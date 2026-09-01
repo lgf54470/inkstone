@@ -4,15 +4,15 @@ import { canFuzzyMatch, fuzzyMatch } from './fuzzy'
 const SAMPLES = [
   'Inkstone',
   'incremental sync engine',
-  '设定面板的打开速度',
-  'WebDAV 备份',
+  '\u8bbe\u5b9a\u9762\u677f\u7684\u6253\u5f00\u901f\u5ea6',
+  'WebDAV \u5907\u4efd',
   'react-hooks-performance.md',
   'Meeting Notes 2026-09-01',
   'short',
   'a b c d e f g',
 ]
 
-const QUERIES = ['ink', 'ync', 'face', 'webdav', 'r-h-p', 'meeti', 'b f', 'abc', 'x', 'zz', '', 'en', '备份']
+const QUERIES = ['ink', 'ync', 'face', 'webdav', 'r-h-p', 'meeti', 'b f', 'abc', 'x', 'zz', '', 'en', '\u5907\u4efd']
 
 describe('canFuzzyMatch', () => {
   it('accepts exactly the inputs fuzzyMatch accepts', () => {

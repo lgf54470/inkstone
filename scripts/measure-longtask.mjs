@@ -219,7 +219,7 @@ async function main() {
     step('measuring: settings open')
     const openSettings = `(() => {
       const matched = [...document.querySelectorAll('button[aria-label]')]
-        .filter((el) => /^(设置|settings)$/i.test(el.getAttribute('aria-label') ?? ''))
+        .filter((el) => /^(?:\u8bbe\u7f6e|settings)$/i.test(el.getAttribute('aria-label') ?? ''))
       const button = matched.find((el) => el.offsetParent !== null) ?? matched[0]
       if (!button) return 'missing-settings-button'
       window.__matchedLabel = button.getAttribute('aria-label')
@@ -244,7 +244,7 @@ async function main() {
     step('measuring: editor tab')
     const switchTab = `(() => {
       const button = [...document.querySelectorAll('[role="dialog"] nav button')]
-        .find((el) => /(编辑|editor)/i.test(el.textContent ?? ''))
+        .find((el) => /(?:\u7f16\u8f91|editor)/i.test(el.textContent ?? ''))
       if (!button) return 'missing-editor-tab'
       const t0 = performance.now()
       button.click()
@@ -284,14 +284,14 @@ async function main() {
     step('measuring: theme switch')
     await evaluate(cdp, `(() => {
       const button = [...document.querySelectorAll('[role="dialog"] nav button')]
-        .find((el) => /(外观|appearance)/i.test(el.textContent ?? ''))
+        .find((el) => /(?:\u5916\u89c2|appearance)/i.test(el.textContent ?? ''))
       if (button) button.click()
       return true
     })()`)
     await sleep(500)
     report.themeSwitchMs = await evaluate(cdp, `(async () => {
       const group = [...document.querySelectorAll('[role="radiogroup"]')]
-        .find((el) => /(主题|theme)/i.test(el.getAttribute('aria-label') ?? ''))
+        .find((el) => /(?:\u4e3b\u9898|theme)/i.test(el.getAttribute('aria-label') ?? ''))
       if (!group) return -1
       const target = [...group.querySelectorAll('[role="radio"]')][1]
       if (!target) return -1
@@ -303,13 +303,13 @@ async function main() {
     await sleep(500)
     report.afterTheme = await evaluate(cdp, `window.__ltSnapshot()`)
 
-    await evaluate(cdp, `document.querySelector('[aria-label*="关闭"], [aria-label*="close" i]')?.click() ?? true`)
+    await evaluate(cdp, `document.querySelector('[aria-label*="\u5173\u95ed"], [aria-label*="close" i]')?.click() ?? true`)
     await sleep(300)
 
     step('measuring: palette open')
     const openPalette = `(() => {
       const button = [...document.querySelectorAll('button[aria-label]')]
-        .find((el) => /(搜索|search|命令|command)/i.test(el.getAttribute('aria-label') ?? '') && el.offsetParent !== null)
+        .find((el) => /(?:\u641c\u7d22|search|\u547d\u4ee4|command)/i.test(el.getAttribute('aria-label') ?? '') && el.offsetParent !== null)
       if (!button) return 'missing-palette-button'
       const t0 = performance.now()
       const wait = window.__waitForDialog()
