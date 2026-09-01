@@ -134,8 +134,6 @@ const SETTINGS_SECTIONS = ['appearance', 'editor', 'preview', 'backup', 'sync'] 
 type SettingsSection = (typeof SETTINGS_SECTIONS)[number]
 
 export function mergeSettings(partial: unknown): UserSettings {
-  // Clone the defaults so the module-level DEFAULT_SETTINGS singleton is
-  // never exposed to callers by reference.
   return mergeSettingsPatch(cloneDefaultSettings(), partial)
 }
 

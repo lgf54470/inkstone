@@ -175,12 +175,6 @@
       transition: none !important;
     }
   }
-
-  /* The fallback theme switch used to cross-fade colors on every element
-     on the page, which repainted the whole document for 260ms and made
-     settings interactions feel sluggish. Colors now switch instantly;
-     the circle view-transition remains available where startViewTransition
-     is supported. */
 }
 
 .app-viewport-fixed {
