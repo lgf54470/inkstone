@@ -53,7 +53,8 @@ export const Preview = memo(function Preview({
   const hostRef = useRef<HTMLDivElement>(null)
   const internalScrollerRef = useRef<HTMLDivElement>(null)
   const scrollerRef = externalScrollerRef ?? internalScrollerRef
-  const settings = useSession((s) => s.settings)
+  const preview = useSession((s) => s.settings.preview)
+  const proseFont = useSession((s) => s.settings.appearance.proseFont)
   const locale = useLocale()
   const setLightbox = useUi((s) => s.setLightbox)
   const openView = useUi((s) => s.openView)
@@ -111,7 +112,7 @@ export const Preview = memo(function Preview({
 
   const startMermaidRender = useCallback(() => {
     const host = hostRef.current
-    if (!host || !settings.preview.mermaid) return
+    if (!host || !preview.mermaid) return
 
     const revision = ++mermaidRevisionRef.current
     void renderPendingMermaid<PreviewViewport | null>(host, theme === 'dark', {
@@ -128,7 +129,7 @@ export const Preview = memo(function Preview({
         onRendered?.()
       },
     })
-  }, [onRendered, scrollerRef, settings.preview.mermaid, theme])
+  }, [onRendered, scrollerRef, preview.mermaid, theme])
 
 
   useEffect(() => {
@@ -147,11 +148,11 @@ export const Preview = memo(function Preview({
         })
       }
       await enhancePreview(staging, {
-        math: settings.preview.math,
-        mermaid: settings.preview.mermaid,
+        math: preview.math,
+        mermaid: preview.mermaid,
         dark: theme === 'dark',
-        codeBlockCollapseLines: settings.preview.codeBlockCollapse
-          ? settings.preview.codeBlockCollapseLines
+        codeBlockCollapseLines: preview.codeBlockCollapse
+          ? preview.codeBlockCollapseLines
           : 0,
       })
       if (cancelled || revision !== preparationRef.current) return
@@ -181,22 +182,22 @@ export const Preview = memo(function Preview({
     rendered.hasEmbeds,
     rendered.html,
     scrollerRef,
-    settings.preview.math,
-    settings.preview.mermaid,
-    settings.preview.codeBlockCollapse,
-    settings.preview.codeBlockCollapseLines,
+    preview.math,
+    preview.mermaid,
+    preview.codeBlockCollapse,
+    preview.codeBlockCollapseLines,
     theme,
   ])
 
 
   useEffect(() => {
-    if (!mermaidEpoch || !settings.preview.mermaid) return
+    if (!mermaidEpoch || !preview.mermaid) return
     const timer = window.setTimeout(startMermaidRender, 60)
     return () => {
       window.clearTimeout(timer)
       mermaidRevisionRef.current++
     }
-  }, [mermaidEpoch, settings.preview.mermaid, startMermaidRender])
+  }, [mermaidEpoch, preview.mermaid, startMermaidRender])
 
   useLayoutEffect(() => {
     const snapshot = pendingViewportRef.current
@@ -384,7 +385,7 @@ export const Preview = memo(function Preview({
         ref={hostRef}
         onClick={onClick}
         onKeyDown={onKeyDown}
-        data-font={settings.appearance.proseFont}
+        data-font={proseFont}
         data-preview-content
         className="ink-prose"
         dangerouslySetInnerHTML={htmlObj}

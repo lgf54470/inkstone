@@ -41,7 +41,8 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
     grouped?: boolean;
 } = {}) {
     const { note, content, loaded } = useActiveNote(pane);
-    const settings = useSession((s) => s.settings);
+    const previewSettings = useSession((s) => s.settings.preview);
+    const editorSettings = useSession((s) => s.settings.editor);
     const updateSettings = useSession((s) => s.updateSettings);
     const editContent = useNotes((s) => s.editContent);
     const editTitle = useNotes((s) => s.editTitle);
@@ -82,7 +83,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         ? mobileLayout
         : grouped && pane !== 'active'
             ? workspacePaneLayouts[pane]
-            : settings.preview.layout;
+            : previewSettings.layout;
     const showEditor = layout === 'edit' || layout === 'split';
     const showPreview = layout === 'preview' || layout === 'split';
     const outlineVisible = !isMobile && outlineOpen && paneActive && headings.length > 0;
@@ -182,7 +183,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         command(view);
         view.focus();
     }, [view]);
-    const invalidateSyncAnchors = useSyncScroll(view, previewScrollerRef, settings.preview.syncScroll && layout === 'split');
+    const invalidateSyncAnchors = useSyncScroll(view, previewScrollerRef, previewSettings.syncScroll && layout === 'split');
     const jumpToHeading = useCallback((heading: Heading) => {
         if (view) {
             const line = Math.min(view.state.doc.lines, heading.line + 1);
@@ -406,11 +407,11 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         </div>
       </header>
 
-      {settings.editor.showToolbar && showEditor && (<EditorToolbar runCommand={runEditorCommand} mobile={isMobile} onPickImage={() => fileInputRef.current?.click()}/>)}
+      {editorSettings.showToolbar && showEditor && (<EditorToolbar runCommand={runEditorCommand} mobile={isMobile} onPickImage={() => fileInputRef.current?.click()}/>)}
 
       <div ref={containerRef} className="flex min-h-0 flex-1">
         {showEditor && (<div className="min-w-0" style={{ width: layout === 'split' ? editorWidth : '100%' }}>
-            <CodeEditor key={note.id} value={content} onChange={onChange} settings={settings.editor} sources={sources} handlers={handlers} onReady={setView}/>
+            <CodeEditor key={note.id} value={content} onChange={onChange} settings={editorSettings} sources={sources} handlers={handlers} onReady={setView}/>
           </div>)}
 
         {layout === 'split' && (<SplitResizer label={t("workspace.resize_editor_and_preview_panes")} containerRef={containerRef} ratio={effectiveSplitRatio} onChange={(splitRatio) => setLayout({ splitRatio })} onReset={() => setLayout({ splitRatio: null })}/>)}
