@@ -56,3 +56,10 @@ npm-debug.log*
 # Operating-system metadata
 .DS_Store
 Thumbs.db
+
+# ai ide/cli
+.freebuff/
+.zcode
+.workbuddy/
+
+
