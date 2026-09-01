@@ -476,7 +476,17 @@ export const useUi = create<UiState>((set, get) => ({
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
   applyAppearance: (patch) => {
-    set(patch)
+    const current = get()
+    const next: Record<string, ThemePref | AccentName | BackgroundName | number> = {}
+    let changed = false
+    for (const key of Object.keys(patch) as (keyof typeof patch)[]) {
+      const value = patch[key]
+      if (value === undefined || value === current[key]) continue
+      next[key] = value
+      changed = true
+    }
+    if (!changed) return
+    set(next as unknown as typeof patch)
     applyThemeToDom(get())
   },
 }))

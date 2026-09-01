@@ -428,13 +428,14 @@ export function syncAppearanceToDom(settings: UserSettings): void {
   root.dataset.preview = preview.layout
   setLocale(appearance.language)
 
-  useUi.getState().applyAppearance({
+  const ui = useUi.getState()
+  ui.applyAppearance({
     theme: appearance.theme,
     accent: appearance.accent,
     background: appearance.background,
     fontScale: appearance.proseSize,
   })
-  useUi.setState({ density: appearance.density })
+  if (ui.density !== appearance.density) useUi.setState({ density: appearance.density })
 }
 
 export function watchSystemTheme(): () => void {
