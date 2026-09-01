@@ -26,10 +26,10 @@ describe('canFuzzyMatch', () => {
     }
   })
 
-  it('matches boundary characters like fuzzyMatch', () => {
-    expect(canFuzzyMatch('a-b c', 'bc')).toBe(true)
-    expect(canFuzzyMatch('a-b c', 'b-c')).toBe(true)
-    expect(canFuzzyMatch('a-b c', 'a c')).toBe(true)
-    expect(canFuzzyMatch('a-b c', 'ca')).toBe(false)
+  it('shares fuzzyMatch acceptance on boundary cases', () => {
+    const text = 'a-b c'
+    for (const query of ['bc', 'b-c', 'a c', 'ca', '-c', 'c-', 'c ']) {
+      expect(canFuzzyMatch(text, query)).toBe(fuzzyMatch(text, query) !== null)
+    }
   })
 })
