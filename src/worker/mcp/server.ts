@@ -1,5 +1,6 @@
 import { McpServer, type ServerContext } from '@modelcontextprotocol/server'
 import { z } from 'zod'
+import { LIMITS } from '@shared/constants'
 import type { Env } from '../env'
 import { ApiError } from '../lib/errors'
 import { isValidId } from '../lib/id'
@@ -141,11 +142,11 @@ export function createInkstoneMcpServer(options: InkstoneMcpServerOptions): McpS
     'search_notes',
     {
       title: 'Advanced note search',
-      description: 'Search notes with tag, folder, starred, and archive filters; optionally combines keyword and AI semantic search. When multiple tags are given, notes must match all of them (AND).',
+      description: `Search notes with tag, folder, starred, and archive filters; optionally combines keyword and AI semantic search. When multiple tags are given, notes must match all of them (AND). Up to ${LIMITS.tagSelectionMax} tags are accepted.`,
       inputSchema: z.object({
         query: z.string().trim().min(1).max(512),
         limit: z.number().int().min(1).max(20).default(10),
-        tags: z.array(z.string().trim().min(1).max(60)).max(8)
+        tags: z.array(z.string().trim().min(1).max(60)).max(LIMITS.tagSelectionMax)
           .describe('Tags to require on each result; multiple tags must all match (AND)').optional(),
         folder: z.string().trim().min(1).max(120).optional(),
         starred: z.boolean().optional(),

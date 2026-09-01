@@ -378,7 +378,7 @@ searchRoutes.get('/graph', requireAuth, async (c) => {
   const folderId = rawFolderId && isValidId(rawFolderId) ? rawFolderId : ''
   const legacyTag = (c.req.query('tag') ?? '').trim()
   const tags = [...new Set((c.req.query('tags') ?? '').split(',').map((item) => item.trim()).filter(Boolean))]
-    .slice(0, 20)
+    .slice(0, LIMITS.tagSelectionMax)
   if (tags.length === 0 && legacyTag) tags.push(legacyTag)
   const tagsMatch = c.req.query('tagsMatch') === 'all' ? 'all' : 'any'
   const includeOrphans = c.req.query('includeOrphans') !== '0'

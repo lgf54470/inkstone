@@ -3,9 +3,11 @@ import { createPortal } from 'react-dom'
 import {
   ArrowDownToLine,
   ArrowRight,
+  ChevronRight,
   CircleDot,
   Filter,
   FolderOpen,
+  Info,
   Maximize2,
   Minus,
   Network,
@@ -15,10 +17,13 @@ import {
   Settings2,
   X,
 } from 'lucide-react'
+import { LIMITS } from '@shared/constants'
 import type { GraphNode, GraphQuery, GraphResponse } from '@shared/types'
 import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
 import { api } from '../../lib/api'
+import { clearSelectionToastKey, clearTagSelection } from '../../lib/tag-selection'
+import { GRAPH_APPEARANCE_TOGGLES, GRAPH_CLEAR_TOGGLES, GRAPH_SHOW_TOGGLES } from '../../lib/graph-settings'
 import { Button, IconButton } from '../../components/primitives'
 import { Menu, Tooltip, useDialogFocus, useEscape, useLockScroll, type MenuItem } from '../../components/overlay'
 import { Empty, LoadingBlock } from '../../components/feedback'
@@ -32,7 +37,7 @@ const PHYSICS_FRAME_LIMIT = 360
 const GRAPH_PREFS_KEY = 'inkstone.graph.preferences.v1'
 
 type GroupBy = 'none' | 'folder' | 'tag'
-interface GraphPreferences {
+export interface GraphPreferences {
   mode: 'global' | 'local'
   depth: number
   includeOrphans: boolean
@@ -44,6 +49,10 @@ interface GraphPreferences {
   tag: string
   /** How the tag filter combines: any tag (union) or all tags (intersection). */
   tagsMatch: 'any' | 'all'
+  /** Whether clearing the sidebar selection also resets the graph's own tag filter. */
+  clearResetsTag: boolean
+  /** Whether clearing the sidebar selection also closes the graph panel. */
+  clearClosesPanel: boolean
   repulsion: number
   linkDistance: number
   nodeScale: number
@@ -60,6 +69,8 @@ const DEFAULT_PREFERENCES: GraphPreferences = {
   folderId: '',
   tag: '',
   tagsMatch: 'any',
+  clearResetsTag: true,
+  clearClosesPanel: true,
   repulsion: 900,
   linkDistance: 76,
   nodeScale: 1,
@@ -109,6 +120,8 @@ function loadPreferences(): GraphPreferences {
         : '',
       tag: typeof stored.tag === 'string' ? truncateText(stored.tag.trim(), 60) : '',
       tagsMatch: stored.tagsMatch === 'all' ? 'all' : 'any',
+      clearResetsTag: booleanPreference(stored.clearResetsTag, DEFAULT_PREFERENCES.clearResetsTag),
+      clearClosesPanel: booleanPreference(stored.clearClosesPanel, DEFAULT_PREFERENCES.clearClosesPanel),
       repulsion: boundedPreference(stored.repulsion, DEFAULT_PREFERENCES.repulsion, 300, 1800),
       linkDistance: boundedPreference(stored.linkDistance, DEFAULT_PREFERENCES.linkDistance, 40, 150),
       nodeScale: boundedPreference(stored.nodeScale, DEFAULT_PREFERENCES.nodeScale, 0.7, 1.8),
@@ -162,6 +175,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const titleId = useId()
   const [prefs, setPrefs] = useState(loadPreferences)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [limitOpen, setLimitOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
   const [data, setData] = useState<GraphResponse | null>(null)
@@ -208,6 +222,12 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   }, [prefs])
 
   const selectedTags = useUi((state) => state.selectedTags)
+
+  useEffect(() => {
+    if (selectedTags.length < LIMITS.tagSelectionMax)
+      setLimitOpen(false)
+  }, [selectedTags.length])
+  const closePanel = useUi((state) => state.closePanel)
   const request: GraphQuery = useMemo(() => {
     // The sidebar's cmd/ctrl+click selections join the graph's own tag filter.
     const tagSet = new Set<string>()
@@ -527,6 +547,14 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const changePref = <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => {
     setPrefs((current) => ({ ...current, [key]: value }))
   }
+  const resetTagFilters = () => {
+    const key = clearSelectionToastKey(prefs.clearResetsTag, prefs.clearClosesPanel)
+    clearTagSelection({ notify: key ? t(key) : true })
+    if (prefs.clearResetsTag)
+      changePref('tag', '')
+    if (prefs.clearClosesPanel)
+      closePanel()
+  }
 
   return createPortal(<div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
     className="app-viewport-fixed fixed z-[230] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0">
@@ -676,14 +704,30 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
           <GraphSelect label={t('graph.tag')} value={prefs.tag} onChange={(value) => changePref('tag', value)} options={[['', t('graph.all_tags')], ...tags.map((item) => [item.name, item.name] as [string, string])]}/>
           {(prefs.tag || selectedTags.length > 0) && <GraphSelect label={t('graph.tags_match')} value={prefs.tagsMatch} onChange={(value) => changePref('tagsMatch', value as 'any' | 'all')} options={[['any', t('graph.tags_match_any')], ['all', t('graph.tags_match_all')]]}/>}
           {selectedTags.length > 0 && <p className="text-[11px] leading-relaxed text-[var(--text-quaternary)]">{t('graph.sidebar_tags_included', { value0: selectedTags.length, value1: prefs.tagsMatch === 'all' ? t('graph.tags_match_all') : t('graph.tags_match_any') })}</p>}
-          <GraphToggle label={t('graph.show_orphans')} checked={prefs.includeOrphans} onChange={(value) => changePref('includeOrphans', value)}/>
-          <GraphToggle label={t('graph.show_unresolved')} checked={prefs.includeUnresolved} onChange={(value) => changePref('includeUnresolved', value)}/>
+      {GRAPH_CLEAR_TOGGLES.map((control) => (
+        <GraphToggle key={control.prefKey} label={t(control.labelKey)} hint={control.hintKey ? t(control.hintKey) : undefined} checked={prefs[control.prefKey]} onChange={(value) => changePref(control.prefKey, value)}/>
+      ))}
+          {selectedTags.length >= LIMITS.tagSelectionMax && <div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-medium leading-relaxed text-[var(--danger)]">{t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}</p>
+                <button type="button" onClick={resetTagFilters} className="shrink-0 text-[11px] font-medium text-[var(--accent)] transition-colors hover:underline">{t('common.clear_selection')}</button>
+              </div>
+              <button type="button" onClick={() => setLimitOpen((v) => !v)} className="mt-1 flex items-center gap-1 text-[10.5px] font-medium text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
+                <ChevronRight size={10} className={'transition-transform duration-[var(--dur-fast)] ' + (limitOpen ? 'rotate-90' : '')}/>
+                {limitOpen ? t('common.collapse') : t('graph.tags_limit_more', { value0: LIMITS.tagSelectionMax })}
+              </button>
+              {limitOpen && <p className="mt-1 text-[10.5px] leading-relaxed text-[var(--text-tertiary)]">{t('graph.tags_limit_detail', { value0: LIMITS.tagSelectionMax })}</p>}
+            </div>}
+          {GRAPH_SHOW_TOGGLES.map((control) => (
+            <GraphToggle key={control.prefKey} label={t(control.labelKey)} checked={prefs[control.prefKey]} onChange={(value) => changePref(control.prefKey, value)}/>
+          ))}
           {prefs.mode === 'local' && <GraphSelect label={t('graph.depth')} value={String(prefs.depth)} onChange={(value) => changePref('depth', Number(value))} options={[["1", '1'], ["2", '2'], ["3", '3']]}/>} 
         </GraphSection>
         <GraphSection icon={<Network size={13}/>} title={t('graph.appearance')}>
           <GraphSelect label={t('graph.group_by')} value={prefs.groupBy} onChange={(value) => changePref('groupBy', value as GroupBy)} options={[["none", t('graph.group_none')], ["folder", t('graph.folder')], ["tag", t('graph.tag')]]}/>
-          <GraphToggle label={t('graph.show_arrows')} checked={prefs.arrows} onChange={(value) => changePref('arrows', value)}/>
-          <GraphToggle label={t('graph.show_labels')} checked={prefs.labels} onChange={(value) => changePref('labels', value)}/>
+          {GRAPH_APPEARANCE_TOGGLES.map((control) => (
+            <GraphToggle key={control.prefKey} label={t(control.labelKey)} checked={prefs[control.prefKey]} onChange={(value) => changePref(control.prefKey, value)}/>
+          ))}
         </GraphSection>
         <GraphSection icon={<ArrowRight size={13}/>} title={t('graph.forces')}>
           <GraphRange label={t('graph.repulsion')} min={300} max={1800} step={50} value={prefs.repulsion} onChange={(value) => changePref('repulsion', value)}/>
@@ -705,8 +749,9 @@ function GraphSelect({ label, value, onChange, options }: { label: string; value
   return <label className="flex items-center justify-between gap-3 text-[12px] text-[var(--text-secondary)]"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-8 max-w-[160px] rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2 text-[11.5px] outline-none focus:border-[var(--accent)]">{options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}</select></label>
 }
 
-function GraphToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
-  return <label className="flex cursor-pointer items-center justify-between gap-3 text-[12px] text-[var(--text-secondary)]"><span>{label}</span><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="size-4 accent-[var(--accent)]"/></label>
+function GraphToggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (value: boolean) => void }) {
+  const hintId = useId()
+  return <label className="flex cursor-pointer items-center justify-between gap-3 text-[12px] text-[var(--text-secondary)]"><span className="flex min-w-0 items-center gap-1"><span className="truncate">{label}</span>{hint && <Tooltip label={hint}><span role="img" aria-label={hint} id={hintId} className="inline-flex shrink-0 text-[var(--text-quaternary)]"><Info size={11}/></span></Tooltip>}</span><input type="checkbox" aria-describedby={hint ? hintId : undefined} checked={checked} onChange={(event) => onChange(event.target.checked)} className="size-4 accent-[var(--accent)]"/></label>
 }
 
 function GraphRange({ label, min, max, step, value, onChange }: { label: string; min: number; max: number; step: number; value: number; onChange: (value: number) => void }) {
