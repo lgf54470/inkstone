@@ -6,7 +6,7 @@ import { duplicateNoteTitle } from '@shared/text-utils';
 import { LIMITS } from '@shared/constants';
 import type { AppLocale, Folder, Note, NoteSummary, SortKey, SortOrder, SyncResponse, Tag, ViewKind, } from '@shared/types';
 import { api, ApiError, CLIENT_ID } from '../lib/api';
-import { localDb, publishBroadcast, type BroadcastPayload, type OutboxItem } from '../lib/db';
+import { localDb, publishBroadcast, type BroadcastPayload, type CachedNoteContent, type OutboxItem } from '../lib/db';
 import { folderDescendantIds } from '../lib/folders';
 import { useSession } from './session';
 import { useUi, type WorkspacePane } from './ui';
@@ -127,6 +127,59 @@ interface DirtyNoteWrite {
     persisted: Promise<boolean>;
 }
 const dirty = new Map<string, DirtyNoteWrite>();
+
+interface PendingNotePersist {
+    outbox: OutboxItem
+    content: CachedNoteContent
+    waiters: Array<(ok: boolean) => void>
+}
+
+const pendingNotePersists = new Map<string, PendingNotePersist>();
+let notePersistTimer: number | undefined;
+const NOTE_PERSIST_DELAY_MS = 200;
+
+/**
+ * Coalesces per-keystroke IndexedDB writes (outbox + cached content) behind
+ * one short timer: only the latest payload per note is ever persisted, so a
+ * burst of typing collapses into a single outbox rewrite per note instead of
+ * serializing every pending note body on every keystroke.
+ */
+function scheduleNotePersist(
+    id: string,
+    outbox: OutboxItem,
+    content: CachedNoteContent,
+): Promise<boolean> {
+    const existing = pendingNotePersists.get(id);
+    const entry: PendingNotePersist = existing ?? { outbox, content, waiters: [] };
+    entry.outbox = outbox;
+    entry.content = content;
+    if (!existing) pendingNotePersists.set(id, entry);
+    const result = new Promise<boolean>((resolve) => entry.waiters.push(resolve));
+    if (notePersistTimer === undefined) {
+        notePersistTimer = window.setTimeout(() => {
+            void flushPendingNotePersists();
+        }, NOTE_PERSIST_DELAY_MS);
+    }
+    return result;
+}
+
+async function flushPendingNotePersists(): Promise<void> {
+    notePersistTimer = undefined;
+    if (!pendingNotePersists.size) return;
+    const batch = [...pendingNotePersists];
+    pendingNotePersists.clear();
+    for (const [id, entry] of batch) {
+        let ok = true;
+        try {
+            await localDb.enqueueOutbox(entry.outbox);
+            await localDb.setContent(id, entry.content);
+        }
+        catch {
+            ok = false;
+        }
+        for (const waiter of entry.waiters) waiter(ok);
+    }
+}
 
 const inheritedOutboxWrites = new Map<string, string>();
 type RecoveryResult = Pick<
@@ -583,6 +636,7 @@ export const useNotes = create<NotesState>((set, get) => ({
         stageNoteTextWrite(id, content, dirty.get(id)?.title, set, get);
     },
     async flush(options) {
+        await flushPendingNotePersists();
         commitAllPendingSummaryDerivations();
         if (options?.immediate)
             window.clearTimeout(saveTimer);
@@ -1274,16 +1328,27 @@ function stageNoteTextWrite(id: string, content: string, title: string | undefin
         rev: summary.rev,
         ...(title !== undefined ? { title } : {}),
     };
-    const persisted = localDb.enqueueOutbox({
-        id: queueId,
-        clientId: CLIENT_ID,
-        writeId,
-        dependsOnWriteId,
-        noteId: id,
-        payload,
-        attempts: 0,
-        createdAt: Date.now(),
-    }).then(() => true, () => false);
+    const persisted = scheduleNotePersist(
+        id,
+        {
+            id: queueId,
+            clientId: CLIENT_ID,
+            writeId,
+            dependsOnWriteId,
+            noteId: id,
+            payload,
+            attempts: 0,
+            createdAt: Date.now(),
+        },
+        {
+            content,
+            contentDirty,
+            ...(title !== undefined ? { pendingTitle: title } : {}),
+            rev: summary.rev,
+            updatedAt,
+            writeId,
+        },
+    );
     dirty.set(id, { content, contentDirty, ...(title !== undefined ? { title } : {}), rev: summary.rev, writeId, queueId, dependsOnWriteId, updatedAt, persisted });
     const titleChanged = title !== undefined && summary.title !== title;
     set((current) => ({
@@ -1298,14 +1363,6 @@ function stageNoteTextWrite(id: string, content: string, title: string | undefin
         scheduleSummaryDerivation(id, content, updatedAt, set, get);
     if (titleChanged)
         scheduleShellSave(get);
-    void localDb.setContent(id, {
-        content,
-        contentDirty,
-        ...(title !== undefined ? { pendingTitle: title } : {}),
-        rev: summary.rev,
-        updatedAt,
-        writeId,
-    });
     const delay = Math.max(100, useSession.getState().settings.editor.autoSaveDelay);
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => void get().flush(), delay);
