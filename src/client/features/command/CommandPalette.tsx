@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Archive, Clock, Columns2, Download, Eye, FilePlus2, FileText, FolderPlus, Hash, Keyboard, Moon, Palette, Pencil, Plus, Search, Settings, Share2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, Clock, Columns2, Download, Eye, FilePlus2, FileText, FolderPlus, Hash, Keyboard, LayoutTemplate, Moon, Palette, Pencil, Plus, Search, Settings, Share2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
 import type { NoteSummary, SearchHit } from '@shared/types';
 import { truncateText } from '@shared/text-utils';
 import { cn } from '../../lib/cn';
@@ -127,6 +127,15 @@ export function CommandPalette({ onClose }: {
                 combo: 'mod+n',
                 group: t("command.commands"),
                 run: () => void createContextualNote(),
+            },
+            {
+                id: 'cmd-new-from-template',
+                kind: 'command',
+                label: t("templates.new_note_from_template"),
+                icon: <LayoutTemplate size={14}/>,
+                combo: 'mod+shift+n',
+                group: t("command.commands"),
+                run: () => openPanel('templates'),
             },
             {
                 id: 'cmd-new-folder',

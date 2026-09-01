@@ -6,6 +6,7 @@ import type {
   Attachment,
   BackupRun,
   BackupTarget,
+  CommunityTemplate,
   Folder,
   Note,
   NoteSummary,
@@ -42,6 +43,7 @@ export interface DemoState {
   shares: Map<string, DemoShare>
   backupTargets: Map<string, BackupTarget>
   backupRuns: BackupRun[]
+  communityTemplates: CommunityTemplate[]
 }
 
 const seedId = (value: number) => `01j${String(value).padStart(23, '0')}`
@@ -99,6 +101,97 @@ export function createDemoState(): DemoState {
     shares: new Map([[welcomeShare.noteId, { info: welcomeShare, password: null }]]),
     backupTargets: new Map(),
     backupRuns: [],
+    communityTemplates: [
+      {
+        id: 'cm-01j00000000000000000000001',
+        authorId: 'community-alice',
+        authorName: '阿远',
+        name: '面试复盘',
+        description: '记录面试过程、问题与反思，为下一次做准备。',
+        content: `# 面试复盘
+
+## 基本信息
+
+- 公司 / 职位：
+- 面试时间：{{date}}
+- 面试官：
+
+## 面试问题
+
+- [ ] 
+- [ ] 
+
+## 我的表现
+
+- 做得好：
+- 待改进：
+
+## 下一步
+
+- [ ] 发送感谢信
+- [ ] 准备二面`,
+        tags: ['工作', '复盘'],
+        category: '工作与会议',
+        createdAt: now - 86_400_000 * 3,
+      },
+      {
+        id: 'cm-01j00000000000000000000002',
+        authorId: 'community-bob',
+        authorName: '小林',
+        name: '家庭旅行规划',
+        description: '带家人出行的完整规划：路线、住宿、餐饮与应急。',
+        content: `# 家庭旅行规划
+
+## 目的地
+
+- 城市：
+- 日期：{{date}}
+- 同行人：
+
+## 行程
+
+| 日期 | 上午 | 下午 | 晚上 |
+| --- | --- | --- | --- |
+| 第1天 |  |  |  |
+| 第2天 |  |  |  |
+
+## 预订清单
+
+- [ ] 机票 / 车票
+- [ ] 酒店
+- [ ] 门票
+
+## 应急联系
+
+- 紧急联系人：
+- 附近医院：`,
+        tags: ['旅行', '清单'],
+        category: '生活记录',
+        createdAt: now - 86_400_000 * 2,
+      },
+      {
+        id: 'cm-01j00000000000000000000003',
+        authorId: 'community-cara',
+        authorName: 'Momo',
+        name: '极简晨间流程',
+        description: '五分钟晨间仪式：喝水、伸展、写三件最重要的事。',
+        content: `# 极简晨间流程
+
+- [ ] 喝一杯水
+- [ ] 伸展 5 分钟
+- [ ] 写下今天最重要的三件事
+- [ ] 不看手机 30 分钟
+
+## 今日三件事
+
+1. 
+2. 
+3.`,
+        tags: ['每日', '健康'],
+        category: '健康与习惯',
+        createdAt: now - 86_400_000,
+      },
+    ],
   }
 }
 

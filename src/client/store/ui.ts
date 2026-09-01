@@ -15,6 +15,7 @@ export type PanelName =
   | 'graph'
   | 'versions'
   | 'share'
+  | 'templates'
   | 'info'
 
 export type WorkspacePane = 'primary' | 'secondary'

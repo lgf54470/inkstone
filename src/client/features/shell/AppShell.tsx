@@ -25,6 +25,7 @@ const ShortcutsPanel = lazy(() => import('../command/ShortcutsPanel').then((m) =
 const GraphPanel = lazy(() => import('../graph/GraphPanel').then((m) => ({ default: m.GraphPanel })));
 const SharePanel = lazy(() => import('../share/SharePanel').then((m) => ({ default: m.SharePanel })));
 const VersionsPanel = lazy(() => import('../workspace/VersionsPanel').then((m) => ({ default: m.VersionsPanel })));
+const TemplateGallery = lazy(() => import('../templates/TemplateGallery').then((m) => ({ default: m.TemplateGallery })));
 const Lightbox = lazy(() => import('../preview/Lightbox').then((m) => ({ default: m.Lightbox })));
 const UpdateDialog = lazy(() => import('../update/UpdateDialog').then((m) => ({ default: m.UpdateDialog })));
 export function AppShell() {
@@ -193,6 +194,7 @@ function OverlayHost() {
         {panel === 'graph' && <GraphPanel onClose={closePanel}/>}
         {panel === 'share' && <SharePanel onClose={closePanel}/>}
         {panel === 'versions' && <VersionsPanel onClose={closePanel}/>}
+        {panel === 'templates' && <TemplateGallery onClose={closePanel}/>}
         {lightbox && <Lightbox />}
       </Suspense>
       {role === 'owner' && updateDialogOpen && (<Suspense fallback={null}>
@@ -231,6 +233,14 @@ function useGlobalHotkeys(): void {
                 group: () => t("shell.global"),
                 allowInInput: true,
                 handler: () => void createContextualNote(),
+            },
+            {
+                id: 'new-note-from-template',
+                combo: 'mod+shift+n',
+                description: () => t("templates.new_note_from_template"),
+                group: () => t("shell.global"),
+                allowInInput: true,
+                handler: () => ui().togglePanel('templates'),
             },
             {
                 id: 'search',

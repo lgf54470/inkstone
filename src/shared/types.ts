@@ -196,6 +196,54 @@ export interface Tag {
   createdAt: number
 }
 
+export interface NoteTemplateCategory {
+  id: string
+  name: string
+  /** True for categories shipped with the app; they cannot be renamed or deleted. */
+  builtin: boolean
+  position: number
+  createdAt: number
+}
+
+export interface NoteTemplate {
+  id: string
+  categoryId: string | null
+  name: string
+  description: string
+  content: string
+  /** True for templates shipped with the app; they can be edited but not deleted. */
+  builtin: boolean
+  isPinned: boolean
+  isStarred: boolean
+  /** Free-form labels shown in the gallery and used as a filter. */
+  tags: string[]
+  /** Manual sort position within the category; falls back to `updatedAt` when absent. */
+  position?: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface CommunityTemplate {
+  id: string
+  authorId: string
+  authorName: string
+  name: string
+  description: string
+  content: string
+  tags: string[]
+  category: string
+  createdAt: number
+}
+
+export interface CommunityTemplateInput {
+  id?: string
+  name: string
+  description: string
+  content: string
+  tags: string[]
+  category: string
+}
+
 export interface NoteVersionMeta {
   id: string
   noteId: string

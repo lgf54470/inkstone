@@ -330,6 +330,20 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_fts_index_queue_due
      ON fts_index_queue(user_id, created_at, note_id)`,
+
+  `CREATE TABLE IF NOT EXISTS community_templates (
+    id TEXT PRIMARY KEY,
+    author_id TEXT NOT NULL,
+    author_name TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT NOT NULL DEFAULT '[]',
+    category TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_community_templates_created
+     ON community_templates(created_at DESC)`,
 ]
 
 interface SchemaMigration {
@@ -505,6 +519,24 @@ const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
          ON totp_login_challenges(expires_at)`,
     ],
   },
+  {
+    version: 12,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS community_templates (
+        id TEXT PRIMARY KEY,
+        author_id TEXT NOT NULL,
+        author_name TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL,
+        tags TEXT NOT NULL DEFAULT '[]',
+        category TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_community_templates_created
+         ON community_templates(created_at DESC)`,
+    ],
+  },
 ]
 
 const FTS_STATEMENT = `CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
@@ -553,6 +585,7 @@ const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   ai_note_embeddings: ['user_id', 'note_id', 'model', 'vector', 'indexed_at'],
   ai_index_queue: ['user_id', 'note_id', 'kind', 'created_at'],
   fts_index_queue: ['user_id', 'note_id', 'kind', 'created_at'],
+  community_templates: ['id', 'author_id', 'author_name', 'name', 'description', 'content', 'tags', 'category', 'created_at'],
 } as const
 
 const REQUIRED_TABLES = [
@@ -584,6 +617,7 @@ const REQUIRED_TABLES = [
   'ai_note_embeddings',
   'ai_index_queue',
   'fts_index_queue',
+  'community_templates',
 ] as const
 
 const REQUIRED_INDEXES = [
@@ -623,6 +657,7 @@ const REQUIRED_INDEXES = [
   'idx_ai_embeddings_indexed',
   'idx_ai_index_queue_due',
   'idx_fts_index_queue_due',
+  'idx_community_templates_created',
 ] as const
 
 

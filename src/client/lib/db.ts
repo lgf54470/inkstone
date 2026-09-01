@@ -1,7 +1,7 @@
 import { clear as clearStore, createStore, del, get, getMany, set, setMany, update } from 'idb-keyval'
 import * as idbKeyval from 'idb-keyval'
 import type { UseStore } from 'idb-keyval'
-import type { Folder, Note, NoteSummary, PublicUser, SessionInfo, SiteInfo, Tag } from '@shared/types'
+import type { Folder, Note, NoteSummary, NoteTemplate, NoteTemplateCategory, PublicUser, SessionInfo, SiteInfo, Tag } from '@shared/types'
 import { CLIENT_DATABASE_NAME } from './runtime'
 
 const optionalIdbExport = (name: string): unknown => Object.prototype.hasOwnProperty.call(idbKeyval, name)
@@ -22,6 +22,7 @@ const KEY = {
   outboxReplayLease: 'outboxReplayLease',
   userId: 'userId',
   session: 'session',
+  templateLibrary: 'templateLibrary',
 } as const
 
 interface ShellData {
@@ -29,6 +30,12 @@ interface ShellData {
   folders: Folder[]
   tags: Tag[]
   cursor: number
+}
+
+export interface TemplateLibraryData {
+  categories: NoteTemplateCategory[]
+  templates: NoteTemplate[]
+  seedVersion: number
 }
 
 let shellSaveTimer = 0
@@ -256,6 +263,22 @@ export const localDb = {
   setContent: (id: string, value: CachedNoteContent) =>
     safeSet(userScopedKey(KEY.content(id)), value),
   dropContent: (id: string) => del(userScopedKey(KEY.content(id)), store).catch(() => {}),
+
+  async loadTemplateLibrary(): Promise<TemplateLibraryData | null> {
+    const value = await safeGet<unknown>(userScopedKey(KEY.templateLibrary))
+    if (!isRecord(value)) return null
+    const categories = Array.isArray(value.categories)
+      ? value.categories.filter(isNoteTemplateCategory)
+      : []
+    const templates = Array.isArray(value.templates)
+      ? value.templates.filter(isNoteTemplate).map((template) => ({ ...template, tags: template.tags ?? [] }))
+      : []
+    const seedVersion = isFiniteNumber(value.seedVersion) ? value.seedVersion : 0
+    return { categories, templates, seedVersion }
+  },
+
+  saveTemplateLibrary: (data: TemplateLibraryData) =>
+    safeSet(userScopedKey(KEY.templateLibrary), data),
 
   getOutbox: async (): Promise<OutboxItem[]> => normalizeOutbox(await safeGet<unknown>(userScopedKey(KEY.outbox))),
 
@@ -509,6 +532,30 @@ function isTag(value: unknown): value is Tag {
     isNullableString(value.color) &&
     isFiniteNumber(value.count) &&
     isFiniteNumber(value.createdAt)
+}
+
+function isNoteTemplateCategory(value: unknown): value is NoteTemplateCategory {
+  if (!isRecord(value)) return false
+  return typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.builtin === 'boolean' &&
+    isFiniteNumber(value.position) &&
+    isFiniteNumber(value.createdAt)
+}
+
+function isNoteTemplate(value: unknown): value is NoteTemplate {
+  if (!isRecord(value)) return false
+  return typeof value.id === 'string' &&
+    isNullableString(value.categoryId) &&
+    typeof value.name === 'string' &&
+    typeof value.description === 'string' &&
+    typeof value.content === 'string' &&
+    typeof value.builtin === 'boolean' &&
+    typeof value.isPinned === 'boolean' &&
+    typeof value.isStarred === 'boolean' &&
+    (value.tags === undefined || (Array.isArray(value.tags) && value.tags.every((tag) => typeof tag === 'string'))) &&
+    isFiniteNumber(value.createdAt) &&
+    isFiniteNumber(value.updatedAt)
 }
 
 export type BroadcastPayload = (

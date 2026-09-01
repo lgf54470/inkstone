@@ -6,6 +6,11 @@ const allowed = new Map([
   ["scripts/check-i18n.mjs", [
     "// The OAuth consent page is a self-contained HTML document with its own",
     "// language switch (cookie-based); it does not use the React i18n layer.",
+    "// Demo mode ships a pre-populated workspace whose seed data (welcome notes,",
+    "// community gallery entries) is authored demo content in the demo locale, not",
+    "// UI chrome rendered by the i18n layer. Like the OAuth consent page above, it",
+    "// bypasses the English-only source rule; the strings themselves still live",
+    "// only in seed data, never in JSX or component props.",
   ]],
   ["src/client/editor/codeLanguages.ts", [
     "// Highlighting removed: no code languages are loaded.",
@@ -101,6 +106,39 @@ const allowed = new Map([
   ["src/shared/types.ts", [
     "/** Tags to filter by. Overrides `tag`; sent comma-separated. */",
     "/** How multiple tags combine: `any` (default) for union, `all` for intersection. */",
+  ]],
+  ["src/shared/note-templates.ts", [
+    "/**\n * Built-in template library catalog.\n *\n * The gallery is seeded per user from this catalog on first run. Names,\n * descriptions and Markdown bodies live in the locale resources (one entry per\n * language), so the catalog only references message keys. Bump\n * `TEMPLATE_SEED_VERSION` when adding or changing built-in entries: hydration\n * merges the missing/updated entries into existing user libraries without\n * touching user-created templates or user edits.\n */",
+    "/**\n * Increment when the built-in catalog changes so already-seeded libraries pick\n * up new or updated entries. User edits to an entry that shares a built-in id\n * are never overwritten by a re-seed.\n */",
+    "/**\n * Cross-cutting labels (not categories) used to tag built-in templates. Each\n * key maps to a localized label; user templates keep arbitrary free-form tags.\n */",
+    "/**\n * Portable format for exporting/importing a user's template library. Only\n * user-created templates and categories are exported; built-ins are re-seeded\n * by the app itself and stay out of the file.\n */",
+    "/**\n * Parses and validates an exported template library. Returns null when the\n * payload is not a well-formed export; malformed entries are dropped\n * individually so a partially broken file can still be imported.\n */",
+  ]],
+  ["src/client/store/note-templates.ts", [
+    "/** Coordinates the client-side template library: built-in seeding, categories and CRUD. */",
+    "/**\n * Merge newer built-in entries into an existing library without touching user\n * templates or user edits. Runs when the stored seed version is behind.\n */",
+    "// Customizing a built-in template hands ownership to the user,",
+    "// so it becomes deletable and drops the \"built-in\" badge.",
+    "// Category ids are preserved when they exist locally (custom",
+    "// categories imported in the same batch included); unknown",
+    "// ids fall back to Uncategorized instead of dangling.",
+    "// Refresh catalog-sourced fields (name, description, content, tags) on",
+    "// built-in entries the user never edited: user edits flip `builtin` to",
+    "// false, so those are skipped and never overwritten by a re-seed.",
+  ]],
+  ["src/client/lib/template-notes.ts", [
+    "/** Creates a note from a template and opens it, returning the new note id (or null on failure). */",
+  ]],
+  ["src/client/features/templates/TemplateGallery.tsx", [
+    "// The fullwidth comma (\\uFF0C) is the typographic default for Chinese input.",
+  ]],
+  ["src/shared/types.ts", [
+    "/** Tags to filter by. Overrides `tag`; sent comma-separated. */",
+    "/** How multiple tags combine: `any` (default) for union, `all` for intersection. */",
+    "/** True for categories shipped with the app; they cannot be renamed or deleted. */",
+    "/** True for templates shipped with the app; they can be edited but not deleted. */",
+    "/** Free-form labels shown in the gallery and used as a filter. */",
+    "/** Manual sort position within the category; falls back to `updatedAt` when absent. */",
   ]],
   ["src/shared/constants.ts", [
     "/**\n * Default template inserted at the top of new notes. Keep placeholders ASCII:\n * they are filled in at creation time with the localized note title and the\n * current date/time. First line must be `---` (a leading blank line would\n * prevent the front matter from being parsed).\n */",

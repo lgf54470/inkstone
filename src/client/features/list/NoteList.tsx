@@ -1,5 +1,5 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDownWideNarrow, CheckSquare2, Columns2, Copy, FileCode, FileDown, FileText, FolderInput, Hash, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
+import { Archive, ArrowDownWideNarrow, CheckSquare2, Columns2, Copy, FileCode, FileDown, FileText, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
 import type { NoteSummary, SortKey, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { groupLabel } from '../../lib/time';
@@ -14,6 +14,8 @@ import { Empty, NoteListSkeleton } from '../../components/feedback';
 import { TagFilterPopover } from '../../components/tag-filter-popover';
 import { useUi } from '../../store/ui';
 import { createContextualNote, useNotes, useVisibleNotes } from '../../store/notes';
+import { useNoteTemplates } from '../../store/note-templates';
+import { createNoteFromTemplate } from '../../lib/template-notes';
 import { folderPathLabel } from '../../lib/folders';
 import { FolderPicker } from '../folders/FolderPicker';
 import { t, useLocale, type MessageKey } from "../../lib/i18n";
@@ -60,11 +62,40 @@ export function NoteList() {
     const [sortMenuOpen, setSortMenuOpen] = useState(false);
     const sortButtonRef = useRef<HTMLButtonElement>(null);
     const [tagFilterOpen, setTagFilterOpen] = useState(false);
+    const [favMenuOpen, setFavMenuOpen] = useState(false);
+    const favButtonRef = useRef<HTMLButtonElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const [renderLimit, setRenderLimit] = useState(INITIAL_RENDERED_NOTES);
     const now = useNow();
     const tagColors = useMemo(() => new Map((tags ?? []).map((item) => [item.name, item.color])), [tags]);
+    const allTemplates = useNoteTemplates((s) => s.templates);
+    useEffect(() => {
+        const state = useNoteTemplates.getState();
+        if (!state.hydrated)
+            void state.hydrate().catch(() => {});
+    }, []);
+    const favoriteTemplates = useMemo(() => allTemplates
+        .filter((item) => item.isStarred)
+        .sort((a, b) => Number(b.isPinned) - Number(a.isPinned) || b.updatedAt - a.updatedAt),
+    [allTemplates]);
+    const favItems: MenuItem[] = favoriteTemplates.length
+        ? favoriteTemplates.map((template) => ({
+            id: template.id,
+            label: template.name,
+            icon: <LayoutTemplate size={13}/>,
+            onSelect: () => void createNoteFromTemplate(template),
+        }))
+        : [
+            { id: 'empty', label: t("templates.no_favorite_templates"), disabled: true },
+            {
+                id: 'open-library',
+                label: t("templates.open_template_library"),
+                icon: <LayoutTemplate size={13}/>,
+                separatorBefore: true,
+                onSelect: () => useUi.getState().openPanel('templates'),
+            },
+        ];
 
     useEffect(() => setFilter(''), [view, folderId, tag]);
     const title = useMemo(() => {
@@ -213,11 +244,23 @@ export function NoteList() {
                 <ArrowDownWideNarrow size={14}/>
               </IconButton>
             </Tooltip>
-            {view !== 'trash' && view !== 'archived' && (<Tooltip label={t("common.new_note")} combo="mod+n">
-                <IconButton label={t("common.new_note")} size="sm" onClick={() => void createContextualNote()}>
-                  <Plus size={15}/>
-                </IconButton>
-              </Tooltip>)}
+            {view !== 'trash' && view !== 'archived' && (<>
+                <Tooltip label={t("templates.new_note_from_template")} combo="mod+shift+n">
+                  <IconButton label={t("templates.new_note_from_template")} size="sm" onClick={() => useUi.getState().openPanel('templates')}>
+                    <LayoutTemplate size={14}/>
+                  </IconButton>
+                </Tooltip>
+                <Tooltip label={t("templates.favorites")} side="bottom">
+                  <IconButton ref={favButtonRef} label={t("templates.favorites")} size="sm" onClick={() => setFavMenuOpen(true)}>
+                    <Star size={14}/>
+                  </IconButton>
+                </Tooltip>
+                <Tooltip label={t("common.new_note")} combo="mod+n">
+                  <IconButton label={t("common.new_note")} size="sm" onClick={() => void createContextualNote()}>
+                    <Plus size={15}/>
+                  </IconButton>
+                </Tooltip>
+              </>)}
           </div>
         </div>
 
@@ -268,6 +311,7 @@ export function NoteList() {
       <BulkBar />
 
       <Menu anchor={sortButtonRef} open={sortMenuOpen} onClose={() => setSortMenuOpen(false)} items={[...sortItems, tagFilterItem]} align="end"/>
+      <Menu anchor={favButtonRef} open={favMenuOpen} onClose={() => setFavMenuOpen(false)} items={favItems} align="end" width={220}/>
       <TagFilterPopover anchor={sortButtonRef} open={tagFilterOpen} onClose={() => setTagFilterOpen(false)}/>
     </section>);
 }

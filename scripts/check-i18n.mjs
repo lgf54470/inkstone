@@ -3,6 +3,14 @@ import path from 'node:path';
 import ts from 'typescript';
 const root = path.resolve('src/client');
 const localeRoot = path.resolve('src/shared/locales');
+// Demo mode ships a pre-populated workspace whose seed data (welcome notes,
+// community gallery entries) is authored demo content in the demo locale, not
+// UI chrome rendered by the i18n layer. Like the OAuth consent page above, it
+// bypasses the English-only source rule; the strings themselves still live
+// only in seed data, never in JSX or component props.
+const localizedDemoFiles = new Set([
+  path.resolve('src/client/demo/state.ts'),
+]);
 const failures = [];
 const usedKeys = new Set();
 const forbiddenCjk = /[\p{Script=Han}\u3000-\u303f\uff00-\uffef]/u;
@@ -75,7 +83,7 @@ const englishOnlyPaths = [
     path.resolve('.github'),
 ];
 for (const file of englishOnlyPaths.flatMap((target) => fs.existsSync(target) ? [...walk(target)] : [])) {
-    if (file === path.join(localeRoot, 'zh-CN.ts') || !isTextSource(file))
+    if (localizedDemoFiles.has(file) || file === path.join(localeRoot, 'zh-CN.ts') || !isTextSource(file))
         continue;
     rejectHan(file);
 }
@@ -95,7 +103,7 @@ for (const file of [
         rejectHan(target);
 }
 for (const file of walk(root)) {
-    if (!/\.tsx?$/.test(file) || file.includes(`${path.sep}locales${path.sep}`) || file.endsWith(`${path.sep}i18n.ts`))
+    if (localizedDemoFiles.has(file) || !/\.tsx?$/.test(file) || file.includes(`${path.sep}locales${path.sep}`) || file.endsWith(`${path.sep}i18n.ts`))
         continue;
     const sourceText = fs.readFileSync(file, 'utf8');
     const isTestFile = file.includes('.test.');

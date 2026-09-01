@@ -9,6 +9,8 @@ import type {
   BackupTargetInput,
   BackupTargetPatchInput,
   Backlink,
+  CommunityTemplate,
+  CommunityTemplateInput,
   Folder,
   GraphResponse,
   ImportResult,
@@ -485,6 +487,12 @@ export const api = {
     remove: (noteId: string) => request<{ ok: true }>(`/api/share/${noteId}`, { method: 'DELETE' }),
     read: (slug: string, password?: string, signal?: AbortSignal) =>
       request<PublicNote>(`/api/public/${slug}`, { method: 'POST', body: { password }, signal }),
+  },
+
+  communityTemplates: {
+    list: () => request<{ templates: CommunityTemplate[] }>('/api/templates/community'),
+    publish: (input: CommunityTemplateInput) => request<{ template: CommunityTemplate }>('/api/templates/community', { method: 'POST', body: input }),
+    remove: (id: string) => request<{ ok: true }>(`/api/templates/community/${id}`, { method: 'DELETE' }),
   },
 
   transfer: {
