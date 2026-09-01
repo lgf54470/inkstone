@@ -661,3 +661,14 @@ export type ApiErrorCode =
   | 'two_factor_not_enabled'
   | 'two_factor_setup_expired'
   | 'two_factor_unavailable'
+
+export interface DateRangeFilter {
+  start: string
+  end: string
+}
+
+/** A rolling date filter: N days ending either at the newest edit (`edit`) or at today (`today`). */
+export interface RelativeFilter {
+  days: number
+  direction: 'edit' | 'today'
+}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronDown } from 'lucide-react';
+import type { DateRangeFilter } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { t, useLocale } from '../../lib/i18n';
 import { dateKey } from '../../lib/time';
@@ -7,6 +8,7 @@ import { useNotes } from '../../store/notes';
 import { useUi } from '../../store/ui';
 import { ActivityCalendar, CalendarDayNote } from '../../components/activity-calendar';
 import { CalendarView, loadCalendarPersist, saveCalendarPersist } from './calendar-persist';
+import { useGapIndicatorStore } from '../list/use-gap-indicator';
 
 export function SidebarCalendar() {
     const locale = useLocale();
@@ -15,7 +17,6 @@ export function SidebarCalendar() {
     const createNote = useNotes((s) => s.createNote);
     const toast = useUi((s) => s.toast);
     const dateFilter = useUi((s) => s.dateFilter);
-    const setDateFilter = useUi((s) => s.setDateFilter);
     const [persisted] = useState(loadCalendarPersist);
     const [collapsed, setCollapsed] = useState(persisted.collapsed);
     const [view, setView] = useState<CalendarView>(persisted.view);
@@ -56,6 +57,7 @@ export function SidebarCalendar() {
     }, [notes]);
 
     const getDiaryId = useCallback((key: string) => noteIdByTitle.get(diaryTitle(key)) ?? null, [diaryTitle, noteIdByTitle]);
+    const latestEditKey = useGapIndicatorStore((s) => s.latestEditKey);
 
     const notesByDay = useMemo(() => {
         const byDay = new Map<string, { id: string; title: string; updatedAt: number }[]>();
@@ -85,8 +87,14 @@ export function SidebarCalendar() {
 
     const headerTitle = view === 'year' ? String(cursor.year) : monthTitle;
 
+    const applyDateFilter = useCallback((range: DateRangeFilter | null) => {
+        useUi.getState().setRelativeFilter(null);
+        useUi.getState().setDateFilter(range);
+    }, []);
     const handleDayClick = useCallback(async (key: string, diaryId: string | null) => {
-        setDateFilter(useUi.getState().dateFilter === key ? null : key);
+        const current = useUi.getState().dateFilter;
+        const isSameSingleDay = current !== null && current.start === key && current.end === key;
+        applyDateFilter(isSameSingleDay ? null : { start: key, end: key });
         if (diaryId) {
             openNote(diaryId);
             toast({ title: t("sidebar.calendar_diary_opened_value0", { value0: key }), tone: 'success' });
@@ -111,7 +119,7 @@ aliases:
         const id = await createNote({ title, content, open: true });
         if (id)
             toast({ title: t("sidebar.calendar_diary_created_value0", { value0: key }), tone: 'success' });
-    }, [createNote, diaryTitle, openNote, setDateFilter, toast]);
+    }, [applyDateFilter, createNote, diaryTitle, openNote, toast]);
 
     return (<section aria-label={t("sidebar.calendar_title")} className="mb-2.5">
         <div className="flex items-center gap-1 px-0.5">
@@ -122,6 +130,13 @@ aliases:
                 <ChevronDown size={11} className={cn('shrink-0 text-[var(--text-quaternary)] transition-transform duration-[var(--dur-fast)]', collapsed && '-rotate-90')}/>
             </button>
         </div>
-        {!collapsed && (<ActivityCalendar counts={counts} notesByDay={notesByDay} getDiaryId={getDiaryId} locale={locale} weekStart={weekStart} today={now} selectedKey={dateFilter} view={view} onViewChange={setView} cursor={cursor} onCursorChange={setCursor} onDayClick={(key, diaryId) => void handleDayClick(key, diaryId)} onDaySelect={(key) => useUi.getState().setDateFilter(key)} onNoteClick={openNote}/>)}
+        {!collapsed && (<ActivityCalendar counts={counts} notesByDay={notesByDay} getDiaryId={getDiaryId} locale={locale} weekStart={weekStart} today={now} selectedRange={dateFilter} latestEditKey={latestEditKey} view={view} onViewChange={setView} cursor={cursor} onCursorChange={setCursor}            onDayClick={(key, diaryId) => void handleDayClick(key, diaryId)} onDaySelect={(key) => applyDateFilter({ start: key, end: key })} onRangeSelect={(start, end) => applyDateFilter({ start, end })}
+            onGapDayClick={(key) => {
+                const relative = useUi.getState().relativeFilter;
+                if (relative)
+                    useUi.getState().setRelativeFilter({ days: relative.days, direction: 'edit' });
+                else
+                    applyDateFilter({ start: key, end: key });
+            }} onNoteClick={openNote}/>)}
     </section>);
 }

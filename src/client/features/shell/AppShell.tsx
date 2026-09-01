@@ -12,6 +12,8 @@ import { createContextualNote, useNotes } from '../../store/notes';
 import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands';
 import { useSession } from '../../store/session';
 import { useUpdate } from '../../store/update';
+import { useRollingDateFilter } from '../list/use-rolling-filter';
+import { useGapIndicator } from '../list/use-gap-indicator';
 import { Sidebar } from '../sidebar/Sidebar';
 import { NoteList } from '../list/NoteList';
 import { FloatingSearch } from './FloatingSearch';
@@ -34,6 +36,8 @@ export function AppShell() {
     const checkForUpdates = useUpdate((s) => s.check);
     useSyncEngine();
     useGlobalHotkeys();
+    useRollingDateFilter();
+    useGapIndicator();
     const hydrated = useNotes((s) => s.hydrated);
     const openNote = useNotes((s) => s.openNote);
     const deepLinkHandled = useRef(false);

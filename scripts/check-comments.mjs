@@ -24,6 +24,50 @@ const allowed = new Map([
   ]],
   ["src/client/components/activity-calendar.tsx", [
     "/** Reusable calendar + activity heatmap: navigable month grid, yearly month columns, and a GitHub-style weekly strip, with optional per-day note lists. */",
+    "/** Convert an inclusive month range (0-11 indices within a year) to inclusive day keys. */",
+  ]],
+  ["src/client/components/date-range-popover.tsx", [
+    "/** Compute the day keys for a fixed quick preset range anchored at `today`. */",
+    "/** Move a preset within its list by one position (no-op at the edges). */",
+    "/** Floating editor for an inclusive date-range filter: pick a start or end endpoint on a mini month calendar, leap to nearby months, apply fixed or rolling quick ranges, or clear the range. */",
+  ]],
+  ["src/client/features/list/range-preset-persist.ts", [
+    "/** Load the user's custom rolling range presets, falling back to the defaults. */",
+  ]],
+  ["src/client/lib/time.ts", [
+    "/** Day-key arithmetic: the key `delta` days after (or before) `key`. */",
+    "/** Whole days from `a` to `b` (negative when `b` is earlier), using UTC day math to stay DST-safe. */",
+    "/** Inclusive day window of `days` entries ending at `anchor` (1 = a single day). */",
+    "/** Key of the week's first day (per `weekStart`) containing `key`. */",
+    "/** Whether an inclusive day-key range spans exactly one aligned week. */",
+  ]],
+  ["src/client/demo/state.ts", [
+    "// Welcome notes are deliberately dated a few weeks back: with no edits within the last ~10 days,",
+    "// the rolling date filter's follow-edit window stays parked at the newest edit and the gap hint",
+    "// (newest edit outside a today-anchored window) is directly visible in the demo.",
+  ]],
+  ["src/client/features/list/use-rolling-filter.ts", [
+    "/** Latest non-deleted note's edit date key (null when there are no notes). */",
+    "/** Newest edit key with whole days it sits outside the selected window (null when it is inside or the inputs are empty). */",
+    "/** Window covering both the current range and the whole gap up to the newest edit (null when the edit is inside or inputs are empty). */",
+    "/** Day key the rolling window anchors on: the newest edit for the follow-edit direction, otherwise the later of the calendar today and the newest edit (the \"now\" moment — the window end advances with the save stream instead of staying pinned to the natural day). */",
+    "/** Subscribes to note saves: any edit mutates the notes store, so `latestEditKey` recomputes the moment a note is written and the window re-materializes with zero latency. A single midnight-aligned tick covers only the today-anchored direction. */",
+    "/** Keeps the rolling date filter materialized: the window recomputes whenever a note save (or the day rollover) changes its anchor. Mount once, anywhere in the tree. */",
+  ]],
+  ["src/client/features/list/use-gap-indicator.test.ts", [
+    "// While peeking, the observed window is the expanded range, so the live gap goes quiet but the last one is kept.",
+    "// The rolling window is re-materialized from the anchor (today), not the pre-peek snapshot.",
+  ]],
+  ["src/client/features/list/use-gap-indicator.ts", [
+    "/** Newest non-deleted note's edit day key (null when there are no notes). */",
+    "/** Newest edit's distance/direction outside the observed window (null when inside or inputs are empty). */",
+    "/** The gap value rendered while a peek hides the live one. */",
+    "/** Expanded range while a peek is active; doubles as the observed window during the peek. */",
+    "/** Single source of truth for the \"newest edit outside the window\" indicator shared by the filter chip, the calendar banner, and the dashed calendar day. */",
+    "/** The window to restore after a peek when no rolling filter is active. */",
+    "/** Temporarily expand the window to cover the whole gap; returns the expanded range or null. */",
+    "/** Restore the window after a peek. */",
+    "/** Recomputes the shared gap whenever the notes or the date filter change. Mount once, anywhere in the tree. */",
   ]],
   ["src/client/features/graph/GraphPanel.tsx", [
     "// Private browsing or a locked-down browser can reject local preferences.",
@@ -67,7 +111,8 @@ const allowed = new Map([
   ]],
   ["src/client/store/ui.ts", [
     "/** How multi-selected tags filter the note list and palette: any or all. */",
-    "/** Date key (YYYY-MM-DD) the note list is filtered to, set from the sidebar calendar. */",
+    "/** Inclusive date range (YYYY-MM-DD keys) the note list is filtered to, set from the sidebar calendar. */",
+    "/** When set, `dateFilter` is the live-materialized window of this rolling filter. */",
     "// Keep the multi-select when entering a folder view so it stacks with",
     "// the folder filter; any other navigation clears the selection.",
   ]],
@@ -141,6 +186,7 @@ const allowed = new Map([
     "/** How multiple tags combine: `any` (default) for union, `all` for intersection. */",
     "/** True for categories shipped with the app; they cannot be renamed or deleted. */",
     "/** True for templates shipped with the app; they can be edited but not deleted. */",
+    "/** A rolling date filter: N days ending either at the newest edit (`edit`) or at today (`today`). */",
     "/** Free-form labels shown in the gallery and used as a filter. */",
     "/** Manual sort position within the category; falls back to `updatedAt` when absent. */",
   ]],

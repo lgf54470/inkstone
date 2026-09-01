@@ -1,4 +1,5 @@
 import { localeTag, t } from './i18n'
+import type { DateRangeFilter } from '@shared/types'
 
 
 const MINUTE = 60_000
@@ -12,6 +13,37 @@ export function dateKey(date: Date): string {
 export function parseDateKey(key: string): Date {
   const [year, month, day] = key.split('-').map(Number)
   return new Date(year, month - 1, day)
+}
+
+/** Day-key arithmetic: the key `delta` days after (or before) `key`. */
+export function addDaysKey(key: string, delta: number): string {
+  const date = parseDateKey(key)
+  date.setDate(date.getDate() + delta)
+  return dateKey(date)
+}
+
+/** Inclusive day window of `days` entries ending at `anchor` (1 = a single day). */
+export function rollingWindowKey(days: number, anchor: string): DateRangeFilter {
+  return { start: addDaysKey(anchor, -(Math.max(1, days) - 1)), end: anchor }
+}
+
+/** Whole days from `a` to `b` (negative when `b` is earlier), using UTC day math to stay DST-safe. */
+export function daysBetweenKeys(a: string, b: string): number {
+  const [ay, am, ad] = a.split('-').map(Number)
+  const [by, bm, bd] = b.split('-').map(Number)
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000)
+}
+
+/** Key of the week's first day (per `weekStart`) containing `key`. */
+export function weekStartKeyOf(key: string, weekStart: 0 | 1): string {
+  const date = parseDateKey(key)
+  date.setDate(date.getDate() - ((date.getDay() - weekStart + 7) % 7))
+  return dateKey(date)
+}
+
+/** Whether an inclusive day-key range spans exactly one aligned week. */
+export function isWeekRangeKey(start: string, end: string, weekStart: 0 | 1): boolean {
+  return start === weekStartKeyOf(start, weekStart) && end === addDaysKey(start, 6)
 }
 
 function isSameDay(a: Date, b: Date): boolean {

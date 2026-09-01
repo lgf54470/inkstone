@@ -1,6 +1,6 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDownWideNarrow, CalendarDays, CheckSquare2, Columns2, Copy, FileCode, FileDown, FileText, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
-import type { NoteSummary, SortKey, ViewKind } from '@shared/types';
+import { Archive, ArrowDownWideNarrow, Bookmark, CalendarDays, Check, CheckSquare2, Columns2, Copy, FileCode, FileDown, FileText, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
+import type { DateRangeFilter, NoteSummary, SortKey, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { groupLabel } from '../../lib/time';
 import { useNow } from '../../lib/hooks';
@@ -12,8 +12,11 @@ import { IconButton } from '../../components/primitives';
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay';
 import { Empty, NoteListSkeleton } from '../../components/feedback';
 import { TagFilterPopover } from '../../components/tag-filter-popover';
-import { parseDateKey } from '../../lib/time';
-import { loadListFilterPersist, saveListFilterPersist } from './list-filter-persist';
+import { DateRangePopover } from '../../components/date-range-popover';
+import { addDaysKey, isWeekRangeKey, parseDateKey, weekStartKeyOf } from '../../lib/time';
+import { computeLatestEditKey } from './use-rolling-filter';
+import { useGapIndicatorStore } from './use-gap-indicator';
+import { loadRememberedFilter, loadSessionFilter, saveRememberedFilter, saveSessionFilter } from './list-filter-persist';
 import { useUi } from '../../store/ui';
 import { createContextualNote, useNotes, useVisibleNotes } from '../../store/notes';
 import { useNoteTemplates } from '../../store/note-templates';
@@ -53,6 +56,7 @@ export function NoteList() {
     const selectedTagsMatch = useUi((s) => s.selectedTagsMatch);
     const setSelectedTagsMatch = useUi((s) => s.setSelectedTagsMatch);
     const dateFilter = useUi((s) => s.dateFilter);
+    const relativeFilter = useUi((s) => s.relativeFilter);
     const notes = useVisibleNotes();
     const folders = useNotes((s) => s.folders);
     const tags = useNotes((s) => s.tags);
@@ -60,22 +64,31 @@ export function NoteList() {
     const hydrated = useNotes((s) => s.hydrated);
     const openNote = useNotes((s) => s.openNote);
     const { emptyTrash, emptyingTrash } = useEmptyTrash();
-    const [persistedFilters] = useState(loadListFilterPersist);
+    const [persistedFilters] = useState(() => loadRememberedFilter() ?? loadSessionFilter());
+    const [rememberFilters, setRememberFilters] = useState(() => loadRememberedFilter() !== null);
     const [filter, setFilter] = useState(persistedFilters.query);
     const deferredFilter = useDeferredValue(filter);
     useEffect(() => {
         useUi.setState({
             dateFilter: persistedFilters.dateFilter,
+            relativeFilter: persistedFilters.relativeFilter,
             selectedTags: persistedFilters.selectedTags,
             selectedTagsMatch: persistedFilters.selectedTagsMatch,
         });
     }, [persistedFilters]);
     useEffect(() => {
-        saveListFilterPersist({ query: filter, dateFilter, selectedTags, selectedTagsMatch });
-    }, [filter, dateFilter, selectedTags, selectedTagsMatch]);
+        const combo = { query: filter, dateFilter, relativeFilter, selectedTags, selectedTagsMatch };
+        saveSessionFilter(combo);
+        if (rememberFilters)
+            saveRememberedFilter(combo);
+        else
+            saveRememberedFilter(null);
+    }, [filter, dateFilter, relativeFilter, selectedTags, selectedTagsMatch, rememberFilters]);
     const [sortMenuOpen, setSortMenuOpen] = useState(false);
     const sortButtonRef = useRef<HTMLButtonElement>(null);
     const [tagFilterOpen, setTagFilterOpen] = useState(false);
+    const [rangeEditorOpen, setRangeEditorOpen] = useState(false);
+    const rangeChipRef = useRef<HTMLButtonElement>(null);
     const [favMenuOpen, setFavMenuOpen] = useState(false);
     const favButtonRef = useRef<HTMLButtonElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
@@ -127,12 +140,100 @@ export function NoteList() {
     const dayFilterLabel = useMemo(() => {
         if (!dateFilter)
             return '';
-        return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric' }).format(parseDateKey(dateFilter));
+        return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric' }).format(parseDateKey(dateFilter.start));
     }, [dateFilter, locale]);
+    const dayFilterLabelEnd = useMemo(() => {
+        if (!dateFilter || dateFilter.start === dateFilter.end)
+            return null;
+        return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric' }).format(parseDateKey(dateFilter.end));
+    }, [dateFilter, locale]);
+    const allNotes = useNotes((s) => s.notes);
+    const latestEdit = useMemo(() => {
+        const key = computeLatestEditKey(allNotes);
+        if (!key)
+            return null;
+        return {
+            key,
+            label: new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric' }).format(parseDateKey(key)),
+        };
+    }, [allNotes, locale]);
+    const gap = useGapIndicatorStore((s) => s.gap);
+    const lastGap = useGapIndicatorStore((s) => s.lastGap);
+    const peekRange = useGapIndicatorStore((s) => s.peekRange);
+    const engagePeek = useGapIndicatorStore((s) => s.engagePeek);
+    const releasePeek = useGapIndicatorStore((s) => s.releasePeek);
+    const displayGap = gap ?? lastGap;
+    const gapShown = gap !== null || peekRange !== null;
+    const peekTimer = useRef<number | null>(null);
+    const peekUsed = useRef(false);
+    const startPeek = useCallback((instant: boolean) => {
+        if (instant) {
+            if (engagePeek())
+                peekUsed.current = true;
+            return;
+        }
+        if (peekTimer.current !== null)
+            window.clearTimeout(peekTimer.current);
+        peekTimer.current = window.setTimeout(() => {
+            if (engagePeek())
+                peekUsed.current = true;
+        }, 350);
+    }, [engagePeek]);
+    const endPeek = useCallback(() => {
+        if (peekTimer.current !== null) {
+            window.clearTimeout(peekTimer.current);
+            peekTimer.current = null;
+        }
+        releasePeek();
+    }, [releasePeek]);
+    const gapCapsuleRef = useCallback((node: HTMLButtonElement | null) => {
+        if (!node)
+            return undefined;
+        const onPointerDown = (event: PointerEvent) => startPeek(event.shiftKey);
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.shiftKey && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                startPeek(true);
+            }
+        };
+        const onKeyUp = (event: KeyboardEvent) => {
+            if (event.key === 'Enter' || event.key === ' ')
+                endPeek();
+        };
+        node.addEventListener('pointerdown', onPointerDown);
+        node.addEventListener('pointerup', endPeek);
+        node.addEventListener('pointerleave', endPeek);
+        node.addEventListener('pointercancel', endPeek);
+        node.addEventListener('keydown', onKeyDown);
+        node.addEventListener('keyup', onKeyUp);
+        node.addEventListener('blur', endPeek);
+        return () => {
+            node.removeEventListener('pointerdown', onPointerDown);
+            node.removeEventListener('pointerup', endPeek);
+            node.removeEventListener('pointerleave', endPeek);
+            node.removeEventListener('pointercancel', endPeek);
+            node.removeEventListener('keydown', onKeyDown);
+            node.removeEventListener('keyup', onKeyUp);
+            node.removeEventListener('blur', endPeek);
+        };
+    }, [endPeek, startPeek]);
     const clearAllFilters = () => {
         useUi.getState().setDateFilter(null);
+        useUi.getState().setRelativeFilter(null);
         useUi.getState().clearTagSelection();
         setFilter('');
+    };
+    const weekStart = locale === 'zh-CN' ? 1 : 0;
+    const weekFiltered = dateFilter ? isWeekRangeKey(dateFilter.start, dateFilter.end, weekStart) : false;
+    const latestWeekRange = latestEdit
+        ? (() => {
+            const start = weekStartKeyOf(latestEdit.key, weekStart);
+            return { start, end: addDaysKey(start, 6) };
+        })()
+        : null;
+    const applyFixedRange = (range: DateRangeFilter | null) => {
+        useUi.getState().setRelativeFilter(null);
+        useUi.getState().setDateFilter(range);
     };
     const filtered = useMemo(() => {
         if (!deferredFilter.trim())
@@ -316,7 +417,17 @@ export function NoteList() {
         {(dateFilter || selectedTags.length > 0 || Boolean(filter)) && (<div role="group" aria-label={t("notes.active_filters")} className="mt-2 flex flex-wrap items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-2 py-1.5">
             {dateFilter && (<span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[11px] text-[var(--text-secondary)]">
                 <CalendarDays size={11} className="shrink-0 text-[var(--text-quaternary)]"/>
-                <span className="truncate">{t("notes.filtering_by_day_value0", { value0: dayFilterLabel })}</span>
+                <button type="button" ref={rangeChipRef} aria-haspopup="dialog" aria-expanded={rangeEditorOpen} aria-label={t("notes.range_editor_title")} onClick={() => setRangeEditorOpen(true)} className="min-w-0 truncate rounded-full text-left transition-colors hover:text-[var(--text-primary)]">
+                  {dayFilterLabelEnd ? t("notes.filtering_by_day_range_value0", { value0: dayFilterLabel, value1: dayFilterLabelEnd }) : t("notes.filtering_by_day_value0", { value0: dayFilterLabel })}
+                </button>
+                {relativeFilter && (<Tooltip label={relativeFilter.direction === 'edit' ? t("notes.auto_follow_edit") : t("notes.auto_follow_today")}>
+                    <span aria-hidden="true" className="shrink-0 rounded-full bg-[var(--accent-soft)] p-0.5 text-[var(--accent)]"><RotateCcw size={10}/></span>
+                  </Tooltip>)}
+                {gapShown && (<Tooltip label={displayGap ? t(displayGap.ahead ? "notes.rolling_gap_ahead_value0" : "notes.rolling_gap_value0", { value0: displayGap.days }) : ''}>
+                    <button type="button" ref={gapCapsuleRef} aria-label={displayGap ? t(displayGap.ahead ? "notes.rolling_gap_ahead_value0" : "notes.rolling_gap_value0", { value0: displayGap.days }) : ""} onClick={() => { if (peekUsed.current) { peekUsed.current = false; return; } const relative = useUi.getState().relativeFilter; if (relative) useUi.getState().setRelativeFilter({ ...relative, direction: 'edit' }); else { const key = latestEdit?.key; if (key) useUi.getState().setDateFilter({ start: key, end: key }); } }} className={cn('shrink-0 rounded-full px-1.5 py-px text-[9px] font-medium transition-colors select-none', peekRange ? 'bg-[var(--accent)] text-[var(--accent-contrast)] ring-1 ring-inset ring-[var(--accent)]' : 'bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)]')}>
+                      {displayGap ? t(displayGap.ahead ? "notes.rolling_gap_ahead_short_value0" : "notes.rolling_gap_short_value0", { value0: displayGap.days }) : ""}
+                    </button>
+                  </Tooltip>)}
                 <Tooltip label={t("notes.clear_day_filter")}>
                   <button type="button" aria-label={t("notes.clear_day_filter")} onClick={() => useUi.getState().setDateFilter(null)} className="rounded-full p-0.5 text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
                     <X size={10}/>
@@ -348,8 +459,11 @@ export function NoteList() {
                 <button type="button" aria-pressed={selectedTagsMatch === 'any'} onClick={() => setSelectedTagsMatch('any')} className="px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">{t("notes.tag_match_any")}</button>
                 <button type="button" aria-pressed={selectedTagsMatch === 'all'} onClick={() => setSelectedTagsMatch('all')} className="border-l border-[var(--border-default)] px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">{t("notes.tag_match_all")}</button>
               </div>)}
+            <button type="button" aria-pressed={rememberFilters} onClick={() => setRememberFilters((value) => !value)} className="ml-auto inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)] aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
+                {rememberFilters ? <Check size={11}/> : <Bookmark size={11}/>}{t("notes.remember_filters")}
+            </button>
             <Tooltip label={t("notes.clear_all_filters")}>
-              <button type="button" aria-label={t("notes.clear_all_filters")} onClick={clearAllFilters} className="ml-auto inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[var(--text-tertiary)] transition-colors hover:text-[var(--danger)]">
+              <button type="button" aria-label={t("notes.clear_all_filters")} onClick={clearAllFilters} className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[var(--text-tertiary)] transition-colors hover:text-[var(--danger)]">
                 <X size={11}/>{t("notes.clear_all_filters")}
               </button>
             </Tooltip>
@@ -359,7 +473,7 @@ export function NoteList() {
       </header>
 
       <div key={`${view}:${folderId ?? ''}:${tag ?? ''}`} ref={listRef} role="listbox" aria-label={title} aria-multiselectable="true" aria-activedescendant={activeNoteId && renderedIds.has(activeNoteId) ? `note-option-${activeNoteId}` : undefined} tabIndex={0} onKeyDown={onKeyDown} className="anim-view-content min-h-0 flex-1 overflow-y-auto px-2 pb-4 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
-        {!hydrated && loading ? (<NoteListSkeleton />) : filtered.length === 0 ? (<ListEmpty view={view} filtering={Boolean(filter)} dayFiltering={Boolean(dateFilter)} tagFiltering={selectedTags.length > 0}/>) : (groups.map((group) => (<div key={group.key} role="group" aria-label={group.label ?? title}>
+        {!hydrated && loading ? (<NoteListSkeleton />        ) : filtered.length === 0 ? (<ListEmpty view={view} filtering={Boolean(filter)} dayFiltering={Boolean(dateFilter)} tagFiltering={selectedTags.length > 0} latestEdit={latestEdit} onJumpToLatest={() => { if (latestEdit) applyFixedRange({ start: latestEdit.key, end: latestEdit.key }); }} weekFiltered={weekFiltered} onJumpToLatestWeek={() => { if (latestWeekRange) applyFixedRange(latestWeekRange); }}/>) : (groups.map((group) => (<div key={group.key} role="group" aria-label={group.label ?? title}>
               {group.label && (<div className="px-2 pt-3 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
                   {group.label}
                 </div>)}
@@ -375,6 +489,7 @@ export function NoteList() {
       <Menu anchor={sortButtonRef} open={sortMenuOpen} onClose={() => setSortMenuOpen(false)} items={[...sortItems, tagFilterItem]} align="end"/>
       <Menu anchor={favButtonRef} open={favMenuOpen} onClose={() => setFavMenuOpen(false)} items={favItems} align="end" width={220}/>
       <TagFilterPopover anchor={sortButtonRef} open={tagFilterOpen} onClose={() => setTagFilterOpen(false)}/>
+      {dateFilter && <DateRangePopover anchor={rangeChipRef} open={rangeEditorOpen} onClose={() => setRangeEditorOpen(false)} range={dateFilter} onChange={applyFixedRange} relative={relativeFilter} onApplyRelative={(value) => useUi.getState().setRelativeFilter(value)}/>}
     </section>);
 }
 const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, position, total, onRangeSelect, }: {
@@ -694,18 +809,29 @@ function BulkBar() {
       {folderPickerOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={commonFolderId} rootLabel={t("notes.remove_from_folder")} onSelect={(folderId) => void runAll(() => performAll((id) => patchNote(id, { folderId }), folderId ? t("notes.moved") : t("notes.moved_out")))} onClose={() => setFolderPickerOpen(false)}/>}
     </div>);
 }
-function ListEmpty({ view, filtering, dayFiltering, tagFiltering }: {
+function ListEmpty({ view, filtering, dayFiltering, tagFiltering, latestEdit, onJumpToLatest, weekFiltered, onJumpToLatestWeek }: {
     view: string;
     filtering: boolean;
     dayFiltering: boolean;
     tagFiltering: boolean;
+    latestEdit: { key: string; label: string } | null;
+    onJumpToLatest: () => void;
+    weekFiltered: boolean;
+    onJumpToLatestWeek: () => void;
 }) {
     const shortcut = (combo: string) => prettyCombo(combo).join('+');
     if (filtering) {
         return <Empty art="search" title={t("notes.no_matching_notes")} description={t("notes.try_another_search_or_press_shortcut_to_search_everywhere", { shortcut: shortcut('mod+k') })}/>;
     }
     if (dayFiltering) {
-        return <Empty art="search" title={t("notes.no_notes_on_this_day")} description={t("notes.no_notes_on_this_day_desc")}/>;
+        return <Empty art="search" title={weekFiltered ? t("notes.no_notes_in_this_week") : t("notes.no_notes_on_this_day")} description={latestEdit ? t("notes.no_notes_in_range_value0", { value0: latestEdit.label }) : t("notes.no_notes_on_this_day_desc")} action={latestEdit ? (<div className="flex flex-col items-center gap-2">
+            {weekFiltered && (<button type="button" onClick={onJumpToLatestWeek} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                <CalendarDays size={13}/>{t("notes.view_latest_week")}
+            </button>)}
+            <button type="button" onClick={onJumpToLatest} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                <CalendarDays size={13}/>{t("notes.view_latest_activity_value0", { value0: latestEdit.label })}
+            </button>
+        </div>) : undefined}/>;
     }
     if (tagFiltering) {
         return <Empty art="tag" title={t("notes.no_notes_match_selected_tags")} description={t("notes.adjust_selected_tags_or_switch_match_mode")}/>;

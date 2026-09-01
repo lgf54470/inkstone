@@ -57,8 +57,11 @@ export function newDemoId(): string {
 export function createDemoState(): DemoState {
   const now = Date.now()
   const folders: Folder[] = []
+  // Welcome notes are deliberately dated a few weeks back: with no edits within the last ~10 days,
+  // the rolling date filter's follow-edit window stays parked at the newest edit and the gap hint
+  // (newest edit outside a today-anchored window) is directly visible in the demo.
   const notes = welcomeNoteTemplates('zh-CN').map(({ content }, index) =>
-    note(seedId(20 + index), content, null, now - index, { isPinned: true, isStarred: true }),
+    note(seedId(20 + index), content, null, now - 86_400_000 * (21 + 7 * index), { isPinned: true, isStarred: true }),
   )
   const tagIds = new Map<string, string>()
   for (const item of notes) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildStripWeeks } from './activity-calendar';
+import { buildStripWeeks, monthRangeToKeys } from './activity-calendar';
 
 describe('buildStripWeeks', () => {
     it('builds a single aligned week when the range fits exactly', () => {
@@ -76,13 +76,27 @@ describe('buildStripWeeks', () => {
             range: { start: new Date(2026, 7, 31), end: new Date(2026, 8, 6) },
             weekStart: 1,
             todayKey: '2026-09-02',
-            selectedKey: '2026-09-02',
+            selectedRange: { start: '2026-09-02', end: '2026-09-04' },
             getDiaryId: (key) => (key === '2026-09-02' ? 'd9' : null),
             notesByDay: notes,
         });
         expect(weeks[0]![2]!.diaryId).toBe('d9');
         expect(weeks[0]![2]!.selected).toBe(true);
-        expect(weeks[0]![3]!.selected).toBe(false);
+        expect(weeks[0]![3]!.selected).toBe(true);
+        expect(weeks[0]![4]!.selected).toBe(true);
+        expect(weeks[0]![5]!.selected).toBe(false);
         expect(weeks[0]![2]!.notes.map((item) => item.id)).toEqual(['n1', 'n2']);
+    });
+
+    it('turns an inclusive month range into day keys covering whole months', () => {
+        expect(monthRangeToKeys(2026, 8, 8)).toEqual({ start: '2026-09-01', end: '2026-09-30' });
+        expect(monthRangeToKeys(2026, 7, 8)).toEqual({ start: '2026-08-01', end: '2026-09-30' });
+        expect(monthRangeToKeys(2026, 0, 11)).toEqual({ start: '2026-01-01', end: '2026-12-31' });
+        expect(monthRangeToKeys(2026, 11, 11)).toEqual({ start: '2026-12-01', end: '2026-12-31' });
+    });
+
+    it('normalizes reversed month ranges and leap-year February', () => {
+        expect(monthRangeToKeys(2024, 11, 0)).toEqual({ start: '2024-01-01', end: '2024-12-31' });
+        expect(monthRangeToKeys(2024, 1, 1)).toEqual({ start: '2024-02-01', end: '2024-02-29' });
     });
 });
