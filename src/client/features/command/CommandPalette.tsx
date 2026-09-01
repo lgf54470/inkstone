@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Archive, Clock, Columns2, Download, Eye, FileText, FolderPlus, Hash, Keyboard, Moon, Palette, Pencil, Plus, Search, Settings, Share2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
 import type { NoteSummary, SearchHit } from '@shared/types';
@@ -60,11 +60,29 @@ export function CommandPalette({ onClose }: {
     useEscape(true, onClose);
     useLockScroll(true);
     useDialogFocus(true, panelRef, inputRef);
-    const executeItem = (item: Item) => {
-
+    const executeItem = useCallback((item: Item) => {
         onClose();
         item.run();
-    };
+    }, [onClose]);
+
+    const noteList = useMemo(() => Object.values(notes).filter((note) => !note.deletedAt), [notes]);
+    const folderIndex = useMemo(() => {
+        const counts = new Map<string, number>();
+        const folderById = new Map(folders.map((folder) => [folder.id, folder]));
+        for (const note of Object.values(notes)) {
+            if (!note.folderId || note.deletedAt || note.isArchived)
+                continue;
+            let currentId: string | null = note.folderId;
+            const seen = new Set<string>();
+            while (currentId && !seen.has(currentId)) {
+                seen.add(currentId);
+                counts.set(currentId, (counts.get(currentId) ?? 0) + 1);
+                currentId = folderById.get(currentId)?.parentId ?? null;
+            }
+        }
+        const choices = folders.map((folder) => ({ folder, path: folderPathLabel(folders, folder.id) }));
+        return { counts, choices };
+    }, [notes, folders]);
 
     useEffect(() => {
         const text = debounced.trim();
@@ -257,7 +275,6 @@ export function CommandPalette({ onClose }: {
     const items = useMemo<Item[]>(() => {
         const text = query.trim();
         const remoteResults = remote.query === text ? remote.results : [];
-        const noteList = Object.values(notes).filter((n) => !n.deletedAt);
         if (!text) {
 
             const recent = recentNoteIds
@@ -315,21 +332,8 @@ export function CommandPalette({ onClose }: {
             score: match.score,
             run: () => openView('tag', { tag: item.name }),
         }));
-        const folderCounts = new Map<string, number>();
-        const folderById = new Map(folders.map((folder) => [folder.id, folder]));
-        for (const note of Object.values(notes)) {
-            if (!note.folderId || note.deletedAt || note.isArchived)
-                continue;
-            let currentId: string | null = note.folderId;
-            const seenFolders = new Set<string>();
-            while (currentId && !seenFolders.has(currentId)) {
-                seenFolders.add(currentId);
-                folderCounts.set(currentId, (folderCounts.get(currentId) ?? 0) + 1);
-                currentId = folderById.get(currentId)?.parentId ?? null;
-            }
-        }
-        const folderChoices = folders.map((folder) => ({ folder, path: folderPathLabel(folders, folder.id) }));
-        const matchedFolders = fuzzyFilter(folderChoices, text, (choice) => choice.path, 5).map<Item>(({ item: choice, match }) => ({
+        const folderCounts = folderIndex.counts;
+        const matchedFolders = fuzzyFilter(folderIndex.choices, text, (choice) => choice.path, 5).map<Item>(({ item: choice, match }) => ({
             id: `folder-${choice.folder.id}`,
             kind: 'folder',
             label: choice.path,
@@ -355,9 +359,10 @@ export function CommandPalette({ onClose }: {
     }, [
         query,
         locale,
-        notes,
+        noteList,
         tags,
         folders,
+        folderIndex,
         commands,
         remote,
         recentNoteIds,
@@ -400,7 +405,7 @@ export function CommandPalette({ onClose }: {
     };
     let flatIndex = -1;
     return createPortal(<div className="app-viewport-fixed fixed z-[240] flex items-end justify-center md:items-start md:px-4 md:pt-[13vh]">
-      <div className="anim-fade absolute inset-0 bg-[var(--scrim)] backdrop-blur-[3px]" onClick={onClose} aria-hidden="true"/>
+      <div className="anim-fade absolute inset-0 bg-[var(--scrim)]" onClick={onClose} aria-hidden="true"/>
 
       <div ref={panelRef} className="anim-pop relative flex h-[min(82dvh,var(--app-viewport-height,100dvh))] w-full max-w-[660px] flex-col overflow-hidden rounded-t-[var(--r-2xl)] border border-b-0 border-[var(--border-default)] bg-[var(--bg-overlay)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-modal)] outline-none md:h-auto md:rounded-[var(--r-2xl)] md:border-b md:pb-0" role="dialog" aria-modal="true" aria-labelledby={labelId} tabIndex={-1}>
         <h2 id={labelId} className="sr-only">{t("common.search_notes_or_run_a_command")}</h2>
@@ -426,25 +431,7 @@ export function CommandPalette({ onClose }: {
                 flatIndex++;
                 const index = flatIndex;
                 const active = index === cursor;
-                const parts = item.match
-                    ? splitByRanges(item.label, item.match.ranges)
-                    : [{ text: item.label, hit: false }];
-                return (<button key={item.id} id={`${listId}-option-${index}`} type="button" role="option" aria-selected={active} tabIndex={-1} data-index={index} onMouseMove={() => setCursor(index)} onClick={() => executeItem(item)} className={cn('flex w-full items-center gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left', 'transition-colors duration-[80ms]', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
-                      <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>
-                        {item.icon}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] text-[var(--text-primary)]">
-                          {parts.map((part, i) => part.hit ? (<mark key={i} className="ink-hit">
-                                {part.text}
-                              </mark>) : (<span key={i}>{part.text}</span>))}
-                        </span>
-                        {item.detail && (<span className="mt-0.5 block truncate text-[11px] text-[var(--text-quaternary)]">
-                            {item.detail}
-                          </span>)}
-                      </span>
-                      {item.combo && <Kbd combo={item.combo}/>}
-                    </button>);
+                return (<PaletteRow key={item.id} item={item} active={active} index={index} listId={listId} onActivate={setCursor} onSelect={executeItem}/>);
             })}
               </div>)))}
         </div>
@@ -460,3 +447,32 @@ export function CommandPalette({ onClose }: {
       </div>
     </div>, document.body);
 }
+
+const PaletteRow = memo(function PaletteRow({ item, active, index, listId, onActivate, onSelect, }: {
+    item: Item;
+    active: boolean;
+    index: number;
+    listId: string;
+    onActivate: (index: number) => void;
+    onSelect: (item: Item) => void;
+}) {
+    const parts = item.match
+        ? splitByRanges(item.label, item.match.ranges)
+        : [{ text: item.label, hit: false }];
+    return (<button id={`${listId}-option-${index}`} type="button" role="option" aria-selected={active} tabIndex={-1} data-index={index} onMouseMove={() => onActivate(index)} onClick={() => onSelect(item)} className={cn('flex w-full items-center gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left', 'transition-colors duration-[80ms]', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
+      <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>
+        {item.icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] text-[var(--text-primary)]">
+          {parts.map((part, i) => part.hit ? (<mark key={i} className="ink-hit">
+                {part.text}
+              </mark>) : (<span key={i}>{part.text}</span>))}
+        </span>
+        {item.detail && (<span className="mt-0.5 block truncate text-[11px] text-[var(--text-quaternary)]">
+            {item.detail}
+          </span>)}
+      </span>
+      {item.combo && <Kbd combo={item.combo}/>}
+    </button>);
+})
