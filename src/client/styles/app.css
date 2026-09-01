@@ -166,16 +166,21 @@
   }
 
 
-  html.theme-transition,
-  html.theme-transition *,
-  html.theme-transition *::before,
-  html.theme-transition *::after {
-    transition:
-      background-color 260ms var(--ease-out),
-      border-color 260ms var(--ease-out),
-      color 260ms var(--ease-out) !important;
+  html.theme-transition body {
+    transition: background-color 260ms var(--ease-out) !important;
     transition-delay: 0 !important;
   }
+  @media (prefers-reduced-motion: reduce) {
+    html.theme-transition body {
+      transition: none !important;
+    }
+  }
+
+  /* The fallback theme switch used to cross-fade colors on every element
+     on the page, which repainted the whole document for 260ms and made
+     settings interactions feel sluggish. Colors now switch instantly;
+     the circle view-transition remains available where startViewTransition
+     is supported. */
 }
 
 .app-viewport-fixed {
