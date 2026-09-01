@@ -141,11 +141,12 @@ export function createInkstoneMcpServer(options: InkstoneMcpServerOptions): McpS
     'search_notes',
     {
       title: 'Advanced note search',
-      description: 'Search notes with tag, folder, starred, and archive filters; optionally combines keyword and AI semantic search.',
+      description: 'Search notes with tag, folder, starred, and archive filters; optionally combines keyword and AI semantic search. When multiple tags are given, notes must match all of them (AND).',
       inputSchema: z.object({
         query: z.string().trim().min(1).max(512),
         limit: z.number().int().min(1).max(20).default(10),
-        tags: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
+        tags: z.array(z.string().trim().min(1).max(60)).max(8)
+          .describe('Tags to require on each result; multiple tags must all match (AND)').optional(),
         folder: z.string().trim().min(1).max(120).optional(),
         starred: z.boolean().optional(),
         archived: z.boolean().optional(),
@@ -265,7 +266,7 @@ export function createInkstoneMcpServer(options: InkstoneMcpServerOptions): McpS
     'create_note',
     {
       title: 'Create note',
-      description: 'Create a private Markdown note. Requires notes:write and an operation_id for safe retry.',
+      description: 'Create a private Markdown note. Requires notes:write and an operation_id for safe retry. When content is omitted, the account\'s configured new-note template is inserted and its placeholders (e.g. {{title}}, {{createdAt}}, {{today}}) are filled in; pass explicit content to create a note verbatim.',
       inputSchema: z.object({
         operation_id: operationId,
         note_id: noteId.optional(),

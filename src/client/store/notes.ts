@@ -1,7 +1,7 @@
 /** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization. */
 import { create, type StoreApi } from 'zustand';
 import { useMemo } from 'react';
-import { countText, deriveExcerpt, extractTags, normalizeLinkKey, sortTagNames } from '@shared/markdown-utils';
+import { addTagToFrontMatter, countText, deriveExcerpt, extractTags, normalizeLinkKey, parseFrontMatter, renderNewNoteTemplate, setFrontMatterProperty, sortTagNames } from '@shared/markdown-utils';
 import { duplicateNoteTitle } from '@shared/text-utils';
 import { LIMITS } from '@shared/constants';
 import type { AppLocale, Folder, Note, NoteSummary, SortKey, SortOrder, SyncResponse, Tag, ViewKind, } from '@shared/types';
@@ -43,6 +43,8 @@ interface NotesState {
         id?: string;
         title?: string;
         content?: string;
+        /** Tags when creating from a tag view: added to the front matter tags and kept as `#tag` body prefixes. */
+        tags?: string[];
         folderId?: string | null;
         isStarred?: boolean;
         open?: boolean;
@@ -603,14 +605,29 @@ export const useNotes = create<NotesState>((set, get) => ({
         const nextTitle = title.slice(0, LIMITS.titleMaxLength);
         if (summary.title === nextTitle)
             return;
-        stageNoteTextWrite(id, content, nextTitle, set, get);
+        // Keep the front matter `title` property in sync with the note title
+        // whenever the note already declares one (opt-out per settings).
+        const syncedContent = useSession.getState().settings.notes.syncTitleToFrontMatter
+            ? setFrontMatterProperty(content, 'title', nextTitle || null)
+            : null;
+        stageNoteTextWrite(id, syncedContent ?? content, nextTitle, set, get);
     },
     editContent(id, content) {
         const state = get();
         const summary = state.notes[id];
         if (!summary || !hasOwnContent(state.contents, id) || state.contents[id] === content)
             return;
-        stageNoteTextWrite(id, content, dirty.get(id)?.title, set, get);
+        // Reverse sync: when the body's front matter `title` property changes,
+        // adopt it as the note title so both stay in agreement (opt-out per
+        // settings).
+        let nextTitle = dirty.get(id)?.title;
+        if (useSession.getState().settings.notes.syncFrontMatterTitle) {
+            const nextFrontMatterTitle = frontMatterTitleOf(content);
+            const previousFrontMatterTitle = frontMatterTitleOf(state.contents[id]);
+            if (nextFrontMatterTitle !== undefined && nextFrontMatterTitle !== previousFrontMatterTitle)
+                nextTitle = nextFrontMatterTitle.slice(0, LIMITS.titleMaxLength);
+        }
+        stageNoteTextWrite(id, content, nextTitle, set, get);
     },
     async flush(options) {
         await notePersistCoalescer.flush();
@@ -631,9 +648,20 @@ export const useNotes = create<NotesState>((set, get) => ({
     async createNote(input) {
         const id = input?.id ?? newLocalEntityId();
         const existing = get().notes[id];
-        const content = input?.content ?? '';
         const title = (input?.title ?? '').trim().slice(0, LIMITS.titleMaxLength);
         const folderId = input?.folderId ?? currentFolderId();
+        let content: string;
+        let cursor: number | null = null;
+        if (input?.content !== undefined) {
+            content = input.content;
+        }
+        else {
+            const built = buildNewNoteContent(title, input?.tags, folderId);
+            content = built.content;
+            cursor = built.cursor;
+            if (cursor !== null)
+                pendingEditorCursors.set(id, cursor);
+        }
         const isStarred = input?.isStarred ?? false;
         if (existing) {
             const request = api.notes.create({ id, title, content, folderId, ...(isStarred ? { isStarred: true } : {}) });
@@ -2560,6 +2588,47 @@ function tagEqual(a: Tag, b: Tag): boolean {
         a.count === b.count &&
         a.createdAt === b.createdAt);
 }
+/**
+ * Build the initial content of a fresh note from the user-configured template
+ * (see settings.notes.newNoteTemplate), optionally carrying the `#tag` body
+ * prefixes of the tags passed from a tag view (also merged into the front
+ * matter `tags` list). `{{cursor}}` is resolved by renderNewNoteTemplate so
+ * the editor can place the caret there. An empty or whitespace-only template
+ * yields a blank note, matching the pre-template behavior.
+ */
+function buildNewNoteContent(title: string, tags: string[] = [], folderId: string | null = null): { content: string; cursor: number | null } {
+    const template = useSession.getState().settings.notes.newNoteTemplate;
+    const tagList = tags.map((item) => item.trim().replace(/^#/, '')).filter(Boolean);
+    if (!template.trim())
+        return { content: tagList.map((tag) => `#${tag}`).join(' ') + (tagList.length ? '\n\n' : ''), cursor: null };
+    const extra: Record<string, string> = {};
+    const folder = folderId ? useNotes.getState().folders.find((item) => item.id === folderId) : null;
+    if (folder?.name)
+        extra.folder = folder.name;
+    if (tagList.length)
+        extra.tags = tagList.join(', ');
+    let templateSource = template;
+    for (const tag of tagList) {
+        const merged = addTagToFrontMatter(templateSource, tag);
+        if (merged)
+            templateSource = merged;
+    }
+    const rendered = renderNewNoteTemplate(templateSource, title || t("common.new_note"), new Date(), extra);
+    const trailing = tagList.length ? tagList.map((tag) => `#${tag}`).join(' ') + '\n\n' : '';
+    const body = trailing ? (rendered.content.endsWith('\n') ? rendered.content : rendered.content + '\n\n') + trailing : rendered.content;
+    return { content: body, cursor: rendered.cursor };
+}
+/** Pending caret positions for freshly created notes, consumed by the editor on mount. */
+const pendingEditorCursors = new Map<string, number>()
+export function takePendingEditorCursor(noteId: string): number | null {
+    const cursor = pendingEditorCursors.get(noteId)
+    pendingEditorCursors.delete(noteId)
+    return cursor ?? null
+}
+function frontMatterTitleOf(content: string): string | undefined {
+    const title = parseFrontMatter(content).data.title;
+    return typeof title === 'string' ? title : undefined;
+}
 function currentFolderId(): string | null {
     const ui = useUi.getState();
     return ui.view === 'folder' ? ui.folderId : null;
@@ -2570,14 +2639,20 @@ export function createContextualNote(input?: {
     open?: boolean;
 }): Promise<string | null> {
     const ui = useUi.getState();
+    // Tags gathered with cmd/ctrl+click in the sidebar are consumed by the
+    // next new-note action, then cleared.
+    const selectedTags = ui.selectedTags.length > 0 ? [...ui.selectedTags] : null;
+    if (selectedTags)
+        ui.clearTagSelection();
     if (ui.view === 'trash' || ui.view === 'archived') {
         ui.openView('all');
-        return useNotes.getState().createNote(input);
+        return useNotes.getState().createNote({ ...input, ...(selectedTags && input?.content === undefined ? { tags: selectedTags } : {}) });
     }
     return useNotes.getState().createNote({
         ...input,
         ...(ui.view === 'folder' ? { folderId: ui.folderId } : {}),
-        ...(ui.view === 'tag' && ui.tag && input?.content === undefined ? { content: `#${ui.tag}\n\n` } : {}),
+        ...(ui.view === 'tag' && ui.tag && input?.content === undefined ? { tags: [ui.tag] } : {}),
+        ...(selectedTags && input?.content === undefined ? { tags: selectedTags } : {}),
         ...(ui.view === 'starred' ? { isStarred: true } : {}),
     });
 }
@@ -2666,7 +2741,7 @@ function numberMapEqual(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, n
 export function useNavigationCounts(): NavigationCounts {
     return useNotes((state) => selectNavigationProjection(state.notes).counts);
 }
-function matchesView(note: NoteSummary, view: ViewKind, folderId: string | null, tag: string | null, folderScope?: ReadonlySet<string>): boolean {
+function matchesView(note: NoteSummary, view: ViewKind, folderId: string | null, tag: string | null, folderScope?: ReadonlySet<string>, selectedTags: readonly string[] = []): boolean {
     if (view === 'trash')
         return Boolean(note.deletedAt);
     if (note.deletedAt)
@@ -2674,6 +2749,8 @@ function matchesView(note: NoteSummary, view: ViewKind, folderId: string | null,
     if (view === 'archived')
         return note.isArchived;
     if (note.isArchived)
+        return false;
+    if (selectedTags.length && !selectedTags.some((name) => note.tags.includes(name)))
         return false;
     switch (view) {
         case 'starred':
@@ -2715,10 +2792,11 @@ function compareTrash(a: NoteSummary, b: NoteSummary): number {
 function pickInitialNoteId(notes: Record<string, NoteSummary>, folders: Folder[]): string | null {
     const ui = useUi.getState();
     const folderScope = ui.view === 'folder' && ui.folderId ? folderDescendantIds(folders, ui.folderId) : undefined;
+    const selectedTags = ui.selectedTags;
     const active = ui.activeNoteId ? notes[ui.activeNoteId] : undefined;
-    if (active && matchesView(active, ui.view, ui.folderId, ui.tag, folderScope))
+    if (active && matchesView(active, ui.view, ui.folderId, ui.tag, folderScope, selectedTags))
         return active.id;
-    const visible = Object.values(notes).filter((note) => matchesView(note, ui.view, ui.folderId, ui.tag, folderScope));
+    const visible = Object.values(notes).filter((note) => matchesView(note, ui.view, ui.folderId, ui.tag, folderScope, selectedTags));
     if (ui.view === 'recent') {
         visible.sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
     }
@@ -2737,11 +2815,12 @@ export function useVisibleNotes(): NoteSummary[] {
     const view = useUi((s) => s.view);
     const folderId = useUi((s) => s.folderId);
     const tag = useUi((s) => s.tag);
+    const selectedTags = useUi((s) => s.selectedTags);
     const sort = useUi((s) => s.sort);
     const order = useUi((s) => s.order);
     return useMemo(() => {
         const folderScope = view === 'folder' && folderId ? folderDescendantIds(folders, folderId) : undefined;
-        const list = Object.values(notes).filter((n) => matchesView(n, view, folderId, tag, folderScope));
+        const list = Object.values(notes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags));
         if (view === 'recent') {
             return list
                 .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
@@ -2750,7 +2829,7 @@ export function useVisibleNotes(): NoteSummary[] {
         if (view === 'trash')
             return list.sort(compareTrash);
         return list.sort((a, b) => compare(a, b, sort, order, locale));
-    }, [notes, folders, view, folderId, tag, sort, order, locale]);
+    }, [notes, folders, view, folderId, tag, selectedTags, sort, order, locale]);
 }
 export interface FolderNode extends Folder {
     children: FolderNode[];

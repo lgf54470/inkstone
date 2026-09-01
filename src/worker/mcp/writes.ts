@@ -1,5 +1,5 @@
-import { LIMITS } from '@shared/constants'
-import { countText, deriveExcerpt, deriveTitle } from '@shared/markdown-utils'
+import { LIMITS, mergeSettings } from '@shared/constants'
+import { countText, deriveExcerpt, deriveTitle, interpolateNewNoteTemplate } from '@shared/markdown-utils'
 import { truncateText, utf8ByteLength } from '@shared/text-utils'
 import type { Note } from '@shared/types'
 import { NOTE_COLUMNS_FULL, toNote, type NoteRow } from '../db/rows'
@@ -47,9 +47,13 @@ export async function createMcpNote(
       return noteId ? loadNoteOrNull(context.env.DB, context.userId, noteId) : null
     },
     execute: async () => {
-      const content = input.content ?? ''
+      const rawContent = input.content ?? ''
+      const title = resolveTitle(input.title ?? deriveTitle(rawContent))
+      // Blank MCP-created notes follow the user's configured new-note template.
+      const content = input.content
+        ? rawContent
+        : interpolateNewNoteTemplate(await loadUserNewNoteTemplate(context.env.DB, context.userId), title)
       assertContentSize(content)
-      const title = resolveTitle(input.title ?? deriveTitle(content))
       const folderId = await resolveFolderId(context.env.DB, context.userId, input.folderId ?? null)
       const now = Date.now()
       const excerpt = deriveExcerpt(content)
@@ -489,6 +493,18 @@ async function resolveFolderId(
 
 function resolveTitle(value: string): string {
   return truncateText(value.trim(), LIMITS.titleMaxLength)
+}
+
+async function loadUserNewNoteTemplate(db: Env['DB'], userId: string): Promise<string> {
+  const row = await db.prepare(`SELECT settings FROM users WHERE id = ?1`)
+    .bind(userId)
+    .first<{ settings: string }>()
+  try {
+    const value = JSON.parse(row?.settings ?? '{}') as unknown
+    return mergeSettings(value).notes.newNoteTemplate
+  } catch {
+    return mergeSettings(null).notes.newNoteTemplate
+  }
 }
 
 function push(sets: string[], binds: unknown[], column: string, value: unknown): void {

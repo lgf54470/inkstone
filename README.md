@@ -37,6 +37,44 @@ Every new account automatically receives two standard starter notes, one in Chin
 | Portability | JSON and ZIP exports, directly readable **Markdown**, attachment export, and **manual or scheduled WebDAV/S3 backups** |
 | Interface | **Desktop and mobile layouts**, **dark/light themes**, accent colors, Simplified Chinese, English, and owner-only update notifications |
 
+## New note templates
+
+Every new note starts from a configurable template (Settings → New notes). The default template inserts a front matter block:
+
+```markdown
+---
+title: {{title}}
+createdAt: {{createdAt}}
+tags: []
+aliases:
+  - ''
+---
+
+```
+
+Placeholders are filled in when the note is created:
+
+| Placeholder | Value |
+| --- | --- |
+| `{{title}}` | The note title; the localized "New note" label for untitled notes |
+| `{{createdAt}}` | Creation time as `yyyy-mm-dd hh:mm:ss` |
+| `{{date}}` | Today's date as `yyyy-mm-dd` |
+| `{{time}}` | Current time as `hh:mm:ss` |
+| `{{today}}` / `{{tomorrow}}` / `{{yesterday}}` | Relative dates as `yyyy-mm-dd` |
+| `{{folder}}` | Name of the destination folder (folder views, folder context menus, or a folder-scoped graph) |
+| `{{tags}}` | The current tag when creating from a tag view (comma-separated for multiple tags) |
+| `{{cursor}}` | Where the caret lands after creation; not written into the note |
+
+Notes:
+
+- Values are quoted automatically when needed, so titles containing `:`, `#`, and similar stay valid YAML.
+- Creating from a tag view keeps the `#tag` body prefix and also appends the tags to the front matter `tags` list.
+- Leaving the template empty starts from a blank note; the settings panel shows a live preview with sample title/folder/tag inputs, a marker where `{{cursor}}` resolves, and hints about where contextual placeholders come from.
+- From a tag view, cmd/ctrl+click tags in the sidebar to select several; new notes then carry all of them (front matter tags, `#tag` prefixes, and `{{tags}}`). The selections also extend the graph's tag filter, where the match mode (any or all) is configurable in the graph settings.
+- Title ↔ front matter `title` sync can be enabled or disabled independently in Settings → New notes.
+- "Insert note template" (toolbar block menu, command palette, or `Ctrl/Cmd+Shift+T`) renders the template into any note at the caret, using the current note's title, folder, and tags as context.
+- The MCP `create_note` tool applies the same template when `content` is omitted.
+
 ## Data storage
 
 | Component | Purpose |

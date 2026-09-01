@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BrainCircuit, Cloud, Database, Info, Keyboard, Palette, RefreshCw, Type, UserRound, X, } from 'lucide-react';
+import { BrainCircuit, Cloud, Database, FilePlus2, Info, Keyboard, Palette, RefreshCw, Type, UserRound, X, } from 'lucide-react';
 import { ACCENTS } from '@shared/constants';
 import { cn } from '../../lib/cn';
 import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../components/overlay';
@@ -10,13 +10,14 @@ import { AppearanceSettings } from './AppearanceSettings';
 import { useUi } from '../../store/ui';
 import { t } from "../../lib/i18n";
 const EditorSettings = lazy(() => import('./EditorSettings').then((m) => ({ default: m.EditorSettings })));
+const NoteSettings = lazy(() => import('./NoteSettings').then((m) => ({ default: m.NoteSettings })));
 const SyncSettings = lazy(() => import('./SyncSettings').then((m) => ({ default: m.SyncSettings })));
 const DataSettings = lazy(() => import('./DataSettings').then((m) => ({ default: m.DataSettings })));
 const AccountSettings = lazy(() => import('./AccountSettings').then((m) => ({ default: m.AccountSettings })));
 const AboutSettings = lazy(() => import('./AboutSettings').then((m) => ({ default: m.AboutSettings })));
 const BackupSettings = lazy(() => import('./BackupSettings').then((m) => ({ default: m.BackupSettings })));
 const McpSettings = lazy(() => import('./McpSettings').then((m) => ({ default: m.McpSettings })));
-type Section = 'appearance' | 'editor' | 'backup' | 'sync' | 'mcp' | 'account' | 'data' | 'about';
+type Section = 'appearance' | 'editor' | 'notes' | 'backup' | 'sync' | 'mcp' | 'account' | 'data' | 'about';
 const SECTIONS: {
     id: Section;
     label: () => string;
@@ -24,6 +25,7 @@ const SECTIONS: {
 }[] = [
     { id: 'appearance', label: () => t("settings.appearance"), icon: <Palette size={14}/> },
     { id: 'editor', label: () => t("settings.editor"), icon: <Type size={14}/> },
+    { id: 'notes', label: () => t("settings.new_notes"), icon: <FilePlus2 size={14}/> },
     { id: 'backup', label: () => t("settings.backup"), icon: <Cloud size={14}/> },
     { id: 'sync', label: () => t("settings.sync"), icon: <RefreshCw size={14}/> },
     { id: 'mcp', label: () => t("settings.mcp"), icon: <BrainCircuit size={14}/> },
@@ -95,6 +97,7 @@ export function SettingsPanel({ onClose }: {
               <Suspense fallback={<LoadingBlock label={t("settings.loading")}/>}>
                 {section === 'appearance' && <AppearanceSettings accents={ACCENTS}/>}
                 {section === 'editor' && <EditorSettings />}
+                {section === 'notes' && <NoteSettings />}
                 {section === 'sync' && <SyncSettings />}
                 {section === 'mcp' && <McpSettings />}
                 {section === 'account' && <AccountSettings />}

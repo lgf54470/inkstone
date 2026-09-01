@@ -1,6 +1,17 @@
 import { EditorSelection, type ChangeSpec, type EditorState, type SelectionRange, type StateCommand } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
+import { renderNewNoteTemplate } from '@shared/markdown-utils';
 import { t } from "../lib/i18n";
+import { useNotes } from '../store/notes';
+import { useSession } from '../store/session';
+import { useUi } from '../store/ui';
+let activeEditorView: EditorView | null = null
+export function setActiveEditorView(view: EditorView | null): void {
+    activeEditorView = view
+}
+export function getActiveEditorView(): EditorView | null {
+    return activeEditorView
+}
 
 
 export function toggleWrap(open: string, close = open): StateCommand {
@@ -359,6 +370,35 @@ export const insertTabs: StateCommand = ({ state, dispatch }) => {
         selection: selected
             ? EditorSelection.cursor(cursor)
             : EditorSelection.range(cursor, cursor + t("editor.tab_1").length),
+        scrollIntoView: true,
+        userEvent: 'input.insert',
+    }));
+    return true;
+};
+
+export const insertNoteTemplate: StateCommand = ({ state, dispatch }) => {
+    const settings = useSession.getState().settings.notes;
+    const noteStore = useNotes.getState();
+    const noteId = useUi.getState().activeNoteId;
+    const summary = noteId ? noteStore.notes[noteId] : null;
+    if (!settings.newNoteTemplate.trim())
+        return false;
+    const extra: Record<string, string> = {};
+    const folder = summary?.folderId ? noteStore.folders.find((item) => item.id === summary.folderId) : null;
+    if (folder?.name)
+        extra.folder = folder.name;
+    if (summary?.tags.length)
+        extra.tags = summary.tags.join(', ');
+    const rendered = renderNewNoteTemplate(
+        settings.newNoteTemplate,
+        summary?.title || t("common.new_note"),
+        new Date(),
+        extra,
+    );
+    const range = state.selection.main;
+    dispatch(state.update({
+        changes: { from: range.from, to: range.to, insert: rendered.content },
+        selection: EditorSelection.cursor(range.from + (rendered.cursor ?? rendered.content.length)),
         scrollIntoView: true,
         userEvent: 'input.insert',
     }));

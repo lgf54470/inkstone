@@ -51,6 +51,7 @@ describe('mergeSettingsPatch', () => {
       preview: { math: false },
       sync: { pollIntervalMs: 30_000 },
       backup: { schedule: 'daily' },
+      notes: { syncFrontMatterTitle: false },
     })
 
     expect(next.appearance.proseSize).toBe(18)
@@ -58,6 +59,8 @@ describe('mergeSettingsPatch', () => {
     expect(next.preview.math).toBe(false)
     expect(next.sync.pollIntervalMs).toBe(30_000)
     expect(next.backup.schedule).toBe('daily')
+    expect(next.notes.syncFrontMatterTitle).toBe(false)
+    expect(next.notes.newNoteTemplate).toBe(DEFAULT_SETTINGS.notes.newNoteTemplate)
   })
 })
 

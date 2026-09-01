@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Plus, Settings, Star, Sun, Trash2, Waypoints, } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Plus, Settings, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
 import type { Tag, ViewKind } from '@shared/types';
 import { compareTagNames } from '@shared/markdown-utils';
@@ -599,6 +599,9 @@ function TagSection() {
     const view = useUi((s) => s.view);
     const activeTag = useUi((s) => s.tag);
     const openView = useUi((s) => s.openView);
+    const selectedTags = useUi((s) => s.selectedTags);
+    const toggleTagSelection = useUi((s) => s.toggleTagSelection);
+    const clearTagSelection = useUi((s) => s.clearTagSelection);
     const [expanded, setExpanded] = useState(false);
     const [creating, setCreating] = useState(false);
     const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -633,10 +636,31 @@ function TagSection() {
         {!sortedTags.length && !creating && (<button type="button" onClick={() => setCreating(true)} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[30px]">
             <Plus size={13}/>{t("tags.create_first")}
           </button>)}
-        {visible.map((tag) => (<TagRow key={tag.id} tag={tag} active={view === 'tag' && activeTag === tag.name} renaming={renamingId === tag.id} onOpen={() => openView('tag', { tag: tag.name })} onStartRename={() => setRenamingId(tag.id)} onFinishRename={(value) => {
+        {visible.map((tag) => (<TagRow key={tag.id} tag={tag} active={view === 'tag' && activeTag === tag.name} selected={selectedTags.includes(tag.name)} renaming={renamingId === tag.id} onOpen={(event) => {
+            if (event.metaKey || event.ctrlKey) {
+                event.preventDefault();
+                toggleTagSelection(tag.name);
+            }
+            else
+                openView('tag', { tag: tag.name });
+        }} onStartRename={() => setRenamingId(tag.id)} onFinishRename={(value) => {
             setRenamingId(null);
             void renameTag(tag, value);
         }} onCancelRename={() => setRenamingId(null)} onEditColor={() => setAppearanceId(tag.id)}/>))}
+
+        {selectedTags.length > 0 && (<div className="rounded-[var(--r-md)] bg-[var(--accent-soft)] px-2 py-1.5 text-[11px] text-[var(--text-secondary)]">
+            <div className="flex h-5 items-center justify-between gap-2">
+              <span className="truncate">{t("sidebar.tags_selected", { value0: selectedTags.length })}</span>
+              <button type="button" onClick={clearTagSelection} className="shrink-0 font-medium text-[var(--accent)] transition-colors hover:underline">{t("common.clear_selection")}</button>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {selectedTags.map((name) => (<button key={name} type="button" aria-label={t("sidebar.remove_selected_tag", { value0: name })} onClick={() => toggleTagSelection(name)} className="inline-flex h-5 max-w-full items-center gap-1 rounded-full bg-[var(--bg-overlay)] px-2 text-[11px] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]">
+                  <Hash size={9} className="shrink-0 text-[var(--text-quaternary)]"/>
+                  <span className="truncate">{name}</span>
+                  <X size={9} className="shrink-0 text-[var(--text-quaternary)]"/>
+                </button>))}
+            </div>
+          </div>)}
 
         {sortedTags.length > 8 && (<button type="button" onClick={() => setExpanded((v) => !v)} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[26px]">
             {expanded ? t("common.collapse") : t("sidebar.show_all_value0_tags", { value0: sortedTags.length })}
@@ -678,11 +702,12 @@ function TagDraftRow({ onFinish, onCancel }: {
         }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>
     </div>);
 }
-function TagRow({ tag, active, renaming, onOpen, onStartRename, onFinishRename, onCancelRename, onEditColor, }: {
+function TagRow({ tag, active, selected, renaming, onOpen, onStartRename, onFinishRename, onCancelRename, onEditColor, }: {
     tag: Tag;
     active: boolean;
+    selected: boolean;
     renaming: boolean;
-    onOpen: () => void;
+    onOpen: (event: React.MouseEvent<HTMLButtonElement>) => void;
     onStartRename: () => void;
     onFinishRename: (value: string) => void;
     onCancelRename: () => void;
@@ -706,10 +731,10 @@ function TagRow({ tag, active, renaming, onOpen, onStartRename, onFinishRename, 
     return (<div ref={rowRef} onContextMenu={(event) => {
             setMenuOpen(false);
             menu.onContextMenu(event);
-        }} className={cn('group relative flex h-10 items-center gap-2 rounded-[var(--r-md)] px-2 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active
+        }} className={cn('group relative flex h-10 items-center gap-2 rounded-[var(--r-md)] px-2 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active || selected
             ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
-      <Hash size={13} className="shrink-0" style={{ color: tag.color ?? (active ? 'var(--accent)' : 'var(--text-quaternary)') }}/>
+      <Hash size={13} className="shrink-0" style={{ color: tag.color ?? (active || selected ? 'var(--accent)' : 'var(--text-quaternary)') }}/>
       {renaming ? (<input aria-label={t("tags.rename")} autoFocus defaultValue={tag.name} onFocus={() => {
             finishedRef.current = false;
         }} onBlur={(event) => finishRename(event.currentTarget.value)} onKeyDown={(event) => {
@@ -720,9 +745,11 @@ function TagRow({ tag, active, renaming, onOpen, onStartRename, onFinishRename, 
                 onCancelRename();
             }
             event.stopPropagation();
-        }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>) : (<button type="button" aria-current={active ? 'page' : undefined} onClick={onOpen} onDoubleClick={onStartRename} className="min-w-0 flex-1 truncate py-1 text-left text-[12.5px] font-medium">
-          {tag.name}
-        </button>)}
+        }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>) : (<Tooltip label={t("sidebar.cmd_click_selects_multiple")} side="right">
+              <button type="button" aria-current={active ? 'page' : undefined} aria-pressed={selected || undefined} onClick={onOpen} onDoubleClick={onStartRename} className="min-w-0 flex-1 truncate py-1 text-left text-[12.5px] font-medium">
+                {tag.name}
+              </button>
+            </Tooltip>)}
       {!renaming && (<>
           <span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-0">
             {tag.count > 0 ? tag.count : ''}

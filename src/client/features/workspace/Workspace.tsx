@@ -14,6 +14,7 @@ import { Drawer, Menu, Tooltip, type MenuItem } from '../../components/overlay';
 import { Segmented } from '../../components/form';
 import { EditorSkeleton, Empty } from '../../components/feedback';
 import { CodeEditor } from '../../editor/CodeEditor';
+import { setActiveEditorView } from '../../editor/commands';
 import { insertFiles } from '../../editor/paste';
 import { optimizeImageFile } from '../../lib/image';
 import { exportNoteAsHtml, exportNoteAsMarkdown, exportNoteAsPdf } from '../../lib/export-note';
@@ -71,7 +72,11 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
     const titleInputRef = useRef<HTMLInputElement>(null);
     const moreButtonRef = useRef<HTMLButtonElement>(null);
     const exportMenuRef = useRef<HTMLButtonElement>(null);
-    const [view, setView] = useState<EditorView | null>(null);
+    const [view, setViewState] = useState<EditorView | null>(null);
+    const setView = useCallback((editorView: EditorView | null) => {
+        setViewState(editorView);
+        setActiveEditorView(editorView);
+    }, []);
     const [headings, setHeadings] = useState<Heading[]>([]);
     const [moreMenuOpen, setMoreMenuOpen] = useState(false);
     const [exportMenuOpen, setExportMenuOpen] = useState(false);

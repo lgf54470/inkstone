@@ -9,6 +9,7 @@ import { InlineErrorBoundary } from '../../components/ErrorBoundary';
 import { EditorSkeleton } from '../../components/feedback';
 import { PANEL_WIDTHS, useUi } from '../../store/ui';
 import { createContextualNote, useNotes } from '../../store/notes';
+import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands';
 import { useSession } from '../../store/session';
 import { useUpdate } from '../../store/update';
 import { Sidebar } from '../sidebar/Sidebar';
@@ -313,6 +314,18 @@ function useGlobalHotkeys(): void {
                     const id = ui().activeNoteId;
                     if (id)
                         void notes().deleteNote(id);
+                },
+            },
+            {
+                id: 'insert-template',
+                combo: 'mod+shift+t',
+                description: () => t("shell.insert_note_template"),
+                group: () => t("common.note"),
+                allowInInput: true,
+                handler: () => {
+                    const view = getActiveEditorView();
+                    if (view)
+                        insertNoteTemplate(view);
                 },
             },
             {

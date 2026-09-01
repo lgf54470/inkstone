@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Archive, Clock, Columns2, Download, Eye, FileText, FolderPlus, Hash, Keyboard, Moon, Palette, Pencil, Plus, Search, Settings, Share2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, Clock, Columns2, Download, Eye, FilePlus2, FileText, FolderPlus, Hash, Keyboard, Moon, Palette, Pencil, Plus, Search, Settings, Share2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
 import type { NoteSummary, SearchHit } from '@shared/types';
 import { truncateText } from '@shared/text-utils';
 import { cn } from '../../lib/cn';
@@ -12,6 +12,7 @@ import { IconButton, Kbd } from '../../components/primitives';
 import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../components/overlay';
 import { useUi } from '../../store/ui';
 import { createContextualNote, useNotes } from '../../store/notes';
+import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands';
 import { folderPathLabel, openFolderView } from '../../lib/folders';
 import { useSession } from '../../store/session';
 import { t, useLocale } from "../../lib/i18n";
@@ -106,6 +107,7 @@ export function CommandPalette({ onClose }: {
     }, [debounced]);
     const commands = useMemo<Omit<Item, 'score' | 'match'>[]>(() => {
         const activeNote = activeNoteId ? notes[activeNoteId] : null;
+        const currentNoteGroup = t("common.current_note");
         const isDark = document.documentElement.dataset.theme === 'dark';
         return [
             {
@@ -145,11 +147,23 @@ export function CommandPalette({ onClose }: {
                         run: () => void patchNote(activeNote.id, { isArchived: !activeNote.isArchived }),
                     },
                     {
+                        id: 'cmd-insert-template',
+                        kind: 'command' as const,
+                        label: t("command.insert_note_template"),
+                        icon: <FilePlus2 size={14}/>,
+                        group: currentNoteGroup,
+                        run: () => {
+                            const view = getActiveEditorView();
+                            if (view)
+                                insertNoteTemplate(view);
+                        },
+                    },
+                    {
                         id: 'cmd-share',
                         kind: 'command' as const,
                         label: t("command.share_current_note"),
                         icon: <Share2 size={14}/>,
-                        group: t("common.current_note"),
+                        group: currentNoteGroup,
                         run: () => openPanel('share'),
                     },
                     {

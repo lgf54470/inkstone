@@ -376,7 +376,11 @@ searchRoutes.get('/graph', requireAuth, async (c) => {
   const query = (c.req.query('q') ?? '').trim()
   const rawFolderId = (c.req.query('folderId') ?? '').trim()
   const folderId = rawFolderId && isValidId(rawFolderId) ? rawFolderId : ''
-  const tag = (c.req.query('tag') ?? '').trim()
+  const legacyTag = (c.req.query('tag') ?? '').trim()
+  const tags = [...new Set((c.req.query('tags') ?? '').split(',').map((item) => item.trim()).filter(Boolean))]
+    .slice(0, 20)
+  if (tags.length === 0 && legacyTag) tags.push(legacyTag)
+  const tagsMatch = c.req.query('tagsMatch') === 'all' ? 'all' : 'any'
   const includeOrphans = c.req.query('includeOrphans') !== '0'
   const includeUnresolved = c.req.query('includeUnresolved') === '1'
 
@@ -389,7 +393,10 @@ searchRoutes.get('/graph', requireAuth, async (c) => {
   if (query.length > 200) {
     throw new ApiError(400, 'bad_request', 'The graph search query cannot exceed 200 characters')
   }
-  if (tag.length > LIMITS.tagNameMaxLength) {
+  if (legacyTag.length > LIMITS.tagNameMaxLength) {
+    throw new ApiError(400, 'bad_request', `The graph tag cannot exceed ${LIMITS.tagNameMaxLength} characters`)
+  }
+  if (tags.some((item) => item.length > LIMITS.tagNameMaxLength)) {
     throw new ApiError(400, 'bad_request', `The graph tag cannot exceed ${LIMITS.tagNameMaxLength} characters`)
   }
   if (mode === 'local' && !centerId) {
@@ -406,13 +413,26 @@ searchRoutes.get('/graph', requireAuth, async (c) => {
     filters.push('n.folder_id = ?')
     filterBinds.push(folderId)
   }
-  if (tag) {
-    filters.push(`EXISTS (
-      SELECT 1 FROM note_tags nt_filter
-      JOIN tags t_filter ON t_filter.id = nt_filter.tag_id AND t_filter.user_id = n.user_id
-      WHERE nt_filter.note_id = n.id AND t_filter.name = ? COLLATE NOCASE
-    )`)
-    filterBinds.push(tag)
+  if (tags.length) {
+    // `tagsMatch=all` intersects the tag filters, otherwise any match qualifies.
+    if (tagsMatch === 'all') {
+      for (const tag of tags) {
+        filters.push(`EXISTS (
+          SELECT 1 FROM note_tags nt_filter
+          JOIN tags t_filter ON t_filter.id = nt_filter.tag_id AND t_filter.user_id = n.user_id
+          WHERE nt_filter.note_id = n.id AND t_filter.name = ?${filterBinds.length + 1} COLLATE NOCASE
+        )`)
+        filterBinds.push(tag)
+      }
+    }
+    else {
+      filters.push(`EXISTS (
+        SELECT 1 FROM note_tags nt_filter
+        JOIN tags t_filter ON t_filter.id = nt_filter.tag_id AND t_filter.user_id = n.user_id
+        WHERE nt_filter.note_id = n.id AND t_filter.name COLLATE NOCASE IN (${tags.map(() => '?').join(', ')})
+      )`)
+      filterBinds.push(...tags)
+    }
   }
   if (!includeOrphans) {
     filters.push(`EXISTS (

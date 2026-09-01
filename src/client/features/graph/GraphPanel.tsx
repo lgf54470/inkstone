@@ -42,6 +42,8 @@ interface GraphPreferences {
   groupBy: GroupBy
   folderId: string
   tag: string
+  /** How the tag filter combines: any tag (union) or all tags (intersection). */
+  tagsMatch: 'any' | 'all'
   repulsion: number
   linkDistance: number
   nodeScale: number
@@ -57,6 +59,7 @@ const DEFAULT_PREFERENCES: GraphPreferences = {
   groupBy: 'none',
   folderId: '',
   tag: '',
+  tagsMatch: 'any',
   repulsion: 900,
   linkDistance: 76,
   nodeScale: 1,
@@ -105,6 +108,7 @@ function loadPreferences(): GraphPreferences {
         ? stored.folderId
         : '',
       tag: typeof stored.tag === 'string' ? truncateText(stored.tag.trim(), 60) : '',
+      tagsMatch: stored.tagsMatch === 'all' ? 'all' : 'any',
       repulsion: boundedPreference(stored.repulsion, DEFAULT_PREFERENCES.repulsion, 300, 1800),
       linkDistance: boundedPreference(stored.linkDistance, DEFAULT_PREFERENCES.linkDistance, 40, 150),
       nodeScale: boundedPreference(stored.nodeScale, DEFAULT_PREFERENCES.nodeScale, 0.7, 1.8),
@@ -169,6 +173,11 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const openNote = useNotes((state) => state.openNote)
   const createNote = useNotes((state) => state.createNote)
   const folders = useNotes((state) => state.folders ?? [])
+  // Notes created from unresolved nodes land in the graph's folder scope so
+  // they inherit the folder name for the `{{folder}}` template placeholder.
+  const createScopedNote = useCallback((title: string) => {
+    void createNote?.({ title, open: true, folderId: prefs.folderId || undefined })
+  }, [createNote, prefs.folderId])
   const tags = useNotes((state) => state.tags ?? [])
   const activeNoteId = useUi((state) => state.activeNoteId)
   const hoverRef = useRef<CanvasNode | null>(null)
@@ -198,17 +207,25 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     }
   }, [prefs])
 
-  const request: GraphQuery = useMemo(() => ({
-    mode: prefs.mode,
-    center: prefs.mode === 'local' ? activeNoteId ?? undefined : undefined,
-    depth: prefs.depth,
-    q: query || undefined,
-    folderId: prefs.folderId || undefined,
-    tag: prefs.tag || undefined,
-    includeOrphans: prefs.includeOrphans,
-    includeUnresolved: prefs.includeUnresolved,
-    limit: 350,
-  }), [activeNoteId, prefs.mode, prefs.depth, prefs.folderId, prefs.tag, prefs.includeOrphans, prefs.includeUnresolved, query])
+  const selectedTags = useUi((state) => state.selectedTags)
+  const request: GraphQuery = useMemo(() => {
+    // The sidebar's cmd/ctrl+click selections join the graph's own tag filter.
+    const tagSet = new Set<string>()
+    if (prefs.tag) tagSet.add(prefs.tag)
+    for (const tag of selectedTags) tagSet.add(tag)
+    return {
+      mode: prefs.mode,
+      center: prefs.mode === 'local' ? activeNoteId ?? undefined : undefined,
+      depth: prefs.depth,
+      q: query || undefined,
+      folderId: prefs.folderId || undefined,
+      tags: tagSet.size ? [...tagSet] : undefined,
+      tagsMatch: tagSet.size ? prefs.tagsMatch : undefined,
+      includeOrphans: prefs.includeOrphans,
+      includeUnresolved: prefs.includeUnresolved,
+      limit: 350,
+    }
+  }, [activeNoteId, prefs.mode, prefs.depth, prefs.folderId, prefs.tag, prefs.tagsMatch, prefs.includeOrphans, prefs.includeUnresolved, query, selectedTags])
 
   useEffect(() => {
     if (request.mode === 'local' && !request.center) {
@@ -488,15 +505,15 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
         if (usePinnedWindows.getState().focusPinnedByNote(drag.node.id)) return
         void openNote(drag.node.id)
       }
-      else void createNote?.({ title: drag.node.title, open: true })
+      else void createScopedNote(drag.node.title)
       onClose()
     }
-  }, [createNote, onClose, openNote])
+  }, [createScopedNote, onClose, openNote])
 
   const selected = data?.nodes.find((node) => node.id === selectedId) ?? null
   const menuItems: MenuItem[] = context ? [
     { id: 'open', label: context.node.kind === 'unresolved' ? t('graph.create_note') : t('graph.open_note'), icon: <FolderOpen size={14}/>, onSelect: () => {
-      if (context.node.kind === 'unresolved') void createNote?.({ title: context.node.title, open: true })
+      if (context.node.kind === 'unresolved') void createScopedNote(context.node.title)
       else void openNote(context.node.id)
       onClose()
     } },
@@ -630,7 +647,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
                   if (usePinnedWindows.getState().focusPinnedByNote(selectedNode.id)) return
                   void openNote(selectedNode.id)
                 }
-                else if (selectedNode) void createNote?.({ title: selectedNode.title, open: true })
+                else if (selectedNode) void createScopedNote(selectedNode.title)
                 if (selectedNode) onClose()
               }
               else if (event.key.startsWith('Arrow')) {
@@ -657,6 +674,8 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
         <GraphSection icon={<Filter size={13}/>} title={t('graph.filters')}>
           <GraphSelect label={t('graph.folder')} value={prefs.folderId} onChange={(value) => changePref('folderId', value)} options={[['', t('graph.all_folders')], ...folders.map((folder) => [folder.id, folder.name] as [string, string])]}/>
           <GraphSelect label={t('graph.tag')} value={prefs.tag} onChange={(value) => changePref('tag', value)} options={[['', t('graph.all_tags')], ...tags.map((item) => [item.name, item.name] as [string, string])]}/>
+          {(prefs.tag || selectedTags.length > 0) && <GraphSelect label={t('graph.tags_match')} value={prefs.tagsMatch} onChange={(value) => changePref('tagsMatch', value as 'any' | 'all')} options={[['any', t('graph.tags_match_any')], ['all', t('graph.tags_match_all')]]}/>}
+          {selectedTags.length > 0 && <p className="text-[11px] leading-relaxed text-[var(--text-quaternary)]">{t('graph.sidebar_tags_included', { value0: selectedTags.length, value1: prefs.tagsMatch === 'all' ? t('graph.tags_match_all') : t('graph.tags_match_any') })}</p>}
           <GraphToggle label={t('graph.show_orphans')} checked={prefs.includeOrphans} onChange={(value) => changePref('includeOrphans', value)}/>
           <GraphToggle label={t('graph.show_unresolved')} checked={prefs.includeUnresolved} onChange={(value) => changePref('includeUnresolved', value)}/>
           {prefs.mode === 'local' && <GraphSelect label={t('graph.depth')} value={String(prefs.depth)} onChange={(value) => changePref('depth', Number(value))} options={[["1", '1'], ["2", '2'], ["3", '3']]}/>} 

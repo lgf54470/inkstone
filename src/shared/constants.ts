@@ -70,6 +70,22 @@ export const PROSE_WIDTH_CH: Record<string, string> = {
 
 export const VIEW_KINDS: ViewKind[] = ['all', 'recent', 'starred', 'unfiled', 'archived', 'trash', 'folder', 'tag']
 
+/**
+ * Default template inserted at the top of new notes. Keep placeholders ASCII:
+ * they are filled in at creation time with the localized note title and the
+ * current date/time. First line must be `---` (a leading blank line would
+ * prevent the front matter from being parsed).
+ */
+export const DEFAULT_NEW_NOTE_TEMPLATE = `---
+title: {{title}}
+createdAt: {{createdAt}}
+tags: []
+aliases:
+  - ''
+---
+
+`
+
 export const DEFAULT_SETTINGS: UserSettings = {
   appearance: {
     language: 'zh-CN',
@@ -112,6 +128,11 @@ export const DEFAULT_SETTINGS: UserSettings = {
     realtime: true,
     pollIntervalMs: 15_000,
   },
+  notes: {
+    newNoteTemplate: DEFAULT_NEW_NOTE_TEMPLATE,
+    syncTitleToFrontMatter: true,
+    syncFrontMatterTitle: true,
+  },
 }
 
 export const BACKUP_INTERVALS: Record<string, number> = {
@@ -133,7 +154,7 @@ const EDITOR_LAYOUTS = ['edit', 'split', 'preview'] as const
 const BACKUP_SCHEDULES = ['off', 'hourly', 'sixHourly', 'daily'] as const
 
 
-const SETTINGS_SECTIONS = ['appearance', 'editor', 'preview', 'backup', 'sync'] as const
+const SETTINGS_SECTIONS = ['appearance', 'editor', 'preview', 'backup', 'sync', 'notes'] as const
 type SettingsSection = (typeof SETTINGS_SECTIONS)[number]
 
 export function mergeSettings(partial: unknown): UserSettings {
@@ -147,6 +168,7 @@ function cloneDefaultSettings(): UserSettings {
     preview: { ...DEFAULT_SETTINGS.preview },
     backup: { ...DEFAULT_SETTINGS.backup },
     sync: { ...DEFAULT_SETTINGS.sync },
+    notes: { ...DEFAULT_SETTINGS.notes },
   }
 }
 
@@ -285,6 +307,22 @@ function mergeSettingsSection(
           current.pollIntervalMs as number,
         ),
       }
+    case 'notes':
+      return {
+        newNoteTemplate: stringValue(
+          patch.newNoteTemplate,
+          current.newNoteTemplate as string,
+          4096,
+        ),
+        syncTitleToFrontMatter: booleanValue(
+          patch.syncTitleToFrontMatter,
+          current.syncTitleToFrontMatter as boolean,
+        ),
+        syncFrontMatterTitle: booleanValue(
+          patch.syncFrontMatterTitle,
+          current.syncFrontMatterTitle as boolean,
+        ),
+      }
   }
 }
 
@@ -304,6 +342,10 @@ function enumValue<T extends string>(
 
 function booleanValue(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
+}
+
+function stringValue(value: unknown, fallback: string, maxLength: number): string {
+  return typeof value === 'string' ? value.slice(0, maxLength) : fallback
 }
 
 function numberInRange(value: unknown, min: number, max: number, fallback: number): number {

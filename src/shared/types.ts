@@ -137,12 +137,19 @@ export interface SyncSettings {
   pollIntervalMs: number
 }
 
+export interface NoteSettings {
+  newNoteTemplate: string
+  syncTitleToFrontMatter: boolean
+  syncFrontMatterTitle: boolean
+}
+
 export interface UserSettings {
   appearance: AppearanceSettings
   editor: EditorSettings
   preview: PreviewSettings
   backup: BackupSettings
   sync: SyncSettings
+  notes: NoteSettings
 }
 
 
@@ -341,6 +348,10 @@ export interface GraphQuery {
   q?: string
   folderId?: string
   tag?: string
+  /** Tags to filter by. Overrides `tag`; sent comma-separated. */
+  tags?: string[]
+  /** How multiple tags combine: `any` (default) for union, `all` for intersection. */
+  tagsMatch?: 'any' | 'all'
   includeOrphans?: boolean
   includeUnresolved?: boolean
   limit?: number

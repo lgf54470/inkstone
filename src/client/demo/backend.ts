@@ -555,7 +555,10 @@ export function createDemoBackend(): DemoBackend {
     const limit = Math.max(50, Math.min(600, Number(c.req.query('limit')) || 350))
     const needle = (c.req.query('q') ?? '').trim().toLocaleLowerCase()
     const folderId = c.req.query('folderId') ?? ''
-    const tag = (c.req.query('tag') ?? '').trim().toLocaleLowerCase()
+    const legacyTag = (c.req.query('tag') ?? '').trim().toLocaleLowerCase()
+    const tags = [...new Set((c.req.query('tags') ?? '').split(',').map((item) => item.trim().toLocaleLowerCase()).filter(Boolean))]
+    if (tags.length === 0 && legacyTag) tags.push(legacyTag)
+    const tagsMatch = c.req.query('tagsMatch') === 'all' ? 'all' : 'any'
     const includeOrphans = c.req.query('includeOrphans') !== '0'
     const includeUnresolved = c.req.query('includeUnresolved') === '1'
     const active = [...state.notes.values()]
@@ -602,7 +605,9 @@ export function createDemoBackend(): DemoBackend {
     const filtered = active.filter((note) => allowed.has(note.id)
       && (!needle || note.title.toLocaleLowerCase().includes(needle))
       && (!folderId || note.folderId === folderId)
-      && (!tag || note.tags.some((name) => name.toLocaleLowerCase() === tag))
+      && (!tags.length || (tagsMatch === 'all'
+        ? tags.every((name) => note.tags.some((item) => item.toLocaleLowerCase() === name))
+        : tags.some((name) => note.tags.some((item) => item.toLocaleLowerCase() === name))))
       && (includeOrphans || (degree.get(note.id) ?? 0) > 0))
       .sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) || b.updatedAt - a.updatedAt)
     const shown = filtered.slice(0, limit)

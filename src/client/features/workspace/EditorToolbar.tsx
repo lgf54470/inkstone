@@ -4,7 +4,7 @@ import { Blocks, Bold, Braces, ChevronDown, Code, Heading, Highlighter, Image as
 import { IconButton } from '../../components/primitives';
 import { Menu, Tooltip, type MenuItem } from '../../components/overlay';
 import { cn } from '../../lib/cn';
-import { insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDetails, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertMermaid, insertTable, insertTabs, insertTag, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskList, toggleWikiLink, } from '../../editor/commands';
+import { insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDetails, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertMermaid, insertNoteTemplate, insertTable, insertTabs, insertTag, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskList, toggleWikiLink, } from '../../editor/commands';
 import { t } from "../../lib/i18n";
 export function EditorToolbar({ runCommand, view, onPickImage, mobile = false, }: {
     runCommand?: (command: (target: EditorView) => boolean) => void;
@@ -56,6 +56,7 @@ export function EditorToolbar({ runCommand, view, onPickImage, mobile = false, }
         { id: 'details', label: t("workspace.details_block"), onSelect: run(insertDetails) },
         { id: 'tabs', label: t("common.tabs"), onSelect: run(insertTabs) },
         { id: 'front-matter', label: 'Front Matter', onSelect: run(insertFrontMatter), separatorBefore: true },
+        { id: 'note-template', label: t("workspace.insert_note_template"), onSelect: run(insertNoteTemplate), separatorBefore: true },
     ];
     return (<div className={cn('flex shrink-0 items-center overflow-x-auto border-b border-[var(--border-subtle)] px-2 no-scrollbar', mobile ? 'h-11 gap-1' : 'h-9 gap-0.5')}>
       <Tooltip label={t("workspace.title_748d7d")}>

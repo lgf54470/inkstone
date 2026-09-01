@@ -56,6 +56,7 @@ interface UiState {
 
   activeNoteId: string | null
   selectedIds: string[]
+  selectedTags: string[]
   recentNoteIds: string[]
 
 
@@ -83,6 +84,8 @@ interface UiState {
   toggleList: () => void
   setMobilePane: (pane: UiState['mobilePane']) => void
   openView: (view: ViewKind, options?: { folderId?: string | null; tag?: string | null }) => void
+  toggleTagSelection: (tag: string) => void
+  clearTagSelection: () => void
   setSort: (sort: SortKey, order?: SortOrder) => void
   setDensity: (density: UiDensity) => void
   toggleFolder: (id: string) => void
@@ -130,6 +133,7 @@ const DEFAULTS = {
   activeWorkspacePane: 'primary' as WorkspacePane,
   workspacePaneLayouts: { primary: 'edit', secondary: 'edit' } as Record<WorkspacePane, EditorLayout>,
   recentNoteIds: [] as string[],
+  selectedTags: [] as string[],
   theme: 'system' as ThemePref,
   accent: 'indigo' as AccentName,
   background: 'paper' as BackgroundName,
@@ -414,10 +418,20 @@ export const useUi = create<UiState>((set, get) => ({
       folderId: options?.folderId ?? null,
       tag: options?.tag ?? null,
       selectedIds: [],
+      selectedTags: [],
       mobilePane: 'list',
 
       navDrawerOpen: false,
     }),
+
+  toggleTagSelection: (tag) =>
+    set((s) => ({
+      selectedTags: s.selectedTags.includes(tag)
+        ? s.selectedTags.filter((item) => item !== tag)
+        : [...s.selectedTags, tag],
+    })),
+
+  clearTagSelection: () => set({ selectedTags: [] }),
 
   setSort: (sort, order) => set((s) => ({ sort, order: order ?? s.order })),
   setDensity: (density) => set({ density }),

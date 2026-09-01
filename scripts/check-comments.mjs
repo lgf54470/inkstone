@@ -13,6 +13,16 @@ const allowed = new Map([
   ]],
   ["src/client/features/graph/GraphPanel.tsx", [
     "// Private browsing or a locked-down browser can reject local preferences.",
+    "// Notes created from unresolved nodes land in the graph's folder scope so",
+    "// they inherit the folder name for the `{{folder}}` template placeholder.",
+    "// The sidebar's cmd/ctrl+click selections join the graph's own tag filter.",
+    "/** How the tag filter combines: any tag (union) or all tags (intersection). */",
+  ]],
+  ["src/worker/routes/search.ts", [
+    "// `tagsMatch=all` intersects the tag filters, otherwise any match qualifies.",
+  ]],
+  ["src/client/features/settings/NoteSettings.tsx", [
+    "// Live preview: what the template looks like with the placeholders filled in.",
   ]],
   ["src/client/features/share/share-form.ts", [
     "// A new or replaced passcode must be at least 4 characters (the server",
@@ -38,6 +48,16 @@ const allowed = new Map([
   ]],
   ["src/client/store/notes.ts", [
     "/** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization. */",
+    "/** Tags when creating from a tag view: added to the front matter tags and kept as `#tag` body prefixes. */",
+    "// Keep the front matter `title` property in sync with the note title",
+    "// whenever the note already declares one (opt-out per settings).",
+    "// Reverse sync: when the body's front matter `title` property changes,",
+    "// adopt it as the note title so both stay in agreement (opt-out per",
+    "// settings).",
+    "/**\n * Build the initial content of a fresh note from the user-configured template\n * (see settings.notes.newNoteTemplate), optionally carrying the `#tag` body\n * prefixes of the tags passed from a tag view (also merged into the front\n * matter `tags` list). `{{cursor}}` is resolved by renderNewNoteTemplate so\n * the editor can place the caret there. An empty or whitespace-only template\n * yields a blank note, matching the pre-template behavior.\n */",
+    "/** Pending caret positions for freshly created notes, consumed by the editor on mount. */",
+    "// Tags gathered with cmd/ctrl+click in the sidebar are consumed by the",
+    "// next new-note action, then cleared.",
   ]],
   ["src/client/store/pwa.ts", [
     "// Reset the flag once the toast is gone, so a later installed worker can",
@@ -48,12 +68,23 @@ const allowed = new Map([
     "// they would be silently dropped. Dynamic import keeps the session",
     "// store free of a circular dependency on the notes store.",
   ]],
+  ["src/shared/types.ts", [
+    "/** Tags to filter by. Overrides `tag`; sent comma-separated. */",
+    "/** How multiple tags combine: `any` (default) for union, `all` for intersection. */",
+  ]],
   ["src/shared/constants.ts", [
+    "/**\n * Default template inserted at the top of new notes. Keep placeholders ASCII:\n * they are filled in at creation time with the localized note title and the\n * current date/time. First line must be `---` (a leading blank line would\n * prevent the front matter from being parsed).\n */",
     "/**\n * Merge a partial patch into the current settings.\n *\n * Sections that the patch does not touch are passed through by reference,\n * so subscribers observing a specific section (e.g. `settings.editor`) are\n * not re-rendered when an unrelated section changes.\n */",
     "/**\n * Guards the referential-stability contract of mergeSettingsPatch: sections\n * the patch did not touch must keep their object identity, otherwise narrow\n * store subscriptions silently regress into full-app re-renders on every\n * settings change.\n */",
   ]],
   ["src/shared/markdown-utils.ts", [
     "/** Provides pure Markdown analysis shared by the browser and Worker runtimes. */",
+    "/**\n * Update an existing front matter property in-place, keeping the body and all\n * other properties untouched. Returns the rewritten content, or `null` when\n * the content has no parseable front matter, the property does not exist, or\n * nothing changes. Passing `null` as `value` deletes the property.\n */",
+    "/**\n * Adds a tag to a note's front matter `tags`/`tag` list (creating the property\n * when missing), without touching the body. Returns the rewritten content, or\n * `null` when there is no parseable front matter or the tag is already\n * present. Used when creating a note from a tag view so the tag also lands in\n * the properties, not only as a `#tag` body prefix.\n */",
+    "/**\n * Renders a new-note template into final content, removing the `{{cursor}}`\n * marker (if any) and reporting its position so callers can place the caret.\n * Shared by note creation, the settings preview, and the editor command that\n * inserts the template at the caret. The sentinel character cannot occur in\n * real template output, so the reported position is always in final content.\n */",
+    "// Contextual values are inserted verbatim: `{{tags}}` commonly expands into",
+    "// a flow list like `tags: [daily, reading]`, which quoting would corrupt.",
+    "/**\n * Fills the placeholders of a new-note template (`{{title}}`, `{{createdAt}}`,\n * `{{date}}`, `{{time}}`, `{{today}}`, `{{tomorrow}}`, `{{yesterday}}`, plus\n * contextual `{{folder}}` and `{{tags}}` values passed via `extra`). Shared by\n * the client (note creation, settings preview) and the worker (MCP\n * create_note). Values are quoted when needed so the rendered front matter\n * stays valid YAML; callers pass the resolved title (with any localized\n * fallback applied). Contextual placeholders without a value render as empty.\n */",
   ]],
   ["src/worker/backup/snapshot.ts", [
     "/** Produces restorable JSON, readable Markdown, and attachment files for every backup target. */",
@@ -123,6 +154,9 @@ const allowed = new Map([
   ]],
   ["src/worker/mcp/retrieval.ts", [
     "// AI unavailable, rate-limited, or malformed response: degrade to lexical.",
+  ]],
+  ["src/worker/mcp/writes.ts", [
+    "// Blank MCP-created notes follow the user's configured new-note template.",
   ]],
   ["src/worker/routes/auth.ts", [
     "// Account-wide cap so a distributed botnet cannot retry one account",
