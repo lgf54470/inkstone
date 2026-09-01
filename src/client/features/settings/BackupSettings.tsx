@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, CloudUpload, ExternalLink, HardDrive, Loader2, MoreHorizontal, Plus, Server, Trash2, Zap, } from 'lucide-react';
 import type { BackupRun, BackupSchedule, BackupTarget, BackupTargetInput, BackupTargetType, TestConnectionResult, } from '@shared/types';
 import { cn } from '../../lib/cn';
@@ -12,10 +12,25 @@ import { Empty, LoadingBlock } from '../../components/feedback';
 import { getBackupPresets, type BackupPreset } from './backupPresets';
 import { useSession } from '../../store/session';
 import { useUi } from '../../store/ui';
-import { t, translateServiceMessage } from "../../lib/i18n";
+import { t, translateServiceMessage, useLocale } from "../../lib/i18n";
 export function BackupSettings() {
-    const settings = useSession((s) => s.settings);
+    const schedule = useSession((s) => s.settings.backup.schedule);
     const update = useSession((s) => s.updateSettings);
+    const locale = useLocale();
+    const setSchedule = useCallback((next: BackupSchedule) => void update({ backup: { schedule: next } }), [update]);
+    const scheduleOptions = useMemo(() => ([{
+        value: 'off' as const,
+        label: t("common.close"),
+    }, {
+        value: 'hourly' as const,
+        label: t("settings.hourly"),
+    }, {
+        value: 'sixHourly' as const,
+        label: t("settings.every_6_hours"),
+    }, {
+        value: 'daily' as const,
+        label: t("settings.daily"),
+    }]), [locale]);
     const toast = useUi((s) => s.toast);
     const [targets, setTargets] = useState<BackupTarget[] | null>(null);
     const [runs, setRuns] = useState<BackupRun[]>([]);
@@ -138,12 +153,7 @@ export function BackupSettings() {
       <section>
         <h3 className="mb-1 text-[11px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("settings.automatic_backups")}</h3>
         <SettingRow title={t("settings.frequency")} description={t("settings.runs_from_cloudflare_cron_the_page_does_not_need_to_stay_open")}>
-          <Segmented<BackupSchedule> label={t("settings.frequency")} value={settings.backup.schedule} onChange={(schedule) => void update({ backup: { schedule } })} options={[
-            { value: 'off', label: t("common.close") },
-            { value: 'hourly', label: t("settings.hourly") },
-            { value: 'sixHourly', label: t("settings.every_6_hours") },
-            { value: 'daily', label: t("settings.daily") },
-        ]}/>
+          <Segmented<BackupSchedule> label={t("settings.frequency")} value={schedule} onChange={setSchedule} options={scheduleOptions}/>
         </SettingRow>
       </section>
 

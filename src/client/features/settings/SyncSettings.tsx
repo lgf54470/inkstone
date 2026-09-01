@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, CloudOff, RefreshCw } from 'lucide-react';
 import { useRelativeTime } from '../../lib/hooks';
 import { Button } from '../../components/primitives';
@@ -8,7 +8,7 @@ import { useNotes } from '../../store/notes';
 import { useUi } from '../../store/ui';
 import { t } from "../../lib/i18n";
 export function SyncSettings() {
-    const settings = useSession((s) => s.settings);
+    const sync = useSession((s) => s.settings.sync);
     const site = useSession((s) => s.site);
     const update = useSession((s) => s.updateSettings);
     const online = useNotes((s) => s.online);
@@ -22,6 +22,8 @@ export function SyncSettings() {
     const [syncing, setSyncing] = useState(false);
     const realtimeAvailable = site?.realtimeEnabled ?? false;
     const savedAgo = useRelativeTime(lastSavedAt, online);
+    const setRealtime = useCallback((realtime: boolean) => void update({ sync: { realtime } }), [update]);
+    const setPollInterval = useCallback((seconds: number) => void update({ sync: { pollIntervalMs: seconds * 1000 } }), [update]);
     useEffect(() => {
         mountedRef.current = true;
         return () => {
@@ -96,11 +98,11 @@ export function SyncSettings() {
 
       <section>
         {realtimeAvailable && (<SettingRow title={t("settings.realtime_sync")} description={t("settings.receive_changes_from_other_devices_quickly")}>
-          <Switch checked={settings.sync.realtime} onChange={(realtime) => void update({ sync: { realtime } })} label={t("settings.realtime_sync")}/>
+          <Switch checked={sync.realtime} onChange={setRealtime} label={t("settings.realtime_sync")}/>
         </SettingRow>)}
 
         <SettingRow title={t("settings.polling_interval")}>
-          <Slider label={t("settings.polling_interval")} className="w-[200px]" value={Math.round(settings.sync.pollIntervalMs / 1000)} min={5} max={120} step={5} onChange={(seconds) => void update({ sync: { pollIntervalMs: seconds * 1000 } })} suffix={t("settings.sec")}/>
+          <Slider label={t("settings.polling_interval")} className="w-[200px]" value={Math.round(sync.pollIntervalMs / 1000)} min={5} max={120} step={5} onChange={setPollInterval} suffix={t("settings.sec")}/>
         </SettingRow>
       </section>
     </div>);

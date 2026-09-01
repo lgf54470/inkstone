@@ -1,11 +1,12 @@
+import { useCallback, useMemo } from 'react'
 import type { AccentName, AppLocale, BackgroundName, ProseFont, ProseWidth, ThemePref, UiDensity } from '@shared/types'
 import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import { cn } from '../../lib/cn'
-import { Segmented, SettingRow, Slider } from '../../components/form'
+import { Segmented, SettingRow, Slider, type SegmentedOption } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import { useSession } from '../../store/session'
 import { switchThemeWithTransition } from '../../store/ui'
-import { t, type MessageKey } from '../../lib/i18n'
+import { t, useLocale, type MessageKey } from '../../lib/i18n'
 
 const ACCENT_MESSAGE_KEYS: Record<AccentName, MessageKey> = {
   cinnabar: 'settings.accent.cinnabar',
@@ -22,9 +23,47 @@ export function AppearanceSettings({
 }: {
   accents: { name: AccentName; swatch: string; foreground: string }[]
 }) {
-  const settings = useSession((s) => s.settings)
+  const appearance = useSession((s) => s.settings.appearance)
   const update = useSession((s) => s.updateSettings)
-  const appearance = settings.appearance
+  const locale = useLocale()
+
+  const setLanguage = useCallback((language: AppLocale) => void update({ appearance: { language } }), [update])
+  const setTheme = useCallback((theme: ThemePref) => {
+    switchThemeWithTransition(theme, undefined, () => update({ appearance: { theme } }))
+  }, [update])
+  const setDensity = useCallback((density: UiDensity) => void update({ appearance: { density } }), [update])
+  const setProseFont = useCallback((proseFont: ProseFont) => void update({ appearance: { proseFont } }), [update])
+  const setProseSize = useCallback((proseSize: number) => void update({ appearance: { proseSize } }), [update])
+  const setProseLineHeight = useCallback((proseLineHeight: number) => void update({ appearance: { proseLineHeight } }), [update])
+  const setProseWidth = useCallback((proseWidth: ProseWidth) => void update({ appearance: { proseWidth } }), [update])
+
+  const languageOptions: SegmentedOption<AppLocale>[] = useMemo(() => ([
+    { value: 'zh-CN', label: t("settings.simplified_chinese") },
+    { value: 'en-US', label: t("settings.english") },
+  ]), [locale])
+
+  const themeOptions: SegmentedOption<ThemePref>[] = useMemo(() => ([
+    { value: 'light', label: <Sun size={12.5} />, title: t("settings.light") },
+    { value: 'dark', label: <Moon size={12.5} />, title: t("settings.dark") },
+    { value: 'system', label: <Monitor size={12.5} />, title: t("settings.system") },
+  ]), [locale])
+
+  const densityOptions: SegmentedOption<UiDensity>[] = useMemo(() => ([
+    { value: 'comfortable', label: t("settings.comfortable") },
+    { value: 'compact', label: t("settings.compact") },
+  ]), [locale])
+
+  const proseFontOptions: SegmentedOption<ProseFont>[] = useMemo(() => ([
+    { value: 'sans', label: t("common.sans_serif") },
+    { value: 'serif', label: t("settings.serif") },
+  ]), [locale])
+
+  const proseWidthOptions: SegmentedOption<ProseWidth>[] = useMemo(() => ([
+    { value: 'narrow', label: t("settings.narrow") },
+    { value: 'normal', label: t("settings.standard") },
+    { value: 'wide', label: t("settings.wide") },
+    { value: 'full', label: t("settings.full") },
+  ]), [locale])
 
   return (
     <div>
@@ -33,11 +72,8 @@ export function AppearanceSettings({
           <Segmented<AppLocale>
             label={t("settings.interface_language")}
             value={appearance.language}
-            onChange={(language) => void update({ appearance: { language } })}
-            options={[
-              { value: 'zh-CN', label: t("settings.simplified_chinese") },
-              { value: 'en-US', label: t("settings.english") },
-            ]}
+            onChange={setLanguage}
+            options={languageOptions}
           />
         </SettingRow>
 
@@ -45,14 +81,8 @@ export function AppearanceSettings({
           <Segmented<ThemePref>
             label={t("settings.theme")}
             value={appearance.theme}
-            onChange={(theme) => {
-              switchThemeWithTransition(theme, undefined, () => update({ appearance: { theme } }))
-            }}
-            options={[
-              { value: 'light', label: <Sun size={12.5} />, title: t("settings.light") },
-              { value: 'dark', label: <Moon size={12.5} />, title: t("settings.dark") },
-              { value: 'system', label: <Monitor size={12.5} />, title: t("settings.system") },
-            ]}
+            onChange={setTheme}
+            options={themeOptions}
           />
         </SettingRow>
 
@@ -115,11 +145,8 @@ export function AppearanceSettings({
           <Segmented<UiDensity>
             label={t("settings.interface_density")}
             value={appearance.density}
-            onChange={(density) => void update({ appearance: { density } })}
-            options={[
-              { value: 'comfortable', label: t("settings.comfortable") },
-              { value: 'compact', label: t("settings.compact") },
-            ]}
+            onChange={setDensity}
+            options={densityOptions}
           />
         </SettingRow>
       </section>
@@ -133,11 +160,8 @@ export function AppearanceSettings({
           <Segmented<ProseFont>
             label={t("settings.body_font")}
             value={appearance.proseFont}
-            onChange={(proseFont) => void update({ appearance: { proseFont } })}
-            options={[
-              { value: 'sans', label: t("common.sans_serif") },
-              { value: 'serif', label: t("settings.serif") },
-            ]}
+            onChange={setProseFont}
+            options={proseFontOptions}
           />
         </SettingRow>
 
@@ -148,7 +172,7 @@ export function AppearanceSettings({
             value={appearance.proseSize}
             min={13}
             max={22}
-            onChange={(proseSize) => void update({ appearance: { proseSize } })}
+            onChange={setProseSize}
             suffix="px"
           />
         </SettingRow>
@@ -161,7 +185,7 @@ export function AppearanceSettings({
             min={1.4}
             max={2.2}
             step={0.05}
-            onChange={(proseLineHeight) => void update({ appearance: { proseLineHeight } })}
+            onChange={setProseLineHeight}
           />
         </SettingRow>
 
@@ -169,13 +193,8 @@ export function AppearanceSettings({
           <Segmented<ProseWidth>
             label={t("settings.content_width")}
             value={appearance.proseWidth}
-            onChange={(proseWidth) => void update({ appearance: { proseWidth } })}
-            options={[
-              { value: 'narrow', label: t("settings.narrow") },
-              { value: 'normal', label: t("settings.standard") },
-              { value: 'wide', label: t("settings.wide") },
-              { value: 'full', label: t("settings.full") },
-            ]}
+            onChange={setProseWidth}
+            options={proseWidthOptions}
           />
         </SettingRow>
       </section>

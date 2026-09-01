@@ -1,6 +1,7 @@
 import {
   cloneElement,
   isValidElement,
+  memo,
   useId,
   useRef,
   type InputHTMLAttributes,
@@ -111,7 +112,7 @@ export function Select({
 }
 
 
-export function Switch({
+export const Switch = memo(function Switch({
   checked,
   onChange,
   disabled,
@@ -146,7 +147,7 @@ export function Switch({
       />
     </button>
   )
-}
+})
 
 
 export interface SegmentedOption<T extends string> {
@@ -156,7 +157,7 @@ export interface SegmentedOption<T extends string> {
   combo?: string
 }
 
-export function Segmented<T extends string>({
+function SegmentedInner<T extends string>({
   value,
   options,
   onChange,
@@ -253,8 +254,10 @@ export function Segmented<T extends string>({
   )
 }
 
+export const Segmented = memo(SegmentedInner) as typeof SegmentedInner
 
-export function Slider({
+
+function SliderInner({
   value,
   min,
   max,
@@ -309,6 +312,8 @@ export function Slider({
     </div>
   )
 }
+
+export const Slider = memo(SliderInner) as typeof SliderInner
 
 
 export function Field({
@@ -389,7 +394,7 @@ export function SettingRow({
 }
 
 
-export function Checkbox({
+function CheckboxInner({
   checked,
   onChange,
   label,
@@ -422,3 +427,5 @@ export function Checkbox({
     </button>
   )
 }
+
+export const Checkbox = memo(CheckboxInner) as typeof CheckboxInner
