@@ -37,6 +37,9 @@ const allowed = new Map([
     "// they would be silently dropped. Dynamic import keeps the session",
     "// store free of a circular dependency on the notes store.",
   ]],
+  ["src/shared/constants.ts", [
+    "/**\n * Merge a partial patch into the current settings.\n *\n * Sections that the patch does not touch are passed through by reference,\n * so subscribers observing a specific section (e.g. `settings.editor`) are\n * not re-rendered when an unrelated section changes.\n */",
+  ]],
   ["src/shared/markdown-utils.ts", [
     "/** Provides pure Markdown analysis shared by the browser and Worker runtimes. */",
   ]],

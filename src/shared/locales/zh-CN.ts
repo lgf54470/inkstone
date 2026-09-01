@@ -632,6 +632,7 @@ export const ZH_CN_MESSAGES = {
     "settings.leave_the_key_blank_to_leave_it_unchanged": "密钥留空表示保持不变",
     "settings.light": "浅色",
     "settings.line_height": "行高",
+    "settings.loading": "正在加载…",
     "settings.loading_backup_configuration": "读取备份配置…",
     "settings.loading_backup_settings": "加载备份设置…",
     "settings.login_password": "登录密码",

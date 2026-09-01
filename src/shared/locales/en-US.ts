@@ -631,6 +631,7 @@ export const EN_US_MESSAGES = {
     "settings.leave_the_key_blank_to_leave_it_unchanged": "Leave the key blank to leave it unchanged",
     "settings.light": "Light",
     "settings.line_height": "Line height",
+    "settings.loading": "Loading…",
     "settings.loading_backup_configuration": "Loading backup configuration…",
     "settings.loading_backup_settings": "Loading backup settings…",
     "settings.login_password": "Login password",

@@ -7,13 +7,13 @@ import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../compone
 import { IconButton } from '../../components/primitives';
 import { LoadingBlock } from '../../components/feedback';
 import { AppearanceSettings } from './AppearanceSettings';
-import { EditorSettings } from './EditorSettings';
-import { SyncSettings } from './SyncSettings';
-import { DataSettings } from './DataSettings';
-import { AccountSettings } from './AccountSettings';
-import { AboutSettings } from './AboutSettings';
 import { useUi } from '../../store/ui';
 import { t } from "../../lib/i18n";
+const EditorSettings = lazy(() => import('./EditorSettings').then((m) => ({ default: m.EditorSettings })));
+const SyncSettings = lazy(() => import('./SyncSettings').then((m) => ({ default: m.SyncSettings })));
+const DataSettings = lazy(() => import('./DataSettings').then((m) => ({ default: m.DataSettings })));
+const AccountSettings = lazy(() => import('./AccountSettings').then((m) => ({ default: m.AccountSettings })));
+const AboutSettings = lazy(() => import('./AboutSettings').then((m) => ({ default: m.AboutSettings })));
 const BackupSettings = lazy(() => import('./BackupSettings').then((m) => ({ default: m.BackupSettings })));
 const McpSettings = lazy(() => import('./McpSettings').then((m) => ({ default: m.McpSettings })));
 type Section = 'appearance' | 'editor' | 'backup' | 'sync' | 'mcp' | 'account' | 'data' | 'about';
@@ -92,18 +92,16 @@ export function SettingsPanel({ onClose }: {
 
           <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] md:px-5 md:py-4">
             <div key={section} className="anim-view-content">
-              {section === 'appearance' && <AppearanceSettings accents={ACCENTS}/>}
-              {section === 'editor' && <EditorSettings />}
-              {section === 'sync' && <SyncSettings />}
-              {section === 'mcp' && (<Suspense fallback={<LoadingBlock label={t("settings.mcp_loading")}/>}> 
-                  <McpSettings />
-                </Suspense>)}
-              {section === 'account' && <AccountSettings />}
-              {section === 'data' && <DataSettings />}
-              {section === 'about' && <AboutSettings />}
-              {section === 'backup' && (<Suspense fallback={<LoadingBlock label={t("settings.loading_backup_settings")}/> }>
-                  <BackupSettings />
-                </Suspense>)}
+              <Suspense fallback={<LoadingBlock label={t("settings.loading")}/>}>
+                {section === 'appearance' && <AppearanceSettings accents={ACCENTS}/>}
+                {section === 'editor' && <EditorSettings />}
+                {section === 'sync' && <SyncSettings />}
+                {section === 'mcp' && <McpSettings />}
+                {section === 'account' && <AccountSettings />}
+                {section === 'data' && <DataSettings />}
+                {section === 'about' && <AboutSettings />}
+                {section === 'backup' && <BackupSettings />}
+              </Suspense>
             </div>
           </div>
         </div>
