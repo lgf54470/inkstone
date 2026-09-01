@@ -22,6 +22,9 @@ const allowed = new Map([
   ["src/client/components/tag-name-highlight.tsx", [
     "/** Renders a tag name with the matched query substring emphasized, used by tag pickers. */",
   ]],
+  ["src/client/components/activity-calendar.tsx", [
+    "/** Reusable month calendar + activity heatmap: navigable month grid and a GitHub-style weekly strip, with optional per-day note lists. */",
+  ]],
   ["src/client/features/graph/GraphPanel.tsx", [
     "// Private browsing or a locked-down browser can reject local preferences.",
     "// Notes created from unresolved nodes land in the graph's folder scope so",

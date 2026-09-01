@@ -16,6 +16,7 @@ import { folderDescendantIds, folderPath, folderPathLabel, openFolderView } from
 import { FolderAppearance, FolderPicker } from '../folders/FolderPicker';
 import { TagAppearance } from '../tags/TagAppearance';
 import { createTag, deleteTag, renameTag, setTagColor } from '../tags/tagMutations';
+import { SidebarCalendar } from './SidebarCalendar';
 import { t } from "../../lib/i18n";
 export function Sidebar({ collapsed = false, onCollapse, }: {
     collapsed?: boolean;
@@ -41,6 +42,7 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-4">
+        <SidebarCalendar />
         <div className="space-y-px">
           <ViewItem icon={<FileText size={14}/>} label={t("navigation.all_notes")} view="all" count={counts.all} active={view === 'all'} onSelect={openView}/>
           <ViewItem icon={<Clock size={14}/>} label={t("navigation.recently_edited")} view="recent" active={view === 'recent'} onSelect={openView}/>

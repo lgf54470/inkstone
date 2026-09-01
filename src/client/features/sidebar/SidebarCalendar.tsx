@@ -1,0 +1,151 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CalendarDays, ChevronDown } from 'lucide-react';
+import { cn } from '../../lib/cn';
+import { t, useLocale } from '../../lib/i18n';
+import { useNotes } from '../../store/notes';
+import { useUi } from '../../store/ui';
+import { ActivityCalendar, CalendarDayNote } from '../../components/activity-calendar';
+
+const CALENDAR_PERSIST_KEY = 'inkstone.sidebar-calendar.v1';
+
+type CalendarView = 'month' | 'weeks';
+
+function loadCalendarPersist(): { collapsed: boolean; view: CalendarView } {
+    try {
+        const raw = localStorage.getItem(CALENDAR_PERSIST_KEY);
+        if (!raw)
+            return { collapsed: false, view: 'month' };
+        const value = JSON.parse(raw) as { collapsed?: unknown; view?: unknown };
+        return {
+            collapsed: value.collapsed === true,
+            view: value.view === 'weeks' ? 'weeks' : 'month',
+        };
+    }
+    catch {
+        return { collapsed: false, view: 'month' };
+    }
+}
+
+function pad2(value: number): string {
+    return String(value).padStart(2, '0');
+}
+
+function dateKey(date: Date): string {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+export function SidebarCalendar() {
+    const locale = useLocale();
+    const notes = useNotes((s) => s.notes);
+    const openNote = useNotes((s) => s.openNote);
+    const createNote = useNotes((s) => s.createNote);
+    const toast = useUi((s) => s.toast);
+    const [persisted] = useState(loadCalendarPersist);
+    const [collapsed, setCollapsed] = useState(persisted.collapsed);
+    const [view, setView] = useState<CalendarView>(persisted.view);
+    const [cursor, setCursor] = useState(() => {
+        const now = new Date();
+        return { year: now.getFullYear(), month: now.getMonth() };
+    });
+    const now = useMemo(() => new Date(), []);
+    const isCurrentMonth = cursor.year === now.getFullYear() && cursor.month === now.getMonth();
+    useEffect(() => {
+        try {
+            localStorage.setItem(CALENDAR_PERSIST_KEY, JSON.stringify({ collapsed, view }));
+        }
+        catch {
+        }
+    }, [collapsed, view]);
+
+    const weekStart = locale === 'zh-CN' ? 1 : 0;
+    const diaryTitle = useCallback((key: string) => t("sidebar.diary_title_value0", { value0: key }), []);
+
+    const counts = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const note of Object.values(notes)) {
+            if (note.deletedAt !== null)
+                continue;
+            const key = dateKey(new Date(note.updatedAt));
+            map.set(key, (map.get(key) ?? 0) + 1);
+        }
+        return map;
+    }, [notes]);
+
+    const noteIdByTitle = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const note of Object.values(notes)) {
+            if (note.deletedAt !== null)
+                continue;
+            if (!map.has(note.title))
+                map.set(note.title, note.id);
+        }
+        return map;
+    }, [notes]);
+
+    const getDiaryId = useCallback((key: string) => noteIdByTitle.get(diaryTitle(key)) ?? null, [diaryTitle, noteIdByTitle]);
+
+    const notesByDay = useMemo(() => {
+        const byDay = new Map<string, { id: string; title: string; updatedAt: number }[]>();
+        for (const note of Object.values(notes)) {
+            if (note.deletedAt !== null)
+                continue;
+            const key = dateKey(new Date(note.updatedAt));
+            const entry = byDay.get(key);
+            const item = { id: note.id, title: note.title, updatedAt: new Date(note.updatedAt).getTime() };
+            if (entry)
+                entry.push(item);
+            else
+                byDay.set(key, [item]);
+        }
+        const out = new Map<string, CalendarDayNote[]>();
+        for (const [key, list] of byDay) {
+            list.sort((a, b) => b.updatedAt - a.updatedAt);
+            out.set(key, list.map(({ id, title }) => ({ id, title })));
+        }
+        return out;
+    }, [notes]);
+
+    const monthTitle = useMemo(() => new Intl.DateTimeFormat(locale, {
+        year: 'numeric',
+        month: 'long',
+    }).format(new Date(cursor.year, cursor.month, 1)), [cursor, locale]);
+
+    const handleDayClick = useCallback(async (key: string, diaryId: string | null) => {
+        if (diaryId) {
+            openNote(diaryId);
+            toast({ title: t("sidebar.calendar_diary_opened_value0", { value0: key }), tone: 'success' });
+            return;
+        }
+        const [year, month, day] = key.split('-').map(Number);
+        const time = new Date(year, month - 1, day);
+        time.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60), Math.floor(Math.random() * 60), 0);
+        const stamp = `${key} ${pad2(time.getHours())}:${pad2(time.getMinutes())}:${pad2(time.getSeconds())}`;
+        const title = diaryTitle(key);
+        const tag = t("sidebar.diary_tag");
+        const content = `---
+title: "${title}"
+createdAt: ${stamp}
+tags:
+  - ${tag}
+aliases:
+  - ''
+---
+
+`;
+        const id = await createNote({ title, content, open: true });
+        if (id)
+            toast({ title: t("sidebar.calendar_diary_created_value0", { value0: key }), tone: 'success' });
+    }, [createNote, diaryTitle, openNote, toast]);
+
+    return (<section aria-label={t("sidebar.calendar_title")} className="mb-2.5">
+        <div className="flex items-center gap-1 px-0.5">
+            <button type="button" aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)} className="flex min-w-0 items-center gap-1 rounded-[var(--r-sm)] px-1 py-0.5 text-left transition-colors hover:bg-[var(--bg-hover)]">
+                <CalendarDays size={12} className="shrink-0 text-[var(--text-quaternary)]"/>
+                <span className="truncate text-[11px] font-semibold text-[var(--text-secondary)]">{monthTitle}</span>
+                {isCurrentMonth && (<span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[9px] font-medium text-[var(--accent)]">{t("sidebar.calendar_today")}</span>)}
+                <ChevronDown size={11} className={cn('shrink-0 text-[var(--text-quaternary)] transition-transform duration-[var(--dur-fast)]', collapsed && '-rotate-90')}/>
+            </button>
+        </div>
+        {!collapsed && (<ActivityCalendar counts={counts} notesByDay={notesByDay} getDiaryId={getDiaryId} locale={locale} weekStart={weekStart} today={now} view={view} onViewChange={setView} cursor={cursor} onCursorChange={setCursor} onDayClick={(key, diaryId) => void handleDayClick(key, diaryId)} onNoteClick={openNote}/>)}
+    </section>);
+}
