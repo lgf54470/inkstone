@@ -24,7 +24,9 @@ import { Menu, Tooltip, useDialogFocus, useEscape, useLockScroll, type MenuItem 
 import { Empty, LoadingBlock } from '../../components/feedback'
 import { useNotes } from '../../store/notes'
 import { useUi } from '../../store/ui'
+import { usePinnedWindows } from '../../store/pinned-windows'
 import { t } from '../../lib/i18n'
+import { getLinkHoverTarget, subscribeLinkHoverTarget } from '../preview/link-signal'
 
 const PHYSICS_FRAME_LIMIT = 360
 const GRAPH_PREFS_KEY = 'inkstone.graph.preferences.v1'
@@ -240,6 +242,14 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     stateRef.current.schedule?.()
   }, [selectedId])
 
+  useEffect(() => subscribeLinkHoverTarget((noteId) => {
+    const state = stateRef.current
+    const node = noteId ? state.nodes.find((candidate) => candidate.id === noteId) ?? null : null
+    hoverRef.current = node
+    setHover(node)
+    state.schedule?.()
+  }), [])
+
   const fitGraph = useCallback(() => {
     const canvas = canvasRef.current
     const state = stateRef.current
@@ -412,6 +422,10 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
       if (state.frame < PHYSICS_FRAME_LIMIT) schedule()
     }
     state.schedule = schedule
+    const linkedTargetId = getLinkHoverTarget()
+    const linkedNode = linkedTargetId ? state.nodes.find((candidate) => candidate.id === linkedTargetId) ?? null : null
+    hoverRef.current = linkedNode
+    setHover(linkedNode)
     schedule()
     const fitTimer = window.setTimeout(fitGraph, 120)
     return () => {
@@ -470,7 +484,10 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     if (!drag) return
     const moved = Math.abs(clientX - drag.startX) + Math.abs(clientY - drag.startY)
     if (drag.node && moved < 5) {
-      if (drag.node.kind === 'note') void openNote(drag.node.id)
+      if (drag.node.kind === 'note') {
+        if (usePinnedWindows.getState().focusPinnedByNote(drag.node.id)) return
+        void openNote(drag.node.id)
+      }
       else void createNote?.({ title: drag.node.title, open: true })
       onClose()
     }
@@ -609,7 +626,10 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
               else if (event.key === 'Home') fitGraph()
               else if (event.key === 'Enter' && selectedIdRef.current) {
                 const selectedNode = state.nodes.find((node) => node.id === selectedIdRef.current)
-                if (selectedNode?.kind === 'note') void openNote(selectedNode.id)
+                if (selectedNode?.kind === 'note') {
+                  if (usePinnedWindows.getState().focusPinnedByNote(selectedNode.id)) return
+                  void openNote(selectedNode.id)
+                }
                 else if (selectedNode) void createNote?.({ title: selectedNode.title, open: true })
                 if (selectedNode) onClose()
               }

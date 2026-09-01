@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Link2 } from 'lucide-react';
 import type { Backlink } from '@shared/types';
-import { api } from '../../lib/api';
+import { getNoteBacklinks } from '../../lib/backlinks';
 import { Button } from '../../components/primitives';
 import { useNotes } from '../../store/notes';
 import { t } from "../../lib/i18n";
@@ -12,19 +12,21 @@ export function BacklinksPanel({ noteId }: {
     const [links, setLinks] = useState<Backlink[] | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [reload, setReload] = useState(0);
+    const forceRetryRef = useRef(false);
     const openNote = useNotes((s) => s.openNote);
     const rev = useNotes((s) => s.notes[noteId]?.rev ?? 0);
     const cursor = useNotes((s) => s.cursor);
     useEffect(() => {
         const controller = new AbortController();
         let cancelled = false;
+        const forceRetry = forceRetryRef.current;
+        forceRetryRef.current = false;
         setLinks(null);
         setLoadError(null);
-        api.notes
-            .backlinks(noteId, controller.signal)
+        getNoteBacklinks(noteId, rev, cursor, controller.signal, { force: forceRetry })
             .then((res) => {
             if (!cancelled)
-                setLinks(res.backlinks);
+                setLinks(res);
         })
             .catch((error) => {
             if (!cancelled)
@@ -40,7 +42,7 @@ export function BacklinksPanel({ noteId }: {
         <Link2 size={11}/>{t("common.backlinks")}{links && links.length > 0 && <span className="tabular">· {links.length}</span>}
       </div>
 
-      {loadError ? (<div className="flex items-center justify-between gap-3 px-3 py-4 text-[12px] text-[var(--text-quaternary)]"><span>{t("workspace.could_not_load_backlinks")}</span><Button size="sm" variant="ghost" onClick={() => setReload((value) => value + 1)}>{t("common.retry")}</Button></div>) : links === null ? (<div className="px-3 py-4 text-[12px] text-[var(--text-quaternary)]">{t("common.loading")}</div>) : links.length === 0 ? (<div className="px-3 py-4 text-[12px] leading-relaxed text-[var(--text-quaternary)]">{t("workspace.no_notes_link_here_yet_write")}{' '}
+      {loadError ? (<div className="flex items-center justify-between gap-3 px-3 py-4 text-[12px] text-[var(--text-quaternary)]"><span>{t("workspace.could_not_load_backlinks")}</span><Button size="sm" variant="ghost" onClick={() => { forceRetryRef.current = true; setReload((value) => value + 1); }}>{t("common.retry")}</Button></div>) : links === null ? (<div className="px-3 py-4 text-[12px] text-[var(--text-quaternary)]">{t("common.loading")}</div>) : links.length === 0 ? (<div className="px-3 py-4 text-[12px] leading-relaxed text-[var(--text-quaternary)]">{t("workspace.no_notes_link_here_yet_write")}{' '}
           <code className="rounded bg-[var(--bg-inset)] px-1 py-0.5 font-mono text-[11px]">{t("workspace.title")}</code>{' '}{t("workspace.will_appear_here")}</div>) : (<ul className="p-2">
           {links.map((link) => (<li key={link.id}>
               <button type="button" onClick={() => void openNote(link.id)} className="group w-full rounded-[var(--r-md)] px-2 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]">

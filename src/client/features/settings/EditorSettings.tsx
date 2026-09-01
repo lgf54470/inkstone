@@ -29,6 +29,9 @@ export function EditorSettings() {
     const setCodeBlockCollapse = useCallback((codeBlockCollapse: boolean) => void update({ preview: { codeBlockCollapse } }), [update]);
     const setCodeBlockCollapseLines = useCallback((codeBlockCollapseLines: number) => void update({ preview: { codeBlockCollapseLines } }), [update]);
     const setShowToc = useCallback((showToc: boolean) => void update({ preview: { showToc } }), [update]);
+    const setLinkHover = useCallback((linkHover: boolean) => void update({ preview: { linkHover } }), [update]);
+    const setLinkHoverDelayMs = useCallback((linkHoverDelayMs: number) => void update({ preview: { linkHoverDelayMs } }), [update]);
+    const setLinkPreviewLength = useCallback((linkPreviewLength: number) => void update({ preview: { linkPreviewLength } }), [update]);
 
     const fontFamilyOptions = useMemo(() => ([
         { value: 'mono' as const, label: t("settings.monospace") },
@@ -96,6 +99,20 @@ export function EditorSettings() {
         <SettingRow title={t("settings.show_outline_by_default")}>
           <Switch checked={preview.showToc} onChange={setShowToc} label={t("settings.show_outline_by_default")}/>
         </SettingRow>
+
+        <SettingRow title={t("settings.link_hover_preview")} description={t("settings.link_hover_preview_description")}>
+          <Switch checked={preview.linkHover} onChange={setLinkHover} label={t("settings.link_hover_preview")}/>
+        </SettingRow>
+
+        {preview.linkHover && <>
+          <SettingRow title={t("settings.link_hover_delay")}>
+            <Slider label={t("settings.link_hover_delay")} className="w-[200px]" value={preview.linkHoverDelayMs} min={150} max={1000} step={50} onChange={setLinkHoverDelayMs} suffix="ms"/>
+          </SettingRow>
+
+          <SettingRow title={t("settings.link_preview_length")}>
+            <Slider label={t("settings.link_preview_length")} className="w-[200px]" value={preview.linkPreviewLength} min={300} max={8000} step={100} onChange={setLinkPreviewLength} suffix={t("settings.characters")}/>
+          </SettingRow>
+        </>}
       </section>
 
       <section>

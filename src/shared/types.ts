@@ -123,6 +123,9 @@ export interface PreviewSettings {
   mermaid: boolean
   codeBlockCollapse: boolean
   codeBlockCollapseLines: number
+  linkHover: boolean
+  linkHoverDelayMs: number
+  linkPreviewLength: number
 }
 
 export interface BackupSettings {

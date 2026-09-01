@@ -101,6 +101,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
     mermaid: true,
     codeBlockCollapse: true,
     codeBlockCollapseLines: 24,
+    linkHover: true,
+    linkHoverDelayMs: 320,
+    linkPreviewLength: 4000,
   },
   backup: {
     schedule: 'sixHourly',
@@ -253,6 +256,19 @@ function mergeSettingsSection(
           8,
           100,
           current.codeBlockCollapseLines as number,
+        ),
+        linkHover: booleanValue(patch.linkHover, current.linkHover as boolean),
+        linkHoverDelayMs: integerInRange(
+          patch.linkHoverDelayMs,
+          150,
+          1000,
+          current.linkHoverDelayMs as number,
+        ),
+        linkPreviewLength: integerInRange(
+          patch.linkPreviewLength,
+          300,
+          8000,
+          current.linkPreviewLength as number,
         ),
       }
     case 'backup':

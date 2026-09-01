@@ -772,6 +772,45 @@
   text-decoration-color: var(--accent);
 }
 
+
+.wiki-hover-body .ink-prose {
+  max-width: none;
+  margin-inline: 0;
+  padding-block: 0;
+}
+.wiki-hover-body .ink-prose h1,
+.wiki-hover-body .ink-prose h2,
+.wiki-hover-body .ink-prose h3 {
+  margin-top: 0.9em;
+}
+.wiki-hover-body .ink-prose > :first-child {
+  margin-top: 0;
+}
+.wiki-hover-embed {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.pinned-window-flash {
+  animation: pinned-window-flash 1.05s ease-out;
+}
+@keyframes pinned-window-flash {
+  0% {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 75%, transparent), var(--shadow-pop);
+  }
+  70% {
+    box-shadow: 0 0 0 12px transparent, var(--shadow-pop);
+  }
+  100% {
+    box-shadow: 0 0 0 12px transparent, var(--shadow-pop);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pinned-window-flash {
+    animation: none;
+  }
+}
+
 .ink-prose .inline-tag {
   color: var(--accent);
   background: var(--accent-softer);

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Annotation, Compartment, EditorState, type Extension } from '@codemirror/state';
 import { EditorView, drawSelection, dropCursor, keymap, lineNumbers, placeholder as placeholderExt, rectangularSelection, } from '@codemirror/view';
 import { foldGutter, indentOnInput, indentUnit, } from '@codemirror/language';
@@ -12,6 +12,14 @@ import { editorTheme } from './theme';
 import { focusModePlugin, markdownDecorations, setFocusMode, typewriterPlugin } from './decorations';
 import { codeFenceSource, tagSource, wikiLinkSource, type CompletionSources } from './completion';
 import { pasteExtension, type PasteHandlers } from './paste';
+import { decodeDataValue } from '../lib/markdown/data-attr';
+import { parseWikiTarget } from '../lib/markdown/renderer';
+import { findNoteByTitle, useNotes } from '../store/notes';
+import { useSession } from '../store/session';
+import { WikiLinkHoverCard, type WikiLinkHoverCardState } from '../features/preview/WikiLinkHoverCard';
+import { useLinkHover } from '../features/preview/link-hover';
+import { linkHoverExtension, linkHoverFacet } from './link-hover-plugin';
+import { usePinnedWindows } from '../store/pinned-windows';
 import { completeCodeFenceOnEnter, setHeading, smartEnter, tableTab, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleItalic, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskDone, toggleTaskList, } from './commands';
 import { t } from "../lib/i18n";
 
@@ -22,15 +30,50 @@ export interface CodeEditorProps {
     settings: EditorSettings;
     sources: CompletionSources;
     handlers: PasteHandlers;
+    noteId?: string | null;
     onReady?: (view: EditorView | null) => void;
     onScroll?: (view: EditorView) => void;
     onCursorLine?: (line: number) => void;
     placeholder?: string;
     className?: string;
 }
-export function CodeEditor({ value, onChange, settings, sources, handlers, onReady, onScroll, onCursorLine, placeholder = t("editor.start_writing"), className, }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, settings, sources, handlers, noteId = null, onReady, onScroll, onCursorLine, placeholder = t("editor.start_writing"), className, }: CodeEditorProps) {
     const hostRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
+    const previewSettings = useSession((s) => s.settings.preview);
+    const [dark, setDark] = useState(() => (document.documentElement.dataset.theme ?? 'dark') === 'dark');
+    const proposeRef = useRef<(link: HTMLElement | null, options?: { immediate?: boolean }) => void>(() => {});
+
+    const resolveEditorCandidate = useCallback((link: HTMLElement): WikiLinkHoverCardState | null => {
+        const parsed = parseWikiTarget(decodeDataValue(link.dataset.wikilink));
+        const notes = useNotes.getState().notes;
+        if (parsed.noteTitle) {
+            const note = findNoteByTitle(parsed.noteTitle);
+            if (note) {
+                return { anchor: link, title: parsed.alias ?? note.title, noteId: note.id, missing: false, headline: parsed.heading ?? note.title };
+            }
+            return { anchor: link, title: parsed.alias ?? parsed.noteTitle, noteId: null, missing: true, headline: parsed.heading ?? parsed.noteTitle };
+        }
+        const currentId = noteId;
+        const summary = currentId ? notes[currentId] : undefined;
+        if (!summary) return null;
+        return { anchor: link, title: parsed.alias ?? summary.title, noteId: currentId, missing: false, headline: parsed.heading ?? summary.title };
+    }, [noteId]);
+
+    const linkHover = useLinkHover({
+        resolve: resolveEditorCandidate,
+        delay: previewSettings.linkHoverDelayMs,
+        enabled: previewSettings.linkHover,
+        armOnNonLink: true,
+    });
+    proposeRef.current = linkHover.propose;
+    const linkHoverRef = useRef(linkHover);
+    linkHoverRef.current = linkHover;
+
+    const handlePin = useCallback((card: WikiLinkHoverCardState, rect: DOMRect) => {
+        usePinnedWindows.getState().pin(card, rect);
+        linkHover.hideNow();
+    }, [linkHover.hideNow]);
 
     const cbRef = useRef({ onChange, onScroll, onCursorLine, sources, handlers });
     cbRef.current = { onChange, onScroll, onCursorLine, sources, handlers };
@@ -123,6 +166,15 @@ export function CodeEditor({ value, onChange, settings, sources, handlers, onRea
                     cbRef.current.onScroll?.(view);
                 },
             }),
+            linkHoverExtension(),
+            linkHoverFacet.of({
+                propose: (link, options) => proposeRef.current(link, options),
+                hide: () => {
+                    if (!linkHoverRef.current.card) return false;
+                    linkHoverRef.current.hideNow();
+                    return true;
+                },
+            }),
         ];
         const view = new EditorView({
             state: EditorState.create({ doc: value, extensions }),
@@ -194,5 +246,38 @@ export function CodeEditor({ value, onChange, settings, sources, handlers, onRea
     useEffect(() => {
         viewRef.current?.dispatch({ effects: setFocusMode.of(settings.focusMode) });
     }, [settings.focusMode]);
-    return (<div ref={hostRef} className={cn('ink-editor', className)} data-family={settings.fontFamily} data-focus-mode={settings.focusMode} data-typewriter={settings.typewriter}/>);
+
+    useEffect(() => {
+        const observer = new MutationObserver(() => {
+            setDark((document.documentElement.dataset.theme ?? 'dark') === 'dark');
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+        const onScroll = (event: Event) => {
+            const target = event.target as Element | null;
+            if (target && typeof target.closest === 'function' && target.closest('[role="tooltip"]'))
+                return;
+            linkHover.hideNow();
+        };
+        window.addEventListener('scroll', onScroll, true);
+        return () => window.removeEventListener('scroll', onScroll, true);
+    }, [linkHover.hideNow]);
+
+    return (<div ref={hostRef} className={cn('ink-editor', className)} data-family={settings.fontFamily} data-focus-mode={settings.focusMode} data-typewriter={settings.typewriter}>
+      {linkHover.card && (
+        <WikiLinkHoverCard
+          card={linkHover.card}
+          path={linkHover.card.noteId ? [linkHover.card.noteId] : []}
+          depth={1}
+          dark={dark}
+          onClose={linkHover.hideNow}
+          onEnter={linkHover.clearPendingHide}
+          onLeave={linkHover.armHide}
+          onPin={handlePin}
+        />
+      )}
+    </div>);
 }

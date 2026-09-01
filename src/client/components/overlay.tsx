@@ -258,7 +258,7 @@ export interface MenuItem {
     onSelect?: () => void;
     separatorBefore?: boolean;
 }
-export function Menu({ anchor, open, onClose, items, align = 'start', width = 208, label = t("overlay.menu"), }: {
+export function Menu({ anchor, open, onClose, items, align = 'start', width = 208, label = t("overlay.menu"), zIndex, }: {
     anchor: RefObject<HTMLElement | null> | {
         x: number;
         y: number;
@@ -269,6 +269,7 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
     align?: 'start' | 'end';
     width?: number;
     label?: string;
+    zIndex?: number;
 }) {
     const menuRef = useRef<HTMLDivElement>(null);
     const [position, setPosition] = useState<{
@@ -371,7 +372,7 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
     }, [open, items, cursor, onClose]);
     if (!open)
         return null;
-    return createPortal(<div ref={menuRef} role="menu" aria-label={label} tabIndex={-1} className="anim-pop fixed z-[260] max-h-[420px] overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none" style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin }}>
+    return createPortal(<div ref={menuRef} role="menu" aria-label={label} tabIndex={-1} className="anim-pop fixed z-[260] max-h-[420px] overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none" style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
       {items.map((item, index) => (<div key={item.id}>
           {item.separatorBefore && <div role="separator" className="my-1 h-px bg-[var(--border-subtle)]"/>}
           <button type="button" role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'} aria-checked={item.checked === undefined ? undefined : item.checked} tabIndex={index === cursor ? 0 : -1} data-menu-index={index} disabled={item.disabled} onMouseEnter={() => {

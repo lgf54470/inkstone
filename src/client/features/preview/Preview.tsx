@@ -29,7 +29,10 @@ import { useSession } from '../../store/session'
 import { previewSourceAnchors } from './preview-anchors'
 import { moveMarkdownTabFocus, selectMarkdownTab } from './markdown-tabs'
 import { capturePreviewInteractionState, restorePreviewInteractionState } from './preview-state'
+import { WikiLinkHoverCard, type WikiLinkHoverCardState } from './WikiLinkHoverCard'
+import { useLinkHover } from './link-hover'
 import { preferredScrollBehavior } from '../../lib/motion'
+import { usePinnedWindows } from '../../store/pinned-windows'
 
 export interface PreviewProps {
   content: string
@@ -209,8 +212,89 @@ export const Preview = memo(function Preview({
   }, [committedHtml, onRendered, scrollerRef])
 
 
+  const resolveHoverCandidate = useCallback((link: HTMLElement): WikiLinkHoverCardState | null => {
+    const parsed = parseWikiTarget(decodeDataValue(link.dataset.wikilink))
+    const notes = useNotes.getState().notes
+    if (parsed.noteTitle) {
+      const note = findNoteByTitle(parsed.noteTitle)
+      if (note)
+        return {
+          anchor: link,
+          title: parsed.alias ?? note.title,
+          noteId: note.id,
+          missing: false,
+          headline: parsed.heading ?? note.title,
+        }
+      return {
+        anchor: link,
+        title: parsed.alias ?? parsed.noteTitle,
+        noteId: null,
+        missing: true,
+        headline: parsed.heading ?? parsed.noteTitle,
+      }
+    }
+    const currentId = sourceNoteId
+    const summary = currentId ? notes[currentId] : undefined
+    if (!summary) return null
+    return {
+      anchor: link,
+      title: parsed.alias ?? summary.title,
+      noteId: currentId,
+      missing: false,
+      headline: parsed.heading ?? summary.title,
+    }
+  }, [sourceNoteId])
+
+  const linkHover = useLinkHover({
+    resolve: resolveHoverCandidate,
+    delay: preview.linkHoverDelayMs,
+    enabled: preview.linkHover,
+    armOnNonLink: true,
+  })
+  const hoverCard = linkHover.card
+
+  const handlePin = useCallback((card: WikiLinkHoverCardState, rect: DOMRect) => {
+    usePinnedWindows.getState().pin(card, rect)
+    linkHover.hideNow()
+  }, [linkHover.hideNow])
+
+  useEffect(() => {
+    linkHover.hideNow()
+  }, [committedHtml, linkHover.hideNow])
+
+  useEffect(() => {
+    const onScroll = (event: Event) => {
+      const target = event.target as Element | null
+      if (target && typeof target.closest === 'function' && target.closest('[role="tooltip"]'))
+        return
+      linkHover.hideNow()
+    }
+    window.addEventListener('scroll', onScroll, true)
+    return () => window.removeEventListener('scroll', onScroll, true)
+  }, [linkHover.hideNow])
+
+  const onMouseLeave = () => {
+    linkHover.handleMouseLeave()
+  }
+
+  const onFocus = (event: React.FocusEvent) => {
+    const link = (event.target as HTMLElement).closest<HTMLElement>('[data-wikilink]')
+    if (!link) return
+    linkHover.propose(link, { immediate: true })
+  }
+
+  const onBlur = (event: React.FocusEvent) => {
+    const related = event.relatedTarget as Element | null
+    if (related && typeof related.closest === 'function' && related.closest('[role="tooltip"]')) {
+      linkHover.clearPendingHide()
+      return
+    }
+    linkHover.armHide(0)
+  }
+
   const onClick = (event: React.MouseEvent) => {
     const target = event.target as HTMLElement
+    linkHover.hideNow()
 
     const mermaidRetry = target.closest<HTMLElement>('[data-mermaid-retry]')
     if (mermaidRetry) {
@@ -360,6 +444,11 @@ export const Preview = memo(function Preview({
   }
 
   const onKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      linkHover.hideNow()
+      usePinnedWindows.getState().closeFront()
+      return
+    }
     const tab = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-tab-button]')
     if (tab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
       event.preventDefault()
@@ -385,11 +474,27 @@ export const Preview = memo(function Preview({
         ref={hostRef}
         onClick={onClick}
         onKeyDown={onKeyDown}
+        onMouseMove={linkHover.handleMouseMove}
+        onMouseLeave={onMouseLeave}
+        onFocus={onFocus}
+        onBlur={onBlur}
         data-font={proseFont}
         data-preview-content
         className="ink-prose"
         dangerouslySetInnerHTML={htmlObj}
       />
+      {hoverCard && (
+        <WikiLinkHoverCard
+          card={hoverCard}
+          path={hoverCard.noteId ? [hoverCard.noteId] : []}
+          depth={1}
+          dark={theme === 'dark'}
+          onClose={linkHover.hideNow}
+          onEnter={linkHover.clearPendingHide}
+          onLeave={linkHover.armHide}
+          onPin={handlePin}
+        />
+      )}
     </div>
   )
 })

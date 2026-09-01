@@ -33,6 +33,7 @@ interface NotesState {
         pane?: WorkspacePane;
         activate?: boolean;
     }) => Promise<void>;
+    peekContent: (id: string) => Promise<string | null>;
     editTitle: (id: string, title: string) => void;
     editContent: (id: string, content: string) => void;
     flush: (options?: {
@@ -387,6 +388,32 @@ export const useNotes = create<NotesState>((set, get) => ({
             discardNoteRuntimeState(id);
             useUi.getState().removeWorkspaceNote(id);
             void localDb.dropContent(id);
+        }
+    },
+    async peekContent(id) {
+        const summary = get().notes[id];
+        if (!summary || summary.deletedAt !== null)
+            return null;
+        if (hasOwnContent(get().contents, id))
+            return get().contents[id]!;
+        try {
+            const cached = await localDb.getContent(id);
+            if (cached && cached.rev === summary.rev && !dirty.has(id)) {
+                set((state) => state.contents[id] !== undefined
+                    ? state
+                    : { contents: { ...state.contents, [id]: cached.content } });
+                return cached.content;
+            }
+        }
+        catch {
+        }
+        try {
+            const note = await requestNote(id);
+            adoptNote(note, set, get);
+            return note.content;
+        }
+        catch {
+            return null;
         }
     },
     async openNote(id, options) {
