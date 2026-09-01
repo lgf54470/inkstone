@@ -169,6 +169,26 @@ export function mergeSettingsPatch(current: unknown, patch: unknown): UserSettin
   return combined as unknown as UserSettings
 }
 
+/**
+ * Guards the referential-stability contract of mergeSettingsPatch: sections
+ * the patch did not touch must keep their object identity, otherwise narrow
+ * store subscriptions silently regress into full-app re-renders on every
+ * settings change.
+ */
+export function assertUnchangedSettingsSections(
+  current: UserSettings,
+  next: UserSettings,
+  patch: unknown,
+): void {
+  const incoming = asRecord(patch)
+  for (const section of SETTINGS_SECTIONS) {
+    if (Object.keys(asRecord(incoming[section])).length > 0) continue
+    if (current[section] !== next[section]) {
+      throw new Error(`untouched settings section "${section}" was rebuilt; keep it referentially stable`)
+    }
+  }
+}
+
 function mergeSettingsSection(
   section: SettingsSection,
   current: Record<string, unknown>,

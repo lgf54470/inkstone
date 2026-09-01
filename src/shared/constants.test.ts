@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, mergeSettings, mergeSettingsPatch } from './constants'
+import type { UserSettings } from './types'
+import {
+  DEFAULT_SETTINGS,
+  assertUnchangedSettingsSections,
+  mergeSettings,
+  mergeSettingsPatch,
+} from './constants'
 
 describe('mergeSettingsPatch', () => {
   it('returns the same object when the patch is empty', () => {
@@ -52,6 +58,43 @@ describe('mergeSettingsPatch', () => {
     expect(next.preview.math).toBe(false)
     expect(next.sync.pollIntervalMs).toBe(30_000)
     expect(next.backup.schedule).toBe('daily')
+  })
+})
+
+describe('assertUnchangedSettingsSections', () => {
+  it('passes for mergeSettingsPatch output', () => {
+    const current = mergeSettings(DEFAULT_SETTINGS)
+    const next = mergeSettingsPatch(current, { editor: { lineNumbers: true } })
+    expect(() => assertUnchangedSettingsSections(current, next, { editor: { lineNumbers: true } }))
+      .not.toThrow()
+  })
+
+  it('passes when every section is touched', () => {
+    const current = mergeSettings(DEFAULT_SETTINGS)
+    const next = mergeSettingsPatch(current, {
+      appearance: { density: 'compact' },
+      editor: { tabSize: 4 },
+      preview: { math: false },
+      backup: { schedule: 'hourly' },
+      sync: { realtime: false },
+    })
+    expect(() => assertUnchangedSettingsSections(current, next, {
+      appearance: { density: 'compact' },
+      editor: { tabSize: 4 },
+      preview: { math: false },
+      backup: { schedule: 'hourly' },
+      sync: { realtime: false },
+    })).not.toThrow()
+  })
+
+  it('throws when an untouched section was rebuilt', () => {
+    const current = mergeSettings(DEFAULT_SETTINGS)
+    const rebuilt: UserSettings = {
+      ...current,
+      appearance: { ...current.appearance },
+    }
+    expect(() => assertUnchangedSettingsSections(current, rebuilt, { editor: { lineNumbers: true } }))
+      .toThrow(/appearance/)
   })
 })
 

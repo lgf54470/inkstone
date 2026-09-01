@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import { DEFAULT_SETTINGS, mergeSettings, mergeSettingsPatch } from '@shared/constants'
+import {
+  DEFAULT_SETTINGS,
+  assertUnchangedSettingsSections,
+  mergeSettings,
+  mergeSettingsPatch,
+} from '@shared/constants'
 import type { PublicUser, SessionInfo, SiteInfo, TotpLoginChallenge, UserSettings } from '@shared/types'
 import { api, ApiError } from '../lib/api'
 import { setLocale, t } from '../lib/i18n'
@@ -257,7 +262,12 @@ export const useSession = create<SessionState>((set, get) => ({
   },
 
   updateSettings(patch, options) {
-    const next = mergeSettingsPatch(get().settings, patch)
+    const currentSettings = get().settings
+    const next = mergeSettingsPatch(currentSettings, patch)
+    const nodeEnv = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process
+    if (import.meta.env?.DEV || nodeEnv?.env?.NODE_ENV === 'test') {
+      assertUnchangedSettingsSections(currentSettings, next, patch)
+    }
     set({ settings: next })
     syncAppearanceToDom(next)
     cacheCurrentSession(get())
