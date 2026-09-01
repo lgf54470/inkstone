@@ -5,7 +5,7 @@ import type { NoteSummary, SearchHit } from '@shared/types';
 import { truncateText } from '@shared/text-utils';
 import { cn } from '../../lib/cn';
 import { api } from '../../lib/api';
-import { fuzzyFilter, splitByRanges, type FuzzyMatch } from '../../lib/fuzzy';
+import { canFuzzyMatch, fuzzyFilter, splitByRanges, type FuzzyMatch } from '../../lib/fuzzy';
 import { useDebounced, useNow } from '../../lib/hooks';
 import { shortTime } from '../../lib/time';
 import { IconButton, Kbd } from '../../components/primitives';
@@ -65,7 +65,9 @@ export function CommandPalette({ onClose }: {
         item.run();
     }, [onClose]);
 
-    const noteList = useMemo(() => Object.values(notes).filter((note) => !note.deletedAt), [notes]);
+    const noteList = useMemo(() => Object.values(notes)
+        .filter((note) => !note.deletedAt)
+        .map((note) => ({ note, lower: note.title.toLowerCase() })), [notes]);
     const folderIndex = useMemo(() => {
         const counts = new Map<string, number>();
         const folderById = new Map(folders.map((folder) => [folder.id, folder]));
@@ -297,16 +299,20 @@ export function CommandPalette({ onClose }: {
             return [...recent, ...quick];
         }
         const matchedCommands = fuzzyFilter(commands, text, (c) => c.label, 8).map<Item>(({ item, match }) => ({ ...item, score: match.score + 60, match }));
-        const matchedNotes = fuzzyFilter(noteList, text, (n) => n.title, 14).map<Item>(({ item, match }) => ({
-            id: `note-${item.id}`,
+        const lowerQuery = text.toLowerCase();
+        const scoredNotes = noteList
+            .filter((entry) => canFuzzyMatch(entry.lower, lowerQuery))
+            .slice(0, 300);
+        const matchedNotes = fuzzyFilter(scoredNotes, text, (entry) => entry.note.title, 14).map<Item>(({ item: entry, match }) => ({
+            id: `note-${entry.note.id}`,
             kind: 'note',
-            label: item.title || t("common.untitled_note"),
-            detail: truncateText(item.excerpt, 60),
+            label: entry.note.title || t("common.untitled_note"),
+            detail: truncateText(entry.note.excerpt, 60),
             icon: <FileText size={14}/>,
             group: t("common.note"),
             score: match.score + 20,
             match,
-            run: () => void openNote(item.id),
+            run: () => void openNote(entry.note.id),
         }));
         const seen = new Set(matchedNotes.map((n) => n.id));
         const fullText = remoteResults

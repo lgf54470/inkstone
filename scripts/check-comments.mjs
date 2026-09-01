@@ -22,6 +22,9 @@ const allowed = new Map([
     "/** Provides typed runtime localization with on-demand locale loading. */",
     "// Preload the other locale in background for instant switching, but don't block init",
   ]],
+  ["src/client/lib/fuzzy.ts", [
+    "/**\n * Fast ordered-subsequence prefilter with the same acceptance semantics as\n * fuzzyMatch (monotonic indexOf per query character), so it never rejects a\n * candidate fuzzyMatch would accept. Used to shrink large candidate pools\n * (e.g. the note list) before scoring.\n */",
+  ]],
   ["src/client/lib/markdown/renderer.ts", [
     "/** Builds the sanitized Markdown rendering pipeline and its Inkstone-specific syntax extensions. */",
   ]],

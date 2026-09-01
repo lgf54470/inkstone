@@ -64,6 +64,24 @@ function isBoundary(text: string, index: number): boolean {
 }
 
 
+/**
+ * Fast ordered-subsequence prefilter with the same acceptance semantics as
+ * fuzzyMatch (monotonic indexOf per query character), so it never rejects a
+ * candidate fuzzyMatch would accept. Used to shrink large candidate pools
+ * (e.g. the note list) before scoring.
+ */
+export function canFuzzyMatch(lowerText: string, lowerQuery: string): boolean {
+  let from = 0
+  for (const ch of lowerQuery) {
+    if (ch === ' ') continue
+    const at = lowerText.indexOf(ch, from)
+    if (at === -1) return false
+    from = at + 1
+  }
+  return true
+}
+
+
 export function splitByRanges(
   text: string,
   ranges: [number, number][],
