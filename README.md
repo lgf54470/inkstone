@@ -68,9 +68,9 @@ Placeholders are filled in when the note is created:
 Notes:
 
 - Values are quoted automatically when needed, so titles containing `:`, `#`, and similar stay valid YAML.
-- Creating from a tag view keeps the `#tag` body prefix and also appends the tags to the front matter `tags` list.
+- Creating from a tag view appends the tags to the front matter `tags` list and exposes them as the `{{tags}}` placeholder context.
 - Leaving the template empty starts from a blank note; the settings panel shows a live preview with sample title/folder/tag inputs, a marker where `{{cursor}}` resolves, and hints about where contextual placeholders come from.
-- From a tag view, cmd/ctrl+click tags in the sidebar to select several; new notes then carry all of them (front matter tags, `#tag` prefixes, and `{{tags}}`).
+- From a tag view, cmd/ctrl+click tags in the sidebar to select several; new notes then carry all of them (front matter tags and the `{{tags}}` placeholder).
 - Title ↔ front matter `title` sync can be enabled or disabled independently in Settings → New notes.
 - "Insert note template" (toolbar block menu, command palette, or `Ctrl/Cmd+Shift+T`) renders the template into any note at the caret, using the current note's title, folder, and tags as context.
 - The MCP `create_note` tool applies the same template when `content` is omitted.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addTagToFrontMatter, extractTags, interpolateNewNoteTemplate, parseFrontMatter, renderNewNoteTemplate, setFrontMatterProperty } from './markdown-utils'
+import { addTagToFrontMatter, extractTags, interpolateNewNoteTemplate, mergeTagsIntoFrontMatter, parseFrontMatter, renderNewNoteTemplate, setFrontMatterProperty } from './markdown-utils'
 
 describe('extractTags', () => {
   it('handles an unterminated inline-code marker with a mismatched trailing marker', () => {
@@ -151,5 +151,32 @@ describe('renderNewNoteTemplate', () => {
   it('joins multiple tags with commas for the placeholder', () => {
     const rendered = renderNewNoteTemplate('tags: [{{tags}}]', 'X', now, { tags: 'daily, reading' })
     expect(rendered.content).toBe('tags: [daily, reading]')
+  })
+})
+
+describe('mergeTagsIntoFrontMatter', () => {
+  const now = new Date(2026, 8, 1, 9, 5, 7)
+
+  it('merges tags into the front matter and shifts the pending caret', () => {
+    const rendered = renderNewNoteTemplate('---\ntags: []\n---\n\n{{cursor}}Body\n', 'X', now)
+    const merged = mergeTagsIntoFrontMatter(rendered.content, ['a', 'b'], rendered.cursor)
+    expect(parseFrontMatter(merged.content).data.tags).toEqual(['a', 'b'])
+    expect(merged.content.slice(merged.cursor!).startsWith('Body')).toBe(true)
+  })
+
+  it('leaves content without front matter untouched', () => {
+    const result = mergeTagsIntoFrontMatter('# Plain\n', ['a'], 3)
+    expect(result.content).toBe('# Plain\n')
+    expect(result.cursor).toBe(3)
+  })
+
+  it('keeps interpolated placeholders intact after the merge', () => {
+    const template = `---\ntitle: {{title}}\ncreatedAt: {{createdAt}}\ntags: []\n---\n\n`
+    const rendered = renderNewNoteTemplate(template, 'My note', now)
+    const merged = mergeTagsIntoFrontMatter(rendered.content, ['Inkstone'], rendered.cursor)
+    expect(merged.content).toContain('2026-09-01 09:05:07')
+    expect(merged.content).not.toContain('{{createdAt}}')
+    expect(merged.content).not.toContain('{ ? { createdAt } }')
+    expect(parseFrontMatter(merged.content).data.tags).toEqual(['Inkstone'])
   })
 })

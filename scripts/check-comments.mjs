@@ -75,13 +75,16 @@ const allowed = new Map([
   ]],
   ["src/client/store/notes.ts", [
     "/** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization. */",
-    "/** Tags when creating from a tag view: added to the front matter tags and kept as `#tag` body prefixes. */",
+    "/** Tags when creating from a tag view: added to the front matter tags and available as the `{{tags}}` context. */",
     "// Keep the front matter `title` property in sync with the note title",
     "// whenever the note already declares one (opt-out per settings).",
     "// Reverse sync: when the body's front matter `title` property changes,",
     "// adopt it as the note title so both stay in agreement (opt-out per",
     "// settings).",
-    "/**\n * Build the initial content of a fresh note from the user-configured template\n * (see settings.notes.newNoteTemplate), optionally carrying the `#tag` body\n * prefixes of the tags passed from a tag view (also merged into the front\n * matter `tags` list). `{{cursor}}` is resolved by renderNewNoteTemplate so\n * the editor can place the caret there. An empty or whitespace-only template\n * yields a blank note, matching the pre-template behavior.\n */",
+    "/**\n * Build the initial content of a fresh note from the user-configured template\n * (see settings.notes.newNoteTemplate), merging any tags passed from a tag\n * view into the front matter `tags` list. `{{cursor}}` is resolved by\n * renderNewNoteTemplate so the editor can place the caret there. An empty or\n * whitespace-only template yields a blank note, matching the pre-template\n * behavior.\n */",
+    "// Interpolate placeholders before the tag merge: the YAML round-trip in",
+    "// mergeTagsIntoFrontMatter would mangle raw `{{...}}` tokens (they parse",
+    "// as flow mappings) and leave them unreplaced in the final note.",
     "/** Pending caret positions for freshly created notes, consumed by the editor on mount. */",
     "// Tags gathered with cmd/ctrl+click in the sidebar are consumed by the",
     "// next new-note action, then cleared.",
@@ -107,8 +110,9 @@ const allowed = new Map([
   ["src/shared/markdown-utils.ts", [
     "/** Provides pure Markdown analysis shared by the browser and Worker runtimes. */",
     "/**\n * Update an existing front matter property in-place, keeping the body and all\n * other properties untouched. Returns the rewritten content, or `null` when\n * the content has no parseable front matter, the property does not exist, or\n * nothing changes. Passing `null` as `value` deletes the property.\n */",
-    "/**\n * Adds a tag to a note's front matter `tags`/`tag` list (creating the property\n * when missing), without touching the body. Returns the rewritten content, or\n * `null` when there is no parseable front matter or the tag is already\n * present. Used when creating a note from a tag view so the tag also lands in\n * the properties, not only as a `#tag` body prefix.\n */",
+    "/**\n * Adds a tag to a note's front matter `tags`/`tag` list (creating the property\n * when missing), without touching the body. Returns the rewritten content, or\n * `null` when there is no parseable front matter or the tag is already\n * present. Used when creating a note from a tag view so the tag lands in the\n * properties.\n */",
     "/**\n * Renders a new-note template into final content, removing the `{{cursor}}`\n * marker (if any) and reporting its position so callers can place the caret.\n * Shared by note creation, the settings preview, and the editor command that\n * inserts the template at the caret. The sentinel character cannot occur in\n * real template output, so the reported position is always in final content.\n */",
+    "/**\n * Merges tags into a rendered template's front matter `tags` list, shifting a\n * pending caret position by the bytes inserted before it. Must run after\n * placeholder interpolation: the YAML round-trip would mangle raw `{{...}}`\n * tokens (they parse as flow mappings) and leave them unreplaced.\n */",
     "// Contextual values are inserted verbatim: `{{tags}}` commonly expands into",
     "// a flow list like `tags: [daily, reading]`, which quoting would corrupt.",
     "/**\n * Fills the placeholders of a new-note template (`{{title}}`, `{{createdAt}}`,\n * `{{date}}`, `{{time}}`, `{{today}}`, `{{tomorrow}}`, `{{yesterday}}`, plus\n * contextual `{{folder}}` and `{{tags}}` values passed via `extra`). Shared by\n * the client (note creation, settings preview) and the worker (MCP\n * create_note). Values are quoted when needed so the rendered front matter\n * stays valid YAML; callers pass the resolved title (with any localized\n * fallback applied). Contextual placeholders without a value render as empty.\n */",
@@ -184,6 +188,7 @@ const allowed = new Map([
   ]],
   ["src/worker/mcp/writes.ts", [
     "// Blank MCP-created notes follow the user's configured new-note template.",
+    "/** Final content for an MCP-created note: explicit content wins, blank notes follow the interpolated template. */",
   ]],
   ["src/worker/routes/auth.ts", [
     "// Account-wide cap so a distributed botnet cannot retry one account",

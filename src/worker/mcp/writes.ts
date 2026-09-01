@@ -14,6 +14,13 @@ import { enqueueNoteIndex } from './ai-search'
 import { runIdempotent } from './operations'
 import { buildOutline } from './retrieval'
 
+/** Final content for an MCP-created note: explicit content wins, blank notes follow the interpolated template. */
+export function buildMcpNoteContent(inputContent: string | undefined, title: string, template: string): string {
+  return inputContent
+    ? inputContent
+    : interpolateNewNoteTemplate(template, title)
+}
+
 export type NoteEditOperation = 'replace' | 'replace_section' | 'append' | 'prepend' | 'replace_all'
 
 export interface McpWriteContext {
@@ -50,9 +57,7 @@ export async function createMcpNote(
       const rawContent = input.content ?? ''
       const title = resolveTitle(input.title ?? deriveTitle(rawContent))
       // Blank MCP-created notes follow the user's configured new-note template.
-      const content = input.content
-        ? rawContent
-        : interpolateNewNoteTemplate(await loadUserNewNoteTemplate(context.env.DB, context.userId), title)
+      const content = buildMcpNoteContent(input.content, title, await loadUserNewNoteTemplate(context.env.DB, context.userId))
       assertContentSize(content)
       const folderId = await resolveFolderId(context.env.DB, context.userId, input.folderId ?? null)
       const now = Date.now()

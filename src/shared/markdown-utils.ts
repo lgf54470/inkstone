@@ -616,8 +616,8 @@ export function interpolateNewNoteTemplate(
  * Adds a tag to a note's front matter `tags`/`tag` list (creating the property
  * when missing), without touching the body. Returns the rewritten content, or
  * `null` when there is no parseable front matter or the tag is already
- * present. Used when creating a note from a tag view so the tag also lands in
- * the properties, not only as a `#tag` body prefix.
+ * present. Used when creating a note from a tag view so the tag lands in the
+ * properties.
  */
 export function addTagToFrontMatter(content: string, tag: string): string | null {
   const frontMatter = parseFrontMatter(content)
@@ -653,6 +653,35 @@ export function addTagToFrontMatter(content: string, tag: string): string | null
     closing,
   ]
   return [...rewrittenFrontMatter, body].join('\n')
+}
+
+export interface FrontMatterMergeResult {
+  content: string
+  cursor: number | null
+}
+
+/**
+ * Merges tags into a rendered template's front matter `tags` list, shifting a
+ * pending caret position by the bytes inserted before it. Must run after
+ * placeholder interpolation: the YAML round-trip would mangle raw `{{...}}`
+ * tokens (they parse as flow mappings) and leave them unreplaced.
+ */
+export function mergeTagsIntoFrontMatter(
+  content: string,
+  tags: readonly string[],
+  cursor: number | null = null,
+): FrontMatterMergeResult {
+  let body = content
+  let next = cursor
+  for (const tag of tags) {
+    const merged = addTagToFrontMatter(body, tag)
+    if (merged) {
+      if (next !== null)
+        next += merged.length - body.length
+      body = merged
+    }
+  }
+  return { content: body, cursor: next }
 }
 
 export interface RenderedNewNoteTemplate {

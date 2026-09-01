@@ -1,7 +1,7 @@
 /** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization. */
 import { create, type StoreApi } from 'zustand';
 import { useMemo } from 'react';
-import { addTagToFrontMatter, countText, deriveExcerpt, extractTags, normalizeLinkKey, parseFrontMatter, renderNewNoteTemplate, setFrontMatterProperty, sortTagNames } from '@shared/markdown-utils';
+import { countText, deriveExcerpt, extractTags, mergeTagsIntoFrontMatter, normalizeLinkKey, parseFrontMatter, renderNewNoteTemplate, setFrontMatterProperty, sortTagNames } from '@shared/markdown-utils';
 import { duplicateNoteTitle } from '@shared/text-utils';
 import { LIMITS } from '@shared/constants';
 import type { AppLocale, Folder, Note, NoteSummary, SortKey, SortOrder, SyncResponse, Tag, } from '@shared/types';
@@ -44,7 +44,7 @@ interface NotesState {
         id?: string;
         title?: string;
         content?: string;
-        /** Tags when creating from a tag view: added to the front matter tags and kept as `#tag` body prefixes. */
+        /** Tags when creating from a tag view: added to the front matter tags and available as the `{{tags}}` context. */
         tags?: string[];
         folderId?: string | null;
         isStarred?: boolean;
@@ -2591,33 +2591,28 @@ function tagEqual(a: Tag, b: Tag): boolean {
 }
 /**
  * Build the initial content of a fresh note from the user-configured template
- * (see settings.notes.newNoteTemplate), optionally carrying the `#tag` body
- * prefixes of the tags passed from a tag view (also merged into the front
- * matter `tags` list). `{{cursor}}` is resolved by renderNewNoteTemplate so
- * the editor can place the caret there. An empty or whitespace-only template
- * yields a blank note, matching the pre-template behavior.
+ * (see settings.notes.newNoteTemplate), merging any tags passed from a tag
+ * view into the front matter `tags` list. `{{cursor}}` is resolved by
+ * renderNewNoteTemplate so the editor can place the caret there. An empty or
+ * whitespace-only template yields a blank note, matching the pre-template
+ * behavior.
  */
 function buildNewNoteContent(title: string, tags: string[] = [], folderId: string | null = null): { content: string; cursor: number | null } {
     const template = useSession.getState().settings.notes.newNoteTemplate;
     const tagList = tags.map((item) => item.trim().replace(/^#/, '')).filter(Boolean);
     if (!template.trim())
-        return { content: tagList.map((tag) => `#${tag}`).join(' ') + (tagList.length ? '\n\n' : ''), cursor: null };
+        return { content: '', cursor: null };
     const extra: Record<string, string> = {};
     const folder = folderId ? useNotes.getState().folders.find((item) => item.id === folderId) : null;
     if (folder?.name)
         extra.folder = folder.name;
     if (tagList.length)
         extra.tags = tagList.join(', ');
-    let templateSource = template;
-    for (const tag of tagList) {
-        const merged = addTagToFrontMatter(templateSource, tag);
-        if (merged)
-            templateSource = merged;
-    }
-    const rendered = renderNewNoteTemplate(templateSource, title || t("common.new_note"), new Date(), extra);
-    const trailing = tagList.length ? tagList.map((tag) => `#${tag}`).join(' ') + '\n\n' : '';
-    const body = trailing ? (rendered.content.endsWith('\n') ? rendered.content : rendered.content + '\n\n') + trailing : rendered.content;
-    return { content: body, cursor: rendered.cursor };
+    // Interpolate placeholders before the tag merge: the YAML round-trip in
+    // mergeTagsIntoFrontMatter would mangle raw `{{...}}` tokens (they parse
+    // as flow mappings) and leave them unreplaced in the final note.
+    const rendered = renderNewNoteTemplate(template, title || t("common.new_note"), new Date(), extra);
+    return mergeTagsIntoFrontMatter(rendered.content, tagList, rendered.cursor);
 }
 /** Pending caret positions for freshly created notes, consumed by the editor on mount. */
 const pendingEditorCursors = new Map<string, number>()
