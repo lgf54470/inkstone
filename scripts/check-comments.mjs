@@ -23,7 +23,7 @@ const allowed = new Map([
     "/** Renders a tag name with the matched query substring emphasized, used by tag pickers. */",
   ]],
   ["src/client/components/activity-calendar.tsx", [
-    "/** Reusable month calendar + activity heatmap: navigable month grid and a GitHub-style weekly strip, with optional per-day note lists. */",
+    "/** Reusable calendar + activity heatmap: navigable month grid, yearly month columns, and a GitHub-style weekly strip, with optional per-day note lists. */",
   ]],
   ["src/client/features/graph/GraphPanel.tsx", [
     "// Private browsing or a locked-down browser can reject local preferences.",
@@ -67,6 +67,7 @@ const allowed = new Map([
   ]],
   ["src/client/store/ui.ts", [
     "/** How multi-selected tags filter the note list and palette: any or all. */",
+    "/** Date key (YYYY-MM-DD) the note list is filtered to, set from the sidebar calendar. */",
     "// Keep the multi-select when entering a folder view so it stacks with",
     "// the folder filter; any other navigation clears the selection.",
   ]],

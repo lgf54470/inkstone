@@ -60,6 +60,8 @@ interface UiState {
   selectedTags: string[]
   /** How multi-selected tags filter the note list and palette: any or all. */
   selectedTagsMatch: 'any' | 'all'
+  /** Date key (YYYY-MM-DD) the note list is filtered to, set from the sidebar calendar. */
+  dateFilter: string | null
   recentNoteIds: string[]
 
 
@@ -91,6 +93,7 @@ interface UiState {
   selectTags: (tags: string[]) => void
   clearTagSelection: () => void
   setSelectedTagsMatch: (match: 'any' | 'all') => void
+  setDateFilter: (value: string | null) => void
   setSort: (sort: SortKey, order?: SortOrder) => void
   setDensity: (density: UiDensity) => void
   toggleFolder: (id: string) => void
@@ -140,6 +143,7 @@ const DEFAULTS = {
   recentNoteIds: [] as string[],
   selectedTags: [] as string[],
   selectedTagsMatch: 'any' as const,
+  dateFilter: null as string | null,
   theme: 'system' as ThemePref,
   accent: 'indigo' as AccentName,
   background: 'paper' as BackgroundName,
@@ -424,6 +428,7 @@ export const useUi = create<UiState>((set, get) => ({
       folderId: options?.folderId ?? null,
       tag: options?.tag ?? null,
       selectedIds: [],
+      dateFilter: null,
       // Keep the multi-select when entering a folder view so it stacks with
       // the folder filter; any other navigation clears the selection.
       selectedTags: view === 'folder' ? s.selectedTags : [],
@@ -449,6 +454,8 @@ export const useUi = create<UiState>((set, get) => ({
     })),
 
   setSelectedTagsMatch: (match) => set({ selectedTagsMatch: match }),
+
+  setDateFilter: (value) => set({ dateFilter: value }),
 
   setSort: (sort, order) => set((s) => ({ sort, order: order ?? s.order })),
   setDensity: (density) => set({ density }),

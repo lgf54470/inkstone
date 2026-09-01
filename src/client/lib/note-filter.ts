@@ -1,4 +1,5 @@
 import type { NoteSummary, ViewKind } from '@shared/types';
+import { dateKey } from './time';
 
 /** Decide whether a note belongs to the active list view, optionally stacked with a multi-tag selection (`any` or `all` must match). */
 export function matchesView(
@@ -9,6 +10,7 @@ export function matchesView(
     folderScope?: ReadonlySet<string>,
     selectedTags: readonly string[] = [],
     selectedTagsMatch: 'any' | 'all' = 'any',
+    dateFilter: string | null = null,
 ): boolean {
     if (view === 'trash')
         return Boolean(note.deletedAt);
@@ -17,6 +19,8 @@ export function matchesView(
     if (view === 'archived')
         return note.isArchived;
     if (note.isArchived)
+        return false;
+    if (dateFilter && dateKey(new Date(note.updatedAt)) !== dateFilter)
         return false;
     if (selectedTags.length) {
         const matches = selectedTagsMatch === 'all'

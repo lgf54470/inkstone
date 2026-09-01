@@ -1,5 +1,5 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDownWideNarrow, CheckSquare2, Columns2, Copy, FileCode, FileDown, FileText, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
+import { Archive, ArrowDownWideNarrow, CalendarDays, CheckSquare2, Columns2, Copy, FileCode, FileDown, FileText, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
 import type { NoteSummary, SortKey, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { groupLabel } from '../../lib/time';
@@ -12,6 +12,8 @@ import { IconButton } from '../../components/primitives';
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay';
 import { Empty, NoteListSkeleton } from '../../components/feedback';
 import { TagFilterPopover } from '../../components/tag-filter-popover';
+import { parseDateKey } from '../../lib/time';
+import { loadListFilterPersist, saveListFilterPersist } from './list-filter-persist';
 import { useUi } from '../../store/ui';
 import { createContextualNote, useNotes, useVisibleNotes } from '../../store/notes';
 import { useNoteTemplates } from '../../store/note-templates';
@@ -50,6 +52,7 @@ export function NoteList() {
     const selectedTags = useUi((s) => s.selectedTags);
     const selectedTagsMatch = useUi((s) => s.selectedTagsMatch);
     const setSelectedTagsMatch = useUi((s) => s.setSelectedTagsMatch);
+    const dateFilter = useUi((s) => s.dateFilter);
     const notes = useVisibleNotes();
     const folders = useNotes((s) => s.folders);
     const tags = useNotes((s) => s.tags);
@@ -57,8 +60,19 @@ export function NoteList() {
     const hydrated = useNotes((s) => s.hydrated);
     const openNote = useNotes((s) => s.openNote);
     const { emptyTrash, emptyingTrash } = useEmptyTrash();
-    const [filter, setFilter] = useState('');
+    const [persistedFilters] = useState(loadListFilterPersist);
+    const [filter, setFilter] = useState(persistedFilters.query);
     const deferredFilter = useDeferredValue(filter);
+    useEffect(() => {
+        useUi.setState({
+            dateFilter: persistedFilters.dateFilter,
+            selectedTags: persistedFilters.selectedTags,
+            selectedTagsMatch: persistedFilters.selectedTagsMatch,
+        });
+    }, [persistedFilters]);
+    useEffect(() => {
+        saveListFilterPersist({ query: filter, dateFilter, selectedTags, selectedTagsMatch });
+    }, [filter, dateFilter, selectedTags, selectedTagsMatch]);
     const [sortMenuOpen, setSortMenuOpen] = useState(false);
     const sortButtonRef = useRef<HTMLButtonElement>(null);
     const [tagFilterOpen, setTagFilterOpen] = useState(false);
@@ -97,7 +111,12 @@ export function NoteList() {
             },
         ];
 
-    useEffect(() => setFilter(''), [view, folderId, tag]);
+    const filterScope = useRef<{ view: ViewKind; folderId: string | null; tag: string | null } | null>(null);
+    useEffect(() => {
+        if (filterScope.current && (filterScope.current.view !== view || filterScope.current.folderId !== folderId || filterScope.current.tag !== tag))
+            setFilter('');
+        filterScope.current = { view, folderId, tag };
+    }, [view, folderId, tag]);
     const title = useMemo(() => {
         if (view === 'folder')
             return (folderId ? folderPathLabel(folders, folderId) : '') || t("navigation.folder");
@@ -105,6 +124,16 @@ export function NoteList() {
             return `#${tag ?? ''}`;
         return t(VIEW_MESSAGE_KEYS[view]);
     }, [view, folderId, tag, folders, locale]);
+    const dayFilterLabel = useMemo(() => {
+        if (!dateFilter)
+            return '';
+        return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric' }).format(parseDateKey(dateFilter));
+    }, [dateFilter, locale]);
+    const clearAllFilters = () => {
+        useUi.getState().setDateFilter(null);
+        useUi.getState().clearTagSelection();
+        setFilter('');
+    };
     const filtered = useMemo(() => {
         if (!deferredFilter.trim())
             return notes.map((note) => ({ note, ranges: EMPTY_HIGHLIGHT }));
@@ -284,20 +313,53 @@ export function NoteList() {
             </Tooltip>)}
         </div>
 
-        {selectedTags.length > 0 && (<div className="mt-2 flex items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-2 py-1 text-[11px] text-[var(--text-secondary)]">
-            <Hash size={11} className="shrink-0 text-[var(--text-quaternary)]"/>
-            <span className="min-w-0 flex-1 truncate">{t("notes.selected_tags_filter", { value0: selectedTags.length })}</span>
-            <div role="group" aria-label={t("notes.selected_tags_match")} className="flex shrink-0 overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-default)]">
-              <button type="button" aria-pressed={selectedTagsMatch === 'any'} onClick={() => setSelectedTagsMatch('any')} className="px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">{t("notes.tag_match_any")}</button>
-              <button type="button" aria-pressed={selectedTagsMatch === 'all'} onClick={() => setSelectedTagsMatch('all')} className="border-l border-[var(--border-default)] px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">{t("notes.tag_match_all")}</button>
-            </div>
+        {(dateFilter || selectedTags.length > 0 || Boolean(filter)) && (<div role="group" aria-label={t("notes.active_filters")} className="mt-2 flex flex-wrap items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-2 py-1.5">
+            {dateFilter && (<span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[11px] text-[var(--text-secondary)]">
+                <CalendarDays size={11} className="shrink-0 text-[var(--text-quaternary)]"/>
+                <span className="truncate">{t("notes.filtering_by_day_value0", { value0: dayFilterLabel })}</span>
+                <Tooltip label={t("notes.clear_day_filter")}>
+                  <button type="button" aria-label={t("notes.clear_day_filter")} onClick={() => useUi.getState().setDateFilter(null)} className="rounded-full p-0.5 text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
+                    <X size={10}/>
+                  </button>
+                </Tooltip>
+              </span>)}
+            {selectedTags.length > 0 && (<span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[11px] text-[var(--text-secondary)]">
+                <Hash size={11} className="shrink-0 text-[var(--text-quaternary)]"/>
+                <span className="flex shrink-0 items-center">
+                    {selectedTags.slice(0, 5).map((tag) => (<span key={tag} aria-hidden="true" className="size-[7px] rounded-full ring-1 ring-[var(--border-subtle)] first:ml-0 -ml-0.5" style={{ backgroundColor: tagColors.get(tag) ?? 'var(--text-quaternary)' }}/>))}
+                </span>
+                <span className="truncate">{t("notes.tag_filter_value0", { value0: selectedTags.length })}</span>
+                <Tooltip label={t("notes.clear_tag_filter")}>
+                  <button type="button" aria-label={t("notes.clear_tag_filter")} onClick={() => useUi.getState().clearTagSelection()} className="rounded-full p-0.5 text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
+                    <X size={10}/>
+                  </button>
+                </Tooltip>
+              </span>)}
+            {filter && (<span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[11px] text-[var(--text-secondary)]">
+                <Search size={10} className="shrink-0 text-[var(--text-quaternary)]"/>
+                <span className="max-w-36 truncate">{t("notes.search_query_value0", { value0: filter })}</span>
+                <Tooltip label={t("notes.clear_search_query")}>
+                  <button type="button" aria-label={t("notes.clear_search_query")} onClick={() => setFilter('')} className="rounded-full p-0.5 text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
+                    <X size={10}/>
+                  </button>
+                </Tooltip>
+              </span>)}
+            {selectedTags.length > 0 && (<div role="group" aria-label={t("notes.selected_tags_match")} className="flex shrink-0 overflow-hidden rounded-full border border-[var(--border-default)]">
+                <button type="button" aria-pressed={selectedTagsMatch === 'any'} onClick={() => setSelectedTagsMatch('any')} className="px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">{t("notes.tag_match_any")}</button>
+                <button type="button" aria-pressed={selectedTagsMatch === 'all'} onClick={() => setSelectedTagsMatch('all')} className="border-l border-[var(--border-default)] px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">{t("notes.tag_match_all")}</button>
+              </div>)}
+            <Tooltip label={t("notes.clear_all_filters")}>
+              <button type="button" aria-label={t("notes.clear_all_filters")} onClick={clearAllFilters} className="ml-auto inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[var(--text-tertiary)] transition-colors hover:text-[var(--danger)]">
+                <X size={11}/>{t("notes.clear_all_filters")}
+              </button>
+            </Tooltip>
           </div>)}
 
         {view === 'trash' && notes.length > 0 && (<button type="button" disabled={emptyingTrash} aria-busy={emptyingTrash} onClick={() => void emptyTrash()} className="mt-2 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] py-1.5 text-[11.5px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)] disabled:pointer-events-none disabled:opacity-50">{t("notes.empty_trash")}{notes.length}{t("notes.notes_93aeb9")}</button>)}
       </header>
 
       <div key={`${view}:${folderId ?? ''}:${tag ?? ''}`} ref={listRef} role="listbox" aria-label={title} aria-multiselectable="true" aria-activedescendant={activeNoteId && renderedIds.has(activeNoteId) ? `note-option-${activeNoteId}` : undefined} tabIndex={0} onKeyDown={onKeyDown} className="anim-view-content min-h-0 flex-1 overflow-y-auto px-2 pb-4 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
-        {!hydrated && loading ? (<NoteListSkeleton />) : filtered.length === 0 ? (<ListEmpty view={view} filtering={Boolean(filter)} tagFiltering={selectedTags.length > 0}/>) : (groups.map((group) => (<div key={group.key} role="group" aria-label={group.label ?? title}>
+        {!hydrated && loading ? (<NoteListSkeleton />) : filtered.length === 0 ? (<ListEmpty view={view} filtering={Boolean(filter)} dayFiltering={Boolean(dateFilter)} tagFiltering={selectedTags.length > 0}/>) : (groups.map((group) => (<div key={group.key} role="group" aria-label={group.label ?? title}>
               {group.label && (<div className="px-2 pt-3 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
                   {group.label}
                 </div>)}
@@ -632,14 +694,18 @@ function BulkBar() {
       {folderPickerOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={commonFolderId} rootLabel={t("notes.remove_from_folder")} onSelect={(folderId) => void runAll(() => performAll((id) => patchNote(id, { folderId }), folderId ? t("notes.moved") : t("notes.moved_out")))} onClose={() => setFolderPickerOpen(false)}/>}
     </div>);
 }
-function ListEmpty({ view, filtering, tagFiltering }: {
+function ListEmpty({ view, filtering, dayFiltering, tagFiltering }: {
     view: string;
     filtering: boolean;
+    dayFiltering: boolean;
     tagFiltering: boolean;
 }) {
     const shortcut = (combo: string) => prettyCombo(combo).join('+');
     if (filtering) {
         return <Empty art="search" title={t("notes.no_matching_notes")} description={t("notes.try_another_search_or_press_shortcut_to_search_everywhere", { shortcut: shortcut('mod+k') })}/>;
+    }
+    if (dayFiltering) {
+        return <Empty art="search" title={t("notes.no_notes_on_this_day")} description={t("notes.no_notes_on_this_day_desc")}/>;
     }
     if (tagFiltering) {
         return <Empty art="tag" title={t("notes.no_notes_match_selected_tags")} description={t("notes.adjust_selected_tags_or_switch_match_mode")}/>;

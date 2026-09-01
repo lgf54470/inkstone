@@ -2764,10 +2764,11 @@ function pickInitialNoteId(notes: Record<string, NoteSummary>, folders: Folder[]
     const folderScope = ui.view === 'folder' && ui.folderId ? folderDescendantIds(folders, ui.folderId) : undefined;
     const selectedTags = ui.selectedTags;
     const selectedTagsMatch = ui.selectedTagsMatch;
+    const dateFilter = ui.dateFilter;
     const active = ui.activeNoteId ? notes[ui.activeNoteId] : undefined;
-    if (active && matchesView(active, ui.view, ui.folderId, ui.tag, folderScope, selectedTags, selectedTagsMatch))
+    if (active && matchesView(active, ui.view, ui.folderId, ui.tag, folderScope, selectedTags, selectedTagsMatch, dateFilter))
         return active.id;
-    const visible = Object.values(notes).filter((note) => matchesView(note, ui.view, ui.folderId, ui.tag, folderScope, selectedTags, selectedTagsMatch));
+    const visible = Object.values(notes).filter((note) => matchesView(note, ui.view, ui.folderId, ui.tag, folderScope, selectedTags, selectedTagsMatch, dateFilter));
     if (ui.view === 'recent') {
         visible.sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
     }
@@ -2788,11 +2789,12 @@ export function useVisibleNotes(): NoteSummary[] {
     const tag = useUi((s) => s.tag);
     const selectedTags = useUi((s) => s.selectedTags);
     const selectedTagsMatch = useUi((s) => s.selectedTagsMatch);
+    const dateFilter = useUi((s) => s.dateFilter);
     const sort = useUi((s) => s.sort);
     const order = useUi((s) => s.order);
     return useMemo(() => {
         const folderScope = view === 'folder' && folderId ? folderDescendantIds(folders, folderId) : undefined;
-        const list = Object.values(notes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch));
+        const list = Object.values(notes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch, dateFilter));
         if (view === 'recent') {
             return list
                 .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
@@ -2801,7 +2803,7 @@ export function useVisibleNotes(): NoteSummary[] {
         if (view === 'trash')
             return list.sort(compareTrash);
         return list.sort((a, b) => compare(a, b, sort, order, locale));
-    }, [notes, folders, view, folderId, tag, selectedTags, selectedTagsMatch, sort, order, locale]);
+    }, [notes, folders, view, folderId, tag, selectedTags, selectedTagsMatch, dateFilter, sort, order, locale]);
 }
 export interface FolderNode extends Folder {
     children: FolderNode[];
