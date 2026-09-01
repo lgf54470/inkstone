@@ -4,11 +4,12 @@ import { useMemo } from 'react';
 import { addTagToFrontMatter, countText, deriveExcerpt, extractTags, normalizeLinkKey, parseFrontMatter, renderNewNoteTemplate, setFrontMatterProperty, sortTagNames } from '@shared/markdown-utils';
 import { duplicateNoteTitle } from '@shared/text-utils';
 import { LIMITS } from '@shared/constants';
-import type { AppLocale, Folder, Note, NoteSummary, SortKey, SortOrder, SyncResponse, Tag, ViewKind, } from '@shared/types';
+import type { AppLocale, Folder, Note, NoteSummary, SortKey, SortOrder, SyncResponse, Tag, } from '@shared/types';
 import { api, ApiError, CLIENT_ID } from '../lib/api';
 import { localDb, publishBroadcast, type BroadcastPayload, type OutboxItem } from '../lib/db';
 import { NotePersistCoalescer } from '../lib/note-persist';
 import { folderDescendantIds } from '../lib/folders';
+import { matchesView } from '../lib/note-filter';
 import { useSession } from './session';
 import { useUi, type WorkspacePane } from './ui';
 import { getLocale, t, useLocale } from "../lib/i18n";
@@ -2741,32 +2742,6 @@ function numberMapEqual(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, n
 export function useNavigationCounts(): NavigationCounts {
     return useNotes((state) => selectNavigationProjection(state.notes).counts);
 }
-function matchesView(note: NoteSummary, view: ViewKind, folderId: string | null, tag: string | null, folderScope?: ReadonlySet<string>, selectedTags: readonly string[] = []): boolean {
-    if (view === 'trash')
-        return Boolean(note.deletedAt);
-    if (note.deletedAt)
-        return false;
-    if (view === 'archived')
-        return note.isArchived;
-    if (note.isArchived)
-        return false;
-    if (selectedTags.length && !selectedTags.some((name) => note.tags.includes(name)))
-        return false;
-    switch (view) {
-        case 'starred':
-            return note.isStarred;
-        case 'unfiled':
-            return !note.folderId;
-        case 'folder':
-            return Boolean(note.folderId && (folderScope?.has(note.folderId) ?? note.folderId === folderId));
-        case 'tag':
-            return Boolean(tag && note.tags.includes(tag));
-        case 'recent':
-        case 'all':
-        default:
-            return true;
-    }
-}
 function compare(a: NoteSummary, b: NoteSummary, sort: SortKey, order: SortOrder, locale: AppLocale): number {
     if (a.isPinned !== b.isPinned)
         return a.isPinned ? -1 : 1;
@@ -2793,10 +2768,11 @@ function pickInitialNoteId(notes: Record<string, NoteSummary>, folders: Folder[]
     const ui = useUi.getState();
     const folderScope = ui.view === 'folder' && ui.folderId ? folderDescendantIds(folders, ui.folderId) : undefined;
     const selectedTags = ui.selectedTags;
+    const selectedTagsMatch = ui.selectedTagsMatch;
     const active = ui.activeNoteId ? notes[ui.activeNoteId] : undefined;
-    if (active && matchesView(active, ui.view, ui.folderId, ui.tag, folderScope, selectedTags))
+    if (active && matchesView(active, ui.view, ui.folderId, ui.tag, folderScope, selectedTags, selectedTagsMatch))
         return active.id;
-    const visible = Object.values(notes).filter((note) => matchesView(note, ui.view, ui.folderId, ui.tag, folderScope, selectedTags));
+    const visible = Object.values(notes).filter((note) => matchesView(note, ui.view, ui.folderId, ui.tag, folderScope, selectedTags, selectedTagsMatch));
     if (ui.view === 'recent') {
         visible.sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
     }
@@ -2816,11 +2792,12 @@ export function useVisibleNotes(): NoteSummary[] {
     const folderId = useUi((s) => s.folderId);
     const tag = useUi((s) => s.tag);
     const selectedTags = useUi((s) => s.selectedTags);
+    const selectedTagsMatch = useUi((s) => s.selectedTagsMatch);
     const sort = useUi((s) => s.sort);
     const order = useUi((s) => s.order);
     return useMemo(() => {
         const folderScope = view === 'folder' && folderId ? folderDescendantIds(folders, folderId) : undefined;
-        const list = Object.values(notes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags));
+        const list = Object.values(notes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch));
         if (view === 'recent') {
             return list
                 .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
@@ -2829,7 +2806,7 @@ export function useVisibleNotes(): NoteSummary[] {
         if (view === 'trash')
             return list.sort(compareTrash);
         return list.sort((a, b) => compare(a, b, sort, order, locale));
-    }, [notes, folders, view, folderId, tag, selectedTags, sort, order, locale]);
+    }, [notes, folders, view, folderId, tag, selectedTags, selectedTagsMatch, sort, order, locale]);
 }
 export interface FolderNode extends Folder {
     children: FolderNode[];

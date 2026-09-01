@@ -57,6 +57,8 @@ interface UiState {
   activeNoteId: string | null
   selectedIds: string[]
   selectedTags: string[]
+  /** How multi-selected tags filter the note list and palette: any or all. */
+  selectedTagsMatch: 'any' | 'all'
   recentNoteIds: string[]
 
 
@@ -85,7 +87,9 @@ interface UiState {
   setMobilePane: (pane: UiState['mobilePane']) => void
   openView: (view: ViewKind, options?: { folderId?: string | null; tag?: string | null }) => void
   toggleTagSelection: (tag: string) => void
+  selectTags: (tags: string[]) => void
   clearTagSelection: () => void
+  setSelectedTagsMatch: (match: 'any' | 'all') => void
   setSort: (sort: SortKey, order?: SortOrder) => void
   setDensity: (density: UiDensity) => void
   toggleFolder: (id: string) => void
@@ -134,6 +138,7 @@ const DEFAULTS = {
   workspacePaneLayouts: { primary: 'edit', secondary: 'edit' } as Record<WorkspacePane, EditorLayout>,
   recentNoteIds: [] as string[],
   selectedTags: [] as string[],
+  selectedTagsMatch: 'any' as const,
   theme: 'system' as ThemePref,
   accent: 'indigo' as AccentName,
   background: 'paper' as BackgroundName,
@@ -413,25 +418,36 @@ export const useUi = create<UiState>((set, get) => ({
   setMobilePane: (mobilePane) => set({ mobilePane }),
 
   openView: (view, options) =>
-    set({
+    set((s) => ({
       view,
       folderId: options?.folderId ?? null,
       tag: options?.tag ?? null,
       selectedIds: [],
-      selectedTags: [],
+      // Keep the multi-select when entering a folder view so it stacks with
+      // the folder filter; any other navigation clears the selection.
+      selectedTags: view === 'folder' ? s.selectedTags : [],
       mobilePane: 'list',
 
       navDrawerOpen: false,
-    }),
-
-  toggleTagSelection: (tag) =>
-    set((s) => ({
-      selectedTags: s.selectedTags.includes(tag)
-        ? s.selectedTags.filter((item) => item !== tag)
-        : [...s.selectedTags, tag],
     })),
 
+  toggleTagSelection: (tag) =>
+    set((s) => {
+      if (s.selectedTags.includes(tag))
+        return { selectedTags: s.selectedTags.filter((item) => item !== tag) };
+      if (s.selectedTags.length >= LIMITS.tagSelectionMax)
+        return s;
+      return { selectedTags: [...s.selectedTags, tag] };
+    }),
+
   clearTagSelection: () => set({ selectedTags: [] }),
+
+  selectTags: (tags) =>
+    set((s) => ({
+      selectedTags: [...new Set([...s.selectedTags, ...tags])].slice(0, LIMITS.tagSelectionMax),
+    })),
+
+  setSelectedTagsMatch: (match) => set({ selectedTagsMatch: match }),
 
   setSort: (sort, order) => set((s) => ({ sort, order: order ?? s.order })),
   setDensity: (density) => set({ density }),

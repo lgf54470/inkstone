@@ -10,6 +10,7 @@ import { useDebounced, useNow } from '../../lib/hooks';
 import { shortTime } from '../../lib/time';
 import { IconButton, Kbd } from '../../components/primitives';
 import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../components/overlay';
+import { TagFilterPopover } from '../../components/tag-filter-popover';
 import { useUi } from '../../store/ui';
 import { createContextualNote, useNotes } from '../../store/notes';
 import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands';
@@ -34,6 +35,8 @@ export function CommandPalette({ onClose }: {
     const locale = useLocale();
     const [query, setQuery] = useState('');
     const [cursor, setCursor] = useState(0);
+    const [tagFilterOpen, setTagFilterOpen] = useState(false);
+    const tagFilterRef = useRef<HTMLButtonElement>(null);
     const [remote, setRemote] = useState<{
         query: string;
         results: SearchHit[];
@@ -54,6 +57,12 @@ export function CommandPalette({ onClose }: {
     const recentNoteIds = useUi((s) => s.recentNoteIds);
     const openPanel = useUi((s) => s.openPanel);
     const openView = useUi((s) => s.openView);
+    const selectedTags = useUi((s) => s.selectedTags);
+    const selectedTagsMatch = useUi((s) => s.selectedTagsMatch);
+    const setSelectedTagsMatch = useUi((s) => s.setSelectedTagsMatch);
+    const matchesSelectedTags = useCallback((note: { tags: string[] }) => selectedTags.length === 0 || (selectedTagsMatch === 'all'
+        ? selectedTags.every((name) => note.tags.includes(name))
+        : selectedTags.some((name) => note.tags.includes(name))), [selectedTags, selectedTagsMatch]);
     const appearanceTheme = useSession((s) => s.settings.appearance.theme);
     const updateSettings = useSession((s) => s.updateSettings);
     const debounced = useDebounced(query, 180);
@@ -315,6 +324,7 @@ export function CommandPalette({ onClose }: {
         const matchedCommands = fuzzyFilter(commands, text, (c) => c.label, 8).map<Item>(({ item, match }) => ({ ...item, score: match.score + 60, match }));
         const lowerQuery = text.toLowerCase();
         const scoredNotes = noteList
+            .filter((entry) => matchesSelectedTags(entry.note))
             .filter((entry) => canFuzzyMatch(entry.lower, lowerQuery))
             .slice(0, 300);
         const matchedNotes = fuzzyFilter(scoredNotes, text, (entry) => entry.note.title, 14).map<Item>(({ item: entry, match }) => ({
@@ -330,6 +340,7 @@ export function CommandPalette({ onClose }: {
         }));
         const seen = new Set(matchedNotes.map((n) => n.id));
         const fullText = remoteResults
+            .filter((hit) => matchesSelectedTags(hit.note))
             .filter((hit) => !seen.has(`note-${hit.note.id}`))
             .slice(0, 8)
             .map<Item>((hit) => ({
@@ -380,6 +391,7 @@ export function CommandPalette({ onClose }: {
         query,
         locale,
         noteList,
+        matchesSelectedTags,
         tags,
         folders,
         folderIndex,
@@ -432,6 +444,11 @@ export function CommandPalette({ onClose }: {
         <div className="flex items-center gap-2.5 border-b border-[var(--border-subtle)] px-4">
           <Search size={16} className="shrink-0 text-[var(--text-quaternary)]"/>
           <input ref={inputRef} role="combobox" aria-label={t("common.search_notes_or_run_a_command")} aria-expanded="true" aria-controls={listId} aria-activedescendant={items[cursor] ? `${listId}-option-${cursor}` : undefined} aria-autocomplete="list" autoComplete="off" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={onKeyDown} placeholder={t("command.search_notes_or_type_a_command")} className="h-[52px] flex-1 bg-transparent text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none"/>
+          <Tooltip label={t("command.filter_by_tags")}>
+            <IconButton label={t("command.filter_by_tags")} size="sm" ref={tagFilterRef} active={selectedTags.length > 0} className="text-[var(--text-tertiary)]" onClick={() => setTagFilterOpen(true)}>
+              <Hash size={15}/>
+            </IconButton>
+          </Tooltip>
           <span className="hidden md:inline-flex"><Kbd keys={['Esc']}/></span>
           <span className="md:hidden">
             <Tooltip label={t("common.close")} side="left">
@@ -441,6 +458,15 @@ export function CommandPalette({ onClose }: {
             </Tooltip>
           </span>
         </div>
+
+        {selectedTags.length > 0 && (<div className="flex items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-1.5 text-[11px] text-[var(--text-secondary)]">
+            <Hash size={12} className="shrink-0 text-[var(--text-quaternary)]"/>
+            <span className="min-w-0 flex-1 truncate">{t("command.selected_tags_filtering", { value0: selectedTags.length })}</span>
+            <div role="group" aria-label={t("notes.selected_tags_match")} className="flex shrink-0 overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-default)]">
+              <button type="button" aria-pressed={selectedTagsMatch === 'any'} onClick={() => setSelectedTagsMatch('any')} className="px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">{t("notes.tag_match_any")}</button>
+              <button type="button" aria-pressed={selectedTagsMatch === 'all'} onClick={() => setSelectedTagsMatch('all')} className="border-l border-[var(--border-default)] px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">{t("notes.tag_match_all")}</button>
+            </div>
+          </div>)}
 
         <div ref={listRef} id={listId} role="listbox" aria-labelledby={labelId} className="min-h-0 flex-1 overflow-y-auto p-1.5 md:max-h-[54vh] md:flex-none">
           {groups.length === 0 ? (<div className="px-3 py-10 text-center text-[12.5px] text-[var(--text-quaternary)]">{t("command.no_matching_results")}</div>) : (groups.map(([group, groupItems]) => (<div key={group} role="group" aria-label={group} className="mb-1">
@@ -465,6 +491,7 @@ export function CommandPalette({ onClose }: {
             <Kbd keys={['Esc']}/>{t("common.close")}</span>
         </div>
       </div>
+      <TagFilterPopover anchor={tagFilterRef} open={tagFilterOpen} onClose={() => setTagFilterOpen(false)}/>
     </div>, document.body);
 }
 

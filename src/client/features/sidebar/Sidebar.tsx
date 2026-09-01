@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Plus, Settings, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Plus, Search, SearchX, Settings, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
 import type { Tag, ViewKind } from '@shared/types';
-import { compareTagNames } from '@shared/markdown-utils';
 import { cn } from '../../lib/cn';
+import { sortTagsForPicker } from '../../lib/tag-sort';
+import { clearTagSelection } from '../../lib/tag-selection';
+import { TagNameHighlight } from '../../components/tag-name-highlight';
 import { Avatar, IconButton, Logo, SectionLabel } from '../../components/primitives';
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay';
 import { switchThemeWithTransition, useUi } from '../../store/ui';
@@ -601,14 +603,18 @@ function TagSection() {
     const openView = useUi((s) => s.openView);
     const selectedTags = useUi((s) => s.selectedTags);
     const toggleTagSelection = useUi((s) => s.toggleTagSelection);
-    const clearTagSelection = useUi((s) => s.clearTagSelection);
+    const selectTags = useUi((s) => s.selectTags);
+    const openPanel = useUi((s) => s.openPanel);
     const [expanded, setExpanded] = useState(false);
+    const [query, setQuery] = useState('');
+    const [activeIndex, setActiveIndex] = useState(0);
     const [creating, setCreating] = useState(false);
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [appearanceId, setAppearanceId] = useState<string | null>(null);
-    const sortedTags = useMemo(() => [...tags]
-            .sort((a, b) => b.count - a.count || compareTagNames(a.name, b.name)), [tags]);
-    const visible = expanded ? sortedTags : sortedTags.slice(0, 8);
+    const sortedTags = useMemo(() => sortTagsForPicker(tags, ''), [tags]);
+    const searching = query.trim() !== '';
+    const visible = searching ? sortTagsForPicker(sortedTags, query) : expanded ? sortedTags : sortedTags.slice(0, 8);
+    const highlightedIndex = Math.min(activeIndex, Math.max(0, visible.length - 1));
     const appearanceTag = appearanceId
         ? tags.find((tag) => tag.id === appearanceId) ?? null
         : null;
@@ -631,12 +637,58 @@ function TagSection() {
           </IconButton>
         </Tooltip>
       </div>
+      {sortedTags.length > 0 && (<div className="relative mt-1.5">
+          <Search size={12} className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-[var(--text-quaternary)]"/>
+          <input aria-label={t("notes.tag_filter_search")} title={t("sidebar.tag_search_select_all")} value={query} onChange={(e) => {
+                setQuery(e.target.value);
+                setActiveIndex(0);
+            }} onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                    setQuery('');
+                    setActiveIndex(0);
+                    return;
+                }
+                if (!searching || !visible.length)
+                    return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setActiveIndex((i) => (i + 1) % visible.length);
+                }
+                else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setActiveIndex((i) => (i - 1 + visible.length) % visible.length);
+                }
+                else if (e.key === 'Enter' && e.shiftKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (selectedTags.length >= LIMITS.tagSelectionMax) {
+                        useUi.getState().toast({ title: t("tags.selection_limit", { value0: LIMITS.tagSelectionMax }), tone: 'danger' });
+                        return;
+                    }
+                    selectTags(visible.map((tag) => tag.name));
+                    setQuery('');
+                    setActiveIndex(0);
+                    useUi.getState().toast({ title: t("sidebar.tags_selected", { value0: visible.length }) });
+                }
+                else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const target = visible[highlightedIndex];
+                    setQuery('');
+                    setActiveIndex(0);
+                    openView('tag', { tag: target.name });
+                }
+            }} placeholder={t("notes.tag_filter_search")} className="h-7 w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-7 pl-6 text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none"/>
+          {searching && <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 tabular-nums text-[10.5px] text-[var(--text-quaternary)]">{visible.length}</span>}
+        </div>)}
       <div className="mt-0.5 space-y-px">
         {creating && <TagDraftRow onFinish={finishCreate} onCancel={() => setCreating(false)}/>}
         {!sortedTags.length && !creating && (<button type="button" onClick={() => setCreating(true)} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[30px]">
             <Plus size={13}/>{t("tags.create_first")}
           </button>)}
-        {visible.map((tag) => (<TagRow key={tag.id} tag={tag} active={view === 'tag' && activeTag === tag.name} selected={selectedTags.includes(tag.name)} renaming={renamingId === tag.id} onOpen={(event) => {
+        {visible.map((tag, index) => (<TagRow key={tag.id} tag={tag} active={view === 'tag' && activeTag === tag.name} selected={selectedTags.includes(tag.name)} highlighted={searching && index === highlightedIndex} searchQuery={query} renaming={renamingId === tag.id} onOpen={(event) => {
             if (event.metaKey || event.ctrlKey) {
                 event.preventDefault();
                 toggleTagSelection(tag.name);
@@ -648,11 +700,30 @@ function TagSection() {
             void renameTag(tag, value);
         }} onCancelRename={() => setRenamingId(null)} onEditColor={() => setAppearanceId(tag.id)}/>))}
 
+        {searching && visible.length === 0 && !creating && (<div className="mt-1 flex flex-col items-center gap-1 rounded-[var(--r-md)] bg-[var(--bg-inset)] px-2 py-3 text-center">
+            <SearchX size={14} className="text-[var(--text-quaternary)]"/>
+            <span className="text-[11.5px] font-medium text-[var(--text-secondary)]">{t("notes.no_matching_tags")}</span>
+            <button type="button" onClick={() => {
+                setQuery('');
+                setActiveIndex(0);
+            }} className="text-[10.5px] font-medium text-[var(--accent)] transition-colors hover:underline">{t("notes.clear_tag_search")}</button>
+          </div>)}
+
         {selectedTags.length > 0 && (<div className="rounded-[var(--r-md)] bg-[var(--accent-soft)] px-2 py-1.5 text-[11px] text-[var(--text-secondary)]">
             <div className="flex h-5 items-center justify-between gap-2">
               <span className="truncate">{t("sidebar.tags_selected", { value0: selectedTags.length })}</span>
-              <button type="button" onClick={clearTagSelection} className="shrink-0 font-medium text-[var(--accent)] transition-colors hover:underline">{t("common.clear_selection")}</button>
+              <div className="flex shrink-0 items-center gap-2">
+                <Tooltip label={t("sidebar.jump_to_graph")}>
+                  <button type="button" onClick={() => openPanel('graph')} className="inline-flex items-center gap-1 font-medium text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)] hover:underline">
+                    <Waypoints size={9}/>
+                    {t("common.graph")}
+                  </button>
+                </Tooltip>
+                <button type="button" onClick={() => clearTagSelection({ notify: true })} className="font-medium text-[var(--accent)] transition-colors hover:underline">{t("common.clear_selection")}</button>
+              </div>
             </div>
+            <div className="mt-0.5 text-[10.5px] text-[var(--text-tertiary)]">{t("sidebar.tags_selected_hint")}</div>
+            {selectedTags.length >= LIMITS.tagSelectionMax && <div className="mt-0.5 text-[10.5px] font-medium text-[var(--danger)]">{t("tags.selection_limit", { value0: LIMITS.tagSelectionMax })}</div>}
             <div className="mt-1 flex flex-wrap gap-1">
               {selectedTags.map((name) => (<button key={name} type="button" aria-label={t("sidebar.remove_selected_tag", { value0: name })} onClick={() => toggleTagSelection(name)} className="inline-flex h-5 max-w-full items-center gap-1 rounded-full bg-[var(--bg-overlay)] px-2 text-[11px] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]">
                   <Hash size={9} className="shrink-0 text-[var(--text-quaternary)]"/>
@@ -662,7 +733,7 @@ function TagSection() {
             </div>
           </div>)}
 
-        {sortedTags.length > 8 && (<button type="button" onClick={() => setExpanded((v) => !v)} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[26px]">
+        {!searching && sortedTags.length > 8 && (<button type="button" onClick={() => setExpanded((v) => !v)} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[26px]">
             {expanded ? t("common.collapse") : t("sidebar.show_all_value0_tags", { value0: sortedTags.length })}
           </button>)}
       </div>
@@ -702,10 +773,12 @@ function TagDraftRow({ onFinish, onCancel }: {
         }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>
     </div>);
 }
-function TagRow({ tag, active, selected, renaming, onOpen, onStartRename, onFinishRename, onCancelRename, onEditColor, }: {
+function TagRow({ tag, active, selected, highlighted, searchQuery, renaming, onOpen, onStartRename, onFinishRename, onCancelRename, onEditColor, }: {
     tag: Tag;
     active: boolean;
     selected: boolean;
+    highlighted: boolean;
+    searchQuery: string;
     renaming: boolean;
     onOpen: (event: React.MouseEvent<HTMLButtonElement>) => void;
     onStartRename: () => void;
@@ -716,6 +789,10 @@ function TagRow({ tag, active, selected, renaming, onOpen, onStartRename, onFini
     const menu = useContextMenu();
     const rowRef = useRef<HTMLDivElement>(null);
     const [menuOpen, setMenuOpen] = useState(false);
+    useEffect(() => {
+        if (highlighted)
+            rowRef.current?.scrollIntoView({ block: 'nearest' });
+    }, [highlighted]);
     const finishedRef = useRef(false);
     const finishRename = (value: string) => {
         if (finishedRef.current)
@@ -733,7 +810,7 @@ function TagRow({ tag, active, selected, renaming, onOpen, onStartRename, onFini
             menu.onContextMenu(event);
         }} className={cn('group relative flex h-10 items-center gap-2 rounded-[var(--r-md)] px-2 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active || selected
             ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
-            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
+            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', highlighted && 'ring-1 ring-[var(--accent)]')}>
       <Hash size={13} className="shrink-0" style={{ color: tag.color ?? (active || selected ? 'var(--accent)' : 'var(--text-quaternary)') }}/>
       {renaming ? (<input aria-label={t("tags.rename")} autoFocus defaultValue={tag.name} onFocus={() => {
             finishedRef.current = false;
@@ -747,7 +824,7 @@ function TagRow({ tag, active, selected, renaming, onOpen, onStartRename, onFini
             event.stopPropagation();
         }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>) : (<Tooltip label={t("sidebar.cmd_click_selects_multiple")} side="right">
               <button type="button" aria-current={active ? 'page' : undefined} aria-pressed={selected || undefined} onClick={onOpen} onDoubleClick={onStartRename} className="min-w-0 flex-1 truncate py-1 text-left text-[12.5px] font-medium">
-                {tag.name}
+                <TagNameHighlight name={tag.name} query={searchQuery}/>
               </button>
             </Tooltip>)}
       {!renaming && (<>

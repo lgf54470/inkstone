@@ -32,6 +32,7 @@ export const LIMITS = {
   contentMaxBytes: 2 * 1024 * 1024,
   folderNameMaxLength: 120,
   tagNameMaxLength: 60,
+  tagSelectionMax: 20,
   folderDepthMax: 12,
   attachmentMaxBytes: 25 * 1024 * 1024,
   attachmentQuotaBytes: 1024 * 1024 * 1024,

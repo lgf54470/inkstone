@@ -1,5 +1,5 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDownWideNarrow, CheckSquare2, Columns2, Copy, FileCode, FileDown, FileText, FolderInput, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
+import { Archive, ArrowDownWideNarrow, CheckSquare2, Columns2, Copy, FileCode, FileDown, FileText, FolderInput, Hash, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
 import type { NoteSummary, SortKey, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { groupLabel } from '../../lib/time';
@@ -11,6 +11,7 @@ import { exportNoteAsHtml, exportNoteAsMarkdown, exportNoteAsPdf } from '../../l
 import { IconButton } from '../../components/primitives';
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay';
 import { Empty, NoteListSkeleton } from '../../components/feedback';
+import { TagFilterPopover } from '../../components/tag-filter-popover';
 import { useUi } from '../../store/ui';
 import { createContextualNote, useNotes, useVisibleNotes } from '../../store/notes';
 import { folderPathLabel } from '../../lib/folders';
@@ -44,6 +45,9 @@ export function NoteList() {
     const setSort = useUi((s) => s.setSort);
     const activeNoteId = useUi((s) => s.activeNoteId);
     const toggleNavDrawer = useUi((s) => s.toggleNavDrawer);
+    const selectedTags = useUi((s) => s.selectedTags);
+    const selectedTagsMatch = useUi((s) => s.selectedTagsMatch);
+    const setSelectedTagsMatch = useUi((s) => s.setSelectedTagsMatch);
     const notes = useVisibleNotes();
     const folders = useNotes((s) => s.folders);
     const tags = useNotes((s) => s.tags);
@@ -55,6 +59,7 @@ export function NoteList() {
     const deferredFilter = useDeferredValue(filter);
     const [sortMenuOpen, setSortMenuOpen] = useState(false);
     const sortButtonRef = useRef<HTMLButtonElement>(null);
+    const [tagFilterOpen, setTagFilterOpen] = useState(false);
     const listRef = useRef<HTMLDivElement>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const [renderLimit, setRenderLimit] = useState(INITIAL_RENDERED_NOTES);
@@ -182,6 +187,14 @@ export function NoteList() {
             onSelect: () => useUi.getState().setDensity(density === 'comfortable' ? 'compact' : 'comfortable'),
         },
     ];
+    const tagFilterItem: MenuItem = {
+        id: 'tag-filter',
+        label: t("notes.filter_by_tags"),
+        icon: <Hash size={13}/>,
+        checked: selectedTags.length > 0 || undefined,
+        separatorBefore: true,
+        onSelect: () => setTagFilterOpen(true),
+    };
     return (<section className="relative flex h-full min-h-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-base)]">
       <header className="shrink-0 px-3 pt-3 pb-2">
         <div className="mb-2.5 flex items-center justify-between gap-2">
@@ -228,11 +241,20 @@ export function NoteList() {
             </Tooltip>)}
         </div>
 
+        {selectedTags.length > 0 && (<div className="mt-2 flex items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-2 py-1 text-[11px] text-[var(--text-secondary)]">
+            <Hash size={11} className="shrink-0 text-[var(--text-quaternary)]"/>
+            <span className="min-w-0 flex-1 truncate">{t("notes.selected_tags_filter", { value0: selectedTags.length })}</span>
+            <div role="group" aria-label={t("notes.selected_tags_match")} className="flex shrink-0 overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-default)]">
+              <button type="button" aria-pressed={selectedTagsMatch === 'any'} onClick={() => setSelectedTagsMatch('any')} className="px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">{t("notes.tag_match_any")}</button>
+              <button type="button" aria-pressed={selectedTagsMatch === 'all'} onClick={() => setSelectedTagsMatch('all')} className="border-l border-[var(--border-default)] px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">{t("notes.tag_match_all")}</button>
+            </div>
+          </div>)}
+
         {view === 'trash' && notes.length > 0 && (<button type="button" disabled={emptyingTrash} aria-busy={emptyingTrash} onClick={() => void emptyTrash()} className="mt-2 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] py-1.5 text-[11.5px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)] disabled:pointer-events-none disabled:opacity-50">{t("notes.empty_trash")}{notes.length}{t("notes.notes_93aeb9")}</button>)}
       </header>
 
       <div key={`${view}:${folderId ?? ''}:${tag ?? ''}`} ref={listRef} role="listbox" aria-label={title} aria-multiselectable="true" aria-activedescendant={activeNoteId && renderedIds.has(activeNoteId) ? `note-option-${activeNoteId}` : undefined} tabIndex={0} onKeyDown={onKeyDown} className="anim-view-content min-h-0 flex-1 overflow-y-auto px-2 pb-4 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
-        {!hydrated && loading ? (<NoteListSkeleton />) : filtered.length === 0 ? (<ListEmpty view={view} filtering={Boolean(filter)}/>) : (groups.map((group) => (<div key={group.key} role="group" aria-label={group.label ?? title}>
+        {!hydrated && loading ? (<NoteListSkeleton />) : filtered.length === 0 ? (<ListEmpty view={view} filtering={Boolean(filter)} tagFiltering={selectedTags.length > 0}/>) : (groups.map((group) => (<div key={group.key} role="group" aria-label={group.label ?? title}>
               {group.label && (<div className="px-2 pt-3 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
                   {group.label}
                 </div>)}
@@ -245,7 +267,8 @@ export function NoteList() {
 
       <BulkBar />
 
-      <Menu anchor={sortButtonRef} open={sortMenuOpen} onClose={() => setSortMenuOpen(false)} items={sortItems} align="end"/>
+      <Menu anchor={sortButtonRef} open={sortMenuOpen} onClose={() => setSortMenuOpen(false)} items={[...sortItems, tagFilterItem]} align="end"/>
+      <TagFilterPopover anchor={sortButtonRef} open={tagFilterOpen} onClose={() => setTagFilterOpen(false)}/>
     </section>);
 }
 const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, position, total, onRangeSelect, }: {
@@ -565,13 +588,17 @@ function BulkBar() {
       {folderPickerOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={commonFolderId} rootLabel={t("notes.remove_from_folder")} onSelect={(folderId) => void runAll(() => performAll((id) => patchNote(id, { folderId }), folderId ? t("notes.moved") : t("notes.moved_out")))} onClose={() => setFolderPickerOpen(false)}/>}
     </div>);
 }
-function ListEmpty({ view, filtering }: {
+function ListEmpty({ view, filtering, tagFiltering }: {
     view: string;
     filtering: boolean;
+    tagFiltering: boolean;
 }) {
     const shortcut = (combo: string) => prettyCombo(combo).join('+');
     if (filtering) {
         return <Empty art="search" title={t("notes.no_matching_notes")} description={t("notes.try_another_search_or_press_shortcut_to_search_everywhere", { shortcut: shortcut('mod+k') })}/>;
+    }
+    if (tagFiltering) {
+        return <Empty art="tag" title={t("notes.no_notes_match_selected_tags")} description={t("notes.adjust_selected_tags_or_switch_match_mode")}/>;
     }
     const config: Record<string, {
         art: 'notes' | 'starred' | 'trash' | 'archive' | 'folder' | 'tag';
