@@ -70,10 +70,45 @@ Notes:
 - Values are quoted automatically when needed, so titles containing `:`, `#`, and similar stay valid YAML.
 - Creating from a tag view keeps the `#tag` body prefix and also appends the tags to the front matter `tags` list.
 - Leaving the template empty starts from a blank note; the settings panel shows a live preview with sample title/folder/tag inputs, a marker where `{{cursor}}` resolves, and hints about where contextual placeholders come from.
-- From a tag view, cmd/ctrl+click tags in the sidebar to select several; new notes then carry all of them (front matter tags, `#tag` prefixes, and `{{tags}}`). The selections also extend the graph's tag filter, where the match mode (any or all) is configurable in the graph settings.
+- From a tag view, cmd/ctrl+click tags in the sidebar to select several; new notes then carry all of them (front matter tags, `#tag` prefixes, and `{{tags}}`).
 - Title ↔ front matter `title` sync can be enabled or disabled independently in Settings → New notes.
 - "Insert note template" (toolbar block menu, command palette, or `Ctrl/Cmd+Shift+T`) renders the template into any note at the caret, using the current note's title, folder, and tags as context.
 - The MCP `create_note` tool applies the same template when `content` is omitted.
+
+## Graph tag filtering
+
+Sidebar-selected tags join the graph's own tag filter (combined with the graph's tag dropdown). The match mode — any tag (union) or all tags (intersection) — is chosen in the graph settings, and both sources share the 20-tag cap.
+
+The graph settings panel offers these controls:
+
+**Filters**
+
+| Setting | Type | Default | Effect |
+| --- | --- | --- | --- |
+| Folder | Select | All folders | Restrict the graph to one folder |
+| Tag | Select | All tags | Restrict the graph to one tag |
+| Tag match | Select | Any | How the graph's tag and sidebar selections combine: any tag (union) or all tags (intersection) |
+| Show orphans | Toggle | On | Show notes that have no links |
+| Show unresolved | Toggle | On | Show unresolved wiki-link targets |
+| Depth | Select (local mode) | 1 | How many neighbor hops to include in local mode |
+| Clear also resets the tag filter | Toggle | On | "Clear selection" also resets the graph's own tag dropdown |
+| Clear also closes the panel | Toggle | On | "Clear selection" also closes the graph panel |
+
+**Appearance**
+
+| Setting | Type | Default | Effect |
+| --- | --- | --- | --- |
+| Group by | Select | None | Group nodes by folder or tag |
+| Show arrows | Toggle | On | Draw link arrows |
+| Show labels | Toggle | On | Show node labels |
+
+**Forces**
+
+| Setting | Type | Default | Effect |
+| --- | --- | --- | --- |
+| Repulsion | Slider | 900 | Push force between nodes |
+| Link distance | Slider | 76 | Preferred link length in px |
+| Node size | Slider | 1 | Base node radius scale |
 
 ## Data storage
 

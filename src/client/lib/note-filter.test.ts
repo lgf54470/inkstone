@@ -1,0 +1,107 @@
+import { describe, expect, it } from 'vitest';
+import type { NoteSummary, ViewKind } from '@shared/types';
+import { matchesView } from './note-filter';
+
+function note(overrides: Partial<NoteSummary> = {}): NoteSummary {
+    return {
+        id: 'n1',
+        title: 'Note',
+        excerpt: '',
+        folderId: null,
+        tags: [],
+        isPinned: false,
+        isStarred: false,
+        isArchived: false,
+        wordCount: 0,
+        charCount: 0,
+        rev: 1,
+        position: 0,
+        createdAt: 0,
+        updatedAt: 0,
+        deletedAt: null,
+        ...overrides,
+    };
+}
+
+const base: ViewKind[] = ['all', 'recent', 'starred', 'unfiled', 'folder', 'tag'];
+
+describe('matchesView', () => {
+    it('includes live notes in all/recent, excludes deleted ones everywhere', () => {
+        for (const view of ['all', 'recent'] as ViewKind[]) {
+            expect(matchesView(note(), view, null, null)).toBe(true);
+            expect(matchesView(note({ deletedAt: 1 }), view, null, null)).toBe(false);
+        }
+        for (const view of base) {
+            expect(matchesView(note({ deletedAt: 1 }), view, null, null)).toBe(false);
+        }
+    });
+
+    it('only matches trash view for deleted notes', () => {
+        const deleted = note({ deletedAt: 5 });
+        expect(matchesView(deleted, 'trash', null, null)).toBe(true);
+        expect(matchesView(note(), 'trash', null, null)).toBe(false);
+    });
+
+    it('only matches archived view for archived notes', () => {
+        const archived = note({ isArchived: true });
+        expect(matchesView(archived, 'archived', null, null)).toBe(true);
+        expect(matchesView(note(), 'archived', null, null)).toBe(false);
+    });
+
+    it('filters starred and unfiled views', () => {
+        expect(matchesView(note({ isStarred: true }), 'starred', null, null)).toBe(true);
+        expect(matchesView(note(), 'starred', null, null)).toBe(false);
+        expect(matchesView(note({ folderId: null }), 'unfiled', null, null)).toBe(true);
+        expect(matchesView(note({ folderId: 'f1' }), 'unfiled', null, null)).toBe(false);
+    });
+
+    it('matches folder view by folder id and by descendant scope', () => {
+        const inFolder = note({ folderId: 'f1' });
+        expect(matchesView(inFolder, 'folder', 'f1', null)).toBe(true);
+        expect(matchesView(inFolder, 'folder', 'f2', null)).toBe(false);
+        expect(matchesView(inFolder, 'folder', 'f2', null, new Set(['f3', 'f1']))).toBe(true);
+        expect(matchesView(note(), 'folder', 'f1', null)).toBe(false);
+    });
+
+    it('matches the tag view against the viewed tag', () => {
+        const tagged = note({ tags: ['reading'] });
+        expect(matchesView(tagged, 'tag', null, 'reading')).toBe(true);
+        expect(matchesView(tagged, 'tag', null, 'work')).toBe(false);
+        expect(matchesView(note(), 'tag', null, 'reading')).toBe(false);
+    });
+
+    it('stacks multi-tag selection with any view using any-match by default', () => {
+        const tagged = note({ tags: ['reading', 'work'] });
+        expect(matchesView(tagged, 'all', null, null, undefined, ['reading'])).toBe(true);
+        expect(matchesView(tagged, 'all', null, null, undefined, ['reading', 'work'])).toBe(true);
+        expect(matchesView(tagged, 'all', null, null, undefined, ['music'])).toBe(false);
+        expect(matchesView(tagged, 'all', null, null, undefined, ['music', 'work'])).toBe(true);
+    });
+
+    it('uses all-match when requested', () => {
+        const tagged = note({ tags: ['reading', 'work'] });
+        expect(matchesView(tagged, 'all', null, null, undefined, ['reading', 'work'], 'all')).toBe(true);
+        expect(matchesView(tagged, 'all', null, null, undefined, ['reading', 'music'], 'all')).toBe(false);
+    });
+
+    it('stacks the selection with folder and tag views', () => {
+        const inFolder = note({ folderId: 'f1', tags: ['work'] });
+        expect(matchesView(inFolder, 'folder', 'f1', null, undefined, ['work'])).toBe(true);
+        expect(matchesView(inFolder, 'folder', 'f1', null, undefined, ['work', 'personal'], 'all')).toBe(false);
+        expect(matchesView(inFolder, 'tag', null, 'work', undefined, ['work'])).toBe(true);
+        expect(matchesView(inFolder, 'tag', null, 'work', undefined, ['personal'])).toBe(false);
+    });
+
+    it('ignores the selection for trash and archived views', () => {
+        const deleted = note({ deletedAt: 1, tags: ['work'] });
+        const archived = note({ isArchived: true, tags: ['personal'] });
+        expect(matchesView(deleted, 'trash', null, null, undefined, ['personal'])).toBe(true);
+        expect(matchesView(archived, 'archived', null, null, undefined, ['work'])).toBe(true);
+    });
+
+    it('is case sensitive on tag names like the tag facets', () => {
+        const tagged = note({ tags: ['Reading'] });
+        expect(matchesView(tagged, 'all', null, null, undefined, ['reading'])).toBe(false);
+        expect(matchesView(tagged, 'all', null, null, undefined, ['Reading'])).toBe(true);
+    });
+});

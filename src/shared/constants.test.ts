@@ -2,10 +2,17 @@ import { describe, expect, it } from 'vitest'
 import type { UserSettings } from './types'
 import {
   DEFAULT_SETTINGS,
+  LIMITS,
   assertUnchangedSettingsSections,
   mergeSettings,
   mergeSettingsPatch,
 } from './constants'
+
+describe('LIMITS', () => {
+  it('keeps the tag selection cap at 20 so the UI, graph, and MCP filters stay consistent', () => {
+    expect(LIMITS.tagSelectionMax).toBe(20)
+  })
+})
 
 describe('mergeSettingsPatch', () => {
   it('returns the same object when the patch is empty', () => {

@@ -11,12 +11,20 @@ const allowed = new Map([
     "// Highlighting removed: no code languages are loaded.",
     "// Kept as empty array so the editor behaves as plain Markdown without syntax colors.",
   ]],
+  ["src/client/components/tag-filter-popover.tsx", [
+    "/** Shared multi-tag picker: searchable tag checklist with note counts and an any/all match-mode switch. */",
+  ]],
+  ["src/client/components/tag-name-highlight.tsx", [
+    "/** Renders a tag name with the matched query substring emphasized, used by tag pickers. */",
+  ]],
   ["src/client/features/graph/GraphPanel.tsx", [
     "// Private browsing or a locked-down browser can reject local preferences.",
     "// Notes created from unresolved nodes land in the graph's folder scope so",
     "// they inherit the folder name for the `{{folder}}` template placeholder.",
     "// The sidebar's cmd/ctrl+click selections join the graph's own tag filter.",
     "/** How the tag filter combines: any tag (union) or all tags (intersection). */",
+    "/** Whether clearing the sidebar selection also resets the graph's own tag filter. */",
+    "/** Whether clearing the sidebar selection also closes the graph panel. */",
   ]],
   ["src/worker/routes/search.ts", [
     "// `tagsMatch=all` intersects the tag filters, otherwise any match qualifies.",
@@ -32,6 +40,9 @@ const allowed = new Map([
     "/** Provides typed runtime localization with on-demand locale loading. */",
     "// Preload the other locale in background for instant switching, but don't block init",
   ]],
+  ["src/client/lib/graph-settings.ts", [
+    "/** The graph settings toggles: the single source of truth for the panel, docs, and tests. */",
+  ]],
   ["src/client/lib/fuzzy.ts", [
     "/**\n * Fast ordered-subsequence prefilter with the same acceptance semantics as\n * fuzzyMatch (monotonic indexOf per query character), so it never rejects a\n * candidate fuzzyMatch would accept. Used to shrink large candidate pools\n * (e.g. the note list) before scoring.\n */",
   ]],
@@ -45,6 +56,22 @@ const allowed = new Map([
     "/**\n   * Applies live setting changes (realtime toggle, poll interval) without\n   * tearing down the engine, its WebSocket, or its leadership claim.\n   */",
     "// The engine is created exactly once; later setting changes are pushed",
     "// through updateConfig instead of rebuilding the whole engine.",
+  ]],
+  ["src/client/store/ui.ts", [
+    "/** How multi-selected tags filter the note list and palette: any or all. */",
+    "// Keep the multi-select when entering a folder view so it stacks with",
+    "// the folder filter; any other navigation clears the selection.",
+  ]],
+  ["src/client/lib/note-filter.ts", [
+    "/** Decide whether a note belongs to the active list view, optionally stacked with a multi-tag selection (`any` or `all` must match). */",
+  ]],
+  ["src/client/lib/tag-selection.ts", [
+    "/** Clears the multi-tag selection shared by the sidebar, list/palette filters, and graph; optionally confirms with a toast (a string overrides the default message). */",
+    "/** The toast key for a graph clear, or null for the default message, based on the clear-behavior preferences. */",
+  ]],
+  ["src/client/lib/tag-sort.ts", [
+    "/** Rank a tag name against a query: exact match, then prefix, then earlier substring. */",
+    "/** Sort tags for a picker: by query relevance when searching, otherwise by note count (then name). */",
   ]],
   ["src/client/store/notes.ts", [
     "/** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization. */",
