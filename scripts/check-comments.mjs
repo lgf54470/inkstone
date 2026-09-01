@@ -25,6 +25,9 @@ const allowed = new Map([
   ["src/client/lib/markdown/renderer.ts", [
     "/** Builds the sanitized Markdown rendering pipeline and its Inkstone-specific syntax extensions. */",
   ]],
+  ["src/client/lib/note-persist.ts", [
+    "/**\n * Coalesces per-keystroke IndexedDB writes (outbox + cached content) behind\n * one short timer: only the latest payload per note is ever persisted, so a\n * burst of typing collapses into a single outbox rewrite per note instead of\n * serializing every pending note body on every keystroke.\n */",
+  ]],
   ["src/client/lib/sync.ts", [
     "/**\n   * Applies live setting changes (realtime toggle, poll interval) without\n   * tearing down the engine, its WebSocket, or its leadership claim.\n   */",
     "// The engine is created exactly once; later setting changes are pushed",
@@ -32,7 +35,6 @@ const allowed = new Map([
   ]],
   ["src/client/store/notes.ts", [
     "/** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization. */",
-    "/**\n * Coalesces per-keystroke IndexedDB writes (outbox + cached content) behind\n * one short timer: only the latest payload per note is ever persisted, so a\n * burst of typing collapses into a single outbox rewrite per note instead of\n * serializing every pending note body on every keystroke.\n */",
   ]],
   ["src/client/store/pwa.ts", [
     "// Reset the flag once the toast is gone, so a later installed worker can",
