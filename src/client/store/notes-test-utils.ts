@@ -1,5 +1,5 @@
 import type { Note, NoteSummary } from '@shared/types';
-import { api } from '../lib/api';
+import { api, ApiError } from '../lib/api';
 import { localDb } from '../lib/db';
 
 /**
@@ -25,11 +25,14 @@ export interface NotesPatchCall {
 export interface NotesMockServer {
     notes: Map<string, Note>;
     patchCalls: NotesPatchCall[];
+    /** Note ids whose next patch should 409 once (simulating a write from another device), then succeed. */
+    conflicts: Set<string>;
 }
 
 export const notesMockServer: NotesMockServer = {
     notes: new Map(),
     patchCalls: [],
+    conflicts: new Set(),
 };
 
 /**
@@ -37,25 +40,53 @@ export const notesMockServer: NotesMockServer = {
  * matching note in `notesMockServer.notes` and returns the updated full note (rev bumped), mirroring
  * the real endpoint's response shape.
  */
+/** Apply the summary-flag subset of a patch body to a note (folder moves plus pin/star/archive). */
+function applyPatchToNote(server: Note, body: Record<string, unknown>): Note {
+    return {
+        ...server,
+        ...(body.folderId === null || typeof body.folderId === 'string' ? { folderId: body.folderId } : {}),
+        ...(typeof body.isPinned === 'boolean' ? { isPinned: body.isPinned } : {}),
+        ...(typeof body.isStarred === 'boolean' ? { isStarred: body.isStarred } : {}),
+        ...(typeof body.isArchived === 'boolean' ? { isArchived: body.isArchived } : {}),
+        rev: server.rev + 1,
+        updatedAt: Date.now(),
+    };
+}
+
 export function installNotesApiStub(): void {
-    const stub = async (id: string, body: { rev: number } & Record<string, unknown>): Promise<Note> => {
+    api.notes.patch = (async (id: string, body: { rev: number } & Record<string, unknown>): Promise<Note> => {
         const server = notesMockServer.notes.get(id);
         if (!server)
             throw new Error(`Mock server has no note "${id}"`);
         notesMockServer.patchCalls.push({ id, rev: body.rev, patch: { ...body } });
-        const updated: Note = {
-            ...server,
-            ...(body.folderId === null || typeof body.folderId === 'string' ? { folderId: body.folderId } : {}),
-            ...(typeof body.isPinned === 'boolean' ? { isPinned: body.isPinned } : {}),
-            ...(typeof body.isStarred === 'boolean' ? { isStarred: body.isStarred } : {}),
-            ...(typeof body.isArchived === 'boolean' ? { isArchived: body.isArchived } : {}),
-            rev: server.rev + 1,
-            updatedAt: Date.now(),
-        };
+        if (notesMockServer.conflicts.has(id)) {
+            notesMockServer.conflicts.delete(id);
+            // Another device already advanced the note past the client's revision.
+            const theirs: Note = { ...server, rev: server.rev + 1, updatedAt: Date.now() };
+            throw new ApiError(409, 'conflict', 'The note changed on another device', { server: theirs });
+        }
+        const updated = applyPatchToNote(server, body);
         notesMockServer.notes.set(id, updated);
         return updated;
-    };
-    api.notes.patch = stub as unknown as typeof api.notes.patch;
+    }) as unknown as typeof api.notes.patch;
+
+    api.notes.remove = (async (id: string): Promise<Note> => {
+        const server = notesMockServer.notes.get(id);
+        if (!server)
+            throw new Error(`Mock server has no note "${id}"`);
+        const removed: Note = { ...server, deletedAt: Date.now(), updatedAt: Date.now(), rev: server.rev + 1 };
+        notesMockServer.notes.set(id, removed);
+        return removed;
+    }) as unknown as typeof api.notes.remove;
+
+    api.notes.restore = (async (id: string): Promise<Note> => {
+        const server = notesMockServer.notes.get(id);
+        if (!server)
+            throw new Error(`Mock server has no note "${id}"`);
+        const restored: Note = { ...server, deletedAt: null, updatedAt: Date.now(), rev: server.rev + 1 };
+        notesMockServer.notes.set(id, restored);
+        return restored;
+    }) as unknown as typeof api.notes.restore;
 }
 
 /**
@@ -71,6 +102,8 @@ export function installLocalDbStubs(): void {
     loose.dropContent = async () => undefined;
     loose.bindUser = async () => undefined;
     loose.loadShell = async () => null;
+    loose.getOutbox = async () => [];
+    loose.withOutboxReplayLock = async () => true;
 }
 
 /** Build a minimal NoteSummary fixture. */

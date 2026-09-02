@@ -177,6 +177,9 @@ type NotePatch = Partial<Pick<NoteSummary, 'isPinned' | 'isStarred' | 'isArchive
     folderId?: string | null;
 };
 
+/** Undo window for destructive actions (e.g. moving a note to the trash): longer than the default 3800ms. */
+const DESTRUCTIVE_UNDO_TOAST_MS = 8000;
+
 /** Batch toast title for a count-aware mutation (e.g. "Moved 3 notes"). */
 function batchPatchTitle(key: MessageKey, count: number): string {
     return t("notes.value0_value1_notes", { value0: t(key), value1: count });
@@ -953,7 +956,7 @@ export const useNotes = create<NotesState>((set, get) => ({
                 const removed = await api.notes.remove(id);
                 finishNoteMutation(id, mutation);
                 adoptNote(removed, set, get);
-                toastWithUndo(t("notes.moved_to_trash"), () => void get().restoreNote(id));
+                toastWithUndo(t("notes.moved_to_trash"), () => void get().restoreNote(id), { duration: DESTRUCTIVE_UNDO_TOAST_MS });
             }
             catch (err) {
                 await recoverNoteMutation(id, mutation, err, set, get);

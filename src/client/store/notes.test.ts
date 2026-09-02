@@ -32,6 +32,7 @@ beforeEach(() => {
     installLocalDbStubs();
     notesMockServer.notes = new Map();
     notesMockServer.patchCalls = [];
+    notesMockServer.conflicts = new Set();
     useUi.setState({ toasts: [] });
 });
 
@@ -211,5 +212,117 @@ describe('setStarred undo contract', () => {
 
         expect(useNotes.getState().notes.a.isStarred).toBe(true);
         expect(useUi.getState().toasts).toHaveLength(0);
+    });
+});
+
+describe('setArchived undo contract', () => {
+    it('archives a single note with an undo that restores it and confirms', async () => {
+        const note = noteSummary('a', { isArchived: false });
+        seed(note);
+
+        await useNotes.getState().setArchived('a', true);
+
+        expect(useNotes.getState().notes.a.isArchived).toBe(true);
+        expect(notesMockServer.notes.get('a')?.isArchived).toBe(true);
+        expect(useUi.getState().toasts).toHaveLength(1);
+
+        await runUndo();
+
+        expect(useNotes.getState().notes.a.isArchived).toBe(false);
+        expect(notesMockServer.notes.get('a')?.isArchived).toBe(false);
+        expect(lastToast()?.tone).toBe('success');
+    });
+
+    it('archives a batch with one shared undo that restores every note silently', async () => {
+        const first = noteSummary('a', { isArchived: false });
+        const second = noteSummary('b', { isArchived: false });
+        seed(first, second);
+
+        await useNotes.getState().setArchivedMany(['a', 'b'], true);
+
+        expect(useNotes.getState().notes.a.isArchived).toBe(true);
+        expect(useNotes.getState().notes.b.isArchived).toBe(true);
+        expect(useUi.getState().toasts).toHaveLength(1);
+
+        await runUndo();
+
+        expect(useNotes.getState().notes.a.isArchived).toBe(false);
+        expect(useNotes.getState().notes.b.isArchived).toBe(false);
+        expect(useUi.getState().toasts).toHaveLength(1);
+    });
+
+    it('supports a silent confirm variant (notify confirm) with no undo toast', async () => {
+        const note = noteSummary('a', { isArchived: false });
+        seed(note);
+
+        await useNotes.getState().setArchived('a', true, { notify: 'confirm' });
+
+        expect(useNotes.getState().notes.a.isArchived).toBe(true);
+        expect(useUi.getState().toasts).toHaveLength(1);
+        expect(undoToast()).toBeUndefined();
+        expect(lastToast()?.tone).toBe('success');
+    });
+});
+
+describe('trash and restore', () => {
+    it('moves a note to the trash with a longer undo window and restores it on undo', async () => {
+        const note = noteSummary('a', { deletedAt: null });
+        seed(note);
+
+        await useNotes.getState().deleteNote('a');
+
+        expect(useNotes.getState().notes.a.deletedAt).not.toBeNull();
+        expect(notesMockServer.notes.get('a')?.deletedAt).not.toBeNull();
+        const trashToast = undoToast();
+        expect(trashToast).toBeTruthy();
+        // Destructive actions get a longer undo window than the default light-operation window.
+        expect(trashToast?.duration).toBe(8000);
+
+        await runUndo();
+
+        expect(useNotes.getState().notes.a.deletedAt).toBeNull();
+        expect(notesMockServer.notes.get('a')?.deletedAt).toBeNull();
+    });
+
+    it('restores from the trash with a success toast', async () => {
+        const note = noteSummary('a', { deletedAt: null });
+        seed(note);
+        await useNotes.getState().deleteNote('a');
+        useUi.setState({ toasts: [] });
+
+        await useNotes.getState().restoreNote('a');
+
+        expect(useNotes.getState().notes.a.deletedAt).toBeNull();
+        expect(useUi.getState().toasts).toHaveLength(1);
+        expect(lastToast()?.tone).toBe('success');
+    });
+});
+
+describe('light-op undo window', () => {
+    it('keeps the default 3800ms window for reversible operations', async () => {
+        const note = noteSummary('a', { folderId: null });
+        seed(note);
+
+        await useNotes.getState().moveNotes(['a'], FOLDER_A.id);
+
+        expect(undoToast()?.duration).toBe(3800);
+    });
+});
+
+describe('conflict recovery', () => {
+    it('adopts the newer server revision and retries the patch', async () => {
+        const note = noteSummary('a', { folderId: null });
+        seed(note);
+        notesMockServer.conflicts.add('a');
+
+        await useNotes.getState().moveNotes(['a'], FOLDER_A.id);
+
+        // Attempt 1 conflicted (rev 1); attempt 2 retried with the adopted revision (rev 2).
+        expect(notesMockServer.patchCalls.map((call) => call.rev)).toEqual([1, 2]);
+        expect(notesMockServer.conflicts.size).toBe(0);
+        expect(useNotes.getState().notes.a.folderId).toBe(FOLDER_A.id);
+        expect(useNotes.getState().notes.a.rev).toBe(2);
+        expect(notesMockServer.notes.get('a')?.folderId).toBe(FOLDER_A.id);
+        expect(undoToast()).toBeTruthy();
     });
 });

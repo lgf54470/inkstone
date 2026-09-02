@@ -591,9 +591,18 @@ export const useUi = create<UiState>((set, get) => ({
 lastPersisted = serializedPersistedState(useUi.getState())
 useUi.subscribe(persist)
 
-/** Post a toast carrying a one-click undo action; the single helper behind every store-level undo flow. */
-export function toastWithUndo(title: string, undo: () => void): void {
-  useUi.getState().toast({ title, kind: 'undo', action: { label: t('common.undo'), run: undo } })
+/**
+ * Post a toast carrying a one-click undo action; the single helper behind every store-level undo flow.
+ * `duration` overrides the default window (dangerous actions pass a longer one via their caller).
+ */
+export function toastWithUndo(title: string, undo: () => void, options?: { duration?: number }): void {
+  const input: Parameters<UiState['toast']>[0] = {
+    title,
+    kind: 'undo',
+    action: { label: t('common.undo'), run: undo },
+  }
+  if (options?.duration !== undefined) input.duration = options.duration
+  useUi.getState().toast(input)
 }
 
 export function applyThemeToDom(state: Pick<UiState, 'theme' | 'accent' | 'background' | 'fontScale'>): void {
