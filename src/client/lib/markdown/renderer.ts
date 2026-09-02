@@ -37,6 +37,7 @@ interface RenderEnvironment {
     docId: string;
     /** `true` when the caller opted into loading external https images (preview.externalImages). */
     externalImages: boolean;
+    hideFrontMatter?: boolean;
 }
 export interface WikiTarget {
     raw: string;
@@ -91,7 +92,9 @@ md.block.ruler.before('hr', 'front_matter', (state, startLine, _endLine, silent)
     state.line = parsed.lineOffset;
     return true;
 });
-md.renderer.rules.front_matter = (tokens, index) => {
+md.renderer.rules.front_matter = (tokens, index, _options, env) => {
+    if ((env as RenderEnvironment | undefined)?.hideFrontMatter)
+        return '';
     const meta = tokens[index]!.meta as {
         data: Record<string, unknown>;
         errors: string[];
@@ -677,9 +680,11 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
 export function renderMarkdown(source: string, options?: {
     /** Allow external https images; defaults to false (blocked). */
     externalImages?: boolean;
+    hideFrontMatter?: boolean;
 }): RenderResult {
     const env = emptyEnvironment();
     env.externalImages = options?.externalImages === true;
+    env.hideFrontMatter = options?.hideFrontMatter === true;
     const raw = md.render(stripObsidianComments(source), env);
     const sanitized = DOMPurify.sanitize(raw, PURIFY_CONFIG);
     const html = materializeTrustedTasks(sanitized, env.taskNonce);

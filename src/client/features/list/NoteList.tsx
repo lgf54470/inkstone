@@ -28,6 +28,8 @@ import { folderPathLabel } from '../../lib/folders';
 import { FolderPicker } from '../folders/FolderPicker';
 import { MoveToFolderSubmenu } from '../folders/MoveToFolderSubmenu';
 import { CreateFolderModal } from '../folders/CreateFolderModal';
+import { TagPill } from '../../components/TagPill';
+import { removeTagFromNote } from '../tags/tagMutations';
 import { t, useLocale, type MessageKey } from "../../lib/i18n";
 const VIEW_MESSAGE_KEYS: Record<ViewKind, MessageKey> = {
     all: 'navigation.all_notes',
@@ -734,11 +736,27 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
                 {note.excerpt}
               </p>)}
 
-            {note.tags.length > 0 && density === 'comfortable' && (<div className="mt-1.5 flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-[10.5px] text-[var(--text-tertiary)]">
-                {note.tags.map((tag) => (<span key={tag} className="max-w-[70%] shrink-0 truncate" style={{ color: tagColors.get(tag) ?? undefined }}>
-                    #{tag}
-                  </span>))}
-              </div>)}
+            {note.tags.length > 0 && density === 'comfortable' && (
+              <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1 overflow-hidden">
+                {note.tags.map((tag) => (
+                  <TagPill
+                    key={tag}
+                    tag={tag}
+                    color={tagColors.get(tag)}
+                    size="sm"
+                    removable
+                    onClick={(e) => {
+                      e?.stopPropagation();
+                      useUi.getState().openView('tag', { tag });
+                    }}
+                    onRemove={(e) => {
+                      e?.stopPropagation();
+                      void removeTagFromNote(note.id, tag);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
         {breakpoint === 'desktop' && (<Tooltip label={t("notes.open_to_side")} side="left">

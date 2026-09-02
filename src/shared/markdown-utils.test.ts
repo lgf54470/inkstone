@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addTagToFrontMatter, extractTags, interpolateNewNoteTemplate, mergeTagsIntoFrontMatter, parseFrontMatter, renderNewNoteTemplate, setFrontMatterProperty } from './markdown-utils'
+import { addTagToFrontMatter, deleteFrontMatterProperty, extractTags, interpolateNewNoteTemplate, mergeTagsIntoFrontMatter, parseFrontMatter, renameFrontMatterProperty, renderNewNoteTemplate, setFrontMatterProperty, upsertFrontMatterProperty } from './markdown-utils'
 
 describe('extractTags', () => {
   it('handles an unterminated inline-code marker with a mismatched trailing marker', () => {
@@ -178,5 +178,40 @@ describe('mergeTagsIntoFrontMatter', () => {
     expect(merged.content).not.toContain('{{createdAt}}')
     expect(merged.content).not.toContain('{ ? { createdAt } }')
     expect(parseFrontMatter(merged.content).data.tags).toEqual(['Inkstone'])
+  })
+})
+
+describe('frontmatter property manipulation', () => {
+  it('upserts properties into content without existing frontmatter', () => {
+    const raw = '# Title\n\nContent'
+    const result = upsertFrontMatterProperty(raw, 'author', 'Alice')
+    const parsed = parseFrontMatter(result)
+    expect(parsed.data.author).toBe('Alice')
+    expect(parsed.body).toContain('# Title\n\nContent')
+  })
+
+  it('upserts properties into content with existing frontmatter', () => {
+    const raw = '---\ntitle: Note\n---\n\nBody'
+    const result = upsertFrontMatterProperty(raw, 'status', 'done')
+    const parsed = parseFrontMatter(result)
+    expect(parsed.data.title).toBe('Note')
+    expect(parsed.data.status).toBe('done')
+    expect(parsed.body.trim()).toBe('Body')
+  })
+
+  it('deletes properties from frontmatter', () => {
+    const raw = '---\ntitle: Note\nstatus: draft\n---\n\nBody'
+    const result = deleteFrontMatterProperty(raw, 'status')
+    const parsed = parseFrontMatter(result)
+    expect(parsed.data.title).toBe('Note')
+    expect(parsed.data.status).toBeUndefined()
+  })
+
+  it('renames properties in frontmatter', () => {
+    const raw = '---\nold_key: 123\n---\n\nBody'
+    const result = renameFrontMatterProperty(raw, 'old_key', 'new_key')
+    const parsed = parseFrontMatter(result)
+    expect(parsed.data.old_key).toBeUndefined()
+    expect(parsed.data.new_key).toBe(123)
   })
 })

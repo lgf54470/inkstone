@@ -301,6 +301,19 @@ function rewriteLoadedNoteContents(from: string, to: string | null): void {
   }
 }
 
+export async function removeTagFromNote(noteId: string, tagName: string): Promise<void> {
+  const content = await useNotes.getState().peekContent(noteId)
+  if (content == null) return
+  const next = replaceTagInContent(content, tagName, null)
+  if (next !== content) {
+    useNotes.getState().editContent(noteId, next)
+    useUi.getState().toast({
+      title: t('tags.tag_removed_from_note', { value0: tagName }),
+      tone: 'success',
+    })
+  }
+}
+
 function newTagId(): string {
   let timestamp = ''
   let value = Date.now()

@@ -28,6 +28,7 @@ import { findNoteByTitle } from '../../store/notes/selectors'
 import { useNotes } from '../../store/notes'
 import { useSession } from '../../store/session'
 import { previewSourceAnchors } from './preview-anchors'
+import { NotePropertiesEditor } from './NotePropertiesEditor'
 import { moveMarkdownTabFocus, selectMarkdownTab } from './markdown-tabs'
 import { capturePreviewInteractionState, restorePreviewInteractionState } from './preview-state'
 import { WikiLinkHoverCard, type WikiLinkHoverCardState } from './WikiLinkHoverCard'
@@ -73,7 +74,7 @@ export const Preview = memo(function Preview({
 
 
   const debounced = useDebounced(content, 90)
-  const rendered = useMemo(() => renderMarkdown(debounced, { externalImages: preview.externalImages }), [debounced, locale, preview.externalImages])
+  const rendered = useMemo(() => renderMarkdown(debounced, { externalImages: preview.externalImages, hideFrontMatter: true }), [debounced, locale, preview.externalImages])
   const embedContextTitle = rendered.hasEmbeds ? currentTitle : ''
   const [committedHtml, setCommittedHtml] = useState(rendered.html)
   const committedHtmlRef = useRef(committedHtml)
@@ -500,6 +501,7 @@ export const Preview = memo(function Preview({
       className={cn('h-full overflow-y-auto overscroll-contain px-4 py-3', className)}
       data-preview-scroller
     >
+      <NotePropertiesEditor noteId={sourceNoteId} content={content} />
       <div
         ref={hostRef}
         onClick={onClick}

@@ -1,5 +1,5 @@
 /** Provides pure Markdown analysis shared by the browser and Worker runtimes. */
-import { parseDocument } from 'yaml'
+import { Document, parseDocument } from 'yaml'
 import { truncateText } from './text-utils'
 
 
@@ -568,6 +568,78 @@ export function setFrontMatterProperty(content: string, key: string, value: stri
   ]
   const rewritten = [...rewrittenFrontMatter, body].join('\n')
   return rewritten === normalized ? null : rewritten
+}
+
+export function upsertFrontMatterProperty(content: string, key: string, value: unknown): string {
+  const frontMatter = parseFrontMatter(content)
+  const normalized = content.replace(/\r\n/g, '\n')
+  if (frontMatter.lineOffset === 0 || frontMatter.errors.length > 0) {
+    const doc = new Document({ [key]: value })
+    const serialized = doc.toString().trim()
+    return `---\n${serialized}\n---\n\n${normalized}`
+  }
+  const lines = normalized.split('\n')
+  const header = lines.slice(0, frontMatter.lineOffset)
+  const body = lines.slice(frontMatter.lineOffset).join('\n')
+  const document = parseDocument(frontMatter.raw, { prettyErrors: false, uniqueKeys: true })
+  if (document.errors.length) return content
+  document.set(key, value)
+  const closing = header.at(-1) ?? '---'
+  const serialized = document.toString().replace(/\n$/, '')
+  return [
+    header[0] ?? '---',
+    ...(serialized ? serialized.split('\n') : []),
+    closing,
+    body,
+  ].join('\n')
+}
+
+export function deleteFrontMatterProperty(content: string, key: string): string {
+  const frontMatter = parseFrontMatter(content)
+  if (frontMatter.lineOffset === 0 || frontMatter.errors.length > 0) return content
+  const normalized = content.replace(/\r\n/g, '\n')
+  const lines = normalized.split('\n')
+  const header = lines.slice(0, frontMatter.lineOffset)
+  const body = lines.slice(frontMatter.lineOffset).join('\n')
+  const document = parseDocument(frontMatter.raw, { prettyErrors: false, uniqueKeys: true })
+  if (document.errors.length) return content
+  document.delete(key)
+  const remaining = document.toJS({ maxAliasCount: 20 }) as unknown
+  if (isPlainRecord(remaining) && Object.keys(remaining).length === 0) {
+    return body.replace(/^\n+/, '')
+  }
+  const closing = header.at(-1) ?? '---'
+  const serialized = document.toString().replace(/\n$/, '')
+  return [
+    header[0] ?? '---',
+    ...(serialized ? serialized.split('\n') : []),
+    closing,
+    body,
+  ].join('\n')
+}
+
+export function renameFrontMatterProperty(content: string, oldKey: string, newKey: string): string {
+  if (!oldKey || !newKey || oldKey === newKey) return content
+  const frontMatter = parseFrontMatter(content)
+  if (frontMatter.lineOffset === 0 || frontMatter.errors.length > 0) return content
+  const normalized = content.replace(/\r\n/g, '\n')
+  const lines = normalized.split('\n')
+  const header = lines.slice(0, frontMatter.lineOffset)
+  const body = lines.slice(frontMatter.lineOffset).join('\n')
+  const document = parseDocument(frontMatter.raw, { prettyErrors: false, uniqueKeys: true })
+  if (document.errors.length) return content
+  const val = document.get(oldKey)
+  if (val === undefined) return content
+  document.delete(oldKey)
+  document.set(newKey, val)
+  const closing = header.at(-1) ?? '---'
+  const serialized = document.toString().replace(/\n$/, '')
+  return [
+    header[0] ?? '---',
+    ...(serialized ? serialized.split('\n') : []),
+    closing,
+    body,
+  ].join('\n')
 }
 
 /**
