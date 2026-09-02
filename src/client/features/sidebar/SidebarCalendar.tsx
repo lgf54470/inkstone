@@ -5,7 +5,7 @@ import { cn } from '../../lib/cn';
 import { t, useLocale } from '../../lib/i18n';
 import { useNotes } from '../../store/notes';
 import { useUi } from '../../store/ui';
-import { ActivityCalendar } from '../../components/activity-calendar';
+import { ActivityCalendarMemo } from '../../components/activity-calendar';
 import { buildActivityProjectionCached } from '../../lib/calendar-tree';
 import { CalendarView, loadCalendarPersist, saveCalendarPersist } from './calendar-persist';
 import { useGapIndicatorStore } from '../list/use-gap-indicator';
@@ -95,6 +95,20 @@ aliases:
             toast({ title: t("sidebar.calendar_diary_created_value0", { value0: key }), tone: 'success' });
     }, [applyDateFilter, createNote, diaryTitle, openNote, toast]);
 
+    // Every ActivityCalendar prop is stabilized so the shallow memo only skips
+    // the subtree when the projection identities genuinely didn't change.
+    const onDayClick = useCallback((key: string, diaryId: string | null) => { void handleDayClick(key, diaryId); }, [handleDayClick]);
+    const onDaySelect = useCallback((key: string) => applyDateFilter({ start: key, end: key }), [applyDateFilter]);
+    const onRangeSelect = useCallback((start: string, end: string) => applyDateFilter({ start, end }), [applyDateFilter]);
+    const onGapDayClick = useCallback((key: string) => {
+        const relative = useUi.getState().relativeFilter;
+        if (relative)
+            useUi.getState().setRelativeFilter({ days: relative.days, direction: 'edit' });
+        else
+            applyDateFilter({ start: key, end: key });
+    }, [applyDateFilter]);
+    const onNoteClick = useCallback((noteId: string) => { openNote(noteId); }, [openNote]);
+
     return (<section aria-label={t("sidebar.calendar_title")} className="mb-2.5">
         <div className="flex items-center gap-1 px-0.5">
             <button type="button" aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)} className="flex min-w-0 items-center gap-1 rounded-[var(--r-sm)] px-1 py-0.5 text-left transition-colors hover:bg-[var(--bg-hover)]">
@@ -104,13 +118,6 @@ aliases:
                 <ChevronDown size={11} className={cn('shrink-0 text-[var(--text-quaternary)] transition-transform duration-[var(--dur-fast)]', collapsed && '-rotate-90')}/>
             </button>
         </div>
-        {!collapsed && (<ActivityCalendar counts={counts} notesByDay={notesByDay} getDiaryId={getDiaryId} locale={locale} weekStart={weekStart} today={now} selectedRange={dateFilter} latestEditKey={latestEditKey} view={view} onViewChange={setView} cursor={cursor} onCursorChange={setCursor} columnsPreference={yearGridColumns} jumpFlash={calendarJump?.nonce ?? 0}            onDayClick={(key, diaryId) => void handleDayClick(key, diaryId)} onDaySelect={(key) => applyDateFilter({ start: key, end: key })} onRangeSelect={(start, end) => applyDateFilter({ start, end })}
-            onGapDayClick={(key) => {
-                const relative = useUi.getState().relativeFilter;
-                if (relative)
-                    useUi.getState().setRelativeFilter({ days: relative.days, direction: 'edit' });
-                else
-                    applyDateFilter({ start: key, end: key });
-            }} onNoteClick={openNote}/>)}
+        {!collapsed && (<ActivityCalendarMemo counts={counts} notesByDay={notesByDay} getDiaryId={getDiaryId} locale={locale} weekStart={weekStart} today={now} selectedRange={dateFilter} latestEditKey={latestEditKey} view={view} onViewChange={setView} cursor={cursor} onCursorChange={setCursor} columnsPreference={yearGridColumns} jumpFlash={calendarJump?.nonce ?? 0} onDayClick={onDayClick} onDaySelect={onDaySelect} onRangeSelect={onRangeSelect} onGapDayClick={onGapDayClick} onNoteClick={onNoteClick}/>)}
     </section>);
 }

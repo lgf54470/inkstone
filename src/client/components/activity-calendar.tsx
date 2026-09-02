@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { BarChart3, CalendarCheck, CalendarDays, CalendarRange, ChevronDown, ChevronLeft, ChevronRight, FileText, RotateCcw } from 'lucide-react';
 import type { DateRangeFilter } from '@shared/types';
 import { cn } from '../lib/cn';
@@ -9,6 +9,12 @@ import { IconButton } from './primitives';
 import { Tooltip } from './overlay';
 import { MonthGrid, YearGrid, YEAR_GRID_COLUMNS, buildMonthGridCells, yearGridColumns, type YearGridColumns, type YearGridColumnsPref } from './calendar-grids';
 export { latestEditOutsideWindow };
+
+// The calendar's inputs (counts, notesByDay, diary lookup) now keep their
+// identity whenever a notes-map commit touches none of the read fields, so a
+// shallow memo lets the whole heatmap subtree skip rendering on such commits
+// (typing pauses still legitimately rebuild today's slice and re-render).
+export const ActivityCalendarMemo = memo(ActivityCalendar);
 
 const HEAT_PERCENTS = [0, 16, 34, 54, 76] as const;
 

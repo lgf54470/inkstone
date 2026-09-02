@@ -27,6 +27,9 @@ export interface Env {
   AI?: {
     run: <T = unknown>(model: string, inputs: unknown) => Promise<T>
   }
+
+  /** Present only in the dev-only wrangler.kv.toml; unlocks /api/dev/seed for local perf seeding. */
+  DEV_SEED?: string
 }
 
 export interface DatabaseState {

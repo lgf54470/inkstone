@@ -53,6 +53,7 @@ crons = ["0 * * * *", "15,45 * * * *"]
 
 [vars]
 APP_NAME = "Inkstone"
+DEV_SEED = "1"
 
 [observability]
 enabled = true
