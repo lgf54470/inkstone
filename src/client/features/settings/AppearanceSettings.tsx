@@ -2,7 +2,8 @@ import { useCallback, useMemo } from 'react'
 import type { AccentName, AppLocale, BackgroundName, ProseFont, ProseWidth, ThemePref, UiDensity } from '@shared/types'
 import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import { cn } from '../../lib/cn'
-import { Segmented, SettingRow, Slider, type SegmentedOption } from '../../components/form'
+import { Segmented, SettingRow, Slider, Switch, type SegmentedOption } from '../../components/form'
+import { setCalendarTreeShowEmpty, setCalendarTreeVisible, useCalendarTreeShowEmpty, useCalendarTreeVisible } from '../../lib/calendar-prefs'
 import { Tooltip } from '../../components/overlay'
 import { useSession } from '../../store/session'
 import { switchThemeWithTransition } from '../../store/ui'
@@ -26,6 +27,8 @@ export function AppearanceSettings({
   const appearance = useSession((s) => s.settings.appearance)
   const update = useSession((s) => s.updateSettings)
   const locale = useLocale()
+  const calendarTreeVisible = useCalendarTreeVisible()
+  const calendarTreeShowEmpty = useCalendarTreeShowEmpty()
 
   const setLanguage = useCallback((language: AppLocale) => void update({ appearance: { language } }), [update])
   const setTheme = useCallback((theme: ThemePref) => {
@@ -148,6 +151,14 @@ export function AppearanceSettings({
             onChange={setDensity}
             options={densityOptions}
           />
+        </SettingRow>
+
+        <SettingRow title={t("settings.sidebar_calendar_tree")} description={t("settings.sidebar_calendar_tree_desc")}>
+          <Switch checked={calendarTreeVisible} onChange={setCalendarTreeVisible} label={t("settings.sidebar_calendar_tree")}/>
+        </SettingRow>
+
+        <SettingRow title={t("settings.show_empty_calendar_periods")} description={t("settings.show_empty_calendar_periods_desc")}>
+          <Switch checked={calendarTreeShowEmpty} onChange={setCalendarTreeShowEmpty} label={t("settings.show_empty_calendar_periods")}/>
         </SettingRow>
       </section>
 

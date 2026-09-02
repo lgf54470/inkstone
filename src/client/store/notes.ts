@@ -8,6 +8,7 @@ import type { AppLocale, Folder, Note, NoteSummary, SortKey, SortOrder, SyncResp
 import { api, ApiError, CLIENT_ID } from '../lib/api';
 import { localDb, publishBroadcast, type BroadcastPayload, type OutboxItem } from '../lib/db';
 import { NotePersistCoalescer } from '../lib/note-persist';
+import { isCalendarFolderId } from '../lib/calendar-tree';
 import { folderDescendantIds } from '../lib/folders';
 import { matchesView } from '../lib/note-filter';
 import { useSession } from './session';
@@ -650,7 +651,7 @@ export const useNotes = create<NotesState>((set, get) => ({
         const id = input?.id ?? newLocalEntityId();
         const existing = get().notes[id];
         const title = (input?.title ?? '').trim().slice(0, LIMITS.titleMaxLength);
-        const folderId = input?.folderId ?? currentFolderId();
+        const folderId = input?.folderId && !isCalendarFolderId(input.folderId) ? input.folderId : currentFolderId();
         let content: string;
         let cursor: number | null = null;
         if (input?.content !== undefined) {
@@ -2576,10 +2577,10 @@ function normalizeFolder(folder: Folder): Folder {
 function reconcileFolderUi(folders: Folder[]): void {
     const validIds = new Set(folders.map((folder) => folder.id));
     const ui = useUi.getState();
-    const expandedFolders = ui.expandedFolders.filter((id) => validIds.has(id));
+    const expandedFolders = ui.expandedFolders.filter((id) => validIds.has(id) || isCalendarFolderId(id));
     if (expandedFolders.length !== ui.expandedFolders.length)
         useUi.setState({ expandedFolders });
-    if (ui.view === 'folder' && (!ui.folderId || !validIds.has(ui.folderId)))
+    if (ui.view === 'folder' && (!ui.folderId || (!isCalendarFolderId(ui.folderId) && !validIds.has(ui.folderId))))
         ui.openView('all');
 }
 function tagEqual(a: Tag, b: Tag): boolean {
@@ -2627,7 +2628,7 @@ function frontMatterTitleOf(content: string): string | undefined {
 }
 function currentFolderId(): string | null {
     const ui = useUi.getState();
-    return ui.view === 'folder' ? ui.folderId : null;
+    return ui.view === 'folder' && !isCalendarFolderId(ui.folderId) ? ui.folderId : null;
 }
 export function createContextualNote(input?: {
     title?: string;

@@ -1,4 +1,5 @@
 import type { DateRangeFilter, NoteSummary, ViewKind } from '@shared/types';
+import { calendarPeriodMatchesNote, isCalendarFolderId, parseCalendarId } from './calendar-tree';
 import { dateKey } from './time';
 
 /** Decide whether a note belongs to the active list view, optionally stacked with a multi-tag selection (`any` or `all` must match). */
@@ -37,8 +38,13 @@ export function matchesView(
             return note.isStarred;
         case 'unfiled':
             return !note.folderId;
-        case 'folder':
+        case 'folder': {
+            if (isCalendarFolderId(folderId)) {
+                const period = parseCalendarId(folderId);
+                return period !== null && calendarPeriodMatchesNote(period, note);
+            }
             return Boolean(note.folderId && (folderScope?.has(note.folderId) ?? note.folderId === folderId));
+        }
         case 'tag':
             return Boolean(tag && note.tags.includes(tag));
         case 'recent':

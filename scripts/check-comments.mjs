@@ -113,6 +113,7 @@ const allowed = new Map([
     "/** How multi-selected tags filter the note list and palette: any or all. */",
     "/** Inclusive date range (YYYY-MM-DD keys) the note list is filtered to, set from the sidebar calendar. */",
     "/** When set, `dateFilter` is the live-materialized window of this rolling filter. */",
+    "/** Sort the user left behind when entering a calendar folder view, restored on exit. */",
     "// Keep the multi-select when entering a folder view so it stacks with",
     "// the folder filter; any other navigation clears the selection.",
   ]],

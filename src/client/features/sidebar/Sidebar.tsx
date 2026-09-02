@@ -17,6 +17,7 @@ import { FolderAppearance, FolderPicker } from '../folders/FolderPicker';
 import { TagAppearance } from '../tags/TagAppearance';
 import { createTag, deleteTag, renameTag, setTagColor } from '../tags/tagMutations';
 import { SidebarCalendar } from './SidebarCalendar';
+import { CalendarTree } from './CalendarTree';
 import { t } from "../../lib/i18n";
 export function Sidebar({ collapsed = false, onCollapse, }: {
     collapsed?: boolean;
@@ -351,6 +352,8 @@ function FolderSection() {
           </IconButton>
         </Tooltip>
       </div>
+
+      <CalendarTree />
 
       {tree.length === 0 ? (<button type="button" disabled={creating} onClick={() => void create(null)} className="mt-0.5 flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[12px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-45 md:h-[30px]">
           <FolderPlus size={13}/>{t("sidebar.create_first_folder")}</button>) : (<div role="tree" aria-label={t("navigation.folder")} className="mt-0.5 space-y-px">

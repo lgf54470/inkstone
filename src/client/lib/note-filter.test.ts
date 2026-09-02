@@ -104,4 +104,30 @@ describe('matchesView', () => {
         expect(matchesView(tagged, 'all', null, null, undefined, ['reading'])).toBe(false);
         expect(matchesView(tagged, 'all', null, null, undefined, ['Reading'])).toBe(true);
     });
+
+    it('matches calendar folder ids by note creation time', () => {
+        const created = note({ createdAt: new Date(2026, 8, 1, 12).getTime() });
+        expect(matchesView(created, 'folder', 'cal', null)).toBe(true);
+        expect(matchesView(created, 'folder', 'cal:2026', null)).toBe(true);
+        expect(matchesView(created, 'folder', 'cal:2026:q3', null)).toBe(true);
+        expect(matchesView(created, 'folder', 'cal:2026:q3:09', null)).toBe(true);
+        expect(matchesView(created, 'folder', 'cal:2026:q3:09:w36', null)).toBe(true);
+        expect(matchesView(created, 'folder', 'cal:2025', null)).toBe(false);
+        expect(matchesView(created, 'folder', 'cal:2026:q4', null)).toBe(false);
+        expect(matchesView(created, 'folder', 'cal:2026:q3:07', null)).toBe(false);
+        expect(matchesView(created, 'folder', 'cal:2026:q3:09:w35', null)).toBe(false);
+        expect(matchesView(created, 'folder', 'cal:2026:q3:09:w36', null, new Set(['cal']))).toBe(true);
+    });
+
+    it('stacks tag selection on top of calendar folder views', () => {
+        const created = note({ createdAt: new Date(2026, 8, 1, 12).getTime(), tags: ['work'] });
+        expect(matchesView(created, 'folder', 'cal:2026:q3:09', null, undefined, ['work'])).toBe(true);
+        expect(matchesView(created, 'folder', 'cal:2026:q3:09', null, undefined, ['personal'])).toBe(false);
+    });
+
+    it('applies the day filter before the calendar membership check', () => {
+        const created = note({ createdAt: new Date(2026, 8, 1, 12).getTime(), updatedAt: new Date(2020, 0, 1).getTime() });
+        expect(matchesView(created, 'folder', 'cal', null, undefined, [], 'any', { start: '2019-01-01', end: '2019-01-03' })).toBe(false);
+        expect(matchesView(created, 'folder', 'cal', null, undefined, [], 'any', { start: '2019-12-30', end: '2020-01-03' })).toBe(true);
+    });
 });

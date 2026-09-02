@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Archive, Clock, Columns2, Download, Eye, FilePlus2, FileText, FolderPlus, Hash, Keyboard, LayoutTemplate, Moon, Palette, Pencil, Plus, Search, Settings, Share2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, CalendarDays, Clock, Columns2, Download, Eye, FilePlus2, FileText, FolderPlus, Hash, Keyboard, LayoutTemplate, Moon, Palette, Pencil, Plus, Search, Settings, Share2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
 import type { NoteSummary, SearchHit } from '@shared/types';
 import { truncateText } from '@shared/text-utils';
 import { cn } from '../../lib/cn';
@@ -14,6 +14,7 @@ import { TagFilterPopover } from '../../components/tag-filter-popover';
 import { useUi } from '../../store/ui';
 import { createContextualNote, useNotes } from '../../store/notes';
 import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands';
+import { calendarAncestorIds, calendarId, calendarNodeName, calendarPeriodKeyRange, calendarPeriodLabel, calendarPeriodsForDate, parseCalendarJumpQuery, type CalendarPeriod } from '../../lib/calendar-tree';
 import { folderPathLabel, openFolderView } from '../../lib/folders';
 import { useSession } from '../../store/session';
 import { t, useLocale } from "../../lib/i18n";
@@ -74,6 +75,16 @@ export function CommandPalette({ onClose }: {
         onClose();
         item.run();
     }, [onClose]);
+    const openCalendarPeriod = useCallback((period: CalendarPeriod) => {
+        const id = calendarId(period);
+        const ancestors = calendarAncestorIds(id);
+        if (ancestors.length) {
+            useUi.setState((state) => ({
+                expandedFolders: [...new Set([...state.expandedFolders, ...ancestors])],
+            }));
+        }
+        openView('folder', { folderId: id });
+    }, [openView]);
 
     const noteList = useMemo(() => Object.values(notes)
         .filter((note) => !note.deletedAt)
@@ -118,6 +129,7 @@ export function CommandPalette({ onClose }: {
         const activeNote = activeNoteId ? notes[activeNoteId] : null;
         const currentNoteGroup = t("common.current_note");
         const isDark = document.documentElement.dataset.theme === 'dark';
+        const calendarPeriods = calendarPeriodsForDate(new Date());
         return [
             {
                 id: 'cmd-new',
@@ -293,6 +305,38 @@ export function CommandPalette({ onClose }: {
                 group: t("common.navigation"),
                 run: () => openView('starred'),
             },
+            {
+                id: 'cmd-calendar-year',
+                kind: 'command',
+                label: t("command.calendar_this_year_value0", { value0: calendarNodeName(calendarPeriods.year) }),
+                icon: <CalendarDays size={14}/>,
+                group: t("common.navigation"),
+                run: () => openCalendarPeriod(calendarPeriods.year),
+            },
+            {
+                id: 'cmd-calendar-quarter',
+                kind: 'command',
+                label: t("command.calendar_this_quarter_value0", { value0: calendarNodeName(calendarPeriods.quarter) }),
+                icon: <CalendarDays size={14}/>,
+                group: t("common.navigation"),
+                run: () => openCalendarPeriod(calendarPeriods.quarter),
+            },
+            {
+                id: 'cmd-calendar-month',
+                kind: 'command',
+                label: t("command.calendar_this_month_value0", { value0: calendarNodeName(calendarPeriods.month) }),
+                icon: <CalendarDays size={14}/>,
+                group: t("common.navigation"),
+                run: () => openCalendarPeriod(calendarPeriods.month),
+            },
+            {
+                id: 'cmd-calendar-week',
+                kind: 'command',
+                label: t("command.calendar_this_week_value0", { value0: calendarNodeName(calendarPeriods.week) }),
+                icon: <CalendarDays size={14}/>,
+                group: t("common.navigation"),
+                run: () => openCalendarPeriod(calendarPeriods.week),
+            },
         ];
     }, [
         activeNoteId,
@@ -301,6 +345,7 @@ export function CommandPalette({ onClose }: {
         createFolder,
         deleteNote,
         notes,
+        openCalendarPeriod,
         openPanel,
         openView,
         patchNote,
@@ -383,7 +428,25 @@ export function CommandPalette({ onClose }: {
             score: match.score,
             run: () => openFolderView(folders, choice.folder.id),
         }));
-        const all = [...matchedCommands, ...matchedNotes, ...fullText, ...matchedTags, ...matchedFolders];
+        const jumpPeriod = parseCalendarJumpQuery(text, new Date(now));
+        const jumpItems: Item[] = jumpPeriod
+            ? (() => {
+                const id = calendarId(jumpPeriod);
+                const range = calendarPeriodKeyRange(id);
+                const display = calendarPeriodLabel(jumpPeriod) ?? '';
+                return [{
+                    id: `calendar-jump-${id}`,
+                    kind: 'command',
+                    label: t("command.calendar_jump_value0", { value0: display }),
+                    detail: range ? `${range.start} ~ ${range.end}` : undefined,
+                    icon: <CalendarDays size={14}/>,
+                    group: t("common.navigation"),
+                    score: 95,
+                    run: () => openCalendarPeriod(jumpPeriod),
+                }];
+            })()
+            : [];
+        const all = [...jumpItems, ...matchedCommands, ...matchedNotes, ...fullText, ...matchedTags, ...matchedFolders];
         if (!all.length) {
             all.push({
                 id: 'create-with-title',
@@ -406,6 +469,7 @@ export function CommandPalette({ onClose }: {
         folderIndex,
         commands,
         remote,
+        openCalendarPeriod,
         recentNoteIds,
         openNote,
         openView,

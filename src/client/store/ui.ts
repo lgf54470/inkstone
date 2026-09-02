@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AccentName, BackgroundName, DateRangeFilter, EditorLayout, RelativeFilter, SortKey, SortOrder, ThemePref, UiDensity, ViewKind } from '@shared/types'
 import { ACCENTS, LIMITS, VIEW_KINDS } from '@shared/constants'
+import { isCalendarFolderId } from '../lib/calendar-tree'
 import { truncateText } from '@shared/text-utils'
 import { UI_STORAGE_KEY } from '../lib/runtime'
 
@@ -64,6 +65,8 @@ interface UiState {
   dateFilter: DateRangeFilter | null
   /** When set, `dateFilter` is the live-materialized window of this rolling filter. */
   relativeFilter: RelativeFilter | null
+  /** Sort the user left behind when entering a calendar folder view, restored on exit. */
+  calendarSortOverride: { sort: SortKey; order: SortOrder } | null
   recentNoteIds: string[]
 
 
@@ -136,7 +139,7 @@ const DEFAULTS = {
   sort: 'updated' as SortKey,
   order: 'desc' as SortOrder,
   density: 'comfortable' as UiDensity,
-  expandedFolders: [] as string[],
+  expandedFolders: ['cal'] as string[],
   activeNoteId: null,
   workspaceSplitRatio: null as number | null,
   workspacePrimaryNoteId: null as string | null,
@@ -148,6 +151,7 @@ const DEFAULTS = {
   selectedTagsMatch: 'any' as const,
   dateFilter: null as DateRangeFilter | null,
   relativeFilter: null as RelativeFilter | null,
+  calendarSortOverride: null as { sort: SortKey; order: SortOrder } | null,
   theme: 'system' as ThemePref,
   accent: 'indigo' as AccentName,
   background: 'paper' as BackgroundName,
@@ -427,19 +431,35 @@ export const useUi = create<UiState>((set, get) => ({
   setMobilePane: (mobilePane) => set({ mobilePane }),
 
   openView: (view, options) =>
-    set((s) => ({
-      view,
-      folderId: options?.folderId ?? null,
-      tag: options?.tag ?? null,
-      selectedIds: [],
-      dateFilter: null,
-      // Keep the multi-select when entering a folder view so it stacks with
-      // the folder filter; any other navigation clears the selection.
-      selectedTags: view === 'folder' ? s.selectedTags : [],
-      mobilePane: 'list',
-
-      navDrawerOpen: false,
-    })),
+    set((s) => {
+      const folderId = options?.folderId ?? null
+      const enteringCalendar = view === 'folder' && isCalendarFolderId(folderId)
+      return {
+        view,
+        folderId,
+        tag: options?.tag ?? null,
+        selectedIds: [],
+        dateFilter: null,
+        // Keep the multi-select when entering a folder view so it stacks with
+        // the folder filter; any other navigation clears the selection.
+        selectedTags: view === 'folder' ? s.selectedTags : [],
+        mobilePane: 'list',
+        navDrawerOpen: false,
+        ...(enteringCalendar
+            ? {
+                calendarSortOverride: s.calendarSortOverride ?? { sort: s.sort, order: s.order },
+                sort: 'created',
+                order: 'desc',
+            }
+            : s.calendarSortOverride
+                ? {
+                    calendarSortOverride: null,
+                    sort: s.calendarSortOverride.sort,
+                    order: s.calendarSortOverride.order,
+                }
+                : {}),
+      }
+    }),
 
   toggleTagSelection: (tag) =>
     set((s) => {

@@ -1,5 +1,5 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDownWideNarrow, Bookmark, CalendarDays, Check, CheckSquare2, Columns2, Copy, FileCode, FileDown, FileText, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
+import { Archive, ArrowDownWideNarrow, Bookmark, CalendarDays, Check, CheckSquare2, ChevronLeft, ChevronRight, Columns2, Copy, FileCode, FileDown, FileText, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
 import type { DateRangeFilter, NoteSummary, SortKey, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { groupLabel } from '../../lib/time';
@@ -13,7 +13,7 @@ import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../com
 import { Empty, NoteListSkeleton } from '../../components/feedback';
 import { TagFilterPopover } from '../../components/tag-filter-popover';
 import { DateRangePopover } from '../../components/date-range-popover';
-import { addDaysKey, isWeekRangeKey, parseDateKey, weekStartKeyOf } from '../../lib/time';
+import { addDaysKey, daysBetweenKeys, isWeekRangeKey, parseDateKey, weekStartKeyOf } from '../../lib/time';
 import { computeLatestEditKey } from './use-rolling-filter';
 import { useGapIndicatorStore } from './use-gap-indicator';
 import { loadRememberedFilter, loadSessionFilter, saveRememberedFilter, saveSessionFilter } from './list-filter-persist';
@@ -21,6 +21,7 @@ import { useUi } from '../../store/ui';
 import { createContextualNote, useNotes, useVisibleNotes } from '../../store/notes';
 import { useNoteTemplates } from '../../store/note-templates';
 import { createNoteFromTemplate } from '../../lib/template-notes';
+import { calendarAncestorIds, calendarId, calendarNearestNeighbors, calendarPathSegments, calendarPeriodKeyRange, calendarPeriodLabel, calendarPeriodsForDate, isCalendarFolderId, parseCalendarId, type CalendarNode } from '../../lib/calendar-tree';
 import { folderPathLabel } from '../../lib/folders';
 import { FolderPicker } from '../folders/FolderPicker';
 import { t, useLocale, type MessageKey } from "../../lib/i18n";
@@ -131,8 +132,13 @@ export function NoteList() {
         filterScope.current = { view, folderId, tag };
     }, [view, folderId, tag]);
     const title = useMemo(() => {
-        if (view === 'folder')
+        if (view === 'folder') {
+            if (isCalendarFolderId(folderId)) {
+                const segments = calendarPathSegments(folderId);
+                return segments ? [t("sidebar.calendar_folder"), ...segments].join(' / ') : t("sidebar.calendar_folder");
+            }
             return (folderId ? folderPathLabel(folders, folderId) : '') || t("navigation.folder");
+        }
         if (view === 'tag')
             return `#${tag ?? ''}`;
         return t(VIEW_MESSAGE_KEYS[view]);
@@ -361,7 +367,7 @@ export function NoteList() {
         <div className="mb-2.5 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <h2 className="truncate text-[14.5px] font-semibold tracking-[-0.016em] text-[var(--text-primary)]">{title}</h2>
-            {view === 'folder' && <p className="mt-0.5 truncate text-[10.5px] text-[var(--text-quaternary)]">{t("folders.includes_subfolders")}</p>}
+            {view === 'folder' && <p className="mt-0.5 truncate text-[10.5px] text-[var(--text-quaternary)]">{isCalendarFolderId(folderId) ? t("sidebar.calendar_folder_hint") : t("folders.includes_subfolders")}</p>}
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
             {breakpoint === 'tablet' && (<Tooltip label={t("notes.open_navigation")}>
@@ -473,7 +479,7 @@ export function NoteList() {
       </header>
 
       <div key={`${view}:${folderId ?? ''}:${tag ?? ''}`} ref={listRef} role="listbox" aria-label={title} aria-multiselectable="true" aria-activedescendant={activeNoteId && renderedIds.has(activeNoteId) ? `note-option-${activeNoteId}` : undefined} tabIndex={0} onKeyDown={onKeyDown} className="anim-view-content min-h-0 flex-1 overflow-y-auto px-2 pb-4 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
-        {!hydrated && loading ? (<NoteListSkeleton />        ) : filtered.length === 0 ? (<ListEmpty view={view} filtering={Boolean(filter)} dayFiltering={Boolean(dateFilter)} tagFiltering={selectedTags.length > 0} latestEdit={latestEdit} onJumpToLatest={() => { if (latestEdit) applyFixedRange({ start: latestEdit.key, end: latestEdit.key }); }} weekFiltered={weekFiltered} onJumpToLatestWeek={() => { if (latestWeekRange) applyFixedRange(latestWeekRange); }}/>) : (groups.map((group) => (<div key={group.key} role="group" aria-label={group.label ?? title}>
+        {!hydrated && loading ? (<NoteListSkeleton />        ) : filtered.length === 0 ? (<ListEmpty view={view} folderId={folderId} filtering={Boolean(filter)} dayFiltering={Boolean(dateFilter)} tagFiltering={selectedTags.length > 0} latestEdit={latestEdit} onJumpToLatest={() => { if (latestEdit) applyFixedRange({ start: latestEdit.key, end: latestEdit.key }); }} weekFiltered={weekFiltered} onJumpToLatestWeek={() => { if (latestWeekRange) applyFixedRange(latestWeekRange); }}/>) : (groups.map((group) => (<div key={group.key} role="group" aria-label={group.label ?? title}>
               {group.label && (<div className="px-2 pt-3 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
                   {group.label}
                 </div>)}
@@ -809,8 +815,9 @@ function BulkBar() {
       {folderPickerOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={commonFolderId} rootLabel={t("notes.remove_from_folder")} onSelect={(folderId) => void runAll(() => performAll((id) => patchNote(id, { folderId }), folderId ? t("notes.moved") : t("notes.moved_out")))} onClose={() => setFolderPickerOpen(false)}/>}
     </div>);
 }
-function ListEmpty({ view, filtering, dayFiltering, tagFiltering, latestEdit, onJumpToLatest, weekFiltered, onJumpToLatestWeek }: {
+function ListEmpty({ view, folderId, filtering, dayFiltering, tagFiltering, latestEdit, onJumpToLatest, weekFiltered, onJumpToLatestWeek }: {
     view: string;
+    folderId: string | null;
     filtering: boolean;
     dayFiltering: boolean;
     tagFiltering: boolean;
@@ -819,6 +826,7 @@ function ListEmpty({ view, filtering, dayFiltering, tagFiltering, latestEdit, on
     weekFiltered: boolean;
     onJumpToLatestWeek: () => void;
 }) {
+    const openView = useUi((s) => s.openView);
     const shortcut = (combo: string) => prettyCombo(combo).join('+');
     if (filtering) {
         return <Empty art="search" title={t("notes.no_matching_notes")} description={t("notes.try_another_search_or_press_shortcut_to_search_everywhere", { shortcut: shortcut('mod+k') })}/>;
@@ -835,6 +843,59 @@ function ListEmpty({ view, filtering, dayFiltering, tagFiltering, latestEdit, on
     }
     if (tagFiltering) {
         return <Empty art="tag" title={t("notes.no_notes_match_selected_tags")} description={t("notes.adjust_selected_tags_or_switch_match_mode")}/>;
+    }
+    const calendarPeriod = isCalendarFolderId(folderId) ? parseCalendarId(folderId) : null;
+    if (calendarPeriod) {
+        const notes = useNotes((s) => s.notes);
+        const label = calendarPeriodLabel(calendarPeriod);
+        const range = calendarPeriodKeyRange(calendarId(calendarPeriod));
+        const at = calendarPeriodsForDate(new Date());
+        const target = calendarPeriod.kind === 'week' ? at.week : at.month;
+        const openCalendarId = (id: string) => {
+            const ancestors = calendarAncestorIds(id);
+            if (ancestors.length) {
+                useUi.setState((state) => ({
+                    expandedFolders: [...new Set([...state.expandedFolders, ...ancestors])],
+                }));
+            }
+            openView('folder', { folderId: id });
+        };
+        const { prev, next } = calendarNearestNeighbors(calendarPeriod, Object.values(notes ?? {}));
+        const targetStart = range?.start;
+        let nearest: CalendarNode | null = null;
+        if (prev && next && targetStart) {
+            const prevStart = calendarPeriodKeyRange(prev.id)?.start;
+            const nextStart = calendarPeriodKeyRange(next.id)?.start;
+            nearest = prevStart && nextStart
+                ? Math.abs(daysBetweenKeys(targetStart, prevStart)) <= Math.abs(daysBetweenKeys(targetStart, nextStart)) ? prev : next
+                : prev;
+        }
+        else {
+            nearest = prev ?? next;
+        }
+        const neighborLabel = (node: CalendarNode) => {
+            const parsed = parseCalendarId(node.id);
+            return (parsed ? calendarPeriodLabel(parsed) : null) ?? node.name;
+        };
+        const neighborButton = (node: CalendarNode, leading: boolean) => (
+            <button type="button" onClick={() => openCalendarId(node.id)} className="inline-flex h-7 items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-default)] px-2.5 text-[11.5px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                {leading && <ChevronLeft size={12}/>}{neighborLabel(node)} · {t("common.value0_notes", { value0: node.count })}{!leading && <ChevronRight size={12}/>}
+            </button>);
+        return <Empty art="folder" title={t("notes.no_notes_in_this_period")} description={range && label ? `${label} · ${t("notes.calendar_period_range_value0", { value0: `${range.start} ~ ${range.end}` })}` : undefined} action={<div className="flex flex-col items-center gap-2">
+            {nearest && (<button type="button" onClick={() => openCalendarId(nearest.id)} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                <CalendarDays size={13}/>{t("notes.jump_to_nearest_period")}
+            </button>)}
+            <button type="button" onClick={() => openCalendarId(calendarId(target))} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                <CalendarDays size={13}/>{t(calendarPeriod.kind === 'week' ? "notes.view_this_week" : "notes.view_this_month")}
+            </button>
+            <button type="button" onClick={() => void createContextualNote()} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                <Plus size={13}/>{t("common.new_note")}
+            </button>
+            {(prev || next) && (<div className="flex items-center gap-1.5">
+                {prev && neighborButton(prev, true)}
+                {next && neighborButton(next, false)}
+            </div>)}
+        </div>}/>;
     }
     const config: Record<string, {
         art: 'notes' | 'starred' | 'trash' | 'archive' | 'folder' | 'tag';
