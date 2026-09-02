@@ -14,6 +14,19 @@ export const TODO_TREE: VirtualTreeNamespace = { rootId: TODO_ROOT_ID, prefix: '
 
 export const DEFAULT_TODO_TAG = '待办'
 
+export const TREE_ROW_INDENT_BASE = 6
+export const TREE_ROW_INDENT_STEP = 13
+
+// Left padding (px) for a sidebar tree row at the given visual level, where level 0 is a root row.
+export function treeRowIndent(level: number): number {
+    return TREE_ROW_INDENT_BASE + level * TREE_ROW_INDENT_STEP
+}
+
+// Virtual rows count the root at depth -1, so a row's visual level is its depth plus one.
+export function virtualTreeRowIndent(depth: number): number {
+    return treeRowIndent(depth + 1)
+}
+
 export function splitTodoTags(tagText: string): string[] {
     return tagText.split(',').map((tag) => tag.trim()).filter(Boolean)
 }

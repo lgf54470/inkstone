@@ -13,6 +13,7 @@ import { useSession } from '../../store/session';
 import { useUpdate } from '../../store/update';
 import { createContextualNote, useFolderTree, useNavigationCounts, useNotes, type FolderNode } from '../../store/notes';
 import { folderDescendantIds, folderPath, folderPathLabel, openFolderView } from '../../lib/folders';
+import { treeRowIndent } from '../../lib/calendar-tree';
 import { FolderAppearance, FolderPicker } from '../folders/FolderPicker';
 import { TagAppearance } from '../tags/TagAppearance';
 import { createTag, deleteTag, renameTag, setTagColor } from '../tags/tagMutations';
@@ -537,7 +538,7 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
             e.dataTransfer.effectAllowed = 'move';
         }} className={cn('group relative flex h-10 items-center gap-1 rounded-[var(--r-md)] pr-1 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active
             ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
-            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dropState === 'inside' && 'ring-1 ring-[var(--accent)]')} style={{ paddingLeft: 6 + node.depth * 13 }}>
+            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dropState === 'inside' && 'ring-1 ring-[var(--accent)]')} style={{ paddingLeft: treeRowIndent(node.depth) }}>
         {dropState === 'before' && <span aria-hidden="true" className="pointer-events-none absolute top-0 right-1 left-1 h-px bg-[var(--accent)]"/>}
         {dropState === 'after' && <span aria-hidden="true" className="pointer-events-none absolute right-1 bottom-0 left-1 h-px bg-[var(--accent)]"/>}
         <Tooltip label={expanded ? t("sidebar.collapse") : t("sidebar.expand")} side="right">

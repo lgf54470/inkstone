@@ -3,7 +3,7 @@ import { CalendarDays, CheckSquare, ChevronRight, FolderClosed, FolderOpen } fro
 import type { NoteSummary } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { t, useLocale } from '../../lib/i18n';
-import { buildVirtualTree, CALENDAR_TREE, filterTodoNotes, resolveTodoTag, TODO_TREE, type CalendarNode, type VirtualTreeNamespace, virtualAncestorIds, virtualPathSegments, virtualPeriodKeyRange } from '../../lib/calendar-tree';
+import { buildVirtualTree, CALENDAR_TREE, filterTodoNotes, resolveTodoTag, TODO_TREE, type CalendarNode, type VirtualTreeNamespace, virtualAncestorIds, virtualPathSegments, virtualPeriodKeyRange, virtualTreeRowIndent } from '../../lib/calendar-tree';
 import { useNotes } from '../../store/notes';
 import { useSession } from '../../store/session';
 import { useUi } from '../../store/ui';
@@ -118,7 +118,7 @@ function VirtualRow({ ns, rootLabel, rootIcon, node }: {
         <div role="treeitem" aria-level={node.depth + 2} aria-expanded={hasChildren ? expanded : undefined}>
             <div className={cn('group relative flex h-10 items-center gap-1 rounded-[var(--r-md)] pr-1 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active
                 ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dim && 'opacity-60')} style={{ paddingLeft: Math.max(6, 6 + node.depth * 13) }}>
+                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dim && 'opacity-60')} style={{ paddingLeft: virtualTreeRowIndent(node.depth) }}>
                 <Tooltip label={expanded ? t("sidebar.collapse") : t("sidebar.expand")} side="right">
                     <button type="button" disabled={!hasChildren} aria-hidden={!hasChildren || undefined} tabIndex={hasChildren ? undefined : -1} onClick={(e) => {
                         e.stopPropagation();

@@ -23,7 +23,10 @@ import {
     virtualPathSegments,
     virtualPeriodKeyRange,
     virtualPeriodMatchesNote,
+    treeRowIndent,
+    virtualTreeRowIndent,
 } from './calendar-tree';
+import type { CalendarNode } from './calendar-tree';
 
 function note(overrides: Partial<NoteSummary> = {}): NoteSummary {
     return {
@@ -482,5 +485,60 @@ describe('buildVirtualTree', () => {
         expect(virtualPeriodMatchesNote({ kind: 'month', year: 2026, month: 9 }, plainSep, TODO_TREE)).toBe(false);
         expect(virtualPeriodMatchesNote({ kind: 'month', year: 2026, month: 9 }, plainSep, CALENDAR_TREE)).toBe(true);
         expect(virtualPeriodMatchesNote({ kind: 'root' }, plainSep, TODO_TREE)).toBe(false);
+    });
+});
+
+describe('tree row indentation', () => {
+    const indentFailures = (nodes: CalendarNode[], parentDepth: number): string[] =>
+        nodes.flatMap((node) => {
+            const bad = virtualTreeRowIndent(node.depth) > virtualTreeRowIndent(parentDepth)
+                ? [] : [`${node.name} (depth ${node.depth}) not indented past depth ${parentDepth}`];
+            return bad.concat(indentFailures(node.children, node.depth));
+        });
+
+    it('shares one 13px-step formula between folder rows and virtual rows', () => {
+        expect(treeRowIndent(0)).toBe(6);
+        expect(treeRowIndent(1)).toBe(19);
+        expect(treeRowIndent(4)).toBe(58);
+        expect(virtualTreeRowIndent(-1)).toBe(6);
+        expect(virtualTreeRowIndent(0)).toBe(19);
+        expect(virtualTreeRowIndent(1)).toBe(32);
+        expect(virtualTreeRowIndent(2)).toBe(45);
+        expect(virtualTreeRowIndent(3)).toBe(58);
+        expect(virtualTreeRowIndent(4)).toBe(71);
+    });
+
+    it('keeps every filled child level visually nested under its parent', () => {
+        const a = note({ id: 'a', createdAt: new Date(2025, 0, 31, 10).getTime() });
+        const b = note({ id: 'b', createdAt: new Date(2026, 7, 12, 10).getTime() });
+        const tree = buildVirtualTree([a, b], CALENDAR_TREE, false);
+        expect(tree.map((y) => [y.name, y.depth])).toEqual([['2025', 0], ['2026', 0]]);
+        expect(indentFailures(tree, -1)).toEqual([]);
+    });
+
+    it('keeps includeEmpty skeletons nested through sparse years in both trees', () => {
+        const calNotes = [
+            note({ id: 'a', createdAt: new Date(2025, 0, 31, 10).getTime() }),
+            note({ id: 'b', createdAt: new Date(2027, 2, 20, 10).getTime() }),
+        ];
+        const todoNotes = [
+            note({ id: 'c', tags: ['待办'], createdAt: new Date(2025, 0, 31, 10).getTime() }),
+            note({ id: 'd', tags: ['待办'], createdAt: new Date(2027, 2, 20, 10).getTime() }),
+        ];
+        const trees = [
+            buildVirtualTree(calNotes, CALENDAR_TREE, true),
+            buildVirtualTree(filterTodoNotes(todoNotes), TODO_TREE, true),
+        ];
+        for (const tree of trees) {
+            expect(tree.map((y) => y.name)).toEqual(['2025', '2026', '2027']);
+            expect(indentFailures(tree, -1)).toEqual([]);
+            const y2026 = tree[1]!;
+            expect(virtualTreeRowIndent(y2026.depth)).toBe(19);
+            expect(y2026.children.map((q) => virtualTreeRowIndent(q.depth))).toEqual([32, 32, 32, 32]);
+            const q1 = y2026.children[0]!;
+            expect(q1.children.map((m) => [m.name, virtualTreeRowIndent(m.depth)])).toEqual([['01', 45], ['02', 45], ['03', 45]]);
+            const mar27 = tree[2]!.children[0]!.children[2]!;
+            expect(mar27.children.map((w) => virtualTreeRowIndent(w.depth))).toEqual([58]);
+        }
     });
 });

@@ -159,6 +159,10 @@ const allowed = new Map([
   ["src/client/lib/note-filter.ts", [
     "/** Decide whether a note belongs to the active list view, optionally stacked with a multi-tag selection (`any` or `all` must match). */",
   ]],
+  ["src/client/lib/calendar-tree.ts", [
+    "// Left padding (px) for a sidebar tree row at the given visual level, where level 0 is a root row.",
+    "// Virtual rows count the root at depth -1, so a row's visual level is its depth plus one.",
+  ]],
   ["src/client/lib/tag-selection.ts", [
     "/** Clears the multi-tag selection shared by the sidebar, list/palette filters, and graph; optionally confirms with a toast (a string overrides the default message). */",
     "/** The toast key for a graph clear, or null for the default message, based on the clear-behavior preferences. */",
