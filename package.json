@@ -32,7 +32,7 @@
     "typecheck": "tsc -b",
     "typecheck:force": "tsc -b --force",
     "test:unit": "vitest run --config vitest.config.ts",
-    "bench:typing": "vitest run --config vitest.config.ts src/client/lib/note-persist.test.ts -t 'typing benchmark'",
+    "bench:typing": "vitest run --config vitest.config.ts src/client/lib/note-persist.test.ts src/client/lib/db-shell.test.ts -t benchmark",
     "budget:check": "npm run build && node scripts/check-bundle-budget.mjs",
     "vendor:check": "node scripts/check-vendor-isolation.mjs",
     "i18n:check": "node scripts/check-i18n.mjs",

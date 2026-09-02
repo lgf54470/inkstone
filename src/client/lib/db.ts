@@ -14,9 +14,11 @@ const store = createStore(CLIENT_DATABASE_NAME, 'kv')
 
 const KEY = {
   notes: 'notes',
+  noteIndex: 'noteIndex',
   folders: 'folders',
   tags: 'tags',
   cursor: 'cursor',
+  summary: (id: string) => `note-summary:${id}`,
   content: (id: string) => `note:${id}`,
   outbox: 'outbox',
   outboxReplayLease: 'outboxReplayLease',
@@ -32,23 +34,39 @@ interface ShellData {
   cursor: number
 }
 
+interface ShellBaseline {
+  userId: string
+  notes: Map<string, NoteSummary>
+  folders: Folder[]
+  tags: Tag[]
+  cursor: number
+}
+
 export interface TemplateLibraryData {
   categories: NoteTemplateCategory[]
   templates: NoteTemplate[]
   seedVersion: number
 }
 
+const supportsUserNamespaces = typeof entries === 'function' && typeof delMany === 'function'
+let forceUserNamespaces = false
+// The shell cache is two-level: one `note-summary:<id>` key per note plus a
+// lightweight `noteIndex` id list. A typing-derived summary commit therefore
+// only upserts the one changed note instead of re-serializing the whole vault;
+// boot still reads every summary in a single getMany over the index. The shell
+// is a read cache for the next boot, not a source of truth: the coalescing
+// window collapses bursts into one flush (a lost tail at most delays the
+// cached shell by one window on abrupt close), and the flush tail chain keeps
+// each diff-based write from racing the previous one.
+const SHELL_SAVE_COALESCE_MS = 800
+const SHELL_SET_CHUNK = 400
 let shellSaveTimer = 0
 let pendingShell: ShellData | null = null
 let pendingShellUserId: string | null = null
 let activeUserId: string | null = null
-const supportsUserNamespaces = typeof entries === 'function' && typeof delMany === 'function'
-let forceUserNamespaces = false
-// The shell is a read cache for the next boot, not a source of truth: a long
-// coalescing window collapses the full-notes serialization that would otherwise
-// fire after every typing-derived summary commit (lost tail at most delays the
-// cached shell by one window on abrupt close).
-const SHELL_SAVE_COALESCE_MS = 800
+let shellBaseline: ShellBaseline | null = null
+let shellFlushTail: Promise<void> = Promise.resolve()
+let shellEpoch = 0
 
 export interface OutboxItem {
   id: string
@@ -110,8 +128,14 @@ function userScopedKey(key: string, userId = activeUserId): string {
 }
 
 function isLegacyDataKey(key: unknown): key is string {
-  return key === KEY.notes || key === KEY.folders || key === KEY.tags || key === KEY.cursor ||
-    key === KEY.outbox || key === KEY.outboxReplayLease || (typeof key === 'string' && key.startsWith('note:'))
+  return key === KEY.notes || key === KEY.noteIndex || key === KEY.folders || key === KEY.tags ||
+    key === KEY.cursor || key === KEY.outbox || key === KEY.outboxReplayLease ||
+    (typeof key === 'string' && (key.startsWith('note:') || key.startsWith('note-summary:')))
+}
+
+function resetShellIdentity(): void {
+  shellBaseline = null
+  shellEpoch++
 }
 
 async function migrateLegacyData(userId: string): Promise<void> {
@@ -146,15 +170,18 @@ async function bindLocalUser(userId: string): Promise<void> {
         forceUserNamespaces = false
       } catch (error) {
         activeUserId = userId
+        resetShellIdentity()
         forceUserNamespaces = true
         throw error
       }
     }
     activeUserId = userId
+    resetShellIdentity()
     await set(KEY.userId, userId, store)
     return
   }
   activeUserId = userId
+  resetShellIdentity()
   const legacyUserId = await safeGet<string>(KEY.userId)
   if (legacyUserId === userId) await migrateLegacyData(userId)
   await set(KEY.userId, userId, store)
@@ -191,27 +218,54 @@ export const localDb = {
     tags: Tag[]
     cursor: number
   } | null> {
-    const shellKeys = [KEY.notes, KEY.folders, KEY.tags, KEY.cursor].map((key) => userScopedKey(key))
+    const userId = activeUserId
+    if (!userId) return null
+    const shellKeys = [
+      userScopedKey(KEY.noteIndex, userId),
+      userScopedKey(KEY.folders, userId),
+      userScopedKey(KEY.tags, userId),
+      userScopedKey(KEY.cursor, userId),
+      userScopedKey(KEY.notes, userId),
+    ]
     try {
       const values = await getMany(shellKeys, store)
-      const [notes, folders, tags, cursor] = values as [
-        NoteSummary[] | undefined,
-        Folder[] | undefined,
-        Tag[] | undefined,
-        number | undefined,
-      ]
-      if (
-        !Array.isArray(notes) || !notes.every(isNoteSummary) ||
+      const index = values[0]
+      const folders = values[1]
+      const tags = values[2]
+      const cursor = values[3]
+      const legacyNotes = values[4]
+      let notes: NoteSummary[] | null = null
+      if (Array.isArray(index) && index.every((id) => typeof id === 'string')) {
+        const ids = index as string[]
+        const summaries = await getMany(ids.map((id) => userScopedKey(KEY.summary(id), userId)), store)
+        if (summaries.every(isNoteSummary)) notes = summaries as NoteSummary[]
+      }
+      else if (Array.isArray(legacyNotes) && legacyNotes.every(isNoteSummary)) {
+        notes = legacyNotes as NoteSummary[]
+        const writes: [string, unknown][] = notes.map((note) => [userScopedKey(KEY.summary(note.id), userId), note])
+        writes.push([userScopedKey(KEY.noteIndex, userId), notes.map((note) => note.id)])
+        for (let start = 0; start < writes.length; start += SHELL_SET_CHUNK)
+          await setMany(writes.slice(start, start + SHELL_SET_CHUNK), store)
+        await del(userScopedKey(KEY.notes, userId), store)
+      }
+      if (!notes ||
         !Array.isArray(folders) || !folders.every(isFolder) ||
         !Array.isArray(tags) || !tags.every(isTag) ||
         typeof cursor !== 'number' || !Number.isSafeInteger(cursor) || cursor < 0
       ) {
         return null
       }
+      shellBaseline = {
+        userId,
+        notes: new Map(notes.map((note) => [note.id, note])),
+        folders: folders as Folder[],
+        tags: tags as Tag[],
+        cursor,
+      }
       return {
         notes,
-        folders,
-        tags,
+        folders: folders as Folder[],
+        tags: tags as Tag[],
         cursor,
       }
     } catch {
@@ -220,18 +274,63 @@ export const localDb = {
   },
 
   async saveShell(data: ShellData, userId = activeUserId) {
-    try {
-      await setMany(
-        [
-          [userScopedKey(KEY.notes, userId), data.notes],
-          [userScopedKey(KEY.folders, userId), data.folders],
-          [userScopedKey(KEY.tags, userId), data.tags],
-          [userScopedKey(KEY.cursor, userId), data.cursor],
-        ],
-        store,
-      )
-    } catch {
+    const epoch = shellEpoch
+    const run = async () => {
+      try {
+        if (epoch !== shellEpoch) return
+        const baseline = userId !== null && shellBaseline?.userId === userId ? shellBaseline : null
+        const targetNotes = new Map(data.notes.map((note) => [note.id, note] as const))
+        const writes: [string, unknown][] = []
+        let indexChanged = baseline === null
+        if (baseline) {
+          for (const note of data.notes) {
+            const previous = baseline.notes.get(note.id)
+            if (previous === undefined || !summariesEqual(previous, note)) {
+              writes.push([userScopedKey(KEY.summary(note.id), userId), note])
+              if (previous === undefined) indexChanged = true
+            }
+          }
+          const removed: string[] = []
+          for (const id of baseline.notes.keys()) {
+            if (!targetNotes.has(id)) removed.push(userScopedKey(KEY.summary(id), userId))
+          }
+          if (removed.length) {
+            indexChanged = true
+            if (delMany) await delMany(removed, store)
+            else for (const key of removed) await del(key, store)
+          }
+          if (indexChanged) writes.push([userScopedKey(KEY.noteIndex, userId), [...targetNotes.keys()]])
+        }
+        else {
+          for (const note of data.notes)
+            writes.push([userScopedKey(KEY.summary(note.id), userId), note])
+          writes.push([userScopedKey(KEY.noteIndex, userId), data.notes.map((note) => note.id)])
+        }
+        if (!baseline || !foldersEqual(baseline.folders, data.folders))
+          writes.push([userScopedKey(KEY.folders, userId), data.folders])
+        if (!baseline || !tagsEqual(baseline.tags, data.tags))
+          writes.push([userScopedKey(KEY.tags, userId), data.tags])
+        if (!baseline || baseline.cursor !== data.cursor)
+          writes.push([userScopedKey(KEY.cursor, userId), data.cursor])
+        if (writes.length) {
+          for (let start = 0; start < writes.length; start += SHELL_SET_CHUNK)
+            await setMany(writes.slice(start, start + SHELL_SET_CHUNK), store)
+        }
+        if (epoch === shellEpoch) {
+          shellBaseline = {
+            userId: userId ?? '',
+            notes: targetNotes,
+            folders: data.folders,
+            tags: data.tags,
+            cursor: data.cursor,
+          }
+        }
+      } catch {
+      }
     }
+    const queued = shellFlushTail.then(run, run)
+    shellFlushTail = queued.catch(() => {})
+    await queued
   },
 
   scheduleShellSave(data: ShellData) {
@@ -456,7 +555,60 @@ async function clearLocalData(): Promise<void> {
   shellSaveTimer = 0
   pendingShell = null
   pendingShellUserId = null
+  shellBaseline = null
+  shellEpoch++
+  shellFlushTail = Promise.resolve()
   await clearStore(store)
+}
+
+function summariesEqual(a: NoteSummary, b: NoteSummary): boolean {
+  if (a === b) return true
+  return a.id === b.id &&
+    a.title === b.title &&
+    a.excerpt === b.excerpt &&
+    a.folderId === b.folderId &&
+    a.isPinned === b.isPinned &&
+    a.isStarred === b.isStarred &&
+    a.isArchived === b.isArchived &&
+    a.wordCount === b.wordCount &&
+    a.charCount === b.charCount &&
+    a.rev === b.rev &&
+    a.position === b.position &&
+    a.createdAt === b.createdAt &&
+    a.updatedAt === b.updatedAt &&
+    a.deletedAt === b.deletedAt &&
+    a.tags.length === b.tags.length &&
+    a.tags.every((tag, index) => tag === b.tags[index])
+}
+
+function foldersEqual(a: Folder[], b: Folder[]): boolean {
+  if (a === b) return true
+  if (a.length !== b.length) return false
+  for (let index = 0; index < a.length; index++) {
+    const x = a[index]!
+    const y = b[index]!
+    if (x.id !== y.id || x.parentId !== y.parentId || x.name !== y.name || x.icon !== y.icon ||
+      (x.color ?? null) !== (y.color ?? null) || x.position !== y.position ||
+      x.createdAt !== y.createdAt || x.updatedAt !== y.updatedAt ||
+      (x.noteCount ?? null) !== (y.noteCount ?? null)) {
+      return false
+    }
+  }
+  return true
+}
+
+function tagsEqual(a: Tag[], b: Tag[]): boolean {
+  if (a === b) return true
+  if (a.length !== b.length) return false
+  for (let index = 0; index < a.length; index++) {
+    const x = a[index]!
+    const y = b[index]!
+    if (x.id !== y.id || x.name !== y.name || (x.color ?? null) !== (y.color ?? null) ||
+      x.count !== y.count || x.createdAt !== y.createdAt) {
+      return false
+    }
+  }
+  return true
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
