@@ -317,23 +317,15 @@ export async function rewriteTagInNotes(
 
   let rewritten = 0
   const rewrittenNotes: RewrittenTagNote[] = []
+  // Read every candidate once in a single batched query instead of one SELECT
+  // per candidate; the guarded UPDATE still catches concurrent edits and only
+  // conflicting candidates get a fresh single-row read on retry.
+  const preloaded = await loadRewriteNotes(env.DB, userId, results.map((candidate) => candidate.id))
   try {
     for (const candidate of results) {
     let complete = false
+    let note: RewriteNoteRow | null = preloaded.get(candidate.id) ?? null
     for (let attempt = 0; attempt < 5; attempt++) {
-      const note = await env.DB.prepare(
-        `SELECT id, title, content, rev, updated_at, deleted_at
-           FROM notes WHERE id = ?1 AND user_id = ?2`,
-      )
-        .bind(candidate.id, userId)
-        .first<{
-          id: string
-          title: string
-          content: string
-          rev: number
-          updated_at: number
-          deleted_at: number | null
-        }>()
       if (!note) {
         complete = true
         break
@@ -422,6 +414,14 @@ export async function rewriteTagInNotes(
         complete = true
         break
       }
+      // The guarded write was lost to a concurrent edit: re-read just this
+      // note and retry with fresh state.
+      note = await env.DB.prepare(
+        `SELECT id, title, content, rev, updated_at, deleted_at
+           FROM notes WHERE id = ?1 AND user_id = ?2`,
+      )
+        .bind(candidate.id, userId)
+        .first<RewriteNoteRow>()
     }
     if (!complete) {
       throw ApiError.conflict(`Some notes are still being edited. Safely completed ${rewritten} notes; try again later`)
@@ -439,6 +439,38 @@ export async function rewriteTagInNotes(
     }
     throw error
   }
+}
+
+interface RewriteNoteRow {
+  id: string
+  title: string
+  content: string
+  rev: number
+  updated_at: number
+  deleted_at: number | null
+}
+
+async function loadRewriteNotes(
+  db: D1Database,
+  userId: string,
+  ids: string[],
+): Promise<Map<string, RewriteNoteRow>> {
+  const rows = new Map<string, RewriteNoteRow>()
+  for (let index = 0; index < ids.length; index += 80) {
+    const chunk = ids.slice(index, index + 80)
+    const { results } = await db.prepare(
+      `SELECT id, title, content, rev, updated_at, deleted_at
+         FROM notes WHERE user_id = ?1 AND id IN (${rewritePlaceholders(chunk.length)})`,
+    )
+      .bind(userId, ...chunk)
+      .all<RewriteNoteRow>()
+    for (const row of results) rows.set(row.id, row)
+  }
+  return rows
+}
+
+function rewritePlaceholders(count: number): string {
+  return Array.from({ length: count }, (_, i) => `?${i + 2}`).join(', ')
 }
 
 interface RewrittenTagNote {

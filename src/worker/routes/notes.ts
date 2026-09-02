@@ -996,6 +996,37 @@ function linkContext(content: string, title: string): string {
   )
 }
 
+interface RewriteNoteRow {
+  id: string
+  title: string
+  content: string
+  content_hash: string
+  rev: number
+  updated_at: number
+  deleted_at: number | null
+}
+
+async function loadRewriteNotes(
+  db: D1Database,
+  userId: string,
+  ids: string[],
+): Promise<Map<string, RewriteNoteRow>> {
+  const rows = new Map<string, RewriteNoteRow>()
+  for (let index = 0; index < ids.length; index += 80) {
+    const chunk = ids.slice(index, index + 80)
+    const { results } = await db.prepare(
+      `SELECT id, title, content, content_hash, rev, updated_at, deleted_at
+         FROM notes WHERE user_id = ?1 AND id IN (${rewritePlaceholders(chunk.length)})`,
+    ).bind(userId, ...chunk).all<RewriteNoteRow>()
+    for (const row of results) rows.set(row.id, row)
+  }
+  return rows
+}
+
+function rewritePlaceholders(count: number): string {
+  return Array.from({ length: count }, (_, i) => `?${i + 2}`).join(', ')
+}
+
 async function rewriteInboundWikiLinks(
   db: D1Database,
   userId: string,
@@ -1013,21 +1044,14 @@ async function rewriteInboundWikiLinks(
   ).bind(userId, targetNoteId, previousKey).all<{ id: string }>()
   let rewritten = 0
   let skipped = 0
+  // Read every candidate once in a single batched query instead of one SELECT
+  // per candidate; the guarded UPDATE still catches concurrent edits and only
+  // conflicting candidates get a fresh single-row read on retry.
+  const preloaded = await loadRewriteNotes(db, userId, candidates.map((candidate) => candidate.id))
   for (const candidate of candidates) {
     let complete = false
+    let note: RewriteNoteRow | null = preloaded.get(candidate.id) ?? null
     for (let attempt = 0; attempt < 5; attempt++) {
-      const note = await db.prepare(
-        `SELECT id, title, content, content_hash, rev, updated_at, deleted_at
-           FROM notes WHERE id = ?1 AND user_id = ?2`,
-      ).bind(candidate.id, userId).first<{
-        id: string
-        title: string
-        content: string
-        content_hash: string
-        rev: number
-        updated_at: number
-        deleted_at: number | null
-      }>()
       if (!note || note.deleted_at !== null) {
         complete = true
         break
@@ -1088,6 +1112,12 @@ async function rewriteInboundWikiLinks(
         complete = true
         break
       }
+      // The guarded write was lost to a concurrent edit: re-read just this
+      // note and retry with fresh state.
+      note = await db.prepare(
+        `SELECT id, title, content, content_hash, rev, updated_at, deleted_at
+           FROM notes WHERE id = ?1 AND user_id = ?2`,
+      ).bind(candidate.id, userId).first<RewriteNoteRow>()
     }
     if (!complete) skipped++
   }
