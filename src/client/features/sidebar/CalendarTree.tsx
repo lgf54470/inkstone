@@ -78,40 +78,42 @@ function CalendarRow({ node, rootLabel }: {
     const isRoot = node.depth < 0;
     const dim = node.count === 0 && !isRoot;
     return (
-        <div role="treeitem" aria-level={node.depth + 2} aria-expanded={hasChildren ? expanded : undefined} className={cn('group relative flex h-10 items-center gap-1 rounded-[var(--r-md)] pr-1 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active
-            ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
-            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dim && 'opacity-60')} style={{ paddingLeft: Math.max(6, 6 + node.depth * 13) }}>
-            <Tooltip label={expanded ? t("sidebar.collapse") : t("sidebar.expand")} side="right">
-                <button type="button" disabled={!hasChildren} aria-hidden={!hasChildren || undefined} tabIndex={hasChildren ? undefined : -1} onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFolder(node.id);
-                }} aria-label={expanded ? t("sidebar.collapse") : t("sidebar.expand")} className={cn('flex size-8 shrink-0 items-center justify-center rounded text-[var(--text-quaternary)] md:size-4', 'transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]', expanded && 'rotate-90', !hasChildren && 'invisible')}>
-                    <ChevronRight size={12}/>
-                </button>
-            </Tooltip>
+        <div role="treeitem" aria-level={node.depth + 2} aria-expanded={hasChildren ? expanded : undefined}>
+            <div className={cn('group relative flex h-10 items-center gap-1 rounded-[var(--r-md)] pr-1 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active
+                ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dim && 'opacity-60')} style={{ paddingLeft: Math.max(6, 6 + node.depth * 13) }}>
+                <Tooltip label={expanded ? t("sidebar.collapse") : t("sidebar.expand")} side="right">
+                    <button type="button" disabled={!hasChildren} aria-hidden={!hasChildren || undefined} tabIndex={hasChildren ? undefined : -1} onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFolder(node.id);
+                    }} aria-label={expanded ? t("sidebar.collapse") : t("sidebar.expand")} className={cn('flex size-8 shrink-0 items-center justify-center rounded text-[var(--text-quaternary)] md:size-4', 'transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]', expanded && 'rotate-90', !hasChildren && 'invisible')}>
+                        <ChevronRight size={12}/>
+                    </button>
+                </Tooltip>
 
-            <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>
-                {isRoot
-                    ? <CalendarDays size={13}/>
-                    : <span aria-hidden="true" data-open={expanded && hasChildren || undefined} className="folder-motion-icon">
-                        <FolderClosed size={14} className="folder-motion-icon__closed"/>
-                        <FolderOpen size={14} className="folder-motion-icon__open"/>
-                    </span>}
-            </span>
+                <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>
+                    {isRoot
+                        ? <CalendarDays size={13}/>
+                        : <span aria-hidden="true" data-open={expanded && hasChildren || undefined} className="folder-motion-icon">
+                            <FolderClosed size={14} className="folder-motion-icon__closed"/>
+                            <FolderOpen size={14} className="folder-motion-icon__open"/>
+                        </span>}
+                </span>
 
-            <Tooltip label={tooltip} side="right">
-                <button type="button" aria-current={active ? 'page' : undefined} onClick={open} className="min-w-0 flex-1 truncate py-1 text-left text-[12.5px] font-medium">
-                    {isRoot ? rootLabel : node.name}
-                </button>
-            </Tooltip>
+                <Tooltip label={tooltip} side="right">
+                    <button type="button" aria-current={active ? 'page' : undefined} onClick={open} className="min-w-0 flex-1 truncate py-1 text-left text-[12.5px] font-medium">
+                        {isRoot ? rootLabel : node.name}
+                    </button>
+                </Tooltip>
 
-            {node.count > 0 && (<span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-70">{node.count}</span>)}
+                {node.count > 0 && (<span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-70">{node.count}</span>)}
+            </div>
 
-        {childrenMounted && (<div role="group" aria-hidden={!childrenVisible} inert={!childrenVisible} className={cn('folder-children-grid', childrenVisible && 'is-expanded')}>
-          <div className="min-h-0 space-y-px overflow-hidden">
-            {node.children.map((child) => (<CalendarRow key={child.id} node={child} rootLabel={rootLabel}/>))}
-          </div>
-        </div>)}
+            {childrenMounted && (<div role="group" aria-hidden={!childrenVisible} inert={!childrenVisible} className={cn('folder-children-grid', childrenVisible && 'is-expanded')}>
+                <div className="min-h-0 space-y-px overflow-hidden">
+                    {node.children.map((child) => (<CalendarRow key={child.id} node={child} rootLabel={rootLabel}/>))}
+                </div>
+            </div>)}
         </div>
     );
 }
