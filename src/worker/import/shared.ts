@@ -3,7 +3,7 @@ import { LIMITS } from '@shared/constants'
 import { deriveTitle } from '@shared/markdown-utils'
 import { truncateText } from '@shared/text-utils'
 import type { ImportResult } from '@shared/types'
-import { runBatched } from '../db/writes'
+import { runBatched, shiftSqlPlaceholders } from '../db/writes'
 import { ApiError } from '../lib/errors'
 import type { ImportConflict } from './types'
 
@@ -83,10 +83,6 @@ function normalizeFolderSegment(value: string): string {
     .replace(/[\u0000-\u001f/\\]/g, '-')
     .trim()
   return truncateText(normalized, LIMITS.folderNameMaxLength).trim()
-}
-
-function shiftSqlPlaceholders(sql: string, offset: number): string {
-  return sql.replace(/\?(\d+)/g, (_match, value: string) => `?${Number(value) + offset}`)
 }
 
 export async function upsertImportMappings(

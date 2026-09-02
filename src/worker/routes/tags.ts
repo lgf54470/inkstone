@@ -5,7 +5,7 @@ import { organizerColorOrNull } from '@shared/organizer-colors'
 import { utf8ByteLength } from '@shared/text-utils'
 import type { AppBindings } from '../env'
 import { toTag, type TagRow } from '../db/rows'
-import { buildNoteDerivedStatements } from '../db/writes'
+import { buildNoteDerivedStatements, shiftSqlPlaceholders } from '../db/writes'
 import { sha256Hex } from '../lib/encoding'
 import { ApiError } from '../lib/errors'
 import { isValidId, newId } from '../lib/id'
@@ -541,6 +541,3 @@ async function rollbackTagRewrites(
   }
 }
 
-function shiftSqlPlaceholders(sql: string, offset: number): string {
-  return sql.replace(/\?(\d+)/g, (_match, value: string) => `?${Number(value) + offset}`)
-}

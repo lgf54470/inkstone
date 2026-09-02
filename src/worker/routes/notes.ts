@@ -19,6 +19,7 @@ import {
   FTS_QUEUE_CONFLICT_SQL,
   LINK_TARGET_SUBQUERY,
   pruneOrphanTags,
+  shiftSqlPlaceholders,
 } from '../db/writes'
 import { fromBase64Url, fromUtf8, sha256Hex, toBase64Url, utf8 } from '../lib/encoding'
 import { ApiError } from '../lib/errors'
@@ -1275,10 +1276,6 @@ export function parseNotesListCursor(
   } catch {
     throw ApiError.badRequest('Invalid notes cursor')
   }
-}
-
-function shiftSqlPlaceholders(sql: string, offset: number): string {
-  return sql.replace(/\?(\d+)/g, (_match, value: string) => `?${Number(value) + offset}`)
 }
 
 async function resolveFolderId(

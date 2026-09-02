@@ -3,7 +3,7 @@ import { countText, deriveExcerpt, deriveTitle, interpolateNewNoteTemplate } fro
 import { truncateText, utf8ByteLength } from '@shared/text-utils'
 import type { Note } from '@shared/types'
 import { NOTE_COLUMNS_FULL, toNote, type NoteRow } from '../db/rows'
-import { buildNoteDerivedStatements, LINK_TARGET_SUBQUERY } from '../db/writes'
+import { buildNoteDerivedStatements, LINK_TARGET_SUBQUERY, shiftSqlPlaceholders } from '../db/writes'
 import type { Env } from '../env'
 import { sha256Hex } from '../lib/encoding'
 import { ApiError } from '../lib/errors'
@@ -515,10 +515,6 @@ async function loadUserNewNoteTemplate(db: Env['DB'], userId: string): Promise<s
 function push(sets: string[], binds: unknown[], column: string, value: unknown): void {
   binds.push(value)
   sets.push(`${column} = ?${binds.length}`)
-}
-
-function shiftSqlPlaceholders(sql: string, offset: number): string {
-  return sql.replace(/\?(\d+)/g, (_match, value: string) => `?${Number(value) + offset}`)
 }
 
 function lineOffsets(content: string): number[] {

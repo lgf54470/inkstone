@@ -19,6 +19,10 @@ export const LINK_TARGET_SUBQUERY = `(SELECT candidate.id FROM notes candidate
     AND candidate.title_key = links.target_key
   ORDER BY candidate.created_at ASC, candidate.id ASC LIMIT 1)`
 
+export function shiftSqlPlaceholders(sql: string, offset: number): string {
+  return sql.replace(/\?(\d+)/g, (_match, value: string) => `?${Number(value) + offset}`)
+}
+
 export function changeStatement(
   db: D1Database,
   userId: string,
