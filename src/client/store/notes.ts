@@ -2827,7 +2827,7 @@ let navigationProjectionCache: NavigationProjection = {
     counts: { all: 0, starred: 0, unfiled: 0, archived: 0, trash: 0 },
     folderCounts: new Map(),
 };
-function selectNavigationProjection(notes: Record<string, NoteSummary>): NavigationProjection {
+export function selectNavigationProjection(notes: Record<string, NoteSummary>): NavigationProjection {
     if (notes === navigationProjectionNotes)
         return navigationProjectionCache;
     navigationProjectionNotes = notes;

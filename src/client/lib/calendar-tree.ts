@@ -466,6 +466,75 @@ export function buildVirtualTree(notes: Iterable<NoteSummary>, ns: VirtualTreeNa
             count: quarters.reduce((sum, quarter) => sum + quarter.count, 0),
             children: quarters,
         });
+    }    return years;
+}
+
+// The sidebar calendar/todo trees bucket notes only by createdAt, deletedAt and
+// (for the todo tree) todo-tag membership. A typing-derived summary commit
+// changes none of those, yet it replaces the whole notes-map identity, so both
+// trees were rebuilt from scratch over the whole vault on every commit while
+// typing. Cache each built tree and, on a notes-map change, bail out of the
+// rebuild with a cheap field-by-field scan that returns the same tree identity
+// unless the structure genuinely changed; unchanged identity lets every
+// downstream consumer skip re-rendering entirely.
+interface VirtualTreeCacheSlot {
+    notes: Record<string, NoteSummary>
+    todoTags: readonly string[] | null
+    children: CalendarNode[]
+}
+const virtualTreeSlots = new Map<string, VirtualTreeCacheSlot>()
+
+function sameTodoTags(a: readonly string[] | null, b: readonly string[] | null): boolean {
+    if (a === b)
+        return true
+    if (!a || !b)
+        return false
+    return a.length === b.length && a.every((tag, index) => tag === b[index])
+}
+
+function isTodoNote(note: NoteSummary, todoTags: readonly string[]): boolean {
+    return note.tags.some((tag) => todoTags.includes(tag))
+}
+
+function virtualTreeInputsEqual(
+    prev: Record<string, NoteSummary>,
+    next: Record<string, NoteSummary>,
+    todoTags: readonly string[] | null,
+): boolean {
+    if (prev === next)
+        return true
+    let prevSize = 0
+    for (const id in prev) {
+        prevSize++
+        const before = prev[id]
+        const after = next[id]
+        if (!before || !after)
+            return false
+        if (before.createdAt !== after.createdAt || (before.deletedAt === null) !== (after.deletedAt === null))
+            return false
+        if (todoTags && isTodoNote(before, todoTags) !== isTodoNote(after, todoTags))
+            return false
     }
-    return years;
+    let nextSize = 0
+    for (const _id in next)
+        nextSize++
+    return prevSize === nextSize
+}
+
+export function buildVirtualTreeCached(
+    notes: Record<string, NoteSummary>,
+    ns: VirtualTreeNamespace,
+    includeEmpty: boolean,
+    todoTags: readonly string[] | null = null,
+): CalendarNode[] {
+    const key = `${ns.rootId}|${includeEmpty ? 'e' : 'c'}`
+    const cached = virtualTreeSlots.get(key)
+    if (cached && sameTodoTags(cached.todoTags, todoTags) && virtualTreeInputsEqual(cached.notes, notes, todoTags))
+        return cached.children
+    const values = todoTags && todoTags.length
+        ? Object.values(notes).filter((note) => isTodoNote(note, todoTags))
+        : Object.values(notes)
+    const children = buildVirtualTree(values, ns, includeEmpty)
+    virtualTreeSlots.set(key, { notes, todoTags, children })
+    return children
 }

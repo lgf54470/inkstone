@@ -243,6 +243,28 @@ const allowed = new Map([
   ["src/client/lib/calendar-tree.ts", [
     "// Left padding (px) for a sidebar tree row at the given visual level, where level 0 is a root row.",
     "// Virtual rows count the root at depth -1, so a row's visual level is its depth plus one.",
+    "// The sidebar calendar/todo trees bucket notes only by createdAt, deletedAt and",
+    "// (for the todo tree) todo-tag membership. A typing-derived summary commit",
+    "// changes none of those, yet it replaces the whole notes-map identity, so both",
+    "// trees were rebuilt from scratch over the whole vault on every commit while",
+    "// typing. Cache each built tree and, on a notes-map change, bail out of the",
+    "// rebuild with a cheap field-by-field scan that returns the same tree identity",
+    "// unless the structure genuinely changed; unchanged identity lets every",
+    "// downstream consumer skip re-rendering entirely.",
+  ]],
+  ["src/client/features/sidebar/Sidebar.tsx", [
+    "// The count feeds the delete-confirmation only; the visible row badge is the",
+    "// tree's totalNotes. Look it up from the shared memoized navigation projection",
+    "// instead of scanning the whole notes map per folder row per render.",
+  ]],
+  ["src/client/lib/calendar-tree.test.ts", [
+    "// A typing-derived summary commit clones the whole map but changes only",
+    "// excerpt/wordCount/updatedAt on one note — none of which feed the tree.",
+    "// Summary-only edits keep the tree identity.",
+    "// Losing the todo tag removes the note from the todo tree.",
+    "// Renaming the configured todo tag rebuilds against the new membership.",
+    "// A summary-only edit under the new tag set still hits the cache.",
+    "// Dropping the todo filter widens the tree to every note (same slot, new build).",
   ]],
   ["src/client/lib/tag-selection.ts", [
     "/** Clears the multi-tag selection shared by the sidebar, list/palette filters, and graph; optionally confirms with a toast (a string overrides the default message). */",

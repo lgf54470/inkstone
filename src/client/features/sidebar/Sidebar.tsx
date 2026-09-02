@@ -11,7 +11,7 @@ import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../com
 import { switchThemeWithTransition, useUi } from '../../store/ui';
 import { useSession } from '../../store/session';
 import { useUpdate } from '../../store/update';
-import { createContextualNote, useFolderTree, useNavigationCounts, useNotes, type FolderNode } from '../../store/notes';
+import { createContextualNote, selectNavigationProjection, useFolderTree, useNavigationCounts, useNotes, type FolderNode } from '../../store/notes';
 import { folderDescendantIds, folderPath, folderPathLabel, openFolderView } from '../../lib/folders';
 import { treeRowIndent } from '../../lib/calendar-tree';
 import { FolderAppearance, FolderPicker } from '../folders/FolderPicker';
@@ -395,7 +395,10 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
     const patchFolder = useNotes((s) => s.patchFolder);
     const deleteFolder = useNotes((s) => s.deleteFolder);
     const patchNote = useNotes((s) => s.patchNote);
-    const directNoteCount = useNotes((s) => Object.values(s.notes ?? {}).filter((note) => note.folderId === node.id).length);
+    // The count feeds the delete-confirmation only; the visible row badge is the
+    // tree's totalNotes. Look it up from the shared memoized navigation projection
+    // instead of scanning the whole notes map per folder row per render.
+    const directNoteCount = useNotes((state) => selectNavigationProjection(state.notes).folderCounts.get(node.id) ?? 0);
     const [dropState, setDropState] = useState<'none' | 'before' | 'inside' | 'after'>('none');
     const menu = useContextMenu();
     const buttonRef = useRef<HTMLDivElement>(null);

@@ -3,7 +3,7 @@ import { CalendarDays, CheckSquare, ChevronRight, FolderClosed, FolderOpen } fro
 import type { NoteSummary } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { t, useLocale } from '../../lib/i18n';
-import { buildVirtualTree, CALENDAR_TREE, filterTodoNotes, resolveTodoTag, TODO_TREE, type CalendarNode, type VirtualTreeNamespace, virtualAncestorIds, virtualPathSegments, virtualPeriodKeyRange, virtualTreeRowIndent } from '../../lib/calendar-tree';
+import { buildVirtualTreeCached, CALENDAR_TREE, filterTodoNotes, resolveTodoTag, splitTodoTags, TODO_TREE, type CalendarNode, type VirtualTreeNamespace, virtualAncestorIds, virtualPathSegments, virtualPeriodKeyRange, virtualTreeRowIndent } from '../../lib/calendar-tree';
 import { useNotes } from '../../store/notes';
 import { useSession } from '../../store/session';
 import { useUi } from '../../store/ui';
@@ -47,11 +47,10 @@ function VirtualTree({ ns, rootLabel, rootIcon, filter, filterArg }: {
     const allNotes = useNotes((s) => s.notes);
     const visible = useCalendarTreeVisible();
     const showEmpty = useCalendarTreeShowEmpty();
-    const source = useMemo(() => {
-        const values = Object.values(allNotes ?? {});
-        return filter ? filter(values, filterArg) : values;
-    }, [allNotes, filter, filterArg]);
-    const children = useMemo(() => buildVirtualTree(source, ns, showEmpty), [source, ns, showEmpty]);
+    const children = useMemo(() => {
+        const todoTags = filter ? splitTodoTags(filterArg ?? '') : null;
+        return buildVirtualTreeCached(allNotes ?? {}, ns, showEmpty, todoTags);
+    }, [allNotes, ns, filter, filterArg, showEmpty]);
     const rootCount = useMemo(() => children.reduce((sum, child) => sum + child.count, 0), [children]);
     if (!visible)
         return null;

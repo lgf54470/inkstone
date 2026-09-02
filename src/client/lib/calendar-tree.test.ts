@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { NoteSummary } from '@shared/types';
 import {
     buildVirtualTree,
+    buildVirtualTreeCached,
     CALENDAR_TREE,
     calendarPeriodForIsoWeek,
     calendarPeriodLabel,
@@ -540,5 +541,79 @@ describe('tree row indentation', () => {
             const mar27 = tree[2]!.children[0]!.children[2]!;
             expect(mar27.children.map((w) => virtualTreeRowIndent(w.depth))).toEqual([58]);
         }
+    });
+});
+
+describe('buildVirtualTreeCached', () => {
+    const asRecord = (items: NoteSummary[]): Record<string, NoteSummary> =>
+        Object.fromEntries(items.map((item) => [item.id, item]));
+    const sept1 = note({ id: 'n1', createdAt: new Date(2026, 8, 1, 10).getTime(), updatedAt: 100 });
+    const sept2 = note({ id: 'n2', createdAt: new Date(2026, 8, 2, 10).getTime(), updatedAt: 200 });
+    const july = note({ id: 'n3', createdAt: new Date(2026, 6, 15, 10).getTime() });
+
+    it('returns the same tree identity when only a summary changed', () => {
+        const first = buildVirtualTreeCached(asRecord([sept1, sept2, july]), CALENDAR_TREE, false);
+        // A typing-derived summary commit clones the whole map but changes only
+        // excerpt/wordCount/updatedAt on one note — none of which feed the tree.
+        const edited = {
+            ...sept2,
+            excerpt: 'new excerpt',
+            wordCount: 42,
+            charCount: 300,
+            updatedAt: 9_000,
+        };
+        const nextMap = asRecord([sept1, edited, july]);
+        const second = buildVirtualTreeCached(nextMap, CALENDAR_TREE, false);
+        expect(second).toBe(first);
+        expect(second).toEqual(buildVirtualTree([sept1, sept2, july], CALENDAR_TREE, false));
+    });
+
+    it('rebuilds when a note is added, removed, or structurally changed', () => {
+        const base = asRecord([sept1, sept2, july]);
+        const first = buildVirtualTreeCached(base, CALENDAR_TREE, false);
+        expect(buildVirtualTreeCached({ ...base, n4: note({ id: 'n4', createdAt: new Date(2026, 9, 3, 10).getTime() }) }, CALENDAR_TREE, false)).not.toBe(first);
+        expect(buildVirtualTreeCached(asRecord([sept1, july]), CALENDAR_TREE, false)).not.toBe(first);
+        const trashed = { ...sept2, deletedAt: 5_000 };
+        expect(buildVirtualTreeCached(asRecord([sept1, trashed, july]), CALENDAR_TREE, false)).not.toBe(first);
+        const moved = { ...sept2, createdAt: new Date(2027, 0, 5, 10).getTime() };
+        expect(buildVirtualTreeCached(asRecord([sept1, moved, july]), CALENDAR_TREE, false)).not.toBe(first);
+        const restored = { ...sept2, deletedAt: null };
+        expect(buildVirtualTreeCached(asRecord([sept1, restored, july]), CALENDAR_TREE, false)).not.toBe(first);
+    });
+
+    it('ignores summary-only and tag-noise changes for the calendar tree', () => {
+        const base = asRecord([sept1, sept2, july]);
+        const first = buildVirtualTreeCached(base, CALENDAR_TREE, false);
+        const moved = { ...sept2, title: 'Renamed', tags: ['noise'], isStarred: true, folderId: 'f1' };
+        expect(buildVirtualTreeCached(asRecord([sept1, moved, july]), CALENDAR_TREE, false)).toBe(first);
+    });
+
+    it('rebuilds the todo tree when todo membership flips', () => {
+        const tags = splitTodoTags('待办');
+        const plain = note({ id: 'p1', createdAt: new Date(2026, 8, 1, 10).getTime() });
+        const tagged = note({ id: 'p2', tags: ['待办'], createdAt: new Date(2026, 8, 2, 10).getTime() });
+        const map = asRecord([plain, tagged]);
+        const first = buildVirtualTreeCached(map, TODO_TREE, false, tags);
+        // Summary-only edits keep the tree identity.
+        const edited = { ...tagged, excerpt: 'new excerpt', updatedAt: 9_000 };
+        expect(buildVirtualTreeCached(asRecord([plain, edited]), TODO_TREE, false, tags)).toBe(first);
+        // Losing the todo tag removes the note from the todo tree.
+        const untaggedMap = asRecord([plain, { ...tagged, tags: [] }]);
+        const afterFlip = buildVirtualTreeCached(untaggedMap, TODO_TREE, false, tags);
+        expect(afterFlip).not.toBe(first);
+        // Renaming the configured todo tag rebuilds against the new membership.
+        const renamed = buildVirtualTreeCached(untaggedMap, TODO_TREE, false, splitTodoTags('todo'));
+        expect(renamed).not.toBe(afterFlip);
+        // A summary-only edit under the new tag set still hits the cache.
+        expect(buildVirtualTreeCached(asRecord([plain, { ...tagged, tags: [], excerpt: 'y' }]), TODO_TREE, false, splitTodoTags('todo'))).toBe(renamed);
+        // Dropping the todo filter widens the tree to every note (same slot, new build).
+        const withoutFilter = buildVirtualTreeCached(untaggedMap, TODO_TREE, false, null);
+        expect(withoutFilter).not.toBe(renamed);
+    });
+
+    it('separates cache slots per namespace and includeEmpty flag', () => {
+        const map = asRecord([sept1, sept2, july]);
+        expect(buildVirtualTreeCached(map, CALENDAR_TREE, false)).not.toBe(buildVirtualTreeCached(map, CALENDAR_TREE, true));
+        expect(buildVirtualTreeCached(map, CALENDAR_TREE, false)).not.toBe(buildVirtualTreeCached(map, TODO_TREE, false, splitTodoTags('待办')));
     });
 });
