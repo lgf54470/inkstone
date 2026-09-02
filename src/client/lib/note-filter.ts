@@ -28,9 +28,11 @@ export function matchesView(
             return false;
     }
     if (selectedTags.length) {
+        const matchesTag = (noteTags: readonly string[], target: string) =>
+            noteTags.some((t) => t === target || t.startsWith(`${target}/`));
         const matches = selectedTagsMatch === 'all'
-            ? selectedTags.every((name) => note.tags.includes(name))
-            : selectedTags.some((name) => note.tags.includes(name));
+            ? selectedTags.every((name) => matchesTag(note.tags, name))
+            : selectedTags.some((name) => matchesTag(note.tags, name));
         if (!matches)
             return false;
     }
@@ -48,7 +50,7 @@ export function matchesView(
             return Boolean(note.folderId && (folderScope?.has(note.folderId) ?? note.folderId === folderId));
         }
         case 'tag':
-            return Boolean(tag && note.tags.includes(tag));
+            return Boolean(tag && (note.tags.includes(tag) || note.tags.some((t) => t.startsWith(`${tag}/`))));
         case 'untagged':
             return note.tags.length === 0;
         case 'recent':

@@ -18,6 +18,7 @@ import { treeRowIndent } from '../../lib/calendar-tree';
 import { FolderAppearance, FolderPicker } from '../folders/FolderPicker';
 import { TagColorSubmenu } from '../tags/TagColorSubmenu';
 import { createTag, deleteTag, renameTag, setTagColor, toggleTagPinned } from '../tags/tagMutations';
+import { buildTagTree, flattenTagTree } from '../../lib/tag-tree';
 import { SidebarCalendar } from './SidebarCalendar';
 import { CalendarTree, TodoTree } from './CalendarTree';
 import { t } from "../../lib/i18n";
@@ -622,10 +623,22 @@ function TagSection() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [creating, setCreating] = useState(false);
     const [renamingId, setRenamingId] = useState<string | null>(null);
+    const [expandedTagPaths, setExpandedTagPaths] = useState<Set<string>>(() => new Set());
+    const toggleTagPath = (path: string) => {
+        setExpandedTagPaths((prev) => {
+            const next = new Set(prev);
+            if (next.has(path)) next.delete(path);
+            else next.add(path);
+            return next;
+        });
+    };
+    const tagTree = useMemo(() => buildTagTree(tags), [tags]);
+    const flattenedTree = useMemo(() => flattenTagTree(tagTree, expandedTagPaths), [tagTree, expandedTagPaths]);
     const sortedTags = useMemo(() => sortTagsForPicker(tags, ''), [tags]);
     const searching = query.trim() !== '';
-    const visible = searching ? sortTagsForPicker(sortedTags, query) : expanded ? sortedTags : sortedTags.slice(0, 8);
-    const highlightedIndex = Math.min(activeIndex, Math.max(0, visible.length - 1));
+    const visibleTags = searching ? sortTagsForPicker(sortedTags, query) : [];
+    const visibleNodes = searching ? [] : expanded ? flattenedTree : flattenedTree.slice(0, 10);
+    const highlightedIndex = Math.min(activeIndex, Math.max(0, (searching ? visibleTags.length : visibleNodes.length) - 1));
     const finishCreate = (value: string) => {
         setCreating(false);
         const id = createTag(value);
@@ -663,17 +676,17 @@ function TagSection() {
                     setActiveIndex(0);
                     return;
                 }
-                if (!searching || !visible.length)
+                if (!searching || !visibleTags.length)
                     return;
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
                     e.stopPropagation();
-                    setActiveIndex((i) => (i + 1) % visible.length);
+                    setActiveIndex((i) => (i + 1) % visibleTags.length);
                 }
                 else if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     e.stopPropagation();
-                    setActiveIndex((i) => (i - 1 + visible.length) % visible.length);
+                    setActiveIndex((i) => (i - 1 + visibleTags.length) % visibleTags.length);
                 }
                 else if (e.key === 'Enter' && e.shiftKey) {
                     e.preventDefault();
@@ -682,21 +695,21 @@ function TagSection() {
                         useUi.getState().toast({ title: t("tags.selection_limit", { value0: LIMITS.tagSelectionMax }), tone: 'danger' });
                         return;
                     }
-                    selectTags(visible.map((tag) => tag.name));
+                    selectTags(visibleTags.map((tag) => tag.name));
                     setQuery('');
                     setActiveIndex(0);
-                    useUi.getState().toast({ title: t("sidebar.tags_selected", { value0: visible.length }) });
+                    useUi.getState().toast({ title: t("sidebar.tags_selected", { value0: visibleTags.length }) });
                 }
                 else if (e.key === 'Enter') {
                     e.preventDefault();
                     e.stopPropagation();
-                    const target = visible[highlightedIndex];
+                    const target = visibleTags[highlightedIndex];
                     setQuery('');
                     setActiveIndex(0);
-                    openView('tag', { tag: target.name });
+                    if (target) openView('tag', { tag: target.name });
                 }
             }} placeholder={t("notes.tag_filter_search")} className="h-7 w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-7 pl-6 text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none"/>
-          {searching && <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 tabular-nums text-[10.5px] text-[var(--text-quaternary)]">{visible.length}</span>}
+          {searching && <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 tabular-nums text-[10.5px] text-[var(--text-quaternary)]">{visibleTags.length}</span>}
         </div>)}
       <div className="mt-0.5 space-y-px">
         {creating && <TagDraftRow onFinish={finishCreate} onCancel={() => setCreating(false)}/>}
@@ -726,19 +739,70 @@ function TagSection() {
             )}
           </button>
         )}
-        {visible.map((tag, index) => (<TagRow key={tag.id} tag={tag} active={view === 'tag' && activeTag === tag.name} selected={selectedTags.includes(tag.name)} highlighted={searching && index === highlightedIndex} searchQuery={query} renaming={renamingId === tag.id} onOpen={(event) => {
-            if (event.metaKey || event.ctrlKey) {
-                event.preventDefault();
-                toggleTagSelection(tag.name);
-            }
-            else
-                openView('tag', { tag: tag.name });
-        }} onStartRename={() => setRenamingId(tag.id)} onFinishRename={(value) => {
-            setRenamingId(null);
-            void renameTag(tag, value);
-        }} onCancelRename={() => setRenamingId(null)}/>))}
+        {searching
+          ? visibleTags.map((tag, index) => (
+              <TagRow
+                key={tag.id}
+                tag={tag}
+                active={view === 'tag' && activeTag === tag.name}
+                selected={selectedTags.includes(tag.name)}
+                highlighted={index === highlightedIndex}
+                searchQuery={query}
+                renaming={renamingId === tag.id}
+                onOpen={(event) => {
+                  if (event.metaKey || event.ctrlKey) {
+                    event.preventDefault();
+                    toggleTagSelection(tag.name);
+                  } else {
+                    openView('tag', { tag: tag.name });
+                  }
+                }}
+                onStartRename={() => setRenamingId(tag.id)}
+                onFinishRename={(value) => {
+                  setRenamingId(null);
+                  void renameTag(tag, value);
+                }}
+                onCancelRename={() => setRenamingId(null)}
+              />
+            ))
+          : visibleNodes.map((node) => {
+              const isRenaming = renamingId === node.tag.id;
+              const isSelected = selectedTags.includes(node.fullPath);
+              const isActive = view === 'tag' && activeTag === node.fullPath;
+              return (
+                <TagRow
+                  key={node.fullPath}
+                  tag={node.tag}
+                  displayName={node.name}
+                  depth={node.depth}
+                  hasChildren={node.children.length > 0}
+                  isExpanded={expandedTagPaths.has(node.fullPath)}
+                  onToggleExpand={() => toggleTagPath(node.fullPath)}
+                  count={node.children.length > 0 ? node.totalCount : node.count}
+                  active={isActive}
+                  selected={isSelected}
+                  highlighted={false}
+                  searchQuery=""
+                  renaming={isRenaming}
+                  onOpen={(event) => {
+                    if (event.metaKey || event.ctrlKey) {
+                      event.preventDefault();
+                      toggleTagSelection(node.fullPath);
+                    } else {
+                      openView('tag', { tag: node.fullPath });
+                    }
+                  }}
+                  onStartRename={() => setRenamingId(node.tag.id)}
+                  onFinishRename={(value) => {
+                    setRenamingId(null);
+                    void renameTag(node.tag, value);
+                  }}
+                  onCancelRename={() => setRenamingId(null)}
+                />
+              );
+            })}
 
-        {searching && visible.length === 0 && !creating && (<div className="mt-1 flex flex-col items-center gap-1 rounded-[var(--r-md)] bg-[var(--bg-inset)] px-2 py-3 text-center">
+        {searching && visibleTags.length === 0 && !creating && (<div className="mt-1 flex flex-col items-center gap-1 rounded-[var(--r-md)] bg-[var(--bg-inset)] px-2 py-3 text-center">
             <SearchX size={14} className="text-[var(--text-quaternary)]"/>
             <span className="text-[11.5px] font-medium text-[var(--text-secondary)]">{t("notes.no_matching_tags")}</span>
             <button type="button" onClick={() => {
@@ -746,6 +810,10 @@ function TagSection() {
                 setActiveIndex(0);
             }} className="text-[10.5px] font-medium text-[var(--accent)] transition-colors hover:underline">{t("notes.clear_tag_search")}</button>
           </div>)}
+
+        {!searching && flattenedTree.length > 10 && (<button type="button" onClick={() => setExpanded((v) => !v)} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[26px]">
+            {expanded ? t("common.collapse") : t("sidebar.show_all_value0_tags", { value0: flattenedTree.length })}
+          </button>)}
 
         {selectedTags.length > 0 && (<div className="rounded-[var(--r-md)] bg-[var(--accent-soft)] px-2 py-1.5 text-[11px] text-[var(--text-secondary)]">
             <div className="flex h-5 items-center justify-between gap-2">
@@ -770,10 +838,6 @@ function TagSection() {
                 </button>))}
             </div>
           </div>)}
-
-        {!searching && sortedTags.length > 8 && (<button type="button" onClick={() => setExpanded((v) => !v)} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[26px]">
-            {expanded ? t("common.collapse") : t("sidebar.show_all_value0_tags", { value0: sortedTags.length })}
-          </button>)}
       </div>
       </section>
     </>);
@@ -807,8 +871,31 @@ function TagDraftRow({ onFinish, onCancel }: {
         }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>
     </div>);
 }
-function TagRow({ tag, active, selected, highlighted, searchQuery, renaming, onOpen, onStartRename, onFinishRename, onCancelRename, }: {
+function TagRow({
+    tag,
+    displayName,
+    depth = 0,
+    hasChildren = false,
+    isExpanded = false,
+    onToggleExpand,
+    count,
+    active,
+    selected,
+    highlighted,
+    searchQuery,
+    renaming,
+    onOpen,
+    onStartRename,
+    onFinishRename,
+    onCancelRename,
+}: {
     tag: Tag;
+    displayName?: string;
+    depth?: number;
+    hasChildren?: boolean;
+    isExpanded?: boolean;
+    onToggleExpand?: () => void;
+    count?: number;
     active: boolean;
     selected: boolean;
     highlighted: boolean;
@@ -823,6 +910,8 @@ function TagRow({ tag, active, selected, highlighted, searchQuery, renaming, onO
     const rowRef = useRef<HTMLDivElement>(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const openPanel = useUi((s) => s.openPanel);
+    const displayLabel = displayName ?? tag.name;
+    const noteCount = count !== undefined ? count : tag.count;
     useEffect(() => {
         if (highlighted)
             rowRef.current?.scrollIntoView({ block: 'nearest' });
@@ -871,9 +960,24 @@ function TagRow({ tag, active, selected, highlighted, searchQuery, renaming, onO
     return (<div ref={rowRef} onContextMenu={(event) => {
             setMenuOpen(false);
             menu.onContextMenu(event);
-        }} className={cn('group relative flex h-10 items-center gap-2 rounded-[var(--r-md)] px-2 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active || selected
+        }} style={depth > 0 ? { paddingLeft: `${depth * 14 + 8}px` } : undefined} className={cn('group relative flex h-10 items-center gap-1.5 rounded-[var(--r-md)] px-2 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active || selected
             ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', highlighted && 'ring-1 ring-[var(--accent)]')}>
+      {hasChildren ? (
+        <button
+          type="button"
+          aria-label={isExpanded ? t("sidebar.collapse") : t("sidebar.expand")}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleExpand?.();
+          }}
+          className="flex size-4 shrink-0 items-center justify-center rounded text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
+        >
+          <ChevronRight size={11} className={cn('transition-transform duration-150', isExpanded && 'rotate-90')} />
+        </button>
+      ) : (
+        depth > 0 && <span className="w-4 shrink-0" />
+      )}
       <Hash size={13} className="shrink-0" style={{ color: tag.color ?? (active || selected ? 'var(--accent)' : 'var(--text-quaternary)') }}/>
       {renaming ? (<input aria-label={t("tags.rename")} autoFocus defaultValue={tag.name} onFocus={() => {
             finishedRef.current = false;
@@ -887,13 +991,13 @@ function TagRow({ tag, active, selected, highlighted, searchQuery, renaming, onO
             event.stopPropagation();
         }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>) : (<Tooltip label={t("sidebar.cmd_click_selects_multiple")} side="right">
               <button type="button" aria-current={active ? 'page' : undefined} aria-pressed={selected || undefined} onClick={onOpen} onDoubleClick={onStartRename} className="min-w-0 flex-1 truncate py-1 text-left text-[12.5px] font-medium flex items-center gap-1.5">
-                <span className="truncate"><TagNameHighlight name={tag.name} query={searchQuery}/></span>
+                <span className="truncate"><TagNameHighlight name={displayLabel} query={searchQuery}/></span>
                 {tag.isPinned && <Pin size={10} className="shrink-0 fill-current text-[var(--accent)] opacity-80" />}
               </button>
             </Tooltip>)}
       {!renaming && (<>
           <span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-0">
-            {tag.count > 0 ? tag.count : ''}
+            {noteCount > 0 ? noteCount : ''}
           </span>
           <Tooltip label={t("common.more_actions")} side="left">
             <IconButton label={t("common.more_actions")} size="sm" onClick={(event) => {

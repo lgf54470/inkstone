@@ -91,9 +91,10 @@ notesRoutes.get('/', async (c) => {
     const tag = c.req.query('tag')
     if (!tag) throw ApiError.badRequest('Missing tag')
     binds.push(tag)
+    binds.push(`${tag}/%`)
     where += ` AND EXISTS (SELECT 1 FROM note_tags nt JOIN tags t ON t.id = nt.tag_id
                  WHERE nt.note_id = n.id AND t.user_id = n.user_id
-                   AND t.name = ?${binds.length} COLLATE NOCASE)`
+                   AND (t.name = ?${binds.length - 1} COLLATE NOCASE OR t.name LIKE ?${binds.length} COLLATE NOCASE))`
   }
 
   const countWhere = where

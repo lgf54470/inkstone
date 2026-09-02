@@ -72,6 +72,13 @@ describe('matchesView', () => {
         expect(matchesView(note(), 'tag', null, 'reading')).toBe(false);
     });
 
+    it('matches the tag view against the viewed tag including descendants', () => {
+        const tagged = note({ tags: ['work/projectA'] });
+        expect(matchesView(tagged, 'tag', null, 'work')).toBe(true);
+        expect(matchesView(tagged, 'tag', null, 'work/projectA')).toBe(true);
+        expect(matchesView(tagged, 'tag', null, 'work/projectB')).toBe(false);
+    });
+
     it('stacks multi-tag selection with any view using any-match by default', () => {
         const tagged = note({ tags: ['reading', 'work'] });
         expect(matchesView(tagged, 'all', null, null, undefined, ['reading'])).toBe(true);
