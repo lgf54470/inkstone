@@ -213,7 +213,7 @@ function ViewItem({ icon, label, view, count, active, onSelect, }: {
     const acceptsDrop = view === 'unfiled' || view === 'starred' || view === 'archived' || view === 'trash';
     const deleteNote = useNotes((s) => s.deleteNote);
     return (<button type="button" aria-current={active ? 'page' : undefined} onClick={() => onSelect(view)} onDragOver={(e) => {
-            if (!acceptsDrop || !e.dataTransfer.types.includes('application/x-inkstone-note'))
+            if (!acceptsDrop || (!e.dataTransfer.types.includes('application/x-inkstone-note') && !e.dataTransfer.types.includes('application/x-inkstone-notes')))
                 return;
             e.preventDefault();
             setDropping(true);
@@ -222,18 +222,28 @@ function ViewItem({ icon, label, view, count, active, onSelect, }: {
                 setDropping(false);
         }} onDrop={(e) => {
             setDropping(false);
-            const id = e.dataTransfer.getData('application/x-inkstone-note');
-            if (!id)
-                return;
             e.preventDefault();
+            let ids: string[] = [];
+            const multi = e.dataTransfer.getData('application/x-inkstone-notes');
+            if (multi) {
+                try {
+                    const parsed = JSON.parse(multi);
+                    if (Array.isArray(parsed) && parsed.length > 0) ids = parsed;
+                } catch {}
+            }
+            if (ids.length === 0) {
+                const single = e.dataTransfer.getData('application/x-inkstone-note');
+                if (single) ids = [single];
+            }
+            if (ids.length === 0) return;
             if (view === 'unfiled')
-                void patchNote(id, { folderId: null });
+                void useNotes.getState().moveNotes(ids, null);
             else if (view === 'starred')
-                void patchNote(id, { isStarred: true });
+                ids.forEach((id) => void patchNote(id, { isStarred: true }));
             else if (view === 'archived')
-                void patchNote(id, { isArchived: true });
+                ids.forEach((id) => void patchNote(id, { isArchived: true }));
             else if (view === 'trash')
-                void deleteNote(id);
+                ids.forEach((id) => void deleteNote(id));
         }} className={cn('group relative flex h-10 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active
             ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]', dropping && 'ring-1 ring-[var(--accent)]')}>
@@ -397,7 +407,6 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
     const folders = useNotes((s) => s.folders ?? []);
     const patchFolder = useNotes((s) => s.patchFolder);
     const deleteFolder = useNotes((s) => s.deleteFolder);
-    const patchNote = useNotes((s) => s.patchNote);
     const { inboxFolderId } = useFolderPreferences();
     const isInbox = inboxFolderId === node.id;
     // The count feeds the delete-confirmation only; the visible row badge is the
@@ -517,12 +526,13 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
             menu.onContextMenu(event);
         }} onDragOver={(e) => {
             if (!e.dataTransfer.types.includes('application/x-inkstone-note') &&
+                !e.dataTransfer.types.includes('application/x-inkstone-notes') &&
                 !e.dataTransfer.types.includes('application/x-inkstone-folder'))
                 return;
             e.preventDefault();
             e.stopPropagation();
             e.dataTransfer.dropEffect = 'move';
-            if (e.dataTransfer.types.includes('application/x-inkstone-note')) {
+            if (e.dataTransfer.types.includes('application/x-inkstone-note') || e.dataTransfer.types.includes('application/x-inkstone-notes')) {
                 setDropState('inside');
                 return;
             }
@@ -536,9 +546,24 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
             e.preventDefault();
             e.stopPropagation();
             setDropState('none');
-            const noteId = e.dataTransfer.getData('application/x-inkstone-note');
-            if (noteId) {
-                void patchNote(noteId, { folderId: node.id });
+            let noteIds: string[] = [];
+            const multiNotesRaw = e.dataTransfer.getData('application/x-inkstone-notes');
+            if (multiNotesRaw) {
+                try {
+                    const parsed = JSON.parse(multiNotesRaw);
+                    if (Array.isArray(parsed) && parsed.length > 0) noteIds = parsed;
+                } catch {}
+            }
+            if (noteIds.length === 0) {
+                const singleId = e.dataTransfer.getData('application/x-inkstone-note');
+                if (singleId) noteIds = [singleId];
+            }
+            if (noteIds.length > 0) {
+                void useNotes.getState().moveNotes(noteIds, node.id);
+                useUi.getState().toast({
+                    title: t("notes.move_to_value0", { value0: node.name }),
+                    tone: 'success',
+                });
                 return;
             }
             const folderId = e.dataTransfer.getData('application/x-inkstone-folder');

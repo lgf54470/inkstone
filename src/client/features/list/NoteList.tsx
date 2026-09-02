@@ -695,6 +695,9 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
     return (<>
       <div id={`note-option-${note.id}`} role="option" aria-selected={active || selected} aria-posinset={position} aria-setsize={total} tabIndex={-1} data-note-id={note.id} draggable style={{ contentVisibility: 'auto', containIntrinsicSize: density === 'compact' ? 'auto 42px' : 'auto 72px' }} onDragStart={(e) => {
             e.dataTransfer.setData('application/x-inkstone-note', note.id);
+            if (selectedIds.includes(note.id) && selectedIds.length > 1) {
+                e.dataTransfer.setData('application/x-inkstone-notes', JSON.stringify(selectedIds));
+            }
             e.dataTransfer.effectAllowed = 'move';
         }} onClick={(event) => {
             if (event.altKey && breakpoint === 'desktop') {
