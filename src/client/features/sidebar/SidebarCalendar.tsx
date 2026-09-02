@@ -3,10 +3,10 @@ import { CalendarDays, ChevronDown } from 'lucide-react';
 import type { DateRangeFilter } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { t, useLocale } from '../../lib/i18n';
-import { dateKey } from '../../lib/time';
 import { useNotes } from '../../store/notes';
 import { useUi } from '../../store/ui';
-import { ActivityCalendar, CalendarDayNote } from '../../components/activity-calendar';
+import { ActivityCalendar } from '../../components/activity-calendar';
+import { buildActivityProjectionCached } from '../../lib/calendar-tree';
 import { CalendarView, loadCalendarPersist, saveCalendarPersist } from './calendar-persist';
 import { useGapIndicatorStore } from '../list/use-gap-indicator';
 import { useYearGridColumns } from '../../lib/year-grid-prefs';
@@ -44,51 +44,15 @@ export function SidebarCalendar() {
     const weekStart = locale === 'zh-CN' ? 1 : 0;
     const diaryTitle = useCallback((key: string) => t("sidebar.diary_title_value0", { value0: key }), []);
 
-    const counts = useMemo(() => {
-        const map = new Map<string, number>();
-        for (const note of Object.values(notes)) {
-            if (note.deletedAt !== null)
-                continue;
-            const key = dateKey(new Date(note.updatedAt));
-            map.set(key, (map.get(key) ?? 0) + 1);
-        }
-        return map;
-    }, [notes]);
-
-    const noteIdByTitle = useMemo(() => {
-        const map = new Map<string, string>();
-        for (const note of Object.values(notes)) {
-            if (note.deletedAt !== null)
-                continue;
-            if (!map.has(note.title))
-                map.set(note.title, note.id);
-        }
-        return map;
-    }, [notes]);
-
+    // Single cached projection replaces the three whole-vault Object.values
+    // scans: a typing commit only re-derives the edited note's day slice and
+    // title slot, leaving every untouched output identity stable.
+    const projection = useMemo(() => buildActivityProjectionCached(notes), [notes]);
+    const counts = projection.counts;
+    const noteIdByTitle = projection.noteIdByTitle;
+    const notesByDay = projection.notesByDay;
     const getDiaryId = useCallback((key: string) => noteIdByTitle.get(diaryTitle(key)) ?? null, [diaryTitle, noteIdByTitle]);
     const latestEditKey = useGapIndicatorStore((s) => s.latestEditKey);
-
-    const notesByDay = useMemo(() => {
-        const byDay = new Map<string, { id: string; title: string; updatedAt: number }[]>();
-        for (const note of Object.values(notes)) {
-            if (note.deletedAt !== null)
-                continue;
-            const key = dateKey(new Date(note.updatedAt));
-            const entry = byDay.get(key);
-            const item = { id: note.id, title: note.title, updatedAt: new Date(note.updatedAt).getTime() };
-            if (entry)
-                entry.push(item);
-            else
-                byDay.set(key, [item]);
-        }
-        const out = new Map<string, CalendarDayNote[]>();
-        for (const [key, list] of byDay) {
-            list.sort((a, b) => b.updatedAt - a.updatedAt);
-            out.set(key, list.map(({ id, title }) => ({ id, title })));
-        }
-        return out;
-    }, [notes]);
 
     const monthTitle = useMemo(() => new Intl.DateTimeFormat(locale, {
         year: 'numeric',

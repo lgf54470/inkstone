@@ -26,8 +26,10 @@ import {
     virtualPeriodMatchesNote,
     treeRowIndent,
     virtualTreeRowIndent,
+    buildActivityProjectionCached,
 } from './calendar-tree';
 import type { CalendarNode } from './calendar-tree';
+import { dateKey } from './time';
 
 function note(overrides: Partial<NoteSummary> = {}): NoteSummary {
     return {
@@ -615,5 +617,252 @@ describe('buildVirtualTreeCached', () => {
         const map = asRecord([sept1, sept2, july]);
         expect(buildVirtualTreeCached(map, CALENDAR_TREE, false)).not.toBe(buildVirtualTreeCached(map, CALENDAR_TREE, true));
         expect(buildVirtualTreeCached(map, CALENDAR_TREE, false)).not.toBe(buildVirtualTreeCached(map, TODO_TREE, false, splitTodoTags('待办')));
+    });
+});
+
+describe('buildActivityProjectionCached', () => {
+    const asRecord = (items: NoteSummary[]): Record<string, NoteSummary> =>
+        Object.fromEntries(items.map((item) => [item.id, item]));
+
+    const naive = (notes: Record<string, NoteSummary>) => {
+        const counts = new Map<string, number>();
+        const noteIdByTitle = new Map<string, string>();
+        const notesByDay = new Map<string, { id: string; title: string; updatedAt: number }[]>();
+        for (const item of Object.values(notes)) {
+            if (item.deletedAt !== null)
+                continue;
+            const key = dateKey(new Date(item.updatedAt));
+            counts.set(key, (counts.get(key) ?? 0) + 1);
+            if (!noteIdByTitle.has(item.title))
+                noteIdByTitle.set(item.title, item.id);
+            const list = notesByDay.get(key);
+            const entry = { id: item.id, title: item.title, updatedAt: item.updatedAt };
+            if (list)
+                list.push(entry);
+            else
+                notesByDay.set(key, [entry]);
+        }
+        for (const list of notesByDay.values())
+            list.sort((a, b) => b.updatedAt - a.updatedAt);
+        return { counts, noteIdByTitle, notesByDay };
+    };
+
+    const day = (year: number, month: number, dayOfMonth: number, hour = 12): number =>
+        new Date(year, month - 1, dayOfMonth, hour).getTime();
+    const id = (index: number) => `note-${String(index).padStart(5, '0')}`;
+
+    // A mulberry32 PRNG so the differential run is deterministic across runs.
+    const mulberry32 = (seed: number) => {
+        let state = seed >>> 0;
+        return () => {
+            state = (state + 0x6d2b79f5) >>> 0;
+            let t = state;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    };
+
+    it('matches a fresh rebuild over a 19.8k-vault cold build', () => {
+        const notes: Record<string, NoteSummary> = {};
+        for (let i = 0; i < 19_800; i++) {
+            const ts = day(2024 + (i % 5), 1 + (i % 12), 1 + (i % 28), 1 + (i % 23));
+            notes[id(i)] = note({ id: id(i), title: `Note ${i % 9}`, updatedAt: ts, createdAt: ts });
+        }
+        const projection = buildActivityProjectionCached(notes);
+        const expected = naive(notes);
+        expect(projection.counts).toEqual(expected.counts);
+        expect(projection.noteIdByTitle).toEqual(expected.noteIdByTitle);
+        expect(projection.notesByDay).toEqual(expected.notesByDay);
+    });
+
+    it('returns the exact same projection for the same map identity', () => {
+        const map = asRecord([
+            note({ id: 'a', updatedAt: day(2026, 8, 1) }),
+            note({ id: 'b', updatedAt: day(2026, 8, 2) }),
+        ]);
+        const first = buildActivityProjectionCached(map);
+        expect(buildActivityProjectionCached(map)).toBe(first);
+    });
+
+    it('keeps every output identity stable when a commit touches no projection field', () => {
+        const map = asRecord([
+            note({ id: 'a', updatedAt: day(2026, 1, 10) }),
+            note({ id: 'b', updatedAt: day(2026, 1, 11) }),
+            note({ id: 'c', updatedAt: day(2026, 1, 12) }),
+        ]);
+        const first = buildActivityProjectionCached(map);
+        const pinned = { ...map.a!, isPinned: true, folderId: 'f1', excerpt: 'x' };
+        const second = buildActivityProjectionCached({ ...map, a: pinned });
+        expect(second.counts).toBe(first.counts);
+        expect(second.noteIdByTitle).toBe(first.noteIdByTitle);
+        expect(second.notesByDay).toBe(first.notesByDay);
+    });
+
+    it('re-derives only the edited note slices when a same-day edit changes updatedAt', () => {
+        const map = asRecord([
+            note({ id: 'a', updatedAt: day(2026, 7, 1) }),
+            note({ id: 'b', title: 'Shared', updatedAt: day(2026, 7, 2) }),
+            note({ id: 'c', title: 'Shared', updatedAt: day(2026, 7, 3) }),
+        ]);
+        const first = buildActivityProjectionCached(map);
+        const edited = { ...map.b!, excerpt: 'new', wordCount: 5, charCount: 20, updatedAt: day(2026, 7, 2, 15) };
+        const second = buildActivityProjectionCached({ ...map, b: edited });
+        expect(second.counts).toBe(first.counts);
+        expect(second.noteIdByTitle).toBe(first.noteIdByTitle);
+        // The untouched day keeps its exact array identity.
+        expect(second.notesByDay.get('2026-07-01')).toBe(first.notesByDay.get('2026-07-01'));
+        expect(second.notesByDay.get('2026-07-03')).toBe(first.notesByDay.get('2026-07-03'));
+        // The edited day is rebuilt with the new updatedAt ordering.
+        expect(second.notesByDay.get('2026-07-02')).toEqual([{ id: 'b', title: 'Shared', updatedAt: day(2026, 7, 2, 15) }]);
+    });
+
+    it('moves a note across day buckets with counts corrected and untouched days stable', () => {
+        const map = asRecord([
+            note({ id: 'a', updatedAt: day(2026, 7, 1) }),
+            note({ id: 'b', updatedAt: day(2026, 7, 2) }),
+            note({ id: 'c', updatedAt: day(2026, 7, 3) }),
+        ]);
+        const first = buildActivityProjectionCached(map);
+        const moved = { ...map.b!, updatedAt: day(2026, 8, 15) };
+        const second = buildActivityProjectionCached({ ...map, b: moved });
+        expect(second.counts.get('2026-07-02')).toBeUndefined();
+        expect(second.counts.get('2026-08-15')).toBe(1);
+        expect(second.counts.get('2026-07-01')).toBe(1);
+        expect(second.notesByDay.get('2026-07-02')).toBeUndefined();
+        expect(second.notesByDay.get('2026-08-15')).toEqual([{ id: 'b', title: 'Note', updatedAt: day(2026, 8, 15) }]);
+        expect(second.notesByDay.get('2026-07-01')).toBe(first.notesByDay.get('2026-07-01'));
+        expect(second.notesByDay.get('2026-07-03')).toBe(first.notesByDay.get('2026-07-03'));
+    });
+
+    it('sorts a day list by updatedAt descending after a same-day edit', () => {
+        const map = asRecord([
+            note({ id: 'a', updatedAt: day(2026, 7, 2, 9) }),
+            note({ id: 'b', updatedAt: day(2026, 7, 2, 10) }),
+            note({ id: 'c', updatedAt: day(2026, 7, 2, 11) }),
+        ]);
+        const first = buildActivityProjectionCached(map);
+        expect(first.notesByDay.get('2026-07-02')!.map((item) => item.id)).toEqual(['c', 'b', 'a']);
+        const edited = { ...map.a!, updatedAt: day(2026, 7, 2, 12) };
+        const second = buildActivityProjectionCached({ ...map, a: edited });
+        expect(second.notesByDay.get('2026-07-02')!.map((item) => item.id)).toEqual(['a', 'c', 'b']);
+    });
+
+    it('re-claims a vacated title slot by the next note in map order', () => {
+        const map = asRecord([
+            note({ id: 'a', title: 'Alpha', updatedAt: day(2026, 7, 1) }),
+            note({ id: 'b', title: 'Alpha', updatedAt: day(2026, 7, 2) }),
+            note({ id: 'c', title: 'Other', updatedAt: day(2026, 7, 3) }),
+        ]);
+        const first = buildActivityProjectionCached(map);
+        expect(first.noteIdByTitle.get('Alpha')).toBe('a');
+        // The owner changes title; note b (later in map order) takes over.
+        const renamed = { ...map.a!, title: 'Beta' };
+        const second = buildActivityProjectionCached({ ...map, a: renamed });
+        expect(second.noteIdByTitle.get('Alpha')).toBe('b');
+        expect(second.noteIdByTitle.get('Beta')).toBe('a');
+        // Renaming a non-owner leaves the slot untouched.
+        const third = buildActivityProjectionCached({ ...map, b: { ...map.b!, title: 'Gamma' } });
+        expect(third.noteIdByTitle.get('Alpha')).toBe('a');
+        // A late map-order note sharing a title never steals the slot.
+        const fourth = buildActivityProjectionCached({ ...map, c: { ...map.c!, title: 'Alpha' } });
+        expect(fourth.noteIdByTitle.get('Alpha')).toBe('a');
+    });
+
+    it('drops and restores a tombstoned note across every slice', () => {
+        const map = asRecord([
+            note({ id: 'a', updatedAt: day(2026, 7, 1) }),
+            note({ id: 'b', title: 'Unique', updatedAt: day(2026, 7, 2) }),
+        ]);
+        const first = buildActivityProjectionCached(map);
+        const trashed = { ...map.b!, deletedAt: day(2026, 9, 1) };
+        const second = buildActivityProjectionCached({ ...map, b: trashed });
+        expect(second.counts.get('2026-07-02')).toBeUndefined();
+        expect(second.notesByDay.get('2026-07-02')).toBeUndefined();
+        expect(second.noteIdByTitle.get('Unique')).toBeUndefined();
+        expect(second.notesByDay.get('2026-07-01')).toBe(first.notesByDay.get('2026-07-01'));
+        // Reviving re-adds the note everywhere with its new timeline position.
+        const revived = { ...map.b!, deletedAt: null, updatedAt: day(2026, 7, 2, 8) };
+        const third = buildActivityProjectionCached({ ...map, b: revived });
+        expect(third.counts.get('2026-07-02')).toBe(1);
+        expect(third.noteIdByTitle.get('Unique')).toBe('b');
+        expect(third.notesByDay.get('2026-07-02')).toEqual([{ id: 'b', title: 'Unique', updatedAt: day(2026, 7, 2, 8) }]);
+    });
+
+    it('sweeps an id that vanishes from the map without a tombstone', () => {
+        const map = asRecord([
+            note({ id: 'a', updatedAt: day(2026, 7, 1) }),
+            note({ id: 'b', title: 'Gone', updatedAt: day(2026, 7, 2) }),
+        ]);
+        buildActivityProjectionCached(map);
+        const { b: _removed, ...shrunk } = map;
+        const second = buildActivityProjectionCached(shrunk);
+        expect(second.counts.get('2026-07-02')).toBeUndefined();
+        expect(second.noteIdByTitle.get('Gone')).toBeUndefined();
+        expect(second.notesByDay.get('2026-07-02')).toBeUndefined();
+        expect(second.notesByDay.get('2026-07-01')).toEqual([{ id: 'a', title: 'Note', updatedAt: day(2026, 7, 1) }]);
+        void _removed;
+    });
+
+    it('stays equal to the naive rebuild through a seeded random op sequence', () => {
+        const rand = mulberry32(20260902);
+        const titles = ['Shared', 'Untitled', 'Diary', 'Project', 'Scratch'];
+        const notes: Record<string, NoteSummary> = {};
+        for (let i = 0; i < 5_000; i++) {
+            const ts = day(2025 + (i % 3), 1 + (i % 12), 1 + (i % 28), 1 + (i % 23));
+            notes[id(i)] = note({ id: id(i), title: titles[i % titles.length]!, updatedAt: ts, createdAt: ts });
+        }
+        let next = notes;
+        for (let step = 0; step < 80; step++) {
+            const op = rand();
+            const target = id(Math.floor(rand() * 5_500));
+            const current = next[target];
+            let updated: NoteSummary | null = null;
+            let added: NoteSummary | null = null;
+            if (!current) {
+                // A missing target acts as a brand-new note.
+                const ts = day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28));
+                added = note({ id: target, title: titles[Math.floor(rand() * titles.length)]!, updatedAt: ts, createdAt: ts });
+            } else if (op < 0.35) {
+                updated = { ...current, updatedAt: day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28)) };
+            } else if (op < 0.5) {
+                updated = { ...current, title: titles[Math.floor(rand() * titles.length)]! };
+            } else if (op < 0.65) {
+                updated = { ...current, deletedAt: day(2026, 9, 1), updatedAt: day(2026, 9, 1) };
+            } else if (op < 0.75) {
+                updated = { ...current, deletedAt: null, updatedAt: day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28)) };
+            } else if (op < 0.85) {
+                const ts = day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28));
+                added = note({ id: id(5_500 + step), title: titles[Math.floor(rand() * titles.length)]!, updatedAt: ts, createdAt: ts });
+            } else if (op < 0.95) {
+                updated = { ...current, isPinned: true, excerpt: `excerpt ${step}` };
+            } else {
+                const { [target]: gone, ...rest } = next;
+                next = rest;
+                void gone;
+            }
+            if (updated)
+                next = { ...next, [target]: updated };
+            if (added)
+                next = { ...next, [added.id]: added };
+            const projection = buildActivityProjectionCached(next);
+            const expected = naive(next);
+            expect(projection.counts).toEqual(expected.counts);
+            expect(projection.noteIdByTitle).toEqual(expected.noteIdByTitle);
+            // Same-millisecond ties have no consumable order (the UI only
+            // reads id/title), and only the order of equal timestamps can
+            // diverge: the naive rebuild follows map insertion while the
+            // incremental re-appends notes that left and re-entered a day.
+            // Compare with a canonical (updatedAt, id) sort instead.
+            const normalize = (byDay: Map<string, { id: string; title: string; updatedAt: number }[]>): Map<string, string[]> => {
+                const out = new Map<string, string[]>();
+                for (const [dayKey, list] of byDay) {
+                    const sorted = [...list].sort((a, b) => b.updatedAt - a.updatedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+                    out.set(dayKey, sorted.map((item) => `${item.updatedAt}|${item.id}|${item.title}`));
+                }
+                return out;
+            };
+            expect(normalize(projection.notesByDay)).toEqual(normalize(expected.notesByDay));
+        }
     });
 });
