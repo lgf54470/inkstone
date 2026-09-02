@@ -181,6 +181,54 @@ export function runShellCacheSuite(suite: SingleTabSuite): void {
       expect(backend.writes).toHaveLength(0)
     })
 
+    it('upgrades a pre-namespace legacy cache through the real boot path', async () => {
+      // An old build stored flat keys under a bare 'userId' marker; booting the
+      // new code first binds a different account, then switches back to u1 so
+      // bindLocalUser's migrateLegacyData moves the flat keys into u1's scope,
+      // and loadShell then upgrades the single-key notes array per note.
+      await localDb.bindUser('other')
+      await backend.seed('userId', 'u1')
+      await backend.seed('notes', fixture.vault)
+      await backend.seed('folders', [])
+      await backend.seed('tags', [])
+      await backend.seed('cursor', 5)
+
+      await localDb.bindUser('u1')
+      const loaded = await localDb.loadShell()
+      expect(loaded!.notes).toHaveLength(fixture.vaultSize)
+      expect(loaded!.cursor).toBe(5)
+
+      const keys = await backend.keys()
+      expect(keys.includes('notes')).toBe(false)
+      expect(keys.includes('folders')).toBe(false)
+      expect(keys.includes('tags')).toBe(false)
+      expect(keys.includes('cursor')).toBe(false)
+      expect(keys.includes('user:u1:notes')).toBe(false)
+      expect(keys.filter((key) => key.includes('note-summary:'))).toHaveLength(fixture.vaultSize)
+
+      // A second boot is fully idempotent: two batched reads, no migration writes.
+      backend.ops.getMany = 0
+      backend.writes.length = 0
+      const reloaded = await localDb.loadShell()
+      expect(reloaded!.notes).toHaveLength(fixture.vaultSize)
+      expect(backend.ops.getMany).toBe(2)
+      expect(backend.writes).toHaveLength(0)
+
+      // The upgraded cache stays fully usable offline: edit, flush, reload.
+      const target = reloaded!.notes[42]!
+      const edited = fixture.edited(target, 9)
+      const nextNotes = reloaded!.notes.map((note) => (note.id === target.id ? edited : note))
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      backend.writes.length = 0
+      localDb.scheduleShellSave(fixture.shell(nextNotes, 5))
+      await suite.flush.settle()
+      vi.useRealTimers()
+      expect(backend.writes).toHaveLength(1)
+      expect(backend.writes[0]!.key).toContain(`note-summary:${target.id}`)
+      const afterEdit = await localDb.loadShell()
+      expect(afterEdit!.notes.find((note) => note.id === target.id)?.updatedAt).toBe(edited.updatedAt)
+    })
+
     it('keeps a migrated legacy cache fully usable offline: edit, flush, reload', async () => {
       const legacyVault = fixture.vault.slice(0, 200)
       await backend.seed('user:u1:notes', legacyVault)
