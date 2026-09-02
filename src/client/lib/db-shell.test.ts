@@ -153,6 +153,31 @@ describe('db shell cache', () => {
     expect(idb.ops.getMany).toBe(2)
     expect(idb.writes).toHaveLength(0)
   })
+
+  it('keeps a migrated legacy cache fully usable offline: edit, flush, reload', async () => {
+    const legacyVault = vault.slice(0, 200)
+    idb.store.set('user:u1:notes', legacyVault)
+    idb.store.set('user:u1:folders', [])
+    idb.store.set('user:u1:tags', [])
+    idb.store.set('user:u1:cursor', 3)
+
+    const migrated = await localDb.loadShell()
+    expect(migrated!.notes).toHaveLength(200)
+    const target = migrated!.notes[42]!
+    const edited = typedVariant(target, 7)
+    const nextNotes = migrated!.notes.map((note) => (note.id === target.id ? edited : note))
+
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    idb.writes.length = 0
+    localDb.scheduleShellSave(shell(nextNotes, 3))
+    await vi.advanceTimersByTimeAsync(2_000)
+    vi.useRealTimers()
+
+    expect(idb.writes).toHaveLength(1)
+    expect(idb.writes[0]!.key).toContain(`note-summary:${target.id}`)
+    const reloaded = await localDb.loadShell()
+    expect(reloaded!.notes.find((note) => note.id === target.id)?.updatedAt).toBe(edited.updatedAt)
+  })
 })
 
 describe('db shell benchmark', () => {
