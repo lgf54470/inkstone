@@ -44,6 +44,11 @@ let pendingShellUserId: string | null = null
 let activeUserId: string | null = null
 const supportsUserNamespaces = typeof entries === 'function' && typeof delMany === 'function'
 let forceUserNamespaces = false
+// The shell is a read cache for the next boot, not a source of truth: a long
+// coalescing window collapses the full-notes serialization that would otherwise
+// fire after every typing-derived summary commit (lost tail at most delays the
+// cached shell by one window on abrupt close).
+const SHELL_SAVE_COALESCE_MS = 800
 
 export interface OutboxItem {
   id: string
@@ -239,7 +244,7 @@ export const localDb = {
       pendingShell = null
       pendingShellUserId = null
       if (snapshot) void localDb.saveShell(snapshot, userId)
-    }, 80)
+    }, SHELL_SAVE_COALESCE_MS)
   },
 
   async getContent(id: string): Promise<CachedNoteContent | undefined> {
