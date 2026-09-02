@@ -329,7 +329,7 @@ function FolderSection() {
         return excluded;
     }, [folders, movingId]);
     return (<>
-      <section className={cn('mt-4 rounded-[var(--r-md)]', rootDropping && 'ring-1 ring-[var(--accent)]')} onDragOver={(event) => {
+      <section id="sidebar-folders" className={cn('mt-4 rounded-[var(--r-md)]', rootDropping && 'ring-1 ring-[var(--accent)]')} onDragOver={(event) => {
             if (!event.dataTransfer.types.includes('application/x-inkstone-folder'))
                 return;
             event.preventDefault();

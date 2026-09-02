@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject, } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { ChevronRight, X } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { Button, IconButton, Kbd } from './primitives';
 import { t } from "../lib/i18n";
@@ -257,6 +257,7 @@ export interface MenuItem {
     checked?: boolean;
     onSelect?: () => void;
     separatorBefore?: boolean;
+    submenu?: ReactNode | ((props: { closeMenu: () => void }) => ReactNode);
 }
 export function Menu({ anchor, open, onClose, items, align = 'start', width = 208, label = t("overlay.menu"), zIndex, }: {
     anchor: RefObject<HTMLElement | null> | {
@@ -282,9 +283,21 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
         origin: 'top left',
     });
     const [cursor, setCursor] = useState(0);
+    const [activeSubmenuId, setActiveSubmenuId] = useState<string | null>(null);
+    const [submenuAnchorRect, setSubmenuAnchorRect] = useState<DOMRect | null>(null);
+    const [submenuPos, setSubmenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+    const submenuRef = useRef<HTMLDivElement>(null);
     const anchorRef = 'current' in anchor ? anchor : null;
     const point = 'current' in anchor ? null : anchor;
     const menuWidth = Math.min(width, Math.max(0, innerWidth - 16));
+
+    useEffect(() => {
+        if (!open) {
+            setActiveSubmenuId(null);
+            setSubmenuAnchorRect(null);
+        }
+    }, [open]);
+
     useLayoutEffect(() => {
         if (!open)
             return;
@@ -312,8 +325,38 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
         setPosition({ top, left, origin: `${flipUp ? 'bottom' : 'top'} ${align === 'end' ? 'right' : 'left'}` });
         setCursor(items.findIndex((i) => !i.disabled));
     }, [open, items, align, menuWidth, anchorRef, point]);
+
+    useLayoutEffect(() => {
+        if (!activeSubmenuId || !submenuAnchorRect)
+            return;
+        const margin = 8;
+        const viewport = getVisibleViewport();
+        const parentRect = menuRef.current?.getBoundingClientRect();
+        const itemRect = submenuAnchorRect;
+        const submenuWidth = submenuRef.current?.offsetWidth || 260;
+        const submenuHeight = submenuRef.current?.offsetHeight || 320;
+
+        const preferredRight = (parentRect ? parentRect.right : itemRect.right) - 2;
+        const preferredLeft = (parentRect ? parentRect.left : itemRect.left) - submenuWidth + 2;
+
+        let left = preferredRight;
+        if (left + submenuWidth > viewport.right - margin) {
+            left = preferredLeft >= viewport.left + margin ? preferredLeft : Math.max(viewport.left + margin, viewport.right - submenuWidth - margin);
+        }
+
+        let top = itemRect.top - 4;
+        if (top + submenuHeight > viewport.bottom - margin) {
+            top = Math.max(viewport.top + margin, viewport.bottom - submenuHeight - margin);
+        }
+        if (top < viewport.top + margin) {
+            top = viewport.top + margin;
+        }
+
+        setSubmenuPos({ top, left });
+    }, [activeSubmenuId, submenuAnchorRect]);
+
     useEscape(open, onClose);
-    useClickOutside(anchorRef ? [menuRef, anchorRef] : [menuRef], open, onClose);
+    useClickOutside(anchorRef ? [menuRef, anchorRef, submenuRef] : [menuRef, submenuRef], open, onClose);
     useEffect(() => {
         if (!open)
             return;
@@ -351,6 +394,20 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
                     return current;
                 });
             }
+            else if (event.key === 'ArrowRight') {
+                const item = items[cursor];
+                if (item?.submenu) {
+                    event.preventDefault();
+                    const btn = menuRef.current?.querySelector<HTMLElement>(`[data-menu-index="${cursor}"]`);
+                    if (btn) {
+                        setActiveSubmenuId(item.id);
+                        setSubmenuAnchorRect(btn.getBoundingClientRect());
+                        queueMicrotask(() => {
+                            submenuRef.current?.querySelector<HTMLElement>('input, button')?.focus();
+                        });
+                    }
+                }
+            }
             else if (event.key === 'Home' || event.key === 'End') {
                 event.preventDefault();
                 const indexes = items
@@ -362,6 +419,14 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
                 event.preventDefault();
                 const item = items[cursor];
                 if (item && !item.disabled) {
+                    if (item.submenu) {
+                        const btn = menuRef.current?.querySelector<HTMLElement>(`[data-menu-index="${cursor}"]`);
+                        if (btn) {
+                            setActiveSubmenuId((curr) => curr === item.id ? null : item.id);
+                            setSubmenuAnchorRect(btn.getBoundingClientRect());
+                        }
+                        return;
+                    }
                     item.onSelect?.();
                     onClose();
                 }
@@ -372,29 +437,73 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
     }, [open, items, cursor, onClose]);
     if (!open)
         return null;
-    return createPortal(<div ref={menuRef} role="menu" aria-label={label} tabIndex={-1} className="anim-pop fixed z-[260] max-h-[420px] overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none" style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
-      {items.map((item, index) => (<div key={item.id}>
-          {item.separatorBefore && <div role="separator" className="my-1 h-px bg-[var(--border-subtle)]"/>}
-          <button type="button" role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'} aria-checked={item.checked === undefined ? undefined : item.checked} tabIndex={index === cursor ? 0 : -1} data-menu-index={index} disabled={item.disabled} onMouseEnter={() => {
-                if (!item.disabled)
-                    setCursor(index);
-            }} onClick={() => {
-                item.onSelect?.();
-                onClose();
-            }} className={cn('flex h-10 w-full items-center gap-2.5 rounded-[var(--r-sm)] px-2 text-left text-[12.5px] md:h-[30px]', 'transition-colors duration-[80ms] disabled:pointer-events-none disabled:opacity-40', index === cursor ? 'bg-[var(--bg-hover)]' : '', item.tone === 'danger'
-                ? 'text-[var(--danger)]'
-                : index === cursor
-                    ? 'text-[var(--text-primary)]'
-                    : 'text-[var(--text-secondary)]')}>
-            {item.icon && (<span className="flex size-4 shrink-0 items-center justify-center opacity-85">
-                {item.icon}
-              </span>)}
-            <span className="min-w-0 flex-1 truncate">{item.label}</span>
-            {item.checked && <span className="text-[var(--accent)]">✓</span>}
-            {item.combo && <Kbd combo={item.combo}/>}
-          </button>
-        </div>))}
-    </div>, document.body);
+    const activeItem = items.find((i) => i.id === activeSubmenuId);
+    return (<>
+      {createPortal(<div ref={menuRef} role="menu" aria-label={label} tabIndex={-1} className="anim-pop fixed z-[260] max-h-[420px] overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none" style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
+        {items.map((item, index) => (<div key={item.id}>
+            {item.separatorBefore && <div role="separator" className="my-1 h-px bg-[var(--border-subtle)]"/>}
+            <button type="button" role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'} aria-checked={item.checked === undefined ? undefined : item.checked} tabIndex={index === cursor ? 0 : -1} data-menu-index={index} disabled={item.disabled} onMouseEnter={(e) => {
+                  if (!item.disabled) {
+                      setCursor(index);
+                      if (item.submenu) {
+                          setActiveSubmenuId(item.id);
+                          setSubmenuAnchorRect(e.currentTarget.getBoundingClientRect());
+                      } else {
+                          setActiveSubmenuId(null);
+                          setSubmenuAnchorRect(null);
+                      }
+                  }
+              }} onClick={(e) => {
+                  if (item.submenu) {
+                      setActiveSubmenuId((curr) => curr === item.id ? null : item.id);
+                      setSubmenuAnchorRect(e.currentTarget.getBoundingClientRect());
+                      return;
+                  }
+                  item.onSelect?.();
+                  onClose();
+              }} className={cn('flex h-10 w-full items-center gap-2.5 rounded-[var(--r-sm)] px-2 text-left text-[12.5px] md:h-[30px]', 'transition-colors duration-[80ms] disabled:pointer-events-none disabled:opacity-40', index === cursor ? 'bg-[var(--bg-hover)]' : '', item.tone === 'danger'
+                  ? 'text-[var(--danger)]'
+                  : index === cursor
+                      ? 'text-[var(--text-primary)]'
+                      : 'text-[var(--text-secondary)]')}>
+              {item.icon && (<span className="flex size-4 shrink-0 items-center justify-center opacity-85">
+                  {item.icon}
+                </span>)}
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              {item.checked && <span className="text-[var(--accent)]">✓</span>}
+              {item.submenu ? (
+                <ChevronRight size={13} className="ml-auto shrink-0 opacity-70" />
+              ) : (
+                item.combo && <Kbd combo={item.combo}/>
+              )}
+            </button>
+          </div>))}
+      </div>, document.body)}
+      {activeItem && activeItem.submenu && createPortal(
+        <div
+          ref={submenuRef}
+          tabIndex={-1}
+          className="anim-pop fixed outline-none"
+          style={{
+            top: submenuPos.top,
+            left: submenuPos.left,
+            zIndex: (zIndex ?? 260) + 10,
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              setActiveSubmenuId(null);
+              menuRef.current?.querySelector<HTMLElement>(`[data-menu-index="${cursor}"]`)?.focus();
+            }
+          }}
+        >
+          {typeof activeItem.submenu === 'function'
+            ? activeItem.submenu({ closeMenu: onClose })
+            : activeItem.submenu}
+        </div>,
+        document.body
+      )}
+    </>);
 }
 export function useContextMenu() {
     const [point, setPoint] = useState<{

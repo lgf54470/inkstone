@@ -26,6 +26,8 @@ import { createNoteFromTemplate } from '../../lib/template-notes';
 import { CALENDAR_TREE, calendarPeriodLabel, calendarPeriodsForDate, filterTodoNotes, isTodoFolderId, isVirtualFolderId, type CalendarNode, parseVirtualId, resolveTodoTag, TODO_TREE, virtualAncestorIds, virtualId, virtualNearestNeighbors, virtualPathSegments, virtualPeriodKeyRange } from '../../lib/calendar-tree';
 import { folderPathLabel } from '../../lib/folders';
 import { FolderPicker } from '../folders/FolderPicker';
+import { MoveToFolderSubmenu } from '../folders/MoveToFolderSubmenu';
+import { CreateFolderModal } from '../folders/CreateFolderModal';
 import { t, useLocale, type MessageKey } from "../../lib/i18n";
 const VIEW_MESSAGE_KEYS: Record<ViewKind, MessageKey> = {
     all: 'navigation.all_notes',
@@ -538,7 +540,32 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
     const menu = useContextMenu();
     const menuButtonRef = useRef<HTMLButtonElement>(null);
     const [menuOpen, setMenuOpen] = useState(false);
-    const [moveOpen, setMoveOpen] = useState(false);
+    const [createFolderOpen, setCreateFolderOpen] = useState(false);
+    const handleSelectFolder = (folderId: string | null) => {
+        const targetIds = selectedIds.includes(note.id) ? selectedIds : [note.id];
+        void moveNotes(targetIds, folderId);
+        if (folderId) {
+            const folder = folders.find((f) => f.id === folderId);
+            if (folder) {
+                toast({
+                    title: t("notes.move_to_value0", { value0: folder.name }),
+                    tone: 'success',
+                });
+            }
+        }
+    };
+    const handleManageFolders = () => {
+        const ui = useUi.getState();
+        if (ui.navCollapsed) {
+            ui.toggleNav();
+        }
+        if (breakpoint === 'mobile' || window.innerWidth < 768) {
+            ui.toggleNavDrawer(true);
+        }
+        setTimeout(() => {
+            document.getElementById('sidebar-folders')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+    };
     const purgeRef = useRef(false);
     const [purging, setPurging] = useState(false);
     const inTrash = Boolean(note.deletedAt);
@@ -644,7 +671,15 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
                 label: t("notes.move_to_folder"),
                 icon: <FolderInput size={13}/>,
                 separatorBefore: true,
-                onSelect: () => setMoveOpen(true),
+                submenu: ({ closeMenu }) => (
+                    <MoveToFolderSubmenu
+                        currentFolderId={note.folderId}
+                        onSelectFolder={handleSelectFolder}
+                        onCreateNew={() => setCreateFolderOpen(true)}
+                        onManageFolders={handleManageFolders}
+                        closeMenu={closeMenu}
+                    />
+                ),
             },
             { id: 'export-md', label: t("workspace.export_markdown"), icon: <FileText size={13}/>, separatorBefore: true, onSelect: () => void exportNote('md') },
             { id: 'export-html', label: t("workspace.export_html"), icon: <FileCode size={13}/>, onSelect: () => void exportNote('html') },
@@ -735,7 +770,15 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
 
       {menu.point && <Menu anchor={menu.point} open onClose={menu.close} items={items}/>}
       <Menu anchor={menuButtonRef} open={menuOpen} onClose={() => setMenuOpen(false)} items={items} align="end" width={240}/>
-      {moveOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={note.folderId} rootLabel={t("notes.remove_from_folder")} onSelect={(folderId) => void moveNotes([note.id], folderId)} onClose={() => setMoveOpen(false)}/>}
+      {createFolderOpen && (
+        <CreateFolderModal
+          open={createFolderOpen}
+          onClose={() => setCreateFolderOpen(false)}
+          onCreated={(folderId) => {
+            handleSelectFolder(folderId);
+          }}
+        />
+      )}
     </>);
 });
 function BulkBar() {
