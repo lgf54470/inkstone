@@ -15,7 +15,7 @@ import { useUi } from '../../store/ui';
 import { createContextualNote, useNotes } from '../../store/notes';
 import { toastWithUndo } from '../../lib/toast-undo';
 import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands';
-import { calendarAncestorIds, calendarId, calendarNodeName, calendarPeriodKeyRange, calendarPeriodLabel, calendarPeriodsForDate, parseCalendarJumpQuery, type CalendarPeriod } from '../../lib/calendar-tree';
+import { CALENDAR_TREE, calendarNodeName, calendarPeriodLabel, calendarPeriodsForDate, parseCalendarJumpQuery, type CalendarPeriod, virtualAncestorIds, virtualId, virtualPeriodKeyRange } from '../../lib/calendar-tree';
 import { folderPathLabel, openFolderView } from '../../lib/folders';
 import { useSession } from '../../store/session';
 import { t, useLocale, type MessageKey } from "../../lib/i18n";
@@ -85,8 +85,8 @@ export function CommandPalette({ onClose }: {
         item.run();
     }, [onClose]);
     const openCalendarPeriod = useCallback((period: CalendarPeriod) => {
-        const id = calendarId(period);
-        const ancestors = calendarAncestorIds(id);
+        const id = virtualId(period, CALENDAR_TREE);
+        const ancestors = virtualAncestorIds(id, CALENDAR_TREE);
         if (ancestors.length) {
             useUi.setState((state) => ({
                 expandedFolders: [...new Set([...state.expandedFolders, ...ancestors])],
@@ -471,8 +471,8 @@ export function CommandPalette({ onClose }: {
         const jumpPeriod = parseCalendarJumpQuery(text, new Date(now));
         const jumpItems: Item[] = jumpPeriod
             ? (() => {
-                const id = calendarId(jumpPeriod);
-                const range = calendarPeriodKeyRange(id);
+                const id = virtualId(jumpPeriod, CALENDAR_TREE);
+                const range = virtualPeriodKeyRange(id, CALENDAR_TREE);
                 const display = calendarPeriodLabel(jumpPeriod) ?? '';
                 return [{
                     id: `calendar-jump-${id}`,

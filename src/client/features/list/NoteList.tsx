@@ -18,11 +18,12 @@ import { computeLatestEditKey } from './use-rolling-filter';
 import { useGapIndicatorStore } from './use-gap-indicator';
 import { loadRememberedFilter, loadSessionFilter, saveRememberedFilter, saveSessionFilter } from './list-filter-persist';
 import { useUi } from '../../store/ui';
+import { useSession } from '../../store/session';
 import { toastWithUndo } from '../../lib/toast-undo';
 import { createContextualNote, useNotes, useVisibleNotes } from '../../store/notes';
 import { useNoteTemplates } from '../../store/note-templates';
 import { createNoteFromTemplate } from '../../lib/template-notes';
-import { calendarAncestorIds, calendarId, calendarNearestNeighbors, calendarPathSegments, calendarPeriodKeyRange, calendarPeriodLabel, calendarPeriodsForDate, isCalendarFolderId, parseCalendarId, type CalendarNode } from '../../lib/calendar-tree';
+import { CALENDAR_TREE, calendarPeriodLabel, calendarPeriodsForDate, filterTodoNotes, isTodoFolderId, isVirtualFolderId, type CalendarNode, parseVirtualId, resolveTodoTag, TODO_TREE, virtualAncestorIds, virtualId, virtualNearestNeighbors, virtualPathSegments, virtualPeriodKeyRange } from '../../lib/calendar-tree';
 import { folderPathLabel } from '../../lib/folders';
 import { FolderPicker } from '../folders/FolderPicker';
 import { t, useLocale, type MessageKey } from "../../lib/i18n";
@@ -44,6 +45,7 @@ const INITIAL_RENDERED_NOTES = 180;
 const RENDERED_NOTES_STEP = 240;
 export function NoteList() {
     const locale = useLocale();
+    const todoTagText = resolveTodoTag(useSession((s) => s.settings.notes.todoTag), locale);
     const breakpoint = useBreakpoint();
     const view = useUi((s) => s.view);
     const folderId = useUi((s) => s.folderId);
@@ -134,9 +136,12 @@ export function NoteList() {
     }, [view, folderId, tag]);
     const title = useMemo(() => {
         if (view === 'folder') {
-            if (isCalendarFolderId(folderId)) {
-                const segments = calendarPathSegments(folderId);
-                return segments ? [t("sidebar.calendar_folder"), ...segments].join(' / ') : t("sidebar.calendar_folder");
+            if (isVirtualFolderId(folderId)) {
+                const isTodo = isTodoFolderId(folderId);
+                const ns = isTodo ? TODO_TREE : CALENDAR_TREE;
+                const rootLabel = isTodo ? t("sidebar.todo_folder") : t("sidebar.calendar_folder");
+                const segments = virtualPathSegments(folderId, ns);
+                return segments ? [rootLabel, ...segments].join(' / ') : rootLabel;
             }
             return (folderId ? folderPathLabel(folders, folderId) : '') || t("navigation.folder");
         }
@@ -385,7 +390,7 @@ export function NoteList() {
         <div className="mb-2.5 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <h2 className="truncate text-[14.5px] font-semibold tracking-[-0.016em] text-[var(--text-primary)]">{title}</h2>
-            {view === 'folder' && <p className="mt-0.5 truncate text-[10.5px] text-[var(--text-quaternary)]">{isCalendarFolderId(folderId) ? t("sidebar.calendar_folder_hint") : t("folders.includes_subfolders")}</p>}
+            {view === 'folder' && <p className="mt-0.5 truncate text-[10.5px] text-[var(--text-quaternary)]">{isVirtualFolderId(folderId) ? (isTodoFolderId(folderId) ? t("sidebar.todo_folder_hint_value0", { value0: todoTagText }) : t("sidebar.calendar_folder_hint")) : t("folders.includes_subfolders")}</p>}
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
             {breakpoint === 'tablet' && (<Tooltip label={t("notes.open_navigation")}>
@@ -845,6 +850,7 @@ function ListEmpty({ view, folderId, filtering, dayFiltering, tagFiltering, late
     onJumpToLatestWeek: () => void;
 }) {
     const openView = useUi((s) => s.openView);
+    const todoTagText = resolveTodoTag(useSession((s) => s.settings.notes.todoTag), useLocale());
     const shortcut = (combo: string) => prettyCombo(combo).join('+');
     if (filtering) {
         return <Empty art="search" title={t("notes.no_matching_notes")} description={t("notes.try_another_search_or_press_shortcut_to_search_everywhere", { shortcut: shortcut('mod+k') })}/>;
@@ -862,15 +868,18 @@ function ListEmpty({ view, folderId, filtering, dayFiltering, tagFiltering, late
     if (tagFiltering) {
         return <Empty art="tag" title={t("notes.no_notes_match_selected_tags")} description={t("notes.adjust_selected_tags_or_switch_match_mode")}/>;
     }
-    const calendarPeriod = isCalendarFolderId(folderId) ? parseCalendarId(folderId) : null;
-    if (calendarPeriod) {
+    const isTodo = isTodoFolderId(folderId);
+    const ns = isTodo ? TODO_TREE : CALENDAR_TREE;
+    const period = isVirtualFolderId(folderId) ? parseVirtualId(folderId, ns) : null;
+    if (period) {
         const notes = useNotes((s) => s.notes);
-        const label = calendarPeriodLabel(calendarPeriod);
-        const range = calendarPeriodKeyRange(calendarId(calendarPeriod));
+        const periodNotes = isTodo ? filterTodoNotes(Object.values(notes ?? {}), todoTagText) : Object.values(notes ?? {});
+        const label = calendarPeriodLabel(period);
+        const range = virtualPeriodKeyRange(virtualId(period, ns), ns);
         const at = calendarPeriodsForDate(new Date());
-        const target = calendarPeriod.kind === 'week' ? at.week : at.month;
+        const target = period.kind === 'week' ? at.week : at.month;
         const openCalendarId = (id: string) => {
-            const ancestors = calendarAncestorIds(id);
+            const ancestors = virtualAncestorIds(id, ns);
             if (ancestors.length) {
                 useUi.setState((state) => ({
                     expandedFolders: [...new Set([...state.expandedFolders, ...ancestors])],
@@ -878,12 +887,12 @@ function ListEmpty({ view, folderId, filtering, dayFiltering, tagFiltering, late
             }
             openView('folder', { folderId: id });
         };
-        const { prev, next } = calendarNearestNeighbors(calendarPeriod, Object.values(notes ?? {}));
+        const { prev, next } = virtualNearestNeighbors(period, periodNotes, ns);
         const targetStart = range?.start;
         let nearest: CalendarNode | null = null;
         if (prev && next && targetStart) {
-            const prevStart = calendarPeriodKeyRange(prev.id)?.start;
-            const nextStart = calendarPeriodKeyRange(next.id)?.start;
+            const prevStart = virtualPeriodKeyRange(prev.id, ns)?.start;
+            const nextStart = virtualPeriodKeyRange(next.id, ns)?.start;
             nearest = prevStart && nextStart
                 ? Math.abs(daysBetweenKeys(targetStart, prevStart)) <= Math.abs(daysBetweenKeys(targetStart, nextStart)) ? prev : next
                 : prev;
@@ -892,7 +901,7 @@ function ListEmpty({ view, folderId, filtering, dayFiltering, tagFiltering, late
             nearest = prev ?? next;
         }
         const neighborLabel = (node: CalendarNode) => {
-            const parsed = parseCalendarId(node.id);
+            const parsed = parseVirtualId(node.id, ns);
             return (parsed ? calendarPeriodLabel(parsed) : null) ?? node.name;
         };
         const neighborButton = (node: CalendarNode, leading: boolean) => (
@@ -903,8 +912,8 @@ function ListEmpty({ view, folderId, filtering, dayFiltering, tagFiltering, late
             {nearest && (<button type="button" onClick={() => openCalendarId(nearest.id)} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
                 <CalendarDays size={13}/>{t("notes.jump_to_nearest_period")}
             </button>)}
-            <button type="button" onClick={() => openCalendarId(calendarId(target))} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
-                <CalendarDays size={13}/>{t(calendarPeriod.kind === 'week' ? "notes.view_this_week" : "notes.view_this_month")}
+            <button type="button" onClick={() => openCalendarId(virtualId(target, ns))} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                <CalendarDays size={13}/>{t(period.kind === 'week' ? "notes.view_this_week" : "notes.view_this_month")}
             </button>
             <button type="button" onClick={() => void createContextualNote()} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
                 <Plus size={13}/>{t("common.new_note")}

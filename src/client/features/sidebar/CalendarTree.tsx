@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronRight, FolderClosed, FolderOpen } from 'lucide-react';
+import { CalendarDays, CheckSquare, ChevronRight, FolderClosed, FolderOpen } from 'lucide-react';
+import type { NoteSummary } from '@shared/types';
 import { cn } from '../../lib/cn';
-import { t } from '../../lib/i18n';
-import { buildCalendarTree, CALENDAR_ROOT_ID, calendarAncestorIds, calendarPathSegments, calendarPeriodKeyRange, type CalendarNode } from '../../lib/calendar-tree';
+import { t, useLocale } from '../../lib/i18n';
+import { buildVirtualTree, CALENDAR_TREE, filterTodoNotes, resolveTodoTag, TODO_TREE, type CalendarNode, type VirtualTreeNamespace, virtualAncestorIds, virtualPathSegments, virtualPeriodKeyRange } from '../../lib/calendar-tree';
 import { useNotes } from '../../store/notes';
+import { useSession } from '../../store/session';
 import { useUi } from '../../store/ui';
 import { Tooltip } from '../../components/overlay';
 import { useCalendarTreeShowEmpty, useCalendarTreeVisible } from '../../lib/calendar-prefs';
@@ -12,15 +14,48 @@ const NOTE_DRAG_TYPE = 'application/x-inkstone-note';
 const FOLDER_DRAG_TYPE = 'application/x-inkstone-folder';
 
 export function CalendarTree() {
+    return (
+        <VirtualTree
+            ns={CALENDAR_TREE}
+            rootLabel={t("sidebar.calendar_folder")}
+            rootIcon={<CalendarDays size={13}/>}
+        />
+    );
+}
+
+export function TodoTree() {
+    const todoTagPref = useSession((s) => s.settings.notes.todoTag);
+    const locale = useLocale();
+    return (
+        <VirtualTree
+            ns={TODO_TREE}
+            rootLabel={t("sidebar.todo_folder")}
+            rootIcon={<CheckSquare size={14}/>}
+            filter={filterTodoNotes}
+            filterArg={resolveTodoTag(todoTagPref, locale)}
+        />
+    );
+}
+
+function VirtualTree({ ns, rootLabel, rootIcon, filter, filterArg }: {
+    ns: VirtualTreeNamespace;
+    rootLabel: string;
+    rootIcon: React.ReactNode;
+    filter?: (notes: NoteSummary[], arg?: string) => NoteSummary[];
+    filterArg?: string;
+}) {
+    const allNotes = useNotes((s) => s.notes);
     const visible = useCalendarTreeVisible();
     const showEmpty = useCalendarTreeShowEmpty();
-    const notes = useNotes((s) => s.notes);
-    const rootLabel = t('sidebar.calendar_folder');
-    const children = useMemo(() => buildCalendarTree(Object.values(notes ?? {}), showEmpty), [notes, showEmpty]);
+    const source = useMemo(() => {
+        const values = Object.values(allNotes ?? {});
+        return filter ? filter(values, filterArg) : values;
+    }, [allNotes, filter, filterArg]);
+    const children = useMemo(() => buildVirtualTree(source, ns, showEmpty), [source, ns, showEmpty]);
     const rootCount = useMemo(() => children.reduce((sum, child) => sum + child.count, 0), [children]);
     if (!visible)
         return null;
-    const root: CalendarNode = { id: CALENDAR_ROOT_ID, name: '', depth: -1, count: rootCount, children };
+    const root: CalendarNode = { id: ns.rootId, name: '', depth: -1, count: rootCount, children };
     const blockDrop = (event: React.DragEvent) => {
         if (event.dataTransfer.types.includes(NOTE_DRAG_TYPE) || event.dataTransfer.types.includes(FOLDER_DRAG_TYPE)) {
             event.preventDefault();
@@ -29,14 +64,16 @@ export function CalendarTree() {
     };
     return (
         <div role="tree" aria-label={rootLabel} className="mt-0.5 space-y-px" onDragOver={blockDrop} onDrop={blockDrop}>
-            <CalendarRow node={root} rootLabel={rootLabel}/>
+            <VirtualRow ns={ns} rootLabel={rootLabel} rootIcon={rootIcon} node={root}/>
         </div>
     );
 }
 
-function CalendarRow({ node, rootLabel }: {
-    node: CalendarNode;
+function VirtualRow({ ns, rootLabel, rootIcon, node }: {
+    ns: VirtualTreeNamespace;
     rootLabel: string;
+    rootIcon: React.ReactNode;
+    node: CalendarNode;
 }) {
     const view = useUi((s) => s.view);
     const activeFolderId = useUi((s) => s.folderId);
@@ -63,7 +100,7 @@ function CalendarRow({ node, rootLabel }: {
         return () => window.clearTimeout(closeTimer);
     }, [expanded, hasChildren]);
     const open = () => {
-        const ancestors = calendarAncestorIds(node.id);
+        const ancestors = virtualAncestorIds(node.id, ns);
         if (ancestors.length) {
             useUi.setState((state) => ({
                 expandedFolders: [...new Set([...state.expandedFolders, ...ancestors])],
@@ -71,9 +108,9 @@ function CalendarRow({ node, rootLabel }: {
         }
         openView('folder', { folderId: node.id });
     };
-    const segments = calendarPathSegments(node.id);
+    const segments = virtualPathSegments(node.id, ns);
     const pathLabel = segments ? [rootLabel, ...segments].join(' / ') : rootLabel;
-    const range = calendarPeriodKeyRange(node.id);
+    const range = virtualPeriodKeyRange(node.id, ns);
     const tooltip = range ? `${pathLabel} · ${range.start} ~ ${range.end}` : pathLabel;
     const isRoot = node.depth < 0;
     const dim = node.count === 0 && !isRoot;
@@ -93,7 +130,7 @@ function CalendarRow({ node, rootLabel }: {
 
                 <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>
                     {isRoot
-                        ? <CalendarDays size={13}/>
+                        ? rootIcon
                         : <span aria-hidden="true" data-open={expanded && hasChildren || undefined} className="folder-motion-icon">
                             <FolderClosed size={14} className="folder-motion-icon__closed"/>
                             <FolderOpen size={14} className="folder-motion-icon__open"/>
@@ -111,7 +148,7 @@ function CalendarRow({ node, rootLabel }: {
 
             {childrenMounted && (<div role="group" aria-hidden={!childrenVisible} inert={!childrenVisible} className={cn('folder-children-grid', childrenVisible && 'is-expanded')}>
                 <div className="min-h-0 space-y-px overflow-hidden">
-                    {node.children.map((child) => (<CalendarRow key={child.id} node={child} rootLabel={rootLabel}/>))}
+                    {node.children.map((child) => (<VirtualRow key={child.id} ns={ns} rootLabel={rootLabel} rootIcon={rootIcon} node={child}/>))}
                 </div>
             </div>)}
         </div>

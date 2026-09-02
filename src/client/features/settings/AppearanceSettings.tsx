@@ -3,9 +3,10 @@ import type { AccentName, AppLocale, BackgroundName, ProseFont, ProseWidth, Them
 import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import { YearGrid } from '../../components/calendar-grids'
 import { cn } from '../../lib/cn'
-import { Segmented, SettingRow, Slider, Switch, type SegmentedOption } from '../../components/form'
+import { Input, Segmented, SettingRow, Slider, Switch, type SegmentedOption } from '../../components/form'
 import { useUi } from '../../store/ui'
 import { setCalendarTreeShowEmpty, setCalendarTreeVisible, useCalendarTreeShowEmpty, useCalendarTreeVisible } from '../../lib/calendar-prefs'
+import { resolveTodoTag } from '../../lib/calendar-tree'
 import { setYearGridColumns, useYearGridColumns, type YearGridColumnsPref } from '../../lib/year-grid-prefs'
 import { Tooltip } from '../../components/overlay'
 import { useSession } from '../../store/session'
@@ -32,7 +33,9 @@ export function AppearanceSettings({
   const locale = useLocale()
   const calendarTreeVisible = useCalendarTreeVisible()
   const calendarTreeShowEmpty = useCalendarTreeShowEmpty()
+  const todoTag = useSession((s) => s.settings.notes.todoTag)
   const yearGridColumns = useYearGridColumns()
+  const setTodoTag = useCallback((value: string) => void update({ notes: { todoTag: value.trim() ? value : null } }), [update])
 
   const setLanguage = useCallback((language: AppLocale) => void update({ appearance: { language } }), [update])
   const setTheme = useCallback((theme: ThemePref) => {
@@ -169,6 +172,16 @@ export function AppearanceSettings({
 
         <SettingRow title={t("settings.show_empty_calendar_periods")} description={t("settings.show_empty_calendar_periods_desc")}>
           <Switch checked={calendarTreeShowEmpty} onChange={setCalendarTreeShowEmpty} label={t("settings.show_empty_calendar_periods")}/>
+        </SettingRow>
+
+        <SettingRow title={t("settings.todo_tag")} description={t("settings.todo_tag_desc")}>
+          <Input
+            aria-label={t("settings.todo_tag")}
+            value={todoTag ?? ''}
+            placeholder={t("settings.todo_tag_placeholder_value0", { value0: resolveTodoTag(null, locale) })}
+            onChange={(event) => setTodoTag(event.target.value)}
+            className="w-[200px]"
+          />
         </SettingRow>
 
         <SettingRow title={t("settings.year_grid_columns")} description={t("settings.year_grid_columns_desc")}>

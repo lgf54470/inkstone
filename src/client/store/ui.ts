@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { AccentName, BackgroundName, DateRangeFilter, EditorLayout, RelativeFilter, SortKey, SortOrder, ThemePref, UiDensity, ViewKind } from '@shared/types'
 import { ACCENTS, LIMITS, VIEW_KINDS } from '@shared/constants'
-import { isCalendarFolderId } from '../lib/calendar-tree'
+import { isVirtualFolderId } from '../lib/calendar-tree'
 import { truncateText } from '@shared/text-utils'
 import { UI_STORAGE_KEY } from '../lib/runtime'
 
@@ -437,7 +437,7 @@ export const useUi = create<UiState>((set, get) => ({
   openView: (view, options) =>
     set((s) => {
       const folderId = options?.folderId ?? null
-      const enteringCalendar = view === 'folder' && isCalendarFolderId(folderId)
+      const enteringCalendar = view === 'folder' && isVirtualFolderId(folderId)
       return {
         view,
         folderId,

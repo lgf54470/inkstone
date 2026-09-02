@@ -130,4 +130,25 @@ describe('matchesView', () => {
         expect(matchesView(created, 'folder', 'cal', null, undefined, [], 'any', { start: '2019-01-01', end: '2019-01-03' })).toBe(false);
         expect(matchesView(created, 'folder', 'cal', null, undefined, [], 'any', { start: '2019-12-30', end: '2020-01-03' })).toBe(true);
     });
+
+    it('matches todo folder ids by creation time and the todo tag', () => {
+        const tagged = note({ id: 'a', tags: ['待办'], createdAt: new Date(2026, 8, 1, 12).getTime() });
+        const plain = note({ id: 'b', createdAt: new Date(2026, 8, 2, 12).getTime() });
+        for (const id of ['todo', 'todo:2026', 'todo:2026:q3', 'todo:2026:q3:09', 'todo:2026:q3:09:w36']) {
+            expect(matchesView(tagged, 'folder', id, null)).toBe(true);
+            expect(matchesView(plain, 'folder', id, null)).toBe(false);
+        }
+        expect(matchesView(tagged, 'folder', 'todo:2026:q3:07', null)).toBe(false);
+        expect(matchesView(tagged, 'folder', 'cal:2026:q3:09', null)).toBe(true);
+        expect(matchesView(plain, 'folder', 'cal:2026:q3:09', null)).toBe(true);
+    });
+
+    it('uses the configured todo tag text for todo folder matching', () => {
+        const todo = note({ id: 'a', tags: ['todo'], createdAt: new Date(2026, 8, 1, 12).getTime() });
+        const chinese = note({ id: 'b', tags: ['待办'], createdAt: new Date(2026, 8, 2, 12).getTime() });
+        expect(matchesView(todo, 'folder', 'todo:2026:q3:09', null, undefined, [], 'any', null, 'todo')).toBe(true);
+        expect(matchesView(chinese, 'folder', 'todo:2026:q3:09', null, undefined, [], 'any', null, 'todo')).toBe(false);
+        expect(matchesView(chinese, 'folder', 'todo:2026:q3:09', null, undefined, [], 'any', null, '待办, urgent')).toBe(true);
+        expect(matchesView(todo, 'folder', 'cal:2026:q3:09', null, undefined, [], 'any', null, 'todo')).toBe(true);
+    });
 });

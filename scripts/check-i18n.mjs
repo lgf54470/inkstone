@@ -15,6 +15,14 @@ const failures = [];
 const usedKeys = new Set();
 const forbiddenCjk = /[\p{Script=Han}\u3000-\u303f\uff00-\uffef]/u;
 const visibleAttributes = new Set(['alt', 'aria-label', 'description', 'hint', 'label', 'placeholder', 'title']);
+// Tag names are note data, not UI copy rendered by the i18n layer. The
+// built-in to-do tag is one such data constant; it is written here so the
+// raw-text scan below can blank it out.
+const localizedDataFragments = new Map([
+    [path.resolve('src/client/lib/calendar-tree.ts'), ['\u5f85\u529e']],
+    [path.resolve('src/client/lib/calendar-tree.test.ts'), ['\u5f85\u529e']],
+    [path.resolve('src/client/lib/note-filter.test.ts'), ['\u5f85\u529e']],
+]);
 const allowedHanFragments = new Map([
     [path.resolve('README.md'), ['<a href="./README_ZH.md">\u4e2d\u6587</a>']],
     // The OAuth consent page is a self-contained HTML document with its own
@@ -131,19 +139,26 @@ for (const file of walk(root)) {
             const value = node.initializer.text.trim();
             if (value && !isTechnicalPlaceholder(node.name.text, value))
                 report(node, `unlocalized ${node.name.text} attribute ${JSON.stringify(value)}`);
-        }
-        if (!isTestFile &&
-            (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) &&
-            /\p{Script=Han}/u.test(node.text) &&
-            !insideTranslationCall(node)) {
-            report(node, JSON.stringify(node.text));
-        }
+        }            if (!isTestFile &&
+                (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) &&
+                /\p{Script=Han}/u.test(node.text) &&
+                !insideTranslationCall(node) &&
+                !insideDataConstant(node)) {
+                report(node, JSON.stringify(node.text));
+            }
         ts.forEachChild(node, visit);
     }
     function report(node, message) {
         const position = source.getLineAndCharacterOfPosition(node.getStart(source));
         failures.push(`${path.relative(process.cwd(), file)}:${position.line + 1}:${position.character + 1} ${message}`);
     }
+}
+// Tag-name constants (note data, not UI copy) are allowed to carry the
+// localized tag literal they match against.
+function insideDataConstant(node) {
+    return ts.isVariableDeclaration(node.parent) &&
+        ts.isIdentifier(node.parent.name) &&
+        node.parent.name.text === 'DEFAULT_TODO_TAG';
 }
 if (failures.length) {
     console.error(`i18n validation failed (${failures.length}):`);
@@ -162,7 +177,10 @@ function isTextSource(file) {
 }
 function rejectHan(file) {
     const source = fs.readFileSync(file, 'utf8');
-    const checked = (allowedHanFragments.get(file) ?? []).reduce((text, fragment) => text.replace(fragment, ' '.repeat(fragment.length)), source);
+    // allowedHanFragments keeps first-occurrence replacement on purpose: some
+    // fragments are substrings of others, so global replacement would blank
+    // the shared prefix before the longer phrase ever gets a chance to match.
+    const checked = (allowedHanFragments.get(file) ?? []).reduce((text, fragment) => text.replace(fragment, ' '.repeat(fragment.length)), (localizedDataFragments.get(file) ?? []).reduce((text, fragment) => text.replaceAll(fragment, ' '.repeat(fragment.length)), source));
     const match = forbiddenCjk.exec(checked);
     if (!match)
         return;

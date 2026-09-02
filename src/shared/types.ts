@@ -141,6 +141,8 @@ export interface NoteSettings {
   newNoteTemplate: string
   syncTitleToFrontMatter: boolean
   syncFrontMatterTitle: boolean
+  /** Tag(s, comma-separated) that file notes into the sidebar to-do tree; null falls back to the locale default. */
+  todoTag: string | null
 }
 
 export interface UserSettings {

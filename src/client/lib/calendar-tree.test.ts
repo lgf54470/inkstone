@@ -1,19 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import type { NoteSummary } from '@shared/types';
 import {
-    buildCalendarTree,
-    calendarAncestorIds,
-    calendarId,
-    calendarPathSegments,
-    calendarNearestNeighbors,
+    buildVirtualTree,
+    CALENDAR_TREE,
     calendarPeriodForIsoWeek,
-    calendarPeriodKeyRange,
     calendarPeriodLabel,
     calendarPeriodMatchesNote,
     calendarPeriodsForDate,
+    DEFAULT_TODO_TAG,
+    filterTodoNotes,
     isCalendarFolderId,
-    parseCalendarId,
+    isTodoFolderId,
+    isVirtualFolderId,
     parseCalendarJumpQuery,
+    parseVirtualId,
+    resolveTodoTag,
+    splitTodoTags,
+    TODO_TREE,
+    virtualAncestorIds,
+    virtualId,
+    virtualNearestNeighbors,
+    virtualPathSegments,
+    virtualPeriodKeyRange,
+    virtualPeriodMatchesNote,
 } from './calendar-tree';
 
 function note(overrides: Partial<NoteSummary> = {}): NoteSummary {
@@ -37,8 +46,8 @@ function note(overrides: Partial<NoteSummary> = {}): NoteSummary {
     };
 }
 
-describe('isCalendarFolderId', () => {
-    it('recognizes the root and prefixed ids only', () => {
+describe('virtual folder id detection', () => {
+    it('recognizes the calendar root and prefixed ids only', () => {
         expect(isCalendarFolderId('cal')).toBe(true);
         expect(isCalendarFolderId('cal:2026')).toBe(true);
         expect(isCalendarFolderId('cal:2026:q3:09:w36')).toBe(true);
@@ -49,9 +58,21 @@ describe('isCalendarFolderId', () => {
         expect(isCalendarFolderId('cal:')).toBe(true);
         expect(isCalendarFolderId('abcdefghjkmnpqrstvwxyz012345')).toBe(false);
     });
+
+    it('recognizes the todo namespace separately and together', () => {
+        expect(isTodoFolderId('todo')).toBe(true);
+        expect(isTodoFolderId('todo:2026:q3:09:w36')).toBe(true);
+        expect(isTodoFolderId('cal')).toBe(false);
+        expect(isCalendarFolderId('todo')).toBe(false);
+        expect(isVirtualFolderId('cal')).toBe(true);
+        expect(isVirtualFolderId('todo:2026')).toBe(true);
+        expect(isVirtualFolderId('cal:2026')).toBe(true);
+        expect(isVirtualFolderId(null)).toBe(false);
+        expect(isVirtualFolderId('todo')).toBe(true);
+    });
 });
 
-describe('parseCalendarId', () => {
+describe('virtualId round-trips per namespace', () => {
     it('round-trips generated ids', () => {
         const ids = [
             'cal',
@@ -61,22 +82,31 @@ describe('parseCalendarId', () => {
             'cal:2026:q2:06:w25',
         ];
         for (const id of ids) {
-            expect(calendarId(parseCalendarId(id)!) ).toBe(id);
+            expect(virtualId(parseVirtualId(id, CALENDAR_TREE)!, CALENDAR_TREE)).toBe(id);
         }
+    });
+
+    it('uses the todo root and prefix', () => {
+        expect(virtualId({ kind: 'root' }, TODO_TREE)).toBe('todo');
+        expect(virtualId({ kind: 'week', year: 2026, month: 9, week: 36 }, TODO_TREE)).toBe('todo:2026:q3:09:w36');
+        expect(parseVirtualId('todo:2026:q3:09:w36', TODO_TREE)).toEqual({ kind: 'week', year: 2026, month: 9, week: 36 });
+        expect(parseVirtualId('todo', TODO_TREE)).toEqual({ kind: 'root' });
+        expect(parseVirtualId('cal:2026', TODO_TREE)).toBeNull();
+        expect(parseVirtualId('todo:2026', CALENDAR_TREE)).toBeNull();
     });
 
     it('rejects malformed ids', () => {
         for (const id of [null, undefined, '', 'calx', 'cal:abcd', 'cal:26', 'cal:2026:q5', 'cal:2026:q1:13', 'cal:2026:q1:00', 'cal:2026:q1:01:w00', 'cal:2026:q1:01:w54', 'cal:2026:q1:01:w36:extra']) {
-            expect(parseCalendarId(id)).toBeNull();
+            expect(parseVirtualId(id, CALENDAR_TREE)).toBeNull();
         }
     });
 
     it('parses every level', () => {
-        expect(parseCalendarId('cal')).toEqual({ kind: 'root' });
-        expect(parseCalendarId('cal:2026')).toEqual({ kind: 'year', year: 2026 });
-        expect(parseCalendarId('cal:2026:q3')).toEqual({ kind: 'quarter', year: 2026, quarter: 3 });
-        expect(parseCalendarId('cal:2026:q3:09')).toEqual({ kind: 'month', year: 2026, month: 9 });
-        expect(parseCalendarId('cal:2026:q3:09:w36')).toEqual({ kind: 'week', year: 2026, month: 9, week: 36 });
+        expect(parseVirtualId('cal', CALENDAR_TREE)).toEqual({ kind: 'root' });
+        expect(parseVirtualId('cal:2026', CALENDAR_TREE)).toEqual({ kind: 'year', year: 2026 });
+        expect(parseVirtualId('cal:2026:q3', CALENDAR_TREE)).toEqual({ kind: 'quarter', year: 2026, quarter: 3 });
+        expect(parseVirtualId('cal:2026:q3:09', CALENDAR_TREE)).toEqual({ kind: 'month', year: 2026, month: 9 });
+        expect(parseVirtualId('cal:2026:q3:09:w36', CALENDAR_TREE)).toEqual({ kind: 'week', year: 2026, month: 9, week: 36 });
     });
 });
 
@@ -112,18 +142,19 @@ describe('ISO week assignment', () => {
     });
 });
 
-describe('calendarPathSegments', () => {
+describe('virtualPathSegments', () => {
     it('returns the display path without the root', () => {
-        expect(calendarPathSegments('cal')).toBeNull();
-        expect(calendarPathSegments('cal:2026')).toEqual(['2026']);
-        expect(calendarPathSegments('cal:2026:q3')).toEqual(['2026', 'Q3']);
-        expect(calendarPathSegments('cal:2026:q3:09')).toEqual(['2026', 'Q3', '09']);
-        expect(calendarPathSegments('cal:2026:q3:09:w36')).toEqual(['2026', 'Q3', '09', 'ww36']);
-        expect(calendarPathSegments(null)).toBeNull();
+        expect(virtualPathSegments('cal', CALENDAR_TREE)).toBeNull();
+        expect(virtualPathSegments('cal:2026', CALENDAR_TREE)).toEqual(['2026']);
+        expect(virtualPathSegments('cal:2026:q3', CALENDAR_TREE)).toEqual(['2026', 'Q3']);
+        expect(virtualPathSegments('cal:2026:q3:09', CALENDAR_TREE)).toEqual(['2026', 'Q3', '09']);
+        expect(virtualPathSegments('cal:2026:q3:09:w36', CALENDAR_TREE)).toEqual(['2026', 'Q3', '09', 'ww36']);
+        expect(virtualPathSegments('todo:2026:q1:02', TODO_TREE)).toEqual(['2026', 'Q1', '02']);
+        expect(virtualPathSegments(null, CALENDAR_TREE)).toBeNull();
     });
 });
 
-describe('calendarNearestNeighbors', () => {
+describe('virtualNearestNeighbors', () => {
     const notes = [
         note({ id: 'a', createdAt: new Date(2025, 1, 10, 10).getTime() }),
         note({ id: 'b', createdAt: new Date(2025, 4, 20, 10).getTime() }),
@@ -132,7 +163,7 @@ describe('calendarNearestNeighbors', () => {
     ];
 
     it('finds the nearest months with notes on both sides', () => {
-        const { prev, next } = calendarNearestNeighbors({ kind: 'month', year: 2025, month: 3 }, notes);
+        const { prev, next } = virtualNearestNeighbors({ kind: 'month', year: 2025, month: 3 }, notes, CALENDAR_TREE);
         expect(prev?.id).toBe('cal:2025:q1:02');
         expect(prev?.count).toBe(1);
         expect(next?.id).toBe('cal:2025:q2:05');
@@ -140,28 +171,34 @@ describe('calendarNearestNeighbors', () => {
     });
 
     it('crosses year boundaries', () => {
-        const { prev, next } = calendarNearestNeighbors({ kind: 'month', year: 2025, month: 4 }, notes);
+        const { prev, next } = virtualNearestNeighbors({ kind: 'month', year: 2025, month: 4 }, notes, CALENDAR_TREE);
         expect(prev?.id).toBe('cal:2025:q1:02');
         expect(next?.id).toBe('cal:2025:q2:05');
-        const { prev: farPrev, next: farNext } = calendarNearestNeighbors({ kind: 'month', year: 2023, month: 6 }, notes);
+        const { prev: farPrev, next: farNext } = virtualNearestNeighbors({ kind: 'month', year: 2023, month: 6 }, notes, CALENDAR_TREE);
         expect(farPrev).toBeNull();
         expect(farNext?.id).toBe('cal:2024:q1:01');
     });
 
     it('works at the year, quarter, and week levels', () => {
-        const years = calendarNearestNeighbors({ kind: 'year', year: 2025 }, notes);
+        const years = virtualNearestNeighbors({ kind: 'year', year: 2025 }, notes, CALENDAR_TREE);
         expect(years.prev?.id).toBe('cal:2024');
         expect(years.next?.id).toBe('cal:2026');
-        const quarters = calendarNearestNeighbors({ kind: 'quarter', year: 2025, quarter: 3 }, notes);
+        const quarters = virtualNearestNeighbors({ kind: 'quarter', year: 2025, quarter: 3 }, notes, CALENDAR_TREE);
         expect(quarters.prev?.id).toBe('cal:2025:q2');
         expect(quarters.next?.id).toBe('cal:2026:q3');
-        const weeks = calendarNearestNeighbors({ kind: 'week', year: 2026, month: 9, week: 36 }, notes);
+        const weeks = virtualNearestNeighbors({ kind: 'week', year: 2026, month: 9, week: 36 }, notes, CALENDAR_TREE);
         expect(weeks.prev?.id).toBe('cal:2026:q3:08:w32');
         expect(weeks.next).toBeNull();
     });
 
+    it('uses the todo namespace ids for todo neighbors', () => {
+        const { prev, next } = virtualNearestNeighbors({ kind: 'month', year: 2025, month: 3 }, notes, TODO_TREE);
+        expect(prev?.id).toBe('todo:2025:q1:02');
+        expect(next?.id).toBe('todo:2025:q2:05');
+    });
+
     it('returns nulls when no notes exist', () => {
-        const { prev, next } = calendarNearestNeighbors({ kind: 'year', year: 2025 }, []);
+        const { prev, next } = virtualNearestNeighbors({ kind: 'year', year: 2025 }, [], CALENDAR_TREE);
         expect(prev).toBeNull();
         expect(next).toBeNull();
     });
@@ -177,17 +214,18 @@ describe('calendarPeriodLabel', () => {
     });
 });
 
-describe('calendarPeriodKeyRange', () => {
+describe('virtualPeriodKeyRange', () => {
     it('returns inclusive date-key ranges per node', () => {
-        expect(calendarPeriodKeyRange('cal')).toBeNull();
-        expect(calendarPeriodKeyRange('cal:2026')).toEqual({ start: '2026-01-01', end: '2026-12-31' });
-        expect(calendarPeriodKeyRange('cal:2026:q3')).toEqual({ start: '2026-07-01', end: '2026-09-30' });
-        expect(calendarPeriodKeyRange('cal:2026:q4')).toEqual({ start: '2026-10-01', end: '2026-12-31' });
-        expect(calendarPeriodKeyRange('cal:2026:q1:02')).toEqual({ start: '2026-02-01', end: '2026-02-28' });
-        expect(calendarPeriodKeyRange('cal:2024:q1:02')).toEqual({ start: '2024-02-01', end: '2024-02-29' });
-        expect(calendarPeriodKeyRange('cal:2026:q3:09')).toEqual({ start: '2026-09-01', end: '2026-09-30' });
-        expect(calendarPeriodKeyRange('cal:2026:q3:09:w36')).toEqual({ start: '2026-08-31', end: '2026-09-06' });
-        expect(calendarPeriodKeyRange(null)).toBeNull();
+        expect(virtualPeriodKeyRange('cal', CALENDAR_TREE)).toBeNull();
+        expect(virtualPeriodKeyRange('cal:2026', CALENDAR_TREE)).toEqual({ start: '2026-01-01', end: '2026-12-31' });
+        expect(virtualPeriodKeyRange('cal:2026:q3', CALENDAR_TREE)).toEqual({ start: '2026-07-01', end: '2026-09-30' });
+        expect(virtualPeriodKeyRange('cal:2026:q4', CALENDAR_TREE)).toEqual({ start: '2026-10-01', end: '2026-12-31' });
+        expect(virtualPeriodKeyRange('cal:2026:q1:02', CALENDAR_TREE)).toEqual({ start: '2026-02-01', end: '2026-02-28' });
+        expect(virtualPeriodKeyRange('cal:2024:q1:02', CALENDAR_TREE)).toEqual({ start: '2024-02-01', end: '2024-02-29' });
+        expect(virtualPeriodKeyRange('cal:2026:q3:09', CALENDAR_TREE)).toEqual({ start: '2026-09-01', end: '2026-09-30' });
+        expect(virtualPeriodKeyRange('cal:2026:q3:09:w36', CALENDAR_TREE)).toEqual({ start: '2026-08-31', end: '2026-09-06' });
+        expect(virtualPeriodKeyRange('todo:2026:q1:02', TODO_TREE)).toEqual({ start: '2026-02-01', end: '2026-02-28' });
+        expect(virtualPeriodKeyRange(null, CALENDAR_TREE)).toBeNull();
     });
 });
 
@@ -256,23 +294,66 @@ describe('calendarPeriodsForDate', () => {
     });
 });
 
-describe('calendarAncestorIds', () => {
+describe('virtualAncestorIds', () => {
     it('returns the ancestor chain without the node itself', () => {
-        expect(calendarAncestorIds('cal:2026:q3:09:w36')).toEqual(['cal:2026', 'cal:2026:q3', 'cal:2026:q3:09']);
-        expect(calendarAncestorIds('cal:2026')).toEqual([]);
-        expect(calendarAncestorIds('cal')).toEqual([]);
-        expect(calendarAncestorIds('nope')).toEqual([]);
+        expect(virtualAncestorIds('cal:2026:q3:09:w36', CALENDAR_TREE)).toEqual(['cal:2026', 'cal:2026:q3', 'cal:2026:q3:09']);
+        expect(virtualAncestorIds('cal:2026', CALENDAR_TREE)).toEqual([]);
+        expect(virtualAncestorIds('cal', CALENDAR_TREE)).toEqual([]);
+        expect(virtualAncestorIds('nope', CALENDAR_TREE)).toEqual([]);
+        expect(virtualAncestorIds('todo:2026:q3:09:w36', TODO_TREE)).toEqual(['todo:2026', 'todo:2026:q3', 'todo:2026:q3:09']);
     });
 });
 
-describe('buildCalendarTree', () => {
+describe('todo tag configuration', () => {
+    it('keeps only notes carrying the default todo tag when no tag text is given', () => {
+        const tagged = note({ id: 'a', tags: ['待办'] });
+        const mixed = note({ id: 'b', tags: ['work', '待办'] });
+        const plain = note({ id: 'c', tags: ['work'] });
+        const none = note({ id: 'd' });
+        expect(filterTodoNotes([tagged, mixed, plain, none]).map((n) => n.id)).toEqual(['a', 'b']);
+        expect(DEFAULT_TODO_TAG).toBe('待办');
+    });
+
+    it('does not match a tag stored with a hash or different name', () => {
+        const hashed = note({ id: 'a', tags: ['#待办'] });
+        const renamed = note({ id: 'b', tags: ['todo-item'] });
+        expect(filterTodoNotes([hashed, renamed])).toEqual([]);
+    });
+
+    it('filters by a custom tag text, with comma-separated multiple tags', () => {
+        const todo = note({ id: 'a', tags: ['todo'] });
+        const mixed = note({ id: 'b', tags: ['work', 'todo'] });
+        const chinese = note({ id: 'c', tags: ['待办'] });
+        const plain = note({ id: 'd', tags: ['work'] });
+        expect(filterTodoNotes([todo, mixed, chinese, plain], 'todo').map((n) => n.id)).toEqual(['a', 'b']);
+        expect(filterTodoNotes([todo, mixed, chinese, plain], ' todo , 待办 ').map((n) => n.id)).toEqual(['a', 'b', 'c']);
+        expect(filterTodoNotes([todo, mixed, chinese, plain], '  ,  ')).toEqual([]);
+    });
+
+    it('splits comma-separated tag text, trimming and dropping empties', () => {
+        expect(splitTodoTags('todo,待办 , work')).toEqual(['todo', '待办', 'work']);
+        expect(splitTodoTags('')).toEqual([]);
+        expect(splitTodoTags('  ,  ')).toEqual([]);
+    });
+
+    it('resolves a preference, defaulting by locale', () => {
+        expect(resolveTodoTag(null, 'zh-CN')).toBe('待办');
+        expect(resolveTodoTag(undefined, 'zh-CN')).toBe('待办');
+        expect(resolveTodoTag(null, 'en-US')).toBe('todo');
+        expect(resolveTodoTag('', 'en-US')).toBe('todo');
+        expect(resolveTodoTag('urgent', 'zh-CN')).toBe('urgent');
+        expect(resolveTodoTag('  urgent  ', 'en-US')).toBe('urgent');
+    });
+});
+
+describe('buildVirtualTree', () => {
     it('builds year → quarter → month → week only for periods with notes', () => {
         const sept1 = note({ id: 'a', createdAt: new Date(2026, 8, 1, 10).getTime() });
         const sept2 = note({ id: 'b', createdAt: new Date(2026, 8, 2, 10).getTime() });
         const july = note({ id: 'c', createdAt: new Date(2026, 6, 15, 10).getTime() });
         const jan2025 = note({ id: 'd', createdAt: new Date(2025, 0, 2, 10).getTime() });
         const deleted = note({ id: 'e', createdAt: new Date(2026, 8, 3, 10).getTime(), deletedAt: 1 });
-        const tree = buildCalendarTree([sept1, sept2, july, jan2025, deleted]);
+        const tree = buildVirtualTree([sept1, sept2, july, jan2025, deleted], CALENDAR_TREE);
         expect(tree).toEqual([
             {
                 id: 'cal:2025',
@@ -356,13 +437,13 @@ describe('buildCalendarTree', () => {
     });
 
     it('returns an empty list when there are no live notes', () => {
-        expect(buildCalendarTree([])).toEqual([]);
-        expect(buildCalendarTree([note({ deletedAt: 1 })])).toEqual([]);
+        expect(buildVirtualTree([], CALENDAR_TREE)).toEqual([]);
+        expect(buildVirtualTree([note({ deletedAt: 1 })], CALENDAR_TREE)).toEqual([]);
     });
 
     it('fills the year/quarter/month skeleton with zero counts when includeEmpty', () => {
         const aug = note({ id: 'a', createdAt: new Date(2026, 7, 5, 10).getTime() });
-        const tree = buildCalendarTree([aug], true);
+        const tree = buildVirtualTree([aug], CALENDAR_TREE, true);
         expect(tree.map((y) => [y.name, y.count])).toEqual([['2026', 1]]);
         expect(tree[0]!.children.map((q) => [q.name, q.count])).toEqual([['Q1', 0], ['Q2', 0], ['Q3', 1], ['Q4', 0]]);
         const q1 = tree[0]!.children[0]!;
@@ -377,13 +458,29 @@ describe('buildCalendarTree', () => {
     it('spans the full year range when includeEmpty, staying sparse by default', () => {
         const a = note({ id: 'a', createdAt: new Date(2025, 0, 15, 10).getTime() });
         const b = note({ id: 'b', createdAt: new Date(2027, 2, 20, 10).getTime() });
-        const full = buildCalendarTree([a, b], true);
+        const full = buildVirtualTree([a, b], CALENDAR_TREE, true);
         expect(full.map((y) => y.name)).toEqual(['2025', '2026', '2027']);
         expect(full[1]!.count).toBe(0);
         expect(full[1]!.children.length).toBe(4);
-        const sparse = buildCalendarTree([a, b], false);
+        const sparse = buildVirtualTree([a, b], CALENDAR_TREE, false);
         expect(sparse.map((y) => y.name)).toEqual(['2025', '2027']);
-        expect(buildCalendarTree([], true)).toEqual([]);
-        expect(buildCalendarTree([note({ deletedAt: 1 })], true)).toEqual([]);
+        expect(buildVirtualTree([], CALENDAR_TREE, true)).toEqual([]);
+        expect(buildVirtualTree([note({ deletedAt: 1 })], CALENDAR_TREE, true)).toEqual([]);
+    });
+
+    it('builds a todo tree from tagged notes with the todo namespace ids', () => {
+        const taggedSep = note({ id: 'a', tags: ['待办'], createdAt: new Date(2026, 8, 1, 10).getTime() });
+        const taggedJul = note({ id: 'b', tags: ['work', '待办'], createdAt: new Date(2026, 6, 15, 10).getTime() });
+        const plainSep = note({ id: 'c', createdAt: new Date(2026, 8, 2, 10).getTime() });
+        const tree = buildVirtualTree(filterTodoNotes([taggedSep, taggedJul, plainSep]), TODO_TREE);
+        expect(tree.map((y) => [y.id, y.count])).toEqual([['todo:2026', 2]]);
+        expect(tree[0]!.children.map((q) => [q.id, q.count])).toEqual([['todo:2026:q3', 2]]);
+        expect(tree[0]!.children[0]!.children.map((m) => [m.id, m.count])).toEqual([['todo:2026:q3:07', 1], ['todo:2026:q3:09', 1]]);
+        const jul = tree[0]!.children[0]!.children[0]!;
+        expect(jul.children.map((w) => [w.id, w.name, w.count])).toEqual([['todo:2026:q3:07:w29', 'ww29', 1]]);
+        expect(virtualPeriodMatchesNote({ kind: 'month', year: 2026, month: 9 }, taggedSep, TODO_TREE)).toBe(true);
+        expect(virtualPeriodMatchesNote({ kind: 'month', year: 2026, month: 9 }, plainSep, TODO_TREE)).toBe(false);
+        expect(virtualPeriodMatchesNote({ kind: 'month', year: 2026, month: 9 }, plainSep, CALENDAR_TREE)).toBe(true);
+        expect(virtualPeriodMatchesNote({ kind: 'root' }, plainSep, TODO_TREE)).toBe(false);
     });
 });

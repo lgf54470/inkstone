@@ -2,8 +2,28 @@ import type { NoteSummary } from '@shared/types';
 import { dateKey } from './time';
 
 export const CALENDAR_ROOT_ID = 'cal'
+export const TODO_ROOT_ID = 'todo'
 
-const CALENDAR_PREFIX = 'cal:'
+export interface VirtualTreeNamespace {
+    rootId: string
+    prefix: string
+}
+
+export const CALENDAR_TREE: VirtualTreeNamespace = { rootId: CALENDAR_ROOT_ID, prefix: 'cal:' }
+export const TODO_TREE: VirtualTreeNamespace = { rootId: TODO_ROOT_ID, prefix: 'todo:' }
+
+export const DEFAULT_TODO_TAG = '待办'
+
+export function splitTodoTags(tagText: string): string[] {
+    return tagText.split(',').map((tag) => tag.trim()).filter(Boolean)
+}
+
+export function resolveTodoTag(pref: string | null | undefined, locale: string): string {
+    const trimmed = pref?.trim()
+    if (trimmed)
+        return trimmed
+    return locale === 'en-US' ? 'todo' : DEFAULT_TODO_TAG
+}
 
 export type CalendarPeriod =
     | { kind: 'root' }
@@ -20,8 +40,20 @@ export interface CalendarNode {
     children: CalendarNode[]
 }
 
+function matchesNamespace(id: string | null | undefined, ns: VirtualTreeNamespace): boolean {
+    return id === ns.rootId || Boolean(id?.startsWith(ns.prefix))
+}
+
 export function isCalendarFolderId(id: string | null | undefined): boolean {
-    return id === CALENDAR_ROOT_ID || Boolean(id?.startsWith(CALENDAR_PREFIX))
+    return matchesNamespace(id, CALENDAR_TREE)
+}
+
+export function isTodoFolderId(id: string | null | undefined): boolean {
+    return matchesNamespace(id, TODO_TREE)
+}
+
+export function isVirtualFolderId(id: string | null | undefined): boolean {
+    return isCalendarFolderId(id) || isTodoFolderId(id)
 }
 
 export function calendarNodeName(period: CalendarPeriod): string {
@@ -39,29 +71,29 @@ export function calendarNodeName(period: CalendarPeriod): string {
     }
 }
 
-export function calendarId(period: CalendarPeriod): string {
+export function virtualId(period: CalendarPeriod, ns: VirtualTreeNamespace): string {
     switch (period.kind) {
         case 'root':
-            return CALENDAR_ROOT_ID
+            return ns.rootId
         case 'year':
-            return `${CALENDAR_PREFIX}${period.year}`
+            return `${ns.prefix}${period.year}`
         case 'quarter':
-            return `${CALENDAR_PREFIX}${period.year}:q${period.quarter}`
+            return `${ns.prefix}${period.year}:q${period.quarter}`
         case 'month':
-            return `${CALENDAR_PREFIX}${period.year}:q${quarterOfMonth(period.month)}:${String(period.month).padStart(2, '0')}`
+            return `${ns.prefix}${period.year}:q${quarterOfMonth(period.month)}:${String(period.month).padStart(2, '0')}`
         case 'week':
-            return `${CALENDAR_PREFIX}${period.year}:q${quarterOfMonth(period.month)}:${String(period.month).padStart(2, '0')}:w${String(period.week).padStart(2, '0')}`
+            return `${ns.prefix}${period.year}:q${quarterOfMonth(period.month)}:${String(period.month).padStart(2, '0')}:w${String(period.week).padStart(2, '0')}`
     }
 }
 
-export function parseCalendarId(id: string | null | undefined): CalendarPeriod | null {
+export function parseVirtualId(id: string | null | undefined, ns: VirtualTreeNamespace): CalendarPeriod | null {
     if (!id)
         return null;
-    if (id === CALENDAR_ROOT_ID)
+    if (id === ns.rootId)
         return { kind: 'root' };
-    if (!id.startsWith(CALENDAR_PREFIX))
+    if (!id.startsWith(ns.prefix))
         return null;
-    const parts = id.slice(CALENDAR_PREFIX.length).split(':');
+    const parts = id.slice(ns.prefix.length).split(':');
     if (parts.length < 1 || parts.length > 4)
         return null;
     const year = Number(parts[0]);
@@ -185,13 +217,13 @@ export function parseCalendarJumpQuery(query: string, today?: Date): CalendarPer
     return null;
 }
 
-export function calendarNearestNeighbors(period: CalendarPeriod, notes: Iterable<NoteSummary>): { prev: CalendarNode | null; next: CalendarNode | null } {
-    const targetId = calendarId(period);
+export function virtualNearestNeighbors(period: CalendarPeriod, notes: Iterable<NoteSummary>, ns: VirtualTreeNamespace): { prev: CalendarNode | null; next: CalendarNode | null } {
+    const targetId = virtualId(period, ns);
     let prev: CalendarNode | null = null;
     let next: CalendarNode | null = null;
     const scan = (nodes: CalendarNode[]): void => {
         for (const node of nodes) {
-            const parsed = parseCalendarId(node.id);
+            const parsed = parseVirtualId(node.id, ns);
             if (parsed && parsed.kind === period.kind) {
                 if (node.id < targetId && (!prev || node.id > prev.id))
                     prev = node;
@@ -202,7 +234,7 @@ export function calendarNearestNeighbors(period: CalendarPeriod, notes: Iterable
             scan(node.children);
         }
     };
-    scan(buildCalendarTree(notes));
+    scan(buildVirtualTree(notes, ns));
     return { prev, next };
 }
 
@@ -221,8 +253,8 @@ export function calendarPeriodLabel(period: CalendarPeriod): string | null {
     }
 }
 
-export function calendarPeriodKeyRange(id: string | null | undefined): { start: string; end: string } | null {
-    const period = parseCalendarId(id);
+export function virtualPeriodKeyRange(id: string | null | undefined, ns: VirtualTreeNamespace): { start: string; end: string } | null {
+    const period = parseVirtualId(id, ns);
     if (!period || period.kind === 'root')
         return null;
     const start = new Date(0);
@@ -280,8 +312,19 @@ export function calendarPeriodMatchesNote(period: CalendarPeriod, note: NoteSumm
     }
 }
 
-export function calendarPathSegments(id: string | null | undefined): string[] | null {
-    const period = parseCalendarId(id);
+export function filterTodoNotes(notes: Iterable<NoteSummary>, tagText: string = DEFAULT_TODO_TAG): NoteSummary[] {
+    const tags = splitTodoTags(tagText)
+    return [...notes].filter((note) => tags.some((tag) => note.tags.includes(tag)))
+}
+
+export function virtualPeriodMatchesNote(period: CalendarPeriod, note: NoteSummary, ns: VirtualTreeNamespace, tagText: string = DEFAULT_TODO_TAG): boolean {
+    if (ns === TODO_TREE && !splitTodoTags(tagText).some((tag) => note.tags.includes(tag)))
+        return false;
+    return calendarPeriodMatchesNote(period, note);
+}
+
+export function virtualPathSegments(id: string | null | undefined, ns: VirtualTreeNamespace): string[] | null {
+    const period = parseVirtualId(id, ns);
     if (!period || period.kind === 'root')
         return null;
     switch (period.kind) {
@@ -303,8 +346,8 @@ export function calendarPathSegments(id: string | null | undefined): string[] | 
     }
 }
 
-export function calendarAncestorIds(id: string | null | undefined): string[] {
-    const period = parseCalendarId(id);
+export function virtualAncestorIds(id: string | null | undefined, ns: VirtualTreeNamespace): string[] {
+    const period = parseVirtualId(id, ns);
     if (!period)
         return [];
     const chain: CalendarPeriod[] = [{ kind: 'root' }];
@@ -327,10 +370,10 @@ export function calendarAncestorIds(id: string | null | undefined): string[] {
         case 'root':
             break;
     }
-    return chain.slice(1).map(calendarId);
+    return chain.slice(1).map((item) => virtualId(item, ns));
 }
 
-export function buildCalendarTree(notes: Iterable<NoteSummary>, includeEmpty = false): CalendarNode[] {
+export function buildVirtualTree(notes: Iterable<NoteSummary>, ns: VirtualTreeNamespace, includeEmpty = false): CalendarNode[] {
     const counts = new Map<string, number>();
     const childrenOf = new Map<string, Set<string>>();
     const childrenSet = (id: string): Set<string> => {
@@ -348,11 +391,11 @@ export function buildCalendarTree(notes: Iterable<NoteSummary>, includeEmpty = f
             continue;
         const leaf = noteWeekPeriod(note.createdAt);
         const ids = [
-            CALENDAR_ROOT_ID,
-            calendarId({ kind: 'year', year: leaf.year }),
-            calendarId({ kind: 'quarter', year: leaf.year, quarter: quarterOfMonth(leaf.month) }),
-            calendarId({ kind: 'month', year: leaf.year, month: leaf.month }),
-            calendarId({ kind: 'week', year: leaf.year, month: leaf.month, week: leaf.week }),
+            ns.rootId,
+            virtualId({ kind: 'year', year: leaf.year }, ns),
+            virtualId({ kind: 'quarter', year: leaf.year, quarter: quarterOfMonth(leaf.month) }, ns),
+            virtualId({ kind: 'month', year: leaf.year, month: leaf.month }, ns),
+            virtualId({ kind: 'week', year: leaf.year, month: leaf.month, week: leaf.week }, ns),
         ];
         for (let i = 0; i < ids.length; i++) {
             const id = ids[i]!;
@@ -370,11 +413,11 @@ export function buildCalendarTree(notes: Iterable<NoteSummary>, includeEmpty = f
         const count = children.length
             ? children.reduce((sum, child) => sum + child.count, 0)
             : (counts.get(id) ?? 0);
-        const parsed = parseCalendarId(id);
+        const parsed = parseVirtualId(id, ns);
         return { id, name: parsed ? calendarNodeName(parsed) : '', depth, count, children };
     };
     if (!includeEmpty)
-        return build(CALENDAR_ROOT_ID, -1).children;
+        return build(ns.rootId, -1).children;
     if (!Number.isFinite(minYear))
         return [];
     const years: CalendarNode[] = [];
@@ -384,15 +427,15 @@ export function buildCalendarTree(notes: Iterable<NoteSummary>, includeEmpty = f
             const months: CalendarNode[] = [];
             const firstMonth = (quarter - 1) * 3 + 1;
             for (let month = firstMonth; month < firstMonth + 3; month++) {
-                const id = calendarId({ kind: 'month', year, month });
+                const id = virtualId({ kind: 'month', year, month }, ns);
                 const weeks = [...(childrenOf.get(id) ?? [])]
                     .sort()
                     .map((child) => build(child, 3));
-                const parsed = parseCalendarId(id)!;
+                const parsed = parseVirtualId(id, ns)!;
                 months.push({ id, name: calendarNodeName(parsed), depth: 2, count: counts.get(id) ?? 0, children: weeks });
             }
-            const qId = calendarId({ kind: 'quarter', year, quarter });
-            const qParsed = parseCalendarId(qId)!;
+            const qId = virtualId({ kind: 'quarter', year, quarter }, ns);
+            const qParsed = parseVirtualId(qId, ns)!;
             quarters.push({
                 id: qId,
                 name: calendarNodeName(qParsed),
@@ -401,8 +444,8 @@ export function buildCalendarTree(notes: Iterable<NoteSummary>, includeEmpty = f
                 children: months,
             });
         }
-        const yId = calendarId({ kind: 'year', year });
-        const yParsed = parseCalendarId(yId)!;
+        const yId = virtualId({ kind: 'year', year }, ns);
+        const yParsed = parseVirtualId(yId, ns)!;
         years.push({
             id: yId,
             name: calendarNodeName(yParsed),

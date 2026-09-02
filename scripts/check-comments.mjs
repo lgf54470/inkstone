@@ -11,6 +11,14 @@ const allowed = new Map([
     "// UI chrome rendered by the i18n layer. Like the OAuth consent page above, it",
     "// bypasses the English-only source rule; the strings themselves still live",
     "// only in seed data, never in JSX or component props.",
+    "// Tag names are note data, not UI copy rendered by the i18n layer. The",
+    "// built-in to-do tag is one such data constant; it is written here so the",
+    "// raw-text scan below can blank it out.",
+    "// Tag-name constants (note data, not UI copy) are allowed to carry the",
+    "// localized tag literal they match against.",
+    "// allowedHanFragments keeps first-occurrence replacement on purpose: some",
+    "// fragments are substrings of others, so global replacement would blank",
+    "// the shared prefix before the longer phrase ever gets a chance to match.",
   ]],
   ["src/client/editor/codeLanguages.ts", [
     "// Highlighting removed: no code languages are loaded.",
@@ -172,6 +180,7 @@ const allowed = new Map([
   ["src/shared/types.ts", [
     "/** Tags to filter by. Overrides `tag`; sent comma-separated. */",
     "/** How multiple tags combine: `any` (default) for union, `all` for intersection. */",
+    "/** Tag(s, comma-separated) that file notes into the sidebar to-do tree; null falls back to the locale default. */",
   ]],
   ["src/shared/note-templates.ts", [
     "/**\n * Built-in template library catalog.\n *\n * The gallery is seeded per user from this catalog on first run. Names,\n * descriptions and Markdown bodies live in the locale resources (one entry per\n * language), so the catalog only references message keys. Bump\n * `TEMPLATE_SEED_VERSION` when adding or changing built-in entries: hydration\n * merges the missing/updated entries into existing user libraries without\n * touching user-created templates or user edits.\n */",
@@ -201,6 +210,7 @@ const allowed = new Map([
   ["src/shared/types.ts", [
     "/** Tags to filter by. Overrides `tag`; sent comma-separated. */",
     "/** How multiple tags combine: `any` (default) for union, `all` for intersection. */",
+    "/** Tag(s, comma-separated) that file notes into the sidebar to-do tree; null falls back to the locale default. */",
     "/** True for categories shipped with the app; they cannot be renamed or deleted. */",
     "/** True for templates shipped with the app; they can be edited but not deleted. */",
     "/** A rolling date filter: N days ending either at the newest edit (`edit`) or at today (`today`). */",

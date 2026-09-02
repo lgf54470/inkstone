@@ -1,5 +1,5 @@
 import type { DateRangeFilter, NoteSummary, ViewKind } from '@shared/types';
-import { calendarPeriodMatchesNote, isCalendarFolderId, parseCalendarId } from './calendar-tree';
+import { CALENDAR_TREE, DEFAULT_TODO_TAG, isTodoFolderId, isVirtualFolderId, parseVirtualId, TODO_TREE, virtualPeriodMatchesNote } from './calendar-tree';
 import { dateKey } from './time';
 
 /** Decide whether a note belongs to the active list view, optionally stacked with a multi-tag selection (`any` or `all` must match). */
@@ -12,6 +12,7 @@ export function matchesView(
     selectedTags: readonly string[] = [],
     selectedTagsMatch: 'any' | 'all' = 'any',
     dateFilter: DateRangeFilter | null = null,
+    todoTagText: string = DEFAULT_TODO_TAG,
 ): boolean {
     if (view === 'trash')
         return Boolean(note.deletedAt);
@@ -39,9 +40,10 @@ export function matchesView(
         case 'unfiled':
             return !note.folderId;
         case 'folder': {
-            if (isCalendarFolderId(folderId)) {
-                const period = parseCalendarId(folderId);
-                return period !== null && calendarPeriodMatchesNote(period, note);
+            if (isVirtualFolderId(folderId)) {
+                const ns = isTodoFolderId(folderId) ? TODO_TREE : CALENDAR_TREE;
+                const period = parseVirtualId(folderId, ns);
+                return period !== null && virtualPeriodMatchesNote(period, note, ns, todoTagText);
             }
             return Boolean(note.folderId && (folderScope?.has(note.folderId) ?? note.folderId === folderId));
         }

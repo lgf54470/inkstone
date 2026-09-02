@@ -133,6 +133,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
     newNoteTemplate: DEFAULT_NEW_NOTE_TEMPLATE,
     syncTitleToFrontMatter: true,
     syncFrontMatterTitle: true,
+    todoTag: null,
   },
 }
 
@@ -323,8 +324,28 @@ function mergeSettingsSection(
           patch.syncFrontMatterTitle,
           current.syncFrontMatterTitle as boolean,
         ),
+        todoTag: nullableStringValue(
+          patch.todoTag,
+          current.todoTag as string | null,
+          256,
+        ),
       }
   }
+}
+
+function nullableStringValue(
+  value: unknown,
+  fallback: string | null,
+  maxLength: number,
+): string | null {
+  if (value === null)
+    return null
+  if (typeof value !== 'string')
+    return fallback
+  const trimmed = value.trim()
+  if (!trimmed)
+    return null
+  return trimmed.slice(0, maxLength)
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

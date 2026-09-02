@@ -8,7 +8,7 @@ import type { AppLocale, Folder, Note, NoteSummary, SortKey, SortOrder, SyncResp
 import { api, ApiError, CLIENT_ID } from '../lib/api';
 import { localDb, publishBroadcast, type BroadcastPayload, type OutboxItem } from '../lib/db';
 import { NotePersistCoalescer } from '../lib/note-persist';
-import { isCalendarFolderId } from '../lib/calendar-tree';
+import { isVirtualFolderId, resolveTodoTag } from '../lib/calendar-tree';
 import { folderDescendantIds } from '../lib/folders';
 import { matchesView } from '../lib/note-filter';
 import { useSession } from './session';
@@ -652,7 +652,7 @@ export const useNotes = create<NotesState>((set, get) => ({
         const id = input?.id ?? newLocalEntityId();
         const existing = get().notes[id];
         const title = (input?.title ?? '').trim().slice(0, LIMITS.titleMaxLength);
-        const folderId = input?.folderId && !isCalendarFolderId(input.folderId) ? input.folderId : currentFolderId();
+        const folderId = input?.folderId && !isVirtualFolderId(input.folderId) ? input.folderId : currentFolderId();
         let content: string;
         let cursor: number | null = null;
         if (input?.content !== undefined) {
@@ -2572,10 +2572,10 @@ function normalizeFolder(folder: Folder): Folder {
 function reconcileFolderUi(folders: Folder[]): void {
     const validIds = new Set(folders.map((folder) => folder.id));
     const ui = useUi.getState();
-    const expandedFolders = ui.expandedFolders.filter((id) => validIds.has(id) || isCalendarFolderId(id));
+    const expandedFolders = ui.expandedFolders.filter((id) => validIds.has(id) || isVirtualFolderId(id));
     if (expandedFolders.length !== ui.expandedFolders.length)
         useUi.setState({ expandedFolders });
-    if (ui.view === 'folder' && (!ui.folderId || (!isCalendarFolderId(ui.folderId) && !validIds.has(ui.folderId))))
+    if (ui.view === 'folder' && (!ui.folderId || (!isVirtualFolderId(ui.folderId) && !validIds.has(ui.folderId))))
         ui.openView('all');
 }
 function tagEqual(a: Tag, b: Tag): boolean {
@@ -2623,7 +2623,7 @@ function frontMatterTitleOf(content: string): string | undefined {
 }
 function currentFolderId(): string | null {
     const ui = useUi.getState();
-    return ui.view === 'folder' && !isCalendarFolderId(ui.folderId) ? ui.folderId : null;
+    return ui.view === 'folder' && !isVirtualFolderId(ui.folderId) ? ui.folderId : null;
 }
 export function createContextualNote(input?: {
     title?: string;
@@ -2761,10 +2761,11 @@ function pickInitialNoteId(notes: Record<string, NoteSummary>, folders: Folder[]
     const selectedTags = ui.selectedTags;
     const selectedTagsMatch = ui.selectedTagsMatch;
     const dateFilter = ui.dateFilter;
+    const todoTagText = resolveTodoTag(useSession.getState().settings.notes.todoTag, getLocale());
     const active = ui.activeNoteId ? notes[ui.activeNoteId] : undefined;
-    if (active && matchesView(active, ui.view, ui.folderId, ui.tag, folderScope, selectedTags, selectedTagsMatch, dateFilter))
+    if (active && matchesView(active, ui.view, ui.folderId, ui.tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, todoTagText))
         return active.id;
-    const visible = Object.values(notes).filter((note) => matchesView(note, ui.view, ui.folderId, ui.tag, folderScope, selectedTags, selectedTagsMatch, dateFilter));
+    const visible = Object.values(notes).filter((note) => matchesView(note, ui.view, ui.folderId, ui.tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, todoTagText));
     if (ui.view === 'recent') {
         visible.sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
     }
@@ -2788,9 +2789,10 @@ export function useVisibleNotes(): NoteSummary[] {
     const dateFilter = useUi((s) => s.dateFilter);
     const sort = useUi((s) => s.sort);
     const order = useUi((s) => s.order);
+    const todoTagPref = useSession((s) => s.settings.notes.todoTag);
     return useMemo(() => {
         const folderScope = view === 'folder' && folderId ? folderDescendantIds(folders, folderId) : undefined;
-        const list = Object.values(notes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch, dateFilter));
+        const list = Object.values(notes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, resolveTodoTag(todoTagPref, locale)));
         if (view === 'recent') {
             return list
                 .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
