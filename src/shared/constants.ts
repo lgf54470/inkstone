@@ -87,7 +87,7 @@ export const PROSE_WIDTH_CH: Record<string, string> = {
   full: '100%',
 }
 
-export const VIEW_KINDS: ViewKind[] = ['all', 'recent', 'starred', 'unfiled', 'archived', 'trash', 'folder', 'tag']
+export const VIEW_KINDS: ViewKind[] = ['all', 'recent', 'starred', 'unfiled', 'archived', 'trash', 'folder', 'tag', 'untagged']
 
 /**
  * Default template inserted at the top of new notes. Keep placeholders ASCII:

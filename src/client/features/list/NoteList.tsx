@@ -38,6 +38,7 @@ const VIEW_MESSAGE_KEYS: Record<ViewKind, MessageKey> = {
     trash: 'navigation.trash',
     folder: 'navigation.folder',
     tag: 'navigation.tag',
+    untagged: 'tags.untagged',
 };
 const EMPTY_HIGHLIGHT: [
     number,
@@ -966,6 +967,7 @@ function ListEmpty({ view, folderId, filtering, dayFiltering, tagFiltering, late
         trash: { art: 'trash', title: t("notes.trash_is_empty"), desc: t("notes.deleted_notes_remain_until_you_restore_or_clear_them") },
         folder: { art: 'folder', title: t("notes.this_folder_is_still_empty"), desc: t("notes.drag_notes_in_or_create_new_ones_here") },
         tag: { art: 'tag', title: t("notes.there_are_no_notes_with_this_tag"), desc: t("notes.write_tags_in_the_note_to_link_them_automatically") },
+        untagged: { art: 'tag', title: t("tags.no_untagged_notes"), desc: t("tags.no_untagged_notes_desc") },
     };
     const item = config[view] ?? config.all!;
     return (<Empty art={item.art} title={item.title} description={item.desc} action={view !== 'trash' && view !== 'archived' ? (<button type="button" onClick={() => void createContextualNote()} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">

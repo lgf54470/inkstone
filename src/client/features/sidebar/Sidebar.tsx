@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Star, Sun, Tag as TagIcon, Trash2, Waypoints, X, } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
 import type { Tag, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
@@ -616,6 +616,7 @@ function TagSection() {
     const toggleTagSelection = useUi((s) => s.toggleTagSelection);
     const selectTags = useUi((s) => s.selectTags);
     const openPanel = useUi((s) => s.openPanel);
+    const counts = useNavigationCounts();
     const [expanded, setExpanded] = useState(false);
     const [query, setQuery] = useState('');
     const [activeIndex, setActiveIndex] = useState(0);
@@ -702,6 +703,29 @@ function TagSection() {
         {!sortedTags.length && !creating && (<button type="button" onClick={() => setCreating(true)} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[30px]">
             <Plus size={13}/>{t("tags.create_first")}
           </button>)}
+        {!searching && (
+          <button
+            type="button"
+            aria-current={view === 'untagged' ? 'page' : undefined}
+            onClick={() => openView('untagged')}
+            className={cn(
+              'group flex h-10 w-full items-center justify-between rounded-[var(--r-md)] px-2 text-left text-[12px] font-medium transition-colors md:h-[28px]',
+              view === 'untagged'
+                ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <TagIcon size={12} className={cn('shrink-0', view === 'untagged' ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')} />
+              <span className="truncate">{t('tags.untagged')}</span>
+            </div>
+            {counts.untagged > 0 && (
+              <span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)]">
+                {counts.untagged}
+              </span>
+            )}
+          </button>
+        )}
         {visible.map((tag, index) => (<TagRow key={tag.id} tag={tag} active={view === 'tag' && activeTag === tag.name} selected={selectedTags.includes(tag.name)} highlighted={searching && index === highlightedIndex} searchQuery={query} renaming={renamingId === tag.id} onOpen={(event) => {
             if (event.metaKey || event.ctrlKey) {
                 event.preventDefault();

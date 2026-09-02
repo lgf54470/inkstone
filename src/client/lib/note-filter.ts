@@ -49,6 +49,8 @@ export function matchesView(
         }
         case 'tag':
             return Boolean(tag && note.tags.includes(tag));
+        case 'untagged':
+            return note.tags.length === 0;
         case 'recent':
         case 'all':
         default:

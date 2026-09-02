@@ -297,6 +297,7 @@ export type ViewKind =
   | 'trash'
   | 'folder'
   | 'tag'
+  | 'untagged'
 
 export type SortKey = 'updated' | 'created' | 'title'
 export type SortOrder = 'asc' | 'desc'

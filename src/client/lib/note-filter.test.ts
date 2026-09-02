@@ -23,7 +23,7 @@ function note(overrides: Partial<NoteSummary> = {}): NoteSummary {
     };
 }
 
-const base: ViewKind[] = ['all', 'recent', 'starred', 'unfiled', 'folder', 'tag'];
+const base: ViewKind[] = ['all', 'recent', 'starred', 'unfiled', 'folder', 'tag', 'untagged'];
 
 describe('matchesView', () => {
     it('includes live notes in all/recent, excludes deleted ones everywhere', () => {
@@ -48,11 +48,13 @@ describe('matchesView', () => {
         expect(matchesView(note(), 'archived', null, null)).toBe(false);
     });
 
-    it('filters starred and unfiled views', () => {
+    it('filters starred, unfiled and untagged views', () => {
         expect(matchesView(note({ isStarred: true }), 'starred', null, null)).toBe(true);
         expect(matchesView(note(), 'starred', null, null)).toBe(false);
         expect(matchesView(note({ folderId: null }), 'unfiled', null, null)).toBe(true);
         expect(matchesView(note({ folderId: 'f1' }), 'unfiled', null, null)).toBe(false);
+        expect(matchesView(note({ tags: [] }), 'untagged', null, null)).toBe(true);
+        expect(matchesView(note({ tags: ['todo'] }), 'untagged', null, null)).toBe(false);
     });
 
     it('matches folder view by folder id and by descendant scope', () => {

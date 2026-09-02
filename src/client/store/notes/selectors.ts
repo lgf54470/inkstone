@@ -56,6 +56,7 @@ export interface NavigationCounts {
     unfiled: number;
     archived: number;
     trash: number;
+    untagged: number;
 }
 interface NavigationProjection {
     counts: NavigationCounts;
@@ -63,14 +64,14 @@ interface NavigationProjection {
 }
 let navigationProjectionNotes: Record<string, NoteSummary> | null = null;
 let navigationProjectionCache: NavigationProjection = {
-    counts: { all: 0, starred: 0, unfiled: 0, archived: 0, trash: 0 },
+    counts: { all: 0, starred: 0, unfiled: 0, archived: 0, trash: 0, untagged: 0 },
     folderCounts: new Map(),
 };
 export function selectNavigationProjection(notes: Record<string, NoteSummary>): NavigationProjection {
     if (notes === navigationProjectionNotes)
         return navigationProjectionCache;
     navigationProjectionNotes = notes;
-    const counts: NavigationCounts = { all: 0, starred: 0, unfiled: 0, archived: 0, trash: 0 };
+    const counts: NavigationCounts = { all: 0, starred: 0, unfiled: 0, archived: 0, trash: 0, untagged: 0 };
     const folderCounts = new Map<string, number>();
     for (const note of Object.values(notes)) {
         if (note.deletedAt) {
@@ -84,6 +85,8 @@ export function selectNavigationProjection(notes: Record<string, NoteSummary>): 
         counts.all++;
         if (note.isStarred)
             counts.starred++;
+        if (!note.tags || note.tags.length === 0)
+            counts.untagged++;
         if (!note.folderId) {
             counts.unfiled++;
         }
@@ -109,7 +112,8 @@ function navigationCountsEqual(a: NavigationCounts, b: NavigationCounts): boolea
         a.starred === b.starred &&
         a.unfiled === b.unfiled &&
         a.archived === b.archived &&
-        a.trash === b.trash;
+        a.trash === b.trash &&
+        a.untagged === b.untagged;
 }
 function numberMapEqual(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number>): boolean {
     if (a.size !== b.size)
