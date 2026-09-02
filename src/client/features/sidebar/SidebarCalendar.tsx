@@ -18,6 +18,7 @@ export function SidebarCalendar() {
     const createNote = useNotes((s) => s.createNote);
     const toast = useUi((s) => s.toast);
     const dateFilter = useUi((s) => s.dateFilter);
+    const calendarJump = useUi((s) => s.calendarJump);
     const yearGridColumns = useYearGridColumns();
     const [persisted] = useState(loadCalendarPersist);
     const [collapsed, setCollapsed] = useState(persisted.collapsed);
@@ -32,6 +33,13 @@ export function SidebarCalendar() {
     useEffect(() => {
         saveCalendarPersist({ collapsed, view });
     }, [collapsed, view]);
+
+    useEffect(() => {
+        if (!calendarJump)
+            return;
+        setView('month');
+        setCursor({ year: calendarJump.year, month: calendarJump.month });
+    }, [calendarJump]);
 
     const weekStart = locale === 'zh-CN' ? 1 : 0;
     const diaryTitle = useCallback((key: string) => t("sidebar.diary_title_value0", { value0: key }), []);
@@ -132,7 +140,7 @@ aliases:
                 <ChevronDown size={11} className={cn('shrink-0 text-[var(--text-quaternary)] transition-transform duration-[var(--dur-fast)]', collapsed && '-rotate-90')}/>
             </button>
         </div>
-        {!collapsed && (<ActivityCalendar counts={counts} notesByDay={notesByDay} getDiaryId={getDiaryId} locale={locale} weekStart={weekStart} today={now} selectedRange={dateFilter} latestEditKey={latestEditKey} view={view} onViewChange={setView} cursor={cursor} onCursorChange={setCursor} columnsPreference={yearGridColumns}            onDayClick={(key, diaryId) => void handleDayClick(key, diaryId)} onDaySelect={(key) => applyDateFilter({ start: key, end: key })} onRangeSelect={(start, end) => applyDateFilter({ start, end })}
+        {!collapsed && (<ActivityCalendar counts={counts} notesByDay={notesByDay} getDiaryId={getDiaryId} locale={locale} weekStart={weekStart} today={now} selectedRange={dateFilter} latestEditKey={latestEditKey} view={view} onViewChange={setView} cursor={cursor} onCursorChange={setCursor} columnsPreference={yearGridColumns} jumpFlash={calendarJump?.nonce ?? 0}            onDayClick={(key, diaryId) => void handleDayClick(key, diaryId)} onDaySelect={(key) => applyDateFilter({ start: key, end: key })} onRangeSelect={(start, end) => applyDateFilter({ start, end })}
             onGapDayClick={(key) => {
                 const relative = useUi.getState().relativeFilter;
                 if (relative)

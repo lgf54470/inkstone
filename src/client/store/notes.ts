@@ -13,6 +13,7 @@ import { folderDescendantIds } from '../lib/folders';
 import { matchesView } from '../lib/note-filter';
 import { useSession } from './session';
 import { useUi, type WorkspacePane } from './ui';
+import { toastWithUndo } from '../lib/toast-undo';
 import { getLocale, t, useLocale } from "../lib/i18n";
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'synced' | 'offline';
 interface NotesState {
@@ -804,13 +805,7 @@ export const useNotes = create<NotesState>((set, get) => ({
                 const removed = await api.notes.remove(id);
                 finishNoteMutation(id, mutation);
                 adoptNote(removed, set, get);
-                useUi.getState().toast({
-                    title: t("notes.moved_to_trash"),
-                    action: {
-                        label: t("common.undo"),
-                        run: () => void get().restoreNote(id),
-                    },
-                });
+                toastWithUndo(t("notes.moved_to_trash"), () => void get().restoreNote(id));
             }
             catch (err) {
                 await recoverNoteMutation(id, mutation, err, set, get);

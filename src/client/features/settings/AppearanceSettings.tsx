@@ -1,8 +1,10 @@
 import { useCallback, useMemo } from 'react'
 import type { AccentName, AppLocale, BackgroundName, ProseFont, ProseWidth, ThemePref, UiDensity } from '@shared/types'
 import { Check, Monitor, Moon, Sun } from 'lucide-react'
+import { YearGrid } from '../../components/calendar-grids'
 import { cn } from '../../lib/cn'
 import { Segmented, SettingRow, Slider, Switch, type SegmentedOption } from '../../components/form'
+import { useUi } from '../../store/ui'
 import { setCalendarTreeShowEmpty, setCalendarTreeVisible, useCalendarTreeShowEmpty, useCalendarTreeVisible } from '../../lib/calendar-prefs'
 import { setYearGridColumns, useYearGridColumns, type YearGridColumnsPref } from '../../lib/year-grid-prefs'
 import { Tooltip } from '../../components/overlay'
@@ -177,6 +179,8 @@ export function AppearanceSettings({
             options={yearGridOptions}
           />
         </SettingRow>
+
+        <YearGridPreview columns={yearGridColumns} locale={locale}/>
       </section>
 
       <section>
@@ -232,6 +236,55 @@ export function AppearanceSettings({
   )
 }
 
+
+function YearGridPreview({ columns, locale }: { columns: YearGridColumnsPref; locale: string }) {
+  const monthLabels = useMemo(() => {
+    const formatter = new Intl.DateTimeFormat(locale, { month: 'short' })
+    return Array.from({ length: 12 }, (_, month) => formatter.format(new Date(2026, month, 1)))
+  }, [locale])
+  const previewHeat = [16, 34, 54] as const
+  const previewYear = new Date().getFullYear()
+  const jumpToMonth = (month: number) => {
+    useUi.getState().requestCalendarJump(previewYear, month)
+    useUi.getState().closePanel()
+  }
+  return (
+    <div className="mt-1 mb-3 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-2">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="text-[9.5px] font-medium text-[var(--text-quaternary)]">{t("settings.year_grid_columns_preview")}</span>
+        <span className="text-[9.5px] text-[var(--text-quaternary)]">{t("settings.year_grid_columns_preview_tip")}</span>
+      </div>
+      <YearGrid
+        year={previewYear}
+        weekStart={locale === 'zh-CN' ? 1 : 0}
+        columns={columns === '4' ? 4 : 3}
+        renderMonth={(month) => (
+          <button
+            key={month.month}
+            type="button"
+            aria-label={t("settings.year_grid_columns_jump_value0", { value0: monthLabels[month.month] ?? '' })}
+            onClick={() => jumpToMonth(month.month)}
+            className="flex min-w-0 flex-col items-center gap-0.5 rounded-[3px] p-px transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+          >
+            <span className="text-[7px] font-medium text-[var(--text-quaternary)]">{monthLabels[month.month]}</span>
+            <span aria-hidden="true" className="grid w-full grid-cols-7 gap-px">
+              {month.cells.map((cell, index) => {
+                const level = cell.inMonth ? ((index + month.month) % 4) : 0
+                return (
+                  <span
+                    key={index}
+                    className={cn('aspect-square w-full rounded-[1px]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]')}
+                    style={{ backgroundColor: !cell.inMonth ? 'transparent' : level === 0 ? 'var(--bg-base)' : `color-mix(in oklab, var(--accent) ${previewHeat[level - 1]}%, transparent)` }}
+                  />
+                )
+              })}
+            </span>
+          </button>
+        )}
+      />
+    </div>
+  )
+}
 
 function PreviewSample() {
   const appearance = useSession((s) => s.settings.appearance)

@@ -183,6 +183,23 @@ describe('view toggle wrapping contract', () => {
         unmount();
     });
 
+    it('walks the focused card\'s weekday columns with arrows and returns to the card', () => {
+        const { container, unmount } = renderCalendar();
+        const toggle = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="sidebar.calendar_view"] button')];
+        act(() => { toggle[2]!.click(); });
+        const september = container.querySelector('[data-month="8"]') as HTMLElement;
+        september.focus();
+        act(() => { september.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); });
+        expect(document.activeElement?.getAttribute('data-weekday')).toBe('0');
+        act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); });
+        act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); });
+        expect(document.activeElement?.getAttribute('data-weekday')).toBe('2');
+        expect(document.activeElement?.closest('[data-month-card]')?.getAttribute('data-month-card')).toBe('8');
+        act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })); });
+        expect(document.activeElement?.getAttribute('data-month')).toBe('8');
+        unmount();
+    });
+
     it('respects a fixed columns preference over the measured width', () => {
         const { container, unmount } = renderElement(createElement('div', { style: { width: 196 } }, createElement(ActivityCalendar, {
             counts: new Map(),
@@ -238,5 +255,55 @@ describe('view toggle wrapping contract', () => {
         expect(cursors).toEqual([{ year: 2026, month: 8 }]);
         expect(views).toEqual(['month']);
         unmount();
+    });
+});
+
+describe('jump flash transition', () => {
+    it('fades the month grid in with an accent ring when an external jump arrives', () => {
+        interface Captured {
+            keyframes: Keyframe[];
+            duration?: number;
+        }
+        const captured: Captured[] = [];
+        const original = Element.prototype.animate;
+        Element.prototype.animate = function (this: Element, keyframes: Keyframe[], options?: KeyframeAnimationOptions) {
+            captured.push({ keyframes: [...keyframes], duration: typeof options?.duration === 'number' ? options.duration : undefined });
+            return { cancel: () => {}, finished: Promise.resolve(), play: () => {}, pause: () => {} } as unknown as Animation;
+        };
+        try {
+            let bumpFlash = () => {};
+            function Harness() {
+                const [flash, setFlash] = useState(0);
+                bumpFlash = () => setFlash((value) => value + 1);
+                return createElement('div', null, createElement(ActivityCalendar, {
+                    counts: new Map(),
+                    locale: 'en-US',
+                    weekStart: 1,
+                    today: new Date(2026, 8, 2),
+                    view: 'month',
+                    onViewChange: () => {},
+                    cursor: { year: 2026, month: 8 },
+                    onCursorChange: () => {},
+                    onDayClick: () => {},
+                    onDaySelect: () => {},
+                    onRangeSelect: () => {},
+                    onGapDayClick: () => {},
+                    onNoteClick: () => {},
+                    getDiaryId: () => null,
+                    jumpFlash: flash,
+                }));
+            }
+            const { unmount } = renderElement(createElement(Harness));
+            expect(captured).toHaveLength(0);
+            act(() => { bumpFlash(); });
+            expect(captured).toHaveLength(1);
+            expect(captured[0]!.duration).toBe(1100);
+            expect(captured[0]!.keyframes[0]!.boxShadow).toContain('var(--accent)');
+            expect(captured[0]!.keyframes[1]!.boxShadow).toContain('rgba(0, 0, 0, 0)');
+            unmount();
+        }
+        finally {
+            Element.prototype.animate = original;
+        }
     });
 });

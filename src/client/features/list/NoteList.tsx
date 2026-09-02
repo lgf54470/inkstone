@@ -18,6 +18,7 @@ import { computeLatestEditKey } from './use-rolling-filter';
 import { useGapIndicatorStore } from './use-gap-indicator';
 import { loadRememberedFilter, loadSessionFilter, saveRememberedFilter, saveSessionFilter } from './list-filter-persist';
 import { useUi } from '../../store/ui';
+import { toastWithUndo } from '../../lib/toast-undo';
 import { createContextualNote, useNotes, useVisibleNotes } from '../../store/notes';
 import { useNoteTemplates } from '../../store/note-templates';
 import { createNoteFromTemplate } from '../../lib/template-notes';
@@ -224,10 +225,27 @@ export function NoteList() {
         };
     }, [endPeek, startPeek]);
     const clearAllFilters = () => {
-        useUi.getState().setDateFilter(null);
-        useUi.getState().setRelativeFilter(null);
-        useUi.getState().clearTagSelection();
+        const state = useUi.getState();
+        const previous = {
+            dateFilter: state.dateFilter,
+            relativeFilter: state.relativeFilter,
+            selectedTags: state.selectedTags,
+            selectedTagsMatch: state.selectedTagsMatch,
+            query: filter,
+        };
+        state.setDateFilter(null);
+        state.setRelativeFilter(null);
+        state.clearTagSelection();
         setFilter('');
+        toastWithUndo(t("notes.filters_cleared"), () => {
+            useUi.setState({
+                dateFilter: previous.dateFilter,
+                relativeFilter: previous.relativeFilter,
+                selectedTags: previous.selectedTags,
+                selectedTagsMatch: previous.selectedTagsMatch,
+            });
+            setFilter(previous.query);
+        });
     };
     const weekStart = locale === 'zh-CN' ? 1 : 0;
     const weekFiltered = dateFilter ? isWeekRangeKey(dateFilter.start, dateFilter.end, weekStart) : false;

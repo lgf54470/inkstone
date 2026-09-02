@@ -47,3 +47,14 @@ describe('tag selection cap', () => {
         expect(useUi.getState().selectedTags).toEqual(['a', 'b', 'c']);
     });
 });
+
+describe('calendarJump', () => {
+    it('records the requested month with an incrementing nonce so repeats still fire', () => {
+        const { requestCalendarJump } = useUi.getState();
+        expect(useUi.getState().calendarJump).toBeNull();
+        requestCalendarJump(2026, 8);
+        requestCalendarJump(2026, 8);
+        expect(useUi.getState().calendarJump).toMatchObject({ year: 2026, month: 8 });
+        expect(useUi.getState().calendarJump?.nonce).toBe(2);
+    });
+});

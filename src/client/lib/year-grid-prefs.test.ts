@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { STORAGE_KEY, setYearGridColumns, useYearGridColumns } from './year-grid-prefs';
+import { STORAGE_KEY, cycleYearGridColumns, setYearGridColumns, useYearGridColumns } from './year-grid-prefs';
 import { act, createElement } from 'react';
 import { renderElement } from './test-render';
 
@@ -17,6 +17,12 @@ describe('year-grid-columns preference', () => {
         expect(value).toBe('3');
         expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')).toBe('3');
         unmount();
+    });
+
+    it('cycles auto -> 3 -> 4 -> auto', () => {
+        expect(cycleYearGridColumns('auto')).toBe('3');
+        expect(cycleYearGridColumns('3')).toBe('4');
+        expect(cycleYearGridColumns('4')).toBe('auto');
     });
 
     it('recovers both quoted and legacy unquoted numeric values on load', async () => {

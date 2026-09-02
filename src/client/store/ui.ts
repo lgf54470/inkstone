@@ -67,6 +67,8 @@ interface UiState {
   relativeFilter: RelativeFilter | null
   /** Sort the user left behind when entering a calendar folder view, restored on exit. */
   calendarSortOverride: { sort: SortKey; order: SortOrder } | null
+  /** External jump request for the sidebar heatmap calendar (from the settings preview); consumed by SidebarCalendar. */
+  calendarJump: { year: number; month: number; nonce: number } | null
   recentNoteIds: string[]
 
 
@@ -100,6 +102,7 @@ interface UiState {
   setSelectedTagsMatch: (match: 'any' | 'all') => void
   setDateFilter: (value: DateRangeFilter | null) => void
   setRelativeFilter: (value: RelativeFilter | null) => void
+  requestCalendarJump: (year: number, month: number) => void
   setSort: (sort: SortKey, order?: SortOrder) => void
   setDensity: (density: UiDensity) => void
   toggleFolder: (id: string) => void
@@ -151,6 +154,7 @@ const DEFAULTS = {
   selectedTagsMatch: 'any' as const,
   dateFilter: null as DateRangeFilter | null,
   relativeFilter: null as RelativeFilter | null,
+  calendarJump: null as { year: number; month: number; nonce: number } | null,
   calendarSortOverride: null as { sort: SortKey; order: SortOrder } | null,
   theme: 'system' as ThemePref,
   accent: 'indigo' as AccentName,
@@ -481,6 +485,10 @@ export const useUi = create<UiState>((set, get) => ({
 
   setDateFilter: (value) => set({ dateFilter: value }),
   setRelativeFilter: (value) => set({ relativeFilter: value }),
+
+  requestCalendarJump: (year, month) => set((s) => ({
+    calendarJump: { year, month, nonce: (s.calendarJump?.nonce ?? 0) + 1 },
+  })),
 
   setSort: (sort, order) => set((s) => ({ sort, order: order ?? s.order })),
   setDensity: (density) => set({ density }),

@@ -99,10 +99,12 @@ export interface ActivityCalendarProps {
     onGapDayClick: (key: string) => void;
     onNoteClick: (noteId: string) => void;
     columnsPreference?: YearGridColumnsPref;
+    /** Increments each time an external jump (e.g. a settings-preview click) targets the month view, triggering a fade-in + accent ring flash. */
+    jumpFlash?: number;
 }
 
 /** Reusable calendar + activity heatmap: navigable month grid, yearly month columns, and a GitHub-style weekly strip, with optional per-day note lists. */
-export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekStart = 1, today, range, selectedRange, latestEditKey, view, onViewChange, cursor, onCursorChange, onDayClick, onDaySelect, onRangeSelect, onGapDayClick, onNoteClick, columnsPreference = 'auto' }: ActivityCalendarProps) {
+export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekStart = 1, today, range, selectedRange, latestEditKey, view, onViewChange, cursor, onCursorChange, onDayClick, onDaySelect,    onRangeSelect, onGapDayClick, onNoteClick, columnsPreference = 'auto', jumpFlash = 0 }: ActivityCalendarProps) {
     const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
     const [expandedDay, setExpandedDay] = useState<string | null>(null);
     const [expandedWeekNotes, setExpandedWeekNotes] = useState(false);
@@ -129,6 +131,22 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
         observer.observe(el);
         return () => observer.disconnect();
     }, []);
+    const monthFlashRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+        // Marks an externally requested month jump (settings preview click) with a brief fade-in and an accent ring that recedes outward.
+        if (jumpFlash <= 0 || view !== 'month')
+            return;
+        const el = monthFlashRef.current;
+        if (!el || typeof el.animate !== 'function')
+            return;
+        if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+            return;
+        const animation = el.animate([
+            { opacity: 0.25, boxShadow: '0 0 0 2px var(--accent)' },
+            { opacity: 1, boxShadow: '0 0 0 9px rgba(0, 0, 0, 0)' },
+        ], { duration: 1100, easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)' });
+        return () => animation.cancel();
+    }, [jumpFlash, view]);
     const yearColumns: YearGridColumns = columnsPreference !== 'auto' ? (columnsPreference === '4' ? 4 : 3) : (rootWidth === null ? YEAR_GRID_COLUMNS : yearGridColumns(rootWidth));
     if (expandedWeek !== null)
         lastExpandedWeek.current = expandedWeek;
@@ -330,6 +348,10 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
         onRangeSelect(dateKey(start), dateKey(end));
     };
 
+    const focusWeekday = (month: number, column: number, scope: Element) => {
+        scope.querySelector<HTMLButtonElement>(`[data-month-card="${month}"] [data-weekday="${column}"]`)?.focus();
+    };
+
     const handleYearGridKeyDown = (event: React.KeyboardEvent) => {
         if (event.key === 'PageUp') {
             event.preventDefault();
@@ -341,15 +363,30 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
             shiftYear(1);
             return;
         }
+        const target = event.target as HTMLElement;
+        const weekdayButton = target.closest<HTMLButtonElement>('[data-weekday]');
+        const card = target.closest<HTMLElement>('[data-month-card]');
+        const cardMonth = card ? Number(card.getAttribute('data-month-card')) : -1;
+        if (weekdayButton && cardMonth >= 0 && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape'].includes(event.key)) {
+            event.preventDefault();
+            const column = Number(weekdayButton.getAttribute('data-weekday'));
+            if (event.key === 'ArrowLeft')
+                focusWeekday(cardMonth, Math.max(0, column - 1), event.currentTarget);
+            else if (event.key === 'ArrowRight')
+                focusWeekday(cardMonth, Math.min(6, column + 1), event.currentTarget);
+            else
+                event.currentTarget.querySelector<HTMLButtonElement>(`[data-month="${cardMonth}"]`)?.focus();
+            return;
+        }
         if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key))
             return;
         event.preventDefault();
+        if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && cardMonth >= 0) {
+            focusWeekday(cardMonth, 0, event.currentTarget);
+            return;
+        }
         let index = focusMonth;
-        if (event.key === 'ArrowLeft')
-            index--;
-        else if (event.key === 'ArrowRight')
-            index++;
-        else if (event.key === 'ArrowUp')
+        if (event.key === 'ArrowUp')
             index -= yearColumns;
         else if (event.key === 'ArrowDown')
             index += yearColumns;
@@ -436,7 +473,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                     <RotateCcw size={10} className="shrink-0"/>
                     <span className="min-w-0 flex-1 truncate text-left">{t(gapAhead ? "sidebar.calendar_gap_banner_ahead_value0" : "sidebar.calendar_gap_banner_value0", { value0: latestOutsideDays ?? 0 })}</span>
                 </button>)}
-            </div><MonthGrid
+            </div><div ref={monthFlashRef} className="rounded-[var(--r-md)]"><MonthGrid
             year={cursor.year}
             month={cursor.month}
             weekStart={weekStart}
@@ -463,7 +500,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                     </button>
                 </Tooltip>);
             }}
-        /></>) : view === 'year' ? (<>
+        /></div></>) : view === 'year' ? (<>
             <YearGrid
                 year={cursor.year}
                 weekStart={weekStart}
@@ -479,7 +516,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                     return (<div key={month.month} data-month-card={month.month} className={cn('flex min-w-0 flex-col items-center gap-1 rounded-[4px] px-px py-1 transition-colors hover:bg-[var(--bg-hover)] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--accent)]', inRangePreview && 'bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]', yearRangeAnchor?.month === month.month && 'ring-1 ring-inset ring-[var(--accent)]')} onMouseEnter={() => { if (yearRangeAnchor !== null) setYearRangeHover(month.month); }}>
                         <span className="text-[8.5px] font-medium text-[var(--text-quaternary)]">{monthLabels[month.month]}</span>
                         <span className="grid w-full grid-cols-7 gap-px leading-none">
-                            {weekdayLabels.map((label, index) => (<button key={index} type="button" tabIndex={-1} aria-label={t("sidebar.calendar_year_weekday_value0", { value0: monthLabels[month.month] ?? '', value1: label })} onClick={() => handleWeekdayClick(month.month, index)} className="rounded-[1px] py-px text-center text-[6px] font-medium text-[var(--text-quaternary)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
+                            {weekdayLabels.map((label, index) => (<button key={index} type="button" data-weekday={index} tabIndex={-1} aria-label={t("sidebar.calendar_year_weekday_value0", { value0: monthLabels[month.month] ?? '', value1: label })} onClick={() => handleWeekdayClick(month.month, index)} className="rounded-[1px] py-px text-center text-[6px] font-medium text-[var(--text-quaternary)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
                                 {label}
                             </button>))}
                         </span>

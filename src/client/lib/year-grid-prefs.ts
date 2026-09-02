@@ -49,3 +49,7 @@ export function setYearGridColumns(next: YearGridColumnsPref): void {
     save()
     listeners.forEach((listener) => listener())
 }
+
+export function cycleYearGridColumns(current: YearGridColumnsPref): YearGridColumnsPref {
+    return current === 'auto' ? '3' : current === '3' ? '4' : 'auto'
+}

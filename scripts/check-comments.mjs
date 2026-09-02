@@ -25,6 +25,8 @@ const allowed = new Map([
   ["src/client/components/activity-calendar.tsx", [
     "/** Reusable calendar + activity heatmap: navigable month grid, yearly month columns, and a GitHub-style weekly strip, with optional per-day note lists. */",
     "/** Convert an inclusive month range (0-11 indices within a year) to inclusive day keys. */",
+    "/** Increments each time an external jump (e.g. a settings-preview click) targets the month view, triggering a fade-in + accent ring flash. */",
+    "// Marks an externally requested month jump (settings preview click) with a brief fade-in and an accent ring that recedes outward.",
   ]],
   ["src/client/components/activity-calendar.test.ts", [
     "// jsdom has no layout engine, so these guards assert the anti-wrap CSS contract",
@@ -127,6 +129,7 @@ const allowed = new Map([
     "/** Inclusive date range (YYYY-MM-DD keys) the note list is filtered to, set from the sidebar calendar. */",
     "/** When set, `dateFilter` is the live-materialized window of this rolling filter. */",
     "/** Sort the user left behind when entering a calendar folder view, restored on exit. */",
+    "/** External jump request for the sidebar heatmap calendar (from the settings preview); consumed by SidebarCalendar. */",
     "// Keep the multi-select when entering a folder view so it stacks with",
     "// the folder filter; any other navigation clears the selection.",
   ]],

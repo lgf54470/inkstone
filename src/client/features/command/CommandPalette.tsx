@@ -13,11 +13,19 @@ import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../compone
 import { TagFilterPopover } from '../../components/tag-filter-popover';
 import { useUi } from '../../store/ui';
 import { createContextualNote, useNotes } from '../../store/notes';
+import { toastWithUndo } from '../../lib/toast-undo';
 import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands';
 import { calendarAncestorIds, calendarId, calendarNodeName, calendarPeriodKeyRange, calendarPeriodLabel, calendarPeriodsForDate, parseCalendarJumpQuery, type CalendarPeriod } from '../../lib/calendar-tree';
 import { folderPathLabel, openFolderView } from '../../lib/folders';
 import { useSession } from '../../store/session';
-import { t, useLocale } from "../../lib/i18n";
+import { t, useLocale, type MessageKey } from "../../lib/i18n";
+import { cycleYearGridColumns, setYearGridColumns, useYearGridColumns, type YearGridColumnsPref } from '../../lib/year-grid-prefs';
+
+const YEAR_GRID_LABEL_KEYS: Record<YearGridColumnsPref, MessageKey> = {
+    'auto': 'settings.year_grid_columns_auto',
+    '3': 'settings.year_grid_columns_three',
+    '4': 'settings.year_grid_columns_four',
+};
 interface Item {
     id: string;
     kind: 'command' | 'note' | 'tag' | 'folder';
@@ -66,6 +74,7 @@ export function CommandPalette({ onClose }: {
         : selectedTags.some((name) => note.tags.includes(name))), [selectedTags, selectedTagsMatch]);
     const appearanceTheme = useSession((s) => s.settings.appearance.theme);
     const updateSettings = useSession((s) => s.updateSettings);
+    const yearGridColumns = useYearGridColumns();
     const debounced = useDebounced(query, 180);
     const now = useNow();
     useEscape(true, onClose);
@@ -174,7 +183,14 @@ export function CommandPalette({ onClose }: {
                         label: activeNote.isArchived ? t("common.unarchive") : t("command.archive_current_note"),
                         icon: <Archive size={14}/>,
                         group: t("common.current_note"),
-                        run: () => void patchNote(activeNote.id, { isArchived: !activeNote.isArchived }),
+                        run: () => {
+                            const wasArchived = activeNote.isArchived;
+                            void patchNote(activeNote.id, { isArchived: !wasArchived });
+                            toastWithUndo(t(wasArchived ? "common.unarchive" : "notes.archived"), () => {
+                                void patchNote(activeNote.id, { isArchived: wasArchived });
+                                useUi.getState().toast({ title: t(wasArchived ? "notes.archived" : "notes.unarchived") });
+                            });
+                        },
                     },
                     {
                         id: 'cmd-insert-template',
@@ -247,6 +263,29 @@ export function CommandPalette({ onClose }: {
                 icon: <Palette size={14}/>,
                 group: t("common.interface"),
                 run: () => openPanel('settings'),
+            },
+            {
+                id: 'cmd-year-grid-columns',
+                kind: 'command',
+                label: t("command.year_grid_columns"),
+                detail: t(YEAR_GRID_LABEL_KEYS[yearGridColumns]),
+                icon: <Columns2 size={14}/>,
+                group: t("common.interface"),
+                run: () => {
+                    const previous = yearGridColumns;
+                    const next: YearGridColumnsPref = cycleYearGridColumns(yearGridColumns);
+                    setYearGridColumns(next);
+                    useUi.getState().toast({
+                        title: t("command.year_grid_columns_switched_value0", { value0: t(YEAR_GRID_LABEL_KEYS[next]) }),
+                        action: {
+                            label: t("common.undo"),
+                            run: () => {
+                                setYearGridColumns(previous);
+                                useUi.getState().toast({ title: t("command.year_grid_columns_undone") });
+                            },
+                        },
+                    });
+                },
             },
             {
                 id: 'cmd-graph',
@@ -350,6 +389,7 @@ export function CommandPalette({ onClose }: {
         openView,
         patchNote,
         updateSettings,
+        yearGridColumns,
     ]);
     const items = useMemo<Item[]>(() => {
         const text = query.trim();
