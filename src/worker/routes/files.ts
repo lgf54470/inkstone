@@ -40,6 +40,15 @@ interface AttachmentRow {
 
 const ATTACHMENT_LIST_PAGE_SIZE = 500
 const ATTACHMENT_SCAN_PAGE_SIZE = 100
+// The usage panel re-opens and re-pages often while note contents rarely
+// change between opens; keep one exact reference map per user for a short
+// window so page 2, filters and re-opens skip the full content scan.
+const ATTACHMENT_REFERENCE_CACHE_TTL_MS = 60_000
+let attachmentReferenceCache: {
+  userId: string
+  at: number
+  references: Map<string, number>
+} | null = null
 
 function encodeContentDispositionFilename(filename: string): string {
   return encodeURIComponent(filename).replace(/['()*]/g, (character) =>
@@ -75,9 +84,14 @@ async function collectAttachmentReferences(
   db: D1Database,
   userId: string,
   wantedIds?: ReadonlySet<string>,
+  options: { earlyExit?: boolean } = {},
 ): Promise<Map<string, number>> {
   const references = new Map<string, number>()
   if (wantedIds?.size === 0) return references
+  // When the caller only needs presence (e.g. pruning), stopping as soon as
+  // every wanted id has been found is exact: unscanned notes could only add
+  // more references for already-found ids, never create new ones.
+  const earlyExit = options.earlyExit === true
 
   let afterId = ''
   while (true) {
@@ -93,6 +107,7 @@ async function collectAttachmentReferences(
         references.set(id, (references.get(id) ?? 0) + 1)
       }
     }
+    if (earlyExit && wantedIds && references.size === wantedIds.size) break
     afterId = results[results.length - 1]!.id
     if (results.length < ATTACHMENT_SCAN_PAGE_SIZE) break
   }
@@ -285,11 +300,15 @@ filesRoutes.get('/', requireAuth, async (c) => {
   const { results } = await statement.all<AttachmentRow>()
   const page = results.slice(0, ATTACHMENT_LIST_PAGE_SIZE)
   const hasMore = results.length > ATTACHMENT_LIST_PAGE_SIZE
-  const references = await collectAttachmentReferences(
-    c.env.DB,
-    userId,
-    new Set(page.map((row) => row.id)),
-  )
+  const cached = attachmentReferenceCache
+  let references: Map<string, number>
+  if (cached && cached.userId === userId && Date.now() - cached.at < ATTACHMENT_REFERENCE_CACHE_TTL_MS) {
+    references = cached.references
+  }
+  else {
+    references = await collectAttachmentReferences(c.env.DB, userId)
+    attachmentReferenceCache = { userId, at: Date.now(), references }
+  }
   return c.json({
     files: page.map((row) => ({
       ...toAttachment(row),
@@ -358,7 +377,7 @@ filesRoutes.post('/prune', requireAuth, async (c) => {
   if (!boundary) return c.json({ removed: 0, freedBytes: 0 })
   const scanCursor = (cursorResult as D1Result<{ seq: number }>).results[0]?.seq ?? 0
   const attachmentIds = await collectAttachmentIdsThroughBoundary(c.env.DB, userId, boundary)
-  const referenced = await collectAttachmentReferences(c.env.DB, userId, attachmentIds)
+  const referenced = await collectAttachmentReferences(c.env.DB, userId, attachmentIds, { earlyExit: true })
 
   let removed = 0
   let freedBytes = 0
