@@ -301,8 +301,13 @@ export const localDb = {
             else for (const key of removedKeys) await del(key, store)
           }
           if (indexChanged) {
-            const nextIds = await mergedNoteIds(userId, [...targetNotes.keys()], new Set(removedIds))
-            writes.push([userScopedKey(KEY.noteIndex, userId), nextIds])
+            const indexKey = userScopedKey(KEY.noteIndex, userId)
+            const written = await withShellIndexLock(userId, async () => {
+              const merged = await mergedNoteIds(userId, [...targetNotes.keys()], new Set(removedIds))
+              await set(indexKey, merged, store)
+              return true
+            })
+            if (written !== true) writes.push([indexKey, [...targetNotes.keys()]])
           }
         }
         else {
@@ -583,6 +588,19 @@ async function mergedNoteIds(userId: string | null, targetIds: string[], removed
     next.push(id)
   }
   return next
+}
+
+// The index read-merge-write is the one whole-value shell write two tabs can
+// race; Web Locks serializes it across tabs so a concurrent merge reads the
+// winner's index instead of a stale one. Browsers without Web Locks fall back
+// to the plain merge, which stays correct when flushes never overlap.
+async function withShellIndexLock(userId: string | null, task: () => Promise<boolean>): Promise<boolean> {
+  if (typeof navigator === 'undefined' || typeof navigator.locks?.request !== 'function') return task()
+  try {
+    return await navigator.locks.request(`inkstone-shell-index:${userId ?? 'anon'}`, task)
+  } catch {
+    return false
+  }
 }
 
 function summariesEqual(a: NoteSummary, b: NoteSummary): boolean {

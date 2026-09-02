@@ -128,6 +128,65 @@ describe('multi-tab shell cache', () => {
     expect(loaded!.notes.find((note) => note.id === vault[secondIndex]!.id)?.updatedAt).toBe(3_000_000 + 9_002)
   })
 
+  it('serializes index rewrites through a Web Locks critical section', async () => {
+    const lockLog: Array<{ name: string }> = []
+    let active = 0
+    let maxActive = 0
+    const waiters: Array<() => Promise<void>> = []
+    const pump = () => {
+      const run = waiters.shift()
+      if (run) void run().finally(pump)
+    }
+    const locks = {
+      request: (name: string, task: () => Promise<boolean>) =>
+        new Promise<boolean>((resolve, reject) => {
+          const run = async () => {
+            active++
+            maxActive = Math.max(maxActive, active)
+            lockLog.push({ name })
+            try {
+              resolve(await task())
+            }
+            catch (error) {
+              reject(error)
+            }
+            finally {
+              active--
+            }
+          }
+          waiters.push(run)
+          if (active === 0) pump()
+        }),
+    }
+    Object.defineProperty(navigator, 'locks', { configurable: true, value: locks })
+
+    try {
+      const tabA = await freshTab()
+      await tabA.saveShell(shell(vault, 1))
+      await tabA.loadShell()
+      const tabB = await freshTab()
+      await tabB.loadShell()
+
+      const noteX = makeSummary(vaultSize + 1)
+      const noteY = makeSummary(vaultSize + 2)
+      tabA.scheduleShellSave(shell([...vault, noteX], 1))
+      tabB.scheduleShellSave(shell([...vault, noteY], 1))
+      await vi.advanceTimersByTimeAsync(2_000)
+
+      expect(maxActive).toBe(1)
+      expect(lockLog.length).toBeGreaterThanOrEqual(2)
+      expect(lockLog.every((entry) => entry.name === 'inkstone-shell-index:u1')).toBe(true)
+      const tabC = await freshTab()
+      const loaded = await tabC.loadShell()
+      const ids = new Set(loaded!.notes.map((note) => note.id))
+      expect(ids.has(noteX.id)).toBe(true)
+      expect(ids.has(noteY.id)).toBe(true)
+    }
+    finally {
+      Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined })
+    }
+  })
+
   it('merges the on-disk index so an offline tab cannot drop another tab\'s new note', async () => {
     const tabA = await freshTab()
     await tabA.saveShell(shell(vault, 1))

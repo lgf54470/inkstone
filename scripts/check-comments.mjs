@@ -172,6 +172,10 @@ const allowed = new Map([
     "// An offline tab never sees another tab's brand-new notes; merging with the",
     "// on-disk index keeps those entries when this tab rewrites the index, while",
     "// ids this tab deleted are still dropped (stale ids heal on the next pull).",
+    "// The index read-merge-write is the one whole-value shell write two tabs can",
+    "// race; Web Locks serializes it across tabs so a concurrent merge reads the",
+    "// winner's index instead of a stale one. Browsers without Web Locks fall back",
+    "// to the plain merge, which stays correct when flushes never overlap.",
   ]],
   ["src/client/lib/db-multitab.test.ts", [
     "// Two \"tabs\" are two independent evaluations of db.ts's module state. They must",
