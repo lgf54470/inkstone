@@ -179,18 +179,20 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
               </Tooltip>
             )}
             {!isCreating && (
-              <Button
-                variant="primary"
-                size="sm"
-                icon={<FolderPlus size={14} className="shrink-0" />}
-                onClick={() => {
-                  setIsCreating(true);
-                  setNewFolderName('');
-                }}
-                className="h-8 shrink-0"
-              >
-                {t('common.new_folder')}
-              </Button>
+              <Tooltip label={t('common.new_folder')}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={<FolderPlus size={14} className="shrink-0" />}
+                  onClick={() => {
+                    setIsCreating(true);
+                    setNewFolderName('');
+                  }}
+                  className="h-8 shrink-0"
+                >
+                  {t('common.new_folder')}
+                </Button>
+              </Tooltip>
             )}
           </div>
 
@@ -221,14 +223,16 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
               >
                 {t('folders.create_new')}
               </Button>
-              <IconButton
-                label={t('common.cancel')}
-                size="sm"
-                type="button"
-                onClick={() => setIsCreating(false)}
-              >
-                <X size={14} />
-              </IconButton>
+              <Tooltip label={t('common.cancel')}>
+                <IconButton
+                  label={t('common.cancel')}
+                  size="sm"
+                  type="button"
+                  onClick={() => setIsCreating(false)}
+                >
+                  <X size={14} />
+                </IconButton>
+              </Tooltip>
             </form>
           )}
 
@@ -285,20 +289,24 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                             }}
                             className="h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[12.5px] outline-none"
                           />
-                          <IconButton
-                            label={t('common.save')}
-                            size="sm"
-                            onClick={() => handleSaveRename(folder.id)}
-                          >
-                            <Check size={13} className="text-[var(--accent)]" />
-                          </IconButton>
-                          <IconButton
-                            label={t('common.cancel')}
-                            size="sm"
-                            onClick={() => setRenamingId(null)}
-                          >
-                            <X size={13} />
-                          </IconButton>
+                          <Tooltip label={t('common.save')}>
+                            <IconButton
+                              label={t('common.save')}
+                              size="sm"
+                              onClick={() => handleSaveRename(folder.id)}
+                            >
+                              <Check size={13} className="text-[var(--accent)]" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip label={t('common.cancel')}>
+                            <IconButton
+                              label={t('common.cancel')}
+                              size="sm"
+                              onClick={() => setRenamingId(null)}
+                            >
+                              <X size={13} />
+                            </IconButton>
+                          </Tooltip>
                         </div>
                       ) : (
                         <div className="min-w-0 flex-1">
@@ -332,97 +340,111 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                     {/* Action buttons */}
                     {!isRenaming && (
                       <div className="flex shrink-0 items-center gap-0.5 opacity-85 group-hover:opacity-100">
-                        <IconButton
-                          label={isInbox ? t('folders.unset_inbox') : t('folders.set_as_inbox')}
-                          size="sm"
-                          className={isInbox ? 'text-[var(--accent)]' : undefined}
-                          onClick={() => {
-                            if (isInbox) {
-                              setInboxFolderId(null);
-                              toast({ title: t('folders.inbox_cleared_toast'), tone: 'default' });
-                            } else {
-                              setInboxFolderId(folder.id);
-                              toast({
-                                title: t('folders.inbox_set_toast', { value0: folder.name }),
-                                tone: 'success',
-                              });
-                            }
-                          }}
-                        >
-                          <Inbox size={13} />
-                        </IconButton>
-                        <IconButton
-                          label={t('folders.open_folder')}
-                          size="sm"
-                          onClick={() => {
-                            openFolderView(folders, folder.id);
-                            onClose();
-                          }}
-                        >
-                          <ExternalLink size={13} />
-                        </IconButton>
-                        <IconButton
-                          label={t('sidebar.rename')}
-                          size="sm"
-                          onClick={() => {
-                            setRenamingId(folder.id);
-                            setRenameValue(folder.name);
-                          }}
-                        >
-                          <Pencil size={13} />
-                        </IconButton>
-                        <IconButton
-                          label={t('folders.color')}
-                          size="sm"
-                          className={folder.color || isColorPickerOpen ? 'text-[var(--accent)]' : undefined}
-                          onClick={() => {
-                            setColorPickerFolderId((id) => (id === folder.id ? null : folder.id));
-                            setIconPickerFolderId(null);
-                          }}
-                        >
-                          <Palette size={13} />
-                        </IconButton>
-                        <IconButton
-                          label={boundTemplate ? `${t('folders.default_template')}: ${boundTemplate.name}` : t('folders.bind_template')}
-                          size="sm"
-                          className={boundTemplate ? 'text-[var(--accent)]' : undefined}
-                          onClick={() => setTemplateFolder(folder)}
-                        >
-                          <LayoutTemplate size={13} />
-                        </IconButton>
-                        <IconButton
-                          label={t('folders.export_zip')}
-                          size="sm"
-                          onClick={async () => {
-                            try {
-                              const res = await exportFolderAsZip(folder.id);
-                              if (res.count === 0) {
-                                toast({ title: t('folders.export_zip_empty'), tone: 'default' });
+                        <Tooltip label={isInbox ? t('folders.unset_inbox') : t('folders.set_as_inbox')}>
+                          <IconButton
+                            label={isInbox ? t('folders.unset_inbox') : t('folders.set_as_inbox')}
+                            size="sm"
+                            className={isInbox ? 'text-[var(--accent)]' : undefined}
+                            onClick={() => {
+                              if (isInbox) {
+                                setInboxFolderId(null);
+                                toast({ title: t('folders.inbox_cleared_toast'), tone: 'default' });
                               } else {
+                                setInboxFolderId(folder.id);
                                 toast({
-                                  title: t('folders.export_zip_success', { value0: res.count }),
+                                  title: t('folders.inbox_set_toast', { value0: folder.name }),
                                   tone: 'success',
                                 });
                               }
-                            } catch (err) {
-                              toast({
-                                title: t('common.export_failed'),
-                                description: err instanceof Error ? err.message : String(err),
-                                tone: 'danger',
-                              });
-                            }
-                          }}
-                        >
-                          <Download size={13} />
-                        </IconButton>
-                        <IconButton
-                          label={t('common.delete')}
-                          size="sm"
-                          className="text-[var(--text-tertiary)] hover:text-[var(--danger)]"
-                          onClick={() => handleDelete(folder)}
-                        >
-                          <Trash2 size={13} />
-                        </IconButton>
+                            }}
+                          >
+                            <Inbox size={13} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip label={t('folders.open_folder')}>
+                          <IconButton
+                            label={t('folders.open_folder')}
+                            size="sm"
+                            onClick={() => {
+                              openFolderView(folders, folder.id);
+                              onClose();
+                            }}
+                          >
+                            <ExternalLink size={13} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip label={t('sidebar.rename')}>
+                          <IconButton
+                            label={t('sidebar.rename')}
+                            size="sm"
+                            onClick={() => {
+                              setRenamingId(folder.id);
+                              setRenameValue(folder.name);
+                            }}
+                          >
+                            <Pencil size={13} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip label={t('folders.color')}>
+                          <IconButton
+                            label={t('folders.color')}
+                            size="sm"
+                            className={folder.color || isColorPickerOpen ? 'text-[var(--accent)]' : undefined}
+                            onClick={() => {
+                              setColorPickerFolderId((id) => (id === folder.id ? null : folder.id));
+                              setIconPickerFolderId(null);
+                            }}
+                          >
+                            <Palette size={13} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip label={boundTemplate ? `${t('folders.default_template')}: ${boundTemplate.name}` : t('folders.bind_template')}>
+                          <IconButton
+                            label={boundTemplate ? `${t('folders.default_template')}: ${boundTemplate.name}` : t('folders.bind_template')}
+                            size="sm"
+                            className={boundTemplate ? 'text-[var(--accent)]' : undefined}
+                            onClick={() => setTemplateFolder(folder)}
+                          >
+                            <LayoutTemplate size={13} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip label={t('folders.export_zip')}>
+                          <IconButton
+                            label={t('folders.export_zip')}
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const res = await exportFolderAsZip(folder.id);
+                                if (res.count === 0) {
+                                  toast({ title: t('folders.export_zip_empty'), tone: 'default' });
+                                } else {
+                                  toast({
+                                    title: t('folders.export_zip_success', { value0: res.count }),
+                                    tone: 'success',
+                                  });
+                                }
+                              } catch (err) {
+                                toast({
+                                  title: t('common.export_failed'),
+                                  description: err instanceof Error ? err.message : String(err),
+                                  tone: 'danger',
+                                });
+                              }
+                            }}
+                          >
+                            <Download size={13} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip label={t('common.delete')}>
+                          <IconButton
+                            label={t('common.delete')}
+                            size="sm"
+                            className="text-[var(--text-tertiary)] hover:text-[var(--danger)]"
+                            onClick={() => handleDelete(folder)}
+                          >
+                            <Trash2 size={13} />
+                          </IconButton>
+                        </Tooltip>
                       </div>
                     )}
                   </div>
@@ -498,22 +520,24 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                         {COMMON_FOLDER_ICONS.map((icon) => {
                           const isSelected = folder.icon === icon;
                           return (
-                            <button
-                              key={icon}
-                              type="button"
-                              onClick={() => {
-                                patchFolder(folder.id, { icon });
-                                setIconPickerFolderId(null);
-                              }}
-                              className={cn(
-                                'flex size-6 items-center justify-center rounded-[var(--r-xs)] text-[14px] leading-none transition-transform hover:scale-110',
-                                isSelected
-                                  ? 'bg-[var(--accent-soft)] ring-2 ring-[var(--accent-ring)]'
-                                  : 'hover:bg-[var(--bg-hover)]'
-                              )}
-                            >
-                              {icon}
-                            </button>
+                            <Tooltip key={icon} label={icon}>
+                              <button
+                                type="button"
+                                aria-label={icon}
+                                onClick={() => {
+                                  patchFolder(folder.id, { icon });
+                                  setIconPickerFolderId(null);
+                                }}
+                                className={cn(
+                                  'flex size-6 items-center justify-center rounded-[var(--r-xs)] text-[14px] leading-none transition-transform hover:scale-110',
+                                  isSelected
+                                    ? 'bg-[var(--accent-soft)] ring-2 ring-[var(--accent-ring)]'
+                                    : 'hover:bg-[var(--bg-hover)]'
+                                )}
+                              >
+                                {icon}
+                              </button>
+                            </Tooltip>
                           );
                         })}
                       </div>
