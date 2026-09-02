@@ -555,16 +555,7 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
         }
     };
     const handleManageFolders = () => {
-        const ui = useUi.getState();
-        if (ui.navCollapsed) {
-            ui.toggleNav();
-        }
-        if (breakpoint === 'mobile' || window.innerWidth < 768) {
-            ui.toggleNavDrawer(true);
-        }
-        setTimeout(() => {
-            document.getElementById('sidebar-folders')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }, 100);
+        useUi.getState().openPanel('folders');
     };
     const purgeRef = useRef(false);
     const [purging, setPurging] = useState(false);

@@ -29,6 +29,7 @@ const GraphPanel = lazy(() => import('../graph/GraphPanel').then((m) => ({ defau
 const SharePanel = lazy(() => import('../share/SharePanel').then((m) => ({ default: m.SharePanel })));
 const VersionsPanel = lazy(() => import('../workspace/VersionsPanel').then((m) => ({ default: m.VersionsPanel })));
 const TemplateGallery = lazy(() => import('../templates/TemplateGallery').then((m) => ({ default: m.TemplateGallery })));
+const ManageFoldersModal = lazy(() => import('../folders/ManageFoldersModal').then((m) => ({ default: m.ManageFoldersModal })));
 const Lightbox = lazy(() => import('../preview/Lightbox').then((m) => ({ default: m.Lightbox })));
 const UpdateDialog = lazy(() => import('../update/UpdateDialog').then((m) => ({ default: m.UpdateDialog })));
 export function AppShell() {
@@ -200,6 +201,7 @@ function OverlayHost() {
         {panel === 'share' && <SharePanel onClose={closePanel}/>}
         {panel === 'versions' && <VersionsPanel onClose={closePanel}/>}
         {panel === 'templates' && <TemplateGallery onClose={closePanel}/>}
+        {panel === 'folders' && <ManageFoldersModal onClose={closePanel}/>}
         {lightbox && <Lightbox />}
       </Suspense>
       {role === 'owner' && updateDialogOpen && (<Suspense fallback={null}>

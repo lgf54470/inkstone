@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Archive, CalendarDays, Clock, Columns2, Download, Eye, FilePlus2, FileText, FolderPlus, Hash, Keyboard, LayoutTemplate, Moon, Palette, Pencil, Plus, Search, Settings, Share2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, CalendarDays, Clock, Columns2, Download, Eye, FilePlus2, FileText, FolderClosed, FolderPlus, Hash, Keyboard, LayoutTemplate, Moon, Palette, Pencil, Plus, Search, Settings, Share2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
 import type { NoteSummary, SearchHit } from '@shared/types';
 import { truncateText } from '@shared/text-utils';
 import { cn } from '../../lib/cn';
@@ -168,6 +168,14 @@ export function CommandPalette({ onClose }: {
                 icon: <FolderPlus size={14}/>,
                 group: t("command.commands"),
                 run: () => void createFolder(),
+            },
+            {
+                id: 'cmd-manage-folders',
+                kind: 'command',
+                label: t("folders.manage_folders"),
+                icon: <FolderClosed size={14}/>,
+                group: t("command.commands"),
+                run: () => openPanel('folders'),
             },
             ...(activeNote
                 ? [

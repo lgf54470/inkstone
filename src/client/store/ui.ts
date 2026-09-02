@@ -19,6 +19,7 @@ export type PanelName =
   | 'share'
   | 'templates'
   | 'info'
+  | 'folders'
 
 export type WorkspacePane = 'primary' | 'secondary'
 
