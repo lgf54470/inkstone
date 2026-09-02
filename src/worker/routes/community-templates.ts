@@ -5,6 +5,7 @@ import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'
 import { isValidId, newId } from '../lib/id'
 import { JSON_BODY_LIMITS, readJson } from '../lib/request'
+import { consumeAttemptBudget, ThrottleError } from '../lib/throttle'
 import { requireAuth } from '../middleware/auth'
 
 export const communityTemplatesRoutes = new Hono<AppBindings>()
@@ -78,6 +79,27 @@ function parseCommunityInput(body: Partial<CommunityTemplateInput>): CommunityTe
 
 communityTemplatesRoutes.post('/', async (c) => {
   const userId = c.get('userId')
+  // Publishing (or updating) counts against a per-user hourly budget so a
+  // single account cannot flood the shared directory; authors updating
+  // their own templates consume the same budget, which is acceptable.
+  try {
+    await consumeAttemptBudget(c.env.DB, [{
+      key: `community-template:publish:${userId}`,
+      maxAttempts: 10,
+      windowMs: 60 * 60 * 1000,
+      lockMs: 60 * 60 * 1000,
+    }])
+  } catch (error) {
+    if (error instanceof ThrottleError) {
+      throw new ApiError(
+        429,
+        'too_many_attempts',
+        `Too many community template publishes. Try again in ${error.retryAfterSec} seconds`,
+        { retryAfter: error.retryAfterSec },
+      )
+    }
+    throw error
+  }
   const body = await readJson<Partial<CommunityTemplateInput>>(c, JSON_BODY_LIMITS.small)
   const input = parseCommunityInput(body)
 
