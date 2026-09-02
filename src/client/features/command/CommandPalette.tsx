@@ -177,6 +177,14 @@ export function CommandPalette({ onClose }: {
                 group: t("command.commands"),
                 run: () => openPanel('folders'),
             },
+            {
+                id: 'cmd-manage-tags',
+                kind: 'command',
+                label: t("tags.manage_tags"),
+                icon: <Hash size={14}/>,
+                group: t("command.commands"),
+                run: () => openPanel('tags'),
+            },
             ...(activeNote
                 ? [
                     {

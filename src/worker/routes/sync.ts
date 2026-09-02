@@ -15,7 +15,7 @@ export const CHANGE_BOUNDS_SQL = `SELECT
 
 const FOLDER_SELECT = `f.id, f.parent_id, f.name, f.icon, f.color, f.position, f.created_at, f.updated_at`
 
-const TAG_SELECT = `t.id, t.name, t.color, t.created_at,
+const TAG_SELECT = `t.id, t.name, t.color, t.is_pinned, t.created_at,
   COALESCE(nc.count, 0) AS note_count`
 
 const TAG_COUNT_JOIN = `LEFT JOIN (

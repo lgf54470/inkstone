@@ -39,4 +39,14 @@ describe('sortTagsForPicker', () => {
         sortTagsForPicker(tags, '');
         expect(tags).toEqual(copy);
     });
+
+    it('prioritizes pinned tags ahead of unpinned tags without query', () => {
+        const tags = [
+            tag('zeta', 10),
+            { ...tag('beta', 2), isPinned: true },
+            { ...tag('alpha', 1), isPinned: true },
+            tag('gamma', 5),
+        ];
+        expect(sortTagsForPicker(tags, '').map((t) => t.name)).toEqual(['beta', 'alpha', 'zeta', 'gamma']);
+    });
 });

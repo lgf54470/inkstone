@@ -312,7 +312,7 @@ export async function buildJsonExport(env: Env, userId: string): Promise<Uint8Ar
       `SELECT f.id, f.parent_id, f.name, f.icon, f.color, f.position, f.created_at, f.updated_at
          FROM folders f WHERE f.user_id = ?1 AND f.deleted_at IS NULL ORDER BY f.position ASC`,
     ).bind(userId),
-    env.DB.prepare(`SELECT t.id, t.name, t.color, t.created_at FROM tags t WHERE t.user_id = ?1`).bind(userId),
+    env.DB.prepare(`SELECT t.id, t.name, t.color, t.is_pinned, t.created_at FROM tags t WHERE t.user_id = ?1`).bind(userId),
     env.DB.prepare(`SELECT login, name FROM users WHERE id = ?1`).bind(userId),
   ])
   const user = (userRows.results[0] as { login: string; name: string } | undefined) ?? null

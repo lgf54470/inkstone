@@ -20,6 +20,7 @@ export type PanelName =
   | 'templates'
   | 'info'
   | 'folders'
+  | 'tags'
 
 export type WorkspacePane = 'primary' | 'secondary'
 

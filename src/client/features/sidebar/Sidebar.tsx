@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Plus, Search, SearchX, Settings, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
 import type { Tag, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
@@ -16,8 +16,8 @@ import { useNotes } from '../../store/notes';
 import { folderDescendantIds, folderPath, folderPathLabel, openFolderView } from '../../lib/folders';
 import { treeRowIndent } from '../../lib/calendar-tree';
 import { FolderAppearance, FolderPicker } from '../folders/FolderPicker';
-import { TagAppearance } from '../tags/TagAppearance';
-import { createTag, deleteTag, renameTag, setTagColor } from '../tags/tagMutations';
+import { TagColorSubmenu } from '../tags/TagColorSubmenu';
+import { createTag, deleteTag, renameTag, setTagColor, toggleTagPinned } from '../tags/tagMutations';
 import { SidebarCalendar } from './SidebarCalendar';
 import { CalendarTree, TodoTree } from './CalendarTree';
 import { t } from "../../lib/i18n";
@@ -621,14 +621,10 @@ function TagSection() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [creating, setCreating] = useState(false);
     const [renamingId, setRenamingId] = useState<string | null>(null);
-    const [appearanceId, setAppearanceId] = useState<string | null>(null);
     const sortedTags = useMemo(() => sortTagsForPicker(tags, ''), [tags]);
     const searching = query.trim() !== '';
     const visible = searching ? sortTagsForPicker(sortedTags, query) : expanded ? sortedTags : sortedTags.slice(0, 8);
     const highlightedIndex = Math.min(activeIndex, Math.max(0, visible.length - 1));
-    const appearanceTag = appearanceId
-        ? tags.find((tag) => tag.id === appearanceId) ?? null
-        : null;
     const finishCreate = (value: string) => {
         setCreating(false);
         const id = createTag(value);
@@ -642,11 +638,18 @@ function TagSection() {
       <section className="mt-4">
       <div className="group/head flex items-center justify-between pr-1">
         <SectionLabel>{t("navigation.tag")}</SectionLabel>
-        <Tooltip label={t("tags.new")} side="right">
-          <IconButton label={t("tags.new")} size="sm" onClick={() => setCreating(true)} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
-            <Plus size={13}/>
-          </IconButton>
-        </Tooltip>
+        <div className="flex items-center gap-0.5">
+          <Tooltip label={t("tags.manage_tags")} side="left">
+            <IconButton label={t("tags.manage_tags")} size="sm" onClick={() => openPanel('tags')} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
+              <Settings2 size={13}/>
+            </IconButton>
+          </Tooltip>
+          <Tooltip label={t("tags.new")} side="right">
+            <IconButton label={t("tags.new")} size="sm" onClick={() => setCreating(true)} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
+              <Plus size={13}/>
+            </IconButton>
+          </Tooltip>
+        </div>
       </div>
       {sortedTags.length > 0 && (<div className="relative mt-1.5">
           <Search size={12} className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-[var(--text-quaternary)]"/>
@@ -709,7 +712,7 @@ function TagSection() {
         }} onStartRename={() => setRenamingId(tag.id)} onFinishRename={(value) => {
             setRenamingId(null);
             void renameTag(tag, value);
-        }} onCancelRename={() => setRenamingId(null)} onEditColor={() => setAppearanceId(tag.id)}/>))}
+        }} onCancelRename={() => setRenamingId(null)}/>))}
 
         {searching && visible.length === 0 && !creating && (<div className="mt-1 flex flex-col items-center gap-1 rounded-[var(--r-md)] bg-[var(--bg-inset)] px-2 py-3 text-center">
             <SearchX size={14} className="text-[var(--text-quaternary)]"/>
@@ -749,10 +752,6 @@ function TagSection() {
           </button>)}
       </div>
       </section>
-      <TagAppearance open={Boolean(appearanceTag)} tag={appearanceTag} onChange={(color) => {
-            if (appearanceTag)
-                void setTagColor(appearanceTag, color);
-        }} onClose={() => setAppearanceId(null)}/>
     </>);
 }
 function TagDraftRow({ onFinish, onCancel }: {
@@ -784,7 +783,7 @@ function TagDraftRow({ onFinish, onCancel }: {
         }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>
     </div>);
 }
-function TagRow({ tag, active, selected, highlighted, searchQuery, renaming, onOpen, onStartRename, onFinishRename, onCancelRename, onEditColor, }: {
+function TagRow({ tag, active, selected, highlighted, searchQuery, renaming, onOpen, onStartRename, onFinishRename, onCancelRename, }: {
     tag: Tag;
     active: boolean;
     selected: boolean;
@@ -795,11 +794,11 @@ function TagRow({ tag, active, selected, highlighted, searchQuery, renaming, onO
     onStartRename: () => void;
     onFinishRename: (value: string) => void;
     onCancelRename: () => void;
-    onEditColor: () => void;
 }) {
     const menu = useContextMenu();
     const rowRef = useRef<HTMLDivElement>(null);
     const [menuOpen, setMenuOpen] = useState(false);
+    const openPanel = useUi((s) => s.openPanel);
     useEffect(() => {
         if (highlighted)
             rowRef.current?.scrollIntoView({ block: 'nearest' });
@@ -812,8 +811,37 @@ function TagRow({ tag, active, selected, highlighted, searchQuery, renaming, onO
         onFinishRename(value);
     };
     const menuItems: MenuItem[] = [
+        {
+            id: 'pin',
+            label: tag.isPinned ? t("tags.unpin") : t("tags.pin"),
+            icon: <Pin size={13} className={tag.isPinned ? 'fill-current' : undefined}/>,
+            onSelect: () => void toggleTagPinned(tag),
+        },
         { id: 'rename', label: t("tags.rename"), icon: <Pencil size={13}/>, onSelect: onStartRename },
-        { id: 'color', label: t("tags.color"), icon: <Palette size={13}/>, onSelect: onEditColor },
+        {
+            id: 'color',
+            label: t("tags.color"),
+            icon: <Palette size={13}/>,
+            submenu: ({ closeMenu }) => (
+                <TagColorSubmenu
+                    tag={tag}
+                    onSelectColor={(color) => {
+                        void setTagColor(tag, color);
+                        closeMenu();
+                    }}
+                    onManageTags={() => {
+                        closeMenu();
+                        openPanel('tags');
+                    }}
+                />
+            ),
+        },
+        {
+            id: 'manage-tags',
+            label: t("tags.manage_tags"),
+            icon: <Settings2 size={13}/>,
+            onSelect: () => openPanel('tags'),
+        },
         { id: 'delete', label: t("tags.delete"), icon: <Trash2 size={13}/>, tone: 'danger', separatorBefore: true, onSelect: () => void deleteTag(tag) },
     ];
     return (<div ref={rowRef} onContextMenu={(event) => {
@@ -834,8 +862,9 @@ function TagRow({ tag, active, selected, highlighted, searchQuery, renaming, onO
             }
             event.stopPropagation();
         }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>) : (<Tooltip label={t("sidebar.cmd_click_selects_multiple")} side="right">
-              <button type="button" aria-current={active ? 'page' : undefined} aria-pressed={selected || undefined} onClick={onOpen} onDoubleClick={onStartRename} className="min-w-0 flex-1 truncate py-1 text-left text-[12.5px] font-medium">
-                <TagNameHighlight name={tag.name} query={searchQuery}/>
+              <button type="button" aria-current={active ? 'page' : undefined} aria-pressed={selected || undefined} onClick={onOpen} onDoubleClick={onStartRename} className="min-w-0 flex-1 truncate py-1 text-left text-[12.5px] font-medium flex items-center gap-1.5">
+                <span className="truncate"><TagNameHighlight name={tag.name} query={searchQuery}/></span>
+                {tag.isPinned && <Pin size={10} className="shrink-0 fill-current text-[var(--accent)] opacity-80" />}
               </button>
             </Tooltip>)}
       {!renaming && (<>

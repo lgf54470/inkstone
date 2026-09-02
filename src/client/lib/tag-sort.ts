@@ -12,7 +12,7 @@ function tagSearchScore(name: string, query: string): number {
 }
 
 /** Sort tags for a picker: by query relevance when searching, otherwise by note count (then name). */
-export function sortTagsForPicker<T extends { name: string; count: number }>(tags: readonly T[], query: string): T[] {
+export function sortTagsForPicker<T extends { name: string; count: number; isPinned?: boolean }>(tags: readonly T[], query: string): T[] {
     const q = query.trim().toLocaleLowerCase();
     const matches = q ? tags.filter((tag) => tag.name.toLocaleLowerCase().includes(q)) : [...tags];
     return matches.sort((a, b) => {
@@ -21,6 +21,9 @@ export function sortTagsForPicker<T extends { name: string; count: number }>(tag
             if (diff !== 0)
                 return diff;
         }
+        const aPinned = Boolean(a.isPinned);
+        const bPinned = Boolean(b.isPinned);
+        if (aPinned !== bPinned) return aPinned ? -1 : 1;
         return b.count - a.count || compareTagNames(a.name, b.name);
     });
 }

@@ -646,6 +646,7 @@ function tagsEqual(a: Tag[], b: Tag[]): boolean {
     const x = a[index]!
     const y = b[index]!
     if (x.id !== y.id || x.name !== y.name || (x.color ?? null) !== (y.color ?? null) ||
+      Boolean(x.isPinned) !== Boolean(y.isPinned) ||
       x.count !== y.count || x.createdAt !== y.createdAt) {
       return false
     }
@@ -729,6 +730,7 @@ function isTag(value: unknown): value is Tag {
   return typeof value.id === 'string' &&
     typeof value.name === 'string' &&
     isNullableString(value.color) &&
+    (value.isPinned === undefined || typeof value.isPinned === 'boolean') &&
     isFiniteNumber(value.count) &&
     isFiniteNumber(value.createdAt)
 }

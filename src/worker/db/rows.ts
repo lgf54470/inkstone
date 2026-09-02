@@ -40,6 +40,7 @@ export interface TagRow {
   id: string
   name: string
   color: string | null
+  is_pinned?: number
   created_at: number
   note_count?: number
 }
@@ -88,6 +89,7 @@ export function toTag(row: TagRow): Tag {
     id: row.id,
     name: row.name,
     color: row.color,
+    isPinned: row.is_pinned === 1,
     count: row.note_count ?? 0,
     createdAt: row.created_at,
   }

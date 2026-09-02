@@ -17,7 +17,7 @@ export const tagsRoutes = new Hono<AppBindings>()
 
 tagsRoutes.use('*', requireAuth)
 
-const TAG_SELECT = `t.id, t.name, t.color, t.created_at,
+const TAG_SELECT = `t.id, t.name, t.color, t.is_pinned, t.created_at,
   COALESCE(nc.count, 0) AS note_count`
 
 const TAG_COUNT_JOIN = `LEFT JOIN (
@@ -31,7 +31,7 @@ tagsRoutes.get('/', async (c) => {
   const { results } = await c.env.DB.prepare(
     `SELECT ${TAG_SELECT} FROM tags t
       ${TAG_COUNT_JOIN}
-     WHERE t.user_id = ?1 ORDER BY t.name COLLATE NOCASE ASC`,
+     WHERE t.user_id = ?1 ORDER BY t.is_pinned DESC, t.name COLLATE NOCASE ASC`,
   )
     .bind(c.get('userId'))
     .all<TagRow>()
@@ -40,7 +40,7 @@ tagsRoutes.get('/', async (c) => {
 
 tagsRoutes.post('/', async (c) => {
   const userId = c.get('userId')
-  const body = await readJson<{ id?: string; name?: string; color?: string | null }>(
+  const body = await readJson<{ id?: string; name?: string; color?: string | null; isPinned?: boolean }>(
     c,
     JSON_BODY_LIMITS.small,
   )
@@ -50,6 +50,9 @@ tagsRoutes.post('/', async (c) => {
   }
   if (body.color !== undefined && body.color !== null && !organizerColorOrNull(body.color)) {
     throw ApiError.badRequest('Tag color is not supported')
+  }
+  if (body.isPinned !== undefined && typeof body.isPinned !== 'boolean') {
+    throw ApiError.badRequest('isPinned must be a boolean')
   }
   const name = body.name.trim().replace(/^#+/, '')
   if (!name) throw ApiError.badRequest('Tag name cannot be empty')
@@ -71,10 +74,11 @@ tagsRoutes.post('/', async (c) => {
   if (duplicate) throw ApiError.conflict('A tag with this name already exists')
 
   const now = Date.now()
+  const isPinned = body.isPinned ? 1 : 0
   const insert = c.env.DB.prepare(
-    `INSERT INTO tags (id, user_id, name, color, is_manual, created_at)
-     VALUES (?1, ?2, ?3, ?4, 1, ?5)`,
-  ).bind(id, userId, name, organizerColorOrNull(body.color), now)
+    `INSERT INTO tags (id, user_id, name, color, is_pinned, is_manual, created_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6)`,
+  ).bind(id, userId, name, organizerColorOrNull(body.color), isPinned, now)
   const change = c.env.DB.prepare(
     `INSERT INTO changes (user_id, entity, entity_id, op, at)
      SELECT ?1, 'tag', ?2, 'upsert', ?3
@@ -89,11 +93,11 @@ tagsRoutes.post('/', async (c) => {
 tagsRoutes.patch('/:id', async (c) => {
   const userId = c.get('userId')
   const id = c.req.param('id')
-  const body = await readJson<{ name?: string; color?: string | null }>(c, JSON_BODY_LIMITS.small)
+  const body = await readJson<{ name?: string; color?: string | null; isPinned?: boolean }>(c, JSON_BODY_LIMITS.small)
 
-  const tag = await c.env.DB.prepare(`SELECT id, name, color FROM tags WHERE id = ?1 AND user_id = ?2`)
+  const tag = await c.env.DB.prepare(`SELECT id, name, color, is_pinned FROM tags WHERE id = ?1 AND user_id = ?2`)
     .bind(id, userId)
-    .first<{ id: string; name: string; color: string | null }>()
+    .first<{ id: string; name: string; color: string | null; is_pinned: number }>()
   if (!tag) throw ApiError.notFound('Tag not found')
 
   if (body.color !== undefined && body.color !== null && typeof body.color !== 'string') {
@@ -105,8 +109,12 @@ tagsRoutes.patch('/:id', async (c) => {
   if (body.name !== undefined && typeof body.name !== 'string') {
     throw ApiError.badRequest('name must be a string')
   }
+  if (body.isPinned !== undefined && typeof body.isPinned !== 'boolean') {
+    throw ApiError.badRequest('isPinned must be a boolean')
+  }
 
   const color = body.color === undefined ? tag.color : body.color
+  const isPinned = body.isPinned === undefined ? tag.is_pinned === 1 : body.isPinned
 
   if (typeof body.name === 'string') {
     const next = body.name.trim().replace(/^#+/, '')
@@ -129,14 +137,17 @@ tagsRoutes.patch('/:id', async (c) => {
       ).bind(userId, destinationName).first<{ id: string }>()
       if (rewrittenDestination?.id === id) {
         const explicitColor = body.color !== undefined ? 1 : 0
+        const explicitPinned = body.isPinned !== undefined ? 1 : 0
+        const nextPinned = isPinned ? 1 : 0
         try {
           const [updated] = await c.env.DB.batch([
             c.env.DB.prepare(
               `UPDATE tags SET name = ?4,
                  color = CASE WHEN ?5 = 1 THEN ?6 ELSE color END,
+                 is_pinned = CASE WHEN ?7 = 1 THEN ?8 ELSE is_pinned END,
                  is_manual = 1
                 WHERE id = ?1 AND user_id = ?2 AND name = ?3`,
-            ).bind(id, userId, tag.name, destinationName, explicitColor, color),
+            ).bind(id, userId, tag.name, destinationName, explicitColor, color, explicitPinned, nextPinned),
             c.env.DB.prepare(
               `INSERT INTO changes (user_id, entity, entity_id, op, at)
                SELECT ?2, 'tag', ?1, 'upsert', ?4
@@ -161,20 +172,24 @@ tagsRoutes.patch('/:id', async (c) => {
       }
       const targetId = newId()
       const explicitColor = body.color !== undefined ? 1 : 0
+      const explicitPinned = body.isPinned !== undefined ? 1 : 0
+      const nextPinned = isPinned ? 1 : 0
       const sourceGuard = `EXISTS (SELECT 1 FROM tags
         WHERE id = ?1 AND user_id = ?2 AND name = ?3)`
       const statements = [
         c.env.DB.prepare(
-          `INSERT INTO tags (id, user_id, name, color, is_manual, created_at)
+          `INSERT INTO tags (id, user_id, name, color, is_pinned, is_manual, created_at)
            SELECT ?4, ?2, ?5,
                   CASE WHEN ?6 = 1 THEN ?7 ELSE source.color END,
-                  1, ?8
+                  CASE WHEN ?8 = 1 THEN ?9 ELSE source.is_pinned END,
+                  1, ?10
              FROM tags source
             WHERE source.id = ?1 AND source.user_id = ?2 AND source.name = ?3
            ON CONFLICT(user_id, name) DO UPDATE SET
              color = CASE WHEN ?6 = 1 THEN ?7 ELSE COALESCE(tags.color, excluded.color) END,
+             is_pinned = CASE WHEN ?8 = 1 THEN ?9 ELSE MAX(tags.is_pinned, excluded.is_pinned) END,
              is_manual = 1`,
-        ).bind(id, userId, tag.name, targetId, destinationName, explicitColor, color, now),
+        ).bind(id, userId, tag.name, targetId, destinationName, explicitColor, color, explicitPinned, nextPinned, now),
         c.env.DB.prepare(
           `INSERT OR IGNORE INTO note_tags (note_id, tag_id)
            SELECT nt.note_id, target.id
@@ -215,17 +230,20 @@ tagsRoutes.patch('/:id', async (c) => {
     }
   }
 
-  if (color !== tag.color) {
+  const colorChanged = color !== tag.color
+  const pinChanged = body.isPinned !== undefined && (tag.is_pinned === 1) !== body.isPinned
+
+  if (colorChanged || pinChanged) {
     const now = Date.now()
     const update = c.env.DB.prepare(
-      `UPDATE tags SET color = ?1, is_manual = 1
-        WHERE id = ?2 AND user_id = ?3 AND name = ?4 AND color IS ?5`,
-    ).bind(color, id, userId, tag.name, tag.color)
+      `UPDATE tags SET color = ?1, is_pinned = ?2, is_manual = 1
+        WHERE id = ?3 AND user_id = ?4 AND name = ?5`,
+    ).bind(color, isPinned ? 1 : 0, id, userId, tag.name)
     const change = c.env.DB.prepare(
       `INSERT INTO changes (user_id, entity, entity_id, op, at)
        SELECT ?1, 'tag', ?2, 'upsert', ?3
-        WHERE EXISTS (SELECT 1 FROM tags WHERE id = ?2 AND user_id = ?1 AND color IS ?4)`,
-    ).bind(userId, id, now, color)
+        WHERE EXISTS (SELECT 1 FROM tags WHERE id = ?2 AND user_id = ?1)`,
+    ).bind(userId, id, now)
     const [updated] = await c.env.DB.batch([update, change])
     if (!updated?.meta.changes) throw ApiError.conflict('The tag changed elsewhere. Refresh and try again')
     await broadcastCursor(c)

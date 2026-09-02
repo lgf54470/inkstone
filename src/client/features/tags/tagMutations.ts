@@ -216,6 +216,44 @@ export async function setTagColor(tag: Tag, color: string | null): Promise<void>
   }
 }
 
+export async function setTagPinned(tag: Tag, isPinned: boolean): Promise<void> {
+  const cachedTag = useNotes.getState().tags.find((candidate) => candidate.id === tag.id)
+  const currentPinned = cachedTag ? Boolean(cachedTag.isPinned) : Boolean(tag.isPinned)
+  if (currentPinned === isPinned) return
+
+  setOptimisticTagCache((state) => ({
+    tags: state.tags.map((candidate) =>
+      candidate.id === tag.id ? { ...candidate, isPinned } : candidate
+    ),
+  }))
+
+  try {
+    await api.tags.patch(tag.id, { isPinned })
+    useUi.getState().toast({
+      title: isPinned ? t('tags.pinned') : t('tags.unpinned'),
+      tone: 'default',
+    })
+  } catch (error) {
+    setOptimisticTagCache((state) => ({
+      tags: state.tags.map((candidate) =>
+        candidate.id === tag.id ? { ...candidate, isPinned: currentPinned } : candidate
+      ),
+    }))
+    useUi.getState().toast({
+      title: isPinned ? t('tags.pin_failed') : t('tags.unpin_failed'),
+      description: error instanceof Error ? error.message : String(error),
+      tone: 'danger',
+    })
+    return
+  }
+
+  await useNotes.getState().refreshTags().catch(() => {})
+}
+
+export function toggleTagPinned(tag: Tag): Promise<void> {
+  return setTagPinned(tag, !tag.isPinned)
+}
+
 function showRefreshWarning(): void {
   useUi.getState().toast({
     title: t('settings.operation_completed_but_refresh_failed'),
