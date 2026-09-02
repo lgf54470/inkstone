@@ -22,7 +22,7 @@ import { FolderColorSubmenu } from '../folders/FolderColorSubmenu';
 import { FolderIconSubmenu } from '../folders/FolderIconSubmenu';
 import { TagColorSubmenu } from '../tags/TagColorSubmenu';
 import { createTag, deleteTag, renameTag, setTagColor, toggleTagPinned } from '../tags/tagMutations';
-import { buildTagTree, flattenTagTree } from '../../lib/tag-tree';
+import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../lib/tag-tree';
 import { SidebarCalendar } from './SidebarCalendar';
 import { CalendarTree, TodoTree } from './CalendarTree';
 import { t } from "../../lib/i18n";
@@ -772,6 +772,33 @@ function TagSection() {
     };
     const tagTree = useMemo(() => buildTagTree(tags), [tags]);
     const flattenedTree = useMemo(() => flattenTagTree(tagTree, expandedTagPaths), [tagTree, expandedTagPaths]);
+    const parentTagPaths = useMemo(() => {
+        const result: string[] = [];
+        const visit = (nodes: readonly TagTreeNode[]) => {
+            for (const node of nodes) {
+                if (node.children.length > 0) {
+                    result.push(node.fullPath);
+                    visit(node.children);
+                }
+            }
+        };
+        visit(tagTree);
+        return result;
+    }, [tagTree]);
+    const canToggleTags = parentTagPaths.length > 0 || flattenedTree.length > 10 || tags.length > 10;
+    const allParentsExpanded = parentTagPaths.length === 0 || parentTagPaths.every((p) => expandedTagPaths.has(p));
+    const isListExpanded = expanded || (flattenedTree.length <= 10 && tags.length <= 10);
+    const allTagsExpanded = allParentsExpanded && isListExpanded;
+
+    const toggleAllTagsExpanded = () => {
+        if (allTagsExpanded) {
+            setExpandedTagPaths(new Set());
+            setExpanded(false);
+        } else {
+            setExpandedTagPaths(new Set(parentTagPaths));
+            setExpanded(true);
+        }
+    };
     const sortedTags = useMemo(() => sortTagsForPicker(tags, ''), [tags]);
     const searching = query.trim() !== '';
     const visibleTags = searching ? sortTagsForPicker(sortedTags, query) : [];
@@ -791,6 +818,18 @@ function TagSection() {
       <div className="group/head flex items-center justify-between pr-1">
         <SectionLabel>{t("navigation.tag")}</SectionLabel>
         <div className="flex items-center gap-0.5">
+          {canToggleTags && (
+            <Tooltip label={allTagsExpanded ? t("tags.collapse_all") : t("tags.expand_all")} side="left">
+              <IconButton
+                label={allTagsExpanded ? t("tags.collapse_all") : t("tags.expand_all")}
+                size="sm"
+                onClick={toggleAllTagsExpanded}
+                className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100"
+              >
+                {allTagsExpanded ? <ChevronsDownUp size={13}/> : <ChevronsUpDown size={13}/>}
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip label={t("tags.manage_tags")} side="left">
             <IconButton label={t("tags.manage_tags")} size="sm" onClick={() => openPanel('tags')} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
               <Settings2 size={13}/>

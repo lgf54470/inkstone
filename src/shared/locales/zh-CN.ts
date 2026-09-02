@@ -1201,6 +1201,8 @@ export const ZH_CN_MESSAGES = {
     "folders.clean_empty_success": "已成功清理 {value0} 个空文件夹",
     "folders.expand_all": "展开全部文件夹",
     "folders.collapse_all": "折叠全部文件夹",
+    "tags.expand_all": "展开全部标签",
+    "tags.collapse_all": "折叠全部标签",
     "sidebar.new_subfolder": "新建子文件夹",
     "sidebar.rename": "重命名",
     "sidebar.rename_failed": "重命名失败",

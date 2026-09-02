@@ -1200,6 +1200,8 @@ export const EN_US_MESSAGES = {
     "folders.clean_empty_success": "Successfully cleaned {value0} empty folders",
     "folders.expand_all": "Expand all folders",
     "folders.collapse_all": "Collapse all folders",
+    "tags.expand_all": "Expand all tags",
+    "tags.collapse_all": "Collapse all tags",
     "sidebar.new_subfolder": "New subfolder",
     "sidebar.rename": "Rename",
     "sidebar.rename_failed": "Rename failed",
