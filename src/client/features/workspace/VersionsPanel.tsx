@@ -9,7 +9,8 @@ import { Button } from '../../components/primitives';
 import { Modal, confirm } from '../../components/overlay';
 import { Empty, LoadingBlock } from '../../components/feedback';
 import { useUi } from '../../store/ui';
-import { useActiveNote, useNotes } from '../../store/notes';
+import { useActiveNote } from '../../store/notes/selectors';
+import { useNotes } from '../../store/notes';
 import { t } from "../../lib/i18n";
 export function VersionsPanel({ onClose }: {
     onClose: () => void;

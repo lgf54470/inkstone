@@ -11,7 +11,7 @@ import { Field, Input, Segmented, Switch } from '../../components/form';
 import { Modal, Tooltip, confirm } from '../../components/overlay';
 import { Empty, LoadingBlock } from '../../components/feedback';
 import { useUi } from '../../store/ui';
-import { useActiveNote } from '../../store/notes';
+import { useActiveNote } from '../../store/notes/selectors';
 import { t } from "../../lib/i18n";
 import {
     expiresInForSelection,

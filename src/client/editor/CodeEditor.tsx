@@ -14,7 +14,9 @@ import { codeFenceSource, tagSource, wikiLinkSource, type CompletionSources } fr
 import { pasteExtension, type PasteHandlers } from './paste';
 import { decodeDataValue } from '../lib/markdown/data-attr';
 import { parseWikiTarget } from '../lib/markdown/renderer';
-import { findNoteByTitle, takePendingEditorCursor, useNotes } from '../store/notes';
+import { findNoteByTitle } from '../store/notes/selectors';
+import { takePendingEditorCursor } from '../store/notes/new-note';
+import { useNotes } from '../store/notes';
 import { useSession } from '../store/session';
 import { WikiLinkHoverCard, type WikiLinkHoverCardState } from '../features/preview/WikiLinkHoverCard';
 import { useLinkHover } from '../features/preview/link-hover';

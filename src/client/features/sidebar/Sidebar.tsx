@@ -11,7 +11,8 @@ import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../com
 import { switchThemeWithTransition, useUi } from '../../store/ui';
 import { useSession } from '../../store/session';
 import { useUpdate } from '../../store/update';
-import { createContextualNote, selectNavigationProjection, useFolderTree, useNavigationCounts, useNotes, type FolderNode } from '../../store/notes';
+import { createContextualNote, selectNavigationProjection, useFolderTree, useNavigationCounts, type FolderNode } from '../../store/notes/selectors';
+import { useNotes } from '../../store/notes';
 import { folderDescendantIds, folderPath, folderPathLabel, openFolderView } from '../../lib/folders';
 import { treeRowIndent } from '../../lib/calendar-tree';
 import { FolderAppearance, FolderPicker } from '../folders/FolderPicker';

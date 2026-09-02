@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import type { RealtimeMessage } from '@shared/types'
 import { CLIENT_ID } from './api'
 import { createBroadcast, type BroadcastPayload } from './db'
-import { acknowledgeOutboxBaseAdvanced, acknowledgeOutboxResult, useNotes } from '../store/notes'
+import { acknowledgeOutboxBaseAdvanced, acknowledgeOutboxResult } from '../store/notes/acknowledge'
+import { useNotes } from '../store/notes'
 import { useSession } from '../store/session'
 
 
