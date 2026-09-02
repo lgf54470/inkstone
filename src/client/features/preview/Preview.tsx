@@ -43,6 +43,7 @@ export interface PreviewProps {
   onHeadings?: (headings: Heading[]) => void
   scrollerRef?: RefObject<HTMLDivElement | null>
   onRendered?: () => void
+  onContextMenu?: (event: React.MouseEvent, target: HTMLElement) => void
   className?: string
 }
 
@@ -53,6 +54,7 @@ export const Preview = memo(function Preview({
   onHeadings,
   scrollerRef: externalScrollerRef,
   onRendered,
+  onContextMenu,
   className,
 }: PreviewProps) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -498,6 +500,10 @@ export const Preview = memo(function Preview({
   return (
     <div
       ref={scrollerRef}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        onContextMenu?.(event, event.target as HTMLElement)
+      }}
       className={cn('h-full overflow-y-auto overscroll-contain px-4 py-3', className)}
       data-preview-scroller
     >

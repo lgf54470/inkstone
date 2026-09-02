@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
+import { EditorSelection } from '@codemirror/state';
 import { ArrowLeft, Columns2, Download, Eye, FileCode, FileDown, FileText, FolderClosed, Hash, History, Link as LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Pencil, Plus, Share2, Star, X, } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { api } from '../../lib/api';
+import { EditorContextMenu } from './EditorContextMenu';
+import { detectEditorContext, detectPreviewContext, type EditorContextData, type PreviewContextData } from './context-menu-detect';
 import { readingMinutes } from '@shared/markdown-utils';
 import { LIMITS } from '@shared/constants';
 import type { EditorLayout } from '@shared/types';
@@ -83,6 +86,9 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
     const [exportMenuOpen, setExportMenuOpen] = useState(false);
     const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
     const [containerWidth, setContainerWidth] = useState(0);
+    const [contextMenuPoint, setContextMenuPoint] = useState<{ x: number; y: number } | null>(null);
+    const [editorContextData, setEditorContextData] = useState<EditorContextData | null>(null);
+    const [previewContextData, setPreviewContextData] = useState<PreviewContextData | null>(null);
     const isMobile = breakpoint === 'mobile';
     const paneActive = !grouped || pane === 'active' || activeWorkspacePane === pane;
     const layout = isMobile
@@ -199,6 +205,48 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         const target = previewScrollerRef.current?.querySelector<HTMLElement>(`#${CSS.escape(heading.slug)}`);
         target?.scrollIntoView({ behavior: preferredScrollBehavior(), block: 'start', inline: 'nearest' });
     }, [view]);
+
+    const handleJumpToLine = useCallback((lineNumber: number) => {
+        if (layout === 'preview') {
+            setEditorLayout('split');
+        }
+        if (view) {
+            const line = Math.min(view.state.doc.lines, Math.max(1, lineNumber + 1));
+            const pos = view.state.doc.line(line).from;
+            view.dispatch({ selection: EditorSelection.cursor(pos), scrollIntoView: true });
+            view.focus();
+        }
+    }, [view, layout]);
+
+    const handleEditorContextMenu = useCallback((event: MouseEvent, editorView: EditorView) => {
+        const pos = editorView.posAtCoords({ x: event.clientX, y: event.clientY });
+        if (pos !== null) {
+            const sel = editorView.state.selection.main;
+            if (sel.empty || pos < sel.from || pos > sel.to) {
+                editorView.dispatch({ selection: EditorSelection.cursor(pos) });
+            }
+            const ctx = detectEditorContext(editorView, pos);
+            setEditorContextData(ctx);
+        } else {
+            const ctx = detectEditorContext(editorView, editorView.state.selection.main.head);
+            setEditorContextData(ctx);
+        }
+        setPreviewContextData(null);
+        setContextMenuPoint({ x: event.clientX, y: event.clientY });
+    }, []);
+
+    const handlePreviewContextMenu = useCallback((_event: React.MouseEvent, target: HTMLElement) => {
+        const ctx = detectPreviewContext(target);
+        setPreviewContextData(ctx);
+        setEditorContextData(null);
+        setContextMenuPoint({ x: _event.clientX, y: _event.clientY });
+    }, []);
+
+    const closeContextMenu = useCallback(() => {
+        setContextMenuPoint(null);
+        setEditorContextData(null);
+        setPreviewContextData(null);
+    }, []);
     useEffect(() => {
         if (!note || !paneActive)
             return;
@@ -417,18 +465,36 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
 
       <div ref={containerRef} className="flex min-h-0 flex-1">
         {showEditor && (<div className="min-w-0" style={{ width: layout === 'split' ? editorWidth : '100%' }}>
-            <CodeEditor key={note.id} value={content} onChange={onChange} settings={editorSettings} sources={sources} handlers={handlers} noteId={note.id} onReady={setView}/>
+            <CodeEditor key={note.id} value={content} onChange={onChange} settings={editorSettings} sources={sources} handlers={handlers} noteId={note.id} onReady={setView} onContextMenu={handleEditorContextMenu}/>
           </div>)}
 
         {layout === 'split' && (<SplitResizer label={t("workspace.resize_editor_and_preview_panes")} containerRef={containerRef} ratio={effectiveSplitRatio} onChange={(splitRatio) => setLayout({ splitRatio })} onReset={() => setLayout({ splitRatio: null })}/>)}
 
         {showPreview && (<div className={cn('flex min-w-0 overflow-hidden border-l border-[var(--border-subtle)] bg-[var(--bg-editor)]', layout === 'preview' && 'flex-1 border-l-0')} style={{ width: layout === 'split' ? previewWidth : undefined }}>
-            <Preview key={note.id} content={content} noteId={note.id} noteTitle={note.title} onHeadings={setHeadings} scrollerRef={previewScrollerRef} onRendered={invalidateSyncAnchors} className="min-w-0 flex-1"/>
+            <Preview key={note.id} content={content} noteId={note.id} noteTitle={note.title} onHeadings={setHeadings} scrollerRef={previewScrollerRef} onRendered={invalidateSyncAnchors} onContextMenu={handlePreviewContextMenu} className="min-w-0 flex-1"/>
             {outlineVisible && (<Outline headings={headings} onSelect={jumpToHeading} scrollerRef={previewScrollerRef}/>)}
           </div>)}
       </div>
 
       {backlinksOpen && paneActive && <BacklinksPanel noteId={note.id}/>}
+
+      <EditorContextMenu
+        point={contextMenuPoint}
+        onClose={closeContextMenu}
+        editorView={view}
+        editorContext={editorContextData}
+        previewContext={previewContextData}
+        content={content}
+        noteId={note.id}
+        noteTitle={note.title}
+        onEditContent={onChange}
+        onJumpToLine={handleJumpToLine}
+        onPickImage={() => fileInputRef.current?.click()}
+        onSwitchLayout={setEditorLayout}
+        currentLayout={layout}
+        previewScrollerRef={previewScrollerRef}
+        onExport={exportNote}
+      />
 
       <Menu anchor={moreButtonRef} open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} items={grouped ? groupedItems : mobileItems} align="end" width={220}/>
       {isMobile && showPreview && (<Drawer open={mobileOutlineOpen} onClose={() => setMobileOutlineOpen(false)} side="right" width={320} title={t("common.outline")}>

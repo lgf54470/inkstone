@@ -36,10 +36,11 @@ export interface CodeEditorProps {
     onReady?: (view: EditorView | null) => void;
     onScroll?: (view: EditorView) => void;
     onCursorLine?: (line: number) => void;
+    onContextMenu?: (event: MouseEvent, view: EditorView) => void;
     placeholder?: string;
     className?: string;
 }
-export function CodeEditor({ value, onChange, settings, sources, handlers, noteId = null, onReady, onScroll, onCursorLine, placeholder = t("editor.start_writing"), className, }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, settings, sources, handlers, noteId = null, onReady, onScroll, onCursorLine, onContextMenu, placeholder = t("editor.start_writing"), className, }: CodeEditorProps) {
     const hostRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const previewSettings = useSession((s) => s.settings.preview);
@@ -77,8 +78,8 @@ export function CodeEditor({ value, onChange, settings, sources, handlers, noteI
         linkHover.hideNow();
     }, [linkHover.hideNow]);
 
-    const cbRef = useRef({ onChange, onScroll, onCursorLine, sources, handlers });
-    cbRef.current = { onChange, onScroll, onCursorLine, sources, handlers };
+    const cbRef = useRef({ onChange, onScroll, onCursorLine, onContextMenu, sources, handlers });
+    cbRef.current = { onChange, onScroll, onCursorLine, onContextMenu, sources, handlers };
 
     const lineNumbersCompartment = useRef(new Compartment());
     const tabSizeCompartment = useRef(new Compartment());
@@ -166,6 +167,13 @@ export function CodeEditor({ value, onChange, settings, sources, handlers, noteI
             EditorView.domEventHandlers({
                 scroll(_event, view) {
                     cbRef.current.onScroll?.(view);
+                },
+                contextmenu(event, view) {
+                    if (cbRef.current.onContextMenu) {
+                        cbRef.current.onContextMenu(event, view);
+                        return true;
+                    }
+                    return false;
                 },
             }),
             linkHoverExtension(),
@@ -275,7 +283,16 @@ export function CodeEditor({ value, onChange, settings, sources, handlers, noteI
         return () => window.removeEventListener('scroll', onScroll, true);
     }, [linkHover.hideNow]);
 
-    return (<div ref={hostRef} className={cn('ink-editor', className)} data-family={settings.fontFamily} data-focus-mode={settings.focusMode} data-typewriter={settings.typewriter}>
+    const handleHostContextMenu = (event: React.MouseEvent) => {
+        if (event.defaultPrevented) return;
+        event.preventDefault();
+        const view = viewRef.current;
+        if (view && onContextMenu) {
+            onContextMenu(event.nativeEvent, view);
+        }
+    };
+
+    return (<div ref={hostRef} onContextMenu={handleHostContextMenu} className={cn('ink-editor', className)} data-family={settings.fontFamily} data-focus-mode={settings.focusMode} data-typewriter={settings.typewriter}>
       {linkHover.card && (
         <WikiLinkHoverCard
           card={linkHover.card}
