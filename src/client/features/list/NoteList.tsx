@@ -1,4 +1,4 @@
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { Archive, ArrowDownWideNarrow, Bookmark, CalendarDays, Check, CheckSquare2, ChevronLeft, ChevronRight, Columns2, Copy, FileCode, FileDown, FileText, FolderClosed, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
 import type { DateRangeFilter, NoteSummary, SortKey, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
@@ -46,8 +46,8 @@ const EMPTY_HIGHLIGHT: [
     number,
     number
 ][] = [];
-const INITIAL_RENDERED_NOTES = 180;
-const RENDERED_NOTES_STEP = 240;
+const INITIAL_RENDERED_NOTES = 60;
+const RENDERED_NOTES_STEP = 80;
 export function NoteList() {
     const locale = useLocale();
     const todoTagText = resolveTodoTag(useSession((s) => s.settings.notes.todoTag), locale);
@@ -252,56 +252,86 @@ export function NoteList() {
         useUi.getState().setRelativeFilter(null);
         useUi.getState().setDateFilter(range);
     };
-    const filtered = useMemo(() => {
-        if (!deferredFilter.trim())
-            return notes.map((note) => ({ note, ranges: EMPTY_HIGHLIGHT }));
-        return fuzzyFilter(notes, deferredFilter, (n) => `${n.title} ${n.excerpt}`, 200).map(({ item, match }) => ({
+    const filteredMatches = useMemo(() => {
+        const query = deferredFilter.trim();
+        if (!query)
+            return null;
+        return fuzzyFilter(notes, query, (n) => `${n.title} ${n.excerpt}`, 200).map(({ item, match }) => ({
             note: item,
             ranges: match.ranges.filter(([s]) => s < item.title.length),
         }));
     }, [notes, deferredFilter]);
-    const filteredIds = useMemo(() => filtered.map((item) => item.note.id), [filtered]);
-    const filteredPositions = useMemo(() => new Map(filteredIds.map((id, index) => [id, index + 1])), [filteredIds]);
+    const filteredCount = filteredMatches ? filteredMatches.length : notes.length;
+    const filteredIds = useMemo(() => {
+        if (filteredMatches)
+            return filteredMatches.map((item) => item.note.id);
+        return notes.map((note) => note.id);
+    }, [filteredMatches, notes]);
     const filteredIdsRef = useRef(filteredIds);
     filteredIdsRef.current = filteredIds;
-    const rendered = useMemo(() => filtered.slice(0, renderLimit), [filtered, renderLimit]);
+    const rendered = useMemo(() => {
+        if (filteredMatches) {
+            return filteredMatches.slice(0, renderLimit).map((item, index) => ({
+                ...item,
+                position: index + 1,
+            }));
+        }
+        return notes.slice(0, renderLimit).map((note, index) => ({
+            note,
+            ranges: EMPTY_HIGHLIGHT,
+            position: index + 1,
+        }));
+    }, [filteredMatches, notes, renderLimit]);
     const renderedIds = useMemo(() => new Set(rendered.map((item) => item.note.id)), [rendered]);
     const groups = useMemo(() => groupNotes(rendered, sort, view === 'trash', now), [rendered, sort, view, locale, now]);
+    const pendingScrollNoteIdRef = useRef<string | null>(null);
     useEffect(() => {
         setRenderLimit(INITIAL_RENDERED_NOTES);
         listRef.current?.scrollTo?.({ top: 0 });
     }, [view, folderId, tag, deferredFilter, sort, order, density]);
     useEffect(() => {
+        pendingScrollNoteIdRef.current = activeNoteId;
+    }, [activeNoteId, view, folderId, tag]);
+    useEffect(() => {
         if (!activeNoteId)
             return;
         const activeIndex = filteredIds.indexOf(activeNoteId);
-        if (activeIndex < 0 || activeIndex < renderLimit)
+        if (activeIndex < 0)
             return;
-        setRenderLimit(Math.min(filtered.length, Math.ceil((activeIndex + 1) / RENDERED_NOTES_STEP) * RENDERED_NOTES_STEP));
-    }, [activeNoteId, filteredIds, filtered.length, renderLimit]);
+        startTransition(() => {
+            setRenderLimit((current) => {
+                if (activeIndex < current)
+                    return current;
+                return Math.min(filteredCount, Math.ceil((activeIndex + 1) / RENDERED_NOTES_STEP) * RENDERED_NOTES_STEP);
+            });
+        });
+    }, [activeNoteId, filteredIds, filteredCount]);
     useEffect(() => {
         const root = listRef.current;
         const target = loadMoreRef.current;
-        if (!root || !target || renderLimit >= filtered.length)
+        if (!root || !target || renderLimit >= filteredCount)
             return;
         if (typeof IntersectionObserver === 'undefined') {
-            setRenderLimit(filtered.length);
+            setRenderLimit(filteredCount);
             return;
         }
         const observer = new IntersectionObserver((entries) => {
             if (!entries.some((entry) => entry.isIntersecting))
                 return;
-            setRenderLimit((current) => Math.min(filtered.length, current + RENDERED_NOTES_STEP));
+            setRenderLimit((current) => Math.min(filteredCount, current + RENDERED_NOTES_STEP));
         }, { root, rootMargin: '600px 0px' });
         observer.observe(target);
         return () => observer.disconnect();
-    }, [filtered.length, renderLimit]);
+    }, [filteredCount, renderLimit]);
     useEffect(() => {
-        if (!activeNoteId)
+        const targetId = pendingScrollNoteIdRef.current;
+        if (!targetId || !listRef.current)
             return;
-        listRef.current
-            ?.querySelector<HTMLElement>(`[data-note-id="${activeNoteId}"]`)
-            ?.scrollIntoView({ block: 'nearest' });
+        const element = listRef.current.querySelector<HTMLElement>(`[data-note-id="${targetId}"]`);
+        if (element) {
+            element.scrollIntoView({ block: 'nearest' });
+            pendingScrollNoteIdRef.current = null;
+        }
     }, [activeNoteId, renderLimit, view, folderId, tag]);
     const onKeyDown = (event: React.KeyboardEvent) => {
         if (event.key === 'Escape') {
@@ -418,7 +448,7 @@ export function NoteList() {
                 setListQuery('');
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                const first = filtered[0]?.note.id;
+                const first = filteredIds[0];
                 if (first)
                     void openNote(first);
                 listRef.current?.focus();
@@ -490,15 +520,15 @@ export function NoteList() {
       </header>
 
       <div key={`${view}:${folderId ?? ''}:${tag ?? ''}`} ref={listRef} role="listbox" aria-label={title} aria-multiselectable="true" aria-activedescendant={activeNoteId && renderedIds.has(activeNoteId) ? `note-option-${activeNoteId}` : undefined} tabIndex={0} onKeyDown={onKeyDown} className="anim-view-content min-h-0 flex-1 overflow-y-auto px-2 pb-4 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
-        {!hydrated && loading ? (<NoteListSkeleton />        ) : filtered.length === 0 ? (<ListEmpty view={view} folderId={folderId} filtering={Boolean(filter)} dayFiltering={Boolean(dateFilter)} tagFiltering={selectedTags.length > 0} latestEdit={latestEdit} onJumpToLatest={() => { if (latestEdit) applyFixedRange({ start: latestEdit.key, end: latestEdit.key }); }} weekFiltered={weekFiltered} onJumpToLatestWeek={() => { if (latestWeekRange) applyFixedRange(latestWeekRange); }}/>) : (groups.map((group) => (<div key={group.key} role="group" aria-label={group.label ?? title}>
+        {!hydrated && loading ? (<NoteListSkeleton />        ) : filteredCount === 0 ? (<ListEmpty view={view} folderId={folderId} filtering={Boolean(filter)} dayFiltering={Boolean(dateFilter)} tagFiltering={selectedTags.length > 0} latestEdit={latestEdit} onJumpToLatest={() => { if (latestEdit) applyFixedRange({ start: latestEdit.key, end: latestEdit.key }); }} weekFiltered={weekFiltered} onJumpToLatestWeek={() => { if (latestWeekRange) applyFixedRange(latestWeekRange); }}/>) : (groups.map((group) => (<div key={group.key} role="group" aria-label={group.label ?? title}>
               {group.label && (<div className="px-2 pt-3 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
                   {group.label}
                 </div>)}
               <div role="presentation" className="space-y-px">
-                {group.items.map(({ note, ranges }) => (<NoteRow key={note.id} note={note} highlight={ranges} density={density} tagColors={tagColors} position={filteredPositions.get(note.id) ?? 1} total={filtered.length} onRangeSelect={selectRange}/>))}
+                {group.items.map(({ note, ranges, position }) => (<NoteRow key={note.id} note={note} highlight={ranges} density={density} tagColors={tagColors} position={position} total={filteredCount} onRangeSelect={selectRange}/>))}
               </div>
             </div>)))}
-        {renderLimit < filtered.length && <div ref={loadMoreRef} aria-hidden="true" className="h-px"/>}
+        {renderLimit < filteredCount && <div ref={loadMoreRef} aria-hidden="true" className="h-px"/>}
       </div>
 
       <BulkBar />
@@ -1044,24 +1074,20 @@ function ListEmpty({ view, folderId, filtering, dayFiltering, tagFiltering, late
     return (<Empty art={item.art} title={item.title} description={item.desc} action={view !== 'trash' && view !== 'archived' ? (<button type="button" onClick={() => void createContextualNote()} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
             <Plus size={13}/>{t("common.new_note")}</button>) : undefined}/>);
 }
-interface Group {
-    key: string;
-    label: string | null;
-    items: {
-        note: NoteSummary;
-        ranges: [
-            number,
-            number
-        ][];
-    }[];
-}
-function groupNotes(items: {
+interface GroupItem {
     note: NoteSummary;
     ranges: [
         number,
         number
     ][];
-}[], sort: SortKey, isTrash: boolean, now: number): Group[] {
+    position: number;
+}
+interface Group {
+    key: string;
+    label: string | null;
+    items: GroupItem[];
+}
+function groupNotes(items: GroupItem[], sort: SortKey, isTrash: boolean, now: number): Group[] {
     const pinned = isTrash ? [] : items.filter((i) => i.note.isPinned);
     const rest = isTrash ? items : items.filter((i) => !i.note.isPinned);
     const groups: Group[] = [];
