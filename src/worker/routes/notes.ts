@@ -1046,6 +1046,8 @@ function rewritePlaceholders(count: number): string {
   return Array.from({ length: count }, (_, i) => `?${i + 2}`).join(', ')
 }
 
+const MAX_INBOUND_WIKI_REWRITES = 25
+
 async function rewriteInboundWikiLinks(
   db: D1Database,
   userId: string,
@@ -1055,14 +1057,15 @@ async function rewriteInboundWikiLinks(
   ftsEnabled: boolean,
 ): Promise<{ rewritten: number; skipped: number }> {
   const previousKey = normalizeLinkKey(fromTitle)
-  const { results: candidates } = await db.prepare(
+  const { results: allCandidates } = await db.prepare(
     `SELECT DISTINCT n.id FROM links l
       JOIN notes n ON n.id = l.source_note_id AND n.user_id = l.user_id
      WHERE l.user_id = ?1 AND l.target_note_id = ?2 AND l.target_key = ?3
        AND n.id <> ?2 AND n.deleted_at IS NULL`,
   ).bind(userId, targetNoteId, previousKey).all<{ id: string }>()
+  const candidates = allCandidates.slice(0, MAX_INBOUND_WIKI_REWRITES)
   let rewritten = 0
-  let skipped = 0
+  let skipped = allCandidates.length - candidates.length
   // Read every candidate once in a single batched query instead of one SELECT
   // per candidate; the guarded UPDATE still catches concurrent edits and only
   // conflicting candidates get a fresh single-row read on retry.
