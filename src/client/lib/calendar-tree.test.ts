@@ -866,3 +866,45 @@ describe('buildActivityProjectionCached', () => {
         }
     });
 });
+
+describe('calendar projection benchmark', () => {
+    it('measures cold build, incremental commits, and identity stability on a 19.8k vault (CI gated)', () => {
+        const notes: Record<string, NoteSummary> = {};
+        const start = Date.UTC(2024, 8, 3);
+        const dayMs = 86_400_000;
+        const notesPerDay = 28;
+        const benchId = (index: number) => `seed-${String(index).padStart(5, '0')}`;
+        for (let i = 0; i < 19_800; i++) {
+            const ts = start + Math.floor(i / notesPerDay) * dayMs + Math.floor((i % notesPerDay) * dayMs / notesPerDay);
+            notes[benchId(i)] = note({ id: benchId(i), title: `Seed ${i % 9}`, createdAt: ts, updatedAt: ts + 3_600_000 });
+        }
+        const coldStart = performance.now();
+        buildActivityProjectionCached(notes);
+        const coldMs = performance.now() - coldStart;
+        const shortcutStart = performance.now();
+        buildActivityProjectionCached(notes);
+        const shortcutMs = performance.now() - shortcutStart;
+        let map = notes;
+        const keys = Object.keys(notes).slice(0, 10);
+        const chain: number[] = [];
+        for (let step = 0; step < 10; step++) {
+            const target = keys[step % keys.length]!;
+            const current = map[target]!;
+            map = { ...map, [target]: { ...current, excerpt: `e${step}`, updatedAt: current.updatedAt + (step + 1) * 60_000 } };
+            const t0 = performance.now();
+            buildActivityProjectionCached(map);
+            chain.push(performance.now() - t0);
+        }
+        const avg = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
+        const before = buildActivityProjectionCached(map);
+        const after = buildActivityProjectionCached({ ...map, [keys[0]!]: { ...map[keys[0]!], updatedAt: map[keys[0]!].updatedAt + 30_000 } });
+        const identityStable = after.counts === before.counts && after.noteIdByTitle === before.noteIdByTitle;
+        console.log('')
+        console.log(`[calendar proj benchmark] vault=19,800 note summaries, 10 typing commits, one note edited per commit`)
+        console.log(`  cold build ms: ${coldMs.toFixed(1)}`)
+        console.log(`  incremental per commit ms: ${chain.map((value) => value.toFixed(1)).join(', ')}`)
+        console.log(`  per-commit average ms: ${avg(chain).toFixed(1)}`)
+        console.log(`  same-map shortcut ms: ${shortcutMs.toFixed(2)}`)
+        console.log(`  same-day identity stable: ${identityStable ? 'yes' : 'no'}`)
+    });
+});

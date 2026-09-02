@@ -303,6 +303,9 @@ const allowed = new Map([
     "// vault instead.",
     "/** Idempotently replace the `seed-*` vault with `count` notes spread day-by-day over `years` years, several notes per day with intra-day hour offsets. */",
   ]],
+  ["scripts/ci-bench-report.mjs", [
+    "// Generous headroom for shared CI runners; the point is catching an order-of-magnitude regression.",
+  ]],
   ["scripts/seed-dev-notes.mjs", [
     "// Seeds a dev:kv instance with a realistic multi-year vault for perf A/Bs.",
     "//",

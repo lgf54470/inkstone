@@ -4,6 +4,11 @@ import fs from 'node:fs'
 const MIN_REDUCTION_PCT = 90
 const MAX_SHELL_BURST_KEYS = 1
 const MAX_SHELL_BURST_BYTES = 4 * 1024
+// Generous headroom for shared CI runners; the point is catching an order-of-magnitude regression.
+const MAX_CAL_COLD_BUILD_MS = 250
+
+const MAX_CAL_COMMIT_AVG_MS = 60
+const MAX_CAL_SHORTCUT_MS = 1
 
 export function parseTyping(stdout) {
   const direct = /direct writes:\s+(\d+)/.exec(stdout)?.[1]
@@ -32,6 +37,39 @@ export function parseShell(stdout) {
     burstBytes,
     wholeVaultAbsent: wholeVaultLine !== undefined && wholeVaultLine.startsWith('not serialized'),
   }
+}
+
+export function parseCalendarProj(stdout) {
+  const coldLine = /cold build ms:\s*([\d.]+)/.exec(stdout)?.[1]
+  const commitLine = /per-commit average ms:\s*([\d.]+)/.exec(stdout)?.[1]
+  const shortcutLine = /same-map shortcut ms:\s*([\d.]+)/.exec(stdout)?.[1]
+  const identityLine = /same-day identity stable:\s*(yes|no)/.exec(stdout)?.[1]
+  return {
+    coldMs: coldLine ? Number.parseFloat(coldLine) : undefined,
+    commitAvgMs: commitLine ? Number.parseFloat(commitLine) : undefined,
+    shortcutMs: shortcutLine ? Number.parseFloat(shortcutLine) : undefined,
+    identityStable: identityLine === 'yes',
+  }
+}
+
+export function validateCalendarProj(cal) {
+  const errors = []
+  if (cal.coldMs === undefined) errors.push('calendar projection benchmark: missing cold-build metric')
+  else if (cal.coldMs > MAX_CAL_COLD_BUILD_MS) {
+    errors.push(`calendar projection benchmark regression: cold build ${cal.coldMs} ms exceeds ${MAX_CAL_COLD_BUILD_MS} ms`)
+  }
+  if (cal.commitAvgMs === undefined) errors.push('calendar projection benchmark: missing per-commit metric')
+  else if (cal.commitAvgMs > MAX_CAL_COMMIT_AVG_MS) {
+    errors.push(`calendar projection benchmark regression: incremental commit average ${cal.commitAvgMs} ms exceeds ${MAX_CAL_COMMIT_AVG_MS} ms (the three full-vault scans would cost ~60 ms)`)
+  }
+  if (cal.shortcutMs === undefined) errors.push('calendar projection benchmark: missing same-map shortcut metric')
+  else if (cal.shortcutMs > MAX_CAL_SHORTCUT_MS) {
+    errors.push(`calendar projection benchmark regression: same-map shortcut ${cal.shortcutMs} ms exceeds ${MAX_CAL_SHORTCUT_MS} ms (the identity fast path was lost)`)
+  }
+  if (!cal.identityStable) {
+    errors.push('calendar projection benchmark regression: same-day edits no longer keep counts/title identities stable')
+  }
+  return errors
 }
 
 export function validateShell(shell) {
@@ -74,6 +112,8 @@ function main() {
   const typing = parseTyping(stdout)
   const shell = parseShell(stdout)
   const shellErrors = validateShell(shell)
+  const cal = parseCalendarProj(stdout)
+  const calErrors = validateCalendarProj(cal)
 
   if (typing.direct === undefined || typing.coalesced === undefined || typing.reduction === undefined) {
     console.error('typing benchmark output did not contain the expected metrics:')
@@ -108,6 +148,24 @@ function main() {
       '',
     )
   }
+  if (calErrors.length) {
+    summary.push('## Calendar projection benchmark — FAILED', '')
+    for (const error of calErrors) summary.push(`- ${error}`)
+    summary.push('')
+  }
+  else {
+    summary.push(
+      '## Calendar projection benchmark',
+      '',
+      '| Metric | Value |',
+      '| --- | --- |',
+      `| Cold build (19.8k vault) | ${cal.coldMs} ms (< ${MAX_CAL_COLD_BUILD_MS} ms) |`,
+      `| Incremental commit average | ${cal.commitAvgMs} ms (< ${MAX_CAL_COMMIT_AVG_MS} ms) |`,
+      `| Same-map shortcut | ${cal.shortcutMs} ms (< ${MAX_CAL_SHORTCUT_MS} ms) |`,
+      `| Same-day identity stable | ${cal.identityStable ? 'yes' : 'no — FAIL'} |`,
+      '',
+    )
+  }
 
   if (process.env.GITHUB_STEP_SUMMARY) {
     fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join('\n'))
@@ -125,9 +183,15 @@ function main() {
     for (const error of shellErrors) console.error(`  ${error}`)
     process.exit(1)
   }
+  if (calErrors.length) {
+    console.error('calendar projection benchmark failed:')
+    for (const error of calErrors) console.error(`  ${error}`)
+    process.exit(1)
+  }
 
   console.log(`typing benchmark passed: ${typing.reduction}% reduction (threshold ${MIN_REDUCTION_PCT}%)`)
   console.log('shell cache benchmark passed: 1 key write per burst, no whole-vault serialization')
+  console.log(`calendar projection benchmark passed: ${cal.commitAvgMs} ms per commit, cold build ${cal.coldMs} ms, identity stable`)
 }
 
 if (import.meta.main) main()
