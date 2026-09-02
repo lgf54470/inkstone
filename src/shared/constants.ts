@@ -22,6 +22,24 @@ export const CLIENT_HEADER = 'X-Inkstone-Client'
 export const SESSION_COOKIE = '__Host-inkstone_session'
 export const LEGACY_SESSION_COOKIE = 'inkstone_session'
 
+/**
+ * Session lifetime design (sliding window):
+ * - `SESSION_TTL_MS` (90d): absolute cap. A session row/cookie never outlives 90 days,
+ *   bounding the window in which a stolen session token stays usable.
+ * - `SESSION_RENEW_BEFORE_MS` (45d = TTL/2): renewal threshold. On an authenticated
+ *   request, if less than this much TTL remains, the session is extended back to the
+ *   full 90 days (see middleware/auth.ts and lib/session-store.ts).
+ *
+ * Trade-offs: renewal only happens for requests that already presented a valid
+ * session, so an abandoned session dies within at most 90 days (no idle-forever
+ * sessions, maintenance sweeps the rows), while an active user never gets logged out
+ * as long as they authenticate at least once per 45 days. The half-life threshold
+ * also bounds write amplification: each session triggers at most one DB renewal
+ * write per 45 days of activity. The 45-day window is generous enough to survive
+ * the app's offline period (offline edits are queued locally and flushed on
+ * reconnect, which needs a still-valid session) yet short enough that a freshly
+ * stolen cookie's remaining lifetime stays bounded.
+ */
 export const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000
 export const SESSION_RENEW_BEFORE_MS = SESSION_TTL_MS / 2
 

@@ -30,6 +30,12 @@ export async function createSession(db: D1Database, userId: string): Promise<str
   return token
 }
 
+/**
+ * Extend a session back to the full TTL. Only call this from an authenticated
+ * request whose session is inside the renewal window (see SESSION_RENEW_BEFORE_MS);
+ * never call it from unauthenticated paths — renewal must not resurrect or
+ * prolong a session the user has not just proven possession of.
+ */
 export async function renewSession(db: D1Database, sessionId: string): Promise<void> {
   await db
     .prepare(`UPDATE sessions SET expires_at = ?1 WHERE id = ?2`)

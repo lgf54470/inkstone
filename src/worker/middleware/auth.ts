@@ -75,6 +75,13 @@ export const loadSession = createMiddleware<AppBindings>(async (c, next) => {
         c.set('userId', row.id)
         c.set('sessionId', row.session_id)
 
+        // Sliding-window renewal (see SESSION_RENEW_BEFORE_MS in shared/constants):
+        // only extend a session that is still valid AND inside its last 45 days, so
+        // (a) an abandoned session still expires within the 90-day absolute cap,
+        // (b) each session gets at most one DB renewal write per 45 days, and
+        // (c) unauthenticated requests (e.g. expired sessions) can never extend
+        //     their own lifetime. The cookie Max-Age is refreshed in lockstep so
+        //     the browser copy does not expire before the server-side row.
         const shouldRenew = row.expires_at - Date.now() < SESSION_RENEW_BEFORE_MS
         if (shouldRenew) {
           await renewSession(c.env.DB, row.session_id)
