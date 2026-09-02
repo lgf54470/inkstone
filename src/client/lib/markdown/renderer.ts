@@ -566,6 +566,19 @@ md.core.ruler.push('collect_headings', (state) => {
     return true;
 });
 const PURIFY_CONFIG = {
+    // The renderer is the only producer of this HTML, so the whitelist is
+    // exact: every tag markdown-it and the Inkstone extensions can emit,
+    // nothing else. SVG/MathML/forms stay out entirely to avoid the
+    // mXSS-prone element combinations; task checkboxes are re-inserted as
+    // DOM nodes after sanitization, so `input` is intentionally absent.
+    ALLOWED_TAGS: [
+        'a', 'abbr', 'aside', 'b', 'blockquote', 'br', 'button', 'code',
+        'dd', 'del', 'details', 'div', 'dl', 'dt', 'em', 'figcaption',
+        'figure', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img',
+        'ins', 'kbd', 'li', 'mark', 'ol', 'p', 'pre', 'q', 's', 'section',
+        'small', 'span', 'strong', 'sub', 'summary', 'sup', 'table',
+        'tbody', 'td', 'th', 'thead', 'tr', 'u', 'ul',
+    ],
     ADD_ATTR: [
         'data-line',
         'data-math',
@@ -609,7 +622,6 @@ const PURIFY_CONFIG = {
         'lang',
         'dir',
     ],
-    ADD_TAGS: ['figure', 'figcaption', 'details', 'summary'],
     FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input', 'link', 'base'],
     FORBID_ATTR: [
         'style',
