@@ -98,6 +98,8 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_links_target ON links(user_id, target_key)`,
   `CREATE INDEX IF NOT EXISTS idx_links_target_note ON links(target_note_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_links_user_source ON links(user_id, source_note_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_links_user_target ON links(user_id, target_note_id)`,
 
   `CREATE TABLE IF NOT EXISTS note_versions (
     id TEXT PRIMARY KEY,
@@ -537,6 +539,16 @@ const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
          ON community_templates(created_at DESC)`,
     ],
   },
+  {
+    // Source-side graph traversal (local graph mode BFS, MCP explore) queries
+    // links by user + source and by user + target; the OR join can only use
+    // both branches when each side has its own user-scoped index.
+    version: 13,
+    statements: [
+      `CREATE INDEX IF NOT EXISTS idx_links_user_source ON links(user_id, source_note_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_links_user_target ON links(user_id, target_note_id)`,
+    ],
+  },
 ]
 
 const FTS_STATEMENT = `CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
@@ -632,6 +644,8 @@ const REQUIRED_INDEXES = [
   'idx_note_tags_tag',
   'idx_links_target',
   'idx_links_target_note',
+  'idx_links_user_source',
+  'idx_links_user_target',
   'idx_versions_note',
   'idx_attachments_user',
   'idx_attachments_user_sha',
