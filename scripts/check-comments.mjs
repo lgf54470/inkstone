@@ -278,6 +278,13 @@ const allowed = new Map([
     "// rebuilding, so the counts map keeps its identity.",
     "// An id vanished from the map without a tombstone: drop its stale",
     "// contributions (a rare path that costs one extra walk when it fires).",
+    "// A store commit clones only the notes it actually touched into a",
+    "// fresh map, so reference equality means none of the input fields can",
+    "// have changed on this note (createdAt/deletedAt live on the object).",
+    "// The input-equality walk runs for every tree on every notes-map commit, so",
+    "// its verdict is memoized per map identity: React StrictMode re-renders the",
+    "// same commit twice and unrelated consumers may pass the same map again, and",
+    "// each of those calls would otherwise rescan the whole vault for nothing.",
   ]],
   ["src/client/features/sidebar/SidebarCalendar.tsx", [
     "// Single cached projection replaces the three whole-vault Object.values",

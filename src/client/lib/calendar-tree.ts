@@ -510,6 +510,11 @@ function virtualTreeInputsEqual(
         const after = next[id]
         if (!before || !after)
             return false
+        // A store commit clones only the notes it actually touched into a
+        // fresh map, so reference equality means none of the input fields can
+        // have changed on this note (createdAt/deletedAt live on the object).
+        if (before === after)
+            continue
         if (before.createdAt !== after.createdAt || (before.deletedAt === null) !== (after.deletedAt === null))
             return false
         if (todoTags && isTodoNote(before, todoTags) !== isTodoNote(after, todoTags))
@@ -521,6 +526,12 @@ function virtualTreeInputsEqual(
     return prevSize === nextSize
 }
 
+// The input-equality walk runs for every tree on every notes-map commit, so
+// its verdict is memoized per map identity: React StrictMode re-renders the
+// same commit twice and unrelated consumers may pass the same map again, and
+// each of those calls would otherwise rescan the whole vault for nothing.
+const virtualTreeVerdicts = new WeakMap<object, Map<string, { prev: Record<string, NoteSummary>; stable: boolean }>>()
+
 export function buildVirtualTreeCached(
     notes: Record<string, NoteSummary>,
     ns: VirtualTreeNamespace,
@@ -529,8 +540,24 @@ export function buildVirtualTreeCached(
 ): CalendarNode[] {
     const key = `${ns.rootId}|${includeEmpty ? 'e' : 'c'}`
     const cached = virtualTreeSlots.get(key)
-    if (cached && sameTodoTags(cached.todoTags, todoTags) && virtualTreeInputsEqual(cached.notes, notes, todoTags))
-        return cached.children
+    const same = Boolean(cached && sameTodoTags(cached.todoTags, todoTags))
+    let stable = false
+    if (same) {
+        let perMap = virtualTreeVerdicts.get(notes)
+        if (!perMap) {
+            perMap = new Map()
+            virtualTreeVerdicts.set(notes, perMap)
+        }
+        const verdict = perMap.get(key)
+        if (verdict && verdict.prev === cached!.notes) {
+            stable = verdict.stable
+        } else {
+            stable = virtualTreeInputsEqual(cached!.notes, notes, todoTags)
+            perMap.set(key, { prev: cached!.notes, stable })
+        }
+    }
+    if (same && stable)
+        return cached!.children
     const values = todoTags && todoTags.length
         ? Object.values(notes).filter((note) => isTodoNote(note, todoTags))
         : Object.values(notes)
