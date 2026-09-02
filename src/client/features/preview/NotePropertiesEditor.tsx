@@ -18,6 +18,7 @@ import {
   upsertFrontMatterProperty,
 } from '@shared/markdown-utils';
 import { TagPill } from '../../components/TagPill';
+import { Tooltip } from '../../components/overlay';
 import { cn } from '../../lib/cn';
 import { t } from '../../lib/i18n';
 import { useNotes } from '../../store/notes';
@@ -324,14 +325,16 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                   </div>
 
                   <div className="flex justify-end">
-                    <button
-                      type="button"
-                      title={t('properties.delete_property')}
-                      onClick={() => handleDelete(key)}
-                      className="rounded p-1 text-[var(--text-tertiary)] opacity-0 transition-all hover:bg-[var(--danger-softer)] hover:text-[var(--danger)] group-hover/row:opacity-100"
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                    <Tooltip label={t('properties.delete_property')} side="left">
+                      <button
+                        type="button"
+                        aria-label={t('properties.delete_property')}
+                        onClick={() => handleDelete(key)}
+                        className="rounded p-1 text-[var(--text-tertiary)] opacity-0 transition-all hover:bg-[var(--danger-softer)] hover:text-[var(--danger)] group-hover/row:opacity-100"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
               );
