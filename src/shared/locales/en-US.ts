@@ -1198,6 +1198,8 @@ export const EN_US_MESSAGES = {
     "folders.clean_empty_value0": "Clean empty folders ({value0})",
     "folders.clean_empty_confirm_value0": "Are you sure you want to delete these {value0} empty folders containing no notes or subfolders? This action cannot be undone.",
     "folders.clean_empty_success": "Successfully cleaned {value0} empty folders",
+    "folders.expand_all": "Expand all folders",
+    "folders.collapse_all": "Collapse all folders",
     "sidebar.new_subfolder": "New subfolder",
     "sidebar.rename": "Rename",
     "sidebar.rename_failed": "Rename failed",

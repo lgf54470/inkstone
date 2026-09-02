@@ -1199,6 +1199,8 @@ export const ZH_CN_MESSAGES = {
     "folders.clean_empty_value0": "清理空文件夹 ({value0})",
     "folders.clean_empty_confirm_value0": "确定要删除这 {value0} 个既没有笔记也没有子文件夹的空文件夹吗？此操作不可撤销。",
     "folders.clean_empty_success": "已成功清理 {value0} 个空文件夹",
+    "folders.expand_all": "展开全部文件夹",
+    "folders.collapse_all": "折叠全部文件夹",
     "sidebar.new_subfolder": "新建子文件夹",
     "sidebar.rename": "重命名",
     "sidebar.rename_failed": "重命名失败",

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, Download, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Smile, Star, Sun, Tag as TagIcon, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, CornerUpLeft, Download, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Smile, Star, Sun, Tag as TagIcon, Trash2, Waypoints, X, } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
 import type { Tag, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
@@ -342,6 +342,23 @@ function FolderSection() {
         }
         return excluded;
     }, [folders, movingId]);
+    const expandedFolders = useUi((s) => s.expandedFolders);
+    const parentFolderIds = useMemo(() => {
+        return folders.filter((f) => folders.some((child) => child.parentId === f.id)).map((f) => f.id);
+    }, [folders]);
+    const allExpanded = parentFolderIds.length > 0 && parentFolderIds.every((id) => expandedFolders.includes(id));
+
+    const toggleAllExpanded = () => {
+        if (allExpanded) {
+            useUi.setState({
+                expandedFolders: expandedFolders.filter((id) => !parentFolderIds.includes(id)),
+            });
+        } else {
+            useUi.setState({
+                expandedFolders: Array.from(new Set([...expandedFolders, ...parentFolderIds])),
+            });
+        }
+    };
     return (<>
       <section id="sidebar-folders" className={cn('mt-4 rounded-[var(--r-md)]', rootDropping && 'ring-1 ring-[var(--accent)]')} onDragOver={(event) => {
             if (!event.dataTransfer.types.includes('application/x-inkstone-folder'))
@@ -363,6 +380,18 @@ function FolderSection() {
       <div className="group/head flex items-center justify-between pr-1">
         <SectionLabel>{t("navigation.folder")}</SectionLabel>
         <div className="flex items-center gap-0.5">
+          {parentFolderIds.length > 0 && (
+            <Tooltip label={allExpanded ? t("folders.collapse_all") : t("folders.expand_all")} side="left">
+              <IconButton
+                label={allExpanded ? t("folders.collapse_all") : t("folders.expand_all")}
+                size="sm"
+                onClick={toggleAllExpanded}
+                className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100"
+              >
+                {allExpanded ? <ChevronsDownUp size={13}/> : <ChevronsUpDown size={13}/>}
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip label={t("folders.manage_folders")} side="left">
             <IconButton label={t("folders.manage_folders")} size="sm" onClick={() => openPanel('folders')} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
               <Settings2 size={13}/>
