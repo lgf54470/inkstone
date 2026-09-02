@@ -855,6 +855,9 @@ console.log('[import atomicity]')
 
 console.log('[protected share attachment]')
 if (noteId) {
+  // The stream must actually exceed the 25 MiB attachment limit (plus the
+  // multipart overhead allowance) for the streaming size guard to fire;
+  // anything below it parses as an invalid form instead (400).
   const streamedOversize = await fetch(BASE + '/api/files', {
     method: 'POST',
     headers: {
@@ -862,7 +865,7 @@ if (noteId) {
       'X-Inkstone-Client': '1',
       Cookie: owner.jar.cookie,
     },
-    body: byteStream(11 * 1024 * 1024),
+    body: byteStream(26 * 1024 * 1024),
     duplex: 'half',
   })
   const streamedError = await streamedOversize.json().catch(() => null)
