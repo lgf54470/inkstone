@@ -307,7 +307,8 @@ export interface ListNotesQuery {
 export interface ListNotesResponse {
   notes: NoteSummary[]
   nextCursor: string | null
-  total: number
+  /** Exact row count of the current view; only present on the first page to keep deep-paging cheap. */
+  total: number | null
 }
 
 export interface CreateNoteBody {

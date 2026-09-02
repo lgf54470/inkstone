@@ -153,12 +153,24 @@ notesRoutes.get('/', async (c) => {
   const listStatement = cursor.kind === 'legacy'
     ? c.env.DB.prepare(listSql).bind(...binds, limit + 1, cursor.offset)
     : c.env.DB.prepare(listSql).bind(...binds, limit + 1)
-  const [countResult, listResult] = await c.env.DB.batch([
-    c.env.DB.prepare(`SELECT COUNT(*) AS total FROM notes n WHERE ${countWhere}`).bind(...countBinds),
-    listStatement,
-  ])
+  // COUNT(*) over the view predicate is only needed on the first page (the
+  // client never re-reads `total` once paging starts); deep pages skip it so
+  // the cost does not grow with every deleted row the index has to walk.
+  const needsTotal = cursor.kind === 'first'
+  const batch: D1PreparedStatement[] = []
+  if (needsTotal) {
+    batch.push(
+      c.env.DB.prepare(`SELECT COUNT(*) AS total FROM notes n WHERE ${countWhere}`).bind(...countBinds),
+    )
+  }
+  batch.push(listStatement)
+  const results = await c.env.DB.batch(batch)
+  const countResult = needsTotal ? results[0] : undefined
+  const listResult = results[needsTotal ? 1 : 0]
 
-  const total = Number((countResult?.results?.[0] as { total?: unknown } | undefined)?.total ?? 0)
+  const total = countResult
+    ? Number((countResult.results?.[0] as { total?: unknown } | undefined)?.total ?? 0)
+    : null
   const rows = listResult?.results as NoteRow[] | undefined ?? []
   const pageRows = rows.slice(0, limit)
   const notes = pageRows.map(toNoteSummary)
