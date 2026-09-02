@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   Check,
+  Download,
   ExternalLink,
   FolderClosed,
   FolderPlus,
@@ -19,6 +20,7 @@ import { selectNavigationProjection } from '../../store/notes/selectors';
 import { useUi } from '../../store/ui';
 import { folderPathLabel, openFolderView } from '../../lib/folders';
 import { setInboxFolderId, useFolderPreferences } from '../../lib/folder-prefs';
+import { exportFolderAsZip } from '../../lib/export-folder';
 import { FolderAppearance } from './FolderPicker';
 import { t } from '../../lib/i18n';
 
@@ -297,6 +299,31 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                         onClick={() => setAppearanceFolder(folder)}
                       >
                         <Palette size={13} />
+                      </IconButton>
+                      <IconButton
+                        label={t('folders.export_zip')}
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const res = await exportFolderAsZip(folder.id);
+                            if (res.count === 0) {
+                              toast({ title: t('folders.export_zip_empty'), tone: 'default' });
+                            } else {
+                              toast({
+                                title: t('folders.export_zip_success', { value0: res.count }),
+                                tone: 'success',
+                              });
+                            }
+                          } catch (err) {
+                            toast({
+                              title: t('common.export_failed'),
+                              description: err instanceof Error ? err.message : String(err),
+                              tone: 'danger',
+                            });
+                          }
+                        }}
+                      >
+                        <Download size={13} />
                       </IconButton>
                       <IconButton
                         label={t('common.delete')}

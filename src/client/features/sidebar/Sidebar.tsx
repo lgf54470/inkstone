@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Star, Sun, Tag as TagIcon, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, Download, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Star, Sun, Tag as TagIcon, Trash2, Waypoints, X, } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
 import type { Tag, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
@@ -16,6 +16,7 @@ import { useNotes } from '../../store/notes';
 import { folderDescendantIds, folderPath, folderPathLabel, openFolderView } from '../../lib/folders';
 import { treeRowIndent } from '../../lib/calendar-tree';
 import { setInboxFolderId, useFolderPreferences } from '../../lib/folder-prefs';
+import { exportFolderAsZip } from '../../lib/export-folder';
 import { FolderAppearance, FolderPicker } from '../folders/FolderPicker';
 import { TagColorSubmenu } from '../tags/TagColorSubmenu';
 import { createTag, deleteTag, renameTag, setTagColor, toggleTagPinned } from '../tags/tagMutations';
@@ -518,6 +519,31 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
         { id: 'move-earlier', label: t("sidebar.move_earlier"), icon: <ArrowUp size={13}/>, disabled: index === 0, onSelect: moveEarlier },
         { id: 'move-later', label: t("sidebar.move_later"), icon: <ArrowDown size={13}/>, disabled: index === siblings.length - 1, onSelect: moveLater },
         { id: 'move-out', label: t("sidebar.move_out_one_level"), icon: <CornerUpLeft size={13}/>, disabled: !parentNode, onSelect: moveOut },
+        {
+            id: 'export-zip',
+            label: t("folders.export_zip"),
+            icon: <Download size={13}/>,
+            separatorBefore: true,
+            onSelect: async () => {
+                try {
+                    const res = await exportFolderAsZip(node.id);
+                    if (res.count === 0) {
+                        useUi.getState().toast({ title: t("folders.export_zip_empty"), tone: 'default' });
+                    } else {
+                        useUi.getState().toast({
+                            title: t("folders.export_zip_success", { value0: res.count }),
+                            tone: 'success',
+                        });
+                    }
+                } catch (err) {
+                    useUi.getState().toast({
+                        title: t("common.export_failed"),
+                        description: err instanceof Error ? err.message : String(err),
+                        tone: 'danger',
+                    });
+                }
+            },
+        },
         { id: 'delete', label: t("sidebar.delete_folder"), icon: <Trash2 size={13}/>, tone: 'danger', separatorBefore: true, onSelect: () => void remove() },
     ];
     return (<div role="treeitem" aria-level={node.depth + 1} aria-expanded={hasChildren ? expanded : undefined} className={cn(justCreated && 'anim-tree-item-enter')} data-new-folder={justCreated || undefined}>
