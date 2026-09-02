@@ -91,9 +91,28 @@ export function inkstonePwa(): Plugin {
 
 function collectCoreFiles(bundle: BuildBundle): string[] {
   const files = new Set<string>(['index.html', ...CORE_PUBLIC_ASSETS])
+  const matchedCoreLazy = new Set<string>()
   const pending = Object.values(bundle)
-    .filter((entry): entry is BuildChunk =>
-      entry.type === 'chunk' && (entry.isEntry || isCoreLazyChunk(entry)))
+    .filter((entry): entry is BuildChunk => {
+      if (entry.type !== 'chunk') return false
+      if (entry.isEntry) return true
+      const matched = isCoreLazyChunk(entry)
+      if (matched) {
+        const moduleId = entry.facadeModuleId?.replaceAll('\\', '/')
+        for (const suffix of CORE_LAZY_MODULES) {
+          if (moduleId?.endsWith(suffix)) {
+            matchedCoreLazy.add(suffix)
+          }
+        }
+      }
+      return matched
+    })
+
+  for (const suffix of CORE_LAZY_MODULES) {
+    if (!matchedCoreLazy.has(suffix)) {
+      console.warn(`[inkstone:pwa] Warning: core lazy module '${suffix}' was not matched in build chunks`)
+    }
+  }
 
   while (pending.length) {
     const chunk = pending.pop()!
