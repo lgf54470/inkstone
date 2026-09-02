@@ -1,7 +1,8 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { initializeDatabase } from './db/schema'
 import { ApiError, errorResponse } from './lib/errors'
 import { loadSession, requireClientHeader } from './middleware/auth'
+import { toBase64Url } from './lib/encoding'
 import { authRoutes } from './routes/auth'
 import { totpRoutes } from './routes/totp'
 import { devRoutes } from './routes/dev'
@@ -31,6 +32,13 @@ export function createApp() {
     await next()
     const isHttps = new URL(c.req.url).protocol === 'https:'
     const imageSchemes = isHttps ? 'https:' : 'https: http:'
+    const contentType = c.res.headers.get('Content-Type') ?? ''
+    // Inline scripts (theme bootstrap, MCP login page, dev React preamble)
+    // are allowed through a fresh per-response nonce instead of
+    // 'unsafe-inline', so a future injection point cannot execute scripts.
+    const scriptSource = contentType.includes('text/html')
+      ? applyScriptNonce(c)
+      : "'self'"
     const formAction = authorizationFormAction(c.req.url, c.res)
     c.header('X-Content-Type-Options', 'nosniff')
     c.header('X-Frame-Options', 'DENY')
@@ -38,7 +46,7 @@ export function createApp() {
     c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
     c.header(
       'Content-Security-Policy',
-        "default-src 'self'; base-uri 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+        `default-src 'self'; base-uri 'self'; script-src ${scriptSource}; style-src 'self' 'unsafe-inline'; ` +
         `img-src 'self' data: blob: ${imageSchemes}; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; ` +
         `manifest-src 'self'; media-src 'self' blob:; form-action ${formAction}; frame-src 'none'; ` +
         "frame-ancestors 'none'; object-src 'none'",
@@ -117,6 +125,25 @@ export function createApp() {
   app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw))
 
   return app
+}
+
+/** Adds a per-response nonce to every inline script in an HTML response and returns the CSP script source. */
+function applyScriptNonce(c: Context<AppBindings>): string {
+  const nonce = randomNonce()
+  c.res = new HTMLRewriter()
+    .on('script', {
+      element(element) {
+        if (!element.hasAttribute('src') && !element.hasAttribute('nonce')) {
+          element.setAttribute('nonce', nonce)
+        }
+      },
+    })
+    .transform(new Response(c.res.body, c.res))
+  return `'self' 'nonce-${nonce}'`
+}
+
+function randomNonce(): string {
+  return toBase64Url(crypto.getRandomValues(new Uint8Array(18)))
 }
 
 function authorizationFormAction(requestUrl: string, response: Response): string {
