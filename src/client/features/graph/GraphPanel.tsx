@@ -23,7 +23,16 @@ import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
 import { api } from '../../lib/api'
 import { clearSelectionToastKey, clearTagSelection } from '../../lib/tag-selection'
-import { GRAPH_APPEARANCE_TOGGLES, GRAPH_CLEAR_TOGGLES, GRAPH_SHOW_TOGGLES } from '../../lib/graph-settings'
+import {
+  GRAPH_APPEARANCE_TOGGLES,
+  GRAPH_CLEAR_TOGGLES,
+  GRAPH_SHOW_TOGGLES,
+  type GraphPreferences,
+  type GroupBy,
+} from '../../lib/graph-settings'
+
+export type { GraphPreferences, GroupBy }
+
 import { Button, IconButton } from '../../components/primitives'
 import { Menu, Tooltip, useDialogFocus, useEscape, useLockScroll, type MenuItem } from '../../components/overlay'
 import { Empty, LoadingBlock } from '../../components/feedback'
@@ -35,28 +44,6 @@ import { getLinkHoverTarget, subscribeLinkHoverTarget } from '../preview/link-si
 
 const PHYSICS_FRAME_LIMIT = 360
 const GRAPH_PREFS_KEY = 'inkstone.graph.preferences.v1'
-
-type GroupBy = 'none' | 'folder' | 'tag'
-export interface GraphPreferences {
-  mode: 'global' | 'local'
-  depth: number
-  includeOrphans: boolean
-  includeUnresolved: boolean
-  arrows: boolean
-  labels: boolean
-  groupBy: GroupBy
-  folderId: string
-  tag: string
-  /** How the tag filter combines: any tag (union) or all tags (intersection). */
-  tagsMatch: 'any' | 'all'
-  /** Whether clearing the sidebar selection also resets the graph's own tag filter. */
-  clearResetsTag: boolean
-  /** Whether clearing the sidebar selection also closes the graph panel. */
-  clearClosesPanel: boolean
-  repulsion: number
-  linkDistance: number
-  nodeScale: number
-}
 
 const DEFAULT_PREFERENCES: GraphPreferences = {
   mode: 'global',

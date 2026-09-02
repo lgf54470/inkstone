@@ -1,5 +1,27 @@
 import type { MessageKey } from '@shared/locales/en-US';
-import type { GraphPreferences } from '../features/graph/GraphPanel';
+
+export type GroupBy = 'none' | 'folder' | 'tag';
+
+export interface GraphPreferences {
+  mode: 'global' | 'local'
+  depth: number
+  includeOrphans: boolean
+  includeUnresolved: boolean
+  arrows: boolean
+  labels: boolean
+  groupBy: GroupBy
+  folderId: string
+  tag: string
+  /** How the tag filter combines: any tag (union) or all tags (intersection). */
+  tagsMatch: 'any' | 'all'
+  /** Whether clearing the sidebar selection also resets the graph's own tag filter. */
+  clearResetsTag: boolean
+  /** Whether clearing the sidebar selection also closes the graph panel. */
+  clearClosesPanel: boolean
+  repulsion: number
+  linkDistance: number
+  nodeScale: number
+}
 
 type GraphTogglePref = { [K in keyof GraphPreferences]: GraphPreferences[K] extends boolean ? K : never }[keyof GraphPreferences];
 

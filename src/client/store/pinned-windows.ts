@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { PINNED_WINDOWS_STORAGE_KEY } from '../lib/runtime'
-import type { WikiLinkHoverCardState } from '../features/preview/WikiLinkHoverCard'
+import type { WikiLinkHoverCardState } from '../types/hover-card'
 
 export interface PersistedPinnedWindow {
   id: number

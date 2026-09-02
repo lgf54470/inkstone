@@ -14,27 +14,9 @@ import { MAX_HOVER_CARD_DEPTH, useLinkHover } from './link-hover'
 import { useNoteBacklinks, useNoteCardContent } from './card-content'
 import { pushLinkHoverTarget } from './link-signal'
 import type { PinnedWindowGeometry } from '../../store/pinned-windows'
+import type { WikiLinkHoverCardState, PinnedNoteCardState } from '../../types/hover-card'
 
-export interface WikiLinkHoverCardState {
-  anchor: HTMLElement
-  title: string
-  noteId: string | null
-  missing: boolean
-  headline?: string
-}
-
-export interface PinnedNoteCardState {
-  id: number
-  noteId: string | null
-  title: string
-  missing: boolean
-  headline?: string
-  x: number
-  y: number
-  width: number
-  height: number
-  z: number
-}
+export type { WikiLinkHoverCardState, PinnedNoteCardState }
 
 const MIN_PINNED_WIDTH = 260
 const MIN_PINNED_HEIGHT = 140

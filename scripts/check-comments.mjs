@@ -113,9 +113,6 @@ const allowed = new Map([
     "/* Actions */",
   ]],
   ["src/client/features/graph/GraphPanel.tsx", [
-    "/** How the tag filter combines: any tag (union) or all tags (intersection). */",
-    "/** Whether clearing the sidebar selection also resets the graph's own tag filter. */",
-    "/** Whether clearing the sidebar selection also closes the graph panel. */",
     "// Notes created from unresolved nodes land in the graph's folder scope so",
     "// they inherit the folder name for the `{{folder}}` template placeholder.",
     "// Private browsing or a locked-down browser can reject local preferences.",
@@ -327,6 +324,9 @@ const allowed = new Map([
     "/**\n * Fast ordered-subsequence prefilter with the same acceptance semantics as\n * fuzzyMatch (monotonic indexOf per query character), so it never rejects a\n * candidate fuzzyMatch would accept. Used to shrink large candidate pools\n * (e.g. the note list) before scoring.\n */",
   ]],
   ["src/client/lib/graph-settings.ts", [
+    "/** How the tag filter combines: any tag (union) or all tags (intersection). */",
+    "/** Whether clearing the sidebar selection also resets the graph's own tag filter. */",
+    "/** Whether clearing the sidebar selection also closes the graph panel. */",
     "/** The graph settings toggles: the single source of truth for the panel, docs, and tests. */",
   ]],
   ["src/client/lib/i18n.ts", [

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { WikiLinkHoverCardState } from './WikiLinkHoverCard'
+import type { WikiLinkHoverCardState } from '../../types/hover-card'
 
 export const MAX_HOVER_CARD_DEPTH = 4
 
