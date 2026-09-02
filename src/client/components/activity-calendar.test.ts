@@ -100,3 +100,143 @@ describe('buildStripWeeks', () => {
         expect(monthRangeToKeys(2024, 1, 1)).toEqual({ start: '2024-02-01', end: '2024-02-29' });
     });
 });
+
+import { act, createElement, useState } from 'react';
+import { ActivityCalendar } from './activity-calendar';
+import { renderElement } from '../lib/test-render';
+
+// jsdom has no layout engine, so these guards assert the anti-wrap CSS contract
+// (whitespace-nowrap + truncate) instead of pixel measurement.
+function renderCalendar(): { container: HTMLElement; unmount: () => void } {
+    function Harness() {
+        const [view, setView] = useState<'month' | 'weeks' | 'year'>('month');
+        return createElement('div', { style: { width: 196 } }, createElement(ActivityCalendar, {
+            counts: new Map(),
+            locale: 'en-US',
+            weekStart: 1,
+            today: new Date(2026, 8, 2),
+            view,
+            onViewChange: setView,
+            cursor: { year: 2026, month: 8 },
+            onCursorChange: () => {},
+            onDayClick: () => {},
+            onDaySelect: () => {},
+            onRangeSelect: () => {},
+            onGapDayClick: () => {},
+            onNoteClick: () => {},
+            getDiaryId: () => null,
+        }));
+    }
+    return renderElement(createElement(Harness));
+}
+
+describe('view toggle wrapping contract', () => {
+    it('keeps the toggle buttons single-line inside the 196px sidebar budget', () => {
+        const { container } = renderCalendar();
+        const group = container.querySelector('[aria-label="sidebar.calendar_view"]');
+        expect(group).not.toBeNull();
+        expect(group!.classList.contains('overflow-hidden')).toBe(true);
+        const buttons = [...group!.querySelectorAll('button')];
+        expect(buttons).toHaveLength(3);
+        for (const button of buttons) {
+            expect(button.classList.contains('whitespace-nowrap')).toBe(true);
+            expect(button.classList.contains('min-w-0')).toBe(true);
+            expect(button.textContent).not.toContain('\n');
+            expect(button.querySelector('span.truncate')).not.toBeNull();
+        }
+        container.remove();
+    });
+
+    it('renders the year grid with a weekday strip, clickable columns, and the measured column count', () => {
+        const { container, unmount } = renderCalendar();
+        const toggle = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="sidebar.calendar_view"] button')];
+        act(() => { toggle[2]!.click(); });
+        const grid = container.querySelector('[aria-label="sidebar.calendar_year_grid_aria"]');
+        expect(grid).not.toBeNull();
+        expect(grid!.classList.contains('grid-cols-3')).toBe(true);
+        const cards = [...grid!.querySelectorAll('[data-month-card]')];
+        expect(cards).toHaveLength(12);
+        for (const card of cards) {
+            const weekdayColumns = [...card.querySelectorAll('button[aria-label^="sidebar.calendar_year_weekday"]')];
+            // One seven-column row of clickable weekday labels above the heat cells.
+            expect(weekdayColumns).toHaveLength(7);
+            expect(card.querySelector('[data-month]')!.classList.contains('grid-cols-7')).toBe(true);
+        }
+        unmount();
+    });
+
+    it('moves the year focus by the measured column count (ArrowUp/Down)', () => {
+        const { container, unmount } = renderCalendar();
+        const toggle = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="sidebar.calendar_view"] button')];
+        act(() => { toggle[2]!.click(); });
+        const september = container.querySelector('[data-month="8"]');
+        expect(september).not.toBeNull();
+        (september as HTMLElement).focus();
+        act(() => {
+            september!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+        });
+        expect(document.activeElement?.getAttribute('data-month')).toBe('11');
+        act(() => {
+            document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }));
+        });
+        expect(document.activeElement?.getAttribute('data-month')).toBe('8');
+        unmount();
+    });
+
+    it('respects a fixed columns preference over the measured width', () => {
+        const { container, unmount } = renderElement(createElement('div', { style: { width: 196 } }, createElement(ActivityCalendar, {
+            counts: new Map(),
+            locale: 'en-US',
+            weekStart: 1,
+            today: new Date(2026, 8, 2),
+            view: 'year',
+            onViewChange: () => {},
+            cursor: { year: 2026, month: 8 },
+            onCursorChange: () => {},
+            onDayClick: () => {},
+            onDaySelect: () => {},
+            onRangeSelect: () => {},
+            onGapDayClick: () => {},
+            onNoteClick: () => {},
+            getDiaryId: () => null,
+            columnsPreference: '4',
+        })));
+        const grid = container.querySelector('[aria-label="sidebar.calendar_year_grid_aria"]');
+        expect(grid!.classList.contains('grid-cols-4')).toBe(true);
+        unmount();
+    });
+
+    it('filters the week of the first tapped weekday and jumps to that month', () => {
+        const ranges: string[][] = [];
+        const cursors: { year: number; month: number }[] = [];
+        const views: string[] = [];
+        function Harness() {
+            const [view, setView] = useState<'month' | 'weeks' | 'year'>('year');
+            return createElement('div', null, createElement(ActivityCalendar, {
+                counts: new Map(),
+                locale: 'en-US',
+                weekStart: 1,
+                today: new Date(2026, 8, 2),
+                view,
+                onViewChange: (next) => { views.push(next); setView(next); },
+                cursor: { year: 2026, month: 8 },
+                onCursorChange: (next) => { cursors.push(next); },
+                onDayClick: () => {},
+                onDaySelect: () => {},
+                onRangeSelect: (start, end) => { ranges.push([start, end]); },
+                onGapDayClick: () => {},
+                onNoteClick: () => {},
+                getDiaryId: () => null,
+            }));
+        }
+        const { container, unmount } = renderElement(createElement(Harness));
+        // 2026-09 has the first Monday on the 7th: column 0 (Mon) filters 09-07..09-13.
+        const monday = container.querySelector('[data-month-card="8"] button[aria-label^="sidebar.calendar_year_weekday"]');
+        expect(monday).not.toBeNull();
+        act(() => { (monday as HTMLButtonElement).click(); });
+        expect(ranges).toEqual([['2026-09-07', '2026-09-13']]);
+        expect(cursors).toEqual([{ year: 2026, month: 8 }]);
+        expect(views).toEqual(['month']);
+        unmount();
+    });
+});

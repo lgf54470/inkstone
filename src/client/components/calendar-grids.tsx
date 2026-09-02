@@ -58,19 +58,28 @@ export function buildYearGridMonths(year: number, weekStart: 0 | 1, todayKey?: s
     return Array.from({ length: 12 }, (_, month) => ({ month, cells: buildMonthGridCells(year, month, weekStart, todayKey) }));
 }
 
+export const YEAR_GRID_COLUMNS = 3;
+export type YearGridColumns = 3 | 4;
+export type YearGridColumnsPref = 'auto' | '3' | '4';
+
+export function yearGridColumns(width: number): YearGridColumns {
+    return width >= 300 ? 4 : 3;
+}
+
 export interface YearGridProps {
     year: number;
     weekStart?: 0 | 1;
     todayKey?: string;
+    columns?: YearGridColumns;
     className?: string;
     ariaLabel?: string;
     onKeyDown?: React.KeyboardEventHandler;
     renderMonth: (month: YearGridMonth) => ReactNode;
 }
 
-export function YearGrid({ year, weekStart = 1, todayKey, className, ariaLabel, onKeyDown, renderMonth }: YearGridProps) {
+export function YearGrid({ year, weekStart = 1, todayKey, columns = YEAR_GRID_COLUMNS, className, ariaLabel, onKeyDown, renderMonth }: YearGridProps) {
     const months = useMemo(() => buildYearGridMonths(year, weekStart, todayKey), [year, weekStart, todayKey]);
-    return (<div role="group" aria-label={ariaLabel} onKeyDown={onKeyDown} className={cn('grid grid-cols-12 gap-1 select-none', className)}>
+    return (<div role="group" aria-label={ariaLabel} onKeyDown={onKeyDown} className={cn('grid gap-1 select-none', columns === 4 ? 'grid-cols-4' : 'grid-cols-3', className)}>
         {months.map((month) => (<Fragment key={month.month}>{renderMonth(month)}</Fragment>))}
     </div>);
 }

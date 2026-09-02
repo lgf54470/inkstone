@@ -7,7 +7,7 @@ import { dateKey } from '../lib/time';
 import { latestEditOutsideWindow } from '../features/list/use-rolling-filter';
 import { IconButton } from './primitives';
 import { Tooltip } from './overlay';
-import { MonthGrid, YearGrid, buildMonthGridCells } from './calendar-grids';
+import { MonthGrid, YearGrid, YEAR_GRID_COLUMNS, buildMonthGridCells, yearGridColumns, type YearGridColumns, type YearGridColumnsPref } from './calendar-grids';
 export { latestEditOutsideWindow };
 
 const HEAT_PERCENTS = [0, 16, 34, 54, 76] as const;
@@ -98,10 +98,11 @@ export interface ActivityCalendarProps {
     onRangeSelect: (start: string, end: string) => void;
     onGapDayClick: (key: string) => void;
     onNoteClick: (noteId: string) => void;
+    columnsPreference?: YearGridColumnsPref;
 }
 
 /** Reusable calendar + activity heatmap: navigable month grid, yearly month columns, and a GitHub-style weekly strip, with optional per-day note lists. */
-export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekStart = 1, today, range, selectedRange, latestEditKey, view, onViewChange, cursor, onCursorChange, onDayClick, onDaySelect, onRangeSelect, onGapDayClick, onNoteClick }: ActivityCalendarProps) {
+export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekStart = 1, today, range, selectedRange, latestEditKey, view, onViewChange, cursor, onCursorChange, onDayClick, onDaySelect, onRangeSelect, onGapDayClick, onNoteClick, columnsPreference = 'auto' }: ActivityCalendarProps) {
     const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
     const [expandedDay, setExpandedDay] = useState<string | null>(null);
     const [expandedWeekNotes, setExpandedWeekNotes] = useState(false);
@@ -114,6 +115,21 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
     const dragHoverKey = useRef<string | null>(null);
     const [yearRangeAnchor, setYearRangeAnchor] = useState<{ year: number; month: number } | null>(null);
     const [yearRangeHover, setYearRangeHover] = useState<number | null>(null);
+    const rootRef = useRef<HTMLDivElement | null>(null);
+    const [rootWidth, setRootWidth] = useState<number | null>(null);
+    useEffect(() => {
+        const el = rootRef.current;
+        if (!el)
+            return;
+        setRootWidth(el.getBoundingClientRect().width);
+        const observer = new ResizeObserver((entries) => {
+            for (const entry of entries)
+                setRootWidth(entry.contentRect.width);
+        });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+    const yearColumns: YearGridColumns = columnsPreference !== 'auto' ? (columnsPreference === '4' ? 4 : 3) : (rootWidth === null ? YEAR_GRID_COLUMNS : yearGridColumns(rootWidth));
     if (expandedWeek !== null)
         lastExpandedWeek.current = expandedWeek;
     if (expandedDay !== null)
@@ -300,6 +316,20 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
         ? focusedMonth
         : (isCurrentYear ? now.getMonth() : 0);
 
+    const handleWeekdayClick = (month: number, column: number) => {
+        const first = new Date(cursor.year, month, 1);
+        const offset = (first.getDay() - weekStart + 7) % 7;
+        const day = 1 + ((column - offset + 7) % 7);
+        const date = new Date(cursor.year, month, day);
+        const start = new Date(date);
+        start.setDate(start.getDate() - ((start.getDay() - weekStart + 7) % 7));
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        onCursorChange({ year: cursor.year, month });
+        onViewChange('month');
+        onRangeSelect(dateKey(start), dateKey(end));
+    };
+
     const handleYearGridKeyDown = (event: React.KeyboardEvent) => {
         if (event.key === 'PageUp') {
             event.preventDefault();
@@ -311,7 +341,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
             shiftYear(1);
             return;
         }
-        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
+        if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key))
             return;
         event.preventDefault();
         let index = focusMonth;
@@ -319,6 +349,10 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
             index--;
         else if (event.key === 'ArrowRight')
             index++;
+        else if (event.key === 'ArrowUp')
+            index -= yearColumns;
+        else if (event.key === 'ArrowDown')
+            index += yearColumns;
         else if (event.key === 'Home')
             index = 0;
         else if (event.key === 'End')
@@ -347,7 +381,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
             onDayClick(key, diaryId);
     };
 
-    return (<div onKeyDown={handleRootKeyDown}>
+    return (<div ref={rootRef} onKeyDown={handleRootKeyDown}>
         <div className="mt-1 flex items-center justify-between gap-1 px-0.5">
             <div className="flex items-center gap-0.5">
                 {view === 'month' && (<>
@@ -386,14 +420,14 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                 </>)}
             </div>
             <div role="group" aria-label={t("sidebar.calendar_view")} className="flex overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-default)]">
-                <button type="button" aria-pressed={view === 'month'} onClick={() => onViewChange('month')} className="flex h-6 items-center gap-1 px-2 text-[10.5px] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
-                    <CalendarDays size={11}/>{t("sidebar.calendar_month_view")}
+                <button type="button" aria-pressed={view === 'month'} onClick={() => onViewChange('month')} className="flex h-6 min-w-0 items-center gap-0.5 whitespace-nowrap px-1.5 text-[10.5px] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
+                    <CalendarDays size={10} className="shrink-0"/><span className="truncate">{t("sidebar.calendar_month_view")}</span>
                 </button>
-                <button type="button" aria-pressed={view === 'weeks'} onClick={() => onViewChange('weeks')} className="flex h-6 items-center gap-1 border-l border-[var(--border-default)] px-2 text-[10.5px] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
-                    <BarChart3 size={11}/>{t("sidebar.calendar_week_view")}
+                <button type="button" aria-pressed={view === 'weeks'} onClick={() => onViewChange('weeks')} className="flex h-6 min-w-0 items-center gap-0.5 whitespace-nowrap border-l border-[var(--border-default)] px-1.5 text-[10.5px] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
+                    <BarChart3 size={10} className="shrink-0"/><span className="truncate">{t("sidebar.calendar_week_view")}</span>
                 </button>
-                <button type="button" aria-pressed={view === 'year'} onClick={() => onViewChange('year')} className="flex h-6 items-center gap-1 border-l border-[var(--border-default)] px-2 text-[10.5px] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
-                    <CalendarRange size={11}/>{t("sidebar.calendar_year_view")}
+                <button type="button" aria-pressed={view === 'year'} onClick={() => onViewChange('year')} className="flex h-6 min-w-0 items-center gap-0.5 whitespace-nowrap border-l border-[var(--border-default)] px-1.5 text-[10.5px] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
+                    <CalendarRange size={10} className="shrink-0"/><span className="truncate">{t("sidebar.calendar_year_view")}</span>
                 </button>
             </div>
         </div>
@@ -434,6 +468,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                 year={cursor.year}
                 weekStart={weekStart}
                 todayKey={todayKey}
+                columns={yearColumns}
                 ariaLabel={t("sidebar.calendar_year_grid_aria", { value0: cursor.year })}
                 onKeyDown={handleYearGridKeyDown}
                 className="mt-1.5 px-0.5"
@@ -441,30 +476,35 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                     const inRangePreview = yearRangeAnchor !== null && yearRangeHover !== null
                         && month.month >= Math.min(yearRangeAnchor.month, yearRangeHover)
                         && month.month <= Math.max(yearRangeAnchor.month, yearRangeHover);
-                    return (<button key={month.month} type="button" data-month={month.month} tabIndex={month.month === focusMonth ? 0 : -1} aria-pressed={yearRangeAnchor?.month === month.month} aria-label={t("sidebar.calendar_year_month_value0", { value0: monthLabels[month.month] ?? '', value1: yearMeta.totals[month.month] ?? 0 })} onClick={(event) => {
-                        setFocusedMonth(month.month);
-                        if (event.detail === 0) {
-                            onCursorChange({ year: cursor.year, month: month.month });
-                            onViewChange('month');
-                            return;
-                        }
-                        if (yearRangeAnchor === null) {
-                            setYearRangeAnchor({ year: cursor.year, month: month.month });
-                            setYearRangeHover(month.month);
-                            return;
-                        }
-                        const range = monthRangeToKeys(yearRangeAnchor.year, yearRangeAnchor.month, month.month);
-                        setYearRangeAnchor(null);
-                        setYearRangeHover(null);
-                        onRangeSelect(range.start, range.end);
-                    }} className={cn('flex min-w-0 flex-col items-center gap-1 rounded-[4px] px-px py-1 transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', inRangePreview && 'bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]', yearRangeAnchor?.month === month.month && 'ring-1 ring-inset ring-[var(--accent)]')} onMouseEnter={() => { if (yearRangeAnchor !== null) setYearRangeHover(month.month); }}>
+                    return (<div key={month.month} data-month-card={month.month} className={cn('flex min-w-0 flex-col items-center gap-1 rounded-[4px] px-px py-1 transition-colors hover:bg-[var(--bg-hover)] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--accent)]', inRangePreview && 'bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]', yearRangeAnchor?.month === month.month && 'ring-1 ring-inset ring-[var(--accent)]')} onMouseEnter={() => { if (yearRangeAnchor !== null) setYearRangeHover(month.month); }}>
                         <span className="text-[8.5px] font-medium text-[var(--text-quaternary)]">{monthLabels[month.month]}</span>
-                        <span className="grid w-full grid-cols-7 gap-px">
+                        <span className="grid w-full grid-cols-7 gap-px leading-none">
+                            {weekdayLabels.map((label, index) => (<button key={index} type="button" tabIndex={-1} aria-label={t("sidebar.calendar_year_weekday_value0", { value0: monthLabels[month.month] ?? '', value1: label })} onClick={() => handleWeekdayClick(month.month, index)} className="rounded-[1px] py-px text-center text-[6px] font-medium text-[var(--text-quaternary)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
+                                {label}
+                            </button>))}
+                        </span>
+                        <button type="button" data-month={month.month} tabIndex={month.month === focusMonth ? 0 : -1} aria-label={t("sidebar.calendar_year_month_value0", { value0: monthLabels[month.month] ?? '', value1: yearMeta.totals[month.month] ?? 0 })} onClick={(event) => {
+                            setFocusedMonth(month.month);
+                            if (event.detail === 0) {
+                                onCursorChange({ year: cursor.year, month: month.month });
+                                onViewChange('month');
+                                return;
+                            }
+                            if (yearRangeAnchor === null) {
+                                setYearRangeAnchor({ year: cursor.year, month: month.month });
+                                setYearRangeHover(month.month);
+                                return;
+                            }
+                            const range = monthRangeToKeys(yearRangeAnchor.year, yearRangeAnchor.month, month.month);
+                            setYearRangeAnchor(null);
+                            setYearRangeHover(null);
+                            onRangeSelect(range.start, range.end);
+                        }} className="grid w-full grid-cols-7 gap-px rounded-[2px] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
                             {month.cells.map((cell, index) => (<span key={index} aria-hidden="true" className={cn('aspect-square w-full rounded-[1px]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]')} style={!cell.inMonth
                                 ? { backgroundColor: 'transparent' }
                                 : (yearLevel(cell.key) > 0 ? { backgroundColor: `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[yearLevel(cell.key)]}%, transparent)` } : { backgroundColor: 'var(--bg-inset)' })}/>))}
-                    </span>
-                </button>);
+                        </button>
+                    </div>);
                 }}
             />
             {yearRangeAnchor !== null && (<div className="mt-1 px-0.5 text-[9px] text-[var(--text-tertiary)]">

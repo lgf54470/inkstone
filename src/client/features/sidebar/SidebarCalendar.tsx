@@ -9,6 +9,7 @@ import { useUi } from '../../store/ui';
 import { ActivityCalendar, CalendarDayNote } from '../../components/activity-calendar';
 import { CalendarView, loadCalendarPersist, saveCalendarPersist } from './calendar-persist';
 import { useGapIndicatorStore } from '../list/use-gap-indicator';
+import { useYearGridColumns } from '../../lib/year-grid-prefs';
 
 export function SidebarCalendar() {
     const locale = useLocale();
@@ -17,6 +18,7 @@ export function SidebarCalendar() {
     const createNote = useNotes((s) => s.createNote);
     const toast = useUi((s) => s.toast);
     const dateFilter = useUi((s) => s.dateFilter);
+    const yearGridColumns = useYearGridColumns();
     const [persisted] = useState(loadCalendarPersist);
     const [collapsed, setCollapsed] = useState(persisted.collapsed);
     const [view, setView] = useState<CalendarView>(persisted.view);
@@ -130,7 +132,7 @@ aliases:
                 <ChevronDown size={11} className={cn('shrink-0 text-[var(--text-quaternary)] transition-transform duration-[var(--dur-fast)]', collapsed && '-rotate-90')}/>
             </button>
         </div>
-        {!collapsed && (<ActivityCalendar counts={counts} notesByDay={notesByDay} getDiaryId={getDiaryId} locale={locale} weekStart={weekStart} today={now} selectedRange={dateFilter} latestEditKey={latestEditKey} view={view} onViewChange={setView} cursor={cursor} onCursorChange={setCursor}            onDayClick={(key, diaryId) => void handleDayClick(key, diaryId)} onDaySelect={(key) => applyDateFilter({ start: key, end: key })} onRangeSelect={(start, end) => applyDateFilter({ start, end })}
+        {!collapsed && (<ActivityCalendar counts={counts} notesByDay={notesByDay} getDiaryId={getDiaryId} locale={locale} weekStart={weekStart} today={now} selectedRange={dateFilter} latestEditKey={latestEditKey} view={view} onViewChange={setView} cursor={cursor} onCursorChange={setCursor} columnsPreference={yearGridColumns}            onDayClick={(key, diaryId) => void handleDayClick(key, diaryId)} onDaySelect={(key) => applyDateFilter({ start: key, end: key })} onRangeSelect={(start, end) => applyDateFilter({ start, end })}
             onGapDayClick={(key) => {
                 const relative = useUi.getState().relativeFilter;
                 if (relative)

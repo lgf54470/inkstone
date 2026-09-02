@@ -26,6 +26,19 @@ const allowed = new Map([
     "/** Reusable calendar + activity heatmap: navigable month grid, yearly month columns, and a GitHub-style weekly strip, with optional per-day note lists. */",
     "/** Convert an inclusive month range (0-11 indices within a year) to inclusive day keys. */",
   ]],
+  ["src/client/components/activity-calendar.test.ts", [
+    "// jsdom has no layout engine, so these guards assert the anti-wrap CSS contract",
+    "// (whitespace-nowrap + truncate) instead of pixel measurement.",
+    "// 2026-09 has the first Monday on the 7th: column 0 (Mon) filters 09-07..09-13.",
+    "// One seven-column row of clickable weekday labels above the heat cells.",
+  ]],
+  ["src/client/lib/test-render.ts", [
+    "/** Idempotent jsdom shims needed to render React components in unit tests. */",
+    "/** Render a React node into a fresh container appended to document.body (portals land on body as usual). */",
+  ]],
+  ["src/client/components/date-range-popover.test.ts", [
+    "// Three fixed pills + two default custom presets + the pencil button.",
+  ]],
   ["src/client/components/date-range-popover.tsx", [
     "/** Compute the day keys for a fixed quick preset range anchored at `today`. */",
     "/** Move a preset within its list by one position (no-op at the edges). */",

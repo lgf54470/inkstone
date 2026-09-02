@@ -4,6 +4,7 @@ import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { Segmented, SettingRow, Slider, Switch, type SegmentedOption } from '../../components/form'
 import { setCalendarTreeShowEmpty, setCalendarTreeVisible, useCalendarTreeShowEmpty, useCalendarTreeVisible } from '../../lib/calendar-prefs'
+import { setYearGridColumns, useYearGridColumns, type YearGridColumnsPref } from '../../lib/year-grid-prefs'
 import { Tooltip } from '../../components/overlay'
 import { useSession } from '../../store/session'
 import { switchThemeWithTransition } from '../../store/ui'
@@ -29,6 +30,7 @@ export function AppearanceSettings({
   const locale = useLocale()
   const calendarTreeVisible = useCalendarTreeVisible()
   const calendarTreeShowEmpty = useCalendarTreeShowEmpty()
+  const yearGridColumns = useYearGridColumns()
 
   const setLanguage = useCallback((language: AppLocale) => void update({ appearance: { language } }), [update])
   const setTheme = useCallback((theme: ThemePref) => {
@@ -66,6 +68,12 @@ export function AppearanceSettings({
     { value: 'normal', label: t("settings.standard") },
     { value: 'wide', label: t("settings.wide") },
     { value: 'full', label: t("settings.full") },
+  ]), [locale])
+
+  const yearGridOptions: SegmentedOption<YearGridColumnsPref>[] = useMemo(() => ([
+    { value: 'auto', label: t("settings.year_grid_columns_auto") },
+    { value: '3', label: t("settings.year_grid_columns_three") },
+    { value: '4', label: t("settings.year_grid_columns_four") },
   ]), [locale])
 
   return (
@@ -159,6 +167,15 @@ export function AppearanceSettings({
 
         <SettingRow title={t("settings.show_empty_calendar_periods")} description={t("settings.show_empty_calendar_periods_desc")}>
           <Switch checked={calendarTreeShowEmpty} onChange={setCalendarTreeShowEmpty} label={t("settings.show_empty_calendar_periods")}/>
+        </SettingRow>
+
+        <SettingRow title={t("settings.year_grid_columns")} description={t("settings.year_grid_columns_desc")}>
+          <Segmented<YearGridColumnsPref>
+            label={t("settings.year_grid_columns")}
+            value={yearGridColumns}
+            onChange={setYearGridColumns}
+            options={yearGridOptions}
+          />
         </SettingRow>
       </section>
 

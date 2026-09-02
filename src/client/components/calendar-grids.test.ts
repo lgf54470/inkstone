@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { buildMonthGridCells, buildYearGridMonths } from './calendar-grids';
+import { YEAR_GRID_COLUMNS, buildMonthGridCells, buildYearGridMonths, yearGridColumns } from './calendar-grids';
+
+describe('year grid layout', () => {
+    it('lays the twelve months out in a 3-column grid by default', () => {
+        expect(YEAR_GRID_COLUMNS).toBe(3);
+        expect(buildYearGridMonths(2026, 1)).toHaveLength(12);
+        expect(12 % YEAR_GRID_COLUMNS).toBe(0);
+    });
+
+    it('switches from 3 to 4 columns once the container is wide enough', () => {
+        expect(yearGridColumns(196)).toBe(3);
+        expect(yearGridColumns(299)).toBe(3);
+        expect(yearGridColumns(300)).toBe(4);
+        expect(yearGridColumns(380)).toBe(4);
+        expect(12 % 4).toBe(0);
+    });
+});
 
 describe('buildMonthGridCells', () => {
     it('aligns the month grid to the week start', () => {
