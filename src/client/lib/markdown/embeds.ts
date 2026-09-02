@@ -4,6 +4,7 @@ import { api } from '../api'
 import { t } from '../i18n'
 import { findNoteByTitle } from '../../store/notes/selectors'
 import { useNotes } from '../../store/notes'
+import { useSession } from '../../store/session'
 import { decodeDataValue } from './data-attr'
 import { parseWikiTarget, renderMarkdown } from './renderer'
 
@@ -102,7 +103,9 @@ async function resolveWithin(
       const body = embed.querySelector<HTMLElement>('.note-embed-body')
       const head = embed.querySelector<HTMLElement>('.note-embed-head')
       if (!body) continue
-      const rendered = renderMarkdown(resolved.markdown)
+      const rendered = renderMarkdown(resolved.markdown, {
+        externalImages: useSession.getState().settings.preview.externalImages,
+      })
       body.innerHTML = rendered.html
       body.querySelectorAll<HTMLInputElement>('input.task-list-item-checkbox').forEach((input) => {
         input.disabled = true

@@ -1,4 +1,5 @@
 import { renderMarkdown } from './markdown/renderer'
+import { useSession } from '../store/session'
 
 const KATEX_CSS_URL = 'https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css'
 
@@ -21,13 +22,15 @@ export function exportNoteAsMarkdown(note: { title: string; content: string }): 
 }
 
 export async function exportNoteAsHtml(note: { title: string; content: string }, language: string): Promise<void> {
-  const rendered = renderMarkdown(note.content)
+  // Respect the user's external-images choice: when blocked, exported HTML
+  // shows the same placeholder as the preview instead of leaking image URLs.
+  const rendered = renderMarkdown(note.content, { externalImages: useSession.getState().settings.preview.externalImages })
   const body = await inlinePrivateImages(rendered.html)
   downloadTextFile(`${safeFileName(note.title) || 'note'}.html`, htmlDocument(note.title, body, language), 'text/html;charset=utf-8')
 }
 
 export async function exportNoteAsPdf(note: { title: string; content: string }, language: string): Promise<void> {
-  const rendered = renderMarkdown(note.content)
+  const rendered = renderMarkdown(note.content, { externalImages: useSession.getState().settings.preview.externalImages })
   const body = await inlinePrivateImages(rendered.html)
   const html = htmlDocument(note.title, body, language)
   await printHtml(html)

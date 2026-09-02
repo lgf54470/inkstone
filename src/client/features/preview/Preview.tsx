@@ -73,7 +73,7 @@ export const Preview = memo(function Preview({
 
 
   const debounced = useDebounced(content, 90)
-  const rendered = useMemo(() => renderMarkdown(debounced), [debounced, locale])
+  const rendered = useMemo(() => renderMarkdown(debounced, { externalImages: preview.externalImages }), [debounced, locale, preview.externalImages])
   const embedContextTitle = rendered.hasEmbeds ? currentTitle : ''
   const [committedHtml, setCommittedHtml] = useState(rendered.html)
   const committedHtmlRef = useRef(committedHtml)

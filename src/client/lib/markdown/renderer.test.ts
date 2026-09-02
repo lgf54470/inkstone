@@ -72,6 +72,27 @@ describe('renderMarkdown XSS hardening', () => {
     })
   })
 
+  it('blocks external https images by default', () => {
+    const rendered = renderMarkdown('![](https://evil.example/track.png)')
+    expect(rendered.html).not.toContain('<img')
+    const figure = parse(rendered.html).querySelector('figure.image-blocked')
+    expect(figure).not.toBeNull()
+    expect(figure!.getAttribute('data-image-blocked')).toBe('https://evil.example/track.png')
+  })
+
+  it('keeps relative and same-origin image sources when blocked', () => {
+    const rendered = renderMarkdown('![alt](/api/files/self.png)')
+    const img = parse(rendered.html).querySelector('img')
+    expect(img?.getAttribute('src')).toBe('/api/files/self.png')
+  })
+
+  it('renders external images when externalImages is explicitly allowed', () => {
+    const rendered = renderMarkdown('![alt](https://evil.example/track.png)', { externalImages: true })
+    const img = parse(rendered.html).querySelector('img')
+    expect(img?.getAttribute('src')).toBe('https://evil.example/track.png')
+    expect(rendered.html).not.toContain('image-blocked')
+  })
+
   it('forces noopener noreferrer on external links', () => {
     const rendered = renderMarkdown('[site](https://example.com)')
     const anchor = parse(rendered.html).querySelector('a')!

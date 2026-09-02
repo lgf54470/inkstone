@@ -4,6 +4,7 @@ import { enhancePreview } from '../../lib/markdown/enhance'
 import { getNoteBacklinks } from '../../lib/backlinks'
 import { useDebounced } from '../../lib/hooks'
 import { useNotes } from '../../store/notes'
+import { useSession } from '../../store/session'
 import type { Backlink } from '@shared/types'
 
 export interface NoteCardContent {
@@ -70,11 +71,12 @@ export function useNoteCardContent(
           return
         }
         const truncatedContent = limitPreviewLength(content, maxLength)
-        const cacheKey = [target.noteId, rev, hashString(truncatedContent), previewMath ? 1 : 0, dark ? 1 : 0].join(':')
+        const externalImages = useSession.getState().settings.preview.externalImages
+        const cacheKey = [target.noteId, rev, hashString(truncatedContent), previewMath ? 1 : 0, dark ? 1 : 0, externalImages ? 1 : 0].join(':')
         let nextHtml = htmlCache.get(cacheKey)
         if (nextHtml === undefined) {
           const staging = document.createElement('div')
-          staging.innerHTML = renderMarkdown(truncatedContent).html
+          staging.innerHTML = renderMarkdown(truncatedContent, { externalImages }).html
           if (staging.querySelector('pre code') || staging.querySelector('[data-math]')) {
             await enhancePreview(staging, {
               math: previewMath,

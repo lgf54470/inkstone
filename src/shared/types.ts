@@ -126,6 +126,12 @@ export interface PreviewSettings {
   linkHover: boolean
   linkHoverDelayMs: number
   linkPreviewLength: number
+  /** Load external (https) images in rendered notes. Off by default: external
+   *  images are replaced with a blocked placeholder (renderer-level), and the
+   *  server drops `https:` from CSP `img-src` while it is off — so raw-HTML
+   *  images in notes stay blocked on the app page and are ALWAYS blocked on
+   *  share pages (/s/*), where visitors never opt in. */
+  externalImages: boolean
 }
 
 export interface BackupSettings {

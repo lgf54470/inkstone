@@ -87,6 +87,9 @@ export function SharePage({ slug }: {
     const rendered = useMemo(() => {
         if (!note)
             return null;
+        // Share pages always block external images (no option): visitors never
+        // opt in, so third parties cannot track them via note images. The
+        // server enforces this too by omitting `https:` from CSP img-src on /s/*.
         const result = renderMarkdown(note.content);
         return {
             ...result,

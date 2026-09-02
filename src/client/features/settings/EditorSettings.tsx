@@ -30,6 +30,7 @@ export function EditorSettings() {
     const setCodeBlockCollapseLines = useCallback((codeBlockCollapseLines: number) => void update({ preview: { codeBlockCollapseLines } }), [update]);
     const setShowToc = useCallback((showToc: boolean) => void update({ preview: { showToc } }), [update]);
     const setLinkHover = useCallback((linkHover: boolean) => void update({ preview: { linkHover } }), [update]);
+    const setExternalImages = useCallback((externalImages: boolean) => void update({ preview: { externalImages } }), [update]);
     const setLinkHoverDelayMs = useCallback((linkHoverDelayMs: number) => void update({ preview: { linkHoverDelayMs } }), [update]);
     const setLinkPreviewLength = useCallback((linkPreviewLength: number) => void update({ preview: { linkPreviewLength } }), [update]);
 
@@ -102,6 +103,10 @@ export function EditorSettings() {
 
         <SettingRow title={t("settings.link_hover_preview")} description={t("settings.link_hover_preview_description")}>
           <Switch checked={preview.linkHover} onChange={setLinkHover} label={t("settings.link_hover_preview")}/>
+        </SettingRow>
+
+        <SettingRow title={t("settings.external_images")} description={t("settings.external_images_description")}>
+          <Switch checked={preview.externalImages} onChange={setExternalImages} label={t("settings.external_images")}/>
         </SettingRow>
 
         {preview.linkHover && <>

@@ -846,6 +846,21 @@
   font-size: 0.82em;
   color: var(--text-tertiary);
 }
+.ink-prose figure.image-blocked {
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  padding: 0.9em 1em;
+  background: var(--bg-inset);
+  text-align: center;
+}
+.ink-prose .image-blocked-label {
+  display: block;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+.ink-prose .image-blocked-fallback {
+  margin-top: 0.35em;
+}
 
 
 .ink-prose hr {

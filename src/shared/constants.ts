@@ -139,6 +139,10 @@ export const DEFAULT_SETTINGS: UserSettings = {
     linkHover: true,
     linkHoverDelayMs: 320,
     linkPreviewLength: 4000,
+    // External https images are blocked by default (renderer placeholder + CSP
+    // `img-src` without `https:`); opt in per user. Share pages stay blocked
+    // regardless of this value.
+    externalImages: false,
   },
   backup: {
     schedule: 'sixHourly',
@@ -305,6 +309,10 @@ function mergeSettingsSection(
           150,
           1000,
           current.linkHoverDelayMs as number,
+        ),
+        externalImages: booleanValue(
+          patch.externalImages,
+          current.externalImages as boolean,
         ),
         linkPreviewLength: integerInRange(
           patch.linkPreviewLength,

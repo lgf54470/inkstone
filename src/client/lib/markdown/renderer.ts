@@ -35,6 +35,8 @@ interface RenderEnvironment {
     tabSequence: number;
     exampleSequence: number;
     docId: string;
+    /** `true` when the caller opted into loading external https images (preview.externalImages). */
+    externalImages: boolean;
 }
 export interface WikiTarget {
     raw: string;
@@ -470,6 +472,7 @@ md.renderer.rules.fence = (tokens, index, _options, rendererEnv) => {
         childEnv.tabSequence = parentEnv.tabSequence;
         childEnv.exampleSequence = parentEnv.exampleSequence;
         childEnv.docId = `${parentEnv.docId}-example-${exampleId}`;
+        childEnv.externalImages = parentEnv.externalImages;
         const preview = md.render(stripObsidianComments(token.content), childEnv).replace(/ data-line="\d+"/g, '');
         parentEnv.hasMath ||= childEnv.hasMath;
         parentEnv.hasMermaid ||= childEnv.hasMermaid;
@@ -519,6 +522,21 @@ md.renderer.rules.table_close = () => '</table></div>';
 const defaultImage = md.renderer.rules.image;
 md.renderer.rules.image = (tokens, index, options, env, self) => {
     const token = tokens[index]!;
+    const src = token.attrGet('src') ?? '';
+    // External https images are blocked by default (privacy default; the server
+    // CSP drops `https:` from img-src while preview.externalImages is off, so
+    // this is defense-in-depth for raw-HTML images too). Same-origin http(s)
+    // URLs, relative paths, data:/blob: keep loading, and the whole check is
+    // skipped when the caller passes `{ externalImages: true }`.
+    if (renderEnv(env).externalImages !== true && isExternalImageUrl(src)) {
+        // Placeholder instead of a broken <img>: the browser never loads an
+        // external image while blocked, so no request leaves the origin.
+        const alt = token.content ? escapeHtml(token.content) : '';
+        return `<figure class="image-blocked" data-image-blocked="${escapeAttr(src)}">` +
+            `<span class="image-blocked-label">${escapeHtml(t("markdown.external_image_blocked"))}</span>` +
+            (alt ? `<figcaption class="image-blocked-fallback">${alt}</figcaption>` : '') +
+            `</figure>`;
+    }
     token.attrSet('loading', 'lazy');
     token.attrSet('decoding', 'async');
     token.attrSet('referrerpolicy', 'no-referrer');
@@ -528,6 +546,19 @@ md.renderer.rules.image = (tokens, index, options, env, self) => {
         : self.renderToken(tokens, index, options);
     return title ? `<figure>${rendered}<figcaption>${escapeHtml(title)}</figcaption></figure>` : rendered;
 };
+/** True for http(s) URLs that point to a different origin than the app itself. */
+function isExternalImageUrl(src: string): boolean {
+    if (!/^https?:/i.test(src))
+        return false;
+    try {
+        const base = typeof location === 'undefined' ? 'http://localhost/' : location.href;
+        const origin = typeof location === 'undefined' ? 'http://localhost/' : location.origin;
+        return new URL(src, base).origin !== origin;
+    }
+    catch {
+        return false;
+    }
+}
 const defaultLink = md.renderer.rules.link_open;
 md.renderer.rules.link_open = (tokens, index, options, env, self) => {
     const href = tokens[index]!.attrGet('href') ?? '';
@@ -602,6 +633,7 @@ const PURIFY_CONFIG = {
         'data-highlight-lines',
         'data-markdown-example',
         'data-markdown-example-id',
+        'data-image-blocked',
         'target',
         'loading',
         'decoding',
@@ -642,8 +674,12 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
         node.setAttribute('rel', 'noopener noreferrer');
     }
 });
-export function renderMarkdown(source: string): RenderResult {
+export function renderMarkdown(source: string, options?: {
+    /** Allow external https images; defaults to false (blocked). */
+    externalImages?: boolean;
+}): RenderResult {
     const env = emptyEnvironment();
+    env.externalImages = options?.externalImages === true;
     const raw = md.render(stripObsidianComments(source), env);
     const sanitized = DOMPurify.sanitize(raw, PURIFY_CONFIG);
     const html = materializeTrustedTasks(sanitized, env.taskNonce);
@@ -799,6 +835,7 @@ function emptyEnvironment(): RenderEnvironment {
         tabSequence: 0,
         exampleSequence: 0,
         docId: `ink-${nonce}`,
+        externalImages: false,
     };
 }
 function renderEnv(value: unknown): RenderEnvironment {
