@@ -1,5 +1,5 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDownWideNarrow, Bookmark, CalendarDays, Check, CheckSquare2, ChevronLeft, ChevronRight, Columns2, Copy, FileCode, FileDown, FileText, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
+import { Archive, ArrowDownWideNarrow, Bookmark, CalendarDays, Check, CheckSquare2, ChevronLeft, ChevronRight, Columns2, Copy, FileCode, FileDown, FileText, FolderClosed, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
 import type { DateRangeFilter, NoteSummary, SortKey, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { groupLabel } from '../../lib/time';
@@ -24,7 +24,7 @@ import { useNotes } from '../../store/notes';
 import { useNoteTemplates } from '../../store/note-templates';
 import { createNoteFromTemplate } from '../../lib/template-notes';
 import { CALENDAR_TREE, calendarPeriodLabel, calendarPeriodsForDate, filterTodoNotes, isTodoFolderId, isVirtualFolderId, type CalendarNode, parseVirtualId, resolveTodoTag, TODO_TREE, virtualAncestorIds, virtualId, virtualNearestNeighbors, virtualPathSegments, virtualPeriodKeyRange } from '../../lib/calendar-tree';
-import { folderPathLabel } from '../../lib/folders';
+import { folderPathLabel, openFolderView } from '../../lib/folders';
 import { FolderPicker } from '../folders/FolderPicker';
 import { MoveToFolderSubmenu } from '../folders/MoveToFolderSubmenu';
 import { CreateFolderModal } from '../folders/CreateFolderModal';
@@ -540,6 +540,10 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
     const purgeNote = useNotes((s) => s.purgeNote);
     const duplicateNote = useNotes((s) => s.duplicateNote);
     const folders = useNotes((s) => s.folders);
+    const view = useUi((s) => s.view);
+    const activeFolderId = useUi((s) => s.folderId);
+    const noteFolder = note.folderId ? folders.find((f) => f.id === note.folderId) ?? null : null;
+    const showFolderPill = Boolean(noteFolder && !(view === 'folder' && activeFolderId === note.folderId));
     const menu = useContextMenu();
     const menuButtonRef = useRef<HTMLButtonElement>(null);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -729,6 +733,29 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
                       {part.text}
                     </mark>) : (<span key={i}>{part.text}</span>))}
               </h3>
+              {showFolderPill && noteFolder && density === 'compact' && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openFolderView(folders, note.folderId!);
+                  }}
+                  title={noteFolder.name}
+                  className="inline-flex max-w-[120px] shrink-0 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-1.5 py-px text-[10px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
+                >
+                  {noteFolder.color ? (
+                    <span
+                      className="size-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: noteFolder.color }}
+                    />
+                  ) : noteFolder.icon ? (
+                    <span className="shrink-0 text-[10px] leading-none">{noteFolder.icon}</span>
+                  ) : (
+                    <FolderClosed size={9} className="shrink-0 opacity-70" />
+                  )}
+                  <span className="truncate">{noteFolder.name}</span>
+                </button>
+              )}
               {note.isStarred && <Star size={10} className="anim-mark-enter shrink-0 fill-current text-[var(--warning)]"/>}
             </div>
 
@@ -736,8 +763,31 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
                 {note.excerpt}
               </p>)}
 
-            {note.tags.length > 0 && density === 'comfortable' && (
+            {density === 'comfortable' && (note.tags.length > 0 || (showFolderPill && noteFolder)) && (
               <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1 overflow-hidden">
+                {showFolderPill && noteFolder && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openFolderView(folders, note.folderId!);
+                    }}
+                    title={noteFolder.name}
+                    className="inline-flex max-w-[140px] items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-2 py-0.5 text-[10.5px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
+                  >
+                    {noteFolder.color ? (
+                      <span
+                        className="size-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: noteFolder.color }}
+                      />
+                    ) : noteFolder.icon ? (
+                      <span className="shrink-0 text-[10px] leading-none">{noteFolder.icon}</span>
+                    ) : (
+                      <FolderClosed size={10} className="shrink-0 opacity-70" />
+                    )}
+                    <span className="truncate">{noteFolder.name}</span>
+                  </button>
+                )}
                 {note.tags.map((tag) => (
                   <TagPill
                     key={tag}
