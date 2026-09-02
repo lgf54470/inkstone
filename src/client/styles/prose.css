@@ -812,16 +812,17 @@
 }
 
 .ink-prose .inline-tag {
-  color: var(--accent);
-  background: var(--accent-softer);
+  color: var(--tag-color, var(--accent));
+  background: var(--tag-bg, var(--accent-softer));
   padding: 0.06em 0.4em;
   border-radius: 999px;
   font-size: 0.9em;
   cursor: pointer;
   white-space: nowrap;
+  transition: background var(--dur-fast), opacity var(--dur-fast);
 }
 .ink-prose .inline-tag:hover {
-  background: var(--accent-soft);
+  background: var(--tag-bg-hover, var(--accent-soft));
 }
 
 

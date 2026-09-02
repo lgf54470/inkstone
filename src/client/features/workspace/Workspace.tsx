@@ -144,7 +144,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
             .sort((a, b) => b.updatedAt - a.updatedAt)
             .slice(0, 300)
             .map((n) => ({ id: n.id, title: n.title, excerpt: n.excerpt })),
-        tags: () => tags.map((t) => ({ name: t.name, count: t.count })),
+        tags: () => tags.map((t) => ({ name: t.name, count: t.count, color: t.color, isPinned: Boolean(t.isPinned) })),
     }), [notes, tags, note?.id]);
     const handlers = useMemo(() => ({
         uploadFile: async (file: File) => {

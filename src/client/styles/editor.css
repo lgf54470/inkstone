@@ -184,10 +184,11 @@
   color: var(--text-quaternary);
 }
 .cm-md-tag {
-  color: var(--accent);
-  background: var(--accent-softer);
+  color: var(--tag-color, var(--accent));
+  background: var(--tag-bg, var(--accent-softer));
   border-radius: 999px;
   padding: 0.03em 0.36em;
+  cursor: pointer;
 }
 .cm-md-wikilink {
   color: var(--accent);

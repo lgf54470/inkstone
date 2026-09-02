@@ -12,6 +12,8 @@ export interface CompletionSources {
     tags: () => {
         name: string;
         count: number;
+        color?: string | null;
+        isPinned?: boolean;
     }[];
 }
 
@@ -83,16 +85,21 @@ export function tagSource(getSources: () => CompletionSources) {
             const match = query ? fuzzyMatch(tag.name, query) : { score: tag.count, ranges: [] };
             if (!match)
                 continue;
+            const pinBoost = tag.isPinned ? 50 : 0;
+            const detailText = [
+                tag.isPinned ? '📌' : '',
+                t("common.value0_notes", { value0: tag.count }),
+            ].filter(Boolean).join(' ');
             options.push({
                 label: tag.name,
-                detail: t("common.value0_notes", { value0: tag.count }),
-                boost: match.score / 10 + Math.min(tag.count, 20) / 10,
+                detail: detailText,
+                boost: pinBoost + match.score / 10 + Math.min(tag.count, 20) / 10,
                 type: 'keyword',
             });
         }
         if (!options.length)
             return null;
-        return { from, options: options.slice(0, 20), filter: false, validFor: /^[\p{L}\p{N}_\-/·]{0,60}$/u };
+        return { from, options: options.slice(0, 24), filter: false, validFor: /^[\p{L}\p{N}_\-/·]{0,60}$/u };
     };
 }
 const LANGUAGES = [

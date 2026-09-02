@@ -1,6 +1,7 @@
 import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { RangeSetBuilder, StateEffect } from '@codemirror/state'
 import { syntaxTree } from '@codemirror/language'
+import { useUi } from '../store/ui'
 
 
 const taskDone = Decoration.mark({ class: 'cm-md-task-done' })
@@ -91,7 +92,27 @@ export const markdownDecorations = ViewPlugin.fromClass(
       }
     }
   },
-  { decorations: (plugin) => plugin.decorations },
+  {
+    decorations: (plugin) => plugin.decorations,
+    eventHandlers: {
+      click(event) {
+        if (event.metaKey || event.ctrlKey) {
+          const target = event.target as HTMLElement | null
+          const tagEl = target?.closest<HTMLElement>('.cm-md-tag')
+          if (tagEl) {
+            const text = tagEl.textContent?.trim()
+            if (text && text.startsWith('#')) {
+              const tagName = text.slice(1)
+              useUi.getState().openView('tag', { tag: tagName })
+              event.preventDefault()
+              return true
+            }
+          }
+        }
+        return false
+      },
+    },
+  },
 )
 
 

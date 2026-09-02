@@ -95,6 +95,35 @@ export const Preview = memo(function Preview({
   }, [rendered.headings, onHeadings])
 
 
+  const allTags = useNotes((s) => s.tags ?? [])
+  const tagColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const t of allTags) {
+      if (t.color) map.set(t.name, t.color)
+    }
+    return map
+  }, [allTags])
+
+  useEffect(() => {
+    if (!hostRef.current) return
+    const tagElements = hostRef.current.querySelectorAll<HTMLElement>('.inline-tag[data-tag]')
+    tagElements.forEach((el) => {
+      const raw = el.dataset.tag
+      if (!raw) return
+      const name = decodeDataValue(raw)
+      const color = tagColorMap.get(name)
+      if (color) {
+        el.style.setProperty('--tag-color', color)
+        el.style.setProperty('--tag-bg', `${color}18`)
+        el.style.setProperty('--tag-bg-hover', `${color}2c`)
+      } else {
+        el.style.removeProperty('--tag-color')
+        el.style.removeProperty('--tag-bg')
+        el.style.removeProperty('--tag-bg-hover')
+      }
+    })
+  }, [committedHtml, tagColorMap])
+
   useEffect(() => {
     const observer = new MutationObserver(() => {
       const next = document.documentElement.dataset.theme ?? 'dark'
