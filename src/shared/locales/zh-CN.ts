@@ -1372,6 +1372,7 @@ export const ZH_CN_MESSAGES = {
     "contextmenu.math_delete": "删除公式",
     "contextmenu.math_jump_to_editor": "在编辑器中定位公式",
     "contextmenu.code_copy": "复制代码内容",
+    "contextmenu.code_format": "格式化代码",
     "contextmenu.code_select": "选中代码块",
     "contextmenu.code_change_lang": "切换语言",
     "contextmenu.code_delete": "删除代码块",

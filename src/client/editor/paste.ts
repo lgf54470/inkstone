@@ -38,10 +38,24 @@ export function pasteExtension(handlers: PasteHandlers) {
                 void insertFiles(view, files, handlers);
                 return true;
             }
-            const text = clipboard.getData('text/plain')?.trim();
+            const range = view.state.selection.main;
+            const plainText = clipboard.getData('text/plain');
+
+            if (isInsideCodeBlock(view.state.doc, range.from)) {
+                if (plainText) {
+                    event.preventDefault();
+                    view.dispatch({
+                        changes: { from: range.from, to: range.to, insert: plainText },
+                        selection: EditorSelection.cursor(range.from + plainText.length),
+                        userEvent: 'input.paste',
+                    });
+                    return true;
+                }
+            }
+
+            const text = plainText?.trim();
 
             if (text && URL_RE.test(text)) {
-                const range = view.state.selection.main;
                 if (!range.empty) {
                     const selected = view.state.sliceDoc(range.from, range.to);
                     if (!URL_RE.test(selected.trim())) {
@@ -58,11 +72,24 @@ export function pasteExtension(handlers: PasteHandlers) {
             }
 
             const html = clipboard.getData('text/html');
+            const isFromVsCode =
+                (clipboard.types && Array.from(clipboard.types).includes('vscode-editor-data')) ||
+                (html && (html.includes('vscode-light') || html.includes('vscode-dark') || html.includes('white-space: pre') || html.includes('white-space:pre')));
+
+            if (isFromVsCode && plainText) {
+                event.preventDefault();
+                view.dispatch({
+                    changes: { from: range.from, to: range.to, insert: plainText },
+                    selection: EditorSelection.cursor(range.from + plainText.length),
+                    userEvent: 'input.paste',
+                });
+                return true;
+            }
+
             if (html && !looksLikeMarkdown(text)) {
                 const markdown = htmlToMarkdown(html);
                 if (markdown && markdown !== text) {
                     event.preventDefault();
-                    const range = view.state.selection.main;
                     view.dispatch({
                         changes: { from: range.from, to: range.to, insert: markdown },
                         selection: EditorSelection.cursor(range.from + markdown.length),
@@ -182,6 +209,7 @@ export function htmlToMarkdown(html: string): string {
             case 'h6':
                 return `\n\n${'#'.repeat(Number(tag[1]))} ${children().trim()}\n\n`;
             case 'p':
+            case 'div':
                 return `\n\n${children().trim()}\n\n`;
             case 'br':
                 return '\n';
@@ -317,4 +345,20 @@ function inlineCode(value: string): string {
 
 function longestRun(value: string, character: string): number {
     return Math.max(0, ...[...value.matchAll(new RegExp(`${character}+`, 'g'))].map((match) => match[0].length));
+}
+
+export function isInsideCodeBlock(doc: { lines: number; line: (n: number) => { text: string; number: number }; lineAt?: (pos: number) => { number: number } }, pos: number): boolean {
+    const currentLine = doc.lineAt ? doc.lineAt(pos) : doc.line(1);
+    let inFence = false;
+    for (let i = 1; i <= currentLine.number; i++) {
+        const line = doc.line(i);
+        const match = /^\s*(`{3,}|~{3,})/.exec(line.text);
+        if (match) {
+            if (i === currentLine.number) {
+                return true;
+            }
+            inFence = !inFence;
+        }
+    }
+    return inFence;
 }

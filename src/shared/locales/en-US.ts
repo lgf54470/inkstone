@@ -1371,6 +1371,7 @@ export const EN_US_MESSAGES = {
     "contextmenu.math_delete": "Delete Math",
     "contextmenu.math_jump_to_editor": "Locate Formula in Editor",
     "contextmenu.code_copy": "Copy Code",
+    "contextmenu.code_format": "Format Code",
     "contextmenu.code_select": "Select Code Block",
     "contextmenu.code_change_lang": "Change Language",
     "contextmenu.code_delete": "Delete Code Block",

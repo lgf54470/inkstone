@@ -62,6 +62,7 @@ import {
   tableToCsv,
   type ParsedTable,
 } from '../../lib/markdown/table-editor';
+import { formatCode } from '../../lib/markdown/code-formatter';
 import {
   insertCallout,
   insertCodeBlock,
@@ -645,6 +646,26 @@ export function EditorContextMenu({
         ...(editorContext?.codeBlock
           ? [
               {
+                id: 'format-code',
+                label: t('contextmenu.code_format'),
+                icon: <Sparkles size={14} />,
+                onSelect: () => {
+                  if (!editorView || !editorContext.codeBlock) return;
+                  const cb = editorContext.codeBlock;
+                  const formatted = formatCode(cb.code, cb.language);
+                  const doc = editorView.state.doc;
+                  const startLine = doc.lineAt(cb.from);
+                  const endLine = doc.lineAt(cb.to);
+                  const fenceStart = startLine.text;
+                  const fenceEnd = endLine.text;
+                  const newBlock = `${fenceStart}\n${formatted}\n${fenceEnd}`;
+                  editorView.dispatch({
+                    changes: { from: startLine.from, to: endLine.to, insert: newBlock },
+                    scrollIntoView: true,
+                  });
+                },
+              },
+              {
                 id: 'select-code',
                 label: t('contextmenu.code_select'),
                 icon: <CheckSquare size={14} />,
@@ -693,8 +714,39 @@ export function EditorContextMenu({
               },
             ]
           : []),
-        ...(previewContext
+        ...(previewContext?.codeBlock
           ? [
+              {
+                id: 'format-code-preview',
+                label: t('contextmenu.code_format'),
+                icon: <Sparkles size={14} />,
+                onSelect: () => {
+                  const sLine = previewContext.sourceLine ?? 0;
+                  const lines = content.split('\n');
+                  const cb = previewContext.codeBlock;
+                  if (!cb) return;
+                  const formatted = formatCode(cb.code, cb.language);
+                  let openLine = -1;
+                  for (let i = sLine; i >= 0; i--) {
+                    if (/^\s*(`{3,}|~{3,})/.test(lines[i] ?? '')) {
+                      openLine = i;
+                      break;
+                    }
+                  }
+                  if (openLine === -1) return;
+                  let closeLine = -1;
+                  for (let i = openLine + 1; i < lines.length; i++) {
+                    if (/^\s*(`{3,}|~{3,})\s*$/.test(lines[i] ?? '')) {
+                      closeLine = i;
+                      break;
+                    }
+                  }
+                  if (closeLine === -1) return;
+                  const newLines = [lines[openLine]!, ...formatted.split('\n'), lines[closeLine]!];
+                  lines.splice(openLine, closeLine - openLine + 1, ...newLines);
+                  onEditContent(lines.join('\n'));
+                },
+              },
               {
                 id: 'jump-code',
                 label: t('contextmenu.code_jump_to_editor'),
