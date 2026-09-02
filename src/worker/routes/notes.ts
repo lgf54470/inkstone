@@ -388,8 +388,10 @@ notesRoutes.patch('/:id', async (c) => {
   }
 
   const now = Math.max(Date.now(), row.updated_at + 1)
-  const sets: string[] = []
-  const binds: unknown[] = []
+  const patches: ColumnPatch[] = []
+  const pushPatch = (column: string, value: unknown) => {
+    patches.push({ column, value })
+  }
   let contentChanged = false
   let newTitle = row.title
   let newContent = row.content
@@ -405,35 +407,39 @@ notesRoutes.patch('/:id', async (c) => {
       newContent = body.content
       newTitle = resolvedTitle
       const { words, chars } = countText(body.content)
-      push(sets, binds, 'content', body.content)
-      push(sets, binds, 'content_hash', hash)
-      push(sets, binds, 'title', newTitle)
-      push(sets, binds, 'excerpt', deriveExcerpt(body.content))
-      push(sets, binds, 'word_count', words)
-      push(sets, binds, 'char_count', chars)
+      pushPatch('content', body.content)
+      pushPatch('content_hash', hash)
+      pushPatch('title', newTitle)
+      pushPatch('excerpt', deriveExcerpt(body.content))
+      pushPatch('word_count', words)
+      pushPatch('char_count', chars)
     }
   } else if (resolvedTitle !== row.title) {
     newTitle = resolvedTitle
-    push(sets, binds, 'title', newTitle)
+    pushPatch('title', newTitle)
   }
 
   if (body.folderId !== undefined) {
-    push(sets, binds, 'folder_id', await resolveFolderId(c.env.DB, userId, body.folderId))
+    pushPatch('folder_id', await resolveFolderId(c.env.DB, userId, body.folderId))
   }
-  if (typeof body.isPinned === 'boolean') push(sets, binds, 'is_pinned', body.isPinned ? 1 : 0)
-  if (typeof body.isStarred === 'boolean') push(sets, binds, 'is_starred', body.isStarred ? 1 : 0)
-  if (typeof body.isArchived === 'boolean') push(sets, binds, 'is_archived', body.isArchived ? 1 : 0)
+  if (typeof body.isPinned === 'boolean') pushPatch('is_pinned', body.isPinned ? 1 : 0)
+  if (typeof body.isStarred === 'boolean') pushPatch('is_starred', body.isStarred ? 1 : 0)
+  if (typeof body.isArchived === 'boolean') pushPatch('is_archived', body.isArchived ? 1 : 0)
 
-  if (!sets.length) return c.json(toNote(row))
+  if (!patches.length) return c.json(toNote(row))
 
-  push(sets, binds, 'updated_at', now)
+  pushPatch('updated_at', now)
   const nextRev = row.rev + 1
-  push(sets, binds, 'rev', nextRev)
+  pushPatch('rev', nextRev)
   const mutationGuard = `EXISTS (SELECT 1 FROM notes
     WHERE id = ?1 AND user_id = ?2 AND rev = ?3
       AND content_hash = ?4 AND title = ?5 AND updated_at = ?6)`
   const mutationValues = [id, userId, nextRev, newHash, newTitle, now] as const
 
+  // The SQL SET fragments derive from the same patches list that answers
+  // the local row projection, so the two can never drift apart.
+  const sets = patches.map((patch, index) => `${patch.column} = ?${index + 1}`)
+  const binds: unknown[] = patches.map((patch) => patch.value)
   binds.push(id, userId, body.rev)
   const update = c.env.DB.prepare(
     `UPDATE notes SET ${sets.join(', ')}
@@ -561,7 +567,7 @@ notesRoutes.patch('/:id', async (c) => {
     scheduleFtsDrain(c)
   }
   const nextTags = contentChanged ? (derivedTags ?? extractTags(newContent)) : null
-  return c.json(toNote(applyPatchRow(row, sets, binds, nextTags)))
+  return c.json(toNote(applyPatchRow(row, patches, nextTags)))
 })
 
 notesRoutes.delete('/:id', async (c) => {
@@ -1130,16 +1136,18 @@ function sameTagSet(left: string[], right: string[]): boolean {
   return right.every((name) => set.has(name))
 }
 
+interface ColumnPatch {
+  column: string
+  value: unknown
+}
+
 function applyPatchRow(
   row: NoteRow,
-  sets: string[],
-  binds: unknown[],
+  patches: readonly ColumnPatch[],
   tagNames: string[] | null,
 ): NoteRow {
   const next: NoteRow = { ...row }
-  for (let index = 0; index < sets.length; index++) {
-    const column = sets[index]!.split(' ')[0]!
-    const value = binds[index]
+  for (const { column, value } of patches) {
     switch (column) {
       case 'content':
         next.content = value as string
@@ -1255,11 +1263,6 @@ export function parseNotesListCursor(
   } catch {
     throw ApiError.badRequest('Invalid notes cursor')
   }
-}
-
-function push(sets: string[], binds: unknown[], column: string, value: unknown): void {
-  binds.push(value)
-  sets.push(`${column} = ?${binds.length}`)
 }
 
 function shiftSqlPlaceholders(sql: string, offset: number): string {
