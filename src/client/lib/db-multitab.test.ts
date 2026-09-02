@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Folder, NoteSummary, Tag } from '@shared/types'
+import { vi } from 'vitest'
+import type { LocalDbLike, ShellBackend } from './db-cache-spec'
 
 // Two "tabs" are two independent evaluations of db.ts's module state. They must
 // share one IndexedDB, so the mock disk lives on a hoisted object that survives
@@ -41,197 +41,33 @@ vi.mock('idb-keyval', () => {
   return impl
 })
 
-function makeSummary(index: number): NoteSummary {
-  return {
-    id: `note-${String(index).padStart(6, '0')}`,
-    title: `Note ${index}`,
-    excerpt: `excerpt line for note ${index} `,
-    folderId: null,
-    tags: [],
-    isPinned: false,
-    isStarred: false,
-    isArchived: false,
-    wordCount: 50 + index,
-    charCount: 300 + index,
-    rev: 1,
-    position: index,
-    createdAt: 1_000_000 + index,
-    updatedAt: 2_000_000 + index,
-    deletedAt: null,
-  }
-}
+const { buildFixture, runMultitabSuite } = await import('./db-cache-spec')
 
-function shell(notes: NoteSummary[], cursor = 1): {
-  notes: NoteSummary[]
-  folders: Folder[]
-  tags: Tag[]
-  cursor: number
-} {
-  return { notes, folders: [], tags: [], cursor }
-}
-
-const vaultSize = 2_000
-const vault: NoteSummary[] = Array.from({ length: vaultSize }, (_, index) => makeSummary(index))
-
-const editedVariant = (note: NoteSummary, tick: number): NoteSummary => ({
-  ...note,
-  excerpt: `excerpt line for note ${note.id} after edit ${tick}`,
-  updatedAt: 3_000_000 + tick,
-})
-
-async function freshTab(): Promise<typeof import('./db')['localDb']> {
+async function freshTab(): Promise<LocalDbLike> {
   vi.resetModules()
   const { localDb } = await import('./db')
   await localDb.bindUser('u1')
   return localDb
 }
 
-const readSummary = (id: string): NoteSummary | undefined =>
-  disk.store.get(`user:u1:note-summary:${id}`) as NoteSummary | undefined
-const readIndex = (): string[] | undefined => disk.store.get('user:u1:noteIndex') as string[] | undefined
+const fixture = buildFixture(2_000)
 
-describe('multi-tab shell cache', () => {
-  beforeEach(() => {
-    disk.reset()
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-  })
+const backend: ShellBackend = {
+  read: async (key: string) => disk.store.get(key),
+  seed: async (key: string, value: unknown) => {
+    disk.store.set(key, value)
+    disk.writes.push({ key, value })
+  },
+  keys: async () => [...disk.store.keys()],
+  writes: disk.writes,
+  ops: { getMany: 0, setMany: 0, delMany: 0 },
+  reset: async () => disk.reset(),
+}
 
-  it('keeps both per-note edits when two tabs type into different notes without pulling', async () => {
-    const tabA = await freshTab()
-    await tabA.saveShell(shell(vault, 1))
-    await tabA.loadShell()
-    const tabB = await freshTab()
-    await tabB.loadShell()
-
-    const firstIndex = 100
-    const secondIndex = 1_200
-    const firstVariant = editedVariant(vault[firstIndex]!, 9_001)
-    const secondVariant = editedVariant(vault[secondIndex]!, 9_002)
-    disk.writes.length = 0
-    const nextA = [...vault]
-    nextA[firstIndex] = firstVariant
-    const nextB = [...vault]
-    nextB[secondIndex] = secondVariant
-    tabA.scheduleShellSave(shell(nextA, 1))
-    tabB.scheduleShellSave(shell(nextB, 1))
-    await vi.advanceTimersByTimeAsync(2_000)
-
-    const summaryWrites = disk.writes.filter((write) => write.key.includes('note-summary:'))
-    expect(summaryWrites).toHaveLength(2)
-    expect(readSummary(vault[firstIndex]!.id)?.updatedAt).toBe(3_000_000 + 9_001)
-    expect(readSummary(vault[secondIndex]!.id)?.updatedAt).toBe(3_000_000 + 9_002)
-
-    const tabC = await freshTab()
-    const loaded = await tabC.loadShell()
-    expect(loaded!.notes).toHaveLength(vaultSize)
-    expect(loaded!.notes.find((note) => note.id === vault[firstIndex]!.id)?.updatedAt).toBe(3_000_000 + 9_001)
-    expect(loaded!.notes.find((note) => note.id === vault[secondIndex]!.id)?.updatedAt).toBe(3_000_000 + 9_002)
-  })
-
-  it('serializes index rewrites through a Web Locks critical section', async () => {
-    const lockLog: Array<{ name: string }> = []
-    let active = 0
-    let maxActive = 0
-    const waiters: Array<() => Promise<void>> = []
-    const pump = () => {
-      const run = waiters.shift()
-      if (run) void run().finally(pump)
-    }
-    const locks = {
-      request: (name: string, task: () => Promise<boolean>) =>
-        new Promise<boolean>((resolve, reject) => {
-          const run = async () => {
-            active++
-            maxActive = Math.max(maxActive, active)
-            lockLog.push({ name })
-            try {
-              resolve(await task())
-            }
-            catch (error) {
-              reject(error)
-            }
-            finally {
-              active--
-            }
-          }
-          waiters.push(run)
-          if (active === 0) pump()
-        }),
-    }
-    Object.defineProperty(navigator, 'locks', { configurable: true, value: locks })
-
-    try {
-      const tabA = await freshTab()
-      await tabA.saveShell(shell(vault, 1))
-      await tabA.loadShell()
-      const tabB = await freshTab()
-      await tabB.loadShell()
-
-      const noteX = makeSummary(vaultSize + 1)
-      const noteY = makeSummary(vaultSize + 2)
-      tabA.scheduleShellSave(shell([...vault, noteX], 1))
-      tabB.scheduleShellSave(shell([...vault, noteY], 1))
-      await vi.advanceTimersByTimeAsync(2_000)
-
-      expect(maxActive).toBe(1)
-      expect(lockLog.length).toBeGreaterThanOrEqual(2)
-      expect(lockLog.every((entry) => entry.name === 'inkstone-shell-index:u1')).toBe(true)
-      const tabC = await freshTab()
-      const loaded = await tabC.loadShell()
-      const ids = new Set(loaded!.notes.map((note) => note.id))
-      expect(ids.has(noteX.id)).toBe(true)
-      expect(ids.has(noteY.id)).toBe(true)
-    }
-    finally {
-      Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined })
-    }
-  })
-
-  it('merges the on-disk index so an offline tab cannot drop another tab\'s new note', async () => {
-    const tabA = await freshTab()
-    await tabA.saveShell(shell(vault, 1))
-    await tabA.loadShell()
-    const tabB = await freshTab()
-    await tabB.loadShell()
-
-    const noteX = makeSummary(vaultSize + 1)
-    const noteY = makeSummary(vaultSize + 2)
-    tabA.scheduleShellSave(shell([...vault, noteX], 1))
-    await vi.advanceTimersByTimeAsync(2_000)
-    tabB.scheduleShellSave(shell([...vault, noteY], 1))
-    await vi.advanceTimersByTimeAsync(2_000)
-
-    expect(readIndex()).toHaveLength(vaultSize + 2)
-    const tabC = await freshTab()
-    const loaded = await tabC.loadShell()
-    const ids = new Set(loaded!.notes.map((note) => note.id))
-    expect(ids.has(noteX.id)).toBe(true)
-    expect(ids.has(noteY.id)).toBe(true)
-    expect(loaded!.notes).toHaveLength(vaultSize + 2)
-  })
-
-  it('drops a deleted note from the merged index once every tab agrees it is gone', async () => {
-    const tabA = await freshTab()
-    await tabA.saveShell(shell(vault, 1))
-    await tabA.loadShell()
-    const tabB = await freshTab()
-    await tabB.loadShell()
-
-    const doomed = vault[500]!
-    const noteY = makeSummary(vaultSize + 2)
-    const withoutDoomed = vault.filter((note) => note.id !== doomed.id)
-    tabA.scheduleShellSave(shell(withoutDoomed, 1))
-    await vi.advanceTimersByTimeAsync(2_000)
-    expect(disk.store.has(`user:u1:note-summary:${doomed.id}`)).toBe(false)
-
-    tabB.scheduleShellSave(shell([...withoutDoomed, noteY], 1))
-    await vi.advanceTimersByTimeAsync(2_000)
-
-    const index = readIndex()!
-    expect(index).toHaveLength(vaultSize)
-    expect(index.includes(doomed.id)).toBe(false)
-    expect(index.includes(noteY.id)).toBe(true)
-    const tabC = await freshTab()
-    expect((await tabC.loadShell())!.notes).toHaveLength(vaultSize)
-  })
+runMultitabSuite({
+  label: 'idb-keyval mock',
+  backend,
+  fixture,
+  freshTab,
+  flush: { settle: async () => { await vi.advanceTimersByTimeAsync(2_000) } },
 })
