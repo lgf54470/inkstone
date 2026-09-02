@@ -169,6 +169,14 @@ const allowed = new Map([
     "// window collapses bursts into one flush (a lost tail at most delays the",
     "// cached shell by one window on abrupt close), and the flush tail chain keeps",
     "// each diff-based write from racing the previous one.",
+    "// An offline tab never sees another tab's brand-new notes; merging with the",
+    "// on-disk index keeps those entries when this tab rewrites the index, while",
+    "// ids this tab deleted are still dropped (stale ids heal on the next pull).",
+  ]],
+  ["src/client/lib/db-multitab.test.ts", [
+    "// Two \"tabs\" are two independent evaluations of db.ts's module state. They must",
+    "// share one IndexedDB, so the mock disk lives on a hoisted object that survives",
+    "// vi.resetModules, while each fresh import of ./db gets its own baseline/timers.",
   ]],
   ["src/client/lib/db-shell.test.ts", [
     "// The harness drives the real localDb implementation; only the IndexedDB",

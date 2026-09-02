@@ -290,16 +290,20 @@ export const localDb = {
               if (previous === undefined) indexChanged = true
             }
           }
-          const removed: string[] = []
+          const removedIds: string[] = []
           for (const id of baseline.notes.keys()) {
-            if (!targetNotes.has(id)) removed.push(userScopedKey(KEY.summary(id), userId))
+            if (!targetNotes.has(id)) removedIds.push(id)
           }
-          if (removed.length) {
+          if (removedIds.length) {
             indexChanged = true
-            if (delMany) await delMany(removed, store)
-            else for (const key of removed) await del(key, store)
+            const removedKeys = removedIds.map((id) => userScopedKey(KEY.summary(id), userId))
+            if (delMany) await delMany(removedKeys, store)
+            else for (const key of removedKeys) await del(key, store)
           }
-          if (indexChanged) writes.push([userScopedKey(KEY.noteIndex, userId), [...targetNotes.keys()]])
+          if (indexChanged) {
+            const nextIds = await mergedNoteIds(userId, [...targetNotes.keys()], new Set(removedIds))
+            writes.push([userScopedKey(KEY.noteIndex, userId), nextIds])
+          }
         }
         else {
           for (const note of data.notes)
@@ -559,6 +563,26 @@ async function clearLocalData(): Promise<void> {
   shellEpoch++
   shellFlushTail = Promise.resolve()
   await clearStore(store)
+}
+
+async function mergedNoteIds(userId: string | null, targetIds: string[], removedIds: Set<string>): Promise<string[]> {
+  // An offline tab never sees another tab's brand-new notes; merging with the
+  // on-disk index keeps those entries when this tab rewrites the index, while
+  // ids this tab deleted are still dropped (stale ids heal on the next pull).
+  let diskIds: string[] = []
+  try {
+    const value = await get<unknown>(userScopedKey(KEY.noteIndex, userId), store)
+    if (Array.isArray(value) && value.every((id) => typeof id === 'string')) diskIds = value as string[]
+  } catch {
+  }
+  const seen = new Set<string>()
+  const next: string[] = []
+  for (const id of [...diskIds, ...targetIds]) {
+    if (removedIds.has(id) || seen.has(id)) continue
+    seen.add(id)
+    next.push(id)
+  }
+  return next
 }
 
 function summariesEqual(a: NoteSummary, b: NoteSummary): boolean {
