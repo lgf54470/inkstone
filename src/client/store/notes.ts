@@ -1,6 +1,6 @@
 /** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization. */
 import { create, type StoreApi } from 'zustand';
-import { useMemo } from 'react';
+import { useDeferredValue, useMemo } from 'react';
 import { countText, deriveExcerpt, extractTags, mergeTagsIntoFrontMatter, normalizeLinkKey, parseFrontMatter, renderNewNoteTemplate, setFrontMatterProperty, sortTagNames } from '@shared/markdown-utils';
 import { duplicateNoteTitle } from '@shared/text-utils';
 import { LIMITS } from '@shared/constants';
@@ -102,7 +102,7 @@ interface NotesState {
 }
 type SetNotesState = StoreApi<NotesState>['setState'];
 let saveTimer: number | undefined;
-const SUMMARY_DERIVE_DELAY_MS = 70;
+const SUMMARY_DERIVE_DELAY_MS = 400;
 interface PendingSummaryDerivation {
     content: string;
     updatedAt: number;
@@ -2931,6 +2931,10 @@ function pickInitialNoteId(notes: Record<string, NoteSummary>, folders: Folder[]
 export function useVisibleNotes(): NoteSummary[] {
     const locale = useLocale();
     const notes = useNotes((s) => s.notes);
+    // Re-sorting the whole visible set after every autosave derivation is the
+    // most expensive idle work while typing; defer it so input stays on the
+    // urgent lane and the list reorders one frame later.
+    const deferredNotes = useDeferredValue(notes);
     const folders = useNotes((s) => s.folders);
     const view = useUi((s) => s.view);
     const folderId = useUi((s) => s.folderId);
@@ -2943,7 +2947,7 @@ export function useVisibleNotes(): NoteSummary[] {
     const todoTagPref = useSession((s) => s.settings.notes.todoTag);
     return useMemo(() => {
         const folderScope = view === 'folder' && folderId ? folderDescendantIds(folders, folderId) : undefined;
-        const list = Object.values(notes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, resolveTodoTag(todoTagPref, locale)));
+        const list = Object.values(deferredNotes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, resolveTodoTag(todoTagPref, locale)));
         if (view === 'recent') {
             return list
                 .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
@@ -2952,7 +2956,7 @@ export function useVisibleNotes(): NoteSummary[] {
         if (view === 'trash')
             return list.sort(compareTrash);
         return list.sort((a, b) => compare(a, b, sort, order, locale));
-    }, [notes, folders, view, folderId, tag, selectedTags, selectedTagsMatch, dateFilter, sort, order, locale]);
+    }, [deferredNotes, folders, view, folderId, tag, selectedTags, selectedTagsMatch, dateFilter, sort, order, locale]);
 }
 export interface FolderNode extends Folder {
     children: FolderNode[];
