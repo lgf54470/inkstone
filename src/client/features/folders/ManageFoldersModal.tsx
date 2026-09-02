@@ -109,20 +109,20 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('folders.search')}
-                className="h-9 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pl-9 pr-3 text-[12.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)]"
+                className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pl-9 pr-3 text-[12.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)]"
               />
             </div>
             {!isCreating && (
               <Button
                 variant="primary"
                 size="sm"
+                icon={<FolderPlus size={14} className="shrink-0" />}
                 onClick={() => {
                   setIsCreating(true);
                   setNewFolderName('');
                 }}
-                className="shrink-0"
+                className="h-8 shrink-0"
               >
-                <FolderPlus size={14} className="mr-1" />
                 {t('common.new_folder')}
               </Button>
             )}
@@ -146,7 +146,13 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                 placeholder={t('common.new_folder')}
                 className="h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[12.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
               />
-              <Button variant="primary" size="sm" type="submit" disabled={!newFolderName.trim()}>
+              <Button
+                variant="primary"
+                size="sm"
+                type="submit"
+                disabled={!newFolderName.trim()}
+                className="h-8 shrink-0"
+              >
                 {t('folders.create_new')}
               </Button>
               <IconButton

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Check, FolderClosed, FolderMinus, Plus, Search, Settings2 } from 'lucide-react';
+import { Check, FolderClosed, FolderMinus, FolderPlus, Search, Settings2 } from 'lucide-react';
 import { useNotes } from '../../store/notes';
 import { folderPathLabel } from '../../lib/folders';
 import { cn } from '../../lib/cn';
@@ -133,10 +133,10 @@ export function MoveToFolderSubmenu({
             closeMenu();
             onCreateNew();
           }}
-          className="flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[12.5px] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
+          className="flex w-full items-center gap-2 whitespace-nowrap rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[12.5px] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
         >
-          <Plus size={13} className="shrink-0 text-[var(--text-tertiary)]" />
-          <span>{t('folders.create_new')}</span>
+          <FolderPlus size={13} className="shrink-0 text-[var(--text-tertiary)]" />
+          <span className="truncate">{t('folders.create_new')}</span>
         </button>
 
         <button

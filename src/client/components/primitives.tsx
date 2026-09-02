@@ -91,7 +91,7 @@ export function Button({
       )}
     >
       {loading ? <Spinner size={size === 'lg' ? 15 : 13} /> : icon}
-      {children != null && <span className="truncate">{children}</span>}
+      {children != null && <span className="inline-flex items-center gap-1.5 truncate">{children}</span>}
       {trailing}
     </button>
   )
