@@ -129,6 +129,13 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_attachments_user_sha ON attachments(user_id, sha256)`,
   `CREATE INDEX IF NOT EXISTS idx_attachments_note ON attachments(note_id)`,
 
+  `CREATE TABLE IF NOT EXISTS attachment_refs (
+    user_id TEXT NOT NULL,
+    attachment_id TEXT NOT NULL,
+    count INTEGER NOT NULL,
+    PRIMARY KEY (user_id, attachment_id)
+  )`,
+
   `CREATE TABLE IF NOT EXISTS attachment_cleanup (
     object_key TEXT PRIMARY KEY CHECK (object_key GLOB 'r2:?*' OR object_key GLOB 'kv:?*'),
     user_id TEXT NOT NULL,
@@ -579,6 +586,7 @@ const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   links: ['source_note_id', 'target_key', 'target_title', 'target_note_id', 'user_id'],
   note_versions: ['id', 'note_id', 'user_id', 'title', 'content', 'size', 'created_at'],
   attachments: ['id', 'user_id', 'note_id', 'filename', 'mime', 'size', 'sha256', 'width', 'height', 'storage', 'created_at'],
+  attachment_refs: ['user_id', 'attachment_id', 'count'],
   attachment_cleanup: ['object_key', 'user_id', 'created_at'],
   import_mappings: ['user_id', 'entity', 'source_id', 'target_id', 'updated_at'],
   backup_targets: ['id', 'user_id', 'type', 'name', 'enabled', 'config', 'secret', 'last_run_at', 'last_status', 'last_error', 'created_at', 'updated_at'],
@@ -611,6 +619,7 @@ const REQUIRED_TABLES = [
   'links',
   'note_versions',
   'attachments',
+  'attachment_refs',
   'attachment_cleanup',
   'import_mappings',
   'backup_targets',

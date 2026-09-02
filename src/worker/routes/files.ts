@@ -8,6 +8,7 @@ import {
   readAttachmentObjectStream,
 } from '../attachments/backend'
 import { drainAttachmentCleanup } from '../attachments/cleanup'
+import { getMeta, setMeta } from '../db/metadata'
 import {
   attachmentCleanupTarget,
   attachmentObjectKey,
@@ -40,15 +41,71 @@ interface AttachmentRow {
 
 const ATTACHMENT_LIST_PAGE_SIZE = 500
 const ATTACHMENT_SCAN_PAGE_SIZE = 100
+const ATTACHMENT_REF_WRITE_CHUNK = 100
 // The usage panel re-opens and re-pages often while note contents rarely
 // change between opens; keep one exact reference map per user for a short
 // window so page 2, filters and re-opens skip the full content scan.
+// The cache lives in D1 (attachment_refs + an app_meta freshness stamp), so
+// every isolate shares the rebuild instead of scanning all note bodies once
+// per isolate within the window.
 const ATTACHMENT_REFERENCE_CACHE_TTL_MS = 60_000
-let attachmentReferenceCache: {
-  userId: string
-  at: number
-  references: Map<string, number>
-} | null = null
+
+function attachmentRefMetaKey(userId: string): string {
+  return `attachment-refs:${userId}`
+}
+
+async function readAttachmentReferenceCounts(
+  db: D1Database,
+  userId: string,
+): Promise<Map<string, number>> {
+  const meta = await getMeta(db, attachmentRefMetaKey(userId))
+  if (meta) {
+    try {
+      const parsed = JSON.parse(meta) as { at?: unknown }
+      if (
+        typeof parsed.at === 'number' &&
+        Date.now() - parsed.at < ATTACHMENT_REFERENCE_CACHE_TTL_MS
+      ) {
+        const { results } = await db
+          .prepare(`SELECT attachment_id, count FROM attachment_refs WHERE user_id = ?1`)
+          .bind(userId)
+          .all<{ attachment_id: string; count: number }>()
+        const references = new Map<string, number>()
+        for (const row of results) references.set(row.attachment_id, row.count)
+        return references
+      }
+    } catch {
+      // Corrupt stamp: fall through to a rebuild.
+    }
+  }
+  const references = await collectAttachmentReferences(db, userId)
+  await persistAttachmentReferenceCounts(db, userId, references)
+  return references
+}
+
+async function persistAttachmentReferenceCounts(
+  db: D1Database,
+  userId: string,
+  references: ReadonlyMap<string, number>,
+): Promise<void> {
+  // The freshness stamp is written last, so readers never observe a
+  // half-rebuilt table: they only consult it when the stamp is fresh.
+  const statements: D1PreparedStatement[] = [
+    db.prepare(`DELETE FROM attachment_refs WHERE user_id = ?1`).bind(userId),
+  ]
+  for (const [attachmentId, count] of references) {
+    statements.push(
+      db.prepare(
+        `INSERT OR REPLACE INTO attachment_refs (user_id, attachment_id, count)
+         VALUES (?1, ?2, ?3)`,
+      ).bind(userId, attachmentId, count),
+    )
+  }
+  for (let index = 0; index < statements.length; index += ATTACHMENT_REF_WRITE_CHUNK) {
+    await db.batch(statements.slice(index, index + ATTACHMENT_REF_WRITE_CHUNK))
+  }
+  await setMeta(db, attachmentRefMetaKey(userId), JSON.stringify({ at: Date.now() }))
+}
 
 function encodeContentDispositionFilename(filename: string): string {
   return encodeURIComponent(filename).replace(/['()*]/g, (character) =>
@@ -300,15 +357,7 @@ filesRoutes.get('/', requireAuth, async (c) => {
   const { results } = await statement.all<AttachmentRow>()
   const page = results.slice(0, ATTACHMENT_LIST_PAGE_SIZE)
   const hasMore = results.length > ATTACHMENT_LIST_PAGE_SIZE
-  const cached = attachmentReferenceCache
-  let references: Map<string, number>
-  if (cached && cached.userId === userId && Date.now() - cached.at < ATTACHMENT_REFERENCE_CACHE_TTL_MS) {
-    references = cached.references
-  }
-  else {
-    references = await collectAttachmentReferences(c.env.DB, userId)
-    attachmentReferenceCache = { userId, at: Date.now(), references }
-  }
+  const references = await readAttachmentReferenceCounts(c.env.DB, userId)
   return c.json({
     files: page.map((row) => ({
       ...toAttachment(row),
