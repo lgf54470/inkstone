@@ -255,8 +255,11 @@ export const useNotes = create<NotesState>((set, get) => ({
                 catch (err) {
                     if (err instanceof ApiError && err.isOffline)
                         set({ online: false });
-                    else if (err instanceof ApiError && err.isAuth)
-                        location.reload();
+                    else if (err instanceof ApiError && err.isAuth) {
+                        await notePersistCoalescer.flush().catch(() => {});
+                        commitAllPendingSummaryDerivations();
+                        useSession.setState({ status: 'anonymous' });
+                    }
                     else
                         throw err;
                 }
