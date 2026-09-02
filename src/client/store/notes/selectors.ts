@@ -12,7 +12,9 @@ import { useUi, type WorkspacePane } from '../ui';
 import { noteState } from './model';
 import type { NotesState } from './model';
 import type { Folder, NoteSummary } from '@shared/types';
-import { getInboxFolderId } from '../../lib/folder-prefs';
+import { getFolderTemplateId, getInboxFolderId } from '../../lib/folder-prefs';
+import { renderNewNoteTemplate } from '@shared/markdown-utils';
+import { useNoteTemplates } from '../note-templates';
 import { compare, compareTrash } from './workspace';
 
 type TagCacheState = Pick<NotesState, 'notes' | 'tags'>;
@@ -39,16 +41,39 @@ export function createContextualNote(input?: {
     const validInboxId = inboxId && folders.some((f) => f.id === inboxId) ? inboxId : undefined;
     const defaultFolderId = ui.view === 'folder' ? ui.folderId : validInboxId;
 
+    let initialTitle = input?.title;
+    let initialContent = input?.content;
+
+    if (defaultFolderId && initialContent === undefined) {
+        const templateId = getFolderTemplateId(defaultFolderId);
+        if (templateId) {
+            const template = useNoteTemplates.getState().templates.find((t) => t.id === templateId);
+            if (template) {
+                const rendered = renderNewNoteTemplate(template.content, template.name, new Date());
+                if (!initialTitle) {
+                    initialTitle = template.name;
+                }
+                initialContent = rendered.content;
+            }
+        }
+    }
+
+    const payload = {
+        ...input,
+        ...(initialTitle !== undefined ? { title: initialTitle } : {}),
+        ...(initialContent !== undefined ? { content: initialContent } : {}),
+    };
+
     if (ui.view === 'trash' || ui.view === 'archived') {
         ui.openView('all');
         return useNotes.getState().createNote({
-            ...input,
+            ...payload,
             ...(defaultFolderId ? { folderId: defaultFolderId } : {}),
             ...(selectedTags && input?.content === undefined ? { tags: selectedTags } : {}),
         });
     }
     return useNotes.getState().createNote({
-        ...input,
+        ...payload,
         ...(defaultFolderId ? { folderId: defaultFolderId } : {}),
         ...(ui.view === 'tag' && ui.tag && input?.content === undefined ? { tags: [ui.tag] } : {}),
         ...(selectedTags && input?.content === undefined ? { tags: selectedTags } : {}),

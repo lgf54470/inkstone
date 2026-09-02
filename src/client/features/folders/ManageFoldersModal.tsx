@@ -6,6 +6,7 @@ import {
   FolderClosed,
   FolderPlus,
   Inbox,
+  LayoutTemplate,
   Palette,
   Pencil,
   Search,
@@ -19,9 +20,11 @@ import { useNotes } from '../../store/notes';
 import { selectNavigationProjection } from '../../store/notes/selectors';
 import { useUi } from '../../store/ui';
 import { folderPathLabel, openFolderView } from '../../lib/folders';
-import { setInboxFolderId, useFolderPreferences } from '../../lib/folder-prefs';
+import { setFolderTemplateId, setInboxFolderId, useFolderPreferences } from '../../lib/folder-prefs';
 import { exportFolderAsZip } from '../../lib/export-folder';
+import { useNoteTemplates } from '../../store/note-templates';
 import { FolderAppearance } from './FolderPicker';
+import { FolderTemplateModal } from './FolderTemplateModal';
 import { t } from '../../lib/i18n';
 
 export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
@@ -31,7 +34,8 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
   const deleteFolder = useNotes((s) => s.deleteFolder);
   const folderCounts = useNotes((s) => selectNavigationProjection(s.notes).folderCounts);
   const toast = useUi((s) => s.toast);
-  const { inboxFolderId } = useFolderPreferences();
+  const { inboxFolderId, folderTemplates } = useFolderPreferences();
+  const templates = useNoteTemplates((s) => s.templates);
 
   const [query, setQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -39,6 +43,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [appearanceFolder, setAppearanceFolder] = useState<Folder | null>(null);
+  const [templateFolder, setTemplateFolder] = useState<Folder | null>(null);
 
   const choices = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -90,6 +95,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
       if (inboxFolderId === folder.id) {
         setInboxFolderId(null);
       }
+      setFolderTemplateId(folder.id, null);
       deleteFolder(folder.id);
       toast({ title: t('notes.deleted'), tone: 'default' });
     }
@@ -180,6 +186,8 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
               const count = folderCounts.get(folder.id) ?? 0;
               const isRenaming = renamingId === folder.id;
               const isInbox = inboxFolderId === folder.id;
+              const boundTemplateId = folderTemplates[folder.id];
+              const boundTemplate = boundTemplateId ? templates.find((t) => t.id === boundTemplateId) : null;
 
               return (
                 <div
@@ -243,6 +251,15 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                               {t('folders.inbox')}
                             </span>
                           )}
+                          {boundTemplate && (
+                            <span
+                              title={`${t('folders.default_template')}: ${boundTemplate.name}`}
+                              className="inline-flex items-center gap-1 rounded bg-[var(--accent-soft)]/60 px-1.5 py-0.5 text-[10.5px] font-medium text-[var(--accent)]"
+                            >
+                              <LayoutTemplate size={10} />
+                              <span className="max-w-[100px] truncate">{boundTemplate.name}</span>
+                            </span>
+                          )}
                           <span className="shrink-0 text-[11px] text-[var(--text-quaternary)]">
                             {t('folders.notes_count', { value0: count })}
                           </span>
@@ -301,6 +318,14 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                         <Palette size={13} />
                       </IconButton>
                       <IconButton
+                        label={boundTemplate ? `${t('folders.default_template')}: ${boundTemplate.name}` : t('folders.bind_template')}
+                        size="sm"
+                        className={boundTemplate ? 'text-[var(--accent)]' : undefined}
+                        onClick={() => setTemplateFolder(folder)}
+                      >
+                        <LayoutTemplate size={13} />
+                      </IconButton>
+                      <IconButton
                         label={t('folders.export_zip')}
                         size="sm"
                         onClick={async () => {
@@ -357,6 +382,14 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
             patchFolder(appearanceFolder.id, patch);
           }}
           onClose={() => setAppearanceFolder(null)}
+        />
+      )}
+
+      {/* Sub-modal: Folder Template */}
+      {templateFolder && (
+        <FolderTemplateModal
+          folder={templateFolder}
+          onClose={() => setTemplateFolder(null)}
         />
       )}
     </>
