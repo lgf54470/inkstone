@@ -1194,6 +1194,7 @@ export const ZH_CN_MESSAGES = {
     "folders.no_template": "不使用模板（空白笔记）",
     "folders.template_bound_toast": "已为文件夹绑定默认模板「{value0}」",
     "folders.template_unbound_toast": "已解绑默认模板",
+    "folders.custom_icon_placeholder": "自定义 Emoji...",
     "sidebar.new_subfolder": "新建子文件夹",
     "sidebar.rename": "重命名",
     "sidebar.rename_failed": "重命名失败",

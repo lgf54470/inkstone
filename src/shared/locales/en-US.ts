@@ -1193,6 +1193,7 @@ export const EN_US_MESSAGES = {
     "folders.no_template": "No template (Blank)",
     "folders.template_bound_toast": "Bound template \"{value0}\" to folder",
     "folders.template_unbound_toast": "Unbound default template",
+    "folders.custom_icon_placeholder": "Custom emoji...",
     "sidebar.new_subfolder": "New subfolder",
     "sidebar.rename": "Rename",
     "sidebar.rename_failed": "Rename failed",

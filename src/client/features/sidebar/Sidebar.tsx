@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, Download, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Star, Sun, Tag as TagIcon, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ChevronRight, Clock, CornerUpLeft, Download, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Smile, Star, Sun, Tag as TagIcon, Trash2, Waypoints, X, } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
 import type { Tag, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
@@ -17,7 +17,9 @@ import { folderDescendantIds, folderPath, folderPathLabel, openFolderView } from
 import { treeRowIndent } from '../../lib/calendar-tree';
 import { setInboxFolderId, useFolderPreferences } from '../../lib/folder-prefs';
 import { exportFolderAsZip } from '../../lib/export-folder';
-import { FolderAppearance, FolderPicker } from '../folders/FolderPicker';
+import { FolderPicker } from '../folders/FolderPicker';
+import { FolderColorSubmenu } from '../folders/FolderColorSubmenu';
+import { FolderIconSubmenu } from '../folders/FolderIconSubmenu';
 import { TagColorSubmenu } from '../tags/TagColorSubmenu';
 import { createTag, deleteTag, renameTag, setTagColor, toggleTagPinned } from '../tags/tagMutations';
 import { buildTagTree, flattenTagTree } from '../../lib/tag-tree';
@@ -269,7 +271,6 @@ function FolderSection() {
     const movingIdsRef = useRef(new Set<string>());
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [movingId, setMovingId] = useState<string | null>(null);
-    const [appearanceId, setAppearanceId] = useState<string | null>(null);
     const [rootDropping, setRootDropping] = useState(false);
     useEffect(() => () => window.clearTimeout(createdTimerRef.current), []);
     const create = (parentId: string | null) => {
@@ -328,7 +329,6 @@ function FolderSection() {
         }
     };
     const movingFolder = movingId ? folders.find((folder) => folder.id === movingId) ?? null : null;
-    const appearanceFolder = appearanceId ? folders.find((folder) => folder.id === appearanceId) ?? null : null;
     const excludedMoveTargets = useMemo(() => {
         if (!movingId)
             return undefined;
@@ -381,20 +381,16 @@ function FolderSection() {
 
       {tree.length === 0 ? (<button type="button" disabled={creating} onClick={() => void create(null)} className="mt-0.5 flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[12px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-45 md:h-[30px]">
           <FolderPlus size={13}/>{t("sidebar.create_first_folder")}</button>) : (<div role="tree" aria-label={t("navigation.folder")} className="mt-0.5 space-y-px">
-          {tree.map((node, index) => (<FolderRow key={node.id} node={node} siblings={tree} index={index} parentNode={null} parentSiblings={[]} onCreateChild={create} onMove={move} onChooseParent={setMovingId} onEditAppearance={setAppearanceId} createdFolderId={createdFolderId} renamingId={renamingId} onStartRename={setRenamingId} onFinishRename={() => setRenamingId(null)}/>))}
+          {tree.map((node, index) => (<FolderRow key={node.id} node={node} siblings={tree} index={index} parentNode={null} parentSiblings={[]} onCreateChild={create} onMove={move} onChooseParent={setMovingId} createdFolderId={createdFolderId} renamingId={renamingId} onStartRename={setRenamingId} onFinishRename={() => setRenamingId(null)}/>))}
         </div>)}
       </section>
       <FolderPicker open={Boolean(movingFolder)} title={t("folders.choose_parent")} folders={folders} currentId={movingFolder?.parentId ?? null} excludedIds={excludedMoveTargets} onSelect={(parentId) => {
             if (movingId)
                 void move(movingId, parentId, null);
         }} onClose={() => setMovingId(null)}/>
-      <FolderAppearance open={Boolean(appearanceFolder)} folder={appearanceFolder} onChange={(patch) => {
-            if (appearanceId)
-                patchFolder(appearanceId, patch);
-        }} onClose={() => setAppearanceId(null)}/>
     </>);
 }
-function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreateChild, onMove, onChooseParent, onEditAppearance, createdFolderId, renamingId, onStartRename, onFinishRename, }: {
+function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreateChild, onMove, onChooseParent, createdFolderId, renamingId, onStartRename, onFinishRename, }: {
     node: FolderNode;
     siblings: FolderNode[];
     index: number;
@@ -403,7 +399,6 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
     onCreateChild: (parentId: string | null) => void;
     onMove: (id: string, parentId: string | null, beforeId: string | null) => boolean;
     onChooseParent: (id: string) => void;
-    onEditAppearance: (id: string) => void;
     createdFolderId: string | null;
     renamingId: string | null;
     onStartRename: (id: string) => void;
@@ -509,7 +504,38 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
         { id: 'rename', label: t("sidebar.rename"), icon: <Pencil size={13}/>, onSelect: () => onStartRename(node.id) },
         { id: 'new-note', label: t("sidebar.create_new_note_here"), icon: <FilePlus2 size={13}/>, onSelect: () => void useNotes.getState().createNote({ folderId: node.id }) },
         { id: 'new-child', label: t("sidebar.new_subfolder"), icon: <FolderPlus size={13}/>, disabled: !canCreateChild, onSelect: () => onCreateChild(node.id) },
-        { id: 'appearance', label: t("folders.appearance"), icon: <Palette size={13}/>, onSelect: () => onEditAppearance(node.id) },
+        {
+            id: 'color',
+            label: t("folders.color"),
+            icon: <Palette size={13}/>,
+            submenu: ({ closeMenu }) => (
+                <FolderColorSubmenu
+                    folder={node}
+                    onSelectColor={(color) => {
+                        void patchFolder(node.id, { color });
+                        closeMenu();
+                    }}
+                    onManageFolders={() => {
+                        closeMenu();
+                        openPanel('folders');
+                    }}
+                />
+            ),
+        },
+        {
+            id: 'icon',
+            label: t("folders.icon"),
+            icon: <Smile size={13}/>,
+            submenu: ({ closeMenu }) => (
+                <FolderIconSubmenu
+                    folder={node}
+                    onSelectIcon={(icon) => {
+                        void patchFolder(node.id, { icon });
+                        closeMenu();
+                    }}
+                />
+            ),
+        },
         {
             id: 'inbox',
             label: isInbox ? t("folders.unset_inbox") : t("folders.set_as_inbox"),
@@ -674,7 +700,7 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
 
       {childrenMounted && (<div role="group" aria-hidden={!childrenVisible} inert={!childrenVisible} className={cn('folder-children-grid', childrenVisible && 'is-expanded')}>
           <div className="min-h-0 space-y-px overflow-hidden">
-            {node.children.map((child, childIndex) => (<FolderRow key={child.id} node={child} siblings={node.children} index={childIndex} parentNode={node} parentSiblings={siblings} onCreateChild={onCreateChild} onMove={onMove} onChooseParent={onChooseParent} onEditAppearance={onEditAppearance} createdFolderId={createdFolderId} renamingId={renamingId} onStartRename={onStartRename} onFinishRename={onFinishRename}/>))}
+            {node.children.map((child, childIndex) => (<FolderRow key={child.id} node={child} siblings={node.children} index={childIndex} parentNode={node} parentSiblings={siblings} onCreateChild={onCreateChild} onMove={onMove} onChooseParent={onChooseParent} createdFolderId={createdFolderId} renamingId={renamingId} onStartRename={onStartRename} onFinishRename={onFinishRename}/>))}
           </div>
         </div>)}
 
