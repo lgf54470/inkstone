@@ -262,6 +262,7 @@ function FolderSection() {
     const patchFolder = useNotes((s) => s.patchFolder);
     const expandFolder = useUi((s) => s.expandFolder);
     const [creating, setCreating] = useState(false);
+    const openPanel = useUi((s) => s.openPanel);
     const creatingRef = useRef(false);
     const createdTimerRef = useRef<number>(0);
     const [createdFolderId, setCreatedFolderId] = useState<string | null>(null);
@@ -361,11 +362,18 @@ function FolderSection() {
         }}>
       <div className="group/head flex items-center justify-between pr-1">
         <SectionLabel>{t("navigation.folder")}</SectionLabel>
-        <Tooltip label={t("common.new_folder")}>
-          <IconButton label={t("common.new_folder")} size="sm" disabled={creating} onClick={() => void create(null)} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
-            <FolderPlus size={13}/>
-          </IconButton>
-        </Tooltip>
+        <div className="flex items-center gap-0.5">
+          <Tooltip label={t("folders.manage_folders")} side="left">
+            <IconButton label={t("folders.manage_folders")} size="sm" onClick={() => openPanel('folders')} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
+              <Settings2 size={13}/>
+            </IconButton>
+          </Tooltip>
+          <Tooltip label={t("common.new_folder")} side="right">
+            <IconButton label={t("common.new_folder")} size="sm" disabled={creating} onClick={() => void create(null)} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
+              <FolderPlus size={13}/>
+            </IconButton>
+          </Tooltip>
+        </div>
       </div>
 
       <CalendarTree />
@@ -405,6 +413,7 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
     const activeFolderId = useUi((s) => s.folderId);
     const expanded = useUi((s) => s.expandedFolders.includes(node.id));
     const toggleFolder = useUi((s) => s.toggleFolder);
+    const openPanel = useUi((s) => s.openPanel);
     const folders = useNotes((s) => s.folders ?? []);
     const patchFolder = useNotes((s) => s.patchFolder);
     const deleteFolder = useNotes((s) => s.deleteFolder);
@@ -497,7 +506,7 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
         void onMove(node.id, parentNode.parentId, parentSiblings[parentIndex + 1]?.id ?? null);
     };
     const menuItems: MenuItem[] = [
-        { id: 'rename', label: t("sidebar.rename"), onSelect: () => onStartRename(node.id) },
+        { id: 'rename', label: t("sidebar.rename"), icon: <Pencil size={13}/>, onSelect: () => onStartRename(node.id) },
         { id: 'new-note', label: t("sidebar.create_new_note_here"), icon: <FilePlus2 size={13}/>, onSelect: () => void useNotes.getState().createNote({ folderId: node.id }) },
         { id: 'new-child', label: t("sidebar.new_subfolder"), icon: <FolderPlus size={13}/>, disabled: !canCreateChild, onSelect: () => onCreateChild(node.id) },
         { id: 'appearance', label: t("folders.appearance"), icon: <Palette size={13}/>, onSelect: () => onEditAppearance(node.id) },
@@ -544,6 +553,7 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
                 }
             },
         },
+        { id: 'manage', label: t("folders.manage_folders"), icon: <Settings2 size={13}/>, separatorBefore: true, onSelect: () => openPanel('folders') },
         { id: 'delete', label: t("sidebar.delete_folder"), icon: <Trash2 size={13}/>, tone: 'danger', separatorBefore: true, onSelect: () => void remove() },
     ];
     return (<div role="treeitem" aria-level={node.depth + 1} aria-expanded={hasChildren ? expanded : undefined} className={cn(justCreated && 'anim-tree-item-enter')} data-new-folder={justCreated || undefined}>
