@@ -43,6 +43,7 @@ export function CommandPalette({ onClose }: {
     const locale = useLocale();
     const [query, setQuery] = useState('');
     const [cursor, setCursor] = useState(0);
+    const [keyboardNav, setKeyboardNav] = useState(false);
     const [tagFilterOpen, setTagFilterOpen] = useState(false);
     const tagFilterRef = useRef<HTMLButtonElement>(null);
     const [remote, setRemote] = useState<{
@@ -84,6 +85,7 @@ export function CommandPalette({ onClose }: {
         onClose();
         item.run();
     }, [onClose]);
+    const pointerNav = useCallback(() => setKeyboardNav(false), []);
     const openCalendarPeriod = useCallback((period: CalendarPeriod) => {
         const id = virtualId(period, CALENDAR_TREE);
         const ancestors = virtualAncestorIds(id, CALENDAR_TREE);
@@ -528,10 +530,12 @@ export function CommandPalette({ onClose }: {
     const onKeyDown = (event: React.KeyboardEvent) => {
         if (event.key === 'ArrowDown' || (event.key === 'n' && event.ctrlKey)) {
             event.preventDefault();
+            setKeyboardNav(true);
             setCursor((c) => items.length ? Math.min(items.length - 1, c + 1) : 0);
         }
         else if (event.key === 'ArrowUp' || (event.key === 'p' && event.ctrlKey)) {
             event.preventDefault();
+            setKeyboardNav(true);
             setCursor((c) => Math.max(0, c - 1));
         }
         else if (event.key === 'Enter') {
@@ -583,7 +587,7 @@ export function CommandPalette({ onClose }: {
                 flatIndex++;
                 const index = flatIndex;
                 const active = index === cursor;
-                return (<PaletteRow key={item.id} item={item} active={active} index={index} listId={listId} onActivate={setCursor} onSelect={executeItem}/>);
+                return (<PaletteRow key={item.id} item={item} active={active} index={index} listId={listId} keyboardNav={keyboardNav} onActivate={setCursor} onPointerNav={pointerNav} onSelect={executeItem}/>);
             })}
               </div>)))}
         </div>
@@ -601,18 +605,23 @@ export function CommandPalette({ onClose }: {
     </div>, document.body);
 }
 
-const PaletteRow = memo(function PaletteRow({ item, active, index, listId, onActivate, onSelect, }: {
+const PaletteRow = memo(function PaletteRow({ item, active, index, listId, keyboardNav, onActivate, onPointerNav, onSelect, }: {
     item: Item;
     active: boolean;
     index: number;
     listId: string;
+    keyboardNav: boolean;
     onActivate: (index: number) => void;
+    onPointerNav: () => void;
     onSelect: (item: Item) => void;
 }) {
     const parts = item.match
         ? splitByRanges(item.label, item.match.ranges)
         : [{ text: item.label, hit: false }];
-    return (<button id={`${listId}-option-${index}`} type="button" role="option" aria-selected={active} tabIndex={-1} data-index={index} onMouseMove={() => onActivate(index)} onClick={() => onSelect(item)} className={cn('flex w-full items-center gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left', 'transition-colors duration-[80ms]', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
+    return (<button id={`${listId}-option-${index}`} type="button" role="option" aria-selected={active} tabIndex={-1} data-index={index} onMouseEnter={() => {
+        onPointerNav();
+        onActivate(index);
+    }} onClick={() => onSelect(item)} className={cn('flex w-full items-center gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left', keyboardNav && 'transition-colors duration-[80ms]', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
       <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>
         {item.icon}
       </span>
