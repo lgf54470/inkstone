@@ -4,7 +4,7 @@ import type { DateRangeFilter } from '@shared/types';
 import { dateKey, rollingWindowKey } from '../../lib/time';
 import { useNotes } from '../../store/notes';
 import { useUi } from '../../store/ui';
-import { computeLatestEditKey, gapPeekRange, latestEditOutsideWindow, relativeAnchorKey } from './use-rolling-filter';
+import { gapPeekRange, latestEditOutsideWindow, memoLatestEditKey, relativeAnchorKey } from './use-rolling-filter';
 
 export interface GapInfo {
     days: number;
@@ -79,7 +79,7 @@ export const useGapIndicatorStore = create<GapIndicatorState>()((set, get) => ({
 export function useGapIndicator(): void {
     const notes = useNotes((s) => s.notes);
     const dateFilter = useUi((s) => s.dateFilter);
-    const latestEditKey = useMemo(() => computeLatestEditKey(notes), [notes]);
+    const latestEditKey = useMemo(() => memoLatestEditKey(notes), [notes]);
     useEffect(() => {
         useGapIndicatorStore.getState().setGap(latestEditKey, dateFilter);
     }, [latestEditKey, dateFilter]);

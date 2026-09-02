@@ -14,7 +14,7 @@ import { Empty, NoteListSkeleton } from '../../components/feedback';
 import { TagFilterPopover } from '../../components/tag-filter-popover';
 import { DateRangePopover } from '../../components/date-range-popover';
 import { addDaysKey, daysBetweenKeys, isWeekRangeKey, parseDateKey, weekStartKeyOf } from '../../lib/time';
-import { computeLatestEditKey } from './use-rolling-filter';
+import { memoLatestEditKey } from './use-rolling-filter';
 import { useGapIndicatorStore } from './use-gap-indicator';
 import { loadRememberedFilter, loadSessionFilter, saveRememberedFilter, saveSessionFilter } from './list-filter-persist';
 import { useUi } from '../../store/ui';
@@ -163,7 +163,7 @@ export function NoteList() {
     }, [dateFilter, locale]);
     const allNotes = useNotes((s) => s.notes);
     const latestEdit = useMemo(() => {
-        const key = computeLatestEditKey(allNotes);
+        const key = memoLatestEditKey(allNotes);
         if (!key)
             return null;
         return {

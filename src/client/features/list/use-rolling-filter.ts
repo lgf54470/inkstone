@@ -16,6 +16,23 @@ export function computeLatestEditKey(notes: Readonly<Record<string, { updatedAt:
     return latest === 0 ? null : dateKey(new Date(latest));
 }
 
+// Several list-side consumers (gap indicator, rolling filter, list header) all
+// scan the whole notes map after every derived commit; memoize by the map
+// identity in a WeakMap so one commit pays exactly one O(n) scan and the cache
+// entry dies with the replaced map (no strong retention).
+const latestEditKeyCache = new WeakMap<object, string | null>()
+
+export function memoLatestEditKey(
+  notes: Readonly<Record<string, { updatedAt: number; deletedAt: number | null }>>,
+): string | null {
+  let key = latestEditKeyCache.get(notes)
+  if (key === undefined) {
+    key = computeLatestEditKey(notes)
+    latestEditKeyCache.set(notes, key)
+  }
+  return key
+}
+
 /** Newest edit key with whole days it sits outside the selected window (null when it is inside or the inputs are empty). */
 export function latestEditOutsideWindow(selectedRange: DateRangeFilter | null | undefined, latestEditKey: string | null | undefined): { key: string; days: number; ahead: boolean } | null {
     if (!selectedRange || !latestEditKey)
@@ -65,7 +82,7 @@ function useTodayKey(): string {
 export function useRollingDateFilter(): void {
     const relative = useUi((s) => s.relativeFilter);
     const notes = useNotes((s) => s.notes);
-    const latestEditKey = useMemo(() => computeLatestEditKey(notes), [notes]);
+    const latestEditKey = useMemo(() => memoLatestEditKey(notes), [notes]);
     const todayKey = useTodayKey();
     useEffect(() => {
         const anchor = relativeAnchorKey(relative, latestEditKey, todayKey);
