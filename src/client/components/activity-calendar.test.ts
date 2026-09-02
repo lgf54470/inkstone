@@ -307,3 +307,55 @@ describe('jump flash transition', () => {
         }
     });
 });
+
+describe('internal jump flash', () => {
+    it('flashes the same accent ring for gap-day follows and week clicks', () => {
+        interface Captured {
+            duration?: number;
+        }
+        const captured: Captured[] = [];
+        const original = Element.prototype.animate;
+        Element.prototype.animate = function (this: Element, _keyframes: Keyframe[], options?: KeyframeAnimationOptions) {
+            captured.push({ duration: typeof options?.duration === 'number' ? options.duration : undefined });
+            return { cancel: () => {}, finished: Promise.resolve(), play: () => {}, pause: () => {} } as unknown as Animation;
+        };
+        try {
+            function Harness() {
+                const [view, setView] = useState<'month' | 'weeks' | 'year'>('month');
+                return createElement('div', null, createElement(ActivityCalendar, {
+                    counts: new Map(),
+                    locale: 'en-US',
+                    weekStart: 1,
+                    today: new Date(2026, 8, 2),
+                    range: { start: new Date(2026, 6, 1), end: new Date(2026, 7, 31) },
+                    selectedRange: { start: '2026-07-01', end: '2026-07-31' },
+                    latestEditKey: '2026-08-05',
+                    view,
+                    onViewChange: setView,
+                    cursor: { year: 2026, month: 8 },
+                    onCursorChange: () => {},
+                    onDayClick: () => {},
+                    onDaySelect: () => {},
+                    onRangeSelect: () => {},
+                    onGapDayClick: () => {},
+                    onNoteClick: () => {},
+                    getDiaryId: () => null,
+                }));
+            }
+            const { container, unmount } = renderElement(createElement(Harness));
+            const banner = container.querySelector('[aria-label*="sidebar.calendar_gap_banner"]');
+            expect(banner).not.toBeNull();
+            act(() => { banner!.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+            expect(captured).toHaveLength(1);
+            expect(captured[0]!.duration).toBe(1100);
+            const toggles = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="sidebar.calendar_view"] button')];
+            act(() => { toggles[1]!.click(); });
+            act(() => { (container.querySelector('[aria-label*="sidebar.calendar_expand_week"]') as HTMLButtonElement).click(); });
+            expect(captured.length).toBeGreaterThan(2);
+            unmount();
+        }
+        finally {
+            Element.prototype.animate = original;
+        }
+    });
+});

@@ -8,6 +8,7 @@ import { useUi } from '../../store/ui'
 import { setCalendarTreeShowEmpty, setCalendarTreeVisible, useCalendarTreeShowEmpty, useCalendarTreeVisible } from '../../lib/calendar-prefs'
 import { resolveTodoTag } from '../../lib/calendar-tree'
 import { setYearGridColumns, useYearGridColumns, type YearGridColumnsPref } from '../../lib/year-grid-prefs'
+import { setUndoToastFocus, useUndoToastFocus } from '../../lib/undo-focus-pref'
 import { Tooltip } from '../../components/overlay'
 import { useSession } from '../../store/session'
 import { switchThemeWithTransition } from '../../store/ui'
@@ -35,6 +36,7 @@ export function AppearanceSettings({
   const calendarTreeShowEmpty = useCalendarTreeShowEmpty()
   const todoTag = useSession((s) => s.settings.notes.todoTag)
   const yearGridColumns = useYearGridColumns()
+  const undoToastFocus = useUndoToastFocus()
   const setTodoTag = useCallback((value: string) => void update({ notes: { todoTag: value.trim() ? value : null } }), [update])
 
   const setLanguage = useCallback((language: AppLocale) => void update({ appearance: { language } }), [update])
@@ -191,6 +193,10 @@ export function AppearanceSettings({
             onChange={setYearGridColumns}
             options={yearGridOptions}
           />
+        </SettingRow>
+
+        <SettingRow title={t("settings.undo_toast_focus")} description={t("settings.undo_toast_focus_desc")}>
+          <Switch checked={undoToastFocus} onChange={setUndoToastFocus} label={t("settings.undo_toast_focus")}/>
         </SettingRow>
 
         <YearGridPreview columns={yearGridColumns} locale={locale}/>

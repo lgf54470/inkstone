@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, Check, Info, X, XCircle } from 'lucide-react';
+import { AlertTriangle, Check, Info, Undo2, X, XCircle } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { useUi, type ToastItem } from '../store/ui';
 import { Button } from './primitives';
 import { Tooltip } from './overlay';
 import { t } from "../lib/i18n";
+import { isEditableTarget } from '../lib/hotkeys';
+import { useUndoToastFocus } from '../lib/undo-focus-pref';
 
 const TONE_ICON = {
     default: <Info size={14}/>,
@@ -27,6 +29,23 @@ function Toast({ item }: {
     const pausedRef = useRef(false);
     const timerRef = useRef<number>(0);
     const dismissTimerRef = useRef<number>(0);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const isUndo = item.kind === 'undo';
+    const undoFocusEnabled = useUndoToastFocus();
+    useEffect(() => {
+        // Landing focus on the undo action is the keyboard fast-path, but it must never
+        // interrupt typing, steal from an open dialog, or fight another undo toast.
+        if (!item.action || !undoFocusEnabled)
+            return;
+        const active = document.activeElement;
+        if (active && isEditableTarget(active))
+            return;
+        if (active?.closest('[role="dialog"]'))
+            return;
+        if (active?.closest('[data-undo-focus]'))
+            return;
+        containerRef.current?.querySelector<HTMLButtonElement>('[data-undo-focus]')?.focus({ preventScroll: true });
+    }, [item.action, undoFocusEnabled]);
     useEffect(() => {
         const start = () => {
             timerRef.current = window.setTimeout(() => {
@@ -42,8 +61,10 @@ function Toast({ item }: {
             window.clearTimeout(dismissTimerRef.current);
         };
     }, [item.id, item.duration, dismiss]);
-    return (<div onMouseEnter={() => (pausedRef.current = true)} onMouseLeave={() => (pausedRef.current = false)} className={cn('pointer-events-auto flex w-[min(400px,calc(100vw-32px))] items-start gap-2.5', 'rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-3 pr-2', 'shadow-[var(--shadow-pop)] transition-all duration-200 ease-[var(--ease-out)]', leaving ? 'translate-x-2 opacity-0' : 'anim-slide-right')} role={item.tone === 'danger' ? 'alert' : 'status'}>
-      <span className={cn('mt-[1px] shrink-0', TONE_COLOR[item.tone])}>{TONE_ICON[item.tone]}</span>
+    return (<div ref={containerRef} onMouseEnter={() => (pausedRef.current = true)} onMouseLeave={() => (pausedRef.current = false)} className={cn('pointer-events-auto flex w-[min(400px,calc(100vw-32px))] items-start gap-2.5', 'rounded-[var(--r-lg)] border p-3 pr-2', 'shadow-[var(--shadow-pop)] transition-all duration-200 ease-[var(--ease-out)]', isUndo
+            ? 'border-[color-mix(in_oklab,var(--accent)_55%,transparent)] bg-[color-mix(in_oklab,var(--accent)_7%,var(--bg-overlay))]'
+            : 'border-[var(--border-default)] bg-[var(--bg-overlay)]', leaving ? 'translate-x-2 opacity-0' : 'anim-slide-right')} role={item.tone === 'danger' ? 'alert' : 'status'} aria-label={item.action ? `${item.title} ${item.action.label}` : undefined}>
+      <span className={cn('mt-[1px] shrink-0', isUndo ? 'text-[var(--accent)]' : TONE_COLOR[item.tone])}>{isUndo ? <Undo2 size={14}/> : TONE_ICON[item.tone]}</span>
       <div className="min-w-0 flex-1">
         <div className="text-[12.5px] leading-snug font-medium text-[var(--text-primary)]">
           {item.title}
@@ -52,7 +73,7 @@ function Toast({ item }: {
             {item.description}
           </div>)}
       </div>
-      {item.action && (<Button size="sm" variant="ghost" className="-my-0.5 shrink-0 text-[var(--accent)]" onClick={() => {
+      {item.action && (<Button data-undo-focus size="sm" variant="ghost" className="-my-0.5 shrink-0 text-[var(--accent)]" onClick={() => {
                 item.action?.run();
                 dismiss(item.id);
             }}>

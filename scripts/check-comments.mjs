@@ -34,7 +34,7 @@ const allowed = new Map([
     "/** Reusable calendar + activity heatmap: navigable month grid, yearly month columns, and a GitHub-style weekly strip, with optional per-day note lists. */",
     "/** Convert an inclusive month range (0-11 indices within a year) to inclusive day keys. */",
     "/** Increments each time an external jump (e.g. a settings-preview click) targets the month view, triggering a fade-in + accent ring flash. */",
-    "// Marks an externally requested month jump (settings preview click) with a brief fade-in and an accent ring that recedes outward.",
+    "// Marks an external month jump (settings preview click) or an internal jump (week click, gap-cell follow, endpoint locate) with the same fade-in + receding accent ring.",
   ]],
   ["src/client/components/activity-calendar.test.ts", [
     "// jsdom has no layout engine, so these guards assert the anti-wrap CSS contract",
@@ -49,10 +49,15 @@ const allowed = new Map([
   ["src/client/components/date-range-popover.test.ts", [
     "// Three fixed pills + two default custom presets + the pencil button.",
   ]],
+  ["src/client/components/feedback.tsx", [
+    "// Landing focus on the undo action is the keyboard fast-path, but it must never",
+    "// interrupt typing, steal from an open dialog, or fight another undo toast.",
+  ]],
   ["src/client/components/date-range-popover.tsx", [
     "/** Compute the day keys for a fixed quick preset range anchored at `today`. */",
     "/** Move a preset within its list by one position (no-op at the edges). */",
     "/** Floating editor for an inclusive date-range filter: pick a start or end endpoint on a mini month calendar, leap to nearby months, apply fixed or rolling quick ranges, or clear the range. */",
+    "// Locate feedback mirrors the sidebar-calendar jumpFlash: when the popover opens aimed at the range end month, or the endpoint toggles, the mini grid pulses with the accent ring.",
   ]],
   ["src/client/features/list/range-preset-persist.ts", [
     "/** Load the user's custom rolling range presets, falling back to the defaults. */",
@@ -63,6 +68,12 @@ const allowed = new Map([
     "/** Inclusive day window of `days` entries ending at `anchor` (1 = a single day). */",
     "/** Key of the week's first day (per `weekStart`) containing `key`. */",
     "/** Whether an inclusive day-key range spans exactly one aligned week. */",
+  ]],
+  ["src/client/demo/backend.ts", [
+    "// Match the real worker contract: facetsFull may only be true when the response carries the",
+    "// complete folders/tags lists. The demo always sends full snapshots when anything changed, so",
+    "// the flag follows `changed`; a no-change catchup must not claim completeness (it would make",
+    "// the client's full-snapshot consolidation replace its freshly collected folders with []).",
   ]],
   ["src/client/demo/state.ts", [
     "// Welcome notes are deliberately dated a few weeks back: with no edits within the last ~10 days,",
@@ -140,6 +151,10 @@ const allowed = new Map([
     "/** External jump request for the sidebar heatmap calendar (from the settings preview); consumed by SidebarCalendar. */",
     "// Keep the multi-select when entering a folder view so it stacks with",
     "// the folder filter; any other navigation clears the selection.",
+    "/** Marks an undo toast: accent icon/tint in the UI and a short vibration cue. */",
+    "/** Unified note-list search query; part of the persisted filter combo cleared by `clearAllFilters`. */",
+    "/** Clears the full filter combo (query, date/relative, tags) with an undo toast restoring the exact previous combination. */",
+    "/** Post a toast carrying a one-click undo action; the single helper behind every store-level undo flow. */",
   ]],
   ["src/client/lib/note-filter.ts", [
     "/** Decide whether a note belongs to the active list view, optionally stacked with a multi-tag selection (`any` or `all` must match). */",
@@ -148,6 +163,20 @@ const allowed = new Map([
     "/** Clears the multi-tag selection shared by the sidebar, list/palette filters, and graph; optionally confirms with a toast (a string overrides the default message). */",
     "/** The toast key for a graph clear, or null for the default message, based on the clear-behavior preferences. */",
   ]],
+  ["src/client/store/notes.test.ts", [
+    "/**\n * Integration tests for the store-level undo contract behind the light note mutations\n * (move to folder, batch pin, star). Each action must optimistically apply, persist through\n * the (mocked) api, and post exactly one undo toast whose action reverts every affected note.\n */",
+    "/** Run a fire-and-forget undo closure and flush the queued patch writes. */",
+    "// A single-note revert confirms with a plain success toast.",
+    "// Batch reverts stay silent: no extra toast was posted.",
+    "// Only `b` changed; the api saw exactly one patch call.",
+  ]],
+  ["src/client/store/notes-test-utils.ts", [
+    "/**\n * Reusable test harness for the notes store (src/client/store/notes.ts).\n *\n * The store reads `api` and `localDb` through the module singletons at call time, so tests can\n * install in-memory stubs on those objects without vi.mock. Install once per test file in\n * `beforeAll` (or per test in `beforeEach`) and point `notesMockServer` at the notes under test.\n *\n * Usage:\n *   import { installNotesApiStub, installLocalDbStubs, notesMockServer, noteSummary } from './notes-test-utils'\n *   beforeAll(() => { installNotesApiStub(); installLocalDbStubs(); })\n *   beforeEach(() => { notesMockServer.notes = new Map(); notesMockServer.patchCalls = [] })\n */",
+    "/** In-memory stand-in for the account's server-side note storage. */",
+    "/**\n * Replace `api.notes.patch` with an in-memory implementation that applies the patch body to the\n * matching note in `notesMockServer.notes` and returns the updated full note (rev bumped), mirroring\n * the real endpoint's response shape.\n */",
+    "/**\n * Neutralize the IndexedDB-backed persistence surface the note mutation paths touch\n * (optimistic shell saves and content caching), so store actions run purely against the mock api.\n * Assignments go through a loose cast: the stubs intentionally ignore their real signatures.\n */",
+    "/** Build a minimal NoteSummary fixture. */",
+  ]],
   ["src/client/lib/tag-sort.ts", [
     "/** Rank a tag name against a query: exact match, then prefix, then earlier substring. */",
     "/** Sort tags for a picker: by query relevance when searching, otherwise by note count (then name). */",
@@ -155,6 +184,17 @@ const allowed = new Map([
   ["src/client/store/notes.ts", [
     "/** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization. */",
     "/** Tags when creating from a tag view: added to the front matter tags and available as the `{{tags}}` context. */",
+    "/** Archive or unarchive a note, posting a store-level undo toast (`notify: 'confirm'` confirms a silent revert, `'none'` reverts silently for batch undos). */",
+    "/** Patch shape accepted by `patchNote` (summary flags plus folder moves). */",
+    "/** Batch toast title for a count-aware mutation (e.g. \"Moved 3 notes\"). */",
+    "/**\n * The shared store-level undo contract for light mutations: apply `patch` to every id in\n * `undoPatches`, then offer one undo toast running each note's captured revert patch.\n * `notify: 'confirm'` turns the action into a silent revert that confirms with a plain\n * toast; `'none'` reverts without any toast (batch undos).\n */",
+    "// Single-note reverts confirm with a plain toast describing the reverted state; batch reverts stay silent.",
+    "/** Archive or unarchive many notes with one shared undo toast that reverts the whole batch. */",
+    "/** Star or unstar a note, posting a store-level undo toast (`notify` mirrors `setArchived`). */",
+    "/** Star or unstar many notes with one shared undo toast. */",
+    "/** Pin or unpin a note, posting a store-level undo toast (`notify` mirrors `setArchived`). */",
+    "/** Pin or unpin many notes with one shared undo toast. */",
+    "/** Move notes to a folder (null = unfiled) with one undo toast restoring each note's previous folder. */",
     "// Keep the front matter `title` property in sync with the note title",
     "// whenever the note already declares one (opt-out per settings).",
     "// Reverse sync: when the body's front matter `title` property changes,",
@@ -200,6 +240,15 @@ const allowed = new Map([
     "// Refresh catalog-sourced fields (name, description, content, tags) on",
     "// built-in entries the user never edited: user edits flip `builtin` to",
     "// false, so those are skipped and never overwritten by a re-seed.",
+  ]],
+  ["src/client/features/command/ShortcutsPanel.test.ts", [
+    "// Narrow the results to a single row; the cursor must clamp back inside.",
+  ]],
+  ["src/client/features/command/ShortcutsPanel.tsx", [
+    "/** Invokes the underlying command for registry-backed rows (command-palette parity). */",
+  ]],
+  ["src/client/lib/undo-focus-pref.ts", [
+    "/** Whether undo toasts should auto-focus their action button (explicit \"no-distraction\" opt-out). */",
   ]],
   ["src/client/lib/template-notes.ts", [
     "/** Creates a note from a template and opens it, returning the new note id (or null on failure). */",

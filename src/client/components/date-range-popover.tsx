@@ -73,6 +73,7 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
     const [presets, setPresets] = useState<RangePresetConfig[]>(loadRangePresets);
     const popoverRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<HTMLDivElement>(null);
+    const [locateFlash, setLocateFlash] = useState(0);
     const current = range ?? { start: dateKey(new Date()), end: dateKey(new Date()) };
 
     useEscape(open, onClose);
@@ -110,6 +111,30 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
             gridRef.current?.querySelector<HTMLButtonElement>('[data-range-day]')?.focus();
         });
     }, [open, editing, cursor]);
+
+    useEffect(() => {
+        // Locate feedback mirrors the sidebar-calendar jumpFlash: when the popover opens aimed at the range end month, or the endpoint toggles, the mini grid pulses with the accent ring.
+        if (!locateFlash)
+            return;
+        const el = gridRef.current;
+        if (!el || typeof el.animate !== 'function')
+            return;
+        if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+            return;
+        const animation = el.animate([
+            { opacity: 0.35, boxShadow: '0 0 0 2px var(--accent)' },
+            { opacity: 1, boxShadow: '0 0 0 9px rgba(0, 0, 0, 0)' },
+        ], { duration: 700, easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)' });
+        return () => animation.cancel();
+    }, [locateFlash]);
+    useEffect(() => {
+        if (open && range)
+            setLocateFlash((n) => n + 1);
+    }, [open]);
+    useEffect(() => {
+        if (open)
+            setLocateFlash((n) => n + 1);
+    }, [editing]);
 
     const todayKey = useMemo(() => dateKey(new Date()), []);
     const weekdayLabels = useMemo(() => {

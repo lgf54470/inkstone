@@ -74,3 +74,33 @@ describe('DateRangePopover render contract', () => {
         unmount();
     });
 });
+describe('DateRangePopover locate flash', () => {
+    it('pulses the mini grid when opening onto an existing range', () => {
+        const captured: {
+            duration?: number;
+        }[] = [];
+        const original = Element.prototype.animate;
+        Element.prototype.animate = function (this: Element, _keyframes: Keyframe[], options?: KeyframeAnimationOptions) {
+            captured.push({ duration: typeof options?.duration === 'number' ? options.duration : undefined });
+            return { cancel: () => {}, finished: Promise.resolve(), play: () => {}, pause: () => {} } as unknown as Animation;
+        };
+        try {
+            const anchor = { current: document.createElement('button') } as React.RefObject<HTMLButtonElement | null>;
+            const { unmount } = renderElement(createElement(DateRangePopover, {
+                anchor,
+                open: true,
+                onClose: () => {},
+                range: { start: '2026-07-01', end: '2026-08-31' },
+                onChange: () => {},
+                relative: null,
+                onApplyRelative: () => {},
+            }));
+            expect(captured).toHaveLength(1);
+            expect(captured[0]!.duration).toBe(700);
+            unmount();
+        }
+        finally {
+            Element.prototype.animate = original;
+        }
+    });
+});

@@ -132,11 +132,15 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
         return () => observer.disconnect();
     }, []);
     const monthFlashRef = useRef<HTMLDivElement | null>(null);
+    const weekFlashRef = useRef<HTMLDivElement | null>(null);
+    const [internalFlash, setInternalFlash] = useState(0);
+    const flash = () => setInternalFlash((n) => n + 1);
+    const flashNonce = jumpFlash + internalFlash;
     useEffect(() => {
-        // Marks an externally requested month jump (settings preview click) with a brief fade-in and an accent ring that recedes outward.
-        if (jumpFlash <= 0 || view !== 'month')
+        // Marks an external month jump (settings preview click) or an internal jump (week click, gap-cell follow, endpoint locate) with the same fade-in + receding accent ring.
+        if (flashNonce <= 0)
             return;
-        const el = monthFlashRef.current;
+        const el = view === 'month' ? monthFlashRef.current : view === 'weeks' ? weekFlashRef.current : null;
         if (!el || typeof el.animate !== 'function')
             return;
         if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
@@ -146,7 +150,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
             { opacity: 1, boxShadow: '0 0 0 9px rgba(0, 0, 0, 0)' },
         ], { duration: 1100, easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)' });
         return () => animation.cancel();
-    }, [jumpFlash, view]);
+    }, [flashNonce, view]);
     const yearColumns: YearGridColumns = columnsPreference !== 'auto' ? (columnsPreference === '4' ? 4 : 3) : (rootWidth === null ? YEAR_GRID_COLUMNS : yearGridColumns(rootWidth));
     if (expandedWeek !== null)
         lastExpandedWeek.current = expandedWeek;
@@ -335,6 +339,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
         : (isCurrentYear ? now.getMonth() : 0);
 
     const handleWeekdayClick = (month: number, column: number) => {
+        flash();
         const first = new Date(cursor.year, month, 1);
         const offset = (first.getDay() - weekStart + 7) % 7;
         const day = 1 + ((column - offset + 7) % 7);
@@ -413,9 +418,23 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
         : flaggedLabel(key);
     const activateDay = (key: string, diaryId: string | null) => {
         if (isLatestOutside(key) && latestEditOutside !== null)
-            onGapDayClick(key);
+            handleGapDayClick(key);
         else
             onDayClick(key, diaryId);
+    };
+    const handleGapDayClick = (key: string) => {
+        flash();
+        onGapDayClick(key);
+    };
+    const handleStripWeekClick = (event: React.MouseEvent, weekIndex: number) => {
+        const week = stripWeeks[weekIndex];
+        const first = week?.[0]?.key;
+        const last = week?.[6]?.key;
+        if (first && last)
+            onRangeSelect(first, last);
+        if (!event.shiftKey)
+            toggleWeek(weekIndex);
+        flash();
     };
 
     return (<div ref={rootRef} onKeyDown={handleRootKeyDown}>
@@ -469,7 +488,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
             </div>
         </div>
         {view === 'month' ? (<><div className="mt-1.5 px-0.5">
-            {latestEditOutside !== null && (<button type="button" aria-label={t(gapAhead ? "sidebar.calendar_gap_banner_ahead_value0" : "sidebar.calendar_gap_banner_value0", { value0: latestOutsideDays ?? 0 })} onClick={() => onGapDayClick(latestEditOutside.key)} className="flex h-6 w-full items-center gap-1.5 rounded-[var(--r-sm)] border border-dashed border-[var(--accent)]/60 bg-[var(--accent-soft)]/60 px-2 text-[10px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
+            {latestEditOutside !== null && (<button type="button" aria-label={t(gapAhead ? "sidebar.calendar_gap_banner_ahead_value0" : "sidebar.calendar_gap_banner_value0", { value0: latestOutsideDays ?? 0 })} onClick={() => handleGapDayClick(latestEditOutside.key)} className="flex h-6 w-full items-center gap-1.5 rounded-[var(--r-sm)] border border-dashed border-[var(--accent)]/60 bg-[var(--accent-soft)]/60 px-2 text-[10px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
                     <RotateCcw size={10} className="shrink-0"/>
                     <span className="min-w-0 flex-1 truncate text-left">{t(gapAhead ? "sidebar.calendar_gap_banner_ahead_value0" : "sidebar.calendar_gap_banner_value0", { value0: latestOutsideDays ?? 0 })}</span>
                 </button>)}
@@ -525,6 +544,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                             if (event.detail === 0) {
                                 onCursorChange({ year: cursor.year, month: month.month });
                                 onViewChange('month');
+                                flash();
                                 return;
                             }
                             if (yearRangeAnchor === null) {
@@ -547,17 +567,10 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
             {yearRangeAnchor !== null && (<div className="mt-1 px-0.5 text-[9px] text-[var(--text-tertiary)]">
                 {t("sidebar.calendar_year_range_hint_value0", { value0: monthLabels[yearRangeAnchor.month] ?? '' })}
             </div>)}
-        </>) : (<div className="mt-1.5 px-0.5">
+        </>) : (<div ref={weekFlashRef} className="mt-1.5 px-0.5">
             <div className="px-0.5 pb-1 text-[9px] font-medium text-[var(--text-quaternary)]">{t("sidebar.calendar_week_strip_value0", { value0: stripWeeks.length })}</div>
             <div className="flex gap-[2px]">
-                {stripWeeks.map((week, weekIndex) => (<button key={weekIndex} type="button" aria-expanded={expandedWeek === weekIndex} aria-pressed={isWeekRangeActive(week)} aria-label={t("sidebar.calendar_expand_week_value0", { value0: week[0]?.key.slice(5), value1: week[6]?.key.slice(5) })} onClick={(event) => {
-                    const first = week[0]?.key;
-                    const last = week[6]?.key;
-                    if (first && last)
-                        onRangeSelect(first, last);
-                    if (!event.shiftKey)
-                        toggleWeek(weekIndex);
-                }} className={cn('flex min-w-0 flex-1 flex-col gap-[2px] rounded-[3px] p-px transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', expandedWeek === weekIndex && 'bg-[var(--accent-soft)]')}>
+                {stripWeeks.map((week, weekIndex) => (<button key={weekIndex} type="button" aria-expanded={expandedWeek === weekIndex} aria-pressed={isWeekRangeActive(week)} aria-label={t("sidebar.calendar_expand_week_value0", { value0: week[0]?.key.slice(5), value1: week[6]?.key.slice(5) })} onClick={(event) => handleStripWeekClick(event, weekIndex)} className={cn('flex min-w-0 flex-1 flex-col gap-[2px] rounded-[3px] p-px transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', expandedWeek === weekIndex && 'bg-[var(--accent-soft)]')}>
                     {week.map((cell) => (<Tooltip key={cell.key} label={flaggedLabel(cell.key)}>
                         <span aria-hidden="true" className={cn('aspect-square w-full rounded-[2px]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]', cell.selected && !cell.today && 'ring-1 ring-inset ring-[var(--accent)]/70', isLatestOutside(cell.key) && 'border border-dashed border-[var(--accent)]/80')} style={cell.level > 0 ? { backgroundColor: `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[cell.level]}%, transparent)` } : { backgroundColor: 'var(--bg-inset)' }}/>
                     </Tooltip>))}

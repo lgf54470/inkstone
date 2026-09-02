@@ -19,7 +19,6 @@ import { useGapIndicatorStore } from './use-gap-indicator';
 import { loadRememberedFilter, loadSessionFilter, saveRememberedFilter, saveSessionFilter } from './list-filter-persist';
 import { useUi } from '../../store/ui';
 import { useSession } from '../../store/session';
-import { toastWithUndo } from '../../lib/toast-undo';
 import { createContextualNote, useNotes, useVisibleNotes } from '../../store/notes';
 import { useNoteTemplates } from '../../store/note-templates';
 import { createNoteFromTemplate } from '../../lib/template-notes';
@@ -61,6 +60,8 @@ export function NoteList() {
     const setSelectedTagsMatch = useUi((s) => s.setSelectedTagsMatch);
     const dateFilter = useUi((s) => s.dateFilter);
     const relativeFilter = useUi((s) => s.relativeFilter);
+    const listQuery = useUi((s) => s.listQuery);
+    const setListQuery = useUi((s) => s.setListQuery);
     const notes = useVisibleNotes();
     const folders = useNotes((s) => s.folders);
     const tags = useNotes((s) => s.tags);
@@ -70,10 +71,11 @@ export function NoteList() {
     const { emptyTrash, emptyingTrash } = useEmptyTrash();
     const [persistedFilters] = useState(() => loadRememberedFilter() ?? loadSessionFilter());
     const [rememberFilters, setRememberFilters] = useState(() => loadRememberedFilter() !== null);
-    const [filter, setFilter] = useState(persistedFilters.query);
+    const filter = listQuery;
     const deferredFilter = useDeferredValue(filter);
     useEffect(() => {
         useUi.setState({
+            listQuery: persistedFilters.query,
             dateFilter: persistedFilters.dateFilter,
             relativeFilter: persistedFilters.relativeFilter,
             selectedTags: persistedFilters.selectedTags,
@@ -131,7 +133,7 @@ export function NoteList() {
     const filterScope = useRef<{ view: ViewKind; folderId: string | null; tag: string | null } | null>(null);
     useEffect(() => {
         if (filterScope.current && (filterScope.current.view !== view || filterScope.current.folderId !== folderId || filterScope.current.tag !== tag))
-            setFilter('');
+            setListQuery('');
         filterScope.current = { view, folderId, tag };
     }, [view, folderId, tag]);
     const title = useMemo(() => {
@@ -230,27 +232,7 @@ export function NoteList() {
         };
     }, [endPeek, startPeek]);
     const clearAllFilters = () => {
-        const state = useUi.getState();
-        const previous = {
-            dateFilter: state.dateFilter,
-            relativeFilter: state.relativeFilter,
-            selectedTags: state.selectedTags,
-            selectedTagsMatch: state.selectedTagsMatch,
-            query: filter,
-        };
-        state.setDateFilter(null);
-        state.setRelativeFilter(null);
-        state.clearTagSelection();
-        setFilter('');
-        toastWithUndo(t("notes.filters_cleared"), () => {
-            useUi.setState({
-                dateFilter: previous.dateFilter,
-                relativeFilter: previous.relativeFilter,
-                selectedTags: previous.selectedTags,
-                selectedTagsMatch: previous.selectedTagsMatch,
-            });
-            setFilter(previous.query);
-        });
+        useUi.getState().clearAllFilters();
     };
     const weekStart = locale === 'zh-CN' ? 1 : 0;
     const weekFiltered = dateFilter ? isWeekRangeKey(dateFilter.start, dateFilter.end, weekStart) : false;
@@ -425,9 +407,9 @@ export function NoteList() {
 
         <div className="relative">
           <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-quaternary)]"/>
-          <input aria-label={t("notes.filter_in_this_view")} value={filter} onChange={(e) => setFilter(e.target.value)} onKeyDown={(e) => {
+          <input aria-label={t("notes.filter_in_this_view")} value={filter} onChange={(e) => setListQuery(e.target.value)} onKeyDown={(e) => {
             if (e.key === 'Escape')
-                setFilter('');
+                setListQuery('');
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 const first = filtered[0]?.note.id;
@@ -437,7 +419,7 @@ export function NoteList() {
             }
         }} placeholder={t("notes.filter_in_this_view")} className={cn('h-10 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] md:h-[30px]', 'pr-9 pl-8 text-[12.5px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] md:pr-7 md:pl-7', 'transition-[border-color,box-shadow] duration-[var(--dur-fast)]', 'focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none')}/>
           {filter && (<Tooltip label={t("notes.clear_filters")} side="left">
-              <button type="button" onClick={() => setFilter('')} aria-label={t("notes.clear_filters")} className="absolute top-1/2 right-1 flex size-8 -translate-y-1/2 items-center justify-center rounded text-[var(--text-quaternary)] hover:text-[var(--text-secondary)] md:right-2 md:size-auto md:p-0.5">
+              <button type="button" onClick={() => setListQuery('')} aria-label={t("notes.clear_filters")} className="absolute top-1/2 right-1 flex size-8 -translate-y-1/2 items-center justify-center rounded text-[var(--text-quaternary)] hover:text-[var(--text-secondary)] md:right-2 md:size-auto md:p-0.5">
                 <X size={12}/>
               </button>
             </Tooltip>)}
@@ -479,7 +461,7 @@ export function NoteList() {
                 <Search size={10} className="shrink-0 text-[var(--text-quaternary)]"/>
                 <span className="max-w-36 truncate">{t("notes.search_query_value0", { value0: filter })}</span>
                 <Tooltip label={t("notes.clear_search_query")}>
-                  <button type="button" aria-label={t("notes.clear_search_query")} onClick={() => setFilter('')} className="rounded-full p-0.5 text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
+                  <button type="button" aria-label={t("notes.clear_search_query")} onClick={() => setListQuery('')} className="rounded-full p-0.5 text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
                     <X size={10}/>
                   </button>
                 </Tooltip>
@@ -543,8 +525,11 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
     const selectionHighlighted = selected && (selectedIds.length > 1 || !active);
     const toggleSelected = useUi((s) => s.toggleSelected);
     const openNote = useNotes((s) => s.openNote);
-    const patchNote = useNotes((s) => s.patchNote);
     const deleteNote = useNotes((s) => s.deleteNote);
+    const setArchived = useNotes((s) => s.setArchived);
+    const setStarred = useNotes((s) => s.setStarred);
+    const setPinned = useNotes((s) => s.setPinned);
+    const moveNotes = useNotes((s) => s.moveNotes);
     const restoreNote = useNotes((s) => s.restoreNote);
     const purgeNote = useNotes((s) => s.purgeNote);
     const duplicateNote = useNotes((s) => s.duplicateNote);
@@ -637,21 +622,21 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
                 id: 'pin',
                 label: note.isPinned ? t("notes.unpin") : t("notes.pin"),
                 icon: note.isPinned ? <PinOff size={13}/> : <Pin size={13}/>,
-                onSelect: () => void patchNote(note.id, { isPinned: !note.isPinned }),
+                onSelect: () => void setPinned(note.id, !note.isPinned),
             },
             {
                 id: 'star',
                 label: note.isStarred ? t("common.remove_from_favorites") : t("navigation.favorites"),
                 icon: note.isStarred ? <StarOff size={13}/> : <Star size={13}/>,
                 combo: 'mod+d',
-                onSelect: () => void patchNote(note.id, { isStarred: !note.isStarred }),
+                onSelect: () => void setStarred(note.id, !note.isStarred),
             },
             { id: 'duplicate', label: t("notes.create_a_copy"), icon: <Copy size={13}/>, onSelect: () => void duplicateNote(note.id) },
             {
                 id: 'archive',
                 label: note.isArchived ? t("common.unarchive") : t("navigation.archive"),
                 icon: <Archive size={13}/>,
-                onSelect: () => void patchNote(note.id, { isArchived: !note.isArchived }),
+                onSelect: () => void setArchived(note.id, !note.isArchived),
             },
             {
                 id: 'move',
@@ -749,14 +734,17 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
 
       {menu.point && <Menu anchor={menu.point} open onClose={menu.close} items={items}/>}
       <Menu anchor={menuButtonRef} open={menuOpen} onClose={() => setMenuOpen(false)} items={items} align="end" width={240}/>
-      {moveOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={note.folderId} rootLabel={t("notes.remove_from_folder")} onSelect={(folderId) => void patchNote(note.id, { folderId })} onClose={() => setMoveOpen(false)}/>}
+      {moveOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={note.folderId} rootLabel={t("notes.remove_from_folder")} onSelect={(folderId) => void moveNotes([note.id], folderId)} onClose={() => setMoveOpen(false)}/>}
     </>);
 });
 function BulkBar() {
     const selectedIds = useUi((s) => s.selectedIds);
     const setSelected = useUi((s) => s.setSelected);
-    const patchNote = useNotes((s) => s.patchNote);
     const deleteNote = useNotes((s) => s.deleteNote);
+    const setArchivedMany = useNotes((s) => s.setArchivedMany);
+    const setStarredMany = useNotes((s) => s.setStarredMany);
+    const setPinnedMany = useNotes((s) => s.setPinnedMany);
+    const moveNotes = useNotes((s) => s.moveNotes);
     const folders = useNotes((s) => s.folders);
     const notes = useNotes((s) => s.notes);
     const toast = useUi((s) => s.toast);
@@ -767,6 +755,7 @@ function BulkBar() {
     if (ids.length < 2)
         return null;
     const allStarred = ids.every((id) => notes[id]?.isStarred);
+    const allPinned = ids.every((id) => notes[id]?.isPinned);
     const firstFolderId = notes[ids[0]!]?.folderId ?? null;
     const commonFolderId = ids.every((id) => notes[id]?.folderId === firstFolderId) ? firstFolderId : undefined;
     const clear = () => {
@@ -799,8 +788,13 @@ function BulkBar() {
       <div className="anim-rise pointer-events-auto flex items-center gap-1 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 pl-3 shadow-[var(--shadow-pop)]">
         <span className="mr-1 text-[11.5px] whitespace-nowrap text-[var(--text-secondary)]">{t("notes.selected")}<span className="tabular font-medium">{ids.length}</span>{t("notes.notes")}</span>
         <Tooltip label={allStarred ? t("common.remove_from_favorites") : t("navigation.favorites")}>
-          <IconButton label={t("navigation.favorites")} size="sm" disabled={busy} onClick={() => void runAll(() => performAll((id) => patchNote(id, { isStarred: !allStarred }), allStarred ? t("notes.removed_from_favorites") : t("notes.added_to_favorites")))}>
+          <IconButton label={t("navigation.favorites")} size="sm" disabled={busy} onClick={() => void runAll(() => setStarredMany(ids, !allStarred))}>
             <Star size={13} className={allStarred ? 'fill-current' : undefined}/>
+          </IconButton>
+        </Tooltip>
+        <Tooltip label={allPinned ? t("notes.unpin") : t("notes.pin")}>
+          <IconButton label={allPinned ? t("notes.unpin") : t("notes.pin")} size="sm" disabled={busy} onClick={() => void runAll(() => setPinnedMany(ids, !allPinned))}>
+            <Pin size={13} className={allPinned ? 'fill-current' : undefined}/>
           </IconButton>
         </Tooltip>
         <Tooltip label={t("notes.move_to_folder")}>
@@ -809,7 +803,7 @@ function BulkBar() {
           </IconButton>
         </Tooltip>
         <Tooltip label={t("navigation.archive")}>
-          <IconButton label={t("navigation.archive")} size="sm" disabled={busy} onClick={() => void runAll(() => performAll((id) => patchNote(id, { isArchived: true }), t("notes.archived")))}>
+          <IconButton label={t("navigation.archive")} size="sm" disabled={busy} onClick={() => void runAll(() => setArchivedMany(ids, true))}>
             <Archive size={13}/>
           </IconButton>
         </Tooltip>
@@ -835,7 +829,7 @@ function BulkBar() {
         </Tooltip>
       </div>
 
-      {folderPickerOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={commonFolderId} rootLabel={t("notes.remove_from_folder")} onSelect={(folderId) => void runAll(() => performAll((id) => patchNote(id, { folderId }), folderId ? t("notes.moved") : t("notes.moved_out")))} onClose={() => setFolderPickerOpen(false)}/>}
+      {folderPickerOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={commonFolderId} rootLabel={t("notes.remove_from_folder")} onSelect={(folderId) => void runAll(() => moveNotes(ids, folderId))} onClose={() => setFolderPickerOpen(false)}/>}
     </div>);
 }
 function ListEmpty({ view, folderId, filtering, dayFiltering, tagFiltering, latestEdit, onJumpToLatest, weekFiltered, onJumpToLatestWeek }: {

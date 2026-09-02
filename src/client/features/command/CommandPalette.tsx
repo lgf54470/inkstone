@@ -13,7 +13,6 @@ import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../compone
 import { TagFilterPopover } from '../../components/tag-filter-popover';
 import { useUi } from '../../store/ui';
 import { createContextualNote, useNotes } from '../../store/notes';
-import { toastWithUndo } from '../../lib/toast-undo';
 import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands';
 import { CALENDAR_TREE, calendarNodeName, calendarPeriodLabel, calendarPeriodsForDate, parseCalendarJumpQuery, type CalendarPeriod, virtualAncestorIds, virtualId, virtualPeriodKeyRange } from '../../lib/calendar-tree';
 import { folderPathLabel, openFolderView } from '../../lib/folders';
@@ -61,7 +60,8 @@ export function CommandPalette({ onClose }: {
     const openNote = useNotes((s) => s.openNote);
     const createFolder = useNotes((s) => s.createFolder);
     const deleteNote = useNotes((s) => s.deleteNote);
-    const patchNote = useNotes((s) => s.patchNote);
+    const setArchived = useNotes((s) => s.setArchived);
+    const setStarred = useNotes((s) => s.setStarred);
     const activeNoteId = useUi((s) => s.activeNoteId);
     const recentNoteIds = useUi((s) => s.recentNoteIds);
     const openPanel = useUi((s) => s.openPanel);
@@ -175,7 +175,7 @@ export function CommandPalette({ onClose }: {
                         icon: <Star size={14}/>,
                         combo: 'mod+d',
                         group: t("common.current_note"),
-                        run: () => void patchNote(activeNote.id, { isStarred: !activeNote.isStarred }),
+                        run: () => void setStarred(activeNote.id, !activeNote.isStarred),
                     },
                     {
                         id: 'cmd-archive',
@@ -183,14 +183,7 @@ export function CommandPalette({ onClose }: {
                         label: activeNote.isArchived ? t("common.unarchive") : t("command.archive_current_note"),
                         icon: <Archive size={14}/>,
                         group: t("common.current_note"),
-                        run: () => {
-                            const wasArchived = activeNote.isArchived;
-                            void patchNote(activeNote.id, { isArchived: !wasArchived });
-                            toastWithUndo(t(wasArchived ? "common.unarchive" : "notes.archived"), () => {
-                                void patchNote(activeNote.id, { isArchived: wasArchived });
-                                useUi.getState().toast({ title: t(wasArchived ? "notes.archived" : "notes.unarchived") });
-                            });
-                        },
+                        run: () => void setArchived(activeNote.id, !activeNote.isArchived),
                     },
                     {
                         id: 'cmd-insert-template',
@@ -387,7 +380,7 @@ export function CommandPalette({ onClose }: {
         openCalendarPeriod,
         openPanel,
         openView,
-        patchNote,
+        setStarred,
         updateSettings,
         yearGridColumns,
     ]);

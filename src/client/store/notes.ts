@@ -12,9 +12,8 @@ import { isVirtualFolderId, resolveTodoTag } from '../lib/calendar-tree';
 import { folderDescendantIds } from '../lib/folders';
 import { matchesView } from '../lib/note-filter';
 import { useSession } from './session';
-import { useUi, type WorkspacePane } from './ui';
-import { toastWithUndo } from '../lib/toast-undo';
-import { getLocale, t, useLocale } from "../lib/i18n";
+import { useUi, toastWithUndo, type WorkspacePane } from './ui';
+import { getLocale, t, useLocale, type MessageKey } from "../lib/i18n";
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'synced' | 'offline';
 interface NotesState {
     notes: Record<string, NoteSummary>;
@@ -55,6 +54,26 @@ interface NotesState {
     patchNote: (id: string, patch: Partial<Pick<NoteSummary, 'isPinned' | 'isStarred' | 'isArchived'>> & {
         folderId?: string | null;
     }) => Promise<void>;
+    /** Archive or unarchive a note, posting a store-level undo toast (`notify: 'confirm'` confirms a silent revert, `'none'` reverts silently for batch undos). */
+    setArchived: (id: string, archived: boolean, options?: {
+        notify?: 'undo' | 'confirm' | 'none';
+    }) => Promise<void>;
+    /** Archive or unarchive many notes with one shared undo toast that reverts the whole batch. */
+    setArchivedMany: (ids: string[], archived: boolean) => Promise<void>;
+    /** Star or unstar a note, posting a store-level undo toast (`notify` mirrors `setArchived`). */
+    setStarred: (id: string, starred: boolean, options?: {
+        notify?: 'undo' | 'confirm' | 'none';
+    }) => Promise<void>;
+    /** Star or unstar many notes with one shared undo toast. */
+    setStarredMany: (ids: string[], starred: boolean) => Promise<void>;
+    /** Pin or unpin a note, posting a store-level undo toast (`notify` mirrors `setArchived`). */
+    setPinned: (id: string, pinned: boolean, options?: {
+        notify?: 'undo' | 'confirm' | 'none';
+    }) => Promise<void>;
+    /** Pin or unpin many notes with one shared undo toast. */
+    setPinnedMany: (ids: string[], pinned: boolean) => Promise<void>;
+    /** Move notes to a folder (null = unfiled) with one undo toast restoring each note's previous folder. */
+    moveNotes: (ids: string[], folderId: string | null) => Promise<void>;
     deleteNote: (id: string) => Promise<void>;
     restoreNote: (id: string) => Promise<void>;
     restoreVersion: (id: string, versionId: string, content: string, title?: string) => Promise<boolean>;
@@ -152,6 +171,48 @@ const validatedRevisions = new Map<string, number>();
 const purgedNoteIds = new Map<string, number | null>();
 const noteRequestEpochs = new Map<string, number>();
 const STALE_NOTE_REQUEST = Symbol('stale-note-request');
+
+/** Patch shape accepted by `patchNote` (summary flags plus folder moves). */
+type NotePatch = Partial<Pick<NoteSummary, 'isPinned' | 'isStarred' | 'isArchived'>> & {
+    folderId?: string | null;
+};
+
+/** Batch toast title for a count-aware mutation (e.g. "Moved 3 notes"). */
+function batchPatchTitle(key: MessageKey, count: number): string {
+    return t("notes.value0_value1_notes", { value0: t(key), value1: count });
+}
+
+/**
+ * The shared store-level undo contract for light mutations: apply `patch` to every id in
+ * `undoPatches`, then offer one undo toast running each note's captured revert patch.
+ * `notify: 'confirm'` turns the action into a silent revert that confirms with a plain
+ * toast; `'none'` reverts without any toast (batch undos).
+ */
+async function patchWithUndo(
+    get: () => NotesState,
+    undoPatches: ReadonlyMap<string, NotePatch>,
+    patch: NotePatch,
+    title: string,
+    revertTitle: string,
+    notify: 'undo' | 'confirm' | 'none' = 'undo',
+): Promise<void> {
+    if (!undoPatches.size)
+        return;
+    await Promise.all([...undoPatches.keys()].map((id) => get().patchNote(id, patch)));
+    if (notify === 'undo') {
+        toastWithUndo(title, () => {
+            for (const [id, undoPatch] of undoPatches)
+                void get().patchNote(id, undoPatch);
+            // Single-note reverts confirm with a plain toast describing the reverted state; batch reverts stay silent.
+            if (undoPatches.size === 1)
+                useUi.getState().toast({ title: revertTitle, tone: 'success' });
+        });
+        return;
+    }
+    if (notify === 'confirm')
+        useUi.getState().toast({ title: revertTitle, tone: 'success' });
+}
+
 export const useNotes = create<NotesState>((set, get) => ({
     notes: {},
     contents: {},
@@ -775,6 +836,93 @@ export const useNotes = create<NotesState>((set, get) => ({
                 }
             }
         });
+    },
+    async setArchived(id, archived, options) {
+        const before = get().notes[id];
+        if (!before || before.isArchived === archived)
+            return;
+        await patchWithUndo(
+            get,
+            new Map([[id, { isArchived: before.isArchived }]]),
+            { isArchived: archived },
+            t(archived ? "notes.archived" : "common.unarchive"),
+            t(archived ? "notes.unarchived" : "notes.archived"),
+            options?.notify,
+        );
+    },
+    async setArchivedMany(ids, archived) {
+        const undoPatches = new Map<string, NotePatch>();
+        for (const id of ids) {
+            const note = get().notes[id];
+            if (note && note.isArchived !== archived)
+                undoPatches.set(id, { isArchived: note.isArchived });
+        }
+        await patchWithUndo(
+            get,
+            undoPatches,
+            { isArchived: archived },
+            batchPatchTitle(archived ? "notes.archived" : "common.unarchive", undoPatches.size),
+            batchPatchTitle(archived ? "notes.unarchived" : "notes.archived", undoPatches.size),
+        );
+    },
+    async setStarred(id, starred, options) {
+        const before = get().notes[id];
+        if (!before || before.isStarred === starred)
+            return;
+        await patchWithUndo(
+            get,
+            new Map([[id, { isStarred: before.isStarred }]]),
+            { isStarred: starred },
+            t(starred ? "notes.added_to_favorites" : "notes.removed_from_favorites"),
+            t(starred ? "notes.removed_from_favorites" : "notes.added_to_favorites"),
+            options?.notify,
+        );
+    },
+    async setStarredMany(ids, starred) {
+        const undoPatches = new Map<string, NotePatch>();
+        for (const id of ids) {
+            const note = get().notes[id];
+            if (note && note.isStarred !== starred)
+                undoPatches.set(id, { isStarred: note.isStarred });
+        }
+        const titleKey: MessageKey = starred ? "notes.added_to_favorites" : "notes.removed_from_favorites";
+        const revertKey: MessageKey = starred ? "notes.removed_from_favorites" : "notes.added_to_favorites";
+        await patchWithUndo(get, undoPatches, { isStarred: starred }, batchPatchTitle(titleKey, undoPatches.size), batchPatchTitle(revertKey, undoPatches.size));
+    },
+    async setPinned(id, pinned, options) {
+        const before = get().notes[id];
+        if (!before || before.isPinned === pinned)
+            return;
+        await patchWithUndo(
+            get,
+            new Map([[id, { isPinned: before.isPinned }]]),
+            { isPinned: pinned },
+            t(pinned ? "notes.pinned" : "notes.unpinned"),
+            t(pinned ? "notes.unpinned" : "notes.pinned"),
+            options?.notify,
+        );
+    },
+    async setPinnedMany(ids, pinned) {
+        const undoPatches = new Map<string, NotePatch>();
+        for (const id of ids) {
+            const note = get().notes[id];
+            if (note && note.isPinned !== pinned)
+                undoPatches.set(id, { isPinned: note.isPinned });
+        }
+        const titleKey: MessageKey = pinned ? "notes.pinned" : "notes.unpinned";
+        const revertKey: MessageKey = pinned ? "notes.unpinned" : "notes.pinned";
+        await patchWithUndo(get, undoPatches, { isPinned: pinned }, batchPatchTitle(titleKey, undoPatches.size), batchPatchTitle(revertKey, undoPatches.size));
+    },
+    async moveNotes(ids, folderId) {
+        const undoPatches = new Map<string, NotePatch>();
+        for (const id of ids) {
+            const note = get().notes[id];
+            if (note && note.folderId !== folderId)
+                undoPatches.set(id, { folderId: note.folderId });
+        }
+        const titleKey: MessageKey = folderId ? "notes.moved" : "notes.moved_out";
+        const revertKey: MessageKey = folderId ? "notes.moved_out" : "notes.moved";
+        await patchWithUndo(get, undoPatches, { folderId }, batchPatchTitle(titleKey, undoPatches.size), batchPatchTitle(revertKey, undoPatches.size));
     },
     async deleteNote(id) {
         commitPendingSummaryDerivation(id);

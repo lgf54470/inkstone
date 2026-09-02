@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LIMITS } from '@shared/constants';
-import { useUi } from './ui';
+import { toastWithUndo, useUi } from './ui';
 
 beforeEach(() => {
     vi.useFakeTimers();
@@ -56,5 +56,50 @@ describe('calendarJump', () => {
         requestCalendarJump(2026, 8);
         expect(useUi.getState().calendarJump).toMatchObject({ year: 2026, month: 8 });
         expect(useUi.getState().calendarJump?.nonce).toBe(2);
+    });
+});
+
+describe('list filter combo', () => {
+    it('clearAllFilters wipes the whole combo and its undo restores the exact previous state', () => {
+        const { setListQuery, setDateFilter, setRelativeFilter, selectTags, setSelectedTagsMatch, clearAllFilters } = useUi.getState();
+        setListQuery('hello');
+        setDateFilter({ start: '2026-01-01', end: '2026-01-31' });
+        setRelativeFilter({ days: 7, direction: 'edit' });
+        selectTags(['a', 'b']);
+        setSelectedTagsMatch('all');
+        clearAllFilters();
+        const cleared = useUi.getState();
+        expect(cleared.listQuery).toBe('');
+        expect(cleared.dateFilter).toBeNull();
+        expect(cleared.relativeFilter).toBeNull();
+        expect(cleared.selectedTags).toEqual([]);
+        expect(cleared.selectedTagsMatch).toBe('any');
+        const toast = useUi.getState().toasts.at(-1);
+        expect(toast?.kind).toBe('undo');
+        toast?.action?.run();
+        const restored = useUi.getState();
+        expect(restored.listQuery).toBe('hello');
+        expect(restored.dateFilter).toEqual({ start: '2026-01-01', end: '2026-01-31' });
+        expect(restored.relativeFilter).toEqual({ days: 7, direction: 'edit' });
+        expect(restored.selectedTags).toEqual(['a', 'b']);
+        expect(restored.selectedTagsMatch).toBe('all');
+    });
+
+    it('toastWithUndo marks undo toasts and vibrates when the platform supports it', () => {
+        const vibrate = vi.fn();
+        Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
+        try {
+            const done = vi.fn();
+            toastWithUndo('notes.moved_to_trash', done);
+            const toast = useUi.getState().toasts.at(-1);
+            expect(toast?.kind).toBe('undo');
+            expect(toast?.action?.label).toBe('common.undo');
+            expect(vibrate).toHaveBeenCalledWith(10);
+            toast?.action?.run();
+            expect(done).toHaveBeenCalled();
+        }
+        finally {
+            delete (navigator as { vibrate?: unknown }).vibrate;
+        }
     });
 });

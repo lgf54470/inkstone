@@ -705,12 +705,16 @@ export function createDemoBackend(): DemoBackend {
   app.get('/api/sync', (c) => {
     const since = Number(c.req.query('since')) || 0
     const changed = since < state.cursor
+    // Match the real worker contract: facetsFull may only be true when the response carries the
+    // complete folders/tags lists. The demo always sends full snapshots when anything changed, so
+    // the flag follows `changed`; a no-change catchup must not claim completeness (it would make
+    // the client's full-snapshot consolidation replace its freshly collected folders with []).
     const response: SyncResponse = {
       cursor: state.cursor,
       full: changed,
       hasMore: false,
       nextKey: null,
-      facetsFull: true,
+      facetsFull: changed,
       settingsChanged: false,
       profileChanged: false,
       notes: changed ? [...state.notes.values()].map(summarize) : [],

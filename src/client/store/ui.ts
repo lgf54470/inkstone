@@ -4,6 +4,7 @@ import { ACCENTS, LIMITS, VIEW_KINDS } from '@shared/constants'
 import { isVirtualFolderId } from '../lib/calendar-tree'
 import { truncateText } from '@shared/text-utils'
 import { UI_STORAGE_KEY } from '../lib/runtime'
+import { t } from '../lib/i18n'
 
 
 const STORAGE_KEY = UI_STORAGE_KEY
@@ -26,6 +27,8 @@ export interface ToastItem {
   title: string
   description?: string
   tone: 'default' | 'success' | 'danger' | 'warning'
+  /** Marks an undo toast: accent icon/tint in the UI and a short vibration cue. */
+  kind?: 'undo'
   action?: { label: string; run: () => void }
   duration: number
 }
@@ -65,6 +68,8 @@ interface UiState {
   dateFilter: DateRangeFilter | null
   /** When set, `dateFilter` is the live-materialized window of this rolling filter. */
   relativeFilter: RelativeFilter | null
+  /** Unified note-list search query; part of the persisted filter combo cleared by `clearAllFilters`. */
+  listQuery: string
   /** Sort the user left behind when entering a calendar folder view, restored on exit. */
   calendarSortOverride: { sort: SortKey; order: SortOrder } | null
   /** External jump request for the sidebar heatmap calendar (from the settings preview); consumed by SidebarCalendar. */
@@ -102,6 +107,9 @@ interface UiState {
   setSelectedTagsMatch: (match: 'any' | 'all') => void
   setDateFilter: (value: DateRangeFilter | null) => void
   setRelativeFilter: (value: RelativeFilter | null) => void
+  setListQuery: (query: string) => void
+  /** Clears the full filter combo (query, date/relative, tags) with an undo toast restoring the exact previous combination. */
+  clearAllFilters: () => void
   requestCalendarJump: (year: number, month: number) => void
   setSort: (sort: SortKey, order?: SortOrder) => void
   setDensity: (density: UiDensity) => void
@@ -154,6 +162,7 @@ const DEFAULTS = {
   selectedTagsMatch: 'any' as const,
   dateFilter: null as DateRangeFilter | null,
   relativeFilter: null as RelativeFilter | null,
+  listQuery: '',
   calendarJump: null as { year: number; month: number; nonce: number } | null,
   calendarSortOverride: null as { sort: SortKey; order: SortOrder } | null,
   theme: 'system' as ThemePref,
@@ -485,6 +494,20 @@ export const useUi = create<UiState>((set, get) => ({
 
   setDateFilter: (value) => set({ dateFilter: value }),
   setRelativeFilter: (value) => set({ relativeFilter: value }),
+  setListQuery: (query) => set({ listQuery: query }),
+
+  clearAllFilters: () => {
+    const state = get()
+    const snapshot = {
+      listQuery: state.listQuery,
+      dateFilter: state.dateFilter,
+      relativeFilter: state.relativeFilter,
+      selectedTags: state.selectedTags,
+      selectedTagsMatch: state.selectedTagsMatch,
+    }
+    set({ listQuery: '', dateFilter: null, relativeFilter: null, selectedTags: [], selectedTagsMatch: 'any' })
+    toastWithUndo(t('notes.filters_cleared'), () => set(snapshot))
+  },
 
   requestCalendarJump: (year, month) => set((s) => ({
     calendarJump: { year, month, nonce: (s.calendarJump?.nonce ?? 0) + 1 },
@@ -537,9 +560,12 @@ export const useUi = create<UiState>((set, get) => ({
       title: input.title,
       description: input.description,
       tone: input.tone ?? 'default',
+      kind: input.kind,
       action: input.action,
       duration: input.duration ?? (input.tone === 'danger' ? 6000 : 3800),
     }
+    if (item.kind === 'undo' && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function')
+      navigator.vibrate(10)
     set((s) => ({ toasts: [...s.toasts.slice(-4), item] }))
     return id
   },
@@ -564,6 +590,11 @@ export const useUi = create<UiState>((set, get) => ({
 
 lastPersisted = serializedPersistedState(useUi.getState())
 useUi.subscribe(persist)
+
+/** Post a toast carrying a one-click undo action; the single helper behind every store-level undo flow. */
+export function toastWithUndo(title: string, undo: () => void): void {
+  useUi.getState().toast({ title, kind: 'undo', action: { label: t('common.undo'), run: undo } })
+}
 
 export function applyThemeToDom(state: Pick<UiState, 'theme' | 'accent' | 'background' | 'fontScale'>): void {
   const root = document.documentElement
