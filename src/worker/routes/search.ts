@@ -179,7 +179,11 @@ searchRoutes.get('/search', requireAuth, async (c) => {
 
   const { ftsEnabled } = c.get('database')
   scheduleFtsDrain(c, 50)
-  const result = await searchUserNotes(c.env.DB, userId, raw, limit, ftsEnabled, false)
+  // Drain synchronously (up to the read-path cap) before querying: a search
+  // that follows note edits within the FTS drain delay should still hit the
+  // index instead of silently falling back to LIKE. The background drain
+  // keeps handling the remainder and deletes.
+  const result = await searchUserNotes(c.env.DB, userId, raw, limit, ftsEnabled, true)
   const q = result.query
 
   const body: SearchResponse = {
