@@ -12,6 +12,7 @@ import { useUi, type WorkspacePane } from '../ui';
 import { noteState } from './model';
 import type { NotesState } from './model';
 import type { Folder, NoteSummary } from '@shared/types';
+import { getInboxFolderId } from '../../lib/folder-prefs';
 import { compare, compareTrash } from './workspace';
 
 type TagCacheState = Pick<NotesState, 'notes' | 'tags'>;
@@ -32,13 +33,23 @@ export function createContextualNote(input?: {
     const selectedTags = ui.selectedTags.length > 0 ? [...ui.selectedTags] : null;
     if (selectedTags)
         ui.clearTagSelection();
+
+    const inboxId = getInboxFolderId();
+    const folders = useNotes.getState().folders ?? [];
+    const validInboxId = inboxId && folders.some((f) => f.id === inboxId) ? inboxId : undefined;
+    const defaultFolderId = ui.view === 'folder' ? ui.folderId : validInboxId;
+
     if (ui.view === 'trash' || ui.view === 'archived') {
         ui.openView('all');
-        return useNotes.getState().createNote({ ...input, ...(selectedTags && input?.content === undefined ? { tags: selectedTags } : {}) });
+        return useNotes.getState().createNote({
+            ...input,
+            ...(defaultFolderId ? { folderId: defaultFolderId } : {}),
+            ...(selectedTags && input?.content === undefined ? { tags: selectedTags } : {}),
+        });
     }
     return useNotes.getState().createNote({
         ...input,
-        ...(ui.view === 'folder' ? { folderId: ui.folderId } : {}),
+        ...(defaultFolderId ? { folderId: defaultFolderId } : {}),
         ...(ui.view === 'tag' && ui.tag && input?.content === undefined ? { tags: [ui.tag] } : {}),
         ...(selectedTags && input?.content === undefined ? { tags: selectedTags } : {}),
         ...(ui.view === 'starred' ? { isStarred: true } : {}),

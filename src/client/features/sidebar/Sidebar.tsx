@@ -15,6 +15,7 @@ import { createContextualNote, selectNavigationProjection, useFolderTree, useNav
 import { useNotes } from '../../store/notes';
 import { folderDescendantIds, folderPath, folderPathLabel, openFolderView } from '../../lib/folders';
 import { treeRowIndent } from '../../lib/calendar-tree';
+import { setInboxFolderId, useFolderPreferences } from '../../lib/folder-prefs';
 import { FolderAppearance, FolderPicker } from '../folders/FolderPicker';
 import { TagColorSubmenu } from '../tags/TagColorSubmenu';
 import { createTag, deleteTag, renameTag, setTagColor, toggleTagPinned } from '../tags/tagMutations';
@@ -397,6 +398,8 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
     const patchFolder = useNotes((s) => s.patchFolder);
     const deleteFolder = useNotes((s) => s.deleteFolder);
     const patchNote = useNotes((s) => s.patchNote);
+    const { inboxFolderId } = useFolderPreferences();
+    const isInbox = inboxFolderId === node.id;
     // The count feeds the delete-confirmation only; the visible row badge is the
     // tree's totalNotes. Look it up from the shared memoized navigation projection
     // instead of scanning the whole notes map per folder row per render.
@@ -488,6 +491,20 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
         { id: 'new-note', label: t("sidebar.create_new_note_here"), icon: <FilePlus2 size={13}/>, onSelect: () => void useNotes.getState().createNote({ folderId: node.id }) },
         { id: 'new-child', label: t("sidebar.new_subfolder"), icon: <FolderPlus size={13}/>, disabled: !canCreateChild, onSelect: () => onCreateChild(node.id) },
         { id: 'appearance', label: t("folders.appearance"), icon: <Palette size={13}/>, onSelect: () => onEditAppearance(node.id) },
+        {
+            id: 'inbox',
+            label: isInbox ? t("folders.unset_inbox") : t("folders.set_as_inbox"),
+            icon: <Inbox size={13}/>,
+            onSelect: () => {
+                if (isInbox) {
+                    setInboxFolderId(null);
+                    useUi.getState().toast({ title: t("folders.inbox_cleared_toast"), tone: 'default' });
+                } else {
+                    setInboxFolderId(node.id);
+                    useUi.getState().toast({ title: t("folders.inbox_set_toast", { value0: node.name }), tone: 'success' });
+                }
+            },
+        },
         { id: 'move-to', label: t("folders.move_to"), icon: <FolderInput size={13}/>, separatorBefore: true, onSelect: () => onChooseParent(node.id) },
         { id: 'move-earlier', label: t("sidebar.move_earlier"), icon: <ArrowUp size={13}/>, disabled: index === 0, onSelect: moveEarlier },
         { id: 'move-later', label: t("sidebar.move_later"), icon: <ArrowDown size={13}/>, disabled: index === siblings.length - 1, onSelect: moveLater },
@@ -568,8 +585,13 @@ function FolderRow({ node, siblings, index, parentNode, parentSiblings, onCreate
                 }
                 e.stopPropagation();
             }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>) : (<Tooltip label={folderPathLabel(folders, node.id)} side="right">
-            <button type="button" aria-current={active ? 'page' : undefined} onClick={() => openFolderView(folders, node.id)} onDoubleClick={() => onStartRename(node.id)} className="min-w-0 flex-1 truncate py-1 text-left text-[12.5px] font-medium">
-              {node.name}
+            <button type="button" aria-current={active ? 'page' : undefined} onClick={() => openFolderView(folders, node.id)} onDoubleClick={() => onStartRename(node.id)} className="flex min-w-0 flex-1 items-center gap-1.5 truncate py-1 text-left text-[12.5px] font-medium">
+              <span className="truncate">{node.name}</span>
+              {isInbox && (
+                <span title={t("folders.inbox")} className="shrink-0 text-[var(--accent)]">
+                  <Inbox size={11} />
+                </span>
+              )}
             </button>
           </Tooltip>)}
 

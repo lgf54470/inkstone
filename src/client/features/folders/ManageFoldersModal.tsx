@@ -4,6 +4,7 @@ import {
   ExternalLink,
   FolderClosed,
   FolderPlus,
+  Inbox,
   Palette,
   Pencil,
   Search,
@@ -17,6 +18,7 @@ import { useNotes } from '../../store/notes';
 import { selectNavigationProjection } from '../../store/notes/selectors';
 import { useUi } from '../../store/ui';
 import { folderPathLabel, openFolderView } from '../../lib/folders';
+import { setInboxFolderId, useFolderPreferences } from '../../lib/folder-prefs';
 import { FolderAppearance } from './FolderPicker';
 import { t } from '../../lib/i18n';
 
@@ -27,6 +29,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
   const deleteFolder = useNotes((s) => s.deleteFolder);
   const folderCounts = useNotes((s) => selectNavigationProjection(s.notes).folderCounts);
   const toast = useUi((s) => s.toast);
+  const { inboxFolderId } = useFolderPreferences();
 
   const [query, setQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -82,6 +85,9 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
       tone: 'danger',
     });
     if (ok) {
+      if (inboxFolderId === folder.id) {
+        setInboxFolderId(null);
+      }
       deleteFolder(folder.id);
       toast({ title: t('notes.deleted'), tone: 'default' });
     }
@@ -171,6 +177,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
             {choices.map(({ folder, path }) => {
               const count = folderCounts.get(folder.id) ?? 0;
               const isRenaming = renamingId === folder.id;
+              const isInbox = inboxFolderId === folder.id;
 
               return (
                 <div
@@ -228,6 +235,12 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                           <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">
                             {path}
                           </span>
+                          {isInbox && (
+                            <span className="inline-flex items-center gap-1 rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10.5px] font-medium text-[var(--accent)]">
+                              <Inbox size={10.5} />
+                              {t('folders.inbox')}
+                            </span>
+                          )}
                           <span className="shrink-0 text-[11px] text-[var(--text-quaternary)]">
                             {t('folders.notes_count', { value0: count })}
                           </span>
@@ -239,6 +252,25 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                   {/* Action buttons */}
                   {!isRenaming && (
                     <div className="flex shrink-0 items-center gap-0.5 opacity-85 group-hover:opacity-100">
+                      <IconButton
+                        label={isInbox ? t('folders.unset_inbox') : t('folders.set_as_inbox')}
+                        size="sm"
+                        className={isInbox ? 'text-[var(--accent)]' : undefined}
+                        onClick={() => {
+                          if (isInbox) {
+                            setInboxFolderId(null);
+                            toast({ title: t('folders.inbox_cleared_toast'), tone: 'default' });
+                          } else {
+                            setInboxFolderId(folder.id);
+                            toast({
+                              title: t('folders.inbox_set_toast', { value0: folder.name }),
+                              tone: 'success',
+                            });
+                          }
+                        }}
+                      >
+                        <Inbox size={13} />
+                      </IconButton>
                       <IconButton
                         label={t('folders.open_folder')}
                         size="sm"
