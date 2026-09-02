@@ -23,3 +23,18 @@ jobs:
       - run: npm run build
       - run: node scripts/check-bundle-budget.mjs
       - run: npm run vendor:check
+
+      - name: End-to-end against a local dev server
+        timeout-minutes: 15
+        run: |
+          INKSTONE_EPHEMERAL_DEV=1 npm run dev:kv > /tmp/inkstone-dev.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 120); do
+            if curl -sf http://localhost:7712/ > /dev/null 2>&1; then ready=1; break; fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$ready" != "1" ]; then cat /tmp/inkstone-dev.log; exit 1; fi
+          node scripts/e2e.mjs
