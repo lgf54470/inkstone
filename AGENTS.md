@@ -79,18 +79,18 @@ code review 把关；本仓库历史提交即按此规范书写）。
 
 ## 3. scope 列表
 
-模块 id（`home`/`tasks`/`apps`/`chats`/`documentation`/`settings`/
-`shadcn-create`）或以下基础设施 scope：
+业务模块 id（`notes`/`folders`/`tags`/`editor`/`preview`/`graph`/`command`/`sidebar`/`auth`/`files`/`backup`/`share`/`mcp`/`settings`/`sync`/`templates`/`update`）或以下基础设施 scope：
 
 | scope       | 覆盖范围                                                     |
 | ----------- | ------------------------------------------------------------ |
-| `theme`     | 主题引擎/设计令牌（`context/shadcn-theme-provider.tsx`、`base-colors.ts`、`app.css`） |
-| `shell`     | 布局壳（page-shell/app-sidebar/navigation）                  |
-| `i18n`      | 国际化（`lib/i18n/*`、各 locales.ts）                        |
-| `workspace` | 工作区（`context/workspace-context.tsx` 及联动）             |
-| `ui`        | `components/ui/*` 通用组件                                   |
-| `infra`     | 构建/CI/Docker/依赖                                          |
-| `docs`      | 改动横跨多个文档、不便归到单一模块时                         |
+| `theme`     | 主题引擎/设计令牌（`styles/*`、`editor/theme.ts` 等）        |
+| `shell`     | 布局壳（`features/shell/*`、AppShell、导航壳层等）           |
+| `i18n`      | 国际化（`lib/i18n.ts`、`shared/locales/*`、check-i18n）      |
+| `workspace` | 工作区状态（双栏 pane、分栏比例、活动笔记联动等）             |
+| `ui`        | `components/*` 通用 UI 组件（primitives/form/overlay/feedback） |
+| `db`        | 数据库与本地持久化（`worker/db/*`、`client/lib/db*`、D1 迁移）|
+| `infra`     | 构建/CI/Wrangler/环境依赖/检测脚本                           |
+| `docs`      | 改动横跨多个文档或专注文档规范时                             |
 
 ## 4. 示例
 
