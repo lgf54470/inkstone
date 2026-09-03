@@ -10,6 +10,7 @@ import sup from 'markdown-it-sup';
 import ins from 'markdown-it-ins';
 import { full as emoji } from 'markdown-it-emoji';
 import deflist from 'markdown-it-deflist';
+import abbr from 'markdown-it-abbr';
 import DOMPurify from 'dompurify';
 import { parseFrontMatter, slugifyHeading } from '@shared/markdown-utils';
 import { getLocale, t } from '../i18n';
@@ -75,6 +76,7 @@ md.use(taskLists, { enabled: true, label: false })
     .use(ins)
     .use(emoji, { shortcuts: {} })
     .use(deflist)
+    .use(abbr)
     .use(anchor, {
     slugify: slugifyHeading,
 

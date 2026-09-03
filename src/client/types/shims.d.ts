@@ -50,6 +50,12 @@ declare module 'markdown-it-deflist' {
   export default plugin
 }
 
+declare module 'markdown-it-abbr' {
+  import type MarkdownIt from 'markdown-it'
+  const plugin: (md: MarkdownIt) => void
+  export default plugin
+}
+
 declare module 'katex/dist/katex.min.css'
 
 declare module 'prismjs/components/prism-core' {

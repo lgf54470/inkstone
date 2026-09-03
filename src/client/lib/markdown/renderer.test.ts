@@ -279,4 +279,14 @@ describe('renderMarkdown extension golden output', () => {
     expect(dts[1]?.textContent).toBe('Term 2')
     expect(dds[1]?.textContent).toBe('Definition 2')
   })
+
+  it('renders abbreviations with title attributes', () => {
+    const markdown = '*[HTML]: HyperText Markup Language\n\nLearn HTML today.'
+    const rendered = renderMarkdown(markdown)
+    const fragment = parse(rendered.html)
+    const abbr = fragment.querySelector('abbr')
+    expect(abbr).not.toBeNull()
+    expect(abbr?.textContent).toBe('HTML')
+    expect(abbr?.getAttribute('title')).toBe('HyperText Markup Language')
+  })
 })

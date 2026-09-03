@@ -65,6 +65,7 @@
     "katex": "^0.18.1",
     "lucide-react": "^1.28.0",
     "markdown-it": "^14.3.0",
+    "markdown-it-abbr": "^2.0.0",
     "markdown-it-anchor": "^9.2.1",
     "markdown-it-deflist": "^4.0.0",
     "markdown-it-emoji": "^3.1.0",
