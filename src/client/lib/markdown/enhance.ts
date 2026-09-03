@@ -472,6 +472,24 @@ export function destroyChartInstances(root: HTMLElement | null): void {
     });
 }
 
+function parseChartConfig(raw: string): Record<string, unknown> {
+    try {
+        return JSON.parse(raw);
+    }
+    catch (initialErr) {
+        try {
+            const cleaned = raw
+                .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
+                .replace(/,\s*([\]}])/g, '$1')
+                .replace(/\*\*/g, '');
+            return JSON.parse(cleaned);
+        }
+        catch {
+            throw initialErr;
+        }
+    }
+}
+
 export async function renderChartJs(root: HTMLElement, dark: boolean): Promise<void> {
     const nodes = [...root.querySelectorAll<HTMLElement>('[data-chart]')];
     if (!nodes.length)
@@ -483,13 +501,14 @@ export async function renderChartJs(root: HTMLElement, dark: boolean): Promise<v
             continue;
         let config: Record<string, unknown>;
         try {
-            config = JSON.parse(raw);
+            config = parseChartConfig(raw);
         }
-        catch {
+        catch (err: unknown) {
             node.classList.remove('loading');
             node.classList.add('has-error', 'chart-error');
             node.removeAttribute('aria-busy');
-            node.innerHTML = `<div class="chart-error-banner"><span class="chart-error-text">${escapeHtml(t("markdown.chart_rendering_failed"))}</span></div><pre><code>${escapeHtml(raw)}</code></pre>`;
+            const message = err instanceof Error ? err.message : String(err);
+            node.innerHTML = `<div class="chart-error-banner"><span class="chart-error-text">${escapeHtml(t("markdown.chart_rendering_failed"))}: ${escapeHtml(message)}</span></div><pre><code>${escapeHtml(raw)}</code></pre>`;
             node.dataset.rendered = signature;
             continue;
         }

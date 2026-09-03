@@ -112,4 +112,36 @@ describe('code block collapsing', () => {
       root.remove()
     }
   })
+
+  it('parses charts with tolerant formatting such as trailing commas or markdown markers', async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = (() => ({
+      canvas: document.createElement('canvas'),
+      clearRect: () => {},
+      fillRect: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      stroke: () => {},
+      fill: () => {},
+      arc: () => {},
+      measureText: () => ({ width: 0 }),
+      save: () => {},
+      restore: () => {},
+    })) as never
+
+    const root = document.createElement('div')
+    const rawWithGlitch = '{\n  "type": "bar",**\n  "data": {\n    "labels": ["A",],\n    "datasets": [{ "data": [10,] }]\n  }\n}'
+    const encoded = encodeDataValue(rawWithGlitch)
+    root.innerHTML = `<div class="chartjs-block loading" data-chart="${encoded}"></div>`
+    document.body.appendChild(root)
+    try {
+      await renderChartJs(root, false)
+      expect(root.querySelector('canvas.chartjs-canvas')).not.toBeNull()
+      destroyChartInstances(root)
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+      root.remove()
+    }
+  })
 })
