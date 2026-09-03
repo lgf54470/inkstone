@@ -339,6 +339,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
         </div>
       }
       width={modalWidth}
+      className="max-h-[82vh] flex flex-col"
       footer={
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
@@ -410,7 +411,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
               </IconButton>
             </div>
 
-            <div className="relative flex items-center justify-center min-h-[420px] max-h-[72vh] overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)]/40 p-4">
+            <div className="relative flex items-center justify-center min-h-[300px] max-h-[60vh] overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)]/40 p-4">
               {imageLoading && !imageError && (
                 <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-surface)]/60 backdrop-blur-xs z-10">
                   <Loader2 size={24} className="animate-spin text-[var(--accent)]" />
@@ -440,7 +441,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
                     transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
                     transition: 'transform 0.15s ease-out',
                   }}
-                  className="max-h-[68vh] max-w-full object-contain rounded-[var(--r-md)] shadow-sm select-none"
+                  className="max-h-[56vh] max-w-full object-contain rounded-[var(--r-md)] shadow-sm select-none"
                 />
               )}
             </div>
@@ -451,7 +452,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
           <iframe
             src={previewUrl}
             title={filename}
-            className="w-full h-[72vh] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-white shadow-xs"
+            className="w-full h-[62vh] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-white shadow-xs"
           />
         )}
 
@@ -470,7 +471,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
 
         {isVideo && (
           <div className="flex items-center justify-center rounded-[var(--r-lg)] bg-black overflow-hidden shadow-xs">
-            <video controls src={previewUrl} className="max-h-[70vh] w-full" autoPlay={false} />
+            <video controls src={previewUrl} className="max-h-[60vh] w-full" autoPlay={false} />
           </div>
         )}
 
