@@ -289,4 +289,16 @@ describe('renderMarkdown extension golden output', () => {
     expect(abbr?.textContent).toBe('HTML')
     expect(abbr?.getAttribute('title')).toBe('HyperText Markup Language')
   })
+
+  it('renders extended task list items with correct status attributes', () => {
+    const markdown = '- [/] In Progress\n- [-] Cancelled\n- [?] Question\n- [!] Important'
+    const rendered = renderMarkdown(markdown)
+    const fragment = parse(rendered.html)
+    const inputs = fragment.querySelectorAll<HTMLInputElement>('input.task-list-item-checkbox')
+    expect(inputs.length).toBe(4)
+    expect(inputs[0]?.dataset.taskStatus).toBe('in-progress')
+    expect(inputs[1]?.dataset.taskStatus).toBe('cancelled')
+    expect(inputs[2]?.dataset.taskStatus).toBe('question')
+    expect(inputs[3]?.dataset.taskStatus).toBe('important')
+  })
 })

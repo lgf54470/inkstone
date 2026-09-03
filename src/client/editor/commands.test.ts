@@ -1,6 +1,6 @@
 import { EditorSelection, EditorState } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
-import { completeCodeFenceOnEnter, insertChartJs, insertMermaid, insertTableOfContents, toggleSubscript, toggleSuperscript, toggleUnderline } from './commands'
+import { completeCodeFenceOnEnter, insertChartJs, insertMermaid, insertTableOfContents, toggleSubscript, toggleSuperscript, toggleTaskDone, toggleUnderline } from './commands'
 
 function runFenceCompletion(doc: string, cursor = doc.length) {
   const state = EditorState.create({ doc, selection: EditorSelection.cursor(cursor) })
@@ -69,6 +69,13 @@ describe('toggleSubscript and toggleSuperscript', () => {
     let next = state
     insertTableOfContents({ state, dispatch: (tr) => { next = tr.state } })
     expect(next.doc.toString()).toBe('[TOC]\n\n')
+  })
+
+  it('toggles extended task marker to done', () => {
+    const state = EditorState.create({ doc: '- [/] In progress task', selection: EditorSelection.cursor(5) })
+    let next = state
+    toggleTaskDone({ state, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toBe('- [x] In progress task')
   })
 })
 

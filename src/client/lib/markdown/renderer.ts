@@ -467,24 +467,60 @@ md.core.ruler.after('github-task-lists', 'trusted_task_placeholders', (state) =>
             !inline.children?.length) {
             continue;
         }
-        const checkboxIndex = inline.children.findIndex((child) => child.type === 'html_inline' && /task-list-item-checkbox/.test(child.content));
-        if (checkboxIndex < 0)
-            continue;
-        const checkbox = inline.children[checkboxIndex]!;
-        const checked = /\schecked(?:=|\s|>)/.test(checkbox.content);
         const sourceLine = item.map?.[0];
         if (sourceLine == null)
             continue;
-        checkbox.content = `<span class="task-checkbox-placeholder" data-task-placeholder="${env.taskNonce}" data-task-line="${sourceLine}" data-task-checked="${checked ? '1' : '0'}"></span>`;
-        const labelOpen = new state.Token('html_inline', '', 0);
-        labelOpen.content = '<span class="task-label">';
-        const labelClose = new state.Token('html_inline', '', 0);
-        labelClose.content = '</span>';
-        inline.children.splice(checkboxIndex + 1, 0, labelOpen);
-        inline.children.push(labelClose);
-        setTokenAttribute(item, 'data-task-line', String(sourceLine));
-        if (checked)
-            appendTokenClass(item, 'done');
+        const checkboxIndex = inline.children.findIndex((child) => child.type === 'html_inline' && /task-list-item-checkbox/.test(child.content));
+        let status = '';
+        let checked = false;
+        if (checkboxIndex >= 0) {
+            const checkbox = inline.children[checkboxIndex]!;
+            checked = /\schecked(?:=|\s|>)/.test(checkbox.content);
+            status = checked ? 'done' : 'todo';
+            checkbox.content = `<span class="task-checkbox-placeholder" data-task-placeholder="${env.taskNonce}" data-task-line="${sourceLine}" data-task-status="${status}" data-task-checked="${checked ? '1' : '0'}"></span>`;
+            const labelOpen = new state.Token('html_inline', '', 0);
+            labelOpen.content = '<span class="task-label">';
+            const labelClose = new state.Token('html_inline', '', 0);
+            labelClose.content = '</span>';
+            inline.children.splice(checkboxIndex + 1, 0, labelOpen);
+            inline.children.push(labelClose);
+        }
+        else {
+            const firstChild = inline.children[0];
+            if (firstChild?.type === 'text') {
+                const extMatch = /^\[([/\-?!])\][ \t]*/.exec(firstChild.content);
+                if (extMatch) {
+                    const ch = extMatch[1]!;
+                    status = ch === '/' ? 'in-progress' :
+                             ch === '-' ? 'cancelled' :
+                             ch === '?' ? 'question' :
+                             ch === '!' ? 'important' : 'todo';
+                    firstChild.content = firstChild.content.slice(extMatch[0].length);
+                    appendTokenClass(item, 'task-list-item');
+                    const listOpen = state.tokens.slice(0, index - 2).reverse().find((t) => t.type === 'bullet_list_open' || t.type === 'ordered_list_open');
+                    if (listOpen)
+                        appendTokenClass(listOpen, 'contains-task-list');
+                    const placeholder = new state.Token('html_inline', '', 0);
+                    placeholder.content = `<span class="task-checkbox-placeholder" data-task-placeholder="${env.taskNonce}" data-task-line="${sourceLine}" data-task-status="${status}" data-task-checked="0"></span>`;
+                    const labelOpen = new state.Token('html_inline', '', 0);
+                    labelOpen.content = '<span class="task-label">';
+                    const labelClose = new state.Token('html_inline', '', 0);
+                    labelClose.content = '</span>';
+                    inline.children.unshift(placeholder);
+                    inline.children.splice(1, 0, labelOpen);
+                    inline.children.push(labelClose);
+                }
+            }
+        }
+        if (status) {
+            setTokenAttribute(item, 'data-task-line', String(sourceLine));
+            setTokenAttribute(item, 'data-task-status', status);
+            appendTokenClass(item, `task-status-${status}`);
+            if (status === 'done')
+                appendTokenClass(item, 'done');
+            else if (status === 'cancelled')
+                appendTokenClass(item, 'cancelled');
+        }
     }
     return true;
 });
@@ -878,6 +914,7 @@ const PURIFY_CONFIG = {
         'data-task-placeholder',
         'data-task-line',
         'data-task-checked',
+        'data-task-status',
         'data-tabs',
         'data-tab-button',
         'data-tab-panel',
@@ -1133,8 +1170,12 @@ function materializeTrustedTasks(html: string, nonce: string): string {
         input.type = 'checkbox';
         input.className = 'task-list-item-checkbox';
         input.checked = placeholder.dataset.taskChecked === '1';
+        const status = placeholder.dataset.taskStatus || (input.checked ? 'done' : 'todo');
+        input.dataset.taskStatus = status;
         if (input.checked)
             input.setAttribute('checked', '');
+        if (status === 'in-progress')
+            input.indeterminate = true;
         if (placeholder.closest('.markdown-example-preview')) {
             input.disabled = true;
             input.setAttribute('aria-label', t("markdown.the_tasks_in_the_example_are_read_only"));

@@ -630,7 +630,7 @@ export const toggleTaskDone: StateCommand = ({ state, dispatch }) => {
             if (!match)
                 continue;
             const from = line.from + match[1]!.length;
-            changes.push({ from, to: from + 1, insert: match[2] === ' ' ? 'x' : ' ' });
+            changes.push({ from, to: from + 1, insert: match[2]?.toLowerCase() === 'x' ? ' ' : 'x' });
         }
     }
     if (!changes.length)
@@ -679,7 +679,7 @@ export function updateTaskAtSourceLine(source: string, lineIndex: number, checke
 }
 
 function taskMarker(line: string): RegExpExecArray | null {
-    return /^((?:[ \t]*>[ \t]?)*[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([ xX])(\])/.exec(line);
+    return /^((?:[ \t]*>[ \t]?)*[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([ xX/\-?!])(\])/.exec(line);
 }
 
 function selectedLineBounds(state: EditorState, range: SelectionRange): {
