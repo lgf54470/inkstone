@@ -2,6 +2,7 @@ import type { AttachmentWithUsage } from '@shared/types'
 import { t } from '../../lib/i18n'
 
 export type AttachmentCategory =
+  | 'dashboard'
   | 'all'
   | 'image'
   | 'document'

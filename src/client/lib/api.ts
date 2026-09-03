@@ -3,7 +3,9 @@ import type { MarkdownBackupManifest } from '@shared/backup-format'
 import type {
   AppLocale,
   Attachment,
+  AttachmentFolder,
   AttachmentStats,
+  AttachmentTag,
   AttachmentWithUsage,
   BackupRun,
   BackupTarget,
@@ -418,6 +420,7 @@ export const api = {
             cursor?: string
             folderId?: string | null
             type?: string
+            extension?: string
             sizeRange?: string
             minBytes?: number
             maxBytes?: number
@@ -441,6 +444,7 @@ export const api = {
           cursor: opts?.cursor,
           folderId: opts?.folderId ?? undefined,
           type: opts?.type,
+          extension: opts?.extension,
           sizeRange: opts?.sizeRange,
           minBytes: opts?.minBytes,
           maxBytes: opts?.maxBytes,
@@ -488,6 +492,45 @@ export const api = {
       ),
     remove: (id: string) => request<{ ok: true }>(`/api/files/${id}`, { method: 'DELETE' }),
     prune: () => request<{ removed: number; freedBytes: number }>('/api/files/prune', { method: 'POST' }),
+    folders: {
+      list: () => request<AttachmentFolder[]>('/api/files/folders'),
+      create: (body: {
+        id?: string
+        name?: string
+        parentId?: string | null
+        color?: string | null
+        icon?: string | null
+        position?: number
+      }) => request<AttachmentFolder>('/api/files/folders', { method: 'POST', body }),
+      patch: (
+        id: string,
+        body: {
+          name?: string
+          parentId?: string | null
+          color?: string | null
+          icon?: string | null
+          position?: number
+        },
+      ) => request<AttachmentFolder>(`/api/files/folders/${id}`, { method: 'PATCH', body }),
+      remove: (id: string) => request<{ ok: true }>(`/api/files/folders/${id}`, { method: 'DELETE' }),
+    },
+    tags: {
+      list: () => request<AttachmentTag[]>('/api/files/tags'),
+      create: (body: {
+        id?: string
+        name: string
+        color?: string | null
+      }) => request<AttachmentTag>('/api/files/tags', { method: 'POST', body }),
+      patch: (
+        id: string,
+        body: {
+          name?: string
+          color?: string | null
+          isPinned?: boolean
+        },
+      ) => request<AttachmentTag>(`/api/files/tags/${id}`, { method: 'PATCH', body }),
+      remove: (id: string) => request<{ ok: true }>(`/api/files/tags/${id}`, { method: 'DELETE' }),
+    },
   },
 
   backup: {

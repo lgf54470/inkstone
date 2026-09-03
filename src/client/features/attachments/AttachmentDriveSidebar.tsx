@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Archive,
   ChevronRight,
@@ -12,25 +12,22 @@ import {
   HardDrive,
   Hash,
   Images,
+  LayoutDashboard,
   Link2Off,
   MoreHorizontal,
   Palette,
   Pencil,
   Pin,
   Plus,
-  Settings2,
   Smile,
   Star,
   Trash2,
 } from 'lucide-react'
-import type { AttachmentStats } from '@shared/types'
+import type { AttachmentStats, Folder, Tag } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { useNotes } from '../../store/notes'
-import { useUi } from '../../store/ui'
-import { useFolderTree, type FolderNode } from '../../store/notes/selectors'
-import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../lib/tag-tree'
-import { createTag, deleteTag, setTagColor, toggleTagPinned } from '../tags/tagMutations'
+import type { FolderNode } from '../../store/notes/selectors'
+import type { TagTreeNode } from '../../lib/tag-tree'
 import { IconButton } from '../../components/primitives'
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
 import { FolderColorSubmenu } from '../folders/FolderColorSubmenu'
@@ -38,6 +35,11 @@ import { FolderIconSubmenu } from '../folders/FolderIconSubmenu'
 import { TagColorSubmenu } from '../tags/TagColorSubmenu'
 import { FolderPicker } from '../folders/FolderPicker'
 import { formatFileSize, type AttachmentCategory } from './attachment-helpers'
+import {
+  useAttachmentFolderTree,
+  useAttachmentStore,
+  useAttachmentTagTree,
+} from './attachment-store'
 
 export function AttachmentDriveSidebar({
   selectedCategory,
@@ -58,25 +60,37 @@ export function AttachmentDriveSidebar({
   stats?: AttachmentStats
   onDropFilesToFolder: (fileIds: string[], targetFolderId: string | null) => Promise<void>
 }) {
-  const tags = useNotes((s) => s.tags ?? [])
-  const createFolder = useNotes((s) => s.createFolder)
-  const openPanel = useUi((s) => s.openPanel)
+  const tree = useAttachmentFolderTree()
+  const { tree: tagTree, flatTree: flattenedTags } = useAttachmentTagTree()
+  const folders = useAttachmentStore((s) => s.folders)
+  const load = useAttachmentStore((s) => s.load)
+  const createFolder = useAttachmentStore((s) => s.createFolder)
+  const patchFolder = useAttachmentStore((s) => s.patchFolder)
+  const deleteFolder = useAttachmentStore((s) => s.deleteFolder)
+  const createTag = useAttachmentStore((s) => s.createTag)
+  const patchTag = useAttachmentStore((s) => s.patchTag)
+  const deleteTag = useAttachmentStore((s) => s.deleteTag)
+  const expandedFolders = useAttachmentStore((s) => s.expandedFolders)
+  const toggleFolderExpanded = useAttachmentStore((s) => s.toggleFolderExpanded)
+  const setExpandedFolders = useAttachmentStore((s) => s.setExpandedFolders)
+  const expandedTagPaths = useAttachmentStore((s) => s.expandedTagPaths)
+  const toggleTagExpanded = useAttachmentStore((s) => s.toggleTagExpanded)
+  const setExpandedTagPaths = useAttachmentStore((s) => s.setExpandedTagPaths)
 
-  const tree = useFolderTree()
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [movingFolderId, setMovingFolderId] = useState<string | null>(null)
 
-  const [expandedTagPaths, setExpandedTagPaths] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    void load()
+  }, [load])
 
-  const handleCreateRootFolder = () => {
-    const id = createFolder({})
-    if (id) {
-      setRenamingFolderId(id)
+  const handleCreateRootFolder = async () => {
+    const created = await createFolder()
+    if (created) {
+      setRenamingFolderId(created.id)
     }
   }
 
-  const tagTree = useMemo(() => buildTagTree(tags), [tags])
-  const flattenedTags = useMemo(() => flattenTagTree(tagTree, expandedTagPaths), [tagTree, expandedTagPaths])
   const parentTagPaths = useMemo(() => {
     const result: string[] = []
     const visit = (nodes: readonly TagTreeNode[]) => {
@@ -102,18 +116,6 @@ export function AttachmentDriveSidebar({
     }
   }
 
-  const toggleTag = (fullPath: string) => {
-    setExpandedTagPaths((prev) => {
-      const next = new Set(prev)
-      if (next.has(fullPath)) {
-        next.delete(fullPath)
-      } else {
-        next.add(fullPath)
-      }
-      return next
-    })
-  }
-
   const handleCreateNewTag = async () => {
     const name = window.prompt(t('tags.new_placeholder'))
     if (name?.trim()) {
@@ -126,6 +128,7 @@ export function AttachmentDriveSidebar({
     label: string
     icon: React.ReactNode
   }> = [
+    { id: 'dashboard', label: t('attachments.dashboard'), icon: <LayoutDashboard size={14} /> },
     { id: 'all', label: t('attachments.all_files'), icon: <HardDrive size={14} /> },
     { id: 'image', label: t('attachments.photos'), icon: <Images size={14} /> },
     { id: 'document', label: t('attachments.documents'), icon: <FileText size={14} /> },
@@ -136,10 +139,10 @@ export function AttachmentDriveSidebar({
     { id: 'unreferenced', label: t('attachments.unreferenced_files'), icon: <Link2Off size={14} /> },
   ]
 
-  const allFoldersExpanded = tree.every((f) => useUi.getState().expandedFolders.includes(f.id))
+  const allFoldersExpanded = tree.length > 0 && tree.every((f) => expandedFolders.includes(f.id))
   const toggleAllFolders = () => {
     if (allFoldersExpanded) {
-      useUi.setState({ expandedFolders: [] })
+      setExpandedFolders([])
     } else {
       const allIds: string[] = []
       const collect = (nodes: FolderNode[]) => {
@@ -149,9 +152,13 @@ export function AttachmentDriveSidebar({
         }
       }
       collect(tree)
-      useUi.setState({ expandedFolders: allIds })
+      setExpandedFolders(allIds)
     }
   }
+
+  const totalQuota = stats?.totalQuotaBytes || 10 * 1024 * 1024 * 1024
+  const usedRatio = Math.min(1, Math.max(0, (stats?.totalBytes ?? 0) / totalQuota))
+  const usedWidthPct = (usedRatio * 100).toFixed(2)
 
   return (
     <div className="flex h-full w-60 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[12.5px] select-none">
@@ -218,16 +225,26 @@ export function AttachmentDriveSidebar({
                 node={node}
                 selectedFolderId={selectedFolderId}
                 renamingFolderId={renamingFolderId}
+                expandedFolders={expandedFolders}
+                onToggleExpand={toggleFolderExpanded}
                 onStartRename={setRenamingFolderId}
-                onFinishRename={() => setRenamingFolderId(null)}
-                onSelectFolder={(id) => {
-                  onSelectFolder(id)
-                  onSelectTag(null)
+                onFinishRename={(id, name) => {
+                  void patchFolder(id, { name })
+                  setRenamingFolderId(null)
                 }}
+                onSelectFolder={onSelectFolder}
                 onChooseParent={setMovingFolderId}
                 onDropFilesToFolder={onDropFilesToFolder}
+                createFolder={createFolder}
+                patchFolder={patchFolder}
+                deleteFolder={deleteFolder}
               />
             ))}
+            {tree.length === 0 && (
+              <div className="px-2 py-1.5 text-xs text-[var(--text-tertiary)] italic">
+                {t('folders.no_folders')}
+              </div>
+            )}
           </div>
         </div>
 
@@ -235,34 +252,23 @@ export function AttachmentDriveSidebar({
           <div className="group/head flex items-center justify-between px-2 pb-1">
             <SectionLabel>{t('navigation.tag')}</SectionLabel>
             <div className="flex items-center gap-0.5">
-              {parentTagPaths.length > 0 && (
-                <Tooltip
-                  label={allTagsExpanded ? t('tags.collapse_all') : t('tags.expand_all')}
-                  side="left"
-                >
-                  <IconButton
-                    label={allTagsExpanded ? t('tags.collapse_all') : t('tags.expand_all')}
-                    size="sm"
-                    onClick={toggleAllTags}
-                  >
-                    {allTagsExpanded ? <ChevronsDownUp size={13} /> : <ChevronsUpDown size={13} />}
-                  </IconButton>
-                </Tooltip>
-              )}
-              <Tooltip label={t('tags.manage_tags')} side="left">
+              <Tooltip
+                label={allTagsExpanded ? t('folders.collapse_all') : t('folders.expand_all')}
+                side="left"
+              >
                 <IconButton
-                  label={t('tags.manage_tags')}
+                  label={allTagsExpanded ? t('folders.collapse_all') : t('folders.expand_all')}
                   size="sm"
-                  onClick={() => openPanel('tags')}
+                  onClick={toggleAllTags}
                 >
-                  <Settings2 size={13} />
+                  {allTagsExpanded ? <ChevronsDownUp size={13} /> : <ChevronsUpDown size={13} />}
                 </IconButton>
               </Tooltip>
               <Tooltip label={t('tags.new')} side="right">
                 <IconButton
                   label={t('tags.new')}
                   size="sm"
-                  onClick={() => void handleCreateNewTag()}
+                  onClick={handleCreateNewTag}
                 >
                   <Plus size={13} />
                 </IconButton>
@@ -276,14 +282,18 @@ export function AttachmentDriveSidebar({
                 key={node.fullPath}
                 node={node}
                 selectedTag={selectedTag}
-                expanded={expandedTagPaths.has(node.fullPath)}
-                onToggleExpand={() => toggleTag(node.fullPath)}
-                onSelectTag={(tagName) => {
-                  onSelectTag(tagName)
-                  onSelectFolder(null)
-                }}
+                expandedTagPaths={expandedTagPaths}
+                onToggleExpand={() => toggleTagExpanded(node.fullPath)}
+                onSelectTag={onSelectTag}
+                patchTag={patchTag}
+                deleteTag={deleteTag}
               />
             ))}
+            {flattenedTags.length === 0 && (
+              <div className="px-2 py-1.5 text-xs text-[var(--text-tertiary)] italic">
+                {t('tags.no_match')}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -292,24 +302,14 @@ export function AttachmentDriveSidebar({
         <div className="border-t border-[var(--border-subtle)] p-3 bg-[var(--bg-sunken)]/40 text-[11px] space-y-1.5">
           <div className="flex items-center justify-between font-semibold text-[var(--text-secondary)]">
             <span>{t('attachments.stats_title')}</span>
-            <span>{formatFileSize(stats.totalBytes)}</span>
+            <span className="font-mono text-[10.5px]">
+              {`${formatFileSize(stats.totalBytes)} / 10 GB`}
+            </span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-subtle)] flex">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-subtle)]">
             <div
-              style={{ width: `${(stats.imageBytes / (stats.totalBytes || 1)) * 100}%` }}
-              className="h-full bg-blue-500"
-            />
-            <div
-              style={{ width: `${(stats.documentBytes / (stats.totalBytes || 1)) * 100}%` }}
-              className="h-full bg-emerald-500"
-            />
-            <div
-              style={{ width: `${(stats.mediaBytes / (stats.totalBytes || 1)) * 100}%` }}
-              className="h-full bg-purple-500"
-            />
-            <div
-              style={{ width: `${(stats.archiveBytes / (stats.totalBytes || 1)) * 100}%` }}
-              className="h-full bg-amber-500"
+              style={{ width: `${Math.max(stats.totalBytes > 0 ? 1 : 0, Number(usedWidthPct))}%` }}
+              className="h-full bg-[var(--accent)] rounded-full transition-all duration-300"
             />
           </div>
           <div className="text-[10px] text-[var(--text-quaternary)] flex justify-between">
@@ -323,10 +323,19 @@ export function AttachmentDriveSidebar({
         <FolderPicker
           open={Boolean(movingFolderId)}
           title={t('folders.move_to')}
-          folders={useNotes.getState().folders ?? []}
+          folders={folders.map((f) => ({
+            id: f.id,
+            parentId: f.parentId,
+            name: f.name,
+            icon: f.icon ?? null,
+            color: f.color ?? null,
+            position: f.position ?? 0,
+            createdAt: f.createdAt,
+            updatedAt: f.updatedAt,
+          }))}
           currentId={movingFolderId}
           onSelect={(parentId) => {
-            void useNotes.getState().patchFolder(movingFolderId, { parentId })
+            void patchFolder(movingFolderId, { parentId })
             setMovingFolderId(null)
           }}
           onClose={() => setMovingFolderId(null)}
@@ -348,67 +357,103 @@ function DriveFolderRow({
   node,
   selectedFolderId,
   renamingFolderId,
+  expandedFolders,
+  onToggleExpand,
   onStartRename,
   onFinishRename,
   onSelectFolder,
   onChooseParent,
   onDropFilesToFolder,
+  createFolder,
+  patchFolder,
+  deleteFolder,
 }: {
   node: FolderNode
   selectedFolderId: string | null
   renamingFolderId: string | null
+  expandedFolders: string[]
+  onToggleExpand: (id: string) => void
   onStartRename: (id: string) => void
-  onFinishRename: () => void
-  onSelectFolder: (id: string) => void
+  onFinishRename: (id: string, name: string) => void
+  onSelectFolder: (id: string | null) => void
   onChooseParent: (id: string) => void
   onDropFilesToFolder: (fileIds: string[], targetFolderId: string | null) => Promise<void>
+  createFolder: (name?: string, parentId?: string | null) => Promise<unknown>
+  patchFolder: (id: string, patch: Partial<Folder>) => Promise<void>
+  deleteFolder: (id: string) => Promise<void>
 }) {
-  const expanded = useUi((s) => s.expandedFolders.includes(node.id))
-  const toggleFolder = useUi((s) => s.toggleFolder)
-  const openPanel = useUi((s) => s.openPanel)
-  const patchFolder = useNotes((s) => s.patchFolder)
-  const deleteFolderAction = useNotes((s) => s.deleteFolder)
-  const createFolder = useNotes((s) => s.createFolder)
-
+  const isRenaming = renamingFolderId === node.id
   const [nameInput, setNameInput] = useState(node.name)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [isDropOver, setIsDropOver] = useState(false)
   const contextMenu = useContextMenu()
 
-  const isRenaming = renamingFolderId === node.id
-  const hasChildren = node.children.length > 0
+  const expanded = expandedFolders.includes(node.id)
+  const hasChildren = Boolean(node.children?.length)
   const active = selectedFolderId === node.id
 
-  const handleFinishRename = () => {
-    const trimmed = nameInput.trim()
-    if (trimmed && trimmed !== node.name) {
-      void patchFolder(node.id, { name: trimmed })
+  useEffect(() => {
+    if (isRenaming) {
+      setNameInput(node.name)
+      inputRef.current?.focus()
+      inputRef.current?.select()
     }
-    onFinishRename()
+  }, [isRenaming, node.name])
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    const raw = e.dataTransfer.getData('application/inkstone-attachment-ids')
+    if (raw) {
+      try {
+        const ids = JSON.parse(raw) as string[]
+        if (Array.isArray(ids) && ids.length) {
+          void onDropFilesToFolder(ids, node.id)
+        }
+      } catch {}
+    }
+  }
+
+  const castFolder: Folder = {
+    id: node.id,
+    parentId: node.parentId,
+    name: node.name,
+    icon: node.icon ?? null,
+    color: node.color ?? null,
+    position: node.position ?? 0,
+    createdAt: node.createdAt,
+    updatedAt: node.updatedAt,
   }
 
   const menuItems: MenuItem[] = [
     {
-      id: 'new-subfolder',
+      id: 'new_subfolder',
       label: t('sidebar.new_subfolder'),
       icon: <FolderPlus size={13} />,
-      onSelect: () => {
-        const childId = createFolder({ parentId: node.id })
-        if (childId) {
-          useUi.getState().expandFolder(node.id)
-          onStartRename(childId)
-        }
+      onSelect: async () => {
+        await createFolder(undefined, node.id)
       },
     },
     {
       id: 'rename',
       label: t('sidebar.rename'),
       icon: <Pencil size={13} />,
-      onSelect: () => {
-        setNameInput(node.name)
-        onStartRename(node.id)
-      },
+      onSelect: () => onStartRename(node.id),
     },
     {
       id: 'color',
@@ -416,15 +461,12 @@ function DriveFolderRow({
       icon: <Palette size={13} />,
       submenu: ({ closeMenu }) => (
         <FolderColorSubmenu
-          folder={node}
+          folder={castFolder}
           onSelectColor={(color) => {
             void patchFolder(node.id, { color })
             closeMenu()
           }}
-          onManageFolders={() => {
-            closeMenu()
-            openPanel('folders')
-          }}
+          onManageFolders={closeMenu}
         />
       ),
     },
@@ -434,7 +476,7 @@ function DriveFolderRow({
       icon: <Smile size={13} />,
       submenu: ({ closeMenu }) => (
         <FolderIconSubmenu
-          folder={node}
+          folder={castFolder}
           onSelectIcon={(icon) => {
             void patchFolder(node.id, { icon })
             closeMenu()
@@ -446,7 +488,6 @@ function DriveFolderRow({
       id: 'move',
       label: t('folders.move_to'),
       icon: <FolderClosed size={13} />,
-      separatorBefore: true,
       onSelect: () => onChooseParent(node.id),
     },
     {
@@ -462,7 +503,7 @@ function DriveFolderRow({
           tone: 'danger',
         })
         if (ok) {
-          void deleteFolderAction(node.id)
+          void deleteFolder(node.id)
         }
       },
     },
@@ -475,38 +516,23 @@ function DriveFolderRow({
           setMenuOpen(false)
           contextMenu.onContextMenu(e)
         }}
-        onDragOver={(e) => {
-          if (e.dataTransfer.types.includes('application/x-inkstone-attachments')) {
-            e.preventDefault()
-            setIsDropOver(true)
-          }
-        }}
-        onDragLeave={() => setIsDropOver(false)}
-        onDrop={(e) => {
-          e.preventDefault()
-          setIsDropOver(false)
-          const data = e.dataTransfer.getData('application/x-inkstone-attachments')
-          if (data) {
-            try {
-              const fileIds = JSON.parse(data) as string[]
-              void onDropFilesToFolder(fileIds, node.id)
-            } catch {}
-          }
-        }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         style={{ paddingLeft: `${node.depth * 12 + 6}px` }}
         className={cn(
           'group flex h-7.5 w-full items-center gap-1 rounded-[var(--r-md)] pr-1 text-left text-[12px] font-medium transition-colors',
           active
             ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
-          isDropOver && 'ring-2 ring-inset ring-[var(--accent)] bg-[var(--accent-soft)]',
+          isDragOver && 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]',
         )}
       >
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation()
-            toggleFolder(node.id)
+            onToggleExpand(node.id)
           }}
           className={cn(
             'flex h-4 w-4 shrink-0 items-center justify-center rounded text-[var(--text-tertiary)] transition-transform',
@@ -517,43 +543,40 @@ function DriveFolderRow({
           <ChevronRight size={11} />
         </button>
 
-        <button
-          type="button"
-          onClick={() => onSelectFolder(node.id)}
-          className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left"
-        >
-          {node.icon ? (
-            <span className="shrink-0 text-sm leading-none">{node.icon}</span>
-          ) : expanded ? (
-            <FolderOpen
-              size={13}
+        {isRenaming ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onBlur={() => onFinishRename(node.id, nameInput.trim() || node.name)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onFinishRename(node.id, nameInput.trim() || node.name)
+              if (e.key === 'Escape') onFinishRename(node.id, node.name)
+            }}
+            className="flex-1 bg-[var(--bg-surface)] px-1 py-0.5 text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => onSelectFolder(node.id)}
+            className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left"
+          >
+            <span
               style={{ color: node.color ?? undefined }}
-              className={cn('shrink-0', !node.color && 'text-[var(--text-tertiary)]')}
-            />
-          ) : (
-            <FolderClosed
-              size={13}
-              style={{ color: node.color ?? undefined }}
-              className={cn('shrink-0', !node.color && 'text-[var(--text-tertiary)]')}
-            />
-          )}
-
-          {isRenaming ? (
-            <input
-              autoFocus
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              onBlur={handleFinishRename}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleFinishRename()
-                if (e.key === 'Escape') onFinishRename()
-              }}
-              className="h-5 w-full rounded border border-[var(--accent)] bg-[var(--bg-base)] px-1 text-[12px] outline-none"
-            />
-          ) : (
+              className={cn('shrink-0', !node.color && 'text-[var(--text-quaternary)]')}
+            >
+              {node.icon ? (
+                <span className="text-xs">{node.icon}</span>
+              ) : expanded ? (
+                <FolderOpen size={13} />
+              ) : (
+                <FolderClosed size={13} />
+              )}
+            </span>
             <span className="truncate">{node.name}</span>
-          )}
-        </button>
+          </button>
+        )}
 
         <button
           ref={moreButtonRef}
@@ -585,17 +608,22 @@ function DriveFolderRow({
 
       {hasChildren && expanded && (
         <div className="space-y-px">
-          {node.children.map((child) => (
+          {node.children!.map((child) => (
             <DriveFolderRow
               key={child.id}
               node={child}
               selectedFolderId={selectedFolderId}
               renamingFolderId={renamingFolderId}
+              expandedFolders={expandedFolders}
+              onToggleExpand={onToggleExpand}
               onStartRename={onStartRename}
               onFinishRename={onFinishRename}
               onSelectFolder={onSelectFolder}
               onChooseParent={onChooseParent}
               onDropFilesToFolder={onDropFilesToFolder}
+              createFolder={createFolder}
+              patchFolder={patchFolder}
+              deleteFolder={deleteFolder}
             />
           ))}
         </div>
@@ -607,23 +635,36 @@ function DriveFolderRow({
 function DriveTagRow({
   node,
   selectedTag,
-  expanded,
+  expandedTagPaths,
   onToggleExpand,
   onSelectTag,
+  patchTag,
+  deleteTag,
 }: {
   node: TagTreeNode
   selectedTag: string | null
-  expanded: boolean
+  expandedTagPaths: Set<string>
   onToggleExpand: () => void
-  onSelectTag: (tagName: string) => void
+  onSelectTag: (tag: string | null) => void
+  patchTag: (id: string, patch: Partial<Tag>) => Promise<void>
+  deleteTag: (id: string) => Promise<void>
 }) {
-  const openPanel = useUi((s) => s.openPanel)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const contextMenu = useContextMenu()
 
+  const expanded = expandedTagPaths.has(node.fullPath)
   const hasChildren = node.children.length > 0
   const active = selectedTag === node.fullPath
+
+  const castTag: Tag = {
+    id: node.tag?.id ?? node.fullPath,
+    name: node.tag?.name ?? node.name,
+    color: node.tag?.color ?? null,
+    isPinned: Boolean(node.tag?.isPinned),
+    count: 0,
+    createdAt: node.tag?.createdAt ?? Date.now(),
+  }
 
   const menuItems: MenuItem[] = [
     {
@@ -631,27 +672,25 @@ function DriveTagRow({
       label: node.tag?.isPinned ? t('tags.unpin') : t('tags.pin'),
       icon: <Pin size={13} />,
       onSelect: () => {
-        if (node.tag) void toggleTagPinned(node.tag)
+        if (node.tag) void patchTag(node.tag.id, { isPinned: !node.tag.isPinned })
       },
     },
     {
       id: 'color',
       label: t('tags.color'),
       icon: <Palette size={13} />,
-      submenu: ({ closeMenu }) =>
-        node.tag ? (
-          <TagColorSubmenu
-            tag={node.tag}
-            onSelectColor={(color) => {
-              void setTagColor(node.tag, color)
-              closeMenu()
-            }}
-            onManageTags={() => {
-              closeMenu()
-              openPanel('tags')
-            }}
-          />
-        ) : null,
+      submenu: node.tag
+        ? ({ closeMenu }) => (
+            <TagColorSubmenu
+              tag={castTag}
+              onSelectColor={(color) => {
+                if (node.tag) void patchTag(node.tag.id, { color })
+                closeMenu()
+              }}
+              onManageTags={closeMenu}
+            />
+          )
+        : null,
     },
     {
       id: 'delete',
@@ -660,7 +699,7 @@ function DriveTagRow({
       tone: 'danger',
       separatorBefore: true,
       onSelect: () => {
-        if (node.tag) void deleteTag(node.tag)
+        if (node.tag) void deleteTag(node.tag.id)
       },
     },
   ]

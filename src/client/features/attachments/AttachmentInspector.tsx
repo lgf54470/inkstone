@@ -19,6 +19,7 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { api } from '../../lib/api'
 import { useNotes } from '../../store/notes'
+import { useAttachmentStore } from './attachment-store'
 import { Button, IconButton } from '../../components/primitives'
 import { formatFileSize, getFileBadgeColor, getFileCategory } from './attachment-helpers'
 
@@ -41,7 +42,7 @@ export function AttachmentInspector({
   onUpdateTags: (file: AttachmentWithUsage, tags: string[]) => Promise<void>
   onPreview: (file: AttachmentWithUsage) => void
 }) {
-  const folders = useNotes((s) => s.folders ?? [])
+  const attachmentFolders = useAttachmentStore((s) => s.folders)
   const openNote = useNotes((s) => s.openNote)
 
   const [referencingNotes, setReferencingNotes] = useState<Array<{ id: string; title: string; folderId: string | null }>>([])
@@ -80,7 +81,7 @@ export function AttachmentInspector({
   const isImage = category === 'image'
   const badge = getFileBadgeColor(category, ext)
 
-  const folder = file.folderId ? folders.find((f) => f.id === file.folderId) : null
+  const folder = file.folderId ? attachmentFolders.find((f) => f.id === file.folderId) : null
 
   const handleCopyLink = async () => {
     try {

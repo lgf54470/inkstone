@@ -5,13 +5,14 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { api } from '../../lib/api'
 import { useUi } from '../../store/ui'
-import { useNotes } from '../../store/notes'
+import { useAttachmentStore } from './attachment-store'
 import { Modal, confirm } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { FolderPicker } from '../folders/FolderPicker'
 import { FilePreviewModal } from '../preview/FilePreviewModal'
 import { AttachmentDriveSidebar } from './AttachmentDriveSidebar'
 import { AttachmentDriveToolbar } from './AttachmentDriveToolbar'
+import { AttachmentDashboardView } from './AttachmentDashboardView'
 import { AttachmentGridView } from './AttachmentGridView'
 import { AttachmentListView } from './AttachmentListView'
 import { AttachmentBatchBar } from './AttachmentBatchBar'
@@ -29,7 +30,7 @@ export function AttachmentDriveModal({
   onClose: () => void
   onInsertFile?: (file: AttachmentWithUsage) => void
 }) {
-  const folders = useNotes((s) => s.folders ?? [])
+  const attachmentFolders = useAttachmentStore((s) => s.folders)
   const toast = useUi((s) => s.toast)
 
   const [files, setFiles] = useState<AttachmentWithUsage[]>([])
@@ -40,6 +41,7 @@ export function AttachmentDriveModal({
   const [category, setCategory] = useState<AttachmentCategory>('all')
   const [folderId, setFolderId] = useState<string | null>(null)
   const [tag, setTag] = useState<string | null>(null)
+  const [extension, setExtension] = useState('all')
   const [search, setSearch] = useState('')
   const [sizeRange, setSizeRange] = useState('all')
   const [sort, setSort] = useState('date_desc')
@@ -73,6 +75,7 @@ export function AttachmentDriveModal({
       const res = await api.files.list({
         folderId: folderId ?? undefined,
         type: typeParam,
+        extension: extension !== 'all' ? extension : undefined,
         sizeRange: sizeRange !== 'all' ? sizeRange : undefined,
         tag: tag ?? undefined,
         starred: starredParam,
@@ -94,7 +97,7 @@ export function AttachmentDriveModal({
     } finally {
       setLoading(false)
     }
-  }, [category, folderId, tag, search, sizeRange, sort, toast])
+  }, [category, folderId, tag, extension, search, sizeRange, sort, toast])
 
   useEffect(() => {
     if (open) {
@@ -120,6 +123,15 @@ export function AttachmentDriveModal({
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDownloadFile = (file: AttachmentWithUsage) => {
+    const a = document.createElement('a')
+    a.href = file.url
+    a.download = file.filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
   const handleToggleSelect = (id: string, e: React.MouseEvent) => {
@@ -388,6 +400,8 @@ export function AttachmentDriveModal({
             <AttachmentDriveToolbar
               search={search}
               onSearchChange={setSearch}
+              extension={extension}
+              onExtensionChange={setExtension}
               sizeRange={sizeRange}
               onSizeRangeChange={setSizeRange}
               sort={sort}
@@ -413,7 +427,26 @@ export function AttachmentDriveModal({
             />
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {loading && files.length === 0 ? (
+              {category === 'dashboard' ? (
+                <AttachmentDashboardView
+                  stats={stats}
+                  onSelectCategory={(cat) => {
+                    setCategory(cat)
+                    setFolderId(null)
+                    setTag(null)
+                  }}
+                  onSelectExtension={(ext) => {
+                    setExtension(ext)
+                    setCategory('all')
+                    setFolderId(null)
+                    setTag(null)
+                  }}
+                  onPreviewFile={setPreviewFile}
+                  onDownloadFile={handleDownloadFile}
+                  onDeleteFile={(f) => void handleDeleteFile(f)}
+                  onPrune={() => void handlePrune()}
+                />
+              ) : loading && files.length === 0 ? (
                 <div className="flex h-full items-center justify-center py-20 text-[var(--text-tertiary)]">
                   <Loader2 size={24} className="animate-spin text-[var(--accent)]" />
                 </div>
@@ -509,7 +542,16 @@ export function AttachmentDriveModal({
         <FolderPicker
           open={Boolean(movingFileIds)}
           title={t('attachments.move_to')}
-          folders={folders}
+          folders={attachmentFolders.map((f) => ({
+            id: f.id,
+            parentId: f.parentId,
+            name: f.name,
+            icon: f.icon ?? null,
+            color: f.color ?? null,
+            position: f.position ?? 0,
+            createdAt: f.createdAt,
+            updatedAt: f.updatedAt,
+          }))}
           currentId={null}
           onSelect={(targetId) => {
             void handleDropFilesToFolder(movingFileIds, targetId)

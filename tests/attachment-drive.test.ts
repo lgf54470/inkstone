@@ -85,7 +85,7 @@ describe('attachment helpers', () => {
   })
 })
 
-describe('database schema migration 15', () => {
+describe('database schema migration 15 & 16', () => {
   it('includes attachments table schema in SCHEMA_STATEMENTS', () => {
     const attachmentStatement = SCHEMA_STATEMENTS.find((stmt) => stmt.includes('CREATE TABLE IF NOT EXISTS attachments'))
     expect(attachmentStatement).toBeDefined()
@@ -93,5 +93,16 @@ describe('database schema migration 15', () => {
     expect(attachmentStatement).toContain('is_starred INTEGER NOT NULL DEFAULT 0')
     expect(attachmentStatement).toContain('is_pinned INTEGER NOT NULL DEFAULT 0')
     expect(attachmentStatement).toContain('tags TEXT NOT NULL DEFAULT \'[]\'')
+  })
+
+  it('includes attachment_folders and attachment_tags in SCHEMA_STATEMENTS', () => {
+    const folderStatement = SCHEMA_STATEMENTS.find((stmt) => stmt.includes('CREATE TABLE IF NOT EXISTS attachment_folders'))
+    expect(folderStatement).toBeDefined()
+    expect(folderStatement).toContain('parent_id TEXT')
+    expect(folderStatement).toContain('position REAL NOT NULL')
+
+    const tagStatement = SCHEMA_STATEMENTS.find((stmt) => stmt.includes('CREATE TABLE IF NOT EXISTS attachment_tags'))
+    expect(tagStatement).toBeDefined()
+    expect(tagStatement).toContain('is_pinned INTEGER NOT NULL DEFAULT 0')
   })
 })

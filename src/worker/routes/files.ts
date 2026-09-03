@@ -269,14 +269,11 @@ filesRoutes.post('/', requireAuth, async (c) => {
   let folderId = typeof rawFolderId === 'string' && rawFolderId ? rawFolderId.slice(0, 128) : null
   if (noteId) {
     const owned = await c.env.DB.prepare(
-      `SELECT id, folder_id FROM notes WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
+      `SELECT id FROM notes WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
     )
       .bind(noteId, userId)
-      .first<{ id: string; folder_id: string | null }>()
+      .first<{ id: string }>()
     if (!owned) throw ApiError.badRequest('The associated note does not exist')
-    if (!folderId && owned.folder_id) {
-      folderId = owned.folder_id
-    }
   }
   const now = Date.now()
   const stored = await persistAttachmentWithinQuota(c.env, {
@@ -308,6 +305,259 @@ filesRoutes.post('/', requireAuth, async (c) => {
   return c.json(attachment, 201)
 })
 
+interface AttachmentFolderRow {
+  id: string
+  user_id: string
+  parent_id: string | null
+  name: string
+  icon: string | null
+  color: string | null
+  position: number
+  created_at: number
+  updated_at: number
+}
+
+interface AttachmentTagRow {
+  id: string
+  user_id: string
+  name: string
+  color: string | null
+  is_pinned: number
+  created_at: number
+}
+
+filesRoutes.get('/folders', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, user_id, parent_id, name, icon, color, position, created_at, updated_at
+       FROM attachment_folders WHERE user_id = ?1 ORDER BY position ASC, created_at ASC`
+  ).bind(userId).all<AttachmentFolderRow>()
+  return c.json(results.map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    parentId: r.parent_id,
+    name: r.name,
+    icon: r.icon,
+    color: r.color,
+    position: r.position,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  })))
+})
+
+filesRoutes.post('/folders', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  const body = await c.req.json<{
+    id?: string
+    name?: string
+    parentId?: string | null
+    color?: string | null
+    icon?: string | null
+    position?: number
+  }>()
+  const id = body.id && isValidId(body.id) ? body.id : newId()
+  const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : 'New Folder'
+  const parentId = body.parentId && isValidId(body.parentId) ? body.parentId : null
+  const now = Date.now()
+  const position = typeof body.position === 'number' ? body.position : now
+
+  await c.env.DB.prepare(
+    `INSERT INTO attachment_folders (id, user_id, parent_id, name, icon, color, position, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`
+  ).bind(id, userId, parentId, name, body.icon ?? null, body.color ?? null, position, now, now).run()
+
+  return c.json({
+    id,
+    userId,
+    parentId,
+    name,
+    icon: body.icon ?? null,
+    color: body.color ?? null,
+    position,
+    createdAt: now,
+    updatedAt: now,
+  }, 201)
+})
+
+filesRoutes.patch('/folders/:id', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  if (!isValidId(id)) throw ApiError.notFound('Folder not found')
+  const body = await c.req.json<{
+    name?: string
+    parentId?: string | null
+    color?: string | null
+    icon?: string | null
+    position?: number
+  }>()
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id, name, parent_id, icon, color, position, created_at, updated_at FROM attachment_folders WHERE id = ?1 AND user_id = ?2`
+  ).bind(id, userId).first<AttachmentFolderRow>()
+  if (!existing) throw ApiError.notFound('Folder not found')
+
+  const nextName = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : existing.name
+  const nextParent = body.parentId !== undefined ? (body.parentId && isValidId(body.parentId) ? body.parentId : null) : existing.parent_id
+  const nextColor = body.color !== undefined ? body.color : existing.color
+  const nextIcon = body.icon !== undefined ? body.icon : existing.icon
+  const nextPosition = typeof body.position === 'number' ? body.position : existing.position
+  const now = Date.now()
+
+  await c.env.DB.prepare(
+    `UPDATE attachment_folders SET name = ?1, parent_id = ?2, color = ?3, icon = ?4, position = ?5, updated_at = ?6
+     WHERE id = ?7 AND user_id = ?8`
+  ).bind(nextName, nextParent, nextColor, nextIcon, nextPosition, now, id, userId).run()
+
+  return c.json({
+    id,
+    userId,
+    parentId: nextParent,
+    name: nextName,
+    icon: nextIcon,
+    color: nextColor,
+    position: nextPosition,
+    createdAt: existing.created_at,
+    updatedAt: now,
+  })
+})
+
+filesRoutes.delete('/folders/:id', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  if (!isValidId(id)) throw ApiError.notFound('Folder not found')
+
+  await c.env.DB.batch([
+    c.env.DB.prepare(`UPDATE attachments SET folder_id = NULL WHERE folder_id = ?1 AND user_id = ?2`).bind(id, userId),
+    c.env.DB.prepare(`UPDATE attachment_folders SET parent_id = NULL WHERE parent_id = ?1 AND user_id = ?2`).bind(id, userId),
+    c.env.DB.prepare(`DELETE FROM attachment_folders WHERE id = ?1 AND user_id = ?2`).bind(id, userId),
+  ])
+  return c.json({ ok: true })
+})
+
+filesRoutes.get('/tags', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, user_id, name, color, is_pinned, created_at
+       FROM attachment_tags WHERE user_id = ?1 ORDER BY is_pinned DESC, name ASC`
+  ).bind(userId).all<AttachmentTagRow>()
+  return c.json(results.map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    name: r.name,
+    color: r.color,
+    isPinned: Boolean(r.is_pinned),
+    createdAt: r.created_at,
+  })))
+})
+
+filesRoutes.post('/tags', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  const body = await c.req.json<{
+    id?: string
+    name: string
+    color?: string | null
+  }>()
+  const name = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : ''
+  if (!name) throw ApiError.badRequest('Tag name is required')
+  const id = body.id && isValidId(body.id) ? body.id : newId()
+  const now = Date.now()
+
+  await c.env.DB.prepare(
+    `INSERT INTO attachment_tags (id, user_id, name, color, is_pinned, created_at)
+     VALUES (?1, ?2, ?3, ?4, 0, ?5)
+     ON CONFLICT(user_id, name) DO UPDATE SET color = COALESCE(?4, color)`
+  ).bind(id, userId, name, body.color ?? null, now).run()
+
+  const tag = await c.env.DB.prepare(
+    `SELECT id, user_id, name, color, is_pinned, created_at FROM attachment_tags WHERE user_id = ?1 AND name = ?2`
+  ).bind(userId, name).first<AttachmentTagRow>()
+
+  return c.json({
+    id: tag?.id ?? id,
+    userId,
+    name,
+    color: tag?.color ?? body.color ?? null,
+    isPinned: Boolean(tag?.is_pinned),
+    createdAt: tag?.created_at ?? now,
+  }, 201)
+})
+
+filesRoutes.patch('/tags/:id', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  if (!isValidId(id)) throw ApiError.notFound('Tag not found')
+  const body = await c.req.json<{
+    name?: string
+    color?: string | null
+    isPinned?: boolean
+  }>()
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id, name, color, is_pinned, created_at FROM attachment_tags WHERE id = ?1 AND user_id = ?2`
+  ).bind(id, userId).first<AttachmentTagRow>()
+  if (!existing) throw ApiError.notFound('Tag not found')
+
+  const nextName = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 50) : existing.name
+  const nextColor = body.color !== undefined ? body.color : existing.color
+  const nextPinned = body.isPinned !== undefined ? (body.isPinned ? 1 : 0) : existing.is_pinned
+
+  await c.env.DB.prepare(
+    `UPDATE attachment_tags SET name = ?1, color = ?2, is_pinned = ?3 WHERE id = ?4 AND user_id = ?5`
+  ).bind(nextName, nextColor, nextPinned, id, userId).run()
+
+  if (nextName !== existing.name) {
+    const { results } = await c.env.DB.prepare(
+      `SELECT id, tags FROM attachments WHERE user_id = ?1 AND tags LIKE ?2`
+    ).bind(userId, `%"${existing.name}"%`).all<{ id: string; tags: string }>()
+    const stmts: D1PreparedStatement[] = []
+    for (const row of results) {
+      const parsed = parseTags(row.tags)
+      const updated = parsed.map(t => t === existing.name ? nextName : t)
+      stmts.push(
+        c.env.DB.prepare(`UPDATE attachments SET tags = ?1 WHERE id = ?2 AND user_id = ?3`).bind(JSON.stringify(updated), row.id, userId)
+      )
+    }
+    if (stmts.length) await c.env.DB.batch(stmts)
+  }
+
+  return c.json({
+    id,
+    userId,
+    name: nextName,
+    color: nextColor,
+    isPinned: Boolean(nextPinned),
+    createdAt: existing.created_at,
+  })
+})
+
+filesRoutes.delete('/tags/:id', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  if (!isValidId(id)) throw ApiError.notFound('Tag not found')
+
+  const existing = await c.env.DB.prepare(
+    `SELECT name FROM attachment_tags WHERE id = ?1 AND user_id = ?2`
+  ).bind(id, userId).first<{ name: string }>()
+
+  if (existing) {
+    const { results } = await c.env.DB.prepare(
+      `SELECT id, tags FROM attachments WHERE user_id = ?1 AND tags LIKE ?2`
+    ).bind(userId, `%"${existing.name}"%`).all<{ id: string; tags: string }>()
+    const stmts: D1PreparedStatement[] = [
+      c.env.DB.prepare(`DELETE FROM attachment_tags WHERE id = ?1 AND user_id = ?2`).bind(id, userId)
+    ]
+    for (const row of results) {
+      const parsed = parseTags(row.tags)
+      const updated = parsed.filter(t => t !== existing.name)
+      stmts.push(
+        c.env.DB.prepare(`UPDATE attachments SET tags = ?1 WHERE id = ?2 AND user_id = ?3`).bind(JSON.stringify(updated), row.id, userId)
+      )
+    }
+    await c.env.DB.batch(stmts)
+  }
+
+  return c.json({ ok: true })
+})
 
 filesRoutes.get('/:id', async (c) => {
   const id = c.req.param('id')
@@ -390,6 +640,7 @@ filesRoutes.get('/', requireAuth, async (c) => {
   const starred = c.req.query('starred')
   const pinned = c.req.query('pinned')
   const noteId = c.req.query('noteId')
+  const extension = c.req.query('extension')?.trim().toLowerCase()
   const search = c.req.query('search')?.trim()
   const sort = c.req.query('sort') || 'date_desc'
   const limitParam = Number(c.req.query('limit'))
@@ -404,6 +655,20 @@ filesRoutes.get('/', requireAuth, async (c) => {
   } else if (folderId) {
     whereClauses.push('folder_id = ?')
     bindings.push(folderId)
+  }
+
+  if (extension && extension !== 'all') {
+    const exts = extension
+      .split(',')
+      .map((e) => e.trim().replace(/^\./, ''))
+      .filter(Boolean)
+    if (exts.length) {
+      const orClauses = exts.map(() => 'LOWER(filename) LIKE ?')
+      whereClauses.push(`(${orClauses.join(' OR ')})`)
+      for (const e of exts) {
+        bindings.push(`%.${e}`)
+      }
+    }
   }
 
   if (type === 'image') {
@@ -475,7 +740,9 @@ filesRoutes.get('/', requireAuth, async (c) => {
      ORDER BY ${orderBy} LIMIT ?`
   bindings.push(pageSize + 1)
 
-  const [itemsResult, statsRow, references] = await Promise.all([
+  const TOTAL_QUOTA_BYTES = 10 * 1024 * 1024 * 1024
+
+  const [itemsResult, statsRow, references, folderCountRow, tagCountRow, largestRows, allFilesForExt] = await Promise.all([
     c.env.DB.prepare(querySql).bind(...bindings).all<AttachmentRow>(),
     c.env.DB.prepare(
       `SELECT
@@ -497,6 +764,13 @@ filesRoutes.get('/', requireAuth, async (c) => {
       code_bytes: number
     }>(),
     readAttachmentReferenceCounts(c.env.DB, userId),
+    c.env.DB.prepare(`SELECT COUNT(*) as count FROM attachment_folders WHERE user_id = ?1`).bind(userId).first<{ count: number }>(),
+    c.env.DB.prepare(`SELECT COUNT(*) as count FROM attachment_tags WHERE user_id = ?1`).bind(userId).first<{ count: number }>(),
+    c.env.DB.prepare(
+      `SELECT id, user_id, note_id, folder_id, filename, mime, size, width, height, storage, is_starred, is_pinned, tags, created_at
+         FROM attachments WHERE user_id = ?1 ORDER BY size DESC LIMIT 5`
+    ).bind(userId).all<AttachmentRow>(),
+    c.env.DB.prepare(`SELECT filename, size FROM attachments WHERE user_id = ?1`).bind(userId).all<{ filename: string; size: number }>(),
   ])
 
   const results = itemsResult.results
@@ -511,6 +785,15 @@ filesRoutes.get('/', requireAuth, async (c) => {
   const codeBytes = statsRow?.code_bytes ?? 0
   const otherBytes = Math.max(0, totalBytes - (imageBytes + documentBytes + mediaBytes + archiveBytes + codeBytes))
 
+  const extensionBreakdown: Record<string, { count: number; bytes: number }> = {}
+  for (const row of allFilesForExt.results) {
+    const ext = row.filename.split('.').pop()?.toLowerCase() || 'other'
+    const curr = extensionBreakdown[ext] ?? { count: 0, bytes: 0 }
+    curr.count += 1
+    curr.bytes += row.size
+    extensionBreakdown[ext] = curr
+  }
+
   return c.json({
     files: page.map((row) => ({
       ...toAttachment(row),
@@ -522,6 +805,7 @@ filesRoutes.get('/', requireAuth, async (c) => {
     stats: {
       totalCount: statsRow?.total_count ?? 0,
       totalBytes,
+      totalQuotaBytes: TOTAL_QUOTA_BYTES,
       imageBytes,
       documentBytes,
       mediaBytes,
@@ -529,6 +813,13 @@ filesRoutes.get('/', requireAuth, async (c) => {
       codeBytes,
       otherBytes,
       unreferencedCount: Math.max(0, (statsRow?.total_count ?? 0) - references.size),
+      folderCount: folderCountRow?.count ?? 0,
+      tagCount: tagCountRow?.count ?? 0,
+      extensionBreakdown,
+      largestFiles: largestRows.results.map((row) => ({
+        ...toAttachment(row),
+        references: references.get(row.id) ?? 0,
+      })),
     },
   })
 })

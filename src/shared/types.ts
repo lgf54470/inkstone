@@ -291,9 +291,31 @@ export interface AttachmentWithUsage extends Attachment {
   references: number
 }
 
+export interface AttachmentFolder {
+  id: string
+  userId?: string
+  parentId: string | null
+  name: string
+  icon?: string | null
+  color?: string | null
+  position?: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface AttachmentTag {
+  id: string
+  userId?: string
+  name: string
+  color?: string | null
+  isPinned?: boolean
+  createdAt: number
+}
+
 export interface AttachmentStats {
   totalCount: number
   totalBytes: number
+  totalQuotaBytes: number
   imageBytes: number
   documentBytes: number
   mediaBytes: number
@@ -301,6 +323,10 @@ export interface AttachmentStats {
   codeBytes: number
   otherBytes: number
   unreferencedCount: number
+  folderCount?: number
+  tagCount?: number
+  extensionBreakdown?: Record<string, { count: number; bytes: number }>
+  largestFiles?: AttachmentWithUsage[]
 }
 
 

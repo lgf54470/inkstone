@@ -137,6 +137,30 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_attachments_user_starred ON attachments(user_id, is_starred)`,
   `CREATE INDEX IF NOT EXISTS idx_attachments_user_pinned ON attachments(user_id, is_pinned)`,
 
+  `CREATE TABLE IF NOT EXISTS attachment_folders (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    parent_id TEXT,
+    name TEXT NOT NULL,
+    icon TEXT,
+    color TEXT,
+    position REAL NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_attachment_folders_user ON attachment_folders(user_id, position)`,
+  `CREATE INDEX IF NOT EXISTS idx_attachment_folders_parent ON attachment_folders(parent_id)`,
+
+  `CREATE TABLE IF NOT EXISTS attachment_tags (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT,
+    is_pinned INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_attachment_tags_user ON attachment_tags(user_id, name)`,
+
   `CREATE TABLE IF NOT EXISTS attachment_refs (
     user_id TEXT NOT NULL,
     attachment_id TEXT NOT NULL,
@@ -584,6 +608,33 @@ const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_attachments_user_pinned ON attachments(user_id, is_pinned)`,
     ],
   },
+  {
+    version: 16,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS attachment_folders (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        parent_id TEXT,
+        name TEXT NOT NULL,
+        icon TEXT,
+        color TEXT,
+        position REAL NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_attachment_folders_user ON attachment_folders(user_id, position)`,
+      `CREATE INDEX IF NOT EXISTS idx_attachment_folders_parent ON attachment_folders(parent_id)`,
+      `CREATE TABLE IF NOT EXISTS attachment_tags (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        color TEXT,
+        is_pinned INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      )`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_attachment_tags_user ON attachment_tags(user_id, name)`,
+    ],
+  },
 ]
 
 const FTS_STATEMENT = `CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
@@ -614,6 +665,8 @@ const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   links: ['source_note_id', 'target_key', 'target_title', 'target_note_id', 'user_id'],
   note_versions: ['id', 'note_id', 'user_id', 'title', 'content', 'size', 'created_at'],
   attachments: ['id', 'user_id', 'note_id', 'folder_id', 'filename', 'mime', 'size', 'sha256', 'width', 'height', 'storage', 'is_starred', 'is_pinned', 'tags', 'created_at'],
+  attachment_folders: ['id', 'user_id', 'parent_id', 'name', 'icon', 'color', 'position', 'created_at', 'updated_at'],
+  attachment_tags: ['id', 'user_id', 'name', 'color', 'is_pinned', 'created_at'],
   attachment_refs: ['user_id', 'attachment_id', 'count'],
   attachment_cleanup: ['object_key', 'user_id', 'created_at'],
   import_mappings: ['user_id', 'entity', 'source_id', 'target_id', 'updated_at'],
@@ -647,6 +700,8 @@ const REQUIRED_TABLES = [
   'links',
   'note_versions',
   'attachments',
+  'attachment_folders',
+  'attachment_tags',
   'attachment_refs',
   'attachment_cleanup',
   'import_mappings',
@@ -687,6 +742,9 @@ const REQUIRED_INDEXES = [
   'idx_attachments_user',
   'idx_attachments_user_sha',
   'idx_attachments_note',
+  'idx_attachment_folders_user',
+  'idx_attachment_folders_parent',
+  'idx_attachment_tags_user',
   'idx_attachment_cleanup_created',
   'idx_attachment_cleanup_user',
   'idx_import_mappings_target',
