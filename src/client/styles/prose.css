@@ -913,6 +913,10 @@
 .ink-prose th[align='center'] {
   text-align: center;
 }
+.ink-prose td[align='left'],
+.ink-prose th[align='left'] {
+  text-align: left;
+}
 
 .ink-prose th.is-selected-cell,
 .ink-prose td.is-selected-cell {

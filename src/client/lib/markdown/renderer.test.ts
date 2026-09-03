@@ -183,4 +183,17 @@ describe('renderMarkdown extension golden output', () => {
     expect(heading.querySelector('code')?.textContent).toBe('"onmouseover="alert(1)')
     expect(heading.querySelector('code')?.getAttribute('onmouseover')).toBeNull()
   })
+
+  it('preserves table column alignments', () => {
+    const rendered = renderMarkdown('| Left | Center | Right |\n| :--- | :---: | ---: |\n| 1 | 2 | 3 |')
+    const fragment = parse(rendered.html)
+    const ths = fragment.querySelectorAll('th')
+    const tds = fragment.querySelectorAll('td')
+    expect(ths[0]?.getAttribute('align')).toBe('left')
+    expect(ths[1]?.getAttribute('align')).toBe('center')
+    expect(ths[2]?.getAttribute('align')).toBe('right')
+    expect(tds[0]?.getAttribute('align')).toBe('left')
+    expect(tds[1]?.getAttribute('align')).toBe('center')
+    expect(tds[2]?.getAttribute('align')).toBe('right')
+  })
 })
