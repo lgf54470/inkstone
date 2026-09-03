@@ -263,4 +263,20 @@ describe('renderMarkdown extension golden output', () => {
     expect(rendered.html).toContain('🚀')
     expect(rendered.html).toContain(':)')
   })
+
+  it('renders definition lists into dl, dt, dd elements', () => {
+    const markdown = 'Term 1\n: Definition 1\n\nTerm 2\n: Definition 2'
+    const rendered = renderMarkdown(markdown)
+    const fragment = parse(rendered.html)
+    const dl = fragment.querySelector('dl')
+    expect(dl).not.toBeNull()
+    const dts = fragment.querySelectorAll('dt')
+    const dds = fragment.querySelectorAll('dd')
+    expect(dts.length).toBe(2)
+    expect(dds.length).toBe(2)
+    expect(dts[0]?.textContent).toBe('Term 1')
+    expect(dds[0]?.textContent).toBe('Definition 1')
+    expect(dts[1]?.textContent).toBe('Term 2')
+    expect(dds[1]?.textContent).toBe('Definition 2')
+  })
 })

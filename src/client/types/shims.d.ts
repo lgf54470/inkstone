@@ -44,6 +44,12 @@ declare module 'markdown-it-emoji' {
   export const bare: (md: MarkdownIt, options?: { defs?: Record<string, string>; shortcuts?: Record<string, string | string[]> }) => void
 }
 
+declare module 'markdown-it-deflist' {
+  import type MarkdownIt from 'markdown-it'
+  const plugin: (md: MarkdownIt) => void
+  export default plugin
+}
+
 declare module 'katex/dist/katex.min.css'
 
 declare module 'prismjs/components/prism-core' {

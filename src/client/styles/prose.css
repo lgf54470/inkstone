@@ -228,6 +228,19 @@
   background: transparent;
 }
 
+.ink-prose dl:not(.frontmatter-properties dl) {
+  margin: 0.85em 0;
+}
+.ink-prose dl:not(.frontmatter-properties dl) dt {
+  font-weight: 600;
+  margin-top: 0.6em;
+  color: var(--text-primary);
+}
+.ink-prose dl:not(.frontmatter-properties dl) dd {
+  margin-inline-start: 1.5em;
+  margin-bottom: 0.35em;
+  color: var(--text-secondary);
+}
 
 .ink-prose .markdown-details,
 .ink-prose > details:not(.callout):not(.frontmatter-properties),
