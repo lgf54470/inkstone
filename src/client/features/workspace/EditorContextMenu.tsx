@@ -7,6 +7,7 @@ import {
   AlignRight,
   BarChart2,
   Bold,
+  BookOpen,
   Braces,
   Calendar,
   Check,
@@ -18,6 +19,7 @@ import {
   ArrowDownAZ,
   Copy,
   CopyPlus,
+  HelpCircle,
   Download,
   Eraser,
   ExternalLink,
@@ -29,6 +31,7 @@ import {
   Highlighter,
   Image as ImageIcon,
   Italic,
+  Languages,
   Link2,
   List,
   ListOrdered,
@@ -45,6 +48,7 @@ import {
   Rows,
   Scissors,
   Sigma,
+  Smile,
   Sparkles,
   Strikethrough,
   Subscript,
@@ -89,12 +93,18 @@ import {
   insertLink,
   insertDiagramCode,
   CHARTJS_TEMPLATES,
+  COMMON_EMOJIS,
   MERMAID_TEMPLATES,
+  insertAbbreviation,
+  insertDefinitionList,
+  insertEmoji,
   insertNoteTemplate,
+  insertRuby,
   insertRunnableJsBlock,
   insertTable,
   insertTableOfContents,
   insertTabs,
+  insertTaskWithStatus,
   setHeading,
   toggleBold,
   toggleBulletList,
@@ -277,6 +287,7 @@ export function EditorContextMenu({
                 { id: 'highlight', label: t('common.highlight'), icon: <Highlighter size={13} />, combo: 'mod+shift+h', onSelect: () => runStateCommand(toggleHighlight) },
                 { id: 'subscript', label: t('workspace.subscript'), icon: <Subscript size={13} />, onSelect: () => runStateCommand(toggleSubscript) },
                 { id: 'superscript', label: t('workspace.superscript'), icon: <Superscript size={13} />, onSelect: () => runStateCommand(toggleSuperscript) },
+                { id: 'ruby', label: t('workspace.ruby_annotation'), icon: <Languages size={13} />, onSelect: () => runStateCommand(insertRuby) },
                 { id: 'code', label: t('common.inline_code'), icon: <FileCode size={13} />, combo: 'mod+e', onSelect: () => runStateCommand(toggleInlineCode) },
                 { id: 'math', label: t('workspace.inline_math'), icon: <Sigma size={13} />, onSelect: () => runStateCommand(toggleInlineMath) },
               ]}
@@ -1346,6 +1357,47 @@ export function EditorContextMenu({
                 { id: 'details', label: t('workspace.details_block'), icon: <ChevronDown size={13} />, onSelect: () => runStateCommand(insertDetails) },
                 { id: 'tabs', label: t('common.tabs'), icon: <Columns2 size={13} />, onSelect: () => runStateCommand(insertTabs) },
                 { id: 'toc', label: t('common.table_of_contents'), icon: <ListTree size={13} />, onSelect: () => runStateCommand(insertTableOfContents) },
+                { id: 'deflist', label: t('workspace.definition_list'), icon: <BookOpen size={13} />, onSelect: () => runStateCommand(insertDefinitionList) },
+                { id: 'abbr', label: t('workspace.abbreviation'), icon: <HelpCircle size={13} />, onSelect: () => runStateCommand(insertAbbreviation) },
+                {
+                  id: 'tasks-status',
+                  label: t('common.task_list'),
+                  icon: <ListTodo size={13} />,
+                  submenu: ({ closeMenu: closeSub }) => (
+                    <SubmenuList
+                      closeMenu={() => {
+                        closeSub();
+                        closeMenu();
+                      }}
+                      width={180}
+                      items={[
+                        { id: 'task-in-progress', label: t('workspace.task_in_progress'), onSelect: () => runStateCommand(insertTaskWithStatus('/')) },
+                        { id: 'task-cancelled', label: t('workspace.task_cancelled'), onSelect: () => runStateCommand(insertTaskWithStatus('-')) },
+                        { id: 'task-question', label: t('workspace.task_question'), onSelect: () => runStateCommand(insertTaskWithStatus('?')) },
+                        { id: 'task-important', label: t('workspace.task_important'), onSelect: () => runStateCommand(insertTaskWithStatus('!')) },
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  id: 'emoji',
+                  label: t('common.emoji'),
+                  icon: <Smile size={13} />,
+                  submenu: ({ closeMenu: closeSub }) => (
+                    <SubmenuList
+                      closeMenu={() => {
+                        closeSub();
+                        closeMenu();
+                      }}
+                      width={180}
+                      items={COMMON_EMOJIS.map((item) => ({
+                        id: item.code,
+                        label: `${item.emoji}  ${item.code}`,
+                        onSelect: () => runStateCommand(insertEmoji(item.emoji)),
+                      }))}
+                    />
+                  ),
+                },
                 { id: 'frontmatter', label: 'Front Matter', icon: <FileText size={13} />, onSelect: () => runStateCommand(insertFrontMatter) },
                 { id: 'template', label: t('workspace.insert_note_template'), icon: <Calendar size={13} />, onSelect: () => runStateCommand(insertNoteTemplate) },
               ]}

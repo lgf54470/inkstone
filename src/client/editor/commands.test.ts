@@ -1,6 +1,6 @@
 import { EditorSelection, EditorState } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
-import { completeCodeFenceOnEnter, insertChartJs, insertMermaid, insertTableOfContents, toggleSubscript, toggleSuperscript, toggleTaskDone, toggleUnderline } from './commands'
+import { completeCodeFenceOnEnter, insertAbbreviation, insertChartJs, insertDefinitionList, insertEmoji, insertMermaid, insertRuby, insertTableOfContents, insertTaskWithStatus, toggleSubscript, toggleSuperscript, toggleTaskDone, toggleUnderline } from './commands'
 
 function runFenceCompletion(doc: string, cursor = doc.length) {
   const state = EditorState.create({ doc, selection: EditorSelection.cursor(cursor) })
@@ -76,6 +76,37 @@ describe('toggleSubscript and toggleSuperscript', () => {
     let next = state
     toggleTaskDone({ state, dispatch: (tr) => { next = tr.state } })
     expect(next.doc.toString()).toBe('- [x] In progress task')
+  })
+
+  it('inserts ruby annotation template', () => {
+    const state = EditorState.create({ doc: 'word', selection: EditorSelection.range(0, 4) })
+    let next = state
+    insertRuby({ state, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toContain('{word|')
+  })
+
+  it('inserts definition list template', () => {
+    const state = EditorState.create({ doc: '', selection: EditorSelection.cursor(0) })
+    let next = state
+    insertDefinitionList({ state, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toContain('\n: ')
+  })
+
+  it('inserts abbreviation template', () => {
+    const state = EditorState.create({ doc: '', selection: EditorSelection.cursor(0) })
+    let next = state
+    insertAbbreviation({ state, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toContain('*[HTML]: ')
+  })
+
+  it('inserts emoji and task with status marker', () => {
+    const state = EditorState.create({ doc: '', selection: EditorSelection.cursor(0) })
+    let next = state
+    insertTaskWithStatus('/')({ state, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toBe('- [/] ')
+
+    insertEmoji('🎉')({ state: next, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toBe('- [/] 🎉')
   })
 })
 

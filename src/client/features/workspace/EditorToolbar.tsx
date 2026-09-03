@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
-import { Blocks, Bold, Braces, ChevronDown, Code, Heading, Highlighter, Image as ImageIcon, Italic, Link2, List, ListOrdered, ListTodo, Minus, Network, Paperclip, Quote, Sigma, Strikethrough, Table, } from 'lucide-react';
+import { Blocks, Bold, Braces, ChevronDown, Code, Heading, Highlighter, Image as ImageIcon, Italic, Link2, List, ListOrdered, ListTodo, Minus, Network, Paperclip, Quote, Sigma, Smile, Strikethrough, Table, } from 'lucide-react';
 import { IconButton } from '../../components/primitives';
 import { Menu, Tooltip, type MenuItem } from '../../components/overlay';
 import { cn } from '../../lib/cn';
-import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDetails, insertDiagramCode, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTag, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleSubscript, toggleSuperscript, toggleTaskList, toggleUnderline, toggleWikiLink, } from '../../editor/commands';
+import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleSubscript, toggleSuperscript, toggleTaskList, toggleUnderline, toggleWikiLink, } from '../../editor/commands';
 import { SubmenuList } from './EditorContextMenu';
 import { t } from "../../lib/i18n";
 export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobile = false, }: {
@@ -18,8 +18,9 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
     const inlineRef = useRef<HTMLButtonElement>(null);
     const noteRef = useRef<HTMLButtonElement>(null);
     const blockRef = useRef<HTMLButtonElement>(null);
-    const [openMenu, setOpenMenu] = useState<'heading' | 'inline' | 'note' | 'block' | null>(null);
-    const toggleMenu = (menu: 'heading' | 'inline' | 'note' | 'block') => {
+    const emojiRef = useRef<HTMLButtonElement>(null);
+    const [openMenu, setOpenMenu] = useState<'heading' | 'inline' | 'note' | 'block' | 'emoji' | null>(null);
+    const toggleMenu = (menu: 'heading' | 'inline' | 'note' | 'block' | 'emoji') => {
         setOpenMenu((current) => current === menu ? null : menu);
     };
     const run = (command: (target: EditorView) => boolean) => () => {
@@ -43,8 +44,14 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
         { id: 'highlight', label: t("common.highlight"), combo: 'mod+shift+h', onSelect: run(toggleHighlight) },
         { id: 'subscript', label: t("workspace.subscript"), onSelect: run(toggleSubscript) },
         { id: 'superscript', label: t("workspace.superscript"), onSelect: run(toggleSuperscript) },
+        { id: 'ruby', label: t("workspace.ruby_annotation"), onSelect: run(insertRuby) },
         { id: 'inline-math', label: t("workspace.inline_math"), onSelect: run(toggleInlineMath), separatorBefore: true },
     ];
+    const emojiItems: MenuItem[] = COMMON_EMOJIS.map((item) => ({
+        id: item.code,
+        label: `${item.emoji}  ${item.code}`,
+        onSelect: run(insertEmoji(item.emoji)),
+    }));
     const noteItems: MenuItem[] = [
         { id: 'wiki-link', label: t("common.wiki_links"), onSelect: run(toggleWikiLink) },
         { id: 'note-embed', label: t("workspace.note_embed"), onSelect: run(toggleNoteEmbed) },
@@ -91,6 +98,24 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
         { id: 'details', label: t("workspace.details_block"), onSelect: run(insertDetails) },
         { id: 'tabs', label: t("common.tabs"), onSelect: run(insertTabs) },
         { id: 'toc', label: t("common.table_of_contents"), onSelect: run(insertTableOfContents) },
+        { id: 'deflist', label: t("workspace.definition_list"), onSelect: run(insertDefinitionList) },
+        { id: 'abbr', label: t("workspace.abbreviation"), onSelect: run(insertAbbreviation) },
+        {
+            id: 'task-extended',
+            label: t("common.task_list"),
+            submenu: ({ closeMenu }) => (
+                <SubmenuList
+                    closeMenu={closeMenu}
+                    width={180}
+                    items={[
+                        { id: 'task-in-progress', label: t("workspace.task_in_progress"), onSelect: run(insertTaskWithStatus('/')) },
+                        { id: 'task-cancelled', label: t("workspace.task_cancelled"), onSelect: run(insertTaskWithStatus('-')) },
+                        { id: 'task-question', label: t("workspace.task_question"), onSelect: run(insertTaskWithStatus('?')) },
+                        { id: 'task-important', label: t("workspace.task_important"), onSelect: run(insertTaskWithStatus('!')) },
+                    ]}
+                />
+            ),
+        },
         { id: 'front-matter', label: 'Front Matter', onSelect: run(insertFrontMatter), separatorBefore: true },
         { id: 'note-template', label: t("workspace.insert_note_template"), onSelect: run(insertNoteTemplate), separatorBefore: true },
     ];
@@ -134,6 +159,9 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
       <ToolButton label={t("common.quote")} combo="mod+shift+." onClick={run(toggleQuote)}>
         <Quote size={14}/>
       </ToolButton>
+      <MenuButton buttonRef={emojiRef} label={t("common.emoji")} mobile={mobile} open={openMenu === 'emoji'} onClick={() => toggleMenu('emoji')}>
+        <Smile size={14}/>
+      </MenuButton>
 
       <Divider />
 
@@ -170,6 +198,7 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
 
       <Menu anchor={headingRef} open={openMenu === 'heading'} onClose={() => setOpenMenu(null)} items={headingItems} width={168} label={t("workspace.title_level")}/>
       <Menu anchor={inlineRef} open={openMenu === 'inline'} onClose={() => setOpenMenu(null)} items={inlineItems} width={184} label={t("workspace.more_inline_styles")}/>
+      <Menu anchor={emojiRef} open={openMenu === 'emoji'} onClose={() => setOpenMenu(null)} items={emojiItems} width={180} label={t("common.emoji")}/>
       <Menu anchor={noteRef} open={openMenu === 'note'} onClose={() => setOpenMenu(null)} items={noteItems} width={184} label={t("workspace.note_syntax")}/>
       <Menu anchor={blockRef} open={openMenu === 'block'} onClose={() => setOpenMenu(null)} items={blockItems} width={192} label={t("workspace.more_blocks")}/>
     </div>);

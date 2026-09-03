@@ -345,6 +345,92 @@ export const insertTableOfContents: StateCommand = ({ state, dispatch }) => {
     return true;
 };
 
+export const insertRuby: StateCommand = ({ state, dispatch }) => {
+    const range = state.selection.main;
+    const selected = state.sliceDoc(range.from, range.to);
+    const base = selected || t('workspace.ruby_base_placeholder');
+    const ruby = t('workspace.ruby_text_placeholder');
+    const insert = `{${base}|${ruby}}`;
+    const rubyStart = range.from + 1 + base.length + 1;
+    dispatch(state.update({
+        changes: { from: range.from, to: range.to, insert },
+        selection: EditorSelection.range(rubyStart, rubyStart + ruby.length),
+        scrollIntoView: true,
+        userEvent: 'input.insert',
+    }));
+    return true;
+};
+
+export const insertDefinitionList: StateCommand = ({ state, dispatch }) => {
+    const range = state.selection.main;
+    const selected = state.sliceDoc(range.from, range.to);
+    const term = selected || t('workspace.deflist_term_placeholder');
+    const def = t('workspace.deflist_desc_placeholder');
+    const insert = `${term}\n: ${def}\n\n`;
+    const defStart = range.from + term.length + 3;
+    dispatch(state.update({
+        changes: { from: range.from, to: range.to, insert },
+        selection: EditorSelection.range(defStart, defStart + def.length),
+        scrollIntoView: true,
+        userEvent: 'input.insert',
+    }));
+    return true;
+};
+
+export const insertAbbreviation: StateCommand = ({ state, dispatch }) => {
+    const range = state.selection.main;
+    const selected = state.sliceDoc(range.from, range.to);
+    const abbr = selected || 'HTML';
+    const def = t('workspace.abbr_desc_placeholder');
+    const insert = `*[${abbr}]: ${def}\n`;
+    const defStart = range.from + 4 + abbr.length;
+    dispatch(state.update({
+        changes: { from: range.from, to: range.to, insert },
+        selection: EditorSelection.range(defStart, defStart + def.length),
+        scrollIntoView: true,
+        userEvent: 'input.insert',
+    }));
+    return true;
+};
+
+export const insertEmoji = (emoji: string): StateCommand => ({ state, dispatch }) => {
+    const range = state.selection.main;
+    dispatch(state.update({
+        changes: { from: range.from, to: range.to, insert: emoji },
+        selection: EditorSelection.cursor(range.from + emoji.length),
+        scrollIntoView: true,
+        userEvent: 'input.insert',
+    }));
+    return true;
+};
+
+export const insertTaskWithStatus = (marker: string): StateCommand => ({ state, dispatch }) => {
+    const range = state.selection.main;
+    const insert = `- [${marker}] `;
+    dispatch(state.update({
+        changes: { from: range.from, to: range.to, insert },
+        selection: EditorSelection.cursor(range.from + insert.length),
+        scrollIntoView: true,
+        userEvent: 'input.insert',
+    }));
+    return true;
+};
+
+export const COMMON_EMOJIS = [
+    { emoji: '😀', code: ':smile:' },
+    { emoji: '🎉', code: ':tada:' },
+    { emoji: '🔥', code: ':fire:' },
+    { emoji: '🚀', code: ':rocket:' },
+    { emoji: '✨', code: ':sparkles:' },
+    { emoji: '⭐', code: ':star:' },
+    { emoji: '💡', code: ':bulb:' },
+    { emoji: '📌', code: ':pushpin:' },
+    { emoji: '✅', code: ':white_check_mark:' },
+    { emoji: '⚠️', code: ':warning:' },
+    { emoji: '❤️', code: ':heart:' },
+    { emoji: '👍', code: ':+1:' },
+] as const;
+
 import { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES } from './diagram-templates';
 export { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES };
 export const insertMermaid: StateCommand = insertDiagramCode('mermaid', MERMAID_TEMPLATES[0]!.code);
