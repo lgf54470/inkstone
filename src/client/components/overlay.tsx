@@ -137,7 +137,7 @@ function isAvailableFocusTarget(element: HTMLElement): boolean {
     return !element.matches(':disabled') && !element.closest('[hidden], [aria-hidden="true"]');
 }
 
-export function Modal({ open, onClose, title, description, children, footer, width = 560, className, }: {
+export function Modal({ open, onClose, title, description, children, footer, width = 560, className, bodyClassName, }: {
     open: boolean;
     onClose: () => void;
     title?: ReactNode;
@@ -146,6 +146,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
     footer?: ReactNode;
     width?: number;
     className?: string;
+    bodyClassName?: string;
 }) {
     const panelRef = useRef<HTMLDivElement>(null);
     const titleId = useId();
@@ -176,7 +177,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
               </IconButton>
             </Tooltip>
           </div>)}
-        <div className="min-h-0 overflow-y-auto px-4 pb-4 md:px-5 md:pb-5">{children}</div>
+        <div className={cn("min-h-0 overflow-y-auto px-4 pb-4 md:px-5 md:pb-5", bodyClassName)}>{children}</div>
         {footer && (<div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-[var(--border-subtle)] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] md:px-5 md:py-3">
             {footer}
           </div>)}

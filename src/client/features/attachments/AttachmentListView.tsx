@@ -59,66 +59,68 @@ export function AttachmentListView({
   const folders = useAttachmentStore((s) => s.folders)
 
   return (
-    <div className="w-full overflow-x-auto">
-      <table className="w-full text-left text-[12px] border-collapse">
-        <thead className="sticky top-0 z-10 border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)]/90 backdrop-blur-xs text-[11px] font-semibold text-[var(--text-tertiary)] uppercase select-none">
-          <tr>
-            <th className="w-10 px-3 py-2.5">
-              <button
-                type="button"
-                onClick={onToggleSelectAll}
-                className={cn(
-                  'flex h-4 w-4 items-center justify-center rounded border transition-colors',
-                  allSelected
-                    ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
-                    : 'border-[var(--border-default)] bg-[var(--bg-base)]',
-                )}
-              >
-                {allSelected && <Check size={11} strokeWidth={3} />}
-              </button>
-            </th>
-            <th className="px-3 py-2.5">{t('attachments.filename')}</th>
-            <th className="px-3 py-2.5 w-32">{t('navigation.folder')}</th>
-            <th className="px-3 py-2.5 w-32">{t('navigation.tag')}</th>
-            <th className="px-3 py-2.5 w-24">{t('attachments.size_all')}</th>
-            <th className="px-3 py-2.5 w-24">{t('attachments.unreferenced')}</th>
-            <th className="px-3 py-2.5 w-28">{t('common.created')}</th>
-            <th className="px-3 py-2.5 w-20 text-right">{t('common.more_actions')}</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[var(--border-subtle)]">
-          {files.map((file) => {
-            const selected = selectedIds.has(file.id)
-            const active = activeFile?.id === file.id
-            const folder = file.folderId ? folders.find((f) => f.id === file.folderId) : null
-            return (
-              <ListRow
-                key={file.id}
-                file={file}
-                folderName={folder?.name}
-                selected={selected}
-                active={active}
-                onToggleSelect={(e) => onToggleSelect(file.id, e)}
-                onSelectActive={() => onSelectActive(file)}
-                onPreview={() => onPreview(file)}
-                onRename={() => onRename(file)}
-                onShowQr={() => onShowQr(file)}
-                onInsertToNote={onInsertToNote ? () => onInsertToNote(file) : undefined}
-                onToggleStar={() => onToggleStar(file)}
-                onTogglePin={() => onTogglePin(file)}
-                onMoveToFolder={() => onMoveToFolder(file)}
-                onDelete={() => onDelete(file)}
-              />
-            )
-          })}
-        </tbody>
-      </table>
+    <div className="flex min-h-full flex-col w-full">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-[12px] border-collapse">
+          <thead className="sticky top-0 z-10 border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)]/90 backdrop-blur-xs text-[11px] font-semibold text-[var(--text-tertiary)] uppercase select-none">
+            <tr>
+              <th className="w-10 px-3 py-2.5">
+                <button
+                  type="button"
+                  onClick={onToggleSelectAll}
+                  className={cn(
+                    'flex h-4 w-4 items-center justify-center rounded border transition-colors cursor-pointer',
+                    allSelected
+                      ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
+                      : 'border-[var(--border-default)] bg-[var(--bg-base)]',
+                  )}
+                >
+                  {allSelected && <Check size={11} strokeWidth={3} />}
+                </button>
+              </th>
+              <th className="px-3 py-2.5">{t('attachments.filename')}</th>
+              <th className="px-3 py-2.5 w-32">{t('navigation.folder')}</th>
+              <th className="px-3 py-2.5 w-32">{t('navigation.tag')}</th>
+              <th className="px-3 py-2.5 w-24">{t('attachments.size_all')}</th>
+              <th className="px-3 py-2.5 w-24">{t('attachments.unreferenced')}</th>
+              <th className="px-3 py-2.5 w-28">{t('common.created')}</th>
+              <th className="px-3 py-2.5 w-20 text-right">{t('common.more_actions')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border-subtle)]">
+            {files.map((file) => {
+              const selected = selectedIds.has(file.id)
+              const active = activeFile?.id === file.id
+              const folder = file.folderId ? folders.find((f) => f.id === file.folderId) : null
+              return (
+                <ListRow
+                  key={file.id}
+                  file={file}
+                  folderName={folder?.name}
+                  selected={selected}
+                  active={active}
+                  onToggleSelect={(e) => onToggleSelect(file.id, e)}
+                  onSelectActive={() => onSelectActive(file)}
+                  onPreview={() => onPreview(file)}
+                  onRename={() => onRename(file)}
+                  onShowQr={() => onShowQr(file)}
+                  onInsertToNote={onInsertToNote ? () => onInsertToNote(file) : undefined}
+                  onToggleStar={() => onToggleStar(file)}
+                  onTogglePin={() => onTogglePin(file)}
+                  onMoveToFolder={() => onMoveToFolder(file)}
+                  onDelete={() => onDelete(file)}
+                />
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {onUploadClick && files.length < 8 && (
-        <div className="p-4">
+        <div className="flex flex-1 p-4">
           <div
             onClick={onUploadClick}
-            className="flex flex-col items-center justify-center rounded-[var(--r-xl)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 py-10 px-4 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/10 cursor-pointer"
+            className="flex flex-1 min-h-[180px] flex-col items-center justify-center rounded-[var(--r-xl)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 py-8 px-4 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/10 cursor-pointer"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-surface)] text-[var(--accent)] shadow-xs mb-3">
               <Upload size={22} />

@@ -70,7 +70,7 @@ export function AttachmentGridView({
       : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="flex min-h-full flex-col p-4 gap-6">
       {groups.map((group, groupIdx) => (
         <div key={group.label} className="space-y-2.5">
           <div className="sticky top-0 z-10 bg-[var(--bg-surface)]/90 py-1 backdrop-blur-xs">
@@ -120,7 +120,7 @@ export function AttachmentGridView({
       {onUploadClick && files.length < 8 && (
         <div
           onClick={onUploadClick}
-          className="flex flex-col items-center justify-center rounded-[var(--r-xl)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 py-10 px-4 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/10 cursor-pointer"
+          className="flex flex-1 min-h-[180px] flex-col items-center justify-center rounded-[var(--r-xl)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 py-8 px-4 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/10 cursor-pointer"
         >
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-surface)] text-[var(--accent)] shadow-xs mb-3">
             <Upload size={22} />

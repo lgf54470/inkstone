@@ -299,7 +299,7 @@ export function AttachmentDriveSidebar({
       </div>
 
       {stats && (
-        <div className="border-t border-[var(--border-subtle)] p-3 bg-[var(--bg-sunken)]/40 text-[11px] space-y-1.5">
+        <div className="mt-auto shrink-0 border-t border-[var(--border-subtle)] p-3 bg-[var(--bg-sunken)]/40 text-[11px] space-y-1.5">
           <div className="flex items-center justify-between font-semibold text-[var(--text-secondary)]">
             <span>{t('attachments.stats_title')}</span>
             <span className="font-mono text-[10.5px]">

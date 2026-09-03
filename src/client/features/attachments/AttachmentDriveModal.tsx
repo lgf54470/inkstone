@@ -339,7 +339,8 @@ export function AttachmentDriveModal({
         open={open}
         onClose={onClose}
         width={1300}
-        className="h-[80vh] min-h-[540px] max-h-[820px] p-0 overflow-hidden flex flex-col"
+        className="h-[82vh] min-h-[560px] max-h-[860px] p-0 overflow-hidden flex flex-col"
+        bodyClassName="p-0 flex-1 min-h-0 flex flex-col overflow-hidden"
       >
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]">
           <div className="flex items-center gap-2">
