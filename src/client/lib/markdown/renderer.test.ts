@@ -233,4 +233,11 @@ describe('renderMarkdown extension golden output', () => {
     expect(fragment.querySelector('sub')?.textContent).toBe('2')
     expect(fragment.querySelector('sup')?.textContent).toBe('2')
   })
+
+  it('renders inserted and underlined inline formatting', () => {
+    const markdown = 'This is ++inserted text++.'
+    const rendered = renderMarkdown(markdown)
+    const fragment = parse(rendered.html)
+    expect(fragment.querySelector('ins')?.textContent).toBe('inserted text')
+  })
 })

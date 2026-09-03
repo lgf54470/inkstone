@@ -1405,6 +1405,12 @@
   padding: 0.04em 0.22em;
   border-radius: 3px;
 }
+.ink-prose ins,
+.ink-prose u {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
 .ink-prose kbd {
   font-family: var(--font-mono);
   font-size: 0.82em;

@@ -7,6 +7,7 @@ import anchor from 'markdown-it-anchor';
 import mark from 'markdown-it-mark';
 import sub from 'markdown-it-sub';
 import sup from 'markdown-it-sup';
+import ins from 'markdown-it-ins';
 import DOMPurify from 'dompurify';
 import { parseFrontMatter, slugifyHeading } from '@shared/markdown-utils';
 import { getLocale, t } from '../i18n';
@@ -69,6 +70,7 @@ md.use(taskLists, { enabled: true, label: false })
     .use(mark)
     .use(sub)
     .use(sup)
+    .use(ins)
     .use(anchor, {
     slugify: slugifyHeading,
 

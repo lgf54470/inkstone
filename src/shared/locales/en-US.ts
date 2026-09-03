@@ -323,6 +323,7 @@ export const EN_US_MESSAGES = {
     "common.the_passwords_do_not_match": "The passwords do not match",
     "common.unarchive": "Unarchive",
     "common.undo": "Undo",
+    "common.underline": "Underline",
     "common.unordered_list": "Unordered list",
     "common.untitled_note": "Untitled note",
     "common.username": "Username",

@@ -4,7 +4,7 @@ import { Blocks, Bold, Braces, ChevronDown, Code, Heading, Highlighter, Image as
 import { IconButton } from '../../components/primitives';
 import { Menu, Tooltip, type MenuItem } from '../../components/overlay';
 import { cn } from '../../lib/cn';
-import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDetails, insertDiagramCode, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTabs, insertTag, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleSubscript, toggleSuperscript, toggleTaskList, toggleWikiLink, } from '../../editor/commands';
+import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDetails, insertDiagramCode, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTabs, insertTag, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleSubscript, toggleSuperscript, toggleTaskList, toggleUnderline, toggleWikiLink, } from '../../editor/commands';
 import { SubmenuList } from './EditorContextMenu';
 import { t } from "../../lib/i18n";
 export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobile = false, }: {
@@ -39,6 +39,7 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
         onSelect: run(setHeading(level)),
     }));
     const inlineItems: MenuItem[] = [
+        { id: 'underline', label: t("common.underline"), combo: 'mod+u', onSelect: run(toggleUnderline) },
         { id: 'highlight', label: t("common.highlight"), combo: 'mod+shift+h', onSelect: run(toggleHighlight) },
         { id: 'subscript', label: t("workspace.subscript"), onSelect: run(toggleSubscript) },
         { id: 'superscript', label: t("workspace.superscript"), onSelect: run(toggleSuperscript) },

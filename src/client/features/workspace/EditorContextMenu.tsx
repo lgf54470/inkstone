@@ -50,6 +50,7 @@ import {
   Superscript,
   Table as TableIcon,
   Trash2,
+  Underline,
   Undo2,
 } from 'lucide-react';
 import { Menu, type MenuItem } from '../../components/overlay';
@@ -102,6 +103,7 @@ import {
   toggleOrderedList,
   toggleQuote,
   toggleStrikethrough,
+  toggleUnderline,
   toggleSubscript,
   toggleSuperscript,
   toggleTaskDone,
@@ -269,6 +271,7 @@ export function EditorContextMenu({
                 { id: 'bold', label: t('common.bold'), icon: <Bold size={13} />, combo: 'mod+b', onSelect: () => runStateCommand(toggleBold) },
                 { id: 'italic', label: t('common.italic'), icon: <Italic size={13} />, combo: 'mod+i', onSelect: () => runStateCommand(toggleItalic) },
                 { id: 'strikethrough', label: t('common.strikethrough'), icon: <Strikethrough size={13} />, combo: 'mod+shift+x', onSelect: () => runStateCommand(toggleStrikethrough) },
+                { id: 'underline', label: t('common.underline'), icon: <Underline size={13} />, combo: 'mod+u', onSelect: () => runStateCommand(toggleUnderline) },
                 { id: 'highlight', label: t('common.highlight'), icon: <Highlighter size={13} />, combo: 'mod+shift+h', onSelect: () => runStateCommand(toggleHighlight) },
                 { id: 'subscript', label: t('workspace.subscript'), icon: <Subscript size={13} />, onSelect: () => runStateCommand(toggleSubscript) },
                 { id: 'superscript', label: t('workspace.superscript'), icon: <Superscript size={13} />, onSelect: () => runStateCommand(toggleSuperscript) },
