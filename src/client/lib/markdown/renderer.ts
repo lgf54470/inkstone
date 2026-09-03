@@ -11,6 +11,7 @@ import ins from 'markdown-it-ins';
 import { full as emoji } from 'markdown-it-emoji';
 import deflist from 'markdown-it-deflist';
 import abbr from 'markdown-it-abbr';
+import ruby from 'markdown-it-ruby';
 import DOMPurify from 'dompurify';
 import { parseFrontMatter, slugifyHeading } from '@shared/markdown-utils';
 import { getLocale, t } from '../i18n';
@@ -77,6 +78,7 @@ md.use(taskLists, { enabled: true, label: false })
     .use(emoji, { shortcuts: {} })
     .use(deflist)
     .use(abbr)
+    .use(ruby)
     .use(anchor, {
     slugify: slugifyHeading,
 
@@ -355,6 +357,27 @@ md.inline.ruler.before('text', 'inline_tag', (state, silent) => {
         token.content = match[1]!;
     }
     state.pos += match[0].length;
+    return true;
+});
+md.inline.ruler.before('link', 'ruby_bracket', (state, silent) => {
+    const start = state.pos;
+    if (state.src.charCodeAt(start) !== 0x5b)
+        return false;
+    const closeBracket = state.src.indexOf(']', start + 1);
+    if (closeBracket === -1 || closeBracket + 1 >= state.src.length || state.src.charCodeAt(closeBracket + 1) !== 0x7b)
+        return false;
+    const closeBrace = state.src.indexOf('}', closeBracket + 2);
+    if (closeBrace === -1)
+        return false;
+    if (silent)
+        return true;
+    const baseText = state.src.slice(start + 1, closeBracket);
+    const rubyText = state.src.slice(closeBracket + 2, closeBrace);
+    if (!baseText || !rubyText)
+        return false;
+    const token = state.push('html_inline', '', 0);
+    token.content = `<ruby>${escapeHtml(baseText)}<rp>(</rp><rt>${escapeHtml(rubyText)}</rt><rp>)</rp></ruby>`;
+    state.pos = closeBrace + 1;
     return true;
 });
 md.renderer.rules.note_embed = (tokens, index) => {
@@ -895,7 +918,7 @@ const PURIFY_CONFIG = {
         'a', 'abbr', 'aside', 'b', 'blockquote', 'br', 'button', 'code',
         'dd', 'del', 'details', 'div', 'dl', 'dt', 'em', 'figcaption',
         'figure', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img',
-        'ins', 'kbd', 'li', 'mark', 'nav', 'ol', 'p', 'pre', 'q', 's', 'section',
+        'ins', 'kbd', 'li', 'mark', 'nav', 'ol', 'p', 'pre', 'q', 'rp', 'rt', 'ruby', 's', 'section',
         'small', 'span', 'strong', 'sub', 'summary', 'sup', 'table',
         'tbody', 'td', 'th', 'thead', 'tr', 'u', 'ul',
     ],

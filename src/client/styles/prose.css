@@ -1530,6 +1530,18 @@
   text-underline-offset: 3px;
   cursor: help;
 }
+.ink-prose ruby {
+  ruby-position: over;
+}
+.ink-prose rt {
+  font-size: 0.68em;
+  color: var(--text-secondary);
+  user-select: none;
+}
+.ink-prose rp {
+  color: var(--text-quaternary);
+  font-size: 0.75em;
+}
 .ink-prose kbd {
   font-family: var(--font-mono);
   font-size: 0.82em;

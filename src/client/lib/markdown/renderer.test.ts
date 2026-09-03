@@ -301,4 +301,14 @@ describe('renderMarkdown extension golden output', () => {
     expect(inputs[2]?.dataset.taskStatus).toBe('question')
     expect(inputs[3]?.dataset.taskStatus).toBe('important')
   })
+
+  it('renders ruby annotations with both pipe and bracket syntaxes', () => {
+    const markdown = '{\\u6c49\\u5b57|h\\u00e0n z\\u00ec} and [\\u6c49\\u5b57]{\\u6c49\\u5b57}'
+    const rendered = renderMarkdown(JSON.parse(`"${markdown}"`))
+    const fragment = parse(rendered.html)
+    const rubies = fragment.querySelectorAll('ruby')
+    expect(rubies.length).toBe(2)
+    expect(rubies[0]?.querySelector('rt')?.textContent).toBe('h\u00e0n z\u00ec')
+    expect(rubies[1]?.querySelector('rt')?.textContent).toBe('\u6c49\u5b57')
+  })
 })
