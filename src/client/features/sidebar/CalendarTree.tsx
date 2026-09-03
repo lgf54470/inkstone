@@ -24,7 +24,7 @@ export function CalendarTree() {
 }
 
 export function TodoTree() {
-    const todoTagPref = useSession((s) => s.settings.notes.todoTag);
+    const todoTagPref = useSession((s) => s.settings.notes?.todoTag);
     const locale = useLocale();
     return (
         <VirtualTree

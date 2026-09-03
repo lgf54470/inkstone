@@ -382,6 +382,9 @@ function mergeSettingsPatches(
     ...(first.sync || second.sync
       ? { sync: { ...first.sync, ...second.sync } }
       : {}),
+    ...(first.notes || second.notes
+      ? { notes: { ...first.notes, ...second.notes } }
+      : {}),
   }
 }
 

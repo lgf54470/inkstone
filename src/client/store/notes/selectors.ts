@@ -180,7 +180,7 @@ export function useVisibleNotes(): NoteSummary[] {
     const dateFilter = useUi((s) => s.dateFilter);
     const sort = useUi((s) => s.sort);
     const order = useUi((s) => s.order);
-    const todoTagPref = useSession((s) => s.settings.notes.todoTag);
+    const todoTagPref = useSession((s) => s.settings.notes?.todoTag);
     return useMemo(() => {
         const folderScope = view === 'folder' && folderId ? folderDescendantIds(folders, folderId) : undefined;
         const list = Object.values(deferredNotes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, resolveTodoTag(todoTagPref, locale)));

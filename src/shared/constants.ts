@@ -206,9 +206,14 @@ function cloneDefaultSettings(): UserSettings {
 export function mergeSettingsPatch(current: unknown, patch: unknown): UserSettings {
   const previous = asRecord(current)
   const incoming = asRecord(patch)
+  const defaults = cloneDefaultSettings()
   const combined: Record<string, unknown> = { ...previous }
   let touched = false
   for (const section of SETTINGS_SECTIONS) {
+    if (!combined[section]) {
+      combined[section] = defaults[section]
+      touched = true
+    }
     const patched = asRecord(incoming[section])
     if (Object.keys(patched).length === 0) continue
     touched = true

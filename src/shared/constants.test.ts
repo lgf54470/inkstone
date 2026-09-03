@@ -31,6 +31,21 @@ describe('mergeSettingsPatch', () => {
     expect(next.preview).toBe(current.preview)
     expect(next.backup).toBe(current.backup)
     expect(next.sync).toBe(current.sync)
+    expect(next.notes).toBe(current.notes)
+  })
+
+  it('backfills missing sections when merging patch onto incomplete settings', () => {
+    const legacy = {
+      appearance: { ...DEFAULT_SETTINGS.appearance },
+      editor: { ...DEFAULT_SETTINGS.editor },
+      preview: { ...DEFAULT_SETTINGS.preview },
+      backup: { ...DEFAULT_SETTINGS.backup },
+      sync: { ...DEFAULT_SETTINGS.sync },
+    }
+    const next = mergeSettingsPatch(legacy, { preview: { layout: 'preview' } })
+    expect(next.notes).toBeDefined()
+    expect(next.notes.todoTag).toBeNull()
+    expect(next.preview.layout).toBe('preview')
   })
 
   it('sanitizes patched values against current values', () => {

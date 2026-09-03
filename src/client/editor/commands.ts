@@ -378,10 +378,11 @@ export const insertTabs: StateCommand = ({ state, dispatch }) => {
 
 export const insertNoteTemplate: StateCommand = ({ state, dispatch }) => {
     const settings = useSession.getState().settings.notes;
+    const template = settings?.newNoteTemplate ?? '';
     const noteStore = useNotes.getState();
     const noteId = useUi.getState().activeNoteId;
     const summary = noteId ? noteStore.notes[noteId] : null;
-    if (!settings.newNoteTemplate.trim())
+    if (!template.trim())
         return false;
     const extra: Record<string, string> = {};
     const folder = summary?.folderId ? noteStore.folders.find((item) => item.id === summary.folderId) : null;

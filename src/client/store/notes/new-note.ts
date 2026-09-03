@@ -1,4 +1,5 @@
 /** Fresh-note construction: template expansion, front-matter title sync, and caret memory. */
+import { DEFAULT_NEW_NOTE_TEMPLATE } from '@shared/constants';
 import { mergeTagsIntoFrontMatter, parseFrontMatter, renderNewNoteTemplate } from '@shared/markdown-utils';
 import { isVirtualFolderId } from '../../lib/calendar-tree';
 import { t } from '../../lib/i18n';
@@ -15,7 +16,7 @@ import type { Folder } from '@shared/types';
  * behavior.
  */
 export function buildNewNoteContent(title: string, tags: string[] = [], folderId: string | null = null, folders: Folder[] = []): { content: string; cursor: number | null } {
-    const template = useSession.getState().settings.notes.newNoteTemplate;
+    const template = useSession.getState().settings.notes?.newNoteTemplate ?? DEFAULT_NEW_NOTE_TEMPLATE;
     const tagList = tags.map((item) => item.trim().replace(/^#/, '')).filter(Boolean);
     if (!template.trim())
         return { content: '', cursor: null };

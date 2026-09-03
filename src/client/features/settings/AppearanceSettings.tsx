@@ -34,7 +34,7 @@ export function AppearanceSettings({
   const locale = useLocale()
   const calendarTreeVisible = useCalendarTreeVisible()
   const calendarTreeShowEmpty = useCalendarTreeShowEmpty()
-  const todoTag = useSession((s) => s.settings.notes.todoTag)
+  const todoTag = useSession((s) => s.settings.notes?.todoTag)
   const yearGridColumns = useYearGridColumns()
   const undoToastFocus = useUndoToastFocus()
   const setTodoTag = useCallback((value: string) => void update({ notes: { todoTag: value.trim() ? value : null } }), [update])

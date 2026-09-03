@@ -36,7 +36,7 @@ settingsRoutes.put('/', async (c) => {
   let previousRaw = c.get('user').settingsRaw
   for (let attempt = 0; attempt < 5; attempt++) {
 
-    const merged = mergeSettingsPatch(parse(previousRaw), incoming)
+    const merged = mergeSettingsPatch(mergeSettings(parse(previousRaw)), incoming)
     const nextRaw = JSON.stringify(merged)
     const updated = await c.env.DB.prepare(
       `UPDATE users SET settings = ?1 WHERE id = ?2 AND settings = ?3`,

@@ -549,7 +549,7 @@ export const useNotes = create<NotesState>((set, get) => ({
             return;
         // Keep the front matter `title` property in sync with the note title
         // whenever the note already declares one (opt-out per settings).
-        const syncedContent = useSession.getState().settings.notes.syncTitleToFrontMatter
+        const syncedContent = useSession.getState().settings.notes?.syncTitleToFrontMatter
             ? setFrontMatterProperty(content, 'title', nextTitle || null)
             : null;
         stageNoteTextWrite(id, syncedContent ?? content, nextTitle, set, get);
@@ -563,7 +563,7 @@ export const useNotes = create<NotesState>((set, get) => ({
         // adopt it as the note title so both stay in agreement (opt-out per
         // settings).
         let nextTitle = dirty.get(id)?.title;
-        if (useSession.getState().settings.notes.syncFrontMatterTitle) {
+        if (useSession.getState().settings.notes?.syncFrontMatterTitle) {
             const nextFrontMatterTitle = frontMatterTitleOf(content);
             const previousFrontMatterTitle = frontMatterTitleOf(state.contents[id]);
             if (nextFrontMatterTitle !== undefined && nextFrontMatterTitle !== previousFrontMatterTitle)

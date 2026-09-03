@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { DEFAULT_NEW_NOTE_TEMPLATE } from '@shared/constants';
+import { DEFAULT_NEW_NOTE_TEMPLATE, DEFAULT_SETTINGS } from '@shared/constants';
 import { renderNewNoteTemplate } from '@shared/markdown-utils';
 import { Input, SettingRow, Switch, Textarea } from '../../components/form';
 import { Button } from '../../components/primitives';
@@ -7,7 +7,7 @@ import { useSession } from '../../store/session';
 import { t, useLocale } from "../../lib/i18n";
 
 export function NoteSettings() {
-    const notes = useSession((s) => s.settings.notes);
+    const notes = useSession((s) => s.settings.notes ?? DEFAULT_SETTINGS.notes);
     const update = useSession((s) => s.updateSettings);
     const locale = useLocale();
 

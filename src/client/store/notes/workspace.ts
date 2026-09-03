@@ -35,7 +35,7 @@ export function pickInitialNoteId(notes: Record<string, NoteSummary>, folders: F
     const selectedTags = ui.selectedTags;
     const selectedTagsMatch = ui.selectedTagsMatch;
     const dateFilter = ui.dateFilter;
-    const todoTagText = resolveTodoTag(useSession.getState().settings.notes.todoTag, getLocale());
+    const todoTagText = resolveTodoTag(useSession.getState().settings.notes?.todoTag, getLocale());
     const active = ui.activeNoteId ? notes[ui.activeNoteId] : undefined;
     if (active && matchesView(active, ui.view, ui.folderId, ui.tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, todoTagText))
         return active.id;

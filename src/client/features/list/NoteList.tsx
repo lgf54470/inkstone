@@ -50,7 +50,7 @@ const INITIAL_RENDERED_NOTES = 60;
 const RENDERED_NOTES_STEP = 80;
 export function NoteList() {
     const locale = useLocale();
-    const todoTagText = resolveTodoTag(useSession((s) => s.settings.notes.todoTag), locale);
+    const todoTagText = resolveTodoTag(useSession((s) => s.settings.notes?.todoTag), locale);
     const breakpoint = useBreakpoint();
     const view = useUi((s) => s.view);
     const folderId = useUi((s) => s.folderId);
@@ -981,7 +981,7 @@ function ListEmpty({ view, folderId, filtering, dayFiltering, tagFiltering, late
     onJumpToLatestWeek: () => void;
 }) {
     const openView = useUi((s) => s.openView);
-    const todoTagText = resolveTodoTag(useSession((s) => s.settings.notes.todoTag), useLocale());
+    const todoTagText = resolveTodoTag(useSession((s) => s.settings.notes?.todoTag), useLocale());
     const shortcut = (combo: string) => prettyCombo(combo).join('+');
     if (filtering) {
         return <Empty art="search" title={t("notes.no_matching_notes")} description={t("notes.try_another_search_or_press_shortcut_to_search_everywhere", { shortcut: shortcut('mod+k') })}/>;
