@@ -1,6 +1,7 @@
 import type { EditorView } from '@codemirror/view';
 import type { Text } from '@codemirror/state';
 import { parseMarkdownTable, type ParsedTable } from '../../lib/markdown/table-editor';
+import { decodeDataValue } from '../../lib/markdown/data-attr';
 
 export type ContextType =
   | 'selection'
@@ -9,6 +10,7 @@ export type ContextType =
   | 'math'
   | 'codeblock'
   | 'mermaid'
+  | 'chart'
   | 'wikilink'
   | 'link'
   | 'frontmatter'
@@ -25,6 +27,7 @@ export interface EditorContextData {
   math?: { formula: string; isBlock: boolean; from: number; to: number };
   codeBlock?: { language: string; code: string; from: number; to: number };
   mermaid?: { code: string; from: number; to: number };
+  chart?: { code: string; from: number; to: number };
   wikiLink?: { target: string; alias?: string; from: number; to: number };
   link?: { text: string; url: string; from: number; to: number };
   task?: { checked: boolean; text: string; from: number; to: number };
@@ -56,6 +59,10 @@ export interface PreviewContextData {
     sourceLine?: number;
   };
   mermaid?: {
+    code: string;
+    sourceLine?: number;
+  };
+  chart?: {
     code: string;
     sourceLine?: number;
   };
@@ -111,6 +118,18 @@ export function detectEditorContext(view: EditorView, pos: number): EditorContex
         pos: clampedPos,
         lineNumber,
         mermaid: {
+          code: codeFence.code,
+          from: codeFence.from,
+          to: codeFence.to,
+        },
+      };
+    }
+    if (codeFence.language.toLowerCase() === 'chart' || codeFence.language.toLowerCase() === 'chartjs') {
+      return {
+        type: 'chart',
+        pos: clampedPos,
+        lineNumber,
+        chart: {
           code: codeFence.code,
           from: codeFence.from,
           to: codeFence.to,
@@ -346,6 +365,18 @@ export function detectPreviewContext(target: HTMLElement): PreviewContextData {
       mermaid: {
         code: mermaidEl.dataset.code ?? mermaidEl.textContent ?? '',
         sourceLine: getSourceLine(mermaidEl),
+      },
+    };
+  }
+
+  const chartEl = target.closest<HTMLElement>('.chartjs-block, [data-chart]');
+  if (chartEl) {
+    return {
+      type: 'chart',
+      target,
+      chart: {
+        code: decodeDataValue(chartEl.dataset.chart ?? '') || chartEl.textContent || '',
+        sourceLine: getSourceLine(chartEl),
       },
     };
   }

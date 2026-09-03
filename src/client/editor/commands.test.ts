@@ -1,6 +1,6 @@
 import { EditorSelection, EditorState } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
-import { completeCodeFenceOnEnter } from './commands'
+import { completeCodeFenceOnEnter, insertChartJs, insertMermaid } from './commands'
 
 function runFenceCompletion(doc: string, cursor = doc.length) {
   const state = EditorState.create({ doc, selection: EditorSelection.cursor(cursor) })
@@ -25,3 +25,20 @@ describe('completeCodeFenceOnEnter', () => {
     expect(result.state.doc.toString()).toBe('```\nconsole.log(1)\n```')
   })
 })
+
+describe('insertDiagramCode', () => {
+  it('inserts mermaid diagram block', () => {
+    const state = EditorState.create({ doc: '', selection: EditorSelection.cursor(0) })
+    let next = state
+    insertMermaid({ state, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toContain('```mermaid\nflowchart TD')
+  })
+
+  it('inserts chart block', () => {
+    const state = EditorState.create({ doc: '', selection: EditorSelection.cursor(0) })
+    let next = state
+    insertChartJs({ state, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toContain('```chart\n{\n  "type": "bar"')
+  })
+})
+

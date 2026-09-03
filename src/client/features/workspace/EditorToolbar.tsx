@@ -4,7 +4,8 @@ import { Blocks, Bold, Braces, ChevronDown, Code, Heading, Highlighter, Image as
 import { IconButton } from '../../components/primitives';
 import { Menu, Tooltip, type MenuItem } from '../../components/overlay';
 import { cn } from '../../lib/cn';
-import { insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDetails, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertMermaid, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTabs, insertTag, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskList, toggleWikiLink, } from '../../editor/commands';
+import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDetails, insertDiagramCode, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTabs, insertTag, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskList, toggleWikiLink, } from '../../editor/commands';
+import { SubmenuList } from './EditorContextMenu';
 import { t } from "../../lib/i18n";
 export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobile = false, }: {
     runCommand?: (command: (target: EditorView) => boolean) => void;
@@ -51,7 +52,36 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
         { id: 'footnote', label: t("workspace.footnote"), onSelect: run(insertFootnote), separatorBefore: true },
     ];
     const blockItems: MenuItem[] = [
-        { id: 'mermaid', label: t("workspace.mermaid_diagram"), onSelect: run(insertMermaid) },
+        {
+            id: 'mermaid',
+            label: t("workspace.mermaid_diagram"),
+            submenu: ({ closeMenu }) => (
+                <SubmenuList
+                    closeMenu={closeMenu}
+                    width={190}
+                    items={MERMAID_TEMPLATES.map((tpl) => ({
+                        id: tpl.id,
+                        label: t(tpl.labelKey),
+                        onSelect: run(insertDiagramCode('mermaid', tpl.code)),
+                    }))}
+                />
+            ),
+        },
+        {
+            id: 'chartjs',
+            label: t("workspace.chartjs_diagram"),
+            submenu: ({ closeMenu }) => (
+                <SubmenuList
+                    closeMenu={closeMenu}
+                    width={180}
+                    items={CHARTJS_TEMPLATES.map((tpl) => ({
+                        id: tpl.id,
+                        label: t(tpl.labelKey),
+                        onSelect: run(insertDiagramCode('chart', tpl.code)),
+                    }))}
+                />
+            ),
+        },
         { id: 'advanced-code', label: t("workspace.enhanced_code_block"), onSelect: run(insertAdvancedCodeBlock) },
         { id: 'js-example', label: t("workspace.runnable_js_block"), onSelect: run(insertRunnableJsBlock) },
         { id: 'callout', label: t("workspace.callout"), onSelect: run(insertCallout) },

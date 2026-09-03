@@ -211,4 +211,18 @@ describe('renderMarkdown extension golden output', () => {
     expect(block?.querySelector('.code-block pre code')?.textContent).toContain('console.log("Hello");')
     expect(block?.querySelector('.js-example-output')).not.toBeNull()
   })
+
+  it('renders chart and mermaid blocks with data attributes', () => {
+    const markdown = '```chart\n{"type":"bar"}\n```\n\n```mermaid\nflowchart TD\nA --> B\n```'
+    const rendered = renderMarkdown(markdown)
+    expect(rendered.hasChart).toBe(true)
+    expect(rendered.hasMermaid).toBe(true)
+    const fragment = parse(rendered.html)
+    const chartBlock = fragment.querySelector('.chartjs-block')
+    expect(chartBlock).not.toBeNull()
+    expect(chartBlock?.getAttribute('data-chart')).toBeTruthy()
+    const mermaidBlock = fragment.querySelector('.mermaid-block')
+    expect(mermaidBlock).not.toBeNull()
+    expect(mermaidBlock?.getAttribute('data-mermaid')).toBeTruthy()
+  })
 })

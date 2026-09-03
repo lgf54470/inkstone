@@ -5,6 +5,7 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  BarChart2,
   Bold,
   Braces,
   Calendar,
@@ -82,7 +83,9 @@ import {
   insertFrontMatter,
   insertHorizontalRule,
   insertLink,
-  insertMermaid,
+  insertDiagramCode,
+  CHARTJS_TEMPLATES,
+  MERMAID_TEMPLATES,
   insertNoteTemplate,
   insertRunnableJsBlock,
   insertTable,
@@ -937,15 +940,11 @@ export function EditorContextMenu({
     const mermaidData = editorContext?.mermaid ?? previewContext?.mermaid;
     if (editorContext?.type === 'mermaid' || previewContext?.type === 'mermaid') {
       const code = mermaidData?.code ?? '';
-      const templates = [
-        { id: 'flowchart', label: t('contextmenu.mermaid_flowchart'), text: 'flowchart TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[OK]\n    B -->|No| D[Cancel]' },
-        { id: 'sequence', label: t('contextmenu.mermaid_sequence'), text: 'sequenceDiagram\n    autonumber\n    Alice->>Bob: Hello\n    Bob-->>Alice: Hi Alice' },
-        { id: 'class', label: t('contextmenu.mermaid_class'), text: 'classDiagram\n    Animal <|-- Duck\n    Animal : +int age\n    Animal : +String gender' },
-        { id: 'state', label: t('contextmenu.mermaid_state'), text: 'stateDiagram-v2\n    [*] --> Still\n    Still --> [*]' },
-        { id: 'er', label: t('contextmenu.mermaid_er'), text: 'erDiagram\n    CUSTOMER ||--o{ ORDER : places\n    ORDER ||--|{ LINE-ITEM : contains' },
-        { id: 'gantt', label: t('contextmenu.mermaid_gantt'), text: 'gantt\n    title Project Plan\n    dateFormat YYYY-MM-DD\n    section Design\n    Task 1: 2026-09-01, 3d' },
-        { id: 'mindmap', label: t('contextmenu.mermaid_mindmap'), text: 'mindmap\n  root((Project))\n    Origin\n      Long History\n    Popularisation' },
-      ];
+      const templates = MERMAID_TEMPLATES.map((tpl) => ({
+        id: tpl.id,
+        label: t(tpl.labelKey),
+        text: tpl.code,
+      }));
       return [
         {
           id: 'copy-mermaid',
@@ -963,6 +962,7 @@ export function EditorContextMenu({
                 submenu: ({ closeMenu }: { closeMenu: () => void }) => (
                   <SubmenuList
                     closeMenu={closeMenu}
+                    width={190}
                     items={templates.map((tpl) => ({
                       id: tpl.id,
                       label: tpl.label,
@@ -984,6 +984,57 @@ export function EditorContextMenu({
               {
                 id: 'jump-mermaid',
                 label: t('contextmenu.mermaid_jump_to_editor'),
+                icon: <Pencil size={14} />,
+                separatorBefore: true,
+                onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0),
+              },
+            ]
+          : []),
+      ];
+    }
+
+    const chartData = editorContext?.chart ?? previewContext?.chart;
+    if (editorContext?.type === 'chart' || previewContext?.type === 'chart') {
+      const code = chartData?.code ?? '';
+      return [
+        {
+          id: 'copy-chart',
+          label: t('contextmenu.chart_copy'),
+          icon: <Copy size={14} />,
+          onSelect: () => handleCopy(code),
+        },
+        ...(editorContext?.chart
+          ? [
+              {
+                id: 'chart-templates-sub',
+                label: t('contextmenu.chart_templates'),
+                icon: <BarChart2 size={14} />,
+                separatorBefore: true,
+                submenu: ({ closeMenu }: { closeMenu: () => void }) => (
+                  <SubmenuList
+                    closeMenu={closeMenu}
+                    width={190}
+                    items={CHARTJS_TEMPLATES.map((tpl) => ({
+                      id: tpl.id,
+                      label: t(tpl.labelKey),
+                      onSelect: () => {
+                        if (!editorView || !editorContext.chart) return;
+                        const block = '```chart\n' + tpl.code + '\n```';
+                        editorView.dispatch({
+                          changes: { from: editorContext.chart.from, to: editorContext.chart.to, insert: block },
+                        });
+                      },
+                    }))}
+                  />
+                ),
+              },
+            ]
+          : []),
+        ...(previewContext
+          ? [
+              {
+                id: 'jump-chart',
+                label: t('contextmenu.chart_jump_to_editor'),
                 icon: <Pencil size={14} />,
                 separatorBefore: true,
                 onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0),
@@ -1241,7 +1292,44 @@ export function EditorContextMenu({
                 { id: 'advanced-code', label: t('workspace.enhanced_code_block'), icon: <FileCode size={13} />, onSelect: () => runStateCommand(insertAdvancedCodeBlock) },
                 { id: 'js-example', label: t('workspace.runnable_js_block'), icon: <FileCode size={13} />, onSelect: () => runStateCommand(insertRunnableJsBlock) },
                 { id: 'math', label: t('workspace.math'), icon: <Sigma size={13} />, onSelect: () => runStateCommand(toggleInlineMath) },
-                { id: 'mermaid', label: t('workspace.mermaid_diagram'), icon: <Sparkles size={13} />, onSelect: () => runStateCommand(insertMermaid) },
+                {
+                  id: 'mermaid',
+                  label: t('workspace.mermaid_diagram'),
+                  icon: <Sparkles size={13} />,
+                  submenu: ({ closeMenu: closeSub }: { closeMenu: () => void }) => (
+                    <SubmenuList
+                      closeMenu={() => {
+                        closeSub();
+                        closeMenu();
+                      }}
+                      width={190}
+                      items={MERMAID_TEMPLATES.map((tpl) => ({
+                        id: tpl.id,
+                        label: t(tpl.labelKey),
+                        onSelect: () => runStateCommand(insertDiagramCode('mermaid', tpl.code)),
+                      }))}
+                    />
+                  ),
+                },
+                {
+                  id: 'chartjs',
+                  label: t('workspace.chartjs_diagram'),
+                  icon: <BarChart2 size={13} />,
+                  submenu: ({ closeMenu: closeSub }: { closeMenu: () => void }) => (
+                    <SubmenuList
+                      closeMenu={() => {
+                        closeSub();
+                        closeMenu();
+                      }}
+                      width={180}
+                      items={CHARTJS_TEMPLATES.map((tpl) => ({
+                        id: tpl.id,
+                        label: t(tpl.labelKey),
+                        onSelect: () => runStateCommand(insertDiagramCode('chart', tpl.code)),
+                      }))}
+                    />
+                  ),
+                },
                 { id: 'callout', label: t('workspace.callout'), icon: <Quote size={13} />, onSelect: () => runStateCommand(insertCallout) },
                 { id: 'divider', label: t('workspace.divider'), icon: <Minus size={13} />, onSelect: () => runStateCommand(insertHorizontalRule) },
                 { id: 'details', label: t('workspace.details_block'), icon: <ChevronDown size={13} />, onSelect: () => runStateCommand(insertDetails) },
@@ -1354,7 +1442,7 @@ export function EditorContextMenu({
   );
 }
 
-function SubmenuList({
+export function SubmenuList({
   items,
   closeMenu,
   width = 180,

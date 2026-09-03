@@ -330,11 +330,10 @@ export const insertFootnote: StateCommand = ({ state, dispatch }) => {
     return true;
 };
 
-export const insertMermaid: StateCommand = (target) => insertWrappedBlock(
-    '```mermaid',
-    '```',
-    'flowchart LR\n  A --> B',
-)(target);
+import { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES } from './diagram-templates';
+export { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES };
+export const insertMermaid: StateCommand = insertDiagramCode('mermaid', MERMAID_TEMPLATES[0]!.code);
+export const insertChartJs: StateCommand = insertDiagramCode('chart', CHARTJS_TEMPLATES[0]!.code);
 
 export const insertCallout: StateCommand = ({ state, dispatch }) => {
     const range = state.selection.main;

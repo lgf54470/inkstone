@@ -20,6 +20,7 @@ export interface RenderResult {
     headings: Heading[];
     hasMath: boolean;
     hasMermaid: boolean;
+    hasChart: boolean;
     hasEmbeds: boolean;
     frontMatter: Record<string, unknown>;
     frontMatterErrors: string[];
@@ -28,6 +29,7 @@ interface RenderEnvironment {
     headings: Heading[];
     hasMath: boolean;
     hasMermaid: boolean;
+    hasChart: boolean;
     hasEmbeds: boolean;
     frontMatter: Record<string, unknown>;
     frontMatterErrors: string[];
@@ -616,6 +618,7 @@ md.renderer.rules.fence = (tokens, index, _options, rendererEnv) => {
         const preview = md.render(stripObsidianComments(token.content), childEnv).replace(/ data-line="\d+"/g, '');
         parentEnv.hasMath ||= childEnv.hasMath;
         parentEnv.hasMermaid ||= childEnv.hasMermaid;
+        parentEnv.hasChart ||= childEnv.hasChart;
         parentEnv.hasEmbeds ||= childEnv.hasEmbeds;
         parentEnv.tabSequence = childEnv.tabSequence;
         parentEnv.exampleSequence = Math.max(parentEnv.exampleSequence, childEnv.exampleSequence);
@@ -683,6 +686,10 @@ md.renderer.rules.fence = (tokens, index, _options, rendererEnv) => {
     if (info.language === 'mermaid') {
         renderEnv(rendererEnv).hasMermaid = true;
         return `<div class="mermaid-block loading"${line} data-mermaid="${escapeAttr(encodeDataValue(token.content))}" aria-busy="true">${escapeHtml(t("markdown.rendering_diagram"))}</div>`;
+    }
+    if (info.language === 'chart' || info.language === 'chartjs') {
+        renderEnv(rendererEnv).hasChart = true;
+        return `<div class="chartjs-block loading"${line} data-chart="${escapeAttr(encodeDataValue(token.content))}" aria-busy="true">${escapeHtml(t("markdown.rendering_chart"))}</div>`;
     }
     const title = info.title || info.language || t("markdown.code");
     return [
@@ -820,6 +827,7 @@ const PURIFY_CONFIG = {
         'data-line',
         'data-math',
         'data-mermaid',
+        'data-chart',
         'data-wikilink',
         'data-embed-target',
         'data-block-ref',
@@ -906,6 +914,7 @@ export function renderMarkdown(source: string, options?: {
         headings: env.headings,
         hasMath: env.hasMath,
         hasMermaid: env.hasMermaid,
+        hasChart: env.hasChart,
         hasEmbeds: env.hasEmbeds,
         frontMatter: env.frontMatter,
         frontMatterErrors: env.frontMatterErrors,
@@ -1046,6 +1055,7 @@ function emptyEnvironment(): RenderEnvironment {
         headings: [],
         hasMath: false,
         hasMermaid: false,
+        hasChart: false,
         hasEmbeds: false,
         frontMatter: {},
         frontMatterErrors: [],

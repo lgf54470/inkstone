@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { detectEditorContext, detectPreviewContext } from './context-menu-detect';
+import { encodeDataValue } from '../../lib/markdown/data-attr';
 
 describe('detectEditorContext', () => {
   function createView(doc: string, selection?: { from: number; to: number }) {
@@ -55,6 +56,15 @@ describe('detectEditorContext', () => {
     view.destroy();
   });
 
+  it('detects chart block', () => {
+    const doc = '```chart\n{"type":"bar"}\n```';
+    const view = createView(doc);
+    const ctx = detectEditorContext(view, 15);
+    expect(ctx.type).toBe('chart');
+    expect(ctx.chart?.code).toBe('{"type":"bar"}');
+    view.destroy();
+  });
+
   it('detects wikilink and normal link', () => {
     const doc = 'Check this [[My Note|Alias]] and [Inkstone](https://inkstone.app)';
     const view = createView(doc);
@@ -90,5 +100,19 @@ describe('detectPreviewContext', () => {
     expect(ctx.table?.colIndex).toBe(0);
     expect(ctx.table?.sourceLine).toBe(10);
     table.remove();
+  });
+
+  it('detects chart element in preview DOM', () => {
+    const chart = document.createElement('div');
+    chart.className = 'chartjs-block';
+    chart.dataset.chart = encodeDataValue('{"type":"bar"}');
+    chart.dataset.sourceLine = '15';
+    document.body.appendChild(chart);
+
+    const ctx = detectPreviewContext(chart);
+    expect(ctx.type).toBe('chart');
+    expect(ctx.chart?.code).toBe('{"type":"bar"}');
+    expect(ctx.chart?.sourceLine).toBe(15);
+    chart.remove();
   });
 });
