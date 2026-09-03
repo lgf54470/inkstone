@@ -339,7 +339,7 @@ export function AttachmentDriveModal({
         open={open}
         onClose={onClose}
         width={1300}
-        className="h-[86vh] max-h-[920px] p-0 overflow-hidden flex flex-col"
+        className="h-[80vh] min-h-[540px] max-h-[820px] p-0 overflow-hidden flex flex-col"
       >
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]">
           <div className="flex items-center gap-2">
@@ -475,6 +475,7 @@ export function AttachmentDriveModal({
                   onTogglePin={(f) => void handleTogglePin(f)}
                   onMoveToFolder={(f) => setMovingFileIds([f.id])}
                   onDelete={(f) => void handleDeleteFile(f)}
+                  onUploadClick={() => fileInputRef.current?.click()}
                 />
               ) : (
                 <AttachmentListView
@@ -493,6 +494,7 @@ export function AttachmentDriveModal({
                   onTogglePin={(f) => void handleTogglePin(f)}
                   onMoveToFolder={(f) => setMovingFileIds([f.id])}
                   onDelete={(f) => void handleDeleteFile(f)}
+                  onUploadClick={() => fileInputRef.current?.click()}
                 />
               )}
             </div>

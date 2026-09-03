@@ -248,6 +248,7 @@ export const ZH_CN_MESSAGES = {
     "attachments.unreferenced_files": "未引用附件",
     "attachments.unstar": "取消收藏",
     "attachments.upload_file": "上传附件",
+    "attachments.upload_guide_hint": "支持图片、文档、音视频及压缩包，单文件最大 50MB",
     "attachments.used": "已使用",
     "attachments.view_grid": "网格相册",
     "attachments.view_list": "列表表格",

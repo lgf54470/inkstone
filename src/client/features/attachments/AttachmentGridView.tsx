@@ -9,14 +9,16 @@ import {
   Paperclip,
   Pencil,
   Pin,
+  Plus,
   QrCode,
   Star,
   Trash2,
+  Upload,
 } from 'lucide-react'
 import type { AttachmentWithUsage } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { useNotes } from '../../store/notes'
+import { useAttachmentStore } from './attachment-store'
 import { Menu, useContextMenu, type MenuItem } from '../../components/overlay'
 import {
   formatFileSize,
@@ -40,6 +42,7 @@ export function AttachmentGridView({
   onTogglePin,
   onMoveToFolder,
   onDelete,
+  onUploadClick,
 }: {
   files: AttachmentWithUsage[]
   selectedIds: Set<string>
@@ -55,6 +58,7 @@ export function AttachmentGridView({
   onTogglePin: (file: AttachmentWithUsage) => void
   onMoveToFolder: (file: AttachmentWithUsage) => void
   onDelete: (file: AttachmentWithUsage) => void
+  onUploadClick?: () => void
 }) {
   const groups = groupAttachmentsByDate(files)
 
@@ -67,7 +71,7 @@ export function AttachmentGridView({
 
   return (
     <div className="space-y-6 p-4">
-      {groups.map((group) => (
+      {groups.map((group, groupIdx) => (
         <div key={group.label} className="space-y-2.5">
           <div className="sticky top-0 z-10 bg-[var(--bg-surface)]/90 py-1 backdrop-blur-xs">
             <h3 className="text-[12px] font-semibold tracking-wider text-[var(--text-tertiary)] uppercase">
@@ -94,9 +98,41 @@ export function AttachmentGridView({
                 onDelete={() => onDelete(file)}
               />
             ))}
+
+            {groupIdx === 0 && onUploadClick && (
+              <button
+                type="button"
+                onClick={onUploadClick}
+                className="group relative flex aspect-square flex-col items-center justify-center rounded-[var(--r-lg)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 p-3 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/20 cursor-pointer"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--bg-surface)] text-[var(--text-tertiary)] shadow-xs transition-transform group-hover:scale-110 group-hover:text-[var(--accent)]">
+                  <Plus size={20} />
+                </div>
+                <span className="mt-2 text-[12px] font-medium text-[var(--text-secondary)] group-hover:text-[var(--accent)]">
+                  {t('attachments.upload_file')}
+                </span>
+              </button>
+            )}
           </div>
         </div>
       ))}
+
+      {onUploadClick && files.length < 8 && (
+        <div
+          onClick={onUploadClick}
+          className="flex flex-col items-center justify-center rounded-[var(--r-xl)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 py-10 px-4 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/10 cursor-pointer"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-surface)] text-[var(--accent)] shadow-xs mb-3">
+            <Upload size={22} />
+          </div>
+          <p className="text-[13px] font-semibold text-[var(--text-secondary)]">
+            {t('attachments.drag_drop_hint')}
+          </p>
+          <p className="mt-1 text-[11.5px] text-[var(--text-tertiary)] max-w-sm">
+            {t('attachments.upload_guide_hint')}
+          </p>
+        </div>
+      )}
     </div>
   )
 }
@@ -130,7 +166,7 @@ function GridCard({
   onMoveToFolder: () => void
   onDelete: () => void
 }) {
-  const folders = useNotes((s) => s.folders ?? [])
+  const folders = useAttachmentStore((s) => s.folders)
   const folder = file.folderId ? folders.find((f) => f.id === file.folderId) : null
 
   const menuButtonRef = useRef<HTMLButtonElement>(null)

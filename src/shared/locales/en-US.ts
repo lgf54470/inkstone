@@ -247,6 +247,7 @@ export const EN_US_MESSAGES = {
     "attachments.unreferenced_files": "Unreferenced",
     "attachments.unstar": "Unstar",
     "attachments.upload_file": "Upload File",
+    "attachments.upload_guide_hint": "Supports images, documents, media, and archives up to 50MB",
     "attachments.used": "Used",
     "attachments.view_grid": "Grid Gallery",
     "attachments.view_list": "List Table",

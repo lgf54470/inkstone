@@ -12,11 +12,12 @@ import {
   QrCode,
   Star,
   Trash2,
+  Upload,
 } from 'lucide-react'
 import type { AttachmentWithUsage } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { useNotes } from '../../store/notes'
+import { useAttachmentStore } from './attachment-store'
 import { Menu, useContextMenu, type MenuItem } from '../../components/overlay'
 import { formatFileSize, getFileBadgeColor, getFileCategory } from './attachment-helpers'
 
@@ -36,6 +37,7 @@ export function AttachmentListView({
   onTogglePin,
   onMoveToFolder,
   onDelete,
+  onUploadClick,
 }: {
   files: AttachmentWithUsage[]
   selectedIds: Set<string>
@@ -52,8 +54,9 @@ export function AttachmentListView({
   onTogglePin: (file: AttachmentWithUsage) => void
   onMoveToFolder: (file: AttachmentWithUsage) => void
   onDelete: (file: AttachmentWithUsage) => void
+  onUploadClick?: () => void
 }) {
-  const folders = useNotes((s) => s.folders ?? [])
+  const folders = useAttachmentStore((s) => s.folders)
 
   return (
     <div className="w-full overflow-x-auto">
@@ -110,6 +113,25 @@ export function AttachmentListView({
           })}
         </tbody>
       </table>
+
+      {onUploadClick && files.length < 8 && (
+        <div className="p-4">
+          <div
+            onClick={onUploadClick}
+            className="flex flex-col items-center justify-center rounded-[var(--r-xl)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 py-10 px-4 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/10 cursor-pointer"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-surface)] text-[var(--accent)] shadow-xs mb-3">
+              <Upload size={22} />
+            </div>
+            <p className="text-[13px] font-semibold text-[var(--text-secondary)]">
+              {t('attachments.drag_drop_hint')}
+            </p>
+            <p className="mt-1 text-[11.5px] text-[var(--text-tertiary)] max-w-sm">
+              {t('attachments.upload_guide_hint')}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

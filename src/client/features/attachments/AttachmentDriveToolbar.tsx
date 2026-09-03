@@ -9,7 +9,6 @@ import {
   FileType,
   Filter,
   Grid,
-  HardDrive,
   List,
   Search,
   SlidersHorizontal,
@@ -22,7 +21,6 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { Button } from '../../components/primitives'
 import { Menu, Tooltip, type MenuItem } from '../../components/overlay'
-import { formatFileSize } from './attachment-helpers'
 
 export function AttachmentDriveToolbar({
   search,
@@ -308,9 +306,9 @@ export function AttachmentDriveToolbar({
   }, [extension])
 
   return (
-    <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-3 bg-[var(--bg-surface)]">
-      <div className="flex items-center gap-2 flex-1 max-w-xl">
-        <div className="relative flex-1 min-w-[140px]">
+    <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-3 bg-[var(--bg-surface)] overflow-x-auto min-w-0">
+      <div className="flex items-center gap-2 shrink-0 min-w-0">
+        <div className="relative w-36 sm:w-44 lg:w-52 shrink-0">
           <Search
             size={13}
             className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-quaternary)]"
@@ -332,21 +330,21 @@ export function AttachmentDriveToolbar({
           )}
         </div>
 
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             ref={extButtonRef}
             type="button"
             onClick={() => setExtOpen((prev) => !prev)}
             className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border px-2.5 text-[12px] font-medium transition-colors cursor-pointer',
+              'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border px-2.5 text-[12px] font-medium transition-colors cursor-pointer select-none',
               extension && extension !== 'all'
                 ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
                 : 'border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
             )}
           >
-            <FileType size={12} />
-            <span>{currentExtLabel}</span>
-            <ChevronDown size={11} className="opacity-60" />
+            <FileType size={12} className="shrink-0" />
+            <span className="whitespace-nowrap">{currentExtLabel}</span>
+            <ChevronDown size={11} className="opacity-60 shrink-0" />
           </button>
           <Menu
             open={extOpen}
@@ -356,21 +354,21 @@ export function AttachmentDriveToolbar({
           />
         </div>
 
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             ref={sizeButtonRef}
             type="button"
             onClick={() => setSizeOpen((prev) => !prev)}
             className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border px-2.5 text-[12px] font-medium transition-colors cursor-pointer',
+              'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border px-2.5 text-[12px] font-medium transition-colors cursor-pointer select-none',
               sizeRange !== 'all'
                 ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
                 : 'border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
             )}
           >
-            <Filter size={12} />
-            <span>{sizeLabels[sizeRange] || t('attachments.size_all')}</span>
-            <ChevronDown size={11} className="opacity-60" />
+            <Filter size={12} className="shrink-0" />
+            <span className="whitespace-nowrap">{sizeLabels[sizeRange] || t('attachments.size_all')}</span>
+            <ChevronDown size={11} className="opacity-60 shrink-0" />
           </button>
           <Menu
             open={sizeOpen}
@@ -380,16 +378,16 @@ export function AttachmentDriveToolbar({
           />
         </div>
 
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             ref={sortButtonRef}
             type="button"
             onClick={() => setSortOpen((prev) => !prev)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-2.5 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] cursor-pointer"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-2.5 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] cursor-pointer select-none"
           >
-            <SlidersHorizontal size={12} />
-            <span>{sortLabels[sort] || t('attachments.sort_date_desc')}</span>
-            <ChevronDown size={11} className="opacity-60" />
+            <SlidersHorizontal size={12} className="shrink-0" />
+            <span className="whitespace-nowrap">{sortLabels[sort] || t('attachments.sort_date_desc')}</span>
+            <ChevronDown size={11} className="opacity-60 shrink-0" />
           </button>
           <Menu
             open={sortOpen}
@@ -400,17 +398,8 @@ export function AttachmentDriveToolbar({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        {stats && (
-          <div className="hidden xl:flex items-center gap-2 text-[11.5px] text-[var(--text-tertiary)] bg-[var(--bg-sunken)] px-2.5 py-1 rounded-[var(--r-md)] font-mono">
-            <HardDrive size={12} className="text-[var(--accent)]" />
-            <span>
-              {`${stats.totalCount} · ${formatFileSize(stats.totalBytes)} / 10 GB`}
-            </span>
-          </div>
-        )}
-
-        <div className="flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5">
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 shrink-0">
           <Tooltip label={t('attachments.view_grid')}>
             <button
               type="button"
@@ -442,7 +431,7 @@ export function AttachmentDriveToolbar({
         </div>
 
         {viewMode === 'grid' && (
-          <div className="hidden sm:flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 text-[11px] font-medium">
+          <div className="hidden lg:flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 text-[11px] font-medium shrink-0">
             <button
               type="button"
               onClick={() => onZoomChange('sm')}
@@ -481,19 +470,19 @@ export function AttachmentDriveToolbar({
           variant="secondary"
           onClick={onPruneClick}
           disabled={pruning}
-          className="text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer"
+          className="shrink-0 whitespace-nowrap text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer"
         >
           <Sparkles size={12} className={cn(pruning && 'animate-spin')} />
-          <span>{t('attachments.cleanup')}</span>
+          <span className="whitespace-nowrap">{t('attachments.cleanup')}</span>
         </Button>
 
         <Button
           size="sm"
           onClick={onUploadClick}
-          className="bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 cursor-pointer"
+          className="shrink-0 whitespace-nowrap bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 cursor-pointer"
         >
           <Upload size={12} />
-          <span>{t('attachments.upload_file')}</span>
+          <span className="whitespace-nowrap">{t('attachments.upload_file')}</span>
         </Button>
       </div>
     </div>
