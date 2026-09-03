@@ -30,10 +30,12 @@ import type {
   PublicNote,
   SearchResponse,
   SessionInfo,
+  ShareFolder,
   ShareGlobalAnalytics,
   ShareInfo,
   ShareListResponse,
   ShareNoteAnalytics,
+  ShareTag,
   ShareTimelinePoint,
   ShareTimelineRange,
   ShareVisitLog,
@@ -971,37 +973,94 @@ export function createDemoBackend(): DemoBackend {
   })
 
   app.get('/api/share', (c) => {
-    const list: ShareInfo[] = []
     const origin = new URL(c.req.url).origin
+    const folderId = c.req.query('folderId')
+    const tag = c.req.query('tag')
+    const status = c.req.query('status')
+    const search = c.req.query('search')?.toLowerCase()
+
+    const allShares: ShareInfo[] = []
+    const folderCounts: Record<string, { total: number; shared: number }> = {}
+    const tagCounts: Record<string, { total: number; shared: number }> = {}
+
+    for (const f of state.shareFolders.values()) {
+      folderCounts[f.id] = { total: 0, shared: 0 }
+    }
+    for (const t of state.shareTags.values()) {
+      tagCounts[t.name] = { total: 0, shared: 0 }
+    }
+
     for (const [noteId, note] of state.notes.entries()) {
       if (note.deletedAt !== null) continue
       const share = state.shares.get(noteId)
       if (share) {
-        list.push({
+        const item: ShareInfo = {
           ...share.info,
           url: `${origin}/s/${share.info.slug}`,
           noteTitle: note.title,
           noteExcerpt: note.content.slice(0, 100),
-          folderId: note.folderId,
-          tags: note.tags || [],
+          folderId: share.info.shareFolderId ?? null,
+          tags: share.info.shareTags ?? [],
+          shareFolderId: share.info.shareFolderId ?? null,
+          shareTags: share.info.shareTags ?? [],
           isPinned: note.isPinned,
           isStarred: note.isStarred,
           uniqueVisitors: Math.round(share.info.views * 0.75),
-        })
+        }
+        allShares.push(item)
+
+        if (item.shareFolderId && folderCounts[item.shareFolderId]) {
+          folderCounts[item.shareFolderId].total++
+          if (item.isEnabled) folderCounts[item.shareFolderId].shared++
+        }
+        if (item.shareTags) {
+          for (const tagName of item.shareTags) {
+            if (!tagCounts[tagName]) tagCounts[tagName] = { total: 0, shared: 0 }
+            tagCounts[tagName].total++
+            if (item.isEnabled) tagCounts[tagName].shared++
+          }
+        }
       }
     }
+
+    let filtered = allShares
+    if (folderId && folderId !== 'null') {
+      filtered = filtered.filter((s) => s.shareFolderId === folderId)
+    }
+    if (tag && tag !== 'null') {
+      filtered = filtered.filter((s) => s.shareTags?.includes(tag))
+    }
+    if (status === 'active') {
+      filtered = filtered.filter((s) => s.isEnabled)
+    } else if (status === 'paused') {
+      filtered = filtered.filter((s) => !s.isEnabled)
+    } else if (status === 'password') {
+      filtered = filtered.filter((s) => s.hasPassword)
+    } else if (status === 'pinned') {
+      filtered = filtered.filter((s) => s.isPinned)
+    } else if (status === 'starred') {
+      filtered = filtered.filter((s) => s.isStarred)
+    }
+    if (search) {
+      filtered = filtered.filter(
+        (s) =>
+          s.slug.toLowerCase().includes(search) ||
+          (s.noteTitle && s.noteTitle.toLowerCase().includes(search)),
+      )
+    }
+
     const res: ShareListResponse = {
-      shares: list,
-      total: list.length,
+      shares: filtered,
+      total: filtered.length,
       globalStats: {
-        totalShares: list.length,
-        activeShares: list.filter((s) => s.isEnabled).length,
-        pinnedShares: list.filter((s) => s.isPinned).length,
-        starredShares: list.filter((s) => s.isStarred).length,
-        totalViews: list.reduce((acc, s) => acc + s.views, 0),
-        totalVisitors: list.reduce((acc, s) => acc + (s.uniqueVisitors ?? 0), 0),
-        folderCounts: {},
-        tagCounts: {},
+        totalShares: allShares.length,
+        activeShares: allShares.filter((s) => s.isEnabled).length,
+        pinnedShares: allShares.filter((s) => s.isPinned).length,
+        starredShares: allShares.filter((s) => s.isStarred).length,
+        totalViews: allShares.reduce((acc, s) => acc + s.views, 0),
+        totalVisitors: allShares.reduce((acc, s) => acc + (s.uniqueVisitors ?? 0), 0),
+        folderCounts,
+        tagCounts,
       },
     }
     return c.json(res)
@@ -1125,6 +1184,108 @@ export function createDemoBackend(): DemoBackend {
     return c.json({ ok: true as const, count })
   })
 
+  app.get('/api/share/folders', (c) => {
+    return c.json({ folders: [...state.shareFolders.values()] })
+  })
+  app.post('/api/share/folders', async (c) => {
+    const body = await jsonBody(c.req.raw)
+    const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : 'New Folder'
+    const parentId = typeof body.parentId === 'string' ? body.parentId : null
+    const color = typeof body.color === 'string' ? body.color : null
+    const icon = typeof body.icon === 'string' ? body.icon : null
+    const folder: ShareFolder = {
+      id: newDemoId(),
+      parentId,
+      name,
+      icon,
+      color,
+      position: state.shareFolders.size,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+    state.shareFolders.set(folder.id, folder)
+    return c.json({ folder })
+  })
+  app.patch('/api/share/folders/:id', async (c) => {
+    const id = c.req.param('id')
+    const folder = state.shareFolders.get(id)
+    if (!folder) return apiError(404, 'not_found', 'Share folder not found')
+    const body = await jsonBody(c.req.raw)
+    if (body.name !== undefined) folder.name = String(body.name).trim() || folder.name
+    if (body.parentId !== undefined) folder.parentId = body.parentId as string | null
+    if (body.color !== undefined) folder.color = body.color as string | null
+    if (body.icon !== undefined) folder.icon = body.icon as string | null
+    folder.updatedAt = Date.now()
+    return c.json({ folder })
+  })
+  app.delete('/api/share/folders/:id', (c) => {
+    const id = c.req.param('id')
+    state.shareFolders.delete(id)
+    for (const share of state.shares.values()) {
+      if (share.info.shareFolderId === id) share.info.shareFolderId = null
+    }
+    return c.json({ ok: true as const })
+  })
+
+  app.get('/api/share/tags', (c) => {
+    return c.json({ tags: [...state.shareTags.values()] })
+  })
+  app.post('/api/share/tags', async (c) => {
+    const body = await jsonBody(c.req.raw)
+    const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : 'Tag'
+    const color = typeof body.color === 'string' ? body.color : null
+    const existing = [...state.shareTags.values()].find((t) => t.name === name)
+    if (existing) return c.json({ tag: existing })
+    const tag: ShareTag = {
+      id: newDemoId(),
+      name,
+      color,
+      isPinned: false,
+      createdAt: Date.now(),
+    }
+    state.shareTags.set(tag.id, tag)
+    return c.json({ tag })
+  })
+  app.patch('/api/share/tags/:id', async (c) => {
+    const id = c.req.param('id')
+    const tag = state.shareTags.get(id)
+    if (!tag) return apiError(404, 'not_found', 'Share tag not found')
+    const body = await jsonBody(c.req.raw)
+    if (body.name !== undefined) tag.name = String(body.name).trim() || tag.name
+    if (body.color !== undefined) tag.color = body.color as string | null
+    if (body.isPinned !== undefined) tag.isPinned = Boolean(body.isPinned)
+    return c.json({ tag })
+  })
+  app.delete('/api/share/tags/:id', (c) => {
+    const id = c.req.param('id')
+    const tag = state.shareTags.get(id)
+    if (tag) {
+      for (const share of state.shares.values()) {
+        if (share.info.shareTags) {
+          share.info.shareTags = share.info.shareTags.filter((t) => t !== tag.name)
+        }
+      }
+      state.shareTags.delete(id)
+    }
+    return c.json({ ok: true as const })
+  })
+
+  app.post('/api/share/batch-toggle-group', async (c) => {
+    const body = await jsonBody(c.req.raw)
+    const { type, target, enabled } = body as { type: 'folder' | 'tag'; target: string; enabled: boolean }
+    let count = 0
+    for (const share of state.shares.values()) {
+      let matched = false
+      if (type === 'folder' && share.info.shareFolderId === target) matched = true
+      if (type === 'tag' && share.info.shareTags?.includes(target)) matched = true
+      if (matched) {
+        share.info.isEnabled = enabled
+        count++
+      }
+    }
+    return c.json({ ok: true as const, count })
+  })
+
   app.post('/api/share/batch-folder', async (c) => {
     const body = await jsonBody(c.req.raw)
     const { folderId, enabled } = body as { folderId: string; enabled: boolean }
@@ -1157,6 +1318,10 @@ export function createDemoBackend(): DemoBackend {
     return c.json({ ok: true as const, count })
   })
 
+  app.get('/api/share/note-share/:noteId', (c) => {
+    const share = state.shares.get(c.req.param('noteId'))
+    return c.json({ share: share ? absoluteShare(share.info, c.req.url) : null })
+  })
   app.get('/api/share/:noteId', (c) => {
     const share = state.shares.get(c.req.param('noteId'))
     return c.json({ share: share ? absoluteShare(share.info, c.req.url) : null })
@@ -1193,15 +1358,17 @@ export function createDemoBackend(): DemoBackend {
       ? body.password || null
       : existing?.password ?? null
     const info: ShareInfo = {
-      slug: existing?.info.slug ?? `demo-${noteId}`,
+      slug: existing?.info.slug ?? (typeof body.customSlug === 'string' && body.customSlug.trim() ? body.customSlug.trim() : `demo-${noteId}`),
       noteId,
       url: '',
       hasPassword: Boolean(password),
       expiresAt,
       views: existing?.info.views ?? 0,
       createdAt: existing?.info.createdAt ?? Date.now(),
-      isEnabled: existing?.info.isEnabled ?? true,
+      isEnabled: typeof body.isEnabled === 'boolean' ? body.isEnabled : existing?.info.isEnabled ?? true,
       lastViewedAt: existing?.info.lastViewedAt ?? null,
+      shareFolderId: body.folderId !== undefined ? (body.folderId as string | null) : existing?.info.shareFolderId ?? null,
+      shareTags: Array.isArray(body.tags) ? (body.tags as string[]) : existing?.info.shareTags ?? [],
     }
     state.shares.set(noteId, { info, password })
     return c.json({ share: absoluteShare(info, c.req.url) })

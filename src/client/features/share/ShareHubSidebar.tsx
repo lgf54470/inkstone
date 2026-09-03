@@ -1,28 +1,36 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
   FolderClosed,
   FolderOpen,
+  FolderPlus,
   Globe,
   Hash,
   Infinity as InfinityIcon,
   KeyRound,
   LayoutDashboard,
+  MoreHorizontal,
+  Palette,
   PauseCircle,
+  Pencil,
   Pin,
   PlayCircle,
+  Plus,
   Star,
   Timer,
+  Trash2,
 } from 'lucide-react'
-import type { ShareCategory } from '@shared/types'
+import type { ShareCategory, ShareTag } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
+import { IconButton } from '../../components/primitives'
+import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
 import { Switch } from '../../components/form'
-import { useNotes } from '../../store/notes'
-import { useFolderTree, type FolderNode } from '../../store/notes/selectors'
-import { useShareStore } from './share-store'
+import { FolderColorSubmenu } from '../folders/FolderColorSubmenu'
+import { TagColorSubmenu } from '../tags/TagColorSubmenu'
+import { buildShareFolderTree, useShareStore, type ShareFolderNode } from './share-store'
 
 export function ShareHubSidebar() {
   const category = useShareStore((s) => s.category)
@@ -32,16 +40,32 @@ export function ShareHubSidebar() {
   const selectedTag = useShareStore((s) => s.tag)
   const setTag = useShareStore((s) => s.setTag)
   const globalStats = useShareStore((s) => s.globalStats)
-  const batchFolderToggle = useShareStore((s) => s.batchFolderToggle)
-  const batchTagToggle = useShareStore((s) => s.batchTagToggle)
+  const batchToggleGroup = useShareStore((s) => s.batchToggleGroup)
   const batchBusy = useShareStore((s) => s.batchBusy)
 
-  const folderTree = useFolderTree()
-  const tags = useNotes((s) => s.tags)
+  const folders = useShareStore((s) => s.folders)
+  const tags = useShareStore((s) => s.tags)
+  const loadFolders = useShareStore((s) => s.loadFolders)
+  const loadTags = useShareStore((s) => s.loadTags)
+  const createFolder = useShareStore((s) => s.createFolder)
+  const patchFolder = useShareStore((s) => s.patchFolder)
+  const deleteFolder = useShareStore((s) => s.deleteFolder)
+  const createTag = useShareStore((s) => s.createTag)
+  const patchTag = useShareStore((s) => s.patchTag)
+  const deleteTag = useShareStore((s) => s.deleteTag)
+
+  const folderTree = useMemo(() => buildShareFolderTree(folders), [folders])
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => new Set())
   const [foldersSectionOpen, setFoldersSectionOpen] = useState(true)
   const [tagsSectionOpen, setTagsSectionOpen] = useState(true)
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
+  const [renamingTagId, setRenamingTagId] = useState<string | null>(null)
+
+  useEffect(() => {
+    void loadFolders()
+    void loadTags()
+  }, [loadFolders, loadTags])
 
   const toggleFolderExpand = (folderId: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -51,6 +75,21 @@ export function ShareHubSidebar() {
       else next.add(folderId)
       return next
     })
+  }
+
+  const handleCreateRootFolder = async () => {
+    const created = await createFolder(t('folders.create_new'))
+    if (created) {
+      setExpandedFolders((prev) => new Set([...prev, created.id]))
+      setRenamingFolderId(created.id)
+    }
+  }
+
+  const handleCreateNewTag = async () => {
+    const name = window.prompt(t('tags.new_placeholder'))
+    if (name?.trim()) {
+      await createTag(name.trim())
+    }
   }
 
   const categories: Array<{
@@ -115,77 +154,54 @@ export function ShareHubSidebar() {
     },
   ]
 
-  const renderFolderNode = (node: FolderNode, level = 0) => {
-    const isExpanded = expandedFolders.has(node.id)
-    const isSelected = selectedFolderId === node.id && !selectedTag && category === 'all'
-    const counts = globalStats?.folderCounts[node.id] || { total: 0, shared: 0 }
+  const renderFolderNode = (node: ShareFolderNode) => {
+    const isExpanded = expandedFolders.has(node.folder.id)
+    const isSelected = selectedFolderId === node.folder.id && !selectedTag && category === 'all'
+    const counts = globalStats?.folderCounts[node.folder.id] || { total: 0, shared: 0 }
     const isChecked = counts.shared > 0
+    const isRenaming = renamingFolderId === node.folder.id
 
     return (
-      <div key={node.id} className="flex flex-col">
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setFolderId(node.id)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              setFolderId(node.id)
-            }
-          }}
-          style={{ paddingLeft: `${8 + level * 14}px` }}
-          className={cn(
-            'group flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[12px] font-medium transition-colors cursor-pointer',
-            isSelected
-              ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
-              : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
-          )}
-        >
-          {node.children.length > 0 ? (
-            <button
-              type="button"
-              onClick={(e) => toggleFolderExpand(node.id, e)}
-              className="p-0.5 text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
-            >
-              {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            </button>
-          ) : (
-            <span className="w-3" />
-          )}
-
-          {isExpanded ? (
-            <FolderOpen size={13} className="shrink-0" style={{ color: node.color ?? undefined }} />
-          ) : (
-            <FolderClosed size={13} className="shrink-0" style={{ color: node.color ?? undefined }} />
-          )}
-
-          <span className="flex-1 truncate">{node.name}</span>
-
-          <span className="tabular text-[10px] text-[var(--text-quaternary)]">
-            {counts.shared > 0 ? (
-              <span className="text-[var(--accent)] font-medium">{counts.shared}</span>
-            ) : (
-              '0'
-            )}
-            /{counts.total}
-          </span>
-
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center pl-1"
-          >
-            <Switch
-              checked={isChecked}
-              disabled={batchBusy || counts.total === 0}
-              onChange={(nextChecked) => void batchFolderToggle(node.id, nextChecked)}
-            />
-          </div>
-        </div>
-
-        {isExpanded &&
-          node.children.length > 0 &&
-          node.children.map((child) => renderFolderNode(child, level + 1))}
-      </div>
+      <ShareFolderItem
+        key={node.folder.id}
+        node={node}
+        isExpanded={isExpanded}
+        isSelected={isSelected}
+        counts={counts}
+        isChecked={isChecked}
+        isRenaming={isRenaming}
+        batchBusy={batchBusy}
+        onToggleExpand={(e) => toggleFolderExpand(node.folder.id, e)}
+        onSelect={() => setFolderId(node.folder.id)}
+        onToggleSwitch={(enabled) => void batchToggleGroup('folder', node.folder.id, enabled)}
+        onStartRename={() => setRenamingFolderId(node.folder.id)}
+        onFinishRename={(nextName) => {
+          setRenamingFolderId(null)
+          if (nextName && nextName !== node.folder.name) {
+            void patchFolder(node.folder.id, { name: nextName })
+          }
+        }}
+        onCreateSubfolder={async () => {
+          const created = await createFolder(t('sidebar.new_subfolder'), node.folder.id)
+          if (created) {
+            setExpandedFolders((prev) => new Set([...prev, node.folder.id]))
+            setRenamingFolderId(created.id)
+          }
+        }}
+        onColorChange={(color) => void patchFolder(node.folder.id, { color })}
+        onDelete={async () => {
+          const ok = await confirm({
+            title: t('sidebar.delete_folder_value0', { value0: node.folder.name }),
+            confirmLabel: t('common.delete'),
+            tone: 'danger',
+          })
+          if (ok) {
+            void deleteFolder(node.folder.id)
+          }
+        }}
+      >
+        {isExpanded && node.children.length > 0 && node.children.map(renderFolderNode)}
+      </ShareFolderItem>
     )
   }
 
@@ -221,15 +237,26 @@ export function ShareHubSidebar() {
 
         <div className="my-3 h-px bg-[var(--border-subtle)]" />
 
-        <div className="mb-1 flex items-center justify-between px-2">
+        {/* Share folders */}
+        <div className="group/head mb-1 flex items-center justify-between px-2">
           <button
             type="button"
             onClick={() => setFoldersSectionOpen(!foldersSectionOpen)}
             className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
           >
             {foldersSectionOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            <span>{t('share.folders_isolation')}</span>
+            <span>{t('navigation.folder')}</span>
           </button>
+          <Tooltip label={t('folders.create_new')} side="left">
+            <IconButton
+              label={t('folders.create_new')}
+              size="sm"
+              onClick={() => void handleCreateRootFolder()}
+              className="opacity-0 group-hover/head:opacity-100 transition-opacity"
+            >
+              <Plus size={13} />
+            </IconButton>
+          </Tooltip>
         </div>
 
         {foldersSectionOpen && (
@@ -239,22 +266,33 @@ export function ShareHubSidebar() {
                 {t('share.no_folders')}
               </p>
             ) : (
-              folderTree.map((f) => renderFolderNode(f))
+              folderTree.map(renderFolderNode)
             )}
           </div>
         )}
 
         <div className="my-3 h-px bg-[var(--border-subtle)]" />
 
-        <div className="mb-1 flex items-center justify-between px-2">
+        {/* Share tags */}
+        <div className="group/head mb-1 flex items-center justify-between px-2">
           <button
             type="button"
             onClick={() => setTagsSectionOpen(!tagsSectionOpen)}
             className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
           >
             {tagsSectionOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            <span>{t('share.tags_isolation')}</span>
+            <span>{t('navigation.tag')}</span>
           </button>
+          <Tooltip label={t('tags.new')} side="left">
+            <IconButton
+              label={t('tags.new')}
+              size="sm"
+              onClick={() => void handleCreateNewTag()}
+              className="opacity-0 group-hover/head:opacity-100 transition-opacity"
+            >
+              <Plus size={13} />
+            </IconButton>
+          </Tooltip>
         </div>
 
         {tagsSectionOpen && (
@@ -268,44 +306,39 @@ export function ShareHubSidebar() {
                 const isSelected = selectedTag === tag.name
                 const counts = globalStats?.tagCounts[tag.name] || { total: 0, shared: 0 }
                 const isChecked = counts.shared > 0
+                const isRenaming = renamingTagId === tag.id
 
                 return (
-                  <div
+                  <ShareTagItem
                     key={tag.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setTag(tag.name)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        setTag(tag.name)
+                    tag={tag}
+                    isSelected={isSelected}
+                    counts={counts}
+                    isChecked={isChecked}
+                    isRenaming={isRenaming}
+                    batchBusy={batchBusy}
+                    onSelect={() => setTag(tag.name)}
+                    onToggleSwitch={(enabled) => void batchToggleGroup('tag', tag.name, enabled)}
+                    onStartRename={() => setRenamingTagId(tag.id)}
+                    onFinishRename={(nextName) => {
+                      setRenamingTagId(null)
+                      if (nextName && nextName !== tag.name) {
+                        void patchTag(tag.id, { name: nextName })
                       }
                     }}
-                    className={cn(
-                      'group flex h-8 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[12px] font-medium transition-colors cursor-pointer',
-                      isSelected
-                        ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
-                        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
-                    )}
-                  >
-                    <Hash size={13} className="shrink-0" style={{ color: tag.color ?? undefined }} />
-                    <span className="flex-1 truncate">{tag.name}</span>
-                    <span className="tabular text-[10px] text-[var(--text-quaternary)]">
-                      {counts.shared > 0 ? (
-                        <span className="text-[var(--accent)] font-medium">{counts.shared}</span>
-                      ) : (
-                        '0'
-                      )}
-                      /{counts.total}
-                    </span>
-                    <div onClick={(e) => e.stopPropagation()} className="pl-1">
-                      <Switch
-                        checked={isChecked}
-                        disabled={batchBusy || counts.total === 0}
-                        onChange={(nextChecked) => void batchTagToggle(tag.name, nextChecked)}
-                      />
-                    </div>
-                  </div>
+                    onColorChange={(color) => void patchTag(tag.id, { color })}
+                    onDelete={async () => {
+                      const ok = await confirm({
+                        title: t('tags.delete'),
+                        description: t('tags.delete_confirm_value0', { value0: tag.name }),
+                        confirmLabel: t('common.delete'),
+                        tone: 'danger',
+                      })
+                      if (ok) {
+                        void deleteTag(tag.id)
+                      }
+                    }}
+                  />
                 )
               })
             )}
@@ -334,5 +367,358 @@ export function ShareHubSidebar() {
         </div>
       </div>
     </aside>
+  )
+}
+
+function ShareFolderItem({
+  node,
+  isExpanded,
+  isSelected,
+  counts,
+  isChecked,
+  isRenaming,
+  batchBusy,
+  onToggleExpand,
+  onSelect,
+  onToggleSwitch,
+  onStartRename,
+  onFinishRename,
+  onCreateSubfolder,
+  onColorChange,
+  onDelete,
+  children,
+}: {
+  node: ShareFolderNode
+  isExpanded: boolean
+  isSelected: boolean
+  counts: { total: number; shared: number }
+  isChecked: boolean
+  isRenaming: boolean
+  batchBusy: boolean
+  onToggleExpand: (e: React.MouseEvent) => void
+  onSelect: () => void
+  onToggleSwitch: (enabled: boolean) => void
+  onStartRename: () => void
+  onFinishRename: (nextName: string) => void
+  onCreateSubfolder: () => void
+  onColorChange: (color: string | null) => void
+  onDelete: () => void
+  children?: React.ReactNode
+}) {
+  const [nameInput, setNameInput] = useState(node.folder.name)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const moreButtonRef = useRef<HTMLButtonElement>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const contextMenu = useContextMenu()
+
+  useEffect(() => {
+    if (isRenaming) {
+      setNameInput(node.folder.name)
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+  }, [isRenaming, node.folder.name])
+
+  const menuItems: MenuItem[] = [
+    {
+      id: 'new_subfolder',
+      label: t('sidebar.new_subfolder'),
+      icon: <FolderPlus size={13} />,
+      onSelect: onCreateSubfolder,
+    },
+    {
+      id: 'rename',
+      label: t('sidebar.rename'),
+      icon: <Pencil size={13} />,
+      onSelect: onStartRename,
+    },
+    {
+      id: 'color',
+      label: t('folders.color'),
+      icon: <Palette size={13} />,
+      submenu: ({ closeMenu }) => (
+        <FolderColorSubmenu
+          folder={{ color: node.folder.color }}
+          onSelectColor={(color) => {
+            onColorChange(color)
+            closeMenu()
+          }}
+          onManageFolders={closeMenu}
+        />
+      ),
+    },
+    {
+      id: 'delete',
+      label: t('common.delete'),
+      icon: <Trash2 size={13} />,
+      tone: 'danger',
+      separatorBefore: true,
+      onSelect: onDelete,
+    },
+  ]
+
+  return (
+    <div className="flex flex-col">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onSelect}
+        onContextMenu={contextMenu.onContextMenu}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onSelect()
+          }
+        }}
+        style={{ paddingLeft: `${8 + node.depth * 12}px` }}
+        className={cn(
+          'group flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[12px] font-medium transition-colors cursor-pointer',
+          isSelected
+            ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
+            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+        )}
+      >
+        {node.children.length > 0 ? (
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            className="p-0.5 text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
+          >
+            {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          </button>
+        ) : (
+          <span className="w-3" />
+        )}
+
+        <span
+          style={{ color: node.folder.color ?? undefined }}
+          className={cn('shrink-0', !node.folder.color && 'text-[var(--text-quaternary)]')}
+        >
+          {isExpanded ? <FolderOpen size={13} /> : <FolderClosed size={13} />}
+        </span>
+
+        {isRenaming ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={nameInput}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => setNameInput(e.target.value)}
+            onBlur={() => onFinishRename(nameInput.trim() || node.folder.name)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onFinishRename(nameInput.trim() || node.folder.name)
+              if (e.key === 'Escape') onFinishRename(node.folder.name)
+            }}
+            className="flex-1 bg-[var(--bg-surface)] px-1 py-0.5 text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden"
+          />
+        ) : (
+          <span className="flex-1 truncate">{node.folder.name}</span>
+        )}
+
+        <span className="tabular text-[10px] text-[var(--text-quaternary)]">
+          {counts.shared > 0 ? (
+            <span className="text-[var(--accent)] font-medium">{counts.shared}</span>
+          ) : (
+            '0'
+          )}
+          /{counts.total}
+        </span>
+
+        {/* Batch toggle switch for entire folder */}
+        <div onClick={(e) => e.stopPropagation()} className="flex items-center pl-1">
+          <Switch
+            checked={isChecked}
+            disabled={batchBusy || counts.total === 0}
+            onChange={onToggleSwitch}
+          />
+        </div>
+
+        <button
+          ref={moreButtonRef}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setMenuOpen((prev) => !prev)
+          }}
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity"
+        >
+          <MoreHorizontal size={12} />
+        </button>
+      </div>
+
+      <Menu
+        open={menuOpen}
+        anchor={moreButtonRef}
+        items={menuItems}
+        onClose={() => setMenuOpen(false)}
+      />
+      {contextMenu.point && (
+        <Menu open anchor={contextMenu.point} items={menuItems} onClose={contextMenu.close} />
+      )}
+
+      {children}
+    </div>
+  )
+}
+
+function ShareTagItem({
+  tag,
+  isSelected,
+  counts,
+  isChecked,
+  isRenaming,
+  batchBusy,
+  onSelect,
+  onToggleSwitch,
+  onStartRename,
+  onFinishRename,
+  onColorChange,
+  onDelete,
+}: {
+  tag: ShareTag
+  isSelected: boolean
+  counts: { total: number; shared: number }
+  isChecked: boolean
+  isRenaming: boolean
+  batchBusy: boolean
+  onSelect: () => void
+  onToggleSwitch: (enabled: boolean) => void
+  onStartRename: () => void
+  onFinishRename: (nextName: string) => void
+  onColorChange: (color: string | null) => void
+  onDelete: () => void
+}) {
+  const [nameInput, setNameInput] = useState(tag.name)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const moreButtonRef = useRef<HTMLButtonElement>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const contextMenu = useContextMenu()
+
+  useEffect(() => {
+    if (isRenaming) {
+      setNameInput(tag.name)
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+  }, [isRenaming, tag.name])
+
+  const menuItems: MenuItem[] = [
+    {
+      id: 'rename',
+      label: t('tags.rename'),
+      icon: <Pencil size={13} />,
+      onSelect: onStartRename,
+    },
+    {
+      id: 'color',
+      label: t('folders.color'),
+      icon: <Palette size={13} />,
+      submenu: ({ closeMenu }) => (
+        <TagColorSubmenu
+          tag={{
+            id: tag.id,
+            name: tag.name,
+            color: tag.color ?? null,
+            count: 0,
+            isPinned: Boolean(tag.isPinned),
+            createdAt: tag.createdAt,
+          }}
+          onSelectColor={(color) => {
+            onColorChange(color)
+            closeMenu()
+          }}
+          onManageTags={closeMenu}
+        />
+      ),
+    },
+    {
+      id: 'delete',
+      label: t('common.delete'),
+      icon: <Trash2 size={13} />,
+      tone: 'danger',
+      separatorBefore: true,
+      onSelect: onDelete,
+    },
+  ]
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onContextMenu={contextMenu.onContextMenu}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onSelect()
+        }
+      }}
+      className={cn(
+        'group flex h-8 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[12px] font-medium transition-colors cursor-pointer',
+        isSelected
+          ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
+          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+      )}
+    >
+      <Hash size={13} className="shrink-0" style={{ color: tag.color ?? undefined }} />
+
+      {isRenaming ? (
+        <input
+          ref={inputRef}
+          type="text"
+          value={nameInput}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => setNameInput(e.target.value)}
+          onBlur={() => onFinishRename(nameInput.trim() || tag.name)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onFinishRename(nameInput.trim() || tag.name)
+            if (e.key === 'Escape') onFinishRename(tag.name)
+          }}
+          className="flex-1 bg-[var(--bg-surface)] px-1 py-0.5 text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden"
+        />
+      ) : (
+        <span className="flex-1 truncate">{tag.name}</span>
+      )}
+
+      <span className="tabular text-[10px] text-[var(--text-quaternary)]">
+        {counts.shared > 0 ? (
+          <span className="text-[var(--accent)] font-medium">{counts.shared}</span>
+        ) : (
+          '0'
+        )}
+        /{counts.total}
+      </span>
+
+      {/* Batch toggle switch for tag */}
+      <div onClick={(e) => e.stopPropagation()} className="pl-1">
+        <Switch
+          checked={isChecked}
+          disabled={batchBusy || counts.total === 0}
+          onChange={onToggleSwitch}
+        />
+      </div>
+
+      <button
+        ref={moreButtonRef}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          setMenuOpen((prev) => !prev)
+        }}
+        className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity"
+      >
+        <MoreHorizontal size={12} />
+      </button>
+
+      <Menu
+        open={menuOpen}
+        anchor={moreButtonRef}
+        items={menuItems}
+        onClose={() => setMenuOpen(false)}
+      />
+      {contextMenu.point && (
+        <Menu open anchor={contextMenu.point} items={menuItems} onClose={contextMenu.close} />
+      )}
+    </div>
   )
 }

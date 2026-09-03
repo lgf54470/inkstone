@@ -223,6 +223,8 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     slug TEXT PRIMARY KEY,
     note_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
+    folder_id TEXT,
+    tags TEXT NOT NULL DEFAULT '[]',
     password_hash TEXT,
     expires_at INTEGER,
     views INTEGER NOT NULL DEFAULT 0,
@@ -232,6 +234,31 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_shares_note ON shares(note_id)`,
   `CREATE INDEX IF NOT EXISTS idx_shares_user ON shares(user_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_shares_folder ON shares(user_id, folder_id)`,
+
+  `CREATE TABLE IF NOT EXISTS share_folders (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    parent_id TEXT,
+    name TEXT NOT NULL,
+    icon TEXT,
+    color TEXT,
+    position REAL NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_share_folders_user ON share_folders(user_id, position)`,
+  `CREATE INDEX IF NOT EXISTS idx_share_folders_parent ON share_folders(parent_id)`,
+
+  `CREATE TABLE IF NOT EXISTS share_tags (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT,
+    is_pinned INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_share_tags_user ON share_tags(user_id, name)`,
 
   `CREATE TABLE IF NOT EXISTS share_visits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -704,6 +731,37 @@ const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_share_visits_filter_time ON share_visits(user_id, is_bot, is_self_referrer, is_owner, visited_at DESC)`,
     ],
   },
+  {
+    version: 19,
+    skipIfColumnExists: { table: 'shares', column: 'folder_id' },
+    statements: [
+      `ALTER TABLE shares ADD COLUMN folder_id TEXT`,
+      `ALTER TABLE shares ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'`,
+      `CREATE INDEX IF NOT EXISTS idx_shares_folder ON shares(user_id, folder_id)`,
+      `CREATE TABLE IF NOT EXISTS share_folders (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        parent_id TEXT,
+        name TEXT NOT NULL,
+        icon TEXT,
+        color TEXT,
+        position REAL NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_share_folders_user ON share_folders(user_id, position)`,
+      `CREATE INDEX IF NOT EXISTS idx_share_folders_parent ON share_folders(parent_id)`,
+      `CREATE TABLE IF NOT EXISTS share_tags (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        color TEXT,
+        is_pinned INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      )`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_share_tags_user ON share_tags(user_id, name)`,
+    ],
+  },
 ]
 
 const FTS_STATEMENT = `CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
@@ -741,7 +799,9 @@ const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   import_mappings: ['user_id', 'entity', 'source_id', 'target_id', 'updated_at'],
   backup_targets: ['id', 'user_id', 'type', 'name', 'enabled', 'config', 'secret', 'last_run_at', 'last_status', 'last_error', 'created_at', 'updated_at'],
   backup_runs: ['id', 'user_id', 'trigger', 'status', 'started_at', 'finished_at', 'note_count', 'file_count', 'bytes', 'detail'],
-  shares: ['slug', 'note_id', 'user_id', 'password_hash', 'expires_at', 'views', 'is_enabled', 'last_viewed_at', 'created_at'],
+  shares: ['slug', 'note_id', 'user_id', 'folder_id', 'tags', 'password_hash', 'expires_at', 'views', 'is_enabled', 'last_viewed_at', 'created_at'],
+  share_folders: ['id', 'user_id', 'parent_id', 'name', 'icon', 'color', 'position', 'created_at', 'updated_at'],
+  share_tags: ['id', 'user_id', 'name', 'color', 'is_pinned', 'created_at'],
   share_visits: ['id', 'user_id', 'note_id', 'slug', 'visited_at', 'visitor_fp', 'country', 'region', 'city', 'referrer', 'referrer_host', 'device_type', 'os', 'browser', 'language', 'user_agent', 'is_bot', 'is_self_referrer', 'is_owner'],
   share_asset_sessions: ['id', 'slug', 'password_hash', 'expires_at', 'created_at'],
   changes: ['seq', 'user_id', 'entity', 'entity_id', 'op', 'at'],
@@ -778,6 +838,8 @@ const REQUIRED_TABLES = [
   'backup_targets',
   'backup_runs',
   'shares',
+  'share_folders',
+  'share_tags',
   'share_visits',
   'share_asset_sessions',
   'changes',
@@ -823,6 +885,10 @@ const REQUIRED_INDEXES = [
   'idx_runs_user',
   'idx_shares_note',
   'idx_shares_user',
+  'idx_shares_folder',
+  'idx_share_folders_user',
+  'idx_share_folders_parent',
+  'idx_share_tags_user',
   'idx_share_visits_user_time',
   'idx_share_visits_slug_time',
   'idx_share_visits_note_time',

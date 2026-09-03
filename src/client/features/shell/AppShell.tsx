@@ -27,6 +27,7 @@ const SettingsPanel = lazy(() => import('../settings/SettingsPanel').then((m) =>
 const ShortcutsPanel = lazy(() => import('../command/ShortcutsPanel').then((m) => ({ default: m.ShortcutsPanel })));
 const GraphPanel = lazy(() => import('../graph/GraphPanel').then((m) => ({ default: m.GraphPanel })));
 const ShareHubModal = lazy(() => import('../share/ShareHubModal').then((m) => ({ default: m.ShareHubModal })));
+const ShareEditModal = lazy(() => import('../share/ShareEditModal').then((m) => ({ default: m.ShareEditModal })));
 const VersionsPanel = lazy(() => import('../workspace/VersionsPanel').then((m) => ({ default: m.VersionsPanel })));
 const TemplateGallery = lazy(() => import('../templates/TemplateGallery').then((m) => ({ default: m.TemplateGallery })));
 const ManageFoldersModal = lazy(() => import('../folders/ManageFoldersModal').then((m) => ({ default: m.ManageFoldersModal })));
@@ -194,13 +195,24 @@ function OverlayHost() {
     const role = useSession((s) => s.user?.role);
     const updateDialogOpen = useUpdate((s) => s.dialogOpen);
     const activeNoteId = useUi((s) => s.activeWorkspacePane === 'secondary' ? s.workspaceSecondaryNoteId : s.workspacePrimaryNoteId);
+    const activeNote = useNotes((s) => (activeNoteId ? s.notes[activeNoteId] : null));
     return (<>
       <Suspense fallback={null}>
         {panel === 'command' && <CommandPalette onClose={closePanel}/>}
         {panel === 'settings' && <SettingsPanel onClose={closePanel}/>}
         {panel === 'shortcuts' && <ShortcutsPanel onClose={closePanel}/>}
         {panel === 'graph' && <GraphPanel onClose={closePanel}/>}
-        {panel === 'share' && <ShareHubModal open={true} onClose={closePanel} initialNoteId={activeNoteId ?? undefined}/>}
+        {panel === 'share' && activeNoteId && (
+          <ShareEditModal
+            open={true}
+            onClose={closePanel}
+            noteId={activeNoteId}
+            noteTitle={activeNote?.title || t('common.untitled_note')}
+          />
+        )}
+        {(panel === 'share-hub' || (panel === 'share' && !activeNoteId)) && (
+          <ShareHubModal open={true} onClose={closePanel} initialNoteId={activeNoteId ?? undefined} />
+        )}
         {panel === 'versions' && <VersionsPanel onClose={closePanel}/>}
         {panel === 'templates' && <TemplateGallery onClose={closePanel}/>}
         {panel === 'folders' && <ManageFoldersModal onClose={closePanel}/>}

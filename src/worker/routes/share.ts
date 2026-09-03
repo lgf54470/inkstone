@@ -1,7 +1,7 @@
 import { Hono, type Context } from 'hono'
 import { setCookie } from 'hono/cookie'
 import { LIMITS } from '@shared/constants'
-import type {
+import {
   PublicNote,
   ShareBreakdownItem,
   ShareGlobalAnalytics,
@@ -14,7 +14,7 @@ import type {
 } from '@shared/types'
 import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'
-import { isValidSlug, newSlug } from '../lib/id'
+import { isValidId, isValidSlug, newId, newSlug } from '../lib/id'
 import { JSON_BODY_LIMITS, readJson, readOptionalJson, requestClientIp } from '../lib/request'
 import { hashPassword, verifyPassword } from '../lib/password'
 import {
@@ -55,11 +55,34 @@ interface ShareRow {
   slug: string
   note_id: string
   user_id: string
+  folder_id?: string | null
+  tags?: string
   password_hash: string | null
   expires_at: number | null
   views: number
   is_enabled: number
   last_viewed_at: number | null
+  created_at: number
+}
+
+interface ShareFolderRow {
+  id: string
+  user_id: string
+  parent_id: string | null
+  name: string
+  icon: string | null
+  color: string | null
+  position: number
+  created_at: number
+  updated_at: number
+}
+
+interface ShareTagRow {
+  id: string
+  user_id: string
+  name: string
+  color: string | null
+  is_pinned: number
   created_at: number
 }
 
@@ -72,8 +95,20 @@ function toShareInfo(
     folderId?: string | null
     tags?: string[]
     uniqueVisitors?: number
+    isPinned?: boolean
+    isStarred?: boolean
   },
 ): ShareInfo {
+  let parsedTags: string[] = []
+  if (extras?.tags) {
+    parsedTags = extras.tags
+  } else if (row.tags) {
+    try {
+      parsedTags = JSON.parse(row.tags)
+    } catch {}
+  }
+  const shareFolderId = extras?.folderId !== undefined ? extras.folderId : (row.folder_id ?? null)
+
   return {
     slug: row.slug,
     noteId: row.note_id,
@@ -82,13 +117,17 @@ function toShareInfo(
     expiresAt: row.expires_at,
     views: row.views,
     createdAt: row.created_at,
-    isEnabled: row.is_enabled === 1,
+    isEnabled: row.is_enabled !== 0,
     lastViewedAt: row.last_viewed_at ?? null,
     uniqueVisitors: extras?.uniqueVisitors,
     noteTitle: extras?.noteTitle,
     noteExcerpt: extras?.noteExcerpt,
-    folderId: extras?.folderId,
-    tags: extras?.tags,
+    shareFolderId,
+    folderId: shareFolderId,
+    shareTags: parsedTags,
+    tags: parsedTags,
+    isPinned: extras?.isPinned,
+    isStarred: extras?.isStarred,
   }
 }
 
@@ -556,11 +595,315 @@ shareManageRoutes.get('/check-slug', async (c) => {
   return c.json({ available: true })
 })
 
+shareManageRoutes.get('/folders', async (c) => {
+  const userId = c.get('userId')
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, user_id, parent_id, name, icon, color, position, created_at, updated_at
+       FROM share_folders WHERE user_id = ?1 ORDER BY position ASC, created_at ASC`,
+  ).bind(userId).all<ShareFolderRow>()
+  return c.json(results.map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    parentId: r.parent_id,
+    name: r.name,
+    icon: r.icon,
+    color: r.color,
+    position: r.position,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  })))
+})
+
+shareManageRoutes.post('/folders', async (c) => {
+  const userId = c.get('userId')
+  const body = await c.req.json<{
+    id?: string
+    name?: string
+    parentId?: string | null
+    color?: string | null
+    icon?: string | null
+    position?: number
+  }>()
+  const id = body.id && isValidId(body.id) ? body.id : newId()
+  const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : 'New Folder'
+  const parentId = body.parentId && isValidId(body.parentId) ? body.parentId : null
+  const now = Date.now()
+  const position = typeof body.position === 'number' ? body.position : now
+
+  await c.env.DB.prepare(
+    `INSERT INTO share_folders (id, user_id, parent_id, name, icon, color, position, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+  ).bind(id, userId, parentId, name, body.icon ?? null, body.color ?? null, position, now, now).run()
+
+  return c.json({
+    id,
+    userId,
+    parentId,
+    name,
+    icon: body.icon ?? null,
+    color: body.color ?? null,
+    position,
+    createdAt: now,
+    updatedAt: now,
+  }, 201)
+})
+
+shareManageRoutes.patch('/folders/:id', async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  if (!isValidId(id)) throw ApiError.notFound('Folder not found')
+  const body = await c.req.json<{
+    name?: string
+    parentId?: string | null
+    color?: string | null
+    icon?: string | null
+    position?: number
+  }>()
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id, name, parent_id, icon, color, position, created_at, updated_at FROM share_folders WHERE id = ?1 AND user_id = ?2`,
+  ).bind(id, userId).first<ShareFolderRow>()
+  if (!existing) throw ApiError.notFound('Folder not found')
+
+  const nextName = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : existing.name
+  const nextParent = body.parentId !== undefined ? (body.parentId && isValidId(body.parentId) ? body.parentId : null) : existing.parent_id
+  const nextColor = body.color !== undefined ? body.color : existing.color
+  const nextIcon = body.icon !== undefined ? body.icon : existing.icon
+  const nextPosition = typeof body.position === 'number' ? body.position : existing.position
+  const now = Date.now()
+
+  await c.env.DB.prepare(
+    `UPDATE share_folders SET name = ?1, parent_id = ?2, color = ?3, icon = ?4, position = ?5, updated_at = ?6
+     WHERE id = ?7 AND user_id = ?8`,
+  ).bind(nextName, nextParent, nextColor, nextIcon, nextPosition, now, id, userId).run()
+
+  return c.json({
+    id,
+    userId,
+    parentId: nextParent,
+    name: nextName,
+    icon: nextIcon,
+    color: nextColor,
+    position: nextPosition,
+    createdAt: existing.created_at,
+    updatedAt: now,
+  })
+})
+
+shareManageRoutes.delete('/folders/:id', async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  if (!isValidId(id)) throw ApiError.notFound('Folder not found')
+
+  await c.env.DB.batch([
+    c.env.DB.prepare(`UPDATE shares SET folder_id = NULL WHERE folder_id = ?1 AND user_id = ?2`).bind(id, userId),
+    c.env.DB.prepare(`UPDATE share_folders SET parent_id = NULL WHERE parent_id = ?1 AND user_id = ?2`).bind(id, userId),
+    c.env.DB.prepare(`DELETE FROM share_folders WHERE id = ?1 AND user_id = ?2`).bind(id, userId),
+  ])
+  return c.json({ ok: true })
+})
+
+shareManageRoutes.get('/tags', async (c) => {
+  const userId = c.get('userId')
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, user_id, name, color, is_pinned, created_at
+       FROM share_tags WHERE user_id = ?1 ORDER BY is_pinned DESC, name ASC`,
+  ).bind(userId).all<ShareTagRow>()
+  return c.json(results.map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    name: r.name,
+    color: r.color,
+    isPinned: Boolean(r.is_pinned),
+    createdAt: r.created_at,
+  })))
+})
+
+shareManageRoutes.post('/tags', async (c) => {
+  const userId = c.get('userId')
+  const body = await c.req.json<{
+    id?: string
+    name: string
+    color?: string | null
+  }>()
+  const name = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : ''
+  if (!name) throw ApiError.badRequest('Tag name is required')
+  const id = body.id && isValidId(body.id) ? body.id : newId()
+  const now = Date.now()
+
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO share_tags (id, user_id, name, color, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5)`,
+    ).bind(id, userId, name, body.color ?? null, now).run()
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('UNIQUE') || msg.includes('constraint')) {
+      const existing = await c.env.DB.prepare(
+        `SELECT id, user_id, name, color, is_pinned, created_at FROM share_tags WHERE user_id = ?1 AND name = ?2`,
+      ).bind(userId, name).first<ShareTagRow>()
+      if (existing) {
+        return c.json({
+          id: existing.id,
+          userId: existing.user_id,
+          name: existing.name,
+          color: existing.color,
+          isPinned: Boolean(existing.is_pinned),
+          createdAt: existing.created_at,
+        })
+      }
+    }
+    throw err
+  }
+
+  return c.json({
+    id,
+    userId,
+    name,
+    color: body.color ?? null,
+    isPinned: false,
+    createdAt: now,
+  }, 201)
+})
+
+shareManageRoutes.patch('/tags/:id', async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  if (!isValidId(id)) throw ApiError.notFound('Tag not found')
+  const body = await c.req.json<{
+    name?: string
+    color?: string | null
+    isPinned?: boolean
+  }>()
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id, name, color, is_pinned, created_at FROM share_tags WHERE id = ?1 AND user_id = ?2`,
+  ).bind(id, userId).first<ShareTagRow>()
+  if (!existing) throw ApiError.notFound('Tag not found')
+
+  const nextName = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 50) : existing.name
+  const nextColor = body.color !== undefined ? body.color : existing.color
+  const nextPinned = body.isPinned !== undefined ? (body.isPinned ? 1 : 0) : existing.is_pinned
+
+  await c.env.DB.prepare(
+    `UPDATE share_tags SET name = ?1, color = ?2, is_pinned = ?3 WHERE id = ?4 AND user_id = ?5`,
+  ).bind(nextName, nextColor, nextPinned, id, userId).run()
+
+  return c.json({
+    id,
+    userId,
+    name: nextName,
+    color: nextColor,
+    isPinned: Boolean(nextPinned),
+    createdAt: existing.created_at,
+  })
+})
+
+shareManageRoutes.delete('/tags/:id', async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  if (!isValidId(id)) throw ApiError.notFound('Tag not found')
+
+  await c.env.DB.prepare(`DELETE FROM share_tags WHERE id = ?1 AND user_id = ?2`).bind(id, userId).run()
+  return c.json({ ok: true })
+})
+
+shareManageRoutes.post('/batch-toggle-group', async (c) => {
+  const userId = c.get('userId')
+  const body = await c.req.json<{
+    type: 'folder' | 'tag'
+    target: string
+    enabled: boolean
+  }>()
+  const isEnabled = body.enabled ? 1 : 0
+
+  if (body.type === 'folder') {
+    await c.env.DB.prepare(
+      `UPDATE shares SET is_enabled = ?1 WHERE folder_id = ?2 AND user_id = ?3`,
+    ).bind(isEnabled, body.target, userId).run()
+  } else if (body.type === 'tag') {
+    await c.env.DB.prepare(
+      `UPDATE shares SET is_enabled = ?1 WHERE user_id = ?2 AND tags LIKE ?3`,
+    ).bind(isEnabled, userId, `%"${body.target}"%`).run()
+  }
+  return c.json({ ok: true })
+})
+
+shareManageRoutes.get('/note-share/:noteId', async (c) => {
+  const userId = c.get('userId')
+  const noteId = c.req.param('noteId')
+  const origin = new URL(c.req.url).origin
+  const row = await c.env.DB.prepare(
+    `SELECT n.id as note_id, n.title as note_title, n.excerpt as note_excerpt, n.is_pinned, n.is_starred,
+            s.slug, s.folder_id, s.tags as share_tags_json, s.password_hash, s.expires_at, s.views, s.is_enabled, s.last_viewed_at, s.created_at
+       FROM notes n
+       LEFT JOIN shares s ON s.note_id = n.id AND s.user_id = n.user_id
+      WHERE n.id = ?1 AND n.user_id = ?2 AND n.deleted_at IS NULL`,
+  ).bind(noteId, userId).first<{
+    note_id: string
+    note_title: string
+    note_excerpt: string
+    is_pinned: number
+    is_starred: number
+    slug: string | null
+    folder_id: string | null
+    share_tags_json: string | null
+    password_hash: string | null
+    expires_at: number | null
+    views: number | null
+    is_enabled: number | null
+    last_viewed_at: number | null
+    created_at: number | null
+  }>()
+
+  if (!row) throw ApiError.notFound('Note not found')
+  if (!row.slug) {
+    return c.json({
+      share: null,
+      noteTitle: row.note_title,
+      isPinned: row.is_pinned === 1,
+      isStarred: row.is_starred === 1,
+    })
+  }
+
+  let shareTags: string[] = []
+  try {
+    shareTags = JSON.parse(row.share_tags_json || '[]')
+  } catch {}
+
+  return c.json({
+    share: {
+      slug: row.slug,
+      noteId: row.note_id,
+      url: `${origin}/s/${row.slug}`,
+      hasPassword: Boolean(row.password_hash),
+      expiresAt: row.expires_at,
+      views: row.views ?? 0,
+      createdAt: row.created_at ?? 0,
+      isEnabled: row.is_enabled !== 0,
+      lastViewedAt: row.last_viewed_at ?? null,
+      noteTitle: row.note_title,
+      noteExcerpt: row.note_excerpt,
+      shareFolderId: row.folder_id,
+      folderId: row.folder_id,
+      shareTags,
+      tags: shareTags,
+      isPinned: row.is_pinned === 1,
+      isStarred: row.is_starred === 1,
+    },
+    noteTitle: row.note_title,
+    isPinned: row.is_pinned === 1,
+    isStarred: row.is_starred === 1,
+  })
+})
+
 shareManageRoutes.get('/', async (c) => {
   const userId = c.get('userId')
   const origin = new URL(c.req.url).origin
-  const folderId = c.req.query('folderId')
-  const tag = c.req.query('tag')
+  const rawFolderId = c.req.query('folderId')
+  const folderId = rawFolderId && rawFolderId !== 'null' && rawFolderId !== 'undefined' ? rawFolderId : null
+  const rawTag = c.req.query('tag')
+  const tag = rawTag && rawTag !== 'null' && rawTag !== 'undefined' ? rawTag : null
   const status = c.req.query('status') || 'all'
   const search = (c.req.query('search') || '').trim()
   const sort = c.req.query('sort') || 'views_desc'
@@ -576,44 +919,40 @@ shareManageRoutes.get('/', async (c) => {
   const now = Date.now()
 
   const folderCountRows = await c.env.DB.prepare(
-    `SELECT n.folder_id,
-            COUNT(*) as total_notes,
-            COUNT(CASE WHEN s.slug IS NOT NULL AND s.is_enabled = 1 AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) as shared_notes
-       FROM notes n
-       LEFT JOIN shares s ON s.note_id = n.id AND s.user_id = n.user_id
-      WHERE n.user_id = ?1 AND n.deleted_at IS NULL AND n.folder_id IS NOT NULL
-      GROUP BY n.folder_id`,
+    `SELECT sf.id as folder_id,
+            COUNT(s.slug) as total_shares,
+            COUNT(CASE WHEN (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) as shared_notes
+       FROM share_folders sf
+       LEFT JOIN shares s ON s.folder_id = sf.id AND s.user_id = sf.user_id
+      WHERE sf.user_id = ?1
+      GROUP BY sf.id`,
   )
     .bind(userId, now)
-    .all<{ folder_id: string; total_notes: number; shared_notes: number }>()
+    .all<{ folder_id: string; total_shares: number; shared_notes: number }>()
 
   const folderCounts: Record<string, { total: number; shared: number }> = {}
   for (const r of folderCountRows.results ?? []) {
-    folderCounts[r.folder_id] = { total: r.total_notes, shared: r.shared_notes }
+    folderCounts[r.folder_id] = { total: r.total_shares, shared: r.shared_notes }
   }
 
-  const tagCountRows = await c.env.DB.prepare(
-    `SELECT t.name as tag_name,
-            COUNT(DISTINCT n.id) as total_notes,
-            COUNT(DISTINCT CASE WHEN s.slug IS NOT NULL AND s.is_enabled = 1 AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN n.id END) as shared_notes
-       FROM tags t
-       JOIN note_tags nt ON nt.tag_id = t.id
-       JOIN notes n ON n.id = nt.note_id AND n.user_id = t.user_id AND n.deleted_at IS NULL
-       LEFT JOIN shares s ON s.note_id = n.id AND s.user_id = n.user_id
-      WHERE t.user_id = ?1
-      GROUP BY t.name`,
-  )
-    .bind(userId, now)
-    .all<{ tag_name: string; total_notes: number; shared_notes: number }>()
+  const allShareTags = await c.env.DB.prepare(
+    `SELECT name FROM share_tags WHERE user_id = ?1`,
+  ).bind(userId).all<{ name: string }>()
 
   const tagCounts: Record<string, { total: number; shared: number }> = {}
-  for (const r of tagCountRows.results ?? []) {
-    tagCounts[r.tag_name] = { total: r.total_notes, shared: r.shared_notes }
+  for (const t of allShareTags.results ?? []) {
+    const tRow = await c.env.DB.prepare(
+      `SELECT COUNT(*) as total,
+              COUNT(CASE WHEN (is_enabled = 1 OR is_enabled IS NULL) AND (expires_at IS NULL OR expires_at > ?3) THEN 1 END) as shared
+         FROM shares
+        WHERE user_id = ?1 AND tags LIKE ?2`,
+    ).bind(userId, `%"${t.name}"%`, now).first<{ total: number; shared: number }>()
+    tagCounts[t.name] = { total: tRow?.total ?? 0, shared: tRow?.shared ?? 0 }
   }
 
   const globalSummary = await c.env.DB.prepare(
     `SELECT COUNT(*) as total_shares,
-            COUNT(CASE WHEN is_enabled = 1 AND (expires_at IS NULL OR expires_at > ?2) THEN 1 END) as active_shares,
+            COUNT(CASE WHEN (is_enabled = 1 OR is_enabled IS NULL) AND (expires_at IS NULL OR expires_at > ?2) THEN 1 END) as active_shares,
             COALESCE(SUM(views), 0) as total_views
        FROM shares
       WHERE user_id = ?1`,
@@ -631,11 +970,11 @@ shareManageRoutes.get('/', async (c) => {
 
   const pinStarRow = await c.env.DB.prepare(
     `SELECT 
-       COUNT(CASE WHEN s.slug IS NOT NULL AND n.is_pinned = 1 THEN 1 END) as pinned_shares,
-       COUNT(CASE WHEN s.slug IS NOT NULL AND n.is_starred = 1 THEN 1 END) as starred_shares
-      FROM notes n
-      JOIN shares s ON s.note_id = n.id AND s.user_id = n.user_id
-     WHERE n.user_id = ?1 AND n.deleted_at IS NULL`,
+       COUNT(CASE WHEN n.is_pinned = 1 THEN 1 END) as pinned_shares,
+       COUNT(CASE WHEN n.is_starred = 1 THEN 1 END) as starred_shares
+      FROM shares s
+      JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
+     WHERE s.user_id = ?1 AND n.deleted_at IS NULL`,
   ).bind(userId).first<{ pinned_shares: number; starred_shares: number }>()
 
   const globalStats = {
@@ -649,60 +988,53 @@ shareManageRoutes.get('/', async (c) => {
     tagCounts,
   }
 
-  const conditions: string[] = [`n.user_id = ?1`, `n.deleted_at IS NULL`]
+  const conditions: string[] = [`s.user_id = ?1`, `n.deleted_at IS NULL`]
   const binds: Array<string | number> = [userId]
   let bindIndex = 2
 
-  const shouldFilterSharedOnly = !folderId && !tag && status === 'all'
-  if (shouldFilterSharedOnly) {
-    conditions.push(`s.slug IS NOT NULL`)
-  }
-
   if (folderId) {
-    conditions.push(`n.folder_id = ?${bindIndex}`)
+    conditions.push(`s.folder_id = ?${bindIndex}`)
     binds.push(folderId)
     bindIndex++
   }
 
   if (tag) {
-    conditions.push(
-      `EXISTS (SELECT 1 FROM note_tags nt JOIN tags t ON t.id = nt.tag_id WHERE nt.note_id = n.id AND t.name = ?${bindIndex} AND t.user_id = ?1)`,
-    )
-    binds.push(tag)
+    conditions.push(`s.tags LIKE ?${bindIndex}`)
+    binds.push(`%"${tag}"%`)
     bindIndex++
   }
 
   if (status === 'active') {
-    conditions.push(`s.slug IS NOT NULL AND s.is_enabled = 1 AND (s.expires_at IS NULL OR s.expires_at > ?${bindIndex})`)
+    conditions.push(`(s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?${bindIndex})`)
     binds.push(now)
     bindIndex++
   } else if (status === 'paused') {
-    conditions.push(`s.slug IS NOT NULL AND s.is_enabled = 0`)
+    conditions.push(`s.is_enabled = 0`)
   } else if (status === 'starred') {
-    conditions.push(`s.slug IS NOT NULL AND n.is_starred = 1`)
+    conditions.push(`n.is_starred = 1`)
   } else if (status === 'pinned') {
-    conditions.push(`s.slug IS NOT NULL AND n.is_pinned = 1`)
+    conditions.push(`n.is_pinned = 1`)
   } else if (status === 'password') {
-    conditions.push(`s.slug IS NOT NULL AND s.password_hash IS NOT NULL`)
+    conditions.push(`s.password_hash IS NOT NULL`)
   } else if (status === 'expiring') {
-    conditions.push(`s.slug IS NOT NULL AND s.expires_at IS NOT NULL`)
+    conditions.push(`s.expires_at IS NOT NULL`)
   } else if (status === 'permanent') {
-    conditions.push(`s.slug IS NOT NULL AND s.expires_at IS NULL`)
+    conditions.push(`s.expires_at IS NULL`)
   } else if (status === 'expired') {
-    conditions.push(`s.slug IS NOT NULL AND s.expires_at IS NOT NULL AND s.expires_at <= ?${bindIndex}`)
+    conditions.push(`s.expires_at IS NOT NULL AND s.expires_at <= ?${bindIndex}`)
     binds.push(now)
     bindIndex++
   }
 
   if (search) {
-    conditions.push(`(n.title LIKE ?${bindIndex} OR n.excerpt LIKE ?${bindIndex} OR s.slug LIKE ?${bindIndex})`)
+    conditions.push(`(n.title LIKE ?${bindIndex} OR n.excerpt LIKE ?${bindIndex} OR s.slug LIKE ?${bindIndex} OR s.tags LIKE ?${bindIndex})`)
     binds.push(`%${search}%`)
     bindIndex++
   }
 
-  let orderClause = `ORDER BY n.is_pinned DESC, s.slug IS NOT NULL DESC, s.views DESC, n.updated_at DESC`
+  let orderClause = `ORDER BY n.is_pinned DESC, s.views DESC, n.updated_at DESC`
   if (sort === 'views_asc') {
-    orderClause = `ORDER BY n.is_pinned DESC, s.slug IS NOT NULL DESC, s.views ASC, n.updated_at DESC`
+    orderClause = `ORDER BY n.is_pinned DESC, s.views ASC, n.updated_at DESC`
   } else if (sort === 'recent_visit') {
     orderClause = `ORDER BY n.is_pinned DESC, s.last_viewed_at IS NOT NULL DESC, s.last_viewed_at DESC, n.updated_at DESC`
   } else if (sort === 'created_desc') {
@@ -716,11 +1048,12 @@ shareManageRoutes.get('/', async (c) => {
   }
 
   const query = `
-    SELECT n.id as note_id, n.title as note_title, n.excerpt as note_excerpt, n.folder_id,
+    SELECT n.id as note_id, n.title as note_title, n.excerpt as note_excerpt,
            n.is_pinned, n.is_starred,
-           s.slug, s.password_hash, s.expires_at, s.views, s.is_enabled, s.last_viewed_at, s.created_at
-      FROM notes n
-      LEFT JOIN shares s ON s.note_id = n.id AND s.user_id = n.user_id
+           s.slug, s.folder_id, s.tags as share_tags_json,
+           s.password_hash, s.expires_at, s.views, s.is_enabled, s.last_viewed_at, s.created_at
+      FROM shares s
+      JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
      WHERE ${conditions.join(' AND ')}
      ${orderClause}
      LIMIT 500
@@ -732,10 +1065,11 @@ shareManageRoutes.get('/', async (c) => {
       note_id: string
       note_title: string
       note_excerpt: string
-      folder_id: string | null
       is_pinned: number
       is_starred: number
-      slug: string | null
+      slug: string
+      folder_id: string | null
+      share_tags_json: string | null
       password_hash: string | null
       expires_at: number | null
       views: number | null
@@ -745,25 +1079,6 @@ shareManageRoutes.get('/', async (c) => {
     }>()
 
   const noteIds = (rows.results ?? []).map((r) => r.note_id)
-  const tagsByNote = new Map<string, string[]>()
-  if (noteIds.length > 0) {
-    const placeholders = noteIds.map(() => '?').join(',')
-    const tagRows = await c.env.DB.prepare(
-      `SELECT nt.note_id, t.name as tag_name
-         FROM note_tags nt
-         JOIN tags t ON t.id = nt.tag_id
-        WHERE nt.note_id IN (${placeholders})`,
-    )
-      .bind(...noteIds)
-      .all<{ note_id: string; tag_name: string }>()
-
-    for (const tr of tagRows.results ?? []) {
-      const list = tagsByNote.get(tr.note_id) || []
-      list.push(tr.tag_name)
-      tagsByNote.set(tr.note_id, list)
-    }
-  }
-
   const noteStatsMap = new Map<string, { pvs: number; uvs: number }>()
   if (noteIds.length > 0) {
     const placeholders = noteIds.map(() => '?').join(',')
@@ -782,25 +1097,30 @@ shareManageRoutes.get('/', async (c) => {
   }
 
   const shares: ShareInfo[] = (rows.results ?? []).map((r) => {
-    const hasShare = Boolean(r.slug)
     const stats = noteStatsMap.get(r.note_id)
     const noteViews = stats ? stats.pvs : (r.views ?? 0)
     const noteVisitors = stats ? stats.uvs : 0
+    let parsedTags: string[] = []
+    try {
+      parsedTags = JSON.parse(r.share_tags_json || '[]')
+    } catch {}
     return {
-      slug: r.slug || '',
+      slug: r.slug,
       noteId: r.note_id,
-      url: r.slug ? `${origin}/s/${r.slug}` : '',
+      url: `${origin}/s/${r.slug}`,
       hasPassword: Boolean(r.password_hash),
       expiresAt: r.expires_at ?? null,
       views: noteViews,
       createdAt: r.created_at ?? 0,
-      isEnabled: hasShare ? r.is_enabled === 1 : false,
+      isEnabled: r.is_enabled !== 0,
       lastViewedAt: r.last_viewed_at ?? null,
       uniqueVisitors: noteVisitors,
       noteTitle: r.note_title,
       noteExcerpt: r.note_excerpt,
+      shareFolderId: r.folder_id,
       folderId: r.folder_id,
-      tags: tagsByNote.get(r.note_id) || [],
+      shareTags: parsedTags,
+      tags: parsedTags,
       isPinned: r.is_pinned === 1,
       isStarred: r.is_starred === 1,
     }
@@ -1166,13 +1486,15 @@ shareManageRoutes.post('/:noteId', async (c) => {
     expiresIn?: number | null
     customSlug?: string
     isEnabled?: boolean
+    folderId?: string | null
+    tags?: string[]
   }>(c, JSON_BODY_LIMITS.small)
 
   const note = await c.env.DB.prepare(
-    `SELECT id, title, folder_id FROM notes WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
+    `SELECT id, title, folder_id, is_pinned, is_starred FROM notes WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
   )
     .bind(noteId, userId)
-    .first<{ id: string; title: string; folder_id: string | null }>()
+    .first<{ id: string; title: string; folder_id: string | null; is_pinned: number; is_starred: number }>()
   if (!note) throw ApiError.notFound('Note not found')
 
   const existingShare = await c.env.DB.prepare(
@@ -1234,6 +1556,8 @@ shareManageRoutes.post('/:noteId', async (c) => {
         : existingShare?.password_hash ?? null
 
   const isEnabled = body.isEnabled !== undefined ? (body.isEnabled ? 1 : 0) : (existingShare?.is_enabled ?? 1)
+  const folderId = body.folderId !== undefined ? (body.folderId && isValidId(body.folderId) ? body.folderId : null) : (existingShare?.folder_id ?? null)
+  const tagsJson = body.tags !== undefined ? JSON.stringify(Array.isArray(body.tags) ? body.tags : []) : (existingShare?.tags ?? '[]')
 
   if (existingShare) {
     await c.env.DB.prepare(
@@ -1241,17 +1565,19 @@ shareManageRoutes.post('/:noteId', async (c) => {
           SET slug = ?1,
               password_hash = ?2,
               expires_at = ?3,
-              is_enabled = ?4
-        WHERE note_id = ?5 AND user_id = ?6`,
+              is_enabled = ?4,
+              folder_id = ?5,
+              tags = ?6
+        WHERE note_id = ?7 AND user_id = ?8`,
     )
-      .bind(targetSlug, passwordHash, expiresAt, isEnabled, noteId, userId)
+      .bind(targetSlug, passwordHash, expiresAt, isEnabled, folderId, tagsJson, noteId, userId)
       .run()
   } else {
     await c.env.DB.prepare(
-      `INSERT INTO shares (slug, note_id, user_id, password_hash, expires_at, views, is_enabled, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, 0, ?6, ?7)`,
+      `INSERT INTO shares (slug, note_id, user_id, password_hash, expires_at, views, is_enabled, folder_id, tags, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, 0, ?6, ?7, ?8, ?9)`,
     )
-      .bind(targetSlug, noteId, userId, passwordHash, expiresAt, isEnabled, Date.now())
+      .bind(targetSlug, noteId, userId, passwordHash, expiresAt, isEnabled, folderId, tagsJson, Date.now())
       .run()
   }
 
@@ -1268,8 +1594,10 @@ shareManageRoutes.post('/:noteId', async (c) => {
   return c.json({
     share: toShareInfo(row!, new URL(c.req.url).origin, {
       noteTitle: note.title,
-      folderId: note.folder_id,
+      folderId: row?.folder_id,
       uniqueVisitors: uvRow?.uvs ?? 0,
+      isPinned: note.is_pinned === 1,
+      isStarred: note.is_starred === 1,
     }),
   })
 })

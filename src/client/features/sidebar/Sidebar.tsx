@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDown, ArrowUp, ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, CornerUpLeft, Download, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Smile, Star, Sun, Tag as TagIcon, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, CornerUpLeft, Download, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Share2, Smile, Star, Sun, Tag as TagIcon, Trash2, Waypoints, X, } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
 import type { Tag, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
@@ -63,6 +63,14 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
       </div>
 
       <div className="shrink-0 space-y-px border-t border-[var(--border-subtle)] px-2 py-2">
+        <button
+          type="button"
+          onClick={() => useUi.getState().openPanel('share-hub')}
+          className="flex h-8 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[12.5px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        >
+          <Share2 size={14} className="shrink-0 text-[var(--accent)]" />
+          <span className="flex-1 text-left">{t('share.manage_shares')}</span>
+        </button>
         <ViewItem icon={<Archive size={14}/>} label={t("navigation.archive")} view="archived" count={counts.archived} active={view === 'archived'} onSelect={openView}/>
         <ViewItem icon={<Trash2 size={14}/>} label={t("navigation.trash")} view="trash" count={counts.trash} active={view === 'trash'} onSelect={openView}/>
       </div>
@@ -90,6 +98,7 @@ function SidebarRail({ onExpand }: {
       <div className="flex w-full flex-col items-center gap-1 py-2">
         <RailButton label={t("navigation.all_notes")} active={view === 'all'} icon={<FileText size={16}/>} onClick={() => openView('all')}/>
         <RailButton label={t("navigation.favorites")} active={view === 'starred'} icon={<Star size={16}/>} onClick={() => openView('starred')}/>
+        <RailButton label={t("share.manage_shares")} icon={<Share2 size={16}/>} onClick={() => useUi.getState().openPanel('share-hub')}/>
         <RailButton label={t("navigation.trash")} active={view === 'trash'} icon={<Trash2 size={16}/>} onClick={() => openView('trash')}/>
         <div className="my-1 h-px w-6 bg-[var(--border-subtle)]"/>
         <RailButton label={t("common.new_note")} combo="mod+n" accent icon={<FilePlus2 size={16}/>} onClick={() => void createContextualNote()}/>

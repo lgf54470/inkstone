@@ -30,10 +30,12 @@ import type {
   PublicNote,
   SearchResponse,
   SessionInfo,
+  ShareFolder,
   ShareGlobalAnalytics,
   ShareInfo,
   ShareListResponse,
   ShareNoteAnalytics,
+  ShareTag,
   ShareTimelineRange,
   ShareVisitsResponse,
   SyncResponse,
@@ -659,6 +661,26 @@ export const api = {
       request<{ ok: true; count: number }>('/api/share/batch-folder', { method: 'POST', body: { folderId, enabled } }),
     batchTag: (tag: string, enabled: boolean) =>
       request<{ ok: true; count: number }>('/api/share/batch-tag', { method: 'POST', body: { tag, enabled } }),
+    batchToggleGroup: (type: 'folder' | 'tag', target: string, enabled: boolean) =>
+      request<{ ok: true }>('/api/share/batch-toggle-group', { method: 'POST', body: { type, target, enabled } }),
+    folders: {
+      list: () => request<ShareFolder[]>('/api/share/folders'),
+      create: (body: { name: string; parentId?: string | null; color?: string | null; icon?: string | null }) =>
+        request<ShareFolder>('/api/share/folders', { method: 'POST', body }),
+      patch: (id: string, body: { name?: string; parentId?: string | null; color?: string | null; icon?: string | null; position?: number }) =>
+        request<ShareFolder>(`/api/share/folders/${id}`, { method: 'PATCH', body }),
+      remove: (id: string) => request<{ ok: true }>(`/api/share/folders/${id}`, { method: 'DELETE' }),
+    },
+    tags: {
+      list: () => request<ShareTag[]>('/api/share/tags'),
+      create: (body: { name: string; color?: string | null }) =>
+        request<ShareTag>('/api/share/tags', { method: 'POST', body }),
+      patch: (id: string, body: { name?: string; color?: string | null; isPinned?: boolean }) =>
+        request<ShareTag>(`/api/share/tags/${id}`, { method: 'PATCH', body }),
+      remove: (id: string) => request<{ ok: true }>(`/api/share/tags/${id}`, { method: 'DELETE' }),
+    },
+    getNoteShare: (noteId: string, signal?: AbortSignal) =>
+      request<{ share: ShareInfo | null; noteTitle: string; isPinned?: boolean; isStarred?: boolean }>(`/api/share/note-share/${noteId}`, { signal }),
     get: (noteId: string, signal?: AbortSignal) =>
       request<{ share: ShareInfo | null }>(`/api/share/${noteId}`, { signal }),
     create: (
@@ -668,6 +690,8 @@ export const api = {
         expiresIn?: number | null
         customSlug?: string
         isEnabled?: boolean
+        folderId?: string | null
+        tags?: string[]
       },
     ) => request<{ share: ShareInfo }>(`/api/share/${noteId}`, { method: 'POST', body }),
     remove: (noteId: string) => request<{ ok: true }>(`/api/share/${noteId}`, { method: 'DELETE' }),
@@ -700,8 +724,8 @@ export const api = {
   },
 }
 
-function toQuery(params: Record<string, string | number | boolean | undefined>): string {
-  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== '')
+function toQuery(params: Record<string, string | number | boolean | undefined | null>): string {
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
   if (!entries.length) return ''
   return `?${entries.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&')}`
 }

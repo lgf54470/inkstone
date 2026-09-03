@@ -573,6 +573,27 @@ export interface TestConnectionResult {
 }
 
 
+export interface ShareFolder {
+  id: string
+  userId?: string
+  parentId: string | null
+  name: string
+  icon?: string | null
+  color?: string | null
+  position?: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ShareTag {
+  id: string
+  userId?: string
+  name: string
+  color?: string | null
+  isPinned?: boolean
+  createdAt: number
+}
+
 export interface ShareInfo {
   slug: string
   noteId: string
@@ -588,6 +609,8 @@ export interface ShareInfo {
   noteExcerpt?: string
   folderId?: string | null
   tags?: string[]
+  shareFolderId?: string | null
+  shareTags?: string[]
   isPinned?: boolean
   isStarred?: boolean
 }

@@ -12,7 +12,9 @@ import type {
   NoteSummary,
   NoteVersion,
   PublicUser,
+  ShareFolder,
   ShareInfo,
+  ShareTag,
   Tag,
   UserSettings,
 } from '@shared/types'
@@ -41,6 +43,8 @@ export interface DemoState {
   versions: Map<string, NoteVersion[]>
   attachments: Map<string, DemoAttachment>
   shares: Map<string, DemoShare>
+  shareFolders: Map<string, ShareFolder>
+  shareTags: Map<string, ShareTag>
   backupTargets: Map<string, BackupTarget>
   backupRuns: BackupRun[]
   communityTemplates: CommunityTemplate[]
@@ -70,6 +74,23 @@ export function createDemoState(): DemoState {
   const tagColors = new Map<string, string | null>([['getting-started', '#6366f1']])
   const preferredLocaleTag = notes[0]?.tags.find((name) => name !== 'Inkstone')
   if (preferredLocaleTag) tagColors.set(preferredLocaleTag, '#b5482e')
+  const demoShareFolder: ShareFolder = {
+    id: seedId(101),
+    parentId: null,
+    name: '产品分享',
+    color: '#3b82f6',
+    icon: null,
+    position: 0,
+    createdAt: now - 86_400_000 * 5,
+    updatedAt: now - 86_400_000 * 5,
+  }
+  const demoShareTag: ShareTag = {
+    id: seedId(201),
+    name: '公开推荐',
+    color: '#10b981',
+    isPinned: false,
+    createdAt: now - 86_400_000 * 5,
+  }
   const welcomeShare: ShareInfo = {
     slug: 'welcome',
     noteId: notes[0]!.id,
@@ -80,6 +101,8 @@ export function createDemoState(): DemoState {
     createdAt: now - 86_400_000 * 4,
     isEnabled: true,
     lastViewedAt: null,
+    shareFolderId: demoShareFolder.id,
+    shareTags: [demoShareTag.name],
   }
 
   return {
@@ -104,6 +127,8 @@ export function createDemoState(): DemoState {
     versions: new Map(),
     attachments: new Map(),
     shares: new Map([[welcomeShare.noteId, { info: welcomeShare, password: null }]]),
+    shareFolders: new Map([[demoShareFolder.id, demoShareFolder]]),
+    shareTags: new Map([[demoShareTag.id, demoShareTag]]),
     backupTargets: new Map(),
     backupRuns: [],
     communityTemplates: [

@@ -314,7 +314,7 @@ export function CommandPalette({ onClose }: {
                 label: t("share.hub_title"),
                 icon: <Share2 size={14}/>,
                 group: t("command.commands"),
-                run: () => openPanel('share'),
+                run: () => openPanel('share-hub'),
             },
             {
                 id: 'cmd-settings',

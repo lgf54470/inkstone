@@ -1,7 +1,32 @@
 import { create } from 'zustand'
-import type { ShareCategory, ShareInfo, ShareListResponse } from '@shared/types'
+import type { ShareCategory, ShareFolder, ShareInfo, ShareListResponse, ShareTag } from '@shared/types'
 import { api } from '../../lib/api'
 import { useNotes } from '../../store/notes'
+
+export interface ShareFolderNode {
+  folder: ShareFolder
+  children: ShareFolderNode[]
+  depth: number
+}
+
+export function buildShareFolderTree(folders: ShareFolder[]): ShareFolderNode[] {
+  const map = new Map<string, ShareFolderNode>()
+  const roots: ShareFolderNode[] = []
+  for (const f of folders) {
+    map.set(f.id, { folder: f, children: [], depth: 0 })
+  }
+  for (const f of folders) {
+    const node = map.get(f.id)!
+    if (f.parentId && map.has(f.parentId)) {
+      const parent = map.get(f.parentId)!
+      node.depth = parent.depth + 1
+      parent.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  }
+  return roots
+}
 
 interface ShareStoreState {
   category: ShareCategory
@@ -13,6 +38,8 @@ interface ShareStoreState {
   viewMode: 'table' | 'grid'
   selectedNoteIds: Set<string>
   shares: ShareInfo[]
+  folders: ShareFolder[]
+  tags: ShareTag[]
   globalStats: ShareListResponse['globalStats'] | null
   loading: boolean
   batchBusy: boolean
@@ -35,6 +62,15 @@ interface ShareStoreState {
   toggleSelectAll: () => void
   clearSelection: () => void
 
+  loadFolders: () => Promise<void>
+  loadTags: () => Promise<void>
+  createFolder: (name: string, parentId?: string | null, color?: string | null, icon?: string | null) => Promise<ShareFolder | null>
+  patchFolder: (id: string, patch: { name?: string; parentId?: string | null; color?: string | null; icon?: string | null; position?: number }) => Promise<ShareFolder | null>
+  deleteFolder: (id: string) => Promise<boolean>
+  createTag: (name: string, color?: string | null) => Promise<ShareTag | null>
+  patchTag: (id: string, patch: { name?: string; color?: string | null; isPinned?: boolean }) => Promise<ShareTag | null>
+  deleteTag: (id: string) => Promise<boolean>
+
   loadShares: () => Promise<void>
   toggleShare: (noteId: string, enabled: boolean) => Promise<boolean>
   togglePin: (noteId: string) => Promise<boolean>
@@ -44,6 +80,7 @@ interface ShareStoreState {
     noteIds: string[],
     expiresIn?: number | null,
   ) => Promise<boolean>
+  batchToggleGroup: (type: 'folder' | 'tag', target: string, enabled: boolean) => Promise<boolean>
   batchFolderToggle: (folderId: string, enabled: boolean) => Promise<boolean>
   batchTagToggle: (tag: string, enabled: boolean) => Promise<boolean>
   updateShare: (
@@ -53,6 +90,8 @@ interface ShareStoreState {
       expiresIn?: number | null
       customSlug?: string
       isEnabled?: boolean
+      folderId?: string | null
+      tags?: string[]
     },
   ) => Promise<ShareInfo | null>
   revokeShare: (noteId: string) => Promise<boolean>
@@ -106,6 +145,8 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
   viewMode: 'table',
   selectedNoteIds: new Set<string>(),
   shares: [],
+  folders: [],
+  tags: [],
   globalStats: null,
   loading: false,
   batchBusy: false,
@@ -114,6 +155,108 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
   excludeOwner: initialFilters.excludeOwner,
   logRetentionDays: initialRetention.logRetentionDays,
   maxLogRecords: initialRetention.maxLogRecords,
+
+  loadFolders: async () => {
+    try {
+      const folders = await api.share.folders.list()
+      set({ folders })
+    } catch {}
+  },
+
+  loadTags: async () => {
+    try {
+      const tags = await api.share.tags.list()
+      set({ tags })
+    } catch {}
+  },
+
+  createFolder: async (name, parentId, color, icon) => {
+    try {
+      const folder = await api.share.folders.create({ name, parentId, color, icon })
+      set((s) => ({ folders: [...s.folders, folder] }))
+      return folder
+    } catch {
+      return null
+    }
+  },
+
+  patchFolder: async (id, patch) => {
+    try {
+      const folder = await api.share.folders.patch(id, patch)
+      set((s) => ({
+        folders: s.folders.map((f) => (f.id === id ? folder : f)),
+      }))
+      return folder
+    } catch {
+      return null
+    }
+  },
+
+  deleteFolder: async (id) => {
+    try {
+      await api.share.folders.remove(id)
+      set((s) => ({
+        folders: s.folders.filter((f) => f.id !== id),
+        folderId: s.folderId === id ? null : s.folderId,
+      }))
+      await get().loadShares()
+      return true
+    } catch {
+      return false
+    }
+  },
+
+  createTag: async (name, color) => {
+    try {
+      const tag = await api.share.tags.create({ name, color })
+      set((s) => ({
+        tags: s.tags.some((t) => t.id === tag.id) ? s.tags : [...s.tags, tag],
+      }))
+      return tag
+    } catch {
+      return null
+    }
+  },
+
+  patchTag: async (id, patch) => {
+    try {
+      const tag = await api.share.tags.patch(id, patch)
+      set((s) => ({
+        tags: s.tags.map((t) => (t.id === id ? tag : t)),
+      }))
+      return tag
+    } catch {
+      return null
+    }
+  },
+
+  deleteTag: async (id) => {
+    try {
+      const tag = get().tags.find((t) => t.id === id)
+      await api.share.tags.remove(id)
+      set((s) => ({
+        tags: s.tags.filter((t) => t.id !== id),
+        tag: tag && s.tag === tag.name ? null : s.tag,
+      }))
+      await get().loadShares()
+      return true
+    } catch {
+      return false
+    }
+  },
+
+  batchToggleGroup: async (type, target, enabled) => {
+    set({ batchBusy: true })
+    try {
+      await api.share.batchToggleGroup(type, target, enabled)
+      await get().loadShares()
+      return true
+    } catch {
+      return false
+    } finally {
+      set({ batchBusy: false })
+    }
+  },
 
   setRetentionSettings: (settings) => {
     set((state) => {
@@ -247,6 +390,8 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
         excludeSelf: excludeSelfReferrers,
         excludeOwner,
       })
+      void get().loadFolders()
+      void get().loadTags()
       if (epoch === loadEpoch) {
         set({
           shares: res.shares,

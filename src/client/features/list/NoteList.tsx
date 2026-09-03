@@ -1,5 +1,5 @@
 import { memo, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDownWideNarrow, Bookmark, CalendarDays, Check, CheckSquare2, ChevronLeft, ChevronRight, Columns2, Copy, FileCode, FileDown, FileText, FolderClosed, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Star, StarOff, Trash2, X, } from 'lucide-react';
+import { Archive, ArrowDownWideNarrow, Bookmark, CalendarDays, Check, CheckSquare2, ChevronLeft, ChevronRight, Columns2, Copy, FileCode, FileDown, FileText, FolderClosed, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Share2, Star, StarOff, Trash2, X, } from 'lucide-react';
 import type { DateRangeFilter, NoteSummary, SortKey, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { groupLabel } from '../../lib/time';
@@ -28,6 +28,7 @@ import { folderPathLabel, openFolderView } from '../../lib/folders';
 import { FolderPicker } from '../folders/FolderPicker';
 import { MoveToFolderSubmenu } from '../folders/MoveToFolderSubmenu';
 import { CreateFolderModal } from '../folders/CreateFolderModal';
+import { ShareEditModal } from '../share/ShareEditModal';
 import { TagPill } from '../../components/TagPill';
 import { removeTagFromNote } from '../tags/tagMutations';
 import { t, useLocale, type MessageKey } from "../../lib/i18n";
@@ -578,6 +579,7 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
     const menuButtonRef = useRef<HTMLButtonElement>(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const [createFolderOpen, setCreateFolderOpen] = useState(false);
+    const [shareModalOpen, setShareModalOpen] = useState(false);
     const handleSelectFolder = (folderId: string | null) => {
         const targetIds = selectedIds.includes(note.id) ? selectedIds : [note.id];
         void moveNotes(targetIds, folderId);
@@ -688,6 +690,12 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
                 onSelect: () => void setStarred(note.id, !note.isStarred),
             },
             { id: 'duplicate', label: t("notes.create_a_copy"), icon: <Copy size={13}/>, onSelect: () => void duplicateNote(note.id) },
+            {
+                id: 'share',
+                label: t("workspace.share"),
+                icon: <Share2 size={13}/>,
+                onSelect: () => setShareModalOpen(true),
+            },
             {
                 id: 'archive',
                 label: note.isArchived ? t("common.unarchive") : t("navigation.archive"),
@@ -870,6 +878,14 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
           onCreated={(folderId) => {
             handleSelectFolder(folderId);
           }}
+        />
+      )}
+      {shareModalOpen && (
+        <ShareEditModal
+          open={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          noteId={note.id}
+          noteTitle={note.title || t("common.untitled_note")}
         />
       )}
     </>);

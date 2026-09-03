@@ -17,6 +17,7 @@ export type PanelName =
   | 'graph'
   | 'versions'
   | 'share'
+  | 'share-hub'
   | 'templates'
   | 'info'
   | 'folders'
