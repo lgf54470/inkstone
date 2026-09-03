@@ -601,7 +601,7 @@ filesRoutes.get('/:id', async (c) => {
   const isPreview = c.req.query('preview') === '1' || c.req.query('inline') === '1'
   const isPreviewable =
     isInlineSafe(row.mime) ||
-    (isPreview && (row.mime === 'application/pdf' || row.mime.startsWith('text/') || row.mime === 'application/json'))
+    (isPreview && (row.mime === 'application/pdf' || row.mime.startsWith('text/') || row.mime === 'application/json' || row.mime.startsWith('audio/') || row.mime.startsWith('video/')))
 
   const headers = new Headers({
     'Content-Type': row.mime,
@@ -609,7 +609,7 @@ filesRoutes.get('/:id', async (c) => {
     'Content-Disposition': `${isPreviewable ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeContentDispositionFilename(row.filename)}`,
     'X-Content-Type-Options': 'nosniff',
   })
-  if (isPreview && !isInlineSafe(row.mime)) {
+  if (isPreview && !isInlineSafe(row.mime) && !row.mime.startsWith('audio/') && !row.mime.startsWith('video/')) {
     headers.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox")
   }
 
