@@ -1283,6 +1283,7 @@ function findTabSegments(state: {
     const markers: Array<{
         line: number;
         title: string;
+        selected: boolean;
     }> = [];
     let fence: {
         char: string;
@@ -1301,15 +1302,17 @@ function findTabSegments(state: {
         }
         if (fence)
             continue;
-        const tab = /^@tab[ \t]+(.+?)[ \t]*$/.exec(text);
-        if (tab)
-            markers.push({ line, title: stripBracketTitle(tab[1]!) || t("common.tabs") });
+        const tab = /^@tab(?::active|\+)?\b[ \t]+(.+?)[ \t]*$/.exec(text);
+        if (tab) {
+            const selected = /^@tab(?::active|\+)\b/.test(text);
+            markers.push({ line, title: stripBracketTitle(tab[1]!) || t("common.tabs"), selected });
+        }
     }
     return markers.map((marker, index) => ({
         title: marker.title,
         start: marker.line + 1,
         end: markers[index + 1]?.line ?? end,
-        selected: false,
+        selected: marker.selected,
     }));
 }
 function findDirectiveTabSegments(state: {
