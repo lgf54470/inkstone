@@ -61,10 +61,73 @@ export function executeJsExample(code: string): JsExecutionResult {
     }
     return { logs, result, durationMs };
   } catch (err: unknown) {
+    if (err instanceof EvalError && typeof document !== 'undefined') {
+      const fallback = executeWithScriptElement(code, fakeConsole);
+      const durationMs = Math.round(performance.now() - start);
+      return { logs, result: fallback.result, error: fallback.error, durationMs };
+    }
     const durationMs = Math.round(performance.now() - start);
     const error = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
     return { logs, error, durationMs };
   }
+}
+
+function executeWithScriptElement(
+  code: string,
+  fakeConsole: Record<string, unknown>,
+): { result?: string; error?: string } {
+  if (typeof document === 'undefined') {
+    return { error: 'Document is not available' };
+  }
+
+  const nonce =
+    document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce ||
+    document.querySelector<HTMLScriptElement>('script[nonce]')?.getAttribute('nonce') ||
+    '';
+
+  const runId = `__ink_run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  let capturedResult: string | undefined;
+  let capturedError: string | undefined;
+
+  (window as unknown as Record<string, unknown>)[runId] = {
+    console: fakeConsole,
+    onSuccess: (val: unknown) => {
+      if (val !== undefined) capturedResult = formatJsValue(val);
+    },
+    onError: (err: unknown) => {
+      capturedError = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    },
+  };
+
+  const script = document.createElement('script');
+  if (nonce) {
+    script.nonce = nonce;
+    script.setAttribute('nonce', nonce);
+  }
+  script.textContent = `(function() {
+  "use strict";
+  const runner = window['${runId}'];
+  if (!runner) return;
+  try {
+    const res = (function(console) {
+      ${code}
+    })(runner.console);
+    runner.onSuccess(res);
+  } catch (err) {
+    runner.onError(err);
+  }
+})();`;
+
+  try {
+    document.head.appendChild(script);
+  } catch (err) {
+    capturedError = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  } finally {
+    script.remove();
+    delete (window as unknown as Record<string, unknown>)[runId];
+  }
+
+  return { result: capturedResult, error: capturedError };
 }
 
 export function handleJsExampleSwitch(switchBtn: HTMLButtonElement): void {
