@@ -318,6 +318,7 @@ export const EN_US_MESSAGES = {
     "common.search_notes_or_run_a_command": "Search notes or run a command",
     "common.settings": "Settings",
     "common.strikethrough": "Strikethrough",
+    "common.table_of_contents": "Table of Contents",
     "common.tabs": "Tabs",
     "common.task_list": "Task list",
     "common.the_passwords_do_not_match": "The passwords do not match",

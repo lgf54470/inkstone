@@ -319,6 +319,7 @@ export const ZH_CN_MESSAGES = {
     "common.search_notes_or_run_a_command": "搜索笔记、执行命令",
     "common.settings": "设置",
     "common.strikethrough": "删除线",
+    "common.table_of_contents": "目录",
     "common.tabs": "标签页",
     "common.task_list": "任务列表",
     "common.the_passwords_do_not_match": "两次输入的密码不一致",

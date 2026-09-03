@@ -33,6 +33,7 @@ import {
   List,
   ListOrdered,
   ListTodo,
+  ListTree,
   Maximize2,
   Minus,
   Network,
@@ -92,6 +93,7 @@ import {
   insertNoteTemplate,
   insertRunnableJsBlock,
   insertTable,
+  insertTableOfContents,
   insertTabs,
   setHeading,
   toggleBold,
@@ -1343,6 +1345,7 @@ export function EditorContextMenu({
                 { id: 'divider', label: t('workspace.divider'), icon: <Minus size={13} />, onSelect: () => runStateCommand(insertHorizontalRule) },
                 { id: 'details', label: t('workspace.details_block'), icon: <ChevronDown size={13} />, onSelect: () => runStateCommand(insertDetails) },
                 { id: 'tabs', label: t('common.tabs'), icon: <Columns2 size={13} />, onSelect: () => runStateCommand(insertTabs) },
+                { id: 'toc', label: t('common.table_of_contents'), icon: <ListTree size={13} />, onSelect: () => runStateCommand(insertTableOfContents) },
                 { id: 'frontmatter', label: 'Front Matter', icon: <FileText size={13} />, onSelect: () => runStateCommand(insertFrontMatter) },
                 { id: 'template', label: t('workspace.insert_note_template'), icon: <Calendar size={13} />, onSelect: () => runStateCommand(insertNoteTemplate) },
               ]}

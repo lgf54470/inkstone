@@ -4,7 +4,7 @@ import { Blocks, Bold, Braces, ChevronDown, Code, Heading, Highlighter, Image as
 import { IconButton } from '../../components/primitives';
 import { Menu, Tooltip, type MenuItem } from '../../components/overlay';
 import { cn } from '../../lib/cn';
-import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDetails, insertDiagramCode, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTabs, insertTag, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleSubscript, toggleSuperscript, toggleTaskList, toggleUnderline, toggleWikiLink, } from '../../editor/commands';
+import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDetails, insertDiagramCode, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTag, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleSubscript, toggleSuperscript, toggleTaskList, toggleUnderline, toggleWikiLink, } from '../../editor/commands';
 import { SubmenuList } from './EditorContextMenu';
 import { t } from "../../lib/i18n";
 export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobile = false, }: {
@@ -90,6 +90,7 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
         { id: 'callout', label: t("workspace.callout"), onSelect: run(insertCallout) },
         { id: 'details', label: t("workspace.details_block"), onSelect: run(insertDetails) },
         { id: 'tabs', label: t("common.tabs"), onSelect: run(insertTabs) },
+        { id: 'toc', label: t("common.table_of_contents"), onSelect: run(insertTableOfContents) },
         { id: 'front-matter', label: 'Front Matter', onSelect: run(insertFrontMatter), separatorBefore: true },
         { id: 'note-template', label: t("workspace.insert_note_template"), onSelect: run(insertNoteTemplate), separatorBefore: true },
     ];

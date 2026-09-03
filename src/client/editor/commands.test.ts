@@ -1,6 +1,6 @@
 import { EditorSelection, EditorState } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
-import { completeCodeFenceOnEnter, insertChartJs, insertMermaid, toggleSubscript, toggleSuperscript, toggleUnderline } from './commands'
+import { completeCodeFenceOnEnter, insertChartJs, insertMermaid, insertTableOfContents, toggleSubscript, toggleSuperscript, toggleUnderline } from './commands'
 
 function runFenceCompletion(doc: string, cursor = doc.length) {
   const state = EditorState.create({ doc, selection: EditorSelection.cursor(cursor) })
@@ -62,6 +62,13 @@ describe('toggleSubscript and toggleSuperscript', () => {
     let next = state
     toggleUnderline({ state, dispatch: (tr) => { next = tr.state } })
     expect(next.doc.toString()).toBe('++Important++ text')
+  })
+
+  it('inserts table of contents block', () => {
+    const state = EditorState.create({ doc: '', selection: EditorSelection.cursor(0) })
+    let next = state
+    insertTableOfContents({ state, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toBe('[TOC]\n\n')
   })
 })
 

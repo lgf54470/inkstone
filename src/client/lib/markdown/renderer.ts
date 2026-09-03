@@ -263,6 +263,34 @@ md.renderer.rules.math_block = (tokens, index) => {
     const line = token.map ? ` data-line="${token.map[0]}"` : '';
     return `<div class="math-block"${line} data-math="${escapeAttr(encodeDataValue(token.content))}"></div>`;
 };
+md.block.ruler.before('paragraph', 'toc', (state, startLine, _endLine, silent) => {
+    const pos = state.bMarks[startLine]! + state.tShift[startLine]!;
+    const max = state.eMarks[startLine]!;
+    const line = state.src.slice(pos, max).trim();
+    if (!/^\[(?:\[\s*(?:toc|TOC)\s*\]\]|(?:toc|TOC))\]$/.test(line)) {
+        return false;
+    }
+    if (silent)
+        return true;
+    state.line = startLine + 1;
+    const token = state.push('toc', 'nav', 0);
+    token.map = [startLine, startLine + 1];
+    return true;
+});
+md.renderer.rules.toc = (tokens, index, _options, env) => {
+    const rEnv = renderEnv(env);
+    const headings = rEnv.headings ?? [];
+    const line = tokens[index]?.map?.[0];
+    const dataLine = line !== undefined ? ` data-line="${line}"` : '';
+    if (!headings.length) {
+        return `<nav class="table-of-contents empty"${dataLine}><div class="toc-title">${t('common.table_of_contents')}</div></nav>`;
+    }
+    const items = headings.map((h) => {
+        const indentClass = `toc-level-${h.level}`;
+        return `<li class="toc-item ${indentClass}"><a href="#${escapeAttr(h.slug)}" class="toc-link">${escapeHtml(h.text)}</a></li>`;
+    }).join('');
+    return `<nav class="table-of-contents"${dataLine}><div class="toc-title">${t('common.table_of_contents')}</div><ul class="toc-list">${items}</ul></nav>`;
+};
 const WIKI_RE = /^\[\[([^\[\]\n]{1,400})\]\]/;
 const EMBED_RE = /^!\[\[([^\[\]\n]{1,400})\]\]/;
 const BLOCK_REF_RE = /^\(\(([A-Za-z0-9][A-Za-z0-9_-]{0,63})\)\)/;
@@ -825,7 +853,7 @@ const PURIFY_CONFIG = {
         'a', 'abbr', 'aside', 'b', 'blockquote', 'br', 'button', 'code',
         'dd', 'del', 'details', 'div', 'dl', 'dt', 'em', 'figcaption',
         'figure', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img',
-        'ins', 'kbd', 'li', 'mark', 'ol', 'p', 'pre', 'q', 's', 'section',
+        'ins', 'kbd', 'li', 'mark', 'nav', 'ol', 'p', 'pre', 'q', 's', 'section',
         'small', 'span', 'strong', 'sub', 'summary', 'sup', 'table',
         'tbody', 'td', 'th', 'thead', 'tr', 'u', 'ul',
     ],

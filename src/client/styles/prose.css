@@ -333,6 +333,46 @@
   font-weight: 600;
 }
 .ink-prose .tab-panel { padding: 0.8em 0.9em 0.15em; }
+
+.ink-prose .table-of-contents {
+  margin: 1.1em 0;
+  padding: 0.75em 1em;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-inset);
+}
+.ink-prose .table-of-contents .toc-title {
+  font-size: 0.82em;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  margin-bottom: 0.4em;
+}
+.ink-prose .table-of-contents .toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ink-prose .table-of-contents .toc-item {
+  margin: 0.22em 0;
+  line-height: 1.45;
+}
+.ink-prose .table-of-contents .toc-level-1 { padding-inline-start: 0; font-weight: 550; }
+.ink-prose .table-of-contents .toc-level-2 { padding-inline-start: 1em; }
+.ink-prose .table-of-contents .toc-level-3 { padding-inline-start: 2em; }
+.ink-prose .table-of-contents .toc-level-4 { padding-inline-start: 3em; }
+.ink-prose .table-of-contents .toc-level-5 { padding-inline-start: 4em; }
+.ink-prose .table-of-contents .toc-level-6 { padding-inline-start: 5em; }
+.ink-prose .table-of-contents .toc-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.ink-prose .table-of-contents .toc-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
 .ink-prose .tab-panel[hidden] { display: none; }
 
 .ink-prose .file-card {

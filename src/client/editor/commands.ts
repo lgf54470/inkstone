@@ -333,6 +333,18 @@ export const insertFootnote: StateCommand = ({ state, dispatch }) => {
     return true;
 };
 
+export const insertTableOfContents: StateCommand = ({ state, dispatch }) => {
+    const range = state.selection.main;
+    const insert = '[TOC]\n\n';
+    dispatch(state.update({
+        changes: { from: range.from, to: range.to, insert },
+        selection: EditorSelection.cursor(range.from + insert.length),
+        scrollIntoView: true,
+        userEvent: 'input.insert',
+    }));
+    return true;
+};
+
 import { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES } from './diagram-templates';
 export { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES };
 export const insertMermaid: StateCommand = insertDiagramCode('mermaid', MERMAID_TEMPLATES[0]!.code);

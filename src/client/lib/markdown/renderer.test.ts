@@ -240,4 +240,18 @@ describe('renderMarkdown extension golden output', () => {
     const fragment = parse(rendered.html)
     expect(fragment.querySelector('ins')?.textContent).toBe('inserted text')
   })
+
+  it('renders table of contents for [TOC] block', () => {
+    const markdown = '[TOC]\n\n# Section One\n\n## Sub Section'
+    const rendered = renderMarkdown(markdown)
+    const fragment = parse(rendered.html)
+    const toc = fragment.querySelector('nav.table-of-contents')
+    expect(toc).not.toBeNull()
+    const links = fragment.querySelectorAll('nav.table-of-contents a.toc-link')
+    expect(links.length).toBe(2)
+    expect(links[0]?.textContent).toBe('Section One')
+    expect(links[0]?.getAttribute('href')).toBe('#sectionone')
+    expect(links[1]?.textContent).toBe('Sub Section')
+    expect(links[1]?.getAttribute('href')).toBe('#subsection')
+  })
 })
