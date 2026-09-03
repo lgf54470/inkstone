@@ -735,6 +735,67 @@
   text-align: center;
 }
 
+.ink-prose th.is-selected-cell,
+.ink-prose td.is-selected-cell {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+}
+
+.ink-prose th.is-editing-cell,
+.ink-prose td.is-editing-cell {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--bg-base);
+  caret-color: var(--accent);
+  cursor: text;
+}
+
+.ink-prose .table-floating-bar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--bg-inset) 85%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+  z-index: 10;
+}
+
+.ink-prose .table-wrap:hover .table-floating-bar,
+.ink-prose .table-wrap:focus-within .table-floating-bar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ink-prose .table-floating-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: var(--r-xs);
+  font-size: 11px;
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.ink-prose .table-floating-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
 
 .ink-prose a:not(.heading-anchor):not(.wikilink) {
   color: var(--accent);

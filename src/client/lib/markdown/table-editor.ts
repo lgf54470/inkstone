@@ -357,3 +357,124 @@ export function tableToCsv(table: ParsedTable): string {
   }
   return lines.join('\n');
 }
+
+export function updateTableCell(
+  table: ParsedTable,
+  rowIndex: number,
+  colIndex: number,
+  newContent: string,
+): ParsedTable {
+  if (colIndex < 0 || colIndex >= table.columnCount) return table;
+  const safeContent = newContent.replace(/\|/g, '\\|');
+
+  if (rowIndex === -1) {
+    const headerRow = [...table.headerRow];
+    headerRow[colIndex] = safeContent;
+    return {
+      ...table,
+      headerRow,
+    };
+  }
+
+  if (rowIndex >= 0 && rowIndex < table.rows.length) {
+    const rows = table.rows.map((r, rIdx) => {
+      if (rIdx !== rowIndex) return r;
+      const newRow = [...r];
+      newRow[colIndex] = safeContent;
+      return newRow;
+    });
+    return {
+      ...table,
+      rows,
+    };
+  }
+
+  return table;
+}
+
+export function sortTableRowByColumn(
+  table: ParsedTable,
+  colIndex: number,
+  direction: 'asc' | 'desc',
+): ParsedTable {
+  if (colIndex < 0 || colIndex >= table.columnCount) return table;
+
+  const sortedRows = [...table.rows].sort((rowA, rowB) => {
+    const valA = (rowA[colIndex] ?? '').trim();
+    const valB = (rowB[colIndex] ?? '').trim();
+
+    const numA = Number(valA);
+    const numB = Number(valB);
+    const isNumA = valA !== '' && !Number.isNaN(numA);
+    const isNumB = valB !== '' && !Number.isNaN(numB);
+
+    let cmp = 0;
+    if (isNumA && isNumB) {
+      cmp = numA - numB;
+    } else {
+      cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+    }
+
+    return direction === 'asc' ? cmp : -cmp;
+  });
+
+  return {
+    ...table,
+    rows: sortedRows,
+  };
+}
+
+export function duplicateTableRow(
+  table: ParsedTable,
+  rowIndex: number,
+): ParsedTable {
+  if (rowIndex < 0 || rowIndex >= table.rows.length) return table;
+  const sourceRow = table.rows[rowIndex]!;
+  const newRow = [...sourceRow];
+  const rows = [...table.rows];
+  rows.splice(rowIndex + 1, 0, newRow);
+
+  return {
+    ...table,
+    rows,
+    endLine: table.endLine + 1,
+  };
+}
+
+export function clearTableCell(
+  table: ParsedTable,
+  rowIndex: number,
+  colIndex: number,
+): ParsedTable {
+  return updateTableCell(table, rowIndex, colIndex, '');
+}
+
+export function clearTableRow(
+  table: ParsedTable,
+  rowIndex: number,
+): ParsedTable {
+  if (rowIndex === -1) {
+    return {
+      ...table,
+      headerRow: new Array(table.columnCount).fill(''),
+    };
+  }
+  if (rowIndex >= 0 && rowIndex < table.rows.length) {
+    const rows = table.rows.map((r, rIdx) =>
+      rIdx === rowIndex ? new Array(table.columnCount).fill('') : r,
+    );
+    return {
+      ...table,
+      rows,
+    };
+  }
+  return table;
+}
+
+export function deleteEntireTableInText(content: string, sourceLine: number): string {
+  const lines = content.split('\n');
+  const table = parseMarkdownTable(lines, sourceLine);
+  if (!table) return content;
+  lines.splice(table.startLine, table.endLine - table.startLine + 1);
+  return lines.join('\n');
+}

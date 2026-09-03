@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   deleteTableColumn,
   deleteTableRow,
+  duplicateTableRow,
+  clearTableCell,
+  clearTableRow,
   findColumnIndexAtOffset,
   formatMarkdownTable,
   insertTableColumn,
@@ -9,8 +12,10 @@ import {
   isDelimiterRow,
   parseMarkdownTable,
   setColumnAlignment,
+  sortTableRowByColumn,
   splitTableRow,
   tableToCsv,
+  updateTableCell,
 } from './table-editor';
 
 describe('splitTableRow and delimiter row detection', () => {
@@ -107,5 +112,38 @@ describe('parseMarkdownTable and modifications', () => {
     const table = parseMarkdownTable(sampleDoc, 4, 3)!;
     const csv = tableToCsv(table);
     expect(csv).toBe('Name,Age,City\nAlice,24,Paris\nBob,30,London');
+  });
+
+  it('updates table cells and escapes pipe characters', () => {
+    const table = parseMarkdownTable(sampleDoc, 4, 3)!;
+    const updatedCell = updateTableCell(table, 0, 0, 'Alice | Smith');
+    expect(updatedCell.rows[0]![0]).toBe('Alice \\| Smith');
+
+    const updatedHeader = updateTableCell(table, -1, 1, 'Years Old');
+    expect(updatedHeader.headerRow[1]).toBe('Years Old');
+  });
+
+  it('sorts table rows numerically and alphabetically', () => {
+    const table = parseMarkdownTable(sampleDoc, 4, 3)!;
+    const sortedDesc = sortTableRowByColumn(table, 1, 'desc');
+    expect(sortedDesc.rows[0]![0]).toBe('Bob');
+    expect(sortedDesc.rows[1]![0]).toBe('Alice');
+
+    const sortedAsc = sortTableRowByColumn(table, 1, 'asc');
+    expect(sortedAsc.rows[0]![0]).toBe('Alice');
+    expect(sortedAsc.rows[1]![0]).toBe('Bob');
+  });
+
+  it('duplicates and clears rows and cells', () => {
+    const table = parseMarkdownTable(sampleDoc, 4, 3)!;
+    const duplicated = duplicateTableRow(table, 0);
+    expect(duplicated.rows).toHaveLength(3);
+    expect(duplicated.rows[1]).toEqual(['Alice', '24', 'Paris']);
+
+    const clearedCell = clearTableCell(table, 0, 1);
+    expect(clearedCell.rows[0]![1]).toBe('');
+
+    const clearedRow = clearTableRow(table, 0);
+    expect(clearedRow.rows[0]).toEqual(['', '', '']);
   });
 });

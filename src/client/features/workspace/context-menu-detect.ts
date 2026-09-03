@@ -277,8 +277,10 @@ export function detectPreviewContext(target: HTMLElement): PreviewContextData {
   }
 
   const getSourceLine = (el: HTMLElement | null): number | undefined => {
-    const nearest = el?.closest<HTMLElement>('[data-source-line]');
-    return nearest?.dataset.sourceLine ? parseInt(nearest.dataset.sourceLine, 10) : undefined;
+    const nearest = el?.closest<HTMLElement>('[data-source-line], [data-line]');
+    if (!nearest) return undefined;
+    const raw = nearest.dataset.sourceLine ?? nearest.dataset.line;
+    return raw ? parseInt(raw, 10) : undefined;
   };
 
   const tableCell = target.closest<HTMLTableCellElement>('td, th');

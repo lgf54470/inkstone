@@ -35,6 +35,12 @@ import { WikiLinkHoverCard, type WikiLinkHoverCardState } from './WikiLinkHoverC
 import { useLinkHover } from './link-hover'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { usePinnedWindows } from '../../store/pinned-windows'
+import {
+  enhanceTablesInRoot,
+  executeTableFloatingAction,
+  handleTableCellSelection,
+  startTableCellEditing,
+} from './table-interactive'
 
 export interface PreviewProps {
   content: string
@@ -191,6 +197,7 @@ export const Preview = memo(function Preview({
           ? preview.codeBlockCollapseLines
           : 0,
       })
+      enhanceTablesInRoot(staging)
       if (cancelled || revision !== preparationRef.current) return
 
       restorePreviewInteractionState(staging, capturePreviewInteractionState(hostRef.current))
@@ -328,6 +335,23 @@ export const Preview = memo(function Preview({
   const onClick = (event: React.MouseEvent) => {
     const target = event.target as HTMLElement
     linkHover.hideNow()
+
+    const tableActionBtn = target.closest<HTMLButtonElement>('[data-table-action]')
+    if (tableActionBtn && sourceNoteId) {
+      event.preventDefault()
+      executeTableFloatingAction(
+        tableActionBtn.dataset.tableAction!,
+        tableActionBtn,
+        content,
+        (next) => editContent(sourceNoteId, next),
+      )
+      return
+    }
+
+    const tableCell = target.closest<HTMLTableCellElement>('td, th')
+    if (tableCell && hostRef.current) {
+      handleTableCellSelection(tableCell, hostRef.current)
+    }
 
     const mermaidRetry = target.closest<HTMLElement>('[data-mermaid-retry]')
     if (mermaidRetry) {
@@ -488,12 +512,29 @@ export const Preview = memo(function Preview({
       moveMarkdownTabFocus(tab, event.key)
       return
     }
+    if (event.key === 'Enter') {
+      const selectedCell = hostRef.current?.querySelector<HTMLTableCellElement>('.is-selected-cell')
+      if (selectedCell && !selectedCell.classList.contains('is-editing-cell') && sourceNoteId) {
+        event.preventDefault()
+        startTableCellEditing(selectedCell, content, (next) => editContent(sourceNoteId, next))
+        return
+      }
+    }
+
     const interactiveLink = (event.target as HTMLElement).closest<HTMLElement>(
       '[data-wikilink], [data-block-ref], [data-tag]',
     )
     if (interactiveLink && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault()
       interactiveLink.click()
+    }
+  }
+
+  const onDoubleClick = (event: React.MouseEvent) => {
+    const target = event.target as HTMLElement
+    const tableCell = target.closest<HTMLTableCellElement>('td, th')
+    if (tableCell && sourceNoteId) {
+      startTableCellEditing(tableCell, content, (next) => editContent(sourceNoteId, next))
     }
   }
 
@@ -511,6 +552,7 @@ export const Preview = memo(function Preview({
       <div
         ref={hostRef}
         onClick={onClick}
+        onDoubleClick={onDoubleClick}
         onKeyDown={onKeyDown}
         onMouseMove={linkHover.handleMouseMove}
         onMouseLeave={onMouseLeave}

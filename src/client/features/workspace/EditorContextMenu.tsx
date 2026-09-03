@@ -12,8 +12,13 @@ import {
   CheckSquare,
   ChevronDown,
   Columns2,
+  ArrowDownUp,
+  ArrowUpAZ,
+  ArrowDownAZ,
   Copy,
+  CopyPlus,
   Download,
+  Eraser,
   ExternalLink,
   FileCode,
   FileDown,
@@ -52,13 +57,18 @@ import { useNotes } from '../../store/notes';
 import { findNoteByTitle } from '../../store/notes/selectors';
 import { preferredScrollBehavior } from '../../lib/motion';
 import {
+  clearTableCell,
+  clearTableRow,
+  deleteEntireTableInText,
   deleteTableColumn,
   deleteTableRow,
+  duplicateTableRow,
   formatMarkdownTable,
   insertTableColumn,
   insertTableRow,
   parseMarkdownTable,
   setColumnAlignment,
+  sortTableRowByColumn,
   tableToCsv,
   type ParsedTable,
 } from '../../lib/markdown/table-editor';
@@ -360,6 +370,13 @@ export function EditorContextMenu({
           onSelect: () => replaceTableInEditor(table, insertTableRow(table, table.cursorRowIndex, 'below')),
         },
         {
+          id: 'duplicate-row',
+          label: t('contextmenu.table_duplicate_row'),
+          icon: <CopyPlus size={14} />,
+          disabled: table.cursorRowIndex < 0,
+          onSelect: () => replaceTableInEditor(table, duplicateTableRow(table, table.cursorRowIndex)),
+        },
+        {
           id: 'delete-row',
           label: t('contextmenu.table_delete_row'),
           icon: <Trash2 size={14} />,
@@ -427,10 +444,54 @@ export function EditorContextMenu({
           ),
         },
         {
+          id: 'sort-sub',
+          label: t('contextmenu.table_sort'),
+          icon: <ArrowDownUp size={14} />,
+          submenu: ({ closeMenu }: { closeMenu: () => void }) => (
+            <SubmenuList
+              closeMenu={closeMenu}
+              items={[
+                {
+                  id: 'sort-asc',
+                  label: t('contextmenu.table_sort_asc'),
+                  icon: <ArrowUpAZ size={13} />,
+                  onSelect: () => replaceTableInEditor(table, sortTableRowByColumn(table, table.cursorColIndex, 'asc')),
+                },
+                {
+                  id: 'sort-desc',
+                  label: t('contextmenu.table_sort_desc'),
+                  icon: <ArrowDownAZ size={13} />,
+                  onSelect: () => replaceTableInEditor(table, sortTableRowByColumn(table, table.cursorColIndex, 'desc')),
+                },
+              ]}
+            />
+          ),
+        },
+        {
+          id: 'clear-cell',
+          label: t('contextmenu.table_clear_cell'),
+          icon: <Eraser size={14} />,
+          separatorBefore: true,
+          onSelect: () => replaceTableInEditor(table, clearTableCell(table, table.cursorRowIndex, table.cursorColIndex)),
+        },
+        {
+          id: 'clear-row',
+          label: t('contextmenu.table_clear_row'),
+          icon: <Eraser size={14} />,
+          onSelect: () => replaceTableInEditor(table, clearTableRow(table, table.cursorRowIndex)),
+        },
+        {
           id: 'format-table',
           label: t('contextmenu.table_format'),
           icon: <FileSpreadsheet size={14} />,
+          separatorBefore: true,
           onSelect: () => replaceTableInEditor(table, { ...table }),
+        },
+        {
+          id: 'copy-markdown',
+          label: t('contextmenu.table_copy_markdown'),
+          icon: <Copy size={14} />,
+          onSelect: () => handleCopy(formatMarkdownTable(table).join('\n')),
         },
         {
           id: 'copy-csv',
@@ -458,6 +519,7 @@ export function EditorContextMenu({
     if (previewContext?.type === 'table' && previewContext.table) {
       const pTable = previewContext.table;
       const sLine = pTable.sourceLine ?? 0;
+      const dataRowIndex = pTable.rowIndex > 0 ? pTable.rowIndex - 1 : 0;
       return [
         {
           id: 'jump-to-editor',
@@ -470,19 +532,27 @@ export function EditorContextMenu({
           label: t('contextmenu.table_insert_row_above'),
           icon: <Rows size={14} />,
           separatorBefore: true,
-          onSelect: () => modifyTableInContent(sLine, (tbl) => insertTableRow(tbl, pTable.rowIndex - 1, 'above')),
+          onSelect: () => modifyTableInContent(sLine, (tbl) => insertTableRow(tbl, dataRowIndex, 'above')),
         },
         {
           id: 'insert-row-below',
           label: t('contextmenu.table_insert_row_below'),
           icon: <Rows size={14} />,
-          onSelect: () => modifyTableInContent(sLine, (tbl) => insertTableRow(tbl, pTable.rowIndex - 1, 'below')),
+          onSelect: () => modifyTableInContent(sLine, (tbl) => insertTableRow(tbl, dataRowIndex, 'below')),
+        },
+        {
+          id: 'duplicate-row',
+          label: t('contextmenu.table_duplicate_row'),
+          icon: <CopyPlus size={14} />,
+          disabled: pTable.rowIndex === 0,
+          onSelect: () => modifyTableInContent(sLine, (tbl) => duplicateTableRow(tbl, dataRowIndex)),
         },
         {
           id: 'delete-row',
           label: t('contextmenu.table_delete_row'),
           icon: <Trash2 size={14} />,
-          onSelect: () => modifyTableInContent(sLine, (tbl) => deleteTableRow(tbl, pTable.rowIndex - 1)),
+          disabled: pTable.rowIndex === 0,
+          onSelect: () => modifyTableInContent(sLine, (tbl) => deleteTableRow(tbl, dataRowIndex)),
         },
         {
           id: 'insert-col-left',
@@ -504,14 +574,114 @@ export function EditorContextMenu({
           onSelect: () => modifyTableInContent(sLine, (tbl) => deleteTableColumn(tbl, pTable.colIndex)),
         },
         {
-          id: 'copy-csv',
+          id: 'align-sub-preview',
+          label: t('contextmenu.table_align'),
+          icon: <AlignCenter size={14} />,
+          separatorBefore: true,
+          submenu: ({ closeMenu }: { closeMenu: () => void }) => (
+            <SubmenuList
+              closeMenu={closeMenu}
+              items={[
+                {
+                  id: 'align-left-prev',
+                  label: t('contextmenu.table_align_left'),
+                  icon: <AlignLeft size={13} />,
+                  onSelect: () => modifyTableInContent(sLine, (tbl) => setColumnAlignment(tbl, pTable.colIndex, 'left')),
+                },
+                {
+                  id: 'align-center-prev',
+                  label: t('contextmenu.table_align_center'),
+                  icon: <AlignCenter size={13} />,
+                  onSelect: () => modifyTableInContent(sLine, (tbl) => setColumnAlignment(tbl, pTable.colIndex, 'center')),
+                },
+                {
+                  id: 'align-right-prev',
+                  label: t('contextmenu.table_align_right'),
+                  icon: <AlignRight size={13} />,
+                  onSelect: () => modifyTableInContent(sLine, (tbl) => setColumnAlignment(tbl, pTable.colIndex, 'right')),
+                },
+                {
+                  id: 'align-default-prev',
+                  label: t('contextmenu.table_align_default'),
+                  icon: <Minus size={13} />,
+                  onSelect: () => modifyTableInContent(sLine, (tbl) => setColumnAlignment(tbl, pTable.colIndex, 'default')),
+                },
+              ]}
+            />
+          ),
+        },
+        {
+          id: 'sort-sub-preview',
+          label: t('contextmenu.table_sort'),
+          icon: <ArrowDownUp size={14} />,
+          submenu: ({ closeMenu }: { closeMenu: () => void }) => (
+            <SubmenuList
+              closeMenu={closeMenu}
+              items={[
+                {
+                  id: 'sort-asc-prev',
+                  label: t('contextmenu.table_sort_asc'),
+                  icon: <ArrowUpAZ size={13} />,
+                  onSelect: () => modifyTableInContent(sLine, (tbl) => sortTableRowByColumn(tbl, pTable.colIndex, 'asc')),
+                },
+                {
+                  id: 'sort-desc-prev',
+                  label: t('contextmenu.table_sort_desc'),
+                  icon: <ArrowDownAZ size={13} />,
+                  onSelect: () => modifyTableInContent(sLine, (tbl) => sortTableRowByColumn(tbl, pTable.colIndex, 'desc')),
+                },
+              ]}
+            />
+          ),
+        },
+        {
+          id: 'clear-cell-prev',
+          label: t('contextmenu.table_clear_cell'),
+          icon: <Eraser size={14} />,
+          separatorBefore: true,
+          onSelect: () => modifyTableInContent(sLine, (tbl) => clearTableCell(tbl, pTable.rowIndex === 0 ? -1 : dataRowIndex, pTable.colIndex)),
+        },
+        {
+          id: 'clear-row-prev',
+          label: t('contextmenu.table_clear_row'),
+          icon: <Eraser size={14} />,
+          onSelect: () => modifyTableInContent(sLine, (tbl) => clearTableRow(tbl, pTable.rowIndex === 0 ? -1 : dataRowIndex)),
+        },
+        {
+          id: 'format-table-prev',
+          label: t('contextmenu.table_format'),
+          icon: <FileSpreadsheet size={14} />,
+          separatorBefore: true,
+          onSelect: () => modifyTableInContent(sLine, (tbl) => ({ ...tbl })),
+        },
+        {
+          id: 'copy-markdown-prev',
+          label: t('contextmenu.table_copy_markdown'),
+          icon: <Copy size={14} />,
+          onSelect: () => {
+            const lines = content.split('\n');
+            const tbl = parseMarkdownTable(lines, sLine);
+            if (tbl) handleCopy(formatMarkdownTable(tbl).join('\n'));
+          },
+        },
+        {
+          id: 'copy-csv-prev',
           label: t('contextmenu.table_copy_csv'),
           icon: <Copy size={14} />,
-          separatorBefore: true,
           onSelect: () => {
             const lines = content.split('\n');
             const tbl = parseMarkdownTable(lines, sLine);
             if (tbl) handleCopy(tableToCsv(tbl));
+          },
+        },
+        {
+          id: 'delete-table-prev',
+          label: t('contextmenu.table_delete'),
+          icon: <Trash2 size={14} />,
+          tone: 'danger',
+          separatorBefore: true,
+          onSelect: () => {
+            onEditContent(deleteEntireTableInText(content, sLine));
           },
         },
       ];
