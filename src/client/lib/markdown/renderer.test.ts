@@ -254,4 +254,13 @@ describe('renderMarkdown extension golden output', () => {
     expect(links[1]?.textContent).toBe('Sub Section')
     expect(links[1]?.getAttribute('href')).toBe('#subsection')
   })
+
+  it('renders emoji shortcodes while preserving ascii emoticons', () => {
+    const markdown = ':tada: :fire: :rocket: :)'
+    const rendered = renderMarkdown(markdown)
+    expect(rendered.html).toContain('🎉')
+    expect(rendered.html).toContain('🔥')
+    expect(rendered.html).toContain('🚀')
+    expect(rendered.html).toContain(':)')
+  })
 })

@@ -8,6 +8,7 @@ import mark from 'markdown-it-mark';
 import sub from 'markdown-it-sub';
 import sup from 'markdown-it-sup';
 import ins from 'markdown-it-ins';
+import { full as emoji } from 'markdown-it-emoji';
 import DOMPurify from 'dompurify';
 import { parseFrontMatter, slugifyHeading } from '@shared/markdown-utils';
 import { getLocale, t } from '../i18n';
@@ -71,6 +72,7 @@ md.use(taskLists, { enabled: true, label: false })
     .use(sub)
     .use(sup)
     .use(ins)
+    .use(emoji, { shortcuts: {} })
     .use(anchor, {
     slugify: slugifyHeading,
 
