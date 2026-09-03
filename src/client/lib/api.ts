@@ -30,7 +30,12 @@ import type {
   PublicNote,
   SearchResponse,
   SessionInfo,
+  ShareGlobalAnalytics,
   ShareInfo,
+  ShareListResponse,
+  ShareNoteAnalytics,
+  ShareTimelineRange,
+  ShareVisitsResponse,
   SyncResponse,
   Tag,
   TestConnectionResult,
@@ -589,10 +594,82 @@ export const api = {
   },
 
   share: {
+    list: (
+      params?: {
+        folderId?: string | null
+        tag?: string | null
+        status?: string
+        search?: string
+        sort?: string
+        excludeBots?: boolean
+        excludeSelf?: boolean
+        excludeOwner?: boolean
+      },
+      signal?: AbortSignal,
+    ) => request<ShareListResponse>(`/api/share${toQuery((params ?? {}) as Record<string, string | number | boolean | undefined>)}`, { signal }),
+    globalAnalytics: (
+      range?: ShareTimelineRange,
+      filters?: { excludeBots?: boolean; excludeSelf?: boolean; excludeOwner?: boolean },
+      signal?: AbortSignal,
+    ) =>
+      request<ShareGlobalAnalytics>(
+        `/api/share/analytics/global${toQuery({
+          range,
+          excludeBots: filters?.excludeBots,
+          excludeSelf: filters?.excludeSelf,
+          excludeOwner: filters?.excludeOwner,
+        })}`,
+        { signal },
+      ),
+    noteAnalytics: (
+      noteId: string,
+      range?: ShareTimelineRange,
+      filters?: { excludeBots?: boolean; excludeSelf?: boolean; excludeOwner?: boolean },
+      signal?: AbortSignal,
+    ) =>
+      request<ShareNoteAnalytics>(
+        `/api/share/analytics/note/${noteId}${toQuery({
+          range,
+          excludeBots: filters?.excludeBots,
+          excludeSelf: filters?.excludeSelf,
+          excludeOwner: filters?.excludeOwner,
+        })}`,
+        { signal },
+      ),
+    checkSlug: (slug: string, currentNoteId?: string) =>
+      request<{ available: boolean; reason?: string }>(`/api/share/check-slug${toQuery({ slug, currentNoteId })}`),
+    visits: (
+      params?: {
+        page?: number
+        limit?: number
+        noteId?: string
+        filter?: string
+        search?: string
+      },
+      signal?: AbortSignal,
+    ) => request<ShareVisitsResponse>(`/api/share/visits${toQuery(params ?? {})}`, { signal }),
+    cleanVisits: (type: 'bots' | 'older_than' | 'all', days?: number) =>
+      request<{ ok: true; deleted: number }>(`/api/share/visits${toQuery({ type, days })}`, { method: 'DELETE' }),
+    batch: (
+      action: 'enable' | 'disable' | 'revoke' | 'expire',
+      noteIds: string[],
+      expiresIn?: number | null,
+    ) => request<{ ok: true; count: number }>('/api/share/batch', { method: 'POST', body: { action, noteIds, expiresIn } }),
+    batchFolder: (folderId: string, enabled: boolean) =>
+      request<{ ok: true; count: number }>('/api/share/batch-folder', { method: 'POST', body: { folderId, enabled } }),
+    batchTag: (tag: string, enabled: boolean) =>
+      request<{ ok: true; count: number }>('/api/share/batch-tag', { method: 'POST', body: { tag, enabled } }),
     get: (noteId: string, signal?: AbortSignal) =>
       request<{ share: ShareInfo | null }>(`/api/share/${noteId}`, { signal }),
-    create: (noteId: string, body: { password?: string | null; expiresIn?: number | null }) =>
-      request<{ share: ShareInfo }>(`/api/share/${noteId}`, { method: 'POST', body }),
+    create: (
+      noteId: string,
+      body: {
+        password?: string | null
+        expiresIn?: number | null
+        customSlug?: string
+        isEnabled?: boolean
+      },
+    ) => request<{ share: ShareInfo }>(`/api/share/${noteId}`, { method: 'POST', body }),
     remove: (noteId: string) => request<{ ok: true }>(`/api/share/${noteId}`, { method: 'DELETE' }),
     read: (slug: string, password?: string, signal?: AbortSignal) =>
       request<PublicNote>(`/api/public/${slug}`, { method: 'POST', body: { password }, signal }),
@@ -623,7 +700,7 @@ export const api = {
   },
 }
 
-function toQuery(params: Record<string, string | number | undefined>): string {
+function toQuery(params: Record<string, string | number | boolean | undefined>): string {
   const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== '')
   if (!entries.length) return ''
   return `?${entries.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&')}`

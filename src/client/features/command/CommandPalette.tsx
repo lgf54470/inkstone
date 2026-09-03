@@ -309,6 +309,14 @@ export function CommandPalette({ onClose }: {
                 run: () => openPanel('graph'),
             },
             {
+                id: 'cmd-share-hub',
+                kind: 'command',
+                label: t("share.hub_title"),
+                icon: <Share2 size={14}/>,
+                group: t("command.commands"),
+                run: () => openPanel('share'),
+            },
+            {
                 id: 'cmd-settings',
                 kind: 'command',
                 label: t("common.open_settings"),

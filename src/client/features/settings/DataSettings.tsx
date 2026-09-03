@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, Download, FileJson, FileUp, FolderOpen, ImageIcon, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
+import { AlertCircle, Download, FileJson, FileUp, FolderOpen, ImageIcon, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatBytes, formatNumber } from '../../lib/time';
 import { Button } from '../../components/primitives';
@@ -22,6 +22,7 @@ export function DataSettings() {
     const statsEpoch = useRef(0);
     const mountedRef = useRef(true);
     const toast = useUi((s) => s.toast);
+    const openPanel = useUi((s) => s.openPanel);
     const emptyTrash = useNotes((s) => s.emptyTrash);
     const pull = useNotes((s) => s.pull);
     const loadStats = useCallback(async () => {
@@ -141,6 +142,14 @@ export function DataSettings() {
 
         <SettingRow title={t("attachments.manage")} description={t("attachments.manage_description")}>
           <Button size="sm" icon={<ImageIcon size={13}/>} onClick={() => setAttachmentManagerOpen(true)}>{t("attachments.manage")}</Button>
+        </SettingRow>
+      </section>
+
+      <section>
+        <h3 className="mb-1 text-[11px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("share.hub_title")}</h3>
+
+        <SettingRow title={t("share.manage_shares")} description={t("share.manage_shares_description")}>
+          <Button size="sm" icon={<Share2 size={13}/>} onClick={() => openPanel('share')}>{t("share.manage_shares")}</Button>
         </SettingRow>
       </section>
 

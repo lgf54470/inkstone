@@ -27,8 +27,9 @@ export function newSlug(): string {
 }
 
 const SLUG_RE = /^[0-9a-hjkmnp-tv-z]{20}$/
+const CUSTOM_SLUG_RE = /^[a-zA-Z0-9_-]{3,64}$/
 export function isValidSlug(value: unknown): value is string {
-  return typeof value === 'string' && SLUG_RE.test(value)
+  return typeof value === 'string' && (SLUG_RE.test(value) || CUSTOM_SLUG_RE.test(value))
 }
 
 
