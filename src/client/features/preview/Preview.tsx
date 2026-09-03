@@ -32,6 +32,7 @@ import { NotePropertiesEditor } from './NotePropertiesEditor'
 import { moveMarkdownTabFocus, selectMarkdownTab } from './markdown-tabs'
 import { capturePreviewInteractionState, restorePreviewInteractionState } from './preview-state'
 import { WikiLinkHoverCard, type WikiLinkHoverCardState } from './WikiLinkHoverCard'
+import { FilePreviewModal } from './FilePreviewModal'
 import { useLinkHover } from './link-hover'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { usePinnedWindows } from '../../store/pinned-windows'
@@ -94,6 +95,7 @@ export const Preview = memo(function Preview({
   const wikiNavigationRef = useRef(0)
   const wikiScrollCleanupRef = useRef<() => void>(() => {})
   const [mermaidEpoch, setMermaidEpoch] = useState(0)
+  const [previewFile, setPreviewFile] = useState<{ url: string; filename: string } | null>(null)
 
 
   const htmlObj = useMemo(() => ({ __html: committedHtml }), [committedHtml])
@@ -336,6 +338,57 @@ export const Preview = memo(function Preview({
     const target = event.target as HTMLElement
     linkHover.hideNow()
 
+    const fileActionBtn = target.closest<HTMLElement>('[data-file-action]')
+    if (fileActionBtn) {
+      event.preventDefault()
+      const action = fileActionBtn.dataset.fileAction
+      const card = fileActionBtn.closest<HTMLElement>('[data-file-card]')
+      const fileUrl = card?.dataset.fileUrl ?? ''
+      const fileName = card?.dataset.fileName ?? 'file'
+
+      if (action === 'preview') {
+        const isImage = /\.(jpe?g|png|gif|webp|avif|svg)$/i.test(fileName)
+        if (isImage) {
+          setLightbox({ src: fileUrl, alt: fileName })
+        } else {
+          setPreviewFile({ url: fileUrl, filename: fileName })
+        }
+        return
+      }
+
+      if (action === 'download') {
+        const link = document.createElement('a')
+        link.href = fileUrl
+        link.download = fileName
+        link.rel = 'noopener noreferrer'
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        return
+      }
+
+      if (action === 'delete') {
+        if (!sourceNoteId) return
+        const committedSource = committedSourceRef.current
+        const next = removeFileAttachmentFromContent(committedSource, fileUrl)
+        if (next !== committedSource) {
+          const previous = content
+          editContent(sourceNoteId, next)
+          toast({
+            title: t('workspace.file_deleted'),
+            kind: 'undo',
+            action: {
+              label: t('common.undo'),
+              run: () => editContent(sourceNoteId, previous),
+            },
+            duration: 5000,
+            tone: 'default',
+          })
+        }
+        return
+      }
+    }
+
     const tableActionBtn = target.closest<HTMLButtonElement>('[data-table-action]')
     if (tableActionBtn && sourceNoteId) {
       event.preventDefault()
@@ -575,9 +628,32 @@ export const Preview = memo(function Preview({
           onPin={handlePin}
         />
       )}
+      {previewFile && (
+        <FilePreviewModal
+          open={Boolean(previewFile)}
+          onClose={() => setPreviewFile(null)}
+          url={previewFile.url}
+          filename={previewFile.filename}
+        />
+      )}
     </div>
   )
 })
+
+function removeFileAttachmentFromContent(source: string, url: string): string {
+  const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const pattern = new RegExp(`(^|\\n)[ \\t]*\\[[^\\]]*\\]\\(<(?:${escapedUrl})>(?:\\s+["'][^"']*["'])?\\)[ \\t]*(?:\\r?\\n|$)`, 'g')
+  let next = source.replace(pattern, (_match, prefix) => prefix ? '\n' : '')
+  if (next === source) {
+    const plainPattern = new RegExp(`(^|\\n)[ \\t]*\\[[^\\]]*\\]\\((?:${escapedUrl})(?:\\s+["'][^"']*["'])?\\)[ \\t]*(?:\\r?\\n|$)`, 'g')
+    next = source.replace(plainPattern, (_match, prefix) => prefix ? '\n' : '')
+  }
+  if (next === source) {
+    const inlinePattern = new RegExp(`\\[[^\\]]*\\]\\(<?(?:${escapedUrl})>?(?:\\s+["'][^"']*["'])?\\)`, 'g')
+    next = source.replace(inlinePattern, '')
+  }
+  return next
+}
 
 function scrollToWikiTarget(
   hostRef: RefObject<HTMLDivElement | null>,

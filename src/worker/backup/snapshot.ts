@@ -22,7 +22,7 @@ import {
   isAttachmentObjectStorage,
   readAttachmentObjectStream,
 } from '../attachments/backend'
-import { attachmentObjectKey } from '../attachments/keys'
+import { attachmentObjectKey, legacyAttachmentObjectKey } from '../attachments/keys'
 import { NOTE_COLUMNS_FULL, toFolder, toNote, toTag, type FolderRow, type NoteRow, type TagRow } from '../db/rows'
 import type { Env } from '../env'
 import { sha256Hex } from '../lib/encoding'
@@ -444,7 +444,10 @@ async function openVerifiedAttachment(
   if (!isAttachmentObjectStorage(row.storage) || !hasAttachmentStorage(env, row.storage)) {
     throw new Error(`Attachment storage is unavailable: ${row.filename}`)
   }
-  const object = await readAttachmentObjectStream(env, row.storage, attachmentObjectKey(row))
+  let object = await readAttachmentObjectStream(env, row.storage, attachmentObjectKey(row))
+  if (!object) {
+    object = await readAttachmentObjectStream(env, row.storage, legacyAttachmentObjectKey(row))
+  }
   if (!object) throw new Error(`Attachment data is missing: ${row.filename}`)
   if (object.size !== null && object.size !== row.size) {
     await object.body.cancel().catch(() => {})

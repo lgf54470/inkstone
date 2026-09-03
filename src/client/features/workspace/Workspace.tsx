@@ -72,6 +72,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
     const breakpoint = useBreakpoint();
     const containerRef = useRef<HTMLDivElement>(null);
     const previewScrollerRef = useRef<HTMLDivElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const moreButtonRef = useRef<HTMLButtonElement>(null);
@@ -155,8 +156,9 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
     const handlers = useMemo(() => ({
         uploadFile: async (file: File) => {
             try {
-                const optimized = await optimizeImageFile(file);
-                const uploaded = await api.files.upload(optimized, note?.id);
+                const isImage = file.type.startsWith('image/');
+                const payload = isImage ? await optimizeImageFile(file) : file;
+                const uploaded = await api.files.upload(payload, note?.id);
                 return {
                     url: uploaded.url,
                     filename: uploaded.filename,
@@ -461,7 +463,14 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         </div>
       </header>
 
-      {editorSettings.showToolbar && showEditor && (<EditorToolbar runCommand={runEditorCommand} mobile={isMobile} onPickImage={() => fileInputRef.current?.click()}/>)}
+      {editorSettings.showToolbar && showEditor && (
+        <EditorToolbar
+          runCommand={runEditorCommand}
+          mobile={isMobile}
+          onPickImage={() => imageInputRef.current?.click()}
+          onPickFile={() => fileInputRef.current?.click()}
+        />
+      )}
 
       <div ref={containerRef} className="flex min-h-0 flex-1">
         {showEditor && (<div className="min-w-0" style={{ width: layout === 'split' ? editorWidth : '100%' }}>
@@ -489,7 +498,8 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         noteTitle={note.title}
         onEditContent={onChange}
         onJumpToLine={handleJumpToLine}
-        onPickImage={() => fileInputRef.current?.click()}
+        onPickImage={() => imageInputRef.current?.click()}
+        onPickFile={() => fileInputRef.current?.click()}
         onSwitchLayout={setEditorLayout}
         currentLayout={layout}
         previewScrollerRef={previewScrollerRef}
@@ -523,12 +533,29 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         <span className={cn('hidden', grouped ? '2xl:inline' : 'lg:inline')}>{t("common.created")}{fullTime(note.createdAt)}</span>
       </footer>
 
-      <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={async (event) => {
-            const files = [...(event.target.files ?? [])];
-            event.target.value = '';
-            if (view && files.length)
-                await insertFiles(view, files, handlers);
-        }}/>
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={async (event) => {
+          const files = [...(event.target.files ?? [])];
+          event.target.value = '';
+          if (view && files.length) await insertFiles(view, files, handlers);
+        }}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        hidden
+        onChange={async (event) => {
+          const files = [...(event.target.files ?? [])];
+          event.target.value = '';
+          if (view && files.length) await insertFiles(view, files, handlers);
+        }}
+      />
     </div>);
 }
 function NoNoteSelected({ onCreate }: {

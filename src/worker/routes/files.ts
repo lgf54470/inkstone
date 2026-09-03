@@ -12,6 +12,7 @@ import { getMeta, setMeta } from '../db/metadata'
 import {
   attachmentCleanupTarget,
   attachmentObjectKey,
+  legacyAttachmentObjectKey,
   type AttachmentObjectStorage,
 } from '../attachments/keys'
 import { persistAttachmentWithinQuota } from '../attachments/storage'
@@ -319,12 +320,20 @@ filesRoutes.get('/:id', async (c) => {
   }
   if (!allowed) throw ApiError.unauthenticated('You do not have access to this attachment')
 
+  const isPreview = c.req.query('preview') === '1' || c.req.query('inline') === '1'
+  const isPreviewable =
+    isInlineSafe(row.mime) ||
+    (isPreview && (row.mime === 'application/pdf' || row.mime.startsWith('text/') || row.mime === 'application/json'))
+
   const headers = new Headers({
     'Content-Type': row.mime,
     'Cache-Control': 'private, no-store',
-    'Content-Disposition': `${isInlineSafe(row.mime) ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeContentDispositionFilename(row.filename)}`,
+    'Content-Disposition': `${isPreviewable ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeContentDispositionFilename(row.filename)}`,
     'X-Content-Type-Options': 'nosniff',
   })
+  if (isPreview && !isInlineSafe(row.mime)) {
+    headers.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+  }
 
   if (!hasAttachmentStorage(c.env, row.storage)) {
     throw new ApiError(
@@ -333,7 +342,10 @@ filesRoutes.get('/:id', async (c) => {
       `${row.storage === 'r2' ? 'R2' : 'Workers KV'} attachment storage is not bound, so the attachment cannot be read`,
     )
   }
-  const object = await readAttachmentObjectStream(c.env, row.storage, attachmentObjectKey(row))
+  let object = await readAttachmentObjectStream(c.env, row.storage, attachmentObjectKey(row))
+  if (!object) {
+    object = await readAttachmentObjectStream(c.env, row.storage, legacyAttachmentObjectKey(row))
+  }
   if (!object) throw ApiError.notFound('Attachment data is missing')
   return new Response(object.body as BodyInit, { headers })
 })

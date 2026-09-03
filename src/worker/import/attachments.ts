@@ -7,7 +7,7 @@ import {
   readAttachmentObject,
   selectAttachmentStorage,
 } from '../attachments/backend'
-import { attachmentObjectKey } from '../attachments/keys'
+import { attachmentObjectKey, legacyAttachmentObjectKey } from '../attachments/keys'
 import {
   persistAttachmentWithinQuota,
   rollbackPersistedAttachments,
@@ -314,7 +314,10 @@ export async function existingAttachmentMatches(
 ): Promise<boolean> {
   if (row.size !== candidate.bytes.byteLength || row.sha256 !== candidate.sha256) return false
   if (!hasAttachmentStorage(env, row.storage)) return false
-  const bytes = await readAttachmentObject(env, row.storage, attachmentObjectKey(row))
+  let bytes = await readAttachmentObject(env, row.storage, attachmentObjectKey(row))
+  if (!bytes) {
+    bytes = await readAttachmentObject(env, row.storage, legacyAttachmentObjectKey(row))
+  }
   if (!bytes) return false
   return bytes.byteLength === candidate.bytes.byteLength &&
     (await sha256Hex(bytes)) === candidate.sha256

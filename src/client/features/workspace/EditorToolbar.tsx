@@ -1,15 +1,16 @@
 import { useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
-import { Blocks, Bold, Braces, ChevronDown, Code, Heading, Highlighter, Image as ImageIcon, Italic, Link2, List, ListOrdered, ListTodo, Minus, Network, Quote, Sigma, Strikethrough, Table, } from 'lucide-react';
+import { Blocks, Bold, Braces, ChevronDown, Code, Heading, Highlighter, Image as ImageIcon, Italic, Link2, List, ListOrdered, ListTodo, Minus, Network, Paperclip, Quote, Sigma, Strikethrough, Table, } from 'lucide-react';
 import { IconButton } from '../../components/primitives';
 import { Menu, Tooltip, type MenuItem } from '../../components/overlay';
 import { cn } from '../../lib/cn';
 import { insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDetails, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertMermaid, insertNoteTemplate, insertTable, insertTabs, insertTag, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskList, toggleWikiLink, } from '../../editor/commands';
 import { t } from "../../lib/i18n";
-export function EditorToolbar({ runCommand, view, onPickImage, mobile = false, }: {
+export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobile = false, }: {
     runCommand?: (command: (target: EditorView) => boolean) => void;
     view?: EditorView | null;
     onPickImage: () => void;
+    onPickFile?: () => void;
     mobile?: boolean;
 }) {
     const headingRef = useRef<HTMLButtonElement>(null);
@@ -106,6 +107,9 @@ export function EditorToolbar({ runCommand, view, onPickImage, mobile = false, }
       </ToolButton>
       <ToolButton label={t("workspace.insert_image")} onClick={onPickImage}>
         <ImageIcon size={14}/>
+      </ToolButton>
+      <ToolButton label={t("workspace.insert_file")} onClick={() => onPickFile?.()}>
+        <Paperclip size={14}/>
       </ToolButton>
       <MenuButton buttonRef={noteRef} label={t("workspace.note_syntax")} mobile={mobile} open={openMenu === 'note'} onClick={() => toggleMenu('note')}>
         <Network size={14}/>

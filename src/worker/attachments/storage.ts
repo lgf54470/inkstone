@@ -91,14 +91,21 @@ export async function persistAttachment(
     dimensions = null
   }
 
-  const filename = sanitizeAttachmentFilename(input.filename)
   const sha256 = await sha256Hex(input.bytes)
+  const filename = await deduplicateAttachmentFilename(
+    env.DB,
+    input.userId,
+    sanitizeAttachmentFilename(input.filename),
+    input.createdAt,
+    sha256,
+  )
   let storedObject = false
   const objectRow = {
     user_id: input.userId,
     id: input.id,
     mime,
     filename,
+    created_at: input.createdAt,
   }
 
   const objectKey = attachmentObjectKey(objectRow)
@@ -172,6 +179,36 @@ export function sanitizeAttachmentFilename(name: string): string {
   return truncateText(cleaned || 'file', 180)
 }
 
+export async function deduplicateAttachmentFilename(
+  db: D1Database,
+  userId: string,
+  filename: string,
+  createdAt: number,
+  sha256: string,
+): Promise<string> {
+  const dayStart = new Date(new Date(createdAt).toISOString().slice(0, 10)).getTime()
+  const dayEnd = dayStart + 24 * 60 * 60 * 1000
+  const rows = await db.prepare(
+    `SELECT filename, sha256 FROM attachments WHERE user_id = ?1 AND created_at >= ?2 AND created_at < ?3`,
+  ).bind(userId, dayStart, dayEnd).all<{ filename: string; sha256: string }>()
+
+  const existingSameName = rows.results.find((r) => r.filename.toLowerCase() === filename.toLowerCase())
+  if (!existingSameName || existingSameName.sha256 === sha256) {
+    return filename
+  }
+
+  const dotIndex = filename.lastIndexOf('.')
+  const base = dotIndex > 0 ? filename.slice(0, dotIndex) : filename
+  const ext = dotIndex > 0 ? filename.slice(dotIndex) : ''
+  let counter = 1
+  let candidate = `${base} (${counter})${ext}`
+  const existingNames = new Set(rows.results.map((r) => r.filename.toLowerCase()))
+  while (existingNames.has(candidate.toLowerCase())) {
+    counter++
+    candidate = `${base} (${counter})${ext}`
+  }
+  return candidate
+}
 
 export async function rollbackPersistedAttachments(
   env: Env,
@@ -192,6 +229,7 @@ export async function rollbackPersistedAttachments(
       id: attachment.id,
       mime: attachment.mime,
       filename: attachment.filename,
+      created_at: attachment.createdAt,
     })
     statements.push(
       env.DB.prepare(

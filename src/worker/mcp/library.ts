@@ -5,7 +5,12 @@ import type { BackupRun } from '@shared/types'
 import { stringify as stringifyYaml } from 'yaml'
 import { readAttachmentObject } from '../attachments/backend'
 import { drainAttachmentCleanup } from '../attachments/cleanup'
-import { attachmentCleanupTarget, attachmentObjectKey, type AttachmentObjectStorage } from '../attachments/keys'
+import {
+  attachmentCleanupTarget,
+  attachmentObjectKey,
+  legacyAttachmentObjectKey,
+  type AttachmentObjectStorage,
+} from '../attachments/keys'
 import { persistAttachmentWithinQuota } from '../attachments/storage'
 import { runBackup } from '../backup/engine'
 import type { Env } from '../env'
@@ -851,7 +856,10 @@ export async function readMcpAttachment(
     created_at: number
   }>()
   if (!row) throw ApiError.notFound('Attachment not found')
-  const bytes = await readAttachmentObject(env, row.storage, attachmentObjectKey(row))
+  let bytes = await readAttachmentObject(env, row.storage, attachmentObjectKey(row))
+  if (!bytes) {
+    bytes = await readAttachmentObject(env, row.storage, legacyAttachmentObjectKey(row))
+  }
   if (!bytes) throw ApiError.notFound('Attachment data is missing')
   const start = Math.max(0, Math.min(bytes.byteLength, Math.trunc(input.cursor ?? 0)))
   const maxBytes = Math.max(1024, Math.min(1024 * 1024, Math.trunc(input.maxBytes ?? 256 * 1024)))

@@ -35,6 +35,7 @@ import {
   Maximize2,
   Minus,
   Network,
+  Paperclip,
   Pencil,
   Plus,
   Quote,
@@ -112,6 +113,7 @@ export interface EditorContextMenuProps {
   onEditContent: (next: string) => void;
   onJumpToLine: (lineNumber: number) => void;
   onPickImage?: () => void;
+  onPickFile?: () => void;
   onSwitchLayout?: (layout: 'edit' | 'split' | 'preview') => void;
   currentLayout?: 'edit' | 'split' | 'preview';
   previewScrollerRef?: React.RefObject<HTMLDivElement | null>;
@@ -128,6 +130,7 @@ export function EditorContextMenu({
   onEditContent,
   onJumpToLine,
   onPickImage,
+  onPickFile,
   onSwitchLayout,
   currentLayout,
   previewScrollerRef,
@@ -1230,6 +1233,7 @@ export function EditorContextMenu({
               items={[
                 { id: 'link', label: t('workspace.link'), icon: <Link2 size={13} />, onSelect: () => runStateCommand(insertLink()) },
                 { id: 'image', label: t('workspace.insert_image'), icon: <ImageIcon size={13} />, onSelect: () => onPickImage?.() },
+                { id: 'file', label: t('workspace.insert_file'), icon: <Paperclip size={13} />, onSelect: () => onPickFile?.() },
                 { id: 'table', label: t('workspace.table'), icon: <TableIcon size={13} />, onSelect: () => runStateCommand(insertTable) },
                 { id: 'codeblock', label: t('workspace.code_block'), icon: <Braces size={13} />, onSelect: () => runStateCommand(insertCodeBlock) },
                 { id: 'math', label: t('workspace.math'), icon: <Sigma size={13} />, onSelect: () => runStateCommand(toggleInlineMath) },
