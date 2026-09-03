@@ -42,6 +42,7 @@ import {
   handleTableCellSelection,
   startTableCellEditing,
 } from './table-interactive'
+import { handleJsExampleRun, handleJsExampleSwitch } from './js-runner'
 
 export interface PreviewProps {
   content: string
@@ -398,6 +399,20 @@ export const Preview = memo(function Preview({
         content,
         (next) => editContent(sourceNoteId, next),
       )
+      return
+    }
+
+    const jsSwitchBtn = target.closest<HTMLButtonElement>('[data-js-switch]')
+    if (jsSwitchBtn) {
+      event.preventDefault()
+      handleJsExampleSwitch(jsSwitchBtn)
+      return
+    }
+
+    const jsRunBtn = target.closest<HTMLButtonElement>('[data-js-run]')
+    if (jsRunBtn) {
+      event.preventDefault()
+      handleJsExampleRun(jsRunBtn)
       return
     }
 

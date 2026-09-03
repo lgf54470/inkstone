@@ -75,6 +75,7 @@ import {
 } from '../../lib/markdown/table-editor';
 import { formatCode } from '../../lib/markdown/code-formatter';
 import {
+  insertAdvancedCodeBlock,
   insertCallout,
   insertCodeBlock,
   insertDetails,
@@ -83,6 +84,7 @@ import {
   insertLink,
   insertMermaid,
   insertNoteTemplate,
+  insertRunnableJsBlock,
   insertTable,
   insertTabs,
   setHeading,
@@ -1236,6 +1238,8 @@ export function EditorContextMenu({
                 { id: 'file', label: t('workspace.insert_file'), icon: <Paperclip size={13} />, onSelect: () => onPickFile?.() },
                 { id: 'table', label: t('workspace.table'), icon: <TableIcon size={13} />, onSelect: () => runStateCommand(insertTable) },
                 { id: 'codeblock', label: t('workspace.code_block'), icon: <Braces size={13} />, onSelect: () => runStateCommand(insertCodeBlock) },
+                { id: 'advanced-code', label: t('workspace.enhanced_code_block'), icon: <FileCode size={13} />, onSelect: () => runStateCommand(insertAdvancedCodeBlock) },
+                { id: 'js-example', label: t('workspace.runnable_js_block'), icon: <FileCode size={13} />, onSelect: () => runStateCommand(insertRunnableJsBlock) },
                 { id: 'math', label: t('workspace.math'), icon: <Sigma size={13} />, onSelect: () => runStateCommand(toggleInlineMath) },
                 { id: 'mermaid', label: t('workspace.mermaid_diagram'), icon: <Sparkles size={13} />, onSelect: () => runStateCommand(insertMermaid) },
                 { id: 'callout', label: t('workspace.callout'), icon: <Quote size={13} />, onSelect: () => runStateCommand(insertCallout) },

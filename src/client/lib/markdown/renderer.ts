@@ -638,6 +638,48 @@ md.renderer.rules.fence = (tokens, index, _options, rendererEnv) => {
             `</section>`,
         ].join('');
     }
+    if (info.language === 'javascript-example' || info.language === 'js-example') {
+        const title = info.title || t("workspace.runnable_javascript_code");
+        return [
+            `<section class="markdown-example js-example-block"${line}>`,
+            `<div class="markdown-example-head js-example-head">`,
+            `<span class="markdown-example-title js-example-title">`,
+            `<span class="js-example-badge">JS</span>`,
+            `<span>${escapeHtml(title)}</span>`,
+            `</span>`,
+            `<div class="js-example-controls">`,
+            `<label class="js-example-switch-wrap" title="${escapeAttr(t("workspace.toggle_line_numbers"))}">`,
+            `<span class="js-example-switch-label">${escapeHtml(t("workspace.line_numbers"))}</span>`,
+            `<button type="button" role="switch" class="js-example-switch is-checked" data-js-switch="line-numbers" aria-checked="true" aria-label="${escapeAttr(t("workspace.line_numbers"))}">`,
+            `<span class="js-example-switch-thumb"></span>`,
+            `</button>`,
+            `</label>`,
+            `<button type="button" class="js-example-run-btn" data-js-run title="${escapeAttr(t("workspace.run_code"))}">`,
+            `<span class="js-example-run-icon">▶</span>`,
+            `<span>${escapeHtml(t("workspace.run"))}</span>`,
+            `</button>`,
+            `</div>`,
+            `</div>`,
+            `<div class="markdown-example-grid js-example-grid">`,
+            `<section class="markdown-example-source js-example-source" aria-label="JavaScript">`,
+            `<div class="code-block markdown-example-code has-line-numbers" data-lang="javascript" data-code-start="1" data-line-numbers="true">`,
+            `<button class="code-copy markdown-example-copy" data-copy type="button" aria-label="${escapeAttr(t("markdown.copy_code"))}">${escapeHtml(t("common.copy"))}</button>`,
+            `<pre><code class="language-javascript">${escapeHtml(token.content)}</code></pre>`,
+            `</div>`,
+            `</section>`,
+            `<section class="markdown-example-preview js-example-output" aria-label="${escapeAttr(t("workspace.execution_result"))}">`,
+            `<div class="js-example-output-head">`,
+            `<span class="js-example-output-title">${escapeHtml(t("workspace.execution_result"))}</span>`,
+            `<span class="js-example-output-status"></span>`,
+            `</div>`,
+            `<div class="js-example-output-body">`,
+            `<div class="js-example-placeholder">${escapeHtml(t("workspace.click_run_to_execute"))}</div>`,
+            `</div>`,
+            `</section>`,
+            `</div>`,
+            `</section>`,
+        ].join('');
+    }
     if (info.language === 'mermaid') {
         renderEnv(rendererEnv).hasMermaid = true;
         return `<div class="mermaid-block loading"${line} data-mermaid="${escapeAttr(encodeDataValue(token.content))}" aria-busy="true">${escapeHtml(t("markdown.rendering_diagram"))}</div>`;
@@ -819,6 +861,7 @@ const PURIFY_CONFIG = {
         'aria-busy',
         'aria-label',
         'aria-selected',
+        'aria-checked',
         'aria-controls',
         'aria-labelledby',
         'tabindex',

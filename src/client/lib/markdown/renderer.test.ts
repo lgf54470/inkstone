@@ -196,4 +196,19 @@ describe('renderMarkdown extension golden output', () => {
     expect(tds[1]?.getAttribute('align')).toBe('center')
     expect(tds[2]?.getAttribute('align')).toBe('right')
   })
+
+  it('renders runnable javascript-example blocks with controls and output panel', () => {
+    const markdown = '~~~~javascript-example title="Demo"\nconsole.log("Hello");\n~~~~'
+    const rendered = renderMarkdown(markdown)
+    const fragment = parse(rendered.html)
+    const block = fragment.querySelector('.js-example-block')
+    expect(block).not.toBeNull()
+    expect(block?.querySelector('.js-example-badge')?.textContent).toBe('JS')
+    expect(block?.querySelector('.js-example-title')?.textContent).toContain('Demo')
+    expect(block?.querySelector('[data-js-switch="line-numbers"]')).not.toBeNull()
+    expect(block?.querySelector('[data-js-run]')).not.toBeNull()
+    expect(block?.querySelector('.code-block[data-lang="javascript"]')).not.toBeNull()
+    expect(block?.querySelector('.code-block pre code')?.textContent).toContain('console.log("Hello");')
+    expect(block?.querySelector('.js-example-output')).not.toBeNull()
+  })
 })
