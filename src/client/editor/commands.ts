@@ -172,6 +172,8 @@ export const toggleInlineCode: StateCommand = ({ state, dispatch }) => {
 };
 export const toggleStrikethrough = toggleWrap('~~');
 export const toggleHighlight = toggleWrap('==');
+export const toggleSubscript = toggleWrap('~');
+export const toggleSuperscript = toggleWrap('^');
 export const toggleInlineMath = toggleWrap('$');
 export const toggleWikiLink = toggleWrap('[[', ']]');
 export const toggleNoteEmbed = toggleWrap('![[', ']]');

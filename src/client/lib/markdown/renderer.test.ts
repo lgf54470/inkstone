@@ -225,4 +225,12 @@ describe('renderMarkdown extension golden output', () => {
     expect(mermaidBlock).not.toBeNull()
     expect(mermaidBlock?.getAttribute('data-mermaid')).toBeTruthy()
   })
+
+  it('renders subscript and superscript inline formatting', () => {
+    const markdown = 'H~2~O and E = mc^2^'
+    const rendered = renderMarkdown(markdown)
+    const fragment = parse(rendered.html)
+    expect(fragment.querySelector('sub')?.textContent).toBe('2')
+    expect(fragment.querySelector('sup')?.textContent).toBe('2')
+  })
 })

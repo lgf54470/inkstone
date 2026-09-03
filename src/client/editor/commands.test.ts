@@ -1,6 +1,6 @@
 import { EditorSelection, EditorState } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
-import { completeCodeFenceOnEnter, insertChartJs, insertMermaid } from './commands'
+import { completeCodeFenceOnEnter, insertChartJs, insertMermaid, toggleSubscript, toggleSuperscript } from './commands'
 
 function runFenceCompletion(doc: string, cursor = doc.length) {
   const state = EditorState.create({ doc, selection: EditorSelection.cursor(cursor) })
@@ -39,6 +39,22 @@ describe('insertDiagramCode', () => {
     let next = state
     insertChartJs({ state, dispatch: (tr) => { next = tr.state } })
     expect(next.doc.toString()).toContain('```chart\n{\n  "type": "bar"')
+  })
+})
+
+describe('toggleSubscript and toggleSuperscript', () => {
+  it('wraps and unwraps subscript', () => {
+    const state = EditorState.create({ doc: 'H2O', selection: EditorSelection.range(1, 2) })
+    let next = state
+    toggleSubscript({ state, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toBe('H~2~O')
+  })
+
+  it('wraps and unwraps superscript', () => {
+    const state = EditorState.create({ doc: 'X2', selection: EditorSelection.range(1, 2) })
+    let next = state
+    toggleSuperscript({ state, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toBe('X^2^')
   })
 })
 

@@ -5,6 +5,8 @@ import taskLists from 'markdown-it-task-lists';
 import footnote from 'markdown-it-footnote';
 import anchor from 'markdown-it-anchor';
 import mark from 'markdown-it-mark';
+import sub from 'markdown-it-sub';
+import sup from 'markdown-it-sup';
 import DOMPurify from 'dompurify';
 import { parseFrontMatter, slugifyHeading } from '@shared/markdown-utils';
 import { getLocale, t } from '../i18n';
@@ -65,6 +67,8 @@ const md = new MarkdownIt({
 md.use(taskLists, { enabled: true, label: false })
     .use(footnote)
     .use(mark)
+    .use(sub)
+    .use(sup)
     .use(anchor, {
     slugify: slugifyHeading,
 

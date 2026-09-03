@@ -1420,6 +1420,8 @@ export const ZH_CN_MESSAGES = {
     "workspace.restored_to_selected_version": "已恢复到所选版本",
     "workspace.share": "分享",
     "workspace.split_view": "分栏",
+    "workspace.subscript": "下标",
+    "workspace.superscript": "上标",
     "workspace.table": "表格",
     "workspace.the_current_content_will_be_automatically_saved_as_a_new_version_first_a": "当前内容会先自动存为一个新版本，不会丢失。",
     "workspace.title": "[[标题]]",

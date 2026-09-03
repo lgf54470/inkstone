@@ -1419,6 +1419,8 @@ export const EN_US_MESSAGES = {
     "workspace.restored_to_selected_version": "Restored to selected version",
     "workspace.share": "Share",
     "workspace.split_view": "Split view",
+    "workspace.subscript": "Subscript",
+    "workspace.superscript": "Superscript",
     "workspace.table": "Table",
     "workspace.the_current_content_will_be_automatically_saved_as_a_new_version_first_a": "The current content will be automatically saved as a new version first and will not be lost.",
     "workspace.title": "[[title]]",
