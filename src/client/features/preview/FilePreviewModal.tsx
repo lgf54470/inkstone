@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
   Copy,
@@ -19,6 +19,8 @@ import { IconButton } from '../../components/primitives'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/cn'
 import { renderMarkdown } from '../../lib/markdown/renderer'
+import { decorateCodeBlock } from '../../lib/markdown/enhance'
+import { highlightWithPrism } from '../../lib/markdown/prism'
 
 export interface FilePreviewModalProps {
   open: boolean
@@ -168,6 +170,53 @@ function parseCsvToRows(text: string, delimiter = ','): string[][] {
     row.push(current.trim())
     return row
   })
+}
+
+function CodeViewer({ code, ext }: { code: string; ext: string }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const root = containerRef.current
+    if (!root) return
+    const block = root.querySelector<HTMLElement>('.code-block')
+    const codeEl = block?.querySelector<HTMLElement>('code')
+    if (!block || !codeEl) return
+
+    codeEl.textContent = code
+    codeEl.className = ''
+    decorateCodeBlock(block)
+
+    let cancelled = false
+    highlightWithPrism(code, ext)
+      .then((highlighted) => {
+        if (cancelled) return
+        if (highlighted) {
+          codeEl.innerHTML = highlighted.html
+          codeEl.className = `language-${highlighted.language}`
+          decorateCodeBlock(block)
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [code, ext])
+
+  return (
+    <div ref={containerRef} className="ink-prose select-text w-full">
+      <div
+        className="code-block has-line-numbers rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] overflow-hidden"
+        data-lang={ext}
+        data-code-start="1"
+        data-line-numbers="true"
+      >
+        <pre className="p-3 m-0 overflow-x-auto font-mono text-[12.5px] leading-relaxed">
+          <code>{code}</code>
+        </pre>
+      </div>
+    </div>
+  )
 }
 
 export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewModalProps) {
@@ -333,7 +382,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
         </div>
       }
     >
-      <div className="min-h-[280px] flex flex-col justify-center">
+      <div className={cn('min-h-[280px] flex flex-col', isText || isMarkdown ? 'justify-start' : 'justify-center')}>
         {isImage && (
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between px-1 py-0.5 text-[12px]">
@@ -512,11 +561,11 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
               <>
                 {isMarkdown && textMode === 'rendered' ? (
                   <div
-                    className="max-h-[68vh] overflow-y-auto p-5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] prose dark:prose-invert max-w-none text-[13.5px] leading-relaxed select-text"
+                    className="p-5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] prose dark:prose-invert max-w-none text-[13.5px] leading-relaxed select-text"
                     dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
                   />
                 ) : isCsv && (textMode === 'table' || textMode === 'rendered') ? (
-                  <div className="max-h-[68vh] overflow-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)]">
+                  <div className="overflow-x-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)]">
                     <table className="w-full text-left text-[12px] border-collapse">
                       {csvRows.length > 0 && (
                         <thead className="sticky top-0 bg-[var(--bg-sunken)] text-[11px] font-semibold text-[var(--text-tertiary)] border-b border-[var(--border-subtle)]">
@@ -543,16 +592,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
                     </table>
                   </div>
                 ) : (
-                  <div className="max-h-[68vh] overflow-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] font-mono text-[12.5px] leading-relaxed select-text flex">
-                    <div className="shrink-0 select-none py-3 px-2 text-right text-[var(--text-quaternary)] border-r border-[var(--border-subtle)] bg-[var(--bg-sunken)]/40 font-mono text-[11px]">
-                      {textContent.split('\n').map((_, idx) => (
-                        <div key={idx}>{idx + 1}</div>
-                      ))}
-                    </div>
-                    <pre className="p-3 m-0 overflow-x-auto whitespace-pre font-mono text-[12.5px] leading-relaxed flex-1">
-                      <code>{textContent}</code>
-                    </pre>
-                  </div>
+                  <CodeViewer code={textContent} ext={ext} />
                 )}
               </>
             )}
