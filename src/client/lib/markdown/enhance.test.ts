@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { initI18n } from '../i18n'
-import { configureCodeBlockCollapsing, decorateCodeBlock, enhancePreview, toggleCodeBlockCollapse } from './enhance'
+import { configureCodeBlockCollapsing, decorateCodeBlock, destroyChartInstances, enhancePreview, renderChartJs, toggleCodeBlockCollapse } from './enhance'
 import { highlightWithPrism } from './prism'
+import { encodeDataValue } from './data-attr'
 
 beforeAll(async () => {
   await initI18n()
@@ -78,5 +79,37 @@ describe('code block collapsing', () => {
     expect(root.querySelector('.math-inline')!.textContent).toBe('$x^2$')
     expect(root.querySelector('.math-block')!.textContent).toBe('$$\na+b\n$$')
     expect(root.querySelectorAll('.math-source')).toHaveLength(2)
+  })
+
+  it('renders and destroys chart blocks', async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = (() => ({
+      canvas: document.createElement('canvas'),
+      clearRect: () => {},
+      fillRect: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      stroke: () => {},
+      fill: () => {},
+      arc: () => {},
+      measureText: () => ({ width: 0 }),
+      save: () => {},
+      restore: () => {},
+    })) as never
+
+    const root = document.createElement('div')
+    const chartJson = JSON.stringify({ type: 'bar', data: { labels: ['A'], datasets: [{ data: [1] }] } })
+    const encoded = encodeDataValue(chartJson)
+    root.innerHTML = `<div class="chartjs-block loading" data-chart="${encoded}"></div>`
+    document.body.appendChild(root)
+    try {
+      await renderChartJs(root, false)
+      expect(root.querySelector('canvas.chartjs-canvas')).not.toBeNull()
+      destroyChartInstances(root)
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+      root.remove()
+    }
   })
 })

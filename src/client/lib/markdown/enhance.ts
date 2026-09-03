@@ -442,7 +442,7 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
     await Promise.allSettled([
         highlightCodeBlocks(root),
         options.math ? renderMath(root) : Promise.resolve(),
-        renderChartJs(root, options.dark),
+        root.isConnected ? renderChartJs(root, options.dark) : Promise.resolve(),
     ]);
     configureCodeBlockCollapsing(root, options.codeBlockCollapseLines ?? 24);
 }
@@ -460,6 +460,16 @@ async function getChartJs(): Promise<typeof import('chart.js/auto')> {
         });
     }
     return chartJsPromise;
+}
+
+export function destroyChartInstances(root: HTMLElement | null): void {
+    root?.querySelectorAll<HTMLElement>('[data-chart]').forEach((node) => {
+        const existing = (node as unknown as { __chartInstance?: { destroy: () => void } }).__chartInstance;
+        if (existing && typeof existing.destroy === 'function') {
+            existing.destroy();
+            delete (node as unknown as { __chartInstance?: unknown }).__chartInstance;
+        }
+    });
 }
 
 export async function renderChartJs(root: HTMLElement, dark: boolean): Promise<void> {
@@ -484,7 +494,8 @@ export async function renderChartJs(root: HTMLElement, dark: boolean): Promise<v
             continue;
         }
         try {
-            const { Chart } = await getChartJs();
+            const chartModule = await getChartJs();
+            const Chart = chartModule.Chart ?? (chartModule as unknown as { default: typeof chartModule.Chart }).default;
             if (!root.contains(node))
                 return;
             const existing = (node as unknown as { __chartInstance?: { destroy: () => void } }).__chartInstance;

@@ -17,7 +17,9 @@ import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
 import { t, useLocale } from '../../lib/i18n'
 import { slugifyHeading } from '@shared/markdown-utils'
 import {
+  destroyChartInstances,
   enhancePreview,
+  renderChartJs,
   renderPendingMermaid,
   resetMermaidNode,
   toggleCodeBlockCollapse,
@@ -244,6 +246,15 @@ export const Preview = memo(function Preview({
       mermaidRevisionRef.current++
     }
   }, [mermaidEpoch, preview.mermaid, startMermaidRender])
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+    void renderChartJs(host, theme === 'dark')
+    return () => {
+      destroyChartInstances(host)
+    }
+  }, [committedHtml, theme])
 
   useLayoutEffect(() => {
     const snapshot = pendingViewportRef.current

@@ -1697,12 +1697,14 @@
   position: relative;
   width: 100%;
   max-width: 720px;
-  min-height: 280px;
-  max-height: 480px;
+  height: 320px;
+  min-height: 260px;
+  max-height: 500px;
 }
 .ink-prose .chartjs-canvas {
-  width: 100% !important;
-  height: 100% !important;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .ink-prose .chartjs-block.loading {
   min-height: 120px;
