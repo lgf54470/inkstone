@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { EditorSelection } from '@codemirror/state';
-import { ArrowLeft, Columns2, Download, Eye, FileCode, FileDown, FileText, FolderClosed, Hash, History, Link as LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Pencil, Plus, Share2, Star, X, } from 'lucide-react';
+import { ArrowLeft, Columns2, Download, Eye, FileCode, FileDown, FileText, FolderClosed, Hash, History, Link as LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Plus, Share2, Star, X, } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { api } from '../../lib/api';
 import { EditorContextMenu } from './EditorContextMenu';
@@ -26,6 +26,7 @@ import { Outline } from '../preview/Outline';
 import { SplitResizer } from '../shell/Resizer';
 import { EditorToolbar } from './EditorToolbar';
 import { BacklinksPanel } from './BacklinksPanel';
+import { AttachmentDriveModal } from '../attachments/AttachmentDriveModal';
 import { SaveIndicator } from '../shell/SaveIndicator';
 import type { Heading } from '../../lib/markdown/renderer';
 import { useUi, type WorkspacePane } from '../../store/ui';
@@ -86,6 +87,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
     const [moreMenuOpen, setMoreMenuOpen] = useState(false);
     const [exportMenuOpen, setExportMenuOpen] = useState(false);
     const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
+    const [attachmentDriveOpen, setAttachmentDriveOpen] = useState(false);
     const [containerWidth, setContainerWidth] = useState(0);
     const [contextMenuPoint, setContextMenuPoint] = useState<{ x: number; y: number } | null>(null);
     const [editorContextData, setEditorContextData] = useState<EditorContextData | null>(null);
@@ -426,6 +428,11 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
               <Star size={14} className={note.isStarred ? 'fill-current' : undefined}/>
             </IconButton>
           </Tooltip>
+          <Tooltip label={t("attachments.manage")}>
+            <IconButton label={t("attachments.manage")} size="sm" active={attachmentDriveOpen} onClick={() => setAttachmentDriveOpen(true)}>
+              <Paperclip size={14}/>
+            </IconButton>
+          </Tooltip>
           <Tooltip label={t("common.backlinks")}>
             <IconButton label={t("common.backlinks")} size="sm" active={backlinksOpen} onClick={toggleBacklinks}>
               <LinkIcon size={14}/>
@@ -554,6 +561,23 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
           const files = [...(event.target.files ?? [])];
           event.target.value = '';
           if (view && files.length) await insertFiles(view, files, handlers);
+        }}
+      />
+      <AttachmentDriveModal
+        open={attachmentDriveOpen}
+        onClose={() => setAttachmentDriveOpen(false)}
+        onInsertFile={(file) => {
+          if (view) {
+            const isImage = file.mime.startsWith('image/');
+            const snippet = isImage ? `![${file.filename}](${file.url})` : `\n[${file.filename}](${file.url})\n`;
+            const sel = view.state.selection.main;
+            view.dispatch({
+              changes: { from: sel.from, to: sel.to, insert: snippet },
+              selection: { anchor: sel.from + snippet.length },
+            });
+            view.focus();
+          }
+          setAttachmentDriveOpen(false);
         }}
       />
     </div>);

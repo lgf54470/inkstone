@@ -31,12 +31,16 @@ interface AttachmentRow {
   id: string
   user_id: string
   note_id: string | null
+  folder_id: string | null
   filename: string
   mime: string
   size: number
   width: number | null
   height: number | null
   storage: AttachmentObjectStorage
+  is_starred: number
+  is_pinned: number
+  tags: string
   created_at: number
 }
 
@@ -124,10 +128,21 @@ function parseAttachmentListCursor(value: string | undefined): { createdAt: numb
   return { createdAt, id: match[2]! }
 }
 
+function parseTags(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === 'string') : []
+  } catch {
+    return []
+  }
+}
+
 function toAttachment(row: AttachmentRow): Attachment {
   return {
     id: row.id,
     noteId: row.note_id,
+    folderId: row.folder_id ?? null,
     filename: row.filename,
     mime: row.mime,
     size: row.size,
@@ -135,6 +150,9 @@ function toAttachment(row: AttachmentRow): Attachment {
     height: row.height,
     url: `/api/files/${row.id}`,
     createdAt: row.created_at,
+    isStarred: Boolean(row.is_starred),
+    isPinned: Boolean(row.is_pinned),
+    tags: parseTags(row.tags),
   }
 }
 
@@ -247,19 +265,25 @@ filesRoutes.post('/', requireAuth, async (c) => {
   const id = newId()
   const rawNoteId = form.get('noteId')
   const noteId = typeof rawNoteId === 'string' && rawNoteId ? rawNoteId.slice(0, 128) : null
+  const rawFolderId = form.get('folderId')
+  let folderId = typeof rawFolderId === 'string' && rawFolderId ? rawFolderId.slice(0, 128) : null
   if (noteId) {
     const owned = await c.env.DB.prepare(
-      `SELECT id FROM notes WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
+      `SELECT id, folder_id FROM notes WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
     )
       .bind(noteId, userId)
-      .first<{ id: string }>()
+      .first<{ id: string; folder_id: string | null }>()
     if (!owned) throw ApiError.badRequest('The associated note does not exist')
+    if (!folderId && owned.folder_id) {
+      folderId = owned.folder_id
+    }
   }
   const now = Date.now()
   const stored = await persistAttachmentWithinQuota(c.env, {
     id,
     userId,
     noteId,
+    folderId,
     filename: file.name || 'file',
     reportedMime: file.type,
     bytes,
@@ -269,6 +293,7 @@ filesRoutes.post('/', requireAuth, async (c) => {
   const attachment: Attachment = {
     id,
     noteId,
+    folderId: stored.folderId ?? folderId,
     filename: stored.filename,
     mime: stored.mime,
     size: bytes.byteLength,
@@ -276,6 +301,9 @@ filesRoutes.post('/', requireAuth, async (c) => {
     height: stored.height,
     url: `/api/files/${id}`,
     createdAt: now,
+    isStarred: false,
+    isPinned: false,
+    tags: [],
   }
   return c.json(attachment, 201)
 })
@@ -353,31 +381,329 @@ filesRoutes.get('/:id', async (c) => {
 
 filesRoutes.get('/', requireAuth, async (c) => {
   const userId = c.get('userId')
+  const folderId = c.req.query('folderId')
+  const type = c.req.query('type')
+  const sizeRange = c.req.query('sizeRange')
+  const minBytes = Number(c.req.query('minBytes'))
+  const maxBytes = Number(c.req.query('maxBytes'))
+  const tag = c.req.query('tag')
+  const starred = c.req.query('starred')
+  const pinned = c.req.query('pinned')
+  const noteId = c.req.query('noteId')
+  const search = c.req.query('search')?.trim()
+  const sort = c.req.query('sort') || 'date_desc'
+  const limitParam = Number(c.req.query('limit'))
+  const pageSize = Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 500 ? limitParam : ATTACHMENT_LIST_PAGE_SIZE
   const cursor = parseAttachmentListCursor(c.req.query('cursor'))
-  const statement = cursor
-    ? c.env.DB.prepare(
-        `SELECT id, user_id, note_id, filename, mime, size, width, height, storage, created_at
-           FROM attachments WHERE user_id = ?1
-            AND (created_at < ?2 OR (created_at = ?2 AND id < ?3))
-          ORDER BY created_at DESC, id DESC LIMIT ?4`,
-      ).bind(userId, cursor.createdAt, cursor.id, ATTACHMENT_LIST_PAGE_SIZE + 1)
-    : c.env.DB.prepare(
-        `SELECT id, user_id, note_id, filename, mime, size, width, height, storage, created_at
-           FROM attachments WHERE user_id = ?1
-          ORDER BY created_at DESC, id DESC LIMIT ?2`,
-      ).bind(userId, ATTACHMENT_LIST_PAGE_SIZE + 1)
-  const { results } = await statement.all<AttachmentRow>()
-  const page = results.slice(0, ATTACHMENT_LIST_PAGE_SIZE)
-  const hasMore = results.length > ATTACHMENT_LIST_PAGE_SIZE
-  const references = await readAttachmentReferenceCounts(c.env.DB, userId)
+
+  const whereClauses: string[] = ['user_id = ?']
+  const bindings: unknown[] = [userId]
+
+  if (folderId === 'unfiled') {
+    whereClauses.push('folder_id IS NULL')
+  } else if (folderId) {
+    whereClauses.push('folder_id = ?')
+    bindings.push(folderId)
+  }
+
+  if (type === 'image') {
+    whereClauses.push("mime LIKE 'image/%'")
+  } else if (type === 'pdf') {
+    whereClauses.push("mime = 'application/pdf'")
+  } else if (type === 'document') {
+    whereClauses.push("(mime = 'application/pdf' OR mime LIKE 'text/%' OR mime LIKE '%document%' OR mime LIKE '%sheet%' OR mime LIKE '%presentation%' OR mime LIKE 'application/vnd.%' OR mime LIKE 'application/msword')")
+  } else if (type === 'media') {
+    whereClauses.push("(mime LIKE 'audio/%' OR mime LIKE 'video/%')")
+  } else if (type === 'archive') {
+    whereClauses.push("(mime LIKE '%zip%' OR mime LIKE '%tar%' OR mime LIKE '%rar%' OR mime LIKE '%7z%' OR mime LIKE '%gzip%')")
+  } else if (type === 'code') {
+    whereClauses.push("(mime LIKE '%javascript%' OR mime LIKE '%json%' OR mime LIKE '%typescript%' OR mime LIKE '%xml%' OR mime LIKE '%yaml%' OR filename LIKE '%.py' OR filename LIKE '%.rs' OR filename LIKE '%.go' OR filename LIKE '%.ts' OR filename LIKE '%.js' OR filename LIKE '%.html' OR filename LIKE '%.css' OR filename LIKE '%.sh')")
+  }
+
+  if (sizeRange === 'small') {
+    whereClauses.push('size < 1048576')
+  } else if (sizeRange === 'medium') {
+    whereClauses.push('size >= 1048576 AND size <= 10485760')
+  } else if (sizeRange === 'large') {
+    whereClauses.push('size > 10485760')
+  }
+
+  if (Number.isFinite(minBytes) && minBytes >= 0) {
+    whereClauses.push('size >= ?')
+    bindings.push(minBytes)
+  }
+  if (Number.isFinite(maxBytes) && maxBytes >= 0) {
+    whereClauses.push('size <= ?')
+    bindings.push(maxBytes)
+  }
+
+  if (tag) {
+    whereClauses.push('tags LIKE ?')
+    bindings.push(`%"${tag}"%`)
+  }
+
+  if (starred === '1') {
+    whereClauses.push('is_starred = 1')
+  }
+  if (pinned === '1') {
+    whereClauses.push('is_pinned = 1')
+  }
+  if (noteId) {
+    whereClauses.push('note_id = ?')
+    bindings.push(noteId)
+  }
+
+  if (search) {
+    whereClauses.push('(filename LIKE ? OR tags LIKE ?)')
+    bindings.push(`%${search}%`, `%"${search}"%`)
+  }
+
+  let orderBy = 'is_pinned DESC, created_at DESC, id DESC'
+  if (sort === 'date_asc') orderBy = 'is_pinned DESC, created_at ASC, id ASC'
+  else if (sort === 'name_asc') orderBy = 'is_pinned DESC, filename ASC, id ASC'
+  else if (sort === 'name_desc') orderBy = 'is_pinned DESC, filename DESC, id DESC'
+  else if (sort === 'size_desc') orderBy = 'is_pinned DESC, size DESC, id DESC'
+  else if (sort === 'size_asc') orderBy = 'is_pinned DESC, size ASC, id ASC'
+
+  if (cursor) {
+    whereClauses.push('(created_at < ? OR (created_at = ? AND id < ?))')
+    bindings.push(cursor.createdAt, cursor.createdAt, cursor.id)
+  }
+
+  const querySql = `SELECT id, user_id, note_id, folder_id, filename, mime, size, width, height, storage, is_starred, is_pinned, tags, created_at
+     FROM attachments WHERE ${whereClauses.join(' AND ')}
+     ORDER BY ${orderBy} LIMIT ?`
+  bindings.push(pageSize + 1)
+
+  const [itemsResult, statsRow, references] = await Promise.all([
+    c.env.DB.prepare(querySql).bind(...bindings).all<AttachmentRow>(),
+    c.env.DB.prepare(
+      `SELECT
+         COUNT(*) as total_count,
+         COALESCE(SUM(size), 0) as total_bytes,
+         COALESCE(SUM(CASE WHEN mime LIKE 'image/%' THEN size ELSE 0 END), 0) as image_bytes,
+         COALESCE(SUM(CASE WHEN mime = 'application/pdf' OR mime LIKE 'text/%' OR mime LIKE '%document%' OR mime LIKE '%sheet%' OR mime LIKE '%presentation%' OR mime LIKE 'application/vnd.%' OR mime LIKE 'application/msword' THEN size ELSE 0 END), 0) as document_bytes,
+         COALESCE(SUM(CASE WHEN mime LIKE 'audio/%' OR mime LIKE 'video/%' THEN size ELSE 0 END), 0) as media_bytes,
+         COALESCE(SUM(CASE WHEN mime LIKE '%zip%' OR mime LIKE '%tar%' OR mime LIKE '%rar%' OR mime LIKE '%7z%' OR mime LIKE '%gzip%' THEN size ELSE 0 END), 0) as archive_bytes,
+         COALESCE(SUM(CASE WHEN mime LIKE '%javascript%' OR mime LIKE '%json%' OR filename LIKE '%.py' OR filename LIKE '%.rs' OR filename LIKE '%.go' OR filename LIKE '%.ts' OR filename LIKE '%.js' THEN size ELSE 0 END), 0) as code_bytes
+       FROM attachments WHERE user_id = ?1`
+    ).bind(userId).first<{
+      total_count: number
+      total_bytes: number
+      image_bytes: number
+      document_bytes: number
+      media_bytes: number
+      archive_bytes: number
+      code_bytes: number
+    }>(),
+    readAttachmentReferenceCounts(c.env.DB, userId),
+  ])
+
+  const results = itemsResult.results
+  const page = results.slice(0, pageSize)
+  const hasMore = results.length > pageSize
+
+  const totalBytes = statsRow?.total_bytes ?? 0
+  const imageBytes = statsRow?.image_bytes ?? 0
+  const documentBytes = statsRow?.document_bytes ?? 0
+  const mediaBytes = statsRow?.media_bytes ?? 0
+  const archiveBytes = statsRow?.archive_bytes ?? 0
+  const codeBytes = statsRow?.code_bytes ?? 0
+  const otherBytes = Math.max(0, totalBytes - (imageBytes + documentBytes + mediaBytes + archiveBytes + codeBytes))
+
   return c.json({
     files: page.map((row) => ({
       ...toAttachment(row),
       references: references.get(row.id) ?? 0,
     })),
-    nextCursor: hasMore
+    nextCursor: hasMore && page.length
       ? `${page[page.length - 1]!.created_at}.${page[page.length - 1]!.id}`
       : null,
+    stats: {
+      totalCount: statsRow?.total_count ?? 0,
+      totalBytes,
+      imageBytes,
+      documentBytes,
+      mediaBytes,
+      archiveBytes,
+      codeBytes,
+      otherBytes,
+      unreferencedCount: Math.max(0, (statsRow?.total_count ?? 0) - references.size),
+    },
+  })
+})
+
+filesRoutes.patch('/:id', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  const body = await c.req.json<{
+    filename?: string
+    folderId?: string | null
+    isStarred?: boolean
+    isPinned?: boolean
+    tags?: string[]
+    updateNoteReferences?: boolean
+  }>()
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id, user_id, filename, folder_id, is_starred, is_pinned, tags FROM attachments WHERE id = ?1 AND user_id = ?2`
+  ).bind(id, userId).first<AttachmentRow>()
+  if (!existing) throw ApiError.notFound('Attachment not found')
+
+  const nextFilename = typeof body.filename === 'string' && body.filename.trim() ? body.filename.trim() : existing.filename
+  const nextFolderId = body.folderId !== undefined ? body.folderId : existing.folder_id
+  const nextStarred = body.isStarred !== undefined ? (body.isStarred ? 1 : 0) : existing.is_starred
+  const nextPinned = body.isPinned !== undefined ? (body.isPinned ? 1 : 0) : existing.is_pinned
+  const nextTags = body.tags !== undefined ? JSON.stringify(body.tags) : existing.tags
+
+  const statements: D1PreparedStatement[] = [
+    c.env.DB.prepare(
+      `UPDATE attachments SET filename = ?1, folder_id = ?2, is_starred = ?3, is_pinned = ?4, tags = ?5 WHERE id = ?6 AND user_id = ?7`
+    ).bind(nextFilename, nextFolderId, nextStarred, nextPinned, nextTags, id, userId)
+  ]
+
+  if (body.updateNoteReferences && nextFilename !== existing.filename) {
+    const { results: referencingNotes } = await c.env.DB.prepare(
+      `SELECT id, content FROM notes WHERE user_id = ?1 AND content LIKE ?2 AND deleted_at IS NULL`
+    ).bind(userId, `%/api/files/${id}%`).all<{ id: string; content: string }>()
+
+    for (const note of referencingNotes) {
+      const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const regex = new RegExp(`(!?\\[)[^\\]]*(\\]\\(<?/api/files/${escapedId}>?[^)]*\\))`, 'g')
+      const nextContent = note.content.replace(regex, `$1${nextFilename}$2`)
+      if (nextContent !== note.content) {
+        statements.push(
+          c.env.DB.prepare(`UPDATE notes SET content = ?1, updated_at = ?2 WHERE id = ?3 AND user_id = ?4`)
+            .bind(nextContent, Date.now(), note.id, userId)
+        )
+      }
+    }
+  }
+
+  await c.env.DB.batch(statements)
+
+  const updated = await c.env.DB.prepare(
+    `SELECT id, user_id, note_id, folder_id, filename, mime, size, width, height, storage, is_starred, is_pinned, tags, created_at
+       FROM attachments WHERE id = ?1 AND user_id = ?2`
+  ).bind(id, userId).first<AttachmentRow>()
+  if (!updated) throw ApiError.notFound('Attachment not found')
+
+  return c.json(toAttachment(updated))
+})
+
+filesRoutes.post('/batch', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  const body = await c.req.json<{
+    action: 'move' | 'star' | 'pin' | 'tag' | 'delete'
+    ids: string[]
+    folderId?: string | null
+    isStarred?: boolean
+    isPinned?: boolean
+    addTags?: string[]
+    removeTags?: string[]
+  }>()
+
+  if (!Array.isArray(body.ids) || !body.ids.length) {
+    return c.json({ ok: true, count: 0 })
+  }
+
+  const ids = body.ids.filter(isValidId)
+  if (!ids.length) return c.json({ ok: true, count: 0 })
+
+  if (body.action === 'move') {
+    const targetFolderId = body.folderId ?? null
+    const statements = ids.map((id) =>
+      c.env.DB.prepare(`UPDATE attachments SET folder_id = ?1 WHERE id = ?2 AND user_id = ?3`).bind(targetFolderId, id, userId)
+    )
+    await c.env.DB.batch(statements)
+    return c.json({ ok: true, count: ids.length })
+  }
+
+  if (body.action === 'star') {
+    const val = body.isStarred ? 1 : 0
+    const statements = ids.map((id) =>
+      c.env.DB.prepare(`UPDATE attachments SET is_starred = ?1 WHERE id = ?2 AND user_id = ?3`).bind(val, id, userId)
+    )
+    await c.env.DB.batch(statements)
+    return c.json({ ok: true, count: ids.length })
+  }
+
+  if (body.action === 'pin') {
+    const val = body.isPinned ? 1 : 0
+    const statements = ids.map((id) =>
+      c.env.DB.prepare(`UPDATE attachments SET is_pinned = ?1 WHERE id = ?2 AND user_id = ?3`).bind(val, id, userId)
+    )
+    await c.env.DB.batch(statements)
+    return c.json({ ok: true, count: ids.length })
+  }
+
+  if (body.action === 'tag') {
+    const add = new Set(body.addTags ?? [])
+    const remove = new Set(body.removeTags ?? [])
+    for (const id of ids) {
+      const row = await c.env.DB.prepare(`SELECT tags FROM attachments WHERE id = ?1 AND user_id = ?2`).bind(id, userId).first<{ tags: string }>()
+      if (row) {
+        let current = parseTags(row.tags)
+        current = current.filter((t) => !remove.has(t))
+        for (const a of add) {
+          if (!current.includes(a)) current.push(a)
+        }
+        await c.env.DB.prepare(`UPDATE attachments SET tags = ?1 WHERE id = ?2 AND user_id = ?3`).bind(JSON.stringify(current), id, userId).run()
+      }
+    }
+    return c.json({ ok: true, count: ids.length })
+  }
+
+  if (body.action === 'delete') {
+    let deletedCount = 0
+    for (const id of ids) {
+      const row = await c.env.DB.prepare(
+        `SELECT id, user_id, filename, mime, storage FROM attachments WHERE id = ?1 AND user_id = ?2`,
+      ).bind(id, userId).first<AttachmentRow>()
+      if (!row) continue
+
+      const statements: D1PreparedStatement[] = [
+        c.env.DB.prepare(
+          `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at)
+           SELECT ?1, user_id, ?2 FROM attachments WHERE id = ?3 AND user_id = ?4`,
+        ).bind(
+          attachmentCleanupTarget(row.storage, attachmentObjectKey(row)),
+          Date.now(),
+          id,
+          userId,
+        ),
+        c.env.DB.prepare(
+          `DELETE FROM import_mappings WHERE user_id = ?1 AND entity = 'attachment' AND target_id = ?2`,
+        ).bind(userId, id),
+        c.env.DB.prepare(`DELETE FROM attachments WHERE id = ?1 AND user_id = ?2`).bind(id, userId),
+      ]
+      await c.env.DB.batch(statements)
+      deletedCount++
+    }
+    void drainAttachmentCleanup(c.env, userId).catch(() => {})
+    return c.json({ ok: true, count: deletedCount })
+  }
+
+  return c.json({ ok: true, count: 0 })
+})
+
+filesRoutes.get('/:id/notes', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  if (!isValidId(id)) throw ApiError.notFound('Attachment not found')
+
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, title, folder_id FROM notes
+      WHERE user_id = ?1 AND content LIKE ?2 AND deleted_at IS NULL
+      ORDER BY updated_at DESC LIMIT 20`
+  ).bind(userId, `%/api/files/${id}%`).all<{ id: string; title: string; folder_id: string | null }>()
+
+  return c.json({
+    notes: results.map((n) => ({
+      id: n.id,
+      title: n.title || 'Untitled',
+      folderId: n.folder_id,
+    })),
   })
 })
 

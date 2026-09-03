@@ -25,6 +25,7 @@ export interface PersistAttachmentInput {
   id: string
   userId: string
   noteId: string | null
+  folderId?: string | null
   filename: string
   reportedMime: string
   bytes: Uint8Array
@@ -35,6 +36,7 @@ export interface PersistedAttachment {
   id: string
   userId: string
   noteId: string | null
+  folderId?: string | null
   filename: string
   mime: string
   size: number
@@ -121,13 +123,14 @@ export async function persistAttachment(
 
   try {
     await env.DB.prepare(
-      `INSERT INTO attachments (id, user_id, note_id, filename, mime, size, sha256, width, height, storage, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
+      `INSERT INTO attachments (id, user_id, note_id, folder_id, filename, mime, size, sha256, width, height, storage, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)`,
     )
       .bind(
         input.id,
         input.userId,
         input.noteId,
+        input.folderId ?? null,
         filename,
         mime,
         input.bytes.byteLength,
@@ -160,6 +163,7 @@ export async function persistAttachment(
     id: input.id,
     userId: input.userId,
     noteId: input.noteId,
+    folderId: input.folderId ?? null,
     filename,
     mime,
     size: input.bytes.byteLength,

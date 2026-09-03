@@ -117,6 +117,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     note_id TEXT,
+    folder_id TEXT,
     filename TEXT NOT NULL,
     mime TEXT NOT NULL,
     size INTEGER NOT NULL,
@@ -124,11 +125,17 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     width INTEGER,
     height INTEGER,
     storage TEXT NOT NULL CHECK (storage IN ('r2', 'kv')),
+    is_starred INTEGER NOT NULL DEFAULT 0,
+    is_pinned INTEGER NOT NULL DEFAULT 0,
+    tags TEXT NOT NULL DEFAULT '[]',
     created_at INTEGER NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS idx_attachments_user ON attachments(user_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_attachments_user_sha ON attachments(user_id, sha256)`,
   `CREATE INDEX IF NOT EXISTS idx_attachments_note ON attachments(note_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_attachments_user_folder ON attachments(user_id, folder_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_attachments_user_starred ON attachments(user_id, is_starred)`,
+  `CREATE INDEX IF NOT EXISTS idx_attachments_user_pinned ON attachments(user_id, is_pinned)`,
 
   `CREATE TABLE IF NOT EXISTS attachment_refs (
     user_id TEXT NOT NULL,
@@ -564,6 +571,19 @@ const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `ALTER TABLE tags ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0`,
     ],
   },
+  {
+    version: 15,
+    skipIfColumnExists: { table: 'attachments', column: 'folder_id' },
+    statements: [
+      `ALTER TABLE attachments ADD COLUMN folder_id TEXT`,
+      `ALTER TABLE attachments ADD COLUMN is_starred INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE attachments ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE attachments ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'`,
+      `CREATE INDEX IF NOT EXISTS idx_attachments_user_folder ON attachments(user_id, folder_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_attachments_user_starred ON attachments(user_id, is_starred)`,
+      `CREATE INDEX IF NOT EXISTS idx_attachments_user_pinned ON attachments(user_id, is_pinned)`,
+    ],
+  },
 ]
 
 const FTS_STATEMENT = `CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
@@ -593,7 +613,7 @@ const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   note_tags: ['note_id', 'tag_id'],
   links: ['source_note_id', 'target_key', 'target_title', 'target_note_id', 'user_id'],
   note_versions: ['id', 'note_id', 'user_id', 'title', 'content', 'size', 'created_at'],
-  attachments: ['id', 'user_id', 'note_id', 'filename', 'mime', 'size', 'sha256', 'width', 'height', 'storage', 'created_at'],
+  attachments: ['id', 'user_id', 'note_id', 'folder_id', 'filename', 'mime', 'size', 'sha256', 'width', 'height', 'storage', 'is_starred', 'is_pinned', 'tags', 'created_at'],
   attachment_refs: ['user_id', 'attachment_id', 'count'],
   attachment_cleanup: ['object_key', 'user_id', 'created_at'],
   import_mappings: ['user_id', 'entity', 'source_id', 'target_id', 'updated_at'],

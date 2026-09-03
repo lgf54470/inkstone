@@ -274,6 +274,7 @@ export interface Backlink {
 export interface Attachment {
   id: string
   noteId: string | null
+  folderId?: string | null
   filename: string
   mime: string
   size: number
@@ -281,10 +282,25 @@ export interface Attachment {
   height: number | null
   url: string
   createdAt: number
+  isStarred?: boolean
+  isPinned?: boolean
+  tags?: string[]
 }
 
 export interface AttachmentWithUsage extends Attachment {
   references: number
+}
+
+export interface AttachmentStats {
+  totalCount: number
+  totalBytes: number
+  imageBytes: number
+  documentBytes: number
+  mediaBytes: number
+  archiveBytes: number
+  codeBytes: number
+  otherBytes: number
+  unreferencedCount: number
 }
 
 

@@ -3,6 +3,7 @@ import type { MarkdownBackupManifest } from '@shared/backup-format'
 import type {
   AppLocale,
   Attachment,
+  AttachmentStats,
   AttachmentWithUsage,
   BackupRun,
   BackupTarget,
@@ -410,16 +411,81 @@ export const api = {
     ),
 
   files: {
-    list: (cursor?: string, signal?: AbortSignal) => request<{ files: AttachmentWithUsage[]; nextCursor?: string | null }>(
-      `/api/files${toQuery({ cursor })}`,
-      { signal },
-    ),
-    upload: (file: File, noteId?: string) => {
+    list: (
+      options?:
+        | string
+        | {
+            cursor?: string
+            folderId?: string | null
+            type?: string
+            sizeRange?: string
+            minBytes?: number
+            maxBytes?: number
+            tag?: string
+            starred?: boolean
+            pinned?: boolean
+            noteId?: string
+            search?: string
+            sort?: string
+            limit?: number
+          },
+      signal?: AbortSignal,
+    ) => {
+      const opts = typeof options === 'string' ? { cursor: options } : options
+      return request<{
+        files: AttachmentWithUsage[]
+        nextCursor?: string | null
+        stats: AttachmentStats
+      }>(
+        `/api/files${toQuery({
+          cursor: opts?.cursor,
+          folderId: opts?.folderId ?? undefined,
+          type: opts?.type,
+          sizeRange: opts?.sizeRange,
+          minBytes: opts?.minBytes,
+          maxBytes: opts?.maxBytes,
+          tag: opts?.tag,
+          starred: opts?.starred ? '1' : undefined,
+          pinned: opts?.pinned ? '1' : undefined,
+          noteId: opts?.noteId,
+          search: opts?.search,
+          sort: opts?.sort,
+          limit: opts?.limit,
+        })}`,
+        { signal },
+      )
+    },
+    upload: (file: File, noteId?: string, folderId?: string | null) => {
       const form = new FormData()
       form.append('file', file)
       if (noteId) form.append('noteId', noteId)
+      if (folderId) form.append('folderId', folderId)
       return request<Attachment>('/api/files', { method: 'POST', formData: form })
     },
+    patch: (
+      id: string,
+      body: {
+        filename?: string
+        folderId?: string | null
+        isStarred?: boolean
+        isPinned?: boolean
+        tags?: string[]
+        updateNoteReferences?: boolean
+      },
+    ) => request<Attachment>(`/api/files/${id}`, { method: 'PATCH', body }),
+    batch: (body: {
+      action: 'move' | 'star' | 'pin' | 'tag' | 'delete'
+      ids: string[]
+      folderId?: string | null
+      isStarred?: boolean
+      isPinned?: boolean
+      addTags?: string[]
+      removeTags?: string[]
+    }) => request<{ ok: true; count: number }>('/api/files/batch', { method: 'POST', body }),
+    referencingNotes: (id: string) =>
+      request<{ notes: Array<{ id: string; title: string; folderId: string | null }> }>(
+        `/api/files/${id}/notes`,
+      ),
     remove: (id: string) => request<{ ok: true }>(`/api/files/${id}`, { method: 'DELETE' }),
     prune: () => request<{ removed: number; freedBytes: number }>('/api/files/prune', { method: 'POST' }),
   },
