@@ -1247,6 +1247,7 @@ export const ZH_CN_MESSAGES = {
     "blog.comments_and_stats": "评论与统计",
     "blog.post_settings": "博文发布设置",
     "blog.sync_post": "同步最新内容",
+    "blog.publish": "发布博文",
     "blog.unpublish": "下架博文",
     "blog.confirm_unpublish": "确定要下架这篇博文吗？",
     "blog.unpublish_description": "下架后文章将不再在博客前台展示，原笔记将保持不变，且可随时重新发布。",

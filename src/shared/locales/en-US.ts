@@ -1246,6 +1246,7 @@ export const EN_US_MESSAGES = {
     "blog.comments_and_stats": "Comments & Stats",
     "blog.post_settings": "Post Settings",
     "blog.sync_post": "Sync Latest Content",
+    "blog.publish": "Publish Post",
     "blog.unpublish": "Unpublish Post",
     "blog.confirm_unpublish": "Are you sure you want to unpublish this post?",
     "blog.unpublish_description": "The post will no longer be visible on your public blog. The original note remains intact and can be republished anytime.",

@@ -483,6 +483,33 @@ blogManageRoutes.get('/analytics', requireAuth, async (c) => {
   return c.json({ analytics })
 })
 
+blogManageRoutes.delete('/visits', requireAuth, async (c) => {
+  const userId = c.get('userId')!
+  const type = c.req.query('type') || 'all'
+  const days = parseInt(c.req.query('days') || '30', 10)
+
+  let deleted = 0
+  if (type === 'bots') {
+    const res = await c.env.DB.prepare(
+      `DELETE FROM blog_visits WHERE user_id = ?1 AND is_bot = 1`,
+    ).bind(userId).run()
+    deleted = res.meta.changes ?? 0
+  } else if (type === 'older_than') {
+    const cutoff = Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000
+    const res = await c.env.DB.prepare(
+      `DELETE FROM blog_visits WHERE user_id = ?1 AND visited_at < ?2`,
+    ).bind(userId, cutoff).run()
+    deleted = res.meta.changes ?? 0
+  } else if (type === 'all') {
+    const res = await c.env.DB.prepare(
+      `DELETE FROM blog_visits WHERE user_id = ?1`,
+    ).bind(userId).run()
+    deleted = res.meta.changes ?? 0
+  }
+
+  return c.json({ ok: true as const, deleted })
+})
+
 // 2. Settings
 blogManageRoutes.get('/settings', requireAuth, async (c) => {
   const userId = c.get('userId')!
@@ -633,7 +660,11 @@ blogManageRoutes.get('/posts', requireAuth, async (c) => {
   }))
 
   if (tag) {
-    posts = posts.filter((p) => p.tags.includes(tag))
+    posts = posts.filter(
+      (p) =>
+        Array.isArray(p.tags) &&
+        p.tags.some((t: string) => t === tag || t.startsWith(`${tag}/`)),
+    )
   }
 
   return c.json({ posts })
@@ -905,22 +936,22 @@ blogManageRoutes.post('/posts/batch', requireAuth, async (c) => {
 
   if (!body.postIds?.length) return c.json({ ok: true, count: 0 })
 
-  const placeholders = body.postIds.map((_, i) => `?${i + 2}`).join(',')
+  const placeholders = body.postIds.map(() => '?').join(',')
   const now = Date.now()
 
   if (body.action === 'publish') {
     await c.env.DB
-      .prepare(`UPDATE blog_posts SET is_published = 1, updated_at = ?1 WHERE user_id = ?2 AND id IN (${placeholders})`)
+      .prepare(`UPDATE blog_posts SET is_published = 1, updated_at = ? WHERE user_id = ? AND id IN (${placeholders})`)
       .bind(now, userId, ...body.postIds)
       .run()
   } else if (body.action === 'unpublish') {
     await c.env.DB
-      .prepare(`UPDATE blog_posts SET is_published = 0, updated_at = ?1 WHERE user_id = ?2 AND id IN (${placeholders})`)
+      .prepare(`UPDATE blog_posts SET is_published = 0, updated_at = ? WHERE user_id = ? AND id IN (${placeholders})`)
       .bind(now, userId, ...body.postIds)
       .run()
   } else if (body.action === 'delete') {
     await c.env.DB
-      .prepare(`DELETE FROM blog_posts WHERE user_id = ?1 AND id IN (${placeholders})`)
+      .prepare(`DELETE FROM blog_posts WHERE user_id = ? AND id IN (${placeholders})`)
       .bind(userId, ...body.postIds)
       .run()
     await c.env.DB
@@ -929,17 +960,17 @@ blogManageRoutes.post('/posts/batch', requireAuth, async (c) => {
       .run()
   } else if (body.action === 'setCategory') {
     await c.env.DB
-      .prepare(`UPDATE blog_posts SET category_id = ?1, updated_at = ?2 WHERE user_id = ?3 AND id IN (${placeholders})`)
+      .prepare(`UPDATE blog_posts SET category_id = ?, updated_at = ? WHERE user_id = ? AND id IN (${placeholders})`)
       .bind(body.categoryId || null, now, userId, ...body.postIds)
       .run()
   } else if (body.action === 'setFolder') {
     await c.env.DB
-      .prepare(`UPDATE blog_posts SET folder_id = ?1, updated_at = ?2 WHERE user_id = ?3 AND id IN (${placeholders})`)
+      .prepare(`UPDATE blog_posts SET folder_id = ?, updated_at = ? WHERE user_id = ? AND id IN (${placeholders})`)
       .bind(body.folderId || null, now, userId, ...body.postIds)
       .run()
   } else if (body.action === 'setPinned') {
     await c.env.DB
-      .prepare(`UPDATE blog_posts SET is_pinned = ?1, updated_at = ?2 WHERE user_id = ?3 AND id IN (${placeholders})`)
+      .prepare(`UPDATE blog_posts SET is_pinned = ?, updated_at = ? WHERE user_id = ? AND id IN (${placeholders})`)
       .bind(body.isPinned ? 1 : 0, now, userId, ...body.postIds)
       .run()
   }
@@ -1248,14 +1279,14 @@ blogManageRoutes.post('/batch-toggle-group', requireAuth, async (c) => {
     }
 
     const ids = Array.from(targetFolderIds)
-    const placeholders = ids.map((_, i) => `?${i + 4}`).join(',')
+    const placeholders = ids.map(() => '?').join(',')
     await c.env.DB.prepare(
-      `UPDATE blog_posts SET is_published = ?1, updated_at = ?2 WHERE user_id = ?3 AND folder_id IN (${placeholders})`,
+      `UPDATE blog_posts SET is_published = ?, updated_at = ? WHERE user_id = ? AND folder_id IN (${placeholders})`,
     ).bind(isPublished, now, userId, ...ids).run()
   } else if (body.type === 'tag') {
     await c.env.DB.prepare(
-      `UPDATE blog_posts SET is_published = ?1, updated_at = ?2 WHERE user_id = ?3 AND tags LIKE ?4`,
-    ).bind(isPublished, now, userId, `%"${body.target}"%`).run()
+      `UPDATE blog_posts SET is_published = ?, updated_at = ? WHERE user_id = ? AND (tags LIKE ? OR tags LIKE ?)`,
+    ).bind(isPublished, now, userId, `%"${body.target}"%`, `%"${body.target}/%`).run()
   }
 
   return c.json({ ok: true })

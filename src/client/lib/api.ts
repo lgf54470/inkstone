@@ -786,6 +786,8 @@ export const api = {
     },
     batchToggleGroup: (type: 'folder' | 'tag', target: string, enabled: boolean) =>
       request<{ ok: true }>('/api/blog/batch-toggle-group', { method: 'POST', body: { type, target, enabled } }),
+    cleanVisits: (type: 'bots' | 'older_than' | 'all', days?: number) =>
+      request<{ ok: true; deleted: number }>(`/api/blog/visits${toQuery({ type, days })}`, { method: 'DELETE' }),
     categories: {
       list: (signal?: AbortSignal) =>
         request<{ categories: BlogCategory[] }>('/api/blog/categories', { signal }),

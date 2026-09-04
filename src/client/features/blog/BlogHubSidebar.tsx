@@ -21,13 +21,14 @@ import {
   Settings,
   Trash2,
 } from 'lucide-react'
-import type { BlogTag } from '@shared/types'
+import type { BlogTag, Tag } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton } from '../../components/primitives'
 import { Switch } from '../../components/form'
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
 import { useUi } from '../../store/ui'
+import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../lib/tag-tree'
 import { FolderColorSubmenu } from '../folders/FolderColorSubmenu'
 import { TagColorSubmenu } from '../tags/TagColorSubmenu'
 import {
@@ -71,11 +72,72 @@ export function BlogHubSidebar({
 
   const folderTree = useMemo(() => buildBlogFolderTree(folders), [folders])
 
+  const mappedTags = useMemo<Tag[]>(() => {
+    return tags.map((bt) => ({
+      id: bt.id,
+      name: bt.name,
+      color: bt.color ?? null,
+      count: stats?.tagCounts?.[bt.name]?.total ?? bt.postsCount ?? 0,
+      isPinned: Boolean(bt.isPinned),
+      createdAt: bt.createdAt ?? 0,
+    }))
+  }, [tags, stats])
+
+  const tagTree = useMemo(() => buildTagTree(mappedTags), [mappedTags])
+
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => new Set())
+  const [expandedTagPaths, setExpandedTagPaths] = useState<Set<string>>(() => new Set())
   const [foldersSectionOpen, setFoldersSectionOpen] = useState(true)
   const [tagsSectionOpen, setTagsSectionOpen] = useState(true)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renamingTagId, setRenamingTagId] = useState<string | null>(null)
+
+  const parentTagPaths = useMemo(() => {
+    const result: string[] = []
+    const visit = (nodes: readonly TagTreeNode[]) => {
+      for (const node of nodes) {
+        if (node.children.length > 0) {
+          result.push(node.fullPath)
+          visit(node.children)
+        }
+      }
+    }
+    visit(tagTree)
+    return result
+  }, [tagTree])
+
+  useEffect(() => {
+    if (parentTagPaths.length > 0) {
+      setExpandedTagPaths((prev) => {
+        if (prev.size === 0) {
+          return new Set(parentTagPaths)
+        }
+        return prev
+      })
+    }
+  }, [parentTagPaths])
+
+  const flattenedTagNodes = useMemo(
+    () => flattenTagTree(tagTree, expandedTagPaths),
+    [tagTree, expandedTagPaths],
+  )
+
+  const getTagNodeCounts = (node: TagTreeNode): { total: number; published: number } => {
+    let total = 0
+    let published = 0
+    const visit = (n: TagTreeNode) => {
+      const direct = stats?.tagCounts?.[n.fullPath]
+      if (direct) {
+        total += direct.total
+        published += direct.published
+      }
+      for (const ch of n.children) {
+        visit(ch)
+      }
+    }
+    visit(node)
+    return { total: Math.max(total, node.totalCount), published }
+  }
 
   useEffect(() => {
     void loadFolders()
@@ -335,26 +397,50 @@ export function BlogHubSidebar({
 
           {tagsSectionOpen && (
             <div className="space-y-0.5 pt-0.5">
-              {tags.length === 0 ? (
+              {flattenedTagNodes.length === 0 ? (
                 <p className="px-2.5 py-1 text-[11px] text-[var(--text-quaternary)]">
                   {t('blog.no_tags')}
                 </p>
               ) : (
-                tags.map((tag) => {
-                  const isSelected = activeTab === 'posts' && selectedTag === tag.name
-                  const counts = stats?.tagCounts?.[tag.name] || { total: 0, published: 0 }
-                  const isRenaming = renamingTagId === tag.id
+                flattenedTagNodes.map((node) => {
+                  const isSelected =
+                    activeTab === 'posts' &&
+                    (selectedTag === node.fullPath || selectedTag === node.name)
+                  const counts = getTagNodeCounts(node)
+                  const isRenaming = renamingTagId === node.tag.id
+                  const hasChildren = node.children.length > 0
+                  const isExpanded = expandedTagPaths.has(node.fullPath)
 
                   return (
                     <BlogTagItem
-                      key={tag.id}
-                      tag={tag}
+                      key={node.fullPath}
+                      tag={{
+                        id: node.tag.id,
+                        userId: '',
+                        name: node.fullPath,
+                        color: node.tag.color,
+                        isPinned: node.isPinned,
+                        postsCount: node.count,
+                        createdAt: node.tag.createdAt,
+                      }}
+                      displayName={node.name}
+                      depth={node.depth}
+                      hasChildren={hasChildren}
+                      isExpanded={isExpanded}
+                      onToggleExpand={() => {
+                        setExpandedTagPaths((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(node.fullPath)) next.delete(node.fullPath)
+                          else next.add(node.fullPath)
+                          return next
+                        })
+                      }}
                       isSelected={isSelected}
                       counts={counts}
                       isRenaming={isRenaming}
-                      onSelect={() => setTag(tag.name)}
+                      onSelect={() => setTag(node.fullPath)}
                       onBatchToggle={async (enabled) => {
-                        const ok = await batchToggleGroup('tag', tag.name, enabled)
+                        const ok = await batchToggleGroup('tag', node.fullPath, enabled)
                         if (ok) {
                           toast({
                             title: enabled
@@ -364,23 +450,37 @@ export function BlogHubSidebar({
                           })
                         }
                       }}
-                      onStartRename={() => setRenamingTagId(tag.id)}
+                      onStartRename={() => setRenamingTagId(node.tag.id)}
                       onFinishRename={(nextName) => {
                         setRenamingTagId(null)
-                        if (nextName && nextName !== tag.name) {
-                          void patchTag(tag.id, { name: nextName })
+                        if (nextName && nextName !== node.name) {
+                          const segments = node.fullPath.split('/')
+                          segments[segments.length - 1] = nextName
+                          const nextFullPath = segments.join('/')
+                          const realTag = tags.find((t) => t.id === node.tag.id || t.name === node.fullPath)
+                          if (realTag) {
+                            void patchTag(realTag.id, { name: nextFullPath })
+                          }
                         }
                       }}
-                      onColorChange={(color) => void patchTag(tag.id, { color })}
+                      onColorChange={(color) => {
+                        const realTag = tags.find((t) => t.id === node.tag.id || t.name === node.fullPath)
+                        if (realTag) {
+                          void patchTag(realTag.id, { color })
+                        }
+                      }}
                       onDelete={async () => {
                         const ok = await confirm({
                           title: t('tags.delete'),
-                          description: t('tags.delete_confirm_value0', { value0: tag.name }),
+                          description: t('tags.delete_confirm_value0', { value0: node.name }),
                           confirmLabel: t('common.delete'),
                           tone: 'danger',
                         })
                         if (ok) {
-                          void deleteTag(tag.id)
+                          const realTag = tags.find((t) => t.id === node.tag.id || t.name === node.fullPath)
+                          if (realTag) {
+                            void deleteTag(realTag.id)
+                          }
                         }
                       }}
                     />
@@ -733,6 +833,11 @@ function BlogFolderItem({
 
 function BlogTagItem({
   tag,
+  displayName,
+  depth = 0,
+  hasChildren = false,
+  isExpanded = false,
+  onToggleExpand,
   isSelected,
   counts,
   isRenaming,
@@ -744,6 +849,11 @@ function BlogTagItem({
   onDelete,
 }: {
   tag: BlogTag
+  displayName?: string
+  depth?: number
+  hasChildren?: boolean
+  isExpanded?: boolean
+  onToggleExpand?: (e: React.MouseEvent) => void
   isSelected: boolean
   counts: { total: number; published: number }
   isRenaming: boolean
@@ -756,7 +866,8 @@ function BlogTagItem({
 }) {
   const toast = useUi((s) => s.toast)
   const batchBusy = useBlogStore((s) => s.batchBusy)
-  const [nameInput, setNameInput] = useState(tag.name)
+  const initialName = displayName || (tag.name.includes('/') ? tag.name.split('/').pop()! : tag.name)
+  const [nameInput, setNameInput] = useState(initialName)
   const inputRef = useRef<HTMLInputElement>(null)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -764,11 +875,11 @@ function BlogTagItem({
 
   useEffect(() => {
     if (isRenaming) {
-      setNameInput(tag.name)
+      setNameInput(initialName)
       inputRef.current?.focus()
       inputRef.current?.select()
     }
-  }, [isRenaming, tag.name])
+  }, [isRenaming, initialName])
 
   const safeTotal = Math.max(0, counts.total)
   const safePublished = Math.min(Math.max(0, counts.published), safeTotal)
@@ -846,13 +957,29 @@ function BlogTagItem({
             onSelect()
           }
         }}
+        style={{ paddingLeft: `${depth * 12 + 8}px` }}
         className={cn(
-          'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] px-2 text-[12px] font-medium transition-colors cursor-pointer',
+          'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[12px] font-medium transition-colors cursor-pointer',
           isSelected
             ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
         )}
       >
+        {hasChildren ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleExpand?.(e)
+            }}
+            className="p-0.5 -ml-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-colors shrink-0"
+          >
+            {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          </button>
+        ) : depth > 0 ? (
+          <span className="w-2 shrink-0" />
+        ) : null}
+
         <span
           style={{ color: tag.color ?? undefined }}
           className={cn('shrink-0', !tag.color && 'text-[var(--text-quaternary)]')}
@@ -867,15 +994,17 @@ function BlogTagItem({
             value={nameInput}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => setNameInput(e.target.value)}
-            onBlur={() => onFinishRename(nameInput.trim() || tag.name)}
+            onBlur={() => onFinishRename(nameInput.trim() || initialName)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') onFinishRename(nameInput.trim() || tag.name)
-              if (e.key === 'Escape') onFinishRename(tag.name)
+              if (e.key === 'Enter') onFinishRename(nameInput.trim() || initialName)
+              if (e.key === 'Escape') onFinishRename(initialName)
             }}
             className="flex-1 bg-[var(--bg-surface)] px-1 py-0.5 text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden"
           />
         ) : (
-          <span className="flex-1 truncate">{tag.name}</span>
+          <span className="flex-1 truncate" title={tag.name}>
+            {initialName}
+          </span>
         )}
 
         <span className="tabular text-[10px] text-[var(--text-quaternary)] shrink-0">

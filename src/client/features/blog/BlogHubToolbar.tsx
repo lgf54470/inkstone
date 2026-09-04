@@ -3,6 +3,7 @@ import { IconButton, Button } from '../../components/primitives'
 import { Input } from '../../components/form'
 import { t } from '../../lib/i18n'
 import { useBlogStore } from './blog-store'
+import { BlogTrafficFilterPopover } from './BlogTrafficFilterPopover'
 
 export function BlogHubToolbar({
   onOpenSettings,
@@ -112,6 +113,8 @@ export function BlogHubToolbar({
         </Button>
 
         <div className="h-4 w-px bg-[var(--border-subtle)]" />
+
+        <BlogTrafficFilterPopover />
 
         <div className="flex items-center rounded-[var(--r-md)] border border-[var(--border-default)] p-0.5 bg-[var(--bg-base)]">
           <button

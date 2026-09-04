@@ -133,8 +133,63 @@ interface BlogStoreState {
   updateCategory: (id: string, patch: Partial<BlogCategory>) => Promise<void>
   deleteCategory: (id: string) => Promise<void>
 
+  excludeBots: boolean
+  excludeSelfReferrers: boolean
+  excludeOwner: boolean
+  setFilters: (filters: Partial<{ excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }>) => void
+
+  logRetentionDays: number
+  maxLogRecords: number
+  setRetentionSettings: (settings: { logRetentionDays: number; maxLogRecords: number }) => void
+
   saveSettings: (settings: Partial<BlogSettings>) => Promise<void>
 }
+
+const TRAFFIC_FILTERS_KEY = 'inkstone_blog_traffic_filters'
+const RETENTION_SETTINGS_KEY = 'inkstone_blog_retention_settings'
+
+function loadInitialFilters(): { excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean } {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(TRAFFIC_FILTERS_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        return {
+          excludeBots: parsed.excludeBots !== false,
+          excludeSelfReferrers: Boolean(parsed.excludeSelfReferrers),
+          excludeOwner: Boolean(parsed.excludeOwner),
+        }
+      }
+    } catch {}
+  }
+  return {
+    excludeBots: true,
+    excludeSelfReferrers: false,
+    excludeOwner: false,
+  }
+}
+
+function loadInitialRetention(): { logRetentionDays: number; maxLogRecords: number } {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(RETENTION_SETTINGS_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        return {
+          logRetentionDays: typeof parsed.logRetentionDays === 'number' ? parsed.logRetentionDays : 30,
+          maxLogRecords: typeof parsed.maxLogRecords === 'number' ? parsed.maxLogRecords : 1000,
+        }
+      }
+    } catch {}
+  }
+  return {
+    logRetentionDays: 30,
+    maxLogRecords: 1000,
+  }
+}
+
+const initialFilters = loadInitialFilters()
+const initialRetention = loadInitialRetention()
 
 export const useBlogStore = create<BlogStoreState>((set, get) => ({
   activeTab: 'dashboard',
@@ -160,6 +215,41 @@ export const useBlogStore = create<BlogStoreState>((set, get) => ({
   settings: null,
   loading: false,
   batchBusy: false,
+
+  excludeBots: initialFilters.excludeBots,
+  excludeSelfReferrers: initialFilters.excludeSelfReferrers,
+  excludeOwner: initialFilters.excludeOwner,
+  setFilters: (newFilters) => {
+    set((state) => {
+      const updated = {
+        excludeBots: newFilters.excludeBots ?? state.excludeBots,
+        excludeSelfReferrers: newFilters.excludeSelfReferrers ?? state.excludeSelfReferrers,
+        excludeOwner: newFilters.excludeOwner ?? state.excludeOwner,
+      }
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(TRAFFIC_FILTERS_KEY, JSON.stringify(updated))
+        } catch {}
+      }
+      return updated
+    })
+    void get().loadPosts()
+    void get().loadStats()
+  },
+
+  logRetentionDays: initialRetention.logRetentionDays,
+  maxLogRecords: initialRetention.maxLogRecords,
+  setRetentionSettings: (newSettings) => {
+    set({
+      logRetentionDays: newSettings.logRetentionDays,
+      maxLogRecords: newSettings.maxLogRecords,
+    })
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(RETENTION_SETTINGS_KEY, JSON.stringify(newSettings))
+      } catch {}
+    }
+  },
 
   setActiveTab: (activeTab) => set({ activeTab }),
   setStatusFilter: (statusFilter) => {
@@ -471,12 +561,16 @@ export const useBlogStore = create<BlogStoreState>((set, get) => ({
   batchMoveToFolder: async (postIds, folderId) => {
     if (!postIds.length) return false
     set({ batchBusy: true })
+    set((state) => ({
+      posts: state.posts.map((p) => (postIds.includes(p.id) ? { ...p, folderId } : p)),
+    }))
     try {
       await api.blog.posts.batch('setFolder', postIds, { folderId })
       get().clearPostSelection()
       await Promise.all([get().loadPosts(), get().loadStats()])
       return true
     } catch {
+      await get().loadPosts()
       return false
     } finally {
       set({ batchBusy: false })
@@ -490,6 +584,9 @@ export const useBlogStore = create<BlogStoreState>((set, get) => ({
   },
 
   updatePost: async (id, patch) => {
+    set((state) => ({
+      posts: state.posts.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+    }))
     await api.blog.posts.patch(id, patch)
     await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
   },
