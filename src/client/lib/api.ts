@@ -1,4 +1,5 @@
 import { CLIENT_HEADER } from '@shared/constants'
+import { secureRandomId } from './id'
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import type {
   AppLocale,
@@ -61,11 +62,14 @@ import { publishBroadcast } from './db'
 import { getLocale, t, translateApiError } from './i18n'
 
 
-export const CLIENT_ID =
-  typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2)
+export const CLIENT_ID = secureRandomId()
 
+/**
+ * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors
+ * the worker's ApiError (src/worker/lib/errors.ts) without sharing the class:
+ * the two layers must stay import-decoupled, and the client carries extra
+ * client-only states (offline/timeout) that have no server counterpart.
+ */
 export class ApiError extends Error {
   constructor(
     readonly status: number,

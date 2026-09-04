@@ -1,3 +1,4 @@
+import { escapeHtml } from '@shared/escape'
 import { renderMarkdown } from './markdown/renderer'
 import { useSession } from '../store/session'
 import { resolveNoteEmbeds } from './markdown/embeds'
@@ -437,19 +438,6 @@ document.querySelectorAll('.tab-list button').forEach(function(btn) {
 </script>
 </body>
 </html>`
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => {
-    const entities: Record<string, string> = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;',
-    }
-    return entities[character] ?? character
-  })
 }
 
 function escapeAttr(value: string): string {

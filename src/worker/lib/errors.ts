@@ -1,6 +1,12 @@
 import type { Context } from 'hono'
 import type { ApiErrorCode } from '@shared/types'
 
+/**
+ * Worker-side ApiError (producer of the HTTP boundary). Deliberately mirrors
+ * the client's ApiError (src/client/lib/api.ts) without sharing the class:
+ * the two layers must stay import-decoupled, and the worker adds static
+ * factories and a strict status union the client does not need.
+ */
 export class ApiError extends Error {
   constructor(
     readonly status: 400 | 401 | 403 | 404 | 409 | 413 | 415 | 429 | 500 | 502 | 503,

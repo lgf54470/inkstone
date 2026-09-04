@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono'
 import { setCookie } from 'hono/cookie'
 import { LIMITS } from '@shared/constants'
+import { escapeHtml } from '@shared/escape'
 import {
   PublicNote,
   ShareBreakdownItem,
@@ -1696,11 +1697,3 @@ export function publicShareTitle(title: string): string {
   return title || 'Untitled note'
 }
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}

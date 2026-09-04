@@ -103,7 +103,6 @@ const allowed = new Map([
     "/* Appearance button/badge */",
     "/* Name or Rename input */",
     "/* Action buttons */",
-    "/* Sub-modal: Folder Appearance */",
   ]],
   ["src/client/features/folders/MoveToFolderSubmenu.tsx", [
     "/* Header */",
@@ -160,7 +159,7 @@ const allowed = new Map([
     "// opt in, so third parties cannot track them via note images. The",
     "// server enforces this too by omitting `https:` from CSP img-src on /s/*.",
   ]],
-  ["src/client/features/sidebar/Sidebar.tsx", [
+  ["src/client/features/sidebar/sidebar/SidebarFolders.tsx", [
     "// The count feeds the delete-confirmation only; the visible row badge is the",
     "// tree's totalNotes. Look it up from the shared memoized navigation projection",
     "// instead of scanning the whole notes map per folder row per render.",
@@ -347,12 +346,14 @@ const allowed = new Map([
     "// Placeholder instead of a broken <img>: the browser never loads an",
     "// external image while blocked, so no request leaves the origin.",
     "/** True for http(s) URLs that point to a different origin than the app itself. */",
+    "/** Allow external https images; defaults to false (blocked). */",
+  ]],
+  ["src/client/lib/markdown/sanitize.ts", [
     "// The renderer is the only producer of this HTML, so the whitelist is",
     "// exact: every tag markdown-it and the Inkstone extensions can emit,",
     "// nothing else. SVG/MathML/forms stay out entirely to avoid the",
     "// mXSS-prone element combinations; task checkboxes are re-inserted as",
     "// DOM nodes after sanitization, so `input` is intentionally absent.",
-    "/** Allow external https images; defaults to false (blocked). */",
   ]],
   ["src/client/lib/note-filter.ts", [
     "/** Decide whether a note belongs to the active list view, optionally stacked with a multi-tag selection (`any` or `all` must match). */",

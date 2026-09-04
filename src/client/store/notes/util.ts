@@ -1,5 +1,6 @@
 /** ID generation, outbox key helpers, and tiny shared predicates for the notes store. */
 import { CLIENT_ID } from '../../lib/api';
+import { randomWriteId } from '../../lib/id';
 import type { OutboxItem } from '../../lib/db';
 
 export function equalStringArrays(a: readonly string[], b: readonly string[]): boolean {
@@ -14,9 +15,7 @@ export function outboxId(noteId: string): string {
     return `patch:${CLIENT_ID}:${noteId}`;
 }
 export function newLocalWriteId(): string {
-    return typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    return randomWriteId();
 }
 export const NOTE_ID_ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz';
 export function newLocalEntityId(): string {

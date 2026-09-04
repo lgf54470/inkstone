@@ -8,6 +8,7 @@ import type { Context } from 'hono'
 import { getCookie, setCookie } from 'hono/cookie'
 import { LIMITS } from '@shared/constants'
 import type { AppLocale } from '@shared/types'
+import { escapeHtml } from '@shared/escape'
 import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'
 import { timingSafeEqual } from '../lib/encoding'
@@ -443,8 +444,3 @@ function randomToken(): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[character]!)
-}

@@ -1,3 +1,4 @@
+import { escapeHtml } from '@shared/escape';
 import { decodeDataValue } from './data-attr';
 import { t } from "../i18n";
 import { highlightWithPrism } from './prism';
@@ -598,9 +599,6 @@ export function invalidateMermaidTheme(root: HTMLElement | null): void {
     root?.querySelectorAll<HTMLElement>('[data-chart]').forEach((node) => {
         delete node.dataset.rendered;
     });
-}
-function escapeHtml(text: string): string {
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 function remember<K, V>(cache: Map<K, V>, key: K, value: V, limit: number): void {
     if (cache.has(key))

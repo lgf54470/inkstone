@@ -13,6 +13,8 @@ import deflist from 'markdown-it-deflist';
 import abbr from 'markdown-it-abbr';
 import ruby from 'markdown-it-ruby';
 import { parseFrontMatter, slugifyHeading } from '@shared/markdown-utils';
+import { escapeHtml } from '@shared/escape';
+import { secureRandomId } from '../id';
 import { sanitizeProseHtml } from './sanitize';
 import { getLocale, t } from '../i18n';
 import { encodeDataValue } from './data-attr';
@@ -1087,15 +1089,7 @@ function renderEnv(value: unknown): RenderEnvironment {
     return value as RenderEnvironment;
 }
 function createNonce(): string {
-    const secureCrypto = globalThis.crypto;
-    if (secureCrypto && typeof secureCrypto.randomUUID === 'function')
-        return secureCrypto.randomUUID();
-    if (secureCrypto && typeof secureCrypto.getRandomValues === 'function') {
-        const bytes = new Uint8Array(16);
-        secureCrypto.getRandomValues(bytes);
-        return [...bytes].map((value) => value.toString(16).padStart(2, '0')).join('');
-    }
-    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    return secureRandomId();
 }
 function materializeTrustedTasks(html: string, nonce: string): string {
     const template = document.createElement('template');
@@ -1453,13 +1447,6 @@ function plainInline(token: Token): string {
         .map((child) => child.content)
         .join('')
         .trim();
-}
-function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
 }
 function escapeAttr(text: string): string {
     return escapeHtml(text).replace(/'/g, '&#39;').replace(/\n/g, '&#10;');
