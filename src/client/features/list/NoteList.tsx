@@ -36,6 +36,8 @@ const VIEW_MESSAGE_KEYS: Record<ViewKind, MessageKey> = {
     all: 'navigation.all_notes',
     recent: 'navigation.recently_edited',
     starred: 'navigation.favorites',
+    pinned: 'navigation.pinned',
+    shared: 'navigation.share',
     unfiled: 'navigation.unfiled',
     archived: 'navigation.archive',
     trash: 'navigation.trash',
@@ -433,6 +435,13 @@ export function NoteList() {
                     <Star size={14}/>
                   </IconButton>
                 </Tooltip>
+                {view === 'shared' && (
+                  <Tooltip label={t("share.manage_shares")}>
+                    <IconButton label={t("share.manage_shares")} size="sm" onClick={() => useUi.getState().openPanel('share-hub')}>
+                      <Share2 size={14} className="text-[var(--accent)]"/>
+                    </IconButton>
+                  </Tooltip>
+                )}
                 <Tooltip label={t("common.new_note")} combo="mod+n">
                   <IconButton label={t("common.new_note")} size="sm" onClick={() => void createContextualNote()}>
                     <Plus size={15}/>
@@ -1079,6 +1088,8 @@ function ListEmpty({ view, folderId, filtering, dayFiltering, tagFiltering, late
         all: { art: 'notes', title: t("notes.no_notes_yet"), desc: t("notes.press_shortcut_or_the_plus_button_to_write_your_first_note", { shortcut: shortcut('mod+n') }) },
         recent: { art: 'notes', title: t("notes.nothing_has_been_edited_recently"), desc: t("notes.write_something_and_it_will_appear_here") },
         starred: { art: 'starred', title: t("notes.no_favorites_yet"), desc: t("notes.right_click_a_note_or_press_shortcut_to_favorite_it", { shortcut: shortcut('mod+d') }) },
+        pinned: { art: 'notes', title: t("notes.no_pinned_notes"), desc: t("notes.no_pinned_notes_desc") },
+        shared: { art: 'notes', title: t("notes.no_shared_notes"), desc: t("notes.no_shared_notes_desc") },
         unfiled: { art: 'folder', title: t("notes.every_note_is_filed"), desc: t("notes.everything_is_neatly_organized") },
         archived: { art: 'archive', title: t("notes.archive_is_empty"), desc: t("notes.keep_notes_here_when_you_want_them_out_of_the_way_but_not_deleted") },
         trash: { art: 'trash', title: t("notes.trash_is_empty"), desc: t("notes.deleted_notes_remain_until_you_restore_or_clear_them") },

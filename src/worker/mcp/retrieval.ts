@@ -329,7 +329,7 @@ export async function listMcpNotes(
   userId: string,
   origin: string,
   input: {
-    view?: 'all' | 'recent' | 'starred' | 'archived' | 'trash'
+    view?: 'all' | 'recent' | 'starred' | 'pinned' | 'shared' | 'archived' | 'trash'
     limit?: number
     cursor?: string
   },
@@ -345,6 +345,8 @@ export async function listMcpNotes(
     else where += ' AND n.is_archived = 0'
   }
   if (view === 'starred') where += ' AND n.is_starred = 1'
+  if (view === 'pinned') where += ' AND n.is_pinned = 1'
+  if (view === 'shared') where += ' AND EXISTS (SELECT 1 FROM shares s WHERE s.note_id = n.id AND (s.is_enabled = 1 OR s.is_enabled IS NULL))'
   const query = cursor.kind === 'key'
     ? db.prepare(
       `SELECT ${NOTE_COLUMNS} FROM notes n WHERE ${where}

@@ -334,6 +334,8 @@ export type ViewKind =
   | 'all'
   | 'recent'
   | 'starred'
+  | 'pinned'
+  | 'shared'
   | 'unfiled'
   | 'archived'
   | 'trash'

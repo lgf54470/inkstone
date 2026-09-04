@@ -16,6 +16,7 @@ import { getFolderTemplateId, getInboxFolderId } from '../../lib/folder-prefs';
 import { renderNewNoteTemplate } from '@shared/markdown-utils';
 import { useNoteTemplates } from '../note-templates';
 import { compare, compareTrash } from './workspace';
+import { useShareStore } from '../../features/share/share-store';
 
 type TagCacheState = Pick<NotesState, 'notes' | 'tags'>;
 
@@ -78,6 +79,7 @@ export function createContextualNote(input?: {
         ...(ui.view === 'tag' && ui.tag && input?.content === undefined ? { tags: [ui.tag] } : {}),
         ...(selectedTags && input?.content === undefined ? { tags: selectedTags } : {}),
         ...(ui.view === 'starred' ? { isStarred: true } : {}),
+        ...(ui.view === 'pinned' ? { isPinned: true } : {}),
     });
 }
 
@@ -89,6 +91,7 @@ export interface NoteGroup {
 export interface NavigationCounts {
     all: number;
     starred: number;
+    pinned: number;
     unfiled: number;
     archived: number;
     trash: number;
@@ -100,14 +103,14 @@ interface NavigationProjection {
 }
 let navigationProjectionNotes: Record<string, NoteSummary> | null = null;
 let navigationProjectionCache: NavigationProjection = {
-    counts: { all: 0, starred: 0, unfiled: 0, archived: 0, trash: 0, untagged: 0 },
+    counts: { all: 0, starred: 0, pinned: 0, unfiled: 0, archived: 0, trash: 0, untagged: 0 },
     folderCounts: new Map(),
 };
 export function selectNavigationProjection(notes: Record<string, NoteSummary>): NavigationProjection {
     if (notes === navigationProjectionNotes)
         return navigationProjectionCache;
     navigationProjectionNotes = notes;
-    const counts: NavigationCounts = { all: 0, starred: 0, unfiled: 0, archived: 0, trash: 0, untagged: 0 };
+    const counts: NavigationCounts = { all: 0, starred: 0, pinned: 0, unfiled: 0, archived: 0, trash: 0, untagged: 0 };
     const folderCounts = new Map<string, number>();
     for (const note of Object.values(notes)) {
         if (note.deletedAt) {
@@ -119,6 +122,8 @@ export function selectNavigationProjection(notes: Record<string, NoteSummary>): 
             continue;
         }
         counts.all++;
+        if (note.isPinned)
+            counts.pinned++;
         if (note.isStarred)
             counts.starred++;
         if (!note.tags || note.tags.length === 0)
@@ -146,6 +151,7 @@ export function selectNavigationProjection(notes: Record<string, NoteSummary>): 
 function navigationCountsEqual(a: NavigationCounts, b: NavigationCounts): boolean {
     return a.all === b.all &&
         a.starred === b.starred &&
+        a.pinned === b.pinned &&
         a.unfiled === b.unfiled &&
         a.archived === b.archived &&
         a.trash === b.trash &&
@@ -181,9 +187,11 @@ export function useVisibleNotes(): NoteSummary[] {
     const sort = useUi((s) => s.sort);
     const order = useUi((s) => s.order);
     const todoTagPref = useSession((s) => s.settings.notes?.todoTag);
+    const shares = useShareStore((s) => s.shares);
+    const sharedNoteIds = useMemo(() => new Set(shares.map((s) => s.noteId)), [shares]);
     return useMemo(() => {
         const folderScope = view === 'folder' && folderId ? folderDescendantIds(folders, folderId) : undefined;
-        const list = Object.values(deferredNotes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, resolveTodoTag(todoTagPref, locale)));
+        const list = Object.values(deferredNotes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, resolveTodoTag(todoTagPref, locale), sharedNoteIds));
         if (view === 'recent') {
             return list
                 .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
@@ -192,7 +200,7 @@ export function useVisibleNotes(): NoteSummary[] {
         if (view === 'trash')
             return list.sort(compareTrash);
         return list.sort((a, b) => compare(a, b, sort, order, locale));
-    }, [deferredNotes, folders, view, folderId, tag, selectedTags, selectedTagsMatch, dateFilter, sort, order, locale]);
+    }, [deferredNotes, folders, view, folderId, tag, selectedTags, selectedTagsMatch, dateFilter, sort, order, locale, sharedNoteIds]);
 }
 export interface FolderNode extends Folder {
     children: FolderNode[];

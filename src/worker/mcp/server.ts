@@ -172,7 +172,7 @@ export function createInkstoneMcpServer(options: InkstoneMcpServerOptions): McpS
       title: 'List notes',
       description: 'List a small, paginated set of recent, starred, archived, or trashed notes. Prefer search_notes for targeted retrieval.',
       inputSchema: z.object({
-        view: z.enum(['all', 'recent', 'starred', 'archived', 'trash']).default('recent'),
+        view: z.enum(['all', 'recent', 'starred', 'pinned', 'shared', 'archived', 'trash']).default('recent'),
         limit: z.number().int().min(1).max(50).default(20),
         cursor: z.string().max(64).optional(),
       }),

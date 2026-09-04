@@ -13,6 +13,7 @@ export function matchesView(
     selectedTagsMatch: 'any' | 'all' = 'any',
     dateFilter: DateRangeFilter | null = null,
     todoTagText: string = DEFAULT_TODO_TAG,
+    sharedNoteIds?: ReadonlySet<string>,
 ): boolean {
     if (view === 'trash')
         return Boolean(note.deletedAt);
@@ -37,8 +38,12 @@ export function matchesView(
             return false;
     }
     switch (view) {
+        case 'pinned':
+            return note.isPinned;
         case 'starred':
             return note.isStarred;
+        case 'shared':
+            return Boolean(sharedNoteIds?.has(note.id));
         case 'unfiled':
             return !note.folderId;
         case 'folder': {

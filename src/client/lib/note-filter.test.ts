@@ -57,6 +57,14 @@ describe('matchesView', () => {
         expect(matchesView(note({ tags: ['todo'] }), 'untagged', null, null)).toBe(false);
     });
 
+    it('filters pinned and shared views', () => {
+        expect(matchesView(note({ isPinned: true }), 'pinned', null, null)).toBe(true);
+        expect(matchesView(note(), 'pinned', null, null)).toBe(false);
+        const sharedIds = new Set(['s1']);
+        expect(matchesView(note({ id: 's1' }), 'shared', null, null, undefined, [], 'any', null, undefined, sharedIds)).toBe(true);
+        expect(matchesView(note({ id: 's2' }), 'shared', null, null, undefined, [], 'any', null, undefined, sharedIds)).toBe(false);
+    });
+
     it('matches folder view by folder id and by descendant scope', () => {
         const inFolder = note({ folderId: 'f1' });
         expect(matchesView(inFolder, 'folder', 'f1', null)).toBe(true);

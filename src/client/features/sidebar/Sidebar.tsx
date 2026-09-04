@@ -66,10 +66,48 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-4">
         <SidebarCalendar />
         <div className="space-y-px">
-          <ViewItem icon={<FileText size={14}/>} label={t("navigation.all_notes")} view="all" count={counts.all} active={view === 'all'} onSelect={openView}/>
-          <ViewItem icon={<Clock size={14}/>} label={t("navigation.recently_edited")} view="recent" active={view === 'recent'} onSelect={openView}/>
-          <ViewItem icon={<Star size={14}/>} label={t("navigation.favorites")} view="starred" count={counts.starred} active={view === 'starred'} onSelect={openView}/>
-          <ViewItem icon={<Inbox size={14}/>} label={t("navigation.unfiled")} view="unfiled" count={counts.unfiled} active={view === 'unfiled'} onSelect={openView}/>
+          <div className="pt-2 pb-1">
+            <div className="grid grid-cols-3 gap-1">
+              <BottomNavButton
+                icon={<Pin size={13.5} className="shrink-0" />}
+                label={t("navigation.pinned")}
+                count={counts.pinned}
+                active={view === 'pinned' && !panel}
+                onClick={() => {
+                  if (panel) closePanel();
+                  openView('pinned');
+                }}
+                acceptsDrop
+                onDropNotes={(ids) => ids.forEach((id) => void patchNote(id, { isPinned: true }))}
+              />
+              <BottomNavButton
+                icon={<Star size={13.5} className="shrink-0" />}
+                label={t("navigation.favorites")}
+                count={counts.starred}
+                active={view === 'starred' && !panel}
+                onClick={() => {
+                  if (panel) closePanel();
+                  openView('starred');
+                }}
+                acceptsDrop
+                onDropNotes={(ids) => ids.forEach((id) => void patchNote(id, { isStarred: true }))}
+              />
+              <BottomNavButton
+                icon={<Share2 size={13.5} className="shrink-0 text-[var(--accent)]" />}
+                label={t("navigation.share")}
+                count={shareCount}
+                active={view === 'shared' && !panel}
+                onClick={() => {
+                  if (panel) closePanel();
+                  openView('shared');
+                }}
+              />
+            </div>
+          </div>
+
+          <ViewItem icon={<FileText size={14}/>} label={t("navigation.all_notes")} view="all" count={counts.all} active={view === 'all' && !panel} onSelect={openView}/>
+          <ViewItem icon={<Clock size={14}/>} label={t("navigation.recently_edited")} view="recent" active={view === 'recent' && !panel} onSelect={openView}/>
+          <ViewItem icon={<Inbox size={14}/>} label={t("navigation.unfiled")} view="unfiled" count={counts.unfiled} active={view === 'unfiled' && !panel} onSelect={openView}/>
         </div>
 
         <FolderSection />
@@ -77,14 +115,7 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
       </div>
 
       <div className="shrink-0 border-t border-[var(--border-subtle)] px-2 pt-2.5 pb-2">
-        <div className="grid grid-cols-3 gap-1">
-          <BottomNavButton
-            icon={<Share2 size={13.5} className="shrink-0 text-[var(--accent)]" />}
-            label={t("navigation.share")}
-            count={shareCount}
-            active={panel === 'share-hub'}
-            onClick={() => useUi.getState().openPanel('share-hub')}
-          />
+        <div className="grid grid-cols-2 gap-1">
           <BottomNavButton
             icon={<Archive size={13.5} className="shrink-0" />}
             label={t("navigation.archive")}
@@ -134,9 +165,11 @@ function SidebarRail({ onExpand }: {
       </div>
 
       <div className="flex w-full flex-col items-center gap-1 py-2">
-        <RailButton label={t("navigation.all_notes")} active={view === 'all' && !panel} icon={<FileText size={16}/>} onClick={() => openView('all')}/>
+        <RailButton label={t("navigation.pinned")} active={view === 'pinned' && !panel} icon={<Pin size={16}/>} onClick={() => openView('pinned')}/>
         <RailButton label={t("navigation.favorites")} active={view === 'starred' && !panel} icon={<Star size={16}/>} onClick={() => openView('starred')}/>
-        <RailButton label={t("navigation.share")} active={panel === 'share-hub'} icon={<Share2 size={16}/>} onClick={() => useUi.getState().openPanel('share-hub')}/>
+        <RailButton label={t("navigation.share")} active={(view === 'shared' || panel === 'share-hub')} icon={<Share2 size={16}/>} onClick={() => openView('shared')}/>
+        <div className="my-1 h-px w-6 bg-[var(--border-subtle)]"/>
+        <RailButton label={t("navigation.all_notes")} active={view === 'all' && !panel} icon={<FileText size={16}/>} onClick={() => openView('all')}/>
         <RailButton label={t("navigation.trash")} active={view === 'trash' && !panel} icon={<Trash2 size={16}/>} onClick={() => openView('trash')}/>
         <div className="my-1 h-px w-6 bg-[var(--border-subtle)]"/>
         <RailButton label={t("common.new_note")} combo="mod+n" accent icon={<FilePlus2 size={16}/>} onClick={() => void createContextualNote()}/>

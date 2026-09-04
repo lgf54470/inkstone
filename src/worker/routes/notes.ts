@@ -52,7 +52,7 @@ type ParsedNotesListCursor =
   | { kind: 'legacy'; offset: number }
   | { kind: 'keyset'; cursor: NotesListCursor }
 
-const NOTE_VIEWS = new Set<ViewKind>(['all', 'recent', 'starred', 'unfiled', 'archived', 'trash', 'folder', 'tag', 'untagged'])
+const NOTE_VIEWS = new Set<ViewKind>(['all', 'recent', 'starred', 'pinned', 'shared', 'unfiled', 'archived', 'trash', 'folder', 'tag', 'untagged'])
 const NOTE_SORTS = new Set<SortKey>(['updated', 'created', 'title'])
 
 
@@ -77,6 +77,8 @@ notesRoutes.get('/', async (c) => {
   }
 
   if (view === 'starred') where += ' AND n.is_starred = 1'
+  if (view === 'pinned') where += ' AND n.is_pinned = 1'
+  if (view === 'shared') where += ' AND EXISTS (SELECT 1 FROM shares s WHERE s.note_id = n.id AND (s.is_enabled = 1 OR s.is_enabled IS NULL))'
   if (view === 'unfiled') where += ' AND n.folder_id IS NULL'
   if (view === 'untagged') where += ' AND NOT EXISTS (SELECT 1 FROM note_tags nt WHERE nt.note_id = n.id)'
 
