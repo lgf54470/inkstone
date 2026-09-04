@@ -29,6 +29,7 @@ import { BacklinksPanel } from './BacklinksPanel';
 import { AttachmentDriveModal } from '../attachments/AttachmentDriveModal';
 import { SaveIndicator } from '../shell/SaveIndicator';
 import { useShareStore } from '../share/share-store';
+import { useBlogStore } from '../blog/blog-store';
 import type { Heading } from '../../lib/markdown/renderer';
 import { useUi, type WorkspacePane } from '../../store/ui';
 import { useSession } from '../../store/session';
@@ -72,6 +73,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
     const activateWorkspacePane = useUi((s) => s.activateWorkspacePane);
     const closeSecondaryNote = useUi((s) => s.closeSecondaryNote);
     const isShared = useShareStore((s) => Boolean(note && s.shares.some((sh) => sh.noteId === note.id)));
+    const isBlogPublished = useBlogStore((s) => Boolean(note && s.posts.some((p) => p.noteId === note.id && p.isPublished)));
     const breakpoint = useBreakpoint();
     const containerRef = useRef<HTMLDivElement>(null);
     const previewScrollerRef = useRef<HTMLDivElement>(null);
@@ -411,6 +413,11 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
           {isShared && (
             <span title={t("workspace.share")} className="inline-flex items-center">
               <Share2 size={11} className="shrink-0 text-[var(--accent)]" />
+            </span>
+          )}
+          {isBlogPublished && (
+            <span title={t("blog.published")} className="inline-flex items-center">
+              <Globe size={11} className="shrink-0 text-[var(--accent)]" />
             </span>
           )}
           {!grouped && (<span className="hidden shrink-0 text-[11px] text-[var(--text-quaternary)] md:inline">

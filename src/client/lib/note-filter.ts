@@ -14,6 +14,7 @@ export function matchesView(
     dateFilter: DateRangeFilter | null = null,
     todoTagText: string = DEFAULT_TODO_TAG,
     sharedNoteIds?: ReadonlySet<string>,
+    publishedNoteIds?: ReadonlySet<string>,
 ): boolean {
     if (view === 'trash')
         return Boolean(note.deletedAt);
@@ -44,6 +45,8 @@ export function matchesView(
             return note.isStarred;
         case 'shared':
             return Boolean(sharedNoteIds?.has(note.id));
+        case 'published':
+            return Boolean(publishedNoteIds?.has(note.id));
         case 'unfiled':
             return !note.folderId;
         case 'folder': {

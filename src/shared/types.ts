@@ -336,6 +336,7 @@ export type ViewKind =
   | 'starred'
   | 'pinned'
   | 'shared'
+  | 'published'
   | 'unfiled'
   | 'archived'
   | 'trash'

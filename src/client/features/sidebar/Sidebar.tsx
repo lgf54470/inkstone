@@ -48,6 +48,11 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
     }, []);
 
     const shareCount = globalStats?.totalShares ?? (shares.length > 0 ? shares.length : undefined);
+    const blogPosts = useBlogStore((s) => s.posts);
+    const publishedCount = useMemo(() => {
+      const count = blogPosts.filter((p) => p.isPublished).length;
+      return count > 0 ? count : undefined;
+    }, [blogPosts]);
 
     return (<>
         {collapsed ? <SidebarRail onExpand={onCollapse}/> : (<aside className="flex h-full min-h-0 flex-col bg-[var(--bg-sunken)]">
@@ -69,7 +74,7 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
         <SidebarCalendar />
         <div className="space-y-px">
           <div className="pt-2 pb-1">
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-4 gap-1">
               <BottomNavButton
                 icon={<Pin size={13.5} className="shrink-0" />}
                 label={t("navigation.pinned")}
@@ -102,6 +107,16 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
                 onClick={() => {
                   if (panel) closePanel();
                   openView('shared');
+                }}
+              />
+              <BottomNavButton
+                icon={<Globe size={13.5} className="shrink-0 text-[var(--accent)]" />}
+                label={t("navigation.published")}
+                count={publishedCount}
+                active={view === 'published' && !panel}
+                onClick={() => {
+                  if (panel) closePanel();
+                  openView('published');
                 }}
               />
             </div>
@@ -157,7 +172,6 @@ function SidebarRail({ onExpand }: {
     const view = useUi((s) => s.view);
     const panel = useUi((s) => s.panel);
     const openView = useUi((s) => s.openView);
-    const openPanel = useUi((s) => s.openPanel);
     return (<aside className="flex h-full min-h-0 flex-col items-center bg-[var(--bg-sunken)]">
       <div className="flex h-11 w-full shrink-0 items-center justify-center border-b border-[var(--border-subtle)]">
         <Tooltip label={t("sidebar.expand_navigation")} side="right">
@@ -171,7 +185,7 @@ function SidebarRail({ onExpand }: {
         <RailButton label={t("navigation.pinned")} active={view === 'pinned' && !panel} icon={<Pin size={16}/>} onClick={() => openView('pinned')}/>
         <RailButton label={t("navigation.favorites")} active={view === 'starred' && !panel} icon={<Star size={16}/>} onClick={() => openView('starred')}/>
         <RailButton label={t("navigation.share")} active={(view === 'shared' || panel === 'share-hub')} icon={<Share2 size={16}/>} onClick={() => openView('shared')}/>
-        <RailButton label={t("blog.blog_hub")} active={panel === 'blog-hub'} icon={<Globe size={16}/>} onClick={() => openPanel('blog-hub')}/>
+        <RailButton label={t("navigation.published")} active={(view === 'published' || panel === 'blog-hub')} icon={<Globe size={16}/>} onClick={() => openView('published')}/>
         <div className="my-1 h-px w-6 bg-[var(--border-subtle)]"/>
         <RailButton label={t("navigation.all_notes")} active={view === 'all' && !panel} icon={<FileText size={16}/>} onClick={() => openView('all')}/>
         <RailButton label={t("navigation.trash")} active={view === 'trash' && !panel} icon={<Trash2 size={16}/>} onClick={() => openView('trash')}/>

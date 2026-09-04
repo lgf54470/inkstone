@@ -17,6 +17,7 @@ import { renderNewNoteTemplate } from '@shared/markdown-utils';
 import { useNoteTemplates } from '../note-templates';
 import { compare, compareTrash } from './workspace';
 import { useShareStore } from '../../features/share/share-store';
+import { useBlogStore } from '../../features/blog/blog-store';
 
 type TagCacheState = Pick<NotesState, 'notes' | 'tags'>;
 
@@ -189,9 +190,14 @@ export function useVisibleNotes(): NoteSummary[] {
     const todoTagPref = useSession((s) => s.settings.notes?.todoTag);
     const shares = useShareStore((s) => s.shares);
     const sharedNoteIds = useMemo(() => new Set(shares.map((s) => s.noteId)), [shares]);
+    const blogPosts = useBlogStore((s) => s.posts);
+    const publishedNoteIds = useMemo(
+        () => new Set(blogPosts.filter((p) => p.isPublished).map((p) => p.noteId)),
+        [blogPosts]
+    );
     return useMemo(() => {
         const folderScope = view === 'folder' && folderId ? folderDescendantIds(folders, folderId) : undefined;
-        const list = Object.values(deferredNotes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, resolveTodoTag(todoTagPref, locale), sharedNoteIds));
+        const list = Object.values(deferredNotes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, resolveTodoTag(todoTagPref, locale), sharedNoteIds, publishedNoteIds));
         if (view === 'recent') {
             return list
                 .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
@@ -200,7 +206,7 @@ export function useVisibleNotes(): NoteSummary[] {
         if (view === 'trash')
             return list.sort(compareTrash);
         return list.sort((a, b) => compare(a, b, sort, order, locale));
-    }, [deferredNotes, folders, view, folderId, tag, selectedTags, selectedTagsMatch, dateFilter, sort, order, locale, sharedNoteIds]);
+    }, [deferredNotes, folders, view, folderId, tag, selectedTags, selectedTagsMatch, dateFilter, sort, order, locale, sharedNoteIds, publishedNoteIds]);
 }
 export interface FolderNode extends Folder {
     children: FolderNode[];

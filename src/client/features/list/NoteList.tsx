@@ -45,6 +45,7 @@ const VIEW_MESSAGE_KEYS: Record<ViewKind, MessageKey> = {
     starred: 'navigation.favorites',
     pinned: 'navigation.pinned',
     shared: 'navigation.share',
+    published: 'navigation.published',
     unfiled: 'navigation.unfiled',
     archived: 'navigation.archive',
     trash: 'navigation.trash',
@@ -448,6 +449,13 @@ export function NoteList() {
                   <Tooltip label={t("share.manage_shares")}>
                     <IconButton label={t("share.manage_shares")} size="sm" onClick={() => useUi.getState().openPanel('share-hub')}>
                       <Share2 size={14} className="text-[var(--accent)]"/>
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {view === 'published' && (
+                  <Tooltip label={t("blog.blog_hub")}>
+                    <IconButton label={t("blog.blog_hub")} size="sm" onClick={() => useUi.getState().openPanel('blog-hub')}>
+                      <Globe size={14} className="text-[var(--accent)]"/>
                     </IconButton>
                   </Tooltip>
                 )}
@@ -866,6 +874,11 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
               {computedIsShared && (
                 <span title={t("workspace.share")} className="inline-flex items-center">
                   <Share2 size={10} className="anim-mark-enter shrink-0 text-[var(--accent)]" />
+                </span>
+              )}
+              {isBlogPublished && (
+                <span title={t("blog.published")} className="inline-flex items-center">
+                  <Globe size={10} className="anim-mark-enter shrink-0 text-[var(--accent)]" />
                 </span>
               )}
             </div>
