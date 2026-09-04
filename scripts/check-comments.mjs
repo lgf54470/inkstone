@@ -3,6 +3,11 @@ import path from 'node:path'
 import ts from 'typescript'
 
 const allowed = new Map([
+  ["scripts/bench-scrypt.mjs", [
+    "/**\n * Measures scrypt cost with the production parameters\n * (SCRYPT_N = 2**14, r = 8, p = 5) so parameter and throttle-budget\n * decisions are grounded in measured numbers, not guesses.\n */",
+    "// p worker threads need ~128 * N * r * p bytes of memory",
+    "// throttle: 8 attempts per 10 minutes",
+  ]],
   ["scripts/check-i18n.mjs", [
     "// Demo mode ships a pre-populated workspace whose seed data (welcome notes,",
     "// community gallery entries) is authored demo content in the demo locale, not",
@@ -852,6 +857,11 @@ const allowed = new Map([
   ]],
   ["src/worker/lib/errors.ts", [
     "/**\n * Worker-side ApiError (producer of the HTTP boundary). Deliberately mirrors\n * the client's ApiError (src/client/lib/api.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the worker adds static\n * factories and a strict status union the client does not need.\n */",
+  ]],
+  ["src/worker/lib/password.ts", [
+    "// Measured on a dev machine (node:crypto, avg of 5): ~250 ms per hash with these",
+    "// params — about 300x below the 75 s worst-case budget the login throttle allows",
+    "// (8 attempts per 10 minutes), so cost can be raised later without breaking it.",
   ]],
   ["src/worker/lib/request.ts", [
     "// CF-Connecting-IP is injected by the Cloudflare edge and cannot be",
