@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   ExternalLink,
   Copy,
@@ -10,10 +11,50 @@ import {
   Pin,
 } from 'lucide-react'
 import type { BlogPost } from '@shared/types'
+import { extractCoverUrl } from '@shared/markdown-utils'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { confirm } from '../../components/overlay'
 import { useBlogStore } from './blog-store'
+
+export function PostCoverImage({
+  src,
+  alt,
+  className = 'size-full object-cover transition-transform duration-300 group-hover:scale-105',
+  fallbackIconSize = 28,
+}: {
+  src?: string
+  alt: string
+  className?: string
+  fallbackIconSize?: number
+}) {
+  const [error, setError] = useState(false)
+  const clean = src ? extractCoverUrl(src) : ''
+  const isValid = Boolean(
+    clean &&
+      (clean.startsWith('http://') ||
+        clean.startsWith('https://') ||
+        clean.startsWith('/') ||
+        clean.startsWith('data:image/')),
+  )
+
+  if (!isValid || error) {
+    return (
+      <div className="flex size-full items-center justify-center text-[var(--text-quaternary)]">
+        <ImageIcon size={fallbackIconSize} className="opacity-40" />
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={clean}
+      alt={alt}
+      onError={() => setError(true)}
+      className={className}
+    />
+  )
+}
 
 export function BlogGridView({
   posts,
@@ -98,17 +139,7 @@ export function BlogGridView({
 
             {/* Cover image banner */}
             <div className="relative h-36 w-full bg-[var(--bg-sunken)] overflow-hidden">
-              {post.coverUrl && (post.coverUrl.startsWith('http') || post.coverUrl.startsWith('/api')) ? (
-                <img
-                  src={post.coverUrl}
-                  alt={post.title}
-                  className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-              ) : (
-                <div className="flex size-full items-center justify-center text-[var(--text-quaternary)]">
-                  <ImageIcon size={28} className="opacity-40" />
-                </div>
-              )}
+              <PostCoverImage src={post.coverUrl} alt={post.title} />
 
               {/* Status pill overlay */}
               <div className="absolute bottom-2 left-2">

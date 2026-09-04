@@ -215,9 +215,11 @@ export const api = {
     }
   },
 
-  async getPostBySlug(slug: string): Promise<BlogPost | null> {
+  async getPostBySlug(slug: string, headers?: HeadersInit): Promise<BlogPost | null> {
     try {
-      const res = await fetch(`${API_BASE}/api/blog/public/posts/${encodeURIComponent(slug)}`)
+      const res = await fetch(`${API_BASE}/api/blog/public/posts/${encodeURIComponent(slug)}`, {
+        headers,
+      })
       if (!res.ok) return null
       const data = await res.json()
       if (!data.post) return null

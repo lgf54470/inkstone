@@ -943,3 +943,15 @@ export function slugifyHeading(text: string): string {
       .replace(/^-+|-+$/g, '') || 'section'
   )
 }
+
+export function extractCoverUrl(raw?: string | null): string {
+  if (!raw || typeof raw !== 'string') return ''
+  let trimmed = raw.trim()
+  trimmed = trimmed.replace(/^['"]+|['"]+$/g, '').trim()
+  const mdMatch = /!\[.*?\]\(([^)\s]+)/.exec(trimmed)
+  if (mdMatch && mdMatch[1]) return mdMatch[1].trim()
+  const parenMatch = /\(([^)\s]+)/.exec(trimmed)
+  if (parenMatch && parenMatch[1]) return parenMatch[1].trim()
+  return trimmed
+}
+

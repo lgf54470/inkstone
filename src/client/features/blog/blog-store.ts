@@ -7,6 +7,7 @@ import type {
   BlogStats,
   BlogSettings,
 } from '@shared/types'
+import { extractCoverUrl } from '@shared/markdown-utils'
 import { api } from '../../lib/api'
 
 export type BlogTab = 'dashboard' | 'posts' | 'comments' | 'categories' | 'settings'
@@ -189,7 +190,11 @@ export const useBlogStore = create<BlogStoreState>((set, get) => ({
         search: search || undefined,
         sort,
       })
-      set({ posts: res.posts })
+      const posts = (res.posts || []).map((p) => ({
+        ...p,
+        coverUrl: extractCoverUrl(p.coverUrl),
+      }))
+      set({ posts })
     } catch (err) {
       console.error('Failed to load blog posts', err)
     }

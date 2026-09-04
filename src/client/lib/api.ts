@@ -18,6 +18,7 @@ import type {
   BlogCommentStatus,
   BlogStats,
   BlogSettings,
+  BlogGlobalAnalytics,
   CommunityTemplate,
   CommunityTemplateInput,
   Folder,
@@ -709,6 +710,15 @@ export const api = {
   blog: {
     stats: (signal?: AbortSignal) =>
       request<{ stats: BlogStats }>('/api/blog/stats', { signal }),
+    analytics: (
+      range: ShareTimelineRange = '7d',
+      filters?: { excludeBots?: boolean; excludeSelf?: boolean; excludeOwner?: boolean },
+      signal?: AbortSignal,
+    ) =>
+      request<{ analytics: BlogGlobalAnalytics }>(
+        `/api/blog/analytics${toQuery({ range, ...filters })}`,
+        { signal },
+      ),
     settings: {
       get: (signal?: AbortSignal) =>
         request<{ settings: BlogSettings }>('/api/blog/settings', { signal }),

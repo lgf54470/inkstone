@@ -497,6 +497,32 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_blog_comments_post ON blog_comments(post_id, status, created_at ASC)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_comments_status ON blog_comments(status, created_at DESC)`,
+
+  `CREATE TABLE IF NOT EXISTS blog_visits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    post_id TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    visited_at INTEGER NOT NULL,
+    visitor_fp TEXT,
+    country TEXT,
+    region TEXT,
+    city TEXT,
+    referrer TEXT,
+    referrer_host TEXT,
+    device_type TEXT,
+    os TEXT,
+    browser TEXT,
+    language TEXT,
+    user_agent TEXT,
+    is_bot INTEGER NOT NULL DEFAULT 0,
+    is_self_referrer INTEGER NOT NULL DEFAULT 0,
+    is_owner INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_visits_user_time ON blog_visits(user_id, visited_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_visits_slug_time ON blog_visits(slug, visited_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_visits_post_time ON blog_visits(post_id, visited_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_visits_filter_time ON blog_visits(user_id, is_bot, is_self_referrer, is_owner, visited_at DESC)`,
 ]
 
 interface SchemaMigration {
@@ -883,6 +909,36 @@ const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_blog_comments_status ON blog_comments(status, created_at DESC)`,
     ],
   },
+  {
+    version: 22,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS blog_visits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        post_id TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        visited_at INTEGER NOT NULL,
+        visitor_fp TEXT,
+        country TEXT,
+        region TEXT,
+        city TEXT,
+        referrer TEXT,
+        referrer_host TEXT,
+        device_type TEXT,
+        os TEXT,
+        browser TEXT,
+        language TEXT,
+        user_agent TEXT,
+        is_bot INTEGER NOT NULL DEFAULT 0,
+        is_self_referrer INTEGER NOT NULL DEFAULT 0,
+        is_owner INTEGER NOT NULL DEFAULT 0
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_visits_user_time ON blog_visits(user_id, visited_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_visits_slug_time ON blog_visits(slug, visited_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_visits_post_time ON blog_visits(post_id, visited_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_visits_filter_time ON blog_visits(user_id, is_bot, is_self_referrer, is_owner, visited_at DESC)`,
+    ],
+  },
 ]
 
 const FTS_STATEMENT = `CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
@@ -941,6 +997,7 @@ const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   blog_posts: ['id', 'slug', 'note_id', 'user_id', 'title', 'excerpt', 'content', 'cover_url', 'category_id', 'tags', 'is_published', 'allow_comments', 'is_pinned', 'views', 'published_at', 'created_at', 'updated_at'],
   blog_categories: ['id', 'user_id', 'name', 'slug', 'description', 'color', 'icon', 'position', 'created_at', 'updated_at'],
   blog_comments: ['id', 'post_id', 'parent_id', 'author_name', 'author_email', 'author_url', 'author_avatar', 'content', 'status', 'ip', 'user_agent', 'created_at'],
+  blog_visits: ['id', 'user_id', 'post_id', 'slug', 'visited_at', 'visitor_fp', 'country', 'region', 'city', 'referrer', 'referrer_host', 'device_type', 'os', 'browser', 'language', 'user_agent', 'is_bot', 'is_self_referrer', 'is_owner'],
 } as const
 
 const REQUIRED_TABLES = [
@@ -982,6 +1039,7 @@ const REQUIRED_TABLES = [
   'blog_posts',
   'blog_categories',
   'blog_comments',
+  'blog_visits',
 ] as const
 
 const REQUIRED_INDEXES = [
@@ -1044,6 +1102,10 @@ const REQUIRED_INDEXES = [
   'idx_blog_categories_user',
   'idx_blog_comments_post',
   'idx_blog_comments_status',
+  'idx_blog_visits_user_time',
+  'idx_blog_visits_slug_time',
+  'idx_blog_visits_post_time',
+  'idx_blog_visits_filter_time',
 ] as const
 
 

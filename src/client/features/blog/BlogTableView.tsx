@@ -4,7 +4,6 @@ import {
   Settings2,
   RefreshCw,
   Trash2,
-  Image as ImageIcon,
   Pin,
 } from 'lucide-react'
 import type { BlogPost } from '@shared/types'
@@ -12,6 +11,7 @@ import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { confirm } from '../../components/overlay'
 import { useBlogStore } from './blog-store'
+import { PostCoverImage } from './BlogGridView'
 
 export function BlogTableView({
   posts,
@@ -124,25 +124,14 @@ export function BlogTableView({
                 {/* Title & Cover & Slug */}
                 <td className="px-3 py-2.5">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    {post.coverUrl ? (
-                      <div className="size-9 shrink-0 overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)]">
-                        {post.coverUrl.startsWith('http') || post.coverUrl.startsWith('/api') ? (
-                          <img
-                            src={post.coverUrl}
-                            alt={post.title}
-                            className="size-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex size-full items-center justify-center text-[var(--text-tertiary)]">
-                            <ImageIcon size={14} />
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-[var(--r-sm)] bg-[var(--bg-sunken)] text-[var(--text-quaternary)] border border-[var(--border-subtle)]">
-                        <ImageIcon size={14} />
-                      </div>
-                    )}
+                    <div className="size-9 shrink-0 overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)]">
+                      <PostCoverImage
+                        src={post.coverUrl}
+                        alt={post.title}
+                        fallbackIconSize={14}
+                        className="size-full object-cover"
+                      />
+                    </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">

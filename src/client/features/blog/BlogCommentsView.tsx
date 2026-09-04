@@ -9,9 +9,10 @@ import {
   ShieldCheck,
   Inbox,
   User,
+  RefreshCw,
 } from 'lucide-react'
 import type { BlogCommentStatus } from '@shared/types'
-import { Button } from '../../components/primitives'
+import { Button, IconButton } from '../../components/primitives'
 import { Input } from '../../components/form'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
@@ -22,6 +23,8 @@ export function BlogCommentsView() {
   const toast = useUi((s) => s.toast)
   const comments = useBlogStore((s) => s.comments)
   const settings = useBlogStore((s) => s.settings)
+  const loading = useBlogStore((s) => s.loading)
+  const loadComments = useBlogStore((s) => s.loadComments)
   const commentStatusFilter = useBlogStore((s) => s.commentStatusFilter)
   const setCommentStatusFilter = useBlogStore((s) => s.setCommentStatusFilter)
   const selectedCommentIds = useBlogStore((s) => s.selectedCommentIds)
@@ -175,15 +178,26 @@ export function BlogCommentsView() {
           })}
         </div>
 
-        {/* Search */}
-        <div className="relative w-[200px] md:w-[240px]">
-          <Input
-            leading={<Search size={13} className="text-[var(--text-quaternary)]" />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('blog.search_comments_placeholder')}
-            className="h-8 text-[12px]"
-          />
+        {/* Search & Refresh */}
+        <div className="flex items-center gap-2">
+          <div className="relative w-[180px] md:w-[220px]">
+            <Input
+              leading={<Search size={13} className="text-[var(--text-quaternary)]" />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('blog.search_comments_placeholder')}
+              className="h-8 text-[12px]"
+            />
+          </div>
+
+          <IconButton
+            size="sm"
+            label={t('common.refresh')}
+            disabled={loading}
+            onClick={() => void loadComments()}
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </IconButton>
         </div>
       </div>
 

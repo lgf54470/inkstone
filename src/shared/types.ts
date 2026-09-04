@@ -987,3 +987,57 @@ export interface BlogSettings {
     language: 'zh-CN' | 'en-US'
   }
 }
+
+export interface BlogVisitLog {
+  id: number
+  postId: string
+  postTitle: string
+  slug: string
+  visitedAt: number
+  country: string | null
+  region: string | null
+  city: string | null
+  referrer: string | null
+  referrerHost: string | null
+  deviceType: string | null
+  os: string | null
+  browser: string | null
+  isBot: boolean
+  isSelfReferrer?: boolean
+  isOwner?: boolean
+  botName?: string | null
+  visitorFp?: string | null
+}
+
+export interface BlogGlobalAnalytics {
+  range: ShareTimelineRange
+  totalPosts: number
+  publishedPosts: number
+  draftPosts: number
+  totalViews: number
+  totalVisitors: number
+  viewsDelta?: number
+  visitorsDelta?: number
+  viewsPerDay: number
+  sparklineViews: number[]
+  sparklineVisitors: number[]
+  timeline: ShareTimelinePoint[]
+  topPosts: Array<{
+    postId: string
+    title: string
+    slug: string
+    views: number
+    visitors: number
+  }>
+  topCountries: ShareBreakdownItem[]
+  topReferrers: ShareBreakdownItem[]
+  devices: ShareBreakdownItem[]
+  osList: ShareBreakdownItem[]
+  browsers: ShareBreakdownItem[]
+  recentVisits: BlogVisitLog[]
+  filterStats?: {
+    bots: number
+    selfReferrals: number
+    owner: number
+  }
+}

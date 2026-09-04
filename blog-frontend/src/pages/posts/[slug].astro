@@ -10,7 +10,21 @@ if (!slug) {
   return Astro.redirect('/404')
 }
 
-const post = await api.getPostBySlug(slug)
+const forwardHeaders: Record<string, string> = {}
+const clientIp = Astro.clientAddress || Astro.request.headers.get('x-forwarded-for')
+if (clientIp) forwardHeaders['x-forwarded-for'] = clientIp
+const ua = Astro.request.headers.get('user-agent')
+if (ua) forwardHeaders['user-agent'] = ua
+const referer = Astro.request.headers.get('referer')
+if (referer) forwardHeaders['referer'] = referer
+const country = Astro.request.headers.get('cf-ipcountry')
+if (country) forwardHeaders['cf-ipcountry'] = country
+const region = Astro.request.headers.get('cf-region')
+if (region) forwardHeaders['cf-region'] = region
+const city = Astro.request.headers.get('cf-city')
+if (city) forwardHeaders['cf-city'] = city
+
+const post = await api.getPostBySlug(slug, forwardHeaders)
 if (!post) {
   return Astro.redirect('/404')
 }

@@ -1,4 +1,4 @@
-import { Search, LayoutGrid, LayoutList, Settings, Plus } from 'lucide-react'
+import { Search, LayoutGrid, LayoutList, Settings, Plus, RefreshCw } from 'lucide-react'
 import { IconButton, Button } from '../../components/primitives'
 import { Input } from '../../components/form'
 import { t } from '../../lib/i18n'
@@ -17,6 +17,8 @@ export function BlogHubToolbar({
   const setStatusFilter = useBlogStore((s) => s.setStatusFilter)
   const viewMode = useBlogStore((s) => s.viewMode)
   const setViewMode = useBlogStore((s) => s.setViewMode)
+  const loadAll = useBlogStore((s) => s.loadAll)
+  const loading = useBlogStore((s) => s.loading)
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[12.5px]">
@@ -106,6 +108,15 @@ export function BlogHubToolbar({
             <LayoutGrid size={13} />
           </button>
         </div>
+
+        <IconButton
+          label={t('common.refresh')}
+          size="sm"
+          disabled={loading}
+          onClick={() => void loadAll()}
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+        </IconButton>
 
         <IconButton label={t('blog.settings')} size="sm" onClick={onOpenSettings}>
           <Settings size={14} />
