@@ -12,4 +12,4 @@ html_handling = "auto-trailing-slash"
 [vars]
 # 后端 Inkstone Worker 服务的生产域名（例如：https://inkstone.your-domain.workers.dev）
 # 部署后可在 Cloudflare Dashboard 或此处配置
-PUBLIC_API_URL = "http://localhost:8787"
+PUBLIC_API_URL = "https://inkstone.333096.xyz"
