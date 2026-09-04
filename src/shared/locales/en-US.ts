@@ -450,6 +450,7 @@ export const EN_US_MESSAGES = {
     "navigation.favorites": "Favorites",
     "navigation.folder": "Folder",
     "navigation.recently_edited": "Recently edited",
+    "navigation.share": "Share",
     "navigation.tag": "Tag",
     "navigation.trash": "Trash",
     "navigation.unfiled": "Unfiled",

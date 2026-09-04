@@ -26,13 +26,27 @@ import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../lib/tag-tr
 import { SidebarCalendar } from './SidebarCalendar';
 import { CalendarTree, TodoTree } from './CalendarTree';
 import { t } from "../../lib/i18n";
+import { useShareStore } from '../share/share-store';
 export function Sidebar({ collapsed = false, onCollapse, }: {
     collapsed?: boolean;
     onCollapse?: () => void;
 }) {
     const view = useUi((s) => s.view);
+    const panel = useUi((s) => s.panel);
     const openView = useUi((s) => s.openView);
+    const closePanel = useUi((s) => s.closePanel);
     const counts = useNavigationCounts();
+    const patchNote = useNotes((s) => s.patchNote);
+    const deleteNote = useNotes((s) => s.deleteNote);
+    const globalStats = useShareStore((s) => s.globalStats);
+    const shares = useShareStore((s) => s.shares);
+
+    useEffect(() => {
+      void useShareStore.getState().loadShares();
+    }, []);
+
+    const shareCount = globalStats?.totalShares ?? (shares.length > 0 ? shares.length : undefined);
+
     return (<>
         {collapsed ? <SidebarRail onExpand={onCollapse}/> : (<aside className="flex h-full min-h-0 flex-col bg-[var(--bg-sunken)]">
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-3">
@@ -62,17 +76,40 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
         <TagSection />
       </div>
 
-      <div className="shrink-0 space-y-px border-t border-[var(--border-subtle)] px-2 py-2">
-        <button
-          type="button"
-          onClick={() => useUi.getState().openPanel('share-hub')}
-          className="flex h-8 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[12.5px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-        >
-          <Share2 size={14} className="shrink-0 text-[var(--accent)]" />
-          <span className="flex-1 text-left">{t('share.manage_shares')}</span>
-        </button>
-        <ViewItem icon={<Archive size={14}/>} label={t("navigation.archive")} view="archived" count={counts.archived} active={view === 'archived'} onSelect={openView}/>
-        <ViewItem icon={<Trash2 size={14}/>} label={t("navigation.trash")} view="trash" count={counts.trash} active={view === 'trash'} onSelect={openView}/>
+      <div className="shrink-0 border-t border-[var(--border-subtle)] px-2 pt-2.5 pb-2">
+        <div className="grid grid-cols-3 gap-1">
+          <BottomNavButton
+            icon={<Share2 size={13.5} className="shrink-0 text-[var(--accent)]" />}
+            label={t("navigation.share")}
+            count={shareCount}
+            active={panel === 'share-hub'}
+            onClick={() => useUi.getState().openPanel('share-hub')}
+          />
+          <BottomNavButton
+            icon={<Archive size={13.5} className="shrink-0" />}
+            label={t("navigation.archive")}
+            count={counts.archived}
+            active={view === 'archived' && !panel}
+            onClick={() => {
+              if (panel) closePanel();
+              openView('archived');
+            }}
+            acceptsDrop
+            onDropNotes={(ids) => ids.forEach((id) => void patchNote(id, { isArchived: true }))}
+          />
+          <BottomNavButton
+            icon={<Trash2 size={13.5} className="shrink-0" />}
+            label={t("navigation.trash")}
+            count={counts.trash}
+            active={view === 'trash' && !panel}
+            onClick={() => {
+              if (panel) closePanel();
+              openView('trash');
+            }}
+            acceptsDrop
+            onDropNotes={(ids) => ids.forEach((id) => void deleteNote(id))}
+          />
+        </div>
       </div>
 
       <div className="shrink-0 border-t border-[var(--border-subtle)] p-2">
@@ -85,6 +122,7 @@ function SidebarRail({ onExpand }: {
     onExpand?: () => void;
 }) {
     const view = useUi((s) => s.view);
+    const panel = useUi((s) => s.panel);
     const openView = useUi((s) => s.openView);
     return (<aside className="flex h-full min-h-0 flex-col items-center bg-[var(--bg-sunken)]">
       <div className="flex h-11 w-full shrink-0 items-center justify-center border-b border-[var(--border-subtle)]">
@@ -96,10 +134,10 @@ function SidebarRail({ onExpand }: {
       </div>
 
       <div className="flex w-full flex-col items-center gap-1 py-2">
-        <RailButton label={t("navigation.all_notes")} active={view === 'all'} icon={<FileText size={16}/>} onClick={() => openView('all')}/>
-        <RailButton label={t("navigation.favorites")} active={view === 'starred'} icon={<Star size={16}/>} onClick={() => openView('starred')}/>
-        <RailButton label={t("share.manage_shares")} icon={<Share2 size={16}/>} onClick={() => useUi.getState().openPanel('share-hub')}/>
-        <RailButton label={t("navigation.trash")} active={view === 'trash'} icon={<Trash2 size={16}/>} onClick={() => openView('trash')}/>
+        <RailButton label={t("navigation.all_notes")} active={view === 'all' && !panel} icon={<FileText size={16}/>} onClick={() => openView('all')}/>
+        <RailButton label={t("navigation.favorites")} active={view === 'starred' && !panel} icon={<Star size={16}/>} onClick={() => openView('starred')}/>
+        <RailButton label={t("navigation.share")} active={panel === 'share-hub'} icon={<Share2 size={16}/>} onClick={() => useUi.getState().openPanel('share-hub')}/>
+        <RailButton label={t("navigation.trash")} active={view === 'trash' && !panel} icon={<Trash2 size={16}/>} onClick={() => openView('trash')}/>
         <div className="my-1 h-px w-6 bg-[var(--border-subtle)]"/>
         <RailButton label={t("common.new_note")} combo="mod+n" accent icon={<FilePlus2 size={16}/>} onClick={() => void createContextualNote()}/>
       </div>
@@ -212,6 +250,106 @@ function SettingsIcon({ size, showDot }: {
       {showDot && (<span data-update-dot aria-hidden="true" className="absolute -top-1 -right-1 size-2 rounded-full border border-[var(--bg-sunken)] bg-[var(--danger)]"/>)}
     </span>);
 }
+
+function WeChatBadge({ count }: { count?: number }) {
+  if (count == null || count <= 0) return null;
+  const text = count > 99 ? '99+' : String(count);
+  return (
+    <span
+      className={cn(
+        'pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 z-10',
+        'flex items-center justify-center',
+        'rounded-full bg-[#fa5151] text-white font-semibold',
+        'text-[10px] leading-none select-none shadow-xs',
+        'ring-2 ring-[var(--bg-sunken)]',
+        count > 99
+          ? 'h-4 min-w-[22px] px-1'
+          : count > 9
+            ? 'h-4 min-w-[18px] px-1'
+            : 'size-4'
+      )}
+    >
+      {text}
+    </span>
+  );
+}
+
+function BottomNavButton({
+  icon,
+  label,
+  count,
+  active,
+  onClick,
+  onDropNotes,
+  acceptsDrop = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  count?: number;
+  active: boolean;
+  onClick: () => void;
+  onDropNotes?: (ids: string[]) => void;
+  acceptsDrop?: boolean;
+}) {
+  const [dropping, setDropping] = useState(false);
+
+  return (
+    <button
+      type="button"
+      aria-current={active ? 'page' : undefined}
+      onClick={onClick}
+      onDragOver={(e) => {
+        if (!acceptsDrop || (!e.dataTransfer.types.includes('application/x-inkstone-note') && !e.dataTransfer.types.includes('application/x-inkstone-notes'))) {
+          return;
+        }
+        e.preventDefault();
+        setDropping(true);
+      }}
+      onDragLeave={(e) => {
+        if (leftDropTarget(e)) {
+          setDropping(false);
+        }
+      }}
+      onDrop={(e) => {
+        if (!acceptsDrop || !onDropNotes) return;
+        setDropping(false);
+        e.preventDefault();
+        let ids: string[] = [];
+        const multi = e.dataTransfer.getData('application/x-inkstone-notes');
+        if (multi) {
+          try {
+            const parsed = JSON.parse(multi);
+            if (Array.isArray(parsed) && parsed.length > 0) ids = parsed;
+          } catch {}
+        }
+        if (ids.length === 0) {
+          const single = e.dataTransfer.getData('application/x-inkstone-note');
+          if (single) ids = [single];
+        }
+        if (ids.length === 0) return;
+        onDropNotes(ids);
+      }}
+      className={cn(
+        'group relative flex h-8 min-w-0 items-center justify-center gap-1 rounded-[var(--r-md)] px-1 text-center',
+        'transition-colors duration-[var(--dur-fast)] select-none',
+        active
+          ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
+          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+        dropping && 'ring-1 ring-[var(--accent)] bg-[var(--accent-soft)]'
+      )}
+      title={label}
+    >
+      <WeChatBadge count={count} />
+      <span className={cn('shrink-0 transition-colors', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)]')}>
+        {icon}
+      </span>
+      <span className="truncate text-[11.5px] font-medium leading-none">
+        {label}
+      </span>
+    </button>
+  );
+}
+
 function ViewItem({ icon, label, view, count, active, onSelect, }: {
     icon: React.ReactNode;
     label: string;
