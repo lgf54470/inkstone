@@ -441,6 +441,62 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_community_templates_created
      ON community_templates(created_at DESC)`,
+
+  `CREATE TABLE IF NOT EXISTS blog_posts (
+    id TEXT PRIMARY KEY,
+    slug TEXT NOT NULL UNIQUE,
+    note_id TEXT NOT NULL UNIQUE,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    excerpt TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL,
+    cover_url TEXT NOT NULL DEFAULT '',
+    category_id TEXT,
+    tags TEXT NOT NULL DEFAULT '[]',
+    is_published INTEGER NOT NULL DEFAULT 1,
+    allow_comments INTEGER NOT NULL DEFAULT 1,
+    is_pinned INTEGER NOT NULL DEFAULT 0,
+    views INTEGER NOT NULL DEFAULT 0,
+    published_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_posts_user ON blog_posts(user_id, is_published, published_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_posts_note ON blog_posts(note_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_posts_category ON blog_posts(category_id)`,
+
+  `CREATE TABLE IF NOT EXISTS blog_categories (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    color TEXT,
+    icon TEXT,
+    position REAL NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_blog_categories_slug ON blog_categories(user_id, slug)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_categories_user ON blog_categories(user_id, position)`,
+
+  `CREATE TABLE IF NOT EXISTS blog_comments (
+    id TEXT PRIMARY KEY,
+    post_id TEXT NOT NULL,
+    parent_id TEXT,
+    author_name TEXT NOT NULL,
+    author_email TEXT NOT NULL,
+    author_url TEXT,
+    author_avatar TEXT,
+    content TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    ip TEXT,
+    user_agent TEXT,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_comments_post ON blog_comments(post_id, status, created_at ASC)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_comments_status ON blog_comments(status, created_at DESC)`,
 ]
 
 interface SchemaMigration {
@@ -769,6 +825,64 @@ const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `UPDATE shares SET views = COALESCE((SELECT COUNT(*) FROM share_visits WHERE share_visits.note_id = shares.note_id AND share_visits.is_bot = 0), 0) WHERE views = 0`,
     ],
   },
+  {
+    version: 21,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS blog_posts (
+        id TEXT PRIMARY KEY,
+        slug TEXT NOT NULL UNIQUE,
+        note_id TEXT NOT NULL UNIQUE,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        excerpt TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL,
+        cover_url TEXT NOT NULL DEFAULT '',
+        category_id TEXT,
+        tags TEXT NOT NULL DEFAULT '[]',
+        is_published INTEGER NOT NULL DEFAULT 1,
+        allow_comments INTEGER NOT NULL DEFAULT 1,
+        is_pinned INTEGER NOT NULL DEFAULT 0,
+        views INTEGER NOT NULL DEFAULT 0,
+        published_at INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_posts_user ON blog_posts(user_id, is_published, published_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_posts_note ON blog_posts(note_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_posts_category ON blog_posts(category_id)`,
+      `CREATE TABLE IF NOT EXISTS blog_categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        color TEXT,
+        icon TEXT,
+        position REAL NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_blog_categories_slug ON blog_categories(user_id, slug)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_categories_user ON blog_categories(user_id, position)`,
+      `CREATE TABLE IF NOT EXISTS blog_comments (
+        id TEXT PRIMARY KEY,
+        post_id TEXT NOT NULL,
+        parent_id TEXT,
+        author_name TEXT NOT NULL,
+        author_email TEXT NOT NULL,
+        author_url TEXT,
+        author_avatar TEXT,
+        content TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        ip TEXT,
+        user_agent TEXT,
+        created_at INTEGER NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_comments_post ON blog_comments(post_id, status, created_at ASC)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_comments_status ON blog_comments(status, created_at DESC)`,
+    ],
+  },
 ]
 
 const FTS_STATEMENT = `CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
@@ -824,6 +938,9 @@ const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   ai_index_queue: ['user_id', 'note_id', 'kind', 'created_at'],
   fts_index_queue: ['user_id', 'note_id', 'kind', 'created_at'],
   community_templates: ['id', 'author_id', 'author_name', 'name', 'description', 'content', 'tags', 'category', 'created_at'],
+  blog_posts: ['id', 'slug', 'note_id', 'user_id', 'title', 'excerpt', 'content', 'cover_url', 'category_id', 'tags', 'is_published', 'allow_comments', 'is_pinned', 'views', 'published_at', 'created_at', 'updated_at'],
+  blog_categories: ['id', 'user_id', 'name', 'slug', 'description', 'color', 'icon', 'position', 'created_at', 'updated_at'],
+  blog_comments: ['id', 'post_id', 'parent_id', 'author_name', 'author_email', 'author_url', 'author_avatar', 'content', 'status', 'ip', 'user_agent', 'created_at'],
 } as const
 
 const REQUIRED_TABLES = [
@@ -862,6 +979,9 @@ const REQUIRED_TABLES = [
   'ai_index_queue',
   'fts_index_queue',
   'community_templates',
+  'blog_posts',
+  'blog_categories',
+  'blog_comments',
 ] as const
 
 const REQUIRED_INDEXES = [
@@ -916,6 +1036,14 @@ const REQUIRED_INDEXES = [
   'idx_ai_index_queue_due',
   'idx_fts_index_queue_due',
   'idx_community_templates_created',
+  'idx_blog_posts_user',
+  'idx_blog_posts_slug',
+  'idx_blog_posts_note',
+  'idx_blog_posts_category',
+  'idx_blog_categories_slug',
+  'idx_blog_categories_user',
+  'idx_blog_comments_post',
+  'idx_blog_comments_status',
 ] as const
 
 

@@ -115,6 +115,10 @@ export const requireAuth = createMiddleware<AppBindings>(async (c, next) => {
 })
 
 export const requireClientHeader = createMiddleware<AppBindings>(async (c, next) => {
+  const path = c.req.path
+  if (path.startsWith('/api/public') || path.startsWith('/api/blog/public')) {
+    return next()
+  }
   const method = c.req.method.toUpperCase()
   if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
     if (c.req.header(CLIENT_HEADER) !== '1') {

@@ -891,3 +891,98 @@ export interface RelativeFilter {
   days: number
   direction: 'edit' | 'today'
 }
+
+export interface BlogPost {
+  id: string
+  slug: string
+  noteId: string
+  userId: string
+  title: string
+  excerpt: string
+  content: string
+  coverUrl: string
+  categoryId: string | null
+  tags: string[]
+  isPublished: boolean
+  allowComments: boolean
+  isPinned: boolean
+  views: number
+  commentsCount?: number
+  publishedAt: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface BlogCategory {
+  id: string
+  userId?: string
+  name: string
+  slug: string
+  description?: string
+  color?: string | null
+  icon?: string | null
+  position: number
+  postsCount?: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface BlogTag {
+  name: string
+  postsCount: number
+}
+
+export type BlogCommentStatus = 'pending' | 'approved' | 'rejected' | 'spam'
+
+export interface BlogComment {
+  id: string
+  postId: string
+  postTitle?: string
+  postSlug?: string
+  parentId: string | null
+  authorName: string
+  authorEmail: string
+  authorUrl?: string | null
+  authorAvatar?: string | null
+  content: string
+  status: BlogCommentStatus
+  ip?: string | null
+  userAgent?: string | null
+  createdAt: number
+  replies?: BlogComment[]
+}
+
+export interface BlogStats {
+  totalPosts: number
+  publishedPosts: number
+  draftPosts: number
+  totalViews: number
+  totalComments: number
+  pendingComments: number
+  categoriesCount: number
+  tagsCount: number
+}
+
+export interface BlogSettings {
+  siteName: string
+  subtitle: string
+  bio: string
+  authorName: string
+  authorAvatar: string
+  socialLinks: {
+    github?: string
+    twitter?: string
+    email?: string
+    website?: string
+  }
+  requireCommentApproval: boolean
+  postsPerPage: number
+  frontendUrl: string
+  appearance: {
+    theme: 'light' | 'dark' | 'system'
+    accent: string
+    background: 'paper' | 'white'
+    density: 'comfortable' | 'compact'
+    language: 'zh-CN' | 'en-US'
+  }
+}

@@ -19,6 +19,7 @@ import { avatarRoutes } from './routes/avatars'
 import { backupRoutes } from './routes/backup'
 import { settingsRoutes } from './routes/settings'
 import { shareManageRoutes, sharePageRoutes, shareRoutes } from './routes/share'
+import { blogManageRoutes, blogPublicRoutes } from './routes/blog'
 import { transferRoutes } from './routes/transfer'
 import { updateRoutes } from './routes/update'
 import { communityTemplatesRoutes } from './routes/community-templates'
@@ -121,6 +122,8 @@ export function createApp() {
   app.route('/api/mcp', mcpSettingsRoutes)
   app.route('/api/share', shareManageRoutes)
   app.route('/api/public', shareRoutes)
+  app.route('/api/blog/public', blogPublicRoutes)
+  app.route('/api/blog', blogManageRoutes)
   app.route('/api/templates/community', communityTemplatesRoutes)
   app.route('/api', transferRoutes)
 
