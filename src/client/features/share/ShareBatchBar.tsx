@@ -92,17 +92,18 @@ export function ShareBatchBar({
   ]
 
   return (
-    <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-4 py-2 shadow-2xl backdrop-blur-md">
-      <span className="text-[12px] font-medium text-[var(--text-primary)]">
+    <div className="absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-4 py-2 shadow-2xl backdrop-blur-md shrink-0 whitespace-nowrap max-w-[calc(100%-2rem)]">
+      <span className="shrink-0 whitespace-nowrap text-[12px] font-medium text-[var(--text-primary)]">
         {t('share.selected_count', { count: selectedCount })}
       </span>
 
-      <div className="h-4 w-px bg-[var(--border-default)]" />
+      <div className="h-4 w-px shrink-0 bg-[var(--border-default)]" />
 
       <Button
         size="sm"
         variant="ghost"
         disabled={batchBusy}
+        className="shrink-0 whitespace-nowrap"
         icon={<Play size={13} className="text-[var(--success)]" />}
         onClick={() => void handleEnableAll()}
       >
@@ -113,6 +114,7 @@ export function ShareBatchBar({
         size="sm"
         variant="ghost"
         disabled={batchBusy}
+        className="shrink-0 whitespace-nowrap"
         icon={<Square size={12} className="text-[var(--warning)]" />}
         onClick={() => void handleDisableAll()}
       >
@@ -124,6 +126,7 @@ export function ShareBatchBar({
         size="sm"
         variant="ghost"
         disabled={batchBusy}
+        className="shrink-0 whitespace-nowrap"
         icon={<FolderInput size={13} />}
         onClick={() => setFolderMenuOpen(true)}
       >
@@ -135,6 +138,7 @@ export function ShareBatchBar({
         size="sm"
         variant="ghost"
         disabled={batchBusy}
+        className="shrink-0 whitespace-nowrap"
         icon={<Calendar size={13} />}
         onClick={() => setExpiryMenuOpen(true)}
       >
@@ -144,7 +148,7 @@ export function ShareBatchBar({
       <Button
         size="sm"
         variant="ghost"
-        className="text-[var(--danger)] hover:bg-[var(--danger-subtle)]"
+        className="shrink-0 whitespace-nowrap text-[var(--danger)] hover:bg-[var(--danger-subtle)]"
         disabled={batchBusy}
         icon={<Trash2 size={13} />}
         onClick={() => void handleRevokeAll()}
@@ -152,12 +156,12 @@ export function ShareBatchBar({
         {t('share.batch_revoke')}
       </Button>
 
-      <div className="h-4 w-px bg-[var(--border-default)]" />
+      <div className="h-4 w-px shrink-0 bg-[var(--border-default)]" />
 
       <button
         type="button"
         onClick={onClearSelection}
-        className="rounded-full p-1 text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        className="shrink-0 rounded-full p-1 text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
       >
         <X size={14} />
       </button>

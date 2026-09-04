@@ -88,7 +88,7 @@ export function ShareHubModal({
         <div className="flex min-h-0 flex-1">
           <ShareHubSidebar />
 
-          <div className="relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)]">
+          <div className="relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden">
             {category === 'dashboard' ? (
               <ShareDashboardView
                 onSelectNoteAnalytics={(noteId) => setAnalyticsNoteId(noteId)}

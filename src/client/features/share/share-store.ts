@@ -546,12 +546,22 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
 
   batchMoveToFolder: async (noteIds, folderId) => {
     set({ batchBusy: true })
+    set((s) => {
+      const idSet = new Set(noteIds)
+      const updatedShares = s.shares.map((share) => {
+        if (idSet.has(share.noteId)) {
+          return { ...share, shareFolderId: folderId, folderId }
+        }
+        return share
+      })
+      return { shares: updatedShares, selectedNoteIds: new Set() }
+    })
     try {
       await api.share.batch('move', noteIds, undefined, folderId)
-      set({ selectedNoteIds: new Set() })
       await get().loadShares()
       return true
     } catch {
+      await get().loadShares()
       return false
     } finally {
       set({ batchBusy: false })
