@@ -17,8 +17,12 @@ function initTaskCheckboxes() {
     if (target instanceof HTMLInputElement && target.classList.contains('task-list-item-checkbox')) {
       const li = target.closest<HTMLLIElement>('li.task-list-item')
       if (li) {
-        li.classList.toggle('done', target.checked)
-        li.dataset.taskStatus = target.checked ? 'done' : 'todo'
+        const isDone = target.checked
+        li.classList.toggle('done', isDone)
+        li.classList.toggle('task-status-done', isDone)
+        li.classList.toggle('task-status-todo', !isDone)
+        li.dataset.taskStatus = isDone ? 'done' : 'todo'
+        target.dataset.taskStatus = isDone ? 'done' : 'todo'
       }
     }
   })

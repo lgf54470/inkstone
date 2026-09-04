@@ -216,12 +216,12 @@ function normalizeCalloutType(val: string): string {
     summary: 'abstract',
     tldr: 'abstract',
     hint: 'tip',
-    important: 'important',
+    important: 'tip',
     check: 'success',
     done: 'success',
     help: 'question',
     faq: 'question',
-    caution: 'caution',
+    caution: 'warning',
     attention: 'warning',
     fail: 'failure',
     missing: 'failure',
@@ -337,6 +337,15 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
     .use(deflist)
     .use(abbr)
     .use(ruby)
+    .use(anchor, {
+      slugify,
+      permalink: anchor.permalink.linkInsideHeader({
+        symbol: '',
+        placement: 'before',
+        class: 'heading-anchor',
+        ariaHidden: true,
+      }),
+    })
 
   // Math inline: $...$
   const MATH_INLINE = /^\$(?!\s)((?:[^$\\]|\\.)+?)(?<!\s)\$/
@@ -518,7 +527,7 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
     if (!silent) {
       const raw = match[1]!.trim()
       const token = state.push('html_inline', '', 0)
-      token.content = `<div class="note-embed"><span class="note-embed-head">${escapeHtml(raw)}</span></div>`
+      token.content = `<div class="note-embed"><span class="note-embed-head">${escapeHtml(raw)}</span><div class="note-embed-body"><p class="text-xs text-[var(--text-tertiary)] italic">嵌入笔记：${escapeHtml(raw)}</p></div></div>`
     }
     state.pos += match[0].length
     return true
@@ -542,20 +551,29 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
     return true
   })
 
+  function appendTokenClass(token: any, className: string): void {
+    const current = token.attrGet('class') || ''
+    const classes = current.split(/\s+/).filter(Boolean)
+    if (!classes.includes(className)) {
+      classes.push(className)
+      token.attrSet('class', classes.join(' '))
+    }
+  }
+
   // Core rule: Task List Items (<span class="task-label"> wrapper and status markers)
   md.core.ruler.after('github-task-lists', 'task_labels_and_markers', (state) => {
-    for (let index = 1; index < state.tokens.length; index++) {
-      const inline = state.tokens[index]
-      if (!inline || inline.type !== 'inline' || !inline.children?.length) continue
-
-      let item: any = null
-      for (let i = index - 1; i >= Math.max(0, index - 3); i--) {
-        if (state.tokens[i]?.type === 'list_item_open') {
-          item = state.tokens[i]
-          break
-        }
+    for (let index = 2; index < state.tokens.length; index++) {
+      const inline = state.tokens[index]!
+      const paragraph = state.tokens[index - 1]!
+      const item = state.tokens[index - 2]!
+      if (
+        inline.type !== 'inline' ||
+        paragraph.type !== 'paragraph_open' ||
+        item.type !== 'list_item_open' ||
+        !inline.children?.length
+      ) {
+        continue
       }
-      if (!item) continue
 
       const cbIdx = inline.children.findIndex(
         (child) => child.type === 'html_inline' && /task-list-item-checkbox/.test(child.content)
@@ -585,11 +603,11 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
               ch === '?' ? 'question' :
               ch === '!' ? 'important' : 'todo'
             firstChild.content = firstChild.content.slice(extMatch[0].length)
-            item.attrJoin('class', 'task-list-item')
-            const listOpen = state.tokens.slice(0, index).reverse().find(
+            appendTokenClass(item, 'task-list-item')
+            const listOpen = state.tokens.slice(0, index - 2).reverse().find(
               (t) => t.type === 'bullet_list_open' || t.type === 'ordered_list_open'
             )
-            if (listOpen) listOpen.attrJoin('class', 'contains-task-list')
+            if (listOpen) appendTokenClass(listOpen, 'contains-task-list')
             const checkbox = new state.Token('html_inline', '', 0)
             checkbox.content = `<input type="checkbox" class="task-list-item-checkbox" data-task-status="${status}" />`
             const labelOpen = new state.Token('html_inline', '', 0)
@@ -604,9 +622,9 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
       }
       if (status) {
         item.attrSet('data-task-status', status)
-        item.attrJoin('class', `task-status-${status}`)
-        if (status === 'done') item.attrJoin('class', 'done')
-        else if (status === 'cancelled') item.attrJoin('class', 'cancelled')
+        appendTokenClass(item, `task-status-${status}`)
+        if (status === 'done') appendTokenClass(item, 'done')
+        else if (status === 'cancelled') appendTokenClass(item, 'cancelled')
       }
     }
     return true
@@ -662,41 +680,12 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
     return true
   })
 
-  // Core rule: Extended task list items ([-], [/], [?], [!])
-  md.core.ruler.after('github-task-lists', 'extended_task_lists', (state) => {
-    for (let index = 2; index < state.tokens.length; index++) {
-      const inline = state.tokens[index]!
-      const pOpen = state.tokens[index - 1]!
-      const item = state.tokens[index - 2]!
-      if (inline.type !== 'inline' || pOpen.type !== 'paragraph_open' || item.type !== 'list_item_open' || !inline.children?.length) {
-        continue
-      }
-      const firstChild = inline.children[0]
-      if (firstChild?.type === 'text') {
-        const extMatch = /^\[([\/\-?!])\][ \t]*/.exec(firstChild.content)
-        if (extMatch) {
-          const ch = extMatch[1]!
-          const status = ch === '/' ? 'in-progress' : ch === '-' ? 'cancelled' : ch === '?' ? 'question' : ch === '!' ? 'important' : 'todo'
-          firstChild.content = firstChild.content.slice(extMatch[0].length)
-          item.attrJoin('class', `task-list-item task-status-${status}${status === 'cancelled' ? ' cancelled' : ''}`)
-          const checkbox = new state.Token('html_inline', '', 0)
-          checkbox.content = `<input type="checkbox" class="task-list-item-checkbox" disabled data-task-status="${status}"><span class="task-label">`
-          const labelClose = new state.Token('html_inline', '', 0)
-          labelClose.content = '</span>'
-          inline.children.unshift(checkbox)
-          inline.children.push(labelClose)
-        }
-      }
-    }
-    return true
-  })
-
   // Renderer rules for details and tabs
   md.renderer.rules.details_open = (tokens, index) => {
     const meta = tokens[index]!.meta as { open: boolean; title: string }
-    return `<details class="markdown-details"${meta.open ? ' open' : ''}><summary>${escapeHtml(meta.title)}</summary><div class="markdown-details-content">`
+    return `<details class="markdown-details"${meta.open ? ' open' : ''}><summary>${escapeHtml(meta.title)}</summary>`
   }
-  md.renderer.rules.details_close = () => '</div></details>'
+  md.renderer.rules.details_close = () => '</details>'
 
   md.renderer.rules.tabs_open = (tokens, index) => {
     const { titles, selectedIndex } = tokens[index]!.meta as { titles: string[]; selectedIndex: number }
@@ -742,7 +731,7 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
   md.renderer.rules.math_block = (tokens, idx) => {
     const formula = tokens[idx]!.content
     try {
-      return `<div class="katex-display">${katex.renderToString(formula, { displayMode: true, throwOnError: false })}</div>`
+      return `<div class="math-block">${katex.renderToString(formula, { displayMode: true, throwOnError: false })}</div>`
     } catch {
       return `<pre class="math-error"><code>${escapeHtml(formula)}</code></pre>`
     }
@@ -861,7 +850,7 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
     const title = info.title || (info.language ? info.language.toUpperCase() : 'CODE')
 
     return [
-      `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}" data-lang="${escapeAttr(lang)}">`,
+      `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}" data-lang="${escapeAttr(lang)}" data-code-start="${info.startLine}"${info.lineNumbers ? ' data-line-numbers="true"' : ''}${info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : ''}>`,
       `<div class="code-block-head">`,
       `<span class="code-title">${escapeHtml(title)}</span>`,
       info.title && info.language ? `<span class="code-lang">${escapeHtml(info.language)}</span>` : '',
@@ -872,7 +861,35 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
     ].join('')
   }
 
-  // Heading anchor collection
+  function plainInline(token: any): string {
+    if (token.type !== 'inline' || !token.children) return token.content || ''
+    return token.children
+      .filter((child: any) => ['text', 'code_inline', 'inline_tag', 'wikilink', 'block_reference'].includes(child.type))
+      .map((child: any) => child.content)
+      .join('')
+      .trim()
+  }
+
+  // Collect headings in core phase before TOC rendering
+  md.core.ruler.push('collect_headings', (state) => {
+    headings.length = 0
+    for (let index = 0; index < state.tokens.length; index++) {
+      const token = state.tokens[index]!
+      if (token.type !== 'heading_open') continue
+      const inline = state.tokens[index + 1]
+      const text = inline ? plainInline(inline) : ''
+      const level = parseInt(token.tag.slice(1), 10)
+      const slug = token.attrGet('id') ?? slugify(text)
+      headings.push({
+        level,
+        text,
+        slug,
+      })
+    }
+    return true
+  })
+
+  // Heading anchor styling
   const defaultHeadingOpen =
     md.renderer.rules.heading_open ||
     function (tokens, idx, options, _env, self) {
@@ -881,29 +898,7 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
 
   md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
     const token = tokens[idx]!
-    const level = parseInt(token.tag.slice(1), 10)
-    const nextToken = tokens[idx + 1]
-
-    if (nextToken && nextToken.type === 'inline') {
-      const title = nextToken.content
-      let baseSlug = slugify(title) || `heading-${headings.length + 1}`
-      let slug = baseSlug
-      let count = 1
-      while (usedSlugs.has(slug)) {
-        slug = `${baseSlug}-${count++}`
-      }
-      usedSlugs.add(slug)
-
-      token.attrSet('id', slug)
-      token.attrJoin('class', 'group relative')
-
-      headings.push({
-        level,
-        text: title,
-        slug,
-      })
-    }
-
+    token.attrJoin('class', 'group relative')
     return defaultHeadingOpen(tokens, idx, options, env, self)
   }
 

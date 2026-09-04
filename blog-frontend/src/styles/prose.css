@@ -206,15 +206,29 @@
   );
 }
 .ink-prose .task-list-item.done > p > .task-label,
-.ink-prose .task-list-item.done > .task-label {
+.ink-prose .task-list-item.done > .task-label,
+.ink-prose .task-status-done > p > .task-label,
+.ink-prose .task-status-done > .task-label {
   color: var(--text-tertiary);
   text-decoration: line-through;
   text-decoration-color: var(--text-quaternary);
 }
-.ink-prose input[type='checkbox'][data-task-status='in-progress'] {
+.ink-prose input[type='checkbox'][data-task-status='in-progress'],
+.ink-prose input[type='checkbox'][data-task-status='cancelled'],
+.ink-prose input[type='checkbox'][data-task-status='question'],
+.ink-prose input[type='checkbox'][data-task-status='important'],
+.ink-prose .task-status-in-progress input[type='checkbox'],
+.ink-prose .task-status-cancelled input[type='checkbox'],
+.ink-prose .task-status-question input[type='checkbox'],
+.ink-prose .task-status-important input[type='checkbox'] {
+  border-radius: 50%;
+}
+.ink-prose input[type='checkbox'][data-task-status='in-progress'],
+.ink-prose .task-status-in-progress input[type='checkbox'] {
   border-color: var(--accent);
 }
-.ink-prose input[type='checkbox'][data-task-status='in-progress']::after {
+.ink-prose input[type='checkbox'][data-task-status='in-progress']::after,
+.ink-prose .task-status-in-progress input[type='checkbox']::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -225,10 +239,12 @@
   transform: translateY(-50%);
   border-radius: 1px;
 }
-.ink-prose input[type='checkbox'][data-task-status='cancelled'] {
+.ink-prose input[type='checkbox'][data-task-status='cancelled'],
+.ink-prose .task-status-cancelled input[type='checkbox'] {
   border-color: var(--text-quaternary);
 }
-.ink-prose input[type='checkbox'][data-task-status='cancelled']::after {
+.ink-prose input[type='checkbox'][data-task-status='cancelled']::after,
+.ink-prose .task-status-cancelled input[type='checkbox']::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -238,10 +254,12 @@
   background: var(--text-tertiary);
   transform: translateY(-50%);
 }
-.ink-prose input[type='checkbox'][data-task-status='question'] {
+.ink-prose input[type='checkbox'][data-task-status='question'],
+.ink-prose .task-status-question input[type='checkbox'] {
   border-color: var(--warning, #f59e0b);
 }
-.ink-prose input[type='checkbox'][data-task-status='question']::after {
+.ink-prose input[type='checkbox'][data-task-status='question']::after,
+.ink-prose .task-status-question input[type='checkbox']::after {
   content: '?';
   position: absolute;
   inset: 0;
@@ -252,10 +270,12 @@
   color: var(--warning, #f59e0b);
   line-height: 1;
 }
-.ink-prose input[type='checkbox'][data-task-status='important'] {
+.ink-prose input[type='checkbox'][data-task-status='important'],
+.ink-prose .task-status-important input[type='checkbox'] {
   border-color: var(--danger, #ef4444);
 }
-.ink-prose input[type='checkbox'][data-task-status='important']::after {
+.ink-prose input[type='checkbox'][data-task-status='important']::after,
+.ink-prose .task-status-important input[type='checkbox']::after {
   content: '!';
   position: absolute;
   inset: 0;
@@ -267,7 +287,9 @@
   line-height: 1;
 }
 .ink-prose .task-list-item.cancelled > p > .task-label,
-.ink-prose .task-list-item.cancelled > .task-label {
+.ink-prose .task-list-item.cancelled > .task-label,
+.ink-prose .task-status-cancelled > p > .task-label,
+.ink-prose .task-status-cancelled > .task-label {
   color: var(--text-tertiary);
   text-decoration: line-through;
   text-decoration-color: var(--text-quaternary);
@@ -353,10 +375,12 @@
   background: color-mix(in oklab, var(--callout-color) 6%, var(--bg-inset));
 }
 .ink-prose .callout-warning,
+.ink-prose .callout-caution,
 .ink-prose .callout-question { --callout-color: var(--warning); }
 .ink-prose .callout-danger,
 .ink-prose .callout-failure { --callout-color: var(--danger); }
 .ink-prose .callout-success,
+.ink-prose .callout-important,
 .ink-prose .callout-tip { --callout-color: var(--success); }
 .ink-prose .callout-title {
   display: flex;
