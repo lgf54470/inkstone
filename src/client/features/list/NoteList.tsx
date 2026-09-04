@@ -33,7 +33,6 @@ import { ShareQrModal } from '../share/ShareQrModal';
 import { ShareNoteAnalyticsModal } from '../share/ShareNoteAnalyticsModal';
 import { ShareNoteSubmenu } from '../share/ShareNoteSubmenu';
 import { useShareStore } from '../share/share-store';
-import { api } from '../../lib/api';
 import { TagPill } from '../../components/TagPill';
 import { removeTagFromNote } from '../tags/tagMutations';
 import { t, useLocale, type MessageKey } from "../../lib/i18n";
@@ -603,22 +602,7 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
     const noteShare = useMemo(() => shares.find((s) => s.noteId === note.id) ?? null, [shares, note.id]);
     const computedIsShared = isShared ?? Boolean(noteShare);
 
-    const handleRevokeShare = async () => {
-        const ok = await confirm({
-            title: t('share.revoke_this_public_link'),
-            description: t('share.anyone_who_gets_the_link_will_immediately_lose_access'),
-            confirmLabel: t('share.cancel_share'),
-            tone: 'danger',
-        });
-        if (!ok) return;
-        try {
-            await api.share.remove(note.id);
-            toast({ title: t('share.link_revoked'), tone: 'default' });
-            void useShareStore.getState().loadShares();
-        } catch {
-            toast({ title: t('common.action_failed'), tone: 'danger' });
-        }
-    };
+
     const handleSelectFolder = (folderId: string | null) => {
         const targetIds = selectedIds.includes(note.id) ? selectedIds : [note.id];
         void moveNotes(targetIds, folderId);
@@ -733,25 +717,22 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
                 id: 'share',
                 label: t("workspace.share"),
                 icon: <Share2 size={13}/>,
-                submenu: ({ closeMenu }) => (
-                    <ShareNoteSubmenu
-                        noteId={note.id}
-                        noteTitle={note.title || t("common.untitled_note")}
-                        share={noteShare}
-                        closeMenu={closeMenu}
-                        onOpenSettings={() => setShareModalOpen(true)}
-                        onOpenQr={(url, title, slug) => setQrModalData({ url, title, slug })}
-                        onOpenAnalytics={() => setAnalyticsOpen(true)}
-                    />
-                ),
+                ...(computedIsShared ? {
+                    submenu: ({ closeMenu }) => (
+                        <ShareNoteSubmenu
+                            noteId={note.id}
+                            noteTitle={note.title || t("common.untitled_note")}
+                            share={noteShare}
+                            closeMenu={closeMenu}
+                            onOpenSettings={() => setShareModalOpen(true)}
+                            onOpenQr={(url, title, slug) => setQrModalData({ url, title, slug })}
+                            onOpenAnalytics={() => setAnalyticsOpen(true)}
+                        />
+                    ),
+                } : {
+                    onSelect: () => setShareModalOpen(true),
+                }),
             },
-            ...(computedIsShared ? [{
-                id: 'unshare',
-                label: t("share.cancel_share"),
-                icon: <Share2 size={13}/>,
-                tone: 'danger' as const,
-                onSelect: () => void handleRevokeShare(),
-            } satisfies MenuItem] : []),
             {
                 id: 'archive',
                 label: note.isArchived ? t("common.unarchive") : t("navigation.archive"),
