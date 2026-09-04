@@ -81,6 +81,34 @@ describe('code block collapsing', () => {
     expect(root.querySelectorAll('.math-source')).toHaveLength(2)
   })
 
+  it('keeps hostile markup inside code fences inert after syntax highlighting', async () => {
+    const root = document.createElement('div')
+    root.innerHTML = '<div class="code-block" data-lang="html"><pre><code>&lt;img src=x onerror=alert(1)&gt;&lt;script&gt;alert(2)&lt;/script&gt;&lt;svg onload=alert(3)&gt;&lt;/svg&gt;</code></pre></div>'
+
+    await enhancePreview(root, { math: false, mermaid: false, dark: false })
+
+    expect(root.querySelector('img, script, svg, iframe')).toBeNull()
+    // Highlighting still ran, but the hostile source survives only as inert text.
+    expect(root.querySelector('.token.tag')).not.toBeNull()
+    expect(root.querySelector('code')!.textContent).toBe('<img src=x onerror=alert(1)><script>alert(2)</script><svg onload=alert(3)></svg>')
+  })
+
+  it('keeps hostile markup inside math inert after KaTeX rendering', async () => {
+    const root = document.createElement('div')
+    const math = document.createElement('span')
+    math.className = 'math-inline'
+    math.dataset.math = '\\text{<img src=x onerror=alert(1)> <script>alert(2)</script>}'
+    root.append(math)
+
+    await enhancePreview(root, { math: true, mermaid: false, dark: false })
+
+    expect(root.querySelector('img, script, svg[onload], iframe')).toBeNull()
+    expect(root.querySelector('.katex')).not.toBeNull()
+    // KaTeX renders inter-word spaces as U+00A0; normalize before comparing.
+    const text = root.querySelector('.math-inline')!.textContent!.replace(/\u00a0/g, ' ')
+    expect(text).toContain('<img src=x onerror=alert(1)> <script>alert(2)</script>')
+  })
+
   it('renders and destroys chart blocks', async () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = (() => ({

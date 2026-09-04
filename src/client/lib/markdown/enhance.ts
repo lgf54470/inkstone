@@ -1,6 +1,7 @@
 import { decodeDataValue } from './data-attr';
 import { t } from "../i18n";
 import { highlightWithPrism } from './prism';
+import { sanitizeCodeTokenHtml, sanitizeMathHtml } from './sanitize';
 
 const OPTIONAL_RENDERER_LOAD_TIMEOUT_MS = 15000;
 
@@ -72,7 +73,7 @@ async function highlightCodeBlocks(root: HTMLElement): Promise<void> {
         try {
             const highlighted = await highlightWithPrism(source, block.dataset.lang ?? '');
             if (highlighted) {
-                code.innerHTML = highlighted.html;
+                code.innerHTML = sanitizeCodeTokenHtml(highlighted.html);
                 code.classList.add(`language-${highlighted.language}`);
             }
             else {
@@ -205,8 +206,13 @@ async function renderMath(root: HTMLElement): Promise<void> {
                 strict: false,
                 output: 'html',
             });
-            remember(mathCache, key, html, 160);
-            node.innerHTML = html;
+            // KaTeX output is machine-generated from math source (\color values
+            // are strictly validated and \href is inert at trust:false), but it
+            // is still written through the same sanitizer as every other HTML
+            // fragment so a future KaTeX change cannot introduce a sink.
+            const safe = sanitizeMathHtml(html);
+            remember(mathCache, key, safe, 160);
+            node.innerHTML = safe;
             node.classList.remove('math-source');
             node.dataset.rendered = '1';
         }

@@ -12,8 +12,8 @@ import { full as emoji } from 'markdown-it-emoji';
 import deflist from 'markdown-it-deflist';
 import abbr from 'markdown-it-abbr';
 import ruby from 'markdown-it-ruby';
-import DOMPurify from 'dompurify';
 import { parseFrontMatter, slugifyHeading } from '@shared/markdown-utils';
+import { sanitizeProseHtml } from './sanitize';
 import { getLocale, t } from '../i18n';
 import { encodeDataValue } from './data-attr';
 export interface Heading {
@@ -908,96 +908,6 @@ md.core.ruler.push('collect_headings', (state) => {
     }
     return true;
 });
-const PURIFY_CONFIG = {
-    // The renderer is the only producer of this HTML, so the whitelist is
-    // exact: every tag markdown-it and the Inkstone extensions can emit,
-    // nothing else. SVG/MathML/forms stay out entirely to avoid the
-    // mXSS-prone element combinations; task checkboxes are re-inserted as
-    // DOM nodes after sanitization, so `input` is intentionally absent.
-    ALLOWED_TAGS: [
-        'a', 'abbr', 'aside', 'b', 'blockquote', 'br', 'button', 'code',
-        'dd', 'del', 'details', 'div', 'dl', 'dt', 'em', 'figcaption',
-        'figure', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img',
-        'ins', 'kbd', 'li', 'mark', 'nav', 'ol', 'p', 'pre', 'q', 'rp', 'rt', 'ruby', 's', 'section',
-        'small', 'span', 'strong', 'sub', 'summary', 'sup', 'table',
-        'tbody', 'td', 'th', 'thead', 'tr', 'u', 'ul',
-    ],
-    ADD_ATTR: [
-        'data-line',
-        'data-math',
-        'data-mermaid',
-        'data-chart',
-        'data-wikilink',
-        'data-embed-target',
-        'data-block-ref',
-        'data-block-id',
-        'data-tag',
-        'data-lang',
-        'data-copy',
-        'data-task-placeholder',
-        'data-task-line',
-        'data-task-checked',
-        'data-task-status',
-        'data-tabs',
-        'data-tab-button',
-        'data-tab-panel',
-        'data-callout',
-        'data-code-start',
-        'data-line-numbers',
-        'data-highlight-lines',
-        'data-markdown-example',
-        'data-markdown-example-id',
-        'data-image-blocked',
-        'data-file-card',
-        'data-file-url',
-        'data-file-name',
-        'data-file-line',
-        'data-file-action',
-        'data-category',
-        'data-inline-file',
-        'download',
-        'type',
-        'target',
-        'loading',
-        'decoding',
-        'referrerpolicy',
-        'align',
-        'colspan',
-        'open',
-        'hidden',
-        'role',
-        'aria-busy',
-        'aria-label',
-        'aria-selected',
-        'aria-checked',
-        'aria-controls',
-        'aria-labelledby',
-        'tabindex',
-        'width',
-        'height',
-        'lang',
-        'dir',
-    ],
-    FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input', 'link', 'base'],
-    FORBID_ATTR: [
-        'style',
-        'onerror',
-        'onload',
-        'onclick',
-        'onchange',
-        'oninput',
-        'onfocus',
-        'srcdoc',
-        'formaction',
-        'action',
-    ],
-    ALLOW_DATA_ATTR: true,
-};
-DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-    if (node.nodeName === 'A' && node.getAttribute('target')?.toLowerCase() === '_blank') {
-        node.setAttribute('rel', 'noopener noreferrer');
-    }
-});
 export function renderMarkdown(source: string, options?: {
     /** Allow external https images; defaults to false (blocked). */
     externalImages?: boolean;
@@ -1007,7 +917,7 @@ export function renderMarkdown(source: string, options?: {
     env.externalImages = options?.externalImages === true;
     env.hideFrontMatter = options?.hideFrontMatter === true;
     const raw = md.render(stripObsidianComments(source), env);
-    const sanitized = DOMPurify.sanitize(raw, PURIFY_CONFIG);
+    const sanitized = sanitizeProseHtml(raw);
     const html = materializeTrustedTasks(sanitized, env.taskNonce);
     return {
         html,

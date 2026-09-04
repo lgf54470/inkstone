@@ -39,6 +39,12 @@ describe('renderMarkdown XSS hardening', () => {
     expect(parse(rendered.html).querySelector('p')!.textContent).toBe('hi')
   })
 
+  it('keeps structural class attributes while stripping style', () => {
+    const rendered = renderMarkdown('<div class="callout" style="position:fixed">x</div>')
+    expect(rendered.html).toContain('class="callout"')
+    expect(rendered.html).not.toContain('style=')
+  })
+
   it('strips SVG and MathML elements including mXSS-prone combinations', () => {
     const rendered = renderMarkdown(
       '<svg><g onload="alert(1)"><foreignObject><iframe src="https://evil"></iframe></foreignObject></g></svg>' +
