@@ -311,4 +311,37 @@ describe('renderMarkdown extension golden output', () => {
     expect(rubies[0]?.querySelector('rt')?.textContent).toBe('h\u00e0n z\u00ec')
     expect(rubies[1]?.querySelector('rt')?.textContent).toBe('\u6c49\u5b57')
   })
+
+  it('renders code blocks with line-numbers and highlight across syntax variants', () => {
+    // 1. With curly braces {line-numbers}
+    const mdWithBraces = '```typescript title="src/shared/utils.ts" {line-numbers}\nconst a = 1;\n```'
+    const rendered1 = renderMarkdown(mdWithBraces)
+    const fragment1 = parse(rendered1.html)
+    const block1 = fragment1.querySelector('.code-block')
+    expect(block1).not.toBeNull()
+    expect(block1?.classList.contains('has-line-numbers')).toBe(true)
+    expect(block1?.getAttribute('data-line-numbers')).toBe('true')
+    expect(block1?.querySelector('.code-title')?.textContent).toBe('src/shared/utils.ts')
+
+    // 2. Without curly braces line-numbers
+    const mdWithoutBraces = '```typescript title="test.ts" line-numbers\nconst b = 2;\n```'
+    const rendered2 = renderMarkdown(mdWithoutBraces)
+    const block2 = parse(rendered2.html).querySelector('.code-block')
+    expect(block2?.classList.contains('has-line-numbers')).toBe(true)
+    expect(block2?.getAttribute('data-line-numbers')).toBe('true')
+
+    // 3. With {showLineNumbers} and highlight lines {2}
+    const mdHighlight = '```typescript title="test.ts" {showLineNumbers} {2}\nconst c = 3;\nconst d = 4;\n```'
+    const rendered3 = renderMarkdown(mdHighlight)
+    const block3 = parse(rendered3.html).querySelector('.code-block')
+    expect(block3?.classList.contains('has-line-numbers')).toBe(true)
+    expect(block3?.getAttribute('data-highlight-lines')).toBe('2')
+
+    // 4. With explicit disable {line-numbers=false}
+    const mdDisabled = '```typescript title="test.ts" {line-numbers=false}\nconst e = 5;\n```'
+    const rendered4 = renderMarkdown(mdDisabled)
+    const block4 = parse(rendered4.html).querySelector('.code-block')
+    expect(block4?.classList.contains('has-line-numbers')).toBe(false)
+    expect(block4?.getAttribute('data-line-numbers')).toBeNull()
+  })
 })

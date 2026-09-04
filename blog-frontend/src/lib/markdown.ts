@@ -114,8 +114,8 @@ export function parseFenceInfo(source: string): FenceInfo {
   const leadingCodeOptions = /^\{([^\{}]+)\}/.exec(rest)
   if (leadingCodeOptions && !/^\d[\d,\s-]*$/.test(leadingCodeOptions[1]!.trim())) {
     const classes = [...leadingCodeOptions[1]!.matchAll(/(?:^|\s)\.([A-Za-z][\w-]{0,63})/g)].map((m) => m[1]!)
-    language = classes.find((c) => !['line-numbers', 'linenos', 'numberLines'].includes(c))?.toLowerCase() ?? ''
-    lineNumbers = classes.some((c) => ['line-numbers', 'linenos', 'numberLines'].includes(c))
+    language = classes.find((c) => !isReservedCodeClass(c))?.toLowerCase() ?? ''
+    lineNumbers = classes.some(isReservedCodeClass)
     const titleMatch = /title=(?:"([^"]*)"|'([^']*)'|([^\s}]+))/.exec(leadingCodeOptions[1]!)
     if (titleMatch) title = titleMatch[1] ?? titleMatch[2] ?? titleMatch[3] ?? ''
     rest = rest.slice(leadingCodeOptions[0].length).trim()
@@ -134,12 +134,17 @@ export function parseFenceInfo(source: string): FenceInfo {
   const bracketTitle = /(?:^|\s)\[([^\]\n]+)\]/.exec(rest)
   if (!title && bracketTitle) title = bracketTitle[1]!.trim()
 
-  lineNumbers = lineNumbers || /(?:^|\s)(?:line-numbers|linenos|numberLines)(?=\s|$)/.test(rest)
+  const hasLineNumbersDisable = /(?:^|[\s{])\.?(?:line-?numbers|linenos|number-?lines|show-?line-?numbers)=(?:"?false"?|0)(?=[\s}]|$)/i.test(rest)
+  const hasLineNumbersEnable = /(?:^|[\s{])\.?(?:line-?numbers|linenos|number-?lines|show-?line-?numbers)(?:=(?:"?true"?|1))?(?=[\s}]|$)/i.test(rest)
+  if (hasLineNumbersDisable) {
+    lineNumbers = false
+  } else if (hasLineNumbersEnable) {
+    lineNumbers = true
+  }
   const start = /(?:^|\s)(?:start|startFrom)=(?:"(\d+)"|'(\d+)'|(\d+))/.exec(rest)
   if (start) startLine = Math.max(1, Number(start[1] ?? start[2] ?? start[3]))
 
-  const hlMatch = /(?:^|\s)\{(\d[\d,\s-]*)\}/.exec(rest)
-  if (hlMatch) {
+  for (const hlMatch of rest.matchAll(/(?:^|\s)\{(\d[\d,\s-]*)\}/g)) {
     parseLineNumbers(hlMatch[1]!).forEach((n) => highlighted.add(n))
   }
 
@@ -150,6 +155,11 @@ export function parseFenceInfo(source: string): FenceInfo {
     startLine,
     highlightedLines: [...highlighted].sort((a, b) => a - b),
   }
+}
+
+function isReservedCodeClass(value: string): boolean {
+  const normalized = value.toLowerCase().replace(/[-_]/g, '')
+  return ['numberlines', 'linenumbers', 'linenos', 'showlinenumbers'].includes(normalized)
 }
 
 function parseLineNumbers(spec: string): number[] {

@@ -792,7 +792,7 @@ md.renderer.rules.fence = (tokens, index, _options, rendererEnv) => {
     }
     const title = info.title || info.language || t("markdown.code");
     return [
-        `<div class="code-block"${line} data-lang="${escapeAttr(info.language)}" data-code-start="${info.startLine}"${info.lineNumbers ? ' data-line-numbers="true"' : ''}${info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : ''}>`,
+        `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}"${line} data-lang="${escapeAttr(info.language)}" data-code-start="${info.startLine}"${info.lineNumbers ? ' data-line-numbers="true"' : ''}${info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : ''}>`,
         `<div class="code-block-head">`,
         `<span class="code-title">${escapeHtml(title)}</span>`,
         info.title && info.language ? `<span class="code-lang">${escapeHtml(info.language)}</span>` : '',
@@ -1130,13 +1130,20 @@ export function parseFenceInfo(source: string): FenceInfo {
     const bracketTitle = /(?:^|\s)\[([^\]\n]+)\]/.exec(rest);
     if (!title && bracketTitle)
         title = bracketTitle[1]!.trim();
-    lineNumbers = lineNumbers || /(?:^|\s)(?:line-numbers|linenos|numberLines)(?=\s|$)/.test(rest);
+    const hasLineNumbersDisable = /(?:^|[\s{])\.?(?:line-?numbers|linenos|number-?lines|show-?line-?numbers)=(?:"?false"?|0)(?=[\s}]|$)/i.test(rest);
+    const hasLineNumbersEnable = /(?:^|[\s{])\.?(?:line-?numbers|linenos|number-?lines|show-?line-?numbers)(?:=(?:"?true"?|1))?(?=[\s}]|$)/i.test(rest);
+    if (hasLineNumbersDisable) {
+        lineNumbers = false;
+    }
+    else if (hasLineNumbersEnable) {
+        lineNumbers = true;
+    }
     const start = /(?:^|\s)(?:start|startFrom)=(?:"(\d+)"|'(\d+)'|(\d+))/.exec(rest);
     if (start)
         startLine = clamp(Number(start[1] ?? start[2] ?? start[3]), 1, 100000);
-    const highlight = /(?:^|\s)\{(\d[\d,\s-]*)\}/.exec(rest);
-    if (highlight)
+    for (const highlight of rest.matchAll(/(?:^|\s)\{(\d[\d,\s-]*)\}/g)) {
         parseLineSpec(highlight[1]!).forEach((line) => highlighted.add(line));
+    }
     const highlightNamed = /(?:^|\s)(?:hl_lines|highlight)=(?:"([^"]*)"|'([^']*)'|([^\s]+))/.exec(rest);
     if (highlightNamed) {
         parseLineSpec(highlightNamed[1] ?? highlightNamed[2] ?? highlightNamed[3] ?? '').forEach((line) => highlighted.add(line));
@@ -1506,7 +1513,8 @@ function parseLineSpec(source: string): number[] {
     return [...lines];
 }
 function isReservedCodeClass(value: string): boolean {
-    return ['numberlines', 'line-numbers', 'linenos'].includes(value.toLowerCase());
+    const normalized = value.toLowerCase().replace(/[-_]/g, '');
+    return ['numberlines', 'linenumbers', 'linenos', 'showlinenumbers'].includes(normalized);
 }
 function codeMetadataValue(source: string, ...names: string[]): string | null {
     const wanted = new Set(names.map((name) => name.toLowerCase()));
