@@ -5,8 +5,10 @@ import {
   RefreshCw,
   Trash2,
   Pin,
+  FolderClosed,
 } from 'lucide-react'
 import type { BlogPost } from '@shared/types'
+import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { confirm } from '../../components/overlay'
@@ -22,10 +24,12 @@ export function BlogTableView({
 }) {
   const toast = useUi((s) => s.toast)
   const categories = useBlogStore((s) => s.categories)
+  const folders = useBlogStore((s) => s.folders)
   const selectedPostIds = useBlogStore((s) => s.selectedPostIds)
   const toggleSelectPost = useBlogStore((s) => s.toggleSelectPost)
   const selectAllPosts = useBlogStore((s) => s.selectAllPosts)
   const clearPostSelection = useBlogStore((s) => s.clearPostSelection)
+  const updatePost = useBlogStore((s) => s.updatePost)
   const deletePost = useBlogStore((s) => s.deletePost)
   const syncPost = useBlogStore((s) => s.syncPost)
   const settings = useBlogStore((s) => s.settings)
@@ -74,6 +78,7 @@ export function BlogTableView({
   }
 
   const categoryMap = new Map(categories.map((c) => [c.id, c]))
+  const folderMap = new Map(folders.map((f) => [f.id, f]))
 
   return (
     <div className="w-full overflow-x-auto text-[12.5px]">
@@ -88,30 +93,38 @@ export function BlogTableView({
                 className="size-3.5 rounded accent-[var(--accent)] cursor-pointer"
               />
             </th>
-            <th className="px-3 py-2.5 min-w-[220px]">{t('blog.col_title')}</th>
-            <th className="px-3 py-2.5 w-[110px]">{t('blog.category')}</th>
-            <th className="px-3 py-2.5 w-[140px]">{t('blog.tags')}</th>
+            <th className="px-3 py-2.5 min-w-[200px]">{t('blog.col_title')}</th>
+            <th className="px-3 py-2.5 w-[110px]">{t('blog.folders')}</th>
+            <th className="px-3 py-2.5 w-[100px]">{t('blog.category')}</th>
+            <th className="px-3 py-2.5 w-[130px]">{t('blog.tags')}</th>
             <th className="px-3 py-2.5 w-[85px]">{t('blog.col_status')}</th>
-            <th className="px-3 py-2.5 w-[70px] text-right">{t('share.metric_pv')}</th>
-            <th className="px-3 py-2.5 w-[70px] text-right">{t('blog.col_comments')}</th>
-            <th className="px-3 py-2.5 w-[110px]">{t('blog.col_created_at')}</th>
-            <th className="px-3 py-2.5 w-[130px] text-right">{t('blog.col_actions')}</th>
+            <th className="px-3 py-2.5 w-[65px] text-right">{t('share.metric_pv')}</th>
+            <th className="px-3 py-2.5 w-[65px] text-right">{t('blog.col_comments')}</th>
+            <th className="px-3 py-2.5 w-[105px]">{t('blog.col_created_at')}</th>
+            <th className="px-3 py-2.5 w-[140px] text-right">{t('blog.col_actions')}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--border-subtle)]">
           {posts.map((post) => {
             const isSelected = selectedPostIds.has(post.id)
             const cat = post.categoryId ? categoryMap.get(post.categoryId) : null
+            const folder = post.folderId ? folderMap.get(post.folderId) : null
             const postUrl = `${frontendBase}/posts/${post.slug}`
 
             return (
               <tr
                 key={post.id}
-                className={`transition-colors hover:bg-[var(--bg-hover)] ${
-                  isSelected ? 'bg-[var(--accent-softer)]' : ''
-                }`}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/inkstone-blog-post-ids', JSON.stringify([post.id]))
+                  e.dataTransfer.effectAllowed = 'move'
+                }}
+                className={cn(
+                  'transition-colors hover:bg-[var(--bg-hover)] cursor-grab active:cursor-grabbing',
+                  isSelected && 'bg-[var(--accent-softer)]',
+                )}
+                title={t('blog.drag_to_folder_hint')}
               >
-                {/* Checkbox */}
                 <td className="px-3 py-2.5 text-center">
                   <input
                     type="checkbox"
@@ -121,7 +134,6 @@ export function BlogTableView({
                   />
                 </td>
 
-                {/* Title & Cover & Slug */}
                 <td className="px-3 py-2.5">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="size-9 shrink-0 overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)]">
@@ -136,7 +148,7 @@ export function BlogTableView({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         {post.isPinned && (
-                          <Pin size={11} className="text-[var(--accent)] shrink-0" />
+                          <Pin size={11} className="text-[var(--accent)] shrink-0 fill-current" />
                         )}
                         <span className="truncate font-medium text-[var(--text-primary)]">
                           {post.title}
@@ -149,11 +161,27 @@ export function BlogTableView({
                   </div>
                 </td>
 
-                {/* Category */}
+                <td className="px-3 py-2.5">
+                  {folder ? (
+                    <span
+                      className="inline-flex items-center gap-1 truncate max-w-[100px] rounded-[var(--r-sm)] px-1.5 py-0.5 text-[11px] font-medium"
+                      style={{
+                        backgroundColor: folder.color ? `${folder.color}15` : 'var(--bg-sunken)',
+                        color: folder.color || 'var(--text-secondary)',
+                      }}
+                    >
+                      <FolderClosed size={10} className="shrink-0" />
+                      <span className="truncate">{folder.name}</span>
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-[var(--text-quaternary)]">-</span>
+                  )}
+                </td>
+
                 <td className="px-3 py-2.5">
                   {cat ? (
                     <span
-                      className="inline-block truncate max-w-[100px] rounded-[var(--r-sm)] px-1.5 py-0.5 text-[11px] font-medium"
+                      className="inline-block truncate max-w-[95px] rounded-[var(--r-sm)] px-1.5 py-0.5 text-[11px] font-medium"
                       style={{
                         backgroundColor: cat.color ? `${cat.color}15` : 'var(--bg-sunken)',
                         color: cat.color || 'var(--text-secondary)',
@@ -166,9 +194,8 @@ export function BlogTableView({
                   )}
                 </td>
 
-                {/* Tags */}
                 <td className="px-3 py-2.5">
-                  <div className="flex flex-wrap gap-1 max-w-[140px]">
+                  <div className="flex flex-wrap gap-1 max-w-[130px]">
                     {post.tags.slice(0, 2).map((t) => (
                       <span
                         key={t}
@@ -185,7 +212,6 @@ export function BlogTableView({
                   </div>
                 </td>
 
-                {/* Status */}
                 <td className="px-3 py-2.5">
                   {post.isPublished ? (
                     <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10.5px] font-medium text-emerald-600 dark:text-emerald-400">
@@ -198,24 +224,34 @@ export function BlogTableView({
                   )}
                 </td>
 
-                {/* Views */}
                 <td className="px-3 py-2.5 text-right font-medium text-[var(--text-secondary)]">
                   {post.views}
                 </td>
 
-                {/* Comments */}
                 <td className="px-3 py-2.5 text-right font-medium text-[var(--text-secondary)]">
                   {post.commentsCount ?? 0}
                 </td>
 
-                {/* Published Date */}
                 <td className="px-3 py-2.5 text-[11.5px] text-[var(--text-quaternary)] whitespace-nowrap">
                   {new Date(post.publishedAt).toLocaleDateString()}
                 </td>
 
-                {/* Action buttons */}
                 <td className="px-3 py-2.5 text-right">
                   <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => void updatePost(post.id, { isPinned: !post.isPinned })}
+                      className={cn(
+                        'p-1 transition-colors',
+                        post.isPinned
+                          ? 'text-[var(--accent)]'
+                          : 'text-[var(--text-quaternary)] hover:text-[var(--accent)]',
+                      )}
+                      title={post.isPinned ? t('blog.unpin_post') : t('blog.pin_post')}
+                    >
+                      <Pin size={13} className={post.isPinned ? 'fill-current' : ''} />
+                    </button>
+
                     <a
                       href={postUrl}
                       target="_blank"

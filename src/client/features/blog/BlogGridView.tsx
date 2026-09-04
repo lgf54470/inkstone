@@ -9,9 +9,11 @@ import {
   Eye,
   MessageSquare,
   Pin,
+  FolderClosed,
 } from 'lucide-react'
 import type { BlogPost } from '@shared/types'
 import { extractCoverUrl } from '@shared/markdown-utils'
+import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { confirm } from '../../components/overlay'
@@ -65,14 +67,17 @@ export function BlogGridView({
 }) {
   const toast = useUi((s) => s.toast)
   const categories = useBlogStore((s) => s.categories)
+  const folders = useBlogStore((s) => s.folders)
   const selectedPostIds = useBlogStore((s) => s.selectedPostIds)
   const toggleSelectPost = useBlogStore((s) => s.toggleSelectPost)
+  const updatePost = useBlogStore((s) => s.updatePost)
   const deletePost = useBlogStore((s) => s.deletePost)
   const syncPost = useBlogStore((s) => s.syncPost)
   const settings = useBlogStore((s) => s.settings)
 
   const frontendBase = (settings?.frontendUrl || 'http://localhost:4321').replace(/\/+$/, '')
   const categoryMap = new Map(categories.map((c) => [c.id, c]))
+  const folderMap = new Map(folders.map((f) => [f.id, f]))
 
   const handleCopyLink = async (slug: string) => {
     try {
@@ -109,18 +114,25 @@ export function BlogGridView({
       {posts.map((post) => {
         const isSelected = selectedPostIds.has(post.id)
         const cat = post.categoryId ? categoryMap.get(post.categoryId) : null
+        const folder = post.folderId ? folderMap.get(post.folderId) : null
         const postUrl = `${frontendBase}/posts/${post.slug}`
 
         return (
           <div
             key={post.id}
-            className={`group relative flex flex-col rounded-[var(--r-xl)] border transition-all overflow-hidden ${
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/inkstone-blog-post-ids', JSON.stringify([post.id]))
+              e.dataTransfer.effectAllowed = 'move'
+            }}
+            className={cn(
+              'group relative flex flex-col rounded-[var(--r-xl)] border transition-all overflow-hidden cursor-grab active:cursor-grabbing',
               isSelected
                 ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-sm'
-                : 'border-[var(--border-default)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] hover:shadow-sm'
-            }`}
+                : 'border-[var(--border-default)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] hover:shadow-sm',
+            )}
+            title={t('blog.drag_to_folder_hint')}
           >
-            {/* Top Selection checkbox */}
             <div className="absolute top-2.5 left-2.5 z-10">
               <input
                 type="checkbox"
@@ -130,18 +142,26 @@ export function BlogGridView({
               />
             </div>
 
-            {/* Pinned badge */}
-            {post.isPinned && (
-              <div className="absolute top-2.5 right-2.5 z-10 flex size-6 items-center justify-center rounded-full bg-[var(--bg-overlay)]/90 text-[var(--accent)] shadow-sm backdrop-blur">
-                <Pin size={12} />
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                void updatePost(post.id, { isPinned: !post.isPinned })
+              }}
+              className={cn(
+                'absolute top-2.5 right-2.5 z-10 flex size-6 items-center justify-center rounded-full shadow-sm backdrop-blur transition-all',
+                post.isPinned
+                  ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
+                  : 'bg-[var(--bg-overlay)]/90 text-[var(--text-quaternary)] opacity-0 group-hover:opacity-100 hover:text-[var(--accent)]',
+              )}
+              title={post.isPinned ? t('blog.unpin_post') : t('blog.pin_post')}
+            >
+              <Pin size={12} className={post.isPinned ? 'fill-current' : ''} />
+            </button>
 
-            {/* Cover image banner */}
             <div className="relative h-36 w-full bg-[var(--bg-sunken)] overflow-hidden">
               <PostCoverImage src={post.coverUrl} alt={post.title} />
 
-              {/* Status pill overlay */}
               <div className="absolute bottom-2 left-2">
                 {post.isPublished ? (
                   <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10.5px] font-semibold text-white shadow-sm backdrop-blur">
@@ -155,9 +175,21 @@ export function BlogGridView({
               </div>
             </div>
 
-            {/* Card Content */}
             <div className="flex flex-1 flex-col p-4">
-              <div className="flex items-center gap-2 mb-1.5">
+              <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                {folder && (
+                  <span
+                    className="flex items-center gap-1 rounded-[var(--r-sm)] px-1.5 py-0.2 text-[10.5px] font-medium"
+                    style={{
+                      backgroundColor: folder.color ? `${folder.color}15` : 'var(--bg-sunken)',
+                      color: folder.color || 'var(--text-secondary)',
+                    }}
+                  >
+                    <FolderClosed size={10} />
+                    <span className="truncate max-w-[90px]">{folder.name}</span>
+                  </span>
+                )}
+
                 {cat && (
                   <span
                     className="rounded-[var(--r-sm)] px-1.5 py-0.2 text-[10.5px] font-medium"
@@ -169,7 +201,8 @@ export function BlogGridView({
                     {cat.name}
                   </span>
                 )}
-                <span className="text-[11px] text-[var(--text-quaternary)]">
+
+                <span className="text-[11px] text-[var(--text-quaternary)] ml-auto">
                   {new Date(post.publishedAt).toLocaleDateString()}
                 </span>
               </div>
@@ -182,7 +215,6 @@ export function BlogGridView({
                 {post.excerpt || t('blog.no_excerpt')}
               </p>
 
-              {/* Tags */}
               {post.tags.length > 0 && (
                 <div className="mt-2.5 flex flex-wrap gap-1">
                   {post.tags.slice(0, 3).map((t) => (
@@ -201,7 +233,6 @@ export function BlogGridView({
                 </div>
               )}
 
-              {/* Stats & Actions Footer */}
               <div className="mt-3.5 flex items-center justify-between pt-2.5 border-t border-[var(--border-subtle)]">
                 <div className="flex items-center gap-3 text-[11px] text-[var(--text-quaternary)]">
                   <span className="flex items-center gap-1">

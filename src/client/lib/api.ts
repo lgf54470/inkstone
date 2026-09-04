@@ -13,6 +13,8 @@ import type {
   BackupTargetPatchInput,
   Backlink,
   BlogPost,
+  BlogFolder,
+  BlogTag,
   BlogCategory,
   BlogComment,
   BlogCommentStatus,
@@ -730,7 +732,7 @@ export const api = {
     getNotePost: (noteId: string, signal?: AbortSignal) =>
       request<{ post: BlogPost | null }>(`/api/blog/note-post/${noteId}`, { signal }),
     posts: {
-      list: (params?: { status?: string; categoryId?: string; tag?: string; search?: string; sort?: string }, signal?: AbortSignal) =>
+      list: (params?: { status?: string; categoryId?: string; folderId?: string; tag?: string; search?: string; sort?: string }, signal?: AbortSignal) =>
         request<{ posts: BlogPost[] }>(`/api/blog/posts${toQuery(params ?? {})}`, { signal }),
       create: (body: {
         noteId: string
@@ -740,6 +742,7 @@ export const api = {
         content?: string
         coverUrl?: string
         categoryId?: string | null
+        folderId?: string | null
         tags?: string[]
         isPublished?: boolean
         allowComments?: boolean
@@ -751,9 +754,38 @@ export const api = {
         request<{ ok: true }>(`/api/blog/posts/${id}`, { method: 'DELETE' }),
       sync: (id: string) =>
         request<{ ok: true; syncedAt: number }>(`/api/blog/posts/${id}/sync`, { method: 'POST' }),
-      batch: (action: 'publish' | 'unpublish' | 'delete' | 'setCategory', postIds: string[], categoryId?: string | null) =>
-        request<{ ok: true; count: number }>('/api/blog/posts/batch', { method: 'POST', body: { action, postIds, categoryId } }),
+      batch: (
+        action: 'publish' | 'unpublish' | 'delete' | 'setCategory' | 'setFolder' | 'setPinned',
+        postIds: string[],
+        options?: { categoryId?: string | null; folderId?: string | null; isPinned?: boolean },
+      ) =>
+        request<{ ok: true; count: number }>('/api/blog/posts/batch', {
+          method: 'POST',
+          body: { action, postIds, ...options },
+        }),
     },
+    folders: {
+      list: (signal?: AbortSignal) =>
+        request<BlogFolder[]>('/api/blog/folders', { signal }),
+      create: (body: { name: string; parentId?: string | null; color?: string | null; icon?: string | null; position?: number }) =>
+        request<BlogFolder>('/api/blog/folders', { method: 'POST', body }),
+      patch: (id: string, body: { name?: string; parentId?: string | null; color?: string | null; icon?: string | null; position?: number }) =>
+        request<BlogFolder>(`/api/blog/folders/${id}`, { method: 'PATCH', body }),
+      remove: (id: string) =>
+        request<{ ok: true }>(`/api/blog/folders/${id}`, { method: 'DELETE' }),
+    },
+    tags: {
+      list: (signal?: AbortSignal) =>
+        request<BlogTag[]>('/api/blog/tags', { signal }),
+      create: (body: { name: string; color?: string | null }) =>
+        request<BlogTag>('/api/blog/tags', { method: 'POST', body }),
+      patch: (id: string, body: { name?: string; color?: string | null; isPinned?: boolean }) =>
+        request<BlogTag>(`/api/blog/tags/${id}`, { method: 'PATCH', body }),
+      remove: (id: string) =>
+        request<{ ok: true }>(`/api/blog/tags/${id}`, { method: 'DELETE' }),
+    },
+    batchToggleGroup: (type: 'folder' | 'tag', target: string, enabled: boolean) =>
+      request<{ ok: true }>('/api/blog/batch-toggle-group', { method: 'POST', body: { type, target, enabled } }),
     categories: {
       list: (signal?: AbortSignal) =>
         request<{ categories: BlogCategory[] }>('/api/blog/categories', { signal }),

@@ -12,12 +12,13 @@ import type { BlogPost } from '@shared/types'
 import { Modal } from '../../components/overlay'
 import { Button, IconButton } from '../../components/primitives'
 import { Input, Switch } from '../../components/form'
+import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { useNotes } from '../../store/notes'
 import { api } from '../../lib/api'
 import { parseFrontMatter, upsertFrontMatterProperty } from '@shared/markdown-utils'
-import { useBlogStore } from './blog-store'
+import { buildBlogFolderTree, useBlogStore, type BlogFolderNode } from './blog-store'
 
 export function BlogPublishModal({
   open,
@@ -44,11 +45,15 @@ export function BlogPublishModal({
 
   const categories = useBlogStore((s) => s.categories)
   const loadCategories = useBlogStore((s) => s.loadCategories)
+  const folders = useBlogStore((s) => s.folders)
+  const availableTags = useBlogStore((s) => s.tags)
+  const currentStoreFolderId = useBlogStore((s) => s.folderId)
   const settings = useBlogStore((s) => s.settings)
 
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
   const [coverUrl, setCoverUrl] = useState('')
+  const [folderId, setFolderId] = useState<string | null>(null)
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [tagInput, setTagInput] = useState('')
   const [tags, setTags] = useState<string[]>([])
@@ -58,6 +63,19 @@ export function BlogPublishModal({
   const [saving, setSaving] = useState(false)
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
   const [slugReason, setSlugReason] = useState('')
+
+  const flatFolderList = useMemo(() => {
+    const tree = buildBlogFolderTree(folders)
+    const result: Array<{ id: string; name: string; depth: number }> = []
+    const traverse = (nodes: BlogFolderNode[]) => {
+      for (const node of nodes) {
+        result.push({ id: node.folder.id, name: node.folder.name, depth: node.depth })
+        if (node.children.length) traverse(node.children)
+      }
+    }
+    traverse(tree)
+    return result
+  }, [folders])
 
   // Helper to extract clean image URL from Markdown or plain string
   const cleanImageUrl = (raw: string) => {
@@ -97,6 +115,7 @@ export function BlogPublishModal({
       setTitle(initialPost.title || note.title || '')
       setSlug(initialPost.slug || '')
       setCoverUrl(cleanImageUrl(initialPost.coverUrl || ''))
+      setFolderId(initialPost.folderId || null)
       setCategoryId(initialPost.categoryId || null)
       setTags(initialPost.tags || [])
       setExcerpt(initialPost.excerpt || note.excerpt || '')
@@ -122,6 +141,7 @@ export function BlogPublishModal({
         setCoverUrl('')
       }
 
+      setFolderId(currentStoreFolderId || null)
       setCategoryId(null)
       // Inherit tags from note tags or frontmatter tags
       const combinedTags = Array.from(new Set([...(note.tags || [])]))
@@ -130,7 +150,7 @@ export function BlogPublishModal({
       setAllowComments(true)
       setIsPinned(false)
     }
-  }, [open, note, initialPost, firstImageInContent])
+  }, [open, note, initialPost, firstImageInContent, currentStoreFolderId])
 
   // Real-time slug validation
   useEffect(() => {
@@ -191,6 +211,7 @@ export function BlogPublishModal({
         excerpt: excerpt.trim(),
         content: noteContent,
         coverUrl: coverUrl.trim(),
+        folderId,
         categoryId,
         tags,
         isPublished: publish,
@@ -231,7 +252,6 @@ export function BlogPublishModal({
       width={640}
       className="p-0 overflow-hidden"
     >
-      {/* Header */}
       <div className="flex h-12 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]">
         <div className="flex items-center gap-2">
           <Globe size={16} className="text-[var(--accent)]" />
@@ -244,9 +264,7 @@ export function BlogPublishModal({
         </IconButton>
       </div>
 
-      {/* Body */}
       <div className="max-h-[75vh] overflow-y-auto p-5 space-y-4 text-[12.5px]">
-        {/* Title */}
         <div>
           <label className="mb-1 block font-medium text-[var(--text-secondary)]">
             {t('blog.post_title')}
@@ -258,7 +276,6 @@ export function BlogPublishModal({
           />
         </div>
 
-        {/* Slug */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="font-medium text-[var(--text-secondary)]">
@@ -286,7 +303,6 @@ export function BlogPublishModal({
           </p>
         </div>
 
-        {/* Cover Image */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="font-medium text-[var(--text-secondary)]">
@@ -316,8 +332,25 @@ export function BlogPublishModal({
           </p>
         </div>
 
-        {/* Category & Pinned row */}
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="mb-1 block font-medium text-[var(--text-secondary)]">
+              {t('blog.folders')}
+            </label>
+            <select
+              value={folderId || ''}
+              onChange={(e) => setFolderId(e.target.value ? e.target.value : null)}
+              className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2.5 text-[12.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            >
+              <option value="">{t('blog.no_folder')}</option>
+              {flatFolderList.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.depth > 0 ? `${'— '.repeat(f.depth)}${f.name}` : f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="mb-1 block font-medium text-[var(--text-secondary)]">
               {t('blog.category')}
@@ -335,25 +368,58 @@ export function BlogPublishModal({
               ))}
             </select>
           </div>
-
-          <div className="flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-2">
-            <div>
-              <span className="block font-medium text-[var(--text-secondary)]">
-                {t('blog.pin_to_top')}
-              </span>
-              <span className="text-[10.5px] text-[var(--text-quaternary)]">
-                {t('blog.pin_to_top_hint')}
-              </span>
-            </div>
-            <Switch checked={isPinned} onChange={setIsPinned} />
-          </div>
         </div>
 
-        {/* Tags */}
+        <div className="flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-2">
+          <div>
+            <span className="block font-medium text-[var(--text-secondary)]">
+              {t('blog.pin_to_top')}
+            </span>
+            <span className="text-[10.5px] text-[var(--text-quaternary)]">
+              {t('blog.pin_to_top_hint')}
+            </span>
+          </div>
+          <Switch checked={isPinned} onChange={setIsPinned} />
+        </div>
+
         <div>
           <label className="mb-1 block font-medium text-[var(--text-secondary)]">
             {t('blog.tags')}
           </label>
+
+          {availableTags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1 mb-2">
+              <span className="text-[10.5px] text-[var(--text-quaternary)] mr-1">
+                {t('blog.tags')}:
+              </span>
+              {availableTags.map((at) => {
+                const isSelected = tags.includes(at.name)
+                return (
+                  <button
+                    key={at.id}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setTags(tags.filter((t) => t !== at.name))
+                      } else {
+                        setTags([...tags, at.name])
+                      }
+                    }}
+                    className={cn(
+                      'inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10.5px] transition-colors',
+                      isSelected
+                        ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
+                        : 'bg-[var(--bg-sunken)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
+                    )}
+                  >
+                    <Hash size={9} />
+                    {at.name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-1.5 mb-2">
             {tags.map((t) => (
               <span
@@ -390,7 +456,6 @@ export function BlogPublishModal({
           </div>
         </div>
 
-        {/* Excerpt */}
         <div>
           <label className="mb-1 block font-medium text-[var(--text-secondary)]">
             {t('blog.excerpt')}
@@ -404,7 +469,6 @@ export function BlogPublishModal({
           />
         </div>
 
-        {/* Allow Comments Switch */}
         <div className="flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3">
           <div>
             <span className="block font-medium text-[var(--text-primary)]">
@@ -418,7 +482,6 @@ export function BlogPublishModal({
         </div>
       </div>
 
-      {/* Footer */}
       <div className="flex items-center justify-between border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3">
         <a
           href={previewUrl}

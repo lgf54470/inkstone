@@ -452,6 +452,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     content TEXT NOT NULL,
     cover_url TEXT NOT NULL DEFAULT '',
     category_id TEXT,
+    folder_id TEXT,
     tags TEXT NOT NULL DEFAULT '[]',
     is_published INTEGER NOT NULL DEFAULT 1,
     allow_comments INTEGER NOT NULL DEFAULT 1,
@@ -465,6 +466,31 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_posts_note ON blog_posts(note_id)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_posts_category ON blog_posts(category_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_posts_folder ON blog_posts(user_id, folder_id)`,
+
+  `CREATE TABLE IF NOT EXISTS blog_folders (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    parent_id TEXT,
+    name TEXT NOT NULL,
+    icon TEXT,
+    color TEXT,
+    position REAL NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_folders_user ON blog_folders(user_id, position)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_folders_parent ON blog_folders(parent_id)`,
+
+  `CREATE TABLE IF NOT EXISTS blog_tags (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT,
+    is_pinned INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_blog_tags_user ON blog_tags(user_id, name)`,
 
   `CREATE TABLE IF NOT EXISTS blog_categories (
     id TEXT PRIMARY KEY,
@@ -939,6 +965,35 @@ const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_blog_visits_filter_time ON blog_visits(user_id, is_bot, is_self_referrer, is_owner, visited_at DESC)`,
     ],
   },
+  {
+    version: 23,
+    statements: [
+      `ALTER TABLE blog_posts ADD COLUMN folder_id TEXT`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_posts_folder ON blog_posts(user_id, folder_id)`,
+      `CREATE TABLE IF NOT EXISTS blog_folders (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        parent_id TEXT,
+        name TEXT NOT NULL,
+        icon TEXT,
+        color TEXT,
+        position REAL NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_folders_user ON blog_folders(user_id, position)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_folders_parent ON blog_folders(parent_id)`,
+      `CREATE TABLE IF NOT EXISTS blog_tags (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        color TEXT,
+        is_pinned INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      )`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_blog_tags_user ON blog_tags(user_id, name)`,
+    ],
+  },
 ]
 
 const FTS_STATEMENT = `CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
@@ -994,7 +1049,9 @@ const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   ai_index_queue: ['user_id', 'note_id', 'kind', 'created_at'],
   fts_index_queue: ['user_id', 'note_id', 'kind', 'created_at'],
   community_templates: ['id', 'author_id', 'author_name', 'name', 'description', 'content', 'tags', 'category', 'created_at'],
-  blog_posts: ['id', 'slug', 'note_id', 'user_id', 'title', 'excerpt', 'content', 'cover_url', 'category_id', 'tags', 'is_published', 'allow_comments', 'is_pinned', 'views', 'published_at', 'created_at', 'updated_at'],
+  blog_posts: ['id', 'slug', 'note_id', 'user_id', 'title', 'excerpt', 'content', 'cover_url', 'category_id', 'folder_id', 'tags', 'is_published', 'allow_comments', 'is_pinned', 'views', 'published_at', 'created_at', 'updated_at'],
+  blog_folders: ['id', 'user_id', 'parent_id', 'name', 'icon', 'color', 'position', 'created_at', 'updated_at'],
+  blog_tags: ['id', 'user_id', 'name', 'color', 'is_pinned', 'created_at'],
   blog_categories: ['id', 'user_id', 'name', 'slug', 'description', 'color', 'icon', 'position', 'created_at', 'updated_at'],
   blog_comments: ['id', 'post_id', 'parent_id', 'author_name', 'author_email', 'author_url', 'author_avatar', 'content', 'status', 'ip', 'user_agent', 'created_at'],
   blog_visits: ['id', 'user_id', 'post_id', 'slug', 'visited_at', 'visitor_fp', 'country', 'region', 'city', 'referrer', 'referrer_host', 'device_type', 'os', 'browser', 'language', 'user_agent', 'is_bot', 'is_self_referrer', 'is_owner'],
@@ -1037,6 +1094,8 @@ const REQUIRED_TABLES = [
   'fts_index_queue',
   'community_templates',
   'blog_posts',
+  'blog_folders',
+  'blog_tags',
   'blog_categories',
   'blog_comments',
   'blog_visits',
@@ -1098,6 +1157,10 @@ const REQUIRED_INDEXES = [
   'idx_blog_posts_slug',
   'idx_blog_posts_note',
   'idx_blog_posts_category',
+  'idx_blog_posts_folder',
+  'idx_blog_folders_user',
+  'idx_blog_folders_parent',
+  'idx_blog_tags_user',
   'idx_blog_categories_slug',
   'idx_blog_categories_user',
   'idx_blog_comments_post',

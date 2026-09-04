@@ -903,6 +903,7 @@ export interface BlogPost {
   content: string
   coverUrl: string
   categoryId: string | null
+  folderId?: string | null
   tags: string[]
   isPublished: boolean
   allowComments: boolean
@@ -910,6 +911,18 @@ export interface BlogPost {
   views: number
   commentsCount?: number
   publishedAt: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface BlogFolder {
+  id: string
+  userId?: string
+  parentId: string | null
+  name: string
+  icon?: string | null
+  color?: string | null
+  position: number
   createdAt: number
   updatedAt: number
 }
@@ -929,8 +942,13 @@ export interface BlogCategory {
 }
 
 export interface BlogTag {
+  id: string
+  userId?: string
   name: string
-  postsCount: number
+  color?: string | null
+  isPinned?: boolean
+  postsCount?: number
+  createdAt?: number
 }
 
 export type BlogCommentStatus = 'pending' | 'approved' | 'rejected' | 'spam'
@@ -957,11 +975,14 @@ export interface BlogStats {
   totalPosts: number
   publishedPosts: number
   draftPosts: number
+  pinnedPosts?: number
   totalViews: number
   totalComments: number
   pendingComments: number
   categoriesCount: number
   tagsCount: number
+  folderCounts?: Record<string, { total: number; published: number }>
+  tagCounts?: Record<string, { total: number; published: number }>
 }
 
 export interface BlogSettings {

@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'
-import { newId, newSlug } from '../lib/id'
+import { isValidId, newId, newSlug } from '../lib/id'
 import { JSON_BODY_LIMITS, readJson, requestClientIp } from '../lib/request'
 import { loadSession, requireAuth } from '../middleware/auth'
 import { getMeta, setMeta } from '../db/metadata'
@@ -21,6 +21,7 @@ import {
 } from '../lib/share-analytics'
 import type {
   BlogPost,
+  BlogTag,
   BlogCategory,
   BlogComment,
   BlogCommentStatus,
@@ -137,18 +138,45 @@ blogManageRoutes.get('/stats', requireAuth, async (c) => {
     .bind(userId)
     .first<{ count: number }>()
 
-  // Distinct tags count
-  const postsWithTags = await db
-    .prepare('SELECT tags FROM blog_posts WHERE user_id = ?1')
+  const pinnedRow = await db
+    .prepare('SELECT COUNT(*) as count FROM blog_posts WHERE user_id = ?1 AND is_pinned = 1')
     .bind(userId)
-    .all<{ tags: string }>()
+    .first<{ count: number }>()
+
+  const postsFolderStats = await db
+    .prepare('SELECT folder_id, is_published, tags FROM blog_posts WHERE user_id = ?1')
+    .bind(userId)
+    .all<{ folder_id: string | null; is_published: number; tags: string }>()
 
   const uniqueTags = new Set<string>()
-  for (const row of postsWithTags.results || []) {
+  const folderCounts: Record<string, { total: number; published: number }> = {}
+  const tagCounts: Record<string, { total: number; published: number }> = {}
+
+  for (const post of postsFolderStats.results || []) {
+    if (post.folder_id) {
+      if (!folderCounts[post.folder_id]) {
+        folderCounts[post.folder_id] = { total: 0, published: 0 }
+      }
+      folderCounts[post.folder_id].total += 1
+      if (post.is_published === 1) {
+        folderCounts[post.folder_id].published += 1
+      }
+    }
     try {
-      const arr = JSON.parse(row.tags || '[]')
+      const arr = JSON.parse(post.tags || '[]')
       if (Array.isArray(arr)) {
-        for (const t of arr) uniqueTags.add(String(t))
+        for (const t of arr) {
+          const strT = String(t).trim()
+          if (!strT) continue
+          uniqueTags.add(strT)
+          if (!tagCounts[strT]) {
+            tagCounts[strT] = { total: 0, published: 0 }
+          }
+          tagCounts[strT].total += 1
+          if (post.is_published === 1) {
+            tagCounts[strT].published += 1
+          }
+        }
       }
     } catch {}
   }
@@ -160,11 +188,14 @@ blogManageRoutes.get('/stats', requireAuth, async (c) => {
     totalPosts,
     publishedPosts,
     draftPosts: totalPosts - publishedPosts,
+    pinnedPosts: pinnedRow?.count || 0,
     totalViews: viewsRow?.count || 0,
     totalComments: totalCommentsRow?.count || 0,
     pendingComments: pendingCommentsRow?.count || 0,
     categoriesCount: categoriesRow?.count || 0,
     tagsCount: uniqueTags.size,
+    folderCounts,
+    tagCounts,
   }
 
   return c.json({ stats })
@@ -527,8 +558,9 @@ blogManageRoutes.get('/note-post/:noteId', requireAuth, async (c) => {
 // 5. List Posts
 blogManageRoutes.get('/posts', requireAuth, async (c) => {
   const userId = c.get('userId')!
-  const status = c.req.query('status') // 'all' | 'published' | 'draft'
+  const status = c.req.query('status') // 'all' | 'published' | 'draft' | 'pinned'
   const categoryId = c.req.query('categoryId')
+  const folderId = c.req.query('folderId')
   const tag = c.req.query('tag')
   const search = c.req.query('search')?.trim()
   const sort = c.req.query('sort') || 'published_desc'
@@ -546,6 +578,15 @@ blogManageRoutes.get('/posts', requireAuth, async (c) => {
     sql += ` AND p.is_published = 1`
   } else if (status === 'draft') {
     sql += ` AND p.is_published = 0`
+  } else if (status === 'pinned') {
+    sql += ` AND p.is_pinned = 1`
+  }
+
+  if (folderId === 'none') {
+    sql += ` AND (p.folder_id IS NULL OR p.folder_id = '')`
+  } else if (folderId) {
+    sql += ` AND p.folder_id = ?${idx++}`
+    params.push(folderId)
   }
 
   if (categoryId) {
@@ -579,6 +620,7 @@ blogManageRoutes.get('/posts', requireAuth, async (c) => {
     content: row.content,
     coverUrl: row.cover_url,
     categoryId: row.category_id,
+    folderId: row.folder_id || null,
     tags: JSON.parse(row.tags || '[]'),
     isPublished: Boolean(row.is_published),
     allowComments: Boolean(row.allow_comments),
@@ -608,6 +650,7 @@ blogManageRoutes.post('/posts', requireAuth, async (c) => {
     content?: string
     coverUrl?: string
     categoryId?: string | null
+    folderId?: string | null
     tags?: string[]
     isPublished?: boolean
     allowComments?: boolean
@@ -646,6 +689,7 @@ blogManageRoutes.post('/posts', requireAuth, async (c) => {
   const coverUrl = extractCoverUrl(body.coverUrl || '')
   const excerpt = body.excerpt || ''
   const categoryId = body.categoryId || null
+  const folderId = body.folderId || null
 
   if (existingPost) {
     if (slug !== existingPost.slug) {
@@ -665,12 +709,13 @@ blogManageRoutes.post('/posts', requireAuth, async (c) => {
           content = ?4,
           cover_url = ?5,
           category_id = ?6,
-          tags = ?7,
-          is_published = ?8,
-          allow_comments = ?9,
-          is_pinned = ?10,
-          updated_at = ?11
-        WHERE id = ?12
+          folder_id = ?7,
+          tags = ?8,
+          is_published = ?9,
+          allow_comments = ?10,
+          is_pinned = ?11,
+          updated_at = ?12
+        WHERE id = ?13
       `)
       .bind(
         slug,
@@ -679,6 +724,7 @@ blogManageRoutes.post('/posts', requireAuth, async (c) => {
         noteContent,
         coverUrl,
         categoryId,
+        folderId,
         tagsJson,
         isPublished,
         allowComments,
@@ -702,9 +748,9 @@ blogManageRoutes.post('/posts', requireAuth, async (c) => {
     .prepare(`
       INSERT INTO blog_posts (
         id, slug, note_id, user_id, title, excerpt, content, cover_url,
-        category_id, tags, is_published, allow_comments, is_pinned, views,
+        category_id, folder_id, tags, is_published, allow_comments, is_pinned, views,
         published_at, created_at, updated_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 0, ?14, ?14, ?14)
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?15, ?15)
     `)
     .bind(
       id,
@@ -716,6 +762,7 @@ blogManageRoutes.post('/posts', requireAuth, async (c) => {
       noteContent,
       coverUrl,
       categoryId,
+      folderId,
       tagsJson,
       isPublished,
       allowComments,
@@ -760,12 +807,13 @@ blogManageRoutes.patch('/posts/:id', requireAuth, async (c) => {
         content = ?4,
         cover_url = ?5,
         category_id = ?6,
-        tags = ?7,
-        is_published = ?8,
-        allow_comments = ?9,
-        is_pinned = ?10,
-        updated_at = ?11
-      WHERE id = ?12
+        folder_id = ?7,
+        tags = ?8,
+        is_published = ?9,
+        allow_comments = ?10,
+        is_pinned = ?11,
+        updated_at = ?12
+      WHERE id = ?13
     `)
     .bind(
       body.slug ?? current.slug,
@@ -774,6 +822,7 @@ blogManageRoutes.patch('/posts/:id', requireAuth, async (c) => {
       body.content ?? current.content,
       body.coverUrl !== undefined ? extractCoverUrl(body.coverUrl) : current.cover_url,
       body.categoryId !== undefined ? body.categoryId : current.category_id,
+      body.folderId !== undefined ? body.folderId : current.folder_id,
       body.tags !== undefined ? JSON.stringify(body.tags) : current.tags,
       body.isPublished !== undefined ? (body.isPublished ? 1 : 0) : current.is_published,
       body.allowComments !== undefined ? (body.allowComments ? 1 : 0) : current.allow_comments,
@@ -847,9 +896,11 @@ blogManageRoutes.post('/posts/:id/sync', requireAuth, async (c) => {
 blogManageRoutes.post('/posts/batch', requireAuth, async (c) => {
   const userId = c.get('userId')!
   const body = await readJson<{
-    action: 'publish' | 'unpublish' | 'delete' | 'setCategory'
+    action: 'publish' | 'unpublish' | 'delete' | 'setCategory' | 'setFolder' | 'setPinned'
     postIds: string[]
     categoryId?: string | null
+    folderId?: string | null
+    isPinned?: boolean
   }>(c, JSON_BODY_LIMITS.note)
 
   if (!body.postIds?.length) return c.json({ ok: true, count: 0 })
@@ -881,9 +932,333 @@ blogManageRoutes.post('/posts/batch', requireAuth, async (c) => {
       .prepare(`UPDATE blog_posts SET category_id = ?1, updated_at = ?2 WHERE user_id = ?3 AND id IN (${placeholders})`)
       .bind(body.categoryId || null, now, userId, ...body.postIds)
       .run()
+  } else if (body.action === 'setFolder') {
+    await c.env.DB
+      .prepare(`UPDATE blog_posts SET folder_id = ?1, updated_at = ?2 WHERE user_id = ?3 AND id IN (${placeholders})`)
+      .bind(body.folderId || null, now, userId, ...body.postIds)
+      .run()
+  } else if (body.action === 'setPinned') {
+    await c.env.DB
+      .prepare(`UPDATE blog_posts SET is_pinned = ?1, updated_at = ?2 WHERE user_id = ?3 AND id IN (${placeholders})`)
+      .bind(body.isPinned ? 1 : 0, now, userId, ...body.postIds)
+      .run()
   }
 
   return c.json({ ok: true, count: body.postIds.length })
+})
+
+blogManageRoutes.get('/folders', requireAuth, async (c) => {
+  const userId = c.get('userId')!
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, user_id, parent_id, name, icon, color, position, created_at, updated_at
+       FROM blog_folders WHERE user_id = ?1 ORDER BY position ASC, created_at ASC`,
+  ).bind(userId).all<any>()
+  return c.json(
+    (results || []).map((r) => ({
+      id: r.id,
+      userId: r.user_id,
+      parentId: r.parent_id,
+      name: r.name,
+      icon: r.icon,
+      color: r.color,
+      position: r.position,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    })),
+  )
+})
+
+blogManageRoutes.post('/folders', requireAuth, async (c) => {
+  const userId = c.get('userId')!
+  const body = await readJson<{
+    id?: string
+    name?: string
+    parentId?: string | null
+    color?: string | null
+    icon?: string | null
+    position?: number
+  }>(c, JSON_BODY_LIMITS.small)
+  const id = body.id && isValidId(body.id) ? body.id : newId()
+  const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : 'New Folder'
+  const parentId = body.parentId && isValidId(body.parentId) ? body.parentId : null
+  const now = Date.now()
+  const position = typeof body.position === 'number' ? body.position : now
+
+  await c.env.DB.prepare(
+    `INSERT INTO blog_folders (id, user_id, parent_id, name, icon, color, position, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+  ).bind(id, userId, parentId, name, body.icon ?? null, body.color ?? null, position, now, now).run()
+
+  return c.json(
+    {
+      id,
+      userId,
+      parentId,
+      name,
+      icon: body.icon ?? null,
+      color: body.color ?? null,
+      position,
+      createdAt: now,
+      updatedAt: now,
+    },
+    201,
+  )
+})
+
+blogManageRoutes.patch('/folders/:id', requireAuth, async (c) => {
+  const userId = c.get('userId')!
+  const id = c.req.param('id')
+  if (!isValidId(id)) throw ApiError.notFound('Folder not found')
+  const body = await readJson<{
+    name?: string
+    parentId?: string | null
+    color?: string | null
+    icon?: string | null
+    position?: number
+  }>(c, JSON_BODY_LIMITS.small)
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id, name, parent_id, icon, color, position, created_at, updated_at FROM blog_folders WHERE id = ?1 AND user_id = ?2`,
+  ).bind(id, userId).first<any>()
+  if (!existing) throw ApiError.notFound('Folder not found')
+
+  const nextName = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : existing.name
+  const nextParent = body.parentId !== undefined ? (body.parentId && isValidId(body.parentId) ? body.parentId : null) : existing.parent_id
+  const nextColor = body.color !== undefined ? body.color : existing.color
+  const nextIcon = body.icon !== undefined ? body.icon : existing.icon
+  const nextPosition = typeof body.position === 'number' ? body.position : existing.position
+  const now = Date.now()
+
+  await c.env.DB.prepare(
+    `UPDATE blog_folders SET name = ?1, parent_id = ?2, color = ?3, icon = ?4, position = ?5, updated_at = ?6
+     WHERE id = ?7 AND user_id = ?8`,
+  ).bind(nextName, nextParent, nextColor, nextIcon, nextPosition, now, id, userId).run()
+
+  return c.json({
+    id,
+    userId,
+    parentId: nextParent,
+    name: nextName,
+    icon: nextIcon,
+    color: nextColor,
+    position: nextPosition,
+    createdAt: existing.created_at,
+    updatedAt: now,
+  })
+})
+
+blogManageRoutes.delete('/folders/:id', requireAuth, async (c) => {
+  const userId = c.get('userId')!
+  const id = c.req.param('id')
+  if (!isValidId(id)) throw ApiError.notFound('Folder not found')
+
+  await c.env.DB.batch([
+    c.env.DB.prepare(`UPDATE blog_posts SET folder_id = NULL WHERE folder_id = ?1 AND user_id = ?2`).bind(id, userId),
+    c.env.DB.prepare(`UPDATE blog_folders SET parent_id = NULL WHERE parent_id = ?1 AND user_id = ?2`).bind(id, userId),
+    c.env.DB.prepare(`DELETE FROM blog_folders WHERE id = ?1 AND user_id = ?2`).bind(id, userId),
+  ])
+  return c.json({ ok: true })
+})
+
+blogManageRoutes.get('/tags', requireAuth, async (c) => {
+  const userId = c.get('userId')!
+  const { results: tagRows } = await c.env.DB.prepare(
+    `SELECT id, user_id, name, color, is_pinned, created_at
+       FROM blog_tags WHERE user_id = ?1 ORDER BY is_pinned DESC, name ASC`,
+  ).bind(userId).all<any>()
+
+  const { results: postsWithTags } = await c.env.DB.prepare(
+    `SELECT tags FROM blog_posts WHERE user_id = ?1`,
+  ).bind(userId).all<{ tags: string }>()
+
+  const countMap = new Map<string, number>()
+  for (const row of postsWithTags || []) {
+    try {
+      const arr = JSON.parse(row.tags || '[]')
+      if (Array.isArray(arr)) {
+        for (const t of arr) {
+          const strT = String(t).trim()
+          if (strT) countMap.set(strT, (countMap.get(strT) || 0) + 1)
+        }
+      }
+    } catch {}
+  }
+
+  const tagsList: BlogTag[] = (tagRows || []).map((r) => ({
+    id: r.id,
+    userId: r.user_id,
+    name: r.name,
+    color: r.color,
+    isPinned: Boolean(r.is_pinned),
+    postsCount: countMap.get(r.name) || 0,
+    createdAt: r.created_at,
+  }))
+
+  const knownNames = new Set(tagsList.map((t) => t.name))
+  for (const [tagName, count] of countMap.entries()) {
+    if (!knownNames.has(tagName)) {
+      tagsList.push({
+        id: tagName,
+        name: tagName,
+        color: null,
+        isPinned: false,
+        postsCount: count,
+      })
+    }
+  }
+
+  return c.json(tagsList)
+})
+
+blogManageRoutes.post('/tags', requireAuth, async (c) => {
+  const userId = c.get('userId')!
+  const body = await readJson<{
+    id?: string
+    name: string
+    color?: string | null
+  }>(c, JSON_BODY_LIMITS.small)
+  const name = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : ''
+  if (!name) throw ApiError.badRequest('Tag name is required')
+  const id = body.id && isValidId(body.id) ? body.id : newId()
+  const now = Date.now()
+
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO blog_tags (id, user_id, name, color, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5)`,
+    ).bind(id, userId, name, body.color ?? null, now).run()
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('UNIQUE') || msg.includes('constraint')) {
+      const existing = await c.env.DB.prepare(
+        `SELECT id, user_id, name, color, is_pinned, created_at FROM blog_tags WHERE user_id = ?1 AND name = ?2`,
+      ).bind(userId, name).first<any>()
+      if (existing) {
+        return c.json({
+          id: existing.id,
+          userId: existing.user_id,
+          name: existing.name,
+          color: existing.color,
+          isPinned: Boolean(existing.is_pinned),
+          createdAt: existing.created_at,
+        })
+      }
+    }
+    throw err
+  }
+
+  return c.json(
+    {
+      id,
+      userId,
+      name,
+      color: body.color ?? null,
+      isPinned: false,
+      createdAt: now,
+    },
+    201,
+  )
+})
+
+blogManageRoutes.patch('/tags/:id', requireAuth, async (c) => {
+  const userId = c.get('userId')!
+  const id = c.req.param('id')
+  const body = await readJson<{
+    name?: string
+    color?: string | null
+    isPinned?: boolean
+  }>(c, JSON_BODY_LIMITS.small)
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id, user_id, name, color, is_pinned, created_at FROM blog_tags WHERE id = ?1 AND user_id = ?2`,
+  ).bind(id, userId).first<any>()
+
+  if (!existing) {
+    const newIdVal = isValidId(id) ? id : newId()
+    const now = Date.now()
+    const nextName = body.name?.trim() || id
+    await c.env.DB.prepare(
+      `INSERT INTO blog_tags (id, user_id, name, color, is_pinned, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
+    ).bind(newIdVal, userId, nextName, body.color ?? null, body.isPinned ? 1 : 0, now).run()
+
+    return c.json({
+      id: newIdVal,
+      userId,
+      name: nextName,
+      color: body.color ?? null,
+      isPinned: Boolean(body.isPinned),
+      createdAt: now,
+    })
+  }
+
+  const nextName = body.name !== undefined ? body.name.trim().slice(0, 50) : existing.name
+  const nextColor = body.color !== undefined ? body.color : existing.color
+  const nextPinned = body.isPinned !== undefined ? (body.isPinned ? 1 : 0) : existing.is_pinned
+
+  await c.env.DB.prepare(
+    `UPDATE blog_tags SET name = ?1, color = ?2, is_pinned = ?3 WHERE id = ?4 AND user_id = ?5`,
+  ).bind(nextName, nextColor, nextPinned, id, userId).run()
+
+  return c.json({
+    id,
+    userId,
+    name: nextName,
+    color: nextColor,
+    isPinned: Boolean(nextPinned),
+    createdAt: existing.created_at,
+  })
+})
+
+blogManageRoutes.delete('/tags/:id', requireAuth, async (c) => {
+  const userId = c.get('userId')!
+  const id = c.req.param('id')
+  await c.env.DB.prepare(
+    `DELETE FROM blog_tags WHERE id = ?1 AND user_id = ?2`,
+  ).bind(id, userId).run()
+  return c.json({ ok: true })
+})
+
+blogManageRoutes.post('/batch-toggle-group', requireAuth, async (c) => {
+  const userId = c.get('userId')!
+  const body = await readJson<{
+    type: 'folder' | 'tag'
+    target: string
+    enabled: boolean
+  }>(c, JSON_BODY_LIMITS.small)
+
+  const isPublished = body.enabled ? 1 : 0
+  const now = Date.now()
+
+  if (body.type === 'folder') {
+    const { results: allFolders } = await c.env.DB.prepare(
+      'SELECT id, parent_id FROM blog_folders WHERE user_id = ?1',
+    ).bind(userId).all<{ id: string; parent_id: string | null }>()
+
+    const targetFolderIds = new Set<string>([body.target])
+    let added = true
+    while (added) {
+      added = false
+      for (const f of allFolders || []) {
+        if (f.parent_id && targetFolderIds.has(f.parent_id) && !targetFolderIds.has(f.id)) {
+          targetFolderIds.add(f.id)
+          added = true
+        }
+      }
+    }
+
+    const ids = Array.from(targetFolderIds)
+    const placeholders = ids.map((_, i) => `?${i + 4}`).join(',')
+    await c.env.DB.prepare(
+      `UPDATE blog_posts SET is_published = ?1, updated_at = ?2 WHERE user_id = ?3 AND folder_id IN (${placeholders})`,
+    ).bind(isPublished, now, userId, ...ids).run()
+  } else if (body.type === 'tag') {
+    await c.env.DB.prepare(
+      `UPDATE blog_posts SET is_published = ?1, updated_at = ?2 WHERE user_id = ?3 AND tags LIKE ?4`,
+    ).bind(isPublished, now, userId, `%"${body.target}"%`).run()
+  }
+
+  return c.json({ ok: true })
 })
 
 // 11. Categories Management
