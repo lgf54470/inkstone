@@ -7,7 +7,17 @@ import type { BlogPost, BlogCategory } from '../../lib/types'
 
 export async function getStaticPaths() {
   const { posts } = await api.getPosts({ limit: 1000 })
-  return posts.map((post) => ({
+  const detailedPosts = await Promise.all(
+    posts.map(async (p) => {
+      try {
+        const full = await api.getPostBySlug(p.slug)
+        return full || p
+      } catch {
+        return p
+      }
+    })
+  )
+  return detailedPosts.map((post) => ({
     params: { slug: post.slug },
     props: { post },
   }))
@@ -20,7 +30,7 @@ interface Props {
 let post = Astro.props.post
 const slug = Astro.params.slug
 
-if (!post && slug) {
+if ((!post || !post.content) && slug) {
   post = await api.getPostBySlug(slug)
 }
 
@@ -28,8 +38,21 @@ if (!post) {
   return Astro.redirect('/404')
 }
 
+// Strip leading frontmatter from content if present
+let rawContent = post.content || ''
+const fmMatch = rawContent.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/)
+let bodyContent = fmMatch ? rawContent.slice(fmMatch[0].length) : rawContent
+
+// Check if first non-empty line is an H1 matching post.title to avoid duplicate H1
+const leadingH1Match = bodyContent.trimStart().match(/^#\s+(.+?)(?:\r?\n|$)/)
+if (leadingH1Match && leadingH1Match[1].trim() === post.title.trim()) {
+  const h1Full = leadingH1Match[0]
+  const startIndex = bodyContent.indexOf(h1Full)
+  bodyContent = bodyContent.slice(0, startIndex) + bodyContent.slice(startIndex + h1Full.length)
+}
+
 // Render markdown content
-const { html, headings } = renderMarkdown(post.content)
+const { html, headings } = renderMarkdown(bodyContent)
 
 // Get Category
 let category: BlogCategory | undefined
@@ -45,7 +68,7 @@ const formattedDate = new Date(post.publishedAt || post.createdAt).toLocaleDateS
 })
 
 // Estimated reading time (approx 300 words/chars per min)
-const wordCount = post.content.replace(/\s+/g, '').length
+const wordCount = bodyContent.replace(/\s+/g, '').length
 const readingMinutes = Math.max(1, Math.round(wordCount / 350))
 ---
 
@@ -88,13 +111,6 @@ const readingMinutes = Math.max(1, Math.round(wordCount / 350))
           {post.title}
         </h1>
 
-        {/* Excerpt / Lead */}
-        {post.excerpt && (
-          <p class="text-sm sm:text-base text-[var(--text-secondary)] italic border-l-3 border-[var(--accent)] pl-4 py-1">
-            {post.excerpt}
-          </p>
-        )}
-
         {/* Tags */}
         {post.tags && post.tags.length > 0 && (
           <div class="flex items-center gap-2 flex-wrap pt-2">
@@ -112,17 +128,21 @@ const readingMinutes = Math.max(1, Math.round(wordCount / 350))
 
       {/* Featured Cover Image */}
       {post.coverUrl && (
-        <div class="rounded-2xl overflow-hidden border border-[var(--border-subtle)] shadow-sm max-h-96 w-full">
+        <div class="rounded-2xl overflow-hidden border border-[var(--border-subtle)] shadow-sm bg-[var(--bg-sunken)] w-full flex items-center justify-center">
           <img
             src={post.coverUrl}
             alt={post.title}
-            class="w-full h-full object-cover"
+            class={
+              post.coverUrl.toLowerCase().endsWith('.svg') || post.coverUrl.toLowerCase().includes('.svg?')
+                ? "max-h-48 w-auto object-contain p-6"
+                : "max-h-96 w-full object-cover"
+            }
           />
         </div>
       )}
 
       {/* 100% Identical Note Preview Style Article Body */}
-      <article class="ink-prose max-w-none pt-2">
+      <article class="ink-prose max-w-none pt-2 !pb-0">
         <div set:html={html} />
       </article>
 

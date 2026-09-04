@@ -11,7 +11,7 @@
   font-family: var(--font-ui);
   max-width: var(--prose-width, 72ch);
   margin-inline: auto;
-  padding-block: 0 42vh;
+  padding-block: 0;
 }
 
 .ink-prose[data-font='serif'] {

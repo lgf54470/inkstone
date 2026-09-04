@@ -20,7 +20,7 @@ const formattedDate = new Date(post.publishedAt || post.createdAt).toLocaleDateS
   {post.coverUrl ? (
     <a
       href={`/posts/${post.slug}`}
-      class="sm:w-48 sm:h-36 w-full h-44 shrink-0 rounded-xl overflow-hidden bg-[var(--bg-sunken)] relative block"
+      class="sm:w-48 sm:h-36 w-full h-44 shrink-0 rounded-xl overflow-hidden bg-[var(--bg-sunken)] relative flex items-center justify-center"
       tabindex="-1"
       aria-hidden="true"
     >
@@ -28,7 +28,11 @@ const formattedDate = new Date(post.publishedAt || post.createdAt).toLocaleDateS
         src={post.coverUrl}
         alt={post.title}
         loading="lazy"
-        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        class={
+          post.coverUrl.toLowerCase().endsWith('.svg') || post.coverUrl.toLowerCase().includes('.svg?')
+            ? "w-auto h-auto max-w-[80%] max-h-[80%] object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+            : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        }
       />
     </a>
   ) : null}
