@@ -762,6 +762,13 @@ const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_share_tags_user ON share_tags(user_id, name)`,
     ],
   },
+  {
+    version: 20,
+    statements: [
+      `UPDATE share_visits SET is_self_referrer = 0 WHERE is_self_referrer = 1 AND (referrer IS NULL OR referrer = '' OR referrer LIKE '%/s/%')`,
+      `UPDATE shares SET views = COALESCE((SELECT COUNT(*) FROM share_visits WHERE share_visits.note_id = shares.note_id AND share_visits.is_bot = 0), 0) WHERE views = 0`,
+    ],
+  },
 ]
 
 const FTS_STATEMENT = `CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(

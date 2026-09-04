@@ -73,10 +73,10 @@ export function ShareDashboardView({
   const timelinePoints = analytics?.timeline || []
   const chartValues = timelinePoints.map((p) => (metricMode === 'views' ? p.views : p.visitors))
 
-  const totalFilteredCount =
-    (analytics?.filterStats?.bots ?? 0) +
-    (analytics?.filterStats?.selfReferrals ?? 0) +
-    (analytics?.filterStats?.owner ?? 0)
+  const filteredBots = excludeBots ? (analytics?.filterStats?.bots ?? 0) : 0
+  const filteredSelf = excludeSelfReferrers ? (analytics?.filterStats?.selfReferrals ?? 0) : 0
+  const filteredOwner = excludeOwner ? (analytics?.filterStats?.owner ?? 0) : 0
+  const totalFilteredCount = filteredBots + filteredSelf + filteredOwner
 
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-base)] p-5">
@@ -116,9 +116,9 @@ export function ShareDashboardView({
             <span className="flex h-2 w-2 rounded-full bg-[var(--success)]" />
             <span>
               {t('share.filter_stats_summary', {
-                bots: analytics?.filterStats?.bots ?? 0,
-                self: analytics?.filterStats?.selfReferrals ?? 0,
-                owner: analytics?.filterStats?.owner ?? 0,
+                bots: filteredBots,
+                self: filteredSelf,
+                owner: filteredOwner,
               })}
             </span>
           </div>

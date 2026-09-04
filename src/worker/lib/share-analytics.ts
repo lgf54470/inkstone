@@ -114,8 +114,8 @@ export function buildVisitFilterSql(filters: ShareFilterOptions, alias = ''): st
   const prefix = alias ? `${alias}.` : ''
   const parts: string[] = []
   if (filters.excludeBots !== false) parts.push(`${prefix}is_bot = 0`)
-  if (filters.excludeSelfReferrers !== false) parts.push(`${prefix}is_self_referrer = 0`)
-  if (filters.excludeOwner !== false) parts.push(`${prefix}is_owner = 0`)
+  if (filters.excludeSelfReferrers === true) parts.push(`${prefix}is_self_referrer = 0`)
+  if (filters.excludeOwner === true) parts.push(`${prefix}is_owner = 0`)
   return parts.length ? ` AND ${parts.join(' AND ')}` : ''
 }
 
@@ -186,12 +186,17 @@ export function parseReferrerHost(rawReferrer: string | null): string | null {
   }
 }
 
-export function isSelfReferrer(rawReferrer: string | null, requestHost: string): boolean {
+export function isSelfReferrer(rawReferrer: string | null, requestHost: string, currentSlug?: string): boolean {
   if (!rawReferrer) return false
   try {
     const u = new URL(rawReferrer)
     const host = normalizeHost(requestHost)
-    return normalizeHost(u.hostname) === host || normalizeHost(u.host) === host
+    const isSameHost = normalizeHost(u.hostname) === host || normalizeHost(u.host) === host
+    if (!isSameHost) return false
+    if (currentSlug && (u.pathname === `/s/${currentSlug}` || u.pathname === `/s/${currentSlug}/`)) {
+      return false
+    }
+    return true
   } catch {
     return false
   }

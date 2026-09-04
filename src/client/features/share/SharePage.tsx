@@ -32,6 +32,7 @@ export function SharePage({ slug }: {
     const copyResetTimersRef = useRef(new Map<HTMLElement, number>());
     const originalTitleRef = useRef(document.title);
     const appliedTitleRef = useRef<string | null>(null);
+    const initialReferrerRef = useRef(typeof document !== 'undefined' ? document.referrer : '');
     const load = useCallback(async (pwd?: string) => {
         requestRef.current?.abort();
         const controller = new AbortController();
@@ -39,7 +40,7 @@ export function SharePage({ slug }: {
         setLoading(true);
         setError(null);
         try {
-            const result = await api.share.read(slug, pwd, controller.signal);
+            const result = await api.share.read(slug, pwd, controller.signal, initialReferrerRef.current || undefined);
             if (controller.signal.aborted)
                 return;
             setNote(result);

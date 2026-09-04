@@ -115,20 +115,20 @@ function loadInitialRetention(): { logRetentionDays: number; maxLogRecords: numb
 
 function loadInitialFilters(): { excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean } {
   try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem('inkstone_share_filters') : null
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('inkstone_share_filters_v2') : null
     if (raw) {
       const parsed = JSON.parse(raw)
       return {
         excludeBots: parsed.excludeBots !== false,
-        excludeSelfReferrers: parsed.excludeSelfReferrers !== false,
-        excludeOwner: parsed.excludeOwner !== false,
+        excludeSelfReferrers: Boolean(parsed.excludeSelfReferrers),
+        excludeOwner: Boolean(parsed.excludeOwner),
       }
     }
   } catch {}
   return {
     excludeBots: true,
-    excludeSelfReferrers: true,
-    excludeOwner: true,
+    excludeSelfReferrers: false,
+    excludeOwner: false,
   }
 }
 
@@ -282,7 +282,7 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
       }
       try {
         if (typeof window !== 'undefined') {
-          localStorage.setItem('inkstone_share_filters', JSON.stringify(updated))
+          localStorage.setItem('inkstone_share_filters_v2', JSON.stringify(updated))
         }
       } catch {}
       return updated

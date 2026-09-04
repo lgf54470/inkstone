@@ -18,8 +18,8 @@ export function ShareTrafficFilterPopover() {
   useClickOutside([buttonRef, panelRef], open, () => setOpen(false))
   useEscape(open, () => setOpen(false))
 
-  const allFiltered = excludeBots && excludeSelfReferrers && excludeOwner
-  const noneFiltered = !excludeBots && !excludeSelfReferrers && !excludeOwner
+  const isFilteringBots = excludeBots
+  const isAllTraffic = !excludeBots && !excludeSelfReferrers && !excludeOwner
 
   return (
     <div className="relative">
@@ -28,19 +28,19 @@ export function ShareTrafficFilterPopover() {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={`flex h-7 items-center gap-1.5 rounded-[var(--r-md)] border px-2 text-[12px] font-medium transition-colors ${
-          allFiltered
+          isFilteringBots
             ? 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--success)] hover:bg-[var(--bg-hover)]'
-            : noneFiltered
+            : isAllTraffic
               ? 'border-[var(--danger)]/30 bg-[var(--danger-subtle)] text-[var(--danger)]'
               : 'border-[var(--warning)]/30 bg-[var(--warning-subtle)] text-[var(--warning)]'
         }`}
         title={t('share.filter_traffic_title')}
       >
-        {allFiltered ? <ShieldCheck size={13} /> : <ShieldAlert size={13} />}
+        {isFilteringBots ? <ShieldCheck size={13} /> : <ShieldAlert size={13} />}
         <span className="hidden sm:inline">
-          {allFiltered
+          {isFilteringBots
             ? t('share.filter_real_visitors_badge')
-            : noneFiltered
+            : isAllTraffic
               ? t('share.filter_all_traffic_badge')
               : t('share.filter_custom_traffic_badge')}
         </span>

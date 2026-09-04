@@ -137,8 +137,8 @@ shareManageRoutes.get('/analytics/global', async (c) => {
   const userId = c.get('userId')
   const range = (c.req.query('range') || '7d') as ShareTimelineRange
   const excludeBots = c.req.query('excludeBots') !== 'false'
-  const excludeSelf = c.req.query('excludeSelf') !== 'false'
-  const excludeOwner = c.req.query('excludeOwner') !== 'false'
+  const excludeSelf = c.req.query('excludeSelf') === 'true'
+  const excludeOwner = c.req.query('excludeOwner') === 'true'
   const filters: ShareFilterOptions = {
     excludeBots,
     excludeSelfReferrers: excludeSelf,
@@ -154,7 +154,7 @@ shareManageRoutes.get('/analytics/global', async (c) => {
   const sharesSummary = await c.env.DB.prepare(
     `SELECT 
        COUNT(*) as total_shares,
-       COUNT(CASE WHEN is_enabled = 1 AND (expires_at IS NULL OR expires_at > ?2) THEN 1 END) as active_shares,
+       COUNT(CASE WHEN (is_enabled = 1 OR is_enabled IS NULL) AND (expires_at IS NULL OR expires_at > ?2) THEN 1 END) as active_shares,
        COALESCE(SUM(views), 0) as total_views
      FROM shares WHERE user_id = ?1`,
   )
@@ -394,8 +394,8 @@ shareManageRoutes.get('/analytics/note/:noteId', async (c) => {
   const noteId = c.req.param('noteId')
   const range = (c.req.query('range') || '7d') as ShareTimelineRange
   const excludeBots = c.req.query('excludeBots') !== 'false'
-  const excludeSelf = c.req.query('excludeSelf') !== 'false'
-  const excludeOwner = c.req.query('excludeOwner') !== 'false'
+  const excludeSelf = c.req.query('excludeSelf') === 'true'
+  const excludeOwner = c.req.query('excludeOwner') === 'true'
   const filters: ShareFilterOptions = {
     excludeBots,
     excludeSelfReferrers: excludeSelf,
@@ -908,8 +908,8 @@ shareManageRoutes.get('/', async (c) => {
   const search = (c.req.query('search') || '').trim()
   const sort = c.req.query('sort') || 'views_desc'
   const excludeBots = c.req.query('excludeBots') !== 'false'
-  const excludeSelf = c.req.query('excludeSelf') !== 'false'
-  const excludeOwner = c.req.query('excludeOwner') !== 'false'
+  const excludeSelf = c.req.query('excludeSelf') === 'true'
+  const excludeOwner = c.req.query('excludeOwner') === 'true'
   const filters: ShareFilterOptions = {
     excludeBots,
     excludeSelfReferrers: excludeSelf,
@@ -1614,7 +1614,7 @@ shareManageRoutes.delete('/:noteId', async (c) => {
 shareRoutes.post('/:slug', async (c) => {
   const slug = c.req.param('slug')
   if (!isValidSlug(slug)) throw ApiError.notFound('The link does not exist or has been revoked')
-  const body = await readOptionalJson<{ password?: string }>(c, JSON_BODY_LIMITS.small, {})
+  const body = await readOptionalJson<{ password?: string; referrer?: string }>(c, JSON_BODY_LIMITS.small, {})
   const password = typeof body.password === 'string'
     ? body.password.slice(0, LIMITS.passwordMaxLength)
     : ''
@@ -1695,11 +1695,36 @@ shareRoutes.post('/:slug', async (c) => {
         const country = c.req.header('cf-ipcountry') || null
         const region = c.req.header('cf-region') || null
         const city = c.req.header('cf-ipcity') || null
-        const rawReferrer = c.req.header('referer') || null
+        const clientReferrer = typeof body.referrer === 'string' && body.referrer.trim() ? body.referrer.trim() : null
+        let candidateReferrer = clientReferrer
+        if (!candidateReferrer) {
+          const headerRef = c.req.header('referer') || null
+          if (headerRef) {
+            try {
+              const u = new URL(headerRef)
+              // If header referer is simply this share page itself, it's not an external referrer
+              if (u.pathname !== `/s/${slug}` && u.pathname !== `/s/${slug}/`) {
+                candidateReferrer = headerRef
+              }
+            } catch {}
+          }
+        }
+
         const requestHost = new URL(c.req.url).host
-        const selfReferrer = isSelfReferrer(rawReferrer, requestHost)
-        const referrer = selfReferrer ? null : rawReferrer
-        const referrerHost = selfReferrer ? null : parseReferrerHost(rawReferrer)
+        const selfReferrer = isSelfReferrer(candidateReferrer, requestHost, slug)
+
+        let referrer: string | null = null
+        let referrerHost: string | null = null
+        if (candidateReferrer) {
+          try {
+            const u = new URL(candidateReferrer)
+            if (u.pathname !== `/s/${slug}` && u.pathname !== `/s/${slug}/`) {
+              referrer = candidateReferrer
+              referrerHost = parseReferrerHost(candidateReferrer)
+            }
+          } catch {}
+        }
+
         const deviceType = parseDeviceType(ua)
         const os = parseOS(ua)
         const browser = parseBrowser(ua)
@@ -1709,7 +1734,8 @@ shareRoutes.post('/:slug', async (c) => {
         const loggedInUserId = c.get('userId')
         const isOwner = loggedInUserId && loggedInUserId === share.user_id ? 1 : 0
 
-        const isRealHumanVisit = bot === 0 && isSelf === 0 && isOwner === 0
+        // Real human visit = not an automated bot/spider
+        const isRealHumanVisit = bot === 0
         const updateShareStmt = isRealHumanVisit
           ? c.env.DB.prepare(`UPDATE shares SET views = views + 1, last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)
           : c.env.DB.prepare(`UPDATE shares SET last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)

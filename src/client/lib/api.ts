@@ -695,8 +695,8 @@ export const api = {
       },
     ) => request<{ share: ShareInfo }>(`/api/share/${noteId}`, { method: 'POST', body }),
     remove: (noteId: string) => request<{ ok: true }>(`/api/share/${noteId}`, { method: 'DELETE' }),
-    read: (slug: string, password?: string, signal?: AbortSignal) =>
-      request<PublicNote>(`/api/public/${slug}`, { method: 'POST', body: { password }, signal }),
+    read: (slug: string, password?: string, signal?: AbortSignal, referrer?: string) =>
+      request<PublicNote>(`/api/public/${slug}`, { method: 'POST', body: { password, referrer }, signal }),
   },
 
   communityTemplates: {
