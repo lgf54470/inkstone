@@ -292,7 +292,7 @@ function WeChatBadge({ count }: { count?: number }) {
       className={cn(
         'pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 z-10',
         'flex items-center justify-center',
-        'rounded-full bg-[#fa5151] text-white font-semibold',
+        'rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold',
         'text-[10px] leading-none select-none shadow-xs',
         'ring-2 ring-[var(--bg-sunken)]',
         count > 99
