@@ -1,0 +1,8 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "inkstone-blog"
+compatibility_date = "2026-05-01"
+pages_build_output_dir = "dist"
+
+[vars]
+# 后端 Inkstone Worker 服务的生产域名（例如：https://inkstone.your-domain.workers.dev）
+PUBLIC_API_URL = "https://inkstone.333096.xyz"
