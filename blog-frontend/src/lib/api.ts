@@ -7,6 +7,7 @@ import type {
   TimelineGroup,
   CalendarDayPost,
 } from './types'
+import { SHOWCASE_CONTENT } from '../data/showcase'
 
 export function getApiBase(): string {
   if (typeof window !== 'undefined') {
@@ -92,6 +93,25 @@ export function publish(post: BlogPost) {
     createdAt: Date.now() - 3600 * 1000 * 48,
     updatedAt: Date.now(),
   },
+  {
+    id: 'syntax-showcase',
+    noteId: 'note-syntax-showcase',
+    title: 'Inkstone 完整 Markdown 语法全景展示',
+    slug: 'markdown-syntax-showcase',
+    excerpt: '展示 Inkstone 当前所支持的全部 Markdown 语法与扩展功能，包含 14 种 Mermaid 图表、7 种 Chart.js 数据图表及全部自定义扩展样式。',
+    content: SHOWCASE_CONTENT,
+    coverUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+    categoryId: 'cat-tech',
+    tags: ['markdown', 'showcase', 'cheatsheet', 'inkstone'],
+    isPublished: true,
+    publishedAt: Date.now() - 3600 * 1000 * 12,
+    allowComments: true,
+    isPinned: true,
+    views: 356,
+    commentsCount: 4,
+    createdAt: Date.now() - 3600 * 1000 * 24,
+    updatedAt: Date.now(),
+  },
 ]
 
 export const api = {
@@ -161,7 +181,7 @@ export const api = {
       return data.categories || []
     } catch {
       return [
-        { id: 'cat-tech', name: '技术随笔', slug: 'tech', color: 'oklch(62% 0.16 252)', postsCount: 1, createdAt: Date.now(), updatedAt: Date.now() },
+        { id: 'cat-tech', name: '技术随笔', slug: 'tech', color: 'oklch(62% 0.16 252)', postsCount: 2, createdAt: Date.now(), updatedAt: Date.now() },
         { id: 'cat-life', name: '生活与思考', slug: 'life', color: 'oklch(66% 0.13 150)', postsCount: 0, createdAt: Date.now(), updatedAt: Date.now() },
       ]
     }
@@ -177,7 +197,9 @@ export const api = {
       return [
         { name: 'Inkstone', postsCount: 1 },
         { name: 'Astro', postsCount: 1 },
-        { name: 'Markdown', postsCount: 1 },
+        { name: 'Markdown', postsCount: 2 },
+        { name: 'showcase', postsCount: 1 },
+        { name: 'cheatsheet', postsCount: 1 },
       ]
     }
   },
