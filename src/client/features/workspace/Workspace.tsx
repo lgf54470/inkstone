@@ -28,6 +28,7 @@ import { EditorToolbar } from './EditorToolbar';
 import { BacklinksPanel } from './BacklinksPanel';
 import { AttachmentDriveModal } from '../attachments/AttachmentDriveModal';
 import { SaveIndicator } from '../shell/SaveIndicator';
+import { useShareStore } from '../share/share-store';
 import type { Heading } from '../../lib/markdown/renderer';
 import { useUi, type WorkspacePane } from '../../store/ui';
 import { useSession } from '../../store/session';
@@ -270,6 +271,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
       </div>);
     }
     const noteFolder = note.folderId ? folders.find((folder) => folder.id === note.folderId) ?? null : null;
+    const isShared = useShareStore((s) => s.shares.some((sh) => sh.noteId === note.id));
     const noteFolderPath = note.folderId ? folderPathLabel(folders, note.folderId) : '';
     const exportNote = async (format: 'md' | 'html' | 'pdf') => {
         setExportMenuOpen(false);
@@ -394,6 +396,11 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
             }}
           />
           {note.isStarred && <Star size={11} className="shrink-0 fill-current text-[var(--warning)]"/>}
+          {isShared && (
+            <span title={t("workspace.share")} className="inline-flex items-center">
+              <Share2 size={11} className="shrink-0 text-[var(--accent)]" />
+            </span>
+          )}
           {!grouped && (<span className="hidden shrink-0 text-[11px] text-[var(--text-quaternary)] md:inline">
               {updatedTime}
             </span>)}

@@ -29,6 +29,11 @@ import { FolderPicker } from '../folders/FolderPicker';
 import { MoveToFolderSubmenu } from '../folders/MoveToFolderSubmenu';
 import { CreateFolderModal } from '../folders/CreateFolderModal';
 import { ShareEditModal } from '../share/ShareEditModal';
+import { ShareQrModal } from '../share/ShareQrModal';
+import { ShareNoteAnalyticsModal } from '../share/ShareNoteAnalyticsModal';
+import { ShareNoteSubmenu } from '../share/ShareNoteSubmenu';
+import { useShareStore } from '../share/share-store';
+import { api } from '../../lib/api';
 import { TagPill } from '../../components/TagPill';
 import { removeTagFromNote } from '../tags/tagMutations';
 import { t, useLocale, type MessageKey } from "../../lib/i18n";
@@ -72,6 +77,8 @@ export function NoteList() {
     const listQuery = useUi((s) => s.listQuery);
     const setListQuery = useUi((s) => s.setListQuery);
     const notes = useVisibleNotes();
+    const shares = useShareStore((s) => s.shares);
+    const sharedNoteIds = useMemo(() => new Set(shares.map((s) => s.noteId)), [shares]);
     const folders = useNotes((s) => s.folders);
     const tags = useNotes((s) => s.tags);
     const loading = useNotes((s) => s.loading);
@@ -535,7 +542,7 @@ export function NoteList() {
                   {group.label}
                 </div>)}
               <div role="presentation" className="space-y-px">
-                {group.items.map(({ note, ranges, position }) => (<NoteRow key={note.id} note={note} highlight={ranges} density={density} tagColors={tagColors} position={position} total={filteredCount} onRangeSelect={selectRange}/>))}
+                {group.items.map(({ note, ranges, position }) => (<NoteRow key={note.id} note={note} isShared={sharedNoteIds.has(note.id)} highlight={ranges} density={density} tagColors={tagColors} position={position} total={filteredCount} onRangeSelect={selectRange}/>))}
               </div>
             </div>)))}
         {renderLimit < filteredCount && <div ref={loadMoreRef} aria-hidden="true" className="h-px"/>}
@@ -549,7 +556,7 @@ export function NoteList() {
       {dateFilter && <DateRangePopover anchor={rangeChipRef} open={rangeEditorOpen} onClose={() => setRangeEditorOpen(false)} range={dateFilter} onChange={applyFixedRange} relative={relativeFilter} onApplyRelative={(value) => useUi.getState().setRelativeFilter(value)}/>}
     </section>);
 }
-const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, position, total, onRangeSelect, }: {
+const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, position, total, onRangeSelect, isShared, }: {
     note: NoteSummary;
     highlight: [
         number,
@@ -560,6 +567,7 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
     position: number;
     total: number;
     onRangeSelect: (noteId: string) => void;
+    isShared?: boolean;
 }) {
     const breakpoint = useBreakpoint();
     const locale = useLocale();
@@ -589,6 +597,28 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
     const [menuOpen, setMenuOpen] = useState(false);
     const [createFolderOpen, setCreateFolderOpen] = useState(false);
     const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [qrModalData, setQrModalData] = useState<{ url: string; title: string; slug: string } | null>(null);
+    const [analyticsOpen, setAnalyticsOpen] = useState(false);
+    const shares = useShareStore((s) => s.shares);
+    const noteShare = useMemo(() => shares.find((s) => s.noteId === note.id) ?? null, [shares, note.id]);
+    const computedIsShared = isShared ?? Boolean(noteShare);
+
+    const handleRevokeShare = async () => {
+        const ok = await confirm({
+            title: t('share.revoke_this_public_link'),
+            description: t('share.anyone_who_gets_the_link_will_immediately_lose_access'),
+            confirmLabel: t('share.cancel_share'),
+            tone: 'danger',
+        });
+        if (!ok) return;
+        try {
+            await api.share.remove(note.id);
+            toast({ title: t('share.link_revoked'), tone: 'default' });
+            void useShareStore.getState().loadShares();
+        } catch {
+            toast({ title: t('common.action_failed'), tone: 'danger' });
+        }
+    };
     const handleSelectFolder = (folderId: string | null) => {
         const targetIds = selectedIds.includes(note.id) ? selectedIds : [note.id];
         void moveNotes(targetIds, folderId);
@@ -703,8 +733,25 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
                 id: 'share',
                 label: t("workspace.share"),
                 icon: <Share2 size={13}/>,
-                onSelect: () => setShareModalOpen(true),
+                submenu: ({ closeMenu }) => (
+                    <ShareNoteSubmenu
+                        noteId={note.id}
+                        noteTitle={note.title || t("common.untitled_note")}
+                        share={noteShare}
+                        closeMenu={closeMenu}
+                        onOpenSettings={() => setShareModalOpen(true)}
+                        onOpenQr={(url, title, slug) => setQrModalData({ url, title, slug })}
+                        onOpenAnalytics={() => setAnalyticsOpen(true)}
+                    />
+                ),
             },
+            ...(computedIsShared ? [{
+                id: 'unshare',
+                label: t("share.cancel_share"),
+                icon: <Share2 size={13}/>,
+                tone: 'danger' as const,
+                onSelect: () => void handleRevokeShare(),
+            } satisfies MenuItem] : []),
             {
                 id: 'archive',
                 label: note.isArchived ? t("common.unarchive") : t("navigation.archive"),
@@ -807,6 +854,11 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
                 </button>
               )}
               {note.isStarred && <Star size={10} className="anim-mark-enter shrink-0 fill-current text-[var(--warning)]"/>}
+              {computedIsShared && (
+                <span title={t("workspace.share")} className="inline-flex items-center">
+                  <Share2 size={10} className="anim-mark-enter shrink-0 text-[var(--accent)]" />
+                </span>
+              )}
             </div>
 
             {density === 'comfortable' && note.excerpt && (<p className="truncate-2 mt-1 text-[11.5px] leading-[1.5] text-[var(--text-tertiary)]">
@@ -895,6 +947,22 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
           onClose={() => setShareModalOpen(false)}
           noteId={note.id}
           noteTitle={note.title || t("common.untitled_note")}
+        />
+      )}
+      {qrModalData && (
+        <ShareQrModal
+          open={Boolean(qrModalData)}
+          onClose={() => setQrModalData(null)}
+          url={qrModalData.url}
+          title={qrModalData.title}
+          slug={qrModalData.slug}
+        />
+      )}
+      {analyticsOpen && (
+        <ShareNoteAnalyticsModal
+          open={analyticsOpen}
+          onClose={() => setAnalyticsOpen(false)}
+          noteId={note.id}
         />
       )}
     </>);
