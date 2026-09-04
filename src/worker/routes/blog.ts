@@ -3,6 +3,12 @@ import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'
 import { isValidId, newId, newSlug } from '../lib/id'
 import { JSON_BODY_LIMITS, readJson, requestClientIp } from '../lib/request'
+import {
+  createScopedFolder,
+  deleteScopedFolder,
+  listScopedFolders,
+  updateScopedFolder,
+} from '../lib/scoped-organizer'
 import { loadSession, requireAuth } from '../middleware/auth'
 import { getMeta, setMeta } from '../db/metadata'
 import { extractCoverUrl, parseFrontMatter } from '@shared/markdown-utils'
@@ -979,115 +985,21 @@ blogManageRoutes.post('/posts/batch', requireAuth, async (c) => {
 })
 
 blogManageRoutes.get('/folders', requireAuth, async (c) => {
-  const userId = c.get('userId')!
-  const { results } = await c.env.DB.prepare(
-    `SELECT id, user_id, parent_id, name, icon, color, position, created_at, updated_at
-       FROM blog_folders WHERE user_id = ?1 ORDER BY position ASC, created_at ASC`,
-  ).bind(userId).all<any>()
-  return c.json(
-    (results || []).map((r) => ({
-      id: r.id,
-      userId: r.user_id,
-      parentId: r.parent_id,
-      name: r.name,
-      icon: r.icon,
-      color: r.color,
-      position: r.position,
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
-    })),
-  )
+  return c.json(await listScopedFolders(c.env.DB, 'blog_folders', c.get('userId')!))
 })
 
 blogManageRoutes.post('/folders', requireAuth, async (c) => {
-  const userId = c.get('userId')!
-  const body = await readJson<{
-    id?: string
-    name?: string
-    parentId?: string | null
-    color?: string | null
-    icon?: string | null
-    position?: number
-  }>(c, JSON_BODY_LIMITS.small)
-  const id = body.id && isValidId(body.id) ? body.id : newId()
-  const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : 'New Folder'
-  const parentId = body.parentId && isValidId(body.parentId) ? body.parentId : null
-  const now = Date.now()
-  const position = typeof body.position === 'number' ? body.position : now
-
-  await c.env.DB.prepare(
-    `INSERT INTO blog_folders (id, user_id, parent_id, name, icon, color, position, created_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
-  ).bind(id, userId, parentId, name, body.icon ?? null, body.color ?? null, position, now, now).run()
-
-  return c.json(
-    {
-      id,
-      userId,
-      parentId,
-      name,
-      icon: body.icon ?? null,
-      color: body.color ?? null,
-      position,
-      createdAt: now,
-      updatedAt: now,
-    },
-    201,
-  )
+  const body = await readJson<Parameters<typeof createScopedFolder>[3]>(c, JSON_BODY_LIMITS.small)
+  return c.json(await createScopedFolder(c.env.DB, 'blog_folders', c.get('userId')!, body), 201)
 })
 
 blogManageRoutes.patch('/folders/:id', requireAuth, async (c) => {
-  const userId = c.get('userId')!
-  const id = c.req.param('id')
-  if (!isValidId(id)) throw ApiError.notFound('Folder not found')
-  const body = await readJson<{
-    name?: string
-    parentId?: string | null
-    color?: string | null
-    icon?: string | null
-    position?: number
-  }>(c, JSON_BODY_LIMITS.small)
-
-  const existing = await c.env.DB.prepare(
-    `SELECT id, name, parent_id, icon, color, position, created_at, updated_at FROM blog_folders WHERE id = ?1 AND user_id = ?2`,
-  ).bind(id, userId).first<any>()
-  if (!existing) throw ApiError.notFound('Folder not found')
-
-  const nextName = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : existing.name
-  const nextParent = body.parentId !== undefined ? (body.parentId && isValidId(body.parentId) ? body.parentId : null) : existing.parent_id
-  const nextColor = body.color !== undefined ? body.color : existing.color
-  const nextIcon = body.icon !== undefined ? body.icon : existing.icon
-  const nextPosition = typeof body.position === 'number' ? body.position : existing.position
-  const now = Date.now()
-
-  await c.env.DB.prepare(
-    `UPDATE blog_folders SET name = ?1, parent_id = ?2, color = ?3, icon = ?4, position = ?5, updated_at = ?6
-     WHERE id = ?7 AND user_id = ?8`,
-  ).bind(nextName, nextParent, nextColor, nextIcon, nextPosition, now, id, userId).run()
-
-  return c.json({
-    id,
-    userId,
-    parentId: nextParent,
-    name: nextName,
-    icon: nextIcon,
-    color: nextColor,
-    position: nextPosition,
-    createdAt: existing.created_at,
-    updatedAt: now,
-  })
+  const body = await readJson<Parameters<typeof createScopedFolder>[3]>(c, JSON_BODY_LIMITS.small)
+  return c.json(await updateScopedFolder(c.env.DB, 'blog_folders', c.get('userId')!, c.req.param('id'), body))
 })
 
 blogManageRoutes.delete('/folders/:id', requireAuth, async (c) => {
-  const userId = c.get('userId')!
-  const id = c.req.param('id')
-  if (!isValidId(id)) throw ApiError.notFound('Folder not found')
-
-  await c.env.DB.batch([
-    c.env.DB.prepare(`UPDATE blog_posts SET folder_id = NULL WHERE folder_id = ?1 AND user_id = ?2`).bind(id, userId),
-    c.env.DB.prepare(`UPDATE blog_folders SET parent_id = NULL WHERE parent_id = ?1 AND user_id = ?2`).bind(id, userId),
-    c.env.DB.prepare(`DELETE FROM blog_folders WHERE id = ?1 AND user_id = ?2`).bind(id, userId),
-  ])
+  await deleteScopedFolder(c.env.DB, 'blog_folders', 'blog_posts', c.get('userId')!, c.req.param('id'))
   return c.json({ ok: true })
 })
 

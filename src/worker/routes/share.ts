@@ -14,9 +14,19 @@ import {
 } from '@shared/types'
 import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'
-import { isValidId, isValidSlug, newId, newSlug } from '../lib/id'
+import { isValidId, isValidSlug, newSlug } from '../lib/id'
 import { JSON_BODY_LIMITS, readJson, readOptionalJson, requestClientIp } from '../lib/request'
 import { hashPassword, verifyPassword } from '../lib/password'
+import {
+  createScopedFolder,
+  createScopedTag,
+  deleteScopedFolder,
+  deleteScopedTag,
+  listScopedFolders,
+  listScopedTags,
+  updateScopedFolder,
+  updateScopedTag,
+} from '../lib/scoped-organizer'
 import {
   buildVisitFilterSql,
   computeDelta,
@@ -62,27 +72,6 @@ interface ShareRow {
   views: number
   is_enabled: number
   last_viewed_at: number | null
-  created_at: number
-}
-
-interface ShareFolderRow {
-  id: string
-  user_id: string
-  parent_id: string | null
-  name: string
-  icon: string | null
-  color: string | null
-  position: number
-  created_at: number
-  updated_at: number
-}
-
-interface ShareTagRow {
-  id: string
-  user_id: string
-  name: string
-  color: string | null
-  is_pinned: number
   created_at: number
 }
 
@@ -596,215 +585,42 @@ shareManageRoutes.get('/check-slug', async (c) => {
 })
 
 shareManageRoutes.get('/folders', async (c) => {
-  const userId = c.get('userId')
-  const { results } = await c.env.DB.prepare(
-    `SELECT id, user_id, parent_id, name, icon, color, position, created_at, updated_at
-       FROM share_folders WHERE user_id = ?1 ORDER BY position ASC, created_at ASC`,
-  ).bind(userId).all<ShareFolderRow>()
-  return c.json(results.map(r => ({
-    id: r.id,
-    userId: r.user_id,
-    parentId: r.parent_id,
-    name: r.name,
-    icon: r.icon,
-    color: r.color,
-    position: r.position,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-  })))
+  return c.json(await listScopedFolders(c.env.DB, 'share_folders', c.get('userId')))
 })
 
 shareManageRoutes.post('/folders', async (c) => {
-  const userId = c.get('userId')
-  const body = await c.req.json<{
-    id?: string
-    name?: string
-    parentId?: string | null
-    color?: string | null
-    icon?: string | null
-    position?: number
-  }>()
-  const id = body.id && isValidId(body.id) ? body.id : newId()
-  const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : 'New Folder'
-  const parentId = body.parentId && isValidId(body.parentId) ? body.parentId : null
-  const now = Date.now()
-  const position = typeof body.position === 'number' ? body.position : now
-
-  await c.env.DB.prepare(
-    `INSERT INTO share_folders (id, user_id, parent_id, name, icon, color, position, created_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
-  ).bind(id, userId, parentId, name, body.icon ?? null, body.color ?? null, position, now, now).run()
-
-  return c.json({
-    id,
-    userId,
-    parentId,
-    name,
-    icon: body.icon ?? null,
-    color: body.color ?? null,
-    position,
-    createdAt: now,
-    updatedAt: now,
-  }, 201)
+  const body = await c.req.json<Parameters<typeof createScopedFolder>[3]>()
+  return c.json(await createScopedFolder(c.env.DB, 'share_folders', c.get('userId'), body), 201)
 })
 
 shareManageRoutes.patch('/folders/:id', async (c) => {
-  const userId = c.get('userId')
-  const id = c.req.param('id')
-  if (!isValidId(id)) throw ApiError.notFound('Folder not found')
-  const body = await c.req.json<{
-    name?: string
-    parentId?: string | null
-    color?: string | null
-    icon?: string | null
-    position?: number
-  }>()
-
-  const existing = await c.env.DB.prepare(
-    `SELECT id, name, parent_id, icon, color, position, created_at, updated_at FROM share_folders WHERE id = ?1 AND user_id = ?2`,
-  ).bind(id, userId).first<ShareFolderRow>()
-  if (!existing) throw ApiError.notFound('Folder not found')
-
-  const nextName = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : existing.name
-  const nextParent = body.parentId !== undefined ? (body.parentId && isValidId(body.parentId) ? body.parentId : null) : existing.parent_id
-  const nextColor = body.color !== undefined ? body.color : existing.color
-  const nextIcon = body.icon !== undefined ? body.icon : existing.icon
-  const nextPosition = typeof body.position === 'number' ? body.position : existing.position
-  const now = Date.now()
-
-  await c.env.DB.prepare(
-    `UPDATE share_folders SET name = ?1, parent_id = ?2, color = ?3, icon = ?4, position = ?5, updated_at = ?6
-     WHERE id = ?7 AND user_id = ?8`,
-  ).bind(nextName, nextParent, nextColor, nextIcon, nextPosition, now, id, userId).run()
-
-  return c.json({
-    id,
-    userId,
-    parentId: nextParent,
-    name: nextName,
-    icon: nextIcon,
-    color: nextColor,
-    position: nextPosition,
-    createdAt: existing.created_at,
-    updatedAt: now,
-  })
+  const body = await c.req.json<Parameters<typeof createScopedFolder>[3]>()
+  return c.json(await updateScopedFolder(c.env.DB, 'share_folders', c.get('userId'), c.req.param('id'), body))
 })
 
 shareManageRoutes.delete('/folders/:id', async (c) => {
-  const userId = c.get('userId')
-  const id = c.req.param('id')
-  if (!isValidId(id)) throw ApiError.notFound('Folder not found')
-
-  await c.env.DB.batch([
-    c.env.DB.prepare(`UPDATE shares SET folder_id = NULL WHERE folder_id = ?1 AND user_id = ?2`).bind(id, userId),
-    c.env.DB.prepare(`UPDATE share_folders SET parent_id = NULL WHERE parent_id = ?1 AND user_id = ?2`).bind(id, userId),
-    c.env.DB.prepare(`DELETE FROM share_folders WHERE id = ?1 AND user_id = ?2`).bind(id, userId),
-  ])
+  await deleteScopedFolder(c.env.DB, 'share_folders', 'shares', c.get('userId'), c.req.param('id'))
   return c.json({ ok: true })
 })
 
 shareManageRoutes.get('/tags', async (c) => {
-  const userId = c.get('userId')
-  const { results } = await c.env.DB.prepare(
-    `SELECT id, user_id, name, color, is_pinned, created_at
-       FROM share_tags WHERE user_id = ?1 ORDER BY is_pinned DESC, name ASC`,
-  ).bind(userId).all<ShareTagRow>()
-  return c.json(results.map(r => ({
-    id: r.id,
-    userId: r.user_id,
-    name: r.name,
-    color: r.color,
-    isPinned: Boolean(r.is_pinned),
-    createdAt: r.created_at,
-  })))
+  return c.json(await listScopedTags(c.env.DB, 'share_tags', c.get('userId')))
 })
 
 shareManageRoutes.post('/tags', async (c) => {
-  const userId = c.get('userId')
-  const body = await c.req.json<{
-    id?: string
-    name: string
-    color?: string | null
-  }>()
-  const name = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : ''
-  if (!name) throw ApiError.badRequest('Tag name is required')
-  const id = body.id && isValidId(body.id) ? body.id : newId()
-  const now = Date.now()
-
-  try {
-    await c.env.DB.prepare(
-      `INSERT INTO share_tags (id, user_id, name, color, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5)`,
-    ).bind(id, userId, name, body.color ?? null, now).run()
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (msg.includes('UNIQUE') || msg.includes('constraint')) {
-      const existing = await c.env.DB.prepare(
-        `SELECT id, user_id, name, color, is_pinned, created_at FROM share_tags WHERE user_id = ?1 AND name = ?2`,
-      ).bind(userId, name).first<ShareTagRow>()
-      if (existing) {
-        return c.json({
-          id: existing.id,
-          userId: existing.user_id,
-          name: existing.name,
-          color: existing.color,
-          isPinned: Boolean(existing.is_pinned),
-          createdAt: existing.created_at,
-        })
-      }
-    }
-    throw err
-  }
-
-  return c.json({
-    id,
-    userId,
-    name,
-    color: body.color ?? null,
-    isPinned: false,
-    createdAt: now,
-  }, 201)
+  const body = await c.req.json<Parameters<typeof createScopedTag>[4]>()
+  const { tag, status } = await createScopedTag(c.env.DB, 'share_tags', 'keep-existing', c.get('userId'), body)
+  return c.json(tag, status)
 })
 
 shareManageRoutes.patch('/tags/:id', async (c) => {
-  const userId = c.get('userId')
-  const id = c.req.param('id')
-  if (!isValidId(id)) throw ApiError.notFound('Tag not found')
-  const body = await c.req.json<{
-    name?: string
-    color?: string | null
-    isPinned?: boolean
-  }>()
-
-  const existing = await c.env.DB.prepare(
-    `SELECT id, name, color, is_pinned, created_at FROM share_tags WHERE id = ?1 AND user_id = ?2`,
-  ).bind(id, userId).first<ShareTagRow>()
-  if (!existing) throw ApiError.notFound('Tag not found')
-
-  const nextName = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 50) : existing.name
-  const nextColor = body.color !== undefined ? body.color : existing.color
-  const nextPinned = body.isPinned !== undefined ? (body.isPinned ? 1 : 0) : existing.is_pinned
-
-  await c.env.DB.prepare(
-    `UPDATE share_tags SET name = ?1, color = ?2, is_pinned = ?3 WHERE id = ?4 AND user_id = ?5`,
-  ).bind(nextName, nextColor, nextPinned, id, userId).run()
-
-  return c.json({
-    id,
-    userId,
-    name: nextName,
-    color: nextColor,
-    isPinned: Boolean(nextPinned),
-    createdAt: existing.created_at,
-  })
+  const body = await c.req.json<Parameters<typeof updateScopedTag>[4]>()
+  const { tag } = await updateScopedTag(c.env.DB, 'share_tags', c.get('userId'), c.req.param('id'), body)
+  return c.json(tag)
 })
 
 shareManageRoutes.delete('/tags/:id', async (c) => {
-  const userId = c.get('userId')
-  const id = c.req.param('id')
-  if (!isValidId(id)) throw ApiError.notFound('Tag not found')
-
-  await c.env.DB.prepare(`DELETE FROM share_tags WHERE id = ?1 AND user_id = ?2`).bind(id, userId).run()
+  await deleteScopedTag(c.env.DB, 'share_tags', c.get('userId'), c.req.param('id'))
   return c.json({ ok: true })
 })
 
