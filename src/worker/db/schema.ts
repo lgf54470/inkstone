@@ -967,6 +967,7 @@ const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   },
   {
     version: 23,
+    skipIfColumnExists: { table: 'blog_posts', column: 'folder_id' },
     statements: [
       `ALTER TABLE blog_posts ADD COLUMN folder_id TEXT`,
       `CREATE INDEX IF NOT EXISTS idx_blog_posts_folder ON blog_posts(user_id, folder_id)`,
