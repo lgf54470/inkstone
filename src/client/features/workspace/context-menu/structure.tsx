@@ -11,12 +11,12 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
-import type { MenuItem } from '../../components/overlay';
-import { t } from '../../lib/i18n';
-import { findNoteByTitle } from '../../store/notes/selectors';
-import { toggleBulletList, toggleTaskDone } from '../../editor/commands';
-import type { MenuCtx } from './context-menu-types';
-import { SubmenuList } from './context-menu-submenu';
+import type { MenuItem } from '../../../components/overlay';
+import { t } from '../../../lib/i18n';
+import { findNoteByTitle } from '../../../store/notes/selectors';
+import { toggleBulletList, toggleTaskDone } from '../../../editor/commands';
+import type { MenuCtx } from './types';
+import { SubmenuList } from './submenu';
 
 export function buildWikiLinkItems(ctx: MenuCtx): MenuItem[] | null {
   const { editorContext, previewContext, onJumpToLine, createNote, openNote, setWorkspaceNote, handleCopy } = ctx;

@@ -23,11 +23,11 @@ import {
   Superscript,
   Underline,
 } from 'lucide-react';
-import type { MenuItem } from '../../components/overlay';
-import { t } from '../../lib/i18n';
-import { insertCallout, insertCodeBlock, insertLink, insertRuby, setHeading, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleUnderline, toggleSubscript, toggleSuperscript, toggleTaskList, toggleWikiLink } from '../../editor/commands';
-import type { MenuCtx } from './context-menu-types';
-import { SubmenuList } from './context-menu-submenu';
+import type { MenuItem } from '../../../components/overlay';
+import { t } from '../../../lib/i18n';
+import { insertCallout, insertCodeBlock, insertLink, insertRuby, setHeading, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleUnderline, toggleSubscript, toggleSuperscript, toggleTaskList, toggleWikiLink } from '../../../editor/commands';
+import type { MenuCtx } from './types';
+import { SubmenuList } from './submenu';
 
 export function buildEditorSelectionItems(ctx: MenuCtx): MenuItem[] | null {
   const { editorContext, runStateCommand, handleCopy, handlePasteIntoEditor, handleCutFromEditor } = ctx;

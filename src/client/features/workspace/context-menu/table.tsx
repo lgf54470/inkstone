@@ -15,11 +15,11 @@ import {
   Rows,
   Trash2,
 } from 'lucide-react';
-import type { MenuItem } from '../../components/overlay';
-import { t } from '../../lib/i18n';
-import { clearTableCell, clearTableRow, deleteEntireTableInText, deleteTableColumn, deleteTableRow, duplicateTableRow, formatMarkdownTable, insertTableColumn, insertTableRow, parseMarkdownTable, setColumnAlignment, sortTableRowByColumn, tableToCsv } from '../../lib/markdown/table-editor';
-import type { MenuCtx } from './context-menu-types';
-import { SubmenuList } from './context-menu-submenu';
+import type { MenuItem } from '../../../components/overlay';
+import { t } from '../../../lib/i18n';
+import { clearTableCell, clearTableRow, deleteEntireTableInText, deleteTableColumn, deleteTableRow, duplicateTableRow, formatMarkdownTable, insertTableColumn, insertTableRow, parseMarkdownTable, setColumnAlignment, sortTableRowByColumn, tableToCsv } from '../../../lib/markdown/table-editor';
+import type { MenuCtx } from './types';
+import { SubmenuList } from './submenu';
 
 export function buildEditorTableItems(ctx: MenuCtx): MenuItem[] | null {
   const { editorView, editorContext, replaceTableInEditor, handleCopy } = ctx;

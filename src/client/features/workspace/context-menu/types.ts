@@ -1,9 +1,9 @@
 import type { EditorView } from '@codemirror/view';
 import type { RefObject } from 'react';
-import type { ParsedTable } from '../../lib/markdown/table-editor';
-import type { NotesState } from '../../store/notes/model';
-import type { WorkspacePane } from '../../store/ui';
-import type { EditorContextData, PreviewContextData } from './context-menu-detect';
+import type { ParsedTable } from '../../../lib/markdown/table-editor';
+import type { NotesState } from '../../../store/notes/model';
+import type { WorkspacePane } from '../../../store/ui';
+import type { EditorContextData, PreviewContextData } from '../context-menu-detect';
 
 /**
  * Everything an EditorContextMenu item builder can read or trigger.

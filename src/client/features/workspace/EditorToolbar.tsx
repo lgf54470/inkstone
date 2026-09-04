@@ -5,7 +5,7 @@ import { IconButton } from '../../components/primitives';
 import { Menu, Tooltip, type MenuItem } from '../../components/overlay';
 import { cn } from '../../lib/cn';
 import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertCodeBlock, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertHorizontalRule, insertImage, insertLink, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, insertText, setHeading, toggleBlockReference, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleNoteEmbed, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleSubscript, toggleSuperscript, toggleTaskList, toggleUnderline, toggleWikiLink, } from '../../editor/commands';
-import { SubmenuList } from './context-menu-submenu';
+import { SubmenuList } from './context-menu/submenu';
 import { t } from "../../lib/i18n";
 export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobile = false, }: {
     runCommand?: (command: (target: EditorView) => boolean) => void;

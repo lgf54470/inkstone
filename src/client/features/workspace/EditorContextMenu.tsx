@@ -6,32 +6,32 @@ import { useUi } from '../../store/ui';
 import { useNotes } from '../../store/notes';
 import { formatMarkdownTable, parseMarkdownTable, type ParsedTable } from '../../lib/markdown/table-editor';
 import { type EditorContextData, type PreviewContextData } from './context-menu-detect';
-import type { MenuCtx } from './context-menu-types';
+import type { MenuCtx } from './context-menu/types';
 import {
   buildEditorSelectionItems,
   buildPreviewSelectionItems,
-} from './context-menu-selection';
+} from './context-menu/selection';
 import {
   buildEditorTableItems,
   buildPreviewTableItems,
-} from './context-menu-table';
+} from './context-menu/table';
 import {
   buildImageItems,
   buildMathItems,
   buildCodeBlockItems,
   buildMermaidItems,
   buildChartItems,
-} from './context-menu-media';
+} from './context-menu/media';
 import {
   buildWikiLinkItems,
   buildLinkItems,
   buildFrontmatterItems,
   buildTaskItems,
-} from './context-menu-structure';
+} from './context-menu/structure';
 import {
   buildEditorBlankItems,
   buildPreviewCanvasItems,
-} from './context-menu-canvas';
+} from './context-menu/canvas';
 
 export interface EditorContextMenuProps {
   point: { x: number; y: number } | null;
