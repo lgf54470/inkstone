@@ -5,9 +5,23 @@ export function initInteractiveContent() {
   initTabs()
   initCodeCopy()
   initJsRunners()
+  initTaskCheckboxes()
   renderMermaid()
   renderCharts()
   initThemeObserver()
+}
+
+function initTaskCheckboxes() {
+  document.addEventListener('change', (e) => {
+    const target = e.target as HTMLElement
+    if (target instanceof HTMLInputElement && target.classList.contains('task-list-item-checkbox')) {
+      const li = target.closest<HTMLLIElement>('li.task-list-item')
+      if (li) {
+        li.classList.toggle('done', target.checked)
+        li.dataset.taskStatus = target.checked ? 'done' : 'todo'
+      }
+    }
+  })
 }
 
 function initTabs() {

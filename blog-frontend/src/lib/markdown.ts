@@ -542,6 +542,76 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
     return true
   })
 
+  // Core rule: Task List Items (<span class="task-label"> wrapper and status markers)
+  md.core.ruler.after('github-task-lists', 'task_labels_and_markers', (state) => {
+    for (let index = 1; index < state.tokens.length; index++) {
+      const inline = state.tokens[index]
+      if (!inline || inline.type !== 'inline' || !inline.children?.length) continue
+
+      let item: any = null
+      for (let i = index - 1; i >= Math.max(0, index - 3); i--) {
+        if (state.tokens[i]?.type === 'list_item_open') {
+          item = state.tokens[i]
+          break
+        }
+      }
+      if (!item) continue
+
+      const cbIdx = inline.children.findIndex(
+        (child) => child.type === 'html_inline' && /task-list-item-checkbox/.test(child.content)
+      )
+      let status = ''
+      let checked = false
+      if (cbIdx >= 0) {
+        const checkbox = inline.children[cbIdx]!
+        checked = /\schecked(?:=|\s|>)/.test(checkbox.content)
+        status = checked ? 'done' : 'todo'
+        checkbox.content = `<input type="checkbox" class="task-list-item-checkbox"${checked ? ' checked=""' : ''} data-task-status="${status}" />`
+        const labelOpen = new state.Token('html_inline', '', 0)
+        labelOpen.content = '<span class="task-label">'
+        const labelClose = new state.Token('html_inline', '', 0)
+        labelClose.content = '</span>'
+        inline.children.splice(cbIdx + 1, 0, labelOpen)
+        inline.children.push(labelClose)
+      } else {
+        const firstChild = inline.children[0]
+        if (firstChild?.type === 'text') {
+          const extMatch = /^\[([/\-?!])\][ \t]*/.exec(firstChild.content)
+          if (extMatch) {
+            const ch = extMatch[1]!
+            status =
+              ch === '/' ? 'in-progress' :
+              ch === '-' ? 'cancelled' :
+              ch === '?' ? 'question' :
+              ch === '!' ? 'important' : 'todo'
+            firstChild.content = firstChild.content.slice(extMatch[0].length)
+            item.attrJoin('class', 'task-list-item')
+            const listOpen = state.tokens.slice(0, index).reverse().find(
+              (t) => t.type === 'bullet_list_open' || t.type === 'ordered_list_open'
+            )
+            if (listOpen) listOpen.attrJoin('class', 'contains-task-list')
+            const checkbox = new state.Token('html_inline', '', 0)
+            checkbox.content = `<input type="checkbox" class="task-list-item-checkbox" data-task-status="${status}" />`
+            const labelOpen = new state.Token('html_inline', '', 0)
+            labelOpen.content = '<span class="task-label">'
+            const labelClose = new state.Token('html_inline', '', 0)
+            labelClose.content = '</span>'
+            inline.children.unshift(checkbox)
+            inline.children.splice(1, 0, labelOpen)
+            inline.children.push(labelClose)
+          }
+        }
+      }
+      if (status) {
+        item.attrSet('data-task-status', status)
+        item.attrJoin('class', `task-status-${status}`)
+        if (status === 'done') item.attrJoin('class', 'done')
+        else if (status === 'cancelled') item.attrJoin('class', 'cancelled')
+      }
+    }
+    return true
+  })
+
   // Core rule: Obsidian Callouts (> [!NOTE] ...)
   md.core.ruler.after('github-task-lists', 'obsidian_callouts', (state) => {
     for (let index = 0; index < state.tokens.length; index++) {

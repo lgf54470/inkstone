@@ -159,6 +159,7 @@
   width: 100%;
 }
 .ink-prose .task-label {
+  grid-column: 2;
   min-width: 0;
 }
 .ink-prose input[type='checkbox'] {
