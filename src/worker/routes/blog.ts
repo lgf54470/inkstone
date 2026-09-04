@@ -184,7 +184,7 @@ blogManageRoutes.get('/stats', requireAuth, async (c) => {
           }
         }
       }
-    } catch {}
+    } catch { /* Corrupt post tags are skipped so one bad row cannot break the dashboard. */ }
   }
 
   const totalPosts = totalPostsRow?.count || 0
@@ -1024,7 +1024,7 @@ blogManageRoutes.get('/tags', requireAuth, async (c) => {
           if (strT) countMap.set(strT, (countMap.get(strT) || 0) + 1)
         }
       }
-    } catch {}
+    } catch { /* Corrupt post tags are skipped so one bad row cannot break the dashboard. */ }
   }
 
   const tagsList: BlogTag[] = (tagRows || []).map((r) => ({
@@ -1712,7 +1712,7 @@ blogPublicRoutes.get('/tags', async (c) => {
           }
         }
       }
-    } catch {}
+    } catch { /* Corrupt post tags are skipped so one bad row cannot break the dashboard. */ }
   }
 
   const tags = Object.entries(tagCounts).map(([name, postsCount]) => ({

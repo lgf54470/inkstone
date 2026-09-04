@@ -785,6 +785,10 @@ const allowed = new Map([
     "// 'unsafe-inline', so a future injection point cannot execute scripts.",
     "// Ensure the schema exists (WeakMap-cached), then read against the raw D1.",
     "/** Adds a per-response nonce to every inline script in an HTML response and returns the CSP script source. */",
+    "/* An unparseable redirect_uri simply contributes no extra origin to the CSP. */",
+  ]],
+  ["src/worker/backup/s3.ts", [
+    "/* Best-effort: an unreadable error body falls back to the generic hints below. */",
   ]],
   ["src/worker/backup/snapshot.ts", [
     "/** Produces restorable JSON, readable Markdown, and attachment files for every backup target. */",
@@ -935,6 +939,7 @@ const allowed = new Map([
     "// Blog Manage Routes (Authenticated)",
     "// --------------------------------------------------------------------------",
     "// 1. Get Blog Stats & Dashboard",
+    "/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */",
     "// 1.1 Blog Global Analytics (Dashboard)",
     "// 2. Settings",
     "// 3. Slug availability check",
@@ -946,6 +951,7 @@ const allowed = new Map([
     "// 8. Delete / Unpublish Post",
     "// 9. Sync Post from Note",
     "// 10. Batch Post Operations",
+    "/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */",
     "// 11. Categories Management",
     "// --------------------------------------------------------------------------",
     "// 12. Comments Moderation Management (Complete Moderation Center)",
@@ -963,6 +969,7 @@ const allowed = new Map([
     "// Get previous and next posts for navigation",
     "// Public categories list with post counts",
     "// Public tags list with post counts",
+    "/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */",
     "// Public timeline (Archive by year and month)",
     "// Public calendar distribution",
     "// Map by YYYY-MM-DD",
@@ -998,6 +1005,9 @@ const allowed = new Map([
     "// every wanted id has been found is exact: unscanned notes could only add",
     "// more references for already-found ids, never create new ones.",
   ]],
+  ["src/worker/routes/mcp-authorize.ts", [
+    "/* Unreadable user settings fall back to the Accept-Language header. */",
+  ]],
   ["src/worker/routes/mcp-settings.ts", [
     "// Kick off the first batch immediately; the rest is drained by the cron.",
   ]],
@@ -1021,7 +1031,10 @@ const allowed = new Map([
     "// `tagsMatch=all` intersects the tag filters, otherwise any match qualifies.",
   ]],
   ["src/worker/routes/share.ts", [
+    "/* Malformed legacy tags degrade to \"no tags\" instead of failing the share render. */",
     "// If header referer is simply this share page itself, it's not an external referrer",
+    "/* An unparseable referer header simply means \"no external referrer\". */",
+    "/* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */",
     "// Real human visit = not an automated bot/spider",
   ]],
   ["src/worker/routes/sync.ts", [

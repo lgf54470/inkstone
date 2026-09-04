@@ -205,7 +205,6 @@ function authorizationFormAction(requestUrl: string, response: Response): string
     if ((callback.protocol === 'http:' || callback.protocol === 'https:') && callback.origin !== url.origin) {
       sources.push(callback.origin)
     }
-  } catch {
-  }
+  } catch { /* An unparseable redirect_uri simply contributes no extra origin to the CSP. */ }
   return sources.join(' ')
 }

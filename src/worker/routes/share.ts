@@ -95,7 +95,7 @@ function toShareInfo(
   } else if (row.tags) {
     try {
       parsedTags = JSON.parse(row.tags)
-    } catch {}
+    } catch { /* Malformed legacy tags degrade to "no tags" instead of failing the share render. */ }
   }
   const shareFolderId = extras?.folderId !== undefined ? extras.folderId : (row.folder_id ?? null)
 
@@ -1536,7 +1536,7 @@ shareRoutes.post('/:slug', async (c) => {
               if (u.pathname !== `/s/${slug}` && u.pathname !== `/s/${slug}/`) {
                 candidateReferrer = headerRef
               }
-            } catch {}
+            } catch { /* An unparseable referer header simply means "no external referrer". */ }
           }
         }
 
@@ -1552,7 +1552,7 @@ shareRoutes.post('/:slug', async (c) => {
               referrer = candidateReferrer
               referrerHost = parseReferrerHost(candidateReferrer)
             }
-          } catch {}
+          } catch { /* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */ }
         }
 
         const deviceType = parseDeviceType(ua)

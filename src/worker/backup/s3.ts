@@ -433,8 +433,7 @@ async function describeError(res: Response, key: string): Promise<string> {
       800,
     )
     detail = /<Message>([\s\S]*?)<\/Message>/.exec(text)?.[1] ?? text.replace(/<[^>]+>/g, ' ').trim()
-  } catch {
-  }
+  } catch { /* Best-effort: an unreadable error body falls back to the generic hints below. */ }
 
   const hints: Record<number, string> = {
     301: 'The bucket region does not match. Check region and endpoint',

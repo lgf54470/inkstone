@@ -398,8 +398,7 @@ function authorizationLocale(c: Context<AppBindings>): AppLocale {
     try {
       const settings = JSON.parse(user.settingsRaw) as { appearance?: { language?: unknown } }
       if (isAppLocale(settings.appearance?.language)) return settings.appearance.language
-    } catch {
-    }
+    } catch { /* Unreadable user settings fall back to the Accept-Language header. */ }
   }
   return c.req.header('Accept-Language')?.toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN'
 }
