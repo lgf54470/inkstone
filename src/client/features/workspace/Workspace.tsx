@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { EditorSelection } from '@codemirror/state';
-import { ArrowLeft, Columns2, Download, Eye, FileCode, FileDown, FileText, FolderClosed, Hash, History, LayoutGrid, Link as LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Plus, Share2, Star, X, } from 'lucide-react';
+import { ArrowLeft, Columns2, Download, Eye, FileCode, FileDown, FileText, FolderClosed, Globe, Hash, History, LayoutGrid, Link as LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Plus, Share2, Star, X, } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { api } from '../../lib/api';
 import { EditorContextMenu } from './EditorContextMenu';
@@ -319,6 +319,18 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
             label: t("share.manage_shares"),
             icon: <LayoutGrid size={13}/>,
             onSelect: () => openPanel('share-hub'),
+        },
+        {
+            id: 'blog-publish',
+            label: t("blog.publish_to_blog"),
+            icon: <Globe size={13}/>,
+            onSelect: () => openPanel('blog-publish'),
+        },
+        {
+            id: 'blog-hub',
+            label: t("blog.blog_hub"),
+            icon: <Globe size={13}/>,
+            onSelect: () => openPanel('blog-hub'),
         },
         {
             id: 'export-md',

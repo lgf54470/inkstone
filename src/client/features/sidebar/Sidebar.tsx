@@ -157,6 +157,7 @@ function SidebarRail({ onExpand }: {
     const view = useUi((s) => s.view);
     const panel = useUi((s) => s.panel);
     const openView = useUi((s) => s.openView);
+    const openPanel = useUi((s) => s.openPanel);
     return (<aside className="flex h-full min-h-0 flex-col items-center bg-[var(--bg-sunken)]">
       <div className="flex h-11 w-full shrink-0 items-center justify-center border-b border-[var(--border-subtle)]">
         <Tooltip label={t("sidebar.expand_navigation")} side="right">
@@ -170,6 +171,7 @@ function SidebarRail({ onExpand }: {
         <RailButton label={t("navigation.pinned")} active={view === 'pinned' && !panel} icon={<Pin size={16}/>} onClick={() => openView('pinned')}/>
         <RailButton label={t("navigation.favorites")} active={view === 'starred' && !panel} icon={<Star size={16}/>} onClick={() => openView('starred')}/>
         <RailButton label={t("navigation.share")} active={(view === 'shared' || panel === 'share-hub')} icon={<Share2 size={16}/>} onClick={() => openView('shared')}/>
+        <RailButton label={t("blog.blog_hub")} active={panel === 'blog-hub'} icon={<Globe size={16}/>} onClick={() => openPanel('blog-hub')}/>
         <div className="my-1 h-px w-6 bg-[var(--border-subtle)]"/>
         <RailButton label={t("navigation.all_notes")} active={view === 'all' && !panel} icon={<FileText size={16}/>} onClick={() => openView('all')}/>
         <RailButton label={t("navigation.trash")} active={view === 'trash' && !panel} icon={<Trash2 size={16}/>} onClick={() => openView('trash')}/>
@@ -272,6 +274,11 @@ function SidebarAccount({ rail = false }: {
               </span>
             </span>
           </button>
+          <Tooltip label={t("blog.blog_hub")} side="top">
+            <IconButton label={t("blog.blog_hub")} size="sm" onClick={() => openPanel('blog-hub')} className="mr-0.5 shrink-0 text-[var(--text-quaternary)] hover:text-[var(--accent)]">
+              <Globe size={14}/>
+            </IconButton>
+          </Tooltip>
           <Tooltip label={t("common.settings")} side="top">
             <IconButton label={t("common.settings")} size="sm" onClick={() => openPanel('settings')} className="mr-1 shrink-0 text-[var(--text-quaternary)] group-hover:text-[var(--text-tertiary)]">
               <SettingsIcon size={14} showDot={user.role === 'owner' && updateAvailable}/>
