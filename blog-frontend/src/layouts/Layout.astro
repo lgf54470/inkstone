@@ -28,9 +28,7 @@ const {
     <title>{title}</title>
     <meta name="description" content={description} />
     {coverUrl && <meta property="og:image" content={coverUrl} />}
-    {import.meta.env.PUBLIC_API_URL && (
-      <meta name="inkstone-api-url" content={import.meta.env.PUBLIC_API_URL} />
-    )}
+    <meta name="inkstone-api-url" content={import.meta.env.PUBLIC_API_URL || 'https://inkstone.333096.xyz'} />
 
     <!-- Immediately apply theme preferences before paint to prevent flicker -->
     <script is:inline>

@@ -59,11 +59,22 @@ export function BlogPublishModal({
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
   const [slugReason, setSlugReason] = useState('')
 
+  // Helper to extract clean image URL from Markdown or plain string
+  const cleanImageUrl = (raw: string) => {
+    if (!raw) return ''
+    const trimmed = raw.trim()
+    const match = /!\[.*?\]\(([^)\s]+)/.exec(trimmed)
+    if (match) return match[1]
+    const paren = /\(([^)\s]+)\)/.exec(trimmed)
+    if (paren) return paren[1]
+    return trimmed
+  }
+
   // Find first image in note content as suggested cover
   const firstImageInContent = useMemo(() => {
     if (!content) return null
     // Matches markdown images: ![alt](url)
-    const match = /!\[([^\]]*)\]\(([^)]+)\)/.exec(content)
+    const match = /!\[([^\]]*)\]\(([^)\s]+)/.exec(content)
     if (match) {
       return { alt: match[1] || 'Cover', url: match[2] || '', raw: match[0] }
     }
@@ -85,7 +96,7 @@ export function BlogPublishModal({
     if (initialPost) {
       setTitle(initialPost.title || note.title || '')
       setSlug(initialPost.slug || '')
-      setCoverUrl(initialPost.coverUrl || '')
+      setCoverUrl(cleanImageUrl(initialPost.coverUrl || ''))
       setCategoryId(initialPost.categoryId || null)
       setTags(initialPost.tags || [])
       setExcerpt(initialPost.excerpt || note.excerpt || '')
@@ -104,9 +115,9 @@ export function BlogPublishModal({
       // Check Frontmatter Cover
       const fmCover = typeof fmData.Cover === 'string' ? fmData.Cover : ''
       if (fmCover) {
-        setCoverUrl(fmCover)
+        setCoverUrl(cleanImageUrl(fmCover))
       } else if (firstImageInContent) {
-        setCoverUrl(firstImageInContent.raw)
+        setCoverUrl(firstImageInContent.url)
       } else {
         setCoverUrl('')
       }
@@ -284,7 +295,7 @@ export function BlogPublishModal({
             {firstImageInContent && (
               <button
                 type="button"
-                onClick={() => setCoverUrl(firstImageInContent.raw)}
+                onClick={() => setCoverUrl(firstImageInContent.url)}
                 className="inline-flex items-center gap-1 text-[11px] text-[var(--accent)] hover:underline"
               >
                 <Sparkles size={11} />

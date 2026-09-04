@@ -73,7 +73,7 @@ export default function CalendarWidget({ initialDays = [], isFullPage = false }:
 
   return (
     <div
-      className={`rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 text-[var(--text-primary)] transition-all ${
+      className={`rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 text-[var(--text-primary)] transition-all ${
         isFullPage ? 'max-w-2xl mx-auto shadow-md p-6' : 'shadow-xs'
       }`}
     >

@@ -1103,7 +1103,7 @@ blogPublicRoutes.get('/comments/:postSlug', async (c) => {
   const postSlug = c.req.param('postSlug')
 
   const post = await c.env.DB
-    .prepare('SELECT id, allow_comments FROM blog_posts WHERE slug = ?1 AND is_published = 1')
+    .prepare('SELECT id, allow_comments FROM blog_posts WHERE (slug = ?1 OR id = ?1) AND is_published = 1')
     .bind(postSlug)
     .first<{ id: string; allow_comments: number }>()
   if (!post) throw ApiError.notFound('Post not found')
@@ -1144,7 +1144,7 @@ blogPublicRoutes.post('/comments', async (c) => {
   if (!body.content?.trim()) throw ApiError.badRequest('Comment content is required')
 
   const post = await c.env.DB
-    .prepare('SELECT id, allow_comments FROM blog_posts WHERE slug = ?1 AND is_published = 1')
+    .prepare('SELECT id, allow_comments FROM blog_posts WHERE (slug = ?1 OR id = ?1) AND is_published = 1')
     .bind(body.postSlug)
     .first<{ id: string; allow_comments: number }>()
   if (!post) throw ApiError.notFound('Post not found')

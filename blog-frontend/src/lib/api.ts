@@ -21,10 +21,20 @@ export function getApiBase(): string {
     (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_API_URL) ||
     (typeof process !== 'undefined' && (process.env.PUBLIC_API_URL || process.env.API_URL))
   if (envUrl) return envUrl.replace(/\/+$/, '')
-  return 'http://localhost:8787'
+  return 'https://inkstone.333096.xyz'
 }
 
 const API_BASE = getApiBase()
+
+export function extractCoverUrl(raw?: string | null): string {
+  if (!raw) return ''
+  const trimmed = raw.trim()
+  const mdMatch = /!\[.*?\]\(([^)\s]+)/.exec(trimmed)
+  if (mdMatch) return mdMatch[1]
+  const parenMatch = /\(([^)\s]+)\)/.exec(trimmed)
+  if (parenMatch) return parenMatch[1]
+  return trimmed
+}
 
 const FALLBACK_SITE_INFO: BlogSiteInfo = {
   siteName: 'Inkstone Blog',
@@ -114,13 +124,47 @@ export function publish(post: BlogPost) {
   },
 ]
 
+function formatPost(p: any): BlogPost {
+  return {
+    id: p.id,
+    noteId: p.noteId || p.note_id || '',
+    title: p.title || '',
+    slug: p.slug || '',
+    excerpt: p.excerpt || '',
+    content: p.content || '',
+    coverUrl: extractCoverUrl(p.coverUrl || p.cover_url),
+    categoryId: p.categoryId || p.category_id || undefined,
+    categoryName: p.categoryName || p.category_name,
+    categorySlug: p.categorySlug || p.category_slug,
+    tags: Array.isArray(p.tags) ? p.tags : typeof p.tags === 'string' ? JSON.parse(p.tags || '[]') : [],
+    isPublished: Boolean(p.isPublished ?? p.is_published ?? true),
+    publishedAt: p.publishedAt || p.published_at || Date.now(),
+    allowComments: Boolean(p.allowComments ?? p.allow_comments ?? true),
+    isPinned: Boolean(p.isPinned ?? p.is_pinned ?? false),
+    views: p.views || 0,
+    commentsCount: p.commentsCount || p.comments_count || 0,
+    createdAt: p.createdAt || p.created_at || Date.now(),
+    updatedAt: p.updatedAt || p.updated_at || Date.now(),
+  }
+}
+
 export const api = {
   async getSiteInfo(): Promise<BlogSiteInfo> {
     try {
       const res = await fetch(`${API_BASE}/api/blog/public/site`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      return data.site || FALLBACK_SITE_INFO
+      const raw = data.settings || data.site || {}
+      return {
+        siteName: raw.siteName || FALLBACK_SITE_INFO.siteName,
+        subtitle: raw.subtitle || FALLBACK_SITE_INFO.subtitle,
+        bio: raw.bio || FALLBACK_SITE_INFO.bio,
+        authorName: raw.authorName || FALLBACK_SITE_INFO.authorName,
+        authorAvatar: raw.authorAvatar || '',
+        socialLinks: raw.socialLinks || FALLBACK_SITE_INFO.socialLinks,
+        postsPerPage: raw.postsPerPage || 10,
+        requireCommentApproval: Boolean(raw.requireCommentApproval),
+      }
     } catch {
       return FALLBACK_SITE_INFO
     }
@@ -143,7 +187,16 @@ export const api = {
 
       const res = await fetch(`${API_BASE}/api/blog/public/posts?${query.toString()}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return await res.json()
+      const data = await res.json()
+      const rawPosts: any[] = data.posts || []
+      const pagination = data.pagination || {}
+      const total = typeof pagination.total === 'number' ? pagination.total : (data.total ?? rawPosts.length)
+      const page = pagination.page ?? data.page ?? 1
+      const limit = pagination.limit ?? data.limit ?? 10
+      const totalPages = pagination.totalPages ?? data.totalPages ?? Math.max(1, Math.ceil(total / limit))
+
+      const posts = rawPosts.map(formatPost)
+      return { posts, total, page, limit, totalPages }
     } catch {
       let filtered = [...FALLBACK_POSTS]
       if (options?.tag) filtered = filtered.filter((p) => p.tags.includes(options.tag!))
@@ -167,7 +220,8 @@ export const api = {
       const res = await fetch(`${API_BASE}/api/blog/public/posts/${encodeURIComponent(slug)}`)
       if (!res.ok) return null
       const data = await res.json()
-      return data.post || null
+      if (!data.post) return null
+      return formatPost(data.post)
     } catch {
       return FALLBACK_POSTS.find((p) => p.slug === slug) ?? null
     }
@@ -178,7 +232,18 @@ export const api = {
       const res = await fetch(`${API_BASE}/api/blog/public/categories`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      return data.categories || []
+      const list: any[] = data.categories || []
+      return list.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        description: c.description || '',
+        color: c.color || 'var(--accent)',
+        icon: c.icon || undefined,
+        postsCount: c.postsCount ?? c.posts_count ?? 0,
+        createdAt: c.createdAt || c.created_at || Date.now(),
+        updatedAt: c.updatedAt || c.updated_at || Date.now(),
+      }))
     } catch {
       return [
         { id: 'cat-tech', name: '技术随笔', slug: 'tech', color: 'oklch(62% 0.16 252)', postsCount: 2, createdAt: Date.now(), updatedAt: Date.now() },
@@ -192,7 +257,11 @@ export const api = {
       const res = await fetch(`${API_BASE}/api/blog/public/tags`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      return data.tags || []
+      const list: any[] = data.tags || []
+      return list.map((t) => ({
+        name: t.name,
+        postsCount: t.postsCount ?? t.posts_count ?? 0,
+      }))
     } catch {
       return [
         { name: 'Inkstone', postsCount: 1 },
@@ -209,7 +278,33 @@ export const api = {
       const res = await fetch(`${API_BASE}/api/blog/public/timeline`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      return data.timeline || []
+      if (Array.isArray(data.timeline)) {
+        return data.timeline
+      }
+      if (data.timeline && typeof data.timeline === 'object') {
+        const groups: TimelineGroup[] = []
+        const years = Object.keys(data.timeline).map(Number).sort((a, b) => b - a)
+        for (const year of years) {
+          const monthMap = data.timeline[year] || {}
+          const months = Object.keys(monthMap).map(Number).sort((a, b) => b - a)
+          groups.push({
+            year,
+            months: months.map((m) => ({
+              month: m,
+              posts: (monthMap[m] || []).map((p: any) => ({
+                id: p.id,
+                title: p.title,
+                slug: p.slug,
+                publishedAt: p.publishedAt || p.published_at,
+                coverUrl: extractCoverUrl(p.coverUrl || p.cover_url),
+                views: p.views || 0,
+              })),
+            })),
+          })
+        }
+        return groups
+      }
+      return []
     } catch {
       const now = new Date()
       return [
@@ -241,7 +336,17 @@ export const api = {
       const res = await fetch(`${API_BASE}/api/blog/public/calendar?${q.toString()}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      return data.days || []
+      if (Array.isArray(data.days)) {
+        return data.days
+      }
+      if (data.calendar && typeof data.calendar === 'object') {
+        return Object.entries(data.calendar).map(([date, item]: [string, any]) => ({
+          date,
+          count: item.count || 0,
+          posts: item.posts || [],
+        }))
+      }
+      return []
     } catch {
       const today = new Date().toISOString().slice(0, 10)
       return [
@@ -254,38 +359,49 @@ export const api = {
     }
   },
 
-  async getComments(postId: string): Promise<BlogComment[]> {
+  async getComments(postSlugOrId: string): Promise<BlogComment[]> {
     try {
-      const res = await fetch(`${API_BASE}/api/blog/public/comments?postId=${encodeURIComponent(postId)}`)
+      const res = await fetch(`${API_BASE}/api/blog/public/comments/${encodeURIComponent(postSlugOrId)}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      return data.comments || []
+      const list: any[] = data.comments || []
+      return list.map((c) => ({
+        id: c.id,
+        postId: c.post_id || c.postId,
+        parentId: c.parent_id || c.parentId || null,
+        authorName: c.author_name || c.authorName,
+        authorEmail: c.author_email || c.authorEmail || '',
+        authorUrl: c.author_url || c.authorUrl || undefined,
+        authorAvatar: c.author_avatar || c.authorAvatar || undefined,
+        content: c.content,
+        status: c.status || 'approved',
+        createdAt: c.created_at || c.createdAt,
+        updatedAt: c.updated_at || c.updatedAt,
+      }))
     } catch {
-      return [
-        {
-          id: 'demo-c1',
-          postId,
-          authorName: '墨客',
-          content: '排版太惊艳了！和 Inkstone 笔记一模一样，爱了！',
-          status: 'approved',
-          createdAt: Date.now() - 3600 * 1000 * 5,
-          updatedAt: Date.now() - 3600 * 1000 * 5,
-        },
-      ]
+      return []
     }
   },
 
   async submitComment(payload: {
-    postId: string
+    postSlug?: string
+    postId?: string
     authorName: string
     authorEmail: string
     authorUrl?: string
     content: string
   }): Promise<{ ok: boolean; message: string; comment?: BlogComment }> {
+    const postSlug = payload.postSlug || payload.postId
     const res = await fetch(`${API_BASE}/api/blog/public/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        postSlug,
+        authorName: payload.authorName,
+        authorEmail: payload.authorEmail,
+        authorUrl: payload.authorUrl,
+        content: payload.content,
+      }),
     })
     const data = await res.json()
     if (!res.ok) {
