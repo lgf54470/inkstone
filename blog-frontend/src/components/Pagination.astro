@@ -1,0 +1,103 @@
+---
+interface Props {
+  currentPage: number
+  totalPages: number
+  baseUrl?: string
+}
+
+const { currentPage, totalPages, baseUrl = '' } = Astro.props
+
+if (totalPages <= 1) return null
+
+function getPageUrl(p: number) {
+  if (p === 1) return baseUrl || '/'
+  const separator = baseUrl.includes('?') ? '&' : '?'
+  return `${baseUrl}${separator}page=${p}`
+}
+
+const pages: (number | string)[] = []
+for (let i = 1; i <= totalPages; i++) {
+  if (
+    i === 1 ||
+    i === totalPages ||
+    (i >= currentPage - 1 && i <= currentPage + 1)
+  ) {
+    pages.push(i)
+  } else if (
+    (i === currentPage - 2 && i > 1) ||
+    (i === currentPage + 2 && i < totalPages)
+  ) {
+    pages.push('...')
+  }
+}
+// Remove consecutive '...'
+const cleanedPages = pages.filter((item, idx) => {
+  if (item === '...' && pages[idx - 1] === '...') return false
+  return true
+})
+---
+
+<nav class="flex items-center justify-center gap-1.5 my-10" aria-label="分页导航">
+  <!-- Prev -->
+  {currentPage > 1 ? (
+    <a
+      href={getPageUrl(currentPage - 1)}
+      class="px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
+    >
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+      <span>上一页</span>
+    </a>
+  ) : (
+    <span class="px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs text-[var(--text-quaternary)] opacity-50 cursor-not-allowed flex items-center gap-1">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+      <span>上一页</span>
+    </span>
+  )}
+
+  <!-- Pages -->
+  {cleanedPages.map((p) => {
+    if (p === '...') {
+      return (
+        <span class="px-2 py-1.5 text-xs text-[var(--text-tertiary)]">...</span>
+      )
+    }
+    const isCurrent = p === currentPage
+    return (
+      <a
+        href={getPageUrl(p as number)}
+        class={`w-8 h-8 rounded-lg text-xs font-medium flex items-center justify-center transition-all ${
+          isCurrent
+            ? 'bg-[var(--accent)] text-white shadow-xs font-bold'
+            : 'border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+        }`}
+        aria-current={isCurrent ? 'page' : undefined}
+      >
+        {p}
+      </a>
+    )
+  })}
+
+  <!-- Next -->
+  {currentPage < totalPages ? (
+    <a
+      href={getPageUrl(currentPage + 1)}
+      class="px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
+    >
+      <span>下一页</span>
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </a>
+  ) : (
+    <span class="px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs text-[var(--text-quaternary)] opacity-50 cursor-not-allowed flex items-center gap-1">
+      <span>下一页</span>
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </span>
+  )}
+</nav>

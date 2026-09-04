@@ -18,6 +18,8 @@ export type PanelName =
   | 'versions'
   | 'share'
   | 'share-hub'
+  | 'blog-hub'
+  | 'blog-publish'
   | 'templates'
   | 'info'
   | 'folders'

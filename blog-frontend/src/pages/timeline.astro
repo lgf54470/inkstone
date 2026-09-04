@@ -1,0 +1,91 @@
+---
+import Layout from '../layouts/Layout.astro'
+import { api } from '../lib/api'
+
+const timeline = await api.getTimeline()
+const totalCount = timeline.reduce(
+  (acc, y) => acc + y.months.reduce((mAcc, m) => mAcc + m.posts.length, 0),
+  0
+)
+---
+
+<Layout title="时间轴归档 - Inkstone Blog" description="所有公开发布的博文时间轴与归档记录">
+  <div class="max-w-3xl mx-auto space-y-8">
+    <!-- Header -->
+    <header class="text-center py-6 border-b border-[var(--border-subtle)] space-y-2">
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">
+        时间轴归档
+      </h1>
+      <p class="text-xs text-[var(--text-tertiary)]">
+        记录走过的路与写过的文字，目前共收录 <span class="font-bold text-[var(--accent)]">{totalCount}</span> 篇随笔
+      </p>
+    </header>
+
+    <!-- Timeline Content -->
+    {timeline.length === 0 ? (
+      <div class="py-16 text-center text-xs text-[var(--text-tertiary)]">
+        暂无归档文章
+      </div>
+    ) : (
+      <div class="relative border-l-2 border-[var(--border-subtle)] ml-4 sm:ml-8 pl-6 sm:pl-8 space-y-10 my-8">
+        {timeline.map((group) => (
+          <div class="space-y-6">
+            {/* Year Node */}
+            <div class="relative flex items-center gap-3 -ml-9 sm:-ml-11">
+              <div class="w-6 h-6 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs ring-4 ring-[var(--bg-base)] shadow-xs">
+                ★
+              </div>
+              <h2 class="text-xl font-extrabold text-[var(--text-primary)] font-serif tracking-tight">
+                {group.year} 年
+              </h2>
+            </div>
+
+            {/* Months */}
+            {group.months.map((monthGroup) => (
+              <div class="space-y-3 pl-2 sm:pl-4">
+                <h3 class="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+                  {monthGroup.month} 月
+                </h3>
+
+                <div class="space-y-2.5">
+                  {monthGroup.posts.map((post) => {
+                    const postDate = new Date(post.publishedAt).toLocaleDateString('zh-CN', {
+                      month: '2-digit',
+                      day: '2-digit',
+                    })
+                    return (
+                      <a
+                        href={`/posts/${post.slug}`}
+                        class="group flex items-center justify-between gap-4 p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:border-[var(--accent)] hover:bg-[var(--accent-softer)] transition-all shadow-2xs"
+                      >
+                        <div class="flex items-center gap-3 min-w-0">
+                          <time class="text-xs font-mono text-[var(--text-quaternary)] group-hover:text-[var(--accent)] shrink-0">
+                            {postDate}
+                          </time>
+                          <span class="text-sm font-medium text-[var(--text-primary)] group-hover:text-[var(--accent)] truncate">
+                            {post.title}
+                          </span>
+                        </div>
+
+                        <div class="flex items-center gap-2 shrink-0">
+                          {typeof post.views === 'number' && (
+                            <span class="text-[11px] text-[var(--text-quaternary)]">
+                              {post.views} 阅读
+                            </span>
+                          )}
+                          <svg class="w-3.5 h-3.5 text-[var(--text-quaternary)] group-hover:text-[var(--accent)] group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </a>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</Layout>

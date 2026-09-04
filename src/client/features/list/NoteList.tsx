@@ -1,5 +1,5 @@
 import { memo, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDownWideNarrow, Bookmark, CalendarDays, Check, CheckSquare2, ChevronLeft, ChevronRight, Columns2, Copy, FileCode, FileDown, FileText, FolderClosed, FolderInput, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Share2, Star, StarOff, Trash2, X, } from 'lucide-react';
+import { Archive, ArrowDownWideNarrow, Bookmark, CalendarDays, Check, CheckSquare2, ChevronLeft, ChevronRight, Columns2, Copy, FileCode, FileDown, FileText, FolderClosed, FolderInput, Globe, Hash, LayoutTemplate, MoreHorizontal, Pin, PinOff, PanelLeft, Plus, RotateCcw, Search, Share2, Star, StarOff, Trash2, X, } from 'lucide-react';
 import type { DateRangeFilter, NoteSummary, SortKey, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { groupLabel } from '../../lib/time';
@@ -33,6 +33,9 @@ import { ShareQrModal } from '../share/ShareQrModal';
 import { ShareNoteAnalyticsModal } from '../share/ShareNoteAnalyticsModal';
 import { ShareNoteSubmenu } from '../share/ShareNoteSubmenu';
 import { useShareStore } from '../share/share-store';
+import { BlogNoteSubmenu } from '../blog/BlogNoteSubmenu';
+import { BlogPublishModal } from '../blog/BlogPublishModal';
+import { useBlogStore } from '../blog/blog-store';
 import { TagPill } from '../../components/TagPill';
 import { removeTagFromNote } from '../tags/tagMutations';
 import { t, useLocale, type MessageKey } from "../../lib/i18n";
@@ -601,6 +604,10 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
     const shares = useShareStore((s) => s.shares);
     const noteShare = useMemo(() => shares.find((s) => s.noteId === note.id) ?? null, [shares, note.id]);
     const computedIsShared = isShared ?? Boolean(noteShare);
+    const [blogPublishOpen, setBlogPublishOpen] = useState(false);
+    const blogPosts = useBlogStore((s) => s.posts);
+    const noteBlogPost = useMemo(() => blogPosts.find((p) => p.noteId === note.id) ?? null, [blogPosts, note.id]);
+    const isBlogPublished = Boolean(noteBlogPost && noteBlogPost.isPublished);
 
 
     const handleSelectFolder = (folderId: string | null) => {
@@ -731,6 +738,27 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
                     ),
                 } : {
                     onSelect: () => setShareModalOpen(true),
+                }),
+            },
+            {
+                id: 'blog',
+                label: isBlogPublished ? t("blog.blog_menu") : t("blog.publish_to_blog"),
+                icon: <Globe size={13}/>,
+                ...(isBlogPublished && noteBlogPost ? {
+                    submenu: ({ closeMenu }) => (
+                        <BlogNoteSubmenu
+                            noteId={note.id}
+                            post={noteBlogPost}
+                            closeMenu={closeMenu}
+                            onOpenSettings={() => setBlogPublishOpen(true)}
+                            onOpenStats={() => {
+                                useBlogStore.getState().setActiveTab('comments');
+                                useUi.getState().openPanel('blog-hub');
+                            }}
+                        />
+                    ),
+                } : {
+                    onSelect: () => setBlogPublishOpen(true),
                 }),
             },
             {
@@ -944,6 +972,14 @@ const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, pos
           open={analyticsOpen}
           onClose={() => setAnalyticsOpen(false)}
           noteId={note.id}
+        />
+      )}
+      {blogPublishOpen && (
+        <BlogPublishModal
+          open={blogPublishOpen}
+          onClose={() => setBlogPublishOpen(false)}
+          noteId={note.id}
+          post={noteBlogPost}
         />
       )}
     </>);

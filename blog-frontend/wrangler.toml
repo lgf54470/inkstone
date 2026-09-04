@@ -1,0 +1,15 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "inkstone-blog"
+compatibility_date = "2026-05-01"
+
+# Cloudflare Workers 现代静态资产托管（Workers Static Assets）
+# Astro 构建产物输出目录为 ./dist
+[assets]
+directory = "./dist"
+not_found_handling = "404-page"
+html_handling = "auto-trailing-slash"
+
+[vars]
+# 后端 Inkstone Worker 服务的生产域名（例如：https://inkstone.your-domain.workers.dev）
+# 部署后可在 Cloudflare Dashboard 或此处配置
+PUBLIC_API_URL = "http://localhost:8787"

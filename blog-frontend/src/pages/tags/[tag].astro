@@ -1,0 +1,65 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import PostCard from '../../components/PostCard.astro'
+import Pagination from '../../components/Pagination.astro'
+import { api } from '../../lib/api'
+
+export async function getStaticPaths() {
+  const tags = await api.getTags()
+  return tags.map((t) => ({
+    params: { tag: t.name },
+    props: { tagName: t.name },
+  }))
+}
+
+interface Props {
+  tagName?: string
+}
+
+let tagName = Astro.props.tagName || Astro.params.tag
+if (!tagName) {
+  return Astro.redirect('/tags')
+}
+
+const url = Astro.url
+const page = parseInt(url.searchParams.get('page') || '1', 10)
+
+const [postsData, categories] = await Promise.all([
+  api.getPosts({ tag: tagName, page, limit: 10 }),
+  api.getCategories(),
+])
+
+const categoryMap = new Map(categories.map((c) => [c.id, c]))
+---
+
+<Layout title={`标签：#${tagName} - Inkstone Blog`} description={`包含 #${tagName} 标签的博文列表`}>
+  <div class="max-w-4xl mx-auto space-y-8">
+    <header class="py-6 border-b border-[var(--border-subtle)] space-y-3">
+      <a href="/tags" class="text-xs text-[var(--accent)] hover:underline inline-flex items-center gap-1">
+        ← 返回所有标签
+      </a>
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">
+          #{tagName}
+        </h1>
+        <span class="text-xs px-2.5 py-0.5 rounded-full bg-[var(--bg-sunken)] text-[var(--text-tertiary)]">
+          {postsData.total} 篇
+        </span>
+      </div>
+    </header>
+
+    {postsData.posts.length === 0 ? (
+      <div class="py-16 text-center text-xs text-[var(--text-tertiary)]">
+        该标签下暂无文章
+      </div>
+    ) : (
+      <div class="space-y-4">
+        {postsData.posts.map((post) => (
+          <PostCard post={post} category={post.categoryId ? categoryMap.get(post.categoryId) : undefined} />
+        ))}
+      </div>
+    )}
+
+    <Pagination currentPage={postsData.page} totalPages={postsData.totalPages} baseUrl={`/tags/${encodeURIComponent(tagName)}`} />
+  </div>
+</Layout>

@@ -1,0 +1,74 @@
+---
+import '../styles/global.css'
+import Header from '../components/Header.astro'
+import Footer from '../components/Footer.astro'
+import AppearanceDrawer from '../components/AppearanceDrawer'
+import SearchModal from '../components/SearchModal'
+
+interface Props {
+  title?: string
+  description?: string
+  coverUrl?: string | null
+}
+
+const {
+  title = 'Inkstone Blog',
+  description = '基于 Inkstone 与 Astro 驱动的高品质静态博客系统',
+  coverUrl,
+} = Astro.props
+---
+
+<!doctype html>
+<html lang="zh-CN" data-theme="light" data-accent="cinnabar" data-background="paper" data-density="comfortable">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {coverUrl && <meta property="og:image" content={coverUrl} />}
+    {import.meta.env.PUBLIC_API_URL && (
+      <meta name="inkstone-api-url" content={import.meta.env.PUBLIC_API_URL} />
+    )}
+
+    <!-- Immediately apply theme preferences before paint to prevent flicker -->
+    <script is:inline>
+      ;(function () {
+        try {
+          const raw = localStorage.getItem('inkstone-blog-appearance')
+          const cfg = raw ? JSON.parse(raw) : {}
+          const theme = cfg.theme || 'system'
+          const resolvedTheme =
+            theme === 'system'
+              ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+              : theme
+          const doc = document.documentElement
+          doc.setAttribute('data-theme', resolvedTheme)
+          doc.setAttribute('data-accent', cfg.accent || 'cinnabar')
+          doc.setAttribute('data-background', cfg.background || 'paper')
+          doc.setAttribute('data-density', cfg.density || 'comfortable')
+          doc.setAttribute('lang', cfg.lang || 'zh-CN')
+        } catch (e) {}
+      })()
+    </script>
+  </head>
+  <body class="min-h-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] antialiased transition-colors selection:bg-[var(--selection)]">
+    <!-- Navigation Header -->
+    <Header />
+
+    <!-- Main Page Content -->
+    <main class="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <slot />
+    </main>
+
+    <!-- Site Footer -->
+    <Footer />
+
+    <!-- Interactive Client Modals/Drawers -->
+    <AppearanceDrawer client:load />
+    <SearchModal client:load />
+  </body>
+</html>

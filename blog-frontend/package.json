@@ -1,0 +1,40 @@
+{
+  "name": "blog-frontend",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "deploy": "astro build && wrangler deploy -c wrangler.toml",
+    "deploy:check": "astro build && wrangler deploy --dry-run -c wrangler.toml",
+    "deploy:pages": "astro build && wrangler pages deploy dist --project-name inkstone-blog",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/react": "^6.0.5",
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.3.1",
+    "clsx": "^2.1.1",
+    "katex": "^0.18.5",
+    "lucide-react": "^1.40.0",
+    "markdown-it": "^15.0.1",
+    "prismjs": "^1.30.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwindcss": "^4.3.3"
+  },
+  "allowScripts": {
+    "esbuild": true
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.8",
+    "@types/markdown-it": "^14.2.0",
+    "@types/prismjs": "^1.26.6",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7"
+  }
+}

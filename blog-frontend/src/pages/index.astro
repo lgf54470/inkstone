@@ -1,0 +1,169 @@
+---
+import Layout from '../layouts/Layout.astro'
+import PostCard from '../components/PostCard.astro'
+import Pagination from '../components/Pagination.astro'
+import CalendarWidget from '../components/CalendarWidget'
+import { api } from '../lib/api'
+
+// Query params
+const url = Astro.url
+const page = parseInt(url.searchParams.get('page') || '1', 10)
+
+// Data fetching
+const [siteInfo, postsData, categories, tags, calendarDays] = await Promise.all([
+  api.getSiteInfo(),
+  api.getPosts({ page, limit: 10 }),
+  api.getCategories(),
+  api.getTags(),
+  api.getCalendar(),
+])
+
+const categoryMap = new Map(categories.map((c) => [c.id, c]))
+---
+
+<Layout title={`${siteInfo.siteName} - ${siteInfo.subtitle}`} description={siteInfo.bio}>
+  <!-- Hero Banner -->
+  <section class="mb-10 text-center py-6 px-4 rounded-3xl bg-[var(--bg-sunken)] border border-[var(--border-subtle)] relative overflow-hidden">
+    <div class="relative z-10 max-w-2xl mx-auto space-y-3">
+      <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-[var(--accent-softer)] text-[var(--accent)] border border-[var(--accent-muted)]/30">
+        ✨ 欢迎来到博客
+      </span>
+      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--text-primary)]">
+        {siteInfo.siteName}
+      </h1>
+      <p class="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed">
+        {siteInfo.subtitle}
+      </p>
+    </div>
+  </section>
+
+  <!-- Two Columns Content -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <!-- Main Column: Post List -->
+    <section class="lg:col-span-8 space-y-5">
+      <div class="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
+        <h2 class="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
+          <span>精选博文</span>
+          <span class="text-xs font-normal text-[var(--text-tertiary)]">({postsData.total} 篇)</span>
+        </h2>
+      </div>
+
+      {postsData.posts.length === 0 ? (
+        <div class="py-16 text-center rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--bg-surface)]">
+          <p class="text-sm text-[var(--text-tertiary)]">暂无已发布的文章，请在 Inkstone 客户端点击发布！</p>
+        </div>
+      ) : (
+        <div class="space-y-4">
+          {postsData.posts.map((post) => (
+            <PostCard post={post} category={post.categoryId ? categoryMap.get(post.categoryId) : undefined} />
+          ))}
+        </div>
+      )}
+
+      <!-- Pagination -->
+      <Pagination currentPage={postsData.page} totalPages={postsData.totalPages} baseUrl="/" />
+    </section>
+
+    <!-- Sidebar Column -->
+    <aside class="lg:col-span-4 space-y-6">
+      <!-- Author Profile Card -->
+      <div class="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-xs">
+        <div class="flex items-center gap-3 mb-3">
+          {siteInfo.authorAvatar ? (
+            <img
+              src={siteInfo.authorAvatar}
+              alt={siteInfo.authorName}
+              class="w-12 h-12 rounded-full object-cover border border-[var(--border-subtle)]"
+            />
+          ) : (
+            <div class="w-12 h-12 rounded-full bg-[var(--accent)] text-white font-serif font-bold text-lg flex items-center justify-center shadow-xs">
+              {siteInfo.authorName.slice(0, 1)}
+            </div>
+          )}
+          <div>
+            <h3 class="font-bold text-sm text-[var(--text-primary)]">{siteInfo.authorName}</h3>
+            <p class="text-xs text-[var(--text-tertiary)]">Inkstone 笔耕客</p>
+          </div>
+        </div>
+        <p class="text-xs text-[var(--text-secondary)] leading-relaxed mb-4">
+          {siteInfo.bio}
+        </p>
+        <div class="grid grid-cols-3 gap-2 text-center py-2.5 px-3 rounded-xl bg-[var(--bg-sunken)] text-xs">
+          <div>
+            <div class="font-bold text-[var(--text-primary)]">{postsData.total}</div>
+            <div class="text-[11px] text-[var(--text-quaternary)]">文章</div>
+          </div>
+          <div>
+            <div class="font-bold text-[var(--text-primary)]">{categories.length}</div>
+            <div class="text-[11px] text-[var(--text-quaternary)]">分类</div>
+          </div>
+          <div>
+            <div class="font-bold text-[var(--text-primary)]">{tags.length}</div>
+            <div class="text-[11px] text-[var(--text-quaternary)]">标签</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar Widget -->
+      <CalendarWidget client:visible initialDays={calendarDays} />
+
+      <!-- Categories Widget -->
+      {categories.length > 0 && (
+        <div class="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-xs">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+              分类专题
+            </h3>
+            <a href="/categories" class="text-xs text-[var(--accent)] hover:underline">
+              查看全部
+            </a>
+          </div>
+          <div class="space-y-1.5">
+            {categories.slice(0, 6).map((cat) => (
+              <a
+                href={`/categories/${cat.slug}`}
+                class="flex items-center justify-between p-2 rounded-lg text-xs hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                <div class="flex items-center gap-2">
+                  <span
+                    class="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: cat.color || 'var(--accent)' }}
+                  />
+                  <span>{cat.name}</span>
+                </div>
+                <span class="text-[11px] px-1.5 py-0.5 rounded bg-[var(--bg-sunken)] text-[var(--text-quaternary)]">
+                  {cat.postsCount || 0}
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <!-- Tags Widget -->
+      {tags.length > 0 && (
+        <div class="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-xs">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+              标签云
+            </h3>
+            <a href="/tags" class="text-xs text-[var(--accent)] hover:underline">
+              全部标签
+            </a>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            {tags.map((tag) => (
+              <a
+                href={`/tags/${encodeURIComponent(tag.name)}`}
+                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-[var(--bg-sunken)] hover:bg-[var(--accent-softer)] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
+              >
+                <span>#{tag.name}</span>
+                <span class="text-[10px] text-[var(--text-quaternary)]">{tag.postsCount}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </aside>
+  </div>
+</Layout>

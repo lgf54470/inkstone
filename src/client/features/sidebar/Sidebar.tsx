@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArrowDown, ArrowUp, ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, CornerUpLeft, Download, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Share2, Smile, Star, Sun, Tag as TagIcon, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, CornerUpLeft, Download, FilePlus2, FileText, FolderClosed, FolderInput, FolderOpen, FolderPlus, Globe, Hash, Inbox, LogOut, Moon, MoreHorizontal, Palette, PanelLeft, PanelLeftClose, Pencil, Pin, Plus, Search, SearchX, Settings, Settings2, Share2, Smile, Star, Sun, Tag as TagIcon, Trash2, Waypoints, X, } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
 import type { Tag, ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
@@ -27,6 +27,7 @@ import { SidebarCalendar } from './SidebarCalendar';
 import { CalendarTree, TodoTree } from './CalendarTree';
 import { t } from "../../lib/i18n";
 import { useShareStore } from '../share/share-store';
+import { useBlogStore } from '../blog/blog-store';
 export function Sidebar({ collapsed = false, onCollapse, }: {
     collapsed?: boolean;
     onCollapse?: () => void;
@@ -43,6 +44,7 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
 
     useEffect(() => {
       void useShareStore.getState().loadShares();
+      void useBlogStore.getState().loadPosts();
     }, []);
 
     const shareCount = globalStats?.totalShares ?? (shares.length > 0 ? shares.length : undefined);
@@ -219,6 +221,12 @@ function SidebarAccount({ rail = false }: {
             icon: <SettingsIcon size={13} showDot={user.role === 'owner' && updateAvailable}/>,
             combo: 'mod+,',
             onSelect: () => openPanel('settings'),
+        },
+        {
+            id: 'blog-hub',
+            label: t("blog.blog_hub"),
+            icon: <Globe size={13}/>,
+            onSelect: () => openPanel('blog-hub'),
         },
         {
             id: 'graph',

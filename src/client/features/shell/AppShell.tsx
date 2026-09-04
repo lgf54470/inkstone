@@ -28,6 +28,8 @@ const ShortcutsPanel = lazy(() => import('../command/ShortcutsPanel').then((m) =
 const GraphPanel = lazy(() => import('../graph/GraphPanel').then((m) => ({ default: m.GraphPanel })));
 const ShareHubModal = lazy(() => import('../share/ShareHubModal').then((m) => ({ default: m.ShareHubModal })));
 const ShareEditModal = lazy(() => import('../share/ShareEditModal').then((m) => ({ default: m.ShareEditModal })));
+const BlogHubModal = lazy(() => import('../blog/BlogHubModal').then((m) => ({ default: m.BlogHubModal })));
+const BlogPublishModal = lazy(() => import('../blog/BlogPublishModal').then((m) => ({ default: m.BlogPublishModal })));
 const VersionsPanel = lazy(() => import('../workspace/VersionsPanel').then((m) => ({ default: m.VersionsPanel })));
 const TemplateGallery = lazy(() => import('../templates/TemplateGallery').then((m) => ({ default: m.TemplateGallery })));
 const ManageFoldersModal = lazy(() => import('../folders/ManageFoldersModal').then((m) => ({ default: m.ManageFoldersModal })));
@@ -212,6 +214,16 @@ function OverlayHost() {
         )}
         {(panel === 'share-hub' || (panel === 'share' && !activeNoteId)) && (
           <ShareHubModal open={true} onClose={closePanel} initialNoteId={activeNoteId ?? undefined} />
+        )}
+        {panel === 'blog-hub' && (
+          <BlogHubModal open={true} onClose={closePanel} initialNoteId={activeNoteId ?? undefined} />
+        )}
+        {panel === 'blog-publish' && activeNoteId && (
+          <BlogPublishModal
+            open={true}
+            onClose={closePanel}
+            noteId={activeNoteId}
+          />
         )}
         {panel === 'versions' && <VersionsPanel onClose={closePanel}/>}
         {panel === 'templates' && <TemplateGallery onClose={closePanel}/>}

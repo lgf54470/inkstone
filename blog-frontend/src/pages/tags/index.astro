@@ -1,0 +1,45 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import { api } from '../../lib/api'
+
+const tags = await api.getTags()
+---
+
+<Layout title="标签检索 - Inkstone Blog" description="所有文章标签索引与检索目录">
+  <div class="max-w-3xl mx-auto space-y-8">
+    <header class="text-center py-6 border-b border-[var(--border-subtle)] space-y-2">
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">
+        标签检索
+      </h1>
+      <p class="text-xs text-[var(--text-tertiary)]">
+        共发现 <span class="font-bold text-[var(--accent)]">{tags.length}</span> 个独立标签
+      </p>
+    </header>
+
+    {tags.length === 0 ? (
+      <div class="py-16 text-center text-xs text-[var(--text-tertiary)]">
+        暂无标签
+      </div>
+    ) : (
+      <div class="p-8 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-wrap gap-2.5 items-center justify-center">
+        {tags.map((t) => {
+          // Scale size slightly based on count
+          const isPopular = t.postsCount > 2
+          return (
+            <a
+              href={`/tags/${encodeURIComponent(t.name)}`}
+              class={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] hover:border-[var(--accent)] hover:bg-[var(--accent-softer)] transition-all ${
+                isPopular ? 'font-bold text-sm text-[var(--accent)]' : 'text-xs text-[var(--text-secondary)]'
+              }`}
+            >
+              <span>#{t.name}</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-[var(--bg-sunken)] text-[var(--text-tertiary)] group-hover:text-[var(--accent)]">
+                {t.postsCount}
+              </span>
+            </a>
+          )
+        })}
+      </div>
+    )}
+  </div>
+</Layout>

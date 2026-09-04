@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Archive, CalendarDays, Clock, Columns2, Download, Eye, FilePlus2, FileText, FolderClosed, FolderPlus, Hash, Keyboard, LayoutTemplate, Moon, Palette, Pencil, Plus, Search, Settings, Share2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
+import { Archive, CalendarDays, Clock, Columns2, Download, Eye, FilePlus2, FileText, FolderClosed, FolderPlus, Globe, Hash, Keyboard, LayoutTemplate, Moon, Palette, Pencil, Plus, Search, Settings, Share2, Star, Sun, Trash2, Waypoints, X, } from 'lucide-react';
 import type { NoteSummary, SearchHit } from '@shared/types';
 import { truncateText } from '@shared/text-utils';
 import { cn } from '../../lib/cn';
@@ -225,6 +225,14 @@ export function CommandPalette({ onClose }: {
                         run: () => openPanel('share'),
                     },
                     {
+                        id: 'cmd-blog-publish',
+                        kind: 'command' as const,
+                        label: t("blog.publish_to_blog"),
+                        icon: <Globe size={14}/>,
+                        group: currentNoteGroup,
+                        run: () => openPanel('blog-publish'),
+                    },
+                    {
                         id: 'cmd-delete',
                         kind: 'command' as const,
                         label: t("command.move_the_current_note_to_trash"),
@@ -315,6 +323,14 @@ export function CommandPalette({ onClose }: {
                 icon: <Share2 size={14}/>,
                 group: t("command.commands"),
                 run: () => openPanel('share-hub'),
+            },
+            {
+                id: 'cmd-blog-hub',
+                kind: 'command',
+                label: t("blog.blog_hub"),
+                icon: <Globe size={14}/>,
+                group: t("command.commands"),
+                run: () => openPanel('blog-hub'),
             },
             {
                 id: 'cmd-settings',

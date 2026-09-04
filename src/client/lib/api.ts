@@ -12,6 +12,12 @@ import type {
   BackupTargetInput,
   BackupTargetPatchInput,
   Backlink,
+  BlogPost,
+  BlogCategory,
+  BlogComment,
+  BlogCommentStatus,
+  BlogStats,
+  BlogSettings,
   CommunityTemplate,
   CommunityTemplateInput,
   Folder,
@@ -698,6 +704,66 @@ export const api = {
     remove: (noteId: string) => request<{ ok: true }>(`/api/share/${noteId}`, { method: 'DELETE' }),
     read: (slug: string, password?: string, signal?: AbortSignal, referrer?: string) =>
       request<PublicNote>(`/api/public/${slug}`, { method: 'POST', body: { password, referrer }, signal }),
+  },
+
+  blog: {
+    stats: (signal?: AbortSignal) =>
+      request<{ stats: BlogStats }>('/api/blog/stats', { signal }),
+    settings: {
+      get: (signal?: AbortSignal) =>
+        request<{ settings: BlogSettings }>('/api/blog/settings', { signal }),
+      patch: (body: Partial<BlogSettings>) =>
+        request<{ settings: BlogSettings }>('/api/blog/settings', { method: 'PATCH', body }),
+    },
+    checkSlug: (slug: string, currentPostId?: string) =>
+      request<{ available: boolean; reason?: string }>(`/api/blog/check-slug${toQuery({ slug, currentPostId })}`),
+    getNotePost: (noteId: string, signal?: AbortSignal) =>
+      request<{ post: BlogPost | null }>(`/api/blog/note-post/${noteId}`, { signal }),
+    posts: {
+      list: (params?: { status?: string; categoryId?: string; tag?: string; search?: string; sort?: string }, signal?: AbortSignal) =>
+        request<{ posts: BlogPost[] }>(`/api/blog/posts${toQuery(params ?? {})}`, { signal }),
+      create: (body: {
+        noteId: string
+        title: string
+        slug?: string
+        excerpt?: string
+        content?: string
+        coverUrl?: string
+        categoryId?: string | null
+        tags?: string[]
+        isPublished?: boolean
+        allowComments?: boolean
+        isPinned?: boolean
+      }) => request<{ ok: true; id: string; slug: string }>('/api/blog/posts', { method: 'POST', body }),
+      patch: (id: string, body: Partial<BlogPost>) =>
+        request<{ ok: true }>(`/api/blog/posts/${id}`, { method: 'PATCH', body }),
+      remove: (id: string) =>
+        request<{ ok: true }>(`/api/blog/posts/${id}`, { method: 'DELETE' }),
+      sync: (id: string) =>
+        request<{ ok: true; syncedAt: number }>(`/api/blog/posts/${id}/sync`, { method: 'POST' }),
+      batch: (action: 'publish' | 'unpublish' | 'delete' | 'setCategory', postIds: string[], categoryId?: string | null) =>
+        request<{ ok: true; count: number }>('/api/blog/posts/batch', { method: 'POST', body: { action, postIds, categoryId } }),
+    },
+    categories: {
+      list: (signal?: AbortSignal) =>
+        request<{ categories: BlogCategory[] }>('/api/blog/categories', { signal }),
+      create: (body: { name: string; slug?: string; description?: string; color?: string; icon?: string }) =>
+        request<{ category: BlogCategory }>('/api/blog/categories', { method: 'POST', body }),
+      patch: (id: string, body: Partial<BlogCategory>) =>
+        request<{ ok: true }>(`/api/blog/categories/${id}`, { method: 'PATCH', body }),
+      remove: (id: string) =>
+        request<{ ok: true }>(`/api/blog/categories/${id}`, { method: 'DELETE' }),
+    },
+    comments: {
+      list: (params?: { status?: string; postId?: string; search?: string }, signal?: AbortSignal) =>
+        request<{ comments: BlogComment[] }>(`/api/blog/comments${toQuery(params ?? {})}`, { signal }),
+      updateStatus: (id: string, status: BlogCommentStatus) =>
+        request<{ ok: true; status: BlogCommentStatus }>(`/api/blog/comments/${id}/status`, { method: 'PATCH', body: { status } }),
+      remove: (id: string) =>
+        request<{ ok: true }>(`/api/blog/comments/${id}`, { method: 'DELETE' }),
+      batch: (action: 'approve' | 'reject' | 'spam' | 'delete', commentIds: string[]) =>
+        request<{ ok: true; count: number }>('/api/blog/comments/batch', { method: 'POST', body: { action, commentIds } }),
+    },
   },
 
   communityTemplates: {

@@ -1,0 +1,77 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import PostCard from '../../components/PostCard.astro'
+import Pagination from '../../components/Pagination.astro'
+import { api } from '../../lib/api'
+import type { BlogCategory } from '../../lib/types'
+
+export async function getStaticPaths() {
+  const categories = await api.getCategories()
+  return categories.map((cat) => ({
+    params: { slug: cat.slug },
+    props: { category: cat },
+  }))
+}
+
+interface Props {
+  category?: BlogCategory
+}
+
+let category = Astro.props.category
+const slug = Astro.params.slug
+
+if (!category && slug) {
+  const categories = await api.getCategories()
+  category = categories.find((c) => c.slug === slug)
+}
+
+if (!category) {
+  return Astro.redirect('/404')
+}
+
+const url = Astro.url
+const page = parseInt(url.searchParams.get('page') || '1', 10)
+
+const postsData = await api.getPosts({ categoryId: category.id, page, limit: 10 })
+---
+
+<Layout title={`分类：${category.name} - Inkstone Blog`} description={category.description}>
+  <div class="max-w-4xl mx-auto space-y-8">
+    <header class="py-6 border-b border-[var(--border-subtle)] space-y-3">
+      <a href="/categories" class="text-xs text-[var(--accent)] hover:underline inline-flex items-center gap-1">
+        ← 返回所有分类
+      </a>
+      <div class="flex items-center gap-3">
+        <span
+          class="w-4 h-4 rounded-full shadow-2xs"
+          style={{ backgroundColor: category.color || 'var(--accent)' }}
+        />
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">
+          {category.name}
+        </h1>
+        <span class="text-xs px-2.5 py-0.5 rounded-full bg-[var(--bg-sunken)] text-[var(--text-tertiary)]">
+          {postsData.total} 篇
+        </span>
+      </div>
+      {category.description && (
+        <p class="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
+          {category.description}
+        </p>
+      )}
+    </header>
+
+    {postsData.posts.length === 0 ? (
+      <div class="py-16 text-center text-xs text-[var(--text-tertiary)]">
+        该分类下暂无文章
+      </div>
+    ) : (
+      <div class="space-y-4">
+        {postsData.posts.map((post) => (
+          <PostCard post={post} category={category} />
+        ))}
+      </div>
+    )}
+
+    <Pagination currentPage={postsData.page} totalPages={postsData.totalPages} baseUrl={`/categories/${category.slug}`} />
+  </div>
+</Layout>

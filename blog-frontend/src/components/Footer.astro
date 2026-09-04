@@ -1,0 +1,107 @@
+---
+import { api } from '../lib/api'
+
+let siteInfo
+try {
+  siteInfo = await api.getSiteInfo()
+} catch {
+  siteInfo = {
+    siteName: 'Inkstone Blog',
+    subtitle: '静水流深，石上墨香 · 基于 Inkstone & Astro 驱动',
+    bio: '记录思考、技术与生活。使用现代化 Markdown 双链笔记与高性能静态博客驱动。',
+    authorName: 'Inkstone Author',
+    authorAvatar: '',
+    socialLinks: {
+      github: 'https://github.com/shuaiplus/inkstone',
+    },
+  }
+}
+
+const currentYear = new Date().getFullYear()
+---
+
+<footer class="mt-auto border-t border-[var(--border-subtle)] bg-[var(--bg-sunken)] text-[var(--text-secondary)] transition-colors py-10">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+      <!-- Col 1: Bio -->
+      <div class="space-y-3">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-md bg-[var(--accent)] text-white flex items-center justify-center font-serif text-xs font-bold">
+            墨
+          </div>
+          <h4 class="text-sm font-bold text-[var(--text-primary)]">{siteInfo.siteName}</h4>
+        </div>
+        <p class="text-xs leading-relaxed text-[var(--text-tertiary)]">
+          {siteInfo.bio || siteInfo.subtitle}
+        </p>
+      </div>
+
+      <!-- Col 2: Navigation -->
+      <div>
+        <h5 class="text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider mb-3">
+          快速导航
+        </h5>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <a href="/" class="hover:text-[var(--accent)] transition-colors">文章精选</a>
+          <a href="/timeline" class="hover:text-[var(--accent)] transition-colors">全量时间轴</a>
+          <a href="/calendar" class="hover:text-[var(--accent)] transition-colors">发文日历</a>
+          <a href="/categories" class="hover:text-[var(--accent)] transition-colors">分类专题</a>
+          <a href="/tags" class="hover:text-[var(--accent)] transition-colors">标签检索</a>
+        </div>
+      </div>
+
+      <!-- Col 3: Social & Meta -->
+      <div class="space-y-3">
+        <h5 class="text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider mb-3">
+          关于博主
+        </h5>
+        <p class="text-xs text-[var(--text-secondary)]">
+          博主：<span class="font-medium text-[var(--text-primary)]">{siteInfo.authorName}</span>
+        </p>
+        <div class="flex items-center gap-3 pt-1">
+          {siteInfo.socialLinks?.github && (
+            <a
+              href={siteInfo.socialLinks.github}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="p-2 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all shadow-2xs"
+              title="GitHub"
+            >
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+              </svg>
+            </a>
+          )}
+          {siteInfo.socialLinks?.website && (
+            <a
+              href={siteInfo.socialLinks.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="p-2 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all shadow-2xs"
+              title="个人网站"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+
+    {/* Bottom credits */}
+    <div class="pt-6 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row items-center justify-between text-[11px] text-[var(--text-quaternary)] gap-2">
+      <p>© {currentYear} {siteInfo.siteName}. All rights reserved.</p>
+      <div class="flex items-center gap-1">
+        <span>Powered by</span>
+        <a href="https://github.com/shuaiplus/inkstone" target="_blank" rel="noopener noreferrer" class="text-[var(--accent)] font-medium hover:underline">
+          Inkstone
+        </a>
+        <span>&</span>
+        <a href="https://astro.build" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--text-secondary)] hover:underline">
+          Astro
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,34 @@
+---
+import Layout from '../layouts/Layout.astro'
+import CalendarWidget from '../components/CalendarWidget'
+import { api } from '../lib/api'
+
+const calendarDays = await api.getCalendar()
+---
+
+<Layout title="发文日历 - Inkstone Blog" description="按月份与日期交互式查看博文发布记录">
+  <div class="max-w-4xl mx-auto space-y-8">
+    <!-- Header -->
+    <header class="text-center py-6 border-b border-[var(--border-subtle)] space-y-2">
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">
+        发文日历
+      </h1>
+      <p class="text-xs text-[var(--text-tertiary)]">
+        交互式日历组件，轻点有标记的日期即可展开当天发布的博文
+      </p>
+    </header>
+
+    <!-- Full Calendar Component -->
+    <section class="py-4">
+      <CalendarWidget client:load initialDays={calendarDays} isFullPage={true} />
+    </section>
+
+    <!-- Description & Tips -->
+    <div class="p-6 rounded-2xl bg-[var(--bg-sunken)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] leading-relaxed space-y-2 max-w-2xl mx-auto text-center">
+      <h3 class="font-bold text-sm text-[var(--text-primary)]">💡 使用说明</h3>
+      <p>
+        日历网格中高亮色块标示该天有公开发布的笔记文章。点击具体日期可在下方抽屉中查阅标题并快速跳转正文阅读。
+      </p>
+    </div>
+  </div>
+</Layout>
