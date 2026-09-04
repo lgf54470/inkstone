@@ -4,6 +4,7 @@ import {
   Check,
   Copy,
   ExternalLink,
+  FolderClosed,
   Lock,
   Pin,
   QrCode,
@@ -30,6 +31,7 @@ export function ShareTableView({
   onOpenAnalytics: (share: ShareInfo) => void
   onOpenEdit: (share: ShareInfo) => void
 }) {
+  const folders = useShareStore((s) => s.folders)
   const selectedNoteIds = useShareStore((s) => s.selectedNoteIds)
   const toggleSelect = useShareStore((s) => s.toggleSelect)
   const toggleSelectAll = useShareStore((s) => s.toggleSelectAll)
@@ -92,10 +94,20 @@ export function ShareTableView({
             const isExpired = share.expiresAt ? share.expiresAt < Date.now() : false
             const isCustom = share.slug && !/^[0-9a-hjkmnp-tv-z]{20}$/.test(share.slug)
 
+            const folder = share.shareFolderId ? folders.find((f) => f.id === share.shareFolderId) : null
+
             return (
               <tr
                 key={share.noteId}
-                className={`group transition-colors hover:bg-[var(--bg-hover)] ${
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(
+                    'application/inkstone-share-note-ids',
+                    JSON.stringify(isSelected ? Array.from(selectedNoteIds) : [share.noteId]),
+                  )
+                  e.dataTransfer.effectAllowed = 'copyMove'
+                }}
+                className={`group transition-colors hover:bg-[var(--bg-hover)] cursor-grab active:cursor-grabbing ${
                   isSelected ? 'bg-[var(--accent-subtle)]/30' : ''
                 }`}
               >
@@ -147,18 +159,25 @@ export function ShareTableView({
                         {share.noteTitle || t('common.untitled_note')}
                       </span>
                     </div>
-                    {share.tags && share.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1 pl-12">
-                        {share.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded bg-[var(--bg-card)] px-1.5 py-0.2 text-[10px] text-[var(--text-tertiary)] border border-[var(--border-subtle)]"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1 pl-12">
+                      {folder && (
+                        <span
+                          style={{ borderColor: folder.color ? `${folder.color}40` : undefined }}
+                          className="inline-flex items-center gap-1 rounded bg-[var(--bg-surface)] px-1.5 py-0.2 text-[10px] text-[var(--text-secondary)] border border-[var(--border-subtle)]"
+                        >
+                          <FolderClosed size={10} style={{ color: folder.color ?? undefined }} className="shrink-0" />
+                          <span className="max-w-[100px] truncate">{folder.name}</span>
+                        </span>
+                      )}
+                      {share.tags && share.tags.length > 0 && share.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded bg-[var(--bg-card)] px-1.5 py-0.2 text-[10px] text-[var(--text-tertiary)] border border-[var(--border-subtle)]"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </td>
 

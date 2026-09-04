@@ -653,10 +653,11 @@ export const api = {
     cleanVisits: (type: 'bots' | 'older_than' | 'all', days?: number) =>
       request<{ ok: true; deleted: number }>(`/api/share/visits${toQuery({ type, days })}`, { method: 'DELETE' }),
     batch: (
-      action: 'enable' | 'disable' | 'revoke' | 'expire',
+      action: 'enable' | 'disable' | 'revoke' | 'expire' | 'move',
       noteIds: string[],
       expiresIn?: number | null,
-    ) => request<{ ok: true; count: number }>('/api/share/batch', { method: 'POST', body: { action, noteIds, expiresIn } }),
+      folderId?: string | null,
+    ) => request<{ ok: true; count: number }>('/api/share/batch', { method: 'POST', body: { action, noteIds, expiresIn, folderId } }),
     batchFolder: (folderId: string, enabled: boolean) =>
       request<{ ok: true; count: number }>('/api/share/batch-folder', { method: 'POST', body: { folderId, enabled } }),
     batchTag: (tag: string, enabled: boolean) =>

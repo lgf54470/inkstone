@@ -730,6 +730,8 @@ export interface ShareListResponse {
     activeShares: number
     pinnedShares?: number
     starredShares?: number
+    pausedShares?: number
+    expiredShares?: number
     totalViews: number
     totalVisitors: number
     folderCounts: Record<string, { total: number; shared: number }>

@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
-import { Calendar, Play, Square, Trash2, X } from 'lucide-react'
+import { Calendar, FolderClosed, FolderInput, Play, Square, Trash2, X } from 'lucide-react'
 import { Button } from '../../components/primitives'
 import { Menu, confirm, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
+import { useUi } from '../../store/ui'
 import { useShareStore } from './share-store'
 
 export function ShareBatchBar({
@@ -12,12 +13,17 @@ export function ShareBatchBar({
   selectedCount: number
   onClearSelection: () => void
 }) {
+  const toast = useUi((s) => s.toast)
   const batchToggle = useShareStore((s) => s.batchToggle)
+  const batchMoveToFolder = useShareStore((s) => s.batchMoveToFolder)
+  const folders = useShareStore((s) => s.folders)
   const selectedNoteIds = useShareStore((s) => s.selectedNoteIds)
   const batchBusy = useShareStore((s) => s.batchBusy)
 
   const [expiryMenuOpen, setExpiryMenuOpen] = useState(false)
   const expiryButtonRef = useRef<HTMLButtonElement>(null)
+  const [folderMenuOpen, setFolderMenuOpen] = useState(false)
+  const folderButtonRef = useRef<HTMLButtonElement>(null)
 
   if (selectedCount === 0) return null
 
@@ -54,6 +60,37 @@ export function ShareBatchBar({
     { id: '30d', label: t('share.30_days'), onSelect: () => void handleSetExpiry(30 * 24 * 3600000) },
   ]
 
+  const folderMenuItems: MenuItem[] = [
+    {
+      id: 'root',
+      label: t('share.no_folder'),
+      icon: <FolderClosed size={13} className="text-[var(--text-quaternary)]" />,
+      onSelect: async () => {
+        setFolderMenuOpen(false)
+        const ok = await batchMoveToFolder(noteIds, null)
+        if (ok) {
+          toast({ title: t('share.batch_move_success', { count: selectedCount }), tone: 'success' })
+        }
+      },
+    },
+    ...folders.map((f) => ({
+      id: f.id,
+      label: f.name,
+      icon: (
+        <span style={{ color: f.color ?? undefined }} className="shrink-0">
+          <FolderClosed size={13} />
+        </span>
+      ),
+      onSelect: async () => {
+        setFolderMenuOpen(false)
+        const ok = await batchMoveToFolder(noteIds, f.id)
+        if (ok) {
+          toast({ title: t('share.batch_move_success', { count: selectedCount }), tone: 'success' })
+        }
+      },
+    })),
+  ]
+
   return (
     <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-4 py-2 shadow-2xl backdrop-blur-md">
       <span className="text-[12px] font-medium text-[var(--text-primary)]">
@@ -80,6 +117,17 @@ export function ShareBatchBar({
         onClick={() => void handleDisableAll()}
       >
         {t('share.batch_disable')}
+      </Button>
+
+      <Button
+        ref={folderButtonRef}
+        size="sm"
+        variant="ghost"
+        disabled={batchBusy}
+        icon={<FolderInput size={13} />}
+        onClick={() => setFolderMenuOpen(true)}
+      >
+        {t('share.batch_move_to_folder')}
       </Button>
 
       <Button
@@ -120,6 +168,15 @@ export function ShareBatchBar({
           onClose={() => setExpiryMenuOpen(false)}
           items={expiryMenuItems}
           anchor={expiryButtonRef}
+        />
+      )}
+
+      {folderMenuOpen && (
+        <Menu
+          open={folderMenuOpen}
+          onClose={() => setFolderMenuOpen(false)}
+          items={folderMenuItems}
+          anchor={folderButtonRef}
         />
       )}
     </div>

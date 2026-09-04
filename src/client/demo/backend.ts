@@ -1057,6 +1057,8 @@ export function createDemoBackend(): DemoBackend {
         activeShares: allShares.filter((s) => s.isEnabled).length,
         pinnedShares: allShares.filter((s) => s.isPinned).length,
         starredShares: allShares.filter((s) => s.isStarred).length,
+        pausedShares: allShares.filter((s) => !s.isEnabled).length,
+        expiredShares: allShares.filter((s) => Boolean(s.expiresAt && s.expiresAt <= Date.now())).length,
         totalViews: allShares.reduce((acc, s) => acc + s.views, 0),
         totalVisitors: allShares.reduce((acc, s) => acc + (s.uniqueVisitors ?? 0), 0),
         folderCounts,
@@ -1170,7 +1172,7 @@ export function createDemoBackend(): DemoBackend {
 
   app.post('/api/share/batch', async (c) => {
     const body = await jsonBody(c.req.raw)
-    const { action, noteIds } = body as { action: string; noteIds: string[] }
+    const { action, noteIds, folderId } = body as { action: string; noteIds: string[]; folderId?: string | null }
     let count = 0
     for (const id of noteIds || []) {
       const share = state.shares.get(id)
@@ -1178,6 +1180,10 @@ export function createDemoBackend(): DemoBackend {
         if (action === 'enable') share.info.isEnabled = true
         if (action === 'disable') share.info.isEnabled = false
         if (action === 'revoke') state.shares.delete(id)
+        if (action === 'move') {
+          share.info.shareFolderId = folderId ?? null
+          share.info.folderId = folderId ?? null
+        }
         count++
       }
     }

@@ -26,13 +26,15 @@ import type { ShareCategory, ShareTag } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton } from '../../components/primitives'
-import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
 import { Switch } from '../../components/form'
+import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
+import { useUi } from '../../store/ui'
 import { FolderColorSubmenu } from '../folders/FolderColorSubmenu'
 import { TagColorSubmenu } from '../tags/TagColorSubmenu'
 import { buildShareFolderTree, useShareStore, type ShareFolderNode } from './share-store'
 
 export function ShareHubSidebar() {
+  const toast = useUi((s) => s.toast)
   const category = useShareStore((s) => s.category)
   const setCategory = useShareStore((s) => s.setCategory)
   const selectedFolderId = useShareStore((s) => s.folderId)
@@ -41,7 +43,7 @@ export function ShareHubSidebar() {
   const setTag = useShareStore((s) => s.setTag)
   const globalStats = useShareStore((s) => s.globalStats)
   const batchToggleGroup = useShareStore((s) => s.batchToggleGroup)
-  const batchBusy = useShareStore((s) => s.batchBusy)
+  const batchMoveToFolder = useShareStore((s) => s.batchMoveToFolder)
 
   const folders = useShareStore((s) => s.folders)
   const tags = useShareStore((s) => s.tags)
@@ -131,6 +133,7 @@ export function ShareHubSidebar() {
       id: 'paused',
       label: t('share.category_paused'),
       icon: <PauseCircle size={14} className="text-[var(--warning)]" />,
+      count: globalStats?.pausedShares,
     },
     {
       id: 'password',
@@ -151,6 +154,7 @@ export function ShareHubSidebar() {
       id: 'expired',
       label: t('share.category_expired'),
       icon: <AlertTriangle size={14} className="text-[var(--danger)]" />,
+      count: globalStats?.expiredShares,
     },
   ]
 
@@ -158,7 +162,6 @@ export function ShareHubSidebar() {
     const isExpanded = expandedFolders.has(node.folder.id)
     const isSelected = selectedFolderId === node.folder.id && !selectedTag && category === 'all'
     const counts = globalStats?.folderCounts[node.folder.id] || { total: 0, shared: 0 }
-    const isChecked = counts.shared > 0
     const isRenaming = renamingFolderId === node.folder.id
 
     return (
@@ -168,12 +171,20 @@ export function ShareHubSidebar() {
         isExpanded={isExpanded}
         isSelected={isSelected}
         counts={counts}
-        isChecked={isChecked}
         isRenaming={isRenaming}
-        batchBusy={batchBusy}
         onToggleExpand={(e) => toggleFolderExpand(node.folder.id, e)}
         onSelect={() => setFolderId(node.folder.id)}
-        onToggleSwitch={(enabled) => void batchToggleGroup('folder', node.folder.id, enabled)}
+        onBatchToggle={async (enabled) => {
+          const ok = await batchToggleGroup('folder', node.folder.id, enabled)
+          if (ok) {
+            toast({
+              title: enabled
+                ? t('share.folder_batch_enabled_toast')
+                : t('share.folder_batch_disabled_toast'),
+              tone: 'success',
+            })
+          }
+        }}
         onStartRename={() => setRenamingFolderId(node.folder.id)}
         onFinishRename={(nextName) => {
           setRenamingFolderId(null)
@@ -197,6 +208,15 @@ export function ShareHubSidebar() {
           })
           if (ok) {
             void deleteFolder(node.folder.id)
+          }
+        }}
+        onDropNotes={async (noteIds) => {
+          const ok = await batchMoveToFolder(noteIds, node.folder.id)
+          if (ok) {
+            toast({
+              title: t('share.batch_move_success', { count: noteIds.length }),
+              tone: 'success',
+            })
           }
         }}
       >
@@ -305,7 +325,6 @@ export function ShareHubSidebar() {
               tags.map((tag) => {
                 const isSelected = selectedTag === tag.name
                 const counts = globalStats?.tagCounts[tag.name] || { total: 0, shared: 0 }
-                const isChecked = counts.shared > 0
                 const isRenaming = renamingTagId === tag.id
 
                 return (
@@ -314,11 +333,19 @@ export function ShareHubSidebar() {
                     tag={tag}
                     isSelected={isSelected}
                     counts={counts}
-                    isChecked={isChecked}
                     isRenaming={isRenaming}
-                    batchBusy={batchBusy}
                     onSelect={() => setTag(tag.name)}
-                    onToggleSwitch={(enabled) => void batchToggleGroup('tag', tag.name, enabled)}
+                    onBatchToggle={async (enabled) => {
+                      const ok = await batchToggleGroup('tag', tag.name, enabled)
+                      if (ok) {
+                        toast({
+                          title: enabled
+                            ? t('share.tag_batch_enabled_toast')
+                            : t('share.tag_batch_disabled_toast'),
+                          tone: 'success',
+                        })
+                      }
+                    }}
                     onStartRename={() => setRenamingTagId(tag.id)}
                     onFinishRename={(nextName) => {
                       setRenamingTagId(null)
@@ -375,37 +402,38 @@ function ShareFolderItem({
   isExpanded,
   isSelected,
   counts,
-  isChecked,
   isRenaming,
-  batchBusy,
   onToggleExpand,
   onSelect,
-  onToggleSwitch,
+  onBatchToggle,
   onStartRename,
   onFinishRename,
   onCreateSubfolder,
   onColorChange,
   onDelete,
+  onDropNotes,
   children,
 }: {
   node: ShareFolderNode
   isExpanded: boolean
   isSelected: boolean
   counts: { total: number; shared: number }
-  isChecked: boolean
   isRenaming: boolean
-  batchBusy: boolean
   onToggleExpand: (e: React.MouseEvent) => void
   onSelect: () => void
-  onToggleSwitch: (enabled: boolean) => void
+  onBatchToggle: (enabled: boolean) => void
   onStartRename: () => void
   onFinishRename: (nextName: string) => void
   onCreateSubfolder: () => void
   onColorChange: (color: string | null) => void
   onDelete: () => void
+  onDropNotes: (noteIds: string[]) => void
   children?: React.ReactNode
 }) {
+  const toast = useUi((s) => s.toast)
+  const batchBusy = useShareStore((s) => s.batchBusy)
   const [nameInput, setNameInput] = useState(node.folder.name)
+  const [isDragOver, setIsDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -418,6 +446,37 @@ function ShareFolderItem({
       inputRef.current?.select()
     }
   }, [isRenaming, node.folder.name])
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    const raw = e.dataTransfer.getData('application/inkstone-share-note-ids')
+    if (raw) {
+      try {
+        const ids = JSON.parse(raw) as string[]
+        if (Array.isArray(ids) && ids.length) {
+          onDropNotes(ids)
+        }
+      } catch {}
+    }
+  }
+
+  const safeTotal = Math.max(0, counts.total)
+  const safeShared = Math.min(Math.max(0, counts.shared), safeTotal)
+  const isChecked = safeTotal > 0 && safeShared > 0
 
   const menuItems: MenuItem[] = [
     {
@@ -447,6 +506,26 @@ function ShareFolderItem({
         />
       ),
     },
+    ...(safeTotal > 0
+      ? [
+          safeShared < safeTotal
+            ? {
+                id: 'enable_all',
+                label: t('share.batch_enable'),
+                icon: <PlayCircle size={13} className="text-[var(--success)]" />,
+                onSelect: () => onBatchToggle(true),
+              }
+            : null,
+          safeShared > 0
+            ? {
+                id: 'pause_all',
+                label: t('share.batch_disable'),
+                icon: <PauseCircle size={13} className="text-[var(--warning)]" />,
+                onSelect: () => onBatchToggle(false),
+              }
+            : null,
+        ].filter(Boolean) as MenuItem[]
+      : []),
     {
       id: 'delete',
       label: t('common.delete'),
@@ -464,6 +543,9 @@ function ShareFolderItem({
         tabIndex={0}
         onClick={onSelect}
         onContextMenu={contextMenu.onContextMenu}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
@@ -472,10 +554,11 @@ function ShareFolderItem({
         }}
         style={{ paddingLeft: `${8 + node.depth * 12}px` }}
         className={cn(
-          'group flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[12px] font-medium transition-colors cursor-pointer',
+          'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[12px] font-medium transition-colors cursor-pointer',
           isSelected
             ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+          isDragOver && 'bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]',
         )}
       >
         {node.children.length > 0 ? (
@@ -515,22 +598,49 @@ function ShareFolderItem({
           <span className="flex-1 truncate">{node.folder.name}</span>
         )}
 
-        <span className="tabular text-[10px] text-[var(--text-quaternary)]">
-          {counts.shared > 0 ? (
-            <span className="text-[var(--accent)] font-medium">{counts.shared}</span>
-          ) : (
+        <span className="tabular text-[10px] text-[var(--text-quaternary)] shrink-0">
+          {safeTotal === 0 ? (
             '0'
+          ) : safeShared < safeTotal ? (
+            <>
+              <span className={safeShared > 0 ? 'text-[var(--warning)] font-medium' : 'text-[var(--text-quaternary)]'}>
+                {safeShared}
+              </span>
+              /{safeTotal}
+            </>
+          ) : (
+            safeTotal
           )}
-          /{counts.total}
         </span>
 
-        {/* Batch toggle switch for entire folder */}
-        <div onClick={(e) => e.stopPropagation()} className="flex items-center pl-1">
-          <Switch
-            checked={isChecked}
-            disabled={batchBusy || counts.total === 0}
-            onChange={onToggleSwitch}
-          />
+        <div
+          onClick={(e) => {
+            e.stopPropagation()
+            if (safeTotal === 0) {
+              toast({ title: t('share.folder_empty_hint'), tone: 'default' })
+            }
+          }}
+          className="flex items-center pl-1 shrink-0"
+        >
+          <Tooltip
+            label={
+              safeTotal === 0
+                ? t('share.folder_empty_hint')
+                : isChecked
+                  ? t('share.batch_disable')
+                  : t('share.batch_enable')
+            }
+            side="top"
+          >
+            <div>
+              <Switch
+                checked={isChecked}
+                disabled={batchBusy || safeTotal === 0}
+                onChange={(nextChecked) => onBatchToggle(nextChecked)}
+                label={t('share.batch_toggle_label')}
+              />
+            </div>
+          </Tooltip>
         </div>
 
         <button
@@ -540,7 +650,7 @@ function ShareFolderItem({
             e.stopPropagation()
             setMenuOpen((prev) => !prev)
           }}
-          className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity"
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity shrink-0"
         >
           <MoreHorizontal size={12} />
         </button>
@@ -565,11 +675,9 @@ function ShareTagItem({
   tag,
   isSelected,
   counts,
-  isChecked,
   isRenaming,
-  batchBusy,
   onSelect,
-  onToggleSwitch,
+  onBatchToggle,
   onStartRename,
   onFinishRename,
   onColorChange,
@@ -578,16 +686,16 @@ function ShareTagItem({
   tag: ShareTag
   isSelected: boolean
   counts: { total: number; shared: number }
-  isChecked: boolean
   isRenaming: boolean
-  batchBusy: boolean
   onSelect: () => void
-  onToggleSwitch: (enabled: boolean) => void
+  onBatchToggle: (enabled: boolean) => void
   onStartRename: () => void
   onFinishRename: (nextName: string) => void
   onColorChange: (color: string | null) => void
   onDelete: () => void
 }) {
+  const toast = useUi((s) => s.toast)
+  const batchBusy = useShareStore((s) => s.batchBusy)
   const [nameInput, setNameInput] = useState(tag.name)
   const inputRef = useRef<HTMLInputElement>(null)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
@@ -601,6 +709,10 @@ function ShareTagItem({
       inputRef.current?.select()
     }
   }, [isRenaming, tag.name])
+
+  const safeTotal = Math.max(0, counts.total)
+  const safeShared = Math.min(Math.max(0, counts.shared), safeTotal)
+  const isChecked = safeTotal > 0 && safeShared > 0
 
   const menuItems: MenuItem[] = [
     {
@@ -631,6 +743,26 @@ function ShareTagItem({
         />
       ),
     },
+    ...(safeTotal > 0
+      ? [
+          safeShared < safeTotal
+            ? {
+                id: 'enable_all',
+                label: t('share.batch_enable'),
+                icon: <PlayCircle size={13} className="text-[var(--success)]" />,
+                onSelect: () => onBatchToggle(true),
+              }
+            : null,
+          safeShared > 0
+            ? {
+                id: 'pause_all',
+                label: t('share.batch_disable'),
+                icon: <PauseCircle size={13} className="text-[var(--warning)]" />,
+                onSelect: () => onBatchToggle(false),
+              }
+            : null,
+        ].filter(Boolean) as MenuItem[]
+      : []),
     {
       id: 'delete',
       label: t('common.delete'),
@@ -654,7 +786,7 @@ function ShareTagItem({
         }
       }}
       className={cn(
-        'group flex h-8 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[12px] font-medium transition-colors cursor-pointer',
+        'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[12px] font-medium transition-colors cursor-pointer',
         isSelected
           ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
@@ -680,22 +812,49 @@ function ShareTagItem({
         <span className="flex-1 truncate">{tag.name}</span>
       )}
 
-      <span className="tabular text-[10px] text-[var(--text-quaternary)]">
-        {counts.shared > 0 ? (
-          <span className="text-[var(--accent)] font-medium">{counts.shared}</span>
-        ) : (
+      <span className="tabular text-[10px] text-[var(--text-quaternary)] shrink-0">
+        {safeTotal === 0 ? (
           '0'
+        ) : safeShared < safeTotal ? (
+          <>
+            <span className={safeShared > 0 ? 'text-[var(--warning)] font-medium' : 'text-[var(--text-quaternary)]'}>
+              {safeShared}
+            </span>
+            /{safeTotal}
+          </>
+        ) : (
+          safeTotal
         )}
-        /{counts.total}
       </span>
 
-      {/* Batch toggle switch for tag */}
-      <div onClick={(e) => e.stopPropagation()} className="pl-1">
-        <Switch
-          checked={isChecked}
-          disabled={batchBusy || counts.total === 0}
-          onChange={onToggleSwitch}
-        />
+      <div
+        onClick={(e) => {
+          e.stopPropagation()
+          if (safeTotal === 0) {
+            toast({ title: t('share.tag_empty_hint'), tone: 'default' })
+          }
+        }}
+        className="flex items-center pl-1 shrink-0"
+      >
+        <Tooltip
+          label={
+            safeTotal === 0
+              ? t('share.tag_empty_hint')
+              : isChecked
+                ? t('share.batch_disable')
+                : t('share.batch_enable')
+          }
+          side="top"
+        >
+          <div>
+            <Switch
+              checked={isChecked}
+              disabled={batchBusy || safeTotal === 0}
+              onChange={(nextChecked) => onBatchToggle(nextChecked)}
+              label={t('share.batch_toggle_label')}
+            />
+          </div>
+        </Tooltip>
       </div>
 
       <button
@@ -705,7 +864,7 @@ function ShareTagItem({
           e.stopPropagation()
           setMenuOpen((prev) => !prev)
         }}
-        className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity"
+        className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity shrink-0"
       >
         <MoreHorizontal size={12} />
       </button>

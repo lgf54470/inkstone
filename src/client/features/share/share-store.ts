@@ -76,10 +76,12 @@ interface ShareStoreState {
   togglePin: (noteId: string) => Promise<boolean>
   toggleStar: (noteId: string) => Promise<boolean>
   batchToggle: (
-    action: 'enable' | 'disable' | 'revoke' | 'expire',
+    action: 'enable' | 'disable' | 'revoke' | 'expire' | 'move',
     noteIds: string[],
     expiresIn?: number | null,
+    folderId?: string | null,
   ) => Promise<boolean>
+  batchMoveToFolder: (noteIds: string[], folderId: string | null) => Promise<boolean>
   batchToggleGroup: (type: 'folder' | 'tag', target: string, enabled: boolean) => Promise<boolean>
   batchFolderToggle: (folderId: string, enabled: boolean) => Promise<boolean>
   batchTagToggle: (tag: string, enabled: boolean) => Promise<boolean>
@@ -173,7 +175,18 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
   createFolder: async (name, parentId, color, icon) => {
     try {
       const folder = await api.share.folders.create({ name, parentId, color, icon })
-      set((s) => ({ folders: [...s.folders, folder] }))
+      set((s) => ({
+        folders: [...s.folders, folder],
+        globalStats: s.globalStats
+          ? {
+              ...s.globalStats,
+              folderCounts: {
+                ...s.globalStats.folderCounts,
+                [folder.id]: { total: 0, shared: 0 },
+              },
+            }
+          : null,
+      }))
       return folder
     } catch {
       return null
@@ -211,6 +224,15 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
       const tag = await api.share.tags.create({ name, color })
       set((s) => ({
         tags: s.tags.some((t) => t.id === tag.id) ? s.tags : [...s.tags, tag],
+        globalStats: s.globalStats
+          ? {
+              ...s.globalStats,
+              tagCounts: {
+                ...s.globalStats.tagCounts,
+                [tag.name]: { total: 0, shared: 0 },
+              },
+            }
+          : null,
       }))
       return tag
     } catch {
@@ -247,11 +269,59 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
 
   batchToggleGroup: async (type, target, enabled) => {
     set({ batchBusy: true })
+    set((s) => {
+      const updatedShares = s.shares.map((share) => {
+        let match = false
+        if (type === 'folder' && (share.folderId === target || share.shareFolderId === target)) {
+          match = true
+        }
+        if (type === 'tag' && share.shareTags?.includes(target)) {
+          match = true
+        }
+        if (match) {
+          return { ...share, isEnabled: enabled }
+        }
+        return share
+      })
+
+      let updatedGlobalStats = s.globalStats
+      if (updatedGlobalStats) {
+        if (type === 'folder' && updatedGlobalStats.folderCounts[target]) {
+          const prev = updatedGlobalStats.folderCounts[target]
+          updatedGlobalStats = {
+            ...updatedGlobalStats,
+            folderCounts: {
+              ...updatedGlobalStats.folderCounts,
+              [target]: {
+                total: prev.total,
+                shared: enabled ? prev.total : 0,
+              },
+            },
+          }
+        }
+        if (type === 'tag' && updatedGlobalStats.tagCounts[target]) {
+          const prev = updatedGlobalStats.tagCounts[target]
+          updatedGlobalStats = {
+            ...updatedGlobalStats,
+            tagCounts: {
+              ...updatedGlobalStats.tagCounts,
+              [target]: {
+                total: prev.total,
+                shared: enabled ? prev.total : 0,
+              },
+            },
+          }
+        }
+      }
+
+      return { shares: updatedShares, globalStats: updatedGlobalStats }
+    })
     try {
       await api.share.batchToggleGroup(type, target, enabled)
       await get().loadShares()
       return true
     } catch {
+      await get().loadShares()
       return false
     } finally {
       set({ batchBusy: false })
@@ -323,6 +393,7 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
       folderId,
       category: folderId ? 'all' : get().category,
       tag: null,
+      statusFilter: 'all',
       selectedNoteIds: new Set(),
     })
     void get().loadShares()
@@ -333,6 +404,7 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
       tag,
       category: tag ? 'all' : get().category,
       folderId: null,
+      statusFilter: 'all',
       selectedNoteIds: new Set(),
     })
     void get().loadShares()
@@ -458,10 +530,24 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
     }
   },
 
-  batchToggle: async (action, noteIds, expiresIn) => {
+  batchToggle: async (action, noteIds, expiresIn, folderId) => {
     set({ batchBusy: true })
     try {
-      await api.share.batch(action, noteIds, expiresIn)
+      await api.share.batch(action, noteIds, expiresIn, folderId)
+      set({ selectedNoteIds: new Set() })
+      await get().loadShares()
+      return true
+    } catch {
+      return false
+    } finally {
+      set({ batchBusy: false })
+    }
+  },
+
+  batchMoveToFolder: async (noteIds, folderId) => {
+    set({ batchBusy: true })
+    try {
+      await api.share.batch('move', noteIds, undefined, folderId)
       set({ selectedNoteIds: new Set() })
       await get().loadShares()
       return true

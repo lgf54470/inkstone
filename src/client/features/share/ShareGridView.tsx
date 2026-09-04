@@ -5,6 +5,7 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  FolderClosed,
   Lock,
   Pin,
   QrCode,
@@ -33,6 +34,7 @@ export function ShareGridView({
   onOpenAnalytics: (share: ShareInfo) => void
   onOpenEdit: (share: ShareInfo) => void
 }) {
+  const folders = useShareStore((s) => s.folders)
   const selectedNoteIds = useShareStore((s) => s.selectedNoteIds)
   const toggleSelect = useShareStore((s) => s.toggleSelect)
   const toggleShare = useShareStore((s) => s.toggleShare)
@@ -67,11 +69,20 @@ export function ShareGridView({
         const isSelected = selectedNoteIds.has(share.noteId)
         const isExpired = share.expiresAt ? share.expiresAt < Date.now() : false
         const isCustom = share.slug && !/^[0-9a-hjkmnp-tv-z]{20}$/.test(share.slug)
+        const folder = share.shareFolderId ? folders.find((f) => f.id === share.shareFolderId) : null
 
         return (
           <div
             key={share.noteId}
-            className={`group relative flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 shadow-[var(--shadow-soft)] transition-all hover:border-[var(--border-default)] hover:shadow-md ${
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData(
+                'application/inkstone-share-note-ids',
+                JSON.stringify(isSelected ? Array.from(selectedNoteIds) : [share.noteId]),
+              )
+              e.dataTransfer.effectAllowed = 'copyMove'
+            }}
+            className={`group relative flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 shadow-[var(--shadow-soft)] transition-all hover:border-[var(--border-default)] hover:shadow-md cursor-grab active:cursor-grabbing ${
               isSelected ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]' : ''
             }`}
           >
@@ -160,7 +171,16 @@ export function ShareGridView({
                 </div>
               )}
 
-              <div className="flex items-center gap-2 pt-2 text-[10px] text-[var(--text-quaternary)]">
+              <div className="flex flex-wrap items-center gap-2 pt-2 text-[10px] text-[var(--text-quaternary)]">
+                {folder && (
+                  <span
+                    style={{ borderColor: folder.color ? `${folder.color}40` : undefined }}
+                    className="inline-flex items-center gap-1 rounded bg-[var(--bg-surface)] px-1.5 py-0.2 text-[10px] text-[var(--text-secondary)] border border-[var(--border-subtle)]"
+                  >
+                    <FolderClosed size={10} style={{ color: folder.color ?? undefined }} className="shrink-0" />
+                    <span className="max-w-[100px] truncate">{folder.name}</span>
+                  </span>
+                )}
                 {share.hasPassword && (
                   <span className="flex items-center gap-0.5 text-[var(--warning)]">
                     <Lock size={10} /> {t('share.password_protected')}
@@ -172,6 +192,14 @@ export function ShareGridView({
                     {isExpired ? t('share.status_expired') : relativeTime(share.expiresAt)}
                   </span>
                 )}
+                {share.tags && share.tags.length > 0 && share.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded bg-[var(--bg-surface)] px-1 py-0.2 text-[10px] text-[var(--text-tertiary)] border border-[var(--border-subtle)]"
+                  >
+                    #{tag}
+                  </span>
+                ))}
               </div>
             </div>
 

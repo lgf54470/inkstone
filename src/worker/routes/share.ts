@@ -921,7 +921,7 @@ shareManageRoutes.get('/', async (c) => {
   const folderCountRows = await c.env.DB.prepare(
     `SELECT sf.id as folder_id,
             COUNT(s.slug) as total_shares,
-            COUNT(CASE WHEN (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) as shared_notes
+            COUNT(CASE WHEN s.slug IS NOT NULL AND (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) as shared_notes
        FROM share_folders sf
        LEFT JOIN shares s ON s.folder_id = sf.id AND s.user_id = sf.user_id
       WHERE sf.user_id = ?1
@@ -932,7 +932,7 @@ shareManageRoutes.get('/', async (c) => {
 
   const folderCounts: Record<string, { total: number; shared: number }> = {}
   for (const r of folderCountRows.results ?? []) {
-    folderCounts[r.folder_id] = { total: r.total_shares, shared: r.shared_notes }
+    folderCounts[r.folder_id] = { total: r.total_shares, shared: Math.min(r.shared_notes, r.total_shares) }
   }
 
   const allShareTags = await c.env.DB.prepare(
@@ -947,18 +947,20 @@ shareManageRoutes.get('/', async (c) => {
          FROM shares
         WHERE user_id = ?1 AND tags LIKE ?2`,
     ).bind(userId, `%"${t.name}"%`, now).first<{ total: number; shared: number }>()
-    tagCounts[t.name] = { total: tRow?.total ?? 0, shared: tRow?.shared ?? 0 }
+    tagCounts[t.name] = { total: tRow?.total ?? 0, shared: Math.min(tRow?.shared ?? 0, tRow?.total ?? 0) }
   }
 
   const globalSummary = await c.env.DB.prepare(
     `SELECT COUNT(*) as total_shares,
             COUNT(CASE WHEN (is_enabled = 1 OR is_enabled IS NULL) AND (expires_at IS NULL OR expires_at > ?2) THEN 1 END) as active_shares,
+            COUNT(CASE WHEN is_enabled = 0 THEN 1 END) as paused_shares,
+            COUNT(CASE WHEN expires_at IS NOT NULL AND expires_at <= ?2 THEN 1 END) as expired_shares,
             COALESCE(SUM(views), 0) as total_views
        FROM shares
       WHERE user_id = ?1`,
   )
     .bind(userId, now)
-    .first<{ total_shares: number; active_shares: number; total_views: number }>()
+    .first<{ total_shares: number; active_shares: number; paused_shares: number; expired_shares: number; total_views: number }>()
 
   const filteredGlobalStats = await c.env.DB.prepare(
     `SELECT COUNT(*) as total_views, COUNT(DISTINCT visitor_fp) as total_uv
@@ -982,6 +984,8 @@ shareManageRoutes.get('/', async (c) => {
     activeShares: globalSummary?.active_shares ?? 0,
     pinnedShares: pinStarRow?.pinned_shares ?? 0,
     starredShares: pinStarRow?.starred_shares ?? 0,
+    pausedShares: globalSummary?.paused_shares ?? 0,
+    expiredShares: globalSummary?.expired_shares ?? 0,
     totalViews: filteredGlobalStats?.total_views ?? (globalSummary?.total_views ?? 0),
     totalVisitors: filteredGlobalStats?.total_uv ?? 0,
     folderCounts,
@@ -1138,9 +1142,10 @@ shareManageRoutes.get('/', async (c) => {
 shareManageRoutes.post('/batch', async (c) => {
   const userId = c.get('userId')
   const body = await readJson<{
-    action: 'enable' | 'disable' | 'revoke' | 'expire'
+    action: 'enable' | 'disable' | 'revoke' | 'expire' | 'move'
     noteIds: string[]
     expiresIn?: number | null
+    folderId?: string | null
   }>(c, JSON_BODY_LIMITS.small)
 
   if (!Array.isArray(body.noteIds) || body.noteIds.length === 0) {
@@ -1198,6 +1203,14 @@ shareManageRoutes.post('/batch', async (c) => {
       `UPDATE shares SET expires_at = ? WHERE user_id = ? AND note_id IN (${placeholders})`,
     )
       .bind(expiresAt, userId, ...noteIds)
+      .run()
+  } else if (body.action === 'move') {
+    const targetFolderId = body.folderId && isValidId(body.folderId) ? body.folderId : null
+    const placeholders = noteIds.map(() => '?').join(',')
+    await c.env.DB.prepare(
+      `UPDATE shares SET folder_id = ? WHERE user_id = ? AND note_id IN (${placeholders})`,
+    )
+      .bind(targetFolderId, userId, ...noteIds)
       .run()
   }
 
