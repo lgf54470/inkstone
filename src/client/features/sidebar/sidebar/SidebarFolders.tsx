@@ -21,21 +21,21 @@ import {
   Trash2,
 } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
-import { cn } from '../../lib/cn';
-import { IconButton, SectionLabel } from '../../components/primitives';
-import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay';
-import { useUi } from '../../store/ui';
-import { selectNavigationProjection, useFolderTree, type FolderNode } from '../../store/notes/selectors';
-import { useNotes } from '../../store/notes';
-import { folderDescendantIds, folderPath, folderPathLabel, openFolderView } from '../../lib/folders';
-import { treeRowIndent } from '../../lib/calendar-tree';
-import { setInboxFolderId, useFolderPreferences } from '../../lib/folder-prefs';
-import { exportFolderAsZip } from '../../lib/export-folder';
-import { FolderPicker } from '../folders/FolderPicker';
-import { FolderColorSubmenu } from '../folders/FolderColorSubmenu';
-import { FolderIconSubmenu } from '../folders/FolderIconSubmenu';
-import { CalendarTree, TodoTree } from './CalendarTree';
-import { t } from '../../lib/i18n';
+import { cn } from '../../../lib/cn';
+import { IconButton, SectionLabel } from '../../../components/primitives';
+import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../../components/overlay';
+import { useUi } from '../../../store/ui';
+import { selectNavigationProjection, useFolderTree, type FolderNode } from '../../../store/notes/selectors';
+import { useNotes } from '../../../store/notes';
+import { folderDescendantIds, folderPath, folderPathLabel, openFolderView } from '../../../lib/folders';
+import { treeRowIndent } from '../../../lib/calendar-tree';
+import { setInboxFolderId, useFolderPreferences } from '../../../lib/folder-prefs';
+import { exportFolderAsZip } from '../../../lib/export-folder';
+import { FolderPicker } from '../../folders/FolderPicker';
+import { FolderColorSubmenu } from '../../folders/FolderColorSubmenu';
+import { FolderIconSubmenu } from '../../folders/FolderIconSubmenu';
+import { CalendarTree, TodoTree } from '.././CalendarTree';
+import { t } from '../../../lib/i18n';
 import { leftDropTarget } from './SidebarDrop';
 
 export function FolderSection() {

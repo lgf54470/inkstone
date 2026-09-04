@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ViewKind } from '@shared/types';
-import { cn } from '../../lib/cn';
-import { useNotes } from '../../store/notes';
+import { cn } from '../../../lib/cn';
+import { useNotes } from '../../../store/notes';
 import { leftDropTarget } from './SidebarDrop';
 
 export function WeChatBadge({ count }: { count?: number }) {

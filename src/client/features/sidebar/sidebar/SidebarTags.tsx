@@ -19,19 +19,19 @@ import {
 } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
 import type { Tag } from '@shared/types';
-import { cn } from '../../lib/cn';
-import { sortTagsForPicker } from '../../lib/tag-sort';
-import { clearTagSelection } from '../../lib/tag-selection';
-import { TagNameHighlight } from '../../components/tag-name-highlight';
-import { IconButton, SectionLabel } from '../../components/primitives';
-import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../components/overlay';
-import { useUi } from '../../store/ui';
-import { useNavigationCounts } from '../../store/notes/selectors';
-import { useNotes } from '../../store/notes';
-import { TagColorSubmenu } from '../tags/TagColorSubmenu';
-import { createTag, deleteTag, renameTag, setTagColor, toggleTagPinned } from '../tags/tagMutations';
-import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../lib/tag-tree';
-import { t } from '../../lib/i18n';
+import { cn } from '../../../lib/cn';
+import { sortTagsForPicker } from '../../../lib/tag-sort';
+import { clearTagSelection } from '../../../lib/tag-selection';
+import { TagNameHighlight } from '../../../components/tag-name-highlight';
+import { IconButton, SectionLabel } from '../../../components/primitives';
+import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../../components/overlay';
+import { useUi } from '../../../store/ui';
+import { useNavigationCounts } from '../../../store/notes/selectors';
+import { useNotes } from '../../../store/notes';
+import { TagColorSubmenu } from '../../tags/TagColorSubmenu';
+import { createTag, deleteTag, renameTag, setTagColor, toggleTagPinned } from '../../tags/tagMutations';
+import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../../lib/tag-tree';
+import { t } from '../../../lib/i18n';
 
 export function TagSection() {
     const tags = useNotes((s) => s.tags);

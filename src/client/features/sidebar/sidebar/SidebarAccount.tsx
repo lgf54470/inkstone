@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
 import { Globe, LogOut, Moon, Settings, Sun, Waypoints } from 'lucide-react';
-import { Avatar, IconButton } from '../../components/primitives';
-import { Menu, Tooltip, type MenuItem } from '../../components/overlay';
-import { switchThemeWithTransition, useUi } from '../../store/ui';
-import { useSession } from '../../store/session';
-import { useUpdate } from '../../store/update';
-import { t } from '../../lib/i18n';
+import { Avatar, IconButton } from '../../../components/primitives';
+import { Menu, Tooltip, type MenuItem } from '../../../components/overlay';
+import { switchThemeWithTransition, useUi } from '../../../store/ui';
+import { useSession } from '../../../store/session';
+import { useUpdate } from '../../../store/update';
+import { t } from '../../../lib/i18n';
 
 export function SidebarAccount({ rail = false }: {
     rail?: boolean;

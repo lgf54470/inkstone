@@ -20,12 +20,12 @@ import { SidebarCalendar } from './SidebarCalendar';
 import { t } from '../../lib/i18n';
 import { useShareStore } from '../share/share-store';
 import { useBlogStore } from '../blog/blog-store';
-import { BottomNavButton } from './SidebarNavButtons';
-import { FolderSection } from './SidebarFolders';
-import { SidebarAccount } from './SidebarAccount';
-import { SidebarRail } from './SidebarRail';
-import { TagSection } from './SidebarTags';
-import { ViewItem } from './SidebarNavButtons';
+import { BottomNavButton } from './sidebar/SidebarNavButtons';
+import { FolderSection } from './sidebar/SidebarFolders';
+import { SidebarAccount } from './sidebar/SidebarAccount';
+import { SidebarRail } from './sidebar/SidebarRail';
+import { TagSection } from './sidebar/SidebarTags';
+import { ViewItem } from './sidebar/SidebarNavButtons';
 
 export function Sidebar({ collapsed = false, onCollapse, }: {
     collapsed?: boolean;
@@ -165,4 +165,6 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
         </aside>)}
     </>);
 }
+
+
 

@@ -8,11 +8,11 @@ import {
   Star,
   Trash2,
 } from 'lucide-react';
-import { IconButton } from '../../components/primitives';
-import { Tooltip } from '../../components/overlay';
-import { useUi } from '../../store/ui';
-import { createContextualNote } from '../../store/notes/selectors';
-import { t } from '../../lib/i18n';
+import { IconButton } from '../../../components/primitives';
+import { Tooltip } from '../../../components/overlay';
+import { useUi } from '../../../store/ui';
+import { createContextualNote } from '../../../store/notes/selectors';
+import { t } from '../../../lib/i18n';
 import { SidebarAccount } from './SidebarAccount';
 
 export function SidebarRail({ onExpand }: {
