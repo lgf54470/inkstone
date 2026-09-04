@@ -5,7 +5,7 @@
 
 @theme inline {
   --color-sunken: var(--bg-sunken);
-  --color-base: var(--bg-base);
+  --color-canvas: var(--bg-base);
   --color-surface: var(--bg-surface);
   --color-raised: var(--bg-raised);
   --color-overlay: var(--bg-overlay);
@@ -52,6 +52,11 @@
   *::before,
   *::after {
     box-sizing: border-box;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: inherit;
   }
 
   html {
