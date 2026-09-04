@@ -71,6 +71,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
     const setWorkspacePaneLayout = useUi((s) => s.setWorkspacePaneLayout);
     const activateWorkspacePane = useUi((s) => s.activateWorkspacePane);
     const closeSecondaryNote = useUi((s) => s.closeSecondaryNote);
+    const isShared = useShareStore((s) => Boolean(note && s.shares.some((sh) => sh.noteId === note.id)));
     const breakpoint = useBreakpoint();
     const containerRef = useRef<HTMLDivElement>(null);
     const previewScrollerRef = useRef<HTMLDivElement>(null);
@@ -271,7 +272,6 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
       </div>);
     }
     const noteFolder = note.folderId ? folders.find((folder) => folder.id === note.folderId) ?? null : null;
-    const isShared = useShareStore((s) => s.shares.some((sh) => sh.noteId === note.id));
     const noteFolderPath = note.folderId ? folderPathLabel(folders, note.folderId) : '';
     const exportNote = async (format: 'md' | 'html' | 'pdf') => {
         setExportMenuOpen(false);
