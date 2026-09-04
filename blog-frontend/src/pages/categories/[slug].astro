@@ -5,25 +5,13 @@ import Pagination from '../../components/Pagination.astro'
 import { api } from '../../lib/api'
 import type { BlogCategory } from '../../lib/types'
 
-export async function getStaticPaths() {
-  const categories = await api.getCategories()
-  return categories.map((cat) => ({
-    params: { slug: cat.slug },
-    props: { category: cat },
-  }))
-}
-
-interface Props {
-  category?: BlogCategory
-}
-
-let category = Astro.props.category
 const slug = Astro.params.slug
-
-if (!category && slug) {
-  const categories = await api.getCategories()
-  category = categories.find((c) => c.slug === slug)
+if (!slug) {
+  return Astro.redirect('/404')
 }
+
+const categories = await api.getCategories()
+const category = categories.find((c) => c.slug === slug)
 
 if (!category) {
   return Astro.redirect('/404')

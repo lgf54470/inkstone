@@ -4,19 +4,7 @@ import PostCard from '../../components/PostCard.astro'
 import Pagination from '../../components/Pagination.astro'
 import { api } from '../../lib/api'
 
-export async function getStaticPaths() {
-  const tags = await api.getTags()
-  return tags.map((t) => ({
-    params: { tag: t.name },
-    props: { tagName: t.name },
-  }))
-}
-
-interface Props {
-  tagName?: string
-}
-
-let tagName = Astro.props.tagName || Astro.params.tag
+const tagName = Astro.params.tag
 if (!tagName) {
   return Astro.redirect('/tags')
 }

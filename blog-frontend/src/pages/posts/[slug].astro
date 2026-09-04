@@ -5,35 +5,12 @@ import { api } from '../../lib/api'
 import { renderMarkdown } from '../../lib/markdown'
 import type { BlogPost, BlogCategory } from '../../lib/types'
 
-export async function getStaticPaths() {
-  const { posts } = await api.getPosts({ limit: 1000 })
-  const detailedPosts = await Promise.all(
-    posts.map(async (p) => {
-      try {
-        const full = await api.getPostBySlug(p.slug)
-        return full || p
-      } catch {
-        return p
-      }
-    })
-  )
-  return detailedPosts.map((post) => ({
-    params: { slug: post.slug },
-    props: { post },
-  }))
-}
-
-interface Props {
-  post?: BlogPost
-}
-
-let post = Astro.props.post
 const slug = Astro.params.slug
-
-if ((!post || !post.content) && slug) {
-  post = await api.getPostBySlug(slug)
+if (!slug) {
+  return Astro.redirect('/404')
 }
 
+const post = await api.getPostBySlug(slug)
 if (!post) {
   return Astro.redirect('/404')
 }
