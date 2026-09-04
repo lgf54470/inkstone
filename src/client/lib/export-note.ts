@@ -391,6 +391,8 @@ details[open] summary { margin-bottom: 0.5em; }
 .markdown-example { margin: 1.2em 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; }
 .markdown-example-head { display: flex; justify-content: space-between; align-items: center; padding: 0.45em 0.9em; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 0.82em; font-weight: 600; color: #475569; }
 .markdown-example-grid { display: grid; grid-template-columns: 1fr 1fr; }
+.markdown-example-grid.js-example-grid { grid-template-columns: 1fr; }
+.markdown-example-grid.js-example-grid .markdown-example-preview { border-right: 0; }
 .markdown-example-preview { padding: 1em; border-right: 1px solid #e2e8f0; background: #fff; }
 .markdown-example-source { background: #0f172a; overflow-x: auto; }
 .markdown-example-source .code-block { margin: 0; border: none; border-radius: 0; }

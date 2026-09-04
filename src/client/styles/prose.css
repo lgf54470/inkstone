@@ -898,6 +898,33 @@
   }
 }
 
+/* js-example 块固定为上下结构：JS 代码在上、运行结果在下，代码不自动换行 */
+.ink-prose .markdown-example-grid.js-example-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ink-prose .markdown-example-source.js-example-source {
+  border-top: 0;
+  border-left: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ink-prose .markdown-example-source.js-example-source .markdown-example-code pre {
+  overflow-wrap: normal;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.ink-prose .markdown-example-source.js-example-source :is(code, .line) {
+  overflow-wrap: normal;
+  white-space: pre;
+}
+
+.ink-prose .markdown-example-preview.js-example-output {
+  border-top: 0;
+  border-left: 0;
+}
+
 .ink-prose .js-example-output-head {
   display: flex;
   align-items: center;
