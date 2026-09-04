@@ -11,7 +11,7 @@
     "preview": "astro preview",
     "deploy": "astro build && wrangler deploy -c wrangler.toml",
     "deploy:check": "astro build && wrangler deploy --dry-run -c wrangler.toml",
-    "deploy:pages": "astro build && wrangler pages deploy dist --project-name inkstone-blog",
+    "deploy:pages": "astro build && mkdir -p .wrangler/deploy && echo '{\"configPath\":\"../../wrangler.toml\",\"auxiliaryWorkers\":[]}' > .wrangler/deploy/config.json && wrangler pages deploy dist --project-name inkstone-blog",
     "astro": "astro"
   },
   "dependencies": {
