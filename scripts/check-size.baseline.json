@@ -538,9 +538,6 @@
     "longFns": 1,
     "deepFns": 1
   },
-  "src/worker/lib/update-check.ts": {
-    "longFns": 1
-  },
   "src/worker/mcp/ai-search.ts": {
     "longFns": 1
   },

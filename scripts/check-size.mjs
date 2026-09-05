@@ -103,6 +103,23 @@ if (updateBaseline) {
   baseline = JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf8'))
 }
 
+const expected = {}
+for (const [rel, result] of measurements) {
+  const entry = baselineEntryFrom(result)
+  if (Object.keys(entry).length > 0) expected[rel] = entry
+}
+const baselineDrift = JSON.stringify(baseline) !== JSON.stringify(expected)
+if (baselineDrift) {
+  console.error('size baseline drift: scripts/check-size.baseline.json no longer matches the current source tree')
+  console.error('resnapshot with "node scripts/check-size.mjs --update-baseline" after an intentional size refactor; never hand-edit the baseline')
+  for (const rel of new Set([...Object.keys(expected), ...Object.keys(baseline)])) {
+    const before = JSON.stringify(baseline[rel] ?? null)
+    const after = JSON.stringify(expected[rel] ?? null)
+    if (before !== after) console.error(`  ${rel}: baseline ${before} -> current ${after}`)
+  }
+  process.exit(1)
+}
+
 const problems = []
 let grandfathered = 0
 for (const [rel, result] of measurements) {

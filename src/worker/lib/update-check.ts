@@ -71,6 +71,10 @@ async function fetchRepositoryVersion(
     }
   }
 
+  return classifyPackageResponse(response)
+}
+
+async function classifyPackageResponse(response: Response): Promise<FetchResult> {
   if (!response.ok) {
     await response.body?.cancel().catch(() => {})
     return { kind: 'failure', reason: 'http_error', status: response.status }
