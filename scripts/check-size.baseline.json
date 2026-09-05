@@ -203,10 +203,6 @@
   "src/client/features/preview/pinned-windows-layer.tsx": {
     "longFns": 1
   },
-  "src/client/features/preview/preview-interactions.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
   "src/client/features/preview/preview.tsx": {
     "longFns": 1
   },
@@ -500,14 +496,6 @@
   },
   "src/client/store/notes/folder-actions.ts": {
     "longFns": 1
-  },
-  "src/client/store/notes/note-actions.ts": {
-    "longFns": 2,
-    "deepFns": 2
-  },
-  "src/client/store/notes/open.ts": {
-    "longFns": 2,
-    "deepFns": 1
   },
   "src/client/store/notes/persist.ts": {
     "longFns": 1
