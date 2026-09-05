@@ -43,22 +43,11 @@ export function createContextualNote(input?: {
     const validInboxId = inboxId && folders.some((f) => f.id === inboxId) ? inboxId : undefined;
     const defaultFolderId = ui.view === 'folder' ? ui.folderId : validInboxId;
 
-    let initialTitle = input?.title;
-    let initialContent = input?.content;
-
-    if (defaultFolderId && initialContent === undefined) {
-        const templateId = getFolderTemplateId(defaultFolderId);
-        if (templateId) {
-            const template = useNoteTemplates.getState().templates.find((t) => t.id === templateId);
-            if (template) {
-                const rendered = renderNewNoteTemplate(template.content, template.name, new Date());
-                if (!initialTitle) {
-                    initialTitle = template.name;
-                }
-                initialContent = rendered.content;
-            }
-        }
-    }
+    const { title: initialTitle, content: initialContent } = renderFolderTemplate(
+        defaultFolderId,
+        input?.title,
+        input?.content,
+    );
 
     const payload = {
         ...input,
@@ -82,6 +71,26 @@ export function createContextualNote(input?: {
         ...(ui.view === 'starred' ? { isStarred: true } : {}),
         ...(ui.view === 'pinned' ? { isPinned: true } : {}),
     });
+}
+
+function renderFolderTemplate(
+    defaultFolderId: string | null | undefined,
+    initialTitle: string | undefined,
+    initialContent: string | undefined,
+): { title: string | undefined, content: string | undefined } {
+    if (!defaultFolderId || initialContent !== undefined)
+        return { title: initialTitle, content: initialContent };
+    const templateId = getFolderTemplateId(defaultFolderId);
+    if (!templateId)
+        return { title: initialTitle, content: initialContent };
+    const template = useNoteTemplates.getState().templates.find((t) => t.id === templateId);
+    if (!template)
+        return { title: initialTitle, content: initialContent };
+    const rendered = renderNewNoteTemplate(template.content, template.name, new Date());
+    return {
+        title: initialTitle || template.name,
+        content: rendered.content,
+    };
 }
 
 export interface NoteGroup {

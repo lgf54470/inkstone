@@ -487,10 +487,6 @@
   "src/client/store/notes/acknowledge.ts": {
     "longFns": 1
   },
-  "src/client/store/notes/destructive.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
   "src/client/store/notes/edit.ts": {
     "longFns": 1
   },
@@ -500,20 +496,8 @@
   "src/client/store/notes/persist.ts": {
     "longFns": 1
   },
-  "src/client/store/notes/selectors.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/client/store/notes/sync.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
   "src/client/store/pinned-windows.ts": {
     "longFns": 1
-  },
-  "src/client/store/session.ts": {
-    "longFns": 3,
-    "deepFns": 1
   },
   "src/client/store/ui/state.ts": {
     "longFns": 1

@@ -31,6 +31,7 @@ interface SessionState {
 }
 
 type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? Partial<T[K]> : T[K] }
+type SessionSetter = (partial: Partial<SessionState>) => void
 
 let saveTimer: number | undefined
 let pendingSettingsPatch: DeepPartial<UserSettings> | null = null
@@ -56,231 +57,250 @@ export const useSession = create<SessionState>((set, get) => ({
   settings: DEFAULT_SETTINGS,
   authError: null,
 
-  async load() {
-    const sequence = ++sessionRequestSequence
-    try {
-      const info = await api.session()
-      if (sequence !== sessionRequestSequence) return
-      await persistSession(info)
-      if (sequence !== sessionRequestSequence) return
-      adopt(info, set)
-    } catch (err) {
-      if (sequence !== sessionRequestSequence) return
-      if (err instanceof ApiError && err.isOffline) {
-        const cached = await localDb.loadSession()
-        if (sequence !== sessionRequestSequence) return
-        if (cached?.user) {
-          adopt(cached, set)
-          return
-        }
-      }
-      set({
-        status: 'anonymous',
-        authError: err instanceof ApiError ? err.message : t("session.could_not_connect_to_the_server"),
-      })
-    }
-  },
+  load: () => loadImpl(set),
+  passwordLogin: (username, password) => passwordLoginImpl(set, username, password),
+  totpLogin: (challengeToken, code) => totpLoginImpl(set, challengeToken, code),
+  passwordRegister: (username, password) => passwordRegisterImpl(set, username, password),
+  refresh: () => refreshImpl(set),
+  refreshSettings: () => refreshSettingsImpl(set, get),
+  updateProfile: (patch) => updateProfileImpl(set, get, patch),
+  updateRegistration: (enabled, password) => updateRegistrationImpl(set, get, enabled, password),
+  logout: () => logoutImpl(set, get),
+  updateSettings: (patch, options) => updateSettingsImpl(set, get, patch, options),
+}))
 
-  async passwordLogin(username, password) {
-    const sequence = ++sessionRequestSequence
-    const result = await api.auth.login(username, password)
-    if (sequence !== sessionRequestSequence) return null
-    if ('twoFactorRequired' in result) return result
-    const info = result
-    await persistSession(info)
-    if (sequence !== sessionRequestSequence) return null
-    adopt(info, set)
-    return null
-  },
-
-  async totpLogin(challengeToken, code) {
-    const sequence = ++sessionRequestSequence
-    const info = await api.auth.totp.completeLogin(challengeToken, code)
-    if (sequence !== sessionRequestSequence) return
-    await persistSession(info)
-    if (sequence !== sessionRequestSequence) return
-    adopt(info, set)
-    if (info.recoveryCodeUsed) {
-      useUi.getState().toast({
-        title: t('auth.recovery_code_used'),
-        description: t('auth.recovery_codes_remaining', {
-          count: info.recoveryCodesRemaining ?? 0,
-        }),
-        tone: info.recoveryCodesRemaining && info.recoveryCodesRemaining > 2 ? 'success' : 'danger',
-      })
-    }
-  },
-
-  async passwordRegister(username, password) {
-    const sequence = ++sessionRequestSequence
-    const info = await api.auth.register(username, password)
-    if (sequence !== sessionRequestSequence) return
-    await persistSession(info)
-    if (sequence !== sessionRequestSequence) return
-    adopt(info, set)
-  },
-
-
-  async refresh() {
-    const sequence = ++sessionRequestSequence
+async function loadImpl(set: SessionSetter): Promise<void> {
+  const sequence = ++sessionRequestSequence
+  try {
     const info = await api.session()
     if (sequence !== sessionRequestSequence) return
     await persistSession(info)
     if (sequence !== sessionRequestSequence) return
     adopt(info, set)
-  },
+  } catch (err) {
+    if (sequence !== sessionRequestSequence) return
+    if (err instanceof ApiError && err.isOffline && await adoptCachedSession(set, sequence)) return
+    set({
+      status: 'anonymous',
+      authError: err instanceof ApiError ? err.message : t("session.could_not_connect_to_the_server"),
+    })
+  }
+}
 
-  async refreshSettings() {
-    const epoch = settingsEpoch
-    const sequence = ++settingsRequestSequence
-    const remote = await api.settings.get()
-    if (epoch !== settingsEpoch || sequence !== settingsRequestSequence) return
-    const localPatch = outstandingSettingsPatch()
-    const settings = localPatch ? mergeSettingsPatch(remote, localPatch) : remote
-    set({ settings })
-    syncAppearanceToDom(settings)
+async function adoptCachedSession(set: SessionSetter, sequence: number): Promise<boolean> {
+  const cached = await localDb.loadSession()
+  if (sequence !== sessionRequestSequence) return false
+  if (!cached?.user) return false
+  adopt(cached, set)
+  return true
+}
+
+async function passwordLoginImpl(set: SessionSetter, username: string, password: string): Promise<TotpLoginChallenge | null> {
+  const sequence = ++sessionRequestSequence
+  const result = await api.auth.login(username, password)
+  if (sequence !== sessionRequestSequence) return null
+  if ('twoFactorRequired' in result) return result
+  const info = result
+  await persistSession(info)
+  if (sequence !== sessionRequestSequence) return null
+  adopt(info, set)
+  return null
+}
+
+async function totpLoginImpl(set: SessionSetter, challengeToken: string, code: string): Promise<void> {
+  const sequence = ++sessionRequestSequence
+  const info = await api.auth.totp.completeLogin(challengeToken, code)
+  if (sequence !== sessionRequestSequence) return
+  await persistSession(info)
+  if (sequence !== sessionRequestSequence) return
+  adopt(info, set)
+  if (info.recoveryCodeUsed) {
+    useUi.getState().toast({
+      title: t('auth.recovery_code_used'),
+      description: t('auth.recovery_codes_remaining', {
+        count: info.recoveryCodesRemaining ?? 0,
+      }),
+      tone: info.recoveryCodesRemaining && info.recoveryCodesRemaining > 2 ? 'success' : 'danger',
+    })
+  }
+}
+
+async function passwordRegisterImpl(set: SessionSetter, username: string, password: string): Promise<void> {
+  const sequence = ++sessionRequestSequence
+  const info = await api.auth.register(username, password)
+  if (sequence !== sessionRequestSequence) return
+  await persistSession(info)
+  if (sequence !== sessionRequestSequence) return
+  adopt(info, set)
+}
+
+async function refreshImpl(set: SessionSetter): Promise<void> {
+  const sequence = ++sessionRequestSequence
+  const info = await api.session()
+  if (sequence !== sessionRequestSequence) return
+  await persistSession(info)
+  if (sequence !== sessionRequestSequence) return
+  adopt(info, set)
+}
+
+async function refreshSettingsImpl(set: SessionSetter, get: () => SessionState): Promise<void> {
+  const epoch = settingsEpoch
+  const sequence = ++settingsRequestSequence
+  const remote = await api.settings.get()
+  if (epoch !== settingsEpoch || sequence !== settingsRequestSequence) return
+  const localPatch = outstandingSettingsPatch()
+  const settings = localPatch ? mergeSettingsPatch(remote, localPatch) : remote
+  set({ settings })
+  syncAppearanceToDom(settings)
+  cacheCurrentSession(get())
+}
+
+async function updateProfileImpl(set: SessionSetter, get: () => SessionState, patch: { name?: string; avatarUrl?: string }): Promise<PublicUser> {
+  const before = get().user
+  if (before) {
+    set({ user: { ...before, ...patch } })
     cacheCurrentSession(get())
-  },
-
-  async updateProfile(patch) {
-    const before = get().user
-    if (before) {
-      set({ user: { ...before, ...patch } })
+  }
+  try {
+    const user = await api.auth.updateProfile(patch)
+    const current = get().user
+    if (current?.id === user.id) {
+      set({
+        user: {
+          ...user,
+          name: patch.name === undefined || current.name !== patch.name ? current.name : user.name,
+          avatarUrl: patch.avatarUrl === undefined || current.avatarUrl !== patch.avatarUrl
+            ? current.avatarUrl
+            : user.avatarUrl,
+        },
+      })
       cacheCurrentSession(get())
     }
-    try {
-      const user = await api.auth.updateProfile(patch)
-      const current = get().user
-      if (current?.id === user.id) {
-        set({
-          user: {
-            ...user,
-            name: patch.name === undefined || current.name !== patch.name ? current.name : user.name,
-            avatarUrl: patch.avatarUrl === undefined || current.avatarUrl !== patch.avatarUrl
-              ? current.avatarUrl
-              : user.avatarUrl,
-          },
-        })
-        cacheCurrentSession(get())
-      }
-      return user
-    } catch (error) {
-      const current = get().user
-      if (before && current?.id === before.id) {
-        set({
-          user: {
-            ...current,
-            ...(patch.name !== undefined && current.name === patch.name ? { name: before.name } : {}),
-            ...(patch.avatarUrl !== undefined && current.avatarUrl === patch.avatarUrl
-              ? { avatarUrl: before.avatarUrl }
-              : {}),
-          },
-        })
-        cacheCurrentSession(get())
-      }
-      throw error
-    }
-  },
-
-  async updateRegistration(enabled, password) {
-    const before = get().site
-    const sequence = ++registrationMutationSequence
-    if (before) {
-      set({ site: { ...before, registrationOpen: enabled } })
+    return user
+  } catch (error) {
+    const current = get().user
+    if (before && current?.id === before.id) {
+      set({
+        user: {
+          ...current,
+          ...(patch.name !== undefined && current.name === patch.name ? { name: before.name } : {}),
+          ...(patch.avatarUrl !== undefined && current.avatarUrl === patch.avatarUrl
+            ? { avatarUrl: before.avatarUrl }
+            : {}),
+        },
+      })
       cacheCurrentSession(get())
     }
-    try {
-      const result = await api.auth.updateRegistration(enabled, password)
-      if (sequence === registrationMutationSequence && get().site) {
-        set({ site: { ...get().site!, registrationOpen: result.registrationOpen } })
-        cacheCurrentSession(get())
-      }
-    } catch (error) {
-      if (sequence === registrationMutationSequence && before) {
-        set({ site: before })
-        cacheCurrentSession(get())
-      }
-      throw error
-    }
-  },
+    throw error
+  }
+}
 
-  async logout() {
-    if (logoutPromise) return logoutPromise
-    const task = (async () => {
-      // Push unsaved offline edits before clearing local data, otherwise
-      // they would be silently dropped. Dynamic import keeps the session
-      // store free of a circular dependency on the notes store.
-      let pending = 0
-      try {
-        const { useNotes } = await import('../store/notes')
-        try {
-          await useNotes.getState().flush({ immediate: true })
-        } catch {
-          pending = Math.max(1, useNotes.getState().pendingCount)
-        }
-        pending = Math.max(pending, useNotes.getState().pendingCount)
-      } catch {
-        pending = 1
-      }
-
-      window.clearTimeout(saveTimer)
-      if (isSettingsSaveInFlight) await settingsSaveCompletion
-      window.clearTimeout(saveTimer)
-      await flushSettingsPatch(set, get)
-      const unsaved = pending + (pendingSettingsPatch ? 1 : 0)
-      if (unsaved > 0) {
-        const proceed = window.confirm(t('session.logout_pending_changes', { count: String(unsaved) }))
-        if (!proceed) return
-      }
-
-      try {
-        await api.logout()
-      } catch (err) {
-        useUi.getState().toast({
-          title: t('session.logout_failed'),
-          description: err instanceof ApiError ? err.message : String(err),
-          tone: 'danger',
-        })
-        return
-      }
-
-      sessionRequestSequence++
-      sessionCacheEpoch++
-      const pendingSessionCache = sessionCacheTask
-      resetSettingsPersistence(null)
-      await pendingSessionCache.catch(() => {})
-      await localDb.clear()
-      set({ status: 'anonymous', user: null, settings: DEFAULT_SETTINGS })
-      location.reload()
-    })()
-    logoutPromise = task
-    try {
-      await task
-    } finally {
-      if (logoutPromise === task) logoutPromise = null
-    }
-  },
-
-  updateSettings(patch, options) {
-    const currentSettings = get().settings
-    const next = mergeSettingsPatch(currentSettings, patch)
-    const nodeEnv = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process
-    if (import.meta.env?.DEV || nodeEnv?.env?.NODE_ENV === 'test') {
-      assertUnchangedSettingsSections(currentSettings, next, patch)
-    }
-    set({ settings: next })
-    syncAppearanceToDom(next)
+async function updateRegistrationImpl(set: SessionSetter, get: () => SessionState, enabled: boolean, password: string): Promise<void> {
+  const before = get().site
+  const sequence = ++registrationMutationSequence
+  if (before) {
+    set({ site: { ...before, registrationOpen: enabled } })
     cacheCurrentSession(get())
-    pendingSettingsPatch = mergeSettingsPatches(pendingSettingsPatch, patch)
-    shouldNotifyPendingSettings ||= !options?.silent
+  }
+  try {
+    const result = await api.auth.updateRegistration(enabled, password)
+    if (sequence === registrationMutationSequence && get().site) {
+      set({ site: { ...get().site!, registrationOpen: result.registrationOpen } })
+      cacheCurrentSession(get())
+    }
+  } catch (error) {
+    if (sequence === registrationMutationSequence && before) {
+      set({ site: before })
+      cacheCurrentSession(get())
+    }
+    throw error
+  }
+}
 
+async function logoutImpl(set: SessionSetter, get: () => SessionState): Promise<void> {
+  if (logoutPromise) return logoutPromise
+  const task = (async () => {
+    // Push unsaved offline edits before clearing local data, otherwise
+    // they would be silently dropped. Dynamic import keeps the session
+    // store free of a circular dependency on the notes store.
+    const pending = await flushNotesBeforeLogout()
 
     window.clearTimeout(saveTimer)
-    saveTimer = window.setTimeout(() => void flushSettingsPatch(set, get), 420)
-  },
-}))
+    if (isSettingsSaveInFlight) await settingsSaveCompletion
+    window.clearTimeout(saveTimer)
+    await flushSettingsPatch(set, get)
+    const unsaved = pending + (pendingSettingsPatch ? 1 : 0)
+    if (unsaved > 0) {
+      const proceed = window.confirm(t('session.logout_pending_changes', { count: String(unsaved) }))
+      if (!proceed) return
+    }
 
-type SessionSetter = (partial: Partial<SessionState>) => void
+    try {
+      await api.logout()
+    } catch (err) {
+      useUi.getState().toast({
+        title: t('session.logout_failed'),
+        description: err instanceof ApiError ? err.message : String(err),
+        tone: 'danger',
+      })
+      return
+    }
+
+    sessionRequestSequence++
+    sessionCacheEpoch++
+    const pendingSessionCache = sessionCacheTask
+    resetSettingsPersistence(null)
+    await pendingSessionCache.catch(() => {})
+    await localDb.clear()
+    set({ status: 'anonymous', user: null, settings: DEFAULT_SETTINGS })
+    location.reload()
+  })()
+  logoutPromise = task
+  try {
+    await task
+  } finally {
+    if (logoutPromise === task) logoutPromise = null
+  }
+}
+
+async function flushNotesBeforeLogout(): Promise<number> {
+  let pending = 0
+  try {
+    const { useNotes } = await import('../store/notes')
+    try {
+      await useNotes.getState().flush({ immediate: true })
+    } catch {
+      pending = Math.max(1, useNotes.getState().pendingCount)
+    }
+    pending = Math.max(pending, useNotes.getState().pendingCount)
+  } catch {
+    pending = 1
+  }
+  return pending
+}
+
+function updateSettingsImpl(
+  set: SessionSetter,
+  get: () => SessionState,
+  patch: DeepPartial<UserSettings>,
+  options?: { silent?: boolean },
+): void {
+  const currentSettings = get().settings
+  const next = mergeSettingsPatch(currentSettings, patch)
+  const nodeEnv = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process
+  if (import.meta.env?.DEV || nodeEnv?.env?.NODE_ENV === 'test') {
+    assertUnchangedSettingsSections(currentSettings, next, patch)
+  }
+  set({ settings: next })
+  syncAppearanceToDom(next)
+  cacheCurrentSession(get())
+  pendingSettingsPatch = mergeSettingsPatches(pendingSettingsPatch, patch)
+  shouldNotifyPendingSettings ||= !options?.silent
+
+
+  window.clearTimeout(saveTimer)
+  saveTimer = window.setTimeout(() => void flushSettingsPatch(set, get), 420)
+}
 
 async function flushSettingsPatch(set: SessionSetter, get: () => SessionState): Promise<void> {
   saveTimer = undefined
@@ -304,31 +324,10 @@ async function flushSettingsPatch(set: SessionSetter, get: () => SessionState): 
     const saved = await api.settings.save(outgoing as Partial<UserSettings>)
     if (epoch !== settingsEpoch || token !== settingsSaveToken) return
     settingsRetryDelay = 1_500
-    if (responseSequence === settingsRequestSequence) {
-      const settings = pendingSettingsPatch
-        ? mergeSettingsPatch(saved, pendingSettingsPatch)
-        : saved
-      set({ settings })
-      syncAppearanceToDom(settings)
-      cacheCurrentSession(get())
-    }
+    applySavedSettings(saved, responseSequence, set, get)
   } catch (err) {
     if (epoch !== settingsEpoch || token !== settingsSaveToken) return
-
-    pendingSettingsPatch = mergeSettingsPatches(outgoing, pendingSettingsPatch)
-    if (shouldNotify) {
-      useUi.getState().toast({
-        title: t("session.could_not_save_settings"),
-        description: err instanceof ApiError ? err.message : String(err),
-        tone: 'danger',
-      })
-    }
-    window.clearTimeout(saveTimer)
-    saveTimer = window.setTimeout(
-      () => void flushSettingsPatch(set, get),
-      settingsRetryDelay,
-    )
-    settingsRetryDelay = Math.min(30_000, settingsRetryDelay * 2)
+    scheduleSettingsRetry(err, outgoing, shouldNotify, set, get)
   } finally {
     if (epoch === settingsEpoch && token === settingsSaveToken) {
       inFlightSettingsPatch = null
@@ -339,6 +338,33 @@ async function flushSettingsPatch(set: SessionSetter, get: () => SessionState): 
     }
     resolveCompletion()
   }
+}
+
+function applySavedSettings(saved: UserSettings, responseSequence: number, set: SessionSetter, get: () => SessionState): void {
+  if (responseSequence !== settingsRequestSequence) return
+  const settings = pendingSettingsPatch
+    ? mergeSettingsPatch(saved, pendingSettingsPatch)
+    : saved
+  set({ settings })
+  syncAppearanceToDom(settings)
+  cacheCurrentSession(get())
+}
+
+function scheduleSettingsRetry(err: unknown, outgoing: DeepPartial<UserSettings>, shouldNotify: boolean, set: SessionSetter, get: () => SessionState): void {
+  pendingSettingsPatch = mergeSettingsPatches(outgoing, pendingSettingsPatch)
+  if (shouldNotify) {
+    useUi.getState().toast({
+      title: t("session.could_not_save_settings"),
+      description: err instanceof ApiError ? err.message : String(err),
+      tone: 'danger',
+    })
+  }
+  window.clearTimeout(saveTimer)
+  saveTimer = window.setTimeout(
+    () => void flushSettingsPatch(set, get),
+    settingsRetryDelay,
+  )
+  settingsRetryDelay = Math.min(30_000, settingsRetryDelay * 2)
 }
 
 function resetSettingsPersistence(userId: string | null): void {
