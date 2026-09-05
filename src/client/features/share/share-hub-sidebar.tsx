@@ -20,9 +20,9 @@ import { t } from '../../lib/i18n';
 import { IconButton } from '../../components/primitives';
 import { Tooltip, confirm } from '../../components/overlay';
 import { useUi } from '../../store/ui';
+import { HubFolderItem } from '../../components/hub-folder-item';
+import { HubTagItem } from '../../components/hub-tag-item';
 import { buildShareFolderTree, useShareStore, type ShareFolderNode } from './share-store';
-import { ShareFolderItem } from './share-hub/share-folder-item';
-import { ShareTagItem } from './share-hub/share-tag-item';
 
 
 export function ShareHubSidebar() {
@@ -39,6 +39,7 @@ export function ShareHubSidebar() {
 
   const folders = useShareStore((s) => s.folders)
   const tags = useShareStore((s) => s.tags)
+  const batchBusy = useShareStore((s) => s.batchBusy)
   const loadFolders = useShareStore((s) => s.loadFolders)
   const loadTags = useShareStore((s) => s.loadTags)
   const createFolder = useShareStore((s) => s.createFolder)
@@ -157,13 +158,21 @@ export function ShareHubSidebar() {
     const isRenaming = renamingFolderId === node.folder.id
 
     return (
-      <ShareFolderItem
+      <HubFolderItem
         key={node.folder.id}
         node={node}
         isExpanded={isExpanded}
         isSelected={isSelected}
-        counts={counts}
+        counts={{ total: counts.total, enabled: counts.shared }}
         isRenaming={isRenaming}
+        batchBusy={batchBusy}
+        dropMime="application/inkstone-share-note-ids"
+        labels={{
+          enable: t('share.batch_enable'),
+          disable: t('share.batch_disable'),
+          toggleLabel: t('share.batch_toggle_label'),
+          emptyHint: t('share.folder_empty_hint'),
+        }}
         onToggleExpand={(e) => toggleFolderExpand(node.folder.id, e)}
         onSelect={() => setFolderId(node.folder.id)}
         onBatchToggle={async (enabled) => {
@@ -202,7 +211,7 @@ export function ShareHubSidebar() {
             void deleteFolder(node.folder.id)
           }
         }}
-        onDropNotes={async (noteIds) => {
+        onDropItems={async (noteIds) => {
           const ok = await batchMoveToFolder(noteIds, node.folder.id)
           if (ok) {
             toast({
@@ -213,7 +222,7 @@ export function ShareHubSidebar() {
         }}
       >
         {isExpanded && node.children.length > 0 && node.children.map(renderFolderNode)}
-      </ShareFolderItem>
+      </HubFolderItem>
     )
   }
 
@@ -320,12 +329,21 @@ export function ShareHubSidebar() {
                 const isRenaming = renamingTagId === tag.id
 
                 return (
-                  <ShareTagItem
+                  <HubTagItem
                     key={tag.id}
                     tag={tag}
                     isSelected={isSelected}
-                    counts={counts}
+                    counts={{ total: counts.total, enabled: counts.shared }}
                     isRenaming={isRenaming}
+                    batchBusy={batchBusy}
+                    labels={{
+                      rename: t('tags.rename'),
+                      color: t('folders.color'),
+                      enable: t('share.batch_enable'),
+                      disable: t('share.batch_disable'),
+                      toggleLabel: t('share.batch_toggle_label'),
+                      emptyHint: t('share.tag_empty_hint'),
+                    }}
                     onSelect={() => setTag(tag.name)}
                     onBatchToggle={async (enabled) => {
                       const ok = await batchToggleGroup('tag', tag.name, enabled)

@@ -12,21 +12,29 @@ import {
   PlayCircle,
   Trash2,
 } from 'lucide-react';
-import { cn } from '../../../lib/cn';
-import { t } from '../../../lib/i18n';
-import { tryParseStringArray } from '../../../lib/json';
-import { Switch } from '../../../components/form';
-import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../../components/overlay';
-import { useUi } from '../../../store/ui';
-import { FolderColorSubmenu } from '../../folders';
-import { useBlogStore, type BlogFolderNode } from '.././blog-store';
+import { cn } from '../lib/cn';
+import { t } from '../lib/i18n';
+import { tryParseStringArray } from '../lib/json';
+import { Switch } from './form';
+import { Menu, Tooltip, useContextMenu, type MenuItem } from './overlay';
+import { useUi } from '../store/ui';
+import { FolderColorSubmenu } from '../features/folders';
 
-export function BlogFolderItem({
+interface HubFolderNodeLike {
+  folder: { id: string; name: string; color?: string | null }
+  depth: number
+  children: unknown[]
+}
+
+export function HubFolderItem({
   node,
   isExpanded,
   isSelected,
   counts,
   isRenaming,
+  batchBusy,
+  dropMime,
+  labels,
   onToggleExpand,
   onSelect,
   onBatchToggle,
@@ -35,14 +43,22 @@ export function BlogFolderItem({
   onCreateSubfolder,
   onColorChange,
   onDelete,
-  onDropPosts,
+  onDropItems,
   children,
 }: {
-  node: BlogFolderNode
+  node: HubFolderNodeLike
   isExpanded: boolean
   isSelected: boolean
-  counts: { total: number; published: number }
+  counts: { total: number; enabled: number }
   isRenaming: boolean
+  batchBusy: boolean
+  dropMime: string
+  labels: {
+    enable: string
+    disable: string
+    toggleLabel: string
+    emptyHint: string
+  }
   onToggleExpand: (e: React.MouseEvent) => void
   onSelect: () => void
   onBatchToggle: (enabled: boolean) => void
@@ -51,11 +67,10 @@ export function BlogFolderItem({
   onCreateSubfolder: () => void
   onColorChange: (color: string | null) => void
   onDelete: () => void
-  onDropPosts: (postIds: string[]) => void
+  onDropItems: (ids: string[]) => void
   children?: React.ReactNode
 }) {
   const toast = useUi((s) => s.toast)
-  const batchBusy = useBlogStore((s) => s.batchBusy)
   const [nameInput, setNameInput] = useState(node.folder.name)
   const [isDragOver, setIsDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -87,18 +102,18 @@ export function BlogFolderItem({
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
-    const raw = e.dataTransfer.getData('application/inkstone-blog-post-ids')
+    const raw = e.dataTransfer.getData(dropMime)
     if (raw) {
       const ids = tryParseStringArray(raw)
       if (ids.length) {
-        onDropPosts(ids)
+        onDropItems(ids)
       }
     }
   }
 
   const safeTotal = Math.max(0, counts.total)
-  const safePublished = Math.min(Math.max(0, counts.published), safeTotal)
-  const isChecked = safeTotal > 0 && safePublished > 0
+  const safeEnabled = Math.min(Math.max(0, counts.enabled), safeTotal)
+  const isChecked = safeTotal > 0 && safeEnabled > 0
 
   const menuItems: MenuItem[] = [
     {
@@ -130,18 +145,18 @@ export function BlogFolderItem({
     },
     ...(safeTotal > 0
       ? [
-          safePublished < safeTotal
+          safeEnabled < safeTotal
             ? {
-                id: 'publish_all',
-                label: t('blog.folder_batch_enabled_toast'),
+                id: 'enable_all',
+                label: labels.enable,
                 icon: <PlayCircle size={13} className="text-[var(--success)]" />,
                 onSelect: () => onBatchToggle(true),
               }
             : null,
-          safePublished > 0
+          safeEnabled > 0
             ? {
-                id: 'draft_all',
-                label: t('blog.folder_batch_disabled_toast'),
+                id: 'disable_all',
+                label: labels.disable,
                 icon: <PauseCircle size={13} className="text-[var(--warning)]" />,
                 onSelect: () => onBatchToggle(false),
               }
@@ -223,16 +238,16 @@ export function BlogFolderItem({
         <span className="tabular text-[length:var(--text-10)] text-[var(--text-quaternary)] shrink-0">
           {safeTotal === 0 ? (
             '0'
-          ) : safePublished < safeTotal ? (
+          ) : safeEnabled < safeTotal ? (
             <>
               <span
                 className={
-                  safePublished > 0
+                  safeEnabled > 0
                     ? 'text-[var(--warning)] font-medium'
                     : 'text-[var(--text-quaternary)]'
                 }
               >
-                {safePublished}
+                {safeEnabled}
               </span>
               /{safeTotal}
             </>
@@ -245,7 +260,7 @@ export function BlogFolderItem({
           onClick={(e) => {
             e.stopPropagation()
             if (safeTotal === 0) {
-              toast({ title: t('blog.folder_empty_hint'), tone: 'default' })
+              toast({ title: labels.emptyHint, tone: 'default' })
             }
           }}
           className="flex items-center pl-1 shrink-0"
@@ -253,10 +268,10 @@ export function BlogFolderItem({
           <Tooltip
             label={
               safeTotal === 0
-                ? t('blog.folder_empty_hint')
+                ? labels.emptyHint
                 : isChecked
-                  ? t('blog.folder_batch_disabled_toast')
-                  : t('blog.folder_batch_enabled_toast')
+                  ? labels.disable
+                  : labels.enable
             }
             side="top"
           >
@@ -265,7 +280,7 @@ export function BlogFolderItem({
                 checked={isChecked}
                 disabled={batchBusy || safeTotal === 0}
                 onChange={(nextChecked) => onBatchToggle(nextChecked)}
-                label={t('blog.batch_toggle_label')}
+                label={labels.toggleLabel}
               />
             </div>
           </Tooltip>
@@ -298,4 +313,3 @@ export function BlogFolderItem({
     </div>
   )
 }
-

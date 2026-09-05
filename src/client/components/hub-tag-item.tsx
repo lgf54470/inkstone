@@ -10,16 +10,22 @@ import {
   PlayCircle,
   Trash2,
 } from 'lucide-react';
-import type { BlogTag } from '@shared/types';
-import { cn } from '../../../lib/cn';
-import { t } from '../../../lib/i18n';
-import { Switch } from '../../../components/form';
-import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../../components/overlay';
-import { useUi } from '../../../store/ui';
-import { TagColorSubmenu } from '../../tags';
-import { useBlogStore } from '.././blog-store';
+import { cn } from '../lib/cn';
+import { t } from '../lib/i18n';
+import { Switch } from './form';
+import { Menu, Tooltip, useContextMenu, type MenuItem } from './overlay';
+import { useUi } from '../store/ui';
+import { TagColorSubmenu } from '../features/tags';
 
-export function BlogTagItem({
+interface HubTagLike {
+  id: string
+  name: string
+  color?: string | null
+  isPinned?: boolean
+  createdAt?: number
+}
+
+export function HubTagItem({
   tag,
   displayName,
   depth = 0,
@@ -29,6 +35,8 @@ export function BlogTagItem({
   isSelected,
   counts,
   isRenaming,
+  batchBusy,
+  labels,
   onSelect,
   onBatchToggle,
   onStartRename,
@@ -36,15 +44,24 @@ export function BlogTagItem({
   onColorChange,
   onDelete,
 }: {
-  tag: BlogTag
+  tag: HubTagLike
   displayName?: string
   depth?: number
   hasChildren?: boolean
   isExpanded?: boolean
   onToggleExpand?: (e: React.MouseEvent) => void
   isSelected: boolean
-  counts: { total: number; published: number }
+  counts: { total: number; enabled: number }
   isRenaming: boolean
+  batchBusy: boolean
+  labels: {
+    rename: string
+    color: string
+    enable: string
+    disable: string
+    toggleLabel: string
+    emptyHint: string
+  }
   onSelect: () => void
   onBatchToggle: (enabled: boolean) => void
   onStartRename: () => void
@@ -53,7 +70,6 @@ export function BlogTagItem({
   onDelete: () => void
 }) {
   const toast = useUi((s) => s.toast)
-  const batchBusy = useBlogStore((s) => s.batchBusy)
   const initialName = displayName || (tag.name.includes('/') ? tag.name.split('/').pop()! : tag.name)
   const [nameInput, setNameInput] = useState(initialName)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -70,19 +86,19 @@ export function BlogTagItem({
   }, [isRenaming, initialName])
 
   const safeTotal = Math.max(0, counts.total)
-  const safePublished = Math.min(Math.max(0, counts.published), safeTotal)
-  const isChecked = safeTotal > 0 && safePublished > 0
+  const safeEnabled = Math.min(Math.max(0, counts.enabled), safeTotal)
+  const isChecked = safeTotal > 0 && safeEnabled > 0
 
   const menuItems: MenuItem[] = [
     {
       id: 'rename',
-      label: t('sidebar.rename'),
+      label: labels.rename,
       icon: <Pencil size={13} />,
       onSelect: onStartRename,
     },
     {
       id: 'color',
-      label: t('tags.color'),
+      label: labels.color,
       icon: <Palette size={13} />,
       submenu: ({ closeMenu }) => (
         <TagColorSubmenu
@@ -104,18 +120,18 @@ export function BlogTagItem({
     },
     ...(safeTotal > 0
       ? [
-          safePublished < safeTotal
+          safeEnabled < safeTotal
             ? {
-                id: 'publish_all',
-                label: t('blog.tag_batch_enabled_toast'),
+                id: 'enable_all',
+                label: labels.enable,
                 icon: <PlayCircle size={13} className="text-[var(--success)]" />,
                 onSelect: () => onBatchToggle(true),
               }
             : null,
-          safePublished > 0
+          safeEnabled > 0
             ? {
-                id: 'draft_all',
-                label: t('blog.tag_batch_disabled_toast'),
+                id: 'disable_all',
+                label: labels.disable,
                 icon: <PauseCircle size={13} className="text-[var(--warning)]" />,
                 onSelect: () => onBatchToggle(false),
               }
@@ -198,16 +214,16 @@ export function BlogTagItem({
         <span className="tabular text-[length:var(--text-10)] text-[var(--text-quaternary)] shrink-0">
           {safeTotal === 0 ? (
             '0'
-          ) : safePublished < safeTotal ? (
+          ) : safeEnabled < safeTotal ? (
             <>
               <span
                 className={
-                  safePublished > 0
+                  safeEnabled > 0
                     ? 'text-[var(--warning)] font-medium'
                     : 'text-[var(--text-quaternary)]'
                 }
               >
-                {safePublished}
+                {safeEnabled}
               </span>
               /{safeTotal}
             </>
@@ -220,7 +236,7 @@ export function BlogTagItem({
           onClick={(e) => {
             e.stopPropagation()
             if (safeTotal === 0) {
-              toast({ title: t('blog.folder_empty_hint'), tone: 'default' })
+              toast({ title: labels.emptyHint, tone: 'default' })
             }
           }}
           className="flex items-center pl-1 shrink-0"
@@ -228,10 +244,10 @@ export function BlogTagItem({
           <Tooltip
             label={
               safeTotal === 0
-                ? t('blog.folder_empty_hint')
+                ? labels.emptyHint
                 : isChecked
-                  ? t('blog.tag_batch_disabled_toast')
-                  : t('blog.tag_batch_enabled_toast')
+                  ? labels.disable
+                  : labels.enable
             }
             side="top"
           >
@@ -240,7 +256,7 @@ export function BlogTagItem({
                 checked={isChecked}
                 disabled={batchBusy || safeTotal === 0}
                 onChange={(nextChecked) => onBatchToggle(nextChecked)}
-                label={t('blog.batch_toggle_label')}
+                label={labels.toggleLabel}
               />
             </div>
           </Tooltip>
@@ -271,4 +287,3 @@ export function BlogTagItem({
     </div>
   )
 }
-

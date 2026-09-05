@@ -19,9 +19,9 @@ import { IconButton } from '../../components/primitives';
 import { Tooltip, confirm } from '../../components/overlay';
 import { useUi } from '../../store/ui';
 import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../lib/tag-tree';
+import { HubFolderItem } from '../../components/hub-folder-item';
+import { HubTagItem } from '../../components/hub-tag-item';
 import { buildBlogFolderTree, useBlogStore, type BlogFolderNode } from './blog-store';
-import { BlogFolderItem } from './blog-hub/blog-folder-item';
-import { BlogTagItem } from './blog-hub/blog-tag-item';
 
 
 export function BlogHubSidebar({
@@ -46,6 +46,7 @@ export function BlogHubSidebar({
 
   const folders = useBlogStore((s) => s.folders)
   const tags = useBlogStore((s) => s.tags)
+  const batchBusy = useBlogStore((s) => s.batchBusy)
   const loadFolders = useBlogStore((s) => s.loadFolders)
   const loadTags = useBlogStore((s) => s.loadTags)
   const createFolder = useBlogStore((s) => s.createFolder)
@@ -226,13 +227,21 @@ export function BlogHubSidebar({
       const isRenaming = renamingFolderId === node.folder.id
 
       return (
-        <BlogFolderItem
+        <HubFolderItem
           key={node.folder.id}
           node={node}
           isExpanded={isExpanded}
           isSelected={isSelected}
-          counts={counts}
+          counts={{ total: counts.total, enabled: counts.published }}
           isRenaming={isRenaming}
+          batchBusy={batchBusy}
+          dropMime="application/inkstone-blog-post-ids"
+          labels={{
+            enable: t('blog.folder_batch_enabled_toast'),
+            disable: t('blog.folder_batch_disabled_toast'),
+            toggleLabel: t('blog.batch_toggle_label'),
+            emptyHint: t('blog.folder_empty_hint'),
+          }}
           onToggleExpand={(e) => toggleFolderExpand(node.folder.id, e)}
           onSelect={() => setFolderId(node.folder.id)}
           onBatchToggle={async (enabled) => {
@@ -271,7 +280,7 @@ export function BlogHubSidebar({
               void deleteFolder(node.folder.id)
             }
           }}
-          onDropPosts={async (postIds) => {
+          onDropItems={async (postIds) => {
             const ok = await batchMoveToFolder(postIds, node.folder.id)
             if (ok) {
               toast({
@@ -282,7 +291,7 @@ export function BlogHubSidebar({
           }}
         >
           {isExpanded && node.children.length > 0 && renderFolderNodes(node.children)}
-        </BlogFolderItem>
+        </HubFolderItem>
       )
     })
   }
@@ -399,15 +408,13 @@ export function BlogHubSidebar({
                   const isExpanded = expandedTagPaths.has(node.fullPath)
 
                   return (
-                    <BlogTagItem
+                    <HubTagItem
                       key={node.fullPath}
                       tag={{
                         id: node.tag.id,
-                        userId: '',
                         name: node.fullPath,
                         color: node.tag.color,
                         isPinned: node.isPinned,
-                        postsCount: node.count,
                         createdAt: node.tag.createdAt,
                       }}
                       displayName={node.name}
@@ -423,8 +430,17 @@ export function BlogHubSidebar({
                         })
                       }}
                       isSelected={isSelected}
-                      counts={counts}
+                      counts={{ total: counts.total, enabled: counts.published }}
                       isRenaming={isRenaming}
+                      batchBusy={batchBusy}
+                      labels={{
+                        rename: t('sidebar.rename'),
+                        color: t('tags.color'),
+                        enable: t('blog.tag_batch_enabled_toast'),
+                        disable: t('blog.tag_batch_disabled_toast'),
+                        toggleLabel: t('blog.batch_toggle_label'),
+                        emptyHint: t('blog.folder_empty_hint'),
+                      }}
                       onSelect={() => setTag(node.fullPath)}
                       onBatchToggle={async (enabled) => {
                         const ok = await batchToggleGroup('tag', node.fullPath, enabled)
