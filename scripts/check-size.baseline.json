@@ -421,12 +421,6 @@
   "src/client/lib/markdown/renderer/math.ts": {
     "longFns": 1
   },
-  "src/client/lib/markdown/renderer/media.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/markdown/renderer/obsidian.ts": {
-    "longFns": 1
-  },
   "src/client/lib/markdown/renderer/parse.ts": {
     "longFns": 1
   },
