@@ -218,7 +218,7 @@ const allowed = new Map([
     "/* Option: No template */",
     "/* User & Built-in Templates */",
   ]],
-  ["src/client/features/folders/manage-folders-modal.tsx", [
+  ["src/client/features/folders/manage-folders-modal/index.tsx", [
     "/* Controls bar: search and add */",
     "/* Inline create form */",
     "/* Folder list */",

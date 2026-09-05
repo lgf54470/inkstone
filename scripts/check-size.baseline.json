@@ -156,8 +156,10 @@
   "src/client/features/command/shortcuts-panel.tsx": {
     "longFns": 1
   },
-  "src/client/features/folders/manage-folders-modal.tsx": {
-    "lines": 588,
+  "src/client/features/folders/manage-folders-modal/index.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/folders/manage-folders-modal/use-manage-folders-modal.ts": {
     "longFns": 1
   },
   "src/client/features/graph/graph-panel.tsx": {
