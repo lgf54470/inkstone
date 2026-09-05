@@ -158,7 +158,7 @@ export function BlogSettingsModal({
       <div className="flex h-12 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]">
         <div className="flex items-center gap-2">
           <Settings size={16} className="text-[var(--accent)]" />
-          <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">
+          <h2 className="text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">
             {t('blog.settings')}
           </h2>
         </div>
@@ -179,14 +179,14 @@ export function BlogSettingsModal({
       </div>
 
       <form onSubmit={handleSave}>
-        <div className="max-h-[66vh] overflow-y-auto p-5 space-y-4 text-[12.5px]">
+        <div className="max-h-[66vh] overflow-y-auto p-5 space-y-4 text-[length:var(--text-12\.5)]">
           {activeTab === 'traffic' ? (
             <>
               {/* Traffic Filters Section */}
               <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5">
                 <div className="flex items-center gap-2 pb-3 border-b border-[var(--border-subtle)]">
                   <Shield size={15} className="text-[var(--success)]" />
-                  <h4 className="text-[13px] font-semibold text-[var(--text-primary)]">
+                  <h4 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]">
                     {t('share.settings_traffic_filter_title')}
                   </h4>
                 </div>
@@ -194,10 +194,10 @@ export function BlogSettingsModal({
                 <div className="flex flex-col gap-3 pt-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-[12px] font-medium text-[var(--text-primary)]">
+                      <div className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                         {t('share.filter_exclude_bots')}
                       </div>
-                      <div className="text-[11px] text-[var(--text-tertiary)]">
+                      <div className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                         {t('share.filter_exclude_bots_hint')}
                       </div>
                     </div>
@@ -206,10 +206,10 @@ export function BlogSettingsModal({
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-[12px] font-medium text-[var(--text-primary)]">
+                      <div className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                         {t('share.filter_exclude_self')}
                       </div>
-                      <div className="text-[11px] text-[var(--text-tertiary)]">
+                      <div className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                         {t('share.filter_exclude_self_hint')}
                       </div>
                     </div>
@@ -218,10 +218,10 @@ export function BlogSettingsModal({
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-[12px] font-medium text-[var(--text-primary)]">
+                      <div className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                         {t('share.filter_exclude_owner')}
                       </div>
-                      <div className="text-[11px] text-[var(--text-tertiary)]">
+                      <div className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                         {t('share.filter_exclude_owner_hint')}
                       </div>
                     </div>
@@ -234,7 +234,7 @@ export function BlogSettingsModal({
               <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5">
                 <div className="flex items-center gap-2 pb-3 border-b border-[var(--border-subtle)]">
                   <Database size={15} className="text-[var(--accent)]" />
-                  <h4 className="text-[13px] font-semibold text-[var(--text-primary)]">
+                  <h4 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]">
                     {t('share.settings_retention_title')}
                   </h4>
                 </div>
@@ -243,10 +243,10 @@ export function BlogSettingsModal({
                   {/* Retention Days */}
                   <div>
                     <div className="flex items-center justify-between pb-1.5">
-                      <span className="text-[12px] font-medium text-[var(--text-primary)]">
+                      <span className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                         {t('share.retention_days_label')}
                       </span>
-                      <span className="text-[11px] text-[var(--text-tertiary)]">
+                      <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                         {retentionDays === '0'
                           ? t('share.retention_unlimited')
                           : t('share.retention_days_val', { days: retentionDays })}
@@ -268,10 +268,10 @@ export function BlogSettingsModal({
                   {/* Max Log Records */}
                   <div>
                     <div className="flex items-center justify-between pb-1.5">
-                      <span className="text-[12px] font-medium text-[var(--text-primary)]">
+                      <span className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                         {t('share.max_records_label')}
                       </span>
-                      <span className="text-[11px] text-[var(--text-tertiary)]">
+                      <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                         {maxRecords === '0'
                           ? t('share.retention_unlimited')
                           : t('share.max_records_val', { count: maxRecords })}
@@ -328,13 +328,13 @@ export function BlogSettingsModal({
             <>
               {/* Site Basic Info */}
               <div className="space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4">
-                <h3 className="font-semibold text-[13px] text-[var(--text-primary)]">
+                <h3 className="font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]">
                   {t('blog.site_basic_info')}
                 </h3>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1 block text-[11.5px] font-medium text-[var(--text-secondary)]">
+                    <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
                       {t('blog.site_name')}
                     </label>
                     <Input
@@ -344,7 +344,7 @@ export function BlogSettingsModal({
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11.5px] font-medium text-[var(--text-secondary)]">
+                    <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
                       {t('blog.subtitle')}
                     </label>
                     <Input
@@ -356,7 +356,7 @@ export function BlogSettingsModal({
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-[11.5px] font-medium text-[var(--text-secondary)]">
+                  <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
                     {t('blog.frontend_url')}
                   </label>
                   <Input
@@ -364,7 +364,7 @@ export function BlogSettingsModal({
                     onChange={(e) => setFrontendUrl(e.target.value)}
                     placeholder="http://localhost:4321"
                   />
-                  <p className="mt-1 text-[10.5px] text-[var(--text-quaternary)]">
+                  <p className="mt-1 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
                     {t('blog.frontend_url_hint')}
                   </p>
                 </div>
@@ -372,13 +372,13 @@ export function BlogSettingsModal({
 
               {/* Author Info */}
               <div className="space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4">
-                <h3 className="font-semibold text-[13px] text-[var(--text-primary)]">
+                <h3 className="font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]">
                   {t('blog.author_profile_settings')}
                 </h3>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1 block text-[11.5px] font-medium text-[var(--text-secondary)]">
+                    <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
                       {t('blog.author_name')}
                     </label>
                     <Input
@@ -388,7 +388,7 @@ export function BlogSettingsModal({
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11.5px] font-medium text-[var(--text-secondary)]">
+                    <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
                       {t('blog.author_avatar')}
                     </label>
                     <Input
@@ -400,7 +400,7 @@ export function BlogSettingsModal({
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-[11.5px] font-medium text-[var(--text-secondary)]">
+                  <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
                     {t('blog.bio')}
                   </label>
                   <Input
@@ -413,7 +413,7 @@ export function BlogSettingsModal({
 
               {/* Comments and Pagination Rule */}
               <div className="space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4">
-                <h3 className="font-semibold text-[13px] text-[var(--text-primary)]">
+                <h3 className="font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]">
                   {t('blog.comments_and_display_rules')}
                 </h3>
 
@@ -422,7 +422,7 @@ export function BlogSettingsModal({
                     <span className="block font-medium text-[var(--text-primary)]">
                       {t('blog.require_approval')}
                     </span>
-                    <span className="text-[11px] text-[var(--text-quaternary)]">
+                    <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                       {t('blog.require_approval_hint')}
                     </span>
                   </div>
@@ -434,7 +434,7 @@ export function BlogSettingsModal({
                     <span className="block font-medium text-[var(--text-primary)]">
                       {t('blog.posts_per_page')}
                     </span>
-                    <span className="text-[11px] text-[var(--text-quaternary)]">
+                    <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                       {t('blog.posts_per_page_hint')}
                     </span>
                   </div>
@@ -444,14 +444,14 @@ export function BlogSettingsModal({
                     max={50}
                     value={postsPerPage}
                     onChange={(e) => setPostsPerPage(Number(e.target.value))}
-                    className="w-16 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 py-1 text-center text-[12px] text-[var(--text-primary)] outline-none"
+                    className="w-16 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 py-1 text-center text-[length:var(--text-12)] text-[var(--text-primary)] outline-none"
                   />
                 </div>
               </div>
 
               {/* Social Links */}
               <div className="space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4">
-                <h3 className="font-semibold text-[13px] text-[var(--text-primary)]">
+                <h3 className="font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]">
                   {t('blog.social_links')}
                 </h3>
                 <div className="grid grid-cols-2 gap-3">

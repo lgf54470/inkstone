@@ -556,19 +556,19 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     className="app-viewport-fixed fixed z-[var(--z-graph)] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0">
     <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2 md:px-4">
       <div className="mr-1 flex min-w-0 items-baseline gap-2.5">
-        <h2 id={titleId} className="text-[14px] font-semibold tracking-[-0.014em]">{t('common.graph')}</h2>
-        {data && <span className="whitespace-nowrap text-[11.5px] text-[var(--text-quaternary)]">
+        <h2 id={titleId} className="text-[length:var(--text-14)] font-semibold tracking-[-0.014em]">{t('common.graph')}</h2>
+        {data && <span className="whitespace-nowrap text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">
           {data.nodes.filter((node) => node.kind === 'note').length}{t('graph.notes')}{data.edges.length}{t('graph.links')}
           {data.nodes.some((node) => node.kind === 'unresolved') && ` · ${data.nodes.filter((node) => node.kind === 'unresolved').length}${t('graph.unresolved_short')}`}
         </span>}
       </div>
       <div className="flex h-8 items-center rounded-[var(--r-md)] bg-[var(--bg-inset)] p-0.5" role="group" aria-label={t('graph.scope')}>
         <button type="button" aria-pressed={prefs.mode === 'global'} onClick={() => changePref('mode', 'global')}
-          className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[11.5px] ${prefs.mode === 'global' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-tertiary)]'}`}>
+          className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\.5)] ${prefs.mode === 'global' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-tertiary)]'}`}>
           {t('graph.global')}
         </button>
         <button type="button" aria-pressed={prefs.mode === 'local'} disabled={!activeNoteId} onClick={() => changePref('mode', 'local')}
-          className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[11.5px] disabled:opacity-40 ${prefs.mode === 'local' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-tertiary)]'}`}>
+          className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\.5)] disabled:opacity-40 ${prefs.mode === 'local' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-tertiary)]'}`}>
           {t('graph.local')}
         </button>
       </div>
@@ -576,7 +576,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
         <Search size={13} className="shrink-0 text-[var(--text-quaternary)]"/>
         <span className="sr-only">{t('graph.search_notes')}</span>
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('graph.search_notes')}
-          className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-[var(--text-quaternary)]"/>
+          className="min-w-0 flex-1 bg-transparent text-[length:var(--text-12)] outline-none placeholder:text-[var(--text-quaternary)]"/>
         {search && <button type="button" aria-label={t('common.clear')} onClick={() => setSearch('')}><X size={12}/></button>}
       </label>
       <div className="ml-auto flex items-center gap-1">
@@ -682,37 +682,37 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
               } else return
               event.preventDefault(); state.schedule?.()
             }}/>
-          {data.meta.truncated && <div role="status" className="absolute top-3 left-1/2 -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3 py-1 text-[11px] text-[var(--text-secondary)] shadow-sm">
+          {data.meta.truncated && <div role="status" className="absolute top-3 left-1/2 -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3 py-1 text-[length:var(--text-11)] text-[var(--text-secondary)] shadow-sm">
             {t('graph.showing_limit', { shown: data.nodes.length, total: data.meta.totalNodes })}
           </div>}
-          {(hover || selected) && <div className="pointer-events-none absolute bottom-4 left-1/2 max-w-[80vw] -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3.5 py-1.5 text-[12px] shadow-[var(--shadow-pop)]">
+          {(hover || selected) && <div className="pointer-events-none absolute bottom-4 left-1/2 max-w-[80vw] -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3.5 py-1.5 text-[length:var(--text-12)] shadow-[var(--shadow-pop)]">
             <span className="max-w-[50vw] truncate">{(hover ?? selected)!.title || t('common.untitled_note')}</span>
             <span className="ml-2 text-[var(--text-quaternary)]">{t('graph.direction_counts', { incoming: (hover ?? selected)!.inDegree, outgoing: (hover ?? selected)!.outDegree })}</span>
           </div>}
-          <div className="pointer-events-none absolute top-3 left-4 hidden text-[11px] text-[var(--text-quaternary)] md:block">{t('graph.interaction_hint')}</div>
+          <div className="pointer-events-none absolute top-3 left-4 hidden text-[length:var(--text-11)] text-[var(--text-quaternary)] md:block">{t('graph.interaction_hint')}</div>
         </>}
       </main>
 
       {isSettingsOpen && <aside aria-label={t('graph.settings')} className="absolute inset-y-0 right-0 z-[var(--z-sticky)] w-[min(88vw,300px)] overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 shadow-[-8px_0_24px_rgba(0,0,0,.06)] md:static md:shadow-none">
-        <div className="mb-4 flex items-center justify-between"><h3 className="text-[13px] font-semibold">{t('graph.settings')}</h3><Tooltip label={t('common.close')}><IconButton size="sm" label={t('common.close')} onClick={() => setIsSettingsOpen(false)}><X size={14}/></IconButton></Tooltip></div>
+        <div className="mb-4 flex items-center justify-between"><h3 className="text-[length:var(--text-13)] font-semibold">{t('graph.settings')}</h3><Tooltip label={t('common.close')}><IconButton size="sm" label={t('common.close')} onClick={() => setIsSettingsOpen(false)}><X size={14}/></IconButton></Tooltip></div>
         <GraphSection icon={<Filter size={13}/>} title={t('graph.filters')}>
           <GraphSelect label={t('graph.folder')} value={prefs.folderId} onChange={(value) => changePref('folderId', value)} options={[['', t('graph.all_folders')], ...folders.map((folder) => [folder.id, folder.name] as [string, string])]}/>
           <GraphSelect label={t('graph.tag')} value={prefs.tag} onChange={(value) => changePref('tag', value)} options={[['', t('graph.all_tags')], ...tags.map((item) => [item.name, item.name] as [string, string])]}/>
           {(prefs.tag || selectedTags.length > 0) && <GraphSelect label={t('graph.tags_match')} value={prefs.tagsMatch} onChange={(value) => changePref('tagsMatch', value as 'any' | 'all')} options={[['any', t('graph.tags_match_any')], ['all', t('graph.tags_match_all')]]}/>}
-          {selectedTags.length > 0 && <p className="text-[11px] leading-relaxed text-[var(--text-quaternary)]">{t('graph.sidebar_tags_included', { value0: selectedTags.length, value1: prefs.tagsMatch === 'all' ? t('graph.tags_match_all') : t('graph.tags_match_any') })}</p>}
+          {selectedTags.length > 0 && <p className="text-[length:var(--text-11)] leading-relaxed text-[var(--text-quaternary)]">{t('graph.sidebar_tags_included', { value0: selectedTags.length, value1: prefs.tagsMatch === 'all' ? t('graph.tags_match_all') : t('graph.tags_match_any') })}</p>}
       {GRAPH_CLEAR_TOGGLES.map((control) => (
         <GraphToggle key={control.prefKey} label={t(control.labelKey)} hint={control.hintKey ? t(control.hintKey) : undefined} checked={prefs[control.prefKey]} onChange={(value) => changePref(control.prefKey, value)}/>
       ))}
           {selectedTags.length >= LIMITS.tagSelectionMax && <div>
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-medium leading-relaxed text-[var(--danger)]">{t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}</p>
-                <button type="button" onClick={resetTagFilters} className="shrink-0 text-[11px] font-medium text-[var(--accent)] transition-colors hover:underline">{t('common.clear_selection')}</button>
+                <p className="text-[length:var(--text-11)] font-medium leading-relaxed text-[var(--danger)]">{t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}</p>
+                <button type="button" onClick={resetTagFilters} className="shrink-0 text-[length:var(--text-11)] font-medium text-[var(--accent)] transition-colors hover:underline">{t('common.clear_selection')}</button>
               </div>
-              <button type="button" onClick={() => setIsLimitOpen((v) => !v)} className="mt-1 flex items-center gap-1 text-[10.5px] font-medium text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
+              <button type="button" onClick={() => setIsLimitOpen((v) => !v)} className="mt-1 flex items-center gap-1 text-[length:var(--text-10\.5)] font-medium text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
                 <ChevronRight size={10} className={'transition-transform duration-[var(--dur-fast)] ' + (isLimitOpen ? 'rotate-90' : '')}/>
                 {isLimitOpen ? t('common.collapse') : t('graph.tags_limit_more', { value0: LIMITS.tagSelectionMax })}
               </button>
-              {isLimitOpen && <p className="mt-1 text-[10.5px] leading-relaxed text-[var(--text-tertiary)]">{t('graph.tags_limit_detail', { value0: LIMITS.tagSelectionMax })}</p>}
+              {isLimitOpen && <p className="mt-1 text-[length:var(--text-10\.5)] leading-relaxed text-[var(--text-tertiary)]">{t('graph.tags_limit_detail', { value0: LIMITS.tagSelectionMax })}</p>}
             </div>}
           {GRAPH_SHOW_TOGGLES.map((control) => (
             <GraphToggle key={control.prefKey} label={t(control.labelKey)} checked={prefs[control.prefKey]} onChange={(value) => changePref(control.prefKey, value)}/>
@@ -729,7 +729,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
           <GraphRange label={t('graph.repulsion')} min={300} max={1800} step={50} value={prefs.repulsion} onChange={(value) => changePref('repulsion', value)}/>
           <GraphRange label={t('graph.link_distance')} min={40} max={150} step={5} value={prefs.linkDistance} onChange={(value) => changePref('linkDistance', value)}/>
           <GraphRange label={t('graph.node_size')} min={0.7} max={1.8} step={0.1} value={prefs.nodeScale} onChange={(value) => changePref('nodeScale', value)}/>
-          <button type="button" onClick={() => setPrefs((current) => ({ ...DEFAULT_PREFERENCES, mode: current.mode }))} className="mt-1 flex h-8 w-full items-center justify-center gap-2 rounded-[var(--r-md)] border border-[var(--border-default)] text-[11.5px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"><ArrowDownToLine size={13}/>{t('graph.restore_defaults')}</button>
+          <button type="button" onClick={() => setPrefs((current) => ({ ...DEFAULT_PREFERENCES, mode: current.mode }))} className="mt-1 flex h-8 w-full items-center justify-center gap-2 rounded-[var(--r-md)] border border-[var(--border-default)] text-[length:var(--text-11\.5)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"><ArrowDownToLine size={13}/>{t('graph.restore_defaults')}</button>
         </GraphSection>
       </aside>}
     </div>
@@ -738,18 +738,18 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
 }
 
 function GraphSection({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
-  return <section className="mb-5"><h4 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[.06em] text-[var(--text-quaternary)]">{icon}{title}</h4><div className="space-y-2.5">{children}</div></section>
+  return <section className="mb-5"><h4 className="mb-2 flex items-center gap-1.5 text-[length:var(--text-11)] font-semibold uppercase tracking-[.06em] text-[var(--text-quaternary)]">{icon}{title}</h4><div className="space-y-2.5">{children}</div></section>
 }
 
 function GraphSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
-  return <label className="flex items-center justify-between gap-3 text-[12px] text-[var(--text-secondary)]"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-8 max-w-[160px] rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2 text-[11.5px] outline-none focus:border-[var(--accent)]">{options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}</select></label>
+  return <label className="flex items-center justify-between gap-3 text-[length:var(--text-12)] text-[var(--text-secondary)]"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-8 max-w-[160px] rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2 text-[length:var(--text-11\.5)] outline-none focus:border-[var(--accent)]">{options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}</select></label>
 }
 
 function GraphToggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (value: boolean) => void }) {
   const hintId = useId()
-  return <label className="flex cursor-pointer items-center justify-between gap-3 text-[12px] text-[var(--text-secondary)]"><span className="flex min-w-0 items-center gap-1"><span className="truncate">{label}</span>{hint && <Tooltip label={hint}><span role="img" aria-label={hint} id={hintId} className="inline-flex shrink-0 text-[var(--text-quaternary)]"><Info size={11}/></span></Tooltip>}</span><input type="checkbox" aria-describedby={hint ? hintId : undefined} checked={checked} onChange={(event) => onChange(event.target.checked)} className="size-4 accent-[var(--accent)]"/></label>
+  return <label className="flex cursor-pointer items-center justify-between gap-3 text-[length:var(--text-12)] text-[var(--text-secondary)]"><span className="flex min-w-0 items-center gap-1"><span className="truncate">{label}</span>{hint && <Tooltip label={hint}><span role="img" aria-label={hint} id={hintId} className="inline-flex shrink-0 text-[var(--text-quaternary)]"><Info size={11}/></span></Tooltip>}</span><input type="checkbox" aria-describedby={hint ? hintId : undefined} checked={checked} onChange={(event) => onChange(event.target.checked)} className="size-4 accent-[var(--accent)]"/></label>
 }
 
 function GraphRange({ label, min, max, step, value, onChange }: { label: string; min: number; max: number; step: number; value: number; onChange: (value: number) => void }) {
-  return <label className="block text-[12px] text-[var(--text-secondary)]"><span className="mb-1 flex justify-between"><span>{label}</span><span className="tabular-nums text-[var(--text-quaternary)]">{value}</span></span><input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full accent-[var(--accent)]"/></label>
+  return <label className="block text-[length:var(--text-12)] text-[var(--text-secondary)]"><span className="mb-1 flex justify-between"><span>{label}</span><span className="tabular-nums text-[var(--text-quaternary)]">{value}</span></span><input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full accent-[var(--accent)]"/></label>
 }

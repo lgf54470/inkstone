@@ -84,7 +84,7 @@ export function BlogHubModal({
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]">
           <div className="flex items-center gap-2">
             <Globe size={16} className="text-[var(--accent)]" />
-            <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">
+            <h2 className="text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">
               {t('blog.hub_title')}
             </h2>
           </div>
@@ -119,7 +119,7 @@ export function BlogHubModal({
 
                 <div className="flex-1 overflow-y-auto">
                   {loading && posts.length === 0 ? (
-                    <div className="flex h-64 items-center justify-center text-[12px] text-[var(--text-quaternary)]">
+                    <div className="flex h-64 items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
                       {t('common.loading')}
                     </div>
                   ) : posts.length === 0 ? (

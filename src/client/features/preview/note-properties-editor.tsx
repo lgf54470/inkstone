@@ -143,7 +143,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
 
   if (!properties.length && !isAddingProperty) {
     return (
-      <div className={cn('mb-4 flex items-center justify-between rounded-lg border border-dashed border-[var(--border-subtle)] px-3 py-1.5 text-[11.5px] text-[var(--text-tertiary)]', className)}>
+      <div className={cn('mb-4 flex items-center justify-between rounded-lg border border-dashed border-[var(--border-subtle)] px-3 py-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]', className)}>
         <span className="flex items-center gap-1.5 font-medium">
           <SlidersHorizontal size={13} />
           {t('markdown.properties')}
@@ -164,7 +164,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
   }
 
   return (
-    <div className={cn('mb-4 overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/40 text-[12px]', className)}>
+    <div className={cn('mb-4 overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/40 text-[length:var(--text-12)]', className)}>
       <div className="flex items-center justify-between px-3 py-2 text-[var(--text-secondary)]">
         <button
           type="button"
@@ -173,7 +173,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
         >
           <SlidersHorizontal size={13} className="text-[var(--text-tertiary)]" />
           <span>{t('markdown.properties')}</span>
-          <span className="rounded-full bg-[var(--surface-tertiary)] px-1.5 py-0.2 text-[10.5px] font-normal text-[var(--text-tertiary)]">
+          <span className="rounded-full bg-[var(--surface-tertiary)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-normal text-[var(--text-tertiary)]">
             {properties.length}
           </span>
         </button>
@@ -210,7 +210,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                           if (e.key === 'Enter') handleRename(key, renamedKey);
                           if (e.key === 'Escape') setEditingKey(null);
                         }}
-                        className="w-full rounded bg-[var(--surface-primary)] px-1.5 py-0.5 text-[11.5px] text-[var(--text-primary)] outline-none ring-1 ring-[var(--accent)]"
+                        className="w-full rounded bg-[var(--surface-primary)] px-1.5 py-0.5 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none ring-1 ring-[var(--accent)]"
                       />
                     ) : (
                       <span
@@ -252,7 +252,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                               if (e.key === 'Escape') setIsAddingTag(false);
                             }}
                             placeholder={t('tags.new_placeholder')}
-                            className="h-6 w-24 rounded-full bg-[var(--surface-primary)] px-2.5 text-[11px] text-[var(--text-primary)] outline-none ring-1 ring-[var(--accent)]"
+                            className="h-6 w-24 rounded-full bg-[var(--surface-primary)] px-2.5 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none ring-1 ring-[var(--accent)]"
                           />
                         ) : (
                           <button
@@ -261,7 +261,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                               setIsAddingTag(true);
                               setNewTagText('');
                             }}
-                            className="inline-flex h-6 items-center gap-1 rounded-full border border-dashed border-[var(--border-default)] px-2 text-[11px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                            className="inline-flex h-6 items-center gap-1 rounded-full border border-dashed border-[var(--border-default)] px-2 text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                           >
                             <Plus size={11} />
                             {t('properties.add_tag')}
@@ -289,7 +289,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                         {value.map((item, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center gap-1 rounded bg-[var(--surface-tertiary)] px-1.5 py-0.5 text-[11px] text-[var(--text-primary)]"
+                            className="inline-flex items-center gap-1 rounded bg-[var(--surface-tertiary)] px-1.5 py-0.5 text-[length:var(--text-11)] text-[var(--text-primary)]"
                           >
                             {String(item)}
                             <button
@@ -319,7 +319,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                             (e.target as HTMLInputElement).blur();
                           }
                         }}
-                        className="w-full rounded bg-transparent px-1.5 py-0.5 text-[12px] text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-primary)] focus:bg-[var(--surface-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                        className="w-full rounded bg-transparent px-1.5 py-0.5 text-[length:var(--text-12)] text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-primary)] focus:bg-[var(--surface-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
                       />
                     )}
                   </div>
@@ -352,7 +352,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                   if (e.key === 'Enter') handleCommitNewProperty();
                   if (e.key === 'Escape') setIsAddingProperty(false);
                 }}
-                className="h-7 w-32 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[11.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                className="h-7 w-32 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
               />
               <input
                 value={newValue}
@@ -362,13 +362,13 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                   if (e.key === 'Enter') handleCommitNewProperty();
                   if (e.key === 'Escape') setIsAddingProperty(false);
                 }}
-                className="h-7 min-w-[140px] flex-1 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[11.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                className="h-7 min-w-[140px] flex-1 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
               />
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={handleCommitNewProperty}
-                  className="inline-flex h-7 items-center rounded bg-[var(--accent)] px-2.5 text-[11.5px] font-medium text-white transition-opacity hover:opacity-90"
+                  className="inline-flex h-7 items-center rounded bg-[var(--accent)] px-2.5 text-[length:var(--text-11\.5)] font-medium text-white transition-opacity hover:opacity-90"
                 >
                   <Check size={12} className="mr-1" />
                   {t('overlay.confirm')}
@@ -376,7 +376,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                 <button
                   type="button"
                   onClick={() => setIsAddingProperty(false)}
-                  className="inline-flex h-7 items-center rounded px-2 text-[11.5px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                  className="inline-flex h-7 items-center rounded px-2 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 >
                   <X size={13} />
                 </button>
@@ -391,7 +391,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                   setNewKey('');
                   setNewValue('');
                 }}
-                className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]"
+                className="inline-flex items-center gap-1.5 text-[length:var(--text-11\.5)] font-medium text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]"
               >
                 <Plus size={12} />
                 {t('properties.add_property')}

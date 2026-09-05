@@ -129,7 +129,7 @@ export function AttachmentInspector({
   return (
     <aside className="flex h-full w-[300px] shrink-0 flex-col border-l border-[var(--border-subtle)] bg-[var(--bg-sunken)]">
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-3">
-        <span className="text-[13px] font-semibold text-[var(--text-primary)]">
+        <span className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]">
           {t('attachments.detail_info')}
         </span>
         <IconButton label={t('common.close')} size="sm" onClick={onClose}>
@@ -151,7 +151,7 @@ export function AttachmentInspector({
           ) : (
             <div className={cn('flex flex-col items-center gap-1.5 p-4 rounded-xl', badge.bg)}>
               <span className={cn('text-lg font-bold tracking-wider', badge.text)}>{badge.label}</span>
-              <span className="text-[11px] text-[var(--text-tertiary)]">{file.mime}</span>
+              <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">{file.mime}</span>
             </div>
           )}
           <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition-opacity group-hover:opacity-100">
@@ -161,7 +161,7 @@ export function AttachmentInspector({
 
         <div>
           <div className="flex items-start justify-between gap-2">
-            <h4 className="text-[13px] font-semibold text-[var(--text-primary)] break-all">
+            <h4 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] break-all">
               {file.filename}
             </h4>
             <IconButton
@@ -172,7 +172,7 @@ export function AttachmentInspector({
               <Pencil size={12} />
             </IconButton>
           </div>
-          <p className="mt-1 text-[11.5px] text-[var(--text-tertiary)]">
+          <p className="mt-1 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
             {formatFileSize(file.size)}
             {file.width && file.height ? ` · ${file.width} × ${file.height}` : ''}
           </p>
@@ -221,14 +221,14 @@ export function AttachmentInspector({
           <a
             href={file.url}
             download={file.filename}
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           >
             <Download size={13} />
             <span>{t('common.download')}</span>
           </a>
         </div>
 
-        <div className="space-y-2 border-t border-[var(--border-subtle)] pt-3 text-[12px]">
+        <div className="space-y-2 border-t border-[var(--border-subtle)] pt-3 text-[length:var(--text-12)]">
           <div className="flex items-center justify-between text-[var(--text-secondary)]">
             <span className="flex items-center gap-1.5 text-[var(--text-tertiary)]">
               <FolderClosed size={13} />
@@ -250,7 +250,7 @@ export function AttachmentInspector({
 
         <div className="space-y-2 border-t border-[var(--border-subtle)] pt-3">
           <div className="flex items-center justify-between">
-            <span className="text-[12px] font-medium text-[var(--text-secondary)]">
+            <span className="text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]">
               {t('navigation.tag')}
             </span>
             <IconButton
@@ -266,7 +266,7 @@ export function AttachmentInspector({
             {file.tags?.map((tName) => (
               <span
                 key={tName}
-                className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-base)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)]"
+                className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-base)] px-2 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)]"
               >
                 <span>#{tName}</span>
                 <button
@@ -289,7 +289,7 @@ export function AttachmentInspector({
                     if (!newTagInput.trim()) setIsAddingTag(false)
                   }}
                   placeholder={t('attachments.add_tag')}
-                  className="h-6 w-24 rounded-full border border-[var(--accent)] bg-[var(--bg-base)] px-2 text-[11px] outline-none"
+                  className="h-6 w-24 rounded-full border border-[var(--accent)] bg-[var(--bg-base)] px-2 text-[length:var(--text-11)] outline-none"
                 />
               </form>
             )}
@@ -297,14 +297,14 @@ export function AttachmentInspector({
         </div>
 
         <div className="space-y-2 border-t border-[var(--border-subtle)] pt-3">
-          <span className="text-[12px] font-medium text-[var(--text-secondary)]">
+          <span className="text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]">
             {t('attachments.referencing_notes')}
           </span>
 
           {isLoadingNotes ? (
-            <p className="text-[11.5px] text-[var(--text-quaternary)]">{t('common.loading')}</p>
+            <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('common.loading')}</p>
           ) : referencingNotes.length === 0 ? (
-            <p className="text-[11.5px] text-[var(--text-quaternary)]">
+            <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">
               {t('attachments.no_referencing_notes')}
             </p>
           ) : (
@@ -314,7 +314,7 @@ export function AttachmentInspector({
                   key={note.id}
                   type="button"
                   onClick={() => openNote(note.id)}
-                  className="flex w-full items-center gap-2 rounded-[var(--r-md)] px-2 py-1.5 text-left text-[12px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
+                  className="flex w-full items-center gap-2 rounded-[var(--r-md)] px-2 py-1.5 text-left text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
                 >
                   <FileText size={13} className="shrink-0 text-[var(--text-quaternary)]" />
                   <span className="truncate">{note.title}</span>

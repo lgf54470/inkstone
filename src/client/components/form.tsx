@@ -16,7 +16,7 @@ import { Tooltip } from './overlay'
 
 const FIELD_BASE = cn(
   'w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)]',
-  'px-2.5 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)]',
+  'px-2.5 text-[length:var(--text-13)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)]',
   'transition-[border-color,box-shadow] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
   'focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none',
   'disabled:opacity-50',
@@ -132,7 +132,7 @@ export const Switch = memo(function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] md:h-[20px] md:w-[34px]',
+        'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] md:h-[var(--sp-5)] md:w-[34px]',
         'disabled:opacity-45',
         checked ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]',
       )}
@@ -140,7 +140,7 @@ export const Switch = memo(function Switch({
       <span
         aria-hidden="true"
         className={cn(
-          'absolute left-[2px] top-[2px] size-5 rounded-full bg-white shadow-sm md:size-[16px]',
+          'absolute left-[2px] top-[2px] size-5 rounded-full bg-white shadow-sm md:size-[var(--sp-4)]',
           'transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]',
           checked ? 'translate-x-5 md:translate-x-[14px]' : 'translate-x-0',
         )}
@@ -233,7 +233,7 @@ function SegmentedInner<T extends string>({
               'relative z-[var(--z-sticky)] inline-flex items-center justify-center gap-1.5 rounded-[var(--r-sm)] font-medium',
               'transition-[color,background-color] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
               'disabled:pointer-events-none disabled:opacity-45',
-              size === 'sm' ? 'h-8 px-2.5 text-[11.5px] md:h-[22px] md:px-2' : 'h-9 px-3 text-[12.5px] md:h-[26px] md:px-2.5',
+              size === 'sm' ? 'h-8 px-2.5 text-[length:var(--text-11\.5)] md:h-[22px] md:px-2' : 'h-9 px-3 text-[length:var(--text-12\.5)] md:h-[26px] md:px-2.5',
               active
                 ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[0_1px_2px_rgba(0,0,0,.10)]'
                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]',
@@ -305,7 +305,7 @@ function SliderInner({
         className="ink-slider h-[18px] flex-1 cursor-pointer appearance-none bg-transparent"
         style={{ '--pct': `${pct}%` } as React.CSSProperties}
       />
-      <span className="w-11 shrink-0 text-right text-[12px] tabular text-[var(--text-tertiary)]">
+      <span className="w-11 shrink-0 text-right text-[length:var(--text-12)] tabular text-[var(--text-tertiary)]">
         {value}
         {suffix}
       </span>
@@ -351,12 +351,12 @@ export function Field({
   }
   return (
     <div className={cn('space-y-1.5', className)}>
-      <label id={labelId} htmlFor={controlId} className="block text-[12px] font-medium text-[var(--text-secondary)]">
+      <label id={labelId} htmlFor={controlId} className="block text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]">
         {label}
         {required && <span aria-hidden="true" className="ml-0.5 text-[var(--danger)]">*</span>}
       </label>
       <div>{control}</div>
-      {hint && <p id={hintId} className="text-[11.5px] leading-relaxed text-[var(--text-quaternary)]">{hint}</p>}
+      {hint && <p id={hintId} className="text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-quaternary)]">{hint}</p>}
     </div>
   )
 }
@@ -381,9 +381,9 @@ export function SettingRow({
       )}
     >
       <div className="min-w-0 flex-1">
-        <div className="text-[13px] font-medium text-[var(--text-primary)]">{title}</div>
+        <div className="text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">{title}</div>
         {description && (
-          <div className="mt-0.5 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">
+          <div className="mt-0.5 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
             {description}
           </div>
         )}
@@ -411,11 +411,11 @@ function CheckboxInner({
       role="checkbox"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={cn('inline-flex min-h-10 items-center gap-2 text-[13px] md:min-h-0', className)}
+      className={cn('inline-flex min-h-10 items-center gap-2 text-[length:var(--text-13)] md:min-h-0', className)}
     >
       <span
         className={cn(
-          'inline-flex size-[15px] shrink-0 items-center justify-center rounded-[5px] border transition-colors duration-[var(--dur-fast)]',
+          'inline-flex size-[15px] shrink-0 items-center justify-center rounded-[var(--r-5)] border transition-colors duration-[var(--dur-fast)]',
           checked
             ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-contrast)]'
             : 'border-[var(--border-strong)] bg-[var(--bg-inset)]',

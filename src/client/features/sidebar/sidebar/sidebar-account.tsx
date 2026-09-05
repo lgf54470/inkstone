@@ -73,10 +73,10 @@ export function SidebarAccount({ rail = false }: {
           <button ref={buttonRef} type="button" onClick={() => setIsMenuOpen(true)} aria-label={t("sidebar.account_and_settings")} className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-l-[var(--r-md)] pl-2 text-left">
             <Avatar src={user.avatarUrl} name={displayName} size={28}/>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[12.5px] font-semibold text-[var(--text-primary)]">
+              <span className="block truncate text-[length:var(--text-12\.5)] font-semibold text-[var(--text-primary)]">
                 {displayName}
               </span>
-              <span className="block truncate text-[10.5px] text-[var(--text-quaternary)]">
+              <span className="block truncate text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
                 @{user.username}
               </span>
             </span>

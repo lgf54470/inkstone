@@ -482,19 +482,19 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                 </>)}
             </div>
             <div role="group" aria-label={t("sidebar.calendar_view")} className="flex overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-default)]">
-                <button type="button" aria-pressed={view === 'month'} onClick={() => onViewChange('month')} className="flex h-6 min-w-0 items-center gap-0.5 whitespace-nowrap px-1.5 text-[10.5px] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
+                <button type="button" aria-pressed={view === 'month'} onClick={() => onViewChange('month')} className="flex h-6 min-w-0 items-center gap-0.5 whitespace-nowrap px-1.5 text-[length:var(--text-10\.5)] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
                     <CalendarDays size={10} className="shrink-0"/><span className="truncate">{t("sidebar.calendar_month_view")}</span>
                 </button>
-                <button type="button" aria-pressed={view === 'weeks'} onClick={() => onViewChange('weeks')} className="flex h-6 min-w-0 items-center gap-0.5 whitespace-nowrap border-l border-[var(--border-default)] px-1.5 text-[10.5px] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
+                <button type="button" aria-pressed={view === 'weeks'} onClick={() => onViewChange('weeks')} className="flex h-6 min-w-0 items-center gap-0.5 whitespace-nowrap border-l border-[var(--border-default)] px-1.5 text-[length:var(--text-10\.5)] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
                     <BarChart3 size={10} className="shrink-0"/><span className="truncate">{t("sidebar.calendar_week_view")}</span>
                 </button>
-                <button type="button" aria-pressed={view === 'year'} onClick={() => onViewChange('year')} className="flex h-6 min-w-0 items-center gap-0.5 whitespace-nowrap border-l border-[var(--border-default)] px-1.5 text-[10.5px] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
+                <button type="button" aria-pressed={view === 'year'} onClick={() => onViewChange('year')} className="flex h-6 min-w-0 items-center gap-0.5 whitespace-nowrap border-l border-[var(--border-default)] px-1.5 text-[length:var(--text-10\.5)] font-medium transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
                     <CalendarRange size={10} className="shrink-0"/><span className="truncate">{t("sidebar.calendar_year_view")}</span>
                 </button>
             </div>
         </div>
         {view === 'month' ? (<><div className="mt-1.5 px-0.5">
-            {latestEditOutside !== null && (<button type="button" aria-label={t(gapAhead ? "sidebar.calendar_gap_banner_ahead_value0" : "sidebar.calendar_gap_banner_value0", { value0: latestOutsideDays ?? 0 })} onClick={() => handleGapDayClick(latestEditOutside.key)} className="flex h-6 w-full items-center gap-1.5 rounded-[var(--r-sm)] border border-dashed border-[var(--accent)]/60 bg-[var(--accent-soft)]/60 px-2 text-[10px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
+            {latestEditOutside !== null && (<button type="button" aria-label={t(gapAhead ? "sidebar.calendar_gap_banner_ahead_value0" : "sidebar.calendar_gap_banner_value0", { value0: latestOutsideDays ?? 0 })} onClick={() => handleGapDayClick(latestEditOutside.key)} className="flex h-6 w-full items-center gap-1.5 rounded-[var(--r-sm)] border border-dashed border-[var(--accent)]/60 bg-[var(--accent-soft)]/60 px-2 text-[length:var(--text-10)] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
                     <RotateCcw size={10} className="shrink-0"/>
                     <span className="min-w-0 flex-1 truncate text-left">{t(gapAhead ? "sidebar.calendar_gap_banner_ahead_value0" : "sidebar.calendar_gap_banner_value0", { value0: latestOutsideDays ?? 0 })}</span>
                 </button>)}
@@ -518,7 +518,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                     <button type="button" data-day-key={cell.key} tabIndex={cell.key === focusKey ? 0 : -1} aria-pressed={selected} aria-label={gapLabel(cell.key)} onClick={() => {
                         setFocusedKey(cell.key);
                         activateDay(cell.key, diaryId);
-                    }} className={cn('relative flex aspect-square items-center justify-center rounded-[4px] text-[9.5px] leading-none transition-colors', 'hover:ring-1 hover:ring-inset hover:ring-[var(--accent-ring)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]', cell.inMonth ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-quaternary)] opacity-60', count > 0 && 'font-semibold text-[var(--text-primary)]', isLatestOutside(cell.key) && 'border border-dashed border-[var(--accent)]/80')} style={level > 0 ? { backgroundColor: `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[level]}%, transparent)` } : undefined}>
+                    }} className={cn('relative flex aspect-square items-center justify-center rounded-[var(--r-xs)] text-[length:var(--text-9\.5)] leading-none transition-colors', 'hover:ring-1 hover:ring-inset hover:ring-[var(--accent-ring)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]', cell.inMonth ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-quaternary)] opacity-60', count > 0 && 'font-semibold text-[var(--text-primary)]', isLatestOutside(cell.key) && 'border border-dashed border-[var(--accent)]/80')} style={level > 0 ? { backgroundColor: `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[level]}%, transparent)` } : undefined}>
                         {cell.day}
                         {diaryId && (<span aria-hidden="true" className="absolute bottom-[2px] left-1/2 size-[3px] -translate-x-1/2 rounded-full bg-[var(--accent)]"/>)}
                         {selected && (<span aria-hidden="true" className="absolute inset-x-1 bottom-[1px] h-[2px] rounded-full bg-[var(--accent)]"/>)}
@@ -538,10 +538,10 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                     const inRangePreview = yearRangeAnchor !== null && yearRangeHover !== null
                         && month.month >= Math.min(yearRangeAnchor.month, yearRangeHover)
                         && month.month <= Math.max(yearRangeAnchor.month, yearRangeHover);
-                    return (<div key={month.month} data-month-card={month.month} className={cn('flex min-w-0 flex-col items-center gap-1 rounded-[4px] px-px py-1 transition-colors hover:bg-[var(--bg-hover)] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--accent)]', inRangePreview && 'bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]', yearRangeAnchor?.month === month.month && 'ring-1 ring-inset ring-[var(--accent)]')} onMouseEnter={() => { if (yearRangeAnchor !== null) setYearRangeHover(month.month); }}>
-                        <span className="text-[8.5px] font-medium text-[var(--text-quaternary)]">{monthLabels[month.month]}</span>
+                    return (<div key={month.month} data-month-card={month.month} className={cn('flex min-w-0 flex-col items-center gap-1 rounded-[var(--r-xs)] px-px py-1 transition-colors hover:bg-[var(--bg-hover)] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--accent)]', inRangePreview && 'bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]', yearRangeAnchor?.month === month.month && 'ring-1 ring-inset ring-[var(--accent)]')} onMouseEnter={() => { if (yearRangeAnchor !== null) setYearRangeHover(month.month); }}>
+                        <span className="text-[length:var(--text-8\.5)] font-medium text-[var(--text-quaternary)]">{monthLabels[month.month]}</span>
                         <span className="grid w-full grid-cols-7 gap-px leading-none">
-                            {weekdayLabels.map((label, index) => (<button key={index} type="button" data-weekday={index} tabIndex={-1} aria-label={t("sidebar.calendar_year_weekday_value0", { value0: monthLabels[month.month] ?? '', value1: label })} onClick={() => handleWeekdayClick(month.month, index)} className="rounded-[1px] py-px text-center text-[6px] font-medium text-[var(--text-quaternary)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
+                            {weekdayLabels.map((label, index) => (<button key={index} type="button" data-weekday={index} tabIndex={-1} aria-label={t("sidebar.calendar_year_weekday_value0", { value0: monthLabels[month.month] ?? '', value1: label })} onClick={() => handleWeekdayClick(month.month, index)} className="rounded-[var(--r-1)] py-px text-center text-[length:var(--text-6)] font-medium text-[var(--text-quaternary)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
                                 {label}
                             </button>))}
                         </span>
@@ -562,23 +562,23 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                             setYearRangeAnchor(null);
                             setYearRangeHover(null);
                             onRangeSelect(range.start, range.end);
-                        }} className="grid w-full grid-cols-7 gap-px rounded-[2px] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
-                            {month.cells.map((cell, index) => (<span key={index} aria-hidden="true" className={cn('aspect-square w-full rounded-[1px]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]')} style={!cell.inMonth
+                        }} className="grid w-full grid-cols-7 gap-px rounded-[var(--r-2)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
+                            {month.cells.map((cell, index) => (<span key={index} aria-hidden="true" className={cn('aspect-square w-full rounded-[var(--r-1)]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]')} style={!cell.inMonth
                                 ? { backgroundColor: 'transparent' }
                                 : (yearLevel(cell.key) > 0 ? { backgroundColor: `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[yearLevel(cell.key)]}%, transparent)` } : { backgroundColor: 'var(--bg-inset)' })}/>))}
                         </button>
                     </div>);
                 }}
             />
-            {yearRangeAnchor !== null && (<div className="mt-1 px-0.5 text-[9px] text-[var(--text-tertiary)]">
+            {yearRangeAnchor !== null && (<div className="mt-1 px-0.5 text-[length:var(--text-9)] text-[var(--text-tertiary)]">
                 {t("sidebar.calendar_year_range_hint_value0", { value0: monthLabels[yearRangeAnchor.month] ?? '' })}
             </div>)}
         </>) : (<div ref={weekFlashRef} className="mt-1.5 px-0.5">
-            <div className="px-0.5 pb-1 text-[9px] font-medium text-[var(--text-quaternary)]">{t("sidebar.calendar_week_strip_value0", { value0: stripWeeks.length })}</div>
+            <div className="px-0.5 pb-1 text-[length:var(--text-9)] font-medium text-[var(--text-quaternary)]">{t("sidebar.calendar_week_strip_value0", { value0: stripWeeks.length })}</div>
             <div className="flex gap-[2px]">
-                {stripWeeks.map((week, weekIndex) => (<button key={weekIndex} type="button" aria-expanded={expandedWeek === weekIndex} aria-pressed={isWeekRangeActive(week)} aria-label={t("sidebar.calendar_expand_week_value0", { value0: week[0]?.key.slice(5), value1: week[6]?.key.slice(5) })} onClick={(event) => handleStripWeekClick(event, weekIndex)} className={cn('flex min-w-0 flex-1 flex-col gap-[2px] rounded-[3px] p-px transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', expandedWeek === weekIndex && 'bg-[var(--accent-soft)]')}>
+                {stripWeeks.map((week, weekIndex) => (<button key={weekIndex} type="button" aria-expanded={expandedWeek === weekIndex} aria-pressed={isWeekRangeActive(week)} aria-label={t("sidebar.calendar_expand_week_value0", { value0: week[0]?.key.slice(5), value1: week[6]?.key.slice(5) })} onClick={(event) => handleStripWeekClick(event, weekIndex)} className={cn('flex min-w-0 flex-1 flex-col gap-[2px] rounded-[var(--r-3)] p-px transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', expandedWeek === weekIndex && 'bg-[var(--accent-soft)]')}>
                     {week.map((cell) => (<Tooltip key={cell.key} label={flaggedLabel(cell.key)}>
-                        <span aria-hidden="true" className={cn('aspect-square w-full rounded-[2px]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]', cell.selected && !cell.today && 'ring-1 ring-inset ring-[var(--accent)]/70', isLatestOutside(cell.key) && 'border border-dashed border-[var(--accent)]/80')} style={cell.level > 0 ? { backgroundColor: `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[cell.level]}%, transparent)` } : { backgroundColor: 'var(--bg-inset)' }}/>
+                        <span aria-hidden="true" className={cn('aspect-square w-full rounded-[var(--r-2)]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]', cell.selected && !cell.today && 'ring-1 ring-inset ring-[var(--accent)]/70', isLatestOutside(cell.key) && 'border border-dashed border-[var(--accent)]/80')} style={cell.level > 0 ? { backgroundColor: `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[cell.level]}%, transparent)` } : { backgroundColor: 'var(--bg-inset)' }}/>
                     </Tooltip>))}
                 </button>))}
             </div>
@@ -588,14 +588,14 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                         {shownWeek !== null && stripWeeks[shownWeek] && stripWeeks[shownWeek].map((cell, dayIndex) => (<div key={cell.key}>
                             <div className="flex items-center gap-0.5">
                                 <button type="button" aria-label={gapLabel(cell.key)} onClick={() => activateDay(cell.key, cell.diaryId)} className={cn('flex h-6 min-w-0 flex-1 items-center gap-1.5 rounded-[var(--r-sm)] px-1.5 text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', cell.selected && 'bg-[var(--accent-soft)]', isLatestOutside(cell.key) && 'border border-dashed border-[var(--accent)]/80')}>
-                                    <span className="w-3 shrink-0 text-center text-[9.5px] font-medium text-[var(--text-quaternary)]">{weekdayLabels[dayIndex]}</span>
-                                    <span className="shrink-0 text-[10.5px] tabular text-[var(--text-secondary)]">{cell.key.slice(5)}</span>
+                                    <span className="w-3 shrink-0 text-center text-[length:var(--text-9\.5)] font-medium text-[var(--text-quaternary)]">{weekdayLabels[dayIndex]}</span>
+                                    <span className="shrink-0 text-[length:var(--text-10\.5)] tabular text-[var(--text-secondary)]">{cell.key.slice(5)}</span>
                                     {cell.today && (<span aria-hidden="true" className="size-[5px] shrink-0 rounded-full bg-[var(--accent)]"/>)}
                                     <span className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5">
-                                        {cell.diaryId && (<span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[9px] font-medium text-[var(--accent)]">
+                                        {cell.diaryId && (<span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[length:var(--text-9)] font-medium text-[var(--accent)]">
                                             <span aria-hidden="true" className="size-[3px] rounded-full bg-[var(--accent)]"/>{t("sidebar.diary_tag")}
                                         </span>)}
-                                        {cell.count > 0 && (<span className="text-[9.5px] tabular text-[var(--text-quaternary)]">{cell.count}</span>)}
+                                        {cell.count > 0 && (<span className="text-[length:var(--text-9\.5)] tabular text-[var(--text-quaternary)]">{cell.count}</span>)}
                                     </span>
                                 </button>
                                 {cell.notes.length > 0 && (<button type="button" aria-expanded={expandedDay === cell.key} aria-label={t("sidebar.calendar_expand_day")} onClick={() => setExpandedDay((current) => current === cell.key ? null : cell.key)} className={cn('flex size-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', expandedDay === cell.key && 'text-[var(--text-secondary)]')}>
@@ -607,7 +607,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                                     <div className="space-y-px py-0.5 pl-3.5 pr-1">
                                         {shownDay === cell.key && cell.notes.map((note) => (<button key={note.id} type="button" onClick={() => onNoteClick(note.id)} className="flex h-6 w-full items-center gap-1.5 rounded-[var(--r-sm)] px-1.5 text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
                                             <FileText size={9} className="shrink-0 text-[var(--text-quaternary)]"/>
-                                            <span className="min-w-0 flex-1 truncate text-[10.5px] text-[var(--text-secondary)]">{note.title}</span>
+                                            <span className="min-w-0 flex-1 truncate text-[length:var(--text-10\.5)] text-[var(--text-secondary)]">{note.title}</span>
                                         </button>))}
                                     </div>
                                 </div>
@@ -618,7 +618,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                         <div className="flex items-center">
                             <button type="button" aria-expanded={isExpandedWeekNotes} aria-label={t("sidebar.calendar_week_notes_value0", { value0: weekCellsTotal })} onClick={() => setIsExpandedWeekNotes((open) => !open)} className="flex h-6 min-w-0 flex-1 items-center gap-1.5 rounded-[var(--r-sm)] px-1.5 text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
                                 <FileText size={10} className="shrink-0 text-[var(--text-quaternary)]"/>
-                                <span className="text-[10.5px] text-[var(--text-secondary)]">{t("sidebar.calendar_week_notes_value0", { value0: weekCellsTotal })}</span>
+                                <span className="text-[length:var(--text-10\.5)] text-[var(--text-secondary)]">{t("sidebar.calendar_week_notes_value0", { value0: weekCellsTotal })}</span>
                                 <ChevronDown size={10} className={cn('ml-auto text-[var(--text-quaternary)] transition-transform duration-[var(--dur-fast)]', isExpandedWeekNotes && 'rotate-180')}/>
                             </button>
                         </div>
@@ -632,14 +632,14 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                                             onCursorChange({ year, month: month - 1 });
                                             onViewChange('month');
                                             onDaySelect(cell.key);
-                                        }} className="flex w-full items-center gap-1 rounded-[var(--r-sm)] px-1.5 py-0.5 text-left text-[9.5px] font-medium text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
+                                        }} className="flex w-full items-center gap-1 rounded-[var(--r-sm)] px-1.5 py-0.5 text-left text-[length:var(--text-9\.5)] font-medium text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
                                             <span>{weekdayLabels[dayIndex]}</span>
                                             <span className="tabular">{cell.key.slice(5)}</span>
                                             <span className="ml-auto tabular">{cell.notes.length}</span>
                                         </button>
                                         {cell.notes.map((note) => (<button key={note.id} type="button" onClick={() => onNoteClick(note.id)} className="flex h-6 w-full items-center gap-1.5 rounded-[var(--r-sm)] py-0.5 pr-1.5 pl-5 text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
                                             <FileText size={9} className="shrink-0 text-[var(--text-quaternary)]"/>
-                                            <span className="min-w-0 flex-1 truncate text-[10.5px] text-[var(--text-secondary)]">{note.title}</span>
+                                            <span className="min-w-0 flex-1 truncate text-[length:var(--text-10\.5)] text-[var(--text-secondary)]">{note.title}</span>
                                         </button>))}
                                     </div>) : null))}
                                 </div>
@@ -651,9 +651,9 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
             </div>
         </div>)}
         <div className="mt-1.5 flex items-center gap-1 px-1">
-            <span className="text-[9px] text-[var(--text-quaternary)]">{t("sidebar.calendar_less")}</span>
-            {[0, 1, 2, 3, 4].map((level) => (<span key={level} aria-hidden="true" className="size-[9px] rounded-[2px]" style={{ backgroundColor: level === 0 ? 'var(--bg-inset)' : `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[level]}%, transparent)` }}/>))}
-            <span className="text-[9px] text-[var(--text-quaternary)]">{t("sidebar.calendar_more")}</span>
+            <span className="text-[length:var(--text-9)] text-[var(--text-quaternary)]">{t("sidebar.calendar_less")}</span>
+            {[0, 1, 2, 3, 4].map((level) => (<span key={level} aria-hidden="true" className="size-[9px] rounded-[var(--r-2)]" style={{ backgroundColor: level === 0 ? 'var(--bg-inset)' : `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[level]}%, transparent)` }}/>))}
+            <span className="text-[length:var(--text-9)] text-[var(--text-quaternary)]">{t("sidebar.calendar_more")}</span>
         </div>
     </div>);
 }

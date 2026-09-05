@@ -297,7 +297,7 @@ export function BlogHubSidebar({
               type="button"
               onClick={item.onClick}
               className={cn(
-                'group flex w-full h-8 items-center justify-between rounded-[var(--r-md)] px-2.5 text-[12px] font-medium transition-colors text-left',
+                'group flex w-full h-8 items-center justify-between rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] font-medium transition-colors text-left',
                 item.active
                   ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
@@ -310,7 +310,7 @@ export function BlogHubSidebar({
               {item.count !== undefined && (
                 <span
                   className={cn(
-                    'tabular text-[10px] px-1.5 py-0.5 rounded-full shrink-0',
+                    'tabular text-[length:var(--text-10)] px-1.5 py-0.5 rounded-full shrink-0',
                     item.badgeTone === 'danger'
                       ? 'bg-[var(--danger)] text-white font-bold animate-pulse'
                       : item.active
@@ -330,7 +330,7 @@ export function BlogHubSidebar({
             <button
               type="button"
               onClick={() => setIsFoldersSectionOpen(!isFoldersSectionOpen)}
-              className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
+              className="flex items-center gap-1 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
             >
               {isFoldersSectionOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               <span>{t('blog.folders')}</span>
@@ -350,7 +350,7 @@ export function BlogHubSidebar({
           {isFoldersSectionOpen && (
             <div className="space-y-0.5 pt-0.5">
               {folders.length === 0 ? (
-                <p className="px-2.5 py-1 text-[11px] text-[var(--text-quaternary)]">
+                <p className="px-2.5 py-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                   {t('blog.no_folders')}
                 </p>
               ) : (
@@ -365,7 +365,7 @@ export function BlogHubSidebar({
             <button
               type="button"
               onClick={() => setIsTagsSectionOpen(!isTagsSectionOpen)}
-              className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
+              className="flex items-center gap-1 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
             >
               {isTagsSectionOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               <span>{t('blog.tags')}</span>
@@ -385,7 +385,7 @@ export function BlogHubSidebar({
           {isTagsSectionOpen && (
             <div className="space-y-0.5 pt-0.5">
               {flattenedTagNodes.length === 0 ? (
-                <p className="px-2.5 py-1 text-[11px] text-[var(--text-quaternary)]">
+                <p className="px-2.5 py-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                   {t('blog.no_tags')}
                 </p>
               ) : (
@@ -484,7 +484,7 @@ export function BlogHubSidebar({
           <button
             type="button"
             onClick={onOpenCategoriesModal}
-            className="flex-1 flex items-center justify-center gap-1 rounded-[var(--r-md)] px-2 py-1.5 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors border border-[var(--border-subtle)]"
+            className="flex-1 flex items-center justify-center gap-1 rounded-[var(--r-md)] px-2 py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors border border-[var(--border-subtle)]"
           >
             <span>{t('blog.categories')}</span>
           </button>
@@ -507,7 +507,7 @@ export function BlogHubSidebar({
           </a>
         </div>
 
-        <div className="space-y-1 pt-1.5 border-t border-[var(--border-subtle)]/60 text-[11px] text-[var(--text-tertiary)]">
+        <div className="space-y-1 pt-1.5 border-t border-[var(--border-subtle)]/60 text-[length:var(--text-11)] text-[var(--text-tertiary)]">
           <div className="flex items-center justify-between">
             <span>{t('blog.total_posts_count')}</span>
             <span className="font-semibold text-[var(--text-primary)]">

@@ -399,7 +399,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
             maxLength={LIMITS.titleMaxLength}
             aria-label={t("workspace.note_title")}
             placeholder={t("common.untitled_note")}
-            className="h-8 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 text-[14px] font-semibold tracking-[-0.01em] text-[var(--text-primary)] outline-none transition-colors placeholder:font-medium placeholder:text-[var(--text-quaternary)] hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)] focus:border-[var(--accent)] focus:bg-[var(--bg-surface)]"
+            className="h-8 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 text-[length:var(--text-14)] font-semibold tracking-[-0.01em] text-[var(--text-primary)] outline-none transition-colors placeholder:font-medium placeholder:text-[var(--text-quaternary)] hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)] focus:border-[var(--accent)] focus:bg-[var(--bg-surface)]"
             onChange={(event) => editTitle(note.id, event.target.value)}
             onBlur={(event) => editTitle(note.id, event.currentTarget.value.trim())}
             onKeyDown={(event) => {
@@ -420,7 +420,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
               <Globe size={11} className="shrink-0 text-[var(--accent)]" />
             </span>
           )}
-          {!grouped && (<span className="hidden shrink-0 text-[11px] text-[var(--text-quaternary)] md:inline">
+          {!grouped && (<span className="hidden shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)] md:inline">
               {updatedTime}
             </span>)}
         </div>
@@ -553,7 +553,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
             }}/>
         </Drawer>)}
 
-      <footer className="flex h-[var(--statusbar-h)] shrink-0 items-center gap-2 overflow-hidden border-t border-[var(--border-subtle)] px-3 text-[11px] text-[var(--text-quaternary)]">
+      <footer className="flex h-[var(--statusbar-h)] shrink-0 items-center gap-2 overflow-hidden border-t border-[var(--border-subtle)] px-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
         <span className="tabular">{note.wordCount}{t("common.words")}</span>
         <span className="hidden tabular sm:inline">{note.charCount}{t("workspace.characters")}</span>
         <span className="hidden tabular md:inline">{t("common.about")}{readingMinutes(note.wordCount)}{t("common.min")}</span>
@@ -618,7 +618,7 @@ function NoNoteSelected({ onCreate }: {
     onCreate: () => void;
 }) {
     return (<div className="flex h-full items-center justify-center bg-[var(--bg-editor)]">
-      <Empty art="select" title={t("workspace.choose_a_note_or_write_a_new_one")} description={t("workspace.open_a_note_from_the_list_or_press_shortcut_to_create_one", { shortcut: prettyCombo('mod+n').join('+') })} action={<button type="button" onClick={onCreate} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3.5 text-[12.5px] font-medium text-[var(--accent-contrast)] transition-transform active:translate-y-px">
+      <Empty art="select" title={t("workspace.choose_a_note_or_write_a_new_one")} description={t("workspace.open_a_note_from_the_list_or_press_shortcut_to_create_one", { shortcut: prettyCombo('mod+n').join('+') })} action={<button type="button" onClick={onCreate} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3.5 text-[length:var(--text-12\.5)] font-medium text-[var(--accent-contrast)] transition-transform active:translate-y-px">
             <Plus size={14}/>{t("common.new_note")}</button>}/>
     </div>);
 }

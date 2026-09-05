@@ -35,7 +35,7 @@ export function FolderIconSubmenu({
       className="w-[224px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)] outline-none"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="px-1 pb-2 pt-0.5 text-[12px] font-medium text-[var(--text-secondary)]">
+      <div className="px-1 pb-2 pt-0.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]">
         {t('folders.icon')}
       </div>
 
@@ -67,7 +67,7 @@ export function FolderIconSubmenu({
               aria-pressed={isSelected}
               onClick={() => onSelectIcon(icon)}
               className={cn(
-                'flex size-7 items-center justify-center rounded-[var(--r-sm)] border text-[14px] leading-none transition-transform hover:scale-110',
+                'flex size-7 items-center justify-center rounded-[var(--r-sm)] border text-[length:var(--text-14)] leading-none transition-transform hover:scale-110',
                 isSelected
                   ? 'border-[var(--accent)] bg-[var(--accent-soft)] ring-2 ring-[var(--accent-ring)]'
                   : 'border-[var(--border-subtle)] bg-[var(--bg-base)] hover:border-[var(--border-default)]'
@@ -95,7 +95,7 @@ export function FolderIconSubmenu({
             }
           }}
           placeholder={t('folders.custom_icon_placeholder')}
-          className="h-7 w-full rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-6 pr-2 text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] outline-none focus:border-[var(--accent)]"
+          className="h-7 w-full rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-6 pr-2 text-[length:var(--text-12)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] outline-none focus:border-[var(--accent)]"
         />
       </form>
     </div>

@@ -86,10 +86,10 @@ export function ShareTableView({
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-2 text-center">
         <Share2 size={32} className="text-[var(--text-quaternary)]" />
-        <p className="text-[13px] font-medium text-[var(--text-secondary)]">
+        <p className="text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]">
           {t('share.no_shares_found')}
         </p>
-        <p className="text-[11px] text-[var(--text-tertiary)]">
+        <p className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
           {t('share.no_shares_hint')}
         </p>
       </div>
@@ -100,7 +100,7 @@ export function ShareTableView({
     <div className="w-full overflow-x-auto">
       <table className="w-full border-collapse text-left">
         <thead className="sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-card)] shadow-xs">
-          <tr className="border-b border-[var(--border-subtle)] text-[11px] font-semibold text-[var(--text-tertiary)]">
+          <tr className="border-b border-[var(--border-subtle)] text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]">
             <th className="w-10 px-3 py-2 text-center">
               <input
                 type="checkbox"
@@ -256,7 +256,7 @@ function ShareTableRow({
               onMoveToFolder(null)
             }}
             className={cn(
-              'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
+              'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
               !share.shareFolderId && 'text-[var(--accent)] font-semibold',
             )}
           >
@@ -273,7 +273,7 @@ function ShareTableRow({
                 onMoveToFolder(f.id)
               }}
               className={cn(
-                'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
+                'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
                 share.shareFolderId === f.id && 'text-[var(--accent)] font-semibold',
               )}
             >
@@ -383,7 +383,7 @@ function ShareTableRow({
             </button>
             <span
               onClick={() => onOpenEdit(share)}
-              className="font-medium text-[13px] text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer"
+              className="font-medium text-[length:var(--text-13)] text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer"
             >
               {share.noteTitle || t('common.untitled_note')}
             </span>
@@ -392,7 +392,7 @@ function ShareTableRow({
             {folder && (
               <span
                 style={{ borderColor: folder.color ? `${folder.color}40` : undefined }}
-                className="inline-flex items-center gap-1 rounded bg-[var(--bg-surface)] px-1.5 py-0.2 text-[10px] text-[var(--text-secondary)] border border-[var(--border-subtle)]"
+                className="inline-flex items-center gap-1 rounded bg-[var(--bg-surface)] px-1.5 py-0.2 text-[length:var(--text-10)] text-[var(--text-secondary)] border border-[var(--border-subtle)]"
               >
                 <FolderClosed size={10} style={{ color: folder.color ?? undefined }} className="shrink-0" />
                 <span className="max-w-[100px] truncate">{folder.name}</span>
@@ -401,7 +401,7 @@ function ShareTableRow({
             {share.tags && share.tags.length > 0 && share.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded bg-[var(--bg-card)] px-1.5 py-0.2 text-[10px] text-[var(--text-tertiary)] border border-[var(--border-subtle)]"
+                className="rounded bg-[var(--bg-card)] px-1.5 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]"
               >
                 #{tag}
               </span>
@@ -419,10 +419,10 @@ function ShareTableRow({
 
       <td className="px-3 py-2.5">
         {share.slug ? (
-          <div className="inline-flex items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
+          <div className="inline-flex items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2 py-1 font-mono text-[length:var(--text-11)] text-[var(--text-secondary)]">
             <span className="truncate max-w-[120px]">{`/s/${share.slug}`}</span>
             {isCustom && (
-              <span className="rounded bg-[var(--accent-subtle)] px-1 py-0.2 text-[9px] font-semibold text-[var(--accent)]">
+              <span className="rounded bg-[var(--accent-subtle)] px-1 py-0.2 text-[length:var(--text-9)] font-semibold text-[var(--accent)]">
                 {'CUSTOM'}
               </span>
             )}
@@ -440,14 +440,14 @@ function ShareTableRow({
             </button>
           </div>
         ) : (
-          <span className="text-[11px] text-[var(--text-quaternary)]">
+          <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
             {t('share.not_shared')}
           </span>
         )}
       </td>
 
       <td className="px-3 py-2.5">
-        <div className="flex flex-col gap-1 text-[11px]">
+        <div className="flex flex-col gap-1 text-[length:var(--text-11)]">
           <div className="flex items-center gap-1">
             {share.hasPassword ? (
               <span className="inline-flex items-center gap-0.5 text-[var(--warning)]">
@@ -471,17 +471,17 @@ function ShareTableRow({
         </div>
       </td>
 
-      <td className="px-3 py-2.5 text-right font-mono text-[12px]">
+      <td className="px-3 py-2.5 text-right font-mono text-[length:var(--text-12)]">
         <div className="text-[var(--text-primary)] font-semibold">
-          {share.views} <span className="text-[10px] font-normal text-[var(--text-tertiary)]">{'PV'}</span>
+          {share.views} <span className="text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]">{'PV'}</span>
         </div>
-        <div className="text-[11px] text-[var(--text-tertiary)]">
+        <div className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
           {share.uniqueVisitors ?? 0}{' '}
-          <span className="text-[10px] text-[var(--text-quaternary)]">{'UV'}</span>
+          <span className="text-[length:var(--text-10)] text-[var(--text-quaternary)]">{'UV'}</span>
         </div>
       </td>
 
-      <td className="px-3 py-2.5 text-right text-[11px] text-[var(--text-tertiary)]">
+      <td className="px-3 py-2.5 text-right text-[length:var(--text-11)] text-[var(--text-tertiary)]">
         {share.lastViewedAt ? relativeTime(share.lastViewedAt) : t('share.never_visited')}
       </td>
 

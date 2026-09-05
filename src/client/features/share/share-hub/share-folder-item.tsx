@@ -176,7 +176,7 @@ export function ShareFolderItem({
         }}
         style={{ paddingLeft: `${8 + node.depth * 12}px` }}
         className={cn(
-          'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[12px] font-medium transition-colors cursor-pointer',
+          'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[length:var(--text-12)] font-medium transition-colors cursor-pointer',
           isSelected
             ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
@@ -220,7 +220,7 @@ export function ShareFolderItem({
           <span className="flex-1 truncate">{node.folder.name}</span>
         )}
 
-        <span className="tabular text-[10px] text-[var(--text-quaternary)] shrink-0">
+        <span className="tabular text-[length:var(--text-10)] text-[var(--text-quaternary)] shrink-0">
           {safeTotal === 0 ? (
             '0'
           ) : safeShared < safeTotal ? (

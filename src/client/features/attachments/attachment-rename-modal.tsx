@@ -55,7 +55,7 @@ export function AttachmentRenameModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4 pt-1">
         <label className="block space-y-1.5">
-          <span className="text-[12px] font-medium text-[var(--text-secondary)]">
+          <span className="text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]">
             {t('attachments.filename')}
           </span>
           <Input
@@ -66,7 +66,7 @@ export function AttachmentRenameModal({
           />
         </label>
 
-        <label className="flex items-center gap-2.5 cursor-pointer text-[12.5px] text-[var(--text-secondary)] select-none">
+        <label className="flex items-center gap-2.5 cursor-pointer text-[length:var(--text-12\.5)] text-[var(--text-secondary)] select-none">
           <Checkbox
             checked={isUpdateRefs}
             onChange={(checked) => setIsUpdateRefs(checked)}

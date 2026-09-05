@@ -104,7 +104,7 @@ export function BlogCategoriesModal({
       <div className="flex h-12 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]">
         <div className="flex items-center gap-2">
           <FolderPlus size={16} className="text-[var(--accent)]" />
-          <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">
+          <h2 className="text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">
             {t('blog.categories')}
           </h2>
         </div>
@@ -113,7 +113,7 @@ export function BlogCategoriesModal({
         </IconButton>
       </div>
 
-      <div className="max-h-[70vh] overflow-y-auto p-5 space-y-5 text-[12.5px]">
+      <div className="max-h-[70vh] overflow-y-auto p-5 space-y-5 text-[length:var(--text-12\.5)]">
         {/* Form: Add or Edit Category */}
         <form onSubmit={handleSubmit} className="rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -124,7 +124,7 @@ export function BlogCategoriesModal({
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="text-[11px] text-[var(--text-quaternary)] hover:text-[var(--text-primary)]"
+                className="text-[length:var(--text-11)] text-[var(--text-quaternary)] hover:text-[var(--text-primary)]"
               >
                 {t('common.cancel')}
               </button>
@@ -133,7 +133,7 @@ export function BlogCategoriesModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-[11.5px] font-medium text-[var(--text-secondary)]">
+              <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
                 {t('blog.category_name')}
               </label>
               <Input
@@ -144,7 +144,7 @@ export function BlogCategoriesModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11.5px] font-medium text-[var(--text-secondary)]">
+              <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
                 {t('blog.category_slug')}
               </label>
               <Input
@@ -156,7 +156,7 @@ export function BlogCategoriesModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-[11.5px] font-medium text-[var(--text-secondary)]">
+            <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
               {t('blog.category_color')}
             </label>
             <div className="flex items-center gap-2">
@@ -185,7 +185,7 @@ export function BlogCategoriesModal({
 
         {/* Existing Categories List */}
         <div className="space-y-2">
-          <h3 className="font-semibold text-[13px] text-[var(--text-secondary)]">
+          <h3 className="font-semibold text-[length:var(--text-13)] text-[var(--text-secondary)]">
             {t('blog.existing_categories')} ({categories.length})
           </h3>
 
@@ -207,14 +207,14 @@ export function BlogCategoriesModal({
                     />
                     <div>
                       <span className="font-medium text-[var(--text-primary)]">{cat.name}</span>
-                      <span className="ml-2 text-[11px] text-[var(--text-quaternary)]">
+                      <span className="ml-2 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                         /{cat.slug}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[11px] text-[var(--text-tertiary)]">
+                    <span className="rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                       {cat.postsCount ?? 0} {t('blog.posts_count_unit')}
                     </span>
                     <IconButton

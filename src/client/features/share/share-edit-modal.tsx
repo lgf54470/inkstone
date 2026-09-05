@@ -293,7 +293,7 @@ export function ShareEditModal({
                   type="text"
                   readOnly
                   value={share.url}
-                  className="flex-1 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 font-mono text-[11.5px] text-[var(--text-primary)] select-all outline-hidden"
+                  className="flex-1 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 font-mono text-[length:var(--text-11\.5)] text-[var(--text-primary)] select-all outline-hidden"
                 />
                 <Button
                   size="sm"
@@ -353,10 +353,10 @@ export function ShareEditModal({
           {/* Share status switch */}
           <div className="flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
             <div>
-              <div className="text-[13px] font-medium text-[var(--text-primary)]">
+              <div className="text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
                 {t('share.share_status')}
               </div>
-              <div className="text-[11px] text-[var(--text-tertiary)]">
+              <div className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                 {isEnabled ? t('share.status_active_desc') : t('share.status_paused_desc')}
               </div>
             </div>
@@ -365,7 +365,7 @@ export function ShareEditModal({
 
           {/* Folder selection */}
           <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-            <div className="text-[13px] font-medium text-[var(--text-primary)] flex items-center gap-1.5 pb-1.5">
+            <div className="text-[length:var(--text-13)] font-medium text-[var(--text-primary)] flex items-center gap-1.5 pb-1.5">
               <FolderClosed size={14} className="text-[var(--text-tertiary)]" />
               <span>{t('share.folders_isolation')}</span>
             </div>
@@ -385,7 +385,7 @@ export function ShareEditModal({
 
           {/* Tag selection */}
           <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 space-y-2">
-            <div className="text-[13px] font-medium text-[var(--text-primary)] flex items-center gap-1.5">
+            <div className="text-[length:var(--text-13)] font-medium text-[var(--text-primary)] flex items-center gap-1.5">
               <Hash size={14} className="text-[var(--text-tertiary)]" />
               <span>{t('share.tags_isolation')}</span>
             </div>
@@ -393,12 +393,12 @@ export function ShareEditModal({
             {/* Tag chips */}
             <div className="flex flex-wrap items-center gap-1.5 min-h-6">
               {shareTags.length === 0 ? (
-                <span className="text-[11px] text-[var(--text-quaternary)]">{t('share.no_tags')}</span>
+                <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">{t('share.no_tags')}</span>
               ) : (
                 shareTags.map((tagName) => (
                   <span
                     key={tagName}
-                    className="inline-flex items-center gap-1 rounded-[var(--r-sm)] bg-[var(--bg-hover)] border border-[var(--border-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]"
+                    className="inline-flex items-center gap-1 rounded-[var(--r-sm)] bg-[var(--bg-hover)] border border-[var(--border-subtle)] px-2 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]"
                   >
                     <Hash size={10} className="text-[var(--accent)]" />
                     <span>{tagName}</span>
@@ -439,10 +439,10 @@ export function ShareEditModal({
           <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
             <div className="flex items-center justify-between pb-2">
               <div>
-                <div className="text-[13px] font-medium text-[var(--text-primary)]">
+                <div className="text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
                   {t('share.custom_slug')}
                 </div>
-                <div className="text-[11px] text-[var(--text-tertiary)]">
+                <div className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                   {t('share.custom_slug_hint')}
                 </div>
               </div>
@@ -452,24 +452,24 @@ export function ShareEditModal({
             {shouldUseCustomSlug && (
               <div className="pt-2">
                 <div className="flex items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 py-1.5 focus-within:border-[var(--accent)]">
-                  <span className="text-[12px] font-mono text-[var(--text-quaternary)]">{'/s/'}</span>
+                  <span className="text-[length:var(--text-12)] font-mono text-[var(--text-quaternary)]">{'/s/'}</span>
                   <input
                     type="text"
                     value={customSlug}
                     onChange={(e) => setCustomSlug(e.target.value)}
                     placeholder={t('share.custom_slug_placeholder')}
-                    className="flex-1 bg-transparent text-[12px] font-mono text-[var(--text-primary)] outline-none placeholder:text-[var(--text-quaternary)]"
+                    className="flex-1 bg-transparent text-[length:var(--text-12)] font-mono text-[var(--text-primary)] outline-none placeholder:text-[var(--text-quaternary)]"
                   />
                   <button
                     type="button"
                     onClick={() => setCustomSlug(generateRandomSlug(6))}
-                    className="flex items-center gap-1 rounded bg-[var(--bg-card)] px-2 py-1 text-[11px] font-medium text-[var(--accent)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all"
+                    className="flex items-center gap-1 rounded bg-[var(--bg-card)] px-2 py-1 text-[length:var(--text-11)] font-medium text-[var(--accent)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all"
                     title={t('share.generate_random_slug')}
                   >
                     <Dices size={12} />
                     <span>{t('share.random_slug_btn')}</span>
                   </button>
-                  {isSlugChecking && <span className="text-[10px] text-[var(--text-quaternary)]">{t('common.checking')}</span>}
+                  {isSlugChecking && <span className="text-[length:var(--text-10)] text-[var(--text-quaternary)]">{t('common.checking')}</span>}
                   {!isSlugChecking && slugAvailable === true && (
                     <Check size={14} className="text-[var(--success)]" />
                   )}
@@ -477,7 +477,7 @@ export function ShareEditModal({
                     <ShieldAlert size={14} className="text-[var(--danger)]" />
                   )}
                 </div>
-                {slugError && <p className="pt-1 text-[11px] text-[var(--danger)]">{slugError}</p>}
+                {slugError && <p className="pt-1 text-[length:var(--text-11)] text-[var(--danger)]">{slugError}</p>}
               </div>
             )}
           </div>
@@ -486,10 +486,10 @@ export function ShareEditModal({
           <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
             <div className="flex items-center justify-between pb-2">
               <div>
-                <div className="text-[13px] font-medium text-[var(--text-primary)]">
+                <div className="text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
                   {t('share.access_password')}
                 </div>
-                <div className="text-[11px] text-[var(--text-tertiary)]">
+                <div className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                   {t('share.password_hint')}
                 </div>
               </div>
@@ -515,7 +515,7 @@ export function ShareEditModal({
 
           {/* Expiration */}
           <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-            <div className="text-[13px] font-medium text-[var(--text-primary)] pb-1.5">
+            <div className="text-[length:var(--text-13)] font-medium text-[var(--text-primary)] pb-1.5">
               {t('share.expiration_title')}
             </div>
             <Segmented

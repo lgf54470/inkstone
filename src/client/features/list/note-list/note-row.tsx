@@ -311,7 +311,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               {note.isPinned && <Pin size={10} className="anim-mark-enter shrink-0 text-[var(--accent)]"/>}
-              <h3 className={cn('min-w-0 flex-1 truncate text-[13px] leading-snug', active
+              <h3 className={cn('min-w-0 flex-1 truncate text-[length:var(--text-13)] leading-snug', active
             ? 'font-semibold text-[var(--accent)]'
             : 'font-medium text-[var(--text-primary)]')}>
                 {titleParts.map((part, i) => part.hit ? (<mark key={i} className="ink-hit">
@@ -326,7 +326,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
                     openFolderView(folders, note.folderId!);
                   }}
                   title={noteFolder.name}
-                  className="inline-flex max-w-[120px] shrink-0 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-1.5 py-px text-[10px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
+                  className="inline-flex max-w-[120px] shrink-0 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-1.5 py-px text-[length:var(--text-10)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
                 >
                   {noteFolder.color ? (
                     <span
@@ -334,7 +334,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
                       style={{ backgroundColor: noteFolder.color }}
                     />
                   ) : noteFolder.icon ? (
-                    <span className="shrink-0 text-[10px] leading-none">{noteFolder.icon}</span>
+                    <span className="shrink-0 text-[length:var(--text-10)] leading-none">{noteFolder.icon}</span>
                   ) : (
                     <FolderClosed size={9} className="shrink-0 opacity-70" />
                   )}
@@ -354,7 +354,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
               )}
             </div>
 
-            {density === 'comfortable' && note.excerpt && (<p className="truncate-2 mt-1 text-[11.5px] leading-[1.5] text-[var(--text-tertiary)]">
+            {density === 'comfortable' && note.excerpt && (<p className="truncate-2 mt-1 text-[length:var(--text-11\.5)] leading-[1.5] text-[var(--text-tertiary)]">
                 {note.excerpt}
               </p>)}
 
@@ -368,7 +368,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
                       openFolderView(folders, note.folderId!);
                     }}
                     title={noteFolder.name}
-                    className="inline-flex max-w-[140px] items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-2 py-0.5 text-[10.5px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
+                    className="inline-flex max-w-[140px] items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-2 py-0.5 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
                   >
                     {noteFolder.color ? (
                       <span
@@ -376,7 +376,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
                         style={{ backgroundColor: noteFolder.color }}
                       />
                     ) : noteFolder.icon ? (
-                      <span className="shrink-0 text-[10px] leading-none">{noteFolder.icon}</span>
+                      <span className="shrink-0 text-[length:var(--text-10)] leading-none">{noteFolder.icon}</span>
                     ) : (
                       <FolderClosed size={10} className="shrink-0 opacity-70" />
                     )}

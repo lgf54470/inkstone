@@ -18,7 +18,7 @@ export function TagColorSubmenu({
       className="w-[218px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)] outline-none"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="px-1 pb-2 pt-0.5 text-[12px] font-medium text-[var(--text-secondary)]">
+      <div className="px-1 pb-2 pt-0.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]">
         {t('tags.color')}
       </div>
 
@@ -66,7 +66,7 @@ export function TagColorSubmenu({
       <button
         type="button"
         onClick={onManageTags}
-        className="flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[12.5px] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
+        className="flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12\.5)] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
       >
         <Settings2 size={13} className="shrink-0 text-[var(--text-tertiary)]" />
         <span className="truncate">{t('tags.manage_tags')}</span>

@@ -116,7 +116,7 @@ export function AttachmentDashboardView({
             <HardDrive size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[11.5px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
+            <div className="text-[length:var(--text-11\.5)] font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
               {t('attachments.total_files')}
             </div>
             <div className="mt-0.5 text-xl font-bold text-[var(--text-primary)]">
@@ -130,7 +130,7 @@ export function AttachmentDashboardView({
             <Database size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[11.5px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
+            <div className="text-[length:var(--text-11\.5)] font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
               {t('attachments.stats_title')}
             </div>
             <div className="mt-0.5 text-xl font-bold text-[var(--text-primary)] truncate">
@@ -147,7 +147,7 @@ export function AttachmentDashboardView({
             <Link2Off size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[11.5px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
+            <div className="text-[length:var(--text-11\.5)] font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
               {t('attachments.unreferenced')}
             </div>
             <div className="mt-0.5 text-xl font-bold text-[var(--text-primary)] flex items-baseline gap-2">
@@ -170,7 +170,7 @@ export function AttachmentDashboardView({
             <FolderTree size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[11.5px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
+            <div className="text-[length:var(--text-11\.5)] font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
               {t('attachments.structure')}
             </div>
             <div className="mt-0.5 text-sm font-semibold text-[var(--text-primary)]">
@@ -183,11 +183,11 @@ export function AttachmentDashboardView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-5 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-            <h3 className="font-semibold text-[13.5px] text-[var(--text-primary)] flex items-center gap-2">
+            <h3 className="font-semibold text-[length:var(--text-13\.5)] text-[var(--text-primary)] flex items-center gap-2">
               <Database size={15} className="text-[var(--accent)]" />
               {t('attachments.storage_donut_title')}
             </h3>
-            <span className="text-[11.5px] text-[var(--text-tertiary)]">
+            <span className="text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
               {formatFileSize(totalQuota)}
             </span>
           </div>
@@ -221,7 +221,7 @@ export function AttachmentDashboardView({
                 <span className="text-2xl font-black tracking-tight text-[var(--text-primary)]">
                   {usedPercentage}%
                 </span>
-                <span className="text-[11px] font-medium text-[var(--text-tertiary)] mt-0.5">
+                <span className="text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)] mt-0.5">
                   {t('attachments.used')}
                 </span>
               </div>
@@ -233,7 +233,7 @@ export function AttachmentDashboardView({
             </div>
           </div>
 
-          <div className="rounded-[var(--r-md)] bg-[var(--bg-subtle)] p-3 text-[12px] flex items-center justify-between">
+          <div className="rounded-[var(--r-md)] bg-[var(--bg-subtle)] p-3 text-[length:var(--text-12)] flex items-center justify-between">
             <div className="flex items-center gap-2 text-[var(--text-secondary)]">
               <Sparkles size={14} className="text-amber-500 shrink-0" />
               <span>{t('attachments.quota_info')}</span>
@@ -246,11 +246,11 @@ export function AttachmentDashboardView({
 
         <div className="lg:col-span-7 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-            <h3 className="font-semibold text-[13.5px] text-[var(--text-primary)] flex items-center gap-2">
+            <h3 className="font-semibold text-[length:var(--text-13\.5)] text-[var(--text-primary)] flex items-center gap-2">
               <Images size={15} className="text-[var(--accent)]" />
               {t('attachments.category_breakdown')}
             </h3>
-            <span className="text-[11.5px] text-[var(--text-tertiary)]">
+            <span className="text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
               {stats?.totalCount ?? 0} {t('attachments.all_files')}
             </span>
           </div>
@@ -264,12 +264,12 @@ export function AttachmentDashboardView({
                   onClick={() => onSelectCategory(cat.id)}
                   className="group cursor-pointer rounded-[var(--r-md)] p-2 hover:bg-[var(--bg-hover)] transition-colors"
                 >
-                  <div className="flex items-center justify-between text-[12.5px] mb-1.5">
+                  <div className="flex items-center justify-between text-[length:var(--text-12\.5)] mb-1.5">
                     <div className="flex items-center gap-2 font-medium text-[var(--text-primary)]">
                       {cat.icon}
                       <span>{cat.label}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-[var(--text-secondary)] font-mono text-[11.5px]">
+                    <div className="flex items-center gap-3 text-[var(--text-secondary)] font-mono text-[length:var(--text-11\.5)]">
                       <span>{formatFileSize(cat.bytes)}</span>
                       <span className="w-12 text-right font-semibold text-[var(--text-primary)]">{pct}%</span>
                     </div>
@@ -286,7 +286,7 @@ export function AttachmentDashboardView({
           </div>
 
           <div className="pt-3 border-t border-[var(--border-subtle)] flex flex-wrap gap-2 items-center">
-            <span className="text-[11.5px] text-[var(--text-tertiary)] font-medium mr-1 flex items-center gap-1">
+            <span className="text-[length:var(--text-11\.5)] text-[var(--text-tertiary)] font-medium mr-1 flex items-center gap-1">
               <Tag size={12} />
               {t('attachments.top_extensions')}:
             </span>
@@ -295,7 +295,7 @@ export function AttachmentDashboardView({
                 key={item.ext}
                 type="button"
                 onClick={() => onSelectExtension(item.ext)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-subtle)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-subtle)] px-2.5 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors cursor-pointer"
               >
                 <span className="uppercase font-semibold">{item.ext}</span>
                 <span className="text-[var(--text-quaternary)]">({item.count})</span>
@@ -307,11 +307,11 @@ export function AttachmentDashboardView({
 
       <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-[13.5px] text-[var(--text-primary)] flex items-center gap-2">
+          <h3 className="font-semibold text-[length:var(--text-13\.5)] text-[var(--text-primary)] flex items-center gap-2">
             <HardDrive size={15} className="text-[var(--accent)]" />
             {t('attachments.largest_files')}
           </h3>
-          <span className="text-[11.5px] text-[var(--text-tertiary)]">
+          <span className="text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
             {'Top 5'}
           </span>
         </div>
@@ -326,12 +326,12 @@ export function AttachmentDashboardView({
               return (
                 <div
                   key={file.id}
-                  className="flex items-center justify-between px-3.5 py-2.5 text-[12.5px] hover:bg-[var(--bg-hover)] transition-colors"
+                  className="flex items-center justify-between px-3.5 py-2.5 text-[length:var(--text-12\.5)] hover:bg-[var(--bg-hover)] transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <span
                       className={cn(
-                        'flex h-7 w-9 shrink-0 items-center justify-center rounded text-[10px] font-bold tracking-wider',
+                        'flex h-7 w-9 shrink-0 items-center justify-center rounded text-[length:var(--text-10)] font-bold tracking-wider',
                         badge.bg,
                         badge.text,
                       )}
@@ -342,7 +342,7 @@ export function AttachmentDashboardView({
                       <div className="truncate font-medium text-[var(--text-primary)]">
                         {file.filename}
                       </div>
-                      <div className="text-[11px] text-[var(--text-tertiary)]">
+                      <div className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                         {new Date(file.createdAt).toLocaleDateString()}
                       </div>
                     </div>

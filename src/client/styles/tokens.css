@@ -21,6 +21,7 @@
   --r-lg: 12px;
   --r-xl: 16px;
   --r-2xl: 20px;
+  --r-18: 18px;
   --r-full: 999px;
 
   --sp-0\25: 1px;
@@ -44,7 +45,11 @@
   --sp-10: 40px;
   --sp-16: 64px;
 
+  --text-6: 6px;
+  --text-7: 7px;
+  --text-8\.5: 8.5px;
   --text-9: 9px;
+  --text-9\.5: 9.5px;
   --text-10: 10px;
   --text-10\.5: 10.5px;
   --text-11: 11px;
@@ -52,8 +57,18 @@
   --text-12: 12px;
   --text-12\.5: 12.5px;
   --text-13: 13px;
+  --text-13\.5: 13.5px;
+  --text-14: 14px;
+  --text-14\.5: 14.5px;
+  --text-15: 15px;
+  --text-15\.5: 15.5px;
   --text-16: 16px;
+  --text-17: 17px;
   --text-18: 18px;
+  --text-22: 22px;
+  --text-24: 24px;
+  --text-26: 26px;
+  --text-30: 30px;
 
 
   --dur-fast: 130ms;

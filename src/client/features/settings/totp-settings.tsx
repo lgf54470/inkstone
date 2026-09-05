@@ -196,7 +196,7 @@ export function TotpSettings() {
 
   if (isLoading && !status) {
     return (
-      <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-4 text-[12px] text-[var(--text-tertiary)]">
+      <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-4 text-[length:var(--text-12)] text-[var(--text-tertiary)]">
         {t('settings.totp_loading')}
       </div>
     )
@@ -205,7 +205,7 @@ export function TotpSettings() {
   if (!status) {
     return (
       <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4">
-        <p role="alert" className="text-[12px] text-[var(--danger)]">
+        <p role="alert" className="text-[length:var(--text-12)] text-[var(--danger)]">
           {error ?? t('settings.totp_load_failed')}
         </p>
         <Button className="mt-3" size="sm" icon={<RefreshCw size={12} />} onClick={() => void load()}>
@@ -260,7 +260,7 @@ export function TotpSettings() {
           event.preventDefault()
           beginSetup()
         }}>
-          <p className="text-[12px] leading-relaxed text-[var(--text-tertiary)]">
+          <p className="text-[length:var(--text-12)] leading-relaxed text-[var(--text-tertiary)]">
             {t('settings.totp_enable_password_description')}
           </p>
           <PasswordInput value={password} isBusy={isBusy} onChange={setPassword} autoFocus />
@@ -275,7 +275,7 @@ export function TotpSettings() {
           confirmSetup()
         }}>
           <div className="grid gap-4 md:grid-cols-[210px_minmax(0,1fr)] md:items-start">
-            <div className="mx-auto rounded-[16px] border border-[var(--border-default)] bg-white p-2 shadow-[var(--shadow-soft)]">
+            <div className="mx-auto rounded-[var(--r-xl)] border border-[var(--border-default)] bg-white p-2 shadow-[var(--shadow-soft)]">
               <QRCodeSVG
                 value={setup.uri}
                 size={190}
@@ -288,17 +288,17 @@ export function TotpSettings() {
             </div>
             <div className="min-w-0 space-y-3">
               <div>
-                <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--text-primary)]">
+                <div className="flex items-center gap-2 text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]">
                   <QrCode size={15} className="text-[var(--accent)]" />
                   {t('settings.totp_scan_qr')}
                 </div>
-                <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-tertiary)]">
+                <p className="mt-1 text-[length:var(--text-12)] leading-relaxed text-[var(--text-tertiary)]">
                   {t('settings.totp_scan_qr_description')}
                 </p>
               </div>
               <div className="rounded-[var(--r-md)] bg-[var(--bg-surface)] p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
+                  <span className="text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]">
                     {t('settings.totp_manual_secret')}
                   </span>
                   <Button
@@ -311,12 +311,12 @@ export function TotpSettings() {
                     {t('common.copy')}
                   </Button>
                 </div>
-                <code className="mt-1.5 block break-all font-mono text-[12px] tracking-[0.08em] text-[var(--text-primary)]">
+                <code className="mt-1.5 block break-all font-mono text-[length:var(--text-12)] tracking-[0.08em] text-[var(--text-primary)]">
                   {setup.secret.match(/.{1,4}/g)?.join(' ')}
                 </code>
               </div>
               <label className="block">
-                <span className="mb-1 block text-[11.5px] text-[var(--text-tertiary)]">
+                <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
                   {t('settings.totp_confirm_code')}
                 </span>
                 <Input
@@ -342,10 +342,10 @@ export function TotpSettings() {
           <div className="flex items-start gap-2.5 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--warning)_35%,transparent)] bg-[color-mix(in_oklab,var(--warning)_8%,transparent)] p-3">
             <TriangleAlert size={15} className="mt-0.5 shrink-0 text-[var(--warning)]" />
             <div>
-              <p className="text-[12.5px] font-semibold text-[var(--text-primary)]">
+              <p className="text-[length:var(--text-12\.5)] font-semibold text-[var(--text-primary)]">
                 {t('settings.totp_save_recovery_codes')}
               </p>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">
+              <p className="mt-1 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
                 {t('settings.totp_recovery_codes_once')}
               </p>
             </div>
@@ -354,7 +354,7 @@ export function TotpSettings() {
             {recoveryCodes.map((recoveryCode, index) => (
               <code
                 key={recoveryCode}
-                className="select-all rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-center font-mono text-[12px] tracking-[0.04em] text-[var(--text-primary)]"
+                className="select-all rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-center font-mono text-[length:var(--text-12)] tracking-[0.04em] text-[var(--text-primary)]"
               >
                 <span className="mr-2 text-[var(--text-quaternary)]">{index + 1}.</span>
                 {recoveryCode}
@@ -388,10 +388,10 @@ export function TotpSettings() {
         }}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[12.5px] font-semibold text-[var(--text-primary)]">
+              <p className="text-[length:var(--text-12\.5)] font-semibold text-[var(--text-primary)]">
                 {t('settings.totp_recovery_codes')}
               </p>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">
+              <p className="mt-1 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
                 {t('settings.totp_regenerate_description')}
               </p>
             </div>
@@ -423,10 +423,10 @@ export function TotpSettings() {
           <div className="flex items-start gap-2.5 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_30%,transparent)] bg-[color-mix(in_oklab,var(--danger)_7%,transparent)] p-3">
             <ShieldOff size={15} className="mt-0.5 shrink-0 text-[var(--danger)]" />
             <div>
-              <p className="text-[12.5px] font-semibold text-[var(--text-primary)]">
+              <p className="text-[length:var(--text-12\.5)] font-semibold text-[var(--text-primary)]">
                 {t('settings.totp_disable_title')}
               </p>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">
+              <p className="mt-1 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
                 {t('settings.totp_disable_description')}
               </p>
             </div>
@@ -434,7 +434,7 @@ export function TotpSettings() {
           <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
             <PasswordInput value={password} isBusy={isBusy} onChange={setPassword} autoFocus />
             <label className="block">
-              <span className="mb-1 block text-[11.5px] text-[var(--text-tertiary)]">
+              <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
                 {t('settings.totp_code_or_recovery')}
               </span>
               <Input
@@ -470,7 +470,7 @@ function PasswordInput(props: {
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11.5px] text-[var(--text-tertiary)]">
+      <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
         {t('settings.current_password')}
       </span>
       <Input
@@ -489,7 +489,7 @@ function PasswordInput(props: {
 function CodeInput(props: { value: string; isBusy: boolean; onChange: (value: string) => void }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11.5px] text-[var(--text-tertiary)]">
+      <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
         {t('settings.totp_authenticator_code')}
       </span>
       <Input
@@ -530,7 +530,7 @@ function ActionRow(props: {
 
 function InlineError(props: { error: string | null; className?: string }) {
   if (!props.error) return null
-  return <p role="alert" className={`text-[12px] text-[var(--danger)] ${props.className ?? ''}`}>{props.error}</p>
+  return <p role="alert" className={`text-[length:var(--text-12)] text-[var(--danger)] ${props.className ?? ''}`}>{props.error}</p>
 }
 
 function errorMessage(error: unknown): string {

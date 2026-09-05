@@ -89,14 +89,14 @@ export function BlogDashboardView({
   const filteredBots = excludeBots ? (analytics?.filterStats?.bots ?? 0) : 0
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[var(--bg-base)] p-5 space-y-5 text-[12.5px]">
+    <div className="flex-1 overflow-y-auto bg-[var(--bg-base)] p-5 space-y-5 text-[length:var(--text-12\.5)]">
       {/* Welcome & quick action banner */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 rounded-[var(--r-xl)] border border-[var(--border-default)] bg-gradient-to-r from-[var(--bg-surface)] to-[var(--bg-sunken)] p-5 shadow-[var(--shadow-soft)]">
         <div>
-          <h2 className="text-[18px] font-bold text-[var(--text-primary)]">
+          <h2 className="text-[length:var(--text-18)] font-bold text-[var(--text-primary)]">
             {settings?.siteName || t('blog.hub_title')}
           </h2>
-          <p className="mt-1 text-[12.5px] text-[var(--text-tertiary)]">
+          <p className="mt-1 text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">
             {settings?.subtitle || t('blog.default_subtitle')}
           </p>
         </div>
@@ -120,10 +120,10 @@ export function BlogDashboardView({
       {/* Control Bar: Range + Traffic Filter + Refresh */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-[15px] font-bold text-[var(--text-primary)]">
+          <h3 className="text-[length:var(--text-15)] font-bold text-[var(--text-primary)]">
             {t('blog.analytics_dashboard_title')}
           </h3>
-          <p className="text-[11.5px] text-[var(--text-tertiary)]">
+          <p className="text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
             {t('blog.analytics_dashboard_subtitle')}
           </p>
         </div>
@@ -138,7 +138,7 @@ export function BlogDashboardView({
           <button
             type="button"
             onClick={() => setExcludeBots(!excludeBots)}
-            className={`inline-flex items-center gap-1.5 rounded-[var(--r-md)] border px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-[var(--r-md)] border px-2.5 py-1 text-[length:var(--text-11\.5)] font-medium transition-colors ${
               excludeBots
                 ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
                 : 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
@@ -162,7 +162,7 @@ export function BlogDashboardView({
 
       {/* Real traffic filter banner */}
       {excludeBots && filteredBots > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-[11.5px] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]">
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-[var(--success)]" />
             <span>
@@ -173,7 +173,7 @@ export function BlogDashboardView({
               })}
             </span>
           </div>
-          <span className="text-[11px] text-[var(--text-quaternary)]">
+          <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
             {t('blog.real_visitors_active')}
           </span>
         </div>
@@ -202,17 +202,17 @@ export function BlogDashboardView({
         {/* Published Posts */}
         <div className="flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 shadow-[var(--shadow-soft)]">
           <div className="flex items-center justify-between text-[var(--text-tertiary)]">
-            <span className="text-[12px] font-medium">{t('blog.active_posts_count')}</span>
+            <span className="text-[length:var(--text-12)] font-medium">{t('blog.active_posts_count')}</span>
             <FileText size={16} className="text-[var(--accent)]" />
           </div>
           <div className="pt-2">
-            <div className="text-[24px] font-bold tracking-tight text-[var(--text-primary)] font-mono">
+            <div className="text-[length:var(--text-24)] font-bold tracking-tight text-[var(--text-primary)] font-mono">
               {stats?.publishedPosts ?? analytics?.publishedPosts ?? 0}
-              <span className="ml-1.5 text-[12px] font-normal text-[var(--text-tertiary)] font-sans">
+              <span className="ml-1.5 text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)] font-sans">
                 / {stats?.totalPosts ?? analytics?.totalPosts ?? posts.length} {t('blog.posts_unit')}
               </span>
             </div>
-            <p className="text-[11px] text-[var(--text-quaternary)] pt-1">
+            <p className="text-[length:var(--text-11)] text-[var(--text-quaternary)] pt-1">
               {t('blog.active_posts_hint')}
             </p>
           </div>
@@ -231,10 +231,10 @@ export function BlogDashboardView({
       <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-soft)]">
         <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
           <div>
-            <h3 className="text-[14px] font-semibold text-[var(--text-primary)]">
+            <h3 className="text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">
               {t('blog.timeline_trend_title')}
             </h3>
-            <p className="text-[11px] text-[var(--text-tertiary)]">
+            <p className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
               {metricMode === 'views' ? t('blog.timeline_pv_desc') : t('blog.timeline_uv_desc')}
             </p>
           </div>
@@ -259,16 +259,16 @@ export function BlogDashboardView({
         {/* Top 10 Posts */}
         <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+            <h3 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
               <BarChart3 size={15} className="text-[var(--accent)]" />
               {t('blog.top_posts_title')}
             </h3>
-            <span className="text-[11px] text-[var(--text-quaternary)]">{'TOP 10'}</span>
+            <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">{'TOP 10'}</span>
           </div>
 
           <div className="divide-y divide-[var(--border-subtle)] pt-1">
             {!analytics?.topPosts || analytics.topPosts.length === 0 ? (
-              <p className="py-6 text-center text-[12px] text-[var(--text-quaternary)]">
+              <p className="py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
                 {t('blog.no_visit_data')}
               </p>
             ) : (
@@ -281,7 +281,7 @@ export function BlogDashboardView({
                     className="flex items-center gap-3 py-2.5 hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-[var(--r-md)] transition-colors"
                   >
                     <span
-                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[length:var(--text-10)] font-bold ${
                         index < 3
                           ? 'bg-[var(--accent)] text-white'
                           : 'bg-[var(--bg-base)] text-[var(--text-tertiary)]'
@@ -291,13 +291,13 @@ export function BlogDashboardView({
                     </span>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between text-[12px]">
+                      <div className="flex items-center justify-between text-[length:var(--text-12)]">
                         <span className="truncate font-medium text-[var(--text-primary)]">
                           {post.title}
                         </span>
                         <span className="font-mono font-semibold text-[var(--text-primary)] ml-2 whitespace-nowrap">
                           {post.views}{' '}
-                          <span className="text-[10px] font-normal text-[var(--text-tertiary)]">
+                          <span className="text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]">
                             {'PV'}
                           </span>
                         </span>
@@ -329,18 +329,18 @@ export function BlogDashboardView({
         {/* Visitor Geography */}
         <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+            <h3 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
               <Globe2 size={15} className="text-[var(--accent)]" />
               {t('blog.visitor_geography')}
             </h3>
-            <span className="text-[11px] text-[var(--text-quaternary)]">
+            <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
               {analytics?.topCountries?.length ?? 0}
             </span>
           </div>
 
           <div className="space-y-2.5 pt-3">
             {!analytics?.topCountries || analytics.topCountries.length === 0 ? (
-              <p className="py-6 text-center text-[12px] text-[var(--text-quaternary)]">
+              <p className="py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
                 {t('blog.no_visit_data')}
               </p>
             ) : (
@@ -360,18 +360,18 @@ export function BlogDashboardView({
         {/* Traffic Sources */}
         <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+            <h3 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
               <Compass size={15} className="text-[var(--accent)]" />
               {t('blog.traffic_sources')}
             </h3>
-            <span className="text-[11px] text-[var(--text-quaternary)]">
+            <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
               {analytics?.topReferrers?.length ?? 0}
             </span>
           </div>
 
           <div className="space-y-2.5 pt-3">
             {!analytics?.topReferrers || analytics.topReferrers.length === 0 ? (
-              <p className="py-6 text-center text-[12px] text-[var(--text-quaternary)]">
+              <p className="py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
                 {t('blog.no_visit_data')}
               </p>
             ) : (
@@ -390,14 +390,14 @@ export function BlogDashboardView({
         {/* Devices and Systems */}
         <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+            <h3 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
               <Laptop size={15} className="text-[var(--accent)]" />
               {t('blog.devices_and_os')}
             </h3>
           </div>
 
           <div className="space-y-3 pt-3">
-            <p className="text-[11px] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider">
+            <p className="text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider">
               {t('blog.device_type')}
             </p>
             <div className="space-y-2">
@@ -419,7 +419,7 @@ export function BlogDashboardView({
               ))}
             </div>
 
-            <p className="pt-2 text-[11px] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider">
+            <p className="pt-2 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider">
               {t('blog.operating_system')}
             </p>
             <div className="space-y-2">
@@ -443,46 +443,46 @@ export function BlogDashboardView({
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
             <div className="flex items-center gap-2">
               <Activity size={15} className="text-[var(--accent)]" />
-              <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
+              <h3 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]">
                 {t('blog.realtime_logs')}
               </h3>
-              <span className="rounded-full bg-[var(--accent-soft)] px-1.5 py-0.2 text-[10.5px] font-medium text-[var(--accent)]">
+              <span className="rounded-full bg-[var(--accent-soft)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-medium text-[var(--accent)]">
                 {analytics?.recentVisits?.length ?? 0}
               </span>
             </div>
-            <span className="text-[11px] text-[var(--text-quaternary)]">
+            <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
               {t('blog.recent_visits_count')}
             </span>
           </div>
 
           <div className="flex-1 divide-y divide-[var(--border-subtle)] pt-1 overflow-y-auto max-h-[360px]">
             {!analytics?.recentVisits || analytics.recentVisits.length === 0 ? (
-              <p className="py-12 text-center text-[12px] text-[var(--text-quaternary)]">
+              <p className="py-12 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
                 {t('blog.no_visit_data')}
               </p>
             ) : (
               analytics.recentVisits.map((v) => (
                 <div
                   key={v.id}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-[12px] hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-[var(--r-md)] transition-colors"
+                  className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-[var(--r-md)] transition-colors"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-[13px]">{countryFlag(v.country)}</span>
+                    <span className="text-[length:var(--text-13)]">{countryFlag(v.country)}</span>
                     <span className="truncate font-medium text-[var(--text-primary)] max-w-[180px]">
                       {v.postTitle || v.slug}
                     </span>
-                    <span className="text-[11px] text-[var(--text-tertiary)] hidden sm:inline">
+                    <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)] hidden sm:inline">
                       ({countryNameLocalized(v.country, locale)}
                       {v.city ? ` · ${v.city}` : ''})
                     </span>
                     {v.isBot && (
-                      <span className="rounded bg-[var(--danger-subtle)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--danger)]">
+                      <span className="rounded bg-[var(--danger-subtle)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--danger)]">
                         🤖 {v.botName || 'Bot'}
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 text-[11px] text-[var(--text-quaternary)]">
+                  <div className="flex items-center gap-2 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                     <span className="rounded bg-[var(--bg-base)] px-1.5 py-0.5 font-mono">
                       {v.browser || 'Other'} / {v.os || 'other'}
                     </span>
@@ -504,11 +504,11 @@ export function BlogDashboardView({
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
             <div className="flex items-center gap-2">
               <AlertCircle size={15} className="text-[var(--warning)]" />
-              <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
+              <h3 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]">
                 {t('blog.pending_comments')}
               </h3>
               {pendingComments.length > 0 && (
-                <span className="rounded-full bg-[var(--danger-subtle)] px-1.5 py-0.2 text-[10.5px] font-bold text-[var(--danger)]">
+                <span className="rounded-full bg-[var(--danger-subtle)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-bold text-[var(--danger)]">
                   {pendingComments.length}
                 </span>
               )}
@@ -516,7 +516,7 @@ export function BlogDashboardView({
             <button
               type="button"
               onClick={() => onSwitchTab('comments')}
-              className="text-[11px] text-[var(--accent)] hover:underline"
+              className="text-[length:var(--text-11)] text-[var(--accent)] hover:underline"
             >
               {t('blog.all_pending_review')} ({comments.length})
             </button>
@@ -530,7 +530,7 @@ export function BlogDashboardView({
                 <button
                   type="button"
                   onClick={() => onSwitchTab('posts')}
-                  className="mt-2 inline-flex items-center gap-1 text-[11.5px] text-[var(--accent)] hover:underline"
+                  className="mt-2 inline-flex items-center gap-1 text-[length:var(--text-11\.5)] text-[var(--accent)] hover:underline"
                 >
                   <FileText size={13} />
                   <span>{t('blog.manage_posts_count')} ({posts.length})</span>
@@ -545,29 +545,29 @@ export function BlogDashboardView({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-[var(--text-primary)]">{c.authorName}</span>
-                      <span className="text-[11px] text-[var(--text-quaternary)]">
+                      <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                         {t('blog.commented_on', { value0: c.postTitle })}
                       </span>
                     </div>
-                    <span className="text-[10.5px] text-[var(--text-quaternary)]">
+                    <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
                       {new Date(c.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-[12px] text-[var(--text-secondary)] line-clamp-2">
+                  <p className="text-[length:var(--text-12)] text-[var(--text-secondary)] line-clamp-2">
                     {c.content}
                   </p>
                   <div className="flex items-center justify-end gap-2 pt-1 border-t border-[var(--border-subtle)]">
                     <button
                       type="button"
                       onClick={() => void updateCommentStatus(c.id, 'rejected')}
-                      className="inline-flex items-center gap-1 text-[11px] text-[var(--danger)] hover:underline"
+                      className="inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--danger)] hover:underline"
                     >
                       <XCircle size={12} /> {t('blog.reject')}
                     </button>
                     <button
                       type="button"
                       onClick={() => void updateCommentStatus(c.id, 'approved')}
-                      className="inline-flex items-center gap-1 text-[11px] text-[var(--success)] hover:underline font-medium"
+                      className="inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--success)] hover:underline font-medium"
                     >
                       <CheckCircle size={12} /> {t('blog.approve')}
                     </button>
@@ -598,18 +598,18 @@ function KpiCard({
   return (
     <div className="flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 shadow-[var(--shadow-soft)]">
       <div className="flex items-center justify-between text-[var(--text-tertiary)]">
-        <span className="text-[12px] font-medium">{label}</span>
+        <span className="text-[length:var(--text-12)] font-medium">{label}</span>
         {icon}
       </div>
 
       <div className="flex items-baseline justify-between pt-2">
-        <span className="text-[24px] font-bold tracking-tight text-[var(--text-primary)] font-mono">
+        <span className="text-[length:var(--text-24)] font-bold tracking-tight text-[var(--text-primary)] font-mono">
           {value.toLocaleString()}
         </span>
 
         {delta !== undefined && (
           <span
-            className={`inline-flex items-center gap-0.5 text-[11px] font-medium ${
+            className={`inline-flex items-center gap-0.5 text-[length:var(--text-11)] font-medium ${
               delta >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
             }`}
           >
@@ -640,13 +640,13 @@ function BreakdownRow({
   percentage: number
 }) {
   return (
-    <div className="flex flex-col gap-1 text-[12px]">
+    <div className="flex flex-col gap-1 text-[length:var(--text-12)]">
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1.5 truncate text-[var(--text-primary)]">
-          {flag && <span className="text-[13px]">{flag}</span>}
+          {flag && <span className="text-[length:var(--text-13)]">{flag}</span>}
           <span className="truncate">{name}</span>
         </span>
-        <div className="flex items-center gap-2 font-mono text-[11px]">
+        <div className="flex items-center gap-2 font-mono text-[length:var(--text-11)]">
           <span className="font-semibold text-[var(--text-primary)]">{count}</span>
           <span className="w-8 text-right text-[var(--text-tertiary)]">{percentage}%</span>
         </div>
@@ -699,7 +699,7 @@ function BigSvgChart({
 }) {
   if (values.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-[12px] text-[var(--text-quaternary)]">
+      <div className="flex h-full items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
         {t('blog.no_visit_data')}
       </div>
     )

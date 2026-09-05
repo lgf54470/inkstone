@@ -220,7 +220,7 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
                     <ChevronRight size={12}/>
                 </button>
             </div>
-            <span className="text-[11px] font-medium text-[var(--text-secondary)]">{monthTitle}</span>
+            <span className="text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]">{monthTitle}</span>
             <button type="button" aria-label={t("notes.clear_day_filter")} onClick={() => onChange(null)} className="flex size-6 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--danger)]">
                 <X size={12}/>
             </button>
@@ -229,17 +229,17 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
             <button type="button" aria-pressed={editing === 'start'} onClick={() => {
                 setEditing('start');
                 setCursor(monthOf(current.start));
-            }} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[10.5px] transition-colors', editing === 'start' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-sm' : 'text-[var(--text-tertiary)]')}>{t("notes.range_editor_start")}</button>
+            }} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-10\.5)] transition-colors', editing === 'start' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-sm' : 'text-[var(--text-tertiary)]')}>{t("notes.range_editor_start")}</button>
             <button type="button" aria-pressed={editing === 'end'} onClick={() => {
                 setEditing('end');
                 setCursor(monthOf(current.end));
-            }} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[10.5px] transition-colors', editing === 'end' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-sm' : 'text-[var(--text-tertiary)]')}>{t("notes.range_editor_end")}</button>
+            }} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-10\.5)] transition-colors', editing === 'end' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-sm' : 'text-[var(--text-tertiary)]')}>{t("notes.range_editor_end")}</button>
         </div>
         <div role="group" aria-label={t("notes.range_preset_group")} className="mt-1 flex flex-wrap items-center gap-0.5">
-            {FIXED_PRESETS.map((preset) => (<button key={preset} type="button" onClick={() => applyPreset(preset)} className="h-5 min-w-0 flex-1 rounded-[var(--r-sm)] bg-[var(--bg-inset)] px-0.5 text-[9px] whitespace-nowrap text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]">
+            {FIXED_PRESETS.map((preset) => (<button key={preset} type="button" onClick={() => applyPreset(preset)} className="h-5 min-w-0 flex-1 rounded-[var(--r-sm)] bg-[var(--bg-inset)] px-0.5 text-[length:var(--text-9)] whitespace-nowrap text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]">
                 {t(FIXED_PRESET_LABELS[preset])}
             </button>))}
-            {presets.map((preset) => (<button key={preset.id} type="button" aria-pressed={isActivePreset(preset)} onClick={() => onApplyRelative({ days: preset.days, direction: preset.direction })} className={cn('h-5 min-w-0 flex-1 rounded-[var(--r-sm)] bg-[var(--bg-inset)] px-0.5 text-[9px] whitespace-nowrap transition-colors hover:bg-[var(--bg-hover)]', isActivePreset(preset) ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]')}>
+            {presets.map((preset) => (<button key={preset.id} type="button" aria-pressed={isActivePreset(preset)} onClick={() => onApplyRelative({ days: preset.days, direction: preset.direction })} className={cn('h-5 min-w-0 flex-1 rounded-[var(--r-sm)] bg-[var(--bg-inset)] px-0.5 text-[length:var(--text-9)] whitespace-nowrap transition-colors hover:bg-[var(--bg-hover)]', isActivePreset(preset) ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]')}>
                 {t("notes.range_preset_custom_value0", { value0: preset.days })}
             </button>))}
             <button type="button" aria-label={t("notes.range_preset_edit")} aria-pressed={isEditorOpen} onClick={() => setIsEditorOpen((open) => !open)} className={cn('flex size-5 shrink-0 items-center justify-center rounded-[var(--r-sm)] transition-colors', isEditorOpen ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'bg-[var(--bg-inset)] text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]')}>
@@ -248,8 +248,8 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
         </div>
         {isEditorOpen ? (<div className="mt-1.5 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-1.5">
             <div className="flex items-center justify-between px-0.5 pb-1">
-                <span className="text-[10px] font-medium text-[var(--text-secondary)]">{t("notes.range_preset_editor_title")}</span>
-                <button type="button" onClick={() => setIsEditorOpen(false)} className="rounded px-1 py-0.5 text-[9.5px] text-[var(--accent)] transition-colors hover:bg-[var(--bg-hover)]">{t("notes.range_preset_done")}</button>
+                <span className="text-[length:var(--text-10)] font-medium text-[var(--text-secondary)]">{t("notes.range_preset_editor_title")}</span>
+                <button type="button" onClick={() => setIsEditorOpen(false)} className="rounded px-1 py-0.5 text-[length:var(--text-9\.5)] text-[var(--accent)] transition-colors hover:bg-[var(--bg-hover)]">{t("notes.range_preset_done")}</button>
             </div>
             <div className="space-y-1">
                 {presets.map((preset, presetIndex) => (<div key={preset.id} draggable onDragStart={handlePresetDragStart(presetIndex)} onDragOver={handlePresetDragOver(presetIndex)} onDragEnd={handlePresetDragEnd} className="flex cursor-grab items-center gap-1 active:cursor-grabbing">
@@ -259,26 +259,26 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
                             const slot = presetMoveButtons.current.get(preset.id) ?? { up: null, down: null };
                             slot.up = node;
                             presetMoveButtons.current.set(preset.id, slot);
-                        }} aria-label={t("notes.range_preset_move_up")} disabled={presetIndex === 0} onClick={() => handleMovePreset(presetIndex, -1)} className="flex size-3.5 items-center justify-center rounded-[2px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-30">
+                        }} aria-label={t("notes.range_preset_move_up")} disabled={presetIndex === 0} onClick={() => handleMovePreset(presetIndex, -1)} className="flex size-3.5 items-center justify-center rounded-[var(--r-2)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-30">
                             <ChevronUp size={9}/>
                         </button>
                         <button type="button" ref={(node) => {
                             const slot = presetMoveButtons.current.get(preset.id) ?? { up: null, down: null };
                             slot.down = node;
                             presetMoveButtons.current.set(preset.id, slot);
-                        }} aria-label={t("notes.range_preset_move_down")} disabled={presetIndex === presets.length - 1} onClick={() => handleMovePreset(presetIndex, 1)} className="flex size-3.5 items-center justify-center rounded-[2px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-30">
+                        }} aria-label={t("notes.range_preset_move_down")} disabled={presetIndex === presets.length - 1} onClick={() => handleMovePreset(presetIndex, 1)} className="flex size-3.5 items-center justify-center rounded-[var(--r-2)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-30">
                             <ChevronDown size={9}/>
                         </button>
                     </div>
-                    <span className="w-12 shrink-0 text-[9px] text-[var(--text-quaternary)]">{t("notes.range_preset_custom_value0", { value0: preset.days })}</span>
+                    <span className="w-12 shrink-0 text-[length:var(--text-9)] text-[var(--text-quaternary)]">{t("notes.range_preset_custom_value0", { value0: preset.days })}</span>
                     <input type="number" min={1} max={365} draggable={false} value={preset.days} aria-label={t("notes.range_preset_custom_value0", { value0: preset.days })} onChange={(event) => {
                         const parsed = parseInt(event.target.value, 10);
                         if (!Number.isNaN(parsed))
                             updatePreset(preset.id, { days: Math.min(365, Math.max(1, parsed)) });
-                    }} className="h-6 w-11 rounded-[var(--r-sm)] bg-[var(--bg-overlay)] px-1 text-center text-[10px] tabular text-[var(--text-secondary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"/>
+                    }} className="h-6 w-11 rounded-[var(--r-sm)] bg-[var(--bg-overlay)] px-1 text-center text-[length:var(--text-10)] tabular text-[var(--text-secondary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"/>
                     <div role="group" aria-label={t("notes.range_preset_direction")} className="flex min-w-0 flex-1 overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-subtle)]">
-                        <button type="button" aria-pressed={preset.direction === 'edit'} onClick={() => updatePreset(preset.id, { direction: 'edit' })} className={cn('h-6 min-w-0 flex-1 truncate px-1 text-[8.5px] transition-colors', preset.direction === 'edit' ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]')}>{t("notes.range_preset_follow_edit")}</button>
-                        <button type="button" aria-pressed={preset.direction === 'today'} onClick={() => updatePreset(preset.id, { direction: 'today' })} className={cn('h-6 min-w-0 flex-1 truncate border-l border-[var(--border-subtle)] px-1 text-[8.5px] transition-colors', preset.direction === 'today' ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]')}>{t("notes.range_preset_anchor_today")}</button>
+                        <button type="button" aria-pressed={preset.direction === 'edit'} onClick={() => updatePreset(preset.id, { direction: 'edit' })} className={cn('h-6 min-w-0 flex-1 truncate px-1 text-[length:var(--text-8\.5)] transition-colors', preset.direction === 'edit' ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]')}>{t("notes.range_preset_follow_edit")}</button>
+                        <button type="button" aria-pressed={preset.direction === 'today'} onClick={() => updatePreset(preset.id, { direction: 'today' })} className={cn('h-6 min-w-0 flex-1 truncate border-l border-[var(--border-subtle)] px-1 text-[length:var(--text-8\.5)] transition-colors', preset.direction === 'today' ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]')}>{t("notes.range_preset_anchor_today")}</button>
                     </div>
                     <button type="button" aria-label={t("notes.range_preset_delete")} onClick={() => removePreset(preset.id)} className="flex size-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--danger)]">
                         <X size={10}/>
@@ -286,7 +286,7 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
                 </div>))}
             </div>
             <div className="mt-1.5 flex items-center gap-1 px-0.5">
-                <button type="button" disabled={presets.length >= RANGE_PRESET_MAX} onClick={addPreset} className="flex h-6 min-w-0 flex-1 items-center justify-center gap-1 rounded-[var(--r-sm)] text-[9.5px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--bg-hover)] disabled:pointer-events-none disabled:opacity-40">
+                <button type="button" disabled={presets.length >= RANGE_PRESET_MAX} onClick={addPreset} className="flex h-6 min-w-0 flex-1 items-center justify-center gap-1 rounded-[var(--r-sm)] text-[length:var(--text-9\.5)] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--bg-hover)] disabled:pointer-events-none disabled:opacity-40">
                     <Plus size={10}/>{t("notes.range_preset_add")}
                 </button>
             </div>
@@ -310,13 +310,13 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
                                 applyRange({ start: next.end, end: next.start });
                             else
                                 applyRange(next);
-                        }} className={cn('relative flex aspect-square items-center justify-center rounded-[4px] text-[10px] leading-none transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', !cell.inMonth && 'opacity-0', cell.today && 'ring-1 ring-inset ring-[var(--accent)]', isStart || isEnd ? 'bg-[var(--accent)] font-semibold text-[var(--accent-contrast)]' : inRange ? 'bg-[var(--accent-soft)] text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]')}>
+                        }} className={cn('relative flex aspect-square items-center justify-center rounded-[var(--r-xs)] text-[length:var(--text-10)] leading-none transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', !cell.inMonth && 'opacity-0', cell.today && 'ring-1 ring-inset ring-[var(--accent)]', isStart || isEnd ? 'bg-[var(--accent)] font-semibold text-[var(--accent-contrast)]' : inRange ? 'bg-[var(--accent-soft)] text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]')}>
                             {cell.day}
                         </button>);
                     }}
                 />
             </div>
-            <div className="mt-1.5 flex items-center gap-1.5 px-0.5 text-[9.5px] text-[var(--text-quaternary)]">
+            <div className="mt-1.5 flex items-center gap-1.5 px-0.5 text-[length:var(--text-9\.5)] text-[var(--text-quaternary)]">
                 <CalendarDays size={10} className="shrink-0"/>
                 <span className="truncate">{t("notes.range_editor_hint")}</span>
             </div>

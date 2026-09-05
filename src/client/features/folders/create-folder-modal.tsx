@@ -72,7 +72,7 @@ export function CreateFolderModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t('common.new_folder')}
-            className="h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-3 text-[13px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)]"
+            className="h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-3 text-[length:var(--text-13)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)]"
           />
         </label>
       </form>

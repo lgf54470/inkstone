@@ -113,8 +113,8 @@ aliases:
         <div className="flex items-center gap-1 px-0.5">
             <button type="button" aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)} className="flex min-w-0 items-center gap-1 rounded-[var(--r-sm)] px-1 py-0.5 text-left transition-colors hover:bg-[var(--bg-hover)]">
                 <CalendarDays size={12} className="shrink-0 text-[var(--text-quaternary)]"/>
-                <span className="truncate text-[11px] font-semibold text-[var(--text-secondary)]">{headerTitle}</span>
-                {showTodayChip && (<span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[9px] font-medium text-[var(--accent)]">{t("sidebar.calendar_today")}</span>)}
+                <span className="truncate text-[length:var(--text-11)] font-semibold text-[var(--text-secondary)]">{headerTitle}</span>
+                {showTodayChip && (<span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[length:var(--text-9)] font-medium text-[var(--accent)]">{t("sidebar.calendar_today")}</span>)}
                 <ChevronDown size={11} className={cn('shrink-0 text-[var(--text-quaternary)] transition-transform duration-[var(--dur-fast)]', collapsed && '-rotate-90')}/>
             </button>
         </div>

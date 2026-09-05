@@ -14,7 +14,7 @@ export function WeChatBadge({ count }: { count?: number }) {
         'pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 z-[var(--z-sticky)]',
         'flex items-center justify-center',
         'rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold',
-        'text-[10px] leading-none select-none shadow-xs',
+        'text-[length:var(--text-10)] leading-none select-none shadow-xs',
         'ring-2 ring-[var(--bg-sunken)]',
         count > 99
           ? 'h-4 min-w-[22px] px-1'
@@ -92,7 +92,7 @@ export function BottomNavButton({
       <span className={cn('shrink-0 transition-colors', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)]')}>
         {icon}
       </span>
-      <span className="truncate text-[11.5px] font-medium leading-none">
+      <span className="truncate text-[length:var(--text-11\.5)] font-medium leading-none">
         {label}
       </span>
     </button>
@@ -144,8 +144,8 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
       <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>
         {icon}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">{label}</span>
-      {count != null && count > 0 && (<span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)]">{count}</span>)}
+      <span className="min-w-0 flex-1 truncate text-[length:var(--text-12\.5)] font-medium">{label}</span>
+      {count != null && count > 0 && (<span className="shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)]">{count}</span>)}
     </button>);
 }
 

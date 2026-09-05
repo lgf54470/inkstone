@@ -66,10 +66,10 @@ function Toast({ item }: {
             : 'border-[var(--border-default)] bg-[var(--bg-overlay)]', isLeaving ? 'translate-x-2 opacity-0' : 'anim-slide-right')} role={item.tone === 'danger' ? 'alert' : 'status'} aria-label={item.action ? `${item.title} ${item.action.label}` : undefined}>
       <span className={cn('mt-[1px] shrink-0', isUndo ? 'text-[var(--accent)]' : TONE_COLOR[item.tone])}>{isUndo ? <Undo2 size={14}/> : TONE_ICON[item.tone]}</span>
       <div className="min-w-0 flex-1">
-        <div className="text-[12.5px] leading-snug font-medium text-[var(--text-primary)]">
+        <div className="text-[length:var(--text-12\.5)] leading-snug font-medium text-[var(--text-primary)]">
           {item.title}
         </div>
-        {item.description && (<div className="mt-0.5 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">
+        {item.description && (<div className="mt-0.5 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
             {item.description}
           </div>)}
       </div>
@@ -132,8 +132,8 @@ export function Empty({ art = 'notes', title, description, action, compact, }: {
 }) {
     return (<div className={cn('flex flex-col items-center justify-center px-8 text-center', compact ? 'py-10' : 'h-full min-h-[240px] py-16')}>
       <EmptyIllustration art={art}/>
-      <p className="mt-4 text-[13.5px] font-medium text-[var(--text-secondary)]">{title}</p>
-      {description && (<p className="mt-1.5 max-w-[290px] text-[12px] leading-relaxed text-[var(--text-quaternary)]">
+      <p className="mt-4 text-[length:var(--text-13\.5)] font-medium text-[var(--text-secondary)]">{title}</p>
+      {description && (<p className="mt-1.5 max-w-[290px] text-[length:var(--text-12)] leading-relaxed text-[var(--text-quaternary)]">
           {description}
         </p>)}
       {action && <div className="mt-4">{action}</div>}
@@ -209,6 +209,6 @@ export function LoadingBlock({ label = t("common.loading") }: {
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.4" opacity="0.2"/>
         <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"/>
       </svg>
-      <span className="text-[12px]">{label}</span>
+      <span className="text-[length:var(--text-12)]">{label}</span>
     </div>);
 }

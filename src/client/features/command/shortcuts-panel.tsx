@@ -175,7 +175,7 @@ export function ShortcutsPanel({ onClose }: {
       <div className="sticky top-0 z-[var(--z-sticky)] -mx-4 bg-[var(--bg-overlay)] px-4 pt-0.5 pb-3 md:-mx-5 md:px-5">
         <div className="relative">
           <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-quaternary)]"/>
-          <input data-autofocus role="combobox" aria-label={t("command.shortcuts_filter_placeholder")} aria-expanded="true" aria-controls={listId} aria-activedescendant={cursor >= 0 ? `${listId}-option-${cursor}` : undefined} aria-autocomplete="list" autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={handleQueryKeyDown} placeholder={t("command.shortcuts_filter_placeholder")} className="h-9 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] pr-8 pl-8 text-[12.5px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] transition-[border-color,box-shadow] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none"/>
+          <input data-autofocus role="combobox" aria-label={t("command.shortcuts_filter_placeholder")} aria-expanded="true" aria-controls={listId} aria-activedescendant={cursor >= 0 ? `${listId}-option-${cursor}` : undefined} aria-autocomplete="list" autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={handleQueryKeyDown} placeholder={t("command.shortcuts_filter_placeholder")} className="h-9 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] pr-8 pl-8 text-[length:var(--text-12\.5)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] transition-[border-color,box-shadow] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none"/>
           {query && (<button type="button" aria-label={t("command.shortcuts_clear_filter")} onClick={() => setQuery('')} className="absolute top-1/2 right-1.5 flex size-6 -translate-y-1/2 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]">
               <X size={13}/>
             </button>)}
@@ -183,7 +183,7 @@ export function ShortcutsPanel({ onClose }: {
       </div>
       {hasResults ? (<div ref={listRef} className="grid grid-cols-1 gap-x-8 gap-y-5 pr-1 md:max-h-[52vh] md:grid-cols-2 md:overflow-y-auto">
         {sections.map((section) => (section.rows.length > 0 && <section key={section.group}>
-            <h3 className="mb-2 text-[10.5px] font-semibold tracking-[0.07em] text-[var(--text-quaternary)]">
+            <h3 className="mb-2 text-[length:var(--text-10\.5)] font-semibold tracking-[0.07em] text-[var(--text-quaternary)]">
               {section.group}
             </h3>
             <ul id={listId} role="listbox" aria-label={t("command.keyboard_shortcuts_021cf9")} className="space-y-0.5">
@@ -192,7 +192,7 @@ export function ShortcutsPanel({ onClose }: {
                     const active = cursor === rowIndex;
                     return (<li key={`${item.combo ?? item.keys?.join('')}-${index}`}>
                     <button type="button" role="option" id={`${listId}-option-${rowIndex}`} aria-selected={active} data-shortcut-index={rowIndex} tabIndex={-1} onClick={() => activateRow(item)} onMouseMove={() => setCursor(rowIndex)} className={cn('flex min-h-10 w-full items-center justify-between gap-4 rounded-[var(--r-sm)] px-1.5 py-[5px] text-left transition-colors md:min-h-0', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
-                        <span className="min-w-0 text-[12.5px] leading-snug text-[var(--text-secondary)] md:truncate">
+                        <span className="min-w-0 text-[length:var(--text-12\.5)] leading-snug text-[var(--text-secondary)] md:truncate">
                           {item.description}
                         </span>
                         {item.combo ? <Kbd combo={item.combo}/> : <Kbd keys={item.keys}/>}
@@ -201,7 +201,7 @@ export function ShortcutsPanel({ onClose }: {
                 })}
             </ul>
           </section>))}
-      </div>) : (<div className="px-2 py-10 text-center text-[12.5px] text-[var(--text-tertiary)]">
+      </div>) : (<div className="px-2 py-10 text-center text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">
           {t("command.shortcuts_no_results")}
         </div>)}
     </Modal>);

@@ -46,7 +46,7 @@ export function AttachmentQrModal({
       width={400}
     >
       <div className="flex flex-col items-center gap-4 py-3">
-        <div className="rounded-[16px] border border-[var(--border-default)] bg-white p-3 shadow-[var(--shadow-soft)]">
+        <div className="rounded-[var(--r-xl)] border border-[var(--border-default)] bg-white p-3 shadow-[var(--shadow-soft)]">
           <QRCodeSVG
             value={fullUrl}
             size={200}
@@ -56,7 +56,7 @@ export function AttachmentQrModal({
             fgColor={QR_FG_COLOR}
           />
         </div>
-        <p className="text-center text-[12px] text-[var(--text-tertiary)] max-w-xs">
+        <p className="text-center text-[length:var(--text-12)] text-[var(--text-tertiary)] max-w-xs">
           {t('attachments.qr_code_hint')}
         </p>
         <div className="flex w-full items-center gap-2 pt-2">
@@ -73,7 +73,7 @@ export function AttachmentQrModal({
             href={fullUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           >
             <ExternalLink size={13} />
             <span>{t('preview.open_in_new_tab')}</span>

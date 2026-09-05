@@ -108,7 +108,7 @@ export function BlogNoteSubmenu({
 
   return (
     <div
-      className="w-[220px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[12.5px]"
+      className="w-[220px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[length:var(--text-12\.5)]"
       onClick={(e) => e.stopPropagation()}
     >
       {/* 1. View in Blog */}

@@ -82,10 +82,10 @@ export function ShareDashboardView({
     <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-base)] p-5">
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
         <div>
-          <h2 className="text-[18px] font-bold text-[var(--text-primary)]">
+          <h2 className="text-[length:var(--text-18)] font-bold text-[var(--text-primary)]">
             {t('share.analytics_dashboard_title')}
           </h2>
-          <p className="text-[12px] text-[var(--text-tertiary)]">
+          <p className="text-[length:var(--text-12)] text-[var(--text-tertiary)]">
             {t('share.analytics_dashboard_subtitle')}
           </p>
         </div>
@@ -111,7 +111,7 @@ export function ShareDashboardView({
       </div>
 
       {totalFilteredCount > 0 && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-[11.5px] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]">
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-[var(--success)]" />
             <span>
@@ -122,7 +122,7 @@ export function ShareDashboardView({
               })}
             </span>
           </div>
-          <span className="text-[11px] text-[var(--text-quaternary)]">
+          <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
             {t('share.filter_real_traffic_active')}
           </span>
         </div>
@@ -147,17 +147,17 @@ export function ShareDashboardView({
 
         <div className="flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5 shadow-[var(--shadow-soft)]">
           <div className="flex items-center justify-between text-[var(--text-tertiary)]">
-            <span className="text-[12px] font-medium">{t('share.active_shares_count')}</span>
+            <span className="text-[length:var(--text-12)] font-medium">{t('share.active_shares_count')}</span>
             <Globe2 size={16} className="text-[var(--accent)]" />
           </div>
           <div className="pt-2">
-            <div className="text-[24px] font-bold tracking-tight text-[var(--text-primary)]">
+            <div className="text-[length:var(--text-24)] font-bold tracking-tight text-[var(--text-primary)]">
               {analytics?.activeShares ?? 0}
-              <span className="ml-1.5 text-[12px] font-normal text-[var(--text-tertiary)]">
+              <span className="ml-1.5 text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)]">
                 / {analytics?.totalShares ?? 0} {t('share.shares_unit')}
               </span>
             </div>
-            <p className="text-[11px] text-[var(--text-quaternary)] pt-1">
+            <p className="text-[length:var(--text-11)] text-[var(--text-quaternary)] pt-1">
               {t('share.active_shares_hint')}
             </p>
           </div>
@@ -174,10 +174,10 @@ export function ShareDashboardView({
       <div className="mt-4 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]">
         <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
           <div>
-            <h3 className="text-[14px] font-semibold text-[var(--text-primary)]">
+            <h3 className="text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">
               {t('share.timeline_trend_title')}
             </h3>
-            <p className="text-[11px] text-[var(--text-tertiary)]">
+            <p className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
               {metricMode === 'views' ? t('share.timeline_pv_desc') : t('share.timeline_uv_desc')}
             </p>
           </div>
@@ -200,16 +200,16 @@ export function ShareDashboardView({
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+            <h3 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
               <BarChart3 size={15} className="text-[var(--accent)]" />
               {t('share.top_notes_title')}
             </h3>
-            <span className="text-[11px] text-[var(--text-quaternary)]">{'TOP 10'}</span>
+            <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">{'TOP 10'}</span>
           </div>
 
           <div className="divide-y divide-[var(--border-subtle)] pt-1">
             {!analytics?.topNotes || analytics.topNotes.length === 0 ? (
-              <p className="py-6 text-center text-[12px] text-[var(--text-quaternary)]">
+              <p className="py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
                 {t('share.no_data_yet')}
               </p>
             ) : (
@@ -222,7 +222,7 @@ export function ShareDashboardView({
                     className="flex items-center gap-3 py-2.5 hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-[var(--r-md)] transition-colors"
                   >
                     <span
-                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[length:var(--text-10)] font-bold ${
                         index < 3
                           ? 'bg-[var(--accent)] text-white'
                           : 'bg-[var(--bg-base)] text-[var(--text-tertiary)]'
@@ -232,12 +232,12 @@ export function ShareDashboardView({
                     </span>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between text-[12px]">
+                      <div className="flex items-center justify-between text-[length:var(--text-12)]">
                         <span className="truncate font-medium text-[var(--text-primary)]">
                           {note.noteTitle}
                         </span>
                         <span className="font-mono font-semibold text-[var(--text-primary)] ml-2">
-                          {note.views} <span className="text-[10px] font-normal text-[var(--text-tertiary)]">{'PV'}</span>
+                          {note.views} <span className="text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]">{'PV'}</span>
                         </span>
                       </div>
                       <div className="mt-1 h-1.5 w-full rounded-full bg-[var(--bg-base)] overflow-hidden">
@@ -267,18 +267,18 @@ export function ShareDashboardView({
 
         <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+            <h3 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
               <Globe2 size={15} className="text-[var(--accent)]" />
               {t('share.top_countries_title')}
             </h3>
-            <span className="text-[11px] text-[var(--text-quaternary)]">
+            <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
               {t('share.visitor_geography')}
             </span>
           </div>
 
           <div className="space-y-2.5 pt-3">
             {!analytics?.topCountries || analytics.topCountries.length === 0 ? (
-              <p className="py-6 text-center text-[12px] text-[var(--text-quaternary)]">
+              <p className="py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
                 {t('share.no_data_yet')}
               </p>
             ) : (
@@ -297,18 +297,18 @@ export function ShareDashboardView({
 
         <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+            <h3 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
               <Compass size={15} className="text-[var(--accent)]" />
               {t('share.top_referrers_title')}
             </h3>
-            <span className="text-[11px] text-[var(--text-quaternary)]">
+            <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
               {t('share.traffic_sources')}
             </span>
           </div>
 
           <div className="space-y-2.5 pt-3">
             {!analytics?.topReferrers || analytics.topReferrers.length === 0 ? (
-              <p className="py-6 text-center text-[12px] text-[var(--text-quaternary)]">
+              <p className="py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
                 {t('share.no_data_yet')}
               </p>
             ) : (
@@ -326,17 +326,17 @@ export function ShareDashboardView({
 
         <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+            <h3 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
               <Laptop size={15} className="text-[var(--accent)]" />
               {t('share.devices_and_systems')}
             </h3>
-            <span className="text-[11px] text-[var(--text-quaternary)]">
+            <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
               {t('share.client_environment')}
             </span>
           </div>
 
           <div className="space-y-3 pt-3">
-            <p className="text-[11px] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider">
+            <p className="text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider">
               {t('share.device_type')}
             </p>
             <div className="space-y-2">
@@ -358,7 +358,7 @@ export function ShareDashboardView({
               ))}
             </div>
 
-            <p className="pt-2 text-[11px] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider">
+            <p className="pt-2 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider">
               {t('share.operating_system')}
             </p>
             <div className="space-y-2">
@@ -378,11 +378,11 @@ export function ShareDashboardView({
       <div className="mt-4 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]">
         <div className="flex items-center justify-between pb-3">
           <div className="flex items-center gap-2">
-            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+            <h3 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
               <Activity size={15} className="text-[var(--accent)]" />
               {t('share.recent_activity_title')}
             </h3>
-            <span className="text-[11px] text-[var(--text-quaternary)]">
+            <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
               {t('share.realtime_stream')}
             </span>
           </div>
@@ -390,7 +390,7 @@ export function ShareDashboardView({
             <button
               type="button"
               onClick={onOpenLogs}
-              className="flex items-center gap-1 text-[11px] font-medium text-[var(--accent)] hover:underline"
+              className="flex items-center gap-1 text-[length:var(--text-11)] font-medium text-[var(--accent)] hover:underline"
             >
               <span>{t('share.view_all_logs')}</span>
               <ExternalLink size={12} />
@@ -400,42 +400,42 @@ export function ShareDashboardView({
 
         <div className="divide-y divide-[var(--border-subtle)] pt-1">
           {!analytics?.recentVisits || analytics.recentVisits.length === 0 ? (
-            <p className="py-6 text-center text-[12px] text-[var(--text-quaternary)]">
+            <p className="py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
               {t('share.no_visits_yet')}
             </p>
           ) : (
             analytics.recentVisits.map((v) => (
               <div
                 key={v.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-2 text-[12px]"
+                className="flex flex-wrap items-center justify-between gap-2 py-2 text-[length:var(--text-12)]"
               >
                 <div className="flex items-center gap-2">
                   <span>{countryFlag(v.country)}</span>
                   <span className="font-medium text-[var(--text-primary)]">
                     {v.noteTitle || 'Untitled note'}
                   </span>
-                  <span className="text-[11px] text-[var(--text-tertiary)]">
+                  <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                     ({countryNameLocalized(v.country, locale)}
                     {v.city ? ` · ${v.city}` : ''})
                   </span>
                   {v.isBot && (
-                    <span className="rounded bg-[var(--danger-subtle)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--danger)]">
+                    <span className="rounded bg-[var(--danger-subtle)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--danger)]">
                       🤖 {v.botName || t('share.badge_bot')}
                     </span>
                   )}
                   {v.isOwner && (
-                    <span className="rounded bg-[var(--accent-subtle)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
+                    <span className="rounded bg-[var(--accent-subtle)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--accent)]">
                       👤 {t('share.badge_owner')}
                     </span>
                   )}
                   {v.isSelfReferrer && (
-                    <span className="rounded bg-[var(--warning-subtle)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--warning)]">
+                    <span className="rounded bg-[var(--warning-subtle)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--warning)]">
                       {t('share.badge_self_referrer')}
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 text-[11px] text-[var(--text-quaternary)]">
+                <div className="flex items-center gap-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                   <span className="rounded bg-[var(--bg-base)] px-1.5 py-0.5 font-mono">
                     {v.browser || 'Other'} / {v.os || 'other'}
                   </span>
@@ -469,18 +469,18 @@ function KpiCard({
   return (
     <div className="flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5 shadow-[var(--shadow-soft)]">
       <div className="flex items-center justify-between text-[var(--text-tertiary)]">
-        <span className="text-[12px] font-medium">{label}</span>
+        <span className="text-[length:var(--text-12)] font-medium">{label}</span>
         {icon}
       </div>
 
       <div className="flex items-baseline justify-between pt-2">
-        <span className="text-[24px] font-bold tracking-tight text-[var(--text-primary)] font-mono">
+        <span className="text-[length:var(--text-24)] font-bold tracking-tight text-[var(--text-primary)] font-mono">
           {value.toLocaleString()}
         </span>
 
         {delta !== undefined && (
           <span
-            className={`inline-flex items-center gap-0.5 text-[11px] font-medium ${
+            className={`inline-flex items-center gap-0.5 text-[length:var(--text-11)] font-medium ${
               delta >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
             }`}
           >
@@ -511,13 +511,13 @@ function BreakdownRow({
   percentage: number
 }) {
   return (
-    <div className="flex flex-col gap-1 text-[12px]">
+    <div className="flex flex-col gap-1 text-[length:var(--text-12)]">
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1.5 truncate text-[var(--text-primary)]">
-          {flag && <span className="text-[13px]">{flag}</span>}
+          {flag && <span className="text-[length:var(--text-13)]">{flag}</span>}
           <span className="truncate">{name}</span>
         </span>
-        <div className="flex items-center gap-2 font-mono text-[11px]">
+        <div className="flex items-center gap-2 font-mono text-[length:var(--text-11)]">
           <span className="font-semibold text-[var(--text-primary)]">{count}</span>
           <span className="w-8 text-right text-[var(--text-tertiary)]">{percentage}%</span>
         </div>
@@ -572,7 +572,7 @@ export function BigSvgChart({
 }) {
   if (values.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-[12px] text-[var(--text-quaternary)]">
+      <div className="flex h-full items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
         {t('share.no_data_yet')}
       </div>
     )

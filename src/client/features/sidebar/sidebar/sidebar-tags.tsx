@@ -171,12 +171,12 @@ export function TagSection() {
                     setActiveIndex(0);
                     if (target) openView('tag', { tag: target.name });
                 }
-            }} placeholder={t("notes.tag_filter_search")} className="h-7 w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-7 pl-6 text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none"/>
-          {searching && <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 tabular-nums text-[10.5px] text-[var(--text-quaternary)]">{visibleTags.length}</span>}
+            }} placeholder={t("notes.tag_filter_search")} className="h-7 w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-7 pl-6 text-[length:var(--text-12)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none"/>
+          {searching && <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 tabular-nums text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">{visibleTags.length}</span>}
         </div>)}
       <div className="mt-0.5 space-y-px">
         {isCreating && <TagDraftRow onFinish={finishCreate} onCancel={() => setIsCreating(false)}/>}
-        {!sortedTags.length && !isCreating && (<button type="button" onClick={() => setIsCreating(true)} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[30px]">
+        {!sortedTags.length && !isCreating && (<button type="button" onClick={() => setIsCreating(true)} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[30px]">
             <Plus size={13}/>{t("tags.create_first")}
           </button>)}
         {!searching && (
@@ -185,7 +185,7 @@ export function TagSection() {
             aria-current={view === 'untagged' ? 'page' : undefined}
             onClick={() => openView('untagged')}
             className={cn(
-              'group flex h-10 w-full items-center justify-between rounded-[var(--r-md)] px-2 text-left text-[12px] font-medium transition-colors md:h-[28px]',
+              'group flex h-10 w-full items-center justify-between rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12)] font-medium transition-colors md:h-[var(--sp-7)]',
               view === 'untagged'
                 ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
@@ -196,7 +196,7 @@ export function TagSection() {
               <span className="truncate">{t('tags.untagged')}</span>
             </div>
             {counts.untagged > 0 && (
-              <span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)]">
+              <span className="shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)]">
                 {counts.untagged}
               </span>
             )}
@@ -267,18 +267,18 @@ export function TagSection() {
 
         {searching && visibleTags.length === 0 && !isCreating && (<div className="mt-1 flex flex-col items-center gap-1 rounded-[var(--r-md)] bg-[var(--bg-inset)] px-2 py-3 text-center">
             <SearchX size={14} className="text-[var(--text-quaternary)]"/>
-            <span className="text-[11.5px] font-medium text-[var(--text-secondary)]">{t("notes.no_matching_tags")}</span>
+            <span className="text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">{t("notes.no_matching_tags")}</span>
             <button type="button" onClick={() => {
                 setQuery('');
                 setActiveIndex(0);
-            }} className="text-[10.5px] font-medium text-[var(--accent)] transition-colors hover:underline">{t("notes.clear_tag_search")}</button>
+            }} className="text-[length:var(--text-10\.5)] font-medium text-[var(--accent)] transition-colors hover:underline">{t("notes.clear_tag_search")}</button>
           </div>)}
 
-        {!searching && flattenedTree.length > 10 && (<button type="button" onClick={() => setIsExpanded((v) => !v)} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[26px]">
+        {!searching && flattenedTree.length > 10 && (<button type="button" onClick={() => setIsExpanded((v) => !v)} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[26px]">
             {isExpanded ? t("common.collapse") : t("sidebar.show_all_value0_tags", { value0: flattenedTree.length })}
           </button>)}
 
-        {selectedTags.length > 0 && (<div className="rounded-[var(--r-md)] bg-[var(--accent-soft)] px-2 py-1.5 text-[11px] text-[var(--text-secondary)]">
+        {selectedTags.length > 0 && (<div className="rounded-[var(--r-md)] bg-[var(--accent-soft)] px-2 py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]">
             <div className="flex h-5 items-center justify-between gap-2">
               <span className="truncate">{t("sidebar.tags_selected", { value0: selectedTags.length })}</span>
               <div className="flex shrink-0 items-center gap-2">
@@ -291,10 +291,10 @@ export function TagSection() {
                 <button type="button" onClick={() => clearTagSelection({ notify: true })} className="font-medium text-[var(--accent)] transition-colors hover:underline">{t("common.clear_selection")}</button>
               </div>
             </div>
-            <div className="mt-0.5 text-[10.5px] text-[var(--text-tertiary)]">{t("sidebar.tags_selected_hint")}</div>
-            {selectedTags.length >= LIMITS.tagSelectionMax && <div className="mt-0.5 text-[10.5px] font-medium text-[var(--danger)]">{t("tags.selection_limit", { value0: LIMITS.tagSelectionMax })}</div>}
+            <div className="mt-0.5 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)]">{t("sidebar.tags_selected_hint")}</div>
+            {selectedTags.length >= LIMITS.tagSelectionMax && <div className="mt-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--danger)]">{t("tags.selection_limit", { value0: LIMITS.tagSelectionMax })}</div>}
             <div className="mt-1 flex flex-wrap gap-1">
-              {selectedTags.map((name) => (<button key={name} type="button" aria-label={t("sidebar.remove_selected_tag", { value0: name })} onClick={() => toggleTagSelection(name)} className="inline-flex h-5 max-w-full items-center gap-1 rounded-full bg-[var(--bg-overlay)] px-2 text-[11px] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]">
+              {selectedTags.map((name) => (<button key={name} type="button" aria-label={t("sidebar.remove_selected_tag", { value0: name })} onClick={() => toggleTagSelection(name)} className="inline-flex h-5 max-w-full items-center gap-1 rounded-full bg-[var(--bg-overlay)] px-2 text-[length:var(--text-11)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]">
                   <Hash size={9} className="shrink-0 text-[var(--text-quaternary)]"/>
                   <span className="truncate">{name}</span>
                   <X size={9} className="shrink-0 text-[var(--text-quaternary)]"/>
@@ -332,7 +332,7 @@ export function TagDraftRow({ onFinish, onCancel }: {
                 onCancel();
             }
             event.stopPropagation();
-        }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>
+        }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[length:var(--text-12\.5)] outline-none"/>
     </div>);
 }
 
@@ -454,14 +454,14 @@ export function TagRow({
                 onCancelRename();
             }
             event.stopPropagation();
-        }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>) : (<Tooltip label={t("sidebar.cmd_click_selects_multiple")} side="right">
-              <button type="button" aria-current={active ? 'page' : undefined} aria-pressed={selected || undefined} onClick={onOpen} onDoubleClick={onStartRename} className="min-w-0 flex-1 truncate py-1 text-left text-[12.5px] font-medium flex items-center gap-1.5">
+        }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[length:var(--text-12\.5)] outline-none"/>) : (<Tooltip label={t("sidebar.cmd_click_selects_multiple")} side="right">
+              <button type="button" aria-current={active ? 'page' : undefined} aria-pressed={selected || undefined} onClick={onOpen} onDoubleClick={onStartRename} className="min-w-0 flex-1 truncate py-1 text-left text-[length:var(--text-12\.5)] font-medium flex items-center gap-1.5">
                 <span className="truncate"><TagNameHighlight name={displayLabel} query={searchQuery}/></span>
                 {tag.isPinned && <Pin size={10} className="shrink-0 fill-current text-[var(--accent)] opacity-80" />}
               </button>
             </Tooltip>)}
       {!renaming && (<>
-          <span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-0">
+          <span className="shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-0">
             {noteCount > 0 ? noteCount : ''}
           </span>
           <Tooltip label={t("common.more_actions")} side="left">

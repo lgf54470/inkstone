@@ -82,7 +82,7 @@ export function BlogGridView({
   const folderMap = new Map(folders.map((f) => [f.id, f]))
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 text-[12.5px]">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 text-[length:var(--text-12\.5)]">
       {posts.map((post) => {
         const isSelected = selectedPostIds.has(post.id)
         const cat = post.categoryId ? categoryMap.get(post.categoryId) ?? null : null
@@ -238,7 +238,7 @@ function BlogGridCard({
               void handleMoveToFolder(null)
             }}
             className={cn(
-              'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
+              'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
               !post.folderId && 'text-[var(--accent)] font-semibold',
             )}
           >
@@ -255,7 +255,7 @@ function BlogGridCard({
                 void handleMoveToFolder(f.id)
               }}
               className={cn(
-                'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
+                'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
                 post.folderId === f.id && 'text-[var(--accent)] font-semibold',
               )}
             >
@@ -346,11 +346,11 @@ function BlogGridCard({
 
         <div className="absolute bottom-2 left-2">
           {post.isPublished ? (
-            <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10.5px] font-semibold text-white shadow-sm backdrop-blur whitespace-nowrap">
+            <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[length:var(--text-10\.5)] font-semibold text-white shadow-sm backdrop-blur whitespace-nowrap">
               {t('blog.published')}
             </span>
           ) : (
-            <span className="rounded-full bg-stone-600/80 px-2 py-0.5 text-[10.5px] font-medium text-white shadow-sm backdrop-blur whitespace-nowrap">
+            <span className="rounded-full bg-stone-600/80 px-2 py-0.5 text-[length:var(--text-10\.5)] font-medium text-white shadow-sm backdrop-blur whitespace-nowrap">
               {t('blog.draft')}
             </span>
           )}
@@ -361,7 +361,7 @@ function BlogGridCard({
         <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
           {folder && (
             <span
-              className="flex items-center gap-1 rounded-[var(--r-sm)] px-1.5 py-0.2 text-[10.5px] font-medium truncate"
+              className="flex items-center gap-1 rounded-[var(--r-sm)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-medium truncate"
               style={{
                 backgroundColor: folder.color ? `${folder.color}15` : 'var(--bg-sunken)',
                 color: folder.color || 'var(--text-secondary)',
@@ -374,7 +374,7 @@ function BlogGridCard({
 
           {cat && (
             <span
-              className="rounded-[var(--r-sm)] px-1.5 py-0.2 text-[10.5px] font-medium truncate max-w-[90px]"
+              className="rounded-[var(--r-sm)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-medium truncate max-w-[90px]"
               style={{
                 backgroundColor: cat.color ? `${cat.color}15` : 'var(--bg-sunken)',
                 color: cat.color || 'var(--text-secondary)',
@@ -384,16 +384,16 @@ function BlogGridCard({
             </span>
           )}
 
-          <span className="text-[11px] text-[var(--text-quaternary)] ml-auto whitespace-nowrap">
+          <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)] ml-auto whitespace-nowrap">
             {new Date(post.publishedAt).toLocaleDateString()}
           </span>
         </div>
 
-        <h3 className="font-semibold text-[14px] text-[var(--text-primary)] line-clamp-1 group-hover:text-[var(--accent)] transition-colors">
+        <h3 className="font-semibold text-[length:var(--text-14)] text-[var(--text-primary)] line-clamp-1 group-hover:text-[var(--accent)] transition-colors">
           {post.title}
         </h3>
 
-        <p className="mt-1 text-[12px] text-[var(--text-tertiary)] line-clamp-2 leading-relaxed flex-1">
+        <p className="mt-1 text-[length:var(--text-12)] text-[var(--text-tertiary)] line-clamp-2 leading-relaxed flex-1">
           {post.excerpt || t('blog.no_excerpt')}
         </p>
 
@@ -402,14 +402,14 @@ function BlogGridCard({
             {post.tags.slice(0, 3).map((tg) => (
               <span
                 key={tg}
-                className="rounded bg-[var(--bg-sunken)] px-1.5 py-0.2 text-[10px] text-[var(--text-tertiary)] truncate max-w-[90px]"
+                className="rounded bg-[var(--bg-sunken)] px-1.5 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)] truncate max-w-[90px]"
                 title={tg}
               >
                 #{tg.includes('/') ? tg.split('/').pop() : tg}
               </span>
             ))}
             {post.tags.length > 3 && (
-              <span className="text-[10px] text-[var(--text-quaternary)]">
+              <span className="text-[length:var(--text-10)] text-[var(--text-quaternary)]">
                 +{post.tags.length - 3}
               </span>
             )}
@@ -417,7 +417,7 @@ function BlogGridCard({
         )}
 
         <div className="mt-3.5 flex items-center justify-between pt-2.5 border-t border-[var(--border-subtle)]">
-          <div className="flex items-center gap-3 text-[11px] text-[var(--text-quaternary)]">
+          <div className="flex items-center gap-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
             <span className="flex items-center gap-1">
               <Eye size={12} /> {post.views}
             </span>

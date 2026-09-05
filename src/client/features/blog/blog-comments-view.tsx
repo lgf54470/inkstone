@@ -109,25 +109,25 @@ export function BlogCommentsView() {
     switch (status) {
       case 'pending':
         return (
-          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[length:var(--text-11)] font-medium text-amber-600 dark:text-amber-400">
             {t('blog.status_pending')}
           </span>
         )
       case 'approved':
         return (
-          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[length:var(--text-11)] font-medium text-emerald-600 dark:text-emerald-400">
             {t('blog.status_approved')}
           </span>
         )
       case 'rejected':
         return (
-          <span className="rounded-full bg-stone-500/10 px-2 py-0.5 text-[11px] font-medium text-stone-500">
+          <span className="rounded-full bg-stone-500/10 px-2 py-0.5 text-[length:var(--text-11)] font-medium text-stone-500">
             {t('blog.status_rejected')}
           </span>
         )
       case 'spam':
         return (
-          <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:text-rose-400">
+          <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[length:var(--text-11)] font-medium text-rose-600 dark:text-rose-400">
             {t('blog.status_spam')}
           </span>
         )
@@ -135,7 +135,7 @@ export function BlogCommentsView() {
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden text-[12.5px]">
+    <div className="flex flex-1 flex-col overflow-hidden text-[length:var(--text-12\.5)]">
       {/* Top filter toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2.5">
         {/* Status tabs */}
@@ -163,7 +163,7 @@ export function BlogCommentsView() {
               >
                 <span>{tab.label}</span>
                 <span
-                  className={`rounded-full px-1.5 py-0.1 text-[10px] ${
+                  className={`rounded-full px-1.5 py-0.1 text-[length:var(--text-10)] ${
                     active
                       ? 'bg-black/20 text-[var(--accent-contrast)]'
                       : tab.alert
@@ -186,7 +186,7 @@ export function BlogCommentsView() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('blog.search_comments_placeholder')}
-              className="h-8 text-[12px]"
+              className="h-8 text-[length:var(--text-12)]"
             />
           </div>
 
@@ -203,7 +203,7 @@ export function BlogCommentsView() {
 
       {/* Batch action bar if items selected */}
       {selectedCommentIds.size > 0 && (
-        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--accent-soft)] px-4 py-2 text-[12px]">
+        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--accent-soft)] px-4 py-2 text-[length:var(--text-12)]">
           <div className="flex items-center gap-2 text-[var(--accent)] font-medium">
             <ShieldCheck size={15} />
             <span>{t('blog.selected_comments_count', { value0: selectedCommentIds.size })}</span>
@@ -263,7 +263,7 @@ export function BlogCommentsView() {
               onChange={handleToggleSelectAll}
               className="size-3.5 rounded accent-[var(--accent)] cursor-pointer"
             />
-            <span className="text-[11px] text-[var(--text-tertiary)] select-none">
+            <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)] select-none">
               {t('blog.select_all_list')} ({filteredComments.length})
             </span>
           </div>
@@ -318,7 +318,7 @@ export function BlogCommentsView() {
                         </span>
                         {getStatusBadge(comment.status)}
                       </div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--text-quaternary)]">
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                         <span>{comment.authorEmail}</span>
                         {comment.ip && <span>{`· ${t('blog.comment_ip')} ${comment.ip}`}</span>}
                         <span>· {new Date(comment.createdAt).toLocaleString()}</span>
@@ -332,7 +332,7 @@ export function BlogCommentsView() {
                       href={postUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hidden sm:inline-flex items-center gap-1 text-[11.5px] text-[var(--accent)] hover:underline max-w-[200px] truncate"
+                      className="hidden sm:inline-flex items-center gap-1 text-[length:var(--text-11\.5)] text-[var(--accent)] hover:underline max-w-[200px] truncate"
                       title={comment.postTitle}
                     >
                       <span className="truncate">{comment.postTitle}</span>
@@ -342,7 +342,7 @@ export function BlogCommentsView() {
                 </div>
 
                 {/* Comment Content */}
-                <div className="mt-3 ml-6 rounded-[var(--r-md)] bg-[var(--bg-base)] p-3 text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
+                <div className="mt-3 ml-6 rounded-[var(--r-md)] bg-[var(--bg-base)] p-3 text-[length:var(--text-12\.5)] leading-relaxed text-[var(--text-secondary)]">
                   {comment.content}
                 </div>
 

@@ -164,7 +164,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('folders.search')}
-                className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pl-9 pr-3 text-[12.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)]"
+                className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pl-9 pr-3 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)]"
               />
             </div>
             {emptyFolders.length > 0 && !isCreating && (
@@ -213,7 +213,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                   if (e.key === 'Escape') setIsCreating(false);
                 }}
                 placeholder={t('common.new_folder')}
-                className="h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[12.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                className="h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
               />
               <Button
                 variant="primary"
@@ -269,7 +269,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                           style={{ color: folder.color ?? 'var(--text-tertiary)' }}
                         >
                           {folder.icon ? (
-                            <span className="text-[14px] leading-none">{folder.icon}</span>
+                            <span className="text-[length:var(--text-14)] leading-none">{folder.icon}</span>
                           ) : (
                             <FolderClosed size={15} />
                           )}
@@ -288,7 +288,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                               if (e.key === 'Enter') handleSaveRename(folder.id);
                               if (e.key === 'Escape') setRenamingId(null);
                             }}
-                            className="h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[12.5px] outline-none"
+                            className="h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12\.5)] outline-none"
                           />
                           <Tooltip label={t('common.save')}>
                             <IconButton
@@ -312,11 +312,11 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                       ) : (
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">
+                            <span className="truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
                               {path}
                             </span>
                             {isInbox && (
-                              <span className="inline-flex items-center gap-1 rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10.5px] font-medium text-[var(--accent)]">
+                              <span className="inline-flex items-center gap-1 rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--accent)]">
                                 <Inbox size={10.5} />
                                 {t('folders.inbox')}
                               </span>
@@ -324,13 +324,13 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                             {boundTemplate && (
                               <span
                                 title={`${t('folders.default_template')}: ${boundTemplate.name}`}
-                                className="inline-flex items-center gap-1 rounded bg-[var(--accent-soft)]/60 px-1.5 py-0.5 text-[10.5px] font-medium text-[var(--accent)]"
+                                className="inline-flex items-center gap-1 rounded bg-[var(--accent-soft)]/60 px-1.5 py-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--accent)]"
                               >
                                 <LayoutTemplate size={10} />
                                 <span className="max-w-[100px] truncate">{boundTemplate.name}</span>
                               </span>
                             )}
-                            <span className="shrink-0 text-[11px] text-[var(--text-quaternary)]">
+                            <span className="shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                               {t('folders.notes_count', { value0: count })}
                             </span>
                           </div>
@@ -530,7 +530,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                                   setIconPickerFolderId(null);
                                 }}
                                 className={cn(
-                                  'flex size-6 items-center justify-center rounded-[var(--r-xs)] text-[14px] leading-none transition-transform hover:scale-110',
+                                  'flex size-6 items-center justify-center rounded-[var(--r-xs)] text-[length:var(--text-14)] leading-none transition-transform hover:scale-110',
                                   isSelected
                                     ? 'bg-[var(--accent-soft)] ring-2 ring-[var(--accent-ring)]'
                                     : 'hover:bg-[var(--bg-hover)]'
@@ -557,7 +557,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                               }
                             }
                           }}
-                          className="h-6 w-48 rounded-[var(--r-xs)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-6 pr-2 text-[11.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                          className="h-6 w-48 rounded-[var(--r-xs)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-6 pr-2 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
                         />
                       </div>
                     </div>
@@ -567,7 +567,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
             })}
 
             {choices.length === 0 && (
-              <div className="py-10 text-center text-[12.5px] text-[var(--text-quaternary)]">
+              <div className="py-10 text-center text-[length:var(--text-12\.5)] text-[var(--text-quaternary)]">
                 {query.trim() ? t('folders.no_match') : t('folders.no_folders')}
               </div>
             )}

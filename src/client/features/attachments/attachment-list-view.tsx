@@ -61,8 +61,8 @@ export function AttachmentListView({
   return (
     <div className="flex min-h-full flex-col w-full">
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-[12px] border-collapse">
-          <thead className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)]/90 backdrop-blur-xs text-[11px] font-semibold text-[var(--text-tertiary)] uppercase select-none">
+        <table className="w-full text-left text-[length:var(--text-12)] border-collapse">
+          <thead className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)]/90 backdrop-blur-xs text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)] uppercase select-none">
             <tr>
               <th className="w-10 px-3 py-2.5">
                 <button
@@ -125,10 +125,10 @@ export function AttachmentListView({
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-surface)] text-[var(--accent)] shadow-xs mb-3">
               <Upload size={22} />
             </div>
-            <p className="text-[13px] font-semibold text-[var(--text-secondary)]">
+            <p className="text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]">
               {t('attachments.drag_drop_hint')}
             </p>
-            <p className="mt-1 text-[11.5px] text-[var(--text-tertiary)] max-w-sm">
+            <p className="mt-1 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)] max-w-sm">
               {t('attachments.upload_guide_hint')}
             </p>
           </div>
@@ -269,7 +269,7 @@ function ListRow({
             {isImage ? (
               <img src={file.url} alt="" className="h-full w-full object-cover" />
             ) : (
-              <span className={cn('text-[9px] font-bold', badge.text)}>{badge.label}</span>
+              <span className={cn('text-[length:var(--text-9)] font-bold', badge.text)}>{badge.label}</span>
             )}
           </div>
           <span className="truncate font-medium text-[var(--text-primary)] max-w-xs md:max-w-md" title={file.filename}>
@@ -292,7 +292,7 @@ function ListRow({
         {file.tags && file.tags.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {file.tags.slice(0, 2).map((tName) => (
-              <span key={tName} className="rounded bg-[var(--bg-sunken)] px-1 text-[10px]">
+              <span key={tName} className="rounded bg-[var(--bg-sunken)] px-1 text-[length:var(--text-10)]">
                 #{tName}
               </span>
             ))}
@@ -308,7 +308,7 @@ function ListRow({
 
       <td className="px-3 py-2">
         {file.references === 0 ? (
-          <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+          <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[length:var(--text-10)] font-medium text-amber-600 dark:text-amber-400">
             {t('attachments.unreferenced')}
           </span>
         ) : (

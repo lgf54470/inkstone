@@ -63,7 +63,7 @@ export function EditorSettings() {
       </section>
 
       <section>
-        <h3 className="mb-1 text-[11px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("settings.writing_mode")}</h3>
+        <h3 className="mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("settings.writing_mode")}</h3>
 
         <SettingRow title={t("settings.typewriter_mode")} description={t("settings.keep_the_cursor_line_centered_on_screen")}>
           <Switch checked={editor.typewriter} onChange={setTypewriter} label={t("settings.typewriter_mode")}/>
@@ -75,7 +75,7 @@ export function EditorSettings() {
       </section>
 
       <section>
-        <h3 className="mb-1 text-[11px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("common.preview")}</h3>
+        <h3 className="mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("common.preview")}</h3>
 
         <SettingRow title={t("settings.scroll_sync")} description={t("settings.keep_the_editor_and_preview_scrolled_together")}>
           <Switch checked={preview.syncScroll} onChange={setSyncScroll} label={t("settings.scroll_sync")}/>

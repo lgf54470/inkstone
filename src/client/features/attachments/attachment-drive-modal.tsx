@@ -345,7 +345,7 @@ export function AttachmentDriveModal({
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]">
           <div className="flex items-center gap-2">
             <HardDrive size={16} className="text-[var(--accent)]" />
-            <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">
+            <h2 className="text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">
               {t('attachments.drive_title')}
             </h2>
           </div>
@@ -456,7 +456,7 @@ export function AttachmentDriveModal({
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-sunken)] text-[var(--text-quaternary)] mb-3">
                     <Upload size={24} />
                   </div>
-                  <p className="text-[13px] font-medium text-[var(--text-secondary)] max-w-sm">
+                  <p className="text-[length:var(--text-13)] font-medium text-[var(--text-secondary)] max-w-sm">
                     {search ? t('attachments.none_match') : t('attachments.drag_drop_hint')}
                   </p>
                 </div>

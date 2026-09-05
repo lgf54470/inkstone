@@ -51,7 +51,7 @@ export const TagPill = memo(function TagPill({
       style={pillStyle}
       className={cn(
         'group/tag inline-flex items-center rounded-full border transition-all select-none',
-        isSm ? 'h-5 gap-0.5 px-2 text-[10.5px] font-medium' : 'h-6 gap-1 px-2.5 text-[12px] font-medium',
+        isSm ? 'h-5 gap-0.5 px-2 text-[length:var(--text-10\.5)] font-medium' : 'h-6 gap-1 px-2.5 text-[length:var(--text-12)] font-medium',
         onClick && 'cursor-pointer hover:brightness-95 dark:hover:brightness-110 active:scale-[0.98]',
         className
       )}

@@ -77,7 +77,7 @@ export function ShareQrModal({
       <div className="flex flex-col items-center gap-4 py-2">
         <div
           ref={svgRef}
-          className="rounded-[20px] border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.02]"
+          className="rounded-[var(--r-2xl)] border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.02]"
         >
           <QRCodeSVG
             value={fullUrl}
@@ -90,10 +90,10 @@ export function ShareQrModal({
         </div>
 
         <div className="w-full max-w-sm rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-center">
-          <p className="truncate text-[12px] font-mono text-[var(--text-secondary)]">{fullUrl}</p>
+          <p className="truncate text-[length:var(--text-12)] font-mono text-[var(--text-secondary)]">{fullUrl}</p>
         </div>
 
-        <p className="text-center text-[12px] text-[var(--text-tertiary)] max-w-xs">
+        <p className="text-center text-[length:var(--text-12)] text-[var(--text-tertiary)] max-w-xs">
           {t('share.qr_code_hint')}
         </p>
 
@@ -140,7 +140,7 @@ export function ShareQrModal({
             href={fullUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           >
             <ExternalLink size={13} />
             <span>{t('preview.open_in_new_tab')}</span>

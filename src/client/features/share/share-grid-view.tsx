@@ -86,7 +86,7 @@ export function ShareGridView({
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-2 text-center">
         <Share2 size={32} className="text-[var(--text-quaternary)]" />
-        <p className="text-[13px] font-medium text-[var(--text-secondary)]">
+        <p className="text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]">
           {t('share.no_shares_found')}
         </p>
       </div>
@@ -230,7 +230,7 @@ function ShareGridCard({
               onMoveToFolder(null)
             }}
             className={cn(
-              'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
+              'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
               !share.shareFolderId && 'text-[var(--accent)] font-semibold',
             )}
           >
@@ -247,7 +247,7 @@ function ShareGridCard({
                 onMoveToFolder(f.id)
               }}
               className={cn(
-                'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
+                'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
                 share.shareFolderId === f.id && 'text-[var(--accent)] font-semibold',
               )}
             >
@@ -354,7 +354,7 @@ function ShareGridCard({
             </button>
             <span
               onClick={onOpenEdit}
-              className="truncate text-[13px] font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer"
+              className="truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer"
             >
               {share.noteTitle || t('common.untitled_note')}
             </span>
@@ -366,17 +366,17 @@ function ShareGridCard({
         </div>
 
         {share.noteExcerpt && (
-          <p className="line-clamp-2 text-[11px] text-[var(--text-tertiary)] pb-2">
+          <p className="line-clamp-2 text-[length:var(--text-11)] text-[var(--text-tertiary)] pb-2">
             {share.noteExcerpt}
           </p>
         )}
 
         {share.slug ? (
-          <div className="flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-2 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
+          <div className="flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-2 py-1 font-mono text-[length:var(--text-11)] text-[var(--text-secondary)]">
             <span className="truncate">{`/s/${share.slug}`}</span>
             <div className="flex items-center gap-1">
               {isCustom && (
-                <span className="rounded bg-[var(--accent-subtle)] px-1 py-0.2 text-[9px] font-semibold text-[var(--accent)]">
+                <span className="rounded bg-[var(--accent-subtle)] px-1 py-0.2 text-[length:var(--text-9)] font-semibold text-[var(--accent)]">
                   {'CUSTOM'}
                 </span>
               )}
@@ -395,16 +395,16 @@ function ShareGridCard({
             </div>
           </div>
         ) : (
-          <div className="rounded-[var(--r-md)] border border-dashed border-[var(--border-subtle)] px-2 py-1 text-center text-[11px] text-[var(--text-quaternary)]">
+          <div className="rounded-[var(--r-md)] border border-dashed border-[var(--border-subtle)] px-2 py-1 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]">
             {t('share.not_shared')}
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 pt-2 text-[10px] text-[var(--text-quaternary)]">
+        <div className="flex flex-wrap items-center gap-2 pt-2 text-[length:var(--text-10)] text-[var(--text-quaternary)]">
           {folder && (
             <span
               style={{ borderColor: folder.color ? `${folder.color}40` : undefined }}
-              className="inline-flex items-center gap-1 rounded bg-[var(--bg-surface)] px-1.5 py-0.2 text-[10px] text-[var(--text-secondary)] border border-[var(--border-subtle)]"
+              className="inline-flex items-center gap-1 rounded bg-[var(--bg-surface)] px-1.5 py-0.2 text-[length:var(--text-10)] text-[var(--text-secondary)] border border-[var(--border-subtle)]"
             >
               <FolderClosed size={10} style={{ color: folder.color ?? undefined }} className="shrink-0" />
               <span className="max-w-[100px] truncate">{folder.name}</span>
@@ -424,7 +424,7 @@ function ShareGridCard({
           {share.tags && share.tags.length > 0 && share.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded bg-[var(--bg-surface)] px-1 py-0.2 text-[10px] text-[var(--text-tertiary)] border border-[var(--border-subtle)]"
+              className="rounded bg-[var(--bg-surface)] px-1 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]"
             >
               #{tag}
             </span>
@@ -433,7 +433,7 @@ function ShareGridCard({
       </div>
 
       <div className="mt-3 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2">
-        <div className="flex items-center gap-2 font-mono text-[11px] text-[var(--text-tertiary)]">
+        <div className="flex items-center gap-2 font-mono text-[length:var(--text-11)] text-[var(--text-tertiary)]">
           <span title={t('share.metric_pv')}>
             <Eye size={11} className="inline mr-0.5" />
             {share.views}

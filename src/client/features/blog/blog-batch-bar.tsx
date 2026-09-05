@@ -93,7 +93,7 @@ export function BlogBatchBar({
   ]
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[var(--z-menu)] flex items-center gap-2 rounded-[var(--r-xl)] border border-[var(--border-strong)] bg-[var(--bg-overlay)]/95 px-4 py-2 shadow-[var(--shadow-modal)] backdrop-blur text-[12px] whitespace-nowrap">
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[var(--z-menu)] flex items-center gap-2 rounded-[var(--r-xl)] border border-[var(--border-strong)] bg-[var(--bg-overlay)]/95 px-4 py-2 shadow-[var(--shadow-modal)] backdrop-blur text-[length:var(--text-12)] whitespace-nowrap">
       <span className="font-semibold text-[var(--text-primary)]">
         {t('blog.selected_posts_count', { value0: selectedCount })}
       </span>
@@ -152,7 +152,7 @@ export function BlogBatchBar({
           <select
             onChange={(e) => void handleBatchSetCategory(e.target.value)}
             defaultValue=""
-            className="h-7 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 text-[11.5px] text-[var(--text-secondary)] outline-none"
+            className="h-7 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)] outline-none"
           >
             <option value="" disabled>
               {t('blog.change_category')}

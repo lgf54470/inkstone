@@ -213,7 +213,7 @@ function CodeViewer({ code, ext }: { code: string; ext: string }) {
         data-code-start="1"
         data-line-numbers="true"
       >
-        <pre className="p-3 m-0 overflow-x-auto font-mono text-[12.5px] leading-relaxed">
+        <pre className="p-3 m-0 overflow-x-auto font-mono text-[length:var(--text-12\.5)] leading-relaxed">
           <code>{code}</code>
         </pre>
       </div>
@@ -335,7 +335,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
         <div className="flex items-center gap-2 max-w-[700px] truncate">
           <span className="truncate font-semibold">{filename}</span>
           {isImage && naturalSize && (
-            <span className="shrink-0 rounded bg-[var(--bg-sunken)] px-1.5 py-0.5 text-[11px] font-mono text-[var(--text-tertiary)]">
+            <span className="shrink-0 rounded bg-[var(--bg-sunken)] px-1.5 py-0.5 text-[length:var(--text-11)] font-mono text-[var(--text-tertiary)]">
               {`${naturalSize.width} × ${naturalSize.height} px`}
             </span>
           )}
@@ -350,7 +350,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
               href={previewUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] cursor-pointer"
+              className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] cursor-pointer"
             >
               <ExternalLink size={13} />
               <span>{t('preview.open_in_new_tab')}</span>
@@ -358,7 +358,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
             <a
               href={url}
               download={filename}
-              className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 text-[12px] font-medium text-[var(--accent-contrast)] transition-transform active:translate-y-px cursor-pointer"
+              className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] transition-transform active:translate-y-px cursor-pointer"
             >
               <Download size={13} />
               <span>{t('workspace.download_file')}</span>
@@ -368,7 +368,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
               <button
                 type="button"
                 onClick={() => void handleCopyText()}
-                className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] cursor-pointer"
+                className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] cursor-pointer"
               >
                 {isCopied ? <Check size={13} className="text-[var(--accent)]" /> : <Copy size={13} />}
                 <span>{isCopied ? t('common.copied') : t('common.copy')}</span>
@@ -379,7 +379,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 items-center rounded-[var(--r-md)] px-3 text-[12px] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] cursor-pointer"
+            className="inline-flex h-8 items-center rounded-[var(--r-md)] px-3 text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] cursor-pointer"
           >
             {t('common.close')}
           </button>
@@ -389,12 +389,12 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
       <div className={cn('min-h-[280px] flex flex-col', isText || isMarkdown ? 'justify-start' : 'justify-center')}>
         {isImage && (
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between px-1 py-0.5 text-[12px]">
+            <div className="flex items-center justify-between px-1 py-0.5 text-[length:var(--text-12)]">
               <div className="flex items-center gap-1 bg-[var(--bg-sunken)] p-0.5 rounded-[var(--r-md)] border border-[var(--border-subtle)]">
                 <IconButton label={t('preview.zoom_out')} size="sm" onClick={handleZoomOut} disabled={imageScale <= 0.25}>
                   <ZoomOut size={13} />
                 </IconButton>
-                <span className="px-1.5 font-mono text-[11px] min-w-[42px] text-center text-[var(--text-secondary)]">
+                <span className="px-1.5 font-mono text-[length:var(--text-11)] min-w-[42px] text-center text-[var(--text-secondary)]">
                   {Math.round(imageScale * 100)}%
                 </span>
                 <IconButton label={t('preview.zoom_in')} size="sm" onClick={handleZoomIn} disabled={imageScale >= 3}>
@@ -403,7 +403,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
                 <button
                   type="button"
                   onClick={handleZoomReset}
-                  className="px-2 py-0.5 text-[11px] font-medium rounded text-[var(--text-secondary)] hover:bg-[var(--bg-base)] transition-colors cursor-pointer"
+                  className="px-2 py-0.5 text-[length:var(--text-11)] font-medium rounded text-[var(--text-secondary)] hover:bg-[var(--bg-base)] transition-colors cursor-pointer"
                 >
                   {t('preview.zoom_reset')}
                 </button>
@@ -422,7 +422,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
               )}
 
               {isImageError ? (
-                <div className="py-12 flex flex-col items-center justify-center gap-2 text-center text-[var(--danger)] text-[13px]">
+                <div className="py-12 flex flex-col items-center justify-center gap-2 text-center text-[var(--danger)] text-[length:var(--text-13)]">
                   <p>{t('preview.could_not_load_image')}</p>
                 </div>
               ) : (
@@ -465,8 +465,8 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
               <Music size={36} />
             </div>
             <div className="text-center">
-              <h4 className="text-[14px] font-semibold text-[var(--text-primary)]">{filename}</h4>
-              <p className="text-[12px] text-[var(--text-tertiary)] uppercase mt-0.5">{ext}</p>
+              <h4 className="text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">{filename}</h4>
+              <p className="text-[length:var(--text-12)] text-[var(--text-tertiary)] uppercase mt-0.5">{ext}</p>
             </div>
             <audio controls src={previewUrl} className="w-full max-w-md shadow-xs" autoPlay={false} />
           </div>
@@ -482,7 +482,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
           <div className="space-y-3">
             {(isMarkdown || isCsv) && !isLoading && !error && textContent !== null && (
               <div className="flex items-center justify-between pb-1 border-b border-[var(--border-subtle)]">
-                <div className="flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 text-[11px] font-medium">
+                <div className="flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 text-[length:var(--text-11)] font-medium">
                   {isMarkdown && (
                     <>
                       <button
@@ -551,12 +551,12 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
             {isLoading && (
               <div className="py-20 flex items-center justify-center text-[var(--text-tertiary)] gap-2">
                 <Loader2 size={20} className="animate-spin text-[var(--accent)]" />
-                <span className="text-[13px]">{t('preview.loading')}</span>
+                <span className="text-[length:var(--text-13)]">{t('preview.loading')}</span>
               </div>
             )}
 
             {error && (
-              <div className="py-12 text-center text-[var(--danger)] text-[13px]">
+              <div className="py-12 text-center text-[var(--danger)] text-[length:var(--text-13)]">
                 {error}
               </div>
             )}
@@ -565,14 +565,14 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
               <>
                 {isMarkdown && textMode === 'rendered' ? (
                   <div
-                    className="p-5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] prose dark:prose-invert max-w-none text-[13.5px] leading-relaxed select-text"
+                    className="p-5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] prose dark:prose-invert max-w-none text-[length:var(--text-13\.5)] leading-relaxed select-text"
                     dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
                   />
                 ) : isCsv && (textMode === 'table' || textMode === 'rendered') ? (
                   <div className="overflow-x-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)]">
-                    <table className="w-full text-left text-[12px] border-collapse">
+                    <table className="w-full text-left text-[length:var(--text-12)] border-collapse">
                       {csvRows.length > 0 && (
-                        <thead className="sticky top-0 bg-[var(--bg-sunken)] text-[11px] font-semibold text-[var(--text-tertiary)] border-b border-[var(--border-subtle)]">
+                        <thead className="sticky top-0 bg-[var(--bg-sunken)] text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)] border-b border-[var(--border-subtle)]">
                           <tr>
                             {csvRows[0]?.map((col, cIdx) => (
                               <th key={cIdx} className="px-3 py-2 border-r border-[var(--border-subtle)] last:border-r-0 whitespace-nowrap">
@@ -586,7 +586,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
                         {csvRows.slice(1).map((row, rIdx) => (
                           <tr key={rIdx} className="hover:bg-[var(--bg-hover)]">
                             {row.map((cell, cIdx) => (
-                              <td key={cIdx} className="px-3 py-1.5 border-r border-[var(--border-subtle)] last:border-r-0 text-[12px] select-text">
+                              <td key={cIdx} className="px-3 py-1.5 border-r border-[var(--border-subtle)] last:border-r-0 text-[length:var(--text-12)] select-text">
                                 {cell}
                               </td>
                             ))}
@@ -608,14 +608,14 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--bg-sunken)] text-[var(--text-tertiary)] mb-1">
               <FileText size={32} />
             </div>
-            <h4 className="text-[14px] font-semibold text-[var(--text-primary)]">{filename}</h4>
-            <p className="text-[13px] text-[var(--text-secondary)] max-w-sm">
+            <h4 className="text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">{filename}</h4>
+            <p className="text-[length:var(--text-13)] text-[var(--text-secondary)] max-w-sm">
               {t('preview.file_preview_unsupported')}
             </p>
             <a
               href={url}
               download={filename}
-              className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-4 text-[12px] font-medium text-[var(--accent-contrast)] shadow-xs transition-transform active:translate-y-px cursor-pointer"
+              className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-4 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] shadow-xs transition-transform active:translate-y-px cursor-pointer"
             >
               <Download size={13} />
               <span>{t('workspace.download_file')}</span>

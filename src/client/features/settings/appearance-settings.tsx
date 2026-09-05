@@ -141,7 +141,7 @@ export function AppearanceSettings({
                 onClick={() => void update({ appearance: { background: background.name } })}
                 aria-pressed={appearance.background === background.name}
                 className={cn(
-                  'flex h-8 min-w-[84px] items-center gap-2 rounded-[var(--r-md)] border px-2.5 text-[11.5px] transition-[border-color,background-color,box-shadow] duration-[var(--dur-fast)]',
+                  'flex h-8 min-w-[84px] items-center gap-2 rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-11\.5)] transition-[border-color,background-color,box-shadow] duration-[var(--dur-fast)]',
                   appearance.background === background.name
                     ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[0_0_0_2px_var(--accent-ring)]'
                     : 'border-[var(--border-default)] bg-[var(--bg-base)] hover:bg-[var(--bg-hover)]',
@@ -203,7 +203,7 @@ export function AppearanceSettings({
       </section>
 
       <section>
-        <h3 className="mb-1 text-[11px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+        <h3 className="mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
           {t("settings.preview_typography")}
         </h3>
 
@@ -270,8 +270,8 @@ function YearGridPreview({ columns, locale }: { columns: YearGridColumnsPref; lo
   return (
     <div className="mt-1 mb-3 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-2">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="text-[9.5px] font-medium text-[var(--text-quaternary)]">{t("settings.year_grid_columns_preview")}</span>
-        <span className="text-[9.5px] text-[var(--text-quaternary)]">{t("settings.year_grid_columns_preview_tip")}</span>
+        <span className="text-[length:var(--text-9\.5)] font-medium text-[var(--text-quaternary)]">{t("settings.year_grid_columns_preview")}</span>
+        <span className="text-[length:var(--text-9\.5)] text-[var(--text-quaternary)]">{t("settings.year_grid_columns_preview_tip")}</span>
       </div>
       <YearGrid
         year={previewYear}
@@ -283,16 +283,16 @@ function YearGridPreview({ columns, locale }: { columns: YearGridColumnsPref; lo
             type="button"
             aria-label={t("settings.year_grid_columns_jump_value0", { value0: monthLabels[month.month] ?? '' })}
             onClick={() => jumpToMonth(month.month)}
-            className="flex min-w-0 flex-col items-center gap-0.5 rounded-[3px] p-px transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+            className="flex min-w-0 flex-col items-center gap-0.5 rounded-[var(--r-3)] p-px transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
           >
-            <span className="text-[7px] font-medium text-[var(--text-quaternary)]">{monthLabels[month.month]}</span>
+            <span className="text-[length:var(--text-7)] font-medium text-[var(--text-quaternary)]">{monthLabels[month.month]}</span>
             <span aria-hidden="true" className="grid w-full grid-cols-7 gap-px">
               {month.cells.map((cell, index) => {
                 const level = cell.inMonth ? ((index + month.month) % 4) : 0
                 return (
                   <span
                     key={index}
-                    className={cn('aspect-square w-full rounded-[1px]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]')}
+                    className={cn('aspect-square w-full rounded-[var(--r-1)]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]')}
                     style={{ backgroundColor: !cell.inMonth ? 'transparent' : level === 0 ? 'var(--bg-base)' : `color-mix(in oklab, var(--accent) ${previewHeat[level - 1]}%, transparent)` }}
                   />
                 )
@@ -309,7 +309,7 @@ function PreviewSample() {
   const appearance = useSession((s) => s.settings.appearance)
   return (
     <section>
-      <h3 className="mb-2 text-[11px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+      <h3 className="mb-2 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
         {t("settings.preview")}
       </h3>
       <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-3">

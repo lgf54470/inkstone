@@ -139,7 +139,7 @@ export function ShareVisitLogsModal({
           <Activity size={17} className="text-[var(--accent)]" />
           <span>{t('share.visit_logs_title')}</span>
           {data && (
-            <span className="rounded-full bg-[var(--bg-card)] px-2 py-0.5 text-[11px] font-normal text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
+            <span className="rounded-full bg-[var(--bg-card)] px-2 py-0.5 text-[length:var(--text-11)] font-normal text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
               {t('share.total_records', { count: data.total })}
             </span>
           )}
@@ -156,7 +156,7 @@ export function ShareVisitLogsModal({
             <button
               type="button"
               onClick={() => handleFilterChange('all')}
-              className={`rounded-[var(--r-md)] px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              className={`rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-11)] font-medium transition-colors ${
                 filter === 'all'
                   ? 'bg-[var(--accent)] text-white'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
@@ -167,7 +167,7 @@ export function ShareVisitLogsModal({
             <button
               type="button"
               onClick={() => handleFilterChange('real')}
-              className={`rounded-[var(--r-md)] px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              className={`rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-11)] font-medium transition-colors ${
                 filter === 'real'
                   ? 'bg-[var(--accent)] text-white'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
@@ -178,7 +178,7 @@ export function ShareVisitLogsModal({
             <button
               type="button"
               onClick={() => handleFilterChange('bot')}
-              className={`rounded-[var(--r-md)] px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              className={`rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-11)] font-medium transition-colors ${
                 filter === 'bot'
                   ? 'bg-[var(--accent)] text-white'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
@@ -189,7 +189,7 @@ export function ShareVisitLogsModal({
             <button
               type="button"
               onClick={() => handleFilterChange('owner')}
-              className={`rounded-[var(--r-md)] px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              className={`rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-11)] font-medium transition-colors ${
                 filter === 'owner'
                   ? 'bg-[var(--accent)] text-white'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
@@ -207,7 +207,7 @@ export function ShareVisitLogsModal({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('share.search_logs_placeholder')}
-                className="h-7 w-44 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-7 pr-2 text-[11px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                className="h-7 w-44 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-7 pr-2 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
               />
               <Search
                 size={12}
@@ -240,21 +240,21 @@ export function ShareVisitLogsModal({
                 <button
                   type="button"
                   onClick={() => void handleClean('bots')}
-                  className="w-full rounded px-2 py-1 text-left text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+                  className="w-full rounded px-2 py-1 text-left text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                 >
                   {t('share.clean_bots_only')}
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleClean('older_than', 30)}
-                  className="w-full rounded px-2 py-1 text-left text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+                  className="w-full rounded px-2 py-1 text-left text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                 >
                   {t('share.clean_older_30d')}
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleClean('all')}
-                  className="w-full rounded px-2 py-1 text-left text-[11px] text-[var(--danger)] hover:bg-[var(--danger-subtle)]"
+                  className="w-full rounded px-2 py-1 text-left text-[length:var(--text-11)] text-[var(--danger)] hover:bg-[var(--danger-subtle)]"
                 >
                   {t('share.clean_all_logs')}
                 </button>
@@ -274,8 +274,8 @@ export function ShareVisitLogsModal({
 
         {/* Logs Table */}
         <div className="max-h-[460px] overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)]">
-          <table className="w-full border-collapse text-left text-[12px]">
-            <thead className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[11px] text-[var(--text-tertiary)] uppercase tracking-wider">
+          <table className="w-full border-collapse text-left text-[length:var(--text-12)]">
+            <thead className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[length:var(--text-11)] text-[var(--text-tertiary)] uppercase tracking-wider">
               <tr>
                 <th className="px-3 py-2 font-medium">{t('share.col_time')}</th>
                 <th className="px-3 py-2 font-medium">{t('share.col_note')}</th>
@@ -300,10 +300,10 @@ export function ShareVisitLogsModal({
                       {/* Time */}
                       <td className="whitespace-nowrap px-3 py-2">
                         <div className="flex flex-col">
-                          <span className="text-[11px] font-medium text-[var(--text-primary)]">
+                          <span className="text-[length:var(--text-11)] font-medium text-[var(--text-primary)]">
                             {relativeTime(log.visitedAt)}
                           </span>
-                          <span className="text-[10px] text-[var(--text-quaternary)]">
+                          <span className="text-[length:var(--text-10)] text-[var(--text-quaternary)]">
                             {new Date(log.visitedAt).toLocaleTimeString([], {
                               hour: '2-digit',
                               minute: '2-digit',
@@ -316,10 +316,10 @@ export function ShareVisitLogsModal({
                       {/* Note & Slug */}
                       <td className="px-3 py-2">
                         <div className="flex flex-col max-w-[160px]">
-                          <span className="truncate font-medium text-[12px] text-[var(--text-primary)]">
+                          <span className="truncate font-medium text-[length:var(--text-12)] text-[var(--text-primary)]">
                             {log.noteTitle}
                           </span>
-                          <span className="truncate font-mono text-[10px] text-[var(--text-quaternary)]">
+                          <span className="truncate font-mono text-[length:var(--text-10)] text-[var(--text-quaternary)]">
                             {`/s/${log.slug}`}
                           </span>
                         </div>
@@ -328,8 +328,8 @@ export function ShareVisitLogsModal({
                       {/* Location */}
                       <td className="whitespace-nowrap px-3 py-2">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[14px]">{flag}</span>
-                          <span className="text-[11px] text-[var(--text-secondary)]">
+                          <span className="text-[length:var(--text-14)]">{flag}</span>
+                          <span className="text-[length:var(--text-11)] text-[var(--text-secondary)]">
                             {log.city ? `${countryName}, ${log.city}` : countryName}
                           </span>
                         </div>
@@ -337,7 +337,7 @@ export function ShareVisitLogsModal({
 
                       {/* Referrer */}
                       <td className="px-3 py-2">
-                        <span className="max-w-[140px] truncate text-[11px] text-[var(--text-tertiary)]">
+                        <span className="max-w-[140px] truncate text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                           {log.referrerHost || (
                             <span className="italic text-[var(--text-quaternary)]">
                               {t('share.direct_access')}
@@ -348,7 +348,7 @@ export function ShareVisitLogsModal({
 
                       {/* Client (Device / OS / Browser) */}
                       <td className="whitespace-nowrap px-3 py-2">
-                        <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
+                        <div className="flex items-center gap-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]">
                           {deviceIcon(log.deviceType)}
                           <span>
                             {log.browser || 'Unknown'} / {log.os || 'Unknown'}
@@ -359,26 +359,26 @@ export function ShareVisitLogsModal({
                       {/* Type Badge */}
                       <td className="whitespace-nowrap px-3 py-2">
                         {log.isBot ? (
-                          <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500 border border-amber-500/20">
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-amber-500 border border-amber-500/20">
                             <Bot size={11} /> {log.botName || 'Bot'}
                           </span>
                         ) : log.isOwner ? (
-                          <span className="inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-500 border border-blue-500/20">
+                          <span className="inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-blue-500 border border-blue-500/20">
                             <User size={11} /> {t('share.badge_owner')}
                           </span>
                         ) : log.isSelfReferrer ? (
-                          <span className="inline-flex items-center gap-1 rounded bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-purple-500 border border-purple-500/20">
+                          <span className="inline-flex items-center gap-1 rounded bg-purple-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-purple-500 border border-purple-500/20">
                             {t('share.badge_self_referrer')}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-500 border border-emerald-500/20">
+                          <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-emerald-500 border border-emerald-500/20">
                             {t('share.badge_human')}
                           </span>
                         )}
                       </td>
 
                       {/* Fingerprint */}
-                      <td className="whitespace-nowrap px-3 py-2 font-mono text-[10px] text-[var(--text-quaternary)]">
+                      <td className="whitespace-nowrap px-3 py-2 font-mono text-[length:var(--text-10)] text-[var(--text-quaternary)]">
                         {log.visitorFp ? log.visitorFp.slice(0, 8) : '-'}
                       </td>
                     </tr>
@@ -397,7 +397,7 @@ export function ShareVisitLogsModal({
 
         {/* Pagination Footer */}
         {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-between px-1 text-[11px] text-[var(--text-tertiary)]">
+          <div className="flex items-center justify-between px-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]">
             <span>
               {t('share.page_info', { page: data.page, totalPages: data.totalPages })}
             </span>

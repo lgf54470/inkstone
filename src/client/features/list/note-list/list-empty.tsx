@@ -28,10 +28,10 @@ export function ListEmpty({ view, folderId, filtering, dayFiltering, tagFilterin
     }
     if (dayFiltering) {
         return <Empty art="search" title={weekFiltered ? t("notes.no_notes_in_this_week") : t("notes.no_notes_on_this_day")} description={latestEdit ? t("notes.no_notes_in_range_value0", { value0: latestEdit.label }) : t("notes.no_notes_on_this_day_desc")} action={latestEdit ? (<div className="flex flex-col items-center gap-2">
-            {weekFiltered && (<button type="button" onClick={onJumpToLatestWeek} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+            {weekFiltered && (<button type="button" onClick={onJumpToLatestWeek} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[length:var(--text-12\.5)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
                 <CalendarDays size={13}/>{t("notes.view_latest_week")}
             </button>)}
-            <button type="button" onClick={onJumpToLatest} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+            <button type="button" onClick={onJumpToLatest} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[length:var(--text-12\.5)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
                 <CalendarDays size={13}/>{t("notes.view_latest_activity_value0", { value0: latestEdit.label })}
             </button>
         </div>) : undefined}/>;
@@ -76,17 +76,17 @@ export function ListEmpty({ view, folderId, filtering, dayFiltering, tagFilterin
             return (parsed ? calendarPeriodLabel(parsed) : null) ?? node.name;
         };
         const neighborButton = (node: CalendarNode, leading: boolean) => (
-            <button type="button" onClick={() => openCalendarId(node.id)} className="inline-flex h-7 items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-default)] px-2.5 text-[11.5px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+            <button type="button" onClick={() => openCalendarId(node.id)} className="inline-flex h-7 items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-default)] px-2.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
                 {leading && <ChevronLeft size={12}/>}{neighborLabel(node)} · {t("common.value0_notes", { value0: node.count })}{!leading && <ChevronRight size={12}/>}
             </button>);
         return <Empty art="folder" title={t("notes.no_notes_in_this_period")} description={range && label ? `${label} · ${t("notes.calendar_period_range_value0", { value0: `${range.start} ~ ${range.end}` })}` : undefined} action={<div className="flex flex-col items-center gap-2">
-            {nearest && (<button type="button" onClick={() => openCalendarId(nearest.id)} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+            {nearest && (<button type="button" onClick={() => openCalendarId(nearest.id)} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[length:var(--text-12\.5)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
                 <CalendarDays size={13}/>{t("notes.jump_to_nearest_period")}
             </button>)}
-            <button type="button" onClick={() => openCalendarId(virtualId(target, ns))} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+            <button type="button" onClick={() => openCalendarId(virtualId(target, ns))} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[length:var(--text-12\.5)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
                 <CalendarDays size={13}/>{t(period.kind === 'week' ? "notes.view_this_week" : "notes.view_this_month")}
             </button>
-            <button type="button" onClick={() => void createContextualNote()} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+            <button type="button" onClick={() => void createContextualNote()} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[length:var(--text-12\.5)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
                 <Plus size={13}/>{t("common.new_note")}
             </button>
             {(prev || next) && (<div className="flex items-center gap-1.5">
@@ -113,7 +113,7 @@ export function ListEmpty({ view, folderId, filtering, dayFiltering, tagFilterin
         untagged: { art: 'tag', title: t("tags.no_untagged_notes"), desc: t("tags.no_untagged_notes_desc") },
     };
     const item = config[view] ?? config.all!;
-    return (<Empty art={item.art} title={item.title} description={item.desc} action={view !== 'trash' && view !== 'archived' ? (<button type="button" onClick={() => void createContextualNote()} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[12.5px] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
+    return (<Empty art={item.art} title={item.title} description={item.desc} action={view !== 'trash' && view !== 'archived' ? (<button type="button" onClick={() => void createContextualNote()} className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[length:var(--text-12\.5)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
             <Plus size={13}/>{t("common.new_note")}</button>) : undefined}/>);
 }
 

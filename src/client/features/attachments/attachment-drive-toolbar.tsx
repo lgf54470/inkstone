@@ -317,7 +317,7 @@ export function AttachmentDriveToolbar({
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={t('attachments.search_placeholder')}
-            className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pr-7 pl-8 text-[12.5px] outline-none transition-colors placeholder:text-[var(--text-quaternary)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-ring)]"
+            className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pr-7 pl-8 text-[length:var(--text-12\.5)] outline-none transition-colors placeholder:text-[var(--text-quaternary)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-ring)]"
           />
           {search && (
             <button
@@ -336,7 +336,7 @@ export function AttachmentDriveToolbar({
             type="button"
             onClick={() => setIsExtOpen((prev) => !prev)}
             className={cn(
-              'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border px-2.5 text-[12px] font-medium transition-colors cursor-pointer select-none',
+              'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-12)] font-medium transition-colors cursor-pointer select-none',
               extension && extension !== 'all'
                 ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
                 : 'border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
@@ -360,7 +360,7 @@ export function AttachmentDriveToolbar({
             type="button"
             onClick={() => setIsSizeOpen((prev) => !prev)}
             className={cn(
-              'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border px-2.5 text-[12px] font-medium transition-colors cursor-pointer select-none',
+              'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-12)] font-medium transition-colors cursor-pointer select-none',
               sizeRange !== 'all'
                 ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
                 : 'border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
@@ -383,7 +383,7 @@ export function AttachmentDriveToolbar({
             ref={sortButtonRef}
             type="button"
             onClick={() => setIsSortOpen((prev) => !prev)}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-2.5 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] cursor-pointer select-none"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-2.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] cursor-pointer select-none"
           >
             <SlidersHorizontal size={12} className="shrink-0" />
             <span className="whitespace-nowrap">{sortLabels[sort] || t('attachments.sort_date_desc')}</span>
@@ -431,7 +431,7 @@ export function AttachmentDriveToolbar({
         </div>
 
         {viewMode === 'grid' && (
-          <div className="hidden lg:flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 text-[11px] font-medium shrink-0">
+          <div className="hidden lg:flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 text-[length:var(--text-11)] font-medium shrink-0">
             <button
               type="button"
               onClick={() => onZoomChange('sm')}

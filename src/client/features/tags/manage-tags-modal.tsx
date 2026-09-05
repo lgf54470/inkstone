@@ -107,7 +107,7 @@ export function ManageTagsModal({ onClose }: { onClose: () => void }) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('notes.tag_filter_search')}
-                className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pl-9 pr-3 text-[12.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)]"
+                className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pl-9 pr-3 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)]"
               />
             </div>
             {unusedTags.length > 0 && !isCreating && (
@@ -155,7 +155,7 @@ export function ManageTagsModal({ onClose }: { onClose: () => void }) {
                   if (e.key === 'Escape') setIsCreating(false);
                 }}
                 placeholder={t('tags.new_placeholder')}
-                className="h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[12.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                className="h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
               />
               <Button
                 variant="primary"
@@ -217,7 +217,7 @@ export function ManageTagsModal({ onClose }: { onClose: () => void }) {
                               if (e.key === 'Enter') handleSaveRename(tag);
                               if (e.key === 'Escape') setRenamingId(null);
                             }}
-                            className="h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[12.5px] outline-none"
+                            className="h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12\.5)] outline-none"
                           />
                           <Tooltip label={t('common.save')}>
                             <IconButton
@@ -241,16 +241,16 @@ export function ManageTagsModal({ onClose }: { onClose: () => void }) {
                       ) : (
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">
+                            <span className="truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
                               #{tag.name}
                             </span>
                             {tag.isPinned && (
-                              <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[var(--accent-soft)] text-[var(--accent)]">
+                              <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[length:var(--text-10)] font-medium bg-[var(--accent-soft)] text-[var(--accent)]">
                                 <Pin size={10} className="fill-current" />
                                 {t('tags.pinned')}
                               </span>
                             )}
-                            <span className="shrink-0 text-[11px] text-[var(--text-quaternary)]">
+                            <span className="shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                               {t('tags.notes_count', { value0: tag.count })}
                             </span>
                           </div>
@@ -368,7 +368,7 @@ export function ManageTagsModal({ onClose }: { onClose: () => void }) {
             })}
 
             {choices.length === 0 && (
-              <div className="py-10 text-center text-[12.5px] text-[var(--text-quaternary)]">
+              <div className="py-10 text-center text-[length:var(--text-12\.5)] text-[var(--text-quaternary)]">
                 {t('tags.no_match')}
               </div>
             )}
@@ -404,17 +404,17 @@ export function ManageTagsModal({ onClose }: { onClose: () => void }) {
                         size={13}
                         style={{ color: targetTag.color ?? 'var(--text-quaternary)' }}
                       />
-                      <span className="text-[13px] font-medium text-[var(--text-primary)]">
+                      <span className="text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
                         #{targetTag.name}
                       </span>
                     </div>
-                    <span className="text-[11px] text-[var(--text-quaternary)]">
+                    <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                       {t('tags.notes_count', { value0: targetTag.count })}
                     </span>
                   </button>
                 ))}
               {tags.length <= 1 && (
-                <div className="py-8 text-center text-[12px] text-[var(--text-quaternary)]">
+                <div className="py-8 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
                   {t('tags.no_other_tags_to_merge')}
                 </div>
               )}

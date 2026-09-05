@@ -20,13 +20,13 @@ describe('Outline heading typography and icon mapping', () => {
 
   it('maps level 1 to 13px, semibold weight, and iconSize 12.5', () => {
     const inactive = getHeadingTypography(1, false);
-    expect(inactive.fontSize).toBe('text-[13px]');
+    expect(inactive.fontSize).toBe('text-[length:var(--text-13)]');
     expect(inactive.fontWeight).toBe('font-semibold');
     expect(inactive.textColor).toContain('var(--text-secondary)');
     expect(inactive.iconSize).toBe(12.5);
 
     const active = getHeadingTypography(1, true);
-    expect(active.fontSize).toBe('text-[13px]');
+    expect(active.fontSize).toBe('text-[length:var(--text-13)]');
     expect(active.fontWeight).toBe('font-semibold');
     expect(active.textColor).toContain('var(--accent)');
     expect(active.iconColor).toContain('var(--accent)');
@@ -34,44 +34,44 @@ describe('Outline heading typography and icon mapping', () => {
 
   it('maps level 2 to 12px and medium (semibold when active)', () => {
     const inactive = getHeadingTypography(2, false);
-    expect(inactive.fontSize).toBe('text-[12px]');
+    expect(inactive.fontSize).toBe('text-[length:var(--text-12)]');
     expect(inactive.fontWeight).toBe('font-medium');
     expect(inactive.iconSize).toBe(11.5);
 
     const active = getHeadingTypography(2, true);
-    expect(active.fontSize).toBe('text-[12px]');
+    expect(active.fontSize).toBe('text-[length:var(--text-12)]');
     expect(active.fontWeight).toBe('font-semibold');
   });
 
   it('maps level 3 to 11.5px and normal (medium when active)', () => {
     const inactive = getHeadingTypography(3, false);
-    expect(inactive.fontSize).toBe('text-[11.5px]');
+    expect(inactive.fontSize).toBe('text-[length:var(--text-11\.5)]');
     expect(inactive.fontWeight).toBe('font-normal');
     expect(inactive.iconSize).toBe(11);
 
     const active = getHeadingTypography(3, true);
-    expect(active.fontSize).toBe('text-[11.5px]');
+    expect(active.fontSize).toBe('text-[length:var(--text-11\.5)]');
     expect(active.fontWeight).toBe('font-medium');
   });
 
   it('maps level 4 to 11px and normal (medium when active)', () => {
     const inactive = getHeadingTypography(4, false);
-    expect(inactive.fontSize).toBe('text-[11px]');
+    expect(inactive.fontSize).toBe('text-[length:var(--text-11)]');
     expect(inactive.fontWeight).toBe('font-normal');
     expect(inactive.iconSize).toBe(10.5);
 
     const active = getHeadingTypography(4, true);
-    expect(active.fontSize).toBe('text-[11px]');
+    expect(active.fontSize).toBe('text-[length:var(--text-11)]');
     expect(active.fontWeight).toBe('font-medium');
   });
 
   it('maps level 5 and 6 to 10.5px and normal (medium when active)', () => {
     const h5 = getHeadingTypography(5, false);
-    expect(h5.fontSize).toBe('text-[10.5px]');
+    expect(h5.fontSize).toBe('text-[length:var(--text-10\.5)]');
     expect(h5.fontWeight).toBe('font-normal');
 
     const h6 = getHeadingTypography(6, false);
-    expect(h6.fontSize).toBe('text-[10.5px]');
+    expect(h6.fontSize).toBe('text-[length:var(--text-10\.5)]');
     expect(h6.fontWeight).toBe('font-normal');
   });
 });
@@ -107,25 +107,25 @@ describe('Outline component', () => {
 
     // H1
     expect(buttons[0].getAttribute('data-heading-level')).toBe('1');
-    expect(buttons[0].classList.contains('text-[13px]')).toBe(true);
+    expect(buttons[0].classList.contains('text-[length:var(--text-13)]')).toBe(true);
     expect(buttons[0].classList.contains('font-semibold')).toBe(true);
     expect(buttons[0].style.paddingLeft).toBe('8px'); // minLevel 1, offset 0
 
     // H2
     expect(buttons[1].getAttribute('data-heading-level')).toBe('2');
-    expect(buttons[1].classList.contains('text-[12px]')).toBe(true);
+    expect(buttons[1].classList.contains('text-[length:var(--text-12)]')).toBe(true);
     expect(buttons[1].classList.contains('font-medium')).toBe(true);
     expect(buttons[1].style.paddingLeft).toBe('18px'); // 8 + 1 * 10
 
     // H3
     expect(buttons[2].getAttribute('data-heading-level')).toBe('3');
-    expect(buttons[2].classList.contains('text-[11.5px]')).toBe(true);
+    expect(buttons[2].classList.contains('text-[length:var(--text-11\.5)]')).toBe(true);
     expect(buttons[2].classList.contains('font-normal')).toBe(true);
     expect(buttons[2].style.paddingLeft).toBe('28px'); // 8 + 2 * 10
 
     // H4
     expect(buttons[3].getAttribute('data-heading-level')).toBe('4');
-    expect(buttons[3].classList.contains('text-[11px]')).toBe(true);
+    expect(buttons[3].classList.contains('text-[length:var(--text-11)]')).toBe(true);
     expect(buttons[3].classList.contains('font-normal')).toBe(true);
     expect(buttons[3].style.paddingLeft).toBe('38px'); // 8 + 3 * 10
 

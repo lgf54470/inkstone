@@ -14,8 +14,8 @@ export function FloatingSearch({ compact = false }: {
         <span className="flex size-[30px] shrink-0 items-center justify-center">
           <Search size={14}/>
         </span>
-        <span className="min-w-0 flex-1 whitespace-nowrap pr-3 text-left text-[12px] opacity-0 transition-opacity duration-150 group-hover/search:opacity-100 group-focus-within/search:opacity-100">{t("shell.search_notes_or_run_a_command")}</span>
-        <kbd className="mr-2 hidden shrink-0 rounded-[4px] border border-[var(--border-default)] px-1 py-px text-[10px] text-[var(--text-quaternary)] group-hover/search:block group-focus-within/search:block">
+        <span className="min-w-0 flex-1 whitespace-nowrap pr-3 text-left text-[length:var(--text-12)] opacity-0 transition-opacity duration-150 group-hover/search:opacity-100 group-focus-within/search:opacity-100">{t("shell.search_notes_or_run_a_command")}</span>
+        <kbd className="mr-2 hidden shrink-0 rounded-[var(--r-xs)] border border-[var(--border-default)] px-1 py-px text-[length:var(--text-10)] text-[var(--text-quaternary)] group-hover/search:block group-focus-within/search:block">
           {IS_MAC ? '⌘K' : 'Ctrl K'}
         </kbd>
       </button>

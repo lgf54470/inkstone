@@ -33,7 +33,7 @@ export function ShareHubToolbar({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('share.search_placeholder')}
-            className="w-full bg-transparent text-[12px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-quaternary)]"
+            className="w-full bg-transparent text-[length:var(--text-12)] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-quaternary)]"
           />
         </div>
       </div>
@@ -42,7 +42,7 @@ export function ShareHubToolbar({
         <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="h-7 text-[12px] py-0 px-2"
+          className="h-7 text-[length:var(--text-12)] py-0 px-2"
         >
           <option value="all">{t('share.status_all')}</option>
           <option value="active">{t('share.status_active')}</option>
@@ -58,7 +58,7 @@ export function ShareHubToolbar({
         <Select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="h-7 text-[12px] py-0 px-2"
+          className="h-7 text-[length:var(--text-12)] py-0 px-2"
         >
           <option value="views_desc">{t('share.sort_views_desc')}</option>
           <option value="views_asc">{t('share.sort_views_asc')}</option>

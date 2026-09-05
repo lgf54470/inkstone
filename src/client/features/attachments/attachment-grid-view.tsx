@@ -74,7 +74,7 @@ export function AttachmentGridView({
       {groups.map((group, groupIdx) => (
         <div key={group.label} className="space-y-2.5">
           <div className="sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-surface)]/90 py-1 backdrop-blur-xs">
-            <h3 className="text-[12px] font-semibold tracking-wider text-[var(--text-tertiary)] uppercase">
+            <h3 className="text-[length:var(--text-12)] font-semibold tracking-wider text-[var(--text-tertiary)] uppercase">
               {group.label}
             </h3>
           </div>
@@ -108,7 +108,7 @@ export function AttachmentGridView({
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--bg-surface)] text-[var(--text-tertiary)] shadow-xs transition-transform group-hover:scale-110 group-hover:text-[var(--accent)]">
                   <Plus size={20} />
                 </div>
-                <span className="mt-2 text-[12px] font-medium text-[var(--text-secondary)] group-hover:text-[var(--accent)]">
+                <span className="mt-2 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] group-hover:text-[var(--accent)]">
                   {t('attachments.upload_file')}
                 </span>
               </button>
@@ -125,10 +125,10 @@ export function AttachmentGridView({
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-surface)] text-[var(--accent)] shadow-xs mb-3">
             <Upload size={22} />
           </div>
-          <p className="text-[13px] font-semibold text-[var(--text-secondary)]">
+          <p className="text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]">
             {t('attachments.drag_drop_hint')}
           </p>
-          <p className="mt-1 text-[11.5px] text-[var(--text-tertiary)] max-w-sm">
+          <p className="mt-1 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)] max-w-sm">
             {t('attachments.upload_guide_hint')}
           </p>
         </div>
@@ -378,18 +378,18 @@ function GridCard({
         </div>
 
         {file.references === 0 && (
-          <div className="absolute bottom-1.5 left-1.5 rounded px-1 py-0.5 text-[9px] font-medium bg-amber-500/85 text-white backdrop-blur-xs">
+          <div className="absolute bottom-1.5 left-1.5 rounded px-1 py-0.5 text-[length:var(--text-9)] font-medium bg-amber-500/85 text-white backdrop-blur-xs">
             {t('attachments.unreferenced')}
           </div>
         )}
       </div>
 
       <div className="p-2 space-y-1">
-        <p className="truncate text-[12px] font-medium text-[var(--text-primary)]" title={file.filename}>
+        <p className="truncate text-[length:var(--text-12)] font-medium text-[var(--text-primary)]" title={file.filename}>
           {file.filename}
         </p>
 
-        <div className="flex items-center justify-between text-[11px] text-[var(--text-tertiary)]">
+        <div className="flex items-center justify-between text-[length:var(--text-11)] text-[var(--text-tertiary)]">
           <span>{formatFileSize(file.size)}</span>
           {folder && (
             <span className="truncate max-w-[80px]" title={folder.name}>
@@ -403,13 +403,13 @@ function GridCard({
             {file.tags.slice(0, 2).map((tag) => (
               <span
                 key={tag}
-                className="rounded bg-[var(--bg-sunken)] px-1 py-0.2 text-[10px] text-[var(--text-tertiary)]"
+                className="rounded bg-[var(--bg-sunken)] px-1 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)]"
               >
                 #{tag}
               </span>
             ))}
             {file.tags.length > 2 && (
-              <span className="text-[10px] text-[var(--text-quaternary)]">
+              <span className="text-[length:var(--text-10)] text-[var(--text-quaternary)]">
                 +{file.tags.length - 2}
               </span>
             )}

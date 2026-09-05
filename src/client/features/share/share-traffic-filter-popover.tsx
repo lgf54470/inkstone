@@ -27,7 +27,7 @@ export function ShareTrafficFilterPopover() {
         ref={buttonRef}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`flex h-7 items-center gap-1.5 rounded-[var(--r-md)] border px-2 text-[12px] font-medium transition-colors ${
+        className={`flex h-7 items-center gap-1.5 rounded-[var(--r-md)] border px-2 text-[length:var(--text-12)] font-medium transition-colors ${
           isFilteringBots
             ? 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--success)] hover:bg-[var(--bg-hover)]'
             : isAllTraffic
@@ -54,13 +54,13 @@ export function ShareTrafficFilterPopover() {
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
             <div className="flex items-center gap-2">
               <ShieldCheck size={16} className="text-[var(--accent)]" />
-              <div className="font-semibold text-[13px] text-[var(--text-primary)]">
+              <div className="font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]">
                 {t('share.filter_traffic_title')}
               </div>
             </div>
           </div>
 
-          <p className="py-2 text-[11px] leading-relaxed text-[var(--text-tertiary)]">
+          <p className="py-2 text-[length:var(--text-11)] leading-relaxed text-[var(--text-tertiary)]">
             {t('share.filter_traffic_desc')}
           </p>
 
@@ -69,10 +69,10 @@ export function ShareTrafficFilterPopover() {
               <div className="flex items-start gap-2">
                 <Bot size={15} className="mt-0.5 text-[var(--accent)] shrink-0" />
                 <div>
-                  <div className="text-[12px] font-medium text-[var(--text-primary)]">
+                  <div className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                     {t('share.filter_bots_title')}
                   </div>
-                  <div className="text-[10.5px] text-[var(--text-quaternary)] leading-normal">
+                  <div className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)] leading-normal">
                     {t('share.filter_bots_desc')}
                   </div>
                 </div>
@@ -87,10 +87,10 @@ export function ShareTrafficFilterPopover() {
               <div className="flex items-start gap-2">
                 <Globe size={15} className="mt-0.5 text-[var(--accent)] shrink-0" />
                 <div>
-                  <div className="text-[12px] font-medium text-[var(--text-primary)]">
+                  <div className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                     {t('share.filter_self_title')}
                   </div>
-                  <div className="text-[10.5px] text-[var(--text-quaternary)] leading-normal">
+                  <div className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)] leading-normal">
                     {t('share.filter_self_desc')}
                   </div>
                 </div>
@@ -105,10 +105,10 @@ export function ShareTrafficFilterPopover() {
               <div className="flex items-start gap-2">
                 <UserCheck size={15} className="mt-0.5 text-[var(--accent)] shrink-0" />
                 <div>
-                  <div className="text-[12px] font-medium text-[var(--text-primary)]">
+                  <div className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                     {t('share.filter_owner_title')}
                   </div>
-                  <div className="text-[10.5px] text-[var(--text-quaternary)] leading-normal">
+                  <div className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)] leading-normal">
                     {t('share.filter_owner_desc')}
                   </div>
                 </div>
@@ -120,7 +120,7 @@ export function ShareTrafficFilterPopover() {
             </div>
           </div>
 
-          <div className="mt-3.5 flex items-center gap-1.5 rounded-[var(--r-sm)] bg-[var(--bg-card)] p-2 text-[10.5px] text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
+          <div className="mt-3.5 flex items-center gap-1.5 rounded-[var(--r-sm)] bg-[var(--bg-card)] p-2 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
             <Info size={12} className="text-[var(--accent)] shrink-0" />
             <span>{t('share.filter_persist_hint')}</span>
           </div>

@@ -256,7 +256,7 @@ export function BlogPublishModal({
       <div className="flex h-12 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]">
         <div className="flex items-center gap-2">
           <Globe size={16} className="text-[var(--accent)]" />
-          <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">
+          <h2 className="text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">
             {initialPost ? t('blog.edit_modal_title') : t('blog.publish_modal_title')}
           </h2>
         </div>
@@ -265,7 +265,7 @@ export function BlogPublishModal({
         </IconButton>
       </div>
 
-      <div className="max-h-[75vh] overflow-y-auto p-5 space-y-4 text-[12.5px]">
+      <div className="max-h-[75vh] overflow-y-auto p-5 space-y-4 text-[length:var(--text-12\.5)]">
         <div>
           <label className="mb-1 block font-medium text-[var(--text-secondary)]">
             {t('blog.post_title')}
@@ -283,12 +283,12 @@ export function BlogPublishModal({
               {t('blog.slug')}
             </label>
             {slugAvailable === true && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-[var(--success)]">
+              <span className="inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--success)]">
                 <Check size={11} /> {t('blog.slug_available')}
               </span>
             )}
             {slugAvailable === false && slugReason && (
-              <span className="text-[11px] text-[var(--danger)]">{slugReason}</span>
+              <span className="text-[length:var(--text-11)] text-[var(--danger)]">{slugReason}</span>
             )}
           </div>
           <div className="relative">
@@ -299,7 +299,7 @@ export function BlogPublishModal({
               className="pr-20"
             />
           </div>
-          <p className="mt-1 text-[11px] text-[var(--text-quaternary)]">
+          <p className="mt-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
             {previewUrl}
           </p>
         </div>
@@ -313,7 +313,7 @@ export function BlogPublishModal({
               <button
                 type="button"
                 onClick={() => setCoverUrl(firstImageInContent.url)}
-                className="inline-flex items-center gap-1 text-[11px] text-[var(--accent)] hover:underline"
+                className="inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--accent)] hover:underline"
               >
                 <Sparkles size={11} />
                 {t('blog.use_first_image')}
@@ -328,7 +328,7 @@ export function BlogPublishModal({
               placeholder={t('blog.cover_placeholder')}
             />
           </div>
-          <p className="mt-1 text-[11px] text-[var(--text-quaternary)]">
+          <p className="mt-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
             {t('blog.cover_hint')} {t('blog.frontmatter_cover_hint')}
           </p>
         </div>
@@ -341,7 +341,7 @@ export function BlogPublishModal({
             <select
               value={folderId || ''}
               onChange={(e) => setFolderId(e.target.value ? e.target.value : null)}
-              className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2.5 text-[12.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+              className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2.5 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             >
               <option value="">{t('blog.no_folder')}</option>
               {flatFolderList.map((f) => (
@@ -359,7 +359,7 @@ export function BlogPublishModal({
             <select
               value={categoryId || ''}
               onChange={(e) => setCategoryId(e.target.value ? e.target.value : null)}
-              className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2.5 text-[12.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+              className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2.5 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             >
               <option value="">{t('blog.no_category')}</option>
               {categories.map((c) => (
@@ -376,7 +376,7 @@ export function BlogPublishModal({
             <span className="block font-medium text-[var(--text-secondary)]">
               {t('blog.pin_to_top')}
             </span>
-            <span className="text-[10.5px] text-[var(--text-quaternary)]">
+            <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
               {t('blog.pin_to_top_hint')}
             </span>
           </div>
@@ -390,7 +390,7 @@ export function BlogPublishModal({
 
           {availableTags.length > 0 && (
             <div className="flex flex-wrap items-center gap-1 mb-2">
-              <span className="text-[10.5px] text-[var(--text-quaternary)] mr-1">
+              <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)] mr-1">
                 {t('blog.tags')}:
               </span>
               {availableTags.map((at) => {
@@ -407,7 +407,7 @@ export function BlogPublishModal({
                       }
                     }}
                     className={cn(
-                      'inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10.5px] transition-colors',
+                      'inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[length:var(--text-10\.5)] transition-colors',
                       isSelected
                         ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
                         : 'bg-[var(--bg-sunken)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
@@ -425,7 +425,7 @@ export function BlogPublishModal({
             {tags.map((t) => (
               <span
                 key={t}
-                className="inline-flex items-center gap-1 rounded-[var(--r-full)] bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] text-[var(--accent)]"
+                className="inline-flex items-center gap-1 rounded-[var(--r-full)] bg-[var(--accent-soft)] px-2 py-0.5 text-[length:var(--text-11)] text-[var(--accent)]"
               >
                 <Hash size={10} />
                 {t}
@@ -466,7 +466,7 @@ export function BlogPublishModal({
             onChange={(e) => setExcerpt(e.target.value)}
             rows={2}
             placeholder={t('blog.excerpt_placeholder')}
-            className="w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] p-2 text-[12px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] resize-none"
+            className="w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] p-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] resize-none"
           />
         </div>
 
@@ -475,7 +475,7 @@ export function BlogPublishModal({
             <span className="block font-medium text-[var(--text-primary)]">
               {t('blog.allow_comments')}
             </span>
-            <span className="text-[11px] text-[var(--text-quaternary)]">
+            <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
               {t('blog.allow_comments_hint')}
             </span>
           </div>
@@ -488,7 +488,7 @@ export function BlogPublishModal({
           href={previewUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)]"
+          className="inline-flex items-center gap-1.5 text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:text-[var(--accent)]"
         >
           <ExternalLink size={12} />
           <span>{t('blog.frontend_preview')}</span>

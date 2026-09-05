@@ -165,10 +165,10 @@ export function Modal({ open, onClose, title, description, children, footer, wid
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} aria-describedby={description ? descriptionId : undefined} aria-label={title ? undefined : t("overlay.dialog")} tabIndex={-1} className={cn('anim-pop relative flex max-h-[calc(var(--app-viewport-height,100dvh)-env(safe-area-inset-top))] md:max-h-[calc(var(--app-viewport-height,100dvh)-4rem)] w-full flex-col rounded-t-[var(--r-2xl)] border border-b-0 border-[var(--border-default)]', 'bg-[var(--bg-overlay)] shadow-[var(--shadow-modal)] outline-none md:my-auto md:rounded-[var(--r-2xl)] md:border-b', className)} style={{ maxWidth: width }}>
         {(title || description) && (<div className="flex shrink-0 items-start justify-between gap-4 px-4 pt-4 pb-3 md:px-5">
             <div className="min-w-0">
-              {title && (<h2 id={titleId} className="text-[15px] font-semibold tracking-[-0.012em] text-[var(--text-primary)]">
+              {title && (<h2 id={titleId} className="text-[length:var(--text-15)] font-semibold tracking-[-0.012em] text-[var(--text-primary)]">
                   {title}
                 </h2>)}
-              {description && (<p id={descriptionId} className="mt-1 text-[12.5px] leading-relaxed text-[var(--text-tertiary)]">
+              {description && (<p id={descriptionId} className="mt-1 text-[length:var(--text-12\.5)] leading-relaxed text-[var(--text-tertiary)]">
                   {description}
                 </p>)}
             </div>
@@ -463,7 +463,7 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
                   }
                   item.onSelect?.();
                   onClose();
-              }} className={cn('flex h-10 w-full items-center gap-2.5 rounded-[var(--r-sm)] px-2 text-left text-[12.5px] md:h-[30px]', 'transition-colors duration-[80ms] disabled:pointer-events-none disabled:opacity-40', index === cursor ? 'bg-[var(--bg-hover)]' : '', item.tone === 'danger'
+              }} className={cn('flex h-10 w-full items-center gap-2.5 rounded-[var(--r-sm)] px-2 text-left text-[length:var(--text-12\.5)] md:h-[30px]', 'transition-colors duration-[80ms] disabled:pointer-events-none disabled:opacity-40', index === cursor ? 'bg-[var(--bg-hover)]' : '', item.tone === 'danger'
                   ? 'text-[var(--danger)]'
                   : index === cursor
                       ? 'text-[var(--text-primary)]'
@@ -596,7 +596,7 @@ export function Tooltip({ label, combo, children, side = 'bottom', delay = 420, 
         {children}
       </span>
       {rect &&
-            createPortal(<div ref={tooltipRef} role="tooltip" data-side={position?.side} className="anim-fade pointer-events-none fixed z-[var(--z-tooltip)] flex max-w-[calc(100vw-16px)] items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-overlay)] px-2 py-1 text-[11.5px] whitespace-nowrap text-[var(--text-secondary)] shadow-[var(--shadow-pop)]" style={style}>
+            createPortal(<div ref={tooltipRef} role="tooltip" data-side={position?.side} className="anim-fade pointer-events-none fixed z-[var(--z-tooltip)] flex max-w-[calc(100vw-16px)] items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-overlay)] px-2 py-1 text-[length:var(--text-11\.5)] whitespace-nowrap text-[var(--text-secondary)] shadow-[var(--shadow-pop)]" style={style}>
             {label}
             {combo && <Kbd combo={combo}/>}
           </div>, document.body)}
@@ -670,7 +670,7 @@ export function Drawer({ open, onClose, side = 'right', width = 380, children, t
             animation: `ink-slide-in-${side} var(--dur-slow) var(--ease-out) both`,
         }}>
         {title && (<header className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-3">
-            <span id={titleId} className="text-[13px] font-semibold">{title}</span>
+            <span id={titleId} className="text-[length:var(--text-13)] font-semibold">{title}</span>
             <Tooltip label={t("common.close")} combo="escape" side="left">
               <IconButton label={t("common.close")} size="sm" onClick={onClose}>
                 <X size={15}/>

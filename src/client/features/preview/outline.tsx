@@ -31,7 +31,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
     switch (level) {
         case 1:
             return {
-                fontSize: 'text-[13px]',
+                fontSize: 'text-[length:var(--text-13)]',
                 fontWeight: 'font-semibold',
                 textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]',
                 iconSize: 12.5,
@@ -40,7 +40,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
             };
         case 2:
             return {
-                fontSize: 'text-[12px]',
+                fontSize: 'text-[length:var(--text-12)]',
                 fontWeight: isActive ? 'font-semibold' : 'font-medium',
                 textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]/85',
                 iconSize: 11.5,
@@ -49,7 +49,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
             };
         case 3:
             return {
-                fontSize: 'text-[11.5px]',
+                fontSize: 'text-[length:var(--text-11\.5)]',
                 fontWeight: isActive ? 'font-medium' : 'font-normal',
                 textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]',
                 iconSize: 11,
@@ -58,7 +58,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
             };
         case 4:
             return {
-                fontSize: 'text-[11px]',
+                fontSize: 'text-[length:var(--text-11)]',
                 fontWeight: isActive ? 'font-medium' : 'font-normal',
                 textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]',
                 iconSize: 10.5,
@@ -67,7 +67,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
             };
         default:
             return {
-                fontSize: 'text-[10.5px]',
+                fontSize: 'text-[length:var(--text-10\.5)]',
                 fontWeight: isActive ? 'font-medium' : 'font-normal',
                 textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]',
                 iconSize: 10,
@@ -117,7 +117,7 @@ export function Outline({ headings, onSelect, scrollerRef, className, }: {
         return null;
     const minLevel = Math.min(...headings.map((h) => h.level));
     return (<nav className={cn('sticky top-0 max-h-full w-[168px] shrink-0 self-start overflow-y-auto py-5 pr-3', className)} aria-label={t("common.outline")}>
-      <div className="mb-2 flex items-center gap-1.5 px-2 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+      <div className="mb-2 flex items-center gap-1.5 px-2 text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
         <ListTree size={11}/>{t("common.outline")}</div>
       <ul className="space-y-px">
         {headings.map((heading, index) => {

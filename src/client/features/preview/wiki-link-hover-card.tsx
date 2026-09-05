@@ -325,7 +325,7 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
       >
         <span
           className={cn(
-            'min-w-0 flex-1 truncate text-[12.5px] leading-snug font-semibold text-[var(--text-primary)]',
+            'min-w-0 flex-1 truncate text-[length:var(--text-12\.5)] leading-snug font-semibold text-[var(--text-primary)]',
             card.missing && 'text-[var(--text-tertiary)]',
           )}
           title={card.title}
@@ -342,7 +342,7 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
             className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           >
             <Layers size={13} />
-            <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--accent)] px-0.5 text-[9px] font-semibold text-[var(--bg-overlay)]">
+            <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--accent)] px-0.5 text-[length:var(--text-9)] font-semibold text-[var(--bg-overlay)]">
               {stackCount}
             </span>
           </button>
@@ -399,12 +399,12 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
         </div>
       )}
       {status === 'missing' && (
-        <div className="px-3 py-2.5 text-[12px] text-[var(--text-tertiary)]">
+        <div className="px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-tertiary)]">
           {t("preview.note_does_not_exist")}
         </div>
       )}
       {status === 'error' && (
-        <div className="px-3 py-2.5 text-[12px] text-[var(--text-tertiary)]">
+        <div className="px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-tertiary)]">
           {t("preview.could_not_load_note")}
         </div>
       )}
@@ -416,7 +416,7 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
           <div className="ink-prose" dangerouslySetInnerHTML={htmlObj} />
         </div>
         {isTruncated && (
-          <div className="border-t border-[var(--border-subtle)] px-3 py-1.5 text-center text-[11px] tracking-widest text-[var(--text-quaternary)]">
+          <div className="border-t border-[var(--border-subtle)] px-3 py-1.5 text-center text-[length:var(--text-11)] tracking-widest text-[var(--text-quaternary)]">
             ···
           </div>
         )}
@@ -475,7 +475,7 @@ function CardBacklinks({ links, onOpen }: {
         aria-expanded={isExpanded}
         aria-label={t("common.backlinks")}
         onClick={() => setIsExpanded((value) => !value)}
-        className="flex h-7 w-full items-center gap-1.5 px-3 text-[11px] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        className="flex h-7 w-full items-center gap-1.5 px-3 text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
       >
         <Link2 size={11} className="shrink-0" />
         <span className="truncate">{t("common.backlinks")}</span>
@@ -491,8 +491,8 @@ function CardBacklinks({ links, onOpen }: {
                 onClick={() => onOpen(link.id)}
                 className="group w-full rounded-[var(--r-sm)] px-2 py-1.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
               >
-                <span className="block truncate text-[11.5px] font-medium text-[var(--text-primary)]">{link.title}</span>
-                <span className="mt-0.5 block truncate-2 text-[10.5px] leading-relaxed text-[var(--text-tertiary)]">{link.context}</span>
+                <span className="block truncate text-[length:var(--text-11\.5)] font-medium text-[var(--text-primary)]">{link.title}</span>
+                <span className="mt-0.5 block truncate-2 text-[length:var(--text-10\.5)] leading-relaxed text-[var(--text-tertiary)]">{link.context}</span>
               </button>
             </li>
           ))}

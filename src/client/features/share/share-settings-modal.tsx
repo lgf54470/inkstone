@@ -111,7 +111,7 @@ export function ShareSettingsModal({
         <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5">
           <div className="flex items-center gap-2 pb-3 border-b border-[var(--border-subtle)]">
             <Shield size={15} className="text-[var(--success)]" />
-            <h4 className="text-[13px] font-semibold text-[var(--text-primary)]">
+            <h4 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]">
               {t('share.settings_traffic_filter_title')}
             </h4>
           </div>
@@ -119,10 +119,10 @@ export function ShareSettingsModal({
           <div className="flex flex-col gap-3 pt-3">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[12px] font-medium text-[var(--text-primary)]">
+                <div className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                   {t('share.filter_exclude_bots')}
                 </div>
-                <div className="text-[11px] text-[var(--text-tertiary)]">
+                <div className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                   {t('share.filter_exclude_bots_hint')}
                 </div>
               </div>
@@ -131,10 +131,10 @@ export function ShareSettingsModal({
 
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[12px] font-medium text-[var(--text-primary)]">
+                <div className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                   {t('share.filter_exclude_self')}
                 </div>
-                <div className="text-[11px] text-[var(--text-tertiary)]">
+                <div className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                   {t('share.filter_exclude_self_hint')}
                 </div>
               </div>
@@ -143,10 +143,10 @@ export function ShareSettingsModal({
 
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[12px] font-medium text-[var(--text-primary)]">
+                <div className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                   {t('share.filter_exclude_owner')}
                 </div>
-                <div className="text-[11px] text-[var(--text-tertiary)]">
+                <div className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                   {t('share.filter_exclude_owner_hint')}
                 </div>
               </div>
@@ -159,7 +159,7 @@ export function ShareSettingsModal({
         <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5">
           <div className="flex items-center gap-2 pb-3 border-b border-[var(--border-subtle)]">
             <Database size={15} className="text-[var(--accent)]" />
-            <h4 className="text-[13px] font-semibold text-[var(--text-primary)]">
+            <h4 className="text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]">
               {t('share.settings_retention_title')}
             </h4>
           </div>
@@ -168,10 +168,10 @@ export function ShareSettingsModal({
             {/* Retention Days */}
             <div>
               <div className="flex items-center justify-between pb-1.5">
-                <span className="text-[12px] font-medium text-[var(--text-primary)]">
+                <span className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                   {t('share.retention_days_label')}
                 </span>
-                <span className="text-[11px] text-[var(--text-tertiary)]">
+                <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                   {retentionDays === '0'
                     ? t('share.retention_unlimited')
                     : t('share.retention_days_val', { days: retentionDays })}
@@ -193,10 +193,10 @@ export function ShareSettingsModal({
             {/* Max Log Records */}
             <div>
               <div className="flex items-center justify-between pb-1.5">
-                <span className="text-[12px] font-medium text-[var(--text-primary)]">
+                <span className="text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                   {t('share.max_records_label')}
                 </span>
-                <span className="text-[11px] text-[var(--text-tertiary)]">
+                <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">
                   {maxRecords === '0'
                     ? t('share.retention_unlimited')
                     : t('share.max_records_val', { count: maxRecords })}

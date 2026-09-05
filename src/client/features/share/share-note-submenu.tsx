@@ -202,7 +202,7 @@ export function ShareNoteSubmenu({
         className="w-[248px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1.5 shadow-[var(--shadow-pop)] outline-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-1.5 px-1 pt-0.5 pb-2 text-[12.5px] font-medium text-[var(--text-secondary)] border-b border-[var(--border-subtle)]">
+        <div className="flex items-center gap-1.5 px-1 pt-0.5 pb-2 text-[length:var(--text-12\.5)] font-medium text-[var(--text-secondary)] border-b border-[var(--border-subtle)]">
           <button
             type="button"
             onClick={() => setView('main')}
@@ -223,7 +223,7 @@ export function ShareNoteSubmenu({
               value={folderQuery}
               onChange={(e) => setFolderQuery(e.target.value)}
               placeholder={t('folders.search')}
-              className="w-full bg-transparent pr-6 text-[12px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-quaternary)]"
+              className="w-full bg-transparent pr-6 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-quaternary)]"
             />
             <Search size={13} className="pointer-events-none absolute right-0 text-[var(--text-quaternary)]" />
           </div>
@@ -235,7 +235,7 @@ export function ShareNoteSubmenu({
             type="button"
             onClick={() => void handleSelectFolder(null)}
             className={cn(
-              'group flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[12px] transition-colors',
+              'group flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12)] transition-colors',
               !currentShare?.shareFolderId
                 ? 'bg-[var(--accent-soft)] font-medium text-[var(--text-primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
@@ -254,7 +254,7 @@ export function ShareNoteSubmenu({
                 type="button"
                 onClick={() => void handleSelectFolder(f.id)}
                 className={cn(
-                  'group flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[12px] transition-colors',
+                  'group flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12)] transition-colors',
                   isSelected
                     ? 'bg-[var(--accent-soft)] font-medium text-[var(--text-primary)]'
                     : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
@@ -281,7 +281,7 @@ export function ShareNoteSubmenu({
         className="w-[248px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)] outline-none space-y-2"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--text-secondary)] pb-1.5 border-b border-[var(--border-subtle)]">
+        <div className="flex items-center gap-1.5 text-[length:var(--text-12\.5)] font-medium text-[var(--text-secondary)] pb-1.5 border-b border-[var(--border-subtle)]">
           <button
             type="button"
             onClick={() => setView('main')}
@@ -296,12 +296,12 @@ export function ShareNoteSubmenu({
         {/* Current tags chips */}
         <div className="flex flex-wrap gap-1 min-h-[26px]">
           {currentTags.length === 0 ? (
-            <span className="text-[11px] text-[var(--text-quaternary)] py-0.5">{t('share.no_tags')}</span>
+            <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)] py-0.5">{t('share.no_tags')}</span>
           ) : (
             currentTags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1 rounded-[var(--r-sm)] bg-[var(--bg-hover)] border border-[var(--border-subtle)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]"
+                className="inline-flex items-center gap-1 rounded-[var(--r-sm)] bg-[var(--bg-hover)] border border-[var(--border-subtle)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]"
               >
                 <Hash size={10} className="text-[var(--accent)]" />
                 <span>{tag}</span>
@@ -331,7 +331,7 @@ export function ShareNoteSubmenu({
               }
             }}
             placeholder={t('share.tag_placeholder')}
-            className="flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 py-1 text-[11px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            className="flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 py-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
           />
           <button
             type="button"
@@ -345,14 +345,14 @@ export function ShareNoteSubmenu({
         {/* Suggested tags */}
         {availableSuggestedTags.length > 0 && (
           <div className="pt-1">
-            <div className="text-[10px] text-[var(--text-quaternary)] pb-1">{t('tags.manage_tags')}</div>
+            <div className="text-[length:var(--text-10)] text-[var(--text-quaternary)] pb-1">{t('tags.manage_tags')}</div>
             <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto">
               {availableSuggestedTags.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => void handleAddTag(t.name)}
-                  className="inline-flex items-center gap-0.5 rounded-[var(--r-sm)] bg-[var(--bg-surface)] px-1.5 py-0.5 text-[10.5px] text-[var(--text-tertiary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] border border-transparent transition-colors"
+                  className="inline-flex items-center gap-0.5 rounded-[var(--r-sm)] bg-[var(--bg-surface)] px-1.5 py-0.5 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] border border-transparent transition-colors"
                 >
                   <Plus size={9} />
                   <span>{t.name}</span>
@@ -367,7 +367,7 @@ export function ShareNoteSubmenu({
 
   return (
     <div
-      className="w-[236px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[12.5px]"
+      className="w-[236px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[length:var(--text-12\.5)]"
       onClick={(e) => e.stopPropagation()}
     >
       {/* 1. View QR code */}
@@ -398,7 +398,7 @@ export function ShareNoteSubmenu({
       >
         <FolderClosed size={13} className="shrink-0 text-[var(--text-tertiary)]" />
         <span className="min-w-0 flex-1 truncate">{t('share.batch_move_to_folder')}</span>
-        <span className="max-w-[70px] truncate text-[11px] text-[var(--text-quaternary)]">
+        <span className="max-w-[70px] truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]">
           {currentFolder ? currentFolder.name : t('navigation.unfiled')}
         </span>
         <ChevronRight size={12} className="shrink-0 opacity-60" />
@@ -412,7 +412,7 @@ export function ShareNoteSubmenu({
       >
         <Hash size={13} className="shrink-0 text-[var(--text-tertiary)]" />
         <span className="min-w-0 flex-1 truncate">{t('share.tags_isolation')}</span>
-        <span className="text-[11px] text-[var(--text-quaternary)]">
+        <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
           {currentTags.length > 0 ? `${currentTags.length}` : t('share.no_tags')}
         </span>
         <ChevronRight size={12} className="shrink-0 opacity-60" />

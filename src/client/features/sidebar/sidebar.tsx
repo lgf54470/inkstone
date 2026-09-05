@@ -58,7 +58,7 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-3">
         <div className="flex min-w-0 items-center gap-[9px] select-none">
           <Logo size={24}/>
-          <span className="min-w-0 truncate font-serif text-[15.5px] font-semibold tracking-[0.02em] text-[var(--text-primary)]">
+          <span className="min-w-0 truncate font-serif text-[length:var(--text-15\.5)] font-semibold tracking-[0.02em] text-[var(--text-primary)]">
             {t("common.product_name")}
           </span>
         </div>

@@ -160,7 +160,7 @@ export function AttachmentDriveSidebar({
   const usedWidthPct = (usedRatio * 100).toFixed(2)
 
   return (
-    <div className="flex h-full w-60 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[12.5px] select-none">
+    <div className="flex h-full w-60 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[length:var(--text-12\.5)] select-none">
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3 space-y-4">
         <div>
           <SectionLabel>{t('attachments.categories')}</SectionLabel>
@@ -298,10 +298,10 @@ export function AttachmentDriveSidebar({
       </div>
 
       {stats && (
-        <div className="mt-auto shrink-0 border-t border-[var(--border-subtle)] p-3 bg-[var(--bg-sunken)]/40 text-[11px] space-y-1.5">
+        <div className="mt-auto shrink-0 border-t border-[var(--border-subtle)] p-3 bg-[var(--bg-sunken)]/40 text-[length:var(--text-11)] space-y-1.5">
           <div className="flex items-center justify-between font-semibold text-[var(--text-secondary)]">
             <span>{t('attachments.stats_title')}</span>
-            <span className="font-mono text-[10.5px]">
+            <span className="font-mono text-[length:var(--text-10\.5)]">
               {`${formatFileSize(stats.totalBytes)} / 10 GB`}
             </span>
           </div>
@@ -311,7 +311,7 @@ export function AttachmentDriveSidebar({
               className="h-full bg-[var(--accent)] rounded-full transition-all duration-300"
             />
           </div>
-          <div className="text-[10px] text-[var(--text-quaternary)] flex justify-between">
+          <div className="text-[length:var(--text-10)] text-[var(--text-quaternary)] flex justify-between">
             <span>{t('attachments.total_value0', { value0: stats.totalCount })}</span>
             <span>{t('attachments.unreferenced_count_value0', { value0: stats.unreferencedCount })}</span>
           </div>
@@ -346,7 +346,7 @@ export function AttachmentDriveSidebar({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="px-2 pb-1 text-[10.5px] font-semibold tracking-wider text-[var(--text-tertiary)] uppercase">
+    <h3 className="px-2 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-wider text-[var(--text-tertiary)] uppercase">
       {children}
     </h3>
   )
@@ -518,7 +518,7 @@ function DriveFolderRow({
         onDrop={handleDrop}
         style={{ paddingLeft: `${node.depth * 12 + 6}px` }}
         className={cn(
-          'group flex h-7.5 w-full items-center gap-1 rounded-[var(--r-md)] pr-1 text-left text-[12px] font-medium transition-colors',
+          'group flex h-7.5 w-full items-center gap-1 rounded-[var(--r-md)] pr-1 text-left text-[length:var(--text-12)] font-medium transition-colors',
           active
             ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
@@ -710,7 +710,7 @@ function DriveTagRow({
         }}
         style={{ paddingLeft: `${node.depth * 12 + 6}px` }}
         className={cn(
-          'group flex h-7.5 w-full items-center gap-1 rounded-[var(--r-md)] pr-1 text-left text-[12px] font-medium transition-colors',
+          'group flex h-7.5 w-full items-center gap-1 rounded-[var(--r-md)] pr-1 text-left text-[length:var(--text-12)] font-medium transition-colors',
           active
             ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',

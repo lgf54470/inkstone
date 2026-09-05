@@ -54,10 +54,10 @@ export function BlogTableView({
   const folderMap = new Map(folders.map((f) => [f.id, f]))
 
   return (
-    <div className="w-full overflow-x-auto text-[12.5px]">
+    <div className="w-full overflow-x-auto text-[length:var(--text-12\.5)]">
       <table className="w-full border-collapse text-left">
         <thead>
-          <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[11px] font-medium text-[var(--text-tertiary)]">
+          <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]">
             <th className="w-10 px-3 py-2.5 text-center">
               <input
                 type="checkbox"
@@ -235,7 +235,7 @@ function BlogTableRow({
               void handleMoveToFolder(null)
             }}
             className={cn(
-              'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
+              'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
               !post.folderId && 'text-[var(--accent)] font-semibold',
             )}
           >
@@ -252,7 +252,7 @@ function BlogTableRow({
                 void handleMoveToFolder(f.id)
               }}
               className={cn(
-                'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
+                'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
                 post.folderId === f.id && 'text-[var(--accent)] font-semibold',
               )}
             >
@@ -337,7 +337,7 @@ function BlogTableRow({
                 {post.title}
               </span>
             </div>
-            <div className="text-[11px] text-[var(--text-quaternary)] truncate">
+            <div className="text-[length:var(--text-11)] text-[var(--text-quaternary)] truncate">
               /{post.slug}
             </div>
           </div>
@@ -347,7 +347,7 @@ function BlogTableRow({
       <td className="px-3 py-2.5">
         {folder ? (
           <span
-            className="inline-flex items-center gap-1 truncate max-w-[100px] rounded-[var(--r-sm)] px-1.5 py-0.5 text-[11px] font-medium"
+            className="inline-flex items-center gap-1 truncate max-w-[100px] rounded-[var(--r-sm)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium"
             style={{
               backgroundColor: folder.color ? `${folder.color}15` : 'var(--bg-sunken)',
               color: folder.color || 'var(--text-secondary)',
@@ -357,14 +357,14 @@ function BlogTableRow({
             <span className="truncate">{folder.name}</span>
           </span>
         ) : (
-          <span className="text-[11px] text-[var(--text-quaternary)]">-</span>
+          <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">-</span>
         )}
       </td>
 
       <td className="px-3 py-2.5">
         {cat ? (
           <span
-            className="inline-block truncate max-w-[95px] rounded-[var(--r-sm)] px-1.5 py-0.5 text-[11px] font-medium"
+            className="inline-block truncate max-w-[95px] rounded-[var(--r-sm)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium"
             style={{
               backgroundColor: cat.color ? `${cat.color}15` : 'var(--bg-sunken)',
               color: cat.color || 'var(--text-secondary)',
@@ -373,7 +373,7 @@ function BlogTableRow({
             {cat.name}
           </span>
         ) : (
-          <span className="text-[11px] text-[var(--text-quaternary)]">-</span>
+          <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">-</span>
         )}
       </td>
 
@@ -382,14 +382,14 @@ function BlogTableRow({
           {post.tags.slice(0, 2).map((tg) => (
             <span
               key={tg}
-              className="rounded bg-[var(--bg-sunken)] px-1 py-0.2 text-[10px] text-[var(--text-tertiary)] truncate max-w-[80px]"
+              className="rounded bg-[var(--bg-sunken)] px-1 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)] truncate max-w-[80px]"
               title={tg}
             >
               #{tg.includes('/') ? tg.split('/').pop() : tg}
             </span>
           ))}
           {post.tags.length > 2 && (
-            <span className="text-[10px] text-[var(--text-quaternary)]">
+            <span className="text-[length:var(--text-10)] text-[var(--text-quaternary)]">
               +{post.tags.length - 2}
             </span>
           )}
@@ -398,11 +398,11 @@ function BlogTableRow({
 
       <td className="px-3 py-2.5 whitespace-nowrap min-w-[76px] shrink-0">
         {post.isPublished ? (
-          <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10.5px] font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap shrink-0">
+          <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[length:var(--text-10\.5)] font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap shrink-0">
             {t('blog.published')}
           </span>
         ) : (
-          <span className="inline-flex items-center rounded-full bg-stone-500/10 px-2 py-0.5 text-[10.5px] font-medium text-stone-500 whitespace-nowrap shrink-0">
+          <span className="inline-flex items-center rounded-full bg-stone-500/10 px-2 py-0.5 text-[length:var(--text-10\.5)] font-medium text-stone-500 whitespace-nowrap shrink-0">
             {t('blog.draft')}
           </span>
         )}
@@ -416,7 +416,7 @@ function BlogTableRow({
         {post.commentsCount ?? 0}
       </td>
 
-      <td className="px-3 py-2.5 text-[11.5px] text-[var(--text-quaternary)] whitespace-nowrap">
+      <td className="px-3 py-2.5 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] whitespace-nowrap">
         {new Date(post.publishedAt).toLocaleDateString()}
       </td>
 

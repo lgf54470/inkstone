@@ -516,10 +516,10 @@ export function TemplateGallery({ onClose }: {
         <div ref={panelRef} role="dialog" aria-modal="true" aria-label={t("templates.template_library")} tabIndex={-1} onKeyDown={handleKeyDown} className="anim-pop relative flex h-[min(88dvh,var(--app-viewport-height,100dvh))] w-full max-w-[940px] flex-col overflow-hidden rounded-t-[var(--r-2xl)] border border-b-0 border-[var(--border-default)] bg-[var(--bg-overlay)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-modal)] outline-none md:rounded-[var(--r-2xl)] md:border-b md:pb-0">
             <header className="flex shrink-0 items-center gap-2.5 border-b border-[var(--border-subtle)] px-4 py-2.5">
                 <LayoutTemplate size={16} className="shrink-0 text-[var(--text-quaternary)]"/>
-                <h2 className="shrink-0 text-[14px] font-semibold tracking-[-0.012em] text-[var(--text-primary)]">{t("templates.template_library")}</h2>
+                <h2 className="shrink-0 text-[length:var(--text-14)] font-semibold tracking-[-0.012em] text-[var(--text-primary)]">{t("templates.template_library")}</h2>
                 <div className="relative min-w-0 flex-1">
                     <Search size={13} aria-hidden="true" className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-quaternary)]"/>
-                    <input ref={searchRef} aria-label={t("templates.search_templates")} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("templates.search_templates")} className="h-10 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] pr-8 pl-8 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] transition-[border-color,box-shadow] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none"/>
+                    <input ref={searchRef} aria-label={t("templates.search_templates")} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("templates.search_templates")} className="h-10 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] pr-8 pl-8 text-[length:var(--text-13)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] transition-[border-color,box-shadow] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none"/>
                     {query && (<button type="button" aria-label={t("common.clear")} onClick={() => setQuery('')} className="absolute top-1/2 right-1.5 flex size-7 -translate-y-1/2 items-center justify-center rounded text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]">
                         <X size={13}/>
                     </button>)}
@@ -553,7 +553,7 @@ export function TemplateGallery({ onClose }: {
                 </Tooltip>
             </header>
 
-            <div className="hidden shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] px-4 py-1.5 text-[10.5px] text-[var(--text-quaternary)] md:flex">
+            <div className="hidden shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] px-4 py-1.5 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)] md:flex">
                 <span>{t("templates.kbd_hint")}</span>
                 {selectMode && <span className="text-[var(--accent)]">{t("templates.select_hint")}</span>}
             </div>
@@ -582,7 +582,7 @@ export function TemplateGallery({ onClose }: {
                     <SidebarButton icon={<Globe size={14}/>} label={t("templates.community")} count={community.length} active={filter.kind === 'community'} onClick={() => setFilter({ kind: 'community' })}/>
                     {counts.uncategorized > 0 && <SidebarButton icon={<FolderPlus size={14}/>} label={t("templates.uncategorized")} count={counts.uncategorized} active={filter.kind === 'uncategorized'} onClick={() => setFilter({ kind: 'uncategorized' })}/>}
                     <div className="mt-3 mb-1 flex items-center justify-between px-2">
-                        <span className="text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("templates.categories")}</span>
+                        <span className="text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("templates.categories")}</span>
                         <Tooltip label={t("templates.new_category")} side="right">
                             <button type="button" aria-label={t("templates.new_category")} onClick={() => setCategoryDialog({ mode: 'create' })} className="flex size-6 items-center justify-center rounded-md text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]">
                                 <Plus size={13}/>
@@ -600,27 +600,27 @@ export function TemplateGallery({ onClose }: {
                         }}/>))}
                     </div>
                     {tagList.length > 0 && (<>
-                        <div className="mt-3 mb-1 px-2 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("templates.tags")}</div>
+                        <div className="mt-3 mb-1 px-2 text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("templates.tags")}</div>
                         <div className="space-y-0.5">
                             {tagList.map(([tag, count]) => (<SidebarButton key={tag} icon={<Hash size={14}/>} label={tag} count={count} active={filter.kind === 'tag' && filter.tag === tag} onClick={() => toggleTagFilter(tag)}/>))}
                         </div>
                     </>)}
-                    <button type="button" onClick={() => setCategoryDialog({ mode: 'create' })} className="mt-2 flex h-8 w-full items-center gap-1.5 rounded-[var(--r-md)] px-2 text-[12px] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]">
+                    <button type="button" onClick={() => setCategoryDialog({ mode: 'create' })} className="mt-2 flex h-8 w-full items-center gap-1.5 rounded-[var(--r-md)] px-2 text-[length:var(--text-12)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]">
                         <Plus size={13}/>{t("templates.new_category")}
                     </button>
                 </aside>
 
                 <main className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4">
                     {filter.kind === 'community' && <CommunityPanel items={community} loading={isCommunityLoading} isError={isCommunityError} myId={currentUserId} onRefresh={() => void refreshCommunity()} onUse={useCommunityTemplate} onImport={importCommunityTemplate} onUnpublish={(item) => void unpublishCommunityTemplate(item)}/>}
-                    {filter.kind !== 'community' && visible.some((item) => item.isPinned) && (<div className="mb-3 flex items-center gap-1.5 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+                    {filter.kind !== 'community' && visible.some((item) => item.isPinned) && (<div className="mb-3 flex items-center gap-1.5 text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
                         <Pin size={11}/>{t("notes.pin")}
                     </div>)}
                     {filter.kind !== 'community' && visible.length === 0 ? (<div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-2 text-center">
                         <LayoutTemplate size={26} className="text-[var(--text-quaternary)]"/>
-                        <p className="text-[13px] font-medium text-[var(--text-secondary)]">
+                        <p className="text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]">
                             {query.trim() ? t("templates.no_matching_templates") : t("templates.no_templates")}
                         </p>
-                        <p className="text-[11.5px] text-[var(--text-quaternary)]">{t("templates.no_templates_hint")}</p>
+                        <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t("templates.no_templates_hint")}</p>
                     </div>) : filter.kind !== 'community' && (<div ref={gridRef} className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
                         {visible.map((template) => (<TemplateCard key={template.id} template={template} categoryName={categoryName(template.categoryId)} selectMode={selectMode} selected={selectedIds.has(template.id)} focused={focusedId === template.id} dragging={draggingId === template.id} dropHint={dropHint?.id === template.id ? dropHint.after : null} onToggleSelect={() => toggleSelect(template.id)} onDragStart={(id) => setDraggingId(id)} onDragOver={(id, after) => setDropHint({ id, after })} onDrop={(template, after) => handleCardDrop(template, after)} onDragEnd={() => {
                             setDraggingId(null);
@@ -631,7 +631,7 @@ export function TemplateGallery({ onClose }: {
             </div>
 
             {selectMode && (<div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-4 py-2.5">
-                <span className="text-[12.5px] font-semibold text-[var(--text-secondary)]">{t("templates.selected_count_value0", { value0: selectedIds.size })}</span>
+                <span className="text-[length:var(--text-12\.5)] font-semibold text-[var(--text-secondary)]">{t("templates.selected_count_value0", { value0: selectedIds.size })}</span>
                 <div className="ml-auto flex flex-wrap items-center gap-1.5">
                     <Button size="sm" variant="ghost" onClick={toggleSelectAll}>{allVisibleSelected ? t("templates.clear_selection") : t("templates.select_all")}</Button>
                     <Button size="sm" variant="secondary" icon={<Star size={13}/>} disabled={selectedIds.size === 0} onClick={batchToggleStar}>{allSelectedStarred ? t("common.remove_from_favorites") : t("navigation.favorites")}</Button>
@@ -667,10 +667,10 @@ function FilterChip({ label, count, active, onClick, dropTarget, onDragOver, onD
     onDragLeave?: () => void;
     onDrop?: (event: React.DragEvent) => void;
 }) {
-    return (<button type="button" aria-pressed={active} onClick={onClick} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} className={cn('flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] transition-colors', active ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dropTarget && 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]')}>
+    return (<button type="button" aria-pressed={active} onClick={onClick} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} className={cn('flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[length:var(--text-11\.5)] transition-colors', active ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dropTarget && 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]')}>
         {count === null && <Plus size={11}/>}
         <span className="whitespace-nowrap">{label}</span>
-        {count !== null && <span className="text-[10.5px] tabular opacity-70">{count}</span>}
+        {count !== null && <span className="text-[length:var(--text-10\.5)] tabular opacity-70">{count}</span>}
     </button>);
 }
 
@@ -681,10 +681,10 @@ function SidebarButton({ icon, label, count, active, onClick }: {
     active: boolean;
     onClick: () => void;
 }) {
-    return (<button type="button" aria-pressed={active} onClick={onClick} className={cn('flex h-9 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left text-[12.5px] transition-colors', active ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
+    return (<button type="button" aria-pressed={active} onClick={onClick} className={cn('flex h-9 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12\.5)] transition-colors', active ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
         <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>{icon}</span>
         <span className="min-w-0 flex-1 truncate">{label}</span>
-        <span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)]">{count}</span>
+        <span className="shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)]">{count}</span>
     </button>);
 }
 
@@ -701,10 +701,10 @@ function CategoryRow({ category, count, active, dropTarget, onSelect, onRename, 
     onDrop?: (event: React.DragEvent) => void;
 }) {
     return (<div onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} className={cn('group flex h-9 items-center rounded-[var(--r-md)] transition-colors', active || dropTarget ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
-        <button type="button" aria-pressed={active} onClick={onSelect} className={cn('flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left text-[12.5px] transition-colors', active ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]')}>
-            <span className={cn('text-[13px] leading-none', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>◈</span>
+        <button type="button" aria-pressed={active} onClick={onSelect} className={cn('flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12\.5)] transition-colors', active ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]')}>
+            <span className={cn('text-[length:var(--text-13)] leading-none', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>◈</span>
             <span className="min-w-0 flex-1 truncate">{category.name}</span>
-            <span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)]">{count}</span>
+            <span className="shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)]">{count}</span>
         </button>
         {!category.builtin && (<div className="flex shrink-0 items-center pr-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
             <Tooltip label={t("templates.rename_category")} side="top">
@@ -816,9 +816,9 @@ function TemplateCard({ template, categoryName, selectMode, selected, focused, d
         <div className="relative z-[var(--z-sticky)] flex items-start justify-between gap-2">
             <div className={cn('flex min-w-0 items-center gap-1.5', selectMode && 'pl-6')}>
                 {template.isPinned && <Pin size={11} className="shrink-0 text-[var(--accent)]"/>}
-                <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">{template.name}</h3>
+                <h3 className="min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">{template.name}</h3>
                 {template.isStarred && <Star size={11} className="shrink-0 fill-current text-[var(--warning)]"/>}
-                {template.builtin && <span className="shrink-0 rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[10px] font-medium text-[var(--text-quaternary)]">{t("templates.builtin")}</span>}
+                {template.builtin && <span className="shrink-0 rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[length:var(--text-10)] font-medium text-[var(--text-quaternary)]">{t("templates.builtin")}</span>}
             </div>
             <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                 <Tooltip label={template.isStarred ? t("common.remove_from_favorites") : t("navigation.favorites")} side="top">
@@ -847,15 +847,15 @@ function TemplateCard({ template, categoryName, selectMode, selected, focused, d
                 </Tooltip>
             </div>
         </div>
-        {template.description && <p className="relative z-[var(--z-sticky)] mt-1.5 line-clamp-2 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">{template.description}</p>}
+        {template.description && <p className="relative z-[var(--z-sticky)] mt-1.5 line-clamp-2 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{template.description}</p>}
         {template.tags.length > 0 && (<div className="relative z-[var(--z-sticky)] mt-1.5 flex min-w-0 flex-wrap items-center gap-1">
-            {template.tags.map((tag) => (<span key={tag} className="rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[10px] text-[var(--text-tertiary)]">#{tag}</span>))}
+            {template.tags.map((tag) => (<span key={tag} className="rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[length:var(--text-10)] text-[var(--text-tertiary)]">#{tag}</span>))}
         </div>)}
         <div className="relative z-[var(--z-sticky)] mt-auto flex items-center gap-2 pt-2.5">
-            <span className="text-[10.5px] text-[var(--text-quaternary)]">{categoryName}</span>
-            <span className="text-[10.5px] text-[var(--text-quaternary)]">·</span>
-            <span className="text-[10.5px] text-[var(--text-quaternary)]">{t("templates.lines_count", { value0: lineCount })}</span>
-            <span className="ml-auto text-[10.5px] font-medium text-[var(--accent)] opacity-0 transition-opacity group-hover:opacity-100">{t("templates.use_template")} →</span>
+            <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">{categoryName}</span>
+            <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">·</span>
+            <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">{t("templates.lines_count", { value0: lineCount })}</span>
+            <span className="ml-auto text-[length:var(--text-10\.5)] font-medium text-[var(--accent)] opacity-0 transition-opacity group-hover:opacity-100">{t("templates.use_template")} →</span>
         </div>
         <Menu anchor={menuButtonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={items} align="end" width={200} zIndex={Z_INDEX.hoverPinned}/>
         {contextMenu.point && <Menu anchor={contextMenu.point} open onClose={contextMenu.close} items={items} width={200} zIndex={Z_INDEX.hoverPinned}/>}
@@ -910,7 +910,7 @@ function TemplateEditorModal({ template, categories, onClose }: {
                 <Input value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} placeholder={t("templates.description")}/>
             </Field>
             <Field label={t("templates.template_content")} hint={t("templates.template_content_hint")}>
-                <Textarea value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} rows={16} spellCheck={false} className="min-h-[280px] font-mono text-[12.5px]"/>
+                <Textarea value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} rows={16} spellCheck={false} className="min-h-[280px] font-mono text-[length:var(--text-12\.5)]"/>
             </Field>
         </div>
     </Modal>);
@@ -968,7 +968,7 @@ function MoveChoice({ label, selected, onClick }: {
     selected: boolean;
     onClick: () => void;
 }) {
-    return (<button type="button" aria-pressed={selected} onClick={onClick} className={cn('flex min-h-10 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2.5 text-left text-[13px] transition-colors', selected ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
+    return (<button type="button" aria-pressed={selected} onClick={onClick} className={cn('flex min-h-10 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-13)] transition-colors', selected ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
         <span className="min-w-0 flex-1 truncate">{label}</span>
         {selected && <Check size={14} className="shrink-0"/>}
     </button>);
@@ -1042,11 +1042,11 @@ function ImportTemplatesModal({ onClose }: {
             <Button variant="primary" onClick={importJson}>{t("templates.import_templates")}</Button>
         </>}>
         <div className="space-y-3">
-            <p className="text-[12px] leading-relaxed text-[var(--text-tertiary)]">{t("templates.import_hint")}</p>
+            <p className="text-[length:var(--text-12)] leading-relaxed text-[var(--text-tertiary)]">{t("templates.import_hint")}</p>
             <Textarea value={text} aria-invalid={isError} onChange={(event) => {
                 setText(event.target.value);
                 setIsError(false);
-            }} rows={10} spellCheck={false} placeholder={t("templates.import_paste_placeholder")} className="min-h-[180px] font-mono text-[12px]"/>
+            }} rows={10} spellCheck={false} placeholder={t("templates.import_paste_placeholder")} className="min-h-[180px] font-mono text-[length:var(--text-12)]"/>
             <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={pickFile}/>
             <Button variant="secondary" icon={<Upload size={13}/>} onClick={() => fileRef.current?.click()}>{t("templates.import_file")}</Button>
         </div>
@@ -1083,18 +1083,18 @@ function CommunityPanel({ items, loading, isError, myId, onRefresh, onUse, onImp
     if (isError && items.length === 0)
         return (<div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-3 text-center">
             <Globe size={26} className="text-[var(--text-quaternary)]"/>
-            <p className="text-[13px] font-medium text-[var(--text-secondary)]">{t("templates.community_load_failed")}</p>
+            <p className="text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]">{t("templates.community_load_failed")}</p>
             <Button size="sm" variant="secondary" icon={<RotateCw size={13}/>} onClick={onRefresh}>{t("common.retry")}</Button>
         </div>);
     if (items.length === 0)
         return (<div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-2 text-center">
             <Globe size={26} className="text-[var(--text-quaternary)]"/>
-            <p className="text-[13px] font-medium text-[var(--text-secondary)]">{t("templates.community_empty")}</p>
-            <p className="text-[11.5px] text-[var(--text-quaternary)]">{t("templates.community_empty_hint")}</p>
+            <p className="text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]">{t("templates.community_empty")}</p>
+            <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t("templates.community_empty_hint")}</p>
         </div>);
     return (<div className="space-y-2.5">
         <div className="flex items-center justify-between gap-2">
-            <p className="text-[11.5px] text-[var(--text-quaternary)]">{t("templates.community_count_value0", { value0: items.length })}</p>
+            <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t("templates.community_count_value0", { value0: items.length })}</p>
             <Button size="sm" variant="ghost" icon={<RotateCw size={13}/>} disabled={loading} onClick={onRefresh}>{t("common.refresh")}</Button>
         </div>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
@@ -1114,17 +1114,17 @@ function CommunityCard({ item, mine, onUse, onImport, onUnpublish }: {
     const date = useMemo(() => new Date(item.createdAt).toLocaleDateString(), [item.createdAt]);
     return (<div className="group relative flex min-h-[132px] flex-col rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 transition-[border-color,box-shadow] duration-[var(--dur-fast)] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)]">
         <div className="flex min-w-0 items-center gap-1.5">
-            <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">{item.name}</h3>
-            {mine && <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[10px] font-medium text-[var(--accent)]">{t("templates.community_mine")}</span>}
+            <h3 className="min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">{item.name}</h3>
+            {mine && <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[length:var(--text-10)] font-medium text-[var(--accent)]">{t("templates.community_mine")}</span>}
         </div>
-        {item.description && <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">{item.description}</p>}
+        {item.description && <p className="mt-1.5 line-clamp-2 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{item.description}</p>}
         {item.tags.length > 0 && (<div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1">
-            {item.tags.map((tag) => (<span key={tag} className="rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[10px] text-[var(--text-tertiary)]">#{tag}</span>))}
+            {item.tags.map((tag) => (<span key={tag} className="rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[length:var(--text-10)] text-[var(--text-tertiary)]">#{tag}</span>))}
         </div>)}
         <div className="relative z-[var(--z-sticky)] mt-auto flex items-center gap-2 pt-2.5">
-            <span className="text-[10.5px] text-[var(--text-quaternary)]">{item.authorName}</span>
-            {item.category && <span className="text-[10.5px] text-[var(--text-quaternary)]">· {item.category}</span>}
-            <span className="text-[10.5px] text-[var(--text-quaternary)]">· {t("templates.lines_count", { value0: lineCount })} · {date}</span>
+            <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">{item.authorName}</span>
+            {item.category && <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">· {item.category}</span>}
+            <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">· {t("templates.lines_count", { value0: lineCount })} · {date}</span>
         </div>
         <div className="mt-2 flex items-center gap-1.5">
             <Button size="sm" variant="primary" icon={<FilePlus2 size={13}/>} onClick={onUse} className="min-w-0 flex-1">{t("templates.use_template")}</Button>
@@ -1163,12 +1163,12 @@ function KeyboardHelpModal({ onClose }: {
     return (<Modal open onClose={onClose} title={t("templates.keyboard_shortcuts")} width={440}>
         <div className="divide-y divide-[var(--border-subtle)]">
             {rows.map((row) => (<div key={row.label} className="flex items-center justify-between gap-3 py-2.5">
-                <span className="text-[12.5px] text-[var(--text-secondary)]">{row.label}</span>
+                <span className="text-[length:var(--text-12\.5)] text-[var(--text-secondary)]">{row.label}</span>
                 <Kbd keys={row.keys}/>
             </div>))}
-            <div className="pt-2.5 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("templates.help_select_section")}</div>
+            <div className="pt-2.5 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("templates.help_select_section")}</div>
             {selectRows.map((row) => (<div key={row.label} className="flex items-center justify-between gap-3 py-2.5">
-                <span className="text-[12.5px] text-[var(--text-secondary)]">{row.label}</span>
+                <span className="text-[length:var(--text-12\.5)] text-[var(--text-secondary)]">{row.label}</span>
                 <Kbd keys={row.keys}/>
             </div>))}
         </div>
@@ -1209,17 +1209,17 @@ function PublishTemplateDialog({ template, category, onClose, onPublished }: {
             <Button variant="primary" icon={<Send size={13}/>} loading={isBusy} onClick={() => void publish()}>{t("templates.publish_to_community")}</Button>
         </>}>
         <div className="space-y-3">
-            <p className="text-[12px] leading-relaxed text-[var(--text-tertiary)]">{t("templates.publish_hint")}</p>
+            <p className="text-[length:var(--text-12)] leading-relaxed text-[var(--text-tertiary)]">{t("templates.publish_hint")}</p>
             <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3">
                 <div className="flex items-center gap-1.5">
-                    <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[var(--text-primary)]">{template.name}</h3>
-                    <span className="shrink-0 text-[10.5px] text-[var(--text-quaternary)]">{category}</span>
+                    <h3 className="min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]">{template.name}</h3>
+                    <span className="shrink-0 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">{category}</span>
                 </div>
                 {template.tags.length > 0 && (<div className="mt-1.5 flex flex-wrap items-center gap-1">
-                    {template.tags.map((tag) => (<span key={tag} className="rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[10px] text-[var(--text-tertiary)]">#{tag}</span>))}
+                    {template.tags.map((tag) => (<span key={tag} className="rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[length:var(--text-10)] text-[var(--text-tertiary)]">#{tag}</span>))}
                 </div>)}
-                {template.description && <p className="mt-1.5 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">{template.description}</p>}
-                <pre className="mt-2 max-h-[220px] overflow-y-auto text-[11px] leading-relaxed whitespace-pre-wrap text-[var(--text-secondary)]">{template.content}</pre>
+                {template.description && <p className="mt-1.5 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{template.description}</p>}
+                <pre className="mt-2 max-h-[220px] overflow-y-auto text-[length:var(--text-11)] leading-relaxed whitespace-pre-wrap text-[var(--text-secondary)]">{template.content}</pre>
             </div>
         </div>
     </Modal>);

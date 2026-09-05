@@ -189,7 +189,7 @@ export function FolderSection() {
       <CalendarTree />
       <TodoTree />
 
-      {tree.length === 0 ? (<button type="button" disabled={isCreating} onClick={() => void create(null)} className="mt-0.5 flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[12px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-45 md:h-[30px]">
+      {tree.length === 0 ? (<button type="button" disabled={isCreating} onClick={() => void create(null)} className="mt-0.5 flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[length:var(--text-12)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-45 md:h-[30px]">
           <FolderPlus size={13}/>{t("sidebar.create_first_folder")}</button>) : (<div role="tree" aria-label={t("navigation.folder")} className="mt-0.5 space-y-px">
           {tree.map((node, index) => (<FolderRow key={node.id} node={node} siblings={tree} index={index} parentNode={null} parentSiblings={[]} onCreateChild={create} onMove={move} onChooseParent={setMovingId} createdFolderId={createdFolderId} renamingId={renamingId} onStartRename={setRenamingId} onFinishRename={() => setRenamingId(null)}/>))}
         </div>)}
@@ -466,7 +466,7 @@ export function FolderRow({ node, siblings, index, parentNode, parentSiblings, o
         </Tooltip>
 
         <span className={cn('shrink-0', active && !node.color ? 'text-[var(--accent)]' : !node.color && 'text-[var(--text-tertiary)]')} style={{ color: node.color ?? undefined }}>
-          {node.icon ? (<span className={cn('text-[13px] leading-none', justCreated && 'anim-mark-enter')}>{node.icon}</span>) : (<FolderMotionIcon open={expanded && hasChildren} drawing={justCreated}/>)}
+          {node.icon ? (<span className={cn('text-[length:var(--text-13)] leading-none', justCreated && 'anim-mark-enter')}>{node.icon}</span>) : (<FolderMotionIcon open={expanded && hasChildren} drawing={justCreated}/>)}
         </span>
 
         {renaming ? (<input aria-label={t("sidebar.rename")} autoFocus defaultValue={node.name} onBlur={(e) => void rename(e.target.value)} onKeyDown={(e) => {
@@ -477,8 +477,8 @@ export function FolderRow({ node, siblings, index, parentNode, parentSiblings, o
                     onFinishRename();
                 }
                 e.stopPropagation();
-            }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[12.5px] outline-none"/>) : (<Tooltip label={folderPathLabel(folders, node.id)} side="right">
-            <button type="button" aria-current={active ? 'page' : undefined} onClick={() => openFolderView(folders, node.id)} onDoubleClick={() => onStartRename(node.id)} className="flex min-w-0 flex-1 items-center gap-1.5 truncate py-1 text-left text-[12.5px] font-medium">
+            }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[length:var(--text-12\.5)] outline-none"/>) : (<Tooltip label={folderPathLabel(folders, node.id)} side="right">
+            <button type="button" aria-current={active ? 'page' : undefined} onClick={() => openFolderView(folders, node.id)} onDoubleClick={() => onStartRename(node.id)} className="flex min-w-0 flex-1 items-center gap-1.5 truncate py-1 text-left text-[length:var(--text-12\.5)] font-medium">
               <span className="truncate">{node.name}</span>
               {isInbox && (
                 <span title={t("folders.inbox")} className="shrink-0 text-[var(--accent)]">
@@ -489,7 +489,7 @@ export function FolderRow({ node, siblings, index, parentNode, parentSiblings, o
           </Tooltip>)}
 
         {!renaming && (<>
-            <span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-0">
+            <span className="shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-0">
               {node.totalNotes > 0 ? node.totalNotes : ''}
             </span>
             <Tooltip label={t("common.more_actions")} side="left">

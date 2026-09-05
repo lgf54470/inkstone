@@ -137,12 +137,12 @@ function VirtualRow({ ns, rootLabel, rootIcon, node }: {
                 </span>
 
                 <Tooltip label={tooltip} side="right">
-                    <button type="button" aria-current={active ? 'page' : undefined} onClick={open} className="min-w-0 flex-1 truncate py-1 text-left text-[12.5px] font-medium">
+                    <button type="button" aria-current={active ? 'page' : undefined} onClick={open} className="min-w-0 flex-1 truncate py-1 text-left text-[length:var(--text-12\.5)] font-medium">
                         {isRoot ? rootLabel : node.name}
                     </button>
                 </Tooltip>
 
-                {node.count > 0 && (<span className="shrink-0 text-[11px] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-70">{node.count}</span>)}
+                {node.count > 0 && (<span className="shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-70">{node.count}</span>)}
             </div>
 
             {childrenMounted && (<div role="group" aria-hidden={!childrenVisible} inert={!childrenVisible} className={cn('folder-children-grid', childrenVisible && 'is-expanded')}>

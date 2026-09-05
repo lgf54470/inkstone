@@ -426,8 +426,8 @@ export function NoteList() {
       <header className="shrink-0 px-3 pt-3 pb-2">
         <div className="mb-2.5 flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="truncate text-[14.5px] font-semibold tracking-[-0.016em] text-[var(--text-primary)]">{title}</h2>
-            {view === 'folder' && <p className="mt-0.5 truncate text-[10.5px] text-[var(--text-quaternary)]">{isVirtualFolderId(folderId) ? (isTodoFolderId(folderId) ? t("sidebar.todo_folder_hint_value0", { value0: todoTagText }) : t("sidebar.calendar_folder_hint")) : t("folders.includes_subfolders")}</p>}
+            <h2 className="truncate text-[length:var(--text-14\.5)] font-semibold tracking-[-0.016em] text-[var(--text-primary)]">{title}</h2>
+            {view === 'folder' && <p className="mt-0.5 truncate text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">{isVirtualFolderId(folderId) ? (isTodoFolderId(folderId) ? t("sidebar.todo_folder_hint_value0", { value0: todoTagText }) : t("sidebar.calendar_folder_hint")) : t("folders.includes_subfolders")}</p>}
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
             {breakpoint === 'tablet' && (<Tooltip label={t("notes.open_navigation")}>
@@ -486,7 +486,7 @@ export function NoteList() {
                     void openNote(first);
                 listRef.current?.focus();
             }
-        }} placeholder={t("notes.filter_in_this_view")} className={cn('h-10 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] md:h-[30px]', 'pr-9 pl-8 text-[12.5px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] md:pr-7 md:pl-7', 'transition-[border-color,box-shadow] duration-[var(--dur-fast)]', 'focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none')}/>
+        }} placeholder={t("notes.filter_in_this_view")} className={cn('h-10 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] md:h-[30px]', 'pr-9 pl-8 text-[length:var(--text-12\.5)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] md:pr-7 md:pl-7', 'transition-[border-color,box-shadow] duration-[var(--dur-fast)]', 'focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none')}/>
           {filter && (<Tooltip label={t("notes.clear_filters")} side="left">
               <button type="button" onClick={() => setListQuery('')} aria-label={t("notes.clear_filters")} className="absolute top-1/2 right-1 flex size-8 -translate-y-1/2 items-center justify-center rounded text-[var(--text-quaternary)] hover:text-[var(--text-secondary)] md:right-2 md:size-auto md:p-0.5">
                 <X size={12}/>
@@ -495,7 +495,7 @@ export function NoteList() {
         </div>
 
         {(dateFilter || selectedTags.length > 0 || Boolean(filter)) && (<div role="group" aria-label={t("notes.active_filters")} className="mt-2 flex flex-wrap items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-2 py-1.5">
-            {dateFilter && (<span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[11px] text-[var(--text-secondary)]">
+            {dateFilter && (<span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]">
                 <CalendarDays size={11} className="shrink-0 text-[var(--text-quaternary)]"/>
                 <button type="button" ref={rangeChipRef} aria-haspopup="dialog" aria-expanded={isRangeEditorOpen} aria-label={t("notes.range_editor_title")} onClick={() => setIsRangeEditorOpen(true)} className="min-w-0 truncate rounded-full text-left transition-colors hover:text-[var(--text-primary)]">
                   {dayFilterLabelEnd ? t("notes.filtering_by_day_range_value0", { value0: dayFilterLabel, value1: dayFilterLabelEnd }) : t("notes.filtering_by_day_value0", { value0: dayFilterLabel })}
@@ -504,7 +504,7 @@ export function NoteList() {
                     <span aria-hidden="true" className="shrink-0 rounded-full bg-[var(--accent-soft)] p-0.5 text-[var(--accent)]"><RotateCcw size={10}/></span>
                   </Tooltip>)}
                 {gapShown && (<Tooltip label={displayGap ? t(displayGap.ahead ? "notes.rolling_gap_ahead_value0" : "notes.rolling_gap_value0", { value0: displayGap.days }) : ''}>
-                    <button type="button" ref={gapCapsuleRef} aria-label={displayGap ? t(displayGap.ahead ? "notes.rolling_gap_ahead_value0" : "notes.rolling_gap_value0", { value0: displayGap.days }) : ""} onClick={() => { if (peekUsed.current) { peekUsed.current = false; return; } const relative = useUi.getState().relativeFilter; if (relative) useUi.getState().setRelativeFilter({ ...relative, direction: 'edit' }); else { const key = latestEdit?.key; if (key) useUi.getState().setDateFilter({ start: key, end: key }); } }} className={cn('shrink-0 rounded-full px-1.5 py-px text-[9px] font-medium transition-colors select-none', peekRange ? 'bg-[var(--accent)] text-[var(--accent-contrast)] ring-1 ring-inset ring-[var(--accent)]' : 'bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)]')}>
+                    <button type="button" ref={gapCapsuleRef} aria-label={displayGap ? t(displayGap.ahead ? "notes.rolling_gap_ahead_value0" : "notes.rolling_gap_value0", { value0: displayGap.days }) : ""} onClick={() => { if (peekUsed.current) { peekUsed.current = false; return; } const relative = useUi.getState().relativeFilter; if (relative) useUi.getState().setRelativeFilter({ ...relative, direction: 'edit' }); else { const key = latestEdit?.key; if (key) useUi.getState().setDateFilter({ start: key, end: key }); } }} className={cn('shrink-0 rounded-full px-1.5 py-px text-[length:var(--text-9)] font-medium transition-colors select-none', peekRange ? 'bg-[var(--accent)] text-[var(--accent-contrast)] ring-1 ring-inset ring-[var(--accent)]' : 'bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)]')}>
                       {displayGap ? t(displayGap.ahead ? "notes.rolling_gap_ahead_short_value0" : "notes.rolling_gap_short_value0", { value0: displayGap.days }) : ""}
                     </button>
                   </Tooltip>)}
@@ -514,7 +514,7 @@ export function NoteList() {
                   </button>
                 </Tooltip>
               </span>)}
-            {selectedTags.length > 0 && (<span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[11px] text-[var(--text-secondary)]">
+            {selectedTags.length > 0 && (<span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]">
                 <Hash size={11} className="shrink-0 text-[var(--text-quaternary)]"/>
                 <span className="flex shrink-0 items-center">
                     {selectedTags.slice(0, 5).map((tag) => (<span key={tag} aria-hidden="true" className="size-[7px] rounded-full ring-1 ring-[var(--border-subtle)] first:ml-0 -ml-0.5" style={{ backgroundColor: tagColors.get(tag) ?? 'var(--text-quaternary)' }}/>))}
@@ -526,7 +526,7 @@ export function NoteList() {
                   </button>
                 </Tooltip>
               </span>)}
-            {filter && (<span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[11px] text-[var(--text-secondary)]">
+            {filter && (<span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]">
                 <Search size={10} className="shrink-0 text-[var(--text-quaternary)]"/>
                 <span className="max-w-36 truncate">{t("notes.search_query_value0", { value0: filter })}</span>
                 <Tooltip label={t("notes.clear_search_query")}>
@@ -549,12 +549,12 @@ export function NoteList() {
             </Tooltip>
           </div>)}
 
-        {view === 'trash' && notes.length > 0 && (<button type="button" disabled={isEmptyingTrash} aria-busy={isEmptyingTrash} onClick={() => void emptyTrash()} className="mt-2 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] py-1.5 text-[11.5px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)] disabled:pointer-events-none disabled:opacity-50">{t("notes.empty_trash")}{notes.length}{t("notes.notes_93aeb9")}</button>)}
+        {view === 'trash' && notes.length > 0 && (<button type="button" disabled={isEmptyingTrash} aria-busy={isEmptyingTrash} onClick={() => void emptyTrash()} className="mt-2 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] py-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)] disabled:pointer-events-none disabled:opacity-50">{t("notes.empty_trash")}{notes.length}{t("notes.notes_93aeb9")}</button>)}
       </header>
 
       <div key={`${view}:${folderId ?? ''}:${tag ?? ''}`} ref={listRef} role="listbox" aria-label={title} aria-multiselectable="true" aria-activedescendant={activeNoteId && renderedIds.has(activeNoteId) ? `note-option-${activeNoteId}` : undefined} tabIndex={0} onKeyDown={onKeyDown} className="anim-view-content min-h-0 flex-1 overflow-y-auto px-2 pb-4 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
         {!hydrated && loading ? (<NoteListSkeleton />        ) : filteredCount === 0 ? (<ListEmpty view={view} folderId={folderId} filtering={Boolean(filter)} dayFiltering={Boolean(dateFilter)} tagFiltering={selectedTags.length > 0} latestEdit={latestEdit} onJumpToLatest={() => { if (latestEdit) applyFixedRange({ start: latestEdit.key, end: latestEdit.key }); }} weekFiltered={weekFiltered} onJumpToLatestWeek={() => { if (latestWeekRange) applyFixedRange(latestWeekRange); }}/>) : (groups.map((group) => (<div key={group.key} role="group" aria-label={group.label ?? title}>
-              {group.label && (<div className="px-2 pt-3 pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+              {group.label && (<div className="px-2 pt-3 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
                   {group.label}
                 </div>)}
               <div role="presentation" className="space-y-px">

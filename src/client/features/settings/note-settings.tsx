@@ -43,19 +43,19 @@ export function NoteSettings() {
               onChange={(e) => setTemplate(e.target.value)}
               rows={10}
               spellCheck={false}
-              className="w-full font-mono text-[12.5px]"
+              className="w-full font-mono text-[length:var(--text-12\.5)]"
             />
             <Button size="sm" variant="ghost" onClick={restoreDefault}>
               {t("settings.restore_default_template")}
             </Button>
           </div>
         </SettingRow>
-        <p className="pt-3 text-[11.5px] leading-relaxed text-[var(--text-quaternary)]">
+        <p className="pt-3 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-quaternary)]">
           {t("settings.new_note_template_hint")}
         </p>
 
         <div className="mt-4">
-          <h3 className="mb-1.5 text-[11px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+          <h3 className="mb-1.5 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
             {t("settings.new_note_template_preview")}
           </h3>
           <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -63,19 +63,19 @@ export function NoteSettings() {
             <Input aria-label={t("settings.template_preview_folder")} placeholder={t("settings.template_preview_folder")} value={demoFolder} onChange={(e) => setDemoFolder(e.target.value)}/>
             <Input aria-label={t("settings.template_preview_tag")} placeholder={t("settings.template_preview_tag")} value={demoTag} onChange={(e) => setDemoTag(e.target.value)}/>
           </div>
-          <pre className="max-h-52 overflow-auto whitespace-pre rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3 font-mono text-[12px] leading-relaxed text-[var(--text-secondary)]">{preview.cursor === null ? preview.content : (<>
+          <pre className="max-h-52 overflow-auto whitespace-pre rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3 font-mono text-[length:var(--text-12)] leading-relaxed text-[var(--text-secondary)]">{preview.cursor === null ? preview.content : (<>
               {preview.content.slice(0, preview.cursor)}
               <span aria-hidden="true" className="mx-px inline-block h-3.5 w-[2px] animate-pulse rounded-full bg-[var(--accent)] align-middle"/>
               {preview.content.slice(preview.cursor)}
             </>)}</pre>
-          {hasContextualPlaceholders && (<p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-quaternary)]">
+          {hasContextualPlaceholders && (<p className="mt-1.5 text-[length:var(--text-11)] leading-relaxed text-[var(--text-quaternary)]">
               {t("settings.template_preview_context")}
             </p>)}
         </div>
       </section>
 
       <section>
-        <h3 className="mb-1 text-[11px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+        <h3 className="mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
           {t("settings.title_sync")}
         </h3>
 

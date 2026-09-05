@@ -42,7 +42,7 @@ export interface MonthGridProps {
 export function MonthGrid({ year, month, weekStart = 1, weekdayLabels, todayKey, className, ariaLabel, onKeyDown, onMouseDown, onMouseUp, onMouseEnter, renderCell }: MonthGridProps) {
     const cells = useMemo(() => buildMonthGridCells(year, month, weekStart, todayKey), [year, month, weekStart, todayKey]);
     return (<div role="group" aria-label={ariaLabel} onKeyDown={onKeyDown} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseEnter={onMouseEnter} className={cn('grid grid-cols-7 gap-[2px] select-none', className)}>
-        {weekdayLabels.map((label, index) => (<div key={index} className="flex items-center justify-center text-[9px] font-medium text-[var(--text-quaternary)]">
+        {weekdayLabels.map((label, index) => (<div key={index} className="flex items-center justify-center text-[length:var(--text-9)] font-medium text-[var(--text-quaternary)]">
             {label}
         </div>))}
         {cells.map((cell) => (<Fragment key={cell.key}>{renderCell(cell)}</Fragment>))}

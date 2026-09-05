@@ -29,13 +29,13 @@ export function BlogHubToolbar({
   const currentFolder = folders.find((f) => f.id === folderId)
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[12.5px]">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[length:var(--text-12\.5)]">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center rounded-[var(--r-md)] bg-[var(--bg-base)] p-0.5 border border-[var(--border-default)]">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
-            className={`rounded-[var(--r-sm)] px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
+            className={`rounded-[var(--r-sm)] px-2.5 py-1 text-[length:var(--text-11\.5)] font-medium transition-colors ${
               statusFilter === 'all'
                 ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
@@ -46,7 +46,7 @@ export function BlogHubToolbar({
           <button
             type="button"
             onClick={() => setStatusFilter('published')}
-            className={`rounded-[var(--r-sm)] px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
+            className={`rounded-[var(--r-sm)] px-2.5 py-1 text-[length:var(--text-11\.5)] font-medium transition-colors ${
               statusFilter === 'published'
                 ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
@@ -57,7 +57,7 @@ export function BlogHubToolbar({
           <button
             type="button"
             onClick={() => setStatusFilter('draft')}
-            className={`rounded-[var(--r-sm)] px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
+            className={`rounded-[var(--r-sm)] px-2.5 py-1 text-[length:var(--text-11\.5)] font-medium transition-colors ${
               statusFilter === 'draft'
                 ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
@@ -68,7 +68,7 @@ export function BlogHubToolbar({
         </div>
 
         {currentFolder && (
-          <span className="flex items-center gap-1 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] px-2.5 py-1 text-[11px] font-medium">
+          <span className="flex items-center gap-1 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] px-2.5 py-1 text-[length:var(--text-11)] font-medium">
             <FolderClosed size={11} />
             <span>{currentFolder.name}</span>
             <button
@@ -82,7 +82,7 @@ export function BlogHubToolbar({
         )}
 
         {tag && (
-          <span className="flex items-center gap-1 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] px-2.5 py-1 text-[11px] font-medium">
+          <span className="flex items-center gap-1 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] px-2.5 py-1 text-[length:var(--text-11)] font-medium">
             <Hash size={11} />
             <span>{tag}</span>
             <button
@@ -101,7 +101,7 @@ export function BlogHubToolbar({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('blog.search_posts_placeholder')}
-            className="h-8 text-[12px]"
+            className="h-8 text-[length:var(--text-12)]"
           />
         </div>
       </div>

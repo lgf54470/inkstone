@@ -65,7 +65,7 @@ export function FolderTemplateModal({
               placeholder={t('templates.search_templates')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)] py-1.5 pl-8 pr-3 text-[13px] outline-none transition-colors focus:border-[var(--accent)]"
+              className="w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)] py-1.5 pl-8 pr-3 text-[length:var(--text-13)] outline-none transition-colors focus:border-[var(--accent)]"
             />
           </div>
         )}
@@ -83,7 +83,7 @@ export function FolderTemplateModal({
                 <FileText size={14} />
               </span>
               <div className="min-w-0">
-                <div className="truncate text-[13px] font-medium text-[var(--text-primary)]">
+                <div className="truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
                   {t('folders.no_template')}
                 </div>
               </div>
@@ -108,11 +108,11 @@ export function FolderTemplateModal({
                     <LayoutTemplate size={14} />
                   </span>
                   <div className="min-w-0">
-                    <div className="truncate text-[13px] font-medium text-[var(--text-primary)]">
+                    <div className="truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
                       {tmpl.name}
                     </div>
                     {tmpl.description && (
-                      <div className="truncate text-[11px] text-[var(--text-quaternary)]">
+                      <div className="truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]">
                         {tmpl.description}
                       </div>
                     )}

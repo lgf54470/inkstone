@@ -38,7 +38,7 @@ export function MoveToFolderSubmenu({
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div className="px-2 pt-1 pb-1.5 text-[12.5px] font-medium text-[var(--text-secondary)]">
+      <div className="px-2 pt-1 pb-1.5 text-[length:var(--text-12\.5)] font-medium text-[var(--text-secondary)]">
         {t('folders.move_to_header')}
       </div>
 
@@ -57,7 +57,7 @@ export function MoveToFolderSubmenu({
                 closeMenu();
               }
             }}
-            className="w-full bg-transparent pr-6 text-[12.5px] text-[var(--text-primary)] outline-none"
+            className="w-full bg-transparent pr-6 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none"
           />
           <Search
             size={14}
@@ -75,7 +75,7 @@ export function MoveToFolderSubmenu({
               onSelectFolder(null);
               closeMenu();
             }}
-            className="flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[12.5px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+            className="flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12\.5)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           >
             <FolderMinus size={13} className="shrink-0 text-[var(--text-tertiary)]" />
             <span className="min-w-0 flex-1 truncate">{t('notes.remove_from_folder')}</span>
@@ -93,7 +93,7 @@ export function MoveToFolderSubmenu({
                 closeMenu();
               }}
               className={cn(
-                'group flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[12.5px] transition-colors',
+                'group flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12\.5)] transition-colors',
                 isSelected
                   ? 'bg-[var(--accent-soft)] font-medium text-[var(--text-primary)]'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
@@ -104,7 +104,7 @@ export function MoveToFolderSubmenu({
                 style={{ color: folder.color ?? 'var(--text-tertiary)' }}
               >
                 {folder.icon ? (
-                  <span className="text-[12px] leading-none">{folder.icon}</span>
+                  <span className="text-[length:var(--text-12)] leading-none">{folder.icon}</span>
                 ) : (
                   <FolderClosed size={13} />
                 )}
@@ -116,7 +116,7 @@ export function MoveToFolderSubmenu({
         })}
 
         {choices.length === 0 && (
-          <div className="px-2 py-5 text-center text-[12px] text-[var(--text-quaternary)]">
+          <div className="px-2 py-5 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
             {t('folders.no_match')}
           </div>
         )}
@@ -133,7 +133,7 @@ export function MoveToFolderSubmenu({
             closeMenu();
             onCreateNew();
           }}
-          className="flex w-full items-center gap-2 whitespace-nowrap rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[12.5px] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
+          className="flex w-full items-center gap-2 whitespace-nowrap rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12\.5)] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
         >
           <FolderPlus size={13} className="shrink-0 text-[var(--text-tertiary)]" />
           <span className="truncate">{t('folders.create_new')}</span>
@@ -145,7 +145,7 @@ export function MoveToFolderSubmenu({
             closeMenu();
             onManageFolders();
           }}
-          className="flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[12.5px] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
+          className="flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12\.5)] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
         >
           <Settings2 size={13} className="shrink-0 text-[var(--text-tertiary)]" />
           <span>{t('folders.manage_folders')}</span>
