@@ -119,11 +119,7 @@ function advanceColumnOffset(state: ColumnOffsetState, line: string, i: number):
   }
 }
 
-export function parseMarkdownTable(
-  lines: string[],
-  targetLineIndex: number,
-  characterOffset = 0,
-): ParsedTable | null {
+export function parseMarkdownTable(lines: string[], targetLineIndex: number, characterOffset = 0): ParsedTable | null {
   if (targetLineIndex < 0 || targetLineIndex >= lines.length) return null;
   const currentLine = lines[targetLineIndex] ?? '';
   if (!currentLine.includes('|')) return null;
@@ -185,13 +181,7 @@ function findDelimiterLine(lines: string[], startLine: number, endLine: number):
   return -1;
 }
 
-function collectTableRows(
-  lines: string[],
-  delimiterLineIndex: number,
-  endLine: number,
-  headerLen: number,
-  delimiterLen: number,
-): { rows: string[][]; columnCount: number } {
+function collectTableRows(lines: string[], delimiterLineIndex: number, endLine: number, headerLen: number, delimiterLen: number): { rows: string[][]; columnCount: number } {
   let columnCount = Math.max(headerLen, delimiterLen, 1);
   const rows: string[][] = [];
   for (let i = delimiterLineIndex + 1; i <= endLine; i++) {
@@ -202,11 +192,7 @@ function collectTableRows(
   return { rows, columnCount };
 }
 
-function buildHeaderAndAlignments(
-  rawHeaders: string[],
-  rawDelimiters: string[],
-  columnCount: number,
-): { headerRow: string[]; alignments: ColumnAlignment[] } {
+function buildHeaderAndAlignments(rawHeaders: string[], rawDelimiters: string[], columnCount: number): { headerRow: string[]; alignments: ColumnAlignment[] } {
   const headerRow: string[] = [];
   const alignments: ColumnAlignment[] = [];
   for (let c = 0; c < columnCount; c++) {
@@ -226,11 +212,7 @@ function padRows(rows: string[][], columnCount: number): string[][] {
   });
 }
 
-export function insertTableRow(
-  table: ParsedTable,
-  rowIndex: number,
-  position: 'above' | 'below',
-): ParsedTable {
+export function insertTableRow(table: ParsedTable, rowIndex: number, position: 'above' | 'below'): ParsedTable {
   const newRow = new Array<string>(table.columnCount).fill('');
   const rows = [...table.rows.map((r) => [...r])];
 
@@ -286,11 +268,7 @@ export function deleteTableRow(table: ParsedTable, rowIndex: number): ParsedTabl
   };
 }
 
-export function insertTableColumn(
-  table: ParsedTable,
-  colIndex: number,
-  position: 'left' | 'right',
-): ParsedTable {
+export function insertTableColumn(table: ParsedTable, colIndex: number, position: 'left' | 'right'): ParsedTable {
   const insertIndex = position === 'left' ? colIndex : colIndex + 1;
   const columnCount = table.columnCount + 1;
 
@@ -335,11 +313,7 @@ export function deleteTableColumn(table: ParsedTable, colIndex: number): ParsedT
   };
 }
 
-export function setColumnAlignment(
-  table: ParsedTable,
-  colIndex: number,
-  align: ColumnAlignment,
-): ParsedTable {
+export function setColumnAlignment(table: ParsedTable, colIndex: number, align: ColumnAlignment): ParsedTable {
   if (colIndex < 0 || colIndex >= table.columnCount) return table;
   const alignments = [...table.alignments];
   alignments[colIndex] = align;
@@ -399,12 +373,7 @@ export function tableToCsv(table: ParsedTable): string {
   return lines.join('\n');
 }
 
-export function updateTableCell(
-  table: ParsedTable,
-  rowIndex: number,
-  colIndex: number,
-  newContent: string,
-): ParsedTable {
+export function updateTableCell(table: ParsedTable, rowIndex: number, colIndex: number, newContent: string): ParsedTable {
   if (colIndex < 0 || colIndex >= table.columnCount) return table;
   const safeContent = newContent.replace(/\|/g, '\\|');
 
@@ -433,11 +402,7 @@ export function updateTableCell(
   return table;
 }
 
-export function sortTableRowByColumn(
-  table: ParsedTable,
-  colIndex: number,
-  direction: 'asc' | 'desc',
-): ParsedTable {
+export function sortTableRowByColumn(table: ParsedTable, colIndex: number, direction: 'asc' | 'desc'): ParsedTable {
   if (colIndex < 0 || colIndex >= table.columnCount) return table;
 
   const sortedRows = [...table.rows].sort((rowA, rowB) => {
@@ -465,10 +430,7 @@ export function sortTableRowByColumn(
   };
 }
 
-export function duplicateTableRow(
-  table: ParsedTable,
-  rowIndex: number,
-): ParsedTable {
+export function duplicateTableRow(table: ParsedTable, rowIndex: number): ParsedTable {
   if (rowIndex < 0 || rowIndex >= table.rows.length) return table;
   const sourceRow = table.rows[rowIndex]!;
   const newRow = [...sourceRow];
@@ -482,18 +444,11 @@ export function duplicateTableRow(
   };
 }
 
-export function clearTableCell(
-  table: ParsedTable,
-  rowIndex: number,
-  colIndex: number,
-): ParsedTable {
+export function clearTableCell(table: ParsedTable, rowIndex: number, colIndex: number): ParsedTable {
   return updateTableCell(table, rowIndex, colIndex, '');
 }
 
-export function clearTableRow(
-  table: ParsedTable,
-  rowIndex: number,
-): ParsedTable {
+export function clearTableRow(table: ParsedTable, rowIndex: number): ParsedTable {
   if (rowIndex === -1) {
     return {
       ...table,
