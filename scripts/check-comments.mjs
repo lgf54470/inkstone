@@ -236,7 +236,7 @@ const allowed = new Map([
     "/* Divider */",
     "/* Actions */",
   ]],
-  ["src/client/features/graph/graph-panel.tsx", [
+  ["src/client/features/graph/graph-panel/index.tsx", [
     "// Notes created from unresolved nodes land in the graph's folder scope so",
     "// they inherit the folder name for the `{{folder}}` template placeholder.",
     "// Private browsing or a locked-down browser can reject local preferences.",
