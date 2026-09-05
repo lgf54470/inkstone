@@ -672,10 +672,27 @@
   "src/worker/routes/mcp-authorize.ts": {
     "longFns": 2
   },
-  "src/worker/routes/notes.ts": {
-    "lines": 1284,
-    "longFns": 9,
+  "src/worker/routes/notes/create.ts": {
+    "longFns": 2
+  },
+  "src/worker/routes/notes/edit.ts": {
+    "longFns": 2
+  },
+  "src/worker/routes/notes/helpers.ts": {
+    "longFns": 1
+  },
+  "src/worker/routes/notes/lifecycle.ts": {
+    "longFns": 4,
     "deepFns": 1
+  },
+  "src/worker/routes/notes/list.ts": {
+    "longFns": 2
+  },
+  "src/worker/routes/notes/trash.ts": {
+    "longFns": 2
+  },
+  "src/worker/routes/notes/versions.ts": {
+    "longFns": 2
   },
   "src/worker/routes/search.ts": {
     "lines": 657,

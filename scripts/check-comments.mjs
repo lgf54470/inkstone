@@ -1085,17 +1085,21 @@ const allowed = new Map([
   ["src/worker/routes/mcp-settings.ts", [
     "// Kick off the first batch immediately; the rest is drained by the cron.",
   ]],
-  ["src/worker/routes/notes.ts", [
-    "// COUNT(*) over the view predicate is only needed on the first page (the",
-    "// client never re-reads `total` once paging starts); deep pages skip it so",
-    "// the cost does not grow with every deleted row the index has to walk.",
+  ["src/worker/routes/notes/edit.ts", [
     "// The SQL SET fragments derive from the same patches list that answers",
     "// the local row projection, so the two can never drift apart.",
+  ]],
+  ["src/worker/routes/notes/helpers.ts", [
     "// Read every candidate once in a single batched query instead of one SELECT",
     "// per candidate; the guarded UPDATE still catches concurrent edits and only",
     "// conflicting candidates get a fresh single-row read on retry.",
     "// The guarded write was lost to a concurrent edit: re-read just this",
     "// note and retry with fresh state.",
+  ]],
+  ["src/worker/routes/notes/list.ts", [
+    "// COUNT(*) over the view predicate is only needed on the first page (the",
+    "// client never re-reads `total` once paging starts); deep pages skip it so",
+    "// the cost does not grow with every deleted row the index has to walk.",
   ]],
   ["src/worker/routes/search.ts", [
     "// Drain synchronously (up to the read-path cap) before querying: a search",
