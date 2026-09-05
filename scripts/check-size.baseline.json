@@ -1,0 +1,667 @@
+{
+  "src/client/components/activity-calendar.test.ts": {
+    "longFns": 3
+  },
+  "src/client/components/activity-calendar.tsx": {
+    "lines": 673,
+    "longFns": 1,
+    "deepFns": 2
+  },
+  "src/client/components/date-range-popover.tsx": {
+    "longFns": 1
+  },
+  "src/client/components/feedback.test.ts": {
+    "longFns": 1
+  },
+  "src/client/components/feedback.tsx": {
+    "longFns": 1
+  },
+  "src/client/components/form.tsx": {
+    "deepFns": 1
+  },
+  "src/client/components/hub-folder-item.tsx": {
+    "longFns": 1
+  },
+  "src/client/components/overlay.tsx": {
+    "lines": 684,
+    "longFns": 4,
+    "deepFns": 2
+  },
+  "src/client/components/tag-filter-popover.tsx": {
+    "longFns": 1
+  },
+  "src/client/demo/backend.ts": {
+    "lines": 2197,
+    "longFns": 10,
+    "deepFns": 4
+  },
+  "src/client/demo/state.ts": {
+    "longFns": 1
+  },
+  "src/client/editor/code-editor.tsx": {
+    "longFns": 2
+  },
+  "src/client/editor/commands.test.ts": {
+    "longFns": 1
+  },
+  "src/client/editor/commands.ts": {
+    "lines": 857,
+    "longFns": 2,
+    "deepFns": 2
+  },
+  "src/client/editor/completion.ts": {
+    "longFns": 1
+  },
+  "src/client/editor/decorations.ts": {
+    "longFns": 1
+  },
+  "src/client/editor/link-hover-plugin.test.ts": {
+    "longFns": 1
+  },
+  "src/client/editor/link-hover-plugin.ts": {
+    "longFns": 1
+  },
+  "src/client/editor/paste.ts": {
+    "longFns": 4,
+    "deepFns": 1
+  },
+  "src/client/features/attachments/attachment-drive-modal.tsx": {
+    "lines": 577,
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/client/features/attachments/attachment-drive-sidebar.tsx": {
+    "lines": 777,
+    "longFns": 2
+  },
+  "src/client/features/attachments/attachment-drive-toolbar.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/attachments/attachment-inspector.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/attachments/attachment-store.ts": {
+    "longFns": 1
+  },
+  "src/client/features/auth/login-page.tsx": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/client/features/blog/blog-batch-bar.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-categories-modal.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-comments-view.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-dashboard-view.tsx": {
+    "lines": 584,
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-grid-view.tsx": {
+    "lines": 503,
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-hub-modal.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-hub-sidebar.tsx": {
+    "lines": 558,
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-note-submenu.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-publish-modal.tsx": {
+    "lines": 524,
+    "longFns": 2
+  },
+  "src/client/features/blog/blog-settings-modal.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-store.ts": {
+    "lines": 672,
+    "longFns": 2
+  },
+  "src/client/features/blog/blog-table-view.tsx": {
+    "lines": 510,
+    "longFns": 2
+  },
+  "src/client/features/command/command-palette.tsx": {
+    "lines": 683,
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/client/features/command/shortcuts-panel.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/command/shortcuts-panel.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/folders/manage-folders-modal.tsx": {
+    "lines": 588,
+    "longFns": 1
+  },
+  "src/client/features/graph/graph-panel.tsx": {
+    "lines": 756,
+    "longFns": 3,
+    "deepFns": 1
+  },
+  "src/client/features/list/note-list.tsx": {
+    "lines": 654,
+    "longFns": 1
+  },
+  "src/client/features/list/note-list/bulk-bar.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/list/note-list/note-row.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/preview/card-content.ts": {
+    "longFns": 2
+  },
+  "src/client/features/preview/file-preview-modal.tsx": {
+    "lines": 629,
+    "longFns": 1
+  },
+  "src/client/features/preview/js-runner.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/preview/js-runner.ts": {
+    "longFns": 2
+  },
+  "src/client/features/preview/link-hover.test.ts": {
+    "longFns": 2
+  },
+  "src/client/features/preview/link-hover.ts": {
+    "longFns": 1
+  },
+  "src/client/features/preview/note-properties-editor.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/preview/outline.test.ts": {
+    "longFns": 2
+  },
+  "src/client/features/preview/outline.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/preview/pinned-windows-layer.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/preview/preview.tsx": {
+    "lines": 827,
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/client/features/preview/table-interactive.ts": {
+    "longFns": 3,
+    "deepFns": 1
+  },
+  "src/client/features/preview/wiki-link-hover-card.tsx": {
+    "lines": 516,
+    "longFns": 1
+  },
+  "src/client/features/settings/account-settings.tsx": {
+    "longFns": 3
+  },
+  "src/client/features/settings/avatar-picker.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/settings/backup-presets.ts": {
+    "longFns": 1
+  },
+  "src/client/features/settings/backup-settings.tsx": {
+    "lines": 577,
+    "longFns": 2
+  },
+  "src/client/features/settings/data-settings.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/settings/editor-settings.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/settings/mcp-settings.tsx": {
+    "lines": 663,
+    "longFns": 1
+  },
+  "src/client/features/settings/sync-settings.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/settings/totp-settings.tsx": {
+    "lines": 557,
+    "longFns": 1
+  },
+  "src/client/features/share/share-batch-bar.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/share/share-dashboard-view.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/share/share-edit-modal.tsx": {
+    "lines": 559,
+    "longFns": 1
+  },
+  "src/client/features/share/share-grid-view.tsx": {
+    "lines": 513,
+    "longFns": 1
+  },
+  "src/client/features/share/share-hub-modal.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/share/share-hub-sidebar.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/share/share-note-submenu.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/share/share-page.tsx": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/client/features/share/share-panel.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/share/share-settings-modal.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/share/share-store.ts": {
+    "lines": 629,
+    "longFns": 2
+  },
+  "src/client/features/share/share-table-view.tsx": {
+    "lines": 555,
+    "longFns": 1
+  },
+  "src/client/features/share/share-visit-logs-modal.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/shell/app-shell.tsx": {
+    "longFns": 3
+  },
+  "src/client/features/sidebar/sidebar-calendar.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/sidebar/sidebar/sidebar-folders.tsx": {
+    "lines": 528,
+    "longFns": 2
+  },
+  "src/client/features/sidebar/sidebar/sidebar-tags.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/tags/manage-tags-modal.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/tags/tag-mutations.ts": {
+    "longFns": 1
+  },
+  "src/client/features/templates/template-gallery.tsx": {
+    "lines": 1227,
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/client/features/workspace/context-menu-detect.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/workspace/context-menu-detect.ts": {
+    "lines": 543,
+    "longFns": 2
+  },
+  "src/client/features/workspace/context-menu/canvas.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/workspace/context-menu/structure.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/workspace/context-menu/table.tsx": {
+    "longFns": 2
+  },
+  "src/client/features/workspace/editor-context-menu.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/workspace/editor-toolbar.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/workspace/sync-scroll.ts": {
+    "longFns": 2
+  },
+  "src/client/features/workspace/versions-panel.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/workspace/workspace.tsx": {
+    "lines": 625,
+    "longFns": 1
+  },
+  "src/client/lib/api.ts": {
+    "lines": 847,
+    "longFns": 1,
+    "deepFns": 2
+  },
+  "src/client/lib/backup-import.ts": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/client/lib/calendar-tree.test.ts": {
+    "lines": 910,
+    "longFns": 6,
+    "deepFns": 1
+  },
+  "src/client/lib/calendar-tree.ts": {
+    "lines": 804,
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/client/lib/db-cache-spec.ts": {
+    "longFns": 5
+  },
+  "src/client/lib/db-multitab.idb.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/db-shell.idb.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/db-shell.test.ts": {
+    "longFns": 2
+  },
+  "src/client/lib/db.ts": {
+    "lines": 826,
+    "longFns": 4,
+    "deepFns": 3
+  },
+  "src/client/lib/export-folder.test.ts": {
+    "longFns": 2
+  },
+  "src/client/lib/export-folder.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/export-note.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/export-note.ts": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/client/lib/markdown/code-formatter.ts": {
+    "longFns": 4,
+    "deepFns": 3
+  },
+  "src/client/lib/markdown/embeds.ts": {
+    "longFns": 2,
+    "deepFns": 3
+  },
+  "src/client/lib/markdown/enhance.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/enhance.ts": {
+    "lines": 636,
+    "longFns": 2,
+    "deepFns": 3
+  },
+  "src/client/lib/markdown/renderer.test.ts": {
+    "longFns": 2
+  },
+  "src/client/lib/markdown/renderer.ts": {
+    "lines": 1454,
+    "longFns": 5,
+    "deepFns": 5
+  },
+  "src/client/lib/markdown/table-editor.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/table-editor.ts": {
+    "longFns": 1,
+    "deepFns": 2
+  },
+  "src/client/lib/note-filter.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/note-filter.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/note-persist.test.ts": {
+    "longFns": 3
+  },
+  "src/client/lib/sync.ts": {
+    "longFns": 2
+  },
+  "src/client/lib/tag-tree.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/tag-tree.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/client/store/note-templates.ts": {
+    "longFns": 2
+  },
+  "src/client/store/notes.test.ts": {
+    "longFns": 1
+  },
+  "src/client/store/notes.ts": {
+    "lines": 1219,
+    "longFns": 9,
+    "deepFns": 5
+  },
+  "src/client/store/notes/acknowledge.ts": {
+    "longFns": 1
+  },
+  "src/client/store/notes/outbox.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/client/store/notes/persist.ts": {
+    "longFns": 1
+  },
+  "src/client/store/notes/selectors.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/client/store/notes/sync.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/client/store/pinned-windows.ts": {
+    "longFns": 1
+  },
+  "src/client/store/session.ts": {
+    "longFns": 3,
+    "deepFns": 1
+  },
+  "src/client/store/ui.ts": {
+    "lines": 677,
+    "longFns": 2
+  },
+  "src/client/store/update.ts": {
+    "longFns": 1
+  },
+  "src/shared/backup-format.ts": {
+    "longFns": 1
+  },
+  "src/shared/constants.test.ts": {
+    "longFns": 1
+  },
+  "src/shared/constants.ts": {
+    "longFns": 1
+  },
+  "src/shared/locales/en-US.ts": {
+    "lines": 3382
+  },
+  "src/shared/locales/zh-CN.ts": {
+    "lines": 3382
+  },
+  "src/shared/markdown-utils.ts": {
+    "lines": 958,
+    "longFns": 2,
+    "deepFns": 3
+  },
+  "src/shared/note-templates.test.ts": {
+    "longFns": 2
+  },
+  "src/shared/types.ts": {
+    "lines": 1065
+  },
+  "src/shared/zip.ts": {
+    "longFns": 2
+  },
+  "src/worker/app.ts": {
+    "longFns": 1
+  },
+  "src/worker/attachments/cleanup.ts": {
+    "longFns": 1
+  },
+  "src/worker/attachments/storage.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/worker/backup/engine.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/worker/backup/s3.ts": {
+    "longFns": 2,
+    "deepFns": 2
+  },
+  "src/worker/backup/scheduler.ts": {
+    "longFns": 1
+  },
+  "src/worker/backup/snapshot.ts": {
+    "lines": 637,
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/worker/backup/webdav.ts": {
+    "longFns": 1,
+    "deepFns": 2
+  },
+  "src/worker/db/fts.ts": {
+    "longFns": 1
+  },
+  "src/worker/db/schema.ts": {
+    "lines": 1318
+  },
+  "src/worker/db/writes.ts": {
+    "longFns": 1
+  },
+  "src/worker/import/attachments.ts": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/worker/import/backup.ts": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/worker/import/bundle.ts": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/worker/import/folders.ts": {
+    "longFns": 1
+  },
+  "src/worker/import/markdown.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/worker/import/notes.ts": {
+    "longFns": 2
+  },
+  "src/worker/import/zip.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/worker/lib/scoped-organizer.ts": {
+    "deepFns": 1
+  },
+  "src/worker/lib/totp-service.ts": {
+    "lines": 702,
+    "longFns": 5
+  },
+  "src/worker/lib/update-check.ts": {
+    "longFns": 1
+  },
+  "src/worker/mcp/ai-search.ts": {
+    "longFns": 1
+  },
+  "src/worker/mcp/library.ts": {
+    "lines": 1344,
+    "longFns": 5,
+    "deepFns": 1
+  },
+  "src/worker/mcp/oauth.ts": {
+    "longFns": 1
+  },
+  "src/worker/mcp/operations.ts": {
+    "longFns": 1
+  },
+  "src/worker/mcp/retrieval.ts": {
+    "lines": 540,
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/worker/mcp/server.ts": {
+    "lines": 1058,
+    "longFns": 1
+  },
+  "src/worker/mcp/writes.ts": {
+    "lines": 527,
+    "longFns": 3
+  },
+  "src/worker/middleware/auth.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/worker/routes/auth.ts": {
+    "longFns": 3
+  },
+  "src/worker/routes/backup.ts": {
+    "longFns": 1
+  },
+  "src/worker/routes/blog.ts": {
+    "lines": 1951,
+    "longFns": 9,
+    "deepFns": 6
+  },
+  "src/worker/routes/community-templates.ts": {
+    "longFns": 1
+  },
+  "src/worker/routes/files.ts": {
+    "lines": 1000,
+    "longFns": 6,
+    "deepFns": 4
+  },
+  "src/worker/routes/folders.ts": {
+    "lines": 626,
+    "longFns": 3
+  },
+  "src/worker/routes/mcp-authorize.ts": {
+    "longFns": 2
+  },
+  "src/worker/routes/notes.ts": {
+    "lines": 1284,
+    "longFns": 9,
+    "deepFns": 1
+  },
+  "src/worker/routes/search.ts": {
+    "lines": 657,
+    "longFns": 2,
+    "deepFns": 3
+  },
+  "src/worker/routes/share.ts": {
+    "lines": 1722,
+    "longFns": 10,
+    "deepFns": 6
+  },
+  "src/worker/routes/sync.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/worker/routes/tags.ts": {
+    "lines": 555,
+    "longFns": 2,
+    "deepFns": 3
+  },
+  "src/worker/routes/transfer.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  }
+}
