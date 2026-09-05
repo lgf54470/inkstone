@@ -2,8 +2,7 @@
   "src/client/components/activity-calendar.test.ts": {
     "longFns": 3
   },
-  "src/client/components/activity-calendar.tsx": {
-    "lines": 673,
+  "src/client/components/activity-calendar/index.tsx": {
     "longFns": 1,
     "deepFns": 2
   },

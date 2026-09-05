@@ -64,14 +64,18 @@ const allowed = new Map([
     "// One seven-column row of clickable weekday labels above the heat cells.",
     "// 2026-09 has the first Monday on the 7th: column 0 (Mon) filters 09-07..09-13.",
   ]],
-  ["src/client/components/activity-calendar.tsx", [
+  ["src/client/components/activity-calendar/index.tsx", [
     "// The calendar's inputs (counts, notesByDay, diary lookup) now keep their",
     "// identity whenever a notes-map commit touches none of the read fields, so a",
     "// shallow memo lets the whole heatmap subtree skip rendering on such commits",
     "// (typing pauses still legitimately rebuild today's slice and re-render).",
-    "/** Increments each time an external jump (e.g. a settings-preview click) targets the month view, triggering a fade-in + accent ring flash. */",
     "/** Reusable calendar + activity heatmap: navigable month grid, yearly month columns, and a GitHub-style weekly strip, with optional per-day note lists. */",
     "// Marks an external month jump (settings preview click) or an internal jump (week click, gap-cell follow, endpoint locate) with the same fade-in + receding accent ring.",
+  ]],
+  ["src/client/components/activity-calendar/props.ts", [
+    "/** Increments each time an external jump (e.g. a settings-preview click) targets the month view, triggering a fade-in + accent ring flash. */",
+  ]],
+  ["src/client/components/activity-calendar/range.ts", [
     "/** Convert an inclusive month range (0-11 indices within a year) to inclusive day keys. */",
   ]],
   ["src/client/components/date-range-popover.test.ts", [
