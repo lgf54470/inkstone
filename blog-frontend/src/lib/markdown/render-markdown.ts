@@ -13,6 +13,7 @@ import ruby from 'markdown-it-ruby'
 import { highlightCode } from '../prism.ts'
 import { escapeAttr, escapeHtml } from './escape.ts'
 import { slugify } from './slugify.ts'
+import { stripFrontmatter } from '../content.ts'
 import { stripObsidianComments } from './obsidian.ts'
 import { parseFenceInfo, splitHtmlIntoLines } from './fence.ts'
 import { registerBlockRules } from './rules/block.ts'
@@ -27,11 +28,7 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
   }
 
   // 1. Strip YAML frontmatter if present
-  let content = rawMarkdown
-  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/)
-  if (fmMatch) {
-    content = content.slice(fmMatch[0].length)
-  }
+  let content = stripFrontmatter(rawMarkdown)
 
   // 2. Strip Obsidian comments
   content = stripObsidianComments(content)

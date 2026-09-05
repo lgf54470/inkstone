@@ -1,5 +1,6 @@
 ---
 import type { BlogPost, BlogCategory } from '../lib/types'
+import { isSvgCoverUrl } from '../lib/content'
 
 interface Props {
   post: BlogPost
@@ -29,7 +30,7 @@ const formattedDate = new Date(post.publishedAt || post.createdAt).toLocaleDateS
         alt={post.title}
         loading="lazy"
         class={
-          post.coverUrl.toLowerCase().endsWith('.svg') || post.coverUrl.toLowerCase().includes('.svg?')
+          isSvgCoverUrl(post.coverUrl)
             ? "w-auto h-auto max-w-[80%] max-h-[80%] object-contain p-2 group-hover:scale-105 transition-transform duration-300"
             : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         }

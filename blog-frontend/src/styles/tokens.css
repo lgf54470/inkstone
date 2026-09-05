@@ -201,30 +201,49 @@
 }
 
 
+/* Accent palette — single source for light-theme accent values and drawer swatch previews */
+:root {
+  --accent-cinnabar: oklch(54% 0.15 30);
+  --accent-indigo: oklch(52% 0.14 252);
+  --accent-celadon: oklch(49% 0.13 150);
+  --accent-amber: oklch(56% 0.105 95);
+  --accent-terracotta: oklch(49% 0.075 205);
+  --accent-wisteria: oklch(52% 0.16 300);
+  --accent-graphite: oklch(38% 0.03 250);
+}
+
+.accent-swatch[data-accent='cinnabar'] { background-color: var(--accent-cinnabar); }
+.accent-swatch[data-accent='indigo'] { background-color: var(--accent-indigo); }
+.accent-swatch[data-accent='celadon'] { background-color: var(--accent-celadon); }
+.accent-swatch[data-accent='amber'] { background-color: var(--accent-amber); }
+.accent-swatch[data-accent='terracotta'] { background-color: var(--accent-terracotta); }
+.accent-swatch[data-accent='wisteria'] { background-color: var(--accent-wisteria); }
+.accent-swatch[data-accent='graphite'] { background-color: var(--accent-graphite); }
+
 :root[data-accent='cinnabar'][data-theme='dark'] { --accent: oklch(66.5% 0.15 32); --accent-hover: oklch(71% 0.145 32); }
-:root[data-accent='cinnabar'][data-theme='light'] { --accent: oklch(54% 0.15 30); --accent-hover: oklch(48.5% 0.155 30); }
+:root[data-accent='cinnabar'][data-theme='light'] { --accent: var(--accent-cinnabar); --accent-hover: oklch(48.5% 0.155 30); }
 
 :root[data-accent='indigo'][data-theme='dark'] { --accent: oklch(72% 0.13 252); --accent-hover: oklch(77% 0.125 252); }
-:root[data-accent='indigo'][data-theme='light'] { --accent: oklch(52% 0.14 252); --accent-hover: oklch(46% 0.13 252); }
+:root[data-accent='indigo'][data-theme='light'] { --accent: var(--accent-indigo); --accent-hover: oklch(46% 0.13 252); }
 
 :root[data-accent='celadon'][data-theme='dark'] { --accent: oklch(74% 0.12 150); --accent-hover: oklch(79% 0.115 150); }
-:root[data-accent='celadon'][data-theme='light'] { --accent: oklch(49% 0.13 150); --accent-hover: oklch(43% 0.11 150); }
+:root[data-accent='celadon'][data-theme='light'] { --accent: var(--accent-celadon); --accent-hover: oklch(43% 0.11 150); }
 
 :root[data-accent='amber'][data-theme='dark'] { --accent: oklch(80% 0.14 95); --accent-hover: oklch(85% 0.13 95); }
-:root[data-accent='amber'][data-theme='light'] { --accent: oklch(56% 0.105 95); --accent-hover: oklch(50% 0.1 95); }
+:root[data-accent='amber'][data-theme='light'] { --accent: var(--accent-amber); --accent-hover: oklch(50% 0.1 95); }
 
 :root[data-accent='terracotta'][data-theme='dark'] { --accent: oklch(76% 0.105 205); --accent-hover: oklch(81% 0.1 205); }
-:root[data-accent='terracotta'][data-theme='light'] { --accent: oklch(49% 0.075 205); --accent-hover: oklch(43% 0.07 205); }
+:root[data-accent='terracotta'][data-theme='light'] { --accent: var(--accent-terracotta); --accent-hover: oklch(43% 0.07 205); }
 
 :root[data-accent='wisteria'][data-theme='dark'] { --accent: oklch(72% 0.13 300); --accent-hover: oklch(77% 0.13 300); }
-:root[data-accent='wisteria'][data-theme='light'] { --accent: oklch(52% 0.16 300); --accent-hover: oklch(46% 0.15 300); }
+:root[data-accent='wisteria'][data-theme='light'] { --accent: var(--accent-wisteria); --accent-hover: oklch(46% 0.15 300); }
 
 :root[data-accent='graphite'][data-theme='dark'] { --accent: oklch(80% 0.025 250); --accent-hover: oklch(86% 0.02 250); }
-:root[data-accent='graphite'][data-theme='light'] { --accent: oklch(38% 0.03 250); --accent-hover: oklch(30% 0.025 250); }
+:root[data-accent='graphite'][data-theme='light'] { --accent: var(--accent-graphite); --accent-hover: oklch(30% 0.025 250); }
 
 
 :root {
-  --accent: oklch(54% 0.15 30);
+  --accent: var(--accent-cinnabar);
   --accent-hover: oklch(48.5% 0.155 30);
   --accent-contrast: oklch(99% 0 0);
   --accent-soft: color-mix(in oklab, var(--accent) 14%, transparent);

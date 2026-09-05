@@ -27,14 +27,14 @@ export const DEFAULT_APPEARANCE: AppearanceConfig = {
   lang: 'zh-CN',
 }
 
-export const ACCENT_OPTIONS: { id: AccentColor; name: string; nameEn: string; color: string }[] = [
-  { id: 'cinnabar', name: '朱砂', nameEn: 'Cinnabar', color: 'oklch(54% 0.15 30)' },
-  { id: 'indigo', name: '靛蓝', nameEn: 'Indigo', color: 'oklch(52% 0.14 252)' },
-  { id: 'celadon', name: '青瓷', nameEn: 'Celadon', color: 'oklch(49% 0.13 150)' },
-  { id: 'amber', name: '琥珀', nameEn: 'Amber', color: 'oklch(56% 0.105 95)' },
-  { id: 'terracotta', name: '黛青', nameEn: 'Terracotta', color: 'oklch(49% 0.075 205)' },
-  { id: 'wisteria', name: '紫藤', nameEn: 'Wisteria', color: 'oklch(52% 0.16 300)' },
-  { id: 'graphite', name: '石墨', nameEn: 'Graphite', color: 'oklch(38% 0.03 250)' },
+export const ACCENT_OPTIONS: { id: AccentColor; name: string; nameEn: string }[] = [
+  { id: 'cinnabar', name: '朱砂', nameEn: 'Cinnabar' },
+  { id: 'indigo', name: '靛蓝', nameEn: 'Indigo' },
+  { id: 'celadon', name: '青瓷', nameEn: 'Celadon' },
+  { id: 'amber', name: '琥珀', nameEn: 'Amber' },
+  { id: 'terracotta', name: '黛青', nameEn: 'Terracotta' },
+  { id: 'wisteria', name: '紫藤', nameEn: 'Wisteria' },
+  { id: 'graphite', name: '石墨', nameEn: 'Graphite' },
 ]
 
 const STORAGE_KEY = 'inkstone-blog-appearance'

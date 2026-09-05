@@ -159,8 +159,8 @@ export default function AppearanceDrawer() {
                     }`}
                   >
                     <span
-                      className="w-5 h-5 rounded-full shadow-xs transition-transform group-hover:scale-110 flex items-center justify-center"
-                      style={{ backgroundColor: item.color }}
+                      className="accent-swatch w-5 h-5 rounded-full shadow-xs transition-transform group-hover:scale-110 flex items-center justify-center"
+                      data-accent={item.id}
                     >
                       {active && <span className="w-1.5 h-1.5 rounded-full bg-white shadow-xs" />}
                     </span>
