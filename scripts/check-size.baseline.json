@@ -519,9 +519,11 @@
     "longFns": 3,
     "deepFns": 1
   },
-  "src/client/store/ui.ts": {
-    "lines": 677,
-    "longFns": 2
+  "src/client/store/ui/state.ts": {
+    "longFns": 1
+  },
+  "src/client/store/ui/store.ts": {
+    "longFns": 1
   },
   "src/client/store/update.ts": {
     "longFns": 1

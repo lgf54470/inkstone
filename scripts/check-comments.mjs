@@ -765,7 +765,19 @@ const allowed = new Map([
     "// they would be silently dropped. Dynamic import keeps the session",
     "// store free of a circular dependency on the notes store.",
   ]],
-  ["src/client/store/ui.ts", [
+  ["src/client/store/ui/state.ts", [
+    "// Quota or private-mode writes can throw; in-memory state stays authoritative for the session.",
+    "/** Seed the persisted-state cache from the freshly created store (avoids an initial redundant write). */",
+  ]],
+  ["src/client/store/ui/store.ts", [
+    "// Keep the multi-select when entering a folder view so it stacks with",
+    "// the folder filter; any other navigation clears the selection.",
+    "/**\n * Post a toast carrying a one-click undo action; the single helper behind every store-level undo flow.\n * `duration` overrides the default window (dangerous actions pass a longer one via their caller).\n */",
+  ]],
+  ["src/client/store/ui/theme.ts", [
+    "// The view transition can be skipped (reduced motion, interrupted navigation); the circular reveal is purely decorative.",
+  ]],
+  ["src/client/store/ui/types.ts", [
     "/** Marks an undo toast: accent icon/tint in the UI and a short vibration cue. */",
     "/** How multi-selected tags filter the note list and palette: any or all. */",
     "/** Inclusive date range (YYYY-MM-DD keys) the note list is filtered to, set from the sidebar calendar. */",
@@ -774,11 +786,6 @@ const allowed = new Map([
     "/** Sort the user left behind when entering a calendar folder view, restored on exit. */",
     "/** External jump request for the sidebar heatmap calendar (from the settings preview); consumed by SidebarCalendar. */",
     "/** Clears the full filter combo (query, date/relative, tags) with an undo toast restoring the exact previous combination. */",
-    "// Quota or private-mode writes can throw; in-memory state stays authoritative for the session.",
-    "// Keep the multi-select when entering a folder view so it stacks with",
-    "// the folder filter; any other navigation clears the selection.",
-    "/**\n * Post a toast carrying a one-click undo action; the single helper behind every store-level undo flow.\n * `duration` overrides the default window (dangerous actions pass a longer one via their caller).\n */",
-    "// The view transition can be skipped (reduced motion, interrupted navigation); the circular reveal is purely decorative.",
   ]],
   ["src/shared/constants.ts", [
     "/**\n * Session lifetime design (sliding window):\n * - `SESSION_TTL_MS` (90d): absolute cap. A session row/cookie never outlives 90 days,\n *   bounding the window in which a stolen session token stays usable.\n * - `SESSION_RENEW_BEFORE_MS` (45d = TTL/2): renewal threshold. On an authenticated\n *   request, if less than this much TTL remains, the session is extended back to the\n *   full 90 days (see middleware/auth.ts and lib/session-store.ts).\n *\n * Trade-offs: renewal only happens for requests that already presented a valid\n * session, so an abandoned session dies within at most 90 days (no idle-forever\n * sessions, maintenance sweeps the rows), while an active user never gets logged out\n * as long as they authenticate at least once per 45 days. The half-life threshold\n * also bounds write amplification: each session triggers at most one DB renewal\n * write per 45 days of activity. The 45-day window is generous enough to survive\n * the app's offline period (offline edits are queued locally and flushed on\n * reconnect, which needs a still-valid session) yet short enough that a freshly\n * stolen cookie's remaining lifetime stays bounded.\n */",
