@@ -1,4 +1,6 @@
 // Client-side interactivity for Mermaid, Chart.js, code copy, tabs, and JS runner
+import type { Chart, ChartConfiguration } from 'chart.js/auto'
+import { asRecord } from './normalize'
 
 export function initInteractiveContent() {
   if (typeof window === 'undefined') return
@@ -97,15 +99,15 @@ function initJsRunners() {
       const code = codeEl.textContent ?? ''
       const logs: Array<{ type: string; text: string }> = []
       const fakeConsole = {
-        log: (...args: any[]) => logs.push({ type: 'log', text: args.map(formatJsValue).join(' ') }),
-        info: (...args: any[]) => logs.push({ type: 'info', text: args.map(formatJsValue).join(' ') }),
-        warn: (...args: any[]) => logs.push({ type: 'warn', text: args.map(formatJsValue).join(' ') }),
-        error: (...args: any[]) => logs.push({ type: 'error', text: args.map(formatJsValue).join(' ') }),
+        log: (...args: unknown[]) => logs.push({ type: 'log', text: args.map(formatJsValue).join(' ') }),
+        info: (...args: unknown[]) => logs.push({ type: 'info', text: args.map(formatJsValue).join(' ') }),
+        warn: (...args: unknown[]) => logs.push({ type: 'warn', text: args.map(formatJsValue).join(' ') }),
+        error: (...args: unknown[]) => logs.push({ type: 'error', text: args.map(formatJsValue).join(' ') }),
       }
 
       const start = performance.now()
-      let result: any = undefined
-      let err: any = undefined
+      let result: unknown
+      let err: unknown
       try {
         const fn = new Function('console', `"use strict";\n${code}`)
         result = fn(fakeConsole)
@@ -178,12 +180,18 @@ function initJsRunners() {
   })
 }
 
-function formatJsValue(val: any): string {
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
+
+// 与根仓库 src/client/features/preview/js-runner.ts 的 formatJsValue 保持同步，改动需两处一致
+function formatJsValue(val: unknown): string {
   if (val === null) return 'null'
   if (val === undefined) return 'undefined'
   if (typeof val === 'string') return val
-  if (typeof val === 'number' || typeof val === 'boolean' || typeof val === 'bigint') return String(val)
+  if (typeof val === 'number' || typeof val === 'boolean' || typeof val === 'bigint' || typeof val === 'symbol') return String(val)
   if (typeof val === 'function') return val.toString()
+  if (val instanceof Error) return `${val.name}: ${val.message}`
   try {
     return JSON.stringify(val, null, 2)
   } catch {
@@ -216,16 +224,16 @@ async function renderMermaid() {
       block.innerHTML = svg
       block.classList.remove('loading')
       block.removeAttribute('aria-busy')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('Mermaid diagram render error:', err)
       block.classList.remove('loading')
       block.classList.add('has-error')
-      block.innerHTML = `<div class="mermaid-error"><span class="mermaid-error-message">${err?.message || err}</span><code>${raw}</code></div>`
+      block.innerHTML = `<div class="mermaid-error"><span class="mermaid-error-message">${errorMessage(err)}</span><code>${raw}</code></div>`
     }
   }
 }
 
-const chartInstances = new Map<HTMLElement, any>()
+const chartInstances = new Map<HTMLElement, Chart>()
 
 function isDarkMode(): boolean {
   if (typeof document === 'undefined') return false
@@ -258,7 +266,7 @@ async function renderCharts() {
     const raw = decodeURIComponent(block.dataset.chart || '')
     if (!raw) return
     try {
-      const config = JSON.parse(raw)
+      const config = asRecord(JSON.parse(raw))
       block.innerHTML = ''
       block.classList.remove('loading', 'has-error')
       block.removeAttribute('aria-busy')
@@ -270,15 +278,16 @@ async function renderCharts() {
       container.appendChild(canvas)
       block.appendChild(container)
 
-      const userOptions = config.options || {}
-      const userScales = userOptions.scales || {}
-      const scales: Record<string, any> = {}
+      const userOptions = asRecord(config.options)
+      const userScales = asRecord(userOptions.scales)
+      const scales: Record<string, Record<string, unknown>> = {}
       for (const [key, val] of Object.entries(userScales)) {
         if (val && typeof val === 'object') {
+          const scale = val as Record<string, unknown>
           scales[key] = {
-            ...(val as object),
-            ticks: { color: textColor, ...((val as any).ticks || {}) },
-            grid: { color: gridColor, ...((val as any).grid || {}) },
+            ...scale,
+            ticks: { color: textColor, ...asRecord(scale.ticks) },
+            grid: { color: gridColor, ...asRecord(scale.grid) },
           }
         }
       }
@@ -295,18 +304,18 @@ async function renderCharts() {
             legend: {
               labels: { color: textColor },
             },
-            ...(userOptions.plugins || {}),
+            ...asRecord(userOptions.plugins),
           },
         },
       }
 
-      const instance = new Chart(canvas, chartConfig)
+      const instance = new Chart(canvas, chartConfig as ChartConfiguration)
       chartInstances.set(block, instance)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('Chart.js render error:', err)
       block.classList.remove('loading')
       block.classList.add('has-error')
-      block.innerHTML = `<div class="chart-error-banner"><span class="chart-error-text">图表渲染失败: ${err?.message || err}</span></div><pre><code>${raw}</code></pre>`
+      block.innerHTML = `<div class="chart-error-banner"><span class="chart-error-text">图表渲染失败: ${errorMessage(err)}</span></div><pre><code>${raw}</code></pre>`
     }
   })
 }

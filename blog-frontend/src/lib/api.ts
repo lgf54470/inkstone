@@ -24,7 +24,7 @@ export { extractCoverUrl } from './normalize'
 
 export function getApiBase(): string {
   if (typeof window !== 'undefined') {
-    const custom = (window as any).__INKSTONE_API_URL__
+    const custom = window.__INKSTONE_API_URL__
     if (custom) return custom.replace(/\/+$/, '')
     const meta = document.querySelector('meta[name="inkstone-api-url"]')
     const content = meta?.getAttribute('content')

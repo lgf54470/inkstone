@@ -1,12 +1,13 @@
 import MarkdownIt from 'markdown-it'
+import type { StateBlock } from 'markdown-it'
 
-function blockLine(state: any, line: number): string {
+function blockLine(state: StateBlock, line: number): string {
   const pos = state.bMarks[line] + state.tShift[line]
   const max = state.eMarks[line]
   return state.src.slice(pos, max)
 }
 
-function findColonFenceEnd(state: any, start: number, end: number, markerLength: number): number {
+function findColonFenceEnd(state: StateBlock, start: number, end: number, markerLength: number): number {
   let fence: { char: string; length: number } | null = null
   for (let line = start; line < end; line++) {
     const text = blockLine(state, line)
@@ -22,7 +23,7 @@ function findColonFenceEnd(state: any, start: number, end: number, markerLength:
   return -1
 }
 
-function findTabSegments(state: any, start: number, end: number) {
+function findTabSegments(state: StateBlock, start: number, end: number) {
   const markers: Array<{ line: number; title: string; selected: boolean }> = []
   let fence: { char: string; length: number } | null = null
   for (let line = start; line < end; line++) {

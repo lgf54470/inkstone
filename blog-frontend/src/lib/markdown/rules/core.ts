@@ -1,10 +1,12 @@
 import MarkdownIt from 'markdown-it'
+import type { Token } from 'markdown-it'
 import { calloutDefaultTitle, normalizeCalloutType } from '../callout.ts'
 import { slugify } from '../slugify.ts'
 import type { TocHeading } from '../types.ts'
 
-function appendTokenClass(token: any, className: string): void {
-  const current = token.attrGet('class') || ''
+function appendTokenClass(token: Token, className: string): void {
+  const attr = token.attrGet('class')
+  const current = typeof attr === 'string' ? attr : ''
   const classes = current.split(/\s+/).filter(Boolean)
   if (!classes.includes(className)) {
     classes.push(className)
@@ -12,11 +14,11 @@ function appendTokenClass(token: any, className: string): void {
   }
 }
 
-function plainInline(token: any): string {
+function plainInline(token: Token): string {
   if (token.type !== 'inline' || !token.children) return token.content || ''
   return token.children
-    .filter((child: any) => ['text', 'code_inline', 'inline_tag', 'wikilink', 'block_reference'].includes(child.type))
-    .map((child: any) => child.content)
+    .filter((child) => ['text', 'code_inline', 'inline_tag', 'wikilink', 'block_reference'].includes(child.type))
+    .map((child) => child.content)
     .join('')
     .trim()
 }

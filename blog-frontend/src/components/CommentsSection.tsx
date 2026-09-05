@@ -70,8 +70,9 @@ export default function CommentsSection({ postId, allowComments = true }: Commen
       }
 
       setContent('')
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || '提交评论失败，请重试' })
+    } catch (err: unknown) {
+      const errorText = err instanceof Error ? err.message : String(err)
+      setMessage({ type: 'error', text: errorText || '提交评论失败，请重试' })
     } finally {
       setSubmitting(false)
     }
