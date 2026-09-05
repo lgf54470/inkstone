@@ -772,9 +772,13 @@ const allowed = new Map([
   ["src/shared/escape.ts", [
     "/**\n * HTML-escape untrusted text (all five metacharacters: & < > \" ').\n * Single canonical implementation shared by client and worker so escaping\n * semantics never drift between layers.\n */",
   ]],
-  ["src/shared/markdown-utils.ts", [
-    "/** Provides pure Markdown analysis shared by the browser and Worker runtimes. */",
+  ["src/shared/markdown-utils/front-matter.ts", [
     "/**\n * Update an existing front matter property in-place, keeping the body and all\n * other properties untouched. Returns the rewritten content, or `null` when\n * the content has no parseable front matter, the property does not exist, or\n * nothing changes. Passing `null` as `value` deletes the property.\n */",
+  ]],
+  ["src/shared/markdown-utils/index.ts", [
+    "/** Pure Markdown analysis shared by the browser and Worker runtimes. */",
+  ]],
+  ["src/shared/markdown-utils/templates.ts", [
     "/**\n * Fills the placeholders of a new-note template (`{{title}}`, `{{createdAt}}`,\n * `{{date}}`, `{{time}}`, `{{today}}`, `{{tomorrow}}`, `{{yesterday}}`, plus\n * contextual `{{folder}}` and `{{tags}}` values passed via `extra`). Shared by\n * the client (note creation, settings preview) and the worker (MCP\n * create_note). Values are quoted when needed so the rendered front matter\n * stays valid YAML; callers pass the resolved title (with any localized\n * fallback applied). Contextual placeholders without a value render as empty.\n */",
     "// Contextual values are inserted verbatim: `{{tags}}` commonly expands into",
     "// a flow list like `tags: [daily, reading]`, which quoting would corrupt.",

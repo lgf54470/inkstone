@@ -484,10 +484,18 @@
   "src/shared/constants.ts": {
     "longFns": 1
   },
-  "src/shared/markdown-utils.ts": {
-    "lines": 958,
-    "longFns": 2,
-    "deepFns": 3
+  "src/shared/markdown-utils/code.ts": {
+    "deepFns": 1
+  },
+  "src/shared/markdown-utils/front-matter.ts": {
+    "longFns": 1
+  },
+  "src/shared/markdown-utils/rewrite.ts": {
+    "deepFns": 1
+  },
+  "src/shared/markdown-utils/tags.ts": {
+    "longFns": 1,
+    "deepFns": 1
   },
   "src/shared/note-templates.test.ts": {
     "longFns": 2
