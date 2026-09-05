@@ -427,10 +427,6 @@
   "src/client/lib/db-shell.test.ts": {
     "longFns": 2
   },
-  "src/client/lib/db/core.ts": {
-    "longFns": 4,
-    "deepFns": 3
-  },
   "src/client/lib/export-folder.test.ts": {
     "longFns": 2
   },

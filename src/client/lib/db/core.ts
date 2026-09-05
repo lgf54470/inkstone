@@ -1,9 +1,11 @@
 import { clear as clearStore, del, getMany, set, setMany, update } from 'idb-keyval';
 import type { Folder, NoteSummary, SessionInfo, Tag } from '@shared/types';
-import { delMany, store, KEY, supportsUserNamespaces } from './keys';
+import { store, KEY, supportsUserNamespaces } from './keys';
 import type { ShellData, ShellBaseline, TemplateLibraryData, OutboxItem, CachedNoteContent } from './types';
-import { normalizeOutbox, safeGet, safeSet, userScopedKey, migrateLegacyData, mergedNoteIds, withShellIndexLock } from './store-io';
-import { summariesEqual, foldersEqual, tagsEqual, isRecord, isPublicUser, isSiteInfo, isFiniteNumber, isNoteSummary, isFolder, isTag, isNoteTemplateCategory, isNoteTemplate } from './validators';
+import { normalizeOutbox, safeGet, safeSet, userScopedKey, migrateLegacyData } from './store-io';
+import { foldersEqual, tagsEqual, isRecord, isPublicUser, isSiteInfo, isFiniteNumber, isNoteSummary, isFolder, isTag, isNoteTemplateCategory, isNoteTemplate } from './validators';
+import { collectBaselineShellWrites, collectFullShellWrites, loadIndexNotes, migrateLegacyNotes, SHELL_SET_CHUNK } from './shell-helpers';
+import { acquireOutboxReplayLease, refreshOutboxReplayLease, releaseOutboxReplayLease } from './outbox-lease';
 export 
 let shouldForceUserNamespaces = false
 export 
@@ -16,8 +18,6 @@ export
 // cached shell by one window on abrupt close), and the flush tail chain keeps
 // each diff-based write from racing the previous one.
 const SHELL_SAVE_COALESCE_MS = 800
-export 
-const SHELL_SET_CHUNK = 400
 export 
 let shellSaveTimer = 0
 export 
@@ -47,17 +47,8 @@ export async function bindLocalUser(userId: string): Promise<void> {
   }
   if (!supportsUserNamespaces) {
     const storedUserId = await safeGet<string>(KEY.userId)
-    if (storedUserId !== userId) {
-      try {
-        await clearLocalData()
-        shouldForceUserNamespaces = false
-      } catch (error) {
-        activeUserId = userId
-        resetShellIdentity()
-        shouldForceUserNamespaces = true
-        throw error
-      }
-    }
+    if (storedUserId !== userId)
+      await rebindLegacyUser(userId)
     activeUserId = userId
     resetShellIdentity()
     await set(KEY.userId, userId, store)
@@ -68,6 +59,18 @@ export async function bindLocalUser(userId: string): Promise<void> {
   const legacyUserId = await safeGet<string>(KEY.userId)
   if (legacyUserId === userId) await migrateLegacyData(userId)
   await set(KEY.userId, userId, store)
+}
+
+async function rebindLegacyUser(userId: string): Promise<void> {
+  try {
+    await clearLocalData()
+    shouldForceUserNamespaces = false
+  } catch (error) {
+    activeUserId = userId
+    resetShellIdentity()
+    shouldForceUserNamespaces = true
+    throw error
+  }
 }
 
 
@@ -120,17 +123,10 @@ export const localDb = {
       const legacyNotes = values[4]
       let notes: NoteSummary[] | null = null
       if (Array.isArray(index) && index.every((id) => typeof id === 'string')) {
-        const ids = index as string[]
-        const summaries = await getMany(ids.map((id) => userScopedKey(KEY.summary(id), userId)), store)
-        if (summaries.every(isNoteSummary)) notes = summaries as NoteSummary[]
+        notes = await loadIndexNotes(index as string[], userId)
       }
       else if (Array.isArray(legacyNotes) && legacyNotes.every(isNoteSummary)) {
-        notes = legacyNotes as NoteSummary[]
-        const writes: [string, unknown][] = notes.map((note) => [userScopedKey(KEY.summary(note.id), userId), note])
-        writes.push([userScopedKey(KEY.noteIndex, userId), notes.map((note) => note.id)])
-        for (let start = 0; start < writes.length; start += SHELL_SET_CHUNK)
-          await setMany(writes.slice(start, start + SHELL_SET_CHUNK), store)
-        await del(userScopedKey(KEY.notes, userId), store)
+        notes = await migrateLegacyNotes(legacyNotes as NoteSummary[], userId)
       }
       if (!notes ||
         !Array.isArray(folders) || !folders.every(isFolder) ||
@@ -163,41 +159,16 @@ export const localDb = {
       try {
         if (epoch !== shellEpoch) return
         const baseline = userId !== null && shellBaseline?.userId === userId ? shellBaseline : null
-        const targetNotes = new Map(data.notes.map((note) => [note.id, note] as const))
-        const writes: [string, unknown][] = []
-        let indexChanged = baseline === null
+        let writes: [string, unknown][] = []
+        let targetNotes: Map<string, NoteSummary>
         if (baseline) {
-          for (const note of data.notes) {
-            const previous = baseline.notes.get(note.id)
-            if (previous === undefined || !summariesEqual(previous, note)) {
-              writes.push([userScopedKey(KEY.summary(note.id), userId), note])
-              if (previous === undefined) indexChanged = true
-            }
-          }
-          const removedIds: string[] = []
-          for (const id of baseline.notes.keys()) {
-            if (!targetNotes.has(id)) removedIds.push(id)
-          }
-          if (removedIds.length) {
-            indexChanged = true
-            const removedKeys = removedIds.map((id) => userScopedKey(KEY.summary(id), userId))
-            if (delMany) await delMany(removedKeys, store)
-            else for (const key of removedKeys) await del(key, store)
-          }
-          if (indexChanged) {
-            const indexKey = userScopedKey(KEY.noteIndex, userId)
-            const written = await withShellIndexLock(userId, async () => {
-              const merged = await mergedNoteIds(userId, [...targetNotes.keys()], new Set(removedIds))
-              await set(indexKey, merged, store)
-              return true
-            })
-            if (written !== true) writes.push([indexKey, [...targetNotes.keys()]])
-          }
+          const diff = await collectBaselineShellWrites(baseline, data, userId)
+          writes = diff.writes
+          targetNotes = diff.targetNotes
         }
         else {
-          for (const note of data.notes)
-            writes.push([userScopedKey(KEY.summary(note.id), userId), note])
-          writes.push([userScopedKey(KEY.noteIndex, userId), data.notes.map((note) => note.id)])
+          writes = collectFullShellWrites(data, userId)
+          targetNotes = new Map(data.notes.map((note) => [note.id, note] as const))
         }
         if (!baseline || !foldersEqual(baseline.folders, data.folders))
           writes.push([userScopedKey(KEY.folders, userId), data.folders])
@@ -381,47 +352,18 @@ export const localDb = {
       return isAcquired
     }
 
-    const leaseMs = 90_000
-    let isAcquired = false
-    const deadline = Date.now() + 30_000
-    while (!isAcquired && Date.now() < deadline) {
-      const now = Date.now()
-      await update<{ owner: string; expiresAt: number } | null>(
-        userScopedKey(KEY.outboxReplayLease),
-        (current) => {
-          if (!current || current.expiresAt <= now) {
-            isAcquired = true
-            return { owner, expiresAt: now + leaseMs }
-          }
-          return current
-        },
-        store,
-      )
-      if (!isAcquired) {
-        await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 50))
-      }
-    }
+    const isAcquired = await acquireOutboxReplayLease(owner)
     if (!isAcquired) return false
 
     const heartbeat = globalThis.setInterval(() => {
-      void update<{ owner: string; expiresAt: number } | null>(
-        userScopedKey(KEY.outboxReplayLease),
-        (current) => current?.owner === owner
-          ? { owner, expiresAt: Date.now() + leaseMs }
-          : current ?? null,
-        store,
-      ).catch(() => {})
+      void refreshOutboxReplayLease(owner)
     }, 20_000)
     try {
       await task()
       return true
     } finally {
       globalThis.clearInterval(heartbeat)
-      await update<{ owner: string; expiresAt: number } | null>(
-        userScopedKey(KEY.outboxReplayLease),
-        (current) => current?.owner === owner ? null : current ?? null,
-        store,
-      ).catch(() => {})
+      await releaseOutboxReplayLease(owner)
     }
   },
 

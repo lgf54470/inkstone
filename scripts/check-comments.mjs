@@ -521,6 +521,12 @@ const allowed = new Map([
     "// cached shell by one window on abrupt close), and the flush tail chain keeps",
     "// each diff-based write from racing the previous one.",
   ]],
+  ["src/client/lib/db/outbox-lease.ts", [
+    "/** Outbox replay lease helpers extracted from core.ts (fallback when Web Locks are unavailable). */",
+  ]],
+  ["src/client/lib/db/shell-helpers.ts", [
+    "/** Shell cache helpers extracted from core.ts: index loading, legacy migration, and diff-based write collection. */",
+  ]],
   ["src/client/lib/db/store-io.ts", [
     "// An offline tab never sees another tab's brand-new notes; merging with the",
     "// on-disk index keeps those entries when this tab rewrites the index, while",

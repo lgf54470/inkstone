@@ -264,6 +264,31 @@ export interface MultitabSuite {
   flush: FlushSettle
 }
 
+async function mergeOnDiskIndexesTest(suite: MultitabSuite, indexKey: string): Promise<void> {
+  const { backend, fixture } = suite
+  const tabA = await suite.freshTab()
+  await tabA.saveShell(fixture.shell(fixture.vault, 1))
+  await tabA.loadShell()
+  const tabB = await suite.freshTab()
+  await tabB.loadShell()
+
+  const noteX = fixture.makeNote(fixture.vaultSize + 1)
+  const noteY = fixture.makeNote(fixture.vaultSize + 2)
+  tabA.scheduleShellSave(fixture.shell([...fixture.vault, noteX], 1))
+  await suite.flush.settle()
+  tabB.scheduleShellSave(fixture.shell([...fixture.vault, noteY], 1))
+  await suite.flush.settle()
+
+  const index = (await backend.read(indexKey)) as string[]
+  expect(index).toHaveLength(fixture.vaultSize + 2)
+  const tabC = await suite.freshTab()
+  const loaded = await tabC.loadShell()
+  const ids = new Set(loaded!.notes.map((note) => note.id))
+  expect(ids.has(noteX.id)).toBe(true)
+  expect(ids.has(noteY.id)).toBe(true)
+  expect(loaded!.notes).toHaveLength(fixture.vaultSize + 2)
+}
+
 export function runMultitabSuite(suite: MultitabSuite): void {
   const { backend, fixture } = suite
   const summaryKey = (id: string) => `user:u1:note-summary:${id}`
@@ -367,29 +392,8 @@ export function runMultitabSuite(suite: MultitabSuite): void {
       }
     })
 
-    it('merges the on-disk index so an offline tab cannot drop another tab\'s new note', async () => {
-      const tabA = await suite.freshTab()
-      await tabA.saveShell(fixture.shell(fixture.vault, 1))
-      await tabA.loadShell()
-      const tabB = await suite.freshTab()
-      await tabB.loadShell()
-
-      const noteX = fixture.makeNote(fixture.vaultSize + 1)
-      const noteY = fixture.makeNote(fixture.vaultSize + 2)
-      tabA.scheduleShellSave(fixture.shell([...fixture.vault, noteX], 1))
-      await suite.flush.settle()
-      tabB.scheduleShellSave(fixture.shell([...fixture.vault, noteY], 1))
-      await suite.flush.settle()
-
-      const index = (await backend.read(indexKey)) as string[]
-      expect(index).toHaveLength(fixture.vaultSize + 2)
-      const tabC = await suite.freshTab()
-      const loaded = await tabC.loadShell()
-      const ids = new Set(loaded!.notes.map((note) => note.id))
-      expect(ids.has(noteX.id)).toBe(true)
-      expect(ids.has(noteY.id)).toBe(true)
-      expect(loaded!.notes).toHaveLength(fixture.vaultSize + 2)
-    })
+    it('merges the on-disk index so an offline tab cannot drop another tab\'s new note', () =>
+      mergeOnDiskIndexesTest(suite, indexKey))
 
     it('drops a deleted note from the merged index once every tab agrees it is gone', async () => {
       const tabA = await suite.freshTab()
