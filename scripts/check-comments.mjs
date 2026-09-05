@@ -366,7 +366,7 @@ const allowed = new Map([
   ["src/client/features/workspace/context-menu/types.ts", [
     "/**\n * Everything an EditorContextMenu item builder can read or trigger.\n * Assembled once per render by the `EditorContextMenu` component and handed to\n * the per-context builder modules so each branch stays a pure function of the\n * menu state (decoupled from the component's hooks and DOM plumbing).\n */",
   ]],
-  ["src/client/lib/api.ts", [
+  ["src/client/lib/api/transport.ts", [
     "/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker's ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */",
   ]],
   ["src/client/lib/calendar-tree.test.ts", [
