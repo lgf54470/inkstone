@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { LIMITS } from '@shared/constants'
 import { ApiError } from './errors'
 
@@ -45,6 +46,22 @@ export async function readJson<T>(
     throw ApiError.badRequest('The request body must be a JSON object')
   }
   return value as T
+}
+
+
+export async function readJsonValidated<T extends z.ZodType>(
+  c: Parameters<typeof readJson<T>>[0],
+  schema: T,
+  maxBytes?: number,
+): Promise<z.infer<T>> {
+  const value = await readJson<unknown>(c, maxBytes)
+  const parsed = schema.safeParse(value)
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]
+    const path = issue?.path.length ? issue.path.join('.') : 'body'
+    throw ApiError.badRequest(`${path}: ${issue?.message ?? 'Invalid request body'}`)
+  }
+  return parsed.data
 }
 
 

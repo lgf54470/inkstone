@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { Hono } from 'hono'
 import { LIMITS } from '@shared/constants'
 import { organizerColorOrNull } from '@shared/organizer-colors'
@@ -8,8 +9,25 @@ import { toFolder, type FolderRow } from '../db/rows'
 import { ApiError } from '../lib/errors'
 import { isValidId, newId } from '../lib/id'
 import { broadcastCursor } from '../lib/notify'
-import { JSON_BODY_LIMITS, readJson } from '../lib/request'
+import { JSON_BODY_LIMITS, readJsonValidated } from '../lib/request'
 import { requireAuth } from '../middleware/auth'
+
+const folderFields = {
+  name: z.string().max(LIMITS.folderNameMaxLength).optional(),
+  parentId: z.string().nullable().optional(),
+  icon: z.string().nullable().optional(),
+  color: z.string().nullable().refine((value) => value === null || Boolean(organizerColorOrNull(value)), 'Folder color is not supported').optional(),
+}
+
+const createFolderSchema = z.object({
+  id: z.string().refine(isValidId, 'id must be a valid folder id').optional(),
+  ...folderFields,
+})
+
+const patchFolderSchema = z.object({
+  beforeId: z.string().nullable().optional(),
+  ...folderFields,
+})
 
 export const foldersRoutes = new Hono<AppBindings>()
 
@@ -30,29 +48,7 @@ foldersRoutes.get('/', async (c) => {
 
 foldersRoutes.post('/', async (c) => {
   const userId = c.get('userId')
-  const body = await readJson<{
-    id?: string
-    name?: string
-    parentId?: string | null
-    icon?: string | null
-    color?: string | null
-  }>(c, JSON_BODY_LIMITS.small)
-
-  if (body.name !== undefined && typeof body.name !== 'string') {
-    throw ApiError.badRequest('name must be a string')
-  }
-  if (body.parentId !== undefined && body.parentId !== null && typeof body.parentId !== 'string') {
-    throw ApiError.badRequest('parentId must be a string or null')
-  }
-  if (body.icon !== undefined && body.icon !== null && typeof body.icon !== 'string') {
-    throw ApiError.badRequest('icon must be a string or null')
-  }
-  if (body.color !== undefined && body.color !== null && !organizerColorOrNull(body.color)) {
-    throw ApiError.badRequest('Folder color is not supported')
-  }
-  if (body.id !== undefined && !isValidId(body.id)) {
-    throw ApiError.badRequest('id must be a valid folder id')
-  }
+  const body = await readJsonValidated(c, createFolderSchema, JSON_BODY_LIMITS.small)
   const id = body.id ?? newId()
   if (body.id) {
     const existing = await c.env.DB.prepare(
@@ -117,13 +113,7 @@ foldersRoutes.post('/', async (c) => {
 foldersRoutes.patch('/:id', async (c) => {
   const userId = c.get('userId')
   const id = c.req.param('id')
-  const body = await readJson<{
-    name?: string
-    parentId?: string | null
-    beforeId?: string | null
-    icon?: string | null
-    color?: string | null
-  }>(c, JSON_BODY_LIMITS.small)
+  const body = await readJsonValidated(c, patchFolderSchema, JSON_BODY_LIMITS.small)
 
   const existing = await c.env.DB.prepare(
     `SELECT id, parent_id, updated_at FROM folders WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
@@ -135,23 +125,11 @@ foldersRoutes.patch('/:id', async (c) => {
   const sets: string[] = []
   const binds: unknown[] = []
 
-  if (body.name !== undefined && typeof body.name !== 'string') {
-    throw ApiError.badRequest('name must be a string')
-  }
-  if (body.parentId !== undefined && body.parentId !== null && typeof body.parentId !== 'string') {
-    throw ApiError.badRequest('parentId must be a string or null')
-  }
-  if (body.beforeId !== undefined && body.beforeId !== null && typeof body.beforeId !== 'string') {
-    throw ApiError.badRequest('beforeId must be a string or null')
-  }
   if (body.beforeId !== undefined && body.parentId === undefined) {
     throw ApiError.badRequest('parentId is required when reordering a folder')
   }
   if (body.beforeId === id) throw ApiError.badRequest('A folder cannot be placed before itself')
-  if (body.icon !== undefined && body.icon !== null && typeof body.icon !== 'string') {
-    throw ApiError.badRequest('icon must be a string or null')
-  }
-  if (typeof body.name === 'string') {
+  if (body.name !== undefined) {
     const name = body.name.trim()
     if (!name) throw ApiError.badRequest('Folder name cannot be empty')
     if (name.length > LIMITS.folderNameMaxLength) throw ApiError.badRequest('Folder name is too long')
@@ -163,9 +141,6 @@ foldersRoutes.patch('/:id', async (c) => {
     sets.push(`icon = ?${binds.length}`)
   }
   if (body.color !== undefined) {
-    if (body.color !== null && !organizerColorOrNull(body.color)) {
-      throw ApiError.badRequest('Folder color is not supported')
-    }
     binds.push(organizerColorOrNull(body.color))
     sets.push(`color = ?${binds.length}`)
   }

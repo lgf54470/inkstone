@@ -949,6 +949,7 @@ const allowed = new Map([
     "//     the browser copy does not expire before the server-side row.",
   ]],
   ["src/worker/routes/auth.ts", [
+    "// Avatar data URLs can reach tens of KB; the 256 KB profile body limit is the cap.",
     "// Account-wide cap so a distributed botnet cannot retry one account",
     "// from many IPs forever; cleared on every successful sign-in, so a",
     "// normal user only ever notices it after 30 failed attempts per hour.",

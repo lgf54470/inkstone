@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { Hono, type Context } from 'hono'
 import { getCookie } from 'hono/cookie'
 import { DEFAULT_SETTINGS } from '@shared/constants'
@@ -29,7 +30,7 @@ import {
   verifyPassword,
 } from '../lib/password'
 import { requireCurrentPassword } from '../lib/reauth'
-import { JSON_BODY_LIMITS, readJson, requestClientIp } from '../lib/request'
+import { JSON_BODY_LIMITS, readJsonValidated, requestClientIp } from '../lib/request'
 import { commitChange } from '../lib/notify'
 import { createSession, destroyOtherSessions, destroySession } from '../lib/session-store'
 import { createTotpLoginChallenge, hasEnabledTotp } from '../lib/totp-service'
@@ -49,6 +50,28 @@ import {
   USER_COLUMNS,
   writeSessionCookie,
 } from '../middleware/auth'
+
+const registerBodySchema = z.object({
+  username: z.string().max(128).optional(),
+  password: z.string().max(PASSWORD_MAX_LENGTH).optional(),
+  locale: z.string().optional(),
+})
+
+const loginBodySchema = z.object({
+  username: z.string().max(128).optional(),
+  password: z.string().optional(),
+})
+
+const profileBodySchema = z.object({
+  name: z.string().max(PROFILE_NAME_MAX_LENGTH).optional(),
+  // Avatar data URLs can reach tens of KB; the 256 KB profile body limit is the cap.
+  avatarUrl: z.string().optional(),
+})
+
+const passwordBodySchema = z.object({
+  currentPassword: z.string().optional(),
+  newPassword: z.string().max(PASSWORD_MAX_LENGTH).optional(),
+})
 
 export const authRoutes = new Hono<AppBindings>()
 
@@ -124,9 +147,9 @@ async function gate(env: Env): Promise<RegistrationDecision> {
 
 
 authRoutes.post('/register', async (c) => {
-  const body = await readJson<{ username?: string; password?: string; locale?: string }>(c, 4096)
+  const body = await readJsonValidated(c, registerBodySchema, 4096)
   const locale = normalizeLocale(body.locale ?? c.req.header('Accept-Language'))
-  const rawUsername = typeof body.username === 'string' ? body.username.slice(0, 128) : ''
+  const rawUsername = (body.username ?? '').slice(0, 128)
   const username = normalizeUsername(rawUsername)
   if (!USERNAME_PATTERN.test(username)) {
     throw new ApiError(400, 'invalid_username', 'Username must contain 3-32 lowercase letters, numbers, underscores, or hyphens')
@@ -180,10 +203,10 @@ authRoutes.post('/register', async (c) => {
 })
 
 authRoutes.post('/login', async (c) => {
-  const body = await readJson<{ username?: string; password?: string }>(c, 4096)
-  const rawUsername = typeof body.username === 'string' ? body.username.slice(0, 128) : ''
+  const body = await readJsonValidated(c, loginBodySchema, 4096)
+  const rawUsername = (body.username ?? '').slice(0, 128)
   const username = normalizeUsername(rawUsername)
-  const password = typeof body.password === 'string' ? body.password : ''
+  const password = body.password ?? ''
   const db = c.env.DB
   const throttleTargets = loginThrottleTargets(username, requestClientIp(c))
   const workTargets = loginWorkTargets(username, requestClientIp(c))
@@ -243,10 +266,7 @@ authRoutes.post('/login', async (c) => {
 
 authRoutes.put('/profile', requireAuth, async (c) => {
   const current = c.get('user')
-  const body = await readJson<{ name?: unknown; avatarUrl?: unknown }>(
-    c,
-    JSON_BODY_LIMITS.profile,
-  )
+  const body = await readJsonValidated(c, profileBodySchema, JSON_BODY_LIMITS.profile)
   const hasName = Object.prototype.hasOwnProperty.call(body, 'name')
   const hasAvatar = Object.prototype.hasOwnProperty.call(body, 'avatarUrl')
   if (!hasName && !hasAvatar) {
@@ -336,7 +356,7 @@ authRoutes.put('/profile', requireAuth, async (c) => {
 authRoutes.post('/password', async (c) => {
   const user = c.get('user')
   if (!user) throw ApiError.unauthenticated()
-  const body = await readJson<{ currentPassword?: string; newPassword?: string }>(c, 4096)
+  const body = await readJsonValidated(c, passwordBodySchema, 4096)
   const weak = validateNewPassword(body.newPassword)
   if (weak) throw new ApiError(400, 'weak_password', weak)
 

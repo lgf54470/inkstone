@@ -1,8 +1,9 @@
+import { z } from 'zod'
 import { Hono } from 'hono'
 import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'
 import { isValidId, newId, newSlug } from '../lib/id'
-import { JSON_BODY_LIMITS, readJson, requestClientIp } from '../lib/request'
+import { JSON_BODY_LIMITS, readJsonValidated, requestClientIp } from '../lib/request'
 import {
   createScopedFolder,
   deleteScopedFolder,
@@ -53,6 +54,118 @@ import type {
   ShareTimelineRange,
 } from '@shared/types'
 
+const blogPostWriteSchema = z.object({
+  noteId: z.string().min(1, 'noteId is required'),
+  title: z.string().optional(),
+  slug: z.string().optional(),
+  excerpt: z.string().optional(),
+  content: z.string().optional(),
+  coverUrl: z.string().nullable().optional(),
+  categoryId: z.string().nullable().optional(),
+  folderId: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  isPublished: z.boolean().optional(),
+  allowComments: z.boolean().optional(),
+  isPinned: z.boolean().optional(),
+})
+
+const blogPostPatchSchema = blogPostWriteSchema.omit({ noteId: true })
+
+const blogBatchSchema = z.object({
+  action: z.enum(['publish', 'unpublish', 'delete', 'setCategory', 'setFolder', 'setPinned']),
+  postIds: z.array(z.string()),
+  categoryId: z.string().nullable().optional(),
+  folderId: z.string().nullable().optional(),
+  isPinned: z.boolean().optional(),
+})
+
+const blogToggleGroupSchema = z.object({
+  type: z.enum(['folder', 'tag']),
+  target: z.string(),
+  enabled: z.boolean(),
+})
+
+const blogScopedFolderSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  parentId: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+  icon: z.string().nullable().optional(),
+  position: z.number().optional(),
+})
+
+const blogTagCreateSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().max(50),
+  color: z.string().nullable().optional(),
+})
+
+const blogTagPatchSchema = z.object({
+  name: z.string().max(50).optional(),
+  color: z.string().nullable().optional(),
+  isPinned: z.boolean().optional(),
+})
+
+const blogCategoryCreateSchema = z.object({
+  name: z.string(),
+  slug: z.string().optional(),
+  description: z.string().optional(),
+  color: z.string().optional(),
+  icon: z.string().optional(),
+})
+
+const blogCategoryPatchSchema = z.object({
+  name: z.string().optional(),
+  slug: z.string().optional(),
+  description: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+  icon: z.string().nullable().optional(),
+  position: z.number().optional(),
+})
+
+const blogCommentStatusSchema = z.object({
+  status: z.enum(['pending', 'approved', 'rejected', 'spam']),
+})
+
+const blogCommentBatchSchema = z.object({
+  action: z.enum(['approve', 'reject', 'spam', 'delete']),
+  commentIds: z.array(z.string()),
+})
+
+const blogPublicCommentSchema = z.object({
+  postSlug: z.string(),
+  parentId: z.string().nullable().optional(),
+  authorName: z.string(),
+  authorEmail: z.string(),
+  authorUrl: z.string().optional(),
+  authorAvatar: z.string().optional(),
+  content: z.string(),
+})
+
+const blogSettingsSchema = z.object({
+  siteName: z.string().optional(),
+  subtitle: z.string().optional(),
+  bio: z.string().optional(),
+  authorName: z.string().optional(),
+  authorAvatar: z.string().optional(),
+  socialLinks: z.object({
+    github: z.string().optional(),
+    twitter: z.string().optional(),
+    email: z.string().optional(),
+    website: z.string().optional(),
+  }).optional(),
+  requireCommentApproval: z.boolean().optional(),
+  postsPerPage: z.number().optional(),
+  frontendUrl: z.string().optional(),
+  appearance: z.object({
+    theme: z.enum(['light', 'dark', 'system']).optional(),
+    accent: z.string().optional(),
+    background: z.enum(['paper', 'white']).optional(),
+    density: z.enum(['comfortable', 'compact']).optional(),
+    language: z.enum(['zh-CN', 'en-US']).optional(),
+  }).optional(),
+})
+
 export const blogManageRoutes = new Hono<AppBindings>()
 export const blogPublicRoutes = new Hono<AppBindings>()
 
@@ -101,7 +214,7 @@ async function getBlogSettings(db: D1Database, userId?: string): Promise<BlogSet
   }
 }
 
-async function saveBlogSettings(db: D1Database, settings: Partial<BlogSettings>, userId?: string): Promise<BlogSettings> {
+async function saveBlogSettings(db: D1Database, settings: z.infer<typeof blogSettingsSchema>, userId?: string): Promise<BlogSettings> {
   const current = await getBlogSettings(db, userId)
   const merged: BlogSettings = {
     ...current,
@@ -538,7 +651,7 @@ blogManageRoutes.get('/settings', requireAuth, async (c) => {
 
 blogManageRoutes.patch('/settings', requireAuth, async (c) => {
   const userId = c.get('userId')!
-  const body = await readJson<Partial<BlogSettings>>(c, JSON_BODY_LIMITS.note)
+  const body = await readJsonValidated(c, blogSettingsSchema, JSON_BODY_LIMITS.note)
   const settings = await saveBlogSettings(c.env.DB, body, userId)
   return c.json({ settings })
 })
@@ -692,22 +805,7 @@ blogManageRoutes.get('/posts', requireAuth, async (c) => {
 // 6. Create / Publish Post
 blogManageRoutes.post('/posts', requireAuth, async (c) => {
   const userId = c.get('userId')!
-  const body = await readJson<{
-    noteId: string
-    title: string
-    slug?: string
-    excerpt?: string
-    content?: string
-    coverUrl?: string
-    categoryId?: string | null
-    folderId?: string | null
-    tags?: string[]
-    isPublished?: boolean
-    allowComments?: boolean
-    isPinned?: boolean
-  }>(c, JSON_BODY_LIMITS.note)
-
-  if (!body.noteId) throw ApiError.badRequest('noteId is required')
+  const body = await readJsonValidated(c, blogPostWriteSchema, JSON_BODY_LIMITS.note)
 
   let noteTitle = body.title
   let noteContent = body.content || ''
@@ -828,7 +926,7 @@ blogManageRoutes.post('/posts', requireAuth, async (c) => {
 blogManageRoutes.patch('/posts/:id', requireAuth, async (c) => {
   const id = c.req.param('id')
   const userId = c.get('userId')!
-  const body = await readJson<Partial<BlogPost>>(c, JSON_BODY_LIMITS.note)
+  const body = await readJsonValidated(c, blogPostPatchSchema, JSON_BODY_LIMITS.note)
 
   const current = await c.env.DB
     .prepare('SELECT * FROM blog_posts WHERE id = ?1 AND user_id = ?2')
@@ -945,13 +1043,7 @@ blogManageRoutes.post('/posts/:id/sync', requireAuth, async (c) => {
 // 10. Batch Post Operations
 blogManageRoutes.post('/posts/batch', requireAuth, async (c) => {
   const userId = c.get('userId')!
-  const body = await readJson<{
-    action: 'publish' | 'unpublish' | 'delete' | 'setCategory' | 'setFolder' | 'setPinned'
-    postIds: string[]
-    categoryId?: string | null
-    folderId?: string | null
-    isPinned?: boolean
-  }>(c, JSON_BODY_LIMITS.note)
+  const body = await readJsonValidated(c, blogBatchSchema, JSON_BODY_LIMITS.note)
 
   if (!body.postIds?.length) return c.json({ ok: true, count: 0 })
 
@@ -1002,12 +1094,12 @@ blogManageRoutes.get('/folders', requireAuth, async (c) => {
 })
 
 blogManageRoutes.post('/folders', requireAuth, async (c) => {
-  const body = await readJson<Parameters<typeof createScopedFolder>[3]>(c, JSON_BODY_LIMITS.small)
+  const body = await readJsonValidated(c, blogScopedFolderSchema, JSON_BODY_LIMITS.small)
   return c.json(await createScopedFolder(c.env.DB, 'blog_folders', c.get('userId')!, body), 201)
 })
 
 blogManageRoutes.patch('/folders/:id', requireAuth, async (c) => {
-  const body = await readJson<Parameters<typeof createScopedFolder>[3]>(c, JSON_BODY_LIMITS.small)
+  const body = await readJsonValidated(c, blogScopedFolderSchema, JSON_BODY_LIMITS.small)
   return c.json(await updateScopedFolder(c.env.DB, 'blog_folders', c.get('userId')!, c.req.param('id'), body))
 })
 
@@ -1068,12 +1160,8 @@ blogManageRoutes.get('/tags', requireAuth, async (c) => {
 
 blogManageRoutes.post('/tags', requireAuth, async (c) => {
   const userId = c.get('userId')!
-  const body = await readJson<{
-    id?: string
-    name: string
-    color?: string | null
-  }>(c, JSON_BODY_LIMITS.small)
-  const name = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : ''
+  const body = await readJsonValidated(c, blogTagCreateSchema, JSON_BODY_LIMITS.small)
+  const name = body.name.trim().slice(0, 50)
   if (!name) throw ApiError.badRequest('Tag name is required')
   const id = body.id && isValidId(body.id) ? body.id : newId()
   const now = Date.now()
@@ -1119,11 +1207,7 @@ blogManageRoutes.post('/tags', requireAuth, async (c) => {
 blogManageRoutes.patch('/tags/:id', requireAuth, async (c) => {
   const userId = c.get('userId')!
   const id = c.req.param('id')
-  const body = await readJson<{
-    name?: string
-    color?: string | null
-    isPinned?: boolean
-  }>(c, JSON_BODY_LIMITS.small)
+  const body = await readJsonValidated(c, blogTagPatchSchema, JSON_BODY_LIMITS.small)
 
   const existing = await c.env.DB.prepare(
     `SELECT id, user_id, name, color, is_pinned, created_at FROM blog_tags WHERE id = ?1 AND user_id = ?2`,
@@ -1177,11 +1261,7 @@ blogManageRoutes.delete('/tags/:id', requireAuth, async (c) => {
 
 blogManageRoutes.post('/batch-toggle-group', requireAuth, async (c) => {
   const userId = c.get('userId')!
-  const body = await readJson<{
-    type: 'folder' | 'tag'
-    target: string
-    enabled: boolean
-  }>(c, JSON_BODY_LIMITS.small)
+  const body = await readJsonValidated(c, blogToggleGroupSchema, JSON_BODY_LIMITS.small)
 
   const isPublished = body.enabled ? 1 : 0
   const now = Date.now()
@@ -1250,13 +1330,7 @@ blogManageRoutes.get('/categories', requireAuth, async (c) => {
 
 blogManageRoutes.post('/categories', requireAuth, async (c) => {
   const userId = c.get('userId')!
-  const body = await readJson<{
-    name: string
-    slug?: string
-    description?: string
-    color?: string
-    icon?: string
-  }>(c, JSON_BODY_LIMITS.note)
+  const body = await readJsonValidated(c, blogCategoryCreateSchema, JSON_BODY_LIMITS.note)
 
   if (!body.name?.trim()) throw ApiError.badRequest('Name is required')
   const slug = (body.slug?.trim() || body.name.trim().toLowerCase().replace(/\s+/g, '-'))
@@ -1297,7 +1371,7 @@ blogManageRoutes.post('/categories', requireAuth, async (c) => {
 blogManageRoutes.patch('/categories/:id', requireAuth, async (c) => {
   const id = c.req.param('id')
   const userId = c.get('userId')!
-  const body = await readJson<Partial<BlogCategory>>(c, JSON_BODY_LIMITS.note)
+  const body = await readJsonValidated(c, blogCategoryPatchSchema, JSON_BODY_LIMITS.note)
 
   const current = await c.env.DB
     .prepare('SELECT * FROM blog_categories WHERE id = ?1 AND user_id = ?2')
@@ -1412,11 +1486,7 @@ blogManageRoutes.get('/comments', requireAuth, async (c) => {
 blogManageRoutes.patch('/comments/:id/status', requireAuth, async (c) => {
   const id = c.req.param('id')
   const userId = c.get('userId')!
-  const body = await readJson<{ status: BlogCommentStatus }>(c, JSON_BODY_LIMITS.note)
-
-  if (!['pending', 'approved', 'rejected', 'spam'].includes(body.status)) {
-    throw ApiError.badRequest('Invalid status')
-  }
+  const body = await readJsonValidated(c, blogCommentStatusSchema, JSON_BODY_LIMITS.note)
 
   const comment = await c.env.DB
     .prepare('SELECT c.id FROM blog_comments c JOIN blog_posts p ON c.post_id = p.id WHERE c.id = ?1 AND p.user_id = ?2')
@@ -1452,10 +1522,7 @@ blogManageRoutes.delete('/comments/:id', requireAuth, async (c) => {
 
 blogManageRoutes.post('/comments/batch', requireAuth, async (c) => {
   const userId = c.get('userId')!
-  const body = await readJson<{
-    action: 'approve' | 'reject' | 'spam' | 'delete'
-    commentIds: string[]
-  }>(c, JSON_BODY_LIMITS.note)
+  const body = await readJsonValidated(c, blogCommentBatchSchema, JSON_BODY_LIMITS.note)
 
   if (!body.commentIds?.length) return c.json({ ok: true, count: 0 })
 
@@ -1824,15 +1891,7 @@ blogPublicRoutes.get('/comments/:postSlug', async (c) => {
 
 // Public submit comment
 blogPublicRoutes.post('/comments', async (c) => {
-  const body = await readJson<{
-    postSlug: string
-    parentId?: string | null
-    authorName: string
-    authorEmail: string
-    authorUrl?: string
-    authorAvatar?: string
-    content: string
-  }>(c, JSON_BODY_LIMITS.note)
+  const body = await readJsonValidated(c, blogPublicCommentSchema, JSON_BODY_LIMITS.note)
 
   if (!body.postSlug) throw ApiError.badRequest('postSlug is required')
   if (!body.authorName?.trim()) throw ApiError.badRequest('Name is required')

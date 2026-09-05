@@ -1,12 +1,11 @@
+import { z } from 'zod'
 import { Hono } from 'hono'
 import { LIMITS } from '@shared/constants'
 import { countText, deriveExcerpt, extractTags, normalizeLinkKey, replaceWikiLinkTarget } from '@shared/markdown-utils'
 import { duplicateNoteTitle, sliceText, truncateText, utf8ByteLength } from '@shared/text-utils'
 import type {
-  CreateNoteBody,
   ListNotesResponse,
   Note,
-  PatchNoteBody,
   SortKey,
   SortOrder,
   ViewKind,
@@ -25,7 +24,7 @@ import { fromBase64Url, fromUtf8, sha256Hex, toBase64Url, utf8 } from '../lib/en
 import { ApiError } from '../lib/errors'
 import { isValidId, newId } from '../lib/id'
 import { broadcastCursor, scheduleFtsDrain } from '../lib/notify'
-import { assertContentSize, clampInt, JSON_BODY_LIMITS, readJson } from '../lib/request'
+import { assertContentSize, clampInt, JSON_BODY_LIMITS, readJsonValidated } from '../lib/request'
 import { requireAuth } from '../middleware/auth'
 import { enqueueNoteIndex, noteIndexQueueStatement } from '../mcp/ai-search'
 
@@ -54,6 +53,30 @@ type ParsedNotesListCursor =
 
 const NOTE_VIEWS = new Set<ViewKind>(['all', 'recent', 'starred', 'pinned', 'shared', 'published', 'unfiled', 'archived', 'trash', 'folder', 'tag', 'untagged'])
 const NOTE_SORTS = new Set<SortKey>(['updated', 'created', 'title'])
+
+const createNoteSchema = z.object({
+  id: z.string().refine(isValidId, 'id must be a valid note id').optional(),
+  title: z.string().optional(),
+  content: z.string().optional(),
+  folderId: z.string().nullable().optional(),
+  isStarred: z.boolean().optional(),
+})
+
+const patchNoteSchema = z.object({
+  rev: z.number().int().min(1, 'rev must be a positive integer'),
+  title: z.string().optional(),
+  content: z.string().optional(),
+  folderId: z.string().nullable().optional(),
+  isPinned: z.boolean().optional(),
+  isStarred: z.boolean().optional(),
+  isArchived: z.boolean().optional(),
+  quiet: z.boolean().optional(),
+  preserveVersion: z.boolean().optional(),
+})
+
+const duplicateNoteSchema = z.object({
+  id: z.string().refine(isValidId, 'id must be a valid note id').optional(),
+})
 
 
 notesRoutes.get('/', async (c) => {
@@ -274,24 +297,9 @@ notesRoutes.get('/:id', async (c) => {
 notesRoutes.post('/', async (c) => {
   const userId = c.get('userId')
   const { ftsEnabled } = c.get('database')
-  const body = await readJson<CreateNoteBody>(c, JSON_BODY_LIMITS.note)
+  const body = await readJsonValidated(c, createNoteSchema, JSON_BODY_LIMITS.note)
 
-  if (body.content !== undefined && typeof body.content !== 'string') {
-    throw ApiError.badRequest('content must be a string')
-  }
-  if (body.title !== undefined && typeof body.title !== 'string') {
-    throw ApiError.badRequest('title must be a string')
-  }
-  if (body.folderId !== undefined && body.folderId !== null && typeof body.folderId !== 'string') {
-    throw ApiError.badRequest('folderId must be a string or null')
-  }
-  if (body.isStarred !== undefined && typeof body.isStarred !== 'boolean') {
-    throw ApiError.badRequest('isStarred must be a boolean')
-  }
-  if (body.id !== undefined && !isValidId(body.id)) {
-    throw ApiError.badRequest('id must be a valid note id')
-  }
-  const content = typeof body.content === 'string' ? body.content : ''
+  const content = body.content ?? ''
   assertContentSize(content)
 
   const id = body.id ?? newId()
@@ -361,7 +369,7 @@ notesRoutes.patch('/:id', async (c) => {
   const userId = c.get('userId')
   const id = c.req.param('id')
   const { ftsEnabled } = c.get('database')
-  const body = await readJson<PatchNoteBody>(c, JSON_BODY_LIMITS.note)
+  const body = await readJsonValidated(c, patchNoteSchema, JSON_BODY_LIMITS.note)
 
   const row = await c.env.DB.prepare(
     `SELECT ${NOTE_COLUMNS_FULL} FROM notes n WHERE n.id = ?1 AND n.user_id = ?2`,
@@ -378,31 +386,8 @@ notesRoutes.patch('/:id', async (c) => {
     throw ApiError.notFound('Note not found', { deletionCursor: deletion?.seq ?? null })
   }
 
-  if (!Number.isInteger(body.rev) || body.rev < 1) {
-    throw ApiError.badRequest('rev must be a positive integer')
-  }
   if (body.rev !== row.rev) {
     throw ApiError.conflict('This note was modified elsewhere', { server: toNote(row) })
-  }
-  if (body.content !== undefined && typeof body.content !== 'string') {
-    throw ApiError.badRequest('content must be a string')
-  }
-  if (body.title !== undefined && typeof body.title !== 'string') {
-    throw ApiError.badRequest('title must be a string')
-  }
-  if (body.folderId !== undefined && body.folderId !== null && typeof body.folderId !== 'string') {
-    throw ApiError.badRequest('folderId must be a string or null')
-  }
-  for (const [key, value] of [
-    ['isPinned', body.isPinned],
-    ['isStarred', body.isStarred],
-    ['isArchived', body.isArchived],
-    ['quiet', body.quiet],
-    ['preserveVersion', body.preserveVersion],
-  ] as const) {
-    if (value !== undefined && typeof value !== 'boolean') {
-      throw ApiError.badRequest(`${key} must be a boolean`)
-    }
   }
 
   const now = Math.max(Date.now(), row.updated_at + 1)
@@ -767,11 +752,8 @@ notesRoutes.post('/:id/duplicate', async (c) => {
   const { ftsEnabled } = c.get('database')
   const source = await loadNoteRow(c.env.DB, userId, c.req.param('id'))
   const body = c.req.header('Content-Type')?.includes('application/json')
-    ? await readJson<{ id?: string }>(c, JSON_BODY_LIMITS.small)
+    ? await readJsonValidated(c, duplicateNoteSchema, JSON_BODY_LIMITS.small)
     : {}
-  if (body.id !== undefined && !isValidId(body.id)) {
-    throw ApiError.badRequest('id must be a valid note id')
-  }
 
   const id = body.id ?? newId()
   if (body.id) {

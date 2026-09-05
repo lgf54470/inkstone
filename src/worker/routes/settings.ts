@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { Hono } from 'hono'
 import { mergeSettings, mergeSettingsPatch } from '@shared/constants'
 import type { UserSettings } from '@shared/types'
@@ -6,7 +7,7 @@ import { ApiError } from '../lib/errors'
 import { commitChange } from '../lib/notify'
 import { setAllowRegistration } from '../lib/instance-settings'
 import { requireCurrentPassword } from '../lib/reauth'
-import { JSON_BODY_LIMITS, readJson } from '../lib/request'
+import { JSON_BODY_LIMITS, readJson, readJsonValidated } from '../lib/request'
 import { requireAuth } from '../middleware/auth'
 
 export const settingsRoutes = new Hono<AppBindings>()
@@ -14,11 +15,15 @@ export const settingsRoutes = new Hono<AppBindings>()
 settingsRoutes.use('*', requireAuth)
 
 
+const registrationSchema = z.object({
+  enabled: z.boolean(),
+  password: z.string().optional(),
+})
+
 settingsRoutes.put('/registration', async (c) => {
   const user = c.get('user')
   if (user.role !== 'owner') throw ApiError.forbidden('Only the owner can change this setting')
-  const body = await readJson<{ enabled?: boolean; password?: string }>(c, 4096)
-  if (typeof body.enabled !== 'boolean') throw ApiError.badRequest('Missing enabled parameter')
+  const body = await readJsonValidated(c, registrationSchema, 4096)
   await requireCurrentPassword(c.env.DB, user.id, body.password)
   await setAllowRegistration(c.env.DB, body.enabled)
   await commitChange(c, 'site', user.id, 'upsert')

@@ -1,7 +1,8 @@
+import { z } from 'zod'
 import { Hono } from 'hono'
 import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'
-import { JSON_BODY_LIMITS, readJson } from '../lib/request'
+import { JSON_BODY_LIMITS, readJsonValidated } from '../lib/request'
 import { requireAuth } from '../middleware/auth'
 import {
   clearAiIndex,
@@ -23,6 +24,20 @@ import {
   setMcpEnabled,
   updateMcpPreferences,
 } from '../mcp/settings'
+
+const mcpPreferencesSchema = z.object({
+  enabled: z.boolean().optional(),
+  writeEnabled: z.boolean().optional(),
+  trashEnabled: z.boolean().optional(),
+})
+
+const mcpKeyNameSchema = z.object({
+  name: z.string().optional(),
+})
+
+const aiSearchSchema = z.object({
+  enabled: z.boolean(),
+})
 
 export const mcpSettingsRoutes = new Hono<AppBindings>()
 
@@ -58,17 +73,8 @@ mcpSettingsRoutes.get('/', async (c) => {
 
 mcpSettingsRoutes.put('/', async (c) => {
   const user = c.get('user')
-  const body = await readJson<{
-    enabled?: boolean
-    writeEnabled?: boolean
-    trashEnabled?: boolean
-  }>(c, JSON_BODY_LIMITS.settings)
+  const body = await readJsonValidated(c, mcpPreferencesSchema, JSON_BODY_LIMITS.settings)
 
-  for (const key of ['enabled', 'writeEnabled', 'trashEnabled'] as const) {
-    if (body[key] !== undefined && typeof body[key] !== 'boolean') {
-      throw ApiError.badRequest(`${key} must be a boolean`)
-    }
-  }
   if (body.enabled !== undefined) {
     if (user.role !== 'owner') throw ApiError.forbidden('Only the owner can enable or disable MCP')
     await setMcpEnabled(c.env.DB, body.enabled)
@@ -88,8 +94,8 @@ mcpSettingsRoutes.put('/', async (c) => {
 mcpSettingsRoutes.post('/keys', async (c) => {
   const user = c.get('user')
   if (!await isMcpEnabled(c.env.DB)) throw ApiError.conflict('MCP is disabled')
-  const body = await readJson<{ name?: unknown }>(c, JSON_BODY_LIMITS.small)
-  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  const body = await readJsonValidated(c, mcpKeyNameSchema, JSON_BODY_LIMITS.small)
+  const name = (body.name ?? '').trim()
   if (!name || name.length > 80) throw ApiError.badRequest('name must be 1-80 characters')
   const created = await createMcpApiKey(c.env.DB, user.id, name)
   return c.json({ key: created.record, token: created.token }, 201)
@@ -107,8 +113,7 @@ mcpSettingsRoutes.get('/ai-search', async (c) => {
 
 mcpSettingsRoutes.put('/ai-search', async (c) => {
   const userId = c.get('userId')
-  const body = await readJson<{ enabled?: unknown }>(c, JSON_BODY_LIMITS.small)
-  if (typeof body.enabled !== 'boolean') throw ApiError.badRequest('enabled must be a boolean')
+  const body = await readJsonValidated(c, aiSearchSchema, JSON_BODY_LIMITS.small)
   if (body.enabled && !await isMcpEnabled(c.env.DB)) throw ApiError.conflict('MCP is disabled')
   if (body.enabled && !isAiSearchAvailable(c.env)) {
     throw ApiError.conflict('Workers AI is not configured')
