@@ -180,8 +180,7 @@
   "src/client/features/preview/card-content.ts": {
     "longFns": 2
   },
-  "src/client/features/preview/file-preview-modal.tsx": {
-    "lines": 629,
+  "src/client/features/preview/file-preview-modal/index.tsx": {
     "longFns": 1
   },
   "src/client/features/preview/js-runner.test.ts": {
@@ -355,8 +354,10 @@
   "src/client/features/workspace/versions-panel.tsx": {
     "longFns": 1
   },
-  "src/client/features/workspace/workspace.tsx": {
-    "lines": 625,
+  "src/client/features/workspace/workspace/index.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/workspace/workspace/use-workspace.ts": {
     "longFns": 1
   },
   "src/client/lib/api/transport.ts": {
