@@ -368,8 +368,7 @@
   "src/client/lib/db-shell.test.ts": {
     "longFns": 2
   },
-  "src/client/lib/db.ts": {
-    "lines": 826,
+  "src/client/lib/db/core.ts": {
     "longFns": 4,
     "deepFns": 3
   },

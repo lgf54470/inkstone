@@ -1,55 +1,12 @@
-import { clear as clearStore, createStore, del, get, getMany, set, setMany, update } from 'idb-keyval'
-import * as idbKeyval from 'idb-keyval'
-import type { UseStore } from 'idb-keyval'
-import type { Folder, Note, NoteSummary, NoteTemplate, NoteTemplateCategory, PublicUser, SessionInfo, SiteInfo, Tag } from '@shared/types'
-import { CLIENT_DATABASE_NAME } from './runtime'
-
-const optionalIdbExport = (name: string): unknown => Object.prototype.hasOwnProperty.call(idbKeyval, name)
-  ? Reflect.get(idbKeyval, name)
-  : undefined
-const delMany = optionalIdbExport('delMany') as ((keys: IDBValidKey[], store?: UseStore) => Promise<void>) | undefined
-const entries = optionalIdbExport('entries') as (<KeyType extends IDBValidKey, ValueType = unknown>(store?: UseStore) => Promise<[KeyType, ValueType][]>) | undefined
-
-const store = createStore(CLIENT_DATABASE_NAME, 'kv')
-
-const KEY = {
-  notes: 'notes',
-  noteIndex: 'noteIndex',
-  folders: 'folders',
-  tags: 'tags',
-  cursor: 'cursor',
-  summary: (id: string) => `note-summary:${id}`,
-  content: (id: string) => `note:${id}`,
-  outbox: 'outbox',
-  outboxReplayLease: 'outboxReplayLease',
-  userId: 'userId',
-  session: 'session',
-  templateLibrary: 'templateLibrary',
-} as const
-
-interface ShellData {
-  notes: NoteSummary[]
-  folders: Folder[]
-  tags: Tag[]
-  cursor: number
-}
-
-interface ShellBaseline {
-  userId: string
-  notes: Map<string, NoteSummary>
-  folders: Folder[]
-  tags: Tag[]
-  cursor: number
-}
-
-export interface TemplateLibraryData {
-  categories: NoteTemplateCategory[]
-  templates: NoteTemplate[]
-  seedVersion: number
-}
-
-const supportsUserNamespaces = typeof entries === 'function' && typeof delMany === 'function'
+import { clear as clearStore, del, getMany, set, setMany, update } from 'idb-keyval';
+import type { Folder, NoteSummary, SessionInfo, Tag } from '@shared/types';
+import { delMany, store, KEY, supportsUserNamespaces } from './keys';
+import type { ShellData, ShellBaseline, TemplateLibraryData, OutboxItem, CachedNoteContent } from './types';
+import { normalizeOutbox, safeGet, safeSet, userScopedKey, migrateLegacyData, mergedNoteIds, withShellIndexLock } from './store-io';
+import { summariesEqual, foldersEqual, tagsEqual, isRecord, isPublicUser, isSiteInfo, isFiniteNumber, isNoteSummary, isFolder, isTag, isNoteTemplateCategory, isNoteTemplate } from './validators';
+export 
 let shouldForceUserNamespaces = false
+export 
 // The shell cache is two-level: one `note-summary:<id>` key per note plus a
 // lightweight `noteIndex` id list. A typing-derived summary commit therefore
 // only upserts the one changed note instead of re-serializing the whole vault;
@@ -59,101 +16,27 @@ let shouldForceUserNamespaces = false
 // cached shell by one window on abrupt close), and the flush tail chain keeps
 // each diff-based write from racing the previous one.
 const SHELL_SAVE_COALESCE_MS = 800
+export 
 const SHELL_SET_CHUNK = 400
+export 
 let shellSaveTimer = 0
+export 
 let pendingShell: ShellData | null = null
+export 
 let pendingShellUserId: string | null = null
+export 
 let activeUserId: string | null = null
+export 
 let shellBaseline: ShellBaseline | null = null
+export 
 let shellFlushTail: Promise<void> = Promise.resolve()
+export 
 let shellEpoch = 0
-
-export interface OutboxItem {
-  id: string
-  clientId: string
-  writeId: string
-  dependsOnWriteId?: string
-  noteId: string
-  payload: Record<string, unknown>
-  attempts: number
-  createdAt: number
-  lastError?: string
-}
-
-export interface CachedNoteContent {
-  content: string
-  rev: number
-  updatedAt: number
-  writeId?: string
-  pendingTitle?: string
-  contentDirty?: boolean
-}
-
-function normalizeOutbox(value: unknown): OutboxItem[] {
-  if (!Array.isArray(value)) return []
-  return value.filter((item): item is OutboxItem => {
-    if (!item || typeof item !== 'object') return false
-    const candidate = item as Partial<OutboxItem>
-    return typeof candidate.id === 'string' &&
-      typeof candidate.clientId === 'string' &&
-      typeof candidate.writeId === 'string' &&
-      typeof candidate.noteId === 'string' &&
-      Boolean(candidate.payload) &&
-      typeof candidate.payload === 'object' &&
-      !Array.isArray(candidate.payload) &&
-      typeof candidate.attempts === 'number' &&
-      Number.isInteger(candidate.attempts) &&
-      typeof candidate.createdAt === 'number' &&
-      Number.isFinite(candidate.createdAt)
-  })
-}
-
-async function safeGet<T>(key: string): Promise<T | undefined> {
-  try {
-    return await get<T>(key, store)
-  } catch {
-    return undefined
-  }
-}
-
-async function safeSet(key: string, value: unknown): Promise<void> {
-  try {
-    await set(key, value, store)
-  } catch {
-  }
-}
-
-function userScopedKey(key: string, userId = activeUserId): string {
-  return userId && (supportsUserNamespaces || shouldForceUserNamespaces) ? `user:${userId}:${key}` : key
-}
-
-function isLegacyDataKey(key: unknown): key is string {
-  return key === KEY.notes || key === KEY.noteIndex || key === KEY.folders || key === KEY.tags ||
-    key === KEY.cursor || key === KEY.outbox || key === KEY.outboxReplayLease ||
-    (typeof key === 'string' && (key.startsWith('note:') || key.startsWith('note-summary:')))
-}
-
-function resetShellIdentity(): void {
+export function resetShellIdentity(): void {
   shellBaseline = null
   shellEpoch++
 }
-
-async function migrateLegacyData(userId: string): Promise<void> {
-  if (!supportsUserNamespaces) return
-  const legacy = (await entries<string, unknown>(store)).filter(([key]) => isLegacyDataKey(key))
-  if (!legacy.length) return
-  const scopedKeys = await getMany(legacy.map(([key]) => userScopedKey(key, userId)), store)
-  const writes: [string, unknown][] = []
-  for (let index = 0; index < legacy.length; index++) {
-    if (scopedKeys[index] === undefined) {
-      writes.push([userScopedKey(legacy[index]![0], userId), legacy[index]![1]])
-    }
-  }
-  if (writes.length) await setMany(writes, store)
-  await delMany(legacy.map(([key]) => key), store)
-}
-
-async function bindLocalUser(userId: string): Promise<void> {
+export async function bindLocalUser(userId: string): Promise<void> {
   if (activeUserId === userId) {
     if (shouldForceUserNamespaces && !supportsUserNamespaces) {
       await clearLocalData()
@@ -186,6 +69,7 @@ async function bindLocalUser(userId: string): Promise<void> {
   if (legacyUserId === userId) await migrateLegacyData(userId)
   await set(KEY.userId, userId, store)
 }
+
 
 export const localDb = {
   async loadSession(): Promise<SessionInfo | null> {
@@ -558,8 +442,7 @@ export const localDb = {
     shouldForceUserNamespaces = false
   },
 }
-
-async function clearLocalData(): Promise<void> {
+export async function clearLocalData(): Promise<void> {
   window.clearTimeout(shellSaveTimer)
   shellSaveTimer = 0
   pendingShell = null
@@ -568,258 +451,4 @@ async function clearLocalData(): Promise<void> {
   shellEpoch++
   shellFlushTail = Promise.resolve()
   await clearStore(store)
-}
-
-async function mergedNoteIds(userId: string | null, targetIds: string[], removedIds: Set<string>): Promise<string[]> {
-  // An offline tab never sees another tab's brand-new notes; merging with the
-  // on-disk index keeps those entries when this tab rewrites the index, while
-  // ids this tab deleted are still dropped (stale ids heal on the next pull).
-  let diskIds: string[] = []
-  try {
-    const value = await get<unknown>(userScopedKey(KEY.noteIndex, userId), store)
-    if (Array.isArray(value) && value.every((id) => typeof id === 'string')) diskIds = value as string[]
-  } catch {
-  }
-  const seen = new Set<string>()
-  const next: string[] = []
-  for (const id of [...diskIds, ...targetIds]) {
-    if (removedIds.has(id) || seen.has(id)) continue
-    seen.add(id)
-    next.push(id)
-  }
-  return next
-}
-
-// The index read-merge-write is the one whole-value shell write two tabs can
-// race; Web Locks serializes it across tabs so a concurrent merge reads the
-// winner's index instead of a stale one. Browsers without Web Locks fall back
-// to the plain merge, which stays correct when flushes never overlap.
-async function withShellIndexLock(userId: string | null, task: () => Promise<boolean>): Promise<boolean> {
-  if (typeof navigator === 'undefined' || typeof navigator.locks?.request !== 'function') return task()
-  try {
-    return await navigator.locks.request(`inkstone-shell-index:${userId ?? 'anon'}`, task)
-  } catch {
-    return false
-  }
-}
-
-function summariesEqual(a: NoteSummary, b: NoteSummary): boolean {
-  if (a === b) return true
-  return a.id === b.id &&
-    a.title === b.title &&
-    a.excerpt === b.excerpt &&
-    a.folderId === b.folderId &&
-    a.isPinned === b.isPinned &&
-    a.isStarred === b.isStarred &&
-    a.isArchived === b.isArchived &&
-    a.wordCount === b.wordCount &&
-    a.charCount === b.charCount &&
-    a.rev === b.rev &&
-    a.position === b.position &&
-    a.createdAt === b.createdAt &&
-    a.updatedAt === b.updatedAt &&
-    a.deletedAt === b.deletedAt &&
-    a.tags.length === b.tags.length &&
-    a.tags.every((tag, index) => tag === b.tags[index])
-}
-
-function foldersEqual(a: Folder[], b: Folder[]): boolean {
-  if (a === b) return true
-  if (a.length !== b.length) return false
-  for (let index = 0; index < a.length; index++) {
-    const x = a[index]!
-    const y = b[index]!
-    if (x.id !== y.id || x.parentId !== y.parentId || x.name !== y.name || x.icon !== y.icon ||
-      (x.color ?? null) !== (y.color ?? null) || x.position !== y.position ||
-      x.createdAt !== y.createdAt || x.updatedAt !== y.updatedAt ||
-      (x.noteCount ?? null) !== (y.noteCount ?? null)) {
-      return false
-    }
-  }
-  return true
-}
-
-function tagsEqual(a: Tag[], b: Tag[]): boolean {
-  if (a === b) return true
-  if (a.length !== b.length) return false
-  for (let index = 0; index < a.length; index++) {
-    const x = a[index]!
-    const y = b[index]!
-    if (x.id !== y.id || x.name !== y.name || (x.color ?? null) !== (y.color ?? null) ||
-      Boolean(x.isPinned) !== Boolean(y.isPinned) ||
-      x.count !== y.count || x.createdAt !== y.createdAt) {
-      return false
-    }
-  }
-  return true
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-}
-
-function isPublicUser(value: unknown): value is PublicUser {
-  if (!isRecord(value)) return false
-  return typeof value.id === 'string' &&
-    typeof value.login === 'string' &&
-    typeof value.name === 'string' &&
-    typeof value.avatarUrl === 'string' &&
-    (value.role === 'owner' || value.role === 'member') &&
-    isFiniteNumber(value.createdAt) &&
-    typeof value.username === 'string'
-}
-
-function isSiteInfo(value: unknown): value is SiteInfo {
-  if (!isRecord(value)) return false
-  return typeof value.name === 'string' &&
-    typeof value.initialized === 'boolean' &&
-    typeof value.registrationOpen === 'boolean' &&
-    typeof value.r2Enabled === 'boolean' &&
-    typeof value.kvEnabled === 'boolean' &&
-    (value.attachmentStorage === 'r2' || value.attachmentStorage === 'kv' || value.attachmentStorage === null) &&
-    typeof value.realtimeEnabled === 'boolean' &&
-    typeof value.version === 'string'
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value)
-}
-
-function isNullableString(value: unknown): value is string | null {
-  return value === null || typeof value === 'string'
-}
-
-function isNullableNumber(value: unknown): value is number | null {
-  return value === null || isFiniteNumber(value)
-}
-
-function isNoteSummary(value: unknown): value is NoteSummary {
-  if (!isRecord(value)) return false
-  return typeof value.id === 'string' &&
-    typeof value.title === 'string' &&
-    typeof value.excerpt === 'string' &&
-    isNullableString(value.folderId) &&
-    Array.isArray(value.tags) && value.tags.every((tag) => typeof tag === 'string') &&
-    typeof value.isPinned === 'boolean' &&
-    typeof value.isStarred === 'boolean' &&
-    typeof value.isArchived === 'boolean' &&
-    isFiniteNumber(value.wordCount) &&
-    isFiniteNumber(value.charCount) &&
-    Number.isSafeInteger(value.rev) && (value.rev as number) >= 1 &&
-    isFiniteNumber(value.position) &&
-    isFiniteNumber(value.createdAt) &&
-    isFiniteNumber(value.updatedAt) &&
-    isNullableNumber(value.deletedAt)
-}
-
-function isFolder(value: unknown): value is Folder {
-  if (!isRecord(value)) return false
-  return typeof value.id === 'string' &&
-    isNullableString(value.parentId) &&
-    typeof value.name === 'string' &&
-    isNullableString(value.icon) &&
-    (value.color === undefined || isNullableString(value.color)) &&
-    isFiniteNumber(value.position) &&
-    isFiniteNumber(value.createdAt) &&
-    isFiniteNumber(value.updatedAt) &&
-    (value.noteCount === undefined || isFiniteNumber(value.noteCount))
-}
-
-function isTag(value: unknown): value is Tag {
-  if (!isRecord(value)) return false
-  return typeof value.id === 'string' &&
-    typeof value.name === 'string' &&
-    isNullableString(value.color) &&
-    (value.isPinned === undefined || typeof value.isPinned === 'boolean') &&
-    isFiniteNumber(value.count) &&
-    isFiniteNumber(value.createdAt)
-}
-
-function isNoteTemplateCategory(value: unknown): value is NoteTemplateCategory {
-  if (!isRecord(value)) return false
-  return typeof value.id === 'string' &&
-    typeof value.name === 'string' &&
-    typeof value.builtin === 'boolean' &&
-    isFiniteNumber(value.position) &&
-    isFiniteNumber(value.createdAt)
-}
-
-function isNoteTemplate(value: unknown): value is NoteTemplate {
-  if (!isRecord(value)) return false
-  return typeof value.id === 'string' &&
-    isNullableString(value.categoryId) &&
-    typeof value.name === 'string' &&
-    typeof value.description === 'string' &&
-    typeof value.content === 'string' &&
-    typeof value.builtin === 'boolean' &&
-    typeof value.isPinned === 'boolean' &&
-    typeof value.isStarred === 'boolean' &&
-    (value.tags === undefined || (Array.isArray(value.tags) && value.tags.every((tag) => typeof tag === 'string'))) &&
-    isFiniteNumber(value.createdAt) &&
-    isFiniteNumber(value.updatedAt)
-}
-
-export type BroadcastPayload = (
-  | { type: 'local-write'; clientId: string }
-  | { type: 'pulled'; cursor: number; clientId: string }
-  | { type: 'claim-leader'; clientId: string; at: number }
-  | { type: 'settings-changed'; clientId: string }
-  | { type: 'profile-changed'; clientId: string }
-  | { type: 'site-changed'; clientId: string }
-  | {
-      type: 'outbox-base-advanced'
-      clientId: string
-      noteId: string
-      writeId: string
-      expectedRev: number
-      nextRev: number
-    }
-  | {
-      type: 'outbox-result'
-      clientId: string
-      targetClientId: string
-      noteId: string
-      writeId: string
-      outcome: 'saved' | 'recovered'
-      recoveryReason?: 'conflict' | 'deleted'
-      rev?: number
-      updatedAt?: number
-      savedTitle?: string
-      savedNote?: Note
-      copyId?: string
-    }
-) & { userId?: string }
-
-let broadcastPublisher: BroadcastChannel | null = null
-
-export function publishBroadcast(payload: BroadcastPayload): void {
-  if (typeof BroadcastChannel === 'undefined') return
-  try {
-    broadcastPublisher ??= new BroadcastChannel('inkstone')
-    broadcastPublisher.postMessage({ ...payload, userId: activeUserId })
-  } catch {
-  }
-}
-
-export function createBroadcast(
-  onMessage: (payload: BroadcastPayload) => void,
-): { post: (payload: BroadcastPayload) => void; close: () => void } {
-  if (typeof BroadcastChannel === 'undefined') {
-    return { post: () => {}, close: () => {} }
-  }
-  const channel = new BroadcastChannel('inkstone')
-  channel.onmessage = (event) => {
-    const payload = event.data as BroadcastPayload
-    if (!activeUserId || payload?.userId !== activeUserId) return
-    onMessage(payload)
-  }
-  return {
-    post: (payload) => {
-      try {
-        channel.postMessage({ ...payload, userId: activeUserId })
-      } catch {
-      }
-    },
-    close: () => channel.close(),
-  }
 }

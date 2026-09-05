@@ -497,7 +497,7 @@ const allowed = new Map([
     "// Regression guard for the two-level layout: a single-note edit must never",
     "// re-serialize the whole vault on the flush path.",
   ]],
-  ["src/client/lib/db.ts", [
+  ["src/client/lib/db/core.ts", [
     "// The shell cache is two-level: one `note-summary:<id>` key per note plus a",
     "// lightweight `noteIndex` id list. A typing-derived summary commit therefore",
     "// only upserts the one changed note instead of re-serializing the whole vault;",
@@ -506,6 +506,8 @@ const allowed = new Map([
     "// window collapses bursts into one flush (a lost tail at most delays the",
     "// cached shell by one window on abrupt close), and the flush tail chain keeps",
     "// each diff-based write from racing the previous one.",
+  ]],
+  ["src/client/lib/db/store-io.ts", [
     "// An offline tab never sees another tab's brand-new notes; merging with the",
     "// on-disk index keeps those entries when this tab rewrites the index, while",
     "// ids this tab deleted are still dropped (stale ids heal on the next pull).",
