@@ -418,15 +418,6 @@
   "src/client/lib/markdown/renderer/fence.ts": {
     "longFns": 2
   },
-  "src/client/lib/markdown/renderer/math.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/markdown/renderer/parse.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/markdown/renderer/wiki.ts": {
-    "longFns": 1
-  },
   "src/client/lib/markdown/table-editor.test.ts": {
     "longFns": 1
   },

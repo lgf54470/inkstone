@@ -85,20 +85,14 @@ export function parseFenceInfo(source: string): FenceInfo {
     let hasLineNumbers = false;
     let startLine = 1;
     const highlighted = new Set<number>();
-    const leadingCodeOptions = /^\{([^{}]+)\}/.exec(rest);
-    if (leadingCodeOptions && !/^\d[\d,\s-]*$/.test(leadingCodeOptions[1]!.trim())) {
-        const classes = [...leadingCodeOptions[1]!.matchAll(/(?:^|\s)\.([A-Za-z][\w-]{0,63})/g)]
-            .map((match) => match[1]!);
-        language = classes.find((className) => !isReservedCodeClass(className))?.toLowerCase() ?? '';
-        hasLineNumbers = classes.some(isReservedCodeClass);
-        title = codeMetadataValue(leadingCodeOptions[1]!, 'title') ?? '';
-        const startAttribute = codeMetadataValue(leadingCodeOptions[1]!, 'start', 'startfrom');
-        if (startAttribute && /^\d+$/.test(startAttribute))
-            startLine = clamp(Number(startAttribute), 1, 100000);
-        const highlightAttribute = codeMetadataValue(leadingCodeOptions[1]!, 'hl_lines', 'highlight');
-        if (highlightAttribute)
-            parseLineSpec(highlightAttribute).forEach((line) => highlighted.add(line));
-        rest = rest.slice(leadingCodeOptions[0].length).trim();
+    const leading = parseFenceLeadingOptions(rest);
+    if (leading) {
+        language = leading.language;
+        title = leading.title;
+        hasLineNumbers = leading.hasLineNumbers;
+        startLine = leading.startLine;
+        leading.highlighted.forEach((line) => highlighted.add(line));
+        rest = leading.rest;
     }
     if (!language) {
         const lang = /^([^\s{]+)/.exec(rest);
@@ -107,30 +101,15 @@ export function parseFenceInfo(source: string): FenceInfo {
             rest = rest.slice(lang[0].length).trim();
         }
     }
-    const titleMatch = /(?:^|\s)title=(?:"([^"]*)"|'([^']*)'|([^\s]+))/.exec(rest);
-    if (titleMatch)
-        title = titleMatch[1] ?? titleMatch[2] ?? titleMatch[3] ?? '';
-    const bracketTitle = /(?:^|\s)\[([^\]\n]+)\]/.exec(rest);
-    if (!title && bracketTitle)
-        title = bracketTitle[1]!.trim();
-    const hasLineNumbersDisable = /(?:^|[\s{])\.?(?:line-?numbers|linenos|number-?lines|show-?line-?numbers)=(?:"?false"?|0)(?=[\s}]|$)/i.test(rest);
-    const hasLineNumbersEnable = /(?:^|[\s{])\.?(?:line-?numbers|linenos|number-?lines|show-?line-?numbers)(?:=(?:"?true"?|1))?(?=[\s}]|$)/i.test(rest);
-    if (hasLineNumbersDisable) {
+    const trailing = parseFenceTrailingOptions(rest, title);
+    title = trailing.title;
+    if (trailing.lineNumbers === 'disable')
         hasLineNumbers = false;
-    }
-    else if (hasLineNumbersEnable) {
+    else if (trailing.lineNumbers === 'enable')
         hasLineNumbers = true;
-    }
-    const start = /(?:^|\s)(?:start|startFrom)=(?:"(\d+)"|'(\d+)'|(\d+))/.exec(rest);
-    if (start)
-        startLine = clamp(Number(start[1] ?? start[2] ?? start[3]), 1, 100000);
-    for (const highlight of rest.matchAll(/(?:^|\s)\{(\d[\d,\s-]*)\}/g)) {
-        parseLineSpec(highlight[1]!).forEach((line) => highlighted.add(line));
-    }
-    const highlightNamed = /(?:^|\s)(?:hl_lines|highlight)=(?:"([^"]*)"|'([^']*)'|([^\s]+))/.exec(rest);
-    if (highlightNamed) {
-        parseLineSpec(highlightNamed[1] ?? highlightNamed[2] ?? highlightNamed[3] ?? '').forEach((line) => highlighted.add(line));
-    }
+    if (trailing.startLine !== null)
+        startLine = trailing.startLine;
+    trailing.highlighted.forEach((line) => highlighted.add(line));
     return {
         language,
         title,
@@ -171,3 +150,70 @@ function codeMetadataValue(source: string, ...names: string[]): string | null {
     }
     return null;
 }
+
+type FenceLeadingOptions = {
+    language: string;
+    title: string;
+    hasLineNumbers: boolean;
+    startLine: number;
+    highlighted: number[];
+    rest: string;
+};
+
+function parseFenceLeadingOptions(rest: string): FenceLeadingOptions | null {
+    const leadingCodeOptions = /^\{([^{}]+)\}/.exec(rest);
+    if (!leadingCodeOptions || /^\d[\d,\s-]*$/.test(leadingCodeOptions[1]!.trim()))
+        return null;
+    const classes = [...leadingCodeOptions[1]!.matchAll(/(?:^|\s)\.([A-Za-z][\w-]{0,63})/g)]
+        .map((match) => match[1]!);
+    const highlighted: number[] = [];
+    const highlightAttribute = codeMetadataValue(leadingCodeOptions[1]!, 'hl_lines', 'highlight');
+    if (highlightAttribute)
+        parseLineSpec(highlightAttribute).forEach((line) => highlighted.push(line));
+    const startAttribute = codeMetadataValue(leadingCodeOptions[1]!, 'start', 'startfrom');
+    return {
+        language: classes.find((className) => !isReservedCodeClass(className))?.toLowerCase() ?? '',
+        title: codeMetadataValue(leadingCodeOptions[1]!, 'title') ?? '',
+        hasLineNumbers: classes.some(isReservedCodeClass),
+        startLine: startAttribute && /^\d+$/.test(startAttribute) ? clamp(Number(startAttribute), 1, 100000) : 1,
+        highlighted,
+        rest: rest.slice(leadingCodeOptions[0].length).trim(),
+    };
+}
+
+type FenceTrailingOptions = {
+    title: string;
+    lineNumbers: 'disable' | 'enable' | null;
+    startLine: number | null;
+    highlighted: number[];
+};
+
+function parseFenceTrailingOptions(rest: string, initialTitle: string): FenceTrailingOptions {
+    let title = initialTitle;
+    const titleMatch = /(?:^|\s)title=(?:"([^"]*)"|'([^']*)'|([^\s]+))/.exec(rest);
+    if (titleMatch)
+        title = titleMatch[1] ?? titleMatch[2] ?? titleMatch[3] ?? '';
+    const bracketTitle = /(?:^|\s)\[([^\]\n]+)\]/.exec(rest);
+    if (!title && bracketTitle)
+        title = bracketTitle[1]!.trim();
+    const hasLineNumbersDisable = /(?:^|[\s{])\.?(?:line-?numbers|linenos|number-?lines|show-?line-?numbers)=(?:"?false"?|0)(?=[\s}]|$)/i.test(rest);
+    const hasLineNumbersEnable = /(?:^|[\s{])\.?(?:line-?numbers|linenos|number-?lines|show-?line-?numbers)(?:=(?:"?true"?|1))?(?=[\s}]|$)/i.test(rest);
+    const lineNumbers = hasLineNumbersDisable ? 'disable' : hasLineNumbersEnable ? 'enable' : null;
+    const start = /(?:^|\s)(?:start|startFrom)=(?:"(\d+)"|'(\d+)'|(\d+))/.exec(rest);
+    const startLine = start ? clamp(Number(start[1] ?? start[2] ?? start[3]), 1, 100000) : null;
+    const highlighted = new Set<number>();
+    for (const highlight of rest.matchAll(/(?:^|\s)\{(\d[\d,\s-]*)\}/g)) {
+        parseLineSpec(highlight[1]!).forEach((line) => highlighted.add(line));
+    }
+    const highlightNamed = /(?:^|\s)(?:hl_lines|highlight)=(?:"([^"]*)"|'([^']*)'|([^\s]+))/.exec(rest);
+    if (highlightNamed) {
+        parseLineSpec(highlightNamed[1] ?? highlightNamed[2] ?? highlightNamed[3] ?? '').forEach((line) => highlighted.add(line));
+    }
+    return {
+        title,
+        lineNumbers,
+        startLine,
+        highlighted: [...highlighted],
+    };
+}
+

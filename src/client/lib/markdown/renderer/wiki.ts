@@ -1,93 +1,106 @@
 import MarkdownIt from 'markdown-it';
+import type StateInline from 'markdown-it/lib/rules_inline/state_inline.mjs';
 import { escapeHtml } from '@shared/escape';
 import { t } from '../../i18n';
 import { encodeDataValue } from '../data-attr';
 import { renderEnv } from './env';
 import { parseWikiTarget } from './parse';
 import { escapeAttr } from './util';
+
+const WIKI_RE = /^\[\[([^\[\]\n]{1,400})\]\]/;
+const EMBED_RE = /^!\[\[([^\[\]\n]{1,400})\]\]/;
+const BLOCK_REF_RE = /^\(\(([A-Za-z0-9][A-Za-z0-9_-]{0,63})\)\)/;
+const TAG_RE = /^#([\p{L}\p{N}_\-/·]{1,60})(?![\p{L}\p{N}_\-/·])/u;
+
+function noteEmbedRule(state: StateInline, silent: boolean): boolean {
+    if (!state.src.startsWith('![[', state.pos))
+        return false;
+    const match = EMBED_RE.exec(state.src.slice(state.pos));
+    if (!match)
+        return false;
+    if (!silent) {
+        const token = state.push('note_embed', 'div', 0);
+        token.content = match[1]!.trim();
+        renderEnv(state.env).hasEmbeds = true;
+    }
+    state.pos += match[0].length;
+    return true;
+}
+
+function wikilinkRule(state: StateInline, silent: boolean): boolean {
+    if (!state.src.startsWith('[[', state.pos))
+        return false;
+    const match = WIKI_RE.exec(state.src.slice(state.pos));
+    if (!match)
+        return false;
+    if (!silent) {
+        const token = state.push('wikilink', 'a', 0);
+        token.content = match[1]!.trim();
+    }
+    state.pos += match[0].length;
+    return true;
+}
+
+function blockReferenceRule(state: StateInline, silent: boolean): boolean {
+    if (!state.src.startsWith('((', state.pos))
+        return false;
+    const match = BLOCK_REF_RE.exec(state.src.slice(state.pos));
+    if (!match)
+        return false;
+    if (!silent) {
+        const token = state.push('block_reference', 'a', 0);
+        token.content = match[1]!;
+    }
+    state.pos += match[0].length;
+    return true;
+}
+
+function inlineTagRule(state: StateInline, silent: boolean): boolean {
+    if (state.src[state.pos] !== '#')
+        return false;
+    const previous = state.pos > 0 ? state.src[state.pos - 1]! : ' ';
+    if (!/[\s(\uff08[\u3010>\u300c\u300e\uff0c,\u3001;\uff1b]/.test(previous) && state.pos !== 0)
+        return false;
+    const match = TAG_RE.exec(state.src.slice(state.pos));
+    if (!match)
+        return false;
+    if (!silent) {
+        const token = state.push('inline_tag', 'span', 0);
+        token.content = match[1]!;
+    }
+    state.pos += match[0].length;
+    return true;
+}
+
+function rubyBracketRule(state: StateInline, silent: boolean): boolean {
+    const start = state.pos;
+    if (state.src.charCodeAt(start) !== 0x5b)
+        return false;
+    const closeBracket = state.src.indexOf(']', start + 1);
+    if (closeBracket === -1 || closeBracket + 1 >= state.src.length || state.src.charCodeAt(closeBracket + 1) !== 0x7b)
+        return false;
+    const closeBrace = state.src.indexOf('}', closeBracket + 2);
+    if (closeBrace === -1)
+        return false;
+    if (silent)
+        return true;
+    const baseText = state.src.slice(start + 1, closeBracket);
+    const rubyText = state.src.slice(closeBracket + 2, closeBrace);
+    if (!baseText || !rubyText)
+        return false;
+    const token = state.push('html_inline', '', 0);
+    token.content = `<ruby>${escapeHtml(baseText)}<rp>(</rp><rt>${escapeHtml(rubyText)}</rt><rp>)</rp></ruby>`;
+    state.pos = closeBrace + 1;
+    return true;
+}
+
 export function registerWiki(md: MarkdownIt): void {
 
-    const WIKI_RE = /^\[\[([^\[\]\n]{1,400})\]\]/;
-    const EMBED_RE = /^!\[\[([^\[\]\n]{1,400})\]\]/;
-    const BLOCK_REF_RE = /^\(\(([A-Za-z0-9][A-Za-z0-9_-]{0,63})\)\)/;
-    const TAG_RE = /^#([\p{L}\p{N}_\-/·]{1,60})(?![\p{L}\p{N}_\-/·])/u;
-    md.inline.ruler.before('image', 'note_embed', (state, silent) => {
-        if (!state.src.startsWith('![[', state.pos))
-            return false;
-        const match = EMBED_RE.exec(state.src.slice(state.pos));
-        if (!match)
-            return false;
-        if (!silent) {
-            const token = state.push('note_embed', 'div', 0);
-            token.content = match[1]!.trim();
-            renderEnv(state.env).hasEmbeds = true;
-        }
-        state.pos += match[0].length;
-        return true;
-    });
-    md.inline.ruler.before('link', 'wikilink', (state, silent) => {
-        if (!state.src.startsWith('[[', state.pos))
-            return false;
-        const match = WIKI_RE.exec(state.src.slice(state.pos));
-        if (!match)
-            return false;
-        if (!silent) {
-            const token = state.push('wikilink', 'a', 0);
-            token.content = match[1]!.trim();
-        }
-        state.pos += match[0].length;
-        return true;
-    });
-    md.inline.ruler.before('text', 'block_reference', (state, silent) => {
-        if (!state.src.startsWith('((', state.pos))
-            return false;
-        const match = BLOCK_REF_RE.exec(state.src.slice(state.pos));
-        if (!match)
-            return false;
-        if (!silent) {
-            const token = state.push('block_reference', 'a', 0);
-            token.content = match[1]!;
-        }
-        state.pos += match[0].length;
-        return true;
-    });
-    md.inline.ruler.before('text', 'inline_tag', (state, silent) => {
-        if (state.src[state.pos] !== '#')
-            return false;
-        const previous = state.pos > 0 ? state.src[state.pos - 1]! : ' ';
-        if (!/[\s(\uff08[\u3010>\u300c\u300e\uff0c,\u3001;\uff1b]/.test(previous) && state.pos !== 0)
-            return false;
-        const match = TAG_RE.exec(state.src.slice(state.pos));
-        if (!match)
-            return false;
-        if (!silent) {
-            const token = state.push('inline_tag', 'span', 0);
-            token.content = match[1]!;
-        }
-        state.pos += match[0].length;
-        return true;
-    });
-    md.inline.ruler.before('link', 'ruby_bracket', (state, silent) => {
-        const start = state.pos;
-        if (state.src.charCodeAt(start) !== 0x5b)
-            return false;
-        const closeBracket = state.src.indexOf(']', start + 1);
-        if (closeBracket === -1 || closeBracket + 1 >= state.src.length || state.src.charCodeAt(closeBracket + 1) !== 0x7b)
-            return false;
-        const closeBrace = state.src.indexOf('}', closeBracket + 2);
-        if (closeBrace === -1)
-            return false;
-        if (silent)
-            return true;
-        const baseText = state.src.slice(start + 1, closeBracket);
-        const rubyText = state.src.slice(closeBracket + 2, closeBrace);
-        if (!baseText || !rubyText)
-            return false;
-        const token = state.push('html_inline', '', 0);
-        token.content = `<ruby>${escapeHtml(baseText)}<rp>(</rp><rt>${escapeHtml(rubyText)}</rt><rp>)</rp></ruby>`;
-        state.pos = closeBrace + 1;
-        return true;
-    });
+    md.inline.ruler.before('image', 'note_embed', noteEmbedRule);
+    md.inline.ruler.before('link', 'wikilink', wikilinkRule);
+    md.inline.ruler.before('text', 'block_reference', blockReferenceRule);
+    md.inline.ruler.before('text', 'inline_tag', inlineTagRule);
+    md.inline.ruler.before('link', 'ruby_bracket', rubyBracketRule);
     md.renderer.rules.note_embed = (tokens, index) => {
         const parsed = parseWikiTarget(tokens[index]!.content);
         const label = parsed.alias || parsed.raw;
