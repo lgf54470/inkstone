@@ -111,7 +111,9 @@ function loadInitialRetention(): { logRetentionDays: number; maxLogRecords: numb
         maxLogRecords: typeof parsed.maxLogRecords === 'number' ? parsed.maxLogRecords : 10000,
       }
     }
-  } catch {}
+  } catch (error) {
+    console.warn('[share-store] failed to load retention settings', error)
+  }
   return { logRetentionDays: 30, maxLogRecords: 10000 }
 }
 
@@ -126,7 +128,9 @@ function loadInitialFilters(): { excludeBots: boolean; excludeSelfReferrers: boo
         excludeOwner: Boolean(parsed.excludeOwner),
       }
     }
-  } catch {}
+  } catch (error) {
+    console.warn('[share-store] failed to load traffic filters', error)
+  }
   return {
     excludeBots: true,
     excludeSelfReferrers: false,
@@ -162,14 +166,18 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
     try {
       const folders = await api.share.folders.list()
       set({ folders })
-    } catch {}
+    } catch (error) {
+      console.warn('[share-store] failed to load folders', error)
+    }
   },
 
   loadTags: async () => {
     try {
       const tags = await api.share.tags.list()
       set({ tags })
-    } catch {}
+    } catch (error) {
+      console.warn('[share-store] failed to load tags', error)
+    }
   },
 
   createFolder: async (name, parentId, color, icon) => {
@@ -338,7 +346,9 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
         if (typeof window !== 'undefined') {
           localStorage.setItem('inkstone_share_retention', JSON.stringify(updated))
         }
-      } catch {}
+      } catch (error) {
+        console.warn('[share-store] failed to persist retention settings', error)
+      }
       return updated
     })
   },
@@ -354,7 +364,9 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
         if (typeof window !== 'undefined') {
           localStorage.setItem('inkstone_share_filters_v2', JSON.stringify(updated))
         }
-      } catch {}
+      } catch (error) {
+        console.warn('[share-store] failed to persist traffic filters', error)
+      }
       return updated
     })
     void get().loadShares()

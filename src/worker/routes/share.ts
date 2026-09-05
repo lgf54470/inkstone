@@ -686,7 +686,9 @@ shareManageRoutes.get('/note-share/:noteId', async (c) => {
   let shareTags: string[] = []
   try {
     shareTags = JSON.parse(row.share_tags_json || '[]')
-  } catch {}
+  } catch (error) {
+    console.warn('[share] failed to parse share tags, falling back to empty list', error)
+  }
 
   return c.json({
     share: {
@@ -924,7 +926,9 @@ shareManageRoutes.get('/', async (c) => {
     let parsedTags: string[] = []
     try {
       parsedTags = JSON.parse(r.share_tags_json || '[]')
-    } catch {}
+    } catch (error) {
+      console.warn('[share] failed to parse share tags, falling back to empty list', error)
+    }
     return {
       slug: r.slug,
       noteId: r.note_id,
@@ -1599,7 +1603,9 @@ shareRoutes.post('/:slug', async (c) => {
             isOwner,
           ),
         ])
-      } catch {}
+      } catch (error) {
+        console.warn('[share] failed to record visit', error)
+      }
     })(),
   )
 

@@ -58,7 +58,9 @@ export function ShareGridView({
       await navigator.clipboard.writeText(full)
       setCopiedSlug(slug)
       setTimeout(() => setCopiedSlug(null), 2000)
-    } catch {}
+    } catch (error) {
+      console.warn('[share] failed to copy link', error)
+    }
   }
 
   const handleMoveToFolder = async (noteId: string, folderId: string | null) => {

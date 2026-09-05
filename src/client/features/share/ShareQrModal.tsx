@@ -30,7 +30,9 @@ export function ShareQrModal({
       await navigator.clipboard.writeText(fullUrl)
       setCopiedLink(true)
       setTimeout(() => setCopiedLink(false), 2000)
-    } catch {}
+    } catch (error) {
+      console.warn('[share] failed to copy QR link', error)
+    }
   }
 
   const handleCopyImage = async () => {
