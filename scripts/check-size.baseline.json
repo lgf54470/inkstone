@@ -492,9 +492,6 @@
   "src/shared/note-templates.test.ts": {
     "longFns": 2
   },
-  "src/shared/types.ts": {
-    "lines": 1065
-  },
   "src/shared/zip.ts": {
     "longFns": 2
   },

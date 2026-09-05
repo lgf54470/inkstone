@@ -8,6 +8,9 @@ const allowed = new Map([
     "// p worker threads need ~128 * N * r * p bytes of memory",
     "// throttle: 8 attempts per 10 minutes",
   ]],
+  ["scripts/check-bundle-budget.mjs", [
+    "// Chunk prefixes follow the kebab-case lazy import paths (settings dir → settings-*).",
+  ]],
   ["scripts/check-i18n.mjs", [
     "// Demo mode ships a pre-populated workspace whose seed data (welcome notes,",
     "// community gallery entries) is authored demo content in the demo locale, not",
@@ -31,9 +34,6 @@ const allowed = new Map([
     "// Inline-literal `new Set([...])` tables are immutable lookups; only empty",
     "// initializers are runtime-fillable and therefore cross-request mutable.",
     "// 2. Client: no module-level useState (React hook outside a component).",
-  ]],
-  ["scripts/check-bundle-budget.mjs", [
-    "// Chunk prefixes follow the kebab-case lazy import paths (settings dir → settings-*).",
   ]],
   ["scripts/ci-bench-report.mjs", [
     "// Generous headroom for shared CI runners; the point is catching an order-of-magnitude regression.",
@@ -105,12 +105,12 @@ const allowed = new Map([
     "// the rolling date filter's follow-edit window stays parked at the newest edit and the gap hint",
     "// (newest edit outside a today-anchored window) is directly visible in the demo.",
   ]],
-  ["src/client/editor/paste.ts", [
-    "// Upload failure degrades to the error placeholder below via the null result.",
-  ]],
   ["src/client/editor/code-languages.ts", [
     "// Highlighting removed: no code languages are loaded.",
     "// Kept as empty array so the editor behaves as plain Markdown without syntax colors.",
+  ]],
+  ["src/client/editor/paste.ts", [
+    "// Upload failure degrades to the error placeholder below via the null result.",
   ]],
   ["src/client/features/blog/blog-categories-modal.tsx", [
     "/* Form: Add or Edit Category */",
@@ -296,6 +296,10 @@ const allowed = new Map([
     "/* Note analytics modal */",
     "/* QR code modal */",
   ]],
+  ["src/client/features/share/share-form.ts", [
+    "// A new or replaced passcode must be at least 4 characters (the server",
+    "// enforces the same minimum); short codes are trivially brute-forced.",
+  ]],
   ["src/client/features/share/share-hub-sidebar.tsx", [
     "/* Share folders */",
     "/* Share tags */",
@@ -341,10 +345,6 @@ const allowed = new Map([
     "/* Fingerprint */",
     "/* Pagination Footer */",
   ]],
-  ["src/client/features/share/share-form.ts", [
-    "// A new or replaced passcode must be at least 4 characters (the server",
-    "// enforces the same minimum); short codes are trivially brute-forced.",
-  ]],
   ["src/client/features/sidebar/sidebar-calendar.tsx", [
     "// Single cached projection replaces the three whole-vault Object.values",
     "// scans: a typing commit only re-derives the edited note's day slice and",
@@ -357,11 +357,11 @@ const allowed = new Map([
     "// tree's totalNotes. Look it up from the shared memoized navigation projection",
     "// instead of scanning the whole notes map per folder row per render.",
   ]],
-  ["src/client/features/templates/template-gallery.tsx", [
-    "// The fullwidth comma (\\uFF0C) is the typographic default for Chinese input.",
-  ]],
   ["src/client/features/tags/tag-mutations.ts", [
     "// The rollback already surfaced the failure toast; a refresh warning would double-toast.",
+  ]],
+  ["src/client/features/templates/template-gallery.tsx", [
+    "// The fullwidth comma (\\uFF0C) is the typographic default for Chinese input.",
   ]],
   ["src/client/features/workspace/context-menu/types.ts", [
     "/**\n * Everything an EditorContextMenu item builder can read or trigger.\n * Assembled once per render by the `EditorContextMenu` component and handed to\n * the per-context builder modules so each branch stays a pure function of the\n * menu state (decoupled from the component's hooks and DOM plumbing).\n */",
@@ -650,24 +650,24 @@ const allowed = new Map([
     "// Attempt 1 conflicted (rev 1); attempt 2 retried with the adopted revision (rev 2).",
   ]],
   ["src/client/store/notes.ts", [
-    "// Reconnect pulls race with the connection coming up; the next event or manual refresh retries.",
-    "// Outbox replay is retried on the next pull; keep the UI responsive meanwhile.",
     "/** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization.\n *\n * This file is the composition root of the notes store: it owns the zustand store\n * instance (`useNotes`) and the store-level undo/toast helpers. The heavy lifting\n * lives in `store/notes/` — see `model.ts` (state), `persist.ts` (write staging),\n * `outbox.ts` (offline replay), `reconcile.ts` (merge), and `selectors.ts` (hooks).\n */",
     "/** Patch shape accepted by `patchNote` (summary flags plus folder moves). */",
     "/** Undo window for destructive actions (e.g. moving a note to the trash): longer than the default 3800ms. */",
     "/** Batch toast title for a count-aware mutation (e.g. \"Moved 3 notes\"). */",
     "/**\n * The shared store-level undo contract for light mutations: apply `patch` to every id in\n * `undoPatches`, then offer one undo toast running each note's captured revert patch.\n * `notify: 'confirm'` turns the action into a silent revert that confirms with a plain\n * toast; `'none'` reverts without any toast (batch undos).\n */",
     "// Single-note reverts confirm with a plain toast describing the reverted state; batch reverts stay silent.",
+    "// Cache read failed (IndexedDB hiccup); fall through to the server fetch below.",
     "// Keep the front matter `title` property in sync with the note title",
     "// whenever the note already declares one (opt-out per settings).",
     "// Reverse sync: when the body's front matter `title` property changes,",
     "// adopt it as the note title so both stay in agreement (opt-out per",
     "// settings).",
-    "// Cache read failed (IndexedDB hiccup); fall through to the server fetch below.",
+    "// Reconnect pulls race with the connection coming up; the next event or manual refresh retries.",
+    "// Outbox replay is retried on the next pull; keep the UI responsive meanwhile.",
   ]],
   ["src/client/store/notes/acknowledge.ts", [
-    "// Best-effort count refresh; the next outbox event or pull retries it.",
     "/** Cross-tab broadcast acknowledgements: apply outbox results and base advancements from other tabs. */",
+    "// Best-effort count refresh; the next outbox event or pull retries it.",
   ]],
   ["src/client/store/notes/adopt.ts", [
     "/** Adopting fetched/created/saved notes into the store (summary plus content caches). */",
@@ -746,7 +746,6 @@ const allowed = new Map([
     "// store free of a circular dependency on the notes store.",
   ]],
   ["src/client/store/ui.ts", [
-    "// The view transition can be skipped (reduced motion, interrupted navigation); the circular reveal is purely decorative.",
     "/** Marks an undo toast: accent icon/tint in the UI and a short vibration cue. */",
     "/** How multi-selected tags filter the note list and palette: any or all. */",
     "/** Inclusive date range (YYYY-MM-DD keys) the note list is filtered to, set from the sidebar calendar. */",
@@ -755,10 +754,11 @@ const allowed = new Map([
     "/** Sort the user left behind when entering a calendar folder view, restored on exit. */",
     "/** External jump request for the sidebar heatmap calendar (from the settings preview); consumed by SidebarCalendar. */",
     "/** Clears the full filter combo (query, date/relative, tags) with an undo toast restoring the exact previous combination. */",
+    "// Quota or private-mode writes can throw; in-memory state stays authoritative for the session.",
     "// Keep the multi-select when entering a folder view so it stacks with",
     "// the folder filter; any other navigation clears the selection.",
     "/**\n * Post a toast carrying a one-click undo action; the single helper behind every store-level undo flow.\n * `duration` overrides the default window (dangerous actions pass a longer one via their caller).\n */",
-    "// Quota or private-mode writes can throw; in-memory state stays authoritative for the session.",
+    "// The view transition can be skipped (reduced motion, interrupted navigation); the circular reveal is purely decorative.",
   ]],
   ["src/shared/constants.ts", [
     "/**\n * Session lifetime design (sliding window):\n * - `SESSION_TTL_MS` (90d): absolute cap. A session row/cookie never outlives 90 days,\n *   bounding the window in which a stolen session token stays usable.\n * - `SESSION_RENEW_BEFORE_MS` (45d = TTL/2): renewal threshold. On an authenticated\n *   request, if less than this much TTL remains, the session is extended back to the\n *   full 90 days (see middleware/auth.ts and lib/session-store.ts).\n *\n * Trade-offs: renewal only happens for requests that already presented a valid\n * session, so an abandoned session dies within at most 90 days (no idle-forever\n * sessions, maintenance sweeps the rows), while an active user never gets logged out\n * as long as they authenticate at least once per 45 days. The half-life threshold\n * also bounds write amplification: each session triggers at most one DB renewal\n * write per 45 days of activity. The 45-day window is generous enough to survive\n * the app's offline period (offline edits are queued locally and flushed on\n * reconnect, which needs a still-valid session) yet short enough that a freshly\n * stolen cookie's remaining lifetime stays bounded.\n */",
@@ -789,17 +789,25 @@ const allowed = new Map([
     "/**\n * Portable format for exporting/importing a user's template library. Only\n * user-created templates and categories are exported; built-ins are re-seeded\n * by the app itself and stay out of the file.\n */",
     "/**\n * Parses and validates an exported template library. Returns null when the\n * payload is not a well-formed export; malformed entries are dropped\n * individually so a partially broken file can still be imported.\n */",
   ]],
-  ["src/shared/types.ts", [
-    "/** Load external (https) images in rendered notes. Off by default: external\n   *  images are replaced with a blocked placeholder (renderer-level), and the\n   *  server drops `https:` from CSP `img-src` while it is off — so raw-HTML\n   *  images in notes stay blocked on the app page and are ALWAYS blocked on\n   *  share pages (/s/*), where visitors never opt in. */",
-    "/** Tag(s, comma-separated) that file notes into the sidebar to-do tree; null falls back to the locale default. */",
+  ["src/shared/types/api.ts", [
+    "/** A rolling date filter: N days ending either at the newest edit (`edit`) or at today (`today`). */",
+  ]],
+  ["src/shared/types/graph.ts", [
+    "/** Tags to filter by. Overrides `tag`; sent comma-separated. */",
+    "/** How multiple tags combine: `any` (default) for union, `all` for intersection. */",
+  ]],
+  ["src/shared/types/list.ts", [
+    "/** Exact row count of the current view; only present on the first page to keep deep-paging cheap. */",
+  ]],
+  ["src/shared/types/notes.ts", [
     "/** True for categories shipped with the app; they cannot be renamed or deleted. */",
     "/** True for templates shipped with the app; they can be edited but not deleted. */",
     "/** Free-form labels shown in the gallery and used as a filter. */",
     "/** Manual sort position within the category; falls back to `updatedAt` when absent. */",
-    "/** Exact row count of the current view; only present on the first page to keep deep-paging cheap. */",
-    "/** Tags to filter by. Overrides `tag`; sent comma-separated. */",
-    "/** How multiple tags combine: `any` (default) for union, `all` for intersection. */",
-    "/** A rolling date filter: N days ending either at the newest edit (`edit`) or at today (`today`). */",
+  ]],
+  ["src/shared/types/settings.ts", [
+    "/** Load external (https) images in rendered notes. Off by default: external\n   *  images are replaced with a blocked placeholder (renderer-level), and the\n   *  server drops `https:` from CSP `img-src` while it is off — so raw-HTML\n   *  images in notes stay blocked on the app page and are ALWAYS blocked on\n   *  share pages (/s/*), where visitors never opt in. */",
+    "/** Tag(s, comma-separated) that file notes into the sidebar to-do tree; null falls back to the locale default. */",
   ]],
   ["src/worker/app.ts", [
     "// External https images: only signed-in SPA pages may load them, and only",
@@ -973,9 +981,6 @@ const allowed = new Map([
     "// clear every throttling key (identity, IP, and account level) so a",
     "// shared IP / NAT is never locked out by a full window of attempts.",
   ]],
-  ["src/worker/routes/folders.ts", [
-    "// Patch format checks run in-route after the ownership lookup so cross-user writes surface 404 first.",
-  ]],
   ["src/worker/routes/blog.ts", [
     "// Ensure session loaded for manage routes",
     "// Helper: load blog settings from app_meta",
@@ -1048,6 +1053,9 @@ const allowed = new Map([
     "// When the caller only needs presence (e.g. pruning), stopping as soon as",
     "// every wanted id has been found is exact: unscanned notes could only add",
     "// more references for already-found ids, never create new ones.",
+  ]],
+  ["src/worker/routes/folders.ts", [
+    "// Patch format checks run in-route after the ownership lookup so cross-user writes surface 404 first.",
   ]],
   ["src/worker/routes/mcp-authorize.ts", [
     "/* Unreadable user settings fall back to the Accept-Language header. */",
