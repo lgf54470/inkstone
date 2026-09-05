@@ -174,6 +174,7 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
             event.dataTransfer.setData('text/plain', String(index));
         }
         catch {
+            // Drag payload is best-effort; the drop handler re-reads the index from state, not dataTransfer.
         }
     };
     const handlePresetDragOver = (index: number) => (event: React.DragEvent) => {

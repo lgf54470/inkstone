@@ -331,7 +331,7 @@ function persist(state: UiState): void {
       localStorage.setItem(STORAGE_KEY, serialized)
       lastPersisted = serialized
     } catch {
-
+      // Quota or private-mode writes can throw; in-memory state stays authoritative for the session.
     }
   }, 220)
 }

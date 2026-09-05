@@ -9,7 +9,7 @@ export function readImageSize(bytes: Uint8Array, mime: string): { width: number;
     if (mime === 'image/gif') return gifSize(bytes)
     if (mime === 'image/webp') return webpSize(bytes)
   } catch {
-
+    // Malformed or truncated image data is routine for probes; degrade to unknown dimensions.
   }
   return null
 }

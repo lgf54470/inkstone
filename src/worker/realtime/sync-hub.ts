@@ -60,7 +60,7 @@ export class SyncHub implements DurableObject {
     try {
       ws.close(code === 1005 ? 1000 : code, reason)
     } catch {
-
+      // Best-effort teardown: the socket may already be closed; there is nothing to recover.
     }
   }
 
@@ -74,7 +74,7 @@ export class SyncHub implements DurableObject {
       try {
         ws.send(payload)
       } catch {
-
+        // A socket can drop between getWebSockets() and send(); skip it and keep broadcasting.
       }
     }
   }

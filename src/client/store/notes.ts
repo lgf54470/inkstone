@@ -350,6 +350,7 @@ export const useNotes = create<NotesState>((set, get) => ({
             }
         }
         catch {
+            // Cache read failed (IndexedDB hiccup); fall through to the server fetch below.
         }
         try {
             const note = await requestNote(id);
@@ -1159,7 +1160,8 @@ export const useNotes = create<NotesState>((set, get) => ({
                 scheduleShellSave(get);
             reconcileFolderUi(get().folders);
         }
-        catch {
+        catch (err) {
+            console.error('[notes] refreshFolders failed:', err);
         }
     },
     async refreshTags() {

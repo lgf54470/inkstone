@@ -79,6 +79,7 @@ const allowed = new Map([
     "/** Move a preset within its list by one position (no-op at the edges). */",
     "/** Floating editor for an inclusive date-range filter: pick a start or end endpoint on a mini month calendar, leap to nearby months, apply fixed or rolling quick ranges, or clear the range. */",
     "// Locate feedback mirrors the sidebar-calendar jumpFlash: when the popover opens aimed at the range end month, or the endpoint toggles, the mini grid pulses with the accent ring.",
+    "// Drag payload is best-effort; the drop handler re-reads the index from state, not dataTransfer.",
   ]],
   ["src/client/components/feedback.tsx", [
     "// Landing focus on the undo action is the keyboard fast-path, but it must never",
@@ -100,6 +101,9 @@ const allowed = new Map([
     "// Welcome notes are deliberately dated a few weeks back: with no edits within the last ~10 days,",
     "// the rolling date filter's follow-edit window stays parked at the newest edit and the gap hint",
     "// (newest edit outside a today-anchored window) is directly visible in the demo.",
+  ]],
+  ["src/client/editor/paste.ts", [
+    "// Upload failure degrades to the error placeholder below via the null result.",
   ]],
   ["src/client/editor/code-languages.ts", [
     "// Highlighting removed: no code languages are loaded.",
@@ -656,6 +660,7 @@ const allowed = new Map([
     "// Reverse sync: when the body's front matter `title` property changes,",
     "// adopt it as the note title so both stay in agreement (opt-out per",
     "// settings).",
+    "// Cache read failed (IndexedDB hiccup); fall through to the server fetch below.",
   ]],
   ["src/client/store/notes/acknowledge.ts", [
     "// Best-effort count refresh; the next outbox event or pull retries it.",
@@ -750,6 +755,7 @@ const allowed = new Map([
     "// Keep the multi-select when entering a folder view so it stacks with",
     "// the folder filter; any other navigation clears the selection.",
     "/**\n * Post a toast carrying a one-click undo action; the single helper behind every store-level undo flow.\n * `duration` overrides the default window (dangerous actions pass a longer one via their caller).\n */",
+    "// Quota or private-mode writes can throw; in-memory state stays authoritative for the session.",
   ]],
   ["src/shared/constants.ts", [
     "/**\n * Session lifetime design (sliding window):\n * - `SESSION_TTL_MS` (90d): absolute cap. A session row/cookie never outlives 90 days,\n *   bounding the window in which a stolen session token stays usable.\n * - `SESSION_RENEW_BEFORE_MS` (45d = TTL/2): renewal threshold. On an authenticated\n *   request, if less than this much TTL remains, the session is extended back to the\n *   full 90 days (see middleware/auth.ts and lib/session-store.ts).\n *\n * Trade-offs: renewal only happens for requests that already presented a valid\n * session, so an abandoned session dies within at most 90 days (no idle-forever\n * sessions, maintenance sweeps the rows), while an active user never gets logged out\n * as long as they authenticate at least once per 45 days. The half-life threshold\n * also bounds write amplification: each session triggers at most one DB renewal\n * write per 45 days of activity. The 45-day window is generous enough to survive\n * the app's offline period (offline edits are queued locally and flushed on\n * reconnect, which needs a still-valid session) yet short enough that a freshly\n * stolen cookie's remaining lifetime stays bounded.\n */",
@@ -872,6 +878,9 @@ const allowed = new Map([
   ["src/worker/lib/errors.ts", [
     "/**\n * Worker-side ApiError (producer of the HTTP boundary). Deliberately mirrors\n * the client's ApiError (src/client/lib/api.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the worker adds static\n * factories and a strict status union the client does not need.\n */",
   ]],
+  ["src/worker/lib/image.ts", [
+    "// Malformed or truncated image data is routine for probes; degrade to unknown dimensions.",
+  ]],
   ["src/worker/lib/password.ts", [
     "// Measured on a dev machine (node:crypto, avg of 5): ~250 ms per hash with these",
     "// params — about 300x below the 75 s worst-case budget the login throttle allows",
@@ -947,6 +956,10 @@ const allowed = new Map([
     "// (c) unauthenticated requests (e.g. expired sessions) can never extend",
     "//     their own lifetime. The cookie Max-Age is refreshed in lockstep so",
     "//     the browser copy does not expire before the server-side row.",
+  ]],
+  ["src/worker/realtime/sync-hub.ts", [
+    "// Best-effort teardown: the socket may already be closed; there is nothing to recover.",
+    "// A socket can drop between getWebSockets() and send(); skip it and keep broadcasting.",
   ]],
   ["src/worker/routes/auth.ts", [
     "// Avatar data URLs can reach tens of KB; the 256 KB profile body limit is the cap.",

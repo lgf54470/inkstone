@@ -138,6 +138,7 @@ export async function insertFiles(view: EditorView, files: File[], handlers: Pas
             result = await handlers.uploadFile(file);
         }
         catch {
+            // Upload failure degrades to the error placeholder below via the null result.
         }
         const markdown = result
             ? uploadedFileMarkdown(result)
