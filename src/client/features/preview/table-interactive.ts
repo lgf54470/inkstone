@@ -6,6 +6,7 @@ import {
   sortTableRowByColumn,
   tableToCsv,
   updateTableCell,
+  type ParsedTable,
 } from '../../lib/markdown/table-editor';
 import { t } from '../../lib/i18n';
 
@@ -42,82 +43,39 @@ export function startTableCellEditing(
   if (cell.classList.contains('is-editing-cell')) return;
 
   const originalText = cell.textContent ?? '';
-  cell.contentEditable = 'true';
-  cell.classList.add('is-editing-cell');
-  cell.focus();
-
-  const range = document.createRange();
-  range.selectNodeContents(cell);
-  const sel = window.getSelection();
-  sel?.removeAllRanges();
-  sel?.addRange(range);
+  focusCellContent(cell);
 
   let isCommitted = false;
 
   const commit = (shouldMove?: 'next' | 'prev' | 'down') => {
     if (isCommitted) return;
     isCommitted = true;
-    cell.contentEditable = 'false';
-    cell.classList.remove('is-editing-cell');
-    cell.removeEventListener('keydown', onKeyDown);
-    cell.removeEventListener('blur', onBlur);
+    finishCellEditing(cell, onKeyDown, onBlur);
 
     const newText = (cell.textContent ?? '').trim();
-    const tableEl = cell.closest('table');
-    const wrapEl = cell.closest<HTMLElement>('.table-wrap');
-    const sourceLineRaw = wrapEl?.dataset.line ?? wrapEl?.dataset.sourceLine ?? '0';
-    const sourceLine = parseInt(sourceLineRaw, 10);
+    const nextContent = applyCellEdit(cell, content, originalText, newText);
+    if (nextContent !== null) onEdit(nextContent);
 
-    const colIndex = cell.cellIndex;
-    const isHeader = cell.tagName.toLowerCase() === 'th';
-    const tbody = tableEl?.querySelector('tbody');
-    const tbodyRows = tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
-    const rowIndex = isHeader ? -1 : tbodyRows.indexOf(cell.closest('tr')!);
-
-    let nextContent = content;
-
-    if (newText !== originalText) {
-      const lines = content.split('\n');
-      const table = parseMarkdownTable(lines, sourceLine);
-      if (table) {
-        const updated = updateTableCell(table, rowIndex, colIndex, newText);
-        const newLines = formatMarkdownTable(updated);
-        lines.splice(table.startLine, table.endLine - table.startLine + 1, ...newLines);
-        nextContent = lines.join('\n');
-        onEdit(nextContent);
-      }
-    }
-
-    if (shouldMove && tableEl) {
+    if (shouldMove && cell.closest('table')) {
       setTimeout(() => {
-        handleMoveAfterCommit(cell, shouldMove, nextContent, onEdit);
+        handleMoveAfterCommit(cell, shouldMove, nextContent ?? content, onEdit);
       }, 50);
     }
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
-      e.preventDefault();
-      cell.textContent = originalText;
-      isCommitted = true;
-      cell.contentEditable = 'false';
-      cell.classList.remove('is-editing-cell');
-      cell.removeEventListener('keydown', onKeyDown);
-      cell.removeEventListener('blur', onBlur);
-      cell.blur();
+      escapeCellEdit(e, cell, originalText, () => { isCommitted = true; }, onKeyDown, onBlur);
       return;
     }
-
     if (e.key === 'Tab') {
       e.preventDefault();
       commit(e.shiftKey ? 'prev' : 'next');
       return;
     }
-
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       commit('down');
-      return;
     }
   };
 
@@ -127,6 +85,64 @@ export function startTableCellEditing(
 
   cell.addEventListener('keydown', onKeyDown);
   cell.addEventListener('blur', onBlur);
+}
+
+function focusCellContent(cell: HTMLTableCellElement): void {
+  cell.contentEditable = 'true';
+  cell.classList.add('is-editing-cell');
+  cell.focus();
+
+  const range = document.createRange();
+  range.selectNodeContents(cell);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
+function finishCellEditing(
+  cell: HTMLTableCellElement,
+  onKeyDown: (e: KeyboardEvent) => void,
+  onBlur: () => void,
+): void {
+  cell.contentEditable = 'false';
+  cell.classList.remove('is-editing-cell');
+  cell.removeEventListener('keydown', onKeyDown);
+  cell.removeEventListener('blur', onBlur);
+}
+
+function escapeCellEdit(
+  e: KeyboardEvent,
+  cell: HTMLTableCellElement,
+  originalText: string,
+  markCommitted: () => void,
+  onKeyDown: (e: KeyboardEvent) => void,
+  onBlur: () => void,
+): void {
+  e.preventDefault();
+  cell.textContent = originalText;
+  markCommitted();
+  finishCellEditing(cell, onKeyDown, onBlur);
+  cell.blur();
+}
+
+function applyCellEdit(cell: HTMLTableCellElement, content: string, originalText: string, newText: string): string | null {
+  if (newText === originalText) return null;
+  const lines = content.split('\n');
+  const wrapEl = cell.closest<HTMLElement>('.table-wrap');
+  const sourceLineRaw = wrapEl?.dataset.line ?? wrapEl?.dataset.sourceLine ?? '0';
+  const sourceLine = parseInt(sourceLineRaw, 10);
+  const table = parseMarkdownTable(lines, sourceLine);
+  if (!table) return null;
+  const colIndex = cell.cellIndex;
+  const isHeader = cell.tagName.toLowerCase() === 'th';
+  const tableEl = cell.closest('table');
+  const tbody = tableEl?.querySelector('tbody');
+  const tbodyRows = tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
+  const rowIndex = isHeader ? -1 : tbodyRows.indexOf(cell.closest('tr')!);
+  const updated = updateTableCell(table, rowIndex, colIndex, newText);
+  const newLines = formatMarkdownTable(updated);
+  lines.splice(table.startLine, table.endLine - table.startLine + 1, ...newLines);
+  return lines.join('\n');
 }
 
 function handleMoveAfterCommit(
@@ -147,17 +163,7 @@ function handleMoveAfterCommit(
       const nextCell = allCells[currentIndex + 1]!;
       startTableCellEditing(nextCell, content, onEdit);
     } else {
-      const wrapEl = tableEl.closest<HTMLElement>('.table-wrap');
-      const sourceLineRaw = wrapEl?.dataset.line ?? wrapEl?.dataset.sourceLine ?? '0';
-      const sourceLine = parseInt(sourceLineRaw, 10);
-      const lines = content.split('\n');
-      const table = parseMarkdownTable(lines, sourceLine);
-      if (table) {
-        const updated = insertTableRow(table, table.rows.length - 1, 'below');
-        const newLines = formatMarkdownTable(updated);
-        lines.splice(table.startLine, table.endLine - table.startLine + 1, ...newLines);
-        onEdit(lines.join('\n'));
-      }
+      appendRowBelow(tableEl.closest<HTMLElement>('.table-wrap'), content, onEdit);
     }
   } else if (direction === 'prev') {
     if (currentIndex > 0) {
@@ -165,40 +171,52 @@ function handleMoveAfterCommit(
       startTableCellEditing(prevCell, content, onEdit);
     }
   } else if (direction === 'down') {
-    const col = currentCell.cellIndex;
-    const currentTr = currentCell.closest('tr');
-    const isHeader = currentCell.tagName.toLowerCase() === 'th';
-    const tbody = tableEl.querySelector('tbody');
+    moveDownAfterCommit(currentCell, tableEl, content, onEdit);
+  }
+}
 
-    if (isHeader) {
-      const firstDataTr = tbody?.querySelector('tr');
-      const targetCell = firstDataTr?.children[col] as HTMLTableCellElement | undefined;
-      if (targetCell) {
-        startTableCellEditing(targetCell, content, onEdit);
-      }
-    } else if (currentTr && tbody) {
-      const tbodyRows = Array.from(tbody.querySelectorAll('tr'));
-      const rIdx = tbodyRows.indexOf(currentTr);
-      if (rIdx < tbodyRows.length - 1) {
-        const nextTr = tbodyRows[rIdx + 1]!;
-        const targetCell = nextTr.children[col] as HTMLTableCellElement | undefined;
-        if (targetCell) {
-          startTableCellEditing(targetCell, content, onEdit);
-        }
-      } else {
-        const wrapEl = tableEl.closest<HTMLElement>('.table-wrap');
-        const sourceLineRaw = wrapEl?.dataset.line ?? wrapEl?.dataset.sourceLine ?? '0';
-        const sourceLine = parseInt(sourceLineRaw, 10);
-        const lines = content.split('\n');
-        const table = parseMarkdownTable(lines, sourceLine);
-        if (table) {
-          const updated = insertTableRow(table, table.rows.length - 1, 'below');
-          const newLines = formatMarkdownTable(updated);
-          lines.splice(table.startLine, table.endLine - table.startLine + 1, ...newLines);
-          onEdit(lines.join('\n'));
-        }
-      }
+function moveDownAfterCommit(
+  currentCell: HTMLTableCellElement,
+  tableEl: HTMLElement,
+  content: string,
+  onEdit: (next: string) => void,
+): void {
+  const col = currentCell.cellIndex;
+  const currentTr = currentCell.closest('tr');
+  const isHeader = currentCell.tagName.toLowerCase() === 'th';
+  const tbody = tableEl.querySelector('tbody');
+  if (isHeader) {
+    const firstDataTr = tbody?.querySelector('tr');
+    const targetCell = firstDataTr?.children[col] as HTMLTableCellElement | undefined;
+    if (targetCell) {
+      startTableCellEditing(targetCell, content, onEdit);
     }
+    return;
+  }
+  if (!currentTr || !tbody) return;
+  const tbodyRows = Array.from(tbody.querySelectorAll('tr'));
+  const rIdx = tbodyRows.indexOf(currentTr);
+  if (rIdx < tbodyRows.length - 1) {
+    const nextTr = tbodyRows[rIdx + 1]!;
+    const targetCell = nextTr.children[col] as HTMLTableCellElement | undefined;
+    if (targetCell) {
+      startTableCellEditing(targetCell, content, onEdit);
+    }
+  } else {
+    appendRowBelow(tableEl.closest<HTMLElement>('.table-wrap'), content, onEdit);
+  }
+}
+
+function appendRowBelow(wrapEl: HTMLElement | null, content: string, onEdit: (next: string) => void): void {
+  const sourceLineRaw = wrapEl?.dataset.line ?? wrapEl?.dataset.sourceLine ?? '0';
+  const sourceLine = parseInt(sourceLineRaw, 10);
+  const lines = content.split('\n');
+  const table = parseMarkdownTable(lines, sourceLine);
+  if (table) {
+    const updated = insertTableRow(table, table.rows.length - 1, 'below');
+    const newLines = formatMarkdownTable(updated);
+    lines.splice(table.startLine, table.endLine - table.startLine + 1, ...newLines);
+    onEdit(lines.join('\n'));
   }
 }
 
@@ -225,38 +243,33 @@ export function executeTableFloatingAction(
   const tbodyRows = tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
   const rowIndex = isHeader || !selectedCell ? -1 : tbodyRows.indexOf(selectedCell.closest('tr')!);
 
-  let updated = table;
-
-  switch (action) {
-    case 'add-row': {
-      const targetRow = rowIndex >= 0 ? rowIndex : table.rows.length - 1;
-      updated = insertTableRow(table, targetRow, 'below');
-      break;
+  if (action === 'copy-csv') {
+    const csv = tableToCsv(table);
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(csv);
     }
-    case 'add-col': {
-      updated = insertTableColumn(table, colIndex, 'right');
-      break;
-    }
-    case 'sort': {
-      updated = sortTableRowByColumn(table, colIndex, 'asc');
-      break;
-    }
-    case 'format': {
-      updated = { ...table };
-      break;
-    }
-    case 'copy-csv': {
-      const csv = tableToCsv(table);
-      if (navigator.clipboard?.writeText) {
-        void navigator.clipboard.writeText(csv);
-      }
-      return;
-    }
-    default:
-      return;
+    return;
   }
+
+  const updated = applyFloatingMutation(action, table, colIndex, rowIndex);
+  if (!updated) return;
 
   const newLines = formatMarkdownTable(updated);
   lines.splice(table.startLine, table.endLine - table.startLine + 1, ...newLines);
   onEdit(lines.join('\n'));
+}
+
+function applyFloatingMutation(action: string, table: ParsedTable, colIndex: number, rowIndex: number): ParsedTable | null {
+  switch (action) {
+    case 'add-row':
+      return insertTableRow(table, rowIndex >= 0 ? rowIndex : table.rows.length - 1, 'below');
+    case 'add-col':
+      return insertTableColumn(table, colIndex, 'right');
+    case 'sort':
+      return sortTableRowByColumn(table, colIndex, 'asc');
+    case 'format':
+      return { ...table };
+    default:
+      return null;
+  }
 }

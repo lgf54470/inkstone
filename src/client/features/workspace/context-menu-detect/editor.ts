@@ -12,195 +12,204 @@ export function detectEditorContext(view: EditorView, pos: number): EditorContex
   const lineText = line.text;
   const offsetInLine = clampedPos - line.from;
 
+  return detectSelection(view, clampedPos, lineNumber)
+    ?? detectFrontMatter(doc, clampedPos, lineNumber)
+    ?? detectFencedBlock(doc, clampedPos, lineNumber)
+    ?? detectTable(doc, lineText, lineNumber, offsetInLine, clampedPos)
+    ?? detectLinePatterns(line, lineText, offsetInLine, clampedPos, lineNumber)
+    ?? { type: 'empty', pos: clampedPos, lineNumber };
+}
+
+function detectSelection(view: EditorView, pos: number, lineNumber: number): EditorContextData | null {
   const selection = view.state.selection.main;
-  if (!selection.empty && clampedPos >= selection.from && clampedPos <= selection.to) {
-    const selectedText = view.state.sliceDoc(selection.from, selection.to);
-    return {
-      type: 'selection',
-      pos: clampedPos,
-      lineNumber,
-      selectedText,
-    };
-  }
+  if (selection.empty || pos < selection.from || pos > selection.to) return null;
+  const selectedText = view.state.sliceDoc(selection.from, selection.to);
+  return {
+    type: 'selection',
+    pos,
+    lineNumber,
+    selectedText,
+  };
+}
 
-  const docText = doc.toString();
-  const frontMatterMatch = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---/.exec(docText);
-  if (frontMatterMatch && clampedPos <= frontMatterMatch[0].length) {
-    return {
-      type: 'frontmatter',
-      pos: clampedPos,
-      lineNumber,
-    };
-  }
+function detectFrontMatter(doc: Text, pos: number, lineNumber: number): EditorContextData | null {
+  const frontMatterMatch = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---/.exec(doc.toString());
+  if (!frontMatterMatch || pos > frontMatterMatch[0].length) return null;
+  return {
+    type: 'frontmatter',
+    pos,
+    lineNumber,
+  };
+}
 
-  const codeFence = findCodeFenceAround(doc, clampedPos);
-  if (codeFence) {
-    if (codeFence.language.toLowerCase() === 'mermaid') {
-      return {
-        type: 'mermaid',
-        pos: clampedPos,
-        lineNumber,
-        mermaid: {
-          code: codeFence.code,
-          from: codeFence.from,
-          to: codeFence.to,
-        },
-      };
-    }
-    if (codeFence.language.toLowerCase() === 'chart' || codeFence.language.toLowerCase() === 'chartjs') {
-      return {
-        type: 'chart',
-        pos: clampedPos,
-        lineNumber,
-        chart: {
-          code: codeFence.code,
-          from: codeFence.from,
-          to: codeFence.to,
-        },
-      };
-    }
-    return {
-      type: 'codeblock',
-      pos: clampedPos,
+function detectFencedBlock(doc: Text, pos: number, lineNumber: number): EditorContextData | null {
+  const codeFence = findCodeFenceAround(doc, pos);
+  if (codeFence) return codeFenceContext(pos, lineNumber, codeFence);
+  const mathBlock = findMathBlockAround(doc, pos);
+  if (mathBlock) return mathBlockContext(pos, lineNumber, mathBlock);
+  return null;
+}
+
+function detectTable(doc: Text, lineText: string, lineNumber: number, offsetInLine: number, pos: number): EditorContextData | null {
+  if (!lineText.includes('|')) return null;
+  const lines = doc.toJSON();
+  const table = parseMarkdownTable(lines, lineNumber - 1, offsetInLine);
+  if (!table) return null;
+  return {
+    type: 'table',
+    pos,
+    lineNumber,
+    table,
+  };
+}
+
+function detectLinePatterns(
+  line: { from: number; to: number },
+  lineText: string,
+  offsetInLine: number,
+  pos: number,
+  lineNumber: number,
+): EditorContextData | null {
+  return inlineMatchContext({
+    regex: /!\[([^\]]*)\]\(([^)]+)\)/g,
+    lineText,
+    offset: offsetInLine,
+    lineFrom: line.from,
+    pos,
+    lineNumber,
+    build: (m, from, to) => ({ type: 'image', image: { alt: m[1] ?? '', url: m[2] ?? '', raw: m[0], from, to } }),
+  })
+    ?? inlineMatchContext({
+      regex: /\[\[([^\]]+)\]\]/g,
+      lineText,
+      offset: offsetInLine,
+      lineFrom: line.from,
+      pos,
       lineNumber,
-      codeBlock: {
-        language: codeFence.language,
+      build: (m, from, to) => {
+        const parts = (m[1] ?? '').split('|');
+        return { type: 'wikilink', wikiLink: { target: parts[0] ? parts[0].trim() : '', alias: parts[1]?.trim(), from, to } };
+      },
+    })
+    ?? inlineMatchContext({
+      regex: /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g,
+      lineText,
+      offset: offsetInLine,
+      lineFrom: line.from,
+      pos,
+      lineNumber,
+      build: (m, from, to) => ({ type: 'link', link: { text: m[1] ?? '', url: m[2] ?? '', from, to } }),
+    })
+    ?? inlineMatchContext({
+      regex: /\$([^\$\n]+)\$/g,
+      lineText,
+      offset: offsetInLine,
+      lineFrom: line.from,
+      pos,
+      lineNumber,
+      build: (m, from, to) => ({ type: 'math', math: { formula: m[1] ?? '', isBlock: false, from, to } }),
+    })
+    ?? detectTask(lineText, line, pos, lineNumber);
+}
+
+function inlineMatchContext(args: {
+  regex: RegExp;
+  lineText: string;
+  offset: number;
+  lineFrom: number;
+  pos: number;
+  lineNumber: number;
+  build: (match: RegExpExecArray, from: number, to: number) => Omit<EditorContextData, 'pos' | 'lineNumber'>;
+}): EditorContextData | null {
+  const match = findMatchAt(args.regex, args.lineText, args.offset);
+  if (!match) return null;
+  const matchStart = match.index;
+  const matchEnd = matchStart + match[0].length;
+  const built = args.build(match, args.lineFrom + matchStart, args.lineFrom + matchEnd);
+  return { ...built, pos: args.pos, lineNumber: args.lineNumber };
+}
+
+function detectTask(lineText: string, line: { from: number; to: number }, pos: number, lineNumber: number): EditorContextData | null {
+  const taskMatch = /^(\s*[-*+]\s+\[([ xX])\]\s+)(.*)$/.exec(lineText);
+  if (!taskMatch) return null;
+  return {
+    type: 'task',
+    pos,
+    lineNumber,
+    task: {
+      checked: taskMatch[2]?.toLowerCase() === 'x',
+      text: taskMatch[3] ?? '',
+      from: line.from,
+      to: line.to,
+    },
+  };
+}
+
+function findMatchAt(regex: RegExp, lineText: string, offset: number): RegExpExecArray | null {
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(lineText)) !== null) {
+    if (offset >= match.index && offset <= match.index + match[0].length) return match;
+  }
+  return null;
+}
+
+function codeFenceContext(
+  pos: number,
+  lineNumber: number,
+  codeFence: { language: string; code: string; from: number; to: number },
+): EditorContextData {
+  if (codeFence.language.toLowerCase() === 'mermaid') {
+    return {
+      type: 'mermaid',
+      pos,
+      lineNumber,
+      mermaid: {
         code: codeFence.code,
         from: codeFence.from,
         to: codeFence.to,
       },
     };
   }
-
-  const mathBlock = findMathBlockAround(doc, clampedPos);
-  if (mathBlock) {
+  if (codeFence.language.toLowerCase() === 'chart' || codeFence.language.toLowerCase() === 'chartjs') {
     return {
-      type: 'math',
-      pos: clampedPos,
+      type: 'chart',
+      pos,
       lineNumber,
-      math: {
-        formula: mathBlock.formula,
-        isBlock: true,
-        from: mathBlock.from,
-        to: mathBlock.to,
+      chart: {
+        code: codeFence.code,
+        from: codeFence.from,
+        to: codeFence.to,
       },
     };
   }
-
-  if (lineText.includes('|')) {
-    const lines = doc.toJSON();
-    const table = parseMarkdownTable(lines, lineNumber - 1, offsetInLine);
-    if (table) {
-      return {
-        type: 'table',
-        pos: clampedPos,
-        lineNumber,
-        table,
-      };
-    }
-  }
-
-  const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-  let imgMatch: RegExpExecArray | null;
-  while ((imgMatch = imageRegex.exec(lineText)) !== null) {
-    const matchStart = imgMatch.index;
-    const matchEnd = matchStart + imgMatch[0].length;
-    if (offsetInLine >= matchStart && offsetInLine <= matchEnd) {
-      return {
-        type: 'image',
-        pos: clampedPos,
-        lineNumber,
-        image: {
-          alt: imgMatch[1] ?? '',
-          url: imgMatch[2] ?? '',
-          raw: imgMatch[0],
-          from: line.from + matchStart,
-          to: line.from + matchEnd,
-        },
-      };
-    }
-  }
-
-  const wikiRegex = /\[\[([^\]]+)\]\]/g;
-  let wikiMatch: RegExpExecArray | null;
-  while ((wikiMatch = wikiRegex.exec(lineText)) !== null) {
-    const matchStart = wikiMatch.index;
-    const matchEnd = matchStart + wikiMatch[0].length;
-    if (offsetInLine >= matchStart && offsetInLine <= matchEnd) {
-      const parts = (wikiMatch[1] ?? '').split('|');
-      return {
-        type: 'wikilink',
-        pos: clampedPos,
-        lineNumber,
-        wikiLink: {
-          target: parts[0] ? parts[0].trim() : '',
-          alias: parts[1]?.trim(),
-          from: line.from + matchStart,
-          to: line.from + matchEnd,
-        },
-      };
-    }
-  }
-
-  const linkRegex = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
-  let linkMatch: RegExpExecArray | null;
-  while ((linkMatch = linkRegex.exec(lineText)) !== null) {
-    const matchStart = linkMatch.index;
-    const matchEnd = matchStart + linkMatch[0].length;
-    if (offsetInLine >= matchStart && offsetInLine <= matchEnd) {
-      return {
-        type: 'link',
-        pos: clampedPos,
-        lineNumber,
-        link: {
-          text: linkMatch[1] ?? '',
-          url: linkMatch[2] ?? '',
-          from: line.from + matchStart,
-          to: line.from + matchEnd,
-        },
-      };
-    }
-  }
-
-  const inlineMathRegex = /\$([^\$\n]+)\$/g;
-  let mathMatch: RegExpExecArray | null;
-  while ((mathMatch = inlineMathRegex.exec(lineText)) !== null) {
-    const matchStart = mathMatch.index;
-    const matchEnd = matchStart + mathMatch[0].length;
-    if (offsetInLine >= matchStart && offsetInLine <= matchEnd) {
-      return {
-        type: 'math',
-        pos: clampedPos,
-        lineNumber,
-        math: {
-          formula: mathMatch[1] ?? '',
-          isBlock: false,
-          from: line.from + matchStart,
-          to: line.from + matchEnd,
-        },
-      };
-    }
-  }
-
-  const taskMatch = /^(\s*[-*+]\s+\[([ xX])\]\s+)(.*)$/.exec(lineText);
-  if (taskMatch) {
-    return {
-      type: 'task',
-      pos: clampedPos,
-      lineNumber,
-      task: {
-        checked: taskMatch[2]?.toLowerCase() === 'x',
-        text: taskMatch[3] ?? '',
-        from: line.from,
-        to: line.to,
-      },
-    };
-  }
-
   return {
-    type: 'empty',
-    pos: clampedPos,
+    type: 'codeblock',
+    pos,
     lineNumber,
+    codeBlock: {
+      language: codeFence.language,
+      code: codeFence.code,
+      from: codeFence.from,
+      to: codeFence.to,
+    },
+  };
+}
+
+function mathBlockContext(
+  pos: number,
+  lineNumber: number,
+  mathBlock: { formula: string; from: number; to: number },
+): EditorContextData {
+  return {
+    type: 'math',
+    pos,
+    lineNumber,
+    math: {
+      formula: mathBlock.formula,
+      isBlock: true,
+      from: mathBlock.from,
+      to: mathBlock.to,
+    },
   };
 }
 
@@ -294,4 +303,3 @@ function findMathBlockAround(doc: Text, pos: number): { formula: string; from: n
     to,
   };
 }
-

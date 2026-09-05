@@ -11,10 +11,14 @@ export interface ParsedTable {
   cursorColIndex: number;
 }
 
+interface SplitCellState {
+  current: string;
+  isEscaped: boolean;
+}
+
 export function splitTableRow(line: string): string[] {
   const cells: string[] = [];
-  let current = '';
-  let isEscaped = false;
+  const state: SplitCellState = { current: '', isEscaped: false };
 
   const trimmed = line.trim();
   let str = trimmed.startsWith('|') ? trimmed.slice(1) : trimmed;
@@ -23,22 +27,29 @@ export function splitTableRow(line: string): string[] {
   }
 
   for (let i = 0; i < str.length; i++) {
-    const char = str[i];
-    if (isEscaped) {
-      current += char;
-      isEscaped = false;
-    } else if (char === '\\') {
-      current += char;
-      isEscaped = true;
-    } else if (char === '|') {
-      cells.push(current.trim());
-      current = '';
-    } else {
-      current += char;
-    }
+    splitCellChar(state, cells, str[i]!);
   }
-  cells.push(current.trim());
+  cells.push(state.current.trim());
   return cells;
+}
+
+function splitCellChar(state: SplitCellState, cells: string[], char: string): void {
+  if (state.isEscaped) {
+    state.current += char;
+    state.isEscaped = false;
+    return;
+  }
+  if (char === '\\') {
+    state.current += char;
+    state.isEscaped = true;
+    return;
+  }
+  if (char === '|') {
+    cells.push(state.current.trim());
+    state.current = '';
+    return;
+  }
+  state.current += char;
 }
 
 export function isDelimiterRow(line: string): boolean {
@@ -78,25 +89,34 @@ export function formatDelimiterCell(align: ColumnAlignment, width = 3): string {
   }
 }
 
+interface ColumnOffsetState {
+  col: number;
+  isInEscape: boolean;
+}
+
 export function findColumnIndexAtOffset(line: string, offset: number): number {
-  let col = 0;
-  let isInEscape = false;
+  const state: ColumnOffsetState = { col: 0, isInEscape: false };
   const clampedOffset = Math.max(0, Math.min(offset, line.length));
 
   for (let i = 0; i < clampedOffset; i++) {
-    const char = line[i];
-    if (isInEscape) {
-      isInEscape = false;
-    } else if (char === '\\') {
-      isInEscape = true;
-    } else if (char === '|') {
-      const isLeading = line.slice(0, i).trim() === '';
-      if (!isLeading) {
-        col++;
-      }
-    }
+    advanceColumnOffset(state, line, i);
   }
-  return col;
+  return state.col;
+}
+
+function advanceColumnOffset(state: ColumnOffsetState, line: string, i: number): void {
+  const char = line[i]!;
+  if (state.isInEscape) {
+    state.isInEscape = false;
+    return;
+  }
+  if (char === '\\') {
+    state.isInEscape = true;
+    return;
+  }
+  if (char === '|' && line.slice(0, i).trim() !== '') {
+    state.col++;
+  }
 }
 
 export function parseMarkdownTable(
@@ -108,58 +128,19 @@ export function parseMarkdownTable(
   const currentLine = lines[targetLineIndex] ?? '';
   if (!currentLine.includes('|')) return null;
 
-  let startLine = targetLineIndex;
-  while (startLine > 0 && (lines[startLine - 1] ?? '').includes('|') && (lines[startLine - 1] ?? '').trim().length > 0) {
-    startLine--;
-  }
-
-  let endLine = targetLineIndex;
-  while (endLine + 1 < lines.length && (lines[endLine + 1] ?? '').includes('|') && (lines[endLine + 1] ?? '').trim().length > 0) {
-    endLine++;
-  }
-
+  const { startLine, endLine } = findTableBounds(lines, targetLineIndex);
   if (endLine - startLine < 1) return null;
 
-  let delimiterLineIndex = -1;
-  for (let i = startLine + 1; i <= endLine; i++) {
-    if (isDelimiterRow(lines[i] ?? '')) {
-      delimiterLineIndex = i;
-      break;
-    }
-  }
-
+  const delimiterLineIndex = findDelimiterLine(lines, startLine, endLine);
   if (delimiterLineIndex === -1) return null;
 
   const headerLineIndex = delimiterLineIndex - 1;
   const rawHeaders = splitTableRow(lines[headerLineIndex] ?? '');
   const rawDelimiters = splitTableRow(lines[delimiterLineIndex] ?? '');
 
-  let columnCount = Math.max(rawHeaders.length, rawDelimiters.length, 1);
-
-  const rows: string[][] = [];
-  for (let i = delimiterLineIndex + 1; i <= endLine; i++) {
-    const rawRow = splitTableRow(lines[i] ?? '');
-    columnCount = Math.max(columnCount, rawRow.length);
-    rows.push(rawRow);
-  }
-
-  const headerRow: string[] = [];
-  for (let c = 0; c < columnCount; c++) {
-    headerRow.push(rawHeaders[c] ?? '');
-  }
-
-  const alignments: ColumnAlignment[] = [];
-  for (let c = 0; c < columnCount; c++) {
-    alignments.push(rawDelimiters[c] ? parseCellAlignment(rawDelimiters[c]!) : 'default');
-  }
-
-  const paddedRows: string[][] = rows.map((row) => {
-    const padded: string[] = [];
-    for (let c = 0; c < columnCount; c++) {
-      padded.push(row[c] ?? '');
-    }
-    return padded;
-  });
+  const { rows, columnCount } = collectTableRows(lines, delimiterLineIndex, endLine, rawHeaders.length, rawDelimiters.length);
+  const { headerRow, alignments } = buildHeaderAndAlignments(rawHeaders, rawDelimiters, columnCount);
+  const paddedRows = padRows(rows, columnCount);
 
   let cursorRowIndex = -1;
   if (targetLineIndex === headerLineIndex || targetLineIndex === delimiterLineIndex) {
@@ -183,6 +164,66 @@ export function parseMarkdownTable(
     cursorRowIndex,
     cursorColIndex,
   };
+}
+
+function findTableBounds(lines: string[], targetLineIndex: number): { startLine: number; endLine: number } {
+  let startLine = targetLineIndex;
+  while (startLine > 0 && (lines[startLine - 1] ?? '').includes('|') && (lines[startLine - 1] ?? '').trim().length > 0) {
+    startLine--;
+  }
+  let endLine = targetLineIndex;
+  while (endLine + 1 < lines.length && (lines[endLine + 1] ?? '').includes('|') && (lines[endLine + 1] ?? '').trim().length > 0) {
+    endLine++;
+  }
+  return { startLine, endLine };
+}
+
+function findDelimiterLine(lines: string[], startLine: number, endLine: number): number {
+  for (let i = startLine + 1; i <= endLine; i++) {
+    if (isDelimiterRow(lines[i] ?? '')) return i;
+  }
+  return -1;
+}
+
+function collectTableRows(
+  lines: string[],
+  delimiterLineIndex: number,
+  endLine: number,
+  headerLen: number,
+  delimiterLen: number,
+): { rows: string[][]; columnCount: number } {
+  let columnCount = Math.max(headerLen, delimiterLen, 1);
+  const rows: string[][] = [];
+  for (let i = delimiterLineIndex + 1; i <= endLine; i++) {
+    const rawRow = splitTableRow(lines[i] ?? '');
+    columnCount = Math.max(columnCount, rawRow.length);
+    rows.push(rawRow);
+  }
+  return { rows, columnCount };
+}
+
+function buildHeaderAndAlignments(
+  rawHeaders: string[],
+  rawDelimiters: string[],
+  columnCount: number,
+): { headerRow: string[]; alignments: ColumnAlignment[] } {
+  const headerRow: string[] = [];
+  const alignments: ColumnAlignment[] = [];
+  for (let c = 0; c < columnCount; c++) {
+    headerRow.push(rawHeaders[c] ?? '');
+    alignments.push(rawDelimiters[c] ? parseCellAlignment(rawDelimiters[c]!) : 'default');
+  }
+  return { headerRow, alignments };
+}
+
+function padRows(rows: string[][], columnCount: number): string[][] {
+  return rows.map((row) => {
+    const padded: string[] = [];
+    for (let c = 0; c < columnCount; c++) {
+      padded.push(row[c] ?? '');
+    }
+    return padded;
+  });
 }
 
 export function insertTableRow(

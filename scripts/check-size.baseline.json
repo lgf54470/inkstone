@@ -206,10 +206,6 @@
   "src/client/features/preview/preview.tsx": {
     "longFns": 1
   },
-  "src/client/features/preview/table-interactive.ts": {
-    "longFns": 3,
-    "deepFns": 1
-  },
   "src/client/features/preview/wiki-link-hover-card/index.tsx": {
     "longFns": 1
   },
@@ -318,9 +314,6 @@
     "longFns": 1
   },
   "src/client/features/workspace/context-menu-detect.test.ts": {
-    "longFns": 1
-  },
-  "src/client/features/workspace/context-menu-detect/editor.ts": {
     "longFns": 1
   },
   "src/client/features/workspace/context-menu-detect/preview.ts": {
@@ -448,8 +441,7 @@
     "longFns": 1
   },
   "src/client/lib/markdown/table-editor.ts": {
-    "longFns": 1,
-    "deepFns": 2
+    "lines": 522
   },
   "src/client/lib/note-filter.test.ts": {
     "longFns": 1
