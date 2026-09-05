@@ -73,9 +73,11 @@
     "longFns": 1,
     "deepFns": 1
   },
-  "src/client/features/attachments/attachment-drive-sidebar.tsx": {
-    "lines": 777,
-    "longFns": 2
+  "src/client/features/attachments/attachment-drive-sidebar/folder-row.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/attachments/attachment-drive-sidebar/sidebar.tsx": {
+    "longFns": 1
   },
   "src/client/features/attachments/attachment-drive-toolbar.tsx": {
     "longFns": 1
