@@ -830,7 +830,7 @@ const allowed = new Map([
   ["src/worker/backup/s3.ts", [
     "/* Best-effort: an unreadable error body falls back to the generic hints below. */",
   ]],
-  ["src/worker/backup/snapshot.ts", [
+  ["src/worker/backup/snapshot/index.ts", [
     "/** Produces restorable JSON, readable Markdown, and attachment files for every backup target. */",
   ]],
   ["src/worker/db/schema/index.ts", [

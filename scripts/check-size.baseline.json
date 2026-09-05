@@ -524,10 +524,12 @@
   "src/worker/backup/scheduler.ts": {
     "longFns": 1
   },
-  "src/worker/backup/snapshot.ts": {
-    "lines": 637,
-    "longFns": 2,
+  "src/worker/backup/snapshot/build.ts": {
+    "longFns": 1,
     "deepFns": 1
+  },
+  "src/worker/backup/snapshot/export.ts": {
+    "longFns": 1
   },
   "src/worker/backup/webdav.ts": {
     "longFns": 1,
