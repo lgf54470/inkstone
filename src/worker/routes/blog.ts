@@ -11,6 +11,19 @@ import {
 } from '../lib/scoped-organizer'
 import { loadSession, requireAuth } from '../middleware/auth'
 import { getMeta, setMeta } from '../db/metadata'
+import type {
+  BlogCalendarRow,
+  BlogCategoryCountsRow,
+  BlogCategoryRow,
+  BlogCommentModerationRow,
+  BlogPostCountsRow,
+  BlogPostPublicRow,
+  BlogPostRow,
+  BlogPublicCategoryRow,
+  BlogPublicCommentRow,
+  BlogTagRow,
+  BlogTimelineRow,
+} from '../db/rows'
 import { extractCoverUrl, parseFrontMatter } from '@shared/markdown-utils'
 import {
   isBot,
@@ -559,7 +572,7 @@ blogManageRoutes.get('/note-post/:noteId', requireAuth, async (c) => {
   const row = await c.env.DB
     .prepare('SELECT * FROM blog_posts WHERE note_id = ?1 AND user_id = ?2')
     .bind(noteId, userId)
-    .first<any>()
+    .first<BlogPostRow>()
 
   if (!row) {
     return c.json({ post: null })
@@ -641,7 +654,7 @@ blogManageRoutes.get('/posts', requireAuth, async (c) => {
     sql += ` ORDER BY p.is_pinned DESC, p.published_at DESC`
   }
 
-  const { results } = await c.env.DB.prepare(sql).bind(...params).all<any>()
+  const { results } = await c.env.DB.prepare(sql).bind(...params).all<BlogPostCountsRow>()
 
   let posts: BlogPost[] = (results || []).map((row) => ({
     id: row.id,
@@ -820,7 +833,7 @@ blogManageRoutes.patch('/posts/:id', requireAuth, async (c) => {
   const current = await c.env.DB
     .prepare('SELECT * FROM blog_posts WHERE id = ?1 AND user_id = ?2')
     .bind(id, userId)
-    .first<any>()
+    .first<BlogPostRow>()
   if (!current) throw ApiError.notFound('Post not found')
 
   if (body.slug && body.slug !== current.slug) {
@@ -1008,7 +1021,7 @@ blogManageRoutes.get('/tags', requireAuth, async (c) => {
   const { results: tagRows } = await c.env.DB.prepare(
     `SELECT id, user_id, name, color, is_pinned, created_at
        FROM blog_tags WHERE user_id = ?1 ORDER BY is_pinned DESC, name ASC`,
-  ).bind(userId).all<any>()
+  ).bind(userId).all<BlogTagRow>()
 
   const { results: postsWithTags } = await c.env.DB.prepare(
     `SELECT tags FROM blog_posts WHERE user_id = ?1`,
@@ -1075,7 +1088,7 @@ blogManageRoutes.post('/tags', requireAuth, async (c) => {
     if (msg.includes('UNIQUE') || msg.includes('constraint')) {
       const existing = await c.env.DB.prepare(
         `SELECT id, user_id, name, color, is_pinned, created_at FROM blog_tags WHERE user_id = ?1 AND name = ?2`,
-      ).bind(userId, name).first<any>()
+      ).bind(userId, name).first<BlogTagRow>()
       if (existing) {
         return c.json({
           id: existing.id,
@@ -1114,7 +1127,7 @@ blogManageRoutes.patch('/tags/:id', requireAuth, async (c) => {
 
   const existing = await c.env.DB.prepare(
     `SELECT id, user_id, name, color, is_pinned, created_at FROM blog_tags WHERE id = ?1 AND user_id = ?2`,
-  ).bind(id, userId).first<any>()
+  ).bind(id, userId).first<BlogTagRow>()
 
   if (!existing) {
     const newIdVal = isValidId(id) ? id : newId()
@@ -1216,7 +1229,7 @@ blogManageRoutes.get('/categories', requireAuth, async (c) => {
       ORDER BY c.position ASC, c.created_at ASC
     `)
     .bind(userId)
-    .all<any>()
+    .all<BlogCategoryCountsRow>()
 
   const categories: BlogCategory[] = (results || []).map((row) => ({
     id: row.id,
@@ -1289,7 +1302,7 @@ blogManageRoutes.patch('/categories/:id', requireAuth, async (c) => {
   const current = await c.env.DB
     .prepare('SELECT * FROM blog_categories WHERE id = ?1 AND user_id = ?2')
     .bind(id, userId)
-    .first<any>()
+    .first<BlogCategoryRow>()
   if (!current) throw ApiError.notFound('Category not found')
 
   const now = Date.now()
@@ -1374,7 +1387,7 @@ blogManageRoutes.get('/comments', requireAuth, async (c) => {
 
   sql += ` ORDER BY c.created_at DESC`
 
-  const { results } = await c.env.DB.prepare(sql).bind(...params).all<any>()
+  const { results } = await c.env.DB.prepare(sql).bind(...params).all<BlogCommentModerationRow>()
 
   const comments: BlogComment[] = (results || []).map((row) => ({
     id: row.id,
@@ -1530,7 +1543,7 @@ blogPublicRoutes.get('/posts', async (c) => {
 
   sql += ` ORDER BY p.is_pinned DESC, p.published_at DESC`
 
-  const { results } = await c.env.DB.prepare(sql).bind(...params).all<any>()
+  const { results } = await c.env.DB.prepare(sql).bind(...params).all<BlogPostPublicRow>()
 
   let items = (results || []).map((row) => ({
     id: row.id,
@@ -1580,7 +1593,7 @@ blogPublicRoutes.get('/posts/:slug', async (c) => {
       WHERE p.slug = ?1 AND p.is_published = 1
     `)
     .bind(slug)
-    .first<any>()
+    .first<BlogPostPublicRow>()
 
   if (!row) {
     throw ApiError.notFound('Post not found')
@@ -1689,7 +1702,7 @@ blogPublicRoutes.get('/categories', async (c) => {
       GROUP BY c.id
       ORDER BY c.position ASC, c.created_at ASC
     `)
-    .all<any>()
+    .all<BlogPublicCategoryRow>()
 
   return c.json({ categories: results || [] })
 })
@@ -1732,9 +1745,17 @@ blogPublicRoutes.get('/timeline', async (c) => {
       WHERE is_published = 1
       ORDER BY published_at DESC
     `)
-    .all<any>()
+    .all<BlogTimelineRow>()
 
-  const timelineMap: Record<number, Record<number, any[]>> = {}
+  interface BlogTimelineEntry {
+    id: string
+    slug: string
+    title: string
+    publishedAt: number
+    coverUrl: string
+    tags: unknown[]
+  }
+  const timelineMap: Record<number, Record<number, BlogTimelineEntry[]>> = {}
   for (const row of results || []) {
     const d = new Date(row.published_at)
     const year = d.getFullYear()
@@ -1758,7 +1779,7 @@ blogPublicRoutes.get('/timeline', async (c) => {
 blogPublicRoutes.get('/calendar', async (c) => {
   const { results } = await c.env.DB
     .prepare('SELECT slug, title, published_at FROM blog_posts WHERE is_published = 1 ORDER BY published_at ASC')
-    .all<any>()
+    .all<BlogCalendarRow>()
 
   // Map by YYYY-MM-DD
   const calendarMap: Record<string, { count: number; posts: { slug: string; title: string }[] }> = {}
@@ -1793,7 +1814,7 @@ blogPublicRoutes.get('/comments/:postSlug', async (c) => {
       ORDER BY created_at ASC
     `)
     .bind(post.id)
-    .all<any>()
+    .all<BlogPublicCommentRow>()
 
   return c.json({
     allowComments: Boolean(post.allow_comments),

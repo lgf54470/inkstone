@@ -128,3 +128,116 @@ export const NOTE_COLUMNS = `n.id, n.user_id, n.folder_id, n.title, n.excerpt, n
     WHERE nt.note_id = n.id AND t.user_id = n.user_id) AS tag_names`
 
 export const NOTE_COLUMNS_FULL = `${NOTE_COLUMNS}, n.content`
+
+
+export interface BlogPostRow {
+  id: string
+  slug: string
+  note_id: string
+  user_id: string
+  title: string
+  excerpt: string
+  content: string
+  cover_url: string
+  category_id: string | null
+  folder_id: string | null
+  tags: string
+  is_published: number
+  allow_comments: number
+  is_pinned: number
+  views: number
+  published_at: number
+  created_at: number
+  updated_at: number
+}
+
+export interface BlogPostCountsRow extends BlogPostRow {
+  comments_count: number
+}
+
+export interface BlogPostPublicRow extends BlogPostCountsRow {
+  category_name: string | null
+  category_slug: string | null
+}
+
+export interface BlogTagRow {
+  id: string
+  user_id: string
+  name: string
+  color: string | null
+  is_pinned: number
+  created_at: number
+}
+
+export interface BlogCategoryRow {
+  id: string
+  user_id: string
+  name: string
+  slug: string
+  description: string
+  color: string | null
+  icon: string | null
+  position: number
+  created_at: number
+  updated_at: number
+}
+
+export interface BlogCategoryCountsRow extends BlogCategoryRow {
+  posts_count: number
+}
+
+export interface BlogPublicCategoryRow {
+  id: string
+  name: string
+  slug: string
+  description: string
+  color: string | null
+  icon: string | null
+  posts_count: number
+}
+
+export interface BlogCommentRow {
+  id: string
+  post_id: string
+  parent_id: string | null
+  author_name: string
+  author_email: string
+  author_url: string | null
+  author_avatar: string | null
+  content: string
+  status: string
+  ip: string | null
+  user_agent: string | null
+  created_at: number
+}
+
+export interface BlogCommentModerationRow extends BlogCommentRow {
+  post_title: string
+  post_slug: string
+}
+
+export interface BlogPublicCommentRow {
+  id: string
+  post_id: string
+  parent_id: string | null
+  author_name: string
+  author_url: string | null
+  author_avatar: string | null
+  content: string
+  created_at: number
+}
+
+export interface BlogTimelineRow {
+  id: string
+  slug: string
+  title: string
+  published_at: number
+  cover_url: string
+  tags: string
+}
+
+export interface BlogCalendarRow {
+  slug: string
+  title: string
+  published_at: number
+}
