@@ -489,7 +489,7 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
           style={{
             top: submenuPos.top,
             left: submenuPos.left,
-            zIndex: (zIndex ?? 260) + 10,
+            zIndex: (zIndex ?? Z_INDEX.menu) + 10,
           }}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
