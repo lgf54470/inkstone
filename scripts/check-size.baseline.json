@@ -146,8 +146,7 @@
   "src/client/features/blog/blog-table-view/row.tsx": {
     "longFns": 1
   },
-  "src/client/features/command/command-palette.tsx": {
-    "lines": 683,
+  "src/client/features/command/command-palette/index.tsx": {
     "longFns": 1,
     "deepFns": 1
   },
