@@ -162,10 +162,12 @@
   "src/client/features/folders/manage-folders-modal/use-manage-folders-modal.ts": {
     "longFns": 1
   },
-  "src/client/features/graph/graph-panel.tsx": {
-    "lines": 756,
+  "src/client/features/graph/graph-panel/canvas.tsx": {
     "longFns": 3,
     "deepFns": 1
+  },
+  "src/client/features/graph/graph-panel/index.tsx": {
+    "longFns": 1
   },
   "src/client/features/list/note-list.tsx": {
     "lines": 654,
