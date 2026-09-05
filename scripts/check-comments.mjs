@@ -369,7 +369,7 @@ const allowed = new Map([
   ["src/client/features/tags/tag-mutations.ts", [
     "// The rollback already surfaced the failure toast; a refresh warning would double-toast.",
   ]],
-  ["src/client/features/templates/template-gallery.tsx", [
+  ["src/client/features/templates/gallery-persist.ts", [
     "// The fullwidth comma (\\uFF0C) is the typographic default for Chinese input.",
   ]],
   ["src/client/features/workspace/context-menu/types.ts", [

@@ -170,7 +170,6 @@
     "longFns": 1
   },
   "src/client/features/list/note-list.tsx": {
-    "lines": 654,
     "longFns": 1
   },
   "src/client/features/list/note-list/bulk-bar.tsx": {
@@ -210,7 +209,7 @@
     "longFns": 1
   },
   "src/client/features/preview/preview.tsx": {
-    "lines": 827,
+    "lines": 683,
     "longFns": 2,
     "deepFns": 1
   },
@@ -321,10 +320,12 @@
   "src/client/features/tags/tag-mutations.ts": {
     "longFns": 1
   },
-  "src/client/features/templates/template-gallery.tsx": {
-    "lines": 1227,
+  "src/client/features/templates/gallery-keyboard.ts": {
     "longFns": 2,
     "deepFns": 1
+  },
+  "src/client/features/templates/template-gallery.tsx": {
+    "longFns": 1
   },
   "src/client/features/workspace/context-menu-detect.test.ts": {
     "longFns": 1
