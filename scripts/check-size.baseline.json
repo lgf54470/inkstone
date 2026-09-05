@@ -110,15 +110,16 @@
   "src/client/features/blog/blog-hub-modal.tsx": {
     "longFns": 1
   },
-  "src/client/features/blog/blog-hub-sidebar.tsx": {
-    "lines": 558,
+  "src/client/features/blog/blog-hub-sidebar/index.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-hub-sidebar/use-blog-hub-sidebar.tsx": {
     "longFns": 1
   },
   "src/client/features/blog/blog-note-submenu.tsx": {
     "longFns": 1
   },
-  "src/client/features/blog/blog-publish-modal.tsx": {
-    "lines": 524,
+  "src/client/features/blog/blog-publish-modal/use-blog-publish-form.ts": {
     "longFns": 2
   },
   "src/client/features/blog/blog-settings-modal.tsx": {

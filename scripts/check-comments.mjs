@@ -175,7 +175,7 @@ const allowed = new Map([
     "/* Separator */",
     "/* 6. Unpublish */",
   ]],
-  ["src/client/features/blog/blog-publish-modal.tsx", [
+  ["src/client/features/blog/blog-publish-modal/use-blog-publish-form.ts", [
     "// Helper to extract clean image URL from Markdown or plain string",
     "// Find first image in note content as suggested cover",
     "// Matches markdown images: ![alt](url)",
