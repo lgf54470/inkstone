@@ -333,8 +333,7 @@
     "lines": 625,
     "longFns": 1
   },
-  "src/client/lib/api.ts": {
-    "lines": 847,
+  "src/client/lib/api/transport.ts": {
     "longFns": 1,
     "deepFns": 2
   },
