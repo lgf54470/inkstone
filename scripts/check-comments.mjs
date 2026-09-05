@@ -833,8 +833,10 @@ const allowed = new Map([
   ["src/worker/backup/snapshot.ts", [
     "/** Produces restorable JSON, readable Markdown, and attachment files for every backup target. */",
   ]],
-  ["src/worker/db/schema.ts", [
+  ["src/worker/db/schema/index.ts", [
     "/** Defines the idempotent final D1 schema initialized by every Worker isolate. */",
+  ]],
+  ["src/worker/db/schema/migrations.ts", [
     "// Explicit whitelist (not a regex over SCHEMA_STATEMENTS) so later",
     "// additions like mcp_api_keys can never be picked up accidentally.",
     "// Only CREATE TABLE / INDEX statements: D1 does not reliably support",
@@ -844,6 +846,8 @@ const allowed = new Map([
     "// Source-side graph traversal (local graph mode BFS, MCP explore) queries",
     "// links by user + source and by user + target; the OR join can only use",
     "// both branches when each side has its own user-scoped index.",
+  ]],
+  ["src/worker/db/schema/runtime.ts", [
     "// Existing installations must converge additively. CREATE IF NOT EXISTS",
     "// never rewrites user data; running table creation before indexes also",
     "// lets a partially initialized database recover missing feature tables.",

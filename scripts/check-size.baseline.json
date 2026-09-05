@@ -536,9 +536,6 @@
   "src/worker/db/fts.ts": {
     "longFns": 1
   },
-  "src/worker/db/schema.ts": {
-    "lines": 1318
-  },
   "src/worker/db/writes.ts": {
     "longFns": 1
   },
