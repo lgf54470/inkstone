@@ -8,7 +8,7 @@ import { useUi } from '../../store/ui';
 import { ActivityCalendarMemo } from '../../components/activity-calendar';
 import { buildActivityProjectionCached } from '../../lib/calendar-tree';
 import { CalendarView, loadCalendarPersist, saveCalendarPersist } from './calendar-persist';
-import { useGapIndicatorStore } from '../list/use-gap-indicator';
+import { useGapIndicatorStore } from '../list';
 import { useYearGridColumns } from '../../lib/year-grid-prefs';
 
 export function SidebarCalendar() {

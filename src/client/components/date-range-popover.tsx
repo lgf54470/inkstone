@@ -8,7 +8,7 @@ import { t, useLocale, type MessageKey } from '../lib/i18n';
 import { dateKey, parseDateKey } from '../lib/time';
 import { useClickOutside, useEscape } from './overlay';
 import { MonthGrid } from './calendar-grids';
-import { RANGE_PRESET_MAX, loadRangePresets, saveRangePresets, type RangePresetConfig } from '../features/list/range-preset-persist';
+import { RANGE_PRESET_MAX, loadRangePresets, saveRangePresets, type RangePresetConfig } from '../features/list';
 
 export type RangePreset = 'today' | 'this-week' | 'this-month';
 

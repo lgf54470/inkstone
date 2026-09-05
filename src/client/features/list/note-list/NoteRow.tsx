@@ -30,18 +30,11 @@ import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../../
 import { useUi } from '../../../store/ui';
 import { useNotes } from '../../../store/notes';
 import { openFolderView } from '../../../lib/folders';
-import { MoveToFolderSubmenu } from '../../folders/MoveToFolderSubmenu';
-import { CreateFolderModal } from '../../folders/CreateFolderModal';
-import { ShareEditModal } from '../../share/ShareEditModal';
-import { ShareQrModal } from '../../share/ShareQrModal';
-import { ShareNoteAnalyticsModal } from '../../share/ShareNoteAnalyticsModal';
-import { ShareNoteSubmenu } from '../../share/ShareNoteSubmenu';
-import { useShareStore } from '../../share/share-store';
-import { BlogNoteSubmenu } from '../../blog/BlogNoteSubmenu';
-import { BlogPublishModal } from '../../blog/BlogPublishModal';
-import { useBlogStore } from '../../blog/blog-store';
+import { CreateFolderModal, MoveToFolderSubmenu } from '../../folders';
+import { useBlogStore, BlogNoteSubmenu, BlogPublishModal } from '../../blog';
+import { ShareEditModal, ShareNoteAnalyticsModal, ShareNoteSubmenu, ShareQrModal, useShareStore } from '../../share';
 import { TagPill } from '../../../components/TagPill';
-import { removeTagFromNote } from '../../tags/tagMutations';
+import { removeTagFromNote } from '../../tags';
 import { t, useLocale } from '../../../lib/i18n';
 
 export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColors, position, total, onRangeSelect, isShared, }: {

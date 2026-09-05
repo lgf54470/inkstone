@@ -4,7 +4,7 @@ import type { DateRangeFilter } from '@shared/types';
 import { cn } from '../lib/cn';
 import { t } from '../lib/i18n';
 import { dateKey } from '../lib/time';
-import { latestEditOutsideWindow } from '../features/list/use-rolling-filter';
+import { latestEditOutsideWindow } from '../features/list';
 import { IconButton } from './primitives';
 import { Tooltip } from './overlay';
 import { MonthGrid, YearGrid, YEAR_GRID_COLUMNS, buildMonthGridCells, yearGridColumns, type YearGridColumns, type YearGridColumnsPref } from './calendar-grids';

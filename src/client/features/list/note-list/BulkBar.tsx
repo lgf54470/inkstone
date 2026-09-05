@@ -4,7 +4,7 @@ import { IconButton } from '../../../components/primitives';
 import { Tooltip, confirm } from '../../../components/overlay';
 import { useUi } from '../../../store/ui';
 import { useNotes } from '../../../store/notes';
-import { FolderPicker } from '../../folders/FolderPicker';
+import { FolderPicker } from '../../folders';
 import { errorMessage } from '../../../lib/errors';
 import { t } from '../../../lib/i18n';
 

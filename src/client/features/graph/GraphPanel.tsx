@@ -41,7 +41,7 @@ import { useNotes } from '../../store/notes'
 import { useUi } from '../../store/ui'
 import { usePinnedWindows } from '../../store/pinned-windows'
 import { t } from '../../lib/i18n'
-import { getLinkHoverTarget, subscribeLinkHoverTarget } from '../preview/link-signal'
+import { getLinkHoverTarget, subscribeLinkHoverTarget } from '../preview'
 
 const PHYSICS_FRAME_LIMIT = 360
 const GRAPH_PREFS_KEY = 'inkstone.graph.preferences.v1'

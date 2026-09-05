@@ -9,7 +9,7 @@ import { SettingRow } from '../../components/form';
 import { confirm } from '../../components/overlay';
 import { useUi } from '../../store/ui';
 import { useNotes } from '../../store/notes';
-import { AttachmentManager } from '../attachments/AttachmentManager';
+import { AttachmentManager } from '../attachments';
 import { t } from "../../lib/i18n";
 import { restoreMarkdownBackupFolder } from '../../lib/backup-import';
 export function DataSettings() {

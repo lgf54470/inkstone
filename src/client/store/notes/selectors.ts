@@ -16,8 +16,8 @@ import { getFolderTemplateId, getInboxFolderId } from '../../lib/folder-prefs';
 import { renderNewNoteTemplate } from '@shared/markdown-utils';
 import { useNoteTemplates } from '../note-templates';
 import { compare, compareTrash } from './workspace';
-import { useShareStore } from '../../features/share/share-store';
-import { useBlogStore } from '../../features/blog/blog-store';
+import { useBlogStore } from '../../features/blog';
+import { useShareStore } from '../../features/share';
 
 type TagCacheState = Pick<NotesState, 'notes' | 'tags'>;
 

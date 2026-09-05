@@ -12,7 +12,7 @@ import { Input } from '../../components/form';
 import { LoadingBlock } from '../../components/feedback';
 import { Tooltip } from '../../components/overlay';
 import { useUi } from '../../store/ui';
-import { moveMarkdownTabFocus, selectMarkdownTab } from '../preview/markdown-tabs';
+import { moveMarkdownTabFocus, selectMarkdownTab } from '../preview';
 import { t, useLocale } from "../../lib/i18n";
 
 export function SharePage({ slug }: {

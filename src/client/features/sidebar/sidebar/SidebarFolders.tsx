@@ -33,9 +33,7 @@ import { folderDescendantIds, folderPath, folderPathLabel, openFolderView } from
 import { treeRowIndent } from '../../../lib/calendar-tree';
 import { setInboxFolderId, useFolderPreferences } from '../../../lib/folder-prefs';
 import { exportFolderAsZip } from '../../../lib/export-folder';
-import { FolderPicker } from '../../folders/FolderPicker';
-import { FolderColorSubmenu } from '../../folders/FolderColorSubmenu';
-import { FolderIconSubmenu } from '../../folders/FolderIconSubmenu';
+import { FolderColorSubmenu, FolderIconSubmenu, FolderPicker } from '../../folders';
 import { CalendarTree, TodoTree } from '.././CalendarTree';
 import { t } from '../../../lib/i18n';
 import { leftDropTarget } from './SidebarDrop';

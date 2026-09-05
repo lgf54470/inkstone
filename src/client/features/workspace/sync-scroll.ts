@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react'
 import type { EditorView } from '@codemirror/view'
-import { previewSourceAnchors } from '../preview/preview-anchors'
+import { previewSourceAnchors } from '../preview'
 
 export interface PreviewAnchor {
   line: number

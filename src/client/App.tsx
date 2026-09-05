@@ -3,14 +3,14 @@ import { ConfirmHost } from './components/overlay'
 import { Toaster } from './components/feedback'
 import { Spinner } from './components/primitives'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { LoginPage } from './features/auth/LoginPage'
+import { LoginPage } from './features/auth'
 import { dismissBootScreen } from './lib/boot'
 import { t, useLocale } from './lib/i18n'
 import { initializePwa, requestOfflineWarmup } from './store/pwa'
 import { useSession, watchSystemTheme } from './store/session'
 
 const AppShell = lazy(() =>
-  import('./features/shell/AppShell').then((module) => ({ default: module.AppShell })),
+  import('./features/shell').then((module) => ({ default: module.AppShell })),
 )
 const SharePage = lazy(() =>
   import('./features/share/SharePage').then((module) => ({ default: module.SharePage })),

@@ -16,7 +16,7 @@ import { t } from '../../../lib/i18n';
 import { Switch } from '../../../components/form';
 import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../../components/overlay';
 import { useUi } from '../../../store/ui';
-import { TagColorSubmenu } from '../../tags/TagColorSubmenu';
+import { TagColorSubmenu } from '../../tags';
 import { useBlogStore } from '.././blog-store';
 
 export function BlogTagItem({

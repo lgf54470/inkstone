@@ -28,8 +28,7 @@ import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../../component
 import { useUi } from '../../../store/ui';
 import { useNavigationCounts } from '../../../store/notes/selectors';
 import { useNotes } from '../../../store/notes';
-import { TagColorSubmenu } from '../../tags/TagColorSubmenu';
-import { createTag, deleteTag, renameTag, setTagColor, toggleTagPinned } from '../../tags/tagMutations';
+import { createTag, deleteTag, renameTag, setTagColor, TagColorSubmenu, toggleTagPinned } from '../../tags';
 import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../../lib/tag-tree';
 import { t } from '../../../lib/i18n';
 

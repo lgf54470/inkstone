@@ -31,10 +31,8 @@ import type { FolderNode } from '../../store/notes/selectors'
 import type { TagTreeNode } from '../../lib/tag-tree'
 import { IconButton } from '../../components/primitives'
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
-import { FolderColorSubmenu } from '../folders/FolderColorSubmenu'
-import { FolderIconSubmenu } from '../folders/FolderIconSubmenu'
-import { TagColorSubmenu } from '../tags/TagColorSubmenu'
-import { FolderPicker } from '../folders/FolderPicker'
+import { FolderColorSubmenu, FolderIconSubmenu, FolderPicker } from '../folders'
+import { TagColorSubmenu } from '../tags'
 import { formatFileSize, type AttachmentCategory } from './attachment-helpers'
 import {
   useAttachmentFolderTree,

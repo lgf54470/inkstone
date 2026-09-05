@@ -27,7 +27,7 @@ import { Segmented } from '../../components/form'
 import { relativeTime } from '../../lib/time'
 import { t, useLocale } from '../../lib/i18n'
 import { api } from '../../lib/api'
-import { countryFlag, countryNameLocalized } from '../share/share-helpers'
+import { countryFlag, countryNameLocalized } from '../share'
 import { useBlogStore, type BlogTab } from './blog-store'
 
 export function BlogDashboardView({

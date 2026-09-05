@@ -18,7 +18,7 @@ import { tryParseStringArray } from '../../../lib/json';
 import { Switch } from '../../../components/form';
 import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../../components/overlay';
 import { useUi } from '../../../store/ui';
-import { FolderColorSubmenu } from '../../folders/FolderColorSubmenu';
+import { FolderColorSubmenu } from '../../folders';
 import { useShareStore, type ShareFolderNode } from '.././share-store';
 
 export function ShareFolderItem({

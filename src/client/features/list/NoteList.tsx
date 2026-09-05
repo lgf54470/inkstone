@@ -39,7 +39,7 @@ import { useNoteTemplates } from '../../store/note-templates';
 import { createNoteFromTemplate } from '../../lib/template-notes';
 import { CALENDAR_TREE, isTodoFolderId, isVirtualFolderId, resolveTodoTag, TODO_TREE, virtualPathSegments } from '../../lib/calendar-tree';
 import { folderPathLabel } from '../../lib/folders';
-import { useShareStore } from '../share/share-store';
+import { useShareStore } from '../share';
 import { t, useLocale, type MessageKey } from '../../lib/i18n';
 import { BulkBar } from './note-list/BulkBar';
 import { ListEmpty } from './note-list/ListEmpty';
