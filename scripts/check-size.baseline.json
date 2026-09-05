@@ -512,22 +512,6 @@
   "src/worker/db/writes.ts": {
     "longFns": 1
   },
-  "src/worker/import/attachments.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/worker/import/backup.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/worker/import/bundle.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/worker/import/zip.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
   "src/worker/mcp/ai-search.ts": {
     "longFns": 1
   },
@@ -699,10 +683,6 @@
     "deepFns": 2
   },
   "src/worker/routes/tags/helpers.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/worker/routes/transfer.ts": {
     "longFns": 1,
     "deepFns": 1
   }

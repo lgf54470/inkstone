@@ -126,7 +126,7 @@ describe('import note-level DB writes', () => {
     expect(row!.title).toBe('Hello')
     expect(row!.rev).toBe(1)
     expect(row!.content_hash).toBe(shaOf('body #alpha and [[Target Note]]'))
-    expect(ctx.result.createdNotes).toBe(0) // importers count notes themselves
+    expect(ctx.result.createdNotes).toBe(0)
     expect((await allRows(db, 'SELECT * FROM changes WHERE entity_id = ?1', id)).length).toBe(1)
     expect((await allRows(db, 'SELECT * FROM ai_index_queue WHERE note_id = ?1', id)).length).toBe(1)
     expect((await allRows(db, 'SELECT name FROM tags')).map((r) => r.name)).toEqual(['alpha'])

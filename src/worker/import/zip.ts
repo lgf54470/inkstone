@@ -40,60 +40,65 @@ export function isInkstoneBackupManifest(entry: UnzippedEntry): boolean {
   }
 }
 
-export async function selectCompleteZipBackup(entries: readonly UnzippedEntry[]): Promise<{
+interface ZipBackupCandidate {
+  entry: UnzippedEntry
   manifest: MarkdownBackupManifest
   rootPrefix: string
-  warning: string | null
-} | null> {
-  const byPath = new Map(entries.map((entry) => [entry.path.toLowerCase(), entry]))
-  const candidates: Array<{
-    entry: UnzippedEntry
-    manifest: MarkdownBackupManifest
-    rootPrefix: string
-    complete: UnzippedEntry | undefined
-  }> = []
-  let hasSeenManifest = false
-  const skipped: string[] = []
+  complete: UnzippedEntry | undefined
+}
 
-  for (const entry of entries) {
-    if (!/(?:^|\/)manifest\.json$/i.test(entry.path)) continue
-    const legacyPath = /(?:^|\/)snapshots\/\d{8}-\d{6}-\d{3}\/manifest\.json$/i.test(entry.path)
-    const directory = entry.path.slice(0, entry.path.lastIndexOf('/') + 1)
-    const siblingComplete = byPath.get(`${directory}complete`.toLowerCase())
-    let raw: unknown
-    try {
-      raw = JSON.parse(new TextDecoder().decode(entry.data))
-    } catch {
-      if (legacyPath || siblingComplete) hasSeenManifest = true
-      if (siblingComplete) throw new Error(`The completed backup has an invalid manifest: ${entry.path}`)
-      continue
+type ZipBackupScan =
+  | { kind: 'candidate'; candidate: ZipBackupCandidate }
+  | { kind: 'seen' }
+  | { kind: 'skip' }
+
+function classifyZipBackupEntry(entry: UnzippedEntry, byPath: Map<string, UnzippedEntry>): ZipBackupScan {
+  if (!/(?:^|\/)manifest\.json$/i.test(entry.path)) return { kind: 'skip' }
+  const legacyPath = /(?:^|\/)snapshots\/\d{8}-\d{6}-\d{3}\/manifest\.json$/i.test(entry.path)
+  const directory = entry.path.slice(0, entry.path.lastIndexOf('/') + 1)
+  const siblingComplete = byPath.get(`${directory}complete`.toLowerCase())
+  let raw: unknown
+  try {
+    raw = JSON.parse(new TextDecoder().decode(entry.data))
+  } catch {
+    const seen = legacyPath || Boolean(siblingComplete)
+    if (siblingComplete) throw new Error(`The completed backup has an invalid manifest: ${entry.path}`)
+    return seen ? { kind: 'seen' } : { kind: 'skip' }
+  }
+  const declaresInkstone = isRecord(raw) && raw.format === MARKDOWN_BACKUP_FORMAT
+  const seen = legacyPath || declaresInkstone
+  const manifest = parseMarkdownBackupManifest(raw)
+  if (!manifest) {
+    if (siblingComplete && declaresInkstone) {
+      throw new Error(`The completed backup has an invalid or unsupported manifest: ${entry.path}`)
     }
-    const declaresInkstone = isRecord(raw) && raw.format === MARKDOWN_BACKUP_FORMAT
-    if (legacyPath || declaresInkstone) hasSeenManifest = true
-    const manifest = parseMarkdownBackupManifest(raw)
-    if (!manifest) {
-      if (siblingComplete && declaresInkstone) {
-        throw new Error(`The completed backup has an invalid or unsupported manifest: ${entry.path}`)
-      }
-      continue
-    }
-    const suffix = backupManifestPath(manifest.snapshot, manifest.version)
-    if (!entry.path.toLowerCase().endsWith(suffix.toLowerCase())) {
-      if (siblingComplete) throw new Error(`The backup manifest is in an invalid path: ${entry.path}`)
-      continue
-    }
-    const rootPrefix = entry.path.slice(0, entry.path.length - suffix.length)
-    candidates.push({
+    return seen ? { kind: 'seen' } : { kind: 'skip' }
+  }
+  const suffix = backupManifestPath(manifest.snapshot, manifest.version)
+  if (!entry.path.toLowerCase().endsWith(suffix.toLowerCase())) {
+    if (siblingComplete) throw new Error(`The backup manifest is in an invalid path: ${entry.path}`)
+    return seen ? { kind: 'seen' } : { kind: 'skip' }
+  }
+  const rootPrefix = entry.path.slice(0, entry.path.length - suffix.length)
+  return {
+    kind: 'candidate',
+    candidate: {
       entry,
       manifest,
       rootPrefix,
       complete: byPath.get(
         `${rootPrefix}${backupCompletePath(manifest.snapshot, manifest.version)}`.toLowerCase(),
       ),
-    })
+    },
   }
+}
 
-  candidates.sort((a, b) => b.manifest.snapshot.localeCompare(a.manifest.snapshot))
+async function pickCompleteZipBackup(candidates: readonly ZipBackupCandidate[]): Promise<{
+  manifest: MarkdownBackupManifest
+  rootPrefix: string
+  warning: string | null
+} | null> {
+  const skipped: string[] = []
   for (const { entry, manifest, rootPrefix, complete } of candidates) {
     if (!complete) {
       skipped.push(manifest.snapshot)
@@ -112,7 +117,31 @@ export async function selectCompleteZipBackup(entries: readonly UnzippedEntry[])
         : null,
     }
   }
+  return null
+}
 
+export async function selectCompleteZipBackup(entries: readonly UnzippedEntry[]): Promise<{
+  manifest: MarkdownBackupManifest
+  rootPrefix: string
+  warning: string | null
+} | null> {
+  const byPath = new Map(entries.map((entry) => [entry.path.toLowerCase(), entry]))
+  const candidates: ZipBackupCandidate[] = []
+  let hasSeenManifest = false
+
+  for (const entry of entries) {
+    const result = classifyZipBackupEntry(entry, byPath)
+    if (result.kind === 'candidate') {
+      hasSeenManifest = true
+      candidates.push(result.candidate)
+    } else if (result.kind === 'seen') {
+      hasSeenManifest = true
+    }
+  }
+
+  candidates.sort((a, b) => b.manifest.snapshot.localeCompare(a.manifest.snapshot))
+  const picked = await pickCompleteZipBackup(candidates)
+  if (picked) return picked
   if (hasSeenManifest) throw new Error('The ZIP contains an incomplete Inkstone backup without a valid COMPLETE marker')
   return null
 }

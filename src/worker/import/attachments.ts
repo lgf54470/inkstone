@@ -67,13 +67,23 @@ export async function importBackupAttachment(
     return
   }
 
+  await persistImportedBackupAttachment(env, userId, entry, candidate)
+  ctx.result.createdAttachments++
+}
+
+async function persistImportedBackupAttachment(
+  env: AppBindings['Bindings'],
+  userId: string,
+  entry: MarkdownBackupAttachmentEntry,
+  candidate: PreparedAttachmentCandidate,
+): Promise<void> {
   const persisted = await persistAttachmentWithinQuota(env, {
     id: newId(),
     userId,
     noteId: null,
     filename: entry.filename,
     reportedMime: entry.mime,
-    bytes,
+    bytes: candidate.bytes,
     createdAt: candidate.createdAt,
   })
   try {
@@ -84,7 +94,6 @@ export async function importBackupAttachment(
     await rollbackPersistedAttachments(env, [persisted]).catch(() => {})
     throw error
   }
-  ctx.result.createdAttachments++
 }
 
 export async function loadBackupAttachmentTargets(
@@ -107,12 +116,19 @@ export async function loadBackupAttachmentTargets(
   return targets
 }
 
-export async function prepareBundleAttachments(
-  env: AppBindings['Bindings'],
-  userId: string,
+interface BundleAttachmentState {
+  sourceIds: ReadonlySet<string>
+  existing: ReadonlyMap<string, ExistingAttachmentRow>
+  pendingCleanupIds: ReadonlySet<string>
+  reservedIds: Set<string>
+  idMap: Map<string, string>
+  created: CreatedImportedAttachment[]
+}
+
+async function collectBundleAttachmentCandidates(
   rawAttachments: unknown[],
   ctx: ImportContext,
-): Promise<PreparedAttachmentImport> {
+): Promise<PreparedAttachmentCandidate[]> {
   const candidates: PreparedAttachmentCandidate[] = []
   const sourceIds = new Set<string>()
   const paths = new Set<string>()
@@ -160,86 +176,119 @@ export async function prepareBundleAttachments(
       createdAt: validTimestamp(raw.createdAt) || Date.now(),
     })
   }
+  return candidates
+}
 
-  if (!candidates.length) return { idMap: new Map(), created: [] }
-  if (!selectAttachmentStorage(env)) {
-    throw new Error('This instance has no R2 or Workers KV attachment binding and cannot restore attachments')
+async function loadBundleAttachmentState(
+  env: AppBindings['Bindings'],
+  userId: string,
+  candidates: readonly PreparedAttachmentCandidate[],
+): Promise<BundleAttachmentState> {
+  const sourceIds = candidates.map((candidate) => candidate.sourceId)
+  const existing = await loadExistingAttachments(env.DB, userId, sourceIds)
+  const pendingCleanupIds = await loadPendingAttachmentCleanupIds(env.DB, userId, sourceIds)
+  return {
+    sourceIds: new Set(sourceIds),
+    existing,
+    pendingCleanupIds,
+    reservedIds: new Set([...existing.values()].map((attachment) => attachment.id)),
+    idMap: new Map(),
+    created: [],
+  }
+}
+
+async function restorePreparedAttachmentCandidate(
+  env: AppBindings['Bindings'],
+  userId: string,
+  candidate: PreparedAttachmentCandidate,
+  ctx: ImportContext,
+  state: BundleAttachmentState,
+): Promise<void> {
+  const existing = state.existing.get(candidate.sourceId)
+  if (existing?.user_id === userId) {
+    const matches = await existingAttachmentMatches(env, existing, candidate)
+    if (matches) {
+      state.idMap.set(candidate.sourceId, existing.id)
+      ctx.result.skippedAttachments++
+      return
+    }
+    addWarning(ctx.result, `${candidate.filename}: an existing attachment with this ID has different content, so a new attachment was restored`)
   }
 
-  const existingAttachments = await loadExistingAttachments(
-    env.DB,
-    userId,
-    candidates.map((candidate) => candidate.sourceId),
-  )
-  const pendingCleanupIds = await loadPendingAttachmentCleanupIds(
-    env.DB,
-    userId,
-    candidates.map((candidate) => candidate.sourceId),
-  )
-  const idMap = new Map<string, string>()
-  const created: CreatedImportedAttachment[] = []
-  const reservedIds = new Set([...existingAttachments.values()].map((attachment) => attachment.id))
+  const pendingOldObject = state.pendingCleanupIds.has(candidate.sourceId)
+  let destinationId = existing || pendingOldObject ? newId() : candidate.sourceId
+  if (!existing && pendingOldObject) {
+    addWarning(ctx.result, `${candidate.filename}: restored with a new internal ID while old attachment bytes await cleanup`)
+  }
+  while (
+    state.reservedIds.has(destinationId) ||
+    (destinationId !== candidate.sourceId && state.sourceIds.has(destinationId))
+  ) {
+    destinationId = newId()
+  }
+  state.reservedIds.add(destinationId)
+  state.idMap.set(candidate.sourceId, destinationId)
 
+  const persisted = await persistAttachmentWithinQuota(env, {
+    id: destinationId,
+    userId,
+    noteId: null,
+    filename: candidate.filename,
+    reportedMime: candidate.reportedMime,
+    bytes: candidate.bytes,
+    createdAt: candidate.createdAt,
+  })
+  state.created.push({
+    sourceId: candidate.sourceId,
+    sourceNoteId: candidate.sourceNoteId,
+    persisted,
+  })
+}
+
+async function restoreBundleAttachmentCandidates(
+  env: AppBindings['Bindings'],
+  userId: string,
+  candidates: readonly PreparedAttachmentCandidate[],
+  ctx: ImportContext,
+  state: BundleAttachmentState,
+): Promise<void> {
   try {
     for (const candidate of candidates) {
-      const existing = existingAttachments.get(candidate.sourceId)
-      if (existing?.user_id === userId) {
-        const matches = await existingAttachmentMatches(env, existing, candidate)
-        if (matches) {
-          idMap.set(candidate.sourceId, existing.id)
-          ctx.result.skippedAttachments++
-          continue
-        }
-        addWarning(ctx.result, `${candidate.filename}: an existing attachment with this ID has different content, so a new attachment was restored`)
-      }
-
-      const pendingOldObject = pendingCleanupIds.has(candidate.sourceId)
-      let destinationId = existing || pendingOldObject ? newId() : candidate.sourceId
-      if (!existing && pendingOldObject) {
-        addWarning(ctx.result, `${candidate.filename}: restored with a new internal ID while old attachment bytes await cleanup`)
-      }
-      while (
-        reservedIds.has(destinationId) ||
-        (destinationId !== candidate.sourceId && sourceIds.has(destinationId))
-      ) {
-        destinationId = newId()
-      }
-      reservedIds.add(destinationId)
-      idMap.set(candidate.sourceId, destinationId)
-
-      const persisted = await persistAttachmentWithinQuota(env, {
-        id: destinationId,
-        userId,
-        noteId: null,
-        filename: candidate.filename,
-        reportedMime: candidate.reportedMime,
-        bytes: candidate.bytes,
-        createdAt: candidate.createdAt,
-      })
-      created.push({
-        sourceId: candidate.sourceId,
-        sourceNoteId: candidate.sourceNoteId,
-        persisted,
-      })
+      await restorePreparedAttachmentCandidate(env, userId, candidate, ctx, state)
     }
     await upsertImportMappings(
       env.DB,
       userId,
       'attachment',
-      created.map((entry) => ({ sourceId: entry.sourceId, targetId: entry.persisted.id })),
+      state.created.map((entry) => ({ sourceId: entry.sourceId, targetId: entry.persisted.id })),
     )
   } catch (error) {
     await rollbackPersistedAttachments(
       env,
-      created.map((entry) => entry.persisted),
+      state.created.map((entry) => entry.persisted),
     ).catch((rollbackError) => {
       console.warn('[inkstone] Attachment import rollback was incomplete; the cleanup queue will continue:', rollbackError)
     })
     throw error
   }
+}
 
-  ctx.result.createdAttachments += created.length
-  return { idMap, created }
+export async function prepareBundleAttachments(
+  env: AppBindings['Bindings'],
+  userId: string,
+  rawAttachments: unknown[],
+  ctx: ImportContext,
+): Promise<PreparedAttachmentImport> {
+  const candidates = await collectBundleAttachmentCandidates(rawAttachments, ctx)
+  if (!candidates.length) return { idMap: new Map(), created: [] }
+  if (!selectAttachmentStorage(env)) {
+    throw new Error('This instance has no R2 or Workers KV attachment binding and cannot restore attachments')
+  }
+
+  const state = await loadBundleAttachmentState(env, userId, candidates)
+  await restoreBundleAttachmentCandidates(env, userId, candidates, ctx, state)
+  ctx.result.createdAttachments += state.created.length
+  return { idMap: state.idMap, created: state.created }
 }
 
 async function loadExistingAttachments(

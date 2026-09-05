@@ -2,7 +2,7 @@
 import { LIMITS } from '@shared/constants'
 import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
-import type { ExportBundle } from '@shared/types'
+import type { ExportBundle, Note } from '@shared/types'
 import type { AppBindings } from '../env'
 import { isValidId, newId } from '../lib/id'
 import { assertContentSize } from '../lib/request'
@@ -14,16 +14,18 @@ import {
 import { ensureFolderPath } from './folders'
 import { insertNote, loadExistingNoteIndex, updateImportedNote } from './notes'
 import { addWarning, finiteNumber, importedBundleTitle, isRecord, normalizeFolderSegment, sourceKey, validTimestamp } from './shared'
-import type { ImportContext, InsertInput, SourceFolder } from './types'
+import type { ExistingNoteIndex, ImportContext, InsertInput, SourceFolder } from './types'
 
 const EXPORT_FORMAT = 'inkstone-export'
 
-export async function importBundle(
-  c: { env: AppBindings['Bindings'] },
-  userId: string,
-  raw: unknown,
-  ctx: ImportContext,
-): Promise<void> {
+interface ParsedExportBundle {
+  bundle: ExportBundle
+  rawFolders: unknown[]
+  rawTags: unknown[]
+  rawAttachments: unknown[]
+}
+
+function parseExportBundleShape(raw: unknown): ParsedExportBundle {
   const bundle = raw as ExportBundle
   if (
     bundle?.format !== EXPORT_FORMAT ||
@@ -32,22 +34,25 @@ export async function importBundle(
   ) {
     throw new Error('This is not a valid Inkstone export')
   }
+  const rawFolders = Array.isArray(bundle.folders) ? bundle.folders : []
+  const rawTags = Array.isArray(bundle.tags) ? bundle.tags : []
+  const rawAttachments = Array.isArray(bundle.attachments) ? bundle.attachments : []
   if (bundle.notes.length > LIMITS.importArchiveEntriesMax * 4) {
     throw new Error(`A single import supports at most ${LIMITS.importArchiveEntriesMax * 4} notes`)
   }
-
-  const rawFolders = Array.isArray(bundle.folders) ? bundle.folders : []
   if (rawFolders.length > LIMITS.importArchiveEntriesMax) {
     throw new Error(`A single import supports at most ${LIMITS.importArchiveEntriesMax} folders`)
   }
-  const rawTags = Array.isArray(bundle.tags) ? bundle.tags : []
   if (rawTags.length > LIMITS.importArchiveEntriesMax * 2) {
     throw new Error(`A single import supports at most ${LIMITS.importArchiveEntriesMax * 2} tags`)
   }
-  const rawAttachments = Array.isArray(bundle.attachments) ? bundle.attachments : []
   if (rawAttachments.length > LIMITS.importArchiveEntriesMax) {
     throw new Error(`A single import supports at most ${LIMITS.importArchiveEntriesMax} attachments`)
   }
+  return { bundle, rawFolders, rawTags, rawAttachments }
+}
+
+function collectBundleSourceFolders(rawFolders: readonly unknown[], ctx: ImportContext): SourceFolder[] {
   const folders: SourceFolder[] = []
   const sourceFolderIds = new Set<string>()
   for (const rawFolder of rawFolders) {
@@ -71,8 +76,15 @@ export async function importBundle(
       updatedAt: validTimestamp(rawFolder.updatedAt),
     })
   }
+  return folders
+}
 
-  const folderIdMap = new Map<string, string>()
+interface ResolvedSourceFolder {
+  folder: SourceFolder
+  path: string
+}
+
+function resolveBundleFolderPaths(folders: readonly SourceFolder[], ctx: ImportContext): ResolvedSourceFolder[] {
   const sourceFolders = new Map(folders.map((folder) => [folder.id, folder]))
   const pathCache = new Map<string, { path: string; depth: number } | null>()
   const visiting = new Set<string>()
@@ -115,122 +127,185 @@ export async function importBundle(
     pathCache.set(id, resolved)
     return resolved
   }
-  const resolvedFolders = folders
+  return folders
     .map((folder) => ({ folder, resolved: pathOf(folder.id) }))
     .filter((entry): entry is { folder: SourceFolder; resolved: { path: string; depth: number } } =>
       entry.resolved !== null)
     .sort((a, b) => a.resolved.depth - b.resolved.depth)
+    .map(({ folder, resolved }) => ({ folder, path: resolved.path }))
+}
 
+async function ensureBundleFolders(
+  db: D1Database,
+  userId: string,
+  resolved: readonly ResolvedSourceFolder[],
+  ctx: ImportContext,
+): Promise<Map<string, string>> {
+  const folderIdMap = new Map<string, string>()
+  for (const { folder, path } of resolved) {
+    const created = await ensureFolderPath(db, userId, path, ctx, folder)
+    if (created) folderIdMap.set(folder.id, created)
+  }
+  return folderIdMap
+}
+
+interface PreparedBundleNote {
+  input: InsertInput
+  noteTitle: string
+  sourceId: string | undefined
+  effectiveUpdatedAt: number
+}
+
+function buildBundleNoteInput(
+  note: Note,
+  content: string,
+  folderIdMap: ReadonlyMap<string, string>,
+): PreparedBundleNote {
+  const noteTitle = importedBundleTitle(note.title, content)
+  const sourceId = isValidId(note.id) ? note.id : undefined
+  const importedCreatedAt = validTimestamp(note.createdAt)
+  const importedUpdatedAt = validTimestamp(note.updatedAt)
+  const importedDeletedAt = validTimestamp(note.deletedAt)
+  const effectiveUpdatedAt = Math.max(
+    importedUpdatedAt || importedCreatedAt,
+    importedDeletedAt,
+  )
+  const sourceFolderId = sourceKey(note.folderId)
+  const input: InsertInput = {
+    id: sourceId,
+    content,
+    title: noteTitle,
+    folderId: sourceFolderId ? (folderIdMap.get(sourceFolderId) ?? null) : null,
+    isStarred: note.isStarred,
+    isPinned: note.isPinned,
+    isArchived: note.isArchived,
+    position: finiteNumber(note.position),
+    createdAt: importedCreatedAt,
+    updatedAt: effectiveUpdatedAt,
+    deletedAt: importedDeletedAt || undefined,
+  }
+  return { input, noteTitle, sourceId, effectiveUpdatedAt }
+}
+
+async function insertFreshBundleNote(
+  c: { env: AppBindings['Bindings'] },
+  userId: string,
+  input: InsertInput,
+  ctx: ImportContext,
+): Promise<string> {
+  const insertedId = await insertNote(c, userId, input, ctx)
+  ctx.result.createdNotes++
+  return insertedId
+}
+
+async function restoreOverExistingBundleNote(
+  c: { env: AppBindings['Bindings'] },
+  userId: string,
+  existing: ExistingNoteIndex,
+  prepared: PreparedBundleNote,
+  ctx: ImportContext,
+  noteIdMap: Map<string, string>,
+): Promise<void> {
+  const { input, noteTitle, sourceId } = prepared
+  if (ctx.conflict === 'skip') {
+    if (sourceId) noteIdMap.set(sourceId, existing.id)
+    ctx.result.skippedNotes++
+    return
+  }
+  if (ctx.conflict === 'duplicate') {
+    const duplicatedId = await insertNote(
+      c,
+      userId,
+      { ...input, id: undefined, title: `${noteTitle} (imported)` },
+      ctx,
+    )
+    if (sourceId) noteIdMap.set(sourceId, duplicatedId)
+    ctx.result.createdNotes++
+    return
+  }
+
+  const outcome = await updateImportedNote(c, userId, existing, input, prepared.effectiveUpdatedAt, ctx)
+  if (outcome === 'updated') {
+    if (sourceId) noteIdMap.set(sourceId, existing.id)
+    ctx.result.updatedNotes++
+    return
+  }
+  if (outcome === 'skipped' || outcome === 'conflict') {
+    if (sourceId) noteIdMap.set(sourceId, existing.id)
+    ctx.result.skippedNotes++
+    if (outcome === 'conflict') {
+      addWarning(ctx.result, `${noteTitle}: the note changed during import, so the current version was kept`)
+    }
+  }
+}
+
+async function restoreBundleNote(
+  c: { env: AppBindings['Bindings'] },
+  userId: string,
+  note: Note,
+  ctx: ImportContext,
+  folderIdMap: ReadonlyMap<string, string>,
+  noteIdMap: Map<string, string>,
+  importedAttachments: { idMap: ReadonlyMap<string, string> },
+): Promise<void> {
+  if (typeof note?.content !== 'string') return
+  const content = rewriteAttachmentReferences(note.content, importedAttachments.idMap)
+  try {
+    assertContentSize(content)
+  } catch (err) {
+    ctx.result.skippedNotes++
+    addWarning(
+      ctx.result,
+      `${typeof note.title === 'string' ? note.title : "Untitled note"}: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    )
+    return
+  }
+
+  const prepared = buildBundleNoteInput(note, content, folderIdMap)
+  const { sourceId, input } = prepared
+  if (!sourceId) {
+    await insertFreshBundleNote(c, userId, input, ctx)
+    return
+  }
+  const existing = await loadExistingNoteIndex(c.env.DB, userId, sourceId, ctx)
+  if (existing) {
+    await restoreOverExistingBundleNote(c, userId, existing, prepared, ctx, noteIdMap)
+    return
+  }
+  const insertedId = await insertFreshBundleNote(c, userId, input, ctx)
+  noteIdMap.set(sourceId, insertedId)
+  ctx.byId?.set(sourceId, {
+    id: insertedId,
+    title: prepared.noteTitle,
+    rev: 1,
+    updated_at: prepared.effectiveUpdatedAt,
+  })
+}
+
+export async function importBundle(
+  c: { env: AppBindings['Bindings'] },
+  userId: string,
+  raw: unknown,
+  ctx: ImportContext,
+): Promise<void> {
+  const { bundle, rawFolders, rawTags, rawAttachments } = parseExportBundleShape(raw)
+
+  const folders = collectBundleSourceFolders(rawFolders, ctx)
+  const resolvedFolders = resolveBundleFolderPaths(folders, ctx)
   const importedAttachments = await prepareBundleAttachments(
     c.env,
     userId,
     rawAttachments,
     ctx,
   )
-
-  for (const { folder, resolved } of resolvedFolders) {
-    const created = await ensureFolderPath(c.env.DB, userId, resolved.path, ctx, folder)
-    if (created) folderIdMap.set(folder.id, created)
-  }
-
+  const folderIdMap = await ensureBundleFolders(c.env.DB, userId, resolvedFolders, ctx)
   const noteIdMap = new Map<string, string>()
 
   try {
     for (const note of bundle.notes) {
-      if (typeof note?.content !== 'string') continue
-      const content = rewriteAttachmentReferences(note.content, importedAttachments.idMap)
-      try {
-        assertContentSize(content)
-      } catch (err) {
-        ctx.result.skippedNotes++
-        addWarning(
-          ctx.result,
-          `${typeof note.title === 'string' ? note.title : "Untitled note"}: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        )
-        continue
-      }
-
-      const noteTitle = importedBundleTitle(note.title, content)
-      const sourceId = isValidId(note.id) ? note.id : undefined
-      const importedCreatedAt = validTimestamp(note.createdAt)
-      const importedUpdatedAt = validTimestamp(note.updatedAt)
-      const importedDeletedAt = validTimestamp(note.deletedAt)
-      const effectiveUpdatedAt = Math.max(
-        importedUpdatedAt || importedCreatedAt,
-        importedDeletedAt,
-      )
-      const existing = sourceId
-        ? await loadExistingNoteIndex(c.env.DB, userId, sourceId, ctx)
-        : null
-      const sourceFolderId = sourceKey(note.folderId)
-      const input: InsertInput = {
-        id: sourceId,
-        content,
-        title: noteTitle,
-        folderId: sourceFolderId ? (folderIdMap.get(sourceFolderId) ?? null) : null,
-        isStarred: note.isStarred,
-        isPinned: note.isPinned,
-        isArchived: note.isArchived,
-        position: finiteNumber(note.position),
-        createdAt: importedCreatedAt,
-        updatedAt: effectiveUpdatedAt,
-        deletedAt: importedDeletedAt || undefined,
-      }
-
-      if (existing) {
-        if (ctx.conflict === 'skip') {
-          if (sourceId) noteIdMap.set(sourceId, existing.id)
-          ctx.result.skippedNotes++
-          continue
-        }
-        if (ctx.conflict === 'duplicate') {
-          const duplicatedId = await insertNote(
-            c,
-            userId,
-            { ...input, id: undefined, title: `${noteTitle} (imported)` },
-            ctx,
-          )
-          if (sourceId) noteIdMap.set(sourceId, duplicatedId)
-          ctx.result.createdNotes++
-          continue
-        }
-
-        const outcome = await updateImportedNote(
-          c,
-          userId,
-          existing,
-          input,
-          effectiveUpdatedAt,
-          ctx,
-        )
-        if (outcome === 'updated') {
-          if (sourceId) noteIdMap.set(sourceId, existing.id)
-          ctx.result.updatedNotes++
-          continue
-        }
-        if (outcome === 'skipped' || outcome === 'conflict') {
-          if (sourceId) noteIdMap.set(sourceId, existing.id)
-          ctx.result.skippedNotes++
-          if (outcome === 'conflict') {
-            addWarning(ctx.result, `${noteTitle}: the note changed during import, so the current version was kept`)
-          }
-          continue
-        }
-      }
-
-      const insertedId = await insertNote(c, userId, input, ctx)
-      if (sourceId) noteIdMap.set(sourceId, insertedId)
-      if (sourceId) {
-        ctx.byId?.set(sourceId, {
-          id: insertedId,
-          title: noteTitle,
-          rev: 1,
-          updated_at: effectiveUpdatedAt,
-        })
-      }
-      ctx.result.createdNotes++
+      await restoreBundleNote(c, userId, note, ctx, folderIdMap, noteIdMap, importedAttachments)
     }
   } finally {
     await linkImportedAttachments(c.env.DB, userId, importedAttachments.created, noteIdMap)
@@ -239,11 +314,7 @@ export async function importBundle(
   await restoreTagMetadata(c.env.DB, userId, rawTags)
 }
 
-async function restoreTagMetadata(
-  db: D1Database,
-  userId: string,
-  rawTags: unknown[],
-): Promise<void> {
+function collectBundleTagRows(rawTags: readonly unknown[]): Array<{ id: string; name: string; color: string | null }> {
   const byName = new Map<string, { id: string; name: string; color: string | null }>()
   for (const raw of rawTags) {
     if (!isRecord(raw) || typeof raw.name !== 'string') continue
@@ -257,9 +328,18 @@ async function restoreTagMetadata(
         : null,
     })
   }
-  if (!byName.size) return
+  return [...byName.values()]
+}
 
-  const rows = JSON.stringify([...byName.values()])
+async function restoreTagMetadata(
+  db: D1Database,
+  userId: string,
+  rawTags: readonly unknown[],
+): Promise<void> {
+  const tags = collectBundleTagRows(rawTags)
+  if (!tags.length) return
+
+  const rows = JSON.stringify(tags)
   const now = Date.now()
   await db.batch([
     db.prepare(
