@@ -3,6 +3,20 @@ import { escapeHtml } from '@shared/escape';
 import { t } from '../../i18n';
 import { renderEnv } from './env';
 import { escapeAttr } from './util';
+/** True for http(s) URLs that point to a different origin than the app itself. */
+function isExternalImageUrl(src: string): boolean {
+    if (!/^https?:/i.test(src))
+        return false;
+    try {
+        const base = typeof location === 'undefined' ? 'http://localhost/' : location.href;
+        const origin = typeof location === 'undefined' ? 'http://localhost/' : location.origin;
+        return new URL(src, base).origin !== origin;
+    }
+    catch {
+        return false;
+    }
+}
+
 export function registerMedia(md: MarkdownIt): void {
 
     const defaultImage = md.renderer.rules.image;
@@ -32,19 +46,6 @@ export function registerMedia(md: MarkdownIt): void {
             : self.renderToken(tokens, index, options);
         return title ? `<figure>${rendered}<figcaption>${escapeHtml(title)}</figcaption></figure>` : rendered;
     };
-    /** True for http(s) URLs that point to a different origin than the app itself. */
-    function isExternalImageUrl(src: string): boolean {
-        if (!/^https?:/i.test(src))
-            return false;
-        try {
-            const base = typeof location === 'undefined' ? 'http://localhost/' : location.href;
-            const origin = typeof location === 'undefined' ? 'http://localhost/' : location.origin;
-            return new URL(src, base).origin !== origin;
-        }
-        catch {
-            return false;
-        }
-    }
     const defaultLink = md.renderer.rules.link_open;
     md.renderer.rules.link_open = (tokens, index, options, env, self) => {
         const href = tokens[index]!.attrGet('href') ?? '';
