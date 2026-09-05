@@ -236,7 +236,7 @@ export function ShareVisitLogsModal({
               >
                 {t('share.clean_logs_btn')}
               </Button>
-              <div className="absolute right-0 top-full z-20 mt-1 hidden min-w-[150px] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1 shadow-lg group-hover:block">
+              <div className="absolute right-0 top-full z-[var(--z-menu)] mt-1 hidden min-w-[150px] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1 shadow-lg group-hover:block">
                 <button
                   type="button"
                   onClick={() => void handleClean('bots')}
@@ -275,7 +275,7 @@ export function ShareVisitLogsModal({
         {/* Logs Table */}
         <div className="max-h-[460px] overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)]">
           <table className="w-full border-collapse text-left text-[12px]">
-            <thead className="sticky top-0 z-10 border-b border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[11px] text-[var(--text-tertiary)] uppercase tracking-wider">
+            <thead className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[11px] text-[var(--text-tertiary)] uppercase tracking-wider">
               <tr>
                 <th className="px-3 py-2 font-medium">{t('share.col_time')}</th>
                 <th className="px-3 py-2 font-medium">{t('share.col_note')}</th>

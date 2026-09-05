@@ -209,7 +209,7 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
 
     if (!open)
         return null;
-    return createPortal(<div ref={popoverRef} role="dialog" aria-label={t("notes.range_editor_title")} className="anim-pop fixed z-[270] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)]" style={{ top: position.top, left: position.left, width: 248, transformOrigin: position.origin }}>
+    return createPortal(<div ref={popoverRef} role="dialog" aria-label={t("notes.range_editor_title")} className="anim-pop fixed z-[var(--z-hover-card)] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)]" style={{ top: position.top, left: position.left, width: 248, transformOrigin: position.origin }}>
         <div className="flex items-center justify-between gap-1">
             <div className="flex items-center gap-0.5">
                 <button type="button" aria-label={t("sidebar.calendar_prev_month")} onClick={() => shiftMonth(-1)} className="flex size-6 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]">

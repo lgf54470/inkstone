@@ -93,7 +93,7 @@ export function BlogBatchBar({
   ]
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 rounded-[var(--r-xl)] border border-[var(--border-strong)] bg-[var(--bg-overlay)]/95 px-4 py-2 shadow-[var(--shadow-modal)] backdrop-blur text-[12px] whitespace-nowrap">
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[var(--z-menu)] flex items-center gap-2 rounded-[var(--r-xl)] border border-[var(--border-strong)] bg-[var(--bg-overlay)]/95 px-4 py-2 shadow-[var(--shadow-modal)] backdrop-blur text-[12px] whitespace-nowrap">
       <span className="font-semibold text-[var(--text-primary)]">
         {t('blog.selected_posts_count', { value0: selectedCount })}
       </span>

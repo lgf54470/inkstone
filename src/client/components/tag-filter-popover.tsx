@@ -71,7 +71,7 @@ export function TagFilterPopover({ anchor, open, onClose, align = 'end' }: {
 
     if (!open)
         return null;
-    return createPortal(<div ref={popoverRef} role="dialog" aria-label={t('command.filter_by_tags')} className="anim-pop fixed z-[270] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]" style={{ top: position.top, left: position.left, width: 236, transformOrigin: position.origin }}>
+    return createPortal(<div ref={popoverRef} role="dialog" aria-label={t('command.filter_by_tags')} className="anim-pop fixed z-[var(--z-hover-card)] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]" style={{ top: position.top, left: position.left, width: 236, transformOrigin: position.origin }}>
         <div className="relative">
             <Search size={13} className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-[var(--text-quaternary)]"/>
             <input ref={inputRef} aria-label={t('command.filter_by_tags')} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('notes.tag_filter_search')} className="h-8 w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-2 pl-7 text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none"/>

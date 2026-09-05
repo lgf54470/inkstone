@@ -5,11 +5,11 @@ import type { Extension } from '@codemirror/state'
 export const baseTheme = EditorView.theme({
   '&': { height: '100%' },
   '.cm-scroller': { fontFamily: 'inherit' },
-  '.cm-content': { paddingBlock: '4px' },
-  '.cm-line': { paddingInline: '16px' },
+  '.cm-content': { paddingBlock: 'var(--sp-1)' },
+  '.cm-line': { paddingInline: 'var(--sp-4)' },
   '&.cm-focused': { outline: 'none' },
   '.cm-tooltip': { border: 'none', background: 'transparent' },
-  '.cm-panels': { zIndex: '20' },
+  '.cm-panels': { zIndex: 'var(--z-menu)' },
 })
 
 export function editorTheme(): Extension {

@@ -550,7 +550,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   }
 
   return createPortal(<div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
-    className="app-viewport-fixed fixed z-[230] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0">
+    className="app-viewport-fixed fixed z-[var(--z-graph)] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0">
     <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2 md:px-4">
       <div className="mr-1 flex min-w-0 items-baseline gap-2.5">
         <h2 id={titleId} className="text-[14px] font-semibold tracking-[-0.014em]">{t('common.graph')}</h2>
@@ -690,7 +690,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
         </>}
       </main>
 
-      {settingsOpen && <aside aria-label={t('graph.settings')} className="absolute inset-y-0 right-0 z-10 w-[min(88vw,300px)] overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 shadow-[-8px_0_24px_rgba(0,0,0,.06)] md:static md:shadow-none">
+      {settingsOpen && <aside aria-label={t('graph.settings')} className="absolute inset-y-0 right-0 z-[var(--z-sticky)] w-[min(88vw,300px)] overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 shadow-[-8px_0_24px_rgba(0,0,0,.06)] md:static md:shadow-none">
         <div className="mb-4 flex items-center justify-between"><h3 className="text-[13px] font-semibold">{t('graph.settings')}</h3><Tooltip label={t('common.close')}><IconButton size="sm" label={t('common.close')} onClick={() => setSettingsOpen(false)}><X size={14}/></IconButton></Tooltip></div>
         <GraphSection icon={<Filter size={13}/>} title={t('graph.filters')}>
           <GraphSelect label={t('graph.folder')} value={prefs.folderId} onChange={(value) => changePref('folderId', value)} options={[['', t('graph.all_folders')], ...folders.map((folder) => [folder.id, folder.name] as [string, string])]}/>

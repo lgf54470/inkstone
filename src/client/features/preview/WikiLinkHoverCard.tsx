@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, 
 import { createPortal } from 'react-dom'
 import { ChevronDown, Layers, Link2, Loader2, PanelLeftOpen, PanelRightOpen, Pin, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { Z_INDEX } from '../../lib/z-index'
 import { decodeDataValue } from '../../lib/markdown/data-attr'
 import { parseWikiTarget } from '../../lib/markdown/renderer'
 import { findNoteByTitle } from '../../store/notes/selectors'
@@ -300,7 +301,7 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
       onKeyDown={onCardKeyDown}
       className={cn(
         'anim-pop fixed flex min-w-0 flex-col overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] shadow-[var(--shadow-pop)]',
-        pinned ? '' : 'z-[270] w-[340px] max-w-[calc(100vw-24px)]',
+        pinned ? '' : 'z-[var(--z-hover-card)] w-[340px] max-w-[calc(100vw-24px)]',
         pinned && flash && 'pinned-window-flash',
       )}
       style={pinned
@@ -309,7 +310,7 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
             top: pinnedRect.y,
             width: pinnedRect.width,
             height: pinnedRect.height || undefined,
-            zIndex: 280 + (pinnedInit?.z ?? 0),
+            zIndex: Z_INDEX.hoverPinned + (pinnedInit?.z ?? 0),
           }
         : position
           ? { top: position.top, left: position.left }
@@ -453,7 +454,7 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
           items={stackItems}
           align="end"
           width={220}
-          zIndex={300}
+          zIndex={Z_INDEX.top}
           label={t("preview.pinned_windows")}
         />
       )}

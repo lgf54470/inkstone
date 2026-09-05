@@ -11,7 +11,7 @@ export function WeChatBadge({ count }: { count?: number }) {
   return (
     <span
       className={cn(
-        'pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 z-10',
+        'pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 z-[var(--z-sticky)]',
         'flex items-center justify-center',
         'rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold',
         'text-[10px] leading-none select-none shadow-xs',

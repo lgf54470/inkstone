@@ -20,7 +20,7 @@ export function AttachmentBatchBar({
   if (selectedCount === 0) return null
 
   return (
-    <div className="anim-pop absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-[var(--r-xl)] border border-[var(--border-default)] bg-[var(--bg-overlay)] px-4 py-2 shadow-[var(--shadow-modal)]">
+    <div className="anim-pop absolute bottom-4 left-1/2 -translate-x-1/2 z-[var(--z-float)] flex items-center gap-2 rounded-[var(--r-xl)] border border-[var(--border-default)] bg-[var(--bg-overlay)] px-4 py-2 shadow-[var(--shadow-modal)]">
       <div className="flex items-center gap-2 border-r border-[var(--border-subtle)] pr-3">
         <span className="text-[12.5px] font-semibold text-[var(--text-primary)]">
           {t('attachments.selected_count', { value0: selectedCount })}

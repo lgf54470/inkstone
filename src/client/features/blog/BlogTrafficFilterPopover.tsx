@@ -49,7 +49,7 @@ export function BlogTrafficFilterPopover() {
       {open && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-full z-50 mt-1.5 w-80 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-float)]"
+          className="absolute right-0 top-full z-[var(--z-popover)] mt-1.5 w-80 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-float)]"
         >
           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
             <div className="flex items-center gap-2">

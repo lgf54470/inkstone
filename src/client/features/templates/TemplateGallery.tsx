@@ -5,6 +5,7 @@ import type { CommunityTemplate, NoteTemplate, NoteTemplateCategory } from '@sha
 import { buildTemplateLibraryExport, parseTemplateLibraryExport } from '@shared/note-templates';
 import { api } from '../../lib/api';
 import { cn } from '../../lib/cn';
+import { Z_INDEX } from '../../lib/z-index';
 import { createNoteFromTemplate } from '../../lib/template-notes';
 import { compareTemplates, templateOrderValue, useNoteTemplates } from '../../store/note-templates';
 import { useSession } from '../../store/session';
@@ -507,7 +508,7 @@ export function TemplateGallery({ onClose }: {
         });
     }, [batchMoving, categoryDialog, editing, focusedId, helpOpen, importOpen, moving, publishing, renaming, selectMode, toggleSelect, toggleSelectAll, toggleSelectMode, visible]);
 
-    return createPortal(<div className="app-viewport-fixed fixed z-[240] flex items-end justify-center md:items-center md:p-6">
+    return createPortal(<div className="app-viewport-fixed fixed z-[var(--z-palette)] flex items-end justify-center md:items-center md:p-6">
         <div className="anim-fade absolute inset-0 bg-[var(--scrim)]" onClick={onClose} aria-hidden="true"/>
         <div ref={panelRef} role="dialog" aria-modal="true" aria-label={t("templates.template_library")} tabIndex={-1} onKeyDown={handleKeyDown} className="anim-pop relative flex h-[min(88dvh,var(--app-viewport-height,100dvh))] w-full max-w-[940px] flex-col overflow-hidden rounded-t-[var(--r-2xl)] border border-b-0 border-[var(--border-default)] bg-[var(--bg-overlay)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-modal)] outline-none md:rounded-[var(--r-2xl)] md:border-b md:pb-0">
             <header className="flex shrink-0 items-center gap-2.5 border-b border-[var(--border-subtle)] px-4 py-2.5">
@@ -649,7 +650,7 @@ export function TemplateGallery({ onClose }: {
             setPublishing(null);
             if (filter.kind === 'community') void refreshCommunity();
         }}/>}
-        <Menu anchor={moreButtonRef} open={moreOpen} onClose={() => setMoreOpen(false)} items={moreItems} align="end" width={200} zIndex={290}/>
+        <Menu anchor={moreButtonRef} open={moreOpen} onClose={() => setMoreOpen(false)} items={moreItems} align="end" width={200} zIndex={Z_INDEX.menuHigh}/>
     </div>, document.body);
 }
 
@@ -805,11 +806,11 @@ function TemplateCard({ template, categoryName, selectMode, selected, focused, d
                 return;
             }
             onUse();
-        }} aria-pressed={selectMode ? selected : undefined} aria-label={selectMode ? `${t("templates.select_template")}: ${template.name}` : `${t("templates.use_template")}: ${template.name}`} className="absolute inset-0 z-0 rounded-[var(--r-lg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"/>
-        {selectMode && (<span aria-hidden="true" className="absolute top-3 left-3 z-20 flex size-4 items-center justify-center rounded border bg-[var(--bg-overlay)]">
+        }} aria-pressed={selectMode ? selected : undefined} aria-label={selectMode ? `${t("templates.select_template")}: ${template.name}` : `${t("templates.use_template")}: ${template.name}`} className="absolute inset-0 z-[var(--z-flat)] rounded-[var(--r-lg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"/>
+        {selectMode && (<span aria-hidden="true" className="absolute top-3 left-3 z-[var(--z-menu)] flex size-4 items-center justify-center rounded border bg-[var(--bg-overlay)]">
             {selected && <Check size={12} className="text-[var(--accent)]"/>}
         </span>)}
-        <div className="relative z-10 flex items-start justify-between gap-2">
+        <div className="relative z-[var(--z-sticky)] flex items-start justify-between gap-2">
             <div className={cn('flex min-w-0 items-center gap-1.5', selectMode && 'pl-6')}>
                 {template.isPinned && <Pin size={11} className="shrink-0 text-[var(--accent)]"/>}
                 <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">{template.name}</h3>
@@ -843,18 +844,18 @@ function TemplateCard({ template, categoryName, selectMode, selected, focused, d
                 </Tooltip>
             </div>
         </div>
-        {template.description && <p className="relative z-10 mt-1.5 line-clamp-2 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">{template.description}</p>}
-        {template.tags.length > 0 && (<div className="relative z-10 mt-1.5 flex min-w-0 flex-wrap items-center gap-1">
+        {template.description && <p className="relative z-[var(--z-sticky)] mt-1.5 line-clamp-2 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">{template.description}</p>}
+        {template.tags.length > 0 && (<div className="relative z-[var(--z-sticky)] mt-1.5 flex min-w-0 flex-wrap items-center gap-1">
             {template.tags.map((tag) => (<span key={tag} className="rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[10px] text-[var(--text-tertiary)]">#{tag}</span>))}
         </div>)}
-        <div className="relative z-10 mt-auto flex items-center gap-2 pt-2.5">
+        <div className="relative z-[var(--z-sticky)] mt-auto flex items-center gap-2 pt-2.5">
             <span className="text-[10.5px] text-[var(--text-quaternary)]">{categoryName}</span>
             <span className="text-[10.5px] text-[var(--text-quaternary)]">·</span>
             <span className="text-[10.5px] text-[var(--text-quaternary)]">{t("templates.lines_count", { value0: lineCount })}</span>
             <span className="ml-auto text-[10.5px] font-medium text-[var(--accent)] opacity-0 transition-opacity group-hover:opacity-100">{t("templates.use_template")} →</span>
         </div>
-        <Menu anchor={menuButtonRef} open={menuOpen} onClose={() => setMenuOpen(false)} items={items} align="end" width={200} zIndex={280}/>
-        {contextMenu.point && <Menu anchor={contextMenu.point} open onClose={contextMenu.close} items={items} width={200} zIndex={280}/>}
+        <Menu anchor={menuButtonRef} open={menuOpen} onClose={() => setMenuOpen(false)} items={items} align="end" width={200} zIndex={Z_INDEX.hoverPinned}/>
+        {contextMenu.point && <Menu anchor={contextMenu.point} open onClose={contextMenu.close} items={items} width={200} zIndex={Z_INDEX.hoverPinned}/>}
     </div>);
 }
 
@@ -1117,7 +1118,7 @@ function CommunityCard({ item, mine, onUse, onImport, onUnpublish }: {
         {item.tags.length > 0 && (<div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1">
             {item.tags.map((tag) => (<span key={tag} className="rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[10px] text-[var(--text-tertiary)]">#{tag}</span>))}
         </div>)}
-        <div className="relative z-10 mt-auto flex items-center gap-2 pt-2.5">
+        <div className="relative z-[var(--z-sticky)] mt-auto flex items-center gap-2 pt-2.5">
             <span className="text-[10.5px] text-[var(--text-quaternary)]">{item.authorName}</span>
             {item.category && <span className="text-[10.5px] text-[var(--text-quaternary)]">· {item.category}</span>}
             <span className="text-[10.5px] text-[var(--text-quaternary)]">· {t("templates.lines_count", { value0: lineCount })} · {date}</span>

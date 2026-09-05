@@ -94,7 +94,7 @@ function VerticalResizeHandle({
       }}
       onDoubleClick={onReset}
       className={cn(
-        'group relative z-10 -mx-[4px] w-[9px] shrink-0 cursor-col-resize touch-none outline-none',
+        'group relative z-[var(--z-sticky)] -mx-[4px] w-[9px] shrink-0 cursor-col-resize touch-none outline-none',
         className,
       )}
     >

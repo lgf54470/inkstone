@@ -11,13 +11,49 @@
     Consolas, 'Liberation Mono', Menlo, 'Sarasa Mono SC', monospace;
 
 
+  --r-1: 1px;
+  --r-2: 2px;
+  --r-3: 3px;
   --r-xs: 4px;
+  --r-5: 5px;
   --r-sm: 6px;
   --r-md: 8px;
   --r-lg: 12px;
   --r-xl: 16px;
   --r-2xl: 20px;
   --r-full: 999px;
+
+  --sp-0\25: 1px;
+  --sp-0\.5: 2px;
+  --sp-0\.75: 3px;
+  --sp-1: 4px;
+  --sp-1\.25: 5px;
+  --sp-1\.5: 6px;
+  --sp-1\.75: 7px;
+  --sp-2: 8px;
+  --sp-2\.25: 9px;
+  --sp-2\.5: 10px;
+  --sp-3: 12px;
+  --sp-3\.5: 14px;
+  --sp-4: 16px;
+  --sp-4\.5: 18px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 28px;
+  --sp-9: 36px;
+  --sp-10: 40px;
+  --sp-16: 64px;
+
+  --text-9: 9px;
+  --text-10: 10px;
+  --text-10\.5: 10.5px;
+  --text-11: 11px;
+  --text-11\.5: 11.5px;
+  --text-12: 12px;
+  --text-12\.5: 12.5px;
+  --text-13: 13px;
+  --text-16: 16px;
+  --text-18: 18px;
 
 
   --dur-fast: 130ms;
@@ -59,6 +95,28 @@
   --swatch-paper: #f7f5f1;
   --swatch-white: #ffffff;
   --mask-ink: #000000;
+  --file-badge-code: #0284c7;
+  --file-badge-slide: #ea580c;
+  --file-badge-media: #7c3aed;
+  --js-badge-bg: #f7df1e;
+  --js-badge-ink: #000000;
+
+  --z-under: -1;
+  --z-flat: 0;
+  --z-raised: 1;
+  --z-sticky: 10;
+  --z-menu: 20;
+  --z-float: 30;
+  --z-popover: 50;
+  --z-drawer: 190;
+  --z-settings: 210;
+  --z-graph: 230;
+  --z-palette: 240;
+  --z-modal: 250;
+  --z-pop: 260;
+  --z-hover-card: 270;
+  --z-toast: 400;
+  --z-tooltip: 500;
 }
 
 

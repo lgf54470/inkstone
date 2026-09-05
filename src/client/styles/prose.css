@@ -39,7 +39,7 @@
   font-weight: 650;
   line-height: var(--heading-line, 1.28);
   letter-spacing: -0.019em;
-  scroll-margin-top: 24px;
+  scroll-margin-top: var(--sp-6);
   position: relative;
 }
 .ink-prose > h1:first-child,
@@ -169,7 +169,7 @@
   height: 1.05em;
   margin: 0.28em 0 0;
   border: 1.5px solid var(--border-strong);
-  border-radius: 5px;
+  border-radius: var(--r-5);
   background: var(--bg-inset);
   cursor: pointer;
   position: relative;
@@ -237,7 +237,7 @@
   height: 2px;
   background: var(--accent);
   transform: translateY(-50%);
-  border-radius: 1px;
+  border-radius: var(--r-1);
 }
 .ink-prose input[type='checkbox'][data-task-status='cancelled'],
 .ink-prose .task-status-cancelled input[type='checkbox'] {
@@ -256,7 +256,7 @@
 }
 .ink-prose input[type='checkbox'][data-task-status='question'],
 .ink-prose .task-status-question input[type='checkbox'] {
-  border-color: var(--warning, #f59e0b);
+  border-color: var(--warning);
 }
 .ink-prose input[type='checkbox'][data-task-status='question']::after,
 .ink-prose .task-status-question input[type='checkbox']::after {
@@ -267,12 +267,12 @@
   place-items: center;
   font-size: 0.76em;
   font-weight: 700;
-  color: var(--warning, #f59e0b);
+  color: var(--warning);
   line-height: 1;
 }
 .ink-prose input[type='checkbox'][data-task-status='important'],
 .ink-prose .task-status-important input[type='checkbox'] {
-  border-color: var(--danger, #ef4444);
+  border-color: var(--danger);
 }
 .ink-prose input[type='checkbox'][data-task-status='important']::after,
 .ink-prose .task-status-important input[type='checkbox']::after {
@@ -283,7 +283,7 @@
   place-items: center;
   font-size: 0.76em;
   font-weight: 700;
-  color: var(--danger, #ef4444);
+  color: var(--danger);
   line-height: 1;
 }
 .ink-prose .task-list-item.cancelled > p > .task-label,
@@ -412,9 +412,9 @@
 }
 .ink-prose .tab-list {
   display: flex;
-  gap: 2px;
+  gap: var(--sp-0\.5);
   overflow-x: auto;
-  padding: 5px 6px 0;
+  padding: var(--sp-1\.25) var(--sp-1\.5) 0;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-inset);
 }
@@ -479,7 +479,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--sp-3);
   margin: 0.85em 0;
   padding: 0.65em 0.9em;
   border: 1px solid var(--border-subtle);
@@ -495,7 +495,7 @@
 .ink-prose .file-card-main {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-2\.5);
   min-width: 0;
   flex: 1;
 }
@@ -511,30 +511,30 @@
   border: 1px solid color-mix(in oklab, var(--file-badge-color) 28%, transparent);
   color: var(--file-badge-color);
   font-family: var(--font-mono, monospace);
-  font-size: 10px;
+  font-size: var(--text-10);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 .ink-prose .file-card-badge[data-category="pdf"] {
-  --file-badge-color: var(--danger, #dc2626);
+  --file-badge-color: var(--danger);
 }
 .ink-prose .file-card-badge[data-category="archive"] {
-  --file-badge-color: var(--warning, #d97706);
+  --file-badge-color: var(--warning);
 }
 .ink-prose .file-card-badge[data-category="code"],
 .ink-prose .file-card-badge[data-category="text"] {
-  --file-badge-color: #0284c7;
+  --file-badge-color: var(--file-badge-code);
 }
 .ink-prose .file-card-badge[data-category="sheet"] {
-  --file-badge-color: var(--success, #16a34a);
+  --file-badge-color: var(--success);
 }
 .ink-prose .file-card-badge[data-category="slide"] {
-  --file-badge-color: #ea580c;
+  --file-badge-color: var(--file-badge-slide);
 }
 .ink-prose .file-card-badge[data-category="audio"],
 .ink-prose .file-card-badge[data-category="video"] {
-  --file-badge-color: #7c3aed;
+  --file-badge-color: var(--file-badge-media);
 }
 .ink-prose .file-card-badge[data-category="image"] {
   --file-badge-color: var(--accent);
@@ -543,7 +543,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: 2px;
+  gap: var(--sp-0\.5);
 }
 .ink-prose .file-card-name {
   font-size: 0.9em;
@@ -562,20 +562,20 @@
 .ink-prose .file-card-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-1\.5);
   flex-shrink: 0;
 }
 .ink-prose .file-card-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--sp-1\.25);
   height: 28px;
-  padding: 0 9px;
+  padding: 0 var(--sp-2\.25);
   border-radius: var(--r-sm);
   border: 1px solid var(--border-subtle);
   background: var(--bg-base);
   color: var(--text-secondary);
-  font-size: 11.5px;
+  font-size: var(--text-11\.5);
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
@@ -589,9 +589,9 @@
   text-decoration: none;
 }
 .ink-prose .file-card-btn-danger:hover {
-  border-color: color-mix(in oklab, var(--danger, #dc2626) 40%, transparent);
-  background: color-mix(in oklab, var(--danger, #dc2626) 10%, var(--bg-base));
-  color: var(--danger, #dc2626);
+  border-color: color-mix(in oklab, var(--danger) 40%, transparent);
+  background: color-mix(in oklab, var(--danger) 10%, var(--bg-base));
+  color: var(--danger);
 }
 .ink-prose .file-card-btn-icon {
   display: inline-block;
@@ -622,7 +622,7 @@
 .ink-prose .inline-file-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   padding: 0.1em 0.45em;
   margin: 0 0.15em;
   border-radius: var(--r-sm);
@@ -685,7 +685,7 @@
   width: 0.58em;
   height: 0.58em;
   flex: none;
-  border-radius: 3px;
+  border-radius: var(--r-3);
   background: linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 55%, var(--success)));
   box-shadow: 0 0 0 3px var(--accent-softer);
   content: '';
@@ -703,7 +703,7 @@
 }
 .ink-prose .markdown-example-preview-body {
   min-height: 72px;
-  padding: 14px 16px;
+  padding: var(--sp-3\.5) var(--sp-4);
 }
 .ink-prose .markdown-example-preview-body > :first-child {
   margin-top: 0;
@@ -734,7 +734,7 @@
 }
 .ink-prose .markdown-example-source .markdown-example-copy {
   position: absolute;
-  z-index: 1;
+  z-index: var(--z-raised);
   top: 8px;
   right: 8px;
   border: 1px solid var(--border-subtle);
@@ -743,7 +743,7 @@
 }
 .ink-prose .markdown-example-source pre {
   min-height: 72px;
-  padding: 14px 16px;
+  padding: var(--sp-3\.5) var(--sp-4);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   font-size: max(12px, calc(var(--code-size, 15px) - 1.5px));
@@ -790,13 +790,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--text-10);
   font-weight: 800;
   line-height: 1;
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: #f7df1e;
-  color: #000000;
+  padding: var(--sp-0\.5) var(--sp-1\.25);
+  border-radius: var(--r-xs);
+  background: var(--js-badge-bg);
+  color: var(--js-badge-ink);
   letter-spacing: 0.04em;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
@@ -817,7 +817,7 @@
 }
 
 .ink-prose .js-example-switch-label {
-  font-size: 11px;
+  font-size: var(--text-11);
   font-weight: 500;
   color: var(--text-tertiary);
 }
@@ -826,7 +826,7 @@
   position: relative;
   width: 28px;
   height: 16px;
-  border-radius: 9999px;
+  border-radius: var(--r-full);
   background: var(--border-strong);
   border: none;
   padding: 0;
@@ -844,8 +844,8 @@
   left: 2px;
   width: 12px;
   height: 12px;
-  border-radius: 9999px;
-  background: #ffffff;
+  border-radius: var(--r-full);
+  background: var(--swatch-white);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   transition: transform var(--dur-fast) var(--ease-out);
 }
@@ -858,11 +858,11 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35em;
-  padding: 3px 9px;
+  padding: var(--sp-0\.75) var(--sp-2\.25);
   border-radius: var(--r-sm);
-  font-size: 11.5px;
+  font-size: var(--text-11\.5);
   font-weight: 600;
-  color: var(--accent-contrast, #ffffff);
+  color: var(--accent-contrast);
   background: var(--accent);
   border: 1px solid transparent;
   cursor: pointer;
@@ -879,7 +879,7 @@
 }
 
 .ink-prose .js-example-run-icon {
-  font-size: 9px;
+  font-size: var(--text-9);
   line-height: 1;
 }
 
@@ -934,7 +934,7 @@
 }
 
 .ink-prose .js-example-output-title {
-  font-size: 11px;
+  font-size: var(--text-11);
   font-weight: 600;
   color: var(--text-tertiary);
   letter-spacing: 0.02em;
@@ -942,11 +942,11 @@
 }
 
 .ink-prose .js-example-output-status {
-  font-size: 11px;
+  font-size: var(--text-11);
   font-family: var(--font-mono);
   font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: var(--sp-0\.25) var(--sp-1\.25);
+  border-radius: var(--r-3);
 }
 
 .ink-prose .js-example-output-status.is-success {
@@ -961,7 +961,7 @@
 
 .ink-prose .js-example-output-body {
   flex: 1;
-  padding: 10px 14px;
+  padding: var(--sp-2\.5) var(--sp-3\.5);
   font-family: var(--font-mono);
   font-size: max(12px, calc(var(--code-size, 15px) - 1.5px));
   line-height: 1.5;
@@ -972,21 +972,21 @@
 .ink-prose .js-example-placeholder {
   color: var(--text-quaternary);
   font-style: italic;
-  font-size: 12px;
-  padding: 8px 0;
+  font-size: var(--text-12);
+  padding: var(--sp-2) 0;
 }
 
 .ink-prose .js-example-empty-hint {
   color: var(--text-quaternary);
   font-style: italic;
-  font-size: 12px;
+  font-size: var(--text-12);
 }
 
 .ink-prose .js-example-log-row {
   display: flex;
   align-items: baseline;
   gap: 0.45em;
-  padding: 2px 0;
+  padding: var(--sp-0\.5) 0;
   border-bottom: 1px solid color-mix(in oklab, var(--border-subtle) 40%, transparent);
 }
 
@@ -995,7 +995,7 @@
 }
 
 .ink-prose .js-example-log-prefix {
-  font-size: 10px;
+  font-size: var(--text-10);
   font-weight: 700;
   flex: none;
   opacity: 0.7;
@@ -1023,7 +1023,7 @@
 
 .ink-prose .js-example-log-row.is-warn .js-example-log-prefix,
 .ink-prose .js-example-log-row.is-warn .js-example-log-text {
-  color: var(--warning, #eab308);
+  color: var(--warning);
 }
 
 .ink-prose .js-example-log-row.is-error .js-example-log-prefix,
@@ -1071,13 +1071,13 @@
   align-items: center;
   justify-content: space-between;
   height: 28px;
-  padding: 0 7px 0 12px;
+  padding: 0 var(--sp-1\.75) 0 12px;
   border-bottom: 1px solid var(--border-subtle);
   background: color-mix(in oklab, var(--bg-inset) 60%, var(--bg-base));
 }
 .ink-prose .code-lang {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--text-10\.5);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-tertiary);
@@ -1087,19 +1087,19 @@
   overflow: hidden;
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-11);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ink-prose .code-title + .code-lang { margin-left: auto; margin-right: 8px; }
+.ink-prose .code-title + .code-lang { margin-left: auto; margin-right: var(--sp-2); }
 .ink-prose .code-copy {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--sp-1\.25);
   height: 20px;
-  padding: 0 7px;
+  padding: 0 var(--sp-1\.75);
   border-radius: var(--r-sm);
-  font-size: 11px;
+  font-size: var(--text-11);
   color: var(--text-tertiary);
   opacity: 0;
   transition:
@@ -1121,10 +1121,10 @@
 }
 .ink-prose .code-collapse {
   margin-left: auto;
-  padding: 0 7px;
+  padding: 0 var(--sp-1\.75);
   border-radius: var(--r-sm);
   color: var(--text-tertiary);
-  font-size: 11px;
+  font-size: var(--text-11);
   line-height: 20px;
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
@@ -1136,7 +1136,7 @@
 
 .ink-prose pre {
   margin: 0;
-  padding: 10px 14px;
+  padding: var(--sp-2\.5) var(--sp-3\.5);
   overflow-x: auto;
   color: var(--code-fg);
   font-size: var(--code-size, 15px);
@@ -1243,7 +1243,7 @@
   display: inline-flex;
   margin: 0.08em 0.25em 0.08em 0;
   padding: 0.02em 0.4em;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   background: var(--accent-softer);
 }
 .ink-prose .frontmatter-error {
@@ -1277,9 +1277,9 @@
 .ink-prose .note-embed-body > :last-child { margin-bottom: 0.65em; }
 .ink-prose .note-embed.loading .note-embed-body,
 .ink-prose .note-embed.error .note-embed-body { color: var(--text-tertiary); font-size: 0.9em; }
-.ink-prose [data-block-id] { scroll-margin-top: 24px; }
+.ink-prose [data-block-id] { scroll-margin-top: var(--sp-6); }
 .ink-prose [data-block-id]:target {
-  border-radius: 4px;
+  border-radius: var(--r-xs);
   outline: 2px solid var(--accent-ring);
   background: var(--accent-softer);
 }
@@ -1356,8 +1356,8 @@
   right: 6px;
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 4px;
+  gap: var(--sp-0\.75);
+  padding: var(--sp-0\.5) var(--sp-1);
   border-radius: var(--r-sm);
   background: color-mix(in oklab, var(--bg-inset) 85%, transparent);
   backdrop-filter: blur(8px);
@@ -1366,7 +1366,7 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--dur-fast) var(--ease-out);
-  z-index: 10;
+  z-index: var(--z-sticky);
 }
 
 .ink-prose .table-wrap:hover .table-floating-bar,
@@ -1378,10 +1378,10 @@
 .ink-prose .table-floating-btn {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
+  gap: var(--sp-0\.75);
+  padding: var(--sp-0\.5) var(--sp-1\.5);
   border-radius: var(--r-xs);
-  font-size: 11px;
+  font-size: var(--text-11);
   font-family: var(--font-ui);
   color: var(--text-secondary);
   background: transparent;
@@ -1413,7 +1413,7 @@
   background: var(--accent-softer);
   padding: 0.06em 0.32em;
   margin: 0 -0.06em;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out);
 }
@@ -1475,7 +1475,7 @@
   color: var(--tag-color, var(--accent));
   background: var(--tag-bg, var(--accent-softer));
   padding: 0.06em 0.4em;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   font-size: 0.9em;
   cursor: pointer;
   white-space: nowrap;
@@ -1509,7 +1509,7 @@
 }
 .ink-prose figure.image-blocked {
   border: 1px dashed var(--border-strong);
-  border-radius: 8px;
+  border-radius: var(--r-md);
   padding: 0.9em 1em;
   background: var(--bg-inset);
   text-align: center;
@@ -1568,7 +1568,7 @@
   background: color-mix(in oklab, var(--warning) 26%, transparent);
   color: var(--text-primary);
   padding: 0.04em 0.22em;
-  border-radius: 3px;
+  border-radius: var(--r-3);
 }
 .ink-prose ins,
 .ink-prose u {
@@ -1599,7 +1599,7 @@
   padding: 0.15em 0.42em;
   border: 1px solid var(--border-default);
   border-bottom-width: 2px;
-  border-radius: 5px;
+  border-radius: var(--r-5);
   background: var(--bg-raised);
   color: var(--text-secondary);
   white-space: nowrap;
@@ -1627,7 +1627,7 @@
 }
 .ink-prose .math-block.math-source {
   margin: 0.9em 0;
-  padding: 10px 14px;
+  padding: var(--sp-2\.5) var(--sp-3\.5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-sm);
   background: var(--bg-inset);
@@ -1640,13 +1640,13 @@
   font-size: 0.85em;
   background: color-mix(in oklab, var(--danger) 10%, transparent);
   padding: 0.1em 0.35em;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
 }
 
 
 .ink-prose .mermaid-block {
   margin: 1em 0;
-  padding: 14px;
+  padding: var(--sp-3\.5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-lg);
   background: var(--bg-inset);
@@ -1662,12 +1662,12 @@
   min-height: 90px;
   align-items: center;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--text-12);
 }
 .ink-prose .mermaid-block.loading::before {
   width: 12px;
   height: 12px;
-  margin-right: 8px;
+  margin-right: var(--sp-2);
   border: 1.5px solid color-mix(in oklab, var(--text-tertiary) 32%, transparent);
   border-top-color: var(--accent);
   border-radius: 50%;
@@ -1689,9 +1689,9 @@
   display: grid;
   width: 100%;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px 12px;
+  gap: var(--sp-2) 12px;
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--text-12);
 }
 .ink-prose .mermaid-error-message {
   align-self: center;
@@ -1710,7 +1710,7 @@
   align-self: start;
   border: 1px solid var(--border-default);
   border-radius: var(--r-sm);
-  padding: 3px 9px;
+  padding: var(--sp-0\.75) var(--sp-2\.25);
   color: var(--text-primary);
   background: var(--bg-overlay);
   cursor: pointer;
@@ -1729,14 +1729,14 @@
 .ink-hit {
   background: var(--accent-soft);
   color: var(--text-primary);
-  border-radius: 3px;
-  padding: 0 1px;
+  border-radius: var(--r-3);
+  padding: 0 var(--sp-0\.25);
   box-decoration-break: clone;
 }
 
 .ink-prose .chartjs-block {
   margin: 1em 0;
-  padding: 14px;
+  padding: var(--sp-3\.5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-lg);
   background: var(--bg-inset);
@@ -1761,12 +1761,12 @@
   min-height: 120px;
   align-items: center;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--text-12);
 }
 .ink-prose .chartjs-block.loading::before {
   width: 12px;
   height: 12px;
-  margin-right: 8px;
+  margin-right: var(--sp-2);
   border: 1.5px solid color-mix(in oklab, var(--text-tertiary) 32%, transparent);
   border-top-color: var(--accent);
   border-radius: 50%;
@@ -1779,13 +1779,13 @@
 }
 .ink-prose .chart-error-banner {
   color: var(--danger);
-  font-size: 12px;
-  margin-bottom: 8px;
+  font-size: var(--text-12);
+  margin-bottom: var(--sp-2);
   font-weight: 500;
 }
 .ink-prose .chartjs-block.has-error pre {
   margin: 0;
-  padding: 8px;
+  padding: var(--sp-2);
   background: var(--bg-base);
   border-radius: var(--r-md);
   overflow-x: auto;
@@ -1797,7 +1797,7 @@
     max-width: none;
     padding: 0;
     font-size: 11pt;
-    color: #000;
+    color: var(--mask-ink);
   }
   .ink-prose .code-copy,
   .ink-prose .heading-anchor {

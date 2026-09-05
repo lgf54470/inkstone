@@ -315,7 +315,7 @@ function BlogGridCard({
       )}
       title={t('blog.drag_to_folder_hint')}
     >
-      <div className="absolute top-2.5 left-2.5 z-10">
+      <div className="absolute top-2.5 left-2.5 z-[var(--z-sticky)]">
         <input
           type="checkbox"
           checked={isSelected}
@@ -331,7 +331,7 @@ function BlogGridCard({
           void updatePost(post.id, { isPinned: !post.isPinned })
         }}
         className={cn(
-          'absolute top-2.5 right-2.5 z-10 flex size-6 items-center justify-center rounded-full shadow-sm backdrop-blur transition-all',
+          'absolute top-2.5 right-2.5 z-[var(--z-sticky)] flex size-6 items-center justify-center rounded-full shadow-sm backdrop-blur transition-all',
           post.isPinned
             ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
             : 'bg-[var(--bg-overlay)]/90 text-[var(--text-quaternary)] opacity-0 group-hover:opacity-100 hover:text-[var(--accent)]',

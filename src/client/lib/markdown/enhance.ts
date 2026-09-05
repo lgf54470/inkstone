@@ -289,7 +289,7 @@ function createMermaidRenderHost(): HTMLDivElement {
         width: '100vw',
         visibility: 'hidden',
         pointerEvents: 'none',
-        zIndex: '-1',
+        zIndex: 'var(--z-under)',
     });
     document.body.append(host);
     return host;

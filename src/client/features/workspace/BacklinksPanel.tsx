@@ -39,7 +39,7 @@ export function BacklinksPanel({ noteId }: {
         };
     }, [noteId, rev, cursor, reload]);
     return (<section className="max-h-[36%] shrink-0 overflow-y-auto border-t border-[var(--border-subtle)] bg-[var(--bg-base)]">
-      <div className="sticky top-0 z-10 flex items-center gap-1.5 border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+      <div className="sticky top-0 z-[var(--z-sticky)] flex items-center gap-1.5 border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
         <Link2 size={11}/>{t("common.backlinks")}{links && links.length > 0 && <span className="tabular">· {links.length}</span>}
       </div>
 

@@ -5,6 +5,7 @@ import { Menu, type MenuItem } from '../../components/overlay';
 import { useUi } from '../../store/ui';
 import { useNotes } from '../../store/notes';
 import { formatMarkdownTable, parseMarkdownTable, type ParsedTable } from '../../lib/markdown/table-editor';
+import { Z_INDEX } from '../../lib/z-index';
 import { type EditorContextData, type PreviewContextData } from './context-menu-detect';
 import type { MenuCtx } from './context-menu/types';
 import {
@@ -233,7 +234,7 @@ export function EditorContextMenu({
       onClose={onClose}
       items={items}
       width={216}
-      zIndex={280}
+      zIndex={Z_INDEX.hoverPinned}
     />
   );
 }

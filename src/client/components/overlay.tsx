@@ -5,6 +5,7 @@ import { cn } from '../lib/cn';
 import { Button, IconButton, Kbd } from './primitives';
 import { t } from "../lib/i18n";
 import { getVisibleViewport } from '../lib/viewport';
+import { Z_INDEX } from '../lib/z-index';
 
 
 const escStack: (() => void)[] = [];
@@ -159,7 +160,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
     return createPortal(
 
 
-    <div className="app-viewport-fixed fixed z-[250] flex items-end justify-center overflow-hidden md:items-start md:overflow-y-auto md:p-8">
+    <div className="app-viewport-fixed fixed z-[var(--z-modal)] flex items-end justify-center overflow-hidden md:items-start md:overflow-y-auto md:p-8">
       <div className="anim-fade absolute inset-0 bg-[var(--scrim)]" onClick={onClose} aria-hidden="true"/>
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} aria-describedby={description ? descriptionId : undefined} aria-label={title ? undefined : t("overlay.dialog")} tabIndex={-1} className={cn('anim-pop relative flex max-h-[calc(var(--app-viewport-height,100dvh)-env(safe-area-inset-top))] md:max-h-[calc(var(--app-viewport-height,100dvh)-4rem)] w-full flex-col rounded-t-[var(--r-2xl)] border border-b-0 border-[var(--border-default)]', 'bg-[var(--bg-overlay)] shadow-[var(--shadow-modal)] outline-none md:my-auto md:rounded-[var(--r-2xl)] md:border-b', className)} style={{ maxWidth: width }}>
         {(title || description) && (<div className="flex shrink-0 items-start justify-between gap-4 px-4 pt-4 pb-3 md:px-5">
@@ -440,7 +441,7 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
         return null;
     const activeItem = items.find((i) => i.id === activeSubmenuId);
     return (<>
-      {createPortal(<div ref={menuRef} role="menu" aria-label={label} tabIndex={-1} className="anim-pop fixed z-[260] max-h-[420px] overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none" style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
+      {createPortal(<div ref={menuRef} role="menu" aria-label={label} tabIndex={-1} className="anim-pop fixed z-[var(--z-pop)] max-h-[420px] overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none" style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
         {items.map((item, index) => (<div key={item.id}>
             {item.separatorBefore && <div role="separator" className="my-1 h-px bg-[var(--border-subtle)]"/>}
             <button type="button" role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'} aria-checked={item.checked === undefined ? undefined : item.checked} tabIndex={index === cursor ? 0 : -1} data-menu-index={index} disabled={item.disabled} onMouseEnter={(e) => {
@@ -595,7 +596,7 @@ export function Tooltip({ label, combo, children, side = 'bottom', delay = 420, 
         {children}
       </span>
       {rect &&
-            createPortal(<div ref={tooltipRef} role="tooltip" data-side={position?.side} className="anim-fade pointer-events-none fixed z-[500] flex max-w-[calc(100vw-16px)] items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-overlay)] px-2 py-1 text-[11.5px] whitespace-nowrap text-[var(--text-secondary)] shadow-[var(--shadow-pop)]" style={style}>
+            createPortal(<div ref={tooltipRef} role="tooltip" data-side={position?.side} className="anim-fade pointer-events-none fixed z-[var(--z-tooltip)] flex max-w-[calc(100vw-16px)] items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-overlay)] px-2 py-1 text-[11.5px] whitespace-nowrap text-[var(--text-secondary)] shadow-[var(--shadow-pop)]" style={style}>
             {label}
             {combo && <Kbd combo={combo}/>}
           </div>, document.body)}
@@ -646,7 +647,7 @@ function placeTooltip(anchor: DOMRect, tooltip: DOMRect, preferred: TooltipSide)
         left: side === 'right' ? anchor.right + gap : anchor.left - gap - tooltip.width,
     };
 }
-export function Drawer({ open, onClose, side = 'right', width = 380, children, title, zIndex = 190, }: {
+export function Drawer({ open, onClose, side = 'right', width = 380, children, title, zIndex = Z_INDEX.drawer, }: {
     open: boolean;
     onClose: () => void;
     side?: 'left' | 'right';

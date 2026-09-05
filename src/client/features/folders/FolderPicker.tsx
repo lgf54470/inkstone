@@ -46,7 +46,7 @@ export function FolderPicker({
         setQuery('');
         onClose();
     }} title={title} width={420}>
-      <div className="sticky top-0 z-10 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3">
+      <div className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3">
         <label className="relative block">
           <Search size={14} aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--text-quaternary)]"/>
           <span className="sr-only">{t("folders.search")}</span>

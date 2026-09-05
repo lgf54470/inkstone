@@ -16,6 +16,7 @@ import {
   Star,
   Trash2,
 } from 'lucide-react'
+import { COPY_FEEDBACK_MS } from '@shared/constants'
 import type { ShareFolder, ShareInfo } from '@shared/types'
 import { Switch } from '../../components/form'
 import { IconButton } from '../../components/primitives'
@@ -57,7 +58,7 @@ export function ShareTableView({
       const full = typeof window !== 'undefined' ? new URL(url, window.location.origin).href : url
       await navigator.clipboard.writeText(full)
       setCopiedSlug(slug)
-      setTimeout(() => setCopiedSlug(null), 2000)
+      setTimeout(() => setCopiedSlug(null), COPY_FEEDBACK_MS)
     } catch (error) {
       console.warn('[share] failed to copy link', error)
     }
@@ -98,7 +99,7 @@ export function ShareTableView({
   return (
     <div className="w-full overflow-x-auto">
       <table className="w-full border-collapse text-left">
-        <thead className="sticky top-0 z-10 bg-[var(--bg-card)] shadow-xs">
+        <thead className="sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-card)] shadow-xs">
           <tr className="border-b border-[var(--border-subtle)] text-[11px] font-semibold text-[var(--text-tertiary)]">
             <th className="w-10 px-3 py-2 text-center">
               <input

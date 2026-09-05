@@ -18,6 +18,7 @@ import { Modal } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/cn'
+import { COPY_FEEDBACK_MS } from '@shared/constants'
 import { errorMessage } from '../../lib/errors'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import { decorateCodeBlock } from '../../lib/markdown/enhance'
@@ -297,7 +298,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
     try {
       await navigator.clipboard.writeText(textContent)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => setCopied(false), COPY_FEEDBACK_MS)
     } catch (error) {
       console.warn('[preview] failed to copy text', error)
     }
@@ -416,7 +417,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
 
             <div className="relative flex items-center justify-center min-h-[300px] max-h-[60vh] overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)]/40 p-4">
               {imageLoading && !imageError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-surface)]/60 backdrop-blur-xs z-10">
+                <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-surface)]/60 backdrop-blur-xs z-[var(--z-sticky)]">
                   <Loader2 size={24} className="animate-spin text-[var(--accent)]" />
                 </div>
               )}

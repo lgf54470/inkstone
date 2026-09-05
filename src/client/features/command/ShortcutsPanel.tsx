@@ -172,7 +172,7 @@ export function ShortcutsPanel({ onClose }: {
     const hasResults = sections.length > 0;
     let rowCursor = -1;
     return (<Modal open onClose={onClose} title={t("command.keyboard_shortcuts_021cf9")} description={t("command.use_nearly_every_action_without_touching_the_mouse")} width={720}>
-      <div className="sticky top-0 z-10 -mx-4 bg-[var(--bg-overlay)] px-4 pt-0.5 pb-3 md:-mx-5 md:px-5">
+      <div className="sticky top-0 z-[var(--z-sticky)] -mx-4 bg-[var(--bg-overlay)] px-4 pt-0.5 pb-3 md:-mx-5 md:px-5">
         <div className="relative">
           <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-quaternary)]"/>
           <input data-autofocus role="combobox" aria-label={t("command.shortcuts_filter_placeholder")} aria-expanded="true" aria-controls={listId} aria-activedescendant={cursor >= 0 ? `${listId}-option-${cursor}` : undefined} aria-autocomplete="list" autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={handleQueryKeyDown} placeholder={t("command.shortcuts_filter_placeholder")} className="h-9 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] pr-8 pl-8 text-[12.5px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] transition-[border-color,box-shadow] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none"/>

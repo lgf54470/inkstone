@@ -73,7 +73,7 @@ export function AttachmentGridView({
     <div className="flex min-h-full flex-col p-4 gap-6">
       {groups.map((group, groupIdx) => (
         <div key={group.label} className="space-y-2.5">
-          <div className="sticky top-0 z-10 bg-[var(--bg-surface)]/90 py-1 backdrop-blur-xs">
+          <div className="sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-surface)]/90 py-1 backdrop-blur-xs">
             <h3 className="text-[12px] font-semibold tracking-wider text-[var(--text-tertiary)] uppercase">
               {group.label}
             </h3>
@@ -323,7 +323,7 @@ function GridCard({
             onToggleSelect(e)
           }}
           className={cn(
-            'absolute top-2 left-2 z-10 flex h-5 w-5 items-center justify-center rounded transition-opacity',
+            'absolute top-2 left-2 z-[var(--z-sticky)] flex h-5 w-5 items-center justify-center rounded transition-opacity',
             selected
               ? 'opacity-100'
               : 'opacity-0 group-hover:opacity-100',
@@ -341,7 +341,7 @@ function GridCard({
           </div>
         </div>
 
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        <div className="absolute top-2 right-2 z-[var(--z-sticky)] flex items-center gap-1">
           {file.isPinned && (
             <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-xs">
               <Pin size={10} />

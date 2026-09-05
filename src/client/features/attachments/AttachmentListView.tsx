@@ -62,7 +62,7 @@ export function AttachmentListView({
     <div className="flex min-h-full flex-col w-full">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-[12px] border-collapse">
-          <thead className="sticky top-0 z-10 border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)]/90 backdrop-blur-xs text-[11px] font-semibold text-[var(--text-tertiary)] uppercase select-none">
+          <thead className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)]/90 backdrop-blur-xs text-[11px] font-semibold text-[var(--text-tertiary)] uppercase select-none">
             <tr>
               <th className="w-10 px-3 py-2.5">
                 <button

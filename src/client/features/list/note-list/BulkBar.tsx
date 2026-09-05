@@ -55,7 +55,7 @@ export function BulkBar() {
             setBusy(false);
         }
     };
-    return (<div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center pb-3">
+    return (<div className="pointer-events-none absolute inset-x-0 bottom-0 z-[var(--z-menu)] flex justify-center pb-3">
       <div className="anim-rise pointer-events-auto flex items-center gap-1 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 pl-3 shadow-[var(--shadow-pop)]">
         <span className="mr-1 text-[11.5px] whitespace-nowrap text-[var(--text-secondary)]">{t("notes.selected")}<span className="tabular font-medium">{ids.length}</span>{t("notes.notes")}</span>
         <Tooltip label={allStarred ? t("common.remove_from_favorites") : t("navigation.favorites")}>
