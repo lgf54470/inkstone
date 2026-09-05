@@ -1,5 +1,5 @@
 import MarkdownIt from 'markdown-it'
-import type { Token } from 'markdown-it'
+import type { StateCore, Token } from 'markdown-it'
 import { calloutDefaultTitle, normalizeCalloutType } from '../callout.ts'
 import { slugify } from '../slugify.ts'
 import type { TocHeading } from '../types.ts'
@@ -23,7 +23,7 @@ function plainInline(token: Token): string {
     .trim()
 }
 
-export function registerCoreRules(md: InstanceType<typeof MarkdownIt>, headings: TocHeading[]): void {
+function registerObsidianBlocksRule(md: InstanceType<typeof MarkdownIt>): void {
   // Core rule: Block anchors ^anchor-id
   md.core.ruler.push('obsidian_blocks', (state) => {
     for (let index = 0; index < state.tokens.length; index++) {
@@ -41,7 +41,52 @@ export function registerCoreRules(md: InstanceType<typeof MarkdownIt>, headings:
     }
     return true
   })
+}
 
+function applyNativeTaskCheckbox(state: StateCore, inline: Token, cbIdx: number): string {
+  const checkbox = inline.children![cbIdx]!
+  const checked = /\schecked(?:=|\s|>)/.test(checkbox.content)
+  const status = checked ? 'done' : 'todo'
+  checkbox.content = `<input type="checkbox" class="task-list-item-checkbox"${checked ? ' checked=""' : ''} data-task-status="${status}" />`
+  const labelOpen = new state.Token('html_inline', '', 0)
+  labelOpen.content = '<span class="task-label">'
+  const labelClose = new state.Token('html_inline', '', 0)
+  labelClose.content = '</span>'
+  inline.children!.splice(cbIdx + 1, 0, labelOpen)
+  inline.children!.push(labelClose)
+  return status
+}
+
+function applyExtendedTaskMarkers(state: StateCore, inline: Token, item: Token, index: number): string {
+  const firstChild = inline.children![0]
+  if (firstChild?.type !== 'text') return ''
+  const extMatch = /^\[([/\-?!])\][ \t]*/.exec(firstChild.content)
+  if (!extMatch) return ''
+  const ch = extMatch[1]!
+  const status =
+    ch === '/' ? 'in-progress' :
+    ch === '-' ? 'cancelled' :
+    ch === '?' ? 'question' :
+    ch === '!' ? 'important' : 'todo'
+  firstChild.content = firstChild.content.slice(extMatch[0].length)
+  appendTokenClass(item, 'task-list-item')
+  const listOpen = state.tokens.slice(0, index - 2).reverse().find(
+    (t) => t.type === 'bullet_list_open' || t.type === 'ordered_list_open'
+  )
+  if (listOpen) appendTokenClass(listOpen, 'contains-task-list')
+  const checkbox = new state.Token('html_inline', '', 0)
+  checkbox.content = `<input type="checkbox" class="task-list-item-checkbox" data-task-status="${status}" />`
+  const labelOpen = new state.Token('html_inline', '', 0)
+  labelOpen.content = '<span class="task-label">'
+  const labelClose = new state.Token('html_inline', '', 0)
+  labelClose.content = '</span>'
+  inline.children!.unshift(checkbox)
+  inline.children!.splice(1, 0, labelOpen)
+  inline.children!.push(labelClose)
+  return status
+}
+
+function registerTaskListRule(md: InstanceType<typeof MarkdownIt>): void {
   // Core rule: Task List Items (<span class="task-label"> wrapper and status markers)
   md.core.ruler.after('github-task-lists', 'task_labels_and_markers', (state) => {
     for (let index = 2; index < state.tokens.length; index++) {
@@ -60,48 +105,7 @@ export function registerCoreRules(md: InstanceType<typeof MarkdownIt>, headings:
       const cbIdx = inline.children.findIndex(
         (child) => child.type === 'html_inline' && /task-list-item-checkbox/.test(child.content)
       )
-      let status = ''
-      let checked = false
-      if (cbIdx >= 0) {
-        const checkbox = inline.children[cbIdx]!
-        checked = /\schecked(?:=|\s|>)/.test(checkbox.content)
-        status = checked ? 'done' : 'todo'
-        checkbox.content = `<input type="checkbox" class="task-list-item-checkbox"${checked ? ' checked=""' : ''} data-task-status="${status}" />`
-        const labelOpen = new state.Token('html_inline', '', 0)
-        labelOpen.content = '<span class="task-label">'
-        const labelClose = new state.Token('html_inline', '', 0)
-        labelClose.content = '</span>'
-        inline.children.splice(cbIdx + 1, 0, labelOpen)
-        inline.children.push(labelClose)
-      } else {
-        const firstChild = inline.children[0]
-        if (firstChild?.type === 'text') {
-          const extMatch = /^\[([/\-?!])\][ \t]*/.exec(firstChild.content)
-          if (extMatch) {
-            const ch = extMatch[1]!
-            status =
-              ch === '/' ? 'in-progress' :
-              ch === '-' ? 'cancelled' :
-              ch === '?' ? 'question' :
-              ch === '!' ? 'important' : 'todo'
-            firstChild.content = firstChild.content.slice(extMatch[0].length)
-            appendTokenClass(item, 'task-list-item')
-            const listOpen = state.tokens.slice(0, index - 2).reverse().find(
-              (t) => t.type === 'bullet_list_open' || t.type === 'ordered_list_open'
-            )
-            if (listOpen) appendTokenClass(listOpen, 'contains-task-list')
-            const checkbox = new state.Token('html_inline', '', 0)
-            checkbox.content = `<input type="checkbox" class="task-list-item-checkbox" data-task-status="${status}" />`
-            const labelOpen = new state.Token('html_inline', '', 0)
-            labelOpen.content = '<span class="task-label">'
-            const labelClose = new state.Token('html_inline', '', 0)
-            labelClose.content = '</span>'
-            inline.children.unshift(checkbox)
-            inline.children.splice(1, 0, labelOpen)
-            inline.children.push(labelClose)
-          }
-        }
-      }
+      const status = cbIdx >= 0 ? applyNativeTaskCheckbox(state, inline, cbIdx) : applyExtendedTaskMarkers(state, inline, item, index)
       if (status) {
         item.attrSet('data-task-status', status)
         appendTokenClass(item, `task-status-${status}`)
@@ -111,7 +115,18 @@ export function registerCoreRules(md: InstanceType<typeof MarkdownIt>, headings:
     }
     return true
   })
+}
 
+function findCalloutCloseIndex(state: StateCore, startIndex: number): number {
+  let depth = 0
+  for (let i = startIndex; i < state.tokens.length; i++) {
+    if (state.tokens[i]!.type === 'blockquote_open') depth++
+    else if (state.tokens[i]!.type === 'blockquote_close' && --depth === 0) return i
+  }
+  return -1
+}
+
+function registerCalloutsRule(md: InstanceType<typeof MarkdownIt>): void {
   // Core rule: Obsidian Callouts (> [!NOTE] ...)
   md.core.ruler.after('github-task-lists', 'obsidian_callouts', (state) => {
     for (let index = 0; index < state.tokens.length; index++) {
@@ -125,15 +140,7 @@ export function registerCoreRules(md: InstanceType<typeof MarkdownIt>, headings:
       const marker = /^\[!([A-Za-z][A-Za-z0-9_-]{0,31})\]([+-])?(?:[ \t]+(.+?))?[ \t]*$/.exec(firstLine)
       if (!marker) continue
 
-      let depth = 0
-      let closeIndex = -1
-      for (let i = index; i < state.tokens.length; i++) {
-        if (state.tokens[i]!.type === 'blockquote_open') depth++
-        else if (state.tokens[i]!.type === 'blockquote_close' && --depth === 0) {
-          closeIndex = i
-          break
-        }
-      }
+      const closeIndex = findCalloutCloseIndex(state, index)
       if (closeIndex < 0) continue
 
       const type = normalizeCalloutType(marker[1]!)
@@ -161,7 +168,9 @@ export function registerCoreRules(md: InstanceType<typeof MarkdownIt>, headings:
     }
     return true
   })
+}
 
+function registerCollectHeadingsRule(md: InstanceType<typeof MarkdownIt>, headings: TocHeading[]): void {
   // Collect headings in core phase before TOC rendering
   md.core.ruler.push('collect_headings', (state) => {
     headings.length = 0
@@ -180,4 +189,11 @@ export function registerCoreRules(md: InstanceType<typeof MarkdownIt>, headings:
     }
     return true
   })
+}
+
+export function registerCoreRules(md: InstanceType<typeof MarkdownIt>, headings: TocHeading[]): void {
+  registerObsidianBlocksRule(md)
+  registerTaskListRule(md)
+  registerCalloutsRule(md)
+  registerCollectHeadingsRule(md, headings)
 }

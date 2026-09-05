@@ -76,109 +76,109 @@ function initJsRunners() {
     const target = e.target as HTMLElement
     const switchBtn = target.closest<HTMLButtonElement>('[data-js-switch="line-numbers"]')
     if (switchBtn) {
-      const isChecked = switchBtn.classList.contains('is-checked')
-      const nextChecked = !isChecked
-      switchBtn.classList.toggle('is-checked', nextChecked)
-      switchBtn.setAttribute('aria-checked', String(nextChecked))
-      const block = switchBtn.closest<HTMLElement>('.js-example-block')
-      const codeBlock = block?.querySelector<HTMLElement>('.code-block')
-      if (codeBlock) {
-        codeBlock.classList.toggle('has-line-numbers', nextChecked)
-      }
+      handleJsLineSwitch(switchBtn)
       return
     }
 
     const runBtn = target.closest<HTMLButtonElement>('[data-js-run]')
-    if (runBtn) {
-      const block = runBtn.closest<HTMLElement>('.js-example-block')
-      if (!block) return
-      const codeEl = block.querySelector<HTMLElement>('.code-block pre code')
-      const outputBody = block.querySelector<HTMLElement>('.js-example-output-body')
-      const statusEl = block.querySelector<HTMLElement>('.js-example-output-status')
-      if (!codeEl || !outputBody) return
-
-      const code = codeEl.textContent ?? ''
-      const logs: Array<{ type: string; text: string }> = []
-      const fakeConsole = {
-        log: (...args: unknown[]) => logs.push({ type: 'log', text: args.map(formatJsValue).join(' ') }),
-        info: (...args: unknown[]) => logs.push({ type: 'info', text: args.map(formatJsValue).join(' ') }),
-        warn: (...args: unknown[]) => logs.push({ type: 'warn', text: args.map(formatJsValue).join(' ') }),
-        error: (...args: unknown[]) => logs.push({ type: 'error', text: args.map(formatJsValue).join(' ') }),
-      }
-
-      const start = performance.now()
-      let result: unknown
-      let err: unknown
-      try {
-        const fn = new Function('console', `"use strict";\n${code}`)
-        result = fn(fakeConsole)
-      } catch (e) {
-        err = e
-      }
-      const durationMs = Math.round(performance.now() - start)
-
-      if (statusEl) {
-        if (err) {
-          statusEl.className = 'js-example-output-status is-error'
-          statusEl.textContent = `✕ ${durationMs}ms`
-        } else {
-          statusEl.className = 'js-example-output-status is-success'
-          statusEl.textContent = `✓ ${durationMs}ms`
-        }
-      }
-
-      outputBody.innerHTML = ''
-      if (logs.length === 0 && result === undefined && !err) {
-        const hint = document.createElement('div')
-        hint.className = 'js-example-empty-hint'
-        hint.textContent = '代码已执行，无输出内容'
-        outputBody.appendChild(hint)
-        return
-      }
-
-      logs.forEach((log) => {
-        const row = document.createElement('div')
-        row.className = `js-example-log-row is-${log.type}`
-        const prefix = document.createElement('span')
-        prefix.className = 'js-example-log-prefix'
-        prefix.textContent = `[${log.type.toUpperCase()}]`
-        const text = document.createElement('span')
-        text.className = 'js-example-log-text'
-        text.textContent = log.text
-        row.appendChild(prefix)
-        row.appendChild(text)
-        outputBody.appendChild(row)
-      })
-
-      if (result !== undefined) {
-        const row = document.createElement('div')
-        row.className = 'js-example-log-row is-return'
-        const prefix = document.createElement('span')
-        prefix.className = 'js-example-log-prefix'
-        prefix.textContent = '[RETURN]'
-        const text = document.createElement('span')
-        text.className = 'js-example-log-text'
-        text.textContent = formatJsValue(result)
-        row.appendChild(prefix)
-        row.appendChild(text)
-        outputBody.appendChild(row)
-      }
-
-      if (err) {
-        const row = document.createElement('div')
-        row.className = 'js-example-log-row is-error'
-        const prefix = document.createElement('span')
-        prefix.className = 'js-example-log-prefix'
-        prefix.textContent = '[ERROR]'
-        const text = document.createElement('span')
-        text.className = 'js-example-log-text'
-        text.textContent = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-        row.appendChild(prefix)
-        row.appendChild(text)
-        outputBody.appendChild(row)
-      }
-    }
+    if (runBtn) handleJsRun(runBtn)
   })
+}
+
+function handleJsLineSwitch(switchBtn: HTMLButtonElement): void {
+  const isChecked = switchBtn.classList.contains('is-checked')
+  const nextChecked = !isChecked
+  switchBtn.classList.toggle('is-checked', nextChecked)
+  switchBtn.setAttribute('aria-checked', String(nextChecked))
+  const block = switchBtn.closest<HTMLElement>('.js-example-block')
+  const codeBlock = block?.querySelector<HTMLElement>('.code-block')
+  if (codeBlock) {
+    codeBlock.classList.toggle('has-line-numbers', nextChecked)
+  }
+}
+
+function runUserCode(code: string): {
+  logs: Array<{ type: string; text: string }>
+  result: unknown
+  err: unknown
+  durationMs: number
+} {
+  const logs: Array<{ type: string; text: string }> = []
+  const fakeConsole = {
+    log: (...args: unknown[]) => logs.push({ type: 'log', text: args.map(formatJsValue).join(' ') }),
+    info: (...args: unknown[]) => logs.push({ type: 'info', text: args.map(formatJsValue).join(' ') }),
+    warn: (...args: unknown[]) => logs.push({ type: 'warn', text: args.map(formatJsValue).join(' ') }),
+    error: (...args: unknown[]) => logs.push({ type: 'error', text: args.map(formatJsValue).join(' ') }),
+  }
+
+  const start = performance.now()
+  let result: unknown
+  let err: unknown
+  try {
+    const fn = new Function('console', `"use strict";\n${code}`)
+    result = fn(fakeConsole)
+  } catch (e) {
+    err = e
+  }
+  const durationMs = Math.round(performance.now() - start)
+
+  return { logs, result, err, durationMs }
+}
+
+function appendJsLogRow(outputBody: HTMLElement, type: string, prefix: string, text: string): void {
+  const row = document.createElement('div')
+  row.className = `js-example-log-row is-${type}`
+  const prefixEl = document.createElement('span')
+  prefixEl.className = 'js-example-log-prefix'
+  prefixEl.textContent = prefix
+  const textEl = document.createElement('span')
+  textEl.className = 'js-example-log-text'
+  textEl.textContent = text
+  row.appendChild(prefixEl)
+  row.appendChild(textEl)
+  outputBody.appendChild(row)
+}
+
+function handleJsRun(runBtn: HTMLButtonElement): void {
+  const block = runBtn.closest<HTMLElement>('.js-example-block')
+  if (!block) return
+  const codeEl = block.querySelector<HTMLElement>('.code-block pre code')
+  const outputBody = block.querySelector<HTMLElement>('.js-example-output-body')
+  const statusEl = block.querySelector<HTMLElement>('.js-example-output-status')
+  if (!codeEl || !outputBody) return
+
+  const { logs, result, err, durationMs } = runUserCode(codeEl.textContent ?? '')
+
+  if (statusEl) {
+    if (err) {
+      statusEl.className = 'js-example-output-status is-error'
+      statusEl.textContent = `✕ ${durationMs}ms`
+    } else {
+      statusEl.className = 'js-example-output-status is-success'
+      statusEl.textContent = `✓ ${durationMs}ms`
+    }
+  }
+
+  outputBody.innerHTML = ''
+  if (logs.length === 0 && result === undefined && !err) {
+    const hint = document.createElement('div')
+    hint.className = 'js-example-empty-hint'
+    hint.textContent = '代码已执行，无输出内容'
+    outputBody.appendChild(hint)
+    return
+  }
+
+  logs.forEach((log) => {
+    appendJsLogRow(outputBody, log.type, `[${log.type.toUpperCase()}]`, log.text)
+  })
+
+  if (result !== undefined) {
+    appendJsLogRow(outputBody, 'return', '[RETURN]', formatJsValue(result))
+  }
+
+  if (err) {
+    appendJsLogRow(outputBody, 'error', '[ERROR]', err instanceof Error ? `${err.name}: ${err.message}` : String(err))
+  }
 }
 
 function errorMessage(err: unknown): string {
@@ -257,6 +257,39 @@ function cssVarValue(name: string, fallback: string): string {
   return value || fallback
 }
 
+function buildChartConfig(config: Record<string, unknown>, textColor: string, gridColor: string): ChartConfiguration {
+  const userOptions = asRecord(config.options)
+  const userScales = asRecord(userOptions.scales)
+  const scales: Record<string, Record<string, unknown>> = {}
+  for (const [key, val] of Object.entries(userScales)) {
+    if (val && typeof val === 'object') {
+      const scale = val as Record<string, unknown>
+      scales[key] = {
+        ...scale,
+        ticks: { color: textColor, ...asRecord(scale.ticks) },
+        grid: { color: gridColor, ...asRecord(scale.grid) },
+      }
+    }
+  }
+
+  return {
+    ...config,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      color: textColor,
+      ...userOptions,
+      scales: Object.keys(scales).length > 0 ? scales : undefined,
+      plugins: {
+        legend: {
+          labels: { color: textColor },
+        },
+        ...asRecord(userOptions.plugins),
+      },
+    },
+  } as ChartConfiguration
+}
+
 async function renderCharts() {
   const blocks = document.querySelectorAll<HTMLElement>('.chartjs-block')
   if (!blocks.length) return
@@ -288,38 +321,7 @@ async function renderCharts() {
       container.appendChild(canvas)
       block.appendChild(container)
 
-      const userOptions = asRecord(config.options)
-      const userScales = asRecord(userOptions.scales)
-      const scales: Record<string, Record<string, unknown>> = {}
-      for (const [key, val] of Object.entries(userScales)) {
-        if (val && typeof val === 'object') {
-          const scale = val as Record<string, unknown>
-          scales[key] = {
-            ...scale,
-            ticks: { color: textColor, ...asRecord(scale.ticks) },
-            grid: { color: gridColor, ...asRecord(scale.grid) },
-          }
-        }
-      }
-
-      const chartConfig = {
-        ...config,
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          color: textColor,
-          ...userOptions,
-          scales: Object.keys(scales).length > 0 ? scales : undefined,
-          plugins: {
-            legend: {
-              labels: { color: textColor },
-            },
-            ...asRecord(userOptions.plugins),
-          },
-        },
-      }
-
-      const instance = new Chart(canvas, chartConfig as ChartConfiguration)
+      const instance = new Chart(canvas, buildChartConfig(config, textColor, gridColor))
       chartInstances.set(block, instance)
     } catch (err: unknown) {
       console.warn('Chart.js render error:', err)

@@ -50,7 +50,7 @@ function findTabSegments(state: StateBlock, start: number, end: number) {
   }))
 }
 
-export function registerBlockRules(md: InstanceType<typeof MarkdownIt>): void {
+function registerMathBlockRule(md: InstanceType<typeof MarkdownIt>): void {
   // Math block: $$...$$
   md.block.ruler.before('fence', 'math_block', (state, startLine, endLine, silent) => {
     const line = blockLine(state, startLine)
@@ -83,7 +83,9 @@ export function registerBlockRules(md: InstanceType<typeof MarkdownIt>): void {
     state.line = next + 1
     return true
   })
+}
 
+function registerTocRule(md: InstanceType<typeof MarkdownIt>): void {
   // TOC block: [TOC] or [[TOC]]
   md.block.ruler.before('paragraph', 'toc', (state, startLine, _endLine, silent) => {
     const line = blockLine(state, startLine).trim()
@@ -93,7 +95,9 @@ export function registerBlockRules(md: InstanceType<typeof MarkdownIt>): void {
     state.push('toc', 'nav', 0)
     return true
   })
+}
 
+function registerModernContainerRule(md: InstanceType<typeof MarkdownIt>): void {
   // Containers: ::: details and ::: tabs
   md.block.ruler.before('fence', 'modern_container', (state, startLine, endLine, silent) => {
     const source = blockLine(state, startLine)
@@ -136,4 +140,10 @@ export function registerBlockRules(md: InstanceType<typeof MarkdownIt>): void {
     state.line = end + 1
     return true
   })
+}
+
+export function registerBlockRules(md: InstanceType<typeof MarkdownIt>): void {
+  registerMathBlockRule(md)
+  registerTocRule(md)
+  registerModernContainerRule(md)
 }

@@ -3,7 +3,7 @@ import katex from 'katex'
 import { escapeAttr, escapeHtml } from '../escape.ts'
 import type { TocHeading } from '../types.ts'
 
-export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headings: TocHeading[]): void {
+function registerContainerRendererRules(md: InstanceType<typeof MarkdownIt>): void {
   // Renderer rules for details and tabs
   md.renderer.rules.details_open = (tokens, index) => {
     const meta = tokens[index]!.meta as { open: boolean; title: string }
@@ -28,7 +28,9 @@ export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headi
     return `<section class="tab-panel" role="tabpanel" data-tab-panel="${tabIndex}"${selected ? '' : ' hidden'}>`
   }
   md.renderer.rules.tab_panel_close = () => '</section>'
+}
 
+function registerCalloutRendererRules(md: InstanceType<typeof MarkdownIt>): void {
   // Renderer rules for callouts
   md.renderer.rules.callout_open = (tokens, index) => {
     const { type, title, fold } = tokens[index]!.meta as { type: string; title: string; fold: string }
@@ -41,7 +43,9 @@ export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headi
     const { fold } = tokens[index]!.meta as { fold: string }
     return `</div>${fold ? '</details>' : '</aside>'}`
   }
+}
 
+function registerMathRendererRules(md: InstanceType<typeof MarkdownIt>): void {
   // Math rendering
   md.renderer.rules.math_inline = (tokens, idx) => {
     const formula = tokens[idx]!.content
@@ -60,7 +64,9 @@ export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headi
       return `<pre class="math-error"><code>${escapeHtml(formula)}</code></pre>`
     }
   }
+}
 
+function registerTableRendererRules(md: InstanceType<typeof MarkdownIt>): void {
   // Table wrapping
   md.renderer.rules.table_open = () => '<div class="table-wrap"><table>'
   md.renderer.rules.table_close = () => '</table></div>'
@@ -82,7 +88,9 @@ export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headi
     if (alignMatch) token.attrSet('align', alignMatch[1]!.toLowerCase())
     return defaultTdOpen(tokens, idx, options, env, self)
   }
+}
 
+function registerHeadingRendererRule(md: InstanceType<typeof MarkdownIt>): void {
   // Heading anchor styling
   const defaultHeadingOpen =
     md.renderer.rules.heading_open ||
@@ -95,7 +103,9 @@ export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headi
     token.attrJoin('class', 'group relative')
     return defaultHeadingOpen(tokens, idx, options, env, self)
   }
+}
 
+function registerTocRendererRule(md: InstanceType<typeof MarkdownIt>, headings: TocHeading[]): void {
   // Render TOC token
   md.renderer.rules.toc = () => {
     if (!headings.length) {
@@ -109,4 +119,13 @@ export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headi
       .join('')
     return `<nav class="table-of-contents"><div class="toc-title">目录</div><ul class="toc-list">${items}</ul></nav>`
   }
+}
+
+export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headings: TocHeading[]): void {
+  registerContainerRendererRules(md)
+  registerCalloutRendererRules(md)
+  registerMathRendererRules(md)
+  registerTableRendererRules(md)
+  registerHeadingRendererRule(md)
+  registerTocRendererRule(md, headings)
 }

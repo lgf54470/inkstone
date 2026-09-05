@@ -2,7 +2,7 @@ import MarkdownIt from 'markdown-it'
 import { escapeAttr, escapeHtml } from '../escape.ts'
 import { slugify } from '../slugify.ts'
 
-export function registerInlineRules(md: InstanceType<typeof MarkdownIt>): void {
+function registerMathInlineRule(md: InstanceType<typeof MarkdownIt>): void {
   // Math inline: $...$
   const MATH_INLINE = /^\$(?!\s)((?:[^$\\]|\\.)+?)(?<!\s)\$/
   md.inline.ruler.before('escape', 'math_inline', (state, silent) => {
@@ -17,7 +17,9 @@ export function registerInlineRules(md: InstanceType<typeof MarkdownIt>): void {
     state.pos += match[0].length
     return true
   })
+}
 
+function registerRubyRule(md: InstanceType<typeof MarkdownIt>): void {
   // Inline ruby brackets: [汉字]{注音}
   md.inline.ruler.before('link', 'ruby_bracket', (state, silent) => {
     const start = state.pos
@@ -37,7 +39,9 @@ export function registerInlineRules(md: InstanceType<typeof MarkdownIt>): void {
     state.pos = closeBrace + 1
     return true
   })
+}
 
+function registerWikilinkRule(md: InstanceType<typeof MarkdownIt>): void {
   // Wikilinks: [[页面|别名]] or [[页面]]
   const WIKI_RE = /^\[\[([^\[\]\n]{1,400})\]\]/
   md.inline.ruler.before('link', 'wikilink', (state, silent) => {
@@ -55,7 +59,9 @@ export function registerInlineRules(md: InstanceType<typeof MarkdownIt>): void {
     state.pos += match[0].length
     return true
   })
+}
 
+function registerBlockReferenceRule(md: InstanceType<typeof MarkdownIt>): void {
   // Block references: ((block-id))
   const BLOCK_REF_RE = /^\(\(([A-Za-z0-9][A-Za-z0-9_-]{0,63})\)\)/
   md.inline.ruler.before('text', 'block_reference', (state, silent) => {
@@ -70,7 +76,9 @@ export function registerInlineRules(md: InstanceType<typeof MarkdownIt>): void {
     state.pos += match[0].length
     return true
   })
+}
 
+function registerInlineTagRule(md: InstanceType<typeof MarkdownIt>): void {
   // Inline tags: #tag
   const TAG_RE = /^#([\p{L}\p{N}_\-\/·]{1,60})(?![\p{L}\p{N}_\-\/·])/u
   md.inline.ruler.before('text', 'inline_tag', (state, silent) => {
@@ -87,7 +95,9 @@ export function registerInlineRules(md: InstanceType<typeof MarkdownIt>): void {
     state.pos += match[0].length
     return true
   })
+}
 
+function registerNoteEmbedRule(md: InstanceType<typeof MarkdownIt>): void {
   // Note embeds: ![[笔记]]
   const EMBED_RE = /^!\[\[([^\[\]\n]{1,400})\]\]/
   md.inline.ruler.before('image', 'note_embed', (state, silent) => {
@@ -102,4 +112,13 @@ export function registerInlineRules(md: InstanceType<typeof MarkdownIt>): void {
     state.pos += match[0].length
     return true
   })
+}
+
+export function registerInlineRules(md: InstanceType<typeof MarkdownIt>): void {
+  registerMathInlineRule(md)
+  registerRubyRule(md)
+  registerWikilinkRule(md)
+  registerBlockReferenceRule(md)
+  registerInlineTagRule(md)
+  registerNoteEmbedRule(md)
 }
