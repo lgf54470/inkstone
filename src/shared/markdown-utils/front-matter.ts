@@ -20,29 +20,43 @@ export function parseFrontMatter(text: string): FrontMatterResult {
   }
 
   const lines = source.split(/\r?\n/)
+  const closing = findClosingSeparator(source, lines)
+  if (closing < 0) return { body: source, data: {}, raw: '', lineOffset: 0, errors: [] }
+  if (closing === FRONT_MATTER_TOO_LARGE) {
+    return {
+      body: source,
+      data: {},
+      raw: '',
+      lineOffset: 0,
+      errors: ['Front Matter exceeds the 64 KiB safety limit'],
+    }
+  }
+
+  const raw = lines.slice(1, closing).join('\n')
+  return parseYamlBlock(lines, raw, closing)
+}
+
+const FRONT_MATTER_TOO_LARGE = -2
+
+function findClosingSeparator(source: string, lines: string[]): number {
   const separators = source.match(/\r?\n/g) ?? []
-  let closing = -1
   let bytes = UTF8_ENCODER.encode(lines[0]!).byteLength
   for (let index = 1; index < lines.length; index++) {
     bytes += UTF8_ENCODER.encode(separators[index - 1] ?? '').byteLength
     bytes += UTF8_ENCODER.encode(lines[index]!).byteLength
-    if (bytes > FRONT_MATTER_LIMIT) {
-      return {
-        body: source,
-        data: {},
-        raw: '',
-        lineOffset: 0,
-        errors: ['Front Matter exceeds the 64 KiB safety limit'],
-      }
-    }
-    if (/^(?:---|\.\.\.)[ \t]*$/.test(lines[index]!)) {
-      closing = index
-      break
-    }
+    if (bytes > FRONT_MATTER_LIMIT) return FRONT_MATTER_TOO_LARGE
+    if (/^(?:---|\.\.\.)[ \t]*$/.test(lines[index]!)) return index
   }
-  if (closing < 0) return { body: source, data: {}, raw: '', lineOffset: 0, errors: [] }
+  return -1
+}
 
-  const raw = lines.slice(1, closing).join('\n')
+function parseYamlBlock(
+  lines: string[],
+  raw: string,
+  closing: number,
+): FrontMatterResult {
+  const body = lines.slice(closing + 1).join('\n')
+  const lineOffset = closing + 1
   try {
     const document = parseDocument(raw, {
       prettyErrors: false,
@@ -50,32 +64,20 @@ export function parseFrontMatter(text: string): FrontMatterResult {
     })
     const errors = document.errors.map((error) => error.message)
     if (errors.length) {
-      return {
-        body: lines.slice(closing + 1).join('\n'),
-        data: {},
-        raw,
-        lineOffset: closing + 1,
-        errors,
-      }
+      return { body, data: {}, raw, lineOffset, errors }
     }
     const value = document.toJS({ maxAliasCount: 20 }) as unknown
     const data = isPlainRecord(value) ? value : {}
     if (value != null && !isPlainRecord(value)) {
       errors.push('Front Matter root must be a YAML mapping')
     }
-    return {
-      body: lines.slice(closing + 1).join('\n'),
-      data,
-      raw,
-      lineOffset: closing + 1,
-      errors,
-    }
+    return { body, data, raw, lineOffset, errors }
   } catch (error) {
     return {
-      body: lines.slice(closing + 1).join('\n'),
+      body,
       data: {},
       raw,
-      lineOffset: closing + 1,
+      lineOffset,
       errors: [error instanceof Error ? error.message : String(error)],
     }
   }

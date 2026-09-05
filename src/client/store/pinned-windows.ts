@@ -42,19 +42,24 @@ export function loadPersisted(): { items: PersistedPinnedWindow[]; seq: number }
   try {
     const raw = localStorage.getItem(PINNED_WINDOWS_STORAGE_KEY)
     if (!raw) return { items: [], seq: 1 }
-    const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { items: [], seq: 1 }
-    const value = parsed as Record<string, unknown>
-    const items = Array.isArray(value.items) ? value.items : []
-    const stored = items
-      .filter(isPinnedWindow)
-      .slice(0, MAX_PINNED_WINDOWS)
-      .map((item) => ({ ...item }))
-    const seq = isFiniteNumber(value.seq) ? value.seq : stored.reduce((max, item) => Math.max(max, item.id), 0) + 1
-    return { items: stored, seq: Math.max(1, seq) }
+    return decodePersisted(JSON.parse(raw) as unknown)
   } catch {
     return { items: [], seq: 1 }
   }
+}
+
+function decodePersisted(value: unknown): { items: PersistedPinnedWindow[]; seq: number } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { items: [], seq: 1 }
+  const record = value as Record<string, unknown>
+  const items = Array.isArray(record.items) ? record.items : []
+  const stored = items
+    .filter(isPinnedWindow)
+    .slice(0, MAX_PINNED_WINDOWS)
+    .map((item) => ({ ...item }))
+  const seq = isFiniteNumber(record.seq)
+    ? record.seq
+    : stored.reduce((max, item) => Math.max(max, item.id), 0) + 1
+  return { items: stored, seq: Math.max(1, seq) }
 }
 
 function isPinnedWindow(value: unknown): value is PersistedPinnedWindow {
@@ -79,6 +84,29 @@ function isFiniteNumber(value: unknown): value is number {
 
 function maxZ(items: PersistedPinnedWindow[]): number {
   return items.reduce((max, item) => Math.max(max, item.z), 0)
+}
+
+function pushPinnedWindow(
+  state: PinnedWindowsState,
+  card: WikiLinkHoverCardState,
+  rect: DOMRect,
+): Partial<PinnedWindowsState> {
+  if (state.items.length >= MAX_PINNED_WINDOWS) return state
+  return {
+    seq: state.seq + 1,
+    items: [...state.items, {
+      id: state.seq,
+      noteId: card.noteId,
+      title: card.title,
+      missing: card.missing,
+      headline: card.headline,
+      x: rect.left,
+      y: rect.top,
+      width: rect.width || 340,
+      height: rect.height || 0,
+      z: maxZ(state.items) + 1,
+    }],
+  }
 }
 
 let persistTimer: number | undefined
@@ -106,24 +134,7 @@ export const usePinnedWindows = create<PinnedWindowsState>((set, get) => ({
   seq: loaded.seq,
   flashId: null,
 
-  pin: (card, rect) => set((state) => {
-    if (state.items.length >= MAX_PINNED_WINDOWS) return state
-    return {
-      seq: state.seq + 1,
-      items: [...state.items, {
-        id: state.seq,
-        noteId: card.noteId,
-        title: card.title,
-        missing: card.missing,
-        headline: card.headline,
-        x: rect.left,
-        y: rect.top,
-        width: rect.width || 340,
-        height: rect.height || 0,
-        z: maxZ(state.items) + 1,
-      }],
-    }
-  }),
+  pin: (card, rect) => set((state) => pushPinnedWindow(state, card, rect)),
 
   close: (id) => set((state) => ({ items: state.items.filter((item) => item.id !== id) })),
 

@@ -33,18 +33,7 @@ export const useUpdate = create<UpdateState>((set, get) => ({
     try {
       const info = await api.update.check()
       if (sequence !== requestSequence) return
-      const available = isNewerVersion(info.latestVersion, info.currentVersion)
-      const ignored = readIgnoredVersion()
-      const dismissedThisSession = get().dismissedThisSession
-      set({
-        status: 'ready',
-        info,
-        available,
-        dialogOpen:
-          available &&
-          info.latestVersion !== ignored &&
-          info.latestVersion !== dismissedThisSession,
-      })
+      applyCheckResult(get, set, info)
     } catch {
       if (sequence !== requestSequence) return
       set({ status: 'error', dialogOpen: false })
@@ -76,6 +65,25 @@ export const useUpdate = create<UpdateState>((set, get) => ({
     })
   },
 }))
+
+function applyCheckResult(
+  get: () => UpdateState,
+  set: (partial: Partial<UpdateState>) => void,
+  info: UpdateCheckResponse,
+): void {
+  const available = isNewerVersion(info.latestVersion, info.currentVersion)
+  const ignored = readIgnoredVersion()
+  const dismissedThisSession = get().dismissedThisSession
+  set({
+    status: 'ready',
+    info,
+    available,
+    dialogOpen:
+      available &&
+      info.latestVersion !== ignored &&
+      info.latestVersion !== dismissedThisSession,
+  })
+}
 
 export function isOfficialUpdateUrl(
   url: string | null,

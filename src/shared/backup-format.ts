@@ -102,83 +102,21 @@ export function parseMarkdownBackupManifest(value: unknown): MarkdownBackupManif
   const noteIds = new Set<string>()
   const paths = new Set<string>()
   for (const raw of value.notes) {
-    if (!isRecord(raw)) return null
-    if (typeof raw.id !== 'string' || !NOTE_ID_RE.test(raw.id) || noteIds.has(raw.id)) return null
-    if (!isSafeBackupPath(raw.path) || paths.has(raw.path.toLowerCase())) return null
-    if (raw.state !== 'notes' && raw.state !== 'archived' && raw.state !== 'trash') return null
-    if (typeof raw.archived !== 'boolean') return null
-    if (
-      !Array.isArray(raw.folder) ||
-      raw.folder.length > LIMITS.folderDepthMax ||
-      raw.folder.some((name) => !isBackupFolderName(name))
-    ) return null
-    if (
-      !Array.isArray(raw.attachmentHashes) ||
-      raw.attachmentHashes.some((hash) => typeof hash !== 'string' || !HASH_RE.test(hash)) ||
-      new Set(raw.attachmentHashes).size !== raw.attachmentHashes.length
-    ) return null
-    if (raw.state === 'archived' && !raw.archived) return null
-    if (raw.state === 'notes' && raw.archived) return null
-    const notePrefix = value.version === 2
-      ? `${backupSnapshotDir(value.snapshot)}/${raw.state}/`
-      : `${raw.state}/`
-    if (!raw.path.startsWith(notePrefix)) return null
-    if (typeof raw.title !== 'string' || raw.title.length > 512) return null
-    if (
-      !isSafeSize(raw.bytes) ||
-      raw.bytes > LIMITS.importUploadMaxBytes ||
-      typeof raw.sha256 !== 'string' ||
-      !HASH_RE.test(raw.sha256)
-    ) return null
-    if (!isTimestamp(raw.createdAt) || !isTimestamp(raw.updatedAt)) return null
-    if (raw.deletedAt !== null && !isTimestamp(raw.deletedAt)) return null
-    if (raw.state === 'trash' && raw.deletedAt === null) return null
-    if (raw.state !== 'trash' && raw.deletedAt !== null) return null
-
-    noteIds.add(raw.id)
-    paths.add(raw.path.toLowerCase())
-    notes.push({
-      id: raw.id,
-      path: raw.path,
-      title: raw.title,
-      folder: raw.folder as string[],
-      attachmentHashes: raw.attachmentHashes as string[],
-      state: raw.state,
-      archived: raw.archived,
-      bytes: raw.bytes,
-      sha256: raw.sha256,
-      createdAt: raw.createdAt,
-      updatedAt: raw.updatedAt,
-      deletedAt: raw.deletedAt,
-    })
+    const entry = parseBackupNoteEntry(raw, value.snapshot, value.version, noteIds, paths)
+    if (!entry) return null
+    noteIds.add(entry.id)
+    paths.add(entry.path.toLowerCase())
+    notes.push(entry)
   }
 
   const attachments: MarkdownBackupAttachmentEntry[] = []
   const hashes = new Set<string>()
   for (const raw of value.attachments) {
-    if (!isRecord(raw)) return null
-    if (typeof raw.sha256 !== 'string' || !HASH_RE.test(raw.sha256) || hashes.has(raw.sha256)) return null
-    if (!isSafeBackupPath(raw.path) || paths.has(raw.path.toLowerCase())) return null
-    const attachmentPrefix = `attachments/${raw.sha256}--`
-    if (!raw.path.startsWith(attachmentPrefix) || raw.path.length === attachmentPrefix.length) return null
-    if (typeof raw.filename !== 'string' || !raw.filename || raw.filename.length > 180) return null
-    if (typeof raw.mime !== 'string' || !raw.mime || raw.mime.length > 255) return null
-    if (
-      !isSafeSize(raw.size) ||
-      raw.size > LIMITS.attachmentMaxBytes ||
-      !isTimestamp(raw.createdAt)
-    ) return null
-
-    hashes.add(raw.sha256)
-    paths.add(raw.path.toLowerCase())
-    attachments.push({
-      path: raw.path,
-      filename: raw.filename,
-      mime: raw.mime,
-      size: raw.size,
-      sha256: raw.sha256,
-      createdAt: raw.createdAt,
-    })
+    const entry = parseBackupAttachmentEntry(raw, paths, hashes)
+    if (!entry) return null
+    hashes.add(entry.sha256)
+    paths.add(entry.path.toLowerCase())
+    attachments.push(entry)
   }
   if (notes.some((note) => note.attachmentHashes.some((hash) => !hashes.has(hash)))) return null
 
@@ -190,6 +128,88 @@ export function parseMarkdownBackupManifest(value: unknown): MarkdownBackupManif
     snapshot: value.snapshot,
     notes,
     attachments,
+  }
+}
+
+function parseBackupNoteEntry(
+  raw: Record<string, unknown>,
+  snapshot: string,
+  version: MarkdownBackupVersion,
+  noteIds: Set<string>,
+  paths: Set<string>,
+): MarkdownBackupNoteEntry | null {
+  if (!isRecord(raw)) return null
+  if (typeof raw.id !== 'string' || !NOTE_ID_RE.test(raw.id) || noteIds.has(raw.id)) return null
+  if (!isSafeBackupPath(raw.path) || paths.has(raw.path.toLowerCase())) return null
+  if (raw.state !== 'notes' && raw.state !== 'archived' && raw.state !== 'trash') return null
+  if (typeof raw.archived !== 'boolean') return null
+  if (
+    !Array.isArray(raw.folder) ||
+    raw.folder.length > LIMITS.folderDepthMax ||
+    raw.folder.some((name) => !isBackupFolderName(name))
+  ) return null
+  if (
+    !Array.isArray(raw.attachmentHashes) ||
+    raw.attachmentHashes.some((hash) => typeof hash !== 'string' || !HASH_RE.test(hash)) ||
+    new Set(raw.attachmentHashes).size !== raw.attachmentHashes.length
+  ) return null
+  if (raw.state === 'archived' && !raw.archived) return null
+  if (raw.state === 'notes' && raw.archived) return null
+  const notePrefix = version === 2
+    ? `${backupSnapshotDir(snapshot)}/${raw.state}/`
+    : `${raw.state}/`
+  if (!raw.path.startsWith(notePrefix)) return null
+  if (typeof raw.title !== 'string' || raw.title.length > 512) return null
+  if (
+    !isSafeSize(raw.bytes) ||
+    raw.bytes > LIMITS.importUploadMaxBytes ||
+    typeof raw.sha256 !== 'string' ||
+    !HASH_RE.test(raw.sha256)
+  ) return null
+  if (!isTimestamp(raw.createdAt) || !isTimestamp(raw.updatedAt)) return null
+  if (raw.deletedAt !== null && !isTimestamp(raw.deletedAt)) return null
+  if (raw.state === 'trash' && raw.deletedAt === null) return null
+  if (raw.state !== 'trash' && raw.deletedAt !== null) return null
+  return {
+    id: raw.id,
+    path: raw.path,
+    title: raw.title,
+    folder: raw.folder as string[],
+    attachmentHashes: raw.attachmentHashes as string[],
+    state: raw.state,
+    archived: raw.archived,
+    bytes: raw.bytes,
+    sha256: raw.sha256,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+    deletedAt: raw.deletedAt,
+  }
+}
+
+function parseBackupAttachmentEntry(
+  raw: Record<string, unknown>,
+  paths: Set<string>,
+  hashes: Set<string>,
+): MarkdownBackupAttachmentEntry | null {
+  if (!isRecord(raw)) return null
+  if (typeof raw.sha256 !== 'string' || !HASH_RE.test(raw.sha256) || hashes.has(raw.sha256)) return null
+  if (!isSafeBackupPath(raw.path) || paths.has(raw.path.toLowerCase())) return null
+  const attachmentPrefix = `attachments/${raw.sha256}--`
+  if (!raw.path.startsWith(attachmentPrefix) || raw.path.length === attachmentPrefix.length) return null
+  if (typeof raw.filename !== 'string' || !raw.filename || raw.filename.length > 180) return null
+  if (typeof raw.mime !== 'string' || !raw.mime || raw.mime.length > 255) return null
+  if (
+    !isSafeSize(raw.size) ||
+    raw.size > LIMITS.attachmentMaxBytes ||
+    !isTimestamp(raw.createdAt)
+  ) return null
+  return {
+    path: raw.path,
+    filename: raw.filename,
+    mime: raw.mime,
+    size: raw.size,
+    sha256: raw.sha256,
+    createdAt: raw.createdAt,
   }
 }
 

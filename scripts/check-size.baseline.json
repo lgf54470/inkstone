@@ -444,34 +444,19 @@
   "src/client/store/notes/persist.ts": {
     "longFns": 1
   },
-  "src/client/store/pinned-windows.ts": {
-    "longFns": 1
-  },
   "src/client/store/ui/state.ts": {
     "longFns": 1
   },
   "src/client/store/ui/store.ts": {
     "longFns": 1
   },
-  "src/client/store/update.ts": {
-    "longFns": 1
-  },
-  "src/shared/backup-format.ts": {
-    "longFns": 1
-  },
   "src/shared/constants.test.ts": {
     "longFns": 1
-  },
-  "src/shared/markdown-utils/front-matter.ts": {
-    "longFns": 1
-  },
-  "src/shared/markdown-utils/rewrite.ts": {
-    "deepFns": 1
   },
   "src/shared/note-templates.test.ts": {
     "longFns": 2
   },
   "src/shared/zip.ts": {
-    "longFns": 2
+    "lines": 510
   }
 }

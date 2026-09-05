@@ -14,43 +14,58 @@ function replaceWikiLinkTargetLine(content: string, from: string, to: string): s
   )
 }
 
+interface FenceState {
+  isInFence: boolean
+  fenceChar: string
+  fenceLength: number
+}
+
+const FENCE_START: FenceState = { isInFence: false, fenceChar: '', fenceLength: 0 }
+
+const FENCE_RE = /^[ \t]{0,3}(`{3,}|~{3,})/
+
+function advanceFence(line: string, state: FenceState): FenceState | null {
+  const fence = FENCE_RE.exec(line)
+  if (!fence) return null
+  const marker = fence[1]!
+  if (!state.isInFence) {
+    return { isInFence: true, fenceChar: marker[0]!, fenceLength: marker.length }
+  }
+  if (marker[0] === state.fenceChar && marker.length >= state.fenceLength) {
+    return { ...FENCE_START }
+  }
+  return state
+}
+
+function replaceInlineWikiLinks(line: string, from: string, to: string): string {
+  const safe = line.replace(/`+[^`\n]*`+/g, (value) => ' '.repeat(value.length))
+  if (safe === line) return replaceWikiLinkTargetLine(line, from, to)
+  const replacements: Array<{ start: number; end: number; value: string }> = []
+  for (const match of safe.matchAll(WIKI_RE)) {
+    const original = line.slice(match.index!, match.index! + match[0].length)
+    const value = replaceWikiLinkTargetLine(original, from, to)
+    if (value !== original) replacements.push({ start: match.index!, end: match.index! + match[0].length, value })
+  }
+  let next = line
+  for (const replacement of replacements.reverse()) {
+    next = next.slice(0, replacement.start) + replacement.value + next.slice(replacement.end)
+  }
+  return next
+}
+
 export function replaceWikiLinkTarget(content: string, from: string, to: string): string {
   const frontMatter = parseFrontMatter(content)
   const lines = content.split('\n')
-  let isInFence = false
-  let fenceChar = ''
-  let fenceLength = 0
+  let state = FENCE_START
   for (let index = frontMatter.lineOffset; index < lines.length; index++) {
     const line = lines[index]!
-    const fence = /^[ \t]{0,3}(`{3,}|~{3,})/.exec(line)
-    if (fence) {
-      const marker = fence[1]!
-      if (!isInFence) {
-        isInFence = true
-        fenceChar = marker[0]!
-        fenceLength = marker.length
-      } else if (marker[0] === fenceChar && marker.length >= fenceLength) {
-        isInFence = false
-      }
+    const next = advanceFence(line, state)
+    if (next) {
+      state = next
       continue
     }
-    if (isInFence) continue
-    const safe = line.replace(/`+[^`\n]*`+/g, (value) => ' '.repeat(value.length))
-    if (safe === line) {
-      lines[index] = replaceWikiLinkTargetLine(line, from, to)
-      continue
-    }
-    const replacements: Array<{ start: number; end: number; value: string }> = []
-    for (const match of safe.matchAll(WIKI_RE)) {
-      const original = line.slice(match.index!, match.index! + match[0].length)
-      const value = replaceWikiLinkTargetLine(original, from, to)
-      if (value !== original) replacements.push({ start: match.index!, end: match.index! + match[0].length, value })
-    }
-    let next = line
-    for (const replacement of replacements.reverse()) {
-      next = next.slice(0, replacement.start) + replacement.value + next.slice(replacement.end)
-    }
-    lines[index] = next
+    if (state.isInFence) continue
+    lines[index] = replaceInlineWikiLinks(line, from, to)
   }
   return lines.join('\n')
 }
