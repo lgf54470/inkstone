@@ -32,6 +32,9 @@ const allowed = new Map([
     "// initializers are runtime-fillable and therefore cross-request mutable.",
     "// 2. Client: no module-level useState (React hook outside a component).",
   ]],
+  ["scripts/check-bundle-budget.mjs", [
+    "// Chunk prefixes follow the kebab-case lazy import paths (settings dir → settings-*).",
+  ]],
   ["scripts/ci-bench-report.mjs", [
     "// Generous headroom for shared CI runners; the point is catching an order-of-magnitude regression.",
   ]],
