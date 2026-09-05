@@ -217,8 +217,7 @@
     "longFns": 3,
     "deepFns": 1
   },
-  "src/client/features/preview/wiki-link-hover-card.tsx": {
-    "lines": 516,
+  "src/client/features/preview/wiki-link-hover-card/index.tsx": {
     "longFns": 1
   },
   "src/client/features/settings/account-settings.tsx": {
@@ -306,9 +305,11 @@
   "src/client/features/sidebar/sidebar-calendar.tsx": {
     "longFns": 1
   },
-  "src/client/features/sidebar/sidebar/sidebar-folders.tsx": {
-    "lines": 528,
-    "longFns": 2
+  "src/client/features/sidebar/sidebar/sidebar-folders/row.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/sidebar/sidebar/sidebar-folders/section.tsx": {
+    "longFns": 1
   },
   "src/client/features/sidebar/sidebar/sidebar-tags.tsx": {
     "longFns": 1
@@ -327,9 +328,11 @@
   "src/client/features/workspace/context-menu-detect.test.ts": {
     "longFns": 1
   },
-  "src/client/features/workspace/context-menu-detect.ts": {
-    "lines": 543,
-    "longFns": 2
+  "src/client/features/workspace/context-menu-detect/editor.ts": {
+    "longFns": 1
+  },
+  "src/client/features/workspace/context-menu-detect/preview.ts": {
+    "longFns": 1
   },
   "src/client/features/workspace/context-menu/canvas.tsx": {
     "longFns": 1

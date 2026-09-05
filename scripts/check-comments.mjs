@@ -361,7 +361,7 @@ const allowed = new Map([
     "// Every ActivityCalendar prop is stabilized so the shallow memo only skips",
     "// the subtree when the projection identities genuinely didn't change.",
   ]],
-  ["src/client/features/sidebar/sidebar/sidebar-folders.tsx", [
+  ["src/client/features/sidebar/sidebar/sidebar-folders/row.tsx", [
     "// The count feeds the delete-confirmation only; the visible row badge is the",
     "// tree's totalNotes. Look it up from the shared memoized navigation projection",
     "// instead of scanning the whole notes map per folder row per render.",

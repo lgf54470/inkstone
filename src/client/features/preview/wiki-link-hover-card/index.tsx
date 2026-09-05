@@ -1,21 +1,24 @@
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { ChevronDown, Layers, Link2, Loader2, PanelLeftOpen, PanelRightOpen, Pin, X } from 'lucide-react'
-import { cn } from '../../lib/cn'
-import { Z_INDEX } from '../../lib/z-index'
-import { decodeDataValue } from '../../lib/markdown/data-attr'
-import { parseWikiTarget } from '../../lib/markdown/renderer'
-import { findNoteByTitle } from '../../store/notes/selectors'
-import { useNotes } from '../../store/notes'
-import { useSession } from '../../store/session'
-import { t } from '../../lib/i18n'
-import { getVisibleViewport } from '../../lib/viewport'
-import { Menu, type MenuItem } from '../../components/overlay'
-import { MAX_HOVER_CARD_DEPTH, useLinkHover } from './link-hover'
-import { useNoteBacklinks, useNoteCardContent } from './card-content'
-import { pushLinkHoverTarget } from './link-signal'
-import type { PinnedWindowGeometry } from '../../store/pinned-windows'
-import type { WikiLinkHoverCardState, PinnedNoteCardState } from '../../types/hover-card'
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Layers, Loader2, PanelLeftOpen, PanelRightOpen, Pin, X } from 'lucide-react';
+import { cn } from '../../../lib/cn';
+import { Z_INDEX } from '../../../lib/z-index';
+import { decodeDataValue } from '../../../lib/markdown/data-attr';
+import { parseWikiTarget } from '../../../lib/markdown/renderer';
+import { findNoteByTitle } from '../../../store/notes/selectors';
+import { useNotes } from '../../../store/notes';
+import { useSession } from '../../../store/session';
+import { t } from '../../../lib/i18n';
+import { getVisibleViewport } from '../../../lib/viewport';
+import { Menu } from '../../../components/overlay';
+import { type MenuItem } from '../../../components/overlay';
+import { MAX_HOVER_CARD_DEPTH, useLinkHover } from '../link-hover';
+import { useNoteBacklinks, useNoteCardContent } from '../card-content';
+import { pushLinkHoverTarget } from '../link-signal';
+import { type PinnedWindowGeometry } from '../../../store/pinned-windows';
+import { type WikiLinkHoverCardState, type PinnedNoteCardState } from '../../../types/hover-card';
+import { CardBacklinks } from './backlinks';
+import { placeHoverCard } from './position';
 
 export type { WikiLinkHoverCardState, PinnedNoteCardState }
 
@@ -463,54 +466,3 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
   )
 })
 
-function CardBacklinks({ links, onOpen }: {
-  links: Array<{ id: string; title: string; context: string }>
-  onOpen: (id: string) => void
-}) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  return (
-    <div className="shrink-0 border-t border-[var(--border-subtle)] bg-[var(--bg-base)]">
-      <button
-        type="button"
-        aria-expanded={isExpanded}
-        aria-label={t("common.backlinks")}
-        onClick={() => setIsExpanded((value) => !value)}
-        className="flex h-7 w-full items-center gap-1.5 px-3 text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-      >
-        <Link2 size={11} className="shrink-0" />
-        <span className="truncate">{t("common.backlinks")}</span>
-        <span className="tabular-nums text-[var(--text-quaternary)]">{links.length}</span>
-        <ChevronDown size={12} className={cn('ml-auto shrink-0 transition-transform', isExpanded && 'rotate-180')} />
-      </button>
-      {isExpanded && (
-        <ul className="max-h-[132px] overflow-y-auto overscroll-contain px-1.5 pb-1.5">
-          {links.map((link) => (
-            <li key={link.id}>
-              <button
-                type="button"
-                onClick={() => onOpen(link.id)}
-                className="group w-full rounded-[var(--r-sm)] px-2 py-1.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
-              >
-                <span className="block truncate text-[length:var(--text-11\.5)] font-medium text-[var(--text-primary)]">{link.title}</span>
-                <span className="mt-0.5 block truncate-2 text-[length:var(--text-10\.5)] leading-relaxed text-[var(--text-tertiary)]">{link.context}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-function placeHoverCard(anchor: DOMRect, card: DOMRect): { top: number; left: number } {
-  const gap = 8
-  const padding = 10
-  const viewport = getVisibleViewport()
-  const clamp = (value: number, min: number, max: number) =>
-    Math.min(Math.max(value, min), Math.max(min, max))
-  const left = clamp(anchor.left, viewport.left + padding, viewport.right - card.width - padding)
-  const fitsBelow = anchor.bottom + gap + card.height <= viewport.bottom - padding
-  const fitsAbove = anchor.top - gap - card.height >= viewport.top + padding
-  const top = fitsBelow || !fitsAbove ? anchor.bottom + gap : anchor.top - gap - card.height
-  return { top, left }
-}
