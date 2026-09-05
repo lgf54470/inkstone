@@ -135,7 +135,11 @@ const allowed = new Map([
     "/* Comment Content */",
     "/* Action Buttons */",
   ]],
-  ["src/client/features/blog/blog-dashboard-view.tsx", [
+  ["src/client/features/blog/blog-dashboard-view/audience-cards.tsx", [
+    "/* Traffic Sources */",
+    "/* Devices and Systems */",
+  ]],
+  ["src/client/features/blog/blog-dashboard-view/index.tsx", [
     "/* Welcome & quick action banner */",
     "/* Control Bar: Range + Traffic Filter + Refresh */",
     "/* Real traffic filter banner */",
@@ -148,8 +152,6 @@ const allowed = new Map([
     "/* 4 Audience Demographics & Breakdown Cards */",
     "/* Top 10 Posts */",
     "/* Visitor Geography */",
-    "/* Traffic Sources */",
-    "/* Devices and Systems */",
     "/* Lower Section: Realtime Logs & Pending Comments */",
     "/* Real-time Visit Logs */",
     "/* Pending Comments & Moderation */",

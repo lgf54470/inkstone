@@ -101,8 +101,7 @@
   "src/client/features/blog/blog-comments-view.tsx": {
     "longFns": 1
   },
-  "src/client/features/blog/blog-dashboard-view.tsx": {
-    "lines": 584,
+  "src/client/features/blog/blog-dashboard-view/index.tsx": {
     "longFns": 1
   },
   "src/client/features/blog/blog-grid-view.tsx": {
