@@ -1,0 +1,178 @@
+.ink-prose blockquote {
+  margin: 0.86em 0;
+  padding: 0.54em 0.86em;
+  border-left: 3px solid var(--border-strong);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--bg-inset);
+  color: var(--text-secondary);
+}
+.ink-prose blockquote > *:last-child {
+  margin-bottom: 0;
+}
+.ink-prose blockquote blockquote {
+  margin: 0.5em 0;
+  background: transparent;
+}
+
+.ink-prose dl:not(.frontmatter-properties dl) {
+  margin: 0.85em 0;
+}
+.ink-prose dl:not(.frontmatter-properties dl) dt {
+  font-weight: 600;
+  margin-top: 0.6em;
+  color: var(--text-primary);
+}
+.ink-prose dl:not(.frontmatter-properties dl) dd {
+  margin-inline-start: 1.5em;
+  margin-bottom: 0.35em;
+  color: var(--text-secondary);
+}
+
+.ink-prose .markdown-details,
+.ink-prose > details:not(.callout):not(.frontmatter-properties),
+.ink-prose .markdown-example-preview details:not(.callout):not(.frontmatter-properties) {
+  margin: 0.9em 0;
+  overflow: clip;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--bg-inset);
+}
+.ink-prose .markdown-details > summary,
+.ink-prose > details:not(.callout):not(.frontmatter-properties) > summary,
+.ink-prose .markdown-example-preview details:not(.callout):not(.frontmatter-properties) > summary {
+  padding: 0.55em 0.8em;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+.ink-prose .markdown-details[open] > summary,
+.ink-prose > details[open]:not(.callout):not(.frontmatter-properties) > summary,
+.ink-prose .markdown-example-preview details[open]:not(.callout):not(.frontmatter-properties) > summary {
+  border-bottom: 1px solid var(--border-subtle);
+}
+.ink-prose .markdown-details > :not(summary),
+.ink-prose > details:not(.callout):not(.frontmatter-properties) > :not(summary),
+.ink-prose .markdown-example-preview details:not(.callout):not(.frontmatter-properties) > :not(summary) {
+  margin-inline: 0.85em;
+}
+.ink-prose .markdown-details > :nth-child(2),
+.ink-prose > details:not(.callout):not(.frontmatter-properties) > :nth-child(2),
+.ink-prose .markdown-example-preview details:not(.callout):not(.frontmatter-properties) > :nth-child(2) {
+  margin-top: 0.72em;
+}
+.ink-prose .markdown-details > :last-child,
+.ink-prose > details:not(.callout):not(.frontmatter-properties) > :last-child,
+.ink-prose .markdown-example-preview details:not(.callout):not(.frontmatter-properties) > :last-child {
+  margin-bottom: 0.72em;
+}
+
+.ink-prose .callout {
+  --callout-color: var(--accent);
+  margin: 0.9em 0;
+  overflow: clip;
+  border: 1px solid color-mix(in oklab, var(--callout-color) 30%, var(--border-subtle));
+  border-left: 3px solid var(--callout-color);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--callout-color) 6%, var(--bg-inset));
+}
+.ink-prose .callout-warning,
+.ink-prose .callout-caution,
+.ink-prose .callout-question { --callout-color: var(--warning); }
+.ink-prose .callout-danger,
+.ink-prose .callout-failure { --callout-color: var(--danger); }
+.ink-prose .callout-success,
+.ink-prose .callout-important,
+.ink-prose .callout-tip { --callout-color: var(--success); }
+.ink-prose .callout-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.48em 0.72em;
+  color: var(--callout-color);
+  font-weight: 650;
+  line-height: 1.4;
+}
+.ink-prose summary.callout-title { cursor: pointer; }
+.ink-prose .callout-title::before {
+  width: 0.58em;
+  height: 0.58em;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+.ink-prose .callout-content { padding: 0 0.78em 0.62em; }
+.ink-prose .callout-content > :last-child { margin-bottom: 0; }
+
+.ink-prose .markdown-tabs {
+  margin: 0.95em 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--bg-base);
+  overflow: hidden;
+}
+.ink-prose .tab-list {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  padding: 5px 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-inset);
+}
+.ink-prose [role='tab'] {
+  flex: none;
+  padding: 0.42em 0.72em 0.5em;
+  border-bottom: 2px solid transparent;
+  color: var(--text-tertiary);
+  font-size: 0.9em;
+  cursor: pointer;
+}
+.ink-prose [role='tab'][aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.ink-prose .tab-panel { padding: 0.8em 0.9em 0.15em; }
+
+.ink-prose .table-of-contents {
+  margin: 1.1em 0;
+  padding: 0.75em 1em;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-inset);
+}
+.ink-prose .table-of-contents .toc-title {
+  font-size: 0.82em;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  margin-bottom: 0.4em;
+}
+.ink-prose .table-of-contents .toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ink-prose .table-of-contents .toc-item {
+  margin: 0.22em 0;
+  line-height: 1.45;
+}
+.ink-prose .table-of-contents .toc-level-1 { padding-inline-start: 0; font-weight: 550; }
+.ink-prose .table-of-contents .toc-level-2 { padding-inline-start: 1em; }
+.ink-prose .table-of-contents .toc-level-3 { padding-inline-start: 2em; }
+.ink-prose .table-of-contents .toc-level-4 { padding-inline-start: 3em; }
+.ink-prose .table-of-contents .toc-level-5 { padding-inline-start: 4em; }
+.ink-prose .table-of-contents .toc-level-6 { padding-inline-start: 5em; }
+.ink-prose .table-of-contents .toc-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.ink-prose .table-of-contents .toc-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.ink-prose .tab-panel[hidden] { display: none; }
+

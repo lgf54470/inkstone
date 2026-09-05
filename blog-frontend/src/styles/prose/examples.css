@@ -1,0 +1,389 @@
+.ink-prose .markdown-example {
+  container-type: inline-size;
+  margin: 1em 0 1.25em;
+  overflow: clip;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-base);
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+.ink-prose .markdown-example-head {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  padding: 0.55em 0.82em;
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in oklab, var(--bg-inset) 58%, var(--bg-base));
+}
+.ink-prose .markdown-example-title {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.55em;
+  color: var(--text-primary);
+  font-size: 0.92em;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.ink-prose .markdown-example-title::before {
+  width: 0.58em;
+  height: 0.58em;
+  flex: none;
+  border-radius: 3px;
+  background: linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 55%, var(--success)));
+  box-shadow: 0 0 0 3px var(--accent-softer);
+  content: '';
+}
+.ink-prose .markdown-example-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.ink-prose .markdown-example-preview,
+.ink-prose .markdown-example-source {
+  min-width: 0;
+}
+.ink-prose .markdown-example-preview {
+  background: var(--bg-base);
+}
+.ink-prose .markdown-example-preview-body {
+  min-height: 72px;
+  padding: 14px 16px;
+}
+.ink-prose .markdown-example-preview-body > :first-child {
+  margin-top: 0;
+}
+.ink-prose .markdown-example-preview-body > :last-child {
+  margin-bottom: 0;
+}
+.ink-prose .markdown-example-preview-body :is(.callout, .markdown-tabs, .markdown-details, .code-block, .mermaid-block, .chartjs-block),
+.ink-prose .markdown-example-preview-body > :is(figure, details) {
+  margin-block: 0;
+}
+.ink-prose .markdown-example-preview-body img {
+  margin-block: 0;
+}
+.ink-prose .markdown-example-preview-body .footnotes {
+  margin-top: 1em;
+}
+.ink-prose .markdown-example-source {
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-inset);
+}
+.ink-prose .markdown-example-source .code-block {
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.ink-prose .markdown-example-source .markdown-example-copy {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in oklab, var(--bg-inset) 88%, var(--bg-base));
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--text-primary) 7%, transparent);
+}
+.ink-prose .markdown-example-source pre {
+  min-height: 72px;
+  padding: 14px 16px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: max(12px, calc(var(--code-size, 15px) - 1.5px));
+  line-height: 1.5;
+}
+.ink-prose .markdown-example-source :is(code, .line) {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+@container (min-width: 360px) {
+  .ink-prose .markdown-example-grid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+  .ink-prose .markdown-example-source {
+    border-top: 0;
+    border-left: 1px solid var(--border-subtle);
+  }
+}
+
+.ink-prose .js-example-head {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75em;
+  padding: 0.45em 0.82em;
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in oklab, var(--bg-inset) 58%, var(--bg-base));
+}
+
+.ink-prose .js-example-title {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.55em;
+  color: var(--text-primary);
+  font-size: 0.92em;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.ink-prose .js-example-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #f7df1e;
+  color: #000000;
+  letter-spacing: 0.04em;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.ink-prose .js-example-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  flex: none;
+}
+
+.ink-prose .js-example-switch-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ink-prose .js-example-switch-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.ink-prose .js-example-switch {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--border-strong);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.ink-prose .js-example-switch.is-checked {
+  background: var(--accent);
+}
+
+.ink-prose .js-example-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.ink-prose .js-example-switch.is-checked .js-example-switch-thumb {
+  transform: translateX(12px);
+}
+
+.ink-prose .js-example-run-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 3px 9px;
+  border-radius: var(--r-sm);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent-contrast, #ffffff);
+  background: var(--accent);
+  border: 1px solid transparent;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+.ink-prose .js-example-run-btn:hover {
+  opacity: 0.9;
+}
+
+.ink-prose .js-example-run-btn:active {
+  transform: scale(0.96);
+}
+
+.ink-prose .js-example-run-icon {
+  font-size: 9px;
+  line-height: 1;
+}
+
+.ink-prose .js-example-output {
+  display: flex;
+  flex-direction: column;
+  min-height: 120px;
+  background: color-mix(in oklab, var(--bg-inset) 70%, var(--bg-base));
+  border-top: 1px solid var(--border-subtle);
+}
+
+@container (min-width: 360px) {
+  .ink-prose .js-example-output {
+    border-top: 0;
+    border-left: 1px solid var(--border-subtle);
+  }
+}
+
+/* js-example 块固定为上下结构：JS 代码在上、运行结果在下，代码不自动换行 */
+.ink-prose .markdown-example-grid.js-example-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ink-prose .markdown-example-source.js-example-source {
+  border-top: 0;
+  border-left: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ink-prose .markdown-example-source.js-example-source .markdown-example-code pre {
+  overflow-wrap: normal;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.ink-prose .markdown-example-source.js-example-source :is(code, .line) {
+  overflow-wrap: normal;
+  white-space: pre;
+}
+
+.ink-prose .markdown-example-preview.js-example-output {
+  border-top: 0;
+  border-left: 0;
+}
+
+.ink-prose .js-example-output-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4em 0.8em;
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in oklab, var(--bg-inset) 40%, var(--bg-base));
+}
+
+.ink-prose .js-example-output-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.ink-prose .js-example-output-status {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.ink-prose .js-example-output-status.is-success {
+  color: var(--success);
+  background: color-mix(in oklab, var(--success) 12%, transparent);
+}
+
+.ink-prose .js-example-output-status.is-error {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+}
+
+.ink-prose .js-example-output-body {
+  flex: 1;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: max(12px, calc(var(--code-size, 15px) - 1.5px));
+  line-height: 1.5;
+  overflow-y: auto;
+  max-height: 360px;
+}
+
+.ink-prose .js-example-placeholder {
+  color: var(--text-quaternary);
+  font-style: italic;
+  font-size: 12px;
+  padding: 8px 0;
+}
+
+.ink-prose .js-example-empty-hint {
+  color: var(--text-quaternary);
+  font-style: italic;
+  font-size: 12px;
+}
+
+.ink-prose .js-example-log-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45em;
+  padding: 2px 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--border-subtle) 40%, transparent);
+}
+
+.ink-prose .js-example-log-row:last-child {
+  border-bottom: none;
+}
+
+.ink-prose .js-example-log-prefix {
+  font-size: 10px;
+  font-weight: 700;
+  flex: none;
+  opacity: 0.7;
+}
+
+.ink-prose .js-example-log-text {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.ink-prose .js-example-log-row.is-log .js-example-log-prefix {
+  color: var(--text-tertiary);
+}
+
+.ink-prose .js-example-log-row.is-info .js-example-log-prefix,
+.ink-prose .js-example-log-row.is-info .js-example-log-text {
+  color: var(--accent);
+}
+
+.ink-prose .js-example-log-row.is-warn .js-example-log-prefix,
+.ink-prose .js-example-log-row.is-warn .js-example-log-text {
+  color: var(--warning, #eab308);
+}
+
+.ink-prose .js-example-log-row.is-error .js-example-log-prefix,
+.ink-prose .js-example-log-row.is-error .js-example-log-text,
+.ink-prose .js-example-log-row.is-error-banner .js-example-log-prefix,
+.ink-prose .js-example-log-row.is-error-banner .js-example-log-text {
+  color: var(--danger);
+}
+
+.ink-prose .js-example-log-row.is-return .js-example-log-prefix {
+  color: var(--text-tertiary);
+}
+
+.ink-prose .js-example-log-row.is-return .js-example-log-text {
+  color: var(--syntax-constant, var(--accent));
+  font-weight: 600;
+}
+

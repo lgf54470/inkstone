@@ -1,0 +1,69 @@
+.ink-prose .frontmatter-properties {
+  margin: 0 0 1em;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--bg-inset);
+  font-size: 0.9em;
+}
+.ink-prose .frontmatter-properties > summary {
+  padding: 0.45em 0.7em;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  cursor: pointer;
+}
+.ink-prose .frontmatter-properties dl { margin: 0; padding: 0 0.72em 0.6em; }
+.ink-prose .frontmatter-row {
+  display: grid;
+  grid-template-columns: minmax(7em, 0.35fr) minmax(0, 1fr);
+  gap: 0.7em;
+  padding: 0.24em 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.ink-prose .frontmatter-row dt { color: var(--text-tertiary); }
+.ink-prose .frontmatter-row dd { min-width: 0; margin: 0; }
+.ink-prose .frontmatter-chip {
+  display: inline-flex;
+  margin: 0.08em 0.25em 0.08em 0;
+  padding: 0.02em 0.4em;
+  border-radius: 999px;
+  background: var(--accent-softer);
+}
+.ink-prose .frontmatter-error {
+  margin-bottom: 1em;
+  padding: 0.6em 0.75em;
+  border: 1px solid color-mix(in oklab, var(--danger) 35%, var(--border-subtle));
+  border-radius: var(--r-md);
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 7%, var(--bg-inset));
+}
+.ink-prose .frontmatter-error ul { margin: 0.35em 0 0; }
+
+.ink-prose .note-embed {
+  display: block;
+  margin: 0.9em 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-md);
+  background: var(--bg-inset);
+}
+.ink-prose .note-embed-head {
+  display: block;
+  padding: 0.42em 0.75em;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--accent);
+  font-size: 0.86em;
+  font-weight: 650;
+}
+.ink-prose .note-embed-body { display: block; padding: 0.7em 0.8em 0.05em; }
+.ink-prose .note-embed-body > :last-child { margin-bottom: 0.65em; }
+.ink-prose .note-embed.loading .note-embed-body,
+.ink-prose .note-embed.error .note-embed-body { color: var(--text-tertiary); font-size: 0.9em; }
+.ink-prose [data-block-id] { scroll-margin-top: 24px; }
+.ink-prose [data-block-id]:target {
+  border-radius: 4px;
+  outline: 2px solid var(--accent-ring);
+  background: var(--accent-softer);
+}
+
+

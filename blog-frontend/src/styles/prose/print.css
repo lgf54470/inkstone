@@ -1,0 +1,17 @@
+@media print {
+  .ink-prose {
+    max-width: none;
+    padding: 0;
+    font-size: 11pt;
+    color: #000;
+  }
+  .ink-prose .code-copy,
+  .ink-prose .heading-anchor {
+    display: none;
+  }
+  .ink-prose .code-block,
+  .ink-prose .table-wrap,
+  .ink-prose .markdown-example {
+    break-inside: avoid;
+  }
+}

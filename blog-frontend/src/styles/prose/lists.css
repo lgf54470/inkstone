@@ -1,0 +1,199 @@
+.ink-prose ul,
+.ink-prose ol {
+  margin: 0 0 0.68em;
+  padding-inline-start: 1.4em;
+}
+.ink-prose ul {
+  list-style-type: disc;
+}
+.ink-prose ol {
+  list-style-type: decimal;
+}
+.ink-prose ul ul {
+  list-style-type: circle;
+}
+.ink-prose ul ul ul {
+  list-style-type: square;
+}
+.ink-prose li {
+  margin-bottom: 0.14em;
+}
+.ink-prose li > ul,
+.ink-prose li > ol {
+  margin: 0.18em 0 0;
+}
+.ink-prose li::marker {
+  color: var(--list-marker, var(--text-tertiary));
+}
+.ink-prose ol > li::marker {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92em;
+}
+
+
+.ink-prose ul.contains-task-list,
+.ink-prose ul.contains-task-list > li.task-list-item {
+  list-style: none;
+}
+.ink-prose ul.contains-task-list {
+  padding-inline-start: 0.15em;
+}
+.ink-prose .task-list-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 0.45em;
+}
+.ink-prose ol.contains-task-list > li.task-list-item {
+  display: list-item;
+}
+.ink-prose ol.contains-task-list > li.task-list-item > input[type='checkbox'] {
+  margin-inline-end: 0.45em;
+}
+.ink-prose .task-list-item > p {
+  margin: 0;
+  display: contents;
+}
+.ink-prose .task-list-item > ul,
+.ink-prose .task-list-item > ol {
+  grid-column: 2;
+  width: 100%;
+}
+.ink-prose .task-label {
+  grid-column: 2;
+  min-width: 0;
+}
+.ink-prose input[type='checkbox'] {
+  appearance: none;
+  flex: none;
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0.28em 0 0;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--bg-inset);
+  cursor: pointer;
+  position: relative;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.ink-prose input[type='checkbox']:hover {
+  border-color: var(--accent);
+}
+.ink-prose input[type='checkbox']:disabled {
+  opacity: 0.72;
+  cursor: default;
+}
+.ink-prose input[type='checkbox']:disabled:hover {
+  border-color: var(--border-strong);
+}
+.ink-prose input[type='checkbox']:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.ink-prose input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent-contrast);
+  clip-path: polygon(
+    20% 52%,
+    16% 58%,
+    40% 80%,
+    84% 30%,
+    78% 24%,
+    39% 68%
+  );
+}
+.ink-prose .task-list-item.done > p > .task-label,
+.ink-prose .task-list-item.done > .task-label,
+.ink-prose .task-status-done > p > .task-label,
+.ink-prose .task-status-done > .task-label {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-quaternary);
+}
+.ink-prose input[type='checkbox'][data-task-status='in-progress'],
+.ink-prose input[type='checkbox'][data-task-status='cancelled'],
+.ink-prose input[type='checkbox'][data-task-status='question'],
+.ink-prose input[type='checkbox'][data-task-status='important'],
+.ink-prose .task-status-in-progress input[type='checkbox'],
+.ink-prose .task-status-cancelled input[type='checkbox'],
+.ink-prose .task-status-question input[type='checkbox'],
+.ink-prose .task-status-important input[type='checkbox'] {
+  border-radius: 50%;
+}
+.ink-prose input[type='checkbox'][data-task-status='in-progress'],
+.ink-prose .task-status-in-progress input[type='checkbox'] {
+  border-color: var(--accent);
+}
+.ink-prose input[type='checkbox'][data-task-status='in-progress']::after,
+.ink-prose .task-status-in-progress input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--accent);
+  transform: translateY(-50%);
+  border-radius: 1px;
+}
+.ink-prose input[type='checkbox'][data-task-status='cancelled'],
+.ink-prose .task-status-cancelled input[type='checkbox'] {
+  border-color: var(--text-quaternary);
+}
+.ink-prose input[type='checkbox'][data-task-status='cancelled']::after,
+.ink-prose .task-status-cancelled input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--text-tertiary);
+  transform: translateY(-50%);
+}
+.ink-prose input[type='checkbox'][data-task-status='question'],
+.ink-prose .task-status-question input[type='checkbox'] {
+  border-color: var(--warning, #f59e0b);
+}
+.ink-prose input[type='checkbox'][data-task-status='question']::after,
+.ink-prose .task-status-question input[type='checkbox']::after {
+  content: '?';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.76em;
+  font-weight: 700;
+  color: var(--warning, #f59e0b);
+  line-height: 1;
+}
+.ink-prose input[type='checkbox'][data-task-status='important'],
+.ink-prose .task-status-important input[type='checkbox'] {
+  border-color: var(--danger, #ef4444);
+}
+.ink-prose input[type='checkbox'][data-task-status='important']::after,
+.ink-prose .task-status-important input[type='checkbox']::after {
+  content: '!';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.76em;
+  font-weight: 700;
+  color: var(--danger, #ef4444);
+  line-height: 1;
+}
+.ink-prose .task-list-item.cancelled > p > .task-label,
+.ink-prose .task-list-item.cancelled > .task-label,
+.ink-prose .task-status-cancelled > p > .task-label,
+.ink-prose .task-status-cancelled > .task-label {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-quaternary);
+}
+
+

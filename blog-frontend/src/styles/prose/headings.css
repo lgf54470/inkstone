@@ -1,0 +1,68 @@
+.ink-prose h1,
+.ink-prose h2,
+.ink-prose h3,
+.ink-prose h4,
+.ink-prose h5,
+.ink-prose h6 {
+  margin: 1.45em 0 0.44em;
+  font-weight: 650;
+  line-height: var(--heading-line, 1.28);
+  letter-spacing: -0.019em;
+  scroll-margin-top: 24px;
+  position: relative;
+}
+.ink-prose > h1:first-child,
+.ink-prose > h2:first-child,
+.ink-prose > h3:first-child {
+  margin-top: 0;
+}
+.ink-prose h1 {
+  font-size: var(--heading-1-size, 1.52em);
+  font-weight: 650;
+  letter-spacing: -0.024em;
+  margin-top: 1.55em;
+}
+.ink-prose h2 {
+  font-size: var(--heading-2-size, 1.28em);
+  margin-top: 1.5em;
+}
+.ink-prose h3 {
+  font-size: var(--heading-3-size, 1.14em);
+}
+.ink-prose h4 {
+  font-size: var(--heading-4-size, 1.03em);
+}
+.ink-prose h5,
+.ink-prose h6 {
+  font-size: var(--heading-5-size, 0.94em);
+  color: var(--text-secondary);
+  text-transform: none;
+}
+
+
+.ink-prose .heading-anchor {
+  position: absolute;
+  left: -0.95em;
+  top: 0;
+  width: 0.9em;
+  color: var(--text-quaternary);
+  opacity: 0;
+  font-weight: 400;
+  text-decoration: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+  user-select: none;
+}
+.ink-prose .heading-anchor::before {
+  content: '#';
+}
+.ink-prose h1:hover .heading-anchor,
+.ink-prose h2:hover .heading-anchor,
+.ink-prose h3:hover .heading-anchor,
+.ink-prose h4:hover .heading-anchor {
+  opacity: 1;
+}
+.ink-prose .heading-anchor:hover {
+  color: var(--accent);
+}
+
+

@@ -1,0 +1,211 @@
+.wiki-hover-body .ink-prose {
+  max-width: none;
+  margin-inline: 0;
+  padding-block: 0;
+}
+.wiki-hover-body .ink-prose h1,
+.wiki-hover-body .ink-prose h2,
+.wiki-hover-body .ink-prose h3 {
+  margin-top: 0.9em;
+}
+.wiki-hover-body .ink-prose > :first-child {
+  margin-top: 0;
+}
+.wiki-hover-embed {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.pinned-window-flash {
+  animation: pinned-window-flash 1.05s ease-out;
+}
+@keyframes pinned-window-flash {
+  0% {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 75%, transparent), var(--shadow-pop);
+  }
+  70% {
+    box-shadow: 0 0 0 12px transparent, var(--shadow-pop);
+  }
+  100% {
+    box-shadow: 0 0 0 12px transparent, var(--shadow-pop);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pinned-window-flash {
+    animation: none;
+  }
+}
+
+.ink-prose .inline-tag {
+  color: var(--tag-color, var(--accent));
+  background: var(--tag-bg, var(--accent-softer));
+  padding: 0.06em 0.4em;
+  border-radius: 999px;
+  font-size: 0.9em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast), opacity var(--dur-fast);
+}
+.ink-prose .inline-tag:hover {
+  background: var(--tag-bg-hover, var(--accent-soft));
+}
+
+
+.ink-prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  display: block;
+  margin: 0.9em auto;
+  cursor: zoom-in;
+  background: var(--bg-inset);
+}
+.ink-prose figure {
+  margin: 1em 0;
+}
+.ink-prose figure img {
+  margin-bottom: 0.4em;
+}
+.ink-prose figcaption {
+  text-align: center;
+  font-size: 0.82em;
+  color: var(--text-tertiary);
+}
+.ink-prose figure.image-blocked {
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  padding: 0.9em 1em;
+  background: var(--bg-inset);
+  text-align: center;
+}
+.ink-prose .image-blocked-label {
+  display: block;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+.ink-prose .image-blocked-fallback {
+  margin-top: 0.35em;
+}
+
+
+.ink-prose hr {
+  border: none;
+  margin: 1.6em 0;
+  height: 1em;
+  position: relative;
+}
+.ink-prose hr::before {
+  content: '· · ·';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  letter-spacing: 0.55em;
+  text-indent: 0.55em;
+  color: var(--text-quaternary);
+  font-size: 0.95em;
+}
+
+
+.ink-prose .footnotes {
+  margin-top: 2em;
+  padding-top: 0.8em;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+.ink-prose .footnotes ol {
+  padding-inline-start: 1.2em;
+}
+.ink-prose .footnote-backref {
+  text-decoration: none;
+  margin-inline-start: 0.35em;
+}
+.ink-prose sup.footnote-ref a {
+  text-decoration: none;
+  font-size: 0.85em;
+  padding: 0 0.15em;
+}
+
+
+.ink-prose mark {
+  background: color-mix(in oklab, var(--warning) 26%, transparent);
+  color: var(--text-primary);
+  padding: 0.04em 0.22em;
+  border-radius: 3px;
+}
+.ink-prose ins,
+.ink-prose u {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+.ink-prose abbr[title] {
+  text-decoration: underline dotted 1.5px;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.ink-prose ruby {
+  ruby-position: over;
+}
+.ink-prose rt {
+  font-size: 0.68em;
+  color: var(--text-secondary);
+  user-select: none;
+}
+.ink-prose rp {
+  color: var(--text-quaternary);
+  font-size: 0.75em;
+}
+.ink-prose kbd {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  padding: 0.15em 0.42em;
+  border: 1px solid var(--border-default);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.ink-prose del {
+  color: var(--text-tertiary);
+}
+.ink-prose abbr {
+  text-decoration: underline dotted;
+  cursor: help;
+}
+.ink-prose .katex {
+  font-size: 1.04em;
+}
+.ink-prose .katex-display {
+  margin: 0.9em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25em 0;
+}
+.ink-prose .math-source {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+.ink-prose .math-block.math-source {
+  margin: 0.9em 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: var(--bg-inset);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ink-prose .math-error {
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: color-mix(in oklab, var(--danger) 10%, transparent);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+

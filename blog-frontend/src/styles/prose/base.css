@@ -1,0 +1,31 @@
+
+
+
+.ink-prose {
+  font-size: var(--prose-size, 16px);
+  line-height: var(--prose-line, 1.65);
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  font-family: var(--font-ui);
+  max-width: var(--prose-width, 72ch);
+  margin-inline: auto;
+  padding-block: 0;
+}
+
+.ink-prose[data-font='serif'] {
+  font-family: var(--font-serif);
+  letter-spacing: 0;
+}
+
+
+.ink-prose p {
+  margin: 0 0 0.72em;
+  text-wrap: pretty;
+}
+.ink-prose > *:last-child {
+  margin-bottom: 0;
+}
+
+

@@ -1,0 +1,148 @@
+.ink-prose .mermaid-block {
+  margin: 1em 0;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-inset);
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+.ink-prose .mermaid-block svg {
+  max-width: 100%;
+  height: auto;
+}
+.ink-prose .mermaid-block.loading {
+  min-height: 90px;
+  align-items: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.ink-prose .mermaid-block.loading::before {
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border: 1.5px solid color-mix(in oklab, var(--text-tertiary) 32%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  content: '';
+  animation: mermaid-spin 0.8s linear infinite;
+}
+.ink-prose .mermaid-block.mermaid-source,
+.ink-prose .mermaid-block.has-error {
+  justify-content: flex-start;
+}
+.ink-prose .mermaid-block.mermaid-source > code {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
+  white-space: pre;
+}
+.ink-prose .mermaid-error {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  color: var(--danger);
+  font-size: 12px;
+}
+.ink-prose .mermaid-error-message {
+  align-self: center;
+  overflow-wrap: anywhere;
+}
+.ink-prose .mermaid-error code {
+  grid-column: 1 / -1;
+  overflow-x: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
+  white-space: pre-wrap;
+}
+.ink-prose .mermaid-retry {
+  align-self: start;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  padding: 3px 9px;
+  color: var(--text-primary);
+  background: var(--bg-overlay);
+  cursor: pointer;
+}
+.ink-prose .mermaid-retry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+@keyframes mermaid-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+.ink-hit {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  border-radius: 3px;
+  padding: 0 1px;
+  box-decoration-break: clone;
+}
+
+.ink-prose .chartjs-block {
+  margin: 1em 0;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-inset);
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+.ink-prose .chartjs-container {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  height: 320px;
+  min-height: 260px;
+  max-height: 500px;
+}
+.ink-prose .chartjs-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ink-prose .chartjs-block.loading {
+  min-height: 120px;
+  align-items: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.ink-prose .chartjs-block.loading::before {
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border: 1.5px solid color-mix(in oklab, var(--text-tertiary) 32%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  content: '';
+  animation: mermaid-spin 0.8s linear infinite;
+}
+.ink-prose .chartjs-block.has-error {
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.ink-prose .chart-error-banner {
+  color: var(--danger);
+  font-size: 12px;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.ink-prose .chartjs-block.has-error pre {
+  margin: 0;
+  padding: 8px;
+  background: var(--bg-base);
+  border-radius: var(--r-md);
+  overflow-x: auto;
+  font-size: var(--code-font-size);
+}
+
