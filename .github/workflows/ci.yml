@@ -20,6 +20,7 @@ jobs:
       - run: node scripts/ci-bench-report.mjs
       - run: npm run i18n:check
       - run: npm run comments:check
+      - run: npm run module-state:check
       - run: npm run build
       - run: node scripts/check-bundle-budget.mjs
       - run: npm run vendor:check

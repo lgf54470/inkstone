@@ -25,6 +25,13 @@ const allowed = new Map([
     "// fragments are substrings of others, so global replacement would blank",
     "// the shared prefix before the longer phrase ever gets a chance to match.",
   ]],
+  ["scripts/check-module-state.mjs", [
+    "/**\n * Guards against module-level mutable state.\n *\n * 1. src/worker must hold NO module-level mutable state: Cloudflare Workers\n *    reuse isolates across requests, so a module-scope `let` or a module-scope\n *    Map/Set that is mutated at request time would leak data between users.\n * 2. `useState` at module scope (outside a component) is a React misuse;\n *    state must live inside components or in an explicit store module.\n */",
+    "// 1. Worker: no module-level mutable bindings.",
+    "// Inline-literal `new Set([...])` tables are immutable lookups; only empty",
+    "// initializers are runtime-fillable and therefore cross-request mutable.",
+    "// 2. Client: no module-level useState (React hook outside a component).",
+  ]],
   ["scripts/ci-bench-report.mjs", [
     "// Generous headroom for shared CI runners; the point is catching an order-of-magnitude regression.",
   ]],
