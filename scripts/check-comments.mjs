@@ -550,7 +550,7 @@ const allowed = new Map([
     "// Highlighting still ran, but the hostile source survives only as inert text.",
     "// KaTeX renders inter-word spaces as U+00A0; normalize before comparing.",
   ]],
-  ["src/client/lib/markdown/enhance.ts", [
+  ["src/client/lib/markdown/enhance/math.ts", [
     "// KaTeX output is machine-generated from math source (\\color values",
     "// are strictly validated and \\href is inert at trust:false), but it",
     "// is still written through the same sanitizer as every other HTML",

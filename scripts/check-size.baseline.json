@@ -397,10 +397,15 @@
   "src/client/lib/markdown/enhance.test.ts": {
     "longFns": 1
   },
-  "src/client/lib/markdown/enhance.ts": {
-    "lines": 636,
-    "longFns": 2,
-    "deepFns": 3
+  "src/client/lib/markdown/enhance/chart.ts": {
+    "longFns": 1,
+    "deepFns": 2
+  },
+  "src/client/lib/markdown/enhance/math.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/enhance/mermaid.ts": {
+    "deepFns": 1
   },
   "src/client/lib/markdown/renderer.test.ts": {
     "longFns": 2
