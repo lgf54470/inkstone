@@ -1,3 +1,73 @@
+const CStyleLanguages = new Set([
+  'javascript',
+  'typescript',
+  'js',
+  'ts',
+  'jsx',
+  'tsx',
+  'c',
+  'cpp',
+  'c++',
+  'csharp',
+  'cs',
+  'c#',
+  'java',
+  'go',
+  'rust',
+  'rs',
+  'php',
+  'css',
+  'scss',
+  'less',
+]);
+
+const SQL_KEYWORDS = [
+  'SELECT',
+  'FROM',
+  'WHERE',
+  'AND',
+  'OR',
+  'INSERT INTO',
+  'VALUES',
+  'UPDATE',
+  'SET',
+  'DELETE FROM',
+  'LEFT JOIN',
+  'RIGHT JOIN',
+  'INNER JOIN',
+  'OUTER JOIN',
+  'JOIN',
+  'GROUP BY',
+  'ORDER BY',
+  'HAVING',
+  'LIMIT',
+  'OFFSET',
+  'UNION ALL',
+  'UNION',
+  'CREATE TABLE',
+  'DROP TABLE',
+  'ALTER TABLE',
+];
+
+const SQL_NEWLINE_KEYWORDS = [
+  'SELECT',
+  'FROM',
+  'WHERE',
+  'AND',
+  'OR',
+  'LEFT JOIN',
+  'RIGHT JOIN',
+  'INNER JOIN',
+  'OUTER JOIN',
+  'JOIN',
+  'GROUP BY',
+  'ORDER BY',
+  'HAVING',
+  'LIMIT',
+  'SET',
+  'VALUES',
+];
+
 export function formatCode(code: string, language: string, tabSize = 2): string {
   const lang = (language || '').toLowerCase().trim();
   const trimmed = code.trim();
@@ -20,30 +90,7 @@ export function formatCode(code: string, language: string, tabSize = 2): string 
     return formatSql(trimmed);
   }
 
-  if (
-    [
-      'javascript',
-      'typescript',
-      'js',
-      'ts',
-      'jsx',
-      'tsx',
-      'c',
-      'cpp',
-      'c++',
-      'csharp',
-      'cs',
-      'c#',
-      'java',
-      'go',
-      'rust',
-      'rs',
-      'php',
-      'css',
-      'scss',
-      'less',
-    ].includes(lang)
-  ) {
+  if (CStyleLanguages.has(lang)) {
     return formatCStyle(code, tabSize);
   }
 
@@ -63,82 +110,78 @@ function formatHtml(html: string, tabSize: number): string {
     if (trimmed.startsWith('</')) {
       depth = Math.max(0, depth - 1);
       lines.push(`${indentStr.repeat(depth)}${trimmed}`);
-    } else if (trimmed.startsWith('<') && trimmed.endsWith('/>')) {
+      continue;
+    }
+
+    if (trimmed.startsWith('<') && trimmed.endsWith('/>')) {
       lines.push(`${indentStr.repeat(depth)}${trimmed}`);
-    } else if (trimmed.startsWith('<') && !trimmed.startsWith('<!') && !trimmed.startsWith('<?')) {
+      continue;
+    }
+
+    if (trimmed.startsWith('<') && !trimmed.startsWith('<!') && !trimmed.startsWith('<?')) {
       lines.push(`${indentStr.repeat(depth)}${trimmed}`);
       const isVoid = /^<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)/i.test(trimmed);
       if (!isVoid) {
         depth++;
       }
-    } else {
-      lines.push(`${indentStr.repeat(depth)}${trimmed}`);
+      continue;
     }
+
+    lines.push(`${indentStr.repeat(depth)}${trimmed}`);
   }
 
   return lines.join('\n');
 }
 
 function formatSql(sql: string): string {
-  const keywords = [
-    'SELECT',
-    'FROM',
-    'WHERE',
-    'AND',
-    'OR',
-    'INSERT INTO',
-    'VALUES',
-    'UPDATE',
-    'SET',
-    'DELETE FROM',
-    'LEFT JOIN',
-    'RIGHT JOIN',
-    'INNER JOIN',
-    'OUTER JOIN',
-    'JOIN',
-    'GROUP BY',
-    'ORDER BY',
-    'HAVING',
-    'LIMIT',
-    'OFFSET',
-    'UNION ALL',
-    'UNION',
-    'CREATE TABLE',
-    'DROP TABLE',
-    'ALTER TABLE',
-  ];
-
   let formatted = sql.replace(/\s+/g, ' ').trim();
-  for (const kw of keywords) {
+  for (const kw of SQL_KEYWORDS) {
     const regex = new RegExp(`\\b${kw.replace(/\s+/g, '\\s+')}\\b`, 'gi');
     formatted = formatted.replace(regex, kw);
   }
 
-  const newlineKeywords = [
-    'SELECT',
-    'FROM',
-    'WHERE',
-    'AND',
-    'OR',
-    'LEFT JOIN',
-    'RIGHT JOIN',
-    'INNER JOIN',
-    'OUTER JOIN',
-    'JOIN',
-    'GROUP BY',
-    'ORDER BY',
-    'HAVING',
-    'LIMIT',
-    'SET',
-    'VALUES',
-  ];
-
-  for (const kw of newlineKeywords) {
+  for (const kw of SQL_NEWLINE_KEYWORDS) {
     const regex = new RegExp(`\\s+(${kw})\\b`, 'g');
     formatted = formatted.replace(regex, '\n$1');
   }
 
   return formatted.trim();
+}
+
+function countBraceBalance(line: string): { open: number; close: number } {
+  let openCount = 0;
+  let closeCount = 0;
+  let inString: string | null = null;
+  let isEscaped = false;
+
+  for (let charIndex = 0; charIndex < line.length; charIndex++) {
+    const ch = line[charIndex]!;
+    if (isEscaped) {
+      isEscaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      isEscaped = true;
+      continue;
+    }
+    if (inString) {
+      if (ch === inString) {
+        inString = null;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      inString = ch;
+      continue;
+    }
+    if (ch === '/' && line[charIndex + 1] === '/') {
+      break;
+    }
+
+    if (ch === '{') openCount++;
+    else if (ch === '}') closeCount++;
+  }
+  return { open: openCount, close: closeCount };
 }
 
 function formatCStyle(code: string, tabSize: number): string {
@@ -175,48 +218,64 @@ function formatCStyle(code: string, tabSize: number): string {
       continue;
     }
 
-    let openCount = 0;
-    let closeCount = 0;
-    let inString: string | null = null;
-    let isEscaped = false;
-
-    for (let charIndex = 0; charIndex < line.length; charIndex++) {
-      const ch = line[charIndex]!;
-      if (isEscaped) {
-        isEscaped = false;
-        continue;
-      }
-      if (ch === '\\') {
-        isEscaped = true;
-        continue;
-      }
-      if (inString) {
-        if (ch === inString) {
-          inString = null;
-        }
-        continue;
-      }
-      if (ch === '"' || ch === "'" || ch === '`') {
-        inString = ch;
-        continue;
-      }
-      if (ch === '/' && line[charIndex + 1] === '/') {
-        break;
-      }
-
-      if (ch === '{') openCount++;
-      else if (ch === '}') closeCount++;
-    }
-
+    const counts = countBraceBalance(line);
     const startsWithClose = line.startsWith('}') || line.startsWith(']') || line.startsWith(')');
     const currentIndent = startsWithClose ? Math.max(0, depth - 1) : depth;
 
     result.push(`${indentStr.repeat(currentIndent)}${line}`);
 
-    depth = Math.max(0, depth + openCount - closeCount);
+    depth = Math.max(0, depth + counts.open - counts.close);
   }
 
   return result.join('\n');
+}
+
+function splitAtBoundary(rest: string, current: string): { split: boolean; advance: number } {
+  const boundaryMatch = /^\s+(return\b|const\b|let\b|var\b|function\b|class\b|if\b|else\b|throw\b|export\b|import\b)/.exec(
+    rest,
+  );
+
+  if (boundaryMatch && current.trim().length > 0) {
+    const lastChar = current.trim().slice(-1);
+    if (lastChar !== ';' && lastChar !== '{' && lastChar !== '}' && lastChar !== '=' && lastChar !== ':') {
+      return { split: true, advance: boundaryMatch[0].length - boundaryMatch[1]!.length - 1 };
+    }
+  }
+
+  const inlineStatementMatch = /^\s+([a-zA-Z_$][a-zA-Z0-9_$]*\s*(?:\+=|-=|\*=|\/=|%=|=)\s*)/.exec(rest);
+  if (inlineStatementMatch && current.trim().length > 0) {
+    const lastChar = current.trim().slice(-1);
+    if (
+      lastChar !== ';' &&
+      lastChar !== '{' &&
+      lastChar !== '}' &&
+      lastChar !== '=' &&
+      lastChar !== ':' &&
+      lastChar !== ',' &&
+      lastChar !== '(' &&
+      lastChar !== '['
+    ) {
+      return { split: true, advance: inlineStatementMatch[0].length - inlineStatementMatch[1]!.length - 1 };
+    }
+  }
+
+  return { split: false, advance: 0 };
+}
+
+function scanChar(line: string, i: number, inString: string | null, isEscaped: boolean): {
+  ch: string;
+  inString: string | null;
+  isEscaped: boolean;
+  structural: boolean;
+} {
+  const ch = line[i]!;
+  if (isEscaped) return { ch, inString, isEscaped: false, structural: false };
+  if (ch === '\\') return { ch, inString, isEscaped: true, structural: false };
+  if (inString) {
+    return { ch, inString: ch === inString ? null : inString, isEscaped: false, structural: false };
+  }
+  if (ch === '"' || ch === "'" || ch === '`') return { ch, inString: ch, isEscaped: false, structural: false };
+  return { ch, inString: null, isEscaped: false, structural: true };
 }
 
 function splitCorruptedStatements(line: string): string[] {
@@ -227,75 +286,24 @@ function splitCorruptedStatements(line: string): string[] {
   let parenDepth = 0;
 
   for (let i = 0; i < line.length; i++) {
-    const ch = line[i]!;
+    const scanned = scanChar(line, i, inString, isEscaped);
+    inString = scanned.inString;
+    isEscaped = scanned.isEscaped;
 
-    if (isEscaped) {
-      current += ch;
-      isEscaped = false;
-      continue;
-    }
+    if (scanned.structural) {
+      if (scanned.ch === '(') parenDepth++;
+      if (scanned.ch === ')') parenDepth = Math.max(0, parenDepth - 1);
 
-    if (ch === '\\') {
-      current += ch;
-      isEscaped = true;
-      continue;
-    }
-
-    if (inString) {
-      current += ch;
-      if (ch === inString) {
-        inString = null;
-      }
-      continue;
-    }
-
-    if (ch === '"' || ch === "'" || ch === '`') {
-      current += ch;
-      inString = ch;
-      continue;
-    }
-
-    if (ch === '(') parenDepth++;
-    else if (ch === ')') parenDepth = Math.max(0, parenDepth - 1);
-
-    if (parenDepth === 0) {
-      const rest = line.slice(i);
-      const boundaryMatch = /^\s+(return\b|const\b|let\b|var\b|function\b|class\b|if\b|else\b|throw\b|export\b|import\b)/.exec(
-        rest,
-      );
-
-      if (boundaryMatch && current.trim().length > 0) {
-        const lastChar = current.trim().slice(-1);
-        if (lastChar !== ';' && lastChar !== '{' && lastChar !== '}' && lastChar !== '=' && lastChar !== ':') {
-          result.push(current.trim());
-          current = '';
-          i += boundaryMatch[0].length - boundaryMatch[1]!.length - 1;
-          continue;
-        }
-      }
-
-      const inlineStatementMatch = /^\s+([a-zA-Z_$][a-zA-Z0-9_$]*\s*(?:\+=|-=|\*=|\/=|%=|=)\s*)/.exec(rest);
-      if (inlineStatementMatch && current.trim().length > 0) {
-        const lastChar = current.trim().slice(-1);
-        if (
-          lastChar !== ';' &&
-          lastChar !== '{' &&
-          lastChar !== '}' &&
-          lastChar !== '=' &&
-          lastChar !== ':' &&
-          lastChar !== ',' &&
-          lastChar !== '(' &&
-          lastChar !== '['
-        ) {
-          result.push(current.trim());
-          current = '';
-          i += inlineStatementMatch[0].length - inlineStatementMatch[1]!.length - 1;
-          continue;
-        }
+      const split = parenDepth === 0 ? splitAtBoundary(line.slice(i), current) : null;
+      if (split?.split) {
+        result.push(current.trim());
+        current = '';
+        i += split.advance;
+        continue;
       }
     }
 
-    current += ch;
+    current += scanned.ch;
   }
 
   if (current.trim().length > 0) {

@@ -444,10 +444,6 @@
     "longFns": 2,
     "deepFns": 1
   },
-  "src/client/lib/markdown/code-formatter.ts": {
-    "longFns": 4,
-    "deepFns": 3
-  },
   "src/client/lib/markdown/embeds.ts": {
     "longFns": 2,
     "deepFns": 3
