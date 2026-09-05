@@ -960,11 +960,13 @@ const allowed = new Map([
     "// through the recovery path instead of re-executing and colliding",
     "// (e.g. create_note with the same id).",
   ]],
-  ["src/worker/mcp/retrieval.ts", [
+  ["src/worker/mcp/retrieval/search.ts", [
     "// AI unavailable, rate-limited, or malformed response: degrade to lexical.",
   ]],
-  ["src/worker/mcp/writes.ts", [
+  ["src/worker/mcp/writes/content.ts", [
     "/** Final content for an MCP-created note: explicit content wins, blank notes follow the interpolated template. */",
+  ]],
+  ["src/worker/mcp/writes/ops.ts", [
     "// Blank MCP-created notes follow the user's configured new-note template.",
   ]],
   ["src/worker/middleware/auth.ts", [

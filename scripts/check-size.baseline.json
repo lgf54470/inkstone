@@ -596,10 +596,12 @@
   "src/worker/mcp/operations.ts": {
     "longFns": 1
   },
-  "src/worker/mcp/retrieval.ts": {
-    "lines": 540,
-    "longFns": 2,
+  "src/worker/mcp/retrieval/read.ts": {
+    "longFns": 1,
     "deepFns": 1
+  },
+  "src/worker/mcp/retrieval/search.ts": {
+    "longFns": 1
   },
   "src/worker/mcp/server/assets.ts": {
     "longFns": 1
@@ -616,8 +618,7 @@
   "src/worker/mcp/server/shares.ts": {
     "longFns": 1
   },
-  "src/worker/mcp/writes.ts": {
-    "lines": 527,
+  "src/worker/mcp/writes/ops.ts": {
     "longFns": 3
   },
   "src/worker/middleware/auth.ts": {
