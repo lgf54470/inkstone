@@ -244,6 +244,130 @@ export function assertUnchangedSettingsSections(
   }
 }
 
+function mergeAppearance(current: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  return {
+    language: enumValue(patch.language, LANGUAGES, current.language as AppLocale),
+    theme: enumValue(patch.theme, THEMES, current.theme as ThemePref),
+    accent: enumValue(patch.accent, ACCENT_NAMES, current.accent as AccentName),
+    background: enumValue(
+      patch.background,
+      BACKGROUND_NAMES,
+      current.background as BackgroundName,
+    ),
+    density: enumValue(patch.density, DENSITIES, current.density as UiDensity),
+    proseFont: enumValue(patch.proseFont, PROSE_FONTS, current.proseFont as ProseFont),
+    proseSize: integerInRange(patch.proseSize, 13, 22, current.proseSize as number),
+    proseWidth: enumValue(patch.proseWidth, PROSE_WIDTHS, current.proseWidth as ProseWidth),
+    proseLineHeight: numberInRange(
+      patch.proseLineHeight,
+      1.4,
+      2.2,
+      current.proseLineHeight as number,
+    ),
+  }
+}
+
+function mergeEditor(current: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  return {
+    fontSize: integerInRange(patch.fontSize, 12, 22, current.fontSize as number),
+    fontFamily: enumValue(
+      patch.fontFamily,
+      EDITOR_FONTS,
+      current.fontFamily as EditorSettings['fontFamily'],
+    ),
+    lineNumbers: booleanValue(patch.lineNumbers, current.lineNumbers as boolean),
+    typewriter: booleanValue(patch.typewriter, current.typewriter as boolean),
+    focusMode: booleanValue(patch.focusMode, current.focusMode as boolean),
+    spellcheck: booleanValue(patch.spellcheck, current.spellcheck as boolean),
+    showToolbar: booleanValue(patch.showToolbar, current.showToolbar as boolean),
+    tabSize: patch.tabSize === 4 ? 4 : patch.tabSize === 2 ? 2 : (current.tabSize as number),
+    autoSaveDelay: integerInRange(
+      patch.autoSaveDelay,
+      200,
+      3000,
+      current.autoSaveDelay as number,
+    ),
+  }
+}
+
+function mergePreview(current: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  return {
+    layout: enumValue(patch.layout, EDITOR_LAYOUTS, current.layout as EditorLayout),
+    syncScroll: booleanValue(patch.syncScroll, current.syncScroll as boolean),
+    showToc: booleanValue(patch.showToc, current.showToc as boolean),
+    math: booleanValue(patch.math, current.math as boolean),
+    mermaid: booleanValue(patch.mermaid, current.mermaid as boolean),
+    codeBlockCollapse: booleanValue(
+      patch.codeBlockCollapse,
+      current.codeBlockCollapse as boolean,
+    ),
+    codeBlockCollapseLines: integerInRange(
+      patch.codeBlockCollapseLines,
+      8,
+      100,
+      current.codeBlockCollapseLines as number,
+    ),
+    linkHover: booleanValue(patch.linkHover, current.linkHover as boolean),
+    linkHoverDelayMs: integerInRange(
+      patch.linkHoverDelayMs,
+      150,
+      1000,
+      current.linkHoverDelayMs as number,
+    ),
+    externalImages: booleanValue(
+      patch.externalImages,
+      current.externalImages as boolean,
+    ),
+    linkPreviewLength: integerInRange(
+      patch.linkPreviewLength,
+      300,
+      8000,
+      current.linkPreviewLength as number,
+    ),
+  }
+}
+
+function mergeBackup(current: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  return {
+    schedule: enumValue(patch.schedule, BACKUP_SCHEDULES, current.schedule as BackupSchedule),
+  }
+}
+
+function mergeSync(current: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  return {
+    realtime: booleanValue(patch.realtime, current.realtime as boolean),
+    pollIntervalMs: integerInRange(
+      patch.pollIntervalMs,
+      5000,
+      120_000,
+      current.pollIntervalMs as number,
+    ),
+  }
+}
+
+function mergeNotes(current: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  return {
+    newNoteTemplate: stringValue(
+      patch.newNoteTemplate,
+      current.newNoteTemplate as string,
+      4096,
+    ),
+    syncTitleToFrontMatter: booleanValue(
+      patch.syncTitleToFrontMatter,
+      current.syncTitleToFrontMatter as boolean,
+    ),
+    syncFrontMatterTitle: booleanValue(
+      patch.syncFrontMatterTitle,
+      current.syncFrontMatterTitle as boolean,
+    ),
+    todoTag: nullableStringValue(
+      patch.todoTag,
+      current.todoTag as string | null,
+      256,
+    ),
+  }
+}
+
 function mergeSettingsSection(
   section: SettingsSection,
   current: Record<string, unknown>,
@@ -251,117 +375,17 @@ function mergeSettingsSection(
 ): unknown {
   switch (section) {
     case 'appearance':
-      return {
-        language: enumValue(patch.language, LANGUAGES, current.language as AppLocale),
-        theme: enumValue(patch.theme, THEMES, current.theme as ThemePref),
-        accent: enumValue(patch.accent, ACCENT_NAMES, current.accent as AccentName),
-        background: enumValue(
-          patch.background,
-          BACKGROUND_NAMES,
-          current.background as BackgroundName,
-        ),
-        density: enumValue(patch.density, DENSITIES, current.density as UiDensity),
-        proseFont: enumValue(patch.proseFont, PROSE_FONTS, current.proseFont as ProseFont),
-        proseSize: integerInRange(patch.proseSize, 13, 22, current.proseSize as number),
-        proseWidth: enumValue(patch.proseWidth, PROSE_WIDTHS, current.proseWidth as ProseWidth),
-        proseLineHeight: numberInRange(
-          patch.proseLineHeight,
-          1.4,
-          2.2,
-          current.proseLineHeight as number,
-        ),
-      }
+      return mergeAppearance(current, patch)
     case 'editor':
-      return {
-        fontSize: integerInRange(patch.fontSize, 12, 22, current.fontSize as number),
-        fontFamily: enumValue(
-          patch.fontFamily,
-          EDITOR_FONTS,
-          current.fontFamily as EditorSettings['fontFamily'],
-        ),
-        lineNumbers: booleanValue(patch.lineNumbers, current.lineNumbers as boolean),
-        typewriter: booleanValue(patch.typewriter, current.typewriter as boolean),
-        focusMode: booleanValue(patch.focusMode, current.focusMode as boolean),
-        spellcheck: booleanValue(patch.spellcheck, current.spellcheck as boolean),
-        showToolbar: booleanValue(patch.showToolbar, current.showToolbar as boolean),
-        tabSize: patch.tabSize === 4 ? 4 : patch.tabSize === 2 ? 2 : (current.tabSize as number),
-        autoSaveDelay: integerInRange(
-          patch.autoSaveDelay,
-          200,
-          3000,
-          current.autoSaveDelay as number,
-        ),
-      }
+      return mergeEditor(current, patch)
     case 'preview':
-      return {
-        layout: enumValue(patch.layout, EDITOR_LAYOUTS, current.layout as EditorLayout),
-        syncScroll: booleanValue(patch.syncScroll, current.syncScroll as boolean),
-        showToc: booleanValue(patch.showToc, current.showToc as boolean),
-        math: booleanValue(patch.math, current.math as boolean),
-        mermaid: booleanValue(patch.mermaid, current.mermaid as boolean),
-        codeBlockCollapse: booleanValue(
-          patch.codeBlockCollapse,
-          current.codeBlockCollapse as boolean,
-        ),
-        codeBlockCollapseLines: integerInRange(
-          patch.codeBlockCollapseLines,
-          8,
-          100,
-          current.codeBlockCollapseLines as number,
-        ),
-        linkHover: booleanValue(patch.linkHover, current.linkHover as boolean),
-        linkHoverDelayMs: integerInRange(
-          patch.linkHoverDelayMs,
-          150,
-          1000,
-          current.linkHoverDelayMs as number,
-        ),
-        externalImages: booleanValue(
-          patch.externalImages,
-          current.externalImages as boolean,
-        ),
-        linkPreviewLength: integerInRange(
-          patch.linkPreviewLength,
-          300,
-          8000,
-          current.linkPreviewLength as number,
-        ),
-      }
+      return mergePreview(current, patch)
     case 'backup':
-      return {
-        schedule: enumValue(patch.schedule, BACKUP_SCHEDULES, current.schedule as BackupSchedule),
-      }
+      return mergeBackup(current, patch)
     case 'sync':
-      return {
-        realtime: booleanValue(patch.realtime, current.realtime as boolean),
-        pollIntervalMs: integerInRange(
-          patch.pollIntervalMs,
-          5000,
-          120_000,
-          current.pollIntervalMs as number,
-        ),
-      }
+      return mergeSync(current, patch)
     case 'notes':
-      return {
-        newNoteTemplate: stringValue(
-          patch.newNoteTemplate,
-          current.newNoteTemplate as string,
-          4096,
-        ),
-        syncTitleToFrontMatter: booleanValue(
-          patch.syncTitleToFrontMatter,
-          current.syncTitleToFrontMatter as boolean,
-        ),
-        syncFrontMatterTitle: booleanValue(
-          patch.syncFrontMatterTitle,
-          current.syncFrontMatterTitle as boolean,
-        ),
-        todoTag: nullableStringValue(
-          patch.todoTag,
-          current.todoTag as string | null,
-          256,
-        ),
-      }
+      return mergeNotes(current, patch)
   }
 }
 

@@ -32,6 +32,12 @@ export function stripCodeRegions(text: string): string {
   return stripObsidianCommentRegions(lines.join('\n'))
 }
 
+function blankExceptNewlines(chars: string[], from: number, to: number): void {
+  for (let cursor = from; cursor < to; cursor++) {
+    if (chars[cursor] !== '\n' && chars[cursor] !== '\r') chars[cursor] = ' '
+  }
+}
+
 function stripObsidianCommentRegions(text: string): string {
   const chars = text.split('')
   let start = -1
@@ -39,18 +45,12 @@ function stripObsidianCommentRegions(text: string): string {
     if (!text.startsWith('%%', index) || isEscaped(text, index)) continue
     if (start < 0) start = index
     else {
-      for (let cursor = start; cursor <= index + 1; cursor++) {
-        if (chars[cursor] !== '\n' && chars[cursor] !== '\r') chars[cursor] = ' '
-      }
+      blankExceptNewlines(chars, start, index + 2)
       start = -1
     }
     index++
   }
-  if (start >= 0) {
-    for (let cursor = start; cursor < chars.length; cursor++) {
-      if (chars[cursor] !== '\n' && chars[cursor] !== '\r') chars[cursor] = ' '
-    }
-  }
+  if (start >= 0) blankExceptNewlines(chars, start, chars.length)
   return chars.join('')
 }
 
