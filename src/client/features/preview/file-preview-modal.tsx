@@ -14,11 +14,11 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
+import { COPY_FEEDBACK_MS } from '@shared/constants'
 import { Modal } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/cn'
-import { COPY_FEEDBACK_MS } from '@shared/constants'
 import { errorMessage } from '../../lib/errors'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import { decorateCodeBlock } from '../../lib/markdown/enhance'

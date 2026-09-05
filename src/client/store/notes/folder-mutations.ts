@@ -1,9 +1,9 @@
 /** Optimistic folder mutations: begin/commit/rollback against pending-folder state. */
+import type { Folder } from '@shared/types';
 import { noteState, pendingFolderMutations, type NotesState, type PendingFolderMutation, type SetNotesState } from './model';
 import { reconcileFolderUi } from './reconcile';
 import { scheduleShellSave } from './shell-save';
 import { replaceFolder } from './folder-ops';
-import type { Folder } from '@shared/types';
 
 export function beginFolderMutation(entityId: string, restoreMissingEntity: boolean, apply: (folders: Folder[]) => Folder[], set: SetNotesState, get: () => NotesState): PendingFolderMutation {
     const mutation: PendingFolderMutation = { entityId, restoreMissingEntity, before: get().folders, apply };

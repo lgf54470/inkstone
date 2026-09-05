@@ -1,7 +1,7 @@
 /** Full-sync paging and consolidation for the note store pull path. */
+import type { SyncResponse } from '@shared/types';
 import { api } from '../../lib/api';
 import { t } from '../../lib/i18n';
-import type { SyncResponse } from '@shared/types';
 
 export async function collectFullSync(first: SyncResponse): Promise<SyncResponse> {
     const notes = new Map(first.notes.map((note) => [note.id, note]));

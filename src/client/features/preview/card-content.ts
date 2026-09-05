@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import type { Backlink } from '@shared/types'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import { enhancePreview } from '../../lib/markdown/enhance'
 import { getNoteBacklinks } from '../../lib/backlinks'
 import { useDebounced } from '../../lib/hooks'
 import { useNotes } from '../../store/notes'
 import { useSession } from '../../store/session'
-import type { Backlink } from '@shared/types'
 
 export interface NoteCardContent {
   status: 'loading' | 'ready' | 'missing' | 'error'

@@ -1,10 +1,10 @@
 /** Optimistic note-summary mutations (move/star/pin/archive/trash/restore) with conflict recovery. */
+import type { Note, NoteSummary } from '@shared/types';
 import { api, ApiError } from '../../lib/api';
 import { adoptNote } from './adopt';
 import { scheduleShellSave } from './shell-save';
 import { applyPendingNoteMutations, noteSummaryEqual } from './reconcile';
 import { pendingNoteMutations, type NotesState, type OptimisticNotePatch, type PendingNoteMutation, type SetNotesState } from './model';
-import type { Note, NoteSummary } from '@shared/types';
 
 export function compactOptimisticPatch(patch: OptimisticNotePatch): OptimisticNotePatch {
     const compact: OptimisticNotePatch = {};

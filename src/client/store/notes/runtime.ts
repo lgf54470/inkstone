@@ -1,4 +1,5 @@
 /** Offline-journal runtime: dirty-revision advancement, purge snapshots, rebase and settle helpers. */
+import type { Note, NoteSummary } from '@shared/types';
 import { ApiError, CLIENT_ID } from '../../lib/api';
 import { localDb, publishBroadcast } from '../../lib/db';
 import { adoptNote } from './adopt';
@@ -6,7 +7,6 @@ import { applyPendingNoteMutations, noteSummaryEqual } from './reconcile';
 import { scheduleShellSave } from './shell-save';
 import { useUi } from '../ui';
 import { dirty, inheritedOutboxWrites, latestRequestedNoteIds, noteRequestEpochs, noteRequests, pendingSummaryDerivations, pendingNoteMutations, purgedNoteIds, validatedRevisions, type DirtyNoteWrite, type NotesState, type SetNotesState } from './model';
-import type { Note, NoteSummary } from '@shared/types';
 import type { OutboxItem } from '../../lib/db';
 
 export function advanceDirtyRevision(id: string, expectedRev: number, nextRev: number, get: () => NotesState): void {

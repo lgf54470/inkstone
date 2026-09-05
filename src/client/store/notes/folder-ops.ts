@@ -1,6 +1,6 @@
 /** Pure folder-tree manipulation used by optimistic folder mutations. */
-import { pendingFolderMutations } from './model';
 import type { Folder } from '@shared/types';
+import { pendingFolderMutations } from './model';
 
 export function replaceFolder(folders: Folder[], saved: Folder): Folder[] {
     const index = folders.findIndex((folder) => folder.id === saved.id);

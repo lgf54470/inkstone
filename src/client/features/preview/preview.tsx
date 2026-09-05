@@ -8,14 +8,14 @@ import {
   useState,
   type RefObject,
 } from 'react'
-import { cn } from '../../lib/cn'
 import { truncateText } from '@shared/text-utils'
+import { slugifyHeading } from '@shared/markdown-utils'
+import { cn } from '../../lib/cn'
 import { useDebounced } from '../../lib/hooks'
 import { decodeDataValue } from '../../lib/markdown/data-attr'
 import { parseWikiTarget, renderMarkdown, type Heading } from '../../lib/markdown/renderer'
 import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
 import { t, useLocale } from '../../lib/i18n'
-import { slugifyHeading } from '@shared/markdown-utils'
 import {
   destroyChartInstances,
   enhancePreview,

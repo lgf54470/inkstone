@@ -1,8 +1,8 @@
 /** Merge/reconcile helpers: fold remote summaries/lists together with pending optimistic state. */
+import type { Folder, NoteSummary, Tag } from '@shared/types';
 import { isVirtualFolderId } from '../../lib/calendar-tree';
 import { useUi } from '../ui';
 import { dirty, pendingNoteCreates, pendingNoteMutations, purgedNoteIds } from './model';
-import type { Folder, NoteSummary, Tag } from '@shared/types';
 
 export function applyPendingNoteMutations(id: string, summary: NoteSummary): NoteSummary {
     const pending = pendingNoteMutations.get(id);

@@ -2,14 +2,14 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { EditorView } from '@codemirror/view';
 import { EditorSelection } from '@codemirror/state';
 import { ArrowLeft, Columns2, Download, Eye, FileCode, FileDown, FileText, FolderClosed, Globe, Hash, History, LayoutGrid, Link as LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Plus, Share2, Star, X, } from 'lucide-react';
+import { readingMinutes } from '@shared/markdown-utils';
+import { LIMITS } from '@shared/constants';
+import type { EditorLayout } from '@shared/types';
 import { cn } from '../../lib/cn';
 import { api } from '../../lib/api';
 import { errorMessage } from '../../lib/errors';
 import { EditorContextMenu } from './editor-context-menu';
 import { detectEditorContext, detectPreviewContext, type EditorContextData, type PreviewContextData } from './context-menu-detect';
-import { readingMinutes } from '@shared/markdown-utils';
-import { LIMITS } from '@shared/constants';
-import type { EditorLayout } from '@shared/types';
 import { fullTime } from '../../lib/time';
 import { useBreakpoint, useRelativeTime } from '../../lib/hooks';
 import { prettyCombo } from '../../lib/hotkeys';

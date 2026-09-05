@@ -1,10 +1,10 @@
 /** Adopting fetched/created/saved notes into the store (summary plus content caches). */
+import type { Note, NoteSummary } from '@shared/types';
 import { api } from '../../lib/api';
 import { localDb } from '../../lib/db';
 import { applyPendingNoteMutations, mergeDirtySummary, noteSummaryEqual } from './reconcile';
 import { scheduleShellSave } from './shell-save';
 import { dirty, noteRequests, noteRequestEpochs, purgedNoteIds, validatedRevisions, STALE_NOTE_REQUEST, type NotesState, type SetNotesState } from './model';
-import type { Note, NoteSummary } from '@shared/types';
 
 export function adoptNote(note: Note | NoteSummary, set: SetNotesState, get: () => NotesState): void {
     if (purgedNoteIds.has(note.id))

@@ -1,8 +1,8 @@
 /** Shared types for the import pipeline (Inkstone exports, Markdown backups, plain .md/.txt files). */
+import type { ImportResult } from '@shared/types'
 import type { AttachmentObjectStorage } from '../attachments/keys'
 import type { PersistedAttachment } from '../attachments/storage'
 import type { ObsidianAssetIndex } from '../lib/obsidian-import'
-import type { ImportResult } from '@shared/types'
 
 export type ImportConflict = 'skip' | 'newer' | 'duplicate'
 

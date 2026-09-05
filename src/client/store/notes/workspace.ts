@@ -1,11 +1,11 @@
 /** Workspace/intent helpers: view scoping for initial note selection and workspace-state snapshots. */
+import type { AppLocale, Folder, NoteSummary, SortKey, SortOrder } from '@shared/types';
 import { resolveTodoTag } from '../../lib/calendar-tree';
 import { folderDescendantIds } from '../../lib/folders';
 import { matchesView } from '../../lib/note-filter';
 import { getLocale } from '../../lib/i18n';
 import { useSession } from '../session';
 import { useUi, type WorkspacePane } from '../ui';
-import type { AppLocale, Folder, NoteSummary, SortKey, SortOrder } from '@shared/types';
 
 export function compare(a: NoteSummary, b: NoteSummary, sort: SortKey, order: SortOrder, locale: AppLocale): number {
     if (a.isPinned !== b.isPinned)

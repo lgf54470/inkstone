@@ -1,4 +1,5 @@
 /** Offline write-ahead replay: dependency-ordered outbox flush, conflict rebase, and 404 recovery. */
+import type { Note } from '@shared/types';
 import { api, ApiError, CLIENT_ID } from '../../lib/api';
 import { localDb, publishBroadcast, type BroadcastPayload, type OutboxItem } from '../../lib/db';
 import { errorMessage } from '../../lib/errors';
@@ -8,7 +9,6 @@ import { adoptNote } from './adopt';
 import { advanceDirtyRevision, advanceDependentOutboxWrites, deletionCursorFrom, discardNoteRuntimeState, rebaseQueuedWrite, settleSavedPatch } from './runtime';
 import { newRecoveryNoteId, outboxAttemptKey, replayAttemptKey } from './util';
 import { scheduleShellSave } from './shell-save';
-import type { Note } from '@shared/types';
 import { workspacePaneForNote } from './workspace';
 import { dirty, noteState, pendingNoteCreates, recoveredOutboxWrites, type DirtyNoteWrite, type NotesState, type RecoveryResult, type SetNotesState } from './model';
 
