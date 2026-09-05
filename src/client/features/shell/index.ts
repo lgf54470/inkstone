@@ -1,3 +1,3 @@
-export * from './AppShell'
-export * from './Resizer'
-export * from './SaveIndicator'
+export * from './app-shell'
+export * from './resizer'
+export * from './save-indicator'

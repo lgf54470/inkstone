@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { WikiLinkHoverCard, type WikiLinkHoverCardState } from './WikiLinkHoverCard'
+import { WikiLinkHoverCard, type WikiLinkHoverCardState } from './wiki-link-hover-card'
 import { applyHighlightToHtml, buildHighlightTerms } from './card-content'
 import { pushLinkHoverTarget, subscribeLinkHoverTarget } from './link-signal'
 import { useLinkHover } from './link-hover'

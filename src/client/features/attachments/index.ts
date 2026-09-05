@@ -1,2 +1,2 @@
-export * from './AttachmentManager'
-export * from './AttachmentDriveModal'
+export * from './attachment-manager'
+export * from './attachment-drive-modal'

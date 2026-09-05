@@ -1,3 +1,3 @@
-export * from './ManageTagsModal'
-export * from './TagColorSubmenu'
-export * from './tagMutations'
+export * from './manage-tags-modal'
+export * from './tag-color-submenu'
+export * from './tag-mutations'

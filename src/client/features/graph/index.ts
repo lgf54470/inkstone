@@ -1,1 +1,1 @@
-export * from './GraphPanel'
+export * from './graph-panel'

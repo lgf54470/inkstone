@@ -1,2 +1,2 @@
-export * from './VersionsPanel'
-export * from './Workspace'
+export * from './versions-panel'
+export * from './workspace'

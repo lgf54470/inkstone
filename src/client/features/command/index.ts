@@ -1,2 +1,2 @@
-export * from './CommandPalette'
-export * from './ShortcutsPanel'
+export * from './command-palette'
+export * from './shortcuts-panel'

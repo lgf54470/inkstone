@@ -1,4 +1,4 @@
 export * from './blog-store'
-export * from './BlogHubModal'
-export * from './BlogNoteSubmenu'
-export * from './BlogPublishModal'
+export * from './blog-hub-modal'
+export * from './blog-note-submenu'
+export * from './blog-publish-modal'

@@ -94,15 +94,15 @@ const allowed = new Map([
     "// the rolling date filter's follow-edit window stays parked at the newest edit and the gap hint",
     "// (newest edit outside a today-anchored window) is directly visible in the demo.",
   ]],
-  ["src/client/editor/codeLanguages.ts", [
+  ["src/client/editor/code-languages.ts", [
     "// Highlighting removed: no code languages are loaded.",
     "// Kept as empty array so the editor behaves as plain Markdown without syntax colors.",
   ]],
-  ["src/client/features/blog/BlogCategoriesModal.tsx", [
+  ["src/client/features/blog/blog-categories-modal.tsx", [
     "/* Form: Add or Edit Category */",
     "/* Existing Categories List */",
   ]],
-  ["src/client/features/blog/BlogCommentsView.tsx", [
+  ["src/client/features/blog/blog-comments-view.tsx", [
     "/* Top filter toolbar */",
     "/* Status tabs */",
     "/* Search & Refresh */",
@@ -114,7 +114,7 @@ const allowed = new Map([
     "/* Comment Content */",
     "/* Action Buttons */",
   ]],
-  ["src/client/features/blog/BlogDashboardView.tsx", [
+  ["src/client/features/blog/blog-dashboard-view.tsx", [
     "/* Welcome & quick action banner */",
     "/* Control Bar: Range + Traffic Filter + Refresh */",
     "/* Real traffic filter banner */",
@@ -133,7 +133,7 @@ const allowed = new Map([
     "/* Real-time Visit Logs */",
     "/* Pending Comments & Moderation */",
   ]],
-  ["src/client/features/blog/BlogHubModal.tsx", [
+  ["src/client/features/blog/blog-hub-modal.tsx", [
     "// Sub-modals state",
     "/* Top Header */",
     "/* Workspace Body */",
@@ -141,7 +141,7 @@ const allowed = new Map([
     "/* Content Area */",
     "/* Sub-modals */",
   ]],
-  ["src/client/features/blog/BlogNoteSubmenu.tsx", [
+  ["src/client/features/blog/blog-note-submenu.tsx", [
     "// 1. Update backend blog post status to unpublished",
     "// 2. Update original note Frontmatter: isPublished = false",
     "/* 1. View in Blog */",
@@ -152,7 +152,7 @@ const allowed = new Map([
     "/* Separator */",
     "/* 6. Unpublish */",
   ]],
-  ["src/client/features/blog/BlogPublishModal.tsx", [
+  ["src/client/features/blog/blog-publish-modal.tsx", [
     "// Helper to extract clean image URL from Markdown or plain string",
     "// Find first image in note content as suggested cover",
     "// Matches markdown images: ![alt](url)",
@@ -166,7 +166,7 @@ const allowed = new Map([
     "// 2. Dual-way linkage: Update original note Frontmatter!",
     "// Add or update: isPublished: true/false, Cover: coverUrl",
   ]],
-  ["src/client/features/blog/BlogSettingsModal.tsx", [
+  ["src/client/features/blog/blog-settings-modal.tsx", [
     "// Site basic states",
     "// Traffic & logs states",
     "// Save traffic & retention filters",
@@ -180,22 +180,22 @@ const allowed = new Map([
     "/* Comments and Pagination Rule */",
     "/* Social Links */",
   ]],
-  ["src/client/features/command/ShortcutsPanel.test.ts", [
+  ["src/client/features/command/shortcuts-panel.test.ts", [
     "// Narrow the results to a single row; the cursor must clamp back inside.",
   ]],
-  ["src/client/features/command/ShortcutsPanel.tsx", [
+  ["src/client/features/command/shortcuts-panel.tsx", [
     "/** Invokes the underlying command for registry-backed rows (command-palette parity). */",
   ]],
-  ["src/client/features/folders/FolderIconSubmenu.tsx", [
+  ["src/client/features/folders/folder-icon-submenu.tsx", [
     "// Pick first grapheme/character",
   ]],
-  ["src/client/features/folders/FolderTemplateModal.tsx", [
+  ["src/client/features/folders/folder-template-modal.tsx", [
     "/* Search */",
     "/* Template options */",
     "/* Option: No template */",
     "/* User & Built-in Templates */",
   ]],
-  ["src/client/features/folders/ManageFoldersModal.tsx", [
+  ["src/client/features/folders/manage-folders-modal.tsx", [
     "/* Controls bar: search and add */",
     "/* Inline create form */",
     "/* Folder list */",
@@ -206,14 +206,14 @@ const allowed = new Map([
     "/* Inline Icon Picker */",
     "/* Sub-modal: Folder Template */",
   ]],
-  ["src/client/features/folders/MoveToFolderSubmenu.tsx", [
+  ["src/client/features/folders/move-to-folder-submenu.tsx", [
     "/* Header */",
     "/* Gmail-style underline search input */",
     "/* Folder list */",
     "/* Divider */",
     "/* Actions */",
   ]],
-  ["src/client/features/graph/GraphPanel.tsx", [
+  ["src/client/features/graph/graph-panel.tsx", [
     "// Notes created from unresolved nodes land in the graph's folder scope so",
     "// they inherit the folder name for the `{{folder}}` template placeholder.",
     "// Private browsing or a locked-down browser can reject local preferences.",
@@ -249,7 +249,7 @@ const allowed = new Map([
     "/** Subscribes to note saves: any edit mutates the notes store, so `latestEditKey` recomputes the moment a note is written and the window re-materializes with zero latency. A single midnight-aligned tick covers only the today-anchored direction. */",
     "/** Keeps the rolling date filter materialized: the window recomputes whenever a note save (or the day rollover) changes its anchor. Mount once, anywhere in the tree. */",
   ]],
-  ["src/client/features/preview/Outline.test.ts", [
+  ["src/client/features/preview/outline.test.ts", [
     "// Each button should render an svg icon",
     "// H1",
     "// minLevel 1, offset 0",
@@ -265,10 +265,10 @@ const allowed = new Map([
     "// First H1 does not have mt-1.5",
     "// Second H1 has mt-1.5",
   ]],
-  ["src/client/features/settings/NoteSettings.tsx", [
+  ["src/client/features/settings/note-settings.tsx", [
     "// Live preview: what the template looks like with the placeholders filled in.",
   ]],
-  ["src/client/features/share/ShareEditModal.tsx", [
+  ["src/client/features/share/share-edit-modal.tsx", [
     "/* Public link display and quick actions */",
     "/* Core action triggers: analytics, qr code, share hub */",
     "/* Share status switch */",
@@ -282,11 +282,11 @@ const allowed = new Map([
     "/* Note analytics modal */",
     "/* QR code modal */",
   ]],
-  ["src/client/features/share/ShareHubSidebar.tsx", [
+  ["src/client/features/share/share-hub-sidebar.tsx", [
     "/* Share folders */",
     "/* Share tags */",
   ]],
-  ["src/client/features/share/ShareNoteSubmenu.tsx", [
+  ["src/client/features/share/share-note-submenu.tsx", [
     "/* Search input */",
     "/* Folder list */",
     "/* Current tags chips */",
@@ -300,19 +300,19 @@ const allowed = new Map([
     "/* 6. Edit share settings */",
     "/* 7. Revoke share if currently shared */",
   ]],
-  ["src/client/features/share/SharePage.tsx", [
+  ["src/client/features/share/share-page.tsx", [
     "// Share pages always block external images (no option): visitors never",
     "// opt in, so third parties cannot track them via note images. The",
     "// server enforces this too by omitting `https:` from CSP img-src on /s/*.",
   ]],
-  ["src/client/features/share/ShareSettingsModal.tsx", [
+  ["src/client/features/share/share-settings-modal.tsx", [
     "/* Traffic Filters Section */",
     "/* Log Retention and Limits Section */",
     "/* Retention Days */",
     "/* Max Log Records */",
     "/* Cleanup Actions */",
   ]],
-  ["src/client/features/share/ShareVisitLogsModal.tsx", [
+  ["src/client/features/share/share-visit-logs-modal.tsx", [
     "/* Controls Toolbar */",
     "/* Traffic Filter Tabs */",
     "/* Search & Actions */",
@@ -331,19 +331,19 @@ const allowed = new Map([
     "// A new or replaced passcode must be at least 4 characters (the server",
     "// enforces the same minimum); short codes are trivially brute-forced.",
   ]],
-  ["src/client/features/sidebar/SidebarCalendar.tsx", [
+  ["src/client/features/sidebar/sidebar-calendar.tsx", [
     "// Single cached projection replaces the three whole-vault Object.values",
     "// scans: a typing commit only re-derives the edited note's day slice and",
     "// title slot, leaving every untouched output identity stable.",
     "// Every ActivityCalendar prop is stabilized so the shallow memo only skips",
     "// the subtree when the projection identities genuinely didn't change.",
   ]],
-  ["src/client/features/sidebar/sidebar/SidebarFolders.tsx", [
+  ["src/client/features/sidebar/sidebar/sidebar-folders.tsx", [
     "// The count feeds the delete-confirmation only; the visible row badge is the",
     "// tree's totalNotes. Look it up from the shared memoized navigation projection",
     "// instead of scanning the whole notes map per folder row per render.",
   ]],
-  ["src/client/features/templates/TemplateGallery.tsx", [
+  ["src/client/features/templates/template-gallery.tsx", [
     "// The fullwidth comma (\\uFF0C) is the typographic default for Chinese input.",
   ]],
   ["src/client/features/workspace/context-menu/types.ts", [

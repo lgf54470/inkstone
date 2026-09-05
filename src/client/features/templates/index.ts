@@ -1,1 +1,1 @@
-export * from './TemplateGallery'
+export * from './template-gallery'
