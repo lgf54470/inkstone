@@ -14,13 +14,11 @@ export default function CalendarWidget({ initialDays = [], isFullPage = false }:
   const [currentMonth, setCurrentMonth] = useState(today.getMonth() + 1) // 1-12
   const [daysData, setDaysData] = useState<CalendarDayPost[]>(initialDays)
   const [selectedDay, setSelectedDay] = useState<CalendarDayPost | null>(null)
-  const [loading, setLoading] = useState(false)
 
   // Fetch when year or month changes
   useEffect(() => {
     let ignore = false
     async function loadData() {
-      setLoading(true)
       try {
         const data = await api.getCalendar(currentYear, currentMonth)
         if (!ignore) {
@@ -28,8 +26,6 @@ export default function CalendarWidget({ initialDays = [], isFullPage = false }:
         }
       } catch (err) {
         console.error('Failed to load calendar data:', err)
-      } finally {
-        if (!ignore) setLoading(false)
       }
     }
 

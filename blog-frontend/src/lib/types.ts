@@ -45,7 +45,6 @@ export interface BlogComment {
   authorName: string
   authorEmail?: string
   authorUrl?: string
-  avatarUrl?: string
   content: string
   status: 'pending' | 'approved' | 'rejected' | 'spam'
   ip?: string

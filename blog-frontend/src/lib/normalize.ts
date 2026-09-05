@@ -178,7 +178,6 @@ export function normalizeComment(value: unknown): BlogComment {
     authorName: asString(c.author_name) || asString(c.authorName),
     authorEmail: asString(c.author_email) || asString(c.authorEmail),
     authorUrl: asString(c.author_url) || asString(c.authorUrl) || undefined,
-    avatarUrl: asString(c.author_avatar) || asString(c.authorAvatar) || undefined,
     content: asString(c.content),
     status: commentStatus(c.status),
     createdAt: toTimestamp(c.created_at) || toTimestamp(c.createdAt) || Date.now(),
