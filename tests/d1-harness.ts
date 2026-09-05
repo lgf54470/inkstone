@@ -46,14 +46,14 @@ export const BASE_SCHEMA = `
 
 export interface D1Prepared {
   bind(...values: unknown[]): D1Prepared
-  run(): Promise<{ meta: { changes: number } }>
+  run(): Promise<{ meta: { changes: number }; results?: Array<Record<string, unknown>> }>
   all(): Promise<{ results: Array<Record<string, unknown>> }>
   first(): Promise<Record<string, unknown> | null>
 }
 
 export interface D1Shim {
   prepare(sql: string): D1Prepared
-  batch(statements: D1Prepared[]): Promise<Array<{ meta: { changes: number } }>>
+  batch(statements: D1Prepared[]): Promise<Array<{ meta: { changes: number }; results?: Array<Record<string, unknown>> }>>
 }
 
 export function createD1Database(extraSchema = ''): D1Shim {
@@ -62,9 +62,13 @@ export function createD1Database(extraSchema = ''): D1Shim {
   const prepare = (sql: string) => {
     const makeStatement = (values: unknown[]): D1Prepared => {
       const statement = sqlite.prepare(sql)
+      const returnsRows = /\bRETURNING\b/i.test(sql) || /^\s*(?:SELECT|WITH)\b/i.test(sql)
       return {
         bind: (...bound: unknown[]) => makeStatement(bound),
         run: async () => {
+          if (returnsRows) {
+            return { meta: { changes: 0 }, results: statement.all(...values) as Array<Record<string, unknown>> }
+          }
           const info = statement.run(...values)
           return { meta: { changes: Number(info.changes) } }
         },
@@ -77,7 +81,7 @@ export function createD1Database(extraSchema = ''): D1Shim {
   return {
     prepare,
     batch: async (statements) => {
-      const out: Array<{ meta: { changes: number } }> = []
+      const out: Array<{ meta: { changes: number }; results?: Array<Record<string, unknown>> }> = []
       for (const statement of statements) out.push(await statement.run())
       return out
     },

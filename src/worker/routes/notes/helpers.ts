@@ -53,6 +53,8 @@ export const patchNoteSchema = z.object({
   preserveVersion: z.boolean().optional(),
 })
 
+export type PatchNoteBody = z.infer<typeof patchNoteSchema>
+
 export const duplicateNoteSchema = z.object({
   id: z.string().refine(isValidId, 'id must be a valid note id').optional(),
 })
@@ -139,79 +141,71 @@ export async function rewriteInboundWikiLinks(
   // conflicting candidates get a fresh single-row read on retry.
   const preloaded = await loadRewriteNotes(db, userId, candidates.map((candidate) => candidate.id))
   for (const candidate of candidates) {
-    let isComplete = false
-    let note: RewriteNoteRow | null = preloaded.get(candidate.id) ?? null
-    for (let attempt = 0; attempt < 5; attempt++) {
-      if (!note || note.deleted_at !== null) {
-        isComplete = true
-        break
-      }
-      const content = replaceWikiLinkTarget(note.content, fromTitle, toTitle)
-      if (content === note.content) {
-        isComplete = true
-        break
-      }
-      const hash = await sha256Hex(content)
-      const { words, chars } = countText(content)
-      const now = Math.max(Date.now(), note.updated_at + 1)
-      const nextRev = note.rev + 1
-      const guard = `EXISTS (SELECT 1 FROM notes
-        WHERE id = ?1 AND user_id = ?2 AND rev = ?3
-          AND content_hash = ?4 AND title = ?5 AND updated_at = ?6)`
-      const guardValues = [note.id, userId, nextRev, hash, note.title, now] as const
-      const statements: D1PreparedStatement[] = [
-        db.prepare(
-          `UPDATE notes SET content = ?1, excerpt = ?2, word_count = ?3, char_count = ?4,
-             content_hash = ?5, rev = ?6, updated_at = ?7
-            WHERE id = ?8 AND user_id = ?9 AND rev = ?10 AND content_hash = ?11`,
-        ).bind(content, deriveExcerpt(content), words, chars, hash, nextRev, now,
-          note.id, userId, note.rev, note.content_hash),
-        db.prepare(
-          `INSERT INTO note_versions (id, note_id, user_id, title, content, size, created_at)
-           SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7 WHERE ${shiftSqlPlaceholders(guard, 7)}`,
-        ).bind(newId(), note.id, userId, note.title, note.content,
-          utf8ByteLength(note.content), now, ...guardValues),
-        db.prepare(
-          `DELETE FROM note_versions WHERE note_id = ?1
-             AND ${shiftSqlPlaceholders(guard, 1)}
-             AND id NOT IN (SELECT id FROM note_versions WHERE note_id = ?1 ORDER BY created_at DESC LIMIT ?8)`,
-        ).bind(note.id, ...guardValues, LIMITS.versionsPerNote),
-      ]
-      statements.push(...buildNoteDerivedStatements({
-        db,
-        userId,
-        noteId: note.id,
-        title: note.title,
-        content,
-        ftsEnabled,
-        expectedRev: nextRev,
-        expectedContentHash: hash,
-        expectedTitle: note.title,
-        expectedUpdatedAt: now,
-      }).statements)
-      statements.push(noteIndexQueueStatement(db, userId, note.id, 'embed', now))
-      statements.push(
-        db.prepare(
-          `INSERT INTO changes (user_id, entity, entity_id, op, at)
-           SELECT ?1, 'note', ?2, 'upsert', ?3 WHERE ${shiftSqlPlaceholders(guard, 3)}`,
-        ).bind(userId, note.id, now, ...guardValues),
-      )
-      const [updated] = await db.batch(statements)
-      if (updated?.meta.changes) {
-        rewritten++
-        isComplete = true
-        break
-      }
-      // The guarded write was lost to a concurrent edit: re-read just this
-      // note and retry with fresh state.
-      note = await db.prepare(
-        `SELECT id, title, content, content_hash, rev, updated_at, deleted_at
-           FROM notes WHERE id = ?1 AND user_id = ?2`,
-      ).bind(candidate.id, userId).first<RewriteNoteRow>()
-    }
-    if (!isComplete) skipped++
+    const result = await rewriteCandidateNote(db, {
+      userId,
+      candidateId: candidate.id,
+      preloaded,
+      fromTitle,
+      toTitle,
+      ftsEnabled,
+    })
+    if (result.rewritten) rewritten++
+    if (!result.completed) skipped++
   }
   return { rewritten, skipped }
+}
+
+async function rewriteCandidateNote(db: D1Database, params: {
+  userId: string
+  candidateId: string
+  preloaded: Map<string, RewriteNoteRow>
+  fromTitle: string
+  toTitle: string
+  ftsEnabled: boolean
+}): Promise<{ rewritten: boolean; completed: boolean }> {
+  const { userId, candidateId, preloaded, fromTitle, toTitle, ftsEnabled } = params
+  let note: RewriteNoteRow | null = preloaded.get(candidateId) ?? null
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (!note || note.deleted_at !== null) return { rewritten: false, completed: true }
+    const content = replaceWikiLinkTarget(note.content, fromTitle, toTitle)
+    if (content === note.content) return { rewritten: false, completed: true }
+    const hash = await sha256Hex(content)
+    const { words, chars } = countText(content)
+    const now = Math.max(Date.now(), note.updated_at + 1)
+    const nextRev = note.rev + 1
+    const guard = `EXISTS (SELECT 1 FROM notes
+        WHERE id = ?1 AND user_id = ?2 AND rev = ?3
+          AND content_hash = ?4 AND title = ?5 AND updated_at = ?6)`
+    const guardValues = [note.id, userId, nextRev, hash, note.title, now] as const
+    const statements: D1PreparedStatement[] = [
+      db.prepare(
+        `UPDATE notes SET content = ?1, excerpt = ?2, word_count = ?3, char_count = ?4,
+           content_hash = ?5, rev = ?6, updated_at = ?7
+          WHERE id = ?8 AND user_id = ?9 AND rev = ?10 AND content_hash = ?11`,
+      ).bind(content, deriveExcerpt(content), words, chars, hash, nextRev, now, note.id, userId, note.rev, note.content_hash),
+      db.prepare(
+        `INSERT INTO note_versions (id, note_id, user_id, title, content, size, created_at)
+         SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7 WHERE ${shiftSqlPlaceholders(guard, 7)}`,
+      ).bind(newId(), note.id, userId, note.title, note.content, utf8ByteLength(note.content), now, ...guardValues),
+      trimNoteVersionsStatement(db, note.id, guard, guardValues),
+    ]
+    statements.push(...buildNoteDerivedStatements({
+      db, userId, noteId: note.id, title: note.title, content, ftsEnabled,
+      expectedRev: nextRev, expectedContentHash: hash,
+      expectedTitle: note.title, expectedUpdatedAt: now,
+    }).statements)
+    statements.push(noteIndexQueueStatement(db, userId, note.id, 'embed', now))
+    statements.push(guardedChangeStatement(db, { userId, entityId: note.id, op: 'upsert', now, guard, guardValues }))
+    const [updated] = await db.batch(statements)
+    if (updated?.meta.changes) return { rewritten: true, completed: true }
+    // The guarded write was lost to a concurrent edit: re-read just this
+    // note and retry with fresh state.
+    note = await db.prepare(
+      `SELECT id, title, content, content_hash, rev, updated_at, deleted_at
+         FROM notes WHERE id = ?1 AND user_id = ?2`,
+    ).bind(candidateId, userId).first<RewriteNoteRow>()
+  }
+  return { rewritten: false, completed: false }
 }
 
 export function sameTagSet(left: string[], right: string[]): boolean {
@@ -361,4 +355,57 @@ export async function resolveFolderId(
     .first<{ id: string }>()
   if (!row) throw ApiError.badRequest('Folder not found')
   return row.id
+}
+
+export async function noteIdFromRequest(
+  db: D1Database,
+  userId: string,
+  requestedId: string | undefined,
+): Promise<{ id: string; existing: NoteRow | null }> {
+  const id = requestedId ?? newId()
+  if (!requestedId) return { id, existing: null }
+  const existing = await db
+    .prepare(`SELECT ${NOTE_COLUMNS_FULL} FROM notes n WHERE n.id = ?1 AND n.user_id = ?2`)
+    .bind(id, userId)
+    .first<NoteRow>()
+  if (existing) return { id, existing }
+  const collision = await db
+    .prepare(`SELECT user_id FROM notes WHERE id = ?1`)
+    .bind(id)
+    .first<{ user_id: string }>()
+  if (collision) throw ApiError.conflict('This note id is already in use')
+  return { id, existing: null }
+}
+
+export function trimNoteVersionsStatement(
+  db: D1Database,
+  noteId: string,
+  guard: string,
+  guardValues: readonly unknown[],
+): D1PreparedStatement {
+  return db.prepare(
+    `DELETE FROM note_versions WHERE note_id = ?1
+       AND ${shiftSqlPlaceholders(guard, 1)}
+       AND id NOT IN (SELECT id FROM note_versions WHERE note_id = ?1 ORDER BY created_at DESC LIMIT ?8)`,
+  ).bind(noteId, ...guardValues, LIMITS.versionsPerNote)
+}
+
+export function guardedChangeStatement(
+  db: D1Database,
+  params: {
+    userId: string
+    entityId: string
+    op: 'upsert' | 'delete'
+    now: number
+    guard: string
+    guardValues: readonly unknown[]
+    returningSeq?: boolean
+  },
+): D1PreparedStatement {
+  const { userId, entityId, op, now, guard, guardValues, returningSeq } = params
+  return db.prepare(
+    `INSERT INTO changes (user_id, entity, entity_id, op, at)
+     SELECT ?1, 'note', ?2, '${op}', ?3 WHERE ${shiftSqlPlaceholders(guard, 3)}
+     ${returningSeq ? 'RETURNING seq' : ''}`,
+  ).bind(userId, entityId, now, ...guardValues)
 }
