@@ -1,0 +1,5 @@
+export { renderMarkdown } from './render-markdown.ts'
+export { slugify } from './slugify.ts'
+export { stripObsidianComments } from './obsidian.ts'
+export { parseFenceInfo } from './fence.ts'
+export type { TocHeading, RenderResult, FenceInfo } from './types.ts'
