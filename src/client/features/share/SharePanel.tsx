@@ -4,6 +4,7 @@ import { LIMITS } from '@shared/constants';
 import type { ShareInfo } from '@shared/types';
 import { api, ApiError } from '../../lib/api';
 import { cn } from '../../lib/cn';
+import { errorMessage } from '../../lib/errors';
 import { fullTime } from '../../lib/time';
 import { useRelativeTime } from '../../lib/hooks';
 import { Badge, Button } from '../../components/primitives';
@@ -74,7 +75,7 @@ export function SharePanel({ onClose }: {
         })
             .catch((error) => {
             if (!cancelled && loadEpoch.current === epoch && noteIdRef.current === noteId)
-                setLoadError(error instanceof Error ? error.message : String(error));
+                setLoadError(errorMessage(error));
         });
         return () => {
             cancelled = true;

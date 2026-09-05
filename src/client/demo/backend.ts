@@ -44,6 +44,7 @@ import type {
 } from '@shared/types'
 import { createZip, readZip } from '@shared/zip'
 import { DEMO_CREDENTIALS } from '../lib/runtime'
+import { errorMessage } from '../lib/errors'
 import {
   createDemoState,
   listFolders,
@@ -1582,7 +1583,7 @@ export function createDemoBackend(): DemoBackend {
           result.createdNotes++
         }
       } catch (error) {
-        result.warnings.push(`${value.name}: ${error instanceof Error ? error.message : String(error)}`)
+        result.warnings.push(`${value.name}: ${errorMessage(error)}`)
       }
     }
     state.cursor++

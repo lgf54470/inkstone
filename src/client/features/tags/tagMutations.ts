@@ -3,6 +3,7 @@ import { replaceTagInContent, sortTagNames } from '@shared/markdown-utils'
 import type { NoteSummary, Tag } from '@shared/types'
 import { confirm } from '../../components/overlay'
 import { api } from '../../lib/api'
+import { errorMessage } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { setOptimisticTagCache } from '../../store/notes/selectors'
 import { useNotes } from '../../store/notes'
@@ -48,7 +49,7 @@ export function createTag(value: string): string | null {
       void useNotes.getState().refreshTags().catch(() => {})
       useUi.getState().toast({
         title: t('tags.create_failed'),
-        description: error instanceof Error ? error.message : String(error),
+        description: errorMessage(error),
         tone: 'danger',
       })
     },
@@ -96,7 +97,7 @@ export async function renameTag(tag: Tag, value: string): Promise<void> {
     }
     ui.toast({
       title: t('tags.rename_failed'),
-      description: error instanceof Error ? error.message : String(error),
+      description: errorMessage(error),
       tone: 'danger',
     })
     return
@@ -143,7 +144,7 @@ export async function deleteTag(tag: Tag): Promise<void> {
     if (beforeUi.view === 'tag' && ui.view === 'all') ui.openView('tag', { tag: tag.name })
     ui.toast({
       title: t('tags.delete_failed'),
-      description: error instanceof Error ? error.message : String(error),
+      description: errorMessage(error),
       tone: 'danger',
     })
     return
@@ -197,7 +198,7 @@ export async function setTagColor(tag: Tag, color: string | null): Promise<void>
         }))
         useUi.getState().toast({
           title: t('tags.color_failed'),
-          description: error instanceof Error ? error.message : String(error),
+          description: errorMessage(error),
           tone: 'danger',
         })
       }
@@ -241,7 +242,7 @@ export async function setTagPinned(tag: Tag, isPinned: boolean): Promise<void> {
     }))
     useUi.getState().toast({
       title: isPinned ? t('tags.pin_failed') : t('tags.unpin_failed'),
-      description: error instanceof Error ? error.message : String(error),
+      description: errorMessage(error),
       tone: 'danger',
     })
     return

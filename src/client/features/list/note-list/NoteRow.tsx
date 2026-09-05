@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { NoteSummary } from '@shared/types';
 import { cn } from '../../../lib/cn';
+import { errorMessage } from '../../../lib/errors';
 import { splitByRanges } from '../../../lib/fuzzy';
 import { useBreakpoint } from '../../../lib/hooks';
 import { exportNoteAsHtml, exportNoteAsMarkdown, exportNoteAsPdf } from '../../../lib/export-note';
@@ -159,7 +160,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
         catch (err) {
             toast({
                 title: t("common.export_failed"),
-                description: err instanceof Error ? err.message : String(err),
+                description: errorMessage(err),
                 tone: 'danger',
             });
         }

@@ -5,6 +5,7 @@ import { Tooltip, confirm } from '../../../components/overlay';
 import { useUi } from '../../../store/ui';
 import { useNotes } from '../../../store/notes';
 import { FolderPicker } from '../../folders/FolderPicker';
+import { errorMessage } from '../../../lib/errors';
 import { t } from '../../../lib/i18n';
 
 export function BulkBar() {
@@ -47,7 +48,7 @@ export function BulkBar() {
             await task();
         }
         catch (err) {
-            toast({ title: t("common.action_failed"), description: err instanceof Error ? err.message : String(err), tone: 'danger' });
+            toast({ title: t("common.action_failed"), description: errorMessage(err), tone: 'danger' });
         }
         finally {
             busyRef.current = false;

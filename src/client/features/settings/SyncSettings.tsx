@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, CloudOff, RefreshCw } from 'lucide-react';
+import { errorMessage } from '../../lib/errors';
 import { useRelativeTime } from '../../lib/hooks';
 import { Button } from '../../components/primitives';
 import { SettingRow, Slider, Switch } from '../../components/form';
@@ -61,7 +62,7 @@ export function SyncSettings() {
         catch (error) {
             toast({
                 title: t("common.action_failed"),
-                description: error instanceof Error ? error.message : String(error),
+                description: errorMessage(error),
                 tone: 'danger',
             });
         }

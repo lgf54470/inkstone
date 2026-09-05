@@ -22,6 +22,7 @@ import type { GraphNode, GraphQuery, GraphResponse } from '@shared/types'
 import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
 import { api } from '../../lib/api'
+import { errorMessage } from '../../lib/errors'
 import { clearSelectionToastKey, clearTagSelection } from '../../lib/tag-selection'
 import {
   GRAPH_APPEARANCE_TOGGLES,
@@ -248,7 +249,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
       if (!cancelled) setData(normalizedResponse(response))
     }).catch((error) => {
       if (!cancelled && (error as Error)?.name !== 'AbortError') {
-        setLoadError(error instanceof Error ? error.message : String(error))
+        setLoadError(errorMessage(error))
       }
     })
     return () => {

@@ -5,6 +5,7 @@ import type { NoteSummary, SearchHit } from '@shared/types';
 import { truncateText } from '@shared/text-utils';
 import { cn } from '../../lib/cn';
 import { api } from '../../lib/api';
+import { errorMessage } from '../../lib/errors';
 import { canFuzzyMatch, fuzzyFilter, splitByRanges, type FuzzyMatch } from '../../lib/fuzzy';
 import { useDebounced, useNow } from '../../lib/hooks';
 import { shortTime } from '../../lib/time';
@@ -359,7 +360,7 @@ export function CommandPalette({ onClose }: {
                 run: () => void api.transfer.save('zip').catch((error) => {
                     useUi.getState().toast({
                         title: t("common.export_failed"),
-                        description: error instanceof Error ? error.message : String(error),
+                        description: errorMessage(error),
                         tone: 'danger',
                     });
                 }),

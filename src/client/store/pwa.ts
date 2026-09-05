@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { errorMessage } from '../lib/errors'
 import { t } from '../lib/i18n'
 import { useUi } from './ui'
 
@@ -184,7 +185,7 @@ async function applyUpdate(worker: ServiceWorker): Promise<void> {
   } catch (error) {
     useUi.getState().toast({
       title: t('common.save_failed'),
-      description: error instanceof Error ? error.message : String(error),
+      description: errorMessage(error),
       tone: 'danger',
     })
     return

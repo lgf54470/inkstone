@@ -13,6 +13,7 @@ import { Modal } from '../../components/overlay'
 import { Button, IconButton } from '../../components/primitives'
 import { Input, Switch } from '../../components/form'
 import { cn } from '../../lib/cn'
+import { errorMessage } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { useNotes } from '../../store/notes'
@@ -235,8 +236,8 @@ export function BlogPublishModal({
 
       onSaved?.()
       onClose()
-    } catch (err: any) {
-      toast({ title: err?.message || t('common.action_failed'), tone: 'danger' })
+    } catch (error: unknown) {
+      toast({ title: errorMessage(error) || t('common.action_failed'), tone: 'danger' })
     } finally {
       setSaving(false)
     }

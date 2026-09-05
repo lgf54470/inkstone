@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { LIMITS } from '@shared/constants';
 import { cn } from '../../../lib/cn';
+import { errorMessage } from '../../../lib/errors';
 import { IconButton, SectionLabel } from '../../../components/primitives';
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../../components/overlay';
 import { useUi } from '../../../store/ui';
@@ -384,7 +385,7 @@ export function FolderRow({ node, siblings, index, parentNode, parentSiblings, o
                 } catch (err) {
                     useUi.getState().toast({
                         title: t("common.export_failed"),
-                        description: err instanceof Error ? err.message : String(err),
+                        description: errorMessage(err),
                         tone: 'danger',
                     });
                 }

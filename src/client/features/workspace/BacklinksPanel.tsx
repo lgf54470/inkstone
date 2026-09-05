@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Link2 } from 'lucide-react';
 import type { Backlink } from '@shared/types';
 import { getNoteBacklinks } from '../../lib/backlinks';
+import { errorMessage } from '../../lib/errors';
 import { Button } from '../../components/primitives';
 import { useNotes } from '../../store/notes';
 import { t } from "../../lib/i18n";
@@ -30,7 +31,7 @@ export function BacklinksPanel({ noteId }: {
         })
             .catch((error) => {
             if (!cancelled)
-                setLoadError(error instanceof Error ? error.message : String(error));
+                setLoadError(errorMessage(error));
         });
         return () => {
             cancelled = true;

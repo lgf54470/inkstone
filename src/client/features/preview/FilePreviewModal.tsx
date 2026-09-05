@@ -18,6 +18,7 @@ import { Modal } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/cn'
+import { errorMessage } from '../../lib/errors'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import { decorateCodeBlock } from '../../lib/markdown/enhance'
 import { highlightWithPrism } from '../../lib/markdown/prism'
@@ -282,7 +283,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
       })
       .catch((err) => {
         if (controller.signal.aborted) return
-        setError(err instanceof Error ? err.message : String(err))
+        setError(errorMessage(err))
         setLoading(false)
       })
 

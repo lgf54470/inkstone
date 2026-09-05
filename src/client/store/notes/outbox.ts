@@ -1,6 +1,7 @@
 /** Offline write-ahead replay: dependency-ordered outbox flush, conflict rebase, and 404 recovery. */
 import { api, ApiError, CLIENT_ID } from '../../lib/api';
 import { localDb, publishBroadcast, type BroadcastPayload, type OutboxItem } from '../../lib/db';
+import { errorMessage } from '../../lib/errors';
 import { t } from '../../lib/i18n';
 import { useUi } from '../ui';
 import { adoptNote } from './adopt';
@@ -362,7 +363,7 @@ async function replayOutboxNow(get: () => NotesState, set: SetNotesState): Promi
                 await localDb.markOutboxFailure(
                     item.id,
                     item.writeId,
-                    err instanceof Error ? err.message : String(err),
+                    errorMessage(err),
                 ).catch(() => {});
             }
         }

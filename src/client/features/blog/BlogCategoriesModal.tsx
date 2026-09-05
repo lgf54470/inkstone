@@ -4,6 +4,7 @@ import type { BlogCategory } from '@shared/types'
 import { Modal } from '../../components/overlay'
 import { Button, IconButton } from '../../components/primitives'
 import { Input } from '../../components/form'
+import { errorMessage } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { confirm } from '../../components/overlay'
@@ -80,8 +81,8 @@ export function BlogCategoriesModal({
         toast({ title: t('common.created'), tone: 'success' })
       }
       handleCancelEdit()
-    } catch (err: any) {
-      toast({ title: err?.message || t('common.action_failed'), tone: 'danger' })
+    } catch (error: unknown) {
+      toast({ title: errorMessage(error) || t('common.action_failed'), tone: 'danger' })
     } finally {
       setSaving(false)
     }

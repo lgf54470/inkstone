@@ -4,6 +4,7 @@ import { EditorSelection } from '@codemirror/state';
 import { ArrowLeft, Columns2, Download, Eye, FileCode, FileDown, FileText, FolderClosed, Globe, Hash, History, LayoutGrid, Link as LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Plus, Share2, Star, X, } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { api } from '../../lib/api';
+import { errorMessage } from '../../lib/errors';
 import { EditorContextMenu } from './EditorContextMenu';
 import { detectEditorContext, detectPreviewContext, type EditorContextData, type PreviewContextData } from './context-menu-detect';
 import { readingMinutes } from '@shared/markdown-utils';
@@ -174,7 +175,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
             catch (err) {
                 toast({
                     title: t("workspace.upload_failed"),
-                    description: err instanceof Error ? err.message : String(err),
+                    description: errorMessage(err),
                     tone: 'danger',
                 });
                 return null;
@@ -293,7 +294,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         catch (err) {
             toast({
                 title: t("workspace.export_failed"),
-                description: err instanceof Error ? err.message : String(err),
+                description: errorMessage(err),
                 tone: 'danger',
             });
         }

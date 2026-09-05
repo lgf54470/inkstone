@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Download, FileJson, FileUp, FolderOpen, ImageIcon, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { errorMessage } from '../../lib/errors';
 import { formatBytes, formatNumber } from '../../lib/time';
 import { Button } from '../../components/primitives';
 import { LoadingBlock } from '../../components/feedback';
@@ -66,7 +67,7 @@ export function DataSettings() {
             catch (error) {
                 toast({
                     title: t("common.export_failed"),
-                    description: error instanceof Error ? error.message : String(error),
+                    description: errorMessage(error),
                     tone: 'danger',
                 });
             }
@@ -183,7 +184,7 @@ export function DataSettings() {
                     await reportImport(result);
                 }
                 catch (err) {
-                    toast({ title: t("settings.import_failed"), description: err instanceof Error ? err.message : String(err), tone: 'danger' });
+                    toast({ title: t("settings.import_failed"), description: errorMessage(err), tone: 'danger' });
                 }
             });
         }}/>
@@ -203,7 +204,7 @@ export function DataSettings() {
                     await reportImport(result);
                 }
                 catch (err) {
-                    toast({ title: t("settings.import_failed"), description: err instanceof Error ? err.message : String(err), tone: 'danger' });
+                    toast({ title: t("settings.import_failed"), description: errorMessage(err), tone: 'danger' });
                 }
             });
         }}/>
@@ -219,7 +220,7 @@ export function DataSettings() {
                 toast({ title: t("settings.rebuilt_the_index_for_value0_notes", { value0: res.indexed }), tone: 'success' });
             }
             catch (err) {
-                toast({ title: t("settings.rebuild_failed"), description: err instanceof Error ? err.message : String(err), tone: 'danger' });
+                toast({ title: t("settings.rebuild_failed"), description: errorMessage(err), tone: 'danger' });
             }
         })}>{t("settings.rebuild_index")}</Button>
         </SettingRow>
@@ -244,7 +245,7 @@ export function DataSettings() {
                 });
             }
             catch (err) {
-                toast({ title: t("settings.cleanup_failed"), description: err instanceof Error ? err.message : String(err), tone: 'danger' });
+                toast({ title: t("settings.cleanup_failed"), description: errorMessage(err), tone: 'danger' });
             }
         })}>{t("settings.clean_up")}</Button>
         </SettingRow>
@@ -272,7 +273,7 @@ export function DataSettings() {
             catch (err) {
                 toast({
                     title: t("common.delete_failed"),
-                    description: err instanceof Error ? err.message : String(err),
+                    description: errorMessage(err),
                     tone: 'danger',
                 });
             }

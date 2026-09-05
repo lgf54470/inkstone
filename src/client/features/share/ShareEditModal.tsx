@@ -22,6 +22,7 @@ import { Button } from '../../components/primitives'
 import { Input, Segmented, Switch } from '../../components/form'
 import { useUi } from '../../store/ui'
 import { api } from '../../lib/api'
+import { errorMessage } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { KEEP_CURRENT_EXPIRY, expiresInForSelection, needsNewSharePasscode } from './share-form'
 import { generateRandomSlug } from './share-helpers'
@@ -211,7 +212,7 @@ export function ShareEditModal({
     } catch (err) {
       toast({
         title: t('common.action_failed'),
-        description: err instanceof Error ? err.message : String(err),
+        description: errorMessage(err),
         tone: 'danger',
       })
     } finally {

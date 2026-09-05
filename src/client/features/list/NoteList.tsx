@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { type DateRangeFilter, type NoteSummary, type SortKey, type ViewKind } from '@shared/types';
 import { cn } from '../../lib/cn';
+import { errorMessage } from '../../lib/errors';
 import { groupLabel } from '../../lib/time';
 import { useNow } from '../../lib/hooks';
 import { fuzzyFilter } from '../../lib/fuzzy';
@@ -641,7 +642,7 @@ function useEmptyTrash() {
             });
         }
         catch (err) {
-            toast({ title: t("notes.clearing_failed"), description: err instanceof Error ? err.message : String(err), tone: 'danger' });
+            toast({ title: t("notes.clearing_failed"), description: errorMessage(err), tone: 'danger' });
         }
         finally {
             busyRef.current = false;

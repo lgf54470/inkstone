@@ -22,6 +22,7 @@ import { useNotes } from '../../store/notes';
 import { selectNavigationProjection } from '../../store/notes/selectors';
 import { useUi } from '../../store/ui';
 import { cn } from '../../lib/cn';
+import { errorMessage } from '../../lib/errors';
 import { folderPathLabel, openFolderView } from '../../lib/folders';
 import { setFolderTemplateId, setInboxFolderId, useFolderPreferences } from '../../lib/folder-prefs';
 import { exportFolderAsZip } from '../../lib/export-folder';
@@ -426,7 +427,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
                               } catch (err) {
                                 toast({
                                   title: t('common.export_failed'),
-                                  description: err instanceof Error ? err.message : String(err),
+                                  description: errorMessage(err),
                                   tone: 'danger',
                                 });
                               }

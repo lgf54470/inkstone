@@ -17,6 +17,7 @@ import { Input, SettingRow, Switch } from '../../components/form'
 import { Tooltip, confirm } from '../../components/overlay'
 import { Badge, Button, IconButton } from '../../components/primitives'
 import { api } from '../../lib/api'
+import { errorMessage } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { IS_DEMO_MODE } from '../../lib/runtime'
 import { fullTime, relativeTime } from '../../lib/time'
@@ -659,6 +660,3 @@ function scopeSummary(scopes: string[]): string {
   }).join(' · ')
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}

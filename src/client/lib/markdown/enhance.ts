@@ -1,5 +1,6 @@
 import { escapeHtml } from '@shared/escape';
 import { decodeDataValue } from './data-attr';
+import { errorMessage } from '../errors';
 import { t } from "../i18n";
 import { highlightWithPrism } from './prism';
 import { sanitizeCodeTokenHtml, sanitizeMathHtml } from './sanitize';
@@ -389,7 +390,7 @@ function showMermaidError(node: HTMLElement, err: unknown, source: string): void
     wrap.className = 'mermaid-error';
     const message = document.createElement('span');
     message.className = 'mermaid-error-message';
-    const detail = err instanceof Error ? err.message : String(err);
+    const detail = errorMessage(err);
     message.textContent = detail.slice(0, 500);
     const retry = document.createElement('button');
     retry.type = 'button';
@@ -514,7 +515,7 @@ export async function renderChartJs(root: HTMLElement, dark: boolean): Promise<v
             node.classList.remove('loading');
             node.classList.add('has-error', 'chart-error');
             node.removeAttribute('aria-busy');
-            const message = err instanceof Error ? err.message : String(err);
+            const message = errorMessage(err);
             node.innerHTML = `<div class="chart-error-banner"><span class="chart-error-text">${escapeHtml(t("markdown.chart_rendering_failed"))}: ${escapeHtml(message)}</span></div><pre><code>${escapeHtml(raw)}</code></pre>`;
             node.dataset.rendered = signature;
             continue;
@@ -586,7 +587,7 @@ export async function renderChartJs(root: HTMLElement, dark: boolean): Promise<v
             node.classList.remove('loading');
             node.classList.add('has-error', 'chart-error');
             node.removeAttribute('aria-busy');
-            const message = err instanceof Error ? err.message : String(err);
+            const message = errorMessage(err);
             node.innerHTML = `<div class="chart-error-banner"><span class="chart-error-text">${escapeHtml(t("markdown.chart_rendering_failed"))}: ${escapeHtml(message)}</span></div><pre><code>${escapeHtml(raw)}</code></pre>`;
             node.dataset.rendered = signature;
         }

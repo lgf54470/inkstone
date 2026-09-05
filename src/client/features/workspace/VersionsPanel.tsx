@@ -3,6 +3,7 @@ import { History, RotateCcw } from 'lucide-react';
 import type { NoteVersionMeta } from '@shared/types';
 import { api } from '../../lib/api';
 import { cn } from '../../lib/cn';
+import { errorMessage } from '../../lib/errors';
 import { formatBytes, fullTime } from '../../lib/time';
 import { useRelativeTime } from '../../lib/hooks';
 import { Button } from '../../components/primitives';
@@ -54,7 +55,7 @@ export function VersionsPanel({ onClose }: {
         })
             .catch((error) => {
             if (!cancelled)
-                setVersionsError(error instanceof Error ? error.message : String(error));
+                setVersionsError(errorMessage(error));
         });
         return () => {
             cancelled = true;
@@ -80,7 +81,7 @@ export function VersionsPanel({ onClose }: {
         })
             .catch((error) => {
             if (!cancelled)
-                setPreviewError(error instanceof Error ? error.message : String(error));
+                setPreviewError(errorMessage(error));
         });
         return () => {
             cancelled = true;
@@ -110,7 +111,7 @@ export function VersionsPanel({ onClose }: {
         }
         catch (err) {
             if (restoreEpoch.current === epoch && noteIdRef.current === noteId)
-                toast({ title: t("common.restore_failed"), description: err instanceof Error ? err.message : String(err), tone: 'danger' });
+                toast({ title: t("common.restore_failed"), description: errorMessage(err), tone: 'danger' });
         }
         finally {
             if (restoreEpoch.current === epoch && noteIdRef.current === noteId) {
