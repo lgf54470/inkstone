@@ -1062,7 +1062,7 @@ const allowed = new Map([
     "// vault instead.",
     "/** Idempotently replace the `seed-*` vault with `count` notes spread day-by-day over `years` years, several notes per day with intra-day hour offsets. */",
   ]],
-  ["src/worker/routes/files.ts", [
+  ["src/worker/routes/files/helpers.ts", [
     "// The usage panel re-opens and re-pages often while note contents rarely",
     "// change between opens; keep one exact reference map per user for a short",
     "// window so page 2, filters and re-opens skip the full content scan.",
@@ -1076,7 +1076,7 @@ const allowed = new Map([
     "// every wanted id has been found is exact: unscanned notes could only add",
     "// more references for already-found ids, never create new ones.",
   ]],
-  ["src/worker/routes/folders.ts", [
+  ["src/worker/routes/folders/helpers.ts", [
     "// Patch format checks run in-route after the ownership lookup so cross-user writes surface 404 first.",
   ]],
   ["src/worker/routes/mcp-authorize.ts", [
@@ -1101,12 +1101,14 @@ const allowed = new Map([
     "// client never re-reads `total` once paging starts); deep pages skip it so",
     "// the cost does not grow with every deleted row the index has to walk.",
   ]],
-  ["src/worker/routes/search.ts", [
+  ["src/worker/routes/search/graph.ts", [
+    "// `tagsMatch=all` intersects the tag filters, otherwise any match qualifies.",
+  ]],
+  ["src/worker/routes/search/query.ts", [
     "// Drain synchronously (up to the read-path cap) before querying: a search",
     "// that follows note edits within the FTS drain delay should still hit the",
     "// index instead of silently falling back to LIKE. The background drain",
     "// keeps handling the remainder and deletes.",
-    "// `tagsMatch=all` intersects the tag filters, otherwise any match qualifies.",
   ]],
   ["src/worker/routes/share/public.ts", [
     "// If header referer is simply this share page itself, it's not an external referrer",
@@ -1125,7 +1127,7 @@ const allowed = new Map([
     "// Never move the client's cursor backwards, even if it reported a",
     "// seq ahead of the server (e.g. data was trimmed).",
   ]],
-  ["src/worker/routes/tags.ts", [
+  ["src/worker/routes/tags/helpers.ts", [
     "// Format is checked after the ownership lookup so cross-user writes surface 404 first.",
     "// Read every candidate once in a single batched query instead of one SELECT",
     "// per candidate; the guarded UPDATE still catches concurrent edits and only",

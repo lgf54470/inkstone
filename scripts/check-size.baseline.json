@@ -660,14 +660,25 @@
   "src/worker/routes/community-templates.ts": {
     "longFns": 1
   },
-  "src/worker/routes/files.ts": {
-    "lines": 1000,
-    "longFns": 6,
-    "deepFns": 4
+  "src/worker/routes/files/helpers.ts": {
+    "deepFns": 2
   },
-  "src/worker/routes/folders.ts": {
-    "lines": 626,
-    "longFns": 3
+  "src/worker/routes/files/library.ts": {
+    "longFns": 3,
+    "deepFns": 1
+  },
+  "src/worker/routes/files/maintenance.ts": {
+    "longFns": 3,
+    "deepFns": 1
+  },
+  "src/worker/routes/files/organizer.ts": {
+    "longFns": 2
+  },
+  "src/worker/routes/files/update.ts": {
+    "longFns": 2
+  },
+  "src/worker/routes/folders/crud.ts": {
+    "longFns": 4
   },
   "src/worker/routes/mcp-authorize.ts": {
     "longFns": 2
@@ -694,10 +705,16 @@
   "src/worker/routes/notes/versions.ts": {
     "longFns": 2
   },
-  "src/worker/routes/search.ts": {
-    "lines": 657,
+  "src/worker/routes/search/graph.ts": {
     "longFns": 2,
-    "deepFns": 3
+    "deepFns": 1
+  },
+  "src/worker/routes/search/helpers.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/worker/routes/search/reindex.ts": {
+    "deepFns": 1
   },
   "src/worker/routes/share/analytics.ts": {
     "longFns": 3
@@ -728,10 +745,13 @@
     "longFns": 1,
     "deepFns": 1
   },
-  "src/worker/routes/tags.ts": {
-    "lines": 555,
+  "src/worker/routes/tags/crud.ts": {
     "longFns": 2,
-    "deepFns": 3
+    "deepFns": 2
+  },
+  "src/worker/routes/tags/helpers.ts": {
+    "longFns": 1,
+    "deepFns": 1
   },
   "src/worker/routes/transfer.ts": {
     "longFns": 1,
