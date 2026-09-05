@@ -21,10 +21,13 @@
   "src/client/components/hub-folder-item.tsx": {
     "longFns": 1
   },
-  "src/client/components/overlay.tsx": {
-    "lines": 684,
-    "longFns": 4,
-    "deepFns": 2
+  "src/client/components/overlay/menu.tsx": {
+    "longFns": 3,
+    "deepFns": 1
+  },
+  "src/client/components/overlay/tooltip.tsx": {
+    "longFns": 1,
+    "deepFns": 1
   },
   "src/client/components/tag-filter-popover.tsx": {
     "longFns": 1
