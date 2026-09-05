@@ -46,6 +46,19 @@ export function stageNoteTextWrite(id: string, content: string, title: string | 
         },
     );
     dirty.set(id, { content, contentDirty, ...(title !== undefined ? { title } : {}), rev: summary.rev, writeId, queueId, dependsOnWriteId, updatedAt, persisted });
+    applyStagedWrite(id, content, title, summary, contentChanged, updatedAt, set, get);
+}
+
+function applyStagedWrite(
+    id: string,
+    content: string,
+    title: string | undefined,
+    summary: NotesState['notes'][string],
+    contentChanged: boolean,
+    updatedAt: number,
+    set: SetNotesState,
+    get: () => NotesState,
+): void {
     const titleChanged = title !== undefined && summary.title !== title;
     set((current) => ({
         notes: titleChanged

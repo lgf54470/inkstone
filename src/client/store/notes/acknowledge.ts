@@ -38,60 +38,78 @@ export function acknowledgeOutboxResult(result: OutboxResult): void {
     const pending = dirty.get(result.noteId);
     if (!pending)
         return;
-    const state = useNotes.getState();
     if (result.outcome === 'saved') {
-        if (pending.writeId !== result.writeId) {
-            if (result.rev !== undefined && result.rev > pending.rev) {
-                advanceDirtyRevision(result.noteId, pending.rev, result.rev, () => useNotes.getState());
-                void useNotes.getState().flush({ immediate: true });
-            }
-            return;
+        applySavedOutboxResult(result, pending);
+        return;
+    }
+    applyFailedOutboxResult(result);
+}
+
+function applySavedOutboxResult(result: OutboxResult, pending: NonNullable<ReturnType<typeof dirty.get>>): void {
+    if (pending.writeId !== result.writeId) {
+        if (result.rev !== undefined && result.rev > pending.rev) {
+            advanceDirtyRevision(result.noteId, pending.rev, result.rev, () => useNotes.getState());
+            void useNotes.getState().flush({ immediate: true });
         }
-        dirty.delete(result.noteId);
-        if (result.savedNote?.id === result.noteId) {
-            adoptNote(result.savedNote, useNotes.setState, () => useNotes.getState());
-            useNotes.setState({ lastSavedAt: Date.now() });
-            refreshPendingCount();
-            return;
-        }
-        useNotes.setState((current) => {
-            const note = current.notes[result.noteId];
-            const nextRev = note && result.rev !== undefined && result.rev > note.rev
-                ? result.rev
-                : note?.rev;
-            const nextTitle = note && typeof result.savedTitle === 'string'
-                ? result.savedTitle
-                : note?.title;
-            const notes = note && (nextRev !== note.rev || nextTitle !== note.title)
-                ? {
-                    ...current.notes,
-                    [result.noteId]: {
-                        ...note,
-                        title: nextTitle!,
-                        rev: nextRev!,
-                        updatedAt: result.updatedAt ?? note.updatedAt,
-                    },
-                }
-                : current.notes;
-            return {
-                notes,
-                saveStatus: dirty.size ? current.saveStatus : 'synced',
-                lastSavedAt: Date.now(),
-            };
-        });
-        const content = state.contents[result.noteId];
-        if (content !== undefined && result.rev !== undefined) {
-            void localDb.setContent(result.noteId, {
-                content,
-                rev: result.rev,
-                updatedAt: result.updatedAt ?? Date.now(),
-            });
-        }
-        scheduleShellSave(() => useNotes.getState());
+        return;
+    }
+    dirty.delete(result.noteId);
+    if (result.savedNote?.id === result.noteId) {
+        adoptNote(result.savedNote, useNotes.setState, () => useNotes.getState());
+        useNotes.setState({ lastSavedAt: Date.now() });
         refreshPendingCount();
         return;
     }
-    if (pending.writeId !== result.writeId)
+    const state = useNotes.getState();
+    useNotes.setState((current) => savedNoteStateUpdater(current, result));
+    persistSavedContent(state, result);
+    scheduleShellSave(() => useNotes.getState());
+    refreshPendingCount();
+}
+
+function savedNoteStateUpdater(
+    current: ReturnType<typeof useNotes.getState>,
+    result: OutboxResult,
+): Partial<ReturnType<typeof useNotes.getState>> {
+    const note = current.notes[result.noteId];
+    const nextRev = note && result.rev !== undefined && result.rev > note.rev
+        ? result.rev
+        : note?.rev;
+    const nextTitle = note && typeof result.savedTitle === 'string'
+        ? result.savedTitle
+        : note?.title;
+    const notes = note && (nextRev !== note.rev || nextTitle !== note.title)
+        ? {
+            ...current.notes,
+            [result.noteId]: {
+                ...note,
+                title: nextTitle!,
+                rev: nextRev!,
+                updatedAt: result.updatedAt ?? note.updatedAt,
+            },
+        }
+        : current.notes;
+    return {
+        notes,
+        saveStatus: dirty.size ? current.saveStatus : 'synced',
+        lastSavedAt: Date.now(),
+    };
+}
+
+function persistSavedContent(state: ReturnType<typeof useNotes.getState>, result: OutboxResult): void {
+    const content = state.contents[result.noteId];
+    if (content !== undefined && result.rev !== undefined) {
+        void localDb.setContent(result.noteId, {
+            content,
+            rev: result.rev,
+            updatedAt: result.updatedAt ?? Date.now(),
+        });
+    }
+}
+
+function applyFailedOutboxResult(result: OutboxResult): void {
+    const pending = dirty.get(result.noteId);
+    if (!pending || pending.writeId !== result.writeId)
         return;
     dirty.delete(result.noteId);
     validatedRevisions.delete(result.noteId);

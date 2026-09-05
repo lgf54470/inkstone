@@ -672,6 +672,7 @@ const allowed = new Map([
   ]],
   ["src/client/store/notes.test.ts", [
     "/**\n * Integration tests for the store-level undo contract behind the light note mutations\n * (move to folder, batch pin, star). Each action must optimistically apply, persist through\n * the (mocked) api, and post exactly one undo toast whose action reverts every affected note.\n */",
+    "/** Assert a note's folder in both the local store and the (mocked) server. */",
     "/** Run a fire-and-forget undo closure and flush the queued patch writes. */",
     "// A single-note revert confirms with a plain success toast.",
     "// Batch reverts stay silent: no extra toast was posted.",

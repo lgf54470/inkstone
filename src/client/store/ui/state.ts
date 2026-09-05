@@ -95,76 +95,95 @@ export function loadPersisted(): Partial<UiState> {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
     const value = parsed as Record<string, unknown>
     const out: Partial<UiState> = {}
-
-    if (isFiniteNumber(value.navWidth)) {
-      out.navWidth = clamp(value.navWidth, PANEL_WIDTHS.navigation.min, PANEL_WIDTHS.navigation.max)
-    }
-    if (isFiniteNumber(value.listWidth)) {
-      out.listWidth = clamp(value.listWidth, PANEL_WIDTHS.noteList.min, PANEL_WIDTHS.noteList.max)
-    }
-    if (typeof value.navCollapsed === 'boolean') out.navCollapsed = value.navCollapsed
-    if (typeof value.listCollapsed === 'boolean') out.listCollapsed = value.listCollapsed
-    if (isFiniteNumber(value.splitRatio)) out.splitRatio = clamp(value.splitRatio, 0.2, 0.8)
-    if (isFiniteNumber(value.workspaceSplitRatio)) {
-      out.workspaceSplitRatio = clamp(value.workspaceSplitRatio, 0.2, 0.8)
-    }
-    if (isChoice(value.view, VIEW_KINDS)) out.view = value.view as ViewKind
-    if (value.folderId === null || typeof value.folderId === 'string') {
-      out.folderId = value.folderId?.slice(0, 128) ?? null
-    }
-    if (value.tag === null || typeof value.tag === 'string') {
-      out.tag = typeof value.tag === 'string' ? truncateText(value.tag, LIMITS.tagNameMaxLength) : null
-    }
-    if (isChoice(value.sort, ['updated', 'created', 'title'])) out.sort = value.sort as SortKey
-    if (isChoice(value.order, ['asc', 'desc'])) out.order = value.order as SortOrder
-    if (isChoice(value.density, ['comfortable', 'compact'])) out.density = value.density as UiDensity
-    if (Array.isArray(value.expandedFolders)) {
-      out.expandedFolders = uniqueStrings(value.expandedFolders, 500)
-    }
-    if (value.activeNoteId === null || typeof value.activeNoteId === 'string') {
-      out.activeNoteId = value.activeNoteId?.slice(0, 128) ?? null
-    }
-    if (value.workspacePrimaryNoteId === null || typeof value.workspacePrimaryNoteId === 'string') {
-      out.workspacePrimaryNoteId = value.workspacePrimaryNoteId?.slice(0, 128) ?? null
-    }
-    if (value.workspaceSecondaryNoteId === null || typeof value.workspaceSecondaryNoteId === 'string') {
-      out.workspaceSecondaryNoteId = value.workspaceSecondaryNoteId?.slice(0, 128) ?? null
-    }
-    if (isChoice(value.activeWorkspacePane, ['primary', 'secondary'])) {
-      out.activeWorkspacePane = value.activeWorkspacePane as WorkspacePane
-    }
-    if (value.workspacePaneLayouts && typeof value.workspacePaneLayouts === 'object' && !Array.isArray(value.workspacePaneLayouts)) {
-      const layouts = value.workspacePaneLayouts as Record<string, unknown>
-      out.workspacePaneLayouts = {
-        primary: isChoice(layouts.primary, ['edit', 'split', 'preview']) ? layouts.primary as EditorLayout : 'edit',
-        secondary: isChoice(layouts.secondary, ['edit', 'split', 'preview']) ? layouts.secondary as EditorLayout : 'edit',
-      }
-    }
-    if (Array.isArray(value.recentNoteIds)) {
-      out.recentNoteIds = uniqueStrings(value.recentNoteIds, 24)
-    }
-    if (isChoice(value.theme, ['light', 'dark', 'system'])) out.theme = value.theme as ThemePref
-    if (isChoice(value.accent, ACCENTS.map((accent) => accent.name))) {
-      out.accent = value.accent as AccentName
-    }
-    if (isChoice(value.background, ['paper', 'white'])) {
-      out.background = value.background as BackgroundName
-    }
-    if (isFiniteNumber(value.fontScale)) out.fontScale = clamp(Math.round(value.fontScale), 13, 22)
-    if (!out.workspaceSecondaryNoteId) {
-      out.workspacePrimaryNoteId = null
-      out.activeWorkspacePane = 'primary'
-    } else if (!out.workspacePrimaryNoteId) {
-      out.workspacePrimaryNoteId = out.activeNoteId ?? null
-    }
-    if (out.workspaceSecondaryNoteId && out.workspacePrimaryNoteId) {
-      out.activeNoteId = out.activeWorkspacePane === 'secondary'
-        ? out.workspaceSecondaryNoteId
-        : out.workspacePrimaryNoteId
-    }
+    readLayoutFields(value, out)
+    readViewFields(value, out)
+    readWorkspaceFields(value, out)
+    readAppearanceFields(value, out)
+    normalizeWorkspaceRelations(out)
     return out
   } catch {
     return {}
+  }
+}
+
+function readLayoutFields(value: Record<string, unknown>, out: Partial<UiState>): void {
+  if (isFiniteNumber(value.navWidth)) {
+    out.navWidth = clamp(value.navWidth, PANEL_WIDTHS.navigation.min, PANEL_WIDTHS.navigation.max)
+  }
+  if (isFiniteNumber(value.listWidth)) {
+    out.listWidth = clamp(value.listWidth, PANEL_WIDTHS.noteList.min, PANEL_WIDTHS.noteList.max)
+  }
+  if (typeof value.navCollapsed === 'boolean') out.navCollapsed = value.navCollapsed
+  if (typeof value.listCollapsed === 'boolean') out.listCollapsed = value.listCollapsed
+  if (isFiniteNumber(value.splitRatio)) out.splitRatio = clamp(value.splitRatio, 0.2, 0.8)
+  if (isFiniteNumber(value.workspaceSplitRatio)) {
+    out.workspaceSplitRatio = clamp(value.workspaceSplitRatio, 0.2, 0.8)
+  }
+}
+
+function readViewFields(value: Record<string, unknown>, out: Partial<UiState>): void {
+  if (isChoice(value.view, VIEW_KINDS)) out.view = value.view as ViewKind
+  if (value.folderId === null || typeof value.folderId === 'string') {
+    out.folderId = value.folderId?.slice(0, 128) ?? null
+  }
+  if (value.tag === null || typeof value.tag === 'string') {
+    out.tag = typeof value.tag === 'string' ? truncateText(value.tag, LIMITS.tagNameMaxLength) : null
+  }
+  if (isChoice(value.sort, ['updated', 'created', 'title'])) out.sort = value.sort as SortKey
+  if (isChoice(value.order, ['asc', 'desc'])) out.order = value.order as SortOrder
+  if (isChoice(value.density, ['comfortable', 'compact'])) out.density = value.density as UiDensity
+  if (Array.isArray(value.expandedFolders)) {
+    out.expandedFolders = uniqueStrings(value.expandedFolders, 500)
+  }
+}
+
+function readWorkspaceFields(value: Record<string, unknown>, out: Partial<UiState>): void {
+  if (value.activeNoteId === null || typeof value.activeNoteId === 'string') {
+    out.activeNoteId = value.activeNoteId?.slice(0, 128) ?? null
+  }
+  if (value.workspacePrimaryNoteId === null || typeof value.workspacePrimaryNoteId === 'string') {
+    out.workspacePrimaryNoteId = value.workspacePrimaryNoteId?.slice(0, 128) ?? null
+  }
+  if (value.workspaceSecondaryNoteId === null || typeof value.workspaceSecondaryNoteId === 'string') {
+    out.workspaceSecondaryNoteId = value.workspaceSecondaryNoteId?.slice(0, 128) ?? null
+  }
+  if (isChoice(value.activeWorkspacePane, ['primary', 'secondary'])) {
+    out.activeWorkspacePane = value.activeWorkspacePane as WorkspacePane
+  }
+  if (value.workspacePaneLayouts && typeof value.workspacePaneLayouts === 'object' && !Array.isArray(value.workspacePaneLayouts)) {
+    const layouts = value.workspacePaneLayouts as Record<string, unknown>
+    out.workspacePaneLayouts = {
+      primary: isChoice(layouts.primary, ['edit', 'split', 'preview']) ? layouts.primary as EditorLayout : 'edit',
+      secondary: isChoice(layouts.secondary, ['edit', 'split', 'preview']) ? layouts.secondary as EditorLayout : 'edit',
+    }
+  }
+}
+
+function readAppearanceFields(value: Record<string, unknown>, out: Partial<UiState>): void {
+  if (Array.isArray(value.recentNoteIds)) {
+    out.recentNoteIds = uniqueStrings(value.recentNoteIds, 24)
+  }
+  if (isChoice(value.theme, ['light', 'dark', 'system'])) out.theme = value.theme as ThemePref
+  if (isChoice(value.accent, ACCENTS.map((accent) => accent.name))) {
+    out.accent = value.accent as AccentName
+  }
+  if (isChoice(value.background, ['paper', 'white'])) {
+    out.background = value.background as BackgroundName
+  }
+  if (isFiniteNumber(value.fontScale)) out.fontScale = clamp(Math.round(value.fontScale), 13, 22)
+}
+
+function normalizeWorkspaceRelations(out: Partial<UiState>): void {
+  if (!out.workspaceSecondaryNoteId) {
+    out.workspacePrimaryNoteId = null
+    out.activeWorkspacePane = 'primary'
+  } else if (!out.workspacePrimaryNoteId) {
+    out.workspacePrimaryNoteId = out.activeNoteId ?? null
+  }
+  if (out.workspaceSecondaryNoteId && out.workspacePrimaryNoteId) {
+    out.activeNoteId = out.activeWorkspacePane === 'secondary'
+      ? out.workspaceSecondaryNoteId
+      : out.workspacePrimaryNoteId
   }
 }
 

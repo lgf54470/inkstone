@@ -426,30 +426,6 @@
   "src/client/lib/tag-tree.test.ts": {
     "longFns": 1
   },
-  "src/client/store/note-templates.ts": {
-    "longFns": 2
-  },
-  "src/client/store/notes.test.ts": {
-    "longFns": 1
-  },
-  "src/client/store/notes/acknowledge.ts": {
-    "longFns": 1
-  },
-  "src/client/store/notes/edit.ts": {
-    "longFns": 1
-  },
-  "src/client/store/notes/folder-actions.ts": {
-    "longFns": 1
-  },
-  "src/client/store/notes/persist.ts": {
-    "longFns": 1
-  },
-  "src/client/store/ui/state.ts": {
-    "longFns": 1
-  },
-  "src/client/store/ui/store.ts": {
-    "longFns": 1
-  },
   "src/shared/constants.test.ts": {
     "longFns": 1
   },

@@ -13,38 +13,11 @@ import { useSession } from '../session';
 export const edit = (set: SetNotesState, get: () => NotesState): Pick<NotesState, 'editTitle' | 'editContent' | 'flush'> => ({
 
     editTitle(id, title) {
-        const state = get();
-        const summary = state.notes[id];
-        const content = state.contents[id];
-        if (!summary || content === undefined)
-            return;
-        const nextTitle = title.slice(0, LIMITS.titleMaxLength);
-        if (summary.title === nextTitle)
-            return;
-        // Keep the front matter `title` property in sync with the note title
-        // whenever the note already declares one (opt-out per settings).
-        const syncedContent = useSession.getState().settings.notes?.syncTitleToFrontMatter
-            ? setFrontMatterProperty(content, 'title', nextTitle || null)
-            : null;
-        stageNoteTextWrite(id, syncedContent ?? content, nextTitle, set, get);
+        editTitleImpl(id, title, set, get);
     },
 
     editContent(id, content) {
-        const state = get();
-        const summary = state.notes[id];
-        if (!summary || !hasOwnContent(state.contents, id) || state.contents[id] === content)
-            return;
-        // Reverse sync: when the body's front matter `title` property changes,
-        // adopt it as the note title so both stay in agreement (opt-out per
-        // settings).
-        let nextTitle = dirty.get(id)?.title;
-        if (useSession.getState().settings.notes?.syncFrontMatterTitle) {
-            const nextFrontMatterTitle = frontMatterTitleOf(content);
-            const previousFrontMatterTitle = frontMatterTitleOf(state.contents[id]);
-            if (nextFrontMatterTitle !== undefined && nextFrontMatterTitle !== previousFrontMatterTitle)
-                nextTitle = nextFrontMatterTitle.slice(0, LIMITS.titleMaxLength);
-        }
-        stageNoteTextWrite(id, content, nextTitle, set, get);
+        editContentImpl(id, content, set, get);
     },
 
     async flush(options) {
@@ -64,3 +37,38 @@ export const edit = (set: SetNotesState, get: () => NotesState): Pick<NotesState
         }));
     }
 });
+
+function editTitleImpl(id: string, title: string, set: SetNotesState, get: () => NotesState): void {
+    const state = get();
+    const summary = state.notes[id];
+    const content = state.contents[id];
+    if (!summary || content === undefined)
+        return;
+    const nextTitle = title.slice(0, LIMITS.titleMaxLength);
+    if (summary.title === nextTitle)
+        return;
+    // Keep the front matter `title` property in sync with the note title
+    // whenever the note already declares one (opt-out per settings).
+    const syncedContent = useSession.getState().settings.notes?.syncTitleToFrontMatter
+        ? setFrontMatterProperty(content, 'title', nextTitle || null)
+        : null;
+    stageNoteTextWrite(id, syncedContent ?? content, nextTitle, set, get);
+}
+
+function editContentImpl(id: string, content: string, set: SetNotesState, get: () => NotesState): void {
+    const state = get();
+    const summary = state.notes[id];
+    if (!summary || !hasOwnContent(state.contents, id) || state.contents[id] === content)
+        return;
+    // Reverse sync: when the body's front matter `title` property changes,
+    // adopt it as the note title so both stay in agreement (opt-out per
+    // settings).
+    let nextTitle = dirty.get(id)?.title;
+    if (useSession.getState().settings.notes?.syncFrontMatterTitle) {
+        const nextFrontMatterTitle = frontMatterTitleOf(content);
+        const previousFrontMatterTitle = frontMatterTitleOf(state.contents[id]);
+        if (nextFrontMatterTitle !== undefined && nextFrontMatterTitle !== previousFrontMatterTitle)
+            nextTitle = nextFrontMatterTitle.slice(0, LIMITS.titleMaxLength);
+    }
+    stageNoteTextWrite(id, content, nextTitle, set, get);
+}

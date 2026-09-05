@@ -1,5 +1,5 @@
 /** Coordinates the client-side template library: built-in seeding, categories and CRUD. */
-import { create } from 'zustand'
+import { create, type StoreApi } from 'zustand'
 import type { NoteTemplate, NoteTemplateCategory } from '@shared/types'
 import {
     BUILTIN_TEMPLATE_CATEGORIES,
@@ -116,27 +116,52 @@ function mergeBuiltinSeed(current: TemplateLibraryData): TemplateLibraryData {
     const defById = new Map(BUILTIN_TEMPLATE_DEFS.map((def) => [def.id, def]));
     const existingTemplateIds = new Set(current.templates.map((item) => item.id));
     const existingCategoryIds = new Set(current.categories.map((item) => item.id));
+    const refreshed = refreshBuiltinTemplates(current.templates, defById);
+    const addedTemplates = missingBuiltinTemplates(existingTemplateIds, now);
+    const addedCategories = missingBuiltinCategories(existingCategoryIds, now);
+    const isTouched = refreshed.isTouched || addedTemplates.length > 0 || addedCategories.length > 0;
+    if (!isTouched)
+        return { ...current, seedVersion: TEMPLATE_SEED_VERSION };
+    return {
+        categories: orderedCategories([...current.categories, ...addedCategories]),
+        templates: [...refreshed.templates, ...addedTemplates],
+        seedVersion: TEMPLATE_SEED_VERSION,
+    };
+}
+
+// Refresh catalog-sourced fields (name, description, content, tags) on
+// built-in entries the user never edited: user edits flip `builtin` to
+// false, so those are skipped and never overwritten by a re-seed.
+function refreshBuiltinTemplates(
+    templates: NoteTemplate[],
+    defById: Map<string, BuiltinTemplateDef>,
+): { templates: NoteTemplate[]; isTouched: boolean } {
     let isTouched = false;
-    // Refresh catalog-sourced fields (name, description, content, tags) on
-    // built-in entries the user never edited: user edits flip `builtin` to
-    // false, so those are skipped and never overwritten by a re-seed.
-    const refreshedTemplates = current.templates.map((item) => {
-        const def = defById.get(item.id);
-        if (!def || !item.builtin) return item;
-        isTouched = true;
-        return {
-            ...item,
-            name: t(def.nameKey),
-            description: t(def.descriptionKey),
-            content: t(def.contentKey),
-            tags: builtinTags(def),
-        };
-    });
-    const addedTemplates: NoteTemplate[] = [];
+    return {
+        templates: templates.map((item) => {
+            const def = defById.get(item.id);
+            if (!def || !item.builtin) return item;
+            isTouched = true;
+            return {
+                ...item,
+                name: t(def.nameKey),
+                description: t(def.descriptionKey),
+                content: t(def.contentKey),
+                tags: builtinTags(def),
+            };
+        }),
+        isTouched,
+    };
+}
+
+function missingBuiltinTemplates(
+    existingIds: Set<string>,
+    now: number,
+): NoteTemplate[] {
+    const added: NoteTemplate[] = [];
     for (const def of BUILTIN_TEMPLATE_DEFS) {
-        if (existingTemplateIds.has(def.id)) continue;
-        isTouched = true;
-        addedTemplates.push({
+        if (existingIds.has(def.id)) continue;
+        added.push({
             id: def.id,
             categoryId: def.categoryId,
             name: t(def.nameKey),
@@ -151,11 +176,14 @@ function mergeBuiltinSeed(current: TemplateLibraryData): TemplateLibraryData {
             updatedAt: now,
         });
     }
-    const addedCategories: NoteTemplateCategory[] = [];
+    return added;
+}
+
+function missingBuiltinCategories(existingIds: Set<string>, now: number): NoteTemplateCategory[] {
+    const added: NoteTemplateCategory[] = [];
     for (const def of BUILTIN_TEMPLATE_CATEGORIES) {
-        if (existingCategoryIds.has(def.id)) continue;
-        isTouched = true;
-        addedCategories.push({
+        if (existingIds.has(def.id)) continue;
+        added.push({
             id: def.id,
             name: t(def.nameKey),
             builtin: true,
@@ -163,13 +191,7 @@ function mergeBuiltinSeed(current: TemplateLibraryData): TemplateLibraryData {
             createdAt: now,
         });
     }
-    if (!isTouched)
-        return { ...current, seedVersion: TEMPLATE_SEED_VERSION };
-    return {
-        categories: orderedCategories([...current.categories, ...addedCategories]),
-        templates: [...refreshedTemplates, ...addedTemplates],
-        seedVersion: TEMPLATE_SEED_VERSION,
-    };
+    return added;
 }
 
 function newLocalId(prefix: string): string {
@@ -178,246 +200,262 @@ function newLocalId(prefix: string): string {
     return `${prefix}-${[...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 }
 
+type SetTemplateState = StoreApi<TemplateLibraryState>['setState']
+
 export const useNoteTemplates = create<TemplateLibraryState>((set, get) => ({
     categories: [],
     templates: [],
     hydrated: false,
-    async hydrate() {
-        if (hydratePromise) return hydratePromise;
-        hydratePromise = (async () => {
-            const stored = await localDb.loadTemplateLibrary();
-            const next = stored
-                ? mergeBuiltinSeed(stored)
-                : buildBuiltinLibrary();
-            if (next !== stored)
-                await localDb.saveTemplateLibrary(next);
-            set({
-                categories: orderedCategories(next.categories),
-                templates: next.templates,
-                hydrated: true,
-            });
-        })().catch((error) => {
-            hydratePromise = null;
-            throw error;
-        });
-        return hydratePromise;
-    },
-    createCategory(name) {
-        const trimmed = name.trim();
-        if (!trimmed) return null;
-        const id = newLocalId('cat');
-        const now = Date.now();
-        set((state) => {
-            const categories = [...state.categories, {
-                id,
-                name: trimmed.slice(0, 120),
-                builtin: false,
-                position: state.categories.length,
-                createdAt: now,
-            }];
-            void localDb.saveTemplateLibrary(serializeLibrary(state.templates, categories));
-            return { categories: orderedCategories(categories) };
-        });
-        return id;
-    },
-    renameCategory(id, name) {
-        const trimmed = name.trim();
-        const current = get().categories.find((item) => item.id === id);
-        if (!current || current.builtin || !trimmed) return false;
-        set((state) => {
-            const categories = state.categories.map((item) => item.id === id
-                ? { ...item, name: trimmed.slice(0, 120) }
-                : item);
-            void localDb.saveTemplateLibrary(serializeLibrary(state.templates, categories));
-            return { categories };
-        });
-        return true;
-    },
-    deleteCategory(id) {
-        const current = get().categories.find((item) => item.id === id);
-        if (!current || current.builtin) return false;
-        set((state) => {
-            const categories = state.categories.filter((item) => item.id !== id);
-            const templates = state.templates.map((item) => item.categoryId === id
-                ? { ...item, categoryId: null }
-                : item);
-            void localDb.saveTemplateLibrary(serializeLibrary(templates, categories));
-            return { categories, templates };
-        });
-        return true;
-    },
-    createTemplate(input) {
-        const name = input.name.trim();
-        if (!name || !input.content) return null;
-        const id = newLocalId('tpl');
-        const now = Date.now();
-        set((state) => {
-            const categoryId = input.categoryId ?? null;
-            const siblings = state.templates.filter((item) => item.categoryId === categoryId);
-            const nextPosition = siblings.length ? Math.max(...siblings.map((item) => templateOrderValue(item))) + 1 : 0;
-            const templates = [...state.templates, {
-                id,
-                categoryId,
-                name: name.slice(0, 120),
-                description: (input.description ?? '').slice(0, 240),
-                content: input.content,
-                tags: normalizeTags(input.tags),
-                builtin: false,
-                isPinned: false,
-                isStarred: false,
-                position: nextPosition,
-                createdAt: now,
-                updatedAt: now,
-            }];
-            void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
-            return { templates };
-        });
-        return id;
-    },
-    updateTemplate(id, patch) {
-        const current = get().templates.find((item) => item.id === id);
-        if (!current) return false;
-        const name = patch.name?.trim();
-        if (name !== undefined && !name) return false;
-        set((state) => {
-            const templates = state.templates.map((item) => item.id === id
-                ? {
-                    ...item,
-                    // Customizing a built-in template hands ownership to the user,
-                    // so it becomes deletable and drops the "built-in" badge.
-                    builtin: false,
-                    name: name !== undefined ? name.slice(0, 120) : item.name,
-                    description: patch.description !== undefined
-                        ? patch.description.slice(0, 240)
-                        : item.description,
-                    content: patch.content !== undefined ? patch.content : item.content,
-                    categoryId: patch.categoryId !== undefined ? (patch.categoryId ?? null) : item.categoryId,
-                    tags: patch.tags !== undefined ? normalizeTags(patch.tags) : item.tags,
-                    updatedAt: Date.now(),
-                }
-                : item);
-            void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
-            return { templates };
-        });
-        return true;
-    },
-    deleteTemplate(id) {
-        const current = get().templates.find((item) => item.id === id);
-        if (!current || current.builtin) return false;
-        set((state) => {
-            const templates = state.templates.filter((item) => item.id !== id);
-            void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
-            return { templates };
-        });
-        return true;
-    },
-    duplicateTemplate(id) {
-        const source = get().templates.find((item) => item.id === id);
-        if (!source) return null;
-        const copyId = newLocalId('tpl');
-        const now = Date.now();
-        set((state) => {
-            const templates = [...state.templates, {
-                ...source,
-                id: copyId,
-                name: `${source.name} (${t("common.copy")})`.slice(0, 120),
-                builtin: false,
-                isPinned: false,
-                isStarred: false,
-                position: state.templates.filter((item) => item.categoryId === source.categoryId)
-                    .reduce((max, item) => Math.max(max, templateOrderValue(item)), -1) + 1,
-                createdAt: now,
-                updatedAt: now,
-            }];
-            void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
-            return { templates };
-        });
-        return copyId;
-    },
-    placeTemplate(id, categoryId, index) {
-        const moving = get().templates.find((item) => item.id === id);
-        if (!moving) return false;
-        const now = Date.now();
-        set((state) => {
-            const siblings = state.templates
-                .filter((item) => item.categoryId === categoryId && item.id !== id)
-                .sort((a, b) => templateOrderValue(a) - templateOrderValue(b));
-            const clamped = Math.max(0, Math.min(siblings.length, index));
-            const ordered = [...siblings.slice(0, clamped), { ...moving, categoryId }, ...siblings.slice(clamped)];
-            const positionById = new Map(ordered.map((item, position) => [item.id, position]));
-            const templates = state.templates.map((item) => positionById.has(item.id)
-                ? { ...item, categoryId, position: positionById.get(item.id), updatedAt: now }
-                : item);
-            void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
-            return { templates };
-        });
-        return true;
-    },
-    importTemplates(data) {
-        let imported = 0;
-        let skipped = 0;
-        set((state) => {
-            const knownCategoryIds = new Set(state.categories.map((item) => item.id));
-            const nextCategories = [...state.categories];
-            let nextPosition = Math.max(0, ...state.categories.map((item) => item.position)) + 1;
-            for (const category of data.categories) {
-                if (knownCategoryIds.has(category.id)) continue;
-                knownCategoryIds.add(category.id);
-                nextCategories.push({
-                    ...category,
-                    name: category.name.slice(0, 120),
-                    position: nextPosition++,
-                });
-            }
-            const knownTemplateIds = new Set(state.templates.map((item) => item.id));
-            const nextTemplates = [...state.templates];
-            for (const template of data.templates) {
-                if (knownTemplateIds.has(template.id)) {
-                    skipped++;
-                    continue;
-                }
-                knownTemplateIds.add(template.id);
-                imported++;
-                nextTemplates.push({
-                    ...template,
-                    // Category ids are preserved when they exist locally (custom
-                    // categories imported in the same batch included); unknown
-                    // ids fall back to Uncategorized instead of dangling.
-                    categoryId: knownCategoryIds.has(template.categoryId ?? '') ? template.categoryId : null,
-                    name: template.name.slice(0, 120),
-                    description: template.description.slice(0, 240),
-                    tags: normalizeTags(template.tags),
-                    isPinned: false,
-                    isStarred: false,
-                });
-            }
-            void localDb.saveTemplateLibrary(serializeLibrary(nextTemplates, nextCategories));
-            return {
-                categories: orderedCategories(nextCategories),
-                templates: nextTemplates,
-            };
-        });
-        return { imported, skipped };
-    },
-    toggleTemplatePin(id) {
-        set((state) => {
-            const templates = state.templates.map((item) => item.id === id
-                ? { ...item, isPinned: !item.isPinned, updatedAt: Date.now() }
-                : item);
-            void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
-            return { templates };
-        });
-    },
-    toggleTemplateStar(id) {
-        set((state) => {
-            const templates = state.templates.map((item) => item.id === id
-                ? { ...item, isStarred: !item.isStarred, updatedAt: Date.now() }
-                : item);
-            void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
-            return { templates };
-        });
-    },
+    hydrate: () => hydrateImpl(set),
+    createCategory: (name) => createCategoryImpl(set, name),
+    renameCategory: (id, name) => renameCategoryImpl(set, get, id, name),
+    deleteCategory: (id) => deleteCategoryImpl(set, get, id),
+    createTemplate: (input) => createTemplateImpl(set, input),
+    updateTemplate: (id, patch) => updateTemplateImpl(set, get, id, patch),
+    deleteTemplate: (id) => deleteTemplateImpl(set, get, id),
+    duplicateTemplate: (id) => duplicateTemplateImpl(set, get, id),
+    placeTemplate: (id, categoryId, index) => placeTemplateImpl(set, get, id, categoryId, index),
+    importTemplates: (data) => importTemplatesImpl(set, data),
+    toggleTemplatePin: (id) => toggleTemplateFlag(set, id, 'isPinned'),
+    toggleTemplateStar: (id) => toggleTemplateFlag(set, id, 'isStarred'),
 }));
+
+async function hydrateImpl(set: SetTemplateState): Promise<void> {
+    if (hydratePromise) return hydratePromise;
+    hydratePromise = (async () => {
+        const stored = await localDb.loadTemplateLibrary();
+        const next = stored
+            ? mergeBuiltinSeed(stored)
+            : buildBuiltinLibrary();
+        if (next !== stored)
+            await localDb.saveTemplateLibrary(next);
+        set({
+            categories: orderedCategories(next.categories),
+            templates: next.templates,
+            hydrated: true,
+        });
+    })().catch((error) => {
+        hydratePromise = null;
+        throw error;
+    });
+    return hydratePromise;
+}
+
+function createCategoryImpl(set: SetTemplateState, name: string): string | null {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    const id = newLocalId('cat');
+    const now = Date.now();
+    set((state) => {
+        const categories = [...state.categories, {
+            id,
+            name: trimmed.slice(0, 120),
+            builtin: false,
+            position: state.categories.length,
+            createdAt: now,
+        }];
+        void localDb.saveTemplateLibrary(serializeLibrary(state.templates, categories));
+        return { categories: orderedCategories(categories) };
+    });
+    return id;
+}
+
+function renameCategoryImpl(set: SetTemplateState, get: () => TemplateLibraryState, id: string, name: string): boolean {
+    const trimmed = name.trim();
+    const current = get().categories.find((item) => item.id === id);
+    if (!current || current.builtin || !trimmed) return false;
+    set((state) => {
+        const categories = state.categories.map((item) => item.id === id
+            ? { ...item, name: trimmed.slice(0, 120) }
+            : item);
+        void localDb.saveTemplateLibrary(serializeLibrary(state.templates, categories));
+        return { categories };
+    });
+    return true;
+}
+
+function deleteCategoryImpl(set: SetTemplateState, get: () => TemplateLibraryState, id: string): boolean {
+    const current = get().categories.find((item) => item.id === id);
+    if (!current || current.builtin) return false;
+    set((state) => {
+        const categories = state.categories.filter((item) => item.id !== id);
+        const templates = state.templates.map((item) => item.categoryId === id
+            ? { ...item, categoryId: null }
+            : item);
+        void localDb.saveTemplateLibrary(serializeLibrary(templates, categories));
+        return { categories, templates };
+    });
+    return true;
+}
+
+function createTemplateImpl(set: SetTemplateState, input: TemplateInput): string | null {
+    const name = input.name.trim();
+    if (!name || !input.content) return null;
+    const id = newLocalId('tpl');
+    const now = Date.now();
+    set((state) => {
+        const categoryId = input.categoryId ?? null;
+        const siblings = state.templates.filter((item) => item.categoryId === categoryId);
+        const nextPosition = siblings.length ? Math.max(...siblings.map((item) => templateOrderValue(item))) + 1 : 0;
+        const templates = [...state.templates, {
+            id,
+            categoryId,
+            name: name.slice(0, 120),
+            description: (input.description ?? '').slice(0, 240),
+            content: input.content,
+            tags: normalizeTags(input.tags),
+            builtin: false,
+            isPinned: false,
+            isStarred: false,
+            position: nextPosition,
+            createdAt: now,
+            updatedAt: now,
+        }];
+        void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
+        return { templates };
+    });
+    return id;
+}
+
+function updateTemplateImpl(set: SetTemplateState, get: () => TemplateLibraryState, id: string, patch: Partial<TemplateInput>): boolean {
+    const current = get().templates.find((item) => item.id === id);
+    if (!current) return false;
+    const name = patch.name?.trim();
+    if (name !== undefined && !name) return false;
+    set((state) => {
+        const templates = state.templates.map((item) => item.id === id
+            ? {
+                ...item,
+                // Customizing a built-in template hands ownership to the user,
+                // so it becomes deletable and drops the "built-in" badge.
+                builtin: false,
+                name: name !== undefined ? name.slice(0, 120) : item.name,
+                description: patch.description !== undefined
+                    ? patch.description.slice(0, 240)
+                    : item.description,
+                content: patch.content !== undefined ? patch.content : item.content,
+                categoryId: patch.categoryId !== undefined ? (patch.categoryId ?? null) : item.categoryId,
+                tags: patch.tags !== undefined ? normalizeTags(patch.tags) : item.tags,
+                updatedAt: Date.now(),
+            }
+            : item);
+        void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
+        return { templates };
+    });
+    return true;
+}
+
+function deleteTemplateImpl(set: SetTemplateState, get: () => TemplateLibraryState, id: string): boolean {
+    const current = get().templates.find((item) => item.id === id);
+    if (!current || current.builtin) return false;
+    set((state) => {
+        const templates = state.templates.filter((item) => item.id !== id);
+        void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
+        return { templates };
+    });
+    return true;
+}
+
+function duplicateTemplateImpl(set: SetTemplateState, get: () => TemplateLibraryState, id: string): string | null {
+    const source = get().templates.find((item) => item.id === id);
+    if (!source) return null;
+    const copyId = newLocalId('tpl');
+    const now = Date.now();
+    set((state) => {
+        const templates = [...state.templates, {
+            ...source,
+            id: copyId,
+            name: `${source.name} (${t("common.copy")})`.slice(0, 120),
+            builtin: false,
+            isPinned: false,
+            isStarred: false,
+            position: state.templates.filter((item) => item.categoryId === source.categoryId)
+                .reduce((max, item) => Math.max(max, templateOrderValue(item)), -1) + 1,
+            createdAt: now,
+            updatedAt: now,
+        }];
+        void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
+        return { templates };
+    });
+    return copyId;
+}
+
+function placeTemplateImpl(set: SetTemplateState, get: () => TemplateLibraryState, id: string, categoryId: string | null, index: number): boolean {
+    const moving = get().templates.find((item) => item.id === id);
+    if (!moving) return false;
+    const now = Date.now();
+    set((state) => {
+        const siblings = state.templates
+            .filter((item) => item.categoryId === categoryId && item.id !== id)
+            .sort((a, b) => templateOrderValue(a) - templateOrderValue(b));
+        const clamped = Math.max(0, Math.min(siblings.length, index));
+        const ordered = [...siblings.slice(0, clamped), { ...moving, categoryId }, ...siblings.slice(clamped)];
+        const positionById = new Map(ordered.map((item, position) => [item.id, position]));
+        const templates = state.templates.map((item) => positionById.has(item.id)
+            ? { ...item, categoryId, position: positionById.get(item.id), updatedAt: now }
+            : item);
+        void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
+        return { templates };
+    });
+    return true;
+}
+
+function importTemplatesImpl(set: SetTemplateState, data: TemplateLibraryExport): { imported: number; skipped: number } {
+    let imported = 0;
+    let skipped = 0;
+    set((state) => {
+        const knownCategoryIds = new Set(state.categories.map((item) => item.id));
+        const nextCategories = [...state.categories];
+        let nextPosition = Math.max(0, ...state.categories.map((item) => item.position)) + 1;
+        for (const category of data.categories) {
+            if (knownCategoryIds.has(category.id)) continue;
+            knownCategoryIds.add(category.id);
+            nextCategories.push({
+                ...category,
+                name: category.name.slice(0, 120),
+                position: nextPosition++,
+            });
+        }
+        const knownTemplateIds = new Set(state.templates.map((item) => item.id));
+        const nextTemplates = [...state.templates];
+        for (const template of data.templates) {
+            if (knownTemplateIds.has(template.id)) {
+                skipped++;
+                continue;
+            }
+            knownTemplateIds.add(template.id);
+            imported++;
+            nextTemplates.push({
+                ...template,
+                // Category ids are preserved when they exist locally (custom
+                // categories imported in the same batch included); unknown
+                // ids fall back to Uncategorized instead of dangling.
+                categoryId: knownCategoryIds.has(template.categoryId ?? '') ? template.categoryId : null,
+                name: template.name.slice(0, 120),
+                description: template.description.slice(0, 240),
+                tags: normalizeTags(template.tags),
+                isPinned: false,
+                isStarred: false,
+            });
+        }
+        void localDb.saveTemplateLibrary(serializeLibrary(nextTemplates, nextCategories));
+        return {
+            categories: orderedCategories(nextCategories),
+            templates: nextTemplates,
+        };
+    });
+    return { imported, skipped };
+}
+
+function toggleTemplateFlag(set: SetTemplateState, id: string, flag: 'isPinned' | 'isStarred'): void {
+    set((state) => {
+        const templates = state.templates.map((item) => item.id === id
+            ? { ...item, [flag]: !item[flag], updatedAt: Date.now() }
+            : item);
+        void localDb.saveTemplateLibrary(serializeLibrary(templates, state.categories));
+        return { templates };
+    });
+}
 
 function serializeLibrary(templates: NoteTemplate[], categories: NoteTemplateCategory[]): TemplateLibraryData {
     return {

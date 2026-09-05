@@ -58,6 +58,12 @@ function seed(...notes: NoteSummary[]) {
     });
 }
 
+/** Assert a note's folder in both the local store and the (mocked) server. */
+function expectFolder(id: string, folderId: string | null) {
+    expect(useNotes.getState().notes[id].folderId).toBe(folderId);
+    expect(notesMockServer.notes.get(id)?.folderId).toBe(folderId);
+}
+
 function undoToast() {
     return useUi.getState().toasts.find((toast) => toast.kind === 'undo');
 }
@@ -79,11 +85,9 @@ describe('moveNotes undo contract', () => {
     it('moves a single note, offers one undo, and restores the previous folder on undo with a confirm toast', async () => {
         const note = noteSummary('a', { folderId: null });
         seed(note);
-
         await useNotes.getState().moveNotes(['a'], FOLDER_A.id);
 
-        expect(useNotes.getState().notes.a.folderId).toBe(FOLDER_A.id);
-        expect(notesMockServer.notes.get('a')?.folderId).toBe(FOLDER_A.id);
+        expectFolder('a', FOLDER_A.id);
         expect(notesMockServer.patchCalls).toHaveLength(1);
         expect(notesMockServer.patchCalls[0]!.patch.folderId).toBe(FOLDER_A.id);
         expect(useUi.getState().toasts).toHaveLength(1);
@@ -91,8 +95,7 @@ describe('moveNotes undo contract', () => {
 
         await runUndo();
 
-        expect(useNotes.getState().notes.a.folderId).toBeNull();
-        expect(notesMockServer.notes.get('a')?.folderId).toBeNull();
+        expectFolder('a', null);
         // A single-note revert confirms with a plain success toast.
         expect(lastToast()?.tone).toBe('success');
         expect(lastToast()?.kind).toBeUndefined();
@@ -119,6 +122,9 @@ describe('moveNotes undo contract', () => {
         expect(useUi.getState().toasts).toHaveLength(1);
     });
 
+});
+
+describe('moveNotes undo contract (batch)', () => {
     it('restores mixed previous folders per note after a batch undo', async () => {
         const fromFolderA = noteSummary('a', { folderId: FOLDER_A.id });
         const unfiled = noteSummary('b', { folderId: null });
