@@ -621,31 +621,6 @@
   "src/worker/routes/search/reindex.ts": {
     "deepFns": 1
   },
-  "src/worker/routes/share/analytics.ts": {
-    "longFns": 3
-  },
-  "src/worker/routes/share/batch.ts": {
-    "longFns": 3,
-    "deepFns": 1
-  },
-  "src/worker/routes/share/note.ts": {
-    "longFns": 2
-  },
-  "src/worker/routes/share/organizer.ts": {
-    "longFns": 1
-  },
-  "src/worker/routes/share/public.ts": {
-    "longFns": 3,
-    "deepFns": 2
-  },
-  "src/worker/routes/share/shares.ts": {
-    "longFns": 3,
-    "deepFns": 2
-  },
-  "src/worker/routes/share/visits.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
   "src/worker/routes/sync.ts": {
     "longFns": 1,
     "deepFns": 1

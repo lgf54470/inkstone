@@ -1,4 +1,4 @@
-import type { ShareTimelineRange } from '@shared/types'
+import type { ShareBreakdownItem, ShareTimelinePoint, ShareTimelineRange } from '@shared/types'
 
 export function parseDeviceType(ua: string): string {
   if (!ua) return 'desktop'
@@ -285,4 +285,43 @@ export function getRangeStartTimestamp(range: ShareTimelineRange, now: number): 
   if (range === '7d') return now - 7 * 24 * 60 * 60 * 1000
   if (range === '30d') return now - 30 * 24 * 60 * 60 * 1000
   return 0
+}
+
+export function toBreakdown(map: Map<string, number>, total: number): ShareBreakdownItem[] {
+  return Array.from(map.entries())
+    .map(([name, count]) => ({
+      name,
+      count,
+      percentage: total > 0 ? Math.round((count / total) * 100) : 0,
+    }))
+    .sort((a, b) => b.count - a.count)
+}
+
+export function buildShareTimeline(
+  rows: Array<{ visited_at: number; visitor_fp: string | null }>,
+  range: ShareTimelineRange,
+  startTs: number,
+  duration: number,
+): ShareTimelinePoint[] {
+  const numBuckets = range === '24h' ? 24 : range === '7d' ? 7 : range === '30d' ? 30 : 12
+  const bucketDuration = duration / numBuckets
+  const timeline: ShareTimelinePoint[] = []
+  for (let i = 0; i < numBuckets; i++) {
+    const bucketStart = startTs + i * bucketDuration
+    const bucketEnd = bucketStart + bucketDuration
+    const bucketVisits = rows.filter((r) => r.visited_at >= bucketStart && r.visited_at < bucketEnd)
+    const d = new Date(bucketStart)
+    const label = range === '24h'
+      ? `${String(d.getHours()).padStart(2, '0')}:00`
+      : range === 'all'
+        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        : `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
+    timeline.push({
+      label,
+      timestamp: bucketStart,
+      views: bucketVisits.length,
+      visitors: new Set(bucketVisits.map((r) => r.visitor_fp).filter(Boolean)).size,
+    })
+  }
+  return timeline
 }
