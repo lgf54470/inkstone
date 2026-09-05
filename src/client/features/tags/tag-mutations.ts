@@ -104,6 +104,10 @@ export async function renameTag(tag: Tag, value: string): Promise<void> {
     return
   }
 
+  await finishTagRename(tag, destination, result)
+}
+
+async function finishTagRename(tag: Tag, destination: string, result: Awaited<ReturnType<typeof api.tags.patch>>): Promise<void> {
   let isRefreshed = true
   try {
     await useNotes.getState().pull({ force: true })

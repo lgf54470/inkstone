@@ -348,9 +348,6 @@
   "src/client/features/tags/manage-tags-modal.tsx": {
     "longFns": 1
   },
-  "src/client/features/tags/tag-mutations.ts": {
-    "longFns": 1
-  },
   "src/client/features/templates/gallery-keyboard.ts": {
     "longFns": 2,
     "deepFns": 1
@@ -536,10 +533,6 @@
   "src/client/store/notes/acknowledge.ts": {
     "longFns": 1
   },
-  "src/client/store/notes/boot.ts": {
-    "longFns": 6,
-    "deepFns": 1
-  },
   "src/client/store/notes/destructive.ts": {
     "longFns": 2,
     "deepFns": 1
@@ -556,10 +549,6 @@
   },
   "src/client/store/notes/open.ts": {
     "longFns": 2,
-    "deepFns": 1
-  },
-  "src/client/store/notes/outbox.ts": {
-    "longFns": 1,
     "deepFns": 1
   },
   "src/client/store/notes/persist.ts": {

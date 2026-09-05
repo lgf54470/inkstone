@@ -680,6 +680,10 @@ const allowed = new Map([
   ["src/client/store/notes/adopt.ts", [
     "/** Adopting fetched/created/saved notes into the store (summary plus content caches). */",
   ]],
+  ["src/client/store/notes/boot-helpers.ts", [
+    "/** Extracted helpers for boot()/pull()/applySync(): moved verbatim from boot.ts method bodies, behavior unchanged. */",
+    "/** Local cleanup in applySync: drop runtime state for deleted notes and detach them from the workspace. */",
+  ]],
   ["src/client/store/notes/boot.ts", [
     "// Reconnect pulls race with the connection coming up; the next event or manual refresh retries.",
     "// Outbox replay is retried on the next pull; keep the UI responsive meanwhile.",
@@ -726,8 +730,11 @@ const allowed = new Map([
   ["src/client/store/notes/open.ts", [
     "// Cache read failed (IndexedDB hiccup); fall through to the server fetch below.",
   ]],
+  ["src/client/store/notes/outbox-replay.ts", [
+    "/** Outbox replay machinery: dependency-ordered flush, conflict rebase, and 404 recovery (extracted from outbox.ts). */",
+  ]],
   ["src/client/store/notes/outbox.ts", [
-    "/** Offline write-ahead replay: dependency-ordered outbox flush, conflict rebase, and 404 recovery. */",
+    "/** Offline write-ahead replay: public entry (`replayOutbox`) plus re-exports; machinery lives in `outbox-replay.ts`. */",
   ]],
   ["src/client/store/notes/persist.ts", [
     "/** Text-write staging: coalesced IndexedDB persistence, outbox enqueue, and per-note write serialization. */",
