@@ -1,119 +1,211 @@
 import { Hono } from "hono";
-import type { BlogStats, BlogGlobalAnalytics, BlogVisitLog, ShareTimelinePoint, ShareBreakdownItem, ShareTimelineRange } from "@shared/types";
+import type { BlogGlobalAnalytics, BlogStats, BlogVisitLog, ShareBreakdownItem, ShareTimelineRange } from "@shared/types";
 import type { AppBindings } from "../../env";
 import { requireAuth } from "../../middleware/auth";
-import { parseBotName, getRangeStartTimestamp, computeDelta, buildVisitFilterSql, type ShareFilterOptions } from "../../lib/share-analytics";
+import { parseBotName, getRangeStartTimestamp, computeDelta, buildVisitFilterSql, buildShareTimeline, toBreakdown, type ShareFilterOptions } from "../../lib/share-analytics";
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+interface BlogVisitRow {
+  visited_at: number
+  visitor_fp: string | null
+  country: string | null
+  referrer_host: string | null
+  device_type: string | null
+  os: string | null
+  browser: string | null
+  is_bot: number
+  is_self_referrer: number
+  is_owner: number
+  post_id: string
+  slug: string
+}
+
+interface AnalyticsContext {
+  range: ShareTimelineRange
+  clause: string
+  filters: ShareFilterOptions
+  now: number
+  startTs: number
+  duration: number
+  prevStartTs: number
+}
 
 export function registerBlogStatsRoutes(blogManageRoutes: Hono<AppBindings>): void {
-// --------------------------------------------------------------------------
-// Blog Manage Routes (Authenticated)
-// --------------------------------------------------------------------------
+  registerBlogStatsRoute(blogManageRoutes)
+  registerBlogAnalyticsRoute(blogManageRoutes)
+  registerBlogVisitsDeleteRoute(blogManageRoutes)
+}
 
-// 1. Get Blog Stats & Dashboard
-blogManageRoutes.get('/stats', requireAuth, async (c) => {
-  const userId = c.get('userId')!
-  const db = c.env.DB
+function registerBlogStatsRoute(blogManageRoutes: Hono<AppBindings>): void {
+  blogManageRoutes.get('/stats', requireAuth, async (c) => {
+    const userId = c.get('userId')!
+    const stats = await loadBlogStats(c.env.DB, userId)
+    return c.json({ stats })
+  })
+}
 
-  const totalPostsRow = await db
-    .prepare('SELECT COUNT(*) as count FROM blog_posts WHERE user_id = ?1')
-    .bind(userId)
-    .first<{ count: number }>()
-
-  const publishedRow = await db
-    .prepare('SELECT COUNT(*) as count FROM blog_posts WHERE user_id = ?1 AND is_published = 1')
-    .bind(userId)
-    .first<{ count: number }>()
-
-  const viewsRow = await db
-    .prepare('SELECT COALESCE(SUM(views), 0) as count FROM blog_posts WHERE user_id = ?1')
-    .bind(userId)
-    .first<{ count: number }>()
-
-  const totalCommentsRow = await db
-    .prepare(
-      'SELECT COUNT(*) as count FROM blog_comments c JOIN blog_posts p ON c.post_id = p.id WHERE p.user_id = ?1',
-    )
-    .bind(userId)
-    .first<{ count: number }>()
-
-  const pendingCommentsRow = await db
-    .prepare(
-      "SELECT COUNT(*) as count FROM blog_comments c JOIN blog_posts p ON c.post_id = p.id WHERE p.user_id = ?1 AND c.status = 'pending'",
-    )
-    .bind(userId)
-    .first<{ count: number }>()
-
-  const categoriesRow = await db
-    .prepare('SELECT COUNT(*) as count FROM blog_categories WHERE user_id = ?1')
-    .bind(userId)
-    .first<{ count: number }>()
-
-  const pinnedRow = await db
-    .prepare('SELECT COUNT(*) as count FROM blog_posts WHERE user_id = ?1 AND is_pinned = 1')
-    .bind(userId)
-    .first<{ count: number }>()
+async function loadBlogStats(db: D1Database, userId: string): Promise<BlogStats> {
+  const totalPosts = (await countBlogPosts(db, userId, 'SELECT COUNT(*) as count FROM blog_posts WHERE user_id = ?1')) ?? 0
+  const publishedPosts = (await countBlogPosts(db, userId, 'SELECT COUNT(*) as count FROM blog_posts WHERE user_id = ?1 AND is_published = 1')) ?? 0
+  const pinnedPosts = (await countBlogPosts(db, userId, 'SELECT COUNT(*) as count FROM blog_posts WHERE user_id = ?1 AND is_pinned = 1')) ?? 0
+  const totalViews = (await countBlogPosts(db, userId, 'SELECT COALESCE(SUM(views), 0) as count FROM blog_posts WHERE user_id = ?1')) ?? 0
+  const totalComments = (await countBlogComments(db, userId, false)) ?? 0
+  const pendingComments = (await countBlogComments(db, userId, true)) ?? 0
+  const categoriesCount = (await countBlogPosts(db, userId, 'SELECT COUNT(*) as count FROM blog_categories WHERE user_id = ?1')) ?? 0
 
   const postsFolderStats = await db
     .prepare('SELECT folder_id, is_published, tags FROM blog_posts WHERE user_id = ?1')
     .bind(userId)
     .all<{ folder_id: string | null; is_published: number; tags: string }>()
 
-  const uniqueTags = new Set<string>()
-  const folderCounts: Record<string, { total: number; published: number }> = {}
-  const tagCounts: Record<string, { total: number; published: number }> = {}
+  const { uniqueTags, folderCounts, tagCounts } = accumulatePostCounts(postsFolderStats.results ?? [])
 
-  for (const post of postsFolderStats.results || []) {
-    if (post.folder_id) {
-      if (!folderCounts[post.folder_id]) {
-        folderCounts[post.folder_id] = { total: 0, published: 0 }
-      }
-      folderCounts[post.folder_id].total += 1
-      if (post.is_published === 1) {
-        folderCounts[post.folder_id].published += 1
-      }
-    }
-    try {
-      const arr = JSON.parse(post.tags || '[]')
-      if (Array.isArray(arr)) {
-        for (const t of arr) {
-          const strT = String(t).trim()
-          if (!strT) continue
-          uniqueTags.add(strT)
-          if (!tagCounts[strT]) {
-            tagCounts[strT] = { total: 0, published: 0 }
-          }
-          tagCounts[strT].total += 1
-          if (post.is_published === 1) {
-            tagCounts[strT].published += 1
-          }
-        }
-      }
-    } catch { /* Corrupt post tags are skipped so one bad row cannot break the dashboard. */ }
-  }
-
-  const totalPosts = totalPostsRow?.count || 0
-  const publishedPosts = publishedRow?.count || 0
-
-  const stats: BlogStats = {
+  return {
     totalPosts,
     publishedPosts,
     draftPosts: totalPosts - publishedPosts,
-    pinnedPosts: pinnedRow?.count || 0,
-    totalViews: viewsRow?.count || 0,
-    totalComments: totalCommentsRow?.count || 0,
-    pendingComments: pendingCommentsRow?.count || 0,
-    categoriesCount: categoriesRow?.count || 0,
+    pinnedPosts,
+    totalViews,
+    totalComments,
+    pendingComments,
+    categoriesCount,
     tagsCount: uniqueTags.size,
     folderCounts,
     tagCounts,
   }
+}
 
-  return c.json({ stats })
-})
+async function countBlogPosts(db: D1Database, userId: string, sql: string): Promise<number> {
+  const row = await db.prepare(sql).bind(userId).first<{ count: number }>()
+  return row?.count ?? 0
+}
 
-// 1.1 Blog Global Analytics (Dashboard)
-blogManageRoutes.get('/analytics', requireAuth, async (c) => {
-  const userId = c.get('userId')!
+async function countBlogComments(db: D1Database, userId: string, pendingOnly: boolean): Promise<number> {
+  const row = await db.prepare(
+    pendingOnly
+      ? "SELECT COUNT(*) as count FROM blog_comments c JOIN blog_posts p ON c.post_id = p.id WHERE p.user_id = ?1 AND c.status = 'pending'"
+      : 'SELECT COUNT(*) as count FROM blog_comments c JOIN blog_posts p ON c.post_id = p.id WHERE p.user_id = ?1',
+  ).bind(userId).first<{ count: number }>()
+  return row?.count ?? 0
+}
+
+function accumulatePostCounts(rows: Array<{ folder_id: string | null; is_published: number; tags: string }>): {
+  uniqueTags: Set<string>
+  folderCounts: Record<string, { total: number; published: number }>
+  tagCounts: Record<string, { total: number; published: number }>
+} {
+  const uniqueTags = new Set<string>()
+  const folderCounts: Record<string, { total: number; published: number }> = {}
+  const tagCounts: Record<string, { total: number; published: number }> = {}
+
+  for (const post of rows) {
+    accumulatePostFolder(folderCounts, post.folder_id, post.is_published === 1)
+    accumulatePostTags(uniqueTags, tagCounts, post.tags, post.is_published === 1)
+  }
+
+  return { uniqueTags, folderCounts, tagCounts }
+}
+
+function accumulatePostFolder(
+  folderCounts: Record<string, { total: number; published: number }>,
+  folderId: string | null,
+  published: boolean,
+): void {
+  if (!folderId) return
+  if (!folderCounts[folderId]) {
+    folderCounts[folderId] = { total: 0, published: 0 }
+  }
+  folderCounts[folderId].total += 1
+  if (published) {
+    folderCounts[folderId].published += 1
+  }
+}
+
+function accumulatePostTags(
+  uniqueTags: Set<string>,
+  tagCounts: Record<string, { total: number; published: number }>,
+  raw: string,
+  published: boolean,
+): void {
+  let arr: unknown
+  try {
+    arr = JSON.parse(raw || '[]')
+  } catch { /* Corrupt post tags are skipped so one bad row cannot break the dashboard. */ }
+  if (!Array.isArray(arr)) return
+  for (const t of arr) {
+    const strT = String(t).trim()
+    if (!strT) continue
+    uniqueTags.add(strT)
+    if (!tagCounts[strT]) {
+      tagCounts[strT] = { total: 0, published: 0 }
+    }
+    tagCounts[strT].total += 1
+    if (published) {
+      tagCounts[strT].published += 1
+    }
+  }
+}
+
+function registerBlogAnalyticsRoute(blogManageRoutes: Hono<AppBindings>): void {
+  blogManageRoutes.get('/analytics', requireAuth, async (c) => {
+    const analytics = await loadBlogAnalyticsPayload(c.env.DB, analyticsContext(c), c.get('userId')!)
+    return c.json({ analytics })
+  })
+}
+
+async function loadBlogAnalyticsPayload(
+  db: D1Database,
+  ctx: AnalyticsContext,
+  userId: string,
+): Promise<BlogGlobalAnalytics> {
+  const postsSummary = await loadBlogPostsSummary(db, userId)
+  const totalPosts = postsSummary?.total_posts ?? 0
+  const publishedPosts = postsSummary?.published_posts ?? 0
+  const draftPosts = Math.max(0, totalPosts - publishedPosts)
+  const postStoredViews = postsSummary?.total_views ?? 0
+
+  const currentRows = await loadBlogRangeVisits(db, userId, ctx.startTs, ctx.clause)
+  const prevStats = await loadBlogPrevVisits(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause)
+  const filterStats = await loadBlogFilterStats(db, userId, ctx.startTs)
+
+  const currentViews = currentRows.length
+  const currentVisitors = new Set(currentRows.map((r) => r.visitor_fp).filter(Boolean)).size
+  const prevViews = prevStats?.prev_views ?? 0
+  const prevVisitors = prevStats?.prev_uv ?? 0
+  const totals = blogDisplayTotals({ currentViews, currentVisitors, postStoredViews, range: ctx.range, duration: ctx.duration })
+
+  const timeline = buildShareTimeline(currentRows, ctx.range, ctx.startTs, ctx.duration)
+  const sparklineViews = timeline.slice(-7).map((p) => p.views)
+  const sparklineVisitors = timeline.slice(-7).map((p) => p.visitors)
+
+  const postVisitsMap = aggregatePostVisits(currentRows)
+  const topPosts = await loadBlogTopPosts(db, userId, postVisitsMap)
+  const breakdown = breakdownStats(currentRows, postStoredViews)
+
+  const recentVisits = await loadBlogRecentVisits(db, userId, ctx.filters)
+
+  return {
+    range: ctx.range,
+    totalPosts,
+    publishedPosts,
+    draftPosts,
+    totalViews: totals.views,
+    totalVisitors: totals.visitors,
+    viewsDelta: computeDelta(currentViews, prevViews),
+    visitorsDelta: computeDelta(currentVisitors, prevVisitors),
+    viewsPerDay: totals.viewsPerDay,
+    sparklineViews,
+    sparklineVisitors,
+    timeline,
+    topPosts,
+    ...breakdown,
+    recentVisits,
+    filterStats,
+  }
+}
+
+function analyticsContext(c: { req: { query(key: string): string | undefined } }): AnalyticsContext {
   const range = (c.req.query('range') || '7d') as ShareTimelineRange
   const excludeBots = c.req.query('excludeBots') !== 'false'
   const excludeSelf = c.req.query('excludeSelf') === 'true'
@@ -123,15 +215,17 @@ blogManageRoutes.get('/analytics', requireAuth, async (c) => {
     excludeSelfReferrers: excludeSelf,
     excludeOwner,
   }
-  const visitFilterClause = buildVisitFilterSql(filters)
+  const clause = buildVisitFilterSql(filters)
 
   const now = Date.now()
   const startTs = getRangeStartTimestamp(range, now)
-  const duration = startTs > 0 ? now - startTs : 30 * 24 * 60 * 60 * 1000
-  const prevStartTs = startTs > 0 ? startTs - duration : 0
+  const duration = startTs > 0 ? now - startTs : 30 * DAY_MS
+  return { range, clause, filters, now, startTs, duration, prevStartTs: startTs > 0 ? startTs - duration : 0 }
+}
 
-  const postsSummary = await c.env.DB.prepare(
-    `SELECT 
+async function loadBlogPostsSummary(db: D1Database, userId: string): Promise<{ total_posts: number; published_posts: number; total_views: number } | null> {
+  return db.prepare(
+    `SELECT
        COUNT(*) as total_posts,
        COUNT(CASE WHEN is_published = 1 THEN 1 END) as published_posts,
        COALESCE(SUM(views), 0) as total_views
@@ -139,103 +233,68 @@ blogManageRoutes.get('/analytics', requireAuth, async (c) => {
   )
     .bind(userId)
     .first<{ total_posts: number; published_posts: number; total_views: number }>()
+}
 
-  const totalPosts = postsSummary?.total_posts ?? 0
-  const publishedPosts = postsSummary?.published_posts ?? 0
-  const draftPosts = Math.max(0, totalPosts - publishedPosts)
-  const postStoredViews = postsSummary?.total_views ?? 0
-
-  const currentVisits = await c.env.DB.prepare(
+async function loadBlogRangeVisits(db: D1Database, userId: string, startTs: number, clause: string): Promise<BlogVisitRow[]> {
+  const rows = await db.prepare(
     `SELECT visited_at, visitor_fp, country, referrer_host, device_type, os, browser,
             is_bot, is_self_referrer, is_owner, post_id, slug
        FROM blog_visits
-      WHERE user_id = ?1 AND visited_at >= ?2 ${visitFilterClause}
+      WHERE user_id = ?1 AND visited_at >= ?2 ${clause}
       ORDER BY visited_at ASC`,
   )
     .bind(userId, startTs)
-    .all<{
-      visited_at: number
-      visitor_fp: string | null
-      country: string | null
-      referrer_host: string | null
-      device_type: string | null
-      os: string | null
-      browser: string | null
-      is_bot: number
-      is_self_referrer: number
-      is_owner: number
-      post_id: string
-      slug: string
-    }>()
+    .all<BlogVisitRow>()
+  return rows.results ?? []
+}
 
-  const currentRows = currentVisits.results ?? []
-
-  const prevStats = await c.env.DB.prepare(
+async function loadBlogPrevVisits(
+  db: D1Database,
+  userId: string,
+  prevStartTs: number,
+  startTs: number,
+  clause: string,
+): Promise<{ prev_views: number; prev_uv: number } | null> {
+  return db.prepare(
     `SELECT COUNT(*) as prev_views, COUNT(DISTINCT visitor_fp) as prev_uv
        FROM blog_visits
-      WHERE user_id = ?1 AND visited_at >= ?2 AND visited_at < ?3 ${visitFilterClause}`,
+      WHERE user_id = ?1 AND visited_at >= ?2 AND visited_at < ?3 ${clause}`,
   )
     .bind(userId, prevStartTs, startTs)
     .first<{ prev_views: number; prev_uv: number }>()
+}
 
-  const filterStatsRow = await c.env.DB.prepare(
-    `SELECT 
+async function loadBlogFilterStats(db: D1Database, userId: string, startTs: number): Promise<{ bots: number; selfReferrals: number; owner: number }> {
+  const row = await db.prepare(
+    `SELECT
        COUNT(CASE WHEN is_bot = 1 THEN 1 END) as bots,
        COUNT(CASE WHEN is_self_referrer = 1 THEN 1 END) as self_referrals,
        COUNT(CASE WHEN is_owner = 1 THEN 1 END) as owner
      FROM blog_visits
     WHERE user_id = ?1 AND visited_at >= ?2`,
   ).bind(userId, startTs).first<{ bots: number; self_referrals: number; owner: number }>()
-
-  const filterStats = {
-    bots: filterStatsRow?.bots ?? 0,
-    selfReferrals: filterStatsRow?.self_referrals ?? 0,
-    owner: filterStatsRow?.owner ?? 0,
+  return {
+    bots: row?.bots ?? 0,
+    selfReferrals: row?.self_referrals ?? 0,
+    owner: row?.owner ?? 0,
   }
+}
 
-  const currentViews = currentRows.length
-  const currentVisitors = new Set(currentRows.map((r) => r.visitor_fp).filter(Boolean)).size
-  const prevViews = prevStats?.prev_views ?? 0
-  const prevVisitors = prevStats?.prev_uv ?? 0
+function blogDisplayTotals(params: {
+  currentViews: number
+  currentVisitors: number
+  postStoredViews: number
+  range: ShareTimelineRange
+  duration: number
+}): { views: number; visitors: number; viewsPerDay: number } {
+  const { currentViews, currentVisitors, postStoredViews, range, duration } = params
+  const views = Math.max(currentViews, range === 'all' ? postStoredViews : currentViews)
+  const visitors = Math.max(currentVisitors, currentViews > 0 ? currentVisitors : (postStoredViews > 0 ? Math.ceil(postStoredViews * 0.75) : 0))
+  const daysSpan = Math.max(1, Math.round(duration / DAY_MS))
+  return { views, visitors, viewsPerDay: Math.round(views / daysSpan) }
+}
 
-  const displayTotalViews = Math.max(currentViews, range === 'all' ? postStoredViews : currentViews)
-  const displayTotalVisitors = Math.max(currentVisitors, currentViews > 0 ? currentVisitors : (postStoredViews > 0 ? Math.ceil(postStoredViews * 0.75) : 0))
-
-  const daysSpan = Math.max(1, Math.round(duration / (24 * 60 * 60 * 1000)))
-  const viewsPerDay = Math.round(displayTotalViews / daysSpan)
-
-  const numBuckets = range === '24h' ? 24 : range === '7d' ? 7 : range === '30d' ? 30 : 12
-  const bucketDuration = duration / numBuckets
-  const timeline: ShareTimelinePoint[] = []
-
-  for (let i = 0; i < numBuckets; i++) {
-    const bucketStart = startTs + i * bucketDuration
-    const bucketEnd = bucketStart + bucketDuration
-    const bucketVisits = currentRows.filter((r) => r.visited_at >= bucketStart && r.visited_at < bucketEnd)
-    const bViews = bucketVisits.length
-    const bUv = new Set(bucketVisits.map((r) => r.visitor_fp).filter(Boolean)).size
-
-    let label: string
-    const d = new Date(bucketStart)
-    if (range === '24h') {
-      label = `${String(d.getHours()).padStart(2, '0')}:00`
-    } else if (range === 'all') {
-      label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    } else {
-      label = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
-    }
-
-    timeline.push({
-      label,
-      timestamp: bucketStart,
-      views: bViews,
-      visitors: bUv,
-    })
-  }
-
-  const sparklineViews = timeline.slice(-7).map((p) => p.views)
-  const sparklineVisitors = timeline.slice(-7).map((p) => p.visitors)
-
+function aggregatePostVisits(currentRows: BlogVisitRow[]): Map<string, { views: number; uvs: Set<string>; slug: string }> {
   const postVisitsMap = new Map<string, { views: number; uvs: Set<string>; slug: string }>()
   for (const row of currentRows) {
     if (row.post_id) {
@@ -245,12 +304,19 @@ blogManageRoutes.get('/analytics', requireAuth, async (c) => {
       postVisitsMap.set(row.post_id, entry)
     }
   }
+  return postVisitsMap
+}
 
-  const allUserPosts = await c.env.DB.prepare(
+async function loadBlogTopPosts(
+  db: D1Database,
+  userId: string,
+  postVisitsMap: Map<string, { views: number; uvs: Set<string>; slug: string }>,
+): Promise<BlogGlobalAnalytics['topPosts']> {
+  const allUserPosts = await db.prepare(
     `SELECT id, title, slug, views FROM blog_posts WHERE user_id = ?1 AND is_published = 1 ORDER BY views DESC LIMIT 10`,
   ).bind(userId).all<{ id: string; title: string; slug: string; views: number }>()
 
-  const topPosts = (allUserPosts.results ?? []).map((p) => {
+  return (allUserPosts.results ?? []).map((p) => {
     const visitData = postVisitsMap.get(p.id)
     const views = Math.max(visitData?.views ?? 0, p.views ?? 0)
     const visitors = visitData ? visitData.uvs.size : Math.max(1, Math.round(views * 0.75))
@@ -262,14 +328,49 @@ blogManageRoutes.get('/analytics', requireAuth, async (c) => {
       visitors,
     }
   }).sort((a, b) => b.views - a.views)
+}
 
+interface BlogBreakdown {
+  topCountries: ShareBreakdownItem[]
+  topReferrers: ShareBreakdownItem[]
+  devices: ShareBreakdownItem[]
+  osList: ShareBreakdownItem[]
+  browsers: ShareBreakdownItem[]
+}
+
+function breakdownStats(currentRows: BlogVisitRow[], postStoredViews: number): BlogBreakdown {
+  const { countryMap, referrerMap, deviceMap, osMap, browserMap } = aggregateBlogDistributions(currentRows)
+
+  if (currentRows.length === 0 && postStoredViews > 0) {
+    fillFallbackDistributions({ countryMap, referrerMap, deviceMap, osMap, browserMap }, postStoredViews)
+  }
+
+  const breakdownTotal = currentRows.length > 0 ? currentRows.length : postStoredViews
+  return {
+    topCountries: toBreakdown(countryMap, breakdownTotal),
+    topReferrers: toBreakdown(referrerMap, breakdownTotal),
+    devices: toBreakdown(deviceMap, breakdownTotal),
+    osList: toBreakdown(osMap, breakdownTotal),
+    browsers: toBreakdown(browserMap, breakdownTotal),
+  }
+}
+
+interface BlogDistributionMaps {
+  countryMap: Map<string, number>
+  referrerMap: Map<string, number>
+  deviceMap: Map<string, number>
+  osMap: Map<string, number>
+  browserMap: Map<string, number>
+}
+
+function aggregateBlogDistributions(rows: BlogVisitRow[]): BlogDistributionMaps {
   const countryMap = new Map<string, number>()
   const referrerMap = new Map<string, number>()
   const deviceMap = new Map<string, number>()
   const osMap = new Map<string, number>()
   const browserMap = new Map<string, number>()
 
-  for (const row of currentRows) {
+  for (const row of rows) {
     const country = (row.country || 'Unknown').toUpperCase()
     countryMap.set(country, (countryMap.get(country) || 0) + 1)
 
@@ -286,36 +387,44 @@ blogManageRoutes.get('/analytics', requireAuth, async (c) => {
     browserMap.set(browser, (browserMap.get(browser) || 0) + 1)
   }
 
-  if (currentRows.length === 0 && postStoredViews > 0) {
-    countryMap.set('CN', postStoredViews)
-    referrerMap.set('Direct', postStoredViews)
-    deviceMap.set('desktop', Math.round(postStoredViews * 0.6))
-    deviceMap.set('mobile', postStoredViews - Math.round(postStoredViews * 0.6))
-    osMap.set('macOS', Math.round(postStoredViews * 0.5))
-    osMap.set('Windows', Math.round(postStoredViews * 0.3))
-    osMap.set('iOS', postStoredViews - Math.round(postStoredViews * 0.8))
-    browserMap.set('Chrome', Math.round(postStoredViews * 0.6))
-    browserMap.set('Safari', postStoredViews - Math.round(postStoredViews * 0.6))
-  }
+  return { countryMap, referrerMap, deviceMap, osMap, browserMap }
+}
 
-  function toBreakdown(map: Map<string, number>, total: number): ShareBreakdownItem[] {
-    return Array.from(map.entries())
-      .map(([name, count]) => ({
-        name,
-        count,
-        percentage: total > 0 ? Math.round((count / total) * 100) : 0,
-      }))
-      .sort((a, b) => b.count - a.count)
-  }
+function fillFallbackDistributions(maps: BlogDistributionMaps, postStoredViews: number): void {
+  const { countryMap, referrerMap, deviceMap, osMap, browserMap } = maps
+  countryMap.set('CN', postStoredViews)
+  referrerMap.set('Direct', postStoredViews)
+  deviceMap.set('desktop', Math.round(postStoredViews * 0.6))
+  deviceMap.set('mobile', postStoredViews - Math.round(postStoredViews * 0.6))
+  osMap.set('macOS', Math.round(postStoredViews * 0.5))
+  osMap.set('Windows', Math.round(postStoredViews * 0.3))
+  osMap.set('iOS', postStoredViews - Math.round(postStoredViews * 0.8))
+  browserMap.set('Chrome', Math.round(postStoredViews * 0.6))
+  browserMap.set('Safari', postStoredViews - Math.round(postStoredViews * 0.6))
+}
 
-  const breakdownTotal = currentRows.length > 0 ? currentRows.length : postStoredViews
-  const topCountries = toBreakdown(countryMap, breakdownTotal)
-  const topReferrers = toBreakdown(referrerMap, breakdownTotal)
-  const devices = toBreakdown(deviceMap, breakdownTotal)
-  const osList = toBreakdown(osMap, breakdownTotal)
-  const browsers = toBreakdown(browserMap, breakdownTotal)
+interface BlogRecentVisitRow {
+  id: number
+  post_id: string
+  slug: string
+  visited_at: number
+  country: string | null
+  region: string | null
+  city: string | null
+  referrer: string | null
+  referrer_host: string | null
+  device_type: string | null
+  os: string | null
+  browser: string | null
+  user_agent: string | null
+  is_bot: number
+  is_self_referrer: number
+  is_owner: number
+  post_title: string
+}
 
-  const recentRows = await c.env.DB.prepare(
+async function loadBlogRecentVisits(db: D1Database, userId: string, filters: ShareFilterOptions): Promise<BlogVisitLog[]> {
+  const rows = await db.prepare(
     `SELECT bv.id, bv.post_id, bv.slug, bv.visited_at, bv.country, bv.region, bv.city,
             bv.referrer, bv.referrer_host, bv.device_type, bv.os, bv.browser, bv.user_agent,
             bv.is_bot, bv.is_self_referrer, bv.is_owner,
@@ -327,27 +436,9 @@ blogManageRoutes.get('/analytics', requireAuth, async (c) => {
       LIMIT 20`,
   )
     .bind(userId)
-    .all<{
-      id: number
-      post_id: string
-      slug: string
-      visited_at: number
-      country: string | null
-      region: string | null
-      city: string | null
-      referrer: string | null
-      referrer_host: string | null
-      device_type: string | null
-      os: string | null
-      browser: string | null
-      user_agent: string | null
-      is_bot: number
-      is_self_referrer: number
-      is_owner: number
-      post_title: string
-    }>()
+    .all<BlogRecentVisitRow>()
 
-  const recentVisits: BlogVisitLog[] = (recentRows.results ?? []).map((r) => ({
+  return (rows.results ?? []).map((r) => ({
     id: r.id,
     postId: r.post_id,
     postTitle: r.post_title,
@@ -366,58 +457,37 @@ blogManageRoutes.get('/analytics', requireAuth, async (c) => {
     isOwner: r.is_owner === 1,
     botName: r.is_bot === 1 ? parseBotName(r.user_agent ?? '') : null,
   }))
-
-  const analytics: BlogGlobalAnalytics = {
-    range,
-    totalPosts,
-    publishedPosts,
-    draftPosts,
-    totalViews: displayTotalViews,
-    totalVisitors: displayTotalVisitors,
-    viewsDelta: computeDelta(currentViews, prevViews),
-    visitorsDelta: computeDelta(currentVisitors, prevVisitors),
-    viewsPerDay,
-    sparklineViews,
-    sparklineVisitors,
-    timeline,
-    topPosts,
-    topCountries,
-    topReferrers,
-    devices,
-    osList,
-    browsers,
-    recentVisits,
-    filterStats,
-  }
-
-  return c.json({ analytics })
-})
-
-blogManageRoutes.delete('/visits', requireAuth, async (c) => {
-  const userId = c.get('userId')!
-  const type = c.req.query('type') || 'all'
-  const days = parseInt(c.req.query('days') || '30', 10)
-
-  let deleted = 0
-  if (type === 'bots') {
-    const res = await c.env.DB.prepare(
-      `DELETE FROM blog_visits WHERE user_id = ?1 AND is_bot = 1`,
-    ).bind(userId).run()
-    deleted = res.meta.changes ?? 0
-  } else if (type === 'older_than') {
-    const cutoff = Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000
-    const res = await c.env.DB.prepare(
-      `DELETE FROM blog_visits WHERE user_id = ?1 AND visited_at < ?2`,
-    ).bind(userId, cutoff).run()
-    deleted = res.meta.changes ?? 0
-  } else if (type === 'all') {
-    const res = await c.env.DB.prepare(
-      `DELETE FROM blog_visits WHERE user_id = ?1`,
-    ).bind(userId).run()
-    deleted = res.meta.changes ?? 0
-  }
-
-  return c.json({ ok: true as const, deleted })
-})
 }
 
+function registerBlogVisitsDeleteRoute(blogManageRoutes: Hono<AppBindings>): void {
+  blogManageRoutes.delete('/visits', requireAuth, async (c) => {
+    const userId = c.get('userId')!
+    const type = c.req.query('type') || 'all'
+    const days = parseInt(c.req.query('days') || '30', 10)
+    const deleted = await deleteBlogVisitLogs(c.env.DB, userId, type, days)
+    return c.json({ ok: true as const, deleted })
+  })
+}
+
+async function deleteBlogVisitLogs(db: D1Database, userId: string, type: string, days: number): Promise<number> {
+  if (type === 'bots') {
+    const res = await db.prepare(
+      `DELETE FROM blog_visits WHERE user_id = ?1 AND is_bot = 1`,
+    ).bind(userId).run()
+    return res.meta.changes ?? 0
+  }
+  if (type === 'older_than') {
+    const cutoff = Date.now() - Math.max(1, days) * DAY_MS
+    const res = await db.prepare(
+      `DELETE FROM blog_visits WHERE user_id = ?1 AND visited_at < ?2`,
+    ).bind(userId, cutoff).run()
+    return res.meta.changes ?? 0
+  }
+  if (type === 'all') {
+    const res = await db.prepare(
+      `DELETE FROM blog_visits WHERE user_id = ?1`,
+    ).bind(userId).run()
+    return res.meta.changes ?? 0
+  }
+  return 0
+}
