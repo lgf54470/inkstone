@@ -115,6 +115,7 @@
   --file-badge-media: #7c3aed;
   --js-badge-bg: #f7df1e;
   --js-badge-ink: #000000;
+  --bg-card: var(--bg-surface);
 
   --z-under: -1;
   --z-flat: 0;

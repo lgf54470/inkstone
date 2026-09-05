@@ -18,9 +18,8 @@ import { Segmented } from '../../components/form'
 import { relativeTime } from '../../lib/time'
 import { t, useLocale } from '../../lib/i18n'
 import { api } from '../../lib/api'
+import { BigSvgChart } from '../../components/big-svg-chart'
 import { countryFlag, countryNameLocalized } from './share-helpers'
-import { BigSvgChart } from './share-dashboard-view'
-
 import { useShareStore } from './share-store'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 
@@ -167,7 +166,7 @@ export function ShareNoteAnalyticsModal({
           </div>
 
           <div className="h-48 w-full pt-1">
-            <BigSvgChart values={chartValues} timeline={timelinePoints} range={range} />
+            <BigSvgChart values={chartValues} timeline={timelinePoints} emptyLabel={t('share.no_data_yet')} />
           </div>
         </div>
 
