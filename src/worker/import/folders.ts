@@ -46,7 +46,6 @@ export async function ensureFolderPath(
 
   let parentId: string | null = null
   let accumulated = ''
-
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const segment = segments[segmentIndex]!
     accumulated = accumulated ? `${accumulated}/${segment}` : segment
@@ -56,46 +55,66 @@ export async function ensureFolderPath(
       parentId = cached
       continue
     }
-
-    const id = newId()
-    const now = Date.now()
-    const isFinal = segmentIndex === segments.length - 1
-    const createdAt = isFinal ? validTimestamp(finalMetadata?.createdAt) || now : now
-    const updatedAt = isFinal
-      ? Math.max(createdAt, validTimestamp(finalMetadata?.updatedAt) || createdAt)
-      : now
-    const position = isFinal ? finiteNumber(finalMetadata?.position) ?? now : now
-    const icon = isFinal ? finalMetadata?.icon ?? null : null
-    const color = isFinal ? finalMetadata?.color ?? null : null
-    const insert = db.prepare(
-      `INSERT OR IGNORE INTO folders
-         (id, user_id, parent_id, name, icon, color, position, created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
-    ).bind(id, userId, parentId, segment, icon, color, position, createdAt, updatedAt)
-    const [created] = await db.batch([
-      insert,
-      db.prepare(
-        `INSERT INTO changes (user_id, entity, entity_id, op, at)
-         SELECT ?1, 'folder', ?2, 'upsert', ?3
-          WHERE EXISTS (SELECT 1 FROM folders WHERE id = ?2 AND user_id = ?1)`,
-      ).bind(userId, id, updatedAt),
-    ])
-
-    let resolvedId = id
-    if (created?.meta.changes) {
-      ctx.result.createdFolders++
-    } else {
-      const existing = await db.prepare(
-        `SELECT id FROM folders
-          WHERE user_id = ?1 AND parent_id IS ?2 AND lower(name) = lower(?3)
-            AND deleted_at IS NULL LIMIT 1`,
-      ).bind(userId, parentId, segment).first<{ id: string }>()
-      if (!existing) throw new Error(`Could not create folder: ${segment}`)
-      resolvedId = existing.id
-    }
-
-    ctx.folderCache.set(key, resolvedId)
-    parentId = resolvedId
+    parentId = await createFolderSegment(
+      db,
+      userId,
+      parentId,
+      segment,
+      key,
+      ctx,
+      segmentIndex === segments.length - 1,
+      finalMetadata,
+    )
   }
   return parentId
+}
+
+async function createFolderSegment(
+  db: D1Database,
+  userId: string,
+  parentId: string | null,
+  segment: string,
+  cacheKey: string,
+  ctx: ImportContext,
+  isFinal: boolean,
+  finalMetadata?: FolderImportMetadata,
+): Promise<string> {
+  const id = newId()
+  const now = Date.now()
+  const createdAt = isFinal ? validTimestamp(finalMetadata?.createdAt) || now : now
+  const updatedAt = isFinal
+    ? Math.max(createdAt, validTimestamp(finalMetadata?.updatedAt) || createdAt)
+    : now
+  const position = isFinal ? finiteNumber(finalMetadata?.position) ?? now : now
+  const icon = isFinal ? finalMetadata?.icon ?? null : null
+  const color = isFinal ? finalMetadata?.color ?? null : null
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO folders
+       (id, user_id, parent_id, name, icon, color, position, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+  ).bind(id, userId, parentId, segment, icon, color, position, createdAt, updatedAt)
+  const [created] = await db.batch([
+    insert,
+    db.prepare(
+      `INSERT INTO changes (user_id, entity, entity_id, op, at)
+       SELECT ?1, 'folder', ?2, 'upsert', ?3
+        WHERE EXISTS (SELECT 1 FROM folders WHERE id = ?2 AND user_id = ?1)`,
+    ).bind(userId, id, updatedAt),
+  ])
+
+  let resolvedId = id
+  if (created?.meta.changes) {
+    ctx.result.createdFolders++
+  } else {
+    const existing = await db.prepare(
+      `SELECT id FROM folders
+        WHERE user_id = ?1 AND parent_id IS ?2 AND lower(name) = lower(?3)
+          AND deleted_at IS NULL LIMIT 1`,
+    ).bind(userId, parentId, segment).first<{ id: string }>()
+    if (!existing) throw new Error(`Could not create folder: ${segment}`)
+    resolvedId = existing.id
+  }
+
+  ctx.folderCache.set(cacheKey, resolvedId)
+  return resolvedId
 }

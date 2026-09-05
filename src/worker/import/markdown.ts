@@ -34,32 +34,7 @@ export async function importMarkdown(
   const filename = normalizedPath.split('/').pop() ?? path
   let content = stripObsidianComments(text)
   if (ctx.assets) {
-    const assetDir = normalizedPath.split('/').slice(0, -1).join('/')
-    const references = collectObsidianReferences(content)
-    const replacements = new Map<string, string>()
-    for (const reference of references) {
-      if (replacements.has(reference)) continue
-      const asset = findObsidianAsset(ctx.assets, reference, assetDir)
-      if (!asset) continue
-      try {
-        const persisted = await persistAttachmentWithinQuota(c.env, {
-          id: newId(),
-          userId,
-          noteId: null,
-          filename: asset.name,
-          reportedMime: mimeForAttachmentName(asset.name),
-          bytes: asset.bytes,
-          createdAt: Date.now(),
-        })
-        replacements.set(reference, `/api/files/${persisted.id}`)
-        ctx.result.createdAttachments++
-      } catch (error) {
-        addWarning(ctx.result, `${asset.name}: a referenced file could not be imported`)
-      }
-    }
-    if (replacements.size) {
-      content = rewriteObsidianReferences(content, (reference) => replacements.get(reference) ?? null)
-    }
+    content = await resolveObsidianAssetReferences(c.env, userId, content, normalizedPath, ctx)
   }
   const title = importedMarkdownTitle(meta, content, filename.replace(/\.(md|markdown|txt)$/i, ''))
 
@@ -79,4 +54,40 @@ export async function importMarkdown(
     ctx,
   )
   ctx.result.createdNotes++
+}
+
+async function resolveObsidianAssetReferences(
+  env: AppBindings['Bindings'],
+  userId: string,
+  content: string,
+  sourcePath: string,
+  ctx: ImportContext,
+): Promise<string> {
+  const assets = ctx.assets
+  if (!assets) return content
+  const assetDir = sourcePath.split('/').slice(0, -1).join('/')
+  const references = collectObsidianReferences(content)
+  const replacements = new Map<string, string>()
+  for (const reference of references) {
+    if (replacements.has(reference)) continue
+    const asset = findObsidianAsset(assets, reference, assetDir)
+    if (!asset) continue
+    try {
+      const persisted = await persistAttachmentWithinQuota(env, {
+        id: newId(),
+        userId,
+        noteId: null,
+        filename: asset.name,
+        reportedMime: mimeForAttachmentName(asset.name),
+        bytes: asset.bytes,
+        createdAt: Date.now(),
+      })
+      replacements.set(reference, `/api/files/${persisted.id}`)
+      ctx.result.createdAttachments++
+    } catch (error) {
+      addWarning(ctx.result, `${asset.name}: a referenced file could not be imported`)
+    }
+  }
+  if (!replacements.size) return content
+  return rewriteObsidianReferences(content, (reference) => replacements.get(reference) ?? null)
 }

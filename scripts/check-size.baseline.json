@@ -524,16 +524,6 @@
     "longFns": 2,
     "deepFns": 1
   },
-  "src/worker/import/folders.ts": {
-    "longFns": 1
-  },
-  "src/worker/import/markdown.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/worker/import/notes.ts": {
-    "longFns": 2
-  },
   "src/worker/import/zip.ts": {
     "longFns": 1,
     "deepFns": 1
