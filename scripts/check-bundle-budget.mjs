@@ -4,14 +4,15 @@ import path from 'node:path'
 const ASSETS_DIR = path.resolve('dist/client/assets')
 
 const BUDGETS = {
-  SettingsPanel: 40_000,
-  AccountSettings: 80_000,
-  EditorSettings: 40_000,
-  SyncSettings: 40_000,
-  DataSettings: 60_000,
-  AboutSettings: 40_000,
-  BackupSettings: 60_000,
-  McpSettings: 60_000,
+  // Chunk prefixes follow the kebab-case lazy import paths (settings dir → settings-*).
+  settings: 40_000,
+  'account-settings': 80_000,
+  'editor-settings': 40_000,
+  'sync-settings': 40_000,
+  'data-settings': 60_000,
+  'about-settings': 40_000,
+  'backup-settings': 60_000,
+  'mcp-settings': 60_000,
 }
 
 const failures = []
