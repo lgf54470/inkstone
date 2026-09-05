@@ -563,9 +563,11 @@ const allowed = new Map([
     "// 3. With {showLineNumbers} and highlight lines {2}",
     "// 4. With explicit disable {line-numbers=false}",
   ]],
-  ["src/client/lib/markdown/renderer.ts", [
+  ["src/client/lib/markdown/renderer/index.ts", [
     "/** Builds the sanitized Markdown rendering pipeline and its Inkstone-specific syntax extensions. */",
-    "/** `true` when the caller opted into loading external https images (preview.externalImages). */",
+    "/** Allow external https images; defaults to false (blocked). */",
+  ]],
+  ["src/client/lib/markdown/renderer/media.ts", [
     "// External https images are blocked by default (privacy default; the server",
     "// CSP drops `https:` from img-src while preview.externalImages is off, so",
     "// this is defense-in-depth for raw-HTML images too). Same-origin http(s)",
@@ -574,7 +576,9 @@ const allowed = new Map([
     "// Placeholder instead of a broken <img>: the browser never loads an",
     "// external image while blocked, so no request leaves the origin.",
     "/** True for http(s) URLs that point to a different origin than the app itself. */",
-    "/** Allow external https images; defaults to false (blocked). */",
+  ]],
+  ["src/client/lib/markdown/renderer/types.ts", [
+    "/** `true` when the caller opted into loading external https images (preview.externalImages). */",
   ]],
   ["src/client/lib/markdown/sanitize.ts", [
     "/**\n * Single sanitization entry point for every HTML string the markdown pipeline\n * writes into the DOM. The main render pass (markdown-it output) and the\n * async enhancers (Prism token HTML, KaTeX output) must each go through one of\n * these helpers so no producer can bypass the whitelist by inserting DOM after\n * the initial DOMPurify pass.\n */",

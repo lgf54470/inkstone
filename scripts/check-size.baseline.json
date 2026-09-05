@@ -410,10 +410,35 @@
   "src/client/lib/markdown/renderer.test.ts": {
     "longFns": 2
   },
-  "src/client/lib/markdown/renderer.ts": {
-    "lines": 1454,
-    "longFns": 5,
-    "deepFns": 5
+  "src/client/lib/markdown/renderer/attachments.ts": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/client/lib/markdown/renderer/containers.ts": {
+    "longFns": 2,
+    "deepFns": 3
+  },
+  "src/client/lib/markdown/renderer/fence.ts": {
+    "longFns": 2
+  },
+  "src/client/lib/markdown/renderer/math.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/renderer/media.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/renderer/obsidian.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/renderer/parse.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/renderer/tasks.ts": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/client/lib/markdown/renderer/wiki.ts": {
+    "longFns": 1
   },
   "src/client/lib/markdown/table-editor.test.ts": {
     "longFns": 1
