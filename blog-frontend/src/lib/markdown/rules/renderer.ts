@@ -69,7 +69,7 @@ export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headi
   md.renderer.rules.th_open = (tokens, idx, options, env, self) => {
     const token = tokens[idx]!
     const style = token.attrGet('style')
-    const alignMatch = style ? /text-align:\s*(center|right|left)/i.exec(style) : null
+    const alignMatch = typeof style === 'string' ? /text-align:\s*(center|right|left)/i.exec(style) : null
     if (alignMatch) token.attrSet('align', alignMatch[1]!.toLowerCase())
     return defaultThOpen(tokens, idx, options, env, self)
   }
@@ -78,7 +78,7 @@ export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headi
   md.renderer.rules.td_open = (tokens, idx, options, env, self) => {
     const token = tokens[idx]!
     const style = token.attrGet('style')
-    const alignMatch = style ? /text-align:\s*(center|right|left)/i.exec(style) : null
+    const alignMatch = typeof style === 'string' ? /text-align:\s*(center|right|left)/i.exec(style) : null
     if (alignMatch) token.attrSet('align', alignMatch[1]!.toLowerCase())
     return defaultTdOpen(tokens, idx, options, env, self)
   }

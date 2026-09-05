@@ -6,15 +6,7 @@ interface Props {
 }
 
 const { siteName: propSiteName } = Astro.props
-let siteName = propSiteName
-if (!siteName) {
-  try {
-    const site = await api.getSiteInfo()
-    siteName = site.siteName
-  } catch {
-    siteName = 'Inkstone Blog'
-  }
-}
+const siteName = propSiteName || (await api.getSiteInfo()).siteName
 
 const navItems = [
   { label: '首页', href: '/' },

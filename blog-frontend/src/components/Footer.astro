@@ -1,21 +1,7 @@
 ---
 import { api } from '../lib/api'
 
-let siteInfo
-try {
-  siteInfo = await api.getSiteInfo()
-} catch {
-  siteInfo = {
-    siteName: 'Inkstone Blog',
-    subtitle: '静水流深，石上墨香 · 基于 Inkstone & Astro 驱动',
-    bio: '记录思考、技术与生活。使用现代化 Markdown 双链笔记与高性能静态博客驱动。',
-    authorName: 'Inkstone Author',
-    authorAvatar: '',
-    socialLinks: {
-      github: 'https://github.com/shuaiplus/inkstone',
-    },
-  }
-}
+const siteInfo = await api.getSiteInfo()
 
 const currentYear = new Date().getFullYear()
 ---

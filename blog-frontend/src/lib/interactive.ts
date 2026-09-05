@@ -142,7 +142,8 @@ function initJsRunners() {
         const text = document.createElement('span')
         text.className = 'js-example-log-text'
         text.textContent = log.text
-        row.append(prefix, text)
+        row.appendChild(prefix)
+        row.appendChild(text)
         outputBody.appendChild(row)
       })
 
@@ -155,7 +156,8 @@ function initJsRunners() {
         const text = document.createElement('span')
         text.className = 'js-example-log-text'
         text.textContent = formatJsValue(result)
-        row.append(prefix, text)
+        row.appendChild(prefix)
+        row.appendChild(text)
         outputBody.appendChild(row)
       }
 
@@ -168,7 +170,8 @@ function initJsRunners() {
         const text = document.createElement('span')
         text.className = 'js-example-log-text'
         text.textContent = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-        row.append(prefix, text)
+        row.appendChild(prefix)
+        row.appendChild(text)
         outputBody.appendChild(row)
       }
     }

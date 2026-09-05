@@ -24,6 +24,7 @@ export interface BlogCategory {
   slug: string
   description?: string
   color?: string
+  icon?: string
   sortOrder?: number
   postsCount?: number
   createdAt: number
@@ -38,6 +39,7 @@ export interface BlogTag {
 export interface BlogComment {
   id: string
   postId: string
+  parentId: string | null
   postTitle?: string
   postSlug?: string
   authorName: string

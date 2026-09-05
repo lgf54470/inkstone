@@ -169,7 +169,7 @@ export function registerCoreRules(md: InstanceType<typeof MarkdownIt>, headings:
       const inline = state.tokens[index + 1]
       const text = inline ? plainInline(inline) : ''
       const level = parseInt(token.tag.slice(1), 10)
-      const slug = token.attrGet('id') ?? slugify(text)
+      const slug = String(token.attrGet('id') ?? slugify(text))
       headings.push({
         level,
         text,
