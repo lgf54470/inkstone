@@ -524,9 +524,6 @@
   "src/worker/mcp/library/organize/folders.ts": {
     "longFns": 2
   },
-  "src/worker/mcp/library/organize/tags.ts": {
-    "longFns": 2
-  },
   "src/worker/mcp/oauth.ts": {
     "longFns": 1
   },
@@ -675,14 +672,6 @@
     "deepFns": 1
   },
   "src/worker/routes/sync.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/worker/routes/tags/crud.ts": {
-    "longFns": 2,
-    "deepFns": 2
-  },
-  "src/worker/routes/tags/helpers.ts": {
     "longFns": 1,
     "deepFns": 1
   }

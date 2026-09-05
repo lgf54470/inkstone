@@ -52,74 +52,118 @@ export async function updateMcpTag(
     operationId: input.operationId,
     tool: 'update_tag',
     request: input,
-    execute: async () => {
-      const tag = await loadTagOrNull(context.env.DB, context.userId, input.tagId)
-      if (!tag) throw ApiError.notFound('Tag not found')
-      const color = input.color === undefined ? tag.color : organizerColorOrNull(input.color)
-      if (input.name === undefined || normalizeTagName(input.name) === tag.name) {
-        if (color !== tag.color) {
-          const now = Date.now()
-          const updated = await context.env.DB.prepare(
-            `UPDATE tags SET color = ?1, is_manual = 1 WHERE id = ?2 AND user_id = ?3 AND color IS ?4`,
-          ).bind(color, tag.id, context.userId, tag.color).run()
-          if (!updated.meta.changes) throw ApiError.conflict('The tag changed elsewhere')
-          await recordChange(context, 'tag', tag.id, 'upsert', now)
-        }
-        return { ok: true, affected: 0, tag: (await loadTagOrNull(context.env.DB, context.userId, tag.id))! }
-      }
-
-      const next = normalizeTagName(input.name)
-      const existing = await loadTagByName(context.env.DB, context.userId, next, tag.id)
-      const destinationName = existing?.name ?? next
-      const rewrite = await rewriteTagInNotes(
-        context.env,
-        context.ftsEnabled,
-        context.userId,
-        tag.id,
-        tag.name,
-        destinationName,
-      )
-      try {
-        const destination = await loadTagByName(context.env.DB, context.userId, destinationName)
-        const now = Date.now()
-        if (destination && destination.id !== tag.id) {
-          const results = await context.env.DB.batch([
-            context.env.DB.prepare(
-              `INSERT OR IGNORE INTO note_tags (note_id, tag_id)
-               SELECT note_id, ?1 FROM note_tags WHERE tag_id = ?2`,
-            ).bind(destination.id, tag.id),
-            context.env.DB.prepare(`DELETE FROM note_tags WHERE tag_id = ?1`).bind(tag.id),
-            context.env.DB.prepare(
-              `UPDATE tags SET color = COALESCE(?1, color), is_manual = 1 WHERE id = ?2 AND user_id = ?3`,
-            ).bind(color, destination.id, context.userId),
-            context.env.DB.prepare(`DELETE FROM tags WHERE id = ?1 AND user_id = ?2`).bind(tag.id, context.userId),
-          ])
-          if (!results[3]?.meta.changes) throw ApiError.conflict('The tag changed elsewhere')
-          await recordChange(context, 'tag', destination.id, 'upsert', now)
-          await recordChange(context, 'tag', tag.id, 'delete', now)
-          return {
-            ok: true,
-            affected: rewrite.rewritten,
-            tag: (await loadTagOrNull(context.env.DB, context.userId, destination.id))!,
-          }
-        }
-        const updated = await context.env.DB.prepare(
-          `UPDATE tags SET name = ?1, color = ?2, is_manual = 1
-            WHERE id = ?3 AND user_id = ?4 AND name = ?5`,
-        ).bind(destinationName, color, tag.id, context.userId, tag.name).run()
-        if (!updated.meta.changes) throw ApiError.conflict('The tag changed elsewhere')
-        await recordChange(context, 'tag', tag.id, 'upsert', now)
-        return {
-          ok: true,
-          affected: rewrite.rewritten,
-          tag: (await loadTagOrNull(context.env.DB, context.userId, tag.id))!,
-        }
-      } catch (error) {
-        await rewrite.rollback()
-        throw error
-      }
-    },
+    execute: () => updateMcpTagExecute(context, input),
   })
+}
+
+type McpTag = NonNullable<Awaited<ReturnType<typeof loadTagOrNull>>>
+
+async function updateMcpTagExecute(
+  context: LibraryContext,
+  input: { tagId: string; name?: string; color?: string | null },
+): Promise<{ ok: boolean; affected: number; tag: McpTag }> {
+  const tag = await loadTagOrNull(context.env.DB, context.userId, input.tagId)
+  if (!tag) throw ApiError.notFound('Tag not found')
+  const color = input.color === undefined ? tag.color : organizerColorOrNull(input.color)
+  if (input.name === undefined || normalizeTagName(input.name) === tag.name) {
+    return updateMcpTagColorOnly(context, tag, color)
+  }
+  const next = normalizeTagName(input.name)
+  const existing = await loadTagByName(context.env.DB, context.userId, next, tag.id)
+  return renameMcpTag(context, tag, existing?.name ?? next, color)
+}
+
+async function updateMcpTagColorOnly(
+  context: LibraryContext,
+  tag: McpTag,
+  color: string | null,
+): Promise<{ ok: boolean; affected: number; tag: McpTag }> {
+  if (color !== tag.color) {
+    const now = Date.now()
+    const updated = await context.env.DB.prepare(
+      `UPDATE tags SET color = ?1, is_manual = 1 WHERE id = ?2 AND user_id = ?3 AND color IS ?4`,
+    ).bind(color, tag.id, context.userId, tag.color).run()
+    if (!updated.meta.changes) throw ApiError.conflict('The tag changed elsewhere')
+    await recordChange(context, 'tag', tag.id, 'upsert', now)
+  }
+  return { ok: true, affected: 0, tag: (await loadTagOrNull(context.env.DB, context.userId, tag.id))! }
+}
+
+async function renameMcpTag(
+  context: LibraryContext,
+  tag: McpTag,
+  destinationName: string,
+  color: string | null,
+): Promise<{ ok: boolean; affected: number; tag: McpTag }> {
+  const rewrite = await rewriteTagInNotes(
+    context.env,
+    context.ftsEnabled,
+    context.userId,
+    tag.id,
+    tag.name,
+    destinationName,
+  )
+  try {
+    const destination = await loadTagByName(context.env.DB, context.userId, destinationName)
+    const now = Date.now()
+    if (destination && destination.id !== tag.id) {
+      return mergeMcpTagIntoDestination(context, tag, destination, color, rewrite.rewritten, now)
+    }
+    return renameMcpTagInPlace(context, tag, destinationName, color, rewrite.rewritten, now)
+  } catch (error) {
+    await rewrite.rollback()
+    throw error
+  }
+}
+
+async function mergeMcpTagIntoDestination(
+  context: LibraryContext,
+  tag: McpTag,
+  destination: McpTag,
+  color: string | null,
+  affected: number,
+  now: number,
+): Promise<{ ok: boolean; affected: number; tag: McpTag }> {
+  const results = await context.env.DB.batch([
+    context.env.DB.prepare(
+      `INSERT OR IGNORE INTO note_tags (note_id, tag_id)
+       SELECT note_id, ?1 FROM note_tags WHERE tag_id = ?2`,
+    ).bind(destination.id, tag.id),
+    context.env.DB.prepare(`DELETE FROM note_tags WHERE tag_id = ?1`).bind(tag.id),
+    context.env.DB.prepare(
+      `UPDATE tags SET color = COALESCE(?1, color), is_manual = 1 WHERE id = ?2 AND user_id = ?3`,
+    ).bind(color, destination.id, context.userId),
+    context.env.DB.prepare(`DELETE FROM tags WHERE id = ?1 AND user_id = ?2`).bind(tag.id, context.userId),
+  ])
+  if (!results[3]?.meta.changes) throw ApiError.conflict('The tag changed elsewhere')
+  await recordChange(context, 'tag', destination.id, 'upsert', now)
+  await recordChange(context, 'tag', tag.id, 'delete', now)
+  return {
+    ok: true,
+    affected,
+    tag: (await loadTagOrNull(context.env.DB, context.userId, destination.id))!,
+  }
+}
+
+async function renameMcpTagInPlace(
+  context: LibraryContext,
+  tag: McpTag,
+  destinationName: string,
+  color: string | null,
+  affected: number,
+  now: number,
+): Promise<{ ok: boolean; affected: number; tag: McpTag }> {
+  const updated = await context.env.DB.prepare(
+    `UPDATE tags SET name = ?1, color = ?2, is_manual = 1
+      WHERE id = ?3 AND user_id = ?4 AND name = ?5`,
+  ).bind(destinationName, color, tag.id, context.userId, tag.name).run()
+  if (!updated.meta.changes) throw ApiError.conflict('The tag changed elsewhere')
+  await recordChange(context, 'tag', tag.id, 'upsert', now)
+  return {
+    ok: true,
+    affected,
+    tag: (await loadTagOrNull(context.env.DB, context.userId, tag.id))!,
+  }
 }
 
 export async function deleteMcpTag(

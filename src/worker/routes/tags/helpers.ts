@@ -52,6 +52,8 @@ export interface TagRewriteResult {
   rollback: () => Promise<void>
 }
 
+const TAG_REWRITE_MAX_ATTEMPTS = 5
+
 export async function rewriteTagInNotes(
   env: AppBindings['Bindings'],
   ftsEnabled: boolean,
@@ -60,138 +62,239 @@ export async function rewriteTagInNotes(
   from: string,
   to: string | null,
 ): Promise<TagRewriteResult> {
-  const { results } = await env.DB.prepare(
+  const candidates = await selectTaggedNoteIds(env.DB, userId, tagId)
+  const preloaded = await loadRewriteNotes(env.DB, userId, candidates.map((candidate) => candidate.id))
+  const rewrittenNotes: RewrittenTagNote[] = []
+  let rewritten = 0
+  try {
+    for (const candidate of candidates) {
+      const rewrittenNote = await rewriteCandidateTagNote(
+        env,
+        ftsEnabled,
+        userId,
+        candidate.id,
+        preloaded,
+        from,
+        to,
+        () => rewritten,
+      )
+      if (!rewrittenNote) continue
+      rewritten++
+      rewrittenNotes.push(rewrittenNote)
+    }
+    return {
+      rewritten,
+      rollback: () => rollbackTagRewrites(env, ftsEnabled, userId, rewrittenNotes),
+    }
+  } catch (error) {
+    await rollbackTagRewriteOrThrow(env, ftsEnabled, userId, rewrittenNotes)
+    throw error
+  }
+}
+
+async function rollbackTagRewriteOrThrow(
+  env: AppBindings['Bindings'],
+  ftsEnabled: boolean,
+  userId: string,
+  rewrittenNotes: readonly RewrittenTagNote[],
+): Promise<void> {
+  try {
+    await rollbackTagRewrites(env, ftsEnabled, userId, rewrittenNotes)
+  } catch {
+    throw ApiError.conflict('Tag rename could not be rolled back safely; refresh and try again')
+  }
+}
+
+async function selectTaggedNoteIds(
+  db: D1Database,
+  userId: string,
+  tagId: string,
+): Promise<Array<{ id: string }>> {
+  const { results } = await db.prepare(
     `SELECT n.id FROM notes n
        JOIN note_tags nt ON nt.note_id = n.id
       WHERE nt.tag_id = ?1 AND n.user_id = ?2`,
   )
     .bind(tagId, userId)
     .all<{ id: string }>()
+  return results
+}
 
-  let rewritten = 0
-  const rewrittenNotes: RewrittenTagNote[] = []
+async function rewriteCandidateTagNote(
+  env: AppBindings['Bindings'],
+  ftsEnabled: boolean,
+  userId: string,
+  candidateId: string,
+  preloaded: Map<string, RewriteNoteRow>,
+  from: string,
+  to: string | null,
+  getRewritten: () => number,
+): Promise<RewrittenTagNote | null> {
   // Read every candidate once in a single batched query instead of one SELECT
   // per candidate; the guarded UPDATE still catches concurrent edits and only
   // conflicting candidates get a fresh single-row read on retry.
-  const preloaded = await loadRewriteNotes(env.DB, userId, results.map((candidate) => candidate.id))
-  try {
-    for (const candidate of results) {
-    let isComplete = false
-    let note: RewriteNoteRow | null = preloaded.get(candidate.id) ?? null
-    for (let attempt = 0; attempt < 5; attempt++) {
-      if (!note) {
-        isComplete = true
-        break
-      }
-      const content = replaceTagInContent(note.content, from, to)
-      if (content === note.content) {
-        isComplete = true
-        break
-      }
+  let note = preloaded.get(candidateId) ?? null
+  for (let attempt = 0; attempt < TAG_REWRITE_MAX_ATTEMPTS; attempt++) {
+    if (!note) return null
+    const content = replaceTagInContent(note.content, from, to)
+    if (content === note.content) return null
 
-      const title = note.title
-      const { words, chars } = countText(content)
-      const hash = await sha256Hex(content)
-      const now = Math.max(Date.now(), note.updated_at + 1)
-      const nextRev = note.rev + 1
-      const mutationGuard = `EXISTS (SELECT 1 FROM notes
-        WHERE id = ?1 AND user_id = ?2 AND rev = ?3
-          AND content_hash = ?4 AND title = ?5 AND updated_at = ?6)`
-      const mutationValues = [note.id, userId, nextRev, hash, title, now] as const
-      const update = env.DB.prepare(
-        `UPDATE notes SET title = ?1, content = ?2, excerpt = ?3, word_count = ?4, char_count = ?5,
-           content_hash = ?6, rev = ?7, updated_at = ?8
-          WHERE id = ?9 AND user_id = ?10 AND rev = ?11`,
-      ).bind(
-        title,
-        content,
-        deriveExcerpt(content),
-        words,
-        chars,
-        hash,
-        nextRev,
-        now,
-        note.id,
-        userId,
-        note.rev,
-      )
-      const snapshot = env.DB.prepare(
-        `INSERT INTO note_versions (id, note_id, user_id, title, content, size, created_at)
-         SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7
-          WHERE ${shiftSqlPlaceholders(mutationGuard, 7)}`,
-      ).bind(
-        newId(),
-        note.id,
-        userId,
-        note.title,
-        note.content,
-        utf8ByteLength(note.content),
-        now,
-        ...mutationValues,
-      )
-      const trim = env.DB.prepare(
-        `DELETE FROM note_versions WHERE note_id = ?1
-           AND ${shiftSqlPlaceholders(mutationGuard, 1)}
-           AND id NOT IN (
-             SELECT id FROM note_versions WHERE note_id = ?1 ORDER BY created_at DESC LIMIT ?8
-           )`,
-      ).bind(note.id, ...mutationValues, LIMITS.versionsPerNote)
-      const statements: D1PreparedStatement[] = [update, snapshot, trim]
-      if (note.deleted_at === null) {
-        statements.push(...buildNoteDerivedStatements({
-          db: env.DB,
-          userId,
-          noteId: note.id,
-          title,
-          content,
-          ftsEnabled,
-          titleChanged: title !== note.title,
-          previousTitle: note.title,
-          expectedRev: nextRev,
-          expectedContentHash: hash,
-          expectedTitle: title,
-          expectedUpdatedAt: now,
-        }).statements)
-      }
-      statements.push(
-        env.DB.prepare(
-          `INSERT INTO changes (user_id, entity, entity_id, op, at)
-           SELECT ?1, 'note', ?2, 'upsert', ?3
-            WHERE ${shiftSqlPlaceholders(mutationGuard, 3)}`,
-        ).bind(userId, note.id, now, ...mutationValues),
-      )
-      const [updated] = await env.DB.batch(statements)
-      if (updated?.meta.changes) {
-        rewritten++
-        rewrittenNotes.push({ note, nextRev, updatedAt: now })
-        isComplete = true
-        break
-      }
-      // The guarded write was lost to a concurrent edit: re-read just this
-      // note and retry with fresh state.
-      note = await env.DB.prepare(
-        `SELECT id, title, content, rev, updated_at, deleted_at
-           FROM notes WHERE id = ?1 AND user_id = ?2`,
-      )
-        .bind(candidate.id, userId)
-        .first<RewriteNoteRow>()
-    }
-    if (!isComplete) {
-      throw ApiError.conflict(`Some notes are still being edited. Safely completed ${rewritten} notes; try again later`)
-    }
+    const rewritten = await applyTagRewrite(env, ftsEnabled, userId, note, content)
+    if (rewritten) return rewritten
+    // The guarded write was lost to a concurrent edit: re-read just this
+    // note and retry with fresh state.
+    note = await reloadTagRewriteNote(env.DB, candidateId, userId)
   }
-    return {
-      rewritten,
-      rollback: () => rollbackTagRewrites(env, ftsEnabled, userId, rewrittenNotes),
-    }
-  } catch (error) {
-    try {
-      await rollbackTagRewrites(env, ftsEnabled, userId, rewrittenNotes)
-    } catch {
-      throw ApiError.conflict('Tag rename could not be rolled back safely; refresh and try again')
-    }
-    throw error
+  throw ApiError.conflict(`Some notes are still being edited. Safely completed ${getRewritten()} notes; try again later`)
+}
+
+interface TagRewritePlan {
+  title: string
+  content: string
+  words: number
+  chars: number
+  hash: string
+  now: number
+  nextRev: number
+}
+
+async function applyTagRewrite(
+  env: AppBindings['Bindings'],
+  ftsEnabled: boolean,
+  userId: string,
+  note: RewriteNoteRow,
+  content: string,
+): Promise<RewrittenTagNote | null> {
+  const plan = await planTagRewrite(note, content)
+  const statements = buildTagRewriteStatements(env, ftsEnabled, userId, note, plan)
+  const [updated] = await env.DB.batch(statements)
+  if (!updated?.meta.changes) return null
+  return { note, nextRev: plan.nextRev, updatedAt: plan.now }
+}
+
+async function planTagRewrite(note: RewriteNoteRow, content: string): Promise<TagRewritePlan> {
+  const { words, chars } = countText(content)
+  return {
+    title: note.title,
+    content,
+    words,
+    chars,
+    hash: await sha256Hex(content),
+    now: Math.max(Date.now(), note.updated_at + 1),
+    nextRev: note.rev + 1,
   }
+}
+
+function buildTagRewriteStatements(
+  env: AppBindings['Bindings'],
+  ftsEnabled: boolean,
+  userId: string,
+  note: RewriteNoteRow,
+  plan: TagRewritePlan,
+): D1PreparedStatement[] {
+  const mutationGuard = `EXISTS (SELECT 1 FROM notes
+    WHERE id = ?1 AND user_id = ?2 AND rev = ?3
+      AND content_hash = ?4 AND title = ?5 AND updated_at = ?6)`
+  const mutationValues = [note.id, userId, plan.nextRev, plan.hash, plan.title, plan.now] as const
+  const statements: D1PreparedStatement[] = [
+    buildTagRewriteUpdateStatement(env.DB, userId, note, plan),
+    ...buildTagRewriteVersionStatements(env.DB, userId, note, plan, mutationGuard, mutationValues),
+  ]
+  if (note.deleted_at === null) {
+    statements.push(...buildNoteDerivedStatements({
+      db: env.DB,
+      userId,
+      noteId: note.id,
+      title: plan.title,
+      content: plan.content,
+      ftsEnabled,
+      titleChanged: plan.title !== note.title,
+      previousTitle: note.title,
+      expectedRev: plan.nextRev,
+      expectedContentHash: plan.hash,
+      expectedTitle: plan.title,
+      expectedUpdatedAt: plan.now,
+    }).statements)
+  }
+  statements.push(
+    env.DB.prepare(
+      `INSERT INTO changes (user_id, entity, entity_id, op, at)
+       SELECT ?1, 'note', ?2, 'upsert', ?3
+        WHERE ${shiftSqlPlaceholders(mutationGuard, 3)}`,
+    ).bind(userId, note.id, plan.now, ...mutationValues),
+  )
+  return statements
+}
+
+function buildTagRewriteUpdateStatement(
+  db: D1Database,
+  userId: string,
+  note: RewriteNoteRow,
+  plan: TagRewritePlan,
+): D1PreparedStatement {
+  return db.prepare(
+    `UPDATE notes SET title = ?1, content = ?2, excerpt = ?3, word_count = ?4, char_count = ?5,
+       content_hash = ?6, rev = ?7, updated_at = ?8
+      WHERE id = ?9 AND user_id = ?10 AND rev = ?11`,
+  ).bind(
+    plan.title,
+    plan.content,
+    deriveExcerpt(plan.content),
+    plan.words,
+    plan.chars,
+    plan.hash,
+    plan.nextRev,
+    plan.now,
+    note.id,
+    userId,
+    note.rev,
+  )
+}
+
+function buildTagRewriteVersionStatements(
+  db: D1Database,
+  userId: string,
+  note: RewriteNoteRow,
+  plan: TagRewritePlan,
+  mutationGuard: string,
+  mutationValues: readonly [string, string, number, string, string, number],
+): D1PreparedStatement[] {
+  return [
+    db.prepare(
+      `INSERT INTO note_versions (id, note_id, user_id, title, content, size, created_at)
+       SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7
+        WHERE ${shiftSqlPlaceholders(mutationGuard, 7)}`,
+    ).bind(
+      newId(),
+      note.id,
+      userId,
+      note.title,
+      note.content,
+      utf8ByteLength(note.content),
+      plan.now,
+      ...mutationValues,
+    ),
+    db.prepare(
+      `DELETE FROM note_versions WHERE note_id = ?1
+         AND ${shiftSqlPlaceholders(mutationGuard, 1)}
+         AND id NOT IN (
+           SELECT id FROM note_versions WHERE note_id = ?1 ORDER BY created_at DESC LIMIT ?8
+         )`,
+    ).bind(note.id, ...mutationValues, LIMITS.versionsPerNote),
+  ]
+}
+
+async function reloadTagRewriteNote(
+  db: D1Database,
+  id: string,
+  userId: string,
+): Promise<RewriteNoteRow | null> {
+  return db.prepare(
+    `SELECT id, title, content, rev, updated_at, deleted_at
+       FROM notes WHERE id = ?1 AND user_id = ?2`,
+  )
+    .bind(id, userId)
+    .first<RewriteNoteRow>()
 }
 
 export interface RewriteNoteRow {
