@@ -56,6 +56,9 @@
   --warning: oklch(76% 0.145 80);
   --danger: oklch(64% 0.19 22);
   --brand-accent: #bb4430;
+  --swatch-paper: #f7f5f1;
+  --swatch-white: #ffffff;
+  --mask-ink: #000000;
 }
 
 

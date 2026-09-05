@@ -5,6 +5,9 @@ import { Modal } from '../../components/overlay'
 import { Button } from '../../components/primitives'
 import { t } from '../../lib/i18n'
 
+const QR_BG_COLOR = '#ffffff'
+const QR_FG_COLOR = '#111827'
+
 export function AttachmentQrModal({
   open,
   onClose,
@@ -48,8 +51,8 @@ export function AttachmentQrModal({
             size={200}
             level="M"
             marginSize={1}
-            bgColor="#ffffff"
-            fgColor="#111827"
+            bgColor={QR_BG_COLOR}
+            fgColor={QR_FG_COLOR}
           />
         </div>
         <p className="text-center text-[12px] text-[var(--text-tertiary)] max-w-xs">

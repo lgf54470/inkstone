@@ -4,23 +4,13 @@ import type { BlogCategory } from '@shared/types'
 import { Modal } from '../../components/overlay'
 import { Button, IconButton } from '../../components/primitives'
 import { Input } from '../../components/form'
+import { BLOG_CATEGORY_COLORS } from '@shared/organizer-colors'
 import { errorMessage } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { confirm } from '../../components/overlay'
 import { useBlogStore } from './blog-store'
 
-const CATEGORY_COLORS = [
-  '#ef4444',
-  '#f97316',
-  '#f59e0b',
-  '#10b981',
-  '#06b6d4',
-  '#3b82f6',
-  '#8b5cf6',
-  '#ec4899',
-  '#64748b',
-]
 
 export function BlogCategoriesModal({
   open,
@@ -38,7 +28,7 @@ export function BlogCategoriesModal({
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [description, setDescription] = useState('')
-  const [selectedColor, setSelectedColor] = useState(CATEGORY_COLORS[0])
+  const [selectedColor, setSelectedColor] = useState<string>(BLOG_CATEGORY_COLORS[0])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -47,7 +37,7 @@ export function BlogCategoriesModal({
     setName(cat.name)
     setSlug(cat.slug)
     setDescription(cat.description || '')
-    setSelectedColor(cat.color || CATEGORY_COLORS[0])
+    setSelectedColor(cat.color || BLOG_CATEGORY_COLORS[0])
   }
 
   const handleCancelEdit = () => {
@@ -170,7 +160,7 @@ export function BlogCategoriesModal({
               {t('blog.category_color')}
             </label>
             <div className="flex items-center gap-2">
-              {CATEGORY_COLORS.map((c) => (
+              {BLOG_CATEGORY_COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"

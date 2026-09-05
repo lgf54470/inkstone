@@ -43,6 +43,11 @@ import { usePinnedWindows } from '../../store/pinned-windows'
 import { t } from '../../lib/i18n'
 import { getLinkHoverTarget, subscribeLinkHoverTarget } from '../preview'
 
+const FALLBACK_EDGE_COLOR = 'rgba(127,127,127,.35)'
+const FALLBACK_NODE_COLOR = '#777'
+const FALLBACK_ACCENT_COLOR = '#4f46e5'
+const FALLBACK_TEXT_COLOR = '#555'
+
 const PHYSICS_FRAME_LIMIT = 360
 const GRAPH_PREFS_KEY = 'inkstone.graph.preferences.v1'
 
@@ -338,10 +343,10 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     observer.observe(canvas)
     const style = getComputedStyle(document.documentElement)
     const colors = {
-      edge: style.getPropertyValue('--border-strong').trim() || 'rgba(127,127,127,.35)',
-      node: style.getPropertyValue('--text-tertiary').trim() || '#777',
-      accent: style.getPropertyValue('--accent').trim() || '#4f46e5',
-      text: style.getPropertyValue('--text-secondary').trim() || '#555',
+      edge: style.getPropertyValue('--border-strong').trim() || FALLBACK_EDGE_COLOR,
+      node: style.getPropertyValue('--text-tertiary').trim() || FALLBACK_NODE_COLOR,
+      accent: style.getPropertyValue('--accent').trim() || FALLBACK_ACCENT_COLOR,
+      text: style.getPropertyValue('--text-secondary').trim() || FALLBACK_TEXT_COLOR,
     }
     const schedule = () => { if (!state.raf) state.raf = requestAnimationFrame(tick) }
     const tick = () => {

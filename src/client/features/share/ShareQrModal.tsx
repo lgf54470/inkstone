@@ -6,6 +6,9 @@ import { Button } from '../../components/primitives'
 import { t } from '../../lib/i18n'
 import { copyQrImageToClipboard, downloadQrPng, downloadQrSvg } from './share-helpers'
 
+const QR_BG_COLOR = '#ffffff'
+const QR_FG_COLOR = '#0f172a'
+
 export function ShareQrModal({
   open,
   onClose,
@@ -80,8 +83,8 @@ export function ShareQrModal({
             size={220}
             level="H"
             marginSize={1}
-            bgColor="#ffffff"
-            fgColor="#0f172a"
+            bgColor={QR_BG_COLOR}
+            fgColor={QR_FG_COLOR}
           />
         </div>
 

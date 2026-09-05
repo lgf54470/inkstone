@@ -10,6 +10,7 @@ import {
   parseStoredAvatarUrl,
 } from '@shared/avatar'
 
+const JPEG_FILL_COLOR = '#f4f1eb'
 const BACKGROUND_COLORS = ['f87171', 'fb923c', '09acf4', 'fb923c', 'f472b6', 'a78bfa', '34d399']
 const BASE_COLORS = ['f7e1c3', 'f9c9b6', 'f2d6cb', 'f8ce8e', 'eac393']
 const avatarCache = new Map<string, string>()
@@ -136,7 +137,7 @@ function renderSquare(
   if (!context) throw new AvatarUploadError('encode_failed')
 
   if (mime === 'image/jpeg') {
-    context.fillStyle = '#f4f1eb'
+    context.fillStyle = JPEG_FILL_COLOR
     context.fillRect(0, 0, size, size)
   }
   context.imageSmoothingEnabled = true

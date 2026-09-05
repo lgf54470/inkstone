@@ -288,7 +288,7 @@ function Backdrop() {
           backgroundImage:
             'linear-gradient(var(--border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px)',
           backgroundSize: '52px 52px',
-          maskImage: 'radial-gradient(ellipse 80% 55% at 50% 40%, #000 20%, transparent 78%)',
+          maskImage: 'radial-gradient(ellipse 80% 55% at 50% 40%, var(--mask-ink) 20%, transparent 78%)',
         }}
       />
     </div>

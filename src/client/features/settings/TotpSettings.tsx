@@ -18,6 +18,9 @@ import { Input, SettingRow } from '../../components/form'
 import { api, ApiError } from '../../lib/api'
 import { downloadTextFile } from '../../lib/export-note'
 import { t } from '../../lib/i18n'
+
+const QR_BG_COLOR = '#ffffff'
+const QR_FG_COLOR = '#111827'
 import { useUi } from '../../store/ui'
 
 type Panel = 'none' | 'enable' | 'setup' | 'recovery' | 'regenerate' | 'disable'
@@ -278,8 +281,8 @@ export function TotpSettings() {
                 size={190}
                 level="M"
                 marginSize={1}
-                bgColor="#ffffff"
-                fgColor="#111827"
+                bgColor={QR_BG_COLOR}
+                fgColor={QR_FG_COLOR}
                 title={t('settings.totp_qr_code_title')}
               />
             </div>

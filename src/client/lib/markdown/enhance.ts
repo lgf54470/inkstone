@@ -5,6 +5,7 @@ import { t } from "../i18n";
 import { highlightWithPrism } from './prism';
 import { sanitizeCodeTokenHtml, sanitizeMathHtml } from './sanitize';
 
+const CHARTJS_TEXT_COLORS = { dark: '#94a3b8', light: '#64748b' } as const
 const OPTIONAL_RENDERER_LOAD_TIMEOUT_MS = 15000;
 
 export function decorateCodeBlock(block: HTMLElement): void {
@@ -540,7 +541,7 @@ export async function renderChartJs(root: HTMLElement, dark: boolean): Promise<v
             container.appendChild(canvas);
             node.appendChild(container);
 
-            const textColor = dark ? '#94a3b8' : '#64748b';
+            const textColor = CHARTJS_TEXT_COLORS[dark ? 'dark' : 'light'];
             const gridColor = dark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)';
             const userOptions = (config.options && typeof config.options === 'object' ? config.options : {}) as Record<string, unknown>;
             const userScales = (userOptions.scales && typeof userOptions.scales === 'object' ? userOptions.scales : {}) as Record<string, unknown>;

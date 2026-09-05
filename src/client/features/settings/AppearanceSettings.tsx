@@ -132,8 +132,8 @@ export function AppearanceSettings({
         <SettingRow title={t("settings.background_color")}>
           <div role="group" aria-label={t("settings.background_color")} className="flex items-center gap-2">
             {([
-              { name: 'paper', label: t("settings.background_paper"), swatch: '#f7f5f1' },
-              { name: 'white', label: t("settings.background_white"), swatch: '#ffffff' },
+              { name: 'paper', label: t("settings.background_paper"), swatch: 'var(--swatch-paper)' },
+              { name: 'white', label: t("settings.background_white"), swatch: 'var(--swatch-white)' },
             ] satisfies { name: BackgroundName; label: string; swatch: string }[]).map((background) => (
               <button
                 key={background.name}
