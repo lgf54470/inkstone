@@ -230,9 +230,11 @@
   "src/client/features/settings/backup-presets.ts": {
     "longFns": 1
   },
-  "src/client/features/settings/backup-settings.tsx": {
-    "lines": 577,
-    "longFns": 2
+  "src/client/features/settings/backup-settings/index.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/settings/backup-settings/target-form.tsx": {
+    "longFns": 1
   },
   "src/client/features/settings/data-settings.tsx": {
     "longFns": 1
