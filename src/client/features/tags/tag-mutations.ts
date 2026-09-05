@@ -38,22 +38,23 @@ export function createTag(value: string): string | null {
   const id = newTagId()
   const optimistic: Tag = { id, name, color: null, count: 0, createdAt: Date.now() }
   setOptimisticTagCache((state) => ({ tags: [...state.tags, optimistic] }))
-  void api.tags.create({ id, name }).then(
-    () => {
+  void (async () => {
+    try {
+      await api.tags.create({ id, name })
       void useNotes.getState().refreshTags().catch(showRefreshWarning)
-    },
-    (error) => {
+    } catch (error) {
       setOptimisticTagCache((state) => ({
         tags: state.tags.filter((tag) => tag.id !== id),
       }))
+      // The rollback already surfaced the failure toast; a refresh warning would double-toast.
       void useNotes.getState().refreshTags().catch(() => {})
       useUi.getState().toast({
         title: t('tags.create_failed'),
         description: errorMessage(error),
         tone: 'danger',
       })
-    },
-  )
+    }
+  })()
   return id
 }
 
@@ -185,7 +186,8 @@ export async function setTagColor(tag: Tag, color: string | null): Promise<void>
     tags: state.tags.map((candidate) => candidate.id === tag.id ? { ...candidate, color } : candidate),
   }))
 
-  const operation = write.tail.then(async () => {
+  const operation = (async () => {
+    await write.tail
     try {
       await api.tags.patch(tag.id, { color })
       write.committedColor = color
@@ -208,7 +210,7 @@ export async function setTagColor(tag: Tag, color: string | null): Promise<void>
     if (sequence === write.sequence) {
       await useNotes.getState().refreshTags().catch(showRefreshWarning)
     }
-  })
+  })()
   write.tail = operation.catch(() => {})
   await operation
 

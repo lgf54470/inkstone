@@ -24,15 +24,16 @@ export function BacklinksPanel({ noteId }: {
         forceRetryRef.current = false;
         setLinks(null);
         setLoadError(null);
-        getNoteBacklinks(noteId, rev, cursor, controller.signal, { force: forceRetry })
-            .then((res) => {
-            if (!cancelled)
-                setLinks(res);
-        })
-            .catch((error) => {
-            if (!cancelled)
-                setLoadError(errorMessage(error));
-        });
+        void (async () => {
+            try {
+                const res = await getNoteBacklinks(noteId, rev, cursor, controller.signal, { force: forceRetry });
+                if (!cancelled)
+                    setLinks(res);
+            } catch (error) {
+                if (!cancelled)
+                    setLoadError(errorMessage(error));
+            }
+        })();
         return () => {
             cancelled = true;
             controller.abort();

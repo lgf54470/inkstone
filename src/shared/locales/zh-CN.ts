@@ -3120,6 +3120,7 @@ tags: [健身]
     "templates.uncategorized": "未分类",
     "templates.use_template": "使用此模板",
     "templates.copied_to_clipboard": "已复制到剪贴板",
+    "templates.copy_failed": "复制失败，请重试或改用导出文件",
     "templates.copy_json": "复制 JSON",
     "templates.export_library": "导出模板库",
     "templates.exported_value0_templates": "已导出 {value0} 个模板",

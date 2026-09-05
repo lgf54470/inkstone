@@ -19,17 +19,17 @@ export async function getNoteBacklinks(
   }
   const existing = inflight.get(key)
   if (existing) return existing
-  const promise = api.notes
-    .backlinks(noteId, signal)
-    .then((response) => {
+  const promise = (async () => {
+    try {
+      const response = await api.notes.backlinks(noteId, signal)
       inflight.delete(key)
       remember(cache, key, response.backlinks, CACHE_LIMIT)
       return response.backlinks
-    })
-    .catch((error) => {
+    } catch (error) {
       inflight.delete(key)
       throw error
-    })
+    }
+  })()
   inflight.set(key, promise)
   return promise
 }

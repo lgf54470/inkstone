@@ -81,11 +81,14 @@ export async function runBackup(env: Env, userId: string, options: RunOptions): 
   )
 
   const heartbeat = setInterval(() => {
-    void release.renew().then((ok) => {
-      if (!ok) console.error(`[inkstone] Backup lease was lost for ${userId}`)
-    }).catch((error) => {
-      console.warn('[inkstone] Backup lease renewal failed:', error instanceof Error ? error.message : error)
-    })
+    void (async () => {
+      try {
+        const ok = await release.renew()
+        if (!ok) console.error(`[inkstone] Backup lease was lost for ${userId}`)
+      } catch (error) {
+        console.warn('[inkstone] Backup lease renewal failed:', error instanceof Error ? error.message : error)
+      }
+    })()
   }, BACKUP_LEASE_RENEW_MS)
   try {
     return await runBackupUnlocked(env, userId, options)

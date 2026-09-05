@@ -84,12 +84,11 @@ export function ShareEditModal({
         setShare(initialShare)
       } else {
         setIsLoadingShare(true)
-        void api.share.getNoteShare(noteId)
-          .then((res) => {
-            setShare(res.share)
-          })
-          .catch(() => {})
-          .finally(() => setIsLoadingShare(false))
+        void (async () => {
+          const res = await api.share.getNoteShare(noteId).catch(() => null)
+          if (res) setShare(res.share)
+          setIsLoadingShare(false)
+        })()
       }
     }
   }, [open, initialShare, noteId, loadFolders, loadTags])

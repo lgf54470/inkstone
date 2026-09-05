@@ -346,7 +346,7 @@ export const Preview = memo(function Preview({
     linkHover.armHide(0)
   }
 
-  const onClick = (event: React.MouseEvent) => {
+  const onClick = async (event: React.MouseEvent) => {
     const target = event.target as HTMLElement
     linkHover.hideNow()
 
@@ -454,24 +454,24 @@ export const Preview = memo(function Preview({
         toast({ title: t("preview.could_not_copy"), tone: 'danger' })
         return
       }
-      void navigator.clipboard
-        .writeText(code)
-        .then(() => {
-          if (!hostRef.current?.contains(copyButton)) return
-          const existingTimer = copyResetTimersRef.current.get(copyButton)
-          if (existingTimer !== undefined) window.clearTimeout(existingTimer)
-          copyButton.textContent = t("common.copied")
-          copyButton.classList.add('copied')
-          const timer = window.setTimeout(() => {
-            if (hostRef.current?.contains(copyButton)) {
-              copyButton.textContent = t("common.copy")
-              copyButton.classList.remove('copied')
-            }
-            copyResetTimersRef.current.delete(copyButton)
-          }, 900)
-          copyResetTimersRef.current.set(copyButton, timer)
-        })
-        .catch(() => toast({ title: t("preview.could_not_copy"), tone: 'danger' }))
+      try {
+        await navigator.clipboard.writeText(code)
+        if (!hostRef.current?.contains(copyButton)) return
+        const existingTimer = copyResetTimersRef.current.get(copyButton)
+        if (existingTimer !== undefined) window.clearTimeout(existingTimer)
+        copyButton.textContent = t("common.copied")
+        copyButton.classList.add('copied')
+        const timer = window.setTimeout(() => {
+          if (hostRef.current?.contains(copyButton)) {
+            copyButton.textContent = t("common.copy")
+            copyButton.classList.remove('copied')
+          }
+          copyResetTimersRef.current.delete(copyButton)
+        }, 900)
+        copyResetTimersRef.current.set(copyButton, timer)
+      } catch {
+        toast({ title: t("preview.could_not_copy"), tone: 'danger' })
+      }
       return
     }
 
@@ -521,24 +521,24 @@ export const Preview = memo(function Preview({
       const parsed = parseWikiTarget(decodeDataValue(wikilink.dataset.wikilink))
       const note = parsed.noteTitle ? findNoteByTitle(parsed.noteTitle) : sourceNoteId ? useNotes.getState().notes[sourceNoteId] : undefined
       if (note) {
-        void openNote(note.id).then(() => {
-          const isCurrent = () =>
-            navigation === wikiNavigationRef.current &&
-            useUi.getState().activeNoteId === note.id
-          if (!isCurrent()) return
+        await openNote(note.id)
+        const isCurrent = () =>
+          navigation === wikiNavigationRef.current &&
+          useUi.getState().activeNoteId === note.id
+        if (isCurrent()) {
           wikiScrollCleanupRef.current = scrollToWikiTarget(hostRef, parsed, isCurrent)
-        })
+        }
       } else if (parsed.noteTitle) {
-        void createNote({ title: parsed.noteTitle, open: false }).then((id) => {
-          if (!id) return
+        const id = await createNote({ title: parsed.noteTitle, open: false })
+        if (id) {
           toast({ title: t("preview.created_title", { title: parsed.noteTitle }), tone: 'success' })
           if (
             navigation === wikiNavigationRef.current &&
             useUi.getState().activeNoteId === sourceNoteId
           ) {
-            void openNote(id)
+            await openNote(id)
           }
-        })
+        }
       }
       return
     }

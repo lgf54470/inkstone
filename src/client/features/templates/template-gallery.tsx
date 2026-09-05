@@ -221,14 +221,17 @@ export function TemplateGallery({ onClose }: {
         useUi.getState().toast({ title: t("templates.exported_value0_templates", { value0: data.templates.length }), tone: 'success' });
     }, []);
 
-    const copyLibraryJson = useCallback(() => {
+    const copyLibraryJson = useCallback(async () => {
         const state = useNoteTemplates.getState();
         const data = buildTemplateLibraryExport(state.categories, state.templates);
         const text = JSON.stringify(data, null, 2);
         if (navigator.clipboard?.writeText) {
-            void navigator.clipboard.writeText(text).then(() => {
+            try {
+                await navigator.clipboard.writeText(text);
                 useUi.getState().toast({ title: t("templates.copied_to_clipboard"), tone: 'success' });
-            });
+            } catch {
+                useUi.getState().toast({ title: t("templates.copy_failed"), tone: 'danger' });
+            }
             return;
         }
         const textarea = document.createElement('textarea');

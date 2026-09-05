@@ -121,7 +121,7 @@ export function SharePage({ slug }: {
             window.clearTimeout(timer);
         copyResetTimersRef.current.clear();
     }, []);
-    const onContentClick = (event: React.MouseEvent) => {
+    const onContentClick = async (event: React.MouseEvent) => {
         const target = event.target as HTMLElement;
         const mermaidRetry = target.closest<HTMLElement>('[data-mermaid-retry]');
         if (mermaidRetry) {
@@ -143,7 +143,8 @@ export function SharePage({ slug }: {
                 toast({ title: t("preview.could_not_copy"), tone: 'danger' });
                 return;
             }
-            void navigator.clipboard.writeText(code).then(() => {
+            try {
+                await navigator.clipboard.writeText(code);
                 if (!hostRef.current?.contains(copyButton))
                     return;
                 const existingTimer = copyResetTimersRef.current.get(copyButton);
@@ -159,7 +160,9 @@ export function SharePage({ slug }: {
                     copyResetTimersRef.current.delete(copyButton);
                 }, 900);
                 copyResetTimersRef.current.set(copyButton, timer);
-            }).catch(() => toast({ title: t("preview.could_not_copy"), tone: 'danger' }));
+            } catch {
+                toast({ title: t("preview.could_not_copy"), tone: 'danger' });
+            }
             return;
         }
         const collapseButton = target.closest<HTMLButtonElement>('[data-code-collapse]');

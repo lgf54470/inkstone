@@ -339,23 +339,23 @@ export const api = {
       newPassword: string
     }) =>
       request<{ ok: true }>('/api/auth/password', { method: 'POST', body }),
-    updateProfile: (body: { name?: string; avatarUrl?: string }) =>
-      request<PublicUser>('/api/auth/profile', {
+    updateProfile: async (body: { name?: string; avatarUrl?: string }) => {
+      const user = await request<PublicUser>('/api/auth/profile', {
         method: 'PUT',
         body,
         timeoutMs: 30_000,
-      }).then((user) => {
-        publishBroadcast({ type: 'profile-changed', clientId: CLIENT_ID })
-        return user
-      }),
-    updateRegistration: (enabled: boolean, password: string) =>
-      request<{ ok: true; registrationOpen: boolean }>('/api/settings/registration', {
+      })
+      publishBroadcast({ type: 'profile-changed', clientId: CLIENT_ID })
+      return user
+    },
+    updateRegistration: async (enabled: boolean, password: string) => {
+      const result = await request<{ ok: true; registrationOpen: boolean }>('/api/settings/registration', {
         method: 'PUT',
         body: { enabled, password },
-      }).then((result) => {
-        publishBroadcast({ type: 'site-changed', clientId: CLIENT_ID })
-        return result
-      }),
+      })
+      publishBroadcast({ type: 'site-changed', clientId: CLIENT_ID })
+      return result
+    },
   },
 
   notes: {
@@ -569,11 +569,11 @@ export const api = {
 
   settings: {
     get: () => request<UserSettings>('/api/settings'),
-    save: (body: Partial<UserSettings>) =>
-      request<UserSettings>('/api/settings', { method: 'PUT', body }).then((settings) => {
-        publishBroadcast({ type: 'settings-changed', clientId: CLIENT_ID })
-        return settings
-      }),
+    save: async (body: Partial<UserSettings>) => {
+      const settings = await request<UserSettings>('/api/settings', { method: 'PUT', body })
+      publishBroadcast({ type: 'settings-changed', clientId: CLIENT_ID })
+      return settings
+    },
     stats: () => request<Record<string, number>>('/api/settings/stats'),
   },
 

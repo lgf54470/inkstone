@@ -250,13 +250,16 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     let cancelled = false
     setData(null)
     setLoadError(null)
-    api.graph(request, controller.signal).then((response) => {
-      if (!cancelled) setData(normalizedResponse(response))
-    }).catch((error) => {
-      if (!cancelled && (error as Error)?.name !== 'AbortError') {
-        setLoadError(errorMessage(error))
+    void (async () => {
+      try {
+        const response = await api.graph(request, controller.signal)
+        if (!cancelled) setData(normalizedResponse(response))
+      } catch (error) {
+        if (!cancelled && (error as Error)?.name !== 'AbortError') {
+          setLoadError(errorMessage(error))
+        }
       }
-    })
+    })()
     return () => {
       cancelled = true
       controller.abort()

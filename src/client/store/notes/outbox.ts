@@ -156,16 +156,19 @@ export function showOfflineRecoveryToast(get: () => NotesState, copyId: string, 
 export function replayOutbox(get: () => NotesState, set: SetNotesState): Promise<void> {
     if (noteState.outboxReplayPromise)
         return noteState.outboxReplayPromise;
-    noteState.outboxReplayPromise = localDb.withOutboxReplayLock(CLIENT_ID, async () => {
-        await replayOutboxNow(get, set);
-    }).then(async (acquired) => {
-        if (acquired)
-            return;
-        const pending = await localDb.getOutbox();
-        set({ pendingCount: pendingNoteCount(pending) });
-    }).finally(() => {
-        noteState.outboxReplayPromise = null;
-    });
+    noteState.outboxReplayPromise = (async () => {
+        try {
+            const acquired = await localDb.withOutboxReplayLock(CLIENT_ID, async () => {
+                await replayOutboxNow(get, set);
+            });
+            if (acquired)
+                return;
+            const pending = await localDb.getOutbox();
+            set({ pendingCount: pendingNoteCount(pending) });
+        } finally {
+            noteState.outboxReplayPromise = null;
+        }
+    })();
     return noteState.outboxReplayPromise;
 }
 async function replayOutboxNow(get: () => NotesState, set: SetNotesState): Promise<void> {

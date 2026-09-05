@@ -353,6 +353,9 @@ const allowed = new Map([
   ["src/client/features/templates/template-gallery.tsx", [
     "// The fullwidth comma (\\uFF0C) is the typographic default for Chinese input.",
   ]],
+  ["src/client/features/tags/tag-mutations.ts", [
+    "// The rollback already surfaced the failure toast; a refresh warning would double-toast.",
+  ]],
   ["src/client/features/workspace/context-menu/types.ts", [
     "/**\n * Everything an EditorContextMenu item builder can read or trigger.\n * Assembled once per render by the `EditorContextMenu` component and handed to\n * the per-context builder modules so each branch stays a pure function of the\n * menu state (decoupled from the component's hooks and DOM plumbing).\n */",
   ]],
@@ -640,6 +643,8 @@ const allowed = new Map([
     "// Attempt 1 conflicted (rev 1); attempt 2 retried with the adopted revision (rev 2).",
   ]],
   ["src/client/store/notes.ts", [
+    "// Reconnect pulls race with the connection coming up; the next event or manual refresh retries.",
+    "// Outbox replay is retried on the next pull; keep the UI responsive meanwhile.",
     "/** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization.\n *\n * This file is the composition root of the notes store: it owns the zustand store\n * instance (`useNotes`) and the store-level undo/toast helpers. The heavy lifting\n * lives in `store/notes/` — see `model.ts` (state), `persist.ts` (write staging),\n * `outbox.ts` (offline replay), `reconcile.ts` (merge), and `selectors.ts` (hooks).\n */",
     "/** Patch shape accepted by `patchNote` (summary flags plus folder moves). */",
     "/** Undo window for destructive actions (e.g. moving a note to the trash): longer than the default 3800ms. */",
@@ -653,6 +658,7 @@ const allowed = new Map([
     "// settings).",
   ]],
   ["src/client/store/notes/acknowledge.ts", [
+    "// Best-effort count refresh; the next outbox event or pull retries it.",
     "/** Cross-tab broadcast acknowledgements: apply outbox results and base advancements from other tabs. */",
   ]],
   ["src/client/store/notes/adopt.ts", [
@@ -732,6 +738,7 @@ const allowed = new Map([
     "// store free of a circular dependency on the notes store.",
   ]],
   ["src/client/store/ui.ts", [
+    "// The view transition can be skipped (reduced motion, interrupted navigation); the circular reveal is purely decorative.",
     "/** Marks an undo toast: accent icon/tint in the UI and a short vibration cue. */",
     "/** How multi-selected tags filter the note list and palette: any or all. */",
     "/** Inclusive date range (YYYY-MM-DD keys) the note list is filtered to, set from the sidebar calendar. */",

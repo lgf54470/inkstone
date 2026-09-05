@@ -467,7 +467,8 @@ export const useNotes = create<NotesState>((set, get) => ({
                         persisted,
                     });
                     restoredPending = true;
-                    void persisted.then((durable) => {
+                    void (async () => {
+                        const durable = await persisted;
                         if (!durable) {
                             useUi.getState().toast({
                                 title: t("notes.the_browser_could_not_save_your_offline_changes"),
@@ -1065,18 +1066,21 @@ export const useNotes = create<NotesState>((set, get) => ({
             noteCount: 0,
         };
         const mutation = beginFolderMutation(id, false, (folders) => folders.some((item) => item.id === id) ? folders : [...folders, folder], set, get);
-        void enqueueFolderWrite(id, () => api.folders.create({
-            id,
-            name,
-            parentId,
-            icon: folder.icon,
-            ...(folder.color ? { color: folder.color } : {}),
-        })).then((saved) => {
-            commitFolderMutation(mutation, saved, set, get);
-        }).catch((err) => {
-            rollbackFolderMutation(mutation, set, get);
-            toastError(err, t("sidebar.failed_to_create_folder"));
-        });
+        void (async () => {
+            try {
+                const saved = await enqueueFolderWrite(id, () => api.folders.create({
+                    id,
+                    name,
+                    parentId,
+                    icon: folder.icon,
+                    ...(folder.color ? { color: folder.color } : {}),
+                }));
+                commitFolderMutation(mutation, saved, set, get);
+            } catch (err) {
+                rollbackFolderMutation(mutation, set, get);
+                toastError(err, t("sidebar.failed_to_create_folder"));
+            }
+        })();
         return id;
     },
     patchFolder(id, patch) {
@@ -1090,12 +1094,15 @@ export const useNotes = create<NotesState>((set, get) => ({
         if (normalized.name === '' || normalized.parentId === id)
             return false;
         const mutation = beginFolderMutation(id, false, (folders) => applyOptimisticFolderPatch(folders, id, normalized), set, get);
-        void enqueueFolderWrite(id, () => api.folders.patch(id, normalized)).then((saved) => {
-            commitFolderMutation(mutation, saved, set, get);
-        }).catch((err) => {
-            rollbackFolderMutation(mutation, set, get);
-            toastError(err, normalized.name !== undefined ? t("sidebar.rename_failed") : t("sidebar.move_failed"));
-        });
+        void (async () => {
+            try {
+                const saved = await enqueueFolderWrite(id, () => api.folders.patch(id, normalized));
+                commitFolderMutation(mutation, saved, set, get);
+            } catch (err) {
+                rollbackFolderMutation(mutation, set, get);
+                toastError(err, normalized.name !== undefined ? t("sidebar.rename_failed") : t("sidebar.move_failed"));
+            }
+        })();
         return true;
     },
     deleteFolder(id) {
@@ -1113,20 +1120,23 @@ export const useNotes = create<NotesState>((set, get) => ({
         }
         const mutation = beginFolderMutation(id, true, (folders) => removeFolderAndPromoteChildren(folders, id), set, get);
         reconcileFolderUi(get().folders);
-        void enqueueFolderWrite(id, () => api.folders.remove(id, 'move-up')).then(() => {
-            finishFolderMutation(mutation);
-            for (const [noteId, noteMutation] of noteMutations)
-                finishNoteMutation(noteId, noteMutation);
-            scheduleShellSave(get);
-            void get().pull().catch(() => { });
-        }).catch((err) => {
-            rollbackFolderMutation(mutation, set, get);
-            for (const [noteId, noteMutation] of noteMutations) {
-                finishNoteMutation(noteId, noteMutation);
-                rollbackNoteMutation(noteId, noteMutation, set, get);
+        void (async () => {
+            try {
+                await enqueueFolderWrite(id, () => api.folders.remove(id, 'move-up'));
+                finishFolderMutation(mutation);
+                for (const [noteId, noteMutation] of noteMutations)
+                    finishNoteMutation(noteId, noteMutation);
+                scheduleShellSave(get);
+                void get().pull().catch(() => { });
+            } catch (err) {
+                rollbackFolderMutation(mutation, set, get);
+                for (const [noteId, noteMutation] of noteMutations) {
+                    finishNoteMutation(noteId, noteMutation);
+                    rollbackNoteMutation(noteId, noteMutation, set, get);
+                }
+                toastError(err, t("common.delete_failed"));
             }
-            toastError(err, t("common.delete_failed"));
-        });
+        })();
         return true;
     },
     async refreshFolders() {
@@ -1177,15 +1187,21 @@ export const useNotes = create<NotesState>((set, get) => ({
     },
     replayPending() {
         return replayOutbox(get, set);
-    },
-    setOnline(online) {
+    },    setOnline(online) {
         set({ online });
         if (online) {
-            void get()
-                .pull()
-                .catch(() => { })
-                .then(() => replayOutbox(get, set))
-                .catch(() => { });
+            void (async () => {
+                try {
+                    await get().pull();
+                } catch {
+                    // Reconnect pulls race with the connection coming up; the next event or manual refresh retries.
+                }
+                try {
+                    await replayOutbox(get, set);
+                } catch {
+                    // Outbox replay is retried on the next pull; keep the UI responsive meanwhile.
+                }
+            })();
         }
     },
 }));

@@ -133,10 +133,11 @@ export function setLocale(next: AppLocale, persist = true): void {
         listeners.forEach((listener) => listener());
         return;
     }
-    void ensureLocaleLoaded(next).then(() => {
+    void (async () => {
+        await ensureLocaleLoaded(next);
         applyLocaleToDom();
         listeners.forEach((listener) => listener());
-    });
+    })();
 }
 export async function setLocaleAsync(next: AppLocale, persist = true): Promise<void> {
     setLocale(next, persist);

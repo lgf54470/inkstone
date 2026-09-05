@@ -652,20 +652,25 @@ export function switchThemeWithTransition(
     apply()
   })
 
-  void transition.ready.then(() => {
-    const radius = Math.hypot(
-      Math.max(origin.x, innerWidth - origin.x),
-      Math.max(origin.y, innerHeight - origin.y),
-    )
-    document.documentElement.animate(
-      {
-        clipPath: [`circle(0px at ${origin.x}px ${origin.y}px)`, `circle(${radius}px at ${origin.x}px ${origin.y}px)`],
-      },
-      {
-        duration: 460,
-        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
-        pseudoElement: '::view-transition-new(root)',
-      },
-    )
-  }).catch(() => {})
+  void (async () => {
+    try {
+      await transition.ready
+      const radius = Math.hypot(
+        Math.max(origin.x, innerWidth - origin.x),
+        Math.max(origin.y, innerHeight - origin.y),
+      )
+      document.documentElement.animate(
+        {
+          clipPath: [`circle(0px at ${origin.x}px ${origin.y}px)`, `circle(${radius}px at ${origin.x}px ${origin.y}px)`],
+        },
+        {
+          duration: 460,
+          easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+          pseudoElement: '::view-transition-new(root)',
+        },
+      )
+    } catch {
+      // The view transition can be skipped (reduced motion, interrupted navigation); the circular reveal is purely decorative.
+    }
+  })()
 }

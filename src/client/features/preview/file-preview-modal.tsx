@@ -189,15 +189,15 @@ function CodeViewer({ code, ext }: { code: string; ext: string }) {
     decorateCodeBlock(block)
 
     let cancelled = false
-    highlightWithPrism(code, ext)
-      .then((highlighted) => {
-        if (cancelled) return
-        if (highlighted) {
-          codeEl.innerHTML = highlighted.html
-          codeEl.className = `language-${highlighted.language}`
-          decorateCodeBlock(block)
-        }
-      })
+    void (async () => {
+      const highlighted = await highlightWithPrism(code, ext)
+      if (cancelled) return
+      if (highlighted) {
+        codeEl.innerHTML = highlighted.html
+        codeEl.className = `language-${highlighted.language}`
+        decorateCodeBlock(block)
+      }
+    })()
       .catch(() => {})
 
     return () => {
@@ -273,20 +273,19 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
     setIsLoading(true)
     setError(null)
 
-    fetch(url, { signal: controller.signal })
-      .then((res) => {
+    void (async () => {
+      try {
+        const res = await fetch(url, { signal: controller.signal })
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-        return res.text()
-      })
-      .then((text) => {
+        const text = await res.text()
         setTextContent(text)
         setIsLoading(false)
-      })
-      .catch((err) => {
+      } catch (err) {
         if (controller.signal.aborted) return
         setError(errorMessage(err))
         setIsLoading(false)
-      })
+      }
+    })()
 
     return () => controller.abort()
   }, [open, url, isText, isImage])

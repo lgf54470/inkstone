@@ -373,19 +373,21 @@ export function useSyncEngine(): void {
   // through updateConfig instead of rebuilding the whole engine.
   useEffect(() => {
     let disposed = false
-    void bootstrap()
-      .catch(() => {
-
-      })
-      .then(() => {
-        if (disposed) return
-        const state = useSession.getState()
-        engineRef.current = new SyncEngine(
-          Boolean(state.site?.realtimeEnabled) && state.settings.sync.realtime,
-          Math.max(5000, state.settings.sync.pollIntervalMs),
-        )
-        engineRef.current.start()
-      })
+    void (async () => {
+      try {
+        await bootstrap()
+      } catch (error) {
+        console.error('sync bootstrap failed; sync engine will not start', error)
+        return
+      }
+      if (disposed) return
+      const state = useSession.getState()
+      engineRef.current = new SyncEngine(
+        Boolean(state.site?.realtimeEnabled) && state.settings.sync.realtime,
+        Math.max(5000, state.settings.sync.pollIntervalMs),
+      )
+      engineRef.current.start()
+    })()
 
     return () => {
       disposed = true

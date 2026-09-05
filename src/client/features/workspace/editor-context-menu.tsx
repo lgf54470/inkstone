@@ -119,24 +119,22 @@ export function EditorContextMenu({
     void navigator.clipboard.writeText(text);
   }, []);
 
-  const handlePasteIntoEditor = useCallback(() => {
+  const handlePasteIntoEditor = useCallback(async () => {
     if (!editorView) return;
     if (navigator.clipboard?.readText) {
-      navigator.clipboard
-        .readText()
-        .then((text) => {
-          if (!text) return;
-          const range = editorView.state.selection.main;
-          editorView.dispatch({
-            changes: { from: range.from, to: range.to, insert: text },
-            selection: EditorSelection.cursor(range.from + text.length),
-            scrollIntoView: true,
-          });
-          editorView.focus();
-        })
-        .catch(() => {
-          document.execCommand('paste');
+      try {
+        const text = await navigator.clipboard.readText();
+        if (!text) return;
+        const range = editorView.state.selection.main;
+        editorView.dispatch({
+          changes: { from: range.from, to: range.to, insert: text },
+          selection: EditorSelection.cursor(range.from + text.length),
+          scrollIntoView: true,
         });
+        editorView.focus();
+      } catch {
+        document.execCommand('paste');
+      }
     } else {
       document.execCommand('paste');
     }

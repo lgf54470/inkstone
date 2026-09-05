@@ -64,19 +64,19 @@ export function SharePanel({ onClose }: {
         setExpiry('0');
         setIsCopied(false);
         window.clearTimeout(copiedTimer.current);
-        api.share
-            .get(note.id, controller.signal)
-            .then((res) => {
-            if (cancelled || loadEpoch.current !== epoch || noteIdRef.current !== noteId)
-                return;
-            setShare(res.share);
-            setShouldUsePassword(Boolean(res.share?.hasPassword));
-            setExpiry(res.share?.expiresAt ? KEEP_CURRENT_EXPIRY : '0');
-        })
-            .catch((error) => {
-            if (!cancelled && loadEpoch.current === epoch && noteIdRef.current === noteId)
-                setLoadError(errorMessage(error));
-        });
+        void (async () => {
+            try {
+                const res = await api.share.get(note.id, controller.signal);
+                if (cancelled || loadEpoch.current !== epoch || noteIdRef.current !== noteId)
+                    return;
+                setShare(res.share);
+                setShouldUsePassword(Boolean(res.share?.hasPassword));
+                setExpiry(res.share?.expiresAt ? KEEP_CURRENT_EXPIRY : '0');
+            } catch (error) {
+                if (!cancelled && loadEpoch.current === epoch && noteIdRef.current === noteId)
+                    setLoadError(errorMessage(error));
+            }
+        })();
         return () => {
             cancelled = true;
             controller.abort();

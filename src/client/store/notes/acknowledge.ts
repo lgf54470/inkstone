@@ -11,9 +11,14 @@ import { useUi } from '../ui';
 import { dirty, validatedRevisions } from './model';
 
 function refreshPendingCount(): void {
-    void localDb.getOutbox()
-        .then((outbox) => useNotes.setState({ pendingCount: pendingNoteCount(outbox) }))
-        .catch(() => { });
+    void (async () => {
+        try {
+            const outbox = await localDb.getOutbox();
+            useNotes.setState({ pendingCount: pendingNoteCount(outbox) });
+        } catch {
+            // Best-effort count refresh; the next outbox event or pull retries it.
+        }
+    })();
 }
 export function acknowledgeOutboxBaseAdvanced(
     result: Extract<BroadcastPayload, { type: 'outbox-base-advanced' }>,
@@ -102,10 +107,11 @@ export function acknowledgeOutboxResult(result: OutboxResult): void {
     });
     void localDb.dropContent(result.noteId);
     refreshPendingCount();
-    void useNotes.getState().pull().then(() => {
+    void (async () => {
+        await useNotes.getState().pull();
         if (openPane && useNotes.getState().notes[result.noteId])
-            return useNotes.getState().openNote(result.noteId, { pane: openPane, activate: wasActive });
-    });
+            await useNotes.getState().openNote(result.noteId, { pane: openPane, activate: wasActive });
+    })();
     if (result.copyId)
         showOfflineRecoveryToast(() => useNotes.getState(), result.copyId, result.recoveryReason !== 'deleted');
 }

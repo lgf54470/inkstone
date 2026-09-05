@@ -80,19 +80,21 @@ export function scheduleFtsDrain(c: Context<AppBindings>, max = 5): void {
     rerun: false,
     promise: Promise.resolve(),
   }
-  scheduled.promise = new Promise<void>((resolve) => {
-    setTimeout(resolve, FTS_DRAIN_DELAY_MS + 2_000)
-  })
-    .then(async () => {
+  scheduled.promise = (async () => {
+    try {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, FTS_DRAIN_DELAY_MS + 2_000)
+      })
       do {
         scheduled.rerun = false
         await drainFtsQueue(db, userId, scheduled.max, true)
       } while (scheduled.rerun)
-    })
-    .catch(() => {})
-    .finally(() => {
+    } catch (error) {
+      console.error('[inkstone] FTS drain failed:', error)
+    } finally {
       if (byUser!.get(userId) === scheduled) byUser!.delete(userId)
-    })
+    }
+  })()
   byUser.set(userId, scheduled)
   c.executionCtx.waitUntil(scheduled.promise)
 }

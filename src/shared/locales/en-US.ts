@@ -3119,6 +3119,7 @@ tags: [fitness]
     "templates.uncategorized": "Uncategorized",
     "templates.use_template": "Use this template",
     "templates.copied_to_clipboard": "Copied to clipboard",
+    "templates.copy_failed": "Could not copy. Try again or export the file instead.",
     "templates.copy_json": "Copy JSON",
     "templates.export_library": "Export library",
     "templates.exported_value0_templates": "Exported {value0} templates",

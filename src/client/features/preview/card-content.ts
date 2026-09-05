@@ -47,7 +47,8 @@ export function useNoteCardContent(
       setStatus('missing')
       return
     }
-    if (noteIdRef.current !== target.noteId) {
+    const noteId = target.noteId
+    if (noteIdRef.current !== noteId) {
       noteIdRef.current = target.noteId
       statusRef.current = 'loading'
     }
@@ -58,10 +59,9 @@ export function useNoteCardContent(
       setHtml('')
       setIsTruncated(false)
     }
-    void useNotes
-      .getState()
-      .peekContent(target.noteId)
-      .then(async (content) => {
+    void (async () => {
+      try {
+        const content = await useNotes.getState().peekContent(noteId)
         if (cancelled || revision !== revisionRef.current) return
         if (content == null) {
           if (hydrated || rev > 0) {
@@ -72,7 +72,7 @@ export function useNoteCardContent(
         }
         const truncatedContent = limitPreviewLength(content, maxLength)
         const externalImages = useSession.getState().settings.preview.externalImages
-        const cacheKey = [target.noteId, rev, hashString(truncatedContent), previewMath ? 1 : 0, dark ? 1 : 0, externalImages ? 1 : 0].join(':')
+        const cacheKey = [noteId, rev, hashString(truncatedContent), previewMath ? 1 : 0, dark ? 1 : 0, externalImages ? 1 : 0].join(':')
         let nextHtml = htmlCache.get(cacheKey)
         if (nextHtml === undefined) {
           const staging = document.createElement('div')
@@ -94,13 +94,13 @@ export function useNoteCardContent(
         setIsTruncated(truncatedContent.length < content.length)
         statusRef.current = 'ready'
         setStatus('ready')
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled && revision === revisionRef.current) {
           statusRef.current = 'error'
           setStatus('error')
         }
-      })
+      }
+    })()
     return () => {
       cancelled = true
     }
@@ -126,13 +126,14 @@ export function useNoteBacklinks(noteId: string | null): NoteBacklinks {
     const controller = new AbortController()
     let cancelled = false
     setLinks(null)
-    getNoteBacklinks(noteId, rev, cursor, controller.signal)
-      .then((response) => {
+    void (async () => {
+      try {
+        const response = await getNoteBacklinks(noteId, rev, cursor, controller.signal)
         if (!cancelled) setLinks(response)
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setLinks([])
-      })
+      }
+    })()
     return () => {
       cancelled = true
       controller.abort()

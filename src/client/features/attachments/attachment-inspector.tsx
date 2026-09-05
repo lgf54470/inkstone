@@ -60,16 +60,16 @@ export function AttachmentInspector({
     }
     let cancelled = false
     setIsLoadingNotes(true)
-    api.files.referencingNotes(file.id)
-      .then((res) => {
+    void (async () => {
+      try {
+        const res = await api.files.referencingNotes(file.id)
         if (!cancelled) setReferencingNotes(res.notes)
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setReferencingNotes([])
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setIsLoadingNotes(false)
-      })
+      }
+    })()
     return () => {
       cancelled = true
     }

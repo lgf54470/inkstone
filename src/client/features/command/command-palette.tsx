@@ -127,15 +127,15 @@ export function CommandPalette({ onClose }: {
             return;
         }
         const controller = new AbortController();
-        api
-            .search(text, 20, controller.signal)
-            .then((res) => {
-            setRemote({ query: text, results: res.results });
-        })
-            .catch((err) => {
-            if ((err as Error)?.name !== 'AbortError')
-                setRemote({ query: text, results: [] });
-        });
+        void (async () => {
+            try {
+                const res = await api.search(text, 20, controller.signal);
+                setRemote({ query: text, results: res.results });
+            } catch (err) {
+                if ((err as Error)?.name !== 'AbortError')
+                    setRemote({ query: text, results: [] });
+            }
+        })();
         return () => controller.abort();
     }, [debounced]);
     const commands = useMemo<Omit<Item, 'score' | 'match'>[]>(() => {

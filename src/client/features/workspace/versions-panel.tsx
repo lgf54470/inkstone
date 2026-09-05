@@ -45,18 +45,18 @@ export function VersionsPanel({ onClose }: {
             return;
         const controller = new AbortController();
         let cancelled = false;
-        api.notes
-            .versions(note.id, controller.signal)
-            .then((res) => {
-            if (cancelled)
-                return;
-            setVersions(res.versions);
-            setSelected(res.versions[0] ? { noteId: note.id, versionId: res.versions[0].id } : null);
-        })
-            .catch((error) => {
-            if (!cancelled)
-                setVersionsError(errorMessage(error));
-        });
+        void (async () => {
+            try {
+                const res = await api.notes.versions(note.id, controller.signal);
+                if (cancelled)
+                    return;
+                setVersions(res.versions);
+                setSelected(res.versions[0] ? { noteId: note.id, versionId: res.versions[0].id } : null);
+            } catch (error) {
+                if (!cancelled)
+                    setVersionsError(errorMessage(error));
+            }
+        })();
         return () => {
             cancelled = true;
             controller.abort();
@@ -73,16 +73,16 @@ export function VersionsPanel({ onClose }: {
             return;
         const controller = new AbortController();
         let cancelled = false;
-        api.notes
-            .version(note.id, selectedId, controller.signal)
-            .then((v) => {
-            if (!cancelled)
-                setPreview(v.content);
-        })
-            .catch((error) => {
-            if (!cancelled)
-                setPreviewError(errorMessage(error));
-        });
+        void (async () => {
+            try {
+                const v = await api.notes.version(note.id, selectedId, controller.signal);
+                if (!cancelled)
+                    setPreview(v.content);
+            } catch (error) {
+                if (!cancelled)
+                    setPreviewError(errorMessage(error));
+            }
+        })();
         return () => {
             cancelled = true;
             controller.abort();

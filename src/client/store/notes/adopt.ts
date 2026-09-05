@@ -68,13 +68,14 @@ export function revalidateNote(id: string, rev: number, set: SetNotesState, get:
     if (dirty.has(id) || validatedRevisions.get(id) === rev)
         return;
     validatedRevisions.set(id, rev);
-    void requestNote(id)
-        .then((note) => {
-        validatedRevisions.set(id, note.rev);
-        adoptNote(note, set, get);
-    })
-        .catch(() => {
-        if (validatedRevisions.get(id) === rev)
-            validatedRevisions.delete(id);
-    });
+    void (async () => {
+        try {
+            const note = await requestNote(id);
+            validatedRevisions.set(id, note.rev);
+            adoptNote(note, set, get);
+        } catch {
+            if (validatedRevisions.get(id) === rev)
+                validatedRevisions.delete(id);
+        }
+    })();
 }
