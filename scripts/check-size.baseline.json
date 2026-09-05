@@ -635,10 +635,27 @@
   "src/worker/routes/backup.ts": {
     "longFns": 1
   },
-  "src/worker/routes/blog.ts": {
-    "lines": 1951,
-    "longFns": 9,
-    "deepFns": 6
+  "src/worker/routes/blog/comments.ts": {
+    "longFns": 2
+  },
+  "src/worker/routes/blog/organizer.ts": {
+    "longFns": 1,
+    "deepFns": 3
+  },
+  "src/worker/routes/blog/posts.ts": {
+    "longFns": 4,
+    "deepFns": 1
+  },
+  "src/worker/routes/blog/public.ts": {
+    "longFns": 4,
+    "deepFns": 1
+  },
+  "src/worker/routes/blog/settings.ts": {
+    "longFns": 1
+  },
+  "src/worker/routes/blog/stats.ts": {
+    "longFns": 3,
+    "deepFns": 1
   },
   "src/worker/routes/community-templates.ts": {
     "longFns": 1
