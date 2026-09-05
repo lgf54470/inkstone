@@ -8,10 +8,14 @@ vi.mock('../src/worker/lib/id', async (importOriginal) => {
   return { ...actual, newId: () => `id-${++H.counter}` }
 })
 
-import type { D1Database } from '@cloudflare/workers-types'
+import type { D1Database, KVNamespace } from '@cloudflare/workers-types'
+import { LIMITS } from '../src/shared/constants'
 import type { MarkdownBackupManifest } from '../src/shared/backup-format'
 import { TABLE_STATEMENTS } from '../src/worker/db/schema/tables'
 import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
+import { attachmentObjectKey } from '../src/worker/attachments/keys'
+import { persistAttachmentWithinQuota, rollbackPersistedAttachments } from '../src/worker/attachments/storage'
+import type { Env } from '../src/worker/env'
 import { importBackupFileBatch } from '../src/worker/import/backup'
 import type { ImportContext } from '../src/worker/import/types'
 import { createD1Database as createDb, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
@@ -21,6 +25,29 @@ const DB_ENV = { env: { DB: null as unknown as D1Database } }
 const SRC_NOTE = 'aaaaaaaaaaaaaaaaaaaaaaaaaa'
 const STAMP = '20260906-120000-000'
 const NOTE_PATH = 'notes/hello.md'
+const ENCODER = new TextEncoder()
+
+interface KvShim extends KVNamespace {
+  listKeys: () => string[]
+}
+
+function createKvShim(): KvShim {
+  const store = new Map<string, Uint8Array>()
+  return {
+    put: async (key: string, value: string | ArrayBuffer | Uint8Array) => {
+      const bytes = typeof value === 'string'
+        ? ENCODER.encode(value)
+        : value instanceof Uint8Array ? value : new Uint8Array(value)
+      store.set(key, bytes)
+    },
+    get: async (key: string) => {
+      const bytes = store.get(key)
+      return bytes ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) : null
+    },
+    delete: async (key: string) => { store.delete(key) },
+    listKeys: () => [...store.keys()],
+  } as unknown as KvShim
+}
 
 function shaOf(content: string): string {
   return createHash('sha256').update(content).digest('hex')
@@ -267,7 +294,7 @@ describe('importBackupFileBatch', () => {
     await importBackupFileBatch(
       DB_ENV,
       USER,
-      [{ file: new File([new TextEncoder().encode('hello **world**')], 'hello.md'), path: 'trash/hello.md' }],
+      [{ file: new File([ENCODER.encode('hello **world**')], 'hello.md'), path: 'trash/hello.md' }],
       manifest,
       c,
     )
@@ -278,5 +305,147 @@ describe('importBackupFileBatch', () => {
     const fts = await firstRow(db, 'SELECT kind FROM fts_index_queue')
     expect(fts!.kind).toBe('delete')
     expect((await allRows(db, 'SELECT * FROM ai_index_queue')).length).toBe(0)
+  })
+})
+
+describe('importBackupFileBatch attachments (fake KV storage)', () => {
+  const attachmentBytes = () => ENCODER.encode('fake png bytes')
+  const attachmentSha = () => shaOfBytes(attachmentBytes())
+  const attachmentNoteContent = () => `see ../../attachments/${attachmentSha()}--pic.png`
+
+  function attachmentManifest(): MarkdownBackupManifest {
+    const bytes = attachmentBytes()
+    const sha = attachmentSha()
+    return buildManifest({
+      content: attachmentNoteContent(),
+      attachmentHashes: [sha],
+      attachments: [{
+        path: `attachments/${sha}--pic.png`,
+        filename: 'pic.png',
+        mime: 'image/png',
+        size: bytes.byteLength,
+        sha256: sha,
+        createdAt: H.now - 2000,
+      }],
+    })
+  }
+
+  function attachmentSelection(): Array<{ file: File; path: string }> {
+    return [
+      { file: new File([attachmentBytes()], 'pic.png'), path: `attachments/${attachmentSha()}--pic.png` },
+      { file: new File([ENCODER.encode(attachmentNoteContent())], 'hello.md'), path: NOTE_PATH },
+    ]
+  }
+
+  it('persists a backup attachment to KV and rewrites the note URL to the new id', async () => {
+    const db = await makeDb()
+    const kv = createKvShim()
+    const env = { env: { DB: db as unknown as D1Database, FILES_KV: kv } as Env }
+    const c = ctx()
+    await importBackupFileBatch(env, USER, attachmentSelection(), attachmentManifest(), c)
+    expect(c.result.createdAttachments).toBe(1)
+    expect(c.result.createdNotes).toBe(1)
+
+    const row = await firstRow(db, 'SELECT id, storage, sha256, size FROM attachments')
+    expect(row!.storage).toBe('kv')
+    expect(row!.sha256).toBe(attachmentSha())
+    expect(row!.size).toBe(attachmentBytes().byteLength)
+    expect(kv.listKeys()).toHaveLength(1)
+    const mapping = await firstRow(db, "SELECT target_id FROM import_mappings WHERE entity = 'attachment' AND source_id = ?1", attachmentSha())
+    expect(mapping!.target_id).toBe(row!.id)
+    const note = await firstRow(db, 'SELECT content FROM notes')
+    expect(note!.content).toBe(`see /api/files/${row!.id}`)
+  })
+
+  it('skips an attachment that already exists with matching content', async () => {
+    const db = await makeDb()
+    const kv = createKvShim()
+    const env = { env: { DB: db as unknown as D1Database, FILES_KV: kv } as Env }
+    const sha = attachmentSha()
+    await runSql(
+      db,
+      `INSERT INTO attachments (id, user_id, note_id, folder_id, filename, mime, size, sha256, width, height,
+         storage, is_starred, is_pinned, tags, created_at)
+       VALUES ('att-1', ?1, NULL, NULL, 'pic.png', 'application/octet-stream', ?2, ?3, NULL, NULL, 'kv', 0, 0, '[]', ?4)`,
+      USER,
+      attachmentBytes().byteLength,
+      sha,
+      H.now - 2000,
+    )
+    await runSql(
+      db,
+      `INSERT INTO import_mappings (user_id, entity, source_id, target_id, updated_at)
+       VALUES (?1, 'attachment', ?2, 'att-1', ?3)`,
+      USER,
+      sha,
+      H.now - 1000,
+    )
+    const key = attachmentObjectKey({
+      user_id: USER,
+      id: 'att-1',
+      mime: 'application/octet-stream',
+      filename: 'pic.png',
+    })
+    await kv.put(key, attachmentBytes())
+
+    const c = ctx()
+    await importBackupFileBatch(env, USER, attachmentSelection(), attachmentManifest(), c)
+    expect(c.result.skippedAttachments).toBe(1)
+    expect(c.result.createdAttachments).toBe(0)
+    expect((await allRows(db, 'SELECT * FROM attachments')).length).toBe(1)
+    const note = await firstRow(db, 'SELECT content FROM notes')
+    expect(note!.content).toBe('see /api/files/att-1')
+  })
+
+  it('rejects attachment restore when no storage binding is configured', async () => {
+    const db = await makeDb()
+    const c = ctx()
+    await expect(
+      importBackupFileBatch(DB_ENV, USER, attachmentSelection(), attachmentManifest(), c),
+    ).rejects.toThrow('This instance has no R2 or Workers KV attachment binding and cannot restore attachments')
+    expect((await allRows(db, 'SELECT * FROM attachments')).length).toBe(0)
+    expect((await allRows(db, 'SELECT * FROM notes')).length).toBe(0)
+  })
+
+  it('rejects an attachment that exceeds the account quota', async () => {
+    const db = await makeDb()
+    const kv = createKvShim()
+    const env = { env: { DB: db as unknown as D1Database, FILES_KV: kv } as Env }
+    await runSql(
+      db,
+      `INSERT INTO attachments (id, user_id, note_id, folder_id, filename, mime, size, sha256, width, height,
+         storage, is_starred, is_pinned, tags, created_at)
+       VALUES ('quota-1', ?1, NULL, NULL, 'big.bin', 'application/octet-stream', ?2, ?3, NULL, NULL, 'kv', 0, 0, '[]', ?4)`,
+      USER,
+      LIMITS.attachmentQuotaBytes - 5,
+      'b'.repeat(64),
+      H.now - 2000,
+    )
+    await expect(
+      importBackupFileBatch(env, USER, attachmentSelection(), attachmentManifest(), ctx()),
+    ).rejects.toThrow('The account attachment quota has been reached')
+    expect(kv.listKeys()).toHaveLength(0)
+  })
+
+  it('rolls a persisted attachment back by deleting the object and row', async () => {
+    const db = await makeDb()
+    const kv = createKvShim()
+    const env = { env: { DB: db as unknown as D1Database, FILES_KV: kv } as Env }
+    const persisted = await persistAttachmentWithinQuota(env.env, {
+      id: 'att-2',
+      userId: USER,
+      noteId: null,
+      filename: 'pic.png',
+      reportedMime: 'image/png',
+      bytes: attachmentBytes(),
+      createdAt: H.now - 2000,
+    })
+    expect((await allRows(db, 'SELECT * FROM attachments')).length).toBe(1)
+    expect(kv.listKeys()).toHaveLength(1)
+
+    await rollbackPersistedAttachments(env.env, [persisted])
+    expect((await allRows(db, 'SELECT * FROM attachments')).length).toBe(0)
+    expect((await allRows(db, 'SELECT * FROM attachment_cleanup')).length).toBe(0)
+    expect(kv.listKeys()).toHaveLength(0)
   })
 })

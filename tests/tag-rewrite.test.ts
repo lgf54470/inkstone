@@ -2,11 +2,31 @@ import { describe, expect, it, vi } from 'vitest'
 import { createHash } from 'node:crypto'
 import { Hono } from 'hono'
 
-const H = vi.hoisted(() => ({ counter: 0, now: 2_000_000_000_000 }))
+const H = vi.hoisted(() => ({ counter: 0, now: 2_000_000_000_000, bumpRev: false, deleteNote: false }))
 
 vi.mock('../src/worker/lib/id', async (importOriginal) => {
   const actual = await importOriginal()
   return { ...actual, newId: () => `id-${++H.counter}` }
+})
+
+vi.mock('../src/worker/lib/encoding', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    sha256Hex: async (input: string | Uint8Array) => {
+      if (H.bumpRev) {
+        H.bumpRev = false
+        await DB_ENV.env.DB.prepare(
+          `UPDATE notes SET rev = rev + 1, updated_at = updated_at + 1 WHERE user_id = ?1`,
+        ).bind(USER).run()
+      }
+      if (H.deleteNote) {
+        H.deleteNote = false
+        await DB_ENV.env.DB.prepare(`DELETE FROM notes WHERE user_id = ?1`).bind(USER).run()
+      }
+      return actual.sha256Hex(input)
+    },
+  }
 })
 
 import type { D1Database } from '@cloudflare/workers-types'
@@ -103,6 +123,34 @@ function request(app: Hono<AppBindings>, path: string, init?: RequestInit): Prom
 }
 
 describe('rewriteTagInNotes', () => {
+  it('retries with fresh state after a concurrent edit bumps the revision', async () => {
+    const db = await makeDb()
+    await seedNote(db, { id: 'note-1', content: 'body with #alpha' })
+    await seedTag(db, 'tag-1', 'alpha')
+    await seedNoteTag(db, 'note-1', 'tag-1')
+    H.bumpRev = true
+
+    const result = await rewriteTagInNotes(DB_ENV.env, true, USER, 'tag-1', 'alpha', 'beta')
+    expect(result.rewritten).toBe(1)
+    const note = await firstRow(db, 'SELECT content, rev, updated_at FROM notes WHERE id = ?1', 'note-1')
+    expect(note!.content).toBe('body with #beta')
+    expect(note!.rev).toBe(3)
+    expect(note!.updated_at).toBe(H.now - 998)
+  })
+
+  it('stops cleanly when the note disappears between preload and apply', async () => {
+    const db = await makeDb()
+    await seedNote(db, { id: 'note-1', content: 'body with #alpha' })
+    await seedTag(db, 'tag-1', 'alpha')
+    await seedNoteTag(db, 'note-1', 'tag-1')
+    H.deleteNote = true
+
+    const result = await rewriteTagInNotes(DB_ENV.env, true, USER, 'tag-1', 'alpha', 'beta')
+    expect(result.rewritten).toBe(0)
+    expect(await firstRow(db, 'SELECT id FROM notes WHERE id = ?1', 'note-1')).toBeNull()
+    expect((await allRows(db, "SELECT * FROM changes WHERE entity = 'note'")).length).toBe(0)
+  })
+
   it('renames the tag in content and rewrites derived state with a version snapshot', async () => {
     const db = await makeDb()
     await seedNote(db, { id: 'note-1', content: 'body with #alpha and more' })

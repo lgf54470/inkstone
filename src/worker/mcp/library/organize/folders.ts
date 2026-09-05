@@ -130,84 +130,126 @@ export async function removeMcpFolderAndPromote(
       const folder = await loadFolderOrNull(context.env.DB, context.userId, input.folderId)
       return folder ? null : { ok: true, folder_id: input.folderId, promoted_to: null }
     },
-    execute: async () => {
-      const current = await loadFolderOrNull(context.env.DB, context.userId, input.folderId)
-      if (!current) throw ApiError.notFound('Folder not found')
-      if (current.updated_at !== input.expectedUpdatedAt) throw ApiError.conflict('The folder changed elsewhere')
-      const conflict = await context.env.DB.prepare(
-        `SELECT 1 FROM folders child JOIN folders sibling
-           ON sibling.user_id = child.user_id AND sibling.parent_id IS ?1
-          AND lower(sibling.name) = lower(child.name) AND sibling.id != child.id
-          AND sibling.deleted_at IS NULL
-          WHERE child.user_id = ?2 AND child.parent_id = ?3 AND child.deleted_at IS NULL LIMIT 1`,
-      ).bind(current.parent_id, context.userId, current.id).first()
-      if (conflict) throw ApiError.conflict('A promoted child would duplicate a sibling folder name')
-      const now = Math.max(Date.now(), current.updated_at + 1)
-      const promotionOrder = await folderPromotionOrder(context.env.DB, context.userId, current)
-      const promotionJson = JSON.stringify(promotionOrder)
-      const guard = `EXISTS (SELECT 1 FROM folders
-        WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at IS NULL)
-        AND NOT EXISTS (
-          SELECT 1 FROM folders child
-          JOIN folders sibling
-            ON sibling.user_id = child.user_id
-           AND sibling.parent_id IS (
-             SELECT parent_id FROM folders WHERE id = ?1 AND user_id = ?2
-           )
-           AND lower(sibling.name) = lower(child.name)
-           AND sibling.deleted_at IS NULL
-           AND sibling.id != ?1
-           AND sibling.id != child.id
-         WHERE child.parent_id = ?1 AND child.user_id = ?2 AND child.deleted_at IS NULL
-        )`
-      const results = await context.env.DB.batch([
-        context.env.DB.prepare(
-          `INSERT INTO changes (user_id, entity, entity_id, op, at)
-           SELECT ?2, 'folder', json_extract(item.value, '$.id'), 'upsert', ?4
-             FROM json_each(?5) item WHERE ${guard}`,
-        ).bind(current.id, context.userId, current.updated_at, now, promotionJson),
-        context.env.DB.prepare(
-          `INSERT INTO changes (user_id, entity, entity_id, op, at)
-           SELECT ?2, 'note', id, 'upsert', ?4 FROM notes
-            WHERE folder_id = ?1 AND user_id = ?2 AND ${guard}`,
-        ).bind(current.id, context.userId, current.updated_at, now),
-        context.env.DB.prepare(
-          `INSERT INTO changes (user_id, entity, entity_id, op, at)
-           SELECT ?2, 'folder', ?1, 'delete', ?4 WHERE ${guard}`,
-        ).bind(current.id, context.userId, current.updated_at, now),
-        context.env.DB.prepare(
-          `UPDATE folders SET deleted_at = ?4
-            WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3
-              AND deleted_at IS NULL AND ${guard}`,
-        ).bind(current.id, context.userId, current.updated_at, now),
-        context.env.DB.prepare(
-          `UPDATE folders SET
-             parent_id = CASE WHEN parent_id = ?1 THEN ?4 ELSE parent_id END,
-             position = COALESCE((
-               SELECT json_extract(item.value, '$.position') FROM json_each(?6) item
-                WHERE json_extract(item.value, '$.id') = folders.id
-             ), position),
-             updated_at = MAX(updated_at + 1, ?5)
-            WHERE id IN (SELECT json_extract(item.value, '$.id') FROM json_each(?6) item)
-              AND user_id = ?2 AND deleted_at IS NULL
-              AND EXISTS (SELECT 1 FROM folders
-                WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at = ?5)`,
-        ).bind(current.id, context.userId, current.updated_at, current.parent_id, now, promotionJson),
-        context.env.DB.prepare(
-          `UPDATE notes SET folder_id = ?4, updated_at = MAX(updated_at + 1, ?5), rev = rev + 1
-            WHERE folder_id = ?1 AND user_id = ?2
-              AND EXISTS (SELECT 1 FROM folders
-                WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at = ?5)`,
-        ).bind(current.id, context.userId, current.updated_at, current.parent_id, now),
-        context.env.DB.prepare(
-          `DELETE FROM folders WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at = ?4`,
-        ).bind(current.id, context.userId, current.updated_at, now),
-      ])
-      if (!results[6]?.meta.changes) throw ApiError.conflict('The folder changed elsewhere')
-      await notifyMutation(context)
-      return { ok: true, folder_id: current.id, promoted_to: current.parent_id }
-    },
+    execute: () => removeMcpFolderAndPromoteExecute(context, input),
   })
+}
+
+async function removeMcpFolderAndPromoteExecute(
+  context: LibraryContext,
+  input: { folderId: string; expectedUpdatedAt: number },
+): Promise<{ ok: boolean; folder_id: string; promoted_to: string | null }> {
+  const current = await loadFolderOrNull(context.env.DB, context.userId, input.folderId)
+  if (!current) throw ApiError.notFound('Folder not found')
+  if (current.updated_at !== input.expectedUpdatedAt) throw ApiError.conflict('The folder changed elsewhere')
+  if (await findPromotionNameConflict(context.env.DB, context.userId, current)) {
+    throw ApiError.conflict('A promoted child would duplicate a sibling folder name')
+  }
+  const now = Math.max(Date.now(), current.updated_at + 1)
+  const promotionOrder = await folderPromotionOrder(context.env.DB, context.userId, current)
+  const guard = buildFolderPromotionGuard()
+  const promotionJson = JSON.stringify(promotionOrder)
+  const results = await context.env.DB.batch([
+    ...buildFolderPromotionChangeStatements(context, current, now, promotionJson, guard),
+    ...buildFolderPromotionMoveStatements(context, current, now, promotionJson),
+  ])
+  if (!results[6]?.meta.changes) throw ApiError.conflict('The folder changed elsewhere')
+  await notifyMutation(context)
+  return { ok: true, folder_id: current.id, promoted_to: current.parent_id }
+}
+
+async function findPromotionNameConflict(
+  db: D1Database,
+  userId: string,
+  folder: { id: string; parent_id: string | null },
+): Promise<boolean> {
+  const conflict = await db.prepare(
+    `SELECT 1 FROM folders child JOIN folders sibling
+       ON sibling.user_id = child.user_id AND sibling.parent_id IS ?1
+      AND lower(sibling.name) = lower(child.name) AND sibling.id != child.id
+      AND sibling.deleted_at IS NULL
+      WHERE child.user_id = ?2 AND child.parent_id = ?3 AND child.deleted_at IS NULL LIMIT 1`,
+  ).bind(folder.parent_id, userId, folder.id).first()
+  return Boolean(conflict)
+}
+
+function buildFolderPromotionGuard(): string {
+  return `EXISTS (SELECT 1 FROM folders
+    WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at IS NULL)
+    AND NOT EXISTS (
+      SELECT 1 FROM folders child
+      JOIN folders sibling
+        ON sibling.user_id = child.user_id
+       AND sibling.parent_id IS (
+         SELECT parent_id FROM folders WHERE id = ?1 AND user_id = ?2
+       )
+       AND lower(sibling.name) = lower(child.name)
+       AND sibling.deleted_at IS NULL
+       AND sibling.id != ?1
+       AND sibling.id != child.id
+     WHERE child.parent_id = ?1 AND child.user_id = ?2 AND child.deleted_at IS NULL
+    )`
+}
+
+function buildFolderPromotionChangeStatements(
+  context: LibraryContext,
+  current: { id: string; updated_at: number },
+  now: number,
+  promotionJson: string,
+  guard: string,
+): D1PreparedStatement[] {
+  return [
+    context.env.DB.prepare(
+      `INSERT INTO changes (user_id, entity, entity_id, op, at)
+       SELECT ?2, 'folder', json_extract(item.value, '$.id'), 'upsert', ?4
+         FROM json_each(?5) item WHERE ${guard}`,
+    ).bind(current.id, context.userId, current.updated_at, now, promotionJson),
+    context.env.DB.prepare(
+      `INSERT INTO changes (user_id, entity, entity_id, op, at)
+       SELECT ?2, 'note', id, 'upsert', ?4 FROM notes
+        WHERE folder_id = ?1 AND user_id = ?2 AND ${guard}`,
+    ).bind(current.id, context.userId, current.updated_at, now),
+    context.env.DB.prepare(
+      `INSERT INTO changes (user_id, entity, entity_id, op, at)
+       SELECT ?2, 'folder', ?1, 'delete', ?4 WHERE ${guard}`,
+    ).bind(current.id, context.userId, current.updated_at, now),
+    context.env.DB.prepare(
+      `UPDATE folders SET deleted_at = ?4
+        WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3
+          AND deleted_at IS NULL AND ${guard}`,
+    ).bind(current.id, context.userId, current.updated_at, now),
+  ]
+}
+
+function buildFolderPromotionMoveStatements(
+  context: LibraryContext,
+  current: { id: string; parent_id: string | null; updated_at: number },
+  now: number,
+  promotionJson: string,
+): D1PreparedStatement[] {
+  return [
+    context.env.DB.prepare(
+      `UPDATE folders SET
+         parent_id = CASE WHEN parent_id = ?1 THEN ?4 ELSE parent_id END,
+         position = COALESCE((
+           SELECT json_extract(item.value, '$.position') FROM json_each(?6) item
+            WHERE json_extract(item.value, '$.id') = folders.id
+         ), position),
+         updated_at = MAX(updated_at + 1, ?5)
+        WHERE id IN (SELECT json_extract(item.value, '$.id') FROM json_each(?6) item)
+          AND user_id = ?2 AND deleted_at IS NULL
+          AND EXISTS (SELECT 1 FROM folders
+            WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at = ?5)`,
+    ).bind(current.id, context.userId, current.updated_at, current.parent_id, now, promotionJson),
+    context.env.DB.prepare(
+      `UPDATE notes SET folder_id = ?4, updated_at = MAX(updated_at + 1, ?5), rev = rev + 1
+        WHERE folder_id = ?1 AND user_id = ?2
+          AND EXISTS (SELECT 1 FROM folders
+            WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at = ?5)`,
+    ).bind(current.id, context.userId, current.updated_at, current.parent_id, now),
+    context.env.DB.prepare(
+      `DELETE FROM folders WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at = ?4`,
+    ).bind(current.id, context.userId, current.updated_at, now),
+  ]
 }
 
 export async function previewMcpFolderRemoval(

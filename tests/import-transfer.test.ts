@@ -10,6 +10,7 @@ vi.mock('../src/worker/lib/id', async (importOriginal) => {
 })
 
 import type { D1Database } from '@cloudflare/workers-types'
+import { LIMITS } from '../src/shared/constants'
 import { backupCompleteBody, type MarkdownBackupManifest } from '../src/shared/backup-format'
 import { createZip } from '../src/shared/zip'
 import { TABLE_STATEMENTS } from '../src/worker/db/schema/tables'
@@ -221,6 +222,54 @@ describe('POST /api/import (real D1)', () => {
     const body = await res.json()
     expect(body.error.message).toMatch(/COMPLETE marker/)
     expect((await allRows(db, 'SELECT * FROM notes')).length).toBe(0)
+  })
+
+  it('duplicates an existing bundle note under conflict=duplicate', async () => {
+    const db = await makeDb()
+    const app = makeApp()
+    const post = () => {
+      const form = new FormData()
+      form.append('conflict', 'duplicate')
+      form.append('file', new File([ENCODER.encode(JSON.stringify(freshBundle()))], 'inkstone-export.json'))
+      return request(app, { method: 'POST', body: form })
+    }
+
+    const first = await post()
+    expect(first.status).toBe(200)
+    const second = await post()
+    expect(second.status).toBe(200)
+    const result = await second.json()
+    expect(result.createdNotes).toBe(1)
+    expect((await allRows(db, 'SELECT title FROM notes ORDER BY title')).map((r) => r.title))
+      .toEqual(['Restored note', 'Restored note (imported)'])
+  })
+
+  it('rejects a file that exceeds the upload limit', async () => {
+    await makeDb()
+    const app = makeApp()
+    const form = new FormData()
+    form.append('file', new File([new Uint8Array(LIMITS.importUploadMaxBytes + 1)], 'huge.md'))
+    const res = await request(app, { method: 'POST', body: form })
+    expect(res.status).toBe(413)
+    const body = await res.json()
+    expect(body.error.message).toBe('A single import cannot exceed 64 MB')
+  })
+
+  it('imports multiple files of mixed kinds in one request', async () => {
+    const db = await makeDb()
+    const app = makeApp()
+    const zip = createZip([{ path: 'Inbox/c.md', data: ENCODER.encode('# From zip\n\nzipped') }])
+    const res = await postForm(app, [
+      { name: 'a.md', bytes: ENCODER.encode('# Alpha\n\nalpha body') },
+      { name: 'b.md', bytes: ENCODER.encode('# Beta\n\nbeta body') },
+      { name: 'notes.zip', bytes: zip },
+    ])
+    expect(res.status).toBe(200)
+    const result = await res.json()
+    expect(result.createdNotes).toBe(3)
+    expect(result.createdFolders).toBe(1)
+    expect((await allRows(db, 'SELECT title FROM notes ORDER BY title')).map((r) => r.title))
+      .toEqual(['Alpha', 'Beta', 'From zip'])
   })
 
   it('releases the import lease after the request and blocks concurrent imports', async () => {

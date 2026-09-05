@@ -521,9 +521,6 @@
   "src/worker/mcp/library/graph.ts": {
     "deepFns": 1
   },
-  "src/worker/mcp/library/organize/folders.ts": {
-    "longFns": 2
-  },
   "src/worker/mcp/oauth.ts": {
     "longFns": 1
   },
