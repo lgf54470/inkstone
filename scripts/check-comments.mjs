@@ -937,7 +937,7 @@ const allowed = new Map([
     "// 32 random bytes encoded as unpadded base64url is exactly 43 characters.",
     "/**\n * Resolves a bearer token to an account. Returns null for unknown, revoked,\n * or malformed keys so the OAuth provider can answer with 401 invalid_token.\n */",
   ]],
-  ["src/worker/mcp/library.ts", [
+  ["src/worker/mcp/library/graph.ts", [
     "// Per-node round trips (up to 2 queries x up to 100 nodes) serialized a whole",
     "// MCP graph exploration; batch each BFS level into chunked IN queries instead",
     "// so a full explore costs a handful of requests. Chunk at 80 to stay under",

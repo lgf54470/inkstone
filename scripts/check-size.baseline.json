@@ -578,10 +578,17 @@
   "src/worker/mcp/ai-search.ts": {
     "longFns": 1
   },
-  "src/worker/mcp/library.ts": {
-    "lines": 1344,
-    "longFns": 5,
+  "src/worker/mcp/library/attachments.ts": {
+    "longFns": 1
+  },
+  "src/worker/mcp/library/graph.ts": {
     "deepFns": 1
+  },
+  "src/worker/mcp/library/organize/folders.ts": {
+    "longFns": 2
+  },
+  "src/worker/mcp/library/organize/tags.ts": {
+    "longFns": 2
   },
   "src/worker/mcp/oauth.ts": {
     "longFns": 1
