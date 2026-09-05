@@ -484,28 +484,6 @@
     "longFns": 1,
     "deepFns": 1
   },
-  "src/worker/backup/engine.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/worker/backup/s3.ts": {
-    "longFns": 2,
-    "deepFns": 2
-  },
-  "src/worker/backup/scheduler.ts": {
-    "longFns": 1
-  },
-  "src/worker/backup/snapshot/build.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/worker/backup/snapshot/export.ts": {
-    "longFns": 1
-  },
-  "src/worker/backup/webdav.ts": {
-    "longFns": 1,
-    "deepFns": 2
-  },
   "src/worker/db/fts.ts": {
     "longFns": 1
   },

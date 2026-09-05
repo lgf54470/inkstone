@@ -1,6 +1,6 @@
 import { AwsClient } from 'aws4fetch'
 import { truncateText } from '@shared/text-utils'
-import type { S3Config, TestConnectionResult } from '@shared/types'
+import type { S3Config } from '@shared/types'
 import type { Snapshot } from './snapshot'
 import { backupArchivePath, createBackupArchive } from './archive'
 import {
@@ -9,6 +9,8 @@ import {
   readResponseBytesWithinLimit,
   type DeliverResult,
 } from './common'
+
+export { s3Test } from './s3-test'
 import {
   normalizeBackupPrefix,
   normalizeS3Region,
@@ -24,7 +26,7 @@ export interface S3Secret {
 const S3_MULTIPART_PART_BYTES = 8 * 1024 * 1024
 const S3_MULTIPART_PARTS_MAX = 10_000
 
-function client(secret: S3Secret, config: S3Config): AwsClient {
+export function client(secret: S3Secret, config: S3Config): AwsClient {
   if (!secret.accessKeyId || !secret.secretAccessKey) {
     throw new Error('Access Key or Secret Key is missing')
   }
@@ -57,7 +59,7 @@ export function objectUrl(config: S3Config, key: string): string {
   return `${endpoint.protocol}//${bucket}.${endpoint.host}${prefix}/${encodedKey}`
 }
 
-function joinKey(...parts: (string | undefined)[]): string {
+export function joinKey(...parts: (string | undefined)[]): string {
   return parts
     .filter((p): p is string => Boolean(p && p.trim()))
     .map((p) => p.replace(/^\/+|\/+$/g, ''))
@@ -166,16 +168,7 @@ async function multipartUpload(
 ): Promise<void> {
   let uploadId: string | null = null
   try {
-    const started = await aws.fetch(multipartUrl(config, key, { uploads: null }), {
-      method: 'POST',
-      headers: archiveHeaders(stamp),
-      signal,
-      redirect: 'manual',
-    })
-    if (!started.ok) throw new Error(await describeError(started, key))
-    const startBody = await responseTextWithinLimit(started, 64 * 1024)
-    uploadId = decodeXmlText(/<UploadId>([\s\S]*?)<\/UploadId>/i.exec(startBody)?.[1] ?? '')
-    if (!uploadId) throw new Error(`S3 did not return a multipart upload ID (${key})`)
+    uploadId = await startMultipartUpload(aws, config, key, stamp, signal)
 
     const parts: UploadedPart[] = []
     let uploadedBytes = 0
@@ -184,50 +177,94 @@ async function multipartUpload(
       if (partNumber > S3_MULTIPART_PARTS_MAX) {
         throw new Error(`The backup needs more than ${S3_MULTIPART_PARTS_MAX} S3 parts`)
       }
-      const uploaded = await aws.fetch(multipartUrl(config, key, {
-        partNumber: String(partNumber),
-        uploadId,
-      }), {
-        method: 'PUT',
-        body: body as unknown as BodyInit,
-        headers: { 'User-Agent': BACKUP_USER_AGENT },
-        signal,
-        redirect: 'manual',
-      })
-      if (!uploaded.ok) throw new Error(await describeError(uploaded, key))
-      const etag = uploaded.headers.get('ETag')
-      await uploaded.body?.cancel().catch(() => {})
-      if (!etag) throw new Error(`S3 did not return an ETag for part ${partNumber} (${key})`)
+      const etag = await uploadMultipartPart(aws, config, key, uploadId, partNumber, body, signal)
       parts.push({ partNumber, etag })
       uploadedBytes += body.byteLength
     }
     if (!parts.length) throw new Error(`The backup ZIP was empty (${key})`)
     if (uploadedBytes !== expectedBytes) throw new Error('The generated backup ZIP size changed')
 
-    const completeBody = new TextEncoder().encode(
-      `<CompleteMultipartUpload>${parts.map((part) =>
-        `<Part><PartNumber>${part.partNumber}</PartNumber><ETag>${escapeXml(part.etag)}</ETag></Part>`
-      ).join('')}</CompleteMultipartUpload>`,
-    )
-    const completed = await aws.fetch(multipartUrl(config, key, { uploadId }), {
-      method: 'POST',
-      body: completeBody as unknown as BodyInit,
-      headers: { 'Content-Type': 'application/xml', 'User-Agent': BACKUP_USER_AGENT },
-      signal,
-      redirect: 'manual',
-    })
-    const completedBody = await responseTextWithinLimit(completed, 64 * 1024)
-    if (!completed.ok || /<Error(?:\s|>)/i.test(completedBody)) {
-      const detail = /<Message>([\s\S]*?)<\/Message>/i.exec(completedBody)?.[1]
-      throw new Error(
-        detail
-          ? `S3 could not complete the multipart upload: ${decodeXmlText(detail)} (${key})`
-          : `S3 could not complete the multipart upload: HTTP ${completed.status} (${key})`,
-      )
-    }
+    await completeMultipartUpload(aws, config, key, uploadId, parts, signal)
     uploadId = null
   } finally {
     if (uploadId) await abortMultipart(aws, config, key, uploadId)
+  }
+}
+
+async function startMultipartUpload(
+  aws: AwsClient,
+  config: S3Config,
+  key: string,
+  stamp: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const started = await aws.fetch(multipartUrl(config, key, { uploads: null }), {
+    method: 'POST',
+    headers: archiveHeaders(stamp),
+    signal,
+    redirect: 'manual',
+  })
+  if (!started.ok) throw new Error(await describeError(started, key))
+  const startBody = await responseTextWithinLimit(started, 64 * 1024)
+  const uploadId = decodeXmlText(/<UploadId>([\s\S]*?)<\/UploadId>/i.exec(startBody)?.[1] ?? '')
+  if (!uploadId) throw new Error(`S3 did not return a multipart upload ID (${key})`)
+  return uploadId
+}
+
+async function uploadMultipartPart(
+  aws: AwsClient,
+  config: S3Config,
+  key: string,
+  uploadId: string,
+  partNumber: number,
+  body: Uint8Array,
+  signal?: AbortSignal,
+): Promise<string> {
+  const uploaded = await aws.fetch(multipartUrl(config, key, {
+    partNumber: String(partNumber),
+    uploadId,
+  }), {
+    method: 'PUT',
+    body: body as unknown as BodyInit,
+    headers: { 'User-Agent': BACKUP_USER_AGENT },
+    signal,
+    redirect: 'manual',
+  })
+  if (!uploaded.ok) throw new Error(await describeError(uploaded, key))
+  const etag = uploaded.headers.get('ETag')
+  await uploaded.body?.cancel().catch(() => {})
+  if (!etag) throw new Error(`S3 did not return an ETag for part ${partNumber} (${key})`)
+  return etag
+}
+
+async function completeMultipartUpload(
+  aws: AwsClient,
+  config: S3Config,
+  key: string,
+  uploadId: string,
+  parts: UploadedPart[],
+  signal?: AbortSignal,
+): Promise<void> {
+  const completeBody = new TextEncoder().encode(
+    `<CompleteMultipartUpload>${parts.map((part) =>
+      `<Part><PartNumber>${part.partNumber}</PartNumber><ETag>${escapeXml(part.etag)}</ETag></Part>`
+    ).join('')}</CompleteMultipartUpload>`,
+  )
+  const completed = await aws.fetch(multipartUrl(config, key, { uploadId }), {
+    method: 'POST',
+    body: completeBody as unknown as BodyInit,
+    headers: { 'Content-Type': 'application/xml', 'User-Agent': BACKUP_USER_AGENT },
+    signal,
+    redirect: 'manual',
+  })
+  const completedBody = await responseTextWithinLimit(completed, 64 * 1024)
+  if (!completed.ok || /<Error(?:\s|>)/i.test(completedBody)) {
+    const detail = /<Message>([\s\S]*?)<\/Message>/i.exec(completedBody)?.[1]
+    throw new Error(
+      detail
+        ? `S3 could not complete the multipart upload: ${decodeXmlText(detail)} (${key})`
+        : `S3 could not complete the multipart upload: HTTP ${completed.status} (${key})`,
+    )
   }
 }
 
@@ -275,32 +312,48 @@ async function* streamParts(
   partBytes: number,
 ): AsyncGenerator<Uint8Array> {
   const reader = stream.getReader()
-  let buffer = new Uint8Array(partBytes)
-  let used = 0
+  let carry = new Uint8Array(partBytes)
+  let carryUsed = 0
   let hasCompleted = false
   try {
     while (true) {
       const { value, done } = await reader.read()
       if (done) break
-      let offset = 0
-      while (offset < value.byteLength) {
-        const copied = Math.min(partBytes - used, value.byteLength - offset)
-        buffer.set(value.subarray(offset, offset + copied), used)
-        used += copied
-        offset += copied
-        if (used === partBytes) {
-          yield buffer
-          buffer = new Uint8Array(partBytes)
-          used = 0
-        }
-      }
+      const filled = fillPartBuffer(value, partBytes, carry, carryUsed)
+      for (const part of filled.parts) yield part
+      carry = filled.carry
+      carryUsed = filled.carryUsed
     }
-    if (used) yield buffer.slice(0, used)
+    if (carryUsed) yield carry.slice(0, carryUsed)
     hasCompleted = true
   } finally {
     if (!hasCompleted) await reader.cancel().catch(() => {})
     reader.releaseLock()
   }
+}
+
+function fillPartBuffer(
+  value: Uint8Array,
+  partBytes: number,
+  carry: Uint8Array<ArrayBuffer>,
+  carryUsed: number,
+): { parts: Uint8Array[]; carry: Uint8Array<ArrayBuffer>; carryUsed: number } {
+  const parts: Uint8Array[] = []
+  let buffer = carry
+  let used = carryUsed
+  let offset = 0
+  while (offset < value.byteLength) {
+    const copied = Math.min(partBytes - used, value.byteLength - offset)
+    buffer.set(value.subarray(offset, offset + copied), used)
+    used += copied
+    offset += copied
+    if (used === partBytes) {
+      parts.push(buffer)
+      buffer = new Uint8Array(partBytes)
+      used = 0
+    }
+  }
+  return { parts, carry: buffer, carryUsed: used }
 }
 
 async function readStreamExactly(
@@ -350,82 +403,7 @@ function escapeXml(value: string): string {
     .replace(/'/g, '&apos;')
 }
 
-export async function s3Test(
-  config: S3Config,
-  secret: S3Secret,
-  signal?: AbortSignal,
-): Promise<TestConnectionResult> {
-  const started = Date.now()
-  try {
-    if (!config.bucket?.trim()) return { ok: false, message: 'Enter a bucket name' }
-    const aws = client(secret, config)
-    const key = joinKey(
-      normalizeBackupPrefix(config.prefix ?? ''),
-      `.inkstone-check-${crypto.randomUUID()}`,
-    )
-    const url = objectUrl(config, key)
-    const payload = new TextEncoder().encode(`inkstone ${new Date().toISOString()}`)
-    let hasWritten = false
-    let hasReadWriteSucceeded = false
-    let primaryFailure: TestConnectionResult | null = null
-    try {
-      const put = await aws.fetch(url, {
-        method: 'PUT',
-        body: payload as unknown as BodyInit,
-        headers: { 'Content-Type': 'text/plain', 'User-Agent': BACKUP_USER_AGENT },
-        signal,
-        redirect: 'manual',
-      })
-      if (!put.ok) return { ok: false, message: await describeError(put, key) }
-      hasWritten = true
-      await put.body?.cancel().catch(() => {})
-
-      const get = await aws.fetch(url, { method: 'GET', signal, redirect: 'manual' })
-      if (!get.ok) {
-        primaryFailure = { ok: false, message: `Write succeeded but read failed: ${await describeError(get, key)}` }
-        return primaryFailure
-      }
-      const downloaded = await readResponseBytesWithinLimit(get, 1024)
-      if (!bytesEqual(downloaded, payload)) {
-        primaryFailure = { ok: false, message: 'The data read after writing did not match. Check the storage gateway or proxy' }
-        return primaryFailure
-      }
-
-      hasReadWriteSucceeded = true
-      return {
-        ok: true,
-        message: 'Connection succeeded with read and write access',
-        latencyMs: Date.now() - started,
-      }
-    } finally {
-      if (hasWritten) {
-        let cleanupError: Error | null = null
-        try {
-          const removed = await aws.fetch(url, {
-            method: 'DELETE',
-            signal: AbortSignal.timeout(5_000),
-            redirect: 'manual',
-          })
-          await removed.body?.cancel().catch(() => {})
-          if (!removed.ok && removed.status !== 404) {
-            cleanupError = new Error(`The test file could not be removed: HTTP ${removed.status}`)
-          }
-        } catch (error) {
-          cleanupError = new Error(`The test file could not be removed: ${friendlyError(error)}`)
-        }
-        if (cleanupError) {
-          if (hasReadWriteSucceeded) throw cleanupError
-          if (primaryFailure) primaryFailure.message += `. ${cleanupError.message}`
-          console.warn('[inkstone] S3 test object cleanup failed:', cleanupError.message)
-        }
-      }
-    }
-  } catch (err) {
-    return { ok: false, message: friendlyError(err) }
-  }
-}
-
-async function describeError(res: Response, key: string): Promise<string> {
+export async function describeError(res: Response, key: string): Promise<string> {
   let detail = ''
   try {
     const text = truncateText(
@@ -446,7 +424,4 @@ async function describeError(res: Response, key: string): Promise<string> {
   return `HTTP ${res.status}${hint ? ` · ${hint}` : ''}${detail ? ` · ${detail}` : ''} (${key})`
 }
 
-function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.byteLength !== b.byteLength) return false
-  return a.every((value, index) => value === b[index])
-}
+

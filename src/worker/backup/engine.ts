@@ -13,6 +13,7 @@ import { decryptSecret } from '../lib/crypto'
 import { newId } from '../lib/id'
 import { acquireLease } from '../lib/lease'
 import { buildSnapshot, type Snapshot } from './snapshot'
+import type { DeliverResult } from './common'
 import { friendlyError, isTransientBackupError } from './common'
 import { forEachConcurrent } from './concurrency'
 import { s3Deliver, s3Test, type S3Secret } from './s3'
@@ -108,17 +109,7 @@ async function runBackupUnlocked(
 
   const targets = await loadTargets(env, userId, options.targetIds)
   if (!targets.length) {
-    const empty: BackupRun = {
-      id: runId,
-      trigger: options.trigger,
-      status: 'failed',
-      startedAt,
-      finishedAt: Date.now(),
-      noteCount: 0,
-      fileCount: 0,
-      bytes: 0,
-      results: [],
-    }
+    const empty = emptyBackupRun(runId, options.trigger, startedAt)
     await persistRunSafely(env, userId, empty, 'No backup targets are enabled')
     return empty
   }
@@ -127,28 +118,7 @@ async function runBackupUnlocked(
   try {
     snapshot = await buildSnapshot(env, userId)
   } catch (error) {
-    const message = friendlyError(error)
-    const results: BackupTargetResult[] = targets.map((target) => ({
-      targetId: target.id,
-      targetName: target.name,
-      targetType: target.type,
-      ok: false,
-      files: 0,
-      bytes: 0,
-      ms: Date.now() - startedAt,
-      error: truncateText(message, 1000),
-    }))
-    const failed: BackupRun = {
-      id: runId,
-      trigger: options.trigger,
-      status: 'failed',
-      startedAt,
-      finishedAt: Date.now(),
-      noteCount: 0,
-      fileCount: 0,
-      bytes: 0,
-      results,
-    }
+    const failed = failedSnapshotRun(runId, options.trigger, startedAt, targets, error)
     await recordOutcomeSafely(env, userId, failed, targets)
     return failed
   }
@@ -158,10 +128,66 @@ async function runBackupUnlocked(
     results[index] = await deliverToTarget(env, target, snapshot)
   })
 
-  const okCount = results.filter((r) => r.ok).length
-  const run: BackupRun = {
+  const run = completedBackupRun(runId, options.trigger, startedAt, snapshot, results)
+  await recordOutcomeSafely(env, userId, run, targets)
+  return run
+}
+
+function emptyBackupRun(runId: string, trigger: RunOptions['trigger'], startedAt: number): BackupRun {
+  return {
     id: runId,
-    trigger: options.trigger,
+    trigger,
+    status: 'failed',
+    startedAt,
+    finishedAt: Date.now(),
+    noteCount: 0,
+    fileCount: 0,
+    bytes: 0,
+    results: [],
+  }
+}
+
+function failedSnapshotRun(
+  runId: string,
+  trigger: RunOptions['trigger'],
+  startedAt: number,
+  targets: readonly TargetRow[],
+  error: unknown,
+): BackupRun {
+  const message = friendlyError(error)
+  return {
+    id: runId,
+    trigger,
+    status: 'failed',
+    startedAt,
+    finishedAt: Date.now(),
+    noteCount: 0,
+    fileCount: 0,
+    bytes: 0,
+    results: targets.map((target) => ({
+      targetId: target.id,
+      targetName: target.name,
+      targetType: target.type,
+      ok: false,
+      files: 0,
+      bytes: 0,
+      ms: Date.now() - startedAt,
+      error: truncateText(message, 1000),
+    })),
+  }
+}
+
+function completedBackupRun(
+  runId: string,
+  trigger: RunOptions['trigger'],
+  startedAt: number,
+  snapshot: Snapshot,
+  results: BackupTargetResult[],
+): BackupRun {
+  const okCount = results.filter((r) => r.ok).length
+  return {
+    id: runId,
+    trigger,
     status: okCount === results.length ? 'success' : okCount === 0 ? 'failed' : 'partial',
     startedAt,
     finishedAt: Date.now(),
@@ -170,9 +196,6 @@ async function runBackupUnlocked(
     bytes: results.reduce((sum, r) => sum + r.bytes, 0),
     results,
   }
-
-  await recordOutcomeSafely(env, userId, run, targets)
-  return run
 }
 
 async function deliverToTarget(
@@ -195,23 +218,8 @@ async function deliverToTarget(
     if (!secret) {
       throw new Error('Backup credentials could not be decrypted. Enter them again in Settings')
     }
-
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), targetTimeoutMs(snapshot))
-      try {
-        const outcome =
-          target.type === 's3'
-            ? await s3Deliver(config, secret, snapshot, controller.signal)
-            : await webdavDeliver(config, secret, snapshot, controller.signal)
-        return { ...base, ok: true, files: outcome.files, bytes: outcome.bytes, ms: Date.now() - started, error: null }
-      } catch (error) {
-        if (attempt > 0 || !isTransientBackupError(error)) throw error
-      } finally {
-        clearTimeout(timer)
-      }
-    }
-    throw new Error('Backup transfer did not complete')
+    const outcome = await deliverWithRetry(target, config, secret, snapshot)
+    return { ...base, ok: true, files: outcome.files, bytes: outcome.bytes, ms: Date.now() - started, error: null }
   } catch (err) {
     return {
       ...base,
@@ -222,6 +230,50 @@ async function deliverToTarget(
       error: truncateText(friendlyError(err), 1000),
     }
   }
+}
+
+async function deliverWithRetry(
+  target: TargetRow,
+  config: S3Config & WebdavConfig,
+  secret: S3Secret & WebdavSecret,
+  snapshot: Snapshot,
+): Promise<DeliverResult> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { outcome, error } = await attemptDelivery(target, config, secret, snapshot)
+    if (outcome) return outcome
+    if (attempt > 0 || !isTransientBackupError(error)) throw error
+  }
+  throw new Error('Backup transfer did not complete')
+}
+
+async function attemptDelivery(
+  target: TargetRow,
+  config: S3Config & WebdavConfig,
+  secret: S3Secret & WebdavSecret,
+  snapshot: Snapshot,
+): Promise<{ outcome: DeliverResult | null; error: unknown }> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), targetTimeoutMs(snapshot))
+  try {
+    const outcome = await deliverOnce(target, config, secret, snapshot, controller.signal)
+    return { outcome, error: null }
+  } catch (error) {
+    return { outcome: null, error }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function deliverOnce(
+  target: TargetRow,
+  config: S3Config & WebdavConfig,
+  secret: S3Secret & WebdavSecret,
+  snapshot: Snapshot,
+  signal: AbortSignal,
+): Promise<DeliverResult> {
+  return target.type === 's3'
+    ? await s3Deliver(config, secret, snapshot, signal)
+    : await webdavDeliver(config, secret, snapshot, signal)
 }
 
 function targetTimeoutMs(snapshot: Snapshot): number {

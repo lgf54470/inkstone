@@ -33,6 +33,11 @@ export function isTransientBackupError(err: unknown): boolean {
 }
 
 
+export function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.byteLength !== b.byteLength) return false
+  return a.every((value, index) => value === b[index])
+}
+
 export async function readResponseBytesWithinLimit(
   response: Response,
   maxBytes: number,

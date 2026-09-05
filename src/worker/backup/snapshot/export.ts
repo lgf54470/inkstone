@@ -1,13 +1,14 @@
 import { LIMITS } from "@shared/constants";
 import type { ExportBundle } from "@shared/types";
 import { estimateZipSizeFromSizes } from "@shared/zip";
-import { NOTE_COLUMNS_FULL, toFolder, toNote, toTag, type FolderRow, type NoteRow, type TagRow } from "../../db/rows";
+import { toFolder, toNote, toTag, type FolderRow, type TagRow } from "../../db/rows";
 import type { Env } from "../../env";
 import { sha256Hex } from "../../lib/encoding";
 import { ApiError } from "../../lib/errors";
 import type { BackupFile } from "./build";
 import type { Snapshot } from "./build";
 import { formatBytes } from "./build";
+import { loadNotesPage } from "./build";
 import { NOTE_PAGE_SIZE } from "./build";
 import { encoder } from "./files";
 
@@ -53,23 +54,7 @@ async function readBackupFile(file: BackupFile): Promise<Uint8Array> {
 }
 
 export async function buildJsonExport(env: Env, userId: string): Promise<Uint8Array> {
-  const [folderRows, tagRows, userRows] = await env.DB.batch([
-    env.DB.prepare(
-      `SELECT f.id, f.parent_id, f.name, f.icon, f.color, f.position, f.created_at, f.updated_at
-         FROM folders f WHERE f.user_id = ?1 AND f.deleted_at IS NULL ORDER BY f.position ASC`,
-    ).bind(userId),
-    env.DB.prepare(`SELECT t.id, t.name, t.color, t.is_pinned, t.created_at FROM tags t WHERE t.user_id = ?1`).bind(userId),
-    env.DB.prepare(`SELECT login, name FROM users WHERE id = ?1`).bind(userId),
-  ])
-  const user = (userRows.results[0] as { login: string; name: string } | undefined) ?? null
-  const metadata: Omit<ExportBundle, 'notes' | 'attachments'> = {
-    format: 'inkstone-export',
-    version: 1,
-    exportedAt: Date.now(),
-    user: { login: user?.login ?? 'unknown', name: user?.name ?? '' },
-    folders: (folderRows as D1Result<FolderRow>).results.map(toFolder),
-    tags: (tagRows as D1Result<TagRow>).results.map(toTag),
-  }
+  const metadata = await loadExportMetadata(env.DB, userId)
   const chunks: Uint8Array[] = []
   let byteLength = 0
   const append = (value: string) => {
@@ -83,10 +68,7 @@ export async function buildJsonExport(env: Env, userId: string): Promise<Uint8Ar
   let afterId = ''
   let isFirstNote = true
   while (true) {
-    const page = await env.DB.prepare(
-      `SELECT ${NOTE_COLUMNS_FULL} FROM notes n
-        WHERE n.user_id = ?1 AND n.id > ?2 ORDER BY n.id ASC LIMIT ?3`,
-    ).bind(userId, afterId, NOTE_PAGE_SIZE).all<NoteRow>()
+    const page = await loadNotesPage(env.DB, userId, afterId)
     if (!page.results.length) break
 
     for (const row of page.results) {
@@ -99,13 +81,41 @@ export async function buildJsonExport(env: Env, userId: string): Promise<Uint8Ar
   }
   append('],"attachments":[]}')
 
+  const bytes = concatChunks(chunks, byteLength)
+  assertBundleCanBeRestored(bytes)
+  return bytes
+}
+
+async function loadExportMetadata(
+  db: D1Database,
+  userId: string,
+): Promise<Omit<ExportBundle, 'notes' | 'attachments'>> {
+  const [folderRows, tagRows, userRows] = await db.batch([
+    db.prepare(
+      `SELECT f.id, f.parent_id, f.name, f.icon, f.color, f.position, f.created_at, f.updated_at
+         FROM folders f WHERE f.user_id = ?1 AND f.deleted_at IS NULL ORDER BY f.position ASC`,
+    ).bind(userId),
+    db.prepare(`SELECT t.id, t.name, t.color, t.is_pinned, t.created_at FROM tags t WHERE t.user_id = ?1`).bind(userId),
+    db.prepare(`SELECT login, name FROM users WHERE id = ?1`).bind(userId),
+  ])
+  const user = (userRows.results[0] as { login: string; name: string } | undefined) ?? null
+  return {
+    format: 'inkstone-export',
+    version: 1,
+    exportedAt: Date.now(),
+    user: { login: user?.login ?? 'unknown', name: user?.name ?? '' },
+    folders: (folderRows as D1Result<FolderRow>).results.map(toFolder),
+    tags: (tagRows as D1Result<TagRow>).results.map(toTag),
+  }
+}
+
+function concatChunks(chunks: Uint8Array[], byteLength: number): Uint8Array {
   const bytes = new Uint8Array(byteLength)
   let offset = 0
   for (const chunk of chunks) {
     bytes.set(chunk, offset)
     offset += chunk.byteLength
   }
-  assertBundleCanBeRestored(bytes)
   return bytes
 }
 

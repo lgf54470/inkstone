@@ -28,49 +28,11 @@ export async function runScheduledBackups(env: Env): Promise<void> {
 
   let afterUserId = ''
   while (true) {
-    const { results: users } = await env.DB.prepare(
-      `SELECT u.id, u.settings,
-              (SELECT MAX(br.started_at) FROM backup_runs br
-                WHERE br.user_id = u.id) AS last_attempt_at,
-              (SELECT MAX(br.started_at) FROM backup_runs br
-                WHERE br.user_id = u.id AND br.status = 'success') AS last_success_at
-         FROM users u
-        WHERE u.id > ?1
-          AND EXISTS (
-            SELECT 1 FROM backup_targets bt WHERE bt.user_id = u.id AND bt.enabled = 1
-          )
-        ORDER BY u.id LIMIT ?2`,
-    )
-      .bind(afterUserId, USER_PAGE_SIZE)
-      .all<{
-        id: string
-        settings: string
-        last_attempt_at: number | null
-        last_success_at: number | null
-      }>()
+    const { results: users } = await loadScheduledUsers(env.DB, afterUserId)
     if (users.length === 0) break
 
     await forEachConcurrent(users, 2, async (user) => {
-      try {
-        const settings = mergeSettings(parse(user.settings))
-        const interval = BACKUP_INTERVALS[settings.backup.schedule] ?? 0
-        if (!interval) return
-
-
-        if (!isScheduledBackupDue(
-          interval,
-          user.last_success_at,
-          user.last_attempt_at,
-          now,
-        )) return
-
-        const run = await runBackup(env, user.id, { trigger: 'cron' })
-        console.log(
-          `[inkstone] Scheduled backup ${user.id}: ${run.status}, ${run.results.length} targets, ${run.bytes} bytes`,
-        )
-      } catch (err) {
-        console.error(`[inkstone] User ${user.id} scheduled backup failed:`, err)
-      }
+      await runScheduledUserBackup(env, user, now)
     })
 
     afterUserId = users[users.length - 1]!.id
@@ -84,7 +46,52 @@ export async function runScheduledBackups(env: Env): Promise<void> {
   }
 }
 
-function isScheduledBackupDue(
+interface ScheduledUser {
+  id: string
+  settings: string
+  last_attempt_at: number | null
+  last_success_at: number | null
+}
+
+async function loadScheduledUsers(db: D1Database, afterUserId: string): Promise<{ results: ScheduledUser[] }> {
+  return db.prepare(
+    `SELECT u.id, u.settings,
+            (SELECT MAX(br.started_at) FROM backup_runs br
+              WHERE br.user_id = u.id) AS last_attempt_at,
+            (SELECT MAX(br.started_at) FROM backup_runs br
+              WHERE br.user_id = u.id AND br.status = 'success') AS last_success_at
+       FROM users u
+      WHERE u.id > ?1
+        AND EXISTS (
+          SELECT 1 FROM backup_targets bt WHERE bt.user_id = u.id AND bt.enabled = 1
+        )
+      ORDER BY u.id LIMIT ?2`,
+  ).bind(afterUserId, USER_PAGE_SIZE).all<ScheduledUser>()
+}
+
+async function runScheduledUserBackup(env: Env, user: ScheduledUser, now: number): Promise<void> {
+  try {
+    const settings = mergeSettings(parse(user.settings))
+    const interval = BACKUP_INTERVALS[settings.backup.schedule] ?? 0
+    if (!interval) return
+
+    if (!isScheduledBackupDue(
+      interval,
+      user.last_success_at,
+      user.last_attempt_at,
+      now,
+    )) return
+
+    const run = await runBackup(env, user.id, { trigger: 'cron' })
+    console.log(
+      `[inkstone] Scheduled backup ${user.id}: ${run.status}, ${run.results.length} targets, ${run.bytes} bytes`,
+    )
+  } catch (err) {
+    console.error(`[inkstone] User ${user.id} scheduled backup failed:`, err)
+  }
+}
+
+export function isScheduledBackupDue(
   interval: number,
   lastSuccessAt: number | null,
   lastAttemptAt: number | null,

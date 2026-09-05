@@ -3,6 +3,7 @@ import type { Snapshot } from './snapshot'
 import { backupArchivePath, createBackupArchive } from './archive'
 import {
   BACKUP_USER_AGENT,
+  bytesEqual,
   friendlyError,
   readResponseBytesWithinLimit,
   type DeliverResult,
@@ -91,27 +92,36 @@ async function ensureDirs(
   signal?: AbortSignal,
 ): Promise<void> {
   for (const dir of dirs) {
-    const parts = dir.split('/').filter(Boolean)
     let path = ''
-    for (const part of parts) {
+    for (const part of dir.split('/').filter(Boolean)) {
       path = path ? `${path}/${part}` : part
-      if (created.has(path)) continue
-      const res = await webdavFetch(childUrl(base, path), {
-        method: 'MKCOL',
-        headers: { Authorization: auth, 'User-Agent': BACKUP_USER_AGENT },
-        signal,
-      }, base.origin)
-      await res.body?.cancel().catch(() => {})
-      if (!res.ok && res.status !== 405) {
-        if (res.status === 401) throw new Error("Incorrect username or password")
-        if (res.status === 403) throw new Error('Permission to create folders is missing')
-        if (res.status === 409) throw new Error(`Creating folder ${path} failed because the parent folder does not exist`)
-        if (res.status === 507) throw new Error('The server is out of storage')
-        throw new Error(`Creating folder ${path} failed: HTTP ${res.status}`)
-      }
-      created.add(path)
+      await ensureDirLevel(base, auth, path, created, signal)
     }
   }
+}
+
+async function ensureDirLevel(
+  base: URL,
+  auth: string,
+  path: string,
+  created: Set<string>,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (created.has(path)) return
+  const res = await webdavFetch(childUrl(base, path), {
+    method: 'MKCOL',
+    headers: { Authorization: auth, 'User-Agent': BACKUP_USER_AGENT },
+    signal,
+  }, base.origin)
+  await res.body?.cancel().catch(() => {})
+  if (!res.ok && res.status !== 405) {
+    if (res.status === 401) throw new Error("Incorrect username or password")
+    if (res.status === 403) throw new Error('Permission to create folders is missing')
+    if (res.status === 409) throw new Error(`Creating folder ${path} failed because the parent folder does not exist`)
+    if (res.status === 507) throw new Error('The server is out of storage')
+    throw new Error(`Creating folder ${path} failed: HTTP ${res.status}`)
+  }
+  created.add(path)
 }
 
 export async function webdavDeliver(
@@ -209,71 +219,86 @@ export async function webdavTest(
     const checkPath = [prefix, `.inkstone-check-${crypto.randomUUID()}`].filter(Boolean).join('/')
     const checkUrl = childUrl(base, checkPath)
     const payload = new TextEncoder().encode(`inkstone ${new Date().toISOString()}`)
-    let hasWritten = false
-    let hasReadWriteSucceeded = false
-    let primaryFailure: TestConnectionResult | null = null
-    try {
-      const put = await webdavFetch(checkUrl, {
-        method: 'PUT',
-        headers: { Authorization: auth, 'Content-Type': 'text/plain', Overwrite: 'T', 'User-Agent': BACKUP_USER_AGENT },
-        body: payload as unknown as BodyInit,
-        signal,
-      }, base.origin)
-      await put.body?.cancel().catch(() => {})
-      if (!put.ok) {
-        if (put.status === 403) return { ok: false, message: 'Connected, but write access is missing' }
-        if (put.status === 507) return { ok: false, message: 'The server is out of storage' }
-        return { ok: false, message: `Write test failed: HTTP ${put.status}` }
-      }
-      hasWritten = true
-
-      const get = await webdavFetch(checkUrl, {
-        method: 'GET',
-        headers: { Authorization: auth, 'User-Agent': BACKUP_USER_AGENT },
-        signal,
-      }, base.origin)
-      if (!get.ok) {
-        await get.body?.cancel().catch(() => {})
-        primaryFailure = { ok: false, message: `Write succeeded but read failed: HTTP ${get.status}` }
-        return primaryFailure
-      }
-      const downloaded = await readResponseBytesWithinLimit(get, 1024)
-      if (!bytesEqual(downloaded, payload)) {
-        primaryFailure = { ok: false, message: 'The data read after writing did not match. Check the WebDAV gateway or proxy' }
-        return primaryFailure
-      }
-
-      hasReadWriteSucceeded = true
-      return { ok: true, message: 'Connection succeeded with read and write access', latencyMs: Date.now() - started }
-    } finally {
-      if (hasWritten) {
-        let cleanupError: Error | null = null
-        try {
-          const removed = await webdavFetch(checkUrl, {
-            method: 'DELETE',
-            headers: { Authorization: auth, 'User-Agent': BACKUP_USER_AGENT },
-            signal: AbortSignal.timeout(5_000),
-          }, base.origin)
-          await removed.body?.cancel().catch(() => {})
-          if (!removed.ok && removed.status !== 404) {
-            cleanupError = new Error(`The test file could not be removed: HTTP ${removed.status}`)
-          }
-        } catch (error) {
-          cleanupError = new Error(`The test file could not be removed: ${friendlyError(error)}`)
-        }
-        if (cleanupError) {
-          if (hasReadWriteSucceeded) throw cleanupError
-          if (primaryFailure) primaryFailure.message += `. ${cleanupError.message}`
-          console.warn('[inkstone] WebDAV test file cleanup failed:', cleanupError.message)
-        }
-      }
-    }
+    return await webdavRoundTrip(base, auth, checkUrl, payload, signal, started)
   } catch (err) {
     return { ok: false, message: friendlyError(err) }
   }
 }
 
-function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.byteLength !== b.byteLength) return false
-  return a.every((value, index) => value === b[index])
+async function webdavRoundTrip(
+  base: URL,
+  auth: string,
+  checkUrl: string,
+  payload: Uint8Array,
+  signal: AbortSignal | undefined,
+  started: number,
+): Promise<TestConnectionResult> {
+  let hasWritten = false
+  let hasReadWriteSucceeded = false
+  let primaryFailure: TestConnectionResult | null = null
+  try {
+    const put = await webdavFetch(checkUrl, {
+      method: 'PUT',
+      headers: { Authorization: auth, 'Content-Type': 'text/plain', Overwrite: 'T', 'User-Agent': BACKUP_USER_AGENT },
+      body: payload as unknown as BodyInit,
+      signal,
+    }, base.origin)
+    await put.body?.cancel().catch(() => {})
+    if (!put.ok) {
+      if (put.status === 403) return { ok: false, message: 'Connected, but write access is missing' }
+      if (put.status === 507) return { ok: false, message: 'The server is out of storage' }
+      return { ok: false, message: `Write test failed: HTTP ${put.status}` }
+    }
+    hasWritten = true
+
+    const get = await webdavFetch(checkUrl, {
+      method: 'GET',
+      headers: { Authorization: auth, 'User-Agent': BACKUP_USER_AGENT },
+      signal,
+    }, base.origin)
+    if (!get.ok) {
+      await get.body?.cancel().catch(() => {})
+      primaryFailure = { ok: false, message: `Write succeeded but read failed: HTTP ${get.status}` }
+      return primaryFailure
+    }
+    const downloaded = await readResponseBytesWithinLimit(get, 1024)
+    if (!bytesEqual(downloaded, payload)) {
+      primaryFailure = { ok: false, message: 'The data read after writing did not match. Check the WebDAV gateway or proxy' }
+      return primaryFailure
+    }
+
+    hasReadWriteSucceeded = true
+    return { ok: true, message: 'Connection succeeded with read and write access', latencyMs: Date.now() - started }
+  } finally {
+    if (hasWritten) await removeWebdavTestObject(base, auth, checkUrl, hasReadWriteSucceeded, primaryFailure)
+  }
 }
+
+async function removeWebdavTestObject(
+  base: URL,
+  auth: string,
+  checkUrl: string,
+  hasReadWriteSucceeded: boolean,
+  primaryFailure: TestConnectionResult | null,
+): Promise<void> {
+  let cleanupError: Error | null = null
+  try {
+    const removed = await webdavFetch(checkUrl, {
+      method: 'DELETE',
+      headers: { Authorization: auth, 'User-Agent': BACKUP_USER_AGENT },
+      signal: AbortSignal.timeout(5_000),
+    }, base.origin)
+    await removed.body?.cancel().catch(() => {})
+    if (!removed.ok && removed.status !== 404) {
+      cleanupError = new Error(`The test file could not be removed: HTTP ${removed.status}`)
+    }
+  } catch (error) {
+    cleanupError = new Error(`The test file could not be removed: ${friendlyError(error)}`)
+  }
+  if (!cleanupError) return
+  if (hasReadWriteSucceeded) throw cleanupError
+  if (primaryFailure) primaryFailure.message += `. ${cleanupError.message}`
+  console.warn('[inkstone] WebDAV test file cleanup failed:', cleanupError.message)
+}
+
+
