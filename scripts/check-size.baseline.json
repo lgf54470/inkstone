@@ -341,10 +341,12 @@
     "longFns": 2,
     "deepFns": 1
   },
-  "src/client/lib/calendar-tree.test.ts": {
-    "lines": 910,
-    "longFns": 6,
+  "src/client/lib/calendar-tree.test/activity.test.ts": {
+    "longFns": 2,
     "deepFns": 1
+  },
+  "src/client/lib/calendar-tree.test/build-tree.test.ts": {
+    "longFns": 4
   },
   "src/client/lib/calendar-tree/activity.ts": {
     "longFns": 1

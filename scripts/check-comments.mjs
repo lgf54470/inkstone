@@ -369,14 +369,7 @@ const allowed = new Map([
   ["src/client/lib/api/transport.ts", [
     "/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker's ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */",
   ]],
-  ["src/client/lib/calendar-tree.test.ts", [
-    "// A typing-derived summary commit clones the whole map but changes only",
-    "// excerpt/wordCount/updatedAt on one note — none of which feed the tree.",
-    "// Summary-only edits keep the tree identity.",
-    "// Losing the todo tag removes the note from the todo tree.",
-    "// Renaming the configured todo tag rebuilds against the new membership.",
-    "// A summary-only edit under the new tag set still hits the cache.",
-    "// Dropping the todo filter widens the tree to every note (same slot, new build).",
+  ["src/client/lib/calendar-tree.test/activity.test.ts", [
     "// A mulberry32 PRNG so the differential run is deterministic across runs.",
     "// The untouched day keeps its exact array identity.",
     "// The edited day is rebuilt with the new updatedAt ordering.",
@@ -390,6 +383,15 @@ const allowed = new Map([
     "// diverge: the naive rebuild follows map insertion while the",
     "// incremental re-appends notes that left and re-entered a day.",
     "// Compare with a canonical (updatedAt, id) sort instead.",
+  ]],
+  ["src/client/lib/calendar-tree.test/build-tree.test.ts", [
+    "// A typing-derived summary commit clones the whole map but changes only",
+    "// excerpt/wordCount/updatedAt on one note — none of which feed the tree.",
+    "// Summary-only edits keep the tree identity.",
+    "// Losing the todo tag removes the note from the todo tree.",
+    "// Renaming the configured todo tag rebuilds against the new membership.",
+    "// A summary-only edit under the new tag set still hits the cache.",
+    "// Dropping the todo filter widens the tree to every note (same slot, new build).",
   ]],
   ["src/client/lib/calendar-tree/activity.ts", [
     "// The activity-heatmap calendar derives three whole-vault structures from each",

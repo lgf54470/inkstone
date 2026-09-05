@@ -20,7 +20,8 @@ const visibleAttributes = new Set(['alt', 'aria-label', 'description', 'hint', '
 // raw-text scan below can blank it out.
 const localizedDataFragments = new Map([
     [path.resolve('src/client/lib/calendar-tree/ids.ts'), ['\u5f85\u529e']],
-    [path.resolve('src/client/lib/calendar-tree.test.ts'), ['\u5f85\u529e']],
+    [path.resolve('src/client/lib/calendar-tree.test/virtual-nodes.test.ts'), ['\u5f85\u529e']],
+    [path.resolve('src/client/lib/calendar-tree.test/build-tree.test.ts'), ['\u5f85\u529e']],
     [path.resolve('src/client/lib/note-filter.test.ts'), ['\u5f85\u529e']],
 ]);
 const allowedHanFragments = new Map([
