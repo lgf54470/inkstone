@@ -411,13 +411,6 @@
   "src/client/lib/markdown/renderer.test.ts": {
     "longFns": 2
   },
-  "src/client/lib/markdown/renderer/attachments.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/client/lib/markdown/renderer/fence.ts": {
-    "longFns": 2
-  },
   "src/client/lib/markdown/table-editor.test.ts": {
     "longFns": 1
   },
