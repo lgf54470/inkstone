@@ -89,7 +89,9 @@ export function AttachmentInspector({
       await navigator.clipboard.writeText(fullUrl)
       setCopiedLink(true)
       setTimeout(() => setCopiedLink(false), 2000)
-    } catch {}
+    } catch (error) {
+      console.warn('[attachments] failed to copy link', error)
+    }
   }
 
   const handleCopyMarkdown = async () => {
@@ -98,7 +100,9 @@ export function AttachmentInspector({
       await navigator.clipboard.writeText(md)
       setCopiedMarkdown(true)
       setTimeout(() => setCopiedMarkdown(false), 2000)
-    } catch {}
+    } catch (error) {
+      console.warn('[attachments] failed to copy markdown', error)
+    }
   }
 
   const handleAddTag = async (e: React.FormEvent) => {

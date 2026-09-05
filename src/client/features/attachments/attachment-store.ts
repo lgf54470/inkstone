@@ -69,7 +69,9 @@ export const useAttachmentStore = create<AttachmentStoreState>((set) => ({
       set((s) => ({
         folders: s.folders.map((f) => (f.id === id ? updated : f)),
       }))
-    } catch {}
+    } catch (error) {
+      console.warn('[attachment-store] failed to patch folder', error)
+    }
   },
 
   deleteFolder: async (id) => {
@@ -79,7 +81,9 @@ export const useAttachmentStore = create<AttachmentStoreState>((set) => ({
         folders: s.folders.filter((f) => f.id !== id),
         expandedFolders: s.expandedFolders.filter((fId) => fId !== id),
       }))
-    } catch {}
+    } catch (error) {
+      console.warn('[attachment-store] failed to delete folder', error)
+    }
   },
 
   setExpandedFolders: (updater) => {
@@ -122,7 +126,9 @@ export const useAttachmentStore = create<AttachmentStoreState>((set) => ({
       set((s) => ({
         tags: s.tags.map((t) => (t.id === id ? updated : t)),
       }))
-    } catch {}
+    } catch (error) {
+      console.warn('[attachment-store] failed to patch tag', error)
+    }
   },
 
   deleteTag: async (id) => {
@@ -131,7 +137,9 @@ export const useAttachmentStore = create<AttachmentStoreState>((set) => ({
       set((s) => ({
         tags: s.tags.filter((t) => t.id !== id),
       }))
-    } catch {}
+    } catch (error) {
+      console.warn('[attachment-store] failed to delete tag', error)
+    }
   },
 
   toggleTagExpanded: (fullPath) => {

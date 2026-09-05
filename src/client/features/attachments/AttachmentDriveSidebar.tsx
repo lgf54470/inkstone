@@ -26,6 +26,7 @@ import {
 import type { AttachmentStats, Folder, Tag } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
+import { tryParseStringArray } from '../../lib/json'
 import type { FolderNode } from '../../store/notes/selectors'
 import type { TagTreeNode } from '../../lib/tag-tree'
 import { IconButton } from '../../components/primitives'
@@ -420,12 +421,10 @@ function DriveFolderRow({
     setIsDragOver(false)
     const raw = e.dataTransfer.getData('application/inkstone-attachment-ids')
     if (raw) {
-      try {
-        const ids = JSON.parse(raw) as string[]
-        if (Array.isArray(ids) && ids.length) {
-          void onDropFilesToFolder(ids, node.id)
-        }
-      } catch {}
+      const ids = tryParseStringArray(raw)
+      if (ids.length) {
+        void onDropFilesToFolder(ids, node.id)
+      }
     }
   }
 

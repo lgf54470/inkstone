@@ -182,14 +182,18 @@ function GridCard({
     try {
       const md = isImage ? `![${file.filename}](${file.url})` : `[${file.filename}](${file.url})`
       await navigator.clipboard.writeText(md)
-    } catch {}
+    } catch (error) {
+      console.warn('[attachments] failed to copy markdown', error)
+    }
   }
 
   const handleCopyLink = async () => {
     try {
       const fullUrl = new URL(file.url, window.location.origin).href
       await navigator.clipboard.writeText(fullUrl)
-    } catch {}
+    } catch (error) {
+      console.warn('[attachments] failed to copy URL', error)
+    }
   }
 
   const menuItems: MenuItem[] = [
