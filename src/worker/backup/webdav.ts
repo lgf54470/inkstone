@@ -209,8 +209,8 @@ export async function webdavTest(
     const checkPath = [prefix, `.inkstone-check-${crypto.randomUUID()}`].filter(Boolean).join('/')
     const checkUrl = childUrl(base, checkPath)
     const payload = new TextEncoder().encode(`inkstone ${new Date().toISOString()}`)
-    let written = false
-    let readWriteSucceeded = false
+    let hasWritten = false
+    let hasReadWriteSucceeded = false
     let primaryFailure: TestConnectionResult | null = null
     try {
       const put = await webdavFetch(checkUrl, {
@@ -225,7 +225,7 @@ export async function webdavTest(
         if (put.status === 507) return { ok: false, message: 'The server is out of storage' }
         return { ok: false, message: `Write test failed: HTTP ${put.status}` }
       }
-      written = true
+      hasWritten = true
 
       const get = await webdavFetch(checkUrl, {
         method: 'GET',
@@ -243,10 +243,10 @@ export async function webdavTest(
         return primaryFailure
       }
 
-      readWriteSucceeded = true
+      hasReadWriteSucceeded = true
       return { ok: true, message: 'Connection succeeded with read and write access', latencyMs: Date.now() - started }
     } finally {
-      if (written) {
+      if (hasWritten) {
         let cleanupError: Error | null = null
         try {
           const removed = await webdavFetch(checkUrl, {
@@ -262,7 +262,7 @@ export async function webdavTest(
           cleanupError = new Error(`The test file could not be removed: ${friendlyError(error)}`)
         }
         if (cleanupError) {
-          if (readWriteSucceeded) throw cleanupError
+          if (hasReadWriteSucceeded) throw cleanupError
           if (primaryFailure) primaryFailure.message += `. ${cleanupError.message}`
           console.warn('[inkstone] WebDAV test file cleanup failed:', cleanupError.message)
         }

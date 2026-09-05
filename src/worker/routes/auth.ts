@@ -230,18 +230,18 @@ authRoutes.post('/login', async (c) => {
         .first<Parameters<typeof rowToUser>[0] & { password_hash: string }>()
     : null
 
-  let valid = false
+  let isValid = false
   if (
     row?.password_hash &&
     password.length <= PASSWORD_MAX_LENGTH &&
     isPasswordHash(row.password_hash)
   ) {
-    valid = await verifyPassword(password, row.password_hash)
+    isValid = await verifyPassword(password, row.password_hash)
   } else {
     await dummyVerify()
   }
 
-  if (!valid || !row) {
+  if (!isValid || !row) {
     await recordLoginFailure(db, throttleTargets)
     throw new ApiError(401, 'invalid_credentials', "Incorrect username or password")
   }

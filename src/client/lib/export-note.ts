@@ -157,10 +157,10 @@ async function printHtml(html: string): Promise<void> {
 
 async function waitForPrintReady(iframe: HTMLIFrameElement): Promise<void> {
   await new Promise<void>((resolve) => {
-    let settled = false
+    let isSettled = false
     const finish = () => {
-      if (settled) return
-      settled = true
+      if (isSettled) return
+      isSettled = true
       resolve()
     }
     iframe.addEventListener('load', () => {

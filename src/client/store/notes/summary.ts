@@ -29,7 +29,7 @@ export function commitPendingSummaryDerivation(id: string): void {
         return;
     window.clearTimeout(pending.timer);
     pendingSummaryDerivations.delete(id);
-    let shellChanged = false;
+    let hasShellChanged = false;
     pending.set((state) => {
         const summary = state.notes[id];
         if (!summary || state.contents[id] !== pending.content)
@@ -45,7 +45,7 @@ export function commitPendingSummaryDerivation(id: string): void {
             summary.updatedAt === pending.updatedAt) {
             return state;
         }
-        shellChanged = true;
+        hasShellChanged = true;
         return {
             notes: {
                 ...state.notes,
@@ -60,7 +60,7 @@ export function commitPendingSummaryDerivation(id: string): void {
             },
         };
     });
-    if (shellChanged)
+    if (hasShellChanged)
         scheduleShellSave(pending.get);
 }
 

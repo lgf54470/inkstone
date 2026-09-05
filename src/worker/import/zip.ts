@@ -52,7 +52,7 @@ export async function selectCompleteZipBackup(entries: readonly UnzippedEntry[])
     rootPrefix: string
     complete: UnzippedEntry | undefined
   }> = []
-  let manifestSeen = false
+  let hasSeenManifest = false
   const skipped: string[] = []
 
   for (const entry of entries) {
@@ -64,12 +64,12 @@ export async function selectCompleteZipBackup(entries: readonly UnzippedEntry[])
     try {
       raw = JSON.parse(new TextDecoder().decode(entry.data))
     } catch {
-      if (legacyPath || siblingComplete) manifestSeen = true
+      if (legacyPath || siblingComplete) hasSeenManifest = true
       if (siblingComplete) throw new Error(`The completed backup has an invalid manifest: ${entry.path}`)
       continue
     }
     const declaresInkstone = isRecord(raw) && raw.format === MARKDOWN_BACKUP_FORMAT
-    if (legacyPath || declaresInkstone) manifestSeen = true
+    if (legacyPath || declaresInkstone) hasSeenManifest = true
     const manifest = parseMarkdownBackupManifest(raw)
     if (!manifest) {
       if (siblingComplete && declaresInkstone) {
@@ -113,7 +113,7 @@ export async function selectCompleteZipBackup(entries: readonly UnzippedEntry[])
     }
   }
 
-  if (manifestSeen) throw new Error('The ZIP contains an incomplete Inkstone backup without a valid COMPLETE marker')
+  if (hasSeenManifest) throw new Error('The ZIP contains an incomplete Inkstone backup without a valid COMPLETE marker')
   return null
 }
 

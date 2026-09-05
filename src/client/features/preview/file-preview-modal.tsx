@@ -156,13 +156,13 @@ function parseCsvToRows(text: string, delimiter = ','): string[][] {
   const lines = text.trim().split(/\r?\n/)
   return lines.slice(0, 100).map((line) => {
     const row: string[] = []
-    let inQuotes = false
+    let isInQuotes = false
     let current = ''
     for (let i = 0; i < line.length; i++) {
       const char = line[i]
       if (char === '"') {
-        inQuotes = !inQuotes
-      } else if (char === delimiter && !inQuotes) {
+        isInQuotes = !isInQuotes
+      } else if (char === delimiter && !isInQuotes) {
         row.push(current.trim())
         current = ''
       } else {
@@ -188,10 +188,10 @@ function CodeViewer({ code, ext }: { code: string; ext: string }) {
     codeEl.className = ''
     decorateCodeBlock(block)
 
-    let cancelled = false
+    let isCancelled = false
     void (async () => {
       const highlighted = await highlightWithPrism(code, ext)
-      if (cancelled) return
+      if (isCancelled) return
       if (highlighted) {
         codeEl.innerHTML = highlighted.html
         codeEl.className = `language-${highlighted.language}`
@@ -201,7 +201,7 @@ function CodeViewer({ code, ext }: { code: string; ext: string }) {
       .catch(() => {})
 
     return () => {
-      cancelled = true
+      isCancelled = true
     }
   }, [code, ext])
 

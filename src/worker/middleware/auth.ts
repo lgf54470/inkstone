@@ -53,7 +53,7 @@ export const loadSession = createMiddleware<AppBindings>(async (c, next) => {
     .map((name) => ({ name, token: getCookie(c, name) }))
     .filter((candidate): candidate is { name: string; token: string } => Boolean(candidate.token))
   const seenTokens = new Set<string>()
-  let authenticated = false
+  let isAuthenticated = false
 
   for (const { name, token } of candidates) {
     if (!isSessionToken(token) || seenTokens.has(token)) continue
@@ -99,12 +99,12 @@ export const loadSession = createMiddleware<AppBindings>(async (c, next) => {
             .run()
             .catch(() => {}),
         )
-        authenticated = true
+        isAuthenticated = true
         break
       }
     }
   }
-  if (candidates.length && !authenticated) clearSessionCookie(c)
+  if (candidates.length && !isAuthenticated) clearSessionCookie(c)
 
   await next()
 })

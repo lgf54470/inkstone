@@ -178,16 +178,16 @@ function formatCStyle(code: string, tabSize: number): string {
     let openCount = 0;
     let closeCount = 0;
     let inString: string | null = null;
-    let escaped = false;
+    let isEscaped = false;
 
     for (let charIndex = 0; charIndex < line.length; charIndex++) {
       const ch = line[charIndex]!;
-      if (escaped) {
-        escaped = false;
+      if (isEscaped) {
+        isEscaped = false;
         continue;
       }
       if (ch === '\\') {
-        escaped = true;
+        isEscaped = true;
         continue;
       }
       if (inString) {
@@ -222,22 +222,22 @@ function formatCStyle(code: string, tabSize: number): string {
 function splitCorruptedStatements(line: string): string[] {
   const result: string[] = [];
   let inString: string | null = null;
-  let escaped = false;
+  let isEscaped = false;
   let current = '';
   let parenDepth = 0;
 
   for (let i = 0; i < line.length; i++) {
     const ch = line[i]!;
 
-    if (escaped) {
+    if (isEscaped) {
       current += ch;
-      escaped = false;
+      isEscaped = false;
       continue;
     }
 
     if (ch === '\\') {
       current += ch;
-      escaped = true;
+      isEscaped = true;
       continue;
     }
 

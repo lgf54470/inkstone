@@ -247,21 +247,21 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
       return
     }
     const controller = new AbortController()
-    let cancelled = false
+    let isCancelled = false
     setData(null)
     setLoadError(null)
     void (async () => {
       try {
         const response = await api.graph(request, controller.signal)
-        if (!cancelled) setData(normalizedResponse(response))
+        if (!isCancelled) setData(normalizedResponse(response))
       } catch (error) {
-        if (!cancelled && (error as Error)?.name !== 'AbortError') {
+        if (!isCancelled && (error as Error)?.name !== 'AbortError') {
           setLoadError(errorMessage(error))
         }
       }
     })()
     return () => {
-      cancelled = true
+      isCancelled = true
       controller.abort()
     }
   }, [request, reload])

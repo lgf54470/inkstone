@@ -132,7 +132,7 @@ async function selectLatestCompleteBackup(files: readonly File[]): Promise<Backu
     rootPrefix: string
     complete: File | undefined
   }> = []
-  let manifestSeen = false
+  let hasSeenManifest = false
   for (const file of byPath.values()) {
     const path = selectedPath(file)
     if (!/(?:^|\/)manifest\.json$/i.test(path)) continue
@@ -149,12 +149,12 @@ async function selectLatestCompleteBackup(files: readonly File[]): Promise<Backu
     try {
       raw = JSON.parse(await file.text())
     } catch {
-      if (legacyPath || siblingComplete) manifestSeen = true
+      if (legacyPath || siblingComplete) hasSeenManifest = true
       if (siblingComplete) throw new Error(t('settings.backup_manifest_invalid', { value0: path }))
       continue
     }
     const declaresInkstone = isRecord(raw) && raw.format === MARKDOWN_BACKUP_FORMAT
-    if (legacyPath || declaresInkstone) manifestSeen = true
+    if (legacyPath || declaresInkstone) hasSeenManifest = true
     const manifest = parseMarkdownBackupManifest(raw)
     if (!manifest) {
       if (siblingComplete && declaresInkstone) {
@@ -209,7 +209,7 @@ async function selectLatestCompleteBackup(files: readonly File[]): Promise<Backu
   }
 
   throw new Error(
-    manifestSeen
+    hasSeenManifest
       ? t('settings.backup_no_complete_snapshot')
       : t('settings.backup_manifest_not_found'),
   )

@@ -8,7 +8,7 @@ export interface NotePersistTarget {
 interface PendingNotePersist {
   outbox: OutboxItem
   content: CachedNoteContent
-  waiters: Array<(ok: boolean) => void>
+  waiters: Array<(isOk: boolean) => void>
 }
 
 /**
@@ -47,14 +47,14 @@ export class NotePersistCoalescer {
     const batch = [...this.pending]
     this.pending.clear()
     for (const [id, entry] of batch) {
-      let ok = true
+      let isOk = true
       try {
         await this.target.enqueueOutbox(entry.outbox)
         await this.target.setContent(id, entry.content)
       } catch {
-        ok = false
+        isOk = false
       }
-      for (const waiter of entry.waiters) waiter(ok)
+      for (const waiter of entry.waiters) waiter(isOk)
     }
   }
 }

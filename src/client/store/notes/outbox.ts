@@ -33,15 +33,15 @@ async function loadReplayOutbox(): Promise<OutboxItem[]> {
     for (let round = 0; round < 4; round++) {
         const snapshot = [...dirty.entries()];
         const durable = await Promise.all(snapshot.map(([, pending]) => pending.persisted));
-        let retried = false;
+        let hasRetried = false;
         snapshot.forEach(([noteId, pending], index) => {
             if (durable[index] || dirty.get(noteId)?.writeId !== pending.writeId)
                 return;
             const persisted = localDb.enqueueOutbox(dirtyOutboxItem(noteId, pending)).then(() => true, () => false);
             dirty.set(noteId, { ...pending, persisted });
-            retried = true;
+            hasRetried = true;
         });
-        if (!retried)
+        if (!hasRetried)
             break;
     }
     const outbox = await localDb.getOutbox();
@@ -173,13 +173,13 @@ export function replayOutbox(get: () => NotesState, set: SetNotesState): Promise
 }
 async function replayOutboxNow(get: () => NotesState, set: SetNotesState): Promise<void> {
     const attempted = new Set<string>();
-    let stoppedOffline = false;
-    for (let round = 0; round < 20 && !stoppedOffline; round++) {
+    let isStoppedOffline = false;
+    for (let round = 0; round < 20 && !isStoppedOffline; round++) {
         const outbox = await loadReplayOutbox();
         const batch = outbox.filter((item) => !attempted.has(replayAttemptKey(item)));
         if (!batch.length)
             break;
-        let restartRound = false;
+        let isRestartRound = false;
         for (const item of batch) {
             attempted.add(replayAttemptKey(item));
             const pendingCreate = pendingNoteCreates.get(item.noteId);
@@ -293,8 +293,8 @@ async function replayOutboxNow(get: () => NotesState, set: SetNotesState): Promi
                         continue;
                     }
                     if (server) {
-                        restartRound = await rebaseQueuedWrite(item, localPending, server, set, get);
-                        if (restartRound)
+                        isRestartRound = await rebaseQueuedWrite(item, localPending, server, set, get);
+                        if (isRestartRound)
                             break;
                     }
                     else
@@ -355,7 +355,7 @@ async function replayOutboxNow(get: () => NotesState, set: SetNotesState): Promi
                     continue;
                 }
                 if (err instanceof ApiError && err.isOffline) {
-                    stoppedOffline = true;
+                    isStoppedOffline = true;
                     set({ online: false, saveStatus: 'offline' });
                     break;
                 }
@@ -370,7 +370,7 @@ async function replayOutboxNow(get: () => NotesState, set: SetNotesState): Promi
                 ).catch(() => {});
             }
         }
-        if (restartRound)
+        if (isRestartRound)
             continue;
     }
     const remaining = await localDb.getOutbox();

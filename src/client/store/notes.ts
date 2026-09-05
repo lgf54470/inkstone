@@ -386,8 +386,8 @@ export const useNotes = create<NotesState>((set, get) => ({
             !currentSummary)
             return;
         if (cached) {
-            let restoredPending = false;
-            let foreignPending = false;
+            let hasRestoredPending = false;
+            let hasForeignPending = false;
             let visibleContent = cached.content;
             let visibleTitle: string | undefined;
             if (cached.writeId) {
@@ -427,9 +427,9 @@ export const useNotes = create<NotesState>((set, get) => ({
                     }
                     else {
                         inheritedOutboxWrites.set(id, existing.writeId);
-                        foreignPending = true;
+                        hasForeignPending = true;
                     }
-                    restoredPending = true;
+                    hasRestoredPending = true;
                 }
                 else {
                     inheritedOutboxWrites.delete(id);
@@ -467,7 +467,7 @@ export const useNotes = create<NotesState>((set, get) => ({
                         updatedAt: cached.updatedAt,
                         persisted,
                     });
-                    restoredPending = true;
+                    hasRestoredPending = true;
                     void (async () => {
                         const durable = await persisted;
                         if (!durable) {
@@ -480,7 +480,7 @@ export const useNotes = create<NotesState>((set, get) => ({
                         }
                     });
                 }
-                if (restoredPending) {
+                if (hasRestoredPending) {
                     const pendingIds = new Set(outbox.map((item) => item.noteId));
                     for (const noteId of dirty.keys())
                         pendingIds.add(noteId);
@@ -492,15 +492,15 @@ export const useNotes = create<NotesState>((set, get) => ({
                     ? { ...s.notes, [id]: { ...s.notes[id]!, title: visibleTitle } }
                     : s.notes,
                 contents: { ...s.contents, [id]: visibleContent },
-                ...(restoredPending
+                ...(hasRestoredPending
                     ? { saveStatus: s.online ? 'dirty' as const : 'offline' as const }
                     : {}),
             }));
             if (visibleTitle !== undefined)
                 scheduleShellSave(get);
             useUi.getState().setWorkspaceNote(targetPane, id, activate);
-            if (restoredPending) {
-                if (foreignPending && get().online)
+            if (hasRestoredPending) {
+                if (hasForeignPending && get().online)
                     void replayOutbox(get, set);
                 return;
             }
@@ -1145,7 +1145,7 @@ export const useNotes = create<NotesState>((set, get) => ({
         const generation = noteState.folderStateGeneration;
         try {
             const { folders } = await api.folders.list();
-            let changed = false;
+            let hasChanged = false;
             set((state) => {
                 if (sequence !== noteState.folderRefreshSequence || generation !== noteState.folderStateGeneration)
                     return state;
@@ -1153,10 +1153,10 @@ export const useNotes = create<NotesState>((set, get) => ({
                 if (next === state.folders)
                     return state;
                 noteState.folderStateGeneration++;
-                changed = true;
+                hasChanged = true;
                 return { folders: next };
             });
-            if (changed)
+            if (hasChanged)
                 scheduleShellSave(get);
             reconcileFolderUi(get().folders);
         }
@@ -1169,7 +1169,7 @@ export const useNotes = create<NotesState>((set, get) => ({
         const generation = noteState.tagStateGeneration;
         try {
             const { tags } = await api.tags.list();
-            let changed = false;
+            let hasChanged = false;
             set((state) => {
                 if (sequence !== noteState.tagRefreshSequence || generation !== noteState.tagStateGeneration)
                     return state;
@@ -1177,10 +1177,10 @@ export const useNotes = create<NotesState>((set, get) => ({
                 if (next === state.tags)
                     return state;
                 noteState.tagStateGeneration++;
-                changed = true;
+                hasChanged = true;
                 return { tags: next };
             });
-            if (changed)
+            if (hasChanged)
                 scheduleShellSave(get);
         }
         catch (error) {

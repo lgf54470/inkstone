@@ -122,18 +122,18 @@ export function restoreOptimisticallyPurgedNotes(snapshots: Array<{
     scheduleShellSave(get);
 }
 export function restoreVersionSnapshot(id: string, optimistic: NoteSummary, before: NoteSummary, optimisticContent: string, beforeContent: string, set: SetNotesState, get: () => NotesState): void {
-    let restored = false;
+    let isRestored = false;
     set((state) => {
         const current = state.notes[id];
         if (!current || !noteSummaryEqual(current, optimistic) || state.contents[id] !== optimisticContent)
             return state;
-        restored = true;
+        isRestored = true;
         return {
             notes: { ...state.notes, [id]: applyPendingNoteMutations(id, before) },
             contents: { ...state.contents, [id]: beforeContent },
         };
     });
-    if (!restored)
+    if (!isRestored)
         return;
     scheduleShellSave(get);
     void localDb.setContent(id, { content: beforeContent, rev: before.rev, updatedAt: before.updatedAt });

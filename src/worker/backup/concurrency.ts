@@ -7,15 +7,15 @@ export async function forEachConcurrent<T>(
   if (!items.length) return
 
   let next = 0
-  let stopped = false
+  let isStopped = false
   const worker = async () => {
-    while (!stopped) {
+    while (!isStopped) {
       const index = next++
       if (index >= items.length) return
       try {
         await run(items[index]!, index)
       } catch (err) {
-        stopped = true
+        isStopped = true
         throw err
       }
     }

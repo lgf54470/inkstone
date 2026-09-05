@@ -49,7 +49,7 @@ export interface TemplateLibraryData {
 }
 
 const supportsUserNamespaces = typeof entries === 'function' && typeof delMany === 'function'
-let forceUserNamespaces = false
+let shouldForceUserNamespaces = false
 // The shell cache is two-level: one `note-summary:<id>` key per note plus a
 // lightweight `noteIndex` id list. A typing-derived summary commit therefore
 // only upserts the one changed note instead of re-serializing the whole vault;
@@ -124,7 +124,7 @@ async function safeSet(key: string, value: unknown): Promise<void> {
 }
 
 function userScopedKey(key: string, userId = activeUserId): string {
-  return userId && (supportsUserNamespaces || forceUserNamespaces) ? `user:${userId}:${key}` : key
+  return userId && (supportsUserNamespaces || shouldForceUserNamespaces) ? `user:${userId}:${key}` : key
 }
 
 function isLegacyDataKey(key: unknown): key is string {
@@ -155,9 +155,9 @@ async function migrateLegacyData(userId: string): Promise<void> {
 
 async function bindLocalUser(userId: string): Promise<void> {
   if (activeUserId === userId) {
-    if (forceUserNamespaces && !supportsUserNamespaces) {
+    if (shouldForceUserNamespaces && !supportsUserNamespaces) {
       await clearLocalData()
-      forceUserNamespaces = false
+      shouldForceUserNamespaces = false
     }
     await set(KEY.userId, userId, store)
     return
@@ -167,11 +167,11 @@ async function bindLocalUser(userId: string): Promise<void> {
     if (storedUserId !== userId) {
       try {
         await clearLocalData()
-        forceUserNamespaces = false
+        shouldForceUserNamespaces = false
       } catch (error) {
         activeUserId = userId
         resetShellIdentity()
-        forceUserNamespaces = true
+        shouldForceUserNamespaces = true
         throw error
       }
     }
@@ -486,38 +486,38 @@ export const localDb = {
   async withOutboxReplayLock(owner: string, task: () => Promise<void>): Promise<boolean> {
     const lockName = activeUserId ? `inkstone-outbox-replay:${activeUserId}` : 'inkstone-outbox-replay'
     if (typeof navigator !== 'undefined' && navigator.locks?.request) {
-      let acquired = false
+      let isAcquired = false
       await navigator.locks.request(
         lockName,
         async () => {
-          acquired = true
+          isAcquired = true
           await task()
         },
       )
-      return acquired
+      return isAcquired
     }
 
     const leaseMs = 90_000
-    let acquired = false
+    let isAcquired = false
     const deadline = Date.now() + 30_000
-    while (!acquired && Date.now() < deadline) {
+    while (!isAcquired && Date.now() < deadline) {
       const now = Date.now()
       await update<{ owner: string; expiresAt: number } | null>(
         userScopedKey(KEY.outboxReplayLease),
         (current) => {
           if (!current || current.expiresAt <= now) {
-            acquired = true
+            isAcquired = true
             return { owner, expiresAt: now + leaseMs }
           }
           return current
         },
         store,
       )
-      if (!acquired) {
+      if (!isAcquired) {
         await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 50))
       }
     }
-    if (!acquired) return false
+    if (!isAcquired) return false
 
     const heartbeat = globalThis.setInterval(() => {
       void update<{ owner: string; expiresAt: number } | null>(
@@ -555,7 +555,7 @@ export const localDb = {
       ])
     }
     activeUserId = null
-    forceUserNamespaces = false
+    shouldForceUserNamespaces = false
   },
 }
 

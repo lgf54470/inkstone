@@ -236,17 +236,17 @@ md.block.ruler.before('fence', 'math_block', (state, startLine, endLine, silent)
     const firstLine = line.slice(2);
     let content = '';
     let next = startLine;
-    let found = false;
+    let isFound = false;
     if (firstLine.trim().endsWith('$$')) {
         content = firstLine.trim().slice(0, -2);
-        found = true;
+        isFound = true;
     }
     else {
-        while (!found && ++next < endLine) {
+        while (!isFound && ++next < endLine) {
             const text = blockLine(state, next);
             if (text.trim().endsWith('$$')) {
                 content += text.slice(0, text.lastIndexOf('$$'));
-                found = true;
+                isFound = true;
             }
             else {
                 content += `${text}\n`;
@@ -255,7 +255,7 @@ md.block.ruler.before('fence', 'math_block', (state, startLine, endLine, silent)
         if (firstLine.trim())
             content = `${firstLine}\n${content}`;
     }
-    if (!found)
+    if (!isFound)
         return false;
     if (silent)
         return true;
@@ -497,12 +497,12 @@ md.core.ruler.after('github-task-lists', 'trusted_task_placeholders', (state) =>
             continue;
         const checkboxIndex = inline.children.findIndex((child) => child.type === 'html_inline' && /task-list-item-checkbox/.test(child.content));
         let status = '';
-        let checked = false;
+        let isChecked = false;
         if (checkboxIndex >= 0) {
             const checkbox = inline.children[checkboxIndex]!;
-            checked = /\schecked(?:=|\s|>)/.test(checkbox.content);
-            status = checked ? 'done' : 'todo';
-            checkbox.content = `<span class="task-checkbox-placeholder" data-task-placeholder="${env.taskNonce}" data-task-line="${sourceLine}" data-task-status="${status}" data-task-checked="${checked ? '1' : '0'}"></span>`;
+            isChecked = /\schecked(?:=|\s|>)/.test(checkbox.content);
+            status = isChecked ? 'done' : 'todo';
+            checkbox.content = `<span class="task-checkbox-placeholder" data-task-placeholder="${env.taskNonce}" data-task-line="${sourceLine}" data-task-status="${status}" data-task-checked="${isChecked ? '1' : '0'}"></span>`;
             const labelOpen = new state.Token('html_inline', '', 0);
             labelOpen.content = '<span class="task-label">';
             const labelClose = new state.Token('html_inline', '', 0);
@@ -580,14 +580,14 @@ md.core.ruler.after('block_note_embeds', 'file_attachments', (state) => {
             continue;
         const fileLinks: { url: string; filename: string }[] = [];
         let isAllFileLinks = true;
-        let inLink = false;
+        let isInLink = false;
         let currentUrl = '';
         let currentFilename = '';
         for (const child of children) {
             if (child.type === 'link_open') {
                 const href = child.attrGet('href') ?? '';
                 if (href.startsWith('/api/files/')) {
-                    inLink = true;
+                    isInLink = true;
                     currentUrl = href;
                     currentFilename = '';
                 }
@@ -597,16 +597,16 @@ md.core.ruler.after('block_note_embeds', 'file_attachments', (state) => {
                 }
             }
             else if (child.type === 'link_close') {
-                if (inLink) {
+                if (isInLink) {
                     fileLinks.push({ url: currentUrl, filename: currentFilename || 'file' });
-                    inLink = false;
+                    isInLink = false;
                 }
                 else {
                     isAllFileLinks = false;
                     break;
                 }
             }
-            else if (inLink) {
+            else if (isInLink) {
                 currentFilename += child.content;
             }
             else if (child.type === 'softbreak' || child.type === 'hardbreak') {
@@ -622,7 +622,7 @@ md.core.ruler.after('block_note_embeds', 'file_attachments', (state) => {
                 break;
             }
         }
-        if (isAllFileLinks && fileLinks.length > 0 && !inLink) {
+        if (isAllFileLinks && fileLinks.length > 0 && !isInLink) {
             const sourceLine = open.map?.[0] ?? 0;
             const newTokens = fileLinks.map((link) => {
                 const token = new state.Token('file_card', 'div', 0);
@@ -935,13 +935,13 @@ export function renderMarkdown(source: string, options?: {
 
 function stripObsidianComments(source: string): string {
     const lines = source.match(/[^\r\n]*(?:\r\n|\r|\n|$)/g)?.filter(Boolean) ?? [];
-    let inComment = false;
+    let isInComment = false;
     let fenceChar = '';
     let fenceLength = 0;
     return lines.map((line) => {
         const ending = /\r\n$|[\r\n]$/.exec(line)?.[0] ?? '';
         const body = ending ? line.slice(0, -ending.length) : line;
-        const fence = !inComment ? /^ {0,3}(`{3,}|~{3,})/.exec(body) : null;
+        const fence = !isInComment ? /^ {0,3}(`{3,}|~{3,})/.exec(body) : null;
         if (fence) {
             const marker = fence[1]!;
             if (!fenceChar) {
@@ -959,7 +959,7 @@ function stripObsidianComments(source: string): string {
         let output = '';
         let inlineTicks = 0;
         for (let index = 0; index < body.length;) {
-            if (body[index] === '`' && !inComment) {
+            if (body[index] === '`' && !isInComment) {
                 let end = index + 1;
                 while (body[end] === '`')
                     end++;
@@ -972,12 +972,12 @@ function stripObsidianComments(source: string): string {
             }
             const marker = body.startsWith('%%', index) && body[index - 1] !== '\\';
             if (marker && !inlineTicks) {
-                inComment = !inComment;
+                isInComment = !isInComment;
                 output += '  ';
                 index += 2;
                 continue;
             }
-            output += inComment ? ' ' : body[index]!;
+            output += isInComment ? ' ' : body[index]!;
             index++;
         }
         return output + ending;
@@ -1011,7 +1011,7 @@ export function parseFenceInfo(source: string): FenceInfo {
     let rest = source.trim();
     let language = '';
     let title = '';
-    let lineNumbers = false;
+    let hasLineNumbers = false;
     let startLine = 1;
     const highlighted = new Set<number>();
     const leadingCodeOptions = /^\{([^{}]+)\}/.exec(rest);
@@ -1019,7 +1019,7 @@ export function parseFenceInfo(source: string): FenceInfo {
         const classes = [...leadingCodeOptions[1]!.matchAll(/(?:^|\s)\.([A-Za-z][\w-]{0,63})/g)]
             .map((match) => match[1]!);
         language = classes.find((className) => !isReservedCodeClass(className))?.toLowerCase() ?? '';
-        lineNumbers = classes.some(isReservedCodeClass);
+        hasLineNumbers = classes.some(isReservedCodeClass);
         title = codeMetadataValue(leadingCodeOptions[1]!, 'title') ?? '';
         const startAttribute = codeMetadataValue(leadingCodeOptions[1]!, 'start', 'startfrom');
         if (startAttribute && /^\d+$/.test(startAttribute))
@@ -1045,10 +1045,10 @@ export function parseFenceInfo(source: string): FenceInfo {
     const hasLineNumbersDisable = /(?:^|[\s{])\.?(?:line-?numbers|linenos|number-?lines|show-?line-?numbers)=(?:"?false"?|0)(?=[\s}]|$)/i.test(rest);
     const hasLineNumbersEnable = /(?:^|[\s{])\.?(?:line-?numbers|linenos|number-?lines|show-?line-?numbers)(?:=(?:"?true"?|1))?(?=[\s}]|$)/i.test(rest);
     if (hasLineNumbersDisable) {
-        lineNumbers = false;
+        hasLineNumbers = false;
     }
     else if (hasLineNumbersEnable) {
-        lineNumbers = true;
+        hasLineNumbers = true;
     }
     const start = /(?:^|\s)(?:start|startFrom)=(?:"(\d+)"|'(\d+)'|(\d+))/.exec(rest);
     if (start)
@@ -1063,7 +1063,7 @@ export function parseFenceInfo(source: string): FenceInfo {
     return {
         language,
         title,
-        lineNumbers,
+        lineNumbers: hasLineNumbers,
         startLine,
         highlightedLines: [...highlighted].sort((a, b) => a - b),
     };
@@ -1248,13 +1248,13 @@ function findDirectiveTabSegments(state: {
         if (close < 0)
             return [];
         let contentStart = line + 1;
-        let selected = false;
+        let isSelected = false;
         while (contentStart < close) {
             const option = /^:([a-z][a-z0-9_-]*):(?:[ \t]+.*)?$/i.exec(blockLine(state, contentStart));
             if (!option)
                 break;
             if (option[1]!.toLowerCase() === 'selected')
-                selected = true;
+                isSelected = true;
             contentStart++;
         }
         if (contentStart < close && !blockLine(state, contentStart).trim())
@@ -1263,7 +1263,7 @@ function findDirectiveTabSegments(state: {
             title: stripBracketTitle(match[2] ?? '') || t("common.tabs"),
             start: contentStart,
             end: close,
-            selected,
+            selected: isSelected,
         });
         line = close + 1;
     }

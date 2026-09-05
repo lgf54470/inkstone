@@ -334,16 +334,16 @@ export async function rewriteTagInNotes(
   const preloaded = await loadRewriteNotes(env.DB, userId, results.map((candidate) => candidate.id))
   try {
     for (const candidate of results) {
-    let complete = false
+    let isComplete = false
     let note: RewriteNoteRow | null = preloaded.get(candidate.id) ?? null
     for (let attempt = 0; attempt < 5; attempt++) {
       if (!note) {
-        complete = true
+        isComplete = true
         break
       }
       const content = replaceTagInContent(note.content, from, to)
       if (content === note.content) {
-        complete = true
+        isComplete = true
         break
       }
 
@@ -422,7 +422,7 @@ export async function rewriteTagInNotes(
       if (updated?.meta.changes) {
         rewritten++
         rewrittenNotes.push({ note, nextRev, updatedAt: now })
-        complete = true
+        isComplete = true
         break
       }
       // The guarded write was lost to a concurrent edit: re-read just this
@@ -434,7 +434,7 @@ export async function rewriteTagInNotes(
         .bind(candidate.id, userId)
         .first<RewriteNoteRow>()
     }
-    if (!complete) {
+    if (!isComplete) {
       throw ApiError.conflict(`Some notes are still being edited. Safely completed ${rewritten} notes; try again later`)
     }
   }

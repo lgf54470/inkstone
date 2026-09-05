@@ -45,7 +45,7 @@ export function finishNoteMutation(id: string, mutation: PendingNoteMutation): v
 }
 
 export function rollbackNoteMutation(id: string, mutation: PendingNoteMutation, set: SetNotesState, get: () => NotesState): void {
-    let changed = false;
+    let hasChanged = false;
     set((state) => {
         const current = state.notes[id];
         if (!current)
@@ -57,10 +57,10 @@ export function rollbackNoteMutation(id: string, mutation: PendingNoteMutation, 
         const next = applyPendingNoteMutations(id, reverted);
         if (noteSummaryEqual(current, next))
             return state;
-        changed = true;
+        hasChanged = true;
         return { notes: { ...state.notes, [id]: next } };
     });
-    if (changed)
+    if (hasChanged)
         scheduleShellSave(get);
 }
 export async function recoverNoteMutation(id: string, mutation: PendingNoteMutation, err: unknown, set: SetNotesState, get: () => NotesState): Promise<void> {

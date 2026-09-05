@@ -350,7 +350,7 @@ function longestRun(value: string, character: string): number {
 
 export function isInsideCodeBlock(doc: { lines: number; line: (n: number) => { text: string; number: number }; lineAt?: (pos: number) => { number: number } }, pos: number): boolean {
     const currentLine = doc.lineAt ? doc.lineAt(pos) : doc.line(1);
-    let inFence = false;
+    let isInFence = false;
     for (let i = 1; i <= currentLine.number; i++) {
         const line = doc.line(i);
         const match = /^\s*(`{3,}|~{3,})/.exec(line.text);
@@ -358,8 +358,8 @@ export function isInsideCodeBlock(doc: { lines: number; line: (n: number) => { t
             if (i === currentLine.number) {
                 return true;
             }
-            inFence = !inFence;
+            isInFence = !isInFence;
         }
     }
-    return inFence;
+    return isInFence;
 }

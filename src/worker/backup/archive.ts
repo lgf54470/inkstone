@@ -81,11 +81,11 @@ function exactSizeStream(
 function cancellationSafeStream(source: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
   const reader = source.getReader()
   let pending: Promise<ReadableStreamReadResult<Uint8Array>> | null = null
-  let cancelled = false
-  let released = false
+  let isCancelled = false
+  let isReleased = false
   const release = () => {
-    if (released) return
-    released = true
+    if (isReleased) return
+    isReleased = true
     reader.releaseLock()
   }
 
@@ -95,7 +95,7 @@ function cancellationSafeStream(source: ReadableStream<Uint8Array>): ReadableStr
         pending = reader.read()
         const result = await pending
         pending = null
-        if (cancelled) {
+        if (isCancelled) {
           release()
           return
         }
@@ -112,7 +112,7 @@ function cancellationSafeStream(source: ReadableStream<Uint8Array>): ReadableStr
       }
     },
     async cancel() {
-      cancelled = true
+      isCancelled = true
       if (pending) await pending.catch(() => {})
       release()
     },

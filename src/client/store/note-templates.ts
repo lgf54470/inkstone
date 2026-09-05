@@ -116,14 +116,14 @@ function mergeBuiltinSeed(current: TemplateLibraryData): TemplateLibraryData {
     const defById = new Map(BUILTIN_TEMPLATE_DEFS.map((def) => [def.id, def]));
     const existingTemplateIds = new Set(current.templates.map((item) => item.id));
     const existingCategoryIds = new Set(current.categories.map((item) => item.id));
-    let touched = false;
+    let isTouched = false;
     // Refresh catalog-sourced fields (name, description, content, tags) on
     // built-in entries the user never edited: user edits flip `builtin` to
     // false, so those are skipped and never overwritten by a re-seed.
     const refreshedTemplates = current.templates.map((item) => {
         const def = defById.get(item.id);
         if (!def || !item.builtin) return item;
-        touched = true;
+        isTouched = true;
         return {
             ...item,
             name: t(def.nameKey),
@@ -135,7 +135,7 @@ function mergeBuiltinSeed(current: TemplateLibraryData): TemplateLibraryData {
     const addedTemplates: NoteTemplate[] = [];
     for (const def of BUILTIN_TEMPLATE_DEFS) {
         if (existingTemplateIds.has(def.id)) continue;
-        touched = true;
+        isTouched = true;
         addedTemplates.push({
             id: def.id,
             categoryId: def.categoryId,
@@ -154,7 +154,7 @@ function mergeBuiltinSeed(current: TemplateLibraryData): TemplateLibraryData {
     const addedCategories: NoteTemplateCategory[] = [];
     for (const def of BUILTIN_TEMPLATE_CATEGORIES) {
         if (existingCategoryIds.has(def.id)) continue;
-        touched = true;
+        isTouched = true;
         addedCategories.push({
             id: def.id,
             name: t(def.nameKey),
@@ -163,7 +163,7 @@ function mergeBuiltinSeed(current: TemplateLibraryData): TemplateLibraryData {
             createdAt: now,
         });
     }
-    if (!touched)
+    if (!isTouched)
         return { ...current, seedVersion: TEMPLATE_SEED_VERSION };
     return {
         categories: orderedCategories([...current.categories, ...addedCategories]),

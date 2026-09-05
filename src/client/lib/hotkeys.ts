@@ -15,7 +15,7 @@ export interface Hotkey {
 }
 
 const registry = new Map<string, Hotkey>()
-let bound = false
+let isBound = false
 
 export const IS_MAC =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)
@@ -42,8 +42,8 @@ export function hotkeyText(value: string | (() => string)): string {
 }
 
 function ensureBound(): void {
-  if (bound || typeof window === 'undefined') return
-  bound = true
+  if (isBound || typeof window === 'undefined') return
+  isBound = true
   window.addEventListener('keydown', onKeyDown, { capture: true })
 }
 

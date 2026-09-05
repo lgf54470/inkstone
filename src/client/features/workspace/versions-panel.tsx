@@ -44,21 +44,21 @@ export function VersionsPanel({ onClose }: {
         if (!note)
             return;
         const controller = new AbortController();
-        let cancelled = false;
+        let isCancelled = false;
         void (async () => {
             try {
                 const res = await api.notes.versions(note.id, controller.signal);
-                if (cancelled)
+                if (isCancelled)
                     return;
                 setVersions(res.versions);
                 setSelected(res.versions[0] ? { noteId: note.id, versionId: res.versions[0].id } : null);
             } catch (error) {
-                if (!cancelled)
+                if (!isCancelled)
                     setVersionsError(errorMessage(error));
             }
         })();
         return () => {
-            cancelled = true;
+            isCancelled = true;
             controller.abort();
         };
     }, [note?.id, versionsReload]);
@@ -72,19 +72,19 @@ export function VersionsPanel({ onClose }: {
         if (!note || !selectedId)
             return;
         const controller = new AbortController();
-        let cancelled = false;
+        let isCancelled = false;
         void (async () => {
             try {
                 const v = await api.notes.version(note.id, selectedId, controller.signal);
-                if (!cancelled)
+                if (!isCancelled)
                     setPreview(v.content);
             } catch (error) {
-                if (!cancelled)
+                if (!isCancelled)
                     setPreviewError(errorMessage(error));
             }
         })();
         return () => {
-            cancelled = true;
+            isCancelled = true;
             controller.abort();
         };
     }, [note?.id, selectedId, previewReload]);

@@ -71,10 +71,10 @@ export function toggleLinePrefix(
         let index = 0;
         for (const range of state.selection.ranges) {
             const { startLine, endLine } = selectedLineBounds(state, range);
-            let allPrefixed = true;
+            let isAllPrefixed = true;
             for (let n = startLine; n <= endLine; n++) {
                 if (!linePrefixMatch(state.doc.line(n).text, pattern)) {
-                    allPrefixed = false;
+                    isAllPrefixed = false;
                     break;
                 }
             }
@@ -88,7 +88,7 @@ export function toggleLinePrefix(
                 const replacement = replacementPattern
                     ? linePrefixMatch(line.text, replacementPattern)
                     : null;
-                if (allPrefixed && match) {
+                if (isAllPrefixed && match) {
                     changes.push({
                         from: line.from + indent.length,
                         to: line.from + indent.length + match[0].length,

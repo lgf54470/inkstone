@@ -103,8 +103,8 @@ export function SharePage({ slug }: {
             return;
         const host = hostRef.current;
         const revision = ++enhancementRevisionRef.current;
-        let cancelled = false;
-        const isCurrent = () => !cancelled && enhancementRevisionRef.current === revision && hostRef.current === host;
+        let isCancelled = false;
+        const isCurrent = () => !isCancelled && enhancementRevisionRef.current === revision && hostRef.current === host;
         void (async () => {
             await enhancePreview(host, { math: true, mermaid: true, dark, codeBlockCollapseLines: 24 });
             if (!isCurrent())
@@ -112,7 +112,7 @@ export function SharePage({ slug }: {
             await renderPendingMermaid(host, dark, { isCurrent });
         })();
         return () => {
-            cancelled = true;
+            isCancelled = true;
         };
     }, [rendered, dark]);
     useEffect(() => () => {

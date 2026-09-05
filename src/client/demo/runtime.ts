@@ -1,11 +1,11 @@
 import { localDb } from '../lib/db'
 import { createDemoBackend } from './backend'
 
-let installed = false
+let isInstalled = false
 
 export async function installDemoRuntime(): Promise<void> {
-  if (installed) return
-  installed = true
+  if (isInstalled) return
+  isInstalled = true
   await localDb.clear()
 
   const backend = createDemoBackend()

@@ -19,7 +19,7 @@ export class SyncEngine {
   private pullTimer = 0
   private leadershipTimer = 0
   private failures = 0
-  private disposed = false
+  private isDisposed = false
   private isLeader = false
   private ownClaimAt = 0
   private bestClaim: { clientId: string; at: number } | null = null
@@ -67,7 +67,7 @@ export class SyncEngine {
   }
 
   dispose(): void {
-    this.disposed = true
+    this.isDisposed = true
     document.removeEventListener('visibilitychange', this.onVisibility)
     window.removeEventListener('focus', this.onFocus)
     window.removeEventListener('online', this.onOnline)
@@ -93,7 +93,7 @@ export class SyncEngine {
     this.broadcast.post(claim)
     window.clearTimeout(this.leadershipTimer)
     this.leadershipTimer = window.setTimeout(() => {
-      if (this.disposed) return
+      if (this.isDisposed) return
       const winner = this.bestClaim
       this.setLeadership(
         Boolean(
@@ -182,7 +182,7 @@ export class SyncEngine {
 
 
   private connect(): void {
-    if (this.disposed || this.socket) return
+    if (this.isDisposed || this.socket) return
     try {
       const url = new URL('/api/sync/ws', location.href)
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -190,7 +190,7 @@ export class SyncEngine {
       this.socket = socket
 
       socket.onopen = () => {
-        if (this.disposed || !this.isLeader || this.socket !== socket) {
+        if (this.isDisposed || !this.isLeader || this.socket !== socket) {
           socket.close()
           return
         }
@@ -202,7 +202,7 @@ export class SyncEngine {
       }
 
       socket.onmessage = (event) => {
-        if (this.disposed || this.socket !== socket) return
+        if (this.isDisposed || this.socket !== socket) return
         let message: RealtimeMessage
         try {
           const parsed: unknown = JSON.parse(String(event.data))
@@ -225,7 +225,7 @@ export class SyncEngine {
         if (this.socket !== socket) return
         this.socket = null
         window.clearInterval(this.heartbeatTimer)
-        if (!this.disposed && this.isLeader) this.scheduleReconnect()
+        if (!this.isDisposed && this.isLeader) this.scheduleReconnect()
       }
 
       socket.onerror = () => {
@@ -271,7 +271,7 @@ export class SyncEngine {
   }
 
   private schedulePull(delay: number, shouldBroadcast = true): void {
-    if (this.disposed) return
+    if (this.isDisposed) return
     this.scheduledPullShouldBroadcast ||= shouldBroadcast
     const dueAt = Date.now() + Math.max(0, delay)
     if (this.pullTimer && this.pullDueAt <= dueAt) return
@@ -287,12 +287,12 @@ export class SyncEngine {
   }
 
   private async pull(shouldBroadcast: boolean): Promise<void> {
-    if (this.disposed) return
+    if (this.isDisposed) return
     const cursorBefore = useNotes.getState().cursor
-    let pulled = false
+    let hasPulled = false
     try {
       await useNotes.getState().pull()
-      pulled = true
+      hasPulled = true
     } catch {
 
     }
@@ -302,7 +302,7 @@ export class SyncEngine {
     } catch {
 
     }
-    if (pulled) {
+    if (hasPulled) {
       this.lastPullAt = Date.now()
       const cursor = useNotes.getState().cursor
       if (shouldBroadcast && cursor > cursorBefore) {
@@ -372,7 +372,7 @@ export function useSyncEngine(): void {
   // The engine is created exactly once; later setting changes are pushed
   // through updateConfig instead of rebuilding the whole engine.
   useEffect(() => {
-    let disposed = false
+    let isDisposed = false
     void (async () => {
       try {
         await bootstrap()
@@ -380,7 +380,7 @@ export function useSyncEngine(): void {
         console.error('sync bootstrap failed; sync engine will not start', error)
         return
       }
-      if (disposed) return
+      if (isDisposed) return
       const state = useSession.getState()
       engineRef.current = new SyncEngine(
         Boolean(state.site?.realtimeEnabled) && state.settings.sync.realtime,
@@ -390,7 +390,7 @@ export function useSyncEngine(): void {
     })()
 
     return () => {
-      disposed = true
+      isDisposed = true
       engineRef.current?.dispose()
       engineRef.current = null
     }

@@ -117,7 +117,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   const timeoutController = timeoutMs && timeoutMs > 0 ? new AbortController() : null
-  let timedOut = false
+  let hasTimedOut = false
   let timeoutHandle = 0
   let detachCallerSignal: (() => void) | undefined
   if (timeoutController) {
@@ -128,7 +128,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       detachCallerSignal = () => signal.removeEventListener('abort', abortFromCaller)
     }
     timeoutHandle = window.setTimeout(() => {
-      timedOut = true
+      hasTimedOut = true
       timeoutController.abort()
     }, timeoutMs)
   }
@@ -150,14 +150,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
     const isJson = isJsonResponse(response)
     let data: unknown = null
-    let invalidJson = false
+    let isInvalidJson = false
     if (isJson) {
       const raw = await response.text()
       if (raw.trim()) {
         try {
           data = JSON.parse(raw)
         } catch {
-          invalidJson = true
+          isInvalidJson = true
         }
       }
     }
@@ -174,7 +174,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       )
     }
 
-    if (invalidJson) {
+    if (isInvalidJson) {
       throw new ApiError(502, 'invalid_response', t("api.invalid_server_response"))
     }
 
@@ -184,7 +184,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     return (isJson ? data : await response.text()) as T
   } catch (err) {
     if (err instanceof ApiError) throw err
-    if (timedOut) throw new ApiError(0, 'request_timeout', t("api.request_timed_out"))
+    if (hasTimedOut) throw new ApiError(0, 'request_timeout', t("api.request_timed_out"))
     if ((err as Error)?.name === 'AbortError') throw err
     throw new ApiError(0, 'offline', t("api.no_network_connection"))
   } finally {

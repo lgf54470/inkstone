@@ -94,7 +94,7 @@ const allowed = new Map([
   ["src/client/demo/backend.ts", [
     "// Match the real worker contract: facetsFull may only be true when the response carries the",
     "// complete folders/tags lists. The demo always sends full snapshots when anything changed, so",
-    "// the flag follows `changed`; a no-change catchup must not claim completeness (it would make",
+    "// the flag follows `hasChanged`; a no-change catchup must not claim completeness (it would make",
     "// the client's full-snapshot consolidation replace its freshly collected folders with []).",
   ]],
   ["src/client/demo/state.ts", [

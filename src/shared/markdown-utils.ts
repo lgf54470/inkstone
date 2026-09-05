@@ -5,7 +5,7 @@ import { truncateText } from './text-utils'
 
 export function stripCodeRegions(text: string): string {
   const lines = text.split('\n')
-  let inFence = false
+  let isInFence = false
   let fenceChar = ''
   let fenceLen = 0
 
@@ -15,20 +15,20 @@ export function stripCodeRegions(text: string): string {
     if (m) {
       const marker = m[1]!
       const ch = marker[0]!
-      if (!inFence) {
-        inFence = true
+      if (!isInFence) {
+        isInFence = true
         fenceChar = ch
         fenceLen = marker.length
         lines[i] = ''
         continue
       }
       if (ch === fenceChar && marker.length >= fenceLen) {
-        inFence = false
+        isInFence = false
         lines[i] = ''
         continue
       }
     }
-    if (inFence) {
+    if (isInFence) {
       lines[i] = ''
       continue
     }
@@ -183,7 +183,7 @@ function tagSearchText(text: string): string {
     for (let i = boundedStart; i < boundedEnd; i++) protectedChars[i] = 1
   }
 
-  let inFence = false
+  let isInFence = false
   let fenceChar = ''
   let fenceLen = 0
   let lineStart = 0
@@ -194,15 +194,15 @@ function tagSearchText(text: string): string {
     const fence = /^[ \t]{0,3}(`{3,}|~{3,})/.exec(line)
     if (fence) {
       const marker = fence[1]!
-      if (!inFence) {
-        inFence = true
+      if (!isInFence) {
+        isInFence = true
         fenceChar = marker[0]!
         fenceLen = marker.length
       } else if (marker[0] === fenceChar && marker.length >= fenceLen) {
-        inFence = false
+        isInFence = false
       }
       protect(lineStart, lineEnd)
-    } else if (inFence) {
+    } else if (isInFence) {
       protect(lineStart, lineEnd)
     }
     lineStart = lineEnd
@@ -217,7 +217,7 @@ function tagSearchText(text: string): string {
     while (text[markerEnd] === '`') markerEnd++
     const markerLength = markerEnd - i
     let closing = markerEnd
-    let matched = false
+    let hasMatched = false
     while (closing < text.length) {
       closing = text.indexOf('`', closing)
       if (closing < 0) break
@@ -226,26 +226,26 @@ function tagSearchText(text: string): string {
       if (closingEnd - closing === markerLength) {
         protect(i, closingEnd)
         i = closingEnd
-        matched = true
+        hasMatched = true
         break
       }
       closing = closingEnd
     }
-    if (!matched) i = markerEnd
+    if (!hasMatched) i = markerEnd
   }
 
   const protectPattern = (pattern: RegExp) => {
     for (const match of text.matchAll(pattern)) {
       const start = match.index
       if (start === undefined) continue
-      let overlaps = false
+      let hasOverlaps = false
       for (let i = start; i < start + match[0].length; i++) {
         if (protectedChars[i]) {
-          overlaps = true
+          hasOverlaps = true
           break
         }
       }
-      if (!overlaps) protect(start, start + match[0].length)
+      if (!hasOverlaps) protect(start, start + match[0].length)
     }
   }
 
@@ -798,7 +798,7 @@ function replaceWikiLinkTargetLine(content: string, from: string, to: string): s
 export function replaceWikiLinkTarget(content: string, from: string, to: string): string {
   const frontMatter = parseFrontMatter(content)
   const lines = content.split('\n')
-  let inFence = false
+  let isInFence = false
   let fenceChar = ''
   let fenceLength = 0
   for (let index = frontMatter.lineOffset; index < lines.length; index++) {
@@ -806,16 +806,16 @@ export function replaceWikiLinkTarget(content: string, from: string, to: string)
     const fence = /^[ \t]{0,3}(`{3,}|~{3,})/.exec(line)
     if (fence) {
       const marker = fence[1]!
-      if (!inFence) {
-        inFence = true
+      if (!isInFence) {
+        isInFence = true
         fenceChar = marker[0]!
         fenceLength = marker.length
       } else if (marker[0] === fenceChar && marker.length >= fenceLength) {
-        inFence = false
+        isInFence = false
       }
       continue
     }
-    if (inFence) continue
+    if (isInFence) continue
     const safe = line.replace(/`+[^`\n]*`+/g, (value) => ' '.repeat(value.length))
     if (safe === line) {
       lines[index] = replaceWikiLinkTargetLine(line, from, to)

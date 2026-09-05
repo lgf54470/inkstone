@@ -395,7 +395,7 @@ notesRoutes.patch('/:id', async (c) => {
   const pushPatch = (column: string, value: unknown) => {
     patches.push({ column, value })
   }
-  let contentChanged = false
+  let hasContentChanged = false
   let newTitle = row.title
   let newContent = row.content
   let newHash = row.content_hash
@@ -405,7 +405,7 @@ notesRoutes.patch('/:id', async (c) => {
     assertContentSize(body.content)
     const hash = await sha256Hex(body.content)
     if (hash !== row.content_hash) {
-      contentChanged = true
+      hasContentChanged = true
       newHash = hash
       newContent = body.content
       newTitle = resolvedTitle
@@ -452,7 +452,7 @@ notesRoutes.patch('/:id', async (c) => {
   const statements: D1PreparedStatement[] = [update]
   let derivedTags: string[] | null = null
 
-  if (contentChanged && !body.quiet && row.content) {
+  if (hasContentChanged && !body.quiet && row.content) {
     const bigChange = Math.abs(newContent.length - row.content.length) >= SNAPSHOT_DIFF_THRESHOLD
     statements.push(
       c.env.DB.prepare(
@@ -478,7 +478,7 @@ notesRoutes.patch('/:id', async (c) => {
     )
   }
 
-  if (row.deleted_at === null && (contentChanged || newTitle !== row.title)) {
+  if (row.deleted_at === null && (hasContentChanged || newTitle !== row.title)) {
     const derived = buildNoteDerivedStatements({
       db: c.env.DB,
       userId,
@@ -495,7 +495,7 @@ notesRoutes.patch('/:id', async (c) => {
     })
     statements.push(...derived.statements)
     derivedTags = derived.tags
-    if (contentChanged && !sameTagSet(splitTags(row.tag_names), derived.tags)) {
+    if (hasContentChanged && !sameTagSet(splitTags(row.tag_names), derived.tags)) {
       statements.push(
         c.env.DB.prepare(
           `DELETE FROM tags WHERE user_id = ?1 AND is_manual = 0
@@ -522,7 +522,7 @@ notesRoutes.patch('/:id', async (c) => {
     throw ApiError.conflict('This note was modified elsewhere', { server: current })
   }
   const changeResult = results.at(-1) as D1Result<{ seq: number }> | undefined
-  let rewroteInbound = false
+  let hasRewrittenInbound = false
   if (newTitle !== row.title) {
     const ambiguous = await c.env.DB.prepare(
       `SELECT 1 AS found FROM notes
@@ -546,7 +546,7 @@ notesRoutes.patch('/:id', async (c) => {
       if (rewrite.skipped) {
         console.warn(`Could not update ${rewrite.skipped} wiki-link source notes after renaming note ${id}`)
       }
-      rewroteInbound = rewrite.rewritten > 0
+      hasRewrittenInbound = rewrite.rewritten > 0
     } else {
       await c.env.DB.prepare(
         `UPDATE links SET target_note_id = ${LINK_TARGET_SUBQUERY}
@@ -564,12 +564,12 @@ notesRoutes.patch('/:id', async (c) => {
       ).run()
     }
   }
-  await broadcastCursor(c, rewroteInbound ? undefined : changeResult?.results?.[0]?.seq)
-  if (contentChanged || newTitle !== row.title) {
+  await broadcastCursor(c, hasRewrittenInbound ? undefined : changeResult?.results?.[0]?.seq)
+  if (hasContentChanged || newTitle !== row.title) {
     await enqueueNoteIndex(c.env.DB, userId, id, 'embed')
     scheduleFtsDrain(c)
   }
-  const nextTags = contentChanged ? (derivedTags ?? extractTags(newContent)) : null
+  const nextTags = hasContentChanged ? (derivedTags ?? extractTags(newContent)) : null
   return c.json(toNote(applyPatchRow(row, patches, nextTags)))
 })
 
@@ -1058,16 +1058,16 @@ async function rewriteInboundWikiLinks(
   // conflicting candidates get a fresh single-row read on retry.
   const preloaded = await loadRewriteNotes(db, userId, candidates.map((candidate) => candidate.id))
   for (const candidate of candidates) {
-    let complete = false
+    let isComplete = false
     let note: RewriteNoteRow | null = preloaded.get(candidate.id) ?? null
     for (let attempt = 0; attempt < 5; attempt++) {
       if (!note || note.deleted_at !== null) {
-        complete = true
+        isComplete = true
         break
       }
       const content = replaceWikiLinkTarget(note.content, fromTitle, toTitle)
       if (content === note.content) {
-        complete = true
+        isComplete = true
         break
       }
       const hash = await sha256Hex(content)
@@ -1118,7 +1118,7 @@ async function rewriteInboundWikiLinks(
       const [updated] = await db.batch(statements)
       if (updated?.meta.changes) {
         rewritten++
-        complete = true
+        isComplete = true
         break
       }
       // The guarded write was lost to a concurrent edit: re-read just this
@@ -1128,7 +1128,7 @@ async function rewriteInboundWikiLinks(
            FROM notes WHERE id = ?1 AND user_id = ?2`,
       ).bind(candidate.id, userId).first<RewriteNoteRow>()
     }
-    if (!complete) skipped++
+    if (!isComplete) skipped++
   }
   return { rewritten, skipped }
 }

@@ -279,14 +279,14 @@ export const useShareStore = create<ShareStoreState>((set, get) => ({
     set({ batchBusy: true })
     set((s) => {
       const updatedShares = s.shares.map((share) => {
-        let match = false
+        let hasMatch = false
         if (type === 'folder' && (share.folderId === target || share.shareFolderId === target)) {
-          match = true
+          hasMatch = true
         }
         if (type === 'tag' && share.shareTags?.includes(target)) {
-          match = true
+          hasMatch = true
         }
-        if (match) {
+        if (hasMatch) {
           return { ...share, isEnabled: enabled }
         }
         return share

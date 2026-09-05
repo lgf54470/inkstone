@@ -722,22 +722,22 @@ export function createDemoBackend(): DemoBackend {
   })
   app.get('/api/sync', (c) => {
     const since = Number(c.req.query('since')) || 0
-    const changed = since < state.cursor
+    const hasChanged = since < state.cursor
     // Match the real worker contract: facetsFull may only be true when the response carries the
     // complete folders/tags lists. The demo always sends full snapshots when anything changed, so
-    // the flag follows `changed`; a no-change catchup must not claim completeness (it would make
+    // the flag follows `hasChanged`; a no-change catchup must not claim completeness (it would make
     // the client's full-snapshot consolidation replace its freshly collected folders with []).
     const response: SyncResponse = {
       cursor: state.cursor,
-      full: changed,
+      full: hasChanged,
       hasMore: false,
       nextKey: null,
-      facetsFull: changed,
+      facetsFull: hasChanged,
       settingsChanged: false,
       profileChanged: false,
-      notes: changed ? [...state.notes.values()].map(summarize) : [],
-      folders: changed ? listFolders(state) : [],
-      tags: changed ? listTags(state) : [],
+      notes: hasChanged ? [...state.notes.values()].map(summarize) : [],
+      folders: hasChanged ? listFolders(state) : [],
+      tags: hasChanged ? listTags(state) : [],
       deletions: [],
       serverTime: Date.now(),
     }
@@ -1284,10 +1284,10 @@ export function createDemoBackend(): DemoBackend {
     const { type, target, enabled } = body as { type: 'folder' | 'tag'; target: string; enabled: boolean }
     let count = 0
     for (const share of state.shares.values()) {
-      let matched = false
-      if (type === 'folder' && share.info.shareFolderId === target) matched = true
-      if (type === 'tag' && share.info.shareTags?.includes(target)) matched = true
-      if (matched) {
+      let hasMatched = false
+      if (type === 'folder' && share.info.shareFolderId === target) hasMatched = true
+      if (type === 'tag' && share.info.shareTags?.includes(target)) hasMatched = true
+      if (hasMatched) {
         share.info.isEnabled = enabled
         count++
       }
@@ -1765,13 +1765,13 @@ function promoteDemoFolderChildren(state: DemoState, root: Folder): void {
 
 function folderDescendants(state: DemoState, rootId: string): Set<string> {
   const ids = new Set([rootId])
-  let changed = true
-  while (changed) {
-    changed = false
+  let hasChanged = true
+  while (hasChanged) {
+    hasChanged = false
     for (const folder of state.folders.values()) {
       if (folder.parentId && ids.has(folder.parentId) && !ids.has(folder.id)) {
         ids.add(folder.id)
-        changed = true
+        hasChanged = true
       }
     }
   }

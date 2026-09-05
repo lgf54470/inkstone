@@ -181,7 +181,7 @@ export async function insertNote(
   const title = truncateText(input.title.trim(), LIMITS.titleMaxLength)
 
   const hash = await sha256Hex(input.content)
-  let inserted = false
+  let hasInserted = false
   for (let attempt = 0; attempt < 2; attempt++) {
     const insert = c.env.DB.prepare(
       `INSERT INTO notes (id, user_id, folder_id, title, content, excerpt, rev, word_count, char_count,
@@ -245,12 +245,12 @@ export async function insertNote(
       ...(mapping ? [mapping] : []),
     ])
     if (result?.meta.changes) {
-      inserted = true
+      hasInserted = true
       break
     }
     id = newId()
   }
-  if (!inserted) throw new Error('Could not generate a unique note ID')
+  if (!hasInserted) throw new Error('Could not generate a unique note ID')
 
   if (!deleted) await enqueueNoteIndex(c.env.DB, userId, id, 'embed')
   return id

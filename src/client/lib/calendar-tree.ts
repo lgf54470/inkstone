@@ -541,7 +541,7 @@ export function buildVirtualTreeCached(
     const key = `${ns.rootId}|${includeEmpty ? 'e' : 'c'}`
     const cached = virtualTreeSlots.get(key)
     const same = Boolean(cached && sameTodoTags(cached.todoTags, todoTags))
-    let stable = false
+    let isStable = false
     if (same) {
         let perMap = virtualTreeVerdicts.get(notes)
         if (!perMap) {
@@ -550,13 +550,13 @@ export function buildVirtualTreeCached(
         }
         const verdict = perMap.get(key)
         if (verdict && verdict.prev === cached!.notes) {
-            stable = verdict.stable
+            isStable = verdict.stable
         } else {
-            stable = virtualTreeInputsEqual(cached!.notes, notes, todoTags)
-            perMap.set(key, { prev: cached!.notes, stable })
+            isStable = virtualTreeInputsEqual(cached!.notes, notes, todoTags)
+            perMap.set(key, { prev: cached!.notes, stable: isStable })
         }
     }
-    if (same && stable)
+    if (same && isStable)
         return cached!.children
     const values = todoTags && todoTags.length
         ? Object.values(notes).filter((note) => isTodoNote(note, todoTags))

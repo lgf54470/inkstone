@@ -209,18 +209,18 @@ export function mergeSettingsPatch(current: unknown, patch: unknown): UserSettin
   const incoming = asRecord(patch)
   const defaults = cloneDefaultSettings()
   const combined: Record<string, unknown> = { ...previous }
-  let touched = false
+  let isTouched = false
   for (const section of SETTINGS_SECTIONS) {
     if (!combined[section]) {
       combined[section] = defaults[section]
-      touched = true
+      isTouched = true
     }
     const patched = asRecord(incoming[section])
     if (Object.keys(patched).length === 0) continue
-    touched = true
+    isTouched = true
     combined[section] = mergeSettingsSection(section, asRecord(combined[section]), patched)
   }
-  if (!touched) return previous as unknown as UserSettings
+  if (!isTouched) return previous as unknown as UserSettings
   return combined as unknown as UserSettings
 }
 

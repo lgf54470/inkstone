@@ -476,7 +476,7 @@ export async function completeTotpLogin(input: {
   const sessionHash = await hashToken(sessionToken)
   const expiresAt = now + SESSION_TTL_MS
   let results: D1Result[]
-  let recoveryCodeUsed = false
+  let isRecoveryCodeUsed = false
 
   if (recoveryCode) {
     const codeHash = await hashRecoveryCode(row.user_id, recoveryCode)
@@ -515,7 +515,7 @@ export async function completeTotpLogin(input: {
         `DELETE FROM totp_login_challenges WHERE id = ?1 AND claimed_by = ?2`,
       ).bind(challengeHash, operationId),
     ])
-    recoveryCodeUsed = true
+    isRecoveryCodeUsed = true
   } else {
     const secret = await decryptTotpSecret(input.env, row.user_id, row.secret_ciphertext)
     if (!secret) throw factorUnavailable()
@@ -570,13 +570,13 @@ export async function completeTotpLogin(input: {
     await rejectFactor(input.env.DB, throttle, 'code', workKey)
   }
   await clearFactorAttempts(input.env.DB, throttle, workKey)
-  const remaining = recoveryCodeUsed
+  const remaining = isRecoveryCodeUsed
     ? await countRecoveryCodes(input.env.DB, row.user_id, row.recovery_generation)
     : null
   return {
     userId: row.user_id,
     sessionToken,
-    recoveryCodeUsed,
+    recoveryCodeUsed: isRecoveryCodeUsed,
     recoveryCodesRemaining: remaining,
   }
 }

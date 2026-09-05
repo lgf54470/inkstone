@@ -293,7 +293,7 @@ async function patchNote(
   const now = Math.max(Date.now(), row.updated_at + 1)
   const sets: string[] = []
   const binds: unknown[] = []
-  let contentChanged = false
+  let hasContentChanged = false
   let newTitle = row.title
   let newContent = row.content
   let newHash = row.content_hash
@@ -302,7 +302,7 @@ async function patchNote(
     assertContentSize(patch.content)
     const hash = await sha256Hex(patch.content)
     if (hash !== row.content_hash) {
-      contentChanged = true
+      hasContentChanged = true
       newHash = hash
       newContent = patch.content
       newTitle = patch.title === undefined ? row.title : resolveTitle(patch.title)
@@ -340,7 +340,7 @@ async function patchNote(
   const mutationValues = [row.id, context.userId, nextRev, newHash, newTitle, now] as const
   const statements: D1PreparedStatement[] = [update]
 
-  if (contentChanged && row.content) {
+  if (hasContentChanged && row.content) {
     statements.push(
       context.env.DB.prepare(
         `INSERT INTO note_versions (id, note_id, user_id, title, content, size, created_at)
@@ -360,7 +360,7 @@ async function patchNote(
     )
   }
 
-  if (contentChanged || newTitle !== row.title) {
+  if (hasContentChanged || newTitle !== row.title) {
     statements.push(...buildNoteDerivedStatements({
       db: context.env.DB,
       userId: context.userId,
@@ -375,7 +375,7 @@ async function patchNote(
       expectedTitle: newTitle,
       expectedUpdatedAt: now,
     }).statements)
-    if (contentChanged) {
+    if (hasContentChanged) {
       statements.push(
         context.env.DB.prepare(
           `DELETE FROM tags WHERE user_id = ?1 AND is_manual = 0
@@ -399,7 +399,7 @@ async function patchNote(
     })
   }
   const note = await loadNote(context.env.DB, context.userId, row.id)
-  if (contentChanged || newTitle !== row.title) {
+  if (hasContentChanged || newTitle !== row.title) {
     await enqueueNoteIndex(context.env.DB, context.userId, row.id, 'embed')
   }
   await afterMutation(context)

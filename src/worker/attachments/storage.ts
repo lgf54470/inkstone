@@ -101,7 +101,7 @@ export async function persistAttachment(
     input.createdAt,
     sha256,
   )
-  let storedObject = false
+  let hasStoredObject = false
   const objectRow = {
     user_id: input.userId,
     id: input.id,
@@ -119,7 +119,7 @@ export async function persistAttachment(
     mime,
     sha256,
   })
-  storedObject = true
+  hasStoredObject = true
 
   try {
     await env.DB.prepare(
@@ -142,7 +142,7 @@ export async function persistAttachment(
       )
       .run()
   } catch (error) {
-    if (storedObject) {
+    if (hasStoredObject) {
       try {
         await deleteAttachmentObjects(env, storage, [objectKey])
       } catch (cleanupError) {

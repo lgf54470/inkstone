@@ -104,19 +104,19 @@ export async function renameTag(tag: Tag, value: string): Promise<void> {
     return
   }
 
-  let refreshed = true
+  let isRefreshed = true
   try {
     await useNotes.getState().pull({ force: true })
     rewriteLoadedNoteContents(tag.name, destination)
   } catch {
-    refreshed = false
+    isRefreshed = false
   }
   useUi.getState().toast({
     title: t('tags.renamed'),
     description: withRefreshWarning(t('tags.updated_note_bodies_value0', {
       value0: 'renamed' in result ? result.renamed : tag.count,
-    }), refreshed),
-    tone: refreshed ? 'success' : 'warning',
+    }), isRefreshed),
+    tone: isRefreshed ? 'success' : 'warning',
   })
 }
 
@@ -151,20 +151,20 @@ export async function deleteTag(tag: Tag): Promise<void> {
     return
   }
 
-  let refreshed = true
+  let isRefreshed = true
   try {
     await useNotes.getState().pull({ force: true })
     rewriteLoadedNoteContents(tag.name, null)
   } catch {
-    refreshed = false
+    isRefreshed = false
   }
   useUi.getState().toast({
     title: t('tags.deleted'),
     description: withRefreshWarning(
       t('tags.updated_note_bodies_value0', { value0: result.affected }),
-      refreshed,
+      isRefreshed,
     ),
-    tone: refreshed ? 'success' : 'warning',
+    tone: isRefreshed ? 'success' : 'warning',
   })
 }
 

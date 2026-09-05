@@ -19,12 +19,12 @@ interface PwaState {
 }
 
 let installPrompt: InstallPromptEvent | null = null
-let initialized = false
-let updateToastShown = false
-let reloadForUpdate = false
+let isInitialized = false
+let hasUpdateToastShown = false
+let shouldReloadForUpdate = false
 let serviceWorkerRegistration: ServiceWorkerRegistration | null = null
-let warmupRequested = false
-let warmupScheduled = false
+let hasWarmupRequested = false
+let isWarmupScheduled = false
 
 export const usePwa = create<PwaState>((set) => ({
   installAvailable: false,
@@ -50,8 +50,8 @@ export const usePwa = create<PwaState>((set) => ({
 }))
 
 export function initializePwa(): void {
-  if (initialized || typeof window === 'undefined') return
-  initialized = true
+  if (isInitialized || typeof window === 'undefined') return
+  isInitialized = true
 
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault()
@@ -67,14 +67,14 @@ export function initializePwa(): void {
 
   navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloadForUpdate) location.reload()
+    if (shouldReloadForUpdate) location.reload()
   })
   window.addEventListener('online', scheduleOfflineWarmup)
   void registerServiceWorker()
 }
 
 export function requestOfflineWarmup(): void {
-  warmupRequested = true
+  hasWarmupRequested = true
   scheduleOfflineWarmup()
 }
 
@@ -113,13 +113,13 @@ async function registerServiceWorker(): Promise<void> {
 }
 
 function scheduleOfflineWarmup(): void {
-  if (!warmupRequested || warmupScheduled || !navigator.onLine) return
+  if (!hasWarmupRequested || isWarmupScheduled || !navigator.onLine) return
   const worker = serviceWorkerRegistration?.active ?? navigator.serviceWorker?.controller
   if (!worker) return
-  warmupScheduled = true
+  isWarmupScheduled = true
   const run = () => {
-    warmupScheduled = false
-    if (!warmupRequested || !navigator.onLine) return
+    isWarmupScheduled = false
+    if (!hasWarmupRequested || !navigator.onLine) return
     worker.postMessage({ type: 'WARM_OFFLINE_CACHE' })
   }
   const idleWindow = window as Window & {
@@ -156,8 +156,8 @@ function handleServiceWorkerMessage(event: MessageEvent): void {
 }
 
 function notifyUpdate(worker: ServiceWorker): void {
-  if (updateToastShown) return
-  updateToastShown = true
+  if (hasUpdateToastShown) return
+  hasUpdateToastShown = true
   const durationMs = 30_000
   useUi.getState().toast({
     title: t('pwa.update_ready'),
@@ -174,7 +174,7 @@ function notifyUpdate(worker: ServiceWorker): void {
   // Reset the flag once the toast is gone, so a later installed worker can
   // notify again instead of being permanently suppressed.
   window.setTimeout(() => {
-    updateToastShown = false
+    hasUpdateToastShown = false
   }, durationMs + 2_000)
 }
 
@@ -190,7 +190,7 @@ async function applyUpdate(worker: ServiceWorker): Promise<void> {
     })
     return
   }
-  reloadForUpdate = true
+  shouldReloadForUpdate = true
   worker.postMessage({ type: 'SKIP_WAITING' })
 }
 

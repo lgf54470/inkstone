@@ -181,7 +181,7 @@ export const Preview = memo(function Preview({
 
   useEffect(() => {
     const revision = ++preparationRef.current
-    let cancelled = false
+    let isCancelled = false
 
     const staging = document.createElement('div')
     staging.innerHTML = rendered.html
@@ -191,7 +191,7 @@ export const Preview = memo(function Preview({
         await resolveNoteEmbeds(staging, {
           currentContent: debounced,
           currentTitle: embedContextTitle,
-          isCurrent: () => !cancelled && revision === preparationRef.current,
+          isCurrent: () => !isCancelled && revision === preparationRef.current,
         })
       }
       await enhancePreview(staging, {
@@ -203,7 +203,7 @@ export const Preview = memo(function Preview({
           : 0,
       })
       enhanceTablesInRoot(staging)
-      if (cancelled || revision !== preparationRef.current) return
+      if (isCancelled || revision !== preparationRef.current) return
 
       restorePreviewInteractionState(staging, capturePreviewInteractionState(hostRef.current))
 
@@ -222,7 +222,7 @@ export const Preview = memo(function Preview({
     void prepare()
 
     return () => {
-      cancelled = true
+      isCancelled = true
     }
   }, [
     debounced,
@@ -690,16 +690,16 @@ function scrollToWikiTarget(
   const id = target.blockId ? `^${target.blockId}` : slugifyHeading(target.heading!)
   let attempts = 0
   let timer = 0
-  let cancelled = false
+  let isCancelled = false
   const find = () => {
-    if (cancelled || !isCurrent()) return
+    if (isCancelled || !isCurrent()) return
     const element = hostRef.current?.querySelector(`#${CSS.escape(id)}`)
     if (element) scrollElementIntoView(element)
     else if (++attempts < 12) timer = window.setTimeout(find, 50)
   }
   find()
   return () => {
-    cancelled = true
+    isCancelled = true
     window.clearTimeout(timer)
   }
 }

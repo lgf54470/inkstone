@@ -12,7 +12,7 @@ export function adoptNote(note: Note | NoteSummary, set: SetNotesState, get: () 
     const hasContent = 'content' in note;
     const incomingSummary = stripContent(note);
     const acceptContent = hasContent && !dirty.has(note.id);
-    let shellChanged = false;
+    let hasShellChanged = false;
     set((state) => {
         const currentSummary = state.notes[note.id];
         const reconciled = applyPendingNoteMutations(note.id, mergeDirtySummary(currentSummary, incomingSummary));
@@ -24,7 +24,7 @@ export function adoptNote(note: Note | NoteSummary, set: SetNotesState, get: () 
         const contentChanged = acceptContent && state.contents[note.id] !== nextContent;
         const nextSaveStatus = dirty.size ? state.saveStatus : 'synced';
         const statusChanged = state.saveStatus !== nextSaveStatus;
-        shellChanged = summaryChanged;
+        hasShellChanged = summaryChanged;
         if (!summaryChanged && !contentChanged && !statusChanged)
             return state;
         return {
@@ -40,7 +40,7 @@ export function adoptNote(note: Note | NoteSummary, set: SetNotesState, get: () 
             updatedAt: note.updatedAt,
         });
     }
-    if (shellChanged)
+    if (hasShellChanged)
         scheduleShellSave(get);
 }
 export function stripContent(note: Note | NoteSummary): NoteSummary {

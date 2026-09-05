@@ -335,7 +335,7 @@ export async function buildJsonExport(env: Env, userId: string): Promise<Uint8Ar
 
   append(`${JSON.stringify(metadata).slice(0, -1)},"notes":[`)
   let afterId = ''
-  let firstNote = true
+  let isFirstNote = true
   while (true) {
     const page = await env.DB.prepare(
       `SELECT ${NOTE_COLUMNS_FULL} FROM notes n
@@ -344,8 +344,8 @@ export async function buildJsonExport(env: Env, userId: string): Promise<Uint8Ar
     if (!page.results.length) break
 
     for (const row of page.results) {
-      append(`${firstNote ? '' : ','}${JSON.stringify(toNote(row))}`)
-      firstNote = false
+      append(`${isFirstNote ? '' : ','}${JSON.stringify(toNote(row))}`)
+      isFirstNote = false
     }
 
     afterId = page.results.at(-1)!.id

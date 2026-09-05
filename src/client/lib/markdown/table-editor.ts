@@ -14,7 +14,7 @@ export interface ParsedTable {
 export function splitTableRow(line: string): string[] {
   const cells: string[] = [];
   let current = '';
-  let escaped = false;
+  let isEscaped = false;
 
   const trimmed = line.trim();
   let str = trimmed.startsWith('|') ? trimmed.slice(1) : trimmed;
@@ -24,12 +24,12 @@ export function splitTableRow(line: string): string[] {
 
   for (let i = 0; i < str.length; i++) {
     const char = str[i];
-    if (escaped) {
+    if (isEscaped) {
       current += char;
-      escaped = false;
+      isEscaped = false;
     } else if (char === '\\') {
       current += char;
-      escaped = true;
+      isEscaped = true;
     } else if (char === '|') {
       cells.push(current.trim());
       current = '';
@@ -80,15 +80,15 @@ export function formatDelimiterCell(align: ColumnAlignment, width = 3): string {
 
 export function findColumnIndexAtOffset(line: string, offset: number): number {
   let col = 0;
-  let inEscape = false;
+  let isInEscape = false;
   const clampedOffset = Math.max(0, Math.min(offset, line.length));
 
   for (let i = 0; i < clampedOffset; i++) {
     const char = line[i];
-    if (inEscape) {
-      inEscape = false;
+    if (isInEscape) {
+      isInEscape = false;
     } else if (char === '\\') {
-      inEscape = true;
+      isInEscape = true;
     } else if (char === '|') {
       const isLeading = line.slice(0, i).trim() === '';
       if (!isLeading) {

@@ -35,8 +35,8 @@ type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? Partial<T[K]> : T
 let saveTimer: number | undefined
 let pendingSettingsPatch: DeepPartial<UserSettings> | null = null
 let inFlightSettingsPatch: DeepPartial<UserSettings> | null = null
-let pendingSettingsShouldNotify = false
-let settingsSaveInFlight = false
+let shouldNotifyPendingSettings = false
+let isSettingsSaveInFlight = false
 let settingsRetryDelay = 1_500
 let settingsEpoch = 0
 let settingsSaveToken = 0
@@ -224,7 +224,7 @@ export const useSession = create<SessionState>((set, get) => ({
       }
 
       window.clearTimeout(saveTimer)
-      if (settingsSaveInFlight) await settingsSaveCompletion
+      if (isSettingsSaveInFlight) await settingsSaveCompletion
       window.clearTimeout(saveTimer)
       await flushSettingsPatch(set, get)
       const unsaved = pending + (pendingSettingsPatch ? 1 : 0)
@@ -272,7 +272,7 @@ export const useSession = create<SessionState>((set, get) => ({
     syncAppearanceToDom(next)
     cacheCurrentSession(get())
     pendingSettingsPatch = mergeSettingsPatches(pendingSettingsPatch, patch)
-    pendingSettingsShouldNotify ||= !options?.silent
+    shouldNotifyPendingSettings ||= !options?.silent
 
 
     window.clearTimeout(saveTimer)
@@ -284,14 +284,14 @@ type SessionSetter = (partial: Partial<SessionState>) => void
 
 async function flushSettingsPatch(set: SessionSetter, get: () => SessionState): Promise<void> {
   saveTimer = undefined
-  if (settingsSaveInFlight || !pendingSettingsPatch) return
+  if (isSettingsSaveInFlight || !pendingSettingsPatch) return
 
   const outgoing = pendingSettingsPatch
-  const shouldNotify = pendingSettingsShouldNotify
+  const shouldNotify = shouldNotifyPendingSettings
   pendingSettingsPatch = null
-  pendingSettingsShouldNotify = false
+  shouldNotifyPendingSettings = false
   inFlightSettingsPatch = outgoing
-  settingsSaveInFlight = true
+  isSettingsSaveInFlight = true
   let resolveCompletion!: () => void
   const completion = new Promise<void>((resolve) => {
     resolveCompletion = resolve
@@ -332,7 +332,7 @@ async function flushSettingsPatch(set: SessionSetter, get: () => SessionState): 
   } finally {
     if (epoch === settingsEpoch && token === settingsSaveToken) {
       inFlightSettingsPatch = null
-      settingsSaveInFlight = false
+      isSettingsSaveInFlight = false
       if (pendingSettingsPatch && saveTimer === undefined) {
         saveTimer = window.setTimeout(() => void flushSettingsPatch(set, get), 0)
       }
@@ -346,8 +346,8 @@ function resetSettingsPersistence(userId: string | null): void {
   saveTimer = undefined
   pendingSettingsPatch = null
   inFlightSettingsPatch = null
-  pendingSettingsShouldNotify = false
-  settingsSaveInFlight = false
+  shouldNotifyPendingSettings = false
+  isSettingsSaveInFlight = false
   settingsSaveCompletion = Promise.resolve()
   settingsRetryDelay = 1_500
   settingsUserId = userId

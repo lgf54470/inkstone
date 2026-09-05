@@ -19,7 +19,7 @@ export function BacklinksPanel({ noteId }: {
     const cursor = useNotes((s) => s.cursor);
     useEffect(() => {
         const controller = new AbortController();
-        let cancelled = false;
+        let isCancelled = false;
         const forceRetry = forceRetryRef.current;
         forceRetryRef.current = false;
         setLinks(null);
@@ -27,15 +27,15 @@ export function BacklinksPanel({ noteId }: {
         void (async () => {
             try {
                 const res = await getNoteBacklinks(noteId, rev, cursor, controller.signal, { force: forceRetry });
-                if (!cancelled)
+                if (!isCancelled)
                     setLinks(res);
             } catch (error) {
-                if (!cancelled)
+                if (!isCancelled)
                     setLoadError(errorMessage(error));
             }
         })();
         return () => {
-            cancelled = true;
+            isCancelled = true;
             controller.abort();
         };
     }, [noteId, rev, cursor, reload]);

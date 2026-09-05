@@ -52,11 +52,11 @@ export function startTableCellEditing(
   sel?.removeAllRanges();
   sel?.addRange(range);
 
-  let committed = false;
+  let isCommitted = false;
 
   const commit = (shouldMove?: 'next' | 'prev' | 'down') => {
-    if (committed) return;
-    committed = true;
+    if (isCommitted) return;
+    isCommitted = true;
     cell.contentEditable = 'false';
     cell.classList.remove('is-editing-cell');
     cell.removeEventListener('keydown', onKeyDown);
@@ -99,7 +99,7 @@ export function startTableCellEditing(
     if (e.key === 'Escape') {
       e.preventDefault();
       cell.textContent = originalText;
-      committed = true;
+      isCommitted = true;
       cell.contentEditable = 'false';
       cell.classList.remove('is-editing-cell');
       cell.removeEventListener('keydown', onKeyDown);

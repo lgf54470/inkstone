@@ -56,7 +56,7 @@ export function SharePanel({ onClose }: {
         }
         const noteId = note.id;
         const controller = new AbortController();
-        let cancelled = false;
+        let isCancelled = false;
         setShare(undefined);
         setLoadError(null);
         setPassword('');
@@ -67,18 +67,18 @@ export function SharePanel({ onClose }: {
         void (async () => {
             try {
                 const res = await api.share.get(note.id, controller.signal);
-                if (cancelled || loadEpoch.current !== epoch || noteIdRef.current !== noteId)
+                if (isCancelled || loadEpoch.current !== epoch || noteIdRef.current !== noteId)
                     return;
                 setShare(res.share);
                 setShouldUsePassword(Boolean(res.share?.hasPassword));
                 setExpiry(res.share?.expiresAt ? KEEP_CURRENT_EXPIRY : '0');
             } catch (error) {
-                if (!cancelled && loadEpoch.current === epoch && noteIdRef.current === noteId)
+                if (!isCancelled && loadEpoch.current === epoch && noteIdRef.current === noteId)
                     setLoadError(errorMessage(error));
             }
         })();
         return () => {
-            cancelled = true;
+            isCancelled = true;
             controller.abort();
         };
     }, [note?.id, reload]);

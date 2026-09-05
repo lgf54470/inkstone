@@ -580,14 +580,14 @@ export const useUi = create<UiState>((set, get) => ({
   applyAppearance: (patch) => {
     const current = get()
     const next: Record<string, ThemePref | AccentName | BackgroundName | number> = {}
-    let changed = false
+    let hasChanged = false
     for (const key of Object.keys(patch) as (keyof typeof patch)[]) {
       const value = patch[key]
       if (value === undefined || value === current[key]) continue
       next[key] = value
-      changed = true
+      hasChanged = true
     }
-    if (!changed) return
+    if (!hasChanged) return
     set(next as unknown as typeof patch)
     applyThemeToDom(get())
   },

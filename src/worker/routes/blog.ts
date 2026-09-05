@@ -1272,13 +1272,13 @@ blogManageRoutes.post('/batch-toggle-group', requireAuth, async (c) => {
     ).bind(userId).all<{ id: string; parent_id: string | null }>()
 
     const targetFolderIds = new Set<string>([body.target])
-    let added = true
-    while (added) {
-      added = false
+    let hasAdded = true
+    while (hasAdded) {
+      hasAdded = false
       for (const f of allFolders || []) {
         if (f.parent_id && targetFolderIds.has(f.parent_id) && !targetFolderIds.has(f.id)) {
           targetFolderIds.add(f.id)
-          added = true
+          hasAdded = true
         }
       }
     }

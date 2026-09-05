@@ -25,9 +25,9 @@ export async function acquireLease(
   ).bind(key, value, now).run()
   if (!acquired.meta.changes) throw ApiError.conflict(conflictMessage)
 
-  let released = false
+  let isReleased = false
   const renew = async (): Promise<boolean> => {
-    if (released) return false
+    if (isReleased) return false
     const now = Date.now()
     const renewed = await db.prepare(
       `UPDATE app_meta SET value = ?3
@@ -36,8 +36,8 @@ export async function acquireLease(
     return renewed.meta.changes === 1
   }
   const release = (async () => {
-    if (released) return
-    released = true
+    if (isReleased) return
+    isReleased = true
     await db.prepare(
       `DELETE FROM app_meta WHERE key = ?1 AND json_extract(value, '$.token') = ?2`,
     ).bind(key, token).run().catch((error) => {

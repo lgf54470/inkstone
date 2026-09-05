@@ -277,7 +277,7 @@ async function* streamParts(
   const reader = stream.getReader()
   let buffer = new Uint8Array(partBytes)
   let used = 0
-  let completed = false
+  let hasCompleted = false
   try {
     while (true) {
       const { value, done } = await reader.read()
@@ -296,9 +296,9 @@ async function* streamParts(
       }
     }
     if (used) yield buffer.slice(0, used)
-    completed = true
+    hasCompleted = true
   } finally {
-    if (!completed) await reader.cancel().catch(() => {})
+    if (!hasCompleted) await reader.cancel().catch(() => {})
     reader.releaseLock()
   }
 }
@@ -365,8 +365,8 @@ export async function s3Test(
     )
     const url = objectUrl(config, key)
     const payload = new TextEncoder().encode(`inkstone ${new Date().toISOString()}`)
-    let written = false
-    let readWriteSucceeded = false
+    let hasWritten = false
+    let hasReadWriteSucceeded = false
     let primaryFailure: TestConnectionResult | null = null
     try {
       const put = await aws.fetch(url, {
@@ -377,7 +377,7 @@ export async function s3Test(
         redirect: 'manual',
       })
       if (!put.ok) return { ok: false, message: await describeError(put, key) }
-      written = true
+      hasWritten = true
       await put.body?.cancel().catch(() => {})
 
       const get = await aws.fetch(url, { method: 'GET', signal, redirect: 'manual' })
@@ -391,14 +391,14 @@ export async function s3Test(
         return primaryFailure
       }
 
-      readWriteSucceeded = true
+      hasReadWriteSucceeded = true
       return {
         ok: true,
         message: 'Connection succeeded with read and write access',
         latencyMs: Date.now() - started,
       }
     } finally {
-      if (written) {
+      if (hasWritten) {
         let cleanupError: Error | null = null
         try {
           const removed = await aws.fetch(url, {
@@ -414,7 +414,7 @@ export async function s3Test(
           cleanupError = new Error(`The test file could not be removed: ${friendlyError(error)}`)
         }
         if (cleanupError) {
-          if (readWriteSucceeded) throw cleanupError
+          if (hasReadWriteSucceeded) throw cleanupError
           if (primaryFailure) primaryFailure.message += `. ${cleanupError.message}`
           console.warn('[inkstone] S3 test object cleanup failed:', cleanupError.message)
         }

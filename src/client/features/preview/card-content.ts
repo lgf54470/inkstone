@@ -53,7 +53,7 @@ export function useNoteCardContent(
       statusRef.current = 'loading'
     }
     const revision = ++revisionRef.current
-    let cancelled = false
+    let isCancelled = false
     if (statusRef.current !== 'ready') {
       setStatus('loading')
       setHtml('')
@@ -62,7 +62,7 @@ export function useNoteCardContent(
     void (async () => {
       try {
         const content = await useNotes.getState().peekContent(noteId)
-        if (cancelled || revision !== revisionRef.current) return
+        if (isCancelled || revision !== revisionRef.current) return
         if (content == null) {
           if (hydrated || rev > 0) {
             statusRef.current = 'error'
@@ -88,21 +88,21 @@ export function useNoteCardContent(
           nextHtml = staging.innerHTML
           remember(htmlCache, cacheKey, nextHtml, HTML_CACHE_LIMIT)
         }
-        if (cancelled || revision !== revisionRef.current) return
+        if (isCancelled || revision !== revisionRef.current) return
         const highlighted = headline ? applyHighlightToHtml(nextHtml, buildHighlightTerms(headline)) : nextHtml
         setHtml(highlighted)
         setIsTruncated(truncatedContent.length < content.length)
         statusRef.current = 'ready'
         setStatus('ready')
       } catch {
-        if (!cancelled && revision === revisionRef.current) {
+        if (!isCancelled && revision === revisionRef.current) {
           statusRef.current = 'error'
           setStatus('error')
         }
       }
     })()
     return () => {
-      cancelled = true
+      isCancelled = true
     }
   }, [target.missing, target.noteId, dark, maxLength, previewMath, headline, rev, hydrated, debouncedLiveContent])
 
@@ -124,18 +124,18 @@ export function useNoteBacklinks(noteId: string | null): NoteBacklinks {
       return
     }
     const controller = new AbortController()
-    let cancelled = false
+    let isCancelled = false
     setLinks(null)
     void (async () => {
       try {
         const response = await getNoteBacklinks(noteId, rev, cursor, controller.signal)
-        if (!cancelled) setLinks(response)
+        if (!isCancelled) setLinks(response)
       } catch {
-        if (!cancelled) setLinks([])
+        if (!isCancelled) setLinks([])
       }
     })()
     return () => {
-      cancelled = true
+      isCancelled = true
       controller.abort()
     }
   }, [noteId, rev, cursor])
@@ -207,7 +207,7 @@ function splitByTerms(text: string, terms: string[]): Array<{ text: string; high
   const lower = text.toLowerCase()
   const result: Array<{ text: string; highlight: boolean }> = []
   let position = 0
-  let changed = false
+  let hasChanged = false
   while (position < text.length) {
     const match = findNextTerm(lower, terms, position)
     if (!match) {
@@ -220,14 +220,14 @@ function splitByTerms(text: string, terms: string[]): Array<{ text: string; high
     const end = match.index + match.term.length
     if (!isInsideWord(text, match.index, match.term)) {
       result.push({ text: text.slice(match.index, end), highlight: true })
-      changed = true
+      hasChanged = true
     }
     else {
       result.push({ text: text.slice(match.index, end), highlight: false })
     }
     position = end
   }
-  return changed ? result : null
+  return hasChanged ? result : null
 }
 
 function findNextTerm(lower: string, terms: string[], start: number): { term: string; index: number } | null {

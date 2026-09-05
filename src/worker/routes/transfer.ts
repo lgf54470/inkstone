@@ -168,7 +168,7 @@ transferRoutes.post('/import', async (c) => {
   for (const selected of selectedFiles) {
     const file = selected.file
     const name = selected.path.toLowerCase()
-    let strictBackup = false
+    let isStrictBackup = false
     try {
       if (name.endsWith('.zip')) {
         const bytes = new Uint8Array(await file.arrayBuffer())
@@ -183,11 +183,11 @@ transferRoutes.post('/import', async (c) => {
           maxTotalBytes: LIMITS.importUploadMaxBytes + 1024,
           include: isBackupControlPath,
         })
-        strictBackup = controls.some((entry) =>
+        isStrictBackup = controls.some((entry) =>
           isMarkdownBackupControlPath(entry.path) || isInkstoneBackupManifest(entry),
         )
         const backup = await selectCompleteZipBackup(controls)
-        if (strictBackup && !backup) {
+        if (isStrictBackup && !backup) {
           throw new Error('The Inkstone backup ZIP is missing a valid manifest or COMPLETE marker')
         }
         if (backup) {
@@ -282,7 +282,7 @@ transferRoutes.post('/import', async (c) => {
         addWarning(result, `Skipped unsupported file: ${selected.path}`)
       }
     } catch (err) {
-      if (strictBackup) {
+      if (isStrictBackup) {
         if (err instanceof ApiError) throw err
         throw ApiError.badRequest(
           `${selected.path}: ${err instanceof Error ? err.message : String(err)}`,
