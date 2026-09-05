@@ -288,6 +288,9 @@ const allowed = new Map([
     "// First H1 does not have mt-1.5",
     "// Second H1 has mt-1.5",
   ]],
+  ["src/client/features/preview/preview-interactions.ts", [
+    "/** DOM click handling for the rendered preview body: file/table/JS-runner actions, mermaid retry, code copy/collapse, task checkboxes, wiki/block/tag navigation, lightbox, anchors. */",
+  ]],
   ["src/client/features/settings/note-settings.tsx", [
     "// Live preview: what the template looks like with the placeholders filled in.",
   ]],

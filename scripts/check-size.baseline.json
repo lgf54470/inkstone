@@ -237,10 +237,12 @@
   "src/client/features/preview/pinned-windows-layer.tsx": {
     "longFns": 1
   },
-  "src/client/features/preview/preview.tsx": {
-    "lines": 683,
+  "src/client/features/preview/preview-interactions.ts": {
     "longFns": 2,
     "deepFns": 1
+  },
+  "src/client/features/preview/preview.tsx": {
+    "longFns": 1
   },
   "src/client/features/preview/table-interactive.ts": {
     "longFns": 3,
