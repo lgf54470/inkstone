@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ViewKind } from '@shared/types';
 import { cn } from '../../../lib/cn';
+import { tryParseStringArray } from '../../../lib/json';
 import { useNotes } from '../../../store/notes';
 import { leftDropTarget } from './SidebarDrop';
 
@@ -69,12 +70,7 @@ export function BottomNavButton({
         e.preventDefault();
         let ids: string[] = [];
         const multi = e.dataTransfer.getData('application/x-inkstone-notes');
-        if (multi) {
-          try {
-            const parsed = JSON.parse(multi);
-            if (Array.isArray(parsed) && parsed.length > 0) ids = parsed;
-          } catch {}
-        }
+        if (multi) ids = tryParseStringArray(multi);
         if (ids.length === 0) {
           const single = e.dataTransfer.getData('application/x-inkstone-note');
           if (single) ids = [single];
@@ -128,12 +124,7 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
             e.preventDefault();
             let ids: string[] = [];
             const multi = e.dataTransfer.getData('application/x-inkstone-notes');
-            if (multi) {
-                try {
-                    const parsed = JSON.parse(multi);
-                    if (Array.isArray(parsed) && parsed.length > 0) ids = parsed;
-                } catch {}
-            }
+            if (multi) ids = tryParseStringArray(multi);
             if (ids.length === 0) {
                 const single = e.dataTransfer.getData('application/x-inkstone-note');
                 if (single) ids = [single];

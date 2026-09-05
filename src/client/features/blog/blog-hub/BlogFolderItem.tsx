@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../lib/cn';
 import { t } from '../../../lib/i18n';
+import { tryParseStringArray } from '../../../lib/json';
 import { Switch } from '../../../components/form';
 import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../../components/overlay';
 import { useUi } from '../../../store/ui';
@@ -88,12 +89,10 @@ export function BlogFolderItem({
     setIsDragOver(false)
     const raw = e.dataTransfer.getData('application/inkstone-blog-post-ids')
     if (raw) {
-      try {
-        const ids = JSON.parse(raw) as string[]
-        if (Array.isArray(ids) && ids.length) {
-          onDropPosts(ids)
-        }
-      } catch {}
+      const ids = tryParseStringArray(raw)
+      if (ids.length) {
+        onDropPosts(ids)
+      }
     }
   }
 

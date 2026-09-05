@@ -110,7 +110,9 @@ export async function renderNoteToExportHtml(
           if (!response.ok) return
           const dataUrl = await blobToDataUrl(await response.blob())
           if (dataUrl) image.setAttribute('src', dataUrl)
-        } catch {}
+        } catch (error) {
+          console.warn('[export] failed to embed remote image, keeping original URL', error)
+        }
       }),
     )
 

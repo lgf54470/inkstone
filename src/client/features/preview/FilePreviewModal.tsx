@@ -298,7 +298,9 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
       await navigator.clipboard.writeText(textContent)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch {}
+    } catch (error) {
+      console.warn('[preview] failed to copy text', error)
+    }
   }
 
   const renderedMarkdown = useMemo(() => {

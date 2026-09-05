@@ -160,7 +160,9 @@ function loadInitialFilters(): { excludeBots: boolean; excludeSelfReferrers: boo
           excludeOwner: Boolean(parsed.excludeOwner),
         }
       }
-    } catch {}
+    } catch (error) {
+      console.warn('[blog-store] failed to load traffic filters', error)
+    }
   }
   return {
     excludeBots: true,
@@ -180,7 +182,9 @@ function loadInitialRetention(): { logRetentionDays: number; maxLogRecords: numb
           maxLogRecords: typeof parsed.maxLogRecords === 'number' ? parsed.maxLogRecords : 1000,
         }
       }
-    } catch {}
+    } catch (error) {
+      console.warn('[blog-store] failed to load retention settings', error)
+    }
   }
   return {
     logRetentionDays: 30,
@@ -229,7 +233,9 @@ export const useBlogStore = create<BlogStoreState>((set, get) => ({
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem(TRAFFIC_FILTERS_KEY, JSON.stringify(updated))
-        } catch {}
+        } catch (error) {
+          console.warn('[blog-store] failed to persist traffic filters', error)
+        }
       }
       return updated
     })
@@ -247,7 +253,9 @@ export const useBlogStore = create<BlogStoreState>((set, get) => ({
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(RETENTION_SETTINGS_KEY, JSON.stringify(newSettings))
-      } catch {}
+      } catch (error) {
+        console.warn('[blog-store] failed to persist retention settings', error)
+      }
     }
   },
 

@@ -124,7 +124,9 @@ export function setLocale(next: AppLocale, persist = true): void {
         try {
             localStorage.setItem(STORAGE_KEY, next);
         }
-        catch { }
+        catch (error) {
+            console.warn('[i18n] failed to persist locale preference', error);
+        }
     }
     if (loadedLocales.has(next)) {
         applyLocaleToDom();
@@ -156,7 +158,9 @@ function detectInitialLocale(): AppLocale {
         if (saved === 'zh-CN' || saved === 'en-US')
             return saved;
     }
-    catch { }
+    catch (error) {
+        console.warn('[i18n] failed to read stored locale', error);
+    }
     return navigator.language.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en-US';
 }
 function applyLocaleToDom(): void {

@@ -23,6 +23,7 @@ import {
 import { LIMITS } from '@shared/constants';
 import { cn } from '../../../lib/cn';
 import { errorMessage } from '../../../lib/errors';
+import { tryParseStringArray } from '../../../lib/json';
 import { IconButton, SectionLabel } from '../../../components/primitives';
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../../components/overlay';
 import { useUi } from '../../../store/ui';
@@ -422,12 +423,7 @@ export function FolderRow({ node, siblings, index, parentNode, parentSiblings, o
             setDropState('none');
             let noteIds: string[] = [];
             const multiNotesRaw = e.dataTransfer.getData('application/x-inkstone-notes');
-            if (multiNotesRaw) {
-                try {
-                    const parsed = JSON.parse(multiNotesRaw);
-                    if (Array.isArray(parsed) && parsed.length > 0) noteIds = parsed;
-                } catch {}
-            }
+            if (multiNotesRaw) noteIds = tryParseStringArray(multiNotesRaw);
             if (noteIds.length === 0) {
                 const singleId = e.dataTransfer.getData('application/x-inkstone-note');
                 if (singleId) noteIds = [singleId];
