@@ -898,7 +898,6 @@
   }
 }
 
-/* js-example 块固定为上下结构：JS 代码在上、运行结果在下，代码不自动换行 */
 .ink-prose .markdown-example-grid.js-example-grid {
   grid-template-columns: minmax(0, 1fr);
 }
