@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DatabaseSync } from 'node:sqlite'
+import { createD1Database as createDb } from './d1-harness'
 import {
   assertNotLocked,
   clearLoginFailures,
@@ -17,60 +17,6 @@ import {
   renewSession,
 } from '../src/worker/lib/session-store'
 import { SESSION_TTL_MS } from '../src/shared/constants'
-
-/**
- * Minimal D1Database-compatible shim over node:sqlite so the real upsert SQL
- * in throttle.ts / session-store.ts executes against SQLite instead of being
- * re-implemented in the test.
- */
-interface Prepared {
-  bind(...values: unknown[]): Prepared
-  run(): Promise<{ meta: { changes: number } }>
-  all(): Promise<{ results: Array<Record<string, unknown>> }>
-  first(): Promise<Record<string, unknown> | null>
-}
-
-type DbLike = {
-  prepare(sql: string): Prepared
-  batch(statements: Prepared[]): Promise<Array<{ meta: { changes: number } }>>
-}
-
-function createDb(): DbLike {
-  const sqlite = new DatabaseSync(':memory:')
-  sqlite.exec(`
-    CREATE TABLE login_attempts (
-      key TEXT PRIMARY KEY,
-      fails INTEGER NOT NULL DEFAULT 0,
-      last_fail_at INTEGER NOT NULL,
-      locked_until INTEGER
-    );
-    CREATE TABLE sessions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      expires_at INTEGER NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-  `)
-  const prepare = (sql: string) => {
-    const makeStatement = (values: unknown[]): Prepared => {
-      const statement = sqlite.prepare(sql)
-      return {
-        bind: (...bound: unknown[]) => makeStatement(bound),
-        run: () => {
-          const info = statement.run(...values)
-          return { meta: { changes: Number(info.changes) } }
-        },
-        all: () => ({ results: statement.all(...values) as Array<Record<string, unknown>> }),
-        first: () => (statement.get(...values) as Record<string, unknown> | undefined) ?? null,
-      }
-    }
-    return makeStatement([])
-  }
-  return {
-    prepare,
-    batch: (statements) => Promise.all(statements.map((statement) => statement.run())),
-  }
-}
 
 describe('session-store', () => {
   it('generates unique 64-hex tokens that pass the session-token check', async () => {

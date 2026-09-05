@@ -54,105 +54,18 @@ import {
   regenerateRecoveryCodes,
   startTotpSetup,
 } from '../src/worker/lib/totp-service'
+import { createD1Database as createDb, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
 const NOW = 2_000_000_000_000
 const TTL = 300_000
 const USER = 'user-1'
 const SESSION_ID = 'session-1'
 
-interface Prepared {
-  bind(...values: unknown[]): Prepared
-  run(): Promise<{ meta: { changes: number } }>
-  all(): Promise<{ results: Array<Record<string, unknown>> }>
-  first(): Promise<Record<string, unknown> | null>
-}
 
-type DbShim = {
-  prepare(sql: string): Prepared
-  batch(statements: Prepared[]): Promise<Array<{ meta: { changes: number } }>>
-}
 
-function createDb(): DbShim {
-  const sqlite = new DatabaseSync(':memory:')
-  sqlite.exec(`
-    CREATE TABLE sessions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      expires_at INTEGER NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-    CREATE TABLE login_attempts (
-      key TEXT PRIMARY KEY,
-      fails INTEGER NOT NULL DEFAULT 0,
-      last_fail_at INTEGER NOT NULL,
-      locked_until INTEGER
-    );
-    CREATE TABLE totp_credentials (
-      user_id TEXT PRIMARY KEY,
-      secret_ciphertext TEXT NOT NULL,
-      enabled_at INTEGER,
-      pending_token_hash TEXT,
-      pending_session_id TEXT,
-      pending_expires_at INTEGER,
-      recovery_generation TEXT NOT NULL DEFAULT '',
-      last_used_step INTEGER,
-      last_used_by TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-    CREATE TABLE totp_recovery_codes (
-      user_id TEXT NOT NULL,
-      code_hash TEXT NOT NULL,
-      generation TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      used_at INTEGER,
-      used_by TEXT,
-      PRIMARY KEY (user_id, code_hash)
-    );
-    CREATE TABLE totp_login_challenges (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      expires_at INTEGER NOT NULL,
-      claimed_by TEXT,
-      created_at INTEGER NOT NULL
-    );
-  `)
-  const prepare = (sql: string) => {
-    const makeStatement = (values: unknown[]): Prepared => {
-      const statement = sqlite.prepare(sql)
-      return {
-        bind: (...bound: unknown[]) => makeStatement(bound),
-        run: async () => {
-          const info = statement.run(...values)
-          return { meta: { changes: Number(info.changes) } }
-        },
-        all: () => ({ results: statement.all(...values) as Array<Record<string, unknown>> }),
-        first: () => (statement.get(...values) as Record<string, unknown> | undefined) ?? null,
-      }
-    }
-    return makeStatement([])
-  }
-  return {
-    prepare,
-    batch: async (statements) => {
-      const out: Array<{ meta: { changes: number } }> = []
-      for (const statement of statements) out.push(await statement.run())
-      return out
-    },
-  }
-}
 
-async function runSql(db: DbShim, sql: string, ...values: unknown[]): Promise<void> {
-  await db.prepare(sql).bind(...values).run()
-}
 
-async function firstRow(db: DbShim, sql: string, ...values: unknown[]): Promise<Record<string, unknown> | null> {
-  return db.prepare(sql).bind(...values).first()
-}
 
-async function allRows(db: DbShim, sql: string, ...values: unknown[]): Promise<Array<Record<string, unknown>>> {
-  return (await db.prepare(sql).bind(...values).all()).results
-}
 
 async function validCode(now = NOW): Promise<string> {
   return totpCodeForStep(H.SECRET, Math.floor(now / 1000 / 30))

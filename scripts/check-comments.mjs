@@ -590,6 +590,7 @@ const allowed = new Map([
     "/** Allow external https images; defaults to false (blocked). */",
   ]],
   ["src/client/lib/markdown/renderer/media.ts", [
+    "/** True for http(s) URLs that point to a different origin than the app itself. */",
     "// External https images are blocked by default (privacy default; the server",
     "// CSP drops `https:` from img-src while preview.externalImages is off, so",
     "// this is defense-in-depth for raw-HTML images too). Same-origin http(s)",
@@ -597,7 +598,6 @@ const allowed = new Map([
     "// skipped when the caller passes `{ externalImages: true }`.",
     "// Placeholder instead of a broken <img>: the browser never loads an",
     "// external image while blocked, so no request leaves the origin.",
-    "/** True for http(s) URLs that point to a different origin than the app itself. */",
   ]],
   ["src/client/lib/markdown/renderer/types.ts", [
     "/** `true` when the caller opted into loading external https images (preview.externalImages). */",
@@ -1205,7 +1205,6 @@ const allowed = new Map([
     "// With table alias:",
   ]],
   ["tests/throttle-session.test.ts", [
-    "/**\n * Minimal D1Database-compatible shim over node:sqlite so the real upsert SQL\n * in throttle.ts / session-store.ts executes against SQLite instead of being\n * re-implemented in the test.\n */",
     "// Rewind the last attempt far enough to expire the window and the lock.",
     "// The 4th failure reached the escalation chain (fails 2 → locked for the",
     "// ip key); assertNotLocked must now throw for that key but not others.",
