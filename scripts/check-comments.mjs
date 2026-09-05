@@ -1104,12 +1104,14 @@ const allowed = new Map([
     "// keeps handling the remainder and deletes.",
     "// `tagsMatch=all` intersects the tag filters, otherwise any match qualifies.",
   ]],
-  ["src/worker/routes/share.ts", [
-    "/* Malformed legacy tags degrade to \"no tags\" instead of failing the share render. */",
+  ["src/worker/routes/share/public.ts", [
     "// If header referer is simply this share page itself, it's not an external referrer",
     "/* An unparseable referer header simply means \"no external referrer\". */",
     "/* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */",
     "// Real human visit = not an automated bot/spider",
+  ]],
+  ["src/worker/routes/share/shares.ts", [
+    "/* Malformed legacy tags degrade to \"no tags\" instead of failing the share render. */",
   ]],
   ["src/worker/routes/sync.ts", [
     "// A non-empty `after` key always means the caller is mid-way through a",
