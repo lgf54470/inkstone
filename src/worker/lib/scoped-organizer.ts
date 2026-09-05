@@ -269,35 +269,53 @@ export interface ScopedTagInput {
 
 export type ScopedTagConflictMode = 'upsert' | 'keep-existing'
 
-export async function createScopedTag(
+async function loadScopedTagRow(
   db: D1Database,
   table: HubTagTable,
-  conflictMode: ScopedTagConflictMode,
   userId: string,
-  body: ScopedTagInput,
+  name: string,
+): Promise<TagRow | null> {
+  return db
+    .prepare(`SELECT ${TAG_COLUMNS} FROM ${table} WHERE user_id = ?1 AND name = ?2`)
+    .bind(userId, name)
+    .first<TagRow>()
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err)
+  return message.includes('UNIQUE') || message.includes('constraint')
+}
+
+async function upsertScopedTag(
+  db: D1Database,
+  table: HubTagTable,
+  userId: string,
+  name: string,
+  color: string | null,
+  id: string,
+  now: number,
 ): Promise<{ tag: ScopedTag; status: 200 | 201 }> {
-  const name = tagName(body.name)
-  if (!name) throw ApiError.badRequest(TAG_NAME_REQUIRED)
-  const id = body.id && isValidId(body.id) ? body.id : newId()
-  const now = Date.now()
-  const color = body.color ?? null
+  await db
+    .prepare(
+      `INSERT INTO ${table} (id, user_id, name, color, is_pinned, created_at)
+       VALUES (?1, ?2, ?3, ?4, 0, ?5)
+       ON CONFLICT(user_id, name) DO UPDATE SET color = COALESCE(?4, color)`,
+    )
+    .bind(id, userId, name, color, now)
+    .run()
+  const row = await loadScopedTagRow(db, table, userId, name)
+  return { tag: row ? toScopedTag(row) : { id, userId, name, color, isPinned: false, createdAt: now }, status: 201 }
+}
 
-  if (conflictMode === 'upsert') {
-    await db
-      .prepare(
-        `INSERT INTO ${table} (id, user_id, name, color, is_pinned, created_at)
-         VALUES (?1, ?2, ?3, ?4, 0, ?5)
-         ON CONFLICT(user_id, name) DO UPDATE SET color = COALESCE(?4, color)`,
-      )
-      .bind(id, userId, name, color, now)
-      .run()
-    const row = await db
-      .prepare(`SELECT ${TAG_COLUMNS} FROM ${table} WHERE user_id = ?1 AND name = ?2`)
-      .bind(userId, name)
-      .first<TagRow>()
-    return { tag: row ? toScopedTag(row) : { id, userId, name, color, isPinned: false, createdAt: now }, status: 201 }
-  }
-
+async function insertScopedTagKeepExisting(
+  db: D1Database,
+  table: HubTagTable,
+  userId: string,
+  name: string,
+  color: string | null,
+  id: string,
+  now: number,
+): Promise<{ tag: ScopedTag; status: 200 | 201 }> {
   try {
     await db
       .prepare(
@@ -311,16 +329,29 @@ export async function createScopedTag(
       status: 201,
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err)
-    if (message.includes('UNIQUE') || message.includes('constraint')) {
-      const existing = await db
-        .prepare(`SELECT ${TAG_COLUMNS} FROM ${table} WHERE user_id = ?1 AND name = ?2`)
-        .bind(userId, name)
-        .first<TagRow>()
-      if (existing) return { tag: toScopedTag(existing), status: 200 }
-    }
+    if (!isUniqueViolation(err)) throw err
+    const existing = await loadScopedTagRow(db, table, userId, name)
+    if (existing) return { tag: toScopedTag(existing), status: 200 }
     throw err
   }
+}
+
+export async function createScopedTag(
+  db: D1Database,
+  table: HubTagTable,
+  conflictMode: ScopedTagConflictMode,
+  userId: string,
+  body: ScopedTagInput,
+): Promise<{ tag: ScopedTag; status: 200 | 201 }> {
+  const name = tagName(body.name)
+  if (!name) throw ApiError.badRequest(TAG_NAME_REQUIRED)
+  const id = body.id && isValidId(body.id) ? body.id : newId()
+  const now = Date.now()
+  const color = body.color ?? null
+
+  return conflictMode === 'upsert'
+    ? await upsertScopedTag(db, table, userId, name, color, id, now)
+    : await insertScopedTagKeepExisting(db, table, userId, name, color, id, now)
 }
 
 export async function updateScopedTag(
