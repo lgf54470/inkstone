@@ -257,8 +257,7 @@
   "src/client/features/share/share-dashboard-view.tsx": {
     "longFns": 1
   },
-  "src/client/features/share/share-edit-modal.tsx": {
-    "lines": 559,
+  "src/client/features/share/share-edit-modal/use-share-edit-modal.ts": {
     "longFns": 1
   },
   "src/client/features/share/share-grid-view/index.tsx": {

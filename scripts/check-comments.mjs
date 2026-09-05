@@ -291,7 +291,7 @@ const allowed = new Map([
   ["src/client/features/settings/note-settings.tsx", [
     "// Live preview: what the template looks like with the placeholders filled in.",
   ]],
-  ["src/client/features/share/share-edit-modal.tsx", [
+  ["src/client/features/share/share-edit-modal/index.tsx", [
     "/* Public link display and quick actions */",
     "/* Core action triggers: analytics, qr code, share hub */",
     "/* Share status switch */",
