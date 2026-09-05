@@ -63,8 +63,22 @@ const allowedHanFragments = new Map([
         '\u4e2d\u6587',
     ]],
 ]);
-const english = readMessages(path.join(localeRoot, 'en-US.ts'), 'EN_US_MESSAGES');
-const chinese = readMessages(path.join(localeRoot, 'zh-CN.ts'), 'ZH_CN_MESSAGES');
+function readMessagesDir(directory) {
+    const messages = new Map();
+    for (const file of walk(directory)) {
+        if (!file.endsWith('.ts'))
+            continue;
+        for (const [key, value] of readMessages(file, 'messages')) {
+            if (messages.has(key))
+                failures.push(`${path.relative(process.cwd(), file)}: duplicate message key ${key}`);
+            messages.set(key, value);
+        }
+    }
+    return messages;
+}
+const english = readMessagesDir(path.join(localeRoot, 'en-US'));
+const chinese = readMessagesDir(path.join(localeRoot, 'zh-CN'));
+const zhLocaleDir = path.join(localeRoot, 'zh-CN');
 for (const key of english.keys()) {
     if (!chinese.has(key))
         failures.push(`missing zh-CN message: ${key}`);
@@ -91,7 +105,7 @@ const englishOnlyPaths = [
     path.resolve('.github'),
 ];
 for (const file of englishOnlyPaths.flatMap((target) => fs.existsSync(target) ? [...walk(target)] : [])) {
-    if (localizedDemoFiles.has(file) || file === path.join(localeRoot, 'zh-CN.ts') || !isTextSource(file))
+    if (localizedDemoFiles.has(file) || file.startsWith(zhLocaleDir + path.sep) || !isTextSource(file))
         continue;
     rejectHan(file);
 }
@@ -187,7 +201,7 @@ function rejectHan(file) {
     const before = checked.slice(0, match.index);
     const line = before.split(/\r?\n/).length;
     const column = match.index - Math.max(before.lastIndexOf('\n'), before.lastIndexOf('\r'));
-    failures.push(`${path.relative(process.cwd(), file)}:${line}:${column} Chinese text is allowed only in src/shared/locales/zh-CN.ts`);
+    failures.push(`${path.relative(process.cwd(), file)}:${line}:${column} Chinese text is allowed only under src/shared/locales/zh-CN/`);
 }
 function insideTranslationCall(node) {
     let current = node;

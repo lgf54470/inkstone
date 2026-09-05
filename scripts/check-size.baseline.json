@@ -484,12 +484,6 @@
   "src/shared/constants.ts": {
     "longFns": 1
   },
-  "src/shared/locales/en-US.ts": {
-    "lines": 3382
-  },
-  "src/shared/locales/zh-CN.ts": {
-    "lines": 3382
-  },
   "src/shared/markdown-utils.ts": {
     "lines": 958,
     "longFns": 2,
