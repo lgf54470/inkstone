@@ -565,23 +565,6 @@
   "src/worker/routes/community-templates.ts": {
     "longFns": 1
   },
-  "src/worker/routes/files/helpers.ts": {
-    "deepFns": 2
-  },
-  "src/worker/routes/files/library.ts": {
-    "longFns": 3,
-    "deepFns": 1
-  },
-  "src/worker/routes/files/maintenance.ts": {
-    "longFns": 3,
-    "deepFns": 1
-  },
-  "src/worker/routes/files/organizer.ts": {
-    "longFns": 2
-  },
-  "src/worker/routes/files/update.ts": {
-    "longFns": 2
-  },
   "src/worker/routes/folders/crud.ts": {
     "longFns": 4
   },

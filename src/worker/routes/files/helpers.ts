@@ -43,29 +43,38 @@ export async function readAttachmentReferenceCounts(
   db: D1Database,
   userId: string,
 ): Promise<Map<string, number>> {
-  const meta = await getMeta(db, attachmentRefMetaKey(userId))
-  if (meta) {
-    try {
-      const parsed = JSON.parse(meta) as { at?: unknown }
-      if (
-        typeof parsed.at === 'number' &&
-        Date.now() - parsed.at < ATTACHMENT_REFERENCE_CACHE_TTL_MS
-      ) {
-        const { results } = await db
-          .prepare(`SELECT attachment_id, count FROM attachment_refs WHERE user_id = ?1`)
-          .bind(userId)
-          .all<{ attachment_id: string; count: number }>()
-        const references = new Map<string, number>()
-        for (const row of results) references.set(row.attachment_id, row.count)
-        return references
-      }
-    } catch {
-      // Corrupt stamp: fall through to a rebuild.
-    }
-  }
+  const cached = await readCachedAttachmentRefs(db, userId)
+  if (cached) return cached
   const references = await collectAttachmentReferences(db, userId)
   await persistAttachmentReferenceCounts(db, userId, references)
   return references
+}
+
+async function readCachedAttachmentRefs(
+  db: D1Database,
+  userId: string,
+): Promise<Map<string, number> | null> {
+  const meta = await getMeta(db, attachmentRefMetaKey(userId))
+  if (!meta) return null
+  try {
+    const parsed = JSON.parse(meta) as { at?: unknown }
+    if (
+      typeof parsed.at !== 'number' ||
+      Date.now() - parsed.at >= ATTACHMENT_REFERENCE_CACHE_TTL_MS
+    ) {
+      return null
+    }
+    const { results } = await db
+      .prepare(`SELECT attachment_id, count FROM attachment_refs WHERE user_id = ?1`)
+      .bind(userId)
+      .all<{ attachment_id: string; count: number }>()
+    const references = new Map<string, number>()
+    for (const row of results) references.set(row.attachment_id, row.count)
+    return references
+  } catch {
+    // Corrupt stamp: fall through to a rebuild.
+    return null
+  }
 }
 
 export async function persistAttachmentReferenceCounts(
@@ -158,16 +167,24 @@ export async function collectAttachmentReferences(
     if (!results.length) break
 
     for (const note of results) {
-      for (const id of extractAttachmentIds(note.content)) {
-        if (wantedIds && !wantedIds.has(id)) continue
-        references.set(id, (references.get(id) ?? 0) + 1)
-      }
+      addNoteAttachmentReferences(references, note.content, wantedIds)
     }
     if (earlyExit && wantedIds && references.size === wantedIds.size) break
     afterId = results[results.length - 1]!.id
     if (results.length < ATTACHMENT_SCAN_PAGE_SIZE) break
   }
   return references
+}
+
+function addNoteAttachmentReferences(
+  references: Map<string, number>,
+  content: string,
+  wantedIds?: ReadonlySet<string>,
+): void {
+  for (const id of extractAttachmentIds(content)) {
+    if (wantedIds && !wantedIds.has(id)) continue
+    references.set(id, (references.get(id) ?? 0) + 1)
+  }
 }
 
 export async function collectAttachmentIdsThroughBoundary(
