@@ -19,6 +19,7 @@ import {
   normalizeTimelineGroup,
 } from './normalize'
 import { FALLBACK_POSTS, FALLBACK_SITE_INFO } from './fallbacks'
+import { POSTS_PER_PAGE_DEFAULT, DEFAULT_API_URL } from './constants'
 
 export { extractCoverUrl } from './normalize'
 
@@ -34,7 +35,7 @@ export function getApiBase(): string {
     (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_API_URL) ||
     (typeof process !== 'undefined' && (process.env.PUBLIC_API_URL || process.env.API_URL))
   if (envUrl) return envUrl.replace(/\/+$/, '')
-  return 'https://inkstone.333096.xyz'
+  return DEFAULT_API_URL
 }
 
 const API_BASE = getApiBase()
@@ -73,7 +74,7 @@ export const api = {
       const pagination = asRecord(data.pagination)
       const total = typeof pagination.total === 'number' ? pagination.total : (typeof data.total === 'number' ? data.total : rawPosts.length)
       const page = typeof pagination.page === 'number' ? pagination.page : (typeof data.page === 'number' ? data.page : 1)
-      const limit = typeof pagination.limit === 'number' ? pagination.limit : (typeof data.limit === 'number' ? data.limit : 10)
+      const limit = typeof pagination.limit === 'number' ? pagination.limit : (typeof data.limit === 'number' ? data.limit : POSTS_PER_PAGE_DEFAULT)
       const totalPages = typeof pagination.totalPages === 'number' ? pagination.totalPages : (typeof data.totalPages === 'number' ? data.totalPages : Math.max(1, Math.ceil(total / limit)))
 
       const posts = rawPosts.map(normalizePost)
@@ -91,7 +92,7 @@ export const api = {
         posts: filtered,
         total: filtered.length,
         page: options?.page || 1,
-        limit: options?.limit || 10,
+        limit: options?.limit || POSTS_PER_PAGE_DEFAULT,
         totalPages: 1,
       }
     }

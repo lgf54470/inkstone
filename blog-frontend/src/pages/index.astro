@@ -9,10 +9,10 @@ import { api } from '../lib/api'
 const url = Astro.url
 const page = parseInt(url.searchParams.get('page') || '1', 10)
 
-// Data fetching
+// Data fetching（不传 limit：服务端按站点配置 postsPerPage 返回，客户端不再重复硬编码 10）
 const [siteInfo, postsData, categories, tags, calendarDays] = await Promise.all([
   api.getSiteInfo(),
-  api.getPosts({ page, limit: 10 }),
+  api.getPosts({ page }),
   api.getCategories(),
   api.getTags(),
   api.getCalendar(),

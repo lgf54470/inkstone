@@ -8,6 +8,7 @@ import type {
   CalendarDayPost,
 } from './types'
 import { FALLBACK_SITE_INFO } from './fallbacks'
+import { POSTS_PER_PAGE_DEFAULT } from './constants'
 
 export function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
@@ -98,7 +99,7 @@ export function normalizeSiteInfo(value: unknown): BlogSiteInfo {
       email: asString(links.email) || undefined,
       website: asString(links.website) || undefined,
     },
-    postsPerPage: toNumber(settings.postsPerPage) || 10,
+    postsPerPage: toNumber(settings.postsPerPage) || POSTS_PER_PAGE_DEFAULT,
     requireCommentApproval: Boolean(settings.requireCommentApproval),
   }
 }

@@ -1,6 +1,7 @@
 // Client-side interactivity for Mermaid, Chart.js, code copy, tabs, and JS runner
 import type { Chart, ChartConfiguration } from 'chart.js/auto'
 import { asRecord } from './normalize'
+import { COPY_FEEDBACK_MS } from './constants'
 
 export function initInteractiveContent() {
   if (typeof window === 'undefined') return
@@ -65,7 +66,7 @@ function initCodeCopy() {
       copyBtn.textContent = '已复制'
       setTimeout(() => {
         copyBtn.textContent = originalText
-      }, 2000)
+      }, COPY_FEEDBACK_MS)
     }).catch((err) => console.warn('Clipboard write failed:', err))
   })
 }

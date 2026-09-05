@@ -4,6 +4,7 @@ import CommentsSection from '../../components/CommentsSection'
 import { api } from '../../lib/api'
 import { renderMarkdown } from '../../lib/markdown'
 import type { BlogCategory } from '../../lib/types'
+import { WORDS_PER_MINUTE } from '../../lib/constants'
 
 const slug = Astro.params.slug
 if (!slug) {
@@ -58,9 +59,9 @@ const formattedDate = new Date(post.publishedAt || post.createdAt).toLocaleDateS
   day: 'numeric',
 })
 
-// Estimated reading time (approx 300 words/chars per min)
+// Estimated reading time based on Chinese chars per minute
 const wordCount = bodyContent.replace(/\s+/g, '').length
-const readingMinutes = Math.max(1, Math.round(wordCount / 350))
+const readingMinutes = Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE))
 ---
 
 <Layout title={`${post.title} - Inkstone Blog`} description={post.excerpt} coverUrl={post.coverUrl}>

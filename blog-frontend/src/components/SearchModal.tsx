@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Search, X, Calendar, Tag, Loader2 } from 'lucide-react'
 import { api } from '../lib/api'
 import type { BlogPost } from '../lib/types'
+import { SEARCH_PREFETCH_LIMIT, SEARCH_RESULT_LIMIT, SEARCH_FOCUS_DELAY_MS } from '../lib/constants'
 
 export default function SearchModal() {
   const [isOpen, setIsOpen] = useState(false)
@@ -41,13 +42,13 @@ export default function SearchModal() {
   // Focus and pre-fetch posts in memory on open
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 30)
+      setTimeout(() => inputRef.current?.focus(), SEARCH_FOCUS_DELAY_MS)
 
       if (!hasLoadedRef.current) {
         hasLoadedRef.current = true
         setLoading(true)
         api
-          .getPosts({ limit: 100 })
+          .getPosts({ limit: SEARCH_PREFETCH_LIMIT })
           .then((res) => {
             setPosts(res.posts || [])
           })
@@ -76,7 +77,7 @@ export default function SearchModal() {
         const tagsMatch = post.tags?.some((t) => t.toLowerCase().includes(q))
         return titleMatch || excerptMatch || tagsMatch
       })
-      .slice(0, 8)
+      .slice(0, SEARCH_RESULT_LIMIT)
   }, [query, posts])
 
   useEffect(() => {
