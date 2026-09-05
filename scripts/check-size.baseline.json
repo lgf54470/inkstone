@@ -541,12 +541,6 @@
   "src/worker/lib/scoped-organizer.ts": {
     "deepFns": 1
   },
-  "src/worker/lib/totp-service/login.ts": {
-    "longFns": 1
-  },
-  "src/worker/lib/totp-service/setup.ts": {
-    "longFns": 4
-  },
   "src/worker/lib/update-check.ts": {
     "longFns": 1
   },
