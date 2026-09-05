@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, Copy, ExternalLink, QrCode } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+import { COPY_FEEDBACK_MS } from '@shared/constants'
 import { Modal } from '../../components/overlay'
 import { Button } from '../../components/primitives'
 import { t } from '../../lib/i18n'
@@ -26,7 +27,7 @@ export function AttachmentQrModal({
     try {
       await navigator.clipboard.writeText(fullUrl)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => setCopied(false), COPY_FEEDBACK_MS)
     } catch {
     }
   }

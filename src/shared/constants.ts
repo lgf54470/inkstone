@@ -18,6 +18,7 @@ export const APP_VERSION = packageVersion
 export const GITHUB_REPOSITORY_URL = 'https://github.com/shuaiplus/inkstone'
 export const GITHUB_PACKAGE_URL =
   'https://raw.githubusercontent.com/shuaiplus/inkstone/refs/heads/main/package.json'
+export const COPY_FEEDBACK_MS = 2000
 export const CLIENT_HEADER = 'X-Inkstone-Client'
 export const SESSION_COOKIE = '__Host-inkstone_session'
 export const LEGACY_SESSION_COOKIE = 'inkstone_session'

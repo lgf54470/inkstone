@@ -76,7 +76,7 @@
     background: var(--bg-base);
     color: var(--text-primary);
     font-family: var(--font-ui);
-    font-size: 13px;
+    font-size: var(--text-13);
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -152,7 +152,7 @@
   }
   ::-webkit-scrollbar-thumb {
     background: var(--border-default);
-    border-radius: 999px;
+    border-radius: var(--r-full);
     border: 2px solid transparent;
     background-clip: padding-box;
     transition: background-color var(--dur-base) var(--ease-out);
@@ -167,12 +167,12 @@
 
 
   html.theme-transition body {
-    transition: background-color 260ms var(--ease-out) !important;
-    transition-delay: 0 !important;
+    transition: background-color 260ms var(--ease-out);
+    transition-delay: 0;
   }
   @media (prefers-reduced-motion: reduce) {
     html.theme-transition body {
-      transition: none !important;
+      transition: none;
     }
   }
 }
@@ -198,7 +198,7 @@
   textarea,
   select {
 
-    font-size: 16px;
+    font-size: var(--text-16);
   }
 }
 
@@ -240,7 +240,7 @@
   }
   .ink-slider::-webkit-slider-runnable-track {
     height: 4px;
-    border-radius: 999px;
+    border-radius: var(--r-full);
     background: linear-gradient(
       to right,
       var(--accent) var(--pct),
@@ -252,7 +252,7 @@
     width: 14px;
     height: 14px;
     margin-top: -5px;
-    border-radius: 999px;
+    border-radius: var(--r-full);
     background: var(--bg-surface);
     border: 1.5px solid var(--accent);
     box-shadow: 0 1px 3px rgb(0 0 0 / 22%);
@@ -266,18 +266,18 @@
   }
   .ink-slider::-moz-range-track {
     height: 4px;
-    border-radius: 999px;
+    border-radius: var(--r-full);
     background: var(--border-default);
   }
   .ink-slider::-moz-range-progress {
     height: 4px;
-    border-radius: 999px;
+    border-radius: var(--r-full);
     background: var(--accent);
   }
   .ink-slider::-moz-range-thumb {
     width: 13px;
     height: 13px;
-    border-radius: 999px;
+    border-radius: var(--r-full);
     background: var(--bg-surface);
     border: 1.5px solid var(--accent);
   }

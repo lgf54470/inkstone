@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Check, Copy, Download, ExternalLink, Image as ImageIcon, QrCode } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+import { COPY_FEEDBACK_MS } from '@shared/constants'
 import { Modal } from '../../components/overlay'
 import { Button } from '../../components/primitives'
 import { t } from '../../lib/i18n'
@@ -32,7 +33,7 @@ export function ShareQrModal({
     try {
       await navigator.clipboard.writeText(fullUrl)
       setCopiedLink(true)
-      setTimeout(() => setCopiedLink(false), 2000)
+      setTimeout(() => setCopiedLink(false), COPY_FEEDBACK_MS)
     } catch (error) {
       console.warn('[share] failed to copy QR link', error)
     }
@@ -44,7 +45,7 @@ export function ShareQrModal({
     const success = await copyQrImageToClipboard(svgEl)
     if (success) {
       setCopiedImage(true)
-      setTimeout(() => setCopiedImage(false), 2000)
+      setTimeout(() => setCopiedImage(false), COPY_FEEDBACK_MS)
     }
   }
 

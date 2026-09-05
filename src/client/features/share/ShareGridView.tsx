@@ -19,6 +19,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-react'
+import { COPY_FEEDBACK_MS } from '@shared/constants'
 import type { ShareFolder, ShareInfo } from '@shared/types'
 import { Switch } from '../../components/form'
 import { IconButton } from '../../components/primitives'
@@ -57,7 +58,7 @@ export function ShareGridView({
       const full = typeof window !== 'undefined' ? new URL(url, window.location.origin).href : url
       await navigator.clipboard.writeText(full)
       setCopiedSlug(slug)
-      setTimeout(() => setCopiedSlug(null), 2000)
+      setTimeout(() => setCopiedSlug(null), COPY_FEEDBACK_MS)
     } catch (error) {
       console.warn('[share] failed to copy link', error)
     }

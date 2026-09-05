@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import type { AttachmentWithUsage } from '@shared/types'
 import { cn } from '../../lib/cn'
+import { COPY_FEEDBACK_MS } from '@shared/constants'
 import { t } from '../../lib/i18n'
 import { api } from '../../lib/api'
 import { useNotes } from '../../store/notes'
@@ -88,7 +89,7 @@ export function AttachmentInspector({
       const fullUrl = new URL(file.url, window.location.origin).href
       await navigator.clipboard.writeText(fullUrl)
       setCopiedLink(true)
-      setTimeout(() => setCopiedLink(false), 2000)
+      setTimeout(() => setCopiedLink(false), COPY_FEEDBACK_MS)
     } catch (error) {
       console.warn('[attachments] failed to copy link', error)
     }
@@ -99,7 +100,7 @@ export function AttachmentInspector({
       const md = isImage ? `![${file.filename}](${file.url})` : `[${file.filename}](${file.url})`
       await navigator.clipboard.writeText(md)
       setCopiedMarkdown(true)
-      setTimeout(() => setCopiedMarkdown(false), 2000)
+      setTimeout(() => setCopiedMarkdown(false), COPY_FEEDBACK_MS)
     } catch (error) {
       console.warn('[attachments] failed to copy markdown', error)
     }
