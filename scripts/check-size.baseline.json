@@ -242,8 +242,7 @@
   "src/client/features/settings/editor-settings.tsx": {
     "longFns": 1
   },
-  "src/client/features/settings/mcp-settings.tsx": {
-    "lines": 663,
+  "src/client/features/settings/mcp-settings/use-mcp-settings.ts": {
     "longFns": 1
   },
   "src/client/features/settings/sync-settings.tsx": {
