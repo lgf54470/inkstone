@@ -32,36 +32,6 @@
   "src/client/components/tag-filter-popover.tsx": {
     "longFns": 1
   },
-  "src/client/demo/backend/helpers/transfer.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/client/demo/backend/routes/auth.ts": {
-    "longFns": 1
-  },
-  "src/client/demo/backend/routes/backup.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/client/demo/backend/routes/files.ts": {
-    "longFns": 1
-  },
-  "src/client/demo/backend/routes/folders.ts": {
-    "longFns": 2
-  },
-  "src/client/demo/backend/routes/notes.ts": {
-    "longFns": 1
-  },
-  "src/client/demo/backend/routes/search.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/client/demo/backend/routes/share-admin.ts": {
-    "longFns": 1
-  },
-  "src/client/demo/backend/routes/tags.ts": {
-    "longFns": 1
-  },
   "src/client/demo/state.ts": {
     "longFns": 1
   },

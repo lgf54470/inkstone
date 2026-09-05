@@ -4,6 +4,7 @@ import { deriveTitle, extractAttachmentIds } from '@shared/markdown-utils'
 import type { ExportAttachment, ExportBundle, ImportResult, Note } from '@shared/types'
 import { createZip } from '@shared/zip'
 import { listFolders, listTags, newDemoId, refreshNote } from '../../state'
+import type { DemoAttachment } from '../../state'
 import type { DemoState } from '../../state'
 import { apiError } from './info'
 import { browserFileUrl, revokeAttachment } from './files'
@@ -33,13 +34,7 @@ export async function exportResponse(state: DemoState, format: 'json' | 'zip'): 
     })
   }
   const storedAttachments = [...state.attachments.values()]
-  const notes = [...state.notes.values()].map((note) => ({
-    ...note,
-    content: storedAttachments.reduce(
-      (content, attachment) => content.replaceAll(attachment.meta.url, `/api/files/${attachment.meta.id}`),
-      note.content,
-    ),
-  }))
+  const notes = rewriteAttachmentUrls([...state.notes.values()], storedAttachments)
   const noteEntries = demoNoteEntries(notes, encoder)
   const expandedBytes = noteEntries.reduce((total, entry) => total + entry.data.byteLength, 0)
     + storedAttachments.reduce((total, attachment) => total + attachment.meta.size, 0)
@@ -49,27 +44,7 @@ export async function exportResponse(state: DemoState, format: 'json' | 'zip'): 
   if (noteEntries.length + storedAttachments.length + 1 > LIMITS.importArchiveEntriesMax) {
     return apiError(413, 'payload_too_large', 'The demo ZIP would contain too many files')
   }
-
-  const attachments: ExportAttachment[] = []
-  const attachmentEntries: Array<{ path: string, data: Uint8Array }> = []
-  for (const attachment of storedAttachments) {
-    const data = new Uint8Array(await attachment.file.arrayBuffer())
-    const filename = safeAttachmentFilename(attachment.meta.filename)
-    const path = `attachments/${attachment.meta.id}/${filename}`
-    attachments.push({
-      id: attachment.meta.id,
-      noteId: attachment.meta.noteId,
-      filename,
-      mime: attachment.meta.mime,
-      size: data.byteLength,
-      width: attachment.meta.width,
-      height: attachment.meta.height,
-      createdAt: attachment.meta.createdAt,
-      path,
-      sha256: await sha256Hex(data),
-    })
-    attachmentEntries.push({ path, data })
-  }
+  const { attachments, entries: attachmentEntries } = await buildAttachmentExport(storedAttachments)
   const bundle: ExportBundle = { ...baseBundle, notes, attachments }
   const entries = [
     { path: 'inkstone-export.json', data: encoder.encode(JSON.stringify(bundle, null, 2)) },
@@ -86,6 +61,42 @@ export async function exportResponse(state: DemoState, format: 'json' | 'zip'): 
       'Content-Disposition': 'attachment; filename="inkstone-demo.zip"',
     },
   })
+}
+
+function rewriteAttachmentUrls(notes: Note[], storedAttachments: Array<{ meta: { url: string, id: string } }>): Note[] {
+  return notes.map((note) => ({
+    ...note,
+    content: storedAttachments.reduce(
+      (content, attachment) => content.replaceAll(attachment.meta.url, `/api/files/${attachment.meta.id}`),
+      note.content,
+    ),
+  }))
+}
+
+async function buildAttachmentExport(
+  storedAttachments: DemoAttachment[],
+): Promise<{ attachments: ExportAttachment[], entries: Array<{ path: string, data: Uint8Array }> }> {
+  const attachments: ExportAttachment[] = []
+  const entries: Array<{ path: string, data: Uint8Array }> = []
+  for (const attachment of storedAttachments) {
+    const data = new Uint8Array(await attachment.file.arrayBuffer())
+    const filename = safeAttachmentFilename(attachment.meta.filename)
+    const path = `attachments/${attachment.meta.id}/${filename}`
+    attachments.push({
+      id: attachment.meta.id,
+      noteId: attachment.meta.noteId,
+      filename,
+      mime: attachment.meta.mime,
+      size: data.byteLength,
+      width: attachment.meta.width,
+      height: attachment.meta.height,
+      createdAt: attachment.meta.createdAt,
+      path,
+      sha256: await sha256Hex(data),
+    })
+    entries.push({ path, data })
+  }
+  return { attachments, entries }
 }
 
 export function demoNoteEntries(notes: Iterable<Note>, encoder: TextEncoder): Array<{ path: string, data: Uint8Array }> {
@@ -111,6 +122,18 @@ export function safeAttachmentFilename(value: string): string {
     .replace(/^\.+/, '')
     .trim()
   return (cleaned || 'file').slice(0, 180)
+}
+
+interface PreparedAttachment {
+  sourceId: string
+  sourceNoteId: string | null
+  id: string
+  filename: string
+  mime: string
+  width: number | null
+  height: number | null
+  createdAt: number
+  data: Uint8Array
 }
 
 export async function importBundle(
@@ -205,77 +228,91 @@ export async function importBundleAttachments(
   archiveEntries: Map<string, Uint8Array>,
   result: ImportResult,
 ): Promise<{ urls: Map<string, string>, sourceNotes: Map<string, string | null> }> {
-  const prepared: Array<{
-    sourceId: string
-    sourceNoteId: string | null
-    id: string
-    filename: string
-    mime: string
-    width: number | null
-    height: number | null
-    createdAt: number
-    data: Uint8Array
-  }> = []
+  const prepared: PreparedAttachment[] = []
   let importedBytes = 0
   const sourceIds = new Set<string>()
   const manifestPaths = new Set<string>()
   for (const raw of rawAttachments) {
-    if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !/^[0-9a-hjkmnp-tv-z]{26}$/.test(raw.id)) {
-      throw new Error('The export contains an invalid attachment ID')
-    }
-    if (sourceIds.has(raw.id)) throw new Error(`The export contains a duplicate attachment ID: ${raw.id}`)
-    sourceIds.add(raw.id)
-    if (typeof raw.path !== 'string' || !raw.path || typeof raw.sha256 !== 'string' || !/^[0-9a-f]{64}$/i.test(raw.sha256)) {
-      throw new Error(`The export contains invalid attachment metadata: ${raw.id}`)
-    }
-    const pathSegments = raw.path.split('/')
-    if (
-      raw.path.length > 512 ||
-      raw.path.includes('\\') ||
-      pathSegments.length !== 3 ||
-      pathSegments[0] !== 'attachments' ||
-      pathSegments[1] !== raw.id ||
-      !pathSegments[2] ||
-      /[\u0000-\u001f]/.test(pathSegments[2])
-    ) throw new Error(`The export contains an invalid attachment path: ${raw.id}`)
-    const pathKey = raw.path.toLocaleLowerCase()
-    if (manifestPaths.has(pathKey)) throw new Error(`The export contains a duplicate attachment path: ${raw.path}`)
-    manifestPaths.add(pathKey)
-    const filename = typeof raw.filename === 'string' ? raw.filename : ''
-    const mime = typeof raw.mime === 'string' ? raw.mime : ''
-    if (!filename || filename.length > 180 || !mime || mime.length > 255) {
-      throw new Error(`The export contains invalid attachment metadata: ${raw.id}`)
-    }
-    const data = archiveEntries.get(pathKey)
-    if (!data) {
-      result.skippedAttachments++
-      result.warnings.push(`${filename}: attachment bytes are missing from the backup and were not restored`)
-      continue
-    }
-    if (!Number.isSafeInteger(raw.size) || raw.size !== data.byteLength || data.byteLength > LIMITS.attachmentMaxBytes) {
-      throw new Error(`The ZIP attachment has an invalid size: ${raw.filename || raw.id}`)
-    }
-    if (await sha256Hex(data) !== raw.sha256.toLocaleLowerCase()) {
-      throw new Error(`The ZIP attachment checksum failed: ${raw.filename || raw.id}`)
-    }
-    importedBytes += data.byteLength
-    prepared.push({
-      sourceId: raw.id,
-      sourceNoteId: typeof raw.noteId === 'string' && /^[0-9a-hjkmnp-tv-z]{26}$/.test(raw.noteId) ? raw.noteId : null,
-      id: state.attachments.has(raw.id) ? newDemoId() : raw.id,
-      filename,
-      mime,
-      width: Number.isFinite(raw.width) ? raw.width : null,
-      height: Number.isFinite(raw.height) ? raw.height : null,
-      createdAt: Number.isFinite(raw.createdAt) ? raw.createdAt : Date.now(),
-      data,
-    })
+    const item = await prepareAttachment(state, raw, archiveEntries, sourceIds, manifestPaths, result)
+    if (!item) continue
+    importedBytes += item.data.byteLength
+    prepared.push(item)
   }
   const usedBytes = [...state.attachments.values()].reduce((total, attachment) => total + attachment.meta.size, 0)
   if (usedBytes + importedBytes > LIMITS.attachmentQuotaBytes) {
     throw new Error('The imported attachments would exceed the account quota')
   }
+  return installPreparedAttachments(state, prepared, result)
+}
 
+function attachmentPathKey(raw: ExportAttachment): string {
+  const pathSegments = raw.path.split('/')
+  if (
+    raw.path.length > 512 ||
+    raw.path.includes('\\') ||
+    pathSegments.length !== 3 ||
+    pathSegments[0] !== 'attachments' ||
+    pathSegments[1] !== raw.id ||
+    !pathSegments[2] ||
+    /[\u0000-\u001f]/.test(pathSegments[2])
+  ) throw new Error(`The export contains an invalid attachment path: ${raw.id}`)
+  return raw.path.toLocaleLowerCase()
+}
+
+async function prepareAttachment(
+  state: DemoState,
+  raw: ExportAttachment,
+  archiveEntries: Map<string, Uint8Array>,
+  sourceIds: Set<string>,
+  manifestPaths: Set<string>,
+  result: ImportResult,
+): Promise<PreparedAttachment | null> {
+  if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !/^[0-9a-hjkmnp-tv-z]{26}$/.test(raw.id)) {
+    throw new Error('The export contains an invalid attachment ID')
+  }
+  if (sourceIds.has(raw.id)) throw new Error(`The export contains a duplicate attachment ID: ${raw.id}`)
+  sourceIds.add(raw.id)
+  if (typeof raw.path !== 'string' || !raw.path || typeof raw.sha256 !== 'string' || !/^[0-9a-f]{64}$/i.test(raw.sha256)) {
+    throw new Error(`The export contains invalid attachment metadata: ${raw.id}`)
+  }
+  const pathKey = attachmentPathKey(raw)
+  if (manifestPaths.has(pathKey)) throw new Error(`The export contains a duplicate attachment path: ${raw.path}`)
+  manifestPaths.add(pathKey)
+  const filename = typeof raw.filename === 'string' ? raw.filename : ''
+  const mime = typeof raw.mime === 'string' ? raw.mime : ''
+  if (!filename || filename.length > 180 || !mime || mime.length > 255) {
+    throw new Error(`The export contains invalid attachment metadata: ${raw.id}`)
+  }
+  const data = archiveEntries.get(pathKey)
+  if (!data) {
+    result.skippedAttachments++
+    result.warnings.push(`${filename}: attachment bytes are missing from the backup and were not restored`)
+    return null
+  }
+  if (!Number.isSafeInteger(raw.size) || raw.size !== data.byteLength || data.byteLength > LIMITS.attachmentMaxBytes) {
+    throw new Error(`The ZIP attachment has an invalid size: ${raw.filename || raw.id}`)
+  }
+  if (await sha256Hex(data) !== raw.sha256.toLocaleLowerCase()) {
+    throw new Error(`The ZIP attachment checksum failed: ${raw.filename || raw.id}`)
+  }
+  return {
+    sourceId: raw.id,
+    sourceNoteId: typeof raw.noteId === 'string' && /^[0-9a-hjkmnp-tv-z]{26}$/.test(raw.noteId) ? raw.noteId : null,
+    id: state.attachments.has(raw.id) ? newDemoId() : raw.id,
+    filename,
+    mime,
+    width: Number.isFinite(raw.width) ? raw.width : null,
+    height: Number.isFinite(raw.height) ? raw.height : null,
+    createdAt: Number.isFinite(raw.createdAt) ? raw.createdAt : Date.now(),
+    data,
+  }
+}
+
+async function installPreparedAttachments(
+  state: DemoState,
+  prepared: PreparedAttachment[],
+  result: ImportResult,
+): Promise<{ urls: Map<string, string>, sourceNotes: Map<string, string | null> }> {
   const imported = new Map<string, string>()
   const sourceNotes = new Map<string, string | null>()
   const createdIds: string[] = []
@@ -306,16 +343,25 @@ export async function importBundleAttachments(
       result.createdAttachments++
     }
   } catch (error) {
-    for (const id of createdIds) {
-      const attachment = state.attachments.get(id)
-      if (attachment) revokeAttachment(attachment.meta.url)
-      state.attachments.delete(id)
-      sourceNotes.delete(id)
-      result.createdAttachments--
-    }
+    rollbackAttachments(state, createdIds, sourceNotes, result)
     throw error
   }
   return { urls: imported, sourceNotes }
+}
+
+function rollbackAttachments(
+  state: DemoState,
+  createdIds: string[],
+  sourceNotes: Map<string, string | null>,
+  result: ImportResult,
+): void {
+  for (const id of createdIds) {
+    const attachment = state.attachments.get(id)
+    if (attachment) revokeAttachment(attachment.meta.url)
+    state.attachments.delete(id)
+    sourceNotes.delete(id)
+    result.createdAttachments--
+  }
 }
 
 export async function sha256Hex(data: Uint8Array): Promise<string> {
