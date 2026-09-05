@@ -19,7 +19,7 @@ const visibleAttributes = new Set(['alt', 'aria-label', 'description', 'hint', '
 // built-in to-do tag is one such data constant; it is written here so the
 // raw-text scan below can blank it out.
 const localizedDataFragments = new Map([
-    [path.resolve('src/client/lib/calendar-tree.ts'), ['\u5f85\u529e']],
+    [path.resolve('src/client/lib/calendar-tree/ids.ts'), ['\u5f85\u529e']],
     [path.resolve('src/client/lib/calendar-tree.test.ts'), ['\u5f85\u529e']],
     [path.resolve('src/client/lib/note-filter.test.ts'), ['\u5f85\u529e']],
 ]);

@@ -347,10 +347,14 @@
     "longFns": 6,
     "deepFns": 1
   },
-  "src/client/lib/calendar-tree.ts": {
-    "lines": 804,
-    "longFns": 2,
+  "src/client/lib/calendar-tree/activity.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/calendar-tree/periods.ts": {
     "deepFns": 1
+  },
+  "src/client/lib/calendar-tree/tree.ts": {
+    "longFns": 1
   },
   "src/client/lib/db-cache-spec.ts": {
     "longFns": 5
