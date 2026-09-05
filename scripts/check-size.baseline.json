@@ -395,10 +395,6 @@
     "longFns": 2,
     "deepFns": 1
   },
-  "src/client/lib/markdown/embeds.ts": {
-    "longFns": 2,
-    "deepFns": 3
-  },
   "src/client/lib/markdown/enhance.test.ts": {
     "longFns": 1
   },
@@ -439,9 +435,6 @@
   },
   "src/client/lib/markdown/table-editor.test.ts": {
     "longFns": 1
-  },
-  "src/client/lib/markdown/table-editor.ts": {
-    "lines": 522
   },
   "src/client/lib/note-filter.test.ts": {
     "longFns": 1
@@ -504,10 +497,6 @@
     "longFns": 1
   },
   "src/shared/markdown-utils/rewrite.ts": {
-    "deepFns": 1
-  },
-  "src/shared/markdown-utils/tags.ts": {
-    "longFns": 1,
     "deepFns": 1
   },
   "src/shared/note-templates.test.ts": {
