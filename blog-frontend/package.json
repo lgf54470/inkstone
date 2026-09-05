@@ -12,7 +12,10 @@
     "deploy": "astro build && wrangler deploy --config dist/server/wrangler.json",
     "deploy:check": "astro build && wrangler deploy --dry-run --config dist/server/wrangler.json",
     "deploy:pages": "astro build && wrangler deploy --config dist/server/wrangler.json",
-    "astro": "astro"
+    "astro": "astro",
+    "typecheck": "astro check",
+    "lint": "node scripts/agents-lint.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.0",
@@ -45,10 +48,12 @@
     "esbuild": true
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.10",
     "@types/katex": "^0.16.8",
     "@types/markdown-it": "^14.2.0",
     "@types/prismjs": "^1.26.6",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7"
+    "@types/react-dom": "^19.2.7",
+    "vitest": "^5.0.0"
   }
 }

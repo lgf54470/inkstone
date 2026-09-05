@@ -1,0 +1,29 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`markdown render baseline > rendered HTML hashes are stable 1`] = `
+{
+  "blockRef": "f5e9fc91d46982ec632d",
+  "callout": "046c7e21054de6a939ad",
+  "calloutFold": "10deb5c77467b846c6b3",
+  "chart": "3f0bdafcc62f71c83250",
+  "details": "083b4dbf4a34b20115c4",
+  "embed": "06d6a840fa1bac271a0e",
+  "fence": "0613b430be80a7a2ed08",
+  "footnote": "3189b8164048362e07ca",
+  "frontmatter": "e32dd30260871ad1c3e2",
+  "jsExample": "97014db371e91faf5a92",
+  "mathBlock": "3bd44473d6294f5aa54a",
+  "mathInline": "d348b4f4ac2bbcf2f117",
+  "mdExample": "06ceee910c13240d0091",
+  "mermaid": "77d47a43e2dc03200419",
+  "obsidianComment": "2e90a6746cdfdb9e8ea6",
+  "ruby": "e8c57c5ac94dfc8170bc",
+  "showcase": "75708105a6511bf7a993",
+  "table": "5983175b5ee258d3707d",
+  "tabs": "ac2922995e97efb6ba85",
+  "tag": "07eb94d5a5d5c7dfd4df",
+  "tasks": "28a259073a2fab352f3d",
+  "toc": "5843461fef2f2d5a6970",
+  "wikilink": "f291854f196859023675",
+}
+`;

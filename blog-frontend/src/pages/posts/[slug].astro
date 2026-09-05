@@ -3,7 +3,7 @@ import Layout from '../../layouts/Layout.astro'
 import CommentsSection from '../../components/CommentsSection'
 import { api } from '../../lib/api'
 import { renderMarkdown } from '../../lib/markdown'
-import type { BlogPost, BlogCategory } from '../../lib/types'
+import type { BlogCategory } from '../../lib/types'
 
 const slug = Astro.params.slug
 if (!slug) {
