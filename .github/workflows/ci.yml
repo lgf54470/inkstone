@@ -38,3 +38,21 @@ jobs:
           done
           if [ "$ready" != "1" ]; then cat /tmp/inkstone-dev.log; exit 1; fi
           node scripts/e2e.mjs
+
+  blog-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: blog-frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: blog-frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
