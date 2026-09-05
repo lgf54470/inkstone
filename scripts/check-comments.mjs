@@ -98,7 +98,7 @@ const allowed = new Map([
   ["src/client/components/tag-name-highlight.tsx", [
     "/** Renders a tag name with the matched query substring emphasized, used by tag pickers. */",
   ]],
-  ["src/client/demo/backend.ts", [
+  ["src/client/demo/backend/routes/files.ts", [
     "// Match the real worker contract: facetsFull may only be true when the response carries the",
     "// complete folders/tags lists. The demo always sends full snapshots when anything changed, so",
     "// the flag follows `hasChanged`; a no-change catchup must not claim completeness (it would make",
