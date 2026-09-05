@@ -203,6 +203,9 @@ const allowed = new Map([
     "/* Comments and Pagination Rule */",
     "/* Social Links */",
   ]],
+  ["src/client/features/command/command-palette/index.tsx", [
+    "// Counts each note once per ancestor folder (its own folder and every parent).",
+  ]],
   ["src/client/features/command/shortcuts-panel.test.ts", [
     "// Narrow the results to a single row; the cursor must clamp back inside.",
   ]],
@@ -218,17 +221,6 @@ const allowed = new Map([
     "/* Option: No template */",
     "/* User & Built-in Templates */",
   ]],
-  ["src/client/features/folders/manage-folders-modal/index.tsx", [
-    "/* Controls bar: search and add */",
-    "/* Inline create form */",
-    "/* Folder list */",
-    "/* Icon button/badge */",
-    "/* Name or Rename input */",
-    "/* Action buttons */",
-    "/* Inline Color Picker */",
-    "/* Inline Icon Picker */",
-    "/* Sub-modal: Folder Template */",
-  ]],
   ["src/client/features/folders/move-to-folder-submenu.tsx", [
     "/* Header */",
     "/* Gmail-style underline search input */",
@@ -237,9 +229,9 @@ const allowed = new Map([
     "/* Actions */",
   ]],
   ["src/client/features/graph/graph-panel/index.tsx", [
+    "// Private browsing or a locked-down browser can reject local preferences.",
     "// Notes created from unresolved nodes land in the graph's folder scope so",
     "// they inherit the folder name for the `{{folder}}` template placeholder.",
-    "// Private browsing or a locked-down browser can reject local preferences.",
     "// The sidebar's cmd/ctrl+click selections join the graph's own tag filter.",
   ]],
   ["src/client/features/list/range-preset-persist.ts", [
@@ -371,6 +363,12 @@ const allowed = new Map([
   ]],
   ["src/client/features/tags/tag-mutations.ts", [
     "// The rollback already surfaced the failure toast; a refresh warning would double-toast.",
+  ]],
+  ["src/client/features/templates/gallery-keyboard.ts", [
+    "// True while a dialog/editor owns the keyboard or the event target is an input.",
+    "// Non-arrow shortcut keys; returns true once the event was consumed.",
+    "// Moves the focus ring across the grid; returns false when the key was not an",
+    "// arrow or the grid is empty.",
   ]],
   ["src/client/features/templates/gallery-persist.ts", [
     "// The fullwidth comma (\\uFF0C) is the typographic default for Chinese input.",

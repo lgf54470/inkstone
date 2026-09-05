@@ -24,73 +24,97 @@ interface GalleryKeyboardDeps {
   setFocusedId: (id: string | null) => void
 }
 
-export function useGalleryKeyboard(deps: GalleryKeyboardDeps): (event: KeyboardEvent) => void {
-    const { editing, renaming, moving, categoryDialog, isImportOpen, isBatchMoving, publishing, isHelpOpen, setIsHelpOpen, toggleSelectMode, searchRef, selectMode, setSelectMode, visible, setSelectedIds, toggleSelectAll, focusedId, gridRef, toggleSelect, setFocusedId } = deps;
-    const handleKeyDown = useCallback((event: KeyboardEvent) => {
-        if (editing || renaming || moving || categoryDialog || isImportOpen || isBatchMoving || publishing || isHelpOpen)
-            return;
-        const target = event.target as HTMLElement;
-        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target.isContentEditable)
-            return;
-        if (event.key === '?') {
-            event.preventDefault();
-            setIsHelpOpen(true);
-            return;
-        }
-        if (event.key === '/') {
-            event.preventDefault();
-            searchRef.current?.focus();
-            return;
-        }
-        if (event.key === 's' || event.key === 'S') {
-            event.preventDefault();
-            toggleSelectMode();
-            return;
-        }
-        if (event.key === 'a' || event.key === 'A') {
-            event.preventDefault();
-            if (!selectMode) {
-                setSelectMode(true);
-                setSelectedIds(new Set(visible.map((item) => item.id)));
-            }
-            else {
-                toggleSelectAll();
-            }
-            return;
-        }
-        if (event.key === ' ' && selectMode) {
-            const activeId = focusedId ?? (document.activeElement instanceof HTMLElement
-                ? document.activeElement.closest('[data-template-id]')?.getAttribute('data-template-id')
-                : null);
-            if (activeId) {
-                event.preventDefault();
-                toggleSelect(activeId);
-            }
-            return;
-        }
-        if (visible.length === 0)
-            return;
-        const columns = gridRef.current
-            ? getComputedStyle(gridRef.current).gridTemplateColumns.split(' ').length
-            : 1;
-        const activeId = focusedId ?? (document.activeElement instanceof HTMLElement
-            ? document.activeElement.closest('[data-template-id]')?.getAttribute('data-template-id')
-            : null);
-        const currentIndex = activeId ? visible.findIndex((item) => item.id === activeId) : -1;
-        let nextIndex = -1;
-        if (event.key === 'ArrowRight') nextIndex = currentIndex < 0 ? 0 : Math.min(visible.length - 1, currentIndex + 1);
-        else if (event.key === 'ArrowDown') nextIndex = currentIndex < 0 ? 0 : Math.min(visible.length - 1, currentIndex + columns);
-        else if (event.key === 'ArrowLeft') nextIndex = currentIndex < 0 ? visible.length - 1 : Math.max(0, currentIndex - 1);
-        else if (event.key === 'ArrowUp') nextIndex = currentIndex < 0 ? visible.length - 1 : Math.max(0, currentIndex - columns);
-        else return;
+function activeTemplateId(deps: Pick<GalleryKeyboardDeps, 'focusedId'>): string | null | undefined {
+    return deps.focusedId ?? (document.activeElement instanceof HTMLElement
+        ? document.activeElement.closest('[data-template-id]')?.getAttribute('data-template-id')
+        : null);
+}
+
+// True while a dialog/editor owns the keyboard or the event target is an input.
+function galleryKeyGuard(deps: GalleryKeyboardDeps, event: KeyboardEvent): boolean {
+    if (deps.editing || deps.renaming || deps.moving || deps.categoryDialog || deps.isImportOpen || deps.isBatchMoving || deps.publishing || deps.isHelpOpen)
+        return true;
+    const target = event.target as HTMLElement;
+    return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target.isContentEditable;
+}
+
+// Non-arrow shortcut keys; returns true once the event was consumed.
+function handleGalleryModifiers(deps: GalleryKeyboardDeps, event: KeyboardEvent): boolean {
+    if (event.key === '?') {
         event.preventDefault();
-        const next = visible[nextIndex];
-        if (!next)
+        deps.setIsHelpOpen(true);
+        return true;
+    }
+    if (event.key === '/') {
+        event.preventDefault();
+        deps.searchRef.current?.focus();
+        return true;
+    }
+    if (event.key === 's' || event.key === 'S') {
+        event.preventDefault();
+        deps.toggleSelectMode();
+        return true;
+    }
+    if (event.key === 'a' || event.key === 'A') {
+        event.preventDefault();
+        if (!deps.selectMode) {
+            deps.setSelectMode(true);
+            deps.setSelectedIds(new Set(deps.visible.map((item) => item.id)));
+        }
+        else {
+            deps.toggleSelectAll();
+        }
+        return true;
+    }
+    if (event.key === ' ' && deps.selectMode) {
+        const activeId = activeTemplateId(deps);
+        if (activeId) {
+            event.preventDefault();
+            deps.toggleSelect(activeId);
+        }
+        return true;
+    }
+    return false;
+}
+
+function nextGalleryIndex(key: string, currentIndex: number, columns: number, count: number): number {
+    if (key === 'ArrowRight') return currentIndex < 0 ? 0 : Math.min(count - 1, currentIndex + 1);
+    if (key === 'ArrowDown') return currentIndex < 0 ? 0 : Math.min(count - 1, currentIndex + columns);
+    if (key === 'ArrowLeft') return currentIndex < 0 ? count - 1 : Math.max(0, currentIndex - 1);
+    if (key === 'ArrowUp') return currentIndex < 0 ? count - 1 : Math.max(0, currentIndex - columns);
+    return -1;
+}
+
+// Moves the focus ring across the grid; returns false when the key was not an
+// arrow or the grid is empty.
+function handleGalleryArrows(deps: GalleryKeyboardDeps, event: KeyboardEvent): boolean {
+    if (deps.visible.length === 0)
+        return false;
+    const columns = deps.gridRef.current
+        ? getComputedStyle(deps.gridRef.current).gridTemplateColumns.split(' ').length
+        : 1;
+    const activeId = activeTemplateId(deps);
+    const currentIndex = activeId ? deps.visible.findIndex((item) => item.id === activeId) : -1;
+    const nextIndex = nextGalleryIndex(event.key, currentIndex, columns, deps.visible.length);
+    if (nextIndex < 0)
+        return false;
+    event.preventDefault();
+    const next = deps.visible[nextIndex];
+    if (!next)
+        return false;
+    deps.setFocusedId(next.id);
+    requestAnimationFrame(() => {
+        deps.gridRef.current?.querySelector(`[data-template-id="${next.id}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+    return true;
+}
+
+export function useGalleryKeyboard(deps: GalleryKeyboardDeps): (event: KeyboardEvent) => void {
+    return useCallback((event: KeyboardEvent) => {
+        if (galleryKeyGuard(deps, event))
             return;
-        setFocusedId(next.id);
-        requestAnimationFrame(() => {
-            gridRef.current?.querySelector(`[data-template-id="${next.id}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-        });
-    }, [isBatchMoving, categoryDialog, editing, focusedId, isHelpOpen, isImportOpen, moving, publishing, renaming, selectMode, toggleSelect, toggleSelectAll, toggleSelectMode, visible]);
-    return handleKeyDown;
+        if (handleGalleryModifiers(deps, event))
+            return;
+        handleGalleryArrows(deps, event);
+    }, [deps]);
 }

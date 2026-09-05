@@ -9,7 +9,65 @@ import { folderPathLabel } from '../../../lib/folders';
 import { useNoteTemplates } from '../../../store/note-templates';
 import { t } from '../../../lib/i18n';
 
-export function useManageFoldersModal() {
+function folderChoices(folders: Folder[], query: string) {
+  const normalized = query.trim().toLocaleLowerCase();
+  return folders
+    .map((folder) => ({
+      folder,
+      path: folderPathLabel(folders, folder.id),
+    }))
+    .filter(({ path }) => !normalized || path.toLocaleLowerCase().includes(normalized))
+    .sort((a, b) => a.path.localeCompare(b.path));
+}
+
+function emptyFoldersOf(folders: Folder[], folderCounts: ReadonlyMap<string, number>): Folder[] {
+  return folders.filter((folder) => {
+    const count = folderCounts.get(folder.id) ?? 0;
+    const hasChildren = folders.some((f) => f.parentId === folder.id);
+    return count === 0 && !hasChildren;
+  });
+}
+
+function deleteFolderCleanup(folder: Folder, inboxFolderId: string | null, deleteFolder: (id: string) => unknown): void {
+  if (inboxFolderId === folder.id) {
+    setInboxFolderId(null);
+  }
+  setFolderTemplateId(folder.id, null);
+  deleteFolder(folder.id);
+}
+
+async function confirmAndCleanEmpty(emptyFolders: Folder[], inboxFolderId: string | null, deleteFolder: (id: string) => unknown): Promise<boolean> {
+  const ok = await confirm({
+    title: t('folders.clean_empty'),
+    description: t('folders.clean_empty_confirm_value0', { value0: emptyFolders.length }),
+    tone: 'danger',
+    confirmLabel: t('common.delete'),
+  });
+  if (!ok) return false;
+  for (const folder of emptyFolders) {
+    deleteFolderCleanup(folder, inboxFolderId, deleteFolder);
+  }
+  return true;
+}
+
+async function confirmFolderDelete(folder: Folder, folderCounts: ReadonlyMap<string, number>, folders: Folder[], inboxFolderId: string | null, deleteFolder: (id: string) => unknown): Promise<boolean> {
+  const count = folderCounts.get(folder.id) ?? 0;
+  const hasChildren = folders.some((f) => f.parentId === folder.id);
+  const hasContent = count > 0 || hasChildren;
+  const ok = await confirm({
+    title: t('sidebar.delete_folder_value0', { value0: folder.name }),
+    description: hasContent
+      ? t('folders.delete_contents_move_up', { value0: count, value1: 0 })
+      : t('sidebar.this_folder_is_empty'),
+    confirmLabel: t('common.delete'),
+    tone: 'danger',
+  });
+  if (!ok) return false;
+  deleteFolderCleanup(folder, inboxFolderId, deleteFolder);
+  return true;
+}
+
+function useFolderModalStore() {
   const folders = useNotes((s) => s.folders ?? []);
   const createFolder = useNotes((s) => s.createFolder);
   const patchFolder = useNotes((s) => s.patchFolder);
@@ -18,7 +76,10 @@ export function useManageFoldersModal() {
   const toast = useUi((s) => s.toast);
   const { inboxFolderId, folderTemplates } = useFolderPreferences();
   const templates = useNoteTemplates((s) => s.templates);
+  return { folders, createFolder, patchFolder, deleteFolder, folderCounts, toast, inboxFolderId, folderTemplates, templates };
+}
 
+function useFolderModalState() {
   const [query, setQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -27,123 +88,52 @@ export function useManageFoldersModal() {
   const [colorPickerFolderId, setColorPickerFolderId] = useState<string | null>(null);
   const [iconPickerFolderId, setIconPickerFolderId] = useState<string | null>(null);
   const [templateFolder, setTemplateFolder] = useState<Folder | null>(null);
+  return { query, setQuery, isCreating, setIsCreating, newFolderName, setNewFolderName, renamingId, setRenamingId, renameValue, setRenameValue, colorPickerFolderId, setColorPickerFolderId, iconPickerFolderId, setIconPickerFolderId, templateFolder, setTemplateFolder };
+}
 
-  const choices = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
-    return folders
-      .map((folder) => ({
-        folder,
-        path: folderPathLabel(folders, folder.id),
-      }))
-      .filter(({ path }) => !normalized || path.toLocaleLowerCase().includes(normalized))
-      .sort((a, b) => a.path.localeCompare(b.path));
-  }, [folders, query]);
+function useFolderDerived(folders: Folder[], folderCounts: ReadonlyMap<string, number>, query: string) {
+  const choices = useMemo(() => folderChoices(folders, query), [folders, query]);
+  const emptyFolders = useMemo(() => emptyFoldersOf(folders, folderCounts), [folders, folderCounts]);
+  return { choices, emptyFolders };
+}
 
-  const emptyFolders = useMemo(() => {
-    return folders.filter((folder) => {
-      const count = folderCounts.get(folder.id) ?? 0;
-      const hasChildren = folders.some((f) => f.parentId === folder.id);
-      return count === 0 && !hasChildren;
-    });
-  }, [folders, folderCounts]);
+export function useManageFoldersModal() {
+  const store = useFolderModalStore();
+  const state = useFolderModalState();
+  const { folders, createFolder, patchFolder, deleteFolder, folderCounts, toast, inboxFolderId } = store;
+  const { query } = state;
+  const { choices, emptyFolders } = useFolderDerived(folders, folderCounts, query);
 
   const handleCleanEmpty = async () => {
-    if (!emptyFolders.length) return;
-    const ok = await confirm({
-      title: t('folders.clean_empty'),
-      description: t('folders.clean_empty_confirm_value0', { value0: emptyFolders.length }),
-      tone: 'danger',
-      confirmLabel: t('common.delete'),
-    });
-    if (!ok) return;
-    const count = emptyFolders.length;
-    for (const folder of emptyFolders) {
-      if (inboxFolderId === folder.id) {
-        setInboxFolderId(null);
-      }
-      setFolderTemplateId(folder.id, null);
-      deleteFolder(folder.id);
+    if (emptyFolders.length && await confirmAndCleanEmpty(emptyFolders, inboxFolderId, deleteFolder)) {
+      toast({ title: t('folders.clean_empty_success', { value0: emptyFolders.length }), tone: 'success' });
     }
-    toast({
-      title: t('folders.clean_empty_success', { value0: count }),
-      tone: 'success',
-    });
   };
 
   const handleCreate = (e?: React.FormEvent) => {
     e?.preventDefault();
-    const trimmed = newFolderName.trim();
+    const trimmed = state.newFolderName.trim();
     if (!trimmed) return;
-    const newId = createFolder({ name: trimmed });
-    if (newId) {
-      toast({
-        title: t('notes.created'),
-        tone: 'success',
-      });
+    if (createFolder({ name: trimmed })) {
+      toast({ title: t('notes.created'), tone: 'success' });
     }
-    setNewFolderName('');
-    setIsCreating(false);
+    state.setNewFolderName('');
+    state.setIsCreating(false);
   };
 
   const handleSaveRename = (id: string) => {
-    const trimmed = renameValue.trim();
+    const trimmed = state.renameValue.trim();
     if (trimmed) {
       patchFolder(id, { name: trimmed });
     }
-    setRenamingId(null);
+    state.setRenamingId(null);
   };
 
   const handleDelete = async (folder: Folder) => {
-    const count = folderCounts.get(folder.id) ?? 0;
-    const hasChildren = folders.some((f) => f.parentId === folder.id);
-    const hasContent = count > 0 || hasChildren;
-    const ok = await confirm({
-      title: t('sidebar.delete_folder_value0', { value0: folder.name }),
-      description: hasContent
-        ? t('folders.delete_contents_move_up', { value0: count, value1: 0 })
-        : t('sidebar.this_folder_is_empty'),
-      confirmLabel: t('common.delete'),
-      tone: 'danger',
-    });
-    if (ok) {
-      if (inboxFolderId === folder.id) {
-        setInboxFolderId(null);
-      }
-      setFolderTemplateId(folder.id, null);
-      deleteFolder(folder.id);
+    if (await confirmFolderDelete(folder, folderCounts, folders, inboxFolderId, deleteFolder)) {
       toast({ title: t('notes.deleted'), tone: 'default' });
     }
   };
 
-  return {
-folders,
-patchFolder,
-folderCounts,
-toast,
-inboxFolderId,
-folderTemplates,
-templates,
-query,
-setQuery,
-isCreating,
-setIsCreating,
-newFolderName,
-setNewFolderName,
-renamingId,
-setRenamingId,
-renameValue,
-setRenameValue,
-colorPickerFolderId,
-setColorPickerFolderId,
-iconPickerFolderId,
-setIconPickerFolderId,
-templateFolder,
-setTemplateFolder,
-choices,
-emptyFolders,
-handleCleanEmpty,
-handleCreate,
-handleSaveRename,
-handleDelete,
-  };
+  return { ...store, ...state, choices, emptyFolders, handleCleanEmpty, handleCreate, handleSaveRename, handleDelete };
 }

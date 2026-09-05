@@ -141,38 +141,6 @@
   "src/client/features/blog/blog-table-view/row.tsx": {
     "longFns": 1
   },
-  "src/client/features/command/command-palette/index.tsx": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/client/features/command/shortcuts-panel.test.ts": {
-    "longFns": 1
-  },
-  "src/client/features/command/shortcuts-panel.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/folders/manage-folders-modal/index.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/folders/manage-folders-modal/use-manage-folders-modal.ts": {
-    "longFns": 1
-  },
-  "src/client/features/graph/graph-panel/canvas.tsx": {
-    "longFns": 3,
-    "deepFns": 1
-  },
-  "src/client/features/graph/graph-panel/index.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/list/note-list.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/list/note-list/bulk-bar.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/list/note-list/note-row.tsx": {
-    "longFns": 1
-  },
   "src/client/features/preview/card-content.ts": {
     "longFns": 2
   },
@@ -304,13 +272,6 @@
     "longFns": 1
   },
   "src/client/features/tags/manage-tags-modal.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/templates/gallery-keyboard.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/client/features/templates/template-gallery.tsx": {
     "longFns": 1
   },
   "src/client/features/workspace/context-menu-detect.test.ts": {
