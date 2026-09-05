@@ -661,22 +661,6 @@ const allowed = new Map([
     "// Destructive actions get a longer undo window than the default light-operation window.",
     "// Attempt 1 conflicted (rev 1); attempt 2 retried with the adopted revision (rev 2).",
   ]],
-  ["src/client/store/notes.ts", [
-    "/** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization.\n *\n * This file is the composition root of the notes store: it owns the zustand store\n * instance (`useNotes`) and the store-level undo/toast helpers. The heavy lifting\n * lives in `store/notes/` — see `model.ts` (state), `persist.ts` (write staging),\n * `outbox.ts` (offline replay), `reconcile.ts` (merge), and `selectors.ts` (hooks).\n */",
-    "/** Patch shape accepted by `patchNote` (summary flags plus folder moves). */",
-    "/** Undo window for destructive actions (e.g. moving a note to the trash): longer than the default 3800ms. */",
-    "/** Batch toast title for a count-aware mutation (e.g. \"Moved 3 notes\"). */",
-    "/**\n * The shared store-level undo contract for light mutations: apply `patch` to every id in\n * `undoPatches`, then offer one undo toast running each note's captured revert patch.\n * `notify: 'confirm'` turns the action into a silent revert that confirms with a plain\n * toast; `'none'` reverts without any toast (batch undos).\n */",
-    "// Single-note reverts confirm with a plain toast describing the reverted state; batch reverts stay silent.",
-    "// Cache read failed (IndexedDB hiccup); fall through to the server fetch below.",
-    "// Keep the front matter `title` property in sync with the note title",
-    "// whenever the note already declares one (opt-out per settings).",
-    "// Reverse sync: when the body's front matter `title` property changes,",
-    "// adopt it as the note title so both stay in agreement (opt-out per",
-    "// settings).",
-    "// Reconnect pulls race with the connection coming up; the next event or manual refresh retries.",
-    "// Outbox replay is retried on the next pull; keep the UI responsive meanwhile.",
-  ]],
   ["src/client/store/notes/acknowledge.ts", [
     "/** Cross-tab broadcast acknowledgements: apply outbox results and base advancements from other tabs. */",
     "// Best-effort count refresh; the next outbox event or pull retries it.",
@@ -684,11 +668,25 @@ const allowed = new Map([
   ["src/client/store/notes/adopt.ts", [
     "/** Adopting fetched/created/saved notes into the store (summary plus content caches). */",
   ]],
+  ["src/client/store/notes/boot.ts", [
+    "// Reconnect pulls race with the connection coming up; the next event or manual refresh retries.",
+    "// Outbox replay is retried on the next pull; keep the UI responsive meanwhile.",
+  ]],
+  ["src/client/store/notes/edit.ts", [
+    "// Keep the front matter `title` property in sync with the note title",
+    "// whenever the note already declares one (opt-out per settings).",
+    "// Reverse sync: when the body's front matter `title` property changes,",
+    "// adopt it as the note title so both stay in agreement (opt-out per",
+    "// settings).",
+  ]],
   ["src/client/store/notes/folder-mutations.ts", [
     "/** Optimistic folder mutations: begin/commit/rollback against pending-folder state. */",
   ]],
   ["src/client/store/notes/folder-ops.ts", [
     "/** Pure folder-tree manipulation used by optimistic folder mutations. */",
+  ]],
+  ["src/client/store/notes/index.ts", [
+    "/** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization.\n *\n * This file is the composition root of the notes store: it owns the zustand store\n * instance (`useNotes`) and the store-level undo/toast helpers. The heavy lifting\n * lives in `store/notes/` — see `model.ts` (state), `persist.ts` (write staging),\n * `outbox.ts` (offline replay), `reconcile.ts` (merge), and `selectors.ts` (hooks).\n */",
   ]],
   ["src/client/store/notes/model.ts", [
     "/** Notes store model: shared types plus module-level mutable state (single browser-tab singletons). */",
@@ -712,6 +710,9 @@ const allowed = new Map([
   ]],
   ["src/client/store/notes/note-mutations.ts", [
     "/** Optimistic note-summary mutations (move/star/pin/archive/trash/restore) with conflict recovery. */",
+  ]],
+  ["src/client/store/notes/open.ts", [
+    "// Cache read failed (IndexedDB hiccup); fall through to the server fetch below.",
   ]],
   ["src/client/store/notes/outbox.ts", [
     "/** Offline write-ahead replay: dependency-ordered outbox flush, conflict rebase, and 404 recovery. */",
@@ -741,6 +742,13 @@ const allowed = new Map([
   ]],
   ["src/client/store/notes/sync.ts", [
     "/** Full-sync paging and consolidation for the note store pull path. */",
+  ]],
+  ["src/client/store/notes/undo.ts", [
+    "/** Patch shape accepted by `patchNote` (summary flags plus folder moves). */",
+    "/** Undo window for destructive actions (e.g. moving a note to the trash): longer than the default 3800ms. */",
+    "/** Batch toast title for a count-aware mutation (e.g. \"Moved 3 notes\"). */",
+    "/**\n * The shared store-level undo contract for light mutations: apply `patch` to every id in\n * `undoPatches`, then offer one undo toast running each note's captured revert patch.\n * `notify: 'confirm'` turns the action into a silent revert that confirms with a plain\n * toast; `'none'` reverts without any toast (batch undos).\n */",
+    "// Single-note reverts confirm with a plain toast describing the reverted state; batch reverts stay silent.",
   ]],
   ["src/client/store/notes/util.ts", [
     "/** ID generation, outbox key helpers, and tiny shared predicates for the notes store. */",

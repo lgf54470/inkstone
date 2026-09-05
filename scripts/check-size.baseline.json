@@ -472,13 +472,30 @@
   "src/client/store/notes.test.ts": {
     "longFns": 1
   },
-  "src/client/store/notes.ts": {
-    "lines": 1219,
-    "longFns": 9,
-    "deepFns": 5
-  },
   "src/client/store/notes/acknowledge.ts": {
     "longFns": 1
+  },
+  "src/client/store/notes/boot.ts": {
+    "longFns": 6,
+    "deepFns": 1
+  },
+  "src/client/store/notes/destructive.ts": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/client/store/notes/edit.ts": {
+    "longFns": 1
+  },
+  "src/client/store/notes/folder-actions.ts": {
+    "longFns": 1
+  },
+  "src/client/store/notes/note-actions.ts": {
+    "longFns": 2,
+    "deepFns": 2
+  },
+  "src/client/store/notes/open.ts": {
+    "longFns": 2,
+    "deepFns": 1
   },
   "src/client/store/notes/outbox.ts": {
     "longFns": 1,
