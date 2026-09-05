@@ -1,4 +1,5 @@
 import MarkdownIt from 'markdown-it';
+import type StateBlock from 'markdown-it/lib/rules_block/state_block.mjs';
 import { escapeHtml } from '@shared/escape';
 import { t } from '../../i18n';
 import { renderEnv } from './env';
@@ -30,45 +31,62 @@ function blockLine(state: {
     const from = state.bMarks[line]! + state.tShift[line]!;
     return state.src.slice(from, state.eMarks[line]!);
 }
-export 
-function findContainerEnd(state: {
+type Fence = {
+    char: string;
+    length: number;
+};
+
+type BlockState = {
     src: string;
     bMarks: number[];
     tShift: number[];
     eMarks: number[];
-}, startLine: number, endLine: number, markerLength: number): number {
-    let depth = 1;
-    let fence: {
-        char: string;
-        length: number;
-    } | null = null;
-    for (let line = startLine + 1; line < endLine; line++) {
+};
+
+function advanceFence(fence: Fence | null, marker: string): Fence | null {
+    if (!fence)
+        return { char: marker[0]!, length: marker.length };
+    if (marker[0] === fence.char && marker.length >= fence.length)
+        return null;
+    return fence;
+}
+
+function walkNonFenceLines(state: BlockState, start: number, end: number, visit: (line: number, text: string) => boolean): number {
+    let fence: Fence | null = null;
+    for (let line = start; line < end; line++) {
         const text = blockLine(state, line);
         const fenceMatch = /^(`{3,}|~{3,})/.exec(text);
         if (fenceMatch) {
-            const marker = fenceMatch[1]!;
-            if (!fence)
-                fence = { char: marker[0]!, length: marker.length };
-            else if (marker[0] === fence.char && marker.length >= fence.length)
-                fence = null;
+            fence = advanceFence(fence, fenceMatch[1]!);
             continue;
         }
         if (fence)
             continue;
-        if (new RegExp(`^:{${markerLength},}(?:\\s+(?:details|tabs)\\b|\\{tab-set\\})`).test(text))
-            depth++;
-        else if (new RegExp(`^:{${markerLength},}\\s*$`).test(text) && --depth === 0)
+        if (visit(line, text))
             return line;
     }
     return -1;
 }
+
 export 
-function findTabSegments(state: {
-    src: string;
-    bMarks: number[];
-    tShift: number[];
-    eMarks: number[];
-}, start: number, end: number): Array<{
+function findContainerEnd(state: BlockState, startLine: number, endLine: number, markerLength: number): number {
+    let depth = 1;
+    let result = -1;
+    walkNonFenceLines(state, startLine + 1, endLine, (line, text) => {
+        if (new RegExp(`^:{${markerLength},}(?:\\s+(?:details|tabs)\\b|\\{tab-set\\})`).test(text)) {
+            depth++;
+            return false;
+        }
+        if (new RegExp(`^:{${markerLength},}\\s*$`).test(text) && --depth === 0) {
+            result = line;
+            return true;
+        }
+        return false;
+    });
+    return result;
+}
+export 
+function findTabSegments(state: BlockState, start: number, end: number): Array<{
     title: string;
     start: number;
     end: number;
@@ -82,29 +100,14 @@ function findTabSegments(state: {
         title: string;
         selected: boolean;
     }> = [];
-    let fence: {
-        char: string;
-        length: number;
-    } | null = null;
-    for (let line = start; line < end; line++) {
-        const text = blockLine(state, line);
-        const fenceMatch = /^(`{3,}|~{3,})/.exec(text);
-        if (fenceMatch) {
-            const marker = fenceMatch[1]!;
-            if (!fence)
-                fence = { char: marker[0]!, length: marker.length };
-            else if (marker[0] === fence.char && marker.length >= fence.length)
-                fence = null;
-            continue;
-        }
-        if (fence)
-            continue;
+    walkNonFenceLines(state, start, end, (line, text) => {
         const tab = /^@tab(?::active|\+)?\b[ \t]+(.+?)[ \t]*$/.exec(text);
         if (tab) {
             const selected = /^@tab(?::active|\+)\b/.test(text);
             markers.push({ line, title: stripBracketTitle(tab[1]!) || t("common.tabs"), selected });
         }
-    }
+        return false;
+    });
     return markers.map((marker, index) => ({
         title: marker.title,
         start: marker.line + 1,
@@ -157,29 +160,84 @@ function findDirectiveTabSegments(state: {
     return tabs;
 }
 export 
-function findColonFenceEnd(state: {
-    src: string;
-    bMarks: number[];
-    tShift: number[];
-    eMarks: number[];
-}, start: number, end: number, markerLength: number): number {
-    let fence: { char: string; length: number } | null = null;
-    for (let line = start; line < end; line++) {
-        const text = blockLine(state, line);
-        const codeFence = /^(`{3,}|~{3,})/.exec(text);
-        if (codeFence) {
-            const marker = codeFence[1]!;
-            if (!fence)
-                fence = { char: marker[0]!, length: marker.length };
-            else if (marker[0] === fence.char && marker.length >= fence.length)
-                fence = null;
-            continue;
+function findColonFenceEnd(state: BlockState, start: number, end: number, markerLength: number): number {
+    let result = -1;
+    walkNonFenceLines(state, start, end, (line, text) => {
+        if (new RegExp(`^:{${markerLength},}\\s*$`).test(text)) {
+            result = line;
+            return true;
         }
-        if (!fence && new RegExp(`^:{${markerLength},}\\s*$`).test(text))
-            return line;
-    }
-    return -1;
+        return false;
+    });
+    return result;
 }
+function renderModernContainer(
+    state: StateBlock,
+    startLine: number,
+    endLine: number,
+    silent: boolean,
+): boolean {
+    const source = blockLine(state, startLine);
+    const legacyMatch = /^(:{3,})[ \t]+(details|tabs)\b(?:[ \t]+(.*))?$/.exec(source);
+    const directiveMatch = /^(:{3,})\{(tab-set)\}[ \t]*(.*)$/.exec(source);
+    if (!legacyMatch && !directiveMatch)
+        return false;
+    const markerLength = (legacyMatch?.[1] ?? directiveMatch![1]!).length;
+    const end = findContainerEnd(state, startLine, endLine, markerLength);
+    if (end < 0)
+        return false;
+    if (silent)
+        return true;
+    const kind = legacyMatch?.[2] ?? directiveMatch![2]!;
+    if (kind === 'details') {
+        renderDetailsContainer(state, startLine, end, legacyMatch);
+    }
+    else {
+        renderTabsContainer(state, startLine, end);
+    }
+    state.line = end + 1;
+    return true;
+}
+
+function renderDetailsContainer(state: StateBlock, startLine: number, end: number, legacyMatch: RegExpExecArray | null): void {
+    const rawInfo = (legacyMatch?.[3] ?? '').trim();
+    const open = /^(?:open|\+)\b/.test(rawInfo);
+    const title = stripBracketTitle(rawInfo.replace(/^(?:open|\+)\b[ \t]*/, '')) || t("markdown.details");
+    const openToken = state.push('details_open', 'details', 1);
+    openToken.block = true;
+    openToken.map = [startLine, end + 1];
+    openToken.meta = { open };
+    const summary = state.push('details_summary', 'summary', 0);
+    summary.content = title;
+    state.md.block.tokenize(state, startLine + 1, end);
+    state.push('details_close', 'details', -1).block = true;
+}
+
+function renderTabsContainer(state: StateBlock, startLine: number, end: number): void {
+    const tabs = findTabSegments(state, startLine + 1, end);
+    if (!tabs.length) {
+        state.line = end + 1;
+        return;
+    }
+    const env = renderEnv(state.env);
+    const id = `${env.docId}-tabs-${++env.tabSequence}`;
+    const selectedIndex = Math.max(0, tabs.findIndex((tab) => tab.selected));
+    const openToken = state.push('tabs_open', 'div', 1);
+    openToken.block = true;
+    openToken.map = [startLine, end + 1];
+    openToken.meta = { id, titles: tabs.map((tab) => tab.title), selectedIndex };
+    tabs.forEach((tab, tabIndex) => {
+        const panelOpen = state.push('tab_panel_open', 'section', 1);
+        panelOpen.block = true;
+        panelOpen.meta = { id, tabIndex, selected: tabIndex === selectedIndex };
+        state.md.block.tokenize(state, tab.start, tab.end);
+        const panelClose = state.push('tab_panel_close', 'section', -1);
+        panelClose.block = true;
+        panelClose.meta = { id, tabIndex };
+    });
+    state.push('tabs_close', 'div', -1).block = true;
+}
+
 export 
 function stripBracketTitle(value: string): string {
     const trimmed = value.trim();
@@ -188,59 +246,8 @@ function stripBracketTitle(value: string): string {
 
 export function registerContainers(md: MarkdownIt): void {
 
-    md.block.ruler.before('fence', 'modern_container', (state, startLine, endLine, silent) => {
-        const source = blockLine(state, startLine);
-        const legacyMatch = /^(:{3,})[ \t]+(details|tabs)\b(?:[ \t]+(.*))?$/.exec(source);
-        const directiveMatch = /^(:{3,})\{(tab-set)\}[ \t]*(.*)$/.exec(source);
-        if (!legacyMatch && !directiveMatch)
-            return false;
-        const markerLength = (legacyMatch?.[1] ?? directiveMatch![1]!).length;
-        const end = findContainerEnd(state, startLine, endLine, markerLength);
-        if (end < 0)
-            return false;
-        if (silent)
-            return true;
-        const kind = legacyMatch?.[2] ?? directiveMatch![2]!;
-        if (kind === 'details') {
-            const rawInfo = (legacyMatch?.[3] ?? '').trim();
-            const open = /^(?:open|\+)\b/.test(rawInfo);
-            const title = stripBracketTitle(rawInfo.replace(/^(?:open|\+)\b[ \t]*/, '')) || t("markdown.details");
-            const openToken = state.push('details_open', 'details', 1);
-            openToken.block = true;
-            openToken.map = [startLine, end + 1];
-            openToken.meta = { open };
-            const summary = state.push('details_summary', 'summary', 0);
-            summary.content = title;
-            state.md.block.tokenize(state, startLine + 1, end);
-            state.push('details_close', 'details', -1).block = true;
-        }
-        else {
-            const tabs = findTabSegments(state, startLine + 1, end);
-            if (!tabs.length) {
-                state.line = end + 1;
-                return true;
-            }
-            const env = renderEnv(state.env);
-            const id = `${env.docId}-tabs-${++env.tabSequence}`;
-            const selectedIndex = Math.max(0, tabs.findIndex((tab) => tab.selected));
-            const openToken = state.push('tabs_open', 'div', 1);
-            openToken.block = true;
-            openToken.map = [startLine, end + 1];
-            openToken.meta = { id, titles: tabs.map((tab) => tab.title), selectedIndex };
-            tabs.forEach((tab, tabIndex) => {
-                const panelOpen = state.push('tab_panel_open', 'section', 1);
-                panelOpen.block = true;
-                panelOpen.meta = { id, tabIndex, selected: tabIndex === selectedIndex };
-                state.md.block.tokenize(state, tab.start, tab.end);
-                const panelClose = state.push('tab_panel_close', 'section', -1);
-                panelClose.block = true;
-                panelClose.meta = { id, tabIndex };
-            });
-            state.push('tabs_close', 'div', -1).block = true;
-        }
-        state.line = end + 1;
-        return true;
-    });
+    md.block.ruler.before('fence', 'modern_container', (state, startLine, endLine, silent) =>
+        renderModernContainer(state, startLine, endLine, silent));
     md.renderer.rules.details_open = (tokens, index) => {
         const sourceLine = tokens[index]!.map?.[0];
         const open = Boolean((tokens[index]!.meta as {

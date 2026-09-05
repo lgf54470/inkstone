@@ -27,68 +27,78 @@ export function buildTagTree(tags: readonly Tag[]): TagTreeNode[] {
       const segment = segments[depth]!;
       currentPath = depth === 0 ? segment : `${currentPath}/${segment}`;
       const isLeaf = depth === segments.length - 1;
-
-      let existing = nodeMap.get(currentPath);
-      if (!existing) {
-        const syntheticTag: Tag = {
-          id: `virtual:${currentPath}`,
-          name: currentPath,
-          color: null,
-          count: 0,
-          isPinned: false,
-          createdAt: 0,
-        };
-        existing = {
-          fullPath: currentPath,
-          name: segment,
-          depth,
-          tag: isLeaf ? tag : syntheticTag,
-          count: isLeaf ? tag.count : 0,
-          totalCount: isLeaf ? tag.count : 0,
-          isPinned: isLeaf ? Boolean(tag.isPinned) : false,
-          children: [],
-        };
-        nodeMap.set(currentPath, existing);
-        parentChildren.push(existing);
-      } else if (isLeaf) {
-        existing.tag = tag;
-        existing.count = tag.count;
-        existing.totalCount = Math.max(existing.totalCount, tag.count);
-        if (tag.isPinned) existing.isPinned = true;
-      }
-
-      parentChildren = existing.children;
+      const node = insertTagSegment(nodeMap, parentChildren, currentPath, segment, depth, isLeaf, tag);
+      parentChildren = node.children;
     }
-  }
-
-  function rollUp(node: TagTreeNode): void {
-    let descendantCount = 0;
-    for (const child of node.children) {
-      rollUp(child);
-      descendantCount += child.totalCount;
-      if (child.isPinned) node.isPinned = true;
-    }
-    node.totalCount = node.count + descendantCount;
-    node.children.sort((a, b) => {
-      const aPin = a.isPinned;
-      const bPin = b.isPinned;
-      if (aPin !== bPin) return aPin ? -1 : 1;
-      return b.totalCount - a.totalCount || compareTagNames(a.name, b.name);
-    });
   }
 
   for (const root of rootNodes) {
-    rollUp(root);
+    rollUpTagCounts(root);
   }
 
-  rootNodes.sort((a, b) => {
-    const aPin = a.isPinned;
-    const bPin = b.isPinned;
-    if (aPin !== bPin) return aPin ? -1 : 1;
-    return b.totalCount - a.totalCount || compareTagNames(a.name, b.name);
-  });
+  rootNodes.sort(compareTagNodes);
 
   return rootNodes;
+}
+
+function insertTagSegment(
+  nodeMap: Map<string, TagTreeNode>,
+  parentChildren: TagTreeNode[],
+  currentPath: string,
+  segment: string,
+  depth: number,
+  isLeaf: boolean,
+  tag: Tag,
+): TagTreeNode {
+  const existing = nodeMap.get(currentPath);
+  if (existing) {
+    if (isLeaf) {
+      existing.tag = tag;
+      existing.count = tag.count;
+      existing.totalCount = Math.max(existing.totalCount, tag.count);
+      if (tag.isPinned) existing.isPinned = true;
+    }
+    return existing;
+  }
+  const syntheticTag: Tag = {
+    id: `virtual:${currentPath}`,
+    name: currentPath,
+    color: null,
+    count: 0,
+    isPinned: false,
+    createdAt: 0,
+  };
+  const node: TagTreeNode = {
+    fullPath: currentPath,
+    name: segment,
+    depth,
+    tag: isLeaf ? tag : syntheticTag,
+    count: isLeaf ? tag.count : 0,
+    totalCount: isLeaf ? tag.count : 0,
+    isPinned: isLeaf ? Boolean(tag.isPinned) : false,
+    children: [],
+  };
+  nodeMap.set(currentPath, node);
+  parentChildren.push(node);
+  return node;
+}
+
+function rollUpTagCounts(node: TagTreeNode): void {
+  let descendantCount = 0;
+  for (const child of node.children) {
+    rollUpTagCounts(child);
+    descendantCount += child.totalCount;
+    if (child.isPinned) node.isPinned = true;
+  }
+  node.totalCount = node.count + descendantCount;
+  node.children.sort(compareTagNodes);
+}
+
+function compareTagNodes(a: TagTreeNode, b: TagTreeNode): number {
+  const aPin = a.isPinned;
+  const bPin = b.isPinned;
+  if (aPin !== bPin) return aPin ? -1 : 1;
+  return b.totalCount - a.totalCount || compareTagNames(a.name, b.name);
 }
 
 export function flattenTagTree(
