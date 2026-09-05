@@ -59,10 +59,6 @@
   "src/client/demo/backend/routes/share-admin.ts": {
     "longFns": 1
   },
-  "src/client/demo/backend/routes/share.ts": {
-    "longFns": 5,
-    "deepFns": 1
-  },
   "src/client/demo/backend/routes/tags.ts": {
     "longFns": 1
   },
