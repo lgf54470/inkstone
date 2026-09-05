@@ -25,6 +25,42 @@ async function loadMcpNotesByIds(
   return rows
 }
 
+async function collectLevelNodes(
+  db: D1Database,
+  userId: string,
+  frontier: string[],
+  nodes: Map<string, { id: string; title: string; excerpt: string }>,
+): Promise<Set<string>> {
+  const present = new Set<string>()
+  for (const note of await loadMcpNotesByIds(db, userId, frontier)) {
+    nodes.set(note.id, note)
+    present.add(note.id)
+  }
+  return present
+}
+
+async function collectLevelEdges(
+  db: D1Database,
+  userId: string,
+  present: Set<string>,
+  nodes: Map<string, { id: string; title: string; excerpt: string }>,
+  edges: Map<string, { source: string; target: string }>,
+  cappedNodes: number,
+): Promise<Set<string>> {
+  const next = new Set<string>()
+  for (const edge of await loadMcpLinkEdges(db, userId, [...present])) {
+    edges.set(`${edge.source_note_id}:${edge.target_note_id}`, {
+      source: edge.source_note_id,
+      target: edge.target_note_id,
+    })
+    const adjacent = present.has(edge.source_note_id)
+      ? edge.target_note_id
+      : edge.source_note_id
+    if (!nodes.has(adjacent) && nodes.size + next.size < cappedNodes) next.add(adjacent)
+  }
+  return next
+}
+
 async function loadMcpLinkEdges(
   db: D1Database,
   userId: string,
@@ -73,25 +109,12 @@ export async function exploreMcpGraph(
   const edges = new Map<string, { source: string; target: string }>()
   let frontier = [rootId]
   for (let level = 0; level <= cappedDepth && frontier.length && nodes.size < cappedNodes; level++) {
-    const next = new Set<string>()
-    const present = new Set<string>()
-    for (const note of await loadMcpNotesByIds(db, userId, frontier)) {
-      nodes.set(note.id, note)
-      present.add(note.id)
-    }
+    const present = await collectLevelNodes(db, userId, frontier, nodes)
     if (level < cappedDepth && present.size) {
-      for (const edge of await loadMcpLinkEdges(db, userId, [...present])) {
-        edges.set(`${edge.source_note_id}:${edge.target_note_id}`, {
-          source: edge.source_note_id,
-          target: edge.target_note_id,
-        })
-        const adjacent = present.has(edge.source_note_id)
-          ? edge.target_note_id
-          : edge.source_note_id
-        if (!nodes.has(adjacent) && nodes.size + next.size < cappedNodes) next.add(adjacent)
-      }
+      frontier = [...await collectLevelEdges(db, userId, present, nodes, edges, cappedNodes)]
+    } else {
+      frontier = []
     }
-    frontier = [...next]
   }
   return {
     root_id: rootId,

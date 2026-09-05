@@ -13,7 +13,7 @@ interface PendingOperation {
   recovery?: Record<string, unknown>
 }
 
-export async function runIdempotent<T>(options: {
+interface IdempotentOptions<T> {
   db: D1Database
   userId: string
   operationId: string
@@ -22,10 +22,38 @@ export async function runIdempotent<T>(options: {
   recovery?: Record<string, unknown>
   recover?: (recovery: Record<string, unknown> | undefined) => Promise<T | null>
   execute: () => Promise<T>
-}): Promise<T> {
+}
+
+export async function runIdempotent<T>(options: IdempotentOptions<T>): Promise<T> {
   const operationId = normalizeOperationId(options.operationId)
   const requestHash = await sha256Hex(stableJson(options.request))
   const pending: PendingOperation = { pending: true, recovery: options.recovery }
+  const existing = await claimOperation(options, operationId, requestHash, pending)
+  if (existing) {
+    return resolveExistingOperation(options, existing, operationId, requestHash)
+  }
+  let result: T
+  try {
+    result = await options.execute()
+  } catch (error) {
+    // The mutation itself failed before committing; remove the pending row
+    // so the client can retry the same operation_id cleanly.
+    await clearPendingRow(options.db, options.userId, operationId, pending)
+    throw error
+  }
+  // The mutation already committed. If storing the response fails, the row
+  // stays pending so a retry goes through the recovery path instead of
+  // re-executing and colliding (e.g. create_note with the same id).
+  await storeResponse(options.db, options.userId, operationId, result)
+  return result
+}
+
+async function claimOperation<T>(
+  options: IdempotentOptions<T>,
+  operationId: string,
+  requestHash: string,
+  pending: PendingOperation,
+): Promise<OperationRow | null> {
   const inserted = await options.db.prepare(
     `INSERT OR IGNORE INTO mcp_operations
        (user_id, operation_id, tool, request_hash, response_json, created_at)
@@ -38,50 +66,47 @@ export async function runIdempotent<T>(options: {
     JSON.stringify(pending),
     Date.now(),
   ).run()
+  if (inserted.meta.changes) return null
+  const existing = await options.db.prepare(
+    `SELECT tool, request_hash, response_json, created_at
+       FROM mcp_operations WHERE user_id = ?1 AND operation_id = ?2`,
+  ).bind(options.userId, operationId).first<OperationRow>()
+  if (!existing) throw ApiError.conflict('Operation state changed; retry the call')
+  return existing
+}
 
-  if (!inserted.meta.changes) {
-    const existing = await options.db.prepare(
-      `SELECT tool, request_hash, response_json, created_at
-         FROM mcp_operations WHERE user_id = ?1 AND operation_id = ?2`,
-    ).bind(options.userId, operationId).first<OperationRow>()
-    if (!existing) throw ApiError.conflict('Operation state changed; retry the call')
-    if (existing.tool !== options.tool || existing.request_hash !== requestHash) {
-      throw ApiError.conflict('operation_id was already used with different arguments')
-    }
-    const stored = parseJson(existing.response_json)
-    if (!isPending(stored)) return stored as T
-    const recovered = await options.recover?.(stored.recovery)
-    if (recovered !== null && recovered !== undefined) {
-      await storeResponse(options.db, options.userId, operationId, recovered)
-      return recovered
-    }
-    throw ApiError.conflict(
-      'The previous call may still be completing. Read the note before retrying with a new operation_id',
-      { operationId, startedAt: existing.created_at },
-    )
+async function resolveExistingOperation<T>(
+  options: IdempotentOptions<T>,
+  existing: OperationRow,
+  operationId: string,
+  requestHash: string,
+): Promise<T> {
+  if (existing.tool !== options.tool || existing.request_hash !== requestHash) {
+    throw ApiError.conflict('operation_id was already used with different arguments')
   }
+  const stored = parseJson(existing.response_json)
+  if (!isPending(stored)) return stored as T
+  const recovered = await options.recover?.(stored.recovery)
+  if (recovered !== null && recovered !== undefined) {
+    await storeResponse(options.db, options.userId, operationId, recovered)
+    return recovered
+  }
+  throw ApiError.conflict(
+    'The previous call may still be completing. Read the note before retrying with a new operation_id',
+    { operationId, startedAt: existing.created_at },
+  )
+}
 
-  let result: T
-  try {
-    result = await options.execute()
-  } catch (error) {
-    // The mutation itself failed before committing; remove the pending row
-    // so the client can retry the same operation_id cleanly.
-    await options.db.prepare(
-      `DELETE FROM mcp_operations
-        WHERE user_id = ?1 AND operation_id = ?2 AND response_json = ?3`,
-    ).bind(options.userId, operationId, JSON.stringify(pending)).run().catch(() => {})
-    throw error
-  }
-  try {
-    await storeResponse(options.db, options.userId, operationId, result)
-  } catch (error) {
-    // The mutation already committed. Keep the pending row so a retry goes
-    // through the recovery path instead of re-executing and colliding
-    // (e.g. create_note with the same id).
-    throw error
-  }
-  return result
+async function clearPendingRow(
+  db: D1Database,
+  userId: string,
+  operationId: string,
+  pending: PendingOperation,
+): Promise<void> {
+  await db.prepare(
+    `DELETE FROM mcp_operations
+      WHERE user_id = ?1 AND operation_id = ?2 AND response_json = ?3`,
+  ).bind(userId, operationId, JSON.stringify(pending)).run().catch(() => {})
 }
 
 export async function purgeExpiredMcpOperations(

@@ -136,48 +136,89 @@ export async function uploadMcpAttachment(
         markdown: `![${row.filename}](/api/files/${row.id})`,
       }
     },
-    execute: async () => {
-      try {
-        await consumeAttemptBudget(context.env.DB, [{
-          key: `attachment-upload:${context.userId}`,
-          maxAttempts: LIMITS.attachmentUploadsPerHour,
-          windowMs: 60 * 60 * 1000,
-          lockMs: 60 * 60 * 1000,
-        }])
-      } catch (error) {
-        if (error instanceof ThrottleError) {
-          throw new ApiError(
-            429,
-            'too_many_attempts',
-            `Too many uploads. Try again in ${error.retryAfterSec} seconds`,
-            { retryAfter: error.retryAfterSec },
-          )
-        }
-        throw error
-      }
-      const collision = await context.env.DB.prepare(`SELECT 1 FROM attachments WHERE id = ?1`).bind(id).first()
-      if (collision) throw ApiError.conflict('This attachment id is already in use')
-      const stored = await persistAttachmentWithinQuota(context.env, {
-        id,
-        userId: context.userId,
-        noteId: input.noteId ?? null,
-        filename: input.filename,
-        reportedMime: input.mime,
-        bytes,
-        createdAt: Date.now(),
-      })
-      return {
-        id: stored.id,
-        note_id: stored.noteId,
-        filename: stored.filename,
-        mime: stored.mime,
-        size: stored.size,
-        width: stored.width,
-        height: stored.height,
-        markdown: `![${stored.filename}](/api/files/${stored.id})`,
-      }
-    },
+    execute: async () => persistUploadedAttachment(context, input, { id, bytes }),
   })
+}
+
+interface UploadAttachmentInput {
+  operationId: string
+  attachmentId?: string
+  noteId?: string | null
+  filename: string
+  mime: string
+  base64: string
+}
+
+interface AttachmentUploadMeta {
+  id: string
+  noteId: string | null
+  filename: string
+  mime: string
+  size: number
+  width: number | null
+  height: number | null
+}
+
+async function persistUploadedAttachment(
+  context: LibraryContext,
+  input: UploadAttachmentInput,
+  payload: { id: string; bytes: Uint8Array },
+): Promise<ReturnType<typeof attachmentUploadResult>> {
+  await assertUploadBudget(context.env.DB, context.userId)
+  const collision = await context.env.DB.prepare(`SELECT 1 FROM attachments WHERE id = ?1`).bind(payload.id).first()
+  if (collision) throw ApiError.conflict('This attachment id is already in use')
+  const stored = await persistAttachmentWithinQuota(context.env, {
+    id: payload.id,
+    userId: context.userId,
+    noteId: input.noteId ?? null,
+    filename: input.filename,
+    reportedMime: input.mime,
+    bytes: payload.bytes,
+    createdAt: Date.now(),
+  })
+  return attachmentUploadResult({
+    id: stored.id,
+    noteId: stored.noteId,
+    filename: stored.filename,
+    mime: stored.mime,
+    size: stored.size,
+    width: stored.width,
+    height: stored.height,
+  })
+}
+
+async function assertUploadBudget(db: D1Database, userId: string): Promise<void> {
+  try {
+    await consumeAttemptBudget(db, [{
+      key: `attachment-upload:${userId}`,
+      maxAttempts: LIMITS.attachmentUploadsPerHour,
+      windowMs: 60 * 60 * 1000,
+      lockMs: 60 * 60 * 1000,
+    }])
+  } catch (error) {
+    if (error instanceof ThrottleError) {
+      throw new ApiError(
+        429,
+        'too_many_attempts',
+        `Too many uploads. Try again in ${error.retryAfterSec} seconds`,
+        { retryAfter: error.retryAfterSec },
+      )
+    }
+    throw error
+  }
+}
+
+function attachmentUploadResult(meta: AttachmentUploadMeta) {
+  return {
+    id: meta.id,
+    note_id: meta.noteId,
+    filename: meta.filename,
+    mime: meta.mime,
+    size: meta.size,
+    width: meta.width,
+    height: meta.height,
+    markdown: `![${meta.filename}](/api/files/${meta.id})`,
+  }
 }
 
 export async function deleteMcpAttachment(

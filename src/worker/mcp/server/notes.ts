@@ -6,7 +6,19 @@ import { createMcpNote, editMcpNote, organizeMcpNote, restoreMcpNote, trashMcpNo
 import { customTool, writeTool, noteResult, readOnlyAnnotations, writeAnnotations, generalOutputSchema, operationId, noteId, expectedRev } from './context';
 
 export function registerNotesTools(ctx: McpToolCtx): void {
-  const { server, options, writes, library } = ctx
+  registerCreateNoteTool(ctx)
+  registerEditNoteTool(ctx)
+  registerOrganizeNoteTool(ctx)
+  registerTrashNoteTool(ctx)
+  registerRestoreNoteTool(ctx)
+  registerDuplicateNoteTool(ctx)
+  registerListNoteVersionsTool(ctx)
+  registerReadNoteVersionTool(ctx)
+  registerRestoreNoteVersionTool(ctx)
+}
+
+function registerCreateNoteTool(toolCtx: McpToolCtx): void {
+  const { server, options, writes } = toolCtx
   server.registerTool(
     'create_note',
     {
@@ -33,7 +45,10 @@ export function registerNotesTools(ctx: McpToolCtx): void {
       options.origin,
     )),
   )
+}
 
+function registerEditNoteTool(toolCtx: McpToolCtx): void {
+  const { server, options, writes } = toolCtx
   server.registerTool(
     'edit_note',
     {
@@ -66,7 +81,10 @@ export function registerNotesTools(ctx: McpToolCtx): void {
       options.origin,
     )),
   )
+}
 
+function registerOrganizeNoteTool(toolCtx: McpToolCtx): void {
+  const { server, options, writes } = toolCtx
   server.registerTool(
     'organize_note',
     {
@@ -97,7 +115,10 @@ export function registerNotesTools(ctx: McpToolCtx): void {
       options.origin,
     )),
   )
+}
 
+function registerTrashNoteTool(toolCtx: McpToolCtx): void {
+  const { server, options, writes } = toolCtx
   server.registerTool(
     'trash_note',
     {
@@ -120,7 +141,10 @@ export function registerNotesTools(ctx: McpToolCtx): void {
       options.origin,
     )),
   )
+}
 
+function registerRestoreNoteTool(toolCtx: McpToolCtx): void {
+  const { server, options, writes } = toolCtx
   server.registerTool(
     'restore_note',
     {
@@ -143,7 +167,10 @@ export function registerNotesTools(ctx: McpToolCtx): void {
       options.origin,
     )),
   )
+}
 
+function registerDuplicateNoteTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'duplicate_note',
     {
@@ -161,7 +188,10 @@ export function registerNotesTools(ctx: McpToolCtx): void {
       options.origin,
     )),
   )
+}
 
+function registerListNoteVersionsTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'list_note_versions',
     {
@@ -181,7 +211,10 @@ export function registerNotesTools(ctx: McpToolCtx): void {
       limit,
     )),
   )
+}
 
+function registerReadNoteVersionTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'read_note_version',
     {
@@ -198,7 +231,10 @@ export function registerNotesTools(ctx: McpToolCtx): void {
       version_id,
     )),
   )
+}
 
+function registerRestoreNoteVersionTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'restore_note_version',
     {

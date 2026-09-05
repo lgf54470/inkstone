@@ -5,7 +5,19 @@ import { bulkOrganizeMcpNotes, createMcpFolder, createMcpTag, deleteMcpTag, prev
 import { customTool, writeTool, readOnlyAnnotations, writeAnnotations, generalOutputSchema, operationId, noteId, expectedRev } from './context';
 
 export function registerFoldersTools(ctx: McpToolCtx): void {
-  const { server, options, library } = ctx
+  registerCreateFolderTool(ctx)
+  registerUpdateFolderTool(ctx)
+  registerCreateTagTool(ctx)
+  registerUpdateTagTool(ctx)
+  registerPreviewTagChangeTool(ctx)
+  registerDeleteTagTool(ctx)
+  registerPreviewFolderRemovalTool(ctx)
+  registerRemoveFolderAndPromoteTool(ctx)
+  registerBulkOrganizeNotesTool(ctx)
+}
+
+function registerCreateFolderTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'create_folder',
     {
@@ -31,7 +43,10 @@ export function registerFoldersTools(ctx: McpToolCtx): void {
       color: input.color,
     })),
   )
+}
 
+function registerUpdateFolderTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'update_folder',
     {
@@ -59,7 +74,10 @@ export function registerFoldersTools(ctx: McpToolCtx): void {
       color: input.color,
     })),
   )
+}
 
+function registerCreateTagTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'create_tag',
     {
@@ -81,7 +99,10 @@ export function registerFoldersTools(ctx: McpToolCtx): void {
       color: input.color,
     })),
   )
+}
 
+function registerUpdateTagTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'update_tag',
     {
@@ -103,7 +124,10 @@ export function registerFoldersTools(ctx: McpToolCtx): void {
       color: input.color,
     })),
   )
+}
 
+function registerPreviewTagChangeTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'preview_tag_change',
     {
@@ -123,7 +147,10 @@ export function registerFoldersTools(ctx: McpToolCtx): void {
       input.next_name,
     )),
   )
+}
 
+function registerDeleteTagTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'delete_tag',
     {
@@ -138,7 +165,10 @@ export function registerFoldersTools(ctx: McpToolCtx): void {
       tagId: input.tag_id,
     })),
   )
+}
 
+function registerPreviewFolderRemovalTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'preview_folder_removal',
     {
@@ -154,7 +184,10 @@ export function registerFoldersTools(ctx: McpToolCtx): void {
       folder_id,
     )),
   )
+}
 
+function registerRemoveFolderAndPromoteTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'remove_folder_and_promote_contents',
     {
@@ -177,7 +210,10 @@ export function registerFoldersTools(ctx: McpToolCtx): void {
       },
     )),
   )
+}
 
+function registerBulkOrganizeNotesTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'bulk_organize_notes',
     {

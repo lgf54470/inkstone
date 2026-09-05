@@ -18,7 +18,7 @@ export default defineConfig({
           name: 'jsdom',
           environment: 'jsdom',
           include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
-          exclude: ['src/worker/lib/request.test.ts', 'src/client/demo/backend.test.ts', 'src/worker/lib/obsidian-import.test.ts', 'tests/import-transfer.test.ts', 'tests/notes-routes.test.ts', 'tests/share-routes.test.ts', 'tests/blog-routes.test.ts', 'tests/files-routes.test.ts', 'tests/backup.test.ts'],
+          exclude: ['src/worker/lib/request.test.ts', 'src/client/demo/backend.test.ts', 'src/worker/lib/obsidian-import.test.ts', 'tests/import-transfer.test.ts', 'tests/notes-routes.test.ts', 'tests/share-routes.test.ts', 'tests/blog-routes.test.ts', 'tests/files-routes.test.ts', 'tests/backup.test.ts', 'tests/mcp-writes.test.ts'],
         },
       },
       {
@@ -26,7 +26,7 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: ['src/worker/lib/request.test.ts', 'src/client/demo/backend.test.ts', 'src/worker/lib/obsidian-import.test.ts', 'tests/import-transfer.test.ts', 'tests/notes-routes.test.ts', 'tests/share-routes.test.ts', 'tests/blog-routes.test.ts', 'tests/files-routes.test.ts', 'tests/backup.test.ts'],
+          include: ['src/worker/lib/request.test.ts', 'src/client/demo/backend.test.ts', 'src/worker/lib/obsidian-import.test.ts', 'tests/import-transfer.test.ts', 'tests/notes-routes.test.ts', 'tests/share-routes.test.ts', 'tests/blog-routes.test.ts', 'tests/files-routes.test.ts', 'tests/backup.test.ts', 'tests/mcp-writes.test.ts'],
         },
       },
     ],

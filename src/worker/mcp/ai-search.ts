@@ -241,21 +241,8 @@ async function processQueueItem(env: Env, userId: string, item: QueueRow): Promi
   const db = env.DB
   const ai = env.AI
   if (!ai) return
-  const queueGuard = `EXISTS (SELECT 1 FROM ai_index_queue
-    WHERE user_id = ?3 AND note_id = ?4 AND kind = ?5 AND created_at = ?6)`
-  const insertQueueGuard = `EXISTS (SELECT 1 FROM ai_index_queue
-    WHERE user_id = ?6 AND note_id = ?7 AND kind = ?8 AND created_at = ?9)`
   if (item.kind === 'delete') {
-    await db.batch([
-      db.prepare(
-        `DELETE FROM ai_note_embeddings
-          WHERE user_id = ?1 AND note_id = ?2 AND ${queueGuard}`,
-      ).bind(userId, item.note_id, userId, item.note_id, item.kind, item.created_at),
-      db.prepare(
-        `DELETE FROM ai_index_queue
-          WHERE user_id = ?1 AND note_id = ?2 AND kind = ?3 AND created_at = ?4`,
-      ).bind(userId, item.note_id, item.kind, item.created_at),
-    ])
+    await db.batch(clearQueueItemStatements(db, userId, item))
     return
   }
   const note = await db.prepare(
@@ -263,22 +250,39 @@ async function processQueueItem(env: Env, userId: string, item: QueueRow): Promi
       WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
   ).bind(item.note_id, userId).first<{ title: string; content: string }>()
   if (!note) {
-    await db.batch([
-      db.prepare(
-        `DELETE FROM ai_note_embeddings
-          WHERE user_id = ?1 AND note_id = ?2 AND ${queueGuard}`,
-      ).bind(userId, item.note_id, userId, item.note_id, item.kind, item.created_at),
-      db.prepare(
-        `DELETE FROM ai_index_queue
-          WHERE user_id = ?1 AND note_id = ?2 AND kind = ?3 AND created_at = ?4`,
-      ).bind(userId, item.note_id, item.kind, item.created_at),
-    ])
+    await db.batch(clearQueueItemStatements(db, userId, item))
     return
   }
-  const text = `${note.title}\n${note.content}`.slice(0, EMBED_TEXT_MAX_CHARS)
-  const vector = await embedText(ai, text)
-  await db.batch([
+  await embedQueueItem(env, userId, item, note)
+}
+
+function clearQueueItemStatements(db: D1Database, userId: string, item: QueueRow): D1PreparedStatement[] {
+  const queueGuard = `EXISTS (SELECT 1 FROM ai_index_queue
+    WHERE user_id = ?3 AND note_id = ?4 AND kind = ?5 AND created_at = ?6)`
+  return [
     db.prepare(
+      `DELETE FROM ai_note_embeddings
+        WHERE user_id = ?1 AND note_id = ?2 AND ${queueGuard}`,
+    ).bind(userId, item.note_id, userId, item.note_id, item.kind, item.created_at),
+    db.prepare(
+      `DELETE FROM ai_index_queue
+        WHERE user_id = ?1 AND note_id = ?2 AND kind = ?3 AND created_at = ?4`,
+    ).bind(userId, item.note_id, item.kind, item.created_at),
+  ]
+}
+
+async function embedQueueItem(
+  env: Env,
+  userId: string,
+  item: QueueRow,
+  note: { title: string; content: string },
+): Promise<void> {
+  const insertQueueGuard = `EXISTS (SELECT 1 FROM ai_index_queue
+    WHERE user_id = ?6 AND note_id = ?7 AND kind = ?8 AND created_at = ?9)`
+  const text = `${note.title}\n${note.content}`.slice(0, EMBED_TEXT_MAX_CHARS)
+  const vector = await embedText(env.AI!, text)
+  await env.DB.batch([
+    env.DB.prepare(
       `INSERT INTO ai_note_embeddings (user_id, note_id, model, vector, indexed_at)
        SELECT ?1, ?2, ?3, ?4, ?5 WHERE ${insertQueueGuard}
        ON CONFLICT(user_id, note_id) DO UPDATE SET
@@ -294,7 +298,7 @@ async function processQueueItem(env: Env, userId: string, item: QueueRow): Promi
       item.kind,
       item.created_at,
     ),
-    db.prepare(
+    env.DB.prepare(
       `DELETE FROM ai_index_queue
         WHERE user_id = ?1 AND note_id = ?2 AND kind = ?3 AND created_at = ?4`,
     ).bind(userId, item.note_id, item.kind, item.created_at),

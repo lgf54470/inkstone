@@ -6,7 +6,18 @@ import { MCP_SCOPES } from "../settings";
 import { customTool, requireScope, safeTool, structured, readOnlyAnnotations, generalOutputSchema, noteId } from './context';
 
 export function registerSearchTools(ctx: McpToolCtx): void {
-  const { server, options } = ctx
+  registerSearchTool(ctx)
+  registerFetchTool(ctx)
+  registerSearchNotesTool(ctx)
+  registerListNotesTool(ctx)
+  registerReadNoteTool(ctx)
+  registerGetNoteContextTool(ctx)
+  registerListFoldersTool(ctx)
+  registerListTagsTool(ctx)
+}
+
+function registerSearchTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'search',
     {
@@ -38,7 +49,10 @@ export function registerSearchTools(ctx: McpToolCtx): void {
       return structured(value)
     }),
   )
+}
 
+function registerFetchTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'fetch',
     {
@@ -59,7 +73,10 @@ export function registerSearchTools(ctx: McpToolCtx): void {
       return structured(await fetchMcpNote(options.env.DB, options.auth.userId, options.origin, id))
     }),
   )
+}
 
+function registerSearchNotesTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'search_notes',
     {
@@ -87,7 +104,10 @@ export function registerSearchTools(ctx: McpToolCtx): void {
       input,
     )),
   )
+}
 
+function registerListNotesTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'list_notes',
     {
@@ -108,7 +128,10 @@ export function registerSearchTools(ctx: McpToolCtx): void {
       input,
     )),
   )
+}
 
+function registerReadNoteTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'read_note',
     {
@@ -139,7 +162,10 @@ export function registerSearchTools(ctx: McpToolCtx): void {
       },
     )),
   )
+}
 
+function registerGetNoteContextTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'get_note_context',
     {
@@ -160,7 +186,10 @@ export function registerSearchTools(ctx: McpToolCtx): void {
       limit,
     )),
   )
+}
 
+function registerListFoldersTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'list_folders',
     {
@@ -172,7 +201,10 @@ export function registerSearchTools(ctx: McpToolCtx): void {
     },
     async (_input, ctx) => customTool(ctx, options, () => listMcpFolders(options.env.DB, options.auth.userId)),
   )
+}
 
+function registerListTagsTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'list_tags',
     {

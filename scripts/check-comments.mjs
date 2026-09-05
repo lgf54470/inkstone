@@ -1008,9 +1008,9 @@ const allowed = new Map([
   ["src/worker/mcp/operations.ts", [
     "// The mutation itself failed before committing; remove the pending row",
     "// so the client can retry the same operation_id cleanly.",
-    "// The mutation already committed. Keep the pending row so a retry goes",
-    "// through the recovery path instead of re-executing and colliding",
-    "// (e.g. create_note with the same id).",
+    "// The mutation already committed. If storing the response fails, the row",
+    "// stays pending so a retry goes through the recovery path instead of",
+    "// re-executing and colliding (e.g. create_note with the same id).",
   ]],
   ["src/worker/mcp/retrieval/search.ts", [
     "// AI unavailable, rate-limited, or malformed response: degrade to lexical.",

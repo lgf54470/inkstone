@@ -131,31 +131,8 @@ export async function getMcpNoteContext(
 ): Promise<Record<string, unknown>> {
   const note = await loadMcpNote(db, userId, noteId)
   const capped = Math.max(1, Math.min(30, limit))
-  const { results: outgoing } = await db.prepare(
-    `SELECT l.target_title AS referenced_title, n.id, n.title, n.excerpt, n.updated_at
-       FROM links l LEFT JOIN notes n
-         ON n.id = l.target_note_id AND n.user_id = ?1 AND n.deleted_at IS NULL
-      WHERE l.user_id = ?1 AND l.source_note_id = ?2
-      ORDER BY n.updated_at DESC, l.target_title COLLATE NOCASE ASC LIMIT ?3`,
-  ).bind(userId, note.id, capped).all<{
-    referenced_title: string
-    id: string | null
-    title: string | null
-    excerpt: string | null
-    updated_at: number | null
-  }>()
-  const { results: backlinks } = await db.prepare(
-    `SELECT n.id, n.title, n.excerpt, n.updated_at
-       FROM links l JOIN notes n ON n.id = l.source_note_id
-      WHERE l.user_id = ?1 AND l.target_note_id = ?2
-        AND n.user_id = ?1 AND n.deleted_at IS NULL
-      ORDER BY n.updated_at DESC, n.id ASC LIMIT ?3`,
-  ).bind(userId, note.id, capped).all<{
-    id: string
-    title: string
-    excerpt: string
-    updated_at: number
-  }>()
+  const outgoing = await loadMcpOutgoingLinks(db, userId, note.id, capped)
+  const backlinks = await loadMcpBacklinks(db, userId, note.id, capped)
 
   return {
     note: {
@@ -297,6 +274,60 @@ export async function listMcpTags(db: D1Database, userId: string, limit = 100): 
   return { tags: results }
 }
 
+async function loadMcpOutgoingLinks(
+  db: D1Database,
+  userId: string,
+  noteId: string,
+  capped: number,
+): Promise<Array<{
+  referenced_title: string
+  id: string | null
+  title: string | null
+  excerpt: string | null
+  updated_at: number | null
+}>> {
+  const { results } = await db.prepare(
+    `SELECT l.target_title AS referenced_title, n.id, n.title, n.excerpt, n.updated_at
+       FROM links l LEFT JOIN notes n
+         ON n.id = l.target_note_id AND n.user_id = ?1 AND n.deleted_at IS NULL
+      WHERE l.user_id = ?1 AND l.source_note_id = ?2
+      ORDER BY n.updated_at DESC, l.target_title COLLATE NOCASE ASC LIMIT ?3`,
+  ).bind(userId, noteId, capped).all<{
+    referenced_title: string
+    id: string | null
+    title: string | null
+    excerpt: string | null
+    updated_at: number | null
+  }>()
+  return results
+}
+
+async function loadMcpBacklinks(
+  db: D1Database,
+  userId: string,
+  noteId: string,
+  capped: number,
+): Promise<Array<{
+  id: string
+  title: string
+  excerpt: string
+  updated_at: number
+}>> {
+  const { results } = await db.prepare(
+    `SELECT n.id, n.title, n.excerpt, n.updated_at
+       FROM links l JOIN notes n ON n.id = l.source_note_id
+      WHERE l.user_id = ?1 AND l.target_note_id = ?2
+        AND n.user_id = ?1 AND n.deleted_at IS NULL
+      ORDER BY n.updated_at DESC, n.id ASC LIMIT ?3`,
+  ).bind(userId, noteId, capped).all<{
+    id: string
+    title: string
+    excerpt: string
+    updated_at: number
+  }>()
+  return results
+}
+
 export function buildOutline(content: string): NoteOutlineItem[] {
   const lines = content.split(/\r?\n/)
   const outline: NoteOutlineItem[] = []
@@ -304,10 +335,9 @@ export function buildOutline(content: string): NoteOutlineItem[] {
   let fence = ''
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index]!
-    const marker = /^[ \t]{0,3}(`{3,}|~{3,})/.exec(line)?.[1]
-    if (marker) {
-      if (!fence) fence = marker[0]!
-      else if (marker[0] === fence) fence = ''
+    const updated = nextFence(line, fence)
+    if (updated !== null) {
+      fence = updated
       continue
     }
     if (fence) continue
@@ -326,6 +356,13 @@ export function buildOutline(content: string): NoteOutlineItem[] {
     if (outline.length >= 200) break
   }
   return outline
+}
+
+function nextFence(line: string, fence: string): string | null {
+  const marker = /^[ \t]{0,3}(`{3,}|~{3,})/.exec(line)?.[1]
+  if (!marker) return null
+  if (!fence) return marker[0]!
+  return marker[0] === fence ? '' : fence
 }
 
 function normalizeNoteId(id: string): string {

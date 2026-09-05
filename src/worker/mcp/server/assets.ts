@@ -5,7 +5,17 @@ import { exploreMcpGraph, listMcpBackupRuns, listMcpAttachments, readMcpAttachme
 import { customTool, writeTool, readOnlyAnnotations, writeAnnotations, generalOutputSchema, operationId, noteId } from './context';
 
 export function registerAssetsTools(ctx: McpToolCtx): void {
-  const { server, options, library } = ctx
+  registerExploreGraphTool(ctx)
+  registerListBackupRunsTool(ctx)
+  registerListAttachmentsTool(ctx)
+  registerReadAttachmentTool(ctx)
+  registerUploadAttachmentTool(ctx)
+  registerDeleteAttachmentTool(ctx)
+  registerRunBackupTool(ctx)
+}
+
+function registerExploreGraphTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'explore_note_graph',
     {
@@ -28,7 +38,10 @@ export function registerAssetsTools(ctx: McpToolCtx): void {
       max_nodes,
     )),
   )
+}
 
+function registerListBackupRunsTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'list_backup_runs',
     {
@@ -44,7 +57,10 @@ export function registerAssetsTools(ctx: McpToolCtx): void {
       limit,
     )),
   )
+}
 
+function registerListAttachmentsTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'list_attachments',
     {
@@ -64,7 +80,10 @@ export function registerAssetsTools(ctx: McpToolCtx): void {
       { noteId: input.note_id, limit: input.limit, cursor: input.cursor },
     )),
   )
+}
 
+function registerReadAttachmentTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'read_attachment',
     {
@@ -84,7 +103,10 @@ export function registerAssetsTools(ctx: McpToolCtx): void {
       maxBytes: input.max_bytes,
     })),
   )
+}
 
+function registerUploadAttachmentTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'upload_attachment',
     {
@@ -110,7 +132,10 @@ export function registerAssetsTools(ctx: McpToolCtx): void {
       base64: input.data,
     })),
   )
+}
 
+function registerDeleteAttachmentTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'delete_attachment',
     {
@@ -125,7 +150,10 @@ export function registerAssetsTools(ctx: McpToolCtx): void {
       attachmentId: input.attachment_id,
     })),
   )
+}
 
+function registerRunBackupTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'run_backup',
     {

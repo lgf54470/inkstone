@@ -1,9 +1,10 @@
 import { OAuthProvider } from '@cloudflare/workers-oauth-provider'
 import { WorkerEntrypoint } from 'cloudflare:workers'
 import { createMcpHandler } from 'agents/mcp/server'
+import { Hono } from 'hono'
 import { createApp } from '../app'
 import { initializeDatabase } from '../db/schema'
-import type { Env } from '../env'
+import type { AppBindings, Env } from '../env'
 import { consumeAttemptBudget, ThrottleError } from '../lib/throttle'
 import { verifyMcpApiKey } from './api-keys'
 import { createInkstoneMcpServer, type McpAuthProps } from './server'
@@ -73,72 +74,88 @@ function providerForOrigin(origin: string, env: Env): OAuthProvider<Env> {
   return new OAuthProvider<Env>({
     apiRoute: '/mcp',
     apiHandler: InkstoneMcpApi,
-    defaultHandler: {
-      fetch(request, bindings, ctx) {
-        return app.fetch(request, bindings, ctx)
-      },
-    },
+    defaultHandler: defaultAppHandler(app),
     authorizeEndpoint: `${origin}/authorize`,
     tokenEndpoint: `${origin}/oauth/token`,
     clientRegistrationEndpoint: `${origin}/oauth/register`,
     scopesSupported: [...MCP_SUPPORTED_SCOPES],
-    resourceMetadata: {
-      resource: mcpResource,
-      ...(origin.startsWith('https:') ? { authorization_servers: [origin] } : {}),
-      scopes_supported: [...MCP_SUPPORTED_SCOPES],
-      bearer_methods_supported: ['header'],
-      resource_name: 'Inkstone private knowledge base',
-    },
+    resourceMetadata: resourceMetadataFor(mcpResource, origin),
     clientIdMetadataDocumentEnabled: true,
     allowImplicitFlow: false,
     allowPlainPKCE: false,
     accessTokenTTL: 60 * 60,
     refreshTokenTTL: 30 * 24 * 60 * 60,
     clientRegistrationTTL: 90 * 24 * 60 * 60,
-    // Static API keys let small or generic MCP clients authenticate with a
-    // plain `Authorization: Bearer ink_...` header instead of running the
-    // full OAuth 2.1 dance. Keys are hashed and revocable.
-    resolveExternalToken: async ({ token, env }) => {
-      // This path runs before the API handler, so ensure the schema exists
-      // (cheap after the first request thanks to the initialization cache).
-      await initializeDatabase(env)
-      const auth = await verifyMcpApiKey(env.DB, token)
-      if (!auth) return null
-      return {
-        props: { userId: auth.userId, role: auth.role, scopes: auth.scopes },
-        audience: mcpResource,
-      }
-    },
-    clientRegistrationCallback: async ({ request }) => {
-      await initializeDatabase(env)
-      if (!await isMcpEnabled(env.DB)) {
-        return { code: 'access_denied', description: 'MCP is disabled', status: 403 }
-      }
-      const ip = request.headers.get('CF-Connecting-IP')?.slice(0, 80) || 'unknown'
-      try {
-        await consumeAttemptBudget(env.DB, [{
-          key: `mcp-dcr:${ip}`,
-          maxAttempts: 20,
-          windowMs: 60 * 60 * 1000,
-          lockMs: 60 * 60 * 1000,
-        }])
-      } catch (error) {
-        if (error instanceof ThrottleError) {
-          return {
-            code: 'temporarily_unavailable',
-            description: 'Too many client registrations; try again later',
-            status: 429,
-          }
-        }
-        throw error
-      }
-    },
+    resolveExternalToken: resolveExternalTokenHandler(mcpResource),
+    clientRegistrationCallback: clientRegistrationCallbackHandler(env),
     onError(error) {
       if (error.internal) {
         console.warn('[inkstone] OAuth error:', error.internal.category, error.internal.reason)
       }
     },
   })
+}
+
+function defaultAppHandler(app: Hono<AppBindings>): ExportedHandler<Env> {
+  return {
+    fetch(request, bindings, ctx) {
+      return app.fetch(request, bindings, ctx)
+    },
+  }
+}
+
+function resourceMetadataFor(mcpResource: string, origin: string) {
+  return {
+    resource: mcpResource,
+    ...(origin.startsWith('https:') ? { authorization_servers: [origin] } : {}),
+    scopes_supported: [...MCP_SUPPORTED_SCOPES],
+    bearer_methods_supported: ['header'],
+    resource_name: 'Inkstone private knowledge base',
+  }
+}
+
+function resolveExternalTokenHandler(mcpResource: string) {
+  // Static API keys let small or generic MCP clients authenticate with a
+  // plain `Authorization: Bearer ink_...` header instead of running the
+  // full OAuth 2.1 dance. Keys are hashed and revocable.
+  return async ({ token, env }: { token: string; env: Env }) => {
+    // This path runs before the API handler, so ensure the schema exists
+    // (cheap after the first request thanks to the initialization cache).
+    await initializeDatabase(env)
+    const auth = await verifyMcpApiKey(env.DB, token)
+    if (!auth) return null
+    return {
+      props: { userId: auth.userId, role: auth.role, scopes: auth.scopes },
+      audience: mcpResource,
+    }
+  }
+}
+
+function clientRegistrationCallbackHandler(env: Env) {
+  return async ({ request }: { request: Request }) => {
+    await initializeDatabase(env)
+    if (!await isMcpEnabled(env.DB)) {
+      return { code: 'access_denied', description: 'MCP is disabled', status: 403 }
+    }
+    const ip = request.headers.get('CF-Connecting-IP')?.slice(0, 80) || 'unknown'
+    try {
+      await consumeAttemptBudget(env.DB, [{
+        key: `mcp-dcr:${ip}`,
+        maxAttempts: 20,
+        windowMs: 60 * 60 * 1000,
+        lockMs: 60 * 60 * 1000,
+      }])
+    } catch (error) {
+      if (error instanceof ThrottleError) {
+        return {
+          code: 'temporarily_unavailable',
+          description: 'Too many client registrations; try again later',
+          status: 429,
+        }
+      }
+      throw error
+    }
+  }
 }
 
 function canonicalOrigin(request: Request, value?: string): string {

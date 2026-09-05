@@ -5,7 +5,16 @@ import { getMcpShare, getMcpNoteProperties, queryMcpNoteProperties, revokeMcpSha
 import { customTool, writeTool, noteResult, readOnlyAnnotations, writeAnnotations, generalOutputSchema, operationId, noteId, expectedRev } from './context';
 
 export function registerSharesTools(ctx: McpToolCtx): void {
-  const { server, options, library } = ctx
+  registerGetNoteShareTool(ctx)
+  registerGetNotePropertiesTool(ctx)
+  registerUpdateNotePropertiesTool(ctx)
+  registerQueryNotePropertiesTool(ctx)
+  registerCreateNoteShareTool(ctx)
+  registerRevokeNoteShareTool(ctx)
+}
+
+function registerGetNoteShareTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'get_note_share',
     {
@@ -22,7 +31,10 @@ export function registerSharesTools(ctx: McpToolCtx): void {
       note_id,
     )),
   )
+}
 
+function registerGetNotePropertiesTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'get_note_properties',
     {
@@ -38,7 +50,10 @@ export function registerSharesTools(ctx: McpToolCtx): void {
       note_id,
     )),
   )
+}
 
+function registerUpdateNotePropertiesTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'update_note_properties',
     {
@@ -65,7 +80,10 @@ export function registerSharesTools(ctx: McpToolCtx): void {
       options.origin,
     )),
   )
+}
 
+function registerQueryNotePropertiesTool(toolCtx: McpToolCtx): void {
+  const { server, options } = toolCtx
   server.registerTool(
     'query_note_properties',
     {
@@ -88,7 +106,10 @@ export function registerSharesTools(ctx: McpToolCtx): void {
       input,
     )),
   )
+}
 
+function registerCreateNoteShareTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'create_note_share',
     {
@@ -112,7 +133,10 @@ export function registerSharesTools(ctx: McpToolCtx): void {
         : input.expires_in_seconds * 1000,
     })),
   )
+}
 
+function registerRevokeNoteShareTool(toolCtx: McpToolCtx): void {
+  const { server, options, library } = toolCtx
   server.registerTool(
     'revoke_note_share',
     {
