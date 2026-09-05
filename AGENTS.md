@@ -101,7 +101,7 @@
 
 ## scope
 
-业务模块 id：`notes` `folders` `tags` `editor` `preview` `graph` `command` `sidebar` `auth` `files` `backup` `share` `mcp` `settings` `sync` `templates` `update`
+业务模块 id：`notes` `folders` `tags` `editor` `preview` `graph` `command` `sidebar` `auth` `files` `backup` `share` `mcp` `settings` `sync` `templates` `update` `blog`
 
 基础设施 scope：
 
