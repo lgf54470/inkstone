@@ -249,8 +249,7 @@
   "src/client/features/settings/sync-settings.tsx": {
     "longFns": 1
   },
-  "src/client/features/settings/totp-settings.tsx": {
-    "lines": 557,
+  "src/client/features/settings/totp-settings/index.tsx": {
     "longFns": 1
   },
   "src/client/features/share/share-batch-bar.tsx": {

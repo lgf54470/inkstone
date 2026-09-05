@@ -1,29 +1,24 @@
-import { useEffect, useRef, useState } from 'react'
-import {
-  Check,
-  Copy,
-  Download,
-  KeyRound,
-  QrCode,
-  RefreshCw,
-  ShieldCheck,
-  ShieldOff,
-  TriangleAlert,
-} from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
-import { LIMITS } from '@shared/constants'
-import type { TotpSetupInfo, TotpStatus } from '@shared/types'
-import { Button, Badge } from '../../components/primitives'
-import { Input, SettingRow } from '../../components/form'
-import { api, ApiError } from '../../lib/api'
-import { downloadTextFile } from '../../lib/export-note'
-import { t } from '../../lib/i18n'
+import { useEffect, useRef, useState } from 'react';
+import { Check, Copy, Download, KeyRound, QrCode, RefreshCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { type TotpSetupInfo, type TotpStatus } from '@shared/types';
+import { Badge, Button } from '../../../components/primitives';
+import { Input, SettingRow } from '../../../components/form';
+import { api } from '../../../lib/api';
+import { downloadTextFile } from '../../../lib/export-note';
+import { useUi } from '../../../store/ui';
+import { t } from '../../../lib/i18n';
 
 const QR_BG_COLOR = '#ffffff'
 const QR_FG_COLOR = '#111827'
-import { useUi } from '../../store/ui'
 
 type Panel = 'none' | 'enable' | 'setup' | 'recovery' | 'regenerate' | 'disable'
+
+import { PasswordInput } from './password-input';
+import { CodeInput } from './code-input';
+import { ActionRow } from './action-row';
+import { InlineError } from './inline-error';
+import { errorMessage, copyText } from './util';
 
 export function TotpSettings() {
   const toast = useUi((state) => state.toast)
@@ -462,95 +457,3 @@ export function TotpSettings() {
   )
 }
 
-function PasswordInput(props: {
-  value: string
-  isBusy: boolean
-  onChange: (value: string) => void
-  autoFocus?: boolean
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
-        {t('settings.current_password')}
-      </span>
-      <Input
-        type="password"
-        value={props.value}
-        maxLength={LIMITS.passwordMaxLength}
-        onChange={(event) => props.onChange(event.target.value)}
-        disabled={props.isBusy}
-        autoComplete="current-password"
-        autoFocus={props.autoFocus}
-      />
-    </label>
-  )
-}
-
-function CodeInput(props: { value: string; isBusy: boolean; onChange: (value: string) => void }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
-        {t('settings.totp_authenticator_code')}
-      </span>
-      <Input
-        value={props.value}
-        maxLength={6}
-        onChange={(event) => props.onChange(event.target.value.replace(/\D/g, '').slice(0, 6))}
-        disabled={props.isBusy}
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        placeholder="000000"
-      />
-    </label>
-  )
-}
-
-function ActionRow(props: {
-  isBusy: boolean
-  onCancel: () => void
-  submitLabel: string
-  danger?: boolean
-}) {
-  return (
-    <div className="flex justify-end gap-2">
-      <Button type="button" size="sm" variant="ghost" disabled={props.isBusy} onClick={props.onCancel}>
-        {t('common.cancel')}
-      </Button>
-      <Button
-        type="submit"
-        size="sm"
-        variant={props.danger ? 'danger' : 'primary'}
-        loading={props.isBusy}
-      >
-        {props.submitLabel}
-      </Button>
-    </div>
-  )
-}
-
-function InlineError(props: { error: string | null; className?: string }) {
-  if (!props.error) return null
-  return <p role="alert" className={`text-[length:var(--text-12)] text-[var(--danger)] ${props.className ?? ''}`}>{props.error}</p>
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : t('settings.action_failed_try_again')
-}
-
-async function copyText(value: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(value)
-    return
-  }
-  const field = document.createElement('textarea')
-  field.value = value
-  field.style.position = 'fixed'
-  field.style.opacity = '0'
-  document.body.appendChild(field)
-  field.select()
-  try {
-    if (!document.execCommand('copy')) throw new Error('copy_failed')
-  } finally {
-    field.remove()
-  }
-}
