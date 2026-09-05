@@ -261,8 +261,7 @@
     "lines": 559,
     "longFns": 1
   },
-  "src/client/features/share/share-grid-view.tsx": {
-    "lines": 513,
+  "src/client/features/share/share-grid-view/index.tsx": {
     "longFns": 1
   },
   "src/client/features/share/share-hub-modal.tsx": {
@@ -296,8 +295,7 @@
   "src/client/features/share/share-store/shares.ts": {
     "longFns": 2
   },
-  "src/client/features/share/share-table-view.tsx": {
-    "lines": 555,
+  "src/client/features/share/share-table-view/index.tsx": {
     "longFns": 1
   },
   "src/client/features/share/share-visit-logs-modal.tsx": {
