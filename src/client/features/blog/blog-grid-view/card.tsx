@@ -2,111 +2,29 @@ import { useRef, useState } from 'react'
 import {
   BarChart2,
   Check,
-  ExternalLink,
   Copy,
-  Settings2,
-  RefreshCw,
-  Trash2,
-  Image as ImageIcon,
+  ExternalLink,
   Eye,
-  MessageSquare,
-  Pin,
   FolderClosed,
   FolderInput,
+  MessageSquare,
   PauseCircle,
+  Pin,
   PlayCircle,
+  RefreshCw,
+  Settings2,
+  Trash2,
 } from 'lucide-react'
 import type { BlogPost, BlogCategory, BlogFolder } from '@shared/types'
-import { extractCoverUrl } from '@shared/markdown-utils'
-import { IconButton } from '../../components/primitives'
-import { Menu, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
-import { cn } from '../../lib/cn'
-import { t } from '../../lib/i18n'
-import { useUi } from '../../store/ui'
-import { useBlogStore } from './blog-store'
+import { IconButton } from '../../../components/primitives'
+import { Menu, confirm, useContextMenu, type MenuItem } from '../../../components/overlay'
+import { cn } from '../../../lib/cn'
+import { t } from '../../../lib/i18n'
+import { useUi } from '../../../store/ui'
+import { useBlogStore } from '../blog-store'
+import { PostCoverImage } from './cover-image'
 
-export function PostCoverImage({
-  src,
-  alt,
-  className = 'size-full object-cover transition-transform duration-300 group-hover:scale-105',
-  fallbackIconSize = 28,
-}: {
-  src?: string
-  alt: string
-  className?: string
-  fallbackIconSize?: number
-}) {
-  const [isError, setIsError] = useState(false)
-  const clean = src ? extractCoverUrl(src) : ''
-  const isValid = Boolean(
-    clean &&
-      (clean.startsWith('http://') ||
-        clean.startsWith('https://') ||
-        clean.startsWith('/') ||
-        clean.startsWith('data:image/')),
-  )
-
-  if (!isValid || isError) {
-    return (
-      <div className="flex size-full items-center justify-center text-[var(--text-quaternary)]">
-        <ImageIcon size={fallbackIconSize} className="opacity-40" />
-      </div>
-    )
-  }
-
-  return (
-    <img
-      src={clean}
-      alt={alt}
-      onError={() => setIsError(true)}
-      className={className}
-    />
-  )
-}
-
-export function BlogGridView({
-  posts,
-  onOpenEdit,
-}: {
-  posts: BlogPost[]
-  onOpenEdit: (post: BlogPost) => void
-}) {
-  const categories = useBlogStore((s) => s.categories)
-  const folders = useBlogStore((s) => s.folders)
-  const selectedPostIds = useBlogStore((s) => s.selectedPostIds)
-  const toggleSelectPost = useBlogStore((s) => s.toggleSelectPost)
-  const settings = useBlogStore((s) => s.settings)
-
-  const frontendBase = (settings?.frontendUrl || 'http://localhost:4321').replace(/\/+$/, '')
-  const categoryMap = new Map(categories.map((c) => [c.id, c]))
-  const folderMap = new Map(folders.map((f) => [f.id, f]))
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 text-[length:var(--text-12\.5)]">
-      {posts.map((post) => {
-        const isSelected = selectedPostIds.has(post.id)
-        const cat = post.categoryId ? categoryMap.get(post.categoryId) ?? null : null
-        const folder = post.folderId ? folderMap.get(post.folderId) ?? null : null
-
-        return (
-          <BlogGridCard
-            key={post.id}
-            post={post}
-            isSelected={isSelected}
-            cat={cat}
-            folder={folder}
-            folders={folders}
-            frontendBase={frontendBase}
-            onToggleSelect={() => toggleSelectPost(post.id)}
-            onOpenEdit={onOpenEdit}
-          />
-        )
-      })}
-    </div>
-  )
-}
-
-function BlogGridCard({
+export function BlogGridCard({
   post,
   isSelected,
   cat,
@@ -500,3 +418,4 @@ function BlogGridCard({
     </div>
   )
 }
+

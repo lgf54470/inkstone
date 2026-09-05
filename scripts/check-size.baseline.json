@@ -104,8 +104,7 @@
   "src/client/features/blog/blog-dashboard-view/index.tsx": {
     "longFns": 1
   },
-  "src/client/features/blog/blog-grid-view.tsx": {
-    "lines": 503,
+  "src/client/features/blog/blog-grid-view/card.tsx": {
     "longFns": 1
   },
   "src/client/features/blog/blog-hub-modal.tsx": {
@@ -140,9 +139,11 @@
   "src/client/features/blog/blog-store/loaders.ts": {
     "longFns": 1
   },
-  "src/client/features/blog/blog-table-view.tsx": {
-    "lines": 510,
-    "longFns": 2
+  "src/client/features/blog/blog-table-view/index.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-table-view/row.tsx": {
+    "longFns": 1
   },
   "src/client/features/command/command-palette.tsx": {
     "lines": 683,
