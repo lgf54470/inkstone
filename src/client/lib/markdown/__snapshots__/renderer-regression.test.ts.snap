@@ -1,0 +1,172 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderer output regression > locks math/wiki/fence rendering output 1`] = `
+[
+  {
+    "doc": "a $x$ b",
+    "hasMath": true,
+    "html": "<p data-line="0">a <span class="math-inline" data-math="b64.eA"></span> b</p>
+",
+  },
+  {
+    "doc": "a $x + y$ b",
+    "hasMath": true,
+    "html": "<p data-line="0">a <span class="math-inline" data-math="b64.eCArIHk"></span> b</p>
+",
+  },
+  {
+    "doc": "$$x$$",
+    "hasMath": true,
+    "html": "<div class="math-block" data-line="0" data-math="b64.eA"></div>",
+  },
+  {
+    "doc": "$$
+x
+y
+$$",
+    "hasMath": true,
+    "html": "<div class="math-block" data-line="0" data-math="b64.eAp5"></div>",
+  },
+  {
+    "doc": "$$
+unclosed",
+    "hasMath": false,
+    "html": "<p data-line="0">$$
+unclosed</p>
+",
+  },
+  {
+    "doc": "see [[Note|alias]] here",
+    "hasMath": false,
+    "html": "<p data-line="0">see <a class="wikilink" data-wikilink="b64.Tm90ZQ" href="#">alias</a> here</p>
+",
+  },
+  {
+    "doc": "embed ![[image.png|alt]]",
+    "hasMath": false,
+    "html": "<div class="note-embed-paragraph" data-line="0">embed <div class="note-embed loading" data-embed-target="b64.aW1hZ2UucG5n"><span class="note-embed-head">alt</span><div class="note-embed-body" aria-busy="true">common.loading</div></div></div>
+",
+  },
+  {
+    "doc": "block ((abc123)) ref",
+    "hasMath": false,
+    "html": "<p data-line="0">block <a class="block-reference" data-block-ref="abc123" href="#%5Eabc123">((abc123))</a> ref</p>
+",
+  },
+  {
+    "doc": "#tag at start",
+    "hasMath": false,
+    "html": "<p data-line="0"><span class="inline-tag" data-tag="b64.dGFn" role="link" tabindex="0">#tag</span> at start</p>
+",
+  },
+  {
+    "doc": "plain#tag notag",
+    "hasMath": false,
+    "html": "<p data-line="0">plain#tag notag</p>
+",
+  },
+  {
+    "doc": "and #one #two
+#three",
+    "hasMath": false,
+    "html": "<p data-line="0">and <span class="inline-tag" data-tag="b64.b25l" role="link" tabindex="0">#one</span> <span class="inline-tag" data-tag="b64.dHdv" role="link" tabindex="0">#two</span>
+<span class="inline-tag" data-tag="b64.dGhyZWU" role="link" tabindex="0">#three</span></p>
+",
+  },
+  {
+    "doc": "[ruby]{furigana} text",
+    "hasMath": false,
+    "html": "<p data-line="0"><ruby>ruby<rp>(</rp><rt>furigana</rt><rp>)</rp></ruby> text</p>
+",
+  },
+  {
+    "doc": "#intro
+
+$$e=mc^2$$
+
+[[Note#^blk]] and $x$",
+    "hasMath": true,
+    "html": "<p data-line="0"><span class="inline-tag" data-tag="b64.aW50cm8" role="link" tabindex="0">#intro</span></p>
+<div class="math-block" data-line="2" data-math="b64.ZT1tY14y"></div><p data-line="4"><a class="wikilink" data-wikilink="b64.Tm90ZSNeYmxr" href="#">Note#^blk</a> and <span class="math-inline" data-math="b64.eA"></span></p>
+",
+  },
+  {
+    "doc": "\`\`\`js title="My Code" start=3 hl_lines="1 3"
+const a = 1;
+const b = 2;
+const c = 3;
+\`\`\`",
+    "hasMath": false,
+    "html": "<div class="code-block" data-line="0" data-lang="js" data-code-start="3" data-highlight-lines="1,3"><div class="code-block-head"><span class="code-title">My Code</span><span class="code-lang">js</span><button class="code-copy" data-copy="" type="button" aria-label="markdown.copy_code">common.copy</button></div><pre><code>const a = 1;
+const b = 2;
+const c = 3;
+</code></pre></div>",
+  },
+  {
+    "doc": "\`\`\`{.python .numberLines linenos=false}
+print(1)
+\`\`\`",
+    "hasMath": false,
+    "html": "<div class="code-block has-line-numbers" data-line="0" data-lang="python" data-code-start="1" data-line-numbers="true"><div class="code-block-head"><span class="code-title">python</span><button class="code-copy" data-copy="" type="button" aria-label="markdown.copy_code">common.copy</button></div><pre><code>print(1)
+</code></pre></div>",
+  },
+  {
+    "doc": "\`\`\`ts linenums startfrom=2
+let x: number = 1;
+\`\`\`",
+    "hasMath": false,
+    "html": "<div class="code-block" data-line="0" data-lang="ts" data-code-start="1"><div class="code-block-head"><span class="code-title">ts</span><button class="code-copy" data-copy="" type="button" aria-label="markdown.copy_code">common.copy</button></div><pre><code>let x: number = 1;
+</code></pre></div>",
+  },
+  {
+    "doc": "\`\`\`
+plain
+\`\`\`",
+    "hasMath": false,
+    "html": "<div class="code-block" data-line="0" data-lang="" data-code-start="1"><div class="code-block-head"><span class="code-title">markdown.code</span><button class="code-copy" data-copy="" type="button" aria-label="markdown.copy_code">common.copy</button></div><pre><code>plain
+</code></pre></div>",
+  },
+  {
+    "doc": "\`\`\`js-example
+console.log(1);
+\`\`\`",
+    "hasMath": false,
+    "html": "<section class="markdown-example js-example-block" data-line="0"><div class="markdown-example-head js-example-head"><span class="markdown-example-title js-example-title"><span class="js-example-badge">JS</span><span>workspace.runnable_javascript_code</span></span><div class="js-example-controls"><span class="js-example-switch-label">workspace.line_numbers</span><button type="button" role="switch" class="js-example-switch is-checked" data-js-switch="line-numbers" aria-checked="true" aria-label="workspace.line_numbers"><span class="js-example-switch-thumb"></span></button><button type="button" class="js-example-run-btn" data-js-run="" title="workspace.run_code"><span class="js-example-run-icon">▶</span><span>workspace.run</span></button></div></div><div class="markdown-example-grid js-example-grid"><section class="markdown-example-source js-example-source" aria-label="JavaScript"><div class="code-block markdown-example-code has-line-numbers" data-lang="javascript" data-code-start="1" data-line-numbers="true"><button class="code-copy markdown-example-copy" data-copy="" type="button" aria-label="markdown.copy_code">common.copy</button><pre><code class="language-javascript">console.log(1);
+</code></pre></div></section><section class="markdown-example-preview js-example-output" aria-label="workspace.execution_result"><div class="js-example-output-head"><span class="js-example-output-title">workspace.execution_result</span><span class="js-example-output-status"></span></div><div class="js-example-output-body"><div class="js-example-placeholder">workspace.click_run_to_execute</div></div></section></div></section>",
+  },
+  {
+    "doc": "\`\`\`md-example
+# inner
+
+[[Note]] $$m$$
+\`\`\`",
+    "hasMath": true,
+    "html": "<section class="markdown-example" data-line="0" aria-labelledby="ink-X-markdown-example-1"><div class="markdown-example-head"><span class="markdown-example-title" id="ink-X-markdown-example-1">markdown.markdown_example</span></div><div class="markdown-example-grid"><section class="markdown-example-preview" aria-label="common.preview" data-markdown-example-id="1" data-markdown-example="b64.IyBpbm5lcgoKW1tOb3RlXV0gJCRtJCQK"><div class="markdown-example-preview-body"><h1 id="inner" tabindex="-1"><a class="heading-anchor" href="#inner" aria-hidden="true"></a> inner</h1>
+<p><a class="wikilink" data-wikilink="b64.Tm90ZQ" href="#">Note</a> $<span class="math-inline" data-math="b64.bQ"></span>$</p>
+</div></section><section class="markdown-example-source" aria-label="Markdown"><div class="code-block markdown-example-code" data-lang="markdown" data-code-start="1"><button class="code-copy markdown-example-copy" data-copy="" type="button" aria-label="markdown.copy_code">common.copy</button><pre><code># inner
+
+[[Note]] $$m$$
+</code></pre></div></section></div></section>",
+  },
+  {
+    "doc": "\`\`\`mermaid
+graph TD; A-->B;
+\`\`\`",
+    "hasMath": false,
+    "html": "<div class="mermaid-block loading" data-line="0" data-mermaid="b64.Z3JhcGggVEQ7IEEtLT5COwo" aria-busy="true">markdown.rendering_diagram</div>",
+  },
+  {
+    "doc": "\`\`\`chart
+bar
+\`\`\`",
+    "hasMath": false,
+    "html": "<div class="chartjs-block loading" data-line="0" data-chart="b64.YmFyCg" aria-busy="true">markdown.rendering_chart</div>",
+  },
+  {
+    "doc": "before %%hidden [[x]]%% after $x$",
+    "hasMath": true,
+    "html": "<p data-line="0">before                  after <span class="math-inline" data-math="b64.eA"></span></p>
+",
+  },
+]
+`;
