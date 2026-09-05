@@ -1,8 +1,9 @@
+import { z } from 'zod'
 import { Hono } from 'hono'
 import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'
 import { requireCurrentPassword } from '../lib/reauth'
-import { readJson } from '../lib/request'
+import { readJsonValidated } from '../lib/request'
 import { loadUser, sessionInfo } from '../lib/session-info'
 import {
   cancelTotpSetup,
@@ -15,10 +16,33 @@ import {
 } from '../lib/totp-service'
 import { requireAuth, writeSessionCookie } from '../middleware/auth'
 
+const totpChallengeSchema = z.object({
+  challengeToken: z.string().optional(),
+  code: z.string().optional(),
+})
+
+const totpPasswordSchema = z.object({
+  currentPassword: z.string().optional(),
+})
+
+const totpSetupConfirmSchema = z.object({
+  setupToken: z.string().optional(),
+  code: z.string().optional(),
+})
+
+const totpSetupCancelSchema = z.object({
+  setupToken: z.string().optional(),
+})
+
+const totpPasswordChallengeSchema = z.object({
+  currentPassword: z.string().optional(),
+  code: z.string().optional(),
+})
+
 export const totpRoutes = new Hono<AppBindings>()
 
 totpRoutes.post('/login', async (c) => {
-  const body = await readJson<{ challengeToken?: unknown; code?: unknown }>(c, 4096)
+  const body = await readJsonValidated(c, totpChallengeSchema, 4096)
   const result = await completeTotpLogin({
     env: c.env,
     challengeToken: body.challengeToken,
@@ -39,7 +63,7 @@ totpRoutes.get('/status', requireAuth, async (c) => {
 })
 
 totpRoutes.post('/setup', requireAuth, async (c) => {
-  const body = await readJson<{ currentPassword?: unknown }>(c, 4096)
+  const body = await readJsonValidated(c, totpPasswordSchema, 4096)
   await requireCurrentPassword(c.env.DB, c.get('userId'), body.currentPassword)
   const user = c.get('user')
   return c.json(await startTotpSetup({
@@ -52,7 +76,7 @@ totpRoutes.post('/setup', requireAuth, async (c) => {
 })
 
 totpRoutes.post('/setup/confirm', requireAuth, async (c) => {
-  const body = await readJson<{ setupToken?: unknown; code?: unknown }>(c, 4096)
+  const body = await readJsonValidated(c, totpSetupConfirmSchema, 4096)
   return c.json(await confirmTotpSetup({
     env: c.env,
     userId: c.get('userId'),
@@ -63,7 +87,7 @@ totpRoutes.post('/setup/confirm', requireAuth, async (c) => {
 })
 
 totpRoutes.delete('/setup', requireAuth, async (c) => {
-  const body = await readJson<{ setupToken?: unknown }>(c, 4096)
+  const body = await readJsonValidated(c, totpSetupCancelSchema, 4096)
   await cancelTotpSetup({
     db: c.env.DB,
     userId: c.get('userId'),
@@ -74,7 +98,7 @@ totpRoutes.delete('/setup', requireAuth, async (c) => {
 })
 
 totpRoutes.post('/recovery-codes', requireAuth, async (c) => {
-  const body = await readJson<{ currentPassword?: unknown; code?: unknown }>(c, 4096)
+  const body = await readJsonValidated(c, totpPasswordChallengeSchema, 4096)
   await requireCurrentPassword(c.env.DB, c.get('userId'), body.currentPassword)
   return c.json(await regenerateRecoveryCodes({
     env: c.env,
@@ -84,7 +108,7 @@ totpRoutes.post('/recovery-codes', requireAuth, async (c) => {
 })
 
 totpRoutes.delete('/', requireAuth, async (c) => {
-  const body = await readJson<{ currentPassword?: unknown; code?: unknown }>(c, 4096)
+  const body = await readJsonValidated(c, totpPasswordChallengeSchema, 4096)
   await requireCurrentPassword(c.env.DB, c.get('userId'), body.currentPassword)
   await disableTotp({
     env: c.env,

@@ -65,6 +65,18 @@ export async function readJsonValidated<T extends z.ZodType>(
 }
 
 
+export async function readOptionalJsonValidated<T extends z.ZodType>(
+  c: Parameters<typeof readJsonValidated<T>>[0],
+  schema: T,
+  maxBytes: number,
+  fallback: z.infer<T>,
+): Promise<z.infer<T>> {
+  const declared = c.req.header?.('Content-Length')
+  if (c.req.raw?.body == null || declared === '0') return Promise.resolve(fallback)
+  return readJsonValidated(c, schema, maxBytes)
+}
+
+
 export async function readFormDataWithinLimit(
   req: {
     raw?: Request

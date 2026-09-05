@@ -957,6 +957,9 @@ const allowed = new Map([
     "// clear every throttling key (identity, IP, and account level) so a",
     "// shared IP / NAT is never locked out by a full window of attempts.",
   ]],
+  ["src/worker/routes/folders.ts", [
+    "// Patch format checks run in-route after the ownership lookup so cross-user writes surface 404 first.",
+  ]],
   ["src/worker/routes/blog.ts", [
     "// Ensure session loaded for manage routes",
     "// Helper: load blog settings from app_meta",
@@ -1071,6 +1074,7 @@ const allowed = new Map([
     "// seq ahead of the server (e.g. data was trimmed).",
   ]],
   ["src/worker/routes/tags.ts", [
+    "// Format is checked after the ownership lookup so cross-user writes surface 404 first.",
     "// Read every candidate once in a single batched query instead of one SELECT",
     "// per candidate; the guarded UPDATE still catches concurrent edits and only",
     "// conflicting candidates get a fresh single-row read on retry.",

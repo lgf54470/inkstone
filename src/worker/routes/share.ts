@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { Hono, type Context } from 'hono'
 import { setCookie } from 'hono/cookie'
 import { LIMITS } from '@shared/constants'
@@ -16,7 +17,7 @@ import {
 import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'
 import { isValidId, isValidSlug, newSlug } from '../lib/id'
-import { JSON_BODY_LIMITS, readJson, readOptionalJson, requestClientIp } from '../lib/request'
+import { JSON_BODY_LIMITS, readJsonValidated, readOptionalJsonValidated, requestClientIp } from '../lib/request'
 import { hashPassword, verifyPassword } from '../lib/password'
 import {
   createScopedFolder,
@@ -57,6 +58,37 @@ import {
 import { loadSession, requireAuth } from '../middleware/auth'
 
 export const shareManageRoutes = new Hono<AppBindings>()
+const shareBatchSchema = z.object({
+  action: z.enum(['enable', 'disable', 'revoke', 'expire', 'move']),
+  noteIds: z.array(z.string()).min(1, 'noteIds must be a non-empty array'),
+  expiresIn: z.number().nullable().optional(),
+  folderId: z.string().nullable().optional(),
+})
+
+const shareFolderToggleSchema = z.object({
+  folderId: z.string(),
+  enabled: z.boolean(),
+})
+
+const shareTagToggleSchema = z.object({
+  tag: z.string(),
+  enabled: z.boolean(),
+})
+
+const shareCreateSchema = z.object({
+  password: z.string().nullable().optional(),
+  expiresIn: z.number().nullable().optional(),
+  customSlug: z.string().optional(),
+  isEnabled: z.boolean().optional(),
+  folderId: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+})
+
+const shareAccessSchema = z.object({
+  password: z.string().optional(),
+  referrer: z.string().optional(),
+})
+
 export const shareRoutes = new Hono<AppBindings>()
 export const sharePageRoutes = new Hono<AppBindings>()
 
@@ -962,16 +994,7 @@ shareManageRoutes.get('/', async (c) => {
 
 shareManageRoutes.post('/batch', async (c) => {
   const userId = c.get('userId')
-  const body = await readJson<{
-    action: 'enable' | 'disable' | 'revoke' | 'expire' | 'move'
-    noteIds: string[]
-    expiresIn?: number | null
-    folderId?: string | null
-  }>(c, JSON_BODY_LIMITS.small)
-
-  if (!Array.isArray(body.noteIds) || body.noteIds.length === 0) {
-    throw ApiError.badRequest('noteIds must be a non-empty array')
-  }
+  const body = await readJsonValidated(c, shareBatchSchema, JSON_BODY_LIMITS.small)
 
   const noteIds = body.noteIds.slice(0, 1000)
   const now = Date.now()
@@ -1040,7 +1063,7 @@ shareManageRoutes.post('/batch', async (c) => {
 
 shareManageRoutes.post('/batch-folder', async (c) => {
   const userId = c.get('userId')
-  const body = await readJson<{ folderId: string; enabled: boolean }>(c, JSON_BODY_LIMITS.small)
+  const body = await readJsonValidated(c, shareFolderToggleSchema, JSON_BODY_LIMITS.small)
 
   const notes = await c.env.DB.prepare(
     `SELECT id FROM notes WHERE folder_id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
@@ -1091,7 +1114,7 @@ shareManageRoutes.post('/batch-folder', async (c) => {
 
 shareManageRoutes.post('/batch-tag', async (c) => {
   const userId = c.get('userId')
-  const body = await readJson<{ tag: string; enabled: boolean }>(c, JSON_BODY_LIMITS.small)
+  const body = await readJsonValidated(c, shareTagToggleSchema, JSON_BODY_LIMITS.small)
 
   const tagRow = await c.env.DB.prepare(
     `SELECT id FROM tags WHERE name = ?1 AND user_id = ?2`,
@@ -1315,14 +1338,7 @@ shareManageRoutes.get('/:noteId', async (c) => {
 shareManageRoutes.post('/:noteId', async (c) => {
   const userId = c.get('userId')
   const noteId = c.req.param('noteId')
-  const body = await readJson<{
-    password?: string | null
-    expiresIn?: number | null
-    customSlug?: string
-    isEnabled?: boolean
-    folderId?: string | null
-    tags?: string[]
-  }>(c, JSON_BODY_LIMITS.small)
+  const body = await readJsonValidated(c, shareCreateSchema, JSON_BODY_LIMITS.small)
 
   const note = await c.env.DB.prepare(
     `SELECT id, title, folder_id, is_pinned, is_starred FROM notes WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
@@ -1448,7 +1464,7 @@ shareManageRoutes.delete('/:noteId', async (c) => {
 shareRoutes.post('/:slug', async (c) => {
   const slug = c.req.param('slug')
   if (!isValidSlug(slug)) throw ApiError.notFound('The link does not exist or has been revoked')
-  const body = await readOptionalJson<{ password?: string; referrer?: string }>(c, JSON_BODY_LIMITS.small, {})
+  const body = await readOptionalJsonValidated(c, shareAccessSchema, JSON_BODY_LIMITS.small, {})
   const password = typeof body.password === 'string'
     ? body.password.slice(0, LIMITS.passwordMaxLength)
     : ''

@@ -12,21 +12,21 @@ import { broadcastCursor } from '../lib/notify'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../lib/request'
 import { requireAuth } from '../middleware/auth'
 
-const folderFields = {
+const createFolderSchema = z.object({
+  id: z.string().refine(isValidId, 'id must be a valid folder id').optional(),
   name: z.string().max(LIMITS.folderNameMaxLength).optional(),
   parentId: z.string().nullable().optional(),
   icon: z.string().nullable().optional(),
   color: z.string().nullable().refine((value) => value === null || Boolean(organizerColorOrNull(value)), 'Folder color is not supported').optional(),
-}
-
-const createFolderSchema = z.object({
-  id: z.string().refine(isValidId, 'id must be a valid folder id').optional(),
-  ...folderFields,
 })
 
+// Patch format checks run in-route after the ownership lookup so cross-user writes surface 404 first.
 const patchFolderSchema = z.object({
+  name: z.string().optional(),
+  parentId: z.string().nullable().optional(),
   beforeId: z.string().nullable().optional(),
-  ...folderFields,
+  icon: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
 })
 
 export const foldersRoutes = new Hono<AppBindings>()
@@ -141,6 +141,9 @@ foldersRoutes.patch('/:id', async (c) => {
     sets.push(`icon = ?${binds.length}`)
   }
   if (body.color !== undefined) {
+    if (body.color !== null && !organizerColorOrNull(body.color)) {
+      throw ApiError.badRequest('Folder color is not supported')
+    }
     binds.push(organizerColorOrNull(body.color))
     sets.push(`color = ?${binds.length}`)
   }

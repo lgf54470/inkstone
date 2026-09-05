@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { Hono } from 'hono'
 import { LIMITS } from '@shared/constants'
 import { countText, deriveExcerpt, replaceTagInContent } from '@shared/markdown-utils'
@@ -10,8 +11,22 @@ import { sha256Hex } from '../lib/encoding'
 import { ApiError } from '../lib/errors'
 import { isValidId, newId } from '../lib/id'
 import { broadcastCursor, scheduleFtsDrain } from '../lib/notify'
-import { JSON_BODY_LIMITS, readJson } from '../lib/request'
+import { JSON_BODY_LIMITS, readJsonValidated } from '../lib/request'
 import { requireAuth } from '../middleware/auth'
+
+const createTagSchema = z.object({
+  id: z.string().refine(isValidId, 'id must be a valid tag id').optional(),
+  name: z.string(),
+  color: z.string().nullable().refine((value) => value === null || Boolean(organizerColorOrNull(value)), 'Tag color is not supported').optional(),
+  isPinned: z.boolean().optional(),
+})
+
+const patchTagSchema = z.object({
+  name: z.string().optional(),
+  // Format is checked after the ownership lookup so cross-user writes surface 404 first.
+  color: z.string().nullable().optional(),
+  isPinned: z.boolean().optional(),
+})
 
 export const tagsRoutes = new Hono<AppBindings>()
 
@@ -40,20 +55,7 @@ tagsRoutes.get('/', async (c) => {
 
 tagsRoutes.post('/', async (c) => {
   const userId = c.get('userId')
-  const body = await readJson<{ id?: string; name?: string; color?: string | null; isPinned?: boolean }>(
-    c,
-    JSON_BODY_LIMITS.small,
-  )
-  if (typeof body.name !== 'string') throw ApiError.badRequest('name must be a string')
-  if (body.id !== undefined && !isValidId(body.id)) {
-    throw ApiError.badRequest('id must be a valid tag id')
-  }
-  if (body.color !== undefined && body.color !== null && !organizerColorOrNull(body.color)) {
-    throw ApiError.badRequest('Tag color is not supported')
-  }
-  if (body.isPinned !== undefined && typeof body.isPinned !== 'boolean') {
-    throw ApiError.badRequest('isPinned must be a boolean')
-  }
+  const body = await readJsonValidated(c, createTagSchema, JSON_BODY_LIMITS.small)
   const name = body.name.trim().replace(/^#+/, '')
   if (!name) throw ApiError.badRequest('Tag name cannot be empty')
   if (name.length > LIMITS.tagNameMaxLength) throw ApiError.badRequest('Tag name is too long')
@@ -93,24 +95,15 @@ tagsRoutes.post('/', async (c) => {
 tagsRoutes.patch('/:id', async (c) => {
   const userId = c.get('userId')
   const id = c.req.param('id')
-  const body = await readJson<{ name?: string; color?: string | null; isPinned?: boolean }>(c, JSON_BODY_LIMITS.small)
+  const body = await readJsonValidated(c, patchTagSchema, JSON_BODY_LIMITS.small)
 
   const tag = await c.env.DB.prepare(`SELECT id, name, color, is_pinned FROM tags WHERE id = ?1 AND user_id = ?2`)
     .bind(id, userId)
     .first<{ id: string; name: string; color: string | null; is_pinned: number }>()
   if (!tag) throw ApiError.notFound('Tag not found')
 
-  if (body.color !== undefined && body.color !== null && typeof body.color !== 'string') {
-    throw ApiError.badRequest('color must be a string or null')
-  }
   if (typeof body.color === 'string' && !/^#[0-9a-f]{6}$/i.test(body.color)) {
     throw ApiError.badRequest('color must be a six-digit hexadecimal color')
-  }
-  if (body.name !== undefined && typeof body.name !== 'string') {
-    throw ApiError.badRequest('name must be a string')
-  }
-  if (body.isPinned !== undefined && typeof body.isPinned !== 'boolean') {
-    throw ApiError.badRequest('isPinned must be a boolean')
   }
 
   const color = body.color === undefined ? tag.color : body.color
