@@ -20,7 +20,7 @@ export function SyncSettings() {
     const toast = useUi((s) => s.toast);
     const syncingRef = useRef(false);
     const mountedRef = useRef(true);
-    const [syncing, setSyncing] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
     const realtimeAvailable = site?.realtimeEnabled ?? false;
     const savedAgo = useRelativeTime(lastSavedAt, online);
     const setRealtime = useCallback((realtime: boolean) => void update({ sync: { realtime } }), [update]);
@@ -36,7 +36,7 @@ export function SyncSettings() {
         if (syncingRef.current)
             return;
         syncingRef.current = true;
-        setSyncing(true);
+        setIsSyncing(true);
         try {
             let failure: unknown = null;
             try {
@@ -69,7 +69,7 @@ export function SyncSettings() {
         finally {
             syncingRef.current = false;
             if (mountedRef.current)
-                setSyncing(false);
+                setIsSyncing(false);
         }
     };
     return (<div className="space-y-6">
@@ -92,7 +92,7 @@ export function SyncSettings() {
                 ? t("settings.value0_changes_will_upload_automatically_after_reconnecting", { value0: pending }) : t("settings.changes_are_saved_locally_and_sync_automatically_after_reconnecting")}
             </div>
           </div>
-          <Button size="sm" variant="secondary" icon={<RefreshCw size={12}/>} loading={syncing} disabled={syncing} onClick={() => void syncNow()}>{t("settings.sync_now")}</Button>
+          <Button size="sm" variant="secondary" icon={<RefreshCw size={12}/>} loading={isSyncing} disabled={isSyncing} onClick={() => void syncNow()}>{t("settings.sync_now")}</Button>
         </div>
 
       </section>

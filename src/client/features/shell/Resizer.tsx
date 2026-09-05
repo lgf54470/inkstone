@@ -36,7 +36,7 @@ function VerticalResizeHandle({
   resolveValue,
   className,
 }: VerticalResizeHandleProps) {
-  const [dragging, setDragging] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const startRef = useRef<ResizeStart>({ x: 0, value: 0 })
 
   const restoreDocument = useCallback(() => {
@@ -48,7 +48,7 @@ function VerticalResizeHandle({
 
   const finish = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      setDragging(false)
+      setIsDragging(false)
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId)
       }
@@ -71,12 +71,12 @@ function VerticalResizeHandle({
         event.preventDefault()
         event.currentTarget.setPointerCapture(event.pointerId)
         startRef.current = { x: event.clientX, value }
-        setDragging(true)
+        setIsDragging(true)
         document.body.style.cursor = 'col-resize'
         document.body.style.userSelect = 'none'
       }}
       onPointerMove={(event) => {
-        if (!dragging) return
+        if (!isDragging) return
         onChange(clamp(resolveValue(event.clientX, startRef.current), min, max))
       }}
       onPointerUp={finish}
@@ -102,7 +102,7 @@ function VerticalResizeHandle({
         className={cn(
           'pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2',
           'transition-[background-color,width] duration-[var(--dur-base)] ease-[var(--ease-out)]',
-          dragging
+          isDragging
             ? 'w-[2px] bg-[var(--accent)]'
             : 'bg-[var(--border-subtle)] group-hover:w-[2px] group-hover:bg-[var(--accent)] group-focus-visible:w-[2px] group-focus-visible:bg-[var(--accent)]',
         )}

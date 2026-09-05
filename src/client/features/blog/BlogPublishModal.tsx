@@ -61,7 +61,7 @@ export function BlogPublishModal({
   const [excerpt, setExcerpt] = useState('')
   const [allowComments, setAllowComments] = useState(true)
   const [isPinned, setIsPinned] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
   const [slugReason, setSlugReason] = useState('')
 
@@ -196,7 +196,7 @@ export function BlogPublishModal({
       return
     }
 
-    setSaving(true)
+    setIsSaving(true)
     try {
       const notesState = useNotes.getState()
       let noteContent = notesState.contents[noteId]
@@ -239,7 +239,7 @@ export function BlogPublishModal({
     } catch (error: unknown) {
       toast({ title: errorMessage(error) || t('common.action_failed'), tone: 'danger' })
     } finally {
-      setSaving(false)
+      setIsSaving(false)
     }
   }
 
@@ -495,14 +495,14 @@ export function BlogPublishModal({
         </a>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>
+          <Button variant="ghost" size="sm" onClick={onClose} disabled={isSaving}>
             {t('common.cancel')}
           </Button>
           {initialPost?.isPublished && (
             <Button
               variant="secondary"
               size="sm"
-              loading={saving}
+              loading={isSaving}
               onClick={() => void handleSave(false)}
             >
               {t('blog.unpublish')}
@@ -511,7 +511,7 @@ export function BlogPublishModal({
           <Button
             variant="primary"
             size="sm"
-            loading={saving}
+            loading={isSaving}
             onClick={() => void handleSave(true)}
           >
             {initialPost ? t('blog.update_post') : t('blog.publish_now')}

@@ -80,20 +80,20 @@ export function TemplateGallery({ onClose }: {
     const [renaming, setRenaming] = useState<NoteTemplate | null>(null);
     const [moving, setMoving] = useState<NoteTemplate | null>(null);
     const [categoryDialog, setCategoryDialog] = useState<{ mode: 'create' } | { mode: 'rename'; category: NoteTemplateCategory } | null>(null);
-    const [moreOpen, setMoreOpen] = useState(false);
-    const [importOpen, setImportOpen] = useState(false);
-    const [helpOpen, setHelpOpen] = useState(false);
+    const [isMoreOpen, setIsMoreOpen] = useState(false);
+    const [isImportOpen, setIsImportOpen] = useState(false);
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
     const [selectMode, setSelectMode] = useState(persisted.selectMode);
     const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
-    const [batchMoving, setBatchMoving] = useState(false);
+    const [isBatchMoving, setIsBatchMoving] = useState(false);
     const [focusedId, setFocusedId] = useState<string | null>(null);
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dropHint, setDropHint] = useState<{ id: string; after: boolean } | null>(null);
     const [dropCategory, setDropCategory] = useState<string | null>(null);
     const [publishing, setPublishing] = useState<NoteTemplate | null>(null);
     const [community, setCommunity] = useState<CommunityTemplate[]>([]);
-    const [communityLoading, setCommunityLoading] = useState(false);
-    const [communityError, setCommunityError] = useState(false);
+    const [isCommunityLoading, setIsCommunityLoading] = useState(false);
+    const [isCommunityError, setIsCommunityError] = useState(false);
     const communityLoadedRef = useRef(false);
     const gridRef = useRef<HTMLDivElement>(null);
     const currentUserId = useSession((s) => s.user?.id);
@@ -137,17 +137,17 @@ export function TemplateGallery({ onClose }: {
     }, [categories, hydrated, templates]);
 
     const refreshCommunity = useCallback(async () => {
-        setCommunityLoading(true);
-        setCommunityError(false);
+        setIsCommunityLoading(true);
+        setIsCommunityError(false);
         try {
             const { templates: items } = await api.communityTemplates.list();
             setCommunity(items);
         }
         catch {
-            setCommunityError(true);
+            setIsCommunityError(true);
         }
         finally {
-            setCommunityLoading(false);
+            setIsCommunityLoading(false);
         }
     }, []);
 
@@ -243,7 +243,7 @@ export function TemplateGallery({ onClose }: {
     const moreItems: MenuItem[] = [
         { id: 'export', label: t("templates.export_library"), icon: <Download size={13}/>, onSelect: exportLibrary },
         { id: 'copy-json', label: t("templates.copy_json"), icon: <Copy size={13}/>, onSelect: copyLibraryJson },
-        { id: 'import', label: t("templates.import_templates"), icon: <Upload size={13}/>, separatorBefore: true, onSelect: () => setImportOpen(true) },
+        { id: 'import', label: t("templates.import_templates"), icon: <Upload size={13}/>, separatorBefore: true, onSelect: () => setIsImportOpen(true) },
     ];
 
     const deleteTemplate = useCallback(async (template: NoteTemplate) => {
@@ -337,7 +337,7 @@ export function TemplateGallery({ onClose }: {
                 moved++;
         }
         setSelectedIds(new Set());
-        setBatchMoving(false);
+        setIsBatchMoving(false);
         useUi.getState().toast({ title: t("templates.batch_moved_value0", { value0: moved }), tone: 'success' });
     }, [selectedTemplates]);
 
@@ -442,14 +442,14 @@ export function TemplateGallery({ onClose }: {
     }, []);
 
     const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-        if (editing || renaming || moving || categoryDialog || importOpen || batchMoving || publishing || helpOpen)
+        if (editing || renaming || moving || categoryDialog || isImportOpen || isBatchMoving || publishing || isHelpOpen)
             return;
         const target = event.target as HTMLElement;
         if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target.isContentEditable)
             return;
         if (event.key === '?') {
             event.preventDefault();
-            setHelpOpen(true);
+            setIsHelpOpen(true);
             return;
         }
         if (event.key === '/') {
@@ -506,7 +506,7 @@ export function TemplateGallery({ onClose }: {
         requestAnimationFrame(() => {
             gridRef.current?.querySelector(`[data-template-id="${next.id}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         });
-    }, [batchMoving, categoryDialog, editing, focusedId, helpOpen, importOpen, moving, publishing, renaming, selectMode, toggleSelect, toggleSelectAll, toggleSelectMode, visible]);
+    }, [isBatchMoving, categoryDialog, editing, focusedId, isHelpOpen, isImportOpen, moving, publishing, renaming, selectMode, toggleSelect, toggleSelectAll, toggleSelectMode, visible]);
 
     return createPortal(<div className="app-viewport-fixed fixed z-[var(--z-palette)] flex items-end justify-center md:items-center md:p-6">
         <div className="anim-fade absolute inset-0 bg-[var(--scrim)]" onClick={onClose} aria-hidden="true"/>
@@ -527,7 +527,7 @@ export function TemplateGallery({ onClose }: {
                     </IconButton>
                 </Tooltip>
                 <Tooltip label={t("templates.keyboard_shortcuts")}>
-                    <IconButton label={t("templates.keyboard_shortcuts")} size="sm" onClick={() => setHelpOpen(true)} className="shrink-0">
+                    <IconButton label={t("templates.keyboard_shortcuts")} size="sm" onClick={() => setIsHelpOpen(true)} className="shrink-0">
                         <HelpCircle size={15}/>
                     </IconButton>
                 </Tooltip>
@@ -539,7 +539,7 @@ export function TemplateGallery({ onClose }: {
                 </Tooltip>
                 <span className="hidden md:inline-flex"><Kbd keys={['Esc']}/></span>
                 <Tooltip label={t("templates.export_library")} side="left">
-                    <IconButton ref={moreButtonRef} label={t("templates.export_library")} size="sm" onClick={() => setMoreOpen(true)}>
+                    <IconButton ref={moreButtonRef} label={t("templates.export_library")} size="sm" onClick={() => setIsMoreOpen(true)}>
                         <MoreHorizontal size={15}/>
                     </IconButton>
                 </Tooltip>
@@ -608,7 +608,7 @@ export function TemplateGallery({ onClose }: {
                 </aside>
 
                 <main className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4">
-                    {filter.kind === 'community' && <CommunityPanel items={community} loading={communityLoading} error={communityError} myId={currentUserId} onRefresh={() => void refreshCommunity()} onUse={useCommunityTemplate} onImport={importCommunityTemplate} onUnpublish={(item) => void unpublishCommunityTemplate(item)}/>}
+                    {filter.kind === 'community' && <CommunityPanel items={community} loading={isCommunityLoading} isError={isCommunityError} myId={currentUserId} onRefresh={() => void refreshCommunity()} onUse={useCommunityTemplate} onImport={importCommunityTemplate} onUnpublish={(item) => void unpublishCommunityTemplate(item)}/>}
                     {filter.kind !== 'community' && visible.some((item) => item.isPinned) && (<div className="mb-3 flex items-center gap-1.5 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
                         <Pin size={11}/>{t("notes.pin")}
                     </div>)}
@@ -632,7 +632,7 @@ export function TemplateGallery({ onClose }: {
                 <div className="ml-auto flex flex-wrap items-center gap-1.5">
                     <Button size="sm" variant="ghost" onClick={toggleSelectAll}>{allVisibleSelected ? t("templates.clear_selection") : t("templates.select_all")}</Button>
                     <Button size="sm" variant="secondary" icon={<Star size={13}/>} disabled={selectedIds.size === 0} onClick={batchToggleStar}>{allSelectedStarred ? t("common.remove_from_favorites") : t("navigation.favorites")}</Button>
-                    <Button size="sm" variant="secondary" icon={<FolderPlus size={13}/>} disabled={selectedIds.size === 0} onClick={() => setBatchMoving(true)}>{t("templates.move_to_category")}</Button>
+                    <Button size="sm" variant="secondary" icon={<FolderPlus size={13}/>} disabled={selectedIds.size === 0} onClick={() => setIsBatchMoving(true)}>{t("templates.move_to_category")}</Button>
                     <Button size="sm" variant="danger" icon={<Trash2 size={13}/>} disabled={!hasDeletableSelection} onClick={() => void batchDelete()}>{t("templates.delete_template")}</Button>
                     <Button size="sm" variant="ghost" onClick={exitSelectMode}>{t("templates.exit_select_mode")}</Button>
                 </div>
@@ -643,14 +643,14 @@ export function TemplateGallery({ onClose }: {
         {renaming && <TemplateRenameDialog template={renaming} onClose={() => setRenaming(null)}/>}
         {moving && <MoveTemplateDialog template={moving} categories={categories} onClose={() => setMoving(null)}/>}
         {categoryDialog && <CategoryDialog dialog={categoryDialog} onClose={() => setCategoryDialog(null)}/>}
-        {importOpen && <ImportTemplatesModal onClose={() => setImportOpen(false)}/>}
-        {batchMoving && <BatchMoveDialog categories={categories} onMove={batchMove} onClose={() => setBatchMoving(false)}/>}
-        {helpOpen && <KeyboardHelpModal onClose={() => setHelpOpen(false)}/>}
+        {isImportOpen && <ImportTemplatesModal onClose={() => setIsImportOpen(false)}/>}
+        {isBatchMoving && <BatchMoveDialog categories={categories} onMove={batchMove} onClose={() => setIsBatchMoving(false)}/>}
+        {isHelpOpen && <KeyboardHelpModal onClose={() => setIsHelpOpen(false)}/>}
         {publishing && <PublishTemplateDialog template={publishing} category={publishing.categoryId === null ? t("templates.uncategorized") : categoryName(publishing.categoryId)} onClose={() => setPublishing(null)} onPublished={() => {
             setPublishing(null);
             if (filter.kind === 'community') void refreshCommunity();
         }}/>}
-        <Menu anchor={moreButtonRef} open={moreOpen} onClose={() => setMoreOpen(false)} items={moreItems} align="end" width={200} zIndex={Z_INDEX.menuHigh}/>
+        <Menu anchor={moreButtonRef} open={isMoreOpen} onClose={() => setIsMoreOpen(false)} items={moreItems} align="end" width={200} zIndex={Z_INDEX.menuHigh}/>
     </div>, document.body);
 }
 
@@ -744,7 +744,7 @@ function TemplateCard({ template, categoryName, selectMode, selected, focused, d
     const menuButtonRef = useRef<HTMLButtonElement>(null);
     const useButtonRef = useRef<HTMLButtonElement>(null);
     const contextMenu = useContextMenu();
-    const [menuOpen, setMenuOpen] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     useEffect(() => {
         if (focused)
             useButtonRef.current?.focus({ preventScroll: true });
@@ -774,7 +774,7 @@ function TemplateCard({ template, categoryName, selectMode, selected, focused, d
             : []),
     ];
     return (<div onContextMenu={(event) => {
-        setMenuOpen(false);
+        setIsMenuOpen(false);
         contextMenu.onContextMenu(event);
     }} data-template-id={template.id} draggable={!selectMode} onDragStart={(event) => {
         if (selectMode) {
@@ -837,7 +837,7 @@ function TemplateCard({ template, categoryName, selectMode, selected, focused, d
                 <Tooltip label={t("common.more_actions")} side="top">
                     <IconButton ref={menuButtonRef} label={t("common.more_actions")} size="sm" onClick={(event) => {
                         event.stopPropagation();
-                        setMenuOpen(true);
+                        setIsMenuOpen(true);
                     }} className="size-6 text-[var(--text-tertiary)]">
                         <MoreHorizontal size={13}/>
                     </IconButton>
@@ -854,7 +854,7 @@ function TemplateCard({ template, categoryName, selectMode, selected, focused, d
             <span className="text-[10.5px] text-[var(--text-quaternary)]">{t("templates.lines_count", { value0: lineCount })}</span>
             <span className="ml-auto text-[10.5px] font-medium text-[var(--accent)] opacity-0 transition-opacity group-hover:opacity-100">{t("templates.use_template")} →</span>
         </div>
-        <Menu anchor={menuButtonRef} open={menuOpen} onClose={() => setMenuOpen(false)} items={items} align="end" width={200} zIndex={Z_INDEX.hoverPinned}/>
+        <Menu anchor={menuButtonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={items} align="end" width={200} zIndex={Z_INDEX.hoverPinned}/>
         {contextMenu.point && <Menu anchor={contextMenu.point} open onClose={contextMenu.close} items={items} width={200} zIndex={Z_INDEX.hoverPinned}/>}
     </div>);
 }
@@ -867,12 +867,12 @@ function TemplateEditorModal({ template, categories, onClose }: {
     const [draft, setDraft] = useState<TemplateDraft>(template
         ? { name: template.name, description: template.description, content: template.content, categoryId: template.categoryId, tags: template.tags }
         : EMPTY_DRAFT);
-    const [error, setError] = useState(false);
+    const [isError, setIsError] = useState(false);
     const nameRef = useRef<HTMLInputElement>(null);
     useEffect(() => { nameRef.current?.focus(); }, []);
     const save = () => {
         if (!draft.name.trim()) {
-            setError(true);
+            setIsError(true);
             return;
         }
         if (template)
@@ -888,9 +888,9 @@ function TemplateEditorModal({ template, categories, onClose }: {
         <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label={t("templates.template_name")} required>
-                    <Input ref={nameRef} invalid={error} value={draft.name} onChange={(event) => {
+                    <Input ref={nameRef} invalid={isError} value={draft.name} onChange={(event) => {
                         setDraft({ ...draft, name: event.target.value });
-                        setError(false);
+                        setIsError(false);
                     }} placeholder={t("templates.template_name")}/>
                 </Field>
                 <Field label={t("templates.category")}>
@@ -918,12 +918,12 @@ function TemplateRenameDialog({ template, onClose }: {
     onClose: () => void;
 }) {
     const [name, setName] = useState(template.name);
-    const [error, setError] = useState(false);
+    const [isError, setIsError] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     useEffect(() => { inputRef.current?.focus(); }, []);
     const save = () => {
         if (!name.trim()) {
-            setError(true);
+            setIsError(true);
             return;
         }
         useNoteTemplates.getState().updateTemplate(template.id, { name });
@@ -934,9 +934,9 @@ function TemplateRenameDialog({ template, onClose }: {
             <Button variant="primary" onClick={save}>{t("common.save")}</Button>
         </>}>
         <Field label={t("templates.template_name")} required>
-            <Input ref={inputRef} invalid={error} value={name} onChange={(event) => {
+            <Input ref={inputRef} invalid={isError} value={name} onChange={(event) => {
                 setName(event.target.value);
-                setError(false);
+                setIsError(false);
             }} onKeyDown={(event) => { if (event.key === 'Enter') save(); }} placeholder={t("templates.template_name")}/>
         </Field>
     </Modal>);
@@ -976,12 +976,12 @@ function CategoryDialog({ dialog, onClose }: {
     onClose: () => void;
 }) {
     const [name, setName] = useState(dialog.mode === 'rename' ? dialog.category.name : '');
-    const [error, setError] = useState(false);
+    const [isError, setIsError] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     useEffect(() => { inputRef.current?.focus(); }, []);
     const save = () => {
         if (!name.trim()) {
-            setError(true);
+            setIsError(true);
             return;
         }
         if (dialog.mode === 'rename')
@@ -995,9 +995,9 @@ function CategoryDialog({ dialog, onClose }: {
             <Button variant="primary" onClick={save}>{t("common.save")}</Button>
         </>}>
         <Field label={t("templates.category_name")} required>
-            <Input ref={inputRef} invalid={error} value={name} onChange={(event) => {
+            <Input ref={inputRef} invalid={isError} value={name} onChange={(event) => {
                 setName(event.target.value);
-                setError(false);
+                setIsError(false);
             }} onKeyDown={(event) => { if (event.key === 'Enter') save(); }} placeholder={t("templates.category_name")}/>
         </Field>
     </Modal>);
@@ -1007,12 +1007,12 @@ function ImportTemplatesModal({ onClose }: {
     onClose: () => void;
 }) {
     const [text, setText] = useState('');
-    const [error, setError] = useState(false);
+    const [isError, setIsError] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     const importJson = () => {
         const data = parseTemplateLibraryExport(text);
         if (!data) {
-            setError(true);
+            setIsError(true);
             return;
         }
         const { imported, skipped } = useNoteTemplates.getState().importTemplates(data);
@@ -1029,7 +1029,7 @@ function ImportTemplatesModal({ onClose }: {
         const reader = new FileReader();
         reader.onload = () => {
             setText(String(reader.result ?? ''));
-            setError(false);
+            setIsError(false);
         };
         reader.readAsText(file);
         event.target.value = '';
@@ -1040,9 +1040,9 @@ function ImportTemplatesModal({ onClose }: {
         </>}>
         <div className="space-y-3">
             <p className="text-[12px] leading-relaxed text-[var(--text-tertiary)]">{t("templates.import_hint")}</p>
-            <Textarea value={text} aria-invalid={error} onChange={(event) => {
+            <Textarea value={text} aria-invalid={isError} onChange={(event) => {
                 setText(event.target.value);
-                setError(false);
+                setIsError(false);
             }} rows={10} spellCheck={false} placeholder={t("templates.import_paste_placeholder")} className="min-h-[180px] font-mono text-[12px]"/>
             <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={pickFile}/>
             <Button variant="secondary" icon={<Upload size={13}/>} onClick={() => fileRef.current?.click()}>{t("templates.import_file")}</Button>
@@ -1063,10 +1063,10 @@ function BatchMoveDialog({ categories, onMove, onClose }: {
     </Modal>);
 }
 
-function CommunityPanel({ items, loading, error, myId, onRefresh, onUse, onImport, onUnpublish }: {
+function CommunityPanel({ items, loading, isError, myId, onRefresh, onUse, onImport, onUnpublish }: {
     items: CommunityTemplate[];
     loading: boolean;
-    error: boolean;
+    isError: boolean;
     myId: string | undefined;
     onRefresh: () => void;
     onUse: (item: CommunityTemplate) => void;
@@ -1077,7 +1077,7 @@ function CommunityPanel({ items, loading, error, myId, onRefresh, onUse, onImpor
         return (<div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {[0, 1, 2].map((index) => (<div key={index} className="min-h-[132px] animate-pulse rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-raised)]"/>))}
         </div>);
-    if (error && items.length === 0)
+    if (isError && items.length === 0)
         return (<div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-3 text-center">
             <Globe size={26} className="text-[var(--text-quaternary)]"/>
             <p className="text-[13px] font-medium text-[var(--text-secondary)]">{t("templates.community_load_failed")}</p>
@@ -1178,11 +1178,11 @@ function PublishTemplateDialog({ template, category, onClose, onPublished }: {
     onClose: () => void;
     onPublished: () => void;
 }) {
-    const [busy, setBusy] = useState(false);
+    const [isBusy, setIsBusy] = useState(false);
     const publish = async () => {
-        if (busy)
+        if (isBusy)
             return;
-        setBusy(true);
+        setIsBusy(true);
         try {
             await api.communityTemplates.publish({
                 name: template.name,
@@ -1198,12 +1198,12 @@ function PublishTemplateDialog({ template, category, onClose, onPublished }: {
             useUi.getState().toast({ title: t("common.action_failed"), tone: 'danger' });
         }
         finally {
-            setBusy(false);
+            setIsBusy(false);
         }
     };
     return (<Modal open onClose={onClose} title={t("templates.publish_to_community")} width={600} footer={<>
             <Button variant="ghost" onClick={onClose}>{t("common.cancel")}</Button>
-            <Button variant="primary" icon={<Send size={13}/>} loading={busy} onClick={() => void publish()}>{t("templates.publish_to_community")}</Button>
+            <Button variant="primary" icon={<Send size={13}/>} loading={isBusy} onClick={() => void publish()}>{t("templates.publish_to_community")}</Button>
         </>}>
         <div className="space-y-3">
             <p className="text-[12px] leading-relaxed text-[var(--text-tertiary)]">{t("templates.publish_hint")}</p>

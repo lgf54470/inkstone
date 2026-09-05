@@ -20,9 +20,9 @@ export function ShareBatchBar({
   const selectedNoteIds = useShareStore((s) => s.selectedNoteIds)
   const batchBusy = useShareStore((s) => s.batchBusy)
 
-  const [expiryMenuOpen, setExpiryMenuOpen] = useState(false)
+  const [isExpiryMenuOpen, setIsExpiryMenuOpen] = useState(false)
   const expiryButtonRef = useRef<HTMLButtonElement>(null)
-  const [folderMenuOpen, setFolderMenuOpen] = useState(false)
+  const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
   const folderButtonRef = useRef<HTMLButtonElement>(null)
 
   if (selectedCount === 0) return null
@@ -49,7 +49,7 @@ export function ShareBatchBar({
   }
 
   const handleSetExpiry = async (millis: number | null) => {
-    setExpiryMenuOpen(false)
+    setIsExpiryMenuOpen(false)
     await batchToggle('expire', noteIds, millis)
   }
 
@@ -66,7 +66,7 @@ export function ShareBatchBar({
       label: t('share.no_folder'),
       icon: <FolderClosed size={13} className="text-[var(--text-quaternary)]" />,
       onSelect: async () => {
-        setFolderMenuOpen(false)
+        setIsFolderMenuOpen(false)
         const ok = await batchMoveToFolder(noteIds, null)
         if (ok) {
           toast({ title: t('share.batch_move_success', { count: selectedCount }), tone: 'success' })
@@ -82,7 +82,7 @@ export function ShareBatchBar({
         </span>
       ),
       onSelect: async () => {
-        setFolderMenuOpen(false)
+        setIsFolderMenuOpen(false)
         const ok = await batchMoveToFolder(noteIds, f.id)
         if (ok) {
           toast({ title: t('share.batch_move_success', { count: selectedCount }), tone: 'success' })
@@ -128,7 +128,7 @@ export function ShareBatchBar({
         disabled={batchBusy}
         className="shrink-0 whitespace-nowrap"
         icon={<FolderInput size={13} />}
-        onClick={() => setFolderMenuOpen(true)}
+        onClick={() => setIsFolderMenuOpen(true)}
       >
         {t('share.batch_move_to_folder')}
       </Button>
@@ -140,7 +140,7 @@ export function ShareBatchBar({
         disabled={batchBusy}
         className="shrink-0 whitespace-nowrap"
         icon={<Calendar size={13} />}
-        onClick={() => setExpiryMenuOpen(true)}
+        onClick={() => setIsExpiryMenuOpen(true)}
       >
         {t('share.batch_set_expiry')}
       </Button>
@@ -166,19 +166,19 @@ export function ShareBatchBar({
         <X size={14} />
       </button>
 
-      {expiryMenuOpen && (
+      {isExpiryMenuOpen && (
         <Menu
-          open={expiryMenuOpen}
-          onClose={() => setExpiryMenuOpen(false)}
+          open={isExpiryMenuOpen}
+          onClose={() => setIsExpiryMenuOpen(false)}
           items={expiryMenuItems}
           anchor={expiryButtonRef}
         />
       )}
 
-      {folderMenuOpen && (
+      {isFolderMenuOpen && (
         <Menu
-          open={folderMenuOpen}
-          onClose={() => setFolderMenuOpen(false)}
+          open={isFolderMenuOpen}
+          onClose={() => setIsFolderMenuOpen(false)}
           items={folderMenuItems}
           anchor={folderButtonRef}
         />

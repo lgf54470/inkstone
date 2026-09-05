@@ -19,9 +19,9 @@ export function BulkBar() {
     const folders = useNotes((s) => s.folders);
     const notes = useNotes((s) => s.notes);
     const toast = useUi((s) => s.toast);
-    const [folderPickerOpen, setFolderPickerOpen] = useState(false);
+    const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
     const busyRef = useRef(false);
-    const [busy, setBusy] = useState(false);
+    const [isBusy, setIsBusy] = useState(false);
     const ids = selectedIds.filter((id) => notes[id]);
     if (ids.length < 2)
         return null;
@@ -43,7 +43,7 @@ export function BulkBar() {
         if (busyRef.current)
             return;
         busyRef.current = true;
-        setBusy(true);
+        setIsBusy(true);
         try {
             await task();
         }
@@ -52,34 +52,34 @@ export function BulkBar() {
         }
         finally {
             busyRef.current = false;
-            setBusy(false);
+            setIsBusy(false);
         }
     };
     return (<div className="pointer-events-none absolute inset-x-0 bottom-0 z-[var(--z-menu)] flex justify-center pb-3">
       <div className="anim-rise pointer-events-auto flex items-center gap-1 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 pl-3 shadow-[var(--shadow-pop)]">
         <span className="mr-1 text-[11.5px] whitespace-nowrap text-[var(--text-secondary)]">{t("notes.selected")}<span className="tabular font-medium">{ids.length}</span>{t("notes.notes")}</span>
         <Tooltip label={allStarred ? t("common.remove_from_favorites") : t("navigation.favorites")}>
-          <IconButton label={t("navigation.favorites")} size="sm" disabled={busy} onClick={() => void runAll(() => setStarredMany(ids, !allStarred))}>
+          <IconButton label={t("navigation.favorites")} size="sm" disabled={isBusy} onClick={() => void runAll(() => setStarredMany(ids, !allStarred))}>
             <Star size={13} className={allStarred ? 'fill-current' : undefined}/>
           </IconButton>
         </Tooltip>
         <Tooltip label={allPinned ? t("notes.unpin") : t("notes.pin")}>
-          <IconButton label={allPinned ? t("notes.unpin") : t("notes.pin")} size="sm" disabled={busy} onClick={() => void runAll(() => setPinnedMany(ids, !allPinned))}>
+          <IconButton label={allPinned ? t("notes.unpin") : t("notes.pin")} size="sm" disabled={isBusy} onClick={() => void runAll(() => setPinnedMany(ids, !allPinned))}>
             <Pin size={13} className={allPinned ? 'fill-current' : undefined}/>
           </IconButton>
         </Tooltip>
         <Tooltip label={t("notes.move_to_folder")}>
-          <IconButton label={t("notes.move_to_folder")} size="sm" disabled={busy} onClick={() => setFolderPickerOpen(true)}>
+          <IconButton label={t("notes.move_to_folder")} size="sm" disabled={isBusy} onClick={() => setIsFolderPickerOpen(true)}>
             <FolderInput size={13}/>
           </IconButton>
         </Tooltip>
         <Tooltip label={t("navigation.archive")}>
-          <IconButton label={t("navigation.archive")} size="sm" disabled={busy} onClick={() => void runAll(() => setArchivedMany(ids, true))}>
+          <IconButton label={t("navigation.archive")} size="sm" disabled={isBusy} onClick={() => void runAll(() => setArchivedMany(ids, true))}>
             <Archive size={13}/>
           </IconButton>
         </Tooltip>
         <Tooltip label={t("common.move_to_trash")}>
-          <IconButton label={t("common.move_to_trash")} size="sm" disabled={busy} className="text-[var(--text-tertiary)] hover:text-[var(--danger)]" onClick={() => void runAll(async () => {
+          <IconButton label={t("common.move_to_trash")} size="sm" disabled={isBusy} className="text-[var(--text-tertiary)] hover:text-[var(--danger)]" onClick={() => void runAll(async () => {
             const ok = await confirm({
                 title: t("notes.move_value0_notes_to_trash", { value0: ids.length }),
                 description: t("notes.restore_it_from_trash_at_any_time"),
@@ -94,13 +94,13 @@ export function BulkBar() {
         </Tooltip>
         <span className="mx-0.5 h-4 w-px bg-[var(--border-subtle)]"/>
         <Tooltip label={t("notes.deselect")}>
-          <IconButton label={t("notes.deselect")} size="sm" disabled={busy} onClick={clear}>
+          <IconButton label={t("notes.deselect")} size="sm" disabled={isBusy} onClick={clear}>
             <X size={13}/>
           </IconButton>
         </Tooltip>
       </div>
 
-      {folderPickerOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={commonFolderId} rootLabel={t("notes.remove_from_folder")} onSelect={(folderId) => void runAll(() => moveNotes(ids, folderId))} onClose={() => setFolderPickerOpen(false)}/>}
+      {isFolderPickerOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={commonFolderId} rootLabel={t("notes.remove_from_folder")} onSelect={(folderId) => void runAll(() => moveNotes(ids, folderId))} onClose={() => setIsFolderPickerOpen(false)}/>}
     </div>);
 }
 

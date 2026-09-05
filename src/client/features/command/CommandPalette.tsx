@@ -45,8 +45,8 @@ export function CommandPalette({ onClose }: {
     const locale = useLocale();
     const [query, setQuery] = useState('');
     const [cursor, setCursor] = useState(0);
-    const [keyboardNav, setKeyboardNav] = useState(false);
-    const [tagFilterOpen, setTagFilterOpen] = useState(false);
+    const [isKeyboardNav, setIsKeyboardNav] = useState(false);
+    const [isTagFilterOpen, setIsTagFilterOpen] = useState(false);
     const tagFilterRef = useRef<HTMLButtonElement>(null);
     const [remote, setRemote] = useState<{
         query: string;
@@ -87,7 +87,7 @@ export function CommandPalette({ onClose }: {
         onClose();
         item.run();
     }, [onClose]);
-    const pointerNav = useCallback(() => setKeyboardNav(false), []);
+    const pointerNav = useCallback(() => setIsKeyboardNav(false), []);
     const openCalendarPeriod = useCallback((period: CalendarPeriod) => {
         const id = virtualId(period, CALENDAR_TREE);
         const ancestors = virtualAncestorIds(id, CALENDAR_TREE);
@@ -572,12 +572,12 @@ export function CommandPalette({ onClose }: {
     const onKeyDown = (event: React.KeyboardEvent) => {
         if (event.key === 'ArrowDown' || (event.key === 'n' && event.ctrlKey)) {
             event.preventDefault();
-            setKeyboardNav(true);
+            setIsKeyboardNav(true);
             setCursor((c) => items.length ? Math.min(items.length - 1, c + 1) : 0);
         }
         else if (event.key === 'ArrowUp' || (event.key === 'p' && event.ctrlKey)) {
             event.preventDefault();
-            setKeyboardNav(true);
+            setIsKeyboardNav(true);
             setCursor((c) => Math.max(0, c - 1));
         }
         else if (event.key === 'Enter') {
@@ -597,7 +597,7 @@ export function CommandPalette({ onClose }: {
           <Search size={16} className="shrink-0 text-[var(--text-quaternary)]"/>
           <input ref={inputRef} role="combobox" aria-label={t("common.search_notes_or_run_a_command")} aria-expanded="true" aria-controls={listId} aria-activedescendant={items[cursor] ? `${listId}-option-${cursor}` : undefined} aria-autocomplete="list" autoComplete="off" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={onKeyDown} placeholder={t("command.search_notes_or_type_a_command")} className="h-[52px] flex-1 bg-transparent text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none"/>
           <Tooltip label={t("command.filter_by_tags")}>
-            <IconButton label={t("command.filter_by_tags")} size="sm" ref={tagFilterRef} active={selectedTags.length > 0} className="text-[var(--text-tertiary)]" onClick={() => setTagFilterOpen(true)}>
+            <IconButton label={t("command.filter_by_tags")} size="sm" ref={tagFilterRef} active={selectedTags.length > 0} className="text-[var(--text-tertiary)]" onClick={() => setIsTagFilterOpen(true)}>
               <Hash size={15}/>
             </IconButton>
           </Tooltip>
@@ -629,7 +629,7 @@ export function CommandPalette({ onClose }: {
                 flatIndex++;
                 const index = flatIndex;
                 const active = index === cursor;
-                return (<PaletteRow key={item.id} item={item} active={active} index={index} listId={listId} keyboardNav={keyboardNav} onActivate={setCursor} onPointerNav={pointerNav} onSelect={executeItem}/>);
+                return (<PaletteRow key={item.id} item={item} active={active} index={index} listId={listId} isKeyboardNav={isKeyboardNav} onActivate={setCursor} onPointerNav={pointerNav} onSelect={executeItem}/>);
             })}
               </div>)))}
         </div>
@@ -643,16 +643,16 @@ export function CommandPalette({ onClose }: {
             <Kbd keys={['Esc']}/>{t("common.close")}</span>
         </div>
       </div>
-      <TagFilterPopover anchor={tagFilterRef} open={tagFilterOpen} onClose={() => setTagFilterOpen(false)}/>
+      <TagFilterPopover anchor={tagFilterRef} open={isTagFilterOpen} onClose={() => setIsTagFilterOpen(false)}/>
     </div>, document.body);
 }
 
-const PaletteRow = memo(function PaletteRow({ item, active, index, listId, keyboardNav, onActivate, onPointerNav, onSelect, }: {
+const PaletteRow = memo(function PaletteRow({ item, active, index, listId, isKeyboardNav, onActivate, onPointerNav, onSelect, }: {
     item: Item;
     active: boolean;
     index: number;
     listId: string;
-    keyboardNav: boolean;
+    isKeyboardNav: boolean;
     onActivate: (index: number) => void;
     onPointerNav: () => void;
     onSelect: (item: Item) => void;
@@ -663,7 +663,7 @@ const PaletteRow = memo(function PaletteRow({ item, active, index, listId, keybo
     return (<button id={`${listId}-option-${index}`} type="button" role="option" aria-selected={active} tabIndex={-1} data-index={index} onMouseEnter={() => {
         onPointerNav();
         onActivate(index);
-    }} onClick={() => onSelect(item)} className={cn('flex w-full items-center gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left', keyboardNav && 'transition-colors duration-[80ms]', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
+    }} onClick={() => onSelect(item)} className={cn('flex w-full items-center gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left', isKeyboardNav && 'transition-colors duration-[80ms]', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
       <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>
         {item.icon}
       </span>

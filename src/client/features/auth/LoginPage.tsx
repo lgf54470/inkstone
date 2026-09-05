@@ -22,11 +22,11 @@ export function LoginPage() {
   const [username, setUsername] = useState(initialCredentials.username)
   const [password, setPassword] = useState(initialCredentials.password)
   const [confirmation, setConfirmation] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [challenge, setChallenge] = useState<TotpLoginChallenge | null>(null)
   const [verificationCode, setVerificationCode] = useState('')
-  const [recoveryMode, setRecoveryMode] = useState(false)
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const busyRef = useRef(false)
   const registerMode = mode === 'register' || firstRun
   const showModeSwitch = !firstRun && site?.registrationOpen
@@ -36,20 +36,20 @@ export function LoginPage() {
     setError(null)
     if (challenge) {
       if (!verificationCode.trim()) {
-        setError(recoveryMode ? t('auth.enter_recovery_code') : t('auth.enter_authenticator_code'))
+        setError(isRecoveryMode ? t('auth.enter_recovery_code') : t('auth.enter_authenticator_code'))
         return
       }
       busyRef.current = true
-      setBusy(true)
+      setIsBusy(true)
       try {
         await totpLogin(challenge.challengeToken, verificationCode)
       } catch (caught) {
         busyRef.current = false
-        setBusy(false)
+        setIsBusy(false)
         if (caught instanceof ApiError && caught.code === 'two_factor_challenge_expired') {
           setChallenge(null)
           setVerificationCode('')
-          setRecoveryMode(false)
+          setIsRecoveryMode(false)
         }
         setError(caught instanceof ApiError ? caught.message : t('auth.network_error_try_again'))
       }
@@ -65,7 +65,7 @@ export function LoginPage() {
     }
 
     busyRef.current = true
-    setBusy(true)
+    setIsBusy(true)
     try {
       if (registerMode) await passwordRegister(username.trim(), password)
       else {
@@ -75,14 +75,14 @@ export function LoginPage() {
           setPassword('')
           setConfirmation('')
           setVerificationCode('')
-          setRecoveryMode(false)
+          setIsRecoveryMode(false)
           busyRef.current = false
-          setBusy(false)
+          setIsBusy(false)
         }
       }
     } catch (caught) {
       busyRef.current = false
-      setBusy(false)
+      setIsBusy(false)
       setError(caught instanceof ApiError ? caught.message : t("auth.network_error_try_again"))
     }
   }
@@ -131,19 +131,19 @@ export function LoginPage() {
                 <span className="min-w-0 truncate">@{username.trim()}</span>
               </div>
               <Input
-                aria-label={recoveryMode ? t('auth.recovery_code') : t('auth.authenticator_code')}
+                aria-label={isRecoveryMode ? t('auth.recovery_code') : t('auth.authenticator_code')}
                 value={verificationCode}
-                maxLength={recoveryMode ? 24 : 8}
+                maxLength={isRecoveryMode ? 24 : 8}
                 onChange={(event) => setVerificationCode(
-                  recoveryMode
+                  isRecoveryMode
                     ? event.target.value.toUpperCase()
                     : event.target.value.replace(/\D/g, '').slice(0, 6),
                 )}
-                disabled={busy}
-                placeholder={recoveryMode ? 'XXXX-XXXX-XXXX-XXXX' : '000000'}
-                autoComplete={recoveryMode ? 'off' : 'one-time-code'}
-                autoCapitalize={recoveryMode ? 'characters' : 'none'}
-                inputMode={recoveryMode ? 'text' : 'numeric'}
+                disabled={isBusy}
+                placeholder={isRecoveryMode ? 'XXXX-XXXX-XXXX-XXXX' : '000000'}
+                autoComplete={isRecoveryMode ? 'off' : 'one-time-code'}
+                autoCapitalize={isRecoveryMode ? 'characters' : 'none'}
+                inputMode={isRecoveryMode ? 'text' : 'numeric'}
                 spellCheck={false}
                 autoFocus
               />
@@ -154,7 +154,7 @@ export function LoginPage() {
                 aria-label={t("common.username")}
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                disabled={busy}
+                disabled={isBusy}
                 placeholder={t("common.username")}
                 autoComplete="username"
                 autoCapitalize="none"
@@ -166,7 +166,7 @@ export function LoginPage() {
                 value={password}
                 maxLength={LIMITS.passwordMaxLength}
                 onChange={(event) => setPassword(event.target.value)}
-                disabled={busy}
+                disabled={isBusy}
                 placeholder={registerMode ? t("auth.password_minimum_8_characters") : t("common.password")}
                 autoComplete={registerMode ? 'new-password' : 'current-password'}
               />
@@ -179,14 +179,14 @@ export function LoginPage() {
               value={confirmation}
               maxLength={LIMITS.passwordMaxLength}
               onChange={(event) => setConfirmation(event.target.value)}
-              disabled={busy}
+              disabled={isBusy}
               placeholder={t("auth.confirm_password")}
               autoComplete="new-password"
             />
           )}
           <button
             type="submit"
-            disabled={busy}
+            disabled={isBusy}
             className={cn(
               'flex h-11 w-full items-center justify-center gap-2.5 rounded-[var(--r-lg)]',
               'bg-[var(--accent)] text-[13.5px] font-medium text-[var(--accent-contrast)]',
@@ -194,7 +194,7 @@ export function LoginPage() {
               'hover:bg-[var(--accent-hover)] active:translate-y-px disabled:opacity-50',
             )}
           >
-            {busy && <Loader2 size={16} className="animate-[ink-spin_.7s_linear_infinite]" />}
+            {isBusy && <Loader2 size={16} className="animate-[ink-spin_.7s_linear_infinite]" />}
             {challenge
               ? t('auth.verify_and_sign_in')
               : registerMode
@@ -205,11 +205,11 @@ export function LoginPage() {
             <div className="flex items-center justify-between gap-3 pt-1">
               <button
                 type="button"
-                disabled={busy}
+                disabled={isBusy}
                 onClick={() => {
                   setChallenge(null)
                   setVerificationCode('')
-                  setRecoveryMode(false)
+                  setIsRecoveryMode(false)
                   setError(null)
                 }}
                 className="inline-flex items-center gap-1 text-[12px] text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]"
@@ -219,22 +219,22 @@ export function LoginPage() {
               </button>
               <button
                 type="button"
-                disabled={busy}
+                disabled={isBusy}
                 onClick={() => {
-                  setRecoveryMode((value) => !value)
+                  setIsRecoveryMode((value) => !value)
                   setVerificationCode('')
                   setError(null)
                 }}
                 className="text-[12px] text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]"
               >
-                {recoveryMode ? t('auth.use_authenticator_code') : t('auth.use_recovery_code')}
+                {isRecoveryMode ? t('auth.use_authenticator_code') : t('auth.use_recovery_code')}
               </button>
             </div>
           )}
           {!challenge && showModeSwitch && (
             <button
               type="button"
-              disabled={busy}
+              disabled={isBusy}
               onClick={() => {
                 setMode(registerMode ? 'login' : 'register')
                 setError(null)

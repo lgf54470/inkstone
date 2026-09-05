@@ -60,7 +60,7 @@ export function BlogFolderItem({
   const [isDragOver, setIsDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const contextMenu = useContextMenu()
 
   useEffect(() => {
@@ -276,7 +276,7 @@ export function BlogFolderItem({
           type="button"
           onClick={(e) => {
             e.stopPropagation()
-            setMenuOpen((prev) => !prev)
+            setIsMenuOpen((prev) => !prev)
           }}
           className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity shrink-0"
         >
@@ -285,10 +285,10 @@ export function BlogFolderItem({
       </div>
 
       <Menu
-        open={menuOpen}
+        open={isMenuOpen}
         anchor={moreButtonRef}
         items={menuItems}
-        onClose={() => setMenuOpen(false)}
+        onClose={() => setIsMenuOpen(false)}
       />
       {contextMenu.point && (
         <Menu open anchor={contextMenu.point} items={menuItems} onClose={contextMenu.close} />

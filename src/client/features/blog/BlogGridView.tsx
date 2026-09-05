@@ -36,7 +36,7 @@ export function PostCoverImage({
   className?: string
   fallbackIconSize?: number
 }) {
-  const [error, setError] = useState(false)
+  const [isError, setIsError] = useState(false)
   const clean = src ? extractCoverUrl(src) : ''
   const isValid = Boolean(
     clean &&
@@ -46,7 +46,7 @@ export function PostCoverImage({
         clean.startsWith('data:image/')),
   )
 
-  if (!isValid || error) {
+  if (!isValid || isError) {
     return (
       <div className="flex size-full items-center justify-center text-[var(--text-quaternary)]">
         <ImageIcon size={fallbackIconSize} className="opacity-40" />
@@ -58,7 +58,7 @@ export function PostCoverImage({
     <img
       src={clean}
       alt={alt}
-      onError={() => setError(true)}
+      onError={() => setIsError(true)}
       className={className}
     />
   )
@@ -133,7 +133,7 @@ function BlogGridCard({
   const setActiveTab = useBlogStore((s) => s.setActiveTab)
 
   const contextMenu = useContextMenu()
-  const [folderMenuOpen, setFolderMenuOpen] = useState(false)
+  const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
   const folderButtonRef = useRef<HTMLButtonElement>(null)
 
   const postUrl = `${frontendBase}/posts/${post.slug}`
@@ -303,7 +303,7 @@ function BlogGridCard({
       onContextMenu={(e) => {
         e.preventDefault()
         e.stopPropagation()
-        setFolderMenuOpen(false)
+        setIsFolderMenuOpen(false)
         contextMenu.onContextMenu(e)
       }}
       onDoubleClick={() => onOpenEdit(post)}
@@ -431,7 +431,7 @@ function BlogGridCard({
               ref={folderButtonRef}
               size="sm"
               label={t('blog.batch_move_folder')}
-              onClick={() => setFolderMenuOpen((prev) => !prev)}
+              onClick={() => setIsFolderMenuOpen((prev) => !prev)}
             >
               <FolderInput size={13} />
             </IconButton>
@@ -483,10 +483,10 @@ function BlogGridCard({
       </div>
 
       <Menu
-        open={folderMenuOpen}
+        open={isFolderMenuOpen}
         anchor={folderButtonRef}
         items={folderMenuItems}
-        onClose={() => setFolderMenuOpen(false)}
+        onClose={() => setIsFolderMenuOpen(false)}
       />
 
       {contextMenu.point && (

@@ -26,12 +26,12 @@ export function AboutSettings() {
     const offlineCompleted = usePwa((s) => s.offlineCompleted);
     const offlineTotal = usePwa((s) => s.offlineTotal);
     const loggingOutRef = useRef(false);
-    const [loggingOut, setLoggingOut] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const exit = async () => {
         if (loggingOutRef.current)
             return;
         loggingOutRef.current = true;
-        setLoggingOut(true);
+        setIsLoggingOut(true);
         try {
             const ok = await confirm({
                 title: t("common.log_out"),
@@ -43,7 +43,7 @@ export function AboutSettings() {
         }
         finally {
             loggingOutRef.current = false;
-            setLoggingOut(false);
+            setIsLoggingOut(false);
         }
     };
     return (<div className="space-y-6">
@@ -61,7 +61,7 @@ export function AboutSettings() {
               <UserRound size={11}/>@{user?.username}
             </div>
           </div>
-          <Button size="sm" variant="ghost" icon={<LogOut size={13}/>} loading={loggingOut} disabled={loggingOut} onClick={() => void exit()}>{t("common.exit")}</Button>
+          <Button size="sm" variant="ghost" icon={<LogOut size={13}/>} loading={isLoggingOut} disabled={isLoggingOut} onClick={() => void exit()}>{t("common.exit")}</Button>
         </div>
         {user && (<p className="mt-2 px-1 text-[11.5px] text-[var(--text-quaternary)]">{t("settings.joined")}{fullTime(user.createdAt)}
           </p>)}

@@ -25,7 +25,7 @@ function Toast({ item }: {
     item: ToastItem;
 }) {
     const dismiss = useUi((s) => s.dismissToast);
-    const [leaving, setLeaving] = useState(false);
+    const [isLeaving, setIsLeaving] = useState(false);
     const pausedRef = useRef(false);
     const timerRef = useRef<number>(0);
     const dismissTimerRef = useRef<number>(0);
@@ -51,7 +51,7 @@ function Toast({ item }: {
             timerRef.current = window.setTimeout(() => {
                 if (pausedRef.current)
                     return start();
-                setLeaving(true);
+                setIsLeaving(true);
                 dismissTimerRef.current = window.setTimeout(() => dismiss(item.id), 200);
             }, item.duration);
         };
@@ -63,7 +63,7 @@ function Toast({ item }: {
     }, [item.id, item.duration, dismiss]);
     return (<div ref={containerRef} onMouseEnter={() => (pausedRef.current = true)} onMouseLeave={() => (pausedRef.current = false)} className={cn('pointer-events-auto flex w-[min(400px,calc(100vw-32px))] items-start gap-2.5', 'rounded-[var(--r-lg)] border p-3 pr-2', 'shadow-[var(--shadow-pop)] transition-all duration-200 ease-[var(--ease-out)]', isUndo
             ? 'border-[color-mix(in_oklab,var(--accent)_55%,transparent)] bg-[color-mix(in_oklab,var(--accent)_7%,var(--bg-overlay))]'
-            : 'border-[var(--border-default)] bg-[var(--bg-overlay)]', leaving ? 'translate-x-2 opacity-0' : 'anim-slide-right')} role={item.tone === 'danger' ? 'alert' : 'status'} aria-label={item.action ? `${item.title} ${item.action.label}` : undefined}>
+            : 'border-[var(--border-default)] bg-[var(--bg-overlay)]', isLeaving ? 'translate-x-2 opacity-0' : 'anim-slide-right')} role={item.tone === 'danger' ? 'alert' : 'status'} aria-label={item.action ? `${item.title} ${item.action.label}` : undefined}>
       <span className={cn('mt-[1px] shrink-0', isUndo ? 'text-[var(--accent)]' : TONE_COLOR[item.tone])}>{isUndo ? <Undo2 size={14}/> : TONE_ICON[item.tone]}</span>
       <div className="min-w-0 flex-1">
         <div className="text-[12.5px] leading-snug font-medium text-[var(--text-primary)]">

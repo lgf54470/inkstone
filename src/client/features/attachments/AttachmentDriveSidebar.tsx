@@ -386,7 +386,7 @@ function DriveFolderRow({
   const [isDragOver, setIsDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const contextMenu = useContextMenu()
 
   const expanded = expandedFolders.includes(node.id)
@@ -510,7 +510,7 @@ function DriveFolderRow({
     <div>
       <div
         onContextMenu={(e) => {
-          setMenuOpen(false)
+          setIsMenuOpen(false)
           contextMenu.onContextMenu(e)
         }}
         onDragOver={handleDragOver}
@@ -580,7 +580,7 @@ function DriveFolderRow({
           type="button"
           onClick={(e) => {
             e.stopPropagation()
-            setMenuOpen((prev) => !prev)
+            setIsMenuOpen((prev) => !prev)
           }}
           className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity"
         >
@@ -589,10 +589,10 @@ function DriveFolderRow({
       </div>
 
       <Menu
-        open={menuOpen}
+        open={isMenuOpen}
         anchor={moreButtonRef}
         items={menuItems}
-        onClose={() => setMenuOpen(false)}
+        onClose={() => setIsMenuOpen(false)}
       />
       {contextMenu.point && (
         <Menu
@@ -647,7 +647,7 @@ function DriveTagRow({
   deleteTag: (id: string) => Promise<void>
 }) {
   const moreButtonRef = useRef<HTMLButtonElement>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const contextMenu = useContextMenu()
 
   const expanded = expandedTagPaths.has(node.fullPath)
@@ -705,7 +705,7 @@ function DriveTagRow({
     <div>
       <div
         onContextMenu={(e) => {
-          setMenuOpen(false)
+          setIsMenuOpen(false)
           contextMenu.onContextMenu(e)
         }}
         style={{ paddingLeft: `${node.depth * 12 + 6}px` }}
@@ -749,7 +749,7 @@ function DriveTagRow({
           type="button"
           onClick={(e) => {
             e.stopPropagation()
-            setMenuOpen((prev) => !prev)
+            setIsMenuOpen((prev) => !prev)
           }}
           className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity"
         >
@@ -758,10 +758,10 @@ function DriveTagRow({
       </div>
 
       <Menu
-        open={menuOpen}
+        open={isMenuOpen}
         anchor={moreButtonRef}
         items={menuItems}
-        onClose={() => setMenuOpen(false)}
+        onClose={() => setIsMenuOpen(false)}
       />
       {contextMenu.point && (
         <Menu

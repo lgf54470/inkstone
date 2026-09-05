@@ -37,8 +37,8 @@ export function ShareHubModal({
   const [qrShare, setQrShare] = useState<{ url: string; title: string; slug: string } | null>(null)
   const [editShare, setEditShare] = useState<{ share: ShareInfo | null; noteId: string; title: string } | null>(null)
   const [analyticsNoteId, setAnalyticsNoteId] = useState<string | null>(null)
-  const [logsOpen, setLogsOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [isLogsOpen, setIsLogsOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -92,13 +92,13 @@ export function ShareHubModal({
             {category === 'dashboard' ? (
               <ShareDashboardView
                 onSelectNoteAnalytics={(noteId) => setAnalyticsNoteId(noteId)}
-                onOpenLogs={() => setLogsOpen(true)}
+                onOpenLogs={() => setIsLogsOpen(true)}
               />
             ) : (
               <>
                 <ShareHubToolbar
-                  onOpenLogs={() => setLogsOpen(true)}
-                  onOpenSettings={() => setSettingsOpen(true)}
+                  onOpenLogs={() => setIsLogsOpen(true)}
+                  onOpenSettings={() => setIsSettingsOpen(true)}
                 />
                 <div className="flex-1 overflow-y-auto">
                   {loading && shares.length === 0 ? (
@@ -186,17 +186,17 @@ export function ShareHubModal({
         />
       )}
 
-      {logsOpen && (
+      {isLogsOpen && (
         <ShareVisitLogsModal
-          open={logsOpen}
-          onClose={() => setLogsOpen(false)}
+          open={isLogsOpen}
+          onClose={() => setIsLogsOpen(false)}
         />
       )}
 
-      {settingsOpen && (
+      {isSettingsOpen && (
         <ShareSettingsModal
-          open={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
+          open={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
         />
       )}
     </>

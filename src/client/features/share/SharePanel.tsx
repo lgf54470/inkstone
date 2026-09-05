@@ -34,10 +34,10 @@ export function SharePanel({ onClose }: {
     const [loadError, setLoadError] = useState<string | null>(null);
     const [reload, setReload] = useState(0);
     const [password, setPassword] = useState('');
-    const [usePassword, setUsePassword] = useState(false);
+    const [shouldUsePassword, setShouldUsePassword] = useState(false);
     const [expiry, setExpiry] = useState('0');
     const [busy, setBusy] = useState<'save' | 'revoke' | null>(null);
-    const [copied, setCopied] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
     const copiedTimer = useRef(0);
     const busyRef = useRef<'save' | 'revoke' | null>(null);
     const noteIdRef = useRef<string | null>(note?.id ?? null);
@@ -60,9 +60,9 @@ export function SharePanel({ onClose }: {
         setShare(undefined);
         setLoadError(null);
         setPassword('');
-        setUsePassword(false);
+        setShouldUsePassword(false);
         setExpiry('0');
-        setCopied(false);
+        setIsCopied(false);
         window.clearTimeout(copiedTimer.current);
         api.share
             .get(note.id, controller.signal)
@@ -70,7 +70,7 @@ export function SharePanel({ onClose }: {
             if (cancelled || loadEpoch.current !== epoch || noteIdRef.current !== noteId)
                 return;
             setShare(res.share);
-            setUsePassword(Boolean(res.share?.hasPassword));
+            setShouldUsePassword(Boolean(res.share?.hasPassword));
             setExpiry(res.share?.expiresAt ? KEEP_CURRENT_EXPIRY : '0');
         })
             .catch((error) => {
@@ -94,11 +94,11 @@ export function SharePanel({ onClose }: {
     const create = async () => {
         if (busyRef.current || share === undefined || loadError)
             return;
-        if (usePassword && password.length > 0 && password.length < 4) {
+        if (shouldUsePassword && password.length > 0 && password.length < 4) {
             toast({ title: t("share.passcode_too_short"), tone: 'danger' });
             return;
         }
-        if (needsNewSharePasscode(usePassword, Boolean(share?.hasPassword), password)) {
+        if (needsNewSharePasscode(shouldUsePassword, Boolean(share?.hasPassword), password)) {
             toast({ title: t("share.enter_a_passcode"), tone: 'danger' });
             return;
         }
@@ -110,7 +110,7 @@ export function SharePanel({ onClose }: {
         setBusy('save');
         try {
             const res = await api.share.create(noteId, {
-                password: usePassword ? password || undefined : null,
+                password: shouldUsePassword ? password || undefined : null,
                 expiresIn: expiresInForSelection(expiry),
             });
             if (mutationEpoch.current !== epoch || noteIdRef.current !== noteId)
@@ -142,7 +142,7 @@ export function SharePanel({ onClose }: {
         const noteId = note.id;
         const epoch = ++mutationEpoch.current;
         const previousShare = share;
-        const previousUsePassword = usePassword;
+        const previousUsePassword = shouldUsePassword;
         const previousExpiry = expiry;
         loadEpoch.current++;
         busyRef.current = 'revoke';
@@ -157,7 +157,7 @@ export function SharePanel({ onClose }: {
             if (mutationEpoch.current !== epoch || noteIdRef.current !== noteId || !ok)
                 return;
             setShare(null);
-            setUsePassword(false);
+            setShouldUsePassword(false);
             setExpiry('0');
             await api.share.remove(noteId);
             if (mutationEpoch.current !== epoch || noteIdRef.current !== noteId)
@@ -168,7 +168,7 @@ export function SharePanel({ onClose }: {
             if (mutationEpoch.current !== epoch || noteIdRef.current !== noteId)
                 return;
             setShare(previousShare);
-            setUsePassword(previousUsePassword);
+            setShouldUsePassword(previousUsePassword);
             setExpiry(previousExpiry);
             toast({
                 title: t("common.action_failed"),
@@ -191,9 +191,9 @@ export function SharePanel({ onClose }: {
             await navigator.clipboard.writeText(share.url);
             if (noteIdRef.current !== noteId)
                 return;
-            setCopied(true);
+            setIsCopied(true);
             window.clearTimeout(copiedTimer.current);
-            copiedTimer.current = window.setTimeout(() => setCopied(false), 1400);
+            copiedTimer.current = window.setTimeout(() => setIsCopied(false), 1400);
         }
         catch {
             if (noteIdRef.current !== noteId)
@@ -214,8 +214,8 @@ export function SharePanel({ onClose }: {
               <div className="flex items-center gap-2">
                 <Link2 size={13} className="shrink-0 text-[var(--accent)]"/>
                 <input aria-label={t("share.public_link")} readOnly value={share.url} onFocus={(e) => e.currentTarget.select()} className="min-w-0 flex-1 bg-transparent font-mono text-[11.5px] text-[var(--text-secondary)] focus:outline-none"/>
-                <Button size="sm" variant={copied ? 'ghost' : 'secondary'} icon={copied ? <Check size={12} className="text-[var(--success)]"/> : <Copy size={12}/>} onClick={() => void copy()}>
-                  {copied ? t("common.copied") : t("common.copy")}
+                <Button size="sm" variant={isCopied ? 'ghost' : 'secondary'} icon={isCopied ? <Check size={12} className="text-[var(--success)]"/> : <Copy size={12}/>} onClick={() => void copy()}>
+                  {isCopied ? t("common.copied") : t("common.copy")}
                 </Button>
                 <Tooltip label={t("share.open_link")} side="left">
                   <a href={share.url} target="_blank" rel="noreferrer" aria-label={t("share.open_link")} className="inline-flex size-9 items-center justify-center rounded-[var(--r-md)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] md:size-7">
@@ -243,10 +243,10 @@ export function SharePanel({ onClose }: {
                 <Lock size={12} className="text-[var(--text-tertiary)]"/>{t("common.access_passcode")}</div>
               <p className="mt-0.5 text-[11.5px] text-[var(--text-tertiary)]">{t("share.require_a_passcode_to_view_this_note")}</p>
             </div>
-            <Switch checked={usePassword} disabled={busy !== null} onChange={setUsePassword} label={t("common.access_passcode")}/>
+            <Switch checked={shouldUsePassword} disabled={busy !== null} onChange={setShouldUsePassword} label={t("common.access_passcode")}/>
           </div>
 
-          {usePassword && (<Field label={t("share.passcode")} hint={share?.hasPassword ? t("share.leave_blank_to_keep_the_current_passcode") : undefined}>
+          {shouldUsePassword && (<Field label={t("share.passcode")} hint={share?.hasPassword ? t("share.leave_blank_to_keep_the_current_passcode") : undefined}>
               <Input type="password" value={password} disabled={busy !== null} maxLength={LIMITS.passwordMaxLength} onChange={(e) => setPassword(e.target.value)} placeholder={share?.hasPassword ? t("share.unchanged") : t("share.set_a_passcode")} autoComplete="new-password"/>
             </Field>)}
 

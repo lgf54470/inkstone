@@ -170,7 +170,7 @@ function GridCard({
   const folder = file.folderId ? folders.find((f) => f.id === file.folderId) : null
 
   const menuButtonRef = useRef<HTMLButtonElement>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const contextMenu = useContextMenu()
 
   const ext = file.filename.split('.').pop()?.toLowerCase() ?? ''
@@ -289,7 +289,7 @@ function GridCard({
       onClick={onSelectActive}
       onDoubleClick={onPreview}
       onContextMenu={(e) => {
-        setMenuOpen(false)
+        setIsMenuOpen(false)
         contextMenu.onContextMenu(e)
       }}
       className={cn(
@@ -369,7 +369,7 @@ function GridCard({
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              setMenuOpen((prev) => !prev)
+              setIsMenuOpen((prev) => !prev)
             }}
             className="flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white/80 opacity-0 group-hover:opacity-100 hover:text-white transition-opacity"
           >
@@ -418,10 +418,10 @@ function GridCard({
       </div>
 
       <Menu
-        open={menuOpen}
+        open={isMenuOpen}
         anchor={menuButtonRef}
         items={menuItems}
-        onClose={() => setMenuOpen(false)}
+        onClose={() => setIsMenuOpen(false)}
       />
       {contextMenu.point && (
         <Menu

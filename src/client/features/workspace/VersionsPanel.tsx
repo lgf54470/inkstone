@@ -26,7 +26,7 @@ export function VersionsPanel({ onClose }: {
     const [preview, setPreview] = useState<string | null>(null);
     const [previewError, setPreviewError] = useState<string | null>(null);
     const [previewReload, setPreviewReload] = useState(0);
-    const [busy, setBusy] = useState(false);
+    const [isBusy, setIsBusy] = useState(false);
     const busyRef = useRef(false);
     const noteIdRef = useRef(note?.id);
     const restoreEpoch = useRef(0);
@@ -35,7 +35,7 @@ export function VersionsPanel({ onClose }: {
     useEffect(() => {
         restoreEpoch.current += 1;
         busyRef.current = false;
-        setBusy(false);
+        setIsBusy(false);
         setVersions(null);
         setVersionsError(null);
         setSelected(null);
@@ -96,7 +96,7 @@ export function VersionsPanel({ onClose }: {
         const versionId = selectedId;
         const epoch = ++restoreEpoch.current;
         busyRef.current = true;
-        setBusy(true);
+        setIsBusy(true);
         try {
             const ok = await confirm({
                 title: t("workspace.restore_this_version"),
@@ -116,13 +116,13 @@ export function VersionsPanel({ onClose }: {
         finally {
             if (restoreEpoch.current === epoch && noteIdRef.current === noteId) {
                 busyRef.current = false;
-                setBusy(false);
+                setIsBusy(false);
             }
         }
     };
     return (<Modal open onClose={onClose} title={t("common.version_history")} description={note ? t("workspace.autosave_for_value0", { value0: note.title }) : undefined} width={880} footer={<>
           <Button variant="ghost" onClick={onClose}>{t("common.close")}</Button>
-          <Button variant="primary" icon={<RotateCcw size={13}/>} disabled={!selectedId || preview === null || Boolean(previewError) || busy} loading={busy} onClick={() => void restore()}>{t("workspace.restore_this_version_da5169")}</Button>
+          <Button variant="primary" icon={<RotateCcw size={13}/>} disabled={!selectedId || preview === null || Boolean(previewError) || isBusy} loading={isBusy} onClick={() => void restore()}>{t("workspace.restore_this_version_da5169")}</Button>
         </>}>
       {versionsError ? (<Empty art="notes" compact title={t("workspace.could_not_load_version_history")} description={versionsError} action={<Button size="sm" variant="secondary" onClick={() => setVersionsReload((value) => value + 1)}>{t("common.retry")}</Button>}/>) : versions === null ? (<LoadingBlock />) : versions.length === 0 ? (<Empty art="notes" compact title={t("workspace.no_version_history_yet")} description={t("workspace.a_snapshot_is_saved_every_few_minutes_or_after_larger_edits")}/>) : (<div className="flex h-[min(68dvh,560px)] min-h-0 flex-col gap-3 md:h-[440px] md:flex-row">
           <ul className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-[var(--border-subtle)] pb-2 md:block md:w-[210px] md:space-y-px md:overflow-y-auto md:border-r md:border-b-0 md:pr-2 md:pb-0">

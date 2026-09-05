@@ -47,11 +47,11 @@ export function AttachmentInspector({
   const openNote = useNotes((s) => s.openNote)
 
   const [referencingNotes, setReferencingNotes] = useState<Array<{ id: string; title: string; folderId: string | null }>>([])
-  const [loadingNotes, setLoadingNotes] = useState(false)
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false)
   const [newTagInput, setNewTagInput] = useState('')
-  const [addingTag, setAddingTag] = useState(false)
-  const [copiedLink, setCopiedLink] = useState(false)
-  const [copiedMarkdown, setCopiedMarkdown] = useState(false)
+  const [isAddingTag, setIsAddingTag] = useState(false)
+  const [isCopiedLink, setIsCopiedLink] = useState(false)
+  const [isCopiedMarkdown, setIsCopiedMarkdown] = useState(false)
 
   useEffect(() => {
     if (!file) {
@@ -59,7 +59,7 @@ export function AttachmentInspector({
       return
     }
     let cancelled = false
-    setLoadingNotes(true)
+    setIsLoadingNotes(true)
     api.files.referencingNotes(file.id)
       .then((res) => {
         if (!cancelled) setReferencingNotes(res.notes)
@@ -68,7 +68,7 @@ export function AttachmentInspector({
         if (!cancelled) setReferencingNotes([])
       })
       .finally(() => {
-        if (!cancelled) setLoadingNotes(false)
+        if (!cancelled) setIsLoadingNotes(false)
       })
     return () => {
       cancelled = true
@@ -88,8 +88,8 @@ export function AttachmentInspector({
     try {
       const fullUrl = new URL(file.url, window.location.origin).href
       await navigator.clipboard.writeText(fullUrl)
-      setCopiedLink(true)
-      setTimeout(() => setCopiedLink(false), COPY_FEEDBACK_MS)
+      setIsCopiedLink(true)
+      setTimeout(() => setIsCopiedLink(false), COPY_FEEDBACK_MS)
     } catch (error) {
       console.warn('[attachments] failed to copy link', error)
     }
@@ -99,8 +99,8 @@ export function AttachmentInspector({
     try {
       const md = isImage ? `![${file.filename}](${file.url})` : `[${file.filename}](${file.url})`
       await navigator.clipboard.writeText(md)
-      setCopiedMarkdown(true)
-      setTimeout(() => setCopiedMarkdown(false), COPY_FEEDBACK_MS)
+      setIsCopiedMarkdown(true)
+      setTimeout(() => setIsCopiedMarkdown(false), COPY_FEEDBACK_MS)
     } catch (error) {
       console.warn('[attachments] failed to copy markdown', error)
     }
@@ -110,7 +110,7 @@ export function AttachmentInspector({
     e.preventDefault()
     const trimmed = newTagInput.trim()
     if (!trimmed) {
-      setAddingTag(false)
+      setIsAddingTag(false)
       return
     }
     const currentTags = file.tags ?? []
@@ -118,7 +118,7 @@ export function AttachmentInspector({
       await onUpdateTags(file, [...currentTags, trimmed])
     }
     setNewTagInput('')
-    setAddingTag(false)
+    setIsAddingTag(false)
   }
 
   const handleRemoveTag = async (tagToRemove: string) => {
@@ -194,19 +194,19 @@ export function AttachmentInspector({
           <Button
             size="sm"
             variant="secondary"
-            icon={copiedMarkdown ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
+            icon={isCopiedMarkdown ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
             onClick={() => void handleCopyMarkdown()}
           >
-            {copiedMarkdown ? t('common.copied') : t('attachments.copy_markdown')}
+            {isCopiedMarkdown ? t('common.copied') : t('attachments.copy_markdown')}
           </Button>
 
           <Button
             size="sm"
             variant="secondary"
-            icon={copiedLink ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
+            icon={isCopiedLink ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
             onClick={() => void handleCopyLink()}
           >
-            {copiedLink ? t('common.copied') : t('attachments.copy_link')}
+            {isCopiedLink ? t('common.copied') : t('attachments.copy_link')}
           </Button>
 
           <Button
@@ -256,7 +256,7 @@ export function AttachmentInspector({
             <IconButton
               label={t('attachments.add_tag')}
               size="sm"
-              onClick={() => setAddingTag(true)}
+              onClick={() => setIsAddingTag(true)}
             >
               <Plus size={12} />
             </IconButton>
@@ -279,14 +279,14 @@ export function AttachmentInspector({
               </span>
             ))}
 
-            {addingTag && (
+            {isAddingTag && (
               <form onSubmit={handleAddTag} className="inline-flex">
                 <input
                   autoFocus
                   value={newTagInput}
                   onChange={(e) => setNewTagInput(e.target.value)}
                   onBlur={() => {
-                    if (!newTagInput.trim()) setAddingTag(false)
+                    if (!newTagInput.trim()) setIsAddingTag(false)
                   }}
                   placeholder={t('attachments.add_tag')}
                   className="h-6 w-24 rounded-full border border-[var(--accent)] bg-[var(--bg-base)] px-2 text-[11px] outline-none"
@@ -301,7 +301,7 @@ export function AttachmentInspector({
             {t('attachments.referencing_notes')}
           </span>
 
-          {loadingNotes ? (
+          {isLoadingNotes ? (
             <p className="text-[11.5px] text-[var(--text-quaternary)]">{t('common.loading')}</p>
           ) : referencingNotes.length === 0 ? (
             <p className="text-[11.5px] text-[var(--text-quaternary)]">

@@ -39,7 +39,7 @@ export function McpSettings() {
   const displayOnly = IS_DEMO_MODE
   const toast = useUi((state) => state.toast)
   const [info, setInfo] = useState<McpSettingsInfo | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [busy, setBusy] = useState<BusyAction>(null)
   const [copied, setCopied] = useState<string | null>(null)
@@ -49,7 +49,7 @@ export function McpSettings() {
   const busyRef = useRef<BusyAction>(null)
 
   const load = async () => {
-    setLoading(true)
+    setIsLoading(true)
     setLoadError(null)
     try {
       const next = await api.mcp.get()
@@ -57,7 +57,7 @@ export function McpSettings() {
     } catch (error) {
       if (mountedRef.current) setLoadError(errorMessage(error))
     } finally {
-      if (mountedRef.current) setLoading(false)
+      if (mountedRef.current) setIsLoading(false)
     }
   }
 
@@ -291,7 +291,7 @@ export function McpSettings() {
 
   const snippets = useMemo(() => info ? clientSnippets(info) : [], [info])
 
-  if (loading && !info) return <LoadingBlock label={t('settings.mcp_loading')} />
+  if (isLoading && !info) return <LoadingBlock label={t('settings.mcp_loading')} />
   if (!info) {
     return (
       <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4">

@@ -29,8 +29,8 @@ export function AvatarPicker({
   const inputRef = useRef<HTMLInputElement>(null)
   const [choices, setChoices] = useState<string[]>([])
   const [selected, setSelected] = useState(preference)
-  const [busy, setBusy] = useState(false)
-  const [processing, setProcessing] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const busyRef = useRef(false)
   const processingRef = useRef(false)
@@ -50,7 +50,7 @@ export function AvatarPicker({
     if (busyRef.current || processingRef.current) return
     if (selected === preference) return close()
     busyRef.current = true
-    setBusy(true)
+    setIsBusy(true)
     setError(null)
     try {
       await updateProfile({ avatarUrl: selected })
@@ -60,14 +60,14 @@ export function AvatarPicker({
       setError(caught instanceof ApiError ? caught.message : t('settings.action_failed_try_again'))
     } finally {
       busyRef.current = false
-      setBusy(false)
+      setIsBusy(false)
     }
   }
 
   const chooseFile = async (file: File | undefined) => {
     if (!file || busyRef.current || processingRef.current) return
     processingRef.current = true
-    setProcessing(true)
+    setIsProcessing(true)
     setError(null)
     try {
       setSelected(await prepareAvatarUpload(file))
@@ -75,7 +75,7 @@ export function AvatarPicker({
       setError(avatarUploadError(caught))
     } finally {
       processingRef.current = false
-      setProcessing(false)
+      setIsProcessing(false)
       if (inputRef.current) inputRef.current.value = ''
     }
   }
@@ -94,14 +94,14 @@ export function AvatarPicker({
       width={620}
       footer={(
         <>
-          <Button variant="ghost" onClick={close} disabled={busy || processing}>
+          <Button variant="ghost" onClick={close} disabled={isBusy || isProcessing}>
             {t('common.cancel')}
           </Button>
           <Button
             variant="primary"
             onClick={() => void save()}
-            loading={busy}
-            disabled={processing || selected === preference}
+            loading={isBusy}
+            disabled={isProcessing || selected === preference}
           >
             {t('common.save')}
           </Button>
@@ -122,7 +122,7 @@ export function AvatarPicker({
             variant="secondary"
             icon={<RotateCcw size={12} />}
             onClick={() => setSelected('')}
-            disabled={busy || processing}
+            disabled={isBusy || isProcessing}
           >
             {t('settings.use_name_avatar')}
           </Button>
@@ -138,7 +138,7 @@ export function AvatarPicker({
               variant="ghost"
               icon={<RefreshCw size={12} />}
               onClick={() => setChoices(createRandomAvatarPreferences())}
-              disabled={busy || processing}
+              disabled={isBusy || isProcessing}
             >
               {t('settings.refresh_avatars')}
             </Button>
@@ -152,7 +152,7 @@ export function AvatarPicker({
                   type="button"
                   aria-label={t('settings.random_avatar_number', { number: index + 1 })}
                   aria-pressed={active}
-                  disabled={busy || processing}
+                  disabled={isBusy || isProcessing}
                   onClick={() => setSelected(choice)}
                   className={`relative flex aspect-square min-w-0 items-center justify-center rounded-[var(--r-lg)] border transition-[border-color,background-color,transform] duration-[var(--dur-fast)] hover:-translate-y-0.5 ${
                     active
@@ -190,8 +190,8 @@ export function AvatarPicker({
             <Button
               variant="secondary"
               icon={<Upload size={13} />}
-              loading={processing}
-              disabled={busy}
+              loading={isProcessing}
+              disabled={isBusy}
               onClick={() => inputRef.current?.click()}
             >
               {t('settings.choose_image')}
@@ -201,7 +201,7 @@ export function AvatarPicker({
             ref={inputRef}
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            disabled={busy || processing}
+            disabled={isBusy || isProcessing}
             className="sr-only"
             onChange={(event) => void chooseFile(event.target.files?.[0])}
           />

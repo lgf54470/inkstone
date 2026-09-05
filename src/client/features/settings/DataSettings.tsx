@@ -13,7 +13,7 @@ import { AttachmentManager } from '../attachments';
 import { t } from "../../lib/i18n";
 import { restoreMarkdownBackupFolder } from '../../lib/backup-import';
 export function DataSettings() {
-    const [attachmentManagerOpen, setAttachmentManagerOpen] = useState(false);
+    const [isAttachmentManagerOpen, setIsAttachmentManagerOpen] = useState(false);
     const [stats, setStats] = useState<Record<string, number> | null>(null);
     const [statsError, setStatsError] = useState<string | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
@@ -142,7 +142,7 @@ export function DataSettings() {
         <h3 className="mb-1 text-[11px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("settings.attachments")}</h3>
 
         <SettingRow title={t("attachments.manage")} description={t("attachments.manage_description")}>
-          <Button size="sm" icon={<ImageIcon size={13}/>} onClick={() => setAttachmentManagerOpen(true)}>{t("attachments.manage")}</Button>
+          <Button size="sm" icon={<ImageIcon size={13}/>} onClick={() => setIsAttachmentManagerOpen(true)}>{t("attachments.manage")}</Button>
         </SettingRow>
       </section>
 
@@ -281,6 +281,6 @@ export function DataSettings() {
         </SettingRow>
       </section>
 
-      <AttachmentManager open={attachmentManagerOpen} onClose={() => setAttachmentManagerOpen(false)} onChanged={() => void loadStats()}/>
+      <AttachmentManager open={isAttachmentManagerOpen} onClose={() => setIsAttachmentManagerOpen(false)} onChanged={() => void loadStats()}/>
     </div>);
 }

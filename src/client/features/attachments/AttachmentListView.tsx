@@ -170,7 +170,7 @@ function ListRow({
   onDelete: () => void
 }) {
   const menuButtonRef = useRef<HTMLButtonElement>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const contextMenu = useContextMenu()
 
   const ext = file.filename.split('.').pop()?.toLowerCase() ?? ''
@@ -233,7 +233,7 @@ function ListRow({
       onClick={onSelectActive}
       onDoubleClick={onPreview}
       onContextMenu={(e) => {
-        setMenuOpen(false)
+        setIsMenuOpen(false)
         contextMenu.onContextMenu(e)
       }}
       className={cn(
@@ -328,7 +328,7 @@ function ListRow({
           type="button"
           onClick={(e) => {
             e.stopPropagation()
-            setMenuOpen((prev) => !prev)
+            setIsMenuOpen((prev) => !prev)
           }}
           className="rounded p-1 text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-colors"
         >
@@ -336,10 +336,10 @@ function ListRow({
         </button>
 
         <Menu
-          open={menuOpen}
+          open={isMenuOpen}
           anchor={menuButtonRef}
           items={menuItems}
-          onClose={() => setMenuOpen(false)}
+          onClose={() => setIsMenuOpen(false)}
         />
         {contextMenu.point && (
           <Menu

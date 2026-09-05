@@ -10,7 +10,7 @@ import type { Backlink } from '@shared/types'
 export interface NoteCardContent {
   status: 'loading' | 'ready' | 'missing' | 'error'
   html: string
-  truncated: boolean
+  isTruncated: boolean
 }
 
 const HTML_CACHE_LIMIT = 40
@@ -26,7 +26,7 @@ export function useNoteCardContent(
     target.missing || !target.noteId ? 'missing' : 'loading',
   )
   const [html, setHtml] = useState('')
-  const [truncated, setTruncated] = useState(false)
+  const [isTruncated, setIsTruncated] = useState(false)
   const revisionRef = useRef(0)
   const statusRef = useRef<NoteCardContent['status']>(status)
   const noteIdRef = useRef(target.noteId)
@@ -56,7 +56,7 @@ export function useNoteCardContent(
     if (statusRef.current !== 'ready') {
       setStatus('loading')
       setHtml('')
-      setTruncated(false)
+      setIsTruncated(false)
     }
     void useNotes
       .getState()
@@ -91,7 +91,7 @@ export function useNoteCardContent(
         if (cancelled || revision !== revisionRef.current) return
         const highlighted = headline ? applyHighlightToHtml(nextHtml, buildHighlightTerms(headline)) : nextHtml
         setHtml(highlighted)
-        setTruncated(truncatedContent.length < content.length)
+        setIsTruncated(truncatedContent.length < content.length)
         statusRef.current = 'ready'
         setStatus('ready')
       })
@@ -106,7 +106,7 @@ export function useNoteCardContent(
     }
   }, [target.missing, target.noteId, dark, maxLength, previewMath, headline, rev, hydrated, debouncedLiveContent])
 
-  return { status, html, truncated }
+  return { status, html, isTruncated }
 }
 
 interface NoteBacklinks {

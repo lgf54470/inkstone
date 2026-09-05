@@ -45,7 +45,7 @@ export function BottomNavButton({
   onDropNotes?: (ids: string[]) => void;
   acceptsDrop?: boolean;
 }) {
-  const [dropping, setDropping] = useState(false);
+  const [isDropping, setIsDropping] = useState(false);
 
   return (
     <button
@@ -57,16 +57,16 @@ export function BottomNavButton({
           return;
         }
         e.preventDefault();
-        setDropping(true);
+        setIsDropping(true);
       }}
       onDragLeave={(e) => {
         if (leftDropTarget(e)) {
-          setDropping(false);
+          setIsDropping(false);
         }
       }}
       onDrop={(e) => {
         if (!acceptsDrop || !onDropNotes) return;
-        setDropping(false);
+        setIsDropping(false);
         e.preventDefault();
         let ids: string[] = [];
         const multi = e.dataTransfer.getData('application/x-inkstone-notes');
@@ -84,7 +84,7 @@ export function BottomNavButton({
         active
           ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
-        dropping && 'ring-1 ring-[var(--accent)] bg-[var(--accent-soft)]'
+        isDropping && 'ring-1 ring-[var(--accent)] bg-[var(--accent-soft)]'
       )}
       title={label}
     >
@@ -107,7 +107,7 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
     active: boolean;
     onSelect: (view: ViewKind) => void;
 }) {
-    const [dropping, setDropping] = useState(false);
+    const [isDropping, setIsDropping] = useState(false);
     const patchNote = useNotes((s) => s.patchNote);
     const acceptsDrop = view === 'unfiled' || view === 'starred' || view === 'archived' || view === 'trash';
     const deleteNote = useNotes((s) => s.deleteNote);
@@ -115,12 +115,12 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
             if (!acceptsDrop || (!e.dataTransfer.types.includes('application/x-inkstone-note') && !e.dataTransfer.types.includes('application/x-inkstone-notes')))
                 return;
             e.preventDefault();
-            setDropping(true);
+            setIsDropping(true);
         }} onDragLeave={(e) => {
             if (leftDropTarget(e))
-                setDropping(false);
+                setIsDropping(false);
         }} onDrop={(e) => {
-            setDropping(false);
+            setIsDropping(false);
             e.preventDefault();
             let ids: string[] = [];
             const multi = e.dataTransfer.getData('application/x-inkstone-notes');
@@ -140,7 +140,7 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
                 ids.forEach((id) => void deleteNote(id));
         }} className={cn('group relative flex h-10 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active
             ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
-            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]', dropping && 'ring-1 ring-[var(--accent)]')}>
+            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]', isDropping && 'ring-1 ring-[var(--accent)]')}>
       <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>
         {icon}
       </span>

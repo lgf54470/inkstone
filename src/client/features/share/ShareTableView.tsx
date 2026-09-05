@@ -179,7 +179,7 @@ function ShareTableRow({
   onRevoke: () => void
 }) {
   const contextMenu = useContextMenu()
-  const [folderMenuOpen, setFolderMenuOpen] = useState(false)
+  const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
   const folderButtonRef = useRef<HTMLButtonElement>(null)
 
   const isExpired = share.expiresAt ? share.expiresAt < Date.now() : false
@@ -328,7 +328,7 @@ function ShareTableRow({
         e.dataTransfer.effectAllowed = 'copyMove'
       }}
       onContextMenu={(e) => {
-        setFolderMenuOpen(false)
+        setIsFolderMenuOpen(false)
         contextMenu.onContextMenu(e)
       }}
       onDoubleClick={() => onOpenEdit(share)}
@@ -491,7 +491,7 @@ function ShareTableRow({
             ref={folderButtonRef}
             size="sm"
             label={t('share.batch_move_to_folder')}
-            onClick={() => setFolderMenuOpen((prev) => !prev)}
+            onClick={() => setIsFolderMenuOpen((prev) => !prev)}
           >
             <FolderInput size={13} />
           </IconButton>
@@ -534,10 +534,10 @@ function ShareTableRow({
         </div>
 
         <Menu
-          open={folderMenuOpen}
+          open={isFolderMenuOpen}
           anchor={folderButtonRef}
           items={folderMenuItems}
-          onClose={() => setFolderMenuOpen(false)}
+          onClose={() => setIsFolderMenuOpen(false)}
         />
 
         {contextMenu.point && (

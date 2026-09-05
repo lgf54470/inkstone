@@ -36,7 +36,7 @@ export function ShareSettingsModal({
   const [owner, setOwner] = useState(excludeOwner)
   const [retentionDays, setRetentionDays] = useState(String(logRetentionDays))
   const [maxRecords, setMaxRecords] = useState(String(maxLogRecords))
-  const [busy, setBusy] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
 
   const handleSave = () => {
     setFilters({
@@ -69,7 +69,7 @@ export function ShareSettingsModal({
     })
     if (!ok) return
 
-    setBusy(true)
+    setIsBusy(true)
     try {
       const res = await api.share.cleanVisits(type, days)
       toast({
@@ -79,7 +79,7 @@ export function ShareSettingsModal({
     } catch {
       toast({ title: t('common.action_failed'), tone: 'danger' })
     } finally {
-      setBusy(false)
+      setIsBusy(false)
     }
   }
 
@@ -221,7 +221,7 @@ export function ShareSettingsModal({
                 size="sm"
                 variant="secondary"
                 onClick={() => void handleClean('bots')}
-                disabled={busy}
+                disabled={isBusy}
               >
                 {t('share.clean_bots_only')}
               </Button>
@@ -229,7 +229,7 @@ export function ShareSettingsModal({
                 size="sm"
                 variant="secondary"
                 onClick={() => void handleClean('older_than')}
-                disabled={busy}
+                disabled={isBusy}
               >
                 {t('share.clean_older_than_retention')}
               </Button>
@@ -238,7 +238,7 @@ export function ShareSettingsModal({
                 variant="ghost"
                 className="text-[var(--danger)] hover:bg-[var(--danger-subtle)]"
                 onClick={() => void handleClean('all')}
-                disabled={busy}
+                disabled={isBusy}
               >
                 {t('share.clean_all_logs')}
               </Button>

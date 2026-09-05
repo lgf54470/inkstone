@@ -53,15 +53,15 @@ export function ShareEditModal({
   const loadTags = useShareStore((s) => s.loadTags)
 
   const [share, setShare] = useState<ShareInfo | null>(initialShare ?? null)
-  const [loadingShare, setLoadingShare] = useState(false)
+  const [isLoadingShare, setIsLoadingShare] = useState(false)
 
-  const [useCustomSlug, setUseCustomSlug] = useState(false)
+  const [shouldUseCustomSlug, setShouldUseCustomSlug] = useState(false)
   const [customSlug, setCustomSlug] = useState('')
-  const [slugChecking, setSlugChecking] = useState(false)
+  const [isSlugChecking, setIsSlugChecking] = useState(false)
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
   const [slugError, setSlugError] = useState<string | null>(null)
 
-  const [usePassword, setUsePassword] = useState(false)
+  const [shouldUsePassword, setShouldUsePassword] = useState(false)
   const [password, setPassword] = useState('')
   const [expiry, setExpiry] = useState(share?.expiresAt ? KEEP_CURRENT_EXPIRY : '0')
   const [isEnabled, setIsEnabled] = useState(share ? share.isEnabled : true)
@@ -69,12 +69,12 @@ export function ShareEditModal({
   const [shareTags, setShareTags] = useState<string[]>([])
   const [newTagInput, setNewTagInput] = useState('')
 
-  const [saving, setSaving] = useState(false)
-  const [revoking, setRevoking] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isRevoking, setIsRevoking] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
 
-  const [analyticsOpen, setAnalyticsOpen] = useState(false)
-  const [qrOpen, setQrOpen] = useState(false)
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false)
+  const [isQrOpen, setIsQrOpen] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -83,13 +83,13 @@ export function ShareEditModal({
       if (initialShare !== undefined) {
         setShare(initialShare)
       } else {
-        setLoadingShare(true)
+        setIsLoadingShare(true)
         void api.share.getNoteShare(noteId)
           .then((res) => {
             setShare(res.share)
           })
           .catch(() => {})
-          .finally(() => setLoadingShare(false))
+          .finally(() => setIsLoadingShare(false))
       }
     }
   }, [open, initialShare, noteId, loadFolders, loadTags])
@@ -97,11 +97,11 @@ export function ShareEditModal({
   useEffect(() => {
     if (open) {
       const isCustom = Boolean(share?.slug && !/^[0-9a-hjkmnp-tv-z]{20}$/.test(share.slug))
-      setUseCustomSlug(isCustom)
+      setShouldUseCustomSlug(isCustom)
       setCustomSlug(isCustom ? share?.slug || '' : '')
       setSlugAvailable(null)
       setSlugError(null)
-      setUsePassword(Boolean(share?.hasPassword))
+      setShouldUsePassword(Boolean(share?.hasPassword))
       setPassword('')
       setExpiry(share?.expiresAt ? KEEP_CURRENT_EXPIRY : '0')
       setIsEnabled(share ? share.isEnabled : true)
@@ -112,7 +112,7 @@ export function ShareEditModal({
   }, [open, share])
 
   useEffect(() => {
-    if (!useCustomSlug || !customSlug.trim()) {
+    if (!shouldUseCustomSlug || !customSlug.trim()) {
       setSlugAvailable(null)
       setSlugError(null)
       return
@@ -132,7 +132,7 @@ export function ShareEditModal({
     }
 
     const timer = setTimeout(async () => {
-      setSlugChecking(true)
+      setIsSlugChecking(true)
       try {
         const res = await api.share.checkSlug(trimmed, noteId)
         setSlugAvailable(res.available)
@@ -140,12 +140,12 @@ export function ShareEditModal({
       } catch {
         setSlugAvailable(null)
       } finally {
-        setSlugChecking(false)
+        setIsSlugChecking(false)
       }
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [useCustomSlug, customSlug, noteId, share?.slug])
+  }, [shouldUseCustomSlug, customSlug, noteId, share?.slug])
 
   const EXPIRY_OPTIONS = [
     { value: '0', label: t('share.never_expires') },
@@ -158,8 +158,8 @@ export function ShareEditModal({
     if (!share?.url) return
     try {
       await navigator.clipboard.writeText(share.url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 1500)
       toast({ title: t('common.copied'), tone: 'success' })
     } catch {
       toast({ title: t('preview.could_not_copy'), tone: 'danger' })
@@ -179,25 +179,25 @@ export function ShareEditModal({
   }
 
   const handleSave = async () => {
-    if (usePassword && password.length > 0 && password.length < 4) {
+    if (shouldUsePassword && password.length > 0 && password.length < 4) {
       toast({ title: t('share.passcode_too_short'), tone: 'danger' })
       return
     }
-    if (needsNewSharePasscode(usePassword, Boolean(share?.hasPassword), password)) {
+    if (needsNewSharePasscode(shouldUsePassword, Boolean(share?.hasPassword), password)) {
       toast({ title: t('share.enter_a_passcode'), tone: 'danger' })
       return
     }
-    if (useCustomSlug && slugAvailable === false) {
+    if (shouldUseCustomSlug && slugAvailable === false) {
       toast({ title: slugError || t('share.custom_slug_invalid'), tone: 'danger' })
       return
     }
 
-    setSaving(true)
+    setIsSaving(true)
     try {
       await api.share.create(noteId, {
-        password: usePassword ? password || undefined : null,
+        password: shouldUsePassword ? password || undefined : null,
         expiresIn: expiresInForSelection(expiry),
-        customSlug: useCustomSlug && customSlug.trim() ? customSlug.trim() : undefined,
+        customSlug: shouldUseCustomSlug && customSlug.trim() ? customSlug.trim() : undefined,
         isEnabled,
         folderId: shareFolderId,
         tags: shareTags,
@@ -216,7 +216,7 @@ export function ShareEditModal({
         tone: 'danger',
       })
     } finally {
-      setSaving(false)
+      setIsSaving(false)
     }
   }
 
@@ -229,7 +229,7 @@ export function ShareEditModal({
     })
     if (!ok) return
 
-    setRevoking(true)
+    setIsRevoking(true)
     try {
       await api.share.remove(noteId)
       toast({ title: t('share.link_revoked'), tone: 'default' })
@@ -239,7 +239,7 @@ export function ShareEditModal({
     } catch {
       toast({ title: t('common.action_failed'), tone: 'danger' })
     } finally {
-      setRevoking(false)
+      setIsRevoking(false)
     }
   }
 
@@ -264,8 +264,8 @@ export function ShareEditModal({
                 variant="ghost"
                 className="text-[var(--danger)] hover:bg-[var(--danger-subtle)]"
                 icon={<Trash2 size={13} />}
-                loading={revoking}
-                disabled={saving}
+                loading={isRevoking}
+                disabled={isSaving}
                 onClick={() => void handleRevoke()}
               >
                 {t('share.revoke_link')}
@@ -275,10 +275,10 @@ export function ShareEditModal({
             )}
 
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="secondary" onClick={onClose} disabled={saving || revoking}>
+              <Button size="sm" variant="secondary" onClick={onClose} disabled={isSaving || isRevoking}>
                 {t('common.cancel')}
               </Button>
-              <Button size="sm" variant="primary" loading={saving} disabled={revoking || loadingShare} onClick={() => void handleSave()}>
+              <Button size="sm" variant="primary" loading={isSaving} disabled={isRevoking || isLoadingShare} onClick={() => void handleSave()}>
                 {share ? t('share.update_settings') : t('share.publish')}
               </Button>
             </div>
@@ -299,10 +299,10 @@ export function ShareEditModal({
                 <Button
                   size="sm"
                   variant="secondary"
-                  icon={copied ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
+                  icon={isCopied ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
                   onClick={() => void handleCopyLink()}
                 >
-                  {copied ? t('common.copied') : t('common.copy')}
+                  {isCopied ? t('common.copied') : t('common.copy')}
                 </Button>
                 <a
                   href={share.url}
@@ -321,7 +321,7 @@ export function ShareEditModal({
                   size="sm"
                   variant="secondary"
                   icon={<BarChart3 size={13} className="text-[var(--accent)]" />}
-                  onClick={() => setAnalyticsOpen(true)}
+                  onClick={() => setIsAnalyticsOpen(true)}
                 >
                   {t('share.note_analytics_title')}
                 </Button>
@@ -330,7 +330,7 @@ export function ShareEditModal({
                   size="sm"
                   variant="secondary"
                   icon={<QrCode size={13} />}
-                  onClick={() => setQrOpen(true)}
+                  onClick={() => setIsQrOpen(true)}
                 >
                   {t('share.qr_code_title')}
                 </Button>
@@ -447,10 +447,10 @@ export function ShareEditModal({
                   {t('share.custom_slug_hint')}
                 </div>
               </div>
-              <Switch checked={useCustomSlug} onChange={setUseCustomSlug} />
+              <Switch checked={shouldUseCustomSlug} onChange={setShouldUseCustomSlug} />
             </div>
 
-            {useCustomSlug && (
+            {shouldUseCustomSlug && (
               <div className="pt-2">
                 <div className="flex items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 py-1.5 focus-within:border-[var(--accent)]">
                   <span className="text-[12px] font-mono text-[var(--text-quaternary)]">{'/s/'}</span>
@@ -470,11 +470,11 @@ export function ShareEditModal({
                     <Dices size={12} />
                     <span>{t('share.random_slug_btn')}</span>
                   </button>
-                  {slugChecking && <span className="text-[10px] text-[var(--text-quaternary)]">{t('common.checking')}</span>}
-                  {!slugChecking && slugAvailable === true && (
+                  {isSlugChecking && <span className="text-[10px] text-[var(--text-quaternary)]">{t('common.checking')}</span>}
+                  {!isSlugChecking && slugAvailable === true && (
                     <Check size={14} className="text-[var(--success)]" />
                   )}
-                  {!slugChecking && slugAvailable === false && (
+                  {!isSlugChecking && slugAvailable === false && (
                     <ShieldAlert size={14} className="text-[var(--danger)]" />
                   )}
                 </div>
@@ -494,10 +494,10 @@ export function ShareEditModal({
                   {t('share.password_hint')}
                 </div>
               </div>
-              <Switch checked={usePassword} onChange={setUsePassword} />
+              <Switch checked={shouldUsePassword} onChange={setShouldUsePassword} />
             </div>
 
-            {usePassword && (
+            {shouldUsePassword && (
               <div className="pt-2">
                 <Input
                   type="password"
@@ -536,19 +536,19 @@ export function ShareEditModal({
       </Modal>
 
       {/* Note analytics modal */}
-      {analyticsOpen && share && (
+      {isAnalyticsOpen && share && (
         <ShareNoteAnalyticsModal
-          open={analyticsOpen}
-          onClose={() => setAnalyticsOpen(false)}
+          open={isAnalyticsOpen}
+          onClose={() => setIsAnalyticsOpen(false)}
           noteId={noteId}
         />
       )}
 
       {/* QR code modal */}
-      {qrOpen && share && (
+      {isQrOpen && share && (
         <ShareQrModal
-          open={qrOpen}
-          onClose={() => setQrOpen(false)}
+          open={isQrOpen}
+          onClose={() => setIsQrOpen(false)}
           url={share.url}
           title={noteTitle}
           slug={share.slug}

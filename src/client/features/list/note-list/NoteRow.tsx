@@ -75,15 +75,15 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
     const showFolderPill = Boolean(noteFolder && !(view === 'folder' && activeFolderId === note.folderId));
     const menu = useContextMenu();
     const menuButtonRef = useRef<HTMLButtonElement>(null);
-    const [menuOpen, setMenuOpen] = useState(false);
-    const [createFolderOpen, setCreateFolderOpen] = useState(false);
-    const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [qrModalData, setQrModalData] = useState<{ url: string; title: string; slug: string } | null>(null);
-    const [analyticsOpen, setAnalyticsOpen] = useState(false);
+    const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
     const shares = useShareStore((s) => s.shares);
     const noteShare = useMemo(() => shares.find((s) => s.noteId === note.id) ?? null, [shares, note.id]);
     const computedIsShared = isShared ?? Boolean(noteShare);
-    const [blogPublishOpen, setBlogPublishOpen] = useState(false);
+    const [isBlogPublishOpen, setIsBlogPublishOpen] = useState(false);
     const blogPosts = useBlogStore((s) => s.posts);
     const noteBlogPost = useMemo(() => blogPosts.find((p) => p.noteId === note.id) ?? null, [blogPosts, note.id]);
     const isBlogPublished = Boolean(noteBlogPost && noteBlogPost.isPublished);
@@ -106,13 +106,13 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
         useUi.getState().openPanel('folders');
     };
     const purgeRef = useRef(false);
-    const [purging, setPurging] = useState(false);
+    const [isPurging, setIsPurging] = useState(false);
     const inTrash = Boolean(note.deletedAt);
     const purge = async () => {
         if (purgeRef.current)
             return;
         purgeRef.current = true;
-        setPurging(true);
+        setIsPurging(true);
         try {
             const ok = await confirm({
                 title: t("notes.permanently_delete_this_note"),
@@ -125,7 +125,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
         }
         finally {
             purgeRef.current = false;
-            setPurging(false);
+            setIsPurging(false);
         }
     };
     const exportNote = async (format: 'md' | 'html' | 'pdf') => {
@@ -167,7 +167,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
                 icon: <Trash2 size={13}/>,
                 tone: 'danger',
                 separatorBefore: true,
-                disabled: purging,
+                disabled: isPurging,
                 onSelect: () => void purge(),
             },
         ]
@@ -210,13 +210,13 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
                             noteTitle={note.title || t("common.untitled_note")}
                             share={noteShare}
                             closeMenu={closeMenu}
-                            onOpenSettings={() => setShareModalOpen(true)}
+                            onOpenSettings={() => setIsShareModalOpen(true)}
                             onOpenQr={(url, title, slug) => setQrModalData({ url, title, slug })}
-                            onOpenAnalytics={() => setAnalyticsOpen(true)}
+                            onOpenAnalytics={() => setIsAnalyticsOpen(true)}
                         />
                     ),
                 } : {
-                    onSelect: () => setShareModalOpen(true),
+                    onSelect: () => setIsShareModalOpen(true),
                 }),
             },
             {
@@ -229,7 +229,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
                             noteId={note.id}
                             post={noteBlogPost}
                             closeMenu={closeMenu}
-                            onOpenSettings={() => setBlogPublishOpen(true)}
+                            onOpenSettings={() => setIsBlogPublishOpen(true)}
                             onOpenStats={() => {
                                 useBlogStore.getState().setActiveTab('comments');
                                 useUi.getState().openPanel('blog-hub');
@@ -237,7 +237,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
                         />
                     ),
                 } : {
-                    onSelect: () => setBlogPublishOpen(true),
+                    onSelect: () => setIsBlogPublishOpen(true),
                 }),
             },
             {
@@ -255,7 +255,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
                     <MoveToFolderSubmenu
                         currentFolderId={note.folderId}
                         onSelectFolder={handleSelectFolder}
-                        onCreateNew={() => setCreateFolderOpen(true)}
+                        onCreateNew={() => setIsCreateFolderOpen(true)}
                         onManageFolders={handleManageFolders}
                         closeMenu={closeMenu}
                     />
@@ -298,7 +298,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
             }
             void openNote(note.id);
         }} onContextMenu={(event) => {
-            setMenuOpen(false);
+            setIsMenuOpen(false);
             menu.onContextMenu(event);
         }} className={cn('motion-note-row group relative cursor-default rounded-[var(--r-md)] border border-transparent px-2.5 pr-11 transition-[background-color,border-color,box-shadow,transform] duration-[var(--dur-fast)] md:pr-10', density === 'compact' ? 'py-[7px]' : 'py-2.5', selectionHighlighted
             ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]/40'
@@ -416,7 +416,7 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
             <IconButton ref={menuButtonRef} label={t("common.more_actions")} size="sm" onClick={(event) => {
                   event.stopPropagation();
                   menu.close();
-                  setMenuOpen(true);
+                  setIsMenuOpen(true);
               }} className="absolute top-1.5 right-1.5">
               <MoreHorizontal size={16}/>
             </IconButton>
@@ -424,20 +424,20 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
       </div>
 
       {menu.point && <Menu anchor={menu.point} open onClose={menu.close} items={items}/>}
-      <Menu anchor={menuButtonRef} open={menuOpen} onClose={() => setMenuOpen(false)} items={items} align="end" width={240}/>
-      {createFolderOpen && (
+      <Menu anchor={menuButtonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={items} align="end" width={240}/>
+      {isCreateFolderOpen && (
         <CreateFolderModal
-          open={createFolderOpen}
-          onClose={() => setCreateFolderOpen(false)}
+          open={isCreateFolderOpen}
+          onClose={() => setIsCreateFolderOpen(false)}
           onCreated={(folderId) => {
             handleSelectFolder(folderId);
           }}
         />
       )}
-      {shareModalOpen && (
+      {isShareModalOpen && (
         <ShareEditModal
-          open={shareModalOpen}
-          onClose={() => setShareModalOpen(false)}
+          open={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
           noteId={note.id}
           noteTitle={note.title || t("common.untitled_note")}
         />
@@ -451,17 +451,17 @@ export const NoteRow = memo(function NoteRow({ note, highlight, density, tagColo
           slug={qrModalData.slug}
         />
       )}
-      {analyticsOpen && (
+      {isAnalyticsOpen && (
         <ShareNoteAnalyticsModal
-          open={analyticsOpen}
-          onClose={() => setAnalyticsOpen(false)}
+          open={isAnalyticsOpen}
+          onClose={() => setIsAnalyticsOpen(false)}
           noteId={note.id}
         />
       )}
-      {blogPublishOpen && (
+      {isBlogPublishOpen && (
         <BlogPublishModal
-          open={blogPublishOpen}
-          onClose={() => setBlogPublishOpen(false)}
+          open={isBlogPublishOpen}
+          onClose={() => setIsBlogPublishOpen(false)}
           noteId={note.id}
           post={noteBlogPost}
         />

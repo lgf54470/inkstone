@@ -51,11 +51,11 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [renamedKey, setRenamedKey] = useState('');
 
-  const [addingProperty, setAddingProperty] = useState(false);
+  const [isAddingProperty, setIsAddingProperty] = useState(false);
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
 
-  const [addingTag, setAddingTag] = useState(false);
+  const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagText, setNewTagText] = useState('');
 
   const applyContentChange = (nextContent: string) => {
@@ -100,7 +100,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
   const handleAddTag = (tagName: string) => {
     const clean = tagName.trim().replace(/^#/, '');
     if (!clean) {
-      setAddingTag(false);
+      setIsAddingTag(false);
       return;
     }
     const currentTags = getTagsList(frontMatter.data.tags ?? frontMatter.data.tag);
@@ -108,13 +108,13 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
       handleUpdate('tags', [...currentTags, clean]);
     }
     setNewTagText('');
-    setAddingTag(false);
+    setIsAddingTag(false);
   };
 
   const handleCommitNewProperty = () => {
     const k = newKey.trim();
     if (!k) {
-      setAddingProperty(false);
+      setIsAddingProperty(false);
       return;
     }
     let val: unknown = newValue.trim();
@@ -128,7 +128,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
     handleUpdate(k, val);
     setNewKey('');
     setNewValue('');
-    setAddingProperty(false);
+    setIsAddingProperty(false);
   };
 
   const renderPropertyIcon = (key: string, val: unknown) => {
@@ -141,7 +141,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
     return <Type size={13} className="shrink-0 text-[var(--text-tertiary)]" />;
   };
 
-  if (!properties.length && !addingProperty) {
+  if (!properties.length && !isAddingProperty) {
     return (
       <div className={cn('mb-4 flex items-center justify-between rounded-lg border border-dashed border-[var(--border-subtle)] px-3 py-1.5 text-[11.5px] text-[var(--text-tertiary)]', className)}>
         <span className="flex items-center gap-1.5 font-medium">
@@ -152,7 +152,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
           type="button"
           onClick={() => {
             setIsExpanded(true);
-            setAddingProperty(true);
+            setIsAddingProperty(true);
           }}
           className="inline-flex items-center gap-1 rounded px-2 py-0.5 font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--accent)]"
         >
@@ -241,7 +241,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                           />
                         ))}
 
-                        {addingTag ? (
+                        {isAddingTag ? (
                           <input
                             autoFocus
                             value={newTagText}
@@ -249,7 +249,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                             onBlur={() => handleAddTag(newTagText)}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') handleAddTag(newTagText);
-                              if (e.key === 'Escape') setAddingTag(false);
+                              if (e.key === 'Escape') setIsAddingTag(false);
                             }}
                             placeholder={t('tags.new_placeholder')}
                             className="h-6 w-24 rounded-full bg-[var(--surface-primary)] px-2.5 text-[11px] text-[var(--text-primary)] outline-none ring-1 ring-[var(--accent)]"
@@ -258,7 +258,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                           <button
                             type="button"
                             onClick={() => {
-                              setAddingTag(true);
+                              setIsAddingTag(true);
                               setNewTagText('');
                             }}
                             className="inline-flex h-6 items-center gap-1 rounded-full border border-dashed border-[var(--border-default)] px-2 text-[11px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
@@ -341,7 +341,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
             })}
           </div>
 
-          {addingProperty ? (
+          {isAddingProperty ? (
             <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border-subtle)] bg-[var(--surface-tertiary)]/30 px-3 py-2">
               <input
                 autoFocus
@@ -350,7 +350,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                 placeholder={t('properties.property_name')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleCommitNewProperty();
-                  if (e.key === 'Escape') setAddingProperty(false);
+                  if (e.key === 'Escape') setIsAddingProperty(false);
                 }}
                 className="h-7 w-32 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[11.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
               />
@@ -360,7 +360,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                 placeholder={t('properties.property_value')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleCommitNewProperty();
-                  if (e.key === 'Escape') setAddingProperty(false);
+                  if (e.key === 'Escape') setIsAddingProperty(false);
                 }}
                 className="h-7 min-w-[140px] flex-1 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[11.5px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
               />
@@ -375,7 +375,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAddingProperty(false)}
+                  onClick={() => setIsAddingProperty(false)}
                   className="inline-flex h-7 items-center rounded px-2 text-[11.5px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 >
                   <X size={13} />
@@ -387,7 +387,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({
               <button
                 type="button"
                 onClick={() => {
-                  setAddingProperty(true);
+                  setIsAddingProperty(true);
                   setNewKey('');
                   setNewValue('');
                 }}

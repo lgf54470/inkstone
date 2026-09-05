@@ -69,7 +69,7 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
         return { year: base.getFullYear(), month: base.getMonth() };
     });
     const [position, setPosition] = useState({ top: 0, left: 0, origin: 'top right' });
-    const [editorOpen, setEditorOpen] = useState(false);
+    const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [presets, setPresets] = useState<RangePresetConfig[]>(loadRangePresets);
     const popoverRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<HTMLDivElement>(null);
@@ -85,12 +85,12 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
 
     useEffect(() => {
         if (!open) {
-            setEditorOpen(false);
+            setIsEditorOpen(false);
             return;
         }
         const margin = 8;
         const width = 248;
-        const height = editorOpen ? 368 : 328;
+        const height = isEditorOpen ? 368 : 328;
         const rect = anchor.current?.getBoundingClientRect();
         if (!rect)
             return;
@@ -102,7 +102,7 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
             top = Math.max(viewport.top + margin, rect.top - height - 5);
         left = Math.min(Math.max(viewport.left + margin, left), viewport.right - width - margin);
         setPosition({ top, left, origin: `${flipUp ? 'bottom' : 'top'} right` });
-    }, [open, editorOpen, anchor]);
+    }, [open, isEditorOpen, anchor]);
 
     useEffect(() => {
         if (!open)
@@ -241,14 +241,14 @@ export function DateRangePopover({ anchor, open, onClose, range, onChange, relat
             {presets.map((preset) => (<button key={preset.id} type="button" aria-pressed={isActivePreset(preset)} onClick={() => onApplyRelative({ days: preset.days, direction: preset.direction })} className={cn('h-5 min-w-0 flex-1 rounded-[var(--r-sm)] bg-[var(--bg-inset)] px-0.5 text-[9px] whitespace-nowrap transition-colors hover:bg-[var(--bg-hover)]', isActivePreset(preset) ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]')}>
                 {t("notes.range_preset_custom_value0", { value0: preset.days })}
             </button>))}
-            <button type="button" aria-label={t("notes.range_preset_edit")} aria-pressed={editorOpen} onClick={() => setEditorOpen((open) => !open)} className={cn('flex size-5 shrink-0 items-center justify-center rounded-[var(--r-sm)] transition-colors', editorOpen ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'bg-[var(--bg-inset)] text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]')}>
+            <button type="button" aria-label={t("notes.range_preset_edit")} aria-pressed={isEditorOpen} onClick={() => setIsEditorOpen((open) => !open)} className={cn('flex size-5 shrink-0 items-center justify-center rounded-[var(--r-sm)] transition-colors', isEditorOpen ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'bg-[var(--bg-inset)] text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]')}>
                 <Pencil size={9}/>
             </button>
         </div>
-        {editorOpen ? (<div className="mt-1.5 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-1.5">
+        {isEditorOpen ? (<div className="mt-1.5 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-1.5">
             <div className="flex items-center justify-between px-0.5 pb-1">
                 <span className="text-[10px] font-medium text-[var(--text-secondary)]">{t("notes.range_preset_editor_title")}</span>
-                <button type="button" onClick={() => setEditorOpen(false)} className="rounded px-1 py-0.5 text-[9.5px] text-[var(--accent)] transition-colors hover:bg-[var(--bg-hover)]">{t("notes.range_preset_done")}</button>
+                <button type="button" onClick={() => setIsEditorOpen(false)} className="rounded px-1 py-0.5 text-[9.5px] text-[var(--accent)] transition-colors hover:bg-[var(--bg-hover)]">{t("notes.range_preset_done")}</button>
             </div>
             <div className="space-y-1">
                 {presets.map((preset, presetIndex) => (<div key={preset.id} draggable onDragStart={handlePresetDragStart(presetIndex)} onDragOver={handlePresetDragOver(presetIndex)} onDragEnd={handlePresetDragEnd} className="flex cursor-grab items-center gap-1 active:cursor-grabbing">

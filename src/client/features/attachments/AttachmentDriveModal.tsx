@@ -35,8 +35,8 @@ export function AttachmentDriveModal({
 
   const [files, setFiles] = useState<AttachmentWithUsage[]>([])
   const [stats, setStats] = useState<AttachmentStats | undefined>(undefined)
-  const [loading, setLoading] = useState(false)
-  const [pruning, setPruning] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isPruning, setIsPruning] = useState(false)
 
   const [category, setCategory] = useState<AttachmentCategory>('all')
   const [folderId, setFolderId] = useState<string | null>(null)
@@ -57,11 +57,11 @@ export function AttachmentDriveModal({
   const [renameFile, setRenameFile] = useState<AttachmentWithUsage | null>(null)
   const [movingFileIds, setMovingFileIds] = useState<string[] | null>(null)
 
-  const [dragOverMain, setDragOverMain] = useState(false)
+  const [isDragOverMain, setIsDragOverMain] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadFiles = useCallback(async () => {
-    setLoading(true)
+    setIsLoading(true)
     try {
       let typeParam: string | undefined
       if (category === 'image') typeParam = 'image'
@@ -95,7 +95,7 @@ export function AttachmentDriveModal({
     } catch {
       toast({ title: t('attachments.load_failed'), tone: 'danger' })
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }, [category, folderId, tag, extension, search, sizeRange, sort, toast])
 
@@ -111,7 +111,7 @@ export function AttachmentDriveModal({
   const handleUploadFiles = async (uploadList: FileList | File[]) => {
     if (!uploadList.length) return
     const fileArray = Array.from(uploadList)
-    setLoading(true)
+    setIsLoading(true)
     try {
       for (const file of fileArray) {
         await api.files.upload(file, undefined, folderId)
@@ -121,7 +121,7 @@ export function AttachmentDriveModal({
     } catch {
       toast({ title: t('common.action_failed'), tone: 'danger' })
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
@@ -302,7 +302,7 @@ export function AttachmentDriveModal({
     })
     if (!ok) return
 
-    setPruning(true)
+    setIsPruning(true)
     try {
       const res = await api.files.prune()
       if (res.removed > 0) {
@@ -317,7 +317,7 @@ export function AttachmentDriveModal({
     } catch {
       toast({ title: t('attachments.cleanup_failed'), tone: 'danger' })
     } finally {
-      setPruning(false)
+      setIsPruning(false)
     }
   }
 
@@ -382,20 +382,20 @@ export function AttachmentDriveModal({
             onDragOver={(e) => {
               if (e.dataTransfer.types.includes('Files')) {
                 e.preventDefault()
-                setDragOverMain(true)
+                setIsDragOverMain(true)
               }
             }}
-            onDragLeave={() => setDragOverMain(false)}
+            onDragLeave={() => setIsDragOverMain(false)}
             onDrop={(e) => {
               if (e.dataTransfer.files.length) {
                 e.preventDefault()
-                setDragOverMain(false)
+                setIsDragOverMain(false)
                 void handleUploadFiles(e.dataTransfer.files)
               }
             }}
             className={cn(
               'relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)]',
-              dragOverMain && 'ring-2 ring-inset ring-[var(--accent)] bg-[var(--accent-soft)]/20',
+              isDragOverMain && 'ring-2 ring-inset ring-[var(--accent)] bg-[var(--accent-soft)]/20',
             )}
           >
             <AttachmentDriveToolbar
@@ -414,7 +414,7 @@ export function AttachmentDriveModal({
               stats={stats}
               onUploadClick={() => fileInputRef.current?.click()}
               onPruneClick={() => void handlePrune()}
-              pruning={pruning}
+              pruning={isPruning}
             />
 
             <input
@@ -447,7 +447,7 @@ export function AttachmentDriveModal({
                   onDeleteFile={(f) => void handleDeleteFile(f)}
                   onPrune={() => void handlePrune()}
                 />
-              ) : loading && files.length === 0 ? (
+              ) : isLoading && files.length === 0 ? (
                 <div className="flex h-full items-center justify-center py-20 text-[var(--text-tertiary)]">
                   <Loader2 size={24} className="animate-spin text-[var(--accent)]" />
                 </div>

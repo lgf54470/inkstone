@@ -20,14 +20,14 @@ export function AttachmentQrModal({
   url: string
   filename: string
 }) {
-  const [copied, setCopied] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
   const fullUrl = typeof window !== 'undefined' ? new URL(url, window.location.origin).href : url
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(fullUrl)
-      setCopied(true)
-      setTimeout(() => setCopied(false), COPY_FEEDBACK_MS)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), COPY_FEEDBACK_MS)
     } catch {
     }
   }
@@ -64,10 +64,10 @@ export function AttachmentQrModal({
             size="sm"
             variant="secondary"
             className="flex-1"
-            icon={copied ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
+            icon={isCopied ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
             onClick={() => void handleCopy()}
           >
-            {copied ? t('common.copied') : t('attachments.copy_link')}
+            {isCopied ? t('common.copied') : t('attachments.copy_link')}
           </Button>
           <a
             href={fullUrl}

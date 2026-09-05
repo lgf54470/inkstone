@@ -47,15 +47,15 @@ function ProfileSection() {
   const updateProfile = useSession((state) => state.updateProfile)
   const toast = useUi((state) => state.toast)
   const [name, setName] = useState(user.name)
-  const [edited, setEdited] = useState(false)
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const [isEdited, setIsEdited] = useState(false)
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const busyRef = useRef(false)
 
   useEffect(() => {
-    if (!edited) setName(user.name)
-  }, [edited, user.name])
+    if (!isEdited) setName(user.name)
+  }, [isEdited, user.name])
 
   const normalizedName = name.trim().replace(/\s+/gu, ' ')
   const validName = Boolean(normalizedName) && [...normalizedName].length <= PROFILE_NAME_MAX_LENGTH
@@ -68,22 +68,22 @@ function ProfileSection() {
       return
     }
     if (!changed) {
-      setEdited(false)
+      setIsEdited(false)
       return
     }
     busyRef.current = true
-    setBusy(true)
+    setIsBusy(true)
     setError(null)
     try {
       const updated = await updateProfile({ name: normalizedName })
       setName(updated.name)
-      setEdited(false)
+      setIsEdited(false)
       toast({ title: t('settings.display_name_saved'), tone: 'success' })
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : t('settings.action_failed_try_again'))
     } finally {
       busyRef.current = false
-      setBusy(false)
+      setIsBusy(false)
     }
   }
 
@@ -97,7 +97,7 @@ function ProfileSection() {
           <button
             type="button"
             aria-label={t('settings.change_avatar')}
-            onClick={() => setPickerOpen(true)}
+            onClick={() => setIsPickerOpen(true)}
             className="group relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-[var(--bg-base)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           >
             <Avatar src={user.avatarUrl} name={user.name} size={52} />
@@ -139,10 +139,10 @@ function ProfileSection() {
               maxLength={PROFILE_NAME_MAX_LENGTH * 2}
               onChange={(event) => {
                 setName(event.target.value)
-                setEdited(true)
+                setIsEdited(true)
                 setError(null)
               }}
-              disabled={busy}
+              disabled={isBusy}
               autoComplete="name"
               className="flex-1"
             />
@@ -150,8 +150,8 @@ function ProfileSection() {
               type="submit"
               variant="primary"
               size="sm"
-              loading={busy}
-              disabled={!edited || !changed || !validName}
+              loading={isBusy}
+              disabled={!isEdited || !changed || !validName}
             >
               {t('common.save')}
             </Button>
@@ -161,8 +161,8 @@ function ProfileSection() {
       </div>
 
       <AvatarPicker
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
+        open={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
         displayName={user.name}
         preference={user.avatarUrl}
       />
@@ -172,12 +172,12 @@ function ProfileSection() {
 
 function LogoutButton() {
   const logout = useSession((state) => state.logout)
-  const [busy, setBusy] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
   const busyRef = useRef(false)
   const run = async () => {
     if (busyRef.current) return
     busyRef.current = true
-    setBusy(true)
+    setIsBusy(true)
     try {
       const ok = await confirm({
         title: t("common.log_out"),
@@ -187,7 +187,7 @@ function LogoutButton() {
       if (ok) await logout()
     } finally {
       busyRef.current = false
-      setBusy(false)
+      setIsBusy(false)
     }
   }
   return (
@@ -195,7 +195,7 @@ function LogoutButton() {
       size="sm"
       variant="ghost"
       icon={<LogOut size={13} />}
-      loading={busy}
+      loading={isBusy}
       onClick={() => void run()}
     >
       {t("common.exit")}
@@ -206,11 +206,11 @@ function LogoutButton() {
 function PasswordSection() {
   const user = useSession((state) => state.user)!
   const toast = useUi((state) => state.toast)
-  const [open, setOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const busyRef = useRef(false)
 
@@ -228,7 +228,7 @@ function PasswordSection() {
     if (newPassword.length < 8) return setError(t("settings.new_password_must_be_at_least_8_characters"))
     if (newPassword !== confirmation) return setError(t("common.the_passwords_do_not_match"))
     busyRef.current = true
-    setBusy(true)
+    setIsBusy(true)
     try {
       await api.auth.setPassword({ currentPassword, newPassword })
       toast({
@@ -236,13 +236,13 @@ function PasswordSection() {
         description: t("settings.other_devices_have_been_logged_out"),
         tone: 'success',
       })
-      setOpen(false)
+      setIsOpen(false)
       resetForm()
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : t("settings.action_failed_try_again"))
     } finally {
       busyRef.current = false
-      setBusy(false)
+      setIsBusy(false)
     }
   }
 
@@ -259,17 +259,17 @@ function PasswordSection() {
           size="sm"
           variant="secondary"
           icon={<KeyRound size={12} />}
-          disabled={busy}
+          disabled={isBusy}
           onClick={() => {
-            setOpen(!open)
+            setIsOpen(!isOpen)
             resetForm()
           }}
         >
-          {open ? t("common.collapse") : t("settings.change_password")}
+          {isOpen ? t("common.collapse") : t("settings.change_password")}
         </Button>
       </SettingRow>
 
-      {open && (
+      {isOpen && (
         <form
           className="space-y-2.5 border-t border-[var(--border-subtle)] px-4 py-3.5"
           onSubmit={(event) => {
@@ -286,7 +286,7 @@ function PasswordSection() {
               value={currentPassword}
               maxLength={LIMITS.passwordMaxLength}
               onChange={(event) => setCurrentPassword(event.target.value)}
-              disabled={busy}
+              disabled={isBusy}
               autoComplete="current-password"
             />
           </label>
@@ -300,7 +300,7 @@ function PasswordSection() {
                 value={newPassword}
                 maxLength={LIMITS.passwordMaxLength}
                 onChange={(event) => setNewPassword(event.target.value)}
-                disabled={busy}
+                disabled={isBusy}
                 autoComplete="new-password"
               />
             </label>
@@ -313,14 +313,14 @@ function PasswordSection() {
                 value={confirmation}
                 maxLength={LIMITS.passwordMaxLength}
                 onChange={(event) => setConfirmation(event.target.value)}
-                disabled={busy}
+                disabled={isBusy}
                 autoComplete="new-password"
               />
             </label>
           </div>
           {error && <p role="alert" className="text-[12px] text-[var(--danger)]">{error}</p>}
           <div className="flex justify-end">
-            <Button type="submit" variant="primary" size="sm" loading={busy}>
+            <Button type="submit" variant="primary" size="sm" loading={isBusy}>
               {t("common.save")}
             </Button>
           </div>
@@ -336,19 +336,19 @@ function RegistrationSection() {
   const toast = useUi((state) => state.toast)
   const [target, setTarget] = useState<boolean | null>(null)
   const [password, setPassword] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const busyRef = useRef(false)
   const enabled = site?.registrationOpen ?? false
   const confirming = target !== null
 
   useEffect(() => {
-    if (target !== null && target === enabled && !busy) {
+    if (target !== null && target === enabled && !isBusy) {
       setTarget(null)
       setPassword('')
       setError(null)
     }
-  }, [busy, enabled, target])
+  }, [isBusy, enabled, target])
 
   const beginToggle = (next: boolean) => {
     if (busyRef.current) return
@@ -363,7 +363,7 @@ function RegistrationSection() {
     setError(null)
     if (!password) return setError(t("settings.enter_your_password"))
     busyRef.current = true
-    setBusy(true)
+    setIsBusy(true)
     const currentPassword = password
     setTarget(null)
     setPassword('')
@@ -379,7 +379,7 @@ function RegistrationSection() {
       setError(caught instanceof ApiError ? caught.message : t("settings.action_failed_try_again"))
     } finally {
       busyRef.current = false
-      setBusy(false)
+      setIsBusy(false)
     }
   }
 
@@ -396,7 +396,7 @@ function RegistrationSection() {
       >
         <Switch
           checked={enabled}
-          disabled={busy}
+          disabled={isBusy}
           onChange={beginToggle}
           label={t("common.open_registration")}
         />
@@ -420,7 +420,7 @@ function RegistrationSection() {
               value={password}
               maxLength={LIMITS.passwordMaxLength}
               onChange={(event) => setPassword(event.target.value)}
-              disabled={busy}
+              disabled={isBusy}
               autoComplete="current-password"
               autoFocus
             />
@@ -431,7 +431,7 @@ function RegistrationSection() {
               type="button"
               size="sm"
               variant="ghost"
-              disabled={busy}
+              disabled={isBusy}
               onClick={() => {
                 setTarget(null)
                 setPassword('')
@@ -444,7 +444,7 @@ function RegistrationSection() {
               type="submit"
               size="sm"
               variant={target ? 'danger' : 'primary'}
-              loading={busy}
+              loading={isBusy}
             >
               {target ? t("settings.confirm_opening_registration") : t("settings.confirm_closing_registration")}
             </Button>

@@ -51,8 +51,8 @@ export function BlogSettingsModal({
   const [retentionDays, setRetentionDays] = useState(String(logRetentionDays))
   const [maxRecords, setMaxRecords] = useState(String(maxLogRecords))
 
-  const [saving, setSaving] = useState(false)
-  const [cleanBusy, setCleanBusy] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isCleanBusy, setIsCleanBusy] = useState(false)
 
   useEffect(() => {
     if (!settings) return
@@ -78,7 +78,7 @@ export function BlogSettingsModal({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSaving(true)
+    setIsSaving(true)
 
     // Save traffic & retention filters
     setFilters({
@@ -113,7 +113,7 @@ export function BlogSettingsModal({
     } catch {
       toast({ title: t('common.action_failed'), tone: 'danger' })
     } finally {
-      setSaving(false)
+      setIsSaving(false)
     }
   }
 
@@ -134,7 +134,7 @@ export function BlogSettingsModal({
     })
     if (!ok) return
 
-    setCleanBusy(true)
+    setIsCleanBusy(true)
     try {
       const res = await api.blog.cleanVisits(type, days)
       toast({
@@ -144,7 +144,7 @@ export function BlogSettingsModal({
     } catch {
       toast({ title: t('common.action_failed'), tone: 'danger' })
     } finally {
-      setCleanBusy(false)
+      setIsCleanBusy(false)
     }
   }
 
@@ -297,7 +297,7 @@ export function BlogSettingsModal({
                       variant="secondary"
                       type="button"
                       onClick={() => void handleClean('bots')}
-                      disabled={cleanBusy}
+                      disabled={isCleanBusy}
                     >
                       {t('share.clean_bots_only')}
                     </Button>
@@ -306,7 +306,7 @@ export function BlogSettingsModal({
                       variant="secondary"
                       type="button"
                       onClick={() => void handleClean('older_than')}
-                      disabled={cleanBusy}
+                      disabled={isCleanBusy}
                     >
                       {t('share.clean_older_than_retention')}
                     </Button>
@@ -316,7 +316,7 @@ export function BlogSettingsModal({
                       type="button"
                       className="text-[var(--danger)] hover:bg-[var(--danger-subtle)]"
                       onClick={() => void handleClean('all')}
-                      disabled={cleanBusy}
+                      disabled={isCleanBusy}
                     >
                       {t('share.clean_all_logs')}
                     </Button>
@@ -482,10 +482,10 @@ export function BlogSettingsModal({
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3">
-          <Button variant="ghost" size="sm" type="button" onClick={onClose} disabled={saving}>
+          <Button variant="ghost" size="sm" type="button" onClick={onClose} disabled={isSaving}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" size="sm" type="submit" loading={saving}>
+          <Button variant="primary" size="sm" type="submit" loading={isSaving}>
             <Save size={13} className="mr-1" />
             {t('blog.save_settings')}
           </Button>

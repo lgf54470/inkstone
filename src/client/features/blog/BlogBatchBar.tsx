@@ -19,7 +19,7 @@ export function BlogBatchBar({
   const folders = useBlogStore((s) => s.folders)
   const categories = useBlogStore((s) => s.categories)
 
-  const [folderMenuOpen, setFolderMenuOpen] = useState(false)
+  const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
   const folderButtonRef = useRef<HTMLButtonElement>(null)
 
   if (selectedCount === 0) return null
@@ -65,7 +65,7 @@ export function BlogBatchBar({
       label: t('blog.no_folder'),
       icon: <FolderClosed size={13} className="text-[var(--text-quaternary)]" />,
       onSelect: async () => {
-        setFolderMenuOpen(false)
+        setIsFolderMenuOpen(false)
         await batchPosts('setFolder', null)
         toast({
           title: t('blog.batch_move_folder_success', { count: selectedCount }),
@@ -82,7 +82,7 @@ export function BlogBatchBar({
         </span>
       ),
       onSelect: async () => {
-        setFolderMenuOpen(false)
+        setIsFolderMenuOpen(false)
         await batchPosts('setFolder', f.id)
         toast({
           title: t('blog.batch_move_folder_success', { count: selectedCount }),
@@ -125,16 +125,16 @@ export function BlogBatchBar({
         size="sm"
         variant="secondary"
         loading={batchBusy}
-        onClick={() => setFolderMenuOpen((prev) => !prev)}
+        onClick={() => setIsFolderMenuOpen((prev) => !prev)}
       >
         <FolderInput size={12} className="mr-1" />
         {t('blog.batch_move_folder')}
       </Button>
       <Menu
-        open={folderMenuOpen}
+        open={isFolderMenuOpen}
         anchor={folderButtonRef}
         items={folderMenuItems}
-        onClose={() => setFolderMenuOpen(false)}
+        onClose={() => setIsFolderMenuOpen(false)}
       />
 
       <Button

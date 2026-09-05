@@ -17,12 +17,12 @@ export function AttachmentRenameModal({
   onRename: (newFilename: string, updateNoteReferences: boolean) => Promise<void>
 }) {
   const [name, setName] = useState(currentFilename)
-  const [updateRefs, setUpdateRefs] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [isUpdateRefs, setIsUpdateRefs] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     setName(currentFilename)
-    setUpdateRefs(true)
+    setIsUpdateRefs(true)
   }, [currentFilename, open])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,12 +32,12 @@ export function AttachmentRenameModal({
       onClose()
       return
     }
-    setSaving(true)
+    setIsSaving(true)
     try {
-      await onRename(trimmed, updateRefs)
+      await onRename(trimmed, isUpdateRefs)
       onClose()
     } finally {
-      setSaving(false)
+      setIsSaving(false)
     }
   }
 
@@ -62,14 +62,14 @@ export function AttachmentRenameModal({
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            disabled={saving}
+            disabled={isSaving}
           />
         </label>
 
         <label className="flex items-center gap-2.5 cursor-pointer text-[12.5px] text-[var(--text-secondary)] select-none">
           <Checkbox
-            checked={updateRefs}
-            onChange={(checked) => setUpdateRefs(checked)}
+            checked={isUpdateRefs}
+            onChange={(checked) => setIsUpdateRefs(checked)}
           />
           <span>{t('attachments.sync_note_references')}</span>
         </label>
@@ -80,16 +80,16 @@ export function AttachmentRenameModal({
             variant="secondary"
             size="sm"
             onClick={onClose}
-            disabled={saving}
+            disabled={isSaving}
           >
             {t('common.cancel')}
           </Button>
           <Button
             type="submit"
             size="sm"
-            disabled={!name.trim() || saving}
+            disabled={!name.trim() || isSaving}
           >
-            {saving ? t('common.loading') : t('common.save')}
+            {isSaving ? t('common.loading') : t('common.save')}
           </Button>
         </div>
       </form>

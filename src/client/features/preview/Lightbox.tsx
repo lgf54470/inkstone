@@ -10,14 +10,14 @@ export function Lightbox() {
     const setLightbox = useUi((s) => s.setLightbox);
     const panelRef = useRef<HTMLDivElement>(null);
     const [scale, setScale] = useState(1);
-    const [failed, setFailed] = useState(false);
+    const [isFailed, setIsFailed] = useState(false);
     const close = () => setLightbox(null);
     useEscape(Boolean(lightbox), close);
     useLockScroll(Boolean(lightbox));
     useDialogFocus(Boolean(lightbox), panelRef);
     useLayoutEffect(() => {
         setScale(1);
-        setFailed(false);
+        setIsFailed(false);
     }, [lightbox?.src]);
     useEffect(() => {
         if (!lightbox)
@@ -36,7 +36,7 @@ export function Lightbox() {
     return createPortal(<div ref={panelRef} role="dialog" aria-modal="true" aria-label={t("preview.image_preview")} tabIndex={-1} className="app-viewport-fixed anim-fade fixed z-[var(--z-pop)] flex items-center justify-center bg-[oklch(0%_0_0/78%)] outline-none" onClick={close}>
       <div className="absolute top-[calc(12px+env(safe-area-inset-top))] right-2 flex items-center gap-1 md:top-4 md:right-4" onClick={(e) => e.stopPropagation()}>
         <Tooltip label={t("common.zoom_out")} side="bottom">
-          <IconButton label={t("common.zoom_out")} disabled={failed || scale <= 0.3} onClick={() => setScale((s) => Math.max(0.3, s - 0.25))} className="text-white/70 hover:bg-white/10 hover:text-white">
+          <IconButton label={t("common.zoom_out")} disabled={isFailed || scale <= 0.3} onClick={() => setScale((s) => Math.max(0.3, s - 0.25))} className="text-white/70 hover:bg-white/10 hover:text-white">
             <ZoomOut size={16}/>
           </IconButton>
         </Tooltip>
@@ -44,7 +44,7 @@ export function Lightbox() {
           {Math.round(scale * 100)}%
         </span>
         <Tooltip label={t("common.zoom_in")} side="bottom">
-          <IconButton label={t("common.zoom_in")} disabled={failed || scale >= 6} onClick={() => setScale((s) => Math.min(6, s + 0.25))} className="text-white/70 hover:bg-white/10 hover:text-white">
+          <IconButton label={t("common.zoom_in")} disabled={isFailed || scale >= 6} onClick={() => setScale((s) => Math.min(6, s + 0.25))} className="text-white/70 hover:bg-white/10 hover:text-white">
             <ZoomIn size={16}/>
           </IconButton>
         </Tooltip>
@@ -60,10 +60,10 @@ export function Lightbox() {
         </Tooltip>
       </div>
 
-      {failed ? (<div role="status" className="flex max-w-[80vw] flex-col items-center gap-2 rounded-[var(--r-lg)] bg-black/35 px-5 py-4 text-center text-[12px] text-white/75">
+      {isFailed ? (<div role="status" className="flex max-w-[80vw] flex-col items-center gap-2 rounded-[var(--r-lg)] bg-black/35 px-5 py-4 text-center text-[12px] text-white/75">
           <ImageOff size={24}/>
           {t("preview.could_not_load_image")}
-        </div>) : (<img src={lightbox.src} alt={lightbox.alt} onError={() => setFailed(true)} onClick={(e) => e.stopPropagation()} onDoubleClick={() => setScale((s) => (s === 1 ? 2 : 1))} style={{ transform: `scale(${scale})` }} className={`max-h-[86vh] max-w-[92vw] rounded-[var(--r-md)] object-contain transition-transform duration-200 ease-[var(--ease-out)] ${scale === 1 ? 'cursor-zoom-in' : 'cursor-zoom-out'}`}/>)}
+        </div>) : (<img src={lightbox.src} alt={lightbox.alt} onError={() => setIsFailed(true)} onClick={(e) => e.stopPropagation()} onDoubleClick={() => setScale((s) => (s === 1 ? 2 : 1))} style={{ transform: `scale(${scale})` }} className={`max-h-[86vh] max-w-[92vw] rounded-[var(--r-md)] object-contain transition-transform duration-200 ease-[var(--ease-out)] ${scale === 1 ? 'cursor-zoom-in' : 'cursor-zoom-out'}`}/>)}
 
       {lightbox.alt && (<div className="absolute bottom-[calc(16px+env(safe-area-inset-bottom))] left-1/2 max-w-[82vw] -translate-x-1/2 truncate rounded-full bg-black/50 px-3 py-1.5 text-[12px] text-white/80 md:bottom-6 md:max-w-[70vw]">
           {lightbox.alt}

@@ -42,10 +42,10 @@ export function TagSection() {
     const selectTags = useUi((s) => s.selectTags);
     const openPanel = useUi((s) => s.openPanel);
     const counts = useNavigationCounts();
-    const [expanded, setExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [query, setQuery] = useState('');
     const [activeIndex, setActiveIndex] = useState(0);
-    const [creating, setCreating] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [expandedTagPaths, setExpandedTagPaths] = useState<Set<string>>(() => new Set());
     const toggleTagPath = (path: string) => {
@@ -73,25 +73,25 @@ export function TagSection() {
     }, [tagTree]);
     const canToggleTags = parentTagPaths.length > 0 || flattenedTree.length > 10 || tags.length > 10;
     const allParentsExpanded = parentTagPaths.length === 0 || parentTagPaths.every((p) => expandedTagPaths.has(p));
-    const isListExpanded = expanded || (flattenedTree.length <= 10 && tags.length <= 10);
+    const isListExpanded = isExpanded || (flattenedTree.length <= 10 && tags.length <= 10);
     const allTagsExpanded = allParentsExpanded && isListExpanded;
 
     const toggleAllTagsExpanded = () => {
         if (allTagsExpanded) {
             setExpandedTagPaths(new Set());
-            setExpanded(false);
+            setIsExpanded(false);
         } else {
             setExpandedTagPaths(new Set(parentTagPaths));
-            setExpanded(true);
+            setIsExpanded(true);
         }
     };
     const sortedTags = useMemo(() => sortTagsForPicker(tags, ''), [tags]);
     const searching = query.trim() !== '';
     const visibleTags = searching ? sortTagsForPicker(sortedTags, query) : [];
-    const visibleNodes = searching ? [] : expanded ? flattenedTree : flattenedTree.slice(0, 10);
+    const visibleNodes = searching ? [] : isExpanded ? flattenedTree : flattenedTree.slice(0, 10);
     const highlightedIndex = Math.min(activeIndex, Math.max(0, (searching ? visibleTags.length : visibleNodes.length) - 1));
     const finishCreate = (value: string) => {
-        setCreating(false);
+        setIsCreating(false);
         const id = createTag(value);
         if (!id)
             return;
@@ -122,7 +122,7 @@ export function TagSection() {
             </IconButton>
           </Tooltip>
           <Tooltip label={t("tags.new")} side="right">
-            <IconButton label={t("tags.new")} size="sm" onClick={() => setCreating(true)} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
+            <IconButton label={t("tags.new")} size="sm" onClick={() => setIsCreating(true)} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
               <Plus size={13}/>
             </IconButton>
           </Tooltip>
@@ -175,8 +175,8 @@ export function TagSection() {
           {searching && <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 tabular-nums text-[10.5px] text-[var(--text-quaternary)]">{visibleTags.length}</span>}
         </div>)}
       <div className="mt-0.5 space-y-px">
-        {creating && <TagDraftRow onFinish={finishCreate} onCancel={() => setCreating(false)}/>}
-        {!sortedTags.length && !creating && (<button type="button" onClick={() => setCreating(true)} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[30px]">
+        {isCreating && <TagDraftRow onFinish={finishCreate} onCancel={() => setIsCreating(false)}/>}
+        {!sortedTags.length && !isCreating && (<button type="button" onClick={() => setIsCreating(true)} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[30px]">
             <Plus size={13}/>{t("tags.create_first")}
           </button>)}
         {!searching && (
@@ -265,7 +265,7 @@ export function TagSection() {
               );
             })}
 
-        {searching && visibleTags.length === 0 && !creating && (<div className="mt-1 flex flex-col items-center gap-1 rounded-[var(--r-md)] bg-[var(--bg-inset)] px-2 py-3 text-center">
+        {searching && visibleTags.length === 0 && !isCreating && (<div className="mt-1 flex flex-col items-center gap-1 rounded-[var(--r-md)] bg-[var(--bg-inset)] px-2 py-3 text-center">
             <SearchX size={14} className="text-[var(--text-quaternary)]"/>
             <span className="text-[11.5px] font-medium text-[var(--text-secondary)]">{t("notes.no_matching_tags")}</span>
             <button type="button" onClick={() => {
@@ -274,8 +274,8 @@ export function TagSection() {
             }} className="text-[10.5px] font-medium text-[var(--accent)] transition-colors hover:underline">{t("notes.clear_tag_search")}</button>
           </div>)}
 
-        {!searching && flattenedTree.length > 10 && (<button type="button" onClick={() => setExpanded((v) => !v)} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[26px]">
-            {expanded ? t("common.collapse") : t("sidebar.show_all_value0_tags", { value0: flattenedTree.length })}
+        {!searching && flattenedTree.length > 10 && (<button type="button" onClick={() => setIsExpanded((v) => !v)} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[11.5px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[26px]">
+            {isExpanded ? t("common.collapse") : t("sidebar.show_all_value0_tags", { value0: flattenedTree.length })}
           </button>)}
 
         {selectedTags.length > 0 && (<div className="rounded-[var(--r-md)] bg-[var(--accent-soft)] px-2 py-1.5 text-[11px] text-[var(--text-secondary)]">
@@ -373,7 +373,7 @@ export function TagRow({
 }) {
     const menu = useContextMenu();
     const rowRef = useRef<HTMLDivElement>(null);
-    const [menuOpen, setMenuOpen] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const openPanel = useUi((s) => s.openPanel);
     const displayLabel = displayName ?? tag.name;
     const noteCount = count !== undefined ? count : tag.count;
@@ -423,7 +423,7 @@ export function TagRow({
         { id: 'delete', label: t("tags.delete"), icon: <Trash2 size={13}/>, tone: 'danger', separatorBefore: true, onSelect: () => void deleteTag(tag) },
     ];
     return (<div ref={rowRef} onContextMenu={(event) => {
-            setMenuOpen(false);
+            setIsMenuOpen(false);
             menu.onContextMenu(event);
         }} style={depth > 0 ? { paddingLeft: `${depth * 14 + 8}px` } : undefined} className={cn('group relative flex h-10 items-center gap-1.5 rounded-[var(--r-md)] px-2 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active || selected
             ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
@@ -468,13 +468,13 @@ export function TagRow({
             <IconButton label={t("common.more_actions")} size="sm" onClick={(event) => {
                 event.stopPropagation();
                 menu.close();
-                setMenuOpen(true);
+                setIsMenuOpen(true);
             }} className="absolute right-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100">
               <MoreHorizontal size={13}/>
             </IconButton>
           </Tooltip>
         </>)}
-      <Menu anchor={rowRef} open={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems}/>
+      <Menu anchor={rowRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={menuItems}/>
       {menu.point && (<Menu anchor={menu.point} open onClose={menu.close} items={menuItems}/>)}
     </div>);
 }

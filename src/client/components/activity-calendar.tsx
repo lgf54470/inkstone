@@ -113,7 +113,7 @@ export interface ActivityCalendarProps {
 export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekStart = 1, today, range, selectedRange, latestEditKey, view, onViewChange, cursor, onCursorChange, onDayClick, onDaySelect,    onRangeSelect, onGapDayClick, onNoteClick, columnsPreference = 'auto', jumpFlash = 0 }: ActivityCalendarProps) {
     const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
     const [expandedDay, setExpandedDay] = useState<string | null>(null);
-    const [expandedWeekNotes, setExpandedWeekNotes] = useState(false);
+    const [isExpandedWeekNotes, setIsExpandedWeekNotes] = useState(false);
     const [focusedKey, setFocusedKey] = useState<string | null>(null);
     const [focusedMonth, setFocusedMonth] = useState<number | null>(null);
     const [dragRange, setDragRange] = useState<DateRangeFilter | null>(null);
@@ -180,7 +180,7 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
     const toggleWeek = (index: number) => {
         setExpandedWeek((current) => current === index ? null : index);
         setExpandedDay(null);
-        setExpandedWeekNotes(false);
+        setIsExpandedWeekNotes(false);
     };
     const isWeekRangeActive = (week: WeekCell[]) => selectedRange != null && week[0]?.key === selectedRange.start && week[6]?.key === selectedRange.end;
     useEffect(() => {
@@ -309,8 +309,8 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
             setExpandedDay(null);
             return;
         }
-        if (expandedWeekNotes) {
-            setExpandedWeekNotes(false);
+        if (isExpandedWeekNotes) {
+            setIsExpandedWeekNotes(false);
             return;
         }
         if (expandedWeek !== null)
@@ -616,14 +616,14 @@ export function ActivityCalendar({ counts, notesByDay, getDiaryId, locale, weekS
                     {weekCellsTotal > 0 && (<>
                         <div className="my-0.5 border-t border-[var(--border-subtle)]"/>
                         <div className="flex items-center">
-                            <button type="button" aria-expanded={expandedWeekNotes} aria-label={t("sidebar.calendar_week_notes_value0", { value0: weekCellsTotal })} onClick={() => setExpandedWeekNotes((open) => !open)} className="flex h-6 min-w-0 flex-1 items-center gap-1.5 rounded-[var(--r-sm)] px-1.5 text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
+                            <button type="button" aria-expanded={isExpandedWeekNotes} aria-label={t("sidebar.calendar_week_notes_value0", { value0: weekCellsTotal })} onClick={() => setIsExpandedWeekNotes((open) => !open)} className="flex h-6 min-w-0 flex-1 items-center gap-1.5 rounded-[var(--r-sm)] px-1.5 text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
                                 <FileText size={10} className="shrink-0 text-[var(--text-quaternary)]"/>
                                 <span className="text-[10.5px] text-[var(--text-secondary)]">{t("sidebar.calendar_week_notes_value0", { value0: weekCellsTotal })}</span>
-                                <ChevronDown size={10} className={cn('ml-auto text-[var(--text-quaternary)] transition-transform duration-[var(--dur-fast)]', expandedWeekNotes && 'rotate-180')}/>
+                                <ChevronDown size={10} className={cn('ml-auto text-[var(--text-quaternary)] transition-transform duration-[var(--dur-fast)]', isExpandedWeekNotes && 'rotate-180')}/>
                             </button>
                         </div>
-                        <div className={cn('grid transition-[grid-template-rows] duration-[var(--dur-base)] ease-out', expandedWeekNotes ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
-                            <div aria-hidden={!expandedWeekNotes} inert={!expandedWeekNotes} className="min-h-0 overflow-hidden">
+                        <div className={cn('grid transition-[grid-template-rows] duration-[var(--dur-base)] ease-out', isExpandedWeekNotes ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+                            <div aria-hidden={!isExpandedWeekNotes} inert={!isExpandedWeekNotes} className="min-h-0 overflow-hidden">
                                 <div className="space-y-1 py-0.5">
                                     {weekCells!.map((cell, dayIndex) => (cell.notes.length > 0 ? (<div key={cell.key}>
                                         <button type="button" aria-label={t("sidebar.calendar_jump_to_day")} onClick={() => {

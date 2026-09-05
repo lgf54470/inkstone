@@ -35,7 +35,7 @@ export function BackupSettings() {
     const [targets, setTargets] = useState<BackupTarget[] | null>(null);
     const [runs, setRuns] = useState<BackupRun[]>([]);
     const [editing, setEditing] = useState<BackupTarget | 'new' | null>(null);
-    const [running, setRunning] = useState(false);
+    const [isRunning, setIsRunning] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const reloadEpoch = useRef(0);
     const runningRef = useRef(false);
@@ -71,7 +71,7 @@ export function BackupSettings() {
         if (runningRef.current)
             return;
         runningRef.current = true;
-        setRunning(true);
+        setIsRunning(true);
         try {
             const run = await api.backup.run();
             await reload();
@@ -96,7 +96,7 @@ export function BackupSettings() {
         finally {
             runningRef.current = false;
             if (mountedRef.current)
-                setRunning(false);
+                setIsRunning(false);
         }
     };
     if (targets === null && loadError)
@@ -131,7 +131,7 @@ export function BackupSettings() {
             </div>
             <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">{t("settings.each_backup_goes_independently_to_every_enabled_target_it_includes_notes")}</p>
           </div>
-          <Button size="sm" variant="primary" icon={running ? undefined : <Zap size={13}/>} loading={running} disabled={!enabled} onClick={() => void runBackup()}>{t("settings.back_up_now")}</Button>
+          <Button size="sm" variant="primary" icon={isRunning ? undefined : <Zap size={13}/>} loading={isRunning} disabled={!enabled} onClick={() => void runBackup()}>{t("settings.back_up_now")}</Button>
         </div>
       </section>
 
@@ -181,12 +181,12 @@ function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRestore, }
     onRestore: (target: BackupTarget) => void;
 }) {
     const toast = useUi((s) => s.toast);
-    const [testing, setTesting] = useState(false);
-    const [deleting, setDeleting] = useState(false);
-    const [updating, setUpdating] = useState(false);
+    const [isTesting, setIsTesting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
     const [result, setResult] = useState<TestConnectionResult | null>(null);
     const actionRef = useRef(false);
-    const busy = testing || deleting || updating;
+    const busy = isTesting || isDeleting || isUpdating;
     const lastRunTime = useRelativeTime(target.lastRunAt ?? 0, Boolean(target.lastRunAt));
     useEffect(() => setResult(null), [target.updatedAt]);
     const config = target.config as unknown as Record<string, unknown>;
@@ -230,7 +230,7 @@ function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRestore, }
             if (actionRef.current)
                 return;
             actionRef.current = true;
-            setUpdating(true);
+            setIsUpdating(true);
             onPatch(target.id, { enabled });
             try {
                 await api.backup.patch(target.id, { enabled, expectedUpdatedAt: target.updatedAt });
@@ -242,14 +242,14 @@ function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRestore, }
             }
             finally {
                 actionRef.current = false;
-                setUpdating(false);
+                setIsUpdating(false);
             }
         }}/>
-          <Button size="sm" variant="ghost" loading={testing} disabled={updating || deleting} onClick={async () => {
+          <Button size="sm" variant="ghost" loading={isTesting} disabled={isUpdating || isDeleting} onClick={async () => {
             if (actionRef.current)
                 return;
             actionRef.current = true;
-            setTesting(true);
+            setIsTesting(true);
             setResult(null);
             try {
                 setResult(await api.backup.test(target.id));
@@ -259,10 +259,10 @@ function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRestore, }
             }
             finally {
                 actionRef.current = false;
-                setTesting(false);
+                setIsTesting(false);
             }
         }}>
-            {testing ? <Loader2 size={12} className="animate-[ink-spin_.7s_linear_infinite]"/> : t("settings.test")}
+            {isTesting ? <Loader2 size={12} className="animate-[ink-spin_.7s_linear_infinite]"/> : t("settings.test")}
           </Button>
           <Tooltip label={t("common.edit")}>
             <IconButton label={t("common.edit")} size="sm" disabled={busy} onClick={onEdit}>
@@ -274,7 +274,7 @@ function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRestore, }
             if (actionRef.current)
                 return;
             actionRef.current = true;
-            setDeleting(true);
+            setIsDeleting(true);
             try {
                 const ok = await confirm({
                     title: t("settings.delete_backup_target_value0", { value0: target.name }),
@@ -295,10 +295,10 @@ function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRestore, }
             }
             finally {
                 actionRef.current = false;
-                setDeleting(false);
+                setIsDeleting(false);
             }
         }}>
-            {deleting ? <Loader2 size={12} className="animate-[ink-spin_.7s_linear_infinite]"/> : <Trash2 size={13}/>}
+            {isDeleting ? <Loader2 size={12} className="animate-[ink-spin_.7s_linear_infinite]"/> : <Trash2 size={13}/>}
             </IconButton>
           </Tooltip>
         </div>
@@ -324,8 +324,8 @@ function TargetForm({ target, onClose, onSaved, }: {
         username: String(config.username ?? ''),
     });
     const [secret, setSecret] = useState({ accessKeyId: '', secretAccessKey: '', password: '' });
-    const [saving, setSaving] = useState(false);
-    const [testing, setTesting] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isTesting, setIsTesting] = useState(false);
     const [result, setResult] = useState<TestConnectionResult | null>(null);
     const [activePreset, setActivePreset] = useState<string | null>(null);
     const actionRef = useRef(false);
@@ -378,7 +378,7 @@ function TargetForm({ target, onClose, onSaved, }: {
         if (actionRef.current)
             return;
         actionRef.current = true;
-        setSaving(true);
+        setIsSaving(true);
         try {
             if (target)
                 await api.backup.patch(target.id, { ...buildPayload(), expectedUpdatedAt: target.updatedAt });
@@ -396,14 +396,14 @@ function TargetForm({ target, onClose, onSaved, }: {
         }
         finally {
             actionRef.current = false;
-            setSaving(false);
+            setIsSaving(false);
         }
     };
     const test = async () => {
         if (actionRef.current)
             return;
         actionRef.current = true;
-        setTesting(true);
+        setIsTesting(true);
         setResult(null);
         try {
             const payload = buildPayload();
@@ -416,7 +416,7 @@ function TargetForm({ target, onClose, onSaved, }: {
         }
         finally {
             actionRef.current = false;
-            setTesting(false);
+            setIsTesting(false);
         }
     };
     const close = () => {
@@ -424,11 +424,11 @@ function TargetForm({ target, onClose, onSaved, }: {
             onClose();
     };
     return (<Modal open onClose={close} title={target ? t("settings.edit_backup_target") : t("settings.add_backup_target")} description={canKeepSecret ? t("settings.leave_the_key_blank_to_leave_it_unchanged") : undefined} width={520} footer={<>
-          <Button variant="ghost" onClick={close} disabled={saving || testing}>{t("common.cancel")}</Button>
-          <Button variant="secondary" loading={testing} disabled={saving} onClick={() => void test()}>{t("settings.test_connection")}</Button>
-          <Button variant="primary" loading={saving} disabled={testing} onClick={() => void save()}>{t("common.save")}</Button>
+          <Button variant="ghost" onClick={close} disabled={isSaving || isTesting}>{t("common.cancel")}</Button>
+          <Button variant="secondary" loading={isTesting} disabled={isSaving} onClick={() => void test()}>{t("settings.test_connection")}</Button>
+          <Button variant="primary" loading={isSaving} disabled={isTesting} onClick={() => void save()}>{t("common.save")}</Button>
         </>}>
-      <fieldset disabled={saving || testing} aria-busy={saving || testing} className="min-w-0 space-y-3.5 border-0 p-0">
+      <fieldset disabled={isSaving || isTesting} aria-busy={isSaving || isTesting} className="min-w-0 space-y-3.5 border-0 p-0">
         {target && type !== target.type && (<div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--warning)_28%,var(--border-subtle))] bg-[var(--bg-inset)] px-3 py-2 text-[11.5px] text-[var(--warning)]">
             <AlertCircle size={13} className="mt-0.5 shrink-0"/>
             <span>{t("settings.enter_the_complete_credentials_for_the_new_backup_type_after_switching_t")}</span>
@@ -543,11 +543,11 @@ function TargetForm({ target, onClose, onSaved, }: {
 function RunRow({ run }: {
     run: BackupRun;
 }) {
-    const [open, setOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const tone = run.status === 'success' ? 'success' : run.status === 'partial' ? 'warning' : 'danger';
     const startedTime = useRelativeTime(run.startedAt);
     return (<li className="overflow-hidden rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)]">
-      <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]">
+      <button type="button" aria-expanded={isOpen} onClick={() => setIsOpen((v) => !v)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]">
         <span className={cn('size-1.5 shrink-0 rounded-full', tone === 'success'
             ? 'bg-[var(--success)]'
             : tone === 'warning'
@@ -562,7 +562,7 @@ function RunRow({ run }: {
         </span>
       </button>
 
-      {open && run.results.length > 0 && (<ul className="border-t border-[var(--border-subtle)] bg-[var(--bg-inset)] px-3 py-2">
+      {isOpen && run.results.length > 0 && (<ul className="border-t border-[var(--border-subtle)] bg-[var(--bg-inset)] px-3 py-2">
           {run.results.map((result, index) => (<li key={`${result.targetId}-${index}`} className="flex items-start gap-2 py-1 text-[11.5px]">
               {result.ok ? (<CheckCircle2 size={11} className="mt-0.5 shrink-0 text-[var(--success)]"/>) : (<AlertCircle size={11} className="mt-0.5 shrink-0 text-[var(--danger)]"/>)}
               <span className="shrink-0 text-[var(--text-secondary)]">{result.targetName}</span>

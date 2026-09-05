@@ -20,10 +20,10 @@ export function SharePage({ slug }: {
 }) {
     const locale = useLocale();
     const [note, setNote] = useState<PublicNote | null>(null);
-    const [needPassword, setNeedPassword] = useState(false);
+    const [isPasswordRequired, setIsPasswordRequired] = useState(false);
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
     const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark');
     const toast = useUi((s) => s.toast);
     const hostRef = useRef<HTMLDivElement>(null);
@@ -37,14 +37,14 @@ export function SharePage({ slug }: {
         requestRef.current?.abort();
         const controller = new AbortController();
         requestRef.current = controller;
-        setLoading(true);
+        setIsLoading(true);
         setError(null);
         try {
             const result = await api.share.read(slug, pwd, controller.signal, initialReferrerRef.current || undefined);
             if (controller.signal.aborted)
                 return;
             setNote(result);
-            setNeedPassword(false);
+            setIsPasswordRequired(false);
             setPassword('');
             const title = `${result.title || t("common.untitled_note")} · ${result.site.name}`;
             document.title = title;
@@ -55,25 +55,25 @@ export function SharePage({ slug }: {
                 return;
             if (err instanceof ApiError && err.status === 401) {
                 setNote(null);
-                setNeedPassword(true);
+                setIsPasswordRequired(true);
                 if (pwd)
                     setError(t("share.incorrect_passcode"));
             }
             else {
-                setNeedPassword(false);
+                setIsPasswordRequired(false);
                 setError(err instanceof ApiError ? err.message : t("share.content_unavailable"));
             }
         }
         finally {
             if (requestRef.current === controller) {
                 requestRef.current = null;
-                setLoading(false);
+                setIsLoading(false);
             }
         }
     }, [slug]);
     useEffect(() => {
         setNote(null);
-        setNeedPassword(false);
+        setIsPasswordRequired(false);
         setPassword('');
         setError(null);
         void load();
@@ -205,9 +205,9 @@ export function SharePage({ slug }: {
       </header>
 
       <main className="mx-auto max-w-[860px] px-4 pb-[calc(64px+env(safe-area-inset-bottom))] md:px-5 md:pb-24">
-        {loading && !needPassword ? (<div className="pt-24">
+        {isLoading && !isPasswordRequired ? (<div className="pt-24">
             <LoadingBlock label={t("share.opening")}/>
-          </div>) : needPassword ? (<div className="anim-rise mx-auto max-w-[340px] pt-[16vh] text-center">
+          </div>) : isPasswordRequired ? (<div className="anim-rise mx-auto max-w-[340px] pt-[16vh] text-center">
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-[16px] border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-tertiary)]">
               <Lock size={20}/>
             </div>
@@ -219,7 +219,7 @@ export function SharePage({ slug }: {
             }}>
               <Input aria-label={t("common.access_passcode")} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("common.access_passcode")} autoComplete="current-password" maxLength={LIMITS.passwordMaxLength} autoFocus leading={<KeyRound size={13}/>} invalid={Boolean(error)}/>
               {error && <p role="alert" className="text-[12px] text-[var(--danger)]">{error}</p>}
-              <Button type="submit" variant="primary" block loading={loading}>{t("share.view_content")}</Button>
+              <Button type="submit" variant="primary" block loading={isLoading}>{t("share.view_content")}</Button>
             </form>
           </div>) : error ? (<div className="mx-auto max-w-[380px] pt-[18vh] text-center">
             <h1 className="text-[16px] font-semibold text-[var(--text-primary)]">{t("share.content_unavailable")}</h1>
@@ -260,7 +260,7 @@ function addShareAccess(html: string, slug: string): string {
     template.innerHTML = html;
     for (const embed of template.content.querySelectorAll<HTMLElement>('.note-embed[data-embed-target]')) {
         embed.removeAttribute('data-embed-target');
-        embed.classList.remove('loading');
+        embed.classList.remove('isLoading');
         embed.classList.add('error');
         const body = embed.querySelector<HTMLElement>('.note-embed-body');
         if (body) {

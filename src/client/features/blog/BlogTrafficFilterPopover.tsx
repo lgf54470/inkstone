@@ -6,7 +6,7 @@ import { t } from '../../lib/i18n'
 import { useBlogStore } from './blog-store'
 
 export function BlogTrafficFilterPopover() {
-  const [open, setOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -15,8 +15,8 @@ export function BlogTrafficFilterPopover() {
   const excludeOwner = useBlogStore((s) => s.excludeOwner)
   const setFilters = useBlogStore((s) => s.setFilters)
 
-  useClickOutside([buttonRef, panelRef], open, () => setOpen(false))
-  useEscape(open, () => setOpen(false))
+  useClickOutside([buttonRef, panelRef], isOpen, () => setIsOpen(false))
+  useEscape(isOpen, () => setIsOpen(false))
 
   const isFilteringBots = excludeBots
   const isAllTraffic = !excludeBots && !excludeSelfReferrers && !excludeOwner
@@ -26,7 +26,7 @@ export function BlogTrafficFilterPopover() {
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => setIsOpen((prev) => !prev)}
         className={`flex h-7 items-center gap-1.5 rounded-[var(--r-md)] border px-2 text-[12px] font-medium transition-colors ${
           isFilteringBots
             ? 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--success)] hover:bg-[var(--bg-hover)]'
@@ -46,7 +46,7 @@ export function BlogTrafficFilterPopover() {
         </span>
       </button>
 
-      {open && (
+      {isOpen && (
         <div
           ref={panelRef}
           className="absolute right-0 top-full z-[var(--z-popover)] mt-1.5 w-80 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-float)]"

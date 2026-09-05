@@ -38,11 +38,11 @@ export function BlogHubModal({
   const activeNote = useNotes((s) => (initialNoteId ? s.notes[initialNoteId] ?? null : null))
 
   // Sub-modals state
-  const [publishModalOpen, setPublishModalOpen] = useState(false)
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false)
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null)
   const [targetNoteId, setTargetNoteId] = useState<string>('')
-  const [categoriesModalOpen, setCategoriesModalOpen] = useState(false)
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
+  const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false)
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -52,23 +52,23 @@ export function BlogHubModal({
       }
     } else {
       clearPostSelection()
-      setPublishModalOpen(false)
+      setIsPublishModalOpen(false)
       setEditingPost(null)
-      setCategoriesModalOpen(false)
-      setSettingsModalOpen(false)
+      setIsCategoriesModalOpen(false)
+      setIsSettingsModalOpen(false)
     }
   }, [open, loadAll, clearPostSelection, initialNoteId, activeNote])
 
   const handleOpenNewPost = () => {
     setEditingPost(null)
     setTargetNoteId(initialNoteId || (activeNote?.id ?? ''))
-    setPublishModalOpen(true)
+    setIsPublishModalOpen(true)
   }
 
   const handleOpenEditPost = (post: BlogPost) => {
     setEditingPost(post)
     setTargetNoteId(post.noteId)
-    setPublishModalOpen(true)
+    setIsPublishModalOpen(true)
   }
 
   return (
@@ -97,8 +97,8 @@ export function BlogHubModal({
         <div className="flex min-h-0 flex-1">
           {/* Sidebar */}
           <BlogHubSidebar
-            onOpenCategoriesModal={() => setCategoriesModalOpen(true)}
-            onOpenSettingsModal={() => setSettingsModalOpen(true)}
+            onOpenCategoriesModal={() => setIsCategoriesModalOpen(true)}
+            onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
           />
 
           {/* Content Area */}
@@ -113,7 +113,7 @@ export function BlogHubModal({
             ) : (
               <>
                 <BlogHubToolbar
-                  onOpenSettings={() => setSettingsModalOpen(true)}
+                  onOpenSettings={() => setIsSettingsModalOpen(true)}
                   onOpenNewPost={handleOpenNewPost}
                 />
 
@@ -144,27 +144,27 @@ export function BlogHubModal({
       </Modal>
 
       {/* Sub-modals */}
-      {publishModalOpen && targetNoteId && (
+      {isPublishModalOpen && targetNoteId && (
         <BlogPublishModal
-          open={publishModalOpen}
-          onClose={() => setPublishModalOpen(false)}
+          open={isPublishModalOpen}
+          onClose={() => setIsPublishModalOpen(false)}
           noteId={targetNoteId}
           post={editingPost}
           onSaved={() => void loadAll()}
         />
       )}
 
-      {categoriesModalOpen && (
+      {isCategoriesModalOpen && (
         <BlogCategoriesModal
-          open={categoriesModalOpen}
-          onClose={() => setCategoriesModalOpen(false)}
+          open={isCategoriesModalOpen}
+          onClose={() => setIsCategoriesModalOpen(false)}
         />
       )}
 
-      {settingsModalOpen && (
+      {isSettingsModalOpen && (
         <BlogSettingsModal
-          open={settingsModalOpen}
-          onClose={() => setSettingsModalOpen(false)}
+          open={isSettingsModalOpen}
+          onClose={() => setIsSettingsModalOpen(false)}
         />
       )}
     </>

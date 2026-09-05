@@ -23,8 +23,8 @@ export function ShareQrModal({
   title: string
   slug: string
 }) {
-  const [copiedLink, setCopiedLink] = useState(false)
-  const [copiedImage, setCopiedImage] = useState(false)
+  const [isCopiedLink, setIsCopiedLink] = useState(false)
+  const [isCopiedImage, setIsCopiedImage] = useState(false)
   const svgRef = useRef<HTMLDivElement>(null)
 
   const fullUrl = typeof window !== 'undefined' ? new URL(url, window.location.origin).href : url
@@ -32,8 +32,8 @@ export function ShareQrModal({
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(fullUrl)
-      setCopiedLink(true)
-      setTimeout(() => setCopiedLink(false), COPY_FEEDBACK_MS)
+      setIsCopiedLink(true)
+      setTimeout(() => setIsCopiedLink(false), COPY_FEEDBACK_MS)
     } catch (error) {
       console.warn('[share] failed to copy QR link', error)
     }
@@ -44,8 +44,8 @@ export function ShareQrModal({
     if (!svgEl) return
     const success = await copyQrImageToClipboard(svgEl)
     if (success) {
-      setCopiedImage(true)
-      setTimeout(() => setCopiedImage(false), COPY_FEEDBACK_MS)
+      setIsCopiedImage(true)
+      setTimeout(() => setIsCopiedImage(false), COPY_FEEDBACK_MS)
     }
   }
 
@@ -101,19 +101,19 @@ export function ShareQrModal({
           <Button
             size="sm"
             variant="secondary"
-            icon={copiedLink ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
+            icon={isCopiedLink ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
             onClick={() => void handleCopyLink()}
           >
-            {copiedLink ? t('common.copied') : t('share.copy_link')}
+            {isCopiedLink ? t('common.copied') : t('share.copy_link')}
           </Button>
 
           <Button
             size="sm"
             variant="secondary"
-            icon={copiedImage ? <Check size={13} className="text-[var(--success)]" /> : <ImageIcon size={13} />}
+            icon={isCopiedImage ? <Check size={13} className="text-[var(--success)]" /> : <ImageIcon size={13} />}
             onClick={() => void handleCopyImage()}
           >
-            {copiedImage ? t('share.qr_copied') : t('share.copy_qr_image')}
+            {isCopiedImage ? t('share.qr_copied') : t('share.copy_qr_image')}
           </Button>
 
           <Button

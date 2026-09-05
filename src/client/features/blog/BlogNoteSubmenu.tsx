@@ -32,8 +32,8 @@ export function BlogNoteSubmenu({
 }) {
   const toast = useUi((s) => s.toast)
   const settings = useBlogStore((s) => s.settings)
-  const [busy, setBusy] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
 
   const frontendBase = (settings?.frontendUrl || 'http://localhost:4321').replace(/\/+$/, '')
   const postUrl = `${frontendBase}/posts/${post.slug}`
@@ -46,9 +46,9 @@ export function BlogNoteSubmenu({
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(postUrl)
-      setCopied(true)
+      setIsCopied(true)
       toast({ title: t('blog.link_copied'), tone: 'success' })
-      setTimeout(() => setCopied(false), 1500)
+      setTimeout(() => setIsCopied(false), 1500)
     } catch {
       toast({ title: t('common.action_failed'), tone: 'danger' })
     }
@@ -56,7 +56,7 @@ export function BlogNoteSubmenu({
   }
 
   const handleSync = async () => {
-    setBusy(true)
+    setIsBusy(true)
     try {
       await api.blog.posts.sync(post.id)
       await useBlogStore.getState().loadPosts()
@@ -64,7 +64,7 @@ export function BlogNoteSubmenu({
     } catch {
       toast({ title: t('common.action_failed'), tone: 'danger' })
     } finally {
-      setBusy(false)
+      setIsBusy(false)
       closeMenu()
     }
   }
@@ -78,7 +78,7 @@ export function BlogNoteSubmenu({
     })
     if (!ok) return
 
-    setBusy(true)
+    setIsBusy(true)
     try {
       // 1. Update backend blog post status to unpublished
       await api.blog.posts.patch(post.id, { isPublished: false })
@@ -102,7 +102,7 @@ export function BlogNoteSubmenu({
     } catch {
       toast({ title: t('common.action_failed'), tone: 'danger' })
     } finally {
-      setBusy(false)
+      setIsBusy(false)
     }
   }
 
@@ -115,7 +115,7 @@ export function BlogNoteSubmenu({
       <button
         type="button"
         onClick={handleOpenBlog}
-        disabled={busy}
+        disabled={isBusy}
         className="flex h-[30px] w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
       >
         <ExternalLink size={13} className="shrink-0 text-[var(--accent)]" />
@@ -126,10 +126,10 @@ export function BlogNoteSubmenu({
       <button
         type="button"
         onClick={() => void handleCopyLink()}
-        disabled={busy}
+        disabled={isBusy}
         className="flex h-[30px] w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
       >
-        {copied ? (
+        {isCopied ? (
           <Check size={13} className="shrink-0 text-[var(--success)]" />
         ) : (
           <Copy size={13} className="shrink-0 text-[var(--text-tertiary)]" />
@@ -144,7 +144,7 @@ export function BlogNoteSubmenu({
           closeMenu()
           onOpenStats()
         }}
-        disabled={busy}
+        disabled={isBusy}
         className="flex h-[30px] w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
       >
         <BarChart2 size={13} className="shrink-0 text-[var(--text-tertiary)]" />
@@ -158,7 +158,7 @@ export function BlogNoteSubmenu({
           closeMenu()
           onOpenSettings()
         }}
-        disabled={busy}
+        disabled={isBusy}
         className="flex h-[30px] w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
       >
         <Settings2 size={13} className="shrink-0 text-[var(--text-tertiary)]" />
@@ -169,7 +169,7 @@ export function BlogNoteSubmenu({
       <button
         type="button"
         onClick={() => void handleSync()}
-        disabled={busy}
+        disabled={isBusy}
         className="flex h-[30px] w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
       >
         <RefreshCw size={13} className="shrink-0 text-[var(--text-tertiary)]" />
@@ -183,7 +183,7 @@ export function BlogNoteSubmenu({
       <button
         type="button"
         onClick={() => void handleUnpublish()}
-        disabled={busy}
+        disabled={isBusy}
         className="flex h-[30px] w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[var(--danger)] transition-colors hover:bg-[var(--danger-subtle)]"
       >
         <Trash2 size={13} className="shrink-0 text-[var(--danger)]" />

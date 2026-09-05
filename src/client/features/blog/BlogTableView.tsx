@@ -130,7 +130,7 @@ function BlogTableRow({
   const setActiveTab = useBlogStore((s) => s.setActiveTab)
 
   const contextMenu = useContextMenu()
-  const [folderMenuOpen, setFolderMenuOpen] = useState(false)
+  const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
   const folderButtonRef = useRef<HTMLButtonElement>(null)
 
   const postUrl = `${frontendBase}/posts/${post.slug}`
@@ -298,7 +298,7 @@ function BlogTableRow({
         e.dataTransfer.effectAllowed = 'move'
       }}
       onContextMenu={(e) => {
-        setFolderMenuOpen(false)
+        setIsFolderMenuOpen(false)
         contextMenu.onContextMenu(e)
       }}
       onDoubleClick={() => onOpenEdit(post)}
@@ -426,7 +426,7 @@ function BlogTableRow({
             ref={folderButtonRef}
             size="sm"
             label={t('blog.batch_move_folder')}
-            onClick={() => setFolderMenuOpen((prev) => !prev)}
+            onClick={() => setIsFolderMenuOpen((prev) => !prev)}
           >
             <FolderInput size={13} />
           </IconButton>
@@ -489,10 +489,10 @@ function BlogTableRow({
         </div>
 
         <Menu
-          open={folderMenuOpen}
+          open={isFolderMenuOpen}
           anchor={folderButtonRef}
           items={folderMenuItems}
-          onClose={() => setFolderMenuOpen(false)}
+          onClose={() => setIsFolderMenuOpen(false)}
         />
 
         {contextMenu.point && (

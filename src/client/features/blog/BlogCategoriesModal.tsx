@@ -30,7 +30,7 @@ export function BlogCategoriesModal({
   const [description, setDescription] = useState('')
   const [selectedColor, setSelectedColor] = useState<string>(BLOG_CATEGORY_COLORS[0])
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleStartEdit = (cat: BlogCategory) => {
     setEditingId(cat.id)
@@ -51,7 +51,7 @@ export function BlogCategoriesModal({
     e.preventDefault()
     if (!name.trim()) return
 
-    setSaving(true)
+    setIsSaving(true)
     try {
       if (editingId) {
         await updateCategory(editingId, {
@@ -74,7 +74,7 @@ export function BlogCategoriesModal({
     } catch (error: unknown) {
       toast({ title: errorMessage(error) || t('common.action_failed'), tone: 'danger' })
     } finally {
-      setSaving(false)
+      setIsSaving(false)
     }
   }
 
@@ -177,7 +177,7 @@ export function BlogCategoriesModal({
           </div>
 
           <div className="flex justify-end pt-1">
-            <Button variant="primary" size="sm" type="submit" loading={saving}>
+            <Button variant="primary" size="sm" type="submit" loading={isSaving}>
               {editingId ? t('common.save') : t('blog.add_tag')}
             </Button>
           </div>

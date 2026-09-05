@@ -93,7 +93,7 @@ export function NoteList() {
     const loading = useNotes((s) => s.loading);
     const hydrated = useNotes((s) => s.hydrated);
     const openNote = useNotes((s) => s.openNote);
-    const { emptyTrash, emptyingTrash } = useEmptyTrash();
+    const { emptyTrash, isEmptyingTrash } = useEmptyTrash();
     const [persistedFilters] = useState(() => loadRememberedFilter() ?? loadSessionFilter());
     const [rememberFilters, setRememberFilters] = useState(() => loadRememberedFilter() !== null);
     const filter = listQuery;
@@ -115,12 +115,12 @@ export function NoteList() {
         else
             saveRememberedFilter(null);
     }, [filter, dateFilter, relativeFilter, selectedTags, selectedTagsMatch, rememberFilters]);
-    const [sortMenuOpen, setSortMenuOpen] = useState(false);
+    const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
     const sortButtonRef = useRef<HTMLButtonElement>(null);
-    const [tagFilterOpen, setTagFilterOpen] = useState(false);
-    const [rangeEditorOpen, setRangeEditorOpen] = useState(false);
+    const [isTagFilterOpen, setIsTagFilterOpen] = useState(false);
+    const [isRangeEditorOpen, setIsRangeEditorOpen] = useState(false);
     const rangeChipRef = useRef<HTMLButtonElement>(null);
-    const [favMenuOpen, setFavMenuOpen] = useState(false);
+    const [isFavMenuOpen, setIsFavMenuOpen] = useState(false);
     const favButtonRef = useRef<HTMLButtonElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -420,7 +420,7 @@ export function NoteList() {
         icon: <Hash size={13}/>,
         checked: selectedTags.length > 0 || undefined,
         separatorBefore: true,
-        onSelect: () => setTagFilterOpen(true),
+        onSelect: () => setIsTagFilterOpen(true),
     };
     return (<section className="relative flex h-full min-h-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-base)]">
       <header className="shrink-0 px-3 pt-3 pb-2">
@@ -436,7 +436,7 @@ export function NoteList() {
                 </IconButton>
               </Tooltip>)}
             <Tooltip label={t("notes.sort_and_display")}>
-              <IconButton label={t("notes.sort_and_display")} size="sm" ref={sortButtonRef} onClick={() => setSortMenuOpen(true)}>
+              <IconButton label={t("notes.sort_and_display")} size="sm" ref={sortButtonRef} onClick={() => setIsSortMenuOpen(true)}>
                 <ArrowDownWideNarrow size={14}/>
               </IconButton>
             </Tooltip>
@@ -447,7 +447,7 @@ export function NoteList() {
                   </IconButton>
                 </Tooltip>
                 <Tooltip label={t("templates.favorites")} side="bottom">
-                  <IconButton ref={favButtonRef} label={t("templates.favorites")} size="sm" onClick={() => setFavMenuOpen(true)}>
+                  <IconButton ref={favButtonRef} label={t("templates.favorites")} size="sm" onClick={() => setIsFavMenuOpen(true)}>
                     <Star size={14}/>
                   </IconButton>
                 </Tooltip>
@@ -497,7 +497,7 @@ export function NoteList() {
         {(dateFilter || selectedTags.length > 0 || Boolean(filter)) && (<div role="group" aria-label={t("notes.active_filters")} className="mt-2 flex flex-wrap items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-2 py-1.5">
             {dateFilter && (<span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[11px] text-[var(--text-secondary)]">
                 <CalendarDays size={11} className="shrink-0 text-[var(--text-quaternary)]"/>
-                <button type="button" ref={rangeChipRef} aria-haspopup="dialog" aria-expanded={rangeEditorOpen} aria-label={t("notes.range_editor_title")} onClick={() => setRangeEditorOpen(true)} className="min-w-0 truncate rounded-full text-left transition-colors hover:text-[var(--text-primary)]">
+                <button type="button" ref={rangeChipRef} aria-haspopup="dialog" aria-expanded={isRangeEditorOpen} aria-label={t("notes.range_editor_title")} onClick={() => setIsRangeEditorOpen(true)} className="min-w-0 truncate rounded-full text-left transition-colors hover:text-[var(--text-primary)]">
                   {dayFilterLabelEnd ? t("notes.filtering_by_day_range_value0", { value0: dayFilterLabel, value1: dayFilterLabelEnd }) : t("notes.filtering_by_day_value0", { value0: dayFilterLabel })}
                 </button>
                 {relativeFilter && (<Tooltip label={relativeFilter.direction === 'edit' ? t("notes.auto_follow_edit") : t("notes.auto_follow_today")}>
@@ -549,7 +549,7 @@ export function NoteList() {
             </Tooltip>
           </div>)}
 
-        {view === 'trash' && notes.length > 0 && (<button type="button" disabled={emptyingTrash} aria-busy={emptyingTrash} onClick={() => void emptyTrash()} className="mt-2 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] py-1.5 text-[11.5px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)] disabled:pointer-events-none disabled:opacity-50">{t("notes.empty_trash")}{notes.length}{t("notes.notes_93aeb9")}</button>)}
+        {view === 'trash' && notes.length > 0 && (<button type="button" disabled={isEmptyingTrash} aria-busy={isEmptyingTrash} onClick={() => void emptyTrash()} className="mt-2 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] py-1.5 text-[11.5px] text-[var(--text-tertiary)] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)] disabled:pointer-events-none disabled:opacity-50">{t("notes.empty_trash")}{notes.length}{t("notes.notes_93aeb9")}</button>)}
       </header>
 
       <div key={`${view}:${folderId ?? ''}:${tag ?? ''}`} ref={listRef} role="listbox" aria-label={title} aria-multiselectable="true" aria-activedescendant={activeNoteId && renderedIds.has(activeNoteId) ? `note-option-${activeNoteId}` : undefined} tabIndex={0} onKeyDown={onKeyDown} className="anim-view-content min-h-0 flex-1 overflow-y-auto px-2 pb-4 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
@@ -566,10 +566,10 @@ export function NoteList() {
 
       <BulkBar />
 
-      <Menu anchor={sortButtonRef} open={sortMenuOpen} onClose={() => setSortMenuOpen(false)} items={[...sortItems, tagFilterItem]} align="end"/>
-      <Menu anchor={favButtonRef} open={favMenuOpen} onClose={() => setFavMenuOpen(false)} items={favItems} align="end" width={220}/>
-      <TagFilterPopover anchor={sortButtonRef} open={tagFilterOpen} onClose={() => setTagFilterOpen(false)}/>
-      {dateFilter && <DateRangePopover anchor={rangeChipRef} open={rangeEditorOpen} onClose={() => setRangeEditorOpen(false)} range={dateFilter} onChange={applyFixedRange} relative={relativeFilter} onApplyRelative={(value) => useUi.getState().setRelativeFilter(value)}/>}
+      <Menu anchor={sortButtonRef} open={isSortMenuOpen} onClose={() => setIsSortMenuOpen(false)} items={[...sortItems, tagFilterItem]} align="end"/>
+      <Menu anchor={favButtonRef} open={isFavMenuOpen} onClose={() => setIsFavMenuOpen(false)} items={favItems} align="end" width={220}/>
+      <TagFilterPopover anchor={sortButtonRef} open={isTagFilterOpen} onClose={() => setIsTagFilterOpen(false)}/>
+      {dateFilter && <DateRangePopover anchor={rangeChipRef} open={isRangeEditorOpen} onClose={() => setIsRangeEditorOpen(false)} range={dateFilter} onChange={applyFixedRange} relative={relativeFilter} onApplyRelative={(value) => useUi.getState().setRelativeFilter(value)}/>}
     </section>);
 }
 interface GroupItem {
@@ -617,13 +617,13 @@ function groupNotes(items: GroupItem[], sort: SortKey, isTrash: boolean, now: nu
 function useEmptyTrash() {
     const emptyTrashAction = useNotes((s) => s.emptyTrash);
     const toast = useUi((s) => s.toast);
-    const [emptyingTrash, setEmptyingTrash] = useState(false);
+    const [isEmptyingTrash, setIsEmptyingTrash] = useState(false);
     const busyRef = useRef(false);
     const emptyTrash = async () => {
         if (busyRef.current)
             return;
         busyRef.current = true;
-        setEmptyingTrash(true);
+        setIsEmptyingTrash(true);
         try {
             const ok = await confirm({
                 title: t("common.empty_trash"),
@@ -646,8 +646,8 @@ function useEmptyTrash() {
         }
         finally {
             busyRef.current = false;
-            setEmptyingTrash(false);
+            setIsEmptyingTrash(false);
         }
     };
-    return { emptyTrash, emptyingTrash };
+    return { emptyTrash, isEmptyingTrash };
 }

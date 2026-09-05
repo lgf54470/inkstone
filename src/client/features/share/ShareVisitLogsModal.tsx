@@ -33,13 +33,13 @@ export function ShareVisitLogsModal({
 }) {
   const toast = useUi((s) => s.toast)
 
-  const [loading, setLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [data, setData] = useState<ShareVisitsResponse | null>(null)
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState<'all' | 'real' | 'bot' | 'owner' | 'self'>('all')
   const [search, setSearch] = useState('')
   const [noteId, setNoteId] = useState<string | undefined>(initialNoteId)
-  const [cleaning, setCleaning] = useState(false)
+  const [isCleaning, setIsCleaning] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -55,7 +55,7 @@ export function ShareVisitLogsModal({
     targetSearch = search,
     targetNoteId = noteId,
   ) => {
-    setLoading(true)
+    setIsLoading(true)
     try {
       const res = await api.share.visits({
         page: targetPage,
@@ -68,7 +68,7 @@ export function ShareVisitLogsModal({
     } catch {
       toast({ title: t('common.action_failed'), tone: 'danger' })
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
@@ -100,7 +100,7 @@ export function ShareVisitLogsModal({
     })
     if (!ok) return
 
-    setCleaning(true)
+    setIsCleaning(true)
     try {
       const res = await api.share.cleanVisits(type, days)
       toast({
@@ -111,7 +111,7 @@ export function ShareVisitLogsModal({
     } catch {
       toast({ title: t('common.action_failed'), tone: 'danger' })
     } finally {
-      setCleaning(false)
+      setIsCleaning(false)
     }
   }
 
@@ -232,7 +232,7 @@ export function ShareVisitLogsModal({
                 variant="secondary"
                 className="text-[var(--danger)] hover:bg-[var(--danger-subtle)]"
                 icon={<Trash2 size={12} />}
-                disabled={cleaning}
+                disabled={isCleaning}
               >
                 {t('share.clean_logs_btn')}
               </Button>
@@ -265,9 +265,9 @@ export function ShareVisitLogsModal({
               size="sm"
               label={t('common.refresh')}
               onClick={() => void fetchVisits(page, filter, search, noteId)}
-              disabled={loading}
+              disabled={isLoading}
             >
-              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
             </IconButton>
           </div>
         </div>
@@ -387,7 +387,7 @@ export function ShareVisitLogsModal({
               ) : (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-[var(--text-quaternary)]">
-                    {loading ? t('common.loading') : t('share.no_logs_found')}
+                    {isLoading ? t('common.loading') : t('share.no_logs_found')}
                   </td>
                 </tr>
               )}
@@ -405,7 +405,7 @@ export function ShareVisitLogsModal({
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={data.page <= 1 || loading}
+                disabled={data.page <= 1 || isLoading}
                 onClick={() => {
                   const p = Math.max(1, data.page - 1)
                   setPage(p)
@@ -418,7 +418,7 @@ export function ShareVisitLogsModal({
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={data.page >= data.totalPages || loading}
+                disabled={data.page >= data.totalPages || isLoading}
                 onClick={() => {
                   const p = Math.min(data.totalPages, data.page + 1)
                   setPage(p)

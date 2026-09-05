@@ -44,7 +44,7 @@ export function FolderSection() {
     const createFolder = useNotes((s) => s.createFolder);
     const patchFolder = useNotes((s) => s.patchFolder);
     const expandFolder = useUi((s) => s.expandFolder);
-    const [creating, setCreating] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
     const openPanel = useUi((s) => s.openPanel);
     const creatingRef = useRef(false);
     const createdTimerRef = useRef<number>(0);
@@ -52,13 +52,13 @@ export function FolderSection() {
     const movingIdsRef = useRef(new Set<string>());
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [movingId, setMovingId] = useState<string | null>(null);
-    const [rootDropping, setRootDropping] = useState(false);
+    const [isRootDropping, setIsRootDropping] = useState(false);
     useEffect(() => () => window.clearTimeout(createdTimerRef.current), []);
     const create = (parentId: string | null) => {
         if (creatingRef.current)
             return;
         creatingRef.current = true;
-        setCreating(true);
+        setIsCreating(true);
         const startingUi = useUi.getState();
         const startingNavigation = {
             view: startingUi.view,
@@ -87,7 +87,7 @@ export function FolderSection() {
         finally {
             queueMicrotask(() => {
                 creatingRef.current = false;
-                setCreating(false);
+                setIsCreating(false);
             });
         }
     };
@@ -141,21 +141,21 @@ export function FolderSection() {
         }
     };
     return (<>
-      <section id="sidebar-folders" className={cn('mt-4 rounded-[var(--r-md)]', rootDropping && 'ring-1 ring-[var(--accent)]')} onDragOver={(event) => {
+      <section id="sidebar-folders" className={cn('mt-4 rounded-[var(--r-md)]', isRootDropping && 'ring-1 ring-[var(--accent)]')} onDragOver={(event) => {
             if (!event.dataTransfer.types.includes('application/x-inkstone-folder'))
                 return;
             event.preventDefault();
             event.dataTransfer.dropEffect = 'move';
-            setRootDropping(true);
+            setIsRootDropping(true);
         }} onDragLeave={(event) => {
             if (leftDropTarget(event))
-                setRootDropping(false);
+                setIsRootDropping(false);
         }} onDrop={(event) => {
             const folderId = event.dataTransfer.getData('application/x-inkstone-folder');
             if (!folderId)
                 return;
             event.preventDefault();
-            setRootDropping(false);
+            setIsRootDropping(false);
             void move(folderId, null, null);
         }}>
       <div className="group/head flex items-center justify-between pr-1">
@@ -179,7 +179,7 @@ export function FolderSection() {
             </IconButton>
           </Tooltip>
           <Tooltip label={t("common.new_folder")} side="right">
-            <IconButton label={t("common.new_folder")} size="sm" disabled={creating} onClick={() => void create(null)} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
+            <IconButton label={t("common.new_folder")} size="sm" disabled={isCreating} onClick={() => void create(null)} className="opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100">
               <FolderPlus size={13}/>
             </IconButton>
           </Tooltip>
@@ -189,7 +189,7 @@ export function FolderSection() {
       <CalendarTree />
       <TodoTree />
 
-      {tree.length === 0 ? (<button type="button" disabled={creating} onClick={() => void create(null)} className="mt-0.5 flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[12px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-45 md:h-[30px]">
+      {tree.length === 0 ? (<button type="button" disabled={isCreating} onClick={() => void create(null)} className="mt-0.5 flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[12px] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-45 md:h-[30px]">
           <FolderPlus size={13}/>{t("sidebar.create_first_folder")}</button>) : (<div role="tree" aria-label={t("navigation.folder")} className="mt-0.5 space-y-px">
           {tree.map((node, index) => (<FolderRow key={node.id} node={node} siblings={tree} index={index} parentNode={null} parentSiblings={[]} onCreateChild={create} onMove={move} onChooseParent={setMovingId} createdFolderId={createdFolderId} renamingId={renamingId} onStartRename={setRenamingId} onFinishRename={() => setRenamingId(null)}/>))}
         </div>)}
@@ -234,7 +234,7 @@ export function FolderRow({ node, siblings, index, parentNode, parentSiblings, o
     const buttonRef = useRef<HTMLDivElement>(null);
     const removingRef = useRef(false);
     const renamingRef = useRef(false);
-    const [menuOpen, setMenuOpen] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const active = view === 'folder' && activeFolderId === node.id;
     const hasChildren = node.children.length > 0;
     const justCreated = createdFolderId === node.id;
@@ -395,7 +395,7 @@ export function FolderRow({ node, siblings, index, parentNode, parentSiblings, o
     ];
     return (<div role="treeitem" aria-level={node.depth + 1} aria-expanded={hasChildren ? expanded : undefined} className={cn(justCreated && 'anim-tree-item-enter')} data-new-folder={justCreated || undefined}>
       <div ref={buttonRef} onContextMenu={(event) => {
-            setMenuOpen(false);
+            setIsMenuOpen(false);
             menu.onContextMenu(event);
         }} onDragOver={(e) => {
             if (!e.dataTransfer.types.includes('application/x-inkstone-note') &&
@@ -496,7 +496,7 @@ export function FolderRow({ node, siblings, index, parentNode, parentSiblings, o
               <IconButton label={t("common.more_actions")} size="sm" onClick={(e) => {
                     e.stopPropagation();
                     menu.close();
-                    setMenuOpen(true);
+                    setIsMenuOpen(true);
                 }} className="absolute right-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100">
                 <MoreHorizontal size={13}/>
               </IconButton>
@@ -510,7 +510,7 @@ export function FolderRow({ node, siblings, index, parentNode, parentSiblings, o
           </div>
         </div>)}
 
-      <Menu anchor={buttonRef} open={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems}/>
+      <Menu anchor={buttonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={menuItems}/>
       {menu.point && (<Menu anchor={menu.point} open onClose={menu.close} items={menuItems}/>)}
     </div>);
 }

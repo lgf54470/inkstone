@@ -38,14 +38,14 @@ export function ShareDashboardView({
   const [range, setRange] = useState<ShareTimelineRange>('7d')
   const [metricMode, setMetricMode] = useState<'views' | 'visitors'>('views')
   const [analytics, setAnalytics] = useState<ShareGlobalAnalytics | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
 
   const excludeBots = useShareStore((s) => s.excludeBots)
   const excludeSelfReferrers = useShareStore((s) => s.excludeSelfReferrers)
   const excludeOwner = useShareStore((s) => s.excludeOwner)
 
   const loadData = async (selectedRange = range) => {
-    setLoading(true)
+    setIsLoading(true)
     try {
       const data = await api.share.globalAnalytics(selectedRange, {
         excludeBots,
@@ -55,7 +55,7 @@ export function ShareDashboardView({
       setAnalytics(data)
     } catch {
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
@@ -102,10 +102,10 @@ export function ShareDashboardView({
           <IconButton
             size="sm"
             label={t('common.refresh')}
-            disabled={loading}
+            disabled={isLoading}
             onClick={() => void loadData(range)}
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
           </IconButton>
         </div>
       </div>

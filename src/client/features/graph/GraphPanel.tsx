@@ -167,8 +167,8 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const titleId = useId()
   const [prefs, setPrefs] = useState(loadPreferences)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [limitOpen, setLimitOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isLimitOpen, setIsLimitOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
   const [data, setData] = useState<GraphResponse | null>(null)
@@ -218,7 +218,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     if (selectedTags.length < LIMITS.tagSelectionMax)
-      setLimitOpen(false)
+      setIsLimitOpen(false)
   }, [selectedTags.length])
   const closePanel = useUi((state) => state.closePanel)
   const request: GraphQuery = useMemo(() => {
@@ -584,7 +584,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
         <Tooltip label={t('common.zoom_in')}><IconButton label={t('common.zoom_in')} size="sm" disabled={!data?.nodes.length} onClick={() => {
           const state = stateRef.current; state.scale = Math.min(4, state.scale + 0.2); state.schedule?.()
         }}><Plus size={14}/></IconButton></Tooltip>
-        <Tooltip label={t('graph.settings')}><IconButton label={t('graph.settings')} size="sm" aria-pressed={settingsOpen} onClick={() => setSettingsOpen((value) => !value)}><Settings2 size={14}/></IconButton></Tooltip>
+        <Tooltip label={t('graph.settings')}><IconButton label={t('graph.settings')} size="sm" aria-pressed={isSettingsOpen} onClick={() => setIsSettingsOpen((value) => !value)}><Settings2 size={14}/></IconButton></Tooltip>
         <Tooltip label={t('common.close')} combo="escape" side="left"><IconButton label={t('common.close')} size="sm" onClick={onClose} className="ml-1"><X size={16}/></IconButton></Tooltip>
       </div>
     </header>
@@ -690,8 +690,8 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
         </>}
       </main>
 
-      {settingsOpen && <aside aria-label={t('graph.settings')} className="absolute inset-y-0 right-0 z-[var(--z-sticky)] w-[min(88vw,300px)] overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 shadow-[-8px_0_24px_rgba(0,0,0,.06)] md:static md:shadow-none">
-        <div className="mb-4 flex items-center justify-between"><h3 className="text-[13px] font-semibold">{t('graph.settings')}</h3><Tooltip label={t('common.close')}><IconButton size="sm" label={t('common.close')} onClick={() => setSettingsOpen(false)}><X size={14}/></IconButton></Tooltip></div>
+      {isSettingsOpen && <aside aria-label={t('graph.settings')} className="absolute inset-y-0 right-0 z-[var(--z-sticky)] w-[min(88vw,300px)] overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 shadow-[-8px_0_24px_rgba(0,0,0,.06)] md:static md:shadow-none">
+        <div className="mb-4 flex items-center justify-between"><h3 className="text-[13px] font-semibold">{t('graph.settings')}</h3><Tooltip label={t('common.close')}><IconButton size="sm" label={t('common.close')} onClick={() => setIsSettingsOpen(false)}><X size={14}/></IconButton></Tooltip></div>
         <GraphSection icon={<Filter size={13}/>} title={t('graph.filters')}>
           <GraphSelect label={t('graph.folder')} value={prefs.folderId} onChange={(value) => changePref('folderId', value)} options={[['', t('graph.all_folders')], ...folders.map((folder) => [folder.id, folder.name] as [string, string])]}/>
           <GraphSelect label={t('graph.tag')} value={prefs.tag} onChange={(value) => changePref('tag', value)} options={[['', t('graph.all_tags')], ...tags.map((item) => [item.name, item.name] as [string, string])]}/>
@@ -705,11 +705,11 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
                 <p className="text-[11px] font-medium leading-relaxed text-[var(--danger)]">{t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}</p>
                 <button type="button" onClick={resetTagFilters} className="shrink-0 text-[11px] font-medium text-[var(--accent)] transition-colors hover:underline">{t('common.clear_selection')}</button>
               </div>
-              <button type="button" onClick={() => setLimitOpen((v) => !v)} className="mt-1 flex items-center gap-1 text-[10.5px] font-medium text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
-                <ChevronRight size={10} className={'transition-transform duration-[var(--dur-fast)] ' + (limitOpen ? 'rotate-90' : '')}/>
-                {limitOpen ? t('common.collapse') : t('graph.tags_limit_more', { value0: LIMITS.tagSelectionMax })}
+              <button type="button" onClick={() => setIsLimitOpen((v) => !v)} className="mt-1 flex items-center gap-1 text-[10.5px] font-medium text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
+                <ChevronRight size={10} className={'transition-transform duration-[var(--dur-fast)] ' + (isLimitOpen ? 'rotate-90' : '')}/>
+                {isLimitOpen ? t('common.collapse') : t('graph.tags_limit_more', { value0: LIMITS.tagSelectionMax })}
               </button>
-              {limitOpen && <p className="mt-1 text-[10.5px] leading-relaxed text-[var(--text-tertiary)]">{t('graph.tags_limit_detail', { value0: LIMITS.tagSelectionMax })}</p>}
+              {isLimitOpen && <p className="mt-1 text-[10.5px] leading-relaxed text-[var(--text-tertiary)]">{t('graph.tags_limit_detail', { value0: LIMITS.tagSelectionMax })}</p>}
             </div>}
           {GRAPH_SHOW_TOGGLES.map((control) => (
             <GraphToggle key={control.prefKey} label={t(control.labelKey)} checked={prefs[control.prefKey]} onChange={(value) => changePref(control.prefKey, value)}/>

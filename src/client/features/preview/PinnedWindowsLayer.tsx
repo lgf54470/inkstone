@@ -34,11 +34,11 @@ export const PinnedWindowsLayer = memo(function PinnedWindowsLayer() {
   const closeAll = usePinnedWindows((s) => s.closeAll)
   const closeFront = usePinnedWindows((s) => s.closeFront)
   const updateGeometry = usePinnedWindows((s) => s.updateGeometry)
-  const [dark, setDark] = useState(() => (document.documentElement.dataset.theme ?? 'dark') === 'dark')
+  const [isDark, setIsDark] = useState(() => (document.documentElement.dataset.theme ?? 'dark') === 'dark')
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
-      setDark((document.documentElement.dataset.theme ?? 'dark') === 'dark')
+      setIsDark((document.documentElement.dataset.theme ?? 'dark') === 'dark')
     })
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
     return () => observer.disconnect()
@@ -94,7 +94,7 @@ export const PinnedWindowsLayer = memo(function PinnedWindowsLayer() {
           card={card}
           path={card.noteId ? [card.noteId] : []}
           depth={1}
-          dark={dark}
+          dark={isDark}
           pinned
           pinnedInit={item}
           stackCount={items.length}

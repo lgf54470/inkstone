@@ -60,9 +60,9 @@ export function AttachmentDriveToolbar({
   const extButtonRef = useRef<HTMLButtonElement>(null)
   const sizeButtonRef = useRef<HTMLButtonElement>(null)
   const sortButtonRef = useRef<HTMLButtonElement>(null)
-  const [extOpen, setExtOpen] = useState(false)
-  const [sizeOpen, setSizeOpen] = useState(false)
-  const [sortOpen, setSortOpen] = useState(false)
+  const [isExtOpen, setIsExtOpen] = useState(false)
+  const [isSizeOpen, setIsSizeOpen] = useState(false)
+  const [isSortOpen, setIsSortOpen] = useState(false)
 
   const sortLabels: Record<string, string> = {
     date_desc: t('attachments.sort_date_desc'),
@@ -87,7 +87,7 @@ export function AttachmentDriveToolbar({
       icon: <Calendar size={13} />,
       onSelect: () => {
         onSortChange('date_desc')
-        setSortOpen(false)
+        setIsSortOpen(false)
       },
     },
     {
@@ -96,7 +96,7 @@ export function AttachmentDriveToolbar({
       icon: <Calendar size={13} />,
       onSelect: () => {
         onSortChange('date_asc')
-        setSortOpen(false)
+        setIsSortOpen(false)
       },
     },
     {
@@ -106,7 +106,7 @@ export function AttachmentDriveToolbar({
       separatorBefore: true,
       onSelect: () => {
         onSortChange('name_asc')
-        setSortOpen(false)
+        setIsSortOpen(false)
       },
     },
     {
@@ -115,7 +115,7 @@ export function AttachmentDriveToolbar({
       icon: <ArrowUpAZ size={13} />,
       onSelect: () => {
         onSortChange('name_desc')
-        setSortOpen(false)
+        setIsSortOpen(false)
       },
     },
     {
@@ -125,7 +125,7 @@ export function AttachmentDriveToolbar({
       separatorBefore: true,
       onSelect: () => {
         onSortChange('size_desc')
-        setSortOpen(false)
+        setIsSortOpen(false)
       },
     },
     {
@@ -134,7 +134,7 @@ export function AttachmentDriveToolbar({
       icon: <ArrowUpWideNarrow size={13} />,
       onSelect: () => {
         onSortChange('size_asc')
-        setSortOpen(false)
+        setIsSortOpen(false)
       },
     },
   ]
@@ -145,7 +145,7 @@ export function AttachmentDriveToolbar({
       label: t('attachments.size_all'),
       onSelect: () => {
         onSizeRangeChange('all')
-        setSizeOpen(false)
+        setIsSizeOpen(false)
       },
     },
     {
@@ -153,7 +153,7 @@ export function AttachmentDriveToolbar({
       label: t('attachments.size_small'),
       onSelect: () => {
         onSizeRangeChange('small')
-        setSizeOpen(false)
+        setIsSizeOpen(false)
       },
     },
     {
@@ -161,7 +161,7 @@ export function AttachmentDriveToolbar({
       label: t('attachments.size_medium'),
       onSelect: () => {
         onSizeRangeChange('medium')
-        setSizeOpen(false)
+        setIsSizeOpen(false)
       },
     },
     {
@@ -169,7 +169,7 @@ export function AttachmentDriveToolbar({
       label: t('attachments.size_large'),
       onSelect: () => {
         onSizeRangeChange('large')
-        setSizeOpen(false)
+        setIsSizeOpen(false)
       },
     },
   ]
@@ -181,7 +181,7 @@ export function AttachmentDriveToolbar({
         label: t('attachments.type_all'),
         onSelect: () => {
           onExtensionChange('all')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
       {
@@ -189,7 +189,7 @@ export function AttachmentDriveToolbar({
         label: 'PNG (.png)',
         onSelect: () => {
           onExtensionChange('png')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
       {
@@ -197,7 +197,7 @@ export function AttachmentDriveToolbar({
         label: 'JPG / JPEG (.jpg, .jpeg)',
         onSelect: () => {
           onExtensionChange('jpg,jpeg')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
       {
@@ -205,7 +205,7 @@ export function AttachmentDriveToolbar({
         label: 'WEBP (.webp)',
         onSelect: () => {
           onExtensionChange('webp')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
       {
@@ -213,7 +213,7 @@ export function AttachmentDriveToolbar({
         label: 'GIF (.gif)',
         onSelect: () => {
           onExtensionChange('gif')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
       {
@@ -221,7 +221,7 @@ export function AttachmentDriveToolbar({
         label: 'SVG (.svg)',
         onSelect: () => {
           onExtensionChange('svg')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
       {
@@ -230,7 +230,7 @@ export function AttachmentDriveToolbar({
         separatorBefore: true,
         onSelect: () => {
           onExtensionChange('pdf')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
       {
@@ -238,7 +238,7 @@ export function AttachmentDriveToolbar({
         label: 'Word (.doc, .docx)',
         onSelect: () => {
           onExtensionChange('doc,docx')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
       {
@@ -246,7 +246,7 @@ export function AttachmentDriveToolbar({
         label: 'Excel (.xls, .xlsx)',
         onSelect: () => {
           onExtensionChange('xls,xlsx')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
       {
@@ -254,7 +254,7 @@ export function AttachmentDriveToolbar({
         label: 'TXT / MD (.txt, .md)',
         onSelect: () => {
           onExtensionChange('txt,md')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
       {
@@ -263,7 +263,7 @@ export function AttachmentDriveToolbar({
         separatorBefore: true,
         onSelect: () => {
           onExtensionChange('zip,7z,tar,rar,gz')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
       {
@@ -271,7 +271,7 @@ export function AttachmentDriveToolbar({
         label: 'MP4 / MP3 / Media (.mp4, .mp3, .wav)',
         onSelect: () => {
           onExtensionChange('mp4,mp3,wav,mov,webm')
-          setExtOpen(false)
+          setIsExtOpen(false)
         },
       },
     ]
@@ -288,7 +288,7 @@ export function AttachmentDriveToolbar({
             label: `.${key.toUpperCase()}`,
             onSelect: () => {
               onExtensionChange(key)
-              setExtOpen(false)
+              setIsExtOpen(false)
             },
           })
         })
@@ -334,7 +334,7 @@ export function AttachmentDriveToolbar({
           <button
             ref={extButtonRef}
             type="button"
-            onClick={() => setExtOpen((prev) => !prev)}
+            onClick={() => setIsExtOpen((prev) => !prev)}
             className={cn(
               'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border px-2.5 text-[12px] font-medium transition-colors cursor-pointer select-none',
               extension && extension !== 'all'
@@ -347,10 +347,10 @@ export function AttachmentDriveToolbar({
             <ChevronDown size={11} className="opacity-60 shrink-0" />
           </button>
           <Menu
-            open={extOpen}
+            open={isExtOpen}
             anchor={extButtonRef}
             items={extensionMenuItems}
-            onClose={() => setExtOpen(false)}
+            onClose={() => setIsExtOpen(false)}
           />
         </div>
 
@@ -358,7 +358,7 @@ export function AttachmentDriveToolbar({
           <button
             ref={sizeButtonRef}
             type="button"
-            onClick={() => setSizeOpen((prev) => !prev)}
+            onClick={() => setIsSizeOpen((prev) => !prev)}
             className={cn(
               'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border px-2.5 text-[12px] font-medium transition-colors cursor-pointer select-none',
               sizeRange !== 'all'
@@ -371,10 +371,10 @@ export function AttachmentDriveToolbar({
             <ChevronDown size={11} className="opacity-60 shrink-0" />
           </button>
           <Menu
-            open={sizeOpen}
+            open={isSizeOpen}
             anchor={sizeButtonRef}
             items={sizeMenuItems}
-            onClose={() => setSizeOpen(false)}
+            onClose={() => setIsSizeOpen(false)}
           />
         </div>
 
@@ -382,7 +382,7 @@ export function AttachmentDriveToolbar({
           <button
             ref={sortButtonRef}
             type="button"
-            onClick={() => setSortOpen((prev) => !prev)}
+            onClick={() => setIsSortOpen((prev) => !prev)}
             className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-2.5 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] cursor-pointer select-none"
           >
             <SlidersHorizontal size={12} className="shrink-0" />
@@ -390,10 +390,10 @@ export function AttachmentDriveToolbar({
             <ChevronDown size={11} className="opacity-60 shrink-0" />
           </button>
           <Menu
-            open={sortOpen}
+            open={isSortOpen}
             anchor={sortButtonRef}
             items={sortMenuItems}
-            onClose={() => setSortOpen(false)}
+            onClose={() => setIsSortOpen(false)}
           />
         </div>
       </div>

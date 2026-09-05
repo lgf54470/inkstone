@@ -67,8 +67,8 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
     preview.math,
     preview.linkPreviewLength,
   )
-  const { status, html, truncated } = content
-  const [stackMenuOpen, setStackMenuOpen] = useState(false)
+  const { status, html, isTruncated } = content
+  const [isStackMenuOpen, setIsStackMenuOpen] = useState(false)
   const stackButtonRef = useRef<HTMLButtonElement>(null)
 
   const [pinnedRect, setPinnedRect] = useState(() => ({
@@ -338,7 +338,7 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
             type="button"
             aria-label={t("preview.pinned_windows")}
             title={t("preview.pinned_windows")}
-            onClick={() => setStackMenuOpen((value) => !value)}
+            onClick={() => setIsStackMenuOpen((value) => !value)}
             className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           >
             <Layers size={13} />
@@ -415,7 +415,7 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
         )}>
           <div className="ink-prose" dangerouslySetInnerHTML={htmlObj} />
         </div>
-        {truncated && (
+        {isTruncated && (
           <div className="border-t border-[var(--border-subtle)] px-3 py-1.5 text-center text-[11px] tracking-widest text-[var(--text-quaternary)]">
             ···
           </div>
@@ -449,8 +449,8 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
       {pinned && (
         <Menu
           anchor={stackButtonRef}
-          open={stackMenuOpen}
-          onClose={() => setStackMenuOpen(false)}
+          open={isStackMenuOpen}
+          onClose={() => setIsStackMenuOpen(false)}
           items={stackItems}
           align="end"
           width={220}
@@ -467,22 +467,22 @@ function CardBacklinks({ links, onOpen }: {
   links: Array<{ id: string; title: string; context: string }>
   onOpen: (id: string) => void
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   return (
     <div className="shrink-0 border-t border-[var(--border-subtle)] bg-[var(--bg-base)]">
       <button
         type="button"
-        aria-expanded={expanded}
+        aria-expanded={isExpanded}
         aria-label={t("common.backlinks")}
-        onClick={() => setExpanded((value) => !value)}
+        onClick={() => setIsExpanded((value) => !value)}
         className="flex h-7 w-full items-center gap-1.5 px-3 text-[11px] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
       >
         <Link2 size={11} className="shrink-0" />
         <span className="truncate">{t("common.backlinks")}</span>
         <span className="tabular-nums text-[var(--text-quaternary)]">{links.length}</span>
-        <ChevronDown size={12} className={cn('ml-auto shrink-0 transition-transform', expanded && 'rotate-180')} />
+        <ChevronDown size={12} className={cn('ml-auto shrink-0 transition-transform', isExpanded && 'rotate-180')} />
       </button>
-      {expanded && (
+      {isExpanded && (
         <ul className="max-h-[132px] overflow-y-auto overscroll-contain px-1.5 pb-1.5">
           {links.map((link) => (
             <li key={link.id}>

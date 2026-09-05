@@ -28,19 +28,19 @@ type Panel = 'none' | 'enable' | 'setup' | 'recovery' | 'regenerate' | 'disable'
 export function TotpSettings() {
   const toast = useUi((state) => state.toast)
   const [status, setStatus] = useState<TotpStatus | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const [panel, setPanel] = useState<Panel>('none')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [setup, setSetup] = useState<TotpSetupInfo | null>(null)
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
-  const [busy, setBusy] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const mountedRef = useRef(true)
   const busyRef = useRef(false)
 
   const load = async () => {
-    setLoading(true)
+    setIsLoading(true)
     setError(null)
     try {
       const next = await api.auth.totp.status()
@@ -48,7 +48,7 @@ export function TotpSettings() {
     } catch (caught) {
       if (mountedRef.current) setError(errorMessage(caught))
     } finally {
-      if (mountedRef.current) setLoading(false)
+      if (mountedRef.current) setIsLoading(false)
     }
   }
 
@@ -72,7 +72,7 @@ export function TotpSettings() {
   const run = async (task: () => Promise<void>) => {
     if (busyRef.current) return
     busyRef.current = true
-    setBusy(true)
+    setIsBusy(true)
     setError(null)
     try {
       await task()
@@ -80,7 +80,7 @@ export function TotpSettings() {
       if (mountedRef.current) setError(errorMessage(caught))
     } finally {
       busyRef.current = false
-      if (mountedRef.current) setBusy(false)
+      if (mountedRef.current) setIsBusy(false)
     }
   }
 
@@ -194,7 +194,7 @@ export function TotpSettings() {
     downloadTextFile('inkstone-recovery-codes.txt', content, 'text/plain;charset=utf-8')
   }
 
-  if (loading && !status) {
+  if (isLoading && !status) {
     return (
       <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-4 text-[12px] text-[var(--text-tertiary)]">
         {t('settings.totp_loading')}
@@ -263,9 +263,9 @@ export function TotpSettings() {
           <p className="text-[12px] leading-relaxed text-[var(--text-tertiary)]">
             {t('settings.totp_enable_password_description')}
           </p>
-          <PasswordInput value={password} busy={busy} onChange={setPassword} autoFocus />
+          <PasswordInput value={password} isBusy={isBusy} onChange={setPassword} autoFocus />
           <InlineError error={error} />
-          <ActionRow busy={busy} onCancel={() => resetForm()} submitLabel={t('common.continue')} />
+          <ActionRow isBusy={isBusy} onCancel={() => resetForm()} submitLabel={t('common.continue')} />
         </form>
       )}
 
@@ -323,7 +323,7 @@ export function TotpSettings() {
                   value={code}
                   maxLength={6}
                   onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                  disabled={busy}
+                  disabled={isBusy}
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   placeholder="000000"
@@ -333,7 +333,7 @@ export function TotpSettings() {
             </div>
           </div>
           <InlineError error={error} />
-          <ActionRow busy={busy} onCancel={cancelSetup} submitLabel={t('settings.totp_confirm_enable')} />
+          <ActionRow isBusy={isBusy} onCancel={cancelSetup} submitLabel={t('settings.totp_confirm_enable')} />
         </form>
       )}
 
@@ -400,18 +400,18 @@ export function TotpSettings() {
               size="sm"
               variant="danger"
               icon={<ShieldOff size={12} />}
-              disabled={busy}
+              disabled={isBusy}
               onClick={() => resetForm('disable')}
             >
               {t('settings.totp_disable')}
             </Button>
           </div>
           <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-            <PasswordInput value={password} busy={busy} onChange={setPassword} autoFocus />
-            <CodeInput value={code} busy={busy} onChange={setCode} />
+            <PasswordInput value={password} isBusy={isBusy} onChange={setPassword} autoFocus />
+            <CodeInput value={code} isBusy={isBusy} onChange={setCode} />
           </div>
           <InlineError error={error} />
-          <ActionRow busy={busy} onCancel={() => resetForm()} submitLabel={t('settings.totp_generate_new_codes')} />
+          <ActionRow isBusy={isBusy} onCancel={() => resetForm()} submitLabel={t('settings.totp_generate_new_codes')} />
         </form>
       )}
 
@@ -432,7 +432,7 @@ export function TotpSettings() {
             </div>
           </div>
           <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-            <PasswordInput value={password} busy={busy} onChange={setPassword} autoFocus />
+            <PasswordInput value={password} isBusy={isBusy} onChange={setPassword} autoFocus />
             <label className="block">
               <span className="mb-1 block text-[11.5px] text-[var(--text-tertiary)]">
                 {t('settings.totp_code_or_recovery')}
@@ -441,7 +441,7 @@ export function TotpSettings() {
                 value={code}
                 maxLength={24}
                 onChange={(event) => setCode(event.target.value.toUpperCase())}
-                disabled={busy}
+                disabled={isBusy}
                 autoComplete="one-time-code"
                 autoCapitalize="characters"
                 spellCheck={false}
@@ -451,7 +451,7 @@ export function TotpSettings() {
           </div>
           <InlineError error={error} />
           <ActionRow
-            busy={busy}
+            isBusy={isBusy}
             onCancel={() => resetForm('regenerate')}
             submitLabel={t('settings.totp_confirm_disable')}
             danger
@@ -464,7 +464,7 @@ export function TotpSettings() {
 
 function PasswordInput(props: {
   value: string
-  busy: boolean
+  isBusy: boolean
   onChange: (value: string) => void
   autoFocus?: boolean
 }) {
@@ -478,7 +478,7 @@ function PasswordInput(props: {
         value={props.value}
         maxLength={LIMITS.passwordMaxLength}
         onChange={(event) => props.onChange(event.target.value)}
-        disabled={props.busy}
+        disabled={props.isBusy}
         autoComplete="current-password"
         autoFocus={props.autoFocus}
       />
@@ -486,7 +486,7 @@ function PasswordInput(props: {
   )
 }
 
-function CodeInput(props: { value: string; busy: boolean; onChange: (value: string) => void }) {
+function CodeInput(props: { value: string; isBusy: boolean; onChange: (value: string) => void }) {
   return (
     <label className="block">
       <span className="mb-1 block text-[11.5px] text-[var(--text-tertiary)]">
@@ -496,7 +496,7 @@ function CodeInput(props: { value: string; busy: boolean; onChange: (value: stri
         value={props.value}
         maxLength={6}
         onChange={(event) => props.onChange(event.target.value.replace(/\D/g, '').slice(0, 6))}
-        disabled={props.busy}
+        disabled={props.isBusy}
         inputMode="numeric"
         autoComplete="one-time-code"
         placeholder="000000"
@@ -506,21 +506,21 @@ function CodeInput(props: { value: string; busy: boolean; onChange: (value: stri
 }
 
 function ActionRow(props: {
-  busy: boolean
+  isBusy: boolean
   onCancel: () => void
   submitLabel: string
   danger?: boolean
 }) {
   return (
     <div className="flex justify-end gap-2">
-      <Button type="button" size="sm" variant="ghost" disabled={props.busy} onClick={props.onCancel}>
+      <Button type="button" size="sm" variant="ghost" disabled={props.isBusy} onClick={props.onCancel}>
         {t('common.cancel')}
       </Button>
       <Button
         type="submit"
         size="sm"
         variant={props.danger ? 'danger' : 'primary'}
-        loading={props.busy}
+        loading={props.isBusy}
       >
         {props.submitLabel}
       </Button>

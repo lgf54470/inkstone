@@ -51,8 +51,8 @@ export function ShareHubSidebar() {
   const folderTree = useMemo(() => buildShareFolderTree(folders), [folders])
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => new Set())
-  const [foldersSectionOpen, setFoldersSectionOpen] = useState(true)
-  const [tagsSectionOpen, setTagsSectionOpen] = useState(true)
+  const [isFoldersSectionOpen, setIsFoldersSectionOpen] = useState(true)
+  const [isTagsSectionOpen, setIsTagsSectionOpen] = useState(true)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renamingTagId, setRenamingTagId] = useState<string | null>(null)
 
@@ -253,10 +253,10 @@ export function ShareHubSidebar() {
         <div className="group/head mb-1 flex items-center justify-between px-2">
           <button
             type="button"
-            onClick={() => setFoldersSectionOpen(!foldersSectionOpen)}
+            onClick={() => setIsFoldersSectionOpen(!isFoldersSectionOpen)}
             className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
           >
-            {foldersSectionOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            {isFoldersSectionOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             <span>{t('navigation.folder')}</span>
           </button>
           <Tooltip label={t('folders.create_new')} side="left">
@@ -271,7 +271,7 @@ export function ShareHubSidebar() {
           </Tooltip>
         </div>
 
-        {foldersSectionOpen && (
+        {isFoldersSectionOpen && (
           <div className="space-y-0.5 pt-0.5">
             {folderTree.length === 0 ? (
               <p className="px-2.5 py-1 text-[11px] text-[var(--text-quaternary)]">
@@ -289,10 +289,10 @@ export function ShareHubSidebar() {
         <div className="group/head mb-1 flex items-center justify-between px-2">
           <button
             type="button"
-            onClick={() => setTagsSectionOpen(!tagsSectionOpen)}
+            onClick={() => setIsTagsSectionOpen(!isTagsSectionOpen)}
             className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
           >
-            {tagsSectionOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            {isTagsSectionOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             <span>{t('navigation.tag')}</span>
           </button>
           <Tooltip label={t('tags.new')} side="left">
@@ -307,7 +307,7 @@ export function ShareHubSidebar() {
           </Tooltip>
         </div>
 
-        {tagsSectionOpen && (
+        {isTagsSectionOpen && (
           <div className="space-y-0.5 pt-0.5">
             {tags.length === 0 ? (
               <p className="px-2.5 py-1 text-[11px] text-[var(--text-quaternary)]">

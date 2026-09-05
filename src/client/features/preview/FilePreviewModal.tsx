@@ -234,35 +234,35 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
   const isText = isMarkdown || isCsv || isCode || isTextData
 
   const [textContent, setTextContent] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
 
   const [textMode, setTextMode] = useState<'rendered' | 'source' | 'table'>('rendered')
 
   const [imageScale, setImageScale] = useState(1)
   const [imageRotation, setImageRotation] = useState(0)
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null)
-  const [imageLoading, setImageLoading] = useState(true)
-  const [imageError, setImageError] = useState(false)
+  const [isImageLoading, setIsImageLoading] = useState(true)
+  const [isImageError, setIsImageError] = useState(false)
 
   useEffect(() => {
     if (!open) {
       setImageScale(1)
       setImageRotation(0)
       setNaturalSize(null)
-      setImageLoading(true)
-      setImageError(false)
+      setIsImageLoading(true)
+      setIsImageError(false)
       setTextContent(null)
       setError(null)
-      setLoading(false)
+      setIsLoading(false)
       setTextMode('rendered')
       return
     }
 
     if (isImage) {
-      setImageLoading(true)
-      setImageError(false)
+      setIsImageLoading(true)
+      setIsImageError(false)
       setImageScale(1)
       setImageRotation(0)
     }
@@ -270,7 +270,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
     if (!isText) return
 
     const controller = new AbortController()
-    setLoading(true)
+    setIsLoading(true)
     setError(null)
 
     fetch(url, { signal: controller.signal })
@@ -280,12 +280,12 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
       })
       .then((text) => {
         setTextContent(text)
-        setLoading(false)
+        setIsLoading(false)
       })
       .catch((err) => {
         if (controller.signal.aborted) return
         setError(errorMessage(err))
-        setLoading(false)
+        setIsLoading(false)
       })
 
     return () => controller.abort()
@@ -297,8 +297,8 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
     if (!textContent) return
     try {
       await navigator.clipboard.writeText(textContent)
-      setCopied(true)
-      setTimeout(() => setCopied(false), COPY_FEEDBACK_MS)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), COPY_FEEDBACK_MS)
     } catch (error) {
       console.warn('[preview] failed to copy text', error)
     }
@@ -371,8 +371,8 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
                 onClick={() => void handleCopyText()}
                 className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] cursor-pointer"
               >
-                {copied ? <Check size={13} className="text-[var(--accent)]" /> : <Copy size={13} />}
-                <span>{copied ? t('common.copied') : t('common.copy')}</span>
+                {isCopied ? <Check size={13} className="text-[var(--accent)]" /> : <Copy size={13} />}
+                <span>{isCopied ? t('common.copied') : t('common.copy')}</span>
               </button>
             )}
           </div>
@@ -416,13 +416,13 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
             </div>
 
             <div className="relative flex items-center justify-center min-h-[300px] max-h-[60vh] overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)]/40 p-4">
-              {imageLoading && !imageError && (
+              {isImageLoading && !isImageError && (
                 <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-surface)]/60 backdrop-blur-xs z-[var(--z-sticky)]">
                   <Loader2 size={24} className="animate-spin text-[var(--accent)]" />
                 </div>
               )}
 
-              {imageError ? (
+              {isImageError ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-2 text-center text-[var(--danger)] text-[13px]">
                   <p>{t('preview.could_not_load_image')}</p>
                 </div>
@@ -431,15 +431,15 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
                   src={previewUrl}
                   alt={filename}
                   onLoad={(e) => {
-                    setImageLoading(false)
+                    setIsImageLoading(false)
                     setNaturalSize({
                       width: e.currentTarget.naturalWidth,
                       height: e.currentTarget.naturalHeight,
                     })
                   }}
                   onError={() => {
-                    setImageLoading(false)
-                    setImageError(true)
+                    setIsImageLoading(false)
+                    setIsImageError(true)
                   }}
                   style={{
                     transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
@@ -481,7 +481,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
 
         {isText && (
           <div className="space-y-3">
-            {(isMarkdown || isCsv) && !loading && !error && textContent !== null && (
+            {(isMarkdown || isCsv) && !isLoading && !error && textContent !== null && (
               <div className="flex items-center justify-between pb-1 border-b border-[var(--border-subtle)]">
                 <div className="flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 text-[11px] font-medium">
                   {isMarkdown && (
@@ -549,7 +549,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
               </div>
             )}
 
-            {loading && (
+            {isLoading && (
               <div className="py-20 flex items-center justify-center text-[var(--text-tertiary)] gap-2">
                 <Loader2 size={20} className="animate-spin text-[var(--accent)]" />
                 <span className="text-[13px]">{t('preview.loading')}</span>
@@ -562,7 +562,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
               </div>
             )}
 
-            {!loading && !error && textContent !== null && (
+            {!isLoading && !error && textContent !== null && (
               <>
                 {isMarkdown && textMode === 'rendered' ? (
                   <div

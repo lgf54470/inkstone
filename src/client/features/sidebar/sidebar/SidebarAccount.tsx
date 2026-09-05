@@ -17,7 +17,7 @@ export function SidebarAccount({ rail = false }: {
     const openPanel = useUi((s) => s.openPanel);
     const updateAvailable = useUpdate((s) => s.available);
     const buttonRef = useRef<HTMLButtonElement>(null);
-    const [menuOpen, setMenuOpen] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     if (!user)
         return null;
     const isDark = theme === 'dark' ||
@@ -66,11 +66,11 @@ export function SidebarAccount({ rail = false }: {
     ];
     return (<>
       {rail ? (<Tooltip label={`${t("sidebar.account_and_settings")} · ${displayName}`} side="right">
-          <button ref={buttonRef} type="button" onClick={() => setMenuOpen(true)} aria-label={t("sidebar.account_and_settings")} className="rounded-full transition-transform duration-[var(--dur-fast)] hover:scale-105 active:scale-95">
+          <button ref={buttonRef} type="button" onClick={() => setIsMenuOpen(true)} aria-label={t("sidebar.account_and_settings")} className="rounded-full transition-transform duration-[var(--dur-fast)] hover:scale-105 active:scale-95">
             <Avatar src={user.avatarUrl} name={displayName} size={28}/>
           </button>
         </Tooltip>) : (<div className="group flex h-11 w-full items-center rounded-[var(--r-md)] transition-colors hover:bg-[var(--bg-hover)]">
-          <button ref={buttonRef} type="button" onClick={() => setMenuOpen(true)} aria-label={t("sidebar.account_and_settings")} className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-l-[var(--r-md)] pl-2 text-left">
+          <button ref={buttonRef} type="button" onClick={() => setIsMenuOpen(true)} aria-label={t("sidebar.account_and_settings")} className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-l-[var(--r-md)] pl-2 text-left">
             <Avatar src={user.avatarUrl} name={displayName} size={28}/>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[12.5px] font-semibold text-[var(--text-primary)]">
@@ -93,7 +93,7 @@ export function SidebarAccount({ rail = false }: {
           </Tooltip>
         </div>)}
 
-      <Menu anchor={buttonRef} open={menuOpen} onClose={() => setMenuOpen(false)} items={items} width={252}/>
+      <Menu anchor={buttonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={items} width={252}/>
     </>);
 }
 

@@ -88,10 +88,10 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         setActiveEditorView(editorView);
     }, []);
     const [headings, setHeadings] = useState<Heading[]>([]);
-    const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-    const [exportMenuOpen, setExportMenuOpen] = useState(false);
-    const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
-    const [attachmentDriveOpen, setAttachmentDriveOpen] = useState(false);
+    const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+    const [isMobileOutlineOpen, setIsMobileOutlineOpen] = useState(false);
+    const [isAttachmentDriveOpen, setIsAttachmentDriveOpen] = useState(false);
     const [containerWidth, setContainerWidth] = useState(0);
     const [contextMenuPoint, setContextMenuPoint] = useState<{ x: number; y: number } | null>(null);
     const [editorContextData, setEditorContextData] = useState<EditorContextData | null>(null);
@@ -125,7 +125,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
     const updatedTime = useRelativeTime(note?.updatedAt ?? 0, Boolean(note));
     useLayoutEffect(() => {
         setHeadings([]);
-        setMobileOutlineOpen(false);
+        setIsMobileOutlineOpen(false);
     }, [note?.id, showPreview]);
     useLayoutEffect(() => {
         const container = containerRef.current;
@@ -276,7 +276,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
     const noteFolder = note.folderId ? folders.find((folder) => folder.id === note.folderId) ?? null : null;
     const noteFolderPath = note.folderId ? folderPathLabel(folders, note.folderId) : '';
     const exportNote = async (format: 'md' | 'html' | 'pdf') => {
-        setExportMenuOpen(false);
+        setIsExportMenuOpen(false);
         if (!note)
             return;
         const payload = { title: note.title, content };
@@ -435,7 +435,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
               ]}/>
             </div>
             <Tooltip label={t("common.more_actions")} side="left">
-              <IconButton ref={moreButtonRef} label={t("common.more_actions")} size="sm" onClick={() => setMoreMenuOpen(true)}>
+              <IconButton ref={moreButtonRef} label={t("common.more_actions")} size="sm" onClick={() => setIsMoreMenuOpen(true)}>
                 <MoreHorizontal size={16}/>
               </IconButton>
             </Tooltip>
@@ -461,7 +461,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
             </IconButton>
           </Tooltip>
           <Tooltip label={t("attachments.manage")}>
-            <IconButton label={t("attachments.manage")} size="sm" active={attachmentDriveOpen} onClick={() => setAttachmentDriveOpen(true)}>
+            <IconButton label={t("attachments.manage")} size="sm" active={isAttachmentDriveOpen} onClick={() => setIsAttachmentDriveOpen(true)}>
               <Paperclip size={14}/>
             </IconButton>
           </Tooltip>
@@ -477,15 +477,15 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
             </Tooltip>)}
           {!isMobile && (<>
               <Tooltip label={t("workspace.export")}>
-                <IconButton ref={exportMenuRef} label={t("workspace.export")} size="sm" onClick={() => setExportMenuOpen(true)}>
+                <IconButton ref={exportMenuRef} label={t("workspace.export")} size="sm" onClick={() => setIsExportMenuOpen(true)}>
                   <Download size={14}/>
                 </IconButton>
               </Tooltip>
-              <Menu anchor={exportMenuRef} open={exportMenuOpen} onClose={() => setExportMenuOpen(false)} items={exportMenuItems} align="end" width={200}/>
+              <Menu anchor={exportMenuRef} open={isExportMenuOpen} onClose={() => setIsExportMenuOpen(false)} items={exportMenuItems} align="end" width={200}/>
             </>)}
           {showPreview && (<Tooltip label={t("common.outline")} combo="mod+shift+o">
-              <IconButton label={t("common.outline")} size="sm" active={isMobile ? mobileOutlineOpen : outlineOpen} onClick={() => isMobile ? setMobileOutlineOpen((open) => !open) : toggleOutline()}>
-                {(isMobile ? mobileOutlineOpen : outlineOpen) ? <PanelRightClose size={14}/> : <ListTree size={14}/>}
+              <IconButton label={t("common.outline")} size="sm" active={isMobile ? isMobileOutlineOpen : outlineOpen} onClick={() => isMobile ? setIsMobileOutlineOpen((open) => !open) : toggleOutline()}>
+                {(isMobile ? isMobileOutlineOpen : outlineOpen) ? <PanelRightClose size={14}/> : <ListTree size={14}/>}
               </IconButton>
             </Tooltip>)}
           {!isMobile && (<Tooltip label={t("workspace.share")}>
@@ -494,7 +494,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
               </IconButton>
             </Tooltip>)}
           {isMobile && (<Tooltip label={t("common.more_actions")} side="left">
-              <IconButton ref={moreButtonRef} label={t("common.more_actions")} size="sm" onClick={() => setMoreMenuOpen(true)}>
+              <IconButton ref={moreButtonRef} label={t("common.more_actions")} size="sm" onClick={() => setIsMoreMenuOpen(true)}>
                 <MoreHorizontal size={16}/>
               </IconButton>
             </Tooltip>)}
@@ -545,11 +545,11 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         onExport={exportNote}
       />
 
-      <Menu anchor={moreButtonRef} open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} items={grouped ? groupedItems : mobileItems} align="end" width={220}/>
-      {isMobile && showPreview && (<Drawer open={mobileOutlineOpen} onClose={() => setMobileOutlineOpen(false)} side="right" width={320} title={t("common.outline")}>
+      <Menu anchor={moreButtonRef} open={isMoreMenuOpen} onClose={() => setIsMoreMenuOpen(false)} items={grouped ? groupedItems : mobileItems} align="end" width={220}/>
+      {isMobile && showPreview && (<Drawer open={isMobileOutlineOpen} onClose={() => setIsMobileOutlineOpen(false)} side="right" width={320} title={t("common.outline")}>
           <Outline headings={headings} scrollerRef={previewScrollerRef} className="max-h-none w-full self-stretch py-3" onSelect={(heading) => {
                 jumpToHeading(heading);
-                setMobileOutlineOpen(false);
+                setIsMobileOutlineOpen(false);
             }}/>
         </Drawer>)}
 
@@ -596,8 +596,8 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         }}
       />
       <AttachmentDriveModal
-        open={attachmentDriveOpen}
-        onClose={() => setAttachmentDriveOpen(false)}
+        open={isAttachmentDriveOpen}
+        onClose={() => setIsAttachmentDriveOpen(false)}
         onInsertFile={(file) => {
           if (view) {
             const isImage = file.mime.startsWith('image/');
@@ -609,7 +609,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
             });
             view.focus();
           }
-          setAttachmentDriveOpen(false);
+          setIsAttachmentDriveOpen(false);
         }}
       />
     </div>);
