@@ -124,25 +124,36 @@ export function parseCalendarJumpQuery(query: string, today?: Date): CalendarPer
     return null;
 }
 
+interface NeighborState {
+    prev: CalendarNode | null
+    next: CalendarNode | null
+}
+
+// Records the node as prev/next neighbor when it is a same-kind period; the
+// caller recurses into children only for periods of other kinds.
+function considerNeighbor(node: CalendarNode, targetId: string, kind: CalendarPeriod['kind'], ns: VirtualTreeNamespace, state: NeighborState): boolean {
+    const parsed = parseVirtualId(node.id, ns);
+    if (!parsed || parsed.kind !== kind)
+        return false
+    if (node.id < targetId && (!state.prev || node.id > state.prev.id))
+        state.prev = node
+    else if (node.id > targetId && (!state.next || node.id < state.next.id))
+        state.next = node
+    return true
+}
+
 export function virtualNearestNeighbors(period: CalendarPeriod, notes: Iterable<NoteSummary>, ns: VirtualTreeNamespace): { prev: CalendarNode | null; next: CalendarNode | null } {
     const targetId = virtualId(period, ns);
-    let prev: CalendarNode | null = null;
-    let next: CalendarNode | null = null;
+    const state: NeighborState = { prev: null, next: null };
     const scan = (nodes: CalendarNode[]): void => {
         for (const node of nodes) {
-            const parsed = parseVirtualId(node.id, ns);
-            if (parsed && parsed.kind === period.kind) {
-                if (node.id < targetId && (!prev || node.id > prev.id))
-                    prev = node;
-                else if (node.id > targetId && (!next || node.id < next.id))
-                    next = node;
-                continue;
-            }
+            if (considerNeighbor(node, targetId, period.kind, ns, state))
+                continue
             scan(node.children);
         }
     };
     scan(buildVirtualTree(notes, ns));
-    return { prev, next };
+    return state;
 }
 
 export function calendarPeriodLabel(period: CalendarPeriod): string | null {

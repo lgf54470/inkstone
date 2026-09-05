@@ -84,39 +84,56 @@ export interface MermaidRenderHooks<T = unknown> {
     beforeUpdate?: () => T;
     afterUpdate?: (snapshot: T) => void;
 }
+// Renders one pending block; throws (possibly MERMAID_CANCELLED) on failure.
+async function renderMermaidNode<T>(root: HTMLElement, node: HTMLElement, source: string, key: string, dark: boolean, hooks: MermaidRenderHooks<T>, isCurrent: () => boolean): Promise<void> {
+    const svg = await queueMermaidRender(key, source, dark, () => (
+        isCurrent() &&
+        root.contains(node) &&
+        mermaidSource(node) === source &&
+        node.dataset.rendered !== currentSignature(node, dark)
+    ));
+    if (!isCurrent() ||
+        !root.contains(node) ||
+        mermaidSource(node) !== source ||
+        node.dataset.rendered === currentSignature(node, dark)) {
+        return;
+    }
+    updateMermaidNode(hooks, () => applyMermaidSvg(node, svg, dark));
+}
+
+// Returns false when the whole batch must stop (detached node or cancelled),
+// true when the loop should keep going (possibly skipping this node).
+function handleMermaidError<T>(err: unknown, root: HTMLElement, node: HTMLElement, source: string, hooks: MermaidRenderHooks<T>, isCurrent: () => boolean): boolean {
+    if (err === MERMAID_CANCELLED || !isCurrent() || !root.contains(node))
+        return false;
+    if (mermaidSource(node) !== source)
+        return true;
+    updateMermaidNode(hooks, () => showMermaidError(node, err, source));
+    return true;
+}
+
 export async function renderPendingMermaid<T = unknown>(root: HTMLElement, dark: boolean, hooks: MermaidRenderHooks<T> = {}): Promise<void> {
     const isCurrent = () => hooks.isCurrent?.() !== false;
     const pending = [...root.querySelectorAll<HTMLElement>('[data-mermaid]')]
         .filter((node) => node.dataset.rendered !== currentSignature(node, dark))
         .map((node) => {
-        const source = mermaidSource(node);
-        return { node, source, key: mermaidKey(source, dark) };
-    });
+            const source = mermaidSource(node);
+            return { node, source, key: mermaidKey(source, dark) };
+        });
     for (const { node, source, key } of pending) {
         if (!isCurrent())
             return;
+        let caught: unknown;
+        let hasError = false;
         try {
-            const svg = await queueMermaidRender(key, source, dark, () => {
-                return (isCurrent() &&
-                    root.contains(node) &&
-                    mermaidSource(node) === source &&
-                    node.dataset.rendered !== currentSignature(node, dark));
-            });
-            if (!isCurrent() ||
-                !root.contains(node) ||
-                mermaidSource(node) !== source ||
-                node.dataset.rendered === currentSignature(node, dark)) {
-                continue;
-            }
-            updateMermaidNode(hooks, () => applyMermaidSvg(node, svg, dark));
+            await renderMermaidNode(root, node, source, key, dark, hooks, isCurrent);
         }
         catch (err) {
-            if (err === MERMAID_CANCELLED || !isCurrent() || !root.contains(node))
-                return;
-            if (mermaidSource(node) !== source)
-                continue;
-            updateMermaidNode(hooks, () => showMermaidError(node, err, source));
+            caught = err;
+            hasError = true;
         }
+        if (hasError && !handleMermaidError(caught, root, node, source, hooks, isCurrent))
+            return;
     }
 }
 function queueMermaidRender(key: string, source: string, dark: boolean, isCurrent: () => boolean): Promise<string> {

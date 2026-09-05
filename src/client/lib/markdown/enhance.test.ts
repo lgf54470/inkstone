@@ -8,7 +8,30 @@ beforeAll(async () => {
   await initI18n()
 })
 
-describe('code block collapsing', () => {
+// Chart.js only ever assigns to the 2D context; a fresh stub per test keeps
+// assignments from leaking across tests.
+const fakeCanvasContext = () => ({
+  canvas: document.createElement('canvas'),
+  clearRect: () => {},
+  fillRect: () => {},
+  beginPath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  stroke: () => {},
+  fill: () => {},
+  arc: () => {},
+  measureText: () => ({ width: 0 }),
+  save: () => {},
+  restore: () => {},
+})
+
+function mockCanvasGetContext(): typeof HTMLCanvasElement.prototype.getContext {
+  const original = HTMLCanvasElement.prototype.getContext
+  HTMLCanvasElement.prototype.getContext = (() => fakeCanvasContext()) as never
+  return original
+}
+
+describe('code block collapsing — Prism languages', () => {
   it('loads every configured Prism language on demand', async () => {
     const languages = [
       'html', 'xml', 'css', 'javascript', 'typescript', 'jsx', 'tsx', 'json', 'markdown',
@@ -45,7 +68,9 @@ describe('code block collapsing', () => {
     expect(root.querySelectorAll('.line')).toHaveLength(2)
     expect(root.querySelector('code')!.textContent).toBe('<plain>\ntext')
   })
+})
 
+describe('code block collapsing — collapse and math source', () => {
   it('collapses long blocks and restores their full height when expanded', () => {
     const root = document.createElement('div')
     root.innerHTML = '<div class="code-block"><div class="code-block-head"><span class="code-title">text</span><button data-copy type="button">Copy</button></div><pre><code>1\n2\n3\n4\n5\n6\n7\n8\n9\n10</code></pre></div>'
@@ -92,7 +117,9 @@ describe('code block collapsing', () => {
     expect(root.querySelector('.token.tag')).not.toBeNull()
     expect(root.querySelector('code')!.textContent).toBe('<img src=x onerror=alert(1)><script>alert(2)</script><svg onload=alert(3)></svg>')
   })
+})
 
+describe('code block collapsing — hostile markup inertness', () => {
   it('keeps hostile markup inside math inert after KaTeX rendering', async () => {
     const root = document.createElement('div')
     const math = document.createElement('span')
@@ -108,24 +135,11 @@ describe('code block collapsing', () => {
     const text = root.querySelector('.math-inline')!.textContent!.replace(/\u00a0/g, ' ')
     expect(text).toContain('<img src=x onerror=alert(1)> <script>alert(2)</script>')
   })
+})
 
+describe('chart rendering', () => {
   it('renders and destroys chart blocks', async () => {
-    const originalGetContext = HTMLCanvasElement.prototype.getContext
-    HTMLCanvasElement.prototype.getContext = (() => ({
-      canvas: document.createElement('canvas'),
-      clearRect: () => {},
-      fillRect: () => {},
-      beginPath: () => {},
-      moveTo: () => {},
-      lineTo: () => {},
-      stroke: () => {},
-      fill: () => {},
-      arc: () => {},
-      measureText: () => ({ width: 0 }),
-      save: () => {},
-      restore: () => {},
-    })) as never
-
+    const originalGetContext = mockCanvasGetContext()
     const root = document.createElement('div')
     const chartJson = JSON.stringify({ type: 'bar', data: { labels: ['A'], datasets: [{ data: [1] }] } })
     const encoded = encodeDataValue(chartJson)
@@ -140,24 +154,11 @@ describe('code block collapsing', () => {
       root.remove()
     }
   })
+})
 
+describe('chart rendering — tolerant config parsing', () => {
   it('parses charts with tolerant formatting such as trailing commas or markdown markers', async () => {
-    const originalGetContext = HTMLCanvasElement.prototype.getContext
-    HTMLCanvasElement.prototype.getContext = (() => ({
-      canvas: document.createElement('canvas'),
-      clearRect: () => {},
-      fillRect: () => {},
-      beginPath: () => {},
-      moveTo: () => {},
-      lineTo: () => {},
-      stroke: () => {},
-      fill: () => {},
-      arc: () => {},
-      measureText: () => ({ width: 0 }),
-      save: () => {},
-      restore: () => {},
-    })) as never
-
+    const originalGetContext = mockCanvasGetContext()
     const root = document.createElement('div')
     const rawWithGlitch = '{\n  "type": "bar",**\n  "data": {\n    "labels": ["A",],\n    "datasets": [{ "data": [10,] }]\n  }\n}'
     const encoded = encodeDataValue(rawWithGlitch)

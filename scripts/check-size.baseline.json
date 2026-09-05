@@ -354,22 +354,6 @@
     "longFns": 2,
     "deepFns": 1
   },
-  "src/client/lib/calendar-tree.test/activity.test.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/client/lib/calendar-tree.test/build-tree.test.ts": {
-    "longFns": 4
-  },
-  "src/client/lib/calendar-tree/activity.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/calendar-tree/periods.ts": {
-    "deepFns": 1
-  },
-  "src/client/lib/calendar-tree/tree.ts": {
-    "longFns": 1
-  },
   "src/client/lib/db-cache-spec.ts": {
     "longFns": 5
   },
@@ -394,25 +378,6 @@
   "src/client/lib/export-note.ts": {
     "longFns": 2,
     "deepFns": 1
-  },
-  "src/client/lib/markdown/enhance.test.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/markdown/enhance/chart.ts": {
-    "longFns": 1,
-    "deepFns": 2
-  },
-  "src/client/lib/markdown/enhance/math.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/markdown/enhance/mermaid.ts": {
-    "deepFns": 1
-  },
-  "src/client/lib/markdown/renderer.test.ts": {
-    "longFns": 2
-  },
-  "src/client/lib/markdown/table-editor.test.ts": {
-    "longFns": 1
   },
   "src/client/lib/note-filter.test.ts": {
     "longFns": 1

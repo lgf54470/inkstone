@@ -14,7 +14,97 @@ import {
 import type { CalendarNode } from '../calendar-tree';
 import { note } from './helpers';
 
-describe('buildVirtualTree', () => {
+const asRecord = (items: NoteSummary[]): Record<string, NoteSummary> =>
+    Object.fromEntries(items.map((item) => [item.id, item]));
+
+const indentFailures = (nodes: CalendarNode[], parentDepth: number): string[] =>
+    nodes.flatMap((node) => {
+        const bad = virtualTreeRowIndent(node.depth) > virtualTreeRowIndent(parentDepth)
+            ? [] : [`${node.name} (depth ${node.depth}) not indented past depth ${parentDepth}`];
+        return bad.concat(indentFailures(node.children, node.depth));
+    });
+
+const EXPECTED_MIXED_TREE: CalendarNode[] = [
+    {
+        id: 'cal:2025',
+        name: '2025',
+        depth: 0,
+        count: 1,
+        children: [
+            {
+                id: 'cal:2025:q1',
+                name: 'Q1',
+                depth: 1,
+                count: 1,
+                children: [
+                    {
+                        id: 'cal:2025:q1:01',
+                        name: '01',
+                        depth: 2,
+                        count: 1,
+                        children: [
+                            {
+                                id: 'cal:2025:q1:01:w01',
+                                name: 'ww01',
+                                depth: 3,
+                                count: 1,
+                                children: [],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'cal:2026',
+        name: '2026',
+        depth: 0,
+        count: 3,
+        children: [
+            {
+                id: 'cal:2026:q3',
+                name: 'Q3',
+                depth: 1,
+                count: 3,
+                children: [
+                    {
+                        id: 'cal:2026:q3:07',
+                        name: '07',
+                        depth: 2,
+                        count: 1,
+                        children: [
+                            {
+                                id: 'cal:2026:q3:07:w29',
+                                name: 'ww29',
+                                depth: 3,
+                                count: 1,
+                                children: [],
+                            },
+                        ],
+                    },
+                    {
+                        id: 'cal:2026:q3:09',
+                        name: '09',
+                        depth: 2,
+                        count: 2,
+                        children: [
+                            {
+                                id: 'cal:2026:q3:09:w36',
+                                name: 'ww36',
+                                depth: 3,
+                                count: 2,
+                                children: [],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    },
+];
+
+describe('buildVirtualTree — populated trees', () => {
     it('builds year → quarter → month → week only for periods with notes', () => {
         const sept1 = note({ id: 'a', createdAt: new Date(2026, 8, 1, 10).getTime() });
         const sept2 = note({ id: 'b', createdAt: new Date(2026, 8, 2, 10).getTime() });
@@ -22,85 +112,7 @@ describe('buildVirtualTree', () => {
         const jan2025 = note({ id: 'd', createdAt: new Date(2025, 0, 2, 10).getTime() });
         const deleted = note({ id: 'e', createdAt: new Date(2026, 8, 3, 10).getTime(), deletedAt: 1 });
         const tree = buildVirtualTree([sept1, sept2, july, jan2025, deleted], CALENDAR_TREE);
-        expect(tree).toEqual([
-            {
-                id: 'cal:2025',
-                name: '2025',
-                depth: 0,
-                count: 1,
-                children: [
-                    {
-                        id: 'cal:2025:q1',
-                        name: 'Q1',
-                        depth: 1,
-                        count: 1,
-                        children: [
-                            {
-                                id: 'cal:2025:q1:01',
-                                name: '01',
-                                depth: 2,
-                                count: 1,
-                                children: [
-                                    {
-                                        id: 'cal:2025:q1:01:w01',
-                                        name: 'ww01',
-                                        depth: 3,
-                                        count: 1,
-                                        children: [],
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                ],
-            },
-            {
-                id: 'cal:2026',
-                name: '2026',
-                depth: 0,
-                count: 3,
-                children: [
-                    {
-                        id: 'cal:2026:q3',
-                        name: 'Q3',
-                        depth: 1,
-                        count: 3,
-                        children: [
-                            {
-                                id: 'cal:2026:q3:07',
-                                name: '07',
-                                depth: 2,
-                                count: 1,
-                                children: [
-                                    {
-                                        id: 'cal:2026:q3:07:w29',
-                                        name: 'ww29',
-                                        depth: 3,
-                                        count: 1,
-                                        children: [],
-                                    },
-                                ],
-                            },
-                            {
-                                id: 'cal:2026:q3:09',
-                                name: '09',
-                                depth: 2,
-                                count: 2,
-                                children: [
-                                    {
-                                        id: 'cal:2026:q3:09:w36',
-                                        name: 'ww36',
-                                        depth: 3,
-                                        count: 2,
-                                        children: [],
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                ],
-            },
-        ]);
+        expect(tree).toEqual(EXPECTED_MIXED_TREE);
         expect(tree[1]?.children[0]?.children[1]?.children[0]?.name ?? '').toBe('ww36');
     });
 
@@ -108,7 +120,9 @@ describe('buildVirtualTree', () => {
         expect(buildVirtualTree([], CALENDAR_TREE)).toEqual([]);
         expect(buildVirtualTree([note({ deletedAt: 1 })], CALENDAR_TREE)).toEqual([]);
     });
+});
 
+describe('buildVirtualTree — includeEmpty skeletons', () => {
     it('fills the year/quarter/month skeleton with zero counts when includeEmpty', () => {
         const aug = note({ id: 'a', createdAt: new Date(2026, 7, 5, 10).getTime() });
         const tree = buildVirtualTree([aug], CALENDAR_TREE, true);
@@ -135,7 +149,9 @@ describe('buildVirtualTree', () => {
         expect(buildVirtualTree([], CALENDAR_TREE, true)).toEqual([]);
         expect(buildVirtualTree([note({ deletedAt: 1 })], CALENDAR_TREE, true)).toEqual([]);
     });
+});
 
+describe('buildVirtualTree — todo tree', () => {
     it('builds a todo tree from tagged notes with the todo namespace ids', () => {
         const taggedSep = note({ id: 'a', tags: ['待办'], createdAt: new Date(2026, 8, 1, 10).getTime() });
         const taggedJul = note({ id: 'b', tags: ['work', '待办'], createdAt: new Date(2026, 6, 15, 10).getTime() });
@@ -153,14 +169,7 @@ describe('buildVirtualTree', () => {
     });
 });
 
-describe('tree row indentation', () => {
-    const indentFailures = (nodes: CalendarNode[], parentDepth: number): string[] =>
-        nodes.flatMap((node) => {
-            const bad = virtualTreeRowIndent(node.depth) > virtualTreeRowIndent(parentDepth)
-                ? [] : [`${node.name} (depth ${node.depth}) not indented past depth ${parentDepth}`];
-            return bad.concat(indentFailures(node.children, node.depth));
-        });
-
+describe('tree row indentation formula', () => {
     it('shares one 13px-step formula between folder rows and virtual rows', () => {
         expect(treeRowIndent(0)).toBe(6);
         expect(treeRowIndent(1)).toBe(19);
@@ -172,7 +181,9 @@ describe('tree row indentation', () => {
         expect(virtualTreeRowIndent(3)).toBe(58);
         expect(virtualTreeRowIndent(4)).toBe(71);
     });
+});
 
+describe('tree row indentation — nested trees', () => {
     it('keeps every filled child level visually nested under its parent', () => {
         const a = note({ id: 'a', createdAt: new Date(2025, 0, 31, 10).getTime() });
         const b = note({ id: 'b', createdAt: new Date(2026, 7, 12, 10).getTime() });
@@ -208,9 +219,7 @@ describe('tree row indentation', () => {
     });
 });
 
-describe('buildVirtualTreeCached', () => {
-    const asRecord = (items: NoteSummary[]): Record<string, NoteSummary> =>
-        Object.fromEntries(items.map((item) => [item.id, item]));
+describe('buildVirtualTreeCached — identity', () => {
     const sept1 = note({ id: 'n1', createdAt: new Date(2026, 8, 1, 10).getTime(), updatedAt: 100 });
     const sept2 = note({ id: 'n2', createdAt: new Date(2026, 8, 2, 10).getTime(), updatedAt: 200 });
     const july = note({ id: 'n3', createdAt: new Date(2026, 6, 15, 10).getTime() });
@@ -251,6 +260,12 @@ describe('buildVirtualTreeCached', () => {
         const moved = { ...sept2, title: 'Renamed', tags: ['noise'], isStarred: true, folderId: 'f1' };
         expect(buildVirtualTreeCached(asRecord([sept1, moved, july]), CALENDAR_TREE, false)).toBe(first);
     });
+});
+
+describe('buildVirtualTreeCached — todo membership and slots', () => {
+    const sept1 = note({ id: 'n1', createdAt: new Date(2026, 8, 1, 10).getTime(), updatedAt: 100 });
+    const sept2 = note({ id: 'n2', createdAt: new Date(2026, 8, 2, 10).getTime(), updatedAt: 200 });
+    const july = note({ id: 'n3', createdAt: new Date(2026, 6, 15, 10).getTime() });
 
     it('rebuilds the todo tree when todo membership flips', () => {
         const tags = splitTodoTags('待办');

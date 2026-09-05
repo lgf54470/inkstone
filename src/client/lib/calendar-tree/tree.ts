@@ -65,17 +65,27 @@ export function virtualAncestorIds(id: string | null | undefined, ns: VirtualTre
     return chain.slice(1).map((item) => virtualId(item, ns));
 }
 
-export function buildVirtualTree(notes: Iterable<NoteSummary>, ns: VirtualTreeNamespace, includeEmpty = false): CalendarNode[] {
+interface VirtualCounts {
+    counts: Map<string, number>
+    childrenOf: Map<string, Set<string>>
+    minYear: number
+    maxYear: number
+}
+
+function childrenSetOf(childrenOf: Map<string, Set<string>>, id: string): Set<string> {
+    let set = childrenOf.get(id);
+    if (!set) {
+        set = new Set();
+        childrenOf.set(id, set);
+    }
+    return set;
+}
+
+// Buckets every live note into its year/quarter/month/week ids and returns the
+// per-period counts, the parent→children adjacency and the covered year range.
+function collectVirtualCounts(notes: Iterable<NoteSummary>, ns: VirtualTreeNamespace): VirtualCounts {
     const counts = new Map<string, number>();
     const childrenOf = new Map<string, Set<string>>();
-    const childrenSet = (id: string): Set<string> => {
-        let set = childrenOf.get(id);
-        if (!set) {
-            set = new Set();
-            childrenOf.set(id, set);
-        }
-        return set;
-    };
     let minYear = Infinity;
     let maxYear = -Infinity;
     for (const note of notes) {
@@ -93,23 +103,29 @@ export function buildVirtualTree(notes: Iterable<NoteSummary>, ns: VirtualTreeNa
             const id = ids[i]!;
             counts.set(id, (counts.get(id) ?? 0) + 1);
             if (i > 0)
-                childrenSet(ids[i - 1]!).add(id);
+                childrenSetOf(childrenOf, ids[i - 1]!).add(id);
         }
         minYear = Math.min(minYear, leaf.year);
         maxYear = Math.max(maxYear, leaf.year);
     }
-    const build = (id: string, depth: number): CalendarNode => {
-        const children = [...(childrenOf.get(id) ?? [])]
-            .sort()
-            .map((child) => build(child, depth + 1));
-        const count = children.length
-            ? children.reduce((sum, child) => sum + child.count, 0)
-            : (counts.get(id) ?? 0);
-        const parsed = parseVirtualId(id, ns);
-        return { id, name: parsed ? calendarNodeName(parsed) : '', depth, count, children };
-    };
-    if (!includeEmpty)
-        return build(ns.rootId, -1).children;
+    return { counts, childrenOf, minYear, maxYear };
+}
+
+function buildVirtualNode(id: string, depth: number, childrenOf: Map<string, Set<string>>, counts: Map<string, number>, ns: VirtualTreeNamespace): CalendarNode {
+    const children = [...(childrenOf.get(id) ?? [])]
+        .sort()
+        .map((child) => buildVirtualNode(child, depth + 1, childrenOf, counts, ns));
+    const count = children.length
+        ? children.reduce((sum, child) => sum + child.count, 0)
+        : (counts.get(id) ?? 0);
+    const parsed = parseVirtualId(id, ns);
+    return { id, name: parsed ? calendarNodeName(parsed) : '', depth, count, children };
+}
+
+// The includeEmpty skeleton spans every year between the first and last note
+// and every quarter/month in between; weeks only appear where notes exist.
+function buildEmptyVirtualTree(collected: VirtualCounts, ns: VirtualTreeNamespace): CalendarNode[] {
+    const { childrenOf, counts, minYear, maxYear } = collected;
     if (!Number.isFinite(minYear))
         return [];
     const years: CalendarNode[] = [];
@@ -122,7 +138,7 @@ export function buildVirtualTree(notes: Iterable<NoteSummary>, ns: VirtualTreeNa
                 const id = virtualId({ kind: 'month', year, month }, ns);
                 const weeks = [...(childrenOf.get(id) ?? [])]
                     .sort()
-                    .map((child) => build(child, 3));
+                    .map((child) => buildVirtualNode(child, 3, childrenOf, counts, ns));
                 const parsed = parseVirtualId(id, ns)!;
                 months.push({ id, name: calendarNodeName(parsed), depth: 2, count: counts.get(id) ?? 0, children: weeks });
             }
@@ -145,7 +161,15 @@ export function buildVirtualTree(notes: Iterable<NoteSummary>, ns: VirtualTreeNa
             count: quarters.reduce((sum, quarter) => sum + quarter.count, 0),
             children: quarters,
         });
-    }    return years;
+    }
+    return years;
+}
+
+export function buildVirtualTree(notes: Iterable<NoteSummary>, ns: VirtualTreeNamespace, includeEmpty = false): CalendarNode[] {
+    const collected = collectVirtualCounts(notes, ns);
+    if (!includeEmpty)
+        return buildVirtualNode(ns.rootId, -1, collected.childrenOf, collected.counts, ns).children;
+    return buildEmptyVirtualTree(collected, ns);
 }
 
 // The sidebar calendar/todo trees bucket notes only by createdAt, deletedAt and

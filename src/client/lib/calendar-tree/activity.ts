@@ -123,109 +123,145 @@ export function upsertInDay(byDay: Map<string, ActivityDayNote[]>, key: string, 
     byDay.set(key, copy);
 }
 
+// Copy-on-write helpers: the incremental path reuses the previous maps until
+// a note actually touches a slice, so every untouched output keeps its exact
+// identity (memoized consumers skip it). Each helper swaps in a fresh map only
+// once, before the first mutation of that slice.
+interface ProjectionCtx {
+    byId: Map<string, ActivityEntry>
+    titleCounts: Map<string, number>
+    counts: Map<string, number>
+    titles: Map<string, string>
+    byDay: Map<string, ActivityDayNote[]>
+    oldCounts: Map<string, number>
+    oldTitles: Map<string, string>
+    oldByDay: Map<string, ActivityDayNote[]>
+    next: Record<string, NoteSummary>
+}
+
+function ensureCountsWritable(ctx: ProjectionCtx): void {
+    if (ctx.counts === ctx.oldCounts)
+        ctx.counts = new Map(ctx.oldCounts)
+}
+
+function ensureByDayWritable(ctx: ProjectionCtx): void {
+    if (ctx.byDay === ctx.oldByDay)
+        ctx.byDay = new Map(ctx.oldByDay)
+}
+
+function ensureTitlesWritable(ctx: ProjectionCtx): void {
+    if (ctx.titles === ctx.oldTitles)
+        ctx.titles = new Map(ctx.oldTitles)
+}
+
+function applyTombstone(ctx: ProjectionCtx, id: string, prev: ActivityEntry): void {
+    ctx.byId.delete(id)
+    ensureCountsWritable(ctx)
+    ensureByDayWritable(ctx)
+    decrementCount(ctx.counts, prev.key)
+    removeFromDay(ctx.byDay, prev.key, id)
+    ensureTitlesWritable(ctx)
+    dropTitleClaim(ctx.titleCounts, ctx.titles, ctx.next, prev.title, id)
+}
+
+function applyInsert(ctx: ProjectionCtx, id: string, note: NoteSummary, key: string): void {
+    ensureCountsWritable(ctx)
+    ensureByDayWritable(ctx)
+    ctx.counts.set(key, (ctx.counts.get(key) ?? 0) + 1)
+    upsertInDay(ctx.byDay, key, { id, title: note.title, updatedAt: note.updatedAt })
+    ensureTitlesWritable(ctx)
+    if (ctx.titles.get(note.title) === undefined)
+        ctx.titles.set(note.title, id)
+    ctx.titleCounts.set(note.title, (ctx.titleCounts.get(note.title) ?? 0) + 1)
+    ctx.byId.set(id, { ref: note, key, title: note.title })
+}
+
+// An alive note whose projection fields actually changed.
+function applyChange(ctx: ProjectionCtx, id: string, note: NoteSummary, prev: ActivityEntry, key: string): void {
+    if (prev.key !== key) {
+        ensureCountsWritable(ctx)
+        decrementCount(ctx.counts, prev.key)
+        ctx.counts.set(key, (ctx.counts.get(key) ?? 0) + 1)
+        ensureByDayWritable(ctx)
+        removeFromDay(ctx.byDay, prev.key, id)
+        upsertInDay(ctx.byDay, key, { id, title: note.title, updatedAt: note.updatedAt })
+    } else {
+        // Same day: per-day count is unchanged; only the day's list needs
+        // rebuilding, so the counts map keeps its identity.
+        ensureByDayWritable(ctx)
+        upsertInDay(ctx.byDay, key, { id, title: note.title, updatedAt: note.updatedAt })
+    }
+    if (prev.title !== note.title) {
+        ensureTitlesWritable(ctx)
+        dropTitleClaim(ctx.titleCounts, ctx.titles, ctx.next, prev.title, id)
+        if (ctx.titles.get(note.title) === undefined)
+            ctx.titles.set(note.title, id)
+        ctx.titleCounts.set(note.title, (ctx.titleCounts.get(note.title) ?? 0) + 1)
+    }
+    ctx.byId.set(id, { ref: note, key, title: note.title })
+}
+
+// An id vanished from the map without a tombstone: drop its stale
+// contributions (a rare path that costs one extra walk when it fires).
+function sweepVanishedIds(ctx: ProjectionCtx): void {
+    ensureCountsWritable(ctx)
+    ensureByDayWritable(ctx)
+    ensureTitlesWritable(ctx)
+    for (const [id, entry] of [...ctx.byId]) {
+        if (ctx.next[id] !== undefined)
+            continue
+        ctx.byId.delete(id)
+        decrementCount(ctx.counts, entry.key)
+        removeFromDay(ctx.byDay, entry.key, id)
+        dropTitleClaim(ctx.titleCounts, ctx.titles, ctx.next, entry.title, id)
+    }
+}
+
 export function updateActivityProjection(slot: ActivityProjectionSlot, next: Record<string, NoteSummary>): ActivityProjectionSlot {
-    const oldCounts = slot.counts;
-    const oldTitles = slot.noteIdByTitle;
-    const oldByDay = slot.notesByDay;
-    const byId = slot.byId;
-    const titleCounts = slot.titleCounts;
-    let counts = oldCounts;
-    let titles = oldTitles;
-    let byDay = oldByDay;
-    let visited = 0;
-    let tombstoned = 0;
+    const ctx: ProjectionCtx = {
+        byId: slot.byId,
+        titleCounts: slot.titleCounts,
+        counts: slot.counts,
+        titles: slot.noteIdByTitle,
+        byDay: slot.notesByDay,
+        oldCounts: slot.counts,
+        oldTitles: slot.noteIdByTitle,
+        oldByDay: slot.notesByDay,
+        next,
+    }
+    let visited = 0
+    let tombstoned = 0
     for (const id in next) {
-        visited++;
-        const note = next[id]!;
-        const prev = byId.get(id);
+        visited++
+        const note = next[id]!
+        const prev = ctx.byId.get(id)
         if (prev && prev.ref === note)
-            continue;
+            continue
         if (note.deletedAt !== null) {
-            tombstoned++;
+            tombstoned++
             if (!prev)
-                continue;
-            byId.delete(id);
-            if (counts === oldCounts)
-                counts = new Map(oldCounts);
-            if (byDay === oldByDay)
-                byDay = new Map(oldByDay);
-            decrementCount(counts, prev.key);
-            removeFromDay(byDay, prev.key, id);
-            if (titles === oldTitles)
-                titles = new Map(oldTitles);
-            dropTitleClaim(titleCounts, titles, next, prev.title, id);
-            continue;
+                continue
+            applyTombstone(ctx, id, prev)
+            continue
         }
-        const key = dateKey(new Date(note.updatedAt));
+        const key = dateKey(new Date(note.updatedAt))
         if (prev && prev.key === key && prev.title === note.title && prev.ref.updatedAt === note.updatedAt) {
             // A commit that touched fields this projection does not read
             // (excerpt, tags, pin, ...): keep every output identity stable.
             // updatedAt feeds both the day key and the day-list sort, so it
             // must match down to the millisecond for the slice to be skipped.
-            byId.set(id, { ref: note, key, title: note.title });
-            continue;
+            ctx.byId.set(id, { ref: note, key, title: note.title })
+            continue
         }
         if (!prev) {
-            if (counts === oldCounts)
-                counts = new Map(oldCounts);
-            if (byDay === oldByDay)
-                byDay = new Map(oldByDay);
-            counts.set(key, (counts.get(key) ?? 0) + 1);
-            upsertInDay(byDay, key, { id, title: note.title, updatedAt: note.updatedAt });
-            if (titles === oldTitles)
-                titles = new Map(oldTitles);
-            if (titles.get(note.title) === undefined)
-                titles.set(note.title, id);
-            titleCounts.set(note.title, (titleCounts.get(note.title) ?? 0) + 1);
-            byId.set(id, { ref: note, key, title: note.title });
-            continue;
+            applyInsert(ctx, id, note, key)
+            continue
         }
-        // An alive note whose projection fields actually changed.
-        if (prev.key !== key) {
-            if (counts === oldCounts)
-                counts = new Map(oldCounts);
-            decrementCount(counts, prev.key);
-            counts.set(key, (counts.get(key) ?? 0) + 1);
-            if (byDay === oldByDay)
-                byDay = new Map(oldByDay);
-            removeFromDay(byDay, prev.key, id);
-            upsertInDay(byDay, key, { id, title: note.title, updatedAt: note.updatedAt });
-        } else {
-            // Same day: per-day count is unchanged; only the day's list needs
-            // rebuilding, so the counts map keeps its identity.
-            if (byDay === oldByDay)
-                byDay = new Map(oldByDay);
-            upsertInDay(byDay, key, { id, title: note.title, updatedAt: note.updatedAt });
-        }
-        if (prev.title !== note.title) {
-            if (titles === oldTitles)
-                titles = new Map(oldTitles);
-            dropTitleClaim(titleCounts, titles, next, prev.title, id);
-            if (titles.get(note.title) === undefined)
-                titles.set(note.title, id);
-            titleCounts.set(note.title, (titleCounts.get(note.title) ?? 0) + 1);
-        }
-        byId.set(id, { ref: note, key, title: note.title });
+        applyChange(ctx, id, note, prev, key)
     }
-    if (visited - tombstoned !== byId.size) {
-        // An id vanished from the map without a tombstone: drop its stale
-        // contributions (a rare path that costs one extra walk when it fires).
-        if (counts === oldCounts)
-            counts = new Map(oldCounts);
-        if (byDay === oldByDay)
-            byDay = new Map(oldByDay);
-        if (titles === oldTitles)
-            titles = new Map(oldTitles);
-        for (const [id, entry] of [...byId]) {
-            if (next[id] !== undefined)
-                continue;
-            byId.delete(id);
-            decrementCount(counts, entry.key);
-            removeFromDay(byDay, entry.key, id);
-            dropTitleClaim(titleCounts, titles, next, entry.title, id);
-        }
-    }
-    return { notes: next, counts, noteIdByTitle: titles, notesByDay: byDay, byId, titleCounts };
+    if (visited - tombstoned !== ctx.byId.size)
+        sweepVanishedIds(ctx)
+    return { notes: next, counts: ctx.counts, noteIdByTitle: ctx.titles, notesByDay: ctx.byDay, byId: ctx.byId, titleCounts: ctx.titleCounts }
 }
 
 export function buildActivityProjectionCached(notes: Record<string, NoteSummary>): ActivityProjection {

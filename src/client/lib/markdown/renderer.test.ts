@@ -12,7 +12,43 @@ function parse(html: string): DocumentFragment {
   return template.content
 }
 
-describe('renderMarkdown XSS hardening', () => {
+const GOLDEN_DOC = [
+  '---',
+  'title: Test',
+  '---',
+  '',
+  '> [!danger] Watch out',
+  '> danger body',
+  '',
+  ':::: tabs',
+  '::: tab-item One',
+  'first panel',
+  ':::',
+  '::: tab-item Two',
+  'second panel',
+  ':::',
+  '::::',
+  '',
+  '::: details Open',
+  'hidden body',
+  ':::',
+  '',
+  'Inline $x^2$',
+  '',
+  '$$a+b$$',
+  '',
+  '```mermaid',
+  'graph TD; A-->B',
+  '```',
+  '',
+  '![[note-a|Label]]',
+  '',
+  '| a | b |',
+  '|---|---|',
+  '| 1 | 2 |',
+].join('\n')
+
+describe('renderMarkdown XSS hardening — element stripping', () => {
   it('strips script tags and their content', () => {
     const rendered = renderMarkdown('<script>window.pwned = 1</script>')
     expect(rendered.html).not.toMatch(/<script/i)
@@ -44,7 +80,9 @@ describe('renderMarkdown XSS hardening', () => {
     expect(rendered.html).toContain('class="callout"')
     expect(rendered.html).not.toContain('style=')
   })
+})
 
+describe('renderMarkdown XSS hardening — svg, math and forms', () => {
   it('strips SVG and MathML elements including mXSS-prone combinations', () => {
     const rendered = renderMarkdown(
       '<svg><g onload="alert(1)"><foreignObject><iframe src="https://evil"></iframe></foreignObject></g></svg>' +
@@ -66,7 +104,9 @@ describe('renderMarkdown XSS hardening', () => {
     expect(fragment.querySelector('iframe')).toBeNull()
     expect(fragment.querySelector('embed')).toBeNull()
   })
+})
 
+describe('renderMarkdown XSS hardening — URLs, links and images', () => {
   it('strips javascript: URLs from links and images', () => {
     const links = renderMarkdown('[click](javascript:alert(1))')
     parse(links.html).querySelectorAll('a').forEach((anchor) => {
@@ -105,7 +145,9 @@ describe('renderMarkdown XSS hardening', () => {
     expect(anchor.getAttribute('target')).toBe('_blank')
     expect(anchor.getAttribute('rel')).toBe('noopener noreferrer')
   })
+})
 
+describe('renderMarkdown XSS hardening — raw text and checkboxes', () => {
   it('escapes raw HTML text content instead of executing it', () => {
     const rendered = renderMarkdown('<textarea>&lt;script&gt;</textarea>')
     expect(rendered.html).not.toMatch(/<textarea/i)
@@ -120,45 +162,9 @@ describe('renderMarkdown XSS hardening', () => {
   })
 })
 
-describe('renderMarkdown extension golden output', () => {
+describe('renderMarkdown extension golden output — blocks and containers', () => {
   it('keeps callouts, tabs, details, math, mermaid, embeds and front matter intact', () => {
-    const rendered = renderMarkdown(
-      [
-        '---',
-        'title: Test',
-        '---',
-        '',
-        '> [!danger] Watch out',
-        '> danger body',
-        '',
-        ':::: tabs',
-        '::: tab-item One',
-        'first panel',
-        ':::',
-        '::: tab-item Two',
-        'second panel',
-        ':::',
-        '::::',
-        '',
-        '::: details Open',
-        'hidden body',
-        ':::',
-        '',
-        'Inline $x^2$',
-        '',
-        '$$a+b$$',
-        '',
-        '```mermaid',
-        'graph TD; A-->B',
-        '```',
-        '',
-        '![[note-a|Label]]',
-        '',
-        '| a | b |',
-        '|---|---|',
-        '| 1 | 2 |',
-      ].join('\n'),
-    )
+    const rendered = renderMarkdown(GOLDEN_DOC)
     const fragment = parse(rendered.html)
     expect(rendered.frontMatter.title).toBe('Test')
     expect(fragment.querySelector('aside.callout.callout-danger')).not.toBeNull()
@@ -170,7 +176,9 @@ describe('renderMarkdown extension golden output', () => {
     expect(fragment.querySelector('.note-embed[data-embed-target]')).not.toBeNull()
     expect(fragment.querySelector('table tbody td')?.textContent).toBe('1')
   })
+})
 
+describe('renderMarkdown extension golden output — headings and tables', () => {
   it('collects headings with level, text, slug and source line', () => {
     const rendered = renderMarkdown('# First\n\nparagraph\n\n## Second Heading\n\n### Third')
     expect(rendered.headings).toMatchObject([
@@ -203,6 +211,22 @@ describe('renderMarkdown extension golden output', () => {
     expect(tds[2]?.getAttribute('align')).toBe('right')
   })
 
+  it('renders table of contents for [TOC] block', () => {
+    const markdown = '[TOC]\n\n# Section One\n\n## Sub Section'
+    const rendered = renderMarkdown(markdown)
+    const fragment = parse(rendered.html)
+    const toc = fragment.querySelector('nav.table-of-contents')
+    expect(toc).not.toBeNull()
+    const links = fragment.querySelectorAll('nav.table-of-contents a.toc-link')
+    expect(links.length).toBe(2)
+    expect(links[0]?.textContent).toBe('Section One')
+    expect(links[0]?.getAttribute('href')).toBe('#sectionone')
+    expect(links[1]?.textContent).toBe('Sub Section')
+    expect(links[1]?.getAttribute('href')).toBe('#subsection')
+  })
+})
+
+describe('renderMarkdown extension golden output — special blocks', () => {
   it('renders runnable javascript-example blocks with controls and output panel', () => {
     const markdown = '~~~~javascript-example title="Demo"\nconsole.log("Hello");\n~~~~'
     const rendered = renderMarkdown(markdown)
@@ -231,7 +255,9 @@ describe('renderMarkdown extension golden output', () => {
     expect(mermaidBlock).not.toBeNull()
     expect(mermaidBlock?.getAttribute('data-mermaid')).toBeTruthy()
   })
+})
 
+describe('renderMarkdown extension golden output — inline formatting', () => {
   it('renders subscript and superscript inline formatting', () => {
     const markdown = 'H~2~O and E = mc^2^'
     const rendered = renderMarkdown(markdown)
@@ -247,20 +273,6 @@ describe('renderMarkdown extension golden output', () => {
     expect(fragment.querySelector('ins')?.textContent).toBe('inserted text')
   })
 
-  it('renders table of contents for [TOC] block', () => {
-    const markdown = '[TOC]\n\n# Section One\n\n## Sub Section'
-    const rendered = renderMarkdown(markdown)
-    const fragment = parse(rendered.html)
-    const toc = fragment.querySelector('nav.table-of-contents')
-    expect(toc).not.toBeNull()
-    const links = fragment.querySelectorAll('nav.table-of-contents a.toc-link')
-    expect(links.length).toBe(2)
-    expect(links[0]?.textContent).toBe('Section One')
-    expect(links[0]?.getAttribute('href')).toBe('#sectionone')
-    expect(links[1]?.textContent).toBe('Sub Section')
-    expect(links[1]?.getAttribute('href')).toBe('#subsection')
-  })
-
   it('renders emoji shortcodes while preserving ascii emoticons', () => {
     const markdown = ':tada: :fire: :rocket: :)'
     const rendered = renderMarkdown(markdown)
@@ -270,6 +282,28 @@ describe('renderMarkdown extension golden output', () => {
     expect(rendered.html).toContain(':)')
   })
 
+  it('renders abbreviations with title attributes', () => {
+    const markdown = '*[HTML]: HyperText Markup Language\n\nLearn HTML today.'
+    const rendered = renderMarkdown(markdown)
+    const fragment = parse(rendered.html)
+    const abbr = fragment.querySelector('abbr')
+    expect(abbr).not.toBeNull()
+    expect(abbr?.textContent).toBe('HTML')
+    expect(abbr?.getAttribute('title')).toBe('HyperText Markup Language')
+  })
+
+  it('renders ruby annotations with both pipe and bracket syntaxes', () => {
+    const markdown = '{\\u6c49\\u5b57|h\\u00e0n z\\u00ec} and [\\u6c49\\u5b57]{\\u6c49\\u5b57}'
+    const rendered = renderMarkdown(JSON.parse(`"${markdown}"`))
+    const fragment = parse(rendered.html)
+    const rubies = fragment.querySelectorAll('ruby')
+    expect(rubies.length).toBe(2)
+    expect(rubies[0]?.querySelector('rt')?.textContent).toBe('h\u00e0n z\u00ec')
+    expect(rubies[1]?.querySelector('rt')?.textContent).toBe('\u6c49\u5b57')
+  })
+})
+
+describe('renderMarkdown extension golden output — lists', () => {
   it('renders definition lists into dl, dt, dd elements', () => {
     const markdown = 'Term 1\n: Definition 1\n\nTerm 2\n: Definition 2'
     const rendered = renderMarkdown(markdown)
@@ -286,16 +320,6 @@ describe('renderMarkdown extension golden output', () => {
     expect(dds[1]?.textContent).toBe('Definition 2')
   })
 
-  it('renders abbreviations with title attributes', () => {
-    const markdown = '*[HTML]: HyperText Markup Language\n\nLearn HTML today.'
-    const rendered = renderMarkdown(markdown)
-    const fragment = parse(rendered.html)
-    const abbr = fragment.querySelector('abbr')
-    expect(abbr).not.toBeNull()
-    expect(abbr?.textContent).toBe('HTML')
-    expect(abbr?.getAttribute('title')).toBe('HyperText Markup Language')
-  })
-
   it('renders extended task list items with correct status attributes', () => {
     const markdown = '- [/] In Progress\n- [-] Cancelled\n- [?] Question\n- [!] Important'
     const rendered = renderMarkdown(markdown)
@@ -307,17 +331,9 @@ describe('renderMarkdown extension golden output', () => {
     expect(inputs[2]?.dataset.taskStatus).toBe('question')
     expect(inputs[3]?.dataset.taskStatus).toBe('important')
   })
+})
 
-  it('renders ruby annotations with both pipe and bracket syntaxes', () => {
-    const markdown = '{\\u6c49\\u5b57|h\\u00e0n z\\u00ec} and [\\u6c49\\u5b57]{\\u6c49\\u5b57}'
-    const rendered = renderMarkdown(JSON.parse(`"${markdown}"`))
-    const fragment = parse(rendered.html)
-    const rubies = fragment.querySelectorAll('ruby')
-    expect(rubies.length).toBe(2)
-    expect(rubies[0]?.querySelector('rt')?.textContent).toBe('h\u00e0n z\u00ec')
-    expect(rubies[1]?.querySelector('rt')?.textContent).toBe('\u6c49\u5b57')
-  })
-
+describe('renderMarkdown extension golden output — code blocks', () => {
   it('renders code blocks with line-numbers and highlight across syntax variants', () => {
     // 1. With curly braces {line-numbers}
     const mdWithBraces = '```typescript title="src/shared/utils.ts" {line-numbers}\nconst a = 1;\n```'

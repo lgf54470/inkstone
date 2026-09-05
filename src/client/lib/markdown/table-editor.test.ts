@@ -42,18 +42,18 @@ describe('splitTableRow and delimiter row detection', () => {
   });
 });
 
-describe('parseMarkdownTable and modifications', () => {
-  const sampleDoc = [
-    'Some text before table',
-    '',
-    '| Name | Age | City |',
-    '| :--- | :---: | ---: |',
-    '| Alice | 24 | Paris |',
-    '| Bob | 30 | London |',
-    '',
-    'Some text after table',
-  ];
+const sampleDoc = [
+  'Some text before table',
+  '',
+  '| Name | Age | City |',
+  '| :--- | :---: | ---: |',
+  '| Alice | 24 | Paris |',
+  '| Bob | 30 | London |',
+  '',
+  'Some text after table',
+];
 
+describe('parseMarkdownTable — parsing and row ops', () => {
   it('parses valid markdown table accurately', () => {
     const table = parseMarkdownTable(sampleDoc, 4, 3);
     expect(table).not.toBeNull();
@@ -86,6 +86,21 @@ describe('parseMarkdownTable and modifications', () => {
     expect(deleted.rows[0]).toEqual(['Bob', '30', 'London']);
   });
 
+  it('duplicates and clears rows and cells', () => {
+    const table = parseMarkdownTable(sampleDoc, 4, 3)!;
+    const duplicated = duplicateTableRow(table, 0);
+    expect(duplicated.rows).toHaveLength(3);
+    expect(duplicated.rows[1]).toEqual(['Alice', '24', 'Paris']);
+
+    const clearedCell = clearTableCell(table, 0, 1);
+    expect(clearedCell.rows[0]![1]).toBe('');
+
+    const clearedRow = clearTableRow(table, 0);
+    expect(clearedRow.rows[0]).toEqual(['', '', '']);
+  });
+});
+
+describe('parseMarkdownTable — column ops, format and export', () => {
   it('inserts and deletes columns properly', () => {
     const table = parseMarkdownTable(sampleDoc, 4, 3)!;
     const colAdded = insertTableColumn(table, 1, 'right');
@@ -132,18 +147,5 @@ describe('parseMarkdownTable and modifications', () => {
     const sortedAsc = sortTableRowByColumn(table, 1, 'asc');
     expect(sortedAsc.rows[0]![0]).toBe('Alice');
     expect(sortedAsc.rows[1]![0]).toBe('Bob');
-  });
-
-  it('duplicates and clears rows and cells', () => {
-    const table = parseMarkdownTable(sampleDoc, 4, 3)!;
-    const duplicated = duplicateTableRow(table, 0);
-    expect(duplicated.rows).toHaveLength(3);
-    expect(duplicated.rows[1]).toEqual(['Alice', '24', 'Paris']);
-
-    const clearedCell = clearTableCell(table, 0, 1);
-    expect(clearedCell.rows[0]![1]).toBe('');
-
-    const clearedRow = clearTableRow(table, 0);
-    expect(clearedRow.rows[0]).toEqual(['', '', '']);
   });
 });

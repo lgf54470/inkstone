@@ -6,49 +6,99 @@ import {
 import { dateKey } from '../time';
 import { note } from './helpers';
 
-describe('buildActivityProjectionCached', () => {
-    const asRecord = (items: NoteSummary[]): Record<string, NoteSummary> =>
-        Object.fromEntries(items.map((item) => [item.id, item]));
+const asRecord = (items: NoteSummary[]): Record<string, NoteSummary> =>
+    Object.fromEntries(items.map((item) => [item.id, item]));
 
-    const naive = (notes: Record<string, NoteSummary>) => {
-        const counts = new Map<string, number>();
-        const noteIdByTitle = new Map<string, string>();
-        const notesByDay = new Map<string, { id: string; title: string; updatedAt: number }[]>();
-        for (const item of Object.values(notes)) {
-            if (item.deletedAt !== null)
-                continue;
-            const key = dateKey(new Date(item.updatedAt));
-            counts.set(key, (counts.get(key) ?? 0) + 1);
-            if (!noteIdByTitle.has(item.title))
-                noteIdByTitle.set(item.title, item.id);
-            const list = notesByDay.get(key);
-            const entry = { id: item.id, title: item.title, updatedAt: item.updatedAt };
-            if (list)
-                list.push(entry);
-            else
-                notesByDay.set(key, [entry]);
-        }
-        for (const list of notesByDay.values())
-            list.sort((a, b) => b.updatedAt - a.updatedAt);
-        return { counts, noteIdByTitle, notesByDay };
+const naive = (notes: Record<string, NoteSummary>) => {
+    const counts = new Map<string, number>();
+    const noteIdByTitle = new Map<string, string>();
+    const notesByDay = new Map<string, { id: string; title: string; updatedAt: number }[]>();
+    for (const item of Object.values(notes)) {
+        if (item.deletedAt !== null)
+            continue;
+        const key = dateKey(new Date(item.updatedAt));
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+        if (!noteIdByTitle.has(item.title))
+            noteIdByTitle.set(item.title, item.id);
+        const list = notesByDay.get(key);
+        const entry = { id: item.id, title: item.title, updatedAt: item.updatedAt };
+        if (list)
+            list.push(entry);
+        else
+            notesByDay.set(key, [entry]);
+    }
+    for (const list of notesByDay.values())
+        list.sort((a, b) => b.updatedAt - a.updatedAt);
+    return { counts, noteIdByTitle, notesByDay };
+};
+
+const day = (year: number, month: number, dayOfMonth: number, hour = 12): number =>
+    new Date(year, month - 1, dayOfMonth, hour).getTime();
+const id = (index: number) => `note-${String(index).padStart(5, '0')}`;
+
+// A mulberry32 PRNG so the differential run is deterministic across runs.
+const mulberry32 = (seed: number) => {
+    let state = seed >>> 0;
+    return () => {
+        state = (state + 0x6d2b79f5) >>> 0;
+        let t = state;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
+};
 
-    const day = (year: number, month: number, dayOfMonth: number, hour = 12): number =>
-        new Date(year, month - 1, dayOfMonth, hour).getTime();
-    const id = (index: number) => `note-${String(index).padStart(5, '0')}`;
+const FUZZ_TITLES = ['Shared', 'Untitled', 'Diary', 'Project', 'Scratch'];
 
-    // A mulberry32 PRNG so the differential run is deterministic across runs.
-    const mulberry32 = (seed: number) => {
-        let state = seed >>> 0;
-        return () => {
-            state = (state + 0x6d2b79f5) >>> 0;
-            let t = state;
-            t = Math.imul(t ^ (t >>> 15), t | 1);
-            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-        };
-    };
+// One random op against the map, mirroring the differential fuzz test's branch
+// probabilities; rand() is consumed in exactly the same order per step.
+const randomStep = (rand: () => number, notes: Record<string, NoteSummary>, step: number): Record<string, NoteSummary> => {
+    const op = rand();
+    const target = id(Math.floor(rand() * 5_500));
+    const current = notes[target];
+    if (!current) {
+        // A missing target acts as a brand-new note.
+        const ts = day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28));
+        return { ...notes, [target]: note({ id: target, title: FUZZ_TITLES[Math.floor(rand() * FUZZ_TITLES.length)]!, updatedAt: ts, createdAt: ts }) };
+    }
+    if (op < 0.35) {
+        return { ...notes, [target]: { ...current, updatedAt: day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28)) } };
+    }
+    if (op < 0.5) {
+        return { ...notes, [target]: { ...current, title: FUZZ_TITLES[Math.floor(rand() * FUZZ_TITLES.length)]! } };
+    }
+    if (op < 0.65) {
+        return { ...notes, [target]: { ...current, deletedAt: day(2026, 9, 1), updatedAt: day(2026, 9, 1) } };
+    }
+    if (op < 0.75) {
+        return { ...notes, [target]: { ...current, deletedAt: null, updatedAt: day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28)) } };
+    }
+    if (op < 0.85) {
+        const ts = day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28));
+        return { ...notes, [id(5_500 + step)]: note({ id: id(5_500 + step), title: FUZZ_TITLES[Math.floor(rand() * FUZZ_TITLES.length)]!, updatedAt: ts, createdAt: ts }) };
+    }
+    if (op < 0.95) {
+        return { ...notes, [target]: { ...current, isPinned: true, excerpt: `excerpt ${step}` } };
+    }
+    const { [target]: gone, ...rest } = notes;
+    void gone;
+    return rest;
+};
 
+// Same-millisecond ties have no consumable order (the UI only reads id/title),
+// and only the order of equal timestamps can diverge: the naive rebuild follows
+// map insertion while the incremental re-appends notes that left and re-entered
+// a day. Compare with a canonical (updatedAt, id) sort instead.
+const normalize = (byDay: Map<string, { id: string; title: string; updatedAt: number }[]>): Map<string, string[]> => {
+    const out = new Map<string, string[]>();
+    for (const [dayKey, list] of byDay) {
+        const sorted = [...list].sort((a, b) => b.updatedAt - a.updatedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+        out.set(dayKey, sorted.map((item) => `${item.updatedAt}|${item.id}|${item.title}`));
+    }
+    return out;
+};
+
+describe('buildActivityProjectionCached — cold build and identity', () => {
     it('matches a fresh rebuild over a 19.8k-vault cold build', () => {
         const notes: Record<string, NoteSummary> = {};
         for (let i = 0; i < 19_800; i++) {
@@ -84,7 +134,9 @@ describe('buildActivityProjectionCached', () => {
         expect(second.noteIdByTitle).toBe(first.noteIdByTitle);
         expect(second.notesByDay).toBe(first.notesByDay);
     });
+});
 
+describe('buildActivityProjectionCached — incremental day edits', () => {
     it('re-derives only the edited note slices when a same-day edit changes updatedAt', () => {
         const map = asRecord([
             note({ id: 'a', updatedAt: day(2026, 7, 1) }),
@@ -133,7 +185,9 @@ describe('buildActivityProjectionCached', () => {
         const second = buildActivityProjectionCached({ ...map, a: edited });
         expect(second.notesByDay.get('2026-07-02')!.map((item) => item.id)).toEqual(['a', 'c', 'b']);
     });
+});
 
+describe('buildActivityProjectionCached — title slot re-claim', () => {
     it('re-claims a vacated title slot by the next note in map order', () => {
         const map = asRecord([
             note({ id: 'a', title: 'Alpha', updatedAt: day(2026, 7, 1) }),
@@ -154,7 +208,9 @@ describe('buildActivityProjectionCached', () => {
         const fourth = buildActivityProjectionCached({ ...map, c: { ...map.c!, title: 'Alpha' } });
         expect(fourth.noteIdByTitle.get('Alpha')).toBe('a');
     });
+});
 
+describe('buildActivityProjectionCached — tombstones and sweeps', () => {
     it('drops and restores a tombstoned note across every slice', () => {
         const map = asRecord([
             note({ id: 'a', updatedAt: day(2026, 7, 1) }),
@@ -189,65 +245,23 @@ describe('buildActivityProjectionCached', () => {
         expect(second.notesByDay.get('2026-07-01')).toEqual([{ id: 'a', title: 'Note', updatedAt: day(2026, 7, 1) }]);
         void _removed;
     });
+});
 
+describe('buildActivityProjectionCached — differential fuzz', () => {
     it('stays equal to the naive rebuild through a seeded random op sequence', () => {
         const rand = mulberry32(20260902);
-        const titles = ['Shared', 'Untitled', 'Diary', 'Project', 'Scratch'];
         const notes: Record<string, NoteSummary> = {};
         for (let i = 0; i < 5_000; i++) {
             const ts = day(2025 + (i % 3), 1 + (i % 12), 1 + (i % 28), 1 + (i % 23));
-            notes[id(i)] = note({ id: id(i), title: titles[i % titles.length]!, updatedAt: ts, createdAt: ts });
+            notes[id(i)] = note({ id: id(i), title: FUZZ_TITLES[i % FUZZ_TITLES.length]!, updatedAt: ts, createdAt: ts });
         }
         let next = notes;
         for (let step = 0; step < 80; step++) {
-            const op = rand();
-            const target = id(Math.floor(rand() * 5_500));
-            const current = next[target];
-            let updated: NoteSummary | null = null;
-            let added: NoteSummary | null = null;
-            if (!current) {
-                // A missing target acts as a brand-new note.
-                const ts = day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28));
-                added = note({ id: target, title: titles[Math.floor(rand() * titles.length)]!, updatedAt: ts, createdAt: ts });
-            } else if (op < 0.35) {
-                updated = { ...current, updatedAt: day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28)) };
-            } else if (op < 0.5) {
-                updated = { ...current, title: titles[Math.floor(rand() * titles.length)]! };
-            } else if (op < 0.65) {
-                updated = { ...current, deletedAt: day(2026, 9, 1), updatedAt: day(2026, 9, 1) };
-            } else if (op < 0.75) {
-                updated = { ...current, deletedAt: null, updatedAt: day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28)) };
-            } else if (op < 0.85) {
-                const ts = day(2024 + Math.floor(rand() * 5), 1 + Math.floor(rand() * 12), 1 + Math.floor(rand() * 28));
-                added = note({ id: id(5_500 + step), title: titles[Math.floor(rand() * titles.length)]!, updatedAt: ts, createdAt: ts });
-            } else if (op < 0.95) {
-                updated = { ...current, isPinned: true, excerpt: `excerpt ${step}` };
-            } else {
-                const { [target]: gone, ...rest } = next;
-                next = rest;
-                void gone;
-            }
-            if (updated)
-                next = { ...next, [target]: updated };
-            if (added)
-                next = { ...next, [added.id]: added };
+            next = randomStep(rand, next, step);
             const projection = buildActivityProjectionCached(next);
             const expected = naive(next);
             expect(projection.counts).toEqual(expected.counts);
             expect(projection.noteIdByTitle).toEqual(expected.noteIdByTitle);
-            // Same-millisecond ties have no consumable order (the UI only
-            // reads id/title), and only the order of equal timestamps can
-            // diverge: the naive rebuild follows map insertion while the
-            // incremental re-appends notes that left and re-entered a day.
-            // Compare with a canonical (updatedAt, id) sort instead.
-            const normalize = (byDay: Map<string, { id: string; title: string; updatedAt: number }[]>): Map<string, string[]> => {
-                const out = new Map<string, string[]>();
-                for (const [dayKey, list] of byDay) {
-                    const sorted = [...list].sort((a, b) => b.updatedAt - a.updatedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-                    out.set(dayKey, sorted.map((item) => `${item.updatedAt}|${item.id}|${item.title}`));
-                }
-                return out;
-            };
             expect(normalize(projection.notesByDay)).toEqual(normalize(expected.notesByDay));
         }
     });

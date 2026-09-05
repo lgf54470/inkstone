@@ -29,14 +29,24 @@ async function getKatex(): Promise<KatexLike | null> {
         return null;
     }
 }
-export async function renderMath(root: HTMLElement): Promise<void> {
-    const pending = [...root.querySelectorAll<HTMLElement>('[data-math]')]
+interface PendingMath {
+    node: HTMLElement
+    source: string
+    display: boolean
+    key: string
+}
+
+function collectPendingMath(root: HTMLElement): PendingMath[] {
+    return [...root.querySelectorAll<HTMLElement>('[data-math]')]
         .filter((node) => !node.dataset.rendered)
         .map((node) => {
-        const source = decodeDataValue(node.dataset.math);
-        const display = node.classList.contains('math-block');
-        return { node, source, display, key: `${display ? 'block' : 'inline'}\u0000${source}` };
-    });
+            const source = decodeDataValue(node.dataset.math);
+            const display = node.classList.contains('math-block');
+            return { node, source, display, key: `${display ? 'block' : 'inline'}\u0000${source}` };
+        });
+}
+
+function applyCachedMath(pending: PendingMath[]): void {
     for (let index = pending.length - 1; index >= 0; index--) {
         const item = pending[index]!;
         const cached = mathCache.get(item.key);
@@ -47,6 +57,37 @@ export async function renderMath(root: HTMLElement): Promise<void> {
         item.node.dataset.rendered = '1';
         pending.splice(index, 1);
     }
+}
+
+function renderMathNode(katex: KatexLike, item: PendingMath): void {
+    try {
+        const html = katex.renderToString(item.source, {
+            displayMode: item.display,
+            throwOnError: false,
+            errorColor: 'var(--danger)',
+            strict: false,
+            output: 'html',
+        });
+        // KaTeX output is machine-generated from math source (\color values
+        // are strictly validated and \href is inert at trust:false), but it
+        // is still written through the same sanitizer as every other HTML
+        // fragment so a future KaTeX change cannot introduce a sink.
+        const safe = sanitizeMathHtml(html);
+        remember(mathCache, item.key, safe, 160);
+        item.node.innerHTML = safe;
+        item.node.classList.remove('math-source');
+        item.node.dataset.rendered = '1';
+    }
+    catch (err) {
+        item.node.innerHTML = `<code class="math-error">${escapeHtml(item.source)}</code>`;
+        item.node.dataset.rendered = '1';
+        void err;
+    }
+}
+
+export async function renderMath(root: HTMLElement): Promise<void> {
+    const pending = collectPendingMath(root);
+    applyCachedMath(pending);
     if (!pending.length)
         return;
     const katex = await getKatex();
@@ -54,31 +95,8 @@ export async function renderMath(root: HTMLElement): Promise<void> {
         pending.forEach(({ node, source, display }) => showMathSource(node, source, display));
         return;
     }
-    for (const { node, source, display, key } of pending) {
-        try {
-            const html = katex.renderToString(source, {
-                displayMode: display,
-                throwOnError: false,
-                errorColor: 'var(--danger)',
-                strict: false,
-                output: 'html',
-            });
-            // KaTeX output is machine-generated from math source (\color values
-            // are strictly validated and \href is inert at trust:false), but it
-            // is still written through the same sanitizer as every other HTML
-            // fragment so a future KaTeX change cannot introduce a sink.
-            const safe = sanitizeMathHtml(html);
-            remember(mathCache, key, safe, 160);
-            node.innerHTML = safe;
-            node.classList.remove('math-source');
-            node.dataset.rendered = '1';
-        }
-        catch (err) {
-            node.innerHTML = `<code class="math-error">${escapeHtml(source)}</code>`;
-            node.dataset.rendered = '1';
-            void err;
-        }
-    }
+    for (const item of pending)
+        renderMathNode(katex, item);
 }
 export function showMathSource(root: HTMLElement): void;
 export function showMathSource(node: HTMLElement, source: string, display: boolean): void;
