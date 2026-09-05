@@ -49,7 +49,9 @@ const {
           doc.setAttribute('data-background', cfg.background || 'paper')
           doc.setAttribute('data-density', cfg.density || 'comfortable')
           doc.setAttribute('lang', cfg.lang || 'zh-CN')
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Failed to restore appearance before paint:', e)
+        }
       })()
     </script>
   </head>

@@ -45,7 +45,8 @@ export function getSavedAppearance(): AppearanceConfig {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULT_APPEARANCE
     return { ...DEFAULT_APPEARANCE, ...JSON.parse(raw) }
-  } catch {
+  } catch (e) {
+    console.warn('Failed to read saved appearance, using defaults:', e)
     return DEFAULT_APPEARANCE
   }
 }
@@ -76,7 +77,9 @@ export function applyAppearance(config: AppearanceConfig) {
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
-  } catch {}
+  } catch (e) {
+    console.warn('Failed to persist appearance:', e)
+  }
 
   window.dispatchEvent(new CustomEvent('inkstone-appearance-change', { detail: config }))
 }

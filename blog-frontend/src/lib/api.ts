@@ -45,7 +45,8 @@ export const api = {
       const res = await fetch(`${API_BASE}/api/blog/public/site`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       return normalizeSiteInfo(await res.json())
-    } catch {
+    } catch (err) {
+      console.warn('[api.getSiteInfo] request failed, using fallback site info:', err)
       return FALLBACK_SITE_INFO
     }
   },
@@ -77,7 +78,8 @@ export const api = {
 
       const posts = rawPosts.map(normalizePost)
       return { posts, total, page, limit, totalPages }
-    } catch {
+    } catch (err) {
+      console.warn('[api.getPosts] request failed, using fallback posts:', err)
       let filtered = [...FALLBACK_POSTS]
       if (options?.tag) filtered = filtered.filter((p) => p.tags.includes(options.tag!))
       if (options?.categoryId) filtered = filtered.filter((p) => p.categoryId === options.categoryId)
@@ -104,7 +106,8 @@ export const api = {
       const data = asRecord(await res.json())
       if (!data.post) return null
       return normalizePost(data.post)
-    } catch {
+    } catch (err) {
+      console.warn(`[api.getPostBySlug] request failed for "${slug}", using fallback:`, err)
       return FALLBACK_POSTS.find((p) => p.slug === slug) ?? null
     }
   },
@@ -115,7 +118,8 @@ export const api = {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = asRecord(await res.json())
       return asArray(data.categories).map(normalizeCategory)
-    } catch {
+    } catch (err) {
+      console.warn('[api.getCategories] request failed, using fallback categories:', err)
       return [
         { id: 'cat-tech', name: '技术随笔', slug: 'tech', color: 'oklch(62% 0.16 252)', postsCount: 2, createdAt: Date.now(), updatedAt: Date.now() },
         { id: 'cat-life', name: '生活与思考', slug: 'life', color: 'oklch(66% 0.13 150)', postsCount: 0, createdAt: Date.now(), updatedAt: Date.now() },
@@ -129,7 +133,8 @@ export const api = {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = asRecord(await res.json())
       return asArray(data.tags).map(normalizeTag)
-    } catch {
+    } catch (err) {
+      console.warn('[api.getTags] request failed, using fallback tags:', err)
       return [
         { name: 'Inkstone', postsCount: 1 },
         { name: 'Astro', postsCount: 1 },
@@ -164,7 +169,8 @@ export const api = {
         return groups.map(normalizeTimelineGroup)
       }
       return []
-    } catch {
+    } catch (err) {
+      console.warn('[api.getTimeline] request failed, using fallback timeline:', err)
       const now = new Date()
       return [
         {
@@ -203,7 +209,8 @@ export const api = {
         return Object.entries(calendar).map(([date, item]) => normalizeCalendarDay({ ...asRecord(item), date }))
       }
       return []
-    } catch {
+    } catch (err) {
+      console.warn('[api.getCalendar] request failed, using fallback calendar:', err)
       const today = new Date().toISOString().slice(0, 10)
       return [
         {
@@ -221,7 +228,8 @@ export const api = {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = asRecord(await res.json())
       return asArray(data.comments).map(normalizeComment)
-    } catch {
+    } catch (err) {
+      console.warn(`[api.getComments] request failed for "${postSlugOrId}":`, err)
       return []
     }
   },

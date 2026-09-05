@@ -8,6 +8,7 @@
  *  - 禁止遗留 console.log（允许 warn/error）
  *  - TODO/FIXME 必须带归属（issue 号或负责人）
  *  - 禁止 any（as any / : any / any[] / <any> / Map<..., any>）
+ * 字符串/模板/注释内容不参与匹配（演示文案中的 console.log 等不误报）。
  * 退出码 0 = 全部通过，1 = 存在违规。
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -18,32 +19,86 @@ const MAX_FILE_LINES = 500
 
 const CHECKS = [
   {
-    name: 'file-too-long',
-    re: null,
-    test: (lines) => lines.length > MAX_FILE_LINES,
-    msg: (lines) => `${lines.length} lines > ${MAX_FILE_LINES}`,
-  },
-  {
     name: 'forbidden-ignore',
-    re: /@ts-ignore|@ts-expect-error|eslint-disable/,
+    re: /@ts-ignore|@ts-expect-error|eslint-disable/g,
   },
   {
     name: 'empty-catch',
-    re: /catch\s*(?:\([^)]*\))?\s*\{\s*\}/,
+    re: /catch\s*(?:\([^)]*\))?\s*\{\s*\}/g,
   },
   {
     name: 'console-log',
-    re: /console\.log\(/,
+    re: /console\.log\(/g,
   },
   {
     name: 'todo-without-owner',
-    re: /\b(?:TODO|FIXME)\b(?!\s*\([^)]*\))/,
+    re: /\b(?:TODO|FIXME)\b(?!\s*\([^)]*\))/g,
   },
   {
     name: 'any-type',
-    re: /\bas any\b|:\s*any\b|\bany\[\]|<any>/,
+    re: /\bas any\b|:\s*any\b|\bany\[\]|<any>/g,
   },
 ]
+
+/** 提取去除字符串与注释后的代码片段（记录片段起始行号）。 */
+function codeSegments(src) {
+  const segments = []
+  let i = 0
+  let line = 1
+  let segStart = 0
+  let segLine = 1
+  let quote = null
+  while (i < src.length) {
+    const ch = src[i]
+    if (quote) {
+      if (ch === '\\') {
+        i += 2
+        continue
+      }
+      if (ch === quote) {
+        quote = null
+        segStart = i + 1
+        segLine = line
+      }
+      if (ch === '\n') line++
+      i++
+      continue
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      if (segStart < i) segments.push({ text: src.slice(segStart, i), line: segLine })
+      quote = ch
+      i++
+      continue
+    }
+    if (ch === '/' && src[i + 1] === '/') {
+      if (segStart < i) segments.push({ text: src.slice(segStart, i), line: segLine })
+      while (i < src.length && src[i] !== '\n') i++
+      segStart = i
+      segLine = line
+      continue
+    }
+    if (ch === '/' && src[i + 1] === '*') {
+      if (segStart < i) segments.push({ text: src.slice(segStart, i), line: segLine })
+      i += 2
+      while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) {
+        if (src[i] === '\n') line++
+        i++
+      }
+      i += 2
+      segStart = i
+      segLine = line
+      continue
+    }
+    if (ch === '\n') {
+      line++
+      i++
+      continue
+    }
+    i++
+  }
+  if (segStart < src.length) segments.push({ text: src.slice(segStart), line: segLine })
+  return segments
+}
 
 function walk(dir) {
   const out = []
@@ -58,18 +113,19 @@ function walk(dir) {
 
 let failed = false
 for (const file of walk(SRC_DIR)) {
-  const lines = readFileSync(file, 'utf8').split('\n')
-  for (const check of CHECKS) {
-    if (check.re) {
-      lines.forEach((line, idx) => {
-        if (check.re.test(line)) {
-          failed = true
-          console.error(`${file}:${idx + 1}: [${check.name}] ${line.trim()}`)
-        }
-      })
-    } else if (check.test(lines)) {
-      failed = true
-      console.error(`${file}: [${check.name}] ${check.msg(lines)}`)
+  const src = readFileSync(file, 'utf8')
+  const lines = src.split('\n')
+  if (lines.length > MAX_FILE_LINES) {
+    failed = true
+    console.error(`${file}: [file-too-long] ${lines.length} lines > ${MAX_FILE_LINES}`)
+  }
+  for (const segment of codeSegments(src)) {
+    for (const check of CHECKS) {
+      for (const match of segment.text.matchAll(check.re)) {
+        const lineNo = segment.line + (segment.text.slice(0, match.index).match(/\n/g)?.length ?? 0)
+        failed = true
+        console.error(`${file}:${lineNo}: [${check.name}] ${match[0].trim()}`)
+      }
     }
   }
 }
