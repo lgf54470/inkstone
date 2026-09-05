@@ -116,6 +116,9 @@ const allowed = new Map([
   ["src/client/editor/paste.ts", [
     "// Upload failure degrades to the error placeholder below via the null result.",
   ]],
+  ["src/client/features/attachments/attachment-drive-modal/hooks.ts", [
+    "/** All state + async actions behind the attachment drive modal, so the modal component stays a thin JSX shell. */",
+  ]],
   ["src/client/features/blog/blog-categories-modal.tsx", [
     "/* Form: Add or Edit Category */",
     "/* Existing Categories List */",

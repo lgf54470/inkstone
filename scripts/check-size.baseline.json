@@ -69,8 +69,7 @@
     "longFns": 4,
     "deepFns": 1
   },
-  "src/client/features/attachments/attachment-drive-modal.tsx": {
-    "lines": 577,
+  "src/client/features/attachments/attachment-drive-modal/hooks.ts": {
     "longFns": 1,
     "deepFns": 1
   },
