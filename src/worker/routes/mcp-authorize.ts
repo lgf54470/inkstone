@@ -39,6 +39,15 @@ mcpAuthorizeRoutes.get('/authorize', async (c) => {
   }
   const client = await c.env.OAUTH_PROVIDER!.lookupClient(parsed.clientId)
   if (!client) return html(c, errorPage(copy.unknownClient, locale, c.req.url), 400)
+  return renderAuthorizePage(c, parsed, client, locale)
+})
+
+async function renderAuthorizePage(
+  c: Context<AppBindings>,
+  parsed: AuthRequest,
+  client: ClientInfo,
+  locale: AppLocale,
+): Promise<Response> {
   const csrf = randomToken()
   setCookie(c, CSRF_COOKIE, csrf, {
     path: '/authorize',
@@ -49,18 +58,19 @@ mcpAuthorizeRoutes.get('/authorize', async (c) => {
   })
   c.header('Cache-Control', 'no-store')
   const user = c.get('user')
+  const url = new URL(c.req.url)
   return html(c, user
     ? consentPage({
         client,
         request: parsed,
         csrf,
         userName: user.name || user.login,
-        action: new URL(c.req.url).pathname + new URL(c.req.url).search,
+        action: url.pathname + url.search,
         locale,
         currentUrl: c.req.url,
       })
     : loginPage(client.clientName || 'MCP client', locale, c.req.url), 200)
-})
+}
 
 mcpAuthorizeRoutes.post('/authorize', async (c) => {
   assertSameOrigin(c.req.raw)
@@ -80,7 +90,17 @@ mcpAuthorizeRoutes.post('/authorize', async (c) => {
     throw ApiError.forbidden('Authorization form expired. Start the connection again.')
   }
   setCookie(c, CSRF_COOKIE, '', { path: '/authorize', maxAge: 0 })
+  return completeAuthorization(c, parsed, body, user, locale, copy)
+})
 
+async function completeAuthorization(
+  c: Context<AppBindings>,
+  parsed: AuthRequest,
+  body: URLSearchParams,
+  user: AppBindings['Variables']['user'],
+  locale: AppLocale,
+  copy: ReturnType<typeof authorizationCopy>,
+): Promise<Response> {
   if (body.get('decision') !== 'approve') {
     return Response.redirect(
       oauthErrorRedirect(
@@ -117,7 +137,7 @@ mcpAuthorizeRoutes.post('/authorize', async (c) => {
     authorizationResponseRedirect(redirectTo, authorizationIssuer(c.req.raw, parsed)),
     302,
   )
-})
+}
 
 async function parseAuthorization(
   request: Request,
@@ -298,44 +318,49 @@ function errorPage(message: string, locale: AppLocale, currentUrl: string): stri
 }
 
 function authorizationCopy(locale: AppLocale) {
-  if (locale === 'zh-CN') {
-    return {
-      header: 'MCP',
-      authorization: '授权',
-      switchLabel: 'EN',
-      switchAria: '切换为英文',
-      mcpClient: 'MCP 客户端',
-      accessTitle: (clientName: string) => `${clientName} 请求访问`,
-      signedInAs: '已登录为 ',
-      accountOnly: '。仅可访问此账户的笔记。',
-      permissions: '权限',
-      readTitle: '读取与搜索笔记',
-      readDetail: '必需。连接的 AI 客户端只会收到工具选中的笔记内容。',
-      readRequiredAria: '读取与搜索笔记为必需权限',
-      writeTitle: '\u4fee\u6539\u7b14\u8bb0\u5e93',
-      writeDetail: '\u53ef\u4fee\u6539\u7b14\u8bb0\u3001\u76ee\u5f55\u3001\u6807\u7b7e\u3001\u5c5e\u6027\u548c\u9644\u4ef6\uff0c\u4e5f\u53ef\u6309\u660e\u786e\u8bf7\u6c42\u521b\u5efa\u5171\u4eab\u94fe\u63a5\u6216\u8fd0\u884c\u5df2\u914d\u7f6e\u7684\u5907\u4efd\uff1b\u5199\u5165\u5305\u542b\u51b2\u7a81\u4fdd\u62a4\u548c\u5e42\u7b49\u952e\u3002',
-      trashTitle: '移入回收站',
-      trashDetail: '仅软删除；MCP 不提供永久清除功能。',
-      privacy: '隐私',
-      privacyDetail: (clientName: string) =>
-        `Cloudflare 托管静态加密的服务数据。只有工具读取笔记时，内容才会发送给 ${clientName}，之后由该客户端的隐私政策约束。`,
-      cancel: '取消',
-      allowAccess: '允许访问',
-      signInTitle: (clientName: string) => `登录以授权 ${clientName}`,
-      passwordOnly: '密码只会发送到当前 Inkstone 部署。',
-      inkstoneAccount: 'Inkstone 账户',
-      username: '用户名',
-      password: '密码',
-      signInContinue: '登录并继续',
-      needAccount: '还没有账户？请先在另一个标签页打开 Inkstone。',
-      signInFailed: '登录失败',
-      authorizationFailed: '授权失败',
-      openInkstone: '打开 Inkstone',
-      mcpDisabled: 'MCP 已在 Inkstone 设置中停用。',
-      unknownClient: '未知的 OAuth 客户端。',
-      sessionExpired: 'Inkstone 会话已过期，请登录后重试。',
-    }
+  return locale === 'zh-CN' ? zhAuthorizationCopy() : enAuthorizationCopy()
+}
+
+function zhAuthorizationCopy() {
+  return {
+    header: 'MCP',
+    authorization: '授权',
+    switchLabel: 'EN',
+    switchAria: '切换为英文',
+    mcpClient: 'MCP 客户端',
+    accessTitle: (clientName: string) => `${clientName} 请求访问`,
+    signedInAs: '已登录为 ',
+    accountOnly: '。仅可访问此账户的笔记。',
+    permissions: '权限',
+    readTitle: '读取与搜索笔记',
+    readDetail: '必需。连接的 AI 客户端只会收到工具选中的笔记内容。',
+    readRequiredAria: '读取与搜索笔记为必需权限',
+    writeTitle: '\u4fee\u6539\u7b14\u8bb0\u5e93',
+    writeDetail: '\u53ef\u4fee\u6539\u7b14\u8bb0\u3001\u76ee\u5f55\u3001\u6807\u7b7e\u3001\u5c5e\u6027\u548c\u9644\u4ef6\uff0c\u4e5f\u53ef\u6309\u660e\u786e\u8bf7\u6c42\u521b\u5efa\u5171\u4eab\u94fe\u63a5\u6216\u8fd0\u884c\u5df2\u914d\u7f6e\u7684\u5907\u4efd\uff1b\u5199\u5165\u5305\u542b\u51b2\u7a81\u4fdd\u62a4\u548c\u5e42\u7b49\u952e\u3002',
+    trashTitle: '移入回收站',
+    trashDetail: '仅软删除；MCP 不提供永久清除功能。',
+    privacy: '隐私',
+    privacyDetail: (clientName: string) =>
+      `Cloudflare 托管静态加密的服务数据。只有工具读取笔记时，内容才会发送给 ${clientName}，之后由该客户端的隐私政策约束。`,
+    cancel: '取消',
+    allowAccess: '允许访问',
+    signInTitle: (clientName: string) => `登录以授权 ${clientName}`,
+    passwordOnly: '密码只会发送到当前 Inkstone 部署。',
+    inkstoneAccount: 'Inkstone 账户',
+    username: '用户名',
+    password: '密码',
+    signInContinue: '登录并继续',
+    needAccount: '还没有账户？请先在另一个标签页打开 Inkstone。',
+    signInFailed: '登录失败',
+    authorizationFailed: '授权失败',
+    openInkstone: '打开 Inkstone',
+    mcpDisabled: 'MCP 已在 Inkstone 设置中停用。',
+    unknownClient: '未知的 OAuth 客户端。',
+    sessionExpired: 'Inkstone 会话已过期，请登录后重试。',
   }
+}
+
+function enAuthorizationCopy() {
   return {
     header: 'MCP',
     authorization: 'Authorization',

@@ -1,4 +1,5 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
+import { z } from "zod";
 import { LIMITS } from "@shared/constants";
 import { organizerColorOrNull } from "@shared/organizer-colors";
 import { truncateText } from "@shared/text-utils";
@@ -13,7 +14,7 @@ import { createFolderSchema } from './helpers';
 import { patchFolderSchema } from './helpers';
 import { FOLDER_SELECT } from './helpers';
 import { loadFolder } from './helpers';
-import { loadFolderGraph } from './helpers';
+import { loadFolderGraph, type FolderGraph } from './helpers';
 import { availableFolderName } from './helpers';
 import { resolveFolderPosition } from './helpers';
 import { folderPromotionOrder } from './helpers';
@@ -23,8 +24,30 @@ import { parseFolderDeleteStrategy } from './helpers';
 import { folderDepth } from './helpers';
 import { subtreeHeight } from './helpers';
 
+type CreateFolderBody = z.infer<typeof createFolderSchema>
+type PatchFolderBody = z.infer<typeof patchFolderSchema>
+
+interface FolderPatchRow {
+  id: string
+  parent_id: string | null
+  updated_at: number
+}
+
+interface FolderDeleteRow {
+  id: string
+  parent_id: string | null
+  position: number
+  updated_at: number
+}
+
 export function registerFoldersCrudRoutes(foldersRoutes: Hono<AppBindings>): void {
-foldersRoutes.get('/', async (c) => {
+  foldersRoutes.get('/', listFoldersHandler)
+  foldersRoutes.post('/', createFolderHandler)
+  foldersRoutes.patch('/:id', patchFolderHandler)
+  foldersRoutes.delete('/:id', deleteFolderHandler)
+}
+
+async function listFoldersHandler(c: Context<AppBindings>): Promise<Response> {
   const { results } = await c.env.DB.prepare(
     `SELECT ${FOLDER_SELECT} FROM folders f
       WHERE f.user_id = ?1 AND f.deleted_at IS NULL
@@ -33,21 +56,15 @@ foldersRoutes.get('/', async (c) => {
     .bind(c.get('userId'))
     .all<FolderRow>()
   return c.json({ folders: results.map(toFolder) })
-})
+}
 
-foldersRoutes.post('/', async (c) => {
+async function createFolderHandler(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
   const body = await readJsonValidated(c, createFolderSchema, JSON_BODY_LIMITS.small)
   const id = body.id ?? newId()
   if (body.id) {
-    const existing = await c.env.DB.prepare(
-      `SELECT ${FOLDER_SELECT} FROM folders f WHERE f.id = ?1 AND f.user_id = ?2 AND f.deleted_at IS NULL`,
-    ).bind(id, userId).first<FolderRow>()
+    const existing = await existingOrAvailableFolder(c.env.DB, id, userId)
     if (existing) return c.json(toFolder(existing))
-    const collision = await c.env.DB.prepare(`SELECT user_id FROM folders WHERE id = ?1`)
-      .bind(id)
-      .first<{ user_id: string }>()
-    if (collision) throw ApiError.conflict('This folder id is already in use')
   }
   const graph = await loadFolderGraph(c.env.DB, userId)
   const parentId = validateParent(graph, body.parentId ?? null)
@@ -59,7 +76,39 @@ foldersRoutes.post('/', async (c) => {
   }
 
   const now = Date.now()
-  const insert = c.env.DB.prepare(
+  const statements = buildFolderInsertStatements(c.env.DB, userId, id, parentId, name, body, now)
+  const [created] = await c.env.DB.batch(statements)
+  if (!created?.meta.changes) throw ApiError.conflict('The parent folder changed or a sibling already uses this name')
+  await broadcastCursor(c)
+  return c.json(await loadFolder(c.env.DB, userId, id), 201)
+}
+
+async function existingOrAvailableFolder(
+  db: D1Database,
+  id: string,
+  userId: string,
+): Promise<FolderRow | null> {
+  const existing = await db.prepare(
+    `SELECT ${FOLDER_SELECT} FROM folders f WHERE f.id = ?1 AND f.user_id = ?2 AND f.deleted_at IS NULL`,
+  ).bind(id, userId).first<FolderRow>()
+  if (existing) return existing
+  const collision = await db.prepare(`SELECT user_id FROM folders WHERE id = ?1`)
+    .bind(id)
+    .first<{ user_id: string }>()
+  if (collision) throw ApiError.conflict('This folder id is already in use')
+  return null
+}
+
+function buildFolderInsertStatements(
+  db: D1Database,
+  userId: string,
+  id: string,
+  parentId: string | null,
+  name: string,
+  body: CreateFolderBody,
+  now: number,
+): D1PreparedStatement[] {
+  const insert = db.prepare(
     `WITH RECURSIVE ancestors(id, parent_id, depth) AS (
        SELECT id, parent_id, 1 FROM folders
         WHERE id = ?3 AND user_id = ?2 AND deleted_at IS NULL
@@ -88,36 +137,58 @@ foldersRoutes.post('/', async (c) => {
     LIMITS.folderDepthMax,
     LIMITS.folderDepthMax + 1,
   )
-  const change = c.env.DB.prepare(
+  const change = db.prepare(
     `INSERT INTO changes (user_id, entity, entity_id, op, at)
      SELECT ?1, 'folder', ?2, 'upsert', ?3
       WHERE EXISTS (SELECT 1 FROM folders WHERE id = ?2 AND user_id = ?1)`,
   ).bind(userId, id, now)
-  const [created] = await c.env.DB.batch([insert, change])
-  if (!created?.meta.changes) throw ApiError.conflict('The parent folder changed or a sibling already uses this name')
-  await broadcastCursor(c)
-  return c.json(await loadFolder(c.env.DB, userId, id), 201)
-})
+  return [insert, change]
+}
 
-foldersRoutes.patch('/:id', async (c) => {
+async function patchFolderHandler(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
-  const id = c.req.param('id')
+  const id = c.req.param('id')!
   const body = await readJsonValidated(c, patchFolderSchema, JSON_BODY_LIMITS.small)
 
   const existing = await c.env.DB.prepare(
     `SELECT id, parent_id, updated_at FROM folders WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
   )
     .bind(id, userId)
-    .first<{ id: string; parent_id: string | null; updated_at: number }>()
+    .first<FolderPatchRow>()
   if (!existing) throw ApiError.notFound('Folder not found')
 
-  const sets: string[] = []
-  const binds: unknown[] = []
+  assertReorderablePatch(body, id)
+  const scalar = collectScalarPatchSets(body)
+  const graph = await loadFolderGraph(c.env.DB, userId)
+  const placement = await resolveFolderPlacement(c.env.DB, userId, id, existing, body, graph)
+  if (!scalar.sets.length && !placement.sets.length) {
+    return c.json(await loadFolder(c.env.DB, userId, id))
+  }
 
+  const updatedAt = Math.max(Date.now(), existing.updated_at + 1)
+  const statements = buildFolderPatchStatements(c.env.DB, userId, id, existing, {
+    sets: [...scalar.sets, ...placement.sets],
+    binds: [...scalar.binds, ...placement.binds],
+    parentId: placement.parentId,
+    beforeId: body.beforeId ?? null,
+    updatedAt,
+  })
+  const [updated] = await c.env.DB.batch(statements)
+  if (!updated?.meta.changes) throw ApiError.conflict('The folder changed elsewhere or a sibling already uses this name')
+  await broadcastCursor(c)
+  return c.json(await loadFolder(c.env.DB, userId, id))
+}
+
+function assertReorderablePatch(body: PatchFolderBody, id: string): void {
   if (body.beforeId !== undefined && body.parentId === undefined) {
     throw ApiError.badRequest('parentId is required when reordering a folder')
   }
   if (body.beforeId === id) throw ApiError.badRequest('A folder cannot be placed before itself')
+}
+
+function collectScalarPatchSets(body: PatchFolderBody): { sets: string[]; binds: unknown[] } {
+  const sets: string[] = []
+  const binds: unknown[] = []
   if (body.name !== undefined) {
     const name = body.name.trim()
     if (!name) throw ApiError.badRequest('Folder name cannot be empty')
@@ -136,7 +207,19 @@ foldersRoutes.patch('/:id', async (c) => {
     binds.push(organizerColorOrNull(body.color))
     sets.push(`color = ?${binds.length}`)
   }
-  const graph = await loadFolderGraph(c.env.DB, userId)
+  return { sets, binds }
+}
+
+async function resolveFolderPlacement(
+  db: D1Database,
+  userId: string,
+  id: string,
+  existing: FolderPatchRow,
+  body: PatchFolderBody,
+  graph: FolderGraph,
+): Promise<{ sets: string[]; binds: unknown[]; parentId: string | null }> {
+  const sets: string[] = []
+  const binds: unknown[] = []
   let parentId = existing.parent_id
   if (body.parentId !== undefined) {
     parentId = validateParent(graph, body.parentId, id)
@@ -153,7 +236,7 @@ foldersRoutes.patch('/:id', async (c) => {
   const shouldPlace = body.beforeId !== undefined || parentChanged
   if (shouldPlace) {
     const position = await resolveFolderPosition(
-      c.env.DB,
+      db,
       userId,
       id,
       existing.parent_id,
@@ -165,64 +248,75 @@ foldersRoutes.patch('/:id', async (c) => {
       sets.push(`position = ?${binds.length}`)
     }
   }
-  if (!sets.length) return c.json(await loadFolder(c.env.DB, userId, id))
+  return { sets, binds, parentId }
+}
 
-  const updatedAt = Math.max(Date.now(), existing.updated_at + 1)
-  binds.push(updatedAt)
-  sets.push(`updated_at = ?${binds.length}`)
-  const shiftedSets = sets.map((set) => set.replace(/\?(\d+)/g, (_m, n: string) => `?${Number(n) + 3}`))
-  const update = c.env.DB.prepare(
+function buildFolderPatchStatements(
+  db: D1Database,
+  userId: string,
+  id: string,
+  existing: FolderPatchRow,
+  patch: {
+    sets: string[]
+    binds: unknown[]
+    parentId: string | null
+    beforeId: string | null
+    updatedAt: number
+  },
+): D1PreparedStatement[] {
+  const updatedAt = patch.updatedAt
+  patch.binds.push(updatedAt)
+  patch.sets.push(`updated_at = ?${patch.binds.length}`)
+  const shiftedSets = patch.sets.map((set) => set.replace(/\?(\d+)/g, (_m, n: string) => `?${Number(n) + 3}`))
+  const update = db.prepare(
     `WITH RECURSIVE
        descendants(id, depth) AS (
          SELECT id, 1 FROM folders WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL
          UNION ALL
          SELECT f.id, d.depth + 1 FROM folders f JOIN descendants d ON f.parent_id = d.id
-          WHERE f.user_id = ?2 AND f.deleted_at IS NULL AND d.depth < ?${binds.length + 5}
+          WHERE f.user_id = ?2 AND f.deleted_at IS NULL AND d.depth < ?${patch.binds.length + 5}
        ),
        ancestors(id, parent_id, depth) AS (
          SELECT id, parent_id, 1 FROM folders WHERE id = ?3 AND user_id = ?2 AND deleted_at IS NULL
          UNION ALL
          SELECT f.id, f.parent_id, a.depth + 1 FROM folders f JOIN ancestors a ON f.id = a.parent_id
-          WHERE f.user_id = ?2 AND f.deleted_at IS NULL AND a.depth < ?${binds.length + 5}
+          WHERE f.user_id = ?2 AND f.deleted_at IS NULL AND a.depth < ?${patch.binds.length + 5}
        )
      UPDATE OR IGNORE folders SET ${shiftedSets.join(', ')}
       WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL
-        AND updated_at = ?${binds.length + 4}
+        AND updated_at = ?${patch.binds.length + 4}
         AND (?3 IS NULL OR EXISTS (
           SELECT 1 FROM folders WHERE id = ?3 AND user_id = ?2 AND deleted_at IS NULL
         ))
         AND NOT EXISTS (SELECT 1 FROM descendants WHERE id = ?3)
         AND COALESCE((SELECT MAX(depth) FROM ancestors), 0)
-            + COALESCE((SELECT MAX(depth) FROM descendants), 1) <= ?${binds.length + 5}
-        AND (?${binds.length + 6} IS NULL OR EXISTS (
+            + COALESCE((SELECT MAX(depth) FROM descendants), 1) <= ?${patch.binds.length + 5}
+        AND (?${patch.binds.length + 6} IS NULL OR EXISTS (
           SELECT 1 FROM folders before_folder
-           WHERE before_folder.id = ?${binds.length + 6}
+           WHERE before_folder.id = ?${patch.binds.length + 6}
              AND before_folder.user_id = ?2 AND before_folder.parent_id IS ?3
              AND before_folder.deleted_at IS NULL
         ))`,
   ).bind(
     id,
     userId,
-    parentId,
-    ...binds,
+    patch.parentId,
+    ...patch.binds,
     existing.updated_at,
     LIMITS.folderDepthMax,
-    body.beforeId ?? null,
+    patch.beforeId,
   )
-  const change = c.env.DB.prepare(
+  const change = db.prepare(
     `INSERT INTO changes (user_id, entity, entity_id, op, at)
      SELECT ?1, 'folder', ?2, 'upsert', ?3
       WHERE EXISTS (SELECT 1 FROM folders WHERE id = ?2 AND user_id = ?1 AND updated_at = ?3)`,
   ).bind(userId, id, updatedAt)
-  const [updated] = await c.env.DB.batch([update, change])
-  if (!updated?.meta.changes) throw ApiError.conflict('The folder changed elsewhere or a sibling already uses this name')
-  await broadcastCursor(c)
-  return c.json(await loadFolder(c.env.DB, userId, id))
-})
+  return [update, change]
+}
 
-foldersRoutes.delete('/:id', async (c) => {
+async function deleteFolderHandler(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
-  const id = c.req.param('id')
+  const id = c.req.param('id')!
   const strategy = parseFolderDeleteStrategy(c.req.query('strategy'))
   const { ftsEnabled } = c.get('database')
   const now = Date.now()
@@ -231,125 +325,172 @@ foldersRoutes.delete('/:id', async (c) => {
     `SELECT id, parent_id, position, updated_at FROM folders WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL`,
   )
     .bind(id, userId)
-    .first<{ id: string; parent_id: string | null; position: number; updated_at: number }>()
+    .first<FolderDeleteRow>()
   if (!row) throw ApiError.notFound('Folder not found')
 
   if (strategy === 'move-up') {
-    const promotionOrder = await folderPromotionOrder(c.env.DB, userId, row)
-    const promotionJson = JSON.stringify(promotionOrder)
-    const guard = `EXISTS (SELECT 1 FROM folders
-      WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at IS NULL)
-      AND NOT EXISTS (
-        SELECT 1 FROM folders child
-        JOIN folders sibling
-          ON sibling.user_id = child.user_id
-         AND sibling.parent_id IS (
-           SELECT parent_id FROM folders WHERE id = ?1 AND user_id = ?2
-         )
-         AND lower(sibling.name) = lower(child.name)
-         AND sibling.deleted_at IS NULL
-         AND sibling.id != ?1
-         AND sibling.id != child.id
-       WHERE child.parent_id = ?1 AND child.user_id = ?2 AND child.deleted_at IS NULL
-      )`
-    const statements = [
-      c.env.DB.prepare(
-        `INSERT INTO changes (user_id, entity, entity_id, op, at)
-         SELECT ?2, 'folder', json_extract(item.value, '$.id'), 'upsert', ?4
-           FROM json_each(?5) item WHERE ${guard}`,
-      ).bind(id, userId, row.updated_at, now, promotionJson),
-      c.env.DB.prepare(
-        `INSERT INTO changes (user_id, entity, entity_id, op, at)
-         SELECT ?2, 'note', id, 'upsert', ?4 FROM notes
-          WHERE folder_id = ?1 AND user_id = ?2 AND ${guard}`,
-      ).bind(id, userId, row.updated_at, now),
-      c.env.DB.prepare(
-        `INSERT INTO changes (user_id, entity, entity_id, op, at)
-         SELECT ?2, 'folder', ?1, 'delete', ?4 WHERE ${guard}`,
-      ).bind(id, userId, row.updated_at, now),
-      c.env.DB.prepare(
-        `UPDATE folders SET deleted_at = ?4
-          WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3
-            AND deleted_at IS NULL AND ${guard}`,
-      ).bind(id, userId, row.updated_at, now),
-      c.env.DB.prepare(
-        `UPDATE folders SET
-           parent_id = CASE WHEN parent_id = ?1 THEN ?4 ELSE parent_id END,
-           position = COALESCE((
-             SELECT json_extract(item.value, '$.position') FROM json_each(?6) item
-              WHERE json_extract(item.value, '$.id') = folders.id
-           ), position),
-           updated_at = MAX(updated_at + 1, ?5)
-          WHERE id IN (SELECT json_extract(item.value, '$.id') FROM json_each(?6) item)
-            AND user_id = ?2 AND deleted_at IS NULL
-            AND EXISTS (SELECT 1 FROM folders
-              WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at = ?5)`,
-      ).bind(id, userId, row.updated_at, row.parent_id, now, promotionJson),
-      c.env.DB.prepare(
-        `UPDATE notes SET folder_id = ?4, updated_at = MAX(updated_at + 1, ?5), rev = rev + 1
-          WHERE folder_id = ?1 AND user_id = ?2
-            AND EXISTS (SELECT 1 FROM folders
-              WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at = ?5)`,
-      ).bind(id, userId, row.updated_at, row.parent_id, now),
-      c.env.DB.prepare(
-        `DELETE FROM folders WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3
-          AND deleted_at = ?4`,
-      ).bind(id, userId, row.updated_at, now),
-    ]
-    const results = await c.env.DB.batch(statements)
-    if (!results.at(-1)?.meta.changes) throw ApiError.conflict('The folder changed elsewhere. Refresh and try again')
+    await promoteFolderContents(c, userId, id, row, now)
   } else {
-    const tree = subtreeCteWithRevision()
-    const noteIds = `SELECT n.id FROM notes n WHERE n.user_id = ?2 AND n.folder_id IN (SELECT id FROM subtree)`
-    const statements: D1PreparedStatement[] = [
-      c.env.DB.prepare(
-        `${tree} INSERT INTO changes (user_id, entity, entity_id, op, at)
-         SELECT ?2, 'folder', id, 'delete', ?4 FROM subtree`,
-      ).bind(id, userId, row.updated_at, now),
-      c.env.DB.prepare(
-        `${tree} INSERT INTO changes (user_id, entity, entity_id, op, at)
-         SELECT ?2, 'note', id, 'upsert', ?4 FROM notes
-          WHERE user_id = ?2 AND folder_id IN (SELECT id FROM subtree)`,
-      ).bind(id, userId, row.updated_at, now),
-      c.env.DB.prepare(
-        `${tree} INSERT OR REPLACE INTO ai_index_queue (user_id, note_id, kind, created_at)
-         SELECT ?2, id, 'delete', ?4 FROM notes
-          WHERE user_id = ?2 AND folder_id IN (SELECT id FROM subtree)`,
-      ).bind(id, userId, row.updated_at, now),
-      c.env.DB.prepare(`${tree} DELETE FROM links WHERE source_note_id IN (${noteIds})`)
-        .bind(id, userId, row.updated_at),
-      c.env.DB.prepare(
-        `${tree} UPDATE links SET target_note_id = (
-           SELECT candidate.id FROM notes candidate
-            WHERE candidate.user_id = links.user_id AND candidate.deleted_at IS NULL
-              AND candidate.title_key = links.target_key
-              AND candidate.id NOT IN (${noteIds})
-            ORDER BY candidate.created_at ASC, candidate.id ASC LIMIT 1
-         ) WHERE user_id = ?2 AND target_note_id IN (${noteIds})`,
-      ).bind(id, userId, row.updated_at),
-    ]
-    if (ftsEnabled) {
-      statements.push(
-        c.env.DB.prepare(`${tree} DELETE FROM notes_fts WHERE note_id IN (${noteIds})`)
-          .bind(id, userId, row.updated_at),
-      )
-    }
-    statements.push(
-      c.env.DB.prepare(
-        `${tree} UPDATE notes SET folder_id = NULL, deleted_at = COALESCE(deleted_at, ?4),
-          updated_at = MAX(updated_at + 1, ?4), rev = rev + 1
-          WHERE user_id = ?2 AND folder_id IN (SELECT id FROM subtree)`,
-      ).bind(id, userId, row.updated_at, now),
-      c.env.DB.prepare(
-        `${tree} DELETE FROM folders WHERE user_id = ?2 AND id IN (SELECT id FROM subtree)`,
-      ).bind(id, userId, row.updated_at),
-    )
-    const results = await c.env.DB.batch(statements)
-    if (!results.at(-1)?.meta.changes) throw ApiError.conflict('The folder changed elsewhere. Refresh and try again')
+    await deleteFolderTree(c, userId, id, row, now, ftsEnabled)
   }
-
   await broadcastCursor(c)
   return c.json({ ok: true })
-})
 }
 
+async function promoteFolderContents(
+  c: Context<AppBindings>,
+  userId: string,
+  id: string,
+  row: FolderDeleteRow,
+  now: number,
+): Promise<void> {
+  const promotionOrder = await folderPromotionOrder(c.env.DB, userId, row)
+  const promotionJson = JSON.stringify(promotionOrder)
+  const guard = `EXISTS (SELECT 1 FROM folders
+    WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at IS NULL)
+    AND NOT EXISTS (
+      SELECT 1 FROM folders child
+      JOIN folders sibling
+        ON sibling.user_id = child.user_id
+       AND sibling.parent_id IS (
+         SELECT parent_id FROM folders WHERE id = ?1 AND user_id = ?2
+       )
+       AND lower(sibling.name) = lower(child.name)
+       AND sibling.deleted_at IS NULL
+       AND sibling.id != ?1
+       AND sibling.id != child.id
+     WHERE child.parent_id = ?1 AND child.user_id = ?2 AND child.deleted_at IS NULL
+    )`
+  const statements = [
+    ...buildPromotionChangeStatements(c.env.DB, userId, id, row.updated_at, now, promotionJson, guard),
+    ...buildPromotionUpdateStatements(c.env.DB, userId, id, row.updated_at, row.parent_id, now, promotionJson, guard),
+  ]
+  const results = await c.env.DB.batch(statements)
+  if (!results.at(-1)?.meta.changes) throw ApiError.conflict('The folder changed elsewhere. Refresh and try again')
+}
+
+function buildPromotionChangeStatements(
+  db: D1Database,
+  userId: string,
+  id: string,
+  updatedAt: number,
+  now: number,
+  promotionJson: string,
+  guard: string,
+): D1PreparedStatement[] {
+  return [
+    db.prepare(
+      `INSERT INTO changes (user_id, entity, entity_id, op, at)
+       SELECT ?2, 'folder', json_extract(item.value, '$.id'), 'upsert', ?4
+         FROM json_each(?5) item WHERE ${guard}`,
+    ).bind(id, userId, updatedAt, now, promotionJson),
+    db.prepare(
+      `INSERT INTO changes (user_id, entity, entity_id, op, at)
+       SELECT ?2, 'note', id, 'upsert', ?4 FROM notes
+        WHERE folder_id = ?1 AND user_id = ?2 AND ${guard}`,
+    ).bind(id, userId, updatedAt, now),
+    db.prepare(
+      `INSERT INTO changes (user_id, entity, entity_id, op, at)
+       SELECT ?2, 'folder', ?1, 'delete', ?4 WHERE ${guard}`,
+    ).bind(id, userId, updatedAt, now),
+  ]
+}
+
+function buildPromotionUpdateStatements(
+  db: D1Database,
+  userId: string,
+  id: string,
+  updatedAt: number,
+  parentId: string | null,
+  now: number,
+  promotionJson: string,
+  guard: string,
+): D1PreparedStatement[] {
+  return [
+    db.prepare(
+      `UPDATE folders SET deleted_at = ?4
+        WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3
+          AND deleted_at IS NULL AND ${guard}`,
+    ).bind(id, userId, updatedAt, now),
+    db.prepare(
+      `UPDATE folders SET
+         parent_id = CASE WHEN parent_id = ?1 THEN ?4 ELSE parent_id END,
+         position = COALESCE((
+           SELECT json_extract(item.value, '$.position') FROM json_each(?6) item
+            WHERE json_extract(item.value, '$.id') = folders.id
+         ), position),
+         updated_at = MAX(updated_at + 1, ?5)
+        WHERE id IN (SELECT json_extract(item.value, '$.id') FROM json_each(?6) item)
+          AND user_id = ?2 AND deleted_at IS NULL
+          AND EXISTS (SELECT 1 FROM folders
+            WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at = ?5)`,
+    ).bind(id, userId, updatedAt, parentId, now, promotionJson),
+    db.prepare(
+      `UPDATE notes SET folder_id = ?4, updated_at = MAX(updated_at + 1, ?5), rev = rev + 1
+        WHERE folder_id = ?1 AND user_id = ?2
+          AND EXISTS (SELECT 1 FROM folders
+            WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3 AND deleted_at = ?5)`,
+    ).bind(id, userId, updatedAt, parentId, now),
+    db.prepare(
+      `DELETE FROM folders WHERE id = ?1 AND user_id = ?2 AND updated_at = ?3
+        AND deleted_at = ?4`,
+    ).bind(id, userId, updatedAt, now),
+  ]
+}
+
+async function deleteFolderTree(
+  c: Context<AppBindings>,
+  userId: string,
+  id: string,
+  row: FolderDeleteRow,
+  now: number,
+  ftsEnabled: boolean,
+): Promise<void> {
+  const tree = subtreeCteWithRevision()
+  const noteIds = `SELECT n.id FROM notes n WHERE n.user_id = ?2 AND n.folder_id IN (SELECT id FROM subtree)`
+  const statements: D1PreparedStatement[] = [
+    c.env.DB.prepare(
+      `${tree} INSERT INTO changes (user_id, entity, entity_id, op, at)
+       SELECT ?2, 'folder', id, 'delete', ?4 FROM subtree`,
+    ).bind(id, userId, row.updated_at, now),
+    c.env.DB.prepare(
+      `${tree} INSERT INTO changes (user_id, entity, entity_id, op, at)
+       SELECT ?2, 'note', id, 'upsert', ?4 FROM notes
+        WHERE user_id = ?2 AND folder_id IN (SELECT id FROM subtree)`,
+    ).bind(id, userId, row.updated_at, now),
+    c.env.DB.prepare(
+      `${tree} INSERT OR REPLACE INTO ai_index_queue (user_id, note_id, kind, created_at)
+       SELECT ?2, id, 'delete', ?4 FROM notes
+        WHERE user_id = ?2 AND folder_id IN (SELECT id FROM subtree)`,
+    ).bind(id, userId, row.updated_at, now),
+    c.env.DB.prepare(`${tree} DELETE FROM links WHERE source_note_id IN (${noteIds})`)
+      .bind(id, userId, row.updated_at),
+    c.env.DB.prepare(
+      `${tree} UPDATE links SET target_note_id = (
+         SELECT candidate.id FROM notes candidate
+          WHERE candidate.user_id = links.user_id AND candidate.deleted_at IS NULL
+            AND candidate.title_key = links.target_key
+            AND candidate.id NOT IN (${noteIds})
+          ORDER BY candidate.created_at ASC, candidate.id ASC LIMIT 1
+       ) WHERE user_id = ?2 AND target_note_id IN (${noteIds})`,
+    ).bind(id, userId, row.updated_at),
+  ]
+  if (ftsEnabled) {
+    statements.push(
+      c.env.DB.prepare(`${tree} DELETE FROM notes_fts WHERE note_id IN (${noteIds})`)
+        .bind(id, userId, row.updated_at),
+    )
+  }
+  statements.push(
+    c.env.DB.prepare(
+      `${tree} UPDATE notes SET folder_id = NULL, deleted_at = COALESCE(deleted_at, ?4),
+        updated_at = MAX(updated_at + 1, ?4), rev = rev + 1
+        WHERE user_id = ?2 AND folder_id IN (SELECT id FROM subtree)`,
+    ).bind(id, userId, row.updated_at, now),
+    c.env.DB.prepare(
+      `${tree} DELETE FROM folders WHERE user_id = ?2 AND id IN (SELECT id FROM subtree)`,
+    ).bind(id, userId, row.updated_at),
+  )
+  const results = await c.env.DB.batch(statements)
+  if (!results.at(-1)?.meta.changes) throw ApiError.conflict('The folder changed elsewhere. Refresh and try again')
+}

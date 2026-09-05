@@ -13,28 +13,10 @@ export async function drainAttachmentCleanup(
   limit = 200,
 ): Promise<{ processed: number; pending: boolean }> {
   const capped = Math.max(1, Math.min(500, Math.trunc(limit)))
-  const supported = env.FILES && env.FILES_KV
-    ? '1 = 1'
-    : env.FILES
-      ? `substr(object_key, 1, 3) = 'r2:'`
-      : env.FILES_KV
-        ? `substr(object_key, 1, 3) = 'kv:'`
-        : null
-
+  const supported = supportedStorageFilter(env)
   if (!supported) return { processed: 0, pending: await hasPendingCleanup(env.DB, userId) }
 
-  const statement = userId
-    ? env.DB.prepare(
-        `SELECT object_key FROM attachment_cleanup
-          WHERE user_id = ?1 AND ${supported}
-          ORDER BY created_at, object_key LIMIT ?2`,
-      ).bind(userId, capped)
-    : env.DB.prepare(
-        `SELECT object_key FROM attachment_cleanup
-          WHERE ${supported}
-          ORDER BY created_at, object_key LIMIT ?1`,
-      ).bind(capped)
-  const { results } = await statement.all<CleanupRow>()
+  const { results } = await loadCleanupRows(env.DB, userId, supported, capped)
   if (!results.length) return { processed: 0, pending: await hasPendingCleanup(env.DB, userId) }
 
   const groups = new Map<AttachmentObjectStorage, Array<CleanupRow & { key: string }>>([
@@ -79,6 +61,33 @@ export async function runAttachmentCleanup(env: Env): Promise<void> {
   } catch (error) {
     console.warn('[inkstone] Attachment object cleanup will retry during the next scheduled run:', error)
   }
+}
+
+function supportedStorageFilter(env: Env): string | null {
+  if (env.FILES && env.FILES_KV) return '1 = 1'
+  if (env.FILES) return `substr(object_key, 1, 3) = 'r2:'`
+  if (env.FILES_KV) return `substr(object_key, 1, 3) = 'kv:'`
+  return null
+}
+
+async function loadCleanupRows(
+  db: D1Database,
+  userId: string | undefined,
+  supported: string,
+  capped: number,
+): Promise<{ results: CleanupRow[] }> {
+  const statement = userId
+    ? db.prepare(
+        `SELECT object_key FROM attachment_cleanup
+          WHERE user_id = ?1 AND ${supported}
+          ORDER BY created_at, object_key LIMIT ?2`,
+      ).bind(userId, capped)
+    : db.prepare(
+        `SELECT object_key FROM attachment_cleanup
+          WHERE ${supported}
+          ORDER BY created_at, object_key LIMIT ?1`,
+      ).bind(capped)
+  return statement.all<CleanupRow>()
 }
 
 async function hasPendingCleanup(db: D1Database, userId?: string): Promise<boolean> {

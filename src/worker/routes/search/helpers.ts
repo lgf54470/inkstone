@@ -30,68 +30,80 @@ export function parseQuery(raw: string): ParsedQuery {
   const tokenRe = /([A-Za-z]+):"([^"]*)"|"([^"]*)"|(\S+)/g
 
   for (const m of raw.matchAll(tokenRe)) {
-    const quotedKey = m[1]
-    const quotedValue = m[2]
-    const quoted = m[3]
-    const bare = m[4]
-    if (quotedKey !== undefined) {
-      const key = quotedKey.toLowerCase()
-      const value = quotedValue?.trim() ?? ''
-      if (key === 'tag' && value) parsed.tags.push(value.replace(/^#/, ''))
-      else if (key === 'folder' && value) parsed.folder = value
-      else if (value) {
-        const token = `${quotedKey}:${value}`
-        parsed.terms.push(token)
-        plain.push(token)
-      }
+    if (m[1] !== undefined) {
+      applyQuotedKeyToken(parsed, m[1].toLowerCase(), m[2]?.trim() ?? '', plain)
       continue
     }
-    if (quoted !== undefined) {
-      if (quoted.trim()) {
-        parsed.terms.push(quoted.trim())
-        plain.push(quoted.trim())
-      }
+    if (m[3] !== undefined) {
+      if (m[3].trim()) pushTerm(parsed, m[3].trim(), plain)
       continue
     }
-    const token = bare ?? ''
-    const colon = token.indexOf(':')
-    if (colon > 0) {
-      const key = token.slice(0, colon).toLowerCase()
-      const value = token.slice(colon + 1)
-      if (key === 'tag' && value) {
-        parsed.tags.push(value.replace(/^#/, ''))
-        continue
-      }
-      if (key === 'folder' && value) {
-        parsed.folder = value
-        continue
-      }
-      if (key === 'is') {
-        const qualifier = value.toLowerCase()
-        if (qualifier === 'starred') parsed.starred = true
-        else if (qualifier === 'archived') parsed.archived = true
-        else if (qualifier === 'unarchived') parsed.archived = false
-        else if (qualifier) {
-          parsed.terms.push(token)
-          plain.push(token)
-        }
-        if (qualifier) continue
-      }
-      if (key === 'in' && value.toLowerCase() === 'trash') {
-        parsed.trash = true
-        continue
-      }
-    }
-    if (token) {
-      parsed.terms.push(token)
-      plain.push(token)
-    }
+    applyBareToken(parsed, m[4] ?? '', plain)
   }
 
   parsed.terms = [...new Set(parsed.terms)].slice(0, 12)
   parsed.tags = [...new Set(parsed.tags)].slice(0, 8)
   parsed.text = plain.slice(0, 12).join(' ')
   return parsed
+}
+
+function applyQuotedKeyToken(parsed: ParsedQuery, key: string, value: string, plain: string[]): void {
+  if (key === 'tag' && value) {
+    parsed.tags.push(value.replace(/^#/, ''))
+    return
+  }
+  if (key === 'folder' && value) {
+    parsed.folder = value
+    return
+  }
+  if (value) pushTerm(parsed, `${key}:${value}`, plain)
+}
+
+function applyBareToken(parsed: ParsedQuery, token: string, plain: string[]): void {
+  const colon = token.indexOf(':')
+  if (colon > 0) {
+    const key = token.slice(0, colon).toLowerCase()
+    const value = token.slice(colon + 1)
+    if (key === 'tag' && value) {
+      parsed.tags.push(value.replace(/^#/, ''))
+      return
+    }
+    if (key === 'folder' && value) {
+      parsed.folder = value
+      return
+    }
+    if (key === 'is') {
+      if (applyIsQualifier(parsed, value, token, plain)) return
+    }
+    if (key === 'in' && value.toLowerCase() === 'trash') {
+      parsed.trash = true
+      return
+    }
+  }
+  if (token) pushTerm(parsed, token, plain)
+}
+
+function applyIsQualifier(parsed: ParsedQuery, value: string, token: string, plain: string[]): boolean {
+  const qualifier = value.toLowerCase()
+  if (qualifier === 'starred') {
+    parsed.starred = true
+    return true
+  }
+  if (qualifier === 'archived') {
+    parsed.archived = true
+    return true
+  }
+  if (qualifier === 'unarchived') {
+    parsed.archived = false
+    return true
+  }
+  if (qualifier) pushTerm(parsed, token, plain)
+  return qualifier !== ''
+}
+
+function pushTerm(parsed: ParsedQuery, token: string, plain: string[]): void {
+  parsed.terms.push(token)
+  plain.push(token)
 }
 
 export interface UserSearchResult {

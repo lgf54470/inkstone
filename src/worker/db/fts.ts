@@ -39,37 +39,7 @@ export async function rebuildFtsIndex(db: D1Database, userId: string): Promise<n
       .all<IndexableNote>()
     if (!results.length) break
 
-    const statements: D1PreparedStatement[] = []
-    for (const row of results) {
-      const guard = `EXISTS (SELECT 1 FROM notes WHERE id = ?1 AND user_id = ?2
-        AND deleted_at IS NULL AND rev = ?3 AND content_hash = ?4
-        AND title = ?5 AND updated_at = ?6)`
-      statements.push(
-        db
-          .prepare(
-            `DELETE FROM notes_fts WHERE note_id = ?1 AND user_id = ?2
-              AND ${shiftPlaceholders(guard, 2)}`,
-          )
-          .bind(row.id, userId, row.id, userId, row.rev, row.content_hash, row.title, row.updated_at),
-        db
-          .prepare(
-            `INSERT INTO notes_fts (note_id, user_id, title, body)
-             SELECT ?1, ?2, ?3, ?4 WHERE ${shiftPlaceholders(guard, 4)}`,
-          )
-          .bind(
-            row.id,
-            userId,
-            segmentCJK(row.title),
-            segmentCJK(truncateText(row.content, LIMITS.ftsContentChars)),
-            row.id,
-            userId,
-            row.rev,
-            row.content_hash,
-            row.title,
-            row.updated_at,
-          ),
-      )
-    }
+    const statements = results.flatMap((row) => buildRebuildNoteStatements(db, userId, row))
     const batch = await db.batch(statements)
     for (let index = 1; index < batch.length; index += 2) {
       indexed += batch[index]?.meta.changes ?? 0
@@ -89,6 +59,41 @@ export async function rebuildFtsIndex(db: D1Database, userId: string): Promise<n
   return indexed
 }
 
+
+function buildRebuildNoteStatements(
+  db: D1Database,
+  userId: string,
+  row: IndexableNote,
+): D1PreparedStatement[] {
+  const guard = `EXISTS (SELECT 1 FROM notes WHERE id = ?1 AND user_id = ?2
+    AND deleted_at IS NULL AND rev = ?3 AND content_hash = ?4
+    AND title = ?5 AND updated_at = ?6)`
+  return [
+    db
+      .prepare(
+        `DELETE FROM notes_fts WHERE note_id = ?1 AND user_id = ?2
+          AND ${shiftPlaceholders(guard, 2)}`,
+      )
+      .bind(row.id, userId, row.id, userId, row.rev, row.content_hash, row.title, row.updated_at),
+    db
+      .prepare(
+        `INSERT INTO notes_fts (note_id, user_id, title, body)
+         SELECT ?1, ?2, ?3, ?4 WHERE ${shiftPlaceholders(guard, 4)}`,
+      )
+      .bind(
+        row.id,
+        userId,
+        segmentCJK(row.title),
+        segmentCJK(truncateText(row.content, LIMITS.ftsContentChars)),
+        row.id,
+        userId,
+        row.rev,
+        row.content_hash,
+        row.title,
+        row.updated_at,
+      ),
+  ]
+}
 
 export const FTS_DRAIN_DELAY_MS = 10_000
 const FTS_DRAIN_BATCH = 5

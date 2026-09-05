@@ -18,24 +18,7 @@ searchRoutes.post('/search/reindex', requireAuth, async (c) => {
     'Search indexing is already running',
   )
   try {
-    try {
-      await consumeAttemptBudget(c.env.DB, [{
-        key: `fts-reindex:${userId}`,
-        maxAttempts: 6,
-        windowMs: 60 * 60 * 1000,
-        lockMs: 60 * 60 * 1000,
-      }])
-    } catch (error) {
-      if (error instanceof ThrottleError) {
-        throw new ApiError(
-          429,
-          'too_many_attempts',
-          `Too many search reindex requests. Try again in ${error.retryAfterSec} seconds`,
-          { retryAfter: error.retryAfterSec },
-        )
-      }
-      throw error
-    }
+    await enforceReindexBudget(c.env.DB, userId)
     const count = await rebuildFtsIndex(c.env.DB, userId)
     return c.json({ ok: true, indexed: count })
   } finally {
@@ -44,3 +27,23 @@ searchRoutes.post('/search/reindex', requireAuth, async (c) => {
 })
 }
 
+async function enforceReindexBudget(db: D1Database, userId: string): Promise<void> {
+  try {
+    await consumeAttemptBudget(db, [{
+      key: `fts-reindex:${userId}`,
+      maxAttempts: 6,
+      windowMs: 60 * 60 * 1000,
+      lockMs: 60 * 60 * 1000,
+    }])
+  } catch (error) {
+    if (error instanceof ThrottleError) {
+      throw new ApiError(
+        429,
+        'too_many_attempts',
+        `Too many search reindex requests. Try again in ${error.retryAfterSec} seconds`,
+        { retryAfter: error.retryAfterSec },
+      )
+    }
+    throw error
+  }
+}

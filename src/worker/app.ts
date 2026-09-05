@@ -32,6 +32,25 @@ export function createApp() {
   const app = new Hono<AppBindings>()
 
   app.onError((err, c) => errorResponse(c, err))
+  registerSecurityHeaders(app)
+  registerDatabaseMiddleware(app)
+  registerAuthMiddleware(app)
+  registerHealthRoute(app)
+  registerApiRoutes(app)
+
+  app.all('/api/*', () => {
+    throw ApiError.notFound('API endpoint not found')
+  })
+
+  app.route('/s', sharePageRoutes)
+  app.route('/', mcpAuthorizeRoutes)
+
+  app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw))
+
+  return app
+}
+
+function registerSecurityHeaders(app: Hono<AppBindings>): void {
   app.use('*', async (c, next) => {
     await next()
     const isHttps = new URL(c.req.url).protocol === 'https:'
@@ -70,8 +89,9 @@ export function createApp() {
       c.header('Cache-Control', 'no-store')
     }
   })
+}
 
-
+function registerDatabaseMiddleware(app: Hono<AppBindings>): void {
   app.use('/api/*', async (c, next) => {
     c.set('database', await initializeDatabase(c.env))
     await next()
@@ -84,11 +104,15 @@ export function createApp() {
     c.set('database', await initializeDatabase(c.env))
     await next()
   })
+}
 
+function registerAuthMiddleware(app: Hono<AppBindings>): void {
   app.use('/api/*', requireClientHeader)
   app.use('/api/*', loadSession)
   app.use('/authorize', loadSession)
+}
 
+function registerHealthRoute(app: Hono<AppBindings>): void {
   app.get('/api/health', async (c) => {
     const database = c.get('database')
     if (!c.get('userId')) return c.json({ ok: true })
@@ -105,7 +129,9 @@ export function createApp() {
       time: Date.now(),
     })
   })
+}
 
+function registerApiRoutes(app: Hono<AppBindings>): void {
   app.route('/api/auth/totp', totpRoutes)
   app.route('/api/auth', authRoutes)
   app.route('/api/notes', notesRoutes)
@@ -126,19 +152,6 @@ export function createApp() {
   app.route('/api/blog', blogManageRoutes)
   app.route('/api/templates/community', communityTemplatesRoutes)
   app.route('/api', transferRoutes)
-
-  app.all('/api/*', () => {
-    throw ApiError.notFound('API endpoint not found')
-  })
-
-
-  app.route('/s', sharePageRoutes)
-  app.route('/', mcpAuthorizeRoutes)
-
-
-  app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw))
-
-  return app
 }
 
 /**

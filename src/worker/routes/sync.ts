@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { LIMITS } from '@shared/constants'
 import type { SyncDeletion, SyncResponse } from '@shared/types'
 import type { AppBindings } from '../env'
@@ -34,86 +34,167 @@ syncRoutes.get('/', requireAuth, async (c) => {
   const bounds = await c.env.DB.prepare(CHANGE_BOUNDS_SQL)
     .bind(userId)
     .first<{ lo: number | null; hi: number | null }>()
-
   const lo = bounds?.lo ?? 0
   const hi = bounds?.hi ?? 0
 
-
-  const needFull = since <= 0 || (lo > 0 && since < lo - 1)
   // A non-empty `after` key always means the caller is mid-way through a
   // full snapshot page chain; keep serving snapshot pages regardless of
   // `since`, so following the returned nextKey can never silently drop
   // remaining pages.
+  const needFull = since <= 0 || (lo > 0 && since < lo - 1)
   if (needFull || after) {
-    const requestedSnapshot = clampInt(
-      c.req.query('snapshot'),
-      0,
-      Number.MAX_SAFE_INTEGER,
-      hi,
-    )
+    const requestedSnapshot = clampInt(c.req.query('snapshot'), 0, Number.MAX_SAFE_INTEGER, hi)
     const snapshotCursor = after ? Math.min(requestedSnapshot, hi) : hi
     return c.json(await fullSnapshot(c.env.DB, userId, snapshotCursor, after))
   }
 
-  if (since >= hi) {
-    const body: SyncResponse = {
-      // Never move the client's cursor backwards, even if it reported a
-      // seq ahead of the server (e.g. data was trimmed).
-      cursor: Math.max(since, hi),
-      full: false,
-      hasMore: false,
-      nextKey: null,
-      facetsFull: false,
-      settingsChanged: false,
-      profileChanged: false,
-      siteChanged: false,
-      notes: [],
-      folders: [],
-      tags: [],
-      deletions: [],
-      serverTime: Date.now(),
-    }
-    return c.json(body)
-  }
+  if (since >= hi) return c.json(emptySyncResponse(since, hi))
+  return c.json(await loadSyncDelta(c, userId, since, hi))
+})
 
-  const { results: changes } = await c.env.DB.prepare(
+function emptySyncResponse(since: number, hi: number): SyncResponse {
+  return {
+    // Never move the client's cursor backwards, even if it reported a
+    // seq ahead of the server (e.g. data was trimmed).
+    cursor: Math.max(since, hi),
+    full: false,
+    hasMore: false,
+    nextKey: null,
+    facetsFull: false,
+    settingsChanged: false,
+    profileChanged: false,
+    siteChanged: false,
+    notes: [],
+    folders: [],
+    tags: [],
+    deletions: [],
+    serverTime: Date.now(),
+  }
+}
+
+async function loadSyncDelta(
+  c: Context<AppBindings>,
+  userId: string,
+  since: number,
+  hi: number,
+): Promise<SyncResponse> {
+  const { changes, cursor, hasMore } = await collectSyncChanges(c.env.DB, userId, since, hi)
+  const latest = latestChanges(changes)
+  const split = splitChangeIds(latest)
+  const { notes, folders, tags } = await loadChangedFacets(c, userId, split)
+  const deletions = appendMissingDeletions(split, notes, folders, tags)
+  return {
+    cursor,
+    full: false,
+    hasMore,
+    nextKey: null,
+    facetsFull: split.facetsFull,
+    settingsChanged: split.settingsChanged,
+    profileChanged: split.profileChanged,
+    siteChanged: split.siteChanged,
+    notes: notes.map(toNoteSummary),
+    folders: folders.map(toFolder),
+    tags: tags.map(toTag),
+    deletions,
+    serverTime: Date.now(),
+  }
+}
+
+async function collectSyncChanges(
+  db: D1Database,
+  userId: string,
+  since: number,
+  hi: number,
+): Promise<{
+  changes: Array<{ seq: number; entity: string; entity_id: string; op: string }>
+  cursor: number
+  hasMore: boolean
+}> {
+  const { results: changes } = await db.prepare(
     `SELECT seq, entity, entity_id, op FROM changes
       WHERE user_id = ?1 AND seq > ?2 ORDER BY seq ASC LIMIT ?3`,
   )
     .bind(userId, since, LIMITS.syncBatchSize)
     .all<{ seq: number; entity: string; entity_id: string; op: string }>()
-
   const cursor = changes.length ? changes[changes.length - 1]!.seq : since
   const hasMore = changes.length === LIMITS.syncBatchSize && cursor < hi
+  return { changes, cursor, hasMore }
+}
 
-
+function latestChanges(
+  changes: Array<{ seq: number; entity: string; entity_id: string; op: string }>,
+): Map<string, { entity: string; id: string; op: string }> {
   const latest = new Map<string, { entity: string; id: string; op: string }>()
   for (const ch of changes) {
     latest.set(`${ch.entity}:${ch.entity_id}`, { entity: ch.entity, id: ch.entity_id, op: ch.op })
   }
+  return latest
+}
 
+interface SplitChangeIds {
+  noteIds: string[]
+  folderIds: string[]
+  tagIds: string[]
+  deletions: SyncDeletion[]
+  facetsFull: boolean
+  settingsChanged: boolean
+  profileChanged: boolean
+  siteChanged: boolean
+}
+
+type ChangeBucket =
+  | { kind: 'deletion'; entity: 'note' | 'folder' | 'tag' }
+  | { kind: 'id'; bucket: 'note' | 'folder' | 'tag' }
+  | { kind: 'skip' }
+
+function changeBucket(item: { entity: string; op: string }): ChangeBucket {
+  if (item.op === 'delete') {
+    if (item.entity === 'note' || item.entity === 'folder' || item.entity === 'tag') {
+      return { kind: 'deletion', entity: item.entity }
+    }
+    return { kind: 'skip' }
+  }
+  if (item.entity === 'note') return { kind: 'id', bucket: 'note' }
+  if (item.entity === 'folder') return { kind: 'id', bucket: 'folder' }
+  if (item.entity === 'tag') return { kind: 'id', bucket: 'tag' }
+  return { kind: 'skip' }
+}
+
+function splitChangeIds(
+  latest: Map<string, { entity: string; id: string; op: string }>,
+): SplitChangeIds {
   const noteIds: string[] = []
   const folderIds: string[] = []
   const tagIds: string[] = []
   const deletions: SyncDeletion[] = []
-
-  for (const item of latest.values()) {
-    if (item.op === 'delete') {
-      if (item.entity === 'note' || item.entity === 'folder' || item.entity === 'tag') {
-        deletions.push({ entity: item.entity, id: item.id })
-      }
-      continue
-    }
-    if (item.entity === 'note') noteIds.push(item.id)
-    else if (item.entity === 'folder') folderIds.push(item.id)
-    else if (item.entity === 'tag') tagIds.push(item.id)
+  const idsByBucket: Record<'note' | 'folder' | 'tag', string[]> = {
+    note: noteIds,
+    folder: folderIds,
+    tag: tagIds,
   }
-  const facetsFull = [...latest.values()].some((item) => item.entity === 'note')
-  const settingsChanged = [...latest.values()].some((item) => item.entity === 'settings')
-  const profileChanged = [...latest.values()].some((item) => item.entity === 'profile')
-  const siteChanged = [...latest.values()].some((item) => item.entity === 'site')
+  for (const item of latest.values()) {
+    const bucket = changeBucket(item)
+    if (bucket.kind === 'deletion') deletions.push({ entity: bucket.entity, id: item.id })
+    else if (bucket.kind === 'id') idsByBucket[bucket.bucket].push(item.id)
+  }
+  return {
+    noteIds,
+    folderIds,
+    tagIds,
+    deletions,
+    facetsFull: [...latest.values()].some((item) => item.entity === 'note'),
+    settingsChanged: [...latest.values()].some((item) => item.entity === 'settings'),
+    profileChanged: [...latest.values()].some((item) => item.entity === 'profile'),
+    siteChanged: [...latest.values()].some((item) => item.entity === 'site'),
+  }
+}
 
-  const notes = await loadInChunks(noteIds, (ids) =>
+async function loadChangedFacets(
+  c: Context<AppBindings>,
+  userId: string,
+  split: SplitChangeIds,
+): Promise<{ notes: NoteRow[]; folders: FolderRow[]; tags: TagRow[] }> {
+  const notes = await loadInChunks(split.noteIds, (ids) =>
     c.env.DB.prepare(
       `SELECT ${NOTE_COLUMNS} FROM notes n
         WHERE n.user_id = ?1 AND n.id IN (${placeholders(ids.length, 2)})`,
@@ -121,8 +202,7 @@ syncRoutes.get('/', requireAuth, async (c) => {
       .bind(userId, ...ids)
       .all<NoteRow>(),
   )
-
-  const folders = facetsFull
+  const folders = split.facetsFull
     ? (
         await c.env.DB.prepare(
           `SELECT ${FOLDER_SELECT} FROM folders f
@@ -132,7 +212,7 @@ syncRoutes.get('/', requireAuth, async (c) => {
           .bind(userId)
           .all<FolderRow>()
       ).results
-    : await loadInChunks(folderIds, (ids) =>
+    : await loadInChunks(split.folderIds, (ids) =>
         c.env.DB.prepare(
           `SELECT ${FOLDER_SELECT} FROM folders f
             WHERE f.user_id = ?1 AND f.deleted_at IS NULL
@@ -141,8 +221,7 @@ syncRoutes.get('/', requireAuth, async (c) => {
           .bind(userId, ...ids)
           .all<FolderRow>(),
       )
-
-  const tags = facetsFull
+  const tags = split.facetsFull
     ? (
         await c.env.DB.prepare(
           `SELECT ${TAG_SELECT} FROM tags t
@@ -152,7 +231,7 @@ syncRoutes.get('/', requireAuth, async (c) => {
           .bind(userId)
           .all<TagRow>()
       ).results
-    : await loadInChunks(tagIds, (ids) =>
+    : await loadInChunks(split.tagIds, (ids) =>
         c.env.DB.prepare(
           `SELECT ${TAG_SELECT} FROM tags t
             ${TAG_COUNT_JOIN}
@@ -161,31 +240,24 @@ syncRoutes.get('/', requireAuth, async (c) => {
           .bind(userId, ...ids)
           .all<TagRow>(),
       )
+  return { notes, folders, tags }
+}
 
+function appendMissingDeletions(
+  split: SplitChangeIds,
+  notes: NoteRow[],
+  folders: FolderRow[],
+  tags: TagRow[],
+): SyncDeletion[] {
+  const deletions = [...split.deletions]
   const gotNotes = new Set(notes.map((n) => n.id))
-  for (const id of noteIds) if (!gotNotes.has(id)) deletions.push({ entity: 'note', id })
+  for (const id of split.noteIds) if (!gotNotes.has(id)) deletions.push({ entity: 'note', id })
   const gotFolders = new Set(folders.map((f) => f.id))
-  for (const id of folderIds) if (!gotFolders.has(id)) deletions.push({ entity: 'folder', id })
+  for (const id of split.folderIds) if (!gotFolders.has(id)) deletions.push({ entity: 'folder', id })
   const gotTags = new Set(tags.map((t) => t.id))
-  for (const id of tagIds) if (!gotTags.has(id)) deletions.push({ entity: 'tag', id })
-
-  const body: SyncResponse = {
-    cursor,
-    full: false,
-    hasMore,
-    nextKey: null,
-    facetsFull,
-    settingsChanged,
-    profileChanged,
-    siteChanged,
-    notes: notes.map(toNoteSummary),
-    folders: folders.map(toFolder),
-    tags: tags.map(toTag),
-    deletions,
-    serverTime: Date.now(),
-  }
-  return c.json(body)
-})
+  for (const id of split.tagIds) if (!gotTags.has(id)) deletions.push({ entity: 'tag', id })
+  return deletions
+}
 
 
 syncRoutes.get('/ws', requireAuth, async (c) => {

@@ -48,66 +48,81 @@ interface SessionUserRow extends UserRow {
 }
 
 export const loadSession = createMiddleware<AppBindings>(async (c, next) => {
-  const cookieNames = sessionCookieNames(c.req.url)
-  const candidates = cookieNames
-    .map((name) => ({ name, token: getCookie(c, name) }))
-    .filter((candidate): candidate is { name: string; token: string } => Boolean(candidate.token))
+  const candidates = sessionCandidates(c)
   const seenTokens = new Set<string>()
   let isAuthenticated = false
 
   for (const { name, token } of candidates) {
     if (!isSessionToken(token) || seenTokens.has(token)) continue
     seenTokens.add(token)
-    const row = await c.env.DB.prepare(
-      `SELECT ${USER_COLUMNS_ALIASED}, s.id AS session_id, s.expires_at
-         FROM sessions s LEFT JOIN users u ON u.id = s.user_id
-        WHERE s.id = ?1 AND s.expires_at > ?2`,
-    )
-      .bind(await hashToken(token), Date.now())
-      .first<SessionUserRow>()
-
+    const row = await loadSessionRow(c.env.DB, token)
+    if (row?.session_id && row.id) {
+      await applyAuthenticatedSession(c, row, token, name)
+      isAuthenticated = true
+      break
+    }
     if (row?.session_id) {
-      if (!row.id) {
-        await destroySession(c.env.DB, token)
-        continue
-      } else {
-        c.set('user', rowToUser(row))
-        c.set('userId', row.id)
-        c.set('sessionId', row.session_id)
-
-        // Sliding-window renewal (see SESSION_RENEW_BEFORE_MS in shared/constants):
-        // only extend a session that is still valid AND inside its last 45 days, so
-        // (a) an abandoned session still expires within the 90-day absolute cap,
-        // (b) each session gets at most one DB renewal write per 45 days, and
-        // (c) unauthenticated requests (e.g. expired sessions) can never extend
-        //     their own lifetime. The cookie Max-Age is refreshed in lockstep so
-        //     the browser copy does not expire before the server-side row.
-        const shouldRenew = row.expires_at - Date.now() < SESSION_RENEW_BEFORE_MS
-        if (shouldRenew) {
-          await renewSession(c.env.DB, row.session_id)
-        }
-        if (shouldRenew || name === LEGACY_SESSION_COOKIE) {
-          writeSessionCookie(c, token)
-        }
-        if (new URL(c.req.url).protocol === 'https:' && getCookie(c, LEGACY_SESSION_COOKIE)) {
-          clearLegacySessionCookie(c)
-        }
-        const now = Date.now()
-        c.executionCtx?.waitUntil(
-          c.env.DB.prepare(`UPDATE users SET last_seen_at = ?1 WHERE id = ?2 AND last_seen_at < ?3`)
-            .bind(now, row.id, now - 5 * 60 * 1000)
-            .run()
-            .catch(() => {}),
-        )
-        isAuthenticated = true
-        break
-      }
+      await destroySession(c.env.DB, token)
     }
   }
   if (candidates.length && !isAuthenticated) clearSessionCookie(c)
 
   await next()
 })
+
+function sessionCandidates(
+  c: Context<AppBindings>,
+): Array<{ name: string; token: string }> {
+  return sessionCookieNames(c.req.url)
+    .map((name) => ({ name, token: getCookie(c, name) }))
+    .filter((candidate): candidate is { name: string; token: string } => Boolean(candidate.token))
+}
+
+async function loadSessionRow(db: D1Database, token: string): Promise<SessionUserRow | null> {
+  return db.prepare(
+    `SELECT ${USER_COLUMNS_ALIASED}, s.id AS session_id, s.expires_at
+       FROM sessions s LEFT JOIN users u ON u.id = s.user_id
+      WHERE s.id = ?1 AND s.expires_at > ?2`,
+  )
+    .bind(await hashToken(token), Date.now())
+    .first<SessionUserRow>()
+}
+
+async function applyAuthenticatedSession(
+  c: Context<AppBindings>,
+  row: SessionUserRow,
+  token: string,
+  name: string,
+): Promise<void> {
+  c.set('user', rowToUser(row))
+  c.set('userId', row.id)
+  c.set('sessionId', row.session_id)
+
+  // Sliding-window renewal (see SESSION_RENEW_BEFORE_MS in shared/constants):
+  // only extend a session that is still valid AND inside its last 45 days, so
+  // (a) an abandoned session still expires within the 90-day absolute cap,
+  // (b) each session gets at most one DB renewal write per 45 days, and
+  // (c) unauthenticated requests (e.g. expired sessions) can never extend
+  //     their own lifetime. The cookie Max-Age is refreshed in lockstep so
+  //     the browser copy does not expire before the server-side row.
+  const shouldRenew = row.expires_at - Date.now() < SESSION_RENEW_BEFORE_MS
+  if (shouldRenew) {
+    await renewSession(c.env.DB, row.session_id)
+  }
+  if (shouldRenew || name === LEGACY_SESSION_COOKIE) {
+    writeSessionCookie(c, token)
+  }
+  if (new URL(c.req.url).protocol === 'https:' && getCookie(c, LEGACY_SESSION_COOKIE)) {
+    clearLegacySessionCookie(c)
+  }
+  const now = Date.now()
+  c.executionCtx?.waitUntil(
+    c.env.DB.prepare(`UPDATE users SET last_seen_at = ?1 WHERE id = ?2 AND last_seen_at < ?3`)
+      .bind(now, row.id, now - 5 * 60 * 1000)
+      .run()
+      .catch(() => {}),
+  )
+}
 
 export const requireAuth = createMiddleware<AppBindings>(async (c, next) => {
   if (!c.get('userId')) throw ApiError.unauthenticated()

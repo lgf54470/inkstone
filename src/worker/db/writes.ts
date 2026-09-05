@@ -83,6 +83,14 @@ export interface SyncDerivedOptions {
 }
 
 
+interface DerivedCtx {
+  db: D1Database
+  userId: string
+  noteId: string
+  guard: string
+  guardValues: unknown[]
+}
+
 export function buildNoteDerivedStatements(
   opts: SyncDerivedOptions,
 ): { statements: D1PreparedStatement[]; tags: string[] } {
@@ -92,7 +100,23 @@ export function buildNoteDerivedStatements(
   const links = extractWikiLinks(content)
   const tagRows = JSON.stringify(tagNames.map((name) => ({ id: newId(), name })))
   const linkRows = JSON.stringify(links.map((link) => ({ key: link.key, target: link.target })))
-  const statements: D1PreparedStatement[] = []
+  const ctx: DerivedCtx = { db, userId, noteId, ...buildDerivedGuard(opts) }
+  const statements: D1PreparedStatement[] = [
+    buildTitleKeyStatement(ctx, normalizeLinkKey(title)),
+    ...buildTagStatements(ctx, tagRows, now),
+    ...buildLinkStatements(ctx, linkRows, opts.deleted ?? false),
+  ]
+  if (ftsEnabled) {
+    statements.push(buildFtsQueueStatement(ctx, opts.deleted ? 'delete' : 'upsert', opts.expectedUpdatedAt ?? now))
+  }
+  if (opts.titleChanged === true) {
+    statements.push(buildTitleChangedStatement(ctx, title, opts.previousTitle ?? title))
+  }
+  return { statements, tags: tagNames }
+}
+
+function buildDerivedGuard(opts: SyncDerivedOptions): { guard: string; guardValues: unknown[] } {
+  const { noteId, userId } = opts
   const guarded = opts.expectedRev !== undefined ||
     opts.expectedContentHash !== undefined ||
     opts.expectedTitle !== undefined ||
@@ -119,17 +143,26 @@ export function buildNoteDerivedStatements(
     ? `EXISTS (SELECT 1 FROM notes WHERE ${checks.join(' AND ')})`
     : '1 = 1'
   if (!guarded) guardValues.length = 0
+  return { guard, guardValues }
+}
 
-  statements.push(
-    db
-      .prepare(
-        `UPDATE notes SET title_key = ?1
-          WHERE id = ?2 AND user_id = ?3 AND ${shiftPlaceholders(guard, 3)}`,
-      )
-      .bind(normalizeLinkKey(title), noteId, userId, ...guardValues),
-  )
+function buildTitleKeyStatement(ctx: DerivedCtx, titleKey: string): D1PreparedStatement {
+  const { db, userId, noteId, guard, guardValues } = ctx
+  return db
+    .prepare(
+      `UPDATE notes SET title_key = ?1
+        WHERE id = ?2 AND user_id = ?3 AND ${shiftSqlPlaceholders(guard, 3)}`,
+    )
+    .bind(titleKey, noteId, userId, ...guardValues)
+}
 
-  statements.push(
+function buildTagStatements(
+  ctx: DerivedCtx,
+  tagRows: string,
+  now: number,
+): D1PreparedStatement[] {
+  const { db, userId, noteId, guard, guardValues } = ctx
+  return [
     db
       .prepare(
         `INSERT INTO tags (id, user_id, name, color, created_at)
@@ -138,7 +171,7 @@ export function buildNoteDerivedStatements(
            LEFT JOIN tags existing
              ON existing.user_id = ?1
             AND existing.name = json_extract(j.value, '$.name') COLLATE NOCASE
-          WHERE ${shiftPlaceholders(guard, 3)}
+          WHERE ${shiftSqlPlaceholders(guard, 3)}
             AND existing.id IS NULL
          ON CONFLICT(user_id, name) DO NOTHING`,
       )
@@ -146,7 +179,7 @@ export function buildNoteDerivedStatements(
     db
       .prepare(
         `DELETE FROM note_tags WHERE note_id = ?1
-          AND ${shiftPlaceholders(guard, 1)}`,
+          AND ${shiftSqlPlaceholders(guard, 1)}`,
       )
       .bind(noteId, ...guardValues),
     db
@@ -166,21 +199,28 @@ export function buildNoteDerivedStatements(
          )
          INSERT INTO note_tags (note_id, tag_id)
          SELECT ?1, id FROM ranked_tags
-          WHERE rank = 1 AND ${shiftPlaceholders(guard, 3)}
+          WHERE rank = 1 AND ${shiftSqlPlaceholders(guard, 3)}
          ON CONFLICT DO NOTHING`,
       )
       .bind(noteId, tagRows, userId, ...guardValues),
-  )
+  ]
+}
 
-  statements.push(
+function buildLinkStatements(
+  ctx: DerivedCtx,
+  linkRows: string,
+  deleted: boolean,
+): D1PreparedStatement[] {
+  const { db, userId, noteId, guard, guardValues } = ctx
+  const statements: D1PreparedStatement[] = [
     db
       .prepare(
         `DELETE FROM links WHERE source_note_id = ?1
-          AND ${shiftPlaceholders(guard, 1)}`,
+          AND ${shiftSqlPlaceholders(guard, 1)}`,
       )
       .bind(noteId, ...guardValues),
-  )
-  if (!opts.deleted) {
+  ]
+  if (!deleted) {
     statements.push(
       db
         .prepare(
@@ -194,7 +234,7 @@ export function buildNoteDerivedStatements(
                     ORDER BY created_at ASC, id ASC LIMIT 1),
                   ?2
              FROM json_each(?3) AS j
-            WHERE ${shiftPlaceholders(guard, 3)}
+            WHERE ${shiftSqlPlaceholders(guard, 3)}
            ON CONFLICT(source_note_id, target_key) DO UPDATE SET
              target_title = excluded.target_title,
              target_note_id = excluded.target_note_id`,
@@ -202,42 +242,42 @@ export function buildNoteDerivedStatements(
         .bind(noteId, userId, linkRows, ...guardValues),
     )
   }
-
-  if (ftsEnabled) {
-    const queueVersion = opts.expectedUpdatedAt ?? now
-    statements.push(
-      db
-        .prepare(
-          `INSERT INTO fts_index_queue (user_id, note_id, kind, created_at)
-           SELECT ?1, ?2, ?3, ?4 WHERE ${shiftPlaceholders(guard, 4)}
-           ${FTS_QUEUE_CONFLICT_SQL}`,
-        )
-        .bind(userId, noteId, opts.deleted ? 'delete' : 'upsert', queueVersion, ...guardValues),
-    )
-  }
-
-  if (opts.titleChanged === true) {
-    const currentKey = normalizeLinkKey(title)
-    const previousKey = normalizeLinkKey(opts.previousTitle ?? title)
-    statements.push(
-      db
-        .prepare(
-          `UPDATE links SET target_note_id = CASE
-               WHEN target_key = ?3 AND target_note_id = ?4 THEN ?4
-               ELSE ${LINK_TARGET_SUBQUERY}
-             END
-             WHERE user_id = ?1 AND target_key IN (?2, ?3)
-               AND ${shiftPlaceholders(guard, 4)}`,
-        )
-        .bind(userId, currentKey, previousKey, noteId, ...guardValues),
-    )
-  }
-
-  return { statements, tags: tagNames }
+  return statements
 }
 
-function shiftPlaceholders(sql: string, offset: number): string {
-  return sql.replace(/\?(\d+)/g, (_match, value: string) => `?${Number(value) + offset}`)
+function buildFtsQueueStatement(
+  ctx: DerivedCtx,
+  kind: 'upsert' | 'delete',
+  queueVersion: number,
+): D1PreparedStatement {
+  const { db, userId, noteId, guard, guardValues } = ctx
+  return db
+    .prepare(
+      `INSERT INTO fts_index_queue (user_id, note_id, kind, created_at)
+       SELECT ?1, ?2, ?3, ?4 WHERE ${shiftSqlPlaceholders(guard, 4)}
+       ${FTS_QUEUE_CONFLICT_SQL}`,
+    )
+    .bind(userId, noteId, kind, queueVersion, ...guardValues)
+}
+
+function buildTitleChangedStatement(
+  ctx: DerivedCtx,
+  title: string,
+  previousTitle: string,
+): D1PreparedStatement {
+  const { db, userId, noteId, guard, guardValues } = ctx
+  const currentKey = normalizeLinkKey(title)
+  const previousKey = normalizeLinkKey(previousTitle)
+  return db
+    .prepare(
+      `UPDATE links SET target_note_id = CASE
+           WHEN target_key = ?3 AND target_note_id = ?4 THEN ?4
+           ELSE ${LINK_TARGET_SUBQUERY}
+         END
+         WHERE user_id = ?1 AND target_key IN (?2, ?3)
+           AND ${shiftSqlPlaceholders(guard, 4)}`,
+    )
+    .bind(userId, currentKey, previousKey, noteId, ...guardValues)
 }
 
 export async function pruneOrphanTags(db: D1Database, userId: string): Promise<void> {

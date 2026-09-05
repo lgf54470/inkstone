@@ -86,41 +86,77 @@ export async function persistAttachment(
     )
   }
 
+  const meta = await deriveAttachmentMeta(env.DB, input)
+  const objectKey = attachmentObjectKey({
+    user_id: input.userId,
+    id: input.id,
+    mime: meta.mime,
+    filename: meta.filename,
+    created_at: input.createdAt,
+  })
+  await putAttachmentObject(env, storage, objectKey, input.bytes, {
+    userId: input.userId,
+    objectId: input.id,
+    kind: 'attachment',
+    filename: meta.filename,
+    mime: meta.mime,
+    sha256: meta.sha256,
+  })
+  await writeAttachmentRow(env, storage, objectKey, input, meta)
+
+  return {
+    id: input.id,
+    userId: input.userId,
+    noteId: input.noteId,
+    folderId: input.folderId ?? null,
+    filename: meta.filename,
+    mime: meta.mime,
+    size: input.bytes.byteLength,
+    width: meta.dimensions?.width ?? null,
+    height: meta.dimensions?.height ?? null,
+    storage,
+    createdAt: input.createdAt,
+  }
+}
+
+async function deriveAttachmentMeta(
+  db: D1Database,
+  input: PersistAttachmentInput,
+): Promise<{
+  mime: string
+  filename: string
+  sha256: string
+  dimensions: { width: number; height: number } | null
+}> {
   let mime = safeAttachmentMime(input.bytes, input.reportedMime)
   let dimensions = readImageSize(input.bytes, mime)
   if (!hasReasonableImageDimensions(dimensions)) {
     mime = 'application/octet-stream'
     dimensions = null
   }
-
   const sha256 = await sha256Hex(input.bytes)
   const filename = await deduplicateAttachmentFilename(
-    env.DB,
+    db,
     input.userId,
     sanitizeAttachmentFilename(input.filename),
     input.createdAt,
     sha256,
   )
-  let hasStoredObject = false
-  const objectRow = {
-    user_id: input.userId,
-    id: input.id,
-    mime,
-    filename,
-    created_at: input.createdAt,
-  }
+  return { mime, filename, sha256, dimensions }
+}
 
-  const objectKey = attachmentObjectKey(objectRow)
-  await putAttachmentObject(env, storage, objectKey, input.bytes, {
-    userId: input.userId,
-    objectId: input.id,
-    kind: 'attachment',
-    filename,
-    mime,
-    sha256,
-  })
-  hasStoredObject = true
-
+async function writeAttachmentRow(
+  env: Env,
+  storage: AttachmentObjectStorage,
+  objectKey: string,
+  input: PersistAttachmentInput,
+  derived: {
+    mime: string
+    filename: string
+    sha256: string
+    dimensions: { width: number; height: number } | null
+  },
+): Promise<void> {
   try {
     await env.DB.prepare(
       `INSERT INTO attachments (id, user_id, note_id, folder_id, filename, mime, size, sha256, width, height, storage, created_at)
@@ -131,46 +167,39 @@ export async function persistAttachment(
         input.userId,
         input.noteId,
         input.folderId ?? null,
-        filename,
-        mime,
+        derived.filename,
+        derived.mime,
         input.bytes.byteLength,
-        sha256,
-        dimensions?.width ?? null,
-        dimensions?.height ?? null,
+        derived.sha256,
+        derived.dimensions?.width ?? null,
+        derived.dimensions?.height ?? null,
         storage,
         input.createdAt,
       )
       .run()
   } catch (error) {
-    if (hasStoredObject) {
-      try {
-        await deleteAttachmentObjects(env, storage, [objectKey])
-      } catch (cleanupError) {
-        await env.DB.prepare(
-          `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at)
-           VALUES (?1, ?2, ?3)`,
-        )
-          .bind(attachmentCleanupTarget(storage, objectKey), input.userId, Date.now())
-          .run()
-          .catch(() => {})
-        console.warn('[inkstone] Attachment cleanup after a write rollback will retry later:', cleanupError)
-      }
-    }
+    await rollbackStoredObject(env, storage, objectKey, input.userId)
     throw error
   }
+}
 
-  return {
-    id: input.id,
-    userId: input.userId,
-    noteId: input.noteId,
-    folderId: input.folderId ?? null,
-    filename,
-    mime,
-    size: input.bytes.byteLength,
-    width: dimensions?.width ?? null,
-    height: dimensions?.height ?? null,
-    storage,
-    createdAt: input.createdAt,
+async function rollbackStoredObject(
+  env: Env,
+  storage: AttachmentObjectStorage,
+  objectKey: string,
+  userId: string,
+): Promise<void> {
+  try {
+    await deleteAttachmentObjects(env, storage, [objectKey])
+  } catch (cleanupError) {
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at)
+       VALUES (?1, ?2, ?3)`,
+    )
+      .bind(attachmentCleanupTarget(storage, objectKey), userId, Date.now())
+      .run()
+      .catch(() => {})
+    console.warn('[inkstone] Attachment cleanup after a write rollback will retry later:', cleanupError)
   }
 }
 

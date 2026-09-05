@@ -473,55 +473,5 @@
   },
   "src/shared/zip.ts": {
     "longFns": 2
-  },
-  "src/worker/app.ts": {
-    "longFns": 1
-  },
-  "src/worker/attachments/cleanup.ts": {
-    "longFns": 1
-  },
-  "src/worker/attachments/storage.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/worker/db/fts.ts": {
-    "longFns": 1
-  },
-  "src/worker/db/writes.ts": {
-    "longFns": 1
-  },
-  "src/worker/middleware/auth.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/worker/routes/auth.ts": {
-    "longFns": 3
-  },
-  "src/worker/routes/backup.ts": {
-    "longFns": 1
-  },
-  "src/worker/routes/community-templates.ts": {
-    "longFns": 1
-  },
-  "src/worker/routes/folders/crud.ts": {
-    "longFns": 4
-  },
-  "src/worker/routes/mcp-authorize.ts": {
-    "longFns": 2
-  },
-  "src/worker/routes/search/graph.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/worker/routes/search/helpers.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/worker/routes/search/reindex.ts": {
-    "deepFns": 1
-  },
-  "src/worker/routes/sync.ts": {
-    "longFns": 1,
-    "deepFns": 1
   }
 }

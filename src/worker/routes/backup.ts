@@ -38,23 +38,37 @@ backupRoutes.post('/targets', async (c) => {
   validateInput(body, true)
 
   const id = newId()
-  const now = Date.now()
   const config = normalizeConfig(body)
   const secret = await encryptSecret(c.env, id, pickSecret(body))
+  await insertBackupTargetRow(c, { userId, body, config, secret, id })
 
+  return c.json(toBackupTarget(await loadTarget(c.env.DB, userId, id)), 201)
+})
+
+async function insertBackupTargetRow(
+  c: { env: AppBindings['Bindings'] },
+  input: {
+    userId: string
+    body: BackupTargetInput
+    config: Record<string, unknown>
+    secret: string
+    id: string
+  },
+): Promise<void> {
+  const now = Date.now()
   const inserted = await c.env.DB.prepare(
     `INSERT INTO backup_targets (id, user_id, type, name, enabled, config, secret, created_at, updated_at)
      SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8
       WHERE (SELECT COUNT(*) FROM backup_targets WHERE user_id = ?2) < ?9`,
   )
     .bind(
-      id,
-      userId,
-      body.type,
-      truncateText(body.name.trim(), 120),
-      body.enabled === false ? 0 : 1,
-      JSON.stringify(config),
-      secret,
+      input.id,
+      input.userId,
+      input.body.type,
+      truncateText(input.body.name.trim(), 120),
+      input.body.enabled === false ? 0 : 1,
+      JSON.stringify(input.config),
+      input.secret,
       now,
       LIMITS.backupTargetsMax,
     )
@@ -62,13 +76,11 @@ backupRoutes.post('/targets', async (c) => {
   if (!inserted.meta.changes) {
     throw ApiError.conflict(`Each account can configure at most ${LIMITS.backupTargetsMax} backup targets`)
   }
-
-  return c.json(toBackupTarget(await loadTarget(c.env.DB, userId, id)), 201)
-})
+}
 
 backupRoutes.patch('/targets/:id', async (c) => {
   const userId = c.get('userId')
-  const id = c.req.param('id')
+  const id = c.req.param('id')!
   const existing = await loadTarget(c.env.DB, userId, id)
   const body = await readJson<BackupTargetPatchInput>(c, JSON_BODY_LIMITS.backup)
   validateInputShape(body)
@@ -81,20 +93,40 @@ backupRoutes.patch('/targets/:id', async (c) => {
 
   const merged = mergeTargetInput(existing, body)
   validateInput(merged, false)
-
   const hasNewSecret = Boolean(
     body.secret && Object.values(body.secret).some((value) => typeof value === 'string' && value.trim()),
   )
-  const changedType = merged.type !== existing.type
-  let secret = existing.secret
-  if (hasNewSecret || changedType) {
-    const current = changedType ? {} : await currentSecret(c, existing)
-    const nextSecret = mergeSecret(current, body.secret ?? {})
-    assertRequiredSecret(merged.type, nextSecret)
-    secret = await encryptSecret(c.env, id, nextSecret)
-  }
+  const secret = await resolveTargetSecret(c, id, existing, merged, body, hasNewSecret)
+  await patchTargetRow(c, merged, secret, id, userId, body.expectedUpdatedAt, existing.updated_at)
+  return c.json(toBackupTarget(await loadTarget(c.env.DB, userId, id)))
+})
 
-  const updatedAt = Math.max(Date.now(), existing.updated_at + 1)
+async function resolveTargetSecret(
+  c: { env: AppBindings['Bindings'] },
+  id: string,
+  existing: TargetRow,
+  merged: BackupTargetInput,
+  body: BackupTargetPatchInput,
+  hasNewSecret: boolean,
+): Promise<string | null> {
+  const changedType = merged.type !== existing.type
+  if (!hasNewSecret && !changedType) return existing.secret
+  const current = changedType ? {} : await currentSecret(c, existing)
+  const nextSecret = mergeSecret(current, body.secret ?? {})
+  assertRequiredSecret(merged.type, nextSecret)
+  return encryptSecret(c.env, id, nextSecret)
+}
+
+async function patchTargetRow(
+  c: { env: AppBindings['Bindings'] },
+  merged: BackupTargetInput,
+  secret: string | null,
+  id: string,
+  userId: string,
+  expectedUpdatedAt: number | undefined,
+  existingUpdatedAt: number,
+): Promise<void> {
+  const updatedAt = Math.max(Date.now(), existingUpdatedAt + 1)
   const updated = await c.env.DB.prepare(
     `UPDATE backup_targets SET type = ?1, name = ?2, enabled = ?3, config = ?4, secret = ?5, updated_at = ?6
        WHERE id = ?7 AND user_id = ?8 AND updated_at = ?9`,
@@ -108,15 +140,13 @@ backupRoutes.patch('/targets/:id', async (c) => {
       updatedAt,
       id,
       userId,
-      body.expectedUpdatedAt ?? existing.updated_at,
+      expectedUpdatedAt ?? existingUpdatedAt,
     )
     .run()
   if (!updated.meta.changes) {
     throw ApiError.conflict('The backup target changed elsewhere. Refresh and try again')
   }
-
-  return c.json(toBackupTarget(await loadTarget(c.env.DB, userId, id)))
-})
+}
 
 backupRoutes.delete('/targets/:id', async (c) => {
   const res = await c.env.DB.prepare(`DELETE FROM backup_targets WHERE id = ?1 AND user_id = ?2`)

@@ -79,11 +79,25 @@ function parseCommunityInput(body: Partial<CommunityTemplateInput>): CommunityTe
 
 communityTemplatesRoutes.post('/', async (c) => {
   const userId = c.get('userId')
+  await enforcePublishBudget(c.env.DB, userId)
+  const body = await readJson<Partial<CommunityTemplateInput>>(c, JSON_BODY_LIMITS.small)
+  const input = parseCommunityInput(body)
+  const id = await resolvePublishId(c.env.DB, input.id, userId)
+  await upsertTemplate(c.env.DB, id, userId, input)
+
+  const row = await c.env.DB.prepare(
+    `SELECT ${COMMUNITY_SELECT} FROM community_templates WHERE id = ?1`,
+  ).bind(id).first<CommunityRow>()
+  if (!row) return c.json({ error: { code: 'internal', message: 'Failed to store the community template' } }, 500)
+  return c.json({ template: toCommunityTemplate(row) })
+})
+
+async function enforcePublishBudget(db: D1Database, userId: string): Promise<void> {
   // Publishing (or updating) counts against a per-user hourly budget so a
   // single account cannot flood the shared directory; authors updating
   // their own templates consume the same budget, which is acceptable.
   try {
-    await consumeAttemptBudget(c.env.DB, [{
+    await consumeAttemptBudget(db, [{
       key: `community-template:publish:${userId}`,
       maxAttempts: 10,
       windowMs: 60 * 60 * 1000,
@@ -100,29 +114,35 @@ communityTemplatesRoutes.post('/', async (c) => {
     }
     throw error
   }
-  const body = await readJson<Partial<CommunityTemplateInput>>(c, JSON_BODY_LIMITS.small)
-  const input = parseCommunityInput(body)
+}
 
-  let id = input.id
-  if (id !== undefined) {
-    if (!isValidId(id)) throw ApiError.badRequest('id must be a valid template id')
-    const existing = await c.env.DB.prepare(
-      `SELECT author_id FROM community_templates WHERE id = ?1`,
-    ).bind(id).first<{ author_id: string }>()
-    if (existing && existing.author_id !== userId) {
-      throw ApiError.forbidden('Only the author can update a published template')
-    }
+async function resolvePublishId(
+  db: D1Database,
+  inputId: string | undefined,
+  userId: string,
+): Promise<string> {
+  if (inputId === undefined) return newId()
+  if (!isValidId(inputId)) throw ApiError.badRequest('id must be a valid template id')
+  const existing = await db.prepare(
+    `SELECT author_id FROM community_templates WHERE id = ?1`,
+  ).bind(inputId).first<{ author_id: string }>()
+  if (existing && existing.author_id !== userId) {
+    throw ApiError.forbidden('Only the author can update a published template')
   }
-  else {
-    id = newId()
-  }
+  return inputId
+}
 
-  const author = await c.env.DB.prepare(
+async function upsertTemplate(
+  db: D1Database,
+  id: string,
+  userId: string,
+  input: CommunityTemplateInput,
+): Promise<void> {
+  const author = await db.prepare(
     `SELECT name FROM users WHERE id = ?1`,
   ).bind(userId).first<{ name: string }>()
   const authorName = author?.name || 'Inkstone'
-
-  await c.env.DB.prepare(
+  await db.prepare(
     `INSERT INTO community_templates (id, author_id, author_name, name, description, content, tags, category, created_at)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
      ON CONFLICT(id) DO UPDATE SET
@@ -136,13 +156,7 @@ communityTemplatesRoutes.post('/', async (c) => {
   )
     .bind(id, userId, authorName, input.name, input.description, input.content, JSON.stringify(input.tags), input.category, Date.now())
     .run()
-
-  const row = await c.env.DB.prepare(
-    `SELECT ${COMMUNITY_SELECT} FROM community_templates WHERE id = ?1`,
-  ).bind(id).first<CommunityRow>()
-  if (!row) return c.json({ error: { code: 'internal', message: 'Failed to store the community template' } }, 500)
-  return c.json({ template: toCommunityTemplate(row) })
-})
+}
 
 communityTemplatesRoutes.delete('/:id', async (c) => {
   const userId = c.get('userId')

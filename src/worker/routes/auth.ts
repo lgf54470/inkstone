@@ -160,7 +160,6 @@ authRoutes.post('/register', async (c) => {
   if (!(await gate(c.env)).ok) {
     throw new ApiError(403, 'registration_closed', 'Registration is closed on this instance')
   }
-
   await enforceAttemptBudget(c.env.DB, [
     {
       key: `register-work:${requestClientIp(c)}`,
@@ -169,10 +168,25 @@ authRoutes.post('/register', async (c) => {
     },
   ])
 
-  const db = c.env.DB
+  const id = await insertNewUser(c.env, username, body.password!, locale)
+  await seedWorkspace(c.env, id, locale).catch((err) => {
+    console.warn('[inkstone] Failed to initialize sample content; the account remains usable:', err)
+  })
+  const token = await rotateSession(c, id)
+  writeSessionCookie(c, token)
+  const user = await loadUser(c.env, id)
+  if (!user) throw new Error('created_user_missing')
+  return c.json(await sessionInfo(c.env, user), 201)
+})
+
+async function insertNewUser(
+  env: Env,
+  username: string,
+  password: string,
+  locale: AppLocale,
+): Promise<string> {
   const id = newId()
-  const now = Date.now()
-  const result = await db
+  const result = await env.DB
     .prepare(
       `INSERT INTO users
          (id, username, password_hash, login, name, avatar_url, role, settings, created_at, last_seen_at)
@@ -183,24 +197,16 @@ authRoutes.post('/register', async (c) => {
            OR COALESCE((SELECT value FROM app_meta WHERE key = 'setting:allow_registration'), '0') = '1'
        ON CONFLICT(username) DO NOTHING`,
     )
-    .bind(id, username, await hashPassword(body.password!), JSON.stringify(settingsFor(locale)), now)
+    .bind(id, username, await hashPassword(password), JSON.stringify(settingsFor(locale)), Date.now())
     .run()
 
   if (!result.meta.changes) {
-    const taken = await db.prepare(`SELECT id FROM users WHERE username = ?1`).bind(username).first()
+    const taken = await env.DB.prepare(`SELECT id FROM users WHERE username = ?1`).bind(username).first()
     if (taken) throw new ApiError(409, 'username_taken', "That username is already in use")
     throw new ApiError(403, 'registration_closed', 'Registration is closed on this instance')
   }
-
-  await seedWorkspace(c.env, id, locale).catch((err) => {
-    console.warn('[inkstone] Failed to initialize sample content; the account remains usable:', err)
-  })
-  const token = await rotateSession(c, id)
-  writeSessionCookie(c, token)
-  const user = await loadUser(c.env, id)
-  if (!user) throw new Error('created_user_missing')
-  return c.json(await sessionInfo(c.env, user), 201)
-})
+  return id
+}
 
 authRoutes.post('/login', async (c) => {
   const body = await readJsonValidated(c, loginBodySchema, 4096)
@@ -223,23 +229,7 @@ authRoutes.post('/login', async (c) => {
     throw err
   }
 
-  const row = USERNAME_PATTERN.test(username)
-    ? await db
-        .prepare(`SELECT ${USER_COLUMNS}, password_hash FROM users WHERE username = ?1`)
-        .bind(username)
-        .first<Parameters<typeof rowToUser>[0] & { password_hash: string }>()
-    : null
-
-  let isValid = false
-  if (
-    row?.password_hash &&
-    password.length <= PASSWORD_MAX_LENGTH &&
-    isPasswordHash(row.password_hash)
-  ) {
-    isValid = await verifyPassword(password, row.password_hash)
-  } else {
-    await dummyVerify()
-  }
+  const { row, isValid } = await verifyCredentials(db, username, password)
 
   if (!isValid || !row) {
     await recordLoginFailure(db, throttleTargets)
@@ -267,12 +257,23 @@ authRoutes.post('/login', async (c) => {
 authRoutes.put('/profile', requireAuth, async (c) => {
   const current = c.get('user')
   const body = await readJsonValidated(c, profileBodySchema, JSON_BODY_LIMITS.profile)
+  const changes = resolveProfileChanges(body, current)
+  if (changes.name === current.name && changes.avatarUrl === current.avatarUrl) {
+    return c.json(publicUser(current))
+  }
+  const user = await applyProfileChanges(c, current, changes)
+  return c.json(publicUser(user))
+})
+
+function resolveProfileChanges(
+  body: { name?: string; avatarUrl?: string },
+  current: NonNullable<AppBindings['Variables']['user']>,
+): { name: string; avatarUrl: string; hasName: boolean; hasAvatar: boolean } {
   const hasName = Object.prototype.hasOwnProperty.call(body, 'name')
   const hasAvatar = Object.prototype.hasOwnProperty.call(body, 'avatarUrl')
   if (!hasName && !hasAvatar) {
     throw ApiError.badRequest('Provide a display name or avatar')
   }
-
   const name = hasName ? normalizeDisplayName(body.name) : current.name
   if (name === null) {
     throw new ApiError(
@@ -281,23 +282,56 @@ authRoutes.put('/profile', requireAuth, async (c) => {
       `Display name must contain 1-${PROFILE_NAME_MAX_LENGTH} characters`,
     )
   }
-  let avatarUrl = hasAvatar ? normalizeAvatarPreference(body.avatarUrl) : current.avatarUrl
+  const avatarUrl = hasAvatar ? normalizeAvatarPreference(body.avatarUrl) : current.avatarUrl
   if (avatarUrl === null) {
     throw new ApiError(400, 'invalid_avatar', 'Choose a generated avatar or upload a supported image')
   }
+  return { name, avatarUrl, hasName, hasAvatar }
+}
 
-  if (name === current.name && avatarUrl === current.avatarUrl) {
-    return c.json(publicUser(current))
-  }
-
+async function applyProfileChanges(
+  c: Context<AppBindings>,
+  current: NonNullable<AppBindings['Variables']['user']>,
+  changes: { name: string; avatarUrl: string; hasName: boolean; hasAvatar: boolean },
+): Promise<NonNullable<AppBindings['Variables']['user']>> {
+  let avatarUrl = changes.avatarUrl
   let storedAvatar: StoredAvatarObject | null = null
-  if (hasAvatar && isBitmapAvatarDataUrl(avatarUrl)) {
+  if (changes.hasAvatar && isBitmapAvatarDataUrl(avatarUrl)) {
     storedAvatar = await persistUploadedAvatar(c.env, current.id, avatarUrl)
     avatarUrl = storedAvatar.preference
   }
+  const { statements, previousAvatar } = buildProfileStatements(c, current, { ...changes, avatarUrl })
 
+  let results: D1Result[]
+  try {
+    results = await c.env.DB.batch(statements)
+  } catch (error) {
+    if (storedAvatar) await discardStoredAvatar(c.env, storedAvatar)
+    throw error
+  }
+  if (!results.at(-1)?.meta.changes) {
+    if (storedAvatar) await discardStoredAvatar(c.env, storedAvatar)
+    throw ApiError.conflict('The profile changed elsewhere. Refresh and try again')
+  }
+
+  if (previousAvatar) {
+    await drainAttachmentCleanup(c.env, current.id).catch((error) => {
+      console.warn('[inkstone] Replaced avatar cleanup will retry later:', error)
+    })
+  }
+  await commitChange(c, 'profile', current.id, 'upsert')
+  const user = await loadUser(c.env, current.id)
+  if (!user) throw ApiError.unauthenticated()
+  return user
+}
+
+function buildProfileStatements(
+  c: Context<AppBindings>,
+  current: NonNullable<AppBindings['Variables']['user']>,
+  changes: { name: string; avatarUrl: string; hasName: boolean; hasAvatar: boolean },
+): { statements: D1PreparedStatement[]; previousAvatar: ReturnType<typeof storedAvatarCleanup> } {
   const statements: D1PreparedStatement[] = []
-  const previousAvatar = hasAvatar ? storedAvatarCleanup(current.avatarUrl) : null
+  const previousAvatar = changes.hasAvatar ? storedAvatarCleanup(current.avatarUrl) : null
   if (previousAvatar) {
     statements.push(
       c.env.DB.prepare(
@@ -318,39 +352,16 @@ authRoutes.put('/profile', requireAuth, async (c) => {
          avatar_url = CASE WHEN ?3 = 1 THEN ?4 ELSE avatar_url END
        WHERE id = ?5 AND (?3 = 0 OR avatar_url = ?6)`,
     ).bind(
-      hasName ? 1 : 0,
-      name,
-      hasAvatar ? 1 : 0,
-      avatarUrl,
+      changes.hasName ? 1 : 0,
+      changes.name,
+      changes.hasAvatar ? 1 : 0,
+      changes.avatarUrl,
       current.id,
       current.avatarUrl,
     ),
   )
-
-  let results: D1Result[]
-  try {
-    results = await c.env.DB.batch(statements)
-  } catch (error) {
-    if (storedAvatar) await discardStoredAvatar(c.env, storedAvatar)
-    throw error
-  }
-  const updated = results.at(-1)
-  if (!updated?.meta.changes) {
-    if (storedAvatar) await discardStoredAvatar(c.env, storedAvatar)
-    throw ApiError.conflict('The profile changed elsewhere. Refresh and try again')
-  }
-
-  if (previousAvatar) {
-    await drainAttachmentCleanup(c.env, current.id).catch((error) => {
-      console.warn('[inkstone] Replaced avatar cleanup will retry later:', error)
-    })
-  }
-
-  await commitChange(c, 'profile', current.id, 'upsert')
-  const user = await loadUser(c.env, current.id)
-  if (!user) throw ApiError.unauthenticated()
-  return c.json(publicUser(user))
-})
+  return { statements, previousAvatar }
+}
 
 
 authRoutes.post('/password', async (c) => {
@@ -383,6 +394,32 @@ authRoutes.post('/logout', async (c) => {
   clearSessionCookie(c)
   return c.json({ ok: true })
 })
+
+async function verifyCredentials(
+  db: D1Database,
+  username: string,
+  password: string,
+): Promise<{
+  row: Parameters<typeof rowToUser>[0] & { password_hash: string } | null
+  isValid: boolean
+}> {
+  const row = USERNAME_PATTERN.test(username)
+    ? await db
+        .prepare(`SELECT ${USER_COLUMNS}, password_hash FROM users WHERE username = ?1`)
+        .bind(username)
+        .first<Parameters<typeof rowToUser>[0] & { password_hash: string }>()
+    : null
+
+  if (
+    row?.password_hash &&
+    password.length <= PASSWORD_MAX_LENGTH &&
+    isPasswordHash(row.password_hash)
+  ) {
+    return { row, isValid: await verifyPassword(password, row.password_hash) }
+  }
+  await dummyVerify()
+  return { row, isValid: false }
+}
 
 async function enforceAttemptBudget(
   db: D1Database,
