@@ -157,7 +157,7 @@
 }
 .ink-prose input[type='checkbox'][data-task-status='question'],
 .ink-prose .task-status-question input[type='checkbox'] {
-  border-color: var(--warning, #f59e0b);
+  border-color: var(--warning);
 }
 .ink-prose input[type='checkbox'][data-task-status='question']::after,
 .ink-prose .task-status-question input[type='checkbox']::after {
@@ -168,12 +168,12 @@
   place-items: center;
   font-size: 0.76em;
   font-weight: 700;
-  color: var(--warning, #f59e0b);
+  color: var(--warning);
   line-height: 1;
 }
 .ink-prose input[type='checkbox'][data-task-status='important'],
 .ink-prose .task-status-important input[type='checkbox'] {
-  border-color: var(--danger, #ef4444);
+  border-color: var(--danger);
 }
 .ink-prose input[type='checkbox'][data-task-status='important']::after,
 .ink-prose .task-status-important input[type='checkbox']::after {
@@ -184,7 +184,7 @@
   place-items: center;
   font-size: 0.76em;
   font-weight: 700;
-  color: var(--danger, #ef4444);
+  color: var(--danger);
   line-height: 1;
 }
 .ink-prose .task-list-item.cancelled > p > .task-label,

@@ -78,7 +78,7 @@
 }
 .ink-prose .markdown-example-source .markdown-example-copy {
   position: absolute;
-  z-index: 1;
+  z-index: var(--z-float);
   top: 8px;
   right: 8px;
   border: 1px solid var(--border-subtle);
@@ -139,10 +139,10 @@
   line-height: 1;
   padding: 2px 5px;
   border-radius: 4px;
-  background: #f7df1e;
-  color: #000000;
+  background: var(--js-yellow);
+  color: var(--js-yellow-ink);
   letter-spacing: 0.04em;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-float);
 }
 
 .ink-prose .js-example-controls {
@@ -189,8 +189,8 @@
   width: 12px;
   height: 12px;
   border-radius: 9999px;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: var(--switch-thumb);
+  box-shadow: var(--shadow-thumb);
   transition: transform var(--dur-fast) var(--ease-out);
 }
 
@@ -206,11 +206,11 @@
   border-radius: var(--r-sm);
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--accent-contrast, #ffffff);
+  color: var(--accent-contrast);
   background: var(--accent);
   border: 1px solid transparent;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-float);
   transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 
@@ -368,7 +368,7 @@
 
 .ink-prose .js-example-log-row.is-warn .js-example-log-prefix,
 .ink-prose .js-example-log-row.is-warn .js-example-log-text {
-  color: var(--warning, #eab308);
+  color: var(--warning);
 }
 
 .ink-prose .js-example-log-row.is-error .js-example-log-prefix,

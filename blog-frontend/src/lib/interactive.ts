@@ -199,6 +199,9 @@ function formatJsValue(val: unknown): string {
   }
 }
 
+// 图表字体固定 13px，与代码字号量级一致，避免图内文字过大撑高容器
+const MERMAID_FONT_SIZE = '13px'
+
 async function renderMermaid() {
   const blocks = document.querySelectorAll<HTMLElement>('.mermaid-block')
   if (!blocks.length) return
@@ -209,7 +212,7 @@ async function renderMermaid() {
     theme: isDark ? 'dark' : 'default',
     securityLevel: 'loose',
     themeVariables: {
-      fontSize: '13px',
+      fontSize: MERMAID_FONT_SIZE,
       background: 'transparent',
     },
   })
@@ -247,12 +250,18 @@ function isDarkMode(): boolean {
   return false
 }
 
+function cssVarValue(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return value || fallback
+}
+
 async function renderCharts() {
   const blocks = document.querySelectorAll<HTMLElement>('.chartjs-block')
   if (!blocks.length) return
-  const isDark = isDarkMode()
-  const textColor = isDark ? '#94a3b8' : '#64748b'
-  const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'
+  // 图表文字/网格色跟随设计令牌（主题与密度联动），兜底为浅色下的原色值
+  const textColor = cssVarValue('--text-tertiary', '#64748b')
+  const gridColor = cssVarValue('--border-default', 'rgba(0, 0, 0, 0.08)')
 
   const { default: Chart } = await import('chart.js/auto')
 

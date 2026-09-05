@@ -3,7 +3,7 @@
     max-width: none;
     padding: 0;
     font-size: 11pt;
-    color: #000;
+    color: var(--print-ink);
   }
   .ink-prose .code-copy,
   .ink-prose .heading-anchor {

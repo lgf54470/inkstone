@@ -75,11 +75,11 @@
   background: color-mix(in oklab, var(--bg-inset) 85%, transparent);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-float-lg);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--dur-fast) var(--ease-out);
-  z-index: 10;
+  z-index: var(--z-float-raised);
 }
 
 .ink-prose .table-wrap:hover .table-floating-bar,

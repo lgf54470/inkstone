@@ -101,7 +101,7 @@ export default function CommentsSection({ postId, allowComments = true }: Commen
           className={`mb-6 p-4 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in duration-200 ${
             message.type === 'success'
               ? 'bg-[var(--accent-softer)] border-[var(--accent)] text-[var(--accent)]'
-              : 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'
+              : 'bg-[var(--danger-soft)] border-[var(--danger-border)] text-[var(--danger)]'
           }`}
         >
           {message.type === 'success' ? (

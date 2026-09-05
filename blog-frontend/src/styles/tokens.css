@@ -56,6 +56,19 @@
   --warning: oklch(76% 0.145 80);
   --danger: oklch(64% 0.19 22);
   --brand-accent: #bb4430;
+
+  --info: oklch(60% 0.13 245);
+  --file-slide: oklch(62% 0.19 40);
+  --file-media: oklch(55% 0.17 300);
+  --js-yellow: oklch(88% 0.19 95);
+  --js-yellow-ink: oklch(22% 0.03 95);
+  --switch-thumb: oklch(100% 0 0);
+  --print-ink: oklch(0% 0 0);
+  --danger-soft: color-mix(in oklab, var(--danger) 10%, transparent);
+  --danger-border: color-mix(in oklab, var(--danger) 30%, transparent);
+
+  --z-float: 1;
+  --z-float-raised: 10;
 }
 
 
@@ -87,6 +100,9 @@
     0 20px 48px -12px oklch(0% 0 0 / 45%);
   --shadow-modal: 0 0 0 1px oklch(100% 0 0 / 8%), 0 16px 40px -8px oklch(0% 0 0 / 65%),
     0 40px 80px -20px oklch(0% 0 0 / 55%);
+  --shadow-float: 0 1px 2px oklch(0% 0 0 / 12%);
+  --shadow-thumb: 0 1px 3px oklch(0% 0 0 / 20%);
+  --shadow-float-lg: 0 2px 8px oklch(0% 0 0 / 8%);
 
   --scrim: oklch(0% 0 0 / 55%);
   --selection: color-mix(in oklab, var(--accent) 30%, transparent);

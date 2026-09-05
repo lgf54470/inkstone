@@ -41,24 +41,24 @@
   text-transform: uppercase;
 }
 .ink-prose .file-card-badge[data-category="pdf"] {
-  --file-badge-color: var(--danger, #dc2626);
+  --file-badge-color: var(--danger);
 }
 .ink-prose .file-card-badge[data-category="archive"] {
-  --file-badge-color: var(--warning, #d97706);
+  --file-badge-color: var(--warning);
 }
 .ink-prose .file-card-badge[data-category="code"],
 .ink-prose .file-card-badge[data-category="text"] {
-  --file-badge-color: #0284c7;
+  --file-badge-color: var(--info);
 }
 .ink-prose .file-card-badge[data-category="sheet"] {
-  --file-badge-color: var(--success, #16a34a);
+  --file-badge-color: var(--success);
 }
 .ink-prose .file-card-badge[data-category="slide"] {
-  --file-badge-color: #ea580c;
+  --file-badge-color: var(--file-slide);
 }
 .ink-prose .file-card-badge[data-category="audio"],
 .ink-prose .file-card-badge[data-category="video"] {
-  --file-badge-color: #7c3aed;
+  --file-badge-color: var(--file-media);
 }
 .ink-prose .file-card-badge[data-category="image"] {
   --file-badge-color: var(--accent);
@@ -113,9 +113,9 @@
   text-decoration: none;
 }
 .ink-prose .file-card-btn-danger:hover {
-  border-color: color-mix(in oklab, var(--danger, #dc2626) 40%, transparent);
-  background: color-mix(in oklab, var(--danger, #dc2626) 10%, var(--bg-base));
-  color: var(--danger, #dc2626);
+  border-color: color-mix(in oklab, var(--danger) 40%, transparent);
+  background: color-mix(in oklab, var(--danger) 10%, var(--bg-base));
+  color: var(--danger);
 }
 .ink-prose .file-card-btn-icon {
   display: inline-block;
