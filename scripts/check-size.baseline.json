@@ -44,10 +44,12 @@
   "src/client/editor/commands.test.ts": {
     "longFns": 1
   },
-  "src/client/editor/commands.ts": {
-    "lines": 857,
+  "src/client/editor/commands/format.ts": {
+    "deepFns": 1
+  },
+  "src/client/editor/commands/wrap.ts": {
     "longFns": 2,
-    "deepFns": 2
+    "deepFns": 1
   },
   "src/client/editor/completion.ts": {
     "longFns": 1
