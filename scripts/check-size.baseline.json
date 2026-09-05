@@ -601,8 +601,19 @@
     "longFns": 2,
     "deepFns": 1
   },
-  "src/worker/mcp/server.ts": {
-    "lines": 1058,
+  "src/worker/mcp/server/assets.ts": {
+    "longFns": 1
+  },
+  "src/worker/mcp/server/folders.ts": {
+    "longFns": 1
+  },
+  "src/worker/mcp/server/notes.ts": {
+    "longFns": 1
+  },
+  "src/worker/mcp/server/search.ts": {
+    "longFns": 1
+  },
+  "src/worker/mcp/server/shares.ts": {
     "longFns": 1
   },
   "src/worker/mcp/writes.ts": {
