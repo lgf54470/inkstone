@@ -203,6 +203,39 @@ function formatJsValue(val: unknown): string {
 // 图表字体固定 13px，与代码字号量级一致，避免图内文字过大撑高容器
 const MERMAID_FONT_SIZE = '13px'
 
+// 错误分支用 textContent 而非 innerHTML 拼接：图表源码/报错信息可能含任意 HTML，
+// 与根仓库 showMermaidError 的防御式 DOM 构建保持一致
+export function showMermaidError(block: HTMLElement, err: unknown, raw: string): void {
+  const wrap = document.createElement('div')
+  wrap.className = 'mermaid-error'
+  const message = document.createElement('span')
+  message.className = 'mermaid-error-message'
+  message.textContent = errorMessage(err)
+  const code = document.createElement('code')
+  code.textContent = raw
+  wrap.appendChild(message)
+  wrap.appendChild(code)
+  block.replaceChildren(wrap)
+  block.classList.remove('loading')
+  block.classList.add('has-error')
+}
+
+export function showChartError(block: HTMLElement, err: unknown, raw: string): void {
+  const banner = document.createElement('div')
+  banner.className = 'chart-error-banner'
+  const text = document.createElement('span')
+  text.className = 'chart-error-text'
+  text.textContent = `图表渲染失败: ${errorMessage(err)}`
+  const pre = document.createElement('pre')
+  const code = document.createElement('code')
+  code.textContent = raw
+  pre.appendChild(code)
+  banner.appendChild(text)
+  block.replaceChildren(banner, pre)
+  block.classList.remove('loading')
+  block.classList.add('has-error')
+}
+
 async function renderMermaid() {
   const blocks = document.querySelectorAll<HTMLElement>('.mermaid-block')
   if (!blocks.length) return
@@ -211,7 +244,8 @@ async function renderMermaid() {
   mermaid.initialize({
     startOnLoad: false,
     theme: isDark ? 'dark' : 'default',
-    securityLevel: 'loose',
+    // strict 关闭图表内 HTML/点击注入；博客只渲染作者本人内容，不需要 loose 的能力
+    securityLevel: 'strict',
     themeVariables: {
       fontSize: MERMAID_FONT_SIZE,
       background: 'transparent',
@@ -230,9 +264,7 @@ async function renderMermaid() {
       block.removeAttribute('aria-busy')
     } catch (err: unknown) {
       console.warn('Mermaid diagram render error:', err)
-      block.classList.remove('loading')
-      block.classList.add('has-error')
-      block.innerHTML = `<div class="mermaid-error"><span class="mermaid-error-message">${errorMessage(err)}</span><code>${raw}</code></div>`
+      showMermaidError(block, err, raw)
     }
   }
 }
@@ -325,9 +357,7 @@ async function renderCharts() {
       chartInstances.set(block, instance)
     } catch (err: unknown) {
       console.warn('Chart.js render error:', err)
-      block.classList.remove('loading')
-      block.classList.add('has-error')
-      block.innerHTML = `<div class="chart-error-banner"><span class="chart-error-text">图表渲染失败: ${errorMessage(err)}</span></div><pre><code>${raw}</code></pre>`
+      showChartError(block, err, raw)
     }
   })
 }
