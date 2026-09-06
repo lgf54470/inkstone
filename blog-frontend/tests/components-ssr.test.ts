@@ -13,15 +13,16 @@ function render(component: ReactElement): string {
 }
 
 describe('component server-render smoke', () => {
-  it('AppearanceDrawer renders its five option sections', () => {
+  it('AppearanceDrawer renders its four option sections without the language toggle', () => {
     const html = render(createElement(AppearanceDrawer))
     expect(html).toContain('外观偏好设置')
     expect(html).toContain('主题模式')
     expect(html).toContain('强调色盘')
     expect(html).toContain('底色风格')
     expect(html).toContain('排版密度')
-    expect(html).toContain('界面语言')
     expect(html).toContain('恢复默认')
+    expect(html).not.toContain('界面语言')
+    expect(html).not.toContain('English')
   })
 
   it('DegradedBanner renders nothing while API health is normal', () => {

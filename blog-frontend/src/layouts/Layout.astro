@@ -57,7 +57,6 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
           doc.setAttribute('data-accent', cfg.accent || 'cinnabar')
           doc.setAttribute('data-background', cfg.background || 'paper')
           doc.setAttribute('data-density', cfg.density || 'comfortable')
-          doc.setAttribute('lang', cfg.lang || 'zh-CN')
         } catch (e) {
           console.warn('Failed to restore appearance before paint:', e)
         }

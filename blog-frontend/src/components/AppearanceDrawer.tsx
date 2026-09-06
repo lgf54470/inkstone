@@ -1,20 +1,10 @@
 import { useState, useEffect, type ReactNode } from 'react'
-import {
-  X,
-  Palette,
-  Sun,
-  Moon,
-  Monitor,
-  Languages,
-  RotateCcw,
-  type LucideIcon,
-} from 'lucide-react'
+import { X, Palette, Sun, Moon, Monitor, RotateCcw, type LucideIcon } from 'lucide-react'
 import {
   type AppearanceConfig,
   type ThemeMode,
   type BackgroundMode,
   type DensityMode,
-  type LanguageMode,
   DEFAULT_APPEARANCE,
   ACCENT_OPTIONS,
   getSavedAppearance,
@@ -24,35 +14,28 @@ import {
 interface PickerProps {
   config: AppearanceConfig
   update: (partial: Partial<AppearanceConfig>) => void
-  isZh: boolean
 }
 
 interface ChoiceOption<T extends string> {
   id: T
-  labelZh: string
-  labelEn: string
+  label: string
   desc?: string
 }
 
 const THEME_OPTIONS: ChoiceOption<ThemeMode>[] = [
-  { id: 'system', labelZh: '跟随系统', labelEn: 'System' },
-  { id: 'light', labelZh: '明亮模式', labelEn: 'Light' },
-  { id: 'dark', labelZh: '深邃模式', labelEn: 'Dark' },
+  { id: 'system', label: '跟随系统' },
+  { id: 'light', label: '明亮模式' },
+  { id: 'dark', label: '深邃模式' },
 ]
 
 const BACKGROUND_OPTIONS: ChoiceOption<BackgroundMode>[] = [
-  { id: 'paper', labelZh: '暖纸质感', labelEn: 'Paper Tone', desc: '柔和护眼纸张色' },
-  { id: 'white', labelZh: '纯粹底色', labelEn: 'Pure Minimal', desc: '极简高对比底色' },
+  { id: 'paper', label: '暖纸质感', desc: '柔和护眼纸张色' },
+  { id: 'white', label: '纯粹底色', desc: '极简高对比底色' },
 ]
 
 const DENSITY_OPTIONS: ChoiceOption<DensityMode>[] = [
-  { id: 'comfortable', labelZh: '舒适舒展', labelEn: 'Comfortable', desc: '16px / 1.65' },
-  { id: 'compact', labelZh: '紧凑高效', labelEn: 'Compact', desc: '15px / 1.55' },
-]
-
-const LANGUAGE_OPTIONS: ChoiceOption<LanguageMode>[] = [
-  { id: 'zh-CN', labelZh: '简体中文', labelEn: '简体中文' },
-  { id: 'en-US', labelZh: 'English', labelEn: 'English' },
+  { id: 'comfortable', label: '舒适舒展', desc: '16px / 1.65' },
+  { id: 'compact', label: '紧凑高效', desc: '15px / 1.55' },
 ]
 
 function useAppearanceDrawerState() {
@@ -96,19 +79,14 @@ function useAppearanceDrawerState() {
   return { isOpen, config, update, resetToDefault, close: () => setIsOpen(false) }
 }
 
-function label(option: ChoiceOption<string>, isZh: boolean): string {
-  return isZh ? option.labelZh : option.labelEn
-}
-
 export default function AppearanceDrawer() {
   const { isOpen, config, update, resetToDefault, close } = useAppearanceDrawerState()
-  const isZh = config.lang === 'zh-CN'
 
   return (
     <DrawerLayer isOpen={isOpen} onClose={close} ariaHidden={!isOpen}>
-      <DrawerHeader isZh={isZh} onClose={close} />
-      <DrawerBody config={config} update={update} isZh={isZh} />
-      <DrawerFooter isZh={isZh} onReset={resetToDefault} onDone={close} />
+      <DrawerHeader onClose={close} />
+      <DrawerBody config={config} update={update} />
+      <DrawerFooter onReset={resetToDefault} onDone={close} />
     </DrawerLayer>
   )
 }
@@ -143,7 +121,7 @@ function DrawerLayer({
         }`}
         role="dialog"
         aria-modal="true"
-        aria-label="Appearance Settings"
+        aria-label="外观偏好设置"
       >
         {children}
       </aside>
@@ -151,20 +129,18 @@ function DrawerLayer({
   )
 }
 
-function DrawerHeader({ isZh, onClose }: { isZh: boolean; onClose: () => void }) {
+function DrawerHeader({ onClose }: { onClose: () => void }) {
   return (
     <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] shrink-0">
       <div className="flex items-center gap-2">
         <Palette className="w-5 h-5 text-[var(--accent)]" />
-        <h2 className="font-semibold text-base text-[var(--text-primary)]">
-          {isZh ? '外观偏好设置' : 'Appearance Settings'}
-        </h2>
+        <h2 className="font-semibold text-base text-[var(--text-primary)]">外观偏好设置</h2>
       </div>
       <button
         type="button"
         onClick={onClose}
         className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-        aria-label="Close"
+        aria-label="关闭"
       >
         <X className="w-5 h-5" />
       </button>
@@ -172,14 +148,13 @@ function DrawerHeader({ isZh, onClose }: { isZh: boolean; onClose: () => void })
   )
 }
 
-function DrawerBody({ config, update, isZh }: PickerProps) {
+function DrawerBody({ config, update }: PickerProps) {
   return (
     <div className="flex-1 overflow-y-auto p-5 space-y-6 text-sm">
-      <ThemePicker config={config} update={update} isZh={isZh} />
-      <AccentPicker config={config} update={update} isZh={isZh} />
-      <BackgroundPicker config={config} update={update} isZh={isZh} />
-      <DensityPicker config={config} update={update} isZh={isZh} />
-      <LanguagePicker config={config} update={update} isZh={isZh} />
+      <ThemePicker config={config} update={update} />
+      <AccentPicker config={config} update={update} />
+      <BackgroundPicker config={config} update={update} />
+      <DensityPicker config={config} update={update} />
     </div>
   )
 }
@@ -230,9 +205,9 @@ function IconChoice({
   )
 }
 
-function ThemePicker({ config, update, isZh }: PickerProps) {
+function ThemePicker({ config, update }: PickerProps) {
   return (
-    <PickerSection title={isZh ? '主题模式' : 'Theme Mode'} gridClass="grid grid-cols-3 gap-2">
+    <PickerSection title="主题模式" gridClass="grid grid-cols-3 gap-2">
       {THEME_OPTIONS.map((option) => (
         <IconChoice
           key={option.id}
@@ -240,7 +215,7 @@ function ThemePicker({ config, update, isZh }: PickerProps) {
           active={config.theme === option.id}
           onClick={() => update({ theme: option.id })}
         >
-          {label(option, isZh)}
+          {option.label}
         </IconChoice>
       ))}
     </PickerSection>
@@ -256,9 +231,9 @@ function iconForTheme(id: ThemeMode): LucideIcon {
   return icons[id]
 }
 
-function AccentPicker({ config, update, isZh }: PickerProps) {
+function AccentPicker({ config, update }: PickerProps) {
   return (
-    <PickerSection title={isZh ? '强调色盘 (东方雅色)' : 'Accent Color'} gridClass="grid grid-cols-4 gap-2.5">
+    <PickerSection title="强调色盘 (东方雅色)" gridClass="grid grid-cols-4 gap-2.5">
       {ACCENT_OPTIONS.map((item) => {
         const active = config.accent === item.id
         return (
@@ -278,9 +253,7 @@ function AccentPicker({ config, update, isZh }: PickerProps) {
             >
               {active && <span className="w-1.5 h-1.5 rounded-full bg-white shadow-xs" />}
             </span>
-            <span className="text-[11px] truncate w-full text-center">
-              {isZh ? item.name : item.nameEn}
-            </span>
+            <span className="text-[11px] truncate w-full text-center">{item.name}</span>
           </button>
         )
       })}
@@ -317,9 +290,9 @@ function TwoLineChoice({
   )
 }
 
-function BackgroundPicker({ config, update, isZh }: PickerProps) {
+function BackgroundPicker({ config, update }: PickerProps) {
   return (
-    <PickerSection title={isZh ? '底色风格' : 'Background Canvas'} gridClass="grid grid-cols-2 gap-2">
+    <PickerSection title="底色风格" gridClass="grid grid-cols-2 gap-2">
       {BACKGROUND_OPTIONS.map((option) => {
         const active = config.background === option.id
         return (
@@ -327,7 +300,7 @@ function BackgroundPicker({ config, update, isZh }: PickerProps) {
             key={option.id}
             active={active}
             onClick={() => update({ background: option.id })}
-            title={label(option, isZh)}
+            title={option.label}
             desc={option.desc ?? ''}
           />
         )
@@ -336,9 +309,9 @@ function BackgroundPicker({ config, update, isZh }: PickerProps) {
   )
 }
 
-function DensityPicker({ config, update, isZh }: PickerProps) {
+function DensityPicker({ config, update }: PickerProps) {
   return (
-    <PickerSection title={isZh ? '排版密度' : 'Layout Density'} gridClass="grid grid-cols-2 gap-2">
+    <PickerSection title="排版密度" gridClass="grid grid-cols-2 gap-2">
       {DENSITY_OPTIONS.map((option) => {
         const active = config.density === option.id
         return (
@@ -346,7 +319,7 @@ function DensityPicker({ config, update, isZh }: PickerProps) {
             key={option.id}
             active={active}
             onClick={() => update({ density: option.id })}
-            title={label(option, isZh)}
+            title={option.label}
             desc={option.desc ?? ''}
           />
         )
@@ -355,37 +328,7 @@ function DensityPicker({ config, update, isZh }: PickerProps) {
   )
 }
 
-function LanguagePicker({ config, update, isZh }: PickerProps) {
-  return (
-    <PickerSection title={isZh ? '界面语言' : 'Language'} gridClass="grid grid-cols-2 gap-2">
-      {LANGUAGE_OPTIONS.map((option) => (
-        <button
-          key={option.id}
-          type="button"
-          onClick={() => update({ lang: option.id })}
-          className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
-            config.lang === option.id
-              ? 'border-[var(--accent)] bg-[var(--accent-softer)] text-[var(--accent)] font-semibold'
-              : 'border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-          }`}
-        >
-          <Languages className="w-3.5 h-3.5" />
-          <span>{isZh ? option.labelZh : option.labelEn}</span>
-        </button>
-      ))}
-    </PickerSection>
-  )
-}
-
-function DrawerFooter({
-  isZh,
-  onReset,
-  onDone,
-}: {
-  isZh: boolean
-  onReset: () => void
-  onDone: () => void
-}) {
+function DrawerFooter({ onReset, onDone }: { onReset: () => void; onDone: () => void }) {
   return (
     <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-raised)] flex items-center justify-between shrink-0">
       <button
@@ -394,14 +337,14 @@ function DrawerFooter({
         className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] px-2 py-1.5 rounded transition-colors cursor-pointer"
       >
         <RotateCcw className="w-3.5 h-3.5" />
-        <span>{isZh ? '恢复默认' : 'Reset Defaults'}</span>
+        <span>恢复默认</span>
       </button>
       <button
         type="button"
         onClick={onDone}
         className="px-4 py-1.5 rounded-lg bg-[var(--accent)] text-white font-medium text-xs hover:opacity-90 transition-opacity shadow-xs cursor-pointer"
       >
-        {isZh ? '完成' : 'Done'}
+        完成
       </button>
     </div>
   )

@@ -9,14 +9,12 @@ export type AccentColor =
   | 'graphite'
 export type BackgroundMode = 'paper' | 'white'
 export type DensityMode = 'comfortable' | 'compact'
-export type LanguageMode = 'zh-CN' | 'en-US'
 
 export interface AppearanceConfig {
   theme: ThemeMode
   accent: AccentColor
   background: BackgroundMode
   density: DensityMode
-  lang: LanguageMode
 }
 
 export const DEFAULT_APPEARANCE: AppearanceConfig = {
@@ -24,17 +22,16 @@ export const DEFAULT_APPEARANCE: AppearanceConfig = {
   accent: 'cinnabar',
   background: 'paper',
   density: 'comfortable',
-  lang: 'zh-CN',
 }
 
-export const ACCENT_OPTIONS: { id: AccentColor; name: string; nameEn: string }[] = [
-  { id: 'cinnabar', name: '朱砂', nameEn: 'Cinnabar' },
-  { id: 'indigo', name: '靛蓝', nameEn: 'Indigo' },
-  { id: 'celadon', name: '青瓷', nameEn: 'Celadon' },
-  { id: 'amber', name: '琥珀', nameEn: 'Amber' },
-  { id: 'terracotta', name: '黛青', nameEn: 'Terracotta' },
-  { id: 'wisteria', name: '紫藤', nameEn: 'Wisteria' },
-  { id: 'graphite', name: '石墨', nameEn: 'Graphite' },
+export const ACCENT_OPTIONS: { id: AccentColor; name: string }[] = [
+  { id: 'cinnabar', name: '朱砂' },
+  { id: 'indigo', name: '靛蓝' },
+  { id: 'celadon', name: '青瓷' },
+  { id: 'amber', name: '琥珀' },
+  { id: 'terracotta', name: '黛青' },
+  { id: 'wisteria', name: '紫藤' },
+  { id: 'graphite', name: '石墨' },
 ]
 
 const STORAGE_KEY = 'inkstone-blog-appearance'
@@ -71,9 +68,6 @@ export function applyAppearance(config: AppearanceConfig) {
 
   // Density
   root.setAttribute('data-density', config.density)
-
-  // Lang
-  root.setAttribute('lang', config.lang)
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
