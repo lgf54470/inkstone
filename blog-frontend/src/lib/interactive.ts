@@ -2,6 +2,7 @@
 import type { Chart, ChartConfiguration } from 'chart.js/auto'
 import { asRecord } from './normalize'
 import { COPY_FEEDBACK_MS } from './constants'
+import { buildOutputRows, createJsExampleFrame, forwardRowsToFrame, runUserCode } from './js-runner-runner'
 
 export function initInteractiveContent() {
   if (typeof window === 'undefined') return
@@ -97,49 +98,7 @@ function handleJsLineSwitch(switchBtn: HTMLButtonElement): void {
   }
 }
 
-export function runUserCode(code: string): {
-  logs: Array<{ type: string; text: string }>
-  result: unknown
-  err: unknown
-  durationMs: number
-} {
-  const logs: Array<{ type: string; text: string }> = []
-  const fakeConsole = {
-    log: (...args: unknown[]) => logs.push({ type: 'log', text: args.map(formatJsValue).join(' ') }),
-    info: (...args: unknown[]) => logs.push({ type: 'info', text: args.map(formatJsValue).join(' ') }),
-    warn: (...args: unknown[]) => logs.push({ type: 'warn', text: args.map(formatJsValue).join(' ') }),
-    error: (...args: unknown[]) => logs.push({ type: 'error', text: args.map(formatJsValue).join(' ') }),
-  }
-
-  const start = performance.now()
-  let result: unknown
-  let err: unknown
-  try {
-    const fn = new Function('console', `"use strict";\n${code}`)
-    result = fn(fakeConsole)
-  } catch (e) {
-    err = e
-  }
-  const durationMs = Math.round(performance.now() - start)
-
-  return { logs, result, err, durationMs }
-}
-
-function appendJsLogRow(outputBody: HTMLElement, type: string, prefix: string, text: string): void {
-  const row = document.createElement('div')
-  row.className = `js-example-log-row is-${type}`
-  const prefixEl = document.createElement('span')
-  prefixEl.className = 'js-example-log-prefix'
-  prefixEl.textContent = prefix
-  const textEl = document.createElement('span')
-  textEl.className = 'js-example-log-text'
-  textEl.textContent = text
-  row.appendChild(prefixEl)
-  row.appendChild(textEl)
-  outputBody.appendChild(row)
-}
-
-function handleJsRun(runBtn: HTMLButtonElement): void {
+async function handleJsRun(runBtn: HTMLButtonElement): Promise<void> {
   const block = runBtn.closest<HTMLElement>('.js-example-block')
   if (!block) return
   const codeEl = block.querySelector<HTMLElement>('.code-block pre code')
@@ -147,57 +106,32 @@ function handleJsRun(runBtn: HTMLButtonElement): void {
   const statusEl = block.querySelector<HTMLElement>('.js-example-output-status')
   if (!codeEl || !outputBody) return
 
-  const { logs, result, err, durationMs } = runUserCode(codeEl.textContent ?? '')
+  setRunStatus(statusEl, 'is-running', '运行中…')
+  outputBody.replaceChildren()
 
-  if (statusEl) {
-    if (err) {
-      statusEl.className = 'js-example-output-status is-error'
-      statusEl.textContent = `✕ ${durationMs}ms`
-    } else {
-      statusEl.className = 'js-example-output-status is-success'
-      statusEl.textContent = `✓ ${durationMs}ms`
-    }
-  }
+  const outcome = await runUserCode(codeEl.textContent ?? '')
 
-  outputBody.innerHTML = ''
-  if (logs.length === 0 && result === undefined && !err) {
-    const hint = document.createElement('div')
-    hint.className = 'js-example-empty-hint'
-    hint.textContent = '代码已执行，无输出内容'
-    outputBody.appendChild(hint)
-    return
-  }
+  setRunStatus(
+    statusEl,
+    outcome.timedOut || outcome.errorText !== '' ? 'is-error' : 'is-success',
+    `${outcome.timedOut || outcome.errorText !== '' ? '✕' : '✓'} ${outcome.durationMs}ms`
+  )
 
-  logs.forEach((log) => {
-    appendJsLogRow(outputBody, log.type, `[${log.type.toUpperCase()}]`, log.text)
-  })
+  // 输出面板使用 sandbox="allow-scripts"（无 allow-same-origin）的隔离 iframe：
+  // 日志文本来自文章代码（不可信），即使未来渲染回归也被限制在不透明源文档内
+  const frame = createJsExampleFrame()
+  outputBody.appendChild(frame)
+  forwardRowsToFrame(frame, buildOutputRows(outcome))
+}
 
-  if (result !== undefined) {
-    appendJsLogRow(outputBody, 'return', '[RETURN]', formatJsValue(result))
-  }
-
-  if (err) {
-    appendJsLogRow(outputBody, 'error', '[ERROR]', err instanceof Error ? `${err.name}: ${err.message}` : String(err))
-  }
+function setRunStatus(statusEl: HTMLElement | null, className: string, text: string): void {
+  if (!statusEl) return
+  statusEl.className = `js-example-output-status ${className}`
+  statusEl.textContent = text
 }
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
-}
-
-// 与根仓库 src/client/features/preview/js-runner.ts 的 formatJsValue 保持同步，改动需两处一致
-function formatJsValue(val: unknown): string {
-  if (val === null) return 'null'
-  if (val === undefined) return 'undefined'
-  if (typeof val === 'string') return val
-  if (typeof val === 'number' || typeof val === 'boolean' || typeof val === 'bigint' || typeof val === 'symbol') return String(val)
-  if (typeof val === 'function') return val.toString()
-  if (val instanceof Error) return `${val.name}: ${val.message}`
-  try {
-    return JSON.stringify(val, null, 2)
-  } catch {
-    return String(val)
-  }
 }
 
 // 图表字体固定 13px，与代码字号量级一致，避免图内文字过大撑高容器

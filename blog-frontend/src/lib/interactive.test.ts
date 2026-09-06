@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { initInteractiveContent, runUserCode, showChartError, showMermaidError } from './interactive'
-import { COPY_FEEDBACK_MS } from './constants'
+import { initInteractiveContent, showChartError, showMermaidError } from './interactive'
+import { FakeWorker } from '../../tests/helpers/fake-worker'
+import { COPY_FEEDBACK_MS, JS_RUN_TIMEOUT_MS } from './constants'
 
 const INJECTED = '</div><img src=x onerror=alert(1)>'
 
@@ -58,19 +59,50 @@ describe('showChartError', () => {
   })
 })
 
-describe('runUserCode', () => {
-  it('captures console output and the return value', () => {
-    const { logs, result, err } = runUserCode('const n = 21; console.log("sum", n * 2); return n * 2')
-    expect(logs).toEqual([{ type: 'log', text: 'sum 42' }])
-    expect(result).toBe(42)
-    expect(err).toBeUndefined()
+describe('js example run button', () => {
+  const blockMarkup = `
+    <div class="js-example-block">
+      <button type="button" class="js-example-run-btn" data-js-run>运行</button>
+      <div class="code-block"><pre><code>console.log("hi"); return 7</code></pre></div>
+      <div class="js-example-output-body"><div class="js-example-placeholder">点击运行</div></div>
+      <div class="js-example-output-status"></div>
+    </div>`
+
+  it('runs code via the worker and renders the sandboxed output frame', async () => {
+    vi.stubGlobal('Worker', FakeWorker)
+    document.body.innerHTML = blockMarkup
+    document.querySelector<HTMLButtonElement>('[data-js-run]')!.click()
+
+    await vi.waitFor(() => {
+      const frame = document.querySelector<HTMLIFrameElement>('.js-example-frame')
+      expect(frame).not.toBeNull()
+      expect(frame?.getAttribute('sandbox')).toBe('allow-scripts')
+    })
+    const statusEl = document.querySelector<HTMLElement>('.js-example-output-status')!
+    expect(statusEl.classList.contains('is-success')).toBe(true)
+    expect(statusEl.textContent).toMatch(/^✓/)
+    expect(document.querySelector('.js-example-placeholder')).toBeNull()
+    vi.unstubAllGlobals()
   })
 
-  it('captures thrown errors and formatting of non-serializable values', () => {
-    const { err } = runUserCode('throw new Error("boom")')
-    expect(err).toBeInstanceOf(Error)
-    const { result } = runUserCode('(() => {})()')
-    expect(result).toBeUndefined()
+  it('marks the run as timed out when the worker hangs', async () => {
+    vi.useFakeTimers()
+    class HangingWorker extends FakeWorker {
+      constructor() {
+        super('hang')
+      }
+    }
+    vi.stubGlobal('Worker', HangingWorker)
+    document.body.innerHTML = blockMarkup
+    document.querySelector<HTMLButtonElement>('[data-js-run]')!.click()
+
+    await vi.advanceTimersByTimeAsync(JS_RUN_TIMEOUT_MS)
+    const statusEl = document.querySelector<HTMLElement>('.js-example-output-status')!
+    expect(statusEl.classList.contains('is-error')).toBe(true)
+    expect(statusEl.textContent).toMatch(/^✕/)
+    expect(document.querySelector('.js-example-frame')).not.toBeNull()
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 })
 

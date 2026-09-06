@@ -16,3 +16,5 @@ export const POPULAR_TAG_MIN_POSTS = 2
 export const DEFAULT_API_URL = 'https://inkstone.333096.xyz'
 /** API 请求超时时间（ms），超时即中止并走离线 fallback */
 export const API_TIMEOUT_MS = 10_000
+/** javascript-example 运行超时（ms），超时即 terminate Worker 强制终止 */
+export const JS_RUN_TIMEOUT_MS = 2000
