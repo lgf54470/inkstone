@@ -24,7 +24,7 @@ export function BlogTableView({
     const folderMap = new Map(folders.map((f) => [f.id, f]))
 
     return (
-        <div className="w-full overflow-x-auto text-[length:var(--text-12\.5)]">
+        <div className="w-full overflow-x-auto">
             <table className="w-full border-collapse text-left">
                 <TableHeader
                     isAllSelected={isAllSelected}
@@ -71,25 +71,27 @@ function toggleAllSelected(
 
 function TableHeader({ isAllSelected, onToggleAll }: { isAllSelected: boolean; onToggleAll: () => void }) {
     return (
-        <thead>
-            <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]">
-                <th className="w-10 px-3 py-2.5 text-center">
+        <thead className="sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-card)] shadow-xs">
+            <tr className="border-b border-[var(--border-subtle)] text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]">
+                <th className="w-10 px-3 py-2 text-center">
                     <input
                         type="checkbox"
                         checked={isAllSelected}
                         onChange={onToggleAll}
-                        className="size-3.5 rounded accent-[var(--accent)] cursor-pointer"
+                        className="rounded border-[var(--border-default)] accent-[var(--accent)] cursor-pointer"
                     />
                 </th>
-                <th className="px-3 py-2.5 min-w-[200px]">{t('blog.col_title')}</th>
-                <th className="px-3 py-2.5 w-[110px]">{t('blog.folders')}</th>
-                <th className="px-3 py-2.5 w-[100px]">{t('blog.category')}</th>
-                <th className="px-3 py-2.5 w-[130px]">{t('blog.tags')}</th>
-                <th className="px-3 py-2.5 w-[85px] min-w-[76px] whitespace-nowrap">{t('blog.col_status')}</th>
-                <th className="px-3 py-2.5 w-[65px] text-right">{t('share.metric_pv')}</th>
-                <th className="px-3 py-2.5 w-[65px] text-right">{t('blog.col_comments')}</th>
-                <th className="px-3 py-2.5 w-[105px] whitespace-nowrap">{t('blog.col_created_at')}</th>
-                <th className="px-3 py-2.5 w-[170px] text-right whitespace-nowrap">{t('blog.col_actions')}</th>
+                <th className="px-3 py-2 min-w-[160px] whitespace-nowrap">{t('blog.col_title')}</th>
+                <th className="w-24 px-3 py-2 whitespace-nowrap">{t('blog.folders')}</th>
+                <th className="w-24 px-3 py-2 whitespace-nowrap">{t('blog.category')}</th>
+                <th className="w-28 px-3 py-2 whitespace-nowrap">{t('blog.tags')}</th>
+                <th className="w-20 px-3 py-2 text-center whitespace-nowrap">{t('blog.col_status')}</th>
+                <th className="w-20 px-3 py-2 text-right whitespace-nowrap">{t('blog.col_views')}</th>
+                <th className="w-16 px-3 py-2 text-right whitespace-nowrap">{t('blog.col_comments')}</th>
+                <th className="w-24 px-3 py-2 text-right whitespace-nowrap">{t('blog.col_created_at')}</th>
+                <th className="w-52 px-3 py-2 text-right whitespace-nowrap sticky right-0 z-[var(--z-sticky)] bg-[var(--bg-card)] border-l border-[var(--border-subtle)]">
+                    {t('blog.col_actions')}
+                </th>
             </tr>
         </thead>
     )

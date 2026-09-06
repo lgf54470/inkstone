@@ -143,6 +143,7 @@ export const messages = {
 "blog.website_placeholder": "个人主页网址",
 "blog.col_title": "标题",
 "blog.col_status": "状态",
+"blog.col_views": "浏览量",
 "blog.col_comments": "评论",
 "blog.col_created_at": "发布时间",
 "blog.col_actions": "操作",

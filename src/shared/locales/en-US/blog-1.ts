@@ -143,6 +143,7 @@ export const messages = {
 "blog.website_placeholder": "Personal website URL",
 "blog.col_title": "Title",
 "blog.col_status": "Status",
+"blog.col_views": "Views",
 "blog.col_comments": "Comments",
 "blog.col_created_at": "Published At",
 "blog.col_actions": "Actions",
