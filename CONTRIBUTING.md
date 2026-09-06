@@ -20,14 +20,26 @@ npm run dev
 
 The local application is available at `http://localhost:7712`. Wrangler stores local D1, R2, and Durable Object state under `.wrangler/state/`.
 
+## Local pre-commit gate
+
+`npm install` / `npm ci` automatically points Git at `.githooks/` (`core.hooksPath`, wired by the `prepare` script), so every commit is policy-gated before it can reach CI:
+
+- Always: `size:check` (files ≤ 500 lines, functions ≤ 50 lines, nesting ≤ 3), `comments:check` (code comments must be pre-approved architecture notes), and `escape:check` (no explicit `any` or `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`).
+- When the commit stages `.ts`/`.tsx` files: an incremental `tsc -b` and `vitest related <staged files>` (unit tests that import the staged files only — the full suite still runs in CI).
+
+Inspect the active hooks with `git config core.hooksPath`. If a hook blocks a commit you believe is legitimate, do not use `git commit --no-verify` casually — first confirm the change would pass the same checks in CI.
+
 ## Required checks
 
-Run the relevant focused tests while developing, then run the complete release gates before opening a pull request:
+Run the relevant focused tests while developing, then run the complete release gates before opening a pull request. The same gates run in CI and locally on commit:
 
 ```bash
 npm run typecheck
 npm run i18n:check
 npm run comments:check
+npm run escape:check
+npm run module-state:check
+npm run size:check
 npm run test:unit
 npm run build
 ```
