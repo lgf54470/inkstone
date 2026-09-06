@@ -8,12 +8,10 @@ import { CLIENT_DATABASE_NAME } from './runtime'
 // actual IDBObjectStore transactions, connection handles, and request events
 // instead of a hand-written Map. The wrapper below only records traffic; every
 // read and write db.ts performs goes to the genuine IndexedDB implementation.
-vi.mock('idb-keyval', async (importOriginal) => {
-  const real = await importOriginal<typeof import('idb-keyval')>()
+const mockState = vi.hoisted(() => {
   const mirror = new Map<string, unknown>()
   const writes: Array<{ key: string; value: unknown }> = []
   const ops = { getMany: 0, setMany: 0, delMany: 0 }
-  const realStore = real.createStore(CLIENT_DATABASE_NAME, 'kv')
   const record = (key: string, value: unknown) => {
     mirror.set(key, value)
     writes.push({ key, value })
@@ -22,66 +20,92 @@ vi.mock('idb-keyval', async (importOriginal) => {
     mirror.delete(key)
     writes.push({ key, value: undefined })
   }
-  return {
-    ...real,
+  return { mirror, writes, ops, record, drop }
+})
+
+const traceIdbCalls = vi.hoisted(() => {
+  return (real: typeof import('idb-keyval'), realStore: unknown, d: {
+    mirror: Map<string, unknown>
+    writes: Array<{ key: string; value: unknown }>
+    ops: { getMany: number; setMany: number; delMany: number }
+    record(key: string, value: unknown): void
+    drop(key: string): void
+  }) => ({
     async getMany(keys: IDBValidKey[], store?: unknown) {
-      ops.getMany++
+      d.ops.getMany++
       return real.getMany(keys, store as never)
     },
     async setMany(entries: Array<[IDBValidKey, unknown]>, store?: unknown) {
-      ops.setMany++
+      d.ops.setMany++
       await real.setMany(entries, store as never)
-      for (const [key, value] of entries) record(String(key), value)
+      for (const [key, value] of entries) d.record(String(key), value)
     },
     async delMany(keys: IDBValidKey[], store?: unknown) {
-      ops.delMany++
+      d.ops.delMany++
       await real.delMany(keys, store as never)
-      for (const key of keys) drop(String(key))
+      for (const key of keys) d.drop(String(key))
     },
     async set(key: IDBValidKey, value: unknown, store?: unknown) {
       await real.set(key, value, store as never)
-      record(String(key), value)
+      d.record(String(key), value)
     },
     async del(key: IDBValidKey, store?: unknown) {
       await real.del(key, store as never)
-      drop(String(key))
+      d.drop(String(key))
     },
     async clear(store?: unknown) {
       await real.clear(store as never)
-      mirror.clear()
-      writes.length = 0
+      d.mirror.clear()
+      d.writes.length = 0
     },
     async update(key: IDBValidKey, updater: (current: unknown) => unknown, store?: unknown) {
       await real.update(key, updater, store as never)
-      const value = await real.get(key, realStore)
-      if (value === undefined) drop(String(key))
-      else record(String(key), value)
+      const value = await real.get(key, realStore as never)
+      if (value === undefined) d.drop(String(key))
+      else d.record(String(key), value)
     },
-    __mock: {
-      store: mirror,
-      writes,
-      ops,
-      realStore,
-      async seed(key: string, value: unknown) {
-        mirror.set(key, value)
-        writes.push({ key, value })
-        await real.set(key, value, realStore)
-      },
-      async read(key: string) {
-        return real.get(key, realStore)
-      },
-      async keys() {
-        return (await real.entries(realStore)).map(([key]) => String(key))
-      },
-      async reset() {
-        mirror.clear()
-        writes.length = 0
-        ops.getMany = 0
-        ops.setMany = 0
-        ops.delMany = 0
-        await real.clear(realStore)
-      },
+  })
+})
+
+const buildMockHandle = vi.hoisted(() => {
+  return (real: typeof import('idb-keyval'), realStore: unknown, d: {
+    mirror: Map<string, unknown>
+    writes: Array<{ key: string; value: unknown }>
+    ops: { getMany: number; setMany: number; delMany: number }
+  }) => ({
+    store: d.mirror,
+    writes: d.writes,
+    ops: d.ops,
+    realStore,
+    async seed(key: string, value: unknown) {
+      d.mirror.set(key, value)
+      d.writes.push({ key, value })
+      await real.set(key, value, realStore as never)
     },
+    async read(key: string) {
+      return real.get(key, realStore as never)
+    },
+    async keys() {
+      return (await real.entries(realStore as never)).map(([key]) => String(key))
+    },
+    async reset() {
+      d.mirror.clear()
+      d.writes.length = 0
+      d.ops.getMany = 0
+      d.ops.setMany = 0
+      d.ops.delMany = 0
+      await real.clear(realStore as never)
+    },
+  })
+})
+
+vi.mock('idb-keyval', async (importOriginal) => {
+  const real = await importOriginal<typeof import('idb-keyval')>()
+  const realStore = real.createStore(CLIENT_DATABASE_NAME, 'kv')
+  return {
+    ...real,
+    ...traceIdbCalls(real, realStore, mockState),
+    __mock: buildMockHandle(real, realStore, mockState),
   }
 })
 

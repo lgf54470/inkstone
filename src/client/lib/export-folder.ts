@@ -1,5 +1,5 @@
 import { downloadZip } from 'client-zip';
-import type { NoteSummary } from '@shared/types';
+import type { Folder, NoteSummary } from '@shared/types';
 import { folderDescendantIds, folderPath } from './folders';
 import { useNotes } from '../store/notes';
 
@@ -16,26 +16,15 @@ export interface ExportFolderResult {
   filename: string;
 }
 
-export async function exportFolderAsZip(folderId: string): Promise<ExportFolderResult> {
-  const state = useNotes.getState();
-  const folders = state.folders ?? [];
-  const rootFolder = folders.find((f) => f.id === folderId);
-  if (!rootFolder) {
-    throw new Error('Folder not found');
-  }
+type ExportState = Pick<ReturnType<typeof useNotes.getState>, 'contents' | 'peekContent'>;
 
-  const descendantIds = folderDescendantIds(folders, folderId);
-  const allNotes = Object.values(state.notes).filter(
-    (n): n is NoteSummary =>
-      Boolean(n && n.deletedAt === null && !n.isArchived && n.folderId && descendantIds.has(n.folderId))
-  );
+export type ExportZipFile = { name: string; lastModified: Date; input: Response | string };
 
-  const zipFilename = `${safeFileName(rootFolder.name) || 'folder'}-export.zip`;
-
-  if (allNotes.length === 0) {
-    return { count: 0, filename: zipFilename };
-  }
-
+function buildFolderRelativePaths(
+  folders: Folder[],
+  folderId: string,
+  descendantIds: Set<string>,
+): Map<string, string> {
   // Pre-calculate relative path from root for every folder in the tree
   const folderRelativePaths = new Map<string, string>();
   const rootAncestorsCount = folderPath(folders, folderId).length;
@@ -45,13 +34,21 @@ export async function exportFolderAsZip(folderId: string): Promise<ExportFolderR
     const relSegments = p.slice(rootAncestorsCount - 1).map((f) => safeFileName(f.name) || 'folder');
     folderRelativePaths.set(fId, relSegments.join('/'));
   }
+  return folderRelativePaths;
+}
 
+async function buildExportFiles(
+  allNotes: NoteSummary[],
+  state: ExportState,
+  folderRelativePaths: Map<string, string>,
+  rootFolderName: string,
+): Promise<ExportZipFile[]> {
   // Group notes by relative directory to avoid file collisions
-  const files: Array<{ name: string; lastModified: Date; input: Response | string }> = [];
+  const files: ExportZipFile[] = [];
   const dirFilesCount = new Map<string, Map<string, number>>();
 
   for (const note of allNotes) {
-    const relDir = (note.folderId && folderRelativePaths.get(note.folderId)) || safeFileName(rootFolder.name) || 'folder';
+    const relDir = (note.folderId && folderRelativePaths.get(note.folderId)) || safeFileName(rootFolderName) || 'folder';
     let seenInDir = dirFilesCount.get(relDir);
     if (!seenInDir) {
       seenInDir = new Map<string, number>();
@@ -78,19 +75,46 @@ export async function exportFolderAsZip(folderId: string): Promise<ExportFolderR
       input: new Response(`${frontMatter}${content}`),
     });
   }
+  return files;
+}
 
-  const zipResponse = downloadZip(files);
-  const blob = await zipResponse.blob();
+function triggerBlobDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function exportFolderAsZip(folderId: string): Promise<ExportFolderResult> {
+  const state = useNotes.getState();
+  const folders = state.folders ?? [];
+  const rootFolder = folders.find((f) => f.id === folderId);
+  if (!rootFolder) {
+    throw new Error('Folder not found');
+  }
+
+  const descendantIds = folderDescendantIds(folders, folderId);
+  const allNotes = Object.values(state.notes).filter(
+    (n): n is NoteSummary =>
+      Boolean(n && n.deletedAt === null && !n.isArchived && n.folderId && descendantIds.has(n.folderId))
+  );
+
+  const zipFilename = `${safeFileName(rootFolder.name) || 'folder'}-export.zip`;
+
+  if (allNotes.length === 0) {
+    return { count: 0, filename: zipFilename };
+  }
+
+  const folderRelativePaths = buildFolderRelativePaths(folders, folderId, descendantIds);
+  const files = await buildExportFiles(allNotes, state, folderRelativePaths, rootFolder.name);
+  const blob = await downloadZip(files).blob();
 
   if (typeof document !== 'undefined') {
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = zipFilename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    triggerBlobDownload(blob, zipFilename);
   }
 
   return { count: allNotes.length, filename: zipFilename };

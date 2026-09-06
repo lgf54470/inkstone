@@ -35,54 +35,52 @@ const NOTE_BATCH_BYTES = 8 * 1024 * 1024
 const NOTE_BATCH_FILES = 50
 const ATTACHMENT_BATCH_FILES = 20
 
-export async function restoreMarkdownBackupFolder(
-  files: readonly File[],
+async function sendAttachmentBatches(
+  selection: BackupSelection,
   send: SendBatch,
-): Promise<ImportResult> {
-  const selection = await selectLatestCompleteBackup(files)
-  const result = emptyResult()
-  const attachmentEntryByHash = new Map(
-    selection.manifest.attachments.map((entry) => [entry.sha256, entry]),
-  )
-  if (selection.warning) result.warnings.push(selection.warning)
-
-  for (const selected of selection.attachments) await verifySelectedFile(selected)
-  for (const selected of selection.notes) await verifySelectedFile(selected)
-
-  let attachmentBatch: SelectedBackupFile<MarkdownBackupAttachmentEntry>[] = []
-  let attachmentBatchBytes = 0
-  const flushAttachments = async () => {
-    if (!attachmentBatch.length) return
+  result: ImportResult,
+): Promise<void> {
+  let batch: SelectedBackupFile<MarkdownBackupAttachmentEntry>[] = []
+  let batchBytes = 0
+  const flush = async () => {
+    if (!batch.length) return
     mergeResult(
       result,
       await send(
-        attachmentBatch.map((selected) => selected.file),
+        batch.map((selected) => selected.file),
         manifestSlice(
           selection.manifest,
           [],
-          attachmentBatch.map((selected) => selected.entry),
+          batch.map((selected) => selected.entry),
         ),
-        attachmentBatch.map((selected) => selected.path),
+        batch.map((selected) => selected.path),
       ),
     )
-    attachmentBatch = []
-    attachmentBatchBytes = 0
+    batch = []
+    batchBytes = 0
   }
   for (const selected of selection.attachments) {
     if (
-      attachmentBatch.length &&
+      batch.length &&
       (
-        attachmentBatch.length >= ATTACHMENT_BATCH_FILES ||
-        attachmentBatchBytes + selected.file.size > LIMITS.attachmentMaxBytes
+        batch.length >= ATTACHMENT_BATCH_FILES ||
+        batchBytes + selected.file.size > LIMITS.attachmentMaxBytes
       )
     ) {
-      await flushAttachments()
+      await flush()
     }
-    attachmentBatch.push(selected)
-    attachmentBatchBytes += selected.file.size
+    batch.push(selected)
+    batchBytes += selected.file.size
   }
-  await flushAttachments()
+  await flush()
+}
 
+async function sendNoteBatches(
+  selection: BackupSelection,
+  send: SendBatch,
+  result: ImportResult,
+  attachmentEntryByHash: Map<string, MarkdownBackupAttachmentEntry>,
+): Promise<void> {
   let batch: SelectedBackupFile<MarkdownBackupNoteEntry>[] = []
   let batchBytes = 0
   const flush = async () => {
@@ -113,10 +111,40 @@ export async function restoreMarkdownBackupFolder(
     batchBytes += selected.file.size
   }
   await flush()
+}
+
+export async function restoreMarkdownBackupFolder(
+  files: readonly File[],
+  send: SendBatch,
+): Promise<ImportResult> {
+  const selection = await selectLatestCompleteBackup(files)
+  const result = emptyResult()
+  const attachmentEntryByHash = new Map(
+    selection.manifest.attachments.map((entry) => [entry.sha256, entry]),
+  )
+  if (selection.warning) result.warnings.push(selection.warning)
+
+  for (const selected of selection.attachments) await verifySelectedFile(selected)
+  for (const selected of selection.notes) await verifySelectedFile(selected)
+
+  await sendAttachmentBatches(selection, send, result)
+  await sendNoteBatches(selection, send, result, attachmentEntryByHash)
   return result
 }
 
-async function selectLatestCompleteBackup(files: readonly File[]): Promise<BackupSelection> {
+interface ManifestCandidate {
+  file: File
+  path: string
+  manifest: MarkdownBackupManifest
+  rootPrefix: string
+  complete: File | undefined
+}
+
+interface ManifestScanCtx {
+  hasSeenManifest: boolean
+}
+
+function indexBackupFiles(files: readonly File[]): Map<string, File> {
   const byPath = new Map<string, File>()
   for (const file of files) {
     const path = selectedPath(file)
@@ -124,58 +152,82 @@ async function selectLatestCompleteBackup(files: readonly File[]): Promise<Backu
     if (byPath.has(key)) throw new Error(t('settings.backup_duplicate_path', { value0: path }))
     byPath.set(key, file)
   }
+  return byPath
+}
 
-  const candidates: Array<{
-    file: File
-    path: string
-    manifest: MarkdownBackupManifest
-    rootPrefix: string
-    complete: File | undefined
-  }> = []
-  let hasSeenManifest = false
+async function buildManifestCandidate(
+  file: File,
+  path: string,
+  byPath: Map<string, File>,
+  ctx: ManifestScanCtx,
+): Promise<ManifestCandidate | null> {
+  const legacyPath = /(?:^|\/)snapshots\/\d{8}-\d{6}-\d{3}\/manifest\.json$/i.test(path)
+  const directory = path.slice(0, path.lastIndexOf('/') + 1)
+  const siblingComplete = byPath.get(`${directory}complete`.toLowerCase())
+  if (file.size > LIMITS.importUploadMaxBytes) {
+    if (legacyPath || siblingComplete) {
+      throw new Error(t('settings.backup_manifest_invalid', { value0: path }))
+    }
+    return null
+  }
+  let raw: unknown
+  try {
+    raw = JSON.parse(await file.text())
+  } catch {
+    if (legacyPath || siblingComplete) ctx.hasSeenManifest = true
+    if (siblingComplete) throw new Error(t('settings.backup_manifest_invalid', { value0: path }))
+    return null
+  }
+  const declaresInkstone = isRecord(raw) && raw.format === MARKDOWN_BACKUP_FORMAT
+  if (legacyPath || declaresInkstone) ctx.hasSeenManifest = true
+  const manifest = parseMarkdownBackupManifest(raw)
+  if (!manifest) {
+    if (siblingComplete && declaresInkstone) {
+      throw new Error(t('settings.backup_manifest_invalid', { value0: path }))
+    }
+    return null
+  }
+  const suffix = backupManifestPath(manifest.snapshot, manifest.version)
+  if (!path.toLowerCase().endsWith(suffix.toLowerCase())) {
+    if (siblingComplete) throw new Error(t('settings.backup_manifest_invalid', { value0: path }))
+    return null
+  }
+  const rootPrefix = path.slice(0, path.length - suffix.length)
+  const complete = byPath.get(
+    `${rootPrefix}${backupCompletePath(manifest.snapshot, manifest.version)}`.toLowerCase(),
+  )
+  if (complete && complete.size > 1024) {
+    throw new Error(t('settings.backup_complete_marker_mismatch', { value0: path }))
+  }
+  return { file, path, manifest, rootPrefix, complete }
+}
+
+async function collectManifestCandidates(byPath: Map<string, File>): Promise<{ candidates: ManifestCandidate[]; hasSeenManifest: boolean }> {
+  const candidates: ManifestCandidate[] = []
+  const ctx: ManifestScanCtx = { hasSeenManifest: false }
   for (const file of byPath.values()) {
     const path = selectedPath(file)
     if (!/(?:^|\/)manifest\.json$/i.test(path)) continue
-    const legacyPath = /(?:^|\/)snapshots\/\d{8}-\d{6}-\d{3}\/manifest\.json$/i.test(path)
-    const directory = path.slice(0, path.lastIndexOf('/') + 1)
-    const siblingComplete = byPath.get(`${directory}complete`.toLowerCase())
-    if (file.size > LIMITS.importUploadMaxBytes) {
-      if (legacyPath || siblingComplete) {
-        throw new Error(t('settings.backup_manifest_invalid', { value0: path }))
-      }
-      continue
-    }
-    let raw: unknown
-    try {
-      raw = JSON.parse(await file.text())
-    } catch {
-      if (legacyPath || siblingComplete) hasSeenManifest = true
-      if (siblingComplete) throw new Error(t('settings.backup_manifest_invalid', { value0: path }))
-      continue
-    }
-    const declaresInkstone = isRecord(raw) && raw.format === MARKDOWN_BACKUP_FORMAT
-    if (legacyPath || declaresInkstone) hasSeenManifest = true
-    const manifest = parseMarkdownBackupManifest(raw)
-    if (!manifest) {
-      if (siblingComplete && declaresInkstone) {
-        throw new Error(t('settings.backup_manifest_invalid', { value0: path }))
-      }
-      continue
-    }
-    const suffix = backupManifestPath(manifest.snapshot, manifest.version)
-    if (!path.toLowerCase().endsWith(suffix.toLowerCase())) {
-      if (siblingComplete) throw new Error(t('settings.backup_manifest_invalid', { value0: path }))
-      continue
-    }
-    const rootPrefix = path.slice(0, path.length - suffix.length)
-    const complete = byPath.get(
-      `${rootPrefix}${backupCompletePath(manifest.snapshot, manifest.version)}`.toLowerCase(),
-    )
-    if (complete && complete.size > 1024) {
-      throw new Error(t('settings.backup_complete_marker_mismatch', { value0: path }))
-    }
-    candidates.push({ file, path, manifest, rootPrefix, complete })
+    const candidate = await buildManifestCandidate(file, path, byPath, ctx)
+    if (candidate) candidates.push(candidate)
   }
+  return { candidates, hasSeenManifest: ctx.hasSeenManifest }
+}
+
+function resolveBackupEntry<T extends MarkdownBackupAttachmentEntry | MarkdownBackupNoteEntry>(
+  byPath: Map<string, File>,
+  rootPrefix: string,
+  entry: T,
+): SelectedBackupFile<T> {
+  const path = entry.path
+  const file = byPath.get(`${rootPrefix}${path}`.toLowerCase())
+  if (!file) throw new Error(t('settings.backup_missing_file', { value0: path }))
+  return { file, path, entry }
+}
+
+async function selectLatestCompleteBackup(files: readonly File[]): Promise<BackupSelection> {
+  const byPath = indexBackupFiles(files)
+  const { candidates, hasSeenManifest } = await collectManifestCandidates(byPath)
   candidates.sort((a, b) => b.manifest.snapshot.localeCompare(a.manifest.snapshot))
 
   const skipped: string[] = []
@@ -190,18 +242,10 @@ async function selectLatestCompleteBackup(files: readonly File[]): Promise<Backu
     if (!declaredHash || declaredHash !== actualHash) {
       throw new Error(t('settings.backup_complete_marker_mismatch', { value0: candidate.path }))
     }
-    const resolve = <T extends MarkdownBackupAttachmentEntry | MarkdownBackupNoteEntry>(
-      entry: T,
-    ): SelectedBackupFile<T> => {
-      const path = entry.path
-      const file = byPath.get(`${rootPrefix}${path}`.toLowerCase())
-      if (!file) throw new Error(t('settings.backup_missing_file', { value0: path }))
-      return { file, path, entry }
-    }
     return {
       manifest,
-      attachments: manifest.attachments.map(resolve),
-      notes: manifest.notes.map(resolve),
+      attachments: manifest.attachments.map((entry) => resolveBackupEntry(byPath, rootPrefix, entry)),
+      notes: manifest.notes.map((entry) => resolveBackupEntry(byPath, rootPrefix, entry)),
       warning: skipped.length
         ? t('settings.backup_newer_snapshot_skipped', { value0: skipped[0] })
         : null,

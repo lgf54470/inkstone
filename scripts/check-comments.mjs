@@ -70,7 +70,6 @@ const allowed = new Map([
     "// shallow memo lets the whole heatmap subtree skip rendering on such commits",
     "// (typing pauses still legitimately rebuild today's slice and re-render).",
     "/** Reusable calendar + activity heatmap: navigable month grid, yearly month columns, and a GitHub-style weekly strip, with optional per-day note lists. */",
-    "// Marks an external month jump (settings preview click) or an internal jump (week click, gap-cell follow, endpoint locate) with the same fade-in + receding accent ring.",
   ]],
   ["src/client/components/activity-calendar/props.ts", [
     "/** Increments each time an external jump (e.g. a settings-preview click) targets the month view, triggering a fade-in + accent ring flash. */",
@@ -78,15 +77,18 @@ const allowed = new Map([
   ["src/client/components/activity-calendar/range.ts", [
     "/** Convert an inclusive month range (0-11 indices within a year) to inclusive day keys. */",
   ]],
+  ["src/client/components/activity-calendar/use-activity-calendar.ts", [
+    "// Marks an external month jump (settings preview click) or an internal jump (week click, gap-cell follow, endpoint locate) with the same fade-in + receding accent ring.",
+  ]],
+  ["src/client/components/date-range-popover-core.ts", [
+    "/** Compute the day keys for a fixed quick preset range anchored at `today`. */",
+    "/** Move a preset within its list by one position (no-op at the edges). */",
+  ]],
   ["src/client/components/date-range-popover.test.ts", [
     "// Three fixed pills + two default custom presets + the pencil button.",
   ]],
   ["src/client/components/date-range-popover.tsx", [
-    "/** Compute the day keys for a fixed quick preset range anchored at `today`. */",
-    "/** Move a preset within its list by one position (no-op at the edges). */",
     "/** Floating editor for an inclusive date-range filter: pick a start or end endpoint on a mini month calendar, leap to nearby months, apply fixed or rolling quick ranges, or clear the range. */",
-    "// Locate feedback mirrors the sidebar-calendar jumpFlash: when the popover opens aimed at the range end month, or the endpoint toggles, the mini grid pulses with the accent ring.",
-    "// Drag payload is best-effort; the drop handler re-reads the index from state, not dataTransfer.",
   ]],
   ["src/client/components/feedback.tsx", [
     "// Landing focus on the undo action is the keyboard fast-path, but it must never",
@@ -97,6 +99,10 @@ const allowed = new Map([
   ]],
   ["src/client/components/tag-name-highlight.tsx", [
     "/** Renders a tag name with the matched query substring emphasized, used by tag pickers. */",
+  ]],
+  ["src/client/components/use-date-range-popover.ts", [
+    "// Locate feedback mirrors the sidebar-calendar jumpFlash: when the popover opens aimed at the range end month, or the endpoint toggles, the mini grid pulses with the accent ring.",
+    "// Drag payload is best-effort; the drop handler re-reads the index from state, not dataTransfer.",
   ]],
   ["src/client/demo/backend/routes/files.ts", [
     "// Match the real worker contract: facetsFull may only be true when the response carries the",
@@ -475,12 +481,14 @@ const allowed = new Map([
     "// transactions on real macrotasks that need an explicit event-loop drain.",
     "// Per-note layout on disk: every summary has its own key, plus one index key.",
     "// Second load goes through the index with two batched reads and no migration writes.",
-    "// An old build stored flat keys under a bare 'userId' marker; booting the",
-    "// new code first binds a different account, then switches back to u1 so",
-    "// bindLocalUser's migrateLegacyData moves the flat keys into u1's scope,",
-    "// and loadShell then upgrades the single-key notes array per note.",
+    "// An old build stored flat keys under a bare 'userId' marker; booting the new",
+    "// code first binds a different account, then switches back to u1 so",
+    "// bindLocalUser's migrateLegacyData moves the flat keys into u1's scope, and",
+    "// loadShell then upgrades the single-key notes array per note.",
     "// A second boot is fully idempotent: two batched reads, no migration writes.",
     "// The upgraded cache stays fully usable offline: edit, flush, reload.",
+    "// Serial queue that mimics Web Locks: one task at a time, FIFO. Installed on",
+    "// navigator.locks so the cache's critical section runs against it.",
   ]],
   ["src/client/lib/db-multitab.idb.test.ts", [
     "// This file runs the same multi-tab scenarios as db-multitab.test.ts, but every",
@@ -546,9 +554,6 @@ const allowed = new Map([
     "// race; Web Locks serializes it across tabs so a concurrent merge reads the",
     "// winner's index instead of a stale one. Browsers without Web Locks fall back",
     "// to the plain merge, which stays correct when flushes never overlap.",
-  ]],
-  ["src/client/lib/export-folder.test.ts", [
-    "// Mock URL.createObjectURL",
   ]],
   ["src/client/lib/export-folder.ts", [
     "// Pre-calculate relative path from root for every folder in the tree",

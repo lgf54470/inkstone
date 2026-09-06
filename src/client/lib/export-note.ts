@@ -33,12 +33,29 @@ export async function renderNoteToExportHtml(
   note: { title: string; content: string },
   language: string,
 ): Promise<string> {
+  const rendered = renderExportHtml(note)
+  const container = createExportContainer(rendered.html)
+  document.body.appendChild(container)
+
+  try {
+    await runExportEnhancements(container, rendered.hasEmbeds, note)
+    stripExportChrome(container)
+    await embedLocalImages(container)
+    return htmlDocument(note.title, container.innerHTML, language)
+  } finally {
+    container.remove()
+  }
+}
+
+function renderExportHtml(note: { title: string; content: string }): { html: string; hasEmbeds: boolean } {
   // Respect the user's external-images choice: when blocked, exported HTML
   // shows the same placeholder as the preview instead of leaking image URLs.
-  const rendered = renderMarkdown(note.content, {
+  return renderMarkdown(note.content, {
     externalImages: useSession.getState().settings.preview.externalImages,
   })
+}
 
+function createExportContainer(html: string): HTMLDivElement {
   const container = document.createElement('div')
   container.className = 'ink-prose export-render-root'
   container.style.position = 'fixed'
@@ -47,80 +64,81 @@ export async function renderNoteToExportHtml(
   container.style.width = '800px'
   container.style.visibility = 'hidden'
   container.style.pointerEvents = 'none'
-  container.innerHTML = rendered.html
-  document.body.appendChild(container)
+  container.innerHTML = html
+  return container
+}
 
-  try {
-    if (rendered.hasEmbeds) {
-      try {
-        await resolveNoteEmbeds(container, {
-          currentContent: note.content,
-          currentTitle: note.title,
-        })
-      } catch (err) {
-        console.warn('Failed to resolve note embeds during export:', err)
-      }
-    }
-
+async function runExportEnhancements(container: HTMLDivElement, hasEmbeds: boolean, note: { title: string; content: string }): Promise<void> {
+  if (hasEmbeds) {
     try {
-      await enhancePreview(container, {
-        math: true,
-        mermaid: true,
-        dark: false,
-        codeBlockCollapseLines: 0,
+      await resolveNoteEmbeds(container, {
+        currentContent: note.content,
+        currentTitle: note.title,
       })
     } catch (err) {
-      console.warn('Failed to enhance preview during export:', err)
+      console.warn('Failed to resolve note embeds during export:', err)
     }
-
-    try {
-      await renderPendingMermaid(container, false)
-    } catch (err) {
-      console.warn('Failed to render mermaid during export:', err)
-    }
-
-    try {
-      await renderChartJs(container, false)
-      const canvases = [...container.querySelectorAll<HTMLCanvasElement>('canvas.chartjs-canvas')]
-      for (const canvas of canvases) {
-        try {
-          const img = document.createElement('img')
-          img.className = 'chartjs-image'
-          img.src = canvas.toDataURL('image/png')
-          img.alt = 'Chart'
-          canvas.replaceWith(img)
-        } catch (err) {
-          console.warn('Failed to convert canvas to data URL:', err)
-        }
-      }
-      destroyChartInstances(container)
-    } catch (err) {
-      console.warn('Failed to render chart.js during export:', err)
-    }
-
-    container.querySelectorAll('.code-copy').forEach((el) => el.remove())
-    container.querySelectorAll('.js-example-controls').forEach((el) => el.remove())
-    container.querySelectorAll('[data-mermaid-retry]').forEach((el) => el.remove())
-
-    const images = [...container.querySelectorAll<HTMLImageElement>('img[src^="/api/files/"]')]
-    await Promise.all(
-      images.map(async (image) => {
-        try {
-          const response = await fetch(image.getAttribute('src')!, { credentials: 'same-origin' })
-          if (!response.ok) return
-          const dataUrl = await blobToDataUrl(await response.blob())
-          if (dataUrl) image.setAttribute('src', dataUrl)
-        } catch (error) {
-          console.warn('[export] failed to embed remote image, keeping original URL', error)
-        }
-      }),
-    )
-
-    const bodyHtml = container.innerHTML
-    return htmlDocument(note.title, bodyHtml, language)
-  } finally {
-    container.remove()
   }
+
+  try {
+    await enhancePreview(container, {
+      math: true,
+      mermaid: true,
+      dark: false,
+      codeBlockCollapseLines: 0,
+    })
+  } catch (err) {
+    console.warn('Failed to enhance preview during export:', err)
+  }
+
+  try {
+    await renderPendingMermaid(container, false)
+  } catch (err) {
+    console.warn('Failed to render mermaid during export:', err)
+  }
+
+  try {
+    await renderChartJs(container, false)
+    const canvases = [...container.querySelectorAll<HTMLCanvasElement>('canvas.chartjs-canvas')]
+    for (const canvas of canvases) canvasToImage(canvas)
+    destroyChartInstances(container)
+  } catch (err) {
+    console.warn('Failed to render chart.js during export:', err)
+  }
+}
+
+function canvasToImage(canvas: HTMLCanvasElement): void {
+  try {
+    const img = document.createElement('img')
+    img.className = 'chartjs-image'
+    img.src = canvas.toDataURL('image/png')
+    img.alt = 'Chart'
+    canvas.replaceWith(img)
+  } catch (err) {
+    console.warn('Failed to convert canvas to data URL:', err)
+  }
+}
+
+function stripExportChrome(container: HTMLDivElement): void {
+  container.querySelectorAll('.code-copy').forEach((el) => el.remove())
+  container.querySelectorAll('.js-example-controls').forEach((el) => el.remove())
+  container.querySelectorAll('[data-mermaid-retry]').forEach((el) => el.remove())
+}
+
+async function embedLocalImages(container: HTMLDivElement): Promise<void> {
+  const images = [...container.querySelectorAll<HTMLImageElement>('img[src^="/api/files/"]')]
+  await Promise.all(
+    images.map(async (image) => {
+      try {
+        const response = await fetch(image.getAttribute('src')!, { credentials: 'same-origin' })
+        if (!response.ok) return
+        const dataUrl = await blobToDataUrl(await response.blob())
+        if (dataUrl) image.setAttribute('src', dataUrl)
+      } catch (error) {
+        console.warn('[export] failed to embed remote image, keeping original URL', error)
+      }
+    }),
+  )
 }
 
 export async function exportNoteAsHtml(note: { title: string; content: string }, language: string): Promise<void> {
@@ -187,17 +205,7 @@ function safeFileName(title: string): string {
     .slice(0, 80)
 }
 
-function htmlDocument(title: string, bodyHtml: string, language: string): string {
-  const safeTitle = escapeHtml(title)
-  return `<!DOCTYPE html>
-<html lang="${escapeAttr(language)}">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${safeTitle}</title>
-<link rel="stylesheet" href="${KATEX_CSS_URL}" crossorigin="anonymous">
-<style>
-:root { color-scheme: light; }
+const EXPORT_CSS = `:root { color-scheme: light; }
 * { box-sizing: border-box; }
 body {
   margin: 0 auto;
@@ -420,14 +428,9 @@ details[open] summary { margin-bottom: 0.5em; }
 .footnote-ref { font-size: 0.8em; }
 .footnotes { font-size: 0.88em; color: #64748b; border-top: 1px solid #e2e8f0; margin-top: 2em; padding-top: 1em; }
 .footnotes-sep { display: none; }
-.footnote-backref { text-decoration: none; margin-left: 0.3em; }
-</style>
-</head>
-<body>
-${safeTitle ? `<h1>${safeTitle}</h1>` : ''}
-${bodyHtml}
-<script>
-document.querySelectorAll('.tab-list button').forEach(function(btn) {
+.footnote-backref { text-decoration: none; margin-left: 0.3em; }`
+
+const EXPORT_SCRIPT = `document.querySelectorAll('.tab-list button').forEach(function(btn) {
   btn.addEventListener('click', function() {
     var wrap = btn.closest('.markdown-tabs');
     var idx = btn.dataset.tabButton;
@@ -438,7 +441,26 @@ document.querySelectorAll('.tab-list button').forEach(function(btn) {
       p.hidden = p.dataset.tabPanel !== idx;
     });
   });
-});
+});`
+
+function htmlDocument(title: string, bodyHtml: string, language: string): string {
+  const safeTitle = escapeHtml(title)
+  return `<!DOCTYPE html>
+<html lang="${escapeAttr(language)}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${safeTitle}</title>
+<link rel="stylesheet" href="${KATEX_CSS_URL}" crossorigin="anonymous">
+<style>
+${EXPORT_CSS}
+</style>
+</head>
+<body>
+${safeTitle ? `<h1>${safeTitle}</h1>` : ''}
+${bodyHtml}
+<script>
+${EXPORT_SCRIPT}
 </script>
 </body>
 </html>`

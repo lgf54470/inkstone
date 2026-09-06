@@ -12,10 +12,14 @@ afterEach(() => {
     setUndoToastFocus(true);
 });
 
+function renderToaster(): { unmount: () => void } {
+    return renderElement(createElement(Toaster));
+}
+
 describe('undo toast presentation', () => {
     it('renders an accent undo icon, announces title plus action to assistive tech, and lands focus on the undo button', () => {
         const undo = () => {};
-        const { unmount } = renderElement(createElement(Toaster));
+        const { unmount } = renderToaster();
         act(() => { toastWithUndo('notes.moved_to_trash', undo); });
         const button = document.body.querySelector<HTMLButtonElement>('[data-undo-focus]');
         expect(button).not.toBeNull();
@@ -28,7 +32,7 @@ describe('undo toast presentation', () => {
     });
 
     it('stays inert for toasts without an action so focus is never stolen', () => {
-        const { unmount } = renderElement(createElement(Toaster));
+        const { unmount } = renderToaster();
         document.body.focus();
         act(() => { useUi.getState().toast({ title: 'notes.syncing' }); });
         expect(document.body.querySelector('[data-undo-focus]')).toBeNull();
@@ -46,7 +50,9 @@ describe('undo toast presentation', () => {
         expect(document.activeElement).toBe(input);
         unmount();
     });
+});
 
+describe('undo toast focus safety', () => {
     it('does not steal focus out of an open dialog', () => {
         const { container, unmount } = renderElement(createElement('div', null,
             createElement('div', { role: 'dialog' }, createElement('button', null, 'dialog button')),
@@ -59,7 +65,7 @@ describe('undo toast presentation', () => {
     });
 
     it('only the first undo toast keeps focus when toasts stack', () => {
-        const { unmount } = renderElement(createElement(Toaster));
+        const { unmount } = renderToaster();
         act(() => { toastWithUndo('notes.moved_to_trash', () => {}); });
         const first = document.activeElement;
         expect(first?.getAttribute('data-undo-focus')).not.toBeNull();
@@ -70,7 +76,7 @@ describe('undo toast presentation', () => {
 
     it('honors the no-distraction preference (focus disabled)', () => {
         setUndoToastFocus(false);
-        const { unmount } = renderElement(createElement(Toaster));
+        const { unmount } = renderToaster();
         document.body.focus();
         act(() => { toastWithUndo('notes.moved_to_trash', () => {}); });
         expect(document.body.querySelector('[data-undo-focus]')).not.toBeNull();

@@ -1,37 +1,35 @@
 import { describe, expect, it } from 'vitest';
-import { buildStripWeeks, monthRangeToKeys } from './activity-calendar';
+import { act, createElement, useState } from 'react';
+import { buildStripWeeks, monthRangeToKeys, ActivityCalendar } from './activity-calendar';
+import type { ActivityCalendarProps } from './activity-calendar/props';
+import { renderElement } from '../lib/test-render';
+
+function stripOptions(overrides: Partial<Parameters<typeof buildStripWeeks>[1]> = {}): Parameters<typeof buildStripWeeks>[1] {
+    return {
+        range: { start: new Date(2026, 7, 31), end: new Date(2026, 8, 6) },
+        weekStart: 1,
+        todayKey: '2026-09-02',
+        ...overrides,
+    };
+}
 
 describe('buildStripWeeks', () => {
     it('builds a single aligned week when the range fits exactly', () => {
         const weeks = buildStripWeeks(new Map([
             ['2026-09-02', 3],
             ['2026-09-06', 1],
-        ]), {
-            range: { start: new Date(2026, 7, 31), end: new Date(2026, 8, 6) },
-            weekStart: 1,
-            todayKey: '2026-09-02',
-        });
+        ]), stripOptions());
         expect(weeks).toHaveLength(1);
-        expect(weeks[0]!.map((cell) => cell.key)).toEqual([
-            '2026-08-31',
-            '2026-09-01',
-            '2026-09-02',
-            '2026-09-03',
-            '2026-09-04',
-            '2026-09-05',
-            '2026-09-06',
-        ]);
+        expect(weeks[0]!.map((cell) => cell.key)).toEqual(['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05', '2026-09-06']);
         expect(weeks[0]![2]!.count).toBe(3);
         expect(weeks[0]![2]!.today).toBe(true);
         expect(weeks[0]![6]!.count).toBe(1);
     });
 
     it('aligns a mid-week range start backwards to the preceding week start', () => {
-        const weeks = buildStripWeeks(new Map(), {
+        const weeks = buildStripWeeks(new Map(), stripOptions({
             range: { start: new Date(2026, 8, 3), end: new Date(2026, 8, 8) },
-            weekStart: 1,
-            todayKey: '2026-09-02',
-        });
+        }));
         expect(weeks).toHaveLength(2);
         expect(weeks[0]![0]!.key).toBe('2026-08-31');
         expect(weeks[1]![0]!.key).toBe('2026-09-07');
@@ -42,11 +40,7 @@ describe('buildStripWeeks', () => {
             ['2026-09-02', 3],
             ['2026-09-03', 2],
             ['2026-09-04', 1],
-        ]), {
-            range: { start: new Date(2026, 7, 31), end: new Date(2026, 8, 6) },
-            weekStart: 1,
-            todayKey: '2026-09-02',
-        });
+        ]), stripOptions());
         const [week] = weeks;
         expect(week![2]!.level).toBe(4);
         expect(week![3]!.level).toBe(3);
@@ -64,7 +58,9 @@ describe('buildStripWeeks', () => {
         expect(weeks[15]![0]!.key).toBe('2026-08-31');
         expect(weeks[15]![2]!.key).toBe('2026-09-02');
     });
+});
 
+describe('buildStripWeeks notes, selection and month ranges', () => {
     it('resolves diary ids, per-day note lists, and the selected day', () => {
         const notes = new Map([
             ['2026-09-02', [
@@ -72,14 +68,11 @@ describe('buildStripWeeks', () => {
                 { id: 'n2', title: 'Note 2' },
             ]],
         ]);
-        const weeks = buildStripWeeks(new Map([['2026-09-02', 2]]), {
-            range: { start: new Date(2026, 7, 31), end: new Date(2026, 8, 6) },
-            weekStart: 1,
-            todayKey: '2026-09-02',
+        const weeks = buildStripWeeks(new Map([['2026-09-02', 2]]), stripOptions({
             selectedRange: { start: '2026-09-02', end: '2026-09-04' },
             getDiaryId: (key) => (key === '2026-09-02' ? 'd9' : null),
             notesByDay: notes,
-        });
+        }));
         expect(weeks[0]![2]!.diaryId).toBe('d9');
         expect(weeks[0]![2]!.selected).toBe(true);
         expect(weeks[0]![3]!.selected).toBe(true);
@@ -101,33 +94,38 @@ describe('buildStripWeeks', () => {
     });
 });
 
-import { act, createElement, useState } from 'react';
-import { ActivityCalendar } from './activity-calendar';
-import { renderElement } from '../lib/test-render';
-
 // jsdom has no layout engine, so these guards assert the anti-wrap CSS contract
 // (whitespace-nowrap + truncate) instead of pixel measurement.
+function calendarProps(overrides: Partial<ActivityCalendarProps> = {}): ActivityCalendarProps {
+    return {
+        counts: new Map(),
+        locale: 'en-US',
+        weekStart: 1,
+        today: new Date(2026, 8, 2),
+        view: 'month',
+        onViewChange: () => {},
+        cursor: { year: 2026, month: 8 },
+        onCursorChange: () => {},
+        onDayClick: () => {},
+        onDaySelect: () => {},
+        onRangeSelect: () => {},
+        onGapDayClick: () => {},
+        onNoteClick: () => {},
+        getDiaryId: () => null,
+        ...overrides,
+    };
+}
+
 function renderCalendar(): { container: HTMLElement; unmount: () => void } {
     function Harness() {
         const [view, setView] = useState<'month' | 'weeks' | 'year'>('month');
-        return createElement('div', { style: { width: 196 } }, createElement(ActivityCalendar, {
-            counts: new Map(),
-            locale: 'en-US',
-            weekStart: 1,
-            today: new Date(2026, 8, 2),
-            view,
-            onViewChange: setView,
-            cursor: { year: 2026, month: 8 },
-            onCursorChange: () => {},
-            onDayClick: () => {},
-            onDaySelect: () => {},
-            onRangeSelect: () => {},
-            onGapDayClick: () => {},
-            onNoteClick: () => {},
-            getDiaryId: () => null,
-        }));
+        return createElement('div', { style: { width: 196 } }, createElement(ActivityCalendar, calendarProps({ view, onViewChange: setView })));
     }
     return renderElement(createElement(Harness));
+}
+
+function viewToggle(container: HTMLElement): HTMLButtonElement[] {
+    return [...container.querySelectorAll<HTMLButtonElement>('[aria-label="sidebar.calendar_view"] button')];
 }
 
 describe('view toggle wrapping contract', () => {
@@ -136,7 +134,7 @@ describe('view toggle wrapping contract', () => {
         const group = container.querySelector('[aria-label="sidebar.calendar_view"]');
         expect(group).not.toBeNull();
         expect(group!.classList.contains('overflow-hidden')).toBe(true);
-        const buttons = [...group!.querySelectorAll('button')];
+        const buttons = viewToggle(container);
         expect(buttons).toHaveLength(3);
         for (const button of buttons) {
             expect(button.classList.contains('whitespace-nowrap')).toBe(true);
@@ -149,8 +147,7 @@ describe('view toggle wrapping contract', () => {
 
     it('renders the year grid with a weekday strip, clickable columns, and the measured column count', () => {
         const { container, unmount } = renderCalendar();
-        const toggle = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="sidebar.calendar_view"] button')];
-        act(() => { toggle[2]!.click(); });
+        act(() => { viewToggle(container)[2]!.click(); });
         const grid = container.querySelector('[aria-label="sidebar.calendar_year_grid_aria"]');
         expect(grid).not.toBeNull();
         expect(grid!.classList.contains('grid-cols-3')).toBe(true);
@@ -167,26 +164,22 @@ describe('view toggle wrapping contract', () => {
 
     it('moves the year focus by the measured column count (ArrowUp/Down)', () => {
         const { container, unmount } = renderCalendar();
-        const toggle = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="sidebar.calendar_view"] button')];
-        act(() => { toggle[2]!.click(); });
+        act(() => { viewToggle(container)[2]!.click(); });
         const september = container.querySelector('[data-month="8"]');
         expect(september).not.toBeNull();
         (september as HTMLElement).focus();
-        act(() => {
-            september!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
-        });
+        act(() => { september!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })); });
         expect(document.activeElement?.getAttribute('data-month')).toBe('11');
-        act(() => {
-            document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }));
-        });
+        act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })); });
         expect(document.activeElement?.getAttribute('data-month')).toBe('8');
         unmount();
     });
+});
 
+describe('year view keyboard and weekday behavior', () => {
     it('walks the focused card\'s weekday columns with arrows and returns to the card', () => {
         const { container, unmount } = renderCalendar();
-        const toggle = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="sidebar.calendar_view"] button')];
-        act(() => { toggle[2]!.click(); });
+        act(() => { viewToggle(container)[2]!.click(); });
         const september = container.querySelector('[data-month="8"]') as HTMLElement;
         september.focus();
         act(() => { september.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); });
@@ -201,23 +194,7 @@ describe('view toggle wrapping contract', () => {
     });
 
     it('respects a fixed columns preference over the measured width', () => {
-        const { container, unmount } = renderElement(createElement('div', { style: { width: 196 } }, createElement(ActivityCalendar, {
-            counts: new Map(),
-            locale: 'en-US',
-            weekStart: 1,
-            today: new Date(2026, 8, 2),
-            view: 'year',
-            onViewChange: () => {},
-            cursor: { year: 2026, month: 8 },
-            onCursorChange: () => {},
-            onDayClick: () => {},
-            onDaySelect: () => {},
-            onRangeSelect: () => {},
-            onGapDayClick: () => {},
-            onNoteClick: () => {},
-            getDiaryId: () => null,
-            columnsPreference: '4',
-        })));
+        const { container, unmount } = renderElement(createElement('div', { style: { width: 196 } }, createElement(ActivityCalendar, calendarProps({ view: 'year', columnsPreference: '4' }))));
         const grid = container.querySelector('[aria-label="sidebar.calendar_year_grid_aria"]');
         expect(grid!.classList.contains('grid-cols-4')).toBe(true);
         unmount();
@@ -229,22 +206,12 @@ describe('view toggle wrapping contract', () => {
         const views: string[] = [];
         function Harness() {
             const [view, setView] = useState<'month' | 'weeks' | 'year'>('year');
-            return createElement('div', null, createElement(ActivityCalendar, {
-                counts: new Map(),
-                locale: 'en-US',
-                weekStart: 1,
-                today: new Date(2026, 8, 2),
+            return createElement('div', null, createElement(ActivityCalendar, calendarProps({
                 view,
                 onViewChange: (next) => { views.push(next); setView(next); },
-                cursor: { year: 2026, month: 8 },
                 onCursorChange: (next) => { cursors.push(next); },
-                onDayClick: () => {},
-                onDaySelect: () => {},
                 onRangeSelect: (start, end) => { ranges.push([start, end]); },
-                onGapDayClick: () => {},
-                onNoteClick: () => {},
-                getDiaryId: () => null,
-            }));
+            })));
         }
         const { container, unmount } = renderElement(createElement(Harness));
         // 2026-09 has the first Monday on the 7th: column 0 (Mon) filters 09-07..09-13.
@@ -258,40 +225,25 @@ describe('view toggle wrapping contract', () => {
     });
 });
 
+function captureAnimations(): { captured: Array<{ duration?: number; keyframes: Keyframe[] }>; restore: () => void } {
+    const captured: Array<{ duration?: number; keyframes: Keyframe[] }> = [];
+    const original = Element.prototype.animate;
+    Element.prototype.animate = function (this: Element, keyframes: Keyframe[], options?: KeyframeAnimationOptions) {
+        captured.push({ keyframes: [...keyframes], duration: typeof options?.duration === 'number' ? options.duration : undefined });
+        return { cancel: () => {}, finished: Promise.resolve(), play: () => {}, pause: () => {} } as unknown as Animation;
+    };
+    return { captured, restore: () => { Element.prototype.animate = original; } };
+}
+
 describe('jump flash transition', () => {
     it('fades the month grid in with an accent ring when an external jump arrives', () => {
-        interface Captured {
-            keyframes: Keyframe[];
-            duration?: number;
-        }
-        const captured: Captured[] = [];
-        const original = Element.prototype.animate;
-        Element.prototype.animate = function (this: Element, keyframes: Keyframe[], options?: KeyframeAnimationOptions) {
-            captured.push({ keyframes: [...keyframes], duration: typeof options?.duration === 'number' ? options.duration : undefined });
-            return { cancel: () => {}, finished: Promise.resolve(), play: () => {}, pause: () => {} } as unknown as Animation;
-        };
+        const { captured, restore } = captureAnimations();
         try {
             let bumpFlash = () => {};
             function Harness() {
                 const [flash, setFlash] = useState(0);
                 bumpFlash = () => setFlash((value) => value + 1);
-                return createElement('div', null, createElement(ActivityCalendar, {
-                    counts: new Map(),
-                    locale: 'en-US',
-                    weekStart: 1,
-                    today: new Date(2026, 8, 2),
-                    view: 'month',
-                    onViewChange: () => {},
-                    cursor: { year: 2026, month: 8 },
-                    onCursorChange: () => {},
-                    onDayClick: () => {},
-                    onDaySelect: () => {},
-                    onRangeSelect: () => {},
-                    onGapDayClick: () => {},
-                    onNoteClick: () => {},
-                    getDiaryId: () => null,
-                    jumpFlash: flash,
-                }));
+                return createElement('div', null, createElement(ActivityCalendar, calendarProps({ view: 'month', jumpFlash: flash })));
             }
             const { unmount } = renderElement(createElement(Harness));
             expect(captured).toHaveLength(0);
@@ -303,44 +255,24 @@ describe('jump flash transition', () => {
             unmount();
         }
         finally {
-            Element.prototype.animate = original;
+            restore();
         }
     });
 });
 
 describe('internal jump flash', () => {
     it('flashes the same accent ring for gap-day follows and week clicks', () => {
-        interface Captured {
-            duration?: number;
-        }
-        const captured: Captured[] = [];
-        const original = Element.prototype.animate;
-        Element.prototype.animate = function (this: Element, _keyframes: Keyframe[], options?: KeyframeAnimationOptions) {
-            captured.push({ duration: typeof options?.duration === 'number' ? options.duration : undefined });
-            return { cancel: () => {}, finished: Promise.resolve(), play: () => {}, pause: () => {} } as unknown as Animation;
-        };
+        const { captured, restore } = captureAnimations();
         try {
             function Harness() {
                 const [view, setView] = useState<'month' | 'weeks' | 'year'>('month');
-                return createElement('div', null, createElement(ActivityCalendar, {
-                    counts: new Map(),
-                    locale: 'en-US',
-                    weekStart: 1,
-                    today: new Date(2026, 8, 2),
+                return createElement('div', null, createElement(ActivityCalendar, calendarProps({
                     range: { start: new Date(2026, 6, 1), end: new Date(2026, 7, 31) },
                     selectedRange: { start: '2026-07-01', end: '2026-07-31' },
                     latestEditKey: '2026-08-05',
                     view,
                     onViewChange: setView,
-                    cursor: { year: 2026, month: 8 },
-                    onCursorChange: () => {},
-                    onDayClick: () => {},
-                    onDaySelect: () => {},
-                    onRangeSelect: () => {},
-                    onGapDayClick: () => {},
-                    onNoteClick: () => {},
-                    getDiaryId: () => null,
-                }));
+                })));
             }
             const { container, unmount } = renderElement(createElement(Harness));
             const banner = container.querySelector('[aria-label*="sidebar.calendar_gap_banner"]');
@@ -348,14 +280,13 @@ describe('internal jump flash', () => {
             act(() => { banner!.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
             expect(captured).toHaveLength(1);
             expect(captured[0]!.duration).toBe(1100);
-            const toggles = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="sidebar.calendar_view"] button')];
-            act(() => { toggles[1]!.click(); });
+            act(() => { viewToggle(container)[1]!.click(); });
             act(() => { (container.querySelector('[aria-label*="sidebar.calendar_expand_week"]') as HTMLButtonElement).click(); });
             expect(captured.length).toBeGreaterThan(2);
             unmount();
         }
         finally {
-            Element.prototype.animate = original;
+            restore();
         }
     });
 });

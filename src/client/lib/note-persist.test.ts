@@ -32,18 +32,26 @@ function item(id: string, content: string, writeId: string): OutboxItem {
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const serialized = (value: unknown) => JSON.stringify(value).length
+const writeCount = (calls: string[]) =>
+  calls.filter((call) => call === 'outbox').length +
+  calls.filter((call) => call === 'content').length
 
-describe('NotePersistCoalescer', () => {
+function scheduleVersion(coalescer: NotePersistCoalescer, noteId: string, version: number): void {
+  void coalescer.schedule(noteId, item(noteId, `v${version}`, `w${version}`), {
+    content: `v${version}`,
+    rev: 1,
+    updatedAt: version,
+    writeId: `w${version}`,
+  })
+}
+
+describe('NotePersistCoalescer coalescing', () => {
   it('collapses a burst of writes for one note into a single batch', async () => {
     const { target, calls, outbox, contents } = mockTarget()
     const coalescer = new NotePersistCoalescer(target, 1)
     for (let index = 1; index <= 10; index++) {
-      void coalescer.schedule('n1', item('n1', `v${index}`, `w${index}`), {
-        content: `v${index}`,
-        rev: 1,
-        updatedAt: index,
-        writeId: `w${index}`,
-      })
+      scheduleVersion(coalescer, 'n1', index)
     }
     await coalescer.flush()
     expect(calls.filter((call) => call === 'outbox')).toHaveLength(1)
@@ -81,7 +89,9 @@ describe('NotePersistCoalescer', () => {
     await expect(first).resolves.toBe(true)
     await expect(second).resolves.toBe(true)
   })
+})
 
+describe('NotePersistCoalescer auto flush', () => {
   it('flushes on its own after the delay when not called explicitly', async () => {
     const { target, calls, outbox } = mockTarget()
     const coalescer = new NotePersistCoalescer(target, 5)
@@ -97,29 +107,30 @@ describe('NotePersistCoalescer', () => {
   })
 })
 
+function runDirectWrites(keystrokes: number, baseNote: string, noteId: string): { bytes: number; writes: number } {
+  const outbox = new Map<string, OutboxItem>()
+  const contents = new Map<string, CachedNoteContent>()
+  let bytes = 0
+  let writes = 0
+  for (let index = 1; index <= keystrokes; index++) {
+    const content = baseNote + '\n'.repeat(index)
+    const current = item(noteId, content, `w${index}`)
+    outbox.set(noteId, current)
+    bytes += serialized([...outbox.values()]) + serialized(contents)
+    writes++
+    writes++
+    contents.set(noteId, { content, rev: 1, updatedAt: index, writeId: `w${index}` })
+  }
+  return { bytes, writes }
+}
+
 describe('typing benchmark', () => {
   it('reports outbox persistence frequency and serialized bytes for direct vs coalesced writes', async () => {
     const noteId = 'note-large'
     const keystrokes = 50
     const baseNote = '# Large note\n\n' + 'lorem ipsum dolor sit amet '.repeat(4000)
 
-    const serialized = (value: unknown) => JSON.stringify(value).length
-
-    const directTarget = mockTarget()
-    const directOutbox = new Map<string, OutboxItem>()
-    const directContent = new Map<string, CachedNoteContent>()
-    const directCalls = { outbox: 0, content: 0, bytes: 0 }
-    for (let index = 1; index <= keystrokes; index++) {
-      const content = baseNote + '\n'.repeat(index)
-      const current = item(noteId, content, `w${index}`)
-      directOutbox.set(noteId, current)
-      directCalls.bytes += serialized([...directOutbox.values()]) + serialized(directContent)
-      directCalls.outbox++
-      directCalls.content++
-      directContent.set(noteId, { content, rev: 1, updatedAt: index, writeId: `w${index}` })
-      void directTarget.target.enqueueOutbox(current)
-      void directTarget.target.setContent(noteId, { content, rev: 1, updatedAt: index, writeId: `w${index}` })
-    }
+    const direct = runDirectWrites(keystrokes, baseNote, noteId)
 
     const coalescedTarget = mockTarget()
     const coalescer = new NotePersistCoalescer(coalescedTarget.target, 1)
@@ -134,25 +145,18 @@ describe('typing benchmark', () => {
     }
     await coalescer.flush()
 
-    const writeCount = (calls: string[]) =>
-      calls.filter((call) => call === 'outbox').length +
-      calls.filter((call) => call === 'content').length
-
-    const coalescedOutboxBytes = serialized([...coalescedTarget.outbox.values()])
-    const coalescedContentBytes = serialized(coalescedTarget.contents)
-    const directBytes = directCalls.bytes
-    const coalescedBytes = coalescedOutboxBytes + coalescedContentBytes
+    const coalescedBytes = serialized([...coalescedTarget.outbox.values()]) + serialized(coalescedTarget.contents)
     const directWrites = keystrokes * 2
     const coalescedWrites = writeCount(coalescedTarget.calls)
-    const reduction = Math.max(0, Math.round((1 - coalescedBytes / directBytes) * 100))
+    const reduction = Math.max(0, Math.round((1 - coalescedBytes / direct.bytes) * 100))
 
     console.log('')
     console.log(`[typing benchmark] note base size ~${(baseNote.length / 1024).toFixed(1)} KiB, ${keystrokes} keystrokes`)
-    console.log(`  direct writes:    ${directWrites} (${(directBytes / 1024 / 1024).toFixed(2)} MiB serialized)`)
+    console.log(`  direct writes:    ${directWrites} (${(direct.bytes / 1024 / 1024).toFixed(2)} MiB serialized)`)
     console.log(`  coalesced writes: ${coalescedWrites} (${(coalescedBytes / 1024 / 1024).toFixed(2)} MiB serialized)`)
     console.log(`  serialized-bytes reduction: ${reduction}%`)
 
     expect(coalescedWrites).toBeLessThan(directWrites)
-    expect(coalescedBytes).toBeLessThan(directBytes)
+    expect(coalescedBytes).toBeLessThan(direct.bytes)
   }, 20_000)
 })

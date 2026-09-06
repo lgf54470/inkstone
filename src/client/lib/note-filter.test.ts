@@ -25,7 +25,7 @@ function note(overrides: Partial<NoteSummary> = {}): NoteSummary {
 
 const base: ViewKind[] = ['all', 'recent', 'starred', 'unfiled', 'folder', 'tag', 'untagged'];
 
-describe('matchesView', () => {
+describe('matchesView base views', () => {
     it('includes live notes in all/recent, excludes deleted ones everywhere', () => {
         for (const view of ['all', 'recent'] as ViewKind[]) {
             expect(matchesView(note(), view, null, null)).toBe(true);
@@ -67,7 +67,9 @@ describe('matchesView', () => {
         expect(matchesView(note({ id: 'p1' }), 'published', null, null, undefined, [], 'any', null, undefined, undefined, publishedIds)).toBe(true);
         expect(matchesView(note({ id: 'p2' }), 'published', null, null, undefined, [], 'any', null, undefined, undefined, publishedIds)).toBe(false);
     });
+});
 
+describe('matchesView folder and tag views', () => {
     it('matches folder view by folder id and by descendant scope', () => {
         const inFolder = note({ folderId: 'f1' });
         expect(matchesView(inFolder, 'folder', 'f1', null)).toBe(true);
@@ -89,7 +91,9 @@ describe('matchesView', () => {
         expect(matchesView(tagged, 'tag', null, 'work/projectA')).toBe(true);
         expect(matchesView(tagged, 'tag', null, 'work/projectB')).toBe(false);
     });
+});
 
+describe('matchesView multi-tag selection', () => {
     it('stacks multi-tag selection with any view using any-match by default', () => {
         const tagged = note({ tags: ['reading', 'work'] });
         expect(matchesView(tagged, 'all', null, null, undefined, ['reading'])).toBe(true);
@@ -124,7 +128,9 @@ describe('matchesView', () => {
         expect(matchesView(tagged, 'all', null, null, undefined, ['reading'])).toBe(false);
         expect(matchesView(tagged, 'all', null, null, undefined, ['Reading'])).toBe(true);
     });
+});
 
+describe('matchesView calendar and todo folder ids', () => {
     it('matches calendar folder ids by note creation time', () => {
         const created = note({ createdAt: new Date(2026, 8, 1, 12).getTime() });
         expect(matchesView(created, 'folder', 'cal', null)).toBe(true);

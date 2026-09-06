@@ -8,6 +8,7 @@ import { Tooltip } from './overlay';
 import { t } from "../lib/i18n";
 import { isEditableTarget } from '../lib/hotkeys';
 import { useUndoToastFocus } from '../lib/undo-focus-pref';
+import { EmptyIllustration, type EmptyArt } from './empty-illustrations';
 
 const TONE_ICON = {
     default: <Info size={14}/>,
@@ -21,17 +22,7 @@ const TONE_COLOR = {
     warning: 'text-[var(--warning)]',
     danger: 'text-[var(--danger)]',
 };
-function Toast({ item }: {
-    item: ToastItem;
-}) {
-    const dismiss = useUi((s) => s.dismissToast);
-    const [isLeaving, setIsLeaving] = useState(false);
-    const pausedRef = useRef(false);
-    const timerRef = useRef<number>(0);
-    const dismissTimerRef = useRef<number>(0);
-    const containerRef = useRef<HTMLDivElement>(null);
-    const isUndo = item.kind === 'undo';
-    const undoFocusEnabled = useUndoToastFocus();
+function useToastAutoFocus(item: ToastItem, undoFocusEnabled: boolean, containerRef: React.RefObject<HTMLDivElement | null>): void {
     useEffect(() => {
         // Landing focus on the undo action is the keyboard fast-path, but it must never
         // interrupt typing, steal from an open dialog, or fight another undo toast.
@@ -45,7 +36,12 @@ function Toast({ item }: {
         if (active?.closest('[data-undo-focus]'))
             return;
         containerRef.current?.querySelector<HTMLButtonElement>('[data-undo-focus]')?.focus({ preventScroll: true });
-    }, [item.action, undoFocusEnabled]);
+    }, [item.action, undoFocusEnabled, containerRef]);
+}
+function useToastTimer(item: ToastItem, dismiss: (id: string) => void, setIsLeaving: (leaving: boolean) => void): { pausedRef: React.MutableRefObject<boolean> } {
+    const pausedRef = useRef(false);
+    const timerRef = useRef<number>(0);
+    const dismissTimerRef = useRef<number>(0);
     useEffect(() => {
         const start = () => {
             timerRef.current = window.setTimeout(() => {
@@ -60,16 +56,28 @@ function Toast({ item }: {
             window.clearTimeout(timerRef.current);
             window.clearTimeout(dismissTimerRef.current);
         };
-    }, [item.id, item.duration, dismiss]);
+    }, [item.id, item.duration, dismiss, setIsLeaving]);
+    return { pausedRef };
+}
+function Toast({ item }: {
+    item: ToastItem;
+}) {
+    const dismiss = useUi((s) => s.dismissToast);
+    const [isLeaving, setIsLeaving] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const isUndo = item.kind === 'undo';
+    const undoFocusEnabled = useUndoToastFocus();
+    useToastAutoFocus(item, undoFocusEnabled, containerRef);
+    const { pausedRef } = useToastTimer(item, dismiss, setIsLeaving);
     return (<div ref={containerRef} onMouseEnter={() => (pausedRef.current = true)} onMouseLeave={() => (pausedRef.current = false)} className={cn('pointer-events-auto flex w-[min(400px,calc(100vw-32px))] items-start gap-2.5', 'rounded-[var(--r-lg)] border p-3 pr-2', 'shadow-[var(--shadow-pop)] transition-all duration-200 ease-[var(--ease-out)]', isUndo
             ? 'border-[color-mix(in_oklab,var(--accent)_55%,transparent)] bg-[color-mix(in_oklab,var(--accent)_7%,var(--bg-overlay))]'
             : 'border-[var(--border-default)] bg-[var(--bg-overlay)]', isLeaving ? 'translate-x-2 opacity-0' : 'anim-slide-right')} role={item.tone === 'danger' ? 'alert' : 'status'} aria-label={item.action ? `${item.title} ${item.action.label}` : undefined}>
       <span className={cn('mt-[1px] shrink-0', isUndo ? 'text-[var(--accent)]' : TONE_COLOR[item.tone])}>{isUndo ? <Undo2 size={14}/> : TONE_ICON[item.tone]}</span>
       <div className="min-w-0 flex-1">
-        <div className="text-[length:var(--text-12\.5)] leading-snug font-medium text-[var(--text-primary)]">
+        <div className="text-[length:var(--text-12\\.5)] leading-snug font-medium text-[var(--text-primary)]">
           {item.title}
         </div>
-        {item.description && (<div className="mt-0.5 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
+        {item.description && (<div className="mt-0.5 text-[length:var(--text-11\\.5)] leading-relaxed text-[var(--text-tertiary)]">
             {item.description}
           </div>)}
       </div>
@@ -122,7 +130,7 @@ export function EditorSkeleton() {
       <Skeleton className="h-[13px] w-[70%]"/>
     </div>);
 }
-export type EmptyArt = 'notes' | 'search' | 'trash' | 'starred' | 'archive' | 'folder' | 'select' | 'tag';
+export type { EmptyArt };
 export function Empty({ art = 'notes', title, description, action, compact, }: {
     art?: EmptyArt;
     title: string;
@@ -132,74 +140,12 @@ export function Empty({ art = 'notes', title, description, action, compact, }: {
 }) {
     return (<div className={cn('flex flex-col items-center justify-center px-8 text-center', compact ? 'py-10' : 'h-full min-h-[240px] py-16')}>
       <EmptyIllustration art={art}/>
-      <p className="mt-4 text-[length:var(--text-13\.5)] font-medium text-[var(--text-secondary)]">{title}</p>
+      <p className="mt-4 text-[length:var(--text-13\\.5)] font-medium text-[var(--text-secondary)]">{title}</p>
       {description && (<p className="mt-1.5 max-w-[290px] text-[length:var(--text-12)] leading-relaxed text-[var(--text-quaternary)]">
           {description}
         </p>)}
       {action && <div className="mt-4">{action}</div>}
     </div>);
-}
-function EmptyIllustration({ art }: {
-    art: EmptyArt;
-}) {
-    const common = {
-        width: 78,
-        height: 78,
-        viewBox: '0 0 64 64',
-        fill: 'none',
-        stroke: 'currentColor',
-        strokeWidth: 1.25,
-        strokeLinecap: 'round' as const,
-        strokeLinejoin: 'round' as const,
-        'aria-hidden': true,
-        className: 'text-[var(--text-quaternary)] [&>*]:[stroke-dasharray:220] [&>*]:[stroke-dashoffset:220] [&>*]:animate-[ink-draw_900ms_var(--ease-out)_forwards]',
-    };
-    switch (art) {
-        case 'search':
-            return (<svg {...common}>
-          <circle cx="28" cy="28" r="14"/>
-          <path d="M38.5 38.5 50 50"/>
-          <path d="M22 28h12M24 23h8" opacity="0.5"/>
-        </svg>);
-        case 'trash':
-            return (<svg {...common}>
-          <path d="M17 20h30l-2.5 27a4 4 0 0 1-4 3.6H23.5a4 4 0 0 1-4-3.6z"/>
-          <path d="M13 20h38M26 20v-4a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v4"/>
-          <path d="M27 29v13M37 29v13" opacity="0.5"/>
-        </svg>);
-        case 'starred':
-            return (<svg {...common}>
-          <path d="M32 13.5l5.6 11.7 12.4 1.8-9 9 2.1 12.7L32 42.7l-11.1 6 2.1-12.7-9-9 12.4-1.8z"/>
-        </svg>);
-        case 'archive':
-            return (<svg {...common}>
-          <rect x="12" y="16" width="40" height="10" rx="2.5"/>
-          <path d="M16 26v22a3 3 0 0 0 3 3h26a3 3 0 0 0 3-3V26"/>
-          <path d="M26 34h12" opacity="0.6"/>
-        </svg>);
-        case 'folder':
-            return (<svg {...common}>
-          <path d="M11 22a3 3 0 0 1 3-3h11l4.5 5H50a3 3 0 0 1 3 3v20a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3z"/>
-          <path d="M11 30h42" opacity="0.5"/>
-        </svg>);
-        case 'tag':
-            return (<svg {...common}>
-          <path d="M31 12H16a4 4 0 0 0-4 4v15l21 21 19-19z"/>
-          <circle cx="23" cy="23" r="3.5"/>
-        </svg>);
-        case 'select':
-            return (<svg {...common}>
-          <rect x="12" y="13" width="26" height="38" rx="3"/>
-          <path d="M44 21h8v30a3 3 0 0 1-3 3H26" opacity="0.55"/>
-          <path d="M19 24h12M19 31h12M19 38h7" opacity="0.7"/>
-        </svg>);
-        default:
-            return (<svg {...common}>
-          <path d="M18 11h20l10 10v32a3 3 0 0 1-3 3H18a3 3 0 0 1-3-3V14a3 3 0 0 1 3-3z"/>
-          <path d="M38 11v10h10"/>
-          <path d="M23 32h18M23 40h13" opacity="0.65"/>
-        </svg>);
-    }
 }
 export function LoadingBlock({ label = t("common.loading") }: {
     label?: string;

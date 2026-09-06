@@ -3,10 +3,10 @@ import type { Tag } from '@shared/types';
 import { buildTagTree, flattenTagTree } from './tag-tree';
 
 function tag(name: string, count = 0, isPinned = false): Tag {
-  return { id: name, name, color: null, count, isPinned, createdAt: 0 };
+  return { id: name, name, count, color: null, isPinned, createdAt: 0 };
 }
 
-describe('tag-tree', () => {
+describe('tag-tree build', () => {
   it('builds flat tree for tags without slashes', () => {
     const tags = [tag('alpha', 2), tag('beta', 5)];
     const tree = buildTagTree(tags);
@@ -44,7 +44,9 @@ describe('tag-tree', () => {
     expect(tree[0]!.children).toHaveLength(1);
     expect(tree[0]!.children[0]!.fullPath).toBe('project/alpha');
   });
+});
 
+describe('tag-tree rollup and flatten', () => {
   it('rolls up pinned status to parent', () => {
     const tags = [
       tag('work', 1, false),

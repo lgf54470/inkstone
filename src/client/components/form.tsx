@@ -157,6 +157,77 @@ export interface SegmentedOption<T extends string> {
   combo?: string
 }
 
+function segmentedMove(index: number, key: string, length: number): number | null {
+  if (!length) return null
+  switch (key) {
+    case 'ArrowRight':
+    case 'ArrowDown':
+      return (index + 1) % length
+    case 'ArrowLeft':
+    case 'ArrowUp':
+      return (index - 1 + length) % length
+    case 'Home':
+      return 0
+    case 'End':
+      return length - 1
+    default:
+      return null
+  }
+}
+
+function SegmentedButton<T extends string>({
+  option,
+  index,
+  active,
+  firstFocusable,
+  disabled,
+  size,
+  buttonsRef,
+  onChange,
+  move,
+}: {
+  option: SegmentedOption<T>
+  index: number
+  active: boolean
+  firstFocusable: boolean
+  disabled: boolean
+  size: 'sm' | 'md'
+  buttonsRef: React.MutableRefObject<Array<HTMLButtonElement | null>>
+  onChange: (value: T) => void
+  move: (index: number, key: string) => void
+}) {
+  return (
+    <button
+      ref={(element) => {
+        buttonsRef.current[index] = element
+      }}
+      type="button"
+      role="radio"
+      aria-checked={active}
+      aria-label={option.title}
+      disabled={disabled}
+      tabIndex={active || firstFocusable ? 0 : -1}
+      onClick={() => onChange(option.value)}
+      onKeyDown={(event) => {
+        if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+        event.preventDefault()
+        move(index, event.key)
+      }}
+      className={cn(
+        'relative z-[var(--z-sticky)] inline-flex items-center justify-center gap-1.5 rounded-[var(--r-sm)] font-medium',
+        'transition-[color,background-color] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
+        'disabled:pointer-events-none disabled:opacity-45',
+        size === 'sm' ? 'h-8 px-2.5 text-[length:var(--text-11\.5)] md:h-[22px] md:px-2' : 'h-9 px-3 text-[length:var(--text-12\.5)] md:h-[26px] md:px-2.5',
+        active
+          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[0_1px_2px_rgba(0,0,0,.10)]'
+          : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]',
+      )}
+    >
+      {option.label}
+    </button>
+  )
+}
+
 function SegmentedInner<T extends string>({
   value,
   options,
@@ -185,13 +256,8 @@ function SegmentedInner<T extends string>({
   const buttonsRef = useRef<Array<HTMLButtonElement | null>>([])
   const hasActiveOption = options.some((option) => option.value === value)
   const move = (index: number, key: string) => {
-    if (!options.length) return
-    let next = index
-    if (key === 'ArrowRight' || key === 'ArrowDown') next = (index + 1) % options.length
-    else if (key === 'ArrowLeft' || key === 'ArrowUp') next = (index - 1 + options.length) % options.length
-    else if (key === 'Home') next = 0
-    else if (key === 'End') next = options.length - 1
-    else return
+    const next = segmentedMove(index, key, options.length)
+    if (next === null) return
     onChange(options[next]!.value)
     buttonsRef.current[next]?.focus()
   }
@@ -213,34 +279,17 @@ function SegmentedInner<T extends string>({
       {options.map((option, index) => {
         const active = option.value === value
         const button = (
-          <button
-            ref={(element) => {
-              buttonsRef.current[index] = element
-            }}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            aria-label={option.title}
+          <SegmentedButton
+            option={option}
+            index={index}
+            active={active}
+            firstFocusable={!hasActiveOption && index === 0}
             disabled={disabled}
-            tabIndex={active || (!hasActiveOption && index === 0) ? 0 : -1}
-            onClick={() => onChange(option.value)}
-            onKeyDown={(event) => {
-              if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
-              event.preventDefault()
-              move(index, event.key)
-            }}
-            className={cn(
-              'relative z-[var(--z-sticky)] inline-flex items-center justify-center gap-1.5 rounded-[var(--r-sm)] font-medium',
-              'transition-[color,background-color] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
-              'disabled:pointer-events-none disabled:opacity-45',
-              size === 'sm' ? 'h-8 px-2.5 text-[length:var(--text-11\.5)] md:h-[22px] md:px-2' : 'h-9 px-3 text-[length:var(--text-12\.5)] md:h-[26px] md:px-2.5',
-              active
-                ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[0_1px_2px_rgba(0,0,0,.10)]'
-                : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]',
-            )}
-          >
-            {option.label}
-          </button>
+            size={size}
+            buttonsRef={buttonsRef}
+            onChange={onChange}
+            move={move}
+          />
         )
         return option.title ? (
           <Tooltip key={option.value} label={option.title} combo={option.combo}>

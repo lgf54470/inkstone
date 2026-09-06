@@ -46,45 +46,84 @@ export interface RequestOptions {
 }
 
 
-export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, signal, formData, timeoutMs } = options
+interface RequestTimeout {
+  controller: AbortController
+  hasTimedOut: boolean
+  handle: number
+  detachCallerSignal: (() => void) | undefined
+}
 
+function buildRequestPayload(options: RequestOptions): { headers: Record<string, string>; payload: BodyInit | undefined } {
   const headers: Record<string, string> = {
     [CLIENT_HEADER]: '1',
     'X-Inkstone-Origin': CLIENT_ID,
     'Accept-Language': getLocale(),
   }
   let payload: BodyInit | undefined
-  if (formData) {
-    payload = formData
-  } else if (body !== undefined) {
+  if (options.formData) {
+    payload = options.formData
+  } else if (options.body !== undefined) {
     headers['Content-Type'] = 'application/json'
-    payload = JSON.stringify(body)
+    payload = JSON.stringify(options.body)
   }
+  return { headers, payload }
+}
 
-  const timeoutController = timeoutMs && timeoutMs > 0 ? new AbortController() : null
-  let hasTimedOut = false
-  let timeoutHandle = 0
-  let detachCallerSignal: (() => void) | undefined
-  if (timeoutController) {
-    const abortFromCaller = () => timeoutController.abort(signal?.reason)
-    if (signal?.aborted) abortFromCaller()
-    else if (signal) {
-      signal.addEventListener('abort', abortFromCaller, { once: true })
-      detachCallerSignal = () => signal.removeEventListener('abort', abortFromCaller)
-    }
-    timeoutHandle = window.setTimeout(() => {
-      hasTimedOut = true
-      timeoutController.abort()
-    }, timeoutMs)
+function setupRequestTimeout(signal: AbortSignal | undefined, timeoutMs: number | undefined): RequestTimeout | null {
+  if (!timeoutMs || timeoutMs <= 0) return null
+  const timeout: RequestTimeout = {
+    controller: new AbortController(),
+    hasTimedOut: false,
+    handle: 0,
+    detachCallerSignal: undefined,
   }
+  const abortFromCaller = () => timeout.controller.abort(signal?.reason)
+  if (signal?.aborted) abortFromCaller()
+  else if (signal) {
+    signal.addEventListener('abort', abortFromCaller, { once: true })
+    timeout.detachCallerSignal = () => signal.removeEventListener('abort', abortFromCaller)
+  }
+  timeout.handle = window.setTimeout(() => {
+    timeout.hasTimedOut = true
+    timeout.controller.abort()
+  }, timeoutMs)
+  return timeout
+}
+
+async function readResponseBody(response: Response, isJson: boolean): Promise<{ data: unknown; isInvalidJson: boolean }> {
+  if (!isJson) return { data: null, isInvalidJson: false }
+  const raw = await response.text()
+  if (!raw.trim()) return { data: null, isInvalidJson: false }
+  try {
+    return { data: JSON.parse(raw), isInvalidJson: false }
+  } catch {
+    return { data: null, isInvalidJson: true }
+  }
+}
+
+function responseApiError(response: Response, data: unknown): ApiError {
+  const error = (data as { error?: { code: string; message: string; details?: unknown } } | null)?.error
+  const code = error?.code ?? 'unknown'
+  const fallback = error?.message ?? t("api.request_failed_status", { status: response.status })
+  return new ApiError(
+    response.status,
+    code,
+    translateApiError(code, fallback),
+    error?.details,
+  )
+}
+
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { method = 'GET', signal, timeoutMs } = options
+  const { headers, payload } = buildRequestPayload(options)
+  const timeout = setupRequestTimeout(signal, timeoutMs)
 
   try {
     const response = await fetch(path, {
       method,
       headers,
       body: payload,
-      signal: timeoutController?.signal ?? signal,
+      signal: timeout?.controller.signal ?? signal,
       credentials: 'same-origin',
     })
 
@@ -95,47 +134,23 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     }
 
     const isJson = isJsonResponse(response)
-    let data: unknown = null
-    let isInvalidJson = false
-    if (isJson) {
-      const raw = await response.text()
-      if (raw.trim()) {
-        try {
-          data = JSON.parse(raw)
-        } catch {
-          isInvalidJson = true
-        }
-      }
-    }
-
-    if (!response.ok) {
-      const error = (data as { error?: { code: string; message: string; details?: unknown } } | null)?.error
-      const code = error?.code ?? 'unknown'
-      const fallback = error?.message ?? t("api.request_failed_status", { status: response.status })
-      throw new ApiError(
-        response.status,
-        code,
-        translateApiError(code, fallback),
-        error?.details,
-      )
-    }
-
+    const { data, isInvalidJson } = await readResponseBody(response, isJson)
+    if (!response.ok) throw responseApiError(response, data)
     if (isInvalidJson) {
       throw new ApiError(502, 'invalid_response', t("api.invalid_server_response"))
     }
-
     if (notifyOtherTabs) {
       publishBroadcast({ type: 'local-write', clientId: CLIENT_ID })
     }
     return (isJson ? data : await response.text()) as T
   } catch (err) {
     if (err instanceof ApiError) throw err
-    if (hasTimedOut) throw new ApiError(0, 'request_timeout', t("api.request_timed_out"))
+    if (timeout?.hasTimedOut) throw new ApiError(0, 'request_timeout', t("api.request_timed_out"))
     if ((err as Error)?.name === 'AbortError') throw err
     throw new ApiError(0, 'offline', t("api.no_network_connection"))
   } finally {
-    if (timeoutHandle) window.clearTimeout(timeoutHandle)
-    detachCallerSignal?.()
+    if (timeout?.handle) window.clearTimeout(timeout.handle)
+    timeout?.detachCallerSignal?.()
   }
 }
 
@@ -182,32 +197,34 @@ export async function fetchDownload(path: string, fallbackName: string): Promise
 }
 
 
+async function saveZipToPicker(): Promise<boolean> {
+  const picker = (window as Window & {
+    showSaveFilePicker?: (options: {
+      suggestedName: string
+      types: Array<{ description: string; accept: Record<string, string[]> }>
+    }) => Promise<FileSystemFileHandle>
+  }).showSaveFilePicker
+  if (!picker) return false
+  let handle: FileSystemFileHandle
+  try {
+    handle = await picker.call(window, {
+      suggestedName: `inkstone-backup-${new Date().toISOString().replace(/[-:TZ]/g, '').slice(0, 15)}.zip`,
+      types: [{ description: 'ZIP archive', accept: { 'application/zip': ['.zip'] } }],
+    })
+  } catch (error) {
+    if ((error as Error)?.name === 'AbortError') return true
+    throw error
+  }
+  const { response } = await fetchDownload('/api/export?format=zip', 'inkstone-backup.zip')
+  if (!response.body) throw new ApiError(0, 'unknown', t('api.no_network_connection'))
+  const writable = await handle.createWritable()
+  await response.body.pipeTo(writable)
+  return true
+}
+
 export async function saveDownload(format: 'json' | 'zip'): Promise<void> {
   if (format === 'zip') {
-    const picker = (window as Window & {
-      showSaveFilePicker?: (options: {
-        suggestedName: string
-        types: Array<{ description: string; accept: Record<string, string[]> }>
-      }) => Promise<FileSystemFileHandle>
-    }).showSaveFilePicker
-    if (picker) {
-      let handle: FileSystemFileHandle
-      try {
-        handle = await picker.call(window, {
-          suggestedName: `inkstone-backup-${new Date().toISOString().replace(/[-:TZ]/g, '').slice(0, 15)}.zip`,
-          types: [{ description: 'ZIP archive', accept: { 'application/zip': ['.zip'] } }],
-        })
-      } catch (error) {
-        if ((error as Error)?.name === 'AbortError') return
-        throw error
-      }
-      const { response } = await fetchDownload('/api/export?format=zip', 'inkstone-backup.zip')
-      if (!response.body) throw new ApiError(0, 'unknown', t('api.no_network_connection'))
-      const writable = await handle.createWritable()
-      await response.body.pipeTo(writable)
-      return
-    }
-
+    if (await saveZipToPicker()) return
     const { response, filename } = await fetchDownload('/api/export?format=zip', 'inkstone-backup.zip')
     await saveResponseDownload(response, filename)
     return

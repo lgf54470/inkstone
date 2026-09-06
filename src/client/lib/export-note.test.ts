@@ -6,7 +6,48 @@ beforeAll(async () => {
   await initI18n()
 })
 
-describe('export-note', () => {
+const MARKDOWN_FIXTURE = [
+  '# Title',
+  '',
+  '- [x] Done task',
+  '- [/] In progress task',
+  '- [-] Cancelled task',
+  '',
+  'Formula: $E=mc^2$',
+  '',
+  '```typescript',
+  'const x: number = 42;',
+  '```',
+  '',
+  '::: details Detail Title',
+  'Some content inside details',
+  ':::',
+].join('\n')
+
+async function withCanvasMock(run: () => Promise<void>): Promise<void> {
+  const originalGetContext = HTMLCanvasElement.prototype.getContext
+  HTMLCanvasElement.prototype.getContext = (() => ({
+    canvas: document.createElement('canvas'),
+    clearRect: () => {},
+    fillRect: () => {},
+    beginPath: () => {},
+    moveTo: () => {},
+    lineTo: () => {},
+    stroke: () => {},
+    fill: () => {},
+    arc: () => {},
+    measureText: () => ({ width: 0 }),
+    save: () => {},
+    restore: () => {},
+  })) as never
+  try {
+    await run()
+  } finally {
+    HTMLCanvasElement.prototype.getContext = originalGetContext
+  }
+}
+
+describe('export-note markdown export', () => {
   it('formats markdown export with title frontmatter', () => {
     const clickSpy = vi.fn()
     const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
@@ -21,44 +62,12 @@ describe('export-note', () => {
     expect(clickSpy).toHaveBeenCalled()
     appendSpy.mockRestore()
   })
+})
 
+describe('export-note html export', () => {
   it('renders all markdown features into self-contained html document', async () => {
-    const originalGetContext = HTMLCanvasElement.prototype.getContext
-    HTMLCanvasElement.prototype.getContext = (() => ({
-      canvas: document.createElement('canvas'),
-      clearRect: () => {},
-      fillRect: () => {},
-      beginPath: () => {},
-      moveTo: () => {},
-      lineTo: () => {},
-      stroke: () => {},
-      fill: () => {},
-      arc: () => {},
-      measureText: () => ({ width: 0 }),
-      save: () => {},
-      restore: () => {},
-    })) as never
-
-    try {
-      const markdownContent = [
-        '# Title',
-        '',
-        '- [x] Done task',
-        '- [/] In progress task',
-        '- [-] Cancelled task',
-        '',
-        'Formula: $E=mc^2$',
-        '',
-        '```typescript',
-        'const x: number = 42;',
-        '```',
-        '',
-        '::: details Detail Title',
-        'Some content inside details',
-        ':::',
-      ].join('\n')
-
-      const html = await renderNoteToExportHtml({ title: 'Test Note', content: markdownContent }, 'zh-CN')
+    await withCanvasMock(async () => {
+      const html = await renderNoteToExportHtml({ title: 'Test Note', content: MARKDOWN_FIXTURE }, 'zh-CN')
 
       expect(html).toContain('<!DOCTYPE html>')
       expect(html).toContain('<title>Test Note</title>')
@@ -66,8 +75,6 @@ describe('export-note', () => {
       expect(html).toContain('.task-status-cancelled')
       expect(html).toContain('.code-block')
       expect(html).toContain('katex')
-    } finally {
-      HTMLCanvasElement.prototype.getContext = originalGetContext
-    }
+    })
   })
 })

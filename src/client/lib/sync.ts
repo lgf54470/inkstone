@@ -106,61 +106,63 @@ export class SyncEngine {
     }, 260)
   }
 
+  private refreshRemoteAndPull(
+    refresh: () => Promise<unknown>,
+    payload: BroadcastPayload,
+    ownDelay: number,
+    remoteDelay: number,
+  ): void {
+    if (payload.clientId !== CLIENT_ID) {
+      void refresh().catch(() => {})
+    }
+    this.schedulePull(payload.clientId === CLIENT_ID ? ownDelay : remoteDelay, false)
+  }
+
+  private handleClaimLeader(payload: Extract<BroadcastPayload, { type: 'claim-leader' }>): void {
+    if (
+      payload.clientId === CLIENT_ID ||
+      !Number.isFinite(payload.at) ||
+      !payload.clientId
+    ) {
+      return
+    }
+    if (!this.bestClaim || compareClaims(payload, this.bestClaim) > 0) this.bestClaim = payload
+    if (
+      this.isLeader &&
+      compareClaims(payload, { clientId: CLIENT_ID, at: this.ownClaimAt }) > 0
+    ) {
+      this.setLeadership(false)
+    }
+  }
+
   private onBroadcast(payload: BroadcastPayload): void {
     if (!payload || typeof payload !== 'object' || typeof payload.type !== 'string') return
-    if (payload.type === 'profile-changed') {
-      if (payload.clientId !== CLIENT_ID) {
-        void useSession.getState().refresh().catch(() => {})
-      }
-      this.schedulePull(payload.clientId === CLIENT_ID ? 700 : 300, false)
-      return
-    }
-    if (payload.type === 'settings-changed') {
-      if (payload.clientId !== CLIENT_ID) {
-        void useSession.getState().refreshSettings().catch(() => {})
-      }
-      this.schedulePull(payload.clientId === CLIENT_ID ? 700 : 400, false)
-      return
-    }
-    if (payload.type === 'site-changed') {
-      if (payload.clientId !== CLIENT_ID) {
-        void useSession.getState().refresh().catch(() => {})
-      }
-      return
-    }
-    if (payload.type === 'outbox-result') {
-      if (payload.targetClientId === CLIENT_ID) acknowledgeOutboxResult(payload)
-      return
-    }
-    if (payload.type === 'outbox-base-advanced') {
-      if (payload.clientId !== CLIENT_ID) void acknowledgeOutboxBaseAdvanced(payload)
-      return
-    }
-    if (payload.type === 'claim-leader') {
-      if (
-        payload.clientId === CLIENT_ID ||
-        !Number.isFinite(payload.at) ||
-        !payload.clientId
-      ) {
+    switch (payload.type) {
+      case 'profile-changed':
+        this.refreshRemoteAndPull(() => useSession.getState().refresh(), payload, 700, 300)
         return
-      }
-      if (!this.bestClaim || compareClaims(payload, this.bestClaim) > 0) this.bestClaim = payload
-      if (
-        this.isLeader &&
-        compareClaims(payload, { clientId: CLIENT_ID, at: this.ownClaimAt }) > 0
-      ) {
-        this.setLeadership(false)
-      }
-      return
-    }
-    if (payload.type === 'pulled' && payload.clientId !== CLIENT_ID) {
-      if (payload.cursor > useNotes.getState().cursor) this.schedulePull(150, false)
-      return
-    }
-    if (payload.type === 'local-write') {
-
-
-      this.schedulePull(payload.clientId === CLIENT_ID ? 700 : 400, false)
+      case 'settings-changed':
+        this.refreshRemoteAndPull(() => useSession.getState().refreshSettings(), payload, 700, 400)
+        return
+      case 'site-changed':
+        if (payload.clientId !== CLIENT_ID) {
+          void useSession.getState().refresh().catch(() => {})
+        }
+        return
+      case 'outbox-result':
+        if (payload.targetClientId === CLIENT_ID) acknowledgeOutboxResult(payload)
+        return
+      case 'outbox-base-advanced':
+        if (payload.clientId !== CLIENT_ID) void acknowledgeOutboxBaseAdvanced(payload)
+        return
+      case 'claim-leader':
+        this.handleClaimLeader(payload)
+        return
+      case 'pulled':
+        if (payload.clientId !== CLIENT_ID && payload.cursor > useNotes.getState().cursor) this.schedulePull(150, false)
+        return
+      case 'local-write':
+        this.schedulePull(payload.clientId === CLIENT_ID ? 700 : 400, false)
     }
   }
 
@@ -181,6 +183,37 @@ export class SyncEngine {
   }
 
 
+  private handleSocketOpen(socket: WebSocket): void {
+    if (this.isDisposed || !this.isLeader || this.socket !== socket) {
+      socket.close()
+      return
+    }
+    this.failures = 0
+    this.lastPong = Date.now()
+    this.startHeartbeat()
+    this.schedulePull(50)
+  }
+
+  private handleSocketMessage(event: MessageEvent, socket: WebSocket): void {
+    if (this.isDisposed || this.socket !== socket) return
+    let message: RealtimeMessage
+    try {
+      const parsed: unknown = JSON.parse(String(event.data))
+      if (!isRealtimeMessage(parsed)) return
+      message = parsed
+    } catch {
+      return
+    }
+    if (message.type === 'pong') {
+      this.lastPong = Date.now()
+      return
+    }
+    if (message.type === 'changed') {
+      if (message.origin === CLIENT_ID) return
+      if (message.cursor > useNotes.getState().cursor) this.schedulePull(180)
+    }
+  }
+
   private connect(): void {
     if (this.isDisposed || this.socket) return
     try {
@@ -189,45 +222,14 @@ export class SyncEngine {
       const socket = new WebSocket(url.toString())
       this.socket = socket
 
-      socket.onopen = () => {
-        if (this.isDisposed || !this.isLeader || this.socket !== socket) {
-          socket.close()
-          return
-        }
-        this.failures = 0
-        this.lastPong = Date.now()
-        this.startHeartbeat()
-
-        this.schedulePull(50)
-      }
-
-      socket.onmessage = (event) => {
-        if (this.isDisposed || this.socket !== socket) return
-        let message: RealtimeMessage
-        try {
-          const parsed: unknown = JSON.parse(String(event.data))
-          if (!isRealtimeMessage(parsed)) return
-          message = parsed
-        } catch {
-          return
-        }
-        if (message.type === 'pong') {
-          this.lastPong = Date.now()
-          return
-        }
-        if (message.type === 'changed') {
-          if (message.origin === CLIENT_ID) return
-          if (message.cursor > useNotes.getState().cursor) this.schedulePull(180)
-        }
-      }
-
+      socket.onopen = () => this.handleSocketOpen(socket)
+      socket.onmessage = (event) => this.handleSocketMessage(event, socket)
       socket.onclose = () => {
         if (this.socket !== socket) return
         this.socket = null
         window.clearInterval(this.heartbeatTimer)
         if (!this.isDisposed && this.isLeader) this.scheduleReconnect()
       }
-
       socket.onerror = () => {
         socket.close()
       }

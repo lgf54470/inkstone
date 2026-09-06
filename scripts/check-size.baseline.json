@@ -1,37 +1,4 @@
 {
-  "src/client/components/activity-calendar.test.ts": {
-    "longFns": 3
-  },
-  "src/client/components/activity-calendar/index.tsx": {
-    "longFns": 1,
-    "deepFns": 2
-  },
-  "src/client/components/date-range-popover.tsx": {
-    "longFns": 1
-  },
-  "src/client/components/feedback.test.ts": {
-    "longFns": 1
-  },
-  "src/client/components/feedback.tsx": {
-    "longFns": 1
-  },
-  "src/client/components/form.tsx": {
-    "deepFns": 1
-  },
-  "src/client/components/hub-folder-item.tsx": {
-    "longFns": 1
-  },
-  "src/client/components/overlay/menu.tsx": {
-    "longFns": 3,
-    "deepFns": 1
-  },
-  "src/client/components/overlay/tooltip.tsx": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/client/components/tag-filter-popover.tsx": {
-    "longFns": 1
-  },
   "src/client/demo/state.ts": {
     "longFns": 1
   },
@@ -305,51 +272,6 @@
     "longFns": 1
   },
   "src/client/features/workspace/workspace/use-workspace.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/api/transport.ts": {
-    "longFns": 1,
-    "deepFns": 2
-  },
-  "src/client/lib/backup-import.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/client/lib/db-cache-spec.ts": {
-    "longFns": 5
-  },
-  "src/client/lib/db-multitab.idb.test.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/db-shell.idb.test.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/db-shell.test.ts": {
-    "longFns": 2
-  },
-  "src/client/lib/export-folder.test.ts": {
-    "longFns": 2
-  },
-  "src/client/lib/export-folder.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/export-note.test.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/export-note.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/client/lib/note-filter.test.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/note-persist.test.ts": {
-    "longFns": 3
-  },
-  "src/client/lib/sync.ts": {
-    "longFns": 2
-  },
-  "src/client/lib/tag-tree.test.ts": {
     "longFns": 1
   },
   "src/shared/constants.test.ts": {
