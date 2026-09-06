@@ -11,6 +11,12 @@ const localeRoot = path.resolve('src/shared/locales');
 const localizedDemoFiles = new Set([
   path.resolve('src/client/demo/state.ts'),
 ]);
+// Cross-tree renderer parity fixtures are authored Chinese markdown (input
+// data proving the root and blog renderers agree on CJK syntax), not UI copy
+// rendered by the i18n layer; same data category as the demo seed state above.
+const renderingFixtureFiles = new Set([
+  path.resolve('tests/markdown-renderer-parity.test.ts'),
+]);
 const failures = [];
 const usedKeys = new Set();
 const forbiddenCjk = /[\p{Script=Han}\u3000-\u303f\uff00-\uffef]/u;
@@ -106,7 +112,7 @@ const englishOnlyPaths = [
     path.resolve('.github'),
 ];
 for (const file of englishOnlyPaths.flatMap((target) => fs.existsSync(target) ? [...walk(target)] : [])) {
-    if (localizedDemoFiles.has(file) || file.startsWith(zhLocaleDir + path.sep) || !isTextSource(file))
+    if (localizedDemoFiles.has(file) || renderingFixtureFiles.has(file) || file.startsWith(zhLocaleDir + path.sep) || !isTextSource(file))
         continue;
     rejectHan(file);
 }
