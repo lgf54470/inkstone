@@ -4,6 +4,7 @@ import PostCard from '../components/PostCard.astro'
 import Pagination from '../components/Pagination.astro'
 import CalendarWidget from '../components/CalendarWidget'
 import { api } from '../lib/api'
+import { categoryDotStyle } from '../lib/category-style'
 
 // Query params
 const url = Astro.url
@@ -129,7 +130,7 @@ const categoryMap = new Map(categories.map((c) => [c.id, c]))
                 <div class="flex items-center gap-2">
                   <span
                     class="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: cat.color || 'var(--accent)' }}
+                    style={categoryDotStyle(cat.color)}
                   />
                   <span>{cat.name}</span>
                 </div>

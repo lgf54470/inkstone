@@ -1,6 +1,7 @@
 ---
 import type { BlogPost, BlogCategory } from '../lib/types'
 import { isSvgCoverUrl } from '../lib/content'
+import { categoryChipStyle } from '../lib/category-style'
 
 interface Props {
   post: BlogPost
@@ -52,7 +53,7 @@ const formattedDate = new Date(post.publishedAt || post.createdAt).toLocaleDateS
           <a
             href={`/categories/${category.slug}`}
             class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border border-[var(--border-subtle)] hover:border-[var(--accent)] transition-colors"
-            style={category.color ? { color: category.color, borderColor: `${category.color}40` } : undefined}
+            style={categoryChipStyle(category.color)}
           >
             {category.name}
           </a>

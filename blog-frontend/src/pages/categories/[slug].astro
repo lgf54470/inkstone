@@ -4,6 +4,7 @@ import PostCard from '../../components/PostCard.astro'
 import Pagination from '../../components/Pagination.astro'
 import { api } from '../../lib/api'
 import { POSTS_PER_PAGE_DEFAULT } from '../../lib/constants'
+import { categoryDotStyle } from '../../lib/category-style'
 
 const slug = Astro.params.slug
 if (!slug) {
@@ -32,7 +33,7 @@ const postsData = await api.getPosts({ categoryId: category.id, page, limit: POS
       <div class="flex items-center gap-3">
         <span
           class="w-4 h-4 rounded-full shadow-2xs"
-          style={{ backgroundColor: category.color || 'var(--accent)' }}
+          style={categoryDotStyle(category.color)}
         />
         <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">
           {category.name}
