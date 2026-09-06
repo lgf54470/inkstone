@@ -186,6 +186,52 @@ describe('code fences', () => {
   })
 })
 
+describe('reusable renderer', () => {
+  it('produces identical output across repeated calls', () => {
+    const first = renderMarkdown('## 标题\n\n正文')
+    const second = renderMarkdown('## 标题\n\n正文')
+    expect(second.html).toBe(first.html)
+    expect(second.headings).toEqual(first.headings)
+  })
+
+  it('does not leak headings between renders', () => {
+    const withHeadings = renderMarkdown('## 甲\n\n正文')
+    expect(withHeadings.headings).toHaveLength(1)
+    const without = renderMarkdown('无标题正文')
+    expect(without.headings).toEqual([])
+    const again = renderMarkdown('## 乙')
+    expect(again.headings).toHaveLength(1)
+    expect(again.headings[0]!.text).toBe('乙')
+  })
+
+  it('does not leak nested preview headings into the outer toc', () => {
+    const result = renderMarkdown('# 外层\n\n~~~md-example\n## 内层标题\n~~~')
+    expect(result.headings.map((h) => h.text)).toEqual(['外层'])
+  })
+})
+
+describe('md-example recursion depth guard', () => {
+  it('renders nested md-example up to the depth limit', () => {
+    const nested = '~~~md-example\n**粗体**\n~~~'
+    const html = renderMarkdown(nested).html
+    expect(html).toContain('<strong>粗体</strong>')
+    expect(html).toContain('markdown-example-preview')
+  })
+
+  it('degrades to a plain code block instead of recursing beyond the limit', () => {
+    // 5 层嵌套超过 MAX_MD_EXAMPLE_DEPTH=4：若没有深度护栏会无限递归直至栈溢出
+    let nested = '**最内层**'
+    for (let i = 0; i < 5; i++) {
+      nested = `~~~md-example\n${nested}\n~~~`
+    }
+    const html = renderMarkdown(nested).html
+    expect(html).toContain('最内层')
+    // 前 4 层各产出预览区，超限层改以普通代码块展示源码（code-lang 仅守卫降级块产出）
+    expect(html.match(/class="markdown-example-preview"/g)).toHaveLength(4)
+    expect(html).toContain('<span class="code-lang">markdown</span>')
+  })
+})
+
 describe('misc extensions', () => {
   it('renders footnotes with ref and backref', () => {
     const html = render('引用[^1]\n\n[^1]: 注释内容')

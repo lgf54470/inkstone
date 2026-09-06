@@ -1,7 +1,7 @@
 import MarkdownIt from 'markdown-it'
 import katex from 'katex'
 import { escapeAttr, escapeHtml } from '../escape.ts'
-import type { TocHeading } from '../types.ts'
+import type { RenderEnv } from '../types.ts'
 
 function registerContainerRendererRules(md: InstanceType<typeof MarkdownIt>): void {
   // Renderer rules for details and tabs
@@ -90,9 +90,10 @@ function registerTableRendererRules(md: InstanceType<typeof MarkdownIt>): void {
   }
 }
 
-function registerTocRendererRule(md: InstanceType<typeof MarkdownIt>, headings: TocHeading[]): void {
-  // Render TOC token
-  md.renderer.rules.toc = () => {
+function registerTocRendererRule(md: InstanceType<typeof MarkdownIt>): void {
+  // Render TOC token from per-render env headings
+  md.renderer.rules.toc = (_tokens, _idx, _options, env) => {
+    const headings = (env as RenderEnv).headings
     if (!headings.length) {
       return '<nav class="table-of-contents empty"><div class="toc-title">目录</div></nav>'
     }
@@ -106,10 +107,10 @@ function registerTocRendererRule(md: InstanceType<typeof MarkdownIt>, headings: 
   }
 }
 
-export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headings: TocHeading[]): void {
+export function registerRendererRules(md: InstanceType<typeof MarkdownIt>): void {
   registerContainerRendererRules(md)
   registerCalloutRendererRules(md)
   registerMathRendererRules(md)
   registerTableRendererRules(md)
-  registerTocRendererRule(md, headings)
+  registerTocRendererRule(md)
 }

@@ -17,15 +17,17 @@ import { slugify } from './slugify.ts'
 import { stripFrontmatter } from '../content.ts'
 import { stripObsidianComments } from './obsidian.ts'
 import { parseFenceInfo, splitHtmlIntoLines } from './fence.ts'
-import type { FenceInfo } from './types.ts'
+import type { FenceInfo, RenderEnv, RenderOptions, RenderResult } from './types.ts'
 import { registerBlockRules } from './rules/block.ts'
 import { registerCoreRules } from './rules/core.ts'
 import { registerInlineRules } from './rules/inline.ts'
 import { registerRendererRules } from './rules/renderer.ts'
 import { sanitizeProseHtml } from './sanitize.ts'
-import type { RenderResult, TocHeading } from './types.ts'
 
-function createMarkdownRenderer(headings: TocHeading[]): InstanceType<typeof MarkdownIt> {
+/** md-example 嵌套渲染深度上限（与根仓库 embeds MAX_DEPTH=4 对齐），超限按普通代码块展示 */
+const MAX_MD_EXAMPLE_DEPTH = 4
+
+function createMarkdownRenderer(): InstanceType<typeof MarkdownIt> {
   const md = new MarkdownIt({
     html: true,
     linkify: true,
@@ -57,8 +59,11 @@ function createMarkdownRenderer(headings: TocHeading[]): InstanceType<typeof Mar
   // Custom Obsidian-style rules
   registerInlineRules(md)
   registerBlockRules(md)
-  registerCoreRules(md, headings)
-  registerRendererRules(md, headings)
+  registerCoreRules(md)
+  registerRendererRules(md)
+
+  // Fences: mermaid, chart, md-example, js-example, code
+  md.renderer.rules.fence = (tokens, idx, _options, env) => renderFence(tokens, idx, env as RenderEnv)
 
   return md
 }
@@ -71,8 +76,8 @@ function renderChartFence(code: string): string {
   return `<div class="chartjs-block loading" data-chart="${encodeURIComponent(code)}" aria-busy="true">正在加载图表...</div>`
 }
 
-function renderMarkdownExampleFence(code: string, title: string): string {
-  const previewHtml = renderMarkdown(code).html
+function renderMarkdownExampleFence(code: string, title: string, depth: number): string {
+  const previewHtml = renderMarkdown(code, { depth }).html
   return [
     `<section class="markdown-example">`,
     `<div class="markdown-example-head"><span class="markdown-example-title">${escapeHtml(title)}</span></div>`,
@@ -153,7 +158,7 @@ function renderCodeFence(info: FenceInfo, code: string): string {
   ].join('')
 }
 
-function renderFence(tokens: Token[], idx: number): string {
+function renderFence(tokens: Token[], idx: number, env: RenderEnv): string {
   const token = tokens[idx]!
   const info = parseFenceInfo(token.info)
   const code = token.content
@@ -169,9 +174,13 @@ function renderFence(tokens: Token[], idx: number): string {
     return renderChartFence(code)
   }
 
-  // 3. md-example comparison block
+  // 3. md-example comparison block（递归渲染，深度超限时降级为普通代码块防栈溢出 DoS）
   if (lang === 'md-example' || lang === 'markdown-example') {
-    return renderMarkdownExampleFence(code, info.title || 'Markdown 演示')
+    const nextDepth = env.mdDepth + 1
+    if (nextDepth > MAX_MD_EXAMPLE_DEPTH) {
+      return renderCodeFence({ ...info, language: 'markdown', title: info.title || 'Markdown 演示' }, code)
+    }
+    return renderMarkdownExampleFence(code, info.title || 'Markdown 演示', nextDepth)
   }
 
   // 4. javascript-example runnable block
@@ -183,7 +192,11 @@ function renderFence(tokens: Token[], idx: number): string {
   return renderCodeFence(info, code)
 }
 
-export function renderMarkdown(rawMarkdown: string): RenderResult {
+// 渲染器实例跨请求复用：插件注册只做一次，每次渲染的状态（headings/嵌套深度）
+// 全部走 env，避免每次请求重建实例的开销与闭包状态泄漏
+const md = createMarkdownRenderer()
+
+export function renderMarkdown(rawMarkdown: string, options?: RenderOptions): RenderResult {
   if (!rawMarkdown) {
     return { html: '', headings: [] }
   }
@@ -194,14 +207,13 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
   // 2. Strip Obsidian comments
   content = stripObsidianComments(content)
 
-  const headings: TocHeading[] = []
-  const md = createMarkdownRenderer(headings)
+  // 3. Per-render state
+  const env: RenderEnv = {
+    headings: [],
+    mdDepth: options?.depth ?? 0,
+  }
 
-  // Fences: mermaid, chart, md-example, js-example, code
-  md.renderer.rules.fence = renderFence
-
-  // 服务端唯一净化入口：文章正文（含作者手写 HTML）在到达客户端 set:html 之前
-  // 必须过白名单；md-example 嵌套预览在各自递归层已净化，外层再净化一次保持幂等
-  const html = sanitizeProseHtml(md.render(content))
-  return { html, headings }
+  // 4. Render and sanitize（md-example 嵌套预览在各自递归层已净化，外层再净化一次保持幂等）
+  const html = sanitizeProseHtml(md.render(content, env))
+  return { html, headings: env.headings }
 }

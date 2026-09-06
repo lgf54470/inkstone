@@ -2,7 +2,7 @@ import MarkdownIt from 'markdown-it'
 import type { StateCore, Token } from 'markdown-it'
 import { calloutDefaultTitle, normalizeCalloutType } from '../callout.ts'
 import { slugify } from '../slugify.ts'
-import type { TocHeading } from '../types.ts'
+import type { RenderEnv } from '../types.ts'
 
 function appendTokenClass(token: Token, className: string): void {
   const attr = token.attrGet('class')
@@ -170,10 +170,11 @@ function registerCalloutsRule(md: InstanceType<typeof MarkdownIt>): void {
   })
 }
 
-function registerCollectHeadingsRule(md: InstanceType<typeof MarkdownIt>, headings: TocHeading[]): void {
-  // Collect headings in core phase before TOC rendering
+function registerCollectHeadingsRule(md: InstanceType<typeof MarkdownIt>): void {
+  // Collect headings into per-render env before TOC rendering
   md.core.ruler.push('collect_headings', (state) => {
-    headings.length = 0
+    const env = state.env as RenderEnv
+    env.headings.length = 0
     for (let index = 0; index < state.tokens.length; index++) {
       const token = state.tokens[index]!
       if (token.type !== 'heading_open') continue
@@ -181,7 +182,7 @@ function registerCollectHeadingsRule(md: InstanceType<typeof MarkdownIt>, headin
       const text = inline ? plainInline(inline) : ''
       const level = parseInt(token.tag.slice(1), 10)
       const slug = String(token.attrGet('id') ?? slugify(text))
-      headings.push({
+      env.headings.push({
         level,
         text,
         slug,
@@ -191,9 +192,9 @@ function registerCollectHeadingsRule(md: InstanceType<typeof MarkdownIt>, headin
   })
 }
 
-export function registerCoreRules(md: InstanceType<typeof MarkdownIt>, headings: TocHeading[]): void {
+export function registerCoreRules(md: InstanceType<typeof MarkdownIt>): void {
   registerObsidianBlocksRule(md)
   registerTaskListRule(md)
   registerCalloutsRule(md)
-  registerCollectHeadingsRule(md, headings)
+  registerCollectHeadingsRule(md)
 }
