@@ -383,6 +383,12 @@ const allowed = new Map([
     "// cached shell by one window on abrupt close), and the flush tail chain keeps",
     "// each diff-based write from racing the previous one.",
   ]],
+  ["src/client/lib/db/keys.ts", [
+    "// The bound user and the namespace fallback flag live here (not in core.ts)",
+    "// because store-io.ts's key scoping reads them, and core.ts imports store-io.ts;",
+    "// a leaf module keeps the db layer free of an import cycle. Mutated through the",
+    "// object (not let exports) because ESM import bindings are read-only for core.ts.",
+  ]],
   ["src/client/lib/db/outbox-lease.ts", [
     "/** Outbox replay lease helpers extracted from core.ts (fallback when Web Locks are unavailable). */",
   ]],
@@ -918,6 +924,10 @@ const allowed = new Map([
   ["src/worker/routes/blog/stats.ts", [
     "/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */",
   ]],
+  ["src/worker/routes/blog/visits.ts", [
+    "// CF-Connecting-IP is injected by the Cloudflare edge (see requestClientIp);",
+    "// raw x-forwarded-for is client-controlled and must not feed analytics.",
+  ]],
   ["src/worker/routes/community-templates.ts", [
     "// Publishing (or updating) counts against a per-user hourly budget so a",
     "// single account cannot flood the shared directory; authors updating",
@@ -1005,10 +1015,6 @@ const allowed = new Map([
     "// Preserved export surface: parseImportConflict / importedBundleTitle /",
     "// importedMarkdownTitle used to live in this file; runBatched was re-exported",
     "// here for consumers that import the transfer route module.",
-  ]],
-  ["src/worker/routes/blog/visits.ts", [
-    "// CF-Connecting-IP is injected by the Cloudflare edge (see requestClientIp);",
-    "// raw x-forwarded-for is client-controlled and must not feed analytics.",
   ]],
   ["tests/markdown-renderer-parity.test.ts", [
     "// Structural parity baseline: root and blog renderers keep (and must not silently",

@@ -1,5 +1,5 @@
 import type { Note } from '@shared/types';
-import { activeUserId } from './core';
+import { dbState } from './keys';
 
 
 export type BroadcastPayload = (
@@ -39,7 +39,7 @@ export function publishBroadcast(payload: BroadcastPayload): void {
   if (typeof BroadcastChannel === 'undefined') return
   try {
     broadcastPublisher ??= new BroadcastChannel('inkstone')
-    broadcastPublisher.postMessage({ ...payload, userId: activeUserId })
+    broadcastPublisher.postMessage({ ...payload, userId: dbState.activeUserId })
   } catch {
   }
 }
@@ -54,13 +54,13 @@ export function createBroadcast(
   const channel = new BroadcastChannel('inkstone')
   channel.onmessage = (event) => {
     const payload = event.data as BroadcastPayload
-    if (!activeUserId || payload?.userId !== activeUserId) return
+    if (!dbState.activeUserId || payload?.userId !== dbState.activeUserId) return
     onMessage(payload)
   }
   return {
     post: (payload) => {
       try {
-        channel.postMessage({ ...payload, userId: activeUserId })
+        channel.postMessage({ ...payload, userId: dbState.activeUserId })
       } catch {
       }
     },

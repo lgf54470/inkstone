@@ -1,7 +1,7 @@
 import { get, getMany, set, setMany } from 'idb-keyval';
 import { delMany, entries, store, KEY, supportsUserNamespaces } from './keys';
 import type { OutboxItem } from './types';
-import { shouldForceUserNamespaces, activeUserId } from './core';
+import { dbState } from './keys';
 export function normalizeOutbox(value: unknown): OutboxItem[] {
   if (!Array.isArray(value)) return []
   return value.filter((item): item is OutboxItem => {
@@ -33,8 +33,8 @@ export async function safeSet(key: string, value: unknown): Promise<void> {
   } catch {
   }
 }
-export function userScopedKey(key: string, userId = activeUserId): string {
-  return userId && (supportsUserNamespaces || shouldForceUserNamespaces) ? `user:${userId}:${key}` : key
+export function userScopedKey(key: string, userId = dbState.activeUserId): string {
+  return userId && (supportsUserNamespaces || dbState.shouldForceUserNamespaces) ? `user:${userId}:${key}` : key
 }
 export function isLegacyDataKey(key: unknown): key is string {
   return key === KEY.notes || key === KEY.noteIndex || key === KEY.folders || key === KEY.tags ||

@@ -1,14 +1,11 @@
 import { clear as clearStore, del, getMany, set, setMany, update } from 'idb-keyval';
 import type { Folder, NoteSummary, SessionInfo, Tag } from '@shared/types';
-import { store, KEY, supportsUserNamespaces } from './keys';
+import { store, KEY, supportsUserNamespaces, dbState } from './keys';
 import type { ShellData, ShellBaseline, TemplateLibraryData, OutboxItem, CachedNoteContent } from './types';
 import { normalizeOutbox, safeGet, safeSet, userScopedKey, migrateLegacyData } from './store-io';
 import { foldersEqual, tagsEqual, isRecord, isPublicUser, isSiteInfo, isFiniteNumber, isNoteSummary, isFolder, isTag, isNoteTemplateCategory, isNoteTemplate } from './validators';
 import { collectBaselineShellWrites, collectFullShellWrites, loadIndexNotes, migrateLegacyNotes, SHELL_SET_CHUNK } from './shell-helpers';
 import { acquireOutboxReplayLease, refreshOutboxReplayLease, releaseOutboxReplayLease } from './outbox-lease';
-export 
-let shouldForceUserNamespaces = false
-export 
 // The shell cache is two-level: one `note-summary:<id>` key per note plus a
 // lightweight `noteIndex` id list. A typing-derived summary commit therefore
 // only upserts the one changed note instead of re-serializing the whole vault;
@@ -25,8 +22,6 @@ let pendingShell: ShellData | null = null
 export 
 let pendingShellUserId: string | null = null
 export 
-let activeUserId: string | null = null
-export 
 let shellBaseline: ShellBaseline | null = null
 export 
 let shellFlushTail: Promise<void> = Promise.resolve()
@@ -37,10 +32,10 @@ export function resetShellIdentity(): void {
   shellEpoch++
 }
 export async function bindLocalUser(userId: string): Promise<void> {
-  if (activeUserId === userId) {
-    if (shouldForceUserNamespaces && !supportsUserNamespaces) {
+  if (dbState.activeUserId === userId) {
+    if (dbState.shouldForceUserNamespaces && !supportsUserNamespaces) {
       await clearLocalData()
-      shouldForceUserNamespaces = false
+      dbState.shouldForceUserNamespaces = false
     }
     await set(KEY.userId, userId, store)
     return
@@ -49,12 +44,12 @@ export async function bindLocalUser(userId: string): Promise<void> {
     const storedUserId = await safeGet<string>(KEY.userId)
     if (storedUserId !== userId)
       await rebindLegacyUser(userId)
-    activeUserId = userId
+    dbState.activeUserId = userId
     resetShellIdentity()
     await set(KEY.userId, userId, store)
     return
   }
-  activeUserId = userId
+  dbState.activeUserId = userId
   resetShellIdentity()
   const legacyUserId = await safeGet<string>(KEY.userId)
   if (legacyUserId === userId) await migrateLegacyData(userId)
@@ -64,11 +59,11 @@ export async function bindLocalUser(userId: string): Promise<void> {
 async function rebindLegacyUser(userId: string): Promise<void> {
   try {
     await clearLocalData()
-    shouldForceUserNamespaces = false
+    dbState.shouldForceUserNamespaces = false
   } catch (error) {
-    activeUserId = userId
+    dbState.activeUserId = userId
     resetShellIdentity()
-    shouldForceUserNamespaces = true
+    dbState.shouldForceUserNamespaces = true
     throw error
   }
 }
@@ -105,7 +100,7 @@ export const localDb = {
     tags: Tag[]
     cursor: number
   } | null> {
-    const userId = activeUserId
+    const userId = dbState.activeUserId
     if (!userId) return null
     const shellKeys = [
       userScopedKey(KEY.noteIndex, userId),
@@ -153,7 +148,7 @@ export const localDb = {
     }
   },
 
-  async saveShell(data: ShellData, userId = activeUserId) {
+  async saveShell(data: ShellData, userId = dbState.activeUserId) {
     const epoch = shellEpoch
     const run = async () => {
       try {
@@ -199,7 +194,7 @@ export const localDb = {
 
   scheduleShellSave(data: ShellData) {
     pendingShell = data
-    pendingShellUserId = activeUserId
+    pendingShellUserId = dbState.activeUserId
     window.clearTimeout(shellSaveTimer)
     shellSaveTimer = window.setTimeout(() => {
       const snapshot = pendingShell
@@ -339,7 +334,7 @@ export const localDb = {
   },
 
   async withOutboxReplayLock(owner: string, task: () => Promise<void>): Promise<boolean> {
-    const lockName = activeUserId ? `inkstone-outbox-replay:${activeUserId}` : 'inkstone-outbox-replay'
+    const lockName = dbState.activeUserId ? `inkstone-outbox-replay:${dbState.activeUserId}` : 'inkstone-outbox-replay'
     if (typeof navigator !== 'undefined' && navigator.locks?.request) {
       let isAcquired = false
       await navigator.locks.request(
@@ -380,8 +375,8 @@ export const localDb = {
         del(KEY.userId, store),
       ])
     }
-    activeUserId = null
-    shouldForceUserNamespaces = false
+    dbState.activeUserId = null
+    dbState.shouldForceUserNamespaces = false
   },
 }
 export async function clearLocalData(): Promise<void> {
