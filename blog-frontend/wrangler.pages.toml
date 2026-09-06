@@ -1,6 +1,11 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "inkstone-blog"
 compatibility_date = "2026-05-01"
+
+# sanitize-html 依赖 postcss（style 白名单解析），postcss 顶层引用 node 内置模块，
+# 无此标志 Worker 加载 SSR 模块会直接失败
+compatibility_flags = ["nodejs_compat"]
+
 pages_build_output_dir = "dist"
 
 [vars]
