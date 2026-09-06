@@ -13,7 +13,7 @@ export interface NotePropertiesEditorProps {
 
 function EmptyProperties({ onAdd, className }: { onAdd: () => void; className?: string }) {
   return (
-    <div className={cn('mb-4 flex items-center justify-between rounded-lg border border-dashed border-[var(--border-subtle)] px-3 py-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]', className)}>
+    <div className={cn('note-properties-editor mb-4 flex items-center justify-between rounded-lg border border-dashed border-[var(--border-subtle)] px-3 py-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]', className)}>
       <span className="flex items-center gap-1.5 font-medium">
         <SlidersHorizontal size={13} />
         {t('markdown.properties')}
@@ -111,7 +111,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({ noteId,
   }
 
   return (
-    <div className={cn('mb-4 overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/40 text-[length:var(--text-12)]', className)}>
+    <div className={cn('note-properties-editor mb-4 overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/40 text-[length:var(--text-12)]', className)}>
       <PropertiesHeader bundle={bundle} />
 
       {isExpanded && (

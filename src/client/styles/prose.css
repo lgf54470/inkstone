@@ -14,6 +14,11 @@
   padding-block: 0 42vh;
 }
 
+.note-properties-editor {
+  max-width: var(--prose-width, 72ch);
+  margin-inline: auto;
+}
+
 .ink-prose[data-font='serif'] {
   font-family: var(--font-serif);
   letter-spacing: 0;
