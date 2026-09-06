@@ -2,6 +2,7 @@ import { AwsClient } from 'aws4fetch'
 import { truncateText } from '@shared/text-utils'
 import type { S3Config } from '@shared/types'
 import type { Snapshot } from './snapshot'
+import { cancelStreamBestEffort } from '../lib/streams'
 import { backupArchivePath, createBackupArchive } from './archive'
 import {
   BACKUP_USER_AGENT,
@@ -78,7 +79,7 @@ export async function s3Deliver(
   const key = joinKey(prefix, backupArchivePath(snapshot))
   const archive = createBackupArchive(snapshot)
   if (await s3ArchiveMatches(aws, config, key, archive.byteLengthNumber, snapshot.stamp, signal)) {
-    await archive.stream.cancel().catch(() => {})
+    await cancelStreamBestEffort(archive.stream)
     return { files: 1, bytes: archive.byteLengthNumber }
   }
 
@@ -114,13 +115,13 @@ async function s3ArchiveMatches(
     redirect: 'manual',
   })
   if (response.status === 403 || response.status === 404) {
-    await response.body?.cancel().catch(() => {})
+    await cancelStreamBestEffort(response.body)
     return false
   }
   if (!response.ok) throw new Error(await describeError(response, key))
   const size = Number(response.headers.get('Content-Length'))
   const storedStamp = response.headers.get('X-Amz-Meta-Inkstone-Snapshot')
-  await response.body?.cancel().catch(() => {})
+  await cancelStreamBestEffort(response.body)
   return size === expectedBytes && (!storedStamp || storedStamp === stamp)
 }
 
@@ -149,7 +150,7 @@ async function putArchive(
     redirect: 'manual',
   })
   if (!response.ok) throw new Error(await describeError(response, key))
-  await response.body?.cancel().catch(() => {})
+  await cancelStreamBestEffort(response.body)
 }
 
 interface UploadedPart {
@@ -232,7 +233,7 @@ async function uploadMultipartPart(
   })
   if (!uploaded.ok) throw new Error(await describeError(uploaded, key))
   const etag = uploaded.headers.get('ETag')
-  await uploaded.body?.cancel().catch(() => {})
+  await cancelStreamBestEffort(uploaded.body)
   if (!etag) throw new Error(`S3 did not return an ETag for part ${partNumber} (${key})`)
   return etag
 }
@@ -281,7 +282,7 @@ async function abortMultipart(
       signal: AbortSignal.timeout(10_000),
       redirect: 'manual',
     })
-    await response.body?.cancel().catch(() => {})
+    await cancelStreamBestEffort(response.body)
     if (!response.ok && response.status !== 404) {
       console.warn(`[inkstone] S3 multipart cleanup failed: HTTP ${response.status} (${key})`)
     }
@@ -327,7 +328,7 @@ async function* streamParts(
     if (carryUsed) yield carry.slice(0, carryUsed)
     hasCompleted = true
   } finally {
-    if (!hasCompleted) await reader.cancel().catch(() => {})
+    if (!hasCompleted) await cancelStreamBestEffort(reader)
     reader.releaseLock()
   }
 }

@@ -4,6 +4,7 @@ import { NOTE_COLUMNS_FULL, type NoteRow } from "../../db/rows";
 import type { Env } from "../../env";
 import { sha256Hex } from "../../lib/encoding";
 import { safeAttachmentMime } from "../../lib/image";
+import { cancelStreamBestEffort } from "../../lib/streams";
 // Snapshot payload types live here (not in build.ts) because build.ts imports
 // the stream helpers from this module; owning the shared shapes here keeps the
 // pair free of an import cycle.
@@ -82,15 +83,15 @@ export async function openVerifiedAttachment(
   }
   if (!object) throw new Error(`Attachment data is missing: ${row.filename}`)
   if (object.size !== null && object.size !== row.size) {
-    await object.body.cancel().catch(() => {})
+    await cancelStreamBestEffort(object.body)
     throw new Error(`Attachment checksum does not match: ${row.filename}`)
   }
   if (object.metadata?.sha256 && object.metadata.sha256 !== row.sha256) {
-    await object.body.cancel().catch(() => {})
+    await cancelStreamBestEffort(object.body)
     throw new Error(`Attachment checksum metadata does not match: ${row.filename}`)
   }
   if (object.metadata?.mime && object.metadata.mime !== row.mime) {
-    await object.body.cancel().catch(() => {})
+    await cancelStreamBestEffort(object.body)
     throw new Error(`Attachment type metadata does not match: ${row.filename}`)
   }
   return verifyAttachmentStream(object.body, row)
@@ -107,7 +108,7 @@ function verifyAttachmentStream(
   let bytes = 0
 
   const fail = async (message: string): Promise<never> => {
-    await digestWriter.abort(message).catch(() => {})
+    await cancelStreamBestEffort({ cancel: () => digestWriter.abort(message) })
     throw new Error(message)
   }
 

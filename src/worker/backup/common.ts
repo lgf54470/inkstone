@@ -1,4 +1,5 @@
 import { APP_VERSION } from '@shared/constants'
+import { cancelStreamBestEffort } from '../lib/streams'
 
 export interface DeliverResult {
   files: number
@@ -44,7 +45,7 @@ export async function readResponseBytesWithinLimit(
 ): Promise<Uint8Array> {
   const declared = Number(response.headers.get('Content-Length'))
   if (Number.isFinite(declared) && declared > maxBytes) {
-    await response.body?.cancel().catch(() => {})
+    await cancelStreamBestEffort(response.body)
     throw new Error('The third-party response exceeds the safety limit')
   }
   if (!response.body) return new Uint8Array()
@@ -58,7 +59,7 @@ export async function readResponseBytesWithinLimit(
       if (done) break
       total += value.byteLength
       if (total > maxBytes) {
-        await reader.cancel().catch(() => {})
+        await cancelStreamBestEffort(reader)
         throw new Error('The third-party response exceeds the safety limit')
       }
       chunks.push(value)

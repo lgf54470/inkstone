@@ -91,6 +91,7 @@ async function persistImportedBackupAttachment(
       { sourceId: entry.sha256, targetId: persisted.id },
     ])
   } catch (error) {
+    // A failed rollback leaves orphan objects that the cleanup queue reclaims later.
     await rollbackPersistedAttachments(env, [persisted]).catch(() => {})
     throw error
   }

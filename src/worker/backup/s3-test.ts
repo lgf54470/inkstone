@@ -1,5 +1,6 @@
 import type { AwsClient } from 'aws4fetch'
 import type { S3Config, TestConnectionResult } from '@shared/types'
+import { cancelStreamBestEffort } from '../lib/streams'
 import { BACKUP_USER_AGENT, bytesEqual, friendlyError, readResponseBytesWithinLimit } from './common'
 import { normalizeBackupPrefix } from './validation'
 import { client, describeError, joinKey, objectUrl, type S3Secret } from './s3'
@@ -46,7 +47,7 @@ async function s3RoundTrip(
     })
     if (!put.ok) return { ok: false, message: await describeError(put, key) }
     hasWritten = true
-    await put.body?.cancel().catch(() => {})
+    await cancelStreamBestEffort(put.body)
 
     const get = await aws.fetch(url, { method: 'GET', signal, redirect: 'manual' })
     if (!get.ok) {
@@ -83,7 +84,7 @@ async function removeS3TestObject(
       signal: AbortSignal.timeout(5_000),
       redirect: 'manual',
     })
-    await removed.body?.cancel().catch(() => {})
+    await cancelStreamBestEffort(removed.body)
     if (!removed.ok && removed.status !== 404) {
       cleanupError = new Error(`The test file could not be removed: HTTP ${removed.status}`)
     }

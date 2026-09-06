@@ -103,6 +103,8 @@ async function clearPendingRow(
   operationId: string,
   pending: PendingOperation,
 ): Promise<void> {
+  // A stale pending row is harmless: the idempotency check overwrites it on
+  // the next attempt, and purgeExpiredMcpOperations clears abandoned rows.
   await db.prepare(
     `DELETE FROM mcp_operations
       WHERE user_id = ?1 AND operation_id = ?2 AND response_json = ?3`,

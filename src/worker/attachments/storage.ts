@@ -192,6 +192,8 @@ async function rollbackStoredObject(
   try {
     await deleteAttachmentObjects(env, storage, [objectKey])
   } catch (cleanupError) {
+    // The rollback error is reported below; if the cleanup-row insert also fails,
+    // the object simply waits for a later cleanup pass instead of being retried now.
     await env.DB.prepare(
       `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at)
        VALUES (?1, ?2, ?3)`,

@@ -1,5 +1,6 @@
 import type { TestConnectionResult, WebdavConfig } from '@shared/types'
 import type { Snapshot } from './snapshot'
+import { cancelStreamBestEffort } from '../lib/streams'
 import { backupArchivePath, createBackupArchive } from './archive'
 import {
   BACKUP_USER_AGENT,
@@ -59,7 +60,7 @@ async function webdavFetch(
     const location = response.headers.get('Location')
     if (!location) return response
     if (redirects === MAX_WEBDAV_REDIRECTS) {
-      await response.body?.cancel().catch(() => {})
+      await cancelStreamBestEffort(response.body)
       throw new Error('Too many WebDAV redirects')
     }
 
@@ -70,11 +71,11 @@ async function webdavFetch(
       next.username ||
       next.password
     ) {
-      await response.body?.cancel().catch(() => {})
+      await cancelStreamBestEffort(response.body)
       throw new Error('WebDAV redirected to another origin. Enter the final HTTPS URL to protect credentials')
     }
 
-    await response.body?.cancel().catch(() => {})
+    await cancelStreamBestEffort(response.body)
     if (!replayable) {
       throw new Error('WebDAV redirected the streaming upload. Enter the final WebDAV HTTPS URL and try again')
     }
@@ -113,7 +114,7 @@ async function ensureDirLevel(
     headers: { Authorization: auth, 'User-Agent': BACKUP_USER_AGENT },
     signal,
   }, base.origin)
-  await res.body?.cancel().catch(() => {})
+  await cancelStreamBestEffort(res.body)
   if (!res.ok && res.status !== 405) {
     if (res.status === 401) throw new Error("Incorrect username or password")
     if (res.status === 403) throw new Error('Permission to create folders is missing')
@@ -139,7 +140,7 @@ export async function webdavDeliver(
 
   const archive = createBackupArchive(snapshot)
   if (await webdavObjectMatches(base, auth, target, archive.byteLengthNumber, signal)) {
-    await archive.stream.cancel().catch(() => {})
+    await cancelStreamBestEffort(archive.stream)
     return { files: 1, bytes: archive.byteLengthNumber }
   }
 
@@ -157,7 +158,7 @@ export async function webdavDeliver(
     signal,
   }, base.origin, false)
   const [response] = await Promise.all([upload, pump])
-  await response.body?.cancel().catch(() => {})
+  await cancelStreamBestEffort(response.body)
   if (!response.ok) {
     if (response.status === 401) throw new Error("Incorrect username or password")
     if (response.status === 403) throw new Error('Write access is missing')
@@ -181,7 +182,7 @@ async function webdavObjectMatches(
     headers: { Authorization: auth, 'User-Agent': BACKUP_USER_AGENT },
     signal,
   }, base.origin)
-  await response.body?.cancel().catch(() => {})
+  await cancelStreamBestEffort(response.body)
   if (response.status === 404) return false
   if (response.status === 405 || response.status === 501) return false
   if (response.status === 401) throw new Error('Incorrect username or password')
@@ -206,7 +207,7 @@ export async function webdavTest(
       headers: { Authorization: auth, Depth: '0', 'Content-Type': 'application/xml', 'User-Agent': BACKUP_USER_AGENT },
       signal,
     }, base.origin)
-    await probe.body?.cancel().catch(() => {})
+    await cancelStreamBestEffort(probe.body)
     if (probe.status === 401) return { ok: false, message: "Incorrect username or password" }
     if (probe.status === 404) return { ok: false, message: 'The path does not exist. Check the URL' }
     if (!probe.ok && probe.status !== 207 && probe.status !== 405) {
@@ -243,7 +244,7 @@ async function webdavRoundTrip(
       body: payload as unknown as BodyInit,
       signal,
     }, base.origin)
-    await put.body?.cancel().catch(() => {})
+    await cancelStreamBestEffort(put.body)
     if (!put.ok) {
       if (put.status === 403) return { ok: false, message: 'Connected, but write access is missing' }
       if (put.status === 507) return { ok: false, message: 'The server is out of storage' }
@@ -257,7 +258,7 @@ async function webdavRoundTrip(
       signal,
     }, base.origin)
     if (!get.ok) {
-      await get.body?.cancel().catch(() => {})
+      await cancelStreamBestEffort(get.body)
       primaryFailure = { ok: false, message: `Write succeeded but read failed: HTTP ${get.status}` }
       return primaryFailure
     }
@@ -288,7 +289,7 @@ async function removeWebdavTestObject(
       headers: { Authorization: auth, 'User-Agent': BACKUP_USER_AGENT },
       signal: AbortSignal.timeout(5_000),
     }, base.origin)
-    await removed.body?.cancel().catch(() => {})
+    await cancelStreamBestEffort(removed.body)
     if (!removed.ok && removed.status !== 404) {
       cleanupError = new Error(`The test file could not be removed: HTTP ${removed.status}`)
     }

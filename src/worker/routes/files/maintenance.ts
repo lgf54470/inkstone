@@ -129,6 +129,7 @@ async function deleteAttachmentsBatch(
     await db.batch(attachmentDeleteStatements(db, userId, row))
     deletedCount++
   }
+  // A failed drain is safe: cleanup rows stay queued and the next scheduled run retries them.
   void drainAttachmentCleanup(env, userId).catch(() => {})
   return deletedCount
 }

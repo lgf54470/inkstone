@@ -5,6 +5,7 @@ import {
 } from '@shared/constants'
 import type { UpdateCheckResponse } from '@shared/types'
 import { isValidVersion } from '@shared/version'
+import { cancelStreamBestEffort } from './streams'
 
 const UPDATE_FETCH_TIMEOUT_MS = 5_000
 const MAX_PACKAGE_RESPONSE_BYTES = 64 * 1024
@@ -76,13 +77,13 @@ async function fetchRepositoryVersion(
 
 async function classifyPackageResponse(response: Response): Promise<FetchResult> {
   if (!response.ok) {
-    await response.body?.cancel().catch(() => {})
+    await cancelStreamBestEffort(response.body)
     return { kind: 'failure', reason: 'http_error', status: response.status }
   }
 
   const declaredLength = Number(response.headers.get('Content-Length'))
   if (Number.isFinite(declaredLength) && declaredLength > MAX_PACKAGE_RESPONSE_BYTES) {
-    await response.body?.cancel().catch(() => {})
+    await cancelStreamBestEffort(response.body)
     return { kind: 'failure', reason: 'response_too_large' }
   }
 
@@ -124,7 +125,7 @@ async function readResponseTextWithinLimit(
       if (done) break
       total += value.byteLength
       if (total > limit) {
-        await reader.cancel().catch(() => {})
+        await cancelStreamBestEffort(reader)
         return null
       }
       chunks.push(value)

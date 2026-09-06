@@ -116,6 +116,7 @@ async function applyAuthenticatedSession(
     clearLegacySessionCookie(c)
   }
   const now = Date.now()
+  // Telemetry-only write; a failed update is harmless and not worth surfacing.
   c.executionCtx?.waitUntil(
     c.env.DB.prepare(`UPDATE users SET last_seen_at = ?1 WHERE id = ?2 AND last_seen_at < ?3`)
       .bind(now, row.id, now - 5 * 60 * 1000)

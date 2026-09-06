@@ -797,6 +797,14 @@ const allowed = new Map([
     "/** Adds a per-response nonce to every inline script in an HTML response and returns the CSP script source. */",
     "/* An unparseable redirect_uri simply contributes no extra origin to the CSP. */",
   ]],
+  ["src/worker/attachments/storage.ts", [
+    "// The rollback error is reported below; if the cleanup-row insert also fails,",
+    "// the object simply waits for a later cleanup pass instead of being retried now.",
+  ]],
+  ["src/worker/avatars/storage.ts", [
+    "// The delete error is reported below; if the cleanup-row insert also fails,",
+    "// the object simply waits for a later cleanup pass instead of being retried now.",
+  ]],
   ["src/worker/backup/s3.ts", [
     "/* Best-effort: an unreadable error body falls back to the generic hints below. */",
   ]],
@@ -836,6 +844,7 @@ const allowed = new Map([
   ]],
   ["src/worker/import/attachments.ts", [
     "/** Attachment handling for the import pipeline: dedupe, persist, map and link. */",
+    "// A failed rollback leaves orphan objects that the cleanup queue reclaims later.",
   ]],
   ["src/worker/import/backup.ts", [
     "/** Markdown-backup import: manifest parsing, entry verification and batch restore. */",
@@ -894,6 +903,14 @@ const allowed = new Map([
   ["src/worker/lib/session-store.ts", [
     "/**\n * Extend a session back to the full TTL. Only call this from an authenticated\n * request whose session is inside the renewal window (see SESSION_RENEW_BEFORE_MS);\n * never call it from unauthenticated paths — renewal must not resurrect or\n * prolong a session the user has not just proven possession of.\n */",
   ]],
+  ["src/worker/lib/streams.ts", [
+    "// Stream cancellation is a best-effort resource release: the read side is",
+    "// already done or errored, so a failed cancel has nothing left to retry and",
+    "// no user-visible state to update. The single wrapper replaces the repeated",
+    "// inline `.catch(() => {})` at every upload/download/rollback site.",
+    "// Best-effort release; a failed cancel leaks only until the runtime",
+    "// reclaims the stream, with no correctness impact on the operation.",
+  ]],
   ["src/worker/mcp/ai-search.ts", [
     "/**\n * Private AI semantic search for the MCP module.\n *\n * Notes are embedded with Workers AI (`@cf/baai/bge-m3`, 1024 dims,\n * multilingual) and the vectors live in D1 — no public query endpoint, one\n * index per account. Content changes are queued and drained in the\n * background; when the AI binding is missing or the model call fails the\n * feature degrades to plain lexical search instead of failing (the old\n * behavior that surfaced as HTTP 503s).\n */",
     "// Stored in app_meta instead of a column on mcp_preferences: D1 does not",
@@ -934,6 +951,8 @@ const allowed = new Map([
     "// The mutation already committed. If storing the response fails, the row",
     "// stays pending so a retry goes through the recovery path instead of",
     "// re-executing and colliding (e.g. create_note with the same id).",
+    "// A stale pending row is harmless: the idempotency check overwrites it on",
+    "// the next attempt, and purgeExpiredMcpOperations clears abandoned rows.",
   ]],
   ["src/worker/mcp/retrieval/search.ts", [
     "// AI unavailable, rate-limited, or malformed response: degrade to lexical.",
@@ -957,6 +976,7 @@ const allowed = new Map([
     "// (c) unauthenticated requests (e.g. expired sessions) can never extend",
     "//     their own lifetime. The cookie Max-Age is refreshed in lockstep so",
     "//     the browser copy does not expire before the server-side row.",
+    "// Telemetry-only write; a failed update is harmless and not worth surfacing.",
   ]],
   ["src/worker/realtime/sync-hub.ts", [
     "// Best-effort teardown: the socket may already be closed; there is nothing to recover.",
@@ -1013,6 +1033,9 @@ const allowed = new Map([
     "// every wanted id has been found is exact: unscanned notes could only add",
     "// more references for already-found ids, never create new ones.",
   ]],
+  ["src/worker/routes/files/maintenance.ts", [
+    "// A failed drain is safe: cleanup rows stay queued and the next scheduled run retries them.",
+  ]],
   ["src/worker/routes/folders/helpers.ts", [
     "// Patch format checks run in-route after the ownership lookup so cross-user writes surface 404 first.",
   ]],
@@ -1021,6 +1044,8 @@ const allowed = new Map([
   ]],
   ["src/worker/routes/mcp-settings.ts", [
     "// Kick off the first batch immediately; the rest is drained by the cron.",
+    "// A failed drain is safe: the queue rows stay enqueued and the next cron trigger retries them.",
+    "// A failed drain is safe: the queue rows stay enqueued and the next cron trigger retries them.",
   ]],
   ["src/worker/routes/notes/edit.ts", [
     "// The SQL SET fragments derive from the same patches list that answers",

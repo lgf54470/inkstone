@@ -122,6 +122,7 @@ mcpSettingsRoutes.put('/ai-search', async (c) => {
   if (body.enabled) {
     const enqueued = await enqueueAllNotesForIndex(c.env.DB, userId)
     // Kick off the first batch immediately; the rest is drained by the cron.
+    // A failed drain is safe: the queue rows stay enqueued and the next cron trigger retries them.
     c.executionCtx.waitUntil(drainAiIndexQueue(c.env, 30).catch(() => {}))
     return c.json({ ...await getAiSearchStatus(c.env.DB, c.env, userId), enqueued })
   }
@@ -135,6 +136,7 @@ mcpSettingsRoutes.post('/ai-search/reindex', async (c) => {
   if (!await isAiSearchEnabled(c.env.DB, userId)) throw ApiError.conflict('AI search is disabled')
   const enqueued = await enqueueAllNotesForIndex(c.env.DB, userId)
   const status = await getAiSearchStatus(c.env.DB, c.env, userId)
+  // A failed drain is safe: the queue rows stay enqueued and the next cron trigger retries them.
   c.executionCtx.waitUntil(drainAiIndexQueue(c.env, 30).catch(() => {}))
   return c.json({ ok: true, enqueued, ...status })
 })

@@ -73,6 +73,8 @@ export async function discardStoredAvatar(env: Env, avatar: StoredAvatarObject):
   try {
     await deleteAttachmentObjects(env, avatar.storage, [avatar.key])
   } catch (error) {
+    // The delete error is reported below; if the cleanup-row insert also fails,
+    // the object simply waits for a later cleanup pass instead of being retried now.
     await env.DB.prepare(
       `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at)
        VALUES (?1, ?2, ?3)`,
