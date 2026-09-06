@@ -54,60 +54,6 @@
     "longFns": 2,
     "deepFns": 1
   },
-  "src/client/features/blog/blog-batch-bar.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-categories-modal.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-comments-view.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-dashboard-view/index.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-grid-view/card.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-hub-modal.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-hub-sidebar/index.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-hub-sidebar/use-blog-hub-sidebar.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-note-submenu.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-publish-modal/use-blog-publish-form.ts": {
-    "longFns": 2
-  },
-  "src/client/features/blog/blog-settings-modal.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-store/actions.ts": {
-    "longFns": 2
-  },
-  "src/client/features/blog/blog-store/content.ts": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-store/filters.ts": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-store/index.ts": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-store/loaders.ts": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-table-view/index.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-table-view/row.tsx": {
-    "longFns": 1
-  },
   "src/client/features/preview/card-content.ts": {
     "longFns": 2
   },
