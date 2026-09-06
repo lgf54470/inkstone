@@ -23,40 +23,34 @@ interface AttachmentStoreState {
   setExpandedTagPaths: (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => void
 }
 
-export const useAttachmentStore = create<AttachmentStoreState>((set) => ({
-  folders: [],
-  tags: [],
-  expandedFolders: [],
-  expandedTagPaths: new Set<string>(),
-  loading: false,
+type StoreSetter = (
+  fn: Partial<AttachmentStoreState> | ((s: AttachmentStoreState) => Partial<AttachmentStoreState>),
+) => void
 
+const loadAction = (set: StoreSetter): Pick<AttachmentStoreState, 'load'> => ({
   load: async () => {
     set({ loading: true })
     try {
-      const [folders, tags] = await Promise.all([
-        api.files.folders.list(),
-        api.files.tags.list(),
-      ])
+      const [folders, tags] = await Promise.all([api.files.folders.list(), api.files.tags.list()])
       set({ folders, tags, loading: false })
     } catch {
       set({ loading: false })
     }
   },
+})
 
+const folderActions = (
+  set: StoreSetter,
+): Pick<
+  AttachmentStoreState,
+  'createFolder' | 'patchFolder' | 'deleteFolder' | 'setExpandedFolders' | 'toggleFolderExpanded'
+> => ({
   createFolder: async (name, parentId = null) => {
     try {
-      const created = await api.files.folders.create({
-        name: name || 'New Folder',
-        parentId,
-      })
+      const created = await api.files.folders.create({ name: name || 'New Folder', parentId })
       set((s) => ({ folders: [...s.folders, created] }))
-      if (parentId) {
-        set((s) => ({
-          expandedFolders: s.expandedFolders.includes(parentId)
-            ? s.expandedFolders
-            : [...s.expandedFolders, parentId],
-        }))
-      }
+      if (parentId)
+        set((s) => ({ expandedFolders: s.expandedFolders.includes(parentId) ? s.expandedFolders : [...s.expandedFolders, parentId] }))
       return created
     } catch {
       return null
@@ -66,9 +60,7 @@ export const useAttachmentStore = create<AttachmentStoreState>((set) => ({
   patchFolder: async (id, patch) => {
     try {
       const updated = await api.files.folders.patch(id, patch)
-      set((s) => ({
-        folders: s.folders.map((f) => (f.id === id ? updated : f)),
-      }))
+      set((s) => ({ folders: s.folders.map((f) => (f.id === id ? updated : f)) }))
     } catch (error) {
       console.warn('[attachment-store] failed to patch folder', error)
     }
@@ -77,10 +69,7 @@ export const useAttachmentStore = create<AttachmentStoreState>((set) => ({
   deleteFolder: async (id) => {
     try {
       await api.files.folders.remove(id)
-      set((s) => ({
-        folders: s.folders.filter((f) => f.id !== id),
-        expandedFolders: s.expandedFolders.filter((fId) => fId !== id),
-      }))
+      set((s) => ({ folders: s.folders.filter((f) => f.id !== id), expandedFolders: s.expandedFolders.filter((fId) => fId !== id) }))
     } catch (error) {
       console.warn('[attachment-store] failed to delete folder', error)
     }
@@ -93,25 +82,23 @@ export const useAttachmentStore = create<AttachmentStoreState>((set) => ({
   },
 
   toggleFolderExpanded: (id) => {
-    set((s) => {
-      const exists = s.expandedFolders.includes(id)
-      return {
-        expandedFolders: exists
-          ? s.expandedFolders.filter((fId) => fId !== id)
-          : [...s.expandedFolders, id],
-      }
-    })
+    set((s) => ({ expandedFolders: s.expandedFolders.includes(id) ? s.expandedFolders.filter((fId) => fId !== id) : [...s.expandedFolders, id] }))
   },
+})
 
+const tagActions = (
+  set: StoreSetter,
+): Pick<
+  AttachmentStoreState,
+  'createTag' | 'patchTag' | 'deleteTag' | 'toggleTagExpanded' | 'setExpandedTagPaths'
+> => ({
   createTag: async (name, color) => {
     try {
       const created = await api.files.tags.create({ name, color })
       set((s) => {
         const exists = s.tags.some((t) => t.id === created.id || t.name === created.name)
         return {
-          tags: exists
-            ? s.tags.map((t) => (t.id === created.id || t.name === created.name ? created : t))
-            : [...s.tags, created],
+          tags: exists ? s.tags.map((t) => (t.id === created.id || t.name === created.name ? created : t)) : [...s.tags, created],
         }
       })
       return created
@@ -123,9 +110,7 @@ export const useAttachmentStore = create<AttachmentStoreState>((set) => ({
   patchTag: async (id, patch) => {
     try {
       const updated = await api.files.tags.patch(id, patch)
-      set((s) => ({
-        tags: s.tags.map((t) => (t.id === id ? updated : t)),
-      }))
+      set((s) => ({ tags: s.tags.map((t) => (t.id === id ? updated : t)) }))
     } catch (error) {
       console.warn('[attachment-store] failed to patch tag', error)
     }
@@ -134,9 +119,7 @@ export const useAttachmentStore = create<AttachmentStoreState>((set) => ({
   deleteTag: async (id) => {
     try {
       await api.files.tags.remove(id)
-      set((s) => ({
-        tags: s.tags.filter((t) => t.id !== id),
-      }))
+      set((s) => ({ tags: s.tags.filter((t) => t.id !== id) }))
     } catch (error) {
       console.warn('[attachment-store] failed to delete tag', error)
     }
@@ -156,6 +139,17 @@ export const useAttachmentStore = create<AttachmentStoreState>((set) => ({
       expandedTagPaths: typeof updater === 'function' ? updater(s.expandedTagPaths) : updater,
     }))
   },
+})
+
+export const useAttachmentStore = create<AttachmentStoreState>()((set) => ({
+  folders: [],
+  tags: [],
+  expandedFolders: [],
+  expandedTagPaths: new Set<string>(),
+  loading: false,
+  ...loadAction(set),
+  ...folderActions(set),
+  ...tagActions(set),
 }))
 
 export function useAttachmentFolderTree(): FolderNode[] {

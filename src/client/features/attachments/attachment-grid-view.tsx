@@ -1,49 +1,23 @@
-import { useRef, useState } from 'react'
-import {
-  Check,
-  Copy,
-  Download,
-  Eye,
-  FolderClosed,
-  MoreVertical,
-  Paperclip,
-  Pencil,
-  Pin,
-  Plus,
-  QrCode,
-  Star,
-  Trash2,
-  Upload,
-} from 'lucide-react'
+import { Check, MoreVertical, Pin, Plus, Star } from 'lucide-react'
 import type { AttachmentWithUsage } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { useAttachmentStore } from './attachment-store'
-import { Menu, useContextMenu, type MenuItem } from '../../components/overlay'
+import type { MenuItem } from '../../components/overlay'
+import { formatFileSize, groupAttachmentsByDate } from './attachment-helpers'
 import {
-  formatFileSize,
-  getFileBadgeColor,
-  getFileCategory,
-  groupAttachmentsByDate,
-} from './attachment-helpers'
+  AttachmentMenus,
+  buildAttachmentMenuItems,
+  cardDragStart,
+  fileBadgeOf,
+  type AttachmentMenuCtx,
+  UploadEmptyState,
+  useCardMenu,
+  useFileFolder,
+} from './attachment-item-common'
 
-export function AttachmentGridView({
-  files,
-  selectedIds,
-  onToggleSelect,
-  activeFile,
-  onSelectActive,
-  zoom,
-  onPreview,
-  onRename,
-  onShowQr,
-  onInsertToNote,
-  onToggleStar,
-  onTogglePin,
-  onMoveToFolder,
-  onDelete,
-  onUploadClick,
-}: {
+type Badge = ReturnType<typeof fileBadgeOf>
+
+export interface AttachmentGridViewProps {
   files: AttachmentWithUsage[]
   selectedIds: Set<string>
   onToggleSelect: (id: string, e: React.MouseEvent) => void
@@ -59,15 +33,18 @@ export function AttachmentGridView({
   onMoveToFolder: (file: AttachmentWithUsage) => void
   onDelete: (file: AttachmentWithUsage) => void
   onUploadClick?: () => void
-}) {
-  const groups = groupAttachmentsByDate(files)
+}
 
-  const gridColsClass =
-    zoom === 'sm'
-      ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8'
-      : zoom === 'lg'
-      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-      : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
+function zoomCols(zoom: 'sm' | 'md' | 'lg'): string {
+  if (zoom === 'sm') return 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8'
+  if (zoom === 'lg') return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+  return 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
+}
+
+export function AttachmentGridView(props: AttachmentGridViewProps) {
+  const { files, selectedIds, onToggleSelect, activeFile, onSelectActive, zoom, onPreview, onRename, onShowQr, onInsertToNote, onToggleStar, onTogglePin, onMoveToFolder, onDelete, onUploadClick } = props
+  const groups = groupAttachmentsByDate(files)
+  const gridColsClass = zoomCols(zoom)
 
   return (
     <div className="flex min-h-full flex-col p-4 gap-6">
@@ -98,60 +75,34 @@ export function AttachmentGridView({
                 onDelete={() => onDelete(file)}
               />
             ))}
-
-            {groupIdx === 0 && onUploadClick && (
-              <button
-                type="button"
-                onClick={onUploadClick}
-                className="group relative flex aspect-square flex-col items-center justify-center rounded-[var(--r-lg)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 p-3 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/20 cursor-pointer"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--bg-surface)] text-[var(--text-tertiary)] shadow-xs transition-transform group-hover:scale-110 group-hover:text-[var(--accent)]">
-                  <Plus size={20} />
-                </div>
-                <span className="mt-2 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] group-hover:text-[var(--accent)]">
-                  {t('attachments.upload_file')}
-                </span>
-              </button>
-            )}
+            {groupIdx === 0 && onUploadClick && <UploadTile onClick={onUploadClick} />}
           </div>
         </div>
       ))}
 
-      {onUploadClick && files.length < 8 && (
-        <div
-          onClick={onUploadClick}
-          className="flex flex-1 min-h-[180px] flex-col items-center justify-center rounded-[var(--r-xl)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 py-8 px-4 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/10 cursor-pointer"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-surface)] text-[var(--accent)] shadow-xs mb-3">
-            <Upload size={22} />
-          </div>
-          <p className="text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]">
-            {t('attachments.drag_drop_hint')}
-          </p>
-          <p className="mt-1 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)] max-w-sm">
-            {t('attachments.upload_guide_hint')}
-          </p>
-        </div>
-      )}
+      {onUploadClick && files.length < 8 && <UploadEmptyState onUploadClick={onUploadClick} />}
     </div>
   )
 }
 
-function GridCard({
-  file,
-  selected,
-  active,
-  onToggleSelect,
-  onSelectActive,
-  onPreview,
-  onRename,
-  onShowQr,
-  onInsertToNote,
-  onToggleStar,
-  onTogglePin,
-  onMoveToFolder,
-  onDelete,
-}: {
+function UploadTile({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative flex aspect-square flex-col items-center justify-center rounded-[var(--r-lg)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 p-3 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/20 cursor-pointer"
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--bg-surface)] text-[var(--text-tertiary)] shadow-xs transition-transform group-hover:scale-110 group-hover:text-[var(--accent)]">
+        <Plus size={20} />
+      </div>
+      <span className="mt-2 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] group-hover:text-[var(--accent)]">
+        {t('attachments.upload_file')}
+      </span>
+    </button>
+  )
+}
+
+export interface GridCardProps {
   file: AttachmentWithUsage
   selected: boolean
   active: boolean
@@ -165,271 +116,161 @@ function GridCard({
   onTogglePin: () => void
   onMoveToFolder: () => void
   onDelete: () => void
-}) {
-  const folders = useAttachmentStore((s) => s.folders)
-  const folder = file.folderId ? folders.find((f) => f.id === file.folderId) : null
+}
 
-  const menuButtonRef = useRef<HTMLButtonElement>(null)
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const contextMenu = useContextMenu()
-
-  const ext = file.filename.split('.').pop()?.toLowerCase() ?? ''
-  const category = getFileCategory(file.mime, file.filename)
-  const isImage = category === 'image'
-  const badge = getFileBadgeColor(category, ext)
-
-  const handleCopyMarkdown = async () => {
-    try {
-      const md = isImage ? `![${file.filename}](${file.url})` : `[${file.filename}](${file.url})`
-      await navigator.clipboard.writeText(md)
-    } catch (error) {
-      console.warn('[attachments] failed to copy markdown', error)
-    }
-  }
-
-  const handleCopyLink = async () => {
-    try {
-      const fullUrl = new URL(file.url, window.location.origin).href
-      await navigator.clipboard.writeText(fullUrl)
-    } catch (error) {
-      console.warn('[attachments] failed to copy URL', error)
-    }
-  }
-
-  const menuItems: MenuItem[] = [
-    {
-      id: 'preview',
-      label: t('common.preview'),
-      icon: <Eye size={13} />,
-      onSelect: onPreview,
-    },
-    ...(onInsertToNote
-      ? [
-          {
-            id: 'insert',
-            label: t('attachments.insert_into_note'),
-            icon: <Paperclip size={13} />,
-            onSelect: onInsertToNote,
-          },
-        ]
-      : []),
-    {
-      id: 'copy-markdown',
-      label: t('attachments.copy_markdown'),
-      icon: <Copy size={13} />,
-      separatorBefore: true,
-      onSelect: () => void handleCopyMarkdown(),
-    },
-    {
-      id: 'copy-link',
-      label: t('attachments.copy_link'),
-      icon: <Copy size={13} />,
-      onSelect: () => void handleCopyLink(),
-    },
-    {
-      id: 'qr',
-      label: t('attachments.qr_code_title'),
-      icon: <QrCode size={13} />,
-      onSelect: onShowQr,
-    },
-    {
-      id: 'star',
-      label: file.isStarred ? t('attachments.unstar') : t('attachments.star'),
-      icon: <Star size={13} />,
-      separatorBefore: true,
-      onSelect: onToggleStar,
-    },
-    {
-      id: 'pin',
-      label: file.isPinned ? t('attachments.unpin') : t('attachments.pin'),
-      icon: <Pin size={13} />,
-      onSelect: onTogglePin,
-    },
-    {
-      id: 'move',
-      label: t('attachments.move_to'),
-      icon: <FolderClosed size={13} />,
-      onSelect: onMoveToFolder,
-    },
-    {
-      id: 'rename',
-      label: t('attachments.rename'),
-      icon: <Pencil size={13} />,
-      onSelect: onRename,
-    },
-    {
-      id: 'download',
-      label: t('common.download'),
-      icon: <Download size={13} />,
-      separatorBefore: true,
-      onSelect: () => {
-        const a = document.createElement('a')
-        a.href = file.url
-        a.download = file.filename
-        a.click()
-      },
-    },
-    {
-      id: 'delete',
-      label: t('attachments.delete'),
-      icon: <Trash2 size={13} />,
-      tone: 'danger',
-      separatorBefore: true,
-      onSelect: onDelete,
-    },
-  ]
+function GridCard(props: GridCardProps) {
+  const { file, selected, active, onToggleSelect, onSelectActive, onPreview, onRename, onShowQr, onInsertToNote, onToggleStar, onTogglePin, onMoveToFolder, onDelete } = props
+  const folder = useFileFolder(file)
+  const menu = useCardMenu()
+  const { isImage, badge } = fileBadgeOf(file)
+  const actions: AttachmentMenuCtx = { file, onPreview, onRename, onShowQr, onInsertToNote, onToggleStar, onTogglePin, onMoveToFolder, onDelete }
+  const menuItems: MenuItem[] = buildAttachmentMenuItems(actions)
 
   return (
     <div
       draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData('application/x-inkstone-attachments', JSON.stringify([file.id]))
-        e.dataTransfer.effectAllowed = 'move'
-      }}
+      onDragStart={(e) => cardDragStart(e, file.id)}
       onClick={onSelectActive}
       onDoubleClick={onPreview}
-      onContextMenu={(e) => {
-        setIsMenuOpen(false)
-        contextMenu.onContextMenu(e)
-      }}
+      onContextMenu={menu.handleContextMenu}
       className={cn(
         'group relative flex flex-col overflow-hidden rounded-[var(--r-lg)] border bg-[var(--bg-base)] text-left transition-all duration-150 cursor-pointer select-none',
-        selected
-          ? 'border-[var(--accent)] ring-2 ring-[var(--accent-ring)]'
-          : active
-          ? 'border-[var(--accent)] shadow-sm'
-          : 'border-[var(--border-subtle)] hover:border-[var(--border-default)] hover:shadow-xs',
+        selected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-ring)]' : active ? 'border-[var(--accent)] shadow-sm' : 'border-[var(--border-subtle)] hover:border-[var(--border-default)] hover:shadow-xs',
       )}
     >
-      <div className="relative aspect-4/3 w-full overflow-hidden bg-[var(--bg-sunken)]">
-        {isImage ? (
-          <img
-            src={file.url}
-            alt={file.filename}
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center p-4">
-            <div className={cn('flex flex-col items-center gap-1 rounded-xl p-3', badge.bg)}>
-              <span className={cn('text-sm font-bold tracking-wider', badge.text)}>{badge.label}</span>
-            </div>
+      <CardThumb file={file} isImage={isImage} badge={badge} selected={selected} onToggleSelect={onToggleSelect} menu={menu} onToggleStar={onToggleStar} />
+      <CardMeta file={file} folderName={folder?.name} />
+      <AttachmentMenus menu={menu} items={menuItems} />
+    </div>
+  )
+}
+
+function CardThumb({ file, isImage, badge, selected, onToggleSelect, menu, onToggleStar }: {
+  file: AttachmentWithUsage
+  isImage: boolean
+  badge: Badge['badge']
+  selected: boolean
+  onToggleSelect: (e: React.MouseEvent) => void
+  menu: ReturnType<typeof useCardMenu>
+  onToggleStar: () => void
+}) {
+  return (
+    <div className="relative aspect-4/3 w-full overflow-hidden bg-[var(--bg-sunken)]">
+      {isImage ? (
+        <img src={file.url} alt={file.filename} loading="lazy" className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center p-4">
+          <div className={cn('flex flex-col items-center gap-1 rounded-xl p-3', badge.bg)}>
+            <span className={cn('text-sm font-bold tracking-wider', badge.text)}>{badge.label}</span>
           </div>
+        </div>
+      )}
+
+      <CardSelect selected={selected} onToggleSelect={onToggleSelect} />
+      <ThumbActions file={file} menu={menu} onToggleStar={onToggleStar} />
+
+      {file.references === 0 && (
+        <div className="absolute bottom-1.5 left-1.5 rounded px-1 py-0.5 text-[length:var(--text-9)] font-medium bg-amber-500/85 text-white backdrop-blur-xs">
+          {t('attachments.unreferenced')}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CardSelect({ selected, onToggleSelect }: { selected: boolean; onToggleSelect: (e: React.MouseEvent) => void }) {
+  return (
+    <div
+      onClick={(e) => {
+        e.stopPropagation()
+        onToggleSelect(e)
+      }}
+      className={cn(
+        'absolute top-2 left-2 z-[var(--z-sticky)] flex h-5 w-5 items-center justify-center rounded transition-opacity',
+        selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+      )}
+    >
+      <div
+        className={cn(
+          'flex h-4 w-4 items-center justify-center rounded border shadow-xs transition-colors',
+          selected ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-white/80 bg-black/40 hover:bg-black/60',
         )}
+      >
+        {selected && <Check size={11} strokeWidth={3} />}
+      </div>
+    </div>
+  )
+}
 
-        <div
-          onClick={(e) => {
-            e.stopPropagation()
-            onToggleSelect(e)
-          }}
-          className={cn(
-            'absolute top-2 left-2 z-[var(--z-sticky)] flex h-5 w-5 items-center justify-center rounded transition-opacity',
-            selected
-              ? 'opacity-100'
-              : 'opacity-0 group-hover:opacity-100',
-          )}
-        >
-          <div
-            className={cn(
-              'flex h-4 w-4 items-center justify-center rounded border shadow-xs transition-colors',
-              selected
-                ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
-                : 'border-white/80 bg-black/40 hover:bg-black/60',
-            )}
-          >
-            {selected && <Check size={11} strokeWidth={3} />}
-          </div>
+function ThumbActions({ file, menu, onToggleStar }: {
+  file: AttachmentWithUsage
+  menu: ReturnType<typeof useCardMenu>
+  onToggleStar: () => void
+}) {
+  return (
+    <div className="absolute top-2 right-2 z-[var(--z-sticky)] flex items-center gap-1">
+      {file.isPinned && (
+        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-xs">
+          <Pin size={10} />
         </div>
+      )}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleStar()
+        }}
+        className={cn(
+          'flex h-5 w-5 items-center justify-center rounded-full transition-opacity',
+          file.isStarred ? 'bg-amber-500 text-white' : 'bg-black/50 text-white/70 opacity-0 group-hover:opacity-100 hover:text-white',
+        )}
+      >
+        <Star size={10} className={file.isStarred ? 'fill-current' : undefined} />
+      </button>
+      <button
+        ref={menu.buttonRef}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          menu.toggle()
+        }}
+        className="flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white/80 opacity-0 group-hover:opacity-100 hover:text-white transition-opacity"
+      >
+        <MoreVertical size={11} />
+      </button>
+    </div>
+  )
+}
 
-        <div className="absolute top-2 right-2 z-[var(--z-sticky)] flex items-center gap-1">
-          {file.isPinned && (
-            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-xs">
-              <Pin size={10} />
-            </div>
-          )}
+function CardMeta({ file, folderName }: { file: AttachmentWithUsage; folderName?: string }) {
+  return (
+    <div className="p-2 space-y-1">
+      <p className="truncate text-[length:var(--text-12)] font-medium text-[var(--text-primary)]" title={file.filename}>
+        {file.filename}
+      </p>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onToggleStar()
-            }}
-            className={cn(
-              'flex h-5 w-5 items-center justify-center rounded-full transition-opacity',
-              file.isStarred
-                ? 'bg-amber-500 text-white'
-                : 'bg-black/50 text-white/70 opacity-0 group-hover:opacity-100 hover:text-white',
-            )}
-          >
-            <Star size={10} className={file.isStarred ? 'fill-current' : undefined} />
-          </button>
-
-          <button
-            ref={menuButtonRef}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              setIsMenuOpen((prev) => !prev)
-            }}
-            className="flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white/80 opacity-0 group-hover:opacity-100 hover:text-white transition-opacity"
-          >
-            <MoreVertical size={11} />
-          </button>
-        </div>
-
-        {file.references === 0 && (
-          <div className="absolute bottom-1.5 left-1.5 rounded px-1 py-0.5 text-[length:var(--text-9)] font-medium bg-amber-500/85 text-white backdrop-blur-xs">
-            {t('attachments.unreferenced')}
-          </div>
+      <div className="flex items-center justify-between text-[length:var(--text-11)] text-[var(--text-tertiary)]">
+        <span>{formatFileSize(file.size)}</span>
+        {folderName && (
+          <span className="truncate max-w-[80px]" title={folderName}>
+            {folderName}
+          </span>
         )}
       </div>
 
-      <div className="p-2 space-y-1">
-        <p className="truncate text-[length:var(--text-12)] font-medium text-[var(--text-primary)]" title={file.filename}>
-          {file.filename}
-        </p>
-
-        <div className="flex items-center justify-between text-[length:var(--text-11)] text-[var(--text-tertiary)]">
-          <span>{formatFileSize(file.size)}</span>
-          {folder && (
-            <span className="truncate max-w-[80px]" title={folder.name}>
-              {folder.name}
+      {file.tags && file.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 pt-0.5">
+          {file.tags.slice(0, 2).map((tag) => (
+            <span key={tag} className="rounded bg-[var(--bg-sunken)] px-1 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)]">
+              #{tag}
+            </span>
+          ))}
+          {file.tags.length > 2 && (
+            <span className="text-[length:var(--text-10)] text-[var(--text-quaternary)]">
+              +{file.tags.length - 2}
             </span>
           )}
         </div>
-
-        {file.tags && file.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-0.5">
-            {file.tags.slice(0, 2).map((tag) => (
-              <span
-                key={tag}
-                className="rounded bg-[var(--bg-sunken)] px-1 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)]"
-              >
-                #{tag}
-              </span>
-            ))}
-            {file.tags.length > 2 && (
-              <span className="text-[length:var(--text-10)] text-[var(--text-quaternary)]">
-                +{file.tags.length - 2}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      <Menu
-        open={isMenuOpen}
-        anchor={menuButtonRef}
-        items={menuItems}
-        onClose={() => setIsMenuOpen(false)}
-      />
-      {contextMenu.point && (
-        <Menu
-          open
-          anchor={contextMenu.point}
-          items={menuItems}
-          onClose={contextMenu.close}
-        />
       )}
     </div>
   )

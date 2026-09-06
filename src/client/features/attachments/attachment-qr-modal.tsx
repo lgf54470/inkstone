@@ -9,29 +9,15 @@ import { t } from '../../lib/i18n'
 const QR_BG_COLOR = '#ffffff'
 const QR_FG_COLOR = '#111827'
 
-export function AttachmentQrModal({
-  open,
-  onClose,
-  url,
-  filename,
-}: {
+export interface AttachmentQrModalProps {
   open: boolean
   onClose: () => void
   url: string
   filename: string
-}) {
-  const [isCopied, setIsCopied] = useState(false)
-  const fullUrl = typeof window !== 'undefined' ? new URL(url, window.location.origin).href : url
+}
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(fullUrl)
-      setIsCopied(true)
-      setTimeout(() => setIsCopied(false), COPY_FEEDBACK_MS)
-    } catch {
-    }
-  }
-
+export function AttachmentQrModal(props: AttachmentQrModalProps) {
+  const { open, onClose, url, filename } = props
   return (
     <Modal
       open={open}
@@ -45,41 +31,52 @@ export function AttachmentQrModal({
       description={filename}
       width={400}
     >
-      <div className="flex flex-col items-center gap-4 py-3">
-        <div className="rounded-[var(--r-xl)] border border-[var(--border-default)] bg-white p-3 shadow-[var(--shadow-soft)]">
-          <QRCodeSVG
-            value={fullUrl}
-            size={200}
-            level="M"
-            marginSize={1}
-            bgColor={QR_BG_COLOR}
-            fgColor={QR_FG_COLOR}
-          />
-        </div>
-        <p className="text-center text-[length:var(--text-12)] text-[var(--text-tertiary)] max-w-xs">
-          {t('attachments.qr_code_hint')}
-        </p>
-        <div className="flex w-full items-center gap-2 pt-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="flex-1"
-            icon={isCopied ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
-            onClick={() => void handleCopy()}
-          >
-            {isCopied ? t('common.copied') : t('attachments.copy_link')}
-          </Button>
-          <a
-            href={fullUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-          >
-            <ExternalLink size={13} />
-            <span>{t('preview.open_in_new_tab')}</span>
-          </a>
-        </div>
-      </div>
+      <QrContent url={url} />
     </Modal>
+  )
+}
+
+function QrContent({ url }: { url: string }) {
+  const [isCopied, setIsCopied] = useState(false)
+  const fullUrl = typeof window !== 'undefined' ? new URL(url, window.location.origin).href : url
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(fullUrl)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), COPY_FEEDBACK_MS)
+    } catch {
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-4 py-3">
+      <div className="rounded-[var(--r-xl)] border border-[var(--border-default)] bg-white p-3 shadow-[var(--shadow-soft)]">
+        <QRCodeSVG value={fullUrl} size={200} level="M" marginSize={1} bgColor={QR_BG_COLOR} fgColor={QR_FG_COLOR} />
+      </div>
+      <p className="text-center text-[length:var(--text-12)] text-[var(--text-tertiary)] max-w-xs">
+        {t('attachments.qr_code_hint')}
+      </p>
+      <div className="flex w-full items-center gap-2 pt-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          className="flex-1"
+          icon={isCopied ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
+          onClick={() => void handleCopy()}
+        >
+          {isCopied ? t('common.copied') : t('attachments.copy_link')}
+        </Button>
+        <a
+          href={fullUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        >
+          <ExternalLink size={13} />
+          <span>{t('preview.open_in_new_tab')}</span>
+        </a>
+      </div>
+    </div>
   )
 }

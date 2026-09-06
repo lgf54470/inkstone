@@ -1,6 +1,8 @@
 import type { AttachmentWithUsage } from '@shared/types'
 import { t } from '../../lib/i18n'
 
+export const DEFAULT_QUOTA_BYTES = 10 * 1024 * 1024 * 1024
+
 export type AttachmentCategory =
   | 'dashboard'
   | 'all'

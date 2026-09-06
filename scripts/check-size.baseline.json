@@ -20,49 +20,6 @@
   "src/client/demo/state.ts": {
     "longFns": 1
   },
-  "src/client/features/attachments/attachment-batch-bar.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/attachments/attachment-dashboard-view.tsx": {
-    "longFns": 3
-  },
-  "src/client/features/attachments/attachment-drive-modal/hooks.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/client/features/attachments/attachment-drive-modal/index.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/attachments/attachment-drive-sidebar/folder-row.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/attachments/attachment-drive-sidebar/sidebar.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/attachments/attachment-drive-sidebar/tag-row.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/attachments/attachment-drive-toolbar.tsx": {
-    "longFns": 2
-  },
-  "src/client/features/attachments/attachment-grid-view.tsx": {
-    "longFns": 2
-  },
-  "src/client/features/attachments/attachment-inspector.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/attachments/attachment-list-view.tsx": {
-    "longFns": 2
-  },
-  "src/client/features/attachments/attachment-qr-modal.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/attachments/attachment-rename-modal.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/attachments/attachment-store.ts": {
-    "longFns": 1
-  },
   "src/client/features/auth/login-page.tsx": {
     "longFns": 2,
     "deepFns": 1
