@@ -20,20 +20,30 @@ export const Preview = memo(function Preview(props: PreviewProps) {
       className={cn('h-full overflow-y-auto overscroll-contain px-4 py-3', className)}
       data-preview-scroller
     >
-      <NotePropertiesEditor noteId={b.sourceNoteId} content={b.content} />
-      <div ref={b.hostRef}
-        onClick={b.onClick}
-        onDoubleClick={b.onDoubleClick}
-        onKeyDown={b.onKeyDown}
-        onMouseMove={b.linkHover.handleMouseMove}
-        onMouseLeave={b.onMouseLeave}
-        onFocus={b.onFocus}
-        onBlur={b.onBlur}
-        data-font={b.proseFont}
-        data-preview-content
-        className="ink-prose"
-        dangerouslySetInnerHTML={b.htmlObj}
-      />
+      <div className="ink-preview-container" data-font={b.proseFont}>
+        <NotePropertiesEditor noteId={b.sourceNoteId} content={b.content} />
+        <div ref={b.hostRef}
+          onClick={b.onClick}
+          onDoubleClick={b.onDoubleClick}
+          onKeyDown={b.onKeyDown}
+          onMouseMove={b.linkHover.handleMouseMove}
+          onMouseLeave={b.onMouseLeave}
+          onFocus={b.onFocus}
+          onBlur={b.onBlur}
+          data-font={b.proseFont}
+          data-preview-content
+          className="ink-prose"
+          dangerouslySetInnerHTML={b.htmlObj}
+        />
+      </div>
+      <PreviewOverlays b={b} />
+    </div>
+  )
+})
+
+function PreviewOverlays({ b }: { b: ReturnType<typeof usePreview> }) {
+  return (
+    <>
       {b.hoverCard && (
         <WikiLinkHoverCard
           card={b.hoverCard}
@@ -54,6 +64,6 @@ export const Preview = memo(function Preview(props: PreviewProps) {
           filename={b.previewFile.filename}
         />
       )}
-    </div>
+    </>
   )
-})
+}

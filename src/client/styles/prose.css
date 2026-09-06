@@ -1,6 +1,18 @@
 
 
 
+.ink-preview-container {
+  font-size: var(--prose-size, 16px);
+  font-family: var(--font-ui);
+  max-width: var(--prose-width, 72ch);
+  margin-inline: auto;
+  width: 100%;
+}
+
+.ink-preview-container[data-font='serif'] {
+  font-family: var(--font-serif);
+}
+
 .ink-prose {
   font-size: var(--prose-size, 16px);
   line-height: var(--prose-line, 1.65);
@@ -15,8 +27,8 @@
 }
 
 .note-properties-editor {
-  max-width: var(--prose-width, 72ch);
-  margin-inline: auto;
+  width: 100%;
+  font-family: var(--font-ui);
 }
 
 .ink-prose[data-font='serif'] {
