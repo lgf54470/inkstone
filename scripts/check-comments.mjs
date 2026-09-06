@@ -128,10 +128,6 @@ const allowed = new Map([
   ["src/client/features/attachments/attachment-drive-modal/hooks.ts", [
     "/** All state + async actions behind the attachment drive modal, so the modal component stays a thin JSX shell. */",
   ]],
-  ["src/client/features/blog/blog-dashboard-view/audience-cards.tsx", [
-    "/* Traffic Sources */",
-    "/* Devices and Systems */",
-  ]],
   ["src/client/features/command/command-palette/index.tsx", [
     "// Counts each note once per ancestor folder (its own folder and every parent).",
   ]],

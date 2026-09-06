@@ -24,27 +24,6 @@
     "longFns": 2,
     "deepFns": 1
   },
-  "src/client/features/blog/blog-dashboard-view/audience-cards.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-dashboard-view/pending-comments-card.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-dashboard-view/top-posts-card.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-dashboard-view/visit-logs-card.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-hub-toolbar.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-publish-modal/index.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/blog/blog-traffic-filter-popover.tsx": {
-    "longFns": 1
-  },
   "src/client/features/command/command-palette/use-commands.tsx": {
     "longFns": 2
   },
