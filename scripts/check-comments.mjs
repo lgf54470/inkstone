@@ -162,6 +162,11 @@ const allowed = new Map([
   ["src/client/features/attachments/attachment-drive-modal/hooks.ts", [
     "/** All state + async actions behind the attachment drive modal, so the modal component stays a thin JSX shell. */",
   ]],
+  ["src/client/features/blog/blog-store/index.ts", [
+    "// Feed the notes store's visibility projection (published note ids) without",
+    "// creating a store → feature import edge: selectors read the neutral registry",
+    "// in store/visibility-sources.ts, not this module.",
+  ]],
   ["src/client/features/command/command-palette/index.tsx", [
     "// Counts each note once per ancestor folder (its own folder and every parent).",
   ]],
@@ -213,6 +218,11 @@ const allowed = new Map([
   ["src/client/features/share/share-form.ts", [
     "// A new or replaced passcode must be at least 4 characters (the server",
     "// enforces the same minimum); short codes are trivially brute-forced.",
+  ]],
+  ["src/client/features/share/share-store/index.ts", [
+    "// Feed the notes store's visibility projection (shared note ids) without",
+    "// creating a store → feature import edge: selectors read the neutral registry",
+    "// in store/visibility-sources.ts, not this module.",
   ]],
   ["src/client/features/share/use-share-page.ts", [
     "// Share pages always block external images (no option): visitors never",
@@ -717,6 +727,17 @@ const allowed = new Map([
     "/** Sort the user left behind when entering a calendar folder view, restored on exit. */",
     "/** External jump request for the sidebar heatmap calendar (from the settings preview); consumed by SidebarCalendar. */",
     "/** Clears the full filter combo (query, date/relative, tags) with an undo toast restoring the exact previous combination. */",
+  ]],
+  ["src/client/store/visibility-sources.ts", [
+    "// Neutral projection registry between the notes store and the share/blog",
+    "// features. The notes store's visible-note selector must filter shared and",
+    "// published notes out of normal views, but it cannot import the feature",
+    "// stores: they import the notes store, and a reverse edge would couple the",
+    "// data layer to feature modules. The blog/share stores push their derived id",
+    "// sets here instead; selectors subscribe through this module, which imports",
+    "// neither side.",
+    "/** Replaces the projection when either id set changed; no-op otherwise. */",
+    "/** Reactive read of the shared/published note-id projection for selectors. */",
   ]],
   ["src/shared/constants.ts", [
     "/**\n * Session lifetime design (sliding window):\n * - `SESSION_TTL_MS` (90d): absolute cap. A session row/cookie never outlives 90 days,\n *   bounding the window in which a stolen session token stays usable.\n * - `SESSION_RENEW_BEFORE_MS` (45d = TTL/2): renewal threshold. On an authenticated\n *   request, if less than this much TTL remains, the session is extended back to the\n *   full 90 days (see middleware/auth.ts and lib/session-store.ts).\n *\n * Trade-offs: renewal only happens for requests that already presented a valid\n * session, so an abandoned session dies within at most 90 days (no idle-forever\n * sessions, maintenance sweeps the rows), while an active user never gets logged out\n * as long as they authenticate at least once per 45 days. The half-life threshold\n * also bounds write amplification: each session triggers at most one DB renewal\n * write per 45 days of activity. The 45-day window is generous enough to survive\n * the app's offline period (offline edits are queued locally and flushed on\n * reconnect, which needs a still-valid session) yet short enough that a freshly\n * stolen cookie's remaining lifetime stays bounded.\n */",

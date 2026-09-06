@@ -15,9 +15,8 @@ import type { Folder, NoteSummary } from '@shared/types';
 import { getFolderTemplateId, getInboxFolderId } from '../../lib/folder-prefs';
 import { renderNewNoteTemplate } from '@shared/markdown-utils';
 import { useNoteTemplates } from '../note-templates';
+import { useVisibilitySnapshot } from '../visibility-sources';
 import { compare, compareTrash } from './workspace';
-import { useBlogStore } from '../../features/blog';
-import { useShareStore } from '../../features/share';
 
 type TagCacheState = Pick<NotesState, 'notes' | 'tags'>;
 
@@ -197,13 +196,7 @@ export function useVisibleNotes(): NoteSummary[] {
     const sort = useUi((s) => s.sort);
     const order = useUi((s) => s.order);
     const todoTagPref = useSession((s) => s.settings.notes?.todoTag);
-    const shares = useShareStore((s) => s.shares);
-    const sharedNoteIds = useMemo(() => new Set(shares.map((s) => s.noteId)), [shares]);
-    const blogPosts = useBlogStore((s) => s.posts);
-    const publishedNoteIds = useMemo(
-        () => new Set(blogPosts.filter((p) => p.isPublished).map((p) => p.noteId)),
-        [blogPosts]
-    );
+    const { sharedNoteIds, publishedNoteIds } = useVisibilitySnapshot();
     return useMemo(() => {
         const folderScope = view === 'folder' && folderId ? folderDescendantIds(folders, folderId) : undefined;
         const list = Object.values(deferredNotes).filter((n) => matchesView(n, view, folderId, tag, folderScope, selectedTags, selectedTagsMatch, dateFilter, resolveTodoTag(todoTagPref, locale), sharedNoteIds, publishedNoteIds));
