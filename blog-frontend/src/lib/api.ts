@@ -69,10 +69,17 @@ export function subscribeApiHealth(listener: (degraded: boolean) => void): () =>
 async function fetchWithTimeout(path: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
+  const external = init?.signal
+  const onExternalAbort = () => controller.abort()
+  if (external) {
+    if (external.aborted) controller.abort()
+    else external.addEventListener('abort', onExternalAbort)
+  }
   try {
     return await fetch(`${API_BASE}${path}`, { ...init, signal: controller.signal })
   } finally {
     clearTimeout(timer)
+    external?.removeEventListener('abort', onExternalAbort)
   }
 }
 
@@ -84,7 +91,9 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
     setDegraded(false)
     return data
   } catch (err) {
-    setDegraded(true)
+    // 调用方主动中止（如搜索换词）不代表 API 降级，不标记健康状态
+    const userAborted = init?.signal?.aborted === true
+    if (!userAborted) setDegraded(true)
     throw err
   }
 }
@@ -105,6 +114,7 @@ export const api = {
     search?: string
     page?: number
     limit?: number
+    signal?: AbortSignal
   }): Promise<{ posts: BlogPost[]; total: number; page: number; limit: number; totalPages: number }> {
     try {
       const query = new URLSearchParams()
@@ -114,7 +124,7 @@ export const api = {
       if (options?.page) query.set('page', String(options.page))
       if (options?.limit) query.set('limit', String(options.limit))
 
-      const data = asRecord(await requestJson(`/api/blog/public/posts?${query.toString()}`))
+      const data = asRecord(await requestJson(`/api/blog/public/posts?${query.toString()}`, { signal: options?.signal }))
       const rawPosts = asArray(data.posts)
       const pagination = asRecord(data.pagination)
       const total = typeof pagination.total === 'number' ? pagination.total : (typeof data.total === 'number' ? data.total : rawPosts.length)

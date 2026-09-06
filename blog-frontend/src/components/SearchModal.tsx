@@ -2,7 +2,6 @@ import {
   useState,
   useEffect,
   useRef,
-  useMemo,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type RefObject,
@@ -10,7 +9,7 @@ import {
 import { Search, X, Calendar, Tag, Loader2 } from 'lucide-react'
 import { api } from '../lib/api'
 import type { BlogPost } from '../lib/types'
-import { SEARCH_PREFETCH_LIMIT, SEARCH_RESULT_LIMIT, SEARCH_FOCUS_DELAY_MS } from '../lib/constants'
+import { SEARCH_RESULT_LIMIT, SEARCH_FOCUS_DELAY_MS, SEARCH_DEBOUNCE_MS } from '../lib/constants'
 
 function useVisibility() {
   const [isOpen, setIsOpen] = useState(false)
@@ -43,56 +42,86 @@ function useVisibility() {
   return { isOpen, close: () => setIsOpen(false) }
 }
 
-function useSearchIndex(isOpen: boolean) {
+/**
+ * 全站搜索：输入防抖后请求服务端 search 接口（覆盖全部已发布文章）。
+ * seq 序号守卫丢弃过期响应，AbortController 取消在途请求（中止不触发降级标记）。
+ */
+function useSearch(isOpen: boolean) {
   const [query, setQuery] = useState('')
-  const [posts, setPosts] = useState<BlogPost[]>([])
-  const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const hasLoadedRef = useRef(false)
+  const { results, total, loading } = useServerSearch(query, isOpen)
 
-  // Focus and pre-fetch posts in memory on open
+  // Focus on open; reset state on close
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), SEARCH_FOCUS_DELAY_MS)
-
-      if (!hasLoadedRef.current) {
-        hasLoadedRef.current = true
-        setLoading(true)
-        api
-          .getPosts({ limit: SEARCH_PREFETCH_LIMIT })
-          .then((res) => {
-            setPosts(res.posts || [])
-          })
-          .catch((err) => {
-            console.error('Failed to pre-fetch search posts:', err)
-          })
-          .finally(() => {
-            setLoading(false)
-          })
-      }
     } else {
       setQuery('')
     }
   }, [isOpen])
 
-  return { query, setQuery, posts, loading, inputRef }
+  return { query, setQuery, results, total, loading, inputRef }
 }
 
-function useFilteredResults(posts: BlogPost[], query: string): BlogPost[] {
-  // Pure in-memory instantaneous search filter (0ms delay)
-  return useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return []
+function useServerSearch(query: string, isOpen: boolean) {
+  const [results, setResults] = useState<BlogPost[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const seqRef = useRef(0)
+  const controllerRef = useRef<AbortController | null>(null)
 
-    return posts
-      .filter((post) => {
-        const titleMatch = post.title.toLowerCase().includes(q)
-        const excerptMatch = post.excerpt?.toLowerCase().includes(q)
-        const tagsMatch = post.tags?.some((t) => t.toLowerCase().includes(q))
-        return titleMatch || excerptMatch || tagsMatch
+  useEffect(() => {
+    const q = query.trim()
+    seqRef.current += 1
+    controllerRef.current?.abort()
+    if (!isOpen || !q) {
+      setResults([])
+      setTotal(0)
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    const timer = setTimeout(() => {
+      runSearchRequest({
+        q,
+        seqRef,
+        controllerRef,
+        onResult: (posts, total) => {
+          setResults(posts)
+          setTotal(total)
+        },
+        onLoading: setLoading,
       })
-      .slice(0, SEARCH_RESULT_LIMIT)
-  }, [query, posts])
+    }, SEARCH_DEBOUNCE_MS)
+
+    return () => clearTimeout(timer)
+  }, [query, isOpen])
+
+  return { results, total, loading }
+}
+
+async function runSearchRequest(options: {
+  q: string
+  seqRef: RefObject<number>
+  controllerRef: RefObject<AbortController | null>
+  onResult: (posts: BlogPost[], total: number) => void
+  onLoading: (loading: boolean) => void
+}): Promise<void> {
+  const { q, seqRef, controllerRef, onResult, onLoading } = options
+  const seq = seqRef.current
+  const controller = new AbortController()
+  controllerRef.current = controller
+  try {
+    const res = await api.getPosts({ search: q, limit: SEARCH_RESULT_LIMIT, signal: controller.signal })
+    if (seq !== seqRef.current) return
+    onResult(res.posts, res.total)
+  } catch {
+    if (seq !== seqRef.current) return // 已被新查询取代的请求中止，丢弃
+    onResult([], 0)
+  } finally {
+    if (seq === seqRef.current) onLoading(false)
+  }
 }
 
 function useSelection(results: BlogPost[]) {
@@ -125,8 +154,7 @@ function useSelection(results: BlogPost[]) {
 
 function useSearchModal() {
   const { isOpen, close } = useVisibility()
-  const { query, setQuery, posts, loading, inputRef } = useSearchIndex(isOpen)
-  const results = useFilteredResults(posts, query)
+  const { query, setQuery, results, total, loading, inputRef } = useSearch(isOpen)
   const { selectedIndex, setSelectedIndex, handleKeyDownList } = useSelection(results)
   const clearQuery = () => setQuery('')
 
@@ -134,8 +162,8 @@ function useSearchModal() {
     isOpen,
     query,
     loading,
-    posts,
     results,
+    total,
     selectedIndex,
     inputRef,
     clearQuery,
@@ -169,7 +197,7 @@ export default function SearchModal() {
         selectedIndex={search.selectedIndex}
         onHoverRow={search.onHoverRow}
       />
-      <SearchFooter resultCount={search.results.length} indexedCount={search.posts.length} />
+      <SearchFooter query={search.query} resultCount={search.results.length} total={search.total} />
     </SearchLayer>
   )
 }
@@ -270,7 +298,7 @@ function SearchResultsPanel({
     <div className="max-h-96 overflow-y-auto p-2">
       {query.trim() === '' ? (
         <div className="py-10 text-center text-xs text-[var(--text-tertiary)]">
-          输入关键字进行全站极速搜索 (Cmd+K)
+          输入关键字进行全站搜索 (Cmd+K)
         </div>
       ) : results.length === 0 && !loading ? (
         <div className="py-10 text-center text-xs text-[var(--text-tertiary)]">
@@ -352,11 +380,13 @@ function SearchResultRow({ post, selected, onHover }: { post: BlogPost; selected
   )
 }
 
-function SearchFooter({ resultCount, indexedCount }: { resultCount: number; indexedCount: number }) {
+function SearchFooter({ query, resultCount, total }: { query: string; resultCount: number; total: number }) {
   return (
     <div className="px-4 py-2 bg-[var(--bg-raised)] border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-quaternary)] flex items-center justify-between">
       <span>
-        {resultCount > 0 ? `匹配到 ${resultCount} 篇相关文章` : `已就绪 ${indexedCount} 篇博文索引`}
+        {query.trim()
+          ? `全站匹配 ${total} 篇，当前展示 ${resultCount} 篇`
+          : '支持全站文章搜索'}
       </span>
       <div className="flex items-center gap-3">
         <span>导航: ↑ ↓</span>

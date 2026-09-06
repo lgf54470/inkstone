@@ -1,9 +1,9 @@
 /** 每页文章数兜底值（站点配置 postsPerPage 缺失/离线 fallback 时使用） */
 export const POSTS_PER_PAGE_DEFAULT = 10
-/** 搜索弹窗首次打开时的预取上限 */
-export const SEARCH_PREFETCH_LIMIT = 100
 /** 搜索结果列表最多展示条数 */
 export const SEARCH_RESULT_LIMIT = 8
+/** 服务端搜索输入防抖延迟（ms） */
+export const SEARCH_DEBOUNCE_MS = 300
 /** 弹窗打开后聚焦输入框的延迟（ms） */
 export const SEARCH_FOCUS_DELAY_MS = 30
 /** 复制成功反馈文字持续时长（ms） */

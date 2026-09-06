@@ -31,7 +31,8 @@ describe('component server-render smoke', () => {
   it('SearchModal renders closed overlay with search hint and footer', () => {
     const html = render(createElement(SearchModal))
     expect(html).toContain('搜索文章标题')
-    expect(html).toContain('输入关键字进行全站极速搜索')
+    expect(html).toContain('输入关键字进行全站搜索')
+    expect(html).toContain('支持全站文章搜索')
     expect(html).toContain('退出: ESC')
     expect(html).toContain('invisible pointer-events-none')
   })

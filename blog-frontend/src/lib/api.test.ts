@@ -85,6 +85,35 @@ describe('api.getPosts', () => {
     expect(result.total).toBe(result.posts.length)
     expect(result.posts[0]!.slug).toBe('welcome-to-inkstone-blog')
   })
+
+  it('sends the search param to the API', async () => {
+    stubFetch({ posts: [], pagination: { total: 0, page: 1, limit: 8, totalPages: 0 } })
+    await api.getPosts({ search: 'hello', limit: 8 })
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      expect.stringContaining('search=hello'),
+      expect.anything()
+    )
+  })
+
+  it('aborts via caller signal without marking degraded', async () => {
+    stubFetch({ settings: { siteName: 'Back' } })
+    await api.getSiteInfo() // 回到健康状态，保证与执行顺序无关
+    const controller = new AbortController()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, init?: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+          })
+      )
+    )
+    const promise = api.getPosts({ search: 'inkstone', signal: controller.signal })
+    controller.abort()
+    const result = await promise // 中止被 getPosts 吞掉并走离线 fallback
+    expect(result.posts.length).toBeGreaterThan(0)
+    expect(isApiDegraded()).toBe(false) // 用户主动中止不计入降级
+  })
 })
 
 describe('api.getSiteInfo', () => {
