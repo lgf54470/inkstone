@@ -678,10 +678,11 @@ const allowed = new Map([
   ["src/client/store/ui/store.ts", [
     "// Keep the multi-select when entering a folder view so it stacks with",
     "// the folder filter; any other navigation clears the selection.",
+    "// The view transition can be skipped (reduced motion, interrupted navigation); the circular reveal is purely decorative.",
     "/**\n * Post a toast carrying a one-click undo action; the single helper behind every store-level undo flow.\n * `duration` overrides the default window (dangerous actions pass a longer one via their caller).\n */",
   ]],
   ["src/client/store/ui/theme.ts", [
-    "// The view transition can be skipped (reduced motion, interrupted navigation); the circular reveal is purely decorative.",
+    "/** Applies the current appearance to <html> data attributes (theme/accent/background). */",
   ]],
   ["src/client/store/ui/types.ts", [
     "/** Marks an undo toast: accent icon/tint in the UI and a short vibration cue. */",
