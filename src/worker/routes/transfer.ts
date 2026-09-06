@@ -367,11 +367,3 @@ async function restoreZipMarkdownNotes(
     })
   }
 }
-
-
-// Preserved export surface: parseImportConflict / importedBundleTitle /
-// importedMarkdownTitle used to live in this file; runBatched was re-exported
-// here for consumers that import the transfer route module.
-export { parseImportConflict } from '../import/shared'
-export { importedBundleTitle, importedMarkdownTitle } from '../import/shared'
-export { runBatched } from '../db/writes'

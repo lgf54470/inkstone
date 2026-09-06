@@ -1174,11 +1174,6 @@ const allowed = new Map([
     "// The guarded write was lost to a concurrent edit: re-read just this",
     "// note and retry with fresh state.",
   ]],
-  ["src/worker/routes/transfer.ts", [
-    "// Preserved export surface: parseImportConflict / importedBundleTitle /",
-    "// importedMarkdownTitle used to live in this file; runBatched was re-exported",
-    "// here for consumers that import the transfer route module.",
-  ]],
   ["tests/markdown-renderer-parity.test.ts", [
     "// Structural parity baseline: root and blog renderers keep (and must not silently",
     "// change) these tag/class skeleton differences. Any baseline item that converges",
