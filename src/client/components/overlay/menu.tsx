@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/cn';
@@ -6,20 +6,7 @@ import { Kbd } from '../primitives';
 import { t } from '../../lib/i18n';
 import { Z_INDEX } from '../../lib/z-index';
 import { useEscape, useClickOutside } from './hooks';
-import { useCursorFocus, useFocusRestore, useMenuActionKeys, useMenuCursorKeys, useMenuPosition, useMenuReset, useSubmenuPosition } from './use-menu';
-
-export interface MenuItem {
-    id: string;
-    label: string;
-    icon?: ReactNode;
-    combo?: string;
-    tone?: 'default' | 'danger';
-    disabled?: boolean;
-    checked?: boolean;
-    onSelect?: () => void;
-    separatorBefore?: boolean;
-    submenu?: ReactNode | ((props: { closeMenu: () => void }) => ReactNode);
-}
+import { useCursorFocus, useFocusRestore, useMenuActionKeys, useMenuCursorKeys, useMenuPosition, useMenuReset, useSubmenuPosition, type MenuItem } from './use-menu';
 
 interface MenuItemRowProps {
     item: MenuItem;

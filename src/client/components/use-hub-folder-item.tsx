@@ -5,7 +5,37 @@ import { tryParseStringArray } from '../lib/json';
 import { useUi, type UiState } from '../store/ui';
 import { useContextMenu, type MenuItem } from './overlay';
 import { FolderColorSubmenu } from '../features/folders';
-import type { FolderRowProps } from './hub-folder-row';
+// FolderRowProps/FolderRowHandlers live here (not in hub-folder-row.tsx)
+// because use-hub-folder-item.tsx consumed them; the row component already
+// imports the other shared types from this module, so owning the props here
+// keeps the pair free of an import cycle.
+export interface FolderRowHandlers {
+    onToggleExpand: (e: React.MouseEvent) => void
+    onSelect: () => void
+    onContextMenu: (e: React.MouseEvent) => void
+    onDragOver: (e: React.DragEvent) => void
+    onDragLeave: (e: React.DragEvent) => void
+    onDrop: (e: React.DragEvent) => void
+    onNameChange: (value: string) => void
+    onFinishRename: (nextName: string) => void
+    onBatchToggle: (enabled: boolean) => void
+    onToggleMenu: () => void
+    onEmptyToast: () => void
+}
+
+export interface FolderRowProps {
+    node: HubFolderNodeLike
+    isExpanded: boolean
+    isSelected: boolean
+    isRenaming: boolean
+    isDragOver: boolean
+    batchBusy: boolean
+    labels: HubFolderLabels
+    counts: { safeTotal: number; safeEnabled: number; isChecked: boolean }
+    nameInput: string
+    refs: { inputRef: React.RefObject<HTMLInputElement | null>; moreButtonRef: React.RefObject<HTMLButtonElement | null> }
+    handlers: FolderRowHandlers
+}
 
 export interface HubFolderNodeLike {
     folder: { id: string; name: string; color?: string | null }

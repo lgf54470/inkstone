@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Kbd } from '../primitives';
 import { getVisibleViewport } from '../../lib/viewport';
-import { useTooltipAnchor, useTooltipReposition } from './use-tooltip';
+import { useTooltipAnchor, useTooltipReposition, type TooltipPosition, type TooltipSide } from './use-tooltip';
 
 const GAP = 7;
 const PADDING = 8;
@@ -73,20 +73,7 @@ export function Tooltip({ label, combo, children, side = 'bottom', delay = 420, 
                 {combo && <Kbd combo={combo}/>}
             </div>, document.body)}
     </>);
-}
-
-
-export type TooltipSide = 'top' | 'bottom' | 'left' | 'right';
-
-
-export interface TooltipPosition {
-    top: number;
-    left: number;
-    side: TooltipSide;
-}
-
-
-export function placeTooltip(anchor: DOMRect, tooltip: DOMRect, preferred: TooltipSide): TooltipPosition {
+}export function placeTooltip(anchor: DOMRect, tooltip: DOMRect, preferred: TooltipSide): TooltipPosition {
     const vp = viewportBounds();
     const side = shouldFlip(anchor, tooltip, preferred, vp) ? oppositeSide(preferred) : preferred;
     const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), Math.max(min, max));

@@ -93,6 +93,11 @@ const allowed = new Map([
   ["src/client/components/activity-calendar/range.ts", [
     "/** Convert an inclusive month range (0-11 indices within a year) to inclusive day keys. */",
   ]],
+  ["src/client/components/activity-calendar/types.ts", [
+    "// Shared hook state shapes for the activity calendar. Kept in their own module",
+    "// so use-calendar-handlers.ts can consume them without importing the main hook",
+    "// module (which imports the handlers back — a module cycle).",
+  ]],
   ["src/client/components/activity-calendar/use-activity-calendar.ts", [
     "// Marks an external month jump (settings preview click) or an internal jump (week click, gap-cell follow, endpoint locate) with the same fade-in + receding accent ring.",
   ]],
@@ -110,6 +115,16 @@ const allowed = new Map([
     "// Landing focus on the undo action is the keyboard fast-path, but it must never",
     "// interrupt typing, steal from an open dialog, or fight another undo toast.",
   ]],
+  ["src/client/components/overlay/use-menu.ts", [
+    "// MenuItem lives here (not in menu.tsx) because menu.tsx already imports the",
+    "// runtime hooks from this module; defining the item shape here keeps the pair",
+    "// free of an import cycle.",
+  ]],
+  ["src/client/components/overlay/use-tooltip.ts", [
+    "// TooltipPosition/TooltipSide live here (not in tooltip.tsx) because tooltip.tsx",
+    "// already imports the runtime hooks from this module; defining the position",
+    "// shapes here keeps the pair free of an import cycle.",
+  ]],
   ["src/client/components/tag-filter-popover.tsx", [
     "/** Shared multi-tag picker: searchable tag checklist with note counts and an any/all match-mode switch. */",
   ]],
@@ -119,6 +134,12 @@ const allowed = new Map([
   ["src/client/components/use-date-range-popover.ts", [
     "// Locate feedback mirrors the sidebar-calendar jumpFlash: when the popover opens aimed at the range end month, or the endpoint toggles, the mini grid pulses with the accent ring.",
     "// Drag payload is best-effort; the drop handler re-reads the index from state, not dataTransfer.",
+  ]],
+  ["src/client/components/use-hub-folder-item.tsx", [
+    "// FolderRowProps/FolderRowHandlers live here (not in hub-folder-row.tsx)",
+    "// because use-hub-folder-item.tsx consumed them; the row component already",
+    "// imports the other shared types from this module, so owning the props here",
+    "// keeps the pair free of an import cycle.",
   ]],
   ["src/client/demo/backend/routes/files.ts", [
     "// Match the real worker contract: facetsFull may only be true when the response carries the",
@@ -758,6 +779,11 @@ const allowed = new Map([
   ["src/worker/backup/s3.ts", [
     "/* Best-effort: an unreadable error body falls back to the generic hints below. */",
   ]],
+  ["src/worker/backup/snapshot/files.ts", [
+    "// Snapshot payload types live here (not in build.ts) because build.ts imports",
+    "// the stream helpers from this module; owning the shared shapes here keeps the",
+    "// pair free of an import cycle.",
+  ]],
   ["src/worker/backup/snapshot/index.ts", [
     "/** Produces restorable JSON, readable Markdown, and attachment files for every backup target. */",
   ]],
@@ -896,6 +922,11 @@ const allowed = new Map([
   ]],
   ["src/worker/mcp/writes/ops.ts", [
     "// Blank MCP-created notes follow the user's configured new-note template.",
+  ]],
+  ["src/worker/mcp/writes/patch.ts", [
+    "// McpWriteContext lives here (not in ops.ts) because ops.ts imports the patch",
+    "// helpers from this module; owning the shared context shape here keeps the",
+    "// pair free of an import cycle.",
   ]],
   ["src/worker/middleware/auth.ts", [
     "// Sliding-window renewal (see SESSION_RENEW_BEFORE_MS in shared/constants):",

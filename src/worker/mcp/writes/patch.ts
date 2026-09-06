@@ -10,7 +10,17 @@ import { newId } from "../../lib/id";
 import { broadcastUserCursor } from "../../lib/notify";
 import { assertContentSize } from "../../lib/request";
 import { enqueueNoteIndex } from "../ai-search";
-import type { McpWriteContext } from './ops';
+import type { Env } from "../../env";
+
+// McpWriteContext lives here (not in ops.ts) because ops.ts imports the patch
+// helpers from this module; owning the shared context shape here keeps the
+// pair free of an import cycle.
+export interface McpWriteContext {
+  env: Env
+  userId: string
+  ftsEnabled: boolean
+  executionCtx: ExecutionContext
+}
 
 export interface NotePatch {
   title?: string

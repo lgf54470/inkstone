@@ -4,9 +4,30 @@ import { NOTE_COLUMNS_FULL, type NoteRow } from "../../db/rows";
 import type { Env } from "../../env";
 import { sha256Hex } from "../../lib/encoding";
 import { safeAttachmentMime } from "../../lib/image";
-import type { AttachmentSnapshotRow } from "./build";
-import type { BackupFile } from "./build";
-import type { BackupFileKind } from "./build";
+// Snapshot payload types live here (not in build.ts) because build.ts imports
+// the stream helpers from this module; owning the shared shapes here keeps the
+// pair free of an import cycle.
+export type BackupFileKind = 'note' | 'attachment' | 'readme' | 'manifest' | 'complete'
+
+export interface BackupFile {
+  path: string
+  byteLength: number
+  sha256: string
+  contentType: string
+  kind: BackupFileKind
+  open: () => Promise<ReadableStream<Uint8Array>>
+}
+
+export interface AttachmentSnapshotRow {
+  id: string
+  user_id: string
+  filename: string
+  mime: string
+  size: number
+  sha256: string
+  storage: string
+  created_at: number
+}
 
 export const encoder = new TextEncoder()
 

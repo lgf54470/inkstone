@@ -12,18 +12,9 @@ import { openPlannedNote } from "./files";
 import { openVerifiedAttachment } from "./files";
 import { renderNoteBody } from "./files";
 import { staticFile } from "./files";
-import { staticFileAsync } from "./files";
+import { staticFileAsync, type BackupFile, type AttachmentSnapshotRow } from "./files";
 
-export type BackupFileKind = 'note' | 'attachment' | 'readme' | 'manifest' | 'complete'
-
-export interface BackupFile {
-  path: string
-  byteLength: number
-  sha256: string
-  contentType: string
-  kind: BackupFileKind
-  open: () => Promise<ReadableStream<Uint8Array>>
-}
+export type { BackupFile, BackupFileKind, AttachmentSnapshotRow } from "./files";
 
 export interface Snapshot {
   payloadFiles: BackupFile[]
@@ -34,17 +25,6 @@ export interface Snapshot {
   bytes: number
   stamp: string
   createdAt: Date
-}
-
-export interface AttachmentSnapshotRow {
-  id: string
-  user_id: string
-  filename: string
-  mime: string
-  size: number
-  sha256: string
-  storage: string
-  created_at: number
 }
 
 export const NOTE_PAGE_SIZE = 100

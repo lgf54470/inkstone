@@ -11,14 +11,9 @@ import { assertContentSize } from "../../lib/request";
 import { enqueueNoteIndex } from "../ai-search";
 import { runIdempotent } from "../operations";
 import { applyEdit, buildMcpNoteContent, type NoteEditOperation } from './content';
-import { afterMutation, assertExpectedRevision, loadNote, loadNoteOrNull, loadNoteRow, patchNote, resolveFolderId, resolveTitle } from './patch';
+import { afterMutation, assertExpectedRevision, loadNote, loadNoteOrNull, loadNoteRow, patchNote, resolveFolderId, resolveTitle, type McpWriteContext } from './patch';
 
-export interface McpWriteContext {
-  env: Env
-  userId: string
-  ftsEnabled: boolean
-  executionCtx: ExecutionContext
-}
+export type { McpWriteContext } from './patch';
 
 interface CreateNoteInput {
   operationId: string

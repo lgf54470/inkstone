@@ -1,6 +1,21 @@
-import { useEffect, useLayoutEffect, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, type ReactNode, type RefObject } from 'react';
 import { getVisibleViewport } from '../../lib/viewport';
-import type { MenuItem } from './menu';
+
+// MenuItem lives here (not in menu.tsx) because menu.tsx already imports the
+// runtime hooks from this module; defining the item shape here keeps the pair
+// free of an import cycle.
+export interface MenuItem {
+    id: string;
+    label: string;
+    icon?: ReactNode;
+    combo?: string;
+    tone?: 'default' | 'danger';
+    disabled?: boolean;
+    checked?: boolean;
+    onSelect?: () => void;
+    separatorBefore?: boolean;
+    submenu?: ReactNode | ((props: { closeMenu: () => void }) => ReactNode);
+}
 
 function nextCursor(items: MenuItem[], current: number, step: 1 | -1): number {
     let next = current;

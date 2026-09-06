@@ -6,32 +6,10 @@ import { buildStripWeeks, type WeekCell } from './strip';
 import { latestEditOutsideWindow } from '../../features/list';
 import { YEAR_GRID_COLUMNS, buildMonthGridCells, yearGridColumns, type YearGridColumns } from '../calendar-grids';
 import type { ActivityCalendarProps } from './props';
+import type { CalendarState, FlashState, CalendarBase, MonthState, StripState, LatestState } from './types';
 import { useCalendarNav, useMonthGridHandlers, useRangeDragFinish, useRootKeyHandler, useStripHandlers, useYearGridHandlers, type MonthGridHandlers, type NavHandlers, type StripHandlers, type YearGridHandlers } from './use-calendar-handlers';
 
-export interface CalendarState {
-    expandedWeek: number | null;
-    setExpandedWeek: React.Dispatch<React.SetStateAction<number | null>>;
-    expandedDay: string | null;
-    setExpandedDay: React.Dispatch<React.SetStateAction<string | null>>;
-    isExpandedWeekNotes: boolean;
-    setIsExpandedWeekNotes: React.Dispatch<React.SetStateAction<boolean>>;
-    focusedKey: string | null;
-    setFocusedKey: React.Dispatch<React.SetStateAction<string | null>>;
-    focusedMonth: number | null;
-    setFocusedMonth: React.Dispatch<React.SetStateAction<number | null>>;
-    dragRange: DateRangeFilter | null;
-    setDragRange: React.Dispatch<React.SetStateAction<DateRangeFilter | null>>;
-    yearRangeAnchor: { year: number; month: number } | null;
-    setYearRangeAnchor: React.Dispatch<React.SetStateAction<{ year: number; month: number } | null>>;
-    yearRangeHover: number | null;
-    setYearRangeHover: React.Dispatch<React.SetStateAction<number | null>>;
-    lastExpandedWeek: React.MutableRefObject<number | null>;
-    lastExpandedDay: React.MutableRefObject<string | null>;
-    dragStartKey: React.MutableRefObject<string | null>;
-    dragHoverKey: React.MutableRefObject<string | null>;
-    rootRef: React.RefObject<HTMLDivElement | null>;
-    rootWidth: number | null;
-}
+export type { CalendarState, FlashState, CalendarBase, MonthState, StripState, LatestState } from './types';
 
 function useCalendarState(): CalendarState {
     const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
@@ -63,13 +41,6 @@ function useCalendarState(): CalendarState {
     return { expandedWeek, setExpandedWeek, expandedDay, setExpandedDay, isExpandedWeekNotes, setIsExpandedWeekNotes, focusedKey, setFocusedKey, focusedMonth, setFocusedMonth, dragRange, setDragRange, yearRangeAnchor, setYearRangeAnchor, yearRangeHover, setYearRangeHover, lastExpandedWeek, lastExpandedDay, dragStartKey, dragHoverKey, rootRef, rootWidth };
 }
 
-export interface FlashState {
-    monthFlashRef: React.RefObject<HTMLDivElement | null>;
-    weekFlashRef: React.RefObject<HTMLDivElement | null>;
-    flash: () => void;
-    flashNonce: number;
-}
-
 function useCalendarFlash(jumpFlash: number, view: 'month' | 'weeks' | 'year'): FlashState {
     const monthFlashRef = useRef<HTMLDivElement | null>(null);
     const weekFlashRef = useRef<HTMLDivElement | null>(null);
@@ -94,18 +65,6 @@ function useCalendarFlash(jumpFlash: number, view: 'month' | 'weeks' | 'year'): 
     return { monthFlashRef, weekFlashRef, flash, flashNonce };
 }
 
-export interface CalendarBase {
-    now: Date;
-    todayKey: string;
-    isCurrentMonth: boolean;
-    isCurrentYear: boolean;
-    weekdayLabels: string[];
-    gridTitle: string;
-    monthLabels: string[];
-    yearColumns: YearGridColumns;
-    focusMonth: number;
-}
-
 function useCalendarBase(props: ActivityCalendarProps, state: CalendarState): CalendarBase {
     const now = useMemo(() => props.today ?? new Date(), [props.today]);
     const todayKey = dateKey(now);
@@ -128,13 +87,6 @@ function useCalendarBase(props: ActivityCalendarProps, state: CalendarState): Ca
         ? state.focusedMonth
         : (isCurrentYear ? now.getMonth() : 0);
     return { now, todayKey, isCurrentMonth, isCurrentYear, weekdayLabels, gridTitle, monthLabels, yearColumns, focusMonth };
-}
-
-export interface MonthState {
-    inMonthKeys: string[];
-    focusKey: string;
-    cellMeta: { byKey: Map<string, number>; max: number };
-    inRange: (key: string) => boolean;
 }
 
 function useCalendarMonth(props: ActivityCalendarProps, state: CalendarState, base: CalendarBase): MonthState {
@@ -192,14 +144,6 @@ function useCalendarYear(props: ActivityCalendarProps, state: CalendarState): Ye
     return { yearMeta, yearLevel };
 }
 
-export interface StripState {
-    stripWeeks: WeekCell[][];
-    weekCells: WeekCell[] | undefined;
-    weekCellsTotal: number;
-    shownWeek: number | null;
-    shownDay: string | null;
-}
-
 function useCalendarStrip(props: ActivityCalendarProps, base: CalendarBase, state: CalendarState): StripState {
     if (state.expandedWeek !== null)
         state.lastExpandedWeek.current = state.expandedWeek;
@@ -211,17 +155,6 @@ function useCalendarStrip(props: ActivityCalendarProps, base: CalendarBase, stat
     const weekCells = shownWeek !== null ? stripWeeks[shownWeek] : undefined;
     const weekCellsTotal = weekCells?.reduce((sum, cell) => sum + cell.notes.length, 0) ?? 0;
     return { stripWeeks, weekCells, weekCellsTotal, shownWeek, shownDay };
-}
-
-export interface LatestState {
-    latestEditOutside: ReturnType<typeof latestEditOutsideWindow>;
-    latestEditOutsideKey: string | null;
-    latestOutsideDays: number | null;
-    isLatestOutside: (key: string) => boolean;
-    gapAhead: boolean;
-    dayLabel: (key: string) => string;
-    flaggedLabel: (key: string) => string;
-    gapLabel: (key: string) => string;
 }
 
 function useCalendarLatest(props: ActivityCalendarProps): LatestState {

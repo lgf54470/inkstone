@@ -2,35 +2,7 @@ import { ChevronDown, ChevronRight, FolderClosed, FolderOpen, MoreHorizontal } f
 import { cn } from '../lib/cn';
 import { Switch } from './form';
 import { Tooltip } from './overlay';
-import type { HubFolderLabels, HubFolderNodeLike } from './use-hub-folder-item';
-
-export interface FolderRowHandlers {
-    onToggleExpand: (e: React.MouseEvent) => void
-    onSelect: () => void
-    onContextMenu: (e: React.MouseEvent) => void
-    onDragOver: (e: React.DragEvent) => void
-    onDragLeave: (e: React.DragEvent) => void
-    onDrop: (e: React.DragEvent) => void
-    onNameChange: (value: string) => void
-    onFinishRename: (nextName: string) => void
-    onBatchToggle: (enabled: boolean) => void
-    onToggleMenu: () => void
-    onEmptyToast: () => void
-}
-
-export interface FolderRowProps {
-    node: HubFolderNodeLike
-    isExpanded: boolean
-    isSelected: boolean
-    isRenaming: boolean
-    isDragOver: boolean
-    batchBusy: boolean
-    labels: HubFolderLabels
-    counts: { safeTotal: number; safeEnabled: number; isChecked: boolean }
-    nameInput: string
-    refs: { inputRef: React.RefObject<HTMLInputElement | null>; moreButtonRef: React.RefObject<HTMLButtonElement | null> }
-    handlers: FolderRowHandlers
-}
+import type { FolderRowProps, HubFolderLabels, HubFolderNodeLike } from './use-hub-folder-item';
 
 function rowKeyDown(select: () => void) {
     return (e: React.KeyboardEvent) => {

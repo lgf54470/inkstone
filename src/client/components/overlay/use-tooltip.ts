@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { TooltipPosition } from './tooltip';
+
+// TooltipPosition/TooltipSide live here (not in tooltip.tsx) because tooltip.tsx
+// already imports the runtime hooks from this module; defining the position
+// shapes here keeps the pair free of an import cycle.
+export type TooltipSide = 'top' | 'bottom' | 'left' | 'right';
+
+export interface TooltipPosition {
+    top: number;
+    left: number;
+    side: TooltipSide;
+}
 
 export function useTooltipAnchor(delay: number, setPosition: React.Dispatch<React.SetStateAction<TooltipPosition | null>>, setRect: React.Dispatch<React.SetStateAction<DOMRect | null>>): {
     holderRef: React.RefObject<HTMLSpanElement | null>;

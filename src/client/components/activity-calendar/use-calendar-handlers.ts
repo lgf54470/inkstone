@@ -4,7 +4,7 @@ import { dateKey } from '../../lib/time';
 import { monthRangeToKeys } from './range';
 import type { WeekCell } from './strip';
 import type { ActivityCalendarProps } from './props';
-import type { CalendarBase, CalendarState, FlashState, LatestState, MonthState, StripState } from './use-activity-calendar';
+import type { CalendarBase, CalendarState, FlashState, LatestState, MonthState, StripState } from './types';
 
 export function normalizeRange(a: string, b: string): DateRangeFilter {
     return a <= b ? { start: a, end: b } : { start: b, end: a };
