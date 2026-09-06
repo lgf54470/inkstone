@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, type SyntheticEvent } from 'react'
 import { MessageSquare, Send, User, Mail, Globe, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { api } from '../lib/api'
 import type { BlogComment } from '../lib/types'
@@ -40,7 +40,7 @@ export default function CommentsSection({ postId, allowComments = true }: Commen
     }
   }, [postId])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!name.trim() || !email.trim() || !content.trim()) {
       setMessage({ type: 'error', text: '请填写称呼、邮箱与评论内容' })

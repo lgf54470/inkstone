@@ -5,13 +5,11 @@ import {
   Sun,
   Moon,
   Monitor,
-  LayoutGrid,
   Languages,
   RotateCcw,
 } from 'lucide-react'
 import {
   type AppearanceConfig,
-  type AccentColor,
   type ThemeMode,
   type BackgroundMode,
   type DensityMode,
