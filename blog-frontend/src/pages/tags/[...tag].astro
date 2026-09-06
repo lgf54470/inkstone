@@ -3,7 +3,6 @@ import Layout from '../../layouts/Layout.astro'
 import PostCard from '../../components/PostCard.astro'
 import Pagination from '../../components/Pagination.astro'
 import { api } from '../../lib/api'
-import { POSTS_PER_PAGE_DEFAULT } from '../../lib/constants'
 
 const tagName = Astro.params.tag
 if (!tagName) {
@@ -13,15 +12,14 @@ if (!tagName) {
 const url = Astro.url
 const page = parseInt(url.searchParams.get('page') || '1', 10)
 
-const [postsData, categories] = await Promise.all([
-  api.getPosts({ tag: tagName, page, limit: POSTS_PER_PAGE_DEFAULT }),
-  api.getCategories(),
-])
+// 分页大小与首页保持一致，遵循站点配置的 postsPerPage 而非硬编码 10
+const [siteInfo, categories] = await Promise.all([api.getSiteInfo(), api.getCategories()])
+const postsData = await api.getPosts({ tag: tagName, page, limit: siteInfo.postsPerPage })
 
 const categoryMap = new Map(categories.map((c) => [c.id, c]))
 ---
 
-<Layout title={`标签：#${tagName} - Inkstone Blog`} description={`包含 #${tagName} 标签的博文列表`}>
+<Layout title={`标签：#${tagName} - Inkstone Blog`} description={`包含 #${tagName} 标签的博文列表`} siteInfo={siteInfo}>
   <div class="max-w-4xl mx-auto space-y-8">
     <header class="py-6 border-b border-[var(--border-subtle)] space-y-3">
       <a href="/tags" class="text-xs text-[var(--accent)] hover:underline inline-flex items-center gap-1">

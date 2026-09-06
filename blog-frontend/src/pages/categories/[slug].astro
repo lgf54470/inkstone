@@ -3,7 +3,6 @@ import Layout from '../../layouts/Layout.astro'
 import PostCard from '../../components/PostCard.astro'
 import Pagination from '../../components/Pagination.astro'
 import { api } from '../../lib/api'
-import { POSTS_PER_PAGE_DEFAULT } from '../../lib/constants'
 import { categoryDotStyle } from '../../lib/category-style'
 
 const slug = Astro.params.slug
@@ -11,7 +10,7 @@ if (!slug) {
   return Astro.redirect('/404')
 }
 
-const categories = await api.getCategories()
+const [categories, siteInfo] = await Promise.all([api.getCategories(), api.getSiteInfo()])
 const category = categories.find((c) => c.slug === slug)
 
 if (!category) {
@@ -21,10 +20,11 @@ if (!category) {
 const url = Astro.url
 const page = parseInt(url.searchParams.get('page') || '1', 10)
 
-const postsData = await api.getPosts({ categoryId: category.id, page, limit: POSTS_PER_PAGE_DEFAULT })
+// 分页大小与首页保持一致，遵循站点配置的 postsPerPage 而非硬编码 10
+const postsData = await api.getPosts({ categoryId: category.id, page, limit: siteInfo.postsPerPage })
 ---
 
-<Layout title={`分类：${category.name} - Inkstone Blog`} description={category.description}>
+<Layout title={`分类：${category.name} - Inkstone Blog`} description={category.description} siteInfo={siteInfo}>
   <div class="max-w-4xl mx-auto space-y-8">
     <header class="py-6 border-b border-[var(--border-subtle)] space-y-3">
       <a href="/categories" class="text-xs text-[var(--accent)] hover:underline inline-flex items-center gap-1">
