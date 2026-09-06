@@ -1,287 +1,154 @@
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Layers, Loader2, PanelLeftOpen, PanelRightOpen, Pin, X } from 'lucide-react';
-import { cn } from '../../../lib/cn';
-import { Z_INDEX } from '../../../lib/z-index';
-import { decodeDataValue } from '../../../lib/markdown/data-attr';
-import { parseWikiTarget } from '../../../lib/markdown/renderer';
-import { findNoteByTitle } from '../../../store/notes/selectors';
-import { useNotes } from '../../../store/notes';
-import { useSession } from '../../../store/session';
-import { t } from '../../../lib/i18n';
-import { getVisibleViewport } from '../../../lib/viewport';
-import { Menu } from '../../../components/overlay';
-import { type MenuItem } from '../../../components/overlay';
-import { MAX_HOVER_CARD_DEPTH, useLinkHover } from '../link-hover';
-import { useNoteBacklinks, useNoteCardContent } from '../card-content';
-import { pushLinkHoverTarget } from '../link-signal';
-import { type PinnedWindowGeometry } from '../../../store/pinned-windows';
-import { type WikiLinkHoverCardState, type PinnedNoteCardState } from '../../../types/hover-card';
-import { CardBacklinks } from './backlinks';
-import { placeHoverCard } from './position';
+import { memo, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { Layers, Loader2, PanelLeftOpen, PanelRightOpen, Pin, X } from 'lucide-react'
+import { cn } from '../../../lib/cn'
+import { Z_INDEX } from '../../../lib/z-index'
+import { t } from '../../../lib/i18n'
+import { Menu } from '../../../components/overlay'
+import { useWikiLinkHoverCard, hoverCardStyle, type WikiLinkHoverCardBundle, type WikiLinkHoverCardProps } from './use-wiki-link-hover-card'
+import { CardBacklinks } from './backlinks'
 
-export type { WikiLinkHoverCardState, PinnedNoteCardState }
+export type { WikiLinkHoverCardState, PinnedNoteCardState } from '../../../types/hover-card'
 
-const MIN_PINNED_WIDTH = 260
-const MIN_PINNED_HEIGHT = 140
-
-export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
-  card,
-  path,
-  depth,
-  dark,
-  pinned = false,
-  pinnedInit,
-  stackCount = 1,
-  stackFront = false,
-  stackItems = [],
-  onClose,
-  onEnter,
-  onLeave,
-  onPin,
-  onGeometryChange,
-  flash = false,
-}: {
-  card: WikiLinkHoverCardState
-  path: string[]
-  depth: number
-  dark: boolean
-  pinned?: boolean
-  pinnedInit?: PinnedNoteCardState
-  stackCount?: number
-  stackFront?: boolean
-  stackItems?: MenuItem[]
-  onClose: () => void
-  onEnter: () => void
-  onLeave: () => void
-  onPin: (card: WikiLinkHoverCardState, rect: DOMRect) => void
-  onGeometryChange?: (geometry: PinnedWindowGeometry) => void
-  flash?: boolean
-}) {
-  const cardRef = useRef<HTMLDivElement>(null)
-  const describedBy = useId()
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
-  const preview = useSession((s) => s.settings.preview)
-  const hoverEnabled = preview.linkHover
-  const hoverDelay = preview.linkHoverDelayMs
-  const content = useNoteCardContent(
-    { noteId: card.noteId, missing: card.missing, headline: card.headline },
-    dark,
-    preview.math,
-    preview.linkPreviewLength,
+function CardHeaderButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+    >
+      {children}
+    </button>
   )
-  const { status, html, isTruncated } = content
-  const [isStackMenuOpen, setIsStackMenuOpen] = useState(false)
-  const stackButtonRef = useRef<HTMLButtonElement>(null)
+}
 
-  const [pinnedRect, setPinnedRect] = useState(() => ({
-    x: pinnedInit?.x ?? 0,
-    y: pinnedInit?.y ?? 0,
-    width: pinnedInit?.width ?? 340,
-    height: pinnedInit?.height ?? 0,
-  }))
-  const pinnedRectRef = useRef(pinnedRect)
-
-  const resolveNested = useCallback(
-    (link: HTMLElement): WikiLinkHoverCardState | null => {
-      if (depth >= MAX_HOVER_CARD_DEPTH) return null
-      const parsed = parseWikiTarget(decodeDataValue(link.dataset.wikilink))
-      const notes = useNotes.getState().notes
-      if (parsed.noteTitle) {
-        const note = findNoteByTitle(parsed.noteTitle)
-        if (!note)
-          return {
-            anchor: link,
-            title: parsed.alias ?? parsed.noteTitle,
-            noteId: null,
-            missing: true,
-            headline: parsed.heading ?? parsed.noteTitle,
-          }
-        if (path.includes(note.id)) return null
-        return {
-          anchor: link,
-          title: parsed.alias ?? note.title,
-          noteId: note.id,
-          missing: false,
-          headline: parsed.heading ?? note.title,
-        }
-      }
-      if (!card.noteId) return null
-      const summary = notes[card.noteId]
-      if (!summary) return null
-      return {
-        anchor: link,
-        title: parsed.alias ?? summary.title,
-        noteId: card.noteId,
-        missing: false,
-        headline: parsed.heading ?? summary.title,
-      }
-    },
-    [card.noteId, depth, path],
+function CardHeader({ b }: { b: WikiLinkHoverCardBundle }) {
+  const { card, pinned, stackCount = 1, stackFront = false, setIsStackMenuOpen, stackButtonRef, openInCurrentPane, openInSidePane, handlePin, onClose, beginDrag } = b
+  return (
+    <div
+      className={cn('flex items-start gap-1 border-b border-[var(--border-subtle)] px-3 py-2', pinned && 'cursor-move select-none touch-none')}
+      onPointerDown={pinned ? beginDrag : undefined}
+    >
+      <span
+        className={cn(
+          'min-w-0 flex-1 truncate text-[length:var(--text-12\.5)] leading-snug font-semibold text-[var(--text-primary)]',
+          card.missing && 'text-[var(--text-tertiary)]',
+        )}
+        title={card.title}
+      >
+        {card.title || t('preview.untitled')}
+      </span>
+      {pinned && stackCount > 1 && stackFront && (
+        <button
+          ref={stackButtonRef}
+          type="button"
+          aria-label={t('preview.pinned_windows')}
+          title={t('preview.pinned_windows')}
+          onClick={() => setIsStackMenuOpen((value) => !value)}
+          className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        >
+          <Layers size={13} />
+          <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--accent)] px-0.5 text-[length:var(--text-9)] font-semibold text-[var(--bg-overlay)]">
+            {stackCount}
+          </span>
+        </button>
+      )}
+      {pinned && card.noteId && (
+        <>
+          <CardHeaderButton label={t('preview.open_in_current_pane')} onClick={openInCurrentPane}><PanelLeftOpen size={13} /></CardHeaderButton>
+          <CardHeaderButton label={t('preview.open_in_side_pane')} onClick={openInSidePane}><PanelRightOpen size={13} /></CardHeaderButton>
+        </>
+      )}
+      {pinned ? (
+        <CardHeaderButton label={t('common.close')} onClick={onClose}>
+          <X size={13} />
+        </CardHeaderButton>
+      ) : (
+        <CardHeaderButton label={t('preview.pin_card')} onClick={handlePin}>
+          <Pin size={13} />
+        </CardHeaderButton>
+      )}
+    </div>
   )
+}
 
-  const machine = useLinkHover({
-    resolve: resolveNested,
-    delay: hoverDelay,
-    enabled: hoverEnabled,
-    armOnNonLink: false,
-    hideGraceMs: 200,
-  })
+function CardBody({ b }: { b: WikiLinkHoverCardBundle }) {
+  const { status, htmlObj, isTruncated, pinned, pinnedRect, backlinks, openBacklink } = b
+  if (status === 'loading') {
+    return (
+      <div className="flex h-24 items-center justify-center text-[var(--text-quaternary)]">
+        <Loader2 size={18} className="animate-spin" />
+      </div>
+    )
+  }
+  if (status === 'missing') {
+    return (
+      <div className="px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-tertiary)]">
+        {t('preview.note_does_not_exist')}
+      </div>
+    )
+  }
+  if (status === 'error') {
+    return (
+      <div className="px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-tertiary)]">
+        {t('preview.could_not_load_note')}
+      </div>
+    )
+  }
+  return (
+    <>
+      <div
+        className={cn(
+          'wiki-hover-body min-h-0 overflow-y-auto overscroll-contain px-3 py-2.5',
+          pinned && pinnedRect.height ? 'flex-1' : 'max-h-[300px]',
+        )}
+      >
+        <div className="ink-prose" dangerouslySetInnerHTML={htmlObj} />
+      </div>
+      {isTruncated && (
+        <div className="border-t border-[var(--border-subtle)] px-3 py-1.5 text-center text-[length:var(--text-11)] tracking-widest text-[var(--text-quaternary)]">
+          ···
+        </div>
+      )}
+      {backlinks && backlinks.length > 0 && <CardBacklinks links={backlinks} onOpen={openBacklink} />}
+    </>
+  )
+}
 
-  useLayoutEffect(() => {
-    if (pinned) return
-    const cardEl = cardRef.current
-    if (!cardEl) return
-    const compute = () => {
-      if (!card.anchor.isConnected) {
-        onClose()
-        return
-      }
-      const anchorRect = card.anchor.getBoundingClientRect()
-      const cardRect = cardEl.getBoundingClientRect()
-      if (!anchorRect.width && !anchorRect.height) return
-      setPosition(placeHoverCard(anchorRect, cardRect))
-    }
-    compute()
-    const observer = new ResizeObserver(compute)
-    observer.observe(cardEl)
-    window.addEventListener('resize', compute)
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', compute)
-    }
-  }, [card.anchor, onClose, pinned])
+function StackMenu({ b }: { b: WikiLinkHoverCardBundle }) {
+  const { stackButtonRef, isStackMenuOpen, setIsStackMenuOpen, stackItems } = b
+  return (
+    <Menu
+      anchor={stackButtonRef}
+      open={isStackMenuOpen}
+      onClose={() => setIsStackMenuOpen(false)}
+      items={stackItems ?? []}
+      align="end"
+      width={220}
+      zIndex={Z_INDEX.top}
+      label={t('preview.pinned_windows')}
+    />
+  )
+}
 
-  useEffect(() => {
-    if (!pinned) return
-    cardRef.current?.focus({ preventScroll: true })
-  }, [pinned])
+function ResizeHandle({ onPointerDown }: { onPointerDown: (event: React.PointerEvent<HTMLElement>) => void }) {
+  return (
+    <div
+      aria-label={t('preview.resize_card')}
+      title={t('preview.resize_card')}
+      onPointerDown={onPointerDown}
+      className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize touch-none"
+    >
+      <div className="absolute right-1 bottom-1 h-2 w-2 rounded-sm border-r-2 border-b-2 border-[var(--border-strong)]" />
+    </div>
+  )
+}
 
-  useEffect(() => {
-    if (pinned || !card.noteId) return
-    return pushLinkHoverTarget(card.noteId)
-  }, [card.noteId, pinned])
-
-  useEffect(() => {
-    const anchor = card.anchor
-    const previous = anchor.getAttribute('aria-describedby')
-    anchor.setAttribute('aria-describedby', describedBy)
-    return () => {
-      if (anchor.getAttribute('aria-describedby') === describedBy)
-        anchor.setAttribute('aria-describedby', previous ?? '')
-    }
-  }, [card.anchor, describedBy])
-
-  const stop = useCallback((event: React.MouseEvent) => {
-    event.stopPropagation()
-    event.preventDefault()
-  }, [])
-
-  const clampWindow = useCallback((next: { x: number; y: number; width: number; height: number }) => {
-    const viewport = getVisibleViewport()
-    const margin = 8
-    const width = Math.max(MIN_PINNED_WIDTH, Math.min(next.width, viewport.right - next.x - margin))
-    const height = Math.max(MIN_PINNED_HEIGHT, Math.min(next.height, viewport.bottom - next.y - margin))
-    const x = Math.min(Math.max(next.x, viewport.left), Math.max(viewport.left, viewport.right - width - margin))
-    const y = Math.min(Math.max(next.y, viewport.top), Math.max(viewport.top, viewport.bottom - height - margin))
-    return { x, y, width, height }
-  }, [])
-
-  const beginDrag = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    if (event.button !== 0) return
-    if ((event.target as Element).closest('button')) return
-    event.preventDefault()
-    const startX = event.clientX
-    const startY = event.clientY
-    const origin = { ...pinnedRectRef.current }
-    const move = (moveEvent: PointerEvent) => {
-      pinnedRectRef.current = clampWindow({
-        ...origin,
-        x: origin.x + moveEvent.clientX - startX,
-        y: origin.y + moveEvent.clientY - startY,
-      })
-      setPinnedRect(pinnedRectRef.current)
-      onGeometryChange?.(pinnedRectRef.current)
-    }
-    const up = () => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
-    }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-  }, [clampWindow])
-
-  const beginResize = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    if (event.button !== 0) return
-    event.preventDefault()
-    const startX = event.clientX
-    const startY = event.clientY
-    const origin = { ...pinnedRectRef.current }
-    const move = (moveEvent: PointerEvent) => {
-      pinnedRectRef.current = clampWindow({
-        ...origin,
-        width: origin.width + moveEvent.clientX - startX,
-        height: origin.height + moveEvent.clientY - startY,
-      })
-      setPinnedRect(pinnedRectRef.current)
-      onGeometryChange?.(pinnedRectRef.current)
-    }
-    const up = () => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
-    }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-  }, [clampWindow, onGeometryChange])
-
-  const moveCardFocus = useCallback((direction: 1 | -1) => {
-    const cards = [...document.querySelectorAll<HTMLElement>('[data-hover-card]')]
-    const index = cards.indexOf(cardRef.current as HTMLElement)
-    cards[index + direction]?.focus({ preventScroll: true })
-  }, [])
-
-  const onCardKeyDown = useCallback((event: React.KeyboardEvent) => {
-    if (pinned && event.key === 'Escape') {
-      event.preventDefault()
-      onClose()
-      return
-    }
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      event.preventDefault()
-      moveCardFocus(1)
-    }
-    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      event.preventDefault()
-      moveCardFocus(-1)
-    }
-  }, [moveCardFocus, onClose, pinned])
-
-  const handlePin = useCallback(() => {
-    const rect = cardRef.current?.getBoundingClientRect()
-    if (!rect) return
-    onPin(card, rect)
-  }, [card, onPin])
-
-  const openInCurrentPane = useCallback(() => {
-    if (!card.noteId) return
-    void useNotes.getState().openNote(card.noteId)
-    onClose()
-  }, [card.noteId, onClose])
-
-  const openInSidePane = useCallback(() => {
-    if (!card.noteId) return
-    void useNotes.getState().openNote(card.noteId, { pane: 'secondary' })
-    onClose()
-  }, [card.noteId, onClose])
-
-  const openBacklink = useCallback((id: string) => {
-    void useNotes.getState().openNote(id, { pane: 'secondary' })
-    onClose()
-  }, [onClose])
-
-  const nested = machine.card
-  const htmlObj = useMemo(() => ({ __html: html }), [html])
-  const { links: backlinks } = useNoteBacklinks(card.noteId && !card.missing ? card.noteId : null)
+export const WikiLinkHoverCard = memo(function WikiLinkHoverCard(props: WikiLinkHoverCardProps) {
+  const b = useWikiLinkHoverCard(props)
+  const { card, pinned, position, pinnedRect, pinnedInit, cardRef, describedBy, machine, nested, depth, path, dark, onEnter, onLeave, onPin, flash, onCardKeyDown, stop, beginResize } = b
 
   return createPortal(
     <div
@@ -307,136 +174,11 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
         pinned ? '' : 'z-[var(--z-hover-card)] w-[340px] max-w-[calc(100vw-24px)]',
         pinned && flash && 'pinned-window-flash',
       )}
-      style={pinned
-        ? {
-            left: pinnedRect.x,
-            top: pinnedRect.y,
-            width: pinnedRect.width,
-            height: pinnedRect.height || undefined,
-            zIndex: Z_INDEX.hoverPinned + (pinnedInit?.z ?? 0),
-          }
-        : position
-          ? { top: position.top, left: position.left }
-          : { top: 0, left: 0, visibility: 'hidden' }}
+      style={hoverCardStyle(pinned, pinnedRect, position, pinnedInit)}
     >
-      <div
-        className={cn(
-          'flex items-start gap-1 border-b border-[var(--border-subtle)] px-3 py-2',
-          pinned && 'cursor-move select-none touch-none',
-        )}
-        onPointerDown={pinned ? beginDrag : undefined}
-      >
-        <span
-          className={cn(
-            'min-w-0 flex-1 truncate text-[length:var(--text-12\.5)] leading-snug font-semibold text-[var(--text-primary)]',
-            card.missing && 'text-[var(--text-tertiary)]',
-          )}
-          title={card.title}
-        >
-          {card.title || t("preview.untitled")}
-        </span>
-        {pinned && stackCount > 1 && stackFront && (
-          <button
-            ref={stackButtonRef}
-            type="button"
-            aria-label={t("preview.pinned_windows")}
-            title={t("preview.pinned_windows")}
-            onClick={() => setIsStackMenuOpen((value) => !value)}
-            className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-          >
-            <Layers size={13} />
-            <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--accent)] px-0.5 text-[length:var(--text-9)] font-semibold text-[var(--bg-overlay)]">
-              {stackCount}
-            </span>
-          </button>
-        )}
-        {pinned && card.noteId && (
-          <>
-            <button
-              type="button"
-              aria-label={t("preview.open_in_current_pane")}
-              title={t("preview.open_in_current_pane")}
-              onClick={openInCurrentPane}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-            >
-              <PanelLeftOpen size={13} />
-            </button>
-            <button
-              type="button"
-              aria-label={t("preview.open_in_side_pane")}
-              title={t("preview.open_in_side_pane")}
-              onClick={openInSidePane}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-            >
-              <PanelRightOpen size={13} />
-            </button>
-          </>
-        )}
-        {pinned
-          ? (
-            <button
-              type="button"
-              aria-label={t("common.close")}
-              title={t("common.close")}
-              onClick={onClose}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-            >
-              <X size={13} />
-            </button>
-          )
-          : (
-            <button
-              type="button"
-              aria-label={t("preview.pin_card")}
-              title={t("preview.pin_card")}
-              onClick={handlePin}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-            >
-              <Pin size={13} />
-            </button>
-          )}
-      </div>
-      {status === 'loading' && (
-        <div className="flex h-24 items-center justify-center text-[var(--text-quaternary)]">
-          <Loader2 size={18} className="animate-spin" />
-        </div>
-      )}
-      {status === 'missing' && (
-        <div className="px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-tertiary)]">
-          {t("preview.note_does_not_exist")}
-        </div>
-      )}
-      {status === 'error' && (
-        <div className="px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-tertiary)]">
-          {t("preview.could_not_load_note")}
-        </div>
-      )}
-      {status === 'ready' && (<>
-        <div className={cn(
-          'wiki-hover-body min-h-0 overflow-y-auto overscroll-contain px-3 py-2.5',
-          pinned && pinnedRect.height ? 'flex-1' : 'max-h-[300px]',
-        )}>
-          <div className="ink-prose" dangerouslySetInnerHTML={htmlObj} />
-        </div>
-        {isTruncated && (
-          <div className="border-t border-[var(--border-subtle)] px-3 py-1.5 text-center text-[length:var(--text-11)] tracking-widest text-[var(--text-quaternary)]">
-            ···
-          </div>
-        )}
-      </>)}
-      {backlinks && backlinks.length > 0 && (
-        <CardBacklinks links={backlinks} onOpen={openBacklink} />
-      )}
-      {pinned && (
-        <div
-          aria-label={t("preview.resize_card")}
-          title={t("preview.resize_card")}
-          onPointerDown={beginResize}
-          className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize touch-none"
-        >
-          <div className="absolute right-1 bottom-1 h-2 w-2 rounded-sm border-r-2 border-b-2 border-[var(--border-strong)]" />
-        </div>
-      )}
+      <CardHeader b={b} />
+      <CardBody b={b} />
+      {pinned && <ResizeHandle onPointerDown={beginResize} />}
       {nested && (
         <WikiLinkHoverCard
           card={nested}
@@ -449,20 +191,8 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard({
           onPin={onPin}
         />
       )}
-      {pinned && (
-        <Menu
-          anchor={stackButtonRef}
-          open={isStackMenuOpen}
-          onClose={() => setIsStackMenuOpen(false)}
-          items={stackItems}
-          align="end"
-          width={220}
-          zIndex={Z_INDEX.top}
-          label={t("preview.pinned_windows")}
-        />
-      )}
+      {pinned && <StackMenu b={b} />}
     </div>,
     document.body,
   )
 })
-

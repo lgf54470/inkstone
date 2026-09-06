@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { executeJsExample, formatJsValue } from './js-runner';
 
-describe('js-runner executeJsExample', () => {
+describe('js-runner console capture', () => {
   it('captures console.log output with primitive values and objects', () => {
     const code = `
       console.log("Hello", 42, true);
@@ -27,7 +27,9 @@ describe('js-runner executeJsExample', () => {
     expect(res.logs[1]!.type).toBe('error');
     expect(res.logs[1]!.text).toBe('Error msg');
   });
+});
 
+describe('js-runner results and errors', () => {
   it('captures returned values', () => {
     const code = `
       const x = 10;
@@ -48,7 +50,9 @@ describe('js-runner executeJsExample', () => {
     expect(res.error).toBeDefined();
     expect(res.error).toContain('TypeError');
   });
+});
 
+describe('js-runner formatJsValue', () => {
   it('handles circular references in formatJsValue', () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;

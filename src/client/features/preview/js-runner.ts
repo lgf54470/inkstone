@@ -80,10 +80,7 @@ function executeWithScriptElement(
     return { error: 'Document is not available' };
   }
 
-  const nonce =
-    document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce ||
-    document.querySelector<HTMLScriptElement>('script[nonce]')?.getAttribute('nonce') ||
-    '';
+  const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce || document.querySelector<HTMLScriptElement>('script[nonce]')?.getAttribute('nonce') || '';
 
   const runId = `__ink_run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   let capturedResult: string | undefined;
@@ -95,14 +92,13 @@ function executeWithScriptElement(
       if (val !== undefined) capturedResult = formatJsValue(val);
     },
     onError: (err: unknown) => {
-      capturedError = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      capturedError = formatJsError(err);
     },
   };
 
   const script = document.createElement('script');
   if (nonce) {
-    script.nonce = nonce;
-    script.setAttribute('nonce', nonce);
+    script.nonce = nonce; script.setAttribute('nonce', nonce);
   }
   script.textContent = `(function() {
   "use strict";
@@ -121,13 +117,16 @@ function executeWithScriptElement(
   try {
     document.head.appendChild(script);
   } catch (err) {
-    capturedError = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    capturedError = formatJsError(err);
   } finally {
-    script.remove();
-    delete (window as unknown as Record<string, unknown>)[runId];
+    script.remove(); delete (window as unknown as Record<string, unknown>)[runId];
   }
 
   return { result: capturedResult, error: capturedError };
+}
+
+function formatJsError(err: unknown): string {
+  return err instanceof Error ? `${err.name}: ${err.message}` : String(err);
 }
 
 export function handleJsExampleSwitch(switchBtn: HTMLButtonElement): void {
@@ -156,16 +155,7 @@ export function handleJsExampleRun(runBtn: HTMLButtonElement): void {
   const code = codeEl.textContent ?? '';
   const { logs, result, error, durationMs } = executeJsExample(code);
 
-  if (statusEl) {
-    if (error) {
-      statusEl.className = 'js-example-output-status is-error';
-      statusEl.textContent = `✕ ${durationMs}ms`;
-    } else {
-      statusEl.className = 'js-example-output-status is-success';
-      statusEl.textContent = `✓ ${durationMs}ms`;
-    }
-  }
-
+  updateRunStatus(statusEl, error, durationMs);
   outputBody.innerHTML = '';
 
   if (logs.length === 0 && result === undefined && !error) {
@@ -177,44 +167,39 @@ export function handleJsExampleRun(runBtn: HTMLButtonElement): void {
   }
 
   logs.forEach((item) => {
-    const row = document.createElement('div');
-    row.className = `js-example-log-row is-${item.type}`;
-    const prefix = document.createElement('span');
-    prefix.className = 'js-example-log-prefix';
-    prefix.textContent = item.type === 'error' ? '✖' : item.type === 'warn' ? '▲' : '›';
-    const text = document.createElement('pre');
-    text.className = 'js-example-log-text';
-    text.textContent = item.text;
-    row.appendChild(prefix);
-    row.appendChild(text);
-    outputBody.appendChild(row);
+    appendLogRow(outputBody, item.type, item.type === 'error' ? '✖' : item.type === 'warn' ? '▲' : '›', item.text);
   });
 
   if (result !== undefined) {
-    const resRow = document.createElement('div');
-    resRow.className = 'js-example-log-row is-return';
-    const prefix = document.createElement('span');
-    prefix.className = 'js-example-log-prefix';
-    prefix.textContent = '←';
-    const text = document.createElement('pre');
-    text.className = 'js-example-log-text';
-    text.textContent = result;
-    resRow.appendChild(prefix);
-    resRow.appendChild(text);
-    outputBody.appendChild(resRow);
+    appendLogRow(outputBody, 'return', '←', result);
   }
 
   if (error) {
-    const errRow = document.createElement('div');
-    errRow.className = 'js-example-log-row is-error-banner';
-    const prefix = document.createElement('span');
-    prefix.className = 'js-example-log-prefix';
-    prefix.textContent = '✖';
-    const text = document.createElement('pre');
-    text.className = 'js-example-log-text';
-    text.textContent = error;
-    errRow.appendChild(prefix);
-    errRow.appendChild(text);
-    outputBody.appendChild(errRow);
+    appendLogRow(outputBody, 'error-banner', '✖', error);
   }
+}
+
+function updateRunStatus(statusEl: HTMLElement | null, error: string | undefined, durationMs: number): void {
+  if (!statusEl) return;
+  if (error) {
+    statusEl.className = 'js-example-output-status is-error';
+    statusEl.textContent = `✕ ${durationMs}ms`;
+  } else {
+    statusEl.className = 'js-example-output-status is-success';
+    statusEl.textContent = `✓ ${durationMs}ms`;
+  }
+}
+
+function appendLogRow(outputBody: HTMLElement, type: string, prefix: string, text: string): void {
+  const row = document.createElement('div');
+  row.className = `js-example-log-row is-${type}`;
+  const prefixEl = document.createElement('span');
+  prefixEl.className = 'js-example-log-prefix';
+  prefixEl.textContent = prefix;
+  const textEl = document.createElement('pre');
+  textEl.className = 'js-example-log-text';
+  textEl.textContent = text;
+  row.appendChild(prefixEl);
+  row.appendChild(textEl);
+  outputBody.appendChild(row);
 }

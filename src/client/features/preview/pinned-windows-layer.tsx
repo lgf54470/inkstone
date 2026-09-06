@@ -26,6 +26,35 @@ function itemToCard(item: PersistedPinnedWindow): WikiLinkHoverCardState {
 }
 
 export const PinnedWindowsLayer = memo(function PinnedWindowsLayer() {
+  const state = usePinnedWindowState()
+  if (!state.items.length) return null
+  return (
+    <>
+      {state.cards.map(({ item, card }) => (
+        <WikiLinkHoverCard
+          key={item.id}
+          card={card}
+          path={card.noteId ? [card.noteId] : []}
+          depth={1}
+          dark={state.isDark}
+          pinned
+          pinnedInit={item}
+          stackCount={state.items.length}
+          stackFront={item.id === state.frontId}
+          stackItems={state.stackItems}
+          onClose={() => state.close(item.id)}
+          onEnter={() => {}}
+          onLeave={() => {}}
+          onPin={(cardState, rect) => state.pin(cardState, rect)}
+          onGeometryChange={(geometry) => state.updateGeometry(item.id, geometry)}
+          flash={state.flashId === item.id}
+        />
+      ))}
+    </>
+  )
+})
+
+function usePinnedWindowState() {
   const items = usePinnedWindows((s) => s.items)
   const flashId = usePinnedWindows((s) => s.flashId)
   const pin = usePinnedWindows((s) => s.pin)
@@ -34,15 +63,8 @@ export const PinnedWindowsLayer = memo(function PinnedWindowsLayer() {
   const closeAll = usePinnedWindows((s) => s.closeAll)
   const closeFront = usePinnedWindows((s) => s.closeFront)
   const updateGeometry = usePinnedWindows((s) => s.updateGeometry)
-  const [isDark, setIsDark] = useState(() => (document.documentElement.dataset.theme ?? 'dark') === 'dark')
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDark((document.documentElement.dataset.theme ?? 'dark') === 'dark')
-    })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => observer.disconnect()
-  }, [])
+  const isDark = useThemeDark()
+  useMenuEscape(closeFront)
 
   const cards = useMemo(() => items.map((item) => ({
     item,
@@ -69,9 +91,24 @@ export const PinnedWindowsLayer = memo(function PinnedWindowsLayer() {
     },
   ], [bringToFront, closeAll, frontId, items])
 
+  return { items, flashId, pin, close, bringToFront, closeAll, closeFront, updateGeometry, isDark, cards, frontId, stackItems }
+}
+
+function useThemeDark(): boolean {
+  const [isDark, setIsDark] = useState(() => (document.documentElement.dataset.theme ?? 'dark') === 'dark')
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark((document.documentElement.dataset.theme ?? 'dark') === 'dark')
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => observer.disconnect()
+  }, [])
+  return isDark
+}
+
+function useMenuEscape(closeFront: () => void): void {
   const handleEscapeRef = useRef(closeFront)
   handleEscapeRef.current = closeFront
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
@@ -83,31 +120,4 @@ export const PinnedWindowsLayer = memo(function PinnedWindowsLayer() {
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [])
-
-  if (!items.length) return null
-
-  return (
-    <>
-      {cards.map(({ item, card }) => (
-        <WikiLinkHoverCard
-          key={item.id}
-          card={card}
-          path={card.noteId ? [card.noteId] : []}
-          depth={1}
-          dark={isDark}
-          pinned
-          pinnedInit={item}
-          stackCount={items.length}
-          stackFront={item.id === frontId}
-          stackItems={stackItems}
-          onClose={() => close(item.id)}
-          onEnter={() => {}}
-          onLeave={() => {}}
-          onPin={(cardState, rect) => pin(cardState, rect)}
-          onGeometryChange={(geometry) => updateGeometry(item.id, geometry)}
-          flash={flashId === item.id}
-        />
-      ))}
-    </>
-  )
-})
+}

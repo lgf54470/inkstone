@@ -54,42 +54,6 @@
     "longFns": 2,
     "deepFns": 1
   },
-  "src/client/features/preview/card-content.ts": {
-    "longFns": 2
-  },
-  "src/client/features/preview/file-preview-modal/index.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/preview/js-runner.test.ts": {
-    "longFns": 1
-  },
-  "src/client/features/preview/js-runner.ts": {
-    "longFns": 2
-  },
-  "src/client/features/preview/link-hover.test.ts": {
-    "longFns": 2
-  },
-  "src/client/features/preview/link-hover.ts": {
-    "longFns": 1
-  },
-  "src/client/features/preview/note-properties-editor.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/preview/outline.test.ts": {
-    "longFns": 2
-  },
-  "src/client/features/preview/outline.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/preview/pinned-windows-layer.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/preview/preview.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/preview/wiki-link-hover-card/index.tsx": {
-    "longFns": 1
-  },
   "src/client/features/settings/account-settings.tsx": {
     "longFns": 3
   },

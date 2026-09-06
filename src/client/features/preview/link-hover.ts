@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { MutableRefObject } from 'react'
 import type { WikiLinkHoverCardState } from '../../types/hover-card'
 
 export const MAX_HOVER_CARD_DEPTH = 4
@@ -31,18 +32,60 @@ export function useLinkHover({
   const [card, setCard] = useState<WikiLinkHoverCardState | null>(null)
   const candidateRef = useRef<HTMLElement | null>(null)
   const openedLinkRef = useRef<HTMLElement | null>(null)
+  const resetCandidate = useCallback(() => {
+    candidateRef.current = null
+    openedLinkRef.current = null
+  }, [])
+  const timers = useHoverTimers({
+    delay,
+    grace: hideGraceMs,
+    onHide: () => {
+      resetCandidate()
+      setCard(null)
+    },
+  })
+  const candidate = useHoverCandidateMachine({
+    resolve, enabled, armOnNonLink,
+    candidateRef, openedLinkRef, timers,
+    onOpen: (next) => setCard(next),
+  })
+  const handleMouseLeave = useCallback(() => {
+    timers.armHide()
+  }, [timers])
+
+  useEffect(() => {
+    if (!enabled)
+      timers.hideNow()
+  }, [enabled, timers.hideNow])
+
+  useEffect(() => () => timers.dispose(), [timers.dispose])
+
+  return {
+    card,
+    propose: candidate.propose,
+    handleMouseMove: candidate.handleMouseMove,
+    handleMouseLeave,
+    clearPendingHide: timers.clearPendingHide,
+    armHide: timers.armHide,
+    hideNow: timers.hideNow,
+  }
+}
+
+type HoverTimers = ReturnType<typeof useHoverTimers>
+
+function useHoverTimers({ delay, grace, onHide }: {
+  delay: number
+  grace: number
+  onHide: () => void
+}) {
   const showTimerRef = useRef(0)
   const hideTimerRef = useRef(0)
-  const resolveRef = useRef(resolve)
-  resolveRef.current = resolve
   const delayRef = useRef(delay)
   delayRef.current = delay
-  const enabledRef = useRef(enabled)
-  enabledRef.current = enabled
-  const armOnNonLinkRef = useRef(armOnNonLink)
-  armOnNonLinkRef.current = armOnNonLink
-  const graceRef = useRef(hideGraceMs)
-  graceRef.current = hideGraceMs
+  const graceRef = useRef(grace)
+  graceRef.current = grace
+  const onHideRef = useRef(onHide)
+  onHideRef.current = onHide
 
   const clearPendingHide = useCallback(() => {
     window.clearTimeout(hideTimerRef.current)
@@ -51,82 +94,97 @@ export function useLinkHover({
   const hideNow = useCallback(() => {
     window.clearTimeout(showTimerRef.current)
     window.clearTimeout(hideTimerRef.current)
-    candidateRef.current = null
-    openedLinkRef.current = null
-    setCard(null)
+    onHideRef.current()
   }, [])
 
-  const armHide = useCallback((grace = graceRef.current) => {
+  const armHide = useCallback((nextGrace = graceRef.current) => {
     window.clearTimeout(showTimerRef.current)
     window.clearTimeout(hideTimerRef.current)
-    hideTimerRef.current = window.setTimeout(() => {
-      candidateRef.current = null
-      openedLinkRef.current = null
-      setCard(null)
-    }, grace)
+    hideTimerRef.current = window.setTimeout(() => onHideRef.current(), nextGrace)
   }, [])
 
-  const openFor = useCallback((link: HTMLElement) => {
+  const scheduleShow = useCallback((fn: () => void) => {
     window.clearTimeout(showTimerRef.current)
+    showTimerRef.current = window.setTimeout(fn, delayRef.current)
+  }, [])
+
+  const dispose = useCallback(() => {
+    window.clearTimeout(showTimerRef.current)
+    window.clearTimeout(hideTimerRef.current)
+  }, [])
+
+  return useMemo(() => ({
+    showTimerRef, hideTimerRef,
+    clearPendingHide, armHide, hideNow, scheduleShow, dispose,
+  }), [clearPendingHide, armHide, hideNow, scheduleShow, dispose])
+}
+
+function useHoverCandidateMachine({
+  resolve,
+  enabled,
+  armOnNonLink,
+  candidateRef,
+  openedLinkRef,
+  timers,
+  onOpen,
+}: {
+  resolve: (link: HTMLElement) => WikiLinkHoverCardState | null
+  enabled: boolean
+  armOnNonLink: boolean
+  candidateRef: MutableRefObject<HTMLElement | null>
+  openedLinkRef: MutableRefObject<HTMLElement | null>
+  timers: HoverTimers
+  onOpen: (card: WikiLinkHoverCardState) => void
+}) {
+  const resolveRef = useRef(resolve); resolveRef.current = resolve
+  const enabledRef = useRef(enabled); enabledRef.current = enabled
+  const armOnNonLinkRef = useRef(armOnNonLink); armOnNonLinkRef.current = armOnNonLink
+
+  const openFor = useCallback((link: HTMLElement) => {
+    window.clearTimeout(timers.showTimerRef.current)
     if (!enabledRef.current) return
     const next = resolveRef.current(link)
     candidateRef.current = null
     openedLinkRef.current = link
-    if (next) setCard(next)
-  }, [])
+    if (next) onOpen(next)
+  }, [timers, candidateRef, openedLinkRef, onOpen])
 
   const propose = useCallback((link: HTMLElement | null, options?: { immediate?: boolean }) => {
     if (!link) {
-      window.clearTimeout(showTimerRef.current)
+      window.clearTimeout(timers.showTimerRef.current)
       candidateRef.current = null
-      armHide()
+      timers.armHide()
       return
     }
-    if (!enabledRef.current) return
-    if (typeof window.matchMedia === 'function' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches)
-      return
-    window.clearTimeout(hideTimerRef.current)
+    if (!enabledRef.current || !isHoverFinePointer()) return
+    window.clearTimeout(timers.hideTimerRef.current)
     if (link === candidateRef.current || link === openedLinkRef.current) return
     candidateRef.current = link
-    if (options?.immediate)
+    if (options?.immediate) openFor(link)
+    else timers.scheduleShow(() => {
+      if (candidateRef.current !== link || !enabledRef.current) return
       openFor(link)
-    else {
-      window.clearTimeout(showTimerRef.current)
-      showTimerRef.current = window.setTimeout(() => {
-        if (candidateRef.current !== link || !enabledRef.current) return
-        openFor(link)
-      }, delayRef.current)
-    }
-  }, [armHide, openFor])
+    })
+  }, [timers, candidateRef, openedLinkRef, openFor])
+
+
 
   const handleMouseMove = useCallback((event: React.MouseEvent) => {
-    if (!enabledRef.current) return
-    if (typeof window.matchMedia === 'function' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches)
-      return
-    window.clearTimeout(hideTimerRef.current)
+    if (!enabledRef.current || !isHoverFinePointer()) return
+    window.clearTimeout(timers.hideTimerRef.current)
     const link = (event.target as HTMLElement).closest<HTMLElement>('[data-wikilink]')
     if (!link) {
-      window.clearTimeout(showTimerRef.current)
+      window.clearTimeout(timers.showTimerRef.current)
       candidateRef.current = null
-      if (armOnNonLinkRef.current) armHide()
+      if (armOnNonLinkRef.current) timers.armHide()
       return
     }
     propose(link)
-  }, [armHide, propose])
+  }, [timers, candidateRef, propose])
 
-  const handleMouseLeave = useCallback(() => {
-    armHide()
-  }, [armHide])
+  return { propose, handleMouseMove }
+}
 
-  useEffect(() => {
-    if (!enabled)
-      hideNow()
-  }, [enabled, hideNow])
-
-  useEffect(() => () => {
-    window.clearTimeout(showTimerRef.current)
-    window.clearTimeout(hideTimerRef.current)
-  }, [])
-
-  return { card, propose, handleMouseMove, handleMouseLeave, clearPendingHide, armHide, hideNow }
+function isHoverFinePointer(): boolean {
+  return typeof window.matchMedia !== 'function' || window.matchMedia('(hover: hover) and (pointer: fine)').matches
 }

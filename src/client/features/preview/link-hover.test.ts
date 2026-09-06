@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { act, createElement } from 'react'
+import type { ComponentProps } from 'react'
 import { createRoot } from 'react-dom/client'
+import type { Root } from 'react-dom/client'
 import { WikiLinkHoverCard, type WikiLinkHoverCardState } from './wiki-link-hover-card'
 import { applyHighlightToHtml, buildHighlightTerms } from './card-content'
 import { pushLinkHoverTarget, subscribeLinkHoverTarget } from './link-signal'
@@ -42,91 +44,102 @@ function summary(id: string, title: string) {
   }
 }
 
-describe('wiki link hover machine', () => {
+function seedNotes(entries: Array<[string, string]>, peek: (id: string) => string): void {
+  useNotes.setState({
+    notes: Object.fromEntries(entries.map(([id, title]) => [id, summary(id, title)])),
+    contents: {},
+    peekContent: async (id: string) => peek(id),
+  })
+}
+
+async function mountCard(state: WikiLinkHoverCardState, props: Partial<ComponentProps<typeof WikiLinkHoverCard>> = {}): Promise<{ root: Root; container: HTMLDivElement }> {
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  const root = createRoot(container)
+  await act(async () => {
+    root.render(createElement(WikiLinkHoverCard, {
+      card: state,
+      path: [state.noteId ?? ''].filter(Boolean),
+      depth: 1,
+      dark: false,
+      onClose: () => {},
+      onEnter: () => {},
+      onLeave: () => {},
+      onPin: () => {},
+      ...props,
+    }))
+  })
+  return { root, container }
+}
+
+function findButtonByLabel(label: string): HTMLButtonElement | undefined {
+  return [...document.querySelectorAll('button')].find(
+    (button) => button.getAttribute('aria-label') === label,
+  )
+}
+
+function renderHoverHarness(resolve: (link: HTMLElement) => WikiLinkHoverCardState | null, delay: number) {
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  const root = createRoot(container)
+  const refs: { host: HTMLDivElement | null; machine: ReturnType<typeof useLinkHover> | null } = { host: null, machine: null }
+  const Harness = () => {
+    const machine = useLinkHover({ resolve, delay, enabled: true })
+    refs.machine = machine
+    return createElement(
+      'div',
+      null,
+      createElement('div', {
+        ref: (node: HTMLDivElement | null) => { refs.host = node },
+        onMouseMove: machine.handleMouseMove,
+        dangerouslySetInnerHTML: wikilinkHtmlObject,
+      }),
+      machine.card
+        ? createElement(WikiLinkHoverCard, {
+            card: machine.card,
+            path: machine.card.noteId ? [machine.card.noteId] : [],
+            depth: 1,
+            dark: false,
+            onClose: machine.hideNow,
+            onEnter: machine.clearPendingHide,
+            onLeave: machine.armHide,
+            onPin: () => {},
+          })
+        : null,
+    )
+  }
+  return { root, refs, Harness }
+}
+
+describe('hover machine opens a card from mousemove', () => {
   it('opens a card from a mousemove inside the host', async () => {
-    useNotes.setState({
-      notes: { a: summary('a', 'Note A'), b: summary('b', 'Note B') },
-      contents: {},
-      peekContent: async (id: string) => (id === 'a' ? 'Content of A with [[Note B]] inside.' : 'Content of B'),
-    })
+    seedNotes([['a', 'Note A'], ['b', 'Note B']], (id) => (id === 'a' ? 'Content of A with [[Note B]] inside.' : 'Content of B'))
 
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    const root = createRoot(container)
-    let host: HTMLDivElement | null = null
-    let machineRef: ReturnType<typeof useLinkHover> | null = null
-
-    const Harness = () => {
-      const machine = useLinkHover({
-        resolve: (link) => {
-          const target = (link.textContent ?? '').replace(/\[\[|\]\]/g, '')
-          return { anchor: link, title: target, noteId: 'b', missing: false }
-        },
-        delay: 50,
-        enabled: true,
-      })
-      host = document.createElement('div')
-      machineRef = machine
-      return createElement(
-        'div',
-        null,
-        createElement('div', {
-          ref: (node: HTMLDivElement | null) => { host = node },
-          onMouseMove: machine.handleMouseMove,
-          dangerouslySetInnerHTML: wikilinkHtmlObject,
-        }),
-        machine.card
-          ? createElement(WikiLinkHoverCard, {
-              card: machine.card,
-              path: machine.card.noteId ? [machine.card.noteId] : [],
-              depth: 1,
-              dark: false,
-              onClose: machine.hideNow,
-              onEnter: machine.clearPendingHide,
-              onLeave: machine.armHide,
-              onPin: () => {},
-            })
-          : null,
-      )
-    }
-
+    const { root, refs, Harness } = renderHoverHarness((link) => {
+      const target = (link.textContent ?? '').replace(/\[\[|\]\]/g, '')
+      return { anchor: link, title: target, noteId: 'b', missing: false }
+    }, 50)
     await act(async () => root.render(createElement(Harness)))
-    const link = host!.querySelector<HTMLElement>('[data-wikilink]')!
+    const link = refs.host!.querySelector<HTMLElement>('[data-wikilink]')!
     await act(async () => {
       link.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }))
       await new Promise((resolve) => setTimeout(resolve, 120))
     })
-    expect(machineRef!.card).not.toBeNull()
+    expect(refs.machine!.card).not.toBeNull()
     expect(document.querySelectorAll('[role="tooltip"]').length).toBeGreaterThan(0)
     act(() => root.unmount())
   })
+})
 
+describe('hover machine nested and immediate cards', () => {
   it('opens a nested card when hovering a wiki link inside the card body', async () => {
-    useNotes.setState({
-      notes: { a: summary('a', 'Note A'), b: summary('b', 'Note B') },
-      contents: {},
-      peekContent: async (id: string) => (id === 'a' ? 'Content of A with [[Note B]] inside.' : 'Content of B'),
-    })
+    seedNotes([['a', 'Note A'], ['b', 'Note B']], (id) => (id === 'a' ? 'Content of A with [[Note B]] inside.' : 'Content of B'))
 
     const anchor = document.createElement('span')
     document.body.appendChild(anchor)
     const state: WikiLinkHoverCardState = { anchor, title: 'Note A', noteId: 'a', missing: false }
 
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    const root = createRoot(container)
-    await act(async () => {
-      root.render(createElement(WikiLinkHoverCard, {
-        card: state,
-        path: ['a'],
-        depth: 1,
-        dark: false,
-        onClose: () => {},
-        onEnter: () => {},
-        onLeave: () => {},
-        onPin: () => {},
-      }))
-    })
+    const { root } = await mountCard(state)
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 30))
     })
@@ -146,114 +159,61 @@ describe('wiki link hover machine', () => {
     act(() => root.unmount())
   })
 
-  it('keeps the card when the same link is re-proposed while a hide is pending', async () => {
-    useNotes.setState({
-      notes: { a: summary('a', 'Note A') },
-      contents: {},
-      peekContent: async () => 'Content of A',
-    })
+  it('opens the card immediately when proposing with the immediate option', async () => {
+    seedNotes([['a', 'Note A']], () => 'Content of A')
 
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    const root = createRoot(container)
-    const link = document.createElement('a')
-    container.appendChild(link)
-    let machineRef: ReturnType<typeof useLinkHover> | null = null
-
-    const Harness = () => {
-      const machine = useLinkHover({
-        resolve: (anchor) => ({ anchor, title: 'Note A', noteId: 'a', missing: false }),
-        delay: 50,
-        enabled: true,
-      })
-      machineRef = machine
-      return null
-    }
-
+    const { root, refs, Harness } = renderHoverHarness(
+      (link) => ({ anchor: link, title: 'Note A', noteId: 'a', missing: false }),
+      10000,
+    )
     await act(async () => root.render(createElement(Harness)))
+    const link = refs.host!.querySelector<HTMLElement>('[data-wikilink]')!
+    expect(refs.machine!.card).toBeNull()
     await act(async () => {
-      machineRef!.propose(link, { immediate: true })
+      refs.machine!.propose(link, { immediate: true })
     })
-    expect(machineRef!.card).not.toBeNull()
-    await act(async () => {
-      machineRef!.armHide()
-      machineRef!.propose(link, { immediate: true })
-      await new Promise((resolve) => setTimeout(resolve, 420))
-    })
-    expect(machineRef!.card).not.toBeNull()
+    expect(refs.machine!.card).not.toBeNull()
     act(() => root.unmount())
   })
+})
 
-  it('opens the card immediately when proposing with the immediate option', async () => {
-    useNotes.setState({
-      notes: { a: summary('a', 'Note A') },
-      contents: {},
-      peekContent: async () => 'Content of A',
-    })
+describe('hover machine hide races', () => {
+  it('keeps the card when the same link is re-proposed while a hide is pending', async () => {
+    seedNotes([['a', 'Note A']], () => 'Content of A')
 
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    const root = createRoot(container)
-    let machineRef: ReturnType<typeof useLinkHover> | null = null
-
-    const Harness = () => {
-      const machine = useLinkHover({
-        resolve: (link) => ({ anchor: link, title: 'Note A', noteId: 'a', missing: false }),
-        delay: 10000,
-        enabled: true,
-      })
-      machineRef = machine
-      return createElement('div', {
-        onMouseMove: machine.handleMouseMove,
-        dangerouslySetInnerHTML: wikilinkHtmlObject,
-      })
-    }
-
+    const { root, refs, Harness } = renderHoverHarness(
+      (anchor) => ({ anchor, title: 'Note A', noteId: 'a', missing: false }),
+      50,
+    )
     await act(async () => root.render(createElement(Harness)))
-    const link = container.querySelector<HTMLElement>('[data-wikilink]')!
-    expect(machineRef!.card).toBeNull()
+    const link = refs.host!.querySelector<HTMLElement>('[data-wikilink]')!
     await act(async () => {
-      machineRef!.propose(link, { immediate: true })
+      refs.machine!.propose(link, { immediate: true })
     })
-    expect(machineRef!.card).not.toBeNull()
+    expect(refs.machine!.card).not.toBeNull()
+    await act(async () => {
+      refs.machine!.armHide()
+      refs.machine!.propose(link, { immediate: true })
+      await new Promise((resolve) => setTimeout(resolve, 420))
+    })
+    expect(refs.machine!.card).not.toBeNull()
     act(() => root.unmount())
   })
 
   it('promotes the card to a pinned window when the pin button is clicked', async () => {
-    useNotes.setState({
-      notes: { a: summary('a', 'Note A') },
-      contents: {},
-      peekContent: async () => 'Content of A',
-    })
+    seedNotes([['a', 'Note A']], () => 'Content of A')
 
     const anchor = document.createElement('span')
     document.body.appendChild(anchor)
     const state: WikiLinkHoverCardState = { anchor, title: 'Note A', noteId: 'a', missing: false }
     let pinnedCard: WikiLinkHoverCardState | null = null
 
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    const root = createRoot(container)
-
-    await act(async () => {
-      root.render(createElement(WikiLinkHoverCard, {
-        card: state,
-        path: ['a'],
-        depth: 1,
-        dark: false,
-        onClose: () => {},
-        onEnter: () => {},
-        onLeave: () => {},
-        onPin: (card) => { pinnedCard = card },
-      }))
-    })
+    const { root } = await mountCard(state, { onPin: (card) => { pinnedCard = card } })
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 30))
     })
 
-    const pinButton = [...document.querySelectorAll('button')].find(
-      (button) => button.getAttribute('aria-label') === 'preview.pin_card',
-    )
+    const pinButton = findButtonByLabel('preview.pin_card')
     expect(pinButton).not.toBeNull()
     await act(async () => {
       pinButton!.click()
@@ -261,41 +221,24 @@ describe('wiki link hover machine', () => {
     expect(pinnedCard).toEqual(state)
     act(() => root.unmount())
   })
+})
 
+describe('pinned card close and headline highlight', () => {
   it('closes a pinned window via its close button', async () => {
-    useNotes.setState({
-      notes: { a: summary('a', 'Note A') },
-      contents: {},
-      peekContent: async () => 'Content of A',
-    })
+    seedNotes([['a', 'Note A']], () => 'Content of A')
 
     const anchor = document.createElement('span')
     document.body.appendChild(anchor)
     const state: WikiLinkHoverCardState = { anchor, title: 'Note A', noteId: 'a', missing: false }
     let closed = false
 
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    const root = createRoot(container)
-
-    await act(async () => {
-      root.render(createElement(WikiLinkHoverCard, {
-        card: state,
-        path: ['a'],
-        depth: 1,
-        dark: false,
-        pinned: true,
-        pinnedInit: { id: 1, noteId: 'a', title: 'Note A', missing: false, x: 40, y: 80, width: 340, height: 0, z: 1 },
-        onClose: () => { closed = true },
-        onEnter: () => {},
-        onLeave: () => {},
-        onPin: () => {},
-      }))
+    const { root } = await mountCard(state, {
+      pinned: true,
+      pinnedInit: { id: 1, noteId: 'a', title: 'Note A', missing: false, x: 40, y: 80, width: 340, height: 0, z: 1 },
+      onClose: () => { closed = true },
     })
 
-    const closeButton = [...document.querySelectorAll('button')].find(
-      (button) => button.getAttribute('aria-label') === 'common.close',
-    )
+    const closeButton = findButtonByLabel('common.close')
     await act(async () => {
       closeButton!.click()
     })
@@ -324,7 +267,9 @@ describe('wiki link hover machine', () => {
     expect(marks.length).toBe(1)
     expect(highlighted).toContain('<code>const MyNote = 1; MyNote++</code>')
   })
+})
 
+describe('hover target signal', () => {
   it('broadcasts and replays the current hover target', () => {
     const seen: Array<string | null> = []
     const unsubscribe = subscribeLinkHoverTarget((noteId) => seen.push(noteId))
@@ -339,38 +284,22 @@ describe('wiki link hover machine', () => {
   })
 
   it('publishes the hover target to graph subscribers while a hover card is mounted', async () => {
-    useNotes.setState({
-      notes: { a: summary('a', 'Note A') },
-      contents: {},
-      peekContent: async () => 'Content of A',
-    })
+    seedNotes([['a', 'Note A']], () => 'Content of A')
     const anchor = document.createElement('span')
     document.body.appendChild(anchor)
     const state: WikiLinkHoverCardState = { anchor, title: 'Note A', noteId: 'a', missing: false }
     const seen: Array<string | null> = []
     const unsubscribe = subscribeLinkHoverTarget((noteId) => seen.push(noteId))
 
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    const root = createRoot(container)
-    await act(async () => {
-      root.render(createElement(WikiLinkHoverCard, {
-        card: state,
-        path: ['a'],
-        depth: 1,
-        dark: false,
-        onClose: () => {},
-        onEnter: () => {},
-        onLeave: () => {},
-        onPin: () => {},
-      }))
-    })
+    const { root } = await mountCard(state)
     expect(seen.at(-1)).toBe('a')
     act(() => root.unmount())
     expect(seen.at(-1)).toBeNull()
     unsubscribe()
   })
+})
 
+describe('pinned windows store behavior', () => {
   it('pins, restacks, moves and closes windows through the persisted store', () => {
     usePinnedWindows.setState({ items: [], seq: 1 })
     const anchor = document.createElement('span')
@@ -416,7 +345,9 @@ describe('wiki link hover machine', () => {
     expect(usePinnedWindows.getState().flashId).toBe(items[0]!.id)
     usePinnedWindows.getState().closeAll()
   })
+})
 
+describe('pinned windows persistence', () => {
   it('restores pinned windows from local storage', () => {
     localStorage.setItem('inkstone.pinned-windows', JSON.stringify({
       seq: 7,

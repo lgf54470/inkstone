@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { MutableRefObject } from 'react'
 import type { Backlink } from '@shared/types'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import { enhancePreview } from '../../lib/markdown/enhance'
@@ -59,48 +60,11 @@ export function useNoteCardContent(
       setHtml('')
       setIsTruncated(false)
     }
-    void (async () => {
-      try {
-        const content = await useNotes.getState().peekContent(noteId)
-        if (isCancelled || revision !== revisionRef.current) return
-        if (content == null) {
-          if (hydrated || rev > 0) {
-            statusRef.current = 'error'
-            setStatus('error')
-          }
-          return
-        }
-        const truncatedContent = limitPreviewLength(content, maxLength)
-        const externalImages = useSession.getState().settings.preview.externalImages
-        const cacheKey = [noteId, rev, hashString(truncatedContent), previewMath ? 1 : 0, dark ? 1 : 0, externalImages ? 1 : 0].join(':')
-        let nextHtml = htmlCache.get(cacheKey)
-        if (nextHtml === undefined) {
-          const staging = document.createElement('div')
-          staging.innerHTML = renderMarkdown(truncatedContent, { externalImages }).html
-          if (staging.querySelector('pre code') || staging.querySelector('[data-math]')) {
-            await enhancePreview(staging, {
-              math: previewMath,
-              mermaid: false,
-              dark,
-              codeBlockCollapseLines: 0,
-            })
-          }
-          nextHtml = staging.innerHTML
-          remember(htmlCache, cacheKey, nextHtml, HTML_CACHE_LIMIT)
-        }
-        if (isCancelled || revision !== revisionRef.current) return
-        const highlighted = headline ? applyHighlightToHtml(nextHtml, buildHighlightTerms(headline)) : nextHtml
-        setHtml(highlighted)
-        setIsTruncated(truncatedContent.length < content.length)
-        statusRef.current = 'ready'
-        setStatus('ready')
-      } catch {
-        if (!isCancelled && revision === revisionRef.current) {
-          statusRef.current = 'error'
-          setStatus('error')
-        }
-      }
-    })()
+    void loadCardContent({
+      noteId, revision, rev, hydrated, maxLength, previewMath, dark, headline,
+      statusRef, isCurrent: () => !isCancelled && revision === revisionRef.current,
+      setStatus, setHtml, setIsTruncated,
+    })
     return () => {
       isCancelled = true
     }
@@ -111,6 +75,70 @@ export function useNoteCardContent(
 
 interface NoteBacklinks {
   links: Backlink[] | null
+}
+
+type LoadCardArgs = {
+  noteId: string
+  revision: number
+  rev: number
+  hydrated: boolean
+  maxLength: number
+  previewMath: boolean
+  dark: boolean
+  headline: string | undefined
+  statusRef: MutableRefObject<NoteCardContent['status']>
+  isCurrent: () => boolean
+  setStatus: (status: NoteCardContent['status']) => void
+  setHtml: (html: string) => void
+  setIsTruncated: (value: boolean) => void
+}
+
+async function loadCardContent(args: LoadCardArgs): Promise<void> {
+  try {
+    const content = await useNotes.getState().peekContent(args.noteId)
+    if (!args.isCurrent()) return
+    if (content == null) {
+      if (args.hydrated || args.rev > 0) {
+        args.statusRef.current = 'error'
+        args.setStatus('error')
+      }
+      return
+    }
+    const { html: nextHtml, isTruncated } = await renderCardHtml(content, args)
+    if (!args.isCurrent()) return
+    const highlighted = args.headline ? applyHighlightToHtml(nextHtml, buildHighlightTerms(args.headline)) : nextHtml
+    args.setHtml(highlighted)
+    args.setIsTruncated(isTruncated)
+    args.statusRef.current = 'ready'
+    args.setStatus('ready')
+  } catch {
+    if (args.isCurrent()) {
+      args.statusRef.current = 'error'
+      args.setStatus('error')
+    }
+  }
+}
+
+async function renderCardHtml(content: string, args: LoadCardArgs): Promise<{ html: string; isTruncated: boolean }> {
+  const truncatedContent = limitPreviewLength(content, args.maxLength)
+  const externalImages = useSession.getState().settings.preview.externalImages
+  const cacheKey = [args.noteId, args.rev, hashString(truncatedContent), args.previewMath ? 1 : 0, args.dark ? 1 : 0, externalImages ? 1 : 0].join(':')
+  let nextHtml = htmlCache.get(cacheKey)
+  if (nextHtml === undefined) {
+    const staging = document.createElement('div')
+    staging.innerHTML = renderMarkdown(truncatedContent, { externalImages }).html
+    if (staging.querySelector('pre code') || staging.querySelector('[data-math]')) {
+      await enhancePreview(staging, {
+        math: args.previewMath,
+        mermaid: false,
+        dark: args.dark,
+        codeBlockCollapseLines: 0,
+      })
+    }
+    nextHtml = staging.innerHTML
+    remember(htmlCache, cacheKey, nextHtml, HTML_CACHE_LIMIT)
+  }
+  return { html: nextHtml, isTruncated: truncatedContent.length < content.length }
 }
 
 export function useNoteBacklinks(noteId: string | null): NoteBacklinks {
