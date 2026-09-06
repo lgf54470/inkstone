@@ -47,7 +47,9 @@ describe('mergeSettingsPatch', () => {
     expect(next.notes.todoTag).toBeNull()
     expect(next.preview.layout).toBe('preview')
   })
+})
 
+describe('mergeSettingsPatch sanitization', () => {
   it('sanitizes patched values against current values', () => {
     const current = mergeSettings({
       ...DEFAULT_SETTINGS,

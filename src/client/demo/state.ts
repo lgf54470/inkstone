@@ -52,21 +52,16 @@ export interface DemoState {
 
 const seedId = (value: number) => `01j${String(value).padStart(23, '0')}`
 
-export function newDemoId(): string {
-  const alphabet = '0123456789abcdefghjkmnpqrstvwxyz'
-  const bytes = crypto.getRandomValues(new Uint8Array(26))
-  return [...bytes].map((value) => alphabet[value % alphabet.length]).join('')
-}
-
-export function createDemoState(): DemoState {
-  const now = Date.now()
-  const folders: Folder[] = []
+function welcomeNotesSeed(now: number): Note[] {
   // Welcome notes are deliberately dated a few weeks back: with no edits within the last ~10 days,
   // the rolling date filter's follow-edit window stays parked at the newest edit and the gap hint
   // (newest edit outside a today-anchored window) is directly visible in the demo.
-  const notes = welcomeNoteTemplates('zh-CN').map(({ content }, index) =>
+  return welcomeNoteTemplates('zh-CN').map(({ content }, index) =>
     note(seedId(20 + index), content, null, now - 86_400_000 * (21 + 7 * index), { isPinned: true, isStarred: true }),
   )
+}
+
+function tagMapsSeed(notes: Note[]): { tagIds: Map<string, string>; tagColors: Map<string, string | null> } {
   const tagIds = new Map<string, string>()
   for (const item of notes) {
     for (const name of item.tags) if (!tagIds.has(name)) tagIds.set(name, newDemoId())
@@ -74,6 +69,10 @@ export function createDemoState(): DemoState {
   const tagColors = new Map<string, string | null>([['getting-started', '#6366f1']])
   const preferredLocaleTag = notes[0]?.tags.find((name) => name !== 'Inkstone')
   if (preferredLocaleTag) tagColors.set(preferredLocaleTag, '#b5482e')
+  return { tagIds, tagColors }
+}
+
+function welcomeShareSeed(now: number, welcomeNoteId: string) {
   const demoShareFolder: ShareFolder = {
     id: seedId(101),
     parentId: null,
@@ -93,7 +92,7 @@ export function createDemoState(): DemoState {
   }
   const welcomeShare: ShareInfo = {
     slug: 'welcome',
-    noteId: notes[0]!.id,
+    noteId: welcomeNoteId,
     url: '/s/welcome',
     hasPassword: false,
     expiresAt: null,
@@ -104,41 +103,21 @@ export function createDemoState(): DemoState {
     shareFolderId: demoShareFolder.id,
     shareTags: [demoShareTag.name],
   }
-
   return {
-    authenticated: false,
-    password: 'password',
-    registrationOpen: false,
-    cursor: 1,
-    user: {
-      id: seedId(1),
-      login: 'admin',
-      username: 'admin',
-      name: 'Demo Admin',
-      avatarUrl: 'dicebear:0123456789abcdef0123456789abcdef',
-      role: 'owner',
-      createdAt: now - 86_400_000 * 30,
-    },
-    settings: mergeSettings({ sync: { realtime: false, pollIntervalMs: 300_000 } }),
-    notes: new Map(notes.map((item) => [item.id, item])),
-    folders: new Map(folders.map((item) => [item.id, item])),
-    tagIds,
-    tagColors,
-    versions: new Map(),
-    attachments: new Map(),
     shares: new Map([[welcomeShare.noteId, { info: welcomeShare, password: null }]]),
     shareFolders: new Map([[demoShareFolder.id, demoShareFolder]]),
     shareTags: new Map([[demoShareTag.id, demoShareTag]]),
-    backupTargets: new Map(),
-    backupRuns: [],
-    communityTemplates: [
-      {
-        id: 'cm-01j00000000000000000000001',
-        authorId: 'community-alice',
-        authorName: '阿远',
-        name: '面试复盘',
-        description: '记录面试过程、问题与反思，为下一次做准备。',
-        content: `# 面试复盘
+  }
+}
+
+const COMMUNITY_SEED_TEMPLATES = [
+  {
+    id: 'cm-01j00000000000000000000001',
+    authorId: 'community-alice',
+    authorName: '阿远',
+    name: '面试复盘',
+    description: '记录面试过程、问题与反思，为下一次做准备。',
+    content: `# 面试复盘
 
 ## 基本信息
 
@@ -160,17 +139,17 @@ export function createDemoState(): DemoState {
 
 - [ ] 发送感谢信
 - [ ] 准备二面`,
-        tags: ['工作', '复盘'],
-        category: '工作与会议',
-        createdAt: now - 86_400_000 * 3,
-      },
-      {
-        id: 'cm-01j00000000000000000000002',
-        authorId: 'community-bob',
-        authorName: '小林',
-        name: '家庭旅行规划',
-        description: '带家人出行的完整规划：路线、住宿、餐饮与应急。',
-        content: `# 家庭旅行规划
+    tags: ['工作', '复盘'],
+    category: '工作与会议',
+    ageDays: 3,
+  },
+  {
+    id: 'cm-01j00000000000000000000002',
+    authorId: 'community-bob',
+    authorName: '小林',
+    name: '家庭旅行规划',
+    description: '带家人出行的完整规划：路线、住宿、餐饮与应急。',
+    content: `# 家庭旅行规划
 
 ## 目的地
 
@@ -195,17 +174,17 @@ export function createDemoState(): DemoState {
 
 - 紧急联系人：
 - 附近医院：`,
-        tags: ['旅行', '清单'],
-        category: '生活记录',
-        createdAt: now - 86_400_000 * 2,
-      },
-      {
-        id: 'cm-01j00000000000000000000003',
-        authorId: 'community-cara',
-        authorName: 'Momo',
-        name: '极简晨间流程',
-        description: '五分钟晨间仪式：喝水、伸展、写三件最重要的事。',
-        content: `# 极简晨间流程
+    tags: ['旅行', '清单'],
+    category: '生活记录',
+    ageDays: 2,
+  },
+  {
+    id: 'cm-01j00000000000000000000003',
+    authorId: 'community-cara',
+    authorName: 'Momo',
+    name: '极简晨间流程',
+    description: '五分钟晨间仪式：喝水、伸展、写三件最重要的事。',
+    content: `# 极简晨间流程
 
 - [ ] 喝一杯水
 - [ ] 伸展 5 分钟
@@ -217,11 +196,65 @@ export function createDemoState(): DemoState {
 1. 
 2. 
 3.`,
-        tags: ['每日', '健康'],
-        category: '健康与习惯',
-        createdAt: now - 86_400_000,
-      },
-    ],
+    tags: ['每日', '健康'],
+    category: '健康与习惯',
+    ageDays: 1,
+  },
+]
+
+function communityTemplatesSeed(now: number): CommunityTemplate[] {
+  return COMMUNITY_SEED_TEMPLATES.map((template) => ({
+    id: template.id,
+    authorId: template.authorId,
+    authorName: template.authorName,
+    name: template.name,
+    description: template.description,
+    content: template.content,
+    tags: template.tags,
+    category: template.category,
+    createdAt: now - 86_400_000 * template.ageDays,
+  }))
+}
+
+export function newDemoId(): string {
+  const alphabet = '0123456789abcdefghjkmnpqrstvwxyz'
+  const bytes = crypto.getRandomValues(new Uint8Array(26))
+  return [...bytes].map((value) => alphabet[value % alphabet.length]).join('')
+}
+
+export function createDemoState(): DemoState {
+  const now = Date.now()
+  const notes = welcomeNotesSeed(now)
+  const { tagIds, tagColors } = tagMapsSeed(notes)
+  const shareSeed = welcomeShareSeed(now, notes[0]!.id)
+
+  return {
+    authenticated: false,
+    password: 'password',
+    registrationOpen: false,
+    cursor: 1,
+    user: {
+      id: seedId(1),
+      login: 'admin',
+      username: 'admin',
+      name: 'Demo Admin',
+      avatarUrl: 'dicebear:0123456789abcdef0123456789abcdef',
+      role: 'owner',
+      createdAt: now - 86_400_000 * 30,
+    },
+    settings: mergeSettings({ sync: { realtime: false, pollIntervalMs: 300_000 } }),
+    notes: new Map(notes.map((item) => [item.id, item])),
+    folders: new Map<string, Folder>(),
+    tagIds,
+    tagColors,
+    versions: new Map(),
+    attachments: new Map(),
+    shares: shareSeed.shares,
+    shareFolders: shareSeed.shareFolders,
+    shareTags: shareSeed.shareTags,
+    backupTargets: new Map(),
+    backupRuns: [],
+    communityTemplates: communityTemplatesSeed(now),
   }
 }
 

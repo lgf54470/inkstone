@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Eye, FileText, ListTree, PencilLine } from 'lucide-react';
+import type { Hotkey } from '../../lib/hotkeys';
 import { cn } from '../../lib/cn';
 import { registerAll } from '../../lib/hotkeys';
 import { useBreakpoint } from '../../lib/hooks';
@@ -18,7 +19,7 @@ import { Sidebar } from '../sidebar';
 import { FloatingSearch } from './floating-search';
 import { Resizer, SplitResizer } from './resizer';
 import { PinnedWindowsLayer } from '../preview';
-import { t } from "../../lib/i18n";
+import { t } from '../../lib/i18n';
 const Workspace = lazy(() => import('../workspace').then((m) => ({ default: m.Workspace })));
 const CommandPalette = lazy(() => import('../command').then((m) => ({ default: m.CommandPalette })));
 const SettingsPanel = lazy(() => import('../settings').then((m) => ({ default: m.SettingsPanel })));
@@ -34,16 +35,27 @@ const ManageFoldersModal = lazy(() => import('../folders').then((m) => ({ defaul
 const ManageTagsModal = lazy(() => import('../tags').then((m) => ({ default: m.ManageTagsModal })));
 const Lightbox = lazy(() => import('../preview').then((m) => ({ default: m.Lightbox })));
 const UpdateDialog = lazy(() => import('../update').then((m) => ({ default: m.UpdateDialog })));
+
+const uiState = () => useUi.getState();
+const notesState = () => useNotes.getState();
+
 export function AppShell() {
-    const breakpoint = useBreakpoint();
-    const role = useSession((s) => s.user?.role);
-    const checkForUpdates = useUpdate((s) => s.check);
-    useSyncEngine();
     useGlobalHotkeys();
+    useSyncEngine();
     useRollingDateFilter();
     useGapIndicator();
+    useShellBootstrap();
+    const isMobile = useBreakpoint() === 'mobile';
+    if (isMobile)
+        return <MobileShell />;
+    return <DesktopShell />;
+}
+
+function useShellBootstrap(): void {
     const hydrated = useNotes((s) => s.hydrated);
     const openNote = useNotes((s) => s.openNote);
+    const role = useSession((s) => s.user?.role);
+    const checkForUpdates = useUpdate((s) => s.check);
     const deepLinkHandled = useRef(false);
     useEffect(() => {
         if (!hydrated || deepLinkHandled.current)
@@ -59,7 +71,6 @@ export function AppShell() {
         if (role === 'owner')
             void checkForUpdates();
     }, [role, checkForUpdates]);
-
     useEffect(() => {
         const ui = useUi.getState();
         useUi.setState({
@@ -68,69 +79,89 @@ export function AppShell() {
                 : useSession.getState().settings.preview.showToc,
         });
     }, []);
-    const navWidth = useUi((s) => s.navWidth);
-    const listWidth = useUi((s) => s.listWidth);
-    const navCollapsed = useUi((s) => s.navCollapsed);
-    const listCollapsed = useUi((s) => s.listCollapsed);
-    const navDrawerOpen = useUi((s) => s.navDrawerOpen);
-    const workspaceSecondaryNoteId = useUi((s) => s.workspaceSecondaryNoteId);
-    const workspaceSplitRatio = useUi((s) => s.workspaceSplitRatio);
-    const toggleNav = useUi((s) => s.toggleNav);
-    const toggleNavDrawer = useUi((s) => s.toggleNavDrawer);
-    const setLayout = useUi((s) => s.setLayout);
-    const workspaceGroupsRef = useRef<HTMLElement>(null);
-    const isMobile = breakpoint === 'mobile';
-    const isTablet = breakpoint === 'tablet';
+}
 
-    const showNav = !isMobile && !isTablet;
+function DesktopShell() {
+    const navDrawerOpen = useUi((s) => s.navDrawerOpen);
+    const listCollapsed = useUi((s) => s.listCollapsed);
+    const toggleNavDrawer = useUi((s) => s.toggleNavDrawer);
+    const isTablet = useBreakpoint() === 'tablet';
+    const showNav = !isTablet;
     const navAsDrawer = isTablet && navDrawerOpen;
-    const showList = !listCollapsed && !isMobile;
-    const showWorkspaceSplit = breakpoint === 'desktop' && Boolean(workspaceSecondaryNoteId);
-    const effectiveWorkspaceSplitRatio = workspaceSplitRatio ?? 0.5;
-    if (isMobile)
-        return <MobileShell />;
+    const showList = !listCollapsed;
     return (<div className="relative flex h-full min-h-0 overflow-hidden bg-[var(--bg-base)]">
       <div className="flex min-w-0 flex-1">
-        {showNav && (<>
-            <div style={{ width: navCollapsed ? 48 : navWidth }} className="shrink-0 overflow-hidden transition-[width] duration-[var(--dur-slow)] ease-[var(--ease-out)]">
-              <Sidebar collapsed={navCollapsed} onCollapse={toggleNav}/>
-            </div>
-            {!navCollapsed && (<Resizer label={t("shell.resize_navigation_panel")} value={navWidth} min={PANEL_WIDTHS.navigation.min} max={PANEL_WIDTHS.navigation.max} onChange={(navWidth) => setLayout({ navWidth })} onReset={() => setLayout({ navWidth: PANEL_WIDTHS.navigation.min })}/>)}
-          </>)}
-
-        {showList && (<>
-            <div style={{ width: listWidth }} className="anim-view-content shrink-0 overflow-hidden">
-              <NoteList />
-            </div>
-            <Resizer label={t("shell.resize_note_list")} value={listWidth} min={PANEL_WIDTHS.noteList.min} max={PANEL_WIDTHS.noteList.max} onChange={(listWidth) => setLayout({ listWidth })} onReset={() => setLayout({ listWidth: PANEL_WIDTHS.noteList.min })}/>
-          </>)}
-
-        <main ref={workspaceGroupsRef} className="flex min-w-0 flex-1">
-          <Suspense fallback={<WorkspaceFallback />}>
-            {showWorkspaceSplit ? (<>
-              <div className="min-w-0" style={{ width: `${effectiveWorkspaceSplitRatio * 100}%` }}>
-                <InlineErrorBoundary><Workspace pane="primary" grouped/></InlineErrorBoundary>
-              </div>
-              <SplitResizer label={t("shell.resize_note_panes")} containerRef={workspaceGroupsRef} ratio={effectiveWorkspaceSplitRatio} onChange={(workspaceSplitRatio) => setLayout({ workspaceSplitRatio })} onReset={() => setLayout({ workspaceSplitRatio: null })}/>
-              <div className="anim-view-content min-w-0 flex-1">
-                <InlineErrorBoundary><Workspace pane="secondary" grouped/></InlineErrorBoundary>
-              </div>
-            </>) : (<div className="min-w-0 flex-1">
-                <InlineErrorBoundary><Workspace /></InlineErrorBoundary>
-              </div>)}
-          </Suspense>
-        </main>
+        {showNav && <NavRail />}
+        {showList && <ListRail />}
+        <WorkspaceArea desktop={!isTablet} />
       </div>
 
       <FloatingSearch />
 
-      <Drawer open={navAsDrawer} onClose={() => toggleNavDrawer(false)} side="left" width={272} title={t("common.navigation")}>
-        <Sidebar onCollapse={() => toggleNavDrawer(false)}/>
-      </Drawer>
+      {navAsDrawer && (<Drawer open onClose={() => toggleNavDrawer(false)} side="left" width={272} title={t("common.navigation")}>
+          <Sidebar onCollapse={() => toggleNavDrawer(false)}/>
+        </Drawer>)}
 
       <OverlayHost />
       <PinnedWindowsLayer />
     </div>);
+}
+
+function NavRail() {
+    const width = useUi((s) => s.navWidth);
+    const collapsed = useUi((s) => s.navCollapsed);
+    const toggle = useUi((s) => s.toggleNav);
+    const setLayout = useUi((s) => s.setLayout);
+    return (<>
+      <div style={{ width: collapsed ? 48 : width }} className="shrink-0 overflow-hidden transition-[width] duration-[var(--dur-slow)] ease-[var(--ease-out)]">
+        <Sidebar collapsed={collapsed} onCollapse={toggle}/>
+      </div>
+      {!collapsed && (<Resizer label={t("shell.resize_navigation_panel")} value={width} min={PANEL_WIDTHS.navigation.min} max={PANEL_WIDTHS.navigation.max} onChange={(navWidth) => setLayout({ navWidth })} onReset={() => setLayout({ navWidth: PANEL_WIDTHS.navigation.min })}/>)}
+    </>);
+}
+
+function ListRail() {
+    const width = useUi((s) => s.listWidth);
+    const setLayout = useUi((s) => s.setLayout);
+    return (<>
+      <div style={{ width }} className="anim-view-content shrink-0 overflow-hidden">
+        <NoteList />
+      </div>
+      <Resizer label={t("shell.resize_note_list")} value={width} min={PANEL_WIDTHS.noteList.min} max={PANEL_WIDTHS.noteList.max} onChange={(listWidth) => setLayout({ listWidth })} onReset={() => setLayout({ listWidth: PANEL_WIDTHS.noteList.min })}/>
+    </>);
+}
+
+function WorkspaceArea({ desktop }: { desktop: boolean }) {
+    const workspaceGroupsRef = useRef<HTMLElement | null>(null);
+    const secondaryId = useUi((s) => s.workspaceSecondaryNoteId);
+    const ratio = useUi((s) => s.workspaceSplitRatio) ?? 0.5;
+    const setLayout = useUi((s) => s.setLayout);
+    const split = desktop && Boolean(secondaryId);
+    return (<main ref={workspaceGroupsRef} className="flex min-w-0 flex-1">
+      <Suspense fallback={<WorkspaceFallback />}>
+        {split ? (<SplitWorkspace containerRef={workspaceGroupsRef} ratio={ratio} onRatio={(workspaceSplitRatio) => setLayout({ workspaceSplitRatio })} onReset={() => setLayout({ workspaceSplitRatio: null })}/>)
+          : (<div className="min-w-0 flex-1">
+              <InlineErrorBoundary><Workspace /></InlineErrorBoundary>
+            </div>)}
+      </Suspense>
+    </main>);
+}
+
+function SplitWorkspace({ containerRef, ratio, onRatio, onReset }: {
+    containerRef: React.RefObject<HTMLElement | null>;
+    ratio: number;
+    onRatio: (ratio: number) => void;
+    onReset: () => void;
+}) {
+    return (<>
+      <div className="min-w-0" style={{ width: `${ratio * 100}%` }}>
+        <InlineErrorBoundary><Workspace pane="primary" grouped/></InlineErrorBoundary>
+      </div>
+      <SplitResizer label={t("shell.resize_note_panes")} containerRef={containerRef} ratio={ratio} onChange={onRatio} onReset={onReset}/>
+      <div className="anim-view-content min-w-0 flex-1">
+        <InlineErrorBoundary><Workspace pane="secondary" grouped/></InlineErrorBoundary>
+      </div>
+    </>);
 }
 
 function MobileShell() {
@@ -176,6 +207,7 @@ function MobileShell() {
       <OverlayHost />
     </div>);
 }
+
 function WorkspaceFallback() {
     return (
         <div
@@ -236,155 +268,151 @@ function OverlayHost() {
 }
 
 function useGlobalHotkeys(): void {
-    useEffect(() => {
-
-
-        const ui = () => useUi.getState();
-        const notes = () => useNotes.getState();
-        return registerAll([
-            {
-                id: 'command',
-                combo: 'mod+k',
-                description: () => t("common.command_palette"),
-                group: () => t("shell.global"),
-                allowInInput: true,
-                handler: () => ui().togglePanel('command'),
-            },
-            {
-                id: 'quick-open',
-                combo: 'mod+p',
-                description: () => t("shell.quick_open"),
-                group: () => t("shell.global"),
-                allowInInput: true,
-                handler: () => ui().openPanel('command'),
-            },
-            {
-                id: 'new-note',
-                combo: 'mod+n',
-                description: () => t("common.new_note"),
-                group: () => t("shell.global"),
-                allowInInput: true,
-                handler: () => void createContextualNote(),
-            },
-            {
-                id: 'new-note-from-template',
-                combo: 'mod+shift+n',
-                description: () => t("templates.new_note_from_template"),
-                group: () => t("shell.global"),
-                allowInInput: true,
-                handler: () => ui().togglePanel('templates'),
-            },
-            {
-                id: 'search',
-                combo: 'mod+shift+f',
-                description: () => t("shell.search_all_notes"),
-                group: () => t("shell.global"),
-                allowInInput: true,
-                handler: () => ui().openPanel('command'),
-            },
-            {
-                id: 'settings',
-                combo: 'mod+,',
-                description: () => t("common.open_settings"),
-                group: () => t("shell.global"),
-                allowInInput: true,
-                handler: () => ui().openPanel('settings'),
-            },
-            {
-                id: 'toggle-list',
-                combo: 'mod+shift+b',
-                description: () => t("shell.collapse_expand_list"),
-                group: () => t("common.interface"),
-                allowInInput: true,
-                handler: () => ui().toggleList(),
-            },
-            {
-                id: 'cycle-layout',
-                combo: 'mod+\\',
-                description: () => t("shell.cycle_editor_split_preview"),
-                group: () => t("common.interface"),
-                allowInInput: true,
-                handler: () => {
-                    const order = ['edit', 'split', 'preview'] as const;
-                    const uiState = ui();
-                    if (uiState.workspaceSecondaryNoteId) {
-                        const pane = uiState.activeWorkspacePane;
-                        const current = order.indexOf(uiState.workspacePaneLayouts[pane]);
-                        uiState.setWorkspacePaneLayout(pane, order[(current + 1) % order.length]);
-                        return;
-                    }
-                    const session = useSession.getState();
-                    const current = order.indexOf(session.settings.preview.layout);
-                    void session.updateSettings({
-                        preview: { layout: order[(current + 1) % order.length] },
-                    });
-                },
-            },
-            {
-                id: 'shortcuts',
-                combo: 'shift+?',
-                description: () => t("shell.keyboard_shortcuts"),
-                group: () => t("shell.global"),
-                handler: () => ui().togglePanel('shortcuts'),
-            },
-            {
-                id: 'save',
-                combo: 'mod+s',
-                description: () => t("shell.save_now"),
-                group: () => t("common.edit"),
-                allowInInput: true,
-                handler: () => void notes().flush({ immediate: true }),
-            },
-            {
-                id: 'star',
-                combo: 'mod+d',
-                description: () => t("shell.add_to_remove_from_favorites"),
-                group: () => t("common.note"),
-                handler: () => {
-                    const id = ui().activeNoteId;
-                    const note = id ? notes().notes[id] : null;
-                    if (id && note)
-                        void notes().patchNote(id, { isStarred: !note.isStarred });
-                },
-            },
-            {
-                id: 'delete',
-                combo: 'mod+backspace',
-                description: () => t("common.move_to_trash"),
-                group: () => t("common.note"),
-                handler: () => {
-                    const id = ui().activeNoteId;
-                    if (id)
-                        void notes().deleteNote(id);
-                },
-            },
-            {
-                id: 'insert-template',
-                combo: 'mod+shift+t',
-                description: () => t("shell.insert_note_template"),
-                group: () => t("common.note"),
-                allowInInput: true,
-                handler: () => {
-                    const view = getActiveEditorView();
-                    if (view)
-                        insertNoteTemplate(view);
-                },
-            },
-            {
-                id: 'outline',
-                combo: 'mod+shift+o',
-                description: () => t("shell.show_hide_outline"),
-                group: () => t("common.interface"),
-                allowInInput: true,
-                handler: () => ui().toggleOutline(),
-            },
-            {
-                id: 'graph',
-                combo: 'mod+shift+g',
-                description: () => t("common.graph"),
-                group: () => t("shell.global"),
-                handler: () => ui().togglePanel('graph'),
-            },
-        ]);
-    }, []);
+    useEffect(() => registerAll(GLOBAL_HOTKEYS), []);
 }
+
+const GLOBAL_HOTKEYS: Hotkey[] = [
+    {
+        id: 'command',
+        combo: 'mod+k',
+        description: () => t("common.command_palette"),
+        group: () => t("shell.global"),
+        allowInInput: true,
+        handler: () => uiState().togglePanel('command'),
+    },
+    {
+        id: 'quick-open',
+        combo: 'mod+p',
+        description: () => t("shell.quick_open"),
+        group: () => t("shell.global"),
+        allowInInput: true,
+        handler: () => uiState().openPanel('command'),
+    },
+    {
+        id: 'new-note',
+        combo: 'mod+n',
+        description: () => t("common.new_note"),
+        group: () => t("shell.global"),
+        allowInInput: true,
+        handler: () => void createContextualNote(),
+    },
+    {
+        id: 'new-note-from-template',
+        combo: 'mod+shift+n',
+        description: () => t("templates.new_note_from_template"),
+        group: () => t("shell.global"),
+        allowInInput: true,
+        handler: () => uiState().togglePanel('templates'),
+    },
+    {
+        id: 'search',
+        combo: 'mod+shift+f',
+        description: () => t("shell.search_all_notes"),
+        group: () => t("shell.global"),
+        allowInInput: true,
+        handler: () => uiState().openPanel('command'),
+    },
+    {
+        id: 'settings',
+        combo: 'mod+,',
+        description: () => t("common.open_settings"),
+        group: () => t("shell.global"),
+        allowInInput: true,
+        handler: () => uiState().openPanel('settings'),
+    },
+    {
+        id: 'toggle-list',
+        combo: 'mod+shift+b',
+        description: () => t("shell.collapse_expand_list"),
+        group: () => t("common.interface"),
+        allowInInput: true,
+        handler: () => uiState().toggleList(),
+    },
+    {
+        id: 'cycle-layout',
+        combo: 'mod+\\',
+        description: () => t("shell.cycle_editor_split_preview"),
+        group: () => t("common.interface"),
+        allowInInput: true,
+        handler: () => {
+            const order = ['edit', 'split', 'preview'] as const;
+            const ui = uiState();
+            if (ui.workspaceSecondaryNoteId) {
+                const pane = ui.activeWorkspacePane;
+                const current = order.indexOf(ui.workspacePaneLayouts[pane]);
+                ui.setWorkspacePaneLayout(pane, order[(current + 1) % order.length]);
+                return;
+            }
+            const session = useSession.getState();
+            const current = order.indexOf(session.settings.preview.layout);
+            void session.updateSettings({
+                preview: { layout: order[(current + 1) % order.length] },
+            });
+        },
+    },
+    {
+        id: 'shortcuts',
+        combo: 'shift+?',
+        description: () => t("shell.keyboard_shortcuts"),
+        group: () => t("shell.global"),
+        handler: () => uiState().togglePanel('shortcuts'),
+    },
+    {
+        id: 'save',
+        combo: 'mod+s',
+        description: () => t("shell.save_now"),
+        group: () => t("common.edit"),
+        allowInInput: true,
+        handler: () => void notesState().flush({ immediate: true }),
+    },
+    {
+        id: 'star',
+        combo: 'mod+d',
+        description: () => t("shell.add_to_remove_from_favorites"),
+        group: () => t("common.note"),
+        handler: () => {
+            const id = uiState().activeNoteId;
+            const note = id ? notesState().notes[id] : null;
+            if (id && note)
+                void notesState().patchNote(id, { isStarred: !note.isStarred });
+        },
+    },
+    {
+        id: 'delete',
+        combo: 'mod+backspace',
+        description: () => t("common.move_to_trash"),
+        group: () => t("common.note"),
+        handler: () => {
+            const id = uiState().activeNoteId;
+            if (id)
+                void notesState().deleteNote(id);
+        },
+    },
+    {
+        id: 'insert-template',
+        combo: 'mod+shift+t',
+        description: () => t("shell.insert_note_template"),
+        group: () => t("common.note"),
+        allowInInput: true,
+        handler: () => {
+            const view = getActiveEditorView();
+            if (view)
+                insertNoteTemplate(view);
+        },
+    },
+    {
+        id: 'outline',
+        combo: 'mod+shift+o',
+        description: () => t("shell.show_hide_outline"),
+        group: () => t("common.interface"),
+        allowInInput: true,
+        handler: () => uiState().toggleOutline(),
+    },
+    {
+        id: 'graph',
+        combo: 'mod+shift+g',
+        description: () => t("common.graph"),
+        group: () => t("shell.global"),
+        handler: () => uiState().togglePanel('graph'),
+    },
+];

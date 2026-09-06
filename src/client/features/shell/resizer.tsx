@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { KeyboardEvent, PointerEvent } from 'react'
 import { cn } from '../../lib/cn'
 
 interface ResizeStart {
@@ -23,6 +24,68 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
+function resizeKeyStep(key: string, value: number, step: number, min: number, max: number): number | null {
+  switch (key) {
+    case 'ArrowLeft':
+      return value - step
+    case 'ArrowRight':
+      return value + step
+    case 'Home':
+      return min
+    case 'End':
+      return max
+    default:
+      return null
+  }
+}
+
+function handleResizeKeyDown(event: KeyboardEvent, value: number, step: number, min: number, max: number, onChange: (next: number) => void) {
+  const next = resizeKeyStep(event.key, value, step, min, max)
+  if (next == null) return
+  event.preventDefault()
+  onChange(clamp(next, min, max))
+}
+
+function handleResizePointerDown(
+  event: PointerEvent,
+  startRef: React.RefObject<ResizeStart>,
+  value: number,
+  setIsDragging: (dragging: boolean) => void,
+) {
+  if (!event.isPrimary || event.button !== 0) return
+  event.preventDefault()
+  event.currentTarget.setPointerCapture(event.pointerId)
+  startRef.current = { x: event.clientX, value }
+  setIsDragging(true)
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+}
+
+function restoreDocument() {
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
+function finishResize(event: PointerEvent) {
+  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+    event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+  restoreDocument()
+}
+
+function ResizeIndicator({ isDragging }: { isDragging: boolean }) {
+  return (
+    <span
+      className={cn(
+        'pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2',
+        'transition-[background-color,width] duration-[var(--dur-base)] ease-[var(--ease-out)]',
+        isDragging
+          ? 'w-[2px] bg-[var(--accent)]'
+          : 'bg-[var(--border-subtle)] group-hover:w-[2px] group-hover:bg-[var(--accent)] group-focus-visible:w-[2px] group-focus-visible:bg-[var(--accent)]',
+      )}
+    />
+  )
+}
 
 function VerticalResizeHandle({
   label,
@@ -38,25 +101,11 @@ function VerticalResizeHandle({
 }: VerticalResizeHandleProps) {
   const [isDragging, setIsDragging] = useState(false)
   const startRef = useRef<ResizeStart>({ x: 0, value: 0 })
-
-  const restoreDocument = useCallback(() => {
-    document.body.style.cursor = ''
-    document.body.style.userSelect = ''
-  }, [])
-
-  useEffect(() => restoreDocument, [restoreDocument])
-
-  const finish = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      setIsDragging(false)
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId)
-      }
-      restoreDocument()
-    },
-    [restoreDocument],
-  )
-
+  useEffect(() => restoreDocument, [])
+  const finish = (event: PointerEvent) => {
+    setIsDragging(false)
+    finishResize(event)
+  }
   return (
     <div
       role="separator"
@@ -66,15 +115,7 @@ function VerticalResizeHandle({
       aria-valuemin={Math.round(min * ariaScale)}
       aria-valuemax={Math.round(max * ariaScale)}
       tabIndex={0}
-      onPointerDown={(event) => {
-        if (!event.isPrimary || event.button !== 0) return
-        event.preventDefault()
-        event.currentTarget.setPointerCapture(event.pointerId)
-        startRef.current = { x: event.clientX, value }
-        setIsDragging(true)
-        document.body.style.cursor = 'col-resize'
-        document.body.style.userSelect = 'none'
-      }}
+      onPointerDown={(event) => handleResizePointerDown(event, startRef, value, setIsDragging)}
       onPointerMove={(event) => {
         if (!isDragging) return
         onChange(clamp(resolveValue(event.clientX, startRef.current), min, max))
@@ -82,31 +123,11 @@ function VerticalResizeHandle({
       onPointerUp={finish}
       onPointerCancel={finish}
       onLostPointerCapture={finish}
-      onKeyDown={(event) => {
-        let next: number | null = null
-        if (event.key === 'ArrowLeft') next = value - keyboardStep
-        else if (event.key === 'ArrowRight') next = value + keyboardStep
-        else if (event.key === 'Home') next = min
-        else if (event.key === 'End') next = max
-        if (next == null) return
-        event.preventDefault()
-        onChange(clamp(next, min, max))
-      }}
+      onKeyDown={(event) => handleResizeKeyDown(event, value, keyboardStep, min, max, onChange)}
       onDoubleClick={onReset}
-      className={cn(
-        'group relative z-[var(--z-sticky)] -mx-[var(--sp-1)] w-[9px] shrink-0 cursor-col-resize touch-none outline-none',
-        className,
-      )}
+      className={cn('group relative z-[var(--z-sticky)] -mx-[var(--sp-1)] w-[9px] shrink-0 cursor-col-resize touch-none outline-none', className)}
     >
-      <span
-        className={cn(
-          'pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2',
-          'transition-[background-color,width] duration-[var(--dur-base)] ease-[var(--ease-out)]',
-          isDragging
-            ? 'w-[2px] bg-[var(--accent)]'
-            : 'bg-[var(--border-subtle)] group-hover:w-[2px] group-hover:bg-[var(--accent)] group-focus-visible:w-[2px] group-focus-visible:bg-[var(--accent)]',
-        )}
-      />
+      <ResizeIndicator isDragging={isDragging} />
     </div>
   )
 }
@@ -140,13 +161,10 @@ export function Resizer({
       onChange={onChange}
       onReset={onReset}
       className={className}
-      resolveValue={(clientX, start) =>
-        start.value + (clientX - start.x) * (invert ? -1 : 1)
-      }
+      resolveValue={(clientX, start) => start.value + (clientX - start.x) * (invert ? -1 : 1)}
     />
   )
 }
-
 
 export function SplitResizer({
   label,

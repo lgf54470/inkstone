@@ -16,15 +16,17 @@ const SharePage = lazy(() =>
   import('./features/share/share-page').then((module) => ({ default: module.SharePage })),
 )
 
-export function App() {
-
-  useLocale()
-  const status = useSession((s) => s.status)
-  const load = useSession((s) => s.load)
+function useShareSlug(): string | null {
   const [shareSlug] = useState(() => {
     const match = /^\/s\/([A-Za-z0-9_-]+)/.exec(location.pathname)
     return match?.[1] ?? null
   })
+  return shareSlug
+}
+
+function useAppBoot(shareSlug: string | null) {
+  const status = useSession((s) => s.status)
+  const load = useSession((s) => s.load)
 
   useEffect(() => {
     if (shareSlug) return
@@ -50,45 +52,67 @@ export function App() {
     const timer = window.setTimeout(() => dismissBootScreen(), 8000)
     return () => window.clearTimeout(timer)
   }, [shareSlug])
-
-  if (shareSlug) {
-    return (
-      <>
-        <ErrorBoundary>
-          <Suspense fallback={<PageFallback />}>
-            <SharePage slug={shareSlug} />
-          </Suspense>
-        </ErrorBoundary>
-        <Toaster />
-      </>
-    )
-  }
-
-  return (
-    <>
-      <ErrorBoundary>
-        {status === 'loading' && <div className="h-full" />}
-        {status === 'anonymous' && <LoginPage />}
-        {status === 'authed' && (
-          <Suspense fallback={<PageFallback />}>
-            <AppShell />
-          </Suspense>
-        )}
-      </ErrorBoundary>
-      <Toaster />
-      <ConfirmHost />
-    </>
-  )
 }
 
 function PageFallback() {
   return (
     <div
       role="status"
-      aria-label={t("common.loading")}
+      aria-label={t('common.loading')}
       className="flex h-full items-center justify-center bg-[var(--bg-base)] text-[var(--text-tertiary)]"
     >
       <Spinner size={18} />
     </div>
+  )
+}
+
+function ShareRoute({ slug }: { slug: string }) {
+  return (
+    <>
+      <ErrorBoundary>
+        <Suspense fallback={<PageFallback />}>
+          <SharePage slug={slug} />
+        </Suspense>
+      </ErrorBoundary>
+      <Toaster />
+    </>
+  )
+}
+
+function AuthedShell() {
+  const status = useSession((s) => s.status)
+  return (
+    <ErrorBoundary>
+      {status === 'loading' && <div className="h-full" />}
+      {status === 'anonymous' && <LoginPage />}
+      {status === 'authed' && (
+        <Suspense fallback={<PageFallback />}>
+          <AppShell />
+        </Suspense>
+      )}
+    </ErrorBoundary>
+  )
+}
+
+export function App() {
+  useLocale()
+  const shareSlug = useShareSlug()
+  useAppBoot(shareSlug)
+
+  if (shareSlug) {
+    return (
+      <>
+        <ShareRoute slug={shareSlug} />
+        <ConfirmHost />
+      </>
+    )
+  }
+
+  return (
+    <>
+      <AuthedShell />
+      <Toaster />
+      <ConfirmHost />
+    </>
   )
 }
