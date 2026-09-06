@@ -150,11 +150,11 @@ function CardCover({ post }: { post: BlogPost }) {
 
             <div className="absolute bottom-2 left-2">
                 {post.isPublished ? (
-                    <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[length:var(--text-10\\.5)] font-semibold text-white shadow-sm backdrop-blur whitespace-nowrap">
+                    <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[length:var(--text-10\.5)] font-semibold text-white shadow-sm backdrop-blur whitespace-nowrap">
                         {t('blog.published')}
                     </span>
                 ) : (
-                    <span className="rounded-full bg-stone-600/80 px-2 py-0.5 text-[length:var(--text-10\\.5)] font-medium text-white shadow-sm backdrop-blur whitespace-nowrap">
+                    <span className="rounded-full bg-stone-600/80 px-2 py-0.5 text-[length:var(--text-10\.5)] font-medium text-white shadow-sm backdrop-blur whitespace-nowrap">
                         {t('blog.draft')}
                     </span>
                 )}
@@ -168,7 +168,7 @@ function CardMeta({ post, folder, cat }: { post: BlogPost; folder: BlogFolder | 
         <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
             {folder && (
                 <span
-                    className="flex items-center gap-1 rounded-[var(--r-sm)] px-1.5 py-0.2 text-[length:var(--text-10\\.5)] font-medium truncate"
+                    className="flex items-center gap-1 rounded-[var(--r-sm)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-medium truncate"
                     style={{
                         backgroundColor: folder.color ? `${folder.color}15` : 'var(--bg-sunken)',
                         color: folder.color || 'var(--text-secondary)',
@@ -181,7 +181,7 @@ function CardMeta({ post, folder, cat }: { post: BlogPost; folder: BlogFolder | 
 
             {cat && (
                 <span
-                    className="rounded-[var(--r-sm)] px-1.5 py-0.2 text-[length:var(--text-10\\.5)] font-medium truncate max-w-[90px]"
+                    className="rounded-[var(--r-sm)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-medium truncate max-w-[90px]"
                     style={{
                         backgroundColor: cat.color ? `${cat.color}15` : 'var(--bg-sunken)',
                         color: cat.color || 'var(--text-secondary)',

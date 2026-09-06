@@ -22,7 +22,7 @@ export function BlogDashboardView({
     const view = useBlogDashboardView()
 
     return (
-        <div className="flex-1 overflow-y-auto bg-[var(--bg-base)] p-5 space-y-5 text-[length:var(--text-12\\.5)]">
+        <div className="flex-1 overflow-y-auto bg-[var(--bg-base)] p-5 space-y-5 text-[length:var(--text-12\.5)]">
             <DashboardWelcomeBanner
                 siteName={view.settings?.siteName}
                 subtitle={view.settings?.subtitle}
@@ -82,7 +82,7 @@ function DashboardWelcomeBanner({
                 <h2 className="text-[length:var(--text-18)] font-bold text-[var(--text-primary)]">
                     {siteName || t('blog.hub_title')}
                 </h2>
-                <p className="mt-1 text-[length:var(--text-12\\.5)] text-[var(--text-tertiary)]">
+                <p className="mt-1 text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">
                     {subtitle || t('blog.default_subtitle')}
                 </p>
             </div>
@@ -126,7 +126,7 @@ function DashboardControls({
                 <h3 className="text-[length:var(--text-15)] font-bold text-[var(--text-primary)]">
                     {t('blog.analytics_dashboard_title')}
                 </h3>
-                <p className="text-[length:var(--text-11\\.5)] text-[var(--text-tertiary)]">
+                <p className="text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
                     {t('blog.analytics_dashboard_subtitle')}
                 </p>
             </div>
@@ -146,7 +146,7 @@ function DashboardControls({
                 <button
                     type="button"
                     onClick={onToggleBots}
-                    className={`inline-flex items-center gap-1.5 rounded-[var(--r-md)] border px-2.5 py-1 text-[length:var(--text-11\\.5)] font-medium transition-colors ${
+                    className={`inline-flex items-center gap-1.5 rounded-[var(--r-md)] border px-2.5 py-1 text-[length:var(--text-11\.5)] font-medium transition-colors ${
                         excludeBots
                             ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
                             : 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
@@ -172,7 +172,7 @@ function DashboardControls({
 
 function BotsFilterBanner({ filteredBots }: { filteredBots: number }) {
     return (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-[length:var(--text-11\\.5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]">
             <div className="flex items-center gap-2">
                 <span className="flex h-2 w-2 rounded-full bg-[var(--success)]" />
                 <span>

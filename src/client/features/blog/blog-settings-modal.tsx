@@ -36,7 +36,7 @@ export function BlogSettingsModal({
             </div>
 
             <form onSubmit={form.handleSave}>
-                <div className="max-h-[66vh] overflow-y-auto p-5 space-y-4 text-[length:var(--text-12\\.5)]">
+                <div className="max-h-[66vh] overflow-y-auto p-5 space-y-4 text-[length:var(--text-12\.5)]">
                     {form.activeTab === 'traffic' ? (
                         <TrafficSettingsTab form={form} />
                     ) : (
@@ -264,7 +264,7 @@ function SiteSettingsTab({ form }: { form: SettingsFormBundle }) {
 function SettingsField({ label, children }: { label: string; children: ReactNode }) {
     return (
         <div>
-            <label className="mb-1 block text-[length:var(--text-11\\.5)] font-medium text-[var(--text-secondary)]">
+            <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
                 {label}
             </label>
             {children}
@@ -290,7 +290,7 @@ function SiteBasicSection({ form }: { form: SettingsFormBundle }) {
 
             <SettingsField label={t('blog.frontend_url')}>
                 <Input value={form.frontendUrl} onChange={(e) => form.setFrontendUrl(e.target.value)} placeholder="http://localhost:4321" />
-                <p className="mt-1 text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">
+                <p className="mt-1 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
                     {t('blog.frontend_url_hint')}
                 </p>
             </SettingsField>
