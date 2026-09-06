@@ -206,16 +206,16 @@ const allowed = new Map([
     "// server enforces this too by omitting `https:` from CSP img-src on /s/*.",
   ]],
   ["src/client/features/sidebar/sidebar-calendar.tsx", [
-    "// Single cached projection replaces the three whole-vault Object.values",
-    "// scans: a typing commit only re-derives the edited note's day slice and",
-    "// title slot, leaving every untouched output identity stable.",
-    "// Every ActivityCalendar prop is stabilized so the shallow memo only skips",
-    "// the subtree when the projection identities genuinely didn't change.",
+    "// Single cached projection replaces three whole-vault Object.values scans; untouched output identities stay stable between typing commits.",
+  ]],
+  ["src/client/features/sidebar/sidebar/sidebar-drop.ts", [
+    "/** Reads the dropped note ids from a DataTransfer, accepting both the\n * multi-select payload and its single-note fallback. */",
   ]],
   ["src/client/features/sidebar/sidebar/sidebar-folders/row.tsx", [
-    "// The count feeds the delete-confirmation only; the visible row badge is the",
-    "// tree's totalNotes. Look it up from the shared memoized navigation projection",
-    "// instead of scanning the whole notes map per folder row per render.",
+    "// The count feeds the delete-confirmation only; the visible row badge is the tree's totalNotes.",
+  ]],
+  ["src/client/features/sidebar/use-tree-children.ts", [
+    "/** Shared expand/collapse mount animation for sidebar tree children (keeps the\n * closing subtree mounted briefly so the collapse transition can play). */",
   ]],
   ["src/client/features/tags/tag-mutations.ts", [
     "// The rollback already surfaced the failure toast; a refresh warning would double-toast.",

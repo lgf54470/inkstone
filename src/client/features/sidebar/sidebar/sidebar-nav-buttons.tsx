@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import type { ViewKind } from '@shared/types';
 import { cn } from '../../../lib/cn';
-import { tryParseStringArray } from '../../../lib/json';
 import { useNotes } from '../../../store/notes';
-import { leftDropTarget } from './sidebar-drop';
+import { isNoteDragEvent, leftDropTarget, readDraggedNoteIds } from './sidebar-drop';
 
 export function WeChatBadge({ count }: { count?: number }) {
   if (count == null || count <= 0) return null;
@@ -53,9 +52,7 @@ export function BottomNavButton({
       aria-current={active ? 'page' : undefined}
       onClick={onClick}
       onDragOver={(e) => {
-        if (!acceptsDrop || (!e.dataTransfer.types.includes('application/x-inkstone-note') && !e.dataTransfer.types.includes('application/x-inkstone-notes'))) {
-          return;
-        }
+        if (!acceptsDrop || !isNoteDragEvent(e)) return;
         e.preventDefault();
         setIsDropping(true);
       }}
@@ -68,13 +65,7 @@ export function BottomNavButton({
         if (!acceptsDrop || !onDropNotes) return;
         setIsDropping(false);
         e.preventDefault();
-        let ids: string[] = [];
-        const multi = e.dataTransfer.getData('application/x-inkstone-notes');
-        if (multi) ids = tryParseStringArray(multi);
-        if (ids.length === 0) {
-          const single = e.dataTransfer.getData('application/x-inkstone-note');
-          if (single) ids = [single];
-        }
+        const ids = readDraggedNoteIds(e);
         if (ids.length === 0) return;
         onDropNotes(ids);
       }}
@@ -109,10 +100,10 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
 }) {
     const [isDropping, setIsDropping] = useState(false);
     const patchNote = useNotes((s) => s.patchNote);
-    const acceptsDrop = view === 'unfiled' || view === 'starred' || view === 'archived' || view === 'trash';
     const deleteNote = useNotes((s) => s.deleteNote);
+    const acceptsDrop = view === 'unfiled' || view === 'starred' || view === 'archived' || view === 'trash';
     return (<button type="button" aria-current={active ? 'page' : undefined} onClick={() => onSelect(view)} onDragOver={(e) => {
-            if (!acceptsDrop || (!e.dataTransfer.types.includes('application/x-inkstone-note') && !e.dataTransfer.types.includes('application/x-inkstone-notes')))
+            if (!acceptsDrop || !isNoteDragEvent(e))
                 return;
             e.preventDefault();
             setIsDropping(true);
@@ -122,22 +113,9 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
         }} onDrop={(e) => {
             setIsDropping(false);
             e.preventDefault();
-            let ids: string[] = [];
-            const multi = e.dataTransfer.getData('application/x-inkstone-notes');
-            if (multi) ids = tryParseStringArray(multi);
-            if (ids.length === 0) {
-                const single = e.dataTransfer.getData('application/x-inkstone-note');
-                if (single) ids = [single];
-            }
+            const ids = readDraggedNoteIds(e);
             if (ids.length === 0) return;
-            if (view === 'unfiled')
-                void useNotes.getState().moveNotes(ids, null);
-            else if (view === 'starred')
-                ids.forEach((id) => void patchNote(id, { isStarred: true }));
-            else if (view === 'archived')
-                ids.forEach((id) => void patchNote(id, { isArchived: true }));
-            else if (view === 'trash')
-                ids.forEach((id) => void deleteNote(id));
+            applyViewDrop(view, ids, patchNote, deleteNote);
         }} className={cn('group relative flex h-10 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active
             ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]', isDropping && 'ring-1 ring-[var(--accent)]')}>
@@ -149,3 +127,19 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
     </button>);
 }
 
+function applyViewDrop(view: ViewKind, ids: string[], patchNote: ReturnType<typeof useNotes.getState>['patchNote'], deleteNote: ReturnType<typeof useNotes.getState>['deleteNote']): void {
+    if (view === 'unfiled') {
+        void useNotes.getState().moveNotes(ids, null);
+        return;
+    }
+    if (view === 'starred') {
+        ids.forEach((id) => void patchNote(id, { isStarred: true }));
+        return;
+    }
+    if (view === 'archived') {
+        ids.forEach((id) => void patchNote(id, { isArchived: true }));
+        return;
+    }
+    if (view === 'trash')
+        ids.forEach((id) => void deleteNote(id));
+}

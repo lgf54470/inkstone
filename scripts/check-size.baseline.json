@@ -82,32 +82,6 @@
   "src/client/features/shell/save-indicator.tsx": {
     "longFns": 1
   },
-  "src/client/features/sidebar/calendar-tree.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/sidebar/sidebar-calendar.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/sidebar/sidebar.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/sidebar/sidebar/sidebar-account.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/sidebar/sidebar/sidebar-folders/row.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/sidebar/sidebar/sidebar-folders/section.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/sidebar/sidebar/sidebar-nav-buttons.tsx": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "src/client/features/sidebar/sidebar/sidebar-tags.tsx": {
-    "longFns": 2,
-    "deepFns": 1
-  },
   "src/client/features/tags/manage-tags-modal.tsx": {
     "longFns": 2
   },
