@@ -7,6 +7,7 @@ cd "$(git rev-parse --show-toplevel)"
 # Static policy gates — always on (fast, whole-tree by design).
 node scripts/check-size.mjs
 node scripts/check-comments.mjs
+node scripts/check-escape-hatches.mjs
 
 # Type/test gates — scoped to the staged TypeScript files so local commits
 # stay fast; the full suite still runs in CI. `tsc -b` is incremental (via

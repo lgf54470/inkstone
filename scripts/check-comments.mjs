@@ -11,6 +11,11 @@ const allowed = new Map([
   ["scripts/check-bundle-budget.mjs", [
     "// Chunk prefixes follow the kebab-case lazy import paths (settings dir → settings-*).",
   ]],
+  ["scripts/check-escape-hatches.mjs", [
+    "// Type escape hatches are banned by AGENTS.md rule 5 (no `any` /",
+    "// `@ts-ignore`); this walks the src tree with the TS AST so prose in",
+    "// comments (\"any of the two modes\") never counts as a violation.",
+  ]],
   ["scripts/check-i18n.mjs", [
     "// Demo mode ships a pre-populated workspace whose seed data (welcome notes,",
     "// community gallery entries) is authored demo content in the demo locale, not",
@@ -34,6 +39,11 @@ const allowed = new Map([
     "// Inline-literal `new Set([...])` tables are immutable lookups; only empty",
     "// initializers are runtime-fillable and therefore cross-request mutable.",
     "// 2. Client: no module-level useState (React hook outside a component).",
+  ]],
+  ["scripts/check-size.config.mjs", [
+    "// Single source of truth for the AGENTS.md code-size limits (single file",
+    "// <= maxFileLines, single function <= maxFnLines, nesting <= maxNesting).",
+    "// Override per invocation with SIZE_LIMITS='{\"maxFnLines\":80}' for experiments.",
   ]],
   ["scripts/check-size.mjs", [
     "// pass the real filename so TS parses .tsx as TSX; a hardcoded '.ts' name made JSX a parse error and truncated function bodies",

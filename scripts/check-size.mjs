@@ -1,12 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import ts from 'typescript'
+import { readSizeLimits } from './check-size.config.mjs'
 
 const ROOT = 'src'
 const BASELINE_PATH = path.join(import.meta.dirname, 'check-size.baseline.json')
-const HARD_LINES = 500
-const HARD_FN_LINES = 50
-const HARD_NESTING = 3
+const limits = readSizeLimits()
 
 function walk(directory, out = []) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -59,10 +58,10 @@ function measure(text, filename) {
         walkFunction(child, 0, childMax)
         const line = sf.getLineAndCharacterOfPosition(child.getStart()).line + 1
         const name = (child.name && child.name.getText(sf)) || '<anonymous>'
-        if (child.body && bodyLines(child.body) > HARD_FN_LINES) {
+        if (child.body && bodyLines(child.body) > limits.maxFnLines) {
           long.push({ name, line, size: bodyLines(child.body) })
         }
-        if (childMax.value > HARD_NESTING) {
+        if (childMax.value > limits.maxNesting) {
           deep.push({ name, line, depth: childMax.value })
         }
         return
@@ -76,7 +75,7 @@ function measure(text, filename) {
 
 function baselineEntryFrom(result) {
   const entry = {}
-  if (result.lines > HARD_LINES) entry.lines = result.lines
+  if (result.lines > limits.maxFileLines) entry.lines = result.lines
   if (result.long.length > 0) entry.longFns = result.long.length
   if (result.deep.length > 0) entry.deepFns = result.deep.length
   return entry
@@ -125,7 +124,7 @@ const problems = []
 let grandfathered = 0
 for (const [rel, result] of measurements) {
   const budget = baseline[rel] ?? {}
-  const linesBudget = budget.lines ?? HARD_LINES
+  const linesBudget = budget.lines ?? limits.maxFileLines
   const longBudget = budget.longFns ?? 0
   const deepBudget = budget.deepFns ?? 0
   if (result.lines > linesBudget) {
@@ -133,15 +132,15 @@ for (const [rel, result] of measurements) {
   }
   if (result.long.length > longBudget) {
     for (const fn of result.long) {
-      problems.push(`${rel}:${fn.line}: function '${fn.name}' is ${fn.size} lines (max ${HARD_FN_LINES})`)
+      problems.push(`${rel}:${fn.line}: function '${fn.name}' is ${fn.size} lines (max ${limits.maxFnLines})`)
     }
   }
   if (result.deep.length > deepBudget) {
     for (const fn of result.deep) {
-      problems.push(`${rel}:${fn.line}: function '${fn.name}' nests control flow ${fn.depth} levels (max ${HARD_NESTING})`)
+      problems.push(`${rel}:${fn.line}: function '${fn.name}' nests control flow ${fn.depth} levels (max ${limits.maxNesting})`)
     }
   }
-  if (result.lines > HARD_LINES || result.long.length > 0 || result.deep.length > 0) grandfathered++
+  if (result.lines > limits.maxFileLines || result.long.length > 0 || result.deep.length > 0) grandfathered++
 }
 
 if (problems.length > 0) {
