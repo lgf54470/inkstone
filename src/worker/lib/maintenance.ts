@@ -1,6 +1,7 @@
 const LOGIN_ATTEMPT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 
-export interface OperationalPurgeResult {
+
+interface OperationalPurgeResult {
   sessions: number
   shareAssetSessions: number
   totpLoginChallenges: number

@@ -50,7 +50,8 @@ export function SidebarRail({ onExpand }: {
     </aside>);
 }
 
-export function RailButton({ label, combo, icon, active, accent, onClick, }: {
+
+function RailButton({ label, combo, icon, active, accent, onClick, }: {
     label: string;
     combo?: string;
     icon: React.ReactNode;

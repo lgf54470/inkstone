@@ -9,7 +9,8 @@ import { FolderColorSubmenu } from '../features/folders';
 // because use-hub-folder-item.tsx consumed them; the row component already
 // imports the other shared types from this module, so owning the props here
 // keeps the pair free of an import cycle.
-export interface FolderRowHandlers {
+
+interface FolderRowHandlers {
     onToggleExpand: (e: React.MouseEvent) => void
     onSelect: () => void
     onContextMenu: (e: React.MouseEvent) => void
@@ -71,7 +72,8 @@ export interface HubFolderItemProps {
     children?: React.ReactNode
 }
 
-export interface HubFolderState {
+
+interface HubFolderState {
     nameInput: string
     setNameInput: React.Dispatch<React.SetStateAction<string>>
     isDragOver: boolean
@@ -181,7 +183,8 @@ function buildFolderRow(props: HubFolderItemProps, deps: {
     }
 }
 
-export function buildHubMenuItems(props: HubFolderItemProps, safeTotal: number, safeEnabled: number): MenuItem[] {
+
+function buildHubMenuItems(props: HubFolderItemProps, safeTotal: number, safeEnabled: number): MenuItem[] {
     return [
         {
             id: 'new_subfolder',

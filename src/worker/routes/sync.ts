@@ -9,7 +9,8 @@ import { requireAuth } from '../middleware/auth'
 
 export const syncRoutes = new Hono<AppBindings>()
 
-export const CHANGE_BOUNDS_SQL = `SELECT
+
+const CHANGE_BOUNDS_SQL = `SELECT
   (SELECT seq FROM changes WHERE user_id = ?1 ORDER BY seq ASC LIMIT 1) AS lo,
   (SELECT seq FROM changes WHERE user_id = ?1 ORDER BY seq DESC LIMIT 1) AS hi`
 

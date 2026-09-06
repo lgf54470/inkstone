@@ -12,6 +12,7 @@ interface LinkHoverOptions {
   hideGraceMs?: number
 }
 
+
 export interface LinkHoverMachine {
   card: WikiLinkHoverCardState | null
   propose: (link: HTMLElement | null, options?: { immediate?: boolean }) => void

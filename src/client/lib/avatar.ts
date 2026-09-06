@@ -16,7 +16,8 @@ const BASE_COLORS = ['f7e1c3', 'f9c9b6', 'f2d6cb', 'f8ce8e', 'eac393']
 const avatarCache = new Map<string, string>()
 const AVATAR_CACHE_LIMIT = 160
 
-export type AvatarUploadErrorCode =
+
+type AvatarUploadErrorCode =
   | 'unsupported'
   | 'too_large'
   | 'decode_failed'
@@ -29,7 +30,8 @@ export class AvatarUploadError extends Error {
   }
 }
 
-export function avatarBackgroundColor(seed: string): string {
+
+function avatarBackgroundColor(seed: string): string {
   let hash = 0
   for (let index = 0; index < seed.length; index++) {
     hash = seed.charCodeAt(index) + ((hash << 5) - hash)
@@ -37,7 +39,8 @@ export function avatarBackgroundColor(seed: string): string {
   return BACKGROUND_COLORS[Math.abs(hash) % BACKGROUND_COLORS.length]!
 }
 
-export function createAvatarDataUri(seed: string): string {
+
+function createAvatarDataUri(seed: string): string {
   const normalizedSeed = seed.trim() || '?'
   const cached = avatarCache.get(normalizedSeed)
   if (cached) return cached

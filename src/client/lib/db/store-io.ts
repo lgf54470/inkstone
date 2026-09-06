@@ -37,7 +37,8 @@ export async function safeSet(key: string, value: unknown): Promise<void> {
 export function userScopedKey(key: string, userId = dbState.activeUserId): string {
   return userId && (supportsUserNamespaces || dbState.shouldForceUserNamespaces) ? `user:${userId}:${key}` : key
 }
-export function isLegacyDataKey(key: unknown): key is string {
+
+function isLegacyDataKey(key: unknown): key is string {
   return key === KEY.notes || key === KEY.noteIndex || key === KEY.folders || key === KEY.tags ||
     key === KEY.cursor || key === KEY.outbox || key === KEY.outboxReplayLease ||
     (typeof key === 'string' && (key.startsWith('note:') || key.startsWith('note-summary:')))

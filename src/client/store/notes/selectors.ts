@@ -92,11 +92,6 @@ function renderFolderTemplate(
     };
 }
 
-export interface NoteGroup {
-    key: string;
-    label: string;
-    notes: NoteSummary[];
-}
 export interface NavigationCounts {
     all: number;
     starred: number;
@@ -284,9 +279,7 @@ export function useActiveNote(pane: WorkspacePane | 'active' = 'active'): {
         loaded: !activeId || storedContent !== undefined,
     };
 }
-export function noteById(id: string): NoteSummary | undefined {
-    return useNotes.getState().notes[id];
-}
+
 
 export function findNoteByTitle(title: string): NoteSummary | undefined {
     const key = normalizeLinkKey(title);

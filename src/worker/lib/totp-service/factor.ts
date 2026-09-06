@@ -122,7 +122,8 @@ export function factorUnavailable(): ApiError {
   )
 }
 
-export function tooManyAttempts(error: ThrottleError): ApiError {
+
+function tooManyAttempts(error: ThrottleError): ApiError {
   return new ApiError(
     429,
     'too_many_attempts',

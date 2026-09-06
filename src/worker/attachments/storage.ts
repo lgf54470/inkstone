@@ -21,7 +21,8 @@ import {
   type AttachmentObjectStorage,
 } from './keys'
 
-export interface PersistAttachmentInput {
+
+interface PersistAttachmentInput {
   id: string
   userId: string
   noteId: string | null
@@ -70,7 +71,8 @@ export async function persistAttachmentWithinQuota(
 }
 
 
-export async function persistAttachment(
+
+async function persistAttachment(
   env: Env,
   input: PersistAttachmentInput,
 ): Promise<PersistedAttachment> {
@@ -205,7 +207,8 @@ async function rollbackStoredObject(
   }
 }
 
-export function sanitizeAttachmentFilename(name: string): string {
+
+function sanitizeAttachmentFilename(name: string): string {
   const cleaned = name
     .replace(/[\\/:*?"<>|]/g, '-')
     .replace(/[\x00-\x1f]/g, '')
@@ -214,7 +217,8 @@ export function sanitizeAttachmentFilename(name: string): string {
   return truncateText(cleaned || 'file', 180)
 }
 
-export async function deduplicateAttachmentFilename(
+
+async function deduplicateAttachmentFilename(
   db: D1Database,
   userId: string,
   filename: string,

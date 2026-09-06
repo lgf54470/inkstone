@@ -74,10 +74,12 @@ export function isSiteInfo(value: unknown): value is SiteInfo {
 export function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
-export function isNullableString(value: unknown): value is string | null {
+
+function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string'
 }
-export function isNullableNumber(value: unknown): value is number | null {
+
+function isNullableNumber(value: unknown): value is number | null {
   return value === null || isFiniteNumber(value)
 }
 export function isNoteSummary(value: unknown): value is NoteSummary {

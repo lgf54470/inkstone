@@ -23,7 +23,7 @@ export
 function renderEnv(value: unknown): RenderEnvironment {
     return value as RenderEnvironment;
 }
-export 
+
 function createNonce(): string {
     return secureRandomId();
 }

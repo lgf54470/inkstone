@@ -40,7 +40,8 @@ function sizeLabelOf(range: string): string {
   return t('attachments.size_all')
 }
 
-export interface AttachmentDriveToolbarProps {
+
+interface AttachmentDriveToolbarProps {
   search: string
   onSearchChange: (query: string) => void
   extension: string

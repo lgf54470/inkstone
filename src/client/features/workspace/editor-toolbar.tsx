@@ -7,7 +7,8 @@ import { insertCodeBlock, insertHorizontalRule, insertLink, insertTable, insertT
 import { useToolbarMenus, type ToolbarBundle } from './use-editor-toolbar';
 import { t } from '../../lib/i18n';
 
-export interface EditorToolbarProps {
+
+interface EditorToolbarProps {
   runCommand?: (command: (target: EditorView) => boolean) => void;
   view?: EditorView | null;
   onPickImage: () => void;

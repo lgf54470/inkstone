@@ -152,10 +152,6 @@ const allowed = new Map([
     "// the rolling date filter's follow-edit window stays parked at the newest edit and the gap hint",
     "// (newest edit outside a today-anchored window) is directly visible in the demo.",
   ]],
-  ["src/client/editor/code-languages.ts", [
-    "// Highlighting removed: no code languages are loaded.",
-    "// Kept as empty array so the editor behaves as plain Markdown without syntax colors.",
-  ]],
   ["src/client/editor/paste.ts", [
     "// Upload failure degrades to the error placeholder below via the null result.",
   ]],

@@ -11,7 +11,8 @@
 import type { MessageKey } from './locales/en-US'
 import type { NoteTemplate, NoteTemplateCategory } from './types'
 
-export interface BuiltinTemplateCategoryDef {
+
+interface BuiltinTemplateCategoryDef {
   id: string
   nameKey: MessageKey
   position: number
@@ -21,7 +22,8 @@ export interface BuiltinTemplateCategoryDef {
  * Cross-cutting labels (not categories) used to tag built-in templates. Each
  * key maps to a localized label; user templates keep arbitrary free-form tags.
  */
-export type BuiltinTemplateTagKey =
+
+type BuiltinTemplateTagKey =
   | 'checklist'
   | 'table'
   | 'daily'

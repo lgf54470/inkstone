@@ -9,9 +9,11 @@ import { applyThemeToDom } from './theme';
 
 
 
-export let toastSeq = 0
 
-export let themeTransitionTimer: number | undefined
+let toastSeq = 0
+
+
+let themeTransitionTimer: number | undefined
 
 type SetState = StoreApi<UiState>['setState']
 

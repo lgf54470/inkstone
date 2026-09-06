@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { relativeTime } from './time'
 
-export function useMediaQuery(query: string): boolean {
+
+function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() =>
     typeof window === 'undefined' ? false : window.matchMedia(query).matches,
   )
@@ -59,42 +60,6 @@ export function useNow(intervalMs = 60_000, enabled = true): number {
 }
 
 
-export function useEvent<T extends (...args: never[]) => unknown>(handler: T): T {
-  const ref = useRef(handler)
-  useEffect(() => {
-    ref.current = handler
-  })
-  return useCallback(((...args: never[]) => ref.current(...args)) as T, [])
-}
-
-export function useOnlineStatus(onChange: (online: boolean) => void): void {
-  const handler = useEvent(onChange)
-  useEffect(() => {
-    const online = () => handler(true)
-    const offline = () => handler(false)
-    window.addEventListener('online', online)
-    window.addEventListener('offline', offline)
-    return () => {
-      window.removeEventListener('online', online)
-      window.removeEventListener('offline', offline)
-    }
-  }, [handler])
-}
 
 
-export function useResizeObserver<T extends HTMLElement>(
-  ref: React.RefObject<T | null>,
-  onResize: (rect: DOMRectReadOnly) => void,
-): void {
-  const handler = useEvent(onResize)
-  useEffect(() => {
-    const element = ref.current
-    if (!element) return
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (entry) handler(entry.contentRect)
-    })
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [ref, handler])
-}
+

@@ -81,12 +81,6 @@ export const ACCENTS: { name: AccentName; swatch: string; foreground: string }[]
   { name: 'graphite', swatch: 'oklch(55% 0.035 250)', foreground: 'white' },
 ]
 
-export const PROSE_WIDTH_CH: Record<string, string> = {
-  narrow: '58ch',
-  normal: '72ch',
-  wide: '88ch',
-  full: '100%',
-}
 
 export const VIEW_KINDS: ViewKind[] = ['all', 'recent', 'starred', 'pinned', 'shared', 'published', 'unfiled', 'archived', 'trash', 'folder', 'tag', 'untagged']
 

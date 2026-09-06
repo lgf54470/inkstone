@@ -1,6 +1,7 @@
 export type CalendarView = 'month' | 'weeks' | 'year';
 
-export interface CalendarPersistState {
+
+interface CalendarPersistState {
     collapsed: boolean;
     view: CalendarView;
 }

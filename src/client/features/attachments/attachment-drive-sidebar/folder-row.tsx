@@ -8,7 +8,8 @@ import type { FolderNode } from '../../../store/notes/selectors';
 import { Menu, confirm, useContextMenu, type MenuItem } from '../../../components/overlay';
 import { FolderColorSubmenu, FolderIconSubmenu } from '../../folders';
 
-export interface DriveFolderRowProps {
+
+interface DriveFolderRowProps {
   node: FolderNode
   selectedFolderId: string | null
   renamingFolderId: string | null

@@ -24,7 +24,8 @@ export interface CodeEditorCallbacks {
     onContextMenu?: (event: MouseEvent, view: EditorView) => void;
 }
 
-export interface EditorLiveRefs {
+
+interface EditorLiveRefs {
     cb: { current: CodeEditorCallbacks };
     propose: { current: (link: HTMLElement | null, options?: { immediate?: boolean }) => void };
     linkHover: { current: { card: unknown | null; hideNow: () => void } };
@@ -36,7 +37,8 @@ export interface EditorCompartments {
     placeholder: Compartment;
 }
 
-export interface EditorExtensionInput {
+
+interface EditorExtensionInput {
     settings: EditorSettings;
     placeholder: string;
     live: EditorLiveRefs;

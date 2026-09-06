@@ -5,7 +5,8 @@ import { Button } from '../../components/primitives'
 import { Checkbox, Input } from '../../components/form'
 import { t } from '../../lib/i18n'
 
-export interface AttachmentRenameModalProps {
+
+interface AttachmentRenameModalProps {
   open: boolean
   onClose: () => void
   currentFilename: string

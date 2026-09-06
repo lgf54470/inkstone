@@ -91,7 +91,8 @@ export function structured<T extends Record<string, unknown>>(value: T) {
   }
 }
 
-export function structuredData(value: unknown) {
+
+function structuredData(value: unknown) {
   const data = isRecord(value) ? value : { value }
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(data) }],
@@ -124,7 +125,8 @@ export function writeAnnotations(idempotent: boolean) {
   return { readOnlyHint: false, destructiveHint: false, idempotentHint: idempotent, openWorldHint: false }
 }
 
-export function toolError(error: unknown): Record<string, unknown> {
+
+function toolError(error: unknown): Record<string, unknown> {
   if (error instanceof ApiError) {
     return {
       error: {

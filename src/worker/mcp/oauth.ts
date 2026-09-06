@@ -12,7 +12,8 @@ import { isMcpEnabled, MCP_SUPPORTED_SCOPES } from './settings'
 
 const app = createApp()
 
-export class InkstoneMcpApi extends WorkerEntrypoint<Env, McpAuthProps> {
+
+class InkstoneMcpApi extends WorkerEntrypoint<Env, McpAuthProps> {
   async fetch(request: Request): Promise<Response> {
     const database = await initializeDatabase(this.env)
     if (!await isMcpEnabled(this.env.DB)) {

@@ -12,7 +12,8 @@ import {
 import { localDb, type TemplateLibraryData } from '../lib/db'
 import { t } from "../lib/i18n";
 
-export interface TemplateInput {
+
+interface TemplateInput {
     name: string;
     description?: string;
     content: string;
@@ -20,7 +21,8 @@ export interface TemplateInput {
     tags?: string[];
 }
 
-export function normalizeTags(tags: string[] | undefined): string[] {
+
+function normalizeTags(tags: string[] | undefined): string[] {
     const seen = new Set<string>();
     const result: string[] = [];
     for (const raw of tags ?? []) {

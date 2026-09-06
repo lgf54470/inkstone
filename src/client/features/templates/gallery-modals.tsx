@@ -112,7 +112,8 @@ export function MoveTemplateDialog({ template, categories, onClose }: {
     </Modal>);
 }
 
-export function MoveChoice({ label, selected, onClick }: {
+
+function MoveChoice({ label, selected, onClick }: {
     label: string;
     selected: boolean;
     onClick: () => void;

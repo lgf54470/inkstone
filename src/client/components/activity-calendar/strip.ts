@@ -9,7 +9,8 @@ export const HEAT_PERCENTS = [0, 16, 34, 54, 76] as const;
 
 
 
-export const DEFAULT_WEEKS = 16;
+
+const DEFAULT_WEEKS = 16;
 
 
 

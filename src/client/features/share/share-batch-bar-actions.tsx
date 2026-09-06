@@ -23,7 +23,8 @@ export async function batchRevokeAll(batchToggle: ShareStoreState['batchToggle']
     await batchToggle('revoke', noteIds)
 }
 
-export async function batchSetExpiry(batchToggle: ShareStoreState['batchToggle'], noteIds: string[], millis: number | null): Promise<void> {
+
+async function batchSetExpiry(batchToggle: ShareStoreState['batchToggle'], noteIds: string[], millis: number | null): Promise<void> {
     await batchToggle('expire', noteIds, millis)
 }
 

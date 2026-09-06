@@ -139,11 +139,9 @@ export function setLocale(next: AppLocale, persist = true): void {
         listeners.forEach((listener) => listener());
     })();
 }
-export async function setLocaleAsync(next: AppLocale, persist = true): Promise<void> {
-    setLocale(next, persist);
-    if (!loadedLocales.has(next)) await ensureLocaleLoaded(next);
-}
-export function subscribeLocale(listener: () => void): () => void {
+
+
+function subscribeLocale(listener: () => void): () => void {
     listeners.add(listener);
     return () => listeners.delete(listener);
 }

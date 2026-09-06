@@ -130,7 +130,8 @@ export function readOptionalJson<T extends object>(
 }
 
 
-export function assertDeclaredBodySize(
+
+function assertDeclaredBodySize(
   req: { header?: (name: string) => string | undefined },
   maxBytes: number,
 ): void {

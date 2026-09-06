@@ -17,7 +17,8 @@ import {
 
 type Badge = ReturnType<typeof fileBadgeOf>
 
-export interface AttachmentGridViewProps {
+
+interface AttachmentGridViewProps {
   files: AttachmentWithUsage[]
   selectedIds: Set<string>
   onToggleSelect: (id: string, e: React.MouseEvent) => void
@@ -102,7 +103,8 @@ function UploadTile({ onClick }: { onClick: () => void }) {
   )
 }
 
-export interface GridCardProps {
+
+interface GridCardProps {
   file: AttachmentWithUsage
   selected: boolean
   active: boolean

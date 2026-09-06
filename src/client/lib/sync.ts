@@ -11,7 +11,8 @@ const HEARTBEAT_MS = 25_000
 const SAFETY_POLL_MS = 5 * 60_000
 const MAX_BACKOFF_MS = 30_000
 
-export class SyncEngine {
+
+class SyncEngine {
   private socket: WebSocket | null = null
   private pollTimer = 0
   private heartbeatTimer = 0

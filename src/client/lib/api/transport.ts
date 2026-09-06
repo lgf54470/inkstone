@@ -37,7 +37,8 @@ export class ApiError extends Error {
 }
 
 
-export interface RequestOptions {
+
+interface RequestOptions {
   method?: string
   body?: unknown
   signal?: AbortSignal
@@ -155,13 +156,15 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 }
 
 
-export function isJsonResponse(response: Response): boolean {
+
+function isJsonResponse(response: Response): boolean {
   const mediaType = response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase()
   return mediaType === 'application/json' || Boolean(mediaType?.endsWith('+json'))
 }
 
 
-export async function fetchDownload(path: string, fallbackName: string): Promise<{ response: Response; filename: string }> {
+
+async function fetchDownload(path: string, fallbackName: string): Promise<{ response: Response; filename: string }> {
   let response: Response
   try {
     response = await fetch(path, {
@@ -235,7 +238,8 @@ export async function saveDownload(format: 'json' | 'zip'): Promise<void> {
 }
 
 
-export async function saveResponseDownload(response: Response, filename: string): Promise<void> {
+
+async function saveResponseDownload(response: Response, filename: string): Promise<void> {
   const blob = await response.blob()
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
@@ -252,7 +256,8 @@ export async function saveResponseDownload(response: Response, filename: string)
 }
 
 
-export function shouldNotifyOtherTabs(path: string): boolean {
+
+function shouldNotifyOtherTabs(path: string): boolean {
   return /^\/api\/(?:notes(?:\/|$)|folders(?:\/|$)|tags(?:\/|$)|import(?:\?|$))/.test(path)
 }
 

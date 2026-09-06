@@ -64,7 +64,8 @@ export function getFileBadgeColor(category: 'image' | 'document' | 'media' | 'ar
   }
 }
 
-export interface TimelineGroup {
+
+interface TimelineGroup {
   label: string
   files: AttachmentWithUsage[]
 }

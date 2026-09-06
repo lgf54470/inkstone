@@ -15,19 +15,20 @@ import { acquireOutboxReplayLease, refreshOutboxReplayLease, releaseOutboxReplay
 // cached shell by one window on abrupt close), and the flush tail chain keeps
 // each diff-based write from racing the previous one.
 const SHELL_SAVE_COALESCE_MS = 800
-export 
+
 let shellSaveTimer = 0
-export 
+
 let pendingShell: ShellData | null = null
-export 
+
 let pendingShellUserId: string | null = null
-export 
+
 let shellBaseline: ShellBaseline | null = null
-export 
+
 let shellFlushTail: Promise<void> = Promise.resolve()
-export 
+
 let shellEpoch = 0
-export function resetShellIdentity(): void {
+
+function resetShellIdentity(): void {
   shellBaseline = null
   shellEpoch++
 }
@@ -385,7 +386,8 @@ export const localDb = {
     dbState.shouldForceUserNamespaces = false
   },
 }
-export async function clearLocalData(): Promise<void> {
+
+async function clearLocalData(): Promise<void> {
   window.clearTimeout(shellSaveTimer)
   shellSaveTimer = 0
   pendingShell = null

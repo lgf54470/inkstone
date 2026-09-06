@@ -53,7 +53,8 @@ export async function renderShareShell(
   })
 }
 
-export function publicShareTitle(title: string): string {
+
+function publicShareTitle(title: string): string {
   return title || 'Untitled note'
 }
 

@@ -135,7 +135,8 @@ export function parseBrowser(ua: string): string {
   return 'Other'
 }
 
-export const APP_PACKAGE_TO_DOMAIN: Record<string, string> = {
+
+const APP_PACKAGE_TO_DOMAIN: Record<string, string> = {
   'com.linkedin.android': 'linkedin.com',
   'com.twitter.android': 'x.com',
   'com.facebook.katana': 'facebook.com',
@@ -164,7 +165,8 @@ export function normalizeHost(host: string): string {
   return lower
 }
 
-export function parseAppReferrer(rawReferrer: string): { packageName: string } | null {
+
+function parseAppReferrer(rawReferrer: string): { packageName: string } | null {
   for (const prefix of APP_SCHEME_PREFIXES) {
     if (rawReferrer.startsWith(prefix)) {
       const rest = rawReferrer.slice(prefix.length)

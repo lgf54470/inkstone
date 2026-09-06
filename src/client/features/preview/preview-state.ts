@@ -1,7 +1,8 @@
 import { toggleCodeBlockCollapse } from '../../lib/markdown/enhance'
 import { selectMarkdownTab } from './markdown-tabs'
 
-export interface PreviewInteractionState {
+
+interface PreviewInteractionState {
   codeBlocks: Map<string, boolean>
   details: Map<string, boolean>
   tabs: Map<string, string>

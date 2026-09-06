@@ -259,7 +259,8 @@ function findSectionEnd(lines: string[], from: number, level: number): number {
   return lines.length
 }
 
-export function extractHeadingSection(markdown: string, heading: string): string | null {
+
+function extractHeadingSection(markdown: string, heading: string): string | null {
   const lines = markdown.split(/\r?\n/)
   const wanted = normalize(stripInlineMarkdown(heading))
   const index = findHeadingLine(lines, wanted)
@@ -284,7 +285,8 @@ function findBlockMarkerLine(lines: string[], marker: RegExp): number {
   return -1
 }
 
-export function extractBlock(markdown: string, blockId: string): string | null {
+
+function extractBlock(markdown: string, blockId: string): string | null {
   const safeId = blockId.replace(/[^A-Za-z0-9_-]/g, '')
   if (!safeId) return null
   const marker = new RegExp(`(?:^|\\s)\\^${escapeRegExp(safeId)}[ \\t]*$`)

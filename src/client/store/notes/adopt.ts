@@ -43,7 +43,8 @@ export function adoptNote(note: Note | NoteSummary, set: SetNotesState, get: () 
     if (hasShellChanged)
         scheduleShellSave(get);
 }
-export function stripContent(note: Note | NoteSummary): NoteSummary {
+
+function stripContent(note: Note | NoteSummary): NoteSummary {
     const { content: _content, ...summary } = note as Note;
     return summary;
 }

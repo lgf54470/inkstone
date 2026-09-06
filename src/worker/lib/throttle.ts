@@ -9,7 +9,8 @@ export interface ThrottleTarget {
   freeFails?: number
 }
 
-export interface AttemptBudgetTarget {
+
+interface AttemptBudgetTarget {
   key: string
   maxAttempts: number
   windowMs: number

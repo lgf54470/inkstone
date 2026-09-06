@@ -9,7 +9,8 @@ import type { DemoState } from '../../state'
 import { apiError } from './info'
 import { browserFileUrl, revokeAttachment } from './files'
 
-export function exportBundle(state: DemoState): ExportBundle {
+
+function exportBundle(state: DemoState): ExportBundle {
   return {
     format: 'inkstone-export',
     version: 1,
@@ -99,7 +100,8 @@ async function buildAttachmentExport(
   return { attachments, entries }
 }
 
-export function demoNoteEntries(notes: Iterable<Note>, encoder: TextEncoder): Array<{ path: string, data: Uint8Array }> {
+
+function demoNoteEntries(notes: Iterable<Note>, encoder: TextEncoder): Array<{ path: string, data: Uint8Array }> {
   const used = new Set<string>()
   return [...notes].map((note) => {
     const base = safeFilename(note.title)
@@ -111,11 +113,13 @@ export function demoNoteEntries(notes: Iterable<Note>, encoder: TextEncoder): Ar
   })
 }
 
-export function safeFilename(value: string): string {
+
+function safeFilename(value: string): string {
   return (value || 'Untitled note').replace(/[\\/:*?"<>|]/g, '-').slice(0, 100)
 }
 
-export function safeAttachmentFilename(value: string): string {
+
+function safeAttachmentFilename(value: string): string {
   const cleaned = value
     .replace(/[\\/:*?"<>|]/g, '-')
     .replace(/[\u0000-\u001f]/g, '')
@@ -222,7 +226,8 @@ export function createImportedNote(
   return id
 }
 
-export async function importBundleAttachments(
+
+async function importBundleAttachments(
   state: DemoState,
   rawAttachments: ExportAttachment[],
   archiveEntries: Map<string, Uint8Array>,

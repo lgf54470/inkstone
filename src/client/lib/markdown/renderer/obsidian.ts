@@ -4,7 +4,7 @@ import type Token from 'markdown-it/lib/token.mjs';
 import { escapeHtml } from '@shared/escape';
 import { t } from '../../i18n';
 import { escapeAttr } from './util';
-export 
+
 function matchingClose(tokens: Token[], start: number, openType: string, closeType: string): number {
     let depth = 0;
     for (let index = start; index < tokens.length; index++) {
@@ -15,7 +15,7 @@ function matchingClose(tokens: Token[], start: number, openType: string, closeTy
     }
     return -1;
 }
-export 
+
 function normalizeCalloutType(value: string): string {
     const type = value.toLowerCase();
     const aliases: Record<string, string> = {
@@ -37,7 +37,7 @@ function normalizeCalloutType(value: string): string {
     };
     return (aliases[type] ?? type.replace(/[^a-z0-9_-]/g, '')) || 'note';
 }
-export 
+
 function calloutDefaultTitle(type: string): string {
     const names: Record<string, string> = {
         note: t("markdown.note"),
@@ -55,14 +55,14 @@ function calloutDefaultTitle(type: string): string {
     };
     return names[type] ?? type;
 }
-export 
+
 function findOpeningToken(tokens: Token[], inlineIndex: number): Token | null {
     const previous = tokens[inlineIndex - 1];
     if (previous && ['paragraph_open', 'heading_open'].includes(previous.type))
         return previous;
     return null;
 }
-export 
+
 function expandBlockReferences(inline: Token, TokenConstructor: new (type: string, tag: string, nesting: -1 | 0 | 1) => Token): void {
     if (!inline.children)
         return;
@@ -93,7 +93,7 @@ function expandBlockReferences(inline: Token, TokenConstructor: new (type: strin
     }
     inline.children = expanded;
 }
-export 
+
 function reparseInline(token: Token, content: string, markdown: MarkdownIt, env: unknown): void {
     const children: Token[] = [];
     markdown.inline.parse(content, markdown, env, children);

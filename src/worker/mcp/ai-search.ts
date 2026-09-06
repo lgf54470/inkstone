@@ -13,7 +13,8 @@ import { truncateText } from '@shared/text-utils'
 import { getMeta, selectQueueUsersRoundRobin, setMeta } from '../db/metadata'
 import type { Env } from '../env'
 
-export const AI_EMBEDDING_MODEL = '@cf/baai/bge-m3'
+
+const AI_EMBEDDING_MODEL = '@cf/baai/bge-m3'
 const AI_EMBEDDING_DIMS = 1024
 const EMBED_TEXT_MAX_CHARS = 4_000
 const MAX_SEMANTIC_VECTORS = 8_000
@@ -22,11 +23,14 @@ const DRAIN_USERS_PER_RUN = 10
 const DRAIN_PER_USER = 25
 const AI_DRAIN_CURSOR_META_KEY = 'ai-index-drain-user-v1'
 const ENQUEUE_CHUNK = 200
-export const RRF_K = 60
 
-export type AiIndexKind = 'embed' | 'delete'
+const RRF_K = 60
 
-export interface AiSearchStatus {
+
+type AiIndexKind = 'embed' | 'delete'
+
+
+interface AiSearchStatus {
   available: boolean
   enabled: boolean
   model: string
@@ -59,7 +63,8 @@ interface EmbeddingRow {
   vector: ArrayBuffer
 }
 
-export interface SemanticFilters {
+
+interface SemanticFilters {
   tags?: string[]
   folder?: string
   starred?: boolean
@@ -354,7 +359,8 @@ export async function searchSemanticNotes(
  * note that ranks well in both lexical and semantic search surfaces above
  * one that only appears in a single index.
  */
-export interface FusedHit<T> {
+
+interface FusedHit<T> {
   item: T
   rrf: number
   sources: Set<'lexical' | 'semantic'>
@@ -389,7 +395,8 @@ export function fuseByRrf<T extends { id: string }>(
 }
 
 /** Calls the Workers AI embedding model and returns a Float32Array. */
-export async function embedText(ai: NonNullable<Env['AI']>, text: string): Promise<Float32Array> {
+
+async function embedText(ai: NonNullable<Env['AI']>, text: string): Promise<Float32Array> {
   const result = await ai.run(AI_EMBEDDING_MODEL, { text: [text] })
   return extractEmbedding(result)
 }

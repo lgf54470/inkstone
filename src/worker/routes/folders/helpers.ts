@@ -40,13 +40,15 @@ export interface FolderGraph {
   siblingNames: Map<string, Set<string>>
 }
 
-export interface FolderOrderRow {
+
+interface FolderOrderRow {
   id: string
   position: number
   created_at: number
 }
 
-export interface FolderPromotionRow extends FolderOrderRow {
+
+interface FolderPromotionRow extends FolderOrderRow {
   parent_id: string | null
 }
 
@@ -116,7 +118,8 @@ export async function resolveFolderPosition(
   return position
 }
 
-export async function loadSiblingOrder(
+
+async function loadSiblingOrder(
   db: D1Database,
   userId: string,
   parentId: string | null,
@@ -129,7 +132,8 @@ export async function loadSiblingOrder(
   return results
 }
 
-export function insertionPosition(previous: number | undefined, next: number | undefined): number | null {
+
+function insertionPosition(previous: number | undefined, next: number | undefined): number | null {
   if (previous === undefined && next === undefined) return 1000
   if (previous === undefined) return next! - 1000
   if (next === undefined) return previous + 1000
@@ -137,7 +141,8 @@ export function insertionPosition(previous: number | undefined, next: number | u
   return Number.isFinite(position) && position > previous && position < next ? position : null
 }
 
-export async function normalizeSiblingPositions(
+
+async function normalizeSiblingPositions(
   db: D1Database,
   userId: string,
   siblings: FolderOrderRow[],
@@ -199,7 +204,8 @@ export async function folderPromotionOrder(
   })
 }
 
-export function positionsBetween(
+
+function positionsBetween(
   previous: number | undefined,
   next: number | undefined,
   count: number,

@@ -40,7 +40,8 @@ export function resolveTodoTag(pref: string | null | undefined, locale: string):
     return locale === 'en-US' ? 'todo' : DEFAULT_TODO_TAG
 }
 
-export function matchesNamespace(id: string | null | undefined, ns: VirtualTreeNamespace): boolean {
+
+function matchesNamespace(id: string | null | undefined, ns: VirtualTreeNamespace): boolean {
     return id === ns.rootId || Boolean(id?.startsWith(ns.prefix))
 }
 
@@ -103,12 +104,14 @@ export function parseVirtualId(id: string | null | undefined, ns: VirtualTreeNam
     return { kind: 'week', year, month, week: weekNumber };
 }
 
-export function quarterOfPart(part: string | undefined): number | null {
+
+function quarterOfPart(part: string | undefined): number | null {
     const match = /^q([1-4])$/.exec(part ?? '');
     return match ? Number(match[1]) : null;
 }
 
-export function monthOfPart(part: string | undefined): number | null {
+
+function monthOfPart(part: string | undefined): number | null {
     const match = /^(0[1-9]|1[0-2])$/.exec(part ?? '');
     return match ? Number(match[1]) : null;
 }

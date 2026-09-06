@@ -2,7 +2,8 @@ import { Fragment, useMemo, type ReactNode } from 'react';
 import { cn } from '../lib/cn';
 import { dateKey } from '../lib/time';
 
-export interface MonthGridCell {
+
+interface MonthGridCell {
     key: string;
     day: number;
     inMonth: boolean;
@@ -24,7 +25,8 @@ export function buildMonthGridCells(year: number, month: number, weekStart: 0 | 
     return out;
 }
 
-export interface MonthGridProps {
+
+interface MonthGridProps {
     year: number;
     month: number;
     weekStart?: 0 | 1;
@@ -49,7 +51,8 @@ export function MonthGrid({ year, month, weekStart = 1, weekdayLabels, todayKey,
     </div>);
 }
 
-export interface YearGridMonth {
+
+interface YearGridMonth {
     month: number;
     cells: MonthGridCell[];
 }
@@ -66,7 +69,8 @@ export function yearGridColumns(width: number): YearGridColumns {
     return width >= 300 ? 4 : 3;
 }
 
-export interface YearGridProps {
+
+interface YearGridProps {
     year: number;
     weekStart?: 0 | 1;
     todayKey?: string;

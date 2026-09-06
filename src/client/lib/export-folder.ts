@@ -11,14 +11,16 @@ export function safeFileName(name: string): string {
     .slice(0, 80);
 }
 
-export interface ExportFolderResult {
+
+interface ExportFolderResult {
   count: number;
   filename: string;
 }
 
 type ExportState = Pick<ReturnType<typeof useNotes.getState>, 'contents' | 'peekContent'>;
 
-export type ExportZipFile = { name: string; lastModified: Date; input: Response | string };
+
+type ExportZipFile = { name: string; lastModified: Date; input: Response | string };
 
 function buildFolderRelativePaths(
   folders: Folder[],

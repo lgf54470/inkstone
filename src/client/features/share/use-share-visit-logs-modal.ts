@@ -7,7 +7,8 @@ import { useUi } from '../../store/ui'
 import type { UiState } from '../../store/ui'
 import { exportVisitsToCsv } from './share-helpers'
 
-export type VisitFilter = 'all' | 'real' | 'bot' | 'owner' | 'self'
+
+type VisitFilter = 'all' | 'real' | 'bot' | 'owner' | 'self'
 
 export function useShareVisitLogs(open: boolean, initialNoteId?: string) {
     const toast = useUi((s) => s.toast)

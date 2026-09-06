@@ -77,7 +77,8 @@ export function getHeadingTypography(level: number, isActive: boolean) {
     }
 }
 
-export function useOutlineActive(headings: Heading[], scrollerRef?: RefObject<HTMLElement | null>): string | null {
+
+function useOutlineActive(headings: Heading[], scrollerRef?: RefObject<HTMLElement | null>): string | null {
     const [active, setActive] = useState<string | null>(null);
     const rafRef = useRef(0);
     useEffect(() => {

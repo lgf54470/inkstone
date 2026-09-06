@@ -9,7 +9,8 @@ import { relativeTime } from '../../../lib/time'
 import { t } from '../../../lib/i18n'
 import { buildFolderMenuItems, buildShareMenuItems, PinStarButtons, SlugChip, type ShareItemCallbacks } from '../share-item-common'
 
-export interface ShareGridCardProps {
+
+interface ShareGridCardProps {
   share: ShareInfo
   isSelected: boolean
   folders: ShareFolder[]

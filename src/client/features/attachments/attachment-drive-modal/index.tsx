@@ -19,7 +19,8 @@ import { AttachmentRenameModal } from '../attachment-rename-modal'
 
 type DriveBundle = ReturnType<typeof useAttachmentDriveModal>
 
-export interface AttachmentDriveModalProps {
+
+interface AttachmentDriveModalProps {
   open: boolean
   onClose: () => void
   onInsertFile?: (file: AttachmentWithUsage) => void

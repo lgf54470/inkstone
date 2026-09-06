@@ -3,11 +3,14 @@ import { sha256Hex, timingSafeEqual, toBase64Url } from './encoding'
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
 const RECOVERY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
-export const TOTP_DIGITS = 6
-export const TOTP_PERIOD_SECONDS = 30
+
+const TOTP_DIGITS = 6
+
+const TOTP_PERIOD_SECONDS = 30
 export const TOTP_SETUP_TTL_MS = 10 * 60 * 1000
 export const TOTP_LOGIN_TTL_MS = 5 * 60 * 1000
-export const TOTP_RECOVERY_CODE_COUNT = 10
+
+const TOTP_RECOVERY_CODE_COUNT = 10
 
 export function generateTotpSecret(): string {
   return encodeBase32(crypto.getRandomValues(new Uint8Array(20)))
@@ -76,7 +79,8 @@ export async function totpCodeForStep(secret: string, step: number): Promise<str
   return String(binary % 10 ** TOTP_DIGITS).padStart(TOTP_DIGITS, '0')
 }
 
-export function normalizeTotpCode(value: unknown): string | null {
+
+function normalizeTotpCode(value: unknown): string | null {
   if (typeof value !== 'string' || value.length > 32) return null
   const normalized = value.replace(/[\s-]/g, '')
   return /^\d{6}$/.test(normalized) ? normalized : null

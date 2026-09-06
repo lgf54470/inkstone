@@ -9,7 +9,8 @@ import type { BlogPostRow } from "../../db/rows";
 import { blogSettingsSchema } from './schemas';
 import { toBlogPost } from './helpers';
 
-export const DEFAULT_BLOG_SETTINGS: BlogSettings = {
+
+const DEFAULT_BLOG_SETTINGS: BlogSettings = {
   siteName: 'Inkstone Blog',
   subtitle: 'Deep thoughts and quiet reflections',
   bio: 'Thoughts, essays, and stories powered by Inkstone and Astro.',
@@ -50,7 +51,8 @@ export async function getBlogSettings(db: D1Database, userId?: string): Promise<
   }
 }
 
-export async function saveBlogSettings(db: D1Database, settings: z.infer<typeof blogSettingsSchema>, userId?: string): Promise<BlogSettings> {
+
+async function saveBlogSettings(db: D1Database, settings: z.infer<typeof blogSettingsSchema>, userId?: string): Promise<BlogSettings> {
   const current = await getBlogSettings(db, userId)
   const merged: BlogSettings = {
     ...current,

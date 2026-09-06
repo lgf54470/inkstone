@@ -1,4 +1,5 @@
-export interface ObsidianAsset {
+
+interface ObsidianAsset {
   path: string
   name: string
   bytes: Uint8Array

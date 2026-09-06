@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import { Button, IconButton } from '../../components/primitives'
 import { t } from '../../lib/i18n'
 
-export interface AttachmentBatchBarProps {
+
+interface AttachmentBatchBarProps {
   selectedCount: number
   onClearSelection: () => void
   onBatchDownload: () => void

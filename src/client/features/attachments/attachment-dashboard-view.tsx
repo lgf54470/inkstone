@@ -22,7 +22,8 @@ import { t } from '../../lib/i18n'
 import { IconButton } from '../../components/primitives'
 import { DEFAULT_QUOTA_BYTES, formatFileSize, getFileBadgeColor, getFileCategory, type AttachmentCategory } from './attachment-helpers'
 
-export interface AttachmentDashboardViewProps {
+
+interface AttachmentDashboardViewProps {
   stats?: AttachmentStats
   onSelectCategory: (category: AttachmentCategory) => void
   onSelectExtension: (ext: string) => void

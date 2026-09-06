@@ -14,17 +14,24 @@ import { isValidId, newId } from './id'
  * log) that a shared simple engine cannot express without distortion.
  */
 
-export const HUB_FOLDER_TABLES = ['attachment_folders', 'share_folders', 'blog_folders'] as const
-export type HubFolderTable = (typeof HUB_FOLDER_TABLES)[number]
 
-export const HUB_TAG_TABLES = ['attachment_tags', 'share_tags', 'blog_tags'] as const
-export type HubTagTable = (typeof HUB_TAG_TABLES)[number]
+const HUB_FOLDER_TABLES = ['attachment_folders', 'share_folders', 'blog_folders'] as const
+
+type HubFolderTable = (typeof HUB_FOLDER_TABLES)[number]
+
+
+const HUB_TAG_TABLES = ['attachment_tags', 'share_tags', 'blog_tags'] as const
+
+type HubTagTable = (typeof HUB_TAG_TABLES)[number]
 
 /** Entity table whose rows carry `folder_id` and are detached when a hub folder is deleted. */
-export const HUB_FOLDER_CHILD_TABLES = ['attachments', 'shares', 'blog_posts'] as const
-export type HubFolderChildTable = (typeof HUB_FOLDER_CHILD_TABLES)[number]
 
-export interface ScopedFolder {
+const HUB_FOLDER_CHILD_TABLES = ['attachments', 'shares', 'blog_posts'] as const
+
+type HubFolderChildTable = (typeof HUB_FOLDER_CHILD_TABLES)[number]
+
+
+interface ScopedFolder {
   id: string
   userId: string
   parentId: string | null
@@ -36,7 +43,8 @@ export interface ScopedFolder {
   updatedAt: number
 }
 
-export interface ScopedTag {
+
+interface ScopedTag {
   id: string
   userId: string
   name: string
@@ -128,7 +136,8 @@ export async function listScopedFolders(
   return results.map(toScopedFolder)
 }
 
-export interface ScopedFolderInput {
+
+interface ScopedFolderInput {
   id?: string
   name?: string
   parentId?: string | null
@@ -260,14 +269,16 @@ export async function listScopedTags(
   return results.map(toScopedTag)
 }
 
-export interface ScopedTagInput {
+
+interface ScopedTagInput {
   id?: string
   name?: string
   color?: string | null
   isPinned?: boolean
 }
 
-export type ScopedTagConflictMode = 'upsert' | 'keep-existing'
+
+type ScopedTagConflictMode = 'upsert' | 'keep-existing'
 
 async function loadScopedTagRow(
   db: D1Database,

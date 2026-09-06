@@ -77,7 +77,8 @@ export const authRoutes = new Hono<AppBindings>()
 
 export { normalizeAvatarPreference } from '../avatars/storage'
 
-export function loginThrottleTargets(username: string, ip: string): ThrottleTarget[] {
+
+function loginThrottleTargets(username: string, ip: string): ThrottleTarget[] {
   const identity = throttleIdentity(username)
   return [
     { key: `login:${ip}:${identity}`, freeFails: 5 },
@@ -89,7 +90,8 @@ export function loginThrottleTargets(username: string, ip: string): ThrottleTarg
   ]
 }
 
-export function loginWorkTargets(username: string, ip: string) {
+
+function loginWorkTargets(username: string, ip: string) {
   const identity = throttleIdentity(username)
   const windowMs = 10 * 60 * 1000
   return [
@@ -128,7 +130,8 @@ type RegistrationDecision =
   | { ok: true; role: 'owner' | 'member' }
   | { ok: false; reason: 'registration_closed' }
 
-export function decideRegistration(input: {
+
+function decideRegistration(input: {
   userCount: number
   registrationOpen: boolean
 }): RegistrationDecision {
@@ -441,7 +444,8 @@ function normalizeLocale(value: unknown): AppLocale {
   return typeof value === 'string' && value.toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN'
 }
 
-export function normalizeDisplayName(value: unknown): string | null {
+
+function normalizeDisplayName(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const normalized = value.trim().replace(/\s+/gu, ' ')
   if (

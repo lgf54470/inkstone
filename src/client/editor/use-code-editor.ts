@@ -32,7 +32,8 @@ export interface CodeEditorProps {
     className?: string;
 }
 
-export interface CodeEditorBundle {
+
+interface CodeEditorBundle {
     hostRef: RefObject<HTMLDivElement | null>;
     dark: boolean;
     card: WikiLinkHoverCardState | null;

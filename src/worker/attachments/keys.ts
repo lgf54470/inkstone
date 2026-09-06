@@ -1,6 +1,7 @@
 import { extensionFor } from '../lib/image'
 
-export interface StoredAttachmentKey {
+
+interface StoredAttachmentKey {
   id: string
   user_id: string
   mime: string

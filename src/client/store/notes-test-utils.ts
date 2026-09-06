@@ -15,14 +15,16 @@ import { localDb } from '../lib/db';
  *   beforeEach(() => { notesMockServer.notes = new Map(); notesMockServer.patchCalls = [] })
  */
 
-export interface NotesPatchCall {
+
+interface NotesPatchCall {
     id: string;
     rev: number;
     patch: Record<string, unknown>;
 }
 
 /** In-memory stand-in for the account's server-side note storage. */
-export interface NotesMockServer {
+
+interface NotesMockServer {
     notes: Map<string, Note>;
     patchCalls: NotesPatchCall[];
     /** Note ids whose next patch should 409 once (simulating a write from another device), then succeed. */

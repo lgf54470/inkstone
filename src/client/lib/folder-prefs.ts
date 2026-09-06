@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
-export interface FolderPreferences {
+
+interface FolderPreferences {
   inboxFolderId: string | null;
   folderTemplates: Record<string, string>;
 }

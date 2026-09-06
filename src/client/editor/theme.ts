@@ -2,7 +2,8 @@ import { EditorView } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
 
 
-export const baseTheme = EditorView.theme({
+
+const baseTheme = EditorView.theme({
   '&': { height: '100%' },
   '.cm-scroller': { fontFamily: 'inherit' },
   '.cm-content': { paddingBlock: 'var(--sp-1)' },

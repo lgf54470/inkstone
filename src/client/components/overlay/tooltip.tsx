@@ -73,7 +73,8 @@ export function Tooltip({ label, combo, children, side = 'bottom', delay = 420, 
                 {combo && <Kbd combo={combo}/>}
             </div>, document.body)}
     </>);
-}export function placeTooltip(anchor: DOMRect, tooltip: DOMRect, preferred: TooltipSide): TooltipPosition {
+}
+function placeTooltip(anchor: DOMRect, tooltip: DOMRect, preferred: TooltipSide): TooltipPosition {
     const vp = viewportBounds();
     const side = shouldFlip(anchor, tooltip, preferred, vp) ? oppositeSide(preferred) : preferred;
     const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), Math.max(min, max));

@@ -5,7 +5,8 @@ import { YearGrid } from '../calendar-grids';
 import { HEAT_PERCENTS } from './strip';
 import type { YearViewBundle } from './use-activity-calendar';
 
-export type YearViewProps = YearViewBundle;
+
+type YearViewProps = YearViewBundle;
 
 export function YearView({ cursor, weekStart, todayKey, columns, weekdayLabels, monthLabels, yearMeta, yearLevel, focusMonth, yearRangeAnchor, yearRangeHover, onKeyDown, onMonthClick, onWeekdayClick, onAnchorHover }: YearViewProps): JSX.Element {
     return (<>

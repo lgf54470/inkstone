@@ -15,7 +15,7 @@ function renderFrontMatterValue(value: unknown): string {
         return `<code>${escapeHtml(JSON.stringify(value))}</code>`;
     return escapeHtml(formatScalar(value));
 }
-export 
+
 function formatScalar(value: unknown): string {
     if (value instanceof Date)
         return value.toISOString();
@@ -68,7 +68,7 @@ function walkNonFenceLines(state: BlockState, start: number, end: number, visit:
     return -1;
 }
 
-export 
+
 function findContainerEnd(state: BlockState, startLine: number, endLine: number, markerLength: number): number {
     let depth = 1;
     let result = -1;
@@ -85,7 +85,7 @@ function findContainerEnd(state: BlockState, startLine: number, endLine: number,
     });
     return result;
 }
-export 
+
 function findTabSegments(state: BlockState, start: number, end: number): Array<{
     title: string;
     start: number;
@@ -115,7 +115,7 @@ function findTabSegments(state: BlockState, start: number, end: number): Array<{
         selected: marker.selected,
     }));
 }
-export 
+
 function findDirectiveTabSegments(state: {
     src: string;
     bMarks: number[];
@@ -159,7 +159,7 @@ function findDirectiveTabSegments(state: {
     }
     return tabs;
 }
-export 
+
 function findColonFenceEnd(state: BlockState, start: number, end: number, markerLength: number): number {
     let result = -1;
     walkNonFenceLines(state, start, end, (line, text) => {
@@ -238,7 +238,7 @@ function renderTabsContainer(state: StateBlock, startLine: number, end: number):
     state.push('tabs_close', 'div', -1).block = true;
 }
 
-export 
+
 function stripBracketTitle(value: string): string {
     const trimmed = value.trim();
     return /^\[[\s\S]*\]$/.test(trimmed) ? trimmed.slice(1, -1).trim() : trimmed;

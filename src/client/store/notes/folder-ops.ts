@@ -13,7 +13,8 @@ export function replaceFolder(folders: Folder[], saved: Folder): Folder[] {
 export function applyPendingFolderMutations(folders: Folder[]): Folder[] {
     return pendingFolderMutations.reduce((current, mutation) => mutation.apply(current), folders);
 }
-export type FolderMutationPatch = {
+
+type FolderMutationPatch = {
     name?: string;
     parentId?: string | null;
     beforeId?: string | null;
@@ -88,7 +89,8 @@ export function removeFolderAndPromoteChildren(folders: Folder[], id: string): F
             }];
     });
 }
-export function positionsForPromotedFolders(previous: number | undefined, next: number | undefined, count: number): number[] | null {
+
+function positionsForPromotedFolders(previous: number | undefined, next: number | undefined, count: number): number[] | null {
     if (!count)
         return [];
     if (previous === undefined && next === undefined)
@@ -102,7 +104,8 @@ export function positionsForPromotedFolders(previous: number | undefined, next: 
         ? Array.from({ length: count }, (_, index) => previous + step * (index + 1))
         : null;
 }
-export function compareFolders(left: Folder, right: Folder): number {
+
+function compareFolders(left: Folder, right: Folder): number {
     return left.position - right.position || left.createdAt - right.createdAt || left.id.localeCompare(right.id);
 }
 export function availableLocalFolderName(folders: Folder[], parentId: string | null, base: string): string {

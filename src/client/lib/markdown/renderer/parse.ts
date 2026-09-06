@@ -118,7 +118,7 @@ export function parseFenceInfo(source: string): FenceInfo {
         highlightedLines: [...highlighted].sort((a, b) => a - b),
     };
 }
-export 
+
 function parseLineSpec(source: string): number[] {
     const lines = new Set<number>();
     for (const part of source.split(/[ ,]+/).filter(Boolean).slice(0, 200)) {
@@ -135,12 +135,12 @@ function parseLineSpec(source: string): number[] {
     }
     return [...lines];
 }
-export 
+
 function isReservedCodeClass(value: string): boolean {
     const normalized = value.toLowerCase().replace(/[-_]/g, '');
     return ['numberlines', 'linenumbers', 'linenos', 'showlinenumbers'].includes(normalized);
 }
-export 
+
 function codeMetadataValue(source: string, ...names: string[]): string | null {
     const wanted = new Set(names.map((name) => name.toLowerCase()));
     const pattern = /(?:^|\s)([A-Za-z][\w-]*)=(?:"([^"]*)"|'([^']*)'|([^\s]+))/g;

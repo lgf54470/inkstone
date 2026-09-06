@@ -55,7 +55,8 @@ export function useBlogPostCard({
 
 type DeleteConfirmKey = 'blog.confirm_delete_post' | 'blog.confirm_delete_post_detail'
 
-export async function copyPostLink(slug: string, frontendBase: string, toast: UiState['toast']): Promise<void> {
+
+async function copyPostLink(slug: string, frontendBase: string, toast: UiState['toast']): Promise<void> {
     try {
         await navigator.clipboard.writeText(`${frontendBase}/posts/${slug}`)
         toast({ title: t('blog.link_copied'), tone: 'success' })

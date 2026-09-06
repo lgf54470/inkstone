@@ -6,7 +6,8 @@ import type { WeekCell } from './strip';
 import type { ActivityCalendarProps } from './props';
 import type { CalendarBase, CalendarState, FlashState, LatestState, MonthState, StripState } from './types';
 
-export function normalizeRange(a: string, b: string): DateRangeFilter {
+
+function normalizeRange(a: string, b: string): DateRangeFilter {
     return a <= b ? { start: a, end: b } : { start: b, end: a };
 }
 

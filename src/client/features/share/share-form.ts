@@ -18,4 +18,3 @@ export function needsNewSharePasscode(
   return passcode.length > 0 && passcode.length < 4
 }
 
-export const SHARE_PASSCODE_MIN_LENGTH = 4

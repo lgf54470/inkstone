@@ -25,7 +25,8 @@ export const ATTACHMENT_LIST_PAGE_SIZE = 500
 
 export const ATTACHMENT_SCAN_PAGE_SIZE = 100
 
-export const ATTACHMENT_REF_WRITE_CHUNK = 100
+
+const ATTACHMENT_REF_WRITE_CHUNK = 100
 
 // The usage panel re-opens and re-pages often while note contents rarely
 // change between opens; keep one exact reference map per user for a short
@@ -35,7 +36,8 @@ export const ATTACHMENT_REF_WRITE_CHUNK = 100
 // per isolate within the window.
 const ATTACHMENT_REFERENCE_CACHE_TTL_MS = 60_000
 
-export function attachmentRefMetaKey(userId: string): string {
+
+function attachmentRefMetaKey(userId: string): string {
   return `attachment-refs:${userId}`
 }
 
@@ -77,7 +79,8 @@ async function readCachedAttachmentRefs(
   }
 }
 
-export async function persistAttachmentReferenceCounts(
+
+async function persistAttachmentReferenceCounts(
   db: D1Database,
   userId: string,
   references: ReadonlyMap<string, number>,

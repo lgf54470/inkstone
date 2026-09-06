@@ -1,4 +1,4 @@
-import type { Folder, Note, NoteSummary, NoteVersionMeta, Tag } from '@shared/types'
+import type { Folder, Note, NoteSummary, Tag } from '@shared/types'
 import { sortTagNames } from '@shared/markdown-utils'
 
 
@@ -95,24 +95,10 @@ export function toTag(row: TagRow): Tag {
   }
 }
 
-export function toVersionMeta(row: {
-  id: string
-  note_id: string
-  title: string
-  size: number
-  created_at: number
-}): NoteVersionMeta {
-  return {
-    id: row.id,
-    noteId: row.note_id,
-    title: row.title,
-    size: row.size,
-    createdAt: row.created_at,
-  }
-}
 
 
-export const TAG_SEP_CODE = 1
+
+const TAG_SEP_CODE = 1
 
 export function splitTags(joined: string | null | undefined): string[] {
   if (!joined) return []
@@ -196,7 +182,8 @@ export interface BlogPublicCategoryRow {
   posts_count: number
 }
 
-export interface BlogCommentRow {
+
+interface BlogCommentRow {
   id: string
   post_id: string
   parent_id: string | null

@@ -13,7 +13,8 @@ interface ScheduledFtsDrain {
 const scheduledFtsDrains = new WeakMap<D1Database, Map<string, ScheduledFtsDrain>>()
 
 
-export function originOf(c: Context<AppBindings>): string | null {
+
+function originOf(c: Context<AppBindings>): string | null {
   return c.req.header('X-Inkstone-Origin')?.slice(0, 128) || null
 }
 

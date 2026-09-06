@@ -7,7 +7,8 @@ import { useSyncExternalStore } from 'react'
 // data layer to feature modules. The blog/share stores push their derived id
 // sets here instead; selectors subscribe through this module, which imports
 // neither side.
-export interface VisibilitySnapshot {
+
+interface VisibilitySnapshot {
     sharedNoteIds: ReadonlySet<string>
     publishedNoteIds: ReadonlySet<string>
 }

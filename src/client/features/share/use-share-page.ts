@@ -9,7 +9,8 @@ import { useUi } from '../../store/ui'
 import type { UiState } from '../../store/ui'
 import { t, useLocale } from '../../lib/i18n'
 
-export type SharePageCtx = {
+
+type SharePageCtx = {
     hostRef: MutableRefObject<HTMLDivElement | null>
     dark: boolean
     revisionRef: MutableRefObject<number>

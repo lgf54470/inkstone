@@ -9,9 +9,12 @@ export const USERNAME_PATTERN = /^[a-z0-9_-]{3,32}$/
 // Measured on a dev machine (node:crypto, avg of 5): ~250 ms per hash with these
 // params — about 300x below the 75 s worst-case budget the login throttle allows
 // (8 attempts per 10 minutes), so cost can be raised later without breaking it.
-export const SCRYPT_N = 2 ** 14
-export const SCRYPT_R = 8
-export const SCRYPT_P = 5
+
+const SCRYPT_N = 2 ** 14
+
+const SCRYPT_R = 8
+
+const SCRYPT_P = 5
 
 const SCRYPT_KEY_BYTES = 32
 const SCRYPT_MAX_MEMORY = 32 * 1024 * 1024

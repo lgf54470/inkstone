@@ -7,7 +7,8 @@ import { MonthGrid } from '../calendar-grids';
 import { HEAT_PERCENTS } from './strip';
 import type { MonthViewBundle } from './use-activity-calendar';
 
-export type MonthViewProps = MonthViewBundle;
+
+type MonthViewProps = MonthViewBundle;
 
 export function MonthView({ cursor, weekStart, todayKey, weekdayLabels, gridTitle, cellMeta, focusKey, inRange, gapLabel, isLatestOutside, gapAhead, latestOutsideDays, latestOutsideKey, getDiaryId, onGapDayClick, onKeyDown, onMouseDown, onMouseEnter, onActivateDay, onFocusDay, flashRef }: MonthViewProps): JSX.Element {
     return (<>

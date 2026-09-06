@@ -67,7 +67,8 @@ const BACKUP_LEASE_TTL_MS = 30 * 60_000
 const BACKUP_LEASE_RENEW_MS = 5 * 60_000
 const TEST_TIMEOUT_MS = 20_000
 
-export interface RunOptions {
+
+interface RunOptions {
   trigger: 'manual' | 'cron'
   targetIds?: string[]
 }

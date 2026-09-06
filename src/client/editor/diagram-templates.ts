@@ -1,7 +1,8 @@
 import { EditorSelection, type StateCommand } from '@codemirror/state';
 import type { MessageKey } from '../lib/i18n';
 
-export interface DiagramTemplate {
+
+interface DiagramTemplate {
   id: string;
   labelKey: MessageKey;
   code: string;

@@ -1,7 +1,8 @@
 import type { Env } from '../env'
 import type { AttachmentObjectStorage } from './keys'
 
-export interface AttachmentObjectMetadata {
+
+interface AttachmentObjectMetadata {
   userId: string
   objectId: string
   kind: 'attachment' | 'avatar'
@@ -10,7 +11,8 @@ export interface AttachmentObjectMetadata {
   sha256: string
 }
 
-export interface AttachmentObjectStream {
+
+interface AttachmentObjectStream {
   body: ReadableStream<Uint8Array>
   size: number | null
   metadata: Partial<AttachmentObjectMetadata> | null

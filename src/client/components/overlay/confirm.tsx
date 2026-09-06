@@ -5,7 +5,8 @@ import { Modal } from './modal';
 
 
 
-export interface ConfirmOptions {
+
+interface ConfirmOptions {
     title: string;
     description?: ReactNode;
     confirmLabel?: string;
@@ -14,13 +15,15 @@ export interface ConfirmOptions {
 }
 
 
-export interface ConfirmRequest {
+
+interface ConfirmRequest {
     options: ConfirmOptions;
     resolve: (value: boolean) => void;
 }
 
 
-export let enqueueConfirm: ((request: ConfirmRequest) => void) | null = null;
+
+let enqueueConfirm: ((request: ConfirmRequest) => void) | null = null;
 
 
 

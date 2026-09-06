@@ -88,7 +88,8 @@ export async function pullWhileFull(payload: SyncResponse | null, get: () => Not
     return payload;
 }
 
-export async function pullFullRound(payload: SyncResponse, get: () => NotesState): Promise<SyncResponse | null> {
+
+async function pullFullRound(payload: SyncResponse, get: () => NotesState): Promise<SyncResponse | null> {
     const snapshot = await collectFullSync(payload);
     let catchup = snapshot.cursor > 0 ? await api.sync(snapshot.cursor) : null;
     const increments: SyncResponse[] = [];

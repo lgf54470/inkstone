@@ -1,11 +1,13 @@
 import { t } from '../../lib/i18n';
 
-export interface JsLogItem {
+
+interface JsLogItem {
   type: 'log' | 'info' | 'warn' | 'error';
   text: string;
 }
 
-export interface JsExecutionResult {
+
+interface JsExecutionResult {
   logs: JsLogItem[];
   result?: string;
   error?: string;

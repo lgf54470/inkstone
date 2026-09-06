@@ -357,7 +357,8 @@ async function loadPendingAttachmentCleanupIds(
   return ids
 }
 
-export async function existingAttachmentMatches(
+
+async function existingAttachmentMatches(
   env: AppBindings['Bindings'],
   row: ExistingAttachmentRow,
   candidate: PreparedAttachmentCandidate,

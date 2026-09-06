@@ -1,22 +1,19 @@
 import { crc32, normalizeZipPath } from './core'
 
-export interface ZipEntry {
+
+interface ZipEntry {
   path: string
   data: Uint8Array
 
   mtime?: number
 }
 
-export interface ZipEntrySize {
+
+interface ZipEntrySize {
   path: string
   byteLength: number
 }
 
-export function estimateZipSize(entries: readonly ZipEntry[]): number {
-  return estimateZipSizeFromSizes(
-    entries.map((entry) => ({ path: entry.path, byteLength: entry.data.byteLength })),
-  )
-}
 
 export function estimateZipSizeFromSizes(entries: readonly ZipEntrySize[]): number {
   if (entries.length > 0xffff) throw new Error('The ZIP contains too many entries')

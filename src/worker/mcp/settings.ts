@@ -52,7 +52,8 @@ export async function updateMcpPreferences(
   return next
 }
 
-export async function putMcpPreferences(
+
+async function putMcpPreferences(
   db: D1Database,
   userId: string,
   value: McpPreferences,

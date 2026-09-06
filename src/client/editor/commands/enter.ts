@@ -2,7 +2,8 @@ import { EditorSelection, type ChangeSpec, EditorState, SelectionRange, StateCom
 import type { EditorView } from '@codemirror/view';
 
 
-export const LIST_RE = /^(\s*)([-*+]|\d+[.)])(\s+)(\[[ xX]\]\s+)?(.*)$/;
+
+const LIST_RE = /^(\s*)([-*+]|\d+[.)])(\s+)(\[[ xX]\]\s+)?(.*)$/;
 
 
 export const FENCE_RE = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/;
@@ -32,7 +33,8 @@ export const completeCodeFenceOnEnter: StateCommand = ({ state, dispatch }) => {
 
 
 
-export function openFenceBeforeLine(state: EditorState, lineNumber: number): boolean {
+
+function openFenceBeforeLine(state: EditorState, lineNumber: number): boolean {
     let opening: { char: string; length: number } | null = null;
     for (let number = 1; number < lineNumber; number++) {
         const match = FENCE_RE.exec(state.doc.line(number).text);
@@ -173,7 +175,8 @@ export function updateTaskAtSourceLine(source: string, lineIndex: number, checke
 
 
 
-export function taskMarker(line: string): RegExpExecArray | null {
+
+function taskMarker(line: string): RegExpExecArray | null {
     return /^((?:[ \t]*>[ \t]?)*[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([ xX/\-?!])(\])/.exec(line);
 }
 

@@ -79,7 +79,8 @@ export function BreakdownRow({
   )
 }
 
-export function MiniSparkline({ values }: { values: number[] }) {
+
+function MiniSparkline({ values }: { values: number[] }) {
   const max = Math.max(...values, 1)
   const min = 0
   const width = 100

@@ -78,7 +78,8 @@ export function reconcileNotes(current: Record<string, NoteSummary>, incoming: N
     }
     return next;
 }
-export function reconcileRemoteSummary(current: NoteSummary | undefined, incoming: NoteSummary): NoteSummary {
+
+function reconcileRemoteSummary(current: NoteSummary | undefined, incoming: NoteSummary): NoteSummary {
     const base = current && current.rev > incoming.rev
         ? current
         : mergeDirtySummary(current, incoming);

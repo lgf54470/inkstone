@@ -1,9 +1,10 @@
-export const GENERATED_AVATAR_PREFIX = 'dicebear:'
+
+const GENERATED_AVATAR_PREFIX = 'dicebear:'
 export const GENERATED_AVATAR_SEED_LENGTH = 32
 export const PROFILE_NAME_MAX_LENGTH = 64
 export const AVATAR_SOURCE_FILE_MAX_BYTES = 8 * 1024 * 1024
 export const AVATAR_STORED_MAX_BYTES = 128 * 1024
-export const AVATAR_PROFILE_BODY_MAX_BYTES = 256 * 1024
+
 const GENERATED_SEED_PATTERN = /^[a-zA-Z0-9_-]{16,64}$/
 
 export function generatedAvatarPreference(seed: string): string {
@@ -20,7 +21,8 @@ export function isBitmapAvatarDataUrl(value: string | null | undefined): boolean
   return /^data:image\/(?:png|jpeg|webp);base64,/i.test(value ?? '')
 }
 
-export interface StoredAvatarLocation {
+
+interface StoredAvatarLocation {
   storage: 'r2' | 'kv'
   userId: string
   objectId: string

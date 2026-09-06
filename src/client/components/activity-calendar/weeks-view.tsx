@@ -2,7 +2,8 @@ import type { JSX } from 'react';
 import { WeeksStrip } from './weeks-strip';
 import type { WeekViewBundle } from './use-activity-calendar';
 
-export type WeeksViewProps = WeekViewBundle;
+
+type WeeksViewProps = WeekViewBundle;
 
 export function WeeksView({ stripWeeks, expandedWeek, shownWeek, expandedDay, shownDay, isExpandedWeekNotes, weekCells, weekCellsTotal, weekdayLabels, flashRef, onStripWeekClick, onToggleDay, onToggleWeekNotes, onActivateDay, onNoteClick, onJumpToDay, isWeekRangeActive, isLatestOutside, gapLabel, flaggedLabel }: WeeksViewProps): JSX.Element {
     return (<WeeksStrip

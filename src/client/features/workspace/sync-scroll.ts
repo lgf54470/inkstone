@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, type RefObject } from 'react'
 import type { EditorView } from '@codemirror/view'
 import { previewSourceAnchors } from '../preview'
 
-export interface PreviewAnchor {
+
+interface PreviewAnchor {
   line: number
   top: number
 }
@@ -164,7 +165,8 @@ export function useSyncScroll(
   return invalidate
 }
 
-export function measurePreviewAnchors(preview: HTMLElement): PreviewAnchor[] {
+
+function measurePreviewAnchors(preview: HTMLElement): PreviewAnchor[] {
   const previewRect = preview.getBoundingClientRect()
   const anchors: PreviewAnchor[] = []
   let previousLine = -1
@@ -185,7 +187,8 @@ export function measurePreviewAnchors(preview: HTMLElement): PreviewAnchor[] {
   return anchors
 }
 
-export function buildScrollCurve(
+
+function buildScrollCurve(
   measured: PreviewAnchor[],
   lineCount: number,
   paddingTop: number,
@@ -212,15 +215,18 @@ export function buildScrollCurve(
   return curve
 }
 
-export function previewTopForLine(curve: PreviewAnchor[], line: number): number {
+
+function previewTopForLine(curve: PreviewAnchor[], line: number): number {
   return interpolateAnchors(curve, line, 'line', 'top')
 }
 
-export function sourceLineForPreviewTop(curve: PreviewAnchor[], top: number): number {
+
+function sourceLineForPreviewTop(curve: PreviewAnchor[], top: number): number {
   return interpolateAnchors(curve, top, 'top', 'line')
 }
 
-export function scrollEdge(scrollTop: number, maximum: number): ScrollEdge {
+
+function scrollEdge(scrollTop: number, maximum: number): ScrollEdge {
   if (scrollTop <= EDGE_EPSILON) return 'top'
   if (maximum > EDGE_EPSILON && scrollTop >= maximum - EDGE_EPSILON) return 'bottom'
   return null

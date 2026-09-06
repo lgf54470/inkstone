@@ -8,7 +8,8 @@ import { IconButton } from '../../components/primitives'
 import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 
-export interface TemplateCardProps {
+
+interface TemplateCardProps {
   template: NoteTemplate
   categoryName: string
   selectMode: boolean

@@ -5,12 +5,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Folder, NoteSummary, Tag } from '@shared/types'
 
-export interface ShellWrite {
+
+interface ShellWrite {
   key: string
   value: unknown
 }
 
-export interface ShellOps {
+
+interface ShellOps {
   getMany: number
   setMany: number
   delMany: number
@@ -43,7 +45,8 @@ export interface LocalDbLike {
   scheduleShellSave(data: ShellData): void
 }
 
-export interface CacheFixture {
+
+interface CacheFixture {
   vaultSize: number
   vault: NoteSummary[]
   typedIndex: number
@@ -91,11 +94,13 @@ export function buildFixture(vaultSize: number): CacheFixture {
 // Backends settle a scheduled flush differently: the in-memory mock finishes on
 // pure microtasks inside the fake-timer advance, while fake-indexeddb commits
 // transactions on real macrotasks that need an explicit event-loop drain.
-export interface FlushSettle {
+
+interface FlushSettle {
   settle(): Promise<void>
 }
 
-export interface SingleTabSuite {
+
+interface SingleTabSuite {
   label: string
   backend: ShellBackend
   localDb: LocalDbLike
@@ -276,7 +281,8 @@ export function runShellCacheSuite(suite: SingleTabSuite): void {
   })
 }
 
-export interface MultitabSuite {
+
+interface MultitabSuite {
   label: string
   backend: ShellBackend
   fixture: CacheFixture

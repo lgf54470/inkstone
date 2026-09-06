@@ -1,4 +1,5 @@
-export interface VisibleViewport {
+
+interface VisibleViewport {
   top: number
   right: number
   bottom: number

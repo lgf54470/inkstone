@@ -329,7 +329,8 @@ export function rewritePlaceholders(count: number): string {
   return Array.from({ length: count }, (_, i) => `?${i + 2}`).join(', ')
 }
 
-export interface RewrittenTagNote {
+
+interface RewrittenTagNote {
   note: {
     id: string
     title: string
@@ -342,7 +343,8 @@ export interface RewrittenTagNote {
   updatedAt: number
 }
 
-export async function rollbackTagRewrites(
+
+async function rollbackTagRewrites(
   env: AppBindings['Bindings'],
   ftsEnabled: boolean,
   userId: string,

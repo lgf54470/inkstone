@@ -23,7 +23,8 @@ import { buildShareFolderTree, useShareStore, type ShareFolderNode, type ShareSt
 
 export type ShareHubSidebarBundle = ReturnType<typeof useShareHubSidebar>
 
-export function useShareHubSidebarState() {
+
+function useShareHubSidebarState() {
     const createFolder = useShareStore((s) => s.createFolder)
     const createTag = useShareStore((s) => s.createTag)
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => new Set())

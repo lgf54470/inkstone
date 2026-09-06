@@ -4,7 +4,8 @@ import { encodeDataValue } from '../lib/markdown/data-attr'
 
 const WIKI_TEXT_RE = /^\[\[([\s\S]+)\]\]$/
 
-export interface LinkHoverCallbacks {
+
+interface LinkHoverCallbacks {
   propose: (link: HTMLElement | null, options?: { immediate?: boolean }) => void
   hide: () => boolean
 }

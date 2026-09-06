@@ -1,14 +1,16 @@
 import { makeZip, predictLength } from 'client-zip'
 import type { BackupFile, Snapshot } from './snapshot'
 
-export interface BackupArchive {
+
+interface BackupArchive {
   filename: string
   byteLength: bigint
   byteLengthNumber: number
   stream: ReadableStream<Uint8Array>
 }
 
-export function backupArchiveFilename(snapshot: Pick<Snapshot, 'stamp'>): string {
+
+function backupArchiveFilename(snapshot: Pick<Snapshot, 'stamp'>): string {
   return `inkstone-backup-${snapshot.stamp}.zip`
 }
 

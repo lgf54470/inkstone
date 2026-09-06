@@ -446,5 +446,3 @@ export function usePreview(props: PreviewProps) {
     ...keyboard,
   }
 }
-
-export type PreviewBundle = ReturnType<typeof usePreview>

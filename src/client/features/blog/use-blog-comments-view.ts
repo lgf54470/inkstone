@@ -48,7 +48,8 @@ export function useBlogCommentsView() {
     }
 }
 
-export function computeStatusCounts(comments: BlogComment[]): Record<BlogCommentStatus | 'all', number> {
+
+function computeStatusCounts(comments: BlogComment[]): Record<BlogCommentStatus | 'all', number> {
     const counts: Record<BlogCommentStatus | 'all', number> = { all: comments.length, pending: 0, approved: 0, rejected: 0, spam: 0 }
     for (const c of comments) {
         if (c.status in counts) counts[c.status as BlogCommentStatus]++
@@ -56,7 +57,8 @@ export function computeStatusCounts(comments: BlogComment[]): Record<BlogComment
     return counts
 }
 
-export function filterComments(comments: BlogComment[], statusFilter: BlogCommentStatus | 'all', search: string): BlogComment[] {
+
+function filterComments(comments: BlogComment[], statusFilter: BlogCommentStatus | 'all', search: string): BlogComment[] {
     let list = comments
     if (statusFilter !== 'all') {
         list = list.filter((c) => c.status === statusFilter)

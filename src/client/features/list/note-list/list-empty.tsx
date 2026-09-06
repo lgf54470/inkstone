@@ -26,7 +26,8 @@ import {
 } from '../../../lib/calendar-tree'
 import { t, useLocale } from '../../../lib/i18n'
 
-export interface ListEmptyProps {
+
+interface ListEmptyProps {
   view: string
   folderId: string | null
   filtering: boolean

@@ -47,7 +47,8 @@ export function normalizeBackupPrefix(value: string): string {
   return prefix
 }
 
-export function validateBackupPrefix(value: string): void {
+
+function validateBackupPrefix(value: string): void {
   if (!value) return
   for (const rawSegment of value.replace(/\\/g, '/').split('/')) {
     let segment: string

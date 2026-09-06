@@ -7,7 +7,8 @@ import { currentSignature } from './mermaid';
 import { getMermaid } from './mermaid';
 import { showMermaidSource } from './mermaid';
 import { renderChartJs } from './chart';
-export interface EnhanceOptions {
+
+interface EnhanceOptions {
     math: boolean;
     mermaid: boolean;
     dark: boolean;

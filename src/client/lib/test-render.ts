@@ -14,7 +14,8 @@ export function installTestGlobals(): void {
     }
 }
 
-export interface RenderedElement {
+
+interface RenderedElement {
     container: HTMLElement;
     unmount: () => void;
 }

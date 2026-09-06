@@ -9,7 +9,8 @@ export function isValidVersion(version: unknown): version is string {
   )
 }
 
-export function compareVersions(left: string, right: string): number {
+
+function compareVersions(left: string, right: string): number {
   const leftParts = parseVersion(left)
   const rightParts = parseVersion(right)
   if (!leftParts || !rightParts) return 0

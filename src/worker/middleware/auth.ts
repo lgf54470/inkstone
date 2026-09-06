@@ -144,7 +144,8 @@ export const requireClientHeader = createMiddleware<AppBindings>(async (c, next)
   await next()
 })
 
-export function sessionCookieString(requestUrl: string, token: string): string {
+
+function sessionCookieString(requestUrl: string, token: string): string {
   const secure = new URL(requestUrl).protocol === 'https:'
   const parts = [
     `${secure ? SESSION_COOKIE : LEGACY_SESSION_COOKIE}=${token}`,

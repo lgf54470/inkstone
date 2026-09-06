@@ -17,7 +17,8 @@ export function outboxId(noteId: string): string {
 export function newLocalWriteId(): string {
     return randomWriteId();
 }
-export const NOTE_ID_ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz';
+
+const NOTE_ID_ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz';
 export function newLocalEntityId(): string {
     let timestamp = '';
     let value = Date.now();

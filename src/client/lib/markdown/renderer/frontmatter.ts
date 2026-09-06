@@ -5,7 +5,7 @@ import { getLocale, t } from '../../i18n';
 import { renderFrontMatterValue } from './containers';
 import type { RenderEnvironment } from './types';
 import { renderEnv } from './env';
-export 
+
 function localizeFrontMatterError(error: string): string {
     if (error === 'Front Matter exceeds the 64 KiB safety limit')
         return t("markdown.front_matter_exceeds_the_64_kib_safety_limit");

@@ -96,7 +96,8 @@ export async function completeSetupEnable(input: {
   await clearFactorAttempts(input.db, input.throttle)
 }
 
-export function pushSetupRecoveryInserts(db: D1Database, statements: D1PreparedStatement[], input: {
+
+function pushSetupRecoveryInserts(db: D1Database, statements: D1PreparedStatement[], input: {
   userId: string
   recoveryGeneration: string
   now: number

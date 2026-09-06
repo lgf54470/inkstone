@@ -6,7 +6,8 @@ import { isValidId } from './id'
 const VAULT_NAME = 'primary'
 const VAULT_ORIGIN = 'https://credential-vault.internal'
 
-export class CryptoUnavailableError extends ApiError {
+
+class CryptoUnavailableError extends ApiError {
   constructor() {
     super(
       503,

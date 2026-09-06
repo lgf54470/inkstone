@@ -24,7 +24,8 @@ import { useAttachmentStore } from './attachment-store'
 import { Button, IconButton } from '../../components/primitives'
 import { formatFileSize, getFileBadgeColor, getFileCategory } from './attachment-helpers'
 
-export interface AttachmentInspectorProps {
+
+interface AttachmentInspectorProps {
   file: AttachmentWithUsage | null
   onClose: () => void
   onRename: (file: AttachmentWithUsage) => void

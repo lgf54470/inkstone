@@ -4,8 +4,10 @@ import { useShareStore } from './share-store'
 
 export type ShareHubModalBundle = ReturnType<typeof useShareHubModal>
 
-export type ShareHubQrData = { url: string; title: string; slug: string }
-export type ShareHubEditData = { share: ShareInfo | null; noteId: string; title: string }
+
+type ShareHubQrData = { url: string; title: string; slug: string }
+
+type ShareHubEditData = { share: ShareInfo | null; noteId: string; title: string }
 
 export function useShareHubModal(open: boolean, initialNoteId?: string) {
   const category = useShareStore((s) => s.category)

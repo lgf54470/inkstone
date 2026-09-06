@@ -162,7 +162,8 @@ export async function insertFiles(view: EditorView, files: File[], handlers: Pas
         });
     }));
 }
-export function uploadedFileMarkdown(result: {
+
+function uploadedFileMarkdown(result: {
     url: string;
     filename: string;
     isImage: boolean;
@@ -192,7 +193,8 @@ function looksLikeMarkdown(text: string | undefined): boolean {
 }
 
 
-export function htmlToMarkdown(html: string): string {
+
+function htmlToMarkdown(html: string): string {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     doc.querySelectorAll('script, style, meta, link, noscript').forEach((el) => el.remove());
     return walkHtml(doc.body)

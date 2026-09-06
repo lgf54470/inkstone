@@ -73,7 +73,8 @@ function ascii(bytes: Uint8Array, start: number, end: number): string {
 }
 
 
-export function hasExpectedImageSignature(bytes: Uint8Array, mime: string): boolean {
+
+function hasExpectedImageSignature(bytes: Uint8Array, mime: string): boolean {
   if (mime === 'image/png') {
     return bytes.length >= 24 &&
       bytes[0] === 0x89 &&
@@ -140,7 +141,8 @@ export function extensionFor(mime: string, filename: string): string {
 }
 
 
-export const ALLOWED_MIME = new Set([
+
+const ALLOWED_MIME = new Set([
   'image/png',
   'image/jpeg',
   'image/gif',

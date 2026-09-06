@@ -4,7 +4,8 @@ import type { DateRangeFilter, RelativeFilter } from '@shared/types';
 export const LIST_FILTER_SESSION_KEY = 'inkstone.list-filter.session.v1';
 export const LIST_FILTER_REMEMBER_KEY = 'inkstone.list-filter.remember.v1';
 
-export interface ListFilterPersistState {
+
+interface ListFilterPersistState {
     query: string;
     dateFilter: DateRangeFilter | null;
     relativeFilter: RelativeFilter | null;

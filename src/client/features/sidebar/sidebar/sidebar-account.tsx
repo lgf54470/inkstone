@@ -124,7 +124,8 @@ function AccountButton({ rail, buttonRef, user, displayName, showUpdateDot, onOp
     </div>);
 }
 
-export function SettingsIcon({ size, showDot }: {
+
+function SettingsIcon({ size, showDot }: {
     size: number;
     showDot: boolean;
 }) {

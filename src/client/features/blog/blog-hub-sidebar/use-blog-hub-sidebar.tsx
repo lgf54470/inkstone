@@ -19,7 +19,8 @@ export interface SidebarNavItem {
     badgeTone?: 'default' | 'danger' | 'warning'
 }
 
-export interface FolderRowCtx {
+
+interface FolderRowCtx {
     expandedFolders: Set<string>
     activeTab: BlogTab
     selectedFolderId: string | null

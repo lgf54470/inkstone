@@ -116,7 +116,8 @@ export function rewritePlaceholders(count: number): string {
   return Array.from({ length: count }, (_, i) => `?${i + 2}`).join(', ')
 }
 
-export const MAX_INBOUND_WIKI_REWRITES = 25
+
+const MAX_INBOUND_WIKI_REWRITES = 25
 
 export async function rewriteInboundWikiLinks(
   db: D1Database,
@@ -279,10 +280,6 @@ export function resolveNoteTitle(title: string | undefined, current = ''): strin
   return title === undefined ? current : truncateText(title.trim(), LIMITS.titleMaxLength)
 }
 
-export function nextNotesCursor(offset: number, returned: number, total: number): string | null {
-  const next = offset + returned
-  return returned > 0 && next < total ? String(next) : null
-}
 
 export function encodeNotesListCursor(
   row: NoteRow,

@@ -1,4 +1,5 @@
-export type ColumnAlignment = 'left' | 'center' | 'right' | 'default';
+
+type ColumnAlignment = 'left' | 'center' | 'right' | 'default';
 
 export interface ParsedTable {
   startLine: number;
@@ -58,7 +59,8 @@ export function isDelimiterRow(line: string): boolean {
   return cells.every((cell) => /^:?-+:?$/.test(cell.trim()));
 }
 
-export function parseCellAlignment(cell: string): ColumnAlignment {
+
+function parseCellAlignment(cell: string): ColumnAlignment {
   const trimmed = cell.trim();
   const leftColon = trimmed.startsWith(':');
   const rightColon = trimmed.endsWith(':');
@@ -68,7 +70,8 @@ export function parseCellAlignment(cell: string): ColumnAlignment {
   return 'default';
 }
 
-export function formatDelimiterCell(align: ColumnAlignment, width = 3): string {
+
+function formatDelimiterCell(align: ColumnAlignment, width = 3): string {
   const fillWidth = Math.max(3, width);
   switch (align) {
     case 'center': {

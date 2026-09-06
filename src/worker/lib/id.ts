@@ -33,16 +33,6 @@ export function isValidSlug(value: unknown): value is string {
 }
 
 
-export function idTime(id: string): number {
-  let n = 0
-  for (let i = 0; i < 10 && i < id.length; i++) {
-    const idx = ALPHABET.indexOf(id[i]!)
-    if (idx < 0) return 0
-    n = n * 32 + idx
-  }
-  return n
-}
-
 const ID_RE = /^[0-9a-hjkmnp-tv-z]{26}$/
 export function isValidId(id: unknown): id is string {
   return typeof id === 'string' && ID_RE.test(id)

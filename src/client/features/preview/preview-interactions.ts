@@ -17,7 +17,8 @@ import { scrollElementIntoView, scrollToWikiTarget } from './wiki-scroll'
 type UiState = ReturnType<typeof useUi.getState>
 type NotesState = ReturnType<typeof useNotes.getState>
 
-export interface PreviewClickApi {
+
+interface PreviewClickApi {
   setLightbox: UiState['setLightbox']
   setPreviewFile: Dispatch<SetStateAction<{ url: string; filename: string } | null>>
   openNote: NotesState['openNote']
@@ -27,7 +28,8 @@ export interface PreviewClickApi {
   toast: UiState['toast']
 }
 
-export interface PreviewClickParams {
+
+interface PreviewClickParams {
   content: string
   sourceNoteId: string | null
   hostRef: RefObject<HTMLDivElement | null>

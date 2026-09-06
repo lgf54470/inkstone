@@ -39,7 +39,8 @@ export function usePopoverPosition(open: boolean, isEditorOpen: boolean, anchor:
     }, [open, isEditorOpen, anchor, setPosition]);
 }
 
-export function useGridFocus(open: boolean, editing: 'start' | 'end', cursor: { year: number; month: number }, gridRef: React.RefObject<HTMLDivElement | null>): void {
+
+function useGridFocus(open: boolean, editing: 'start' | 'end', cursor: { year: number; month: number }, gridRef: React.RefObject<HTMLDivElement | null>): void {
     useEffect(() => {
         if (!open)
             return;
@@ -49,7 +50,8 @@ export function useGridFocus(open: boolean, editing: 'start' | 'end', cursor: { 
     }, [open, editing, cursor, gridRef]);
 }
 
-export function useRangeGridFlash(open: boolean, editing: 'start' | 'end', range: DateRangeFilter | null, gridRef: React.RefObject<HTMLDivElement | null>): number {
+
+function useRangeGridFlash(open: boolean, editing: 'start' | 'end', range: DateRangeFilter | null, gridRef: React.RefObject<HTMLDivElement | null>): number {
     const [locateFlash, setLocateFlash] = useState(0);
     useEffect(() => {
         if (open && range)
@@ -77,7 +79,8 @@ export function useRangeGridFlash(open: boolean, editing: 'start' | 'end', range
     return locateFlash;
 }
 
-export interface DateRangeCore {
+
+interface DateRangeCore {
     weekStart: 0 | 1;
     editing: 'start' | 'end';
     setEditing: React.Dispatch<React.SetStateAction<'start' | 'end'>>;
@@ -98,7 +101,8 @@ export interface DateRangeCore {
     onPick: (key: string) => void;
 }
 
-export function useDateRangeCore(props: DateRangePopoverProps): DateRangeCore {
+
+function useDateRangeCore(props: DateRangePopoverProps): DateRangeCore {
     const locale = useLocale();
     const weekStart = locale === 'zh-CN' ? 1 : 0;
     const [editing, setEditing] = useState<'start' | 'end'>('start');
@@ -148,7 +152,8 @@ export function useDateRangeCore(props: DateRangePopoverProps): DateRangeCore {
     return { weekStart, editing, setEditing, isEditorOpen, setIsEditorOpen, position, popoverRef, gridRef, todayKey, weekdayLabels, monthTitle, cursor, current, shiftMonth, applyPreset, isActivePreset, selectEndpoint, onPick };
 }
 
-export interface DateRangePopoverState extends DateRangeCore {
+
+interface DateRangePopoverState extends DateRangeCore {
     locateFlash: number;
     presets: RangePresetConfig[];
     updatePreset: (id: string, patch: Partial<Pick<RangePresetConfig, 'days' | 'direction'>>) => void;
@@ -167,7 +172,8 @@ export function useDateRangePopover(props: DateRangePopoverProps): DateRangePopo
     return { ...core, locateFlash, presets, updatePreset, removePreset, addPreset, drag, onChange: props.onChange, onApplyRelative: props.onApplyRelative };
 }
 
-export interface RangePresetsState {
+
+interface RangePresetsState {
     presets: RangePresetConfig[];
     setPresets: React.Dispatch<React.SetStateAction<RangePresetConfig[]>>;
     updatePreset: (id: string, patch: Partial<Pick<RangePresetConfig, 'days' | 'direction'>>) => void;
@@ -175,7 +181,8 @@ export interface RangePresetsState {
     addPreset: () => void;
 }
 
-export function useRangePresets(): RangePresetsState {
+
+function useRangePresets(): RangePresetsState {
     const [presets, setPresets] = useState<RangePresetConfig[]>(loadRangePresets);
     useEffect(() => {
         saveRangePresets(presets);
@@ -200,7 +207,8 @@ export interface PresetDrag {
     moveButtonsRef: React.MutableRefObject<Map<string, { up: HTMLButtonElement | null; down: HTMLButtonElement | null }>>;
 }
 
-export function usePresetDrag(presets: RangePresetConfig[], setPresets: React.Dispatch<React.SetStateAction<RangePresetConfig[]>>): PresetDrag {
+
+function usePresetDrag(presets: RangePresetConfig[], setPresets: React.Dispatch<React.SetStateAction<RangePresetConfig[]>>): PresetDrag {
     const dragPresetIndex = useRef<number | null>(null);
     const handlePresetDragStart = (index: number) => (event: React.DragEvent) => {
         dragPresetIndex.current = index;

@@ -2,9 +2,12 @@ import { LIMITS } from './constants'
 
 export const MARKDOWN_BACKUP_FORMAT = 'inkstone-markdown-backup'
 export const MARKDOWN_BACKUP_VERSION = 3 as const
-export type MarkdownBackupVersion = 2 | typeof MARKDOWN_BACKUP_VERSION
-export const BACKUP_MANIFEST_NAME = 'manifest.json'
-export const BACKUP_COMPLETE_NAME = 'COMPLETE'
+
+type MarkdownBackupVersion = 2 | typeof MARKDOWN_BACKUP_VERSION
+
+const BACKUP_MANIFEST_NAME = 'manifest.json'
+
+const BACKUP_COMPLETE_NAME = 'COMPLETE'
 
 export type MarkdownBackupNoteState = 'notes' | 'archived' | 'trash'
 

@@ -218,7 +218,8 @@ export const toggleBlockReference = toggleWrap('[[#^', ']]');
 export const toggleQuote = toggleLinePrefix('> ', /^>\s?/);
 
 
-export const ANY_LIST_PREFIX = /^(?:[-*+]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?/;
+
+const ANY_LIST_PREFIX = /^(?:[-*+]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?/;
 
 
 export const toggleBulletList = toggleLinePrefix(
@@ -243,7 +244,8 @@ export const toggleOrderedList = toggleLinePrefix(
 
 
 
-export function surroundingMarkers(
+
+function surroundingMarkers(
     state: EditorState,
     range: SelectionRange,
     open: string,
@@ -262,7 +264,8 @@ export function surroundingMarkers(
 
 
 
-export function containedMarkers(text: string, open: string, close: string): { open: number; close: number } | null {
+
+function containedMarkers(text: string, open: string, close: string): { open: number; close: number } | null {
     if (open === '*' && close === '*') {
         const before = countStringRun(text, 0, 1, '*');
         const after = countStringRun(text, text.length - 1, -1, '*');
@@ -277,7 +280,8 @@ export function containedMarkers(text: string, open: string, close: string): { o
 
 
 
-export function codeSpanMarkers(text: string): number {
+
+function codeSpanMarkers(text: string): number {
     const before = countStringRun(text, 0, 1, '`');
     const after = countStringRun(text, text.length - 1, -1, '`');
     return before > 0 && before === after && text.length > before * 2 ? before : 0;
@@ -285,7 +289,8 @@ export function codeSpanMarkers(text: string): number {
 
 
 
-export function countRunBefore(state: EditorState, position: number, character: string): number {
+
+function countRunBefore(state: EditorState, position: number, character: string): number {
     let count = 0;
     while (position - count - 1 >= 0 && state.sliceDoc(position - count - 1, position - count) === character)
         count++;
@@ -294,7 +299,8 @@ export function countRunBefore(state: EditorState, position: number, character: 
 
 
 
-export function countRunAfter(state: EditorState, position: number, character: string): number {
+
+function countRunAfter(state: EditorState, position: number, character: string): number {
     let count = 0;
     while (position + count < state.doc.length && state.sliceDoc(position + count, position + count + 1) === character)
         count++;
@@ -303,7 +309,8 @@ export function countRunAfter(state: EditorState, position: number, character: s
 
 
 
-export function countStringRun(value: string, start: number, step: 1 | -1, character: string): number {
+
+function countStringRun(value: string, start: number, step: 1 | -1, character: string): number {
     let count = 0;
     for (let index = start; index >= 0 && index < value.length && value[index] === character; index += step)
         count++;

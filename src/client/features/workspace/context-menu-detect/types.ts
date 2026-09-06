@@ -1,6 +1,7 @@
 import { type ParsedTable } from '../../../lib/markdown/table-editor';
 
-export type ContextType =
+
+type ContextType =
   | 'selection'
   | 'table'
   | 'image'

@@ -59,7 +59,8 @@ export const DEFAULTS = {
 
 
 
-export const PERSISTED_KEYS = [
+
+const PERSISTED_KEYS = [
   'navWidth',
   'listWidth',
   'navCollapsed',
@@ -195,7 +196,8 @@ export function isFiniteNumber(value: unknown): value is number {
 
 
 
-export function isChoice(value: unknown, choices: readonly string[]): value is string {
+
+function isChoice(value: unknown, choices: readonly string[]): value is string {
   return typeof value === 'string' && choices.includes(value)
 }
 
@@ -207,7 +209,8 @@ export function clamp(value: number, min: number, max: number): number {
 
 
 
-export function uniqueStrings(value: unknown[], limit: number): string[] {
+
+function uniqueStrings(value: unknown[], limit: number): string[] {
   return [...new Set(value.filter((item): item is string => typeof item === 'string'))]
     .slice(0, limit)
     .map((item) => item.slice(0, 128))
@@ -236,7 +239,8 @@ export let lastPersisted = ''
 
 
 
-export function serializedPersistedState(state: UiState): string {
+
+function serializedPersistedState(state: UiState): string {
   const out: Record<string, unknown> = {}
   for (const key of PERSISTED_KEYS) out[key] = state[key]
   return JSON.stringify(out)

@@ -24,7 +24,8 @@ export interface DemoAttachment {
   file: File
 }
 
-export interface DemoShare {
+
+interface DemoShare {
   info: ShareInfo
   password: string | null
 }

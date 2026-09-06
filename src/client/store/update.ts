@@ -85,7 +85,8 @@ function applyCheckResult(
   })
 }
 
-export function isOfficialUpdateUrl(
+
+function isOfficialUpdateUrl(
   url: string | null,
 ): url is typeof GITHUB_REPOSITORY_URL {
   return url === GITHUB_REPOSITORY_URL

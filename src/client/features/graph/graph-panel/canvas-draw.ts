@@ -6,14 +6,16 @@ import { nodeColor } from './helpers'
 import type { CanvasNode, CanvasState } from './types'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 
-export interface ThemeColors {
+
+interface ThemeColors {
   edge: string
   node: string
   accent: string
   text: string
 }
 
-export function applyRepulsion(state: CanvasState, repulsion: number): void {
+
+function applyRepulsion(state: CanvasState, repulsion: number): void {
   for (let i = 0; i < state.nodes.length; i++) {
     const a = state.nodes[i]!
     for (let j = i + 1; j < state.nodes.length; j++) {
@@ -36,7 +38,8 @@ export function applyRepulsion(state: CanvasState, repulsion: number): void {
   }
 }
 
-export function applySprings(state: CanvasState, linkDistance: number): void {
+
+function applySprings(state: CanvasState, linkDistance: number): void {
   for (const edge of state.edges) {
     const dx = edge.b.x - edge.a.x, dy = edge.b.y - edge.a.y
     const distance = Math.hypot(dx, dy) || 1
@@ -46,7 +49,8 @@ export function applySprings(state: CanvasState, linkDistance: number): void {
   }
 }
 
-export function applyVelocities(state: CanvasState): number {
+
+function applyVelocities(state: CanvasState): number {
   let movement = 0
   for (const node of state.nodes) {
     if (state.dragging?.node === node) continue
@@ -59,7 +63,8 @@ export function applyVelocities(state: CanvasState): number {
   return movement
 }
 
-export function advancePhysics(state: CanvasState, prefs: GraphPreferences): void {
+
+function advancePhysics(state: CanvasState, prefs: GraphPreferences): void {
   if (state.frame >= PHYSICS_FRAME_LIMIT)
     return
   state.frame++
@@ -70,7 +75,8 @@ export function advancePhysics(state: CanvasState, prefs: GraphPreferences): voi
     state.frame = PHYSICS_FRAME_LIMIT
 }
 
-export function drawArrowHead(ctx: CanvasRenderingContext2D, a: CanvasNode, b: CanvasNode, color: string, scale: number): void {
+
+function drawArrowHead(ctx: CanvasRenderingContext2D, a: CanvasNode, b: CanvasNode, color: string, scale: number): void {
   const angle = Math.atan2(b.y - a.y, b.x - a.x)
   const x = b.x - Math.cos(angle) * (b.r + 2)
   const y = b.y - Math.sin(angle) * (b.r + 2)
@@ -82,7 +88,8 @@ export function drawArrowHead(ctx: CanvasRenderingContext2D, a: CanvasNode, b: C
   ctx.closePath(); ctx.fillStyle = color; ctx.fill()
 }
 
-export function drawEdges(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, arrows: boolean): void {
+
+function drawEdges(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, arrows: boolean): void {
   ctx.lineWidth = 1 / state.scale
   for (const edge of state.edges) {
     const related = emphasizedId === edge.a.id || emphasizedId === edge.b.id
@@ -94,7 +101,8 @@ export function drawEdges(ctx: CanvasRenderingContext2D, state: CanvasState, col
   }
 }
 
-export function drawNodes(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, groupBy: GraphPreferences['groupBy'], selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>): void {
+
+function drawNodes(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, groupBy: GraphPreferences['groupBy'], selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>): void {
   for (const node of state.nodes) {
     const active = node.id === activeNoteIdRef.current
     const emphasized = node.id === emphasizedId
@@ -115,7 +123,8 @@ export function drawNodes(ctx: CanvasRenderingContext2D, state: CanvasState, col
   }
 }
 
-export function drawLabels(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, fontFamily: string, scale: number, labels: boolean): void {
+
+function drawLabels(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, fontFamily: string, scale: number, labels: boolean): void {
   if (!labels || !(scale > 0.68 || emphasizedId))
     return
   ctx.font = `${11 / scale}px ${fontFamily}`

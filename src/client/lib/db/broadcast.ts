@@ -32,7 +32,8 @@ export type BroadcastPayload = (
       copyId?: string
     }
 ) & { userId?: string }
-export let broadcastPublisher: BroadcastChannel | null = null
+
+let broadcastPublisher: BroadcastChannel | null = null
 
 
 export function publishBroadcast(payload: BroadcastPayload): void {

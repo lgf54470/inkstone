@@ -9,7 +9,8 @@ import { t } from '../../lib/i18n'
 const QR_BG_COLOR = '#ffffff'
 const QR_FG_COLOR = '#111827'
 
-export interface AttachmentQrModalProps {
+
+interface AttachmentQrModalProps {
   open: boolean
   onClose: () => void
   url: string

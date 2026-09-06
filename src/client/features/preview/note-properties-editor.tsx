@@ -5,7 +5,8 @@ import { t } from '../../lib/i18n'
 import { useNoteProperties, type NotePropertiesBundle } from './use-note-properties'
 import { PropertyRow } from './property-row'
 
-export interface NotePropertiesEditorProps {
+
+interface NotePropertiesEditorProps {
   noteId: string | null
   content: string
   className?: string

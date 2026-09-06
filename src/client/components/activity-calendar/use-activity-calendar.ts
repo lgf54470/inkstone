@@ -113,7 +113,8 @@ function useCalendarMonth(props: ActivityCalendarProps, state: CalendarState, ba
     return { inMonthKeys, focusKey, cellMeta, inRange };
 }
 
-export interface YearState {
+
+interface YearState {
     yearMeta: { totals: number[]; yearMax: number };
     yearLevel: (key: string) => number;
 }
@@ -278,7 +279,8 @@ function buildWeekView(props: ActivityCalendarProps, state: CalendarState, base:
     };
 }
 
-export interface CalendarHook {
+
+interface CalendarHook {
     view: 'month' | 'weeks' | 'year';
     onViewChange: (view: 'month' | 'weeks' | 'year') => void;
     rootRef: React.RefObject<HTMLDivElement | null>;

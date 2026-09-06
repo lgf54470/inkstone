@@ -457,7 +457,8 @@ function queueSessionCache(info: SessionInfo): Promise<void> {
 }
 
 
-export function syncAppearanceToDom(settings: UserSettings): void {
+
+function syncAppearanceToDom(settings: UserSettings): void {
   const { appearance, preview } = settings
   const root = document.documentElement
   root.style.setProperty('--prose-size', `${appearance.proseSize}px`)

@@ -61,7 +61,8 @@ export async function currentCursor(db: D1Database, userId: string): Promise<num
   return row?.seq ?? 0
 }
 
-export interface SyncDerivedOptions {
+
+interface SyncDerivedOptions {
   db: D1Database
   userId: string
   noteId: string

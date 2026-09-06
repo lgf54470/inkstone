@@ -3,7 +3,8 @@ import { useEffect, useRef, type RefObject } from 'react';
 
 
 
-export const escStack: (() => void)[] = [];
+
+const escStack: (() => void)[] = [];
 
 
 export function useEscape(active: boolean, onEscape: () => void): void {
@@ -56,10 +57,12 @@ export function useClickOutside(refs: RefObject<HTMLElement | null>[], active: b
 }
 
 
-export let scrollLockCount = 0;
+
+let scrollLockCount = 0;
 
 
-export let unlockedBodyOverflow = '';
+
+let unlockedBodyOverflow = '';
 
 
 export function useLockScroll(active: boolean): void {
@@ -79,10 +82,12 @@ export function useLockScroll(active: boolean): void {
 }
 
 
-export const dialogStack: symbol[] = [];
+
+const dialogStack: symbol[] = [];
 
 
-export const FOCUSABLE_SELECTOR = [
+
+const FOCUSABLE_SELECTOR = [
     'a[href]',
     'button:not([disabled])',
     'input:not([disabled]):not([type="hidden"])',
@@ -147,6 +152,7 @@ export function useDialogFocus<T extends HTMLElement>(active: boolean, panelRef:
 
 
 
-export function isAvailableFocusTarget(element: HTMLElement): boolean {
+
+function isAvailableFocusTarget(element: HTMLElement): boolean {
     return !element.matches(':disabled') && !element.closest('[hidden], [aria-hidden="true"]');
 }

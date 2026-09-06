@@ -21,13 +21,15 @@ export interface ActivityProjection {
     notesByDay: Map<string, ActivityDayNote[]>
 }
 
-export interface ActivityEntry {
+
+interface ActivityEntry {
     ref: NoteSummary
     key: string
     title: string
 }
 
-export interface ActivityProjectionSlot extends ActivityProjection {
+
+interface ActivityProjectionSlot extends ActivityProjection {
     notes: Record<string, NoteSummary>
     byId: Map<string, ActivityEntry>
     titleCounts: Map<string, number>
@@ -66,7 +68,8 @@ export function buildActivityProjectionFresh(notes: Record<string, NoteSummary>)
 // First-wins over insertion order, matching the naive rebuild: the map holds
 // the first alive note per title, so a vacated slot is re-claimed by the first
 // alive note in map order that still carries the title.
-export function claimNextNoteWithTitle(notes: Record<string, NoteSummary>, title: string): string | null {
+
+function claimNextNoteWithTitle(notes: Record<string, NoteSummary>, title: string): string | null {
     for (const id in notes) {
         const note = notes[id]!;
         if (note.deletedAt === null && note.title === title)
@@ -75,7 +78,8 @@ export function claimNextNoteWithTitle(notes: Record<string, NoteSummary>, title
     return null;
 }
 
-export function dropTitleClaim(titleCounts: Map<string, number>, titles: Map<string, string>, notes: Record<string, NoteSummary>, title: string, id: string): void {
+
+function dropTitleClaim(titleCounts: Map<string, number>, titles: Map<string, string>, notes: Record<string, NoteSummary>, title: string, id: string): void {
     const rest = (titleCounts.get(title) ?? 0) - 1;
     if (rest > 0) {
         titleCounts.set(title, rest);
@@ -95,7 +99,8 @@ export function dropTitleClaim(titleCounts: Map<string, number>, titles: Map<str
 // The naive rebuild only ever records days with at least one note, so the
 // incremental must drop a key when its count reaches zero (keeps the map
 // bounded and matches the reference shape exactly).
-export function decrementCount(counts: Map<string, number>, key: string): void {
+
+function decrementCount(counts: Map<string, number>, key: string): void {
     const next = (counts.get(key) ?? 0) - 1;
     if (next > 0)
         counts.set(key, next);
@@ -103,7 +108,8 @@ export function decrementCount(counts: Map<string, number>, key: string): void {
         counts.delete(key);
 }
 
-export function removeFromDay(byDay: Map<string, ActivityDayNote[]>, key: string, id: string): void {
+
+function removeFromDay(byDay: Map<string, ActivityDayNote[]>, key: string, id: string): void {
     const list = byDay.get(key);
     if (!list)
         return;
@@ -114,7 +120,8 @@ export function removeFromDay(byDay: Map<string, ActivityDayNote[]>, key: string
         byDay.delete(key);
 }
 
-export function upsertInDay(byDay: Map<string, ActivityDayNote[]>, key: string, item: ActivityDayNote): void {
+
+function upsertInDay(byDay: Map<string, ActivityDayNote[]>, key: string, item: ActivityDayNote): void {
     const list = byDay.get(key);
     const copy = list ? list.map((entry) => (entry.id === item.id ? item : entry)) : [];
     if (!copy.some((entry) => entry.id === item.id))

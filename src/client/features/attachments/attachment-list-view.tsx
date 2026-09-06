@@ -15,7 +15,8 @@ import {
   useFileFolder,
 } from './attachment-item-common'
 
-export interface AttachmentListViewProps {
+
+interface AttachmentListViewProps {
   files: AttachmentWithUsage[]
   selectedIds: Set<string>
   onToggleSelect: (id: string, e: React.MouseEvent) => void
@@ -102,7 +103,8 @@ function TableHead({ onToggleSelectAll, allSelected }: { onToggleSelectAll: () =
   )
 }
 
-export interface ListRowProps {
+
+interface ListRowProps {
   file: AttachmentWithUsage
   selected: boolean
   active: boolean

@@ -146,7 +146,8 @@ export async function searchUserNotes(
   return { results: await likeSearch(db, userId, query, limit), mode: 'like', query }
 }
 
-export function buildFtsQuery(terms: string[]): string {
+
+function buildFtsQuery(terms: string[]): string {
   const parts: string[] = []
   for (const term of terms) {
     const seg = segmentCJK(term).trim().replace(/"/g, '')
@@ -157,7 +158,8 @@ export function buildFtsQuery(terms: string[]): string {
   return parts.join(' AND ')
 }
 
-export async function ftsSearch(
+
+async function ftsSearch(
   db: D1Database,
   userId: string,
   q: ParsedQuery,
@@ -197,7 +199,8 @@ export async function ftsSearch(
   }))
 }
 
-export async function likeSearch(
+
+async function likeSearch(
   db: D1Database,
   userId: string,
   q: ParsedQuery,
@@ -252,7 +255,8 @@ export async function likeSearch(
   }))
 }
 
-export function applyFilters(q: ParsedQuery, binds: unknown[], append: (clause: string) => void): void {
+
+function applyFilters(q: ParsedQuery, binds: unknown[], append: (clause: string) => void): void {
   if (q.starred === true) append(' AND n.is_starred = 1')
   if (q.archived === true) append(' AND n.is_archived = 1')
   else if (q.archived === false) append(' AND n.is_archived = 0')
@@ -274,7 +278,8 @@ export function applyFilters(q: ParsedQuery, binds: unknown[], append: (clause: 
   }
 }
 
-export function makeSnippet(content: string, terms: string[], radius = 70): string {
+
+function makeSnippet(content: string, terms: string[], radius = 70): string {
   const plain = toPlainText(content).replace(/\s+/g, ' ')
   if (!plain) return ''
   const lower = plain.toLowerCase()
@@ -291,7 +296,8 @@ export function makeSnippet(content: string, terms: string[], radius = 70): stri
   return (start > 0 ? '…' : '') + sliceText(plain, start, end).trim() + (end < plain.length ? '…' : '')
 }
 
-export function scoreOf(row: NoteRow & { content: string }, terms: string[]): number {
+
+function scoreOf(row: NoteRow & { content: string }, terms: string[]): number {
   let score = 0
   const title = row.title.toLowerCase()
   const body = row.content.toLowerCase()
@@ -303,7 +309,8 @@ export function scoreOf(row: NoteRow & { content: string }, terms: string[]): nu
   return score
 }
 
-export function countOccurrences(text: string, query: string, limit: number): number {
+
+function countOccurrences(text: string, query: string, limit: number): number {
   if (!query) return 0
   let count = 0
   let offset = 0
@@ -320,7 +327,8 @@ export function escapeLike(text: string): string {
   return text.replace(/[\\%_]/g, (ch) => `\\${ch}`)
 }
 
-export function contentWindowSql(termBindIndex: number): string {
+
+function contentWindowSql(termBindIndex: number): string {
   const found = `instr(lower(n.content), lower(?${termBindIndex}))`
   return `substr(n.content, CASE WHEN ${found} > 180 THEN ${found} - 180 ELSE 1 END, 520)`
 }

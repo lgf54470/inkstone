@@ -42,7 +42,8 @@ export function CommunityPanel({ items, loading, isError, myId, onRefresh, onUse
     </div>);
 }
 
-export function CommunityCard({ item, mine, onUse, onImport, onUnpublish }: {
+
+function CommunityCard({ item, mine, onUse, onImport, onUnpublish }: {
     item: CommunityTemplate;
     mine: boolean;
     onUse: () => void;

@@ -223,7 +223,8 @@ export async function setTagColor(tag: Tag, color: string | null): Promise<void>
     tagColorWrites.delete(tag.id)
 }
 
-export async function setTagPinned(tag: Tag, isPinned: boolean): Promise<void> {
+
+async function setTagPinned(tag: Tag, isPinned: boolean): Promise<void> {
   const cachedTag = useNotes.getState().tags.find((candidate) => candidate.id === tag.id)
   const currentPinned = cachedTag ? Boolean(cachedTag.isPinned) : Boolean(tag.isPinned)
   if (currentPinned === isPinned) return

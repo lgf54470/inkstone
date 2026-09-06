@@ -7,7 +7,8 @@ import type { TagTreeNode } from '../../../lib/tag-tree';
 import { Menu, useContextMenu, type MenuItem } from '../../../components/overlay';
 import { TagColorSubmenu } from '../../tags';
 
-export interface DriveTagRowProps {
+
+interface DriveTagRowProps {
   node: TagTreeNode
   selectedTag: string | null
   expandedTagPaths: Set<string>

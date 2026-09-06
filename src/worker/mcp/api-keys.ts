@@ -17,7 +17,8 @@ const ACTIVE_KEYS_MAX = 50
 // 32 random bytes encoded as unpadded base64url is exactly 43 characters.
 const KEY_TOKEN_RE = /^ink_[A-Za-z0-9_-]{43}$/
 
-export interface McpApiKeyRecord {
+
+interface McpApiKeyRecord {
   id: string
   name: string
   scopes: string[]
@@ -25,7 +26,8 @@ export interface McpApiKeyRecord {
   lastUsedAt: number | null
 }
 
-export interface McpApiKeyAuth {
+
+interface McpApiKeyAuth {
   userId: string
   role: 'owner' | 'member'
   scopes: string[]

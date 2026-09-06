@@ -8,7 +8,8 @@ import { useDebounced } from '../../lib/hooks'
 import { useNotes } from '../../store/notes'
 import { useSession } from '../../store/session'
 
-export interface NoteCardContent {
+
+interface NoteCardContent {
   status: 'loading' | 'ready' | 'missing' | 'error'
   html: string
   isTruncated: boolean
@@ -171,7 +172,8 @@ export function useNoteBacklinks(noteId: string | null): NoteBacklinks {
   return { links }
 }
 
-export function hashString(value: string): number {
+
+function hashString(value: string): number {
   let hash = 5381
   for (let index = 0; index < value.length; index++) {
     hash = ((hash << 5) + hash + value.charCodeAt(index)) | 0

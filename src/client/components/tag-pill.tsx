@@ -4,7 +4,8 @@ import { Hash, X } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { t } from '../lib/i18n'
 
-export interface TagPillProps {
+
+interface TagPillProps {
   tag: string
   color?: string | null
   size?: 'sm' | 'md'

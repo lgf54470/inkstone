@@ -15,7 +15,8 @@ import { SectionLabel } from './label';
 import { DriveFolderRow } from './folder-row';
 import { DriveTagRow } from './tag-row';
 
-export interface AttachmentDriveSidebarProps {
+
+interface AttachmentDriveSidebarProps {
   selectedCategory: AttachmentCategory
   onSelectCategory: (cat: AttachmentCategory) => void
   selectedFolderId: string | null

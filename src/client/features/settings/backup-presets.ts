@@ -1,12 +1,14 @@
 import type { BackupTargetType } from '@shared/types'
 import { t } from '../../lib/i18n'
 
-export interface BackupGuidePart {
+
+interface BackupGuidePart {
   text: string
   href?: string
 }
 
-export interface BackupGuideAddress {
+
+interface BackupGuideAddress {
   label: string
   url: string
 }

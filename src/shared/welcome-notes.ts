@@ -2,7 +2,8 @@ import { EN_US_MESSAGES } from './locales/en-US'
 import { ZH_CN_MESSAGES } from './locales/zh-CN'
 import type { AppLocale } from './types'
 
-export interface WelcomeNoteTemplate {
+
+interface WelcomeNoteTemplate {
   locale: AppLocale
   content: string
 }
@@ -12,7 +13,8 @@ const WELCOME_NOTE_CONTENT: Record<AppLocale, string> = {
   'en-US': EN_US_MESSAGES['seed.welcome_note'],
 }
 
-export function welcomeNoteContent(locale: AppLocale): string {
+
+function welcomeNoteContent(locale: AppLocale): string {
   return WELCOME_NOTE_CONTENT[locale]
 }
 

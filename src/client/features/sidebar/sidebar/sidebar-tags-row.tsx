@@ -39,7 +39,8 @@ export function TagDraftRow({ onFinish, onCancel }: {
     </div>);
 }
 
-export interface TagRowProps {
+
+interface TagRowProps {
     tag: Tag;
     displayName?: string;
     depth?: number;

@@ -9,7 +9,8 @@ import { useNotes } from '../../store/notes'
 import { confirm } from '../../components/overlay'
 import { useBlogStore } from './blog-store'
 
-export interface BlogNoteSubmenuBundle {
+
+interface BlogNoteSubmenuBundle {
     isBusy: boolean
     isCopied: boolean
     postUrl: string

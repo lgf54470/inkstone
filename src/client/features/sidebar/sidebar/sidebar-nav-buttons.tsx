@@ -4,7 +4,8 @@ import { cn } from '../../../lib/cn';
 import { useNotes } from '../../../store/notes';
 import { isNoteDragEvent, leftDropTarget, readDraggedNoteIds } from './sidebar-drop';
 
-export function WeChatBadge({ count }: { count?: number }) {
+
+function WeChatBadge({ count }: { count?: number }) {
   if (count == null || count <= 0) return null;
   const text = count > 99 ? '99+' : String(count);
   return (

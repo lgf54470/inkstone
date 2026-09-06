@@ -11,7 +11,8 @@ import type { UnzippedEntry } from '@shared/zip'
 import { sha256Hex } from '../lib/encoding'
 import { isRecord } from './shared'
 
-export const EXPORT_FILE = 'inkstone-export.json'
+
+const EXPORT_FILE = 'inkstone-export.json'
 
 export function isExportBundlePath(path: string): boolean {
   const lower = path.toLowerCase()
@@ -174,7 +175,8 @@ export function mapBundleAttachmentEntries(
   return mapped
 }
 
-export function bundleDirectory(bundlePath: string): string {
+
+function bundleDirectory(bundlePath: string): string {
   const slash = bundlePath.lastIndexOf('/')
   return slash >= 0 ? bundlePath.slice(0, slash + 1) : ''
 }

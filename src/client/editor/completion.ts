@@ -4,12 +4,14 @@ import { truncateText } from '@shared/text-utils';
 import { fuzzyMatch } from '../lib/fuzzy';
 import { t } from "../lib/i18n";
 
-export interface NoteSource {
+
+interface NoteSource {
     id: string;
     title: string;
     excerpt: string;
 }
-export interface TagSource {
+
+interface TagSource {
     name: string;
     count: number;
     color?: string | null;

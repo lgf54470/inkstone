@@ -25,7 +25,8 @@ export interface GraphPreferences {
 
 type GraphTogglePref = { [K in keyof GraphPreferences]: GraphPreferences[K] extends boolean ? K : never }[keyof GraphPreferences];
 
-export interface GraphToggleControl {
+
+interface GraphToggleControl {
   prefKey: GraphTogglePref
   labelKey: MessageKey
   hintKey?: MessageKey

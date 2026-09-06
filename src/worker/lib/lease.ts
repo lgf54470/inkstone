@@ -2,7 +2,8 @@ import { ApiError } from './errors'
 import { newId } from './id'
 
 
-export type LeaseRelease = (() => Promise<void>) & {
+
+type LeaseRelease = (() => Promise<void>) & {
   renew: () => Promise<boolean>
 }
 

@@ -23,9 +23,11 @@ export const ORGANIZER_COLORS = [
   '#64748b',
 ] as const
 
-export type OrganizerColor = (typeof ORGANIZER_COLORS)[number]
 
-export function isOrganizerColor(value: unknown): value is OrganizerColor {
+type OrganizerColor = (typeof ORGANIZER_COLORS)[number]
+
+
+function isOrganizerColor(value: unknown): value is OrganizerColor {
   return typeof value === 'string' && (ORGANIZER_COLORS as readonly string[]).includes(value)
 }
 

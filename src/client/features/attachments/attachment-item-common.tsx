@@ -68,7 +68,8 @@ export function cardDragStart(e: React.DragEvent, fileId: string) {
   e.dataTransfer.effectAllowed = 'move'
 }
 
-export async function copyFileMarkdown(file: AttachmentWithUsage) {
+
+async function copyFileMarkdown(file: AttachmentWithUsage) {
   try {
     const md = fileBadgeOf(file).isImage ? `![${file.filename}](${file.url})` : `[${file.filename}](${file.url})`
     await navigator.clipboard.writeText(md)
@@ -77,7 +78,8 @@ export async function copyFileMarkdown(file: AttachmentWithUsage) {
   }
 }
 
-export async function copyFileUrl(file: AttachmentWithUsage) {
+
+async function copyFileUrl(file: AttachmentWithUsage) {
   try {
     const fullUrl = new URL(file.url, window.location.origin).href
     await navigator.clipboard.writeText(fullUrl)
