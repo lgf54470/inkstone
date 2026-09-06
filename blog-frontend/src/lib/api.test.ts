@@ -1,5 +1,7 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, extractCoverUrl } from './api'
+import { api, extractCoverUrl, isApiDegraded, subscribeApiHealth } from './api'
+import { API_TIMEOUT_MS } from './constants'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -14,6 +16,7 @@ function stubFetch(body: unknown, ok = true, status = 200): void {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
 describe('extractCoverUrl', () => {
@@ -124,5 +127,56 @@ describe('api.submitComment', () => {
     expect(res.ok).toBe(true)
     expect(res.comment?.status).toBe('pending')
     expect(res.comment?.authorName).toBe('A')
+  })
+})
+
+describe('api health state', () => {
+  it('marks degraded on failure and recovers on success', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('down') }))
+    await api.getSiteInfo()
+    expect(isApiDegraded()).toBe(true)
+
+    stubFetch({ settings: { siteName: 'Back' } })
+    await api.getSiteInfo()
+    expect(isApiDegraded()).toBe(false)
+  })
+
+  it('aborts stalled requests after the timeout and falls back', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, init?: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(new Error('aborted by timeout')))
+          })
+      )
+    )
+    const promise = api.getSiteInfo()
+    vi.advanceTimersByTime(API_TIMEOUT_MS)
+    const info = await promise
+    expect(info.siteName).toBe('Inkstone Blog')
+    expect(isApiDegraded()).toBe(true)
+  })
+
+  it('notifies subscribers on change and stops after unsubscribe', async () => {
+    stubFetch({ settings: { siteName: 'Back' } })
+    await api.getSiteInfo() // 先回到健康状态，保证测试与执行顺序无关
+    const seen: boolean[] = []
+    const unsubscribe = subscribeApiHealth((value) => seen.push(value))
+    expect(seen).toEqual([false])
+
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('down') }))
+    await api.getSiteInfo()
+    expect(seen).toEqual([false, true])
+
+    stubFetch({ settings: { siteName: 'Back' } })
+    await api.getSiteInfo()
+    expect(seen).toEqual([false, true, false])
+
+    unsubscribe()
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('down again') }))
+    await api.getSiteInfo()
+    expect(seen).toEqual([false, true, false])
   })
 })

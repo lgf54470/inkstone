@@ -3,6 +3,7 @@ import { createElement, type ReactElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import AppearanceDrawer from '../src/components/AppearanceDrawer'
 import SearchModal from '../src/components/SearchModal'
+import DegradedBanner from '../src/components/DegradedBanner'
 import CalendarWidget from '../src/components/CalendarWidget'
 import CommentsSection from '../src/components/CommentsSection'
 import type { CalendarDayPost } from '../src/lib/types'
@@ -21,6 +22,10 @@ describe('component server-render smoke', () => {
     expect(html).toContain('排版密度')
     expect(html).toContain('界面语言')
     expect(html).toContain('恢复默认')
+  })
+
+  it('DegradedBanner renders nothing while API health is normal', () => {
+    expect(render(createElement(DegradedBanner))).toBe('')
   })
 
   it('SearchModal renders closed overlay with search hint and footer', () => {

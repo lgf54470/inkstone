@@ -19,7 +19,7 @@ import {
   normalizeTimelineGroup,
 } from './normalize'
 import { FALLBACK_POSTS, FALLBACK_SITE_INFO } from './fallbacks'
-import { POSTS_PER_PAGE_DEFAULT, DEFAULT_API_URL } from './constants'
+import { POSTS_PER_PAGE_DEFAULT, DEFAULT_API_URL, API_TIMEOUT_MS } from './constants'
 
 export { extractCoverUrl } from './normalize'
 
@@ -40,12 +40,59 @@ export function getApiBase(): string {
 
 const API_BASE = getApiBase()
 
+// 健康状态只在浏览器端记录：SSR 侧失败不代表站点离线，且 Worker 跨请求共享模块实例，
+// 不能让一次瞬时失败污染后续请求的渲染。
+let degraded = false
+const healthListeners = new Set<(degraded: boolean) => void>()
+
+function setDegraded(value: boolean): void {
+  if (typeof window === 'undefined') return
+  if (degraded === value) return
+  degraded = value
+  for (const listener of healthListeners) listener(value)
+}
+
+/** 当前是否处于 API 降级（离线 fallback）状态 */
+export function isApiDegraded(): boolean {
+  return degraded
+}
+
+/** 订阅 API 健康状态：立即回调当前值，返回取消订阅函数 */
+export function subscribeApiHealth(listener: (degraded: boolean) => void): () => void {
+  healthListeners.add(listener)
+  listener(degraded)
+  return () => {
+    healthListeners.delete(listener)
+  }
+}
+
+async function fetchWithTimeout(path: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
+  try {
+    return await fetch(`${API_BASE}${path}`, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
+  try {
+    const res = await fetchWithTimeout(path, init)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data: unknown = await res.json()
+    setDegraded(false)
+    return data
+  } catch (err) {
+    setDegraded(true)
+    throw err
+  }
+}
+
 export const api = {
   async getSiteInfo(): Promise<BlogSiteInfo> {
     try {
-      const res = await fetch(`${API_BASE}/api/blog/public/site`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return normalizeSiteInfo(await res.json())
+      return normalizeSiteInfo(await requestJson('/api/blog/public/site'))
     } catch (err) {
       console.warn('[api.getSiteInfo] request failed, using fallback site info:', err)
       return FALLBACK_SITE_INFO
@@ -67,9 +114,7 @@ export const api = {
       if (options?.page) query.set('page', String(options.page))
       if (options?.limit) query.set('limit', String(options.limit))
 
-      const res = await fetch(`${API_BASE}/api/blog/public/posts?${query.toString()}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = asRecord(await res.json())
+      const data = asRecord(await requestJson(`/api/blog/public/posts?${query.toString()}`))
       const rawPosts = asArray(data.posts)
       const pagination = asRecord(data.pagination)
       const total = typeof pagination.total === 'number' ? pagination.total : (typeof data.total === 'number' ? data.total : rawPosts.length)
@@ -100,11 +145,7 @@ export const api = {
 
   async getPostBySlug(slug: string, headers?: HeadersInit): Promise<BlogPost | null> {
     try {
-      const res = await fetch(`${API_BASE}/api/blog/public/posts/${encodeURIComponent(slug)}`, {
-        headers,
-      })
-      if (!res.ok) return null
-      const data = asRecord(await res.json())
+      const data = asRecord(await requestJson(`/api/blog/public/posts/${encodeURIComponent(slug)}`, { headers }))
       if (!data.post) return null
       return normalizePost(data.post)
     } catch (err) {
@@ -115,9 +156,7 @@ export const api = {
 
   async getCategories(): Promise<BlogCategory[]> {
     try {
-      const res = await fetch(`${API_BASE}/api/blog/public/categories`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = asRecord(await res.json())
+      const data = asRecord(await requestJson('/api/blog/public/categories'))
       return asArray(data.categories).map(normalizeCategory)
     } catch (err) {
       console.warn('[api.getCategories] request failed, using fallback categories:', err)
@@ -130,9 +169,7 @@ export const api = {
 
   async getTags(): Promise<BlogTag[]> {
     try {
-      const res = await fetch(`${API_BASE}/api/blog/public/tags`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = asRecord(await res.json())
+      const data = asRecord(await requestJson('/api/blog/public/tags'))
       return asArray(data.tags).map(normalizeTag)
     } catch (err) {
       console.warn('[api.getTags] request failed, using fallback tags:', err)
@@ -148,9 +185,7 @@ export const api = {
 
   async getTimeline(): Promise<TimelineGroup[]> {
     try {
-      const res = await fetch(`${API_BASE}/api/blog/public/timeline`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = asRecord(await res.json())
+      const data = asRecord(await requestJson('/api/blog/public/timeline'))
       if (Array.isArray(data.timeline)) {
         return asArray(data.timeline).map(normalizeTimelineGroup)
       }
@@ -199,9 +234,7 @@ export const api = {
       const q = new URLSearchParams()
       if (year) q.set('year', String(year))
       if (month) q.set('month', String(month))
-      const res = await fetch(`${API_BASE}/api/blog/public/calendar?${q.toString()}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = asRecord(await res.json())
+      const data = asRecord(await requestJson(`/api/blog/public/calendar?${q.toString()}`))
       if (Array.isArray(data.days)) {
         return asArray(data.days).map(normalizeCalendarDay)
       }
@@ -225,9 +258,7 @@ export const api = {
 
   async getComments(postSlugOrId: string): Promise<BlogComment[]> {
     try {
-      const res = await fetch(`${API_BASE}/api/blog/public/comments/${encodeURIComponent(postSlugOrId)}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = asRecord(await res.json())
+      const data = asRecord(await requestJson(`/api/blog/public/comments/${encodeURIComponent(postSlugOrId)}`))
       return asArray(data.comments).map(normalizeComment)
     } catch (err) {
       console.warn(`[api.getComments] request failed for "${postSlugOrId}":`, err)
@@ -244,17 +275,23 @@ export const api = {
     content: string
   }): Promise<{ ok: boolean; message: string; comment?: BlogComment }> {
     const postSlug = payload.postSlug || payload.postId
-    const res = await fetch(`${API_BASE}/api/blog/public/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        postSlug,
-        authorName: payload.authorName,
-        authorEmail: payload.authorEmail,
-        authorUrl: payload.authorUrl,
-        content: payload.content,
-      }),
-    })
+    let res: Response
+    try {
+      res = await fetchWithTimeout('/api/blog/public/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postSlug,
+          authorName: payload.authorName,
+          authorEmail: payload.authorEmail,
+          authorUrl: payload.authorUrl,
+          content: payload.content,
+        }),
+      })
+    } catch (err) {
+      setDegraded(true)
+      throw err
+    }
     const data = asRecord(await res.json())
     if (!res.ok) {
       throw new Error(typeof data.error === 'string' ? data.error : `HTTP ${res.status}`)

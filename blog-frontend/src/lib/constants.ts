@@ -14,3 +14,5 @@ export const WORDS_PER_MINUTE = 350
 export const POPULAR_TAG_MIN_POSTS = 2
 /** 后端 API 兜底地址（优先使用 PUBLIC_API_URL / meta / window 注入） */
 export const DEFAULT_API_URL = 'https://inkstone.333096.xyz'
+/** API 请求超时时间（ms），超时即中止并走离线 fallback */
+export const API_TIMEOUT_MS = 10_000
