@@ -13,20 +13,98 @@ type ScrollEdge = 'top' | 'bottom' | null
 const EDGE_EPSILON = 2
 const DRIVER_IDLE_MS = 160
 
-export function useSyncScroll(
+type DriverRef = { current: ScrollSide | null }
+type FrameRef = { current: number }
+type ReleaseRef = { current: number }
+
+function releaseDriverLater(driverRef: DriverRef, releaseRef: ReleaseRef, side: ScrollSide) {
+  window.clearTimeout(releaseRef.current)
+  releaseRef.current = window.setTimeout(() => {
+    if (driverRef.current === side) driverRef.current = null
+  }, DRIVER_IDLE_MS)
+}
+
+function claimDriver(driverRef: DriverRef, frameRef: FrameRef, releaseRef: ReleaseRef, side: ScrollSide) {
+  if (driverRef.current !== side) cancelAnimationFrame(frameRef.current)
+  driverRef.current = side
+  releaseDriverLater(driverRef, releaseRef, side)
+}
+
+function scheduleSync(driverRef: DriverRef, frameRef: FrameRef, releaseRef: ReleaseRef, side: ScrollSide, syncFromEditor: () => void, syncFromPreview: () => void) {
+  if (driverRef.current !== side) return
+  window.clearTimeout(releaseRef.current)
+  cancelAnimationFrame(frameRef.current)
+  frameRef.current = requestAnimationFrame(() => {
+    if (driverRef.current !== side) return
+    if (side === 'editor') syncFromEditor()
+    else syncFromPreview()
+    releaseDriverLater(driverRef, releaseRef, side)
+  })
+}
+
+function bindScrollSides(editor: HTMLElement, preview: HTMLElement, claim: (side: ScrollSide) => void, schedule: (side: ScrollSide) => void) {
+  const bindings = (
+    [
+      ['editor', editor],
+      ['preview', preview],
+    ] as const
+  ).map(([side, element]) => {
+    const claimSide = () => claim(side)
+    const onScroll = () => schedule(side)
+    element.addEventListener('wheel', claimSide, { passive: true })
+    element.addEventListener('pointerdown', claimSide, { passive: true })
+    element.addEventListener('keydown', claimSide, true)
+    element.addEventListener('scroll', onScroll, { passive: true })
+    return { element, claimSide, onScroll }
+  })
+  return () => {
+    bindings.forEach(({ element, claimSide, onScroll }) => {
+      element.removeEventListener('wheel', claimSide)
+      element.removeEventListener('pointerdown', claimSide)
+      element.removeEventListener('keydown', claimSide, true)
+      element.removeEventListener('scroll', onScroll)
+    })
+  }
+}
+
+function syncEditorToPreview(view: EditorView, editor: HTMLElement, preview: HTMLElement, getCurve: () => PreviewAnchor[]) {
+  const edge = scrollEdge(editor.scrollTop, maxScroll(editor))
+  if (edge === 'top') {
+    setScrollTop(preview, 0)
+    return
+  }
+  if (edge === 'bottom') {
+    setScrollTop(preview, maxScroll(preview))
+    return
+  }
+  const target = previewTopForLine(getCurve(), editorLineAtScroll(view, editor.scrollTop))
+  setScrollTop(preview, target - previewPaddingTop(preview))
+}
+
+function syncPreviewToEditor(view: EditorView, editor: HTMLElement, preview: HTMLElement, getCurve: () => PreviewAnchor[]) {
+  const edge = scrollEdge(preview.scrollTop, maxScroll(preview))
+  if (edge === 'top') {
+    setScrollTop(editor, 0)
+    return
+  }
+  if (edge === 'bottom') {
+    setScrollTop(editor, maxScroll(editor))
+    return
+  }
+  const line = sourceLineForPreviewTop(getCurve(), preview.scrollTop + previewPaddingTop(preview))
+  setScrollTop(editor, editorScrollForLine(view, line))
+}
+
+function useScrollSyncEffect(
   view: EditorView | null,
   previewRef: RefObject<HTMLDivElement | null>,
   enabled: boolean,
-): () => void {
-  const anchorsRef = useRef<PreviewAnchor[] | null>(null)
-  const driverRef = useRef<ScrollSide | null>(null)
-  const frameRef = useRef(0)
-  const releaseRef = useRef(0)
-
-  const invalidate = useCallback(() => {
-    anchorsRef.current = null
-  }, [])
-
+  invalidate: () => void,
+  anchorsRef: { current: PreviewAnchor[] | null },
+  driverRef: DriverRef,
+  frameRef: FrameRef,
+  releaseRef: ReleaseRef,
+) {
   useEffect(() => {
     if (!enabled || !view) return
     const preview = previewRef.current
@@ -46,77 +124,11 @@ export function useSyncScroll(
       )
     }
 
-    const syncFromEditor = () => {
-      const edge = scrollEdge(editor.scrollTop, maxScroll(editor))
-      if (edge === 'top') {
-        setScrollTop(preview, 0)
-        return
-      }
-      if (edge === 'bottom') {
-        setScrollTop(preview, maxScroll(preview))
-        return
-      }
-
-      const paddingTop = previewPaddingTop(preview)
-      const target = previewTopForLine(getCurve(), editorLineAtScroll(view, editor.scrollTop))
-      setScrollTop(preview, target - paddingTop)
-    }
-
-    const syncFromPreview = () => {
-      const edge = scrollEdge(preview.scrollTop, maxScroll(preview))
-      if (edge === 'top') {
-        setScrollTop(editor, 0)
-        return
-      }
-      if (edge === 'bottom') {
-        setScrollTop(editor, maxScroll(editor))
-        return
-      }
-
-      const line = sourceLineForPreviewTop(
-        getCurve(),
-        preview.scrollTop + previewPaddingTop(preview),
-      )
-      setScrollTop(editor, editorScrollForLine(view, line))
-    }
-
-    const releaseLater = (side: ScrollSide) => {
-      window.clearTimeout(releaseRef.current)
-      releaseRef.current = window.setTimeout(() => {
-        if (driverRef.current === side) driverRef.current = null
-      }, DRIVER_IDLE_MS)
-    }
-
-    const claim = (side: ScrollSide) => {
-      if (driverRef.current !== side) cancelAnimationFrame(frameRef.current)
-      driverRef.current = side
-      releaseLater(side)
-    }
-
-    const schedule = (side: ScrollSide) => {
-      if (driverRef.current !== side) return
-      window.clearTimeout(releaseRef.current)
-      cancelAnimationFrame(frameRef.current)
-      frameRef.current = requestAnimationFrame(() => {
-        if (driverRef.current !== side) return
-        if (side === 'editor') syncFromEditor()
-        else syncFromPreview()
-        releaseLater(side)
-      })
-    }
-
-    const bindings = ([
-      [editor, 'editor'],
-      [preview, 'preview'],
-    ] as const).map(([element, side]) => {
-      const claimSide = () => claim(side)
-      const onScroll = () => schedule(side)
-      element.addEventListener('wheel', claimSide, { passive: true })
-      element.addEventListener('pointerdown', claimSide, { passive: true })
-      element.addEventListener('keydown', claimSide, true)
-      element.addEventListener('scroll', onScroll, { passive: true })
-      return { element, claimSide, onScroll }
-    })
+    const syncFromEditor = () => syncEditorToPreview(view, editor, preview, getCurve)
+    const syncFromPreview = () => syncPreviewToEditor(view, editor, preview, getCurve)
+    const claim = (side: ScrollSide) => claimDriver(driverRef, frameRef, releaseRef, side)
+    const schedule = (side: ScrollSide) => scheduleSync(driverRef, frameRef, releaseRef, side, syncFromEditor, syncFromPreview)
+    const cleanupBindings = bindScrollSides(editor, preview, claim, schedule)
 
     const resizeObserver = new ResizeObserver(invalidate)
     resizeObserver.observe(preview)
@@ -127,15 +139,27 @@ export function useSyncScroll(
       cancelAnimationFrame(frameRef.current)
       window.clearTimeout(releaseRef.current)
       driverRef.current = null
-      bindings.forEach(({ element, claimSide, onScroll }) => {
-        element.removeEventListener('wheel', claimSide)
-        element.removeEventListener('pointerdown', claimSide)
-        element.removeEventListener('keydown', claimSide, true)
-        element.removeEventListener('scroll', onScroll)
-      })
+      cleanupBindings()
       resizeObserver.disconnect()
     }
-  }, [enabled, invalidate, previewRef, view])
+  }, [enabled, invalidate, previewRef, view, anchorsRef, driverRef, frameRef, releaseRef])
+}
+
+export function useSyncScroll(
+  view: EditorView | null,
+  previewRef: RefObject<HTMLDivElement | null>,
+  enabled: boolean,
+): () => void {
+  const anchorsRef = useRef<PreviewAnchor[] | null>(null)
+  const driverRef = useRef<ScrollSide | null>(null)
+  const frameRef = useRef(0)
+  const releaseRef = useRef(0)
+
+  const invalidate = useCallback(() => {
+    anchorsRef.current = null
+  }, [])
+
+  useScrollSyncEffect(view, previewRef, enabled, invalidate, anchorsRef, driverRef, frameRef, releaseRef)
 
   return invalidate
 }

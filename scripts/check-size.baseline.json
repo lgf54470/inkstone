@@ -102,39 +102,6 @@
   "src/client/features/tags/manage-tags-modal.tsx": {
     "longFns": 1
   },
-  "src/client/features/workspace/context-menu-detect.test.ts": {
-    "longFns": 1
-  },
-  "src/client/features/workspace/context-menu-detect/preview.ts": {
-    "longFns": 1
-  },
-  "src/client/features/workspace/context-menu/canvas.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/workspace/context-menu/structure.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/workspace/context-menu/table.tsx": {
-    "longFns": 2
-  },
-  "src/client/features/workspace/editor-context-menu.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/workspace/editor-toolbar.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/workspace/sync-scroll.ts": {
-    "longFns": 2
-  },
-  "src/client/features/workspace/versions-panel.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/workspace/workspace/index.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/workspace/workspace/use-workspace.ts": {
-    "longFns": 1
-  },
   "src/shared/constants.test.ts": {
     "longFns": 1
   },
