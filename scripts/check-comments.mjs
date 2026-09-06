@@ -196,9 +196,6 @@ const allowed = new Map([
   ["src/client/features/preview/preview-interactions.ts", [
     "/** DOM click handling for the rendered preview body: file/table/JS-runner actions, mermaid retry, code copy/collapse, task checkboxes, wiki/block/tag navigation, lightbox, anchors. */",
   ]],
-  ["src/client/features/settings/note-settings.tsx", [
-    "// Live preview: what the template looks like with the placeholders filled in.",
-  ]],
   ["src/client/features/share/share-form.ts", [
     "// A new or replaced passcode must be at least 4 characters (the server",
     "// enforces the same minimum); short codes are trivially brute-forced.",

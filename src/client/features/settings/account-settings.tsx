@@ -4,11 +4,12 @@ import { PROFILE_NAME_MAX_LENGTH } from '@shared/avatar'
 import { LIMITS } from '@shared/constants'
 import { Avatar, Badge, Button } from '../../components/primitives'
 import { Input, SettingRow, Switch } from '../../components/form'
+import type { PublicUser } from '@shared/types'
 import { confirm } from '../../components/overlay'
 import { api, ApiError } from '../../lib/api'
 import { t } from '../../lib/i18n'
 import { useSession } from '../../store/session'
-import { useUi } from '../../store/ui'
+import { useUi, type UiState } from '../../store/ui'
 import { AvatarPicker } from './avatar-picker'
 import { TotpSettings } from './totp-settings'
 
@@ -42,7 +43,13 @@ export function AccountSettings() {
   )
 }
 
-function ProfileSection() {
+type ProfileEditor = ReturnType<typeof useProfileEditor>;
+type PasswordForm = ReturnType<typeof usePasswordForm>;
+type RegistrationToggle = ReturnType<typeof useRegistrationToggle>;
+type ToastFn = UiState['toast'];
+type ProfileUser = PublicUser;
+
+function useProfileEditor() {
   const user = useSession((state) => state.user)!
   const updateProfile = useSession((state) => state.updateProfile)
   const toast = useUi((state) => state.toast)
@@ -60,150 +67,172 @@ function ProfileSection() {
   const normalizedName = name.trim().replace(/\s+/gu, ' ')
   const validName = Boolean(normalizedName) && [...normalizedName].length <= PROFILE_NAME_MAX_LENGTH
   const changed = normalizedName !== user.name
+  const saveName = () => void saveNameFlow({ normalizedName, validName, changed, updateProfile, busyRef, setIsBusy, setError, setIsEdited, setName, toast })
+  return { user, name, setName, isEdited, setIsEdited, isPickerOpen, setIsPickerOpen, isBusy, error, setError, saveName }
+}
 
-  const saveName = async () => {
-    if (busyRef.current) return
-    if (!validName) {
-      setError(t('settings.display_name_length', { max: PROFILE_NAME_MAX_LENGTH }))
-      return
-    }
-    if (!changed) {
-      setIsEdited(false)
-      return
-    }
-    busyRef.current = true
-    setIsBusy(true)
-    setError(null)
-    try {
-      const updated = await updateProfile({ name: normalizedName })
-      setName(updated.name)
-      setIsEdited(false)
-      toast({ title: t('settings.display_name_saved'), tone: 'success' })
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : t('settings.action_failed_try_again'))
-    } finally {
-      busyRef.current = false
-      setIsBusy(false)
-    }
+async function saveNameFlow({ normalizedName, validName, changed, updateProfile, busyRef, setIsBusy, setError, setIsEdited, setName, toast }: {
+  normalizedName: string;
+  validName: boolean;
+  changed: boolean;
+  updateProfile: (patch: { name: string }) => Promise<ProfileUser>;
+  busyRef: React.MutableRefObject<boolean>;
+  setIsBusy: (busy: boolean) => void;
+  setError: (error: string | null) => void;
+  setIsEdited: (edited: boolean) => void;
+  setName: (name: string) => void;
+  toast: ToastFn;
+}) {
+  if (busyRef.current) return
+  if (!validName) {
+    setError(t('settings.display_name_length', { max: PROFILE_NAME_MAX_LENGTH }))
+    return
   }
+  if (!changed) {
+    setIsEdited(false)
+    return
+  }
+  busyRef.current = true
+  setIsBusy(true)
+  setError(null)
+  try {
+    const updated = await updateProfile({ name: normalizedName })
+    setName(updated.name)
+    setIsEdited(false)
+    toast({ title: t('settings.display_name_saved'), tone: 'success' })
+  } catch (caught) {
+    setError(caught instanceof ApiError ? caught.message : t('settings.action_failed_try_again'))
+  } finally {
+    busyRef.current = false
+    setIsBusy(false)
+  }
+}
 
+function ProfileSection() {
+  const editor = useProfileEditor()
   return (
     <section>
       <h3 className="mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]">
         {t('settings.personal_profile')}
       </h3>
       <div className="overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]">
-        <div className="flex items-center gap-3 p-4">
-          <button
-            type="button"
-            aria-label={t('settings.change_avatar')}
-            onClick={() => setIsPickerOpen(true)}
-            className="group relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-[var(--bg-base)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-          >
-            <Avatar src={user.avatarUrl} name={user.name} size={52} />
-            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-white opacity-0 transition-[background-color,opacity] group-hover:bg-black/40 group-hover:opacity-100 group-focus-visible:bg-black/40 group-focus-visible:opacity-100">
-              <Camera size={16} />
-            </span>
-          </button>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="truncate text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">
-                {user.name}
-              </span>
-              {user.role === 'owner' && <Badge tone="accent">{t('common.owner')}</Badge>}
-            </div>
-            <div className="mt-0.5 flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
-              <UserRound size={11} />@{user.username}
-            </div>
-            <p className="mt-1 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
-              {t('settings.username_is_sign_in_id')}
-            </p>
-          </div>
-          <LogoutButton />
-        </div>
-
-        <form
-          className="border-t border-[var(--border-subtle)] px-4 py-3.5"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void saveName()
-          }}
-        >
-          <label htmlFor="profile-display-name" className="block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
-            {t('settings.display_name')}
-          </label>
-          <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
-            <Input
-              id="profile-display-name"
-              value={name}
-              maxLength={PROFILE_NAME_MAX_LENGTH * 2}
-              onChange={(event) => {
-                setName(event.target.value)
-                setIsEdited(true)
-                setError(null)
-              }}
-              disabled={isBusy}
-              autoComplete="name"
-              className="flex-1"
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              loading={isBusy}
-              disabled={!isEdited || !changed || !validName}
-            >
-              {t('common.save')}
-            </Button>
-          </div>
-          {error && <p role="alert" className="mt-1.5 text-[length:var(--text-12)] text-[var(--danger)]">{error}</p>}
-        </form>
+        <ProfileHeader editor={editor} />
+        <DisplayNameForm editor={editor} />
       </div>
-
-      <AvatarPicker
-        open={isPickerOpen}
-        onClose={() => setIsPickerOpen(false)}
-        displayName={user.name}
-        preference={user.avatarUrl}
-      />
+      <AvatarPicker open={editor.isPickerOpen} onClose={() => editor.setIsPickerOpen(false)} displayName={editor.user.name} preference={editor.user.avatarUrl} />
     </section>
   )
+}
+
+function ProfileHeader({ editor }: { editor: ProfileEditor }) {
+  const { user } = editor
+  return (
+    <div className="flex items-center gap-3 p-4">
+      <button
+        type="button"
+        aria-label={t('settings.change_avatar')}
+        onClick={() => editor.setIsPickerOpen(true)}
+        className="group relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-[var(--bg-base)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+      >
+        <Avatar src={user.avatarUrl} name={user.name} size={52} />
+        <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-white opacity-0 transition-[background-color,opacity] group-hover:bg-black/40 group-hover:opacity-100 group-focus-visible:bg-black/40 group-focus-visible:opacity-100">
+          <Camera size={16} />
+        </span>
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">
+            {user.name}
+          </span>
+          {user.role === 'owner' && <Badge tone="accent">{t('common.owner')}</Badge>}
+        </div>
+        <div className="mt-0.5 flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+          <UserRound size={11} />@{user.username}
+        </div>
+        <p className="mt-1 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
+          {t('settings.username_is_sign_in_id')}
+        </p>
+      </div>
+      <LogoutButton />
+    </div>
+  )
+}
+
+function DisplayNameForm({ editor }: { editor: ProfileEditor }) {
+  return (
+    <form
+      className="border-t border-[var(--border-subtle)] px-4 py-3.5"
+      onSubmit={(event) => {
+        event.preventDefault()
+        editor.saveName()
+      }}
+    >
+      <label htmlFor="profile-display-name" className="block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
+        {t('settings.display_name')}
+      </label>
+      <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+        <Input
+          id="profile-display-name"
+          value={editor.name}
+          maxLength={PROFILE_NAME_MAX_LENGTH * 2}
+          onChange={(event) => {
+            editor.setName(event.target.value)
+            editor.setIsEdited(true)
+            editor.setError(null)
+          }}
+          disabled={editor.isBusy}
+          autoComplete="name"
+          className="flex-1"
+        />
+        <Button type="submit" variant="primary" size="sm" loading={editor.isBusy} disabled={saveNameDisabled(editor)}>
+          {t('common.save')}
+        </Button>
+      </div>
+      {editor.error && <p role="alert" className="mt-1.5 text-[length:var(--text-12)] text-[var(--danger)]">{editor.error}</p>}
+    </form>
+  )
+}
+
+function saveNameDisabled(editor: ProfileEditor) {
+  const trimmed = editor.name.trim().replace(/\s+/gu, ' ')
+  const valid = Boolean(trimmed) && [...trimmed].length <= PROFILE_NAME_MAX_LENGTH
+  return !editor.isEdited || trimmed === editor.user.name || !valid
 }
 
 function LogoutButton() {
   const logout = useSession((state) => state.logout)
   const [isBusy, setIsBusy] = useState(false)
   const busyRef = useRef(false)
-  const run = async () => {
-    if (busyRef.current) return
-    busyRef.current = true
-    setIsBusy(true)
-    try {
-      const ok = await confirm({
-        title: t("common.log_out"),
-        description: t("settings.this_device_will_be_signed_out_and_its_local_cache_cleared_cloud_data_is"),
-        confirmLabel: t("common.exit"),
-      })
-      if (ok) await logout()
-    } finally {
-      busyRef.current = false
-      setIsBusy(false)
-    }
-  }
+  const run = () => void confirmLogoutFlow({ busyRef, setIsBusy, logout })
   return (
-    <Button
-      size="sm"
-      variant="ghost"
-      icon={<LogOut size={13} />}
-      loading={isBusy}
-      onClick={() => void run()}
-    >
+    <Button size="sm" variant="ghost" icon={<LogOut size={13} />} loading={isBusy} onClick={run}>
       {t("common.exit")}
     </Button>
   )
 }
 
-function PasswordSection() {
+async function confirmLogoutFlow({ busyRef, setIsBusy, logout }: {
+  busyRef: React.MutableRefObject<boolean>;
+  setIsBusy: (busy: boolean) => void;
+  logout: () => Promise<void>;
+}) {
+  if (busyRef.current) return
+  busyRef.current = true
+  setIsBusy(true)
+  try {
+    const ok = await confirm({
+      title: t("common.log_out"),
+      description: t("settings.this_device_will_be_signed_out_and_its_local_cache_cleared_cloud_data_is"),
+      confirmLabel: t("common.exit"),
+    })
+    if (ok) await logout()
+  } finally {
+    busyRef.current = false
+    setIsBusy(false)
+  }
+}
+
+function usePasswordForm() {
   const user = useSession((state) => state.user)!
   const toast = useUi((state) => state.toast)
   const [isOpen, setIsOpen] = useState(false)
@@ -213,124 +242,115 @@ function PasswordSection() {
   const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const busyRef = useRef(false)
-
   const resetForm = () => {
     setCurrentPassword('')
     setNewPassword('')
     setConfirmation('')
     setError(null)
   }
-
-  const submit = async () => {
-    if (busyRef.current) return
-    setError(null)
-    if (!currentPassword) return setError(t("settings.enter_your_current_password"))
-    if (newPassword.length < 8) return setError(t("settings.new_password_must_be_at_least_8_characters"))
-    if (newPassword !== confirmation) return setError(t("common.the_passwords_do_not_match"))
-    busyRef.current = true
-    setIsBusy(true)
-    try {
-      await api.auth.setPassword({ currentPassword, newPassword })
-      toast({
-        title: t("settings.password_updated"),
-        description: t("settings.other_devices_have_been_logged_out"),
-        tone: 'success',
-      })
-      setIsOpen(false)
-      resetForm()
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : t("settings.action_failed_try_again"))
-    } finally {
-      busyRef.current = false
-      setIsBusy(false)
-    }
+  const toggle = () => {
+    setIsOpen((open) => !open)
+    resetForm()
   }
+  const submit = () => void passwordFlow({ currentPassword, newPassword, confirmation, busyRef, setIsBusy, setError, setIsOpen, resetForm, toast })
+  return { user, isOpen, setIsOpen, toggle, currentPassword, setCurrentPassword, newPassword, setNewPassword, confirmation, setConfirmation, isBusy, error, submit }
+}
 
+async function passwordFlow({ currentPassword, newPassword, confirmation, busyRef, setIsBusy, setError, setIsOpen, resetForm, toast }: {
+  currentPassword: string;
+  newPassword: string;
+  confirmation: string;
+  busyRef: React.MutableRefObject<boolean>;
+  setIsBusy: (busy: boolean) => void;
+  setError: (error: string | null) => void;
+  setIsOpen: (open: boolean) => void;
+  resetForm: () => void;
+  toast: ToastFn;
+}) {
+  if (busyRef.current) return
+  setError(null)
+  if (!currentPassword) return setError(t("settings.enter_your_current_password"))
+  if (newPassword.length < 8) return setError(t("settings.new_password_must_be_at_least_8_characters"))
+  if (newPassword !== confirmation) return setError(t("common.the_passwords_do_not_match"))
+  busyRef.current = true
+  setIsBusy(true)
+  try {
+    await api.auth.setPassword({ currentPassword, newPassword })
+    toast({
+      title: t("settings.password_updated"),
+      description: t("settings.other_devices_have_been_logged_out"),
+      tone: 'success',
+    })
+    setIsOpen(false)
+    resetForm()
+  } catch (caught) {
+    setError(caught instanceof ApiError ? caught.message : t("settings.action_failed_try_again"))
+  } finally {
+    busyRef.current = false
+    setIsBusy(false)
+  }
+}
+
+function PasswordSection() {
+  const form = usePasswordForm()
   return (
     <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]">
       <SettingRow
         className="px-4"
         title={t("settings.login_password")}
-        description={t("settings.username_value0_changing_the_password_signs_out_other_devices", {
-          value0: user.username,
-        })}
+        description={t("settings.username_value0_changing_the_password_signs_out_other_devices", { value0: form.user.username })}
       >
-        <Button
-          size="sm"
-          variant="secondary"
-          icon={<KeyRound size={12} />}
-          disabled={isBusy}
-          onClick={() => {
-            setIsOpen(!isOpen)
-            resetForm()
-          }}
-        >
-          {isOpen ? t("common.collapse") : t("settings.change_password")}
+        <Button size="sm" variant="secondary" icon={<KeyRound size={12} />} disabled={form.isBusy} onClick={form.toggle}>
+          {form.isOpen ? t("common.collapse") : t("settings.change_password")}
         </Button>
       </SettingRow>
-
-      {isOpen && (
-        <form
-          className="space-y-2.5 border-t border-[var(--border-subtle)] px-4 py-3.5"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void submit()
-          }}
-        >
-          <label className="block">
-            <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
-              {t("settings.current_password")}
-            </span>
-            <Input
-              type="password"
-              value={currentPassword}
-              maxLength={LIMITS.passwordMaxLength}
-              onChange={(event) => setCurrentPassword(event.target.value)}
-              disabled={isBusy}
-              autoComplete="current-password"
-            />
-          </label>
-          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
-                {t("settings.new_password")}
-              </span>
-              <Input
-                type="password"
-                value={newPassword}
-                maxLength={LIMITS.passwordMaxLength}
-                onChange={(event) => setNewPassword(event.target.value)}
-                disabled={isBusy}
-                autoComplete="new-password"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
-                {t("settings.confirm_new_password")}
-              </span>
-              <Input
-                type="password"
-                value={confirmation}
-                maxLength={LIMITS.passwordMaxLength}
-                onChange={(event) => setConfirmation(event.target.value)}
-                disabled={isBusy}
-                autoComplete="new-password"
-              />
-            </label>
-          </div>
-          {error && <p role="alert" className="text-[length:var(--text-12)] text-[var(--danger)]">{error}</p>}
-          <div className="flex justify-end">
-            <Button type="submit" variant="primary" size="sm" loading={isBusy}>
-              {t("common.save")}
-            </Button>
-          </div>
-        </form>
-      )}
+      {form.isOpen && <PasswordFields form={form} />}
     </div>
   )
 }
 
-function RegistrationSection() {
+function PasswordFields({ form }: { form: PasswordForm }) {
+  return (
+    <form
+      className="space-y-2.5 border-t border-[var(--border-subtle)] px-4 py-3.5"
+      onSubmit={(event) => {
+        event.preventDefault()
+        form.submit()
+      }}
+    >
+      <PasswordLabel text={t("settings.current_password")}>
+        <Input type="password" value={form.currentPassword} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setCurrentPassword(event.target.value)} disabled={form.isBusy} autoComplete="current-password" />
+      </PasswordLabel>
+      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+        <PasswordLabel text={t("settings.new_password")}>
+          <Input type="password" value={form.newPassword} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setNewPassword(event.target.value)} disabled={form.isBusy} autoComplete="new-password" />
+        </PasswordLabel>
+        <PasswordLabel text={t("settings.confirm_new_password")}>
+          <Input type="password" value={form.confirmation} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setConfirmation(event.target.value)} disabled={form.isBusy} autoComplete="new-password" />
+        </PasswordLabel>
+      </div>
+      {form.error && <p role="alert" className="text-[length:var(--text-12)] text-[var(--danger)]">{form.error}</p>}
+      <div className="flex justify-end">
+        <Button type="submit" variant="primary" size="sm" loading={form.isBusy}>
+          {t("common.save")}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function PasswordLabel({ text, children }: { text: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+        {text}
+      </span>
+      {children}
+    </label>
+  )
+}
+
+function useRegistrationToggle() {
   const site = useSession((state) => state.site)
   const updateRegistration = useSession((state) => state.updateRegistration)
   const toast = useUi((state) => state.toast)
@@ -356,101 +376,100 @@ function RegistrationSection() {
     setPassword('')
     setTarget(next)
   }
-
-  const finishToggle = async () => {
-    if (busyRef.current || target === null) return
-    const requested = target
-    setError(null)
-    if (!password) return setError(t("settings.enter_your_password"))
-    busyRef.current = true
-    setIsBusy(true)
-    const currentPassword = password
+  const cancelToggle = () => {
     setTarget(null)
     setPassword('')
-    try {
-      await updateRegistration(requested, currentPassword)
-      toast({
-        title: requested ? t("settings.registration_open") : t("settings.registration_closed"),
-        description: requested ? t("settings.anyone_can_now_register_a_new_account") : t("settings.only_existing_accounts_can_log_in"),
-        tone: 'success',
-      })
-    } catch (caught) {
-      setTarget(requested)
-      setError(caught instanceof ApiError ? caught.message : t("settings.action_failed_try_again"))
-    } finally {
-      busyRef.current = false
-      setIsBusy(false)
-    }
+    setError(null)
   }
+  const finishToggle = () => void registrationToggleFlow({ target, password, updateRegistration, busyRef, setIsBusy, setError, setTarget, setPassword, toast })
+  return { enabled, confirming, password, setPassword, isBusy, error, beginToggle, cancelToggle, finishToggle, target }
+}
 
+async function registrationToggleFlow({ target, password, updateRegistration, busyRef, setIsBusy, setError, setTarget, setPassword, toast }: {
+  target: boolean | null;
+  password: string;
+  updateRegistration: (open: boolean, currentPassword: string) => Promise<void>;
+  busyRef: React.MutableRefObject<boolean>;
+  setIsBusy: (busy: boolean) => void;
+  setError: (error: string | null) => void;
+  setTarget: (target: boolean | null) => void;
+  setPassword: (password: string) => void;
+  toast: ToastFn;
+}) {
+  if (busyRef.current || target === null) return
+  const requested = target
+  setError(null)
+  if (!password) return setError(t("settings.enter_your_password"))
+  busyRef.current = true
+  setIsBusy(true)
+  const currentPassword = password
+  setTarget(null)
+  setPassword('')
+  try {
+    await updateRegistration(requested, currentPassword)
+    toast({
+      title: requested ? t("settings.registration_open") : t("settings.registration_closed"),
+      description: requested ? t("settings.anyone_can_now_register_a_new_account") : t("settings.only_existing_accounts_can_log_in"),
+      tone: 'success',
+    })
+  } catch (caught) {
+    setTarget(requested)
+    setError(caught instanceof ApiError ? caught.message : t("settings.action_failed_try_again"))
+  } finally {
+    busyRef.current = false
+    setIsBusy(false)
+  }
+}
+
+function RegistrationSection() {
+  const toggle = useRegistrationToggle()
   return (
     <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]">
       <SettingRow
         className="px-4"
         title={t("common.open_registration")}
-        description={`${
-          enabled
-            ? t("settings.open_anyone_can_register_with_a_username_and_password")
-            : t("settings.off_default_only_existing_accounts_can_log_in")
-        } ${t("settings.changing_this_requires_your_current_password_and_takes_effect_immediatel")}`}
+        description={`${toggle.enabled ? t("settings.open_anyone_can_register_with_a_username_and_password") : t("settings.off_default_only_existing_accounts_can_log_in")} ${t("settings.changing_this_requires_your_current_password_and_takes_effect_immediatel")}`}
       >
-        <Switch
-          checked={enabled}
-          disabled={isBusy}
-          onChange={beginToggle}
-          label={t("common.open_registration")}
-        />
+        <Switch checked={toggle.enabled} disabled={toggle.isBusy} onChange={toggle.beginToggle} label={t("common.open_registration")} />
       </SettingRow>
-
-      {confirming && (
-        <form
-          className="space-y-2.5 border-t border-[var(--border-subtle)] px-4 py-3.5"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void finishToggle()
-          }}
-        >
-          <label className="block">
-            <span className="mb-1 flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
-              <ShieldCheck size={12} />
-              {target ? t("settings.open_registration_requires_password_verification") : t("settings.close_registration_requires_password_verification")}
-            </span>
-            <Input
-              type="password"
-              value={password}
-              maxLength={LIMITS.passwordMaxLength}
-              onChange={(event) => setPassword(event.target.value)}
-              disabled={isBusy}
-              autoComplete="current-password"
-              autoFocus
-            />
-          </label>
-          {error && <p role="alert" className="text-[length:var(--text-12)] text-[var(--danger)]">{error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={isBusy}
-              onClick={() => {
-                setTarget(null)
-                setPassword('')
-                setError(null)
-              }}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              variant={target ? 'danger' : 'primary'}
-              loading={isBusy}
-            >
-              {target ? t("settings.confirm_opening_registration") : t("settings.confirm_closing_registration")}
-            </Button>
-          </div>
-        </form>
-      )}
+      {toggle.confirming && <RegistrationForm toggle={toggle} />}
     </div>
+  )
+}
+
+function RegistrationForm({ toggle }: { toggle: RegistrationToggle }) {
+  return (
+    <form
+      className="space-y-2.5 border-t border-[var(--border-subtle)] px-4 py-3.5"
+      onSubmit={(event) => {
+        event.preventDefault()
+        toggle.finishToggle()
+      }}
+    >
+      <label className="block">
+        <span className="mb-1 flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+          <ShieldCheck size={12} />
+          {toggle.target ? t("settings.open_registration_requires_password_verification") : t("settings.close_registration_requires_password_verification")}
+        </span>
+        <Input
+          type="password"
+          value={toggle.password}
+          maxLength={LIMITS.passwordMaxLength}
+          onChange={(event) => toggle.setPassword(event.target.value)}
+          disabled={toggle.isBusy}
+          autoComplete="current-password"
+          autoFocus
+        />
+      </label>
+      {toggle.error && <p role="alert" className="text-[length:var(--text-12)] text-[var(--danger)]">{toggle.error}</p>}
+      <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="ghost" disabled={toggle.isBusy} onClick={toggle.cancelToggle}>
+          {t("common.cancel")}
+        </Button>
+        <Button type="submit" size="sm" variant={toggle.target ? 'danger' : 'primary'} loading={toggle.isBusy}>
+          {toggle.target ? t("settings.confirm_opening_registration") : t("settings.confirm_closing_registration")}
+        </Button>
+      </div>
+    </form>
   )
 }

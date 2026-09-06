@@ -9,27 +9,10 @@ import { t, useLocale } from "../../lib/i18n";
 export function NoteSettings() {
     const notes = useSession((s) => s.settings.notes ?? DEFAULT_SETTINGS.notes);
     const update = useSession((s) => s.updateSettings);
-    const locale = useLocale();
-
     const setTemplate = useCallback((newNoteTemplate: string) => void update({ notes: { newNoteTemplate } }), [update]);
     const restoreDefault = useCallback(() => void update({ notes: { newNoteTemplate: DEFAULT_NEW_NOTE_TEMPLATE } }), [update]);
     const setSyncTitleToFrontMatter = useCallback((syncTitleToFrontMatter: boolean) => void update({ notes: { syncTitleToFrontMatter } }), [update]);
     const setSyncFrontMatterTitle = useCallback((syncFrontMatterTitle: boolean) => void update({ notes: { syncFrontMatterTitle } }), [update]);
-    // Live preview: what the template looks like with the placeholders filled in.
-    const [demoTitle, setDemoTitle] = useState('');
-    const [demoFolder, setDemoFolder] = useState('');
-    const [demoTag, setDemoTag] = useState('');
-    const preview = useMemo(() => {
-        const demoTags = demoTag.split(/[,]|\uFF0C/).map((item) => item.trim()).filter(Boolean).join(', ');
-        return renderNewNoteTemplate(
-            notes.newNoteTemplate,
-            demoTitle.trim() || t("common.new_note"),
-            new Date(),
-            { folder: demoFolder.trim(), tags: demoTags },
-        );
-    }, [notes.newNoteTemplate, demoTitle, demoFolder, demoTag, locale]);
-    const hasContextualPlaceholders = notes.newNoteTemplate.includes('{{folder}}') || notes.newNoteTemplate.includes('{{tags}}');
-
     return (<div className="space-y-6">
       <section>
         <SettingRow
@@ -53,7 +36,39 @@ export function NoteSettings() {
         <p className="pt-3 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-quaternary)]">
           {t("settings.new_note_template_hint")}
         </p>
+        <TemplatePreview template={notes.newNoteTemplate} />
+      </section>
 
+      <section>
+        <h3 className="mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+          {t("settings.title_sync")}
+        </h3>
+        <SettingRow title={t("settings.sync_title_to_frontmatter")} description={t("settings.sync_title_to_frontmatter_desc")}>
+          <Switch checked={notes.syncTitleToFrontMatter} onChange={setSyncTitleToFrontMatter} label={t("settings.sync_title_to_frontmatter")}/>
+        </SettingRow>
+        <SettingRow title={t("settings.sync_frontmatter_title")} description={t("settings.sync_frontmatter_title_desc")}>
+          <Switch checked={notes.syncFrontMatterTitle} onChange={setSyncFrontMatterTitle} label={t("settings.sync_frontmatter_title")}/>
+        </SettingRow>
+      </section>
+    </div>);
+}
+
+function TemplatePreview({ template }: { template: string }) {
+    const locale = useLocale();
+    const [demoTitle, setDemoTitle] = useState('');
+    const [demoFolder, setDemoFolder] = useState('');
+    const [demoTag, setDemoTag] = useState('');
+    const preview = useMemo(() => {
+        const demoTags = demoTag.split(/[,]|\uFF0C/).map((item) => item.trim()).filter(Boolean).join(', ');
+        return renderNewNoteTemplate(
+            template,
+            demoTitle.trim() || t("common.new_note"),
+            new Date(),
+            { folder: demoFolder.trim(), tags: demoTags },
+        );
+    }, [template, demoTitle, demoFolder, demoTag, locale]);
+    const hasContextualPlaceholders = template.includes('{{folder}}') || template.includes('{{tags}}');
+    return (
         <div className="mt-4">
           <h3 className="mb-1.5 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
             {t("settings.new_note_template_preview")}
@@ -72,20 +87,5 @@ export function NoteSettings() {
               {t("settings.template_preview_context")}
             </p>)}
         </div>
-      </section>
-
-      <section>
-        <h3 className="mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
-          {t("settings.title_sync")}
-        </h3>
-
-        <SettingRow title={t("settings.sync_title_to_frontmatter")} description={t("settings.sync_title_to_frontmatter_desc")}>
-          <Switch checked={notes.syncTitleToFrontMatter} onChange={setSyncTitleToFrontMatter} label={t("settings.sync_title_to_frontmatter")}/>
-        </SettingRow>
-
-        <SettingRow title={t("settings.sync_frontmatter_title")} description={t("settings.sync_frontmatter_title_desc")}>
-          <Switch checked={notes.syncFrontMatterTitle} onChange={setSyncFrontMatterTitle} label={t("settings.sync_frontmatter_title")}/>
-        </SettingRow>
-      </section>
-    </div>);
+    );
 }

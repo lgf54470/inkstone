@@ -7,7 +7,7 @@ import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../compone
 import { IconButton } from '../../components/primitives';
 import { LoadingBlock } from '../../components/feedback';
 import { AppearanceSettings } from './appearance-settings';
-import { useUi } from '../../store/ui';
+import { useUi, type PanelName } from '../../store/ui';
 import { t } from "../../lib/i18n";
 const EditorSettings = lazy(() => import('./editor-settings').then((m) => ({ default: m.EditorSettings })));
 const NoteSettings = lazy(() => import('./note-settings').then((m) => ({ default: m.NoteSettings })));
@@ -51,11 +51,25 @@ export function SettingsPanel({ onClose }: {
       <div className="anim-fade absolute inset-0 bg-[var(--scrim)]" onClick={onClose} aria-hidden="true"/>
 
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="anim-pop relative flex h-full w-full max-w-[880px] flex-col overflow-hidden bg-[var(--bg-overlay)] pt-[env(safe-area-inset-top)] shadow-[var(--shadow-modal)] outline-none md:max-h-[720px] md:flex-row md:rounded-[var(--r-2xl)] md:border md:border-[var(--border-default)] md:pt-0">
-        { }
+        <SettingsNav section={section} onSelect={setSection} onClose={onClose} openPanel={openPanel} titleId={titleId}/>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <SettingsHeader section={section} onClose={onClose}/>
+          <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] md:px-5 md:py-4">
+            <div key={section} className="anim-view-content">
+              <SectionContent section={section}/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>, document.body);
+}
+
+function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { section: Section; onSelect: (section: Section) => void; onClose: () => void; openPanel: (panel: PanelName) => void; titleId: string }) {
+    return (
         <nav className="flex w-full shrink-0 flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-2 md:w-[172px] md:border-r md:border-b-0">
           <div id={titleId} className="px-2 py-1.5 text-[length:var(--text-13\.5)] font-semibold tracking-[-0.012em] md:py-2.5">{t("common.settings")}</div>
           <div className="flex gap-1 overflow-x-auto pb-1 md:block md:space-y-px md:overflow-visible md:pb-0">
-            {SECTIONS.map((item) => (<button key={item.id} type="button" aria-current={section === item.id ? 'page' : undefined} onClick={() => setSection(item.id)} className={cn('flex h-10 shrink-0 items-center gap-2 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12\.5)] md:h-[30px] md:w-full md:gap-2.5 md:px-2', 'transition-colors duration-[var(--dur-fast)]', section === item.id
+            {SECTIONS.map((item) => (<button key={item.id} type="button" aria-current={section === item.id ? 'page' : undefined} onClick={() => onSelect(item.id)} className={cn('flex h-10 shrink-0 items-center gap-2 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12\.5)] md:h-[30px] md:w-full md:gap-2.5 md:px-2', 'transition-colors duration-[var(--dur-fast)]', section === item.id
                 ? 'bg-[var(--accent-soft)] font-medium text-[var(--text-primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
                 <span className={cn('shrink-0', section === item.id ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>
@@ -78,36 +92,36 @@ export function SettingsPanel({ onClose }: {
         }} className="hidden h-[30px] w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12\.5)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] md:flex">
             <Keyboard size={14}/>{t("settings.keyboard_shortcuts")}</button>
         </nav>
+    );
+}
 
-        { }
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <header className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4 md:px-5">
-            <h2 className="text-[length:var(--text-14)] font-semibold tracking-[-0.012em]">
-              {SECTIONS.find((s) => s.id === section)?.label()}
-            </h2>
-            <Tooltip label={t("common.close")} combo="escape" side="left">
-              <IconButton label={t("common.close")} size="sm" onClick={onClose}>
-                <X size={15}/>
-              </IconButton>
-            </Tooltip>
-          </header>
+function SettingsHeader({ section, onClose }: { section: Section; onClose: () => void }) {
+    return (
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4 md:px-5">
+          <h2 className="text-[length:var(--text-14)] font-semibold tracking-[-0.012em]">
+            {SECTIONS.find((s) => s.id === section)?.label()}
+          </h2>
+          <Tooltip label={t("common.close")} combo="escape" side="left">
+            <IconButton label={t("common.close")} size="sm" onClick={onClose}>
+              <X size={15}/>
+            </IconButton>
+          </Tooltip>
+        </header>
+    );
+}
 
-          <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] md:px-5 md:py-4">
-            <div key={section} className="anim-view-content">
-              <Suspense fallback={<LoadingBlock label={t("settings.loading")}/>}>
-                {section === 'appearance' && <AppearanceSettings accents={ACCENTS}/>}
-                {section === 'editor' && <EditorSettings />}
-                {section === 'notes' && <NoteSettings />}
-                {section === 'sync' && <SyncSettings />}
-                {section === 'mcp' && <McpSettings />}
-                {section === 'account' && <AccountSettings />}
-                {section === 'data' && <DataSettings />}
-                {section === 'about' && <AboutSettings />}
-                {section === 'backup' && <BackupSettings />}
-              </Suspense>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>, document.body);
+function SectionContent({ section }: { section: Section }) {
+    return (
+        <Suspense fallback={<LoadingBlock label={t("settings.loading")}/>}>
+          {section === 'appearance' && <AppearanceSettings accents={ACCENTS}/>}
+          {section === 'editor' && <EditorSettings />}
+          {section === 'notes' && <NoteSettings />}
+          {section === 'sync' && <SyncSettings />}
+          {section === 'mcp' && <McpSettings />}
+          {section === 'account' && <AccountSettings />}
+          {section === 'data' && <DataSettings />}
+          {section === 'about' && <AboutSettings />}
+          {section === 'backup' && <BackupSettings />}
+        </Suspense>
+    );
 }

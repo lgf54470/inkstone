@@ -144,54 +144,6 @@
   "src/client/features/preview/lightbox.tsx": {
     "longFns": 1
   },
-  "src/client/features/settings/about-settings.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/account-settings.tsx": {
-    "longFns": 3
-  },
-  "src/client/features/settings/appearance-settings.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/avatar-picker.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/backup-presets.ts": {
-    "longFns": 1
-  },
-  "src/client/features/settings/backup-settings/index.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/backup-settings/target-card.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/backup-settings/target-form.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/data-settings.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/editor-settings.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/mcp-settings/index.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/mcp-settings/use-mcp-settings.ts": {
-    "longFns": 1
-  },
-  "src/client/features/settings/note-settings.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/settings-panel.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/sync-settings.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/settings/totp-settings/index.tsx": {
-    "longFns": 1
-  },
   "src/client/features/shell/app-shell.tsx": {
     "longFns": 3
   },

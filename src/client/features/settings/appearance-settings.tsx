@@ -29,225 +29,20 @@ export function AppearanceSettings({
 }: {
   accents: { name: AccentName; swatch: string; foreground: string }[]
 }) {
-  const appearance = useSession((s) => s.settings.appearance)
-  const update = useSession((s) => s.updateSettings)
-  const locale = useLocale()
-  const calendarTreeVisible = useCalendarTreeVisible()
-  const calendarTreeShowEmpty = useCalendarTreeShowEmpty()
-  const todoTag = useSession((s) => s.settings.notes?.todoTag)
-  const yearGridColumns = useYearGridColumns()
-  const undoToastFocus = useUndoToastFocus()
-  const setTodoTag = useCallback((value: string) => void update({ notes: { todoTag: value.trim() ? value : null } }), [update])
-
-  const setLanguage = useCallback((language: AppLocale) => void update({ appearance: { language } }), [update])
-  const setTheme = useCallback((theme: ThemePref) => {
-    switchThemeWithTransition(theme, undefined, () => update({ appearance: { theme } }))
-  }, [update])
-  const setDensity = useCallback((density: UiDensity) => void update({ appearance: { density } }), [update])
-  const setProseFont = useCallback((proseFont: ProseFont) => void update({ appearance: { proseFont } }), [update])
-  const setProseSize = useCallback((proseSize: number) => void update({ appearance: { proseSize } }), [update])
-  const setProseLineHeight = useCallback((proseLineHeight: number) => void update({ appearance: { proseLineHeight } }), [update])
-  const setProseWidth = useCallback((proseWidth: ProseWidth) => void update({ appearance: { proseWidth } }), [update])
-
-  const languageOptions: SegmentedOption<AppLocale>[] = useMemo(() => ([
-    { value: 'zh-CN', label: t("settings.simplified_chinese") },
-    { value: 'en-US', label: t("settings.english") },
-  ]), [locale])
-
-  const themeOptions: SegmentedOption<ThemePref>[] = useMemo(() => ([
-    { value: 'light', label: <Sun size={12.5} />, title: t("settings.light") },
-    { value: 'dark', label: <Moon size={12.5} />, title: t("settings.dark") },
-    { value: 'system', label: <Monitor size={12.5} />, title: t("settings.system") },
-  ]), [locale])
-
-  const densityOptions: SegmentedOption<UiDensity>[] = useMemo(() => ([
-    { value: 'comfortable', label: t("settings.comfortable") },
-    { value: 'compact', label: t("settings.compact") },
-  ]), [locale])
-
-  const proseFontOptions: SegmentedOption<ProseFont>[] = useMemo(() => ([
-    { value: 'sans', label: t("common.sans_serif") },
-    { value: 'serif', label: t("settings.serif") },
-  ]), [locale])
-
-  const proseWidthOptions: SegmentedOption<ProseWidth>[] = useMemo(() => ([
-    { value: 'narrow', label: t("settings.narrow") },
-    { value: 'normal', label: t("settings.standard") },
-    { value: 'wide', label: t("settings.wide") },
-    { value: 'full', label: t("settings.full") },
-  ]), [locale])
-
-  const yearGridOptions: SegmentedOption<YearGridColumnsPref>[] = useMemo(() => ([
-    { value: 'auto', label: t("settings.year_grid_columns_auto") },
-    { value: '3', label: t("settings.year_grid_columns_three") },
-    { value: '4', label: t("settings.year_grid_columns_four") },
-  ]), [locale])
-
+  const { appearance, setters, options } = useAppearanceSettings()
   return (
     <div>
       <section>
-        <SettingRow title={t("settings.interface_language")}>
-          <Segmented<AppLocale>
-            label={t("settings.interface_language")}
-            value={appearance.language}
-            onChange={setLanguage}
-            options={languageOptions}
-          />
-        </SettingRow>
-
-        <SettingRow title={t("settings.theme")}>
-          <Segmented<ThemePref>
-            label={t("settings.theme")}
-            value={appearance.theme}
-            onChange={setTheme}
-            options={themeOptions}
-          />
-        </SettingRow>
-
-        <SettingRow title={t("settings.accent_color")}>
-          <div role="group" aria-label={t("settings.accent_color")} className="flex items-center gap-1.5">
-            {accents.map((accent) => (
-              <Tooltip key={accent.name} label={t(ACCENT_MESSAGE_KEYS[accent.name])}>
-                <button
-                  type="button"
-                  onClick={() => void update({ appearance: { accent: accent.name } })}
-                  aria-label={t(ACCENT_MESSAGE_KEYS[accent.name])}
-                  aria-pressed={appearance.accent === accent.name}
-                  className={cn(
-                    'relative flex size-6 items-center justify-center rounded-full transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)]',
-                    'hover:scale-110 active:scale-95',
-                    appearance.accent === accent.name && 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg-overlay)]',
-                  )}
-                  style={{ background: accent.swatch, color: accent.foreground }}
-                >
-                  {appearance.accent === accent.name && (
-                    <Check size={12} strokeWidth={3} className="drop-shadow-sm" />
-                  )}
-                </button>
-              </Tooltip>
-            ))}
-          </div>
-        </SettingRow>
-
-        <SettingRow title={t("settings.background_color")}>
-          <div role="group" aria-label={t("settings.background_color")} className="flex items-center gap-2">
-            {([
-              { name: 'paper', label: t("settings.background_paper"), swatch: 'var(--swatch-paper)' },
-              { name: 'white', label: t("settings.background_white"), swatch: 'var(--swatch-white)' },
-            ] satisfies { name: BackgroundName; label: string; swatch: string }[]).map((background) => (
-              <button
-                key={background.name}
-                type="button"
-                onClick={() => void update({ appearance: { background: background.name } })}
-                aria-pressed={appearance.background === background.name}
-                className={cn(
-                  'flex h-8 min-w-[84px] items-center gap-2 rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-11\.5)] transition-[border-color,background-color,box-shadow] duration-[var(--dur-fast)]',
-                  appearance.background === background.name
-                    ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[0_0_0_2px_var(--accent-ring)]'
-                    : 'border-[var(--border-default)] bg-[var(--bg-base)] hover:bg-[var(--bg-hover)]',
-                )}
-              >
-                <span
-                  aria-hidden="true"
-                  className="size-4 rounded-full border border-black/10 shadow-sm"
-                  style={{ background: background.swatch }}
-                />
-                <span>{background.label}</span>
-                {appearance.background === background.name && <Check size={11} className="ml-auto text-[var(--accent)]" />}
-              </button>
-            ))}
-          </div>
-        </SettingRow>
-
-        <SettingRow title={t("settings.interface_density")}>
-          <Segmented<UiDensity>
-            label={t("settings.interface_density")}
-            value={appearance.density}
-            onChange={setDensity}
-            options={densityOptions}
-          />
-        </SettingRow>
-
-        <SettingRow title={t("settings.sidebar_calendar_tree")} description={t("settings.sidebar_calendar_tree_desc")}>
-          <Switch checked={calendarTreeVisible} onChange={setCalendarTreeVisible} label={t("settings.sidebar_calendar_tree")}/>
-        </SettingRow>
-
-        <SettingRow title={t("settings.show_empty_calendar_periods")} description={t("settings.show_empty_calendar_periods_desc")}>
-          <Switch checked={calendarTreeShowEmpty} onChange={setCalendarTreeShowEmpty} label={t("settings.show_empty_calendar_periods")}/>
-        </SettingRow>
-
-        <SettingRow title={t("settings.todo_tag")} description={t("settings.todo_tag_desc")}>
-          <Input
-            aria-label={t("settings.todo_tag")}
-            value={todoTag ?? ''}
-            placeholder={t("settings.todo_tag_placeholder_value0", { value0: resolveTodoTag(null, locale) })}
-            onChange={(event) => setTodoTag(event.target.value)}
-            className="w-[200px]"
-          />
-        </SettingRow>
-
-        <SettingRow title={t("settings.year_grid_columns")} description={t("settings.year_grid_columns_desc")}>
-          <Segmented<YearGridColumnsPref>
-            label={t("settings.year_grid_columns")}
-            value={yearGridColumns}
-            onChange={setYearGridColumns}
-            options={yearGridOptions}
-          />
-        </SettingRow>
-
-        <SettingRow title={t("settings.undo_toast_focus")} description={t("settings.undo_toast_focus_desc")}>
-          <Switch checked={undoToastFocus} onChange={setUndoToastFocus} label={t("settings.undo_toast_focus")}/>
-        </SettingRow>
-
-        <YearGridPreview columns={yearGridColumns} locale={locale}/>
+        <LanguageThemeSection appearance={appearance} setters={setters} options={options} />
+        <ColorSection appearance={appearance} accents={accents} setters={setters} />
+        <InterfaceSection appearance={appearance} setters={setters} options={options} />
       </section>
 
       <section>
         <h3 className="mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
           {t("settings.preview_typography")}
         </h3>
-
-        <SettingRow title={t("settings.body_font")}>
-          <Segmented<ProseFont>
-            label={t("settings.body_font")}
-            value={appearance.proseFont}
-            onChange={setProseFont}
-            options={proseFontOptions}
-          />
-        </SettingRow>
-
-        <SettingRow title={t("settings.body_text_size")}>
-          <Slider
-            label={t("settings.body_text_size")}
-            className="w-[200px]"
-            value={appearance.proseSize}
-            min={13}
-            max={22}
-            onChange={setProseSize}
-            suffix="px"
-          />
-        </SettingRow>
-
-        <SettingRow title={t("settings.line_height")}>
-          <Slider
-            label={t("settings.line_height")}
-            className="w-[200px]"
-            value={appearance.proseLineHeight}
-            min={1.4}
-            max={2.2}
-            step={0.05}
-            onChange={setProseLineHeight}
-          />
-        </SettingRow>
-
-        <SettingRow title={t("settings.content_width")}>
-          <Segmented<ProseWidth>
-            label={t("settings.content_width")}
-            value={appearance.proseWidth}
-            onChange={setProseWidth}
-            options={proseWidthOptions}
-          />
-        </SettingRow>
+        <TypographySection appearance={appearance} setters={setters} options={options} />
       </section>
 
       <PreviewSample />
@@ -255,6 +50,213 @@ export function AppearanceSettings({
   )
 }
 
+type AppearanceSettingsState = ReturnType<typeof useSession.getState>['settings']['appearance'];
+type Setters = ReturnType<typeof useAppearanceSettings>['setters'];
+interface AppearanceOptions {
+  languageOptions: SegmentedOption<AppLocale>[]
+  themeOptions: SegmentedOption<ThemePref>[]
+  densityOptions: SegmentedOption<UiDensity>[]
+  proseFontOptions: SegmentedOption<ProseFont>[]
+  proseWidthOptions: SegmentedOption<ProseWidth>[]
+  yearGridOptions: SegmentedOption<YearGridColumnsPref>[]
+}
+
+type Options = AppearanceOptions;
+
+function useAppearanceSettings() {
+  const appearance = useSession((s) => s.settings.appearance)
+  const update = useSession((s) => s.updateSettings)
+  const locale = useLocale()
+  const setTodoTag = useCallback((value: string) => void update({ notes: { todoTag: value.trim() ? value : null } }), [update])
+  const setLanguage = useCallback((language: AppLocale) => void update({ appearance: { language } }), [update])
+  const setTheme = useCallback((theme: ThemePref) => {
+    switchThemeWithTransition(theme, undefined, () => update({ appearance: { theme } }))
+  }, [update])
+  const setDensity = useCallback((density: UiDensity) => void update({ appearance: { density } }), [update])
+  const setAccent = useCallback((accent: AccentName) => void update({ appearance: { accent } }), [update])
+  const setBackground = useCallback((background: BackgroundName) => void update({ appearance: { background } }), [update])
+  const setProseFont = useCallback((proseFont: ProseFont) => void update({ appearance: { proseFont } }), [update])
+  const setProseSize = useCallback((proseSize: number) => void update({ appearance: { proseSize } }), [update])
+  const setProseLineHeight = useCallback((proseLineHeight: number) => void update({ appearance: { proseLineHeight } }), [update])
+  const setProseWidth = useCallback((proseWidth: ProseWidth) => void update({ appearance: { proseWidth } }), [update])
+  const setters = { setTodoTag, setLanguage, setTheme, setDensity, setAccent, setBackground, setProseFont, setProseSize, setProseLineHeight, setProseWidth }
+  const options = useMemo((): Options => ({
+    languageOptions: [{ value: 'zh-CN', label: t("settings.simplified_chinese") }, { value: 'en-US', label: t("settings.english") }],
+    themeOptions: [{ value: 'light', label: <Sun size={12.5} />, title: t("settings.light") }, { value: 'dark', label: <Moon size={12.5} />, title: t("settings.dark") }, { value: 'system', label: <Monitor size={12.5} />, title: t("settings.system") }],
+    densityOptions: [{ value: 'comfortable', label: t("settings.comfortable") }, { value: 'compact', label: t("settings.compact") }],
+    proseFontOptions: [{ value: 'sans', label: t("common.sans_serif") }, { value: 'serif', label: t("settings.serif") }],
+    proseWidthOptions: [{ value: 'narrow', label: t("settings.narrow") }, { value: 'normal', label: t("settings.standard") }, { value: 'wide', label: t("settings.wide") }, { value: 'full', label: t("settings.full") }],
+    yearGridOptions: [{ value: 'auto', label: t("settings.year_grid_columns_auto") }, { value: '3', label: t("settings.year_grid_columns_three") }, { value: '4', label: t("settings.year_grid_columns_four") }],
+  }), [locale])
+  return { appearance, setters, options }
+}
+
+function LanguageThemeSection({ appearance, setters, options }: { appearance: AppearanceSettingsState; setters: Setters; options: Options }) {
+  return (
+    <>
+      <SettingRow title={t("settings.interface_language")}>
+        <Segmented<AppLocale>
+          label={t("settings.interface_language")}
+          value={appearance.language}
+          onChange={setters.setLanguage}
+          options={options.languageOptions}
+        />
+      </SettingRow>
+      <SettingRow title={t("settings.theme")}>
+        <Segmented<ThemePref>
+          label={t("settings.theme")}
+          value={appearance.theme}
+          onChange={setters.setTheme}
+          options={options.themeOptions}
+        />
+      </SettingRow>
+    </>
+  )
+}
+
+function ColorSection({ appearance, accents, setters }: { appearance: AppearanceSettingsState; accents: { name: AccentName; swatch: string; foreground: string }[]; setters: Setters }) {
+  return (
+    <>
+      <AccentSwatches appearance={appearance} accents={accents} setters={setters} />
+      <BackgroundSwatches appearance={appearance} setters={setters} />
+    </>
+  )
+}
+
+function AccentSwatches({ appearance, accents, setters }: { appearance: AppearanceSettingsState; accents: { name: AccentName; swatch: string; foreground: string }[]; setters: Setters }) {
+  return (
+    <SettingRow title={t("settings.accent_color")}>
+      <div role="group" aria-label={t("settings.accent_color")} className="flex items-center gap-1.5">
+        {accents.map((accent) => (
+          <Tooltip key={accent.name} label={t(ACCENT_MESSAGE_KEYS[accent.name])}>
+            <button
+              type="button"
+              onClick={() => setters.setAccent(accent.name)}
+              aria-label={t(ACCENT_MESSAGE_KEYS[accent.name])}
+              aria-pressed={appearance.accent === accent.name}
+              className={cn('relative flex size-6 items-center justify-center rounded-full transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-110 active:scale-95', appearance.accent === accent.name && 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg-overlay)]')}
+              style={{ background: accent.swatch, color: accent.foreground }}
+            >
+              {appearance.accent === accent.name && (
+                <Check size={12} strokeWidth={3} className="drop-shadow-sm" />
+              )}
+            </button>
+          </Tooltip>
+        ))}
+      </div>
+    </SettingRow>
+  )
+}
+
+function BackgroundSwatches({ appearance, setters }: { appearance: AppearanceSettingsState; setters: Setters }) {
+  return (
+    <SettingRow title={t("settings.background_color")}>
+      <div role="group" aria-label={t("settings.background_color")} className="flex items-center gap-2">
+        {([
+          { name: 'paper', label: t("settings.background_paper"), swatch: 'var(--swatch-paper)' },
+          { name: 'white', label: t("settings.background_white"), swatch: 'var(--swatch-white)' },
+        ] satisfies { name: BackgroundName; label: string; swatch: string }[]).map((background) => (
+          <button
+            key={background.name}
+            type="button"
+            onClick={() => setters.setBackground(background.name)}
+            aria-pressed={appearance.background === background.name}
+            className={cn('flex h-8 min-w-[84px] items-center gap-2 rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-11\.5)] transition-[border-color,background-color,box-shadow] duration-[var(--dur-fast)]', appearance.background === background.name ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[0_0_0_2px_var(--accent-ring)]' : 'border-[var(--border-default)] bg-[var(--bg-base)] hover:bg-[var(--bg-hover)]')}
+          >
+            <span aria-hidden="true" className="size-4 rounded-full border border-black/10 shadow-sm" style={{ background: background.swatch }} />
+            <span>{background.label}</span>
+            {appearance.background === background.name && <Check size={11} className="ml-auto text-[var(--accent)]" />}
+          </button>
+        ))}
+      </div>
+    </SettingRow>
+  )
+}
+
+function InterfaceSection({ appearance, setters, options }: { appearance: AppearanceSettingsState; setters: Setters; options: Options }) {
+  const locale = useLocale()
+  const calendarTreeVisible = useCalendarTreeVisible()
+  const calendarTreeShowEmpty = useCalendarTreeShowEmpty()
+  const todoTag = useSession((s) => s.settings.notes?.todoTag)
+  const yearGridColumns = useYearGridColumns()
+  const undoToastFocus = useUndoToastFocus()
+  return (
+    <>
+      <SettingRow title={t("settings.interface_density")}>
+        <Segmented<UiDensity> label={t("settings.interface_density")} value={appearance.density} onChange={setters.setDensity} options={options.densityOptions} />
+      </SettingRow>
+
+      <SettingRow title={t("settings.sidebar_calendar_tree")} description={t("settings.sidebar_calendar_tree_desc")}>
+        <Switch checked={calendarTreeVisible} onChange={setCalendarTreeVisible} label={t("settings.sidebar_calendar_tree")}/>
+      </SettingRow>
+      <SettingRow title={t("settings.show_empty_calendar_periods")} description={t("settings.show_empty_calendar_periods_desc")}>
+        <Switch checked={calendarTreeShowEmpty} onChange={setCalendarTreeShowEmpty} label={t("settings.show_empty_calendar_periods")}/>
+      </SettingRow>
+
+      <SettingRow title={t("settings.todo_tag")} description={t("settings.todo_tag_desc")}>
+        <Input aria-label={t("settings.todo_tag")} value={todoTag ?? ''} placeholder={t("settings.todo_tag_placeholder_value0", { value0: resolveTodoTag(null, locale) })} onChange={(event) => setters.setTodoTag(event.target.value)} className="w-[200px]" />
+      </SettingRow>
+
+      <SettingRow title={t("settings.year_grid_columns")} description={t("settings.year_grid_columns_desc")}>
+        <Segmented<YearGridColumnsPref> label={t("settings.year_grid_columns")} value={yearGridColumns} onChange={setYearGridColumns} options={options.yearGridOptions} />
+      </SettingRow>
+
+      <SettingRow title={t("settings.undo_toast_focus")} description={t("settings.undo_toast_focus_desc")}>
+        <Switch checked={undoToastFocus} onChange={setUndoToastFocus} label={t("settings.undo_toast_focus")}/>
+      </SettingRow>
+
+      <YearGridPreview columns={yearGridColumns} locale={locale}/>
+    </>
+  )
+}
+
+function TypographySection({ appearance, setters, options }: { appearance: AppearanceSettingsState; setters: Setters; options: Options }) {
+  return (
+    <>
+      <SettingRow title={t("settings.body_font")}>
+        <Segmented<ProseFont>
+          label={t("settings.body_font")}
+          value={appearance.proseFont}
+          onChange={setters.setProseFont}
+          options={options.proseFontOptions}
+        />
+      </SettingRow>
+
+      <SettingRow title={t("settings.body_text_size")}>
+        <Slider
+          label={t("settings.body_text_size")}
+          className="w-[200px]"
+          value={appearance.proseSize}
+          min={13}
+          max={22}
+          onChange={setters.setProseSize}
+          suffix="px"
+        />
+      </SettingRow>
+
+      <SettingRow title={t("settings.line_height")}>
+        <Slider
+          label={t("settings.line_height")}
+          className="w-[200px]"
+          value={appearance.proseLineHeight}
+          min={1.4}
+          max={2.2}
+          step={0.05}
+          onChange={setters.setProseLineHeight}
+        />
+      </SettingRow>
+
+      <SettingRow title={t("settings.content_width")}>
+        <Segmented<ProseWidth>
+          label={t("settings.content_width")}
+          value={appearance.proseWidth}
+          onChange={setters.setProseWidth}
+          options={options.proseWidthOptions}
+        />
+      </SettingRow>
+    </>
+  )
+}
 
 function YearGridPreview({ columns, locale }: { columns: YearGridColumnsPref; locale: string }) {
   const monthLabels = useMemo(() => {
