@@ -286,15 +286,13 @@ const allowed = new Map([
     "// Left padding (px) for a sidebar tree row at the given visual level, where level 0 is a root row.",
     "// Virtual rows count the root at depth -1, so a row's visual level is its depth plus one.",
   ]],
-  ["src/client/lib/calendar-tree/periods.ts", [
-    "// Records the node as prev/next neighbor when it is a same-kind period; the",
-    "// caller recurses into children only for periods of other kinds.",
-  ]],
   ["src/client/lib/calendar-tree/tree.ts", [
     "// Buckets every live note into its year/quarter/month/week ids and returns the",
     "// per-period counts, the parent→children adjacency and the covered year range.",
     "// The includeEmpty skeleton spans every year between the first and last note",
     "// and every quarter/month in between; weeks only appear where notes exist.",
+    "// Records the node as prev/next neighbor when it is a same-kind period; the",
+    "// caller recurses into children only for periods of other kinds.",
     "// The sidebar calendar/todo trees bucket notes only by createdAt, deletedAt and",
     "// (for the todo tree) todo-tag membership. A typing-derived summary commit",
     "// changes none of those, yet it replaces the whole notes-map identity, so both",
@@ -310,6 +308,11 @@ const allowed = new Map([
     "// its verdict is memoized per map identity: React StrictMode re-renders the",
     "// same commit twice and unrelated consumers may pass the same map again, and",
     "// each of those calls would otherwise rescan the whole vault for nothing.",
+  ]],
+  ["src/client/lib/calendar-tree/types.ts", [
+    "// Shared shape types for the virtual calendar/todo trees. Kept in their own",
+    "// module (instead of periods.ts) so ids.ts can import them without creating a",
+    "// module cycle: ids.ts holds the runtime id helpers that periods.ts consumes.",
   ]],
   ["src/client/lib/db-cache-spec.ts", [
     "// Shared behavior specs for the two-level shell cache. Each backend test file",

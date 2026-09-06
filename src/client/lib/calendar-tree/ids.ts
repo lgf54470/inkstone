@@ -1,4 +1,4 @@
-import type { CalendarPeriod } from './periods';
+import type { CalendarPeriod } from './types';
 
 export const CALENDAR_ROOT_ID = 'cal'
 

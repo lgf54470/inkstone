@@ -2,8 +2,7 @@ import type { NoteSummary } from "@shared/types";
 import type { VirtualTreeNamespace } from './ids';
 import { DEFAULT_TODO_TAG } from './ids';
 import { splitTodoTags } from './ids';
-import type { CalendarPeriod } from './periods';
-import type { CalendarNode } from './periods';
+import type { CalendarPeriod, CalendarNode } from './types';
 import { calendarNodeName } from './periods';
 import { virtualId } from './ids';
 import { parseVirtualId } from './ids';
@@ -163,6 +162,38 @@ function buildEmptyVirtualTree(collected: VirtualCounts, ns: VirtualTreeNamespac
         });
     }
     return years;
+}
+
+interface NeighborState {
+    prev: CalendarNode | null
+    next: CalendarNode | null
+}
+
+// Records the node as prev/next neighbor when it is a same-kind period; the
+// caller recurses into children only for periods of other kinds.
+function considerNeighbor(node: CalendarNode, targetId: string, kind: CalendarPeriod['kind'], ns: VirtualTreeNamespace, state: NeighborState): boolean {
+    const parsed = parseVirtualId(node.id, ns);
+    if (!parsed || parsed.kind !== kind)
+        return false
+    if (node.id < targetId && (!state.prev || node.id > state.prev.id))
+        state.prev = node
+    else if (node.id > targetId && (!state.next || node.id < state.next.id))
+        state.next = node
+    return true
+}
+
+export function virtualNearestNeighbors(period: CalendarPeriod, notes: Iterable<NoteSummary>, ns: VirtualTreeNamespace): { prev: CalendarNode | null; next: CalendarNode | null } {
+    const targetId = virtualId(period, ns);
+    const state: NeighborState = { prev: null, next: null };
+    const scan = (nodes: CalendarNode[]): void => {
+        for (const node of nodes) {
+            if (considerNeighbor(node, targetId, period.kind, ns, state))
+                continue
+            scan(node.children);
+        }
+    };
+    scan(buildVirtualTree(notes, ns));
+    return state;
 }
 
 export function buildVirtualTree(notes: Iterable<NoteSummary>, ns: VirtualTreeNamespace, includeEmpty = false): CalendarNode[] {

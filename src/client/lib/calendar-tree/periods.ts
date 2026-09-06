@@ -4,25 +4,9 @@ import type { VirtualTreeNamespace } from './ids';
 import { TODO_TREE } from './ids';
 import { DEFAULT_TODO_TAG } from './ids';
 import { splitTodoTags } from './ids';
-import { virtualId } from './ids';
 import { parseVirtualId } from './ids';
 import { quarterOfMonth } from './ids';
-import { buildVirtualTree } from './tree';
-
-export type CalendarPeriod =
-    | { kind: 'root' }
-    | { kind: 'year'; year: number }
-    | { kind: 'quarter'; year: number; quarter: number }
-    | { kind: 'month'; year: number; month: number }
-    | { kind: 'week'; year: number; month: number; week: number }
-
-export interface CalendarNode {
-    id: string
-    name: string
-    depth: number
-    count: number
-    children: CalendarNode[]
-}
+import type { CalendarPeriod } from './types';
 
 export function calendarNodeName(period: CalendarPeriod): string {
     switch (period.kind) {
@@ -122,38 +106,6 @@ export function parseCalendarJumpQuery(query: string, today?: Date): CalendarPer
     if (yearWeekMatch)
         return calendarPeriodForIsoWeek(Number(yearWeekMatch[1]), Number(yearWeekMatch[2]));
     return null;
-}
-
-interface NeighborState {
-    prev: CalendarNode | null
-    next: CalendarNode | null
-}
-
-// Records the node as prev/next neighbor when it is a same-kind period; the
-// caller recurses into children only for periods of other kinds.
-function considerNeighbor(node: CalendarNode, targetId: string, kind: CalendarPeriod['kind'], ns: VirtualTreeNamespace, state: NeighborState): boolean {
-    const parsed = parseVirtualId(node.id, ns);
-    if (!parsed || parsed.kind !== kind)
-        return false
-    if (node.id < targetId && (!state.prev || node.id > state.prev.id))
-        state.prev = node
-    else if (node.id > targetId && (!state.next || node.id < state.next.id))
-        state.next = node
-    return true
-}
-
-export function virtualNearestNeighbors(period: CalendarPeriod, notes: Iterable<NoteSummary>, ns: VirtualTreeNamespace): { prev: CalendarNode | null; next: CalendarNode | null } {
-    const targetId = virtualId(period, ns);
-    const state: NeighborState = { prev: null, next: null };
-    const scan = (nodes: CalendarNode[]): void => {
-        for (const node of nodes) {
-            if (considerNeighbor(node, targetId, period.kind, ns, state))
-                continue
-            scan(node.children);
-        }
-    };
-    scan(buildVirtualTree(notes, ns));
-    return state;
 }
 
 export function calendarPeriodLabel(period: CalendarPeriod): string | null {
