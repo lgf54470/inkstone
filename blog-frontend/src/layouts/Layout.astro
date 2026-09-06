@@ -5,9 +5,8 @@ import Footer from '../components/Footer.astro'
 import AppearanceDrawer from '../components/AppearanceDrawer'
 import SearchModal from '../components/SearchModal'
 import DegradedBanner from '../components/DegradedBanner'
-import { api } from '../lib/api'
+import { api, getApiBase } from '../lib/api'
 import type { BlogSiteInfo } from '../lib/types'
-import { DEFAULT_API_URL } from '../lib/constants'
 
 interface Props {
   title?: string
@@ -37,7 +36,7 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     <title>{title}</title>
     <meta name="description" content={description} />
     {coverUrl && <meta property="og:image" content={coverUrl} />}
-    <meta name="inkstone-api-url" content={import.meta.env.PUBLIC_API_URL || DEFAULT_API_URL} />
+    <meta name="inkstone-api-url" content={getApiBase()} />
 
     <!-- Immediately apply theme preferences before paint to prevent flicker -->
     <script is:inline>

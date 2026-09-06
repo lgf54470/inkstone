@@ -13,21 +13,9 @@ if (!slug) {
   return Astro.redirect('/404')
 }
 
-const forwardHeaders: Record<string, string> = {}
-const clientIp = Astro.clientAddress || Astro.request.headers.get('x-forwarded-for')
-if (clientIp) forwardHeaders['x-forwarded-for'] = clientIp
-const ua = Astro.request.headers.get('user-agent')
-if (ua) forwardHeaders['user-agent'] = ua
-const referer = Astro.request.headers.get('referer')
-if (referer) forwardHeaders['referer'] = referer
-const country = Astro.request.headers.get('cf-ipcountry')
-if (country) forwardHeaders['cf-ipcountry'] = country
-const region = Astro.request.headers.get('cf-region')
-if (region) forwardHeaders['cf-region'] = region
-const city = Astro.request.headers.get('cf-city')
-if (city) forwardHeaders['cf-city'] = city
-
-const post = await api.getPostBySlug(slug, forwardHeaders)
+// 不转发客户端可控的 x-forwarded-for/user-agent/referer 等请求头：
+// 访问统计统一由 API 侧读取 CF 边缘注入的 CF-Connecting-IP / cf-* 头，避免伪造刷量
+const post = await api.getPostBySlug(slug)
 if (!post) {
   return Astro.redirect('/404')
 }

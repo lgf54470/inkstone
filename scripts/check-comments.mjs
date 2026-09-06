@@ -1003,6 +1003,10 @@ const allowed = new Map([
     "// importedMarkdownTitle used to live in this file; runBatched was re-exported",
     "// here for consumers that import the transfer route module.",
   ]],
+  ["src/worker/routes/blog/visits.ts", [
+    "// CF-Connecting-IP is injected by the Cloudflare edge (see requestClientIp);",
+    "// raw x-forwarded-for is client-controlled and must not feed analytics.",
+  ]],
   ["tests/markdown-renderer-parity.test.ts", [
     "// Structural parity baseline: root and blog renderers keep (and must not silently",
     "// change) these tag/class skeleton differences. Any baseline item that converges",

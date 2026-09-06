@@ -1,13 +1,12 @@
 import type { z } from 'zod';
 import { Hono } from "hono";
-import type { Context } from 'hono';
 import type { BlogCommentStatus } from "@shared/types";
 import type { AppBindings } from "../../env";
 import { ApiError } from "../../lib/errors";
 import { newId } from "../../lib/id";
 import { JSON_BODY_LIMITS, readJsonValidated, requestClientIp } from "../../lib/request";
 import type { BlogCalendarRow, BlogPostPublicRow, BlogPublicCategoryRow, BlogPublicCommentRow, BlogTimelineRow } from "../../db/rows";
-import { isBot, parseDeviceType, parseOS, parseBrowser, parseReferrerHost, computeVisitorFingerprint } from "../../lib/share-analytics";
+import { recordBlogVisit } from './visits';
 import { blogPublicCommentSchema } from './schemas';
 import { getBlogSettings } from './settings';
 import { summarizePostTagCounts } from './helpers';
@@ -193,57 +192,6 @@ async function loadPublicPostBySlug(db: D1Database, slug: string): Promise<BlogP
     throw ApiError.notFound('Post not found')
   }
   return row
-}
-
-async function recordBlogVisit(c: Context<AppBindings>, row: BlogPostPublicRow, now: number): Promise<void> {
-  try {
-    const rawIp = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || requestClientIp(c) || ''
-    const ua = c.req.header('user-agent') || ''
-    const country = c.req.header('cf-ipcountry') || c.req.header('x-country') || null
-    const region = c.req.header('cf-region') || c.req.header('x-region') || null
-    const city = c.req.header('cf-city') || c.req.header('x-city') || null
-    const rawReferrer = c.req.header('referer') || null
-    const referrerHost = parseReferrerHost(rawReferrer)
-    const deviceType = parseDeviceType(ua)
-    const os = parseOS(ua)
-    const browser = parseBrowser(ua)
-    const bot = isBot(ua) ? 1 : 0
-    const visitorFp = await computeVisitorFingerprint(rawIp, ua)
-    const loggedInUserId = c.get('userId')
-    const isOwner = loggedInUserId && loggedInUserId === row.user_id ? 1 : 0
-
-    await c.env.DB
-      .prepare(`
-        INSERT INTO blog_visits (
-          user_id, post_id, slug, visited_at, visitor_fp, country, region, city,
-          referrer, referrer_host, device_type, os, browser, language, user_agent,
-          is_bot, is_self_referrer, is_owner
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)
-      `)
-      .bind(
-        row.user_id,
-        row.id,
-        row.slug,
-        now,
-        visitorFp,
-        country,
-        region,
-        city,
-        rawReferrer,
-        referrerHost,
-        deviceType,
-        os,
-        browser,
-        c.req.header('accept-language')?.slice(0, 32) || null,
-        ua.slice(0, 256),
-        bot,
-        0,
-        isOwner,
-      )
-      .run()
-  } catch (err) {
-    console.error('Failed to log blog visit', err)
-  }
 }
 
 async function loadAdjacentPost(db: D1Database, publishedAt: number, newer: boolean): Promise<{ slug: string; title: string } | null> {

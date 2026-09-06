@@ -153,9 +153,9 @@ export const api = {
     }
   },
 
-  async getPostBySlug(slug: string, headers?: HeadersInit): Promise<BlogPost | null> {
+  async getPostBySlug(slug: string): Promise<BlogPost | null> {
     try {
-      const data = asRecord(await requestJson(`/api/blog/public/posts/${encodeURIComponent(slug)}`, { headers }))
+      const data = asRecord(await requestJson(`/api/blog/public/posts/${encodeURIComponent(slug)}`))
       if (!data.post) return null
       return normalizePost(data.post)
     } catch (err) {
