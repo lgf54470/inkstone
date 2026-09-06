@@ -54,11 +54,17 @@ async function submitCommentRequest(postId: string, fields: CommentFields): Prom
   }
 }
 
-function useCommentFetch(postId: string) {
+function useCommentFetch(postId: string, enabled: boolean) {
   const [comments, setComments] = useState<BlogComment[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Closed-comment posts render a static notice; skip the network request entirely.
+    if (!enabled) {
+      setComments([])
+      setLoading(false)
+      return
+    }
     let ignore = false
     async function fetchComments() {
       setLoading(true)
@@ -78,7 +84,7 @@ function useCommentFetch(postId: string) {
     return () => {
       ignore = true
     }
-  }, [postId])
+  }, [postId, enabled])
 
   const appendComment = (comment?: BlogComment) => {
     if (comment) {
@@ -127,7 +133,7 @@ function useCommentForm(postId: string, onPosted?: (comment?: BlogComment) => vo
 }
 
 export default function CommentsSection({ postId, allowComments = true }: CommentsSectionProps) {
-  const { comments, loading, appendComment } = useCommentFetch(postId)
+  const { comments, loading, appendComment } = useCommentFetch(postId, allowComments)
   const form = useCommentForm(postId, appendComment)
 
   if (!allowComments) {
