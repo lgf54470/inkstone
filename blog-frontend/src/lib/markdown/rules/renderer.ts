@@ -90,21 +90,6 @@ function registerTableRendererRules(md: InstanceType<typeof MarkdownIt>): void {
   }
 }
 
-function registerHeadingRendererRule(md: InstanceType<typeof MarkdownIt>): void {
-  // Heading anchor styling
-  const defaultHeadingOpen =
-    md.renderer.rules.heading_open ||
-    function (tokens, idx, options, _env, self) {
-      return self.renderToken(tokens, idx, options)
-    }
-
-  md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
-    const token = tokens[idx]!
-    token.attrJoin('class', 'group relative')
-    return defaultHeadingOpen(tokens, idx, options, env, self)
-  }
-}
-
 function registerTocRendererRule(md: InstanceType<typeof MarkdownIt>, headings: TocHeading[]): void {
   // Render TOC token
   md.renderer.rules.toc = () => {
@@ -126,6 +111,5 @@ export function registerRendererRules(md: InstanceType<typeof MarkdownIt>, headi
   registerCalloutRendererRules(md)
   registerMathRendererRules(md)
   registerTableRendererRules(md)
-  registerHeadingRendererRule(md)
   registerTocRendererRule(md, headings)
 }
