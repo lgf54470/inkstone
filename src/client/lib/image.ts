@@ -41,6 +41,7 @@ export async function optimizeImageFile(file: File): Promise<File> {
     try {
       source?.bitmap.close()
     } catch {
+      // Best-effort bitmap release; a failed close only leaks until GC reclaims it.
     }
   }
 }

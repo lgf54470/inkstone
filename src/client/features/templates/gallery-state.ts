@@ -55,7 +55,9 @@ export function useGalleryStoreState() {
     const toggleStar = useNoteTemplates((s) => s.toggleTemplateStar);
     useEffect(() => {
         if (!hydrated)
-            void hydrate().catch(() => {});
+            void hydrate().catch((error) => {
+                console.warn('[templates] failed to hydrate the template library', error)
+            });
     }, [hydrated, hydrate]);
     return { categories, templates, hydrated, togglePin, toggleStar };
 }

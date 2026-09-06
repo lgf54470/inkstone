@@ -53,6 +53,7 @@ export function saveRangePresets(presets: RangePresetConfig[], storage: Pick<Sto
         storage?.setItem(RANGE_PRESET_STORAGE_KEY, JSON.stringify(payload));
     }
     catch {
+        // Quota or private-mode writes can throw; presets stay authoritative in memory for the session.
     }
 }
 

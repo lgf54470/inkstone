@@ -273,6 +273,7 @@ async function recoverPendingContent(
         createdAt: cached.updatedAt,
     }).then(async () => {
         if (existing)
+            // Best-effort journal cleanup; a stale outbox entry heals on the next replay.
             await localDb.completeOutboxItem(existing.id, existing.writeId).catch(() => { });
         return true;
     }, () => false);

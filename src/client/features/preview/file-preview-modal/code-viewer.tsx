@@ -26,6 +26,7 @@ export function CodeViewer({ code, ext }: { code: string; ext: string }) {
         decorateCodeBlock(block)
       }
     })()
+      // Highlighting is best-effort; the plain text code stays visible on failure.
       .catch(() => {})
 
     return () => {

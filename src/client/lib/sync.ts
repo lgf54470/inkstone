@@ -113,6 +113,7 @@ export class SyncEngine {
     remoteDelay: number,
   ): void {
     if (payload.clientId !== CLIENT_ID) {
+      // Best-effort remote refresh; the next broadcast or scheduled pull retries.
       void refresh().catch(() => {})
     }
     this.schedulePull(payload.clientId === CLIENT_ID ? ownDelay : remoteDelay, false)
@@ -146,7 +147,8 @@ export class SyncEngine {
         return
       case 'site-changed':
         if (payload.clientId !== CLIENT_ID) {
-          void useSession.getState().refresh().catch(() => {})
+          // Best-effort session refresh; the next sync payload retries.
+      void useSession.getState().refresh().catch(() => {})
         }
         return
       case 'outbox-result':
@@ -296,13 +298,12 @@ export class SyncEngine {
       await useNotes.getState().pull()
       hasPulled = true
     } catch {
-
+      // A failed pull is retried by the next scheduled pull; the UI stays responsive meanwhile.
     }
     try {
-
       await useNotes.getState().replayPending()
     } catch {
-
+      // A failed replay is retried on the next pull.
     }
     if (hasPulled) {
       this.lastPullAt = Date.now()

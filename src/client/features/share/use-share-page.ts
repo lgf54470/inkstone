@@ -256,6 +256,7 @@ function addShareAccess(html: string, slug: string): string {
             element.setAttribute(attr, `${url.pathname}${url.search}`)
         }
         catch {
+            // Invalid URLs are skipped; the attribute keeps its original value.
         }
     }
     return template.innerHTML

@@ -35,6 +35,8 @@ export async function acquireOutboxReplayLease(owner: string): Promise<boolean> 
   return isAcquired
 }
 
+// Lease refresh/release failures are safe: the lease expires via its TTL, and a
+// stale holder simply re-competes on the next replay attempt.
 export function refreshOutboxReplayLease(owner: string): Promise<void> {
   return update<ReplayLease | null>(
     userScopedKey(KEY.outboxReplayLease),

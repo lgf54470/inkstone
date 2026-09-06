@@ -250,6 +250,7 @@ async function logoutImpl(set: SessionSetter, get: () => SessionState): Promise<
     sessionCacheEpoch++
     const pendingSessionCache = sessionCacheTask
     resetSettingsPersistence(null)
+    // A failed session-cache write only loses the offline copy; logout proceeds regardless.
     await pendingSessionCache.catch(() => {})
     await localDb.clear()
     set({ status: 'anonymous', user: null, settings: DEFAULT_SETTINGS })
@@ -434,6 +435,7 @@ async function persistSession(info: SessionInfo): Promise<void> {
   if (info.user) await queueSessionCache(info)
   else {
     sessionCacheEpoch++
+    // A failed session-cache write only loses the offline copy; clearing proceeds regardless.
     await sessionCacheTask.catch(() => {})
     await localDb.clearSession()
   }
@@ -449,6 +451,7 @@ function queueSessionCache(info: SessionInfo): Promise<void> {
   const task = sessionCacheTask.then(async () => {
     if (epoch === sessionCacheEpoch) await localDb.saveSession(info)
   })
+  // The cache tail must never reject; saveSession reports its own failures.
   sessionCacheTask = task.catch(() => {})
   return task
 }

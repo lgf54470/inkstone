@@ -31,6 +31,7 @@ export async function safeSet(key: string, value: unknown): Promise<void> {
   try {
     await set(key, value, store)
   } catch {
+    // Quota/private-mode or transient IndexedDB failures are absorbed; in-memory state stays authoritative.
   }
 }
 export function userScopedKey(key: string, userId = dbState.activeUserId): string {
@@ -64,6 +65,7 @@ export async function mergedNoteIds(userId: string | null, targetIds: string[], 
     const value = await get<unknown>(userScopedKey(KEY.noteIndex, userId), store)
     if (Array.isArray(value) && value.every((id) => typeof id === 'string')) diskIds = value as string[]
   } catch {
+    // A disk read failure falls back to the in-memory index; stale ids heal on the next pull.
   }
   const seen = new Set<string>()
   const next: string[] = []

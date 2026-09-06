@@ -215,12 +215,12 @@ export async function setTagColor(tag: Tag, color: string | null): Promise<void>
       await useNotes.getState().refreshTags().catch(showRefreshWarning)
     }
   })()
+  // The tail chain must never reject; each operation reports its own failure.
   write.tail = operation.catch(() => {})
   await operation
 
-  if (sequence === write.sequence && tagColorWrites.get(tag.id) === write) {
+  if (sequence === write.sequence && tagColorWrites.get(tag.id) === write)
     tagColorWrites.delete(tag.id)
-  }
 }
 
 export async function setTagPinned(tag: Tag, isPinned: boolean): Promise<void> {
@@ -254,6 +254,7 @@ export async function setTagPinned(tag: Tag, isPinned: boolean): Promise<void> {
     return
   }
 
+  // The mutation already surfaced its failure; a refresh warning would double-toast.
   await useNotes.getState().refreshTags().catch(() => {})
 }
 

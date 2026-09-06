@@ -83,6 +83,7 @@ export async function recoverNoteMutation(id: string, mutation: PendingNoteMutat
             return;
         }
         catch {
+            // Fetching the authoritative note failed; the optimistic mutation rolls back below.
         }
     }
     else {

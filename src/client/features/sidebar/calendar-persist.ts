@@ -28,6 +28,7 @@ export function saveCalendarPersist(state: CalendarPersistState, storage: Pick<S
         storage?.setItem(CALENDAR_PERSIST_KEY, JSON.stringify(state));
     }
     catch {
+        // Quota or private-mode writes can throw; the calendar view stays authoritative in memory.
     }
 }
 

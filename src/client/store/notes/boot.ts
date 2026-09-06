@@ -89,8 +89,10 @@ async function runPull(get: () => NotesState, set: SetNotesState): Promise<void>
 
 function runApplySync(payload: SyncResponse, get: () => NotesState, set: SetNotesState): void {
     if (payload.settingsChanged)
+        // Best-effort settings refresh; the next sync payload retries.
         void useSession.getState().refreshSettings().catch(() => { });
     if (payload.profileChanged || payload.siteChanged)
+        // Best-effort profile/site refresh; the next sync payload retries.
         void useSession.getState().refresh().catch(() => { });
     const deletionIds = payload.deletions
         .filter((item) => item.entity === 'note')

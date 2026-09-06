@@ -135,6 +135,7 @@ function cancelSetupFlow(core: TotpCore) {
   void runTotpBusy(core, async () => {
     const pending = core.setup;
     resetTotpForm(core);
+    // Best-effort server cleanup; an orphaned pending setup expires server-side.
     if (pending) await api.auth.totp.cancelSetup(pending.setupToken).catch(() => { });
   });
 }

@@ -182,8 +182,13 @@ const allowed = new Map([
     "// they inherit the folder name for the `{{folder}}` template placeholder.",
     "// The sidebar's cmd/ctrl+click selections join the graph's own tag filter.",
   ]],
+  ["src/client/features/list/list-filter-persist.ts", [
+    "// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.",
+    "// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.",
+  ]],
   ["src/client/features/list/range-preset-persist.ts", [
     "/** Load the user's custom rolling range presets, falling back to the defaults. */",
+    "// Quota or private-mode writes can throw; presets stay authoritative in memory for the session.",
   ]],
   ["src/client/features/list/use-gap-indicator.test.ts", [
     "// While peeking, the observed window is the expanded range, so the live gap goes quiet but the last one is kept.",
@@ -212,8 +217,15 @@ const allowed = new Map([
     "/** Subscribes to note saves: any edit mutates the notes store, so `latestEditKey` recomputes the moment a note is written and the window re-materializes with zero latency. A single midnight-aligned tick covers only the today-anchored direction. */",
     "/** Keeps the rolling date filter materialized: the window recomputes whenever a note save (or the day rollover) changes its anchor. Mount once, anywhere in the tree. */",
   ]],
+  ["src/client/features/preview/file-preview-modal/code-viewer.tsx", [
+    "// Highlighting is best-effort; the plain text code stays visible on failure.",
+  ]],
   ["src/client/features/preview/preview-interactions.ts", [
     "/** DOM click handling for the rendered preview body: file/table/JS-runner actions, mermaid retry, code copy/collapse, task checkboxes, wiki/block/tag navigation, lightbox, anchors. */",
+    "// Malformed percent-encoding falls back to the raw id.",
+  ]],
+  ["src/client/features/settings/totp-settings/use-totp-settings.ts", [
+    "// Best-effort server cleanup; an orphaned pending setup expires server-side.",
   ]],
   ["src/client/features/share/share-form.ts", [
     "// A new or replaced passcode must be at least 4 characters (the server",
@@ -228,6 +240,10 @@ const allowed = new Map([
     "// Share pages always block external images (no option): visitors never",
     "// opt in, so third parties cannot track them via note images. The",
     "// server enforces this too by omitting `https:` from CSP img-src on /s/*.",
+    "// Invalid URLs are skipped; the attribute keeps its original value.",
+  ]],
+  ["src/client/features/sidebar/calendar-persist.ts", [
+    "// Quota or private-mode writes can throw; the calendar view stays authoritative in memory.",
   ]],
   ["src/client/features/sidebar/sidebar-calendar.tsx", [
     "// Single cached projection replaces three whole-vault Object.values scans; untouched output identities stay stable between typing commits.",
@@ -243,6 +259,8 @@ const allowed = new Map([
   ]],
   ["src/client/features/tags/tag-mutations.ts", [
     "// The rollback already surfaced the failure toast; a refresh warning would double-toast.",
+    "// The tail chain must never reject; each operation reports its own failure.",
+    "// The mutation already surfaced its failure; a refresh warning would double-toast.",
   ]],
   ["src/client/features/templates/gallery-keyboard.ts", [
     "// True while a dialog/editor owns the keyboard or the event target is an input.",
@@ -258,6 +276,10 @@ const allowed = new Map([
   ]],
   ["src/client/lib/api/transport.ts", [
     "/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker's ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */",
+  ]],
+  ["src/client/lib/calendar-prefs.ts", [
+    "// Corrupt or missing stored prefs fall back to the defaults below.",
+    "// Quota or private-mode writes can throw; prefs stay authoritative in memory.",
   ]],
   ["src/client/lib/calendar-tree.test/activity.test.ts", [
     "// A mulberry32 PRNG so the differential run is deterministic across runs.",
@@ -407,6 +429,10 @@ const allowed = new Map([
     "// Regression guard for the two-level layout: a single-note edit must never",
     "// re-serialize the whole vault on the flush path.",
   ]],
+  ["src/client/lib/db/broadcast.ts", [
+    "// Best-effort cross-tab broadcast; a failed post only delays the message until the next event.",
+    "// Best-effort cross-tab broadcast; a failed post only delays the message until the next event.",
+  ]],
   ["src/client/lib/db/core.ts", [
     "// The shell cache is two-level: one `note-summary:<id>` key per note plus a",
     "// lightweight `noteIndex` id list. A typing-derived summary commit therefore",
@@ -416,6 +442,11 @@ const allowed = new Map([
     "// window collapses bursts into one flush (a lost tail at most delays the",
     "// cached shell by one window on abrupt close), and the flush tail chain keeps",
     "// each diff-based write from racing the previous one.",
+    "// The session still works in memory; only the offline restore copy is lost.",
+    "// Best-effort cache deletion; stale session keys are overwritten on the next save.",
+    "// A flush failure is absorbed by the tail chain; the next flush retries the whole snapshot.",
+    "// The tail chain must never reject; run() already absorbs individual flush failures.",
+    "// Best-effort cache deletion; stale content keys are harmless.",
   ]],
   ["src/client/lib/db/keys.ts", [
     "// The bound user and the namespace fallback flag live here (not in core.ts)",
@@ -425,14 +456,18 @@ const allowed = new Map([
   ]],
   ["src/client/lib/db/outbox-lease.ts", [
     "/** Outbox replay lease helpers extracted from core.ts (fallback when Web Locks are unavailable). */",
+    "// Lease refresh/release failures are safe: the lease expires via its TTL, and a",
+    "// stale holder simply re-competes on the next replay attempt.",
   ]],
   ["src/client/lib/db/shell-helpers.ts", [
     "/** Shell cache helpers extracted from core.ts: index loading, legacy migration, and diff-based write collection. */",
   ]],
   ["src/client/lib/db/store-io.ts", [
+    "// Quota/private-mode or transient IndexedDB failures are absorbed; in-memory state stays authoritative.",
     "// An offline tab never sees another tab's brand-new notes; merging with the",
     "// on-disk index keeps those entries when this tab rewrites the index, while",
     "// ids this tab deleted are still dropped (stale ids heal on the next pull).",
+    "// A disk read failure falls back to the in-memory index; stale ids heal on the next pull.",
     "// The index read-merge-write is the one whole-value shell write two tabs can",
     "// race; Web Locks serializes it across tabs so a concurrent merge reads the",
     "// winner's index instead of a stale one. Browsers without Web Locks fall back",
@@ -467,6 +502,9 @@ const allowed = new Map([
     "/** Strongest available random id: randomUUID → CSPRNG hex → timestamp+random. */",
     "/** randomUUID with a timestamp+random fallback (for write/outbox ids). */",
   ]],
+  ["src/client/lib/image.ts", [
+    "// Best-effort bitmap release; a failed close only leaks until GC reclaims it.",
+  ]],
   ["src/client/lib/markdown/enhance.test.ts", [
     "// Chart.js only ever assigns to the 2D context; a fresh stub per test keeps",
     "// assignments from leaking across tests.",
@@ -480,6 +518,9 @@ const allowed = new Map([
     "// One block: parse the config, then instantiate the chart; both failures land",
     "// on the same error banner. The root-containment check aborts the whole batch",
     "// once the node was detached mid-render (the original behavior).",
+  ]],
+  ["src/client/lib/markdown/enhance/index.ts", [
+    "// Pre-warm is best-effort; the on-demand loader retries when a diagram renders.",
   ]],
   ["src/client/lib/markdown/enhance/math.ts", [
     "// KaTeX output is machine-generated from math source (\\color values",
@@ -534,6 +575,10 @@ const allowed = new Map([
   ]],
   ["src/client/lib/sync.ts", [
     "/**\n   * Applies live setting changes (realtime toggle, poll interval) without\n   * tearing down the engine, its WebSocket, or its leadership claim.\n   */",
+    "// Best-effort remote refresh; the next broadcast or scheduled pull retries.",
+    "// Best-effort session refresh; the next sync payload retries.",
+    "// A failed pull is retried by the next scheduled pull; the UI stays responsive meanwhile.",
+    "// A failed replay is retried on the next pull.",
     "// The engine is created exactly once; later setting changes are pushed",
     "// through updateConfig instead of rebuilding the whole engine.",
   ]],
@@ -560,7 +605,13 @@ const allowed = new Map([
     "/** Whether an inclusive day-key range spans exactly one aligned week. */",
   ]],
   ["src/client/lib/undo-focus-pref.ts", [
+    "// Corrupt or missing stored prefs fall back to the default below.",
+    "// Quota or private-mode writes can throw; the pref stays authoritative in memory.",
     "/** Whether undo toasts should auto-focus their action button (explicit \"no-distraction\" opt-out). */",
+  ]],
+  ["src/client/lib/year-grid-prefs.ts", [
+    "// Corrupt or missing stored prefs fall back to the default below.",
+    "// Quota or private-mode writes can throw; the pref stays authoritative in memory.",
   ]],
   ["src/client/store/note-templates.ts", [
     "/** Coordinates the client-side template library: built-in seeding, categories and CRUD. */",
@@ -603,11 +654,17 @@ const allowed = new Map([
   ]],
   ["src/client/store/notes/boot-helpers.ts", [
     "/** Extracted helpers for boot()/pull()/applySync(): moved verbatim from boot.ts method bodies, behavior unchanged. */",
+    "// The in-memory persist queue is already drained; a failed disk flush is retried on the next save.",
     "/** Local cleanup in applySync: drop runtime state for deleted notes and detach them from the workspace. */",
   ]],
   ["src/client/store/notes/boot.ts", [
+    "// Best-effort settings refresh; the next sync payload retries.",
+    "// Best-effort profile/site refresh; the next sync payload retries.",
     "// Reconnect pulls race with the connection coming up; the next event or manual refresh retries.",
     "// Outbox replay is retried on the next pull; keep the UI responsive meanwhile.",
+  ]],
+  ["src/client/store/notes/destructive.ts", [
+    "// Best-effort follow-up pull; the next event or manual refresh retries.",
   ]],
   ["src/client/store/notes/edit.ts", [
     "// Keep the front matter `title` property in sync with the note title",
@@ -615,6 +672,9 @@ const allowed = new Map([
     "// Reverse sync: when the body's front matter `title` property changes,",
     "// adopt it as the note title so both stay in agreement (opt-out per",
     "// settings).",
+  ]],
+  ["src/client/store/notes/folder-actions.ts", [
+    "// Best-effort follow-up pull; the next event or manual refresh retries.",
   ]],
   ["src/client/store/notes/folder-mutations.ts", [
     "/** Optimistic folder mutations: begin/commit/rollback against pending-folder state. */",
@@ -647,12 +707,20 @@ const allowed = new Map([
   ]],
   ["src/client/store/notes/note-mutations.ts", [
     "/** Optimistic note-summary mutations (move/star/pin/archive/trash/restore) with conflict recovery. */",
+    "// Fetching the authoritative note failed; the optimistic mutation rolls back below.",
   ]],
   ["src/client/store/notes/open.ts", [
     "// Cache read failed (IndexedDB hiccup); fall through to the server fetch below.",
+    "// Best-effort journal cleanup; a stale outbox entry heals on the next replay.",
   ]],
   ["src/client/store/notes/outbox-replay.ts", [
     "/** Outbox replay machinery: dependency-ordered flush, conflict rebase, and 404 recovery (extracted from outbox.ts). */",
+    "// Best-effort journal cleanup; the in-memory recovered-write map stays authoritative for this session.",
+    "// The mark is best-effort; in-memory attempts stay authoritative for this session.",
+    "// The mark is best-effort; in-memory attempts stay authoritative for this session.",
+    "// The mark is best-effort; in-memory attempts stay authoritative for this session.",
+    "// The mark is best-effort; in-memory attempts stay authoritative for this session.",
+    "// Best-effort follow-up pull; the next event or manual refresh retries.",
   ]],
   ["src/client/store/notes/outbox.ts", [
     "/** Offline write-ahead replay: public entry (`replayOutbox`) plus re-exports; machinery lives in `outbox-replay.ts`. */",
@@ -665,6 +733,9 @@ const allowed = new Map([
   ]],
   ["src/client/store/notes/runtime.ts", [
     "/** Offline-journal runtime: dirty-revision advancement, purge snapshots, rebase and settle helpers. */",
+    "// A failed disk update only leaves the journal stale; dependents are already",
+    "// advanced in memory and the next replay reconciles the journal.",
+    "// The mark is best-effort; in-memory attempts stay authoritative for this session.",
   ]],
   ["src/client/store/notes/selectors.ts", [
     "/** Read-side selectors and hooks: navigation counts, visible notes, folder tree, active-note lookups. */",
@@ -696,7 +767,12 @@ const allowed = new Map([
   ["src/client/store/notes/workspace.ts", [
     "/** Workspace/intent helpers: view scoping for initial note selection and workspace-state snapshots. */",
   ]],
+  ["src/client/store/pinned-windows.ts", [
+    "// Quota or private-mode writes can throw; pinned windows stay authoritative in memory.",
+  ]],
   ["src/client/store/pwa.ts", [
+    "// Best-effort worker update check; the next visibility change retries.",
+    "// PWA init failures degrade to a normal session; there is nothing to surface.",
     "// Reset the flag once the toast is gone, so a later installed worker can",
     "// notify again instead of being permanently suppressed.",
   ]],
@@ -704,6 +780,9 @@ const allowed = new Map([
     "// Push unsaved offline edits before clearing local data, otherwise",
     "// they would be silently dropped. Dynamic import keeps the session",
     "// store free of a circular dependency on the notes store.",
+    "// A failed session-cache write only loses the offline copy; logout proceeds regardless.",
+    "// A failed session-cache write only loses the offline copy; clearing proceeds regardless.",
+    "// The cache tail must never reject; saveSession reports its own failures.",
   ]],
   ["src/client/store/ui/state.ts", [
     "// Quota or private-mode writes can throw; in-memory state stays authoritative for the session.",
@@ -727,6 +806,9 @@ const allowed = new Map([
     "/** Sort the user left behind when entering a calendar folder view, restored on exit. */",
     "/** External jump request for the sidebar heatmap calendar (from the settings preview); consumed by SidebarCalendar. */",
     "/** Clears the full filter combo (query, date/relative, tags) with an undo toast restoring the exact previous combination. */",
+  ]],
+  ["src/client/store/update.ts", [
+    "// Quota or private-mode writes can throw; the user is simply asked about the version again.",
   ]],
   ["src/client/store/visibility-sources.ts", [
     "// Neutral projection registry between the notes store and the share/blog",

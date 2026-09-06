@@ -21,6 +21,7 @@ function load(): YearGridColumnsPref {
         }
     }
     catch {
+        // Corrupt or missing stored prefs fall back to the default below.
     }
     return 'auto'
 }
@@ -30,6 +31,7 @@ function save(): void {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(pref))
     }
     catch {
+        // Quota or private-mode writes can throw; the pref stays authoritative in memory.
     }
 }
 

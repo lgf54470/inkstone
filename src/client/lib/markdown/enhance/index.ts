@@ -18,6 +18,7 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
         hydrateCachedMermaid(root, options.dark);
         const hasPendingDiagram = [...root.querySelectorAll<HTMLElement>('[data-mermaid]')].some((node) => node.dataset.rendered !== currentSignature(node, options.dark));
         if (hasPendingDiagram)
+            // Pre-warm is best-effort; the on-demand loader retries when a diagram renders.
             void getMermaid().catch(() => { });
     }
     else {

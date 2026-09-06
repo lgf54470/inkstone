@@ -48,6 +48,8 @@ export async function advanceDependentOutboxWrites(
         return;
     if (inheritedOutboxWrites.get(id) === sourceWriteId)
         inheritedOutboxWrites.delete(id);
+    // A failed disk update only leaves the journal stale; dependents are already
+    // advanced in memory and the next replay reconciles the journal.
     await localDb.advanceOutboxDependents(id, sourceWriteId, expectedRev, nextRev).catch(() => { });
     if (visibleBatch) {
         for (const item of visibleBatch) {
@@ -186,6 +188,7 @@ export async function rebaseQueuedWrite(
         await localDb.updateOutboxRevision(queueId, writeId, server.rev, true);
     }
     catch {
+        // The mark is best-effort; in-memory attempts stay authoritative for this session.
         await localDb.markOutboxFailure(item.id, item.writeId, 'could not rebase the offline journal').catch(() => { });
         return false;
     }

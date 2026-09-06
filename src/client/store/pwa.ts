@@ -104,11 +104,13 @@ async function registerServiceWorker(): Promise<void> {
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
+        // Best-effort worker update check; the next visibility change retries.
         void registration.update().catch(() => {})
         scheduleOfflineWarmup()
       }
     })
   } catch {
+    // PWA init failures degrade to a normal session; there is nothing to surface.
   }
 }
 

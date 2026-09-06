@@ -22,7 +22,8 @@ export function useShareNoteAnalytics(open: boolean, noteId: string) {
         excludeOwner,
       })
       setData(res)
-    } catch {
+    } catch (error) {
+      console.warn('[share] failed to load note analytics', error)
     }
   }
 

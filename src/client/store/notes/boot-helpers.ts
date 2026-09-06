@@ -129,6 +129,7 @@ export async function handlePullError(err: unknown, set: SetNotesState): Promise
     if (err instanceof ApiError && err.isOffline)
         set({ online: false });
     else if (err instanceof ApiError && err.isAuth) {
+        // The in-memory persist queue is already drained; a failed disk flush is retried on the next save.
         await notePersistCoalescer.flush().catch(() => {});
         commitAllPendingSummaryDerivations();
         useSession.setState({ status: 'anonymous' });

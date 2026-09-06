@@ -45,7 +45,8 @@ function QrContent({ url }: { url: string }) {
       await navigator.clipboard.writeText(fullUrl)
       setIsCopied(true)
       setTimeout(() => setIsCopied(false), COPY_FEEDBACK_MS)
-    } catch {
+    } catch (error) {
+      console.warn('[attachments] failed to copy QR link', error)
     }
   }
 

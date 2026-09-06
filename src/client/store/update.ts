@@ -103,5 +103,6 @@ function writeIgnoredVersion(version: string): void {
   try {
     localStorage.setItem(IGNORED_VERSION_KEY, version)
   } catch {
+    // Quota or private-mode writes can throw; the user is simply asked about the version again.
   }
 }

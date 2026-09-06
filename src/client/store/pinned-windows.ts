@@ -122,7 +122,7 @@ function persist(state: PinnedWindowsState): void {
       localStorage.setItem(PINNED_WINDOWS_STORAGE_KEY, serialized)
       lastPersisted = serialized
     } catch {
-
+      // Quota or private-mode writes can throw; pinned windows stay authoritative in memory.
     }
   }, 220)
 }

@@ -22,6 +22,7 @@ function load(): CalendarTreePrefs {
         }
     }
     catch {
+        // Corrupt or missing stored prefs fall back to the defaults below.
     }
     return { visible: true, showEmpty: false }
 }
@@ -31,6 +32,7 @@ function save(): void {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
     }
     catch {
+        // Quota or private-mode writes can throw; prefs stay authoritative in memory.
     }
 }
 

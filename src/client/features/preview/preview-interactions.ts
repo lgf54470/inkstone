@@ -333,7 +333,7 @@ function handleAnchor(event: ReactMouseEvent, target: HTMLElement, ctx: PreviewC
   try {
     id = decodeURIComponent(rawId)
   } catch {
-
+    // Malformed percent-encoding falls back to the raw id.
   }
   const heading = ctx.hostRef.current?.querySelector(`#${CSS.escape(id)}`)
   heading?.scrollIntoView({ behavior: preferredScrollBehavior(), block: 'start' })

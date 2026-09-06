@@ -127,6 +127,7 @@ async function retryRecoveredOutbox(item: OutboxItem): Promise<boolean> {
         publishOutboxResult(item, result);
     }
     catch {
+        // Best-effort journal cleanup; the in-memory recovered-write map stays authoritative for this session.
     }
     return true;
 }
@@ -240,6 +241,7 @@ async function prepareReplayPayload(item: OutboxItem, get: () => NotesState): Pr
     const title = typeof queuedTitle === 'string' ? queuedTitle : undefined;
     const rev = latestLocal?.rev ?? item.payload.rev;
     if (typeof content !== 'string' || !Number.isInteger(rev) || (rev as number) < 1) {
+        // The mark is best-effort; in-memory attempts stay authoritative for this session.
         await localDb.markOutboxFailure(item.id, item.writeId, 'invalid offline journal payload').catch(() => { });
         return null;
     }
@@ -272,6 +274,7 @@ async function replayOutboxItem(item: OutboxItem, batch: OutboxItem[], get: () =
             location.reload();
             return 'stop';
         }
+        // The mark is best-effort; in-memory attempts stay authoritative for this session.
         await localDb.markOutboxFailure(
             item.id,
             item.writeId,
@@ -360,6 +363,7 @@ async function handleConflictError(err: ApiError, item: OutboxItem, payload: Rep
         const isRestartRound = await rebaseQueuedWrite(item, localPending, server, set, get);
         return isRestartRound ? 'restart' : 'ok';
     }
+    // The mark is best-effort; in-memory attempts stay authoritative for this session.
     await localDb.markOutboxFailure(item.id, item.writeId, 'conflict response did not include the server note').catch(() => { });
     return 'ok';
 }
@@ -379,6 +383,7 @@ async function handleNotFoundError(err: ApiError, item: OutboxItem, payload: Rep
             item.payload = { ...item.payload, recoveryId };
         }
         catch {
+            // The mark is best-effort; in-memory attempts stay authoritative for this session.
             await localDb.markOutboxFailure(item.id, recoveredWriteId, 'could not persist the recovery note id').catch(() => { });
             return 'ok';
         }
@@ -418,5 +423,6 @@ async function discardRecoveredNoteLocally(item: OutboxItem, err: ApiError, copy
     if (openPane)
         useUi.getState().setWorkspaceNote(openPane, copyId, wasActive);
     if (deletionCursor === null)
+        // Best-effort follow-up pull; the next event or manual refresh retries.
         void get().pull({ force: true }).catch(() => { });
 }

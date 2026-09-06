@@ -118,6 +118,7 @@ function deleteFolderImpl(id: string, set: SetNotesState, get: () => NotesState)
             for (const [noteId, noteMutation] of noteMutations)
                 finishNoteMutation(noteId, noteMutation);
             scheduleShellSave(get);
+            // Best-effort follow-up pull; the next event or manual refresh retries.
             void get().pull().catch(() => { });
         } catch (err) {
             rollbackFolderMutation(mutation, set, get);

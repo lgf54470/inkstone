@@ -259,7 +259,9 @@ function useFavoriteTemplateItems() {
     useEffect(() => {
         const state = useNoteTemplates.getState();
         if (!state.hydrated)
-            void state.hydrate().catch(() => {});
+            void state.hydrate().catch((error) => {
+                console.warn('[notes] failed to hydrate the template library', error)
+            });
     }, []);
     return useMemo(() => favoriteTemplateItems(allTemplates), [allTemplates]);
 }

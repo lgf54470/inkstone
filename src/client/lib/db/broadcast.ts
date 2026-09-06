@@ -41,6 +41,7 @@ export function publishBroadcast(payload: BroadcastPayload): void {
     broadcastPublisher ??= new BroadcastChannel('inkstone')
     broadcastPublisher.postMessage({ ...payload, userId: dbState.activeUserId })
   } catch {
+    // Best-effort cross-tab broadcast; a failed post only delays the message until the next event.
   }
 }
 
@@ -62,6 +63,7 @@ export function createBroadcast(
       try {
         channel.postMessage({ ...payload, userId: dbState.activeUserId })
       } catch {
+        // Best-effort cross-tab broadcast; a failed post only delays the message until the next event.
       }
     },
     close: () => channel.close(),

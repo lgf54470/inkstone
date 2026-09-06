@@ -12,6 +12,7 @@ function load(): boolean {
             return raw !== 'off'
     }
     catch {
+        // Corrupt or missing stored prefs fall back to the default below.
     }
     return true
 }
@@ -21,6 +22,7 @@ function save(): void {
         localStorage.setItem(UNDO_FOCUS_STORAGE_KEY, pref ? 'on' : 'off')
     }
     catch {
+        // Quota or private-mode writes can throw; the pref stays authoritative in memory.
     }
 }
 

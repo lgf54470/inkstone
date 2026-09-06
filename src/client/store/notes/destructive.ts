@@ -223,6 +223,7 @@ async function emptyTrashImpl(
             discardNoteRuntimeState(id);
             void localDb.dropContent(id);
         }
+        // Best-effort follow-up pull; the next event or manual refresh retries.
         void get().pull().catch(() => { });
         return result.purged;
     }

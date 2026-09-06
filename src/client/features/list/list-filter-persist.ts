@@ -62,6 +62,7 @@ export function saveSessionFilter(state: ListFilterPersistState, storage: Pick<S
         storage?.setItem(LIST_FILTER_SESSION_KEY, JSON.stringify(state));
     }
     catch {
+        // Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.
     }
 }
 
@@ -93,6 +94,7 @@ export function saveRememberedFilter(state: ListFilterPersistState | null, stora
         }
     }
     catch {
+        // Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.
     }
 }
 

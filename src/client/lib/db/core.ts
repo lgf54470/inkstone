@@ -88,10 +88,13 @@ export const localDb = {
     try {
       await bindLocalUser(info.user.id)
       await set(KEY.session, info, store)
-    } catch {
+    } catch (error) {
+      // The session still works in memory; only the offline restore copy is lost.
+      console.warn('[db] failed to persist session', error)
     }
   },
 
+  // Best-effort cache deletion; stale session keys are overwritten on the next save.
   clearSession: () => del(KEY.session, store).catch(() => {}),
 
   async loadShell(): Promise<{
@@ -185,9 +188,11 @@ export const localDb = {
           }
         }
       } catch {
+        // A flush failure is absorbed by the tail chain; the next flush retries the whole snapshot.
       }
     }
     const queued = shellFlushTail.then(run, run)
+    // The tail chain must never reject; run() already absorbs individual flush failures.
     shellFlushTail = queued.catch(() => {})
     await queued
   },
@@ -225,6 +230,7 @@ export const localDb = {
   },
   setContent: (id: string, value: CachedNoteContent) =>
     safeSet(userScopedKey(KEY.content(id)), value),
+  // Best-effort cache deletion; stale content keys are harmless.
   dropContent: (id: string) => del(userScopedKey(KEY.content(id)), store).catch(() => {}),
 
   async loadTemplateLibrary(): Promise<TemplateLibraryData | null> {
