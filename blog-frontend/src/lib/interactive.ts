@@ -97,7 +97,7 @@ function handleJsLineSwitch(switchBtn: HTMLButtonElement): void {
   }
 }
 
-function runUserCode(code: string): {
+export function runUserCode(code: string): {
   logs: Array<{ type: string; text: string }>
   result: unknown
   err: unknown
