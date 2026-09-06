@@ -2,24 +2,26 @@
 import Layout from '../../layouts/Layout.astro'
 import { api } from '../../lib/api'
 import { categoryDotStyle } from '../../lib/category-style'
+import { t, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
 
+const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
 const categories = await api.getCategories()
 ---
 
-<Layout title="分类专题 - Inkstone Blog" description="所有文章专题分类目录">
+<Layout title={t('category.index_title', {}, locale)} description={t('category.index_description', {}, locale)} locale={locale}>
   <div class="max-w-3xl mx-auto space-y-8">
     <header class="text-center py-6 border-b border-[var(--border-subtle)] space-y-2">
       <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">
-        分类专题
+        {t('category.index_header', {}, locale)}
       </h1>
       <p class="text-xs text-[var(--text-tertiary)]">
-        共收录 <span class="font-bold text-[var(--accent)]">{categories.length}</span> 个文章分类专栏
+        {t('category.index_intro', { count: categories.length }, locale)}
       </p>
     </header>
 
     {categories.length === 0 ? (
       <div class="py-16 text-center text-xs text-[var(--text-tertiary)]">
-        暂无分类
+        {t('category.empty', {}, locale)}
       </div>
     ) : (
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -46,9 +48,9 @@ const categories = await api.getCategories()
             </div>
 
             <div class="pt-4 mt-3 border-t border-[var(--border-subtle)]/50 flex items-center justify-between text-xs text-[var(--text-tertiary)]">
-              <span>{cat.postsCount || 0} 篇文章</span>
+              <span>{t('category.posts_unit', { count: cat.postsCount || 0 }, locale)}</span>
               <span class="group-hover:translate-x-1 group-hover:text-[var(--accent)] transition-transform">
-                浏览专栏 →
+                {t('category.browse', {}, locale)}
               </span>
             </div>
           </a>

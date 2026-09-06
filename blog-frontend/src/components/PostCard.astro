@@ -2,19 +2,18 @@
 import type { BlogPost, BlogCategory } from '../lib/types'
 import { isSvgCoverUrl } from '../lib/content'
 import { categoryChipStyle } from '../lib/category-style'
+import { t, formatDate, DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
 
 interface Props {
   post: BlogPost
   category?: BlogCategory
+  locale?: BlogLocale
 }
 
-const { post, category } = Astro.props
+const { post, category, locale: propLocale } = Astro.props
+const locale: BlogLocale = propLocale ?? Astro.locals?.locale ?? DEFAULT_LOCALE
 
-const formattedDate = new Date(post.publishedAt || post.createdAt).toLocaleDateString('zh-CN', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-})
+const formattedDate = formatDate(post.publishedAt || post.createdAt, locale)
 ---
 
 <article class="group relative flex flex-col sm:flex-row gap-5 p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:border-[var(--accent-muted)] hover:shadow-md transition-all duration-200">
@@ -46,7 +45,7 @@ const formattedDate = new Date(post.publishedAt || post.createdAt).toLocaleDateS
       <div class="flex items-center gap-2 mb-2 flex-wrap">
         {post.isPinned && (
           <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--accent)] text-white shadow-2xs">
-            置顶
+            {t('post.pinned', {}, locale)}
           </span>
         )}
         {category && (

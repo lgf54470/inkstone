@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react'
-import { X, Palette, Sun, Moon, Monitor, RotateCcw, type LucideIcon } from 'lucide-react'
+import { X, Palette, Sun, Moon, Monitor, RotateCcw, Languages, type LucideIcon } from 'lucide-react'
 import {
   type AppearanceConfig,
   type ThemeMode,
@@ -10,37 +10,29 @@ import {
   getSavedAppearance,
   applyAppearance,
 } from '../lib/appearance'
+import { t, type BlogLocale } from '../lib/i18n'
+
+interface DrawerProps {
+  initialLocale?: BlogLocale
+}
 
 interface PickerProps {
   config: AppearanceConfig
   update: (partial: Partial<AppearanceConfig>) => void
 }
 
-interface ChoiceOption<T extends string> {
-  id: T
-  label: string
-  desc?: string
-}
-
-const THEME_OPTIONS: ChoiceOption<ThemeMode>[] = [
-  { id: 'system', label: '跟随系统' },
-  { id: 'light', label: '明亮模式' },
-  { id: 'dark', label: '深邃模式' },
+const LANGUAGE_OPTIONS: { id: BlogLocale; label: string }[] = [
+  { id: 'zh-CN', label: '简体中文' },
+  { id: 'zh-TW', label: '繁體中文' },
+  { id: 'en-US', label: 'English' },
 ]
 
-const BACKGROUND_OPTIONS: ChoiceOption<BackgroundMode>[] = [
-  { id: 'paper', label: '暖纸质感', desc: '柔和护眼纸张色' },
-  { id: 'white', label: '纯粹底色', desc: '极简高对比底色' },
-]
-
-const DENSITY_OPTIONS: ChoiceOption<DensityMode>[] = [
-  { id: 'comfortable', label: '舒适舒展', desc: '16px / 1.65' },
-  { id: 'compact', label: '紧凑高效', desc: '15px / 1.55' },
-]
-
-function useAppearanceDrawerState() {
+function useAppearanceDrawerState(initialLocale?: BlogLocale) {
   const [isOpen, setIsOpen] = useState(false)
-  const [config, setConfig] = useState<AppearanceConfig>(DEFAULT_APPEARANCE)
+  const [config, setConfig] = useState<AppearanceConfig>(() => ({
+    ...DEFAULT_APPEARANCE,
+    lang: initialLocale ?? DEFAULT_APPEARANCE.lang,
+  }))
 
   useEffect(() => {
     setConfig(getSavedAppearance())
@@ -69,24 +61,31 @@ function useAppearanceDrawerState() {
     const next = { ...config, ...partial }
     setConfig(next)
     applyAppearance(next)
+    if (partial.lang && partial.lang !== config.lang) {
+      if (typeof window !== 'undefined') {
+        setTimeout(() => window.location.reload(), 80)
+      }
+    }
   }
 
   const resetToDefault = () => {
-    setConfig(DEFAULT_APPEARANCE)
-    applyAppearance(DEFAULT_APPEARANCE)
+    const next = { ...DEFAULT_APPEARANCE, lang: config.lang }
+    setConfig(next)
+    applyAppearance(next)
   }
 
   return { isOpen, config, update, resetToDefault, close: () => setIsOpen(false) }
 }
 
-export default function AppearanceDrawer() {
-  const { isOpen, config, update, resetToDefault, close } = useAppearanceDrawerState()
+export default function AppearanceDrawer({ initialLocale }: DrawerProps) {
+  const { isOpen, config, update, resetToDefault, close } = useAppearanceDrawerState(initialLocale)
+  const lang = config.lang
 
   return (
-    <DrawerLayer isOpen={isOpen} onClose={close} ariaHidden={!isOpen}>
-      <DrawerHeader onClose={close} />
+    <DrawerLayer isOpen={isOpen} onClose={close} ariaHidden={!isOpen} title={t('appearance.title', {}, lang)}>
+      <DrawerHeader onClose={close} lang={lang} />
       <DrawerBody config={config} update={update} />
-      <DrawerFooter onReset={resetToDefault} onDone={close} />
+      <DrawerFooter onReset={resetToDefault} onDone={close} lang={lang} />
     </DrawerLayer>
   )
 }
@@ -95,11 +94,13 @@ function DrawerLayer({
   isOpen,
   onClose,
   ariaHidden,
+  title,
   children,
 }: {
   isOpen: boolean
   onClose: () => void
   ariaHidden: boolean
+  title: string
   children: ReactNode
 }) {
   return (
@@ -121,7 +122,7 @@ function DrawerLayer({
         }`}
         role="dialog"
         aria-modal="true"
-        aria-label="外观偏好设置"
+        aria-label={title}
       >
         {children}
       </aside>
@@ -129,18 +130,20 @@ function DrawerLayer({
   )
 }
 
-function DrawerHeader({ onClose }: { onClose: () => void }) {
+function DrawerHeader({ onClose, lang }: { onClose: () => void; lang: BlogLocale }) {
   return (
     <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] shrink-0">
       <div className="flex items-center gap-2">
         <Palette className="w-5 h-5 text-[var(--accent)]" />
-        <h2 className="font-semibold text-base text-[var(--text-primary)]">外观偏好设置</h2>
+        <h2 className="font-semibold text-base text-[var(--text-primary)]">
+          {t('appearance.title', {}, lang)}
+        </h2>
       </div>
       <button
         type="button"
         onClick={onClose}
         className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-        aria-label="关闭"
+        aria-label={t('appearance.close', {}, lang)}
       >
         <X className="w-5 h-5" />
       </button>
@@ -155,6 +158,7 @@ function DrawerBody({ config, update }: PickerProps) {
       <AccentPicker config={config} update={update} />
       <BackgroundPicker config={config} update={update} />
       <DensityPicker config={config} update={update} />
+      <LanguagePicker config={config} update={update} />
     </div>
   )
 }
@@ -206,9 +210,16 @@ function IconChoice({
 }
 
 function ThemePicker({ config, update }: PickerProps) {
+  const lang = config.lang
+  const themeOptions: { id: ThemeMode; label: string }[] = [
+    { id: 'system', label: t('appearance.theme_system', {}, lang) },
+    { id: 'light', label: t('appearance.theme_light', {}, lang) },
+    { id: 'dark', label: t('appearance.theme_dark', {}, lang) },
+  ]
+
   return (
-    <PickerSection title="主题模式" gridClass="grid grid-cols-3 gap-2">
-      {THEME_OPTIONS.map((option) => (
+    <PickerSection title={t('appearance.theme', {}, lang)} gridClass="grid grid-cols-3 gap-2">
+      {themeOptions.map((option) => (
         <IconChoice
           key={option.id}
           icon={iconForTheme(option.id)}
@@ -232,10 +243,22 @@ function iconForTheme(id: ThemeMode): LucideIcon {
 }
 
 function AccentPicker({ config, update }: PickerProps) {
+  const lang = config.lang
+  const accentKeyMap: Record<string, Parameters<typeof t>[0]> = {
+    cinnabar: 'appearance.accent_cinnabar',
+    indigo: 'appearance.accent_indigo',
+    celadon: 'appearance.accent_celadon',
+    amber: 'appearance.accent_amber',
+    terracotta: 'appearance.accent_terracotta',
+    wisteria: 'appearance.accent_wisteria',
+    graphite: 'appearance.accent_graphite',
+  }
+
   return (
-    <PickerSection title="强调色盘 (东方雅色)" gridClass="grid grid-cols-4 gap-2.5">
+    <PickerSection title={t('appearance.accent', {}, lang)} gridClass="grid grid-cols-4 gap-2.5">
       {ACCENT_OPTIONS.map((item) => {
         const active = config.accent === item.id
+        const label = t(accentKeyMap[item.id] || 'appearance.accent_cinnabar', {}, lang)
         return (
           <button
             key={item.id}
@@ -253,7 +276,7 @@ function AccentPicker({ config, update }: PickerProps) {
             >
               {active && <span className="w-1.5 h-1.5 rounded-full bg-white shadow-xs" />}
             </span>
-            <span className="text-[11px] truncate w-full text-center">{item.name}</span>
+            <span className="text-[11px] truncate w-full text-center">{label}</span>
           </button>
         )
       })}
@@ -291,44 +314,93 @@ function TwoLineChoice({
 }
 
 function BackgroundPicker({ config, update }: PickerProps) {
+  const lang = config.lang
+  const backgroundOptions: { id: BackgroundMode; label: string; desc: string }[] = [
+    { id: 'paper', label: t('appearance.bg_paper', {}, lang), desc: t('appearance.bg_paper_desc', {}, lang) },
+    { id: 'white', label: t('appearance.bg_white', {}, lang), desc: t('appearance.bg_white_desc', {}, lang) },
+  ]
+
   return (
-    <PickerSection title="底色风格" gridClass="grid grid-cols-2 gap-2">
-      {BACKGROUND_OPTIONS.map((option) => {
-        const active = config.background === option.id
-        return (
-          <TwoLineChoice
-            key={option.id}
-            active={active}
-            onClick={() => update({ background: option.id })}
-            title={option.label}
-            desc={option.desc ?? ''}
-          />
-        )
-      })}
+    <PickerSection title={t('appearance.background', {}, lang)} gridClass="grid grid-cols-2 gap-2">
+      {backgroundOptions.map((option) => (
+        <TwoLineChoice
+          key={option.id}
+          active={config.background === option.id}
+          onClick={() => update({ background: option.id })}
+          title={option.label}
+          desc={option.desc}
+        />
+      ))}
     </PickerSection>
   )
 }
 
 function DensityPicker({ config, update }: PickerProps) {
+  const lang = config.lang
+  const densityOptions: { id: DensityMode; label: string; desc: string }[] = [
+    {
+      id: 'comfortable',
+      label: t('appearance.density_comfortable', {}, lang),
+      desc: t('appearance.density_comfortable_desc', {}, lang),
+    },
+    {
+      id: 'compact',
+      label: t('appearance.density_compact', {}, lang),
+      desc: t('appearance.density_compact_desc', {}, lang),
+    },
+  ]
+
   return (
-    <PickerSection title="排版密度" gridClass="grid grid-cols-2 gap-2">
-      {DENSITY_OPTIONS.map((option) => {
-        const active = config.density === option.id
+    <PickerSection title={t('appearance.density', {}, lang)} gridClass="grid grid-cols-2 gap-2">
+      {densityOptions.map((option) => (
+        <TwoLineChoice
+          key={option.id}
+          active={config.density === option.id}
+          onClick={() => update({ density: option.id })}
+          title={option.label}
+          desc={option.desc}
+        />
+      ))}
+    </PickerSection>
+  )
+}
+
+function LanguagePicker({ config, update }: PickerProps) {
+  const lang = config.lang
+
+  return (
+    <PickerSection title={t('appearance.language', {}, lang)} gridClass="grid grid-cols-3 gap-2">
+      {LANGUAGE_OPTIONS.map((option) => {
+        const active = config.lang === option.id
         return (
-          <TwoLineChoice
+          <button
             key={option.id}
-            active={active}
-            onClick={() => update({ density: option.id })}
-            title={option.label}
-            desc={option.desc ?? ''}
-          />
+            type="button"
+            onClick={() => update({ lang: option.id })}
+            className={`flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
+              active
+                ? 'border-[var(--accent)] bg-[var(--accent-softer)] text-[var(--accent)] font-semibold shadow-xs'
+                : 'border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+            }`}
+          >
+            <Languages className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{option.label}</span>
+          </button>
         )
       })}
     </PickerSection>
   )
 }
 
-function DrawerFooter({ onReset, onDone }: { onReset: () => void; onDone: () => void }) {
+function DrawerFooter({
+  onReset,
+  onDone,
+  lang,
+}: {
+  onReset: () => void
+  onDone: () => void
+  lang: BlogLocale
+}) {
   return (
     <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-raised)] flex items-center justify-between shrink-0">
       <button
@@ -337,14 +409,14 @@ function DrawerFooter({ onReset, onDone }: { onReset: () => void; onDone: () => 
         className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] px-2 py-1.5 rounded transition-colors cursor-pointer"
       >
         <RotateCcw className="w-3.5 h-3.5" />
-        <span>恢复默认</span>
+        <span>{t('appearance.reset', {}, lang)}</span>
       </button>
       <button
         type="button"
         onClick={onDone}
         className="px-4 py-1.5 rounded-lg bg-[var(--accent)] text-white font-medium text-xs hover:opacity-90 transition-opacity shadow-xs cursor-pointer"
       >
-        完成
+        {t('appearance.done', {}, lang)}
       </button>
     </div>
   )

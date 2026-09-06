@@ -1,8 +1,16 @@
-// Client-side interactivity for Mermaid, Chart.js, code copy, tabs, and JS runner
 import type { Chart, ChartConfiguration } from 'chart.js/auto'
 import { asRecord } from './normalize'
 import { COPY_FEEDBACK_MS } from './constants'
 import { buildOutputRows, createJsExampleFrame, forwardRowsToFrame, runUserCode } from './js-runner-runner'
+import { t, DEFAULT_LOCALE, isSupportedLocale, type BlogLocale } from './i18n'
+
+function getCurrentLocale(): BlogLocale {
+  if (typeof document !== 'undefined') {
+    const lang = document.documentElement.getAttribute('lang')
+    if (isSupportedLocale(lang)) return lang
+  }
+  return DEFAULT_LOCALE
+}
 
 export function initInteractiveContent() {
   if (typeof window === 'undefined') return
@@ -63,8 +71,9 @@ function initCodeCopy() {
     if (!codeEl) return
     const codeText = codeEl.textContent ?? ''
     navigator.clipboard.writeText(codeText).then(() => {
-      const originalText = copyBtn.textContent || '复制'
-      copyBtn.textContent = '已复制'
+      const locale = getCurrentLocale()
+      const originalText = copyBtn.textContent || t('interactive.copy', {}, locale)
+      copyBtn.textContent = t('interactive.copied', {}, locale)
       setTimeout(() => {
         copyBtn.textContent = originalText
       }, COPY_FEEDBACK_MS)
@@ -106,7 +115,8 @@ async function handleJsRun(runBtn: HTMLButtonElement): Promise<void> {
   const statusEl = block.querySelector<HTMLElement>('.js-example-output-status')
   if (!codeEl || !outputBody) return
 
-  setRunStatus(statusEl, 'is-running', '运行中…')
+  const locale = getCurrentLocale()
+  setRunStatus(statusEl, 'is-running', t('interactive.running', {}, locale))
   outputBody.replaceChildren()
 
   const outcome = await runUserCode(codeEl.textContent ?? '')
@@ -159,7 +169,8 @@ export function showChartError(block: HTMLElement, err: unknown, raw: string): v
   banner.className = 'chart-error-banner'
   const text = document.createElement('span')
   text.className = 'chart-error-text'
-  text.textContent = `图表渲染失败: ${errorMessage(err)}`
+  const locale = getCurrentLocale()
+  text.textContent = t('interactive.chart_error', { error: errorMessage(err) }, locale)
   const pre = document.createElement('pre')
   const code = document.createElement('code')
   code.textContent = raw

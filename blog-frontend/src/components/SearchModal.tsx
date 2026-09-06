@@ -10,6 +10,33 @@ import { Search, X, Calendar, Tag, Loader2 } from 'lucide-react'
 import { api } from '../lib/api'
 import type { BlogPost } from '../lib/types'
 import { SEARCH_RESULT_LIMIT, SEARCH_FOCUS_DELAY_MS, SEARCH_DEBOUNCE_MS } from '../lib/constants'
+import { t, formatDate, DEFAULT_LOCALE, isSupportedLocale, type BlogLocale } from '../lib/i18n'
+
+interface SearchModalProps {
+  initialLocale?: BlogLocale
+}
+
+function useCurrentLocale(propLocale?: BlogLocale): BlogLocale {
+  const [locale, setLocale] = useState<BlogLocale>(() => {
+    if (propLocale) return propLocale
+    if (typeof document !== 'undefined') {
+      const docLang = document.documentElement.getAttribute('lang')
+      if (isSupportedLocale(docLang)) return docLang
+    }
+    return DEFAULT_LOCALE
+  })
+
+  useEffect(() => {
+    const handleLocaleChange = (e: Event) => {
+      const custom = e as CustomEvent<BlogLocale>
+      if (isSupportedLocale(custom.detail)) setLocale(custom.detail)
+    }
+    window.addEventListener('inkstone-locale-change', handleLocaleChange)
+    return () => window.removeEventListener('inkstone-locale-change', handleLocaleChange)
+  }, [])
+
+  return propLocale || locale
+}
 
 function useVisibility() {
   const [isOpen, setIsOpen] = useState(false)
@@ -174,8 +201,9 @@ function useSearchModal() {
   }
 }
 
-export default function SearchModal() {
+export default function SearchModal({ initialLocale }: SearchModalProps) {
   const search = useSearchModal()
+  const locale = useCurrentLocale(initialLocale)
 
   return (
     <SearchLayer
@@ -187,6 +215,7 @@ export default function SearchModal() {
         query={search.query}
         loading={search.loading}
         inputRef={search.inputRef}
+        locale={locale}
         onQueryChange={search.onQueryChange}
         onClear={search.clearQuery}
       />
@@ -195,9 +224,15 @@ export default function SearchModal() {
         loading={search.loading}
         results={search.results}
         selectedIndex={search.selectedIndex}
+        locale={locale}
         onHoverRow={search.onHoverRow}
       />
-      <SearchFooter query={search.query} resultCount={search.results.length} total={search.total} />
+      <SearchFooter
+        query={search.query}
+        resultCount={search.results.length}
+        total={search.total}
+        locale={locale}
+      />
     </SearchLayer>
   )
 }
@@ -242,12 +277,14 @@ function SearchInputRow({
   query,
   loading,
   inputRef,
+  locale,
   onQueryChange,
   onClear,
 }: {
   query: string
   loading: boolean
   inputRef: RefObject<HTMLInputElement | null>
+  locale: BlogLocale
   onQueryChange: (value: string) => void
   onClear: () => void
 }) {
@@ -259,7 +296,7 @@ function SearchInputRow({
         type="text"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
-        placeholder="搜索文章标题、摘要、标签... (↑↓ 选择，Enter 确认)"
+        placeholder={t('search.input_placeholder', {}, locale)}
         className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-[var(--text-quaternary)] text-[var(--text-primary)]"
       />
       {loading ? (
@@ -286,23 +323,25 @@ function SearchResultsPanel({
   loading,
   results,
   selectedIndex,
+  locale,
   onHoverRow,
 }: {
   query: string
   loading: boolean
   results: BlogPost[]
   selectedIndex: number
+  locale: BlogLocale
   onHoverRow: (idx: number) => void
 }) {
   return (
     <div className="max-h-96 overflow-y-auto p-2">
       {query.trim() === '' ? (
         <div className="py-10 text-center text-xs text-[var(--text-tertiary)]">
-          输入关键字进行全站搜索 (Cmd+K)
+          {t('search.empty_query_hint', {}, locale)}
         </div>
       ) : results.length === 0 && !loading ? (
         <div className="py-10 text-center text-xs text-[var(--text-tertiary)]">
-          未找到与 &quot;{query}&quot; 相关的文章
+          {t('search.no_results', { query }, locale)}
         </div>
       ) : (
         <div className="space-y-1">
@@ -311,6 +350,7 @@ function SearchResultsPanel({
               key={post.id}
               post={post}
               selected={idx === selectedIndex}
+              locale={locale}
               onHover={() => onHoverRow(idx)}
             />
           ))}
@@ -320,7 +360,7 @@ function SearchResultsPanel({
   )
 }
 
-function SearchResultTitle({ post, selected }: { post: BlogPost; selected: boolean }) {
+function SearchResultTitle({ post, selected, locale }: { post: BlogPost; selected: boolean; locale: BlogLocale }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <h4
@@ -332,7 +372,7 @@ function SearchResultTitle({ post, selected }: { post: BlogPost; selected: boole
       </h4>
       <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-quaternary)] shrink-0">
         <Calendar className="w-3 h-3" />
-        <span>{new Date(post.publishedAt || post.createdAt).toLocaleDateString()}</span>
+        <span>{formatDate(post.publishedAt || post.createdAt, locale)}</span>
       </div>
     </div>
   )
@@ -364,7 +404,17 @@ function SearchResultTags({ post }: { post: BlogPost }) {
   )
 }
 
-function SearchResultRow({ post, selected, onHover }: { post: BlogPost; selected: boolean; onHover: () => void }) {
+function SearchResultRow({
+  post,
+  selected,
+  locale,
+  onHover,
+}: {
+  post: BlogPost
+  selected: boolean
+  locale: BlogLocale
+  onHover: () => void
+}) {
   return (
     <a
       href={`/posts/${post.slug}`}
@@ -373,25 +423,35 @@ function SearchResultRow({ post, selected, onHover }: { post: BlogPost; selected
         selected ? 'bg-[var(--accent-softer)] border-l-2 border-[var(--accent)]' : 'hover:bg-[var(--bg-hover)]'
       }`}
     >
-      <SearchResultTitle post={post} selected={selected} />
+      <SearchResultTitle post={post} selected={selected} locale={locale} />
       <SearchResultExcerpt post={post} />
       <SearchResultTags post={post} />
     </a>
   )
 }
 
-function SearchFooter({ query, resultCount, total }: { query: string; resultCount: number; total: number }) {
+function SearchFooter({
+  query,
+  resultCount,
+  total,
+  locale,
+}: {
+  query: string
+  resultCount: number
+  total: number
+  locale: BlogLocale
+}) {
   return (
     <div className="px-4 py-2 bg-[var(--bg-raised)] border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-quaternary)] flex items-center justify-between">
       <span>
         {query.trim()
-          ? `全站匹配 ${total} 篇，当前展示 ${resultCount} 篇`
-          : '支持全站文章搜索'}
+          ? t('search.footer_matched', { total, count: resultCount }, locale)
+          : t('search.footer_idle', {}, locale)}
       </span>
       <div className="flex items-center gap-3">
-        <span>导航: ↑ ↓</span>
-        <span>打开: ↵</span>
-        <span>退出: ESC</span>
+        <span>{t('search.key_nav', {}, locale)}</span>
+        <span>{t('search.key_open', {}, locale)}</span>
+        <span>{t('search.key_esc', {}, locale)}</span>
       </div>
     </div>
   )

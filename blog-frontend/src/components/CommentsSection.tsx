@@ -12,10 +12,12 @@ import {
 } from 'lucide-react'
 import { api } from '../lib/api'
 import type { BlogComment } from '../lib/types'
+import { t, formatDate, DEFAULT_LOCALE, isSupportedLocale, type BlogLocale } from '../lib/i18n'
 
 interface CommentsSectionProps {
   postId: string
   allowComments?: boolean
+  initialLocale?: BlogLocale
 }
 
 type CommentFieldKey = 'name' | 'email' | 'url' | 'content'
@@ -31,12 +33,38 @@ const EMPTY_FIELDS: CommentFields = { name: '', email: '', url: '', content: '' 
 
 type SubmitResult = { kind: 'success'; comment?: BlogComment } | { kind: 'error'; message: string }
 
-async function submitCommentRequest(postId: string, fields: CommentFields): Promise<SubmitResult> {
+function useCurrentLocale(propLocale?: BlogLocale): BlogLocale {
+  const [locale, setLocale] = useState<BlogLocale>(() => {
+    if (propLocale) return propLocale
+    if (typeof document !== 'undefined') {
+      const docLang = document.documentElement.getAttribute('lang')
+      if (isSupportedLocale(docLang)) return docLang
+    }
+    return DEFAULT_LOCALE
+  })
+
+  useEffect(() => {
+    const handleLocaleChange = (e: Event) => {
+      const custom = e as CustomEvent<BlogLocale>
+      if (isSupportedLocale(custom.detail)) setLocale(custom.detail)
+    }
+    window.addEventListener('inkstone-locale-change', handleLocaleChange)
+    return () => window.removeEventListener('inkstone-locale-change', handleLocaleChange)
+  }, [])
+
+  return propLocale || locale
+}
+
+async function submitCommentRequest(
+  postId: string,
+  fields: CommentFields,
+  locale: BlogLocale
+): Promise<SubmitResult> {
   const name = fields.name.trim()
   const email = fields.email.trim()
   const content = fields.content.trim()
   if (!name || !email || !content) {
-    return { kind: 'error', message: '请填写称呼、邮箱与评论内容' }
+    return { kind: 'error', message: t('comments.error_required', {}, locale) }
   }
   try {
     const res = await api.submitComment({
@@ -50,7 +78,7 @@ async function submitCommentRequest(postId: string, fields: CommentFields): Prom
     return { kind: 'success', comment: approved }
   } catch (err: unknown) {
     const errorText = err instanceof Error ? err.message : String(err)
-    return { kind: 'error', message: errorText || '提交评论失败，请重试' }
+    return { kind: 'error', message: errorText || t('comments.error_generic', {}, locale) }
   }
 }
 
@@ -59,7 +87,6 @@ function useCommentFetch(postId: string, enabled: boolean) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Closed-comment posts render a static notice; skip the network request entirely.
     if (!enabled) {
       setComments([])
       setLoading(false)
@@ -95,7 +122,11 @@ function useCommentFetch(postId: string, enabled: boolean) {
   return { comments, loading, appendComment }
 }
 
-function useCommentForm(postId: string, onPosted?: (comment?: BlogComment) => void) {
+function useCommentForm(
+  postId: string,
+  locale: BlogLocale,
+  onPosted?: (comment?: BlogComment) => void
+) {
   const [fields, setFields] = useState<CommentFields>(EMPTY_FIELDS)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -110,16 +141,12 @@ function useCommentForm(postId: string, onPosted?: (comment?: BlogComment) => vo
     setSubmitting(true)
     setMessage(null)
 
-    const result = await submitCommentRequest(postId, fields)
+    const result = await submitCommentRequest(postId, fields, locale)
     if (result.kind === 'success') {
-      if (result.comment) {
-        setMessage({ type: 'success', text: '评论发布成功！' })
-      } else {
-        setMessage({
-          type: 'success',
-          text: '评论提交成功！博主开启了留言审核机制，审核通过后将公开显示。',
-        })
-      }
+      const successText = result.comment
+        ? t('comments.success_approved', {}, locale)
+        : t('comments.success_moderated', {}, locale)
+      setMessage({ type: 'success', text: successText })
       setFields((prev) => ({ ...prev, content: '' }))
       onPosted?.(result.comment)
     } else {
@@ -132,42 +159,50 @@ function useCommentForm(postId: string, onPosted?: (comment?: BlogComment) => vo
   return { fields, submitting, message, updateField, handleSubmit }
 }
 
-export default function CommentsSection({ postId, allowComments = true }: CommentsSectionProps) {
+export default function CommentsSection({
+  postId,
+  allowComments = true,
+  initialLocale,
+}: CommentsSectionProps) {
+  const locale = useCurrentLocale(initialLocale)
   const { comments, loading, appendComment } = useCommentFetch(postId, allowComments)
-  const form = useCommentForm(postId, appendComment)
+  const form = useCommentForm(postId, locale, appendComment)
 
   if (!allowComments) {
-    return <CommentsDisabled />
+    return <CommentsDisabled locale={locale} />
   }
 
   return (
     <section className="my-12 pt-8 border-t border-[var(--border-default)]" id="comments">
-      <CommentsHeader count={comments.length} />
+      <CommentsHeader count={comments.length} locale={locale} />
       {form.message && <MessageBanner message={form.message} />}
       <CommentForm
         fields={form.fields}
         submitting={form.submitting}
+        locale={locale}
         onFieldChange={form.updateField}
         onSubmit={form.handleSubmit}
       />
-      <CommentList comments={comments} loading={loading} />
+      <CommentList comments={comments} loading={loading} locale={locale} />
     </section>
   )
 }
 
-function CommentsDisabled() {
+function CommentsDisabled({ locale }: { locale: BlogLocale }) {
   return (
     <div className="my-10 p-6 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-sunken)] text-center text-xs text-[var(--text-tertiary)]">
-      博主已关闭此文章的评论功能
+      {t('comments.disabled', {}, locale)}
     </div>
   )
 }
 
-function CommentsHeader({ count }: { count: number }) {
+function CommentsHeader({ count, locale }: { count: number; locale: BlogLocale }) {
   return (
     <div className="flex items-center gap-2 mb-6">
       <MessageSquare className="w-5 h-5 text-[var(--accent)]" />
-      <h3 className="text-lg font-bold text-[var(--text-primary)]">评论与讨论 ({count})</h3>
+      <h3 className="text-lg font-bold text-[var(--text-primary)]">
+        {t('comments.title', { count }, locale)}
+      </h3>
     </div>
   )
 }
@@ -201,31 +236,58 @@ interface MetaFieldConfig {
   required?: boolean
 }
 
-const META_FIELD_CONFIGS: MetaFieldConfig[] = [
-  { key: 'name', label: '称呼', type: 'text', placeholder: '如何称呼您', icon: User, required: true },
-  { key: 'email', label: '邮箱', type: 'email', placeholder: '不公开，用于接收回复', icon: Mail, required: true },
-  { key: 'url', label: '网址 (选填)', type: 'url', placeholder: 'https://', icon: Globe },
-]
+function getFieldConfigs(locale: BlogLocale): MetaFieldConfig[] {
+  return [
+    {
+      key: 'name',
+      label: t('comments.field_name', {}, locale),
+      type: 'text',
+      placeholder: t('comments.field_name_placeholder', {}, locale),
+      icon: User,
+      required: true,
+    },
+    {
+      key: 'email',
+      label: t('comments.field_email', {}, locale),
+      type: 'email',
+      placeholder: t('comments.field_email_placeholder', {}, locale),
+      icon: Mail,
+      required: true,
+    },
+    {
+      key: 'url',
+      label: t('comments.field_url', {}, locale),
+      type: 'url',
+      placeholder: t('comments.field_url_placeholder', {}, locale),
+      icon: Globe,
+    },
+  ]
+}
 
 function CommentForm({
   fields,
   submitting,
+  locale,
   onFieldChange,
   onSubmit,
 }: {
   fields: CommentFields
   submitting: boolean
+  locale: BlogLocale
   onFieldChange: (key: CommentFieldKey) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void
   onSubmit: (e: SyntheticEvent<HTMLFormElement>) => void
 }) {
+  const configs = getFieldConfigs(locale)
   return (
     <form
       onSubmit={onSubmit}
       className="mb-8 p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-xs space-y-4"
     >
-      <h4 className="text-sm font-semibold text-[var(--text-primary)]">发表看法</h4>
+      <h4 className="text-sm font-semibold text-[var(--text-primary)]">
+        {t('comments.form_heading', {}, locale)}
+      </h4>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {META_FIELD_CONFIGS.map((cfg) => (
+        {configs.map((cfg) => (
           <CommentInput
             key={cfg.key}
             config={cfg}
@@ -234,8 +296,8 @@ function CommentForm({
           />
         ))}
       </div>
-      <CommentContentField value={fields.content} onChange={onFieldChange('content')} />
-      <CommentFormActions submitting={submitting} />
+      <CommentContentField value={fields.content} locale={locale} onChange={onFieldChange('content')} />
+      <CommentFormActions submitting={submitting} locale={locale} />
     </form>
   )
 }
@@ -273,32 +335,36 @@ function CommentInput({
 
 function CommentContentField({
   value,
+  locale,
   onChange,
 }: {
   value: string
+  locale: BlogLocale
   onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void
 }) {
   return (
     <div>
       <label className="block text-[11px] font-medium text-[var(--text-secondary)] mb-1">
-        评论内容 <span className="text-[var(--accent)]">*</span>
+        {t('comments.field_content', {}, locale)} <span className="text-[var(--accent)]">*</span>
       </label>
       <textarea
         required
         rows={3}
         value={value}
         onChange={onChange}
-        placeholder="写下您的见解或疑问..."
+        placeholder={t('comments.field_content_placeholder', {}, locale)}
         className="w-full p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-y leading-relaxed"
       />
     </div>
   )
 }
 
-function CommentFormActions({ submitting }: { submitting: boolean }) {
+function CommentFormActions({ submitting, locale }: { submitting: boolean; locale: BlogLocale }) {
   return (
     <div className="flex items-center justify-between pt-1">
-      <span className="text-[11px] text-[var(--text-quaternary)]">文明发言，严谨交流</span>
+      <span className="text-[11px] text-[var(--text-quaternary)]">
+        {t('comments.rules_hint', {}, locale)}
+      </span>
       <button
         type="submit"
         disabled={submitting}
@@ -307,12 +373,12 @@ function CommentFormActions({ submitting }: { submitting: boolean }) {
         {submitting ? (
           <>
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>提交中...</span>
+            <span>{t('comments.submitting', {}, locale)}</span>
           </>
         ) : (
           <>
             <Send className="w-3.5 h-3.5" />
-            <span>发表评论</span>
+            <span>{t('comments.submit', {}, locale)}</span>
           </>
         )}
       </button>
@@ -320,32 +386,40 @@ function CommentFormActions({ submitting }: { submitting: boolean }) {
   )
 }
 
-function CommentList({ comments, loading }: { comments: BlogComment[]; loading: boolean }) {
+function CommentList({
+  comments,
+  loading,
+  locale,
+}: {
+  comments: BlogComment[]
+  loading: boolean
+  locale: BlogLocale
+}) {
   if (loading) {
     return (
       <div className="py-8 text-center text-xs text-[var(--text-tertiary)] flex items-center justify-center gap-2">
         <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />
-        <span>加载评论中...</span>
+        <span>{t('comments.loading', {}, locale)}</span>
       </div>
     )
   }
   if (comments.length === 0) {
     return (
       <div className="py-10 text-center text-xs text-[var(--text-quaternary)] bg-[var(--bg-surface)] rounded-xl border border-[var(--border-subtle)]">
-        暂无评论，来发表第一条评论吧！
+        {t('comments.empty', {}, locale)}
       </div>
     )
   }
   return (
     <div className="space-y-4">
       {comments.map((item) => (
-        <CommentItem key={item.id} item={item} />
+        <CommentItem key={item.id} item={item} locale={locale} />
       ))}
     </div>
   )
 }
 
-function CommentItem({ item }: { item: BlogComment }) {
+function CommentItem({ item, locale }: { item: BlogComment; locale: BlogLocale }) {
   return (
     <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs space-y-2">
       <div className="flex items-center justify-between">
@@ -369,7 +443,13 @@ function CommentItem({ item }: { item: BlogComment }) {
           </div>
         </div>
         <time className="text-[11px] text-[var(--text-quaternary)]">
-          {new Date(item.createdAt).toLocaleString()}
+          {formatDate(item.createdAt, locale, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
         </time>
       </div>
       <p className="text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed pl-9">

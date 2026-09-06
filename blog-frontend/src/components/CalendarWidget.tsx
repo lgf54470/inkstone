@@ -2,13 +2,44 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, FileText } from 'lucide-react'
 import { api } from '../lib/api'
 import type { CalendarDayPost } from '../lib/types'
+import {
+  t,
+  formatMonthYear,
+  DEFAULT_LOCALE,
+  isSupportedLocale,
+  type BlogLocale,
+} from '../lib/i18n'
 
 interface CalendarWidgetProps {
   initialDays?: CalendarDayPost[]
   isFullPage?: boolean
+  initialLocale?: BlogLocale
 }
 
-const WEEK_HEADERS = ['日', '一', '二', '三', '四', '五', '六']
+const WEEK_HEADERS_ZH = ['日', '一', '二', '三', '四', '五', '六']
+const WEEK_HEADERS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function useCurrentLocale(propLocale?: BlogLocale): BlogLocale {
+  const [locale, setLocale] = useState<BlogLocale>(() => {
+    if (propLocale) return propLocale
+    if (typeof document !== 'undefined') {
+      const docLang = document.documentElement.getAttribute('lang')
+      if (isSupportedLocale(docLang)) return docLang
+    }
+    return DEFAULT_LOCALE
+  })
+
+  useEffect(() => {
+    const handleLocaleChange = (e: Event) => {
+      const custom = e as CustomEvent<BlogLocale>
+      if (isSupportedLocale(custom.detail)) setLocale(custom.detail)
+    }
+    window.addEventListener('inkstone-locale-change', handleLocaleChange)
+    return () => window.removeEventListener('inkstone-locale-change', handleLocaleChange)
+  }, [])
+
+  return propLocale || locale
+}
 
 function pad2(value: number): string {
   return String(value).padStart(2, '0')
@@ -53,7 +84,6 @@ function useMonthNav() {
 function useCalendarDays(initialDays: CalendarDayPost[], currentYear: number, currentMonth: number) {
   const [daysData, setDaysData] = useState<CalendarDayPost[]>(initialDays)
 
-  // Fetch when year or month changes
   useEffect(() => {
     let ignore = false
     async function loadData() {
@@ -76,12 +106,16 @@ function useCalendarDays(initialDays: CalendarDayPost[], currentYear: number, cu
   return daysData
 }
 
-export default function CalendarWidget({ initialDays = [], isFullPage = false }: CalendarWidgetProps) {
+export default function CalendarWidget({
+  initialDays = [],
+  isFullPage = false,
+  initialLocale,
+}: CalendarWidgetProps) {
+  const locale = useCurrentLocale(initialLocale)
   const { currentYear, currentMonth, prevMonth, nextMonth, goToday } = useMonthNav()
   const daysData = useCalendarDays(initialDays, currentYear, currentMonth)
   const [selectedDay, setSelectedDay] = useState<CalendarDayPost | null>(null)
 
-  // Clear the selected day whenever the displayed month changes
   useEffect(() => {
     setSelectedDay(null)
   }, [currentYear, currentMonth])
@@ -94,11 +128,12 @@ export default function CalendarWidget({ initialDays = [], isFullPage = false }:
         currentYear={currentYear}
         currentMonth={currentMonth}
         isFullPage={isFullPage}
+        locale={locale}
         onPrev={prevMonth}
         onNext={nextMonth}
         onToday={goToday}
       />
-      <WeekHeaderRow />
+      <WeekHeaderRow locale={locale} />
       <DayGrid
         daysData={daysData}
         currentYear={currentYear}
@@ -107,7 +142,9 @@ export default function CalendarWidget({ initialDays = [], isFullPage = false }:
         selectedDay={selectedDay}
         onSelectDay={setSelectedDay}
       />
-      {selectedDay && <SelectedDayPanel day={selectedDay} onClose={() => setSelectedDay(null)} />}
+      {selectedDay && (
+        <SelectedDayPanel day={selectedDay} locale={locale} onClose={() => setSelectedDay(null)} />
+      )}
     </CalendarShell>
   )
 }
@@ -125,10 +162,12 @@ function CalendarShell({ isFullPage, children }: { isFullPage: boolean; children
 }
 
 function CalendarNavButtons({
+  locale,
   onPrev,
   onNext,
   onToday,
 }: {
+  locale: BlogLocale
   onPrev: () => void
   onNext: () => void
   onToday: () => void
@@ -139,7 +178,7 @@ function CalendarNavButtons({
         type="button"
         onClick={onPrev}
         className="p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-        aria-label="上个月"
+        aria-label={t('calendar.prev_month', {}, locale)}
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
@@ -148,13 +187,13 @@ function CalendarNavButtons({
         onClick={onToday}
         className="text-xs px-2 py-0.5 rounded border border-[var(--border-subtle)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]"
       >
-        今
+        {t('calendar.today', {}, locale)}
       </button>
       <button
         type="button"
         onClick={onNext}
         className="p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-        aria-label="下个月"
+        aria-label={t('calendar.next_month', {}, locale)}
       >
         <ChevronRight className="w-4 h-4" />
       </button>
@@ -166,6 +205,7 @@ function CalendarHeader({
   currentYear,
   currentMonth,
   isFullPage,
+  locale,
   onPrev,
   onNext,
   onToday,
@@ -173,6 +213,7 @@ function CalendarHeader({
   currentYear: number
   currentMonth: number
   isFullPage: boolean
+  locale: BlogLocale
   onPrev: () => void
   onNext: () => void
   onToday: () => void
@@ -182,18 +223,19 @@ function CalendarHeader({
       <div className="flex items-center gap-2">
         <CalendarIcon className="w-4 h-4 text-[var(--accent)]" />
         <h3 className={`font-semibold ${isFullPage ? 'text-lg' : 'text-sm'}`}>
-          {currentYear}年 {currentMonth}月
+          {formatMonthYear(currentYear, currentMonth, locale)}
         </h3>
       </div>
-      <CalendarNavButtons onPrev={onPrev} onNext={onNext} onToday={onToday} />
+      <CalendarNavButtons locale={locale} onPrev={onPrev} onNext={onNext} onToday={onToday} />
     </div>
   )
 }
 
-function WeekHeaderRow() {
+function WeekHeaderRow({ locale }: { locale: BlogLocale }) {
+  const headers = locale === 'en-US' ? WEEK_HEADERS_EN : WEEK_HEADERS_ZH
   return (
     <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
-      {WEEK_HEADERS.map((h, i) => (
+      {headers.map((h, i) => (
         <span
           key={h}
           className={`text-[11px] font-medium py-1 ${
@@ -222,7 +264,7 @@ function DayGrid({
   selectedDay: CalendarDayPost | null
   onSelectDay: (day: CalendarDayPost | null) => void
 }) {
-  const firstDayOfWeek = new Date(currentYear, currentMonth - 1, 1).getDay() // 0 is Sun
+  const firstDayOfWeek = new Date(currentYear, currentMonth - 1, 1).getDay()
   const totalDaysInMonth = new Date(currentYear, currentMonth, 0).getDate()
 
   const postsByDate = new Map<string, CalendarDayPost>()
@@ -322,17 +364,25 @@ function DayCell({
   )
 }
 
-function SelectedDayPanel({ day, onClose }: { day: CalendarDayPost; onClose: () => void }) {
+function SelectedDayPanel({
+  day,
+  locale,
+  onClose,
+}: {
+  day: CalendarDayPost
+  locale: BlogLocale
+  onClose: () => void
+}) {
   return (
     <div className="mt-4 p-3 rounded-lg bg-[var(--bg-raised)] border border-[var(--border-subtle)] animate-in fade-in slide-in-from-top-1 duration-150">
       <div className="flex items-center justify-between text-xs font-medium text-[var(--text-secondary)] mb-2">
-        <span>{day.date} 发布文章 ({day.posts.length} 篇)</span>
+        <span>{t('calendar.posts_count', { date: day.date, count: day.posts.length }, locale)}</span>
         <button
           type="button"
           onClick={onClose}
-          className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+          className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
         >
-          关闭
+          {t('calendar.close', {}, locale)}
         </button>
       </div>
       <div className="space-y-1.5">

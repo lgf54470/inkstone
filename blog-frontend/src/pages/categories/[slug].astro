@@ -4,7 +4,9 @@ import PostCard from '../../components/PostCard.astro'
 import Pagination from '../../components/Pagination.astro'
 import { api } from '../../lib/api'
 import { categoryDotStyle } from '../../lib/category-style'
+import { t, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
 
+const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
 const slug = Astro.params.slug
 if (!slug) {
   return Astro.redirect('/404')
@@ -24,11 +26,11 @@ const page = parseInt(url.searchParams.get('page') || '1', 10)
 const postsData = await api.getPosts({ categoryId: category.id, page, limit: siteInfo.postsPerPage })
 ---
 
-<Layout title={`分类：${category.name} - Inkstone Blog`} description={category.description} siteInfo={siteInfo}>
+<Layout title={`${category.name} - ${siteInfo.siteName || 'Inkstone Blog'}`} description={category.description} siteInfo={siteInfo} locale={locale}>
   <div class="max-w-4xl mx-auto space-y-8">
     <header class="py-6 border-b border-[var(--border-subtle)] space-y-3">
       <a href="/categories" class="text-xs text-[var(--accent)] hover:underline inline-flex items-center gap-1">
-        ← 返回所有分类
+        {t('category.back_to_all', {}, locale)}
       </a>
       <div class="flex items-center gap-3">
         <span
@@ -39,7 +41,7 @@ const postsData = await api.getPosts({ categoryId: category.id, page, limit: sit
           {category.name}
         </h1>
         <span class="text-xs px-2.5 py-0.5 rounded-full bg-[var(--bg-sunken)] text-[var(--text-tertiary)]">
-          {postsData.total} 篇
+          {t('category.posts_count', { count: postsData.total }, locale)}
         </span>
       </div>
       {category.description && (
@@ -51,16 +53,16 @@ const postsData = await api.getPosts({ categoryId: category.id, page, limit: sit
 
     {postsData.posts.length === 0 ? (
       <div class="py-16 text-center text-xs text-[var(--text-tertiary)]">
-        该分类下暂无文章
+        {t('category.no_posts', {}, locale)}
       </div>
     ) : (
       <div class="space-y-4">
         {postsData.posts.map((post) => (
-          <PostCard post={post} category={category} />
+          <PostCard post={post} category={category} locale={locale} />
         ))}
       </div>
     )}
 
-    <Pagination currentPage={postsData.page} totalPages={postsData.totalPages} baseUrl={`/categories/${category.slug}`} />
+    <Pagination currentPage={postsData.page} totalPages={postsData.totalPages} baseUrl={`/categories/${category.slug}`} locale={locale} />
   </div>
 </Layout>

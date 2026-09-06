@@ -7,6 +7,9 @@ import { isSvgCoverUrl, stripFrontmatter } from '../../lib/content'
 import { categoryChipStyle } from '../../lib/category-style'
 import type { BlogCategory } from '../../lib/types'
 import { WORDS_PER_MINUTE } from '../../lib/constants'
+import { t, formatDate, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
+
+const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
 
 const slug = Astro.params.slug
 if (!slug) {
@@ -42,18 +45,14 @@ if (post.categoryId) {
   category = categories.find((c) => c.id === post.categoryId)
 }
 
-const formattedDate = new Date(post.publishedAt || post.createdAt).toLocaleDateString('zh-CN', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-})
+const formattedDate = formatDate(post.publishedAt || post.createdAt, locale)
 
 // Estimated reading time based on Chinese chars per minute
 const wordCount = bodyContent.replace(/\s+/g, '').length
 const readingMinutes = Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE))
 ---
 
-<Layout title={`${post.title} - Inkstone Blog`} description={post.excerpt} coverUrl={post.coverUrl}>
+<Layout title={`${post.title} - Inkstone Blog`} description={post.excerpt} coverUrl={post.coverUrl} locale={locale}>
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
     {/* Main Article Content */}
     <main class={`space-y-8 ${headings.length > 0 ? 'lg:col-span-9' : 'lg:col-span-12'}`}>
@@ -71,17 +70,17 @@ const readingMinutes = Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE))
             </a>
           )}
           <time class="text-xs text-[var(--text-quaternary)]">
-            发布于 {formattedDate}
+            {t('post.published_on', { date: formattedDate }, locale)}
           </time>
           <span class="text-[var(--text-quaternary)]">•</span>
           <span class="text-xs text-[var(--text-quaternary)]">
-            约 {wordCount} 字 / 阅读需 {readingMinutes} 分钟
+            {t('post.meta_reading', { words: wordCount, minutes: readingMinutes }, locale)}
           </span>
           {typeof post.views === 'number' && (
             <>
               <span class="text-[var(--text-quaternary)]">•</span>
               <span class="text-xs text-[var(--text-quaternary)]">
-                {post.views} 次浏览
+                {t('post.views_count', { views: post.views }, locale)}
               </span>
             </>
           )}
@@ -129,35 +128,36 @@ const readingMinutes = Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE))
       <div class="p-6 rounded-2xl bg-[var(--bg-sunken)] border border-[var(--border-subtle)] flex flex-col sm:flex-row items-center justify-between gap-4 my-8">
         <div class="space-y-1 text-center sm:text-left">
           <h4 class="text-sm font-bold text-[var(--text-primary)]">
-            感谢阅读本文
+            {t('post.thanks_reading', {}, locale)}
           </h4>
           <p class="text-xs text-[var(--text-tertiary)]">
-            本文内容由 Inkstone 笔记系统发布并驱动，欢迎在下方发表交流与讨论。
+            {t('post.thanks_desc', {}, locale)}
           </p>
         </div>
         <div class="flex items-center gap-2">
           <button
             type="button"
-            onclick="navigator.clipboard.writeText(window.location.href); alert('文章链接已复制到剪贴板！');"
+            data-copied-alert={t('post.link_copied', {}, locale)}
+            onclick="navigator.clipboard.writeText(window.location.href); alert(this.getAttribute('data-copied-alert'));"
             class="px-3.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
-            <span>分享链接</span>
+            <span>{t('post.share_link', {}, locale)}</span>
           </button>
         </div>
       </div>
 
       {/* Comments Section */}
-      <CommentsSection client:visible postId={post.id} allowComments={post.allowComments} />
+      <CommentsSection client:visible postId={post.id} allowComments={post.allowComments} initialLocale={locale} />
     </main>
 
     {/* Floating Table of Contents (TOC) Sidebar */}
     {headings.length > 0 && (
       <aside class="hidden lg:block lg:col-span-3 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto space-y-3 p-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs">
         <h3 class="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)] pb-2 border-b border-[var(--border-subtle)]">
-          文章目录
+          {t('post.toc', {}, locale)}
         </h3>
         <nav class="space-y-1">
           {headings.map((h) => (
