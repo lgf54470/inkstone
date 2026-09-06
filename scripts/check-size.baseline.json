@@ -2,21 +2,6 @@
   "src/client/app.tsx": {
     "longFns": 1
   },
-  "src/client/components/activity-calendar/header.tsx": {
-    "longFns": 1
-  },
-  "src/client/components/activity-calendar/weeks-strip.tsx": {
-    "longFns": 1
-  },
-  "src/client/components/big-svg-chart.tsx": {
-    "longFns": 1
-  },
-  "src/client/components/hub-tag-item.tsx": {
-    "longFns": 1
-  },
-  "src/client/components/tag-pill.tsx": {
-    "longFns": 1
-  },
   "src/client/demo/state.ts": {
     "longFns": 1
   },
@@ -26,21 +11,6 @@
   },
   "src/client/features/command/command-palette/use-commands.tsx": {
     "longFns": 2
-  },
-  "src/client/features/folders/create-folder-modal.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/folders/folder-color-submenu.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/folders/folder-icon-submenu.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/folders/folder-template-modal.tsx": {
-    "longFns": 1
-  },
-  "src/client/features/folders/move-to-folder-submenu.tsx": {
-    "longFns": 1
   },
   "src/client/features/list/note-list/header.tsx": {
     "longFns": 1

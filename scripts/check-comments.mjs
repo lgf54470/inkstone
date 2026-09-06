@@ -137,22 +137,6 @@ const allowed = new Map([
   ["src/client/features/command/shortcuts-panel.tsx", [
     "/** Invokes the underlying command for registry-backed rows (command-palette parity). */",
   ]],
-  ["src/client/features/folders/folder-icon-submenu.tsx", [
-    "// Pick first grapheme/character",
-  ]],
-  ["src/client/features/folders/folder-template-modal.tsx", [
-    "/* Search */",
-    "/* Template options */",
-    "/* Option: No template */",
-    "/* User & Built-in Templates */",
-  ]],
-  ["src/client/features/folders/move-to-folder-submenu.tsx", [
-    "/* Header */",
-    "/* Gmail-style underline search input */",
-    "/* Folder list */",
-    "/* Divider */",
-    "/* Actions */",
-  ]],
   ["src/client/features/graph/graph-panel/index.tsx", [
     "// Private browsing or a locked-down browser can reject local preferences.",
     "// Notes created from unresolved nodes land in the graph's folder scope so",
