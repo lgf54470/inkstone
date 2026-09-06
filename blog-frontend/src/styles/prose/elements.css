@@ -1,41 +1,3 @@
-.wiki-hover-body .ink-prose {
-  max-width: none;
-  margin-inline: 0;
-  padding-block: 0;
-}
-.wiki-hover-body .ink-prose h1,
-.wiki-hover-body .ink-prose h2,
-.wiki-hover-body .ink-prose h3 {
-  margin-top: 0.9em;
-}
-.wiki-hover-body .ink-prose > :first-child {
-  margin-top: 0;
-}
-.wiki-hover-embed {
-  color: var(--text-tertiary);
-  font-style: italic;
-}
-
-.pinned-window-flash {
-  animation: pinned-window-flash 1.05s ease-out;
-}
-@keyframes pinned-window-flash {
-  0% {
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 75%, transparent), var(--shadow-pop);
-  }
-  70% {
-    box-shadow: 0 0 0 12px transparent, var(--shadow-pop);
-  }
-  100% {
-    box-shadow: 0 0 0 12px transparent, var(--shadow-pop);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .pinned-window-flash {
-    animation: none;
-  }
-}
-
 .ink-prose .inline-tag {
   color: var(--tag-color, var(--accent));
   background: var(--tag-bg, var(--accent-softer));
@@ -71,21 +33,6 @@
   text-align: center;
   font-size: 0.82em;
   color: var(--text-tertiary);
-}
-.ink-prose figure.image-blocked {
-  border: 1px dashed var(--border-strong);
-  border-radius: 8px;
-  padding: 0.9em 1em;
-  background: var(--bg-inset);
-  text-align: center;
-}
-.ink-prose .image-blocked-label {
-  display: block;
-  font-size: 0.85em;
-  color: var(--text-secondary);
-}
-.ink-prose .image-blocked-fallback {
-  margin-top: 0.35em;
 }
 
 

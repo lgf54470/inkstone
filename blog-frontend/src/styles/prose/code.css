@@ -71,25 +71,6 @@
   background: var(--bg-hover);
   color: var(--text-primary);
 }
-.ink-prose .code-copy.copied {
-  color: var(--success);
-  opacity: 1;
-}
-.ink-prose .code-collapse {
-  margin-left: auto;
-  padding: 0 7px;
-  border-radius: var(--r-sm);
-  color: var(--text-tertiary);
-  font-size: 11px;
-  line-height: 20px;
-  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-}
-.ink-prose .code-collapse:hover,
-.ink-prose .code-collapse:focus-visible {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
 .ink-prose pre {
   margin: 0;
   padding: 10px 14px;
@@ -109,9 +90,6 @@
   font-size: 1em;
   font-weight: inherit;
   line-height: inherit;
-}
-.ink-prose .code-block.is-code-collapsed pre {
-  overflow-y: hidden;
 }
 
 

@@ -14,23 +14,23 @@
   background: transparent;
 }
 
-.ink-prose dl:not(.frontmatter-properties dl) {
+.ink-prose dl {
   margin: 0.85em 0;
 }
-.ink-prose dl:not(.frontmatter-properties dl) dt {
+.ink-prose dl dt {
   font-weight: 600;
   margin-top: 0.6em;
   color: var(--text-primary);
 }
-.ink-prose dl:not(.frontmatter-properties dl) dd {
+.ink-prose dl dd {
   margin-inline-start: 1.5em;
   margin-bottom: 0.35em;
   color: var(--text-secondary);
 }
 
 .ink-prose .markdown-details,
-.ink-prose > details:not(.callout):not(.frontmatter-properties),
-.ink-prose .markdown-example-preview details:not(.callout):not(.frontmatter-properties) {
+.ink-prose > details:not(.callout),
+.ink-prose .markdown-example-preview details:not(.callout) {
   margin: 0.9em 0;
   overflow: clip;
   border: 1px solid var(--border-subtle);
@@ -38,8 +38,8 @@
   background: var(--bg-inset);
 }
 .ink-prose .markdown-details > summary,
-.ink-prose > details:not(.callout):not(.frontmatter-properties) > summary,
-.ink-prose .markdown-example-preview details:not(.callout):not(.frontmatter-properties) > summary {
+.ink-prose > details:not(.callout) > summary,
+.ink-prose .markdown-example-preview details:not(.callout) > summary {
   padding: 0.55em 0.8em;
   color: var(--text-secondary);
   font-weight: 600;
@@ -47,23 +47,23 @@
   user-select: none;
 }
 .ink-prose .markdown-details[open] > summary,
-.ink-prose > details[open]:not(.callout):not(.frontmatter-properties) > summary,
-.ink-prose .markdown-example-preview details[open]:not(.callout):not(.frontmatter-properties) > summary {
+.ink-prose > details[open]:not(.callout) > summary,
+.ink-prose .markdown-example-preview details[open]:not(.callout) > summary {
   border-bottom: 1px solid var(--border-subtle);
 }
 .ink-prose .markdown-details > :not(summary),
-.ink-prose > details:not(.callout):not(.frontmatter-properties) > :not(summary),
-.ink-prose .markdown-example-preview details:not(.callout):not(.frontmatter-properties) > :not(summary) {
+.ink-prose > details:not(.callout) > :not(summary),
+.ink-prose .markdown-example-preview details:not(.callout) > :not(summary) {
   margin-inline: 0.85em;
 }
 .ink-prose .markdown-details > :nth-child(2),
-.ink-prose > details:not(.callout):not(.frontmatter-properties) > :nth-child(2),
-.ink-prose .markdown-example-preview details:not(.callout):not(.frontmatter-properties) > :nth-child(2) {
+.ink-prose > details:not(.callout) > :nth-child(2),
+.ink-prose .markdown-example-preview details:not(.callout) > :nth-child(2) {
   margin-top: 0.72em;
 }
 .ink-prose .markdown-details > :last-child,
-.ink-prose > details:not(.callout):not(.frontmatter-properties) > :last-child,
-.ink-prose .markdown-example-preview details:not(.callout):not(.frontmatter-properties) > :last-child {
+.ink-prose > details:not(.callout) > :last-child,
+.ink-prose .markdown-example-preview details:not(.callout) > :last-child {
   margin-bottom: 0.72em;
 }
 
