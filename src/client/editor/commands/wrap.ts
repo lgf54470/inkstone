@@ -58,47 +58,7 @@ export function toggleLinePrefix(
     replacementPattern?: RegExp,
 ): StateCommand {
     return ({ state, dispatch }) => {
-        const changes: ChangeSpec[] = [];
-        const seen = new Set<number>();
-        let index = 0;
-        for (const range of state.selection.ranges) {
-            const { startLine, endLine } = selectedLineBounds(state, range);
-            let isAllPrefixed = true;
-            for (let n = startLine; n <= endLine; n++) {
-                if (!linePrefixMatch(state.doc.line(n).text, pattern)) {
-                    isAllPrefixed = false;
-                    break;
-                }
-            }
-            for (let n = startLine; n <= endLine; n++) {
-                if (seen.has(n))
-                    continue;
-                seen.add(n);
-                const line = state.doc.line(n);
-                const indent = lineIndent(line.text);
-                const match = linePrefixMatch(line.text, pattern);
-                const replacement = replacementPattern
-                    ? linePrefixMatch(line.text, replacementPattern)
-                    : null;
-                if (isAllPrefixed && match) {
-                    changes.push({
-                        from: line.from + indent.length,
-                        to: line.from + indent.length + match[0].length,
-                    });
-                }
-                else if (!match) {
-                    const value = typeof prefix === 'function' ? prefix(index) : prefix;
-                    changes.push({
-                        from: line.from + indent.length,
-                        to: replacement
-                            ? line.from + indent.length + replacement[0].length
-                            : line.from + indent.length,
-                        insert: value,
-                    });
-                }
-                index++;
-            }
-        }
+        const changes = collectLinePrefixChanges(state, prefix, pattern, replacementPattern);
         if (!changes.length)
             return false;
         const changeSet = state.changes(changes);
@@ -110,6 +70,64 @@ export function toggleLinePrefix(
         }));
         return true;
     };
+}
+
+function collectLinePrefixChanges(
+    state: EditorState,
+    prefix: string | ((index: number) => string),
+    pattern: RegExp,
+    replacementPattern?: RegExp,
+): ChangeSpec[] {
+    const changes: ChangeSpec[] = [];
+    const seen = new Set<number>();
+    let index = 0;
+    for (const range of state.selection.ranges) {
+        const { startLine, endLine } = selectedLineBounds(state, range);
+        const isAllPrefixed = rangeLinesAllPrefixed(state, startLine, endLine, pattern);
+        for (let n = startLine; n <= endLine; n++) {
+            if (seen.has(n))
+                continue;
+            seen.add(n);
+            const spec = linePrefixSpec(state.doc.line(n), isAllPrefixed, prefix, pattern, replacementPattern, index);
+            if (spec)
+                changes.push(spec);
+            index++;
+        }
+    }
+    return changes;
+}
+
+function rangeLinesAllPrefixed(state: EditorState, startLine: number, endLine: number, pattern: RegExp): boolean {
+    for (let n = startLine; n <= endLine; n++) {
+        if (!linePrefixMatch(state.doc.line(n).text, pattern))
+            return false;
+    }
+    return true;
+}
+
+function linePrefixSpec(
+    line: { text: string; from: number },
+    isAllPrefixed: boolean,
+    prefix: string | ((index: number) => string),
+    pattern: RegExp,
+    replacementPattern: RegExp | undefined,
+    index: number,
+): ChangeSpec | null {
+    const indent = lineIndent(line.text);
+    const match = linePrefixMatch(line.text, pattern);
+    const replacement = replacementPattern ? linePrefixMatch(line.text, replacementPattern) : null;
+    if (isAllPrefixed && match) {
+        return { from: line.from + indent.length, to: line.from + indent.length + match[0].length };
+    }
+    if (!match) {
+        const value = typeof prefix === 'function' ? prefix(index) : prefix;
+        return {
+            from: line.from + indent.length,
+            to: replacement ? line.from + indent.length + replacement[0].length : line.from + indent.length,
+            insert: value,
+        };
+    }
+    return null;
 }
 
 

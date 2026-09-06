@@ -42,7 +42,7 @@ describe('insertDiagramCode', () => {
   })
 })
 
-describe('toggleSubscript and toggleSuperscript', () => {
+describe('toggle text markers', () => {
   it('wraps and unwraps subscript', () => {
     const state = EditorState.create({ doc: 'H2O', selection: EditorSelection.range(1, 2) })
     let next = state
@@ -63,7 +63,9 @@ describe('toggleSubscript and toggleSuperscript', () => {
     toggleUnderline({ state, dispatch: (tr) => { next = tr.state } })
     expect(next.doc.toString()).toBe('++Important++ text')
   })
+})
 
+describe('insert code templates', () => {
   it('inserts table of contents block', () => {
     const state = EditorState.create({ doc: '', selection: EditorSelection.cursor(0) })
     let next = state
@@ -109,4 +111,3 @@ describe('toggleSubscript and toggleSuperscript', () => {
     expect(next.doc.toString()).toBe('- [/] 🎉')
   })
 })
-

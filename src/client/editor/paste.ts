@@ -19,84 +19,15 @@ export function pasteExtension(handlers: PasteHandlers) {
             const clipboard = event.clipboardData;
             if (!clipboard)
                 return false;
-
-            const files = [...clipboard.files];
-            if (!files.length) {
-                const types = clipboard.types ? Array.from(clipboard.types) : [];
-                const hasRichText = types.includes('text/html') || types.includes('text/plain');
-                if (!hasRichText && clipboard.items) {
-                    for (const item of [...clipboard.items]) {
-                        if (item.kind === 'file' && item.type.startsWith('image/')) {
-                            const file = item.getAsFile();
-                            if (file) files.push(file);
-                        }
-                    }
-                }
-            }
+            const files = clipboardFiles(clipboard);
             if (files.length) {
                 event.preventDefault();
                 void insertFiles(view, files, handlers);
                 return true;
             }
-            const range = view.state.selection.main;
-            const plainText = clipboard.getData('text/plain');
-
-            if (isInsideCodeBlock(view.state.doc, range.from)) {
-                if (plainText) {
-                    event.preventDefault();
-                    view.dispatch({
-                        changes: { from: range.from, to: range.to, insert: plainText },
-                        selection: EditorSelection.cursor(range.from + plainText.length),
-                        userEvent: 'input.paste',
-                    });
-                    return true;
-                }
-            }
-
-            const text = plainText?.trim();
-
-            if (text && URL_RE.test(text)) {
-                if (!range.empty) {
-                    const selected = view.state.sliceDoc(range.from, range.to);
-                    if (!URL_RE.test(selected.trim())) {
-                        event.preventDefault();
-                        const insert = markdownLink(selected, text);
-                        view.dispatch({
-                            changes: { from: range.from, to: range.to, insert },
-                            selection: EditorSelection.cursor(range.from + insert.length),
-                            userEvent: 'input.paste',
-                        });
-                        return true;
-                    }
-                }
-            }
-
-            const html = clipboard.getData('text/html');
-            const isFromVsCode =
-                (clipboard.types && Array.from(clipboard.types).includes('vscode-editor-data')) ||
-                (html && (html.includes('vscode-light') || html.includes('vscode-dark') || html.includes('white-space: pre') || html.includes('white-space:pre')));
-
-            if (isFromVsCode && plainText) {
+            if (pasteContent(view, clipboard)) {
                 event.preventDefault();
-                view.dispatch({
-                    changes: { from: range.from, to: range.to, insert: plainText },
-                    selection: EditorSelection.cursor(range.from + plainText.length),
-                    userEvent: 'input.paste',
-                });
                 return true;
-            }
-
-            if (html && !looksLikeMarkdown(text)) {
-                const markdown = htmlToMarkdown(html);
-                if (markdown && markdown !== text) {
-                    event.preventDefault();
-                    view.dispatch({
-                        changes: { from: range.from, to: range.to, insert: markdown },
-                        selection: EditorSelection.cursor(range.from + markdown.length),
-                        userEvent: 'input.paste',
-                    });
-                    return true;
-                }
             }
             return false;
         },
@@ -118,6 +49,78 @@ export function pasteExtension(handlers: PasteHandlers) {
         },
     });
 }
+
+function clipboardFiles(clipboard: DataTransfer): File[] {
+    const files = [...clipboard.files];
+    if (files.length)
+        return files;
+    const types = clipboard.types ? Array.from(clipboard.types) : [];
+    if (types.includes('text/html') || types.includes('text/plain'))
+        return files;
+    if (!clipboard.items)
+        return files;
+    for (const item of [...clipboard.items]) {
+        const file = item.kind === 'file' && item.type.startsWith('image/') ? item.getAsFile() : null;
+        if (file)
+            files.push(file);
+    }
+    return files;
+}
+
+function pasteContent(view: EditorView, clipboard: DataTransfer): boolean {
+    const range = view.state.selection.main;
+    const plainText = clipboard.getData('text/plain');
+    if (isInsideCodeBlock(view.state.doc, range.from)) {
+        if (plainText) {
+            dispatchPasteInsert(view, plainText);
+            return true;
+        }
+    }
+    const text = plainText?.trim();
+    if (text && URL_RE.test(text) && pasteUrlOverSelection(view, range, text))
+        return true;
+    const html = clipboard.getData('text/html');
+    if (isFromVsCode(clipboard, html)) {
+        if (plainText) {
+            dispatchPasteInsert(view, plainText);
+            return true;
+        }
+    }
+    if (html && !looksLikeMarkdown(text)) {
+        const markdown = htmlToMarkdown(html);
+        if (markdown && markdown !== text) {
+            dispatchPasteInsert(view, markdown);
+            return true;
+        }
+    }
+    return false;
+}
+
+function dispatchPasteInsert(view: EditorView, insert: string) {
+    const range = view.state.selection.main;
+    view.dispatch({
+        changes: { from: range.from, to: range.to, insert },
+        selection: EditorSelection.cursor(range.from + insert.length),
+        userEvent: 'input.paste',
+    });
+}
+
+function pasteUrlOverSelection(view: EditorView, range: { from: number; to: number; empty: boolean }, text: string): boolean {
+    if (range.empty)
+        return false;
+    const selected = view.state.sliceDoc(range.from, range.to);
+    if (URL_RE.test(selected.trim()))
+        return false;
+    dispatchPasteInsert(view, markdownLink(selected, text));
+    return true;
+}
+
+function isFromVsCode(clipboard: DataTransfer, html: string): boolean {
+    const viaType = clipboard.types ? Array.from(clipboard.types).includes('vscode-editor-data') : false;
+    const viaMarkup = html ? html.includes('vscode-light') || html.includes('vscode-dark') || html.includes('white-space: pre') || html.includes('white-space:pre') : false;
+    return viaType || viaMarkup;
+}
+
 export async function insertFiles(view: EditorView, files: File[], handlers: PasteHandlers): Promise<void> {
 
 
@@ -192,133 +195,135 @@ function looksLikeMarkdown(text: string | undefined): boolean {
 export function htmlToMarkdown(html: string): string {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     doc.querySelectorAll('script, style, meta, link, noscript').forEach((el) => el.remove());
-    const walk = (node: Node, listIndent = ''): string => {
-        if (node.nodeType === Node.TEXT_NODE) {
-            return (node.textContent ?? '').replace(/\s+/g, ' ');
-        }
-        if (node.nodeType !== Node.ELEMENT_NODE)
-            return '';
-        const el = node as HTMLElement;
-        const tag = el.tagName.toLowerCase();
-        const children = () => [...el.childNodes].map((child) => walk(child, listIndent)).join('');
-        switch (tag) {
-            case 'h1':
-            case 'h2':
-            case 'h3':
-            case 'h4':
-            case 'h5':
-            case 'h6':
-                return `\n\n${'#'.repeat(Number(tag[1]))} ${children().trim()}\n\n`;
-            case 'p':
-            case 'div':
-                return `\n\n${children().trim()}\n\n`;
-            case 'br':
-                return '\n';
-            case 'hr':
-                return '\n\n---\n\n';
-            case 'strong':
-            case 'b': {
-                const text = children().trim();
-                return text ? `**${text}**` : '';
-            }
-            case 'em':
-            case 'i': {
-                const text = children().trim();
-                return text ? `*${text}*` : '';
-            }
-            case 'del':
-            case 's':
-            case 'strike': {
-                const text = children().trim();
-                return text ? `~~${text}~~` : '';
-            }
-            case 'code':
-                if (el.closest('pre'))
-                    return el.textContent ?? '';
-                return inlineCode(el.textContent ?? '');
-            case 'pre': {
-                const code = el.textContent ?? '';
-                const lang = /language-([a-z0-9+#-]+)/i.exec(el.querySelector('code')?.className ?? '')?.[1] ?? '';
-                const fence = '`'.repeat(Math.max(3, longestRun(code, '`') + 1));
-                return `\n\n${fence}${lang}\n${code.replace(/\n$/, '')}\n${fence}\n\n`;
-            }
-            case 'blockquote':
-                return `\n\n${children()
-                    .trim()
-                    .split('\n')
-                    .map((line) => `> ${line}`)
-                    .join('\n')}\n\n`;
-            case 'a': {
-                const href = safePastedHref(el.getAttribute('href') ?? '', false);
-                const label = children().trim() || href || '';
-
-                return href ? markdownLink(label, href) : label;
-            }
-            case 'img': {
-                const src = safePastedHref(el.getAttribute('src') ?? '', true);
-                const alt = el.getAttribute('alt') ?? '';
-                return src ? markdownLink(alt, src, true) : '';
-            }
-            case 'ul':
-            case 'ol':
-                return `\n\n${renderList(el, listIndent)}\n\n`;
-            case 'li':
-                return children();
-            case 'table': {
-                const rows = [...el.querySelectorAll('tr')];
-                if (!rows.length)
-                    return children();
-                const cells = (row: Element) => [...row.querySelectorAll('th, td')].map((c) => (c.textContent ?? '').trim().replace(/\|/g, '\\|'));
-                const header = cells(rows[0]!);
-                const lines = [
-                    `| ${header.join(' | ')} |`,
-                    `| ${header.map(() => '---').join(' | ')} |`,
-                    ...rows.slice(1).map((row) => `| ${cells(row).join(' | ')} |`),
-                ];
-                return `\n\n${lines.join('\n')}\n\n`;
-            }
-            default:
-                return children();
-        }
-    };
-    return walk(doc.body)
+    return walkHtml(doc.body)
         .replace(/\n{3,}/g, '\n\n')
         .replace(/[ \t]+\n/g, '\n')
         .trim();
+}
 
-    function renderList(list: HTMLElement, indent: string): string {
-        const ordered = list.tagName.toLowerCase() === 'ol';
-        const parsedStart = Number.parseInt(list.getAttribute('start') ?? '1', 10);
-        const start = Number.isFinite(parsedStart) ? parsedStart : 1;
-        const items = [...list.children].filter((child) => child.tagName.toLowerCase() === 'li');
-        const lines: string[] = [];
-        items.forEach((item, index) => {
-            const explicit = Number.parseInt(item.getAttribute('value') ?? '', 10);
-            const number = Number.isFinite(explicit) ? explicit : start + index;
-            const marker = ordered ? `${number}. ` : '- ';
-            const nested: HTMLElement[] = [];
-            const content = [...item.childNodes]
-                .map((child) => {
+const WRAP_TAGS: Record<string, string> = { strong: '**', b: '**', em: '*', i: '*', del: '~~', s: '~~', strike: '~~' }
+
+function walkHtml(node: Node, listIndent = ''): string {
+    if (node.nodeType === Node.TEXT_NODE) {
+        return (node.textContent ?? '').replace(/\s+/g, ' ');
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE)
+        return '';
+    const el = node as HTMLElement;
+    const tag = el.tagName.toLowerCase();
+    const children = () => [...el.childNodes].map((child) => walkHtml(child, listIndent)).join('');
+    if (tag.length === 2 && tag[0] === 'h' && tag[1] >= '1' && tag[1] <= '6') {
+        return `\n\n${'#'.repeat(Number(tag[1]))} ${children().trim()}\n\n`;
+    }
+    const wrap = WRAP_TAGS[tag];
+    if (wrap) {
+        return wrapped(children(), wrap);
+    }
+    switch (tag) {
+        case 'p':
+        case 'div':
+            return `\n\n${children().trim()}\n\n`;
+        case 'br':
+            return '\n';
+        case 'hr':
+            return '\n\n---\n\n';
+        case 'code':
+            if (el.closest('pre'))
+                return el.textContent ?? '';
+            return inlineCode(el.textContent ?? '');
+        case 'pre':
+            return `\n\n${preBlockMarkdown(el)}\n\n`;
+        case 'blockquote':
+            return `\n\n${quoteLines(children().trim())}\n\n`;
+        case 'a':
+            return anchorMarkdown(el, children().trim());
+        case 'img':
+            return imageMarkdown(el);
+        case 'ul':
+        case 'ol':
+            return `\n\n${renderHtmlList(el, listIndent)}\n\n`;
+        case 'li':
+            return children();
+        case 'table':
+            return `\n\n${tableMarkdown(el, listIndent)}\n\n`;
+        default:
+            return children();
+    }
+}
+
+function wrapped(text: string, marker: string): string {
+    const content = text.trim();
+    return content ? `${marker}${content}${marker}` : '';
+}
+
+function preBlockMarkdown(el: HTMLElement): string {
+    const code = el.textContent ?? '';
+    const lang = /language-([a-z0-9+#-]+)/i.exec(el.querySelector('code')?.className ?? '')?.[1] ?? '';
+    const fence = '`'.repeat(Math.max(3, longestRun(code, '`') + 1));
+    return `${fence}${lang}\n${code.replace(/\n$/, '')}\n${fence}`;
+}
+
+function quoteLines(text: string): string {
+    return text.split('\n').map((line) => `> ${line}`).join('\n');
+}
+
+function anchorMarkdown(el: HTMLElement, label: string): string {
+    const href = safePastedHref(el.getAttribute('href') ?? '', false);
+    return href ? markdownLink(label || href || '', href) : label;
+}
+
+function imageMarkdown(el: HTMLElement): string {
+    const src = safePastedHref(el.getAttribute('src') ?? '', true);
+    const alt = el.getAttribute('alt') ?? '';
+    return src ? markdownLink(alt, src, true) : '';
+}
+
+function tableMarkdown(el: HTMLElement, listIndent: string): string {
+    const rows = [...el.querySelectorAll('tr')];
+    if (!rows.length)
+        return [...el.childNodes].map((child) => walkHtml(child, listIndent)).join('');
+    const cells = (row: Element) => [...row.querySelectorAll('th, td')].map((c) => (c.textContent ?? '').trim().replace(/\|/g, '\\|'));
+    const header = cells(rows[0]!);
+    const lines = [
+        `| ${header.join(' | ')} |`,
+        `| ${header.map(() => '---').join(' | ')} |`,
+        ...rows.slice(1).map((row) => `| ${cells(row).join(' | ')} |`),
+    ];
+    return lines.join('\n');
+}
+
+function renderHtmlList(list: HTMLElement, indent: string): string {
+    const ordered = list.tagName.toLowerCase() === 'ol';
+    const parsedStart = Number.parseInt(list.getAttribute('start') ?? '1', 10);
+    const start = Number.isFinite(parsedStart) ? parsedStart : 1;
+    const items = [...list.children].filter((child) => child.tagName.toLowerCase() === 'li');
+    const lines: string[] = [];
+    items.forEach((item, index) => {
+        const explicit = Number.parseInt(item.getAttribute('value') ?? '', 10);
+        const number = Number.isFinite(explicit) ? explicit : start + index;
+        const marker = ordered ? `${number}. ` : '- ';
+        const nested: HTMLElement[] = [];
+        const content = [...item.childNodes]
+            .map((child) => {
                 if (child.nodeType === Node.ELEMENT_NODE && /^(?:ul|ol)$/i.test((child as Element).tagName)) {
                     nested.push(child as HTMLElement);
                     return '';
                 }
-                return walk(child, indent + ' '.repeat(marker.length));
+                return walkHtml(child, indent + ' '.repeat(marker.length));
             })
-                .join('')
-                .trim()
-                .replace(/\n{2,}/g, '\n');
-            const contentLines = content ? content.split('\n') : [''];
-            lines.push(`${indent}${marker}${contentLines[0]}`);
-            for (const continuation of contentLines.slice(1)) {
-                lines.push(`${indent}${' '.repeat(marker.length)}${continuation}`);
-            }
-            for (const childList of nested) {
-                lines.push(renderList(childList, indent + ' '.repeat(marker.length)));
-            }
-        });
-        return lines.join('\n');
-    }
+            .join('')
+            .trim()
+            .replace(/\n{2,}/g, '\n');
+        const contentLines = content ? content.split('\n') : [''];
+        lines.push(`${indent}${marker}${contentLines[0]}`);
+        for (const continuation of contentLines.slice(1)) {
+            lines.push(`${indent}${' '.repeat(marker.length)}${continuation}`);
+        }
+        for (const childList of nested) {
+            lines.push(renderHtmlList(childList, indent + ' '.repeat(marker.length)));
+        }
+    });
+    return lines.join('\n');
 }
 
 function markdownLink(label: string, url: string, image = false, labelEscaped = false): string {

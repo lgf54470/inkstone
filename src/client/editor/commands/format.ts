@@ -1,4 +1,4 @@
-import { EditorSelection, type ChangeSpec, StateCommand } from '@codemirror/state';
+import { EditorSelection, type ChangeSpec, type EditorState, type SelectionRange, StateCommand } from '@codemirror/state';
 import { t } from '../../lib/i18n';
 import { selectedLineBounds } from './enter';
 
@@ -8,24 +8,7 @@ export function setHeading(level: number): StateCommand {
         const changes: ChangeSpec[] = [];
         const seen = new Set<number>();
         for (const range of state.selection.ranges) {
-            const { startLine, endLine } = selectedLineBounds(state, range);
-            for (let n = startLine; n <= endLine; n++) {
-                if (seen.has(n))
-                    continue;
-                seen.add(n);
-                const line = state.doc.line(n);
-                const match = /^(#{1,6})\s+/.exec(line.text);
-                const marker = '#'.repeat(level);
-                if (match && match[1]!.length === level) {
-                    changes.push({ from: line.from, to: line.from + match[0].length });
-                }
-                else if (match) {
-                    changes.push({ from: line.from, to: line.from + match[0].length, insert: `${marker} ` });
-                }
-                else {
-                    changes.push({ from: line.from, insert: `${marker} ` });
-                }
-            }
+            appendHeadingChanges(state, range, level, changes, seen);
         }
         if (!changes.length)
             return false;
@@ -38,6 +21,27 @@ export function setHeading(level: number): StateCommand {
         }));
         return true;
     };
+}
+
+function appendHeadingChanges(state: EditorState, range: SelectionRange, level: number, changes: ChangeSpec[], seen: Set<number>): void {
+    const { startLine, endLine } = selectedLineBounds(state, range);
+    for (let n = startLine; n <= endLine; n++) {
+        if (seen.has(n))
+            continue;
+        seen.add(n);
+        const line = state.doc.line(n);
+        const match = /^(#{1,6})\s+/.exec(line.text);
+        const marker = '#'.repeat(level);
+        if (match && match[1]!.length === level) {
+            changes.push({ from: line.from, to: line.from + match[0].length });
+        }
+        else if (match) {
+            changes.push({ from: line.from, to: line.from + match[0].length, insert: `${marker} ` });
+        }
+        else {
+            changes.push({ from: line.from, insert: `${marker} ` });
+        }
+    }
 }
 
 

@@ -12,70 +12,61 @@ const TAG_RE = /(^|[\s(\uff08[\u3010>\u300c\u300e\uff0c,\u3001;\uff1b])#([\p{L}\
 const WIKI_RE = /\[\[[^[\]\n]{1,200}\]\]/g
 const TASK_DONE_RE = /^((?:[ \t]*>[ \t]?)*[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[[xX]\][ \t]+)(.*)$/
 
+type DecorationItem = { from: number; to: number; deco: Decoration }
+type TreeLike = { iterate: (spec: { from: number; to: number; enter: (node: { from: number; to: number; name: string }) => void }) => void }
+
 function buildDecorations(view: EditorView): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>()
   const tree = syntaxTree(view.state)
 
   for (const { from, to } of view.visibleRanges) {
-
-    const fenced: { from: number; to: number }[] = []
-    tree.iterate({
-      from,
-      to,
-      enter(node) {
-        if (node.name === 'FencedCode' || node.name === 'CodeBlock') {
-          fenced.push({ from: node.from, to: node.to })
-        }
-      },
-    })
-
-    const markDecorations: { from: number; to: number; deco: Decoration }[] = []
-    const startLine = view.state.doc.lineAt(from).number
-    const endLine = view.state.doc.lineAt(to).number
-
-    for (let n = startLine; n <= endLine; n++) {
-      const line = view.state.doc.line(n)
-      if (fenced.some((b) => line.from >= b.from && line.to <= b.to)) continue
-      const text = line.text
-
-      const done = TASK_DONE_RE.exec(text)
-      if (done && done[2]) {
-        markDecorations.push({
-          from: line.from + done[1]!.length,
-          to: line.to,
-          deco: taskDone,
-        })
-      }
-
-      TAG_RE.lastIndex = 0
-      for (const match of text.matchAll(TAG_RE)) {
-        const offset = (match.index ?? 0) + (match[1]?.length ?? 0)
-        markDecorations.push({
-          from: line.from + offset,
-          to: line.from + offset + 1 + match[2]!.length,
-          deco: tagMark,
-        })
-      }
-
-      WIKI_RE.lastIndex = 0
-      for (const match of text.matchAll(WIKI_RE)) {
-        markDecorations.push({
-          from: line.from + (match.index ?? 0),
-          to: line.from + (match.index ?? 0) + match[0].length,
-          deco: wikiMark,
-        })
-      }
-    }
-
-
-    const all = [
-      ...markDecorations.map((d) => ({ ...d, line: false })),
-    ].sort((a, b) => a.from - b.from || (a.line === b.line ? 0 : a.line ? -1 : 1))
-
-    for (const item of all) builder.add(item.from, item.to, item.deco)
+    const items = rangeDecorations(view, tree, from, to)
+    for (const item of items) builder.add(item.from, item.to, item.deco)
   }
 
   return builder.finish()
+}
+
+function rangeDecorations(view: EditorView, tree: TreeLike, from: number, to: number): DecorationItem[] {
+  const fenced: { from: number; to: number }[] = []
+  tree.iterate({
+    from,
+    to,
+    enter(node) {
+      if (node.name === 'FencedCode' || node.name === 'CodeBlock') {
+        fenced.push({ from: node.from, to: node.to })
+      }
+    },
+  })
+
+  const items: DecorationItem[] = []
+  const startLine = view.state.doc.lineAt(from).number
+  const endLine = view.state.doc.lineAt(to).number
+  for (let n = startLine; n <= endLine; n++) {
+    const line = view.state.doc.line(n)
+    if (fenced.some((b) => line.from >= b.from && line.to <= b.to)) continue
+    collectLineDecorations(line, items)
+  }
+  return items.sort((a, b) => a.from - b.from)
+}
+
+function collectLineDecorations(line: { text: string; from: number; to: number }, items: DecorationItem[]) {
+  const text = line.text
+  const done = TASK_DONE_RE.exec(text)
+  if (done && done[2]) {
+    items.push({ from: line.from + done[1]!.length, to: line.to, deco: taskDone })
+  }
+
+  TAG_RE.lastIndex = 0
+  for (const match of text.matchAll(TAG_RE)) {
+    const offset = (match.index ?? 0) + (match[1]?.length ?? 0)
+    items.push({ from: line.from + offset, to: line.from + offset + 1 + match[2]!.length, deco: tagMark })
+  }
+
+  WIKI_RE.lastIndex = 0
+  for (const match of text.matchAll(WIKI_RE)) {
+    items.push({ from: line.from + (match.index ?? 0), to: line.from + (match.index ?? 0) + match[0].length, deco: wikiMark })
+  }
 }
 
 export const markdownDecorations = ViewPlugin.fromClass(

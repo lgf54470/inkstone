@@ -20,35 +20,6 @@
   "src/client/demo/state.ts": {
     "longFns": 1
   },
-  "src/client/editor/code-editor.tsx": {
-    "longFns": 2
-  },
-  "src/client/editor/commands.test.ts": {
-    "longFns": 1
-  },
-  "src/client/editor/commands/format.ts": {
-    "deepFns": 1
-  },
-  "src/client/editor/commands/wrap.ts": {
-    "longFns": 2,
-    "deepFns": 1
-  },
-  "src/client/editor/completion.ts": {
-    "longFns": 1
-  },
-  "src/client/editor/decorations.ts": {
-    "longFns": 1
-  },
-  "src/client/editor/link-hover-plugin.test.ts": {
-    "longFns": 1
-  },
-  "src/client/editor/link-hover-plugin.ts": {
-    "longFns": 1
-  },
-  "src/client/editor/paste.ts": {
-    "longFns": 4,
-    "deepFns": 1
-  },
   "src/client/features/attachments/attachment-batch-bar.tsx": {
     "longFns": 1
   },

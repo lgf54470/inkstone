@@ -3,18 +3,21 @@ import { normalizeLinkKey } from '@shared/markdown-utils';
 import { truncateText } from '@shared/text-utils';
 import { fuzzyMatch } from '../lib/fuzzy';
 import { t } from "../lib/i18n";
+
+export interface NoteSource {
+    id: string;
+    title: string;
+    excerpt: string;
+}
+export interface TagSource {
+    name: string;
+    count: number;
+    color?: string | null;
+    isPinned?: boolean;
+}
 export interface CompletionSources {
-    notes: () => {
-        id: string;
-        title: string;
-        excerpt: string;
-    }[];
-    tags: () => {
-        name: string;
-        count: number;
-        color?: string | null;
-        isPinned?: boolean;
-    }[];
+    notes: () => NoteSource[];
+    tags: () => TagSource[];
 }
 
 export function wikiLinkSource(getSources: () => CompletionSources) {
@@ -34,32 +37,12 @@ export function wikiLinkSource(getSources: () => CompletionSources) {
             if (seenTitles.has(titleKey))
                 continue;
             seenTitles.add(titleKey);
-            const match = query ? fuzzyMatch(note.title, query) : { score: 0, ranges: [] };
-            if (!match)
-                continue;
-            options.push({
-                label: note.title,
-                detail: note.excerpt ? truncateText(note.excerpt, 34) : undefined,
-                boost: match.score / 10,
-                apply: (view, _completion, from, to) => {
-                    const insert = `${note.title}]]`;
-                    view.dispatch({
-                        changes: { from, to, insert },
-                        selection: { anchor: from + insert.length },
-                    });
-                },
-            });
+            const option = noteOption(note, query);
+            if (option)
+                options.push(option);
         }
         if (query.trim() && !options.some((o) => o.label === query.trim())) {
-            options.push({
-                label: query.trim(),
-                detail: t("editor.create_new_note"),
-                boost: -20,
-                apply: (view, _completion, from, to) => {
-                    const insert = `${query.trim()}]]`;
-                    view.dispatch({ changes: { from, to, insert }, selection: { anchor: from + insert.length } });
-                },
-            });
+            options.push(createNoteOption(query));
         }
         return {
             from: before.from + 2,
@@ -69,9 +52,40 @@ export function wikiLinkSource(getSources: () => CompletionSources) {
         };
     };
 }
+
+function noteOption(note: NoteSource, query: string): Completion | null {
+    const match = query ? fuzzyMatch(note.title, query) : { score: 0, ranges: [] };
+    if (!match)
+        return null;
+    return {
+        label: note.title,
+        detail: note.excerpt ? truncateText(note.excerpt, 34) : undefined,
+        boost: match.score / 10,
+        apply: (view, _completion, from, to) => {
+            const insert = `${note.title}]]`;
+            view.dispatch({
+                changes: { from, to, insert },
+                selection: { anchor: from + insert.length },
+            });
+        },
+    };
+}
+
+function createNoteOption(query: string): Completion {
+    return {
+        label: query.trim(),
+        detail: t("editor.create_new_note"),
+        boost: -20,
+        apply: (view, _completion, from, to) => {
+            const insert = `${query.trim()}]]`;
+            view.dispatch({ changes: { from, to, insert }, selection: { anchor: from + insert.length } });
+        },
+    };
+}
+
 export function tagSource(getSources: () => CompletionSources) {
     return (context: CompletionContext): CompletionResult | null => {
-        const before = context.matchBefore(/(?:^|[\s(\uff08[\u3010>\u300c\u300e\uff0c,\u3001;\uff1b])#([\p{L}\p{N}_\-/·]{0,60})$/u);
+        const before = context.matchBefore(/(?:^|[\s(\uff08[\u3010>\u300c\u300e\uff0c,\u3001;\uff1b])#([\p{L}\p{N}_\-\/·]{0,60})$/u);
         if (!before)
             return null;
         const hashIndex = before.text.lastIndexOf('#');
@@ -99,7 +113,7 @@ export function tagSource(getSources: () => CompletionSources) {
         }
         if (!options.length)
             return null;
-        return { from, options: options.slice(0, 24), filter: false, validFor: /^[\p{L}\p{N}_\-/·]{0,60}$/u };
+        return { from, options: options.slice(0, 24), filter: false, validFor: /^[\p{L}\p{N}_\-\/·]{0,60}$/u };
     };
 }
 const LANGUAGES = [

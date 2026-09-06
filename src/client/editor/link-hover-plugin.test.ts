@@ -9,6 +9,13 @@ const CHAR_W = 4
 const LINE_H = 16
 let activeContentDom: HTMLElement | null = null
 
+beforeAll(() => {
+  installLayoutPolyfills()
+})
+afterAll(() => {
+  restoreLayoutPolyfills()
+})
+
 function contentRoot(): HTMLElement | null {
   return activeContentDom ?? document.querySelector('.cm-content')
 }
@@ -56,18 +63,15 @@ function installLayoutPolyfills(): void {
   }
 }
 
-describe('editor link hover plugin', () => {
-  beforeAll(() => {
-    installLayoutPolyfills()
-  })
-  afterAll(() => {
-    Range.prototype.getClientRects = () => [] as unknown as DOMRectList
-    Element.prototype.getBoundingClientRect = () => ({
-      left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0,
-      x: 0, y: 0, toJSON: () => ({}),
-    } as DOMRect)
-  })
+function restoreLayoutPolyfills(): void {
+  Range.prototype.getClientRects = () => [] as unknown as DOMRectList
+  Element.prototype.getBoundingClientRect = () => ({
+    left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0,
+    x: 0, y: 0, toJSON: () => ({}),
+  } as DOMRect)
+}
 
+describe('caret proposal from link hover plugin', () => {
   it('proposes the wiki link when the caret sits inside a mark', async () => {
     const { view, proposals, container } = mountEditor()
     const start = view.state.doc.toString().indexOf('[[Note B]]')
@@ -105,7 +109,9 @@ describe('editor link hover plugin', () => {
 
     view.destroy()
   })
+})
 
+describe('mouse hover behavior of link hover plugin', () => {
   it('does not re-propose when the mouse hovers the same mark the caret is in', async () => {
     const { view, proposals, container } = mountEditor()
     const start = view.state.doc.toString().indexOf('[[Note B]]')
