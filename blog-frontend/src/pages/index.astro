@@ -22,7 +22,7 @@ const [siteInfo, postsData, categories, tags, calendarDays] = await Promise.all(
 const categoryMap = new Map(categories.map((c) => [c.id, c]))
 ---
 
-<Layout title={`${siteInfo.siteName} - ${siteInfo.subtitle}`} description={siteInfo.bio}>
+<Layout title={`${siteInfo.siteName} - ${siteInfo.subtitle}`} description={siteInfo.bio} siteInfo={siteInfo}>
   <!-- Hero Banner -->
   <section class="mb-10 text-center py-6 px-4 rounded-3xl bg-[var(--bg-sunken)] border border-[var(--border-subtle)] relative overflow-hidden">
     <div class="relative z-10 max-w-2xl mx-auto space-y-3">

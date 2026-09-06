@@ -1,12 +1,9 @@
 ---
-import { api } from '../lib/api'
-
 interface Props {
-  siteName?: string
+  siteName: string
 }
 
-const { siteName: propSiteName } = Astro.props
-const siteName = propSiteName || (await api.getSiteInfo()).siteName
+const { siteName } = Astro.props
 
 const navItems = [
   { label: '首页', href: '/' },

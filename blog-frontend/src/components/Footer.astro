@@ -1,7 +1,11 @@
 ---
-import { api } from '../lib/api'
+import type { BlogSiteInfo } from '../lib/types'
 
-const siteInfo = await api.getSiteInfo()
+interface Props {
+  siteInfo: BlogSiteInfo
+}
+
+const { siteInfo } = Astro.props
 
 const currentYear = new Date().getFullYear()
 ---
