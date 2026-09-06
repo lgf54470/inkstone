@@ -3,5 +3,21 @@
 # comments:check steps so violations fail locally before reaching CI).
 set -e
 cd "$(git rev-parse --show-toplevel)"
+
+# Static policy gates — always on (fast, whole-tree by design).
 node scripts/check-size.mjs
 node scripts/check-comments.mjs
+
+# Type/test gates — scoped to the staged TypeScript files so local commits
+# stay fast; the full suite still runs in CI. `tsc -b` is incremental (via
+# .tsbuildinfo it only re-checks the modules affected by this change), and
+# vitest "related" runs only the unit tests that import the staged files.
+staged_ts="$(git diff --cached --name-only --diff-filter=ACM -- '*.ts' '*.tsx')"
+if [ -z "$staged_ts" ]; then
+  exit 0
+fi
+
+npm run typecheck --silent
+
+# shellcheck disable=SC2086  # word-splitting is intended for the file list
+npx --no-install vitest related $staged_ts --passWithNoTests
