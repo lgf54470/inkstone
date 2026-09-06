@@ -292,15 +292,51 @@ function SearchResultsPanel({
   )
 }
 
-function SearchResultRow({
-  post,
-  selected,
-  onHover,
-}: {
-  post: BlogPost
-  selected: boolean
-  onHover: () => void
-}) {
+function SearchResultTitle({ post, selected }: { post: BlogPost; selected: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <h4
+        className={`text-sm font-semibold truncate ${
+          selected ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'
+        }`}
+      >
+        {post.title}
+      </h4>
+      <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-quaternary)] shrink-0">
+        <Calendar className="w-3 h-3" />
+        <span>{new Date(post.publishedAt || post.createdAt).toLocaleDateString()}</span>
+      </div>
+    </div>
+  )
+}
+
+function SearchResultExcerpt({ post }: { post: BlogPost }) {
+  if (!post.excerpt) return null
+  return (
+    <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mt-1 leading-relaxed">
+      {post.excerpt}
+    </p>
+  )
+}
+
+function SearchResultTags({ post }: { post: BlogPost }) {
+  if (!post.tags || post.tags.length === 0) return null
+  return (
+    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+      {post.tags.map((tag) => (
+        <span
+          key={tag}
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg-inset)] text-[var(--text-tertiary)]"
+        >
+          <Tag className="w-2.5 h-2.5" />
+          {tag}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function SearchResultRow({ post, selected, onHover }: { post: BlogPost; selected: boolean; onHover: () => void }) {
   return (
     <a
       href={`/posts/${post.slug}`}
@@ -309,37 +345,9 @@ function SearchResultRow({
         selected ? 'bg-[var(--accent-softer)] border-l-2 border-[var(--accent)]' : 'hover:bg-[var(--bg-hover)]'
       }`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <h4
-          className={`text-sm font-semibold truncate ${
-            selected ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'
-          }`}
-        >
-          {post.title}
-        </h4>
-        <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-quaternary)] shrink-0">
-          <Calendar className="w-3 h-3" />
-          <span>{new Date(post.publishedAt || post.createdAt).toLocaleDateString()}</span>
-        </div>
-      </div>
-      {post.excerpt && (
-        <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mt-1 leading-relaxed">
-          {post.excerpt}
-        </p>
-      )}
-      {post.tags && post.tags.length > 0 && (
-        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-          {post.tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg-inset)] text-[var(--text-tertiary)]"
-            >
-              <Tag className="w-2.5 h-2.5" />
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
+      <SearchResultTitle post={post} selected={selected} />
+      <SearchResultExcerpt post={post} />
+      <SearchResultTags post={post} />
     </a>
   )
 }
