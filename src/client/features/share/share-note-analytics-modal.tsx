@@ -11,12 +11,14 @@ import { countryFlag, countryNameLocalized } from './share-helpers'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import { useShareNoteAnalytics } from './use-share-note-analytics'
 
-const RANGE_OPTIONS = [
-  { value: '24h', label: '24h' },
-  { value: '7d', label: '7d' },
-  { value: '30d', label: '30d' },
-  { value: 'all', label: t('share.range_all') },
-]
+function rangeOptions(): { value: string; label: string }[] {
+  return [
+    { value: '24h', label: '24h' },
+    { value: '7d', label: '7d' },
+    { value: '30d', label: '30d' },
+    { value: 'all', label: t('share.range_all') },
+  ]
+}
 
 export function ShareNoteAnalyticsModal({
   open,
@@ -51,7 +53,7 @@ export function ShareNoteAnalyticsModal({
         <div className="flex items-center justify-between gap-2">
           <StatCards data={data} />
           <div className="flex items-center gap-2">
-            <Segmented options={RANGE_OPTIONS} value={range} onChange={(val) => setRange(val as ShareTimelineRange)} />
+            <Segmented options={rangeOptions()} value={range} onChange={(val) => setRange(val as ShareTimelineRange)} />
             <ShareTrafficFilterPopover />
           </div>
         </div>

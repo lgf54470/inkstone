@@ -21,17 +21,21 @@ import { t } from '../../../lib/i18n';
 import type { WorkspaceBundle } from './use-workspace';
 import type { ExportNote } from './workspace-menus';
 
-const groupedLayoutOptions: SegmentedOption<EditorLayout>[] = [
-  { value: 'edit', label: <Pencil size={12.5} />, title: t('workspace.edit_only') },
-  { value: 'split', label: <Columns2 size={12.5} />, title: t('workspace.split_view') },
-  { value: 'preview', label: <Eye size={12.5} />, title: t('workspace.preview_only') },
-];
+function groupedLayoutOptions(): SegmentedOption<EditorLayout>[] {
+  return [
+    { value: 'edit', label: <Pencil size={12.5} />, title: t('workspace.edit_only') },
+    { value: 'split', label: <Columns2 size={12.5} />, title: t('workspace.split_view') },
+    { value: 'preview', label: <Eye size={12.5} />, title: t('workspace.preview_only') },
+  ];
+}
 
-const standaloneLayoutOptions: SegmentedOption<EditorLayout>[] = [
-  { value: 'edit', label: <Pencil size={12.5} />, title: t('workspace.edit_only') },
-  { value: 'split', label: <Columns2 size={12.5} />, title: t('workspace.split_view'), combo: 'mod+\\\\' },
-  { value: 'preview', label: <Eye size={12.5} />, title: t('workspace.preview_only') },
-];
+function standaloneLayoutOptions(): SegmentedOption<EditorLayout>[] {
+  return [
+    { value: 'edit', label: <Pencil size={12.5} />, title: t('workspace.edit_only') },
+    { value: 'split', label: <Columns2 size={12.5} />, title: t('workspace.split_view'), combo: 'mod+\\\\' },
+    { value: 'preview', label: <Eye size={12.5} />, title: t('workspace.preview_only') },
+  ];
+}
 
 function TitleArea({ b, grouped }: { b: WorkspaceBundle; grouped: boolean }) {
   const { note, editTitle, view, isShared, isBlogPublished, updatedTime } = b;
@@ -79,7 +83,7 @@ function GroupedHeaderActions({ b }: { b: WorkspaceBundle }) {
   return (
     <>
       <div className="mr-1 hidden 2xl:block">
-        <Segmented label={t('workspace.layout')} size="sm" value={layout} onChange={setEditorLayout} options={groupedLayoutOptions} />
+        <Segmented label={t('workspace.layout')} size="sm" value={layout} onChange={setEditorLayout} options={groupedLayoutOptions()} />
       </div>
       <Tooltip label={t('common.more_actions')} side="left">
         <IconButton ref={moreButtonRef} label={t('common.more_actions')} size="sm" onClick={() => setIsMoreMenuOpen(true)}>
@@ -102,7 +106,7 @@ function StandaloneHeaderActions({ b, exportMenuItems }: { b: WorkspaceBundle; e
   return (
     <>
       <span className="mr-1 hidden xl:inline-flex"><SaveIndicator /></span>
-      <div className="mr-1 hidden lg:block"><Segmented label={t('workspace.layout')} size="sm" value={b.layout} onChange={b.setEditorLayout} options={standaloneLayoutOptions} /></div>
+      <div className="mr-1 hidden lg:block"><Segmented label={t('workspace.layout')} size="sm" value={b.layout} onChange={b.setEditorLayout} options={standaloneLayoutOptions()} /></div>
       <Tooltip label={note.isStarred ? t('common.remove_from_favorites') : t('navigation.favorites')} combo="mod+d"><IconButton label={note.isStarred ? t('common.remove_from_favorites') : t('navigation.favorites')} size="sm" active={note.isStarred} onClick={() => void patchNote(note.id, { isStarred: !note.isStarred })}><Star size={14} className={note.isStarred ? 'fill-current' : undefined} /></IconButton></Tooltip>
       <Tooltip label={t('attachments.manage')}><IconButton label={t('attachments.manage')} size="sm" active={isAttachmentDriveOpen} onClick={() => setIsAttachmentDriveOpen(true)}><Paperclip size={14} /></IconButton></Tooltip>
       <Tooltip label={t('common.backlinks')}><IconButton label={t('common.backlinks')} size="sm" active={backlinksOpen} onClick={toggleBacklinks}><LinkIcon size={14} /></IconButton></Tooltip>

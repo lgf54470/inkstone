@@ -26,17 +26,19 @@ export interface AttachmentDriveSidebarProps {
   onDropFilesToFolder: (fileIds: string[], targetFolderId: string | null) => Promise<void>
 }
 
-const CATEGORIES: { id: AttachmentCategory; label: string; icon: ReactNode }[] = [
-  { id: 'dashboard', label: t('attachments.dashboard'), icon: <LayoutDashboard size={14} /> },
-  { id: 'all', label: t('attachments.all_files'), icon: <HardDrive size={14} /> },
-  { id: 'image', label: t('attachments.photos'), icon: <Images size={14} /> },
-  { id: 'document', label: t('attachments.documents'), icon: <FileText size={14} /> },
-  { id: 'media', label: t('attachments.media'), icon: <Film size={14} /> },
-  { id: 'archive', label: t('attachments.archives'), icon: <Archive size={14} /> },
-  { id: 'starred', label: t('attachments.starred_files'), icon: <Star size={14} /> },
-  { id: 'pinned', label: t('attachments.pinned_files'), icon: <Pin size={14} /> },
-  { id: 'unreferenced', label: t('attachments.unreferenced_files'), icon: <Link2Off size={14} /> },
-]
+function categoryList(): { id: AttachmentCategory; label: string; icon: ReactNode }[] {
+  return [
+    { id: 'dashboard', label: t('attachments.dashboard'), icon: <LayoutDashboard size={14} /> },
+    { id: 'all', label: t('attachments.all_files'), icon: <HardDrive size={14} /> },
+    { id: 'image', label: t('attachments.photos'), icon: <Images size={14} /> },
+    { id: 'document', label: t('attachments.documents'), icon: <FileText size={14} /> },
+    { id: 'media', label: t('attachments.media'), icon: <Film size={14} /> },
+    { id: 'archive', label: t('attachments.archives'), icon: <Archive size={14} /> },
+    { id: 'starred', label: t('attachments.starred_files'), icon: <Star size={14} /> },
+    { id: 'pinned', label: t('attachments.pinned_files'), icon: <Pin size={14} /> },
+    { id: 'unreferenced', label: t('attachments.unreferenced_files'), icon: <Link2Off size={14} /> },
+  ]
+}
 
 function useAttachmentSidebarStore() {
   const tree = useAttachmentFolderTree()
@@ -145,7 +147,7 @@ function CategoryList({ selectedCategory, selectedFolderId, selectedTag, onSelec
     <div>
       <SectionLabel>{t('attachments.categories')}</SectionLabel>
       <div className="space-y-0.5">
-        {CATEGORIES.map((cat) => {
+        {categoryList().map((cat) => {
           const active = selectedCategory === cat.id && !selectedFolderId && !selectedTag
           return (
             <button

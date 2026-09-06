@@ -24,20 +24,20 @@ import { Menu, Tooltip, type MenuItem } from '../../components/overlay'
 
 const KNOWN_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'md', 'zip', '7z', 'tar', 'rar', 'gz', 'mp4', 'mp3', 'wav', 'mov', 'webm']
 
-const SORT_LABELS: Record<string, string> = {
-  date_desc: t('attachments.sort_date_desc'),
-  date_asc: t('attachments.sort_date_asc'),
-  name_asc: t('attachments.sort_name_asc'),
-  name_desc: t('attachments.sort_name_desc'),
-  size_desc: t('attachments.sort_size_desc'),
-  size_asc: t('attachments.sort_size_asc'),
+function sortLabelOf(sort: string): string {
+  if (sort === 'date_asc') return t('attachments.sort_date_asc')
+  if (sort === 'name_asc') return t('attachments.sort_name_asc')
+  if (sort === 'name_desc') return t('attachments.sort_name_desc')
+  if (sort === 'size_desc') return t('attachments.sort_size_desc')
+  if (sort === 'size_asc') return t('attachments.sort_size_asc')
+  return t('attachments.sort_date_desc')
 }
 
-const SIZE_LABELS: Record<string, string> = {
-  all: t('attachments.size_all'),
-  small: t('attachments.size_small'),
-  medium: t('attachments.size_medium'),
-  large: t('attachments.size_large'),
+function sizeLabelOf(range: string): string {
+  if (range === 'small') return t('attachments.size_small')
+  if (range === 'medium') return t('attachments.size_medium')
+  if (range === 'large') return t('attachments.size_large')
+  return t('attachments.size_all')
 }
 
 export interface AttachmentDriveToolbarProps {
@@ -145,8 +145,8 @@ export function AttachmentDriveToolbar(props: AttachmentDriveToolbarProps) {
       <div className="flex items-center gap-2 shrink-0 min-w-0">
         <SearchBox search={search} onSearchChange={onSearchChange} />
         <FilterDropdown buttonRef={extButtonRef} isOpen={isExtOpen} onToggle={() => setIsExtOpen((p) => !p)} onClose={() => setIsExtOpen(false)} isActive={Boolean(extension && extension !== 'all')} icon={<FileType size={12} className="shrink-0" />} label={extLabelOf(extension)} items={extensionMenuItems} />
-        <FilterDropdown buttonRef={sizeButtonRef} isOpen={isSizeOpen} onToggle={() => setIsSizeOpen((p) => !p)} onClose={() => setIsSizeOpen(false)} isActive={sizeRange !== 'all'} icon={<Filter size={12} className="shrink-0" />} label={SIZE_LABELS[sizeRange] || t('attachments.size_all')} items={buildSizeMenuItems(onSizeRangeChange, () => setIsSizeOpen(false))} />
-        <FilterDropdown buttonRef={sortButtonRef} isOpen={isSortOpen} onToggle={() => setIsSortOpen((p) => !p)} onClose={() => setIsSortOpen(false)} isActive={false} icon={<SlidersHorizontal size={12} className="shrink-0" />} label={SORT_LABELS[sort] || t('attachments.sort_date_desc')} items={buildSortMenuItems(onSortChange, () => setIsSortOpen(false))} />
+        <FilterDropdown buttonRef={sizeButtonRef} isOpen={isSizeOpen} onToggle={() => setIsSizeOpen((p) => !p)} onClose={() => setIsSizeOpen(false)} isActive={sizeRange !== 'all'} icon={<Filter size={12} className="shrink-0" />} label={sizeLabelOf(sizeRange)} items={buildSizeMenuItems(onSizeRangeChange, () => setIsSizeOpen(false))} />
+        <FilterDropdown buttonRef={sortButtonRef} isOpen={isSortOpen} onToggle={() => setIsSortOpen((p) => !p)} onClose={() => setIsSortOpen(false)} isActive={false} icon={<SlidersHorizontal size={12} className="shrink-0" />} label={sortLabelOf(sort)} items={buildSortMenuItems(onSortChange, () => setIsSortOpen(false))} />
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
@@ -243,16 +243,15 @@ function ViewModeToggle({ viewMode, onViewModeChange }: { viewMode: 'grid' | 'li
   )
 }
 
-const ZOOM_OPTIONS: { id: 'sm' | 'md' | 'lg'; label: string }[] = [
-  { id: 'sm', label: t('attachments.zoom_sm') },
-  { id: 'md', label: t('attachments.zoom_md') },
-  { id: 'lg', label: t('attachments.zoom_lg') },
-]
-
 function ZoomControl({ zoom, onZoomChange }: { zoom: 'sm' | 'md' | 'lg'; onZoomChange: (zoom: 'sm' | 'md' | 'lg') => void }) {
+  const zoomOptions = [
+    { id: 'sm' as const, label: t('attachments.zoom_sm') },
+    { id: 'md' as const, label: t('attachments.zoom_md') },
+    { id: 'lg' as const, label: t('attachments.zoom_lg') },
+  ]
   return (
     <div className="hidden lg:flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 text-[length:var(--text-11)] font-medium shrink-0">
-      {ZOOM_OPTIONS.map((opt) => (
+      {zoomOptions.map((opt) => (
         <button
           key={opt.id}
           type="button"
