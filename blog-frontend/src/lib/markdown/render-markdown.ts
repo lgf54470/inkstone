@@ -22,6 +22,7 @@ import { registerBlockRules } from './rules/block.ts'
 import { registerCoreRules } from './rules/core.ts'
 import { registerInlineRules } from './rules/inline.ts'
 import { registerRendererRules } from './rules/renderer.ts'
+import { sanitizeProseHtml } from './sanitize.ts'
 import type { RenderResult, TocHeading } from './types.ts'
 
 function createMarkdownRenderer(headings: TocHeading[]): InstanceType<typeof MarkdownIt> {
@@ -199,6 +200,8 @@ export function renderMarkdown(rawMarkdown: string): RenderResult {
   // Fences: mermaid, chart, md-example, js-example, code
   md.renderer.rules.fence = renderFence
 
-  const html = md.render(content)
+  // 服务端唯一净化入口：文章正文（含作者手写 HTML）在到达客户端 set:html 之前
+  // 必须过白名单；md-example 嵌套预览在各自递归层已净化，外层再净化一次保持幂等
+  const html = sanitizeProseHtml(md.render(content))
   return { html, headings }
 }

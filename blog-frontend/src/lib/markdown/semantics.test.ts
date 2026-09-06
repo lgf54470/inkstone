@@ -39,7 +39,7 @@ describe('task lists', () => {
     const html = render('- [x] 已完成')
     expect(html).toContain('class="task-list-item enabled task-status-done done"')
     expect(html).toContain('<li class="task-list-item enabled task-status-done done" data-task-status="done">')
-    expect(html).toContain('<input type="checkbox" class="task-list-item-checkbox" checked="" data-task-status="done" />')
+    expect(html).toContain('<input type="checkbox" class="task-list-item-checkbox" checked data-task-status="done" />')
     expect(html).toContain('<span class="task-label"> 已完成</span>')
   })
 
@@ -147,9 +147,11 @@ describe('tables', () => {
   it('wraps tables and converts alignment styles to align attributes', () => {
     const html = render('| a | b | c |\n| :--- | ---: | :---: |\n| 1 | 2 | 3 |')
     expect(html).toContain('<div class="table-wrap"><table>')
-    expect(html).toContain('<th style="text-align:left" align="left">a</th>')
-    expect(html).toContain('<th style="text-align:right" align="right">b</th>')
-    expect(html).toContain('<th style="text-align:center" align="center">c</th>')
+    // 内联 style 在净化时剥离（镜像主应用 PROSE 规则），对齐改由 align 属性承载
+    expect(html).not.toContain('style=')
+    expect(html).toContain('<th align="left">a</th>')
+    expect(html).toContain('<th align="right">b</th>')
+    expect(html).toContain('<th align="center">c</th>')
   })
 })
 
