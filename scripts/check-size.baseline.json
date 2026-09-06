@@ -1,4 +1,22 @@
 {
+  "src/client/app.tsx": {
+    "longFns": 1
+  },
+  "src/client/components/activity-calendar/header.tsx": {
+    "longFns": 1
+  },
+  "src/client/components/activity-calendar/weeks-strip.tsx": {
+    "longFns": 1
+  },
+  "src/client/components/big-svg-chart.tsx": {
+    "longFns": 1
+  },
+  "src/client/components/hub-tag-item.tsx": {
+    "longFns": 1
+  },
+  "src/client/components/tag-pill.tsx": {
+    "longFns": 1
+  },
   "src/client/demo/state.ts": {
     "longFns": 1
   },
@@ -31,9 +49,18 @@
     "longFns": 4,
     "deepFns": 1
   },
+  "src/client/features/attachments/attachment-batch-bar.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/attachments/attachment-dashboard-view.tsx": {
+    "longFns": 3
+  },
   "src/client/features/attachments/attachment-drive-modal/hooks.ts": {
     "longFns": 1,
     "deepFns": 1
+  },
+  "src/client/features/attachments/attachment-drive-modal/index.tsx": {
+    "longFns": 1
   },
   "src/client/features/attachments/attachment-drive-sidebar/folder-row.tsx": {
     "longFns": 1
@@ -41,10 +68,25 @@
   "src/client/features/attachments/attachment-drive-sidebar/sidebar.tsx": {
     "longFns": 1
   },
-  "src/client/features/attachments/attachment-drive-toolbar.tsx": {
+  "src/client/features/attachments/attachment-drive-sidebar/tag-row.tsx": {
     "longFns": 1
   },
+  "src/client/features/attachments/attachment-drive-toolbar.tsx": {
+    "longFns": 2
+  },
+  "src/client/features/attachments/attachment-grid-view.tsx": {
+    "longFns": 2
+  },
   "src/client/features/attachments/attachment-inspector.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/attachments/attachment-list-view.tsx": {
+    "longFns": 2
+  },
+  "src/client/features/attachments/attachment-qr-modal.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/attachments/attachment-rename-modal.tsx": {
     "longFns": 1
   },
   "src/client/features/attachments/attachment-store.ts": {
@@ -54,8 +96,62 @@
     "longFns": 2,
     "deepFns": 1
   },
+  "src/client/features/blog/blog-dashboard-view/audience-cards.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-dashboard-view/pending-comments-card.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-dashboard-view/top-posts-card.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-dashboard-view/visit-logs-card.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-hub-toolbar.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-publish-modal/index.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/blog/blog-traffic-filter-popover.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/command/command-palette/use-commands.tsx": {
+    "longFns": 2
+  },
+  "src/client/features/folders/create-folder-modal.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/folders/folder-color-submenu.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/folders/folder-icon-submenu.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/folders/folder-template-modal.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/folders/move-to-folder-submenu.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/list/note-list/header.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/list/note-list/list-empty.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/preview/lightbox.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/settings/about-settings.tsx": {
+    "longFns": 1
+  },
   "src/client/features/settings/account-settings.tsx": {
     "longFns": 3
+  },
+  "src/client/features/settings/appearance-settings.tsx": {
+    "longFns": 1
   },
   "src/client/features/settings/avatar-picker.tsx": {
     "longFns": 1
@@ -64,6 +160,9 @@
     "longFns": 1
   },
   "src/client/features/settings/backup-settings/index.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/settings/backup-settings/target-card.tsx": {
     "longFns": 1
   },
   "src/client/features/settings/backup-settings/target-form.tsx": {
@@ -75,7 +174,16 @@
   "src/client/features/settings/editor-settings.tsx": {
     "longFns": 1
   },
+  "src/client/features/settings/mcp-settings/index.tsx": {
+    "longFns": 1
+  },
   "src/client/features/settings/mcp-settings/use-mcp-settings.ts": {
+    "longFns": 1
+  },
+  "src/client/features/settings/note-settings.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/settings/settings-panel.tsx": {
     "longFns": 1
   },
   "src/client/features/settings/sync-settings.tsx": {
@@ -87,7 +195,23 @@
   "src/client/features/shell/app-shell.tsx": {
     "longFns": 3
   },
+  "src/client/features/shell/resizer.tsx": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/client/features/shell/save-indicator.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/sidebar/calendar-tree.tsx": {
+    "longFns": 1
+  },
   "src/client/features/sidebar/sidebar-calendar.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/sidebar/sidebar.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/sidebar/sidebar/sidebar-account.tsx": {
     "longFns": 1
   },
   "src/client/features/sidebar/sidebar/sidebar-folders/row.tsx": {
@@ -96,10 +220,21 @@
   "src/client/features/sidebar/sidebar/sidebar-folders/section.tsx": {
     "longFns": 1
   },
+  "src/client/features/sidebar/sidebar/sidebar-nav-buttons.tsx": {
+    "longFns": 1,
+    "deepFns": 1
+  },
   "src/client/features/sidebar/sidebar/sidebar-tags.tsx": {
-    "longFns": 1
+    "longFns": 2,
+    "deepFns": 1
   },
   "src/client/features/tags/manage-tags-modal.tsx": {
+    "longFns": 2
+  },
+  "src/client/features/tags/tag-color-submenu.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/templates/template-card.tsx": {
     "longFns": 1
   },
   "src/shared/constants.test.ts": {

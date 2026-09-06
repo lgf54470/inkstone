@@ -1,27 +1,22 @@
-import { useEffect, useState } from 'react'
-import {
-  Activity,
-  BarChart2,
-  Compass,
-  ExternalLink,
-  Globe,
-  Lock,
-  QrCode,
-} from 'lucide-react'
-import type {
-  ShareNoteAnalytics,
-  ShareTimelineRange,
-} from '@shared/types'
+import { Activity, BarChart2, Compass, ExternalLink, Globe, Lock, QrCode } from 'lucide-react'
+import type { ReactNode } from 'react'
+import type { ShareNoteAnalytics, ShareTimelineRange } from '@shared/types'
 import { Modal } from '../../components/overlay'
 import { Button } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { relativeTime } from '../../lib/time'
-import { t, useLocale } from '../../lib/i18n'
-import { api } from '../../lib/api'
+import { t } from '../../lib/i18n'
 import { BigSvgChart } from '../../components/big-svg-chart'
 import { countryFlag, countryNameLocalized } from './share-helpers'
-import { useShareStore } from './share-store'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
+import { useShareNoteAnalytics } from './use-share-note-analytics'
+
+const RANGE_OPTIONS = [
+  { value: '24h', label: '24h' },
+  { value: '7d', label: '7d' },
+  { value: '30d', label: '30d' },
+  { value: 'all', label: t('share.range_all') },
+]
 
 export function ShareNoteAnalyticsModal({
   open,
@@ -34,45 +29,10 @@ export function ShareNoteAnalyticsModal({
   noteId: string
   onOpenQr?: (url: string, title: string, slug: string) => void
 }) {
-  const locale = useLocale()
-  const [range, setRange] = useState<ShareTimelineRange>('7d')
-  const [metricMode, setMetricMode] = useState<'views' | 'visitors'>('views')
-  const [data, setData] = useState<ShareNoteAnalytics | null>(null)
-
-  const excludeBots = useShareStore((s) => s.excludeBots)
-  const excludeSelfReferrers = useShareStore((s) => s.excludeSelfReferrers)
-  const excludeOwner = useShareStore((s) => s.excludeOwner)
-
-  const loadData = async (selectedRange = range) => {
-    try {
-      const res = await api.share.noteAnalytics(noteId, selectedRange, {
-        excludeBots,
-        excludeSelf: excludeSelfReferrers,
-        excludeOwner,
-      })
-      setData(res)
-    } catch {
-    }
-  }
-
-  useEffect(() => {
-    if (open && noteId) {
-      void loadData(range)
-    }
-  }, [open, noteId, range, excludeBots, excludeSelfReferrers, excludeOwner])
-
+  const { locale, range, setRange, metricMode, setMetricMode, data } = useShareNoteAnalytics(open, noteId)
   if (!open) return null
-
-  const RANGE_OPTIONS = [
-    { value: '24h', label: '24h' },
-    { value: '7d', label: '7d' },
-    { value: '30d', label: '30d' },
-    { value: 'all', label: t('share.range_all') },
-  ]
-
   const timelinePoints = data?.timeline || []
   const chartValues = timelinePoints.map((p) => (metricMode === 'views' ? p.views : p.visitors))
-
   return (
     <Modal
       open={open}
@@ -87,185 +47,174 @@ export function ShareNoteAnalyticsModal({
       width={780}
     >
       <div className="flex flex-col gap-4 py-1 max-h-[75vh] overflow-y-auto pr-1">
-        {data && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-            <div className="flex items-center gap-2 font-mono text-[length:var(--text-12)] text-[var(--text-secondary)]">
-              <Globe size={14} className="text-[var(--accent)]" />
-              <span className="font-semibold text-[var(--text-primary)]">{`/s/${data.slug}`}</span>
-              {data.hasPassword && (
-                <span className="flex items-center gap-0.5 rounded bg-[var(--bg-base)] px-1.5 py-0.5 text-[length:var(--text-10)] text-[var(--warning)]">
-                  <Lock size={10} /> {t('share.password_protected')}
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              {onOpenQr && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  icon={<QrCode size={12} />}
-                  onClick={() => onOpenQr(data.url, data.noteTitle, data.slug)}
-                >
-                  {t('share.qr_code_title')}
-                </Button>
-              )}
-              <a
-                href={data.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-7 items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-2 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-              >
-                <ExternalLink size={12} />
-                <span>{t('preview.open_in_new_tab')}</span>
-              </a>
-            </div>
-          </div>
-        )}
-
+        {data && <AnalyticsLinkBar data={data} onOpenQr={onOpenQr} />}
         <div className="flex items-center justify-between gap-2">
-          <div className="grid grid-cols-2 gap-3 w-full sm:w-auto">
-            <div className="flex min-w-[140px] flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-              <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">{t('share.total_views_pv')}</span>
-              <span className="font-mono text-[length:var(--text-22)] font-bold text-[var(--text-primary)]">
-                {data?.totalViews ?? 0}
-              </span>
-            </div>
-
-            <div className="flex min-w-[140px] flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-              <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">{t('share.total_visitors_uv')}</span>
-              <span className="font-mono text-[length:var(--text-22)] font-bold text-[var(--text-primary)]">
-                {data?.totalVisitors ?? 0}
-              </span>
-            </div>
-          </div>
-
+          <StatCards data={data} />
           <div className="flex items-center gap-2">
-            <Segmented
-              options={RANGE_OPTIONS}
-              value={range}
-              onChange={(val) => setRange(val as ShareTimelineRange)}
-            />
+            <Segmented options={RANGE_OPTIONS} value={range} onChange={(val) => setRange(val as ShareTimelineRange)} />
             <ShareTrafficFilterPopover />
           </div>
         </div>
-
-        <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-          <div className="flex items-center justify-between pb-2">
-            <span className="text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]">
-              {t('share.timeline_trend_title')}
-            </span>
-            <Segmented
-              options={[
-                { value: 'views', label: t('share.metric_pv') },
-                { value: 'visitors', label: t('share.metric_uv') },
-              ]}
-              value={metricMode}
-              onChange={(val) => setMetricMode(val as 'views' | 'visitors')}
-            />
-          </div>
-
-          <div className="h-48 w-full pt-1">
-            <BigSvgChart values={chartValues} timeline={timelinePoints} emptyLabel={t('share.no_data_yet')} />
-          </div>
-        </div>
-
+        <TimelineCard metricMode={metricMode} setMetricMode={setMetricMode} chartValues={chartValues} timelinePoints={timelinePoints} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-            <div className="flex items-center gap-1.5 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]">
-              <Globe size={13} className="text-[var(--accent)]" />
-              <span>{t('share.top_countries_title')}</span>
-            </div>
-            <div className="space-y-2 pt-1">
-              {!data?.topCountries || data.topCountries.length === 0 ? (
-                <p className="py-3 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]">
-                  {t('share.no_data_yet')}
-                </p>
-              ) : (
-                data.topCountries.slice(0, 5).map((item) => (
-                  <BreakdownMiniRow
-                    key={item.name}
-                    name={countryNameLocalized(item.name, locale)}
-                    flag={countryFlag(item.name)}
-                    count={item.count}
-                    percentage={item.percentage ?? 0}
-                  />
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-            <div className="flex items-center gap-1.5 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]">
-              <Compass size={13} className="text-[var(--accent)]" />
-              <span>{t('share.top_referrers_title')}</span>
-            </div>
-            <div className="space-y-2 pt-1">
-              {!data?.topReferrers || data.topReferrers.length === 0 ? (
-                <p className="py-3 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]">
-                  {t('share.no_data_yet')}
-                </p>
-              ) : (
-                data.topReferrers.slice(0, 5).map((item) => (
-                  <BreakdownMiniRow
-                    key={item.name}
-                    name={item.name}
-                    count={item.count}
-                    percentage={item.percentage ?? 0}
-                  />
-                ))
-              )}
-            </div>
-          </div>
+          <BreakdownCard title={t('share.top_countries_title')} icon={<Globe size={13} className="text-[var(--accent)]" />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topCountries || data.topCountries.length === 0}>
+            {data?.topCountries.slice(0, 5).map((item) => (
+              <BreakdownMiniRow key={item.name} name={countryNameLocalized(item.name, locale)} flag={countryFlag(item.name)} count={item.count} percentage={item.percentage ?? 0} />
+            ))}
+          </BreakdownCard>
+          <BreakdownCard title={t('share.top_referrers_title')} icon={<Compass size={13} className="text-[var(--accent)]" />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topReferrers || data.topReferrers.length === 0}>
+            {data?.topReferrers.slice(0, 5).map((item) => (
+              <BreakdownMiniRow key={item.name} name={item.name} count={item.count} percentage={item.percentage ?? 0} />
+            ))}
+          </BreakdownCard>
         </div>
-
-        <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-          <div className="flex items-center gap-1.5 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]">
-            <Activity size={13} className="text-[var(--accent)]" />
-            <span>{t('share.recent_activity_title')}</span>
-          </div>
-
-          <div className="divide-y divide-[var(--border-subtle)] pt-1">
-            {!data?.recentVisits || data.recentVisits.length === 0 ? (
-              <p className="py-4 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]">
-                {t('share.no_visits_yet')}
-              </p>
-            ) : (
-              data.recentVisits.slice(0, 8).map((v) => (
-                <div key={v.id} className="flex items-center justify-between py-1.5 text-[length:var(--text-11)]">
-                  <div className="flex items-center gap-1.5">
-                    <span>{countryFlag(v.country)}</span>
-                    <span className="text-[var(--text-secondary)]">
-                      {countryNameLocalized(v.country, locale)}
-                      {v.city ? ` · ${v.city}` : ''}
-                    </span>
-                    {v.isBot && (
-                      <span className="rounded bg-[var(--danger-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--danger)]">
-                        🤖 {v.botName || t('share.badge_bot')}
-                      </span>
-                    )}
-                    {v.isOwner && (
-                      <span className="rounded bg-[var(--accent-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--accent)]">
-                        👤 {t('share.badge_owner')}
-                      </span>
-                    )}
-                    {v.isSelfReferrer && (
-                      <span className="rounded bg-[var(--warning-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--warning)]">
-                        {t('share.badge_self_referrer')}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-[var(--text-quaternary)] font-mono">
-                    <span>{v.browser} / {v.os}</span>
-                    <span>{relativeTime(v.visitedAt)}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        <RecentActivityCard data={data} locale={locale} />
       </div>
     </Modal>
+  )
+}
+
+function AnalyticsLinkBar({ data, onOpenQr }: { data: ShareNoteAnalytics; onOpenQr?: (url: string, title: string, slug: string) => void }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
+      <div className="flex items-center gap-2 font-mono text-[length:var(--text-12)] text-[var(--text-secondary)]">
+        <Globe size={14} className="text-[var(--accent)]" />
+        <span className="font-semibold text-[var(--text-primary)]">{`/s/${data.slug}`}</span>
+        {data.hasPassword && (
+          <span className="flex items-center gap-0.5 rounded bg-[var(--bg-base)] px-1.5 py-0.5 text-[length:var(--text-10)] text-[var(--warning)]">
+            <Lock size={10} /> {t('share.password_protected')}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        {onOpenQr && (
+          <Button size="sm" variant="secondary" icon={<QrCode size={12} />} onClick={() => onOpenQr(data.url, data.noteTitle, data.slug)}>
+            {t('share.qr_code_title')}
+          </Button>
+        )}
+        <a
+          href={data.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-7 items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-2 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        >
+          <ExternalLink size={12} />
+          <span>{t('preview.open_in_new_tab')}</span>
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function StatCards({ data }: { data: ShareNoteAnalytics | null }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 w-full sm:w-auto">
+      <div className="flex min-w-[140px] flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
+        <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">{t('share.total_views_pv')}</span>
+        <span className="font-mono text-[length:var(--text-22)] font-bold text-[var(--text-primary)]">
+          {data?.totalViews ?? 0}
+        </span>
+      </div>
+      <div className="flex min-w-[140px] flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
+        <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">{t('share.total_visitors_uv')}</span>
+        <span className="font-mono text-[length:var(--text-22)] font-bold text-[var(--text-primary)]">
+          {data?.totalVisitors ?? 0}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function TimelineCard({ metricMode, setMetricMode, chartValues, timelinePoints }: { metricMode: 'views' | 'visitors'; setMetricMode: (mode: 'views' | 'visitors') => void; chartValues: number[]; timelinePoints: ShareNoteAnalytics['timeline'] }) {
+  return (
+    <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
+      <div className="flex items-center justify-between pb-2">
+        <span className="text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]">
+          {t('share.timeline_trend_title')}
+        </span>
+        <Segmented
+          options={[
+            { value: 'views', label: t('share.metric_pv') },
+            { value: 'visitors', label: t('share.metric_uv') },
+          ]}
+          value={metricMode}
+          onChange={(val) => setMetricMode(val as 'views' | 'visitors')}
+        />
+      </div>
+      <div className="h-48 w-full pt-1">
+        <BigSvgChart values={chartValues} timeline={timelinePoints} emptyLabel={t('share.no_data_yet')} />
+      </div>
+    </div>
+  )
+}
+
+function BreakdownCard({ title, icon, emptyLabel, isEmpty, children }: { title: string; icon: ReactNode; emptyLabel: string; isEmpty: boolean; children: ReactNode }) {
+  return (
+    <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
+      <div className="flex items-center gap-1.5 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]">
+        {icon}
+        <span>{title}</span>
+      </div>
+      <div className="space-y-2 pt-1">
+        {isEmpty ? (
+          <p className="py-3 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]">
+            {emptyLabel}
+          </p>
+        ) : (
+          children
+        )}
+      </div>
+    </div>
+  )
+}
+
+function RecentActivityCard({ data, locale }: { data: ShareNoteAnalytics | null; locale: string }) {
+  const visits = data?.recentVisits ?? []
+  return (
+    <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
+      <div className="flex items-center gap-1.5 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]">
+        <Activity size={13} className="text-[var(--accent)]" />
+        <span>{t('share.recent_activity_title')}</span>
+      </div>
+      <div className="divide-y divide-[var(--border-subtle)] pt-1">
+        {visits.length === 0 ? (
+          <p className="py-4 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]">
+            {t('share.no_visits_yet')}
+          </p>
+        ) : (
+          visits.slice(0, 8).map((v) => (
+            <div key={v.id} className="flex items-center justify-between py-1.5 text-[length:var(--text-11)]">
+              <div className="flex items-center gap-1.5">
+                <span>{countryFlag(v.country)}</span>
+                <span className="text-[var(--text-secondary)]">
+                  {countryNameLocalized(v.country, locale)}
+                  {v.city ? ` · ${v.city}` : ''}
+                </span>
+                {v.isBot && (
+                  <span className="rounded bg-[var(--danger-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--danger)]">
+                    🤖 {v.botName || t('share.badge_bot')}
+                  </span>
+                )}
+                {v.isOwner && (
+                  <span className="rounded bg-[var(--accent-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--accent)]">
+                    👤 {t('share.badge_owner')}
+                  </span>
+                )}
+                {v.isSelfReferrer && (
+                  <span className="rounded bg-[var(--warning-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--warning)]">
+                    {t('share.badge_self_referrer')}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-[var(--text-quaternary)] font-mono">
+                <span>{v.browser} / {v.os}</span>
+                <span>{relativeTime(v.visitedAt)}</span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   )
 }
 

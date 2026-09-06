@@ -43,8 +43,9 @@ function isControl(node) {
     || ts.isTryStatement(node)
 }
 
-function measure(text) {
-  const sf = ts.createSourceFile('source.ts', text, ts.ScriptTarget.Latest, true)
+function measure(text, filename) {
+  // pass the real filename so TS parses .tsx as TSX; a hardcoded '.ts' name made JSX a parse error and truncated function bodies
+  const sf = ts.createSourceFile(filename, text, ts.ScriptTarget.Latest, true)
   const long = []
   const deep = []
   function bodyLines(node) {
@@ -84,7 +85,7 @@ function baselineEntryFrom(result) {
 const files = walk(ROOT).sort()
 const measurements = new Map()
 for (const file of files) {
-  measurements.set(relative(file), measure(fs.readFileSync(file, 'utf8')))
+  measurements.set(relative(file), measure(fs.readFileSync(file, 'utf8'), file))
 }
 const updateBaseline = process.argv.includes('--update-baseline') || !fs.existsSync(BASELINE_PATH)
 

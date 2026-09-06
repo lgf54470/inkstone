@@ -35,6 +35,9 @@ const allowed = new Map([
     "// initializers are runtime-fillable and therefore cross-request mutable.",
     "// 2. Client: no module-level useState (React hook outside a component).",
   ]],
+  ["scripts/check-size.mjs", [
+    "// pass the real filename so TS parses .tsx as TSX; a hardcoded '.ts' name made JSX a parse error and truncated function bodies",
+  ]],
   ["scripts/ci-bench-report.mjs", [
     "// Generous headroom for shared CI runners; the point is catching an order-of-magnitude regression.",
   ]],
@@ -195,20 +198,6 @@ const allowed = new Map([
   ]],
   ["src/client/features/settings/note-settings.tsx", [
     "// Live preview: what the template looks like with the placeholders filled in.",
-  ]],
-  ["src/client/features/share/share-edit-modal/index.tsx", [
-    "/* Public link display and quick actions */",
-    "/* Core action triggers: analytics, qr code, share hub */",
-    "/* Share status switch */",
-    "/* Folder selection */",
-    "/* Tag selection */",
-    "/* Tag chips */",
-    "/* Add tag input */",
-    "/* Custom slug */",
-    "/* Access passcode */",
-    "/* Expiration */",
-    "/* Note analytics modal */",
-    "/* QR code modal */",
   ]],
   ["src/client/features/share/share-form.ts", [
     "// A new or replaced passcode must be at least 4 characters (the server",

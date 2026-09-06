@@ -302,3 +302,4 @@ async function revokeEditShareFlow({ noteId, setIsRevoking, toast, onSaved, onCl
     setIsRevoking(false)
   }
 }
+export type ShareEditModalBundle = ReturnType<typeof useShareEditModal>

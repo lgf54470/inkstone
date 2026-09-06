@@ -3,6 +3,12 @@ import type { MenuItem } from '../../../components/overlay';
 import { Kbd } from '../../../components/primitives';
 import { cn } from '../../../lib/cn';
 
+export function submenuFor(items: MenuItem[], width?: number) {
+  return ({ closeMenu }: { closeMenu: () => void }) => (
+    <SubmenuList closeMenu={closeMenu} items={items} width={width} />
+  );
+}
+
 export function SubmenuList({
   items,
   closeMenu,
