@@ -82,7 +82,7 @@ function TableHeader({ isAllSelected, onToggleAll }: { isAllSelected: boolean; o
             className='rounded border-[var(--border-default)] accent-[var(--accent)] cursor-pointer'
           />
         </th>
-        <th className='px-3 py-2 min-w-[160px] whitespace-nowrap'>{t('blog.col_title')}</th>
+        <th className='px-3 py-2 min-w-40 whitespace-nowrap'>{t('blog.col_title')}</th>
         <th className='w-24 px-3 py-2 whitespace-nowrap'>{t('blog.folders')}</th>
         <th className='w-24 px-3 py-2 whitespace-nowrap'>{t('blog.category')}</th>
         <th className='w-28 px-3 py-2 whitespace-nowrap'>{t('blog.tags')}</th>

@@ -297,7 +297,7 @@ function PaletteSearchHeader({ inputRef, query, onQueryChange, onKeyDown, listId
   return (
     <div className='flex items-center gap-2.5 border-b border-[var(--border-subtle)] px-4'>
       <Search size={16} className='shrink-0 text-[var(--text-quaternary)]'/>
-      <input ref={inputRef} role='combobox' aria-label={t('common.search_notes_or_run_a_command')} aria-expanded='true' aria-controls={listId} aria-activedescendant={items[cursor] ? `${listId}-option-${cursor}` : undefined} aria-autocomplete='list' autoComplete='off' value={query} onChange={(e) => onQueryChange(e.target.value)} onKeyDown={onKeyDown} placeholder={t('command.search_notes_or_type_a_command')} className='h-[52px] flex-1 bg-transparent text-[length:var(--text-15)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none'/>
+      <input ref={inputRef} role='combobox' aria-label={t('common.search_notes_or_run_a_command')} aria-expanded='true' aria-controls={listId} aria-activedescendant={items[cursor] ? `${listId}-option-${cursor}` : undefined} aria-autocomplete='list' autoComplete='off' value={query} onChange={(e) => onQueryChange(e.target.value)} onKeyDown={onKeyDown} placeholder={t('command.search_notes_or_type_a_command')} className='h-13 flex-1 bg-transparent text-[length:var(--text-15)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none'/>
       <Tooltip label={t('command.filter_by_tags')}>
         <IconButton label={t('command.filter_by_tags')} size='sm' ref={tagFilterRef} active={hasSelectedTags} className='text-[var(--text-tertiary)]' onClick={onOpenTagFilter}>
           <Hash size={15}/>
@@ -347,7 +347,7 @@ function PaletteResultsList({ listRef, listId, labelId, groups, cursor, isKeyboa
   return (
     <div ref={listRef} id={listId} role='listbox' aria-labelledby={labelId} className='min-h-0 flex-1 overflow-y-auto p-1.5 md:max-h-[54vh] md:flex-none'>
       {groups.length === 0 ? (<div className="px-3 py-10 text-center text-[length:var(--text-12\.5)] text-[var(--text-quaternary)]">{t('command.no_matching_results')}</div>) : (groups.map(([group, groupItems]) => (<div key={group} role='group' aria-label={group} className='mb-1'>
-        <div className="px-2.5 pt-2 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+        <div className="px-2.5 pt-2 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]">
           {group}
         </div>
         {groupItems.map((item) => {
@@ -429,7 +429,7 @@ export function CommandPalette({ onClose }: {
   const onKeyDown = (event: React.KeyboardEvent) => paletteKeyDown(event, { items, cursor }, { setCursor, setIsKeyboardNav, executeItem });
   return createPortal(<div className='app-viewport-fixed fixed z-[var(--z-palette)] flex items-end justify-center md:items-start md:px-4 md:pt-[13vh]'>
     <div className='anim-fade absolute inset-0 bg-[var(--scrim)]' onClick={onClose} aria-hidden='true'/>
-    <div ref={panelRef} className='anim-pop relative flex h-[min(82dvh,var(--app-viewport-height,100dvh))] w-full max-w-[660px] flex-col overflow-hidden rounded-t-[var(--r-2xl)] border border-b-0 border-[var(--border-default)] bg-[var(--bg-overlay)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-modal)] outline-none md:h-auto md:rounded-[var(--r-2xl)] md:border-b md:pb-0' role='dialog' aria-modal='true' aria-labelledby={labelId} tabIndex={-1}>
+    <div ref={panelRef} className='anim-pop relative flex h-[min(82dvh,var(--app-viewport-height,100dvh))] w-full max-w-165 flex-col overflow-hidden rounded-t-[var(--r-2xl)] border border-b-0 border-[var(--border-default)] bg-[var(--bg-overlay)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-modal)] outline-none md:h-auto md:rounded-[var(--r-2xl)] md:border-b md:pb-0' role='dialog' aria-modal='true' aria-labelledby={labelId} tabIndex={-1}>
     <h2 id={labelId} className='sr-only'>{t('common.search_notes_or_run_a_command')}</h2>
     <PaletteSearchHeader inputRef={inputRef} query={query} onQueryChange={setQuery} onKeyDown={onKeyDown} listId={listId} cursor={cursor} items={items} tagFilterRef={tagFilterRef} hasSelectedTags={selectedTags.length > 0} onOpenTagFilter={() => setIsTagFilterOpen(true)} onClose={onClose}/>
     {selectedTags.length > 0 && <PaletteTagBar count={selectedTags.length} match={selectedTagsMatch} onMatchChange={setSelectedTagsMatch}/>}

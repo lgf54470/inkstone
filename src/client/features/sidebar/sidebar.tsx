@@ -28,6 +28,8 @@ import { SidebarRail } from './sidebar/sidebar-rail';
 import { TagSection } from './sidebar/sidebar-tags';
 import { ViewItem } from './sidebar/sidebar-nav-buttons';
 
+const TRACKING_APP_TITLE = 'tracking-[0.02em]'
+
 export function Sidebar({ collapsed = false, onCollapse, }: {
     collapsed?: boolean;
     onCollapse?: () => void;
@@ -84,9 +86,9 @@ function SidebarHeader({ onCollapse }: {
     onCollapse?: () => void;
 }) {
     return (<header className='flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-3'>
-      <div className='flex min-w-0 items-center gap-[9px] select-none'>
+      <div className='flex min-w-0 items-center gap-2.25 select-none'>
         <Logo size={24}/>
-        <span className="min-w-0 truncate font-serif text-[length:var(--text-15\.5)] font-semibold tracking-[0.02em] text-[var(--text-primary)]">
+        <span className={`min-w-0 truncate font-serif text-[length:var(--text-15\.5)] font-semibold ${TRACKING_APP_TITLE} text-[var(--text-primary)]`}>
           {t('common.product_name')}
         </span>
       </div>

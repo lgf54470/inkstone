@@ -13,7 +13,21 @@
 //     icon sizes are an established per-site convention across hundreds of
 //     call sites, and SVG geometry (r/cx/cy), stroke and opacity attributes
 //     are excluded because hand-authored illustration coordinates are
-//     one-shot specs the remediation commits never hoisted.
+//     one-shot specs the remediation commits never hoisted;
+//   - raw unit values inside Tailwind arbitrary-value classNames (w-[240px],
+//     text-[11px], tracking-[0.06em], grid-cols-[210px_...]) in className/class
+//     attributes and cn() string arguments. The compliant shape is a design
+//     token reference ([var(--...)]), the sanctioned style-constant-table
+//     pattern (a string inside a named initializer, e.g. a const holding the
+//     className, like the hex exemption below), or an existing utility class.
+//     Brackets whose content is var()/calc()/min()/max()/clamp()/env() or a
+//     color function (oklch()/rgb()/...) are exempt: token references are the
+//     goal; calc/min/max/clamp/env are viewport-relative responsive math
+//     (safe-area insets, 100vw offsets); color functions carry % channels,
+//     not sizes. Numeric exemption matches the style scan: 0/1/100 (e.g.
+//     gap-[1px] is a canonical hairline). cn() arguments are scanned
+//     recursively so ternary/binary class strings (cond ? 'w-[2px]' : ...)
+//     cannot dodge the check.
 // Numeric literals in .ts (non-JSX) files are out of scope: without a type
 // checker a bare number cannot be told apart from data, and the visual
 // surface is JSX by construction.
@@ -28,6 +42,8 @@ const EXCLUDED_DIRS = new Set(['node_modules', 'dist', '.git', '.wrangler'])
 const HEX_RE = /(?<![0-9a-fA-F&])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})\b/g
 const UNIT_VALUE_RE = /^-?\d+(?:\.\d+)?(?:px|rem|em|pt|%)$/
 const NUMERIC_ATTR_RE = /^-?\d+(?:\.\d+)?(?:px)?$/
+// Unit values inside Tailwind arbitrary-value brackets; also matches .06em.
+const ARBITRARY_UNIT_RE = /-?(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem|em|pt|%)/g
 const EXEMPT_NUMBERS = new Set([0, 1, -1, 100])
 
 const VISUAL_ATTRS = new Set([
@@ -61,6 +77,10 @@ function isExemptFile(rel) {
 function inNamedInitializer(node) {
   let current = node.parent
   while (current) {
+    // A string inside a function body is code (JSX/classNames/computed
+    // values), not table data: const C = () => 'w-[240px]' is a loophole,
+    // only direct const/param/property/enum data counts as a constant table.
+    if (ts.isFunctionLike(current)) return false
     const initializer = ts.isVariableDeclaration(current) || ts.isParameter(current)
       || ts.isPropertyDeclaration(current) || ts.isEnumMember(current)
       ? current.initializer
@@ -75,6 +95,26 @@ function inNamedInitializer(node) {
 
 function isExemptNumber(value) {
   return EXEMPT_NUMBERS.has(Number(value))
+}
+
+// Tailwind arbitrary-value brackets hold raw sizes unless they reference a
+// token or compose relative units; return the offending unit values.
+function arbitraryUnitProblems(text) {
+  const found = []
+  let start = 0
+  while ((start = text.indexOf('[', start)) !== -1) {
+    const close = text.indexOf(']', start)
+    if (close === -1) break
+    const inner = text.slice(start + 1, close)
+    if (!/var\(/.test(inner) && !/^(?:calc|min|max|clamp|env)\(/.test(inner.trim())
+      && !/^(?:oklch|oklab|rgb|rgba|hsl|hsla|color-mix|color|color:|length:var)/.test(inner.trim())) {
+      for (const match of inner.matchAll(ARBITRARY_UNIT_RE)) {
+        if (!isExemptNumber(match[0].replace(/[^-\d.]/g, ''))) found.push(match[0])
+      }
+    }
+    start = close + 1
+  }
+  return found
 }
 
 function problemsFor(rel, text) {
@@ -139,8 +179,60 @@ function problemsFor(rel, text) {
     ts.forEachChild(node, visitNumbers)
   }
 
+  // Part 3: raw unit values in Tailwind arbitrary-value classNames.
+  function scanClassString(node, report) {
+    if (inNamedInitializer(node)) return
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      for (const value of arbitraryUnitProblems(node.text)) report(lineOf(node), value)
+      return
+    }
+    if (ts.isTemplateExpression(node)) {
+      const parts = [node.head, ...node.templateSpans.map((span) => span.literal)]
+      for (const part of parts) {
+        for (const value of arbitraryUnitProblems(part.text)) report(lineOf(part), value)
+      }
+    }
+  }
+
+  // cn() arguments and className expressions can be ternaries/logicals
+  // wrapping the class strings; collect every string literal beneath them.
+  function collectClassStrings(node, out) {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node)) {
+      out.push(node)
+      return
+    }
+    ts.forEachChild(node, (child) => collectClassStrings(child, out))
+  }
+
+  function visitClasses(node) {
+    if (ts.isJsxAttribute(node)) {
+      const name = node.name.getText(sf)
+      if ((name === 'className' || name === 'class') && node.initializer) {
+        let initializer = node.initializer
+        if (ts.isJsxExpression(initializer) && initializer.expression) initializer = initializer.expression
+        const strings = []
+        collectClassStrings(initializer, strings)
+        for (const literal of strings) {
+          scanClassString(literal, (line, value) => {
+            push(line, `raw ${value} in Tailwind arbitrary-value class (AGENTS.md rule 2): reference a design token (var(--...)) or hoist the class string to a named constant`)
+          })
+        }
+      }
+    } else if (ts.isCallExpression(node) && node.expression.getText(sf) === 'cn') {
+      const strings = []
+      for (const arg of node.arguments) collectClassStrings(arg, strings)
+      for (const literal of strings) {
+        scanClassString(literal, (line, value) => {
+          push(line, `raw ${value} in Tailwind arbitrary-value class (AGENTS.md rule 2): reference a design token (var(--...)) or hoist the class string to a named constant`)
+        })
+      }
+    }
+    ts.forEachChild(node, visitClasses)
+  }
+
   visitHex(sf)
   if (rel.endsWith('.tsx')) visitNumbers(sf)
+  visitClasses(sf)
   return found
 }
 

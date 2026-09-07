@@ -27,7 +27,7 @@ export function VisitLogsCard({ analytics, locale }: VisitLogsCardProps) {
       </span>
     </div>
 
-    <div className='flex-1 divide-y divide-[var(--border-subtle)] pt-1 overflow-y-auto max-h-[360px]'>
+    <div className='flex-1 divide-y divide-[var(--border-subtle)] pt-1 overflow-y-auto max-h-90'>
       {visits.length === 0 ? (
         <p className='py-12 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
           {t('blog.no_visit_data')}
@@ -49,7 +49,7 @@ function VisitLogRow({ visit, locale }: {
     <div className='flex flex-wrap items-center justify-between gap-2 py-2.5 text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-[var(--r-md)] transition-colors'>
       <div className='flex items-center gap-2 min-w-0'>
         <span className='text-[length:var(--text-13)]'>{countryFlag(visit.country)}</span>
-        <span className='truncate font-medium text-[var(--text-primary)] max-w-[180px]'>
+        <span className='truncate font-medium text-[var(--text-primary)] max-w-45'>
           {visit.postTitle || visit.slug}
         </span>
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)] hidden sm:inline'>

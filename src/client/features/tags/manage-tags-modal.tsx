@@ -194,7 +194,7 @@ function TagManageList({
       });
   }, [tags, query]);
   return (
-    <div className='max-h-[420px] overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>
+    <div className='max-h-105 overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>
       {choices.map((tag) => (
         <TagManageRow key={tag.id} tag={tag} onOpenTag={onOpenTag} />
       ))}

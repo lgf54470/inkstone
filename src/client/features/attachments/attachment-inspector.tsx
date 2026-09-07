@@ -152,7 +152,7 @@ export function AttachmentInspector(props: AttachmentInspectorProps) {
   const folder = file.folderId ? attachmentFolders.find((f) => f.id === file.folderId) : null
 
   return (
-    <aside className='flex h-full w-[300px] shrink-0 flex-col border-l border-[var(--border-subtle)] bg-[var(--bg-sunken)]'>
+    <aside className='flex h-full w-75 shrink-0 flex-col border-l border-[var(--border-subtle)] bg-[var(--bg-sunken)]'>
       <div className='flex h-12 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-3'>
         <span className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
           {t('attachments.detail_info')}

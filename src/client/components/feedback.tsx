@@ -10,6 +10,8 @@ import { isEditableTarget } from '../lib/hotkeys';
 import { useUndoToastFocus } from '../lib/undo-focus-pref';
 import { EmptyIllustration, type EmptyArt } from './empty-illustrations';
 
+const SKELETON_WIDE = 'w-[86%]'
+const SKELETON_NARROW = 'w-[70%]'
 const SKELETON_FADE_STEP = 0.11
 const SKELETON_W_BASE = 58
 const SKELETON_W_STEP = 13
@@ -123,9 +125,9 @@ export function NoteListSkeleton({ count = 7 }: {
 }) {
   return (<div className='space-y-1 p-2'>
     {Array.from({ length: count }, (_, i) => (<div key={i} className='space-y-2 rounded-[var(--r-md)] p-2.5' style={{ opacity: 1 - i * SKELETON_FADE_STEP }}>
-      <Skeleton className='h-[13px]' style={{ width: `${SKELETON_W_BASE + ((i * SKELETON_W_STEP) % SKELETON_W_MOD)}%` }}/>
-      <Skeleton className='h-[11px]' style={{ width: `${SKELETON_W2_BASE + ((i * SKELETON_W2_STEP) % SKELETON_W2_MOD)}%` }}/>
-      <Skeleton className='h-[10px] w-16'/>
+      <Skeleton className='h-3.25' style={{ width: `${SKELETON_W_BASE + ((i * SKELETON_W_STEP) % SKELETON_W_MOD)}%` }}/>
+      <Skeleton className='h-2.75' style={{ width: `${SKELETON_W2_BASE + ((i * SKELETON_W2_STEP) % SKELETON_W2_MOD)}%` }}/>
+      <Skeleton className='h-2.5 w-16'/>
     </div>))}
   </div>);
 }
@@ -133,10 +135,10 @@ export function EditorSkeleton() {
   return (<div className='mx-auto max-w-[70ch] space-y-3 px-6 py-8'>
     <Skeleton className='h-6 w-1/2'/>
     <div className='h-3'/>
-    {[92, 100, 78, 96, 64].map((w, i) => (<Skeleton key={i} className='h-[13px]' style={{ width: `${w}%` }}/>))}
+    {[92, 100, 78, 96, 64].map((w, i) => (<Skeleton key={i} className='h-3.25' style={{ width: `${w}%` }}/>))}
     <div className='h-4'/>
-    <Skeleton className='h-[13px] w-[86%]'/>
-    <Skeleton className='h-[13px] w-[70%]'/>
+    <Skeleton className={`h-3.25 ${SKELETON_WIDE}`}/>
+    <Skeleton className={`h-3.25 ${SKELETON_NARROW}`}/>
   </div>);
 }
 export type { EmptyArt };
@@ -147,10 +149,10 @@ export function Empty({ art = 'notes', title, description, action, compact, }: {
   action?: ReactNode;
   compact?: boolean;
 }) {
-  return (<div className={cn('flex flex-col items-center justify-center px-8 text-center', compact ? 'py-10' : 'h-full min-h-[240px] py-16')}>
+  return (<div className={cn('flex flex-col items-center justify-center px-8 text-center', compact ? 'py-10' : 'h-full min-h-60 py-16')}>
     <EmptyIllustration art={art}/>
     <p className="mt-4 text-[length:var(--text-13\\.5)] font-medium text-[var(--text-secondary)]">{title}</p>
-    {description && (<p className='mt-1.5 max-w-[290px] text-[length:var(--text-12)] leading-relaxed text-[var(--text-quaternary)]'>
+    {description && (<p className='mt-1.5 max-w-72.5 text-[length:var(--text-12)] leading-relaxed text-[var(--text-quaternary)]'>
       {description}
     </p>)}
     {action && <div className='mt-4'>{action}</div>}
@@ -159,7 +161,7 @@ export function Empty({ art = 'notes', title, description, action, compact, }: {
 export function LoadingBlock({ label = t('common.loading') }: {
   label?: string;
 }) {
-  return (<div role='status' aria-live='polite' className='flex h-full min-h-[160px] flex-col items-center justify-center gap-2.5 text-[var(--text-quaternary)]'>
+  return (<div role='status' aria-live='polite' className='flex h-full min-h-40 flex-col items-center justify-center gap-2.5 text-[var(--text-quaternary)]'>
     <svg aria-hidden='true' width={LOADING_ICON_SIZE} height={LOADING_ICON_SIZE} viewBox='0 0 24 24' fill='none' className='animate-[ink-spin_.7s_linear_infinite]'>
     <circle cx='12' cy='12' r='9' stroke='currentColor' strokeWidth='2.4' opacity='0.2'/>
     <path d='M21 12a9 9 0 0 0-9-9' stroke='currentColor' strokeWidth='2.4' strokeLinecap='round'/>

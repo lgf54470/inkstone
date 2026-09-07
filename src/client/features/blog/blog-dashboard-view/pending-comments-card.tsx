@@ -30,7 +30,7 @@ export function PendingCommentsCard({ pendingComments, totalComments, totalPosts
       </button>
     </div>
 
-    <div className='flex-1 mt-3 space-y-2.5 overflow-y-auto max-h-[360px]'>
+    <div className='flex-1 mt-3 space-y-2.5 overflow-y-auto max-h-90'>
       {pendingComments.length === 0 ? (
         <AllCommentsReviewed onSwitchTab={onSwitchTab} totalPosts={totalPosts} />
       ) : (

@@ -13,6 +13,8 @@ import { AttachmentManager } from '../attachments';
 import { t } from '../../lib/i18n';
 import { restoreMarkdownBackupFolder } from '../../lib/backup-import';
 
+const TRACKING_STAT = 'tracking-[-0.02em]'
+
 export function DataSettings() {
   const d = useDataSettings();
   return (<div className='space-y-6'>
@@ -251,7 +253,7 @@ async function reportImportFlow({ result, pull, loadStats, toast }: {
 function OverviewSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.overview')}</h3>
+      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.overview')}</h3>
       {d.stats === null ? (
       d.statsError ? <StatsLoadError d={d}/> : <LoadingBlock label={t('common.loading')}/>
       ) : (
@@ -303,7 +305,7 @@ function StatsGrid({ stats }: { stats: Record<string, number> }) {
       <div className='grid grid-cols-2 gap-2 md:grid-cols-4'>
       {items.map((item) => (
         <div key={item.label} className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2.5'>
-        <div className='text-[length:var(--text-17)] font-semibold tabular tracking-[-0.02em] text-[var(--text-primary)]'>
+        <div className={`text-[length:var(--text-17)] font-semibold tabular ${TRACKING_STAT} text-[var(--text-primary)]`}>
           {formatNumber(item.value)}
         </div>
         <div className='mt-0.5 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{item.label}</div>
@@ -319,7 +321,7 @@ function StatsGrid({ stats }: { stats: Record<string, number> }) {
 function AttachmentSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.attachments')}</h3>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.attachments')}</h3>
       <SettingRow title={t('attachments.manage')} description={t('attachments.manage_description')}>
       <Button size='sm' icon={<ImageIcon size={13}/>} onClick={() => d.setIsAttachmentManagerOpen(true)}>{t('attachments.manage')}</Button>
       </SettingRow>
@@ -330,7 +332,7 @@ function AttachmentSection({ d }: { d: DataState }) {
 function ShareHubSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('share.hub_title')}</h3>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('share.hub_title')}</h3>
       <SettingRow title={t('share.manage_shares')} description={t('share.manage_shares_description')}>
       <Button size='sm' icon={<Share2 size={13}/>} onClick={() => d.openPanel('share')}>{t('share.manage_shares')}</Button>
       </SettingRow>
@@ -341,7 +343,7 @@ function ShareHubSection({ d }: { d: DataState }) {
 function ExportSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.export')}</h3>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.export')}</h3>
       <SettingRow title={t('settings.export_to_zip')} description={t('settings.includes_every_note_folder_tag_and_attachment_for_a_complete_restore_plu')}>
       <Button size='sm' icon={<Download size={13}/>} loading={d.busy === 'export-zip'} disabled={d.busy !== null} onClick={() => d.exportData('zip')}>{t('settings.download_zip')}</Button>
       </SettingRow>
@@ -355,7 +357,7 @@ function ExportSection({ d }: { d: DataState }) {
 function ImportSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.import')}</h3>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.import')}</h3>
       <SettingRow title={t('settings.restore_backup_folder')} description={t('settings.restore_backup_folder_description')}>
       <Button size='sm' icon={<FolderOpen size={13}/>} loading={d.busy === 'restore-backup'} disabled={d.busy !== null} onClick={() => d.backupFolderRef.current?.click()}>{t('settings.select_backup_folder')}</Button>
       </SettingRow>
@@ -381,7 +383,7 @@ function ImportSection({ d }: { d: DataState }) {
 function MaintenanceSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.maintenance')}</h3>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.maintenance')}</h3>
       <SettingRow title={t('settings.rebuild_search_index')} description={t('settings.try_this_when_your_search_results_don_t_look_right')}>
       <Button size='sm' variant='secondary' icon={<RefreshCw size={13}/>} loading={d.busy === 'reindex'} disabled={d.busy !== null} onClick={d.reindex}>{t('settings.rebuild_index')}</Button>
       </SettingRow>

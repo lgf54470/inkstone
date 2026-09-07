@@ -33,7 +33,7 @@ export function BlogHubModal({
         open={open}
         onClose={onClose}
         width={MODAL_WIDTH}
-        className='h-[84vh] min-h-[580px] max-h-[880px] p-0 overflow-hidden flex flex-col'
+        className='h-[84vh] min-h-145 max-h-220 p-0 overflow-hidden flex flex-col'
         bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'
       >
         <BlogHubModalHeader onClose={onClose} />

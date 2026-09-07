@@ -30,7 +30,7 @@ export function BlogHubSidebar({
   } = useBlogHubSidebar()
 
   return (
-    <aside className='flex w-[240px] shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sunken)] select-none'>
+    <aside className='flex w-60 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sunken)] select-none'>
       <div className='flex-1 overflow-y-auto px-2 py-3 space-y-4'>
         <SidebarNav items={navItems} />
 

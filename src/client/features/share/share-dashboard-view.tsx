@@ -435,7 +435,7 @@ function RecentVisitRow({ visit, locale }: {
           {visit.browser || 'Other'} / {visit.os || 'other'}
         </span>
         {visit.referrerHost && (
-          <span className='truncate max-w-[120px]'>{visit.referrerHost}</span>
+          <span className='truncate max-w-30'>{visit.referrerHost}</span>
         )}
         <span className='font-mono'>{relativeTime(visit.visitedAt)}</span>
       </div>

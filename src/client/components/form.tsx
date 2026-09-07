@@ -53,7 +53,7 @@ export function Input({
           aria-invalid={accessibleInvalid}
           className={cn(
             FIELD_BASE,
-            'h-11 md:h-[34px]',
+            'h-11 md:h-8.5',
             leading && 'pl-8',
             trailing && 'pr-8',
             invalid && 'border-[var(--danger)]',
@@ -68,7 +68,7 @@ export function Input({
     <input
       {...rest}
       aria-invalid={accessibleInvalid}
-      className={cn(FIELD_BASE, 'h-11 md:h-[34px]', invalid && 'border-[var(--danger)]', className)}
+      className={cn(FIELD_BASE, 'h-11 md:h-8.5', invalid && 'border-[var(--danger)]', className)}
     />
   )
 }
@@ -89,7 +89,7 @@ export function Select({
     <div className='relative'>
       <select
         {...rest}
-        className={cn(FIELD_BASE, 'h-11 cursor-pointer appearance-none pr-7 md:h-[34px]', className)}
+        className={cn(FIELD_BASE, 'h-11 cursor-pointer appearance-none pr-7 md:h-8.5', className)}
       >
         {children}
       </select>
@@ -134,7 +134,7 @@ export const Switch = memo(function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] md:h-[var(--sp-5)] md:w-[34px]',
+        'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] md:h-[var(--sp-5)] md:w-8.5',
         'disabled:opacity-45',
         checked ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]',
       )}
@@ -142,9 +142,9 @@ export const Switch = memo(function Switch({
       <span
         aria-hidden='true'
         className={cn(
-          'absolute left-[2px] top-[2px] size-5 rounded-full bg-white shadow-[var(--shadow-sm)] md:size-[var(--sp-4)]',
+          'absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow-[var(--shadow-sm)] md:size-[var(--sp-4)]',
           'transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]',
-          checked ? 'translate-x-5 md:translate-x-[14px]' : 'translate-x-0',
+          checked ? 'translate-x-5 md:translate-x-3.5' : 'translate-x-0',
         )}
       />
     </button>
@@ -219,7 +219,7 @@ function SegmentedButton<T extends string>({
         'relative z-[var(--z-sticky)] inline-flex items-center justify-center gap-1.5 rounded-[var(--r-sm)] font-medium',
         'transition-[color,background-color] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
         'disabled:pointer-events-none disabled:opacity-45',
-        size === 'sm' ? 'h-8 px-2.5 text-[length:var(--text-11\.5)] md:h-[22px] md:px-2' : 'h-9 px-3 text-[length:var(--text-12\.5)] md:h-[26px] md:px-2.5',
+        size === 'sm' ? 'h-8 px-2.5 text-[length:var(--text-11\.5)] md:h-5.5 md:px-2' : 'h-9 px-3 text-[length:var(--text-12\.5)] md:h-6.5 md:px-2.5',
         active
           ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-control)]'
           : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]',
@@ -273,7 +273,7 @@ function SegmentedInner<T extends string>({
       aria-required={ariaRequired}
       aria-disabled={disabled || undefined}
       className={cn(
-        'relative inline-flex items-center gap-0.5 rounded-[var(--r-md)] bg-[var(--bg-inset)] p-[3px]',
+        'relative inline-flex items-center gap-0.5 rounded-[var(--r-md)] bg-[var(--bg-inset)] p-0.75',
         'border border-[var(--border-subtle)]',
         className,
       )}
@@ -353,7 +353,7 @@ function SliderInner({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className='ink-slider h-[18px] flex-1 cursor-pointer appearance-none bg-transparent'
+        className='ink-slider h-4.5 flex-1 cursor-pointer appearance-none bg-transparent'
         style={{ '--pct': `${pct}%` } as React.CSSProperties}
       />
       <span className='w-11 shrink-0 text-right text-[length:var(--text-12)] tabular text-[var(--text-tertiary)]'>
@@ -466,7 +466,7 @@ function CheckboxInner({
     >
       <span
         className={cn(
-          'inline-flex size-[15px] shrink-0 items-center justify-center rounded-[var(--r-5)] border transition-colors duration-[var(--dur-fast)]',
+          'inline-flex size-3.75 shrink-0 items-center justify-center rounded-[var(--r-5)] border transition-colors duration-[var(--dur-fast)]',
           checked
             ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-contrast)]'
             : 'border-[var(--border-strong)] bg-[var(--bg-inset)]',

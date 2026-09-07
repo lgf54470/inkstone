@@ -42,7 +42,7 @@ export function SyncSettings() {
     </SettingRow>)}
 
     <SettingRow title={t('settings.polling_interval')}>
-      <Slider label={t('settings.polling_interval')} className='w-[200px]' value={Math.round(sync.pollIntervalMs / 1000)} min={5} max={120} step={5} onChange={setPollInterval} suffix={t('settings.sec')}/>
+      <Slider label={t('settings.polling_interval')} className='w-50' value={Math.round(sync.pollIntervalMs / 1000)} min={5} max={120} step={5} onChange={setPollInterval} suffix={t('settings.sec')}/>
     </SettingRow>
     </section>
   </div>);

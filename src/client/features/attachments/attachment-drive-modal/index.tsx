@@ -34,7 +34,7 @@ export function AttachmentDriveModal(props: AttachmentDriveModalProps) {
 
   return (
     <>
-      <Modal open={open} onClose={onClose} width={MODAL_WIDTH} className='h-[82vh] min-h-[560px] max-h-[860px] p-0 overflow-hidden flex flex-col' bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'>
+      <Modal open={open} onClose={onClose} width={MODAL_WIDTH} className='h-[82vh] min-h-140 max-h-215 p-0 overflow-hidden flex flex-col' bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'>
         <DriveHeader onClose={onClose} />
         <div className='flex min-h-0 flex-1'>
           <DriveSidebar b={b} />

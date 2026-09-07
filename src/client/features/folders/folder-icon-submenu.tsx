@@ -118,7 +118,7 @@ export function FolderIconSubmenu({
 }) {
   return (
     <div
-      className='w-[224px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)] outline-none'
+      className='w-56 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)] outline-none'
       onClick={(e) => e.stopPropagation()}
     >
       <div className='px-1 pb-2 pt-0.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>

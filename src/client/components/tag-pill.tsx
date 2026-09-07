@@ -91,7 +91,7 @@ export const TagPill = memo(function TagPill({
       )}
     >
       <Hash size={isSm ? 10 : 12} className='shrink-0 opacity-70' />
-      <span className='truncate max-w-[150px]'>{tag}</span>
+      <span className='truncate max-w-37.5'>{tag}</span>
       {removable && onRemove && <TagPillRemove isSm={isSm} onRemove={onRemove} />}
     </span>
   )

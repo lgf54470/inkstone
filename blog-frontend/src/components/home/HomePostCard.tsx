@@ -11,6 +11,8 @@ export interface HomePostCardProps {
   onTagClick?: (tag: string) => void
 }
 
+const THUMBNAIL_FIT = 'max-w-[80%] max-h-[80%]'
+
 function PostCover({ post }: { post: BlogPost }): ReactElement | null {
   if (!post.coverUrl) return null
   const isSvg = isSvgCoverUrl(post.coverUrl)
@@ -27,7 +29,7 @@ function PostCover({ post }: { post: BlogPost }): ReactElement | null {
         loading='lazy'
         className={
           isSvg
-            ? 'w-auto h-auto max-w-[80%] max-h-[80%] object-contain p-2 group-hover:scale-105 transition-transform duration-[var(--dur-slow)]'
+            ? `w-auto h-auto ${THUMBNAIL_FIT} object-contain p-2 group-hover:scale-105 transition-transform duration-[var(--dur-slow)]`
             : 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-[var(--dur-slow)]'
         }
       />
@@ -48,14 +50,14 @@ function PostMetaRow({
   return (
     <div className='flex items-center gap-2 mb-2 flex-wrap'>
       {post.isPinned && (
-        <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--accent)] text-white shadow-2xs'>
+        <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[length:var(--text-11)] font-semibold bg-[var(--accent)] text-white shadow-2xs'>
           {t('post.pinned', {}, locale)}
         </span>
       )}
       {category && (
         <a
           href={`/categories/${category.slug}`}
-          className='inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border border-[var(--border-subtle)] hover:border-[var(--accent)] transition-colors'
+          className='inline-flex items-center px-2.5 py-0.5 rounded-full text-[length:var(--text-11)] font-medium border border-[var(--border-subtle)] hover:border-[var(--accent)] transition-colors'
           style={categoryChipStyle(category.color)}
         >
           {category.name}
@@ -81,14 +83,14 @@ function PostFooterRow({
             key={tag}
             type='button'
             onClick={() => onTagClick?.(tag)}
-            className='px-2 py-0.5 rounded-md text-[11px] bg-[var(--bg-sunken)] hover:bg-[var(--accent-softer)] hover:text-[var(--accent)] transition-colors cursor-pointer'
+            className='px-2 py-0.5 rounded-md text-[length:var(--text-11)] bg-[var(--bg-sunken)] hover:bg-[var(--accent-softer)] hover:text-[var(--accent)] transition-colors cursor-pointer'
           >
             #{tag}
           </button>
         ))}
       </div>
 
-      <div className='flex items-center gap-3 text-[11px] text-[var(--text-quaternary)] shrink-0'>
+      <div className='flex items-center gap-3 text-[length:var(--text-11)] text-[var(--text-quaternary)] shrink-0'>
         {typeof post.views === 'number' && (
           <span className='flex items-center gap-1'>
             <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24' aria-hidden='true'>

@@ -64,7 +64,7 @@ function FeedHeader({
         <div className='flex items-center justify-between rounded-xl border border-[var(--accent-muted)]/40 bg-[var(--accent-softer)]/60 px-3.5 py-2 text-xs'>
           <div className='flex items-center gap-2 text-[var(--accent)] font-medium'>
             <span>{t('filter.tag_active', {}, locale)}:</span>
-            <span className='rounded-md bg-[var(--accent)] px-2 py-0.5 text-[11px] font-semibold text-white shadow-2xs'>
+            <span className='rounded-md bg-[var(--accent)] px-2 py-0.5 text-[length:var(--text-11)] font-semibold text-white shadow-2xs'>
               #{selectedTag}
             </span>
           </div>

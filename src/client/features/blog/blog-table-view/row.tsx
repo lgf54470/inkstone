@@ -111,7 +111,7 @@ function ColoredBadge({ name, color }: { name?: string; color?: string | null })
   if (!name) return <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>-</span>
   return (
     <span
-      className='inline-flex items-center gap-1 truncate max-w-[80px] rounded-[var(--r-sm)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium'
+      className='inline-flex items-center gap-1 truncate max-w-20 rounded-[var(--r-sm)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium'
       style={{
         backgroundColor: color ? `${color}15` : 'var(--bg-sunken)',
         color: color || 'var(--text-secondary)',
@@ -126,11 +126,11 @@ function ColoredBadge({ name, color }: { name?: string; color?: string | null })
 function TableRowTagsCell({ post }: { post: BlogPost }) {
   return (
     <td className='px-3 py-2.5 whitespace-nowrap'>
-      <div className='flex flex-wrap gap-1 max-w-[110px]'>
+      <div className='flex flex-wrap gap-1 max-w-27.5'>
         {post.tags.slice(0, 2).map((tg) => (
           <span
             key={tg}
-            className='rounded bg-[var(--bg-sunken)] px-1.5 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)] border border-[var(--border-subtle)] truncate max-w-[70px]'
+            className='rounded bg-[var(--bg-sunken)] px-1.5 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)] border border-[var(--border-subtle)] truncate max-w-17.5'
             title={tg}
           >
             #{tg.includes('/') ? tg.split('/').pop() : tg}

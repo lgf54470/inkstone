@@ -9,7 +9,7 @@ import type { FilePreviewModalProps } from './types'
 function ModalTitle({ bundle }: { bundle: FilePreviewBundle }) {
   const { filename, isImage, naturalSize } = bundle
   return (
-    <div className='flex items-center gap-2 max-w-[700px] truncate'>
+    <div className='flex items-center gap-2 max-w-175 truncate'>
       <span className='truncate font-semibold'>{filename}</span>
       {isImage && naturalSize && (
         <span className='shrink-0 rounded bg-[var(--bg-sunken)] px-1.5 py-0.5 text-[length:var(--text-11)] font-mono text-[var(--text-tertiary)]'>
@@ -70,7 +70,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
       className='max-h-[82vh] flex flex-col'
       footer={<ModalFooter bundle={bundle} onClose={onClose} />}
     >
-      <div className={cn('min-h-[280px] flex flex-col', isText || isMarkdown ? 'justify-start' : 'justify-center')}>
+      <div className={cn('min-h-70 flex flex-col', isText || isMarkdown ? 'justify-start' : 'justify-center')}>
         {isImage && <ImagePreview bundle={bundle} />}
         {(isPdf || isAudio || isVideo) && <MediaPreview bundle={bundle} />}
         {isText && <TextPreview bundle={bundle} content={textContent} />}

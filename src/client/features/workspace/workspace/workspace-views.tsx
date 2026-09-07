@@ -52,7 +52,7 @@ function TitleArea({ b, grouped }: { b: WorkspaceBundle; grouped: boolean }) {
         maxLength={LIMITS.titleMaxLength}
         aria-label={t('workspace.note_title')}
         placeholder={t('common.untitled_note')}
-        className='h-8 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 text-[length:var(--text-14)] font-semibold tracking-[-0.01em] text-[var(--text-primary)] outline-none transition-colors placeholder:font-medium placeholder:text-[var(--text-quaternary)] hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)] focus:border-[var(--accent)] focus:bg-[var(--bg-surface)]'
+        className='h-8 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 text-[length:var(--text-14)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)] outline-none transition-colors placeholder:font-medium placeholder:text-[var(--text-quaternary)] hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)] focus:border-[var(--accent)] focus:bg-[var(--bg-surface)]'
         onChange={(event) => editTitle(note.id, event.target.value)}
         onBlur={(event) => editTitle(note.id, event.currentTarget.value.trim())}
         onKeyDown={(event) => {

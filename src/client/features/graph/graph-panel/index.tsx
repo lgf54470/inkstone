@@ -23,6 +23,8 @@ import { loadPreferences, normalizedResponse } from './helpers'
 import { GRAPH_PREFS_KEY } from './constants'
 import type { CanvasNode, CanvasState } from './types'
 
+const TRACKING_TITLE = 'tracking-[-0.014em]'
+
 function useGraphPrefs() {
   const [prefs, setPrefs] = useState(loadPreferences)
   useEffect(() => {
@@ -152,7 +154,7 @@ function GraphSearchBox({ search, onSearchChange }: {
   onSearchChange: (value: string) => void;
 }) {
   return (
-    <label className='flex h-8 min-w-[150px] flex-1 items-center gap-2 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2.5 md:max-w-[320px]'>
+    <label className='flex h-8 min-w-37.5 flex-1 items-center gap-2 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2.5 md:max-w-80'>
       <Search size={13} className='shrink-0 text-[var(--text-quaternary)]'/>
       <span className='sr-only'>{t('graph.search_notes')}</span>
       <input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder={t('graph.search_notes')}
@@ -201,7 +203,7 @@ function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search
   return (
     <header className='flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2 md:px-4'>
       <div className='mr-1 flex min-w-0 items-baseline gap-2.5'>
-        <h2 id={titleId} className='text-[length:var(--text-14)] font-semibold tracking-[-0.014em]'>{t('common.graph')}</h2>
+        <h2 id={titleId} className={`text-[length:var(--text-14)] font-semibold ${TRACKING_TITLE}`}>{t('common.graph')}</h2>
         {data && <GraphStats data={data}/>}
       </div>
       <GraphScopeToggle mode={prefs.mode} onModeChange={onModeChange} hasActiveNote={hasActiveNote} />

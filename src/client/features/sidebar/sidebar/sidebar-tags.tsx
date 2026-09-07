@@ -205,7 +205,7 @@ function UntaggedRow({ onOpen }: {
 function CreateFirstTagButton({ onCreate }: {
     onCreate: () => void;
 }) {
-    return (<button type='button' onClick={onCreate} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[30px]">
+    return (<button type='button' onClick={onCreate} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-7.5">
         <Plus size={13}/>{t('tags.create_first')}
     </button>);
 }
@@ -225,7 +225,7 @@ function ShowMoreTagsButton({ isExpanded, count, onToggle }: {
     count: number;
     onToggle: () => void;
 }) {
-    return (<button type='button' onClick={onToggle} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[26px]">
+    return (<button type='button' onClick={onToggle} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-6.5">
         {isExpanded ? t('common.collapse') : t('sidebar.show_all_value0_tags', { value0: count })}
     </button>);
 }

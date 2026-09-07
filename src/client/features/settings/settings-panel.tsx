@@ -50,7 +50,7 @@ export function SettingsPanel({ onClose }: {
   return createPortal(<div className='app-viewport-fixed fixed z-[var(--z-settings)] flex items-center justify-center md:p-8'>
     <div className='anim-fade absolute inset-0 bg-[var(--scrim)]' onClick={onClose} aria-hidden='true'/>
 
-    <div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1} className='anim-pop relative flex h-full w-full max-w-[880px] flex-col overflow-hidden bg-[var(--bg-overlay)] pt-[env(safe-area-inset-top)] shadow-[var(--shadow-modal)] outline-none md:max-h-[720px] md:flex-row md:rounded-[var(--r-2xl)] md:border md:border-[var(--border-default)] md:pt-0'>
+    <div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1} className='anim-pop relative flex h-full w-full max-w-220 flex-col overflow-hidden bg-[var(--bg-overlay)] pt-[env(safe-area-inset-top)] shadow-[var(--shadow-modal)] outline-none md:max-h-180 md:flex-row md:rounded-[var(--r-2xl)] md:border md:border-[var(--border-default)] md:pt-0'>
     <SettingsNav section={section} onSelect={setSection} onClose={onClose} openPanel={openPanel} titleId={titleId}/>
     <div className='flex min-h-0 min-w-0 flex-1 flex-col'>
       <SettingsHeader section={section} onClose={onClose}/>
@@ -66,10 +66,10 @@ export function SettingsPanel({ onClose }: {
 
 function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { section: Section; onSelect: (section: Section) => void; onClose: () => void; openPanel: (panel: PanelName) => void; titleId: string }) {
   return (
-    <nav className='flex w-full shrink-0 flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-2 md:w-[172px] md:border-r md:border-b-0'>
-      <div id={titleId} className="px-2 py-1.5 text-[length:var(--text-13\.5)] font-semibold tracking-[-0.012em] md:py-2.5">{t('common.settings')}</div>
+    <nav className='flex w-full shrink-0 flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-2 md:w-43 md:border-r md:border-b-0'>
+      <div id={titleId} className="px-2 py-1.5 text-[length:var(--text-13\.5)] font-semibold tracking-[var(--tracking-title)] md:py-2.5">{t('common.settings')}</div>
       <div className='flex gap-1 overflow-x-auto pb-1 md:block md:space-y-px md:overflow-visible md:pb-0'>
-      {SECTIONS.map((item) => (<button key={item.id} type='button' aria-current={section === item.id ? 'page' : undefined} onClick={() => onSelect(item.id)} className={cn('flex h-10 shrink-0 items-center gap-2 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12\.5)] md:h-[30px] md:w-full md:gap-2.5 md:px-2', 'transition-colors duration-[var(--dur-fast)]', section === item.id
+      {SECTIONS.map((item) => (<button key={item.id} type='button' aria-current={section === item.id ? 'page' : undefined} onClick={() => onSelect(item.id)} className={cn('flex h-10 shrink-0 items-center gap-2 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12\.5)] md:h-7.5 md:w-full md:gap-2.5 md:px-2', 'transition-colors duration-[var(--dur-fast)]', section === item.id
         ? 'bg-[var(--accent-soft)] font-medium text-[var(--text-primary)]'
         : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
         <span className={cn('shrink-0', section === item.id ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>
@@ -89,7 +89,7 @@ function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { secti
       <button type='button' onClick={() => {
       onClose();
       openPanel('shortcuts');
-    }} className="hidden h-[30px] w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12\.5)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] md:flex">
+    }} className="hidden h-7.5 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12\.5)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] md:flex">
       <Keyboard size={14}/>{t('settings.keyboard_shortcuts')}</button>
     </nav>
   );
@@ -98,7 +98,7 @@ function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { secti
 function SettingsHeader({ section, onClose }: { section: Section; onClose: () => void }) {
   return (
     <header className='flex h-12 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4 md:px-5'>
-      <h2 className='text-[length:var(--text-14)] font-semibold tracking-[-0.012em]'>
+      <h2 className='text-[length:var(--text-14)] font-semibold tracking-[var(--tracking-title)]'>
       {SECTIONS.find((s) => s.id === section)?.label()}
       </h2>
       <Tooltip label={t('common.close')} combo='escape' side='left'>

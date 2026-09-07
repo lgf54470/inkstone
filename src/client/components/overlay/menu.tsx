@@ -24,7 +24,7 @@ function MenuItemRow({ item, index, cursor, onHover, onClick }: MenuItemRowProps
     <button type='button' role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'} aria-checked={item.checked === undefined ? undefined : item.checked} tabIndex={index === cursor ? 0 : -1} data-menu-index={index} disabled={item.disabled} onMouseEnter={(e) => {
       if (!item.disabled)
         onHover(index, item, e.currentTarget);
-    }}        onClick={(e) => onClick(item, e.currentTarget)} className={cn('flex h-10 w-full items-center gap-2.5 rounded-[var(--r-sm)] px-2 text-left text-[length:var(--text-12\\.5)] md:h-[30px]', 'transition-colors duration-[var(--dur-xs)] disabled:pointer-events-none disabled:opacity-40', index === cursor ? 'bg-[var(--bg-hover)]' : '', item.tone === 'danger'
+    }}        onClick={(e) => onClick(item, e.currentTarget)} className={cn('flex h-10 w-full items-center gap-2.5 rounded-[var(--r-sm)] px-2 text-left text-[length:var(--text-12\\.5)] md:h-7.5', 'transition-colors duration-[var(--dur-xs)] disabled:pointer-events-none disabled:opacity-40', index === cursor ? 'bg-[var(--bg-hover)]' : '', item.tone === 'danger'
       ? 'text-[var(--danger)]'
       : index === cursor
         ? 'text-[var(--text-primary)]'
@@ -81,7 +81,7 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
     return null;
   const activeItem = items.find((i) => i.id === activeSubmenuId);
   return (<>
-    {createPortal(<div ref={menuRef} role='menu' aria-label={label} tabIndex={-1} className='anim-pop fixed z-[var(--z-pop)] max-h-[420px] overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none' style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
+    {createPortal(<div ref={menuRef} role='menu' aria-label={label} tabIndex={-1} className='anim-pop fixed z-[var(--z-pop)] max-h-105 overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none' style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
       {items.map((item, index) => (<MenuItemRow key={item.id} item={item} index={index} cursor={cursor} onHover={handleHover} onClick={handleClick}/>))}
     </div>, document.body)}
     {activeItem && activeItem.submenu && (<MenuSubmenu

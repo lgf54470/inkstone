@@ -276,7 +276,7 @@ function AccentPicker({ config, update }: PickerProps) {
             >
               {active && <span className='w-1.5 h-1.5 rounded-full bg-white shadow-[var(--shadow-xs)]' />}
             </span>
-            <span className='text-[11px] truncate w-full text-center'>{label}</span>
+            <span className='text-[length:var(--text-11)] truncate w-full text-center'>{label}</span>
           </button>
         )
       })}
@@ -308,7 +308,7 @@ function TwoLineChoice({
       <div className={`text-xs font-semibold ${active ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'}`}>
         {title}
       </div>
-      <div className='text-[11px] text-[var(--text-tertiary)] mt-0.5'>{desc}</div>
+      <div className='text-[length:var(--text-11)] text-[var(--text-tertiary)] mt-0.5'>{desc}</div>
     </button>
   )
 }

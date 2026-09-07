@@ -254,7 +254,7 @@ function CardMeta({ file, folderName }: { file: AttachmentWithUsage; folderName?
       <div className='flex items-center justify-between text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
         <span>{formatFileSize(file.size)}</span>
         {folderName && (
-          <span className='truncate max-w-[80px]' title={folderName}>
+          <span className='truncate max-w-20' title={folderName}>
             {folderName}
           </span>
         )}

@@ -11,6 +11,7 @@ import { useUi, type UiState } from '../../../store/ui';
 type ToastFn = UiState['toast'];
 import { t, translateServiceMessage } from '../../../lib/i18n';
 
+const TRACKING_HINT = 'tracking-[0.04em]'
 const MODAL_WIDTH = 520
 
 interface TargetFormFields {
@@ -221,7 +222,7 @@ function TypeChangeWarning() {
 function PresetPicker({ f }: { f: TargetFormState }) {
   return (
     <div className='space-y-2.5'>
-      <p className='text-[length:var(--text-11)] font-medium tracking-[0.04em] text-[var(--text-quaternary)]'>
+      <p className={`text-[length:var(--text-11)] font-medium ${TRACKING_HINT} text-[var(--text-quaternary)]`}>
       {f.type === 'webdav' ? 'WebDAV' : 'S3'} · {t('settings.common_provider_presets_optional_click_to_autofill')}</p>
       <div className='grid grid-cols-3 gap-1.5'>
       {f.recommendedPresets.map((preset) => (<button key={preset.id} type='button' onClick={() => f.applyBackupPreset(preset)} className={cn('flex flex-col gap-0.5 rounded-[var(--r-md)] border px-2.5 py-2 text-left', 'transition-colors duration-[var(--dur-fast)]', f.activePreset === preset.id

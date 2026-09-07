@@ -23,6 +23,7 @@ const SCROLL_TARGET_BUFFER = 16
 
 const OUTLINE_INDENT_BASE = 8
 const OUTLINE_INDENT_STEP = 10
+const ACTIVE_BAR_W = 'w-[2.5px]'
 
 const HEADING_ICONS: Record<number, ComponentType<LucideProps>> = {
   1: Heading1,
@@ -68,7 +69,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       }
     case 4:
       return {
-        fontSize: 'text-[11px]',
+        fontSize: 'text-[length:var(--text-11)]',
         fontWeight: isActive ? 'font-medium' : 'font-normal',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]',
         iconSize: 10.5,
@@ -77,7 +78,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       }
     default:
       return {
-        fontSize: 'text-[10.5px]',
+        fontSize: 'text-[length:var(--text-10\.5)]',
         fontWeight: isActive ? 'font-medium' : 'font-normal',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]',
         iconSize: 10,
@@ -180,7 +181,7 @@ function OutlineRow({ heading, index, active, minLevel, prevHeading, onSelect }:
         {isActive && (
           <span
             aria-hidden='true'
-            className='absolute top-1/2 left-0.5 h-3.5 w-[2.5px] -translate-y-1/2 rounded-full bg-[var(--accent)]'
+            className={`absolute top-1/2 left-0.5 h-3.5 ${ACTIVE_BAR_W} -translate-y-1/2 rounded-full bg-[var(--accent)]`}
           />
         )}
         <HeadingIcon
@@ -245,7 +246,7 @@ export default function PostOutline({ headings, locale = DEFAULT_LOCALE, classNa
 
   return (
     <nav ref={navRef} className={`w-full ${className}`} aria-label={t('common.outline', {}, locale)}>
-      <div className='mb-2 flex items-center gap-1.5 px-2 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+      <div className='mb-2 flex items-center gap-1.5 px-2 text-[length:var(--text-10\.5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
         <ListTree size={11} aria-hidden='true' />
         <span>{t('common.outline', {}, locale)}</span>
       </div>

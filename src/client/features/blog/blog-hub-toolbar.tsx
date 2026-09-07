@@ -84,7 +84,7 @@ function SearchBox() {
   const search = useBlogStore((s) => s.search)
   const setSearch = useBlogStore((s) => s.setSearch)
   return (
-    <div className='relative w-[180px] md:w-[220px]'>
+    <div className='relative w-45 md:w-55'>
       <Input
         leading={<Search size={13} className='text-[var(--text-quaternary)]' />}
         value={search}

@@ -19,7 +19,7 @@ export function NoteSettings() {
       title={t('settings.new_note_template')}
       description={t('settings.new_note_template_description')}
     >
-      <div className='flex w-[340px] max-w-full flex-col items-end gap-2'>
+      <div className='flex w-85 max-w-full flex-col items-end gap-2'>
       <Textarea
         aria-label={t('settings.new_note_template')}
         value={notes.newNoteTemplate}
@@ -40,7 +40,7 @@ export function NoteSettings() {
     </section>
 
     <section>
-    <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+    <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
       {t('settings.title_sync')}
     </h3>
     <SettingRow title={t('settings.sync_title_to_frontmatter')} description={t('settings.sync_title_to_frontmatter_desc')}>
@@ -70,7 +70,7 @@ function TemplatePreview({ template }: { template: string }) {
   const hasContextualPlaceholders = template.includes('{{folder}}') || template.includes('{{tags}}');
   return (
     <div className='mt-4'>
-      <h3 className='mb-1.5 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+      <h3 className='mb-1.5 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
       {t('settings.new_note_template_preview')}
       </h3>
       <div className='mb-2 grid grid-cols-1 gap-2 sm:grid-cols-3'>
@@ -80,7 +80,7 @@ function TemplatePreview({ template }: { template: string }) {
       </div>
       <pre className='max-h-52 overflow-auto whitespace-pre rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3 font-mono text-[length:var(--text-12)] leading-relaxed text-[var(--text-secondary)]'>{preview.cursor === null ? preview.content : (<>
         {preview.content.slice(0, preview.cursor)}
-        <span aria-hidden='true' className='mx-px inline-block h-3.5 w-[2px] animate-pulse rounded-full bg-[var(--accent)] align-middle'/>
+        <span aria-hidden='true' className='mx-px inline-block h-3.5 w-0.5 animate-pulse rounded-full bg-[var(--accent)] align-middle'/>
         {preview.content.slice(preview.cursor)}
       </>)}</pre>
       {hasContextualPlaceholders && (<p className='mt-1.5 text-[length:var(--text-11)] leading-relaxed text-[var(--text-quaternary)]'>

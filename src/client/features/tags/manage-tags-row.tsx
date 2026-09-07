@@ -258,7 +258,7 @@ function MergeTagsModal({ source, onClose }: { source: Tag; onClose: () => void 
       width={MERGE_MODAL_WIDTH}
     >
       <div className='space-y-3 pt-1'>
-        <div className='max-h-[320px] overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>
+        <div className='max-h-80 overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>
           {targets.map((target) => (
             <MergeTargetRow
               key={target.id}

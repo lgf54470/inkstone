@@ -10,7 +10,7 @@ import { useShareHubSidebar } from './use-share-hub-sidebar';
 export function ShareHubSidebar() {
   const bundle = useShareHubSidebar()
   return (
-    <aside className='flex h-full w-[260px] shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sidebar)]'>
+    <aside className='flex h-full w-65 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sidebar)]'>
       <div className='flex-1 overflow-y-auto px-2 py-3'>
         <CategoryList bundle={bundle} />
         <div className='my-3 h-px bg-[var(--border-subtle)]' />

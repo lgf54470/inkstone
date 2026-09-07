@@ -351,7 +351,7 @@ export function FolderRowList({ choices, folderCounts, folderTemplates, template
   actions: FolderRowActions;
 }) {
   return (
-    <div className='max-h-[420px] overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>
+    <div className='max-h-105 overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>
       {choices.map(({ folder, path }) => {
         const count = folderCounts.get(folder.id) ?? 0;
         const boundTemplateId = folderTemplates[folder.id];

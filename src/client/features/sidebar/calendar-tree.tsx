@@ -101,7 +101,7 @@ function VirtualRow({ ns, rootLabel, rootIcon, node }: {
   const dim = node.count === 0 && !isRoot
   return (
     <div role='treeitem' aria-level={node.depth + 2} aria-expanded={hasChildren ? expanded : undefined}>
-      <div className={cn('group relative flex h-10 items-center gap-1 rounded-[var(--r-md)] pr-1 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dim && 'opacity-60')} style={{ paddingLeft: virtualTreeRowIndent(node.depth) }}>
+      <div className={cn('group relative flex h-10 items-center gap-1 rounded-[var(--r-md)] pr-1 md:h-7.5', 'transition-colors duration-[var(--dur-fast)]', active ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dim && 'opacity-60')} style={{ paddingLeft: virtualTreeRowIndent(node.depth) }}>
         <TreeExpandButton expanded={expanded} hasChildren={hasChildren} onToggle={() => toggleFolder(node.id)}/>
         <VirtualRowIcon active={active} isRoot={isRoot} rootIcon={rootIcon} open={expanded && hasChildren}/>
         <VirtualRowLabel active={active} isRoot={isRoot} rootLabel={rootLabel} name={node.name} tooltip={tooltip} onOpen={open}/>

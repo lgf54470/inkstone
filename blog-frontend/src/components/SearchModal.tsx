@@ -311,7 +311,7 @@ function SearchInputRow({
           <X className='w-4 h-4' />
         </button>
       ) : (
-        <kbd className='hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded border border-[var(--border-subtle)] text-[var(--text-quaternary)] bg-[var(--bg-base)]'>
+        <kbd className='hidden sm:inline-block text-[length:var(--text-10)] font-mono px-1.5 py-0.5 rounded border border-[var(--border-subtle)] text-[var(--text-quaternary)] bg-[var(--bg-base)]'>
           ESC
         </kbd>
       )}
@@ -371,7 +371,7 @@ function SearchResultTitle({ post, selected, locale }: { post: BlogPost; selecte
       >
         {post.title}
       </h4>
-      <div className='flex items-center gap-1.5 text-[11px] text-[var(--text-quaternary)] shrink-0'>
+      <div className='flex items-center gap-1.5 text-[length:var(--text-11)] text-[var(--text-quaternary)] shrink-0'>
         <Calendar className='w-3 h-3' />
         <span>{formatDate(post.publishedAt || post.createdAt, locale)}</span>
       </div>
@@ -395,7 +395,7 @@ function SearchResultTags({ post }: { post: BlogPost }) {
       {post.tags.map((tag) => (
         <span
           key={tag}
-          className='inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg-inset)] text-[var(--text-tertiary)]'
+          className='inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[length:var(--text-10)] bg-[var(--bg-inset)] text-[var(--text-tertiary)]'
         >
           <Tag className='w-2.5 h-2.5' />
           {tag}
@@ -443,7 +443,7 @@ function SearchFooter({
   locale: BlogLocale
 }) {
   return (
-    <div className='px-4 py-2 bg-[var(--bg-raised)] border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-quaternary)] flex items-center justify-between'>
+    <div className='px-4 py-2 bg-[var(--bg-raised)] border-t border-[var(--border-subtle)] text-[length:var(--text-11)] text-[var(--text-quaternary)] flex items-center justify-between'>
       <span>
         {query.trim()
           ? t('search.footer_matched', { total, count: resultCount }, locale)

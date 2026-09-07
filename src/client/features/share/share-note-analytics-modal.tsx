@@ -113,13 +113,13 @@ function AnalyticsLinkBar({ data, onOpenQr }: { data: ShareNoteAnalytics; onOpen
 function StatCards({ data }: { data: ShareNoteAnalytics | null }) {
   return (
     <div className='grid grid-cols-2 gap-3 w-full sm:w-auto'>
-      <div className='flex min-w-[140px] flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
+      <div className='flex min-w-35 flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{t('share.total_views_pv')}</span>
         <span className='font-mono text-[length:var(--text-22)] font-bold text-[var(--text-primary)]'>
           {data?.totalViews ?? 0}
         </span>
       </div>
-      <div className='flex min-w-[140px] flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
+      <div className='flex min-w-35 flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{t('share.total_visitors_uv')}</span>
         <span className='font-mono text-[length:var(--text-22)] font-bold text-[var(--text-primary)]'>
           {data?.totalVisitors ?? 0}

@@ -70,7 +70,7 @@ function McpDemoBanner() {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className='mb-1 px-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+    <h3 className='mb-1 px-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
       {children}
     </h3>
   );
@@ -163,7 +163,7 @@ function PermissionsSection({ v }: { v: McpReady }) {
 function KeysSection({ v }: { v: McpReady }) {
   return (
     <section>
-      <h3 className='mb-2 px-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+      <h3 className='mb-2 px-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
         {t('settings.mcp_api_keys')}
       </h3>
       <p className="mb-3 px-1 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
@@ -282,7 +282,7 @@ function AiSearchHeader({ v }: { v: McpReady }) {
     <div className='mb-2 flex items-center justify-between gap-3 px-1'>
       <div className='flex items-center gap-1.5'>
         <Sparkles size={13} className='text-[var(--accent)]' />
-        <h3 className='text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+        <h3 className='text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
           {t('settings.mcp_ai_search')}
         </h3>
         {aiSearch.available ? (
@@ -375,7 +375,7 @@ function ClientsSection({ v }: { v: McpReady }) {
   return (
     <section>
       <div className='mb-2 flex items-center justify-between gap-3 px-1'>
-        <h3 className='text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+        <h3 className='text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
           {t('settings.mcp_connected_clients')}
         </h3>
         {grants.length > 1 && (

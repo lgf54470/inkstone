@@ -17,9 +17,9 @@ function WeChatBadge({ count }: { count?: number }) {
         'text-[length:var(--text-10)] leading-none select-none shadow-[var(--shadow-xs)]',
         'ring-2 ring-[var(--bg-sunken)]',
         count > 99
-          ? 'h-4 min-w-[22px] px-1'
+          ? 'h-4 min-w-5.5 px-1'
           : count > 9
-            ? 'h-4 min-w-[18px] px-1'
+            ? 'h-4 min-w-4.5 px-1'
             : 'size-4'
       )}
     >
@@ -117,7 +117,7 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
             const ids = readDraggedNoteIds(e);
             if (ids.length === 0) return;
             applyViewDrop(view, ids, patchNote, deleteNote);
-        }} className={cn('group relative flex h-10 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active
+        }} className={cn('group relative flex h-10 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left md:h-7.5', 'transition-colors duration-[var(--dur-fast)]', active
             ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]', isDropping && 'ring-1 ring-[var(--accent)]')}>
       <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>

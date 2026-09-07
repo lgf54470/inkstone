@@ -39,7 +39,7 @@ export function AppearanceSettings({
       </section>
 
       <section>
-        <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+        <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
           {t('settings.preview_typography')}
         </h3>
         <TypographySection appearance={appearance} setters={setters} options={options} />
@@ -161,7 +161,7 @@ function BackgroundSwatches({ appearance, setters }: { appearance: AppearanceSet
             type='button'
             onClick={() => setters.setBackground(background.name)}
             aria-pressed={appearance.background === background.name}
-            className={cn('flex h-8 min-w-[84px] items-center gap-2 rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-11\.5)] transition-[border-color,background-color,box-shadow] duration-[var(--dur-fast)]', appearance.background === background.name ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-ring)]' : 'border-[var(--border-default)] bg-[var(--bg-base)] hover:bg-[var(--bg-hover)]')}
+            className={cn('flex h-8 min-w-21 items-center gap-2 rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-11\.5)] transition-[border-color,background-color,box-shadow] duration-[var(--dur-fast)]', appearance.background === background.name ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-ring)]' : 'border-[var(--border-default)] bg-[var(--bg-base)] hover:bg-[var(--bg-hover)]')}
           >
             <span aria-hidden='true' className='size-4 rounded-full border border-black/10 shadow-[var(--shadow-sm)]' style={{ background: background.swatch }} />
             <span>{background.label}</span>
@@ -194,7 +194,7 @@ function InterfaceSection({ appearance, setters, options }: { appearance: Appear
       </SettingRow>
 
       <SettingRow title={t('settings.todo_tag')} description={t('settings.todo_tag_desc')}>
-        <Input aria-label={t('settings.todo_tag')} value={todoTag ?? ''} placeholder={t('settings.todo_tag_placeholder_value0', { value0: resolveTodoTag(null, locale) })} onChange={(event) => setters.setTodoTag(event.target.value)} className='w-[200px]' />
+        <Input aria-label={t('settings.todo_tag')} value={todoTag ?? ''} placeholder={t('settings.todo_tag_placeholder_value0', { value0: resolveTodoTag(null, locale) })} onChange={(event) => setters.setTodoTag(event.target.value)} className='w-50' />
       </SettingRow>
 
       <SettingRow title={t('settings.year_grid_columns')} description={t('settings.year_grid_columns_desc')}>
@@ -225,7 +225,7 @@ function TypographySection({ appearance, setters, options }: { appearance: Appea
       <SettingRow title={t('settings.body_text_size')}>
         <Slider
           label={t('settings.body_text_size')}
-          className='w-[200px]'
+          className='w-50'
           value={appearance.proseSize}
           min={13}
           max={22}
@@ -237,7 +237,7 @@ function TypographySection({ appearance, setters, options }: { appearance: Appea
       <SettingRow title={t('settings.line_height')}>
         <Slider
           label={t('settings.line_height')}
-          className='w-[200px]'
+          className='w-50'
           value={appearance.proseLineHeight}
           min={1.4}
           max={2.2}
@@ -311,7 +311,7 @@ function PreviewSample() {
   const appearance = useSession((s) => s.settings.appearance)
   return (
     <section>
-      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
         {t('settings.preview')}
       </h3>
       <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-3'>

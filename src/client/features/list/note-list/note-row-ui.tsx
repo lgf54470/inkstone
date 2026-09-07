@@ -58,7 +58,7 @@ function useNoteRowHandlers(state: NoteRowState) {
 
 function noteRowClassName(state: NoteRowState): string {
   const { density, selectionHighlighted, active, openInSecondary } = state;
-  return cn('motion-note-row group relative cursor-default rounded-[var(--r-md)] border border-transparent px-2.5 pr-11 transition-[background-color,border-color,box-shadow,transform] duration-[var(--dur-fast)] md:pr-10', density === 'compact' ? 'py-[7px]' : 'py-2.5', selectionHighlighted
+  return cn('motion-note-row group relative cursor-default rounded-[var(--r-md)] border border-transparent px-2.5 pr-11 transition-[background-color,border-color,box-shadow,transform] duration-[var(--dur-fast)] md:pr-10', density === 'compact' ? 'py-1.75' : 'py-2.5', selectionHighlighted
     ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]/40'
     : active
       ? 'border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'
@@ -110,7 +110,7 @@ function NoteRowTitleLine({ state }: { state: NoteRowState }) {
           folder={noteFolder}
           folders={folders}
           size={9}
-          pillClass='inline-flex max-w-[120px] shrink-0 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-1.5 py-px text-[length:var(--text-10)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]'
+          pillClass='inline-flex max-w-30 shrink-0 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-1.5 py-px text-[length:var(--text-10)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]'
         />
       )}
       {note.isStarred && <Star size={10} className='anim-mark-enter shrink-0 fill-current text-[var(--warning)]'/>}
@@ -137,7 +137,7 @@ function NoteRowMeta({ state }: { state: NoteRowState }) {
           folder={noteFolder}
           folders={folders}
           size={10}
-          pillClass="inline-flex max-w-[140px] items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-2 py-0.5 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
+          pillClass="inline-flex max-w-35 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-2 py-0.5 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
         />
       )}
       {note.tags.map((tag) => (

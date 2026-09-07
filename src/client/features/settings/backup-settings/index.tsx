@@ -196,7 +196,7 @@ function TargetsSection({ targets, editing, onAdd, onEdit, onChanged, onPatch, o
   return (
     <section>
       <div className='mb-2 flex items-center justify-between'>
-      <h3 className='text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.backup_target')}</h3>
+      <h3 className='text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.backup_target')}</h3>
       <Button size='sm' variant='secondary' icon={<Plus size={13}/>} onClick={onAdd}>{t('settings.add_target')}</Button>
       </div>
 
@@ -218,7 +218,7 @@ function TargetsSection({ targets, editing, onAdd, onEdit, onChanged, onPatch, o
 function ScheduleSection({ schedule, options, onChange }: { schedule: BackupSchedule; options: SegmentedOption<BackupSchedule>[]; onChange: (schedule: BackupSchedule) => void }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.automatic_backups')}</h3>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.automatic_backups')}</h3>
       <SettingRow title={t('settings.frequency')} description={t('settings.runs_from_cloudflare_cron_the_page_does_not_need_to_stay_open')}>
       <Segmented<BackupSchedule> label={t('settings.frequency')} value={schedule} onChange={onChange} options={options}/>
       </SettingRow>
@@ -229,7 +229,7 @@ function ScheduleSection({ schedule, options, onChange }: { schedule: BackupSche
 function RunsSection({ runs }: { runs: BackupRun[] }) {
   return (
     <section>
-      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.latest_backups')}</h3>
+      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.latest_backups')}</h3>
       {runs.length === 0 ? (
       <p className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-3 py-4 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('settings.no_backup_record_yet')}</p>
       ) : (

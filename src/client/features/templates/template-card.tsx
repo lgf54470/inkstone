@@ -162,7 +162,7 @@ function CardTitleRow({
     <div className='relative z-[var(--z-sticky)] flex items-start justify-between gap-2'>
       <div className={cn('flex min-w-0 items-center gap-1.5', selectMode && 'pl-6')}>
         {template.isPinned && <Pin size={11} className='shrink-0 text-[var(--accent)]' />}
-        <h3 className='min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold tracking-[-0.01em] text-[var(--text-primary)]'>
+        <h3 className='min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)]'>
           {template.name}
         </h3>
         {template.isStarred && <Star size={11} className='shrink-0 fill-current text-[var(--warning)]' />}
@@ -243,7 +243,7 @@ function templateCardClass(state: {
   dropHint?: boolean | null
 }): string {
   return cn(
-    'group relative flex min-h-[132px] flex-col rounded-[var(--r-lg)] border bg-[var(--bg-surface)] p-3.5 transition-[border-color,box-shadow,transform] duration-[var(--dur-fast)]',
+    'group relative flex min-h-33 flex-col rounded-[var(--r-lg)] border bg-[var(--bg-surface)] p-3.5 transition-[border-color,box-shadow,transform] duration-[var(--dur-fast)]',
     state.selectMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
     state.dragging && 'opacity-50',
     state.selected ? 'border-[var(--accent)] bg-[var(--accent-soft)] shadow-[var(--shadow-sm)]' : 'border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)]',

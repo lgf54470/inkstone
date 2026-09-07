@@ -80,7 +80,7 @@ function AddPropertyForm({ bundle }: { bundle: NotePropertiesBundle }) {
           if (e.key === 'Enter') handleCommitNewProperty()
           if (e.key === 'Escape') setIsAddingProperty(false)
         }}
-        className="h-7 min-w-[140px] flex-1 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+        className="h-7 min-w-35 flex-1 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
       />
       <div className='flex items-center gap-1'>
         <button

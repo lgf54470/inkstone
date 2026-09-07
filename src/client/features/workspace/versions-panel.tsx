@@ -35,9 +35,9 @@ function ModalFooter({ b, onClose }: { b: VersionsPanelBundle; onClose: () => vo
 function VersionList({ b }: { b: VersionsPanelBundle }) {
   const { versions, note, selectedId, setSelected } = b;
   return (
-    <ul className='flex w-full shrink-0 gap-1 overflow-x-auto border-b border-[var(--border-subtle)] pb-2 md:block md:w-[210px] md:space-y-px md:overflow-y-auto md:border-r md:border-b-0 md:pr-2 md:pb-0'>
+    <ul className='flex w-full shrink-0 gap-1 overflow-x-auto border-b border-[var(--border-subtle)] pb-2 md:block md:w-52.5 md:space-y-px md:overflow-y-auto md:border-r md:border-b-0 md:pr-2 md:pb-0'>
       {versions!.map((version, index) => (
-        <li key={version.id} className='w-[188px] shrink-0 md:w-auto'>
+        <li key={version.id} className='w-47 shrink-0 md:w-auto'>
           <button
             type='button'
             aria-pressed={selectedId === version.id}
@@ -137,7 +137,7 @@ export function VersionsPanel({ onClose }: { onClose: () => void }) {
       ) : versions.length === 0 ? (
         <Empty art='notes' compact title={t('workspace.no_version_history_yet')} description={t('workspace.a_snapshot_is_saved_every_few_minutes_or_after_larger_edits')} />
       ) : (
-        <div className='flex h-[min(68dvh,560px)] min-h-0 flex-col gap-3 md:h-[440px] md:flex-row'>
+        <div className='flex h-[min(68dvh,560px)] min-h-0 flex-col gap-3 md:h-110 md:flex-row'>
           <VersionList b={b} />
           <DiffPane b={b} />
         </div>

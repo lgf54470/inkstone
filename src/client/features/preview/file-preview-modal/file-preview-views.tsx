@@ -27,7 +27,7 @@ function ZoomControls({ bundle }: { bundle: FilePreviewBundle }) {
       <IconButton label={t('preview.zoom_out')} size='sm' onClick={handleZoomOut} disabled={imageScale <= 0.25}>
         <ZoomOut size={13} />
       </IconButton>
-      <span className='px-1.5 font-mono text-[length:var(--text-11)] min-w-[42px] text-center text-[var(--text-secondary)]'>
+      <span className='px-1.5 font-mono text-[length:var(--text-11)] min-w-10.5 text-center text-[var(--text-secondary)]'>
         {Math.round(imageScale * 100)}%
       </span>
       <IconButton label={t('preview.zoom_in')} size='sm' onClick={handleZoomIn} disabled={imageScale >= 3}>
@@ -55,7 +55,7 @@ export function ImagePreview({ bundle }: { bundle: FilePreviewBundle }) {
         </IconButton>
       </div>
 
-      <div className='relative flex items-center justify-center min-h-[300px] max-h-[60vh] overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)]/40 p-4'>
+      <div className='relative flex items-center justify-center min-h-75 max-h-[60vh] overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)]/40 p-4'>
         {isImageLoading && !isImageError && (
           <div className='absolute inset-0 flex items-center justify-center bg-[var(--bg-surface)]/60 backdrop-blur-xs z-[var(--z-sticky)]'>
             <Loader2 size={24} className='animate-spin text-[var(--accent)]' />

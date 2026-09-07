@@ -22,7 +22,7 @@ export function BlogNoteSubmenu({
 
   return (
     <div
-      className="w-[220px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[length:var(--text-12\.5)]"
+      className="w-55 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[length:var(--text-12\.5)]"
       onClick={(e) => e.stopPropagation()}
     >
       <SubmenuButton icon={<ExternalLink size={13} className='shrink-0 text-[var(--accent)]' />} label={t('blog.view_in_blog')} onClick={bundle.handleOpenBlog} busy={bundle.isBusy} />
@@ -74,7 +74,7 @@ function SubmenuButton({
       onClick={onClick}
       disabled={busy}
       className={cn(
-        'flex h-[30px] w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left transition-colors',
+        'flex h-7.5 w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left transition-colors',
         danger
           ? 'text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',

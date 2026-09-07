@@ -129,7 +129,7 @@ export function NoteListBody({ scope, groups, title, activeNoteId, renderedIds, 
   return (
     <div key={`${view}:${folderId ?? ''}:${tag ?? ''}`} ref={listRef} role='listbox' aria-label={title} aria-multiselectable='true' aria-activedescendant={activeNoteId && renderedIds.has(activeNoteId) ? `note-option-${activeNoteId}` : undefined} tabIndex={0} onKeyDown={onKeyDown} className='anim-view-content min-h-0 flex-1 overflow-y-auto px-2 pb-4 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'>
       {!hydrated && loading ? (<NoteListSkeleton />        ) : filteredCount === 0 ? (<ListEmpty view={view} folderId={folderId} filtering={Boolean(filter)} dayFiltering={Boolean(dateFilter)} tagFiltering={selectedTags.length > 0} latestEdit={latestEdit} onJumpToLatest={() => { if (latestEdit) applyFixedRange({ start: latestEdit.key, end: latestEdit.key }); }} weekFiltered={weekFiltered} onJumpToLatestWeek={() => { if (latestWeekRange) applyFixedRange(latestWeekRange); }}/>) : (groups.map((group) => (<div key={group.key} role='group' aria-label={group.label ?? title}>
-        {group.label && (<div className="px-2 pt-3 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+        {group.label && (<div className="px-2 pt-3 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]">
           {group.label}
         </div>)}
         <div role='presentation' className='space-y-px'>

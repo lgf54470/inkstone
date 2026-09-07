@@ -11,6 +11,10 @@ import { ActionRow } from './action-row';
 import { InlineError } from './inline-error';
 import { useTotpSettings, type TotpPanel, type TotpSettingsState } from './use-totp-settings';
 
+const TOTP_GRID_COLS = 'md:grid-cols-[210px_minmax(0,1fr)]'
+const TRACKING_CODE = 'tracking-[0.08em]'
+const TRACKING_INPUT = 'tracking-[0.04em]'
+
 export function TotpSettings() {
   const s = useTotpSettings()
   if (s.isLoading && !s.status) {
@@ -114,7 +118,7 @@ function SetupPanel({ s, setup }: { s: TotpSettingsState; setup: TotpSetupInfo }
       event.preventDefault()
       s.confirmSetup()
     }}>
-      <div className='grid gap-4 md:grid-cols-[210px_minmax(0,1fr)] md:items-start'>
+      <div className={`grid gap-4 ${TOTP_GRID_COLS} md:items-start`}>
         <QrTile uri={setup.uri} />
         <div className='min-w-0 space-y-3'>
           <div>
@@ -163,7 +167,7 @@ function ManualSecretCard({ secret, onCopy }: { secret: string; onCopy: () => vo
           {t('common.copy')}
         </Button>
       </div>
-      <code className='mt-1.5 block break-all font-mono text-[length:var(--text-12)] tracking-[0.08em] text-[var(--text-primary)]'>
+      <code className={`mt-1.5 block break-all font-mono text-[length:var(--text-12)] ${TRACKING_CODE} text-[var(--text-primary)]`}>
         {secret.match(/.{1,4}/g)?.join(' ')}
       </code>
     </div>
@@ -238,7 +242,7 @@ function RecoveryCodesGrid({ codes }: { codes: string[] }) {
       {codes.map((recoveryCode, index) => (
         <code
           key={recoveryCode}
-          className='select-all rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-center font-mono text-[length:var(--text-12)] tracking-[0.04em] text-[var(--text-primary)]'
+          className={`select-all rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-center font-mono text-[length:var(--text-12)] ${TRACKING_INPUT} text-[var(--text-primary)]`}
         >
           <span className='mr-2 text-[var(--text-quaternary)]'>{index + 1}.</span>
           {recoveryCode}

@@ -314,7 +314,7 @@ function CommentInput({
   const Icon = config.icon
   return (
     <div>
-      <label className='block text-[11px] font-medium text-[var(--text-secondary)] mb-1'>
+      <label className='block text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] mb-1'>
         {config.label}
         {config.required && <span className='text-[var(--accent)]'> *</span>}
       </label>
@@ -344,7 +344,7 @@ function CommentContentField({
 }) {
   return (
     <div>
-      <label className='block text-[11px] font-medium text-[var(--text-secondary)] mb-1'>
+      <label className='block text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] mb-1'>
         {t('comments.field_content', {}, locale)} <span className='text-[var(--accent)]'>*</span>
       </label>
       <textarea
@@ -362,7 +362,7 @@ function CommentContentField({
 function CommentFormActions({ submitting, locale }: { submitting: boolean; locale: BlogLocale }) {
   return (
     <div className='flex items-center justify-between pt-1'>
-      <span className='text-[11px] text-[var(--text-quaternary)]'>
+      <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {t('comments.rules_hint', {}, locale)}
       </span>
       <button
@@ -442,7 +442,7 @@ function CommentItem({ item, locale }: { item: BlogComment; locale: BlogLocale }
             )}
           </div>
         </div>
-        <time className='text-[11px] text-[var(--text-quaternary)]'>
+        <time className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
           {formatDate(item.createdAt, locale, {
             year: 'numeric',
             month: 'short',

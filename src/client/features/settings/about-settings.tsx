@@ -92,7 +92,7 @@ function ProfileCard({ user, isLoggingOut, onExit }: { user: PublicUser | null; 
 function AccessControlSection({ site }: { site: SiteInfo | null }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('common.access_control')}</h3>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('common.access_control')}</h3>
       <SettingRow title={t('settings.registration_status')} description={site?.registrationOpen
       ? t('settings.new_accounts_can_currently_register_with_a_username_and_password') : t('settings.only_existing_accounts_can_sign_in_new_accounts_are_rejected')}>
       <Badge tone={site?.registrationOpen ? 'warning' : 'success'}>
@@ -110,7 +110,7 @@ function AccessControlSection({ site }: { site: SiteInfo | null }) {
 function UpdateSection({ site, updateStatus, updateInfo, updateAvailable, checkForUpdates, openUpdatePage }: { site: SiteInfo | null; updateStatus: UpdateStatus; updateInfo: UpdateCheckResponse | null; updateAvailable: boolean; checkForUpdates: () => void; openUpdatePage: () => void }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.deployment_updates')}</h3>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.deployment_updates')}</h3>
       <SettingRow title={t('settings.current_version')}>
       <Badge>{updateInfo?.currentVersion ?? site?.version ?? '—'}</Badge>
       </SettingRow>
@@ -140,7 +140,7 @@ function UpdateSection({ site, updateStatus, updateInfo, updateAvailable, checkF
 function PwaSection({ installAvailable, installed, installing, install, offlineStatus, offlineCompleted, offlineTotal }: { installAvailable: boolean; installed: boolean; installing: boolean; install: () => void; offlineStatus: OfflineStatus; offlineCompleted: number; offlineTotal: number }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('pwa.app_installation')}</h3>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('pwa.app_installation')}</h3>
       {(installAvailable || installed) && (<SettingRow title={t('pwa.install_inkstone')} description={t('pwa.install_description')}>
       {installed
         ? <Badge tone='success'>{t('pwa.installed')}</Badge>

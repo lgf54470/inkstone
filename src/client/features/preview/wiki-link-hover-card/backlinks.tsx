@@ -23,7 +23,7 @@ export function CardBacklinks({ links, onOpen }: {
         <ChevronDown size={12} className={cn('ml-auto shrink-0 transition-transform', isExpanded && 'rotate-180')} />
       </button>
       {isExpanded && (
-        <ul className='max-h-[132px] overflow-y-auto overscroll-contain px-1.5 pb-1.5'>
+        <ul className='max-h-33 overflow-y-auto overscroll-contain px-1.5 pb-1.5'>
           {links.map((link) => (
             <li key={link.id}>
               <button

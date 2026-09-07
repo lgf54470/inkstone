@@ -23,7 +23,7 @@ export function TagDraftRow({ onFinish, onCancel }: {
     finishedRef.current = true;
     onFinish(value);
   };
-  return (<div className='flex h-10 items-center gap-2 rounded-[var(--r-md)] px-2 md:h-[30px]'>
+  return (<div className='flex h-10 items-center gap-2 rounded-[var(--r-md)] px-2 md:h-7.5'>
     <Hash size={13} className='shrink-0 text-[var(--text-quaternary)]'/>
     <input aria-label={t('tags.new')} autoFocus placeholder={t('tags.new_placeholder')} onBlur={(event) => {
       if (event.currentTarget.value.trim())
@@ -81,7 +81,7 @@ export function TagRow({ tag, displayName, depth = 0, hasChildren = false, isExp
     onFinishRename(value);
   };
   const menuItems = buildTagMenuItems(tag, onStartRename, openPanel);
-  return (<div ref={rowRef} onContextMenu={(event) => { setIsMenuOpen(false); menu.onContextMenu(event); }} style={depth > 0 ? { paddingLeft: `${depth * TAG_INDENT_STEP + TAG_INDENT_BASE}px` } : undefined} className={cn('group relative flex h-10 items-center gap-1.5 rounded-[var(--r-md)] px-2 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active || selected ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', highlighted && 'ring-1 ring-[var(--accent)]')}>
+  return (<div ref={rowRef} onContextMenu={(event) => { setIsMenuOpen(false); menu.onContextMenu(event); }} style={depth > 0 ? { paddingLeft: `${depth * TAG_INDENT_STEP + TAG_INDENT_BASE}px` } : undefined} className={cn('group relative flex h-10 items-center gap-1.5 rounded-[var(--r-md)] px-2 md:h-7.5', 'transition-colors duration-[var(--dur-fast)]', active || selected ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', highlighted && 'ring-1 ring-[var(--accent)]')}>
     <TagRowChevron hasChildren={hasChildren} depth={depth} isExpanded={isExpanded} onToggleExpand={onToggleExpand}/>
     <Hash size={13} className='shrink-0' style={{ color: tag.color ?? (active || selected ? 'var(--accent)' : 'var(--text-quaternary)') }}/>
     <TagRowLabel tag={tag} displayLabel={displayLabel} searchQuery={searchQuery} active={active} selected={selected} renaming={renaming} finishedRef={finishedRef} onOpen={onOpen} onStartRename={onStartRename} onCancelRename={onCancelRename} onCommitRename={commitRename}/>

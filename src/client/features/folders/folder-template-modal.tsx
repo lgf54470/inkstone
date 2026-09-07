@@ -122,7 +122,7 @@ export function FolderTemplateModal({
       <div className='space-y-3'>
         {templates.length > 4 && <TemplateSearchField query={query} onQueryChange={setQuery} />}
 
-        <div className='max-h-[380px] overflow-y-auto space-y-1'>
+        <div className='max-h-95 overflow-y-auto space-y-1'>
           <NoTemplateOption selected={currentTemplateId === null} onSelect={() => handleSelect(null)} />
           {filtered.map((tmpl) => (
             <TemplateOptionRow

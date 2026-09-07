@@ -69,7 +69,7 @@ export function buildShareMenuItems(share: ShareInfo, folders: ShareFolder[], cb
 
 function MoveFolderSubmenu({ share, folders, onSelect }: { share: ShareInfo; folders: ShareFolder[]; onSelect: (folderId: string | null) => void }) {
   return (
-    <div className='py-1 min-w-[160px]'>
+    <div className='py-1 min-w-40'>
       <button
         type='button'
         onClick={() => onSelect(null)}

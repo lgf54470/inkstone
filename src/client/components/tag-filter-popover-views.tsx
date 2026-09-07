@@ -37,13 +37,13 @@ export function TagList({ tags, selectedTags, query, highlightedRef, onToggle }:
 }): JSX.Element {
   if (tags.length === 0)
     return <div className="px-2 py-3 text-center text-[length:var(--text-11\\.5)] text-[var(--text-quaternary)]">{t('notes.no_matching_tags')}</div>;
-  return (<div className='max-h-[248px] overflow-y-auto' role='listbox' aria-multiselectable='true'>
+  return (<div className='max-h-62 overflow-y-auto' role='listbox' aria-multiselectable='true'>
     {tags.map((tag) => {
       const selected = selectedTags.includes(tag.name);
       return (<button key={tag.id} type='button' role='option' aria-selected={selected} ref={selected || tags[0]?.id === tag.id ? highlightedRef : undefined} onClick={() => onToggle(tag.name)} className={cn('flex h-8 w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[length:var(--text-12)] transition-colors hover:bg-[var(--bg-hover)]', selected
         ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
         : 'text-[var(--text-secondary)]')}>
-        <span aria-hidden='true' className={cn('size-[7px] shrink-0 rounded-full', !tag.color && 'bg-[var(--text-quaternary)] opacity-40', selected && 'ring-2 ring-[var(--accent)]')} style={tag.color ? { backgroundColor: tag.color } : undefined}/>
+        <span aria-hidden='true' className={cn('size-1.75 shrink-0 rounded-full', !tag.color && 'bg-[var(--text-quaternary)] opacity-40', selected && 'ring-2 ring-[var(--accent)]')} style={tag.color ? { backgroundColor: tag.color } : undefined}/>
         <Hash size={12} className='shrink-0 text-[var(--text-quaternary)]'/>
         <span className='min-w-0 flex-1 truncate'>#<TagNameHighlight name={tag.name} query={query}/></span>
         <span className="shrink-0 tabular-nums text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">{tag.count}</span>

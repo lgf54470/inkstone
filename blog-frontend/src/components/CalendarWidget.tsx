@@ -238,7 +238,7 @@ function WeekHeaderRow({ locale }: { locale: BlogLocale }) {
       {headers.map((h, i) => (
         <span
           key={h}
-          className={`text-[11px] font-medium py-1 ${
+          className={`text-[length:var(--text-11)] font-medium py-1 ${
             i === 0 || i === 6 ? 'text-[var(--text-quaternary)]' : 'text-[var(--text-secondary)]'
           }`}
         >

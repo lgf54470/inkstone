@@ -12,6 +12,8 @@ import { t } from '../../../lib/i18n';
 import type { ShareRenderBundle } from './use-share-page';
 import { useShareLoad, useShareRendering } from './use-share-page';
 
+const TRACKING_H1 = 'tracking-[-0.03em]'
+
 export function SharePage({ slug }: {
   slug: string;
 }) {
@@ -26,7 +28,7 @@ export function SharePage({ slug }: {
   return (
     <div className='h-full overflow-y-auto overscroll-contain bg-[var(--bg-base)]'>
       <SharePageHeader siteName={loadBundle.note?.site.name ?? 'Inkstone'} dark={dark} onToggleTheme={toggleTheme} />
-      <main className='mx-auto max-w-[860px] px-4 pb-[calc(64px+env(safe-area-inset-bottom))] md:px-5 md:pb-24'>
+      <main className='mx-auto max-w-215 px-4 pb-[calc(64px+env(safe-area-inset-bottom))] md:px-5 md:pb-24'>
         <SharePageBody loadBundle={loadBundle} renderBundle={renderBundle} />
       </main>
     </div>
@@ -40,11 +42,11 @@ function SharePageHeader({ siteName, dark, onToggleTheme }: {
 }) {
   return (
     <header className='sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-base)]/85 pt-[env(safe-area-inset-top)] backdrop-blur'>
-      <div className='mx-auto flex h-12 max-w-[860px] items-center gap-3 px-4 md:px-5'>
+      <div className='mx-auto flex h-12 max-w-215 items-center gap-3 px-4 md:px-5'>
         <span className='flex items-center gap-1.5 text-[var(--accent)]'>
           <Logo size={15}/>
         </span>
-        <span className="text-[length:var(--text-12\.5)] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
+        <span className="text-[length:var(--text-12\.5)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)]">
           {siteName}
         </span>
         <span className='flex-1'/>
@@ -75,7 +77,7 @@ function SharePageBody({ loadBundle, renderBundle }: {
   }
   if (error) {
     return (
-      <div className='mx-auto max-w-[380px] pt-[18vh] text-center'>
+      <div className='mx-auto max-w-95 pt-[18vh] text-center'>
         <h1 className='text-[length:var(--text-16)] font-semibold text-[var(--text-primary)]'>{t('share.content_unavailable')}</h1>
         <p role='alert' className='mt-2 text-[length:var(--text-13)] leading-relaxed text-[var(--text-tertiary)]'>{error}</p>
       </div>
@@ -91,7 +93,7 @@ function SharePasswordView({ loadBundle }: {
 }) {
   const { password, setPassword, error, isLoading, load } = loadBundle
   return (
-    <div className='anim-rise mx-auto max-w-[340px] pt-[16vh] text-center'>
+    <div className='anim-rise mx-auto max-w-85 pt-[16vh] text-center'>
       <div className='mx-auto mb-4 flex size-12 items-center justify-center rounded-[var(--r-xl)] border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-tertiary)]'>
         <Lock size={20}/>
       </div>
@@ -117,7 +119,7 @@ function ShareNoteView({ note, renderBundle }: {
   return (
     <article className='pt-7 md:pt-10'>
       <header className='mb-6 md:mb-8'>
-        <h1 className='text-[length:var(--text-26)] leading-[1.25] font-bold tracking-[-0.03em] text-[var(--text-primary)] md:text-[length:var(--text-30)]'>
+        <h1 className={`text-[length:var(--text-26)] leading-[1.25] font-bold ${TRACKING_H1} text-[var(--text-primary)] md:text-[length:var(--text-30)]`}>
           {note.title || t('common.untitled_note')}
         </h1>
         <div className='mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[length:var(--text-12)] text-[var(--text-quaternary)]'>

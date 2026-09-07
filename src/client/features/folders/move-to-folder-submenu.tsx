@@ -150,7 +150,7 @@ export function MoveToFolderSubmenu({
   }
   return (
     <div
-      className='w-[248px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1.5 shadow-[var(--shadow-pop)] outline-none'
+      className='w-62 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1.5 shadow-[var(--shadow-pop)] outline-none'
       onClick={(e) => e.stopPropagation()}
     >
       <div className="px-2 pt-1 pb-1.5 text-[length:var(--text-12\\.5)] font-medium text-[var(--text-secondary)]">
@@ -165,7 +165,7 @@ export function MoveToFolderSubmenu({
         }}
       />
 
-      <div className='max-h-[220px] overflow-y-auto space-y-0.5 px-0.5'>
+      <div className='max-h-55 overflow-y-auto space-y-0.5 px-0.5'>
         {currentFolderId !== null && currentFolderId !== undefined && !query.trim() && (
           <RemoveFromFolderRow onRemove={() => pickFolder(null)} />
         )}

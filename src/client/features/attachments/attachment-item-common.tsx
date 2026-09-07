@@ -118,7 +118,7 @@ export function UploadEmptyState({ onUploadClick }: { onUploadClick: () => void 
   return (
     <div
       onClick={onUploadClick}
-      className='flex flex-1 min-h-[180px] flex-col items-center justify-center rounded-[var(--r-xl)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 py-8 px-4 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/10 cursor-pointer'
+      className='flex flex-1 min-h-45 flex-col items-center justify-center rounded-[var(--r-xl)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 py-8 px-4 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/10 cursor-pointer'
     >
       <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-surface)] text-[var(--accent)] shadow-[var(--shadow-xs)] mb-3'>
         <Upload size={22} />

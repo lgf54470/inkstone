@@ -6,6 +6,8 @@ import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { getTagsList, isTagKey, type NotePropertiesBundle } from './use-note-properties'
 
+const PROPERTY_GRID_COLS = 'grid-cols-[140px_1fr_28px]'
+
 function PropertyIcon({ rowKey, value }: { rowKey: string; value: unknown }) {
   if (isTagKey(rowKey)) return <Hash size={13} className='shrink-0 text-[var(--accent)]' />
   if (typeof value === 'boolean') return <Check size={13} className='shrink-0 text-[var(--text-tertiary)]' />
@@ -151,7 +153,7 @@ export function PropertyRow({ bundle, rowKey, value }: { bundle: NotePropertiesB
   const tagsList = isTags ? getTagsList(value) : []
 
   return (
-    <div className='group/row grid grid-cols-[140px_1fr_28px] items-center gap-2 px-3 py-1.5 transition-colors hover:bg-[var(--surface-hover)]/30'>
+    <div className={`group/row grid ${PROPERTY_GRID_COLS} items-center gap-2 px-3 py-1.5 transition-colors hover:bg-[var(--surface-hover)]/30`}>
       <PropertyKeyCell bundle={bundle} rowKey={rowKey} value={value} />
 
       <div className='min-w-0'>

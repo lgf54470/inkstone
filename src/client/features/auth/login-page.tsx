@@ -52,6 +52,12 @@ interface LoginContext extends LoginFlow {
 
 type LoginActionContext = Omit<LoginContext, 'backToPassword' | 'submit'>
 
+const TRACKING_H1 = 'tracking-[0.01em]'
+const TRACKING_TAGLINE = 'tracking-[0.04em]'
+const TRACKING_FOOTER = 'tracking-[0.05em]'
+const HALO_TOP = 'top-[-22%]'
+const HALO_BLUR = 'blur-[120px]'
+
 function reportFlowError(ctx: LoginActionContext, caught: unknown) {
   ctx.busyRef.current = false
   ctx.setIsBusy(false)
@@ -174,7 +180,7 @@ function LoginHeader({ flow }: { flow: LoginFlow }) {
       >
         <Logo size={27} />
       </div>
-      <h1 className='text-[length:var(--text-30)] font-semibold tracking-[0.01em] text-[var(--text-primary)]' style={{ fontFamily: 'var(--font-serif)' }}>
+      <h1 className={`text-[length:var(--text-30)] font-semibold ${TRACKING_H1} text-[var(--text-primary)]`} style={{ fontFamily: 'var(--font-serif)' }}>
         {t('common.product_name')}
       </h1>
       <p className='mt-2.5 text-[length:var(--text-13)] leading-relaxed text-[var(--text-tertiary)]'>
@@ -357,7 +363,7 @@ function LoginFooter({ registrationClosed }: { registrationClosed: boolean }) {
           {t('auth.this_is_a_private_instance_registration_is_closed_so_only_existing_accou')}
         </p>
       )}
-      <p className='text-[length:var(--text-11)] tracking-[0.04em] text-[var(--text-quaternary)]'>
+      <p className={`text-[length:var(--text-11)] ${TRACKING_TAGLINE} text-[var(--text-quaternary)]`}>
         {t('auth.live_split_view_markdown_preview_realtime_multi_device_sync_multiple_web')}
       </p>
     </div>
@@ -367,7 +373,7 @@ function LoginFooter({ registrationClosed }: { registrationClosed: boolean }) {
 function Backdrop() {
   return (
     <div aria-hidden='true' className='pointer-events-none absolute inset-0 overflow-hidden'>
-      <div className='absolute left-1/2 top-[-22%] size-[720px] -translate-x-1/2 rounded-full opacity-[0.13] blur-[120px]' style={{ background: 'var(--accent)' }} />
+      <div className={`absolute left-1/2 ${HALO_TOP} size-180 -translate-x-1/2 rounded-full opacity-[0.13] ${HALO_BLUR}`} style={{ background: 'var(--accent)' }} />
       <div
         className='absolute inset-0 opacity-[0.5]'
         style={{
@@ -386,7 +392,7 @@ export function LoginPage() {
   return (
     <div className='relative flex min-h-full flex-col items-center justify-center overflow-y-auto px-4 pt-[calc(32px+env(safe-area-inset-top))] pb-[calc(24px+env(safe-area-inset-bottom))] md:px-6 md:py-10'>
       <Backdrop />
-      <div className='anim-rise relative w-full max-w-[380px]'>
+      <div className='anim-rise relative w-full max-w-95'>
         <LoginHeader flow={flow} />
         <form
           className='space-y-2.5'
@@ -413,7 +419,7 @@ export function LoginPage() {
         <LoginAlert flow={flow} />
         <LoginFooter registrationClosed={flow.registrationClosed} />
       </div>
-      <footer className='pointer-events-none mt-6 text-center text-[length:var(--text-11)] tracking-[0.05em] text-[var(--text-quaternary)] md:mt-8'>
+      <footer className={`pointer-events-none mt-6 text-center text-[length:var(--text-11)] ${TRACKING_FOOTER} text-[var(--text-quaternary)] md:mt-8`}>
         {t('auth.self_hosted_on_cloudflare_workers_your_data_is_yours')}
       </footer>
     </div>

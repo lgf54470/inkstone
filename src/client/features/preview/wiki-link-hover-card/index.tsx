@@ -104,7 +104,7 @@ function CardBody({ b }: { b: WikiLinkHoverCardBundle }) {
       <div
         className={cn(
           'wiki-hover-body min-h-0 overflow-y-auto overscroll-contain px-3 py-2.5',
-          pinned && pinnedRect.height ? 'flex-1' : 'max-h-[300px]',
+          pinned && pinnedRect.height ? 'flex-1' : 'max-h-75',
         )}
       >
         <div className='ink-prose' dangerouslySetInnerHTML={htmlObj} />
@@ -173,7 +173,7 @@ export const WikiLinkHoverCard = memo(function WikiLinkHoverCard(props: WikiLink
       onKeyDown={onCardKeyDown}
       className={cn(
         'anim-pop fixed flex min-w-0 flex-col overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] shadow-[var(--shadow-pop)]',
-        pinned ? '' : 'z-[var(--z-hover-card)] w-[340px] max-w-[calc(100vw-24px)]',
+        pinned ? '' : 'z-[var(--z-hover-card)] w-85 max-w-[calc(100vw-24px)]',
         pinned && flash && 'pinned-window-flash',
       )}
       style={hoverCardStyle(pinned, pinnedRect, position, pinnedInit)}

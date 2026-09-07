@@ -6,6 +6,7 @@ import { hotkeyText, listHotkeys } from '../../lib/hotkeys';
 import { cn } from '../../lib/cn';
 import { t, type MessageKey } from '../../lib/i18n';
 
+const TRACKING_SECTION = 'tracking-[0.07em]'
 const MODAL_WIDTH = 720
 
 const EDITOR_SHORTCUTS: {
@@ -230,7 +231,7 @@ function ShortcutResults({ sections, cursor, listId, listRef, onActivate, onHove
   let rowCursor = -1;
   return <div ref={listRef} className='grid grid-cols-1 gap-x-8 gap-y-5 pr-1 md:max-h-[52vh] md:grid-cols-2 md:overflow-y-auto'>
     {sections.map((section) => (section.rows.length > 0 && <section key={section.group}>
-      <h3 className="mb-2 text-[length:var(--text-10\.5)] font-semibold tracking-[0.07em] text-[var(--text-quaternary)]">
+      <h3 className={`mb-2 text-[length:var(--text-10\.5)] font-semibold ${TRACKING_SECTION} text-[var(--text-quaternary)]`}>
       {section.group}
       </h3>
       <ul id={listId} role='listbox' aria-label={t('command.keyboard_shortcuts_021cf9')} className='space-y-0.5'>
@@ -238,7 +239,7 @@ function ShortcutResults({ sections, cursor, listId, listRef, onActivate, onHove
           const rowIndex = ++rowCursor;
           const active = cursor === rowIndex;
           return (<li key={`${item.combo ?? item.keys?.join('')}-${index}`}>
-          <button type='button' role='option' id={`${listId}-option-${rowIndex}`} aria-selected={active} data-shortcut-index={rowIndex} tabIndex={-1} onClick={() => onActivate(item)} onMouseMove={() => onHover(rowIndex)} className={cn('flex min-h-10 w-full items-center justify-between gap-4 rounded-[var(--r-sm)] px-1.5 py-[5px] text-left transition-colors md:min-h-0', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
+          <button type='button' role='option' id={`${listId}-option-${rowIndex}`} aria-selected={active} data-shortcut-index={rowIndex} tabIndex={-1} onClick={() => onActivate(item)} onMouseMove={() => onHover(rowIndex)} className={cn('flex min-h-10 w-full items-center justify-between gap-4 rounded-[var(--r-sm)] px-1.5 py-1.25 text-left transition-colors md:min-h-0', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
             <span className="min-w-0 text-[length:var(--text-12\.5)] leading-snug text-[var(--text-secondary)] md:truncate">
             {item.description}
             </span>

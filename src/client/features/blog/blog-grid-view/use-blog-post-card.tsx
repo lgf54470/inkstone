@@ -176,7 +176,7 @@ function FolderMoveSubmenu({
   closeMenu: () => void
 }) {
   return (
-    <div className='py-1 min-w-[160px]'>
+    <div className='py-1 min-w-40'>
       <button
         type='button'
         onClick={() => {

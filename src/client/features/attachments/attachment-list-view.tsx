@@ -212,7 +212,7 @@ function RowDataCells({ file, folderName }: { file: AttachmentWithUsage; folderN
   return (
     <>
       <td className='px-3 py-2 text-[var(--text-tertiary)]'>
-        {folderName ? <span className='truncate block max-w-[120px]'>{folderName}</span> : <span>-</span>}
+        {folderName ? <span className='truncate block max-w-30'>{folderName}</span> : <span>-</span>}
       </td>
       <td className='px-3 py-2 text-[var(--text-tertiary)]'>
         {tags.length > 0 ? (

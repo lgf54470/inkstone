@@ -106,6 +106,9 @@
   --code-line: 1.56;
   --code-weight: 400;
   --code-spacing: -0.012em;
+  --tracking-label: 0.06em;
+  --tracking-title: -0.012em;
+  --tracking-heading: -0.01em;
 
 
   --success: oklch(70% 0.14 155);

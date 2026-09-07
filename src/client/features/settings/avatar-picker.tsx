@@ -186,7 +186,7 @@ function RandomAvatarGrid({ picker }: { picker: PickerState }) {
                   : 'border-[var(--border-subtle)] bg-[var(--bg-base)] hover:border-[var(--border-strong)]'
               }`}
             >
-              <Avatar src={choice} name={picker.displayName} size={42} className='md:!size-[60px]' />
+              <Avatar src={choice} name={picker.displayName} size={42} className='md:!size-15' />
               {active && (
                 <span className='absolute right-1.5 bottom-1.5 flex size-4 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)]'>
                   <Check size={10} strokeWidth={3} />

@@ -3,6 +3,7 @@ import { cn } from '../lib/cn'
 import { prettyCombo } from '../lib/hotkeys'
 import { resolveAvatarSource } from '../lib/avatar'
 
+const TRACKING_GROUP = 'tracking-[0.075em]'
 const LOGO_BOX = 27
 const AVATAR_FONT_RATIO = 0.42
 
@@ -166,12 +167,12 @@ export function Spinner({ size = 14, className }: { size?: number; className?: s
 export function Kbd({ combo, keys }: { combo?: string; keys?: string[] }) {
   const parts = keys ?? (combo ? prettyCombo(combo) : [])
   return (
-    <span className='inline-flex shrink-0 items-center gap-[3px]'>
+    <span className='inline-flex shrink-0 items-center gap-0.75'>
       {parts.map((key, i) => (
         <kbd
           key={`${key}-${i}`}
           className={cn(
-            'inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[var(--r-5)] px-[5px]',
+            'inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-[var(--r-5)] px-1.25',
             'border border-[var(--border-default)] bg-[var(--bg-raised)]',
             'text-[length:var(--text-10\.5)] font-medium text-[var(--text-tertiary)]',
           )}
@@ -241,7 +242,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-[7px] py-[1px] text-[length:var(--text-11)] font-medium tabular',
+        'inline-flex items-center rounded-full px-1.75 py-px text-[length:var(--text-11)] font-medium tabular',
         tones[tone],
         className,
       )}
@@ -270,7 +271,7 @@ export function SectionLabel({ children, className }: { children: ReactNode; cla
   return (
     <div
       className={cn(
-        'px-2 pt-1 pb-1 text-[length:var(--text-10\.5)] font-semibold uppercase tracking-[0.075em] text-[var(--text-quaternary)]',
+        `px-2 pt-1 pb-1 text-[length:var(--text-10\.5)] font-semibold uppercase ${TRACKING_GROUP} text-[var(--text-quaternary)]`,
         className,
       )}
     >

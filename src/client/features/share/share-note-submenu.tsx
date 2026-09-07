@@ -65,7 +65,7 @@ function ShareSubmenuHeader({ title, onBack }: { title: string; onBack: () => vo
 function ShareFolderView({ bundle }: { bundle: ShareNoteSubmenuBundle }) {
   return (
     <div
-      className='w-[248px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1.5 shadow-[var(--shadow-pop)] outline-none'
+      className='w-62 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1.5 shadow-[var(--shadow-pop)] outline-none'
       onClick={(e) => e.stopPropagation()}
     >
       <ShareSubmenuHeader title={t('share.batch_move_to_folder')} onBack={() => bundle.setView('main')} />
@@ -90,7 +90,7 @@ function ShareFolderView({ bundle }: { bundle: ShareNoteSubmenuBundle }) {
 function ShareFolderList({ bundle }: { bundle: ShareNoteSubmenuBundle }) {
   const selectedId = bundle.currentShare?.shareFolderId ?? null
   return (
-    <div className='max-h-[200px] overflow-y-auto space-y-0.5 px-0.5 pt-0.5'>
+    <div className='max-h-50 overflow-y-auto space-y-0.5 px-0.5 pt-0.5'>
       <ShareFolderRow
         icon={<FolderMinus size={13} className='shrink-0 text-[var(--text-tertiary)]' />}
         label={t('navigation.unfiled')}
@@ -137,7 +137,7 @@ function ShareFolderRow({ icon, label, isSelected, onSelect }: {
 function ShareTagsView({ bundle }: { bundle: ShareNoteSubmenuBundle }) {
   return (
     <div
-      className='w-[248px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)] outline-none space-y-2'
+      className='w-62 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)] outline-none space-y-2'
       onClick={(e) => e.stopPropagation()}
     >
       <ShareSubmenuHeader title={t('share.tags_isolation')} onBack={() => bundle.setView('main')} />
@@ -155,7 +155,7 @@ function ShareTagChips({ tags, onRemove }: { tags: string[]; onRemove: (tag: str
     return <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)] py-0.5'>{t('share.no_tags')}</span>
   }
   return (
-    <div className='flex flex-wrap gap-1 min-h-[26px]'>
+    <div className='flex flex-wrap gap-1 min-h-6.5'>
       {tags.map((tag) => (
         <span
           key={tag}
@@ -212,7 +212,7 @@ function ShareTagSuggestions({ tags, onAdd }: { tags: ShareTag[]; onAdd: (name: 
   return (
     <div className='pt-1'>
       <div className='text-[length:var(--text-10)] text-[var(--text-quaternary)] pb-1'>{t('tags.manage_tags')}</div>
-      <div className='flex flex-wrap gap-1 max-h-[80px] overflow-y-auto'>
+      <div className='flex flex-wrap gap-1 max-h-20 overflow-y-auto'>
         {tags.map((tag) => (
           <button
             key={tag.id}
@@ -241,7 +241,7 @@ function ShareMenuButton({ icon, label, right, onClick, danger }: {
       type='button'
       onClick={onClick}
       className={cn(
-        'flex h-[30px] w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left transition-colors',
+        'flex h-7.5 w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left transition-colors',
         danger
           ? 'text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
@@ -261,7 +261,7 @@ function ShareMainMenu({ bundle, closeMenu, onOpenSettings }: {
 }) {
   const folderRight = (
     <>
-      <span className='max-w-[70px] truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+      <span className='max-w-17.5 truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {bundle.currentFolder ? bundle.currentFolder.name : t('navigation.unfiled')}
       </span>
       <ChevronRight size={12} className='shrink-0 opacity-60' />
@@ -277,7 +277,7 @@ function ShareMainMenu({ bundle, closeMenu, onOpenSettings }: {
   )
   return (
     <div
-      className="w-[236px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[length:var(--text-12\.5)]"
+      className="w-59 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[length:var(--text-12\.5)]"
       onClick={(e) => e.stopPropagation()}
     >
       <ShareMenuButton icon={<QrCode size={13} className='shrink-0 text-[var(--text-tertiary)]' />} label={t('share.view_qr')} onClick={() => void bundle.handleOpenQr()} />

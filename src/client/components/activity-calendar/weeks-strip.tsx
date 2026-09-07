@@ -74,7 +74,7 @@ function WeekHeatColumn({
       aria-label={t('sidebar.calendar_expand_week_value0', { value0: week[0]?.key.slice(5), value1: week[6]?.key.slice(5) })}
       onClick={(event) => onStripWeekClick(event, weekIndex)}
       className={cn(
-        'flex min-w-0 flex-1 flex-col gap-[2px] rounded-[var(--r-3)] p-px transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]',
+        'flex min-w-0 flex-1 flex-col gap-0.5 rounded-[var(--r-3)] p-px transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]',
         expandedWeek === weekIndex && 'bg-[var(--accent-soft)]',
       )}
     >
@@ -120,7 +120,7 @@ function WeekHeatStrip({
       <div className='px-0.5 pb-1 text-[length:var(--text-9)] font-medium text-[var(--text-quaternary)]'>
         {t('sidebar.calendar_week_strip_value0', { value0: stripWeeks.length })}
       </div>
-      <div className='flex gap-[2px]'>
+      <div className='flex gap-0.5'>
         {stripWeeks.map((week, weekIndex) => (
           <WeekHeatColumn
             key={weekIndex}
@@ -271,11 +271,11 @@ function DayHeaderRow({ cell, dayIndex, weekdayLabels, ix }: { cell: WeekCell; d
         >
           <span className="w-3 shrink-0 text-center text-[length:var(--text-9\\.5)] font-medium text-[var(--text-quaternary)]">{weekdayLabels[dayIndex]}</span>
           <span className="shrink-0 text-[length:var(--text-10\\.5)] tabular text-[var(--text-secondary)]">{cell.key.slice(5)}</span>
-          {cell.today && <span aria-hidden='true' className='size-[5px] shrink-0 rounded-full bg-[var(--accent)]' />}
+          {cell.today && <span aria-hidden='true' className='size-1.25 shrink-0 rounded-full bg-[var(--accent)]' />}
           <span className='ml-auto flex min-w-0 shrink-0 items-center gap-1.5'>
             {cell.diaryId && (
               <span className='inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[length:var(--text-9)] font-medium text-[var(--accent)]'>
-                <span aria-hidden='true' className='size-[3px] rounded-full bg-[var(--accent)]' />
+                <span aria-hidden='true' className='size-0.75 rounded-full bg-[var(--accent)]' />
                 {t('sidebar.diary_tag')}
               </span>
             )}

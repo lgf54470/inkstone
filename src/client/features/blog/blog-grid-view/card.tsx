@@ -175,13 +175,13 @@ function CardMeta({ post, folder, cat }: { post: BlogPost; folder: BlogFolder | 
           }}
         >
           <FolderClosed size={10} className='shrink-0' />
-          <span className='truncate max-w-[90px]'>{folder.name}</span>
+          <span className='truncate max-w-22.5'>{folder.name}</span>
         </span>
       )}
 
       {cat && (
         <span
-          className="rounded-[var(--r-sm)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-medium truncate max-w-[90px]"
+          className="rounded-[var(--r-sm)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-medium truncate max-w-22.5"
           style={{
             backgroundColor: cat.color ? `${cat.color}15` : 'var(--bg-sunken)',
             color: cat.color || 'var(--text-secondary)',
@@ -205,7 +205,7 @@ function CardTags({ post }: { post: BlogPost }) {
       {post.tags.slice(0, 3).map((tg) => (
         <span
           key={tg}
-          className='rounded bg-[var(--bg-sunken)] px-1.5 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)] truncate max-w-[90px]'
+          className='rounded bg-[var(--bg-sunken)] px-1.5 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)] truncate max-w-22.5'
           title={tg}
         >
           #{tg.includes('/') ? tg.split('/').pop() : tg}

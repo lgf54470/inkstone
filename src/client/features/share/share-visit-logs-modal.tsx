@@ -158,7 +158,7 @@ function CleanLogsMenu({ isCleaning, onClean }: {
       >
         {t('share.clean_logs_btn')}
       </Button>
-      <div className='absolute right-0 top-full z-[var(--z-menu)] mt-1 hidden min-w-[150px] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1 shadow-[var(--shadow-pop)] group-hover:block'>
+      <div className='absolute right-0 top-full z-[var(--z-menu)] mt-1 hidden min-w-37.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1 shadow-[var(--shadow-pop)] group-hover:block'>
         <button
           type='button'
           onClick={() => void onClean('bots')}
@@ -188,7 +188,7 @@ function CleanLogsMenu({ isCleaning, onClean }: {
 function LogsTable({ bundle }: { bundle: LogsBundle }) {
   const { data, isLoading } = bundle
   return (
-    <div className='max-h-[460px] overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)]'>
+    <div className='max-h-115 overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)]'>
       <table className='w-full border-collapse text-left text-[length:var(--text-12)]'>
         <LogsTableHeader />
         <tbody className='divide-y divide-[var(--border-subtle)]'>
@@ -271,7 +271,7 @@ function VisitTimeCell({ log }: { log: VisitLog }) {
 function VisitNoteCell({ log }: { log: VisitLog }) {
   return (
     <td className='px-3 py-2'>
-      <div className='flex flex-col max-w-[160px]'>
+      <div className='flex flex-col max-w-40'>
         <span className='truncate font-medium text-[length:var(--text-12)] text-[var(--text-primary)]'>
           {log.noteTitle}
         </span>
@@ -303,7 +303,7 @@ function VisitLocationCell({ log, flag, countryName }: {
 function VisitReferrerCell({ log }: { log: VisitLog }) {
   return (
     <td className='px-3 py-2'>
-      <span className='max-w-[140px] truncate text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+      <span className='max-w-35 truncate text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
         {log.referrerHost || (
           <span className='italic text-[var(--text-quaternary)]'>
             {t('share.direct_access')}

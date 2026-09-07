@@ -67,6 +67,8 @@ interface NoteListHeaderProps {
   notes: NoteSummary[]
 }
 
+const TRACKING_TITLE = 'tracking-[-0.016em]'
+
 function HeaderIconAction({
   label,
   icon,
@@ -197,7 +199,7 @@ function NoteSearchField({
         onKeyDown={(event) => handleSearchKeyDown(event, filter, filteredIds, openNote, listRef, setListQuery)}
         placeholder={t('notes.filter_in_this_view')}
         className={cn(
-          'h-10 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] md:h-[30px]',
+          'h-10 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] md:h-7.5',
           'pr-9 pl-8 text-[length:var(--text-12\\.5)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] md:pr-7 md:pl-7',
           'transition-[border-color,box-shadow] duration-[var(--dur-fast)]',
           'focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)] focus:outline-none',
@@ -342,7 +344,7 @@ function TagFilterChip({
     >
       <span className='flex shrink-0 items-center'>
         {selectedTags.slice(0, 5).map((tag) => (
-          <span key={tag} aria-hidden='true' className='size-[7px] rounded-full ring-1 ring-[var(--border-subtle)] first:ml-0 -ml-0.5' style={{ backgroundColor: tagColors.get(tag) ?? 'var(--text-quaternary)' }} />
+          <span key={tag} aria-hidden='true' className='size-1.75 rounded-full ring-1 ring-[var(--border-subtle)] first:ml-0 -ml-0.5' style={{ backgroundColor: tagColors.get(tag) ?? 'var(--text-quaternary)' }} />
         ))}
       </span>
       <span className='truncate'>{t('notes.tag_filter_value0', { value0: selectedTags.length })}</span>
@@ -437,7 +439,7 @@ export function NoteListHeader(props: NoteListHeaderProps) {
     <header className='shrink-0 px-3 pt-3 pb-2'>
       <div className='mb-2.5 flex items-center justify-between gap-2'>
         <div className='min-w-0'>
-          <h2 className="truncate text-[length:var(--text-14\\.5)] font-semibold tracking-[-0.016em] text-[var(--text-primary)]">{title}</h2>
+          <h2 className={`truncate text-[length:var(--text-14\\.5)] font-semibold ${TRACKING_TITLE} text-[var(--text-primary)]`}>{title}</h2>
           <FolderSubtitle view={view} folderId={folderId} todoTagText={todoTagText} />
         </div>
         <ListHeaderActions view={view} breakpoint={props.breakpoint} toggleNavDrawer={props.toggleNavDrawer} sortButtonRef={props.sortButtonRef} setIsSortMenuOpen={props.setIsSortMenuOpen} favButtonRef={props.favButtonRef} setIsFavMenuOpen={props.setIsFavMenuOpen} />

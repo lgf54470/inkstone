@@ -36,7 +36,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
     <div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={title ? titleId : undefined} aria-describedby={description ? descriptionId : undefined} aria-label={title ? undefined : t('overlay.dialog')} tabIndex={-1} className={cn('anim-pop relative flex max-h-[calc(var(--app-viewport-height,100dvh)-env(safe-area-inset-top))] md:max-h-[calc(var(--app-viewport-height,100dvh)-4rem)] w-full flex-col rounded-t-[var(--r-2xl)] border border-b-0 border-[var(--border-default)]', 'bg-[var(--bg-overlay)] shadow-[var(--shadow-modal)] outline-none md:my-auto md:rounded-[var(--r-2xl)] md:border-b', className)} style={{ maxWidth: width }}>
     {(title || description) && (<div className='flex shrink-0 items-start justify-between gap-4 px-4 pt-4 pb-3 md:px-5'>
       <div className='min-w-0'>
-        {title && (<h2 id={titleId} className='text-[length:var(--text-15)] font-semibold tracking-[-0.012em] text-[var(--text-primary)]'>
+        {title && (<h2 id={titleId} className='text-[length:var(--text-15)] font-semibold tracking-[var(--tracking-title)] text-[var(--text-primary)]'>
           {title}
         </h2>)}
         {description && (<p id={descriptionId} className="mt-1 text-[length:var(--text-12\.5)] leading-relaxed text-[var(--text-tertiary)]">

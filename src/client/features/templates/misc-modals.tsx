@@ -34,7 +34,7 @@ export function KeyboardHelpModal({ onClose }: {
         <span className="text-[length:var(--text-12\.5)] text-[var(--text-secondary)]">{row.label}</span>
         <Kbd keys={row.keys}/>
       </div>))}
-      <div className="pt-2.5 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t('templates.help_select_section')}</div>
+      <div className="pt-2.5 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]">{t('templates.help_select_section')}</div>
       {selectRows.map((row) => (<div key={row.label} className='flex items-center justify-between gap-3 py-2.5'>
         <span className="text-[length:var(--text-12\.5)] text-[var(--text-secondary)]">{row.label}</span>
         <Kbd keys={row.keys}/>
@@ -87,7 +87,7 @@ export function PublishTemplateDialog({ template, category, onClose, onPublished
           {template.tags.map((tag) => (<span key={tag} className='rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[length:var(--text-10)] text-[var(--text-tertiary)]'>#{tag}</span>))}
         </div>)}
         {template.description && <p className="mt-1.5 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{template.description}</p>}
-        <pre className='mt-2 max-h-[220px] overflow-y-auto text-[length:var(--text-11)] leading-relaxed whitespace-pre-wrap text-[var(--text-secondary)]'>{template.content}</pre>
+        <pre className='mt-2 max-h-55 overflow-y-auto text-[length:var(--text-11)] leading-relaxed whitespace-pre-wrap text-[var(--text-secondary)]'>{template.content}</pre>
       </div>
     </div>
   </Modal>);

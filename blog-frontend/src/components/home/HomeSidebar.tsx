@@ -44,9 +44,9 @@ function AuthorCard({
         )}
         <div className='min-w-0 flex-1'>
           <h3 className='font-bold text-xs text-[var(--text-primary)] truncate'>{siteInfo.authorName}</h3>
-          <p className='text-[11px] text-[var(--text-tertiary)] truncate'>{siteInfo.bio || t('home.author_role', {}, locale)}</p>
+          <p className='text-[length:var(--text-11)] text-[var(--text-tertiary)] truncate'>{siteInfo.bio || t('home.author_role', {}, locale)}</p>
         </div>
-        <div className='flex items-center gap-2 text-center text-[10px] text-[var(--text-quaternary)] shrink-0 pl-2.5 border-l border-[var(--border-subtle)]'>
+        <div className='flex items-center gap-2 text-center text-[length:var(--text-10)] text-[var(--text-quaternary)] shrink-0 pl-2.5 border-l border-[var(--border-subtle)]'>
           <div>
             <div className='font-bold text-xs text-[var(--text-primary)]'>{totalPosts}</div>
             <div>{t('home.stat_posts', {}, locale)}</div>
@@ -94,7 +94,7 @@ function CategoriesBox({
               <span className='w-2 h-2 rounded-full' style={categoryDotStyle(cat.color)} />
               <span>{cat.name}</span>
             </div>
-            <span className='text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-sunken)] text-[var(--text-quaternary)]'>
+            <span className='text-[length:var(--text-10)] px-1.5 py-0.5 rounded bg-[var(--bg-sunken)] text-[var(--text-quaternary)]'>
               {cat.postsCount || 0}
             </span>
           </a>
@@ -141,7 +141,7 @@ function TagsBox({
               }`}
             >
               <span>#{tag.name}</span>
-              <span className={`text-[10px] ${isActive ? 'text-white/80' : 'text-[var(--text-quaternary)]'}`}>
+              <span className={`text-[length:var(--text-10)] ${isActive ? 'text-white/80' : 'text-[var(--text-quaternary)]'}`}>
                 {tag.postsCount}
               </span>
             </button>

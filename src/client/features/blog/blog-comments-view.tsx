@@ -96,7 +96,7 @@ function CommentsToolbar({
       />
 
       <div className='flex items-center gap-2'>
-        <div className='relative w-[180px] md:w-[220px]'>
+        <div className='relative w-45 md:w-55'>
           <Input
             leading={<Search size={13} className='text-[var(--text-quaternary)]' />}
             value={search}
@@ -306,7 +306,7 @@ function CommentPostLink({ comment, postUrl }: { comment: BlogComment; postUrl: 
       href={postUrl}
       target='_blank'
       rel='noopener noreferrer'
-      className="hidden sm:inline-flex items-center gap-1 text-[length:var(--text-11\.5)] text-[var(--accent)] hover:underline max-w-[200px] truncate"
+      className="hidden sm:inline-flex items-center gap-1 text-[length:var(--text-11\.5)] text-[var(--accent)] hover:underline max-w-50 truncate"
       title={comment.postTitle}
     >
       <span className='truncate'>{comment.postTitle}</span>

@@ -189,7 +189,7 @@ function CreateFirstFolderButton({ isCreating, onCreate }: {
   isCreating: boolean;
   onCreate: () => void;
 }) {
-  return (<button type='button' disabled={isCreating} onClick={onCreate} className='mt-0.5 flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[length:var(--text-12)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-45 md:h-[30px]'>
+  return (<button type='button' disabled={isCreating} onClick={onCreate} className='mt-0.5 flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[length:var(--text-12)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-45 md:h-7.5'>
     <FolderPlus size={13}/>{t('sidebar.create_first_folder')}
     </button>);
 }

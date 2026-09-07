@@ -71,11 +71,11 @@ export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTag
 }
 
 function GraphSection({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
-  return <section className='mb-5'><h4 className='mb-2 flex items-center gap-1.5 text-[length:var(--text-11)] font-semibold uppercase tracking-[.06em] text-[var(--text-quaternary)]'>{icon}{title}</h4><div className='space-y-2.5'>{children}</div></section>
+  return <section className='mb-5'><h4 className='mb-2 flex items-center gap-1.5 text-[length:var(--text-11)] font-semibold uppercase tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{icon}{title}</h4><div className='space-y-2.5'>{children}</div></section>
 }
 
 function GraphSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
-  return <label className='flex items-center justify-between gap-3 text-[length:var(--text-12)] text-[var(--text-secondary)]'><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-8 max-w-[160px] rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2 text-[length:var(--text-11\.5)] outline-none focus:border-[var(--accent)]">{options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}</select></label>
+  return <label className='flex items-center justify-between gap-3 text-[length:var(--text-12)] text-[var(--text-secondary)]'><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-8 max-w-40 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2 text-[length:var(--text-11\.5)] outline-none focus:border-[var(--accent)]">{options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}</select></label>
 }
 
 function GraphToggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (value: boolean) => void }) {

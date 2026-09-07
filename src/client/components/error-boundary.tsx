@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return (
       <div
         role='alert'
-        className='flex h-full min-h-[240px] flex-col items-center justify-center gap-3 bg-[var(--bg-base)] px-6 text-center'
+        className='flex h-full min-h-60 flex-col items-center justify-center gap-3 bg-[var(--bg-base)] px-6 text-center'
       >
         <div className='flex size-12 items-center justify-center rounded-full bg-[var(--danger-soft)] text-[var(--danger)]'>
           <CircleAlert size={22} aria-hidden='true' />
@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <h2 className='text-[length:var(--text-15)] font-semibold text-[var(--text-primary)]'>
           {t('app.something_went_wrong')}
         </h2>
-        <p className="max-w-[320px] text-[length:var(--text-12\.5)] leading-relaxed text-[var(--text-tertiary)]">
+        <p className="max-w-80 text-[length:var(--text-12\.5)] leading-relaxed text-[var(--text-tertiary)]">
           {t('app.error_boundary_description')}
         </p>
         <button
@@ -67,7 +67,7 @@ export function InlineErrorBoundary({ children, label }: {
   return (
     <ErrorBoundary
       fallback={
-        <div className="flex h-full min-h-[120px] items-center justify-center px-4 text-center text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">
+        <div className="flex h-full min-h-30 items-center justify-center px-4 text-center text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">
           {label ?? t('app.section_unavailable')}
         </div>
       }
