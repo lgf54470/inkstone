@@ -52,9 +52,9 @@ interface LoginContext extends LoginFlow {
 
 type LoginActionContext = Omit<LoginContext, 'backToPassword' | 'submit'>
 
-const TRACKING_H1 = 'tracking-[0.01em]'
-const TRACKING_TAGLINE = 'tracking-[0.04em]'
-const TRACKING_FOOTER = 'tracking-[0.05em]'
+const TRACKING_H1 = 'tracking-[var(--tracking-h1)]'
+const TRACKING_TAGLINE = 'tracking-[var(--tracking-tagline)]'
+const TRACKING_FOOTER = 'tracking-[var(--tracking-footer)]'
 const HALO_TOP = 'top-[-22%]'
 const HALO_BLUR = 'blur-[120px]'
 

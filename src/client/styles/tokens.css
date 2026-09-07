@@ -109,6 +109,9 @@
   --tracking-label: 0.06em;
   --tracking-title: -0.012em;
   --tracking-heading: -0.01em;
+  --tracking-h1: 0.01em;
+  --tracking-tagline: 0.04em;
+  --tracking-footer: 0.05em;
 
 
   --success: oklch(70% 0.14 155);
