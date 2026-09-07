@@ -677,6 +677,14 @@ const allowed = new Map([
   ["src/client/lib/note-persist.ts", [
     "/**\n * Coalesces per-keystroke IndexedDB writes (outbox + cached content) behind\n * one short timer: only the latest payload per note is ever persisted, so a\n * burst of typing collapses into a single outbox rewrite per note instead of\n * serializing every pending note body on every keystroke.\n */",
   ]],
+  ["src/client/lib/qr-colors.ts", [
+    "// QR codes are drawn into canvas/SVG at render time, where CSS variables",
+    "// cannot be resolved, so the two colors are absolute values instead of design",
+    "// tokens. They used to be triplicated across the share/attachments/TOTP",
+    "// modals with a divergent foreground (#111827 vs #0f172a); this module is the",
+    "// single source of truth. #0f172a (slate-900) matches the light-theme text",
+    "// color used by prose and exports.",
+  ]],
   ["src/client/lib/sync.ts", [
     "/**\n   * Applies live setting changes (realtime toggle, poll interval) without\n   * tearing down the engine, its WebSocket, or its leadership claim.\n   */",
     "// Best-effort remote refresh; the next broadcast or scheduled pull retries.",

@@ -5,9 +5,7 @@ import { COPY_FEEDBACK_MS } from '@shared/constants'
 import { Modal } from '../../components/overlay'
 import { Button } from '../../components/primitives'
 import { t } from '../../lib/i18n'
-
-const QR_BG_COLOR = '#ffffff'
-const QR_FG_COLOR = '#111827'
+import { QR_BG_COLOR, QR_FG_COLOR } from '../../lib/qr-colors'
 
 
 interface AttachmentQrModalProps {

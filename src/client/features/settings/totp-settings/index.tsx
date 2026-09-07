@@ -4,14 +4,12 @@ import { type TotpSetupInfo, type TotpStatus } from '@shared/types';
 import { Badge, Button } from '../../../components/primitives';
 import { Input, SettingRow } from '../../../components/form';
 import { t } from '../../../lib/i18n';
+import { QR_BG_COLOR, QR_FG_COLOR } from '../../../lib/qr-colors';
 import { PasswordInput } from './password-input';
 import { CodeInput } from './code-input';
 import { ActionRow } from './action-row';
 import { InlineError } from './inline-error';
 import { useTotpSettings, type TotpPanel, type TotpSettingsState } from './use-totp-settings';
-
-const QR_BG_COLOR = '#ffffff'
-const QR_FG_COLOR = '#111827'
 
 export function TotpSettings() {
   const s = useTotpSettings()

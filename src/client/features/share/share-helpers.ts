@@ -1,4 +1,5 @@
-const QR_CANVAS_BACKGROUND = '#ffffff'
+import { QR_BG_COLOR } from '../../lib/qr-colors'
+
 
 export function countryFlag(countryCode: string | null | undefined): string {
   if (!countryCode || countryCode === 'UNKNOWN' || countryCode.length !== 2) {
@@ -51,7 +52,7 @@ export async function downloadQrPng(svgElement: SVGElement, filename = 'share-qr
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
-  ctx.fillStyle = QR_CANVAS_BACKGROUND
+  ctx.fillStyle = QR_BG_COLOR
   ctx.fillRect(0, 0, size, size)
   ctx.drawImage(img, 0, 0, size, size)
 
@@ -91,7 +92,7 @@ export async function copyQrImageToClipboard(svgElement: SVGElement): Promise<bo
     const ctx = canvas.getContext('2d')
     if (!ctx) return false
 
-    ctx.fillStyle = QR_CANVAS_BACKGROUND
+    ctx.fillStyle = QR_BG_COLOR
     ctx.fillRect(0, 0, 600, 600)
     ctx.drawImage(img, 0, 0, 600, 600)
 

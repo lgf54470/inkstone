@@ -5,10 +5,8 @@ import { COPY_FEEDBACK_MS } from '@shared/constants'
 import { Modal } from '../../components/overlay'
 import { Button } from '../../components/primitives'
 import { t } from '../../lib/i18n'
+import { QR_BG_COLOR, QR_FG_COLOR } from '../../lib/qr-colors'
 import { copyQrImageToClipboard, downloadQrPng, downloadQrSvg } from './share-helpers'
-
-const QR_BG_COLOR = '#ffffff'
-const QR_FG_COLOR = '#0f172a'
 
 export function ShareQrModal({
   open,
