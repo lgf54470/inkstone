@@ -10,6 +10,14 @@ const localeRoot = path.resolve('src/shared/locales');
 // only in seed data, never in JSX or component props.
 const localizedDemoFiles = new Set([
   path.resolve('src/client/demo/state.ts'),
+  // Blog demo seed + mutations carry the same category of authored demo
+  // content (welcome posts, categories, sample comments) served by the demo
+  // backend; they are data fixtures, never UI chrome rendered by the i18n
+  // layer. The demo test files assert against those seed fixtures verbatim.
+  path.resolve('src/client/demo/backend/routes/blog-seed.ts'),
+  path.resolve('src/client/demo/backend/routes/blog-mutations.ts'),
+  path.resolve('src/client/demo/backend.test.ts'),
+  path.resolve('src/client/demo/blog-smoke.test.ts'),
 ]);
 // Cross-tree renderer parity fixtures are authored Chinese markdown (input
 // data proving the root and blog renderers agree on CJK syntax), not UI copy

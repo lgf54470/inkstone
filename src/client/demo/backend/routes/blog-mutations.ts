@@ -143,6 +143,8 @@ function registerBlogPostBatchRoute(app: Hono, data: BlogDemoData): void {
   })
 }
 
+// Unnamed fallbacks below are authored demo seed data (mirroring the welcome
+// content in blog-seed.ts), not UI copy: the i18n layer never renders them.
 function registerBlogFolderRoutes(app: Hono, data: BlogDemoData): void {
   app.get('/api/blog/folders', (c) => c.json(data.folders))
 
