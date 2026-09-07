@@ -70,15 +70,15 @@ describe('Outline heading typography and icon mapping', () => {
   });
 
   it('maps level 3 and 4 typography', () => {
-    expectTypography(3, false, { fontSize: 'text-[length:var(--text-11\.5)]', fontWeight: 'font-normal', iconSize: 11 });
-    expectTypography(3, true, { fontSize: 'text-[length:var(--text-11\.5)]', fontWeight: 'font-medium' });
+    expectTypography(3, false, { fontSize: 'text-[length:var(--text-11\\.5)]', fontWeight: 'font-normal', iconSize: 11 });
+    expectTypography(3, true, { fontSize: 'text-[length:var(--text-11\\.5)]', fontWeight: 'font-medium' });
     expectTypography(4, false, { fontSize: 'text-[length:var(--text-11)]', fontWeight: 'font-normal', iconSize: 10.5 });
     expectTypography(4, true, { fontSize: 'text-[length:var(--text-11)]', fontWeight: 'font-medium' });
   });
 
   it('maps level 5 and 6 typography', () => {
-    expectTypography(5, false, { fontSize: 'text-[length:var(--text-10\.5)]', fontWeight: 'font-normal' });
-    expectTypography(6, false, { fontSize: 'text-[length:var(--text-10\.5)]', fontWeight: 'font-normal' });
+    expectTypography(5, false, { fontSize: 'text-[length:var(--text-10\\.5)]', fontWeight: 'font-normal' });
+    expectTypography(6, false, { fontSize: 'text-[length:var(--text-10\\.5)]', fontWeight: 'font-normal' });
   });
 });
 
@@ -99,7 +99,7 @@ describe('Outline component', () => {
 
     expectHeadingButton(buttons[0], '1', 'text-[length:var(--text-13)]', 'font-semibold', '8px');
     expectHeadingButton(buttons[1], '2', 'text-[length:var(--text-12)]', 'font-medium', '18px');
-    expectHeadingButton(buttons[2], '3', 'text-[length:var(--text-11\.5)]', 'font-normal', '28px');
+    expectHeadingButton(buttons[2], '3', 'text-[length:var(--text-11\\.5)]', 'font-normal', '28px');
     expectHeadingButton(buttons[3], '4', 'text-[length:var(--text-11)]', 'font-normal', '38px');
 
     buttons[1].click();

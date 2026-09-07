@@ -23,7 +23,7 @@ const SCROLL_TARGET_BUFFER = 16
 
 const OUTLINE_INDENT_BASE = 8
 const OUTLINE_INDENT_STEP = 10
-const ACTIVE_BAR_W = 'w-[2.5px]'
+const ACTIVE_BAR_W = 'w-[var(--sp-0\.625)]'
 
 const HEADING_ICONS: Record<number, ComponentType<LucideProps>> = {
   1: Heading1,
@@ -42,7 +42,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
   switch (level) {
     case 1:
       return {
-        fontSize: 'text-[13px]',
+        fontSize: 'text-[length:var(--text-13)]',
         fontWeight: 'font-semibold',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]',
         iconSize: 12.5,
@@ -51,7 +51,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       }
     case 2:
       return {
-        fontSize: 'text-[12px]',
+        fontSize: 'text-[length:var(--text-12)]',
         fontWeight: isActive ? 'font-semibold' : 'font-medium',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]/85',
         iconSize: 11.5,
@@ -60,7 +60,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       }
     case 3:
       return {
-        fontSize: 'text-[11.5px]',
+        fontSize: 'text-[length:var(--text-11\.5)]',
         fontWeight: isActive ? 'font-medium' : 'font-normal',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]',
         iconSize: 11,

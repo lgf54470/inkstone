@@ -47,9 +47,13 @@
   --code-weight: 400;
   --code-spacing: -0.012em;
   --tracking-label: 0.06em;
+  --sp-0\.625: 2.5px;
   --text-10: 10px;
   --text-10\.5: 10.5px;
   --text-11: 11px;
+  --text-11\.5: 11.5px;
+  --text-12: 12px;
+  --text-13: 13px;
 
 
   --success: oklch(70% 0.14 155);

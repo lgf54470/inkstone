@@ -13,7 +13,7 @@ import type { Heading } from '../../lib/markdown/renderer';
 import { cn } from '../../lib/cn';
 import { Tooltip } from '../../components/overlay';
 
-const ACTIVE_BAR_W = 'w-[2.5px]'
+const ACTIVE_BAR_W = 'w-[var(--sp-0\\.625)]'
 import { t } from '../../lib/i18n';
 
 const OUTLINE_INDENT_BASE = 8
@@ -54,7 +54,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       };
     case 3:
       return {
-        fontSize: 'text-[length:var(--text-11\.5)]',
+        fontSize: 'text-[length:var(--text-11\\.5)]',
         fontWeight: isActive ? 'font-medium' : 'font-normal',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]',
         iconSize: 11,
@@ -72,7 +72,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       };
     default:
       return {
-        fontSize: 'text-[length:var(--text-10\.5)]',
+        fontSize: 'text-[length:var(--text-10\\.5)]',
         fontWeight: isActive ? 'font-medium' : 'font-normal',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]',
         iconSize: 10,
@@ -132,7 +132,7 @@ export function Outline({ headings, onSelect, scrollerRef, className, }: {
     return null;
   const minLevel = Math.min(...headings.map((h) => h.level));
   return (<nav className={cn('sticky top-0 max-h-full w-42 shrink-0 self-start overflow-y-auto py-5 pr-3', className)} aria-label={t('common.outline')}>
-    <div className="mb-2 flex items-center gap-1.5 px-2 text-[length:var(--text-10\.5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]">
+    <div className="mb-2 flex items-center gap-1.5 px-2 text-[length:var(--text-10\\.5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]">
     <ListTree size={11}/>{t('common.outline')}</div>
     <ul className='space-y-px'>
     {headings.map((heading, index) => (
