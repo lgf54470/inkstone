@@ -14,169 +14,169 @@ import { toastError } from './undo';
 
 export const folderActions = (set: SetNotesState, get: () => NotesState): Pick<NotesState, 'createFolder' | 'patchFolder' | 'deleteFolder' | 'refreshFolders' | 'refreshTags'> => ({
 
-    createFolder(input) {
-        return createFolderImpl(input, set, get);
-    },
+  createFolder(input) {
+    return createFolderImpl(input, set, get);
+  },
 
-    patchFolder(id, patch) {
-        return patchFolderImpl(id, patch, set, get);
-    },
+  patchFolder(id, patch) {
+    return patchFolderImpl(id, patch, set, get);
+  },
 
-    deleteFolder(id) {
-        return deleteFolderImpl(id, set, get);
-    },
+  deleteFolder(id) {
+    return deleteFolderImpl(id, set, get);
+  },
 
-    async refreshFolders() {
-        await refreshFoldersImpl(set, get);
-    },
+  async refreshFolders() {
+    await refreshFoldersImpl(set, get);
+  },
 
-    async refreshTags() {
-        await refreshTagsImpl(set, get);
-    }
+  async refreshTags() {
+    await refreshTagsImpl(set, get);
+  }
 });
 
 function createFolderImpl(input: Parameters<NotesState['createFolder']>[0], set: SetNotesState, get: () => NotesState): string | null {
-    const parentId = input?.parentId ?? null;
-    const current = get().folders;
-    if (parentId && !current.some((folder) => folder.id === parentId))
-        return null;
-    const id = newLocalEntityId();
-    const now = Date.now();
-    const name = availableLocalFolderName(current, parentId, input?.name?.trim() || t("common.new_folder"));
-    const folder: Folder = {
+  const parentId = input?.parentId ?? null;
+  const current = get().folders;
+  if (parentId && !current.some((folder) => folder.id === parentId))
+    return null;
+  const id = newLocalEntityId();
+  const now = Date.now();
+  const name = availableLocalFolderName(current, parentId, input?.name?.trim() || t('common.new_folder'));
+  const folder: Folder = {
+    id,
+    parentId,
+    name,
+    icon: input?.icon ?? null,
+    color: input?.color ?? null,
+    position: insertionPositionForFolders(current, id, parentId, null),
+    createdAt: now,
+    updatedAt: now,
+    noteCount: 0,
+  };
+  const mutation = beginFolderMutation(id, false, (folders) => folders.some((item) => item.id === id) ? folders : [...folders, folder], set, get);
+  void (async () => {
+    try {
+      const saved = await enqueueFolderWrite(id, () => api.folders.create({
         id,
-        parentId,
         name,
-        icon: input?.icon ?? null,
-        color: input?.color ?? null,
-        position: insertionPositionForFolders(current, id, parentId, null),
-        createdAt: now,
-        updatedAt: now,
-        noteCount: 0,
-    };
-    const mutation = beginFolderMutation(id, false, (folders) => folders.some((item) => item.id === id) ? folders : [...folders, folder], set, get);
-    void (async () => {
-        try {
-            const saved = await enqueueFolderWrite(id, () => api.folders.create({
-                id,
-                name,
-                parentId,
-                icon: folder.icon,
-                ...(folder.color ? { color: folder.color } : {}),
-            }));
-            commitFolderMutation(mutation, saved, set, get);
-        } catch (err) {
-            rollbackFolderMutation(mutation, set, get);
-            toastError(err, t("sidebar.failed_to_create_folder"));
-        }
-    })();
-    return id;
+        parentId,
+        icon: folder.icon,
+        ...(folder.color ? { color: folder.color } : {}),
+      }));
+      commitFolderMutation(mutation, saved, set, get);
+    } catch (err) {
+      rollbackFolderMutation(mutation, set, get);
+      toastError(err, t('sidebar.failed_to_create_folder'));
+    }
+  })();
+  return id;
 }
 
 function patchFolderImpl(id: string, patch: Parameters<NotesState['patchFolder']>[1], set: SetNotesState, get: () => NotesState): boolean {
-    const current = get().folders.find((folder) => folder.id === id);
-    if (!current)
-        return false;
-    const normalized = {
-        ...patch,
-        ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
-    };
-    if (normalized.name === '' || normalized.parentId === id)
-        return false;
-    const mutation = beginFolderMutation(id, false, (folders) => applyOptimisticFolderPatch(folders, id, normalized), set, get);
-    void (async () => {
-        try {
-            const saved = await enqueueFolderWrite(id, () => api.folders.patch(id, normalized));
-            commitFolderMutation(mutation, saved, set, get);
-        } catch (err) {
-            rollbackFolderMutation(mutation, set, get);
-            toastError(err, normalized.name !== undefined ? t("sidebar.rename_failed") : t("sidebar.move_failed"));
-        }
-    })();
-    return true;
+  const current = get().folders.find((folder) => folder.id === id);
+  if (!current)
+    return false;
+  const normalized = {
+    ...patch,
+    ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
+  };
+  if (normalized.name === '' || normalized.parentId === id)
+    return false;
+  const mutation = beginFolderMutation(id, false, (folders) => applyOptimisticFolderPatch(folders, id, normalized), set, get);
+  void (async () => {
+    try {
+      const saved = await enqueueFolderWrite(id, () => api.folders.patch(id, normalized));
+      commitFolderMutation(mutation, saved, set, get);
+    } catch (err) {
+      rollbackFolderMutation(mutation, set, get);
+      toastError(err, normalized.name !== undefined ? t('sidebar.rename_failed') : t('sidebar.move_failed'));
+    }
+  })();
+  return true;
 }
 
 function deleteFolderImpl(id: string, set: SetNotesState, get: () => NotesState): boolean {
-    const folder = get().folders.find((item) => item.id === id);
-    if (!folder)
-        return false;
-    const noteMutations: Array<[string, PendingNoteMutation]> = [];
-    const movedAt = Date.now();
-    for (const note of Object.values(get().notes)) {
-        if (note.folderId !== id)
-            continue;
-        const mutation = beginNoteMutation(note.id, { folderId: folder.parentId, updatedAt: movedAt }, set, get);
-        if (mutation)
-            noteMutations.push([note.id, mutation]);
+  const folder = get().folders.find((item) => item.id === id);
+  if (!folder)
+    return false;
+  const noteMutations: Array<[string, PendingNoteMutation]> = [];
+  const movedAt = Date.now();
+  for (const note of Object.values(get().notes)) {
+    if (note.folderId !== id)
+      continue;
+    const mutation = beginNoteMutation(note.id, { folderId: folder.parentId, updatedAt: movedAt }, set, get);
+    if (mutation)
+      noteMutations.push([note.id, mutation]);
+  }
+  const mutation = beginFolderMutation(id, true, (folders) => removeFolderAndPromoteChildren(folders, id), set, get);
+  reconcileFolderUi(get().folders);
+  void (async () => {
+    try {
+      await enqueueFolderWrite(id, () => api.folders.remove(id, 'move-up'));
+      finishFolderMutation(mutation);
+      for (const [noteId, noteMutation] of noteMutations)
+        finishNoteMutation(noteId, noteMutation);
+      scheduleShellSave(get);
+      // Best-effort follow-up pull; the next event or manual refresh retries.
+      void get().pull().catch(() => { });
+    } catch (err) {
+      rollbackFolderMutation(mutation, set, get);
+      for (const [noteId, noteMutation] of noteMutations) {
+        finishNoteMutation(noteId, noteMutation);
+        rollbackNoteMutation(noteId, noteMutation, set, get);
+      }
+      toastError(err, t('common.delete_failed'));
     }
-    const mutation = beginFolderMutation(id, true, (folders) => removeFolderAndPromoteChildren(folders, id), set, get);
-    reconcileFolderUi(get().folders);
-    void (async () => {
-        try {
-            await enqueueFolderWrite(id, () => api.folders.remove(id, 'move-up'));
-            finishFolderMutation(mutation);
-            for (const [noteId, noteMutation] of noteMutations)
-                finishNoteMutation(noteId, noteMutation);
-            scheduleShellSave(get);
-            // Best-effort follow-up pull; the next event or manual refresh retries.
-            void get().pull().catch(() => { });
-        } catch (err) {
-            rollbackFolderMutation(mutation, set, get);
-            for (const [noteId, noteMutation] of noteMutations) {
-                finishNoteMutation(noteId, noteMutation);
-                rollbackNoteMutation(noteId, noteMutation, set, get);
-            }
-            toastError(err, t("common.delete_failed"));
-        }
-    })();
-    return true;
+  })();
+  return true;
 }
 
 async function refreshFoldersImpl(set: SetNotesState, get: () => NotesState): Promise<void> {
-    const sequence = ++noteState.folderRefreshSequence;
-    const generation = noteState.folderStateGeneration;
-    try {
-        const { folders } = await api.folders.list();
-        let hasChanged = false;
-        set((state) => {
-            if (sequence !== noteState.folderRefreshSequence || generation !== noteState.folderStateGeneration)
-                return state;
-            const next = applyPendingFolderMutations(reconcileList(state.folders, folders, folderEqual));
-            if (next === state.folders)
-                return state;
-            noteState.folderStateGeneration++;
-            hasChanged = true;
-            return { folders: next };
-        });
-        if (hasChanged)
-            scheduleShellSave(get);
-        reconcileFolderUi(get().folders);
-    }
-    catch (err) {
-        console.error('[notes] refreshFolders failed:', err);
-    }
+  const sequence = ++noteState.folderRefreshSequence;
+  const generation = noteState.folderStateGeneration;
+  try {
+    const { folders } = await api.folders.list();
+    let hasChanged = false;
+    set((state) => {
+      if (sequence !== noteState.folderRefreshSequence || generation !== noteState.folderStateGeneration)
+        return state;
+      const next = applyPendingFolderMutations(reconcileList(state.folders, folders, folderEqual));
+      if (next === state.folders)
+        return state;
+      noteState.folderStateGeneration++;
+      hasChanged = true;
+      return { folders: next };
+    });
+    if (hasChanged)
+      scheduleShellSave(get);
+    reconcileFolderUi(get().folders);
+  }
+  catch (err) {
+    console.error('[notes] refreshFolders failed:', err);
+  }
 }
 
 async function refreshTagsImpl(set: SetNotesState, get: () => NotesState): Promise<void> {
-    const sequence = ++noteState.tagRefreshSequence;
-    const generation = noteState.tagStateGeneration;
-    try {
-        const { tags } = await api.tags.list();
-        let hasChanged = false;
-        set((state) => {
-            if (sequence !== noteState.tagRefreshSequence || generation !== noteState.tagStateGeneration)
-                return state;
-            const next = reconcileList(state.tags, tags, tagEqual);
-            if (next === state.tags)
-                return state;
-            noteState.tagStateGeneration++;
-            hasChanged = true;
-            return { tags: next };
-        });
-        if (hasChanged)
-            scheduleShellSave(get);
-    }
-    catch (error) {
-        throw error;
-    }
+  const sequence = ++noteState.tagRefreshSequence;
+  const generation = noteState.tagStateGeneration;
+  try {
+    const { tags } = await api.tags.list();
+    let hasChanged = false;
+    set((state) => {
+      if (sequence !== noteState.tagRefreshSequence || generation !== noteState.tagStateGeneration)
+        return state;
+      const next = reconcileList(state.tags, tags, tagEqual);
+      if (next === state.tags)
+        return state;
+      noteState.tagStateGeneration++;
+      hasChanged = true;
+      return { tags: next };
+    });
+    if (hasChanged)
+      scheduleShellSave(get);
+  }
+  catch (error) {
+    throw error;
+  }
 }

@@ -14,7 +14,7 @@ export function FolderIconBadge({ folder, isOpen, onToggle }: {
   return (
     <Tooltip label={t('folders.icon')}>
       <button
-        type="button"
+        type='button'
         onClick={onToggle}
         className={cn(
           'flex size-7 shrink-0 items-center justify-center rounded-[var(--r-sm)] border bg-[var(--bg-surface)] transition-all hover:scale-105',
@@ -25,7 +25,7 @@ export function FolderIconBadge({ folder, isOpen, onToggle }: {
         style={{ color: folder.color ?? 'var(--text-tertiary)' }}
       >
         {folder.icon ? (
-          <span className="text-[length:var(--text-14)] leading-none">{folder.icon}</span>
+          <span className='text-[length:var(--text-14)] leading-none'>{folder.icon}</span>
         ) : (
           <FolderClosed size={15} />
         )}
@@ -39,10 +39,10 @@ export function FolderColorPicker({ folder, onPick }: {
   onPick: (color: string | null) => void;
 }) {
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2">
+    <div className='mt-2 flex flex-wrap items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2'>
       <Tooltip label={t('folders.no_color')}>
         <button
-          type="button"
+          type='button'
           aria-label={t('folders.no_color')}
           onClick={() => onPick(null)}
           className={cn(
@@ -60,7 +60,7 @@ export function FolderColorPicker({ folder, onPick }: {
         return (
           <Tooltip key={color} label={color}>
             <button
-              type="button"
+              type='button'
               aria-label={color}
               onClick={() => onPick(color)}
               className={cn(
@@ -69,7 +69,7 @@ export function FolderColorPicker({ folder, onPick }: {
               )}
               style={{ backgroundColor: color }}
             >
-              {isSelected && <Check size={12} className="text-white drop-shadow-[var(--drop-shadow-sm)]" />}
+              {isSelected && <Check size={12} className='text-white drop-shadow-[var(--drop-shadow-sm)]' />}
             </button>
           </Tooltip>
         );
@@ -80,10 +80,10 @@ export function FolderColorPicker({ folder, onPick }: {
 
 function FolderCustomIconInput({ onPick }: { onPick: (icon: string) => void }) {
   return (
-    <div className="relative flex items-center">
-      <Smile size={12} className="pointer-events-none absolute left-2 text-[var(--text-quaternary)]" />
+    <div className='relative flex items-center'>
+      <Smile size={12} className='pointer-events-none absolute left-2 text-[var(--text-quaternary)]' />
       <input
-        type="text"
+        type='text'
         placeholder={t('folders.custom_icon_placeholder')}
         onChange={(e) => {
           const trimmed = e.target.value.trim();
@@ -103,11 +103,11 @@ export function FolderIconPicker({ folder, onPick }: {
   onPick: (icon: string | null) => void;
 }) {
   return (
-    <div className="mt-2 space-y-2 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2">
-      <div className="flex flex-wrap items-center gap-1.5">
+    <div className='mt-2 space-y-2 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2'>
+      <div className='flex flex-wrap items-center gap-1.5'>
         <Tooltip label={t('folders.no_icon')}>
           <button
-            type="button"
+            type='button'
             aria-label={t('folders.no_icon')}
             onClick={() => onPick(null)}
             className={cn(
@@ -125,7 +125,7 @@ export function FolderIconPicker({ folder, onPick }: {
           return (
             <Tooltip key={icon} label={icon}>
               <button
-                type="button"
+                type='button'
                 aria-label={icon}
                 onClick={() => onPick(icon)}
                 className={cn(

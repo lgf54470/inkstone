@@ -57,9 +57,9 @@ function useAppBoot(shareSlug: string | null) {
 function PageFallback() {
   return (
     <div
-      role="status"
+      role='status'
       aria-label={t('common.loading')}
-      className="flex h-full items-center justify-center bg-[var(--bg-base)] text-[var(--text-tertiary)]"
+      className='flex h-full items-center justify-center bg-[var(--bg-base)] text-[var(--text-tertiary)]'
     >
       <Spinner size={18} />
     </div>
@@ -83,7 +83,7 @@ function AuthedShell() {
   const status = useSession((s) => s.status)
   return (
     <ErrorBoundary>
-      {status === 'loading' && <div className="h-full" />}
+      {status === 'loading' && <div className='h-full' />}
       {status === 'anonymous' && <LoginPage />}
       {status === 'authed' && (
         <Suspense fallback={<PageFallback />}>

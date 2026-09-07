@@ -46,7 +46,7 @@ function TagPillRemove({
   const ariaLabel = t('tags.remove_from_note')
   return (
     <button
-      type="button"
+      type='button'
       tabIndex={0}
       aria-label={ariaLabel}
       title={ariaLabel}
@@ -90,8 +90,8 @@ export const TagPill = memo(function TagPill({
         className,
       )}
     >
-      <Hash size={isSm ? 10 : 12} className="shrink-0 opacity-70" />
-      <span className="truncate max-w-[150px]">{tag}</span>
+      <Hash size={isSm ? 10 : 12} className='shrink-0 opacity-70' />
+      <span className='truncate max-w-[150px]'>{tag}</span>
       {removable && onRemove && <TagPillRemove isSm={isSm} onRemove={onRemove} />}
     </span>
   )

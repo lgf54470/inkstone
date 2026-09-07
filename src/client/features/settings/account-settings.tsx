@@ -18,14 +18,14 @@ export function AccountSettings() {
   if (!user) return null
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       <ProfileSection />
 
       <section>
-        <h3 className="mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]">
+        <h3 className='mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
           {t("settings.sign_in_security")}
         </h3>
-        <div className="space-y-2">
+        <div className='space-y-2'>
           <PasswordSection />
           <TotpSettings />
         </div>
@@ -33,7 +33,7 @@ export function AccountSettings() {
 
       {user.role === 'owner' && (
         <section>
-          <h3 className="mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]">
+          <h3 className='mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
             {t("common.access_control")}
           </h3>
           <RegistrationSection />
@@ -112,10 +112,10 @@ function ProfileSection() {
   const editor = useProfileEditor()
   return (
     <section>
-      <h3 className="mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]">
+      <h3 className='mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
         {t('settings.personal_profile')}
       </h3>
-      <div className="overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]">
+      <div className='overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]'>
         <ProfileHeader editor={editor} />
         <DisplayNameForm editor={editor} />
       </div>
@@ -127,24 +127,24 @@ function ProfileSection() {
 function ProfileHeader({ editor }: { editor: ProfileEditor }) {
   const { user } = editor
   return (
-    <div className="flex items-center gap-3 p-4">
+    <div className='flex items-center gap-3 p-4'>
       <button
-        type="button"
+        type='button'
         aria-label={t('settings.change_avatar')}
         onClick={() => editor.setIsPickerOpen(true)}
-        className="group relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-[var(--bg-base)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+        className='group relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-[var(--bg-base)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
       >
         <Avatar src={user.avatarUrl} name={user.name} size={52} />
-        <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-white opacity-0 transition-[background-color,opacity] group-hover:bg-black/40 group-hover:opacity-100 group-focus-visible:bg-black/40 group-focus-visible:opacity-100">
+        <span className='absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-white opacity-0 transition-[background-color,opacity] group-hover:bg-black/40 group-hover:opacity-100 group-focus-visible:bg-black/40 group-focus-visible:opacity-100'>
           <Camera size={16} />
         </span>
       </button>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">
+      <div className='min-w-0 flex-1'>
+        <div className='flex items-center gap-2'>
+          <span className='truncate text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
             {user.name}
           </span>
-          {user.role === 'owner' && <Badge tone="accent">{t('common.owner')}</Badge>}
+          {user.role === 'owner' && <Badge tone='accent'>{t('common.owner')}</Badge>}
         </div>
         <div className="mt-0.5 flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
           <UserRound size={11} />@{user.username}
@@ -161,18 +161,18 @@ function ProfileHeader({ editor }: { editor: ProfileEditor }) {
 function DisplayNameForm({ editor }: { editor: ProfileEditor }) {
   return (
     <form
-      className="border-t border-[var(--border-subtle)] px-4 py-3.5"
+      className='border-t border-[var(--border-subtle)] px-4 py-3.5'
       onSubmit={(event) => {
         event.preventDefault()
         editor.saveName()
       }}
     >
-      <label htmlFor="profile-display-name" className="block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
+      <label htmlFor='profile-display-name' className="block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
         {t('settings.display_name')}
       </label>
-      <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+      <div className='mt-1.5 flex flex-col gap-2 sm:flex-row'>
         <Input
-          id="profile-display-name"
+          id='profile-display-name'
           value={editor.name}
           maxLength={PROFILE_NAME_MAX_LENGTH * 2}
           onChange={(event) => {
@@ -181,14 +181,14 @@ function DisplayNameForm({ editor }: { editor: ProfileEditor }) {
             editor.setError(null)
           }}
           disabled={editor.isBusy}
-          autoComplete="name"
-          className="flex-1"
+          autoComplete='name'
+          className='flex-1'
         />
-        <Button type="submit" variant="primary" size="sm" loading={editor.isBusy} disabled={saveNameDisabled(editor)}>
+        <Button type='submit' variant='primary' size='sm' loading={editor.isBusy} disabled={saveNameDisabled(editor)}>
           {t('common.save')}
         </Button>
       </div>
-      {editor.error && <p role="alert" className="mt-1.5 text-[length:var(--text-12)] text-[var(--danger)]">{editor.error}</p>}
+      {editor.error && <p role='alert' className='mt-1.5 text-[length:var(--text-12)] text-[var(--danger)]'>{editor.error}</p>}
     </form>
   )
 }
@@ -205,7 +205,7 @@ function LogoutButton() {
   const busyRef = useRef(false)
   const run = () => void confirmLogoutFlow({ busyRef, setIsBusy, logout })
   return (
-    <Button size="sm" variant="ghost" icon={<LogOut size={13} />} loading={isBusy} onClick={run}>
+    <Button size='sm' variant='ghost' icon={<LogOut size={13} />} loading={isBusy} onClick={run}>
       {t("common.exit")}
     </Button>
   )
@@ -221,9 +221,9 @@ async function confirmLogoutFlow({ busyRef, setIsBusy, logout }: {
   setIsBusy(true)
   try {
     const ok = await confirm({
-      title: t("common.log_out"),
-      description: t("settings.this_device_will_be_signed_out_and_its_local_cache_cleared_cloud_data_is"),
-      confirmLabel: t("common.exit"),
+      title: t('common.log_out'),
+      description: t('settings.this_device_will_be_signed_out_and_its_local_cache_cleared_cloud_data_is'),
+      confirmLabel: t('common.exit'),
     })
     if (ok) await logout()
   } finally {
@@ -269,22 +269,22 @@ async function passwordFlow({ currentPassword, newPassword, confirmation, busyRe
 }) {
   if (busyRef.current) return
   setError(null)
-  if (!currentPassword) return setError(t("settings.enter_your_current_password"))
-  if (newPassword.length < 8) return setError(t("settings.new_password_must_be_at_least_8_characters"))
-  if (newPassword !== confirmation) return setError(t("common.the_passwords_do_not_match"))
+  if (!currentPassword) return setError(t('settings.enter_your_current_password'))
+  if (newPassword.length < 8) return setError(t('settings.new_password_must_be_at_least_8_characters'))
+  if (newPassword !== confirmation) return setError(t('common.the_passwords_do_not_match'))
   busyRef.current = true
   setIsBusy(true)
   try {
     await api.auth.setPassword({ currentPassword, newPassword })
     toast({
-      title: t("settings.password_updated"),
-      description: t("settings.other_devices_have_been_logged_out"),
+      title: t('settings.password_updated'),
+      description: t('settings.other_devices_have_been_logged_out'),
       tone: 'success',
     })
     setIsOpen(false)
     resetForm()
   } catch (caught) {
-    setError(caught instanceof ApiError ? caught.message : t("settings.action_failed_try_again"))
+    setError(caught instanceof ApiError ? caught.message : t('settings.action_failed_try_again'))
   } finally {
     busyRef.current = false
     setIsBusy(false)
@@ -294,14 +294,14 @@ async function passwordFlow({ currentPassword, newPassword, confirmation, busyRe
 function PasswordSection() {
   const form = usePasswordForm()
   return (
-    <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]">
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]'>
       <SettingRow
-        className="px-4"
+        className='px-4'
         title={t("settings.login_password")}
         description={t("settings.username_value0_changing_the_password_signs_out_other_devices", { value0: form.user.username })}
       >
-        <Button size="sm" variant="secondary" icon={<KeyRound size={12} />} disabled={form.isBusy} onClick={form.toggle}>
-          {form.isOpen ? t("common.collapse") : t("settings.change_password")}
+        <Button size='sm' variant='secondary' icon={<KeyRound size={12} />} disabled={form.isBusy} onClick={form.toggle}>
+          {form.isOpen ? t('common.collapse') : t('settings.change_password')}
         </Button>
       </SettingRow>
       {form.isOpen && <PasswordFields form={form} />}
@@ -312,26 +312,26 @@ function PasswordSection() {
 function PasswordFields({ form }: { form: PasswordForm }) {
   return (
     <form
-      className="space-y-2.5 border-t border-[var(--border-subtle)] px-4 py-3.5"
+      className='space-y-2.5 border-t border-[var(--border-subtle)] px-4 py-3.5'
       onSubmit={(event) => {
         event.preventDefault()
         form.submit()
       }}
     >
-      <PasswordLabel text={t("settings.current_password")}>
-        <Input type="password" value={form.currentPassword} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setCurrentPassword(event.target.value)} disabled={form.isBusy} autoComplete="current-password" />
+      <PasswordLabel text={t('settings.current_password')}>
+        <Input type='password' value={form.currentPassword} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setCurrentPassword(event.target.value)} disabled={form.isBusy} autoComplete='current-password' />
       </PasswordLabel>
-      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-        <PasswordLabel text={t("settings.new_password")}>
-          <Input type="password" value={form.newPassword} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setNewPassword(event.target.value)} disabled={form.isBusy} autoComplete="new-password" />
+      <div className='grid grid-cols-1 gap-2.5 md:grid-cols-2'>
+        <PasswordLabel text={t('settings.new_password')}>
+          <Input type='password' value={form.newPassword} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setNewPassword(event.target.value)} disabled={form.isBusy} autoComplete='new-password' />
         </PasswordLabel>
         <PasswordLabel text={t("settings.confirm_new_password")}>
-          <Input type="password" value={form.confirmation} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setConfirmation(event.target.value)} disabled={form.isBusy} autoComplete="new-password" />
+          <Input type='password' value={form.confirmation} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setConfirmation(event.target.value)} disabled={form.isBusy} autoComplete='new-password' />
         </PasswordLabel>
       </div>
-      {form.error && <p role="alert" className="text-[length:var(--text-12)] text-[var(--danger)]">{form.error}</p>}
-      <div className="flex justify-end">
-        <Button type="submit" variant="primary" size="sm" loading={form.isBusy}>
+      {form.error && <p role='alert' className='text-[length:var(--text-12)] text-[var(--danger)]'>{form.error}</p>}
+      <div className='flex justify-end'>
+        <Button type='submit' variant='primary' size='sm' loading={form.isBusy}>
           {t("common.save")}
         </Button>
       </div>
@@ -341,7 +341,7 @@ function PasswordFields({ form }: { form: PasswordForm }) {
 
 function PasswordLabel({ text, children }: { text: string; children: React.ReactNode }) {
   return (
-    <label className="block">
+    <label className='block'>
       <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
         {text}
       </span>
@@ -399,7 +399,7 @@ async function registrationToggleFlow({ target, password, updateRegistration, bu
   if (busyRef.current || target === null) return
   const requested = target
   setError(null)
-  if (!password) return setError(t("settings.enter_your_password"))
+  if (!password) return setError(t('settings.enter_your_password'))
   busyRef.current = true
   setIsBusy(true)
   const currentPassword = password
@@ -408,13 +408,13 @@ async function registrationToggleFlow({ target, password, updateRegistration, bu
   try {
     await updateRegistration(requested, currentPassword)
     toast({
-      title: requested ? t("settings.registration_open") : t("settings.registration_closed"),
-      description: requested ? t("settings.anyone_can_now_register_a_new_account") : t("settings.only_existing_accounts_can_log_in"),
+      title: requested ? t('settings.registration_open') : t('settings.registration_closed'),
+      description: requested ? t('settings.anyone_can_now_register_a_new_account') : t('settings.only_existing_accounts_can_log_in'),
       tone: 'success',
     })
   } catch (caught) {
     setTarget(requested)
-    setError(caught instanceof ApiError ? caught.message : t("settings.action_failed_try_again"))
+    setError(caught instanceof ApiError ? caught.message : t('settings.action_failed_try_again'))
   } finally {
     busyRef.current = false
     setIsBusy(false)
@@ -424,11 +424,11 @@ async function registrationToggleFlow({ target, password, updateRegistration, bu
 function RegistrationSection() {
   const toggle = useRegistrationToggle()
   return (
-    <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]">
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]'>
       <SettingRow
-        className="px-4"
+        className='px-4'
         title={t("common.open_registration")}
-        description={`${toggle.enabled ? t("settings.open_anyone_can_register_with_a_username_and_password") : t("settings.off_default_only_existing_accounts_can_log_in")} ${t("settings.changing_this_requires_your_current_password_and_takes_effect_immediatel")}`}
+        description={`${toggle.enabled ? t('settings.open_anyone_can_register_with_a_username_and_password') : t('settings.off_default_only_existing_accounts_can_log_in')} ${t('settings.changing_this_requires_your_current_password_and_takes_effect_immediatel')}`}
       >
         <Switch checked={toggle.enabled} disabled={toggle.isBusy} onChange={toggle.beginToggle} label={t("common.open_registration")} />
       </SettingRow>
@@ -440,34 +440,34 @@ function RegistrationSection() {
 function RegistrationForm({ toggle }: { toggle: RegistrationToggle }) {
   return (
     <form
-      className="space-y-2.5 border-t border-[var(--border-subtle)] px-4 py-3.5"
+      className='space-y-2.5 border-t border-[var(--border-subtle)] px-4 py-3.5'
       onSubmit={(event) => {
         event.preventDefault()
         toggle.finishToggle()
       }}
     >
-      <label className="block">
+      <label className='block'>
         <span className="mb-1 flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
           <ShieldCheck size={12} />
-          {toggle.target ? t("settings.open_registration_requires_password_verification") : t("settings.close_registration_requires_password_verification")}
+          {toggle.target ? t('settings.open_registration_requires_password_verification') : t('settings.close_registration_requires_password_verification')}
         </span>
         <Input
-          type="password"
+          type='password'
           value={toggle.password}
           maxLength={LIMITS.passwordMaxLength}
           onChange={(event) => toggle.setPassword(event.target.value)}
           disabled={toggle.isBusy}
-          autoComplete="current-password"
+          autoComplete='current-password'
           autoFocus
         />
       </label>
-      {toggle.error && <p role="alert" className="text-[length:var(--text-12)] text-[var(--danger)]">{toggle.error}</p>}
-      <div className="flex justify-end gap-2">
-        <Button type="button" size="sm" variant="ghost" disabled={toggle.isBusy} onClick={toggle.cancelToggle}>
+      {toggle.error && <p role='alert' className='text-[length:var(--text-12)] text-[var(--danger)]'>{toggle.error}</p>}
+      <div className='flex justify-end gap-2'>
+        <Button type='button' size='sm' variant='ghost' disabled={toggle.isBusy} onClick={toggle.cancelToggle}>
           {t("common.cancel")}
         </Button>
-        <Button type="submit" size="sm" variant={toggle.target ? 'danger' : 'primary'} loading={toggle.isBusy}>
-          {toggle.target ? t("settings.confirm_opening_registration") : t("settings.confirm_closing_registration")}
+        <Button type='submit' size='sm' variant={toggle.target ? 'danger' : 'primary'} loading={toggle.isBusy}>
+          {toggle.target ? t('settings.confirm_opening_registration') : t('settings.confirm_closing_registration')}
         </Button>
       </div>
     </form>

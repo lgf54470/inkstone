@@ -1,5 +1,5 @@
 export const messages = {
-"seed.welcome_note": `---
+'seed.welcome_note': `---
 title: Welcome to Inkstone
 tags: [getting-started, Inkstone]
 aliases:

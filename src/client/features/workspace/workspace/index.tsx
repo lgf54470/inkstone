@@ -18,7 +18,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
   if (!raw.note) return <NoNoteSelected onCreate={() => void createContextualNote()} />;
   if (!raw.loaded) {
     return (
-      <div className="h-full overflow-hidden bg-[var(--bg-editor)]" aria-busy="true" aria-label={t('workspace.loading_note_content')}>
+      <div className='h-full overflow-hidden bg-[var(--bg-editor)]' aria-busy='true' aria-label={t('workspace.loading_note_content')}>
         <EditorSkeleton />
       </div>
     );
@@ -38,7 +38,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
     >
       <WorkspaceHeader b={b} grouped={grouped} onMobileBack={onMobileBack} exportMenuItems={exportMenuItems} />
       <WorkspaceToolbar b={b} />
-      <div ref={b.containerRef} className="flex min-h-0 flex-1">
+      <div ref={b.containerRef} className='flex min-h-0 flex-1'>
         <WorkspacePanes b={b} />
       </div>
       <BacklinksSection b={b} />

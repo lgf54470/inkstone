@@ -1,7 +1,7 @@
-import { Hono } from "hono";
-import type { AppBindings } from "../../env";
-import { createScopedFolder, createScopedTag, deleteScopedFolder, deleteScopedTag, listScopedFolders, listScopedTags, updateScopedFolder, updateScopedTag } from "../../lib/scoped-organizer";
-import { isValidCustomSlug } from "../../lib/share-analytics";
+import { Hono } from 'hono';
+import type { AppBindings } from '../../env';
+import { createScopedFolder, createScopedTag, deleteScopedFolder, deleteScopedTag, listScopedFolders, listScopedTags, updateScopedFolder, updateScopedTag } from '../../lib/scoped-organizer';
+import { isValidCustomSlug } from '../../lib/share-analytics';
 
 export function registerShareOrganizerRoutes(shareManageRoutes: Hono<AppBindings>): void {
   registerShareSlugCheckRoute(shareManageRoutes)

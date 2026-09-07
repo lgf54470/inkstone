@@ -80,7 +80,7 @@ function renderResolvedEmbed(
   body.querySelectorAll<HTMLInputElement>('input.task-list-item-checkbox').forEach((input) => {
     input.disabled = true
     input.removeAttribute('data-task-line')
-    input.setAttribute('aria-label', t("markdown.tasks_in_embedded_notes_are_read_only"))
+    input.setAttribute('aria-label', t('markdown.tasks_in_embedded_notes_are_read_only'))
   })
   body.removeAttribute('aria-busy')
   embed.classList.remove('loading', 'error')
@@ -106,7 +106,7 @@ async function resolveWithin(
   for (const embed of embeds) {
     if (context.isCurrent && !context.isCurrent()) return
     if (++context.rendered > MAX_EMBEDS || depth >= MAX_DEPTH) {
-      showError(embed, t("markdown.embed_nesting_limit_reached"))
+      showError(embed, t('markdown.embed_nesting_limit_reached'))
       continue
     }
 
@@ -117,16 +117,16 @@ async function resolveWithin(
     try {
       const resolved = await resolveTarget(target, context, targetScope)
       if (!resolved) {
-        showError(embed, t("markdown.embedded_note_not_found"))
+        showError(embed, t('markdown.embedded_note_not_found'))
         continue
       }
       if (ancestors.has(resolved.signature)) {
-        showError(embed, t("markdown.embed_nesting_limit_reached"))
+        showError(embed, t('markdown.embed_nesting_limit_reached'))
         continue
       }
       context.totalChars += resolved.markdown.length
       if (context.totalChars > MAX_TOTAL_CHARS) {
-        showError(embed, t("markdown.embedded_content_is_too_large"))
+        showError(embed, t('markdown.embedded_content_is_too_large'))
         continue
       }
 
@@ -139,7 +139,7 @@ async function resolveWithin(
       nextAncestors.add(resolved.signature)
       await resolveWithin(body, context, depth + 1, nextAncestors, resolved.scope)
     } catch {
-      showError(embed, t("markdown.could_not_load_embedded_content"))
+      showError(embed, t('markdown.could_not_load_embedded_content'))
     }
   }
 }
@@ -152,14 +152,14 @@ async function resolveTargetSource(
   if (!target.noteTitle || normalize(target.noteTitle) === normalize(scope.title)) {
     return {
       content: scope.content,
-      title: scope.title || t("common.current_note"),
+      title: scope.title || t('common.current_note'),
       identity: scope.identity,
     }
   }
   if (normalize(target.noteTitle) === normalize(context.rootScope.title)) {
     return {
       content: context.rootScope.content,
-      title: context.rootScope.title || t("common.current_note"),
+      title: context.rootScope.title || t('common.current_note'),
       identity: context.rootScope.identity,
     }
   }

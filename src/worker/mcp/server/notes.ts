@@ -1,8 +1,8 @@
 import type { McpToolCtx } from './context';
-import { z } from "zod";
-import { MCP_SCOPES } from "../settings";
-import { duplicateMcpNote, listMcpNoteVersions, readMcpNoteVersion, restoreMcpNoteVersion } from "../library";
-import { createMcpNote, editMcpNote, organizeMcpNote, restoreMcpNote, trashMcpNote } from "../writes";
+import { z } from 'zod';
+import { MCP_SCOPES } from '../settings';
+import { duplicateMcpNote, listMcpNoteVersions, readMcpNoteVersion, restoreMcpNoteVersion } from '../library';
+import { createMcpNote, editMcpNote, organizeMcpNote, restoreMcpNote, trashMcpNote } from '../writes';
 import { customTool, writeTool, noteResult, readOnlyAnnotations, writeAnnotations, generalOutputSchema, operationId, noteId, expectedRev } from './context';
 
 export function registerNotesTools(ctx: McpToolCtx): void {

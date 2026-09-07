@@ -20,7 +20,7 @@ export const Preview = memo(function Preview(props: PreviewProps) {
       className={cn('h-full overflow-y-auto overscroll-contain px-4 py-3', className)}
       data-preview-scroller
     >
-      <div className="ink-preview-container" data-font={b.proseFont}>
+      <div className='ink-preview-container' data-font={b.proseFont}>
         <NotePropertiesEditor noteId={b.sourceNoteId} content={b.content} />
         <div ref={b.hostRef}
           onClick={b.onClick}
@@ -32,7 +32,7 @@ export const Preview = memo(function Preview(props: PreviewProps) {
           onBlur={b.onBlur}
           data-font={b.proseFont}
           data-preview-content
-          className="ink-prose"
+          className='ink-prose'
           dangerouslySetInnerHTML={b.htmlObj}
         />
       </div>

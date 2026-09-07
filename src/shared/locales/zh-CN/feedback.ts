@@ -1,3 +1,3 @@
 export const messages = {
-"feedback.dismiss": "关闭提示",
+'feedback.dismiss': '关闭提示',
 };

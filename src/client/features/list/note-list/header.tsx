@@ -79,8 +79,8 @@ function HeaderIconAction({
   buttonRef?: RefObject<HTMLButtonElement | null>
 }) {
   return (
-    <Tooltip label={label} side="bottom">
-      <IconButton ref={buttonRef} label={label} size="sm" onClick={onClick}>
+    <Tooltip label={label} side='bottom'>
+      <IconButton ref={buttonRef} label={label} size='sm' onClick={onClick}>
         {icon}
       </IconButton>
     </Tooltip>
@@ -106,16 +106,16 @@ function ListHeaderActions({
 }) {
   const showContextual = view !== 'trash' && view !== 'archived'
   return (
-    <div className="flex shrink-0 items-center gap-0.5">
+    <div className='flex shrink-0 items-center gap-0.5'>
       {breakpoint === 'tablet' && (
-        <Tooltip label={t('notes.open_navigation')} side="bottom">
-          <IconButton label={t('notes.open_navigation')} size="sm" onClick={() => toggleNavDrawer(true)}>
+        <Tooltip label={t('notes.open_navigation')} side='bottom'>
+          <IconButton label={t('notes.open_navigation')} size='sm' onClick={() => toggleNavDrawer(true)}>
             <PanelLeft size={14} />
           </IconButton>
         </Tooltip>
       )}
-      <Tooltip label={t('notes.sort_and_display')} side="bottom">
-        <IconButton ref={sortButtonRef} label={t('notes.sort_and_display')} size="sm" onClick={() => setIsSortMenuOpen(true)}>
+      <Tooltip label={t('notes.sort_and_display')} side='bottom'>
+        <IconButton ref={sortButtonRef} label={t('notes.sort_and_display')} size='sm' onClick={() => setIsSortMenuOpen(true)}>
           <ArrowDownWideNarrow size={14} />
         </IconButton>
       </Tooltip>
@@ -133,10 +133,10 @@ function ListHeaderActions({
             buttonRef={favButtonRef}
           />
           {view === 'shared' && (
-            <HeaderIconAction label={t('share.manage_shares')} icon={<Share2 size={14} className="text-[var(--accent)]" />} onClick={() => useUi.getState().openPanel('share-hub')} />
+            <HeaderIconAction label={t('share.manage_shares')} icon={<Share2 size={14} className='text-[var(--accent)]' />} onClick={() => useUi.getState().openPanel('share-hub')} />
           )}
           {view === 'published' && (
-            <HeaderIconAction label={t('blog.blog_hub')} icon={<Globe size={14} className="text-[var(--accent)]" />} onClick={() => useUi.getState().openPanel('blog-hub')} />
+            <HeaderIconAction label={t('blog.blog_hub')} icon={<Globe size={14} className='text-[var(--accent)]' />} onClick={() => useUi.getState().openPanel('blog-hub')} />
           )}
           <HeaderIconAction label={t('common.new_note')} icon={<Plus size={15} />} onClick={() => void createContextualNote()} />
         </>
@@ -188,8 +188,8 @@ function NoteSearchField({
   openNote: (id: string) => void
 }) {
   return (
-    <div className="relative">
-      <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-quaternary)]" />
+    <div className='relative'>
+      <Search size={13} className='pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-quaternary)]' />
       <input
         aria-label={t('notes.filter_in_this_view')}
         value={filter}
@@ -204,12 +204,12 @@ function NoteSearchField({
         )}
       />
       {filter && (
-        <Tooltip label={t('notes.clear_filters')} side="left">
+        <Tooltip label={t('notes.clear_filters')} side='left'>
           <button
-            type="button"
+            type='button'
             onClick={() => setListQuery('')}
             aria-label={t('notes.clear_filters')}
-            className="absolute top-1/2 right-1 flex size-8 -translate-y-1/2 items-center justify-center rounded text-[var(--text-quaternary)] hover:text-[var(--text-secondary)] md:right-2 md:size-auto md:p-0.5"
+            className='absolute top-1/2 right-1 flex size-8 -translate-y-1/2 items-center justify-center rounded text-[var(--text-quaternary)] hover:text-[var(--text-secondary)] md:right-2 md:size-auto md:p-0.5'
           >
             <X size={12} />
           </button>
@@ -231,11 +231,11 @@ function FilterChipFrame({
   onClear: () => void
 }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]">
+    <span className='inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--bg-surface)] py-0.5 pr-1 pl-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
       {icon}
       {children}
       <Tooltip label={clearLabel}>
-        <button type="button" aria-label={clearLabel} onClick={onClear} className="rounded-full p-0.5 text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
+        <button type='button' aria-label={clearLabel} onClick={onClear} className='rounded-full p-0.5 text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]'>
           <X size={10} />
         </button>
       </Tooltip>
@@ -248,18 +248,18 @@ function DayFilterChip(props: Pick<NoteListHeaderProps, 'dateFilter' | 'rangeChi
   if (!dateFilter) return null
   return (
     <FilterChipFrame
-      icon={<CalendarDays size={11} className="shrink-0 text-[var(--text-quaternary)]" />}
+      icon={<CalendarDays size={11} className='shrink-0 text-[var(--text-quaternary)]' />}
       clearLabel={t('notes.clear_day_filter')}
       onClear={() => useUi.getState().setDateFilter(null)}
     >
       <button
-        type="button"
+        type='button'
         ref={props.rangeChipRef}
-        aria-haspopup="dialog"
+        aria-haspopup='dialog'
         aria-expanded={props.isRangeEditorOpen}
         aria-label={t('notes.range_editor_title')}
         onClick={() => props.setIsRangeEditorOpen(true)}
-        className="min-w-0 truncate rounded-full text-left transition-colors hover:text-[var(--text-primary)]"
+        className='min-w-0 truncate rounded-full text-left transition-colors hover:text-[var(--text-primary)]'
       >
         {props.dayFilterLabelEnd
           ? t('notes.filtering_by_day_range_value0', { value0: props.dayFilterLabel, value1: props.dayFilterLabelEnd })
@@ -275,7 +275,7 @@ function RelativeFollowBadge({ direction }: { direction: 'edit' | 'today' }) {
   const label = direction === 'edit' ? t('notes.auto_follow_edit') : t('notes.auto_follow_today')
   return (
     <Tooltip label={label}>
-      <span aria-hidden="true" className="shrink-0 rounded-full bg-[var(--accent-soft)] p-0.5 text-[var(--accent)]">
+      <span aria-hidden='true' className='shrink-0 rounded-full bg-[var(--accent-soft)] p-0.5 text-[var(--accent)]'>
         <RotateCcw size={10} />
       </span>
     </Tooltip>
@@ -305,7 +305,7 @@ function GapCapsule(props: Pick<NoteListHeaderProps, 'displayGap' | 'gapCapsuleR
   return (
     <Tooltip label={label}>
       <button
-        type="button"
+        type='button'
         ref={props.gapCapsuleRef}
         aria-label={label}
         onClick={onClick}
@@ -336,16 +336,16 @@ function TagFilterChip({
   if (selectedTags.length === 0) return null
   return (
     <FilterChipFrame
-      icon={<Hash size={11} className="shrink-0 text-[var(--text-quaternary)]" />}
+      icon={<Hash size={11} className='shrink-0 text-[var(--text-quaternary)]' />}
       clearLabel={t('notes.clear_tag_filter')}
       onClear={() => useUi.getState().clearTagSelection()}
     >
-      <span className="flex shrink-0 items-center">
+      <span className='flex shrink-0 items-center'>
         {selectedTags.slice(0, 5).map((tag) => (
-          <span key={tag} aria-hidden="true" className="size-[7px] rounded-full ring-1 ring-[var(--border-subtle)] first:ml-0 -ml-0.5" style={{ backgroundColor: tagColors.get(tag) ?? 'var(--text-quaternary)' }} />
+          <span key={tag} aria-hidden='true' className='size-[7px] rounded-full ring-1 ring-[var(--border-subtle)] first:ml-0 -ml-0.5' style={{ backgroundColor: tagColors.get(tag) ?? 'var(--text-quaternary)' }} />
         ))}
       </span>
-      <span className="truncate">{t('notes.tag_filter_value0', { value0: selectedTags.length })}</span>
+      <span className='truncate'>{t('notes.tag_filter_value0', { value0: selectedTags.length })}</span>
     </FilterChipFrame>
   )
 }
@@ -354,11 +354,11 @@ function QueryFilterChip({ filter, setListQuery }: { filter: string; setListQuer
   if (!filter) return null
   return (
     <FilterChipFrame
-      icon={<Search size={10} className="shrink-0 text-[var(--text-quaternary)]" />}
+      icon={<Search size={10} className='shrink-0 text-[var(--text-quaternary)]' />}
       clearLabel={t('notes.clear_search_query')}
       onClear={() => setListQuery('')}
     >
-      <span className="max-w-36 truncate">{t('notes.search_query_value0', { value0: filter })}</span>
+      <span className='max-w-36 truncate'>{t('notes.search_query_value0', { value0: filter })}</span>
     </FilterChipFrame>
   )
 }
@@ -374,11 +374,11 @@ function TagMatchToggle({
 }) {
   if (selectedTags.length === 0) return null
   return (
-    <div role="group" aria-label={t('notes.selected_tags_match')} className="flex shrink-0 overflow-hidden rounded-full border border-[var(--border-default)]">
-      <button type="button" aria-pressed={selectedTagsMatch === 'any'} onClick={() => setSelectedTagsMatch('any')} className="px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
+    <div role='group' aria-label={t('notes.selected_tags_match')} className='flex shrink-0 overflow-hidden rounded-full border border-[var(--border-default)]'>
+      <button type='button' aria-pressed={selectedTagsMatch === 'any'} onClick={() => setSelectedTagsMatch('any')} className='px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]'>
         {t('notes.tag_match_any')}
       </button>
-      <button type="button" aria-pressed={selectedTagsMatch === 'all'} onClick={() => setSelectedTagsMatch('all')} className="border-l border-[var(--border-default)] px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
+      <button type='button' aria-pressed={selectedTagsMatch === 'all'} onClick={() => setSelectedTagsMatch('all')} className='border-l border-[var(--border-default)] px-1.5 py-0.5 transition-colors aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]'>
         {t('notes.tag_match_all')}
       </button>
     </div>
@@ -396,12 +396,12 @@ function RememberFilterRow({
 }) {
   return (
     <>
-      <button type="button" aria-pressed={rememberFilters} onClick={() => setRememberFilters((value) => !value)} className="ml-auto inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)] aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]">
+      <button type='button' aria-pressed={rememberFilters} onClick={() => setRememberFilters((value) => !value)} className='ml-auto inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)] aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]'>
         {rememberFilters ? <Check size={11} /> : <Bookmark size={11} />}
         {t('notes.remember_filters')}
       </button>
       <Tooltip label={t('notes.clear_all_filters')}>
-        <button type="button" aria-label={t('notes.clear_all_filters')} onClick={clearAllFilters} className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[var(--text-tertiary)] transition-colors hover:text-[var(--danger)]">
+        <button type='button' aria-label={t('notes.clear_all_filters')} onClick={clearAllFilters} className='inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[var(--text-tertiary)] transition-colors hover:text-[var(--danger)]'>
           <X size={11} />
           {t('notes.clear_all_filters')}
         </button>
@@ -414,7 +414,7 @@ function EmptyTrashButton({ notes, isEmptyingTrash, emptyTrash }: { notes: NoteS
   if (notes.length === 0) return null
   return (
     <button
-      type="button"
+      type='button'
       disabled={isEmptyingTrash}
       aria-busy={isEmptyingTrash}
       onClick={() => void emptyTrash()}
@@ -434,9 +434,9 @@ export function NoteListHeader(props: NoteListHeaderProps) {
   } = props
   const hasActiveFilters = Boolean(dateFilter || selectedTags.length > 0 || filter)
   return (
-    <header className="shrink-0 px-3 pt-3 pb-2">
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        <div className="min-w-0">
+    <header className='shrink-0 px-3 pt-3 pb-2'>
+      <div className='mb-2.5 flex items-center justify-between gap-2'>
+        <div className='min-w-0'>
           <h2 className="truncate text-[length:var(--text-14\\.5)] font-semibold tracking-[-0.016em] text-[var(--text-primary)]">{title}</h2>
           <FolderSubtitle view={view} folderId={folderId} todoTagText={todoTagText} />
         </div>
@@ -446,7 +446,7 @@ export function NoteListHeader(props: NoteListHeaderProps) {
       <NoteSearchField filter={filter} setListQuery={props.setListQuery} listRef={props.listRef} filteredIds={props.filteredIds} openNote={props.openNote} />
 
       {hasActiveFilters && (
-        <div role="group" aria-label={t('notes.active_filters')} className="mt-2 flex flex-wrap items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-2 py-1.5">
+        <div role='group' aria-label={t('notes.active_filters')} className='mt-2 flex flex-wrap items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-2 py-1.5'>
           <DayFilterChip {...props} />
           <TagFilterChip tagColors={props.tagColors} selectedTags={selectedTags} />
           <QueryFilterChip filter={filter} setListQuery={props.setListQuery} />

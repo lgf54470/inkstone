@@ -49,32 +49,32 @@ function FeedHeader({
   onClearTag: () => void
 }): ReactElement {
   return (
-    <div className="space-y-3 pb-2 border-b border-[var(--border-subtle)]">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
-          <Sparkles size={16} className="text-[var(--accent)]" aria-hidden="true" />
+    <div className='space-y-3 pb-2 border-b border-[var(--border-subtle)]'>
+      <div className='flex items-center justify-between'>
+        <h2 className='text-base font-bold text-[var(--text-primary)] flex items-center gap-2'>
+          <Sparkles size={16} className='text-[var(--accent)]' aria-hidden='true' />
           <span>{t('home.featured_posts', {}, locale)}</span>
-          <span className="text-xs font-normal text-[var(--text-tertiary)]">
+          <span className='text-xs font-normal text-[var(--text-tertiary)]'>
             {t('home.posts_count', { count: total }, locale)}
           </span>
         </h2>
       </div>
 
       {selectedTag && (
-        <div className="flex items-center justify-between rounded-xl border border-[var(--accent-muted)]/40 bg-[var(--accent-softer)]/60 px-3.5 py-2 text-xs">
-          <div className="flex items-center gap-2 text-[var(--accent)] font-medium">
+        <div className='flex items-center justify-between rounded-xl border border-[var(--accent-muted)]/40 bg-[var(--accent-softer)]/60 px-3.5 py-2 text-xs'>
+          <div className='flex items-center gap-2 text-[var(--accent)] font-medium'>
             <span>{t('filter.tag_active', {}, locale)}:</span>
-            <span className="rounded-md bg-[var(--accent)] px-2 py-0.5 text-[11px] font-semibold text-white shadow-2xs">
+            <span className='rounded-md bg-[var(--accent)] px-2 py-0.5 text-[11px] font-semibold text-white shadow-2xs'>
               #{selectedTag}
             </span>
           </div>
           <button
-            type="button"
+            type='button'
             onClick={onClearTag}
-            className="flex items-center gap-1 text-xs text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+            className='flex items-center gap-1 text-xs text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer'
           >
             <span>{t('filter.clear', {}, locale)}</span>
-            <X size={13} aria-hidden="true" />
+            <X size={13} aria-hidden='true' />
           </button>
         </div>
       )}
@@ -97,8 +97,8 @@ function FeedPostsList({
 }): ReactElement {
   if (posts.length === 0 && !loading) {
     return (
-      <div className="py-16 text-center rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--bg-surface)]">
-        <p className="text-sm text-[var(--text-tertiary)]">{t('filter.no_matched', {}, locale)}</p>
+      <div className='py-16 text-center rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--bg-surface)]'>
+        <p className='text-sm text-[var(--text-tertiary)]'>{t('filter.no_matched', {}, locale)}</p>
       </div>
     )
   }
@@ -205,7 +205,7 @@ function FeedMainColumn({
   onPageSizeChange,
 }: FeedMainColumnProps): ReactElement {
   return (
-    <section className="lg:col-span-8 flex flex-col h-full min-h-0">
+    <section className='lg:col-span-8 flex flex-col h-full min-h-0'>
       <FeedHeader
         total={total}
         selectedTag={selectedTag}
@@ -214,7 +214,7 @@ function FeedMainColumn({
       />
       <div
         ref={scrollRef as React.RefObject<HTMLDivElement>}
-        className="flex-1 min-h-0 overflow-y-auto py-2.5 pr-0 lg:pr-2 scrollbar-thin space-y-4"
+        className='flex-1 min-h-0 overflow-y-auto py-2.5 pr-0 lg:pr-2 scrollbar-thin space-y-4'
       >
         <FeedPostsList
           posts={posts}
@@ -224,7 +224,7 @@ function FeedMainColumn({
           onTagClick={onTagToggle}
         />
       </div>
-      <footer className="shrink-0 mt-auto pt-2.5 pb-1 border-t border-[var(--border-subtle)] bg-[var(--bg-base)]">
+      <footer className='shrink-0 mt-auto pt-2.5 pb-1 border-t border-[var(--border-subtle)] bg-[var(--bg-base)]'>
         <HomePagination
           currentPage={page}
           totalPages={totalPages}
@@ -252,7 +252,7 @@ export default function HomeFeedView(props: HomeFeedViewProps): ReactElement {
   const state = useFeedState({ ...props, onScrollToTop: scrollToTop })
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch h-full min-h-0">
+    <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch h-full min-h-0'>
       <FeedMainColumn
         scrollRef={leftScrollRef}
         total={state.total}
@@ -268,7 +268,7 @@ export default function HomeFeedView(props: HomeFeedViewProps): ReactElement {
         onPageChange={state.handlePageChange}
         onPageSizeChange={state.handlePageSizeChange}
       />
-      <div className="lg:col-span-4 h-full min-h-0 overflow-y-auto scrollbar-none">
+      <div className='lg:col-span-4 h-full min-h-0 overflow-y-auto scrollbar-none'>
         <HomeSidebar
           siteInfo={props.siteInfo}
           categories={props.categories}

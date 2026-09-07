@@ -2,7 +2,7 @@ import { stripCodeRegions } from './code';
 import { splitFrontMatter } from './front-matter';
 import { truncateText } from '../text-utils'
 
-export function deriveTitle(content: string, fallback = "Untitled note"): string {
+export function deriveTitle(content: string, fallback = 'Untitled note'): string {
   const { body, meta } = splitFrontMatter(content)
   if (meta.title) return trimTitle(meta.title)
   const safe = stripCodeRegions(body)

@@ -32,9 +32,9 @@ export function TagManageRow({
     setRenaming(false);
   };
   return (
-    <div className="group rounded-[var(--r-md)] p-2 transition-colors hover:bg-[var(--bg-hover)]">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+    <div className='group rounded-[var(--r-md)] p-2 transition-colors hover:bg-[var(--bg-hover)]'>
+      <div className='flex items-center justify-between gap-3'>
+        <div className='flex min-w-0 flex-1 items-center gap-2.5'>
           <TagColorButton tag={tag} open={colorOpen} onToggle={() => setColorOpen((open) => !open)} />
           {renaming ? (
             <TagRenameField
@@ -75,11 +75,11 @@ function TagColorButton({
   return (
     <Tooltip label={t('tags.color')}>
       <button
-        type="button"
+        type='button'
         onClick={onToggle}
         aria-label={t('tags.color')}
         aria-expanded={open}
-        className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-transform hover:scale-105"
+        className='flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-transform hover:scale-105'
         style={{ color: color ?? 'var(--text-quaternary)' }}
       >
         <Hash
@@ -104,10 +104,10 @@ function TagRenameField({
   onCancel: () => void;
 }) {
   return (
-    <div className="flex flex-1 items-center gap-1.5">
+    <div className='flex flex-1 items-center gap-1.5'>
       <input
         autoFocus
-        type="text"
+        type='text'
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
@@ -117,12 +117,12 @@ function TagRenameField({
         className="h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12\\.5)] outline-none"
       />
       <Tooltip label={t('common.save')}>
-        <IconButton label={t('common.save')} size="sm" onClick={onSave}>
-          <Check size={13} className="text-[var(--accent)]" />
+        <IconButton label={t('common.save')} size='sm' onClick={onSave}>
+          <Check size={13} className='text-[var(--accent)]' />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('common.cancel')}>
-        <IconButton label={t('common.cancel')} size="sm" onClick={onCancel}>
+        <IconButton label={t('common.cancel')} size='sm' onClick={onCancel}>
           <X size={13} />
         </IconButton>
       </Tooltip>
@@ -133,18 +133,18 @@ function TagRenameField({
 function TagRowTitle({ tag }: { tag: Tag }) {
   const isPinned = Boolean(tag.isPinned);
   return (
-    <div className="min-w-0 flex-1">
-      <div className="flex items-center gap-2">
-        <span className="truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
+    <div className='min-w-0 flex-1'>
+      <div className='flex items-center gap-2'>
+        <span className='truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
           #{tag.name}
         </span>
         {isPinned && (
-          <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[length:var(--text-10)] font-medium bg-[var(--accent-soft)] text-[var(--accent)]">
-            <Pin size={10} className="fill-current" />
+          <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[length:var(--text-10)] font-medium bg-[var(--accent-soft)] text-[var(--accent)]'>
+            <Pin size={10} className='fill-current' />
             {t('tags.pinned')}
           </span>
         )}
-        <span className="shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
+        <span className='shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
           {t('tags.notes_count', { value0: tag.count })}
         </span>
       </div>
@@ -165,32 +165,32 @@ function TagRowActions({
 }) {
   const isPinned = Boolean(tag.isPinned);
   return (
-    <div className="flex shrink-0 items-center gap-0.5 opacity-85 group-hover:opacity-100">
+    <div className='flex shrink-0 items-center gap-0.5 opacity-85 group-hover:opacity-100'>
       <Tooltip label={isPinned ? t('tags.unpin') : t('tags.pin')}>
-        <IconButton label={isPinned ? t('tags.unpin') : t('tags.pin')} size="sm" onClick={() => void toggleTagPinned(tag)}>
+        <IconButton label={isPinned ? t('tags.unpin') : t('tags.pin')} size='sm' onClick={() => void toggleTagPinned(tag)}>
           <Pin size={13} className={isPinned ? 'fill-current text-[var(--accent)]' : ''} />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('tags.merge_into')}>
-        <IconButton label={t('tags.merge_into')} size="sm" onClick={onMerge}>
+        <IconButton label={t('tags.merge_into')} size='sm' onClick={onMerge}>
           <GitMerge size={13} />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('tags.open_tag')}>
-        <IconButton label={t('tags.open_tag')} size="sm" onClick={onOpen}>
+        <IconButton label={t('tags.open_tag')} size='sm' onClick={onOpen}>
           <ExternalLink size={13} />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('tags.rename')}>
-        <IconButton label={t('tags.rename')} size="sm" onClick={onRename}>
+        <IconButton label={t('tags.rename')} size='sm' onClick={onRename}>
           <Pencil size={13} />
         </IconButton>
       </Tooltip>
-      <Tooltip label={t('tags.delete')} side="left">
+      <Tooltip label={t('tags.delete')} side='left'>
         <IconButton
           label={t('tags.delete')}
-          size="sm"
-          className="text-[var(--text-tertiary)] hover:text-[var(--danger)]"
+          size='sm'
+          className='text-[var(--text-tertiary)] hover:text-[var(--danger)]'
           onClick={() => void deleteTag(tag)}
         >
           <Trash2 size={13} />
@@ -202,10 +202,10 @@ function TagRowActions({
 
 function TagColorPalette({ tag, onClose }: { tag: Tag; onClose: () => void }) {
   return (
-    <div className="mt-2.5 flex flex-wrap items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2">
+    <div className='mt-2.5 flex flex-wrap items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2'>
       <Tooltip label={t('tags.clear_color')}>
         <button
-          type="button"
+          type='button'
           aria-label={t('tags.clear_color')}
           onClick={() => {
             void setTagColor(tag, null);
@@ -224,7 +224,7 @@ function TagColorPalette({ tag, onClose }: { tag: Tag; onClose: () => void }) {
       {ORGANIZER_COLORS.map((color) => (
         <Tooltip key={color} label={color}>
           <button
-            type="button"
+            type='button'
             aria-label={color}
             onClick={() => {
               void setTagColor(tag, color);
@@ -236,7 +236,7 @@ function TagColorPalette({ tag, onClose }: { tag: Tag; onClose: () => void }) {
             )}
             style={{ backgroundColor: color }}
           >
-            {color === tag.color && <Check size={12} className="text-white drop-shadow-[var(--drop-shadow-sm)]" />}
+            {color === tag.color && <Check size={12} className='text-white drop-shadow-[var(--drop-shadow-sm)]' />}
           </button>
         </Tooltip>
       ))}
@@ -255,8 +255,8 @@ function MergeTagsModal({ source, onClose }: { source: Tag; onClose: () => void 
       description={t('tags.merge_choose_target_desc', { value0: source.name })}
       width={440}
     >
-      <div className="space-y-3 pt-1">
-        <div className="max-h-[320px] overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50">
+      <div className='space-y-3 pt-1'>
+        <div className='max-h-[320px] overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>
           {targets.map((target) => (
             <MergeTargetRow
               key={target.id}
@@ -269,13 +269,13 @@ function MergeTagsModal({ source, onClose }: { source: Tag; onClose: () => void 
             />
           ))}
           {targets.length === 0 && (
-            <div className="py-8 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
+            <div className='py-8 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
               {t('tags.no_other_tags_to_merge')}
             </div>
           )}
         </div>
-        <div className="flex justify-end pt-2 border-t border-[var(--border-subtle)]">
-          <Button size="sm" onClick={onClose}>
+        <div className='flex justify-end pt-2 border-t border-[var(--border-subtle)]'>
+          <Button size='sm' onClick={onClose}>
             {t('common.cancel')}
           </Button>
         </div>
@@ -287,17 +287,17 @@ function MergeTagsModal({ source, onClose }: { source: Tag; onClose: () => void 
 function MergeTargetRow({ target, onPick }: { target: Tag; onPick: () => void }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={onPick}
-      className="flex w-full items-center justify-between rounded-[var(--r-sm)] px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+      className='flex w-full items-center justify-between rounded-[var(--r-sm)] px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]'
     >
-      <div className="flex items-center gap-2">
+      <div className='flex items-center gap-2'>
         <Hash size={13} style={{ color: target.color ?? 'var(--text-quaternary)' }} />
-        <span className="text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
+        <span className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
           #{target.name}
         </span>
       </div>
-      <span className="text-[length:var(--text-11)] text-[var(--text-quaternary)]">
+      <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {t('tags.notes_count', { value0: target.count })}
       </span>
     </button>

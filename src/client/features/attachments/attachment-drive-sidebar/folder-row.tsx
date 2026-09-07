@@ -211,7 +211,7 @@ function FolderNameCell({ node, expanded, isRenaming, nameInput, inputRef, onNam
     return (
       <input
         ref={inputRef}
-        type="text"
+        type='text'
         value={nameInput}
         onChange={(e) => onNameChange(e.target.value)}
         onBlur={() => onFinishRename(node.id, nameInput.trim() || node.name)}
@@ -219,16 +219,16 @@ function FolderNameCell({ node, expanded, isRenaming, nameInput, inputRef, onNam
           if (e.key === 'Enter') onFinishRename(node.id, nameInput.trim() || node.name)
           if (e.key === 'Escape') onFinishRename(node.id, node.name)
         }}
-        className="flex-1 bg-[var(--bg-surface)] px-1 py-0.5 text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden"
+        className='flex-1 bg-[var(--bg-surface)] px-1 py-0.5 text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden'
       />
     )
   }
   return (
-    <button type="button" onClick={() => onSelectFolder(node.id)} className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left">
+    <button type='button' onClick={() => onSelectFolder(node.id)} className='flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left'>
       <span style={{ color: node.color ?? undefined }} className={cn('shrink-0', !node.color && 'text-[var(--text-quaternary)]')}>
-        {node.icon ? <span className="text-xs">{node.icon}</span> : expanded ? <FolderOpen size={13} /> : <FolderClosed size={13} />}
+        {node.icon ? <span className='text-xs'>{node.icon}</span> : expanded ? <FolderOpen size={13} /> : <FolderClosed size={13} />}
       </span>
-      <span className="truncate">{node.name}</span>
+      <span className='truncate'>{node.name}</span>
     </button>
   )
 }
@@ -236,7 +236,7 @@ function FolderNameCell({ node, expanded, isRenaming, nameInput, inputRef, onNam
 function FolderToggle({ expanded, hasChildren, onToggleExpand }: { expanded: boolean; hasChildren: boolean; onToggleExpand: () => void }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={(e) => {
         e.stopPropagation()
         onToggleExpand()
@@ -256,12 +256,12 @@ function FolderMoreButton({ moreButtonRef, onMoreClick }: { moreButtonRef: React
   return (
     <button
       ref={moreButtonRef}
-      type="button"
+      type='button'
       onClick={(e) => {
         e.stopPropagation()
         onMoreClick()
       }}
-      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity"
+      className='opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity'
     >
       <MoreHorizontal size={12} />
     </button>
@@ -288,7 +288,7 @@ function FolderRowMenus(props: FolderRowMenusProps) {
 
 function FolderRowChildren({ node, ...rest }: { node: FolderNode } & Omit<DriveFolderRowProps, 'node'>) {
   return (
-    <div className="space-y-px">
+    <div className='space-y-px'>
       {node.children!.map((child) => (
         <DriveFolderRow key={child.id} node={child} {...rest} />
       ))}

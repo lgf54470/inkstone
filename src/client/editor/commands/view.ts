@@ -6,10 +6,10 @@ let activeEditorView: EditorView | null = null
 
 
 export function setActiveEditorView(view: EditorView | null): void {
-    activeEditorView = view
+  activeEditorView = view
 }
 
 
 export function getActiveEditorView(): EditorView | null {
-    return activeEditorView
+  return activeEditorView
 }

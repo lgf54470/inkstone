@@ -21,7 +21,7 @@ export class ApiError extends Error {
   static badRequest(message: string, details?: unknown) {
     return new ApiError(400, 'bad_request', message, details)
   }
-  static unauthenticated(message = "Please sign in first") {
+  static unauthenticated(message = 'Please sign in first') {
     return new ApiError(401, 'unauthenticated', message)
   }
   static forbidden(message = 'Permission denied') {
@@ -47,5 +47,5 @@ export function errorResponse(c: Context, err: unknown): Response {
   }
   console.error('[inkstone] Unhandled error:', err)
 
-  return c.json({ error: { code: 'internal', message: "Internal server error" } }, 500)
+  return c.json({ error: { code: 'internal', message: 'Internal server error' } }, 500)
 }

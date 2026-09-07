@@ -206,7 +206,7 @@ async function handleCopyButton(target: HTMLElement, ctx: PreviewClickContext): 
   if (!copyButton) return false
   const code = copyButton.closest('.code-block')?.querySelector('pre')?.textContent ?? ''
   if (!navigator.clipboard?.writeText) {
-    ctx.api.toast({ title: t("preview.could_not_copy"), tone: 'danger' })
+    ctx.api.toast({ title: t('preview.could_not_copy'), tone: 'danger' })
     return true
   }
   try {
@@ -214,18 +214,18 @@ async function handleCopyButton(target: HTMLElement, ctx: PreviewClickContext): 
     if (!ctx.hostRef.current?.contains(copyButton)) return true
     const existingTimer = ctx.copyResetTimersRef.current.get(copyButton)
     if (existingTimer !== undefined) window.clearTimeout(existingTimer)
-    copyButton.textContent = t("common.copied")
+    copyButton.textContent = t('common.copied')
     copyButton.classList.add('copied')
     const timer = window.setTimeout(() => {
       if (ctx.hostRef.current?.contains(copyButton)) {
-        copyButton.textContent = t("common.copy")
+        copyButton.textContent = t('common.copy')
         copyButton.classList.remove('copied')
       }
       ctx.copyResetTimersRef.current.delete(copyButton)
     }, 900)
     ctx.copyResetTimersRef.current.set(copyButton, timer)
   } catch {
-    ctx.api.toast({ title: t("preview.could_not_copy"), tone: 'danger' })
+    ctx.api.toast({ title: t('preview.could_not_copy'), tone: 'danger' })
   }
   return true
 }
@@ -248,13 +248,13 @@ async function handleTaskCheckbox(target: HTMLElement, ctx: PreviewClickContext)
     const committedSource = ctx.committedSourceRef.current
     if (ctx.content !== committedSource) {
       checkbox.checked = !checked
-      ctx.api.toast({ title: t("preview.the_preview_is_updating_try_again_in_a_moment"), tone: 'warning' })
+      ctx.api.toast({ title: t('preview.the_preview_is_updating_try_again_in_a_moment'), tone: 'warning' })
       return true
     }
     const next = updateTaskAtSourceLine(committedSource, line, checked)
     if (next == null || !ctx.sourceNoteId) {
       checkbox.checked = !checked
-      ctx.api.toast({ title: t("preview.could_not_update_this_task"), tone: 'warning' })
+      ctx.api.toast({ title: t('preview.could_not_update_this_task'), tone: 'warning' })
       return true
     }
     ctx.api.editContent(ctx.sourceNoteId, next)
@@ -291,7 +291,7 @@ async function handleWikiLink(event: ReactMouseEvent, target: HTMLElement, ctx: 
   if (!parsed.noteTitle) return true
   const id = await ctx.api.createNote({ title: parsed.noteTitle, open: false })
   if (id) {
-    ctx.api.toast({ title: t("preview.created_title", { title: parsed.noteTitle }), tone: 'success' })
+    ctx.api.toast({ title: t('preview.created_title', { title: parsed.noteTitle }), tone: 'success' })
     if (
       navigation === ctx.wikiNavigationRef.current &&
       useUi.getState().activeNoteId === ctx.sourceNoteId

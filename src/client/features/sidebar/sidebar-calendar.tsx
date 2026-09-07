@@ -17,7 +17,7 @@ async function createDiaryNote(key: string, diaryTitle: (value: string) => strin
     time.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60), Math.floor(Math.random() * 60), 0);
     const stamp = `${key} ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}:${String(time.getSeconds()).padStart(2, '0')}`;
     const title = diaryTitle(key);
-    const tag = t("sidebar.diary_tag");
+    const tag = t('sidebar.diary_tag');
     const content = `---
 title: "${title}"
 createdAt: ${stamp}
@@ -30,7 +30,7 @@ aliases:
 `;
     const id = await useNotes.getState().createNote({ title, content, open: true });
     if (id)
-        useUi.getState().toast({ title: t("sidebar.calendar_diary_created_value0", { value0: key }), tone: 'success' });
+        useUi.getState().toast({ title: t('sidebar.calendar_diary_created_value0', { value0: key }), tone: 'success' });
 }
 
 function useCalendarPersist() {
@@ -60,11 +60,11 @@ function SidebarCalendarHeader({ headerTitle, showTodayChip, collapsed, onToggle
     collapsed: boolean;
     onToggle: () => void;
 }) {
-    return (<div className="flex items-center gap-1 px-0.5">
-        <button type="button" aria-expanded={!collapsed} onClick={onToggle} className="flex min-w-0 items-center gap-1 rounded-[var(--r-sm)] px-1 py-0.5 text-left transition-colors hover:bg-[var(--bg-hover)]">
-            <CalendarDays size={12} className="shrink-0 text-[var(--text-quaternary)]"/>
-            <span className="truncate text-[length:var(--text-11)] font-semibold text-[var(--text-secondary)]">{headerTitle}</span>
-            {showTodayChip && (<span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[length:var(--text-9)] font-medium text-[var(--accent)]">{t("sidebar.calendar_today")}</span>)}
+    return (<div className='flex items-center gap-1 px-0.5'>
+        <button type='button' aria-expanded={!collapsed} onClick={onToggle} className='flex min-w-0 items-center gap-1 rounded-[var(--r-sm)] px-1 py-0.5 text-left transition-colors hover:bg-[var(--bg-hover)]'>
+            <CalendarDays size={12} className='shrink-0 text-[var(--text-quaternary)]'/>
+            <span className='truncate text-[length:var(--text-11)] font-semibold text-[var(--text-secondary)]'>{headerTitle}</span>
+            {showTodayChip && (<span className='shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[length:var(--text-9)] font-medium text-[var(--accent)]'>{t("sidebar.calendar_today")}</span>)}
             <ChevronDown size={11} className={cn('shrink-0 text-[var(--text-quaternary)] transition-transform duration-[var(--dur-fast)]', collapsed && '-rotate-90')}/>
         </button>
     </div>);
@@ -83,7 +83,7 @@ export function SidebarCalendar() {
     const isCurrentMonth = cursor.year === now.getFullYear() && cursor.month === now.getMonth();
     const showTodayChip = view === 'year' ? cursor.year === now.getFullYear() : isCurrentMonth;
     const weekStart = locale === 'zh-CN' ? 1 : 0;
-    const diaryTitle = useCallback((key: string) => t("sidebar.diary_title_value0", { value0: key }), []);
+    const diaryTitle = useCallback((key: string) => t('sidebar.diary_title_value0', { value0: key }), []);
     // Single cached projection replaces three whole-vault Object.values scans; untouched output identities stay stable between typing commits.
     const { counts, noteIdByTitle, notesByDay } = useMemo(() => buildActivityProjectionCached(notes), [notes]);
     const getDiaryId = useCallback((key: string) => noteIdByTitle.get(diaryTitle(key)) ?? null, [diaryTitle, noteIdByTitle]);
@@ -97,7 +97,7 @@ export function SidebarCalendar() {
         applyDateFilter(isSameSingleDay ? null : { start: key, end: key });
         if (diaryId) {
             openNote(diaryId);
-            toast({ title: t("sidebar.calendar_diary_opened_value0", { value0: key }), tone: 'success' });
+            toast({ title: t('sidebar.calendar_diary_opened_value0', { value0: key }), tone: 'success' });
             return;
         }
         await createDiaryNote(key, diaryTitle);
@@ -113,7 +113,7 @@ export function SidebarCalendar() {
             applyDateFilter({ start: key, end: key });
     }, [applyDateFilter]);
     const onNoteClick = useCallback((noteId: string) => { openNote(noteId); }, [openNote]);
-    return (<section aria-label={t("sidebar.calendar_title")} className="mb-2.5">
+    return (<section aria-label={t("sidebar.calendar_title")} className='mb-2.5'>
         <SidebarCalendarHeader headerTitle={headerTitle} showTodayChip={showTodayChip} collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)}/>
         {!collapsed && (<ActivityCalendarMemo counts={counts} notesByDay={notesByDay} getDiaryId={getDiaryId} locale={locale} weekStart={weekStart} today={now} selectedRange={dateFilter} latestEditKey={latestEditKey} view={view} onViewChange={setView} cursor={cursor} onCursorChange={setCursor} columnsPreference={yearGridColumns} jumpFlash={calendarJumpNonce} onDayClick={onDayClick} onDaySelect={onDaySelect} onRangeSelect={onRangeSelect} onGapDayClick={onGapDayClick} onNoteClick={onNoteClick}/>)}
     </section>);

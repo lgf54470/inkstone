@@ -1,15 +1,15 @@
-import { mergeSettings } from "@shared/constants";
-import { countText, deriveExcerpt, deriveTitle } from "@shared/markdown-utils";
-import type { Note } from "@shared/types";
-import type { NoteRow } from "../../db/rows";
-import { buildNoteDerivedStatements, LINK_TARGET_SUBQUERY, shiftSqlPlaceholders } from "../../db/writes";
-import type { Env } from "../../env";
-import { sha256Hex } from "../../lib/encoding";
-import { ApiError } from "../../lib/errors";
-import { isValidId, newId } from "../../lib/id";
-import { assertContentSize } from "../../lib/request";
-import { enqueueNoteIndex } from "../ai-search";
-import { runIdempotent } from "../operations";
+import { mergeSettings } from '@shared/constants';
+import { countText, deriveExcerpt, deriveTitle } from '@shared/markdown-utils';
+import type { Note } from '@shared/types';
+import type { NoteRow } from '../../db/rows';
+import { buildNoteDerivedStatements, LINK_TARGET_SUBQUERY, shiftSqlPlaceholders } from '../../db/writes';
+import type { Env } from '../../env';
+import { sha256Hex } from '../../lib/encoding';
+import { ApiError } from '../../lib/errors';
+import { isValidId, newId } from '../../lib/id';
+import { assertContentSize } from '../../lib/request';
+import { enqueueNoteIndex } from '../ai-search';
+import { runIdempotent } from '../operations';
 import { applyEdit, buildMcpNoteContent, type NoteEditOperation } from './content';
 import { afterMutation, assertExpectedRevision, loadNote, loadNoteOrNull, loadNoteRow, patchNote, resolveFolderId, resolveTitle, type McpWriteContext } from './patch';
 

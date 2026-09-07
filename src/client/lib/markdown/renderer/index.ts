@@ -31,32 +31,32 @@ import { registerMedia } from './media';
 import { registerHeadings } from './headings';
 
 const md = new MarkdownIt({
-    html: true,
-    linkify: true,
-    breaks: false,
-    typographer: false,
-    langPrefix: 'language-',
+  html: true,
+  linkify: true,
+  breaks: false,
+  typographer: false,
+  langPrefix: 'language-',
 });
 
 md.use(taskLists, { enabled: true, label: false })
-    .use(footnote)
-    .use(mark)
-    .use(sub)
-    .use(sup)
-    .use(ins)
-    .use(emoji, { shortcuts: {} })
-    .use(deflist)
-    .use(abbr)
-    .use(ruby)
-    .use(anchor, {
-    slugify: slugifyHeading,
+  .use(footnote)
+  .use(mark)
+  .use(sub)
+  .use(sup)
+  .use(ins)
+  .use(emoji, { shortcuts: {} })
+  .use(deflist)
+  .use(abbr)
+  .use(ruby)
+  .use(anchor, {
+  slugify: slugifyHeading,
 
-    permalink: anchor.permalink.linkInsideHeader({
-        symbol: '',
-        placement: 'before',
-        class: 'heading-anchor',
-        ariaHidden: true,
-    }),
+  permalink: anchor.permalink.linkInsideHeader({
+    symbol: '',
+    placement: 'before',
+    class: 'heading-anchor',
+    ariaHidden: true,
+  }),
 });
 registerFrontMatter(md);
 registerContainers(md);
@@ -72,26 +72,26 @@ registerMedia(md);
 registerHeadings(md);
 
 export function renderMarkdown(source: string, options?: {
-    /** Allow external https images; defaults to false (blocked). */
-    externalImages?: boolean;
-    hideFrontMatter?: boolean;
+  /** Allow external https images; defaults to false (blocked). */
+  externalImages?: boolean;
+  hideFrontMatter?: boolean;
 }): RenderResult {
-    const env = emptyEnvironment();
-    env.externalImages = options?.externalImages === true;
-    env.hideFrontMatter = options?.hideFrontMatter === true;
-    const raw = md.render(stripObsidianComments(source), env);
-    const sanitized = sanitizeProseHtml(raw);
-    const html = materializeTrustedTasks(sanitized, env.taskNonce);
-    return {
-        html,
-        headings: env.headings,
-        hasMath: env.hasMath,
-        hasMermaid: env.hasMermaid,
-        hasChart: env.hasChart,
-        hasEmbeds: env.hasEmbeds,
-        frontMatter: env.frontMatter,
-        frontMatterErrors: env.frontMatterErrors,
-    };
+  const env = emptyEnvironment();
+  env.externalImages = options?.externalImages === true;
+  env.hideFrontMatter = options?.hideFrontMatter === true;
+  const raw = md.render(stripObsidianComments(source), env);
+  const sanitized = sanitizeProseHtml(raw);
+  const html = materializeTrustedTasks(sanitized, env.taskNonce);
+  return {
+    html,
+    headings: env.headings,
+    hasMath: env.hasMath,
+    hasMermaid: env.hasMermaid,
+    hasChart: env.hasChart,
+    hasEmbeds: env.hasEmbeds,
+    frontMatter: env.frontMatter,
+    frontMatterErrors: env.frontMatterErrors,
+  };
 }
 export type { Heading, RenderResult, WikiTarget, FenceInfo } from './types';
 export { parseWikiTarget, parseFenceInfo } from './parse';

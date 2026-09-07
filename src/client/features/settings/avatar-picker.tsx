@@ -34,20 +34,20 @@ export function AvatarPicker({
       width={620}
       footer={(
         <>
-          <Button variant="ghost" onClick={picker.close} disabled={picker.isBusy || picker.isProcessing}>
+          <Button variant='ghost' onClick={picker.close} disabled={picker.isBusy || picker.isProcessing}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" onClick={picker.save} loading={picker.isBusy} disabled={picker.isProcessing || picker.selected === preference}>
+          <Button variant='primary' onClick={picker.save} loading={picker.isBusy} disabled={picker.isProcessing || picker.selected === preference}>
             {t('common.save')}
           </Button>
         </>
       )}
     >
-      <div className="space-y-5">
+      <div className='space-y-5'>
         <SelectedAvatarCard picker={picker} />
         <RandomAvatarGrid picker={picker} />
         <UploadSection picker={picker} />
-        {picker.error && <p role="alert" className="text-[length:var(--text-12)] text-[var(--danger)]">{picker.error}</p>}
+        {picker.error && <p role='alert' className='text-[length:var(--text-12)] text-[var(--danger)]'>{picker.error}</p>}
       </div>
     </Modal>
   )
@@ -141,15 +141,15 @@ async function chooseAvatarFileFlow({ file, busyRef, processingRef, setIsProcess
 
 function SelectedAvatarCard({ picker }: { picker: PickerState }) {
   return (
-    <div className="flex items-center gap-4 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4">
+    <div className='flex items-center gap-4 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4'>
       <Avatar src={picker.selected} name={picker.displayName} size={72} />
-      <div className="min-w-0 flex-1">
-        <div className="text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]">
+      <div className='min-w-0 flex-1'>
+        <div className='text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
           {t('settings.selected_avatar')}
         </div>
         <div className="mt-1 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">{picker.selectionLabel}</div>
       </div>
-      <Button size="sm" variant="secondary" icon={<RotateCcw size={12} />} onClick={() => picker.setSelected('')} disabled={picker.isBusy || picker.isProcessing}>
+      <Button size='sm' variant='secondary' icon={<RotateCcw size={12} />} onClick={() => picker.setSelected('')} disabled={picker.isBusy || picker.isProcessing}>
         {t('settings.use_name_avatar')}
       </Button>
     </div>
@@ -159,21 +159,21 @@ function SelectedAvatarCard({ picker }: { picker: PickerState }) {
 function RandomAvatarGrid({ picker }: { picker: PickerState }) {
   return (
     <section>
-      <div className="mb-2.5 flex items-center justify-between gap-3">
-        <h3 className="text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]">
+      <div className='mb-2.5 flex items-center justify-between gap-3'>
+        <h3 className='text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
           {t('settings.random_avatars')}
         </h3>
-        <Button size="sm" variant="ghost" icon={<RefreshCw size={12} />} onClick={() => picker.setChoices(createRandomAvatarPreferences())} disabled={picker.isBusy || picker.isProcessing}>
+        <Button size='sm' variant='ghost' icon={<RefreshCw size={12} />} onClick={() => picker.setChoices(createRandomAvatarPreferences())} disabled={picker.isBusy || picker.isProcessing}>
           {t('settings.refresh_avatars')}
         </Button>
       </div>
-      <div className="grid grid-cols-5 gap-2.5">
+      <div className='grid grid-cols-5 gap-2.5'>
         {picker.choices.map((choice, index) => {
           const active = picker.selected === choice
           return (
             <button
               key={choice}
-              type="button"
+              type='button'
               aria-label={t('settings.random_avatar_number', { number: index + 1 })}
               aria-pressed={active}
               disabled={picker.isBusy || picker.isProcessing}
@@ -184,9 +184,9 @@ function RandomAvatarGrid({ picker }: { picker: PickerState }) {
                   : 'border-[var(--border-subtle)] bg-[var(--bg-base)] hover:border-[var(--border-strong)]'
               }`}
             >
-              <Avatar src={choice} name={picker.displayName} size={42} className="md:!size-[60px]" />
+              <Avatar src={choice} name={picker.displayName} size={42} className='md:!size-[60px]' />
               {active && (
-                <span className="absolute right-1.5 bottom-1.5 flex size-4 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)]">
+                <span className='absolute right-1.5 bottom-1.5 flex size-4 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)]'>
                   <Check size={10} strokeWidth={3} />
                 </span>
               )}
@@ -200,26 +200,26 @@ function RandomAvatarGrid({ picker }: { picker: PickerState }) {
 
 function UploadSection({ picker }: { picker: PickerState }) {
   return (
-    <section className="rounded-[var(--r-lg)] border border-dashed border-[var(--border-default)] bg-[var(--bg-inset)] p-4">
-      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+    <section className='rounded-[var(--r-lg)] border border-dashed border-[var(--border-default)] bg-[var(--bg-inset)] p-4'>
+      <div className='flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center'>
         <div>
-          <h3 className="text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]">
+          <h3 className='text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
             {t('settings.upload_local_image')}
           </h3>
-          <p className="mt-1 text-[length:var(--text-11)] leading-relaxed text-[var(--text-quaternary)]">
+          <p className='mt-1 text-[length:var(--text-11)] leading-relaxed text-[var(--text-quaternary)]'>
             {t('settings.avatar_upload_hint')}
           </p>
         </div>
-        <Button variant="secondary" icon={<Upload size={13} />} loading={picker.isProcessing} disabled={picker.isBusy} onClick={() => picker.inputRef.current?.click()}>
+        <Button variant='secondary' icon={<Upload size={13} />} loading={picker.isProcessing} disabled={picker.isBusy} onClick={() => picker.inputRef.current?.click()}>
           {t('settings.choose_image')}
         </Button>
       </div>
       <input
         ref={picker.inputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
+        type='file'
+        accept='image/png,image/jpeg,image/webp'
         disabled={picker.isBusy || picker.isProcessing}
-        className="sr-only"
+        className='sr-only'
         onChange={(event) => picker.chooseFile(event.target.files?.[0])}
       />
     </section>

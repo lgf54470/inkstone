@@ -18,7 +18,7 @@ async function start(): Promise<void> {
   const [{ App }, i18n] = await Promise.all([import('./app'), import('./lib/i18n')])
   await i18n.initI18n()
   const container = document.getElementById('root')
-  if (!container) throw new Error(i18n.t("app.missing_root_mount_point"))
+  if (!container) throw new Error(i18n.t('app.missing_root_mount_point'))
   createRoot(container).render(
     <StrictMode>
       <App />

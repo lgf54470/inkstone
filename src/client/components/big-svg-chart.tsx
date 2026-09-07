@@ -53,8 +53,8 @@ function ChartGridLines({ maxVal }: { maxVal: number }) {
         const val = Math.round(maxVal * g)
         return (
           <g key={gi}>
-            <line x1={PAD_L} x2={CHART_W - PAD_R} y1={gy} y2={gy} stroke="var(--border-subtle)" strokeDasharray="2 2" strokeWidth="1" />
-            <text x={PAD_L - 6} y={gy + 3} fontSize="9" fill="var(--text-tertiary)" textAnchor="end" fontFamily="var(--font-family-mono, monospace)">
+            <line x1={PAD_L} x2={CHART_W - PAD_R} y1={gy} y2={gy} stroke='var(--border-subtle)' strokeDasharray='2 2' strokeWidth='1' />
+            <text x={PAD_L - 6} y={gy + 3} fontSize='9' fill='var(--text-tertiary)' textAnchor='end' fontFamily='var(--font-family-mono, monospace)'>
               {val}
             </text>
           </g>
@@ -68,7 +68,7 @@ function ChartDots({ geometry, values, timeline }: { geometry: ChartGeometry; va
   return (
     <>
       {geometry.pts.map((p, i) => (
-        <circle key={i} cx={p[0].toFixed(1)} cy={p[1].toFixed(1)} r="3" fill="var(--bg-card)" stroke="var(--accent)" strokeWidth="2">
+        <circle key={i} cx={p[0].toFixed(1)} cy={p[1].toFixed(1)} r='3' fill='var(--bg-card)' stroke='var(--accent)' strokeWidth='2'>
           <title>{`${timeline[i]?.label}: ${values[i]}`}</title>
         </circle>
       ))}
@@ -83,7 +83,7 @@ function ChartXLabels({ geometry, values, timeline }: { geometry: ChartGeometry;
       {geometry.pts.map((p, i) => {
         if (i % interval !== 0 && i !== values.length - 1) return null
         return (
-          <text key={`lbl-${i}`} x={p[0].toFixed(1)} y={CHART_H - 6} fontSize="9" fill="var(--text-tertiary)" textAnchor="middle" fontFamily="var(--font-family-mono, monospace)">
+          <text key={`lbl-${i}`} x={p[0].toFixed(1)} y={CHART_H - 6} fontSize='9' fill='var(--text-tertiary)' textAnchor='middle' fontFamily='var(--font-family-mono, monospace)'>
             {timeline[i]?.label || ''}
           </text>
         )
@@ -94,7 +94,7 @@ function ChartXLabels({ geometry, values, timeline }: { geometry: ChartGeometry;
 
 function ChartEmptyState({ emptyLabel }: { emptyLabel: string }) {
   return (
-    <div className="flex h-full items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]">
+    <div className='flex h-full items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
       {emptyLabel}
     </div>
   )
@@ -110,11 +110,11 @@ export function BigSvgChart({ values, timeline, emptyLabel }: { values: number[]
   const geometry = chartGeometryOf(values)
 
   return (
-    <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" className="h-full w-full">
+    <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio='none' className='h-full w-full'>
       <defs>
-        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.0" />
+        <linearGradient id={gradId} x1='0' y1='0' x2='0' y2='1'>
+          <stop offset='0%' stopColor='var(--accent)' stopOpacity='0.35' />
+          <stop offset='100%' stopColor='var(--accent)' stopOpacity='0.0' />
         </linearGradient>
       </defs>
 
@@ -122,7 +122,7 @@ export function BigSvgChart({ values, timeline, emptyLabel }: { values: number[]
 
       {geometry.area && <path d={geometry.area} fill={`url(#${gradId})`} />}
 
-      <path d={geometry.solidLine} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={geometry.solidLine} fill='none' stroke='var(--accent)' strokeWidth='2' strokeLinejoin='round' strokeLinecap='round' />
 
       <ChartDots geometry={geometry} values={values} timeline={timeline} />
       <ChartXLabels geometry={geometry} values={values} timeline={timeline} />

@@ -1,5 +1,5 @@
 export const messages = {
-"template.four_quadrant.content": `---
+'template.four_quadrant.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [priority]
@@ -19,9 +19,9 @@ tags: [priority]
 
 > Principle: protect time for quadrant 2; the most meaningful work lives there. {{cursor}}
 `,
-"template.four_quadrant.description": "Prioritize tasks by urgency and importance into four quadrants.",
-"template.four_quadrant.name": "Four Quadrants",
-"template.gtd.content": `---
+'template.four_quadrant.description': 'Prioritize tasks by urgency and importance into four quadrants.',
+'template.four_quadrant.name': 'Four Quadrants',
+'template.gtd.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [gtd]
@@ -48,9 +48,9 @@ tags: [gtd]
 
 > Weekly review: empty the inbox, update lists, and decide the next physical action for each project.
 `,
-"template.gtd.description": "Capture, clarify, organize, reflect and engage with your commitments.",
-"template.gtd.name": "GTD Task Management",
-"template.habit_tracker.content": `---
+'template.gtd.description': 'Capture, clarify, organize, reflect and engage with your commitments.',
+'template.gtd.name': 'GTD Task Management',
+'template.habit_tracker.content': `---
 title: {{title}} · {{date}}
 createdAt: {{createdAt}}
 tags: [habits]
@@ -72,9 +72,9 @@ tags: [habits]
 ## Notes
 - Missed a day? Don't break the chain — just continue. {{cursor}}
 `,
-"template.habit_tracker.description": "Track daily habits across a month with a simple grid.",
-"template.habit_tracker.name": "Habit Tracker",
-"template.knowledge_cards.content": `---
+'template.habit_tracker.description': 'Track daily habits across a month with a simple grid.',
+'template.habit_tracker.name': 'Habit Tracker',
+'template.knowledge_cards.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [cards]
@@ -97,9 +97,9 @@ tags: [cards]
 
 > Write it as if you will never see the original source again. {{cursor}}
 `,
-"template.knowledge_cards.description": "One idea per card for building a personal knowledge base.",
-"template.knowledge_cards.name": "Knowledge Cards",
-"template.marketing_plan.content": `---
+'template.knowledge_cards.description': 'One idea per card for building a personal knowledge base.',
+'template.knowledge_cards.name': 'Knowledge Cards',
+'template.marketing_plan.content': `---
 title: {{title}} Marketing Plan
 createdAt: {{createdAt}}
 tags: [marketing]
@@ -133,9 +133,9 @@ tags: [marketing]
 ## Review
 - {{tomorrow}}
 `,
-"template.marketing_plan.description": "Plan a campaign: audience, channels, budget and timeline.",
-"template.marketing_plan.name": "Marketing Plan",
-"template.meal_log.content": `---
+'template.marketing_plan.description': 'Plan a campaign: audience, channels, budget and timeline.',
+'template.marketing_plan.name': 'Marketing Plan',
+'template.meal_log.content': `---
 title: {{title}} · {{date}}
 createdAt: {{createdAt}}
 tags: [food]
@@ -161,9 +161,9 @@ tags: [food]
 
 > Honest records beat perfect records. {{cursor}}
 `,
-"template.meal_log.description": "Track meals, calories and how you feel afterwards.",
-"template.meal_log.name": "Meal Log",
-"template.meeting_minutes.content": `---
+'template.meal_log.description': 'Track meals, calories and how you feel afterwards.',
+'template.meal_log.name': 'Meal Log',
+'template.meeting_minutes.content': `---
 title: {{title}} · {{date}}
 createdAt: {{createdAt}}
 tags: [meeting]
@@ -189,9 +189,9 @@ tags: [meeting]
 ## Next Meeting
 - {{tomorrow}}
 `,
-"template.meeting_minutes.description": "Capture decisions, action items and owners from a meeting.",
-"template.meeting_minutes.name": "Meeting Minutes",
-"template.mistake_notebook.content": `---
+'template.meeting_minutes.description': 'Capture decisions, action items and owners from a meeting.',
+'template.meeting_minutes.name': 'Meeting Minutes',
+'template.mistake_notebook.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [mistakes]
@@ -213,9 +213,9 @@ tags: [mistakes]
 ## Retest Date
 - {{tomorrow}}
 `,
-"template.mistake_notebook.description": "Log mistakes with the correct approach to avoid repeating them.",
-"template.mistake_notebook.name": "Mistake Notebook",
-"template.morning_pages.content": `---
+'template.mistake_notebook.description': 'Log mistakes with the correct approach to avoid repeating them.',
+'template.mistake_notebook.name': 'Mistake Notebook',
+'template.morning_pages.content': `---
 title: {{title}} · {{date}}
 createdAt: {{createdAt}}
 tags: [journal]
@@ -231,9 +231,9 @@ Start writing whatever comes to mind. Don't edit, don't stop.
 
 ## Intention
 `,
-"template.morning_pages.description": "Three pages of stream-of-consciousness writing to clear your mind.",
-"template.morning_pages.name": "Morning Pages",
-"template.movie_log.content": `---
+'template.morning_pages.description': 'Three pages of stream-of-consciousness writing to clear your mind.',
+'template.morning_pages.name': 'Morning Pages',
+'template.movie_log.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [movies]
@@ -255,9 +255,9 @@ tags: [movies]
 - Total:
 - Favorites:
 `,
-"template.movie_log.description": "Track films and shows with ratings and quick reviews.",
-"template.movie_log.name": "Movie & Show Log",
-"template.okr.content": `---
+'template.movie_log.description': 'Track films and shows with ratings and quick reviews.',
+'template.movie_log.name': 'Movie & Show Log',
+'template.okr.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [okr]
@@ -281,9 +281,9 @@ tags: [okr]
 
 > KRs should be measurable, ambitious and time-bound. Review weekly.
 `,
-"template.okr.description": "Objectives and key results to align ambitious goals with measurable outcomes.",
-"template.okr.name": "OKR Goals",
-"template.pdca.content": `---
+'template.okr.description': 'Objectives and key results to align ambitious goals with measurable outcomes.',
+'template.okr.name': 'OKR Goals',
+'template.pdca.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [pdca]
@@ -309,9 +309,9 @@ tags: [pdca]
 - Adjust:
 - Next cycle starts: {{tomorrow}}
 `,
-"template.pdca.description": "Plan-Do-Check-Act loop for continuous improvement.",
-"template.pdca.name": "PDCA Cycle",
-"template.pomodoro.content": `---
+'template.pdca.description': 'Plan-Do-Check-Act loop for continuous improvement.',
+'template.pdca.name': 'PDCA Cycle',
+'template.pomodoro.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [pomodoro]
@@ -333,9 +333,9 @@ tags: [pomodoro]
 
 > Rhythm: 25 min work, 5 min break; every 4 pomodoros take a longer break. {{cursor}}
 `,
-"template.pomodoro.description": "25-minute focus sprints with short breaks.",
-"template.pomodoro.name": "Pomodoro Technique",
-"template.prd.content": `---
+'template.pomodoro.description': '25-minute focus sprints with short breaks.',
+'template.pomodoro.name': 'Pomodoro Technique',
+'template.prd.content': `---
 title: {{title}} PRD
 createdAt: {{createdAt}}
 tags: [product]
@@ -373,6 +373,6 @@ tags: [product]
 ## Open Questions
 - 
 `,
-"template.prd.description": "Product requirements: background, users, scope and acceptance criteria.",
-"template.prd.name": "Product Requirements",
+'template.prd.description': 'Product requirements: background, users, scope and acceptance criteria.',
+'template.prd.name': 'Product Requirements',
 };

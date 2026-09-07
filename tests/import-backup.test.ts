@@ -154,8 +154,8 @@ describe('importBackupFileBatch', () => {
     expect(mapping!.target_id).toBe(note!.id)
     expect((await allRows(db, "SELECT * FROM changes WHERE entity = 'folder'")).length).toBe(1)
     expect((await allRows(db, "SELECT * FROM changes WHERE entity = 'note'")).length).toBe(1)
-    expect((await firstRow(db, "SELECT kind FROM ai_index_queue WHERE note_id = ?1", note!.id as string))!.kind).toBe('embed')
-    expect((await firstRow(db, "SELECT kind FROM fts_index_queue WHERE note_id = ?1", note!.id as string))!.kind).toBe('upsert')
+    expect((await firstRow(db, 'SELECT kind FROM ai_index_queue WHERE note_id = ?1', note!.id as string))!.kind).toBe('embed')
+    expect((await firstRow(db, 'SELECT kind FROM fts_index_queue WHERE note_id = ?1', note!.id as string))!.kind).toBe('upsert')
   })
 
   it('rejects files that fail length or SHA-256 verification before writing anything', async () => {

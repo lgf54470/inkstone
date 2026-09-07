@@ -1,15 +1,15 @@
-import { z } from "zod";
-import { LIMITS } from "@shared/constants";
-import { countText, deriveExcerpt, normalizeLinkKey, replaceWikiLinkTarget } from "@shared/markdown-utils";
-import { sliceText, truncateText, utf8ByteLength } from "@shared/text-utils";
-import type { Note, SortKey, SortOrder, ViewKind } from "@shared/types";
-import { NOTE_COLUMNS_FULL, toNote, type NoteRow } from "../../db/rows";
-import { buildNoteDerivedStatements, shiftSqlPlaceholders } from "../../db/writes";
-import { fromBase64Url, fromUtf8, sha256Hex, toBase64Url, utf8 } from "../../lib/encoding";
-import { ApiError } from "../../lib/errors";
-import { isValidId, newId } from "../../lib/id";
-import { clampInt } from "../../lib/request";
-import { noteIndexQueueStatement } from "../../mcp/ai-search";
+import { z } from 'zod';
+import { LIMITS } from '@shared/constants';
+import { countText, deriveExcerpt, normalizeLinkKey, replaceWikiLinkTarget } from '@shared/markdown-utils';
+import { sliceText, truncateText, utf8ByteLength } from '@shared/text-utils';
+import type { Note, SortKey, SortOrder, ViewKind } from '@shared/types';
+import { NOTE_COLUMNS_FULL, toNote, type NoteRow } from '../../db/rows';
+import { buildNoteDerivedStatements, shiftSqlPlaceholders } from '../../db/writes';
+import { fromBase64Url, fromUtf8, sha256Hex, toBase64Url, utf8 } from '../../lib/encoding';
+import { ApiError } from '../../lib/errors';
+import { isValidId, newId } from '../../lib/id';
+import { clampInt } from '../../lib/request';
+import { noteIndexQueueStatement } from '../../mcp/ai-search';
 
 export const SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000
 

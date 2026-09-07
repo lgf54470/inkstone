@@ -120,8 +120,8 @@ function DrawerLayer({
         className={`relative w-full max-w-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border-l border-[var(--border-default)] shadow-[var(--shadow-modal)] flex flex-col h-full z-10 transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)] transform will-change-transform ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
-        role="dialog"
-        aria-modal="true"
+        role='dialog'
+        aria-modal='true'
         aria-label={title}
       >
         {children}
@@ -132,20 +132,20 @@ function DrawerLayer({
 
 function DrawerHeader({ onClose, lang }: { onClose: () => void; lang: BlogLocale }) {
   return (
-    <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] shrink-0">
-      <div className="flex items-center gap-2">
-        <Palette className="w-5 h-5 text-[var(--accent)]" />
-        <h2 className="font-semibold text-base text-[var(--text-primary)]">
+    <div className='flex items-center justify-between px-5 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] shrink-0'>
+      <div className='flex items-center gap-2'>
+        <Palette className='w-5 h-5 text-[var(--accent)]' />
+        <h2 className='font-semibold text-base text-[var(--text-primary)]'>
           {t('appearance.title', {}, lang)}
         </h2>
       </div>
       <button
-        type="button"
+        type='button'
         onClick={onClose}
-        className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+        className='p-1.5 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer'
         aria-label={t('appearance.close', {}, lang)}
       >
-        <X className="w-5 h-5" />
+        <X className='w-5 h-5' />
       </button>
     </div>
   )
@@ -153,7 +153,7 @@ function DrawerHeader({ onClose, lang }: { onClose: () => void; lang: BlogLocale
 
 function DrawerBody({ config, update }: PickerProps) {
   return (
-    <div className="flex-1 overflow-y-auto p-5 space-y-6 text-sm">
+    <div className='flex-1 overflow-y-auto p-5 space-y-6 text-sm'>
       <ThemePicker config={config} update={update} />
       <AccentPicker config={config} update={update} />
       <BackgroundPicker config={config} update={update} />
@@ -174,7 +174,7 @@ function PickerSection({
 }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2.5">
+      <label className='block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2.5'>
         {title}
       </label>
       <div className={gridClass}>{children}</div>
@@ -195,7 +195,7 @@ function IconChoice({
 }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={onClick}
       className={`flex flex-col items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
         active
@@ -203,7 +203,7 @@ function IconChoice({
           : 'border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
       }`}
     >
-      <Icon className="w-4 h-4" />
+      <Icon className='w-4 h-4' />
       <span>{children}</span>
     </button>
   )
@@ -218,7 +218,7 @@ function ThemePicker({ config, update }: PickerProps) {
   ]
 
   return (
-    <PickerSection title={t('appearance.theme', {}, lang)} gridClass="grid grid-cols-3 gap-2">
+    <PickerSection title={t('appearance.theme', {}, lang)} gridClass='grid grid-cols-3 gap-2'>
       {themeOptions.map((option) => (
         <IconChoice
           key={option.id}
@@ -255,14 +255,14 @@ function AccentPicker({ config, update }: PickerProps) {
   }
 
   return (
-    <PickerSection title={t('appearance.accent', {}, lang)} gridClass="grid grid-cols-4 gap-2.5">
+    <PickerSection title={t('appearance.accent', {}, lang)} gridClass='grid grid-cols-4 gap-2.5'>
       {ACCENT_OPTIONS.map((item) => {
         const active = config.accent === item.id
         const label = t(accentKeyMap[item.id] || 'appearance.accent_cinnabar', {}, lang)
         return (
           <button
             key={item.id}
-            type="button"
+            type='button'
             onClick={() => update({ accent: item.id })}
             className={`group relative flex flex-col items-center gap-1.5 p-2 rounded-lg border text-xs transition-colors cursor-pointer ${
               active
@@ -271,12 +271,12 @@ function AccentPicker({ config, update }: PickerProps) {
             }`}
           >
             <span
-              className="accent-swatch w-5 h-5 rounded-full shadow-[var(--shadow-xs)] transition-transform group-hover:scale-110 flex items-center justify-center"
+              className='accent-swatch w-5 h-5 rounded-full shadow-[var(--shadow-xs)] transition-transform group-hover:scale-110 flex items-center justify-center'
               data-accent={item.id}
             >
-              {active && <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[var(--shadow-xs)]" />}
+              {active && <span className='w-1.5 h-1.5 rounded-full bg-white shadow-[var(--shadow-xs)]' />}
             </span>
-            <span className="text-[11px] truncate w-full text-center">{label}</span>
+            <span className='text-[11px] truncate w-full text-center'>{label}</span>
           </button>
         )
       })}
@@ -297,7 +297,7 @@ function TwoLineChoice({
 }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={onClick}
       className={`text-left p-3 rounded-lg border transition-colors cursor-pointer ${
         active
@@ -308,7 +308,7 @@ function TwoLineChoice({
       <div className={`text-xs font-semibold ${active ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'}`}>
         {title}
       </div>
-      <div className="text-[11px] text-[var(--text-tertiary)] mt-0.5">{desc}</div>
+      <div className='text-[11px] text-[var(--text-tertiary)] mt-0.5'>{desc}</div>
     </button>
   )
 }
@@ -321,7 +321,7 @@ function BackgroundPicker({ config, update }: PickerProps) {
   ]
 
   return (
-    <PickerSection title={t('appearance.background', {}, lang)} gridClass="grid grid-cols-2 gap-2">
+    <PickerSection title={t('appearance.background', {}, lang)} gridClass='grid grid-cols-2 gap-2'>
       {backgroundOptions.map((option) => (
         <TwoLineChoice
           key={option.id}
@@ -351,7 +351,7 @@ function DensityPicker({ config, update }: PickerProps) {
   ]
 
   return (
-    <PickerSection title={t('appearance.density', {}, lang)} gridClass="grid grid-cols-2 gap-2">
+    <PickerSection title={t('appearance.density', {}, lang)} gridClass='grid grid-cols-2 gap-2'>
       {densityOptions.map((option) => (
         <TwoLineChoice
           key={option.id}
@@ -369,13 +369,13 @@ function LanguagePicker({ config, update }: PickerProps) {
   const lang = config.lang
 
   return (
-    <PickerSection title={t('appearance.language', {}, lang)} gridClass="grid grid-cols-3 gap-2">
+    <PickerSection title={t('appearance.language', {}, lang)} gridClass='grid grid-cols-3 gap-2'>
       {LANGUAGE_OPTIONS.map((option) => {
         const active = config.lang === option.id
         return (
           <button
             key={option.id}
-            type="button"
+            type='button'
             onClick={() => update({ lang: option.id })}
             className={`flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
               active
@@ -383,8 +383,8 @@ function LanguagePicker({ config, update }: PickerProps) {
                 : 'border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
             }`}
           >
-            <Languages className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{option.label}</span>
+            <Languages className='w-3.5 h-3.5 shrink-0' />
+            <span className='truncate'>{option.label}</span>
           </button>
         )
       })}
@@ -402,19 +402,19 @@ function DrawerFooter({
   lang: BlogLocale
 }) {
   return (
-    <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-raised)] flex items-center justify-between shrink-0">
+    <div className='p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-raised)] flex items-center justify-between shrink-0'>
       <button
-        type="button"
+        type='button'
         onClick={onReset}
-        className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] px-2 py-1.5 rounded transition-colors cursor-pointer"
+        className='flex items-center gap-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] px-2 py-1.5 rounded transition-colors cursor-pointer'
       >
-        <RotateCcw className="w-3.5 h-3.5" />
+        <RotateCcw className='w-3.5 h-3.5' />
         <span>{t('appearance.reset', {}, lang)}</span>
       </button>
       <button
-        type="button"
+        type='button'
         onClick={onDone}
-        className="px-4 py-1.5 rounded-lg bg-[var(--accent)] text-white font-medium text-xs hover:opacity-90 transition-opacity shadow-[var(--shadow-xs)] cursor-pointer"
+        className='px-4 py-1.5 rounded-lg bg-[var(--accent)] text-white font-medium text-xs hover:opacity-90 transition-opacity shadow-[var(--shadow-xs)] cursor-pointer'
       >
         {t('appearance.done', {}, lang)}
       </button>

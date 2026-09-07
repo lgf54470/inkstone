@@ -25,8 +25,8 @@ export function PostCoverImage({
 
   if (!isValid || isError) {
     return (
-      <div className="flex size-full items-center justify-center text-[var(--text-quaternary)]">
-        <ImageIcon size={fallbackIconSize} className="opacity-40" />
+      <div className='flex size-full items-center justify-center text-[var(--text-quaternary)]'>
+        <ImageIcon size={fallbackIconSize} className='opacity-40' />
       </div>
     )
   }

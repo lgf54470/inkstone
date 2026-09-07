@@ -121,9 +121,9 @@ function TagRowBody(props: TagRowBodyProps) {
       )}
     >
       <TagToggle expanded={expanded} hasChildren={hasChildren} onToggleExpand={onToggleExpand} />
-      <button type="button" onClick={onSelectTag} className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left">
+      <button type='button' onClick={onSelectTag} className='flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left'>
         <Hash size={12} style={{ color: node.tag?.color ?? undefined }} className={cn('shrink-0', !node.tag?.color && 'text-[var(--text-quaternary)]')} />
-        <span className="truncate">{node.name}</span>
+        <span className='truncate'>{node.name}</span>
       </button>
       <FolderMoreButton moreButtonRef={moreButtonRef} onMoreClick={onMoreClick} />
     </div>
@@ -133,7 +133,7 @@ function TagRowBody(props: TagRowBodyProps) {
 function TagToggle({ expanded, hasChildren, onToggleExpand }: { expanded: boolean; hasChildren: boolean; onToggleExpand: () => void }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={(e) => {
         e.stopPropagation()
         onToggleExpand()
@@ -153,12 +153,12 @@ function FolderMoreButton({ moreButtonRef, onMoreClick }: { moreButtonRef: React
   return (
     <button
       ref={moreButtonRef}
-      type="button"
+      type='button'
       onClick={(e) => {
         e.stopPropagation()
         onMoreClick()
       }}
-      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity"
+      className='opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity'
     >
       <MoreHorizontal size={12} />
     </button>

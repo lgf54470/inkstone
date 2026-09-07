@@ -22,16 +22,16 @@ export function AttachmentRenameModal(props: AttachmentRenameModalProps) {
       open={open}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2">
-          <Pencil size={15} className="text-[var(--accent)]" />
+        <div className='flex items-center gap-2'>
+          <Pencil size={15} className='text-[var(--accent)]' />
           <span>{t('attachments.rename')}</span>
         </div>
       }
       width={440}
     >
-      <form onSubmit={form.handleSubmit} className="space-y-4 pt-1">
-        <label className="block space-y-1.5">
-          <span className="text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]">
+      <form onSubmit={form.handleSubmit} className='space-y-4 pt-1'>
+        <label className='block space-y-1.5'>
+          <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
             {t('attachments.filename')}
           </span>
           <Input autoFocus value={form.name} onChange={(e) => form.setName(e.target.value)} disabled={form.isSaving} />
@@ -42,11 +42,11 @@ export function AttachmentRenameModal(props: AttachmentRenameModalProps) {
           <span>{t('attachments.sync_note_references')}</span>
         </label>
 
-        <div className="flex items-center justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" size="sm" onClick={onClose} disabled={form.isSaving}>
+        <div className='flex items-center justify-end gap-2 pt-2'>
+          <Button type='button' variant='secondary' size='sm' onClick={onClose} disabled={form.isSaving}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" size="sm" disabled={!form.name.trim() || form.isSaving}>
+          <Button type='submit' size='sm' disabled={!form.name.trim() || form.isSaving}>
             {form.isSaving ? t('common.loading') : t('common.save')}
           </Button>
         </div>

@@ -19,7 +19,7 @@ interface EditorToolbarProps {
 function ToolButton({ label, combo, onClick, children }: { label: string; combo?: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <Tooltip label={label} combo={combo}>
-      <IconButton label={label} size="sm" onClick={onClick} className="size-9 md:size-7">
+      <IconButton label={label} size='sm' onClick={onClick} className='size-9 md:size-7'>
         {children}
       </IconButton>
     </Tooltip>
@@ -31,31 +31,31 @@ function MenuButton({ buttonRef, label, open, onClick, children, mobile }: { but
     <Tooltip label={label}>
       <button
         ref={buttonRef}
-        type="button"
+        type='button'
         onClick={onClick}
         aria-label={label}
-        aria-haspopup="menu"
+        aria-haspopup='menu'
         aria-expanded={open}
         className={cn('inline-flex shrink-0 items-center gap-0.5 rounded-[var(--r-md)] px-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]', mobile ? 'h-9' : 'h-7')}
       >
         {children}
-        <ChevronDown size={10} className="opacity-60" />
+        <ChevronDown size={10} className='opacity-60' />
       </button>
     </Tooltip>
   );
 }
 
 function Divider() {
-  return <span className="mx-1 h-4 w-px shrink-0 bg-[var(--border-subtle)]" />;
+  return <span className='mx-1 h-4 w-px shrink-0 bg-[var(--border-subtle)]' />;
 }
 
 function TextStyleButtons({ b }: { b: ToolbarBundle }) {
   return (
     <>
-      <ToolButton label={t('common.bold')} combo="mod+b" onClick={b.run(toggleBold)}><Bold size={14} /></ToolButton>
-      <ToolButton label={t('common.italic')} combo="mod+i" onClick={b.run(toggleItalic)}><Italic size={14} /></ToolButton>
-      <ToolButton label={t('common.strikethrough')} combo="mod+shift+x" onClick={b.run(toggleStrikethrough)}><Strikethrough size={14} /></ToolButton>
-      <ToolButton label={t('common.inline_code')} combo="mod+e" onClick={b.run(toggleInlineCode)}><Code size={14} /></ToolButton>
+      <ToolButton label={t('common.bold')} combo='mod+b' onClick={b.run(toggleBold)}><Bold size={14} /></ToolButton>
+      <ToolButton label={t('common.italic')} combo='mod+i' onClick={b.run(toggleItalic)}><Italic size={14} /></ToolButton>
+      <ToolButton label={t('common.strikethrough')} combo='mod+shift+x' onClick={b.run(toggleStrikethrough)}><Strikethrough size={14} /></ToolButton>
+      <ToolButton label={t('common.inline_code')} combo='mod+e' onClick={b.run(toggleInlineCode)}><Code size={14} /></ToolButton>
       <MenuButton buttonRef={b.inlineRef} label={t('workspace.more_inline_styles')} mobile={b.mobile} open={b.openMenu === 'inline'} onClick={() => b.toggleMenu('inline')}>
         <Highlighter size={14} />
       </MenuButton>
@@ -66,10 +66,10 @@ function TextStyleButtons({ b }: { b: ToolbarBundle }) {
 function ListButtons({ b }: { b: ToolbarBundle }) {
   return (
     <>
-      <ToolButton label={t('common.unordered_list')} combo="mod+shift+8" onClick={b.run(toggleBulletList)}><List size={14} /></ToolButton>
-      <ToolButton label={t('common.ordered_list')} combo="mod+shift+7" onClick={b.run(toggleOrderedList)}><ListOrdered size={14} /></ToolButton>
-      <ToolButton label={t('common.task_list')} combo="mod+shift+9" onClick={b.run(toggleTaskList)}><ListTodo size={14} /></ToolButton>
-      <ToolButton label={t('common.quote')} combo="mod+shift+." onClick={b.run(toggleQuote)}><Quote size={14} /></ToolButton>
+      <ToolButton label={t('common.unordered_list')} combo='mod+shift+8' onClick={b.run(toggleBulletList)}><List size={14} /></ToolButton>
+      <ToolButton label={t('common.ordered_list')} combo='mod+shift+7' onClick={b.run(toggleOrderedList)}><ListOrdered size={14} /></ToolButton>
+      <ToolButton label={t('common.task_list')} combo='mod+shift+9' onClick={b.run(toggleTaskList)}><ListTodo size={14} /></ToolButton>
+      <ToolButton label={t('common.quote')} combo='mod+shift+.' onClick={b.run(toggleQuote)}><Quote size={14} /></ToolButton>
       <MenuButton buttonRef={b.emojiRef} label={t('common.emoji')} mobile={b.mobile} open={b.openMenu === 'emoji'} onClick={() => b.toggleMenu('emoji')}>
         <Smile size={14} />
       </MenuButton>
@@ -125,15 +125,15 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
       <Tooltip label={t('workspace.title_748d7d')}>
         <button
           ref={b.headingRef}
-          type="button"
+          type='button'
           onClick={() => b.toggleMenu('heading')}
           aria-label={t('workspace.title_level')}
-          aria-haspopup="menu"
+          aria-haspopup='menu'
           aria-expanded={b.openMenu === 'heading'}
           className={cn('inline-flex items-center gap-0.5 rounded-[var(--r-md)] px-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]', mobile ? 'h-9' : 'h-7')}
         >
           <Heading size={14} />
-          <ChevronDown size={10} className="opacity-60" />
+          <ChevronDown size={10} className='opacity-60' />
         </button>
       </Tooltip>
 

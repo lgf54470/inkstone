@@ -58,11 +58,11 @@ function listTitle(view: ViewKind, folderId: string | null, tag: string | null, 
         if (isVirtualFolderId(folderId)) {
             const isTodo = isTodoFolderId(folderId);
             const ns = isTodo ? TODO_TREE : CALENDAR_TREE;
-            const rootLabel = isTodo ? t("sidebar.todo_folder") : t("sidebar.calendar_folder");
+            const rootLabel = isTodo ? t('sidebar.todo_folder') : t('sidebar.calendar_folder');
             const segments = virtualPathSegments(folderId, ns);
             return segments ? [rootLabel, ...segments].join(' / ') : rootLabel;
         }
-        return (folderId ? folderPathLabel(folders, folderId) : '') || t("navigation.folder");
+        return (folderId ? folderPathLabel(folders, folderId) : '') || t('navigation.folder');
     }
     if (view === 'tag')
         return `#${tag ?? ''}`;
@@ -97,10 +97,10 @@ function favoriteTemplateItems(allTemplates: NoteTemplate[]): MenuItem[] {
         .sort((a, b) => Number(b.isPinned) - Number(a.isPinned) || b.updatedAt - a.updatedAt);
     if (!favorites.length)
         return [
-            { id: 'empty', label: t("templates.no_favorite_templates"), disabled: true },
+            { id: 'empty', label: t('templates.no_favorite_templates'), disabled: true },
             {
                 id: 'open-library',
-                label: t("templates.open_template_library"),
+                label: t('templates.open_template_library'),
                 icon: <LayoutTemplate size={13}/>,
                 separatorBefore: true,
                 onSelect: () => useUi.getState().openPanel('templates'),
@@ -119,31 +119,31 @@ function listSortItems(view: ViewKind, sort: SortKey, order: SortOrder, density:
         return [
             {
                 id: 'fixed-order',
-                label: view === 'trash' ? t("notes.recently_deleted_first") : t("notes.recently_edited_first"),
+                label: view === 'trash' ? t('notes.recently_deleted_first') : t('notes.recently_edited_first'),
                 checked: true,
                 disabled: true,
             },
             {
                 id: 'density',
-                label: density === 'comfortable' ? t("notes.compact_list") : t("notes.comfortable_list"),
+                label: density === 'comfortable' ? t('notes.compact_list') : t('notes.comfortable_list'),
                 separatorBefore: true,
                 onSelect: () => useUi.getState().setDensity(density === 'comfortable' ? 'compact' : 'comfortable'),
             },
         ];
     }
     return [
-        { id: 'updated', label: t("notes.modified"), checked: sort === 'updated', onSelect: () => setSort('updated') },
-        { id: 'created', label: t("notes.created"), checked: sort === 'created', onSelect: () => setSort('created') },
-        { id: 'title', label: t("notes.title"), checked: sort === 'title', onSelect: () => setSort('title', 'asc') },
+        { id: 'updated', label: t('notes.modified'), checked: sort === 'updated', onSelect: () => setSort('updated') },
+        { id: 'created', label: t('notes.created'), checked: sort === 'created', onSelect: () => setSort('created') },
+        { id: 'title', label: t('notes.title'), checked: sort === 'title', onSelect: () => setSort('title', 'asc') },
         {
             id: 'order',
-            label: order === 'desc' ? t("notes.sort_ascending") : t("notes.sort_descending"),
+            label: order === 'desc' ? t('notes.sort_ascending') : t('notes.sort_descending'),
             separatorBefore: true,
             onSelect: () => setSort(sort, order === 'desc' ? 'asc' : 'desc'),
         },
         {
             id: 'density',
-            label: density === 'comfortable' ? t("notes.compact_list") : t("notes.comfortable_list"),
+            label: density === 'comfortable' ? t('notes.compact_list') : t('notes.comfortable_list'),
             onSelect: () => useUi.getState().setDensity(density === 'comfortable' ? 'compact' : 'comfortable'),
         },
     ];
@@ -401,7 +401,7 @@ function useListDerived(data: ReturnType<typeof useListData>, layout: ReturnType
     const sortItems = useMemo(() => listSortItems(view, sort, order, density, setSort), [view, sort, order, density, setSort]);
     const tagFilterItem: MenuItem = {
         id: 'tag-filter',
-        label: t("notes.filter_by_tags"),
+        label: t('notes.filter_by_tags'),
         icon: <Hash size={13}/>,
         checked: selectedTags.length > 0 || undefined,
         separatorBefore: true,
@@ -423,15 +423,15 @@ export function NoteList() {
     const data = useListData();
     const layout = useListLayout();
     const d = useListDerived(data, layout);
-    return (<section className="relative flex h-full min-h-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-base)]">
+    return (<section className='relative flex h-full min-h-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-base)]'>
       <NoteListHeader title={d.title} view={d.view} folderId={d.folderId} todoTagText={d.todoTagText} breakpoint={d.breakpoint} toggleNavDrawer={d.toggleNavDrawer} sortButtonRef={d.sortButtonRef} setIsSortMenuOpen={d.setIsSortMenuOpen} favButtonRef={d.favButtonRef} setIsFavMenuOpen={d.setIsFavMenuOpen} filter={d.filter} setListQuery={d.setListQuery} listRef={d.listRef} filteredIds={d.filteredIds} openNote={d.openNote} dateFilter={d.dateFilter} rangeChipRef={d.rangeChipRef} isRangeEditorOpen={d.isRangeEditorOpen} setIsRangeEditorOpen={d.setIsRangeEditorOpen} dayFilterLabel={d.dayFilterLabel} dayFilterLabelEnd={d.dayFilterLabelEnd} relativeFilter={d.relativeFilter} gapShown={d.gapShown} displayGap={d.displayGap} gapCapsuleRef={d.gapCapsuleRef} peekUsed={d.peekUsed} peekRange={d.peekRange} latestEdit={d.latestEdit} tagColors={d.tagColors} selectedTags={d.selectedTags} selectedTagsMatch={d.selectedTagsMatch} setSelectedTagsMatch={d.setSelectedTagsMatch} rememberFilters={d.rememberFilters} setRememberFilters={d.setRememberFilters} clearAllFilters={() => useUi.getState().clearAllFilters()} isEmptyingTrash={d.isEmptyingTrash} emptyTrash={d.emptyTrash} notes={d.notes}/>
 
       <NoteListBody scope={{ view: d.view, folderId: d.folderId, tag: d.tag }} groups={d.groups} title={d.title} activeNoteId={d.activeNoteId} renderedIds={d.renderedIds} onKeyDown={d.onKeyDown} listRef={d.listRef} hydrated={d.hydrated} loading={d.loading} filteredCount={d.filteredCount} filter={d.filter} dateFilter={d.dateFilter} selectedTags={d.selectedTags} latestEdit={d.latestEdit} weekFiltered={d.weekFiltered} latestWeekRange={d.latestWeekRange} applyFixedRange={d.applyFixedRange} sharedNoteIds={d.sharedNoteIds} density={d.density} tagColors={d.tagColors} selectRange={d.selectRange} renderLimit={d.renderLimit} loadMoreRef={d.loadMoreRef}/>
 
       <BulkBar />
 
-      <Menu anchor={d.sortButtonRef} open={d.isSortMenuOpen} onClose={() => d.setIsSortMenuOpen(false)} items={[...d.sortItems, d.tagFilterItem]} align="end"/>
-      <Menu anchor={d.favButtonRef} open={d.isFavMenuOpen} onClose={() => d.setIsFavMenuOpen(false)} items={d.favItems} align="end" width={220}/>
+      <Menu anchor={d.sortButtonRef} open={d.isSortMenuOpen} onClose={() => d.setIsSortMenuOpen(false)} items={[...d.sortItems, d.tagFilterItem]} align='end'/>
+      <Menu anchor={d.favButtonRef} open={d.isFavMenuOpen} onClose={() => d.setIsFavMenuOpen(false)} items={d.favItems} align='end' width={220}/>
       <TagFilterPopover anchor={d.sortButtonRef} open={d.isTagFilterOpen} onClose={() => d.setIsTagFilterOpen(false)}/>
       {d.dateFilter && <DateRangePopover anchor={d.rangeChipRef} open={d.isRangeEditorOpen} onClose={() => d.setIsRangeEditorOpen(false)} range={d.dateFilter} onChange={d.applyFixedRange} relative={d.relativeFilter} onApplyRelative={(value) => useUi.getState().setRelativeFilter(value)}/>}
     </section>);

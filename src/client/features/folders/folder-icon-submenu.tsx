@@ -22,7 +22,7 @@ function firstCharacter(value: string): string | null {
 function NoIconButton({ active, onSelect }: { active: boolean; onSelect: (icon: string | null) => void }) {
   return (
     <button
-      type="button"
+      type='button'
       aria-label={t('folders.no_icon')}
       title={t('folders.no_icon')}
       aria-pressed={active}
@@ -50,7 +50,7 @@ function IconChoiceButton({
 }) {
   return (
     <button
-      type="button"
+      type='button'
       aria-label={icon}
       title={icon}
       aria-pressed={active}
@@ -69,7 +69,7 @@ function IconChoiceButton({
 
 function IconChoiceGrid({ folder, onSelectIcon }: { folder: FolderIconLike; onSelectIcon: (icon: string | null) => void }) {
   return (
-    <div className="grid grid-cols-6 gap-1.5 px-0.5">
+    <div className='grid grid-cols-6 gap-1.5 px-0.5'>
       <NoIconButton active={!folder.icon} onSelect={onSelectIcon} />
       {COMMON_FOLDER_ICONS.map((icon) => (
         <IconChoiceButton key={icon} icon={icon} active={folder.icon === icon} onSelect={onSelectIcon} />
@@ -92,18 +92,18 @@ function CustomEmojiField({ onSelectIcon }: { onSelectIcon: (icon: string | null
         e.preventDefault()
         pickFirstCharacter(value)
       }}
-      className="relative flex items-center px-0.5"
+      className='relative flex items-center px-0.5'
     >
-      <Smile size={13} className="pointer-events-none absolute left-2 text-[var(--text-quaternary)]" />
+      <Smile size={13} className='pointer-events-none absolute left-2 text-[var(--text-quaternary)]' />
       <input
-        type="text"
+        type='text'
         value={value}
         onChange={(e) => {
           setValue(e.target.value)
           pickFirstCharacter(e.target.value)
         }}
         placeholder={t('folders.custom_icon_placeholder')}
-        className="h-7 w-full rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-6 pr-2 text-[length:var(--text-12)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] outline-none focus:border-[var(--accent)]"
+        className='h-7 w-full rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-6 pr-2 text-[length:var(--text-12)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] outline-none focus:border-[var(--accent)]'
       />
     </form>
   )
@@ -118,14 +118,14 @@ export function FolderIconSubmenu({
 }) {
   return (
     <div
-      className="w-[224px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)] outline-none"
+      className='w-[224px] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)] outline-none'
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="px-1 pb-2 pt-0.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]">
+      <div className='px-1 pb-2 pt-0.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
         {t('folders.icon')}
       </div>
       <IconChoiceGrid folder={folder} onSelectIcon={onSelectIcon} />
-      <div role="separator" className="my-2 h-px bg-[var(--border-subtle)]" />
+      <div role='separator' className='my-2 h-px bg-[var(--border-subtle)]' />
       <CustomEmojiField onSelectIcon={onSelectIcon} />
     </div>
   )

@@ -1,8 +1,8 @@
-import { extractAttachmentIds } from "@shared/markdown-utils";
-import type { Attachment } from "@shared/types";
-import { getMeta, setMeta } from "../../db/metadata";
-import { type AttachmentObjectStorage } from "../../attachments/keys";
-import { ApiError } from "../../lib/errors";
+import { extractAttachmentIds } from '@shared/markdown-utils';
+import type { Attachment } from '@shared/types';
+import { getMeta, setMeta } from '../../db/metadata';
+import { type AttachmentObjectStorage } from '../../attachments/keys';
+import { ApiError } from '../../lib/errors';
 
 export interface AttachmentRow {
   id: string

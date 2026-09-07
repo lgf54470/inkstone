@@ -1,10 +1,10 @@
-import { hasAttachmentStorage, isAttachmentObjectStorage, readAttachmentObjectStream } from "../../attachments/backend";
-import { attachmentObjectKey, legacyAttachmentObjectKey } from "../../attachments/keys";
-import { NOTE_COLUMNS_FULL, type NoteRow } from "../../db/rows";
-import type { Env } from "../../env";
-import { sha256Hex } from "../../lib/encoding";
-import { safeAttachmentMime } from "../../lib/image";
-import { cancelStreamBestEffort } from "../../lib/streams";
+import { hasAttachmentStorage, isAttachmentObjectStorage, readAttachmentObjectStream } from '../../attachments/backend';
+import { attachmentObjectKey, legacyAttachmentObjectKey } from '../../attachments/keys';
+import { NOTE_COLUMNS_FULL, type NoteRow } from '../../db/rows';
+import type { Env } from '../../env';
+import { sha256Hex } from '../../lib/encoding';
+import { safeAttachmentMime } from '../../lib/image';
+import { cancelStreamBestEffort } from '../../lib/streams';
 // Snapshot payload types live here (not in build.ts) because build.ts imports
 // the stream helpers from this module; owning the shared shapes here keeps the
 // pair free of an import cycle.

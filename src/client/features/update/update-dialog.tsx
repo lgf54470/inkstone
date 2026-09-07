@@ -26,15 +26,15 @@ export function UpdateDialog() {
       width={500}
       footer={
         <>
-          <Button size="sm" variant="ghost" onClick={ignoreCurrentVersion}>
+          <Button size='sm' variant='ghost' onClick={ignoreCurrentVersion}>
             {t('settings.do_not_remind_this_version')}
           </Button>
-          <Button size="sm" variant="secondary" data-autofocus onClick={remindLater}>
+          <Button size='sm' variant='secondary' data-autofocus onClick={remindLater}>
             {t('settings.remind_me_next_time')}
           </Button>
           <Button
-            size="sm"
-            variant="primary"
+            size='sm'
+            variant='primary'
             icon={<ExternalLink size={13} />}
             onClick={openUpdatePage}
           >
@@ -43,9 +43,9 @@ export function UpdateDialog() {
         </>
       }
     >
-      <div className="flex items-start gap-3 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3">
-        <GitFork size={17} className="mt-0.5 shrink-0 text-[var(--accent)]" />
-        <p className="text-[length:var(--text-12)] leading-relaxed text-[var(--text-secondary)]">
+      <div className='flex items-start gap-3 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3'>
+        <GitFork size={17} className='mt-0.5 shrink-0 text-[var(--accent)]' />
+        <p className='text-[length:var(--text-12)] leading-relaxed text-[var(--text-secondary)]'>
           {t('settings.update_manual_fork_hint')}
         </p>
       </div>

@@ -1,5 +1,5 @@
-import type { BlogComment, BlogCommentStatus, BlogPost } from "@shared/types";
-import type { BlogCommentModerationRow, BlogPostRow } from "../../db/rows";
+import type { BlogComment, BlogCommentStatus, BlogPost } from '@shared/types';
+import type { BlogCommentModerationRow, BlogPostRow } from '../../db/rows';
 
 export function toBlogPost(row: BlogPostRow & { comments_count?: number }): BlogPost {
   return {

@@ -1,15 +1,15 @@
-import { Hono } from "hono";
-import { countText, deriveExcerpt, extractTags, normalizeLinkKey } from "@shared/markdown-utils";
-import { utf8ByteLength } from "@shared/text-utils";
-import type { AppBindings } from "../../env";
-import { NOTE_COLUMNS_FULL, splitTags, toNote, type NoteRow } from "../../db/rows";
-import { buildNoteDerivedStatements, LINK_TARGET_SUBQUERY, shiftSqlPlaceholders } from "../../db/writes";
-import { sha256Hex } from "../../lib/encoding";
-import { ApiError } from "../../lib/errors";
-import { newId } from "../../lib/id";
-import { broadcastCursor, scheduleFtsDrain } from "../../lib/notify";
-import { assertContentSize, JSON_BODY_LIMITS, readJsonValidated } from "../../lib/request";
-import { enqueueNoteIndex } from "../../mcp/ai-search";
+import { Hono } from 'hono';
+import { countText, deriveExcerpt, extractTags, normalizeLinkKey } from '@shared/markdown-utils';
+import { utf8ByteLength } from '@shared/text-utils';
+import type { AppBindings } from '../../env';
+import { NOTE_COLUMNS_FULL, splitTags, toNote, type NoteRow } from '../../db/rows';
+import { buildNoteDerivedStatements, LINK_TARGET_SUBQUERY, shiftSqlPlaceholders } from '../../db/writes';
+import { sha256Hex } from '../../lib/encoding';
+import { ApiError } from '../../lib/errors';
+import { newId } from '../../lib/id';
+import { broadcastCursor, scheduleFtsDrain } from '../../lib/notify';
+import { assertContentSize, JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request';
+import { enqueueNoteIndex } from '../../mcp/ai-search';
 import {
   SNAPSHOT_INTERVAL_MS,
   SNAPSHOT_DIFF_THRESHOLD,

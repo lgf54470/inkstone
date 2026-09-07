@@ -39,7 +39,7 @@ function TagsManagerPanel({
   const [query, setQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   return (
-    <div className="space-y-3 pt-1">
+    <div className='space-y-3 pt-1'>
       <TagsSearchRow
         tags={tags}
         query={query}
@@ -68,14 +68,14 @@ function TagsSearchRow({
 }) {
   const unusedTags = useMemo(() => tags.filter((tag) => tag.count === 0), [tags]);
   return (
-    <div className="flex items-center gap-2">
-      <div className="relative flex-1">
+    <div className='flex items-center gap-2'>
+      <div className='relative flex-1'>
         <Search
           size={14}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-quaternary)]"
+          className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-quaternary)]'
         />
         <input
-          type="text"
+          type='text'
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder={t('notes.tag_filter_search')}
@@ -85,10 +85,10 @@ function TagsSearchRow({
       {unusedTags.length > 0 && !isCreating && (
         <Tooltip label={t('tags.clean_unused')}>
           <Button
-            variant="secondary"
-            size="sm"
+            variant='secondary'
+            size='sm'
             onClick={() => void cleanUnusedTags(unusedTags)}
-            className="h-8 shrink-0 text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+            className='h-8 shrink-0 text-[var(--danger)] hover:bg-[var(--danger-soft)]'
           >
             {t('tags.clean_unused_value0', { value0: unusedTags.length })}
           </Button>
@@ -97,11 +97,11 @@ function TagsSearchRow({
       {!isCreating && (
         <Tooltip label={t('tags.new')}>
           <Button
-            variant="primary"
-            size="sm"
-            icon={<Plus size={14} className="shrink-0" />}
+            variant='primary'
+            size='sm'
+            icon={<Plus size={14} className='shrink-0' />}
             onClick={onToggleCreating}
-            className="h-8 shrink-0"
+            className='h-8 shrink-0'
           >
             {t('tags.new')}
           </Button>
@@ -139,12 +139,12 @@ function TagCreateForm({ onDone }: { onDone: () => void }) {
   return (
     <form
       onSubmit={submit}
-      className="flex items-center gap-2 rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-soft)]/25 p-2"
+      className='flex items-center gap-2 rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-soft)]/25 p-2'
     >
-      <Hash size={16} className="ml-1 shrink-0 text-[var(--accent)]" />
+      <Hash size={16} className='ml-1 shrink-0 text-[var(--accent)]' />
       <input
         autoFocus
-        type="text"
+        type='text'
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
@@ -154,16 +154,16 @@ function TagCreateForm({ onDone }: { onDone: () => void }) {
         className="h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[length:var(--text-12\\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
       />
       <Button
-        variant="primary"
-        size="sm"
-        type="submit"
+        variant='primary'
+        size='sm'
+        type='submit'
         disabled={!name.trim()}
-        className="h-8 shrink-0"
+        className='h-8 shrink-0'
       >
         {t('tags.create')}
       </Button>
       <Tooltip label={t('common.cancel')}>
-        <IconButton label={t('common.cancel')} size="sm" type="button" onClick={onDone}>
+        <IconButton label={t('common.cancel')} size='sm' type='button' onClick={onDone}>
           <X size={14} />
         </IconButton>
       </Tooltip>
@@ -192,7 +192,7 @@ function TagManageList({
       });
   }, [tags, query]);
   return (
-    <div className="max-h-[420px] overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50">
+    <div className='max-h-[420px] overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>
       {choices.map((tag) => (
         <TagManageRow key={tag.id} tag={tag} onOpenTag={onOpenTag} />
       ))}

@@ -32,9 +32,9 @@ export function AttachmentDriveModal(props: AttachmentDriveModalProps) {
 
   return (
     <>
-      <Modal open={open} onClose={onClose} width={1300} className="h-[82vh] min-h-[560px] max-h-[860px] p-0 overflow-hidden flex flex-col" bodyClassName="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+      <Modal open={open} onClose={onClose} width={1300} className='h-[82vh] min-h-[560px] max-h-[860px] p-0 overflow-hidden flex flex-col' bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'>
         <DriveHeader onClose={onClose} />
-        <div className="flex min-h-0 flex-1">
+        <div className='flex min-h-0 flex-1'>
           <DriveSidebar b={b} />
           <MainDropZone b={b} onInsertFile={onInsertFile} />
           <DriveInspector b={b} onInsertFile={onInsertFile} />
@@ -100,14 +100,14 @@ function DriveDialogs({ b }: { b: DriveBundle }) {
 
 function DriveHeader({ onClose }: { onClose: () => void }) {
   return (
-    <div className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]">
-      <div className="flex items-center gap-2">
-        <HardDrive size={16} className="text-[var(--accent)]" />
-        <h2 className="text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">
+    <div className='flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]'>
+      <div className='flex items-center gap-2'>
+        <HardDrive size={16} className='text-[var(--accent)]' />
+        <h2 className='text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
           {t('attachments.drive_title')}
         </h2>
       </div>
-      <IconButton label={t('common.close')} size="sm" onClick={onClose}>
+      <IconButton label={t('common.close')} size='sm' onClick={onClose}>
         <X size={15} />
       </IconButton>
     </div>
@@ -139,14 +139,14 @@ function MainDropZone({ b, onInsertFile }: { b: DriveBundle; onInsertFile?: (fil
       <DriveToolbar b={b} />
       <input
         ref={b.fileInputRef}
-        type="file"
+        type='file'
         multiple
-        className="hidden"
+        className='hidden'
         onChange={(e) => {
           if (e.target.files) void b.handleUploadFiles(e.target.files)
         }}
       />
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className='min-h-0 flex-1 overflow-y-auto'>
         <DriveContent b={b} onInsertFile={onInsertFile} />
       </div>
       <AttachmentBatchBar
@@ -216,19 +216,19 @@ function DriveDashboard({ b }: { b: DriveBundle }) {
 
 function LoadingState() {
   return (
-    <div className="flex h-full items-center justify-center py-20 text-[var(--text-tertiary)]">
-      <Loader2 size={24} className="animate-spin text-[var(--accent)]" />
+    <div className='flex h-full items-center justify-center py-20 text-[var(--text-tertiary)]'>
+      <Loader2 size={24} className='animate-spin text-[var(--accent)]' />
     </div>
   )
 }
 
 function EmptyState({ hasSearch }: { hasSearch: boolean }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center py-24 text-center px-4">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-sunken)] text-[var(--text-quaternary)] mb-3">
+    <div className='flex h-full flex-col items-center justify-center py-24 text-center px-4'>
+      <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-sunken)] text-[var(--text-quaternary)] mb-3'>
         <Upload size={24} />
       </div>
-      <p className="text-[length:var(--text-13)] font-medium text-[var(--text-secondary)] max-w-sm">
+      <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)] max-w-sm'>
         {hasSearch ? t('attachments.none_match') : t('attachments.drag_drop_hint')}
       </p>
     </div>

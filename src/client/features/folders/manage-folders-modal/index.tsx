@@ -82,7 +82,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
   return (
     <>
       <Modal open onClose={onClose} title={t('folders.manage_folders')} description={t('folders.manage_description')} width={640}>
-        <div className="space-y-3 pt-1">
+        <div className='space-y-3 pt-1'>
           <FolderControlsBar query={query} onQueryChange={setQuery} emptyFolders={emptyFolders} isCreating={isCreating} onClean={handleCleanEmpty} onAdd={() => { setIsCreating(true); setNewFolderName(''); }} />
           {isCreating && <FolderCreateForm value={newFolderName} onChange={setNewFolderName} onSubmit={handleCreate} onCancel={() => setIsCreating(false)} />}
           <FolderRowList choices={choices} folderCounts={folderCounts} folderTemplates={folderTemplates} templates={templates} renamingId={renamingId} inboxFolderId={inboxFolderId} colorPickerFolderId={colorPickerFolderId} iconPickerFolderId={iconPickerFolderId} renameValue={renameValue} query={query} actions={actions} />

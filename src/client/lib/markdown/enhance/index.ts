@@ -9,30 +9,30 @@ import { showMermaidSource } from './mermaid';
 import { renderChartJs } from './chart';
 
 interface EnhanceOptions {
-    math: boolean;
-    mermaid: boolean;
-    dark: boolean;
-    codeBlockCollapseLines?: number;
+  math: boolean;
+  mermaid: boolean;
+  dark: boolean;
+  codeBlockCollapseLines?: number;
 }
 export async function enhancePreview(root: HTMLElement, options: EnhanceOptions): Promise<void> {
-    if (options.mermaid) {
-        hydrateCachedMermaid(root, options.dark);
-        const hasPendingDiagram = [...root.querySelectorAll<HTMLElement>('[data-mermaid]')].some((node) => node.dataset.rendered !== currentSignature(node, options.dark));
-        if (hasPendingDiagram)
-            // Pre-warm is best-effort; the on-demand loader retries when a diagram renders.
-            void getMermaid().catch(() => { });
-    }
-    else {
-        showMermaidSource(root);
-    }
-    if (!options.math)
-        showMathSource(root);
-    await Promise.allSettled([
-        highlightCodeBlocks(root),
-        options.math ? renderMath(root) : Promise.resolve(),
-        root.isConnected ? renderChartJs(root, options.dark) : Promise.resolve(),
-    ]);
-    configureCodeBlockCollapsing(root, options.codeBlockCollapseLines ?? 24);
+  if (options.mermaid) {
+    hydrateCachedMermaid(root, options.dark);
+    const hasPendingDiagram = [...root.querySelectorAll<HTMLElement>('[data-mermaid]')].some((node) => node.dataset.rendered !== currentSignature(node, options.dark));
+    if (hasPendingDiagram)
+      // Pre-warm is best-effort; the on-demand loader retries when a diagram renders.
+      void getMermaid().catch(() => { });
+  }
+  else {
+    showMermaidSource(root);
+  }
+  if (!options.math)
+    showMathSource(root);
+  await Promise.allSettled([
+    highlightCodeBlocks(root),
+    options.math ? renderMath(root) : Promise.resolve(),
+    root.isConnected ? renderChartJs(root, options.dark) : Promise.resolve(),
+  ]);
+  configureCodeBlockCollapsing(root, options.codeBlockCollapseLines ?? 24);
 }
 export { decorateCodeBlock } from './code';
 export { configureCodeBlockCollapsing } from './code';

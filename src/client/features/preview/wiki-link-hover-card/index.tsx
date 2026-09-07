@@ -13,11 +13,11 @@ export type { WikiLinkHoverCardState, PinnedNoteCardState } from '../../../types
 function CardHeaderButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
   return (
     <button
-      type="button"
+      type='button'
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+      className='flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
     >
       {children}
     </button>
@@ -43,14 +43,14 @@ function CardHeader({ b }: { b: WikiLinkHoverCardBundle }) {
       {pinned && stackCount > 1 && stackFront && (
         <button
           ref={stackButtonRef}
-          type="button"
+          type='button'
           aria-label={t('preview.pinned_windows')}
           title={t('preview.pinned_windows')}
           onClick={() => setIsStackMenuOpen((value) => !value)}
-          className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+          className='relative flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         >
           <Layers size={13} />
-          <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--accent)] px-0.5 text-[length:var(--text-9)] font-semibold text-[var(--bg-overlay)]">
+          <span className='absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--accent)] px-0.5 text-[length:var(--text-9)] font-semibold text-[var(--bg-overlay)]'>
             {stackCount}
           </span>
         </button>
@@ -78,21 +78,21 @@ function CardBody({ b }: { b: WikiLinkHoverCardBundle }) {
   const { status, htmlObj, isTruncated, pinned, pinnedRect, backlinks, openBacklink } = b
   if (status === 'loading') {
     return (
-      <div className="flex h-24 items-center justify-center text-[var(--text-quaternary)]">
-        <Loader2 size={18} className="animate-spin" />
+      <div className='flex h-24 items-center justify-center text-[var(--text-quaternary)]'>
+        <Loader2 size={18} className='animate-spin' />
       </div>
     )
   }
   if (status === 'missing') {
     return (
-      <div className="px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-tertiary)]">
+      <div className='px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
         {t('preview.note_does_not_exist')}
       </div>
     )
   }
   if (status === 'error') {
     return (
-      <div className="px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-tertiary)]">
+      <div className='px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
         {t('preview.could_not_load_note')}
       </div>
     )
@@ -105,10 +105,10 @@ function CardBody({ b }: { b: WikiLinkHoverCardBundle }) {
           pinned && pinnedRect.height ? 'flex-1' : 'max-h-[300px]',
         )}
       >
-        <div className="ink-prose" dangerouslySetInnerHTML={htmlObj} />
+        <div className='ink-prose' dangerouslySetInnerHTML={htmlObj} />
       </div>
       {isTruncated && (
-        <div className="border-t border-[var(--border-subtle)] px-3 py-1.5 text-center text-[length:var(--text-11)] tracking-widest text-[var(--text-quaternary)]">
+        <div className='border-t border-[var(--border-subtle)] px-3 py-1.5 text-center text-[length:var(--text-11)] tracking-widest text-[var(--text-quaternary)]'>
           ···
         </div>
       )}
@@ -125,7 +125,7 @@ function StackMenu({ b }: { b: WikiLinkHoverCardBundle }) {
       open={isStackMenuOpen}
       onClose={() => setIsStackMenuOpen(false)}
       items={stackItems ?? []}
-      align="end"
+      align='end'
       width={220}
       zIndex={Z_INDEX.top}
       label={t('preview.pinned_windows')}
@@ -139,9 +139,9 @@ function ResizeHandle({ onPointerDown }: { onPointerDown: (event: React.PointerE
       aria-label={t('preview.resize_card')}
       title={t('preview.resize_card')}
       onPointerDown={onPointerDown}
-      className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize touch-none"
+      className='absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize touch-none'
     >
-      <div className="absolute right-1 bottom-1 h-2 w-2 rounded-sm border-r-2 border-b-2 border-[var(--border-strong)]" />
+      <div className='absolute right-1 bottom-1 h-2 w-2 rounded-sm border-r-2 border-b-2 border-[var(--border-strong)]' />
     </div>
   )
 }

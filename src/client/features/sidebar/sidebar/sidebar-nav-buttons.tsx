@@ -49,7 +49,7 @@ export function BottomNavButton({
 
   return (
     <button
-      type="button"
+      type='button'
       aria-current={active ? 'page' : undefined}
       onClick={onClick}
       onDragOver={(e) => {
@@ -103,7 +103,7 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
     const patchNote = useNotes((s) => s.patchNote);
     const deleteNote = useNotes((s) => s.deleteNote);
     const acceptsDrop = view === 'unfiled' || view === 'starred' || view === 'archived' || view === 'trash';
-    return (<button type="button" aria-current={active ? 'page' : undefined} onClick={() => onSelect(view)} onDragOver={(e) => {
+    return (<button type='button' aria-current={active ? 'page' : undefined} onClick={() => onSelect(view)} onDragOver={(e) => {
             if (!acceptsDrop || !isNoteDragEvent(e))
                 return;
             e.preventDefault();
@@ -124,7 +124,7 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
         {icon}
       </span>
       <span className="min-w-0 flex-1 truncate text-[length:var(--text-12\.5)] font-medium">{label}</span>
-      {count != null && count > 0 && (<span className="shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)]">{count}</span>)}
+      {count != null && count > 0 && (<span className='shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)]'>{count}</span>)}
     </button>);
 }
 

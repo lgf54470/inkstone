@@ -19,19 +19,19 @@ export const ActivityCalendarMemo = memo(ActivityCalendar);
 
 /** Reusable calendar + activity heatmap: navigable month grid, yearly month columns, and a GitHub-style weekly strip, with optional per-day note lists. */
 export function ActivityCalendar(props: ActivityCalendarProps): JSX.Element {
-    const cal = useActivityCalendar(props);
-    return (<div ref={cal.rootRef} onKeyDown={cal.onRootKeyDown}>
-        <CalendarHeader
-            view={cal.view}
-            onViewChange={cal.onViewChange}
-            isCurrentMonth={cal.header.isCurrentMonth}
-            isCurrentYear={cal.header.isCurrentYear}
-            shiftMonth={cal.header.shiftMonth}
-            shiftYear={cal.header.shiftYear}
-            jumpToCurrentMonth={cal.header.jumpToCurrentMonth}
-            jumpToCurrentYear={cal.header.jumpToCurrentYear}
-        />
-        {cal.view === 'month' ? <MonthView {...cal.monthView} /> : cal.view === 'year' ? <YearView {...cal.yearView} /> : <WeeksView {...cal.weekView} />}
-        <HeatLegend />
-    </div>);
+  const cal = useActivityCalendar(props);
+  return (<div ref={cal.rootRef} onKeyDown={cal.onRootKeyDown}>
+    <CalendarHeader
+      view={cal.view}
+      onViewChange={cal.onViewChange}
+      isCurrentMonth={cal.header.isCurrentMonth}
+      isCurrentYear={cal.header.isCurrentYear}
+      shiftMonth={cal.header.shiftMonth}
+      shiftYear={cal.header.shiftYear}
+      jumpToCurrentMonth={cal.header.jumpToCurrentMonth}
+      jumpToCurrentYear={cal.header.jumpToCurrentYear}
+    />
+    {cal.view === 'month' ? <MonthView {...cal.monthView} /> : cal.view === 'year' ? <YearView {...cal.yearView} /> : <WeeksView {...cal.weekView} />}
+    <HeatLegend />
+  </div>);
 }

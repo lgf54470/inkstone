@@ -19,7 +19,7 @@ export const DESTRUCTIVE_UNDO_TOAST_MS = 8000;
 
 /** Batch toast title for a count-aware mutation (e.g. "Moved 3 notes"). */
 export function batchPatchTitle(key: MessageKey, count: number): string {
-    return t("notes.value0_value1_notes", { value0: t(key), value1: count });
+    return t('notes.value0_value1_notes', { value0: t(key), value1: count });
 }
 
 

@@ -57,7 +57,7 @@ function RowActionButton({ label, icon, className, onClick }: {
 }) {
   return (
     <Tooltip label={label}>
-      <IconButton label={label} size="sm" className={className} onClick={onClick}>
+      <IconButton label={label} size='sm' className={className} onClick={onClick}>
         {icon}
       </IconButton>
     </Tooltip>
@@ -73,14 +73,14 @@ export function FolderControlsBar({ query, onQueryChange, emptyFolders, isCreati
   onAdd: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="relative flex-1">
+    <div className='flex items-center gap-2'>
+      <div className='relative flex-1'>
         <Search
           size={14}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-quaternary)]"
+          className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-quaternary)]'
         />
         <input
-          type="text"
+          type='text'
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder={t('folders.search')}
@@ -90,10 +90,10 @@ export function FolderControlsBar({ query, onQueryChange, emptyFolders, isCreati
       {emptyFolders.length > 0 && !isCreating && (
         <Tooltip label={t('folders.clean_empty')}>
           <Button
-            variant="secondary"
-            size="sm"
+            variant='secondary'
+            size='sm'
             onClick={() => void onClean()}
-            className="h-8 shrink-0 text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+            className='h-8 shrink-0 text-[var(--danger)] hover:bg-[var(--danger-soft)]'
           >
             {t('folders.clean_empty_value0', { value0: emptyFolders.length })}
           </Button>
@@ -102,11 +102,11 @@ export function FolderControlsBar({ query, onQueryChange, emptyFolders, isCreati
       {!isCreating && (
         <Tooltip label={t('common.new_folder')}>
           <Button
-            variant="primary"
-            size="sm"
-            icon={<FolderPlus size={14} className="shrink-0" />}
+            variant='primary'
+            size='sm'
+            icon={<FolderPlus size={14} className='shrink-0' />}
             onClick={onAdd}
-            className="h-8 shrink-0"
+            className='h-8 shrink-0'
           >
             {t('common.new_folder')}
           </Button>
@@ -125,12 +125,12 @@ export function FolderCreateForm({ value, onChange, onSubmit, onCancel }: {
   return (
     <form
       onSubmit={onSubmit}
-      className="flex items-center gap-2 rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-soft)]/25 p-2"
+      className='flex items-center gap-2 rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-soft)]/25 p-2'
     >
-      <FolderClosed size={16} className="ml-1 text-[var(--accent)] shrink-0" />
+      <FolderClosed size={16} className='ml-1 text-[var(--accent)] shrink-0' />
       <input
         autoFocus
-        type="text"
+        type='text'
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
@@ -140,19 +140,19 @@ export function FolderCreateForm({ value, onChange, onSubmit, onCancel }: {
         className="h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
       />
       <Button
-        variant="primary"
-        size="sm"
-        type="submit"
+        variant='primary'
+        size='sm'
+        type='submit'
         disabled={!value.trim()}
-        className="h-8 shrink-0"
+        className='h-8 shrink-0'
       >
         {t('folders.create_new')}
       </Button>
       <Tooltip label={t('common.cancel')}>
         <IconButton
           label={t('common.cancel')}
-          size="sm"
-          type="button"
+          size='sm'
+          type='button'
           onClick={onCancel}
         >
           <X size={14} />
@@ -177,10 +177,10 @@ function FolderRenameInput({ value, onChange, onSave, onCancel }: {
   onCancel: () => void;
 }) {
   return (
-    <div className="flex flex-1 items-center gap-1.5">
+    <div className='flex flex-1 items-center gap-1.5'>
       <input
         autoFocus
-        type="text"
+        type='text'
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
@@ -192,16 +192,16 @@ function FolderRenameInput({ value, onChange, onSave, onCancel }: {
       <Tooltip label={t('common.save')}>
         <IconButton
           label={t('common.save')}
-          size="sm"
+          size='sm'
           onClick={onSave}
         >
-          <Check size={13} className="text-[var(--accent)]" />
+          <Check size={13} className='text-[var(--accent)]' />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('common.cancel')}>
         <IconButton
           label={t('common.cancel')}
-          size="sm"
+          size='sm'
           onClick={onCancel}
         >
           <X size={13} />
@@ -218,9 +218,9 @@ function FolderNameDisplay({ path, isInbox, boundTemplate, count }: {
   count: number;
 }) {
   return (
-    <div className="min-w-0 flex-1">
-      <div className="flex items-center gap-2">
-        <span className="truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
+    <div className='min-w-0 flex-1'>
+      <div className='flex items-center gap-2'>
+        <span className='truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
           {path}
         </span>
         {isInbox && (
@@ -235,10 +235,10 @@ function FolderNameDisplay({ path, isInbox, boundTemplate, count }: {
             className="inline-flex items-center gap-1 rounded bg-[var(--accent-soft)]/60 px-1.5 py-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--accent)]"
           >
             <LayoutTemplate size={10} />
-            <span className="max-w-[100px] truncate">{boundTemplate.name}</span>
+            <span className='max-w-[100px] truncate'>{boundTemplate.name}</span>
           </span>
         )}
-        <span className="shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)]">
+        <span className='shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
           {t('folders.notes_count', { value0: count })}
         </span>
       </div>
@@ -254,7 +254,7 @@ function FolderActionButtons({ folder, isInbox, isColorPickerOpen, boundTemplate
   actions: FolderRowActions;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-0.5 opacity-85 group-hover:opacity-100">
+    <div className='flex shrink-0 items-center gap-0.5 opacity-85 group-hover:opacity-100'>
       <RowActionButton
         label={isInbox ? t('folders.unset_inbox') : t('folders.set_as_inbox')}
         icon={<Inbox size={13} />}
@@ -291,7 +291,7 @@ function FolderActionButtons({ folder, isInbox, isColorPickerOpen, boundTemplate
       <RowActionButton
         label={t('common.delete')}
         icon={<Trash2 size={13} />}
-        className="text-[var(--text-tertiary)] hover:text-[var(--danger)]"
+        className='text-[var(--text-tertiary)] hover:text-[var(--danger)]'
         onClick={() => actions.onDelete(folder)}
       />
     </div>
@@ -313,9 +313,9 @@ interface FolderRowProps {
 
 function FolderRow({ folder, path, count, isRenaming, isInbox, isColorPickerOpen, isIconPickerOpen, boundTemplate, renameValue, actions }: FolderRowProps) {
   return (
-    <div className="py-0.5">
-      <div className="group flex items-center justify-between gap-3 rounded-[var(--r-md)] p-2 transition-colors hover:bg-[var(--bg-hover)]">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+    <div className='py-0.5'>
+      <div className='group flex items-center justify-between gap-3 rounded-[var(--r-md)] p-2 transition-colors hover:bg-[var(--bg-hover)]'>
+        <div className='flex min-w-0 flex-1 items-center gap-2.5'>
           <FolderIconBadge folder={folder} isOpen={actions.isIconPickerOpen(folder)} onToggle={() => actions.onToggleIconPicker(folder.id)} />
           {isRenaming ? (
             <FolderRenameInput value={renameValue} onChange={actions.onRenameChange} onSave={() => actions.onSaveRename(folder.id)} onCancel={actions.onCancelRename} />
@@ -351,7 +351,7 @@ export function FolderRowList({ choices, folderCounts, folderTemplates, template
   actions: FolderRowActions;
 }) {
   return (
-    <div className="max-h-[420px] overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50">
+    <div className='max-h-[420px] overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>
       {choices.map(({ folder, path }) => {
         const count = folderCounts.get(folder.id) ?? 0;
         const boundTemplateId = folderTemplates[folder.id];

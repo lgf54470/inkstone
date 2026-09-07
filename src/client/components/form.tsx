@@ -40,9 +40,9 @@ export function Input({
   const accessibleInvalid = invalid ? true : ariaInvalid
   if (leading || trailing) {
     return (
-      <div className="relative flex items-center">
+      <div className='relative flex items-center'>
         {leading && (
-          <span className="pointer-events-none absolute left-2.5 text-[var(--text-quaternary)]">
+          <span className='pointer-events-none absolute left-2.5 text-[var(--text-quaternary)]'>
             {leading}
           </span>
         )}
@@ -58,7 +58,7 @@ export function Input({
             className,
           )}
         />
-        {trailing && <span className="absolute right-2.5 flex items-center">{trailing}</span>}
+        {trailing && <span className='absolute right-2.5 flex items-center'>{trailing}</span>}
       </div>
     )
   }
@@ -84,7 +84,7 @@ export function Select({
   ...rest
 }: SelectHTMLAttributes<HTMLSelectElement> & { ref?: Ref<HTMLSelectElement> }) {
   return (
-    <div className="relative">
+    <div className='relative'>
       <select
         {...rest}
         className={cn(FIELD_BASE, 'h-11 cursor-pointer appearance-none pr-7 md:h-[34px]', className)}
@@ -92,19 +92,19 @@ export function Select({
         {children}
       </select>
       <svg
-        viewBox="0 0 12 12"
-        width="11"
-        height="11"
-        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
-        aria-hidden="true"
+        viewBox='0 0 12 12'
+        width='11'
+        height='11'
+        className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]'
+        aria-hidden='true'
       >
         <path
-          d="M2.5 4.5 6 8l3.5-3.5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          d='M2.5 4.5 6 8l3.5-3.5'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='1.4'
+          strokeLinecap='round'
+          strokeLinejoin='round'
         />
       </svg>
     </div>
@@ -125,8 +125,8 @@ export const Switch = memo(function Switch({
 }) {
   return (
     <button
-      type="button"
-      role="switch"
+      type='button'
+      role='switch'
       aria-checked={checked}
       aria-label={label}
       disabled={disabled}
@@ -138,7 +138,7 @@ export const Switch = memo(function Switch({
       )}
     >
       <span
-        aria-hidden="true"
+        aria-hidden='true'
         className={cn(
           'absolute left-[2px] top-[2px] size-5 rounded-full bg-white shadow-[var(--shadow-sm)] md:size-[var(--sp-4)]',
           'transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]',
@@ -201,8 +201,8 @@ function SegmentedButton<T extends string>({
       ref={(element) => {
         buttonsRef.current[index] = element
       }}
-      type="button"
-      role="radio"
+      type='button'
+      role='radio'
       aria-checked={active}
       aria-label={option.title}
       disabled={disabled}
@@ -264,7 +264,7 @@ function SegmentedInner<T extends string>({
   return (
     <div
       id={id}
-      role="radiogroup"
+      role='radiogroup'
       aria-label={label}
       aria-labelledby={ariaLabelledBy}
       aria-describedby={ariaDescribedBy}
@@ -296,7 +296,7 @@ function SegmentedInner<T extends string>({
             {button}
           </Tooltip>
         ) : (
-          <span key={option.value} className="contents">{button}</span>
+          <span key={option.value} className='contents'>{button}</span>
         )
       })}
     </div>
@@ -340,7 +340,7 @@ function SliderInner({
     <div className={cn('flex items-center gap-3', className)}>
       <input
         id={id}
-        type="range"
+        type='range'
         aria-label={label}
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
@@ -351,10 +351,10 @@ function SliderInner({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="ink-slider h-[18px] flex-1 cursor-pointer appearance-none bg-transparent"
+        className='ink-slider h-[18px] flex-1 cursor-pointer appearance-none bg-transparent'
         style={{ '--pct': `${pct}%` } as React.CSSProperties}
       />
-      <span className="w-11 shrink-0 text-right text-[length:var(--text-12)] tabular text-[var(--text-tertiary)]">
+      <span className='w-11 shrink-0 text-right text-[length:var(--text-12)] tabular text-[var(--text-tertiary)]'>
         {value}
         {suffix}
       </span>
@@ -400,9 +400,9 @@ export function Field({
   }
   return (
     <div className={cn('space-y-1.5', className)}>
-      <label id={labelId} htmlFor={controlId} className="block text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]">
+      <label id={labelId} htmlFor={controlId} className='block text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
         {label}
-        {required && <span aria-hidden="true" className="ml-0.5 text-[var(--danger)]">*</span>}
+        {required && <span aria-hidden='true' className='ml-0.5 text-[var(--danger)]'>*</span>}
       </label>
       <div>{control}</div>
       {hint && <p id={hintId} className="text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-quaternary)]">{hint}</p>}
@@ -429,15 +429,15 @@ export function SettingRow({
         className,
       )}
     >
-      <div className="min-w-0 flex-1">
-        <div className="text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">{title}</div>
+      <div className='min-w-0 flex-1'>
+        <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>{title}</div>
         {description && (
           <div className="mt-0.5 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
             {description}
           </div>
         )}
       </div>
-      <div className="min-w-0 shrink-0">{children}</div>
+      <div className='min-w-0 shrink-0'>{children}</div>
     </div>
   )
 }
@@ -456,8 +456,8 @@ function CheckboxInner({
 }) {
   return (
     <button
-      type="button"
-      role="checkbox"
+      type='button'
+      role='checkbox'
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={cn('inline-flex min-h-10 items-center gap-2 text-[length:var(--text-13)] md:min-h-0', className)}
@@ -472,7 +472,7 @@ function CheckboxInner({
       >
         {checked && <Check size={11} strokeWidth={3} />}
       </span>
-      {label && <span className="text-[var(--text-secondary)]">{label}</span>}
+      {label && <span className='text-[var(--text-secondary)]'>{label}</span>}
     </button>
   )
 }

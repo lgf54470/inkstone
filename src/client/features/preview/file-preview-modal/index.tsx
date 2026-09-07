@@ -9,10 +9,10 @@ import type { FilePreviewModalProps } from './types'
 function ModalTitle({ bundle }: { bundle: FilePreviewBundle }) {
   const { filename, isImage, naturalSize } = bundle
   return (
-    <div className="flex items-center gap-2 max-w-[700px] truncate">
-      <span className="truncate font-semibold">{filename}</span>
+    <div className='flex items-center gap-2 max-w-[700px] truncate'>
+      <span className='truncate font-semibold'>{filename}</span>
       {isImage && naturalSize && (
-        <span className="shrink-0 rounded bg-[var(--bg-sunken)] px-1.5 py-0.5 text-[length:var(--text-11)] font-mono text-[var(--text-tertiary)]">
+        <span className='shrink-0 rounded bg-[var(--bg-sunken)] px-1.5 py-0.5 text-[length:var(--text-11)] font-mono text-[var(--text-tertiary)]'>
           {`${naturalSize.width} × ${naturalSize.height} px`}
         </span>
       )}
@@ -23,13 +23,13 @@ function ModalTitle({ bundle }: { bundle: FilePreviewBundle }) {
 function ModalFooter({ bundle, onClose }: { bundle: FilePreviewBundle; onClose: () => void }) {
   const { isText, textContent, previewUrl, url, filename } = bundle
   return (
-    <div className="flex items-center justify-between w-full">
-      <div className="flex items-center gap-2">
+    <div className='flex items-center justify-between w-full'>
+      <div className='flex items-center gap-2'>
         <a
           href={previewUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] cursor-pointer"
+          target='_blank'
+          rel='noopener noreferrer'
+          className='inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] cursor-pointer'
         >
           <ExternalLink size={13} />
           <span>{t('preview.open_in_new_tab')}</span>
@@ -37,7 +37,7 @@ function ModalFooter({ bundle, onClose }: { bundle: FilePreviewBundle; onClose: 
         <a
           href={url}
           download={filename}
-          className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] transition-transform active:translate-y-px cursor-pointer"
+          className='inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] transition-transform active:translate-y-px cursor-pointer'
         >
           <Download size={13} />
           <span>{t('workspace.download_file')}</span>
@@ -46,9 +46,9 @@ function ModalFooter({ bundle, onClose }: { bundle: FilePreviewBundle; onClose: 
       </div>
 
       <button
-        type="button"
+        type='button'
         onClick={onClose}
-        className="inline-flex h-8 items-center rounded-[var(--r-md)] px-3 text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] cursor-pointer"
+        className='inline-flex h-8 items-center rounded-[var(--r-md)] px-3 text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] cursor-pointer'
       >
         {t('common.close')}
       </button>
@@ -67,7 +67,7 @@ export function FilePreviewModal({ open, onClose, url, filename }: FilePreviewMo
       onClose={onClose}
       title={<ModalTitle bundle={bundle} />}
       width={modalWidth}
-      className="max-h-[82vh] flex flex-col"
+      className='max-h-[82vh] flex flex-col'
       footer={<ModalFooter bundle={bundle} onClose={onClose} />}
     >
       <div className={cn('min-h-[280px] flex flex-col', isText || isMarkdown ? 'justify-start' : 'justify-center')}>

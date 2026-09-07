@@ -1,16 +1,16 @@
-import { Hono } from "hono";
+import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { getCookie } from "hono/cookie";
-import { extractAttachmentIds } from "@shared/markdown-utils";
+import { getCookie } from 'hono/cookie';
+import { extractAttachmentIds } from '@shared/markdown-utils';
 
-import { hasAttachmentStorage, readAttachmentObjectStream } from "../../attachments/backend";
-import { attachmentObjectKey, legacyAttachmentObjectKey } from "../../attachments/keys";
-import type { AppBindings } from "../../env";
-import { ApiError } from "../../lib/errors";
-import { isValidId, isValidSlug } from "../../lib/id";
-import { isInlineSafe } from "../../lib/image";
-import { shareAssetCookieName, verifyShareAssetSession } from "../../lib/share-asset-session";
-import { requireAuth } from "../../middleware/auth";
+import { hasAttachmentStorage, readAttachmentObjectStream } from '../../attachments/backend';
+import { attachmentObjectKey, legacyAttachmentObjectKey } from '../../attachments/keys';
+import type { AppBindings } from '../../env';
+import { ApiError } from '../../lib/errors';
+import { isValidId, isValidSlug } from '../../lib/id';
+import { isInlineSafe } from '../../lib/image';
+import { shareAssetCookieName, verifyShareAssetSession } from '../../lib/share-asset-session';
+import { requireAuth } from '../../middleware/auth';
 import { AttachmentRow } from './helpers';
 import { ATTACHMENT_LIST_PAGE_SIZE } from './helpers';
 import { readAttachmentReferenceCounts } from './helpers';

@@ -31,11 +31,11 @@ function PageSizeSelector({
   onPageSizeChange: (size: number) => void
 }): ReactElement {
   return (
-    <div className="flex items-center gap-2">
+    <div className='flex items-center gap-2'>
       <select
         value={pageSize}
         onChange={(e) => onPageSizeChange(Number(e.target.value))}
-        className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--border-default)] focus:border-[var(--accent)] focus:outline-hidden"
+        className='rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--border-default)] focus:border-[var(--accent)] focus:outline-hidden'
         aria-label={t('pagination.page_size', { size: pageSize }, locale)}
       >
         {options.map((opt) => (
@@ -44,7 +44,7 @@ function PageSizeSelector({
           </option>
         ))}
       </select>
-      <span className="text-xs text-[var(--text-tertiary)]">
+      <span className='text-xs text-[var(--text-tertiary)]'>
         {t('pagination.total_count', { total }, locale)}
       </span>
     </div>
@@ -62,14 +62,14 @@ function PageNumberButton({
 }): ReactElement {
   if (item === '...') {
     return (
-      <span className="px-1.5 text-xs text-[var(--text-tertiary)]">
+      <span className='px-1.5 text-xs text-[var(--text-tertiary)]'>
         ...
       </span>
     )
   }
   return (
     <button
-      type="button"
+      type='button'
       onClick={() => onPageChange(item)}
       className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-medium transition-all ${
         isCurrent
@@ -97,7 +97,7 @@ function NavArrowButton({
   const isPrev = direction === 'prev'
   return (
     <button
-      type="button"
+      type='button'
       disabled={disabled}
       onClick={onClick}
       className={`flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-xs transition-colors ${
@@ -107,9 +107,9 @@ function NavArrowButton({
       }`}
       aria-label={label}
     >
-      {isPrev && <ChevronLeft size={13} aria-hidden="true" />}
-      <span className="hidden sm:inline">{label}</span>
-      {!isPrev && <ChevronRight size={13} aria-hidden="true" />}
+      {isPrev && <ChevronLeft size={13} aria-hidden='true' />}
+      <span className='hidden sm:inline'>{label}</span>
+      {!isPrev && <ChevronRight size={13} aria-hidden='true' />}
     </button>
   )
 }
@@ -127,9 +127,9 @@ function PageNavButtons({
 }): ReactElement {
   const pages = buildPageItems(currentPage, Math.max(1, totalPages))
   return (
-    <div className="flex items-center gap-1">
+    <div className='flex items-center gap-1'>
       <NavArrowButton
-        direction="prev"
+        direction='prev'
         disabled={currentPage <= 1}
         label={t('pagination.prev', {}, locale)}
         onClick={() => onPageChange(currentPage - 1)}
@@ -143,7 +143,7 @@ function PageNavButtons({
         />
       ))}
       <NavArrowButton
-        direction="next"
+        direction='next'
         disabled={currentPage >= totalPages}
         label={t('pagination.next', {}, locale)}
         onClick={() => onPageChange(currentPage + 1)}

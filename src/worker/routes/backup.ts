@@ -400,12 +400,12 @@ function validateInput(body: BackupTargetInput, requireSecret: boolean): void {
     }
     if (requireSecret) assertRequiredSecret('s3', pickSecret(body))
   } else {
-    assertConfigString(c.url, "WebDAV address", 2048)
-    assertConfigString(c.username, "Username", 256)
+    assertConfigString(c.url, 'WebDAV address', 2048)
+    assertConfigString(c.username, 'Username', 256)
     assertConfigString(c.prefix, 'Path prefix', 1024)
     const url = str(c.url)
     if (!url) throw ApiError.badRequest('Enter a WebDAV URL')
-    validateBackupConfig(() => parseBackupEndpoint(url, "WebDAV address"))
+    validateBackupConfig(() => parseBackupEndpoint(url, 'WebDAV address'))
     validateBackupConfig(() => normalizeBackupPrefix(str(c.prefix)))
     if (!str(c.username)) throw ApiError.badRequest('Enter a username')
     if (requireSecret) assertRequiredSecret('webdav', pickSecret(body))

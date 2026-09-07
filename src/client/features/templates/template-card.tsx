@@ -90,7 +90,7 @@ function CardUseButton({
   return (
     <button
       ref={useButtonRef}
-      type="button"
+      type='button'
       onClick={(event: MouseEvent) => {
         if (event.ctrlKey || event.metaKey) {
           event.preventDefault()
@@ -107,7 +107,7 @@ function CardUseButton({
       aria-label={
         selectMode ? `${t('templates.select_template')}: ${template.name}` : `${t('templates.use_template')}: ${template.name}`
       }
-      className="absolute inset-0 z-[var(--z-flat)] rounded-[var(--r-lg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+      className='absolute inset-0 z-[var(--z-flat)] rounded-[var(--r-lg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
     />
   )
 }
@@ -124,16 +124,16 @@ function CardToolAction({
   onClick: () => void
 }) {
   return (
-    <Tooltip label={tooltip} side="top">
+    <Tooltip label={tooltip} side='top'>
       <IconButton
         label={tooltip}
-        size="sm"
+        size='sm'
         active={active}
         onClick={(event) => {
           event.stopPropagation()
           onClick()
         }}
-        className="size-6 text-[var(--text-tertiary)]"
+        className='size-6 text-[var(--text-tertiary)]'
       >
         {icon}
       </IconButton>
@@ -157,23 +157,23 @@ function CardTitleRow({
   onOpenMenu: () => void
 }) {
   return (
-    <div className="relative z-[var(--z-sticky)] flex items-start justify-between gap-2">
+    <div className='relative z-[var(--z-sticky)] flex items-start justify-between gap-2'>
       <div className={cn('flex min-w-0 items-center gap-1.5', selectMode && 'pl-6')}>
-        {template.isPinned && <Pin size={11} className="shrink-0 text-[var(--accent)]" />}
-        <h3 className="min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
+        {template.isPinned && <Pin size={11} className='shrink-0 text-[var(--accent)]' />}
+        <h3 className='min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold tracking-[-0.01em] text-[var(--text-primary)]'>
           {template.name}
         </h3>
-        {template.isStarred && <Star size={11} className="shrink-0 fill-current text-[var(--warning)]" />}
+        {template.isStarred && <Star size={11} className='shrink-0 fill-current text-[var(--warning)]' />}
         {template.builtin && (
-          <span className="shrink-0 rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[length:var(--text-10)] font-medium text-[var(--text-quaternary)]">
+          <span className='shrink-0 rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[length:var(--text-10)] font-medium text-[var(--text-quaternary)]'>
             {t('templates.builtin')}
           </span>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+      <div className='flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100'>
         <CardToolAction
           tooltip={template.isStarred ? t('common.remove_from_favorites') : t('navigation.favorites')}
-          icon={template.isStarred ? <Star size={12} className="fill-current" /> : <Star size={12} />}
+          icon={template.isStarred ? <Star size={12} className='fill-current' /> : <Star size={12} />}
           active={template.isStarred}
           onClick={onToggleStar}
         />
@@ -183,16 +183,16 @@ function CardTitleRow({
           active={template.isPinned}
           onClick={onTogglePin}
         />
-        <Tooltip label={t('common.more_actions')} side="top">
+        <Tooltip label={t('common.more_actions')} side='top'>
           <IconButton
             ref={menuButtonRef}
             label={t('common.more_actions')}
-            size="sm"
+            size='sm'
             onClick={(event) => {
               event.stopPropagation()
               onOpenMenu()
             }}
-            className="size-6 text-[var(--text-tertiary)]"
+            className='size-6 text-[var(--text-tertiary)]'
           >
             <MoreHorizontal size={13} />
           </IconButton>
@@ -204,7 +204,7 @@ function CardTitleRow({
 
 function CardMetaFooter({ categoryName, lineCount }: { categoryName: string; lineCount: number }) {
   return (
-    <div className="relative z-[var(--z-sticky)] mt-auto flex items-center gap-2 pt-2.5">
+    <div className='relative z-[var(--z-sticky)] mt-auto flex items-center gap-2 pt-2.5'>
       <span className="text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">{categoryName}</span>
       <span className="text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">·</span>
       <span className="text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">{t('templates.lines_count', { value0: lineCount })}</span>
@@ -215,17 +215,17 @@ function CardMetaFooter({ categoryName, lineCount }: { categoryName: string; lin
 
 function SelectionBadge({ selected }: { selected: boolean }) {
   return (
-    <span aria-hidden="true" className="absolute top-3 left-3 z-[var(--z-menu)] flex size-4 items-center justify-center rounded border bg-[var(--bg-overlay)]">
-      {selected && <Check size={12} className="text-[var(--accent)]" />}
+    <span aria-hidden='true' className='absolute top-3 left-3 z-[var(--z-menu)] flex size-4 items-center justify-center rounded border bg-[var(--bg-overlay)]'>
+      {selected && <Check size={12} className='text-[var(--accent)]' />}
     </span>
   )
 }
 
 function CardTagList({ tags }: { tags: string[] }) {
   return (
-    <div className="relative z-[var(--z-sticky)] mt-1.5 flex min-w-0 flex-wrap items-center gap-1">
+    <div className='relative z-[var(--z-sticky)] mt-1.5 flex min-w-0 flex-wrap items-center gap-1'>
       {tags.map((tag) => (
-        <span key={tag} className="rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[length:var(--text-10)] text-[var(--text-tertiary)]">
+        <span key={tag} className='rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
           #{tag}
         </span>
       ))}
@@ -268,7 +268,7 @@ function CardMenus({
 }) {
   return (
     <>
-      <Menu anchor={menuButtonRef} open={isMenuOpen} onClose={onCloseMenu} items={items} align="end" width={200} zIndex={Z_INDEX.hoverPinned} />
+      <Menu anchor={menuButtonRef} open={isMenuOpen} onClose={onCloseMenu} items={items} align='end' width={200} zIndex={Z_INDEX.hoverPinned} />
       {contextPoint && <Menu anchor={contextPoint} open onClose={onCloseContext} items={items} width={200} zIndex={Z_INDEX.hoverPinned} />}
     </>
   )

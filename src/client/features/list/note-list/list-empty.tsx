@@ -42,7 +42,7 @@ interface ListEmptyProps {
 function EmptyActionButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={onClick}
       className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-3 text-[length:var(--text-12\\.5)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
     >
@@ -55,7 +55,7 @@ function EmptyActionButton({ icon, label, onClick }: { icon: ReactNode; label: s
 function SearchEmpty({ shortcut }: { shortcut: (combo: string) => string }) {
   return (
     <Empty
-      art="search"
+      art='search'
       title={t('notes.no_matching_notes')}
       description={t('notes.try_another_search_or_press_shortcut_to_search_everywhere', {
         shortcut: shortcut('mod+k'),
@@ -76,7 +76,7 @@ function DayRangeEmpty({
   onJumpToLatest: () => void
 }) {
   const action = latestEdit && (
-    <div className="flex flex-col items-center gap-2">
+    <div className='flex flex-col items-center gap-2'>
       {weekFiltered && (
         <EmptyActionButton
           icon={<CalendarDays size={13} />}
@@ -93,7 +93,7 @@ function DayRangeEmpty({
   )
   return (
     <Empty
-      art="search"
+      art='search'
       title={weekFiltered ? t('notes.no_notes_in_this_week') : t('notes.no_notes_on_this_day')}
       description={latestEdit ? t('notes.no_notes_in_range_value0', { value0: latestEdit.label }) : t('notes.no_notes_on_this_day_desc')}
       action={action}
@@ -104,7 +104,7 @@ function DayRangeEmpty({
 function TagEmpty() {
   return (
     <Empty
-      art="tag"
+      art='tag'
       title={t('notes.no_notes_match_selected_tags')}
       description={t('notes.adjust_selected_tags_or_switch_match_mode')}
     />
@@ -114,7 +114,7 @@ function TagEmpty() {
 function PeriodNeighborButton({ label, count, leading, onClick }: { label: string; count: number; leading: boolean; onClick: () => void }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={onClick}
       className="inline-flex h-7 items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-default)] px-2.5 text-[length:var(--text-11\\.5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
     >
@@ -143,7 +143,7 @@ function PeriodActions({
   openCalendarId: (id: string) => void
 }) {
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className='flex flex-col items-center gap-2'>
       {nearest && (
         <EmptyActionButton
           icon={<CalendarDays size={13} />}
@@ -154,7 +154,7 @@ function PeriodActions({
       <EmptyActionButton icon={<CalendarDays size={13} />} label={t(targetLabelKey)} onClick={() => openCalendarId(targetId)} />
       <EmptyActionButton icon={<Plus size={13} />} label={t('common.new_note')} onClick={() => void createContextualNote()} />
       {(prev || next) && (
-        <div className="flex items-center gap-1.5">
+        <div className='flex items-center gap-1.5'>
           {prev && <PeriodNeighborButton label={labelOf(prev)} count={prev.count} leading onClick={() => openCalendarId(prev.id)} />}
           {next && <PeriodNeighborButton label={labelOf(next)} count={next.count} leading={false} onClick={() => openCalendarId(next.id)} />}
         </div>
@@ -199,7 +199,7 @@ function PeriodEmpty({ folderId }: { folderId: string | null }) {
   }
   return (
     <Empty
-      art="folder"
+      art='folder'
       title={t('notes.no_notes_in_this_period')}
       description={range && label ? `${label} · ${t('notes.calendar_period_range_value0', { value0: `${range.start} ~ ${range.end}` })}` : undefined}
       action={

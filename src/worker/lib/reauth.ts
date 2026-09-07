@@ -37,7 +37,7 @@ export async function requireCurrentPassword(
   const password = typeof input === 'string' && input.length <= PASSWORD_MAX_LENGTH ? input : ''
   if (!(await verifyPassword(password, row.password_hash))) {
     await recordLoginFailure(db, throttleKeys)
-    throw new ApiError(401, 'wrong_password', "The current password is incorrect")
+    throw new ApiError(401, 'wrong_password', 'The current password is incorrect')
   }
   await clearLoginFailures(db, [...throttleKeys, workKeys[0]!.key])
   return row.password_hash

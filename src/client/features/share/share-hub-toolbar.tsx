@@ -18,24 +18,24 @@ export function ShareHubToolbar({ onOpenLogs, onOpenSettings }: { onOpenLogs?: (
   const loading = useShareStore((s) => s.loading)
 
   return (
-    <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-4">
+    <div className='flex h-11 shrink-0 items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-4'>
       <SearchField value={search} onChange={setSearch} />
-      <div className="flex items-center gap-2">
+      <div className='flex items-center gap-2'>
         <StatusSelect value={statusFilter} onChange={setStatusFilter} />
         <SortSelect value={sort} onChange={setSort} />
         <ShareTrafficFilterPopover />
         {onOpenLogs && (
-          <IconButton size="sm" label={t('share.visit_logs_title')} onClick={onOpenLogs}>
+          <IconButton size='sm' label={t('share.visit_logs_title')} onClick={onOpenLogs}>
             <FileText size={13} />
           </IconButton>
         )}
         {onOpenSettings && (
-          <IconButton size="sm" label={t('share.settings_modal_title')} onClick={onOpenSettings}>
+          <IconButton size='sm' label={t('share.settings_modal_title')} onClick={onOpenSettings}>
             <Settings size={13} />
           </IconButton>
         )}
         <ViewToggle value={viewMode} onChange={setViewMode} />
-        <IconButton size="sm" label={t('common.refresh')} disabled={loading} onClick={() => void loadShares()}>
+        <IconButton size='sm' label={t('common.refresh')} disabled={loading} onClick={() => void loadShares()}>
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
         </IconButton>
       </div>
@@ -45,15 +45,15 @@ export function ShareHubToolbar({ onOpenLogs, onOpenSettings }: { onOpenLogs?: (
 
 function SearchField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <div className="flex flex-1 items-center gap-2 max-w-sm">
-      <div className="flex h-7 w-full items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2.5 focus-within:border-[var(--accent)]">
-        <Search size={13} className="text-[var(--text-quaternary)]" />
+    <div className='flex flex-1 items-center gap-2 max-w-sm'>
+      <div className='flex h-7 w-full items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2.5 focus-within:border-[var(--accent)]'>
+        <Search size={13} className='text-[var(--text-quaternary)]' />
         <input
-          type="text"
+          type='text'
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={t('share.search_placeholder')}
-          className="w-full bg-transparent text-[length:var(--text-12)] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-quaternary)]"
+          className='w-full bg-transparent text-[length:var(--text-12)] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-quaternary)]'
         />
       </div>
     </div>
@@ -62,41 +62,41 @@ function SearchField({ value, onChange }: { value: string; onChange: (value: str
 
 function StatusSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value)} className="h-7 text-[length:var(--text-12)] py-0 px-2">
-      <option value="all">{t('share.status_all')}</option>
-      <option value="active">{t('share.status_active')}</option>
-      <option value="pinned">{t('share.category_pinned')}</option>
-      <option value="starred">{t('share.category_starred')}</option>
-      <option value="paused">{t('share.status_paused')}</option>
-      <option value="password">{t('share.category_password')}</option>
-      <option value="expiring">{t('share.category_expiring')}</option>
-      <option value="permanent">{t('share.category_permanent')}</option>
-      <option value="expired">{t('share.category_expired')}</option>
+    <Select value={value} onChange={(e) => onChange(e.target.value)} className='h-7 text-[length:var(--text-12)] py-0 px-2'>
+      <option value='all'>{t('share.status_all')}</option>
+      <option value='active'>{t('share.status_active')}</option>
+      <option value='pinned'>{t('share.category_pinned')}</option>
+      <option value='starred'>{t('share.category_starred')}</option>
+      <option value='paused'>{t('share.status_paused')}</option>
+      <option value='password'>{t('share.category_password')}</option>
+      <option value='expiring'>{t('share.category_expiring')}</option>
+      <option value='permanent'>{t('share.category_permanent')}</option>
+      <option value='expired'>{t('share.category_expired')}</option>
     </Select>
   )
 }
 
 function SortSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value)} className="h-7 text-[length:var(--text-12)] py-0 px-2">
-      <option value="views_desc">{t('share.sort_views_desc')}</option>
-      <option value="views_asc">{t('share.sort_views_asc')}</option>
-      <option value="recent_visit">{t('share.sort_recent_visit')}</option>
-      <option value="created_desc">{t('share.sort_created_desc')}</option>
-      <option value="title_asc">{t('share.sort_title_asc')}</option>
-      <option value="pinned_first">{t('share.sort_pinned_first')}</option>
-      <option value="expires_asc">{t('share.sort_expires_asc')}</option>
+    <Select value={value} onChange={(e) => onChange(e.target.value)} className='h-7 text-[length:var(--text-12)] py-0 px-2'>
+      <option value='views_desc'>{t('share.sort_views_desc')}</option>
+      <option value='views_asc'>{t('share.sort_views_asc')}</option>
+      <option value='recent_visit'>{t('share.sort_recent_visit')}</option>
+      <option value='created_desc'>{t('share.sort_created_desc')}</option>
+      <option value='title_asc'>{t('share.sort_title_asc')}</option>
+      <option value='pinned_first'>{t('share.sort_pinned_first')}</option>
+      <option value='expires_asc'>{t('share.sort_expires_asc')}</option>
     </Select>
   )
 }
 
 function ViewToggle({ value, onChange }: { value: 'table' | 'grid'; onChange: (value: 'table' | 'grid') => void }) {
   return (
-    <div className="flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-0.5">
-      <IconButton size="sm" label={t('share.view_table')} active={value === 'table'} onClick={() => onChange('table')}>
+    <div className='flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-0.5'>
+      <IconButton size='sm' label={t('share.view_table')} active={value === 'table'} onClick={() => onChange('table')}>
         <List size={13} />
       </IconButton>
-      <IconButton size="sm" label={t('share.view_grid')} active={value === 'grid'} onClick={() => onChange('grid')}>
+      <IconButton size='sm' label={t('share.view_grid')} active={value === 'grid'} onClick={() => onChange('grid')}>
         <LayoutGrid size={13} />
       </IconButton>
     </div>

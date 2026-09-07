@@ -82,7 +82,7 @@ async function loadImpl(set: SessionSetter): Promise<void> {
     if (err instanceof ApiError && err.isOffline && await adoptCachedSession(set, sequence)) return
     set({
       status: 'anonymous',
-      authError: err instanceof ApiError ? err.message : t("session.could_not_connect_to_the_server"),
+      authError: err instanceof ApiError ? err.message : t('session.could_not_connect_to_the_server'),
     })
   }
 }
@@ -355,7 +355,7 @@ function scheduleSettingsRetry(err: unknown, outgoing: DeepPartial<UserSettings>
   pendingSettingsPatch = mergeSettingsPatches(outgoing, pendingSettingsPatch)
   if (shouldNotify) {
     useUi.getState().toast({
-      title: t("session.could_not_save_settings"),
+      title: t('session.could_not_save_settings'),
       description: err instanceof ApiError ? err.message : String(err),
       tone: 'danger',
     })

@@ -1,9 +1,9 @@
-import { slugifyHeading } from "@shared/markdown-utils";
-import { sliceText } from "@shared/text-utils";
-import type { Note } from "@shared/types";
-import { NOTE_COLUMNS, NOTE_COLUMNS_FULL, toNote, toNoteSummary, type NoteRow } from "../../db/rows";
-import { ApiError } from "../../lib/errors";
-import { isValidId } from "../../lib/id";
+import { slugifyHeading } from '@shared/markdown-utils';
+import { sliceText } from '@shared/text-utils';
+import type { Note } from '@shared/types';
+import { NOTE_COLUMNS, NOTE_COLUMNS_FULL, toNote, toNoteSummary, type NoteRow } from '../../db/rows';
+import { ApiError } from '../../lib/errors';
+import { isValidId } from '../../lib/id';
 import { noteUrl } from './search';
 
 const FETCH_MAX_CHARS = 80_000

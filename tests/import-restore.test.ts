@@ -104,7 +104,7 @@ describe('bundle restore', () => {
     const db = await makeDb()
     const c = ctx()
     await importBundle(DB_ENV, USER, freshBundle(), c)
-    const mapping = await firstRow(db, "SELECT * FROM import_mappings WHERE source_id = ?1", SRC_NOTE)
+    const mapping = await firstRow(db, 'SELECT * FROM import_mappings WHERE source_id = ?1', SRC_NOTE)
     expect(mapping!.target_id).toBe((await firstRow(db, 'SELECT id FROM notes'))!.id)
   })
 

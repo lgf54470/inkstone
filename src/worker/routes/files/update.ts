@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { Hono } from 'hono';
 
-import type { AppBindings } from "../../env";
-import { ApiError } from "../../lib/errors";
-import { requireAuth } from "../../middleware/auth";
+import type { AppBindings } from '../../env';
+import { ApiError } from '../../lib/errors';
+import { requireAuth } from '../../middleware/auth';
 import { AttachmentRow } from './helpers';
 import { toAttachment } from './helpers';
 

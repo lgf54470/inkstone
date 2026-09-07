@@ -37,20 +37,20 @@ export function ShareQrModal({
       open={open}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2">
-          <QrCode size={16} className="text-[var(--accent)]" />
+        <div className='flex items-center gap-2'>
+          <QrCode size={16} className='text-[var(--accent)]' />
           <span>{t('share.qr_code_title')}</span>
         </div>
       }
       description={title}
       width={420}
     >
-      <div className="flex flex-col items-center gap-4 py-2">
+      <div className='flex flex-col items-center gap-4 py-2'>
         <QrCodeCard svgRef={svgRef} fullUrl={fullUrl} />
-        <div className="w-full max-w-sm rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-center">
-          <p className="truncate text-[length:var(--text-12)] font-mono text-[var(--text-secondary)]">{fullUrl}</p>
+        <div className='w-full max-w-sm rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-center'>
+          <p className='truncate text-[length:var(--text-12)] font-mono text-[var(--text-secondary)]'>{fullUrl}</p>
         </div>
-        <p className="text-center text-[length:var(--text-12)] text-[var(--text-tertiary)] max-w-xs">
+        <p className='text-center text-[length:var(--text-12)] text-[var(--text-tertiary)] max-w-xs'>
           {t('share.qr_code_hint')}
         </p>
         <QrActionsGrid isCopiedLink={isCopiedLink} isCopiedImage={isCopiedImage} onCopyLink={() => void handleCopyLink()} onCopyImage={() => void handleCopyImage()} onDownloadPng={() => void handleDownloadPng()} onDownloadSvg={handleDownloadSvg} />
@@ -99,12 +99,12 @@ function QrCodeCard({ svgRef, fullUrl }: {
   return (
     <div
       ref={svgRef}
-      className="rounded-[var(--r-2xl)] border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.02]"
+      className='rounded-[var(--r-2xl)] border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.02]'
     >
       <QRCodeSVG
         value={fullUrl}
         size={220}
-        level="H"
+        level='H'
         marginSize={1}
         bgColor={QR_BG_COLOR}
         fgColor={QR_FG_COLOR}
@@ -122,28 +122,28 @@ function QrActionsGrid({ isCopiedLink, isCopiedImage, onCopyLink, onCopyImage, o
   onDownloadSvg: () => void
 }) {
   return (
-    <div className="grid w-full grid-cols-2 gap-2 pt-1">
+    <div className='grid w-full grid-cols-2 gap-2 pt-1'>
       <Button
-        size="sm"
-        variant="secondary"
-        icon={isCopiedLink ? <Check size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
+        size='sm'
+        variant='secondary'
+        icon={isCopiedLink ? <Check size={13} className='text-[var(--success)]' /> : <Copy size={13} />}
         onClick={onCopyLink}
       >
         {isCopiedLink ? t('common.copied') : t('share.copy_link')}
       </Button>
 
       <Button
-        size="sm"
-        variant="secondary"
-        icon={isCopiedImage ? <Check size={13} className="text-[var(--success)]" /> : <ImageIcon size={13} />}
+        size='sm'
+        variant='secondary'
+        icon={isCopiedImage ? <Check size={13} className='text-[var(--success)]' /> : <ImageIcon size={13} />}
         onClick={onCopyImage}
       >
         {isCopiedImage ? t('share.qr_copied') : t('share.copy_qr_image')}
       </Button>
 
       <Button
-        size="sm"
-        variant="secondary"
+        size='sm'
+        variant='secondary'
         icon={<Download size={13} />}
         onClick={onDownloadPng}
       >
@@ -151,8 +151,8 @@ function QrActionsGrid({ isCopiedLink, isCopiedImage, onCopyLink, onCopyImage, o
       </Button>
 
       <Button
-        size="sm"
-        variant="secondary"
+        size='sm'
+        variant='secondary'
         icon={<Download size={13} />}
         onClick={onDownloadSvg}
       >
@@ -166,12 +166,12 @@ function QrOpenLink({ fullUrl }: {
   fullUrl: string
 }) {
   return (
-    <div className="w-full pt-1">
+    <div className='w-full pt-1'>
       <a
         href={fullUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        target='_blank'
+        rel='noopener noreferrer'
+        className='inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
       >
         <ExternalLink size={13} />
         <span>{t('preview.open_in_new_tab')}</span>

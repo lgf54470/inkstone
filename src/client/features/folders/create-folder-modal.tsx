@@ -6,14 +6,14 @@ import { t } from '../../lib/i18n'
 
 function FolderNameField({ name, onNameChange }: { name: string; onNameChange: (name: string) => void }) {
   return (
-    <label className="block">
+    <label className='block'>
       <input
         autoFocus
-        type="text"
+        type='text'
         value={name}
         onChange={(e) => onNameChange(e.target.value)}
         placeholder={t('common.new_folder')}
-        className="h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-3 text-[length:var(--text-13)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]"
+        className='h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-3 text-[length:var(--text-13)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]'
       />
     </label>
   )
@@ -28,10 +28,10 @@ function CreateFolderFooter({
 }) {
   return (
     <>
-      <Button variant="ghost" type="button" onClick={onCancel}>
+      <Button variant='ghost' type='button' onClick={onCancel}>
         {t('common.cancel')}
       </Button>
-      <Button variant="primary" type="submit" form="create-folder-modal-form" disabled={!canSubmit} data-autofocus>
+      <Button variant='primary' type='submit' form='create-folder-modal-form' disabled={!canSubmit} data-autofocus>
         {t('folders.create_new')}
       </Button>
     </>
@@ -78,7 +78,7 @@ export function CreateFolderModal({
       width={400}
       footer={<CreateFolderFooter canSubmit={Boolean(name.trim())} onCancel={closeAndReset} />}
     >
-      <form id="create-folder-modal-form" onSubmit={handleSubmit} className="pt-1">
+      <form id='create-folder-modal-form' onSubmit={handleSubmit} className='pt-1'>
         <FolderNameField name={name} onNameChange={setName} />
       </form>
     </Modal>

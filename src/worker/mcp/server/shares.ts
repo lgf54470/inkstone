@@ -1,7 +1,7 @@
 import type { McpToolCtx } from './context';
-import { z } from "zod";
-import { MCP_SCOPES } from "../settings";
-import { getMcpShare, getMcpNoteProperties, queryMcpNoteProperties, revokeMcpShare, updateMcpNoteProperties, createMcpShare } from "../library";
+import { z } from 'zod';
+import { MCP_SCOPES } from '../settings';
+import { getMcpShare, getMcpNoteProperties, queryMcpNoteProperties, revokeMcpShare, updateMcpNoteProperties, createMcpShare } from '../library';
 import { customTool, writeTool, noteResult, readOnlyAnnotations, writeAnnotations, generalOutputSchema, operationId, noteId, expectedRev } from './context';
 
 export function registerSharesTools(ctx: McpToolCtx): void {

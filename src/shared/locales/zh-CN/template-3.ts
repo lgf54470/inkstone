@@ -1,5 +1,5 @@
 export const messages = {
-"template.project_review.content": `---
+'template.project_review.content': `---
 title: {{title}} 复盘
 createdAt: {{createdAt}}
 tags: [复盘]
@@ -28,9 +28,9 @@ tags: [复盘]
 ## 经验沉淀
 - 
 `,
-"template.project_review.description": "回顾项目中的得失，沉淀改进项。",
-"template.project_review.name": "项目复盘",
-"template.recipe.content": `---
+'template.project_review.description': '回顾项目中的得失，沉淀改进项。',
+'template.project_review.name': '项目复盘',
+'template.recipe.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [食谱]
@@ -56,9 +56,9 @@ tags: [食谱]
 
 > 记得写下实际使用的调料用量。{{cursor}}
 `,
-"template.recipe.description": "标准食谱卡片：食材、步骤与口味记录。",
-"template.recipe.name": "食谱",
-"template.shopping_list.content": `---
+'template.recipe.description': '标准食谱卡片：食材、步骤与口味记录。',
+'template.recipe.name': '食谱',
+'template.shopping_list.content': `---
 title: {{title}} · {{date}}
 createdAt: {{createdAt}}
 tags: [购物]
@@ -82,9 +82,9 @@ tags: [购物]
 
 > 每放进购物车一件，就勾掉一件。{{cursor}}
 `,
-"template.shopping_list.description": "按分类整理的购物清单，带数量与预算。",
-"template.shopping_list.name": "购物清单",
-"template.sleep_diary.content": `---
+'template.shopping_list.description': '按分类整理的购物清单，带数量与预算。',
+'template.shopping_list.name': '购物清单',
+'template.sleep_diary.content': `---
 title: {{title}} · {{date}}
 createdAt: {{createdAt}}
 tags: [睡眠]
@@ -112,9 +112,9 @@ tags: [睡眠]
 
 > 保持规律作息，周末也一样。{{cursor}}
 `,
-"template.sleep_diary.description": "记录入睡、起床时间与睡眠质量。",
-"template.sleep_diary.name": "睡眠日记",
-"template.speech_draft.content": `---
+'template.sleep_diary.description': '记录入睡、起床时间与睡眠质量。',
+'template.sleep_diary.name': '睡眠日记',
+'template.speech_draft.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [演讲]
@@ -150,9 +150,9 @@ tags: [演讲]
 - 语速：
 - 停顿：
 `,
-"template.speech_draft.description": "组织演讲稿：开场、要点与行动号召。",
-"template.speech_draft.name": "演讲稿",
-"template.story_setting.content": `---
+'template.speech_draft.description': '组织演讲稿：开场、要点与行动号召。',
+'template.speech_draft.name': '演讲稿',
+'template.story_setting.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [写作]
@@ -190,9 +190,9 @@ tags: [写作]
 ## 主题
 - 
 `,
-"template.story_setting.description": "搭建故事的角色、世界观与情节。",
-"template.story_setting.name": "故事设定",
-"template.swot.content": `---
+'template.story_setting.description': '搭建故事的角色、世界观与情节。',
+'template.story_setting.name': '故事设定',
+'template.swot.content': `---
 title: {{title}} SWOT
 createdAt: {{createdAt}}
 tags: [swot]
@@ -211,9 +211,9 @@ tags: [swot]
 - ST（用优势化解威胁）：
 - WT（避开威胁、减少劣势）：
 `,
-"template.swot.description": "评估优势、劣势、机会与威胁。",
-"template.swot.name": "SWOT 分析",
-"template.task_breakdown.content": `---
+'template.swot.description': '评估优势、劣势、机会与威胁。',
+'template.swot.name': 'SWOT 分析',
+'template.task_breakdown.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [拆解]
@@ -239,9 +239,9 @@ tags: [拆解]
 
 > 每个子任务都要小到可以不用思考就开始。{{cursor}}
 `,
-"template.task_breakdown.description": "把大任务拆成一个个可以立刻执行的小任务。",
-"template.task_breakdown.name": "任务拆解",
-"template.todo_list.content": `---
+'template.task_breakdown.description': '把大任务拆成一个个可以立刻执行的小任务。',
+'template.task_breakdown.name': '任务拆解',
+'template.todo_list.content': `---
 title: {{title}} · {{date}}
 createdAt: {{createdAt}}
 tags: [待办]
@@ -260,9 +260,9 @@ tags: [待办]
 
 > 先圈出最重要的一件事，从它开始。{{cursor}}
 `,
-"template.todo_list.description": "简单清晰的每日待办清单，带优先级与截止时间。",
-"template.todo_list.name": "Todo 清单",
-"template.travel_guide.content": `---
+'template.todo_list.description': '简单清晰的每日待办清单，带优先级与截止时间。',
+'template.todo_list.name': 'Todo 清单',
+'template.travel_guide.content': `---
 title: {{title}} 旅行攻略
 createdAt: {{createdAt}}
 tags: [旅行]
@@ -304,9 +304,9 @@ tags: [旅行]
 ## 备注
 - 
 `,
-"template.travel_guide.description": "规划行程、预算、行李与预订。",
-"template.travel_guide.name": "旅游攻略",
-"template.weekly_plan.content": `---
+'template.travel_guide.description': '规划行程、预算、行李与预订。',
+'template.travel_guide.name': '旅游攻略',
+'template.weekly_plan.content': `---
 title: {{title}} · 本周
 createdAt: {{createdAt}}
 tags: [周计划]
@@ -331,9 +331,9 @@ tags: [周计划]
 
 > 周日复盘：哪些推进了，哪些需要重新安排。{{cursor}}
 `,
-"template.weekly_plan.description": "一周计划：定目标、排日程、周末复盘。",
-"template.weekly_plan.name": "周计划",
-"template.weekly_report.content": `---
+'template.weekly_plan.description': '一周计划：定目标、排日程、周末复盘。',
+'template.weekly_plan.name': '周计划',
+'template.weekly_report.content': `---
 title: {{title}} 周报
 createdAt: {{createdAt}}
 tags: [周报]
@@ -359,6 +359,6 @@ tags: [周报]
 | --- | --- | --- |
 |  |  |  |
 `,
-"template.weekly_report.description": "总结本周进展、收获与下周计划。",
-"template.weekly_report.name": "周报",
+'template.weekly_report.description': '总结本周进展、收获与下周计划。',
+'template.weekly_report.name': '周报',
 };

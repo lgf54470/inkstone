@@ -72,13 +72,13 @@ export function shortTime(ts: number, now = Date.now()): string {
   const diff = now - ts
   const distance = Math.abs(diff)
 
-  if (distance < MINUTE) return t("time.just_now")
+  if (distance < MINUTE) return t('time.just_now')
   if (diff < 0 && -diff < HOUR) return relative(Math.ceil(-diff / MINUTE), 'minute')
   if (diff >= 0 && diff < HOUR) return relative(-Math.floor(diff / MINUTE), 'minute')
   if (isSameDay(date, today)) {
     return dateTimeFormat({ hour: '2-digit', minute: '2-digit' }).format(date)
   }
-  if (diff >= 0 && isSameDay(date, previousDay(today))) return t("time.yesterday")
+  if (diff >= 0 && isSameDay(date, previousDay(today))) return t('time.yesterday')
   if (distance < 7 * DAY) return dateTimeFormat({ weekday: 'short' }).format(date)
   if (date.getFullYear() === today.getFullYear()) {
     return dateTimeFormat({ month: 'short', day: 'numeric' }).format(date)
@@ -103,7 +103,7 @@ export function relativeTime(ts: number, now = Date.now()): string {
   if (!Number.isFinite(ts) || !ts) return '—'
   const diff = now - ts
   const distance = Math.abs(diff)
-  if (distance < MINUTE) return t("time.just_now")
+  if (distance < MINUTE) return t('time.just_now')
   const direction = diff < 0 ? 1 : -1
   const rounded = (unit: number) => direction * (direction > 0
     ? Math.ceil(distance / unit)
@@ -121,11 +121,11 @@ export function groupLabel(ts: number, now = Date.now()): string {
   const date = new Date(ts)
   const today = new Date(now)
   const diff = now - ts
-  if (isSameDay(date, today)) return t("time.today")
-  if (diff >= 0 && isSameDay(date, previousDay(today))) return t("time.yesterday")
-  if (diff >= 0 && diff < 7 * DAY) return t("time.this_week")
+  if (isSameDay(date, today)) return t('time.today')
+  if (diff >= 0 && isSameDay(date, previousDay(today))) return t('time.yesterday')
+  if (diff >= 0 && diff < 7 * DAY) return t('time.this_week')
   if (date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth()) {
-    return t("time.this_month")
+    return t('time.this_month')
   }
   if (date.getFullYear() === today.getFullYear()) {
     return dateTimeFormat({ month: 'long' }).format(date)

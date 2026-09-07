@@ -205,7 +205,7 @@ async function insertNewUser(
 
   if (!result.meta.changes) {
     const taken = await env.DB.prepare(`SELECT id FROM users WHERE username = ?1`).bind(username).first()
-    if (taken) throw new ApiError(409, 'username_taken', "That username is already in use")
+    if (taken) throw new ApiError(409, 'username_taken', 'That username is already in use')
     throw new ApiError(403, 'registration_closed', 'Registration is closed on this instance')
   }
   return id
@@ -236,7 +236,7 @@ authRoutes.post('/login', async (c) => {
 
   if (!isValid || !row) {
     await recordLoginFailure(db, throttleTargets)
-    throw new ApiError(401, 'invalid_credentials', "Incorrect username or password")
+    throw new ApiError(401, 'invalid_credentials', 'Incorrect username or password')
   }
 
   // A successful sign-in proves this identity and IP are legitimate:

@@ -30,7 +30,7 @@ function authHeader(config: WebdavConfig, secret: WebdavSecret): string {
 function baseUrl(config: WebdavConfig): URL {
   const raw = (config.url ?? '').trim()
   if (!raw) throw new Error('Enter a WebDAV URL')
-  const url = parseBackupEndpoint(raw, "WebDAV address")
+  const url = parseBackupEndpoint(raw, 'WebDAV address')
   if (!url.pathname.endsWith('/')) url.pathname += '/'
   return url
 }
@@ -117,7 +117,7 @@ async function ensureDirLevel(
   }, base.origin)
   await cancelStreamBestEffort(res.body)
   if (!res.ok && res.status !== 405) {
-    if (res.status === 401) throw new Error("Incorrect username or password")
+    if (res.status === 401) throw new Error('Incorrect username or password')
     if (res.status === 403) throw new Error('Permission to create folders is missing')
     if (res.status === 409) throw new Error(`Creating folder ${path} failed because the parent folder does not exist`)
     if (res.status === 507) throw new Error('The server is out of storage')
@@ -161,7 +161,7 @@ export async function webdavDeliver(
   const [response] = await Promise.all([upload, pump])
   await cancelStreamBestEffort(response.body)
   if (!response.ok) {
-    if (response.status === 401) throw new Error("Incorrect username or password")
+    if (response.status === 401) throw new Error('Incorrect username or password')
     if (response.status === 403) throw new Error('Write access is missing')
     if (response.status === 404) throw new Error(`Path not found: ${target}`)
     if (response.status === 507) throw new Error('The server is out of storage')
@@ -209,7 +209,7 @@ export async function webdavTest(
       signal,
     }, base.origin)
     await cancelStreamBestEffort(probe.body)
-    if (probe.status === 401) return { ok: false, message: "Incorrect username or password" }
+    if (probe.status === 401) return { ok: false, message: 'Incorrect username or password' }
     if (probe.status === 404) return { ok: false, message: 'The path does not exist. Check the URL' }
     if (!probe.ok && probe.status !== 207 && probe.status !== 405) {
       return { ok: false, message: `Server returned HTTP ${probe.status}` }

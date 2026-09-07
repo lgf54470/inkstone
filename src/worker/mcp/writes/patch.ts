@@ -1,16 +1,16 @@
-import { LIMITS } from "@shared/constants";
-import { countText, deriveExcerpt } from "@shared/markdown-utils";
-import { truncateText, utf8ByteLength } from "@shared/text-utils";
-import type { Note } from "@shared/types";
-import { NOTE_COLUMNS_FULL, toNote, type NoteRow } from "../../db/rows";
-import { buildNoteDerivedStatements, shiftSqlPlaceholders } from "../../db/writes";
-import { sha256Hex } from "../../lib/encoding";
-import { ApiError } from "../../lib/errors";
-import { newId } from "../../lib/id";
-import { broadcastUserCursor } from "../../lib/notify";
-import { assertContentSize } from "../../lib/request";
-import { enqueueNoteIndex } from "../ai-search";
-import type { Env } from "../../env";
+import { LIMITS } from '@shared/constants';
+import { countText, deriveExcerpt } from '@shared/markdown-utils';
+import { truncateText, utf8ByteLength } from '@shared/text-utils';
+import type { Note } from '@shared/types';
+import { NOTE_COLUMNS_FULL, toNote, type NoteRow } from '../../db/rows';
+import { buildNoteDerivedStatements, shiftSqlPlaceholders } from '../../db/writes';
+import { sha256Hex } from '../../lib/encoding';
+import { ApiError } from '../../lib/errors';
+import { newId } from '../../lib/id';
+import { broadcastUserCursor } from '../../lib/notify';
+import { assertContentSize } from '../../lib/request';
+import { enqueueNoteIndex } from '../ai-search';
+import type { Env } from '../../env';
 
 // McpWriteContext lives here (not in ops.ts) because ops.ts imports the patch
 // helpers from this module; owning the shared context shape here keeps the

@@ -188,7 +188,7 @@ describe('removeMcpFolderAndPromote', () => {
     expect(note!.folder_id).toBe(ROOT_1)
     expect(note!.rev).toBe(2)
 
-    const changes = await allRows(db, "SELECT entity, entity_id, op FROM changes ORDER BY entity, entity_id")
+    const changes = await allRows(db, 'SELECT entity, entity_id, op FROM changes ORDER BY entity, entity_id')
     expect(changes).toEqual([
       { entity: 'folder', entity_id: FOLDER_1, op: 'delete' },
       { entity: 'folder', entity_id: FOLDER_2, op: 'upsert' },

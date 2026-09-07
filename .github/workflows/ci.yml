@@ -24,6 +24,7 @@ jobs:
       - run: npm run empty-catch:check
       - run: npm run module-state:check
       - run: npm run deep-imports:check
+      - run: npm run style:check
       - run: npm run size:check
       # Sibling workspace gates (same node_modules; run from the repo root).
       - run: npm run size:check:blog

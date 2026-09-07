@@ -105,7 +105,7 @@ async function readResponseBody(response: Response, isJson: boolean): Promise<{ 
 function responseApiError(response: Response, data: unknown): ApiError {
   const error = (data as { error?: { code: string; message: string; details?: unknown } } | null)?.error
   const code = error?.code ?? 'unknown'
-  const fallback = error?.message ?? t("api.request_failed_status", { status: response.status })
+  const fallback = error?.message ?? t('api.request_failed_status', { status: response.status })
   return new ApiError(
     response.status,
     code,
@@ -138,7 +138,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     const { data, isInvalidJson } = await readResponseBody(response, isJson)
     if (!response.ok) throw responseApiError(response, data)
     if (isInvalidJson) {
-      throw new ApiError(502, 'invalid_response', t("api.invalid_server_response"))
+      throw new ApiError(502, 'invalid_response', t('api.invalid_server_response'))
     }
     if (notifyOtherTabs) {
       publishBroadcast({ type: 'local-write', clientId: CLIENT_ID })
@@ -146,9 +146,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     return (isJson ? data : await response.text()) as T
   } catch (err) {
     if (err instanceof ApiError) throw err
-    if (timeout?.hasTimedOut) throw new ApiError(0, 'request_timeout', t("api.request_timed_out"))
+    if (timeout?.hasTimedOut) throw new ApiError(0, 'request_timeout', t('api.request_timed_out'))
     if ((err as Error)?.name === 'AbortError') throw err
-    throw new ApiError(0, 'offline', t("api.no_network_connection"))
+    throw new ApiError(0, 'offline', t('api.no_network_connection'))
   } finally {
     if (timeout?.handle) window.clearTimeout(timeout.handle)
     timeout?.detachCallerSignal?.()
@@ -176,7 +176,7 @@ async function fetchDownload(path: string, fallbackName: string): Promise<{ resp
       credentials: 'same-origin',
     })
   } catch {
-    throw new ApiError(0, 'offline', t("api.no_network_connection"))
+    throw new ApiError(0, 'offline', t('api.no_network_connection'))
   }
 
   if (!response.ok) {
@@ -185,7 +185,7 @@ async function fetchDownload(path: string, fallbackName: string): Promise<{ resp
       : null
     const error = (data as { error?: { code: string; message: string; details?: unknown } } | null)?.error
     const code = error?.code ?? 'unknown'
-    const fallback = error?.message ?? t("api.request_failed_status", { status: response.status })
+    const fallback = error?.message ?? t('api.request_failed_status', { status: response.status })
     throw new ApiError(
       response.status,
       code,

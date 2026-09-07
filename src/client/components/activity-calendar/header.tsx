@@ -19,8 +19,8 @@ interface CalendarHeaderProps {
 
 function NavStepButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
   return (
-    <Tooltip label={label} side="bottom">
-      <IconButton label={label} size="sm" onClick={onClick}>
+    <Tooltip label={label} side='bottom'>
+      <IconButton label={label} size='sm' onClick={onClick}>
         {children}
       </IconButton>
     </Tooltip>
@@ -94,13 +94,13 @@ function ViewModeButton({
 }) {
   return (
     <button
-      type="button"
+      type='button'
       aria-pressed={active}
       onClick={() => onSelect(view)}
       className={`flex h-6 min-w-0 items-center gap-0.5 whitespace-nowrap border-l border-[var(--border-default)] px-1.5 text-[length:var(--text-10\\.5)] font-medium transition-colors first:border-l-0 aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]`}
     >
       {icon}
-      <span className="truncate">{label}</span>
+      <span className='truncate'>{label}</span>
     </button>
   )
 }
@@ -113,10 +113,10 @@ function ViewSwitcher({
   onViewChange: (view: CalendarView) => void
 }) {
   return (
-    <div role="group" aria-label={t('sidebar.calendar_view')} className="flex overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-default)]">
-      <ViewModeButton view="month" active={view === 'month'} label={t('sidebar.calendar_month_view')} icon={<CalendarDays size={10} className="shrink-0" />} onSelect={onViewChange} />
-      <ViewModeButton view="weeks" active={view === 'weeks'} label={t('sidebar.calendar_week_view')} icon={<BarChart3 size={10} className="shrink-0" />} onSelect={onViewChange} />
-      <ViewModeButton view="year" active={view === 'year'} label={t('sidebar.calendar_year_view')} icon={<CalendarRange size={10} className="shrink-0" />} onSelect={onViewChange} />
+    <div role='group' aria-label={t('sidebar.calendar_view')} className='flex overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-default)]'>
+      <ViewModeButton view='month' active={view === 'month'} label={t('sidebar.calendar_month_view')} icon={<CalendarDays size={10} className='shrink-0' />} onSelect={onViewChange} />
+      <ViewModeButton view='weeks' active={view === 'weeks'} label={t('sidebar.calendar_week_view')} icon={<BarChart3 size={10} className='shrink-0' />} onSelect={onViewChange} />
+      <ViewModeButton view='year' active={view === 'year'} label={t('sidebar.calendar_year_view')} icon={<CalendarRange size={10} className='shrink-0' />} onSelect={onViewChange} />
     </div>
   )
 }
@@ -132,8 +132,8 @@ export function CalendarHeader({
   jumpToCurrentYear,
 }: CalendarHeaderProps): JSX.Element {
   return (
-    <div className="mt-1 flex items-center justify-between gap-1 px-0.5">
-      <div className="flex items-center gap-0.5">
+    <div className='mt-1 flex items-center justify-between gap-1 px-0.5'>
+      <div className='flex items-center gap-0.5'>
         {view === 'month' && (
           <MonthNav isCurrentMonth={isCurrentMonth} shiftMonth={shiftMonth} jumpToCurrentMonth={jumpToCurrentMonth} />
         )}

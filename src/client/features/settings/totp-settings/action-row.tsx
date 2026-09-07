@@ -8,13 +8,13 @@ export function ActionRow(props: {
   danger?: boolean
 }) {
   return (
-    <div className="flex justify-end gap-2">
-      <Button type="button" size="sm" variant="ghost" disabled={props.isBusy} onClick={props.onCancel}>
+    <div className='flex justify-end gap-2'>
+      <Button type='button' size='sm' variant='ghost' disabled={props.isBusy} onClick={props.onCancel}>
         {t('common.cancel')}
       </Button>
       <Button
-        type="submit"
-        size="sm"
+        type='submit'
+        size='sm'
         variant={props.danger ? 'danger' : 'primary'}
         loading={props.isBusy}
       >

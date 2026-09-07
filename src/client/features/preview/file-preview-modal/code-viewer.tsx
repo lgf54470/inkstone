@@ -35,12 +35,12 @@ export function CodeViewer({ code, ext }: { code: string; ext: string }) {
   }, [code, ext])
 
   return (
-    <div ref={containerRef} className="ink-prose select-text w-full">
+    <div ref={containerRef} className='ink-prose select-text w-full'>
       <div
-        className="code-block has-line-numbers rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] overflow-hidden"
+        className='code-block has-line-numbers rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] overflow-hidden'
         data-lang={ext}
-        data-code-start="1"
-        data-line-numbers="true"
+        data-code-start='1'
+        data-line-numbers='true'
       >
         <pre className="p-3 m-0 overflow-x-auto font-mono text-[length:var(--text-12\.5)] leading-relaxed">
           <code>{code}</code>

@@ -29,7 +29,7 @@ export function buildNewNoteContent(title: string, tags: string[] = [], folderId
     // Interpolate placeholders before the tag merge: the YAML round-trip in
     // mergeTagsIntoFrontMatter would mangle raw `{{...}}` tokens (they parse
     // as flow mappings) and leave them unreplaced in the final note.
-    const rendered = renderNewNoteTemplate(template, title || t("common.new_note"), new Date(), extra);
+    const rendered = renderNewNoteTemplate(template, title || t('common.new_note'), new Date(), extra);
     return mergeTagsIntoFrontMatter(rendered.content, tagList, rendered.cursor);
 }
 /** Pending caret positions for freshly created notes, consumed by the editor on mount. */

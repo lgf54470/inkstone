@@ -45,20 +45,20 @@ export function ShareGridCard({ share, isSelected, folders, copiedSlug, onToggle
       <div>
         <CardHeader share={share} isSelected={isSelected} onToggleSelect={onToggleSelect} onTogglePin={onTogglePin} onToggleStar={onToggleStar} onToggleShare={onToggleShare} onOpenEdit={onOpenEdit} />
         {share.noteExcerpt && (
-          <p className="line-clamp-2 text-[length:var(--text-11)] text-[var(--text-tertiary)] pb-2">
+          <p className='line-clamp-2 text-[length:var(--text-11)] text-[var(--text-tertiary)] pb-2'>
             {share.noteExcerpt}
           </p>
         )}
         {share.slug ? (
-          <SlugChip share={share} copiedSlug={copiedSlug} onCopy={onCopy} grouped className="flex w-full justify-between bg-[var(--bg-base)]" />
+          <SlugChip share={share} copiedSlug={copiedSlug} onCopy={onCopy} grouped className='flex w-full justify-between bg-[var(--bg-base)]' />
         ) : (
-          <div className="rounded-[var(--r-md)] border border-dashed border-[var(--border-subtle)] px-2 py-1 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]">
+          <div className='rounded-[var(--r-md)] border border-dashed border-[var(--border-subtle)] px-2 py-1 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
             {t('share.not_shared')}
           </div>
         )}
         <CardBadges share={share} folder={folder} isExpired={isExpired} />
       </div>
-      <div className="mt-3 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2">
+      <div className='mt-3 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2'>
         <CardMetrics share={share} />
         <CardActions share={share} onOpenQr={onOpenQr} onOpenAnalytics={onOpenAnalytics} onOpenEdit={onOpenEdit} folderButtonRef={folderButtonRef} onToggleFolderMenu={() => setIsFolderMenuOpen((prev) => !prev)} />
       </div>
@@ -70,11 +70,11 @@ export function ShareGridCard({ share, isSelected, folders, copiedSlug, onToggle
 
 function CardHeader({ share, isSelected, onToggleSelect, onTogglePin, onToggleStar, onToggleShare, onOpenEdit }: { share: ShareInfo; isSelected: boolean; onToggleSelect: () => void; onTogglePin: () => void; onToggleStar: () => void; onToggleShare: (checked: boolean) => void; onOpenEdit: () => void }) {
   return (
-    <div className="flex items-start justify-between gap-2 pb-2">
-      <div className="flex items-center gap-1.5 min-w-0">
-        <input type="checkbox" checked={isSelected} onChange={onToggleSelect} className="rounded border-[var(--border-default)] accent-[var(--accent)] shrink-0" />
+    <div className='flex items-start justify-between gap-2 pb-2'>
+      <div className='flex items-center gap-1.5 min-w-0'>
+        <input type='checkbox' checked={isSelected} onChange={onToggleSelect} className='rounded border-[var(--border-default)] accent-[var(--accent)] shrink-0' />
         <PinStarButtons share={share} onTogglePin={onTogglePin} onToggleStar={onToggleStar} compact />
-        <span onClick={onOpenEdit} className="truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer">
+        <span onClick={onOpenEdit} className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer'>
           {share.noteTitle || t('common.untitled_note')}
         </span>
       </div>
@@ -85,15 +85,15 @@ function CardHeader({ share, isSelected, onToggleSelect, onTogglePin, onToggleSt
 
 function CardBadges({ share, folder, isExpired }: { share: ShareInfo; folder: ShareFolder | null; isExpired: boolean }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 pt-2 text-[length:var(--text-10)] text-[var(--text-quaternary)]">
+    <div className='flex flex-wrap items-center gap-2 pt-2 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
       {folder && (
-        <span style={{ borderColor: folder.color ? `${folder.color}40` : undefined }} className="inline-flex items-center gap-1 rounded bg-[var(--bg-surface)] px-1.5 py-0.2 text-[length:var(--text-10)] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
-          <FolderClosed size={10} style={{ color: folder.color ?? undefined }} className="shrink-0" />
-          <span className="max-w-[100px] truncate">{folder.name}</span>
+        <span style={{ borderColor: folder.color ? `${folder.color}40` : undefined }} className='inline-flex items-center gap-1 rounded bg-[var(--bg-surface)] px-1.5 py-0.2 text-[length:var(--text-10)] text-[var(--text-secondary)] border border-[var(--border-subtle)]'>
+          <FolderClosed size={10} style={{ color: folder.color ?? undefined }} className='shrink-0' />
+          <span className='max-w-[100px] truncate'>{folder.name}</span>
         </span>
       )}
       {share.hasPassword && (
-        <span className="flex items-center gap-0.5 text-[var(--warning)]">
+        <span className='flex items-center gap-0.5 text-[var(--warning)]'>
           <Lock size={10} /> {t('share.password_protected')}
         </span>
       )}
@@ -104,7 +104,7 @@ function CardBadges({ share, folder, isExpired }: { share: ShareInfo; folder: Sh
         </span>
       )}
       {share.tags && share.tags.length > 0 && share.tags.map((tag) => (
-        <span key={tag} className="rounded bg-[var(--bg-surface)] px-1 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
+        <span key={tag} className='rounded bg-[var(--bg-surface)] px-1 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]'>
           #{tag}
         </span>
       ))}
@@ -114,13 +114,13 @@ function CardBadges({ share, folder, isExpired }: { share: ShareInfo; folder: Sh
 
 function CardMetrics({ share }: { share: ShareInfo }) {
   return (
-    <div className="flex items-center gap-2 font-mono text-[length:var(--text-11)] text-[var(--text-tertiary)]">
+    <div className='flex items-center gap-2 font-mono text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
       <span title={t('share.metric_pv')}>
-        <Eye size={11} className="inline mr-0.5" />
+        <Eye size={11} className='inline mr-0.5' />
         {share.views}
       </span>
       <span title={t('share.metric_uv')}>
-        <Users size={11} className="inline mr-0.5" />
+        <Users size={11} className='inline mr-0.5' />
         {share.uniqueVisitors ?? 0}
       </span>
     </div>
@@ -129,21 +129,21 @@ function CardMetrics({ share }: { share: ShareInfo }) {
 
 function CardActions({ share, onOpenQr, onOpenAnalytics, onOpenEdit, folderButtonRef, onToggleFolderMenu }: { share: ShareInfo; onOpenQr: () => void; onOpenAnalytics: () => void; onOpenEdit: () => void; folderButtonRef: React.Ref<HTMLButtonElement>; onToggleFolderMenu: () => void }) {
   return (
-    <div className="flex items-center gap-0.5">
-      <IconButton ref={folderButtonRef} size="sm" label={t('share.batch_move_to_folder')} onClick={onToggleFolderMenu}>
+    <div className='flex items-center gap-0.5'>
+      <IconButton ref={folderButtonRef} size='sm' label={t('share.batch_move_to_folder')} onClick={onToggleFolderMenu}>
         <FolderInput size={13} />
       </IconButton>
-      <IconButton size="sm" label={t('share.qr_code_title')} onClick={onOpenQr}>
+      <IconButton size='sm' label={t('share.qr_code_title')} onClick={onOpenQr}>
         <QrCode size={13} />
       </IconButton>
-      <IconButton size="sm" label={t('share.note_analytics_title')} onClick={onOpenAnalytics}>
+      <IconButton size='sm' label={t('share.note_analytics_title')} onClick={onOpenAnalytics}>
         <BarChart2 size={13} />
       </IconButton>
-      <IconButton size="sm" label={t('share.edit_share_settings')} onClick={onOpenEdit}>
+      <IconButton size='sm' label={t('share.edit_share_settings')} onClick={onOpenEdit}>
         <Settings2 size={13} />
       </IconButton>
       {share.slug && (
-        <a href={share.url} target="_blank" rel="noopener noreferrer" className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]" title={t('preview.open_in_new_tab')}>
+        <a href={share.url} target='_blank' rel='noopener noreferrer' className='inline-flex h-7 w-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]' title={t('preview.open_in_new_tab')}>
           <ExternalLink size={13} />
         </a>
       )}

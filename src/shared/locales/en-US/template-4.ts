@@ -1,5 +1,5 @@
 export const messages = {
-"template.workout_plan.content": `---
+'template.workout_plan.content': `---
 title: {{title}} Workout Plan
 createdAt: {{createdAt}}
 tags: [fitness]
@@ -27,6 +27,6 @@ tags: [fitness]
 - Sleep:  h
 - Stretching: [ ] 
 `,
-"template.workout_plan.description": "Weekly workout split with exercises, sets and reps.",
-"template.workout_plan.name": "Workout Plan",
+'template.workout_plan.description': 'Weekly workout split with exercises, sets and reps.',
+'template.workout_plan.name': 'Workout Plan',
 };

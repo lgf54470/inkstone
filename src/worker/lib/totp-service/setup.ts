@@ -1,20 +1,20 @@
-import type { TotpLoginChallenge, TotpRecoveryCodesResult, TotpSetupInfo, TotpStatus } from "@shared/types";
-import type { Env } from "../../env";
-import { decryptTotpSecret, encryptTotpSecret } from "../crypto";
-import { timingSafeEqual } from "../encoding";
-import { ApiError } from "../errors";
-import { newId } from "../id";
-import { buildTotpUri, generateOpaqueToken, generateRecoveryCodes, generateTotpSecret, hashOpaqueToken, hashRecoveryCode, isOpaqueToken, matchTotpCode, normalizeRecoveryCode, TOTP_LOGIN_TTL_MS, TOTP_SETUP_TTL_MS } from "../totp";
-import { beginFactorAttempt } from "./factor";
-import { changed } from "./factor";
-import { clearFactorAttempts } from "./factor";
-import { factorThrottle } from "./factor";
-import { factorUnavailable } from "./factor";
-import { loadCredential } from "./factor";
-import { rejectFactor } from "./factor";
-import { requireEnabledCredential } from "./factor";
-import { setupExpired } from "./factor";
-import { beginSetupBatch, completeSetupEnable, disableByRecoveryCodeStatements, disableByTotpCodeStatement, disableTeardownStatements, regenerateRecoveryStatements } from "./setup-helpers";
+import type { TotpLoginChallenge, TotpRecoveryCodesResult, TotpSetupInfo, TotpStatus } from '@shared/types';
+import type { Env } from '../../env';
+import { decryptTotpSecret, encryptTotpSecret } from '../crypto';
+import { timingSafeEqual } from '../encoding';
+import { ApiError } from '../errors';
+import { newId } from '../id';
+import { buildTotpUri, generateOpaqueToken, generateRecoveryCodes, generateTotpSecret, hashOpaqueToken, hashRecoveryCode, isOpaqueToken, matchTotpCode, normalizeRecoveryCode, TOTP_LOGIN_TTL_MS, TOTP_SETUP_TTL_MS } from '../totp';
+import { beginFactorAttempt } from './factor';
+import { changed } from './factor';
+import { clearFactorAttempts } from './factor';
+import { factorThrottle } from './factor';
+import { factorUnavailable } from './factor';
+import { loadCredential } from './factor';
+import { rejectFactor } from './factor';
+import { requireEnabledCredential } from './factor';
+import { setupExpired } from './factor';
+import { beginSetupBatch, completeSetupEnable, disableByRecoveryCodeStatements, disableByTotpCodeStatement, disableTeardownStatements, regenerateRecoveryStatements } from './setup-helpers';
 
 export async function hasEnabledTotp(db: D1Database, userId: string): Promise<boolean> {
   const row = await db.prepare(

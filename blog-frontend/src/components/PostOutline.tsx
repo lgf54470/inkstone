@@ -163,7 +163,7 @@ function OutlineRow({ heading, index, active, minLevel, prevHeading, onSelect }:
   return (
     <li className={marginTopClass}>
       <button
-        type="button"
+        type='button'
         aria-current={isActive ? 'location' : undefined}
         data-heading-level={heading.level}
         data-heading-slug={heading.slug}
@@ -176,18 +176,18 @@ function OutlineRow({ heading, index, active, minLevel, prevHeading, onSelect }:
       >
         {isActive && (
           <span
-            aria-hidden="true"
-            className="absolute top-1/2 left-0.5 h-3.5 w-[2.5px] -translate-y-1/2 rounded-full bg-[var(--accent)]"
+            aria-hidden='true'
+            className='absolute top-1/2 left-0.5 h-3.5 w-[2.5px] -translate-y-1/2 rounded-full bg-[var(--accent)]'
           />
         )}
         <HeadingIcon
           size={typography.iconSize}
-          aria-hidden="true"
+          aria-hidden='true'
           className={`shrink-0 transition-opacity duration-[var(--dur-fast)] ${typography.iconColor} ${
             !isActive ? 'group-hover:text-[var(--text-secondary)] group-hover:opacity-100' : ''
           }`}
         />
-        <span className="min-w-0 flex-1 truncate">{heading.text}</span>
+        <span className='min-w-0 flex-1 truncate'>{heading.text}</span>
       </button>
     </li>
   )
@@ -242,11 +242,11 @@ export default function PostOutline({ headings, locale = DEFAULT_LOCALE, classNa
 
   return (
     <nav ref={navRef} className={`w-full ${className}`} aria-label={t('common.outline', {}, locale)}>
-      <div className="mb-2 flex items-center gap-1.5 px-2 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
-        <ListTree size={11} aria-hidden="true" />
+      <div className='mb-2 flex items-center gap-1.5 px-2 text-[10.5px] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+        <ListTree size={11} aria-hidden='true' />
         <span>{t('common.outline', {}, locale)}</span>
       </div>
-      <ul className="space-y-px">
+      <ul className='space-y-px'>
         {headings.map((heading, index) => (
           <OutlineRow
             key={`${heading.slug}-${index}`}

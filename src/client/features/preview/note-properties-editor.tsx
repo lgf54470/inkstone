@@ -15,14 +15,14 @@ interface NotePropertiesEditorProps {
 function EmptyProperties({ onAdd, className }: { onAdd: () => void; className?: string }) {
   return (
     <div className={cn('note-properties-editor mb-4 flex items-center justify-between rounded-lg border border-dashed border-[var(--border-subtle)] px-3 py-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]', className)}>
-      <span className="flex items-center gap-1.5 font-medium">
+      <span className='flex items-center gap-1.5 font-medium'>
         <SlidersHorizontal size={13} />
         {t('markdown.properties')}
       </span>
       <button
-        type="button"
+        type='button'
         onClick={onAdd}
-        className="inline-flex items-center gap-1 rounded px-2 py-0.5 font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--accent)]"
+        className='inline-flex items-center gap-1 rounded px-2 py-0.5 font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--accent)]'
       >
         <Plus size={12} />
         {t('properties.add_property')}
@@ -34,22 +34,22 @@ function EmptyProperties({ onAdd, className }: { onAdd: () => void; className?: 
 function PropertiesHeader({ bundle }: { bundle: NotePropertiesBundle }) {
   const { properties, isExpanded, setIsExpanded } = bundle
   return (
-    <div className="flex items-center justify-between px-3 py-2 text-[var(--text-secondary)]">
+    <div className='flex items-center justify-between px-3 py-2 text-[var(--text-secondary)]'>
       <button
-        type="button"
+        type='button'
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 font-medium text-[var(--text-primary)] hover:opacity-80 transition-opacity"
+        className='flex items-center gap-2 font-medium text-[var(--text-primary)] hover:opacity-80 transition-opacity'
       >
-        <SlidersHorizontal size={13} className="text-[var(--text-tertiary)]" />
+        <SlidersHorizontal size={13} className='text-[var(--text-tertiary)]' />
         <span>{t('markdown.properties')}</span>
         <span className="rounded-full bg-[var(--surface-tertiary)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-normal text-[var(--text-tertiary)]">
           {properties.length}
         </span>
       </button>
       <button
-        type="button"
+        type='button'
         onClick={() => setIsExpanded(!isExpanded)}
-        className="p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+        className='p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors'
       >
         <ChevronDown size={14} className={cn('transition-transform duration-[var(--dur-base)]', !isExpanded && '-rotate-90')} />
       </button>
@@ -60,7 +60,7 @@ function PropertiesHeader({ bundle }: { bundle: NotePropertiesBundle }) {
 function AddPropertyForm({ bundle }: { bundle: NotePropertiesBundle }) {
   const { newKey, setNewKey, newValue, setNewValue, handleCommitNewProperty, setIsAddingProperty } = bundle
   return (
-    <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border-subtle)] bg-[var(--surface-tertiary)]/30 px-3 py-2">
+    <div className='flex flex-wrap items-center gap-2 border-t border-[var(--border-subtle)] bg-[var(--surface-tertiary)]/30 px-3 py-2'>
       <input
         autoFocus
         value={newKey}
@@ -82,17 +82,17 @@ function AddPropertyForm({ bundle }: { bundle: NotePropertiesBundle }) {
         }}
         className="h-7 min-w-[140px] flex-1 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
       />
-      <div className="flex items-center gap-1">
+      <div className='flex items-center gap-1'>
         <button
-          type="button"
+          type='button'
           onClick={handleCommitNewProperty}
           className="inline-flex h-7 items-center rounded bg-[var(--accent)] px-2.5 text-[length:var(--text-11\.5)] font-medium text-white transition-opacity hover:opacity-90"
         >
-          <Check size={12} className="mr-1" />
+          <Check size={12} className='mr-1' />
           {t('overlay.confirm')}
         </button>
         <button
-          type="button"
+          type='button'
           onClick={() => setIsAddingProperty(false)}
           className="inline-flex h-7 items-center rounded px-2 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
         >
@@ -116,8 +116,8 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({ noteId,
       <PropertiesHeader bundle={bundle} />
 
       {isExpanded && (
-        <div className="border-t border-[var(--border-subtle)]">
-          <div className="divide-y divide-[var(--border-subtle)]/50">
+        <div className='border-t border-[var(--border-subtle)]'>
+          <div className='divide-y divide-[var(--border-subtle)]/50'>
             {properties.map(([key, value]) => (
               <PropertyRow key={key} bundle={bundle} rowKey={key} value={value} />
             ))}
@@ -126,9 +126,9 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({ noteId,
           {isAddingProperty ? (
             <AddPropertyForm bundle={bundle} />
           ) : (
-            <div className="border-t border-[var(--border-subtle)] bg-[var(--surface-tertiary)]/20 px-3 py-2">
+            <div className='border-t border-[var(--border-subtle)] bg-[var(--surface-tertiary)]/20 px-3 py-2'>
               <button
-                type="button"
+                type='button'
                 onClick={beginAddProperty}
                 className="inline-flex items-center gap-1.5 text-[length:var(--text-11\.5)] font-medium text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]"
               >

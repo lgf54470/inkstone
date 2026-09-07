@@ -1,7 +1,7 @@
-import { Hono } from "hono";
-import { ShareVisitLog } from "@shared/types";
-import type { AppBindings } from "../../env";
-import { parseBotName } from "../../lib/share-analytics";
+import { Hono } from 'hono';
+import { ShareVisitLog } from '@shared/types';
+import type { AppBindings } from '../../env';
+import { parseBotName } from '../../lib/share-analytics';
 
 interface VisitLogRow {
   id: number

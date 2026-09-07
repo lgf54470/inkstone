@@ -10,10 +10,10 @@ import { useShareHubSidebar } from './use-share-hub-sidebar';
 export function ShareHubSidebar() {
   const bundle = useShareHubSidebar()
   return (
-    <aside className="flex h-full w-[260px] shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sidebar)]">
-      <div className="flex-1 overflow-y-auto px-2 py-3">
+    <aside className='flex h-full w-[260px] shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sidebar)]'>
+      <div className='flex-1 overflow-y-auto px-2 py-3'>
         <CategoryList bundle={bundle} />
-        <div className="my-3 h-px bg-[var(--border-subtle)]" />
+        <div className='my-3 h-px bg-[var(--border-subtle)]' />
         <SidebarSection
           isOpen={bundle.isFoldersSectionOpen}
           onToggle={() => bundle.setIsFoldersSectionOpen(!bundle.isFoldersSectionOpen)}
@@ -22,12 +22,12 @@ export function ShareHubSidebar() {
           onAdd={() => void bundle.handleCreateRootFolder()}
         >
           {bundle.isFoldersSectionOpen && (
-            <div className="space-y-0.5 pt-0.5">
-              {bundle.folderTree.length === 0 ? <p className="px-2.5 py-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]">{t('share.no_folders')}</p> : bundle.folderTree.map(bundle.renderFolderNode)}
+            <div className='space-y-0.5 pt-0.5'>
+              {bundle.folderTree.length === 0 ? <p className='px-2.5 py-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('share.no_folders')}</p> : bundle.folderTree.map(bundle.renderFolderNode)}
             </div>
           )}
         </SidebarSection>
-        <div className="my-3 h-px bg-[var(--border-subtle)]" />
+        <div className='my-3 h-px bg-[var(--border-subtle)]' />
         <SidebarSection
           isOpen={bundle.isTagsSectionOpen}
           onToggle={() => bundle.setIsTagsSectionOpen(!bundle.isTagsSectionOpen)}
@@ -36,8 +36,8 @@ export function ShareHubSidebar() {
           onAdd={() => void bundle.handleCreateNewTag()}
         >
           {bundle.isTagsSectionOpen && (
-            <div className="space-y-0.5 pt-0.5">
-              {bundle.tags.length === 0 ? <p className="px-2.5 py-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]">{t('share.no_tags')}</p> : bundle.tags.map(bundle.renderTagNode)}
+            <div className='space-y-0.5 pt-0.5'>
+              {bundle.tags.length === 0 ? <p className='px-2.5 py-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('share.no_tags')}</p> : bundle.tags.map(bundle.renderTagNode)}
             </div>
           )}
         </SidebarSection>
@@ -50,13 +50,13 @@ export function ShareHubSidebar() {
 function CategoryList({ bundle }: { bundle: ShareHubSidebarBundle }) {
   const { categories, category, selectedFolderId, selectedTag, setCategory } = bundle
   return (
-    <div className="space-y-0.5">
+    <div className='space-y-0.5'>
       {categories.map((cat) => {
         const isSelected = category === cat.id && !selectedFolderId && !selectedTag
         return (
           <button
             key={cat.id}
-            type="button"
+            type='button'
             onClick={() => setCategory(cat.id)}
             className={cn(
               'flex h-8 w-full items-center gap-2 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] font-medium transition-colors',
@@ -66,9 +66,9 @@ function CategoryList({ bundle }: { bundle: ShareHubSidebarBundle }) {
             )}
           >
             {cat.icon}
-            <span className="flex-1 text-left">{cat.label}</span>
+            <span className='flex-1 text-left'>{cat.label}</span>
             {cat.count !== undefined && cat.count > 0 && (
-              <span className="tabular rounded bg-[var(--bg-card)] px-1.5 py-0.5 text-[length:var(--text-10)] font-medium text-[var(--text-tertiary)] shadow-[var(--shadow-sm)]">
+              <span className='tabular rounded bg-[var(--bg-card)] px-1.5 py-0.5 text-[length:var(--text-10)] font-medium text-[var(--text-tertiary)] shadow-[var(--shadow-sm)]'>
                 {cat.count}
               </span>
             )}
@@ -89,21 +89,21 @@ function SidebarSection({ isOpen, onToggle, title, addLabel, onAdd, children }: 
 }) {
   return (
     <>
-      <div className="group/head mb-1 flex items-center justify-between px-2">
+      <div className='group/head mb-1 flex items-center justify-between px-2'>
         <button
-          type="button"
+          type='button'
           onClick={onToggle}
-          className="flex items-center gap-1 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
+          className='flex items-center gap-1 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'
         >
           {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
           <span>{title}</span>
         </button>
-        <Tooltip label={addLabel} side="left">
+        <Tooltip label={addLabel} side='left'>
           <IconButton
             label={addLabel}
-            size="sm"
+            size='sm'
             onClick={onAdd}
-            className="opacity-0 group-hover/head:opacity-100 transition-opacity"
+            className='opacity-0 group-hover/head:opacity-100 transition-opacity'
           >
             <Plus size={13} />
           </IconButton>
@@ -118,22 +118,22 @@ function SidebarFooterStats({ globalStats }: {
   globalStats: ShareHubSidebarBundle['globalStats']
 }) {
   return (
-    <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2.5">
-      <div className="flex items-center justify-between text-[length:var(--text-11)] text-[var(--text-tertiary)]">
+    <div className='border-t border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2.5'>
+      <div className='flex items-center justify-between text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
         <span>{t('share.total_shares_count')}</span>
-        <span className="font-semibold text-[var(--text-primary)]">
+        <span className='font-semibold text-[var(--text-primary)]'>
           {globalStats?.totalShares ?? 0}
         </span>
       </div>
-      <div className="flex items-center justify-between pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]">
+      <div className='flex items-center justify-between pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
         <span>{t('share.total_pv_views')}</span>
-        <span className="font-semibold text-[var(--text-primary)]">
+        <span className='font-semibold text-[var(--text-primary)]'>
           {globalStats?.totalViews ?? 0}
         </span>
       </div>
-      <div className="flex items-center justify-between pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]">
+      <div className='flex items-center justify-between pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
         <span>{t('share.total_uv_visitors')}</span>
-        <span className="font-semibold text-[var(--text-primary)]">
+        <span className='font-semibold text-[var(--text-primary)]'>
           {globalStats?.totalVisitors ?? 0}
         </span>
       </div>

@@ -1,15 +1,15 @@
-import { Hono, type Context } from "hono";
-import { z } from "zod";
-import { LIMITS } from "@shared/constants";
-import { organizerColorOrNull } from "@shared/organizer-colors";
-import { truncateText } from "@shared/text-utils";
+import { Hono, type Context } from 'hono';
+import { z } from 'zod';
+import { LIMITS } from '@shared/constants';
+import { organizerColorOrNull } from '@shared/organizer-colors';
+import { truncateText } from '@shared/text-utils';
 
-import type { AppBindings } from "../../env";
-import { toFolder, type FolderRow } from "../../db/rows";
-import { ApiError } from "../../lib/errors";
-import { newId } from "../../lib/id";
-import { broadcastCursor } from "../../lib/notify";
-import { JSON_BODY_LIMITS, readJsonValidated } from "../../lib/request";
+import type { AppBindings } from '../../env';
+import { toFolder, type FolderRow } from '../../db/rows';
+import { ApiError } from '../../lib/errors';
+import { newId } from '../../lib/id';
+import { broadcastCursor } from '../../lib/notify';
+import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request';
 import { createFolderSchema } from './helpers';
 import { patchFolderSchema } from './helpers';
 import { FOLDER_SELECT } from './helpers';
@@ -69,7 +69,7 @@ async function createFolderHandler(c: Context<AppBindings>): Promise<Response> {
   const graph = await loadFolderGraph(c.env.DB, userId)
   const parentId = validateParent(graph, body.parentId ?? null)
   const requestedName = (body.name ?? '').trim()
-  const name = requestedName || availableFolderName(graph, parentId, "New folder")
+  const name = requestedName || availableFolderName(graph, parentId, 'New folder')
   if (name.length > LIMITS.folderNameMaxLength) throw ApiError.badRequest('Folder name is too long')
   if (parentId && folderDepth(graph, parentId) >= LIMITS.folderDepthMax) {
     throw ApiError.badRequest(`Folder depth cannot exceed ${LIMITS.folderDepthMax} levels`)

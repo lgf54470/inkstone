@@ -9,17 +9,17 @@ export function PasswordInput(props: {
   autoFocus?: boolean
 }) {
   return (
-    <label className="block">
+    <label className='block'>
       <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
         {t('settings.current_password')}
       </span>
       <Input
-        type="password"
+        type='password'
         value={props.value}
         maxLength={LIMITS.passwordMaxLength}
         onChange={(event) => props.onChange(event.target.value)}
         disabled={props.isBusy}
-        autoComplete="current-password"
+        autoComplete='current-password'
         autoFocus={props.autoFocus}
       />
     </label>

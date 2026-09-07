@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const blogPostWriteSchema = z.object({
   noteId: z.string().min(1, 'noteId is required'),

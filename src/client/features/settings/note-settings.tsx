@@ -4,88 +4,88 @@ import { renderNewNoteTemplate } from '@shared/markdown-utils';
 import { Input, SettingRow, Switch, Textarea } from '../../components/form';
 import { Button } from '../../components/primitives';
 import { useSession } from '../../store/session';
-import { t, useLocale } from "../../lib/i18n";
+import { t, useLocale } from '../../lib/i18n';
 
 export function NoteSettings() {
-    const notes = useSession((s) => s.settings.notes ?? DEFAULT_SETTINGS.notes);
-    const update = useSession((s) => s.updateSettings);
-    const setTemplate = useCallback((newNoteTemplate: string) => void update({ notes: { newNoteTemplate } }), [update]);
-    const restoreDefault = useCallback(() => void update({ notes: { newNoteTemplate: DEFAULT_NEW_NOTE_TEMPLATE } }), [update]);
-    const setSyncTitleToFrontMatter = useCallback((syncTitleToFrontMatter: boolean) => void update({ notes: { syncTitleToFrontMatter } }), [update]);
-    const setSyncFrontMatterTitle = useCallback((syncFrontMatterTitle: boolean) => void update({ notes: { syncFrontMatterTitle } }), [update]);
-    return (<div className="space-y-6">
-      <section>
-        <SettingRow
-          title={t("settings.new_note_template")}
-          description={t("settings.new_note_template_description")}
-        >
-          <div className="flex w-[340px] max-w-full flex-col items-end gap-2">
-            <Textarea
-              aria-label={t("settings.new_note_template")}
-              value={notes.newNoteTemplate}
-              onChange={(e) => setTemplate(e.target.value)}
-              rows={10}
-              spellCheck={false}
-              className="w-full font-mono text-[length:var(--text-12\.5)]"
-            />
-            <Button size="sm" variant="ghost" onClick={restoreDefault}>
-              {t("settings.restore_default_template")}
-            </Button>
-          </div>
-        </SettingRow>
-        <p className="pt-3 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-quaternary)]">
-          {t("settings.new_note_template_hint")}
-        </p>
-        <TemplatePreview template={notes.newNoteTemplate} />
-      </section>
+  const notes = useSession((s) => s.settings.notes ?? DEFAULT_SETTINGS.notes);
+  const update = useSession((s) => s.updateSettings);
+  const setTemplate = useCallback((newNoteTemplate: string) => void update({ notes: { newNoteTemplate } }), [update]);
+  const restoreDefault = useCallback(() => void update({ notes: { newNoteTemplate: DEFAULT_NEW_NOTE_TEMPLATE } }), [update]);
+  const setSyncTitleToFrontMatter = useCallback((syncTitleToFrontMatter: boolean) => void update({ notes: { syncTitleToFrontMatter } }), [update]);
+  const setSyncFrontMatterTitle = useCallback((syncFrontMatterTitle: boolean) => void update({ notes: { syncFrontMatterTitle } }), [update]);
+  return (<div className='space-y-6'>
+    <section>
+    <SettingRow
+      title={t('settings.new_note_template')}
+      description={t("settings.new_note_template_description")}
+    >
+      <div className='flex w-[340px] max-w-full flex-col items-end gap-2'>
+      <Textarea
+        aria-label={t('settings.new_note_template')}
+        value={notes.newNoteTemplate}
+        onChange={(e) => setTemplate(e.target.value)}
+        rows={10}
+        spellCheck={false}
+        className="w-full font-mono text-[length:var(--text-12\.5)]"
+      />
+      <Button size='sm' variant='ghost' onClick={restoreDefault}>
+        {t("settings.restore_default_template")}
+      </Button>
+      </div>
+    </SettingRow>
+    <p className="pt-3 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-quaternary)]">
+      {t("settings.new_note_template_hint")}
+    </p>
+    <TemplatePreview template={notes.newNoteTemplate} />
+    </section>
 
-      <section>
-        <h3 className="mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
-          {t("settings.title_sync")}
-        </h3>
-        <SettingRow title={t("settings.sync_title_to_frontmatter")} description={t("settings.sync_title_to_frontmatter_desc")}>
-          <Switch checked={notes.syncTitleToFrontMatter} onChange={setSyncTitleToFrontMatter} label={t("settings.sync_title_to_frontmatter")}/>
-        </SettingRow>
-        <SettingRow title={t("settings.sync_frontmatter_title")} description={t("settings.sync_frontmatter_title_desc")}>
-          <Switch checked={notes.syncFrontMatterTitle} onChange={setSyncFrontMatterTitle} label={t("settings.sync_frontmatter_title")}/>
-        </SettingRow>
-      </section>
-    </div>);
+    <section>
+    <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+      {t("settings.title_sync")}
+    </h3>
+    <SettingRow title={t("settings.sync_title_to_frontmatter")} description={t("settings.sync_title_to_frontmatter_desc")}>
+      <Switch checked={notes.syncTitleToFrontMatter} onChange={setSyncTitleToFrontMatter} label={t("settings.sync_title_to_frontmatter")}/>
+    </SettingRow>
+    <SettingRow title={t("settings.sync_frontmatter_title")} description={t("settings.sync_frontmatter_title_desc")}>
+      <Switch checked={notes.syncFrontMatterTitle} onChange={setSyncFrontMatterTitle} label={t("settings.sync_frontmatter_title")}/>
+    </SettingRow>
+    </section>
+  </div>);
 }
 
 function TemplatePreview({ template }: { template: string }) {
-    const locale = useLocale();
-    const [demoTitle, setDemoTitle] = useState('');
-    const [demoFolder, setDemoFolder] = useState('');
-    const [demoTag, setDemoTag] = useState('');
-    const preview = useMemo(() => {
-        const demoTags = demoTag.split(/[,]|\uFF0C/).map((item) => item.trim()).filter(Boolean).join(', ');
-        return renderNewNoteTemplate(
-            template,
-            demoTitle.trim() || t("common.new_note"),
-            new Date(),
-            { folder: demoFolder.trim(), tags: demoTags },
-        );
-    }, [template, demoTitle, demoFolder, demoTag, locale]);
-    const hasContextualPlaceholders = template.includes('{{folder}}') || template.includes('{{tags}}');
-    return (
-        <div className="mt-4">
-          <h3 className="mb-1.5 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
-            {t("settings.new_note_template_preview")}
-          </h3>
-          <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <Input aria-label={t("settings.template_preview_title")} placeholder={t("settings.template_preview_title")} value={demoTitle} onChange={(e) => setDemoTitle(e.target.value)}/>
-            <Input aria-label={t("settings.template_preview_folder")} placeholder={t("settings.template_preview_folder")} value={demoFolder} onChange={(e) => setDemoFolder(e.target.value)}/>
-            <Input aria-label={t("settings.template_preview_tag")} placeholder={t("settings.template_preview_tag")} value={demoTag} onChange={(e) => setDemoTag(e.target.value)}/>
-          </div>
-          <pre className="max-h-52 overflow-auto whitespace-pre rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3 font-mono text-[length:var(--text-12)] leading-relaxed text-[var(--text-secondary)]">{preview.cursor === null ? preview.content : (<>
-              {preview.content.slice(0, preview.cursor)}
-              <span aria-hidden="true" className="mx-px inline-block h-3.5 w-[2px] animate-pulse rounded-full bg-[var(--accent)] align-middle"/>
-              {preview.content.slice(preview.cursor)}
-            </>)}</pre>
-          {hasContextualPlaceholders && (<p className="mt-1.5 text-[length:var(--text-11)] leading-relaxed text-[var(--text-quaternary)]">
-              {t("settings.template_preview_context")}
-            </p>)}
-        </div>
+  const locale = useLocale();
+  const [demoTitle, setDemoTitle] = useState('');
+  const [demoFolder, setDemoFolder] = useState('');
+  const [demoTag, setDemoTag] = useState('');
+  const preview = useMemo(() => {
+    const demoTags = demoTag.split(/[,]|\uFF0C/).map((item) => item.trim()).filter(Boolean).join(', ');
+    return renderNewNoteTemplate(
+      template,
+      demoTitle.trim() || t('common.new_note'),
+      new Date(),
+      { folder: demoFolder.trim(), tags: demoTags },
     );
+  }, [template, demoTitle, demoFolder, demoTag, locale]);
+  const hasContextualPlaceholders = template.includes('{{folder}}') || template.includes('{{tags}}');
+  return (
+    <div className='mt-4'>
+      <h3 className='mb-1.5 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
+      {t("settings.new_note_template_preview")}
+      </h3>
+      <div className='mb-2 grid grid-cols-1 gap-2 sm:grid-cols-3'>
+      <Input aria-label={t('settings.template_preview_title')} placeholder={t("settings.template_preview_title")} value={demoTitle} onChange={(e) => setDemoTitle(e.target.value)}/>
+      <Input aria-label={t('settings.template_preview_folder')} placeholder={t("settings.template_preview_folder")} value={demoFolder} onChange={(e) => setDemoFolder(e.target.value)}/>
+      <Input aria-label={t('settings.template_preview_tag')} placeholder={t("settings.template_preview_tag")} value={demoTag} onChange={(e) => setDemoTag(e.target.value)}/>
+      </div>
+      <pre className='max-h-52 overflow-auto whitespace-pre rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3 font-mono text-[length:var(--text-12)] leading-relaxed text-[var(--text-secondary)]'>{preview.cursor === null ? preview.content : (<>
+        {preview.content.slice(0, preview.cursor)}
+        <span aria-hidden='true' className='mx-px inline-block h-3.5 w-[2px] animate-pulse rounded-full bg-[var(--accent)] align-middle'/>
+        {preview.content.slice(preview.cursor)}
+      </>)}</pre>
+      {hasContextualPlaceholders && (<p className='mt-1.5 text-[length:var(--text-11)] leading-relaxed text-[var(--text-quaternary)]'>
+        {t("settings.template_preview_context")}
+      </p>)}
+    </div>
+  );
 }

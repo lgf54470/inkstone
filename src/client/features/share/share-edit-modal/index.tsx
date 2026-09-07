@@ -29,8 +29,8 @@ export function ShareEditModal({
         open={open}
         onClose={onClose}
         title={
-          <div className="flex items-center gap-2">
-            <Globe size={16} className="text-[var(--accent)]" />
+          <div className='flex items-center gap-2'>
+            <Globe size={16} className='text-[var(--accent)]' />
             <span>{b.share ? t('share.edit_share_settings') : t('share.create_new_share')}</span>
           </div>
         }
@@ -38,7 +38,7 @@ export function ShareEditModal({
         width={500}
         footer={<EditModalFooter b={b} onClose={onClose} />}
       >
-        <div className="flex flex-col gap-3.5 py-1">
+        <div className='flex flex-col gap-3.5 py-1'>
           <ShareLinkCard b={b} onClose={onClose} />
           <ShareStatusCard b={b} />
           <ShareFolderCard b={b} />

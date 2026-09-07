@@ -72,13 +72,13 @@ for (const file of files) {
 }
 
 function jsEscape(value) {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
 }
 
 const lines = ['const allowed = new Map([']
 for (const [name, comments] of [...inventory.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
-  lines.push(`  ["${name}", [`)
-  for (const comment of comments) lines.push(`    "${jsEscape(comment)}",`)
+  lines.push(`  ['${name}', [`)
+  for (const comment of comments) lines.push(`    '${jsEscape(comment)}',`)
   lines.push('  ]],')
 }
 lines.push('])')

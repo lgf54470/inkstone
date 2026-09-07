@@ -19,14 +19,14 @@ function filterTemplates(templates: NoteTemplate[], query: string): NoteTemplate
 
 function TemplateSearchField({ query, onQueryChange }: { query: string; onQueryChange: (query: string) => void }) {
   return (
-    <div className="relative">
-      <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-quaternary)]" />
+    <div className='relative'>
+      <Search size={14} className='pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-quaternary)]' />
       <input
-        type="search"
+        type='search'
         placeholder={t('templates.search_templates')}
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
-        className="w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)] py-1.5 pl-8 pr-3 text-[length:var(--text-13)] outline-none transition-colors focus:border-[var(--accent)]"
+        className='w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)] py-1.5 pl-8 pr-3 text-[length:var(--text-13)] outline-none transition-colors focus:border-[var(--accent)]'
       />
     </div>
   )
@@ -35,21 +35,21 @@ function TemplateSearchField({ query, onQueryChange }: { query: string; onQueryC
 function NoTemplateOption({ selected, onSelect }: { selected: boolean; onSelect: () => void }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={onSelect}
-      className="flex w-full items-center justify-between gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+      className='flex w-full items-center justify-between gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]'
     >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-[var(--r-sm)] bg-[var(--bg-sunken)] text-[var(--text-tertiary)]">
+      <div className='flex items-center gap-2.5 min-w-0'>
+        <span className='flex size-7 shrink-0 items-center justify-center rounded-[var(--r-sm)] bg-[var(--bg-sunken)] text-[var(--text-tertiary)]'>
           <FileText size={14} />
         </span>
-        <div className="min-w-0">
-          <div className="truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">
+        <div className='min-w-0'>
+          <div className='truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
             {t('folders.no_template')}
           </div>
         </div>
       </div>
-      {selected && <Check size={14} className="shrink-0 text-[var(--accent)]" />}
+      {selected && <Check size={14} className='shrink-0 text-[var(--accent)]' />}
     </button>
   )
 }
@@ -65,22 +65,22 @@ function TemplateOptionRow({
 }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={onSelect}
-      className="flex w-full items-center justify-between gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+      className='flex w-full items-center justify-between gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]'
     >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-[var(--r-sm)] bg-[var(--accent-soft)] text-[var(--accent)]">
+      <div className='flex items-center gap-2.5 min-w-0'>
+        <span className='flex size-7 shrink-0 items-center justify-center rounded-[var(--r-sm)] bg-[var(--accent-soft)] text-[var(--accent)]'>
           <LayoutTemplate size={14} />
         </span>
-        <div className="min-w-0">
-          <div className="truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]">{template.name}</div>
+        <div className='min-w-0'>
+          <div className='truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>{template.name}</div>
           {template.description && (
-            <div className="truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]">{template.description}</div>
+            <div className='truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{template.description}</div>
           )}
         </div>
       </div>
-      {selected && <Check size={14} className="shrink-0 text-[var(--accent)]" />}
+      {selected && <Check size={14} className='shrink-0 text-[var(--accent)]' />}
     </button>
   )
 }
@@ -117,10 +117,10 @@ export function FolderTemplateModal({
       description={t('folders.bind_template')}
       width={480}
     >
-      <div className="space-y-3">
+      <div className='space-y-3'>
         {templates.length > 4 && <TemplateSearchField query={query} onQueryChange={setQuery} />}
 
-        <div className="max-h-[380px] overflow-y-auto space-y-1">
+        <div className='max-h-[380px] overflow-y-auto space-y-1'>
           <NoTemplateOption selected={currentTemplateId === null} onSelect={() => handleSelect(null)} />
           {filtered.map((tmpl) => (
             <TemplateOptionRow

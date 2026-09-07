@@ -40,31 +40,31 @@ export function ShareNoteAnalyticsModal({
       open={open}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2">
-          <BarChart2 size={16} className="text-[var(--accent)]" />
+        <div className='flex items-center gap-2'>
+          <BarChart2 size={16} className='text-[var(--accent)]' />
           <span>{t('share.note_analytics_title')}</span>
         </div>
       }
       description={data?.noteTitle || ''}
       width={780}
     >
-      <div className="flex flex-col gap-4 py-1 max-h-[75vh] overflow-y-auto pr-1">
+      <div className='flex flex-col gap-4 py-1 max-h-[75vh] overflow-y-auto pr-1'>
         {data && <AnalyticsLinkBar data={data} onOpenQr={onOpenQr} />}
-        <div className="flex items-center justify-between gap-2">
+        <div className='flex items-center justify-between gap-2'>
           <StatCards data={data} />
-          <div className="flex items-center gap-2">
+          <div className='flex items-center gap-2'>
             <Segmented options={rangeOptions()} value={range} onChange={(val) => setRange(val as ShareTimelineRange)} />
             <ShareTrafficFilterPopover />
           </div>
         </div>
         <TimelineCard metricMode={metricMode} setMetricMode={setMetricMode} chartValues={chartValues} timelinePoints={timelinePoints} />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <BreakdownCard title={t('share.top_countries_title')} icon={<Globe size={13} className="text-[var(--accent)]" />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topCountries || data.topCountries.length === 0}>
+        <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+          <BreakdownCard title={t('share.top_countries_title')} icon={<Globe size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topCountries || data.topCountries.length === 0}>
             {data?.topCountries.slice(0, 5).map((item) => (
               <BreakdownMiniRow key={item.name} name={countryNameLocalized(item.name, locale)} flag={countryFlag(item.name)} count={item.count} percentage={item.percentage ?? 0} />
             ))}
           </BreakdownCard>
-          <BreakdownCard title={t('share.top_referrers_title')} icon={<Compass size={13} className="text-[var(--accent)]" />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topReferrers || data.topReferrers.length === 0}>
+          <BreakdownCard title={t('share.top_referrers_title')} icon={<Compass size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topReferrers || data.topReferrers.length === 0}>
             {data?.topReferrers.slice(0, 5).map((item) => (
               <BreakdownMiniRow key={item.name} name={item.name} count={item.count} percentage={item.percentage ?? 0} />
             ))}
@@ -78,27 +78,27 @@ export function ShareNoteAnalyticsModal({
 
 function AnalyticsLinkBar({ data, onOpenQr }: { data: ShareNoteAnalytics; onOpenQr?: (url: string, title: string, slug: string) => void }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-      <div className="flex items-center gap-2 font-mono text-[length:var(--text-12)] text-[var(--text-secondary)]">
-        <Globe size={14} className="text-[var(--accent)]" />
-        <span className="font-semibold text-[var(--text-primary)]">{`/s/${data.slug}`}</span>
+    <div className='flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
+      <div className='flex items-center gap-2 font-mono text-[length:var(--text-12)] text-[var(--text-secondary)]'>
+        <Globe size={14} className='text-[var(--accent)]' />
+        <span className='font-semibold text-[var(--text-primary)]'>{`/s/${data.slug}`}</span>
         {data.hasPassword && (
-          <span className="flex items-center gap-0.5 rounded bg-[var(--bg-base)] px-1.5 py-0.5 text-[length:var(--text-10)] text-[var(--warning)]">
+          <span className='flex items-center gap-0.5 rounded bg-[var(--bg-base)] px-1.5 py-0.5 text-[length:var(--text-10)] text-[var(--warning)]'>
             <Lock size={10} /> {t('share.password_protected')}
           </span>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className='flex items-center gap-2'>
         {onOpenQr && (
-          <Button size="sm" variant="secondary" icon={<QrCode size={12} />} onClick={() => onOpenQr(data.url, data.noteTitle, data.slug)}>
+          <Button size='sm' variant='secondary' icon={<QrCode size={12} />} onClick={() => onOpenQr(data.url, data.noteTitle, data.slug)}>
             {t('share.qr_code_title')}
           </Button>
         )}
         <a
           href={data.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex h-7 items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-2 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+          target='_blank'
+          rel='noopener noreferrer'
+          className='inline-flex h-7 items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-2 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         >
           <ExternalLink size={12} />
           <span>{t('preview.open_in_new_tab')}</span>
@@ -110,16 +110,16 @@ function AnalyticsLinkBar({ data, onOpenQr }: { data: ShareNoteAnalytics; onOpen
 
 function StatCards({ data }: { data: ShareNoteAnalytics | null }) {
   return (
-    <div className="grid grid-cols-2 gap-3 w-full sm:w-auto">
-      <div className="flex min-w-[140px] flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-        <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">{t('share.total_views_pv')}</span>
-        <span className="font-mono text-[length:var(--text-22)] font-bold text-[var(--text-primary)]">
+    <div className='grid grid-cols-2 gap-3 w-full sm:w-auto'>
+      <div className='flex min-w-[140px] flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
+        <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{t('share.total_views_pv')}</span>
+        <span className='font-mono text-[length:var(--text-22)] font-bold text-[var(--text-primary)]'>
           {data?.totalViews ?? 0}
         </span>
       </div>
-      <div className="flex min-w-[140px] flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-        <span className="text-[length:var(--text-11)] text-[var(--text-tertiary)]">{t('share.total_visitors_uv')}</span>
-        <span className="font-mono text-[length:var(--text-22)] font-bold text-[var(--text-primary)]">
+      <div className='flex min-w-[140px] flex-col rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
+        <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{t('share.total_visitors_uv')}</span>
+        <span className='font-mono text-[length:var(--text-22)] font-bold text-[var(--text-primary)]'>
           {data?.totalVisitors ?? 0}
         </span>
       </div>
@@ -129,9 +129,9 @@ function StatCards({ data }: { data: ShareNoteAnalytics | null }) {
 
 function TimelineCard({ metricMode, setMetricMode, chartValues, timelinePoints }: { metricMode: 'views' | 'visitors'; setMetricMode: (mode: 'views' | 'visitors') => void; chartValues: number[]; timelinePoints: ShareNoteAnalytics['timeline'] }) {
   return (
-    <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-      <div className="flex items-center justify-between pb-2">
-        <span className="text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]">
+    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
+      <div className='flex items-center justify-between pb-2'>
+        <span className='text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
           {t('share.timeline_trend_title')}
         </span>
         <Segmented
@@ -143,7 +143,7 @@ function TimelineCard({ metricMode, setMetricMode, chartValues, timelinePoints }
           onChange={(val) => setMetricMode(val as 'views' | 'visitors')}
         />
       </div>
-      <div className="h-48 w-full pt-1">
+      <div className='h-48 w-full pt-1'>
         <BigSvgChart values={chartValues} timeline={timelinePoints} emptyLabel={t('share.no_data_yet')} />
       </div>
     </div>
@@ -152,14 +152,14 @@ function TimelineCard({ metricMode, setMetricMode, chartValues, timelinePoints }
 
 function BreakdownCard({ title, icon, emptyLabel, isEmpty, children }: { title: string; icon: ReactNode; emptyLabel: string; isEmpty: boolean; children: ReactNode }) {
   return (
-    <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-      <div className="flex items-center gap-1.5 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]">
+    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
+      <div className='flex items-center gap-1.5 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
         {icon}
         <span>{title}</span>
       </div>
-      <div className="space-y-2 pt-1">
+      <div className='space-y-2 pt-1'>
         {isEmpty ? (
-          <p className="py-3 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]">
+          <p className='py-3 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
             {emptyLabel}
           </p>
         ) : (
@@ -173,22 +173,22 @@ function BreakdownCard({ title, icon, emptyLabel, isEmpty, children }: { title: 
 function RecentActivityCard({ data, locale }: { data: ShareNoteAnalytics | null; locale: string }) {
   const visits = data?.recentVisits ?? []
   return (
-    <div className="rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
-      <div className="flex items-center gap-1.5 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]">
-        <Activity size={13} className="text-[var(--accent)]" />
+    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
+      <div className='flex items-center gap-1.5 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
+        <Activity size={13} className='text-[var(--accent)]' />
         <span>{t('share.recent_activity_title')}</span>
       </div>
-      <div className="divide-y divide-[var(--border-subtle)] pt-1">
+      <div className='divide-y divide-[var(--border-subtle)] pt-1'>
         {visits.length === 0 ? (
-          <p className="py-4 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]">
+          <p className='py-4 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
             {t('share.no_visits_yet')}
           </p>
         ) : (
           visits.slice(0, 8).map((v) => (
-            <div key={v.id} className="flex items-center justify-between py-1.5 text-[length:var(--text-11)]">
-              <div className="flex items-center gap-1.5">
+            <div key={v.id} className='flex items-center justify-between py-1.5 text-[length:var(--text-11)]'>
+              <div className='flex items-center gap-1.5'>
                 <span>{countryFlag(v.country)}</span>
-                <span className="text-[var(--text-secondary)]">
+                <span className='text-[var(--text-secondary)]'>
                   {countryNameLocalized(v.country, locale)}
                   {v.city ? ` · ${v.city}` : ''}
                 </span>
@@ -208,7 +208,7 @@ function RecentActivityCard({ data, locale }: { data: ShareNoteAnalytics | null;
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-[var(--text-quaternary)] font-mono">
+              <div className='flex items-center gap-2 text-[var(--text-quaternary)] font-mono'>
                 <span>{v.browser} / {v.os}</span>
                 <span>{relativeTime(v.visitedAt)}</span>
               </div>
@@ -232,20 +232,20 @@ function BreakdownMiniRow({
   percentage: number
 }) {
   return (
-    <div className="flex flex-col gap-0.5 text-[length:var(--text-11)]">
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1 truncate text-[var(--text-primary)]">
+    <div className='flex flex-col gap-0.5 text-[length:var(--text-11)]'>
+      <div className='flex items-center justify-between'>
+        <span className='flex items-center gap-1 truncate text-[var(--text-primary)]'>
           {flag && <span>{flag}</span>}
-          <span className="truncate">{name}</span>
+          <span className='truncate'>{name}</span>
         </span>
-        <div className="flex items-center gap-1 font-mono">
-          <span className="font-medium text-[var(--text-primary)]">{count}</span>
-          <span className="text-[var(--text-quaternary)]">({percentage}%)</span>
+        <div className='flex items-center gap-1 font-mono'>
+          <span className='font-medium text-[var(--text-primary)]'>{count}</span>
+          <span className='text-[var(--text-quaternary)]'>({percentage}%)</span>
         </div>
       </div>
-      <div className="h-1 w-full rounded-full bg-[var(--bg-base)] overflow-hidden">
+      <div className='h-1 w-full rounded-full bg-[var(--bg-base)] overflow-hidden'>
         <div
-          className="h-full rounded-full bg-[var(--accent)]"
+          className='h-full rounded-full bg-[var(--accent)]'
           style={{ width: `${percentage}%` }}
         />
       </div>

@@ -1,6 +1,6 @@
-import { changed } from "./factor";
-import { clearFactorAttempts } from "./factor";
-import { setupExpired } from "./factor";
+import { changed } from './factor';
+import { clearFactorAttempts } from './factor';
+import { setupExpired } from './factor';
 
 export async function beginSetupBatch(db: D1Database, input: {
   userId: string

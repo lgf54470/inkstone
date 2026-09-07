@@ -188,7 +188,7 @@ export function buildEditorBlankItems(ctx: MenuCtx): MenuItem[] | null {
       {
         id: 'paste',
         label: t('contextmenu.paste'),
-        icon: <Copy size={14} className="rotate-90" />,
+        icon: <Copy size={14} className='rotate-90' />,
         combo: 'mod+v',
         onSelect: handlePasteIntoEditor,
       },
@@ -256,7 +256,7 @@ export function buildPreviewCanvasItems(ctx: MenuCtx): MenuItem[] {
     {
       id: 'scroll-top',
       label: t('contextmenu.preview_scroll_top'),
-      icon: <Minus size={14} className="rotate-90" />,
+      icon: <Minus size={14} className='rotate-90' />,
       separatorBefore: true,
       onSelect: () => {
         previewScrollerRef?.current?.scrollTo({ top: 0, behavior: preferredScrollBehavior() });
@@ -265,7 +265,7 @@ export function buildPreviewCanvasItems(ctx: MenuCtx): MenuItem[] {
     {
       id: 'scroll-bottom',
       label: t('contextmenu.preview_scroll_bottom'),
-      icon: <Minus size={14} className="-rotate-90" />,
+      icon: <Minus size={14} className='-rotate-90' />,
       onSelect: () => {
         if (previewScrollerRef?.current) {
           previewScrollerRef.current.scrollTo({

@@ -142,24 +142,24 @@ export function AttachmentDriveToolbar(props: AttachmentDriveToolbarProps) {
   )
 
   return (
-    <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-3 bg-[var(--bg-surface)] overflow-x-auto min-w-0">
-      <div className="flex items-center gap-2 shrink-0 min-w-0">
+    <div className='flex h-12 shrink-0 items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-3 bg-[var(--bg-surface)] overflow-x-auto min-w-0'>
+      <div className='flex items-center gap-2 shrink-0 min-w-0'>
         <SearchBox search={search} onSearchChange={onSearchChange} />
-        <FilterDropdown buttonRef={extButtonRef} isOpen={isExtOpen} onToggle={() => setIsExtOpen((p) => !p)} onClose={() => setIsExtOpen(false)} isActive={Boolean(extension && extension !== 'all')} icon={<FileType size={12} className="shrink-0" />} label={extLabelOf(extension)} items={extensionMenuItems} />
-        <FilterDropdown buttonRef={sizeButtonRef} isOpen={isSizeOpen} onToggle={() => setIsSizeOpen((p) => !p)} onClose={() => setIsSizeOpen(false)} isActive={sizeRange !== 'all'} icon={<Filter size={12} className="shrink-0" />} label={sizeLabelOf(sizeRange)} items={buildSizeMenuItems(onSizeRangeChange, () => setIsSizeOpen(false))} />
-        <FilterDropdown buttonRef={sortButtonRef} isOpen={isSortOpen} onToggle={() => setIsSortOpen((p) => !p)} onClose={() => setIsSortOpen(false)} isActive={false} icon={<SlidersHorizontal size={12} className="shrink-0" />} label={sortLabelOf(sort)} items={buildSortMenuItems(onSortChange, () => setIsSortOpen(false))} />
+        <FilterDropdown buttonRef={extButtonRef} isOpen={isExtOpen} onToggle={() => setIsExtOpen((p) => !p)} onClose={() => setIsExtOpen(false)} isActive={Boolean(extension && extension !== 'all')} icon={<FileType size={12} className='shrink-0' />} label={extLabelOf(extension)} items={extensionMenuItems} />
+        <FilterDropdown buttonRef={sizeButtonRef} isOpen={isSizeOpen} onToggle={() => setIsSizeOpen((p) => !p)} onClose={() => setIsSizeOpen(false)} isActive={sizeRange !== 'all'} icon={<Filter size={12} className='shrink-0' />} label={sizeLabelOf(sizeRange)} items={buildSizeMenuItems(onSizeRangeChange, () => setIsSizeOpen(false))} />
+        <FilterDropdown buttonRef={sortButtonRef} isOpen={isSortOpen} onToggle={() => setIsSortOpen((p) => !p)} onClose={() => setIsSortOpen(false)} isActive={false} icon={<SlidersHorizontal size={12} className='shrink-0' />} label={sortLabelOf(sort)} items={buildSortMenuItems(onSortChange, () => setIsSortOpen(false))} />
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className='flex items-center gap-2 shrink-0'>
         <ViewModeToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
         {viewMode === 'grid' && <ZoomControl zoom={zoom} onZoomChange={onZoomChange} />}
-        <Button size="sm" variant="secondary" onClick={onPruneClick} disabled={pruning} className="shrink-0 whitespace-nowrap text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer">
+        <Button size='sm' variant='secondary' onClick={onPruneClick} disabled={pruning} className='shrink-0 whitespace-nowrap text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer'>
           <Sparkles size={12} className={cn(pruning && 'animate-spin')} />
-          <span className="whitespace-nowrap">{t('attachments.cleanup')}</span>
+          <span className='whitespace-nowrap'>{t('attachments.cleanup')}</span>
         </Button>
-        <Button size="sm" onClick={onUploadClick} className="shrink-0 whitespace-nowrap bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 cursor-pointer">
+        <Button size='sm' onClick={onUploadClick} className='shrink-0 whitespace-nowrap bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 cursor-pointer'>
           <Upload size={12} />
-          <span className="whitespace-nowrap">{t('attachments.upload_file')}</span>
+          <span className='whitespace-nowrap'>{t('attachments.upload_file')}</span>
         </Button>
       </div>
     </div>
@@ -168,8 +168,8 @@ export function AttachmentDriveToolbar(props: AttachmentDriveToolbarProps) {
 
 function SearchBox({ search, onSearchChange }: { search: string; onSearchChange: (query: string) => void }) {
   return (
-    <div className="relative w-36 sm:w-44 lg:w-52 shrink-0">
-      <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-quaternary)]" />
+    <div className='relative w-36 sm:w-44 lg:w-52 shrink-0'>
+      <Search size={13} className='pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-quaternary)]' />
       <input
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
@@ -178,9 +178,9 @@ function SearchBox({ search, onSearchChange }: { search: string; onSearchChange:
       />
       {search && (
         <button
-          type="button"
+          type='button'
           onClick={() => onSearchChange('')}
-          className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-[var(--text-quaternary)] hover:text-[var(--text-primary)] cursor-pointer"
+          className='absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-[var(--text-quaternary)] hover:text-[var(--text-primary)] cursor-pointer'
         >
           <X size={12} />
         </button>
@@ -200,10 +200,10 @@ function FilterDropdown({ buttonRef, isOpen, onToggle, onClose, isActive, icon, 
   items: MenuItem[]
 }) {
   return (
-    <div className="relative shrink-0">
+    <div className='relative shrink-0'>
       <button
         ref={buttonRef}
-        type="button"
+        type='button'
         onClick={onToggle}
         className={cn(
           'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-12)] font-medium transition-colors cursor-pointer select-none',
@@ -211,8 +211,8 @@ function FilterDropdown({ buttonRef, isOpen, onToggle, onClose, isActive, icon, 
         )}
       >
         {icon}
-        <span className="whitespace-nowrap">{label}</span>
-        <ChevronDown size={11} className="opacity-60 shrink-0" />
+        <span className='whitespace-nowrap'>{label}</span>
+        <ChevronDown size={11} className='opacity-60 shrink-0' />
       </button>
       <Menu open={isOpen} anchor={buttonRef} items={items} onClose={onClose} />
     </div>
@@ -221,10 +221,10 @@ function FilterDropdown({ buttonRef, isOpen, onToggle, onClose, isActive, icon, 
 
 function ViewModeToggle({ viewMode, onViewModeChange }: { viewMode: 'grid' | 'list'; onViewModeChange: (mode: 'grid' | 'list') => void }) {
   return (
-    <div className="flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 shrink-0">
+    <div className='flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 shrink-0'>
       <Tooltip label={t('attachments.view_grid')}>
         <button
-          type="button"
+          type='button'
           onClick={() => onViewModeChange('grid')}
           className={cn('rounded p-1 text-[var(--text-tertiary)] transition-colors cursor-pointer', viewMode === 'grid' ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-[var(--shadow-xs)]' : 'hover:text-[var(--text-primary)]')}
         >
@@ -233,7 +233,7 @@ function ViewModeToggle({ viewMode, onViewModeChange }: { viewMode: 'grid' | 'li
       </Tooltip>
       <Tooltip label={t('attachments.view_list')}>
         <button
-          type="button"
+          type='button'
           onClick={() => onViewModeChange('list')}
           className={cn('rounded p-1 text-[var(--text-tertiary)] transition-colors cursor-pointer', viewMode === 'list' ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-[var(--shadow-xs)]' : 'hover:text-[var(--text-primary)]')}
         >
@@ -251,11 +251,11 @@ function ZoomControl({ zoom, onZoomChange }: { zoom: 'sm' | 'md' | 'lg'; onZoomC
     { id: 'lg' as const, label: t('attachments.zoom_lg') },
   ]
   return (
-    <div className="hidden lg:flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 text-[length:var(--text-11)] font-medium shrink-0">
+    <div className='hidden lg:flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-0.5 text-[length:var(--text-11)] font-medium shrink-0'>
       {zoomOptions.map((opt) => (
         <button
           key={opt.id}
-          type="button"
+          type='button'
           onClick={() => onZoomChange(opt.id)}
           className={cn('px-1.5 py-0.5 rounded cursor-pointer', zoom === opt.id ? 'bg-[var(--bg-surface)] text-[var(--accent)] font-semibold shadow-[var(--shadow-xs)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]')}
         >

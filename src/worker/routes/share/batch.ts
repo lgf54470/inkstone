@@ -1,7 +1,7 @@
-import { Hono } from "hono";
-import type { AppBindings } from "../../env";
-import { isValidId, newSlug } from "../../lib/id";
-import { JSON_BODY_LIMITS, readJsonValidated } from "../../lib/request";
+import { Hono } from 'hono';
+import type { AppBindings } from '../../env';
+import { isValidId, newSlug } from '../../lib/id';
+import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request';
 import { shareBatchSchema, shareFolderToggleSchema, shareTagToggleSchema } from './schemas';
 
 export function registerShareBatchRoutes(shareManageRoutes: Hono<AppBindings>): void {

@@ -1,5 +1,5 @@
-import { Hono } from "hono";
-import type { AppBindings } from "../../env";
+import { Hono } from 'hono';
+import type { AppBindings } from '../../env';
 import { loadNoteRow } from './helpers';
 import { linkContext } from './helpers';
 

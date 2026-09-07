@@ -1,5 +1,5 @@
 export const messages = {
-"template.workout_plan.content": `---
+'template.workout_plan.content': `---
 title: {{title}} 训练计划
 createdAt: {{createdAt}}
 tags: [健身]
@@ -27,6 +27,6 @@ tags: [健身]
 - 睡眠： 小时
 - 拉伸：[ ] 
 `,
-"template.workout_plan.description": "每周训练计划：动作、组数与次数。",
-"template.workout_plan.name": "健身计划",
+'template.workout_plan.description': '每周训练计划：动作、组数与次数。',
+'template.workout_plan.name': '健身计划',
 };

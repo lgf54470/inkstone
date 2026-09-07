@@ -1,5 +1,5 @@
 export const messages = {
-"template.article_outline.content": `---
+'template.article_outline.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [writing]
@@ -30,9 +30,9 @@ tags: [writing]
 ## Sources
 - 
 `,
-"template.article_outline.description": "Structure an article: thesis, sections and key arguments.",
-"template.article_outline.name": "Article Outline",
-"template.book_notes.content": `---
+'template.article_outline.description': 'Structure an article: thesis, sections and key arguments.',
+'template.article_outline.name': 'Article Outline',
+'template.book_notes.content': `---
 title: Book Notes: {{title}}
 createdAt: {{createdAt}}
 tags: [reading]
@@ -58,9 +58,9 @@ tags: [reading]
 ## Rating
 ⭐⭐⭐⭐⭐
 `,
-"template.book_notes.description": "Capture quotes, ideas and takeaways while reading a book.",
-"template.book_notes.name": "Book Notes",
-"template.brainstorm.content": `---
+'template.book_notes.description': 'Capture quotes, ideas and takeaways while reading a book.',
+'template.book_notes.name': 'Book Notes',
+'template.brainstorm.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [brainstorm]
@@ -92,9 +92,9 @@ tags: [brainstorm]
 ## Next Step
 - [ ] 
 `,
-"template.brainstorm.description": "Capture raw ideas first, then cluster and prioritize.",
-"template.brainstorm.name": "Brainstorm",
-"template.bug_tracker.content": `---
+'template.brainstorm.description': 'Capture raw ideas first, then cluster and prioritize.',
+'template.brainstorm.name': 'Brainstorm',
+'template.bug_tracker.content': `---
 title: Bug: {{title}}
 createdAt: {{createdAt}}
 tags: [bug]
@@ -129,9 +129,9 @@ tags: [bug]
 - [ ] Reproduced before fix
 - [ ] Fixed in:
 `,
-"template.bug_tracker.description": "Document one bug per note: repro steps, cause and fix.",
-"template.bug_tracker.name": "Bug Tracker",
-"template.bullet_journal.content": `---
+'template.bug_tracker.description': 'Document one bug per note: repro steps, cause and fix.',
+'template.bug_tracker.name': 'Bug Tracker',
+'template.bullet_journal.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [bullet-journal]
@@ -160,31 +160,31 @@ tags: [bullet-journal]
 - · task · > migrated · < scheduled · o event · - note
 - * priority · ! inspiration · ? question · x done
 `,
-"template.bullet_journal.description": "Rapid logging with bullets, tasks, events and notes plus a future log.",
-"template.bullet_journal.name": "Bullet Journal",
-"template.category.health": "Health & Habits",
-"template.category.industry": "By Industry",
-"template.category.learning": "Learning & Knowledge",
-"template.category.life": "Life & Leisure",
-"template.category.productivity": "Productivity",
-"template.category.tasks": "Tasks & Lists",
-"template.category.work": "Work & Meetings",
-"template.category.writing": "Writing & Creation",
-"template.tag.checklist": "Checklist",
-"template.tag.daily": "Daily",
-"template.tag.finance": "Finance",
-"template.tag.goal": "Goals",
-"template.tag.health": "Health",
-"template.tag.life": "Life",
-"template.tag.review": "Review",
-"template.tag.study": "Learning",
-"template.tag.table": "Table",
-"template.tag.tech": "Tech",
-"template.tag.travel": "Travel",
-"template.tag.weekly": "Weekly",
-"template.tag.work": "Work",
-"template.tag.writing": "Writing",
-"template.class_notes.content": `---
+'template.bullet_journal.description': 'Rapid logging with bullets, tasks, events and notes plus a future log.',
+'template.bullet_journal.name': 'Bullet Journal',
+'template.category.health': 'Health & Habits',
+'template.category.industry': 'By Industry',
+'template.category.learning': 'Learning & Knowledge',
+'template.category.life': 'Life & Leisure',
+'template.category.productivity': 'Productivity',
+'template.category.tasks': 'Tasks & Lists',
+'template.category.work': 'Work & Meetings',
+'template.category.writing': 'Writing & Creation',
+'template.tag.checklist': 'Checklist',
+'template.tag.daily': 'Daily',
+'template.tag.finance': 'Finance',
+'template.tag.goal': 'Goals',
+'template.tag.health': 'Health',
+'template.tag.life': 'Life',
+'template.tag.review': 'Review',
+'template.tag.study': 'Learning',
+'template.tag.table': 'Table',
+'template.tag.tech': 'Tech',
+'template.tag.travel': 'Travel',
+'template.tag.weekly': 'Weekly',
+'template.tag.work': 'Work',
+'template.tag.writing': 'Writing',
+'template.class_notes.content': `---
 title: {{title}} · {{date}}
 createdAt: {{createdAt}}
 tags: [class]
@@ -208,9 +208,9 @@ tags: [class]
 - [ ] Do exercises
 - [ ] Ask questions
 `,
-"template.class_notes.description": "Structured notes for lectures and courses.",
-"template.class_notes.name": "Lecture Notes",
-"template.cornell.content": `---
+'template.class_notes.description': 'Structured notes for lectures and courses.',
+'template.class_notes.name': 'Lecture Notes',
+'template.cornell.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [cornell]
@@ -227,9 +227,9 @@ tags: [cornell]
 
 Summarize the page in your own words in 1-3 sentences. {{cursor}}
 `,
-"template.cornell.description": "The classic cue-column-summary layout for lectures and reading.",
-"template.cornell.name": "Cornell Notes",
-"template.dev_daily.content": `---
+'template.cornell.description': 'The classic cue-column-summary layout for lectures and reading.',
+'template.cornell.name': 'Cornell Notes',
+'template.dev_daily.content': `---
 title: {{title}} · {{date}}
 createdAt: {{createdAt}}
 tags: [dev]
@@ -257,9 +257,9 @@ tags: [dev]
 ## Learned
 - 
 `,
-"template.dev_daily.description": "Daily developer log: progress, blockers and next steps.",
-"template.dev_daily.name": "Dev Daily Log",
-"template.diary.content": `---
+'template.dev_daily.description': 'Daily developer log: progress, blockers and next steps.',
+'template.dev_daily.name': 'Dev Daily Log',
+'template.diary.content': `---
 title: {{title}} · {{date}}
 createdAt: {{createdAt}}
 tags: [diary]
@@ -283,9 +283,9 @@ tags: [diary]
 
 {{cursor}}
 `,
-"template.diary.description": "A dated diary entry with mood, highlights and gratitude.",
-"template.diary.name": "Diary Entry",
-"template.expense_log.content": `---
+'template.diary.description': 'A dated diary entry with mood, highlights and gratitude.',
+'template.diary.name': 'Diary Entry',
+'template.expense_log.content': `---
 title: {{title}} · {{date}}
 createdAt: {{createdAt}}
 tags: [expense]
@@ -310,9 +310,9 @@ tags: [expense]
 ## Notes
 - 
 `,
-"template.expense_log.description": "Track daily spending by category and compare to budget.",
-"template.expense_log.name": "Expense Log",
-"template.feynman.content": `---
+'template.expense_log.description': 'Track daily spending by category and compare to budget.',
+'template.expense_log.name': 'Expense Log',
+'template.feynman.content': `---
 title: {{title}}
 createdAt: {{createdAt}}
 tags: [feynman]
@@ -337,6 +337,6 @@ Rewrite with an analogy:
 - [ ] Can I explain it without jargon?
 - [ ] Can I give a concrete example?
 `,
-"template.feynman.description": "Explain a concept in plain language to find your knowledge gaps.",
-"template.feynman.name": "Feynman Technique",
+'template.feynman.description': 'Explain a concept in plain language to find your knowledge gaps.',
+'template.feynman.name': 'Feynman Technique',
 };

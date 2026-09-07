@@ -1,10 +1,10 @@
-import { Hono } from "hono";
-import type { AppBindings } from "../../env";
-import { rebuildFtsIndex } from "../../db/fts";
-import { ApiError } from "../../lib/errors";
-import { acquireLease } from "../../lib/lease";
-import { consumeAttemptBudget, ThrottleError } from "../../lib/throttle";
-import { requireAuth } from "../../middleware/auth";
+import { Hono } from 'hono';
+import type { AppBindings } from '../../env';
+import { rebuildFtsIndex } from '../../db/fts';
+import { ApiError } from '../../lib/errors';
+import { acquireLease } from '../../lib/lease';
+import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle';
+import { requireAuth } from '../../middleware/auth';
 
 export function registerSearchReindexRoutes(searchRoutes: Hono<AppBindings>): void {
 searchRoutes.post('/search/reindex', requireAuth, async (c) => {

@@ -16,9 +16,9 @@ function ModalFooter({ b, onClose }: { b: VersionsPanelBundle; onClose: () => vo
   const { selectedId, preview, previewError, isBusy, restore } = b;
   return (
     <>
-      <Button variant="ghost" onClick={onClose}>{t('common.close')}</Button>
+      <Button variant='ghost' onClick={onClose}>{t('common.close')}</Button>
       <Button
-        variant="primary"
+        variant='primary'
         icon={<RotateCcw size={13} />}
         disabled={!selectedId || preview === null || Boolean(previewError) || isBusy}
         loading={isBusy}
@@ -33,11 +33,11 @@ function ModalFooter({ b, onClose }: { b: VersionsPanelBundle; onClose: () => vo
 function VersionList({ b }: { b: VersionsPanelBundle }) {
   const { versions, note, selectedId, setSelected } = b;
   return (
-    <ul className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-[var(--border-subtle)] pb-2 md:block md:w-[210px] md:space-y-px md:overflow-y-auto md:border-r md:border-b-0 md:pr-2 md:pb-0">
+    <ul className='flex w-full shrink-0 gap-1 overflow-x-auto border-b border-[var(--border-subtle)] pb-2 md:block md:w-[210px] md:space-y-px md:overflow-y-auto md:border-r md:border-b-0 md:pr-2 md:pb-0'>
       {versions!.map((version, index) => (
-        <li key={version.id} className="w-[188px] shrink-0 md:w-auto">
+        <li key={version.id} className='w-[188px] shrink-0 md:w-auto'>
           <button
-            type="button"
+            type='button'
             aria-pressed={selectedId === version.id}
             onClick={() => setSelected({ noteId: note!.id, versionId: version.id })}
             className={cn(
@@ -45,8 +45,8 @@ function VersionList({ b }: { b: VersionsPanelBundle }) {
               selectedId === version.id ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]',
             )}
           >
-            <div className="flex items-center gap-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
-              <History size={11} className="shrink-0 text-[var(--text-quaternary)]" />
+            <div className='flex items-center gap-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
+              <History size={11} className='shrink-0 text-[var(--text-quaternary)]' />
               {index === 0 ? t('workspace.latest') : <VersionAge timestamp={version.createdAt} />}
             </div>
             <div className="mt-0.5 pl-4 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
@@ -62,7 +62,7 @@ function VersionList({ b }: { b: VersionsPanelBundle }) {
 function DiffLineRow({ line }: { line: { kind: 'same' | 'add' | 'remove'; text: string } }) {
   return (
     <div className={cn('px-1', line.kind === 'add' && 'bg-[color-mix(in_oklab,var(--success)_14%,transparent)]', line.kind === 'remove' && 'bg-[color-mix(in_oklab,var(--danger)_14%,transparent)]', line.kind === 'same' && 'text-[var(--text-tertiary)]')}>
-      <span className="mr-2 inline-block w-2 text-[var(--text-quaternary)]">
+      <span className='mr-2 inline-block w-2 text-[var(--text-quaternary)]'>
         {line.kind === 'add' ? '+' : line.kind === 'remove' ? '-' : ' '}
       </span>
       {line.text || ' '}
@@ -75,11 +75,11 @@ function DiffView({ b }: { b: VersionsPanelBundle }) {
   if (previewError) {
     return (
       <Empty
-        art="notes"
+        art='notes'
         compact
         title={t('workspace.could_not_load_version')}
         description={previewError}
-        action={<Button size="sm" variant="secondary" onClick={() => setPreviewReload((value) => value + 1)}>{t('common.retry')}</Button>}
+        action={<Button size='sm' variant='secondary' onClick={() => setPreviewReload((value) => value + 1)}>{t('common.retry')}</Button>}
       />
     );
   }
@@ -88,8 +88,8 @@ function DiffView({ b }: { b: VersionsPanelBundle }) {
     <>
       <div className="sticky top-0 flex items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-inset)] px-3 py-1.5 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
         <span>{t('workspace.differences_from_current_content')}</span>
-        <span className="text-[var(--success)]">+{diff.added}</span>
-        <span className="text-[var(--danger)]">-{diff.removed}</span>
+        <span className='text-[var(--success)]'>+{diff.added}</span>
+        <span className='text-[var(--danger)]'>-{diff.removed}</span>
         {diff.simplified && <span>{t('workspace.large_content_using_a_faster_comparison')}</span>}
       </div>
       <pre className="p-3 font-mono text-[length:var(--text-11\.5)] leading-[1.65] whitespace-pre-wrap">
@@ -103,7 +103,7 @@ function DiffView({ b }: { b: VersionsPanelBundle }) {
 
 function DiffPane({ b }: { b: VersionsPanelBundle }) {
   return (
-    <div className="min-w-0 flex-1 overflow-y-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)]">
+    <div className='min-w-0 flex-1 overflow-y-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)]'>
       <DiffView b={b} />
     </div>
   );
@@ -124,18 +124,18 @@ export function VersionsPanel({ onClose }: { onClose: () => void }) {
     >
       {versionsError ? (
         <Empty
-          art="notes"
+          art='notes'
           compact
           title={t('workspace.could_not_load_version_history')}
           description={versionsError}
-          action={<Button size="sm" variant="secondary" onClick={() => setVersionsReload((value) => value + 1)}>{t('common.retry')}</Button>}
+          action={<Button size='sm' variant='secondary' onClick={() => setVersionsReload((value) => value + 1)}>{t('common.retry')}</Button>}
         />
       ) : versions === null ? (
         <LoadingBlock />
       ) : versions.length === 0 ? (
-        <Empty art="notes" compact title={t('workspace.no_version_history_yet')} description={t('workspace.a_snapshot_is_saved_every_few_minutes_or_after_larger_edits')} />
+        <Empty art='notes' compact title={t('workspace.no_version_history_yet')} description={t('workspace.a_snapshot_is_saved_every_few_minutes_or_after_larger_edits')} />
       ) : (
-        <div className="flex h-[min(68dvh,560px)] min-h-0 flex-col gap-3 md:h-[440px] md:flex-row">
+        <div className='flex h-[min(68dvh,560px)] min-h-0 flex-col gap-3 md:h-[440px] md:flex-row'>
           <VersionList b={b} />
           <DiffPane b={b} />
         </div>

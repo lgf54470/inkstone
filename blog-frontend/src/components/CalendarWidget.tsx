@@ -173,29 +173,29 @@ function CalendarNavButtons({
   onToday: () => void
 }) {
   return (
-    <div className="flex items-center gap-1">
+    <div className='flex items-center gap-1'>
       <button
-        type="button"
+        type='button'
         onClick={onPrev}
-        className="p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+        className='p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors'
         aria-label={t('calendar.prev_month', {}, locale)}
       >
-        <ChevronLeft className="w-4 h-4" />
+        <ChevronLeft className='w-4 h-4' />
       </button>
       <button
-        type="button"
+        type='button'
         onClick={onToday}
-        className="text-xs px-2 py-0.5 rounded border border-[var(--border-subtle)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]"
+        className='text-xs px-2 py-0.5 rounded border border-[var(--border-subtle)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
       >
         {t('calendar.today', {}, locale)}
       </button>
       <button
-        type="button"
+        type='button'
         onClick={onNext}
-        className="p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+        className='p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors'
         aria-label={t('calendar.next_month', {}, locale)}
       >
-        <ChevronRight className="w-4 h-4" />
+        <ChevronRight className='w-4 h-4' />
       </button>
     </div>
   )
@@ -219,9 +219,9 @@ function CalendarHeader({
   onToday: () => void
 }) {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-2">
-        <CalendarIcon className="w-4 h-4 text-[var(--accent)]" />
+    <div className='flex items-center justify-between mb-4'>
+      <div className='flex items-center gap-2'>
+        <CalendarIcon className='w-4 h-4 text-[var(--accent)]' />
         <h3 className={`font-semibold ${isFullPage ? 'text-lg' : 'text-sm'}`}>
           {formatMonthYear(currentYear, currentMonth, locale)}
         </h3>
@@ -234,7 +234,7 @@ function CalendarHeader({
 function WeekHeaderRow({ locale }: { locale: BlogLocale }) {
   const headers = locale === 'en-US' ? WEEK_HEADERS_EN : WEEK_HEADERS_ZH
   return (
-    <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
+    <div className='grid grid-cols-7 gap-1 text-center mb-1.5'>
       {headers.map((h, i) => (
         <span
           key={h}
@@ -273,9 +273,9 @@ function DayGrid({
   }
 
   return (
-    <div className="grid grid-cols-7 gap-1">
+    <div className='grid grid-cols-7 gap-1'>
       {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-        <div key={`empty-${i}`} className="aspect-square" />
+        <div key={`empty-${i}`} className='aspect-square' />
       ))}
       {Array.from({ length: totalDaysInMonth }).map((_, i) =>
         renderDayCell(i + 1, {
@@ -343,7 +343,7 @@ function DayCell({
 }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={onSelect}
       disabled={!hasPosts}
       className={`relative aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-medium transition-all ${
@@ -358,7 +358,7 @@ function DayCell({
     >
       <span>{day}</span>
       {hasPosts && !isSelected && (
-        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-0.5" />
+        <span className='w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-0.5' />
       )}
     </button>
   )
@@ -374,26 +374,26 @@ function SelectedDayPanel({
   onClose: () => void
 }) {
   return (
-    <div className="mt-4 p-3 rounded-lg bg-[var(--bg-raised)] border border-[var(--border-subtle)] animate-in fade-in slide-in-from-top-1 duration-[var(--dur-fast)]">
-      <div className="flex items-center justify-between text-xs font-medium text-[var(--text-secondary)] mb-2">
+    <div className='mt-4 p-3 rounded-lg bg-[var(--bg-raised)] border border-[var(--border-subtle)] animate-in fade-in slide-in-from-top-1 duration-[var(--dur-fast)]'>
+      <div className='flex items-center justify-between text-xs font-medium text-[var(--text-secondary)] mb-2'>
         <span>{t('calendar.posts_count', { date: day.date, count: day.posts.length }, locale)}</span>
         <button
-          type="button"
+          type='button'
           onClick={onClose}
-          className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
+          className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer'
         >
           {t('calendar.close', {}, locale)}
         </button>
       </div>
-      <div className="space-y-1.5">
+      <div className='space-y-1.5'>
         {day.posts.map((post) => (
           <a
             key={post.slug}
             href={`/posts/${post.slug}`}
-            className="flex items-center gap-2 p-1.5 rounded text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors"
+            className='flex items-center gap-2 p-1.5 rounded text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors'
           >
-            <FileText className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
-            <span className="truncate">{post.title}</span>
+            <FileText className='w-3.5 h-3.5 text-[var(--accent)] shrink-0' />
+            <span className='truncate'>{post.title}</span>
           </a>
         ))}
       </div>

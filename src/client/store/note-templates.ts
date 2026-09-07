@@ -10,7 +10,7 @@ import {
     type TemplateLibraryExport,
 } from '@shared/note-templates'
 import { localDb, type TemplateLibraryData } from '../lib/db'
-import { t } from "../lib/i18n";
+import { t } from '../lib/i18n';
 
 
 interface TemplateInput {
@@ -367,7 +367,7 @@ function duplicateTemplateImpl(set: SetTemplateState, get: () => TemplateLibrary
         const templates = [...state.templates, {
             ...source,
             id: copyId,
-            name: `${source.name} (${t("common.copy")})`.slice(0, 120),
+            name: `${source.name} (${t('common.copy')})`.slice(0, 120),
             builtin: false,
             isPinned: false,
             isStarred: false,

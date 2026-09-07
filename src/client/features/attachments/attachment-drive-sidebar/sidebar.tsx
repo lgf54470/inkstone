@@ -125,7 +125,7 @@ export function AttachmentDriveSidebar(props: AttachmentDriveSidebarProps) {
 
   return (
     <div className="flex h-full w-60 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[length:var(--text-12\\.5)] select-none">
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3 space-y-4">
+      <div className='min-h-0 flex-1 overflow-y-auto px-2 py-3 space-y-4'>
         <CategoryList selectedCategory={selectedCategory} selectedFolderId={selectedFolderId} selectedTag={selectedTag} onSelectCategory={onSelectCategory} />
         <FolderSection tree={store.tree} selectedFolderId={selectedFolderId} renamingFolderId={renamingFolderId} expandedFolders={store.expandedFolders} allFoldersExpanded={expansion.allFoldersExpanded} toggleAllFolders={expansion.toggleAllFolders} handleCreateRootFolder={handleCreateRootFolder} toggleFolderExpanded={store.toggleFolderExpanded} setRenamingFolderId={setRenamingFolderId} patchFolder={store.patchFolder} onSelectFolder={onSelectFolder} setMovingFolderId={setMovingFolderId} onDropFilesToFolder={onDropFilesToFolder} createFolder={store.createFolder} deleteFolder={store.deleteFolder} />
         <TagSection flatTree={store.flattenedTags} selectedTag={selectedTag} expandedTagPaths={store.expandedTagPaths} allTagsExpanded={expansion.allTagsExpanded} toggleAllTags={expansion.toggleAllTags} handleCreateNewTag={handleCreateNewTag} toggleTagExpanded={store.toggleTagExpanded} onSelectTag={onSelectTag} patchTag={store.patchTag} deleteTag={store.deleteTag} />
@@ -147,13 +147,13 @@ function CategoryList({ selectedCategory, selectedFolderId, selectedTag, onSelec
   return (
     <div>
       <SectionLabel>{t('attachments.categories')}</SectionLabel>
-      <div className="space-y-0.5">
+      <div className='space-y-0.5'>
         {categoryList().map((cat) => {
           const active = selectedCategory === cat.id && !selectedFolderId && !selectedTag
           return (
             <button
               key={cat.id}
-              type="button"
+              type='button'
               onClick={() => onSelectCategory(cat.id)}
               className={cn(
                 'flex h-7.5 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left font-medium transition-colors',
@@ -163,7 +163,7 @@ function CategoryList({ selectedCategory, selectedFolderId, selectedTag, onSelec
               <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>
                 {cat.icon}
               </span>
-              <span className="truncate flex-1">{cat.label}</span>
+              <span className='truncate flex-1'>{cat.label}</span>
             </button>
           )
         })}
@@ -181,16 +181,16 @@ function SectionHeader({ title, expandLabel, isExpanded, onToggleAll, addLabel, 
   onAdd: () => void
 }) {
   return (
-    <div className="group/head flex items-center justify-between px-2 pb-1">
+    <div className='group/head flex items-center justify-between px-2 pb-1'>
       <SectionLabel>{title}</SectionLabel>
-      <div className="flex items-center gap-0.5">
-        <Tooltip label={expandLabel} side="left">
-          <IconButton label={expandLabel} size="sm" onClick={onToggleAll}>
+      <div className='flex items-center gap-0.5'>
+        <Tooltip label={expandLabel} side='left'>
+          <IconButton label={expandLabel} size='sm' onClick={onToggleAll}>
             {isExpanded ? <ChevronsDownUp size={13} /> : <ChevronsUpDown size={13} />}
           </IconButton>
         </Tooltip>
-        <Tooltip label={addLabel} side="right">
-          <IconButton label={addLabel} size="sm" onClick={onAdd}>
+        <Tooltip label={addLabel} side='right'>
+          <IconButton label={addLabel} size='sm' onClick={onAdd}>
             <Plus size={13} />
           </IconButton>
         </Tooltip>
@@ -219,7 +219,7 @@ function FolderSection({ tree, selectedFolderId, renamingFolderId, expandedFolde
   return (
     <div>
       <SectionHeader title={t('navigation.folder')} expandLabel={allFoldersExpanded ? t('folders.collapse_all') : t('folders.expand_all')} isExpanded={allFoldersExpanded} onToggleAll={toggleAllFolders} addLabel={t('common.new_folder')} onAdd={() => void handleCreateRootFolder()} />
-      <div className="space-y-px">
+      <div className='space-y-px'>
         {tree.map((node) => (
           <DriveFolderRow
             key={node.id}
@@ -242,7 +242,7 @@ function FolderSection({ tree, selectedFolderId, renamingFolderId, expandedFolde
           />
         ))}
         {tree.length === 0 && (
-          <div className="px-2 py-1.5 text-xs text-[var(--text-tertiary)] italic">
+          <div className='px-2 py-1.5 text-xs text-[var(--text-tertiary)] italic'>
             {t('folders.no_folders')}
           </div>
         )}
@@ -266,7 +266,7 @@ function TagSection({ flatTree, selectedTag, expandedTagPaths, allTagsExpanded, 
   return (
     <div>
       <SectionHeader title={t('navigation.tag')} expandLabel={allTagsExpanded ? t('folders.collapse_all') : t('folders.expand_all')} isExpanded={allTagsExpanded} onToggleAll={toggleAllTags} addLabel={t('tags.new')} onAdd={() => void handleCreateNewTag()} />
-      <div className="space-y-px">
+      <div className='space-y-px'>
         {flatTree.map((node) => (
           <DriveTagRow
             key={node.fullPath}
@@ -280,7 +280,7 @@ function TagSection({ flatTree, selectedTag, expandedTagPaths, allTagsExpanded, 
           />
         ))}
         {flatTree.length === 0 && (
-          <div className="px-2 py-1.5 text-xs text-[var(--text-tertiary)] italic">
+          <div className='px-2 py-1.5 text-xs text-[var(--text-tertiary)] italic'>
             {t('tags.no_match')}
           </div>
         )}
@@ -295,20 +295,20 @@ function StatsFooter({ stats }: { stats: AttachmentStats }) {
   const usedWidthPct = (usedRatio * 100).toFixed(2)
 
   return (
-    <div className="mt-auto shrink-0 border-t border-[var(--border-subtle)] p-3 bg-[var(--bg-sunken)]/40 text-[length:var(--text-11)] space-y-1.5">
-      <div className="flex items-center justify-between font-semibold text-[var(--text-secondary)]">
+    <div className='mt-auto shrink-0 border-t border-[var(--border-subtle)] p-3 bg-[var(--bg-sunken)]/40 text-[length:var(--text-11)] space-y-1.5'>
+      <div className='flex items-center justify-between font-semibold text-[var(--text-secondary)]'>
         <span>{t('attachments.stats_title')}</span>
         <span className="font-mono text-[length:var(--text-10\\.5)]">
           {`${formatFileSize(stats.totalBytes)} / 10 GB`}
         </span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-subtle)]">
+      <div className='h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-subtle)]'>
         <div
           style={{ width: `${Math.max(stats.totalBytes > 0 ? 1 : 0, Number(usedWidthPct))}%` }}
-          className="h-full bg-[var(--accent)] rounded-full transition-all duration-[var(--dur-slow)]"
+          className='h-full bg-[var(--accent)] rounded-full transition-all duration-[var(--dur-slow)]'
         />
       </div>
-      <div className="text-[length:var(--text-10)] text-[var(--text-quaternary)] flex justify-between">
+      <div className='text-[length:var(--text-10)] text-[var(--text-quaternary)] flex justify-between'>
         <span>{t('attachments.total_value0', { value0: stats.totalCount })}</span>
         <span>{t('attachments.unreferenced_count_value0', { value0: stats.unreferencedCount })}</span>
       </div>

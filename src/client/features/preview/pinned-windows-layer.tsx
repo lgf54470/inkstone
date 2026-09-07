@@ -78,13 +78,13 @@ function usePinnedWindowState() {
   const stackItems: MenuItem[] = useMemo(() => [
     ...items.map((item) => ({
       id: `pin-${item.id}`,
-      label: item.title || t("preview.untitled"),
+      label: item.title || t('preview.untitled'),
       checked: item.id === frontId,
       onSelect: () => bringToFront(item.id),
     })),
     {
       id: 'close-all',
-      label: t("preview.close_all_pinned"),
+      label: t('preview.close_all_pinned'),
       tone: 'danger' as const,
       separatorBefore: true,
       onSelect: () => closeAll(),

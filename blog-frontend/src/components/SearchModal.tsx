@@ -290,28 +290,28 @@ function SearchInputRow({
   onClear: () => void
 }) {
   return (
-    <div className="flex items-center px-4 py-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-raised)]">
-      <Search className="w-5 h-5 text-[var(--text-tertiary)] mr-3 shrink-0" />
+    <div className='flex items-center px-4 py-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-raised)]'>
+      <Search className='w-5 h-5 text-[var(--text-tertiary)] mr-3 shrink-0' />
       <input
         ref={inputRef}
-        type="text"
+        type='text'
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder={t('search.input_placeholder', {}, locale)}
-        className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-[var(--text-quaternary)] text-[var(--text-primary)]"
+        className='flex-1 bg-transparent text-sm focus:outline-none placeholder:text-[var(--text-quaternary)] text-[var(--text-primary)]'
       />
       {loading ? (
-        <Loader2 className="w-4 h-4 text-[var(--accent)] animate-spin shrink-0" />
+        <Loader2 className='w-4 h-4 text-[var(--accent)] animate-spin shrink-0' />
       ) : query ? (
         <button
-          type="button"
+          type='button'
           onClick={onClear}
-          className="p-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
+          className='p-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer'
         >
-          <X className="w-4 h-4" />
+          <X className='w-4 h-4' />
         </button>
       ) : (
-        <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded border border-[var(--border-subtle)] text-[var(--text-quaternary)] bg-[var(--bg-base)]">
+        <kbd className='hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded border border-[var(--border-subtle)] text-[var(--text-quaternary)] bg-[var(--bg-base)]'>
           ESC
         </kbd>
       )}
@@ -335,17 +335,17 @@ function SearchResultsPanel({
   onHoverRow: (idx: number) => void
 }) {
   return (
-    <div className="max-h-96 overflow-y-auto p-2">
+    <div className='max-h-96 overflow-y-auto p-2'>
       {query.trim() === '' ? (
-        <div className="py-10 text-center text-xs text-[var(--text-tertiary)]">
+        <div className='py-10 text-center text-xs text-[var(--text-tertiary)]'>
           {t('search.empty_query_hint', {}, locale)}
         </div>
       ) : results.length === 0 && !loading ? (
-        <div className="py-10 text-center text-xs text-[var(--text-tertiary)]">
+        <div className='py-10 text-center text-xs text-[var(--text-tertiary)]'>
           {t('search.no_results', { query }, locale)}
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className='space-y-1'>
           {results.map((post, idx) => (
             <SearchResultRow
               key={post.id}
@@ -363,7 +363,7 @@ function SearchResultsPanel({
 
 function SearchResultTitle({ post, selected, locale }: { post: BlogPost; selected: boolean; locale: BlogLocale }) {
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className='flex items-center justify-between gap-2'>
       <h4
         className={`text-sm font-semibold truncate ${
           selected ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'
@@ -371,8 +371,8 @@ function SearchResultTitle({ post, selected, locale }: { post: BlogPost; selecte
       >
         {post.title}
       </h4>
-      <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-quaternary)] shrink-0">
-        <Calendar className="w-3 h-3" />
+      <div className='flex items-center gap-1.5 text-[11px] text-[var(--text-quaternary)] shrink-0'>
+        <Calendar className='w-3 h-3' />
         <span>{formatDate(post.publishedAt || post.createdAt, locale)}</span>
       </div>
     </div>
@@ -382,7 +382,7 @@ function SearchResultTitle({ post, selected, locale }: { post: BlogPost; selecte
 function SearchResultExcerpt({ post }: { post: BlogPost }) {
   if (!post.excerpt) return null
   return (
-    <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mt-1 leading-relaxed">
+    <p className='text-xs text-[var(--text-secondary)] line-clamp-2 mt-1 leading-relaxed'>
       {post.excerpt}
     </p>
   )
@@ -391,13 +391,13 @@ function SearchResultExcerpt({ post }: { post: BlogPost }) {
 function SearchResultTags({ post }: { post: BlogPost }) {
   if (!post.tags || post.tags.length === 0) return null
   return (
-    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+    <div className='flex items-center gap-1.5 mt-2 flex-wrap'>
       {post.tags.map((tag) => (
         <span
           key={tag}
-          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg-inset)] text-[var(--text-tertiary)]"
+          className='inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg-inset)] text-[var(--text-tertiary)]'
         >
-          <Tag className="w-2.5 h-2.5" />
+          <Tag className='w-2.5 h-2.5' />
           {tag}
         </span>
       ))}
@@ -443,13 +443,13 @@ function SearchFooter({
   locale: BlogLocale
 }) {
   return (
-    <div className="px-4 py-2 bg-[var(--bg-raised)] border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-quaternary)] flex items-center justify-between">
+    <div className='px-4 py-2 bg-[var(--bg-raised)] border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-quaternary)] flex items-center justify-between'>
       <span>
         {query.trim()
           ? t('search.footer_matched', { total, count: resultCount }, locale)
           : t('search.footer_idle', {}, locale)}
       </span>
-      <div className="flex items-center gap-3">
+      <div className='flex items-center gap-3'>
         <span>{t('search.key_nav', {}, locale)}</span>
         <span>{t('search.key_open', {}, locale)}</span>
         <span>{t('search.key_esc', {}, locale)}</span>

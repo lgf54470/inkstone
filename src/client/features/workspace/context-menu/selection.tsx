@@ -37,7 +37,7 @@ export function buildEditorSelectionItems(ctx: MenuCtx): MenuItem[] | null {
     return [
       { id: 'cut', label: t('contextmenu.cut'), icon: <Scissors size={14} />, combo: 'mod+x', onSelect: handleCutFromEditor },
       { id: 'copy', label: t('contextmenu.copy'), icon: <Copy size={14} />, combo: 'mod+c', onSelect: () => handleCopy(selected) },
-      { id: 'paste', label: t('contextmenu.paste'), icon: <Copy size={14} className="rotate-90" />, combo: 'mod+v', onSelect: handlePasteIntoEditor },
+      { id: 'paste', label: t('contextmenu.paste'), icon: <Copy size={14} className='rotate-90' />, combo: 'mod+v', onSelect: handlePasteIntoEditor },
       { id: 'format-sub', label: t('contextmenu.format'), icon: <Highlighter size={14} />, separatorBefore: true, submenu: submenuFor(buildFormatItems(ctx)) },
       { id: 'headings-sub', label: t('contextmenu.headings'), icon: <Heading size={14} />, submenu: submenuFor(buildHeadingItems(ctx)) },
       { id: 'lists-sub', label: t('contextmenu.lists_quotes'), icon: <List size={14} />, submenu: submenuFor(buildListItems(ctx)) },

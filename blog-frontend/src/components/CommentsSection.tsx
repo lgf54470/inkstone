@@ -173,7 +173,7 @@ export default function CommentsSection({
   }
 
   return (
-    <section className="my-12 pt-8 border-t border-[var(--border-default)]" id="comments">
+    <section className='my-12 pt-8 border-t border-[var(--border-default)]' id='comments'>
       <CommentsHeader count={comments.length} locale={locale} />
       {form.message && <MessageBanner message={form.message} />}
       <CommentForm
@@ -190,7 +190,7 @@ export default function CommentsSection({
 
 function CommentsDisabled({ locale }: { locale: BlogLocale }) {
   return (
-    <div className="my-10 p-6 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-sunken)] text-center text-xs text-[var(--text-tertiary)]">
+    <div className='my-10 p-6 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-sunken)] text-center text-xs text-[var(--text-tertiary)]'>
       {t('comments.disabled', {}, locale)}
     </div>
   )
@@ -198,9 +198,9 @@ function CommentsDisabled({ locale }: { locale: BlogLocale }) {
 
 function CommentsHeader({ count, locale }: { count: number; locale: BlogLocale }) {
   return (
-    <div className="flex items-center gap-2 mb-6">
-      <MessageSquare className="w-5 h-5 text-[var(--accent)]" />
-      <h3 className="text-lg font-bold text-[var(--text-primary)]">
+    <div className='flex items-center gap-2 mb-6'>
+      <MessageSquare className='w-5 h-5 text-[var(--accent)]' />
+      <h3 className='text-lg font-bold text-[var(--text-primary)]'>
         {t('comments.title', { count }, locale)}
       </h3>
     </div>
@@ -218,9 +218,9 @@ function MessageBanner({ message }: { message: { type: 'success' | 'error'; text
       }`}
     >
       {isSuccess ? (
-        <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+        <CheckCircle2 className='w-4 h-4 shrink-0 mt-0.5' />
       ) : (
-        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+        <AlertCircle className='w-4 h-4 shrink-0 mt-0.5' />
       )}
       <span>{message.text}</span>
     </div>
@@ -281,12 +281,12 @@ function CommentForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="mb-8 p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--shadow-xs)] space-y-4"
+      className='mb-8 p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--shadow-xs)] space-y-4'
     >
-      <h4 className="text-sm font-semibold text-[var(--text-primary)]">
+      <h4 className='text-sm font-semibold text-[var(--text-primary)]'>
         {t('comments.form_heading', {}, locale)}
       </h4>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
         {configs.map((cfg) => (
           <CommentInput
             key={cfg.key}
@@ -314,19 +314,19 @@ function CommentInput({
   const Icon = config.icon
   return (
     <div>
-      <label className="block text-[11px] font-medium text-[var(--text-secondary)] mb-1">
+      <label className='block text-[11px] font-medium text-[var(--text-secondary)] mb-1'>
         {config.label}
-        {config.required && <span className="text-[var(--accent)]"> *</span>}
+        {config.required && <span className='text-[var(--accent)]'> *</span>}
       </label>
-      <div className="relative flex items-center">
-        <Icon className="w-3.5 h-3.5 absolute left-2.5 text-[var(--text-quaternary)]" />
+      <div className='relative flex items-center'>
+        <Icon className='w-3.5 h-3.5 absolute left-2.5 text-[var(--text-quaternary)]' />
         <input
           type={config.type}
           required={config.required}
           value={value}
           onChange={onChange}
           placeholder={config.placeholder}
-          className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+          className='w-full pl-8 pr-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] transition-colors'
         />
       </div>
     </div>
@@ -344,8 +344,8 @@ function CommentContentField({
 }) {
   return (
     <div>
-      <label className="block text-[11px] font-medium text-[var(--text-secondary)] mb-1">
-        {t('comments.field_content', {}, locale)} <span className="text-[var(--accent)]">*</span>
+      <label className='block text-[11px] font-medium text-[var(--text-secondary)] mb-1'>
+        {t('comments.field_content', {}, locale)} <span className='text-[var(--accent)]'>*</span>
       </label>
       <textarea
         required
@@ -353,7 +353,7 @@ function CommentContentField({
         value={value}
         onChange={onChange}
         placeholder={t('comments.field_content_placeholder', {}, locale)}
-        className="w-full p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-y leading-relaxed"
+        className='w-full p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-y leading-relaxed'
       />
     </div>
   )
@@ -361,23 +361,23 @@ function CommentContentField({
 
 function CommentFormActions({ submitting, locale }: { submitting: boolean; locale: BlogLocale }) {
   return (
-    <div className="flex items-center justify-between pt-1">
-      <span className="text-[11px] text-[var(--text-quaternary)]">
+    <div className='flex items-center justify-between pt-1'>
+      <span className='text-[11px] text-[var(--text-quaternary)]'>
         {t('comments.rules_hint', {}, locale)}
       </span>
       <button
-        type="submit"
+        type='submit'
         disabled={submitting}
-        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-[var(--shadow-xs)]"
+        className='inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-[var(--shadow-xs)]'
       >
         {submitting ? (
           <>
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <Loader2 className='w-3.5 h-3.5 animate-spin' />
             <span>{t('comments.submitting', {}, locale)}</span>
           </>
         ) : (
           <>
-            <Send className="w-3.5 h-3.5" />
+            <Send className='w-3.5 h-3.5' />
             <span>{t('comments.submit', {}, locale)}</span>
           </>
         )}
@@ -397,21 +397,21 @@ function CommentList({
 }) {
   if (loading) {
     return (
-      <div className="py-8 text-center text-xs text-[var(--text-tertiary)] flex items-center justify-center gap-2">
-        <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />
+      <div className='py-8 text-center text-xs text-[var(--text-tertiary)] flex items-center justify-center gap-2'>
+        <Loader2 className='w-4 h-4 animate-spin text-[var(--accent)]' />
         <span>{t('comments.loading', {}, locale)}</span>
       </div>
     )
   }
   if (comments.length === 0) {
     return (
-      <div className="py-10 text-center text-xs text-[var(--text-quaternary)] bg-[var(--bg-surface)] rounded-xl border border-[var(--border-subtle)]">
+      <div className='py-10 text-center text-xs text-[var(--text-quaternary)] bg-[var(--bg-surface)] rounded-xl border border-[var(--border-subtle)]'>
         {t('comments.empty', {}, locale)}
       </div>
     )
   }
   return (
-    <div className="space-y-4">
+    <div className='space-y-4'>
       {comments.map((item) => (
         <CommentItem key={item.id} item={item} locale={locale} />
       ))}
@@ -421,28 +421,28 @@ function CommentList({
 
 function CommentItem({ item, locale }: { item: BlogComment; locale: BlogLocale }) {
   return (
-    <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-[var(--accent-softer)] text-[var(--accent)] font-bold flex items-center justify-center text-xs">
+    <div className='p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs space-y-2'>
+      <div className='flex items-center justify-between'>
+        <div className='flex items-center gap-2'>
+          <div className='w-7 h-7 rounded-full bg-[var(--accent-softer)] text-[var(--accent)] font-bold flex items-center justify-center text-xs'>
             {item.authorName.slice(0, 1).toUpperCase()}
           </div>
           <div>
             {item.authorUrl ? (
               <a
                 href={item.authorUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]"
+                target='_blank'
+                rel='noopener noreferrer'
+                className='font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]'
               >
                 {item.authorName}
               </a>
             ) : (
-              <span className="font-semibold text-[var(--text-primary)]">{item.authorName}</span>
+              <span className='font-semibold text-[var(--text-primary)]'>{item.authorName}</span>
             )}
           </div>
         </div>
-        <time className="text-[11px] text-[var(--text-quaternary)]">
+        <time className='text-[11px] text-[var(--text-quaternary)]'>
           {formatDate(item.createdAt, locale, {
             year: 'numeric',
             month: 'short',
@@ -452,7 +452,7 @@ function CommentItem({ item, locale }: { item: BlogComment; locale: BlogLocale }
           })}
         </time>
       </div>
-      <p className="text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed pl-9">
+      <p className='text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed pl-9'>
         {item.content}
       </p>
     </div>

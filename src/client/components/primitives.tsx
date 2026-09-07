@@ -7,23 +7,23 @@ import { resolveAvatarSource } from '../lib/avatar'
 export function Logo({ size = 20, className }: { size?: number; className?: string }) {
   return (
     <svg
-      viewBox="0 0 32 32"
+      viewBox='0 0 32 32'
       width={size}
       height={size}
       className={cn('ink-logo', className)}
-      aria-hidden="true"
+      aria-hidden='true'
     >
       <rect
-        x="2.5"
-        y="2.5"
-        width="27"
-        height="27"
-        rx="8.5"
-        className="fill-[var(--text-primary)]"
+        x='2.5'
+        y='2.5'
+        width='27'
+        height='27'
+        rx='8.5'
+        className='fill-[var(--text-primary)]'
       />
       <path
-        d="M16 8.2c2.7 3.5 5.4 6.3 5.4 9.3a5.4 5.4 0 1 1-10.8 0c0-3 2.7-5.8 5.4-9.3z"
-        className="fill-[var(--brand-accent)]"
+        d='M16 8.2c2.7 3.5 5.4 6.3 5.4 9.3a5.4 5.4 0 1 1-10.8 0c0-3 2.7-5.8 5.4-9.3z'
+        className='fill-[var(--brand-accent)]'
       />
     </svg>
   )
@@ -91,7 +91,7 @@ export function Button({
       )}
     >
       {loading ? <Spinner size={size === 'lg' ? 15 : 13} /> : icon}
-      {children != null && <span className="inline-flex items-center gap-1.5 truncate">{children}</span>}
+      {children != null && <span className='inline-flex items-center gap-1.5 truncate'>{children}</span>}
       {trailing}
     </button>
   )
@@ -143,17 +143,17 @@ export function Spinner({ size = 14, className }: { size?: number; className?: s
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
-      fill="none"
+      viewBox='0 0 24 24'
+      fill='none'
       className={cn('shrink-0 animate-[ink-spin_0.7s_linear_infinite]', className)}
-      aria-hidden="true"
+      aria-hidden='true'
     >
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" opacity="0.2" />
+      <circle cx='12' cy='12' r='9' stroke='currentColor' strokeWidth='2.5' opacity='0.2' />
       <path
-        d="M21 12a9 9 0 0 0-9-9"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
+        d='M21 12a9 9 0 0 0-9-9'
+        stroke='currentColor'
+        strokeWidth='2.5'
+        strokeLinecap='round'
       />
     </svg>
   )
@@ -163,7 +163,7 @@ export function Spinner({ size = 14, className }: { size?: number; className?: s
 export function Kbd({ combo, keys }: { combo?: string; keys?: string[] }) {
   const parts = keys ?? (combo ? prettyCombo(combo) : [])
   return (
-    <span className="inline-flex shrink-0 items-center gap-[3px]">
+    <span className='inline-flex shrink-0 items-center gap-[3px]'>
       {parts.map((key, i) => (
         <kbd
           key={`${key}-${i}`}
@@ -208,11 +208,11 @@ export function Avatar({
     >
       <img
         src={displaySrc}
-        alt=""
+        alt=''
         width={size}
         height={size}
         onError={() => setFailedSrc(resolvedSrc)}
-        className="size-full object-cover"
+        className='size-full object-cover'
       />
     </span>
   )
@@ -252,7 +252,7 @@ export function Badge({
 export function Divider({ className, vertical }: { className?: string; vertical?: boolean }) {
   return (
     <div
-      role="separator"
+      role='separator'
       className={cn(
         'shrink-0 bg-[var(--border-subtle)]',
         vertical ? 'h-4 w-px' : 'h-px w-full',

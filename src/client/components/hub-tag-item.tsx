@@ -106,7 +106,7 @@ function buildTagMenuItems(ctx: MenuContext): MenuItem[] {
       items.push({
         id: 'enable_all',
         label: ctx.labels.enable,
-        icon: <PlayCircle size={13} className="text-[var(--success)]" />,
+        icon: <PlayCircle size={13} className='text-[var(--success)]' />,
         onSelect: () => ctx.onBatchToggle(true),
       })
     }
@@ -114,7 +114,7 @@ function buildTagMenuItems(ctx: MenuContext): MenuItem[] {
       items.push({
         id: 'disable_all',
         label: ctx.labels.disable,
-        icon: <PauseCircle size={13} className="text-[var(--warning)]" />,
+        icon: <PauseCircle size={13} className='text-[var(--warning)]' />,
         onSelect: () => ctx.onBatchToggle(false),
       })
     }
@@ -142,16 +142,16 @@ function TagExpandAffordance({
   onToggle?: (e: MouseEvent) => void
 }) {
   if (!hasChildren) {
-    return depth > 0 ? <span className="w-2 shrink-0" /> : null
+    return depth > 0 ? <span className='w-2 shrink-0' /> : null
   }
   return (
     <button
-      type="button"
+      type='button'
       onClick={(e) => {
         e.stopPropagation()
         onToggle?.(e)
       }}
-      className="p-0.5 -ml-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-colors shrink-0"
+      className='p-0.5 -ml-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-colors shrink-0'
     >
       {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
     </button>
@@ -178,7 +178,7 @@ function TagNameEditor({
   return (
     <input
       ref={inputRef}
-      type="text"
+      type='text'
       value={value}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => setValue(e.target.value)}
@@ -187,14 +187,14 @@ function TagNameEditor({
         if (e.key === 'Enter') commit(value)
         if (e.key === 'Escape') onCommit(initialName)
       }}
-      className="flex-1 bg-[var(--bg-surface)] px-1 py-0.5 text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden"
+      className='flex-1 bg-[var(--bg-surface)] px-1 py-0.5 text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden'
     />
   )
 }
 
 function TagNameText({ name, fullName }: { name: string; fullName: string }) {
   return (
-    <span className="flex-1 truncate" title={fullName}>
+    <span className='flex-1 truncate' title={fullName}>
       {name}
     </span>
   )
@@ -202,7 +202,7 @@ function TagNameText({ name, fullName }: { name: string; fullName: string }) {
 
 function TagCountBadge({ total, enabled }: { total: number; enabled: number }) {
   return (
-    <span className="tabular text-[length:var(--text-10)] text-[var(--text-quaternary)] shrink-0">
+    <span className='tabular text-[length:var(--text-10)] text-[var(--text-quaternary)] shrink-0'>
       {total === 0 ? (
         '0'
       ) : enabled < total ? (
@@ -243,9 +243,9 @@ function TagToggleControl({
           toast({ title: labels.emptyHint, tone: 'default' })
         }
       }}
-      className="flex items-center pl-1 shrink-0"
+      className='flex items-center pl-1 shrink-0'
     >
-      <Tooltip label={tooltipLabel} side="top">
+      <Tooltip label={tooltipLabel} side='top'>
         <div>
           <Switch
             checked={checked}
@@ -271,13 +271,13 @@ function TagMoreButton({
   return (
     <button
       ref={buttonRef}
-      type="button"
+      type='button'
       aria-expanded={open}
       onClick={(e) => {
         e.stopPropagation()
         onToggle()
       }}
-      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity shrink-0"
+      className='opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity shrink-0'
     >
       <MoreHorizontal size={12} />
     </button>
@@ -319,7 +319,7 @@ function HubTagRow({
   const displayNameText = displayName || initialName
   return (
     <div
-      role="button"
+      role='button'
       tabIndex={0}
       onClick={onSelect}
       onContextMenu={onContextMenu}
@@ -381,7 +381,7 @@ export function HubTagItem(props: HubTagItemProps) {
     onDelete,
   })
   return (
-    <div className="flex flex-col">
+    <div className='flex flex-col'>
       <HubTagRow
         {...props}
         initialName={initialName}

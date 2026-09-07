@@ -21,14 +21,14 @@ export function SubmenuList({
   return (
     <div
       style={{ width }}
-      className="max-h-[380px] overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none"
+      className='max-h-[380px] overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none'
       onClick={(e) => e.stopPropagation()}
     >
       {items.map((item) => (
         <div key={item.id}>
-          {item.separatorBefore && <div role="separator" className="my-1 h-px bg-[var(--border-subtle)]" />}
+          {item.separatorBefore && <div role='separator' className='my-1 h-px bg-[var(--border-subtle)]' />}
           <button
-            type="button"
+            type='button'
             role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
             aria-checked={item.checked}
             disabled={item.disabled}
@@ -45,10 +45,10 @@ export function SubmenuList({
             )}
           >
             {item.icon && (
-              <span className="flex size-4 shrink-0 items-center justify-center opacity-85">{item.icon}</span>
+              <span className='flex size-4 shrink-0 items-center justify-center opacity-85'>{item.icon}</span>
             )}
-            <span className="min-w-0 flex-1 truncate">{item.label}</span>
-            {item.checked && <Check size={13} className="shrink-0 text-[var(--accent)]" />}
+            <span className='min-w-0 flex-1 truncate'>{item.label}</span>
+            {item.checked && <Check size={13} className='shrink-0 text-[var(--accent)]' />}
             {item.combo && <Kbd combo={item.combo} />}
           </button>
         </div>

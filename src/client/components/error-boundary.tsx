@@ -36,20 +36,20 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
     return (
       <div
-        role="alert"
-        className="flex h-full min-h-[240px] flex-col items-center justify-center gap-3 bg-[var(--bg-base)] px-6 text-center"
+        role='alert'
+        className='flex h-full min-h-[240px] flex-col items-center justify-center gap-3 bg-[var(--bg-base)] px-6 text-center'
       >
-        <div className="flex size-12 items-center justify-center rounded-full bg-[var(--danger-soft)] text-[var(--danger)]">
-          <CircleAlert size={22} aria-hidden="true" />
+        <div className='flex size-12 items-center justify-center rounded-full bg-[var(--danger-soft)] text-[var(--danger)]'>
+          <CircleAlert size={22} aria-hidden='true' />
         </div>
-        <h2 className="text-[length:var(--text-15)] font-semibold text-[var(--text-primary)]">
+        <h2 className='text-[length:var(--text-15)] font-semibold text-[var(--text-primary)]'>
           {t('app.something_went_wrong')}
         </h2>
         <p className="max-w-[320px] text-[length:var(--text-12\.5)] leading-relaxed text-[var(--text-tertiary)]">
           {t('app.error_boundary_description')}
         </p>
         <button
-          type="button"
+          type='button'
           onClick={this.handleReload}
           className="mt-2 inline-flex h-9 items-center justify-center rounded-[var(--r-md)] bg-[var(--accent)] px-4 text-[length:var(--text-12\.5)] font-semibold text-white transition-colors hover:bg-[var(--accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
         >

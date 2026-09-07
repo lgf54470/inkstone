@@ -48,11 +48,11 @@ export function AttachmentGridView(props: AttachmentGridViewProps) {
   const gridColsClass = zoomCols(zoom)
 
   return (
-    <div className="flex min-h-full flex-col p-4 gap-6">
+    <div className='flex min-h-full flex-col p-4 gap-6'>
       {groups.map((group, groupIdx) => (
-        <div key={group.label} className="space-y-2.5">
-          <div className="sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-surface)]/90 py-1 backdrop-blur-xs">
-            <h3 className="text-[length:var(--text-12)] font-semibold tracking-wider text-[var(--text-tertiary)] uppercase">
+        <div key={group.label} className='space-y-2.5'>
+          <div className='sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-surface)]/90 py-1 backdrop-blur-xs'>
+            <h3 className='text-[length:var(--text-12)] font-semibold tracking-wider text-[var(--text-tertiary)] uppercase'>
               {group.label}
             </h3>
           </div>
@@ -89,14 +89,14 @@ export function AttachmentGridView(props: AttachmentGridViewProps) {
 function UploadTile({ onClick }: { onClick: () => void }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={onClick}
-      className="group relative flex aspect-square flex-col items-center justify-center rounded-[var(--r-lg)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 p-3 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/20 cursor-pointer"
+      className='group relative flex aspect-square flex-col items-center justify-center rounded-[var(--r-lg)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 p-3 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/20 cursor-pointer'
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--bg-surface)] text-[var(--text-tertiary)] shadow-[var(--shadow-xs)] transition-transform group-hover:scale-110 group-hover:text-[var(--accent)]">
+      <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--bg-surface)] text-[var(--text-tertiary)] shadow-[var(--shadow-xs)] transition-transform group-hover:scale-110 group-hover:text-[var(--accent)]'>
         <Plus size={20} />
       </div>
-      <span className="mt-2 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] group-hover:text-[var(--accent)]">
+      <span className='mt-2 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] group-hover:text-[var(--accent)]'>
         {t('attachments.upload_file')}
       </span>
     </button>
@@ -157,11 +157,11 @@ function CardThumb({ file, isImage, badge, selected, onToggleSelect, menu, onTog
   onToggleStar: () => void
 }) {
   return (
-    <div className="relative aspect-4/3 w-full overflow-hidden bg-[var(--bg-sunken)]">
+    <div className='relative aspect-4/3 w-full overflow-hidden bg-[var(--bg-sunken)]'>
       {isImage ? (
-        <img src={file.url} alt={file.filename} loading="lazy" className="h-full w-full object-cover transition-transform duration-[var(--dur-base)] group-hover:scale-105" />
+        <img src={file.url} alt={file.filename} loading='lazy' className='h-full w-full object-cover transition-transform duration-[var(--dur-base)] group-hover:scale-105' />
       ) : (
-        <div className="flex h-full w-full items-center justify-center p-4">
+        <div className='flex h-full w-full items-center justify-center p-4'>
           <div className={cn('flex flex-col items-center gap-1 rounded-xl p-3', badge.bg)}>
             <span className={cn('text-sm font-bold tracking-wider', badge.text)}>{badge.label}</span>
           </div>
@@ -172,7 +172,7 @@ function CardThumb({ file, isImage, badge, selected, onToggleSelect, menu, onTog
       <ThumbActions file={file} menu={menu} onToggleStar={onToggleStar} />
 
       {file.references === 0 && (
-        <div className="absolute bottom-1.5 left-1.5 rounded px-1 py-0.5 text-[length:var(--text-9)] font-medium bg-amber-500/85 text-white backdrop-blur-xs">
+        <div className='absolute bottom-1.5 left-1.5 rounded px-1 py-0.5 text-[length:var(--text-9)] font-medium bg-amber-500/85 text-white backdrop-blur-xs'>
           {t('attachments.unreferenced')}
         </div>
       )}
@@ -210,14 +210,14 @@ function ThumbActions({ file, menu, onToggleStar }: {
   onToggleStar: () => void
 }) {
   return (
-    <div className="absolute top-2 right-2 z-[var(--z-sticky)] flex items-center gap-1">
+    <div className='absolute top-2 right-2 z-[var(--z-sticky)] flex items-center gap-1'>
       {file.isPinned && (
-        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-xs">
+        <div className='flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-xs'>
           <Pin size={10} />
         </div>
       )}
       <button
-        type="button"
+        type='button'
         onClick={(e) => {
           e.stopPropagation()
           onToggleStar()
@@ -231,12 +231,12 @@ function ThumbActions({ file, menu, onToggleStar }: {
       </button>
       <button
         ref={menu.buttonRef}
-        type="button"
+        type='button'
         onClick={(e) => {
           e.stopPropagation()
           menu.toggle()
         }}
-        className="flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white/80 opacity-0 group-hover:opacity-100 hover:text-white transition-opacity"
+        className='flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white/80 opacity-0 group-hover:opacity-100 hover:text-white transition-opacity'
       >
         <MoreVertical size={11} />
       </button>
@@ -246,29 +246,29 @@ function ThumbActions({ file, menu, onToggleStar }: {
 
 function CardMeta({ file, folderName }: { file: AttachmentWithUsage; folderName?: string }) {
   return (
-    <div className="p-2 space-y-1">
-      <p className="truncate text-[length:var(--text-12)] font-medium text-[var(--text-primary)]" title={file.filename}>
+    <div className='p-2 space-y-1'>
+      <p className='truncate text-[length:var(--text-12)] font-medium text-[var(--text-primary)]' title={file.filename}>
         {file.filename}
       </p>
 
-      <div className="flex items-center justify-between text-[length:var(--text-11)] text-[var(--text-tertiary)]">
+      <div className='flex items-center justify-between text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
         <span>{formatFileSize(file.size)}</span>
         {folderName && (
-          <span className="truncate max-w-[80px]" title={folderName}>
+          <span className='truncate max-w-[80px]' title={folderName}>
             {folderName}
           </span>
         )}
       </div>
 
       {file.tags && file.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 pt-0.5">
+        <div className='flex flex-wrap gap-1 pt-0.5'>
           {file.tags.slice(0, 2).map((tag) => (
-            <span key={tag} className="rounded bg-[var(--bg-sunken)] px-1 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)]">
+            <span key={tag} className='rounded bg-[var(--bg-sunken)] px-1 py-0.2 text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
               #{tag}
             </span>
           ))}
           {file.tags.length > 2 && (
-            <span className="text-[length:var(--text-10)] text-[var(--text-quaternary)]">
+            <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
               +{file.tags.length - 2}
             </span>
           )}

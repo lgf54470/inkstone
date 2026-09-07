@@ -164,7 +164,7 @@ function useLoginFlow(): LoginFlow {
 
 function LoginHeader({ flow }: { flow: LoginFlow }) {
   return (
-    <div className="mb-6 flex flex-col items-center text-center md:mb-8">
+    <div className='mb-6 flex flex-col items-center text-center md:mb-8'>
       <div
         className={cn(
           'mb-5 flex size-14 items-center justify-center rounded-[var(--r-18)]',
@@ -174,10 +174,10 @@ function LoginHeader({ flow }: { flow: LoginFlow }) {
       >
         <Logo size={27} />
       </div>
-      <h1 className="text-[length:var(--text-30)] font-semibold tracking-[0.01em] text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-serif)' }}>
+      <h1 className='text-[length:var(--text-30)] font-semibold tracking-[0.01em] text-[var(--text-primary)]' style={{ fontFamily: 'var(--font-serif)' }}>
         {t('common.product_name')}
       </h1>
-      <p className="mt-2.5 text-[length:var(--text-13)] leading-relaxed text-[var(--text-tertiary)]">
+      <p className='mt-2.5 text-[length:var(--text-13)] leading-relaxed text-[var(--text-tertiary)]'>
         {flow.challenge
           ? t('auth.two_step_verification_description')
           : flow.firstRun
@@ -190,9 +190,9 @@ function LoginHeader({ flow }: { flow: LoginFlow }) {
 
 function ChallengeIdentityRow({ username }: { username: string }) {
   return (
-    <div className="mb-3 flex items-center gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-secondary)]">
-      <KeyRound size={14} className="shrink-0 text-[var(--accent)]" />
-      <span className="min-w-0 truncate">@{username.trim()}</span>
+    <div className='mb-3 flex items-center gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2.5 text-[length:var(--text-12)] text-[var(--text-secondary)]'>
+      <KeyRound size={14} className='shrink-0 text-[var(--accent)]' />
+      <span className='min-w-0 truncate'>@{username.trim()}</span>
     </div>
   )
 }
@@ -228,13 +228,13 @@ function CredentialsFields({ flow }: { flow: LoginFlow }) {
         onChange={(event) => flow.setUsername(event.target.value)}
         disabled={flow.isBusy}
         placeholder={t('common.username')}
-        autoComplete="username"
-        autoCapitalize="none"
+        autoComplete='username'
+        autoCapitalize='none'
         spellCheck={false}
       />
       <Input
         aria-label={t('common.password')}
-        type="password"
+        type='password'
         value={flow.password}
         maxLength={LIMITS.passwordMaxLength}
         onChange={(event) => flow.setPassword(event.target.value)}
@@ -251,13 +251,13 @@ function ConfirmationField({ flow }: { flow: LoginFlow }) {
   return (
     <Input
       aria-label={t('auth.confirm_password')}
-      type="password"
+      type='password'
       value={flow.confirmation}
       maxLength={LIMITS.passwordMaxLength}
       onChange={(event) => flow.setConfirmation(event.target.value)}
       disabled={flow.isBusy}
       placeholder={t('auth.confirm_password')}
-      autoComplete="new-password"
+      autoComplete='new-password'
     />
   )
 }
@@ -272,7 +272,7 @@ function SubmitButton({ flow }: { flow: LoginFlow }) {
       : t('auth.sign_in')
   return (
     <button
-      type="submit"
+      type='submit'
       disabled={flow.isBusy}
       className={cn(
         'flex h-11 w-full items-center justify-center gap-2.5 rounded-[var(--r-lg)]',
@@ -281,7 +281,7 @@ function SubmitButton({ flow }: { flow: LoginFlow }) {
         'hover:bg-[var(--accent-hover)] active:translate-y-px disabled:opacity-50',
       )}
     >
-      {flow.isBusy && <Loader2 size={16} className="animate-[ink-spin_.7s_linear_infinite]" />}
+      {flow.isBusy && <Loader2 size={16} className='animate-[ink-spin_.7s_linear_infinite]' />}
       {label}
     </button>
   )
@@ -290,7 +290,7 @@ function SubmitButton({ flow }: { flow: LoginFlow }) {
 function LinkButton({ children, onClick, disabled, className }: { children: ReactNode; onClick: () => void; disabled?: boolean; className?: string }) {
   return (
     <button
-      type="button"
+      type='button'
       disabled={disabled}
       onClick={onClick}
       className={cn('text-[length:var(--text-12)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]', className)}
@@ -303,8 +303,8 @@ function LinkButton({ children, onClick, disabled, className }: { children: Reac
 function ChallengeLinks({ flow }: { flow: LoginFlow }) {
   if (!flow.challenge) return null
   return (
-    <div className="flex items-center justify-between gap-3 pt-1">
-      <LinkButton onClick={flow.backToPassword} className="inline-flex items-center gap-1">
+    <div className='flex items-center justify-between gap-3 pt-1'>
+      <LinkButton onClick={flow.backToPassword} className='inline-flex items-center gap-1'>
         <ArrowLeft size={12} />
         {t('auth.back_to_password')}
       </LinkButton>
@@ -331,7 +331,7 @@ function ModeSwitchLink({ flow }: { flow: LoginFlow }) {
         flow.setMode(flow.registerMode ? 'login' : 'register')
         flow.setError(null)
       }}
-      className="mx-auto block"
+      className='mx-auto block'
     >
       {flow.registerMode ? t('auth.already_have_an_account_sign_in') : t('auth.no_account_create_one')}
     </LinkButton>
@@ -342,22 +342,22 @@ function LoginAlert({ flow }: { flow: LoginFlow }) {
   const message = flow.error || flow.authError
   if (!message) return null
   return (
-    <div role="alert" className="anim-rise mt-4 flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_35%,transparent)] bg-[color-mix(in_oklab,var(--danger)_9%,transparent)] px-3 py-2.5">
-      <TriangleAlert size={14} className="mt-[1px] shrink-0 text-[var(--danger)]" />
-      <span className="text-[length:var(--text-12)] leading-relaxed text-[var(--text-secondary)]">{message}</span>
+    <div role='alert' className='anim-rise mt-4 flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_35%,transparent)] bg-[color-mix(in_oklab,var(--danger)_9%,transparent)] px-3 py-2.5'>
+      <TriangleAlert size={14} className='mt-[1px] shrink-0 text-[var(--danger)]' />
+      <span className='text-[length:var(--text-12)] leading-relaxed text-[var(--text-secondary)]'>{message}</span>
     </div>
   )
 }
 
 function LoginFooter({ registrationClosed }: { registrationClosed: boolean }) {
   return (
-    <div className="mt-6 space-y-2 text-center md:mt-8">
+    <div className='mt-6 space-y-2 text-center md:mt-8'>
       {registrationClosed && (
         <p className="text-[length:var(--text-11\\.5)] leading-relaxed text-[var(--text-quaternary)]">
           {t('auth.this_is_a_private_instance_registration_is_closed_so_only_existing_accou')}
         </p>
       )}
-      <p className="text-[length:var(--text-11)] tracking-[0.04em] text-[var(--text-quaternary)]">
+      <p className='text-[length:var(--text-11)] tracking-[0.04em] text-[var(--text-quaternary)]'>
         {t('auth.live_split_view_markdown_preview_realtime_multi_device_sync_multiple_web')}
       </p>
     </div>
@@ -366,10 +366,10 @@ function LoginFooter({ registrationClosed }: { registrationClosed: boolean }) {
 
 function Backdrop() {
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute left-1/2 top-[-22%] size-[720px] -translate-x-1/2 rounded-full opacity-[0.13] blur-[120px]" style={{ background: 'var(--accent)' }} />
+    <div aria-hidden='true' className='pointer-events-none absolute inset-0 overflow-hidden'>
+      <div className='absolute left-1/2 top-[-22%] size-[720px] -translate-x-1/2 rounded-full opacity-[0.13] blur-[120px]' style={{ background: 'var(--accent)' }} />
       <div
-        className="absolute inset-0 opacity-[0.5]"
+        className='absolute inset-0 opacity-[0.5]'
         style={{
           backgroundImage:
             'linear-gradient(var(--border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px)',
@@ -384,12 +384,12 @@ function Backdrop() {
 export function LoginPage() {
   const flow = useLoginFlow()
   return (
-    <div className="relative flex min-h-full flex-col items-center justify-center overflow-y-auto px-4 pt-[calc(32px+env(safe-area-inset-top))] pb-[calc(24px+env(safe-area-inset-bottom))] md:px-6 md:py-10">
+    <div className='relative flex min-h-full flex-col items-center justify-center overflow-y-auto px-4 pt-[calc(32px+env(safe-area-inset-top))] pb-[calc(24px+env(safe-area-inset-bottom))] md:px-6 md:py-10'>
       <Backdrop />
-      <div className="anim-rise relative w-full max-w-[380px]">
+      <div className='anim-rise relative w-full max-w-[380px]'>
         <LoginHeader flow={flow} />
         <form
-          className="space-y-2.5"
+          className='space-y-2.5'
           onSubmit={(event) => {
             event.preventDefault()
             void flow.submit()
@@ -413,7 +413,7 @@ export function LoginPage() {
         <LoginAlert flow={flow} />
         <LoginFooter registrationClosed={flow.registrationClosed} />
       </div>
-      <footer className="pointer-events-none mt-6 text-center text-[length:var(--text-11)] tracking-[0.05em] text-[var(--text-quaternary)] md:mt-8">
+      <footer className='pointer-events-none mt-6 text-center text-[length:var(--text-11)] tracking-[0.05em] text-[var(--text-quaternary)] md:mt-8'>
         {t('auth.self_hosted_on_cloudflare_workers_your_data_is_yours')}
       </footer>
     </div>

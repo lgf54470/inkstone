@@ -256,7 +256,7 @@ async function restoreBundleNote(
     ctx.result.skippedNotes++
     addWarning(
       ctx.result,
-      `${typeof note.title === 'string' ? note.title : "Untitled note"}: ${
+      `${typeof note.title === 'string' ? note.title : 'Untitled note'}: ${
         err instanceof Error ? err.message : String(err)
       }`,
     )

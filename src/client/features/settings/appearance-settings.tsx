@@ -39,7 +39,7 @@ export function AppearanceSettings({
       </section>
 
       <section>
-        <h3 className="mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+        <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
           {t("settings.preview_typography")}
         </h3>
         <TypographySection appearance={appearance} setters={setters} options={options} />
@@ -81,12 +81,12 @@ function useAppearanceSettings() {
   const setProseWidth = useCallback((proseWidth: ProseWidth) => void update({ appearance: { proseWidth } }), [update])
   const setters = { setTodoTag, setLanguage, setTheme, setDensity, setAccent, setBackground, setProseFont, setProseSize, setProseLineHeight, setProseWidth }
   const options = useMemo((): Options => ({
-    languageOptions: [{ value: 'zh-CN', label: t("settings.simplified_chinese") }, { value: 'en-US', label: t("settings.english") }],
-    themeOptions: [{ value: 'light', label: <Sun size={12.5} />, title: t("settings.light") }, { value: 'dark', label: <Moon size={12.5} />, title: t("settings.dark") }, { value: 'system', label: <Monitor size={12.5} />, title: t("settings.system") }],
-    densityOptions: [{ value: 'comfortable', label: t("settings.comfortable") }, { value: 'compact', label: t("settings.compact") }],
-    proseFontOptions: [{ value: 'sans', label: t("common.sans_serif") }, { value: 'serif', label: t("settings.serif") }],
-    proseWidthOptions: [{ value: 'narrow', label: t("settings.narrow") }, { value: 'normal', label: t("settings.standard") }, { value: 'wide', label: t("settings.wide") }, { value: 'full', label: t("settings.full") }],
-    yearGridOptions: [{ value: 'auto', label: t("settings.year_grid_columns_auto") }, { value: '3', label: t("settings.year_grid_columns_three") }, { value: '4', label: t("settings.year_grid_columns_four") }],
+    languageOptions: [{ value: 'zh-CN', label: t('settings.simplified_chinese') }, { value: 'en-US', label: t('settings.english') }],
+    themeOptions: [{ value: 'light', label: <Sun size={12.5} />, title: t('settings.light') }, { value: 'dark', label: <Moon size={12.5} />, title: t('settings.dark') }, { value: 'system', label: <Monitor size={12.5} />, title: t("settings.system") }],
+    densityOptions: [{ value: 'comfortable', label: t('settings.comfortable') }, { value: 'compact', label: t('settings.compact') }],
+    proseFontOptions: [{ value: 'sans', label: t('common.sans_serif') }, { value: 'serif', label: t('settings.serif') }],
+    proseWidthOptions: [{ value: 'narrow', label: t('settings.narrow') }, { value: 'normal', label: t('settings.standard') }, { value: 'wide', label: t('settings.wide') }, { value: 'full', label: t('settings.full') }],
+    yearGridOptions: [{ value: 'auto', label: t('settings.year_grid_columns_auto') }, { value: '3', label: t('settings.year_grid_columns_three') }, { value: '4', label: t('settings.year_grid_columns_four') }],
   }), [locale])
   return { appearance, setters, options }
 }
@@ -96,7 +96,7 @@ function LanguageThemeSection({ appearance, setters, options }: { appearance: Ap
     <>
       <SettingRow title={t("settings.interface_language")}>
         <Segmented<AppLocale>
-          label={t("settings.interface_language")}
+          label={t('settings.interface_language')}
           value={appearance.language}
           onChange={setters.setLanguage}
           options={options.languageOptions}
@@ -104,7 +104,7 @@ function LanguageThemeSection({ appearance, setters, options }: { appearance: Ap
       </SettingRow>
       <SettingRow title={t("settings.theme")}>
         <Segmented<ThemePref>
-          label={t("settings.theme")}
+          label={t('settings.theme')}
           value={appearance.theme}
           onChange={setters.setTheme}
           options={options.themeOptions}
@@ -126,11 +126,11 @@ function ColorSection({ appearance, accents, setters }: { appearance: Appearance
 function AccentSwatches({ appearance, accents, setters }: { appearance: AppearanceSettingsState; accents: { name: AccentName; swatch: string; foreground: string }[]; setters: Setters }) {
   return (
     <SettingRow title={t("settings.accent_color")}>
-      <div role="group" aria-label={t("settings.accent_color")} className="flex items-center gap-1.5">
+      <div role='group' aria-label={t('settings.accent_color')} className='flex items-center gap-1.5'>
         {accents.map((accent) => (
           <Tooltip key={accent.name} label={t(ACCENT_MESSAGE_KEYS[accent.name])}>
             <button
-              type="button"
+              type='button'
               onClick={() => setters.setAccent(accent.name)}
               aria-label={t(ACCENT_MESSAGE_KEYS[accent.name])}
               aria-pressed={appearance.accent === accent.name}
@@ -138,7 +138,7 @@ function AccentSwatches({ appearance, accents, setters }: { appearance: Appearan
               style={{ background: accent.swatch, color: accent.foreground }}
             >
               {appearance.accent === accent.name && (
-                <Check size={12} strokeWidth={3} className="drop-shadow-[var(--drop-shadow-sm)]" />
+                <Check size={12} strokeWidth={3} className='drop-shadow-[var(--drop-shadow-sm)]' />
               )}
             </button>
           </Tooltip>
@@ -151,21 +151,21 @@ function AccentSwatches({ appearance, accents, setters }: { appearance: Appearan
 function BackgroundSwatches({ appearance, setters }: { appearance: AppearanceSettingsState; setters: Setters }) {
   return (
     <SettingRow title={t("settings.background_color")}>
-      <div role="group" aria-label={t("settings.background_color")} className="flex items-center gap-2">
+      <div role='group' aria-label={t('settings.background_color')} className='flex items-center gap-2'>
         {([
-          { name: 'paper', label: t("settings.background_paper"), swatch: 'var(--swatch-paper)' },
-          { name: 'white', label: t("settings.background_white"), swatch: 'var(--swatch-white)' },
+          { name: 'paper', label: t('settings.background_paper'), swatch: 'var(--swatch-paper)' },
+          { name: 'white', label: t('settings.background_white'), swatch: 'var(--swatch-white)' },
         ] satisfies { name: BackgroundName; label: string; swatch: string }[]).map((background) => (
           <button
             key={background.name}
-            type="button"
+            type='button'
             onClick={() => setters.setBackground(background.name)}
             aria-pressed={appearance.background === background.name}
             className={cn('flex h-8 min-w-[84px] items-center gap-2 rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-11\.5)] transition-[border-color,background-color,box-shadow] duration-[var(--dur-fast)]', appearance.background === background.name ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-ring)]' : 'border-[var(--border-default)] bg-[var(--bg-base)] hover:bg-[var(--bg-hover)]')}
           >
-            <span aria-hidden="true" className="size-4 rounded-full border border-black/10 shadow-[var(--shadow-sm)]" style={{ background: background.swatch }} />
+            <span aria-hidden='true' className='size-4 rounded-full border border-black/10 shadow-[var(--shadow-sm)]' style={{ background: background.swatch }} />
             <span>{background.label}</span>
-            {appearance.background === background.name && <Check size={11} className="ml-auto text-[var(--accent)]" />}
+            {appearance.background === background.name && <Check size={11} className='ml-auto text-[var(--accent)]' />}
           </button>
         ))}
       </div>
@@ -183,7 +183,7 @@ function InterfaceSection({ appearance, setters, options }: { appearance: Appear
   return (
     <>
       <SettingRow title={t("settings.interface_density")}>
-        <Segmented<UiDensity> label={t("settings.interface_density")} value={appearance.density} onChange={setters.setDensity} options={options.densityOptions} />
+        <Segmented<UiDensity> label={t('settings.interface_density')} value={appearance.density} onChange={setters.setDensity} options={options.densityOptions} />
       </SettingRow>
 
       <SettingRow title={t("settings.sidebar_calendar_tree")} description={t("settings.sidebar_calendar_tree_desc")}>
@@ -194,11 +194,11 @@ function InterfaceSection({ appearance, setters, options }: { appearance: Appear
       </SettingRow>
 
       <SettingRow title={t("settings.todo_tag")} description={t("settings.todo_tag_desc")}>
-        <Input aria-label={t("settings.todo_tag")} value={todoTag ?? ''} placeholder={t("settings.todo_tag_placeholder_value0", { value0: resolveTodoTag(null, locale) })} onChange={(event) => setters.setTodoTag(event.target.value)} className="w-[200px]" />
+        <Input aria-label={t('settings.todo_tag')} value={todoTag ?? ''} placeholder={t("settings.todo_tag_placeholder_value0", { value0: resolveTodoTag(null, locale) })} onChange={(event) => setters.setTodoTag(event.target.value)} className='w-[200px]' />
       </SettingRow>
 
       <SettingRow title={t("settings.year_grid_columns")} description={t("settings.year_grid_columns_desc")}>
-        <Segmented<YearGridColumnsPref> label={t("settings.year_grid_columns")} value={yearGridColumns} onChange={setYearGridColumns} options={options.yearGridOptions} />
+        <Segmented<YearGridColumnsPref> label={t('settings.year_grid_columns')} value={yearGridColumns} onChange={setYearGridColumns} options={options.yearGridOptions} />
       </SettingRow>
 
       <SettingRow title={t("settings.undo_toast_focus")} description={t("settings.undo_toast_focus_desc")}>
@@ -215,7 +215,7 @@ function TypographySection({ appearance, setters, options }: { appearance: Appea
     <>
       <SettingRow title={t("settings.body_font")}>
         <Segmented<ProseFont>
-          label={t("settings.body_font")}
+          label={t('settings.body_font')}
           value={appearance.proseFont}
           onChange={setters.setProseFont}
           options={options.proseFontOptions}
@@ -224,20 +224,20 @@ function TypographySection({ appearance, setters, options }: { appearance: Appea
 
       <SettingRow title={t("settings.body_text_size")}>
         <Slider
-          label={t("settings.body_text_size")}
-          className="w-[200px]"
+          label={t('settings.body_text_size')}
+          className='w-[200px]'
           value={appearance.proseSize}
           min={13}
           max={22}
           onChange={setters.setProseSize}
-          suffix="px"
+          suffix='px'
         />
       </SettingRow>
 
       <SettingRow title={t("settings.line_height")}>
         <Slider
-          label={t("settings.line_height")}
-          className="w-[200px]"
+          label={t('settings.line_height')}
+          className='w-[200px]'
           value={appearance.proseLineHeight}
           min={1.4}
           max={2.2}
@@ -248,7 +248,7 @@ function TypographySection({ appearance, setters, options }: { appearance: Appea
 
       <SettingRow title={t("settings.content_width")}>
         <Segmented<ProseWidth>
-          label={t("settings.content_width")}
+          label={t('settings.content_width')}
           value={appearance.proseWidth}
           onChange={setters.setProseWidth}
           options={options.proseWidthOptions}
@@ -270,8 +270,8 @@ function YearGridPreview({ columns, locale }: { columns: YearGridColumnsPref; lo
     useUi.getState().closePanel()
   }
   return (
-    <div className="mt-1 mb-3 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-2">
-      <div className="mb-1 flex items-center justify-between gap-2">
+    <div className='mt-1 mb-3 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-2'>
+      <div className='mb-1 flex items-center justify-between gap-2'>
         <span className="text-[length:var(--text-9\.5)] font-medium text-[var(--text-quaternary)]">{t("settings.year_grid_columns_preview")}</span>
         <span className="text-[length:var(--text-9\.5)] text-[var(--text-quaternary)]">{t("settings.year_grid_columns_preview_tip")}</span>
       </div>
@@ -282,13 +282,13 @@ function YearGridPreview({ columns, locale }: { columns: YearGridColumnsPref; lo
         renderMonth={(month) => (
           <button
             key={month.month}
-            type="button"
-            aria-label={t("settings.year_grid_columns_jump_value0", { value0: monthLabels[month.month] ?? '' })}
+            type='button'
+            aria-label={t('settings.year_grid_columns_jump_value0', { value0: monthLabels[month.month] ?? '' })}
             onClick={() => jumpToMonth(month.month)}
-            className="flex min-w-0 flex-col items-center gap-0.5 rounded-[var(--r-3)] p-px transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+            className='flex min-w-0 flex-col items-center gap-0.5 rounded-[var(--r-3)] p-px transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'
           >
-            <span className="text-[length:var(--text-7)] font-medium text-[var(--text-quaternary)]">{monthLabels[month.month]}</span>
-            <span aria-hidden="true" className="grid w-full grid-cols-7 gap-px">
+            <span className='text-[length:var(--text-7)] font-medium text-[var(--text-quaternary)]'>{monthLabels[month.month]}</span>
+            <span aria-hidden='true' className='grid w-full grid-cols-7 gap-px'>
               {month.cells.map((cell, index) => {
                 const level = cell.inMonth ? ((index + month.month) % 4) : 0
                 return (
@@ -311,19 +311,19 @@ function PreviewSample() {
   const appearance = useSession((s) => s.settings.appearance)
   return (
     <section>
-      <h3 className="mb-2 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
+      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
         {t("settings.preview")}
       </h3>
-      <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-3">
+      <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-3'>
         <div
-          className="ink-prose"
+          className='ink-prose'
           data-font={appearance.proseFont}
           style={{ maxWidth: 'none', paddingBlock: 0 }}
         >
           <h3 style={{ marginTop: 0 }}>{t("settings.q_a_in_the_mountains")}</h3>
           <p>
-            {t("settings.asked_why_i_wanted_to_live_in_the_green_mountains_i_smiled_without_answe")}{' '}
-            {t("settings.chinese_english_and")} <code>{t("common.inline_code")}</code> {t("settings.look_at_home_together")}
+            {t('settings.asked_why_i_wanted_to_live_in_the_green_mountains_i_smiled_without_answe')}{' '}
+            {t('settings.chinese_english_and')} <code>{t("common.inline_code")}</code> {t("settings.look_at_home_together")}
           </p>
         </div>
       </div>

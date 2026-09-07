@@ -108,9 +108,9 @@ function VerticalResizeHandle({
   }
   return (
     <div
-      role="separator"
+      role='separator'
       aria-label={label}
-      aria-orientation="vertical"
+      aria-orientation='vertical'
       aria-valuenow={Math.round(value * ariaScale)}
       aria-valuemin={Math.round(min * ariaScale)}
       aria-valuemax={Math.round(max * ariaScale)}
