@@ -10,7 +10,7 @@ import path from 'node:path'
 import ts from 'typescript'
 
 const ROOTS = ['src', 'scripts', 'tests']
-const EXTRA_FILES = ['vite.config.ts', 'vitest.config.ts', 'index.html', 'wrangler.toml']
+const EXTRA_FILES = ['vite.config.ts', 'vitest.config.ts', 'pwa.config.ts', 'index.html', 'wrangler.toml']
 
 function* walk(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

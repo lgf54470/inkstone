@@ -36,6 +36,18 @@ const allowed = new Map([
     "// ALLOWED_DOUBLE_CASTS in check-escape-hatches.mjs.",
     "// tests are white-box by design",
   ]],
+  ["scripts/check-empty-catches.mjs", [
+    "// AGENTS.md rule 5: an empty catch body swallows the failure without",
+    "// handling it or rethrowing with context, so a bare `catch {}` is banned.",
+    "// This walks src/scripts/tests and the root-level .ts configs with the TS",
+    "// AST (so the pattern inside comments or strings never counts) and flags",
+    "// catch clauses whose body has no statements AND no comment. A comment-only",
+    "// catch is documented intent: for src/scripts/tests the exact comment text",
+    "// is then enforced by check-comments.mjs, so an unexplained swallow cannot",
+    "// sneak through either gate.",
+    "// A block with zero statements can only hold whitespace and comments,",
+    "// so a comment scan over its raw text cannot false-positive.",
+  ]],
   ["scripts/check-escape-hatches.mjs", [
     "// Type escape hatches are banned by AGENTS.md rule 5 (no `any` /",
     "// `@ts-ignore`); this walks the src tree with the TS AST so prose in",
@@ -146,6 +158,11 @@ const allowed = new Map([
     "// The stream must actually exceed the 25 MiB attachment limit (plus the",
     "// multipart overhead allowance) for the streaming size guard to fire;",
     "// anything below it parses as an invalid form instead (400).",
+  ]],
+  ["scripts/measure-longtask.mjs", [
+    "// Best-effort probe: connection errors while the dev server boots are retried.",
+    "// Best-effort close: closing an already-closed socket is a no-op.",
+    "// Best-effort parse: a malformed CDP event message is skipped.",
   ]],
   ["scripts/seed-dev-notes.mjs", [
     "// Seeds a dev:kv instance with a realistic multi-year vault for perf A/Bs.",
@@ -1349,7 +1366,7 @@ const failures = []
 const roots = ['src', 'scripts', 'tests']
 const files = [
   ...roots.filter((root) => fs.existsSync(root)).flatMap((root) => [...walk(path.resolve(root))]),
-  ...['vite.config.ts', 'vitest.config.ts', 'index.html', 'wrangler.toml'].map((file) => path.resolve(file)),
+  ...['vite.config.ts', 'vitest.config.ts', 'pwa.config.ts', 'index.html', 'wrangler.toml'].map((file) => path.resolve(file)),
 ]
 
 for (const file of files) {

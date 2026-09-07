@@ -41,6 +41,7 @@
     "i18n:check": "node scripts/check-i18n.mjs",
     "comments:check": "node scripts/check-comments.mjs",
     "escape:check": "node scripts/check-escape-hatches.mjs",
+    "empty-catch:check": "node scripts/check-empty-catches.mjs",
     "module-state:check": "node scripts/check-module-state.mjs",
     "deep-imports:check": "node scripts/check-deep-imports.mjs",
     "deep-imports:check:blog": "node scripts/check-deep-imports.mjs --root blog-frontend/src",

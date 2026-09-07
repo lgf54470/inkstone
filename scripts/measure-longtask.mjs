@@ -17,6 +17,7 @@ async function waitForUrl(url, timeoutMs = 30_000) {
       const res = await fetch(url)
       if (res.ok) return true
     } catch {
+      // Best-effort probe: connection errors while the dev server boots are retried.
     }
     await sleep(250)
   }
@@ -73,6 +74,7 @@ class CdpClient {
     try {
       this.ws.close()
     } catch {
+      // Best-effort close: closing an already-closed socket is a no-op.
     }
   }
 }
@@ -173,6 +175,7 @@ async function main() {
           consoleLogs.push((message.params.args ?? []).map((arg) => arg.value ?? arg.description ?? '').join(' ').slice(0, 200))
         }
       } catch {
+        // Best-effort parse: a malformed CDP event message is skipped.
       }
     })
     await cdp.send('Runtime.enable')

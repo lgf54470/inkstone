@@ -10,6 +10,7 @@ cd "$(git rev-parse --show-toplevel)"
 node scripts/check-size.mjs
 node scripts/check-comments.mjs
 node scripts/check-escape-hatches.mjs
+node scripts/check-empty-catches.mjs
 node scripts/check-i18n.mjs
 node scripts/check-module-state.mjs
 node scripts/check-deep-imports.mjs

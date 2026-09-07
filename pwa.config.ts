@@ -320,6 +320,8 @@ async function pruneAssetCache(cache) {
       const value = await (await cache.match(request)).json()
       if (Array.isArray(value.urls)) manifests.push(value)
     } catch {
+      // Best-effort manifest read: a corrupt entry is skipped so one bad
+      // manifest cannot break the whole prune sweep.
     }
   }
   manifests.sort((left, right) => Number(right.createdAt) - Number(left.createdAt))
