@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { driftProblems, normalizeName, normalizeValue, snapshotPayload, tokenEntries } from '../scripts/check-token-drift.mjs'
+import { driftProblems, normalizeName, normalizeValue, resolveVars, snapshotPayload, staleProblems, tokenEntries } from '../scripts/check-token-drift.mjs'
 
 describe('token name/value extraction', () => {
   it('normalizes CSS-escaped token names', () => {
-    expect(normalizeName('--text-13\\.5')).toBe('--text-13.5')
-    expect(normalizeName('--sp-0\\25')).toBe('--sp-0%')
+    expect(normalizeName(String.raw`--text-13\.5`)).toBe('--text-13.5')
+    expect(normalizeName(String.raw`--sp-0\25`)).toBe('--sp-0%')
   })
 
   it('collapses whitespace in values', () => {
@@ -12,10 +12,24 @@ describe('token name/value extraction', () => {
   })
 
   it('extracts name/value pairs from declarations', () => {
-    const entries = tokenEntries(':root { --sp-0\\.5: 2px; --tracking-label: 0.06em; }\n--accent: var(--accent-cinnabar);')
+    const entries = tokenEntries(String.raw`:root { --sp-0\.5: 2px; --tracking-label: 0.06em; }
+--accent: var(--accent-cinnabar);`)
     expect(entries.get('--sp-0.5')).toBe('2px')
     expect(entries.get('--tracking-label')).toBe('0.06em')
     expect(entries.get('--accent')).toBe('var(--accent-cinnabar)')
+  })
+
+  it('resolves var() references against the same stylesheet', () => {
+    const entries = new Map([['--alias', 'oklch(54% 0.15 30)']])
+    expect(resolveVars('var(--alias)', entries)).toBe('oklch(54% 0.15 30)')
+    expect(resolveVars('var(--unknown)', entries)).toBe('var(--unknown)')
+    expect(resolveVars('var(--self)', new Map([['--self', 'var(--self)']]))).toBe('var(--self)')
+  })
+
+  it('resolves chained and cyclic var() references at extraction', () => {
+    const entries = tokenEntries(':root { --c: 1px; --b: var(--c); --a: var(--b); --loop-x: var(--loop-y); --loop-y: var(--loop-x); }')
+    expect(entries.get('--a')).toBe('1px')
+    expect(entries.get('--loop-x')).toBe('var(--loop-y)')
   })
 })
 
@@ -55,6 +69,12 @@ describe('drift detection', () => {
     expect(driftProblems(appChanged, blog, baseline).some((p) => p.includes('--b value drifted'))).toBe(true)
   })
 
+  it('treats a var()-alias spelling change as no drift', () => {
+    const appSpelled = tokenEntries(':root { --alias: 1px; --a: var(--alias); --b: 2px; --z: 30; }')
+    const blogSpelled = tokenEntries(':root { --a: 1px; --b: 2px; --z: 1; }')
+    expect(driftProblems(appSpelled, blogSpelled, baseline)).toEqual([])
+  })
+
   it('flags a value change on the other side', () => {
     const blogChanged = tokenEntries(':root { --a: 1px; --b: 2px; --z: 10; }')
     expect(driftProblems(app, blogChanged, baseline).some((p) => p.includes('--z value drifted'))).toBe(true)
@@ -69,5 +89,29 @@ describe('drift detection', () => {
   it('falls back to cross-tree comparison when the baseline has no values', () => {
     const legacy = { tokens: ['--z'] }
     expect(driftProblems(app, blog, legacy).some((p) => p.includes('--z value differs'))).toBe(true)
+  })
+})
+
+describe('staleness detection', () => {
+  const app = tokenEntries(':root { --a: 1px; --b: 2px; }')
+  const blog = tokenEntries(':root { --a: 1px; --b: 2px; }')
+  const baseline = {
+    tokens: ['--a'],
+    values: { '--a': { app: '1px', blog: '1px' } },
+  }
+
+  it('flags a token newly shared by both trees', () => {
+    expect(staleProblems(app, blog, baseline).some((p) => p.includes('--b added to both trees'))).toBe(true)
+  })
+
+  it('passes when the baseline records every shared token', () => {
+    const current = {
+      tokens: ['--a', '--b'],
+      values: {
+        '--a': { app: '1px', blog: '1px' },
+        '--b': { app: '2px', blog: '2px' },
+      },
+    }
+    expect(staleProblems(app, blog, current)).toEqual([])
   })
 })

@@ -88,7 +88,7 @@
   "values": {
     "--accent": {
       "app": "oklch(54% 0.15 30)",
-      "blog": "var(--accent-cinnabar)"
+      "blog": "oklch(54% 0.15 30)"
     },
     "--accent-contrast": {
       "app": "oklch(16% 0.008 265)",
@@ -99,20 +99,20 @@
       "blog": "oklch(48.5% 0.155 30)"
     },
     "--accent-muted": {
-      "app": "color-mix(in oklab, var(--accent) 62%, var(--text-tertiary))",
-      "blog": "color-mix(in oklab, var(--accent) 62%, var(--text-tertiary))"
+      "app": "color-mix(in oklab, oklch(54% 0.15 30) 62%, oklch(58% 0.009 265))",
+      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 62%, oklch(58% 0.009 265))"
     },
     "--accent-ring": {
-      "app": "color-mix(in oklab, var(--accent) 34%, transparent)",
-      "blog": "color-mix(in oklab, var(--accent) 34%, transparent)"
+      "app": "color-mix(in oklab, oklch(54% 0.15 30) 34%, transparent)",
+      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 34%, transparent)"
     },
     "--accent-soft": {
-      "app": "color-mix(in oklab, var(--accent) 14%, transparent)",
-      "blog": "color-mix(in oklab, var(--accent) 14%, transparent)"
+      "app": "color-mix(in oklab, oklch(54% 0.15 30) 14%, transparent)",
+      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 14%, transparent)"
     },
     "--accent-softer": {
-      "app": "color-mix(in oklab, var(--accent) 7%, transparent)",
-      "blog": "color-mix(in oklab, var(--accent) 7%, transparent)"
+      "app": "color-mix(in oklab, oklch(54% 0.15 30) 7%, transparent)",
+      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 7%, transparent)"
     },
     "--anim-spin": {
       "app": "0.8s",
@@ -255,8 +255,8 @@
       "blog": "1.28"
     },
     "--list-marker": {
-      "app": "var(--accent-muted)",
-      "blog": "var(--accent-muted)"
+      "app": "color-mix(in oklab, oklch(54% 0.15 30) 62%, oklch(58% 0.009 265))",
+      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 62%, oklch(58% 0.009 265))"
     },
     "--prose-line": {
       "app": "1.65",
@@ -299,8 +299,8 @@
       "blog": "4px"
     },
     "--selection": {
-      "app": "color-mix(in oklab, var(--accent) 22%, transparent)",
-      "blog": "color-mix(in oklab, var(--accent) 22%, transparent)"
+      "app": "color-mix(in oklab, oklch(54% 0.15 30) 22%, transparent)",
+      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 22%, transparent)"
     },
     "--shadow-float": {
       "app": "0 1px 2px oklch(20% 0.01 265 / 12%)",

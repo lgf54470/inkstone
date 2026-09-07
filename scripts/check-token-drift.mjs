@@ -6,8 +6,9 @@
 // token's value on both sides; the gate fails when a baseline token vanishes
 // from either tree or when either side's value deviates from the snapshot
 // (removing/renaming a shared token or changing its value is a deliberate act
-// that needs a resnapshot), while tokens private to one app are free to
-// diverge and newly shared tokens pass automatically.
+// that needs a resnapshot), and also when the baseline itself is stale (a
+// token newly shared by both trees is not in the snapshot). Tokens private to
+// one app are free to diverge and never affect the shared snapshot.
 // Usage: node scripts/check-token-drift.mjs [--update-baseline]
 import fs from 'node:fs'
 import path from 'node:path'
@@ -27,19 +28,45 @@ function normalizeName(name) {
     .replace(/\\(.)/g, '$1')
 }
 
-// Values compare as text (whitespace-collapsed): the baseline records each
-// side's spelling, so a var() reference and an equivalent literal only count
-// as drift when one side actually changes.
+// Values compare as text (whitespace-collapsed).
 function normalizeValue(value) {
   return value.trim().replace(/\s+/g, ' ')
 }
 
-// name -> normalized value; the per-side value pair is what the baseline
-// snapshots for each shared token.
+// Replace var(--x) references with the referenced token's own value until
+// stable, so semantically identical spellings (a literal vs var(--alias))
+// compare equal instead of drifting. Unresolvable or self-referential
+// references stay verbatim; bounded passes keep cycles from looping.
+function resolveVars(value, entries) {
+  let result = value
+  for (let depth = 0; depth < 8; depth += 1) {
+    const next = result.replace(/var\((--[\w.-]+)\)/g, (match, name) => {
+      const target = entries.get(normalizeName(name))
+      return target === undefined || target === match ? match : target
+    })
+    if (next === result) return result
+    result = next
+  }
+  return result
+}
+
+// name -> normalized, var()-resolved value; the per-side value pair is what
+// the baseline snapshots for each shared token.
 function tokenEntries(text) {
   const entries = new Map()
   for (const match of text.matchAll(DECL_RE)) {
     entries.set(normalizeName(match[1]), normalizeValue(match[2]))
+  }
+  let changed = true
+  for (let depth = 0; depth < 8 && changed; depth += 1) {
+    changed = false
+    for (const [name, value] of entries) {
+      const next = resolveVars(value, entries)
+      if (next !== value) {
+        entries.set(name, next)
+        changed = true
+      }
+    }
   }
   return entries
 }
@@ -75,6 +102,17 @@ function driftProblems(app, blog, baseline) {
   return problems
 }
 
+// The snapshot is the source of truth: a token both trees now share but the
+// baseline does not record leaves the snapshot stale even though nothing
+// vanished or drifted.
+function staleProblems(app, blog, baseline) {
+  const snapshot = snapshotPayload(app, blog)
+  const baselineTokens = new Set(baseline.tokens)
+  return snapshot.tokens
+    .filter((name) => !baselineTokens.has(name))
+    .map((name) => `${name} added to both trees but absent from the baseline`)
+}
+
 // Importable by unit tests; the tree scan only runs when invoked as a CLI.
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
@@ -89,14 +127,14 @@ if (isMain) {
   }
 
   const baseline = JSON.parse(fs.readFileSync(BASELINE, 'utf8'))
-  const problems = driftProblems(app, blog, baseline)
+  const problems = [...driftProblems(app, blog, baseline), ...staleProblems(app, blog, baseline)]
   if (problems.length > 0) {
     console.error(`token drift check failed: ${problems.length} shared-token problem(s)`)
     for (const problem of problems) console.error(`  ${problem}`)
-    console.error('removing/renaming a shared token or changing its value is a deliberate act: resnapshot with --update-baseline when intended')
+    console.error('changing the shared token layer is a deliberate act: resnapshot with --update-baseline when intended')
     process.exit(1)
   }
-  console.log(`token drift check passed: ${baseline.tokens.length} shared tokens across both trees with stable values`)
+  console.log(`token drift check passed: baseline matches the current shared token layer (${baseline.tokens.length} tokens, values stable)`)
 }
 
-export { normalizeName, normalizeValue, tokenEntries, snapshotPayload, driftProblems }
+export { normalizeName, normalizeValue, resolveVars, tokenEntries, snapshotPayload, driftProblems, staleProblems }
