@@ -8,7 +8,41 @@ describe('token name/value extraction', () => {
   })
 
   it('collapses whitespace in values', () => {
-    expect(normalizeValue('  0 1px  2px,\n    oklch(0% 0 0 / 5%)  ')).toBe('0 1px 2px, oklch(0% 0 0 / 5%)')
+    expect(normalizeValue('  0 1px  2px,\n    oklch(0% 0 0 / 5%)  ')).toBe('0 1px 2px, oklch(0 0 0 / 0.05)')
+  })
+
+  it('lowercases and expands hex colors', () => {
+    expect(normalizeValue('#BB4430')).toBe('#bb4430')
+    expect(normalizeValue('#FFF')).toBe('#ffffff')
+    expect(normalizeValue('#0f08')).toBe('#00ff0088')
+  })
+
+  it('maps oklch percent channels to numbers', () => {
+    expect(normalizeValue('oklch(70% 0.14 155)')).toBe('oklch(0.7 0.14 155)')
+    expect(normalizeValue('OKLCH(66.5% 0.150 32)')).toBe('oklch(0.665 0.15 32)')
+  })
+
+  it('treats alpha defaults and percent alphas as equal', () => {
+    expect(normalizeValue('oklch(70% 0.14 155 / 1)')).toBe('oklch(0.7 0.14 155)')
+    expect(normalizeValue('oklch(70% 0.14 155 / 100%)')).toBe('oklch(0.7 0.14 155)')
+    expect(normalizeValue('oklch(0% 0 0 / 55%)')).toBe('oklch(0 0 0 / 0.55)')
+  })
+
+  it('normalizes colors inside shadow lists and color-mix()', () => {
+    expect(normalizeValue('0 1px 2px oklch(0% 0 0 / 5%)')).toBe('0 1px 2px oklch(0 0 0 / 0.05)')
+    expect(normalizeValue('color-mix(in oklab, oklch(54% 0.15 30) 14%, transparent)'))
+      .toBe('color-mix(in oklab, oklch(0.54 0.15 30) 14%, transparent)')
+  })
+
+  it('normalizes rgb/hsl channel forms', () => {
+    expect(normalizeValue('rgb(100% 0% 0%)')).toBe('rgb(255 0 0)')
+    expect(normalizeValue('hsl(0 100% 50%)')).toBe('hsl(0 1 0.5)')
+  })
+
+  it('leaves non-color values untouched', () => {
+    expect(normalizeValue('1.65')).toBe('1.65')
+    expect(normalizeValue('72ch')).toBe('72ch')
+    expect(normalizeValue('cubic-bezier(0.22, 1, 0.36, 1)')).toBe('cubic-bezier(0.22, 1, 0.36, 1)')
   })
 
   it('extracts name/value pairs from declarations', () => {
@@ -73,6 +107,20 @@ describe('drift detection', () => {
     const appSpelled = tokenEntries(':root { --alias: 1px; --a: var(--alias); --b: 2px; --z: 30; }')
     const blogSpelled = tokenEntries(':root { --a: 1px; --b: 2px; --z: 1; }')
     expect(driftProblems(appSpelled, blogSpelled, baseline)).toEqual([])
+  })
+
+  it('treats a cosmetic color respelling as no drift', () => {
+    const appSpelled = tokenEntries(':root { --a: 1px; --b: 2px; --z: 30; --accent: OKLCH(54% 0.15 30 / 1); }')
+    const blogSpelled = tokenEntries(':root { --a: 1px; --b: 2px; --z: 1; --accent: oklch(54% 0.15 30); }')
+    const withAccent = { ...baseline, tokens: [...baseline.tokens, '--accent'], values: { ...baseline.values, '--accent': { app: 'oklch(0.54 0.15 30)', blog: 'oklch(0.54 0.15 30)' } } }
+    expect(driftProblems(appSpelled, blogSpelled, withAccent)).toEqual([])
+  })
+
+  it('still flags a real color change across spellings', () => {
+    const appChanged = tokenEntries(':root { --a: 1px; --b: 2px; --z: 30; --accent: oklch(60% 0.15 30); }')
+    const blogSpelled = tokenEntries(':root { --a: 1px; --b: 2px; --z: 1; --accent: oklch(54% 0.15 30); }')
+    const withAccent = { ...baseline, tokens: [...baseline.tokens, '--accent'], values: { ...baseline.values, '--accent': { app: 'oklch(0.54 0.15 30)', blog: 'oklch(0.54 0.15 30)' } } }
+    expect(driftProblems(appChanged, blogSpelled, withAccent).some((p) => p.includes('--accent value drifted'))).toBe(true)
   })
 
   it('flags a value change on the other side', () => {

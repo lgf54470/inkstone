@@ -60,6 +60,7 @@
     "--shadow-pop",
     "--shadow-sm",
     "--shadow-xs",
+    "--sp-0.625",
     "--success",
     "--syntax-comment",
     "--syntax-constant",
@@ -76,6 +77,9 @@
     "--text-10",
     "--text-10.5",
     "--text-11",
+    "--text-11.5",
+    "--text-12",
+    "--text-13",
     "--text-inverse",
     "--text-primary",
     "--text-quaternary",
@@ -87,40 +91,40 @@
   ],
   "values": {
     "--accent": {
-      "app": "oklch(54% 0.15 30)",
-      "blog": "oklch(54% 0.15 30)"
+      "app": "oklch(0.54 0.15 30)",
+      "blog": "oklch(0.54 0.15 30)"
     },
     "--accent-contrast": {
-      "app": "oklch(16% 0.008 265)",
-      "blog": "oklch(16% 0.008 265)"
+      "app": "oklch(0.16 0.008 265)",
+      "blog": "oklch(0.16 0.008 265)"
     },
     "--accent-hover": {
-      "app": "oklch(48.5% 0.155 30)",
-      "blog": "oklch(48.5% 0.155 30)"
+      "app": "oklch(0.485 0.155 30)",
+      "blog": "oklch(0.485 0.155 30)"
     },
     "--accent-muted": {
-      "app": "color-mix(in oklab, oklch(54% 0.15 30) 62%, oklch(58% 0.009 265))",
-      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 62%, oklch(58% 0.009 265))"
+      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.58 0.009 265))",
+      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.58 0.009 265))"
     },
     "--accent-ring": {
-      "app": "color-mix(in oklab, oklch(54% 0.15 30) 34%, transparent)",
-      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 34%, transparent)"
+      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 34%, transparent)",
+      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 34%, transparent)"
     },
     "--accent-soft": {
-      "app": "color-mix(in oklab, oklch(54% 0.15 30) 14%, transparent)",
-      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 14%, transparent)"
+      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 14%, transparent)",
+      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 14%, transparent)"
     },
     "--accent-softer": {
-      "app": "color-mix(in oklab, oklch(54% 0.15 30) 7%, transparent)",
-      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 7%, transparent)"
+      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 7%, transparent)",
+      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 7%, transparent)"
     },
     "--anim-spin": {
       "app": "0.8s",
       "blog": "0.8s"
     },
     "--bg-active": {
-      "app": "oklch(20% 0.01 265 / 7%)",
-      "blog": "oklch(20% 0.01 265 / 7%)"
+      "app": "oklch(0.2 0.01 265 / 0.07)",
+      "blog": "oklch(0.2 0.01 265 / 0.07)"
     },
     "--bg-base": {
       "app": "#151617",
@@ -131,8 +135,8 @@
       "blog": "#1b1c1e"
     },
     "--bg-hover": {
-      "app": "oklch(20% 0.01 265 / 4%)",
-      "blog": "oklch(20% 0.01 265 / 4%)"
+      "app": "oklch(0.2 0.01 265 / 0.04)",
+      "blog": "oklch(0.2 0.01 265 / 0.04)"
     },
     "--bg-inset": {
       "app": "#111214",
@@ -155,16 +159,16 @@
       "blog": "#202123"
     },
     "--border-default": {
-      "app": "oklch(20% 0.01 265 / 11%)",
-      "blog": "oklch(20% 0.01 265 / 11%)"
+      "app": "oklch(0.2 0.01 265 / 0.11)",
+      "blog": "oklch(0.2 0.01 265 / 0.11)"
     },
     "--border-strong": {
-      "app": "oklch(20% 0.01 265 / 17%)",
-      "blog": "oklch(20% 0.01 265 / 17%)"
+      "app": "oklch(0.2 0.01 265 / 0.17)",
+      "blog": "oklch(0.2 0.01 265 / 0.17)"
     },
     "--border-subtle": {
-      "app": "oklch(20% 0.01 265 / 7%)",
-      "blog": "oklch(20% 0.01 265 / 7%)"
+      "app": "oklch(0.2 0.01 265 / 0.07)",
+      "blog": "oklch(0.2 0.01 265 / 0.07)"
     },
     "--code-fg": {
       "app": "#24292e",
@@ -191,8 +195,8 @@
       "blog": "400"
     },
     "--danger": {
-      "app": "oklch(68% 0.185 22)",
-      "blog": "oklch(68% 0.185 22)"
+      "app": "oklch(0.68 0.185 22)",
+      "blog": "oklch(0.68 0.185 22)"
     },
     "--dur-base": {
       "app": "1ms",
@@ -219,16 +223,16 @@
       "blog": "15px"
     },
     "--font-mono": {
-      "app": "ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Cascadia Mono', Consolas, 'Liberation Mono', Menlo, 'Sarasa Mono SC', monospace",
-      "blog": "ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Cascadia Mono', Consolas, 'Liberation Mono', Menlo, 'Sarasa Mono SC', monospace"
+      "app": "ui-monospace, 'sf mono', 'jetbrains mono', 'cascadia code', 'cascadia mono', consolas, 'liberation mono', menlo, 'sarasa mono sc', monospace",
+      "blog": "ui-monospace, 'sf mono', 'jetbrains mono', 'cascadia code', 'cascadia mono', consolas, 'liberation mono', menlo, 'sarasa mono sc', monospace"
     },
     "--font-serif": {
-      "app": "'Iowan Old Style', 'Source Serif 4', Charter, Georgia, 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', 'SimSun', serif",
-      "blog": "'Iowan Old Style', 'Source Serif 4', Charter, Georgia, 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', 'SimSun', serif"
+      "app": "'iowan old style', 'source serif 4', charter, georgia, 'songti sc', 'noto serif cjk sc', 'source han serif sc', 'simsun', serif",
+      "blog": "'iowan old style', 'source serif 4', charter, georgia, 'songti sc', 'noto serif cjk sc', 'source han serif sc', 'simsun', serif"
     },
     "--font-ui": {
-      "app": "'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', Inter, Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif",
-      "blog": "'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', Inter, Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif"
+      "app": "'inter variable', -apple-system, blinkmacsystemfont, 'segoe ui variable text', 'segoe ui', inter, roboto, 'pingfang sc', 'hiragino sans gb', 'microsoft yahei ui', 'microsoft yahei', sans-serif",
+      "blog": "'inter variable', -apple-system, blinkmacsystemfont, 'segoe ui variable text', 'segoe ui', inter, roboto, 'pingfang sc', 'hiragino sans gb', 'microsoft yahei ui', 'microsoft yahei', sans-serif"
     },
     "--heading-1-size": {
       "app": "1.52em",
@@ -255,8 +259,8 @@
       "blog": "1.28"
     },
     "--list-marker": {
-      "app": "color-mix(in oklab, oklch(54% 0.15 30) 62%, oklch(58% 0.009 265))",
-      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 62%, oklch(58% 0.009 265))"
+      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.58 0.009 265))",
+      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.58 0.009 265))"
     },
     "--prose-line": {
       "app": "1.65",
@@ -299,36 +303,40 @@
       "blog": "4px"
     },
     "--selection": {
-      "app": "color-mix(in oklab, oklch(54% 0.15 30) 22%, transparent)",
-      "blog": "color-mix(in oklab, oklch(54% 0.15 30) 22%, transparent)"
+      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 22%, transparent)",
+      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 22%, transparent)"
     },
     "--shadow-float": {
-      "app": "0 1px 2px oklch(20% 0.01 265 / 12%)",
-      "blog": "0 1px 2px oklch(0% 0 0 / 12%)"
+      "app": "0 1px 2px oklch(0.2 0.01 265 / 0.12)",
+      "blog": "0 1px 2px oklch(0 0 0 / 0.12)"
     },
     "--shadow-hover": {
-      "app": "0 4px 6px -1px oklch(20% 0.01 265 / 10%), 0 2px 4px -2px oklch(20% 0.01 265 / 10%)",
-      "blog": "0 4px 6px -1px oklch(20% 0.01 265 / 10%), 0 2px 4px -2px oklch(20% 0.01 265 / 10%)"
+      "app": "0 4px 6px -1px oklch(0.2 0.01 265 / 0.1), 0 2px 4px -2px oklch(0.2 0.01 265 / 0.1)",
+      "blog": "0 4px 6px -1px oklch(0.2 0.01 265 / 0.1), 0 2px 4px -2px oklch(0.2 0.01 265 / 0.1)"
     },
     "--shadow-modal": {
-      "app": "0 0 0 1px oklch(20% 0.01 265 / 7%), 0 8px 16px -4px oklch(20% 0.01 265 / 8%), 0 24px 48px -12px oklch(20% 0.01 265 / 16%)",
-      "blog": "0 0 0 1px oklch(20% 0.01 265 / 7%), 0 8px 16px -4px oklch(20% 0.01 265 / 8%), 0 24px 48px -12px oklch(20% 0.01 265 / 16%)"
+      "app": "0 0 0 1px oklch(0.2 0.01 265 / 0.07), 0 8px 16px -4px oklch(0.2 0.01 265 / 0.08), 0 24px 48px -12px oklch(0.2 0.01 265 / 0.16)",
+      "blog": "0 0 0 1px oklch(0.2 0.01 265 / 0.07), 0 8px 16px -4px oklch(0.2 0.01 265 / 0.08), 0 24px 48px -12px oklch(0.2 0.01 265 / 0.16)"
     },
     "--shadow-pop": {
-      "app": "0 0 0 1px oklch(20% 0.01 265 / 6%), 0 2px 4px -1px oklch(20% 0.01 265 / 5%), 0 12px 28px -8px oklch(20% 0.01 265 / 12%), 0 24px 56px -16px oklch(20% 0.01 265 / 10%)",
-      "blog": "0 0 0 1px oklch(20% 0.01 265 / 6%), 0 2px 4px -1px oklch(20% 0.01 265 / 5%), 0 12px 28px -8px oklch(20% 0.01 265 / 12%), 0 24px 56px -16px oklch(20% 0.01 265 / 10%)"
+      "app": "0 0 0 1px oklch(0.2 0.01 265 / 0.06), 0 2px 4px -1px oklch(0.2 0.01 265 / 0.05), 0 12px 28px -8px oklch(0.2 0.01 265 / 0.12), 0 24px 56px -16px oklch(0.2 0.01 265 / 0.1)",
+      "blog": "0 0 0 1px oklch(0.2 0.01 265 / 0.06), 0 2px 4px -1px oklch(0.2 0.01 265 / 0.05), 0 12px 28px -8px oklch(0.2 0.01 265 / 0.12), 0 24px 56px -16px oklch(0.2 0.01 265 / 0.1)"
     },
     "--shadow-sm": {
-      "app": "0 1px 2px oklch(20% 0.01 265 / 6%)",
-      "blog": "0 1px 2px oklch(20% 0.01 265 / 6%)"
+      "app": "0 1px 2px oklch(0.2 0.01 265 / 0.06)",
+      "blog": "0 1px 2px oklch(0.2 0.01 265 / 0.06)"
     },
     "--shadow-xs": {
-      "app": "0 1px 2px oklch(20% 0.01 265 / 5%)",
-      "blog": "0 1px 2px oklch(20% 0.01 265 / 5%)"
+      "app": "0 1px 2px oklch(0.2 0.01 265 / 0.05)",
+      "blog": "0 1px 2px oklch(0.2 0.01 265 / 0.05)"
+    },
+    "--sp-0.625": {
+      "app": "2.5px",
+      "blog": "2.5px"
     },
     "--success": {
-      "app": "oklch(72% 0.145 155)",
-      "blog": "oklch(72% 0.145 155)"
+      "app": "oklch(0.72 0.145 155)",
+      "blog": "oklch(0.72 0.145 155)"
     },
     "--syntax-comment": {
       "app": "#6a737d",
@@ -390,33 +398,45 @@
       "app": "11px",
       "blog": "11px"
     },
+    "--text-11.5": {
+      "app": "11.5px",
+      "blog": "11.5px"
+    },
+    "--text-12": {
+      "app": "12px",
+      "blog": "12px"
+    },
+    "--text-13": {
+      "app": "13px",
+      "blog": "13px"
+    },
     "--text-inverse": {
-      "app": "oklch(99% 0 0)",
-      "blog": "oklch(99% 0 0)"
+      "app": "oklch(0.99 0 0)",
+      "blog": "oklch(0.99 0 0)"
     },
     "--text-primary": {
-      "app": "oklch(21% 0.01 265)",
-      "blog": "oklch(21% 0.01 265)"
+      "app": "oklch(0.21 0.01 265)",
+      "blog": "oklch(0.21 0.01 265)"
     },
     "--text-quaternary": {
-      "app": "oklch(51% 0.008 265)",
-      "blog": "oklch(51% 0.008 265)"
+      "app": "oklch(0.51 0.008 265)",
+      "blog": "oklch(0.51 0.008 265)"
     },
     "--text-secondary": {
-      "app": "oklch(44% 0.01 265)",
-      "blog": "oklch(44% 0.01 265)"
+      "app": "oklch(0.44 0.01 265)",
+      "blog": "oklch(0.44 0.01 265)"
     },
     "--text-tertiary": {
-      "app": "oklch(58% 0.009 265)",
-      "blog": "oklch(58% 0.009 265)"
+      "app": "oklch(0.58 0.009 265)",
+      "blog": "oklch(0.58 0.009 265)"
     },
     "--tracking-label": {
       "app": "0.06em",
       "blog": "0.06em"
     },
     "--warning": {
-      "app": "oklch(80% 0.15 82)",
-      "blog": "oklch(80% 0.15 82)"
+      "app": "oklch(0.8 0.15 82)",
+      "blog": "oklch(0.8 0.15 82)"
     },
     "--z-float": {
       "app": "30",
