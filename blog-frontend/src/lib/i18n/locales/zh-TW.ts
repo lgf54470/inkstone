@@ -111,6 +111,11 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'pagination.aria': '分頁導覽',
   'pagination.prev': '上一頁',
   'pagination.next': '下一頁',
+  'pagination.page_size': '{size} 條/頁',
+  'pagination.total_count': '共 {total} 篇',
+  'filter.tag_active': '目前標籤',
+  'filter.clear': '清除篩選',
+  'filter.no_matched': '此篩選條件下暫無文章',
 
   // Search Modal
   'search.input_placeholder': '搜尋文章標題、摘要、標籤... (↑↓ 選擇，Enter 確認)',

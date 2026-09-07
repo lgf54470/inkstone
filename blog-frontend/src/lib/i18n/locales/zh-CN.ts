@@ -111,6 +111,11 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'pagination.aria': '分页导航',
   'pagination.prev': '上一页',
   'pagination.next': '下一页',
+  'pagination.page_size': '{size} 条/页',
+  'pagination.total_count': '共 {total} 篇',
+  'filter.tag_active': '当前标签',
+  'filter.clear': '清除筛选',
+  'filter.no_matched': '该筛选条件下暂无文章',
 
   // Search Modal
   'search.input_placeholder': '搜索文章标题、摘要、标签... (↑↓ 选择，Enter 确认)',

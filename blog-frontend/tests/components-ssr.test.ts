@@ -7,7 +7,8 @@ import DegradedBanner from '../src/components/DegradedBanner'
 import CalendarWidget from '../src/components/CalendarWidget'
 import CommentsSection from '../src/components/CommentsSection'
 import PostOutline from '../src/components/PostOutline'
-import type { CalendarDayPost } from '../src/lib/types'
+import HomeFeedView from '../src/components/home/HomeFeedView'
+import type { CalendarDayPost, BlogSiteInfo } from '../src/lib/types'
 
 function render(component: ReactElement): string {
   return renderToString(component)
@@ -136,5 +137,35 @@ describe('component server-render smoke', () => {
 
     const en = render(createElement(PostOutline, { headings, locale: 'en-US' }))
     expect(en).toContain('Outline')
+  })
+
+  it('HomeFeedView renders posts and sidebar in SSR', () => {
+    const site: BlogSiteInfo = {
+      siteName: 'SSR站点',
+      subtitle: '副标题',
+      authorName: '笔耕客',
+      bio: '博主简介',
+      authorAvatar: '',
+      socialLinks: {},
+      postsPerPage: 10,
+      requireCommentApproval: false,
+    }
+    const html = render(
+      createElement(HomeFeedView, {
+        initialPosts: [],
+        initialTotal: 0,
+        initialPage: 1,
+        initialLimit: 10,
+        initialTotalPages: 1,
+        categories: [],
+        tags: [],
+        calendarDays: [],
+        siteInfo: site,
+        locale: 'zh-CN',
+      })
+    )
+    expect(html).toContain('精选博文')
+    expect(html).toContain('笔耕客')
+    expect(html).toContain('分页导航')
   })
 })

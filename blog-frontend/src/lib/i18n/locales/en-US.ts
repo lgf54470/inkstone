@@ -111,6 +111,11 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'pagination.aria': 'Pagination',
   'pagination.prev': 'Previous',
   'pagination.next': 'Next',
+  'pagination.page_size': '{size} / page',
+  'pagination.total_count': '{total} posts in total',
+  'filter.tag_active': 'Active Tag',
+  'filter.clear': 'Clear filter',
+  'filter.no_matched': 'No posts found matching the filter',
 
   // Search Modal
   'search.input_placeholder': 'Search posts by title, excerpt, tag... (↑↓ navigate, Enter open)',

@@ -103,6 +103,11 @@ export type MessageKey =
   | 'pagination.aria'
   | 'pagination.prev'
   | 'pagination.next'
+  | 'pagination.page_size'
+  | 'pagination.total_count'
+  | 'filter.tag_active'
+  | 'filter.clear'
+  | 'filter.no_matched'
   // Search Modal
   | 'search.input_placeholder'
   | 'search.empty_query_hint'
