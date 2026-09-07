@@ -147,6 +147,11 @@ const allowed = new Map([
     "// the flag follows `hasChanged`; a no-change catchup must not claim completeness (it would make",
     "// the client's full-snapshot consolidation replace its freshly collected folders with []).",
   ]],
+  ["src/client/demo/blog-smoke.test.ts", [
+    "// Every /api/blog/* route the client calls via src/client/lib/api/share.ts, with",
+    "// representative payloads. Any gap here fails the smoke test instead of surfacing",
+    "// as a silent 404 console flood in demo mode.",
+  ]],
   ["src/client/demo/state.ts", [
     "// Welcome notes are deliberately dated a few weeks back: with no edits within the last ~10 days,",
     "// the rolling date filter's follow-edit window stays parked at the newest edit and the gap hint",
