@@ -12,6 +12,7 @@ import { registerSettingsRoutes } from './routes/settings'
 import { registerShareRoutes } from './routes/share'
 import { registerShareAdminRoutes } from './routes/share-admin'
 import { registerBackupRoutes } from './routes/backup'
+import { registerBlogRoutes } from './routes/blog'
 
 interface DemoBackend {
   fetch: (request: Request) => Promise<Response>
@@ -46,6 +47,7 @@ export function createDemoBackend(): DemoBackend {
   registerShareRoutes(app, state)
   registerShareAdminRoutes(app, state)
   registerBackupRoutes(app, state)
+  registerBlogRoutes(app, state)
 
   app.all('/api/*', () => apiError(404, 'not_found', 'Demo endpoint not found'))
 

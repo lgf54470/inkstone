@@ -54,3 +54,85 @@ describe('demo backend', () => {
     expect(missing.status).toBe(404)
   })
 })
+
+async function authedBackend(): Promise<DemoBackend> {
+  const backend = createDemoBackend()
+  await call(backend, '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(DEMO_CREDENTIALS),
+  })
+  return backend
+}
+
+describe('demo blog routes read surface', () => {
+  it('serves the full hub read surface', async () => {
+    const backend = await authedBackend()
+    const [stats, posts, folders, tags, categories, comments, settings, analytics] = await Promise.all([
+      call(backend, '/api/blog/stats'),
+      call(backend, '/api/blog/posts'),
+      call(backend, '/api/blog/folders'),
+      call(backend, '/api/blog/tags'),
+      call(backend, '/api/blog/categories'),
+      call(backend, '/api/blog/comments'),
+      call(backend, '/api/blog/settings'),
+      call(backend, '/api/blog/analytics?range=7d'),
+    ])
+    for (const response of [stats, posts, folders, tags, categories, comments, settings, analytics]) {
+      expect(response.status).toBe(200)
+    }
+    const statsBody = await stats.json()
+    expect(statsBody.stats).toMatchObject({ totalPosts: 4, publishedPosts: 3, draftPosts: 1, pendingComments: 2 })
+    const postsBody = await posts.json()
+    expect(postsBody.posts).toHaveLength(4)
+    const analyticsBody = await analytics.json()
+    expect(analyticsBody.analytics).toMatchObject({ range: '7d', timeline: expect.any(Array) })
+  })
+
+  it('filters posts by status, tag and search', async () => {
+    const backend = await authedBackend()
+    const drafts = await (await call(backend, '/api/blog/posts?status=draft')).json()
+    expect(drafts.posts).toHaveLength(1)
+    expect(drafts.posts[0]).toMatchObject({ title: 'Markdown 速查草稿' })
+    const byTag = await (await call(backend, '/api/blog/posts?tag=%E5%A4%87%E4%BB%BD')).json()
+    expect(byTag.posts).toHaveLength(1)
+    expect(byTag.posts[0]).toMatchObject({ title: '自托管笔记的备份策略' })
+    const searched = await (await call(backend, '/api/blog/posts?search=inkstone')).json()
+    expect(searched.posts[0]).toMatchObject({ title: '欢迎使用 Inkstone' })
+  })
+})
+
+describe('demo blog route mutations', () => {
+  it('moderates comments in memory', async () => {
+    const backend = await authedBackend()
+    const approved = await call(backend, '/api/blog/comments/demo-comment-2/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'approved' }),
+    })
+    expect(approved.status).toBe(200)
+    const pending = await (await call(backend, '/api/blog/comments?status=pending')).json()
+    expect(pending.comments).toHaveLength(1)
+
+    const removed = await call(backend, '/api/blog/comments/demo-comment-1', { method: 'DELETE' })
+    expect(removed.status).toBe(200)
+    const stats = await (await call(backend, '/api/blog/stats')).json()
+    expect(stats.stats.totalComments).toBe(4)
+  })
+
+  it('patches settings and reports slug availability', async () => {
+    const backend = await authedBackend()
+    const patched = await call(backend, '/api/blog/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ siteName: 'Renamed Blog' }),
+    })
+    expect(patched.status).toBe(200)
+    expect((await patched.json()).settings.siteName).toBe('Renamed Blog')
+
+    const slug = await (await call(backend, '/api/blog/check-slug?slug=welcome')).json()
+    expect(slug).toEqual({ available: true })
+    const notePost = await (await call(backend, '/api/blog/note-post/demo-note-welcome')).json()
+    expect(notePost.post).toMatchObject({ slug: 'welcome-to-inkstone' })
+  })
+})
