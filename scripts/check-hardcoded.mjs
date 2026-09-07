@@ -17,22 +17,28 @@
 //   - raw unit values inside Tailwind arbitrary-value classNames (w-[240px],
 //     text-[11px], tracking-[0.06em], grid-cols-[210px_...]) in className/class
 //     attributes and cn() string arguments. The compliant shape is a design
-//     token reference ([var(--...)]), the sanctioned style-constant-table
-//     pattern (a string inside a named initializer, e.g. a const holding the
-//     className, like the hex exemption below), or an existing utility class.
-//     Brackets whose content is var()/calc()/min()/max()/clamp()/env() or a
-//     color function (oklch()/rgb()/...) are exempt: token references are the
-//     goal; calc/min/max/clamp/env are viewport-relative responsive math
-//     (safe-area insets, 100vw offsets); color functions carry % channels,
-//     not sizes. Numeric exemption matches the style scan: 0/1/100 (e.g.
-//     gap-[1px] is a canonical hairline). cn() arguments are scanned
-//     recursively so ternary/binary class strings (cond ? 'w-[2px]' : ...)
-//     cannot dodge the check.
+//     token reference ([var(--...)] or the w-(--spacing-4) paren shorthand),
+//     the sanctioned style-constant-table pattern (a string inside a named
+//     initializer, e.g. a const holding the className, like the hex exemption
+//     below), or an existing utility class. Brackets and parens whose content
+//     is var()/calc()/min()/max()/clamp()/env() or a color function
+//     (oklch()/rgb()/...) are exempt: token references are the goal;
+//     calc/min/max/clamp/env are viewport-relative responsive math (safe-area
+//     insets, 100vw offsets); color functions carry % channels, not sizes.
+//     Paren groups that are bare custom-property references (--name, with an
+//     optional length:/color: type hint or /50 opacity modifier) are the
+//     named-group token form and stay exempt; arbitrary properties
+//     ([width:240px], [--scroll-offset:56px]) scan like any other bracket.
+//     Numeric exemption matches the style scan: 0/1/100 (e.g. gap-[1px] is a
+//     canonical hairline). cn() arguments are scanned recursively so
+//     ternary/binary class strings (cond ? 'w-[2px]' : ...) cannot dodge the
+//     check.
 // Numeric literals in .ts (non-JSX) files are out of scope: without a type
 // checker a bare number cannot be told apart from data, and the visual
 // surface is JSX by construction.
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 
 const ROOTS = ['src', 'blog-frontend/src']
@@ -42,7 +48,7 @@ const EXCLUDED_DIRS = new Set(['node_modules', 'dist', '.git', '.wrangler'])
 const HEX_RE = /(?<![0-9a-fA-F&])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})\b/g
 const UNIT_VALUE_RE = /^-?\d+(?:\.\d+)?(?:px|rem|em|pt|%)$/
 const NUMERIC_ATTR_RE = /^-?\d+(?:\.\d+)?(?:px)?$/
-// Unit values inside Tailwind arbitrary-value brackets; also matches .06em.
+// Unit values inside Tailwind arbitrary-value brackets and parens; also matches .06em.
 const ARBITRARY_UNIT_RE = /-?(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem|em|pt|%)/g
 const EXEMPT_NUMBERS = new Set([0, 1, -1, 100])
 
@@ -97,19 +103,58 @@ function isExemptNumber(value) {
   return EXEMPT_NUMBERS.has(Number(value))
 }
 
-// Tailwind arbitrary-value brackets hold raw sizes unless they reference a
-// token or compose relative units; return the offending unit values.
+// A Tailwind arbitrary-value group is exempt when its content is a token
+// reference (var(...) or the w-(--spacing-4) bare-variable shorthand) or
+// relative-unit math, never a raw size.
+function isExemptArbitraryGroup(inner) {
+  const content = inner.trim()
+  if (/var\(/.test(inner)) return true
+  if (/^(?:calc|min|max|clamp|env)\(/.test(content)) return true
+  if (/^(?:oklch|oklab|rgb|rgba|hsl|hsla|color-mix|color|color:|length:var)/.test(content)) return true
+  // Paren named-group shorthand: w-(--spacing-4), bg-(--brand/50),
+  // text-(length:--my-var) is a CSS-variable reference, not a raw value.
+  return /^(?:[a-z-]+:)?--[\w-]+(?:\/[\d.]+%?)?$/.test(content)
+}
+
+// Tailwind arbitrary-value brackets and parens hold raw sizes unless they
+// reference a token or compose relative units; return the offending values.
 function arbitraryUnitProblems(text) {
   const found = []
+  const seen = new Set()
+  const bracketRanges = []
   let start = 0
   while ((start = text.indexOf('[', start)) !== -1) {
     const close = text.indexOf(']', start)
     if (close === -1) break
+    bracketRanges.push([start, close])
     const inner = text.slice(start + 1, close)
-    if (!/var\(/.test(inner) && !/^(?:calc|min|max|clamp|env)\(/.test(inner.trim())
-      && !/^(?:oklch|oklab|rgb|rgba|hsl|hsla|color-mix|color|color:|length:var)/.test(inner.trim())) {
+    if (!isExemptArbitraryGroup(inner)) {
       for (const match of inner.matchAll(ARBITRARY_UNIT_RE)) {
-        if (!isExemptNumber(match[0].replace(/[^-\d.]/g, ''))) found.push(match[0])
+        const value = match[0]
+        if (!isExemptNumber(value.replace(/[^-\d.]/g, '')) && !seen.has(value)) {
+          seen.add(value)
+          found.push(value)
+        }
+      }
+    }
+    start = close + 1
+  }
+  start = 0
+  while ((start = text.indexOf('(', start)) !== -1) {
+    const close = text.indexOf(')', start)
+    if (close === -1) break
+    // Paren groups are the named-group shorthand (w-(--spacing-4)); scan them
+    // so w-(240px) cannot slip past. Parens nested inside brackets are
+    // covered by the bracket scan and skipped here.
+    const insideBracket = bracketRanges.some(([a, b]) => start > a && close < b)
+    const inner = text.slice(start + 1, close)
+    if (!insideBracket && !isExemptArbitraryGroup(inner)) {
+      for (const match of inner.matchAll(ARBITRARY_UNIT_RE)) {
+        const value = match[0]
+        if (!isExemptNumber(value.replace(/[^-\d.]/g, '')) && !seen.has(value)) {
+          seen.add(value)
+          found.push(value)
+        }
       }
     }
     start = close + 1
@@ -179,7 +224,8 @@ function problemsFor(rel, text) {
     ts.forEachChild(node, visitNumbers)
   }
 
-  // Part 3: raw unit values in Tailwind arbitrary-value classNames.
+  // Part 3: raw unit values in Tailwind arbitrary-value classNames (brackets,
+  // named-group parens, arbitrary properties).
   function scanClassString(node, report) {
     if (inNamedInitializer(node)) return
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
@@ -236,19 +282,25 @@ function problemsFor(rel, text) {
   return found
 }
 
-const problems = []
-for (const root of ROOTS) {
-  for (const file of walk(path.resolve(root))) {
-    const rel = path.relative(process.cwd(), file).replaceAll('\\\\', '/')
-    if (isExemptFile(rel)) continue
-    if (ALLOWED_CONTENT_FILES.has(rel)) continue
-    problems.push(...problemsFor(rel, fs.readFileSync(file, 'utf8')))
+// Importable by unit tests; the tree scan only runs when invoked as a CLI.
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+if (isMain) {
+  const problems = []
+  for (const root of ROOTS) {
+    for (const file of walk(path.resolve(root))) {
+      const rel = path.relative(process.cwd(), file).replaceAll('\\\\', '/')
+      if (isExemptFile(rel)) continue
+      if (ALLOWED_CONTENT_FILES.has(rel)) continue
+      problems.push(...problemsFor(rel, fs.readFileSync(file, 'utf8')))
+    }
   }
+
+  if (problems.length > 0) {
+    console.error(`hardcoded value check failed: ${problems.length} violation(s)`)
+    for (const problem of problems) console.error(`  ${problem}`)
+    process.exit(1)
+  }
+  console.log('hardcoded value check passed: no bare hex colors or magic numbers in JSX styles/visual attrs across src + blog-frontend/src')
 }
 
-if (problems.length > 0) {
-  console.error(`hardcoded value check failed: ${problems.length} violation(s)`)
-  for (const problem of problems) console.error(`  ${problem}`)
-  process.exit(1)
-}
-console.log('hardcoded value check passed: no bare hex colors or magic numbers in JSX styles/visual attrs across src + blog-frontend/src')
+export { arbitraryUnitProblems, problemsFor }
