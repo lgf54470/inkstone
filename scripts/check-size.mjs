@@ -3,15 +3,25 @@ import path from 'node:path'
 import ts from 'typescript'
 import { readSizeLimits } from './check-size.config.mjs'
 
-const ROOT = 'src'
-const BASELINE_PATH = path.join(import.meta.dirname, 'check-size.baseline.json')
+// Scan scope is parameterizable so sibling workspaces (blog-frontend) reuse
+// the same gate: `--root blog-frontend/src --baseline <path>` from the repo
+// root. Defaults keep the historical inkstone behavior.
+const args = process.argv.slice(2)
+function argValue(flag) {
+  const index = args.indexOf(flag)
+  return index === -1 ? null : args[index + 1]
+}
+
+const ROOT = argValue('--root') ?? 'src'
+const BASELINE_PATH = argValue('--baseline')
+  ?? path.join(import.meta.dirname, ROOT === 'src' ? 'check-size.baseline.json' : `check-size.${ROOT.replaceAll('/', '-')}.baseline.json`)
 const limits = readSizeLimits()
 
 function walk(directory, out = []) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const target = path.join(directory, entry.name)
     if (entry.isDirectory()) out = walk(target, out)
-    else if (entry.name.endsWith('.css')) out.push(target)
+    else if (entry.name.endsWith('.css') || entry.name.endsWith('.astro')) out.push(target)
     else if ((entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) && !entry.name.endsWith('.d.ts')) out.push(target)
   }
   return out
@@ -44,6 +54,12 @@ function isControl(node) {
 }
 
 function measure(text, filename) {
+  // CSS and Astro templates get the line budget only: the AST-based function
+  // and nesting rules are TS-specific, and parsing those formats as TS would
+  // produce meaningless function spans.
+  if (!/\.tsx?$/.test(filename)) {
+    return { lines: text.split('\n').length, long: [], deep: [] }
+  }
   // pass the real filename so TS parses .tsx as TSX; a hardcoded '.ts' name made JSX a parse error and truncated function bodies
   const sf = ts.createSourceFile(filename, text, ts.ScriptTarget.Latest, true)
   const long = []
@@ -111,7 +127,7 @@ for (const [rel, result] of measurements) {
 }
 const baselineDrift = JSON.stringify(baseline) !== JSON.stringify(expected)
 if (baselineDrift) {
-  console.error('size baseline drift: scripts/check-size.baseline.json no longer matches the current source tree')
+  console.error(`size baseline drift: ${BASELINE_PATH} no longer matches the current source tree`)
   console.error('resnapshot with "node scripts/check-size.mjs --update-baseline" after an intentional size refactor; never hand-edit the baseline')
   for (const rel of new Set([...Object.keys(expected), ...Object.keys(baseline)])) {
     const before = JSON.stringify(baseline[rel] ?? null)

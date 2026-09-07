@@ -24,6 +24,9 @@ jobs:
       - run: npm run module-state:check
       - run: npm run deep-imports:check
       - run: npm run size:check
+      # Sibling workspace gates (same node_modules; run from the repo root).
+      - run: npm run size:check:blog
+      - run: npm run deep-imports:check:blog
       - run: npm run build
       - run: node scripts/check-bundle-budget.mjs
       - run: npm run vendor:check

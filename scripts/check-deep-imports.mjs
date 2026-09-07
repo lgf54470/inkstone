@@ -12,12 +12,22 @@ import fs from 'node:fs'
 import path from 'node:path'
 import ts from 'typescript'
 
-const ROOT = 'src'
-const ALIASES = [
-  { prefix: '@/files/', dir: 'src/client/files/' },
-  { prefix: '@/', dir: 'src/client/' },
-  { prefix: '@shared/', dir: 'src/shared/' },
-]
+// Scan scope is parameterizable so sibling workspaces (blog-frontend) reuse
+// the same gate; the inkstone path aliases only exist for the root src tree.
+const args = process.argv.slice(2)
+function argValue(flag) {
+  const index = args.indexOf(flag)
+  return index === -1 ? null : args[index + 1]
+}
+
+const ROOT = argValue('--root') ?? 'src'
+const ALIASES = ROOT === 'src'
+  ? [
+      { prefix: '@/files/', dir: 'src/client/files/' },
+      { prefix: '@/', dir: 'src/client/' },
+      { prefix: '@shared/', dir: 'src/shared/' },
+    ]
+  : []
 
 function walk(directory, out = []) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -62,7 +72,9 @@ function boundaryCrossed(importer, resolvedFile) {
   const moduleDir = relative(path.dirname(resolvedFile))
   if (indexFiles.get(moduleDir) === resolvedFile) return null
   let dir = moduleDir
-  while (dir !== ROOT) {
+  // The `dir !== '.'` guard keeps a malformed moduleDir (outside ROOT) from
+  // spinning forever at the filesystem root.
+  while (dir !== ROOT && dir !== '.') {
     if (indexFiles.has(dir)) {
       const importerToModule = path.relative(dir, path.dirname(importer))
       const isInsideModule = importerToModule === '' || (!importerToModule.startsWith('..') && !path.isAbsolute(importerToModule))
