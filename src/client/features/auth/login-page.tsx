@@ -131,11 +131,10 @@ function useLoginFlow(): LoginFlow {
   const initialCredentials = initialLoginCredentials()
   const site = useSession((state) => state.site)
   const authError = useSession((state) => state.authError)
-  const auth = useSession((state) => ({
-    passwordLogin: state.passwordLogin,
-    totpLogin: state.totpLogin,
-    passwordRegister: state.passwordRegister,
-  }))
+  const passwordLogin = useSession((state) => state.passwordLogin)
+  const totpLogin = useSession((state) => state.totpLogin)
+  const passwordRegister = useSession((state) => state.passwordRegister)
+  const auth = { passwordLogin, totpLogin, passwordRegister }
   const firstRun = Boolean(site && !site.initialized)
   const [mode, setMode] = useState<'login' | 'register'>(firstRun ? 'register' : 'login')
   const [username, setUsername] = useState(initialCredentials.username)
