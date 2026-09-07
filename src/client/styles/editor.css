@@ -353,7 +353,7 @@
 .ink-editor .cm-panel.cm-search input:focus {
   border-color: var(--accent);
   outline: none;
-  box-shadow: 0 0 0 3px var(--accent-ring);
+  box-shadow: var(--shadow-focus);
 }
 .ink-editor .cm-panel.cm-search button:not([name='close']) {
   background: var(--bg-raised);
@@ -393,7 +393,7 @@
 
 .ink-editor[data-focus-mode='true'] .cm-line {
   opacity: 0.32;
-  transition: opacity 300ms var(--ease-out);
+  transition: opacity var(--dur-slow) var(--ease-out);
 }
 .ink-editor[data-focus-mode='true'] .cm-line.cm-focus-paragraph {
   opacity: 1;

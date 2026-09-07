@@ -167,7 +167,7 @@
 
 
   html.theme-transition body {
-    transition: background-color 260ms var(--ease-out);
+    transition: background-color var(--dur-base) var(--ease-out);
     transition-delay: 0;
   }
   @media (prefers-reduced-motion: reduce) {
@@ -461,10 +461,10 @@
 .folder-motion-icon[data-drawing] > svg :is(path, line, polyline) {
   stroke-dasharray: 120;
   stroke-dashoffset: 120;
-  animation: ink-draw 760ms var(--ease-out) forwards;
+  animation: ink-draw var(--anim-draw) var(--ease-out) forwards;
 }
 .folder-motion-icon[data-drawing] > svg :is(path, line, polyline):nth-child(2) {
-  animation-delay: 90ms;
+  animation-delay: var(--dur-xs);
 }
 
 .folder-children-grid {
@@ -533,7 +533,7 @@
     ),
     var(--bg-raised);
   background-size: 180% 100%;
-  animation: ink-shimmer 1.6s ease-in-out infinite;
+  animation: ink-shimmer var(--anim-shimmer) var(--ease-in-out) infinite;
   border-radius: var(--r-sm);
 }
 
