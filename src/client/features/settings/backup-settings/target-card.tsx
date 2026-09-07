@@ -27,10 +27,9 @@ export function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRes
     const busy = isTesting || isDeleting || isUpdating;
     const lastRunTime = useRelativeTime(target.lastRunAt ?? 0, Boolean(target.lastRunAt));
     useEffect(() => setResult(null), [target.updatedAt]);
-    const config = target.config as unknown as Record<string, unknown>;
-    const location = target.type === 's3'
-        ? `${String(config.bucket ?? '')}${config.prefix ? `/${config.prefix}` : ''}`
-        : String(config.url ?? '');
+    const location = 'bucket' in target.config
+        ? `${String(target.config.bucket ?? '')}${target.config.prefix ? `/${target.config.prefix}` : ''}`
+        : String(target.config.url ?? '');
     return (<div className={cn('rounded-[var(--r-lg)] border bg-[var(--bg-base)] p-3 transition-colors', target.enabled ? 'border-[var(--border-subtle)]' : 'border-[var(--border-subtle)] opacity-60')}>
       <div className="flex items-start gap-3">
         <span className={cn('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-[var(--r-md)]', 'bg-[var(--bg-raised)] text-[var(--text-tertiary)]')}>

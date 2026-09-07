@@ -81,6 +81,8 @@ export const localDb = {
     } catch {
       return null
     }
+    // Validators above confirmed the stored session's shape; the composite
+    // SessionInfo type is reconstructed from those validated parts.
     return value as unknown as SessionInfo
   },
 

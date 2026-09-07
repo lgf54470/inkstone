@@ -1,5 +1,6 @@
 import { AwsClient } from 'aws4fetch'
 import { truncateText } from '@shared/text-utils'
+import { asBodyInit } from '@shared/http'
 import type { S3Config } from '@shared/types'
 import type { Snapshot } from './snapshot'
 import { cancelStreamBestEffort } from '../lib/streams'
@@ -144,7 +145,7 @@ async function putArchive(
 ): Promise<void> {
   const response = await aws.fetch(objectUrl(config, key), {
     method: 'PUT',
-    body: body as unknown as BodyInit,
+    body: asBodyInit(body),
     headers: archiveHeaders(stamp),
     signal,
     redirect: 'manual',
@@ -226,7 +227,7 @@ async function uploadMultipartPart(
     uploadId,
   }), {
     method: 'PUT',
-    body: body as unknown as BodyInit,
+    body: asBodyInit(body),
     headers: { 'User-Agent': BACKUP_USER_AGENT },
     signal,
     redirect: 'manual',
@@ -253,7 +254,7 @@ async function completeMultipartUpload(
   )
   const completed = await aws.fetch(multipartUrl(config, key, { uploadId }), {
     method: 'POST',
-    body: completeBody as unknown as BodyInit,
+    body: asBodyInit(completeBody),
     headers: { 'Content-Type': 'application/xml', 'User-Agent': BACKUP_USER_AGENT },
     signal,
     redirect: 'manual',

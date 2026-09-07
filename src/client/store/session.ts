@@ -288,7 +288,7 @@ function updateSettingsImpl(
 ): void {
   const currentSettings = get().settings
   const next = mergeSettingsPatch(currentSettings, patch)
-  const nodeEnv = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process
+  const nodeEnv = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
   if (import.meta.env?.DEV || nodeEnv?.env?.NODE_ENV === 'test') {
     assertUnchangedSettingsSections(currentSettings, next, patch)
   }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, ExternalLink } from 'lucide-react';
-import { type BackupTarget, type BackupTargetInput, type BackupTargetType, type TestConnectionResult } from '@shared/types';
+import { type BackupTarget, type BackupTargetConfig, type BackupTargetInput, type BackupTargetType, type TestConnectionResult } from '@shared/types';
 import { cn } from '../../../lib/cn';
 import { api, ApiError } from '../../../lib/api';
 import { Button } from '../../../components/primitives';
@@ -64,19 +64,26 @@ export function TargetForm({ target, onClose, onSaved, }: {
 
 type TargetFormState = ReturnType<typeof useTargetForm>;
 
+// Initial form fields from whichever config variant the target carries; the
+// `in` guards narrow the S3/WebDAV union so every field reads type-safe.
+function initialFormFields(config: BackupTargetConfig | null): TargetFormFields {
+    const s3 = config && 'endpoint' in config ? config : null;
+    const webdav = config && 'url' in config ? config : null;
+    return {
+        endpoint: s3?.endpoint ?? '',
+        region: s3?.region ?? 'auto',
+        bucket: s3?.bucket ?? '',
+        prefix: config?.prefix ?? 'inkstone',
+        pathStyle: s3 ? s3.pathStyle : true,
+        url: webdav?.url ?? '',
+        username: webdav?.username ?? '',
+    };
+}
+
 function useTargetForm(target: BackupTarget | null) {
-    const config = (target?.config ?? {}) as unknown as Record<string, unknown>;
     const [type, setType] = useState<BackupTargetType>(target?.type ?? 's3');
     const [name, setName] = useState(target?.name ?? '');
-    const [form, setForm] = useState<TargetFormFields>({
-        endpoint: String(config.endpoint ?? ''),
-        region: String(config.region ?? 'auto'),
-        bucket: String(config.bucket ?? ''),
-        prefix: String(config.prefix ?? 'inkstone'),
-        pathStyle: config.pathStyle !== false,
-        url: String(config.url ?? ''),
-        username: String(config.username ?? ''),
-    });
+    const [form, setForm] = useState<TargetFormFields>(initialFormFields(target?.config ?? null));
     const [secret, setSecret] = useState({ accessKeyId: '', secretAccessKey: '', password: '' });
     const [isSaving, setIsSaving] = useState(false);
     const [isTesting, setIsTesting] = useState(false);

@@ -1,5 +1,5 @@
 import { create, type StoreApi } from 'zustand';
-import type { AccentName, BackgroundName, ThemePref, ViewKind } from '@shared/types';
+import type { ThemePref, ViewKind } from '@shared/types';
 import { LIMITS } from '@shared/constants';
 import { isVirtualFolderId } from '../../lib/calendar-tree';
 import { t } from '../../lib/i18n';
@@ -343,20 +343,19 @@ export function switchThemeWithTransition(
 
 function applyAppearanceImpl(
   get: () => UiState,
-  set: SetState,
+  set: (patch: Parameters<UiState['applyAppearance']>[0]) => void,
   patch: Parameters<UiState['applyAppearance']>[0],
 ): void {
   const current = get()
-  const next: Record<string, ThemePref | AccentName | BackgroundName | number> = {}
+  const next: Parameters<UiState['applyAppearance']>[0] = {}
   let hasChanged = false
-  for (const key of Object.keys(patch) as (keyof typeof patch)[]) {
-    const value = patch[key]
-    if (value === undefined || value === current[key]) continue
-    next[key] = value
-    hasChanged = true
-  }
+  // One guarded assignment per key: a union-keyed loop write would need a cast.
+  if (patch.theme !== undefined && patch.theme !== current.theme) { next.theme = patch.theme; hasChanged = true }
+  if (patch.accent !== undefined && patch.accent !== current.accent) { next.accent = patch.accent; hasChanged = true }
+  if (patch.background !== undefined && patch.background !== current.background) { next.background = patch.background; hasChanged = true }
+  if (patch.fontScale !== undefined && patch.fontScale !== current.fontScale) { next.fontScale = patch.fontScale; hasChanged = true }
   if (!hasChanged) return
-  set(next as unknown as typeof patch)
+  set(next)
   applyThemeToDom(get())
 }
 

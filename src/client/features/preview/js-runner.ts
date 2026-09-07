@@ -88,7 +88,7 @@ function executeWithScriptElement(
   let capturedResult: string | undefined;
   let capturedError: string | undefined;
 
-  (window as unknown as Record<string, unknown>)[runId] = {
+  Reflect.set(window, runId, {
     console: fakeConsole,
     onSuccess: (val: unknown) => {
       if (val !== undefined) capturedResult = formatJsValue(val);
@@ -96,7 +96,7 @@ function executeWithScriptElement(
     onError: (err: unknown) => {
       capturedError = formatJsError(err);
     },
-  };
+  });
 
   const script = document.createElement('script');
   if (nonce) {
@@ -121,7 +121,7 @@ function executeWithScriptElement(
   } catch (err) {
     capturedError = formatJsError(err);
   } finally {
-    script.remove(); delete (window as unknown as Record<string, unknown>)[runId];
+    script.remove(); Reflect.deleteProperty(window, runId);
   }
 
   return { result: capturedResult, error: capturedError };

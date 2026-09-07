@@ -1,4 +1,5 @@
 import type { TestConnectionResult, WebdavConfig } from '@shared/types'
+import { asBodyInit } from '@shared/http'
 import type { Snapshot } from './snapshot'
 import { cancelStreamBestEffort } from '../lib/streams'
 import { backupArchivePath, createBackupArchive } from './archive'
@@ -154,7 +155,7 @@ export async function webdavDeliver(
       Overwrite: 'T',
       'User-Agent': BACKUP_USER_AGENT,
     },
-    body: fixed.readable as unknown as BodyInit,
+    body: asBodyInit(fixed.readable),
     signal,
   }, base.origin, false)
   const [response] = await Promise.all([upload, pump])
@@ -241,7 +242,7 @@ async function webdavRoundTrip(
     const put = await webdavFetch(checkUrl, {
       method: 'PUT',
       headers: { Authorization: auth, 'Content-Type': 'text/plain', Overwrite: 'T', 'User-Agent': BACKUP_USER_AGENT },
-      body: payload as unknown as BodyInit,
+      body: asBodyInit(payload),
       signal,
     }, base.origin)
     await cancelStreamBestEffort(put.body)

@@ -1,4 +1,5 @@
 import { crc32, normalizeZipPath, requireRange } from './core'
+import { asBodyInit } from '../http'
 
 export interface UnzippedEntry {
   path: string
@@ -227,7 +228,7 @@ async function readEntryData(
 
 async function inflateRaw(data: Uint8Array, maxBytes: number): Promise<Uint8Array> {
   if (maxBytes < 0) throw new Error('Expanded ZIP data exceeds the limit')
-  const source = new Response(data as unknown as BodyInit).body
+  const source = new Response(asBodyInit(data)).body
   if (!source) throw new Error('ZIP decompression is unavailable in this environment')
 
   const reader = source

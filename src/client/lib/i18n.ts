@@ -41,8 +41,8 @@ let englishMessageKeys = new Map<string, MessageKey>();
 let locale: AppLocale = detectInitialLocale();
 let initPromise: Promise<void> | null = null;
 const localeLoaders: Record<AppLocale, () => Promise<Record<string, string>>> = {
-    'en-US': () => import('@shared/locales/en-US').then((m) => m.EN_US_MESSAGES as unknown as Record<string, string>),
-    'zh-CN': () => import('@shared/locales/zh-CN').then((m) => m.ZH_CN_MESSAGES as unknown as Record<string, string>),
+    'en-US': () => import('@shared/locales/en-US').then((m) => m.EN_US_MESSAGES as Record<string, string>),
+    'zh-CN': () => import('@shared/locales/zh-CN').then((m) => m.ZH_CN_MESSAGES as Record<string, string>),
 };
 const loadedLocales = new Set<AppLocale>();
 async function ensureLocaleLoaded(target: AppLocale): Promise<void> {
