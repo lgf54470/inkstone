@@ -296,6 +296,10 @@ const allowed = new Map([
     "// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.",
     "// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.",
   ]],
+  ["src/client/features/list/note-list/note-row-ui.tsx", [
+    "// containIntrinsicSize hints reserve the row height before content renders",
+    "// under content-visibility: auto; one value per density.",
+  ]],
   ["src/client/features/list/range-preset-persist.ts", [
     "/** Load the user's custom rolling range presets, falling back to the defaults. */",
     "// Quota or private-mode writes can throw; presets stay authoritative in memory for the session.",

@@ -254,10 +254,15 @@ function NoteRowModalOverlays({ state }: { state: NoteRowState }) {
     </>);
 }
 
+// containIntrinsicSize hints reserve the row height before content renders
+// under content-visibility: auto; one value per density.
+const ROW_INTRINSIC_COMPACT = 'auto 42px'
+const ROW_INTRINSIC_COMFORTABLE = 'auto 72px'
+
 export function NoteRowRoot({ state, actions, items }: { state: NoteRowState; actions: NoteRowActions; items: MenuItem[] }) {
     const handlers = useNoteRowHandlers(state);
     return (<>
-        <div id={`note-option-${state.note.id}`} role="option" aria-selected={state.active || state.selected} aria-posinset={state.position} aria-setsize={state.total} tabIndex={-1} data-note-id={state.note.id} draggable style={{ contentVisibility: 'auto', containIntrinsicSize: state.density === 'compact' ? 'auto 42px' : 'auto 72px' }} onDragStart={handlers.onDragStart} onClick={handlers.onClick} onContextMenu={handlers.onContextMenu} className={noteRowClassName(state)}>
+        <div id={`note-option-${state.note.id}`} role="option" aria-selected={state.active || state.selected} aria-posinset={state.position} aria-setsize={state.total} tabIndex={-1} data-note-id={state.note.id} draggable style={{ contentVisibility: 'auto', containIntrinsicSize: state.density === 'compact' ? ROW_INTRINSIC_COMPACT : ROW_INTRINSIC_COMFORTABLE }} onDragStart={handlers.onDragStart} onClick={handlers.onClick} onContextMenu={handlers.onContextMenu} className={noteRowClassName(state)}>
             <NoteRowMain state={state}/>
             <NoteRowSideButtons state={state}/>
         </div>

@@ -293,12 +293,16 @@ function buildChartConfig(config: Record<string, unknown>, textColor: string, gr
   } as ChartConfiguration
 }
 
+// Chart canvas colors follow the theme tokens with fixed light-theme
+// fallbacks for when the tokens are not resolvable (headless render).
+const CHART_TEXT_FALLBACK = '#64748b'
+const CHART_GRID_FALLBACK = 'rgba(0, 0, 0, 0.08)'
+
 async function renderCharts() {
   const blocks = document.querySelectorAll<HTMLElement>('.chartjs-block')
   if (!blocks.length) return
-  // 图表文字/网格色跟随设计令牌（主题与密度联动），兜底为浅色下的原色值
-  const textColor = cssVarValue('--text-tertiary', '#64748b')
-  const gridColor = cssVarValue('--border-default', 'rgba(0, 0, 0, 0.08)')
+  const textColor = cssVarValue('--text-tertiary', CHART_TEXT_FALLBACK)
+  const gridColor = cssVarValue('--border-default', CHART_GRID_FALLBACK)
 
   const { default: Chart } = await import('chart.js/auto')
 

@@ -14,6 +14,13 @@ import { t, DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
 
 export type Heading = TocHeading
 
+// Sticky header height plus the per-use-case offset. Both call sites must
+// agree on the header height, so it is a named constant instead of two magic
+// numbers that drift apart.
+const STICKY_HEADER_H = 60
+const ACTIVE_HEADING_OFFSET = 25
+const SCROLL_TARGET_BUFFER = 16
+
 const HEADING_ICONS: Record<number, ComponentType<LucideProps>> = {
   1: Heading1,
   2: Heading2,
@@ -93,8 +100,7 @@ function activeHeadingSlug(headings: Heading[]): string | null {
     return headings[headings.length - 1]!.slug
   }
 
-  // 60px sticky header + 25px offset
-  const topOffset = 85
+  const topOffset = STICKY_HEADER_H + ACTIVE_HEADING_OFFSET
   let current: string | null = headings[0]?.slug ?? null
   for (const heading of headings) {
     const el = document.getElementById(heading.slug)
@@ -190,7 +196,7 @@ function OutlineRow({ heading, index, active, minLevel, prevHeading, onSelect }:
 function scrollToHeading(heading: Heading): void {
   const el = document.getElementById(heading.slug)
   if (!el) return
-  const topOffset = 76 // 60px sticky header + 16px buffer
+  const topOffset = STICKY_HEADER_H + SCROLL_TARGET_BUFFER
   const elementPosition = el.getBoundingClientRect().top
   const offsetPosition = elementPosition + window.pageYOffset - topOffset
   if (typeof window.scrollTo === 'function') {
@@ -199,7 +205,7 @@ function scrollToHeading(heading: Heading): void {
   try {
     history.replaceState(null, '', `#${heading.slug}`)
   } catch {
-    // ignore
+    // replaceState can throw on sandboxed or about: documents; the hash is cosmetic.
   }
 }
 
