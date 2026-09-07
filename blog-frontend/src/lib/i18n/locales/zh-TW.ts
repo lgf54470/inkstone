@@ -54,6 +54,7 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'post.share_link': '分享連結',
   'post.link_copied': '文章連結已複製到剪貼簿！',
   'post.toc': '文章目錄',
+  'common.outline': '大綱',
 
   // Timeline
   'timeline.title': '時間軸歸檔 - Inkstone Blog',

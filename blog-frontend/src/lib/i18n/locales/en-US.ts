@@ -54,6 +54,7 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'post.share_link': 'Share Link',
   'post.link_copied': 'Post link copied to clipboard!',
   'post.toc': 'Table of Contents',
+  'common.outline': 'Outline',
 
   // Timeline
   'timeline.title': 'Timeline Archive - Inkstone Blog',

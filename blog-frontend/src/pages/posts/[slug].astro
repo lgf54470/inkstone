@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro'
 import CommentsSection from '../../components/CommentsSection'
+import PostOutline from '../../components/PostOutline'
 import { api } from '../../lib/api'
 import { renderMarkdown } from '../../lib/markdown'
 import { isSvgCoverUrl, stripFrontmatter } from '../../lib/content'
@@ -153,30 +154,10 @@ const readingMinutes = Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE))
       <CommentsSection client:visible postId={post.id} allowComments={post.allowComments} initialLocale={locale} />
     </main>
 
-    {/* Floating Table of Contents (TOC) Sidebar */}
+    {/* Floating Outline Sidebar */}
     {headings.length > 0 && (
-      <aside class="hidden lg:block lg:col-span-3 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto space-y-3 p-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs">
-        <h3 class="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)] pb-2 border-b border-[var(--border-subtle)]">
-          {t('post.toc', {}, locale)}
-        </h3>
-        <nav class="space-y-1">
-          {headings.map((h) => (
-            <a
-              href={`#${h.slug}`}
-              class={`block py-1 hover:text-[var(--accent)] text-[var(--text-secondary)] transition-colors line-clamp-1 ${
-                h.level === 1
-                  ? 'font-semibold pl-0'
-                  : h.level === 2
-                  ? 'pl-2'
-                  : h.level === 3
-                  ? 'pl-4 text-[var(--text-tertiary)]'
-                  : 'pl-6 text-[var(--text-quaternary)]'
-              }`}
-            >
-              {h.text}
-            </a>
-          ))}
-        </nav>
+      <aside class="hidden lg:block lg:col-span-3 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto p-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+        <PostOutline client:load headings={headings} locale={locale} />
       </aside>
     )}
   </div>

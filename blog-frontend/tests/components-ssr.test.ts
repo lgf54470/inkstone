@@ -6,6 +6,7 @@ import SearchModal from '../src/components/SearchModal'
 import DegradedBanner from '../src/components/DegradedBanner'
 import CalendarWidget from '../src/components/CalendarWidget'
 import CommentsSection from '../src/components/CommentsSection'
+import PostOutline from '../src/components/PostOutline'
 import type { CalendarDayPost } from '../src/lib/types'
 
 function render(component: ReactElement): string {
@@ -119,5 +120,21 @@ describe('component server-render smoke', () => {
     expect(html).toContain('Comments &amp; Discussions')
     expect(html).toContain('Leave a Comment')
     expect(html).toContain('Loading comments...')
+  })
+
+  it('PostOutline renders outline nav and headings in Chinese and English SSR', () => {
+    const headings = [
+      { level: 1, text: '总览', slug: 'overview' },
+      { level: 2, text: '架构设计', slug: 'architecture' },
+    ]
+    const zh = render(createElement(PostOutline, { headings, locale: 'zh-CN' }))
+    expect(zh).toContain('大纲')
+    expect(zh).toContain('总览')
+    expect(zh).toContain('架构设计')
+    expect(zh).toContain('data-heading-level="1"')
+    expect(zh).toContain('data-heading-level="2"')
+
+    const en = render(createElement(PostOutline, { headings, locale: 'en-US' }))
+    expect(en).toContain('Outline')
   })
 })
