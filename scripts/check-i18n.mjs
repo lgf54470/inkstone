@@ -25,6 +25,12 @@ const localizedDemoFiles = new Set([
 const renderingFixtureFiles = new Set([
   path.resolve('tests/markdown-renderer-parity.test.ts'),
 ]);
+// The visual e2e matches locale-dependent UI labels (both zh-CN and en-US)
+// so the gate is locale-agnostic; the strings are test selectors, never UI
+// copy rendered by the i18n layer.
+const localizedFixtureFiles = new Set([
+  path.resolve('scripts/e2e-visual.mjs'),
+]);
 const failures = [];
 const usedKeys = new Set();
 const forbiddenCjk = /[\p{Script=Han}\u3000-\u303f\uff00-\uffef]/u;
@@ -120,7 +126,7 @@ const englishOnlyPaths = [
     path.resolve('.github'),
 ];
 for (const file of englishOnlyPaths.flatMap((target) => fs.existsSync(target) ? [...walk(target)] : [])) {
-    if (localizedDemoFiles.has(file) || renderingFixtureFiles.has(file) || file.startsWith(zhLocaleDir + path.sep) || !isTextSource(file))
+    if (localizedDemoFiles.has(file) || renderingFixtureFiles.has(file) || localizedFixtureFiles.has(file) || file.startsWith(zhLocaleDir + path.sep) || !isTextSource(file))
         continue;
     rejectHan(file);
 }

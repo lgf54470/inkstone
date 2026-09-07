@@ -42,6 +42,7 @@ jobs:
           done
           if [ "$ready" != "1" ]; then cat /tmp/inkstone-dev.log; exit 1; fi
           node scripts/e2e.mjs
+          node scripts/e2e-visual.mjs
 
   blog-frontend:
     runs-on: ubuntu-latest
