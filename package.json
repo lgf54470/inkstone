@@ -49,6 +49,7 @@
     "deep-imports:check:blog": "node scripts/check-deep-imports.mjs --root blog-frontend/src",
     "size:check": "node scripts/check-size.mjs",
     "size:check:blog": "node scripts/check-size.mjs --root blog-frontend/src",
+    "tokens:check": "node scripts/check-token-drift.mjs",
     "test:e2e": "node scripts/e2e.mjs",
     "cf-typegen": "wrangler types",
     "cf-typegen:kv": "wrangler types --config wrangler.kv.toml",
