@@ -5,17 +5,18 @@ import { t, DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
 interface Props {
   siteInfo: BlogSiteInfo
   locale?: BlogLocale
+  compact?: boolean
 }
 
-const { siteInfo, locale: propLocale } = Astro.props
+const { siteInfo, locale: propLocale, compact = false } = Astro.props
 const locale: BlogLocale = propLocale ?? Astro.locals?.locale ?? DEFAULT_LOCALE
 
 const currentYear = new Date().getFullYear()
 ---
 
-<footer class="mt-auto border-t border-[var(--border-subtle)] bg-[var(--bg-sunken)] text-[var(--text-secondary)] transition-colors py-10">
+<footer class={`shrink-0 mt-auto border-t border-[var(--border-subtle)] bg-[var(--bg-sunken)] text-[var(--text-secondary)] transition-colors ${compact ? 'py-4 sm:py-5' : 'py-8 sm:py-10'}`}>
   <div class="max-w-5xl mx-auto px-4 sm:px-6">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+    <div class={`grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 ${compact ? 'mb-3.5' : 'mb-8'}`}>
       <!-- Col 1: Bio -->
       <div class="space-y-3">
         <div class="flex items-center gap-2">
@@ -83,7 +84,7 @@ const currentYear = new Date().getFullYear()
     </div>
 
     {/* Bottom credits */}
-    <div class="pt-6 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row items-center justify-between text-[11px] text-[var(--text-quaternary)] gap-2">
+    <div class={`${compact ? 'pt-3' : 'pt-6'} border-t border-[var(--border-subtle)] flex flex-col sm:flex-row items-center justify-between text-[11px] text-[var(--text-quaternary)] gap-2`}>
       <p>© {currentYear} {siteInfo.siteName}. {t('footer.all_rights_reserved', {}, locale)}</p>
       <div class="flex items-center gap-1">
         <span>{t('footer.powered_by', {}, locale)}</span>

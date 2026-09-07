@@ -205,7 +205,7 @@ function FeedMainColumn({
   onPageSizeChange,
 }: FeedMainColumnProps): ReactElement {
   return (
-    <section className="lg:col-span-8 flex flex-col lg:h-[calc(100vh-6.5rem)]">
+    <section className="lg:col-span-8 flex flex-col h-full min-h-0">
       <FeedHeader
         total={total}
         selectedTag={selectedTag}
@@ -214,7 +214,7 @@ function FeedMainColumn({
       />
       <div
         ref={scrollRef as React.RefObject<HTMLDivElement>}
-        className="flex-1 min-h-0 lg:overflow-y-auto py-3 pr-0 lg:pr-2 scrollbar-thin space-y-4"
+        className="flex-1 min-h-0 overflow-y-auto py-2.5 pr-0 lg:pr-2 scrollbar-thin space-y-4"
       >
         <FeedPostsList
           posts={posts}
@@ -224,7 +224,7 @@ function FeedMainColumn({
           onTagClick={onTagToggle}
         />
       </div>
-      <footer className="shrink-0 mt-auto pt-3 pb-1 border-t border-[var(--border-subtle)] bg-[var(--bg-base)]">
+      <footer className="shrink-0 mt-auto pt-2.5 pb-1 border-t border-[var(--border-subtle)] bg-[var(--bg-base)]">
         <HomePagination
           currentPage={page}
           totalPages={totalPages}
@@ -252,7 +252,7 @@ export default function HomeFeedView(props: HomeFeedViewProps): ReactElement {
   const state = useFeedState({ ...props, onScrollToTop: scrollToTop })
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch h-full min-h-0">
       <FeedMainColumn
         scrollRef={leftScrollRef}
         total={state.total}
@@ -268,7 +268,7 @@ export default function HomeFeedView(props: HomeFeedViewProps): ReactElement {
         onPageChange={state.handlePageChange}
         onPageSizeChange={state.handlePageSizeChange}
       />
-      <div className="lg:col-span-4 lg:sticky lg:top-20 lg:h-[calc(100vh-6.5rem)] lg:overflow-y-auto scrollbar-thin">
+      <div className="lg:col-span-4 h-full min-h-0 overflow-y-auto scrollbar-none">
         <HomeSidebar
           siteInfo={props.siteInfo}
           categories={props.categories}

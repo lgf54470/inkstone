@@ -15,6 +15,7 @@ interface Props {
   coverUrl?: string | null
   siteInfo?: BlogSiteInfo
   locale?: BlogLocale
+  fitViewport?: boolean
 }
 
 const {
@@ -23,7 +24,9 @@ const {
   coverUrl,
   siteInfo: propSiteInfo,
   locale: propLocale,
+  fitViewport = false,
 } = Astro.props
+
 
 const locale: BlogLocale = propLocale ?? Astro.locals?.locale ?? DEFAULT_LOCALE
 
@@ -69,17 +72,18 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
       })()
     </script>
   </head>
-  <body class="min-h-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] antialiased transition-colors selection:bg-[var(--selection)]">
+  <body class={`min-h-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] antialiased transition-colors selection:bg-[var(--selection)] ${fitViewport ? 'lg:h-screen lg:overflow-hidden' : ''}`}>
     <!-- Navigation Header -->
     <Header siteName={siteInfo.siteName} locale={locale} />
 
     <!-- Main Page Content -->
-    <main class="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <main class={`flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 ${fitViewport ? 'py-3 lg:py-4 flex flex-col min-h-0 overflow-hidden' : 'py-8'}`}>
       <slot />
     </main>
 
     <!-- Site Footer -->
-    <Footer siteInfo={siteInfo} locale={locale} />
+    <Footer siteInfo={siteInfo} locale={locale} compact={fitViewport} />
+
 
     <!-- Interactive Client Modals/Drawers -->
     <AppearanceDrawer client:load initialLocale={locale} />

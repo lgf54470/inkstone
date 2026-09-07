@@ -23,7 +23,7 @@ const [siteInfo, postsData, categories, tags, calendarDays] = await Promise.all(
 ])
 ---
 
-<Layout title={`${siteInfo.siteName} - ${siteInfo.subtitle}`} description={siteInfo.bio} siteInfo={siteInfo} locale={locale}>
+<Layout title={`${siteInfo.siteName} - ${siteInfo.subtitle}`} description={siteInfo.bio} siteInfo={siteInfo} locale={locale} fitViewport={true}>
   <HomeFeedView
     client:load
     initialPosts={postsData.posts}
