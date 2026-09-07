@@ -585,6 +585,21 @@ const allowed = new Map([
     "// Respect the user's external-images choice: when blocked, exported HTML",
     "// shows the same placeholder as the preview instead of leaking image URLs.",
   ]],
+  ["src/client/lib/export-palette.test.ts", [
+    "// Both directions of the export palette contract: every color the rendered",
+    "// export CSS contains must come from EXPORT_PALETTE (a raw hex dropped into",
+    "// the template would surface here as an unknown value), and every palette",
+    "// entry must be used (an orphaned entry means the stylesheet drifted from",
+    "// the table of record).",
+  ]],
+  ["src/client/lib/export-palette.ts", [
+    "// Palette of the self-contained HTML export (export-note.ts EXPORT_CSS). The",
+    "// exported file is a standalone document that must render without the app's",
+    "// stylesheets, so it cannot consume runtime CSS variables; keeping every",
+    "// value in this one table (instead of raw hex inside the CSS template) gives",
+    "// the export palette a single source of truth, and export-palette.test.ts",
+    "// fails on any hex that is not in this table or any entry left unused.",
+  ]],
   ["src/client/lib/folder-prefs.ts", [
     "// quota or private mode",
   ]],
