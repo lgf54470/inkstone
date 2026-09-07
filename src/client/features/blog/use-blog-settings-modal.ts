@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import { api } from '../../lib/api'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
@@ -124,7 +125,7 @@ function applySettingsToForm(ctx: SettingsFormCtx & SettingsFormSetters): void {
     ctx.setTwitter(ctx.settings.socialLinks?.twitter || '')
     ctx.setEmail(ctx.settings.socialLinks?.email || '')
     ctx.setWebsite(ctx.settings.socialLinks?.website || '')
-    ctx.setFrontendUrl(ctx.settings.frontendUrl || 'http://localhost:4321')
+    ctx.setFrontendUrl(ctx.settings.frontendUrl || DEFAULT_BLOG_FRONTEND_URL)
     ctx.setRequireCommentApproval(ctx.settings.requireCommentApproval !== false)
     ctx.setPostsPerPage(ctx.settings.postsPerPage || 10)
     ctx.setBots(ctx.excludeBots)
@@ -190,7 +191,7 @@ async function saveSettingsFlow(e: FormEvent, ctx: SaveSettingsCtx): Promise<voi
             bio: ctx.bio.trim(),
             authorName: ctx.authorName.trim(),
             authorAvatar: ctx.authorAvatar.trim(),
-            frontendUrl: ctx.frontendUrl.trim() || 'http://localhost:4321',
+            frontendUrl: ctx.frontendUrl.trim() || DEFAULT_BLOG_FRONTEND_URL,
             requireCommentApproval: ctx.requireCommentApproval,
             postsPerPage: Number(ctx.postsPerPage) || 10,
             socialLinks: {

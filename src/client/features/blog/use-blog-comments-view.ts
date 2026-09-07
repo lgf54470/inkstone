@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogComment, BlogCommentStatus } from '@shared/types'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
@@ -25,7 +26,7 @@ export function useBlogCommentsView() {
 
     const [search, setSearch] = useState('')
 
-    const frontendBase = (settings?.frontendUrl || 'http://localhost:4321').replace(/\/+$/, '')
+    const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
     const statusCounts = useMemo(() => computeStatusCounts(comments), [comments])
     const filteredComments = useMemo(
         () => filterComments(comments, commentStatusFilter, search),

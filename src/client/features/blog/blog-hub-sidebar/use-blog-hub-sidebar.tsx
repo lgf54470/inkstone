@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type Dispatch, type MouseEvent, type ReactNode, type SetStateAction } from 'react'
 import { FileEdit, FileText, LayoutDashboard, MessageSquare, Pin, PlayCircle } from 'lucide-react'
+import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogStats, BlogTag, Tag } from '@shared/types'
 import { confirm } from '../../../components/overlay'
 import { HubFolderItem } from '../../../components/hub-folder-item'
@@ -73,7 +74,7 @@ export function useBlogHubSidebar() {
     useBlogHubSidebarEffects(store, parentTagPaths, setExpandedTagPaths)
 
     const pendingCommentsCount = store.comments.filter((c) => c.status === 'pending').length
-    const frontendBase = (store.settings?.frontendUrl || 'http://localhost:4321').replace(/\/+$/, '')
+    const frontendBase = (store.settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
 
     const navItems = buildNavItems({ activeTab: store.activeTab, statusFilter: store.statusFilter, selectedFolderId: store.selectedFolderId, selectedTag: store.selectedTag, stats: store.stats, commentsCount: store.comments.length, pendingCommentsCount, setActiveTab: store.setActiveTab, setStatusFilter: store.setStatusFilter })
     const handleCreateRootFolder = () => createRootFolder(store.createFolder, setExpandedFolders, setRenamingFolderId)

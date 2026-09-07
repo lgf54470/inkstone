@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogPost } from '@shared/types'
 import { parseFrontMatter, upsertFrontMatterProperty } from '@shared/markdown-utils'
 import { api } from '../../../lib/api'
@@ -60,7 +61,7 @@ export function useBlogPublishForm({
 
     const handleSave = (publish: boolean) => savePublishedPost(publish, { note, noteId, title, slug, coverUrl, folderId, categoryId, tags, excerpt, allowComments, isPinned, toast, setIsSaving, onSaved, onClose })
 
-    const frontendBase = (settings?.frontendUrl || 'http://localhost:4321').replace(/\/+$/, '')
+    const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
     const previewUrl = `${frontendBase}/posts/${slug.trim() || 'preview'}`
 
     return {

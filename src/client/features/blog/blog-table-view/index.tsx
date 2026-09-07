@@ -1,3 +1,4 @@
+import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogPost } from '@shared/types'
 import { useBlogStore } from '../blog-store'
 import { t } from '../../../lib/i18n'
@@ -18,7 +19,7 @@ export function BlogTableView({
     const clearPostSelection = useBlogStore((s) => s.clearPostSelection)
     const settings = useBlogStore((s) => s.settings)
 
-    const frontendBase = (settings?.frontendUrl || 'http://localhost:4321').replace(/\/+$/, '')
+    const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
     const isAllSelected = posts.length > 0 && posts.every((p) => selectedPostIds.has(p.id))
     const categoryMap = new Map(categories.map((c) => [c.id, c]))
     const folderMap = new Map(folders.map((f) => [f.id, f]))

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Hono } from "hono";
+import { DEFAULT_BLOG_FRONTEND_URL } from "@shared/constants";
 import type { BlogSettings } from "@shared/types";
 import type { AppBindings } from "../../env";
 import { JSON_BODY_LIMITS, readJsonValidated } from "../../lib/request";
@@ -24,7 +25,7 @@ const DEFAULT_BLOG_SETTINGS: BlogSettings = {
   },
   requireCommentApproval: true,
   postsPerPage: 10,
-  frontendUrl: 'http://localhost:4321',
+  frontendUrl: DEFAULT_BLOG_FRONTEND_URL,
   appearance: {
     theme: 'system',
     accent: 'cinnabar',

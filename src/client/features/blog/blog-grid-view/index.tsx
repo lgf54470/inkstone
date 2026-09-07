@@ -1,3 +1,4 @@
+import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogPost } from '@shared/types'
 import { useBlogStore } from '../blog-store'
 import { BlogGridCard } from './card'
@@ -17,7 +18,7 @@ export function BlogGridView({
   const toggleSelectPost = useBlogStore((s) => s.toggleSelectPost)
   const settings = useBlogStore((s) => s.settings)
 
-  const frontendBase = (settings?.frontendUrl || 'http://localhost:4321').replace(/\/+$/, '')
+  const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
   const categoryMap = new Map(categories.map((c) => [c.id, c]))
   const folderMap = new Map(folders.map((f) => [f.id, f]))
 

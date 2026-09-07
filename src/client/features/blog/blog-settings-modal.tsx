@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Database, Save, Settings, Shield, X } from 'lucide-react'
+import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import { Modal } from '../../components/overlay'
 import { Button, IconButton } from '../../components/primitives'
 import { Input, Switch, Segmented } from '../../components/form'
@@ -289,7 +290,7 @@ function SiteBasicSection({ form }: { form: SettingsFormBundle }) {
             </div>
 
             <SettingsField label={t('blog.frontend_url')}>
-                <Input value={form.frontendUrl} onChange={(e) => form.setFrontendUrl(e.target.value)} placeholder="http://localhost:4321" />
+                <Input value={form.frontendUrl} onChange={(e) => form.setFrontendUrl(e.target.value)} placeholder={DEFAULT_BLOG_FRONTEND_URL} />
                 <p className="mt-1 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
                     {t('blog.frontend_url_hint')}
                 </p>

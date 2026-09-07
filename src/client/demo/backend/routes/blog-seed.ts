@@ -1,3 +1,4 @@
+import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type {
   BlogCategory,
   BlogComment,
@@ -200,7 +201,7 @@ function defaultBlogSettings(): BlogSettings {
     socialLinks: { github: 'https://github.com/shuaiplus/inkstone', email: 'hello@example.com' },
     requireCommentApproval: true,
     postsPerPage: 10,
-    frontendUrl: 'http://localhost:4321',
+    frontendUrl: DEFAULT_BLOG_FRONTEND_URL,
     appearance: { theme: 'system', accent: 'vermilion', background: 'paper', density: 'comfortable', language: 'zh-CN' },
   }
 }
