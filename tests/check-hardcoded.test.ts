@@ -160,3 +160,42 @@ describe('token-family rule (Part 4) via problemsFor', () => {
     expect(problemsFor(rel, `const H = 'gap-[1px]'`)).toEqual([])
   })
 })
+
+describe('decimal-token runtime escape via problemsFor', () => {
+  const rel = 'probe.tsx'
+
+  it('flags a lone-backslash decimal ref in a JS string constant', () => {
+    const problems = problemsFor(rel, `const T = 'text-[length:var(--text-11\.5)]'`)
+    expect(problems.join('\n')).toContain('unescaped-dot decimal token reference')
+  })
+
+  it('flags a lone-backslash decimal ref in a className expression string', () => {
+    const problems = problemsFor(rel, `function P() { return <div className={'w-[var(--sp-0\.625)]'}/> }`)
+    expect(problems.join('\n')).toContain('unescaped-dot decimal token reference')
+  })
+
+  it('flags a lone-backslash decimal ref in a template literal', () => {
+    const problems = problemsFor(rel, 'const T = `text-[length:var(--text-12\\.5)]`')
+    expect(problems.join('\n')).toContain('unescaped-dot decimal token reference')
+  })
+
+  it('flags a lone-backslash decimal ref in an inline var() style', () => {
+    const problems = problemsFor(rel, `function P() { return <div style={{ fontSize: 'var(--text-11\.5)' }}/> }`)
+    expect(problems.join('\n')).toContain('unescaped-dot decimal token reference')
+  })
+
+  it('accepts the doubled-backslash spelling in JS strings', () => {
+    const problems = problemsFor(rel, `const T = 'text-[length:var(--text-11\\\\.5)]'`)
+    expect(problems).toEqual([])
+  })
+
+  it('accepts the doubled-backslash spelling in inline var() styles', () => {
+    const problems = problemsFor(rel, `function P() { return <div style={{ fontSize: 'var(--text-11\\\\.5)' }}/> }`)
+    expect(problems).toEqual([])
+  })
+
+  it('accepts a lone backslash in a direct JSX attribute value (verbatim)', () => {
+    const problems = problemsFor(rel, `function P() { return <div className="text-[length:var(--text-11\\.5)]"/> }`)
+    expect(problems).toEqual([])
+  })
+})

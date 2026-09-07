@@ -44,6 +44,12 @@
 //     strings (grid-cols-, blur-, aspect-...) that the table pattern
 //     sanctions. Relative percentages (w-[86%], max-h-[36%]) are responsive
 //     sizing, not raw sizes, and stay allowed.
+//     Runtime-escape rule (companion to Part 4): a decimal token name like
+//     --text-11.5 referenced from a JS class string must double the
+//     backslash in source (\\.), because JS cooks a lone \. to a plain dot
+//     and the runtime class then never matches the compiled selector. Direct
+//     JSX attribute values (className="...") keep the backslash verbatim and
+//     are correct with a single one, so they are not flagged.
 // Numeric literals in .ts (non-JSX) files are out of scope: without a type
 // checker a bare number cannot be told apart from data, and the visual
 // surface is JSX by construction.
@@ -134,6 +140,17 @@ const ABSOLUTE_UNIT_RE = /-?(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem|em|pt)/g
 // --tracking-*, font-size --text-*, spacing --sp-*); raw absolute-unit values
 // inside their arbitrary brackets/parens are banned even in named constants.
 const TOKEN_FAMILY_CLASS_RE = /(?<![a-z-])((?:tracking|text|min-w|max-w|min-h|max-h|space-x|space-y|inset-x|inset-y|size|gap|inset|top|right|bottom|left|p[trblxy]?|m[trblxy]?|w|h)-)([\[(])([^\]\)]*)([\]\)])/g
+
+// A decimal token name (--text-11.5, --sp-0.625) referenced from a class
+// string must carry an escaped dot (\\. in source, so the runtime string
+// keeps a backslash-dot): a lone backslash-dot is a valid-but-no-op JS
+// escape, so TS cooks it to a plain dot and the runtime class never matches
+// the selector Tailwind compiled for the escaped candidate. Because TS
+// reports cooked text, a plain dot inside the var() name here is exactly the
+// broken single-backslash source; the correct form shows up as \\. (dot
+// preceded by a backslash) and does not match. Also holds for inline var()
+// styles, where the same drop invalidates the declaration.
+const PLAIN_DOT_DECIMAL_TOKEN_RE = /var\(--[a-zA-Z0-9_-]*\.\d/
 
 // Tailwind arbitrary-value brackets and parens hold raw sizes unless they
 // reference a token or compose relative units; return the offending values.
@@ -266,6 +283,13 @@ function problemsFor(rel, text) {
           : prefix.startsWith('text-') ? 'font sizes must reference a --text-* design token'
           : 'sizes must reference a --sp-* design token or a spacing utility'
         push(lineOf(node), `raw ${label} in ${match[0]} (AGENTS.md rule 2): ${hint}`)
+      }
+      // Runtime-escape correctness: a decimal token name written with a lone
+      // backslash (var(--text-11\.5) in source) is cooked to a plain dot, so
+      // the size silently never applies. The source must double the escape.
+      const plainDot = node.text.match(PLAIN_DOT_DECIMAL_TOKEN_RE)
+      if (plainDot) {
+        push(lineOf(node), `unescaped-dot decimal token reference ${plainDot[0]} (AGENTS.md rule 2): JS cooks a lone backslash-dot to a plain dot, so the runtime class never matches — double the backslash in the source`)
       }
       return
     }
