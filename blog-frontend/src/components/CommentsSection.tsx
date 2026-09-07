@@ -211,7 +211,7 @@ function MessageBanner({ message }: { message: { type: 'success' | 'error'; text
   const isSuccess = message.type === 'success'
   return (
     <div
-      className={`mb-6 p-4 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in duration-200 ${
+      className={`mb-6 p-4 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in duration-[var(--dur-base)] ${
         isSuccess
           ? 'bg-[var(--accent-softer)] border-[var(--accent)] text-[var(--accent)]'
           : 'bg-[var(--danger-soft)] border-[var(--danger-border)] text-[var(--danger)]'
@@ -281,7 +281,7 @@ function CommentForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="mb-8 p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-xs space-y-4"
+      className="mb-8 p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--shadow-xs)] space-y-4"
     >
       <h4 className="text-sm font-semibold text-[var(--text-primary)]">
         {t('comments.form_heading', {}, locale)}
@@ -368,7 +368,7 @@ function CommentFormActions({ submitting, locale }: { submitting: boolean; local
       <button
         type="submit"
         disabled={submitting}
-        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-xs"
+        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-[var(--shadow-xs)]"
       >
         {submitting ? (
           <>

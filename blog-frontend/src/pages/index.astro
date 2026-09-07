@@ -71,7 +71,7 @@ const categoryMap = new Map(categories.map((c) => [c.id, c]))
     <!-- Sidebar Column -->
     <aside class="lg:col-span-4 flex flex-col gap-6">
       <!-- Author Profile Card -->
-      <div class="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-xs">
+      <div class="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-xs)]">
         <div class="flex items-center gap-3 mb-3">
           {siteInfo.authorAvatar ? (
             <img
@@ -80,7 +80,7 @@ const categoryMap = new Map(categories.map((c) => [c.id, c]))
               class="w-12 h-12 rounded-full object-cover border border-[var(--border-subtle)]"
             />
           ) : (
-            <div class="w-12 h-12 rounded-full bg-[var(--accent)] text-white font-serif font-bold text-lg flex items-center justify-center shadow-xs">
+            <div class="w-12 h-12 rounded-full bg-[var(--accent)] text-white font-serif font-bold text-lg flex items-center justify-center shadow-[var(--shadow-xs)]">
               {siteInfo.authorName.slice(0, 1)}
             </div>
           )}
@@ -115,7 +115,7 @@ const categoryMap = new Map(categories.map((c) => [c.id, c]))
 
       <!-- Categories Widget -->
       {categories.length > 0 && (
-        <div class="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-xs">
+        <div class="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-xs)]">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
               {t('home.category_topics', {}, locale)}
@@ -148,7 +148,7 @@ const categoryMap = new Map(categories.map((c) => [c.id, c]))
 
       <!-- Tags Widget -->
       {tags.length > 0 && (
-        <div class="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-xs">
+        <div class="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-xs)]">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
               {t('home.tag_cloud', {}, locale)}

@@ -250,19 +250,19 @@ function SearchLayer({
 }) {
   return (
     <div
-      className={`fixed inset-0 z-50 overflow-y-auto flex items-start justify-center pt-20 px-4 transition-[visibility] duration-200 ${
+      className={`fixed inset-0 z-50 overflow-y-auto flex items-start justify-center pt-20 px-4 transition-[visibility] duration-[var(--dur-base)] ${
         isOpen ? 'visible pointer-events-auto' : 'invisible pointer-events-none'
       }`}
       aria-hidden={!isOpen}
     >
       <div
-        className={`fixed inset-0 bg-black/40 transition-opacity duration-200 ease-out ${
+        className={`fixed inset-0 bg-black/40 transition-opacity duration-[var(--dur-base)] ease-[var(--ease-out)] ${
           isOpen ? 'opacity-100' : 'opacity-0'
         }`}
         onClick={onClose}
       />
       <div
-        className={`relative w-full max-w-xl bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-xl border border-[var(--border-default)] shadow-2xl overflow-hidden z-10 transition-all duration-200 ease-out transform ${
+        className={`relative w-full max-w-xl bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-xl border border-[var(--border-default)] shadow-[var(--shadow-modal)] overflow-hidden z-10 transition-all duration-[var(--dur-base)] ease-[var(--ease-out)] transform ${
           isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
         onKeyDown={onKeyDown}

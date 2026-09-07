@@ -108,7 +108,7 @@ const readingMinutes = Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE))
 
       {/* Featured Cover Image */}
       {post.coverUrl && (
-        <div class="rounded-2xl overflow-hidden border border-[var(--border-subtle)] shadow-sm bg-[var(--bg-sunken)] w-full flex items-center justify-center">
+        <div class="rounded-2xl overflow-hidden border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] bg-[var(--bg-sunken)] w-full flex items-center justify-center">
           <img
             src={post.coverUrl}
             alt={post.title}

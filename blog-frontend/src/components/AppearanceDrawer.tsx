@@ -105,19 +105,19 @@ function DrawerLayer({
 }) {
   return (
     <div
-      className={`fixed inset-0 z-50 overflow-hidden flex justify-end transition-[visibility] duration-250 ${
+      className={`fixed inset-0 z-50 overflow-hidden flex justify-end transition-[visibility] duration-[var(--dur-base)] ${
         isOpen ? 'visible pointer-events-auto' : 'invisible pointer-events-none'
       }`}
       aria-hidden={ariaHidden}
     >
       <div
-        className={`fixed inset-0 bg-black/40 transition-opacity duration-250 ease-out ${
+        className={`fixed inset-0 bg-black/40 transition-opacity duration-[var(--dur-base)] ease-[var(--ease-out)] ${
           isOpen ? 'opacity-100' : 'opacity-0'
         }`}
         onClick={onClose}
       />
       <aside
-        className={`relative w-full max-w-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border-l border-[var(--border-default)] shadow-2xl flex flex-col h-full z-10 transition-transform duration-250 ease-out transform will-change-transform ${
+        className={`relative w-full max-w-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border-l border-[var(--border-default)] shadow-[var(--shadow-modal)] flex flex-col h-full z-10 transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)] transform will-change-transform ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
@@ -199,7 +199,7 @@ function IconChoice({
       onClick={onClick}
       className={`flex flex-col items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
         active
-          ? 'border-[var(--accent)] bg-[var(--accent-softer)] text-[var(--accent)] font-semibold shadow-xs'
+          ? 'border-[var(--accent)] bg-[var(--accent-softer)] text-[var(--accent)] font-semibold shadow-[var(--shadow-xs)]'
           : 'border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
       }`}
     >
@@ -271,10 +271,10 @@ function AccentPicker({ config, update }: PickerProps) {
             }`}
           >
             <span
-              className="accent-swatch w-5 h-5 rounded-full shadow-xs transition-transform group-hover:scale-110 flex items-center justify-center"
+              className="accent-swatch w-5 h-5 rounded-full shadow-[var(--shadow-xs)] transition-transform group-hover:scale-110 flex items-center justify-center"
               data-accent={item.id}
             >
-              {active && <span className="w-1.5 h-1.5 rounded-full bg-white shadow-xs" />}
+              {active && <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[var(--shadow-xs)]" />}
             </span>
             <span className="text-[11px] truncate w-full text-center">{label}</span>
           </button>
@@ -379,7 +379,7 @@ function LanguagePicker({ config, update }: PickerProps) {
             onClick={() => update({ lang: option.id })}
             className={`flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
               active
-                ? 'border-[var(--accent)] bg-[var(--accent-softer)] text-[var(--accent)] font-semibold shadow-xs'
+                ? 'border-[var(--accent)] bg-[var(--accent-softer)] text-[var(--accent)] font-semibold shadow-[var(--shadow-xs)]'
                 : 'border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
             }`}
           >
@@ -414,7 +414,7 @@ function DrawerFooter({
       <button
         type="button"
         onClick={onDone}
-        className="px-4 py-1.5 rounded-lg bg-[var(--accent)] text-white font-medium text-xs hover:opacity-90 transition-opacity shadow-xs cursor-pointer"
+        className="px-4 py-1.5 rounded-lg bg-[var(--accent)] text-white font-medium text-xs hover:opacity-90 transition-opacity shadow-[var(--shadow-xs)] cursor-pointer"
       >
         {t('appearance.done', {}, lang)}
       </button>

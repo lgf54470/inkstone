@@ -153,7 +153,7 @@ function CalendarShell({ isFullPage, children }: { isFullPage: boolean; children
   return (
     <div
       className={`rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 text-[var(--text-primary)] transition-all ${
-        isFullPage ? 'max-w-2xl mx-auto shadow-md p-6' : 'shadow-xs'
+        isFullPage ? 'max-w-2xl mx-auto shadow-[var(--shadow-hover)] p-6' : 'shadow-[var(--shadow-xs)]'
       }`}
     >
       {children}
@@ -348,7 +348,7 @@ function DayCell({
       disabled={!hasPosts}
       className={`relative aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-medium transition-all ${
         isSelected
-          ? 'bg-[var(--accent)] text-white font-semibold shadow-xs ring-2 ring-[var(--accent)] ring-offset-1'
+          ? 'bg-[var(--accent)] text-white font-semibold shadow-[var(--shadow-xs)] ring-2 ring-[var(--accent)] ring-offset-1'
           : hasPosts
           ? 'bg-[var(--accent-softer)] text-[var(--accent)] hover:bg-[var(--accent-soft)] cursor-pointer font-bold'
           : isToday
@@ -374,7 +374,7 @@ function SelectedDayPanel({
   onClose: () => void
 }) {
   return (
-    <div className="mt-4 p-3 rounded-lg bg-[var(--bg-raised)] border border-[var(--border-subtle)] animate-in fade-in slide-in-from-top-1 duration-150">
+    <div className="mt-4 p-3 rounded-lg bg-[var(--bg-raised)] border border-[var(--border-subtle)] animate-in fade-in slide-in-from-top-1 duration-[var(--dur-fast)]">
       <div className="flex items-center justify-between text-xs font-medium text-[var(--text-secondary)] mb-2">
         <span>{t('calendar.posts_count', { date: day.date, count: day.posts.length }, locale)}</span>
         <button

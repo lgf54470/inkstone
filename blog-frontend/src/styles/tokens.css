@@ -23,6 +23,7 @@
   --dur-fast: 130ms;
   --dur-base: 220ms;
   --dur-slow: 340ms;
+  --anim-spin: 0.8s;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
@@ -96,6 +97,9 @@
   --shadow-float: 0 1px 2px oklch(0% 0 0 / 12%);
   --shadow-thumb: 0 1px 3px oklch(0% 0 0 / 20%);
   --shadow-float-lg: 0 2px 8px oklch(0% 0 0 / 8%);
+  --shadow-xs: 0 1px 2px oklch(0% 0 0 / 5%);
+  --shadow-sm: 0 1px 2px oklch(0% 0 0 / 40%);
+  --shadow-hover: 0 4px 6px -1px oklch(0% 0 0 / 10%), 0 2px 4px -2px oklch(0% 0 0 / 10%);
 
   --selection: color-mix(in oklab, var(--accent) 30%, transparent);
   --success: oklch(72% 0.145 155);
@@ -147,6 +151,9 @@
     0 12px 28px -8px oklch(20% 0.01 265 / 12%), 0 24px 56px -16px oklch(20% 0.01 265 / 10%);
   --shadow-modal: 0 0 0 1px oklch(20% 0.01 265 / 7%), 0 8px 16px -4px oklch(20% 0.01 265 / 8%),
     0 24px 48px -12px oklch(20% 0.01 265 / 16%);
+  --shadow-xs: 0 1px 2px oklch(20% 0.01 265 / 5%);
+  --shadow-sm: 0 1px 2px oklch(20% 0.01 265 / 6%);
+  --shadow-hover: 0 4px 6px -1px oklch(20% 0.01 265 / 10%), 0 2px 4px -2px oklch(20% 0.01 265 / 10%);
 
   --selection: color-mix(in oklab, var(--accent) 22%, transparent);
 

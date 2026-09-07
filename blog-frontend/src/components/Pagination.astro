@@ -52,7 +52,7 @@ const pageUrl = (p: number) => getPageUrl(p, baseUrl)
         href={pageUrl(p as number)}
         class={`w-8 h-8 rounded-lg text-xs font-medium flex items-center justify-center transition-all ${
           isCurrent
-            ? 'bg-[var(--accent)] text-white shadow-xs font-bold'
+            ? 'bg-[var(--accent)] text-white shadow-[var(--shadow-xs)] font-bold'
             : 'border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         }`}
         aria-current={isCurrent ? 'page' : undefined}
