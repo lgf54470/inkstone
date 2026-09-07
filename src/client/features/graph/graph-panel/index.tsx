@@ -23,7 +23,7 @@ import { loadPreferences, normalizedResponse } from './helpers'
 import { GRAPH_PREFS_KEY } from './constants'
 import type { CanvasNode, CanvasState } from './types'
 
-const TRACKING_TITLE = 'tracking-[-0.014em]'
+const TRACKING_TITLE = 'tracking-[var(--tracking-graph-title)]'
 
 function useGraphPrefs() {
   const [prefs, setPrefs] = useState(loadPreferences)

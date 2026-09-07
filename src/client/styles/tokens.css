@@ -112,6 +112,16 @@
   --tracking-h1: 0.01em;
   --tracking-tagline: 0.04em;
   --tracking-footer: 0.05em;
+  --tracking-section: 0.07em;
+  --tracking-group: 0.075em;
+  --tracking-app-title: 0.02em;
+  --tracking-stat: -0.02em;
+  --tracking-code: 0.08em;
+  --tracking-code-input: 0.04em;
+  --tracking-hint: 0.04em;
+  --tracking-graph-title: -0.014em;
+  --tracking-list-title: -0.016em;
+  --tracking-share-h1: -0.03em;
 
 
   --success: oklch(70% 0.14 155);

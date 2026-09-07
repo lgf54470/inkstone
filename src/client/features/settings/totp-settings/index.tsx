@@ -12,8 +12,8 @@ import { InlineError } from './inline-error';
 import { useTotpSettings, type TotpPanel, type TotpSettingsState } from './use-totp-settings';
 
 const TOTP_GRID_COLS = 'md:grid-cols-[210px_minmax(0,1fr)]'
-const TRACKING_CODE = 'tracking-[0.08em]'
-const TRACKING_INPUT = 'tracking-[0.04em]'
+const TRACKING_CODE = 'tracking-[var(--tracking-code)]'
+const TRACKING_INPUT = 'tracking-[var(--tracking-code-input)]'
 
 export function TotpSettings() {
   const s = useTotpSettings()

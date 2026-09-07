@@ -3,7 +3,7 @@ import { cn } from '../lib/cn'
 import { prettyCombo } from '../lib/hotkeys'
 import { resolveAvatarSource } from '../lib/avatar'
 
-const TRACKING_GROUP = 'tracking-[0.075em]'
+const TRACKING_GROUP = 'tracking-[var(--tracking-group)]'
 const LOGO_BOX = 27
 const AVATAR_FONT_RATIO = 0.42
 

@@ -12,7 +12,7 @@ import { t } from '../../../lib/i18n';
 import type { ShareRenderBundle } from './use-share-page';
 import { useShareLoad, useShareRendering } from './use-share-page';
 
-const TRACKING_H1 = 'tracking-[-0.03em]'
+const TRACKING_H1 = 'tracking-[var(--tracking-share-h1)]'
 
 export function SharePage({ slug }: {
   slug: string;

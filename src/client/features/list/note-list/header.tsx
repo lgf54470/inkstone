@@ -67,7 +67,7 @@ interface NoteListHeaderProps {
   notes: NoteSummary[]
 }
 
-const TRACKING_TITLE = 'tracking-[-0.016em]'
+const TRACKING_TITLE = 'tracking-[var(--tracking-list-title)]'
 
 function HeaderIconAction({
   label,

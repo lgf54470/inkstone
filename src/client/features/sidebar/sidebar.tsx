@@ -28,7 +28,7 @@ import { SidebarRail } from './sidebar/sidebar-rail';
 import { TagSection } from './sidebar/sidebar-tags';
 import { ViewItem } from './sidebar/sidebar-nav-buttons';
 
-const TRACKING_APP_TITLE = 'tracking-[0.02em]'
+const TRACKING_APP_TITLE = 'tracking-[var(--tracking-app-title)]'
 
 export function Sidebar({ collapsed = false, onCollapse, }: {
     collapsed?: boolean;

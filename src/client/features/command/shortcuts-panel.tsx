@@ -6,7 +6,7 @@ import { hotkeyText, listHotkeys } from '../../lib/hotkeys';
 import { cn } from '../../lib/cn';
 import { t, type MessageKey } from '../../lib/i18n';
 
-const TRACKING_SECTION = 'tracking-[0.07em]'
+const TRACKING_SECTION = 'tracking-[var(--tracking-section)]'
 const MODAL_WIDTH = 720
 
 const EDITOR_SHORTCUTS: {

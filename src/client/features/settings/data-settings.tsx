@@ -13,7 +13,7 @@ import { AttachmentManager } from '../attachments';
 import { t } from '../../lib/i18n';
 import { restoreMarkdownBackupFolder } from '../../lib/backup-import';
 
-const TRACKING_STAT = 'tracking-[-0.02em]'
+const TRACKING_STAT = 'tracking-[var(--tracking-stat)]'
 
 export function DataSettings() {
   const d = useDataSettings();

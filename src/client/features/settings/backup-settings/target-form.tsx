@@ -11,7 +11,7 @@ import { useUi, type UiState } from '../../../store/ui';
 type ToastFn = UiState['toast'];
 import { t, translateServiceMessage } from '../../../lib/i18n';
 
-const TRACKING_HINT = 'tracking-[0.04em]'
+const TRACKING_HINT = 'tracking-[var(--tracking-hint)]'
 const MODAL_WIDTH = 520
 
 interface TargetFormFields {
