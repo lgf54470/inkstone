@@ -51,7 +51,7 @@ function PropertiesHeader({ bundle }: { bundle: NotePropertiesBundle }) {
         onClick={() => setIsExpanded(!isExpanded)}
         className="p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
       >
-        <ChevronDown size={14} className={cn('transition-transform duration-200', !isExpanded && '-rotate-90')} />
+        <ChevronDown size={14} className={cn('transition-transform duration-[var(--dur-base)]', !isExpanded && '-rotate-90')} />
       </button>
     </div>
   )

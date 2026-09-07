@@ -68,7 +68,7 @@ function CategoryList({ bundle }: { bundle: ShareHubSidebarBundle }) {
             {cat.icon}
             <span className="flex-1 text-left">{cat.label}</span>
             {cat.count !== undefined && cat.count > 0 && (
-              <span className="tabular rounded bg-[var(--bg-card)] px-1.5 py-0.5 text-[length:var(--text-10)] font-medium text-[var(--text-tertiary)] shadow-sm">
+              <span className="tabular rounded bg-[var(--bg-card)] px-1.5 py-0.5 text-[length:var(--text-10)] font-medium text-[var(--text-tertiary)] shadow-[var(--shadow-sm)]">
                 {cat.count}
               </span>
             )}

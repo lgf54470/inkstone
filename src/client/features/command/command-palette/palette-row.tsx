@@ -20,7 +20,7 @@ export const PaletteRow = memo(function PaletteRow({ item, active, index, listId
     return (<button id={`${listId}-option-${index}`} type="button" role="option" aria-selected={active} tabIndex={-1} data-index={index} onMouseEnter={() => {
         onPointerNav();
         onActivate(index);
-    }} onClick={() => onSelect(item)} className={cn('flex w-full items-center gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left', isKeyboardNav && 'transition-colors duration-[80ms]', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
+    }} onClick={() => onSelect(item)} className={cn('flex w-full items-center gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left', isKeyboardNav && 'transition-colors duration-[var(--dur-xs)]', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
       <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>
         {item.icon}
       </span>

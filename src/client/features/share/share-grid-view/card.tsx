@@ -40,7 +40,7 @@ export function ShareGridCard({ share, isSelected, folders, copiedSlug, onToggle
       onDragStart={(e) => { e.dataTransfer.setData('application/inkstone-share-note-ids', JSON.stringify([share.noteId])); e.dataTransfer.effectAllowed = 'copyMove' }}
       onContextMenu={(e) => { setIsFolderMenuOpen(false); contextMenu.onContextMenu(e) }}
       onDoubleClick={onOpenEdit}
-      className={cn('group relative flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 shadow-[var(--shadow-soft)] transition-all hover:border-[var(--border-default)] hover:shadow-md cursor-grab active:cursor-grabbing select-none', isSelected ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]' : '')}
+      className={cn('group relative flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 shadow-[var(--shadow-soft)] transition-all hover:border-[var(--border-default)] hover:shadow-[var(--shadow-hover)] cursor-grab active:cursor-grabbing select-none', isSelected ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]' : '')}
     >
       <div>
         <CardHeader share={share} isSelected={isSelected} onToggleSelect={onToggleSelect} onTogglePin={onTogglePin} onToggleStar={onToggleStar} onToggleShare={onToggleShare} onOpenEdit={onOpenEdit} />

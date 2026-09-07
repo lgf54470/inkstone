@@ -13,7 +13,7 @@ function FolderNameField({ name, onNameChange }: { name: string; onNameChange: (
         value={name}
         onChange={(e) => onNameChange(e.target.value)}
         placeholder={t('common.new_folder')}
-        className="h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-3 text-[length:var(--text-13)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)]"
+        className="h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-3 text-[length:var(--text-13)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]"
       />
     </label>
   )

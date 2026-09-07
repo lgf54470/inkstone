@@ -69,7 +69,7 @@ export function FolderColorPicker({ folder, onPick }: {
               )}
               style={{ backgroundColor: color }}
             >
-              {isSelected && <Check size={12} className="text-white drop-shadow-sm" />}
+              {isSelected && <Check size={12} className="text-white drop-shadow-[var(--drop-shadow-sm)]" />}
             </button>
           </Tooltip>
         );

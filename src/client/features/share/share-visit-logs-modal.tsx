@@ -156,7 +156,7 @@ function CleanLogsMenu({ isCleaning, onClean }: {
       >
         {t('share.clean_logs_btn')}
       </Button>
-      <div className="absolute right-0 top-full z-[var(--z-menu)] mt-1 hidden min-w-[150px] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1 shadow-lg group-hover:block">
+      <div className="absolute right-0 top-full z-[var(--z-menu)] mt-1 hidden min-w-[150px] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1 shadow-[var(--shadow-pop)] group-hover:block">
         <button
           type="button"
           onClick={() => void onClean('bots')}

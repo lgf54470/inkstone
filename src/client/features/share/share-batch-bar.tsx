@@ -40,7 +40,7 @@ export function ShareBatchBar({
     }
 
     return (
-        <div className="absolute bottom-6 left-1/2 z-[var(--z-float)] flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-4 py-2 shadow-2xl backdrop-blur-md shrink-0 whitespace-nowrap max-w-[calc(100%-2rem)]">
+        <div className="absolute bottom-6 left-1/2 z-[var(--z-float)] flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-4 py-2 shadow-[var(--shadow-pop)] backdrop-blur-md shrink-0 whitespace-nowrap max-w-[calc(100%-2rem)]">
             <span className="shrink-0 whitespace-nowrap text-[length:var(--text-12)] font-medium text-[var(--text-primary)]">
                 {t('share.selected_count', { count: selectedCount })}
             </span>

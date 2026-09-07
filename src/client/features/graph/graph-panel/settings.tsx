@@ -28,7 +28,7 @@ interface GraphSettingsPanelProps {
 
 export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTags, isLimitOpen, onToggleLimit, onClose, onResetTagFilters, onRestoreDefaults }: GraphSettingsPanelProps) {
   return (
-      <aside aria-label={t('graph.settings')} className="absolute inset-y-0 right-0 z-[var(--z-sticky)] w-[min(88vw,300px)] overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 shadow-[-8px_0_24px_rgba(0,0,0,.06)] md:static md:shadow-none">
+      <aside aria-label={t('graph.settings')} className="absolute inset-y-0 right-0 z-[var(--z-sticky)] w-[min(88vw,300px)] overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 shadow-[var(--shadow-edge)] md:static md:shadow-none">
         <div className="mb-4 flex items-center justify-between"><h3 className="text-[length:var(--text-13)] font-semibold">{t('graph.settings')}</h3><Tooltip label={t('common.close')}><IconButton size="sm" label={t('common.close')} onClick={onClose}><X size={14}/></IconButton></Tooltip></div>
         <GraphSection icon={<Filter size={13}/>} title={t('graph.filters')}>
           <GraphSelect label={t('graph.folder')} value={prefs.folderId} onChange={(value) => onChange('folderId', value)} options={[['', t('graph.all_folders')], ...folders.map((folder) => [folder.id, folder.name] as [string, string])]}/>

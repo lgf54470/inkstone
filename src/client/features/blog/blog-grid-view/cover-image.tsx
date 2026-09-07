@@ -5,7 +5,7 @@ import { extractCoverUrl } from '@shared/markdown-utils'
 export function PostCoverImage({
   src,
   alt,
-  className = 'size-full object-cover transition-transform duration-300 group-hover:scale-105',
+  className = 'size-full object-cover transition-transform duration-[var(--dur-slow)] group-hover:scale-105',
   fallbackIconSize = 28,
 }: {
   src?: string

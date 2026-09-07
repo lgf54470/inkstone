@@ -34,7 +34,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
       data-workspace-pane={grouped ? pane : undefined}
       onPointerDownCapture={() => activateWorkspacePane(pane, grouped, b.paneActive, b.activateWorkspacePane)}
       onFocusCapture={() => activateWorkspacePane(pane, grouped, b.paneActive, b.activateWorkspacePane)}
-      className={cn('flex h-full min-h-0 flex-col bg-[var(--bg-editor)]', grouped && b.paneActive && 'shadow-[inset_0_2px_0_var(--accent)]')}
+      className={cn('flex h-full min-h-0 flex-col bg-[var(--bg-editor)]', grouped && b.paneActive && 'shadow-[var(--shadow-inset-accent)]')}
     >
       <WorkspaceHeader b={b} grouped={grouped} onMobileBack={onMobileBack} exportMenuItems={exportMenuItems} />
       <WorkspaceToolbar b={b} />

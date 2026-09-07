@@ -35,13 +35,13 @@ type Size = 'sm' | 'md' | 'lg'
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    'bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-hover)] shadow-[0_1px_2px_rgba(0,0,0,.14)]',
+    'bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-hover)] shadow-[var(--shadow-btn)]',
   secondary:
     'border border-[var(--border-default)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-strong)]',
   ghost: 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
   subtle: 'bg-[var(--bg-raised)] text-[var(--text-primary)] hover:bg-[var(--bg-active)]',
   danger:
-    'bg-[var(--danger)] text-white hover:brightness-108 shadow-[0_1px_2px_rgba(0,0,0,.14)]',
+    'bg-[var(--danger)] text-white hover:brightness-108 shadow-[var(--shadow-btn)]',
 }
 
 const SIZES: Record<Size, string> = {

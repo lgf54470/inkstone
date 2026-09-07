@@ -136,11 +136,11 @@ function GraphScopeToggle({ mode, onModeChange, hasActiveNote }: {
   return (
     <div className="flex h-8 items-center rounded-[var(--r-md)] bg-[var(--bg-inset)] p-0.5" role="group" aria-label={t('graph.scope')}>
       <button type="button" aria-pressed={mode === 'global'} onClick={() => onModeChange('global')}
-        className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\.5)] ${mode === 'global' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-tertiary)]'}`}>
+        className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\.5)] ${mode === 'global' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]'}`}>
         {t('graph.global')}
       </button>
       <button type="button" aria-pressed={mode === 'local'} disabled={!hasActiveNote} onClick={() => onModeChange('local')}
-        className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\.5)] disabled:opacity-40 ${mode === 'local' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-tertiary)]'}`}>
+        className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\.5)] disabled:opacity-40 ${mode === 'local' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]'}`}>
         {t('graph.local')}
       </button>
     </div>

@@ -41,7 +41,7 @@ interface DayInteractions {
 
 function Reveal({ open, children }: { open: boolean; children: ReactNode }) {
   return (
-    <div className={cn('grid transition-[grid-template-rows] duration-[var(--dur-base)] ease-out', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+    <div className={cn('grid transition-[grid-template-rows] duration-[var(--dur-base)] ease-[var(--ease-out)]', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
       <div aria-hidden={!open} inert={!open} className="min-h-0 overflow-hidden">
         {children}
       </div>

@@ -26,7 +26,7 @@ function StatusTab({
       onClick={() => onSelect(value)}
       className={`rounded-[var(--r-sm)] px-2.5 py-1 text-[length:var(--text-11\\.5)] font-medium transition-colors ${
         active
-          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
+          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
           : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
       }`}
     >
@@ -116,7 +116,7 @@ function ViewModeButton({
       title={title}
       className={`flex size-6 items-center justify-center rounded-[var(--r-sm)] transition-colors ${
         active
-          ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-sm'
+          ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-[var(--shadow-sm)]'
           : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
       }`}
     >

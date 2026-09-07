@@ -200,7 +200,7 @@ function NoteSearchField({
           'h-10 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] md:h-[30px]',
           'pr-9 pl-8 text-[length:var(--text-12\\.5)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] md:pr-7 md:pl-7',
           'transition-[border-color,box-shadow] duration-[var(--dur-fast)]',
-          'focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none',
+          'focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)] focus:outline-none',
         )}
       />
       {filter && (

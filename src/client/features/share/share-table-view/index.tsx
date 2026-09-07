@@ -64,7 +64,7 @@ export function ShareTableView({
 
 function ShareTableHeader({ allSelected, onToggleAll }: { allSelected: boolean; onToggleAll: () => void }) {
     return (
-        <thead className="sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-card)] shadow-xs">
+        <thead className="sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-card)] shadow-[var(--shadow-xs)]">
             <tr className="border-b border-[var(--border-subtle)] text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]">
                 <th className="w-10 px-3 py-2 text-center">
                     <input

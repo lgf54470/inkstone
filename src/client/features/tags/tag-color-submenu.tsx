@@ -38,7 +38,7 @@ function ColorSwatchButton({ color, active, onSelect }: { color: string; active:
       )}
       style={{ backgroundColor: color }}
     >
-      {active && <Check size={13} className="text-white drop-shadow-sm" />}
+      {active && <Check size={13} className="text-white drop-shadow-[var(--drop-shadow-sm)]" />}
     </button>
   )
 }

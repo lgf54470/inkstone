@@ -78,8 +78,8 @@ export function ImagePreview({ bundle }: { bundle: FilePreviewBundle }) {
               setIsImageLoading(false)
               setIsImageError(true)
             }}
-            style={{ transform: `scale(${imageScale}) rotate(${imageRotation}deg)`, transition: 'transform 0.15s ease-out' }}
-            className="max-h-[56vh] max-w-full object-contain rounded-[var(--r-md)] shadow-sm select-none"
+            style={{ transform: `scale(${imageScale}) rotate(${imageRotation}deg)`, transition: 'transform var(--dur-fast) var(--ease-out)' }}
+            className="max-h-[56vh] max-w-full object-contain rounded-[var(--r-md)] shadow-[var(--shadow-sm)] select-none"
           />
         )}
       </div>
@@ -90,25 +90,25 @@ export function ImagePreview({ bundle }: { bundle: FilePreviewBundle }) {
 export function MediaPreview({ bundle }: { bundle: FilePreviewBundle }) {
   const { filename, ext, previewUrl, isPdf, isVideo } = bundle
   if (isPdf) {
-    return <iframe src={previewUrl} title={filename} className="w-full h-[62vh] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-white shadow-xs" />
+    return <iframe src={previewUrl} title={filename} className="w-full h-[62vh] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-white shadow-[var(--shadow-xs)]" />
   }
   if (isVideo) {
     return (
-      <div className="flex items-center justify-center rounded-[var(--r-lg)] bg-black overflow-hidden shadow-xs">
+      <div className="flex items-center justify-center rounded-[var(--r-lg)] bg-black overflow-hidden shadow-[var(--shadow-xs)]">
         <video controls src={previewUrl} className="max-h-[60vh] w-full" autoPlay={false} />
       </div>
     )
   }
   return (
     <div className="py-16 flex flex-col items-center justify-center gap-6">
-      <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm">
+      <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[var(--accent-soft)] text-[var(--accent)] shadow-[var(--shadow-sm)]">
         <Music size={36} />
       </div>
       <div className="text-center">
         <h4 className="text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]">{filename}</h4>
         <p className="text-[length:var(--text-12)] text-[var(--text-tertiary)] uppercase mt-0.5">{ext}</p>
       </div>
-      <audio controls src={previewUrl} className="w-full max-w-md shadow-xs" autoPlay={false} />
+      <audio controls src={previewUrl} className="w-full max-w-md shadow-[var(--shadow-xs)]" autoPlay={false} />
     </div>
   )
 }
@@ -127,7 +127,7 @@ export function UnsupportedPreview({ bundle }: { bundle: FilePreviewBundle }) {
       <a
         href={url}
         download={filename}
-        className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-4 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] shadow-xs transition-transform active:translate-y-px cursor-pointer"
+        className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-4 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] shadow-[var(--shadow-xs)] transition-transform active:translate-y-px cursor-pointer"
       >
         <Download size={13} />
         <span>{t('workspace.download_file')}</span>
@@ -143,7 +143,7 @@ function ModeTab({ active, onClick, icon, label }: { active: boolean; onClick: (
       onClick={onClick}
       className={cn(
         'flex items-center gap-1 px-2.5 py-1 rounded transition-colors cursor-pointer',
-        active ? 'bg-[var(--bg-surface)] text-[var(--accent)] font-semibold shadow-xs' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]',
+        active ? 'bg-[var(--bg-surface)] text-[var(--accent)] font-semibold shadow-[var(--shadow-xs)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]',
       )}
     >
       {icon}

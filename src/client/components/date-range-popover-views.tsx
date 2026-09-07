@@ -35,8 +35,8 @@ export function EndpointToggle({ editing, onSelect }: {
     onSelect: (endpoint: 'start' | 'end') => void;
 }): JSX.Element {
     return (<div role="group" aria-label={t("notes.range_editor_endpoint")} className="mt-1.5 flex items-center gap-0.5 rounded-[var(--r-sm)] bg-[var(--bg-inset)] p-0.5">
-        <button type="button" aria-pressed={editing === 'start'} onClick={() => onSelect('start')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-10\\.5)] transition-colors', editing === 'start' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-sm' : 'text-[var(--text-tertiary)]')}>{t("notes.range_editor_start")}</button>
-        <button type="button" aria-pressed={editing === 'end'} onClick={() => onSelect('end')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-10\\.5)] transition-colors', editing === 'end' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-sm' : 'text-[var(--text-tertiary)]')}>{t("notes.range_editor_end")}</button>
+        <button type="button" aria-pressed={editing === 'start'} onClick={() => onSelect('start')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-10\\.5)] transition-colors', editing === 'start' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]')}>{t("notes.range_editor_start")}</button>
+        <button type="button" aria-pressed={editing === 'end'} onClick={() => onSelect('end')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-10\\.5)] transition-colors', editing === 'end' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]')}>{t("notes.range_editor_end")}</button>
     </div>);
 }
 

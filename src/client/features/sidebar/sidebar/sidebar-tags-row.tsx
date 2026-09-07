@@ -98,7 +98,7 @@ function TagRowChevron({ hasChildren, depth, isExpanded, onToggleExpand }: {
         e.stopPropagation();
         onToggleExpand?.();
     }} className="flex size-4 shrink-0 items-center justify-center rounded text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]">
-        <ChevronRight size={11} className={cn('transition-transform duration-150', isExpanded && 'rotate-90')}/>
+        <ChevronRight size={11} className={cn('transition-transform duration-[var(--dur-fast)]', isExpanded && 'rotate-90')}/>
     </button>);
     return depth > 0 ? <span className="w-4 shrink-0"/> : null;
 }

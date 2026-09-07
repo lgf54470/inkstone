@@ -191,7 +191,7 @@ function FilePreviewBlock({ file, isImage, badge, onPreview }: {
       className="group relative flex aspect-video w-full cursor-pointer items-center justify-center overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]"
     >
       {isImage ? (
-        <img src={file.url} alt={file.filename} className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105" />
+        <img src={file.url} alt={file.filename} className="h-full w-full object-cover transition-transform duration-[var(--dur-base)] group-hover:scale-105" />
       ) : (
         <div className={cn('flex flex-col items-center gap-1.5 p-4 rounded-xl', badge.bg)}>
           <span className={cn('text-lg font-bold tracking-wider', badge.text)}>{badge.label}</span>

@@ -79,7 +79,7 @@ function TagsSearchRow({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder={t('notes.tag_filter_search')}
-          className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pl-9 pr-3 text-[length:var(--text-12\\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)]"
+          className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pl-9 pr-3 text-[length:var(--text-12\\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]"
         />
       </div>
       {unusedTags.length > 0 && !isCreating && (

@@ -84,7 +84,7 @@ function TagColorButton({
       >
         <Hash
           size={14}
-          className={color ? 'drop-shadow-sm' : ''}
+          className={color ? 'drop-shadow-[var(--drop-shadow-sm)]' : ''}
           style={{ color: color ?? 'var(--text-quaternary)' }}
         />
       </button>
@@ -236,7 +236,7 @@ function TagColorPalette({ tag, onClose }: { tag: Tag; onClose: () => void }) {
             )}
             style={{ backgroundColor: color }}
           >
-            {color === tag.color && <Check size={12} className="text-white drop-shadow-sm" />}
+            {color === tag.color && <Check size={12} className="text-white drop-shadow-[var(--drop-shadow-sm)]" />}
           </button>
         </Tooltip>
       ))}

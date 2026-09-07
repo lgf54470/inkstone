@@ -80,7 +80,7 @@ export function AttachmentDashboardView(props: AttachmentDashboardViewProps) {
       <StatCardsGrid stats={stats} totalBytes={totalBytes} totalQuota={totalQuota} onPrune={onPrune} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-5 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-xs)] flex flex-col justify-between">
           <CardHeader icon={<Database size={15} className="text-[var(--accent)]" />} title={t('attachments.storage_donut_title')} side={formatFileSize(totalQuota)} />
           <StorageDonut usedPercentage={usedPercentage} usedRatio={usedRatio} freeBytes={freeBytes} />
           <div className="rounded-[var(--r-md)] bg-[var(--bg-subtle)] p-3 text-[length:var(--text-12)] flex items-center justify-between">
@@ -92,7 +92,7 @@ export function AttachmentDashboardView(props: AttachmentDashboardViewProps) {
           </div>
         </div>
 
-        <div className="lg:col-span-7 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-7 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-xs)] flex flex-col justify-between">
           <CardHeader icon={<Images size={15} className="text-[var(--accent)]" />} title={t('attachments.category_breakdown')} side={`${stats?.totalCount ?? 0} ${t('attachments.all_files')}`} />
           <div className="space-y-3.5 py-3">
             {categories.map((cat) => (
@@ -141,7 +141,7 @@ function StatCard({ icon, iconClass, label, value, children }: {
   children?: ReactNode
 }) {
   return (
-    <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 flex items-center gap-3.5 shadow-xs">
+    <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 flex items-center gap-3.5 shadow-[var(--shadow-xs)]">
       <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--r-md)]', iconClass)}>
         {icon}
       </div>
@@ -157,7 +157,7 @@ function StatCard({ icon, iconClass, label, value, children }: {
 
 function UnreferencedCard({ count, onPrune }: { count: number; onPrune: () => void }) {
   return (
-    <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 flex items-center gap-3.5 shadow-xs">
+    <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 flex items-center gap-3.5 shadow-[var(--shadow-xs)]">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--r-md)] bg-amber-500/10 text-amber-500">
         <Link2Off size={20} />
       </div>
@@ -211,7 +211,7 @@ function StorageDonut({ usedPercentage, usedRatio, freeBytes }: { usedPercentage
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            className="text-[var(--accent)] transition-all duration-700 ease-out"
+            className="text-[var(--accent)] transition-all duration-[var(--dur-slow)] ease-[var(--ease-out)]"
           />
         </svg>
         <div className="absolute flex flex-col items-center text-center px-4">
@@ -246,7 +246,7 @@ function CategoryRow({ cat, onSelectCategory }: { cat: CategoryBreakdown; onSele
         </div>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--bg-subtle)]">
-        <div className={cn('h-full rounded-full transition-all duration-500', cat.barColor)} style={{ width: `${Math.max(cat.bytes > 0 ? 2 : 0, Number(pct))}%` }} />
+        <div className={cn('h-full rounded-full transition-all duration-[var(--dur-slow)]', cat.barColor)} style={{ width: `${Math.max(cat.bytes > 0 ? 2 : 0, Number(pct))}%` }} />
       </div>
     </div>
   )
@@ -282,7 +282,7 @@ function LargestFilesCard({ stats, onPreviewFile, onDownloadFile, onDeleteFile }
 }) {
   const files = stats?.largestFiles ?? []
   return (
-    <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-xs space-y-4">
+    <div className="rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-xs)] space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-[length:var(--text-13\\.5)] text-[var(--text-primary)] flex items-center gap-2">
           <HardDrive size={15} className="text-[var(--accent)]" />

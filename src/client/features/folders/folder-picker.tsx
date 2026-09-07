@@ -49,7 +49,7 @@ export function FolderPicker({
         <label className="relative block">
           <Search size={14} aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--text-quaternary)]"/>
           <span className="sr-only">{t("folders.search")}</span>
-          <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("folders.search")} className="h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pr-3 pl-9 text-[length:var(--text-13)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-ring)]"/>
+          <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("folders.search")} className="h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pr-3 pl-9 text-[length:var(--text-13)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]"/>
         </label>
       </div>
       <div className="space-y-1 p-2">

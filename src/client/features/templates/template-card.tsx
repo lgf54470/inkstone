@@ -246,8 +246,8 @@ function templateCardClass(state: {
     state.dragging && 'opacity-50',
     state.selected ? 'border-[var(--accent)] bg-[var(--accent-soft)] shadow-[var(--shadow-sm)]' : 'border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)]',
     state.focused && 'ring-1 ring-[var(--accent)]',
-    state.dropHint === true && 'shadow-[0_3px_0_0_var(--accent)]',
-    state.dropHint === false && 'shadow-[0_-3px_0_0_var(--accent)]',
+    state.dropHint === true && 'shadow-[var(--shadow-drop-top)]',
+    state.dropHint === false && 'shadow-[var(--shadow-drop-bottom)]',
   )
 }
 

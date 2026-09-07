@@ -226,7 +226,7 @@ function ViewModeToggle({ viewMode, onViewModeChange }: { viewMode: 'grid' | 'li
         <button
           type="button"
           onClick={() => onViewModeChange('grid')}
-          className={cn('rounded p-1 text-[var(--text-tertiary)] transition-colors cursor-pointer', viewMode === 'grid' ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-xs' : 'hover:text-[var(--text-primary)]')}
+          className={cn('rounded p-1 text-[var(--text-tertiary)] transition-colors cursor-pointer', viewMode === 'grid' ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-[var(--shadow-xs)]' : 'hover:text-[var(--text-primary)]')}
         >
           <Grid size={14} />
         </button>
@@ -235,7 +235,7 @@ function ViewModeToggle({ viewMode, onViewModeChange }: { viewMode: 'grid' | 'li
         <button
           type="button"
           onClick={() => onViewModeChange('list')}
-          className={cn('rounded p-1 text-[var(--text-tertiary)] transition-colors cursor-pointer', viewMode === 'list' ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-xs' : 'hover:text-[var(--text-primary)]')}
+          className={cn('rounded p-1 text-[var(--text-tertiary)] transition-colors cursor-pointer', viewMode === 'list' ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-[var(--shadow-xs)]' : 'hover:text-[var(--text-primary)]')}
         >
           <List size={14} />
         </button>
@@ -257,7 +257,7 @@ function ZoomControl({ zoom, onZoomChange }: { zoom: 'sm' | 'md' | 'lg'; onZoomC
           key={opt.id}
           type="button"
           onClick={() => onZoomChange(opt.id)}
-          className={cn('px-1.5 py-0.5 rounded cursor-pointer', zoom === opt.id ? 'bg-[var(--bg-surface)] text-[var(--accent)] font-semibold shadow-xs' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]')}
+          className={cn('px-1.5 py-0.5 rounded cursor-pointer', zoom === opt.id ? 'bg-[var(--bg-surface)] text-[var(--accent)] font-semibold shadow-[var(--shadow-xs)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]')}
         >
           {opt.label}
         </button>

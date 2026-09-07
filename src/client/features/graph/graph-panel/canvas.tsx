@@ -306,7 +306,7 @@ function GraphOverlays({ data, hover, selected, hint }: {
   const shown = hover ?? selected
   return (
     <>
-      {data.meta.truncated && <div role="status" className="absolute top-3 left-1/2 -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3 py-1 text-[length:var(--text-11)] text-[var(--text-secondary)] shadow-sm">
+      {data.meta.truncated && <div role="status" className="absolute top-3 left-1/2 -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3 py-1 text-[length:var(--text-11)] text-[var(--text-secondary)] shadow-[var(--shadow-sm)]">
         {t('graph.showing_limit', { shown: data.nodes.length, total: data.meta.totalNodes })}
       </div>}
       {shown && <div className="pointer-events-none absolute bottom-4 left-1/2 max-w-[80vw] -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3.5 py-1.5 text-[length:var(--text-12)] shadow-[var(--shadow-pop)]">

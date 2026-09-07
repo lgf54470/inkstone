@@ -138,7 +138,7 @@ function AccentSwatches({ appearance, accents, setters }: { appearance: Appearan
               style={{ background: accent.swatch, color: accent.foreground }}
             >
               {appearance.accent === accent.name && (
-                <Check size={12} strokeWidth={3} className="drop-shadow-sm" />
+                <Check size={12} strokeWidth={3} className="drop-shadow-[var(--drop-shadow-sm)]" />
               )}
             </button>
           </Tooltip>
@@ -161,9 +161,9 @@ function BackgroundSwatches({ appearance, setters }: { appearance: AppearanceSet
             type="button"
             onClick={() => setters.setBackground(background.name)}
             aria-pressed={appearance.background === background.name}
-            className={cn('flex h-8 min-w-[84px] items-center gap-2 rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-11\.5)] transition-[border-color,background-color,box-shadow] duration-[var(--dur-fast)]', appearance.background === background.name ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[0_0_0_2px_var(--accent-ring)]' : 'border-[var(--border-default)] bg-[var(--bg-base)] hover:bg-[var(--bg-hover)]')}
+            className={cn('flex h-8 min-w-[84px] items-center gap-2 rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-11\.5)] transition-[border-color,background-color,box-shadow] duration-[var(--dur-fast)]', appearance.background === background.name ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-ring)]' : 'border-[var(--border-default)] bg-[var(--bg-base)] hover:bg-[var(--bg-hover)]')}
           >
-            <span aria-hidden="true" className="size-4 rounded-full border border-black/10 shadow-sm" style={{ background: background.swatch }} />
+            <span aria-hidden="true" className="size-4 rounded-full border border-black/10 shadow-[var(--shadow-sm)]" style={{ background: background.swatch }} />
             <span>{background.label}</span>
             {appearance.background === background.name && <Check size={11} className="ml-auto text-[var(--accent)]" />}
           </button>

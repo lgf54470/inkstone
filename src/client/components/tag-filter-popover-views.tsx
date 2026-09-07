@@ -23,8 +23,8 @@ export function TagMatchToggle({ match, onChange }: {
     onChange: (match: 'any' | 'all') => void;
 }): JSX.Element {
     return (<div role="group" aria-label={t('notes.selected_tags_match')} className="mt-1.5 flex items-center gap-1 rounded-[var(--r-sm)] bg-[var(--bg-inset)] p-0.5">
-        <button type="button" aria-pressed={match === 'any'} onClick={() => onChange('any')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-11)] transition-colors', match === 'any' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-sm' : 'text-[var(--text-tertiary)]')}>{t('notes.tag_match_any')}</button>
-        <button type="button" aria-pressed={match === 'all'} onClick={() => onChange('all')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-11)] transition-colors', match === 'all' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-sm' : 'text-[var(--text-tertiary)]')}>{t('notes.tag_match_all')}</button>
+        <button type="button" aria-pressed={match === 'any'} onClick={() => onChange('any')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-11)] transition-colors', match === 'any' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]')}>{t('notes.tag_match_any')}</button>
+        <button type="button" aria-pressed={match === 'all'} onClick={() => onChange('all')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-11)] transition-colors', match === 'all' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]')}>{t('notes.tag_match_all')}</button>
     </div>);
 }
 

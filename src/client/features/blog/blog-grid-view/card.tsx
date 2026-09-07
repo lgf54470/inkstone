@@ -38,8 +38,8 @@ export function BlogGridCard({
             className={cn(
                 'group relative flex flex-col rounded-[var(--r-xl)] border transition-all overflow-hidden cursor-grab active:cursor-grabbing select-none',
                 isSelected
-                    ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-sm'
-                    : 'border-[var(--border-default)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] hover:shadow-sm',
+                    ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-sm)]'
+                    : 'border-[var(--border-default)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)]',
             )}
             title={t('blog.drag_to_folder_hint')}
         >
@@ -122,7 +122,7 @@ function CardTopControls({
                     type="checkbox"
                     checked={isSelected}
                     onChange={onToggleSelect}
-                    className="size-4 rounded accent-[var(--accent)] cursor-pointer drop-shadow-sm"
+                    className="size-4 rounded accent-[var(--accent)] cursor-pointer drop-shadow-[var(--drop-shadow-sm)]"
                 />
             </div>
 
@@ -130,7 +130,7 @@ function CardTopControls({
                 type="button"
                 onClick={onTogglePin}
                 className={cn(
-                    'absolute top-2.5 right-2.5 z-[var(--z-sticky)] flex size-6 items-center justify-center rounded-full shadow-sm backdrop-blur transition-all',
+                    'absolute top-2.5 right-2.5 z-[var(--z-sticky)] flex size-6 items-center justify-center rounded-full shadow-[var(--shadow-sm)] backdrop-blur transition-all',
                     post.isPinned
                         ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
                         : 'bg-[var(--bg-overlay)]/90 text-[var(--text-quaternary)] opacity-0 group-hover:opacity-100 hover:text-[var(--accent)]',
@@ -150,11 +150,11 @@ function CardCover({ post }: { post: BlogPost }) {
 
             <div className="absolute bottom-2 left-2">
                 {post.isPublished ? (
-                    <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[length:var(--text-10\.5)] font-semibold text-white shadow-sm backdrop-blur whitespace-nowrap">
+                    <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[length:var(--text-10\.5)] font-semibold text-white shadow-[var(--shadow-sm)] backdrop-blur whitespace-nowrap">
                         {t('blog.published')}
                     </span>
                 ) : (
-                    <span className="rounded-full bg-stone-600/80 px-2 py-0.5 text-[length:var(--text-10\.5)] font-medium text-white shadow-sm backdrop-blur whitespace-nowrap">
+                    <span className="rounded-full bg-stone-600/80 px-2 py-0.5 text-[length:var(--text-10\.5)] font-medium text-white shadow-[var(--shadow-sm)] backdrop-blur whitespace-nowrap">
                         {t('blog.draft')}
                     </span>
                 )}

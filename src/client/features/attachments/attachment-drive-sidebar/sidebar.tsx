@@ -305,7 +305,7 @@ function StatsFooter({ stats }: { stats: AttachmentStats }) {
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-subtle)]">
         <div
           style={{ width: `${Math.max(stats.totalBytes > 0 ? 1 : 0, Number(usedWidthPct))}%` }}
-          className="h-full bg-[var(--accent)] rounded-full transition-all duration-300"
+          className="h-full bg-[var(--accent)] rounded-full transition-all duration-[var(--dur-slow)]"
         />
       </div>
       <div className="text-[length:var(--text-10)] text-[var(--text-quaternary)] flex justify-between">

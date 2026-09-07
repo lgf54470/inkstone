@@ -14,7 +14,7 @@ function WeChatBadge({ count }: { count?: number }) {
         'pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 z-[var(--z-sticky)]',
         'flex items-center justify-center',
         'rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold',
-        'text-[length:var(--text-10)] leading-none select-none shadow-xs',
+        'text-[length:var(--text-10)] leading-none select-none shadow-[var(--shadow-xs)]',
         'ring-2 ring-[var(--bg-sunken)]',
         count > 99
           ? 'h-4 min-w-[22px] px-1'

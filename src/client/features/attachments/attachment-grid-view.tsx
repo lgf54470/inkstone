@@ -93,7 +93,7 @@ function UploadTile({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className="group relative flex aspect-square flex-col items-center justify-center rounded-[var(--r-lg)] border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-sunken)]/20 p-3 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/20 cursor-pointer"
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--bg-surface)] text-[var(--text-tertiary)] shadow-xs transition-transform group-hover:scale-110 group-hover:text-[var(--accent)]">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--bg-surface)] text-[var(--text-tertiary)] shadow-[var(--shadow-xs)] transition-transform group-hover:scale-110 group-hover:text-[var(--accent)]">
         <Plus size={20} />
       </div>
       <span className="mt-2 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] group-hover:text-[var(--accent)]">
@@ -136,8 +136,8 @@ function GridCard(props: GridCardProps) {
       onDoubleClick={onPreview}
       onContextMenu={menu.handleContextMenu}
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-[var(--r-lg)] border bg-[var(--bg-base)] text-left transition-all duration-150 cursor-pointer select-none',
-        selected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-ring)]' : active ? 'border-[var(--accent)] shadow-sm' : 'border-[var(--border-subtle)] hover:border-[var(--border-default)] hover:shadow-xs',
+        'group relative flex flex-col overflow-hidden rounded-[var(--r-lg)] border bg-[var(--bg-base)] text-left transition-all duration-[var(--dur-fast)] cursor-pointer select-none',
+        selected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-ring)]' : active ? 'border-[var(--accent)] shadow-[var(--shadow-sm)]' : 'border-[var(--border-subtle)] hover:border-[var(--border-default)] hover:shadow-[var(--shadow-xs)]',
       )}
     >
       <CardThumb file={file} isImage={isImage} badge={badge} selected={selected} onToggleSelect={onToggleSelect} menu={menu} onToggleStar={onToggleStar} />
@@ -159,7 +159,7 @@ function CardThumb({ file, isImage, badge, selected, onToggleSelect, menu, onTog
   return (
     <div className="relative aspect-4/3 w-full overflow-hidden bg-[var(--bg-sunken)]">
       {isImage ? (
-        <img src={file.url} alt={file.filename} loading="lazy" className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105" />
+        <img src={file.url} alt={file.filename} loading="lazy" className="h-full w-full object-cover transition-transform duration-[var(--dur-base)] group-hover:scale-105" />
       ) : (
         <div className="flex h-full w-full items-center justify-center p-4">
           <div className={cn('flex flex-col items-center gap-1 rounded-xl p-3', badge.bg)}>
@@ -194,7 +194,7 @@ function CardSelect({ selected, onToggleSelect }: { selected: boolean; onToggleS
     >
       <div
         className={cn(
-          'flex h-4 w-4 items-center justify-center rounded border shadow-xs transition-colors',
+          'flex h-4 w-4 items-center justify-center rounded border shadow-[var(--shadow-xs)] transition-colors',
           selected ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-white/80 bg-black/40 hover:bg-black/60',
         )}
       >

@@ -158,7 +158,7 @@ function ImagePane({
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={onToggleScale}
       style={{ transform: `scale(${scale})` }}
-      className={`max-h-[86vh] max-w-[92vw] rounded-[var(--r-md)] object-contain transition-transform duration-200 ease-[var(--ease-out)] ${
+      className={`max-h-[86vh] max-w-[92vw] rounded-[var(--r-md)] object-contain transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)] ${
         scale === 1 ? 'cursor-zoom-in' : 'cursor-zoom-out'
       }`}
     />
