@@ -16,6 +16,7 @@ const FIXTURES: Record<string, string> = {
     mdExample: '~~~md-example title="对比"\n**粗体**\n~~~',
     jsExample: '~~~javascript-example title="运行"\nconst x = 1\n~~~',
     tabs: '::: tabs\n@tab 甲\n内容A\n@tab:active 乙\n内容B\n:::',
+    tabsDirective: ':::: tabs\n::: tab-item 甲\n内容A\n:::\n::: tab-item 乙\n内容B\n:::\n::::',
     details: '::: details open 标题\n内容\n:::',
     wikilink: '[[笔记|别名]] 与 [[纯链接]]',
     blockRef: '段落 ^anchor-id\n\n((anchor-id))',

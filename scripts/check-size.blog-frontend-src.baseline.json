@@ -9,9 +9,6 @@
     "longFns": 1,
     "deepFns": 1
   },
-  "blog-frontend/src/lib/markdown/rules/block.ts": {
-    "deepFns": 2
-  },
   "blog-frontend/src/lib/markdown/rules/core.ts": {
     "deepFns": 1
   },

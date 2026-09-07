@@ -59,33 +59,42 @@ describe('showChartError', () => {
   })
 })
 
-describe('js example run button', () => {
-  const blockMarkup = `
-    <div class="js-example-block">
-      <button type="button" class="js-example-run-btn" data-js-run>运行</button>
-      <div class="code-block"><pre><code>console.log("hi"); return 7</code></pre></div>
-      <div class="js-example-output-body"><div class="js-example-placeholder">点击运行</div></div>
-      <div class="js-example-output-status"></div>
-    </div>`
+const blockMarkup = `
+  <div class="js-example-block">
+    <button type="button" class="js-example-run-btn" data-js-run>运行</button>
+    <div class="code-block"><pre><code>console.log("hi"); return 7</code></pre></div>
+    <div class="js-example-output-body"><div class="js-example-placeholder">点击运行</div></div>
+    <div class="js-example-output-status"></div>
+  </div>`
 
-  it('runs code via the worker and renders the sandboxed output frame', async () => {
+describe('js example run button success', () => {
+  it('runs code via the worker and renders direct DOM log rows', async () => {
     vi.stubGlobal('Worker', FakeWorker)
     document.body.innerHTML = blockMarkup
     document.querySelector<HTMLButtonElement>('[data-js-run]')!.click()
 
     await vi.waitFor(() => {
-      const frame = document.querySelector<HTMLIFrameElement>('.js-example-frame')
-      expect(frame).not.toBeNull()
-      expect(frame?.getAttribute('sandbox')).toBe('allow-scripts')
+      const rows = document.querySelectorAll('.js-example-log-row')
+      expect(rows.length).toBe(2)
     })
+    const logRow = document.querySelector('.js-example-log-row.is-log')
+    expect(logRow?.querySelector('.js-example-log-prefix')?.textContent).toBe('›')
+    expect(logRow?.querySelector('.js-example-log-text')?.textContent).toBe('hi')
+
+    const returnRow = document.querySelector('.js-example-log-row.is-return')
+    expect(returnRow?.querySelector('.js-example-log-prefix')?.textContent).toBe('←')
+    expect(returnRow?.querySelector('.js-example-log-text')?.textContent).toBe('7')
+
     const statusEl = document.querySelector<HTMLElement>('.js-example-output-status')!
     expect(statusEl.classList.contains('is-success')).toBe(true)
     expect(statusEl.textContent).toMatch(/^✓/)
     expect(document.querySelector('.js-example-placeholder')).toBeNull()
     vi.unstubAllGlobals()
   })
+})
 
-  it('marks the run as timed out when the worker hangs', async () => {
+describe('js example run button timeout', () => {
+  it('marks the run as timed out when the worker hangs and shows error banner', async () => {
     vi.useFakeTimers()
     class HangingWorker extends FakeWorker {
       constructor() {
@@ -100,7 +109,11 @@ describe('js example run button', () => {
     const statusEl = document.querySelector<HTMLElement>('.js-example-output-status')!
     expect(statusEl.classList.contains('is-error')).toBe(true)
     expect(statusEl.textContent).toMatch(/^✕/)
-    expect(document.querySelector('.js-example-frame')).not.toBeNull()
+
+    const errorRow = document.querySelector('.js-example-log-row.is-error-banner')
+    expect(errorRow).not.toBeNull()
+    expect(errorRow?.querySelector('.js-example-log-prefix')?.textContent).toBe('✖')
+    expect(errorRow?.querySelector('.js-example-log-text')?.textContent).toContain('TimeoutError')
     vi.useRealTimers()
     vi.unstubAllGlobals()
   })
@@ -133,23 +146,53 @@ describe('task checkbox toggles', () => {
 })
 
 describe('tabs interaction', () => {
-  it('switches aria-selected and panel visibility on tab click', () => {
-    document.body.innerHTML = `
-      <div class="markdown-tabs">
-        <div class="tab-list">
-          <button data-tab-button="0" aria-selected="true">甲</button>
-          <button data-tab-button="1" aria-selected="false">乙</button>
-        </div>
-        <section data-tab-panel="0">内容A</section>
-        <section data-tab-panel="1" hidden>内容B</section>
-      </div>`
+  const tabsMarkup = `
+    <div class="markdown-tabs" data-tabs>
+      <div class="tab-list" role="tablist">
+        <button data-tab-button="0" aria-selected="true" tabindex="0">甲</button>
+        <button data-tab-button="1" aria-selected="false" tabindex="-1">乙</button>
+        <button data-tab-button="2" aria-selected="false" tabindex="-1">丙</button>
+      </div>
+      <section data-tab-panel="0">内容A</section>
+      <section data-tab-panel="1" hidden>内容B</section>
+      <section data-tab-panel="2" hidden>内容C</section>
+    </div>`
+
+  it('switches aria-selected, tabindex, and panel visibility on tab click', () => {
+    document.body.innerHTML = tabsMarkup
     const buttons = document.querySelectorAll<HTMLButtonElement>('[data-tab-button]')
     buttons[1]!.click()
 
     expect(buttons[0]!.getAttribute('aria-selected')).toBe('false')
+    expect(buttons[0]!.tabIndex).toBe(-1)
     expect(buttons[1]!.getAttribute('aria-selected')).toBe('true')
+    expect(buttons[1]!.tabIndex).toBe(0)
     expect(document.querySelector('[data-tab-panel="0"]')?.hasAttribute('hidden')).toBe(true)
     expect(document.querySelector('[data-tab-panel="1"]')?.hasAttribute('hidden')).toBe(false)
+  })
+
+  it('navigates tabs using ArrowRight, ArrowLeft, Home and End keys', () => {
+    document.body.innerHTML = tabsMarkup
+    const buttons = document.querySelectorAll<HTMLButtonElement>('[data-tab-button]')
+    buttons[0]!.focus()
+
+    // ArrowRight: 0 -> 1
+    buttons[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    expect(buttons[1]!.getAttribute('aria-selected')).toBe('true')
+    expect(buttons[1]!.tabIndex).toBe(0)
+    expect(buttons[0]!.getAttribute('aria-selected')).toBe('false')
+
+    // ArrowRight: 1 -> 2
+    buttons[1]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    expect(buttons[2]!.getAttribute('aria-selected')).toBe('true')
+
+    // End: 2 -> 2
+    buttons[2]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }))
+    expect(buttons[0]!.getAttribute('aria-selected')).toBe('true')
+
+    // ArrowLeft wraps: 0 -> 2
+    buttons[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }))
+    expect(buttons[2]!.getAttribute('aria-selected')).toBe('true')
   })
 })
 

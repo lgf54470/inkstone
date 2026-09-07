@@ -1,16 +1,10 @@
 /**
- * javascript-example 的浏览器侧 glue：Worker 生命周期（含死循环硬终止）、
- * 隔离 iframe 的创建与输出行转发。
+ * javascript-example 的浏览器侧执行与输出渲染：Worker 生命周期（含死循环硬终止）
+ * 与安全纯文本 DOM 渲染（避免 iframe 加载竞态与白屏，对齐主项目预览视觉）。
  */
 import { JS_RUN_TIMEOUT_MS } from './constants'
-import type { JsRunLog, JsRunOutcome } from './js-runner-core'
-import { buildFrameSrcdoc, type JsExampleFrameTheme } from './js-runner-frame'
-
-export interface JsRunRow {
-  kind: string
-  prefix: string
-  text: string
-}
+import type { JsRunOutcome } from './js-runner-core'
+import { t, type BlogLocale } from './i18n'
 
 const TIMEOUT_ERROR_TEXT = `TimeoutError: 执行超过 ${JS_RUN_TIMEOUT_MS}ms，已强制终止`
 
@@ -53,64 +47,52 @@ export function runUserCode(code: string): Promise<JsRunOutcome> {
   })
 }
 
-const FRAME_THEME_TOKENS: Array<[keyof JsExampleFrameTheme, string, string]> = [
-  ['fontMono', '--font-mono', 'monospace'],
-  ['textPrimary', '--text-primary', '#1e293b'],
-  ['textTertiary', '--text-tertiary', '#64748b'],
-  ['textQuaternary', '--text-quaternary', '#94a3b8'],
-  ['accent', '--accent', '#3b82f6'],
-  ['warning', '--warning', '#f59e0b'],
-  ['danger', '--danger', '#ef4444'],
-  ['success', '--success', '#10b981'],
-  ['syntaxConstant', '--syntax-constant', '#3b82f6'],
-  ['borderSubtle', '--border-subtle', 'rgba(100, 116, 139, 0.2)'],
-]
-
-function currentFrameTheme(): JsExampleFrameTheme {
-  const theme = {} as JsExampleFrameTheme
-  for (const [key, token, fallback] of FRAME_THEME_TOKENS) {
-    theme[key] = getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback
-  }
-  return theme
+export function appendLogRow(outputBody: HTMLElement, type: string, prefix: string, text: string): void {
+  const row = document.createElement('div')
+  row.className = `js-example-log-row is-${type}`
+  const prefixEl = document.createElement('span')
+  prefixEl.className = 'js-example-log-prefix'
+  prefixEl.textContent = prefix
+  const textEl = document.createElement('pre')
+  textEl.className = 'js-example-log-text'
+  textEl.textContent = text
+  row.appendChild(prefixEl)
+  row.appendChild(textEl)
+  outputBody.appendChild(row)
 }
 
 /**
- * 创建隔离输出 iframe：sandbox 只给 allow-scripts（无 allow-same-origin），
- * 文档因此是不透明源，即使其中脚本被攻破也无法触达父页面。
+ * 将执行结果安全渲染为 DOM 节点写入 outputBody，使用纯文本 textContent 防御 XSS。
  */
-export function createJsExampleFrame(): HTMLIFrameElement {
-  const frame = document.createElement('iframe')
-  frame.className = 'js-example-frame'
-  frame.title = '运行结果（隔离环境）'
-  frame.setAttribute('data-js-example-frame', '')
-  frame.setAttribute('sandbox', 'allow-scripts')
-  frame.srcdoc = buildFrameSrcdoc(currentFrameTheme())
-  return frame
-}
+export function renderJsOutcome(
+  outputBody: HTMLElement,
+  outcome: JsRunOutcome,
+  locale?: BlogLocale
+): void {
+  outputBody.replaceChildren()
 
-export function forwardRowsToFrame(frame: HTMLIFrameElement, rows: JsRunRow[]): void {
-  // 目标是不透明源，只能以 '*' 投递；内容仅为预格式化字符串行，无结构数据
-  frame.contentWindow?.postMessage({ rows }, '*')
-}
+  const hasLogs = outcome.logs.length > 0
+  const hasResult = outcome.resultText !== ''
+  const hasError = outcome.timedOut || outcome.errorText !== ''
 
-export function buildOutputRows(outcome: JsRunOutcome): JsRunRow[] {
-  if (outcome.timedOut) {
-    return [{ kind: 'error', prefix: '[ERROR]', text: outcome.errorText }]
+  if (!hasLogs && !hasResult && !hasError) {
+    const emptyRow = document.createElement('div')
+    emptyRow.className = 'js-example-empty-hint'
+    emptyRow.textContent = t('interactive.executed_no_output', {}, locale)
+    outputBody.appendChild(emptyRow)
+    return
   }
-  const hasAnyOutput = outcome.logs.length > 0 || outcome.resultText !== '' || outcome.errorText !== ''
-  if (!hasAnyOutput) {
-    return [{ kind: 'empty', prefix: '', text: '代码已执行，无输出内容' }]
+
+  for (const item of outcome.logs) {
+    const prefix = item.type === 'error' ? '✖' : item.type === 'warn' ? '▲' : '›'
+    appendLogRow(outputBody, item.type, prefix, item.text)
   }
-  const rows: JsRunRow[] = outcome.logs.map((log: JsRunLog) => ({
-    kind: log.type,
-    prefix: `[${log.type.toUpperCase()}]`,
-    text: log.text,
-  }))
-  if (outcome.resultText !== '') {
-    rows.push({ kind: 'return', prefix: '[RETURN]', text: outcome.resultText })
+
+  if (hasResult) {
+    appendLogRow(outputBody, 'return', '←', outcome.resultText)
   }
-  if (outcome.errorText !== '') {
-    rows.push({ kind: 'error', prefix: '[ERROR]', text: outcome.errorText })
+
+  if (hasError) {
+    appendLogRow(outputBody, 'error-banner', '✖', outcome.errorText)
   }
-  return rows
 }

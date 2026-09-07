@@ -171,3 +171,4 @@ export type MessageKey =
   | 'interactive.running'
   | 'interactive.chart_error'
   | 'interactive.mermaid_loading'
+  | 'interactive.executed_no_output'

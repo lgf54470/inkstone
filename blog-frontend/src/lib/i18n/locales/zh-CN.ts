@@ -184,4 +184,5 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'interactive.running': '运行中…',
   'interactive.chart_error': '图表渲染失败: {error}',
   'interactive.mermaid_loading': '正在加载图表...',
+  'interactive.executed_no_output': '代码已执行，无输出内容',
 }

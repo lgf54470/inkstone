@@ -62,6 +62,28 @@ describe('tabs container', () => {
     expect(html).toContain('内容A')
     expect(html).toContain('内容B')
   })
+
+  it('renders directive tabs with ::: tab-item syntax', () => {
+    const md = ':::: tabs\n::: tab-item 第一个标签\n这是第一个标签页的内容。\n:::\n::: tab-item 第二个标签\n这是第二个标签页的内容。\n:::\n::::'
+    const html = render(md)
+    expect(html).toContain('role="tab" aria-selected="true" data-tab-button="0"')
+    expect(html).toContain('第一个标签')
+    expect(html).toContain('role="tab" aria-selected="false" data-tab-button="1"')
+    expect(html).toContain('第二个标签')
+    expect(html).toContain('这是第一个标签页的内容。')
+    expect(html).toContain('这是第二个标签页的内容。')
+    expect(html).toContain('<section class="tab-panel" role="tabpanel" data-tab-panel="0">')
+    expect(html).toContain('<section class="tab-panel" role="tabpanel" data-tab-panel="1" hidden>')
+  })
+
+  it('supports :selected: option in directive tabs', () => {
+    const md = ':::: tabs\n::: tab-item 标签一\n内容一\n:::\n::: tab-item 标签二\n:selected:\n内容二\n:::\n::::'
+    const html = render(md)
+    expect(html).toContain('role="tab" aria-selected="false" data-tab-button="0"')
+    expect(html).toContain('role="tab" aria-selected="true" data-tab-button="1"')
+    expect(html).toContain('<section class="tab-panel" role="tabpanel" data-tab-panel="0" hidden>')
+    expect(html).toContain('<section class="tab-panel" role="tabpanel" data-tab-panel="1">')
+  })
 })
 
 describe('details container', () => {

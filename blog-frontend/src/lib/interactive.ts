@@ -1,7 +1,7 @@
 import type { Chart, ChartConfiguration } from 'chart.js/auto'
 import { asRecord } from './normalize'
 import { COPY_FEEDBACK_MS } from './constants'
-import { buildOutputRows, createJsExampleFrame, forwardRowsToFrame, runUserCode } from './js-runner-runner'
+import { renderJsOutcome, runUserCode } from './js-runner-runner'
 import { t, DEFAULT_LOCALE, isSupportedLocale, type BlogLocale } from './i18n'
 
 function getCurrentLocale(): BlogLocale {
@@ -40,23 +40,52 @@ function initTaskCheckboxes() {
   })
 }
 
+export function selectMarkdownTab(button: HTMLButtonElement): void {
+  const tabs = button.closest<HTMLElement>('.markdown-tabs, [data-tabs]')
+  if (!tabs) return
+  const index = button.dataset.tabButton
+  tabs.querySelectorAll<HTMLButtonElement>('[data-tab-button]').forEach((candidate) => {
+    const selected = candidate === button
+    candidate.setAttribute('aria-selected', String(selected))
+    candidate.tabIndex = selected ? 0 : -1
+  })
+  tabs.querySelectorAll<HTMLElement>('[data-tab-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.tabPanel !== index
+  })
+}
+
+export function moveMarkdownTabFocus(button: HTMLButtonElement, key: string): void {
+  const tablist = button.closest<HTMLElement>('[role="tablist"], .tab-list')
+  const buttons = Array.from(tablist?.querySelectorAll<HTMLButtonElement>('[data-tab-button]') ?? [])
+  if (!buttons.length) return
+  const current = Math.max(0, buttons.indexOf(button))
+  const offset = key === 'ArrowRight' ? 1 : -1
+  const index =
+    key === 'Home'
+      ? 0
+      : key === 'End'
+        ? buttons.length - 1
+        : (current + offset + buttons.length) % buttons.length
+  const next = buttons[index]!
+  selectMarkdownTab(next)
+  next.focus()
+}
+
 function initTabs() {
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement
     const btn = target.closest<HTMLButtonElement>('.markdown-tabs [data-tab-button]')
     if (!btn) return
-    const tabsContainer = btn.closest<HTMLElement>('.markdown-tabs')
-    if (!tabsContainer) return
-    const tabIndex = btn.dataset.tabButton
-    tabsContainer.querySelectorAll<HTMLButtonElement>('[data-tab-button]').forEach((b) => {
-      const isSelected = b.dataset.tabButton === tabIndex
-      b.setAttribute('aria-selected', String(isSelected))
-    })
-    tabsContainer.querySelectorAll<HTMLElement>('[data-tab-panel]').forEach((p) => {
-      const isSelected = p.dataset.tabPanel === tabIndex
-      if (isSelected) p.removeAttribute('hidden')
-      else p.setAttribute('hidden', '')
-    })
+    selectMarkdownTab(btn)
+  })
+
+  document.addEventListener('keydown', (e) => {
+    const target = e.target as HTMLElement
+    const btn = target.closest<HTMLButtonElement>('.markdown-tabs [data-tab-button]')
+    if (btn && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+      e.preventDefault()
+      moveMarkdownTabFocus(btn, e.key)
+    }
   })
 }
 
@@ -121,17 +150,14 @@ async function handleJsRun(runBtn: HTMLButtonElement): Promise<void> {
 
   const outcome = await runUserCode(codeEl.textContent ?? '')
 
+  const isError = outcome.timedOut || outcome.errorText !== ''
   setRunStatus(
     statusEl,
-    outcome.timedOut || outcome.errorText !== '' ? 'is-error' : 'is-success',
-    `${outcome.timedOut || outcome.errorText !== '' ? '✕' : '✓'} ${outcome.durationMs}ms`
+    isError ? 'is-error' : 'is-success',
+    `${isError ? '✕' : '✓'} ${outcome.durationMs}ms`
   )
 
-  // 输出面板使用 sandbox="allow-scripts"（无 allow-same-origin）的隔离 iframe：
-  // 日志文本来自文章代码（不可信），即使未来渲染回归也被限制在不透明源文档内
-  const frame = createJsExampleFrame()
-  outputBody.appendChild(frame)
-  forwardRowsToFrame(frame, buildOutputRows(outcome))
+  renderJsOutcome(outputBody, outcome, locale)
 }
 
 function setRunStatus(statusEl: HTMLElement | null, className: string, text: string): void {

@@ -184,4 +184,5 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'interactive.running': 'Running…',
   'interactive.chart_error': 'Chart render failed: {error}',
   'interactive.mermaid_loading': 'Loading diagram...',
+  'interactive.executed_no_output': 'Code executed with no output',
 }

@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FakeWorker } from '../../tests/helpers/fake-worker'
 import { JS_RUN_TIMEOUT_MS } from './constants'
-import { buildOutputRows, createJsExampleFrame, forwardRowsToFrame, runUserCode } from './js-runner-runner'
+import { renderJsOutcome, runUserCode } from './js-runner-runner'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -48,52 +48,89 @@ describe('runUserCode worker glue', () => {
   })
 })
 
-describe('js-example output frame', () => {
-  it('creates a sandboxed iframe without allow-same-origin', () => {
-    const frame = createJsExampleFrame()
-    expect(frame.getAttribute('sandbox')).toBe('allow-scripts')
-    expect(frame.getAttribute('sandbox')).not.toContain('allow-same-origin')
-    expect(frame.srcdoc).toContain('textContent')
-    expect(frame.srcdoc).not.toContain('innerHTML')
-    expect(frame.srcdoc).toContain('var(--text-primary)')
-  })
+describe('renderJsOutcome log rows', () => {
+  it('renders log, warn, error, return, and error banner rows with correct symbols', () => {
+    const container = document.createElement('div')
+    renderJsOutcome(container, {
+      logs: [
+        { type: 'log', text: '普通日志' },
+        { type: 'warn', text: '警告信息' },
+        { type: 'error', text: '错误日志' },
+      ],
+      resultText: '42',
+      errorText: 'BoomError: boom',
+      durationMs: 5,
+      timedOut: false,
+    })
 
-  it('forwards preformatted rows to the frame via postMessage', () => {
-    const postMessage = vi.fn()
-    const frame = { contentWindow: { postMessage } } as unknown as HTMLIFrameElement
-    forwardRowsToFrame(frame, [{ kind: 'log', prefix: '[LOG]', text: 'hi' }])
-    expect(postMessage).toHaveBeenCalledWith({ rows: [{ kind: 'log', prefix: '[LOG]', text: 'hi' }] }, '*')
-  })
+    const rows = container.querySelectorAll('.js-example-log-row')
+    expect(rows.length).toBe(5)
 
-  it('forwards nothing when the frame window is not ready', () => {
-    const frame = { contentWindow: null } as unknown as HTMLIFrameElement
-    expect(() => forwardRowsToFrame(frame, [{ kind: 'log', prefix: '[LOG]', text: 'hi' }])).not.toThrow()
+    expect(rows[0]?.classList.contains('is-log')).toBe(true)
+    expect(rows[0]?.querySelector('.js-example-log-prefix')?.textContent).toBe('›')
+    expect(rows[0]?.querySelector('.js-example-log-text')?.textContent).toBe('普通日志')
+
+    expect(rows[1]?.classList.contains('is-warn')).toBe(true)
+    expect(rows[1]?.querySelector('.js-example-log-prefix')?.textContent).toBe('▲')
+    expect(rows[1]?.querySelector('.js-example-log-text')?.textContent).toBe('警告信息')
+
+    expect(rows[2]?.classList.contains('is-error')).toBe(true)
+    expect(rows[2]?.querySelector('.js-example-log-prefix')?.textContent).toBe('✖')
+    expect(rows[2]?.querySelector('.js-example-log-text')?.textContent).toBe('错误日志')
+
+    expect(rows[3]?.classList.contains('is-return')).toBe(true)
+    expect(rows[3]?.querySelector('.js-example-log-prefix')?.textContent).toBe('←')
+    expect(rows[3]?.querySelector('.js-example-log-text')?.textContent).toBe('42')
+
+    expect(rows[4]?.classList.contains('is-error-banner')).toBe(true)
+    expect(rows[4]?.querySelector('.js-example-log-prefix')?.textContent).toBe('✖')
+    expect(rows[4]?.querySelector('.js-example-log-text')?.textContent).toBe('BoomError: boom')
   })
 })
 
-describe('buildOutputRows', () => {
-  it('maps logs, return value and error into rows', () => {
-    const rows = buildOutputRows({
-      logs: [{ type: 'warn', text: '小心' }],
-      resultText: '42',
-      errorText: 'Error: boom',
-      durationMs: 3,
+describe('renderJsOutcome edge cases', () => {
+  it('renders empty hint when there is no output', () => {
+    const container = document.createElement('div')
+    renderJsOutcome(container, {
+      logs: [],
+      resultText: '',
+      errorText: '',
+      durationMs: 1,
+      timedOut: false,
+    }, 'zh-CN')
+
+    const empty = container.querySelector('.js-example-empty-hint')
+    expect(empty).not.toBeNull()
+    expect(empty?.textContent).toBe('代码已执行，无输出内容')
+  })
+
+  it('supports en-US locale for empty hint', () => {
+    const container = document.createElement('div')
+    renderJsOutcome(container, {
+      logs: [],
+      resultText: '',
+      errorText: '',
+      durationMs: 1,
+      timedOut: false,
+    }, 'en-US')
+
+    const empty = container.querySelector('.js-example-empty-hint')
+    expect(empty?.textContent).toBe('Code executed with no output')
+  })
+
+  it('safely escapes HTML tags in log text using textContent', () => {
+    const container = document.createElement('div')
+    const evil = '<script>alert(1)</script><img src=x onerror=alert(2)>'
+    renderJsOutcome(container, {
+      logs: [{ type: 'log', text: evil }],
+      resultText: evil,
+      errorText: evil,
+      durationMs: 2,
       timedOut: false,
     })
-    expect(rows).toEqual([
-      { kind: 'warn', prefix: '[WARN]', text: '小心' },
-      { kind: 'return', prefix: '[RETURN]', text: '42' },
-      { kind: 'error', prefix: '[ERROR]', text: 'Error: boom' },
-    ])
-  })
 
-  it('emits an empty hint when nothing was produced', () => {
-    const rows = buildOutputRows({ logs: [], resultText: '', errorText: '', durationMs: 1, timedOut: false })
-    expect(rows).toEqual([{ kind: 'empty', prefix: '', text: '代码已执行，无输出内容' }])
-  })
-
-  it('emits only the timeout error row on timeout', () => {
-    const rows = buildOutputRows({ logs: [], resultText: '', errorText: 'TimeoutError: x', durationMs: 2000, timedOut: true })
-    expect(rows).toEqual([{ kind: 'error', prefix: '[ERROR]', text: 'TimeoutError: x' }])
+    expect(container.querySelectorAll('script').length).toBe(0)
+    expect(container.querySelectorAll('img').length).toBe(0)
+    expect(container.querySelector('.is-log .js-example-log-text')?.textContent).toBe(evil)
   })
 })
