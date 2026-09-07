@@ -56,17 +56,31 @@ Two toolchain quirks shape the compliant forms for decimal token names like
 Tailwind candidate extraction (the old `w-[2.5px]` silently never compiled),
 and a single backslash-dot written as `\.` inside a JS string literal is
 dropped by the language spec, so the runtime class never matches the compiled
-selector. In the main app the source must spell the escape as `\\` — `const
-ACTIVE_BAR_W = 'w-[var(--sp-0\\.625)]'` — a valid JS escape that survives
-every transform and yields the backslash-carrying class Tailwind compiled
-(verified live at 2.5px). The remediation of `ACTIVE_BAR_W` also fixed a
-latent rendering bug: the old `w-[2.5px]` class was never emitted, so the
-outline active bar was invisible. The blog-frontend toolchain differs: its
-Tailwind pass compiles only the single-backslash spelling while the runtime
-still drops the escape, so dotted refs there render at the fallback size — a
-blog-side gap to close separately. Sites across the main-app tree still using
-the single-backslash form are likewise broken and need the same `\\`
-conversion; both are follow-ups.
+selector. The two UI trees resolve this differently.
+
+In the main app the source must double the escape — `const ACTIVE_BAR_W =
+'w-[var(--sp-0\\.625)]'` — a valid JS escape that survives every transform
+and yields the backslash-carrying class Tailwind compiled (verified live at
+2.5px). Direct JSX attribute values (`className="..."`) keep a lone
+backslash verbatim and are already correct with a single one; only JS string
+literals and templates (constants, `cn()` arguments, `className={...}`
+expressions) drop it, so the Part 4 gate's unescaped-dot scan flags a plain
+dot inside `var(--token.N)` — the cooked remnant of a lone backslash — in
+every string node. The sweep that closed the gap converted exactly those
+sites (17 refs in 12 files) to the doubled form; JSX attribute values, which
+render correctly as written, were untouched. The remediation of
+`ACTIVE_BAR_W` also fixed a latent rendering bug: the old `w-[2.5px]` class
+was never emitted, so the outline active bar was invisible.
+
+In the blog-frontend (Astro) the two ends can never align: its Tailwind pass
+extracts only odd-backslash-run candidates verbatim (1 or 3 backslashes,
+never even runs) while JS/SSR always yields floor(n/2) backslashes from the
+same source, so no class spelling survives both — dotted-token arbitrary
+classes are impossible there. Components therefore reference dotted tokens
+through inline `var()` styles (e.g. `style={{ width: 'var(--sp-0\\.625)' }}`
+on the outline active bar, `fontSize: 'var(--text-11\\.5)'` in the
+heading table), which bypass candidate extraction entirely and resolve against
+the escaped token names in CSSOM (verified at 11.5/10.5/2.5px).
 
 The asymmetry is deliberate: the constant-table exemption survives only for
 one-off families that have no token layer (`grid-cols-[140px_1fr_28px]`,

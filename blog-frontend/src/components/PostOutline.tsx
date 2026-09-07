@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties } from 'react'
 import {
   ListTree,
   Heading1,
@@ -23,7 +23,13 @@ const SCROLL_TARGET_BUFFER = 16
 
 const OUTLINE_INDENT_BASE = 8
 const OUTLINE_INDENT_STEP = 10
-const ACTIVE_BAR_W = 'w-[var(--sp-0\.625)]'
+
+// Dotted token names (--sp-0.625, --text-11.5, ...) cannot be referenced from
+// Tailwind arbitrary classes in this Astro toolchain: the CSS scanner only
+// extracts odd-backslash candidates while JS/SSR drops the backslash from
+// `\.`, so no source spelling survives both ends. Inline var() styles bypass
+// candidate extraction entirely and resolve against the escaped token names.
+const ACTIVE_BAR_STYLE: CSSProperties = { width: 'var(--sp-0\\.625)' }
 
 const HEADING_ICONS: Record<number, ComponentType<LucideProps>> = {
   1: Heading1,
@@ -42,7 +48,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
   switch (level) {
     case 1:
       return {
-        fontSize: 'text-[length:var(--text-13)]',
+        fontSize: 'var(--text-13)',
         fontWeight: 'font-semibold',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]',
         iconSize: 12.5,
@@ -51,7 +57,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       }
     case 2:
       return {
-        fontSize: 'text-[length:var(--text-12)]',
+        fontSize: 'var(--text-12)',
         fontWeight: isActive ? 'font-semibold' : 'font-medium',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]/85',
         iconSize: 11.5,
@@ -60,7 +66,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       }
     case 3:
       return {
-        fontSize: 'text-[length:var(--text-11\.5)]',
+        fontSize: 'var(--text-11\\.5)',
         fontWeight: isActive ? 'font-medium' : 'font-normal',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]',
         iconSize: 11,
@@ -69,7 +75,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       }
     case 4:
       return {
-        fontSize: 'text-[length:var(--text-11)]',
+        fontSize: 'var(--text-11)',
         fontWeight: isActive ? 'font-medium' : 'font-normal',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]',
         iconSize: 10.5,
@@ -78,7 +84,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       }
     default:
       return {
-        fontSize: 'text-[length:var(--text-10\.5)]',
+        fontSize: 'var(--text-10\\.5)',
         fontWeight: isActive ? 'font-medium' : 'font-normal',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]',
         iconSize: 10,
@@ -173,15 +179,16 @@ function OutlineRow({ heading, index, active, minLevel, prevHeading, onSelect }:
         data-heading-slug={heading.slug}
         title={heading.text}
         onClick={() => onSelect(heading)}
-        className={`group relative flex w-full items-center gap-1.5 rounded-[var(--r-sm)] pr-1.5 text-left leading-snug cursor-pointer transition-colors duration-[var(--dur-fast)] ${typography.fontSize} ${typography.fontWeight} ${typography.textColor} ${typography.paddingY} ${
+        className={`group relative flex w-full items-center gap-1.5 rounded-[var(--r-sm)] pr-1.5 text-left leading-snug cursor-pointer transition-colors duration-[var(--dur-fast)] ${typography.fontWeight} ${typography.textColor} ${typography.paddingY} ${
           isActive ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         }`}
-        style={{ paddingLeft: OUTLINE_INDENT_BASE + relativeLevel * OUTLINE_INDENT_STEP }}
+        style={{ fontSize: typography.fontSize, paddingLeft: OUTLINE_INDENT_BASE + relativeLevel * OUTLINE_INDENT_STEP }}
       >
         {isActive && (
           <span
             aria-hidden='true'
-            className={`absolute top-1/2 left-0.5 h-3.5 ${ACTIVE_BAR_W} -translate-y-1/2 rounded-full bg-[var(--accent)]`}
+            style={ACTIVE_BAR_STYLE}
+            className={`absolute top-1/2 left-0.5 h-3.5 -translate-y-1/2 rounded-full bg-[var(--accent)]`}
           />
         )}
         <HeadingIcon
@@ -246,7 +253,10 @@ export default function PostOutline({ headings, locale = DEFAULT_LOCALE, classNa
 
   return (
     <nav ref={navRef} className={`w-full ${className}`} aria-label={t('common.outline', {}, locale)}>
-      <div className='mb-2 flex items-center gap-1.5 px-2 text-[length:var(--text-10\.5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
+      <div
+        className='mb-2 flex items-center gap-1.5 px-2 font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'
+        style={{ fontSize: 'var(--text-10\\.5)' }}
+      >
         <ListTree size={11} aria-hidden='true' />
         <span>{t('common.outline', {}, locale)}</span>
       </div>

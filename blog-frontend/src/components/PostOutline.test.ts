@@ -33,7 +33,7 @@ describe('PostOutline icon and typography mapping', () => {
 
   it('maps level 1 and 2 typography for active and inactive states', () => {
     const h1Inactive = getHeadingTypography(1, false)
-    expect(h1Inactive.fontSize).toBe('text-[13px]')
+    expect(h1Inactive.fontSize).toBe('var(--text-13)')
     expect(h1Inactive.fontWeight).toBe('font-semibold')
     expect(h1Inactive.textColor).toBe('text-[var(--text-secondary)]')
 
@@ -42,7 +42,7 @@ describe('PostOutline icon and typography mapping', () => {
     expect(h1Active.iconColor).toBe('text-[var(--accent)] opacity-100')
 
     const h2Inactive = getHeadingTypography(2, false)
-    expect(h2Inactive.fontSize).toBe('text-[12px]')
+    expect(h2Inactive.fontSize).toBe('var(--text-12)')
     expect(h2Inactive.fontWeight).toBe('font-medium')
 
     const h2Active = getHeadingTypography(2, true)
@@ -51,14 +51,14 @@ describe('PostOutline icon and typography mapping', () => {
 
   it('maps levels 3, 4, and 5 typography', () => {
     const h3 = getHeadingTypography(3, false)
-    expect(h3.fontSize).toBe('text-[11.5px]')
+    expect(h3.fontSize).toBe('var(--text-11\\.5)')
     expect(h3.iconSize).toBe(11)
 
     const h4 = getHeadingTypography(4, false)
-    expect(h4.fontSize).toBe('text-[11px]')
+    expect(h4.fontSize).toBe('var(--text-11)')
 
     const h5 = getHeadingTypography(5, false)
-    expect(h5.fontSize).toBe('text-[10.5px]')
+    expect(h5.fontSize).toBe('var(--text-10\\.5)')
   })
 })
 
@@ -109,15 +109,19 @@ describe('PostOutline rendering', () => {
     expect(buttons[0]?.getAttribute('data-heading-level')).toBe('1')
     expect(buttons[0]?.getAttribute('data-heading-slug')).toBe('chapter-1')
     expect(buttons[0]?.style.paddingLeft).toBe('8px')
+    expect(buttons[0]?.style.fontSize).toBe('var(--text-13)')
 
     expect(buttons[1]?.getAttribute('data-heading-level')).toBe('2')
     expect(buttons[1]?.style.paddingLeft).toBe('18px')
+    expect(buttons[1]?.style.fontSize).toBe('var(--text-12)')
 
     expect(buttons[2]?.getAttribute('data-heading-level')).toBe('3')
     expect(buttons[2]?.style.paddingLeft).toBe('28px')
+    expect(buttons[2]?.style.fontSize).toBe('var(--text-11\\.5)')
 
     expect(buttons[3]?.getAttribute('data-heading-level')).toBe('4')
     expect(buttons[3]?.style.paddingLeft).toBe('38px')
+    expect(buttons[3]?.style.fontSize).toBe('var(--text-11)')
   })
 })
 
