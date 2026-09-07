@@ -205,38 +205,42 @@ function FeedMainColumn({
   onPageSizeChange,
 }: FeedMainColumnProps): ReactElement {
   return (
-    <section
-      ref={scrollRef}
-      className="lg:col-span-8 flex flex-col space-y-5 lg:max-h-[calc(100vh-6.5rem)] lg:overflow-y-auto lg:pr-2 scrollbar-thin"
-    >
+    <section className="lg:col-span-8 flex flex-col lg:h-[calc(100vh-6.5rem)]">
       <FeedHeader
         total={total}
         selectedTag={selectedTag}
         locale={locale}
         onClearTag={() => onTagToggle(selectedTag!)}
       />
-      <FeedPostsList
-        posts={posts}
-        loading={loading}
-        categoryMap={categoryMap}
-        locale={locale}
-        onTagClick={onTagToggle}
-      />
-      <HomePagination
-        currentPage={page}
-        totalPages={totalPages}
-        pageSize={pageSize}
-        total={total}
-        locale={locale}
-        onPageChange={onPageChange}
-        onPageSizeChange={onPageSizeChange}
-      />
+      <div
+        ref={scrollRef as React.RefObject<HTMLDivElement>}
+        className="flex-1 min-h-0 lg:overflow-y-auto py-3 pr-0 lg:pr-2 scrollbar-thin space-y-4"
+      >
+        <FeedPostsList
+          posts={posts}
+          loading={loading}
+          categoryMap={categoryMap}
+          locale={locale}
+          onTagClick={onTagToggle}
+        />
+      </div>
+      <footer className="shrink-0 mt-auto pt-3 pb-1 border-t border-[var(--border-subtle)] bg-[var(--bg-base)]">
+        <HomePagination
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          total={total}
+          locale={locale}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
+      </footer>
     </section>
   )
 }
 
 export default function HomeFeedView(props: HomeFeedViewProps): ReactElement {
-  const leftScrollRef = useRef<HTMLElement>(null)
+  const leftScrollRef = useRef<HTMLDivElement>(null)
   const categoryMap = useMemo(() => new Map(props.categories.map((c) => [c.id, c])), [props.categories])
 
   const scrollToTop = () => {
@@ -264,7 +268,7 @@ export default function HomeFeedView(props: HomeFeedViewProps): ReactElement {
         onPageChange={state.handlePageChange}
         onPageSizeChange={state.handlePageSizeChange}
       />
-      <div className="lg:col-span-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6.5rem)] lg:overflow-y-auto scrollbar-thin">
+      <div className="lg:col-span-4 lg:sticky lg:top-20 lg:h-[calc(100vh-6.5rem)] lg:overflow-y-auto scrollbar-thin">
         <HomeSidebar
           siteInfo={props.siteInfo}
           categories={props.categories}

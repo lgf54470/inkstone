@@ -10,6 +10,7 @@ export interface HomePaginationProps {
   total: number
   pageSizeOptions?: number[]
   locale?: BlogLocale
+  className?: string
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
 }
@@ -158,12 +159,13 @@ export default function HomePagination({
   total,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   locale = DEFAULT_LOCALE,
+  className = '',
   onPageChange,
   onPageSizeChange,
 }: HomePaginationProps): ReactElement {
   return (
     <nav
-      className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)]/70 pt-4"
+      className={`flex flex-wrap items-center justify-between gap-3 ${className}`}
       aria-label={t('pagination.aria', {}, locale)}
     >
       <PageSizeSelector
