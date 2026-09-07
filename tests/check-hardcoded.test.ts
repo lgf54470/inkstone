@@ -50,8 +50,8 @@ describe('class-string loopholes via problemsFor', () => {
     expect(problems.join('\n')).toContain('raw 240px')
   })
 
-  it('exempts a direct const class table', () => {
-    const problems = problemsFor(rel, `const WIDE = 'w-[240px]'\nconst el = <div className={WIDE}/>`)
+  it('exempts a direct const class table for one-off families', () => {
+    const problems = problemsFor(rel, `const GRID = 'grid-cols-[140px_1fr_28px]'\nconst el = <div className={GRID}/>`)
     expect(problems).toEqual([])
   })
 
@@ -81,7 +81,7 @@ describe('class-string loopholes via problemsFor', () => {
   })
 
   it('accepts the hoisted-const rewrite of conditional classes', () => {
-    const problems = problemsFor(rel, `const WIDE = 'w-[240px]'\nfunction Probe() { return <div className={cn(cond && WIDE)}/> }`)
+    const problems = problemsFor(rel, `const GRID = 'grid-cols-[140px_1fr_28px]'\nfunction Probe() { return <div className={cn(cond && GRID)}/> }`)
     expect(problems).toEqual([])
   })
 })
@@ -107,5 +107,56 @@ describe('tracking token family via problemsFor', () => {
   it('flags raw tracking keys in clsx conditional objects', () => {
     const problems = problemsFor(rel, `function Probe() { return <div className={cn({ 'tracking-[0.06em]': cond })}/> }`)
     expect(problems.join('\n')).toContain('raw letter-spacing in tracking-[0.06em]')
+  })
+})
+
+describe('token-family rule (Part 4) via problemsFor', () => {
+  const rel = 'probe.tsx'
+
+  it('flags a raw font size even inside a named constant table', () => {
+    const problems = problemsFor(rel, `const T = 'text-[13px]'`)
+    expect(problems.join('\n')).toContain('raw font-size in text-[13px]')
+  })
+
+  it('flags raw spacing even inside a named constant table', () => {
+    const problems = problemsFor(rel, `const W = 'w-[2.5px]'`)
+    expect(problems.join('\n')).toContain('raw spacing in w-[2.5px]')
+  })
+
+  it('flags every family prefix in a multi-class constant', () => {
+    const problems = problemsFor(rel, `const C = 'h-[13px] max-w-[290px] py-[4px]'`)
+    const text = problems.join('\n')
+    expect(text).toContain('raw spacing in h-[13px]')
+    expect(text).toContain('raw spacing in max-w-[290px]')
+    expect(text).toContain('raw spacing in py-[4px]')
+  })
+
+  it('flags rem values in the spacing family', () => {
+    const problems = problemsFor(rel, `const R = 'w-[2.5rem]'`)
+    expect(problems.join('\n')).toContain('raw spacing in w-[2.5rem]')
+  })
+
+  it('accepts token-referencing font-size constants', () => {
+    expect(problemsFor(rel, `const T = 'text-[length:var(--text-13)]'`)).toEqual([])
+    expect(problemsFor(rel, `const T = 'text-(--text-13)'`)).toEqual([])
+  })
+
+  it('accepts token-referencing spacing constants', () => {
+    expect(problemsFor(rel, String.raw`const W = 'w-[var(--sp-0\\.625)]'`)).toEqual([])
+    expect(problemsFor(rel, `const W = 'w-(--spacing-4)'`)).toEqual([])
+  })
+
+  it('accepts relative percentages in named constants', () => {
+    expect(problemsFor(rel, `const W = 'max-w-[86%]'`)).toEqual([])
+    expect(problemsFor(rel, `const H = 'top-[-22%]'`)).toEqual([])
+  })
+
+  it('accepts one-off class families in named constants', () => {
+    expect(problemsFor(rel, `const G = 'grid-cols-[140px_1fr_28px]'`)).toEqual([])
+    expect(problemsFor(rel, `const B = 'blur-[120px]'`)).toEqual([])
+  })
+
+  it('keeps the hairline exemption in named constants', () => {
+    expect(problemsFor(rel, `const H = 'gap-[1px]'`)).toEqual([])
   })
 })

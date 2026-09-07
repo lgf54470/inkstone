@@ -16,16 +16,14 @@
 //     one-shot specs the remediation commits never hoisted;
 //   - raw unit values inside Tailwind arbitrary-value classNames (w-[240px],
 //     text-[11px], grid-cols-[210px_...]) in className/class attributes and
-//     cn() string arguments, plus raw letter-spacing values (tracking-[0.06em])
-//     in ANY string literal — tracking is a dedicated --tracking-* token
-//     family, so a raw value stays a rule-2 violation even inside a named
-//     constant table, unlike other class strings. The compliant shape is a
-//     design token reference ([var(--...)] or the w-(--spacing-4) paren
-//     shorthand), the sanctioned style-constant-table pattern (a string inside
-//     a named initializer, e.g. a const holding the className, like the hex
-//     exemption below), or an existing utility class. Brackets and parens
-//     whose content is var()/calc()/min()/max()/clamp()/env() or a color
-//     function (oklch()/rgb()/...) are exempt: token references are the goal;
+//     cn() string arguments, plus raw values of the design-token families in
+//     ANY string literal (Part 4). The compliant shape is a design token
+//     reference ([var(--...)] or the w-(--spacing-4) paren shorthand), the
+//     sanctioned style-constant-table pattern (a string inside a named
+//     initializer, e.g. a const holding the className, like the hex exemption
+//     below), or an existing utility class. Brackets and parens whose content
+//     is var()/calc()/min()/max()/clamp()/env() or a color function
+//     (oklch()/rgb()/...) are exempt: token references are the goal;
 //     calc/min/max/clamp/env are viewport-relative responsive math (safe-area
 //     insets, 100vw offsets); color functions carry % channels, not sizes.
 //     Paren groups that are bare custom-property references (--name, with an
@@ -38,6 +36,14 @@
 //     check, and object-literal keys inside cn() (the clsx conditional-object
 //     shape cn({ 'w-[2px]': cond })) are class strings too: hoist the class
 //     to a const and write cn(cond && WIDE) instead.
+//     Part 4 is the token-family rule: letter-spacing (tracking-), font size
+//     (text-) and spacing (w-/h-/min-w-/gap-/p-*/m-*/...) each have a
+//     dedicated --tracking-*/--text-*/--sp-* token family, so raw
+//     absolute-unit values (px/rem/em/pt) for these families stay a rule-2
+//     violation even inside a named constant table — unlike one-off class
+//     strings (grid-cols-, blur-, aspect-...) that the table pattern
+//     sanctions. Relative percentages (w-[86%], max-h-[36%]) are responsive
+//     sizing, not raw sizes, and stay allowed.
 // Numeric literals in .ts (non-JSX) files are out of scope: without a type
 // checker a bare number cannot be told apart from data, and the visual
 // surface is JSX by construction.
@@ -120,6 +126,14 @@ function isExemptArbitraryGroup(inner) {
   // text-(length:--my-var) is a CSS-variable reference, not a raw value.
   return /^(?:[a-z-]+:)?--[\w-]+(?:\/[\d.]+%?)?$/.test(content)
 }
+
+// Absolute units only (no %): percentages are relative sizing, not raw sizes.
+const ABSOLUTE_UNIT_RE = /-?(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem|em|pt)/g
+
+// Class prefixes whose values belong to a design-token family (letter-spacing
+// --tracking-*, font-size --text-*, spacing --sp-*); raw absolute-unit values
+// inside their arbitrary brackets/parens are banned even in named constants.
+const TOKEN_FAMILY_CLASS_RE = /(?<![a-z-])((?:tracking|text|min-w|max-w|min-h|max-h|space-x|space-y|inset-x|inset-y|size|gap|inset|top|right|bottom|left|p[trblxy]?|m[trblxy]?|w|h)-)([\[(])([^\]\)]*)([\]\)])/g
 
 // Tailwind arbitrary-value brackets and parens hold raw sizes unless they
 // reference a token or compose relative units; return the offending values.
@@ -231,20 +245,31 @@ function problemsFor(rel, text) {
 
   // Part 3: raw unit values in Tailwind arbitrary-value classNames (brackets,
   // named-group parens, arbitrary properties) in className/class and cn().
-  // Part 4: raw letter-spacing values anywhere, including named constants:
-  // letter-spacing is its own token family (--tracking-*), so tracking-[0.06em]
-  // must become tracking-[var(--tracking-label)] even as a hoisted class string.
-  function visitTracking(node) {
+  // Part 4: raw absolute-unit values of the token families anywhere, including
+  // named constants: letter-spacing/font-size/spacing each have a dedicated
+  // --tracking-*/--text-*/--sp-* token layer, so tracking-[0.06em] must become
+  // tracking-[var(--tracking-label)] even as a hoisted class string, and
+  // w-[2.5px] must become a --sp-* reference or a spacing utility.
+  function visitTokenFamilies(node) {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)
       || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
-      for (const match of node.text.matchAll(/tracking-\[([^\]]*)\]/g)) {
-        if (!isExemptArbitraryGroup(match[1])) {
-          push(lineOf(node), `raw letter-spacing in ${match[0]} (AGENTS.md rule 2): tracking values must reference a --tracking-* design token`)
-        }
+      for (const match of node.text.matchAll(TOKEN_FAMILY_CLASS_RE)) {
+        if (isExemptArbitraryGroup(match[3])) continue
+        const unit = [...match[3].matchAll(ABSOLUTE_UNIT_RE)]
+          .map((u) => u[0])
+          .find((u) => !isExemptNumber(u.replace(/[^-0-9.]/g, '')))
+        if (!unit) continue
+        const prefix = match[1]
+        const label = prefix.startsWith('tracking-') ? 'letter-spacing'
+          : prefix.startsWith('text-') ? 'font-size' : 'spacing'
+        const hint = prefix.startsWith('tracking-') ? 'tracking values must reference a --tracking-* design token'
+          : prefix.startsWith('text-') ? 'font sizes must reference a --text-* design token'
+          : 'sizes must reference a --sp-* design token or a spacing utility'
+        push(lineOf(node), `raw ${label} in ${match[0]} (AGENTS.md rule 2): ${hint}`)
       }
       return
     }
-    ts.forEachChild(node, visitTracking)
+    ts.forEachChild(node, visitTokenFamilies)
   }
 
   function scanClassString(node, report) {
@@ -301,7 +326,7 @@ function problemsFor(rel, text) {
   visitHex(sf)
   if (rel.endsWith('.tsx')) visitNumbers(sf)
   visitClasses(sf)
-  visitTracking(sf)
+  visitTokenFamilies(sf)
   return found
 }
 
