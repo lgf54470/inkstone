@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { Z_INDEX } from '../../../lib/z-index'
 import { decodeDataValue } from '../../../lib/markdown/data-attr'
 import { parseWikiTarget } from '../../../lib/markdown/renderer'
-import { findNoteByTitle } from '../../../store/notes/selectors'
+import { findNoteByTitle } from '../../../store/notes'
 import { useNotes } from '../../../store/notes'
 import { useSession } from '../../../store/session'
 import { getVisibleViewport } from '../../../lib/viewport'

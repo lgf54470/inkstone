@@ -12,7 +12,7 @@ import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../../comp
 import { TagFilterPopover } from '../../../components/tag-filter-popover';
 import { useUi } from '../../../store/ui';
 import { useNotes } from '../../../store/notes';
-import { createContextualNote } from '../../../store/notes/selectors';
+import { createContextualNote } from '../../../store/notes';
 import { CALENDAR_TREE, calendarPeriodLabel, parseCalendarJumpQuery, type CalendarPeriod, virtualAncestorIds, virtualId, virtualPeriodKeyRange } from '../../../lib/calendar-tree';
 import { folderPathLabel, openFolderView } from '../../../lib/folders';
 import { t, useLocale } from '../../../lib/i18n';

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Folder } from '@shared/types';
 import { confirm } from '../../../components/overlay';
 import { useNotes } from '../../../store/notes';
-import { selectNavigationProjection } from '../../../store/notes/selectors';
+import { selectNavigationProjection } from '../../../store/notes';
 import { useUi } from '../../../store/ui';
 import { setFolderTemplateId, setInboxFolderId, useFolderPreferences } from '../../../lib/folder-prefs';
 import { folderPathLabel } from '../../../lib/folders';

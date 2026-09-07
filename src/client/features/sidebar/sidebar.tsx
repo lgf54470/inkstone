@@ -15,7 +15,7 @@ import type { ViewKind } from '@shared/types';
 import { IconButton, Logo } from '../../components/primitives';
 import { Tooltip } from '../../components/overlay';
 import { useUi, type PanelName } from '../../store/ui';
-import { type NavigationCounts, useNavigationCounts } from '../../store/notes/selectors';
+import { type NavigationCounts, useNavigationCounts } from '../../store/notes';
 import { useNotes } from '../../store/notes';
 import { SidebarCalendar } from './sidebar-calendar';
 import { t } from '../../lib/i18n';

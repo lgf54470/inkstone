@@ -4,9 +4,7 @@ import { api } from '../../lib/api';
 import { confirm } from '../../components/overlay';
 import { errorMessage } from '../../lib/errors';
 import { useUi } from '../../store/ui';
-import { useActiveNote } from '../../store/notes/selectors';
-import { useNotes } from '../../store/notes';
-import type { NotesState } from '../../store/notes/model';
+import { useActiveNote, useNotes, type NotesState } from '../../store/notes';
 import type { UiState } from '../../store/ui/types';
 import { t } from '../../lib/i18n';
 

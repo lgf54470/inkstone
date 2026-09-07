@@ -7,7 +7,7 @@ import { errorMessage } from '../../../../lib/errors';
 import { IconButton } from '../../../../components/primitives';
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../../../components/overlay';
 import { useUi } from '../../../../store/ui';
-import { selectNavigationProjection, type FolderNode } from '../../../../store/notes/selectors';
+import { selectNavigationProjection, type FolderNode } from '../../../../store/notes';
 import { useNotes } from '../../../../store/notes';
 import { folderPathLabel, openFolderView } from '../../../../lib/folders';
 import { treeRowIndent } from '../../../../lib/calendar-tree';

@@ -19,7 +19,7 @@ import { clearTagSelection } from '../../../lib/tag-selection';
 import { IconButton, SectionLabel } from '../../../components/primitives';
 import { Tooltip } from '../../../components/overlay';
 import { useUi } from '../../../store/ui';
-import { useNavigationCounts } from '../../../store/notes/selectors';
+import { useNavigationCounts } from '../../../store/notes';
 import { useNotes } from '../../../store/notes';
 import { createTag, renameTag } from '../../tags';
 import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../../lib/tag-tree';

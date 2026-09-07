@@ -9,7 +9,7 @@ import { Drawer } from '../../components/overlay';
 import { InlineErrorBoundary } from '../../components/error-boundary';
 import { EditorSkeleton } from '../../components/feedback';
 import { PANEL_WIDTHS, useUi } from '../../store/ui';
-import { createContextualNote } from '../../store/notes/selectors';
+import { createContextualNote } from '../../store/notes';
 import { useNotes } from '../../store/notes';
 import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands';
 import { useSession } from '../../store/session';

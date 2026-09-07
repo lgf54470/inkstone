@@ -15,7 +15,7 @@ import { useGapIndicatorStore } from './use-gap-indicator';
 import { loadRememberedFilter, loadSessionFilter, saveRememberedFilter, saveSessionFilter } from './list-filter-persist';
 import { useUi } from '../../store/ui';
 import { useSession } from '../../store/session';
-import { useVisibleNotes } from '../../store/notes/selectors';
+import { useVisibleNotes } from '../../store/notes';
 import { useNotes } from '../../store/notes';
 import { useNoteTemplates } from '../../store/note-templates';
 import { createNoteFromTemplate } from '../../lib/template-notes';

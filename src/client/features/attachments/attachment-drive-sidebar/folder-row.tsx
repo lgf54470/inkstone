@@ -4,7 +4,7 @@ import type { Folder } from '@shared/types';
 import { cn } from '../../../lib/cn';
 import { t } from '../../../lib/i18n';
 import { tryParseStringArray } from '../../../lib/json';
-import type { FolderNode } from '../../../store/notes/selectors';
+import type { FolderNode } from '../../../store/notes';
 import { Menu, confirm, useContextMenu, type MenuItem } from '../../../components/overlay';
 import { FolderColorSubmenu, FolderIconSubmenu } from '../../folders';
 

@@ -1,6 +1,6 @@
 import { cn } from '../../../lib/cn';
 import { EditorSkeleton } from '../../../components/feedback';
-import { createContextualNote } from '../../../store/notes/selectors';
+import { createContextualNote } from '../../../store/notes';
 import { t } from '../../../lib/i18n';
 import type { WorkspacePane } from '../../../store/ui';
 import { NoNoteSelected } from './no-note-selected';

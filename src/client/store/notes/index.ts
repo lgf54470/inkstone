@@ -4,6 +4,10 @@
  * instance (`useNotes`) and the store-level undo/toast helpers. The heavy lifting
  * lives in `store/notes/` — see `model.ts` (state), `persist.ts` (write staging),
  * `outbox.ts` (offline replay), `reconcile.ts` (merge), and `selectors.ts` (hooks).
+ *
+ * Consumers import only from this module; the re-exports below are the store's
+ * public surface. The re-exported submodules keep their own runtime imports of
+ * `../notes`, so the module graph stays acyclic.
  */
 
 import { create } from 'zustand';
@@ -46,3 +50,7 @@ notes: {},
 }));
 
 export type { NotesState, SaveStatus } from './model';
+export { noteState } from './model';
+export * from './selectors';
+export { acknowledgeOutboxBaseAdvanced, acknowledgeOutboxResult } from './acknowledge';
+export { takePendingEditorCursor } from './new-note';

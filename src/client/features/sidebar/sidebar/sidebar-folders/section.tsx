@@ -6,7 +6,7 @@ import { cn } from '../../../../lib/cn';
 import { IconButton, SectionLabel } from '../../../../components/primitives';
 import { Tooltip } from '../../../../components/overlay';
 import { useUi } from '../../../../store/ui';
-import { useFolderTree } from '../../../../store/notes/selectors';
+import { useFolderTree } from '../../../../store/notes';
 import { useNotes } from '../../../../store/notes';
 import { folderDescendantIds, folderPath, openFolderView } from '../../../../lib/folders';
 import { FolderPicker } from '../../../folders';

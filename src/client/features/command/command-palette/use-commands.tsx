@@ -31,7 +31,7 @@ import { cycleYearGridColumns, setYearGridColumns, useYearGridColumns, type Year
 import { useUi, type PanelName } from '../../../store/ui'
 import { useNotes } from '../../../store/notes'
 import { useSession } from '../../../store/session'
-import { createContextualNote } from '../../../store/notes/selectors'
+import { createContextualNote } from '../../../store/notes'
 import { getActiveEditorView, insertNoteTemplate } from '../../../editor/commands'
 import type { Item } from './types'
 import type { ViewKind } from '@shared/types'

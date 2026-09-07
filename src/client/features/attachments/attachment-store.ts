@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { AttachmentFolder, AttachmentTag, Folder, Tag } from '@shared/types'
 import { api } from '../../lib/api'
-import { buildFolderTree, type FolderNode } from '../..//store/notes/selectors'
+import { buildFolderTree, type FolderNode } from '../../store/notes'
 import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../lib/tag-tree'
 
 interface AttachmentStoreState {

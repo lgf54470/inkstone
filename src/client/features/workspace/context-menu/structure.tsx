@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import type { MenuItem } from '../../../components/overlay';
 import { t } from '../../../lib/i18n';
-import { findNoteByTitle } from '../../../store/notes/selectors';
+import { findNoteByTitle } from '../../../store/notes';
 import { toggleBulletList, toggleTaskDone } from '../../../editor/commands';
 import type { MenuCtx } from './types';
 import { SubmenuList } from './submenu';

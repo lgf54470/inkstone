@@ -5,7 +5,7 @@ import { Empty } from '../../../components/feedback'
 import { daysBetweenKeys } from '../../../lib/time'
 import { useUi } from '../../../store/ui'
 import { useSession } from '../../../store/session'
-import { createContextualNote } from '../../../store/notes/selectors'
+import { createContextualNote } from '../../../store/notes'
 import { useNotes } from '../../../store/notes'
 import {
   CALENDAR_TREE,

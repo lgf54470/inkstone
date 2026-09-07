@@ -11,7 +11,7 @@ import {
 import { IconButton } from '../../../components/primitives';
 import { Tooltip } from '../../../components/overlay';
 import { useUi } from '../../../store/ui';
-import { createContextualNote } from '../../../store/notes/selectors';
+import { createContextualNote } from '../../../store/notes';
 import { t } from '../../../lib/i18n';
 import { SidebarAccount } from './sidebar-account';
 

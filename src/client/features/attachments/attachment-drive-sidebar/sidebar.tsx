@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import type { AttachmentFolder, AttachmentStats, Folder, Tag } from '@shared/types';
 import { cn } from '../../../lib/cn';
 import { t } from '../../../lib/i18n';
-import type { FolderNode } from '../../../store/notes/selectors';
+import type { FolderNode } from '../../../store/notes';
 import type { TagTreeNode } from '../../../lib/tag-tree';
 import { IconButton } from '../../../components/primitives';
 import { Tooltip } from '../../../components/overlay';

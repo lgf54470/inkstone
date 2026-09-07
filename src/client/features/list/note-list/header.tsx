@@ -23,7 +23,7 @@ import { isTodoFolderId, isVirtualFolderId } from '../../../lib/calendar-tree'
 import { type Breakpoint } from '../../../lib/hooks'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
-import { createContextualNote } from '../../../store/notes/selectors'
+import { createContextualNote } from '../../../store/notes'
 import type { GapInfo } from '../use-gap-indicator'
 
 interface NoteListHeaderProps {

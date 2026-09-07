@@ -5,7 +5,7 @@ import { confirm } from '../../components/overlay'
 import { api } from '../../lib/api'
 import { errorMessage } from '../../lib/errors'
 import { t } from '../../lib/i18n'
-import { setOptimisticTagCache } from '../../store/notes/selectors'
+import { setOptimisticTagCache } from '../../store/notes'
 import { useNotes } from '../../store/notes'
 import { useUi } from '../../store/ui'
 
