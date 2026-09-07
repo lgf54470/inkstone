@@ -1,0 +1,39 @@
+
+
+
+.ink-preview-container {
+  font-size: var(--prose-size, 16px);
+  font-family: var(--font-ui);
+  max-width: var(--prose-width, 72ch);
+  margin-inline: auto;
+  width: 100%;
+}
+
+.ink-preview-container[data-font='serif'] {
+  font-family: var(--font-serif);
+}
+
+.ink-prose {
+  font-size: var(--prose-size, 16px);
+  line-height: var(--prose-line, 1.65);
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  font-family: var(--font-ui);
+  max-width: var(--prose-width, 72ch);
+  margin-inline: auto;
+  padding-block: 0 42vh;
+}
+
+.note-properties-editor {
+  width: 100%;
+  font-family: var(--font-ui);
+}
+
+.ink-prose[data-font='serif'] {
+  font-family: var(--font-serif);
+  letter-spacing: 0;
+}
+
+

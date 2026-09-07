@@ -11,6 +11,7 @@ function walk(directory, out = []) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const target = path.join(directory, entry.name)
     if (entry.isDirectory()) out = walk(target, out)
+    else if (entry.name.endsWith('.css')) out.push(target)
     else if ((entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) && !entry.name.endsWith('.d.ts')) out.push(target)
   }
   return out

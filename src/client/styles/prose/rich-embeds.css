@@ -1,0 +1,165 @@
+.ink-prose .mermaid-block {
+  margin: 1em 0;
+  padding: var(--sp-3\.5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-inset);
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+.ink-prose .mermaid-block svg {
+  max-width: 100%;
+  height: auto;
+}
+.ink-prose .mermaid-block.loading {
+  min-height: 90px;
+  align-items: center;
+  color: var(--text-tertiary);
+  font-size: var(--text-12);
+}
+.ink-prose .mermaid-block.loading::before {
+  width: 12px;
+  height: 12px;
+  margin-right: var(--sp-2);
+  border: 1.5px solid color-mix(in oklab, var(--text-tertiary) 32%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  content: '';
+  animation: mermaid-spin var(--anim-spin) linear infinite;
+}
+.ink-prose .mermaid-block.mermaid-source,
+.ink-prose .mermaid-block.has-error {
+  justify-content: flex-start;
+}
+.ink-prose .mermaid-block.mermaid-source > code {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
+  white-space: pre;
+}
+.ink-prose .mermaid-error {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-2) 12px;
+  color: var(--danger);
+  font-size: var(--text-12);
+}
+.ink-prose .mermaid-error-message {
+  align-self: center;
+  overflow-wrap: anywhere;
+}
+.ink-prose .mermaid-error code {
+  grid-column: 1 / -1;
+  overflow-x: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
+  white-space: pre-wrap;
+}
+.ink-prose .mermaid-retry {
+  align-self: start;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  padding: var(--sp-0\.75) var(--sp-2\.25);
+  color: var(--text-primary);
+  background: var(--bg-overlay);
+  cursor: pointer;
+}
+.ink-prose .mermaid-retry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+@keyframes mermaid-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+.ink-hit {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  border-radius: var(--r-3);
+  padding: 0 var(--sp-0\.25);
+  box-decoration-break: clone;
+}
+
+.ink-prose .chartjs-block {
+  margin: 1em 0;
+  padding: var(--sp-3\.5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-inset);
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+.ink-prose .chartjs-container {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  height: 320px;
+  min-height: 260px;
+  max-height: 500px;
+}
+.ink-prose .chartjs-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ink-prose .chartjs-block.loading {
+  min-height: 120px;
+  align-items: center;
+  color: var(--text-tertiary);
+  font-size: var(--text-12);
+}
+.ink-prose .chartjs-block.loading::before {
+  width: 12px;
+  height: 12px;
+  margin-right: var(--sp-2);
+  border: 1.5px solid color-mix(in oklab, var(--text-tertiary) 32%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  content: '';
+  animation: mermaid-spin var(--anim-spin) linear infinite;
+}
+.ink-prose .chartjs-block.has-error {
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.ink-prose .chart-error-banner {
+  color: var(--danger);
+  font-size: var(--text-12);
+  margin-bottom: var(--sp-2);
+  font-weight: 500;
+}
+.ink-prose .chartjs-block.has-error pre {
+  margin: 0;
+  padding: var(--sp-2);
+  background: var(--bg-base);
+  border-radius: var(--r-md);
+  overflow-x: auto;
+  font-size: var(--code-font-size);
+}
+
+@media print {
+  .ink-prose {
+    max-width: none;
+    padding: 0;
+    font-size: 11pt;
+    color: var(--mask-ink);
+  }
+  .ink-prose .code-copy,
+  .ink-prose .heading-anchor {
+    display: none;
+  }
+  .ink-prose .code-block,
+  .ink-prose .table-wrap,
+  .ink-prose .markdown-example {
+    break-inside: avoid;
+  }
+}

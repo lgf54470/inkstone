@@ -1,0 +1,428 @@
+.ink-prose .frontmatter-properties {
+  margin: 0 0 1em;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--bg-inset);
+  font-size: 0.9em;
+}
+.ink-prose .frontmatter-properties > summary {
+  padding: 0.45em 0.7em;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  cursor: pointer;
+}
+.ink-prose .frontmatter-properties dl { margin: 0; padding: 0 0.72em 0.6em; }
+.ink-prose .frontmatter-row {
+  display: grid;
+  grid-template-columns: minmax(7em, 0.35fr) minmax(0, 1fr);
+  gap: 0.7em;
+  padding: 0.24em 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.ink-prose .frontmatter-row dt { color: var(--text-tertiary); }
+.ink-prose .frontmatter-row dd { min-width: 0; margin: 0; }
+.ink-prose .frontmatter-chip {
+  display: inline-flex;
+  margin: 0.08em 0.25em 0.08em 0;
+  padding: 0.02em 0.4em;
+  border-radius: var(--r-full);
+  background: var(--accent-softer);
+}
+.ink-prose .frontmatter-error {
+  margin-bottom: 1em;
+  padding: 0.6em 0.75em;
+  border: 1px solid color-mix(in oklab, var(--danger) 35%, var(--border-subtle));
+  border-radius: var(--r-md);
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 7%, var(--bg-inset));
+}
+.ink-prose .frontmatter-error ul { margin: 0.35em 0 0; }
+
+.ink-prose .note-embed {
+  display: block;
+  margin: 0.9em 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-md);
+  background: var(--bg-inset);
+}
+.ink-prose .note-embed-head {
+  display: block;
+  padding: 0.42em 0.75em;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--accent);
+  font-size: 0.86em;
+  font-weight: 650;
+}
+.ink-prose .note-embed-body { display: block; padding: 0.7em 0.8em 0.05em; }
+.ink-prose .note-embed-body > :last-child { margin-bottom: 0.65em; }
+.ink-prose .note-embed.loading .note-embed-body,
+.ink-prose .note-embed.error .note-embed-body { color: var(--text-tertiary); font-size: 0.9em; }
+.ink-prose [data-block-id] { scroll-margin-top: var(--sp-6); }
+.ink-prose [data-block-id]:target {
+  border-radius: var(--r-xs);
+  outline: 2px solid var(--accent-ring);
+  background: var(--accent-softer);
+}
+
+
+.ink-prose .table-wrap {
+  margin: 0.9em 0;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+}
+.ink-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.91em;
+}
+.ink-prose thead {
+  background: var(--bg-inset);
+}
+.ink-prose th {
+  font-weight: 620;
+  text-align: start;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.ink-prose th,
+.ink-prose td {
+  padding: 0.4em 0.7em;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+.ink-prose tbody tr:last-child td {
+  border-bottom: none;
+}
+.ink-prose tbody tr {
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.ink-prose tbody tr:hover {
+  background: var(--bg-hover);
+}
+.ink-prose td[align='right'],
+.ink-prose th[align='right'] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ink-prose td[align='center'],
+.ink-prose th[align='center'] {
+  text-align: center;
+}
+.ink-prose td[align='left'],
+.ink-prose th[align='left'] {
+  text-align: left;
+}
+
+.ink-prose th.is-selected-cell,
+.ink-prose td.is-selected-cell {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+}
+
+.ink-prose th.is-editing-cell,
+.ink-prose td.is-editing-cell {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--bg-base);
+  caret-color: var(--accent);
+  cursor: text;
+}
+
+.ink-prose .table-floating-bar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-0\.75);
+  padding: var(--sp-0\.5) var(--sp-1);
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--bg-inset) 85%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+  z-index: var(--z-sticky);
+}
+
+.ink-prose .table-wrap:hover .table-floating-bar,
+.ink-prose .table-wrap:focus-within .table-floating-bar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ink-prose .table-floating-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-0\.75);
+  padding: var(--sp-0\.5) var(--sp-1\.5);
+  border-radius: var(--r-xs);
+  font-size: var(--text-11);
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.ink-prose .table-floating-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+
+.ink-prose a:not(.heading-anchor):not(.wikilink) {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2.5px;
+  transition: text-decoration-color var(--dur-fast) var(--ease-out);
+}
+.ink-prose a:not(.heading-anchor):not(.wikilink):hover {
+  text-decoration-color: var(--accent);
+}
+
+.ink-prose .wikilink {
+  color: var(--accent);
+  background: var(--accent-softer);
+  padding: 0.06em 0.32em;
+  margin: 0 -0.06em;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.ink-prose .wikilink:hover {
+  background: var(--accent-soft);
+}
+.ink-prose .wikilink.missing {
+  color: var(--text-tertiary);
+  background: transparent;
+  text-decoration: underline dashed;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+}
+.ink-prose .wikilink.missing:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+
+.wiki-hover-body .ink-prose {
+  max-width: none;
+  margin-inline: 0;
+  padding-block: 0;
+}
+.wiki-hover-body .ink-prose h1,
+.wiki-hover-body .ink-prose h2,
+.wiki-hover-body .ink-prose h3 {
+  margin-top: 0.9em;
+}
+.wiki-hover-body .ink-prose > :first-child {
+  margin-top: 0;
+}
+.wiki-hover-embed {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.pinned-window-flash {
+  animation: pinned-window-flash var(--anim-flash) var(--ease-out);
+}
+@keyframes pinned-window-flash {
+  0% {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 75%, transparent), var(--shadow-pop);
+  }
+  70% {
+    box-shadow: 0 0 0 12px transparent, var(--shadow-pop);
+  }
+  100% {
+    box-shadow: 0 0 0 12px transparent, var(--shadow-pop);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pinned-window-flash {
+    animation: none;
+  }
+}
+
+.ink-prose .inline-tag {
+  color: var(--tag-color, var(--accent));
+  background: var(--tag-bg, var(--accent-softer));
+  padding: 0.06em 0.4em;
+  border-radius: var(--r-full);
+  font-size: 0.9em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast), opacity var(--dur-fast);
+}
+.ink-prose .inline-tag:hover {
+  background: var(--tag-bg-hover, var(--accent-soft));
+}
+
+
+.ink-prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  display: block;
+  margin: 0.9em auto;
+  cursor: zoom-in;
+  background: var(--bg-inset);
+}
+.ink-prose figure {
+  margin: 1em 0;
+}
+.ink-prose figure img {
+  margin-bottom: 0.4em;
+}
+.ink-prose figcaption {
+  text-align: center;
+  font-size: 0.82em;
+  color: var(--text-tertiary);
+}
+.ink-prose figure.image-blocked {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 0.9em 1em;
+  background: var(--bg-inset);
+  text-align: center;
+}
+.ink-prose .image-blocked-label {
+  display: block;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+.ink-prose .image-blocked-fallback {
+  margin-top: 0.35em;
+}
+
+
+.ink-prose hr {
+  border: none;
+  margin: 1.6em 0;
+  height: 1em;
+  position: relative;
+}
+.ink-prose hr::before {
+  content: '· · ·';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  letter-spacing: 0.55em;
+  text-indent: 0.55em;
+  color: var(--text-quaternary);
+  font-size: 0.95em;
+}
+
+
+.ink-prose .footnotes {
+  margin-top: 2em;
+  padding-top: 0.8em;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+.ink-prose .footnotes ol {
+  padding-inline-start: 1.2em;
+}
+.ink-prose .footnote-backref {
+  text-decoration: none;
+  margin-inline-start: 0.35em;
+}
+.ink-prose sup.footnote-ref a {
+  text-decoration: none;
+  font-size: 0.85em;
+  padding: 0 0.15em;
+}
+
+
+.ink-prose mark {
+  background: color-mix(in oklab, var(--warning) 26%, transparent);
+  color: var(--text-primary);
+  padding: 0.04em 0.22em;
+  border-radius: var(--r-3);
+}
+.ink-prose ins,
+.ink-prose u {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+.ink-prose abbr[title] {
+  text-decoration: underline dotted 1.5px;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.ink-prose ruby {
+  ruby-position: over;
+}
+.ink-prose rt {
+  font-size: 0.68em;
+  color: var(--text-secondary);
+  user-select: none;
+}
+.ink-prose rp {
+  color: var(--text-quaternary);
+  font-size: 0.75em;
+}
+.ink-prose kbd {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  padding: 0.15em 0.42em;
+  border: 1px solid var(--border-default);
+  border-bottom-width: 2px;
+  border-radius: var(--r-5);
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.ink-prose del {
+  color: var(--text-tertiary);
+}
+.ink-prose abbr {
+  text-decoration: underline dotted;
+  cursor: help;
+}
+.ink-prose .katex {
+  font-size: 1.04em;
+}
+.ink-prose .katex-display {
+  margin: 0.9em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25em 0;
+}
+.ink-prose .math-source {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+.ink-prose .math-block.math-source {
+  margin: 0.9em 0;
+  padding: var(--sp-2\.5) var(--sp-3\.5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: var(--bg-inset);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ink-prose .math-error {
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: color-mix(in oklab, var(--danger) 10%, transparent);
+  padding: 0.1em 0.35em;
+  border-radius: var(--r-xs);
+}
+
+
