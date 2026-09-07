@@ -42,6 +42,7 @@
     "comments:check": "node scripts/check-comments.mjs",
     "escape:check": "node scripts/check-escape-hatches.mjs",
     "module-state:check": "node scripts/check-module-state.mjs",
+    "deep-imports:check": "node scripts/check-deep-imports.mjs",
     "size:check": "node scripts/check-size.mjs",
     "test:e2e": "node scripts/e2e.mjs",
     "cf-typegen": "wrangler types",

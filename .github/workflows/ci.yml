@@ -22,6 +22,7 @@ jobs:
       - run: npm run comments:check
       - run: npm run escape:check
       - run: npm run module-state:check
+      - run: npm run deep-imports:check
       - run: npm run size:check
       - run: npm run build
       - run: node scripts/check-bundle-budget.mjs

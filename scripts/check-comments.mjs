@@ -11,10 +11,42 @@ const allowed = new Map([
   ["scripts/check-bundle-budget.mjs", [
     "// Chunk prefixes follow the kebab-case lazy import paths (settings dir → settings-*).",
   ]],
+  ["scripts/check-deep-imports.mjs", [
+    "// AGENTS.md rule 4: modules communicate only through their public interface",
+    "// (the directory's index.ts). This walks the src tree with the TS AST so",
+    "// imports inside comments or strings never count, and resolves both relative",
+    "// and `@/`/`@shared/` aliased imports to their concrete files.",
+    "//",
+    "// A violation is an import that reaches PAST a module boundary: the resolved",
+    "// file sits under some directory that exposes an index.ts, but the importing",
+    "// file lives outside that directory. Importing the index itself (`../notes`,",
+    "// `./blog-store`) IS the public interface and stays allowed, and so do",
+    "// module-internal sibling imports.",
+    "// Map<moduleDir, indexFile> for every src directory exposing index.ts.",
+    "// bare packages and #aliases are out of scope",
+    "// The module boundary the resolved file belongs to (nearest ancestor with an",
+    "// index.ts), or null when the import is the interface itself / module-internal.",
+    "// `import type` / `export type` are erased at compile time, so they",
+    "// cross no runtime boundary; the public-interface rule targets wiring.",
+    "// AGENTS.md rule 5: violations must be explicit and reasoned. Same pattern as",
+    "// ALLOWED_DOUBLE_CASTS in check-escape-hatches.mjs.",
+    "// tests are white-box by design",
+  ]],
   ["scripts/check-escape-hatches.mjs", [
     "// Type escape hatches are banned by AGENTS.md rule 5 (no `any` /",
     "// `@ts-ignore`); this walks the src tree with the TS AST so prose in",
     "// comments (\"any of the two modes\") never counts as a violation.",
+    "// `as unknown as T` is a two-step escape hatch that defeats the checker's",
+    "// plain `any` scan; flag the OUTER cast whose source is itself a cast to",
+    "// unknown. A plain `x as unknown` feeding a runtime validator is the safe",
+    "// direction and stays allowed.",
+    "// Irreducible platform seams: each entry carries the reason the double-cast",
+    "// cannot be replaced by a narrowing helper or a precise type. File paths are",
+    "// repo-relative; line numbers are intentionally absent so edits nearby do not",
+    "// silently invalidate the entry (the AST scan still pins the exact expression).",
+    "// Test files keep the any/ts-ignore ban but may double-cast: in-memory stubs",
+    "// of api/db/DOM primitives are the one sanctioned use, mirroring the",
+    "// notes-test-utils allowlist entry below.",
   ]],
   ["scripts/check-i18n.mjs", [
     "// Demo mode ships a pre-populated workspace whose seed data (welcome notes,",
@@ -22,6 +54,10 @@ const allowed = new Map([
     "// UI chrome rendered by the i18n layer. Like the OAuth consent page above, it",
     "// bypasses the English-only source rule; the strings themselves still live",
     "// only in seed data, never in JSX or component props.",
+    "// Blog demo seed + mutations carry the same category of authored demo",
+    "// content (welcome posts, categories, sample comments) served by the demo",
+    "// backend; they are data fixtures, never UI chrome rendered by the i18n",
+    "// layer. The demo test files assert against those seed fixtures verbatim.",
     "// Cross-tree renderer parity fixtures are authored Chinese markdown (input",
     "// data proving the root and blog renderers agree on CJK syntax), not UI copy",
     "// rendered by the i18n layer; same data category as the demo seed state above.",
@@ -141,6 +177,10 @@ const allowed = new Map([
     "// imports the other shared types from this module, so owning the props here",
     "// keeps the pair free of an import cycle.",
   ]],
+  ["src/client/demo/backend/routes/blog-mutations.ts", [
+    "// Unnamed fallbacks below are authored demo seed data (mirroring the welcome",
+    "// content in blog-seed.ts), not UI copy: the i18n layer never renders them.",
+  ]],
   ["src/client/demo/backend/routes/files.ts", [
     "// Match the real worker contract: facetsFull may only be true when the response carries the",
     "// complete folders/tags lists. The demo always sends full snapshots when anything changed, so",
@@ -225,6 +265,10 @@ const allowed = new Map([
     "/** DOM click handling for the rendered preview body: file/table/JS-runner actions, mermaid retry, code copy/collapse, task checkboxes, wiki/block/tag navigation, lightbox, anchors. */",
     "// Malformed percent-encoding falls back to the raw id.",
   ]],
+  ["src/client/features/settings/backup-settings/target-form.tsx", [
+    "// Initial form fields from whichever config variant the target carries; the",
+    "// `in` guards narrow the S3/WebDAV union so every field reads type-safe.",
+  ]],
   ["src/client/features/settings/totp-settings/use-totp-settings.ts", [
     "// Best-effort server cleanup; an orphaned pending setup expires server-side.",
   ]],
@@ -232,16 +276,21 @@ const allowed = new Map([
     "// A new or replaced passcode must be at least 4 characters (the server",
     "// enforces the same minimum); short codes are trivially brute-forced.",
   ]],
-  ["src/client/features/share/share-store/index.ts", [
-    "// Feed the notes store's visibility projection (shared note ids) without",
-    "// creating a store → feature import edge: selectors read the neutral registry",
-    "// in store/visibility-sources.ts, not this module.",
+  ["src/client/features/share/share-page/index.ts", [
+    "// Public interface of the share-page module. Kept separate from the parent",
+    "// share module's index so the share page stays a self-contained lazy chunk",
+    "// (app.tsx code-splits on this boundary and must not pull the editor in).",
   ]],
-  ["src/client/features/share/use-share-page.ts", [
+  ["src/client/features/share/share-page/use-share-page.ts", [
     "// Share pages always block external images (no option): visitors never",
     "// opt in, so third parties cannot track them via note images. The",
     "// server enforces this too by omitting `https:` from CSP img-src on /s/*.",
     "// Invalid URLs are skipped; the attribute keeps its original value.",
+  ]],
+  ["src/client/features/share/share-store/index.ts", [
+    "// Feed the notes store's visibility projection (shared note ids) without",
+    "// creating a store → feature import edge: selectors read the neutral registry",
+    "// in store/visibility-sources.ts, not this module.",
   ]],
   ["src/client/features/sidebar/calendar-persist.ts", [
     "// Quota or private-mode writes can throw; the calendar view stays authoritative in memory.",
@@ -443,6 +492,8 @@ const allowed = new Map([
     "// window collapses bursts into one flush (a lost tail at most delays the",
     "// cached shell by one window on abrupt close), and the flush tail chain keeps",
     "// each diff-based write from racing the previous one.",
+    "// Validators above confirmed the stored session's shape; the composite",
+    "// SessionInfo type is reconstructed from those validated parts.",
     "// The session still works in memory; only the offline restore copy is lost.",
     "// Best-effort cache deletion; stale session keys are overwritten on the next save.",
     "// A flush failure is absorbed by the tail chain; the next flush retries the whole snapshot.",
@@ -684,7 +735,7 @@ const allowed = new Map([
     "/** Pure folder-tree manipulation used by optimistic folder mutations. */",
   ]],
   ["src/client/store/notes/index.ts", [
-    "/** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization.\n *\n * This file is the composition root of the notes store: it owns the zustand store\n * instance (`useNotes`) and the store-level undo/toast helpers. The heavy lifting\n * lives in `store/notes/` — see `model.ts` (state), `persist.ts` (write staging),\n * `outbox.ts` (offline replay), `reconcile.ts` (merge), and `selectors.ts` (hooks).\n */",
+    "/** Coordinates the note cache, offline write-ahead log, optimistic updates, and server synchronization.\n *\n * This file is the composition root of the notes store: it owns the zustand store\n * instance (`useNotes`) and the store-level undo/toast helpers. The heavy lifting\n * lives in `store/notes/` — see `model.ts` (state), `persist.ts` (write staging),\n * `outbox.ts` (offline replay), `reconcile.ts` (merge), and `selectors.ts` (hooks).\n *\n * Consumers import only from this module; the re-exports below are the store's\n * public surface. The re-exported submodules keep their own runtime imports of\n * `../notes`, so the module graph stays acyclic.\n */",
   ]],
   ["src/client/store/notes/model.ts", [
     "/** Notes store model: shared types plus module-level mutable state (single browser-tab singletons). */",
@@ -793,6 +844,7 @@ const allowed = new Map([
     "// Keep the multi-select when entering a folder view so it stacks with",
     "// the folder filter; any other navigation clears the selection.",
     "// The view transition can be skipped (reduced motion, interrupted navigation); the circular reveal is purely decorative.",
+    "// One guarded assignment per key: a union-keyed loop write would need a cast.",
     "/**\n * Post a toast carrying a one-click undo action; the single helper behind every store-level undo flow.\n * `duration` overrides the default window (dangerous actions pass a longer one via their caller).\n */",
   ]],
   ["src/client/store/ui/theme.ts", [
@@ -833,6 +885,9 @@ const allowed = new Map([
   ]],
   ["src/shared/escape.ts", [
     "/**\n * HTML-escape untrusted text (all five metacharacters: & < > \" ').\n * Single canonical implementation shared by client and worker so escaping\n * semantics never drift between layers.\n */",
+  ]],
+  ["src/shared/http.ts", [
+    "/**\n * Widens a binary body to `BodyInit` for the shared DOM/undici request types.\n *\n * Workers and undici accept `Uint8Array` and `ReadableStream` bodies at\n * runtime, but the DOM `BodyInit` union models them through `BufferSource`\n * parameterizations that reject the exact `Uint8Array`/stream shapes used\n * here, so every backup call site would otherwise repeat a double-cast. This\n * helper is the single point where that widening happens.\n */",
   ]],
   ["src/shared/markdown-utils/front-matter.ts", [
     "/**\n * Update an existing front matter property in-place, keeping the body and all\n * other properties untouched. Returns the rewritten content, or `null` when\n * the content has no parseable front matter, the property does not exist, or\n * nothing changes. Passing `null` as `value` deletes the property.\n */",

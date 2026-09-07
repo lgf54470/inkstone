@@ -1,13 +1,18 @@
 #!/bin/sh
-# Pre-commit gate for AGENTS.md policy checks (mirrors the CI size:check /
-# comments:check steps so violations fail locally before reaching CI).
+# Pre-commit gate for AGENTS.md policy checks (mirrors the CI static policy
+# gates so violations fail locally before reaching CI).
 set -e
 cd "$(git rev-parse --show-toplevel)"
 
-# Static policy gates — always on (fast, whole-tree by design).
+# Static policy gates — always on (fast, whole-tree by design). Parity with
+# the CI static block (i18n/comments/escape/module-state/deep-imports/size);
+# the build/budget/vendor/e2e steps remain CI-only (slow or server-bound).
 node scripts/check-size.mjs
 node scripts/check-comments.mjs
 node scripts/check-escape-hatches.mjs
+node scripts/check-i18n.mjs
+node scripts/check-module-state.mjs
+node scripts/check-deep-imports.mjs
 
 # Type/test gates — scoped to the staged TypeScript files so local commits
 # stay fast; the full suite still runs in CI. `tsc -b` is incremental (via

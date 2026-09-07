@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MutableRefObject } from 'react'
 import type { PublicNote } from '@shared/types'
-import { api, ApiError } from '../../lib/api'
-import { renderMarkdown } from '../../lib/markdown/renderer'
-import { enhancePreview, renderPendingMermaid, resetMermaidNode, toggleCodeBlockCollapse } from '../../lib/markdown/enhance'
-import { moveMarkdownTabFocus, selectMarkdownTab } from '../preview'
-import { useUi } from '../../store/ui'
-import type { UiState } from '../../store/ui'
-import { t, useLocale } from '../../lib/i18n'
+import { api, ApiError } from '../../../lib/api'
+import { renderMarkdown } from '../../../lib/markdown/renderer'
+import { enhancePreview, renderPendingMermaid, resetMermaidNode, toggleCodeBlockCollapse } from '../../../lib/markdown/enhance'
+import { moveMarkdownTabFocus, selectMarkdownTab } from '../../preview'
+import { useUi } from '../../../store/ui'
+import type { UiState } from '../../../store/ui'
+import { t, useLocale } from '../../../lib/i18n'
 
 
 type SharePageCtx = {
