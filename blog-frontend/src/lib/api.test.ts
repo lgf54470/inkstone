@@ -19,6 +19,24 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
+const SNAKE_CASE_POST = {
+  id: 'p1',
+  note_id: 'n1',
+  title: 'T',
+  slug: 't',
+  excerpt: 'E',
+  content: 'C',
+  cover_url: '![cover](https://x/y.png)',
+  category_id: 'c1',
+  tags: ['a', 'b'],
+  is_published: false,
+  published_at: '2026-01-02T00:00:00Z',
+  views: '12',
+  comments_count: 3,
+  created_at: 1700000000000,
+  updated_at: 1700000000001,
+}
+
 describe('extractCoverUrl', () => {
   it('returns trimmed raw value', () => {
     expect(extractCoverUrl('  https://a/b.png  ')).toBe('https://a/b.png')
@@ -38,30 +56,9 @@ describe('extractCoverUrl', () => {
   })
 })
 
-describe('api.getPosts', () => {
+describe('api.getPosts payload mapping', () => {
   it('maps snake_case payloads and normalizes types', async () => {
-    stubFetch({
-      posts: [
-        {
-          id: 'p1',
-          note_id: 'n1',
-          title: 'T',
-          slug: 't',
-          excerpt: 'E',
-          content: 'C',
-          cover_url: '![cover](https://x/y.png)',
-          category_id: 'c1',
-          tags: ['a', 'b'],
-          is_published: false,
-          published_at: '2026-01-02T00:00:00Z',
-          views: '12',
-          comments_count: 3,
-          created_at: 1700000000000,
-          updated_at: 1700000000001,
-        },
-      ],
-      pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
-    })
+    stubFetch({ posts: [SNAKE_CASE_POST], pagination: { total: 1, page: 1, limit: 10, totalPages: 1 } })
     const result = await api.getPosts({ page: 1 })
     expect(result.posts).toHaveLength(1)
     expect(result.posts[0]).toMatchObject({
@@ -85,7 +82,9 @@ describe('api.getPosts', () => {
     expect(result.total).toBe(result.posts.length)
     expect(result.posts[0]!.slug).toBe('welcome-to-inkstone-blog')
   })
+})
 
+describe('api.getPosts request behavior', () => {
   it('sends the search param to the API', async () => {
     stubFetch({ posts: [], pagination: { total: 0, page: 1, limit: 8, totalPages: 0 } })
     await api.getPosts({ search: 'hello', limit: 8 })

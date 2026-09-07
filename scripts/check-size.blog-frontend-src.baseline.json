@@ -1,18 +1,1 @@
-{
-  "blog-frontend/src/components/SearchModal.tsx": {
-    "deepFns": 1
-  },
-  "blog-frontend/src/lib/api.test.ts": {
-    "longFns": 1
-  },
-  "blog-frontend/src/lib/markdown/fence.ts": {
-    "longFns": 1,
-    "deepFns": 1
-  },
-  "blog-frontend/src/lib/markdown/rules/core.ts": {
-    "deepFns": 1
-  },
-  "blog-frontend/src/lib/markdown/sanitize.test.ts": {
-    "longFns": 1
-  }
-}
+{}

@@ -8,22 +8,18 @@ export function parseFenceInfo(source: string): FenceInfo {
   let startLine = 1
   const highlighted = new Set<number>()
 
-  const leadingCodeOptions = /^\{([^\{}]+)\}/.exec(rest)
-  if (leadingCodeOptions && !/^\d[\d,\s-]*$/.test(leadingCodeOptions[1]!.trim())) {
-    const classes = [...leadingCodeOptions[1]!.matchAll(/(?:^|\s)\.([A-Za-z][\w-]{0,63})/g)].map((m) => m[1]!)
-    language = classes.find((c) => !isReservedCodeClass(c))?.toLowerCase() ?? ''
-    lineNumbers = classes.some(isReservedCodeClass)
-    const titleMatch = /title=(?:"([^"]*)"|'([^']*)'|([^\s}]+))/.exec(leadingCodeOptions[1]!)
-    if (titleMatch) title = titleMatch[1] ?? titleMatch[2] ?? titleMatch[3] ?? ''
-    rest = rest.slice(leadingCodeOptions[0].length).trim()
+  const leading = parseLeadingCodeOptions(rest)
+  if (leading) {
+    language = leading.language
+    lineNumbers = leading.lineNumbers
+    title = leading.title
+    rest = leading.rest
   }
 
   if (!language) {
-    const langMatch = /^([^\s{]+)/.exec(rest)
-    if (langMatch) {
-      language = langMatch[1]!.toLowerCase()
-      rest = rest.slice(langMatch[0].length).trim()
-    }
+    const lang = parseLeadingLanguage(rest)
+    language = lang.language
+    rest = lang.rest
   }
 
   const titleMatch = /(?:^|\s)title=(?:"([^"]*)"|'([^']*)'|([^\s]+))/.exec(rest)
@@ -54,6 +50,28 @@ export function parseFenceInfo(source: string): FenceInfo {
   }
 }
 
+function parseLeadingCodeOptions(rest: string): { language: string; lineNumbers: boolean; title: string; rest: string } | null {
+  const leadingCodeOptions = /^\{([^\{}]+)\}/.exec(rest)
+  if (!leadingCodeOptions || /^\d[\d,\s-]*$/.test(leadingCodeOptions[1]!.trim())) return null
+  const classes = [...leadingCodeOptions[1]!.matchAll(/(?:^|\s)\.([A-Za-z][\w-]{0,63})/g)].map((m) => m[1]!)
+  const titleMatch = /title=(?:"([^"]*)"|'([^']*)'|([^\s}]+))/.exec(leadingCodeOptions[1]!)
+  return {
+    language: classes.find((c) => !isReservedCodeClass(c))?.toLowerCase() ?? '',
+    lineNumbers: classes.some(isReservedCodeClass),
+    title: titleMatch ? (titleMatch[1] ?? titleMatch[2] ?? titleMatch[3] ?? '') : '',
+    rest: rest.slice(leadingCodeOptions[0].length).trim(),
+  }
+}
+
+function parseLeadingLanguage(rest: string): { language: string; rest: string } {
+  const langMatch = /^([^\s{]+)/.exec(rest)
+  if (!langMatch) return { language: '', rest }
+  return {
+    language: langMatch[1]!.toLowerCase(),
+    rest: rest.slice(langMatch[0].length).trim(),
+  }
+}
+
 function isReservedCodeClass(value: string): boolean {
   const normalized = value.toLowerCase().replace(/[-_]/g, '')
   return ['numberlines', 'linenumbers', 'linenos', 'showlinenumbers'].includes(normalized)
@@ -61,19 +79,24 @@ function isReservedCodeClass(value: string): boolean {
 
 function parseLineNumbers(spec: string): number[] {
   const result: number[] = []
-  const parts = spec.split(',')
-  for (const part of parts) {
+  for (const part of spec.split(',')) {
     const trimmed = part.trim()
     if (/^\d+$/.test(trimmed)) {
       result.push(Number(trimmed))
-    } else if (/^(\d+)\s*-\s*(\d+)$/.test(trimmed)) {
-      const match = /^(\d+)\s*-\s*(\d+)$/.exec(trimmed)!
-      const start = Number(match[1])
-      const end = Number(match[2])
-      for (let i = start; i <= end; i++) result.push(i)
+    } else if (/^\d+\s*-\s*\d+$/.test(trimmed)) {
+      result.push(...expandLineRange(trimmed))
     }
   }
   return result
+}
+
+function expandLineRange(spec: string): number[] {
+  const match = /^(\d+)\s*-\s*(\d+)$/.exec(spec)!
+  const start = Number(match[1])
+  const end = Number(match[2])
+  const out: number[] = []
+  for (let i = start; i <= end; i++) out.push(i)
+  return out
 }
 
 export function splitHtmlIntoLines(html: string, startLine: number, highlightedLines: number[]): string {

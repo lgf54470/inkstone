@@ -106,15 +106,17 @@ function registerTaskListRule(md: InstanceType<typeof MarkdownIt>): void {
         (child) => child.type === 'html_inline' && /task-list-item-checkbox/.test(child.content)
       )
       const status = cbIdx >= 0 ? applyNativeTaskCheckbox(state, inline, cbIdx) : applyExtendedTaskMarkers(state, inline, item, index)
-      if (status) {
-        item.attrSet('data-task-status', status)
-        appendTokenClass(item, `task-status-${status}`)
-        if (status === 'done') appendTokenClass(item, 'done')
-        else if (status === 'cancelled') appendTokenClass(item, 'cancelled')
-      }
+      if (status) applyTaskStatus(item, status)
     }
     return true
   })
+}
+
+function applyTaskStatus(item: Token, status: string): void {
+  item.attrSet('data-task-status', status)
+  appendTokenClass(item, `task-status-${status}`)
+  if (status === 'done') appendTokenClass(item, 'done')
+  else if (status === 'cancelled') appendTokenClass(item, 'cancelled')
 }
 
 function findCalloutCloseIndex(state: StateCore, startIndex: number): number {

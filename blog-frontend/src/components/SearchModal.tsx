@@ -160,19 +160,20 @@ function useSelection(results: BlogPost[]) {
 
   const handleKeyDownList = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (results.length === 0) return
-
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setSelectedIndex((prev) => (prev + 1) % results.length)
-    } else if (e.key === 'ArrowUp') {
+      return
+    }
+    if (e.key === 'ArrowUp') {
       e.preventDefault()
       setSelectedIndex((prev) => (prev - 1 + results.length) % results.length)
-    } else if (e.key === 'Enter') {
+      return
+    }
+    if (e.key === 'Enter') {
       e.preventDefault()
       const selected = results[selectedIndex]
-      if (selected) {
-        window.location.href = `/posts/${selected.slug}`
-      }
+      if (selected) window.location.href = `/posts/${selected.slug}`
     }
   }
 

@@ -62,7 +62,9 @@ describe('sanitizeProseHtml stored-XSS defense', () => {
     expect(html).not.toContain('click me')
     expect(html).not.toContain('<mi>')
   })
+})
 
+describe('sanitizeProseHtml whitelist behavior', () => {
   it('keeps the whitelisted blog features intact', () => {
     const html = sanitizeProseHtml(
       '<details open><summary>标题</summary>内容</details>' +
