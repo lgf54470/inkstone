@@ -69,4 +69,19 @@ describe('class-string loopholes via problemsFor', () => {
     const problems = problemsFor(rel, `function Probe() { return <div className='w-(240px)'/> }`)
     expect(problems.join('\n')).toContain('raw 240px')
   })
+
+  it('flags clsx conditional-object keys in cn()', () => {
+    const problems = problemsFor(rel, `function Probe() { return <div className={cn({ 'w-[240px]': cond })}/> }`)
+    expect(problems.join('\n')).toContain('raw 240px')
+  })
+
+  it('exempts token-referencing conditional-object keys', () => {
+    const problems = problemsFor(rel, `function Probe() { return <div className={cn({ 'w-[var(--w-side)]': cond })}/> }`)
+    expect(problems).toEqual([])
+  })
+
+  it('accepts the hoisted-const rewrite of conditional classes', () => {
+    const problems = problemsFor(rel, `const WIDE = 'w-[240px]'\nfunction Probe() { return <div className={cn(cond && WIDE)}/> }`)
+    expect(problems).toEqual([])
+  })
 })

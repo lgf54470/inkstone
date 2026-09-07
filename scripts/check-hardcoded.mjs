@@ -32,7 +32,9 @@
 //     Numeric exemption matches the style scan: 0/1/100 (e.g. gap-[1px] is a
 //     canonical hairline). cn() arguments are scanned recursively so
 //     ternary/binary class strings (cond ? 'w-[2px]' : ...) cannot dodge the
-//     check.
+//     check, and object-literal keys inside cn() (the clsx conditional-object
+//     shape cn({ 'w-[2px]': cond })) are class strings too: hoist the class
+//     to a const and write cn(cond && WIDE) instead.
 // Numeric literals in .ts (non-JSX) files are out of scope: without a type
 // checker a bare number cannot be told apart from data, and the visual
 // surface is JSX by construction.
@@ -241,7 +243,8 @@ function problemsFor(rel, text) {
   }
 
   // cn() arguments and className expressions can be ternaries/logicals
-  // wrapping the class strings; collect every string literal beneath them.
+  // wrapping the class strings; collect every string literal beneath them —
+  // including object-literal keys, which clsx treats as classes by definition.
   function collectClassStrings(node, out) {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node)) {
       out.push(node)
