@@ -9,7 +9,8 @@ import type { BlogCalendarRow, BlogPostPublicRow, BlogPublicCategoryRow, BlogPub
 import { recordBlogVisit } from './visits';
 import { blogPublicCommentSchema } from './schemas';
 import { getBlogSettings } from './settings';
-import { summarizePostTagCounts } from './helpers';
+import { safeDecodeTagParam, summarizePostTagCounts } from './helpers';
+
 
 export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): void {
   registerBlogCorsMiddleware(blogPublicRoutes)
@@ -51,7 +52,7 @@ function registerBlogPublicPostsListRoute(blogPublicRoutes: Hono<AppBindings>): 
     const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
     const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '10', 10)))
     const offset = (page - 1) * limit
-    const tag = c.req.query('tag')?.trim()
+    const tag = safeDecodeTagParam(c.req.query('tag'))
     const categorySlug = c.req.query('category')?.trim()
     const search = c.req.query('search')?.trim()
 
@@ -60,7 +61,7 @@ function registerBlogPublicPostsListRoute(blogPublicRoutes: Hono<AppBindings>): 
 
     let items = (results || []).map(toPublicPostSummary)
     if (tag) {
-      items = items.filter((p) => p.tags.includes(tag))
+      items = items.filter((p) => p.tags.some((t: string) => t === tag || t.startsWith(`${tag}/`)))
     }
 
     const total = items.length

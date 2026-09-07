@@ -62,3 +62,23 @@ function parsedPostTags(raw: string): string[] {
   if (!Array.isArray(arr)) return []
   return arr.map((t) => String(t).trim()).filter(Boolean)
 }
+
+function tryDecode(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
+export function safeDecodeTagParam(raw?: string | null): string | undefined {
+  if (!raw) return undefined
+  const tag = raw.trim()
+  if (!tag) return undefined
+  if (!tag.includes('%')) return tag
+  const first = tryDecode(tag).trim()
+  const result = (first.includes('%') ? tryDecode(first) : first).trim()
+  return result || undefined
+}
+
+

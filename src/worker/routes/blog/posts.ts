@@ -11,7 +11,7 @@ import type { BlogPostCountsRow, BlogPostRow } from "../../db/rows";
 import { blogPostWriteSchema } from './schemas';
 import { blogPostPatchSchema } from './schemas';
 import { blogBatchSchema } from './schemas';
-import { toBlogPost } from './helpers';
+import { safeDecodeTagParam, toBlogPost } from './helpers';
 
 const SLUG_RE = /^[a-zA-Z0-9_-]{2,80}$/
 
@@ -27,18 +27,18 @@ export function registerBlogPostsRoutes(blogManageRoutes: Hono<AppBindings>): vo
 function registerBlogPostsListRoute(blogManageRoutes: Hono<AppBindings>): void {
   blogManageRoutes.get('/posts', requireAuth, async (c) => {
     const userId = c.get('userId')!
+    const tag = safeDecodeTagParam(c.req.query('tag'))
     const { sql, params } = blogPostsListQuery(userId, {
       status: c.req.query('status'),
       categoryId: c.req.query('categoryId'),
       folderId: c.req.query('folderId'),
-      tag: c.req.query('tag'),
+      tag,
       search: c.req.query('search')?.trim(),
       sort: c.req.query('sort') || 'published_desc',
     })
     const { results } = await c.env.DB.prepare(sql).bind(...params).all<BlogPostCountsRow>()
 
     let posts: BlogPost[] = (results || []).map(toBlogPost)
-    const tag = c.req.query('tag')
     if (tag) {
       posts = filterPostsByTag(posts, tag)
     }

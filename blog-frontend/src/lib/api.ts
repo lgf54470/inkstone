@@ -20,6 +20,7 @@ import {
 } from './normalize'
 import { FALLBACK_POSTS, FALLBACK_SITE_INFO } from './fallbacks'
 import { POSTS_PER_PAGE_DEFAULT, DEFAULT_API_URL, API_TIMEOUT_MS } from './constants'
+import { safeDecodeTag } from './content'
 
 export { extractCoverUrl } from './normalize'
 
@@ -119,7 +120,7 @@ export const api = {
     try {
       const query = new URLSearchParams()
       if (options?.categoryId) query.set('categoryId', options.categoryId)
-      if (options?.tag) query.set('tag', options.tag)
+      if (options?.tag) query.set('tag', safeDecodeTag(options.tag))
       if (options?.search) query.set('search', options.search)
       if (options?.page) query.set('page', String(options.page))
       if (options?.limit) query.set('limit', String(options.limit))
@@ -137,7 +138,10 @@ export const api = {
     } catch (err) {
       console.warn('[api.getPosts] request failed, using fallback posts:', err)
       let filtered = [...FALLBACK_POSTS]
-      if (options?.tag) filtered = filtered.filter((p) => p.tags.includes(options.tag!))
+      if (options?.tag) {
+        const cleanTag = safeDecodeTag(options.tag)
+        filtered = filtered.filter((p) => p.tags.some((t) => t === cleanTag || t.startsWith(`${cleanTag}/`)))
+      }
       if (options?.categoryId) filtered = filtered.filter((p) => p.categoryId === options.categoryId)
       if (options?.search) {
         const s = options.search.toLowerCase()

@@ -3,10 +3,15 @@ import Layout from '../../layouts/Layout.astro'
 import PostCard from '../../components/PostCard.astro'
 import Pagination from '../../components/Pagination.astro'
 import { api } from '../../lib/api'
+import { safeDecodeTag } from '../../lib/content'
 import { t, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
 
 const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
-const tagName = Astro.params.tag
+const rawTag = Astro.params.tag
+if (!rawTag) {
+  return Astro.redirect('/tags')
+}
+const tagName = safeDecodeTag(rawTag)
 if (!tagName) {
   return Astro.redirect('/tags')
 }

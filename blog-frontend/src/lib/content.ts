@@ -12,3 +12,21 @@ export function isSvgCoverUrl(coverUrl: string | null | undefined): boolean {
   const lower = coverUrl.toLowerCase()
   return lower.endsWith('.svg') || lower.includes('.svg?')
 }
+
+function tryDecode(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
+/**
+ * Safely decodes a tag string that might be URI-encoded, doubly encoded (e.g. `%2F` for slashes),
+ * or already plain text. Handles malformed URI components gracefully without throwing.
+ */
+export function safeDecodeTag(raw?: string | null): string {
+  if (!raw) return ''
+  const first = tryDecode(raw)
+  return first.includes('%') ? tryDecode(first) : first
+}
