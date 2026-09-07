@@ -88,7 +88,7 @@ function SidebarHeader({ onCollapse }: {
     return (<header className='flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-3'>
       <div className='flex min-w-0 items-center gap-2.25 select-none'>
         <Logo size={24}/>
-        <span className={`min-w-0 truncate font-serif text-[length:var(--text-15\.5)] font-semibold ${TRACKING_APP_TITLE} text-[var(--text-primary)]`}>
+        <span className={`min-w-0 truncate font-serif text-[length:var(--text-15\\.5)] font-semibold ${TRACKING_APP_TITLE} text-[var(--text-primary)]`}>
           {t('common.product_name')}
         </span>
       </div>

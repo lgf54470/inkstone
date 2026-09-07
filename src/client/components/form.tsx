@@ -219,7 +219,7 @@ function SegmentedButton<T extends string>({
         'relative z-[var(--z-sticky)] inline-flex items-center justify-center gap-1.5 rounded-[var(--r-sm)] font-medium',
         'transition-[color,background-color] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
         'disabled:pointer-events-none disabled:opacity-45',
-        size === 'sm' ? 'h-8 px-2.5 text-[length:var(--text-11\.5)] md:h-5.5 md:px-2' : 'h-9 px-3 text-[length:var(--text-12\.5)] md:h-6.5 md:px-2.5',
+        size === 'sm' ? 'h-8 px-2.5 text-[length:var(--text-11\\.5)] md:h-5.5 md:px-2' : 'h-9 px-3 text-[length:var(--text-12\\.5)] md:h-6.5 md:px-2.5',
         active
           ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-control)]'
           : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]',

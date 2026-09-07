@@ -35,7 +35,7 @@ function CardHeader({ b }: { b: WikiLinkHoverCardBundle }) {
     >
       <span
         className={cn(
-          'min-w-0 flex-1 truncate text-[length:var(--text-12\.5)] leading-snug font-semibold text-[var(--text-primary)]',
+          'min-w-0 flex-1 truncate text-[length:var(--text-12\\.5)] leading-snug font-semibold text-[var(--text-primary)]',
           card.missing && 'text-[var(--text-tertiary)]',
         )}
         title={card.title}

@@ -174,7 +174,7 @@ export function Kbd({ combo, keys }: { combo?: string; keys?: string[] }) {
           className={cn(
             'inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-[var(--r-5)] px-1.25',
             'border border-[var(--border-default)] bg-[var(--bg-raised)]',
-            'text-[length:var(--text-10\.5)] font-medium text-[var(--text-tertiary)]',
+            'text-[length:var(--text-10\\.5)] font-medium text-[var(--text-tertiary)]',
           )}
         >
           {key}
@@ -271,7 +271,7 @@ export function SectionLabel({ children, className }: { children: ReactNode; cla
   return (
     <div
       className={cn(
-        `px-2 pt-1 pb-1 text-[length:var(--text-10\.5)] font-semibold uppercase ${TRACKING_GROUP} text-[var(--text-quaternary)]`,
+        `px-2 pt-1 pb-1 text-[length:var(--text-10\\.5)] font-semibold uppercase ${TRACKING_GROUP} text-[var(--text-quaternary)]`,
         className,
       )}
     >

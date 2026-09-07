@@ -231,7 +231,7 @@ function ShortcutResults({ sections, cursor, listId, listRef, onActivate, onHove
   let rowCursor = -1;
   return <div ref={listRef} className='grid grid-cols-1 gap-x-8 gap-y-5 pr-1 md:max-h-[52vh] md:grid-cols-2 md:overflow-y-auto'>
     {sections.map((section) => (section.rows.length > 0 && <section key={section.group}>
-      <h3 className={`mb-2 text-[length:var(--text-10\.5)] font-semibold ${TRACKING_SECTION} text-[var(--text-quaternary)]`}>
+      <h3 className={`mb-2 text-[length:var(--text-10\\.5)] font-semibold ${TRACKING_SECTION} text-[var(--text-quaternary)]`}>
       {section.group}
       </h3>
       <ul id={listId} role='listbox' aria-label={t('command.keyboard_shortcuts_021cf9')} className='space-y-0.5'>

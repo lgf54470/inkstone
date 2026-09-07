@@ -14,7 +14,7 @@ interface NotePropertiesEditorProps {
 
 function EmptyProperties({ onAdd, className }: { onAdd: () => void; className?: string }) {
   return (
-    <div className={cn('note-properties-editor mb-4 flex items-center justify-between rounded-lg border border-dashed border-[var(--border-subtle)] px-3 py-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]', className)}>
+    <div className={cn('note-properties-editor mb-4 flex items-center justify-between rounded-lg border border-dashed border-[var(--border-subtle)] px-3 py-1.5 text-[length:var(--text-11\\.5)] text-[var(--text-tertiary)]', className)}>
       <span className='flex items-center gap-1.5 font-medium'>
         <SlidersHorizontal size={13} />
         {t('markdown.properties')}

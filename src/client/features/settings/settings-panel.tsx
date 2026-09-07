@@ -69,7 +69,7 @@ function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { secti
     <nav className='flex w-full shrink-0 flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-2 md:w-43 md:border-r md:border-b-0'>
       <div id={titleId} className="px-2 py-1.5 text-[length:var(--text-13\.5)] font-semibold tracking-[var(--tracking-title)] md:py-2.5">{t('common.settings')}</div>
       <div className='flex gap-1 overflow-x-auto pb-1 md:block md:space-y-px md:overflow-visible md:pb-0'>
-      {SECTIONS.map((item) => (<button key={item.id} type='button' aria-current={section === item.id ? 'page' : undefined} onClick={() => onSelect(item.id)} className={cn('flex h-10 shrink-0 items-center gap-2 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12\.5)] md:h-7.5 md:w-full md:gap-2.5 md:px-2', 'transition-colors duration-[var(--dur-fast)]', section === item.id
+      {SECTIONS.map((item) => (<button key={item.id} type='button' aria-current={section === item.id ? 'page' : undefined} onClick={() => onSelect(item.id)} className={cn('flex h-10 shrink-0 items-center gap-2 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12\\.5)] md:h-7.5 md:w-full md:gap-2.5 md:px-2', 'transition-colors duration-[var(--dur-fast)]', section === item.id
         ? 'bg-[var(--accent-soft)] font-medium text-[var(--text-primary)]'
         : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
         <span className={cn('shrink-0', section === item.id ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>

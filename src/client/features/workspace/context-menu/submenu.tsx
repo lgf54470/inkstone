@@ -37,7 +37,7 @@ export function SubmenuList({
               closeMenu();
             }}
             className={cn(
-              'flex h-10 w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[length:var(--text-12\.5)] md:h-7.5',
+              'flex h-10 w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[length:var(--text-12\\.5)] md:h-7.5',
               'transition-colors duration-[var(--dur-xs)] hover:bg-[var(--bg-hover)] disabled:pointer-events-none disabled:opacity-40',
               item.tone === 'danger'
                 ? 'text-[var(--danger)]'
