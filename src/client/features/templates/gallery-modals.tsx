@@ -11,6 +11,10 @@ import { useNoteTemplates } from '../../store/note-templates';
 import { useUi } from '../../store/ui';
 import { t } from '../../lib/i18n';
 
+const EDITOR_MODAL_WIDTH = 680
+const NARROW_MODAL_WIDTH = 420
+const IMPORT_MODAL_WIDTH = 560
+
 export function TemplateEditorModal({ template, categories, onClose }: {
   template: NoteTemplate | null;
   categories: NoteTemplateCategory[];
@@ -33,9 +37,9 @@ export function TemplateEditorModal({ template, categories, onClose }: {
       useNoteTemplates.getState().createTemplate(draft);
     onClose();
   };
-  return (<Modal open onClose={onClose} title={template ? t("templates.edit_template") : t('templates.create_template')} width={680} footer={<>
-      <Button variant='ghost' onClick={onClose}>{t("common.cancel")}</Button>
-      <Button variant='primary' onClick={save}>{template ? t("common.save") : t('templates.create_template')}</Button>
+  return (<Modal open onClose={onClose} title={template ? t('templates.edit_template') : t('templates.create_template')} width={EDITOR_MODAL_WIDTH} footer={<>
+      <Button variant='ghost' onClick={onClose}>{t('common.cancel')}</Button>
+      <Button variant='primary' onClick={save}>{template ? t('common.save') : t('templates.create_template')}</Button>
     </>}>
     <div className='space-y-4'>
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
@@ -43,22 +47,22 @@ export function TemplateEditorModal({ template, categories, onClose }: {
           <Input ref={nameRef} invalid={isError} value={draft.name} onChange={(event) => {
             setDraft({ ...draft, name: event.target.value });
             setIsError(false);
-          }} placeholder={t("templates.template_name")}/>
+          }} placeholder={t('templates.template_name')}/>
         </Field>
-        <Field label={t("templates.category")}>
+        <Field label={t('templates.category')}>
           <Select value={draft.categoryId ?? ''} onChange={(event) => setDraft({ ...draft, categoryId: event.target.value || null })}>
-            <option value=''>{t("templates.uncategorized")}</option>
+            <option value=''>{t('templates.uncategorized')}</option>
             {categories.map((category) => (<option key={category.id} value={category.id}>{category.name}</option>))}
           </Select>
         </Field>
       </div>
-      <Field label={t("templates.tags")} hint={t("templates.tag_hint")}>
-        <Input value={draft.tags.join(', ')} onChange={(event) => setDraft({ ...draft, tags: splitTagInput(event.target.value) })} placeholder={t("templates.tag_hint")}/>
+      <Field label={t('templates.tags')} hint={t('templates.tag_hint')}>
+        <Input value={draft.tags.join(', ')} onChange={(event) => setDraft({ ...draft, tags: splitTagInput(event.target.value) })} placeholder={t('templates.tag_hint')}/>
       </Field>
-      <Field label={t("templates.description")}>
-        <Input value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} placeholder={t("templates.description")}/>
+      <Field label={t('templates.description')}>
+        <Input value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} placeholder={t('templates.description')}/>
       </Field>
-      <Field label={t("templates.template_content")} hint={t("templates.template_content_hint")}>
+      <Field label={t('templates.template_content')} hint={t('templates.template_content_hint')}>
         <Textarea value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} rows={16} spellCheck={false} className="min-h-[280px] font-mono text-[length:var(--text-12\.5)]"/>
       </Field>
     </div>
@@ -81,15 +85,15 @@ export function TemplateRenameDialog({ template, onClose }: {
     useNoteTemplates.getState().updateTemplate(template.id, { name });
     onClose();
   };
-  return (<Modal open onClose={onClose} title={t("templates.rename_template")} width={420} footer={<>
-      <Button variant='ghost' onClick={onClose}>{t("common.cancel")}</Button>
-      <Button variant='primary' onClick={save}>{t("common.save")}</Button>
+  return (<Modal open onClose={onClose} title={t('templates.rename_template')} width={NARROW_MODAL_WIDTH} footer={<>
+      <Button variant='ghost' onClick={onClose}>{t('common.cancel')}</Button>
+      <Button variant='primary' onClick={save}>{t('common.save')}</Button>
     </>}>
     <Field label={t('templates.template_name')} required>
       <Input ref={inputRef} invalid={isError} value={name} onChange={(event) => {
         setName(event.target.value);
         setIsError(false);
-      }} onKeyDown={(event) => { if (event.key === 'Enter') save(); }} placeholder={t("templates.template_name")}/>
+      }} onKeyDown={(event) => { if (event.key === 'Enter') save(); }} placeholder={t('templates.template_name')}/>
     </Field>
   </Modal>);
 }
@@ -104,7 +108,7 @@ export function MoveTemplateDialog({ template, categories, onClose }: {
       useNoteTemplates.getState().updateTemplate(template.id, { categoryId });
     onClose();
   };
-  return (<Modal open onClose={onClose} title={t("templates.move_to_category")} width={420}>
+  return (<Modal open onClose={onClose} title={t('templates.move_to_category')} width={NARROW_MODAL_WIDTH}>
     <div className='space-y-1'>
       <MoveChoice label={t('templates.uncategorized')} selected={template.categoryId === null} onClick={() => move(null)}/>
       {categories.map((category) => (<MoveChoice key={category.id} label={category.name} selected={template.categoryId === category.id} onClick={() => move(category.id)}/>))}
@@ -143,15 +147,15 @@ export function CategoryDialog({ dialog, onClose }: {
       useNoteTemplates.getState().createCategory(name);
     onClose();
   };
-  return (<Modal open onClose={onClose} title={dialog.mode === 'rename' ? t('templates.rename_category') : t('templates.new_category')} width={420} footer={<>
-      <Button variant='ghost' onClick={onClose}>{t("common.cancel")}</Button>
-      <Button variant='primary' onClick={save}>{t("common.save")}</Button>
+  return (<Modal open onClose={onClose} title={dialog.mode === 'rename' ? t('templates.rename_category') : t('templates.new_category')} width={NARROW_MODAL_WIDTH} footer={<>
+      <Button variant='ghost' onClick={onClose}>{t('common.cancel')}</Button>
+      <Button variant='primary' onClick={save}>{t('common.save')}</Button>
     </>}>
     <Field label={t('templates.category_name')} required>
       <Input ref={inputRef} invalid={isError} value={name} onChange={(event) => {
         setName(event.target.value);
         setIsError(false);
-      }} onKeyDown={(event) => { if (event.key === 'Enter') save(); }} placeholder={t("templates.category_name")}/>
+      }} onKeyDown={(event) => { if (event.key === 'Enter') save(); }} placeholder={t('templates.category_name')}/>
     </Field>
   </Modal>);
 }
@@ -187,18 +191,18 @@ export function ImportTemplatesModal({ onClose }: {
     reader.readAsText(file);
     event.target.value = '';
   };
-  return (<Modal open onClose={onClose} title={t("templates.import_title")} width={560} footer={<>
-      <Button variant='ghost' onClick={onClose}>{t("common.cancel")}</Button>
-      <Button variant='primary' onClick={importJson}>{t("templates.import_templates")}</Button>
+  return (<Modal open onClose={onClose} title={t('templates.import_title')} width={IMPORT_MODAL_WIDTH} footer={<>
+      <Button variant='ghost' onClick={onClose}>{t('common.cancel')}</Button>
+      <Button variant='primary' onClick={importJson}>{t('templates.import_templates')}</Button>
     </>}>
     <div className='space-y-3'>
-      <p className='text-[length:var(--text-12)] leading-relaxed text-[var(--text-tertiary)]'>{t("templates.import_hint")}</p>
+      <p className='text-[length:var(--text-12)] leading-relaxed text-[var(--text-tertiary)]'>{t('templates.import_hint')}</p>
       <Textarea value={text} aria-invalid={isError} onChange={(event) => {
         setText(event.target.value);
         setIsError(false);
-      }} rows={10} spellCheck={false} placeholder={t("templates.import_paste_placeholder")} className='min-h-[180px] font-mono text-[length:var(--text-12)]'/>
+      }} rows={10} spellCheck={false} placeholder={t('templates.import_paste_placeholder')} className='min-h-[180px] font-mono text-[length:var(--text-12)]'/>
       <input ref={fileRef} type='file' accept='.json,application/json' className='hidden' onChange={pickFile}/>
-      <Button variant='secondary' icon={<Upload size={13}/>} onClick={() => fileRef.current?.click()}>{t("templates.import_file")}</Button>
+      <Button variant='secondary' icon={<Upload size={13}/>} onClick={() => fileRef.current?.click()}>{t('templates.import_file')}</Button>
     </div>
   </Modal>);
 }
@@ -208,7 +212,7 @@ export function BatchMoveDialog({ categories, onMove, onClose }: {
   onMove: (categoryId: string | null) => void;
   onClose: () => void;
 }) {
-  return (<Modal open onClose={onClose} title={t("templates.move_to_category")} width={420}>
+  return (<Modal open onClose={onClose} title={t('templates.move_to_category')} width={NARROW_MODAL_WIDTH}>
     <div className='space-y-1'>
       <MoveChoice label={t('templates.uncategorized')} selected={false} onClick={() => onMove(null)}/>
       {categories.map((category) => (<MoveChoice key={category.id} label={category.name} selected={false} onClick={() => onMove(category.id)}/>))}

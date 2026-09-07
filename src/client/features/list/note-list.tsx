@@ -12,6 +12,8 @@ import { DateRangePopover } from '../../components/date-range-popover';
 import { addDaysKey, isWeekRangeKey, parseDateKey, weekStartKeyOf } from '../../lib/time';
 import { memoLatestEditKey } from './use-rolling-filter';
 import { useGapIndicatorStore } from './use-gap-indicator';
+
+const FAV_MENU_WIDTH = 220
 import { loadRememberedFilter, loadSessionFilter, saveRememberedFilter, saveSessionFilter } from './list-filter-persist';
 import { useUi } from '../../store/ui';
 import { useSession } from '../../store/session';
@@ -431,7 +433,7 @@ export function NoteList() {
       <BulkBar />
 
       <Menu anchor={d.sortButtonRef} open={d.isSortMenuOpen} onClose={() => d.setIsSortMenuOpen(false)} items={[...d.sortItems, d.tagFilterItem]} align='end'/>
-      <Menu anchor={d.favButtonRef} open={d.isFavMenuOpen} onClose={() => d.setIsFavMenuOpen(false)} items={d.favItems} align='end' width={220}/>
+      <Menu anchor={d.favButtonRef} open={d.isFavMenuOpen} onClose={() => d.setIsFavMenuOpen(false)} items={d.favItems} align='end' width={FAV_MENU_WIDTH}/>
       <TagFilterPopover anchor={d.sortButtonRef} open={d.isTagFilterOpen} onClose={() => d.setIsTagFilterOpen(false)}/>
       {d.dateFilter && <DateRangePopover anchor={d.rangeChipRef} open={d.isRangeEditorOpen} onClose={() => d.setIsRangeEditorOpen(false)} range={d.dateFilter} onChange={d.applyFixedRange} relative={d.relativeFilter} onApplyRelative={(value) => useUi.getState().setRelativeFilter(value)}/>}
     </section>);

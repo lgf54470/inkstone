@@ -19,7 +19,7 @@ export function CalendarTree() {
   return (
     <VirtualTree
       ns={CALENDAR_TREE}
-      rootLabel={t("sidebar.calendar_folder")}
+      rootLabel={t('sidebar.calendar_folder')}
       rootIcon={<CalendarDays size={13}/>}
     />
   );
@@ -31,7 +31,7 @@ export function TodoTree() {
   return (
     <VirtualTree
       ns={TODO_TREE}
-      rootLabel={t("sidebar.todo_folder")}
+      rootLabel={t('sidebar.todo_folder')}
       rootIcon={<CheckSquare size={14}/>}
       filter={filterTodoNotes}
       filterArg={resolveTodoTag(todoTagPref, locale)}

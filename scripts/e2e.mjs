@@ -1458,22 +1458,25 @@ console.log('[realtime origin boundary]')
 
 console.log('[throttle]')
 {
+  // Throttle a throwaway member account, not Owner-1: the visual e2e gate
+  // signs in as Owner-1 right after this suite, and the 60s lock this block
+  // triggers would block that login (see scripts/e2e-visual.mjs defaults).
   const attacker = makeClient()
   for (let i = 1; i <= 5; i++) {
-    const bad = await attacker.req('POST', '/api/auth/login', { username: 'owner-1', password: 'wrong-password' })
+    const bad = await attacker.req('POST', '/api/auth/login', { username: 'second-user', password: 'wrong-password' })
     check(`wrong password #${i} -> 401`, bad.status === 401 && bad.data?.error?.code === 'invalid_credentials', `status=${bad.status}`)
   }
-  const locked = await attacker.req('POST', '/api/auth/login', { username: 'owner-1', password: 'supersecret100' })
+  const locked = await attacker.req('POST', '/api/auth/login', { username: 'second-user', password: 'supersecret99' })
   check('locked out even with correct password -> 429', locked.status === 429 && locked.data?.error?.code === 'too_many_attempts')
   const otherIp = await attacker.req(
     'POST',
     '/api/auth/login',
-    { username: 'owner-1', password: 'supersecret100' },
+    { username: 'second-user', password: 'supersecret99' },
     { 'CF-Connecting-IP': '203.0.113.9' },
   )
   check(
     'a different IP is not able to lock out the account globally',
-    otherIp.status === 200 && otherIp.data?.user?.username === 'owner-1',
+    otherIp.status === 200 && otherIp.data?.user?.username === 'second-user',
     `status=${otherIp.status}`,
   )
 }

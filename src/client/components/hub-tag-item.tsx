@@ -18,6 +18,9 @@ import { Menu, Tooltip, useContextMenu, type MenuItem } from './overlay'
 import { useUi } from '../store/ui'
 import { TagColorSubmenu } from '../features/tags'
 
+const TREE_INDENT_BASE = 8
+const TREE_INDENT_STEP = 12
+
 interface HubTagLike {
   id: string
   name: string
@@ -329,7 +332,7 @@ function HubTagRow({
           onSelect()
         }
       }}
-      style={{ paddingLeft: `${depth * 12 + 8}px` }}
+      style={{ paddingLeft: `${depth * TREE_INDENT_STEP + TREE_INDENT_BASE}px` }}
       className={cn(
         'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[length:var(--text-12)] font-medium transition-colors cursor-pointer',
         isSelected

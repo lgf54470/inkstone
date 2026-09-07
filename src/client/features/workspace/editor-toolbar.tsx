@@ -8,6 +8,12 @@ import { useToolbarMenus, type ToolbarBundle } from './use-editor-toolbar';
 import { t } from '../../lib/i18n';
 
 
+const HEADING_MENU_WIDTH = 168
+const INLINE_MENU_WIDTH = 184
+const EMOJI_MENU_WIDTH = 180
+const NOTE_MENU_WIDTH = 184
+const BLOCK_MENU_WIDTH = 192
+
 interface EditorToolbarProps {
   runCommand?: (command: (target: EditorView) => boolean) => void;
   view?: EditorView | null;
@@ -107,11 +113,11 @@ function BlockButtons({ b }: { b: ToolbarBundle }) {
 function ToolbarMenus({ b }: { b: ToolbarBundle }) {
   return (
     <>
-      <Menu anchor={b.headingRef} open={b.openMenu === 'heading'} onClose={() => b.setOpenMenu(null)} items={b.headingItems} width={168} label={t('workspace.title_level')} />
-      <Menu anchor={b.inlineRef} open={b.openMenu === 'inline'} onClose={() => b.setOpenMenu(null)} items={b.inlineItems} width={184} label={t('workspace.more_inline_styles')} />
-      <Menu anchor={b.emojiRef} open={b.openMenu === 'emoji'} onClose={() => b.setOpenMenu(null)} items={b.emojiItems} width={180} label={t('common.emoji')} />
-      <Menu anchor={b.noteRef} open={b.openMenu === 'note'} onClose={() => b.setOpenMenu(null)} items={b.noteItems} width={184} label={t('workspace.note_syntax')} />
-      <Menu anchor={b.blockRef} open={b.openMenu === 'block'} onClose={() => b.setOpenMenu(null)} items={b.blockItems} width={192} label={t('workspace.more_blocks')} />
+      <Menu anchor={b.headingRef} open={b.openMenu === 'heading'} onClose={() => b.setOpenMenu(null)} items={b.headingItems} width={HEADING_MENU_WIDTH} label={t('workspace.title_level')} />
+      <Menu anchor={b.inlineRef} open={b.openMenu === 'inline'} onClose={() => b.setOpenMenu(null)} items={b.inlineItems} width={INLINE_MENU_WIDTH} label={t('workspace.more_inline_styles')} />
+      <Menu anchor={b.emojiRef} open={b.openMenu === 'emoji'} onClose={() => b.setOpenMenu(null)} items={b.emojiItems} width={EMOJI_MENU_WIDTH} label={t('common.emoji')} />
+      <Menu anchor={b.noteRef} open={b.openMenu === 'note'} onClose={() => b.setOpenMenu(null)} items={b.noteItems} width={NOTE_MENU_WIDTH} label={t('workspace.note_syntax')} />
+      <Menu anchor={b.blockRef} open={b.openMenu === 'block'} onClose={() => b.setOpenMenu(null)} items={b.blockItems} width={BLOCK_MENU_WIDTH} label={t('workspace.more_blocks')} />
     </>
   );
 }

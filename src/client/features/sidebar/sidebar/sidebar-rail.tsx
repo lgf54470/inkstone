@@ -32,12 +32,12 @@ export function SidebarRail({ onExpand }: {
 
       <div className='flex w-full flex-col items-center gap-1 py-2'>
         <RailButton label={t('navigation.pinned')} active={view === 'pinned' && !panel} icon={<Pin size={16}/>} onClick={() => openView('pinned')}/>
-        <RailButton label={t("navigation.favorites")} active={view === 'starred' && !panel} icon={<Star size={16}/>} onClick={() => openView('starred')}/>
-        <RailButton label={t("navigation.share")} active={(view === 'shared' || panel === 'share-hub')} icon={<Share2 size={16}/>} onClick={() => openView('shared')}/>
-        <RailButton label={t("navigation.published")} active={(view === 'published' || panel === 'blog-hub')} icon={<Globe size={16}/>} onClick={() => openView('published')}/>
+        <RailButton label={t('navigation.favorites')} active={view === 'starred' && !panel} icon={<Star size={16}/>} onClick={() => openView('starred')}/>
+        <RailButton label={t('navigation.share')} active={(view === 'shared' || panel === 'share-hub')} icon={<Share2 size={16}/>} onClick={() => openView('shared')}/>
+        <RailButton label={t('navigation.published')} active={(view === 'published' || panel === 'blog-hub')} icon={<Globe size={16}/>} onClick={() => openView('published')}/>
         <div className='my-1 h-px w-6 bg-[var(--border-subtle)]'/>
         <RailButton label={t('navigation.all_notes')} active={view === 'all' && !panel} icon={<FileText size={16}/>} onClick={() => openView('all')}/>
-        <RailButton label={t("navigation.trash")} active={view === 'trash' && !panel} icon={<Trash2 size={16}/>} onClick={() => openView('trash')}/>
+        <RailButton label={t('navigation.trash')} active={view === 'trash' && !panel} icon={<Trash2 size={16}/>} onClick={() => openView('trash')}/>
         <div className='my-1 h-px w-6 bg-[var(--border-subtle)]'/>
         <RailButton label={t('common.new_note')} combo='mod+n' accent icon={<FilePlus2 size={16}/>} onClick={() => void createContextualNote()}/>
       </div>

@@ -7,6 +7,9 @@ import { Button, Kbd } from '../../components/primitives';
 import { Modal } from '../../components/overlay';
 import { t } from '../../lib/i18n';
 
+const HELP_MODAL_WIDTH = 440
+const PUBLISH_MODAL_WIDTH = 600
+
 export function KeyboardHelpModal({ onClose }: {
   onClose: () => void;
 }) {
@@ -25,13 +28,13 @@ export function KeyboardHelpModal({ onClose }: {
     { label: t('templates.help_select_focused'), keys: ['Space'] },
     { label: t('templates.help_select_all'), keys: ['a'] },
   ];
-  return (<Modal open onClose={onClose} title={t("templates.keyboard_shortcuts")} width={440}>
+  return (<Modal open onClose={onClose} title={t('templates.keyboard_shortcuts')} width={HELP_MODAL_WIDTH}>
     <div className='divide-y divide-[var(--border-subtle)]'>
       {rows.map((row) => (<div key={row.label} className='flex items-center justify-between gap-3 py-2.5'>
         <span className="text-[length:var(--text-12\.5)] text-[var(--text-secondary)]">{row.label}</span>
         <Kbd keys={row.keys}/>
       </div>))}
-      <div className="pt-2.5 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t("templates.help_select_section")}</div>
+      <div className="pt-2.5 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">{t('templates.help_select_section')}</div>
       {selectRows.map((row) => (<div key={row.label} className='flex items-center justify-between gap-3 py-2.5'>
         <span className="text-[length:var(--text-12\.5)] text-[var(--text-secondary)]">{row.label}</span>
         <Kbd keys={row.keys}/>
@@ -69,12 +72,12 @@ export function PublishTemplateDialog({ template, category, onClose, onPublished
       setIsBusy(false);
     }
   };
-  return (<Modal open onClose={onClose} title={t("templates.publish_to_community")} width={600} footer={<>
-      <Button variant='ghost' onClick={onClose}>{t("common.cancel")}</Button>
-      <Button variant='primary' icon={<Send size={13}/>} loading={isBusy} onClick={() => void publish()}>{t("templates.publish_to_community")}</Button>
+  return (<Modal open onClose={onClose} title={t('templates.publish_to_community')} width={PUBLISH_MODAL_WIDTH} footer={<>
+      <Button variant='ghost' onClick={onClose}>{t('common.cancel')}</Button>
+      <Button variant='primary' icon={<Send size={13}/>} loading={isBusy} onClick={() => void publish()}>{t('templates.publish_to_community')}</Button>
     </>}>
     <div className='space-y-3'>
-      <p className='text-[length:var(--text-12)] leading-relaxed text-[var(--text-tertiary)]'>{t("templates.publish_hint")}</p>
+      <p className='text-[length:var(--text-12)] leading-relaxed text-[var(--text-tertiary)]'>{t('templates.publish_hint')}</p>
       <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3'>
         <div className='flex items-center gap-1.5'>
           <h3 className='min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>{template.name}</h3>

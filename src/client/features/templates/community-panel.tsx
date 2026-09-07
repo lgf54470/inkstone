@@ -22,19 +22,19 @@ export function CommunityPanel({ items, loading, isError, myId, onRefresh, onUse
   if (isError && items.length === 0)
     return (<div className='flex h-full min-h-[240px] flex-col items-center justify-center gap-3 text-center'>
       <Globe size={26} className='text-[var(--text-quaternary)]'/>
-      <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]'>{t("templates.community_load_failed")}</p>
-      <Button size='sm' variant='secondary' icon={<RotateCw size={13}/>} onClick={onRefresh}>{t("common.retry")}</Button>
+      <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]'>{t('templates.community_load_failed')}</p>
+      <Button size='sm' variant='secondary' icon={<RotateCw size={13}/>} onClick={onRefresh}>{t('common.retry')}</Button>
     </div>);
   if (items.length === 0)
     return (<div className='flex h-full min-h-[240px] flex-col items-center justify-center gap-2 text-center'>
       <Globe size={26} className='text-[var(--text-quaternary)]'/>
-      <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]'>{t("templates.community_empty")}</p>
-      <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t("templates.community_empty_hint")}</p>
+      <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]'>{t('templates.community_empty')}</p>
+      <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('templates.community_empty_hint')}</p>
     </div>);
   return (<div className='space-y-2.5'>
     <div className='flex items-center justify-between gap-2'>
-      <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t("templates.community_count_value0", { value0: items.length })}</p>
-      <Button size='sm' variant='ghost' icon={<RotateCw size={13}/>} disabled={loading} onClick={onRefresh}>{t("common.refresh")}</Button>
+      <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('templates.community_count_value0', { value0: items.length })}</p>
+      <Button size='sm' variant='ghost' icon={<RotateCw size={13}/>} disabled={loading} onClick={onRefresh}>{t('common.refresh')}</Button>
     </div>
     <div className='grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3'>
       {items.map((item) => (<CommunityCard key={item.id} item={item} mine={item.authorId === myId} onUse={() => onUse(item)} onImport={() => onImport(item)} onUnpublish={() => onUnpublish(item)}/>))}
@@ -55,7 +55,7 @@ function CommunityCard({ item, mine, onUse, onImport, onUnpublish }: {
   return (<div className='group relative flex min-h-[132px] flex-col rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 transition-[border-color,box-shadow] duration-[var(--dur-fast)] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)]'>
     <div className='flex min-w-0 items-center gap-1.5'>
       <h3 className='min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold tracking-[-0.01em] text-[var(--text-primary)]'>{item.name}</h3>
-      {mine && <span className='shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[length:var(--text-10)] font-medium text-[var(--accent)]'>{t("templates.community_mine")}</span>}
+      {mine && <span className='shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[length:var(--text-10)] font-medium text-[var(--accent)]'>{t('templates.community_mine')}</span>}
     </div>
     {item.description && <p className="mt-1.5 line-clamp-2 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{item.description}</p>}
     {item.tags.length > 0 && (<div className='mt-1.5 flex min-w-0 flex-wrap items-center gap-1'>
@@ -67,8 +67,8 @@ function CommunityCard({ item, mine, onUse, onImport, onUnpublish }: {
       <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">· {t('templates.lines_count', { value0: lineCount })} · {date}</span>
     </div>
     <div className='mt-2 flex items-center gap-1.5'>
-      <Button size='sm' variant='primary' icon={<FilePlus2 size={13}/>} onClick={onUse} className='min-w-0 flex-1'>{t("templates.use_template")}</Button>
-      <Tooltip label={t("templates.community_import")}>
+      <Button size='sm' variant='primary' icon={<FilePlus2 size={13}/>} onClick={onUse} className='min-w-0 flex-1'>{t('templates.use_template')}</Button>
+      <Tooltip label={t('templates.community_import')}>
         <IconButton label={t('templates.community_import')} size='sm' onClick={onImport}>
           <Download size={13}/>
         </IconButton>

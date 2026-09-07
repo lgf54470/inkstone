@@ -57,20 +57,20 @@ type EditorSetters = ReturnType<typeof useEditorSetters>;
 function FontSection({ editor, setters }: { editor: SettingsEditor; setters: EditorSetters }) {
   return (
     <section>
-      <SettingRow title={t("settings.editor_font")}>
+      <SettingRow title={t('settings.editor_font')}>
       <Segmented<'mono' | 'sans'> label={t('settings.editor_font')} value={editor.fontFamily} onChange={setters.setFontFamily} options={setters.fontFamilyOptions}/>
       </SettingRow>
-      <SettingRow title={t("settings.editor_font_size")}>
+      <SettingRow title={t('settings.editor_font_size')}>
       <Slider label={t('settings.editor_font_size')} className='w-[200px]' value={editor.fontSize} min={12} max={22} onChange={setters.setFontSize} suffix='px'/>
       </SettingRow>
-      <SettingRow title={t("settings.show_line_numbers")}>
-      <Switch checked={editor.lineNumbers} onChange={setters.setLineNumbers} label={t("settings.show_line_numbers")}/>
+      <SettingRow title={t('settings.show_line_numbers')}>
+      <Switch checked={editor.lineNumbers} onChange={setters.setLineNumbers} label={t('settings.show_line_numbers')}/>
       </SettingRow>
-      <SettingRow title={t("settings.show_toolbar")}>
-      <Switch checked={editor.showToolbar} onChange={setters.setShowToolbar} label={t("settings.show_toolbar")}/>
+      <SettingRow title={t('settings.show_toolbar')}>
+      <Switch checked={editor.showToolbar} onChange={setters.setShowToolbar} label={t('settings.show_toolbar')}/>
       </SettingRow>
-      <SettingRow title={t("settings.spellcheck")}>
-      <Switch checked={editor.spellcheck} onChange={setters.setSpellcheck} label={t("settings.spellcheck")}/>
+      <SettingRow title={t('settings.spellcheck')}>
+      <Switch checked={editor.spellcheck} onChange={setters.setSpellcheck} label={t('settings.spellcheck')}/>
       </SettingRow>
     </section>
   );
@@ -79,12 +79,12 @@ function FontSection({ editor, setters }: { editor: SettingsEditor; setters: Edi
 function WritingModeSection({ editor, setters }: { editor: SettingsEditor; setters: EditorSetters }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("settings.writing_mode")}</h3>
-      <SettingRow title={t("settings.typewriter_mode")} description={t("settings.keep_the_cursor_line_centered_on_screen")}>
-      <Switch checked={editor.typewriter} onChange={setters.setTypewriter} label={t("settings.typewriter_mode")}/>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.writing_mode')}</h3>
+      <SettingRow title={t('settings.typewriter_mode')} description={t('settings.keep_the_cursor_line_centered_on_screen')}>
+      <Switch checked={editor.typewriter} onChange={setters.setTypewriter} label={t('settings.typewriter_mode')}/>
       </SettingRow>
-      <SettingRow title={t("settings.focus_mode")} description={t("settings.fade_content_outside_the_current_paragraph")}>
-      <Switch checked={editor.focusMode} onChange={setters.setFocusMode} label={t("settings.focus_mode")}/>
+      <SettingRow title={t('settings.focus_mode')} description={t('settings.fade_content_outside_the_current_paragraph')}>
+      <Switch checked={editor.focusMode} onChange={setters.setFocusMode} label={t('settings.focus_mode')}/>
       </SettingRow>
     </section>
   );
@@ -93,37 +93,37 @@ function WritingModeSection({ editor, setters }: { editor: SettingsEditor; sette
 function PreviewSection({ preview, setters }: { preview: SettingsPreview; setters: EditorSetters }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("common.preview")}</h3>
-      <SettingRow title={t("settings.scroll_sync")} description={t("settings.keep_the_editor_and_preview_scrolled_together")}>
-      <Switch checked={preview.syncScroll} onChange={setters.setSyncScroll} label={t("settings.scroll_sync")}/>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('common.preview')}</h3>
+      <SettingRow title={t('settings.scroll_sync')} description={t('settings.keep_the_editor_and_preview_scrolled_together')}>
+      <Switch checked={preview.syncScroll} onChange={setters.setSyncScroll} label={t('settings.scroll_sync')}/>
       </SettingRow>
-      <SettingRow title={t("settings.math")} description={t("settings.render_and_using_katex")}>
-      <Switch checked={preview.math} onChange={setters.setMath} label={t("settings.math")}/>
+      <SettingRow title={t('settings.math')} description={t('settings.render_and_using_katex')}>
+      <Switch checked={preview.math} onChange={setters.setMath} label={t('settings.math')}/>
       </SettingRow>
-      <SettingRow title={t("settings.diagram")} description={t("settings.render_mermaid_code_blocks_into_flowcharts")}>
-      <Switch checked={preview.mermaid} onChange={setters.setMermaid} label={t("settings.diagram")}/>
+      <SettingRow title={t('settings.diagram')} description={t('settings.render_mermaid_code_blocks_into_flowcharts')}>
+      <Switch checked={preview.mermaid} onChange={setters.setMermaid} label={t('settings.diagram')}/>
       </SettingRow>
-      <SettingRow title={t("settings.collapse_long_code_blocks")} description={t("settings.collapse_long_code_blocks_description")}>
-      <Switch checked={preview.codeBlockCollapse} onChange={setters.setCodeBlockCollapse} label={t("settings.collapse_long_code_blocks")}/>
+      <SettingRow title={t('settings.collapse_long_code_blocks')} description={t('settings.collapse_long_code_blocks_description')}>
+      <Switch checked={preview.codeBlockCollapse} onChange={setters.setCodeBlockCollapse} label={t('settings.collapse_long_code_blocks')}/>
       </SettingRow>
       {preview.codeBlockCollapse && <SettingRow title={t('settings.code_block_collapse_after')}>
-      <Slider label={t('settings.code_block_collapse_after')} className='w-[200px]' value={preview.codeBlockCollapseLines} min={8} max={100} step={1} onChange={setters.setCodeBlockCollapseLines} suffix={t("settings.lines")}/>
+      <Slider label={t('settings.code_block_collapse_after')} className='w-[200px]' value={preview.codeBlockCollapseLines} min={8} max={100} step={1} onChange={setters.setCodeBlockCollapseLines} suffix={t('settings.lines')}/>
       </SettingRow>}
       <SettingRow title={t('settings.show_outline_by_default')}>
-      <Switch checked={preview.showToc} onChange={setters.setShowToc} label={t("settings.show_outline_by_default")}/>
+      <Switch checked={preview.showToc} onChange={setters.setShowToc} label={t('settings.show_outline_by_default')}/>
       </SettingRow>
-      <SettingRow title={t("settings.link_hover_preview")} description={t("settings.link_hover_preview_description")}>
-      <Switch checked={preview.linkHover} onChange={setters.setLinkHover} label={t("settings.link_hover_preview")}/>
+      <SettingRow title={t('settings.link_hover_preview')} description={t('settings.link_hover_preview_description')}>
+      <Switch checked={preview.linkHover} onChange={setters.setLinkHover} label={t('settings.link_hover_preview')}/>
       </SettingRow>
-      <SettingRow title={t("settings.external_images")} description={t("settings.external_images_description")}>
-      <Switch checked={preview.externalImages} onChange={setters.setExternalImages} label={t("settings.external_images")}/>
+      <SettingRow title={t('settings.external_images')} description={t('settings.external_images_description')}>
+      <Switch checked={preview.externalImages} onChange={setters.setExternalImages} label={t('settings.external_images')}/>
       </SettingRow>
       {preview.linkHover && <>
       <SettingRow title={t('settings.link_hover_delay')}>
         <Slider label={t('settings.link_hover_delay')} className='w-[200px]' value={preview.linkHoverDelayMs} min={150} max={1000} step={50} onChange={setters.setLinkHoverDelayMs} suffix='ms'/>
       </SettingRow>
-      <SettingRow title={t("settings.link_preview_length")}>
-        <Slider label={t('settings.link_preview_length')} className='w-[200px]' value={preview.linkPreviewLength} min={300} max={8000} step={100} onChange={setters.setLinkPreviewLength} suffix={t("settings.characters")}/>
+      <SettingRow title={t('settings.link_preview_length')}>
+        <Slider label={t('settings.link_preview_length')} className='w-[200px]' value={preview.linkPreviewLength} min={300} max={8000} step={100} onChange={setters.setLinkPreviewLength} suffix={t('settings.characters')}/>
       </SettingRow>
       </>}
     </section>
@@ -133,10 +133,10 @@ function PreviewSection({ preview, setters }: { preview: SettingsPreview; setter
 function MiscSection({ editor, setters }: { editor: SettingsEditor; setters: EditorSetters }) {
   return (
     <section>
-      <SettingRow title={t("settings.autosave_delay")} description={t("settings.delay_before_uploading_after_you_stop_typing_shorter_makes_more_requests")}>
+      <SettingRow title={t('settings.autosave_delay')} description={t('settings.delay_before_uploading_after_you_stop_typing_shorter_makes_more_requests')}>
       <Slider label={t('settings.autosave_delay')} className='w-[200px]' value={editor.autoSaveDelay} min={200} max={3000} step={100} onChange={setters.setAutoSaveDelay} suffix='ms'/>
       </SettingRow>
-      <SettingRow title={t("settings.indent_width")}>
+      <SettingRow title={t('settings.indent_width')}>
       <Segmented<string> label={t('settings.indent_width')} value={String(editor.tabSize)} onChange={setters.setTabSize} options={TAB_SIZE_OPTIONS}/>
       </SettingRow>
     </section>

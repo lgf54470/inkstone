@@ -1,5 +1,10 @@
 import type { JSX } from 'react';
 
+const ARCHIVE_RECT_W = 40
+const ARCHIVE_RECT_H = 10
+const SELECT_RECT_W = 26
+const SELECT_RECT_H = 38
+
 const ART_PROPS = {
   width: 78,
   height: 78,
@@ -45,7 +50,7 @@ function StarredArt(): JSX.Element {
 
 function ArchiveArt(): JSX.Element {
   return (<svg {...ART_PROPS}>
-    <rect x='12' y='16' width='40' height='10' rx='2.5'/>
+    <rect x='12' y='16' width={ARCHIVE_RECT_W} height={ARCHIVE_RECT_H} rx='2.5'/>
     <path d='M16 26v22a3 3 0 0 0 3 3h26a3 3 0 0 0 3-3V26'/>
     <path d='M26 34h12' opacity='0.6'/>
   </svg>);
@@ -67,7 +72,7 @@ function TagArt(): JSX.Element {
 
 function SelectArt(): JSX.Element {
   return (<svg {...ART_PROPS}>
-    <rect x='12' y='13' width='26' height='38' rx='3'/>
+    <rect x='12' y='13' width={SELECT_RECT_W} height={SELECT_RECT_H} rx='3'/>
     <path d='M44 21h8v30a3 3 0 0 1-3 3H26' opacity='0.55'/>
     <path d='M19 24h12M19 31h12M19 38h7' opacity='0.7'/>
   </svg>);

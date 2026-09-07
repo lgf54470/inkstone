@@ -8,6 +8,8 @@ import type { NotesState } from '../../../store/notes';
 import { useManageFoldersModal } from './use-manage-folders-modal';
 import { FolderControlsBar, FolderCreateForm, FolderRowList, type FolderRowActions, type ToastFn } from './sections';
 
+const MODAL_WIDTH = 640
+
 function buildFolderRowActions(api: {
   folders: Parameters<typeof openFolderView>[0];
   inboxFolderId: string | null;
@@ -81,7 +83,7 @@ export function ManageFoldersModal({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <Modal open onClose={onClose} title={t('folders.manage_folders')} description={t('folders.manage_description')} width={640}>
+      <Modal open onClose={onClose} title={t('folders.manage_folders')} description={t('folders.manage_description')} width={MODAL_WIDTH}>
         <div className='space-y-3 pt-1'>
           <FolderControlsBar query={query} onQueryChange={setQuery} emptyFolders={emptyFolders} isCreating={isCreating} onClean={handleCleanEmpty} onAdd={() => { setIsCreating(true); setNewFolderName(''); }} />
           {isCreating && <FolderCreateForm value={newFolderName} onChange={setNewFolderName} onSubmit={handleCreate} onCancel={() => setIsCreating(false)} />}

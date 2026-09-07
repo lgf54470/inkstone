@@ -9,6 +9,9 @@ import { useUi, type PanelName } from '../../../store/ui';
 import { deleteTag, setTagColor, TagColorSubmenu, toggleTagPinned } from '../../tags';
 import { t } from '../../../lib/i18n';
 
+const TAG_INDENT_BASE = 8
+const TAG_INDENT_STEP = 14
+
 export function TagDraftRow({ onFinish, onCancel }: {
   onFinish: (value: string) => void;
   onCancel: () => void;
@@ -22,7 +25,7 @@ export function TagDraftRow({ onFinish, onCancel }: {
   };
   return (<div className='flex h-10 items-center gap-2 rounded-[var(--r-md)] px-2 md:h-[30px]'>
     <Hash size={13} className='shrink-0 text-[var(--text-quaternary)]'/>
-    <input aria-label={t('tags.new')} autoFocus placeholder={t("tags.new_placeholder")} onBlur={(event) => {
+    <input aria-label={t('tags.new')} autoFocus placeholder={t('tags.new_placeholder')} onBlur={(event) => {
       if (event.currentTarget.value.trim())
         finish(event.currentTarget.value);
       else
@@ -78,7 +81,7 @@ export function TagRow({ tag, displayName, depth = 0, hasChildren = false, isExp
     onFinishRename(value);
   };
   const menuItems = buildTagMenuItems(tag, onStartRename, openPanel);
-  return (<div ref={rowRef} onContextMenu={(event) => { setIsMenuOpen(false); menu.onContextMenu(event); }} style={depth > 0 ? { paddingLeft: `${depth * 14 + 8}px` } : undefined} className={cn('group relative flex h-10 items-center gap-1.5 rounded-[var(--r-md)] px-2 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active || selected ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', highlighted && 'ring-1 ring-[var(--accent)]')}>
+  return (<div ref={rowRef} onContextMenu={(event) => { setIsMenuOpen(false); menu.onContextMenu(event); }} style={depth > 0 ? { paddingLeft: `${depth * TAG_INDENT_STEP + TAG_INDENT_BASE}px` } : undefined} className={cn('group relative flex h-10 items-center gap-1.5 rounded-[var(--r-md)] px-2 md:h-[30px]', 'transition-colors duration-[var(--dur-fast)]', active || selected ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', highlighted && 'ring-1 ring-[var(--accent)]')}>
     <TagRowChevron hasChildren={hasChildren} depth={depth} isExpanded={isExpanded} onToggleExpand={onToggleExpand}/>
     <Hash size={13} className='shrink-0' style={{ color: tag.color ?? (active || selected ? 'var(--accent)' : 'var(--text-quaternary)') }}/>
     <TagRowLabel tag={tag} displayLabel={displayLabel} searchQuery={searchQuery} active={active} selected={selected} renaming={renaming} finishedRef={finishedRef} onOpen={onOpen} onStartRename={onStartRename} onCancelRename={onCancelRename} onCommitRename={commitRename}/>
@@ -116,7 +119,7 @@ function TagRowLabel({ tag, displayLabel, searchQuery, active, selected, renamin
   onCancelRename: () => void;
   onCommitRename: (value: string) => void;
 }) {
-  if (renaming) return (<input aria-label={t("tags.rename")} autoFocus defaultValue={tag.name} onFocus={() => { finishedRef.current = false; }} onBlur={(event) => onCommitRename(event.currentTarget.value)} onKeyDown={(event) => {
+  if (renaming) return (<input aria-label={t('tags.rename')} autoFocus defaultValue={tag.name} onFocus={() => { finishedRef.current = false; }} onBlur={(event) => onCommitRename(event.currentTarget.value)} onKeyDown={(event) => {
     if (event.key === 'Enter')
       onCommitRename(event.currentTarget.value);
     if (event.key === 'Escape') {
@@ -125,7 +128,7 @@ function TagRowLabel({ tag, displayLabel, searchQuery, active, selected, renamin
     }
     event.stopPropagation();
   }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[length:var(--text-12\.5)] outline-none"/>);
-  return (<Tooltip label={t("sidebar.cmd_click_selects_multiple")} side='right'>
+  return (<Tooltip label={t('sidebar.cmd_click_selects_multiple')} side='right'>
     <button type='button' aria-current={active ? 'page' : undefined} aria-pressed={selected || undefined} onClick={onOpen} onDoubleClick={onStartRename} className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left text-[length:var(--text-12\.5)] font-medium truncate">
       <span className='truncate'><TagNameHighlight name={displayLabel} query={searchQuery}/></span>
       {tag.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--accent)] opacity-80'/>}
@@ -141,7 +144,7 @@ function TagRowMeta({ noteCount, onOpenMenu }: {
     <span className='shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-0'>
       {noteCount > 0 ? noteCount : ''}
     </span>
-    <Tooltip label={t("common.more_actions")} side='left'>
+    <Tooltip label={t('common.more_actions')} side='left'>
       <IconButton label={t('common.more_actions')} size='sm' onClick={onOpenMenu} className='absolute right-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100'>
         <MoreHorizontal size={13}/>
       </IconButton>

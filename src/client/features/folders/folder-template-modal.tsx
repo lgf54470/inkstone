@@ -7,6 +7,8 @@ import { getFolderTemplateId, setFolderTemplateId } from '../../lib/folder-prefs
 import { useUi } from '../../store/ui'
 import { t } from '../../lib/i18n'
 
+const MODAL_WIDTH = 480
+
 function filterTemplates(templates: NoteTemplate[], query: string): NoteTemplate[] {
   const q = query.trim().toLocaleLowerCase()
   if (!q) return templates
@@ -115,7 +117,7 @@ export function FolderTemplateModal({
       onClose={onClose}
       title={`${t('folders.default_template')} - ${folder.name}`}
       description={t('folders.bind_template')}
-      width={480}
+      width={MODAL_WIDTH}
     >
       <div className='space-y-3'>
         {templates.length > 4 && <TemplateSearchField query={query} onQueryChange={setQuery} />}

@@ -7,6 +7,8 @@ import { Button } from '../../components/primitives'
 import { t } from '../../lib/i18n'
 import { QR_BG_COLOR, QR_FG_COLOR } from '../../lib/qr-colors'
 
+const MODAL_WIDTH = 400
+
 
 interface AttachmentQrModalProps {
   open: boolean
@@ -28,7 +30,7 @@ export function AttachmentQrModal(props: AttachmentQrModalProps) {
         </div>
       }
       description={filename}
-      width={400}
+      width={MODAL_WIDTH}
     >
       <QrContent url={url} />
     </Modal>

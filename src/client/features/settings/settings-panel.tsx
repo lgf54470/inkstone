@@ -67,7 +67,7 @@ export function SettingsPanel({ onClose }: {
 function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { section: Section; onSelect: (section: Section) => void; onClose: () => void; openPanel: (panel: PanelName) => void; titleId: string }) {
   return (
     <nav className='flex w-full shrink-0 flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-2 md:w-[172px] md:border-r md:border-b-0'>
-      <div id={titleId} className="px-2 py-1.5 text-[length:var(--text-13\.5)] font-semibold tracking-[-0.012em] md:py-2.5">{t("common.settings")}</div>
+      <div id={titleId} className="px-2 py-1.5 text-[length:var(--text-13\.5)] font-semibold tracking-[-0.012em] md:py-2.5">{t('common.settings')}</div>
       <div className='flex gap-1 overflow-x-auto pb-1 md:block md:space-y-px md:overflow-visible md:pb-0'>
       {SECTIONS.map((item) => (<button key={item.id} type='button' aria-current={section === item.id ? 'page' : undefined} onClick={() => onSelect(item.id)} className={cn('flex h-10 shrink-0 items-center gap-2 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12\.5)] md:h-[30px] md:w-full md:gap-2.5 md:px-2', 'transition-colors duration-[var(--dur-fast)]', section === item.id
         ? 'bg-[var(--accent-soft)] font-medium text-[var(--text-primary)]'
@@ -81,7 +81,7 @@ function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { secti
         onClose();
         openPanel('shortcuts');
       }} className="flex h-10 shrink-0 items-center gap-2.5 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12\.5)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] md:hidden">
-        <Keyboard size={14}/>{t("settings.keyboard_shortcuts")}
+        <Keyboard size={14}/>{t('settings.keyboard_shortcuts')}
       </button>
       </div>
 
@@ -90,7 +90,7 @@ function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { secti
       onClose();
       openPanel('shortcuts');
     }} className="hidden h-[30px] w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12\.5)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] md:flex">
-      <Keyboard size={14}/>{t("settings.keyboard_shortcuts")}</button>
+      <Keyboard size={14}/>{t('settings.keyboard_shortcuts')}</button>
     </nav>
   );
 }
@@ -101,7 +101,7 @@ function SettingsHeader({ section, onClose }: { section: Section; onClose: () =>
       <h2 className='text-[length:var(--text-14)] font-semibold tracking-[-0.012em]'>
       {SECTIONS.find((s) => s.id === section)?.label()}
       </h2>
-      <Tooltip label={t("common.close")} combo='escape' side='left'>
+      <Tooltip label={t('common.close')} combo='escape' side='left'>
       <IconButton label={t('common.close')} size='sm' onClick={onClose}>
         <X size={15}/>
       </IconButton>
@@ -112,7 +112,7 @@ function SettingsHeader({ section, onClose }: { section: Section; onClose: () =>
 
 function SectionContent({ section }: { section: Section }) {
   return (
-    <Suspense fallback={<LoadingBlock label={t("settings.loading")}/>}>
+    <Suspense fallback={<LoadingBlock label={t('settings.loading')}/>}>
       {section === 'appearance' && <AppearanceSettings accents={ACCENTS}/>}
       {section === 'editor' && <EditorSettings />}
       {section === 'notes' && <NoteSettings />}

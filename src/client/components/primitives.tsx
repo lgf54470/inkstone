@@ -3,6 +3,9 @@ import { cn } from '../lib/cn'
 import { prettyCombo } from '../lib/hotkeys'
 import { resolveAvatarSource } from '../lib/avatar'
 
+const LOGO_BOX = 27
+const AVATAR_FONT_RATIO = 0.42
+
 
 export function Logo({ size = 20, className }: { size?: number; className?: string }) {
   return (
@@ -16,8 +19,8 @@ export function Logo({ size = 20, className }: { size?: number; className?: stri
       <rect
         x='2.5'
         y='2.5'
-        width='27'
-        height='27'
+        width={LOGO_BOX}
+        height={LOGO_BOX}
         rx='8.5'
         className='fill-[var(--text-primary)]'
       />
@@ -204,7 +207,7 @@ export function Avatar({
         'ring-1 ring-[var(--border-subtle)]',
         className,
       )}
-      style={{ width: size, height: size, fontSize: size * 0.42 }}
+      style={{ width: size, height: size, fontSize: size * AVATAR_FONT_RATIO }}
     >
       <img
         src={displaySrc}

@@ -9,6 +9,8 @@ import { t } from '../../lib/i18n';
 import { createTag, deleteTag } from './tag-mutations';
 import { TagManageRow } from './manage-tags-row';
 
+const MODAL_WIDTH = 640
+
 export function ManageTagsModal({ onClose }: { onClose: () => void }) {
   const tags = useNotes((s) => s.tags ?? []);
   const openView = useUi((s) => s.openView);
@@ -22,7 +24,7 @@ export function ManageTagsModal({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       title={t('tags.manage_tags')}
       description={t('tags.manage_description')}
-      width={640}
+      width={MODAL_WIDTH}
     >
       <TagsManagerPanel tags={tags} onOpenTag={openTag} />
     </Modal>

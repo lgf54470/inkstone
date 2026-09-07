@@ -3,6 +3,8 @@ import { Button } from '../primitives';
 import { t } from '../../lib/i18n';
 import { Modal } from './modal';
 
+const MODAL_WIDTH = 440
+
 
 
 
@@ -67,7 +69,7 @@ export function ConfirmHost() {
     setCurrent(next);
   }, []);
   const options = current?.options;
-  return (<Modal open={Boolean(current)} onClose={() => finish(current, false)} title={options?.title} description={options?.description} width={440} footer={<>
+  return (<Modal open={Boolean(current)} onClose={() => finish(current, false)} title={options?.title} description={options?.description} width={MODAL_WIDTH} footer={<>
       <Button variant='ghost' onClick={() => finish(current, false)}>
       {options?.cancelLabel ?? t('common.cancel')}
       </Button>

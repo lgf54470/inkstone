@@ -29,7 +29,7 @@ interface GraphSettingsPanelProps {
 export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTags, isLimitOpen, onToggleLimit, onClose, onResetTagFilters, onRestoreDefaults }: GraphSettingsPanelProps) {
   return (
       <aside aria-label={t('graph.settings')} className='absolute inset-y-0 right-0 z-[var(--z-sticky)] w-[min(88vw,300px)] overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 shadow-[var(--shadow-edge)] md:static md:shadow-none'>
-        <div className='mb-4 flex items-center justify-between'><h3 className='text-[length:var(--text-13)] font-semibold'>{t('graph.settings')}</h3><Tooltip label={t('common.close')}><IconButton size="sm" label={t('common.close')} onClick={onClose}><X size={14}/></IconButton></Tooltip></div>
+        <div className='mb-4 flex items-center justify-between'><h3 className='text-[length:var(--text-13)] font-semibold'>{t('graph.settings')}</h3><Tooltip label={t('common.close')}><IconButton size='sm' label={t('common.close')} onClick={onClose}><X size={14}/></IconButton></Tooltip></div>
         <GraphSection icon={<Filter size={13}/>} title={t('graph.filters')}>
           <GraphSelect label={t('graph.folder')} value={prefs.folderId} onChange={(value) => onChange('folderId', value)} options={[['', t('graph.all_folders')], ...folders.map((folder) => [folder.id, folder.name] as [string, string])]}/>
           <GraphSelect label={t('graph.tag')} value={prefs.tag} onChange={(value) => onChange('tag', value)} options={[['', t('graph.all_tags')], ...tags.map((item) => [item.name, item.name] as [string, string])]}/>
@@ -71,7 +71,7 @@ export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTag
 }
 
 function GraphSection({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
-  return <section className='mb-5'><h4 className='mb-2 flex items-center gap-1.5 text-[length:var(--text-11)] font-semibold uppercase tracking-[.06em] text-[var(--text-quaternary)]'>{icon}{title}</h4><div className="space-y-2.5">{children}</div></section>
+  return <section className='mb-5'><h4 className='mb-2 flex items-center gap-1.5 text-[length:var(--text-11)] font-semibold uppercase tracking-[.06em] text-[var(--text-quaternary)]'>{icon}{title}</h4><div className='space-y-2.5'>{children}</div></section>
 }
 
 function GraphSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
@@ -80,10 +80,10 @@ function GraphSelect({ label, value, onChange, options }: { label: string; value
 
 function GraphToggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (value: boolean) => void }) {
   const hintId = useId()
-  return <label className='flex cursor-pointer items-center justify-between gap-3 text-[length:var(--text-12)] text-[var(--text-secondary)]'><span className='flex min-w-0 items-center gap-1'><span className='truncate'>{label}</span>{hint && <Tooltip label={hint}><span role="img" aria-label={hint} id={hintId} className="inline-flex shrink-0 text-[var(--text-quaternary)]"><Info size={11}/></span></Tooltip>}</span><input type="checkbox" aria-describedby={hint ? hintId : undefined} checked={checked} onChange={(event) => onChange(event.target.checked)} className="size-4 accent-[var(--accent)]"/></label>
+  return <label className='flex cursor-pointer items-center justify-between gap-3 text-[length:var(--text-12)] text-[var(--text-secondary)]'><span className='flex min-w-0 items-center gap-1'><span className='truncate'>{label}</span>{hint && <Tooltip label={hint}><span role='img' aria-label={hint} id={hintId} className='inline-flex shrink-0 text-[var(--text-quaternary)]'><Info size={11}/></span></Tooltip>}</span><input type='checkbox' aria-describedby={hint ? hintId : undefined} checked={checked} onChange={(event) => onChange(event.target.checked)} className='size-4 accent-[var(--accent)]'/></label>
 }
 
 function GraphRange({ label, min, max, step, value, onChange }: { label: string; min: number; max: number; step: number; value: number; onChange: (value: number) => void }) {
-  return <label className='block text-[length:var(--text-12)] text-[var(--text-secondary)]'><span className='mb-1 flex justify-between'><span>{label}</span><span className="tabular-nums text-[var(--text-quaternary)]">{value}</span></span><input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full accent-[var(--accent)]"/></label>
+  return <label className='block text-[length:var(--text-12)] text-[var(--text-secondary)]'><span className='mb-1 flex justify-between'><span>{label}</span><span className='tabular-nums text-[var(--text-quaternary)]'>{value}</span></span><input type='range' min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className='w-full accent-[var(--accent)]'/></label>
 }
 

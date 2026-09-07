@@ -17,6 +17,8 @@ import { AttachmentInspector } from '../attachment-inspector'
 import { AttachmentQrModal } from '../attachment-qr-modal'
 import { AttachmentRenameModal } from '../attachment-rename-modal'
 
+const MODAL_WIDTH = 1300
+
 type DriveBundle = ReturnType<typeof useAttachmentDriveModal>
 
 
@@ -32,7 +34,7 @@ export function AttachmentDriveModal(props: AttachmentDriveModalProps) {
 
   return (
     <>
-      <Modal open={open} onClose={onClose} width={1300} className='h-[82vh] min-h-[560px] max-h-[860px] p-0 overflow-hidden flex flex-col' bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'>
+      <Modal open={open} onClose={onClose} width={MODAL_WIDTH} className='h-[82vh] min-h-[560px] max-h-[860px] p-0 overflow-hidden flex flex-col' bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'>
         <DriveHeader onClose={onClose} />
         <div className='flex min-h-0 flex-1'>
           <DriveSidebar b={b} />

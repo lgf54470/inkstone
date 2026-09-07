@@ -21,6 +21,10 @@ import { t } from '../../../lib/i18n';
 import type { WorkspaceBundle } from './use-workspace';
 import type { ExportNote } from './workspace-menus';
 
+const EXPORT_MENU_WIDTH = 200
+const MORE_MENU_WIDTH = 220
+const OUTLINE_DRAWER_WIDTH = 320
+
 function groupedLayoutOptions(): SegmentedOption<EditorLayout>[] {
   return [
     { value: 'edit', label: <Pencil size={12.5} />, title: t('workspace.edit_only') },
@@ -114,7 +118,7 @@ function StandaloneHeaderActions({ b, exportMenuItems }: { b: WorkspaceBundle; e
       {!isMobile && (
         <>
           <Tooltip label={t('workspace.export')}><IconButton ref={exportMenuRef} label={t('workspace.export')} size='sm' onClick={() => setIsExportMenuOpen(true)}><Download size={14} /></IconButton></Tooltip>
-          <Menu anchor={exportMenuRef} open={isExportMenuOpen} onClose={() => setIsExportMenuOpen(false)} items={exportMenuItems} align='end' width={200} />
+          <Menu anchor={exportMenuRef} open={isExportMenuOpen} onClose={() => setIsExportMenuOpen(false)} items={exportMenuItems} align='end' width={EXPORT_MENU_WIDTH} />
         </>
       )}
       {showPreview && <Tooltip label={t('common.outline')} combo='mod+shift+o'><IconButton label={t('common.outline')} size='sm' active={isMobile ? isMobileOutlineOpen : outlineOpen} onClick={() => (isMobile ? setIsMobileOutlineOpen((open) => !open) : toggleOutline())}>{(isMobile ? isMobileOutlineOpen : outlineOpen) ? <PanelRightClose size={14} /> : <ListTree size={14} />}</IconButton></Tooltip>}
@@ -187,9 +191,9 @@ export function WorkspaceOverlays({ b, grouped, exportNote, groupedItems, mobile
         previewScrollerRef={previewScrollerRef}
         onExport={exportNote}
       />
-      <Menu anchor={moreButtonRef} open={isMoreMenuOpen} onClose={() => setIsMoreMenuOpen(false)} items={grouped ? groupedItems : mobileItems} align='end' width={220} />
+      <Menu anchor={moreButtonRef} open={isMoreMenuOpen} onClose={() => setIsMoreMenuOpen(false)} items={grouped ? groupedItems : mobileItems} align='end' width={MORE_MENU_WIDTH} />
       {isMobile && showPreview && (
-        <Drawer open={isMobileOutlineOpen} onClose={() => setIsMobileOutlineOpen(false)} side='right' width={320} title={t('common.outline')}>
+        <Drawer open={isMobileOutlineOpen} onClose={() => setIsMobileOutlineOpen(false)} side='right' width={OUTLINE_DRAWER_WIDTH} title={t('common.outline')}>
           <Outline
             headings={headings}
             scrollerRef={previewScrollerRef}

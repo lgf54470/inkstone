@@ -14,6 +14,8 @@ import { Check } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Tooltip } from './overlay'
 
+const SELECT_CHEVRON_SIZE = 11
+
 const FIELD_BASE = cn(
   'w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)]',
   'px-2.5 text-[length:var(--text-13)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)]',
@@ -93,8 +95,8 @@ export function Select({
       </select>
       <svg
         viewBox='0 0 12 12'
-        width='11'
-        height='11'
+        width={SELECT_CHEVRON_SIZE}
+        height={SELECT_CHEVRON_SIZE}
         className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]'
         aria-hidden='true'
       >

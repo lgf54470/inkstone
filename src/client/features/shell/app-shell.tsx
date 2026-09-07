@@ -28,6 +28,9 @@ const GraphPanel = lazy(() => import('../graph').then((m) => ({ default: m.Graph
 const ShareHubModal = lazy(() => import('../share').then((m) => ({ default: m.ShareHubModal })));
 const ShareEditModal = lazy(() => import('../share').then((m) => ({ default: m.ShareEditModal })));
 const BlogHubModal = lazy(() => import('../blog').then((m) => ({ default: m.BlogHubModal })));
+
+const NAV_DRAWER_WIDTH = 272
+const NAV_RAIL_COLLAPSED_WIDTH = 48
 const BlogPublishModal = lazy(() => import('../blog').then((m) => ({ default: m.BlogPublishModal })));
 const VersionsPanel = lazy(() => import('../workspace').then((m) => ({ default: m.VersionsPanel })));
 const TemplateGallery = lazy(() => import('../templates').then((m) => ({ default: m.TemplateGallery })));
@@ -98,7 +101,7 @@ function DesktopShell() {
 
     <FloatingSearch />
 
-    {navAsDrawer && (<Drawer open onClose={() => toggleNavDrawer(false)} side='left' width={272} title={t("common.navigation")}>
+    {navAsDrawer && (<Drawer open onClose={() => toggleNavDrawer(false)} side='left' width={NAV_DRAWER_WIDTH} title={t('common.navigation')}>
       <Sidebar onCollapse={() => toggleNavDrawer(false)}/>
     </Drawer>)}
 
@@ -113,7 +116,7 @@ function NavRail() {
   const toggle = useUi((s) => s.toggleNav);
   const setLayout = useUi((s) => s.setLayout);
   return (<>
-    <div style={{ width: collapsed ? 48 : width }} className='shrink-0 overflow-hidden transition-[width] duration-[var(--dur-slow)] ease-[var(--ease-out)]'>
+    <div style={{ width: collapsed ? NAV_RAIL_COLLAPSED_WIDTH : width }} className='shrink-0 overflow-hidden transition-[width] duration-[var(--dur-slow)] ease-[var(--ease-out)]'>
     <Sidebar collapsed={collapsed} onCollapse={toggle}/>
     </div>
     {!collapsed && (<Resizer label={t('shell.resize_navigation_panel')} value={width} min={PANEL_WIDTHS.navigation.min} max={PANEL_WIDTHS.navigation.max} onChange={(navWidth) => setLayout({ navWidth })} onReset={() => setLayout({ navWidth: PANEL_WIDTHS.navigation.min })}/>)}
@@ -127,7 +130,7 @@ function ListRail() {
     <div style={{ width }} className='anim-view-content shrink-0 overflow-hidden'>
     <NoteList />
     </div>
-    <Resizer label={t("shell.resize_note_list")} value={width} min={PANEL_WIDTHS.noteList.min} max={PANEL_WIDTHS.noteList.max} onChange={(listWidth) => setLayout({ listWidth })} onReset={() => setLayout({ listWidth: PANEL_WIDTHS.noteList.min })}/>
+    <Resizer label={t('shell.resize_note_list')} value={width} min={PANEL_WIDTHS.noteList.min} max={PANEL_WIDTHS.noteList.max} onChange={(listWidth) => setLayout({ listWidth })} onReset={() => setLayout({ listWidth: PANEL_WIDTHS.noteList.min })}/>
   </>);
 }
 
@@ -157,7 +160,7 @@ function SplitWorkspace({ containerRef, ratio, onRatio, onReset }: {
     <div className='min-w-0' style={{ width: `${ratio * 100}%` }}>
     <InlineErrorBoundary><Workspace pane='primary' grouped/></InlineErrorBoundary>
     </div>
-    <SplitResizer label={t("shell.resize_note_panes")} containerRef={containerRef} ratio={ratio} onChange={onRatio} onReset={onReset}/>
+    <SplitResizer label={t('shell.resize_note_panes')} containerRef={containerRef} ratio={ratio} onChange={onRatio} onReset={onReset}/>
     <div className='anim-view-content min-w-0 flex-1'>
     <InlineErrorBoundary><Workspace pane='secondary' grouped/></InlineErrorBoundary>
     </div>
@@ -175,7 +178,7 @@ function MobileShell() {
   }, [activeNoteId, notePane, setPane]);
   const tabs = [
     { id: 'nav' as const, icon: <ListTree size={19}/>, label: t('common.navigation') },
-    { id: 'list' as const, icon: <FileText size={19}/>, label: t("common.note") },
+    { id: 'list' as const, icon: <FileText size={19}/>, label: t('common.note') },
     ...(activeNoteId ? [
       { id: 'editor' as const, icon: <PencilLine size={19}/>, label: t('common.edit') },
       { id: 'preview' as const, icon: <Eye size={19}/>, label: t('common.preview') },

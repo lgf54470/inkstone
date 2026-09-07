@@ -6,6 +6,8 @@ import { Segmented, Switch } from '../../components/form'
 import { t } from '../../lib/i18n'
 import { useShareSettingsModal } from './use-share-settings-modal'
 
+const MODAL_WIDTH = 520
+
 type SettingsBundle = ReturnType<typeof useShareSettingsModal>
 
 export function ShareSettingsModal({
@@ -27,7 +29,7 @@ export function ShareSettingsModal({
         </div>
       }
       description={t('share.settings_modal_desc')}
-      width={520}
+      width={MODAL_WIDTH}
       footer={
         <div className='flex w-full items-center justify-end gap-2'>
           <Button size='sm' variant='ghost' onClick={onClose}>

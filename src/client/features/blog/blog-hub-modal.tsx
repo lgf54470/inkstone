@@ -14,6 +14,8 @@ import { BlogPublishModal } from './blog-publish-modal'
 import { BlogCategoriesModal } from './blog-categories-modal'
 import { BlogSettingsModal } from './blog-settings-modal'
 
+const MODAL_WIDTH = 1300
+
 export function BlogHubModal({
   open,
   onClose,
@@ -30,7 +32,7 @@ export function BlogHubModal({
       <Modal
         open={open}
         onClose={onClose}
-        width={1300}
+        width={MODAL_WIDTH}
         className='h-[84vh] min-h-[580px] max-h-[880px] p-0 overflow-hidden flex flex-col'
         bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'
       >

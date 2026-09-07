@@ -9,6 +9,8 @@ import { cn } from '../../lib/cn';
 import { t } from '../../lib/i18n';
 import { deleteTag, renameTag, setTagColor, toggleTagPinned } from './tag-mutations';
 
+const MERGE_MODAL_WIDTH = 440
+
 export function TagManageRow({
   tag,
   onOpenTag,
@@ -253,7 +255,7 @@ function MergeTagsModal({ source, onClose }: { source: Tag; onClose: () => void 
       onClose={onClose}
       title={t('tags.merge_into')}
       description={t('tags.merge_choose_target_desc', { value0: source.name })}
-      width={440}
+      width={MERGE_MODAL_WIDTH}
     >
       <div className='space-y-3 pt-1'>
         <div className='max-h-[320px] overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>

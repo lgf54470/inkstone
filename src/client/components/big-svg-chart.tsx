@@ -9,6 +9,7 @@ const PAD_T = 10
 const PAD_B = 24
 const GRID_STEPS = [0, 0.25, 0.5, 0.75, 1]
 const LABEL_STEP_MIN = { 10: 2, 20: 4 } as const
+const AXIS_LABEL_FONT_SIZE = '9'
 
 interface ChartGeometry {
   maxVal: number
@@ -54,7 +55,7 @@ function ChartGridLines({ maxVal }: { maxVal: number }) {
         return (
           <g key={gi}>
             <line x1={PAD_L} x2={CHART_W - PAD_R} y1={gy} y2={gy} stroke='var(--border-subtle)' strokeDasharray='2 2' strokeWidth='1' />
-            <text x={PAD_L - 6} y={gy + 3} fontSize='9' fill='var(--text-tertiary)' textAnchor='end' fontFamily='var(--font-family-mono, monospace)'>
+            <text x={PAD_L - 6} y={gy + 3} fontSize={AXIS_LABEL_FONT_SIZE} fill='var(--text-tertiary)' textAnchor='end' fontFamily='var(--font-family-mono, monospace)'>
               {val}
             </text>
           </g>
@@ -83,7 +84,7 @@ function ChartXLabels({ geometry, values, timeline }: { geometry: ChartGeometry;
       {geometry.pts.map((p, i) => {
         if (i % interval !== 0 && i !== values.length - 1) return null
         return (
-          <text key={`lbl-${i}`} x={p[0].toFixed(1)} y={CHART_H - 6} fontSize='9' fill='var(--text-tertiary)' textAnchor='middle' fontFamily='var(--font-family-mono, monospace)'>
+          <text key={`lbl-${i}`} x={p[0].toFixed(1)} y={CHART_H - 6} fontSize={AXIS_LABEL_FONT_SIZE} fill='var(--text-tertiary)' textAnchor='middle' fontFamily='var(--font-family-mono, monospace)'>
             {timeline[i]?.label || ''}
           </text>
         )

@@ -143,10 +143,10 @@ function LoadErrorState({ error, onRetry }: { error: string; onRetry: () => void
       <div className='flex items-start gap-3'>
       <AlertCircle size={16} className='mt-0.5 shrink-0 text-[var(--danger)]'/>
       <div className='min-w-0 flex-1'>
-        <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>{t("settings.could_not_load_backup_settings")}</div>
+        <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>{t('settings.could_not_load_backup_settings')}</div>
         <p className="mt-1 break-words text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">{error}</p>
       </div>
-      <Button size='sm' variant='secondary' onClick={onRetry}>{t("common.retry")}</Button>
+      <Button size='sm' variant='secondary' onClick={onRetry}>{t('common.retry')}</Button>
       </div>
     </div>
   );
@@ -158,7 +158,7 @@ function ErrorBanner({ error, onRetry }: { error: string | null; onRetry: () => 
     <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--danger)]">
       <AlertCircle size={13} className='mt-0.5 shrink-0'/>
       <span className='min-w-0 flex-1 break-words'>{error}</span>
-      <button type='button' className='shrink-0 font-medium underline underline-offset-2' onClick={onRetry}>{t("common.retry")}</button>
+      <button type='button' className='shrink-0 font-medium underline underline-offset-2' onClick={onRetry}>{t('common.retry')}</button>
     </div>
   );
 }
@@ -174,9 +174,9 @@ function BackupHero({ enabled, isRunning, onRun }: { enabled: number; isRunning:
         <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
         {enabled > 0 ? t('settings.value0_backup_targets_active', { value0: enabled }) : t('settings.no_backup_configured_yet')}
         </div>
-        <p className="mt-1 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{t("settings.each_backup_goes_independently_to_every_enabled_target_it_includes_notes")}</p>
+        <p className="mt-1 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{t('settings.each_backup_goes_independently_to_every_enabled_target_it_includes_notes')}</p>
       </div>
-      <Button size='sm' variant='primary' icon={isRunning ? undefined : <Zap size={13}/>} loading={isRunning} disabled={!enabled} onClick={onRun}>{t("settings.back_up_now")}</Button>
+      <Button size='sm' variant='primary' icon={isRunning ? undefined : <Zap size={13}/>} loading={isRunning} disabled={!enabled} onClick={onRun}>{t('settings.back_up_now')}</Button>
       </div>
     </section>
   );
@@ -196,13 +196,13 @@ function TargetsSection({ targets, editing, onAdd, onEdit, onChanged, onPatch, o
   return (
     <section>
       <div className='mb-2 flex items-center justify-between'>
-      <h3 className='text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("settings.backup_target")}</h3>
-      <Button size='sm' variant='secondary' icon={<Plus size={13}/>} onClick={onAdd}>{t("settings.add_target")}</Button>
+      <h3 className='text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.backup_target')}</h3>
+      <Button size='sm' variant='secondary' icon={<Plus size={13}/>} onClick={onAdd}>{t('settings.add_target')}</Button>
       </div>
 
       {targets.length === 0 ? (
       <div className='rounded-[var(--r-lg)] border border-dashed border-[var(--border-default)]'>
-        <Empty art='archive' compact title={t("settings.no_backup_target_yet")} description={t("settings.add_a_webdav_or_s3_compatible_target_or_choose_a_common_provider_preset")} action={<Button size='sm' icon={<Plus size={13}/>} onClick={onAdd}>{t("settings.add_first_target")}</Button>}/>
+        <Empty art='archive' compact title={t('settings.no_backup_target_yet')} description={t('settings.add_a_webdav_or_s3_compatible_target_or_choose_a_common_provider_preset')} action={<Button size='sm' icon={<Plus size={13}/>} onClick={onAdd}>{t('settings.add_first_target')}</Button>}/>
       </div>
       ) : (
       <div className='space-y-2'>
@@ -218,8 +218,8 @@ function TargetsSection({ targets, editing, onAdd, onEdit, onChanged, onPatch, o
 function ScheduleSection({ schedule, options, onChange }: { schedule: BackupSchedule; options: SegmentedOption<BackupSchedule>[]; onChange: (schedule: BackupSchedule) => void }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("settings.automatic_backups")}</h3>
-      <SettingRow title={t("settings.frequency")} description={t("settings.runs_from_cloudflare_cron_the_page_does_not_need_to_stay_open")}>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.automatic_backups')}</h3>
+      <SettingRow title={t('settings.frequency')} description={t('settings.runs_from_cloudflare_cron_the_page_does_not_need_to_stay_open')}>
       <Segmented<BackupSchedule> label={t('settings.frequency')} value={schedule} onChange={onChange} options={options}/>
       </SettingRow>
     </section>
@@ -229,9 +229,9 @@ function ScheduleSection({ schedule, options, onChange }: { schedule: BackupSche
 function RunsSection({ runs }: { runs: BackupRun[] }) {
   return (
     <section>
-      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("settings.latest_backups")}</h3>
+      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.latest_backups')}</h3>
       {runs.length === 0 ? (
-      <p className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-3 py-4 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t("settings.no_backup_record_yet")}</p>
+      <p className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-3 py-4 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('settings.no_backup_record_yet')}</p>
       ) : (
       <ul className='space-y-1'>
         {runs.slice(0, 12).map((run) => (<RunRow key={run.id} run={run}/>))}

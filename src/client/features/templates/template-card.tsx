@@ -8,6 +8,8 @@ import { IconButton } from '../../components/primitives'
 import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 
+const MENU_WIDTH = 200
+
 
 interface TemplateCardProps {
   template: NoteTemplate
@@ -268,8 +270,8 @@ function CardMenus({
 }) {
   return (
     <>
-      <Menu anchor={menuButtonRef} open={isMenuOpen} onClose={onCloseMenu} items={items} align='end' width={200} zIndex={Z_INDEX.hoverPinned} />
-      {contextPoint && <Menu anchor={contextPoint} open onClose={onCloseContext} items={items} width={200} zIndex={Z_INDEX.hoverPinned} />}
+      <Menu anchor={menuButtonRef} open={isMenuOpen} onClose={onCloseMenu} items={items} align='end' width={MENU_WIDTH} zIndex={Z_INDEX.hoverPinned} />
+      {contextPoint && <Menu anchor={contextPoint} open onClose={onCloseContext} items={items} width={MENU_WIDTH} zIndex={Z_INDEX.hoverPinned} />}
     </>
   )
 }

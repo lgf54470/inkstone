@@ -9,6 +9,8 @@ import { useClickOutside, useEscape } from './overlay';
 import { TagList, TagMatchToggle, TagPickerFooter, TagSearchInput } from './tag-filter-popover-views';
 import { useHighlightScroll, usePopoverFocus, usePopoverPosition } from './use-tag-filter-popover';
 
+const POPOVER_WIDTH = 236
+
 /** Shared multi-tag picker: searchable tag checklist with note counts and an any/all match-mode switch. */
 export function TagFilterPopover({ anchor, open, onClose, align = 'end' }: {
   anchor: React.RefObject<HTMLButtonElement | null>;
@@ -48,7 +50,7 @@ export function TagFilterPopover({ anchor, open, onClose, align = 'end' }: {
     selectTags(visibleTags.map((tag) => tag.name));
     useUi.getState().toast({ title: t('sidebar.tags_selected', { value0: visibleTags.length }) });
   };
-  return createPortal(<div ref={popoverRef} role='dialog' aria-label={t('command.filter_by_tags')} className='anim-pop fixed z-[var(--z-hover-card)] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]' style={{ top: position.top, left: position.left, width: 236, transformOrigin: position.origin }}>
+  return createPortal(<div ref={popoverRef} role='dialog' aria-label={t('command.filter_by_tags')} className='anim-pop fixed z-[var(--z-hover-card)] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]' style={{ top: position.top, left: position.left, width: POPOVER_WIDTH, transformOrigin: position.origin }}>
     <TagSearchInput inputRef={inputRef} value={query} onChange={setQuery}/>
     <TagMatchToggle match={selectedTagsMatch} onChange={setSelectedTagsMatch}/>
     <div className='mt-1.5 mb-1 h-px bg-[var(--border-subtle)]'/>

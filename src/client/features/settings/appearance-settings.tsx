@@ -40,7 +40,7 @@ export function AppearanceSettings({
 
       <section>
         <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
-          {t("settings.preview_typography")}
+          {t('settings.preview_typography')}
         </h3>
         <TypographySection appearance={appearance} setters={setters} options={options} />
       </section>
@@ -82,7 +82,7 @@ function useAppearanceSettings() {
   const setters = { setTodoTag, setLanguage, setTheme, setDensity, setAccent, setBackground, setProseFont, setProseSize, setProseLineHeight, setProseWidth }
   const options = useMemo((): Options => ({
     languageOptions: [{ value: 'zh-CN', label: t('settings.simplified_chinese') }, { value: 'en-US', label: t('settings.english') }],
-    themeOptions: [{ value: 'light', label: <Sun size={12.5} />, title: t('settings.light') }, { value: 'dark', label: <Moon size={12.5} />, title: t('settings.dark') }, { value: 'system', label: <Monitor size={12.5} />, title: t("settings.system") }],
+    themeOptions: [{ value: 'light', label: <Sun size={12.5} />, title: t('settings.light') }, { value: 'dark', label: <Moon size={12.5} />, title: t('settings.dark') }, { value: 'system', label: <Monitor size={12.5} />, title: t('settings.system') }],
     densityOptions: [{ value: 'comfortable', label: t('settings.comfortable') }, { value: 'compact', label: t('settings.compact') }],
     proseFontOptions: [{ value: 'sans', label: t('common.sans_serif') }, { value: 'serif', label: t('settings.serif') }],
     proseWidthOptions: [{ value: 'narrow', label: t('settings.narrow') }, { value: 'normal', label: t('settings.standard') }, { value: 'wide', label: t('settings.wide') }, { value: 'full', label: t('settings.full') }],
@@ -94,7 +94,7 @@ function useAppearanceSettings() {
 function LanguageThemeSection({ appearance, setters, options }: { appearance: AppearanceSettingsState; setters: Setters; options: Options }) {
   return (
     <>
-      <SettingRow title={t("settings.interface_language")}>
+      <SettingRow title={t('settings.interface_language')}>
         <Segmented<AppLocale>
           label={t('settings.interface_language')}
           value={appearance.language}
@@ -102,7 +102,7 @@ function LanguageThemeSection({ appearance, setters, options }: { appearance: Ap
           options={options.languageOptions}
         />
       </SettingRow>
-      <SettingRow title={t("settings.theme")}>
+      <SettingRow title={t('settings.theme')}>
         <Segmented<ThemePref>
           label={t('settings.theme')}
           value={appearance.theme}
@@ -125,7 +125,7 @@ function ColorSection({ appearance, accents, setters }: { appearance: Appearance
 
 function AccentSwatches({ appearance, accents, setters }: { appearance: AppearanceSettingsState; accents: { name: AccentName; swatch: string; foreground: string }[]; setters: Setters }) {
   return (
-    <SettingRow title={t("settings.accent_color")}>
+    <SettingRow title={t('settings.accent_color')}>
       <div role='group' aria-label={t('settings.accent_color')} className='flex items-center gap-1.5'>
         {accents.map((accent) => (
           <Tooltip key={accent.name} label={t(ACCENT_MESSAGE_KEYS[accent.name])}>
@@ -150,7 +150,7 @@ function AccentSwatches({ appearance, accents, setters }: { appearance: Appearan
 
 function BackgroundSwatches({ appearance, setters }: { appearance: AppearanceSettingsState; setters: Setters }) {
   return (
-    <SettingRow title={t("settings.background_color")}>
+    <SettingRow title={t('settings.background_color')}>
       <div role='group' aria-label={t('settings.background_color')} className='flex items-center gap-2'>
         {([
           { name: 'paper', label: t('settings.background_paper'), swatch: 'var(--swatch-paper)' },
@@ -182,27 +182,27 @@ function InterfaceSection({ appearance, setters, options }: { appearance: Appear
   const undoToastFocus = useUndoToastFocus()
   return (
     <>
-      <SettingRow title={t("settings.interface_density")}>
+      <SettingRow title={t('settings.interface_density')}>
         <Segmented<UiDensity> label={t('settings.interface_density')} value={appearance.density} onChange={setters.setDensity} options={options.densityOptions} />
       </SettingRow>
 
-      <SettingRow title={t("settings.sidebar_calendar_tree")} description={t("settings.sidebar_calendar_tree_desc")}>
-        <Switch checked={calendarTreeVisible} onChange={setCalendarTreeVisible} label={t("settings.sidebar_calendar_tree")}/>
+      <SettingRow title={t('settings.sidebar_calendar_tree')} description={t('settings.sidebar_calendar_tree_desc')}>
+        <Switch checked={calendarTreeVisible} onChange={setCalendarTreeVisible} label={t('settings.sidebar_calendar_tree')}/>
       </SettingRow>
-      <SettingRow title={t("settings.show_empty_calendar_periods")} description={t("settings.show_empty_calendar_periods_desc")}>
-        <Switch checked={calendarTreeShowEmpty} onChange={setCalendarTreeShowEmpty} label={t("settings.show_empty_calendar_periods")}/>
-      </SettingRow>
-
-      <SettingRow title={t("settings.todo_tag")} description={t("settings.todo_tag_desc")}>
-        <Input aria-label={t('settings.todo_tag')} value={todoTag ?? ''} placeholder={t("settings.todo_tag_placeholder_value0", { value0: resolveTodoTag(null, locale) })} onChange={(event) => setters.setTodoTag(event.target.value)} className='w-[200px]' />
+      <SettingRow title={t('settings.show_empty_calendar_periods')} description={t('settings.show_empty_calendar_periods_desc')}>
+        <Switch checked={calendarTreeShowEmpty} onChange={setCalendarTreeShowEmpty} label={t('settings.show_empty_calendar_periods')}/>
       </SettingRow>
 
-      <SettingRow title={t("settings.year_grid_columns")} description={t("settings.year_grid_columns_desc")}>
+      <SettingRow title={t('settings.todo_tag')} description={t('settings.todo_tag_desc')}>
+        <Input aria-label={t('settings.todo_tag')} value={todoTag ?? ''} placeholder={t('settings.todo_tag_placeholder_value0', { value0: resolveTodoTag(null, locale) })} onChange={(event) => setters.setTodoTag(event.target.value)} className='w-[200px]' />
+      </SettingRow>
+
+      <SettingRow title={t('settings.year_grid_columns')} description={t('settings.year_grid_columns_desc')}>
         <Segmented<YearGridColumnsPref> label={t('settings.year_grid_columns')} value={yearGridColumns} onChange={setYearGridColumns} options={options.yearGridOptions} />
       </SettingRow>
 
-      <SettingRow title={t("settings.undo_toast_focus")} description={t("settings.undo_toast_focus_desc")}>
-        <Switch checked={undoToastFocus} onChange={setUndoToastFocus} label={t("settings.undo_toast_focus")}/>
+      <SettingRow title={t('settings.undo_toast_focus')} description={t('settings.undo_toast_focus_desc')}>
+        <Switch checked={undoToastFocus} onChange={setUndoToastFocus} label={t('settings.undo_toast_focus')}/>
       </SettingRow>
 
       <YearGridPreview columns={yearGridColumns} locale={locale}/>
@@ -213,7 +213,7 @@ function InterfaceSection({ appearance, setters, options }: { appearance: Appear
 function TypographySection({ appearance, setters, options }: { appearance: AppearanceSettingsState; setters: Setters; options: Options }) {
   return (
     <>
-      <SettingRow title={t("settings.body_font")}>
+      <SettingRow title={t('settings.body_font')}>
         <Segmented<ProseFont>
           label={t('settings.body_font')}
           value={appearance.proseFont}
@@ -222,7 +222,7 @@ function TypographySection({ appearance, setters, options }: { appearance: Appea
         />
       </SettingRow>
 
-      <SettingRow title={t("settings.body_text_size")}>
+      <SettingRow title={t('settings.body_text_size')}>
         <Slider
           label={t('settings.body_text_size')}
           className='w-[200px]'
@@ -234,7 +234,7 @@ function TypographySection({ appearance, setters, options }: { appearance: Appea
         />
       </SettingRow>
 
-      <SettingRow title={t("settings.line_height")}>
+      <SettingRow title={t('settings.line_height')}>
         <Slider
           label={t('settings.line_height')}
           className='w-[200px]'
@@ -246,7 +246,7 @@ function TypographySection({ appearance, setters, options }: { appearance: Appea
         />
       </SettingRow>
 
-      <SettingRow title={t("settings.content_width")}>
+      <SettingRow title={t('settings.content_width')}>
         <Segmented<ProseWidth>
           label={t('settings.content_width')}
           value={appearance.proseWidth}
@@ -272,8 +272,8 @@ function YearGridPreview({ columns, locale }: { columns: YearGridColumnsPref; lo
   return (
     <div className='mt-1 mb-3 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-2'>
       <div className='mb-1 flex items-center justify-between gap-2'>
-        <span className="text-[length:var(--text-9\.5)] font-medium text-[var(--text-quaternary)]">{t("settings.year_grid_columns_preview")}</span>
-        <span className="text-[length:var(--text-9\.5)] text-[var(--text-quaternary)]">{t("settings.year_grid_columns_preview_tip")}</span>
+        <span className="text-[length:var(--text-9\.5)] font-medium text-[var(--text-quaternary)]">{t('settings.year_grid_columns_preview')}</span>
+        <span className="text-[length:var(--text-9\.5)] text-[var(--text-quaternary)]">{t('settings.year_grid_columns_preview_tip')}</span>
       </div>
       <YearGrid
         year={previewYear}
@@ -312,7 +312,7 @@ function PreviewSample() {
   return (
     <section>
       <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
-        {t("settings.preview")}
+        {t('settings.preview')}
       </h3>
       <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-3'>
         <div
@@ -320,10 +320,10 @@ function PreviewSample() {
           data-font={appearance.proseFont}
           style={{ maxWidth: 'none', paddingBlock: 0 }}
         >
-          <h3 style={{ marginTop: 0 }}>{t("settings.q_a_in_the_mountains")}</h3>
+          <h3 style={{ marginTop: 0 }}>{t('settings.q_a_in_the_mountains')}</h3>
           <p>
             {t('settings.asked_why_i_wanted_to_live_in_the_green_mountains_i_smiled_without_answe')}{' '}
-            {t('settings.chinese_english_and')} <code>{t("common.inline_code")}</code> {t("settings.look_at_home_together")}
+            {t('settings.chinese_english_and')} <code>{t('common.inline_code')}</code> {t('settings.look_at_home_together')}
           </p>
         </div>
       </div>

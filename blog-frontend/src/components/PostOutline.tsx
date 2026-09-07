@@ -21,6 +21,9 @@ const STICKY_HEADER_H = 60
 const ACTIVE_HEADING_OFFSET = 25
 const SCROLL_TARGET_BUFFER = 16
 
+const OUTLINE_INDENT_BASE = 8
+const OUTLINE_INDENT_STEP = 10
+
 const HEADING_ICONS: Record<number, ComponentType<LucideProps>> = {
   1: Heading1,
   2: Heading2,
@@ -172,7 +175,7 @@ function OutlineRow({ heading, index, active, minLevel, prevHeading, onSelect }:
         className={`group relative flex w-full items-center gap-1.5 rounded-[var(--r-sm)] pr-1.5 text-left leading-snug cursor-pointer transition-colors duration-[var(--dur-fast)] ${typography.fontSize} ${typography.fontWeight} ${typography.textColor} ${typography.paddingY} ${
           isActive ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         }`}
-        style={{ paddingLeft: 8 + relativeLevel * 10 }}
+        style={{ paddingLeft: OUTLINE_INDENT_BASE + relativeLevel * OUTLINE_INDENT_STEP }}
       >
         {isActive && (
           <span

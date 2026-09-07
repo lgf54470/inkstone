@@ -77,7 +77,7 @@ function TagSectionHeader({ canToggleTags, allTagsExpanded, onToggleAll, onCreat
 }) {
     const openPanel = useUi((s) => s.openPanel);
     return (<div className='group/head flex items-center justify-between pr-1'>
-        <SectionLabel>{t("navigation.tag")}</SectionLabel>
+        <SectionLabel>{t('navigation.tag')}</SectionLabel>
         <div className='flex items-center gap-0.5'>
           {canToggleTags && (
             <Tooltip label={allTagsExpanded ? t('tags.collapse_all') : t('tags.expand_all')} side='left'>
@@ -91,7 +91,7 @@ function TagSectionHeader({ canToggleTags, allTagsExpanded, onToggleAll, onCreat
               <Settings2 size={13}/>
             </IconButton>
           </Tooltip>
-          <Tooltip label={t("tags.new")} side='right'>
+          <Tooltip label={t('tags.new')} side='right'>
             <IconButton label={t('tags.new')} size='sm' onClick={onCreate} className='opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100'>
               <Plus size={13}/>
             </IconButton>
@@ -110,10 +110,10 @@ function TagSearchBox({ query, setQuery, setActiveIndex, searching, visibleTags,
 }) {
     return (<div className='relative mt-1.5'>
         <Search size={12} className='pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-[var(--text-quaternary)]'/>
-        <input aria-label={t('notes.tag_filter_search')} title={t("sidebar.tag_search_select_all")} value={query} onChange={(e) => {
+        <input aria-label={t('notes.tag_filter_search')} title={t('sidebar.tag_search_select_all')} value={query} onChange={(e) => {
             setQuery(e.target.value);
             setActiveIndex(0);
-        }} onKeyDown={(e) => handleTagSearchKeyDown(e, { searching, visibleTags, highlightedIndex, setQuery, setActiveIndex })} placeholder={t("notes.tag_filter_search")} className='h-7 w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-7 pl-6 text-[length:var(--text-12)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none'/>
+        }} onKeyDown={(e) => handleTagSearchKeyDown(e, { searching, visibleTags, highlightedIndex, setQuery, setActiveIndex })} placeholder={t('notes.tag_filter_search')} className='h-7 w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-7 pl-6 text-[length:var(--text-12)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none'/>
         {searching && <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 tabular-nums text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">{visibleTags.length}</span>}
     </div>);
 }
@@ -206,7 +206,7 @@ function CreateFirstTagButton({ onCreate }: {
     onCreate: () => void;
 }) {
     return (<button type='button' onClick={onCreate} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[30px]">
-        <Plus size={13}/>{t("tags.create_first")}
+        <Plus size={13}/>{t('tags.create_first')}
     </button>);
 }
 
@@ -215,8 +215,8 @@ function TagSearchEmpty({ onClear }: {
 }) {
     return (<div className='mt-1 flex flex-col items-center gap-1 rounded-[var(--r-md)] bg-[var(--bg-inset)] px-2 py-3 text-center'>
         <SearchX size={14} className='text-[var(--text-quaternary)]'/>
-        <span className="text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">{t("notes.no_matching_tags")}</span>
-        <button type='button' onClick={onClear} className="text-[length:var(--text-10\.5)] font-medium text-[var(--accent)] transition-colors hover:underline">{t("notes.clear_tag_search")}</button>
+        <span className="text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">{t('notes.no_matching_tags')}</span>
+        <button type='button' onClick={onClear} className="text-[length:var(--text-10\.5)] font-medium text-[var(--accent)] transition-colors hover:underline">{t('notes.clear_tag_search')}</button>
     </div>);
 }
 
@@ -226,7 +226,7 @@ function ShowMoreTagsButton({ isExpanded, count, onToggle }: {
     onToggle: () => void;
 }) {
     return (<button type='button' onClick={onToggle} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-[26px]">
-        {isExpanded ? t("common.collapse") : t('sidebar.show_all_value0_tags', { value0: count })}
+        {isExpanded ? t('common.collapse') : t('sidebar.show_all_value0_tags', { value0: count })}
     </button>);
 }
 
@@ -238,7 +238,7 @@ function SelectedTagsBar() {
         return null;
     return (<div className='rounded-[var(--r-md)] bg-[var(--accent-soft)] px-2 py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
         <div className='flex h-5 items-center justify-between gap-2'>
-            <span className='truncate'>{t("sidebar.tags_selected", { value0: selectedTags.length })}</span>
+            <span className='truncate'>{t('sidebar.tags_selected', { value0: selectedTags.length })}</span>
             <div className='flex shrink-0 items-center gap-2'>
                 <Tooltip label={t('sidebar.jump_to_graph')}>
                     <button type='button' onClick={() => openPanel('graph')} className='inline-flex items-center gap-1 font-medium text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)] hover:underline'>
@@ -246,13 +246,13 @@ function SelectedTagsBar() {
                         {t('common.graph')}
                     </button>
                 </Tooltip>
-                <button type='button' onClick={() => clearTagSelection({ notify: true })} className='font-medium text-[var(--accent)] transition-colors hover:underline'>{t("common.clear_selection")}</button>
+                <button type='button' onClick={() => clearTagSelection({ notify: true })} className='font-medium text-[var(--accent)] transition-colors hover:underline'>{t('common.clear_selection')}</button>
             </div>
         </div>
-        <div className="mt-0.5 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)]">{t("sidebar.tags_selected_hint")}</div>
-        {selectedTags.length >= LIMITS.tagSelectionMax && <div className="mt-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--danger)]">{t("tags.selection_limit", { value0: LIMITS.tagSelectionMax })}</div>}
+        <div className="mt-0.5 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)]">{t('sidebar.tags_selected_hint')}</div>
+        {selectedTags.length >= LIMITS.tagSelectionMax && <div className="mt-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--danger)]">{t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}</div>}
         <div className='mt-1 flex flex-wrap gap-1'>
-            {selectedTags.map((name) => (<button key={name} type='button' aria-label={t("sidebar.remove_selected_tag", { value0: name })} onClick={() => toggleTagSelection(name)} className='inline-flex h-5 max-w-full items-center gap-1 rounded-full bg-[var(--bg-overlay)] px-2 text-[length:var(--text-11)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'>
+            {selectedTags.map((name) => (<button key={name} type='button' aria-label={t('sidebar.remove_selected_tag', { value0: name })} onClick={() => toggleTagSelection(name)} className='inline-flex h-5 max-w-full items-center gap-1 rounded-full bg-[var(--bg-overlay)] px-2 text-[length:var(--text-11)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'>
                 <Hash size={9} className='shrink-0 text-[var(--text-quaternary)]'/>
                 <span className='truncate'>{name}</span>
                 <X size={9} className='shrink-0 text-[var(--text-quaternary)]'/>

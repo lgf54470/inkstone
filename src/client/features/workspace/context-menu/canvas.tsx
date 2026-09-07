@@ -36,6 +36,12 @@ import { insertAdvancedCodeBlock, insertCallout, insertCodeBlock, insertDetails,
 import type { MenuCtx } from './types';
 import { SubmenuList } from './submenu';
 
+const MERMAID_MENU_WIDTH = 190
+const CHART_MENU_WIDTH = 180
+const TASK_MENU_WIDTH = 180
+const EMOJI_MENU_WIDTH = 180
+const INSERT_MENU_WIDTH = 200
+
 function basicInsertItems(ctx: MenuCtx): MenuItem[] {
   const { onPickImage, onPickFile, runStateCommand } = ctx;
   return [
@@ -65,7 +71,7 @@ function diagramInsertItems(ctx: MenuCtx, kind: 'mermaid' | 'chart', closeParent
             closeSub();
             closeParent();
           }}
-          width={isMermaid ? 190 : 180}
+          width={isMermaid ? MERMAID_MENU_WIDTH : CHART_MENU_WIDTH}
           items={templates.map((tpl) => ({
             id: tpl.id,
             label: t(tpl.labelKey),
@@ -105,7 +111,7 @@ function taskStatusInsertItems(ctx: MenuCtx, closeParent: () => void): MenuItem[
             closeSub();
             closeParent();
           }}
-          width={180}
+          width={TASK_MENU_WIDTH}
           items={[
             { id: 'task-in-progress', label: t('workspace.task_in_progress'), onSelect: () => runStateCommand(insertTaskWithStatus('/')) },
             { id: 'task-cancelled', label: t('workspace.task_cancelled'), onSelect: () => runStateCommand(insertTaskWithStatus('-')) },
@@ -131,7 +137,7 @@ function emojiInsertItems(ctx: MenuCtx, closeParent: () => void): MenuItem[] {
             closeSub();
             closeParent();
           }}
-          width={180}
+          width={EMOJI_MENU_WIDTH}
           items={COMMON_EMOJIS.map((item) => ({
             id: item.code,
             label: `${item.emoji}  ${item.code}`,
@@ -152,7 +158,7 @@ function buildInsertItem(ctx: MenuCtx): MenuItem {
     submenu: ({ closeMenu }: { closeMenu: () => void }) => (
       <SubmenuList
         closeMenu={closeMenu}
-        width={200}
+        width={INSERT_MENU_WIDTH}
         items={[
           ...basicInsertItems(ctx),
           ...diagramInsertItems(ctx, 'mermaid', closeMenu),

@@ -60,7 +60,7 @@ export function CategoryRow({ category, count, active, dropTarget, onSelect, onR
           <Pencil size={11}/>
         </IconButton>
       </Tooltip>
-      <Tooltip label={t("templates.delete_category")} side='top'>
+      <Tooltip label={t('templates.delete_category')} side='top'>
         <IconButton label={t('templates.delete_category')} size='sm' onClick={onDelete} className='size-6 text-[var(--text-quaternary)] hover:text-[var(--danger)]'>
           <Trash2 size={11}/>
         </IconButton>

@@ -62,7 +62,7 @@ function BulkToolbar({ count, actions, isBusy, onClear, isFolderPickerOpen, fold
 }) {
   return (<div className='pointer-events-none absolute inset-x-0 bottom-0 z-[var(--z-menu)] flex justify-center pb-3'>
     <div className='anim-rise pointer-events-auto flex items-center gap-1 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 pl-3 shadow-[var(--shadow-pop)]'>
-    <span className="mr-1 text-[length:var(--text-11\.5)] whitespace-nowrap text-[var(--text-secondary)]">{t("notes.selected")}<span className='tabular font-medium'>{count}</span>{t("notes.notes")}</span>
+    <span className="mr-1 text-[length:var(--text-11\.5)] whitespace-nowrap text-[var(--text-secondary)]">{t('notes.selected')}<span className='tabular font-medium'>{count}</span>{t('notes.notes')}</span>
     {actions.map((action) => (
       <Tooltip key={action.key} label={action.label}>
       <IconButton label={action.label} size='sm' disabled={isBusy} className={action.className} onClick={action.onClick}>
@@ -77,7 +77,7 @@ function BulkToolbar({ count, actions, isBusy, onClear, isFolderPickerOpen, fold
       </IconButton>
     </Tooltip>
     </div>
-    {isFolderPickerOpen && <FolderPicker open title={t("notes.move_to_folder")} folders={folders} currentId={commonFolderId} rootLabel={t("notes.remove_from_folder")} onSelect={onSelectFolder} onClose={onCloseFolderPicker}/>}
+    {isFolderPickerOpen && <FolderPicker open title={t('notes.move_to_folder')} folders={folders} currentId={commonFolderId} rootLabel={t('notes.remove_from_folder')} onSelect={onSelectFolder} onClose={onCloseFolderPicker}/>}
   </div>);
 }
 

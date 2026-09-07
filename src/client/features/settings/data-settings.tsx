@@ -251,7 +251,7 @@ async function reportImportFlow({ result, pull, loadStats, toast }: {
 function OverviewSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("settings.overview")}</h3>
+      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.overview')}</h3>
       {d.stats === null ? (
       d.statsError ? <StatsLoadError d={d}/> : <LoadingBlock label={t('common.loading')}/>
       ) : (
@@ -269,10 +269,10 @@ function StatsLoadError({ d }: { d: DataState }) {
     <div role='alert' className='flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-3 py-3'>
       <AlertCircle size={14} className='mt-0.5 shrink-0 text-[var(--danger)]'/>
       <div className='min-w-0 flex-1'>
-      <div className="text-[length:var(--text-12\.5)] font-medium text-[var(--text-primary)]">{t("settings.could_not_load_data_overview")}</div>
+      <div className="text-[length:var(--text-12\.5)] font-medium text-[var(--text-primary)]">{t('settings.could_not_load_data_overview')}</div>
       <p className="mt-0.5 break-words text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">{d.statsError}</p>
       </div>
-      <Button size='sm' variant='secondary' onClick={() => void d.loadStats()}>{t("common.retry")}</Button>
+      <Button size='sm' variant='secondary' onClick={() => void d.loadStats()}>{t('common.retry')}</Button>
     </div>
   );
 }
@@ -282,7 +282,7 @@ function InlineStatsError({ d }: { d: DataState }) {
     <div role='alert' className="mb-2 flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--danger)]">
       <AlertCircle size={13} className='mt-0.5 shrink-0'/>
       <span className='min-w-0 flex-1 break-words'>{d.statsError}</span>
-      <button type='button' className='shrink-0 font-medium underline underline-offset-2' onClick={() => void d.loadStats()}>{t("common.retry")}</button>
+      <button type='button' className='shrink-0 font-medium underline underline-offset-2' onClick={() => void d.loadStats()}>{t('common.retry')}</button>
     </div>
   );
 }
@@ -310,7 +310,7 @@ function StatsGrid({ stats }: { stats: Record<string, number> }) {
         </div>
       ))}
       </div>
-      {stats.attachmentBytes ? (<p className="mt-2 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t("settings.attachment_storage")}{formatBytes(stats.attachmentBytes)}
+      {stats.attachmentBytes ? (<p className="mt-2 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('settings.attachment_storage')}{formatBytes(stats.attachmentBytes)}
       </p>) : null}
     </>
   );
@@ -319,9 +319,9 @@ function StatsGrid({ stats }: { stats: Record<string, number> }) {
 function AttachmentSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("settings.attachments")}</h3>
-      <SettingRow title={t("attachments.manage")} description={t("attachments.manage_description")}>
-      <Button size='sm' icon={<ImageIcon size={13}/>} onClick={() => d.setIsAttachmentManagerOpen(true)}>{t("attachments.manage")}</Button>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.attachments')}</h3>
+      <SettingRow title={t('attachments.manage')} description={t('attachments.manage_description')}>
+      <Button size='sm' icon={<ImageIcon size={13}/>} onClick={() => d.setIsAttachmentManagerOpen(true)}>{t('attachments.manage')}</Button>
       </SettingRow>
     </section>
   );
@@ -330,9 +330,9 @@ function AttachmentSection({ d }: { d: DataState }) {
 function ShareHubSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("share.hub_title")}</h3>
-      <SettingRow title={t("share.manage_shares")} description={t("share.manage_shares_description")}>
-      <Button size='sm' icon={<Share2 size={13}/>} onClick={() => d.openPanel('share')}>{t("share.manage_shares")}</Button>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('share.hub_title')}</h3>
+      <SettingRow title={t('share.manage_shares')} description={t('share.manage_shares_description')}>
+      <Button size='sm' icon={<Share2 size={13}/>} onClick={() => d.openPanel('share')}>{t('share.manage_shares')}</Button>
       </SettingRow>
     </section>
   );
@@ -341,12 +341,12 @@ function ShareHubSection({ d }: { d: DataState }) {
 function ExportSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("settings.export")}</h3>
-      <SettingRow title={t("settings.export_to_zip")} description={t("settings.includes_every_note_folder_tag_and_attachment_for_a_complete_restore_plu")}>
-      <Button size='sm' icon={<Download size={13}/>} loading={d.busy === 'export-zip'} disabled={d.busy !== null} onClick={() => d.exportData('zip')}>{t("settings.download_zip")}</Button>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.export')}</h3>
+      <SettingRow title={t('settings.export_to_zip')} description={t('settings.includes_every_note_folder_tag_and_attachment_for_a_complete_restore_plu')}>
+      <Button size='sm' icon={<Download size={13}/>} loading={d.busy === 'export-zip'} disabled={d.busy !== null} onClick={() => d.exportData('zip')}>{t('settings.download_zip')}</Button>
       </SettingRow>
-      <SettingRow title={t("settings.export_to_json")} description={t("settings.structured_note_data_without_attachment_binaries_download_zip_for_a_comp")}>
-      <Button size='sm' variant='ghost' icon={<FileJson size={13}/>} loading={d.busy === 'export-json'} disabled={d.busy !== null} onClick={() => d.exportData('json')}>{t("settings.download_json")}</Button>
+      <SettingRow title={t('settings.export_to_json')} description={t('settings.structured_note_data_without_attachment_binaries_download_zip_for_a_comp')}>
+      <Button size='sm' variant='ghost' icon={<FileJson size={13}/>} loading={d.busy === 'export-json'} disabled={d.busy !== null} onClick={() => d.exportData('json')}>{t('settings.download_json')}</Button>
       </SettingRow>
     </section>
   );
@@ -355,9 +355,9 @@ function ExportSection({ d }: { d: DataState }) {
 function ImportSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("settings.import")}</h3>
-      <SettingRow title={t("settings.restore_backup_folder")} description={t("settings.restore_backup_folder_description")}>
-      <Button size='sm' icon={<FolderOpen size={13}/>} loading={d.busy === 'restore-backup'} disabled={d.busy !== null} onClick={() => d.backupFolderRef.current?.click()}>{t("settings.select_backup_folder")}</Button>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.import')}</h3>
+      <SettingRow title={t('settings.restore_backup_folder')} description={t('settings.restore_backup_folder_description')}>
+      <Button size='sm' icon={<FolderOpen size={13}/>} loading={d.busy === 'restore-backup'} disabled={d.busy !== null} onClick={() => d.backupFolderRef.current?.click()}>{t('settings.select_backup_folder')}</Button>
       </SettingRow>
       <input ref={d.backupFolderRef} type='file' hidden multiple {...({ webkitdirectory: '', directory: '' } as Record<string, string>)} onChange={async (event) => {
       const files = [...(event.target.files ?? [])];
@@ -365,8 +365,8 @@ function ImportSection({ d }: { d: DataState }) {
       if (files.length)
         d.restoreBackup(files);
       }}/>
-      <SettingRow title={t("settings.import_file")} description={t("settings.supports_md_txt_zip_and_inkstone_json_exports_for_matching_ids_the_newer")}>
-      <Button size='sm' icon={<FileUp size={13}/>} loading={d.busy === 'import'} disabled={d.busy !== null} onClick={() => d.fileRef.current?.click()}>{t("settings.select_file")}</Button>
+      <SettingRow title={t('settings.import_file')} description={t('settings.supports_md_txt_zip_and_inkstone_json_exports_for_matching_ids_the_newer')}>
+      <Button size='sm' icon={<FileUp size={13}/>} loading={d.busy === 'import'} disabled={d.busy !== null} onClick={() => d.fileRef.current?.click()}>{t('settings.select_file')}</Button>
       </SettingRow>
       <input ref={d.fileRef} type='file' hidden multiple accept='.md,.markdown,.txt,.json,.zip' onChange={async (event) => {
       const files = [...(event.target.files ?? [])];
@@ -381,15 +381,15 @@ function ImportSection({ d }: { d: DataState }) {
 function MaintenanceSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("settings.maintenance")}</h3>
-      <SettingRow title={t("settings.rebuild_search_index")} description={t("settings.try_this_when_your_search_results_don_t_look_right")}>
-      <Button size='sm' variant='secondary' icon={<RefreshCw size={13}/>} loading={d.busy === 'reindex'} disabled={d.busy !== null} onClick={d.reindex}>{t("settings.rebuild_index")}</Button>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.maintenance')}</h3>
+      <SettingRow title={t('settings.rebuild_search_index')} description={t('settings.try_this_when_your_search_results_don_t_look_right')}>
+      <Button size='sm' variant='secondary' icon={<RefreshCw size={13}/>} loading={d.busy === 'reindex'} disabled={d.busy !== null} onClick={d.reindex}>{t('settings.rebuild_index')}</Button>
       </SettingRow>
-      <SettingRow title={t("settings.clean_unreferenced_attachments")} description={t("settings.delete_pictures_and_files_that_no_longer_appear_in_any_notes")}>
-      <Button size='sm' variant='secondary' icon={<Sparkles size={13}/>} loading={d.busy === 'prune'} disabled={d.busy !== null} onClick={d.prune}>{t("settings.clean_up")}</Button>
+      <SettingRow title={t('settings.clean_unreferenced_attachments')} description={t('settings.delete_pictures_and_files_that_no_longer_appear_in_any_notes')}>
+      <Button size='sm' variant='secondary' icon={<Sparkles size={13}/>} loading={d.busy === 'prune'} disabled={d.busy !== null} onClick={d.prune}>{t('settings.clean_up')}</Button>
       </SettingRow>
-      <SettingRow title={t("settings.empty_trash")} description={t("settings.permanently_delete_every_note_in_trash")}>
-      <Button size='sm' variant='ghost' icon={<Trash2 size={13}/>} className='text-[var(--danger)]' loading={d.busy === 'trash'} disabled={d.busy !== null} onClick={d.trash}>{t("common.clear")}</Button>
+      <SettingRow title={t('settings.empty_trash')} description={t('settings.permanently_delete_every_note_in_trash')}>
+      <Button size='sm' variant='ghost' icon={<Trash2 size={13}/>} className='text-[var(--danger)]' loading={d.busy === 'trash'} disabled={d.busy !== null} onClick={d.trash}>{t('common.clear')}</Button>
       </SettingRow>
     </section>
   );

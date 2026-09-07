@@ -17,7 +17,7 @@ export function NoteSettings() {
     <section>
     <SettingRow
       title={t('settings.new_note_template')}
-      description={t("settings.new_note_template_description")}
+      description={t('settings.new_note_template_description')}
     >
       <div className='flex w-[340px] max-w-full flex-col items-end gap-2'>
       <Textarea
@@ -29,25 +29,25 @@ export function NoteSettings() {
         className="w-full font-mono text-[length:var(--text-12\.5)]"
       />
       <Button size='sm' variant='ghost' onClick={restoreDefault}>
-        {t("settings.restore_default_template")}
+        {t('settings.restore_default_template')}
       </Button>
       </div>
     </SettingRow>
     <p className="pt-3 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-quaternary)]">
-      {t("settings.new_note_template_hint")}
+      {t('settings.new_note_template_hint')}
     </p>
     <TemplatePreview template={notes.newNoteTemplate} />
     </section>
 
     <section>
     <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
-      {t("settings.title_sync")}
+      {t('settings.title_sync')}
     </h3>
-    <SettingRow title={t("settings.sync_title_to_frontmatter")} description={t("settings.sync_title_to_frontmatter_desc")}>
-      <Switch checked={notes.syncTitleToFrontMatter} onChange={setSyncTitleToFrontMatter} label={t("settings.sync_title_to_frontmatter")}/>
+    <SettingRow title={t('settings.sync_title_to_frontmatter')} description={t('settings.sync_title_to_frontmatter_desc')}>
+      <Switch checked={notes.syncTitleToFrontMatter} onChange={setSyncTitleToFrontMatter} label={t('settings.sync_title_to_frontmatter')}/>
     </SettingRow>
-    <SettingRow title={t("settings.sync_frontmatter_title")} description={t("settings.sync_frontmatter_title_desc")}>
-      <Switch checked={notes.syncFrontMatterTitle} onChange={setSyncFrontMatterTitle} label={t("settings.sync_frontmatter_title")}/>
+    <SettingRow title={t('settings.sync_frontmatter_title')} description={t('settings.sync_frontmatter_title_desc')}>
+      <Switch checked={notes.syncFrontMatterTitle} onChange={setSyncFrontMatterTitle} label={t('settings.sync_frontmatter_title')}/>
     </SettingRow>
     </section>
   </div>);
@@ -71,12 +71,12 @@ function TemplatePreview({ template }: { template: string }) {
   return (
     <div className='mt-4'>
       <h3 className='mb-1.5 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>
-      {t("settings.new_note_template_preview")}
+      {t('settings.new_note_template_preview')}
       </h3>
       <div className='mb-2 grid grid-cols-1 gap-2 sm:grid-cols-3'>
-      <Input aria-label={t('settings.template_preview_title')} placeholder={t("settings.template_preview_title")} value={demoTitle} onChange={(e) => setDemoTitle(e.target.value)}/>
-      <Input aria-label={t('settings.template_preview_folder')} placeholder={t("settings.template_preview_folder")} value={demoFolder} onChange={(e) => setDemoFolder(e.target.value)}/>
-      <Input aria-label={t('settings.template_preview_tag')} placeholder={t("settings.template_preview_tag")} value={demoTag} onChange={(e) => setDemoTag(e.target.value)}/>
+      <Input aria-label={t('settings.template_preview_title')} placeholder={t('settings.template_preview_title')} value={demoTitle} onChange={(e) => setDemoTitle(e.target.value)}/>
+      <Input aria-label={t('settings.template_preview_folder')} placeholder={t('settings.template_preview_folder')} value={demoFolder} onChange={(e) => setDemoFolder(e.target.value)}/>
+      <Input aria-label={t('settings.template_preview_tag')} placeholder={t('settings.template_preview_tag')} value={demoTag} onChange={(e) => setDemoTag(e.target.value)}/>
       </div>
       <pre className='max-h-52 overflow-auto whitespace-pre rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3 font-mono text-[length:var(--text-12)] leading-relaxed text-[var(--text-secondary)]'>{preview.cursor === null ? preview.content : (<>
         {preview.content.slice(0, preview.cursor)}
@@ -84,7 +84,7 @@ function TemplatePreview({ template }: { template: string }) {
         {preview.content.slice(preview.cursor)}
       </>)}</pre>
       {hasContextualPlaceholders && (<p className='mt-1.5 text-[length:var(--text-11)] leading-relaxed text-[var(--text-quaternary)]'>
-        {t("settings.template_preview_context")}
+        {t('settings.template_preview_context')}
       </p>)}
     </div>
   );

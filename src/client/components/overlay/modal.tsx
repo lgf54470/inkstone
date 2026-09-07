@@ -43,7 +43,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
           {description}
         </p>)}
       </div>
-      <Tooltip label={t("common.close")} combo='escape' side='left'>
+      <Tooltip label={t('common.close')} combo='escape' side='left'>
         <IconButton label={t('common.close')} size='sm' onClick={onClose} className='-mr-1 -mt-0.5'>
         <X size={15}/>
         </IconButton>

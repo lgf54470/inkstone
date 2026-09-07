@@ -12,6 +12,8 @@ import { TagPill } from '../../../components/tag-pill';
 import { removeTagFromNote } from '../../tags';
 import { t } from '../../../lib/i18n';
 import type { NoteRowState } from './note-row-state';
+
+const ACTIONS_MENU_WIDTH = 240
 import type { NoteRowActions } from './note-row-actions';
 
 interface FolderPillData {
@@ -179,7 +181,7 @@ function NoteRowMain({ state }: { state: NoteRowState }) {
 function NoteRowSideButtons({ state }: { state: NoteRowState }) {
   const { breakpoint, openInSecondary, openNote, note, menuButtonRef, menu, setIsMenuOpen } = state;
   return (<>
-    {breakpoint === 'desktop' && (<Tooltip label={t("notes.open_to_side")} side='left'>
+    {breakpoint === 'desktop' && (<Tooltip label={t('notes.open_to_side')} side='left'>
       <IconButton label={t('notes.open_to_side')} size='sm' active={openInSecondary} onClick={(event) => {
         event.stopPropagation();
         void openNote(note.id, { pane: 'secondary' });
@@ -188,7 +190,7 @@ function NoteRowSideButtons({ state }: { state: NoteRowState }) {
       </IconButton>
     </Tooltip>)}
     {breakpoint === 'mobile' && (<Tooltip label={t('common.more_actions')} side='left'>
-      <IconButton ref={menuButtonRef} label={t("common.more_actions")} size='sm' onClick={(event) => {
+      <IconButton ref={menuButtonRef} label={t('common.more_actions')} size='sm' onClick={(event) => {
         event.stopPropagation();
         menu.close();
         setIsMenuOpen(true);
@@ -203,7 +205,7 @@ function NoteRowOverlays({ state, actions, items }: { state: NoteRowState; actio
   const { menu, menuButtonRef, isMenuOpen, setIsMenuOpen, isCreateFolderOpen, setIsCreateFolderOpen, isShareModalOpen, setIsShareModalOpen, note } = state;
   return (<>
     {menu.point && <Menu anchor={menu.point} open onClose={menu.close} items={items}/>}
-    <Menu anchor={menuButtonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={items} align='end' width={240}/>
+    <Menu anchor={menuButtonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={items} align='end' width={ACTIONS_MENU_WIDTH}/>
     {isCreateFolderOpen && (
       <CreateFolderModal
         open={isCreateFolderOpen}

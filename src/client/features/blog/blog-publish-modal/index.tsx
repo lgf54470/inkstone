@@ -8,6 +8,8 @@ import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
 import { useBlogPublishForm } from './use-blog-publish-form'
 
+const MODAL_WIDTH = 640
+
 type PublishForm = ReturnType<typeof useBlogPublishForm>
 
 function FieldLabel({ children }: { children: ReactNode }) {
@@ -344,7 +346,7 @@ export function BlogPublishModal({
   const form = useBlogPublishForm({ open, onClose, noteId, initialPost, onSaved })
   const editing = Boolean(initialPost)
   return (
-    <Modal open={open} onClose={onClose} width={640} className='p-0 overflow-hidden'>
+    <Modal open={open} onClose={onClose} width={MODAL_WIDTH} className='p-0 overflow-hidden'>
       <div className='flex h-12 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]'>
         <div className='flex items-center gap-2'>
           <Globe size={16} className='text-[var(--accent)]' />

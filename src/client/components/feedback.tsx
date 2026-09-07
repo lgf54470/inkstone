@@ -10,6 +10,15 @@ import { isEditableTarget } from '../lib/hotkeys';
 import { useUndoToastFocus } from '../lib/undo-focus-pref';
 import { EmptyIllustration, type EmptyArt } from './empty-illustrations';
 
+const SKELETON_FADE_STEP = 0.11
+const SKELETON_W_BASE = 58
+const SKELETON_W_STEP = 13
+const SKELETON_W_MOD = 34
+const SKELETON_W2_BASE = 72
+const SKELETON_W2_STEP = 7
+const SKELETON_W2_MOD = 24
+const LOADING_ICON_SIZE = 20
+
 const TONE_ICON = {
   default: <Info size={14}/>,
   success: <Check size={14}/>,
@@ -113,9 +122,9 @@ export function NoteListSkeleton({ count = 7 }: {
   count?: number;
 }) {
   return (<div className='space-y-1 p-2'>
-    {Array.from({ length: count }, (_, i) => (<div key={i} className='space-y-2 rounded-[var(--r-md)] p-2.5' style={{ opacity: 1 - i * 0.11 }}>
-      <Skeleton className='h-[13px]' style={{ width: `${58 + ((i * 13) % 34)}%` }}/>
-      <Skeleton className='h-[11px]' style={{ width: `${72 + ((i * 7) % 24)}%` }}/>
+    {Array.from({ length: count }, (_, i) => (<div key={i} className='space-y-2 rounded-[var(--r-md)] p-2.5' style={{ opacity: 1 - i * SKELETON_FADE_STEP }}>
+      <Skeleton className='h-[13px]' style={{ width: `${SKELETON_W_BASE + ((i * SKELETON_W_STEP) % SKELETON_W_MOD)}%` }}/>
+      <Skeleton className='h-[11px]' style={{ width: `${SKELETON_W2_BASE + ((i * SKELETON_W2_STEP) % SKELETON_W2_MOD)}%` }}/>
       <Skeleton className='h-[10px] w-16'/>
     </div>))}
   </div>);
@@ -151,7 +160,7 @@ export function LoadingBlock({ label = t('common.loading') }: {
   label?: string;
 }) {
   return (<div role='status' aria-live='polite' className='flex h-full min-h-[160px] flex-col items-center justify-center gap-2.5 text-[var(--text-quaternary)]'>
-    <svg aria-hidden='true' width='20' height='20' viewBox='0 0 24 24' fill='none' className='animate-[ink-spin_.7s_linear_infinite]'>
+    <svg aria-hidden='true' width={LOADING_ICON_SIZE} height={LOADING_ICON_SIZE} viewBox='0 0 24 24' fill='none' className='animate-[ink-spin_.7s_linear_infinite]'>
     <circle cx='12' cy='12' r='9' stroke='currentColor' strokeWidth='2.4' opacity='0.2'/>
     <path d='M21 12a9 9 0 0 0-9-9' stroke='currentColor' strokeWidth='2.4' strokeLinecap='round'/>
     </svg>

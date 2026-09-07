@@ -5,6 +5,8 @@ import { t } from '../../lib/i18n'
 import { useSession } from '../../store/session'
 import { useUpdate } from '../../store/update'
 
+const MODAL_WIDTH = 500
+
 export function UpdateDialog() {
   const role = useSession((state) => state.user?.role)
   const open = useUpdate((state) => state.dialogOpen)
@@ -23,7 +25,7 @@ export function UpdateDialog() {
       description={t('settings.update_dialog_description', {
         version: info.latestVersion,
       })}
-      width={500}
+      width={MODAL_WIDTH}
       footer={
         <>
           <Button size='sm' variant='ghost' onClick={ignoreCurrentVersion}>

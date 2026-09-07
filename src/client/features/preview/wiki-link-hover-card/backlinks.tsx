@@ -18,7 +18,7 @@ export function CardBacklinks({ links, onOpen }: {
         className='flex h-7 w-full items-center gap-1.5 px-3 text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
       >
         <Link2 size={11} className='shrink-0' />
-        <span className='truncate'>{t("common.backlinks")}</span>
+        <span className='truncate'>{t('common.backlinks')}</span>
         <span className='tabular-nums text-[var(--text-quaternary)]'>{links.length}</span>
         <ChevronDown size={12} className={cn('ml-auto shrink-0 transition-transform', isExpanded && 'rotate-180')} />
       </button>

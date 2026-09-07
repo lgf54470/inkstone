@@ -8,6 +8,8 @@ import { Menu } from '../../../components/overlay'
 import { useWikiLinkHoverCard, hoverCardStyle, type WikiLinkHoverCardBundle, type WikiLinkHoverCardProps } from './use-wiki-link-hover-card'
 import { CardBacklinks } from './backlinks'
 
+const STACK_MENU_WIDTH = 220
+
 export type { WikiLinkHoverCardState, PinnedNoteCardState } from '../../../types/hover-card'
 
 function CardHeaderButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
@@ -126,7 +128,7 @@ function StackMenu({ b }: { b: WikiLinkHoverCardBundle }) {
       onClose={() => setIsStackMenuOpen(false)}
       items={stackItems ?? []}
       align='end'
-      width={220}
+      width={STACK_MENU_WIDTH}
       zIndex={Z_INDEX.top}
       label={t('preview.pinned_windows')}
     />

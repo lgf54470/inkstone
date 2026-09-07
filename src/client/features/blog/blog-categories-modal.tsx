@@ -11,6 +11,8 @@ import type { UiState } from '../../store/ui'
 import { useUi } from '../../store/ui'
 import { useBlogStore, type BlogStoreState } from './blog-store'
 
+const MODAL_WIDTH = 560
+
 export function BlogCategoriesModal({
   open,
   onClose,
@@ -31,7 +33,7 @@ export function BlogCategoriesModal({
     <Modal
       open={open}
       onClose={onClose}
-      width={560}
+      width={MODAL_WIDTH}
       className='p-0 overflow-hidden'
     >
       <CategoriesModalHeader onClose={onClose} />

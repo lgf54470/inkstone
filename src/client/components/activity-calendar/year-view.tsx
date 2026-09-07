@@ -15,7 +15,7 @@ export function YearView({ cursor, weekStart, todayKey, columns, weekdayLabels, 
       weekStart={weekStart}
       todayKey={todayKey}
       columns={columns}
-      ariaLabel={t("sidebar.calendar_year_grid_aria", { value0: cursor.year })}
+      ariaLabel={t('sidebar.calendar_year_grid_aria', { value0: cursor.year })}
       onKeyDown={onKeyDown}
       className='mt-1.5 px-0.5'
       renderMonth={(month) => {
@@ -38,7 +38,7 @@ export function YearView({ cursor, weekStart, todayKey, columns, weekdayLabels, 
       }}
     />
     {yearRangeAnchor !== null && (<div className='mt-1 px-0.5 text-[length:var(--text-9)] text-[var(--text-tertiary)]'>
-      {t("sidebar.calendar_year_range_hint_value0", { value0: monthLabels[yearRangeAnchor.month] ?? '' })}
+      {t('sidebar.calendar_year_range_hint_value0', { value0: monthLabels[yearRangeAnchor.month] ?? '' })}
     </div>)}
   </>);
 }

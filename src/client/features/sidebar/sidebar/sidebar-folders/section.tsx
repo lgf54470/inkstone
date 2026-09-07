@@ -42,11 +42,11 @@ export function FolderSection() {
     <FolderSectionHeader parentFolderIds={parentFolderIds} allExpanded={allExpanded} isCreating={isCreating} onToggleAll={toggleAllExpanded} onCreate={() => void create(null)}/>
     <CalendarTree />
     <TodoTree />
-    {tree.length === 0 ? <CreateFirstFolderButton isCreating={isCreating} onCreate={() => void create(null)}/> : (<div role="tree" aria-label={t("navigation.folder")} className="mt-0.5 space-y-px">
+    {tree.length === 0 ? <CreateFirstFolderButton isCreating={isCreating} onCreate={() => void create(null)}/> : (<div role='tree' aria-label={t('navigation.folder')} className='mt-0.5 space-y-px'>
       {tree.map((node, index) => (<FolderRow key={node.id} node={node} siblings={tree} index={index} parentNode={null} parentSiblings={[]} onCreateChild={create} onMove={move} onChooseParent={setMovingId} createdFolderId={createdFolderId} renamingId={renamingId} onStartRename={setRenamingId} onFinishRename={() => setRenamingId(null)}/>))}
       </div>)}
     </section>
-    <FolderPicker open={Boolean(movingFolder)} title={t("folders.choose_parent")} folders={folders} currentId={movingFolder?.parentId ?? null} excludedIds={excludedMoveTargets} onSelect={(parentId) => { if (movingId) void move(movingId, parentId, null); }} onClose={() => setMovingId(null)}/>
+    <FolderPicker open={Boolean(movingFolder)} title={t('folders.choose_parent')} folders={folders} currentId={movingFolder?.parentId ?? null} excludedIds={excludedMoveTargets} onSelect={(parentId) => { if (movingId) void move(movingId, parentId, null); }} onClose={() => setMovingId(null)}/>
   </>);
 }
 
@@ -162,7 +162,7 @@ function FolderSectionHeader({ parentFolderIds, allExpanded, isCreating, onToggl
 }) {
   const openPanel = useUi((s) => s.openPanel);
   return (<div className='group/head flex items-center justify-between pr-1'>
-    <SectionLabel>{t("navigation.folder")}</SectionLabel>
+    <SectionLabel>{t('navigation.folder')}</SectionLabel>
     <div className='flex items-center gap-0.5'>
       {parentFolderIds.length > 0 && (
       <Tooltip label={allExpanded ? t('folders.collapse_all') : t('folders.expand_all')} side='left'>
@@ -176,7 +176,7 @@ function FolderSectionHeader({ parentFolderIds, allExpanded, isCreating, onToggl
         <Settings2 size={13}/>
       </IconButton>
       </Tooltip>
-      <Tooltip label={t("common.new_folder")} side='right'>
+      <Tooltip label={t('common.new_folder')} side='right'>
       <IconButton label={t('common.new_folder')} size='sm' disabled={isCreating} onClick={onCreate} className='opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100'>
         <FolderPlus size={13}/>
       </IconButton>
@@ -190,6 +190,6 @@ function CreateFirstFolderButton({ isCreating, onCreate }: {
   onCreate: () => void;
 }) {
   return (<button type='button' disabled={isCreating} onClick={onCreate} className='mt-0.5 flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[length:var(--text-12)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-45 md:h-[30px]'>
-    <FolderPlus size={13}/>{t("sidebar.create_first_folder")}
+    <FolderPlus size={13}/>{t('sidebar.create_first_folder')}
     </button>);
 }

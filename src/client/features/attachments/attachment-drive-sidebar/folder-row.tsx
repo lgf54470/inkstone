@@ -8,6 +8,9 @@ import type { FolderNode } from '../../../store/notes';
 import { Menu, confirm, useContextMenu, type MenuItem } from '../../../components/overlay';
 import { FolderColorSubmenu, FolderIconSubmenu } from '../../folders';
 
+const TREE_INDENT_BASE = 6
+const TREE_INDENT_STEP = 12
+
 
 interface DriveFolderRowProps {
   node: FolderNode
@@ -183,7 +186,7 @@ function FolderRowBody(props: FolderRowBodyProps) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      style={{ paddingLeft: `${node.depth * 12 + 6}px` }}
+      style={{ paddingLeft: `${node.depth * TREE_INDENT_STEP + TREE_INDENT_BASE}px` }}
       className={cn(
         'group flex h-7.5 w-full items-center gap-1 rounded-[var(--r-md)] pr-1 text-left text-[length:var(--text-12)] font-medium transition-colors',
         active ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',

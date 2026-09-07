@@ -14,6 +14,9 @@ import { cn } from '../../lib/cn';
 import { Tooltip } from '../../components/overlay';
 import { t } from '../../lib/i18n';
 
+const OUTLINE_INDENT_BASE = 8
+const OUTLINE_INDENT_STEP = 10
+
 const HEADING_ICONS: Record<number, ComponentType<LucideProps>> = {
   1: Heading1,
   2: Heading2,
@@ -128,7 +131,7 @@ export function Outline({ headings, onSelect, scrollerRef, className, }: {
   const minLevel = Math.min(...headings.map((h) => h.level));
   return (<nav className={cn('sticky top-0 max-h-full w-[168px] shrink-0 self-start overflow-y-auto py-5 pr-3', className)} aria-label={t('common.outline')}>
     <div className="mb-2 flex items-center gap-1.5 px-2 text-[length:var(--text-10\.5)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]">
-    <ListTree size={11}/>{t("common.outline")}</div>
+    <ListTree size={11}/>{t('common.outline')}</div>
     <ul className='space-y-px'>
     {headings.map((heading, index) => (
       <OutlineRow
@@ -162,7 +165,7 @@ function OutlineRow({ heading, index, active, minLevel, prevHeading, onSelect }:
     <Tooltip label={heading.text || t('preview.untitled')} side='left'>
     <button type='button' aria-current={isActive ? 'location' : undefined} data-heading-level={heading.level} onClick={() => onSelect(heading)} className={cn('group relative flex w-full items-center gap-1.5 rounded-[var(--r-sm)] pr-1.5 text-left leading-snug', 'transition-colors duration-[var(--dur-fast)]', typography.fontSize, typography.fontWeight, typography.textColor, typography.paddingY, isActive
       ? 'bg-[var(--accent-soft)]'
-      : 'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]')} style={{ paddingLeft: 8 + relativeLevel * 10 }}>
+      : 'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]')} style={{ paddingLeft: OUTLINE_INDENT_BASE + relativeLevel * OUTLINE_INDENT_STEP }}>
       {isActive && (<span aria-hidden='true' className='absolute top-1/2 left-0.5 h-3.5 w-[2.5px] -translate-y-1/2 rounded-full bg-[var(--accent)]'/>)}
       <HeadingIcon size={typography.iconSize} aria-hidden='true' className={cn('shrink-0 transition-opacity duration-[var(--dur-fast)]', typography.iconColor, !isActive && 'group-hover:text-[var(--text-secondary)] group-hover:opacity-100')}/>
       <span className='min-w-0 flex-1 truncate'>

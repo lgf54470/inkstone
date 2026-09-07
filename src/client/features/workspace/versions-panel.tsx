@@ -8,6 +8,8 @@ import { Empty, LoadingBlock } from '../../components/feedback';
 import { useVersionsPanel, type VersionsPanelBundle } from './use-versions-panel';
 import { t } from '../../lib/i18n';
 
+const MODAL_WIDTH = 880
+
 function VersionAge({ timestamp }: { timestamp: number }) {
   return useRelativeTime(timestamp);
 }
@@ -119,7 +121,7 @@ export function VersionsPanel({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       title={t('common.version_history')}
       description={note ? t('workspace.autosave_for_value0', { value0: note.title }) : undefined}
-      width={880}
+      width={MODAL_WIDTH}
       footer={<ModalFooter b={b} onClose={onClose} />}
     >
       {versionsError ? (

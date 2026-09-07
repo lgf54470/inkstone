@@ -8,6 +8,8 @@ import { Z_INDEX } from '../../lib/z-index';
 import { useEscape, useClickOutside } from './hooks';
 import { useCursorFocus, useFocusRestore, useMenuActionKeys, useMenuCursorKeys, useMenuPosition, useMenuReset, useSubmenuPosition, type MenuItem } from './use-menu';
 
+const SUBMENU_STACK_DELTA = 10
+
 interface MenuItemRowProps {
   item: MenuItem;
   index: number;
@@ -137,7 +139,7 @@ function MenuSubmenu({ submenu, submenuRef, submenuPos, zIndex, cursor, menuRef,
       style={{
         top: submenuPos.top,
         left: submenuPos.left,
-        zIndex: (zIndex ?? Z_INDEX.menu) + 10,
+        zIndex: (zIndex ?? Z_INDEX.menu) + SUBMENU_STACK_DELTA,
       }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {

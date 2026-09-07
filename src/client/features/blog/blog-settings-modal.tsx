@@ -7,6 +7,8 @@ import { Input, Switch, Segmented } from '../../components/form'
 import { t } from '../../lib/i18n'
 import { useBlogSettingsModal } from './use-blog-settings-modal'
 
+const MODAL_WIDTH = 600
+
 export function BlogSettingsModal({
   open,
   onClose,
@@ -20,7 +22,7 @@ export function BlogSettingsModal({
     <Modal
       open={open}
       onClose={onClose}
-      width={600}
+      width={MODAL_WIDTH}
       className='p-0 overflow-hidden'
     >
       <SettingsModalHeader onClose={onClose} />

@@ -8,6 +8,8 @@ import { t } from '../../lib/i18n'
 import { QR_BG_COLOR, QR_FG_COLOR } from '../../lib/qr-colors'
 import { copyQrImageToClipboard, downloadQrPng, downloadQrSvg } from './share-helpers'
 
+const MODAL_WIDTH = 420
+
 export function ShareQrModal({
   open,
   onClose,
@@ -43,7 +45,7 @@ export function ShareQrModal({
         </div>
       }
       description={title}
-      width={420}
+      width={MODAL_WIDTH}
     >
       <div className='flex flex-col items-center gap-4 py-2'>
         <QrCodeCard svgRef={svgRef} fullUrl={fullUrl} />

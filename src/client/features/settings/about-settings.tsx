@@ -75,15 +75,15 @@ function ProfileCard({ user, isLoggingOut, onExit }: { user: PublicUser | null; 
         <span className='truncate text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
           {user?.name}
         </span>
-        {user?.role === 'owner' && <Badge tone='accent'>{t("common.owner")}</Badge>}
+        {user?.role === 'owner' && <Badge tone='accent'>{t('common.owner')}</Badge>}
         </div>
         <div className="mt-0.5 flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
         <UserRound size={11}/>@{user?.username}
         </div>
       </div>
-      <Button size='sm' variant='ghost' icon={<LogOut size={13}/>} loading={isLoggingOut} disabled={isLoggingOut} onClick={onExit}>{t("common.exit")}</Button>
+      <Button size='sm' variant='ghost' icon={<LogOut size={13}/>} loading={isLoggingOut} disabled={isLoggingOut} onClick={onExit}>{t('common.exit')}</Button>
       </div>
-      {user && (<p className="mt-2 px-1 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t("settings.joined")}{fullTime(user.createdAt)}
+      {user && (<p className="mt-2 px-1 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('settings.joined')}{fullTime(user.createdAt)}
       </p>)}
     </section>
   );
@@ -92,16 +92,16 @@ function ProfileCard({ user, isLoggingOut, onExit }: { user: PublicUser | null; 
 function AccessControlSection({ site }: { site: SiteInfo | null }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("common.access_control")}</h3>
-      <SettingRow title={t("settings.registration_status")} description={site?.registrationOpen
-      ? t("settings.new_accounts_can_currently_register_with_a_username_and_password") : t('settings.only_existing_accounts_can_sign_in_new_accounts_are_rejected')}>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('common.access_control')}</h3>
+      <SettingRow title={t('settings.registration_status')} description={site?.registrationOpen
+      ? t('settings.new_accounts_can_currently_register_with_a_username_and_password') : t('settings.only_existing_accounts_can_sign_in_new_accounts_are_rejected')}>
       <Badge tone={site?.registrationOpen ? 'warning' : 'success'}>
-        {site?.registrationOpen ? t("common.open_registration") : t('settings.private_instance')}
+        {site?.registrationOpen ? t('common.open_registration') : t('settings.private_instance')}
       </Badge>
       </SettingRow>
       <div className='mt-3 flex items-start gap-2.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3'>
       <Shield size={14} className='mt-px shrink-0 text-[var(--text-tertiary)]'/>
-      <div className="text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{t("settings.to_add_users_open_registration_under_settings_account_they_can_then_crea")}</div>
+      <div className="text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{t('settings.to_add_users_open_registration_under_settings_account_they_can_then_crea')}</div>
       </div>
     </section>
   );
@@ -110,11 +110,11 @@ function AccessControlSection({ site }: { site: SiteInfo | null }) {
 function UpdateSection({ site, updateStatus, updateInfo, updateAvailable, checkForUpdates, openUpdatePage }: { site: SiteInfo | null; updateStatus: UpdateStatus; updateInfo: UpdateCheckResponse | null; updateAvailable: boolean; checkForUpdates: () => void; openUpdatePage: () => void }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("settings.deployment_updates")}</h3>
-      <SettingRow title={t("settings.current_version")}>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('settings.deployment_updates')}</h3>
+      <SettingRow title={t('settings.current_version')}>
       <Badge>{updateInfo?.currentVersion ?? site?.version ?? '—'}</Badge>
       </SettingRow>
-      <SettingRow title={t("settings.latest_version")} description={updateInfo?.checkedAt
+      <SettingRow title={t('settings.latest_version')} description={updateInfo?.checkedAt
       ? `${t('settings.checked_at')} ${fullTime(updateInfo.checkedAt)}` : undefined}>
       <Badge tone={updateAvailable ? 'warning' : updateInfo?.status === 'unavailable' ? 'neutral' : 'success'}>
         {updateStatus === 'checking'
@@ -123,14 +123,14 @@ function UpdateSection({ site, updateStatus, updateInfo, updateAvailable, checkF
       </Badge>
       </SettingRow>
       {!updateAvailable && updateInfo?.latestVersion && (<p className="mt-2 px-1 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">
-      {t("settings.up_to_date")}
+      {t('settings.up_to_date')}
       </p>)}
       <div className='mt-3 flex flex-wrap justify-end gap-2'>
       <Button size='sm' variant='secondary' icon={<RefreshCw size={13}/>} loading={updateStatus === 'checking'} onClick={() => void checkForUpdates()}>
-        {t("settings.recheck_updates")}
+        {t('settings.recheck_updates')}
       </Button>
       {updateInfo?.updateUrl && (<Button size='sm' variant='primary' icon={<ExternalLink size={13}/>} onClick={openUpdatePage}>
-        {t("settings.open_official_repository")}
+        {t('settings.open_official_repository')}
       </Button>)}
       </div>
     </section>
@@ -140,11 +140,11 @@ function UpdateSection({ site, updateStatus, updateInfo, updateAvailable, checkF
 function PwaSection({ installAvailable, installed, installing, install, offlineStatus, offlineCompleted, offlineTotal }: { installAvailable: boolean; installed: boolean; installing: boolean; install: () => void; offlineStatus: OfflineStatus; offlineCompleted: number; offlineTotal: number }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t("pwa.app_installation")}</h3>
-      {(installAvailable || installed) && (<SettingRow title={t('pwa.install_inkstone')} description={t("pwa.install_description")}>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[0.06em] text-[var(--text-quaternary)]'>{t('pwa.app_installation')}</h3>
+      {(installAvailable || installed) && (<SettingRow title={t('pwa.install_inkstone')} description={t('pwa.install_description')}>
       {installed
         ? <Badge tone='success'>{t('pwa.installed')}</Badge>
-        : <Button size='sm' variant='secondary' icon={<Download size={13}/>} loading={installing} onClick={() => void install()}>{t("pwa.install")}</Button>}
+        : <Button size='sm' variant='secondary' icon={<Download size={13}/>} loading={installing} onClick={() => void install()}>{t('pwa.install')}</Button>}
       </SettingRow>)}
       {offlineStatus !== 'idle' && (<SettingRow
       title={t('pwa.complete_offline_access')}
@@ -176,8 +176,8 @@ function FooterSection({ site }: { site: SiteInfo | null }) {
         <Logo size={20}/>
       </span>
       <div>
-        <div className='text-[length:var(--text-13)] font-semibold'>{t("common.product_name")}</div>
-        <div className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t("settings.version")} {site?.version ?? '—'}</div>
+        <div className='text-[length:var(--text-13)] font-semibold'>{t('common.product_name')}</div>
+        <div className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('settings.version')} {site?.version ?? '—'}</div>
       </div>
       </div>
       <a

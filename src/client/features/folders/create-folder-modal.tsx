@@ -4,6 +4,8 @@ import { Button } from '../../components/primitives'
 import { useNotes } from '../../store/notes'
 import { t } from '../../lib/i18n'
 
+const MODAL_WIDTH = 400
+
 function FolderNameField({ name, onNameChange }: { name: string; onNameChange: (name: string) => void }) {
   return (
     <label className='block'>
@@ -75,7 +77,7 @@ export function CreateFolderModal({
       onClose={closeAndReset}
       title={t('common.new_folder')}
       description={t('folders.create_and_move_desc')}
-      width={400}
+      width={MODAL_WIDTH}
       footer={<CreateFolderFooter canSubmit={Boolean(name.trim())} onCancel={closeAndReset} />}
     >
       <form id='create-folder-modal-form' onSubmit={handleSubmit} className='pt-1'>

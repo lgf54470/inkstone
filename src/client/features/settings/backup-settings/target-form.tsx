@@ -11,6 +11,8 @@ import { useUi, type UiState } from '../../../store/ui';
 type ToastFn = UiState['toast'];
 import { t, translateServiceMessage } from '../../../lib/i18n';
 
+const MODAL_WIDTH = 520
+
 interface TargetFormFields {
   endpoint: string;
   region: string;
@@ -31,10 +33,10 @@ export function TargetForm({ target, onClose, onSaved, }: {
     if (!f.actionRef.current) onClose();
   };
   const s3 = f.type === 's3';
-  return (<Modal open onClose={close} title={target ? t("settings.edit_backup_target") : t('settings.add_backup_target')} description={f.canKeepSecret ? t('settings.leave_the_key_blank_to_leave_it_unchanged') : undefined} width={520} footer={<>
-      <Button variant='ghost' onClick={close} disabled={f.isSaving || f.isTesting}>{t("common.cancel")}</Button>
-      <Button variant='secondary' loading={f.isTesting} disabled={f.isSaving} onClick={() => f.test()}>{t("settings.test_connection")}</Button>
-      <Button variant='primary' loading={f.isSaving} disabled={f.isTesting} onClick={() => void f.save(onSaved)}>{t("common.save")}</Button>
+  return (<Modal open onClose={close} title={target ? t('settings.edit_backup_target') : t('settings.add_backup_target')} description={f.canKeepSecret ? t('settings.leave_the_key_blank_to_leave_it_unchanged') : undefined} width={MODAL_WIDTH} footer={<>
+      <Button variant='ghost' onClick={close} disabled={f.isSaving || f.isTesting}>{t('common.cancel')}</Button>
+      <Button variant='secondary' loading={f.isTesting} disabled={f.isSaving} onClick={() => f.test()}>{t('settings.test_connection')}</Button>
+      <Button variant='primary' loading={f.isSaving} disabled={f.isTesting} onClick={() => void f.save(onSaved)}>{t('common.save')}</Button>
     </>}>
     <fieldset disabled={f.isSaving || f.isTesting} aria-busy={f.isSaving || f.isTesting} className='min-w-0 space-y-3.5 border-0 p-0'>
     {target && f.type !== target.type && (<TypeChangeWarning/>)}
@@ -48,12 +50,12 @@ export function TargetForm({ target, onClose, onSaved, }: {
     {!target && <PresetPicker f={f}/>}
 
     <Field label={t('settings.name')} required>
-      <Input value={f.name} onChange={(e) => f.setName(e.target.value)} placeholder={t("settings.for_example_primary_r2_backup")}/>
+      <Input value={f.name} onChange={(e) => f.setName(e.target.value)} placeholder={t('settings.for_example_primary_r2_backup')}/>
     </Field>
 
     {s3 ? <S3Fields f={f}/> : <WebdavFields f={f}/>}
 
-    <Field label={t('settings.subdirectory')} hint={t("settings.store_backups_in_this_directory_or_leave_blank_to_use_the_root_directory")}>
+    <Field label={t('settings.subdirectory')} hint={t('settings.store_backups_in_this_directory_or_leave_blank_to_use_the_root_directory')}>
       <Input value={f.form.prefix} onChange={(e) => f.patchField('prefix', e.target.value)} placeholder='inkstone'/>
     </Field>
 
@@ -211,7 +213,7 @@ function TypeChangeWarning() {
   return (
     <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--warning)_28%,var(--border-subtle))] bg-[var(--bg-inset)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--warning)]">
       <AlertCircle size={13} className='mt-0.5 shrink-0'/>
-      <span>{t("settings.enter_the_complete_credentials_for_the_new_backup_type_after_switching_t")}</span>
+      <span>{t('settings.enter_the_complete_credentials_for_the_new_backup_type_after_switching_t')}</span>
     </div>
   );
 }
@@ -277,26 +279,26 @@ function S3Fields({ f }: { f: TargetFormState }) {
   const { canKeepSecret } = f;
   return (
     <>
-      <Field label={t("settings.endpoint")} hint={t("settings.leave_blank_unless_the_provider_requires_it_for_r2_use_url")}>
+      <Field label={t('settings.endpoint')} hint={t('settings.leave_blank_unless_the_provider_requires_it_for_r2_use_url')}>
       <Input value={f.form.endpoint} onChange={(e) => f.patchField('endpoint', e.target.value)} placeholder='https://…'/>
       </Field>
       <div className='grid grid-cols-2 gap-3'>
       <Field label={t('settings.bucket')} required>
         <Input value={f.form.bucket} onChange={(e) => f.patchField('bucket', e.target.value)} placeholder='my-notes-backup'/>
       </Field>
-      <Field label={t("settings.region")}>
+      <Field label={t('settings.region')}>
         <Input value={f.form.region} onChange={(e) => f.patchField('region', e.target.value)} placeholder='auto'/>
       </Field>
       </div>
       <div className='grid grid-cols-2 gap-3'>
       <Field label={t('settings.access_key_id')} required={!canKeepSecret}>
-        <Input value={f.secret.accessKeyId} onChange={(e) => f.setSecret({ ...f.secret, accessKeyId: e.target.value })} placeholder={canKeepSecret ? t("settings.unchanged") : ''} autoComplete='off'/>
+        <Input value={f.secret.accessKeyId} onChange={(e) => f.setSecret({ ...f.secret, accessKeyId: e.target.value })} placeholder={canKeepSecret ? t('settings.unchanged') : ''} autoComplete='off'/>
       </Field>
-      <Field label={t("settings.secret_access_key")} required={!canKeepSecret}>
-        <Input type='password' value={f.secret.secretAccessKey} onChange={(e) => f.setSecret({ ...f.secret, secretAccessKey: e.target.value })} placeholder={canKeepSecret ? t("settings.unchanged") : ''} autoComplete='new-password'/>
+      <Field label={t('settings.secret_access_key')} required={!canKeepSecret}>
+        <Input type='password' value={f.secret.secretAccessKey} onChange={(e) => f.setSecret({ ...f.secret, secretAccessKey: e.target.value })} placeholder={canKeepSecret ? t('settings.unchanged') : ''} autoComplete='new-password'/>
       </Field>
       </div>
-      <Checkbox checked={f.form.pathStyle} onChange={(pathStyle) => f.patchField('pathStyle', pathStyle)} label={t("settings.use_path_style_access_recommended_for_most_compatible_services")}/>
+      <Checkbox checked={f.form.pathStyle} onChange={(pathStyle) => f.patchField('pathStyle', pathStyle)} label={t('settings.use_path_style_access_recommended_for_most_compatible_services')}/>
     </>
   );
 }
@@ -305,15 +307,15 @@ function WebdavFields({ f }: { f: TargetFormState }) {
   const { canKeepSecret } = f;
   return (
     <>
-      <Field label={t("settings.webdav_address")} required hint={t("settings.https_only_redirects_within_the_same_site_are_handled_automatically")}>
+      <Field label={t('settings.webdav_address')} required hint={t('settings.https_only_redirects_within_the_same_site_are_handled_automatically')}>
       <Input value={f.form.url} onChange={(e) => f.patchField('url', e.target.value)} placeholder='https://dav.example.com/dav/'/>
       </Field>
       <div className='grid grid-cols-2 gap-3'>
       <Field label={t('common.username')} required>
         <Input value={f.form.username} onChange={(e) => f.patchField('username', e.target.value)} autoComplete='off'/>
       </Field>
-      <Field label={t("common.password")} required={!canKeepSecret} hint={t("settings.use_an_app_specific_password_when_possible")}>
-        <Input type='password' value={f.secret.password} onChange={(e) => f.setSecret({ ...f.secret, password: e.target.value })} placeholder={canKeepSecret ? t("settings.unchanged") : ''} autoComplete='new-password'/>
+      <Field label={t('common.password')} required={!canKeepSecret} hint={t('settings.use_an_app_specific_password_when_possible')}>
+        <Input type='password' value={f.secret.password} onChange={(e) => f.setSecret({ ...f.secret, password: e.target.value })} placeholder={canKeepSecret ? t('settings.unchanged') : ''} autoComplete='new-password'/>
       </Field>
       </div>
     </>

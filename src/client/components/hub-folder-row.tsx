@@ -4,6 +4,9 @@ import { Switch } from './form';
 import { Tooltip } from './overlay';
 import type { FolderRowProps, HubFolderLabels, HubFolderNodeLike } from './use-hub-folder-item';
 
+const TREE_INDENT_BASE = 8
+const TREE_INDENT_STEP = 12
+
 function rowKeyDown(select: () => void) {
   return (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -164,7 +167,7 @@ export function FolderRow({ node, isExpanded, isSelected, isRenaming, isDragOver
         onDragLeave={handlers.onDragLeave}
         onDrop={handlers.onDrop}
         onKeyDown={rowKeyDown(handlers.onSelect)}
-        style={{ paddingLeft: `${8 + node.depth * 12}px` }}
+        style={{ paddingLeft: `${TREE_INDENT_BASE + node.depth * TREE_INDENT_STEP}px` }}
         className={cn(
           'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[length:var(--text-12)] font-medium transition-colors cursor-pointer',
           isSelected

@@ -45,7 +45,9 @@ for (const file of files) {
   }
   if (minIndent === 4) problems.push(`${rel}: 4-space indentation (use 2-space)`)
 
-  const kind = /\.(ts|tsx)$/.test(rel) ? ts.ScriptKind.TS : ts.ScriptKind.JS
+  // pass the real kind so .tsx parses as TSX; parsing it as plain TS turned
+  // JSX into a parse-error tree whose string/quote tokens never materialized
+  const kind = rel.endsWith('.tsx') ? ts.ScriptKind.TSX : /\.(ts|tsx)$/.test(rel) ? ts.ScriptKind.TS : ts.ScriptKind.JS
   const sf = ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true, kind)
   function visit(node) {
     if (node.kind === ts.SyntaxKind.SemicolonToken) {

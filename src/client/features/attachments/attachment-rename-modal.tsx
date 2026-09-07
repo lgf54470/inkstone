@@ -5,6 +5,8 @@ import { Button } from '../../components/primitives'
 import { Checkbox, Input } from '../../components/form'
 import { t } from '../../lib/i18n'
 
+const MODAL_WIDTH = 440
+
 
 interface AttachmentRenameModalProps {
   open: boolean
@@ -27,7 +29,7 @@ export function AttachmentRenameModal(props: AttachmentRenameModalProps) {
           <span>{t('attachments.rename')}</span>
         </div>
       }
-      width={440}
+      width={MODAL_WIDTH}
     >
       <form onSubmit={form.handleSubmit} className='space-y-4 pt-1'>
         <label className='block space-y-1.5'>

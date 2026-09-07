@@ -48,16 +48,16 @@ export function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRes
     </div>
 
     <div className='flex shrink-0 items-center gap-1'>
-      <Switch checked={target.enabled} disabled={busy} label={t("settings.enabled")} onChange={(enabled) => void toggleEnabledFlow({ actionRef, target, enabled, setIsUpdating, onPatch, onChanged, toast })}/>
+      <Switch checked={target.enabled} disabled={busy} label={t('settings.enabled')} onChange={(enabled) => void toggleEnabledFlow({ actionRef, target, enabled, setIsUpdating, onPatch, onChanged, toast })}/>
       <Button size='sm' variant='ghost' loading={isTesting} disabled={isUpdating || isDeleting} onClick={() => void testTargetFlow({ actionRef, target, setIsTesting, setResult })}>
       {isTesting ? <Loader2 size={12} className='animate-[ink-spin_.7s_linear_infinite]'/> : t('settings.test')}
       </Button>
-      <Tooltip label={t("common.edit")}>
+      <Tooltip label={t('common.edit')}>
       <IconButton label={t('common.edit')} size='sm' disabled={busy} onClick={onEdit}>
         <MoreHorizontal size={14}/>
       </IconButton>
       </Tooltip>
-      <Tooltip label={t("common.delete")} side='left'>
+      <Tooltip label={t('common.delete')} side='left'>
       <IconButton label={t('common.delete')} size='sm' disabled={busy} className='text-[var(--text-quaternary)] hover:text-[var(--danger)]' onClick={() => void deleteTargetFlow({ actionRef, target, setIsDeleting, onRemove, onRestore, onChanged, toast })}>
         {isDeleting ? <Loader2 size={12} className='animate-[ink-spin_.7s_linear_infinite]'/> : <Trash2 size={13}/>}
       </IconButton>

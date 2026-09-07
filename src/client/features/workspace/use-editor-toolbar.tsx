@@ -5,6 +5,10 @@ import type { MenuItem } from '../../components/overlay';
 import { t } from '../../lib/i18n';
 import { SubmenuList } from './context-menu/submenu';
 
+const MERMAID_MENU_WIDTH = 190
+const CHART_MENU_WIDTH = 180
+const TASK_MENU_WIDTH = 180
+
 type MenuName = 'heading' | 'inline' | 'note' | 'block' | 'emoji';
 type Run = (command: (target: EditorView) => boolean) => () => void;
 
@@ -58,7 +62,7 @@ function diagramMenuItems(run: Run, kind: 'mermaid' | 'chart'): MenuItem[] {
       submenu: ({ closeMenu }: { closeMenu: () => void }) => (
         <SubmenuList
           closeMenu={closeMenu}
-          width={isMermaid ? 190 : 180}
+          width={isMermaid ? MERMAID_MENU_WIDTH : CHART_MENU_WIDTH}
           items={templates.map((tpl) => ({
             id: tpl.id,
             label: t(tpl.labelKey),
@@ -78,7 +82,7 @@ function taskStatusMenuItems(run: Run): MenuItem[] {
       submenu: ({ closeMenu }: { closeMenu: () => void }) => (
         <SubmenuList
           closeMenu={closeMenu}
-          width={180}
+          width={TASK_MENU_WIDTH}
           items={[
             { id: 'task-in-progress', label: t('workspace.task_in_progress'), onSelect: run(insertTaskWithStatus('/')) },
             { id: 'task-cancelled', label: t('workspace.task_cancelled'), onSelect: run(insertTaskWithStatus('-')) },

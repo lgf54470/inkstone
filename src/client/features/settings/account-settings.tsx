@@ -23,7 +23,7 @@ export function AccountSettings() {
 
       <section>
         <h3 className='mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
-          {t("settings.sign_in_security")}
+          {t('settings.sign_in_security')}
         </h3>
         <div className='space-y-2'>
           <PasswordSection />
@@ -34,7 +34,7 @@ export function AccountSettings() {
       {user.role === 'owner' && (
         <section>
           <h3 className='mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
-            {t("common.access_control")}
+            {t('common.access_control')}
           </h3>
           <RegistrationSection />
         </section>
@@ -206,7 +206,7 @@ function LogoutButton() {
   const run = () => void confirmLogoutFlow({ busyRef, setIsBusy, logout })
   return (
     <Button size='sm' variant='ghost' icon={<LogOut size={13} />} loading={isBusy} onClick={run}>
-      {t("common.exit")}
+      {t('common.exit')}
     </Button>
   )
 }
@@ -297,8 +297,8 @@ function PasswordSection() {
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]'>
       <SettingRow
         className='px-4'
-        title={t("settings.login_password")}
-        description={t("settings.username_value0_changing_the_password_signs_out_other_devices", { value0: form.user.username })}
+        title={t('settings.login_password')}
+        description={t('settings.username_value0_changing_the_password_signs_out_other_devices', { value0: form.user.username })}
       >
         <Button size='sm' variant='secondary' icon={<KeyRound size={12} />} disabled={form.isBusy} onClick={form.toggle}>
           {form.isOpen ? t('common.collapse') : t('settings.change_password')}
@@ -325,14 +325,14 @@ function PasswordFields({ form }: { form: PasswordForm }) {
         <PasswordLabel text={t('settings.new_password')}>
           <Input type='password' value={form.newPassword} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setNewPassword(event.target.value)} disabled={form.isBusy} autoComplete='new-password' />
         </PasswordLabel>
-        <PasswordLabel text={t("settings.confirm_new_password")}>
+        <PasswordLabel text={t('settings.confirm_new_password')}>
           <Input type='password' value={form.confirmation} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setConfirmation(event.target.value)} disabled={form.isBusy} autoComplete='new-password' />
         </PasswordLabel>
       </div>
       {form.error && <p role='alert' className='text-[length:var(--text-12)] text-[var(--danger)]'>{form.error}</p>}
       <div className='flex justify-end'>
         <Button type='submit' variant='primary' size='sm' loading={form.isBusy}>
-          {t("common.save")}
+          {t('common.save')}
         </Button>
       </div>
     </form>
@@ -427,10 +427,10 @@ function RegistrationSection() {
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]'>
       <SettingRow
         className='px-4'
-        title={t("common.open_registration")}
+        title={t('common.open_registration')}
         description={`${toggle.enabled ? t('settings.open_anyone_can_register_with_a_username_and_password') : t('settings.off_default_only_existing_accounts_can_log_in')} ${t('settings.changing_this_requires_your_current_password_and_takes_effect_immediatel')}`}
       >
-        <Switch checked={toggle.enabled} disabled={toggle.isBusy} onChange={toggle.beginToggle} label={t("common.open_registration")} />
+        <Switch checked={toggle.enabled} disabled={toggle.isBusy} onChange={toggle.beginToggle} label={t('common.open_registration')} />
       </SettingRow>
       {toggle.confirming && <RegistrationForm toggle={toggle} />}
     </div>
@@ -464,7 +464,7 @@ function RegistrationForm({ toggle }: { toggle: RegistrationToggle }) {
       {toggle.error && <p role='alert' className='text-[length:var(--text-12)] text-[var(--danger)]'>{toggle.error}</p>}
       <div className='flex justify-end gap-2'>
         <Button type='button' size='sm' variant='ghost' disabled={toggle.isBusy} onClick={toggle.cancelToggle}>
-          {t("common.cancel")}
+          {t('common.cancel')}
         </Button>
         <Button type='submit' size='sm' variant={toggle.target ? 'danger' : 'primary'} loading={toggle.isBusy}>
           {toggle.target ? t('settings.confirm_opening_registration') : t('settings.confirm_closing_registration')}

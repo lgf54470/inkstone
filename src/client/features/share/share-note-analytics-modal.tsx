@@ -11,6 +11,8 @@ import { countryFlag, countryNameLocalized } from './share-helpers'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import { useShareNoteAnalytics } from './use-share-note-analytics'
 
+const MODAL_WIDTH = 780
+
 function rangeOptions(): { value: string; label: string }[] {
   return [
     { value: '24h', label: '24h' },
@@ -46,7 +48,7 @@ export function ShareNoteAnalyticsModal({
         </div>
       }
       description={data?.noteTitle || ''}
-      width={780}
+      width={MODAL_WIDTH}
     >
       <div className='flex flex-col gap-4 py-1 max-h-[75vh] overflow-y-auto pr-1'>
         {data && <AnalyticsLinkBar data={data} onOpenQr={onOpenQr} />}

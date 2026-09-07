@@ -14,6 +14,8 @@ import { useSession } from '../../store/session'
 import { useUi, type UiState } from '../../store/ui'
 type ToastFn = UiState['toast'];
 
+const MODAL_WIDTH = 620
+
 export function AvatarPicker({
   open,
   onClose,
@@ -31,7 +33,7 @@ export function AvatarPicker({
       open={open}
       onClose={picker.close}
       title={t('settings.change_avatar')}
-      width={620}
+      width={MODAL_WIDTH}
       footer={(
         <>
           <Button variant='ghost' onClick={picker.close} disabled={picker.isBusy || picker.isProcessing}>

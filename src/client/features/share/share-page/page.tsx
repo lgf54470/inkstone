@@ -76,7 +76,7 @@ function SharePageBody({ loadBundle, renderBundle }: {
   if (error) {
     return (
       <div className='mx-auto max-w-[380px] pt-[18vh] text-center'>
-        <h1 className='text-[length:var(--text-16)] font-semibold text-[var(--text-primary)]'>{t("share.content_unavailable")}</h1>
+        <h1 className='text-[length:var(--text-16)] font-semibold text-[var(--text-primary)]'>{t('share.content_unavailable')}</h1>
         <p role='alert' className='mt-2 text-[length:var(--text-13)] leading-relaxed text-[var(--text-tertiary)]'>{error}</p>
       </div>
     )
@@ -95,15 +95,15 @@ function SharePasswordView({ loadBundle }: {
       <div className='mx-auto mb-4 flex size-12 items-center justify-center rounded-[var(--r-xl)] border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-tertiary)]'>
         <Lock size={20}/>
       </div>
-      <h1 className='text-[length:var(--text-16)] font-semibold text-[var(--text-primary)]'>{t("share.this_note_requires_a_password")}</h1>
-      <p className="mt-1.5 text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">{t("share.ask_the_person_who_shared_this_note_for_its_passcode")}</p>
+      <h1 className='text-[length:var(--text-16)] font-semibold text-[var(--text-primary)]'>{t('share.this_note_requires_a_password')}</h1>
+      <p className="mt-1.5 text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">{t('share.ask_the_person_who_shared_this_note_for_its_passcode')}</p>
       <form className='mt-5 space-y-2.5' onSubmit={(event) => {
         event.preventDefault();
         void load(password);
       }}>
-        <Input aria-label={t('common.access_passcode')} type='password' value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("common.access_passcode")} autoComplete='current-password' maxLength={LIMITS.passwordMaxLength} autoFocus leading={<KeyRound size={13}/>} invalid={Boolean(error)}/>
+        <Input aria-label={t('common.access_passcode')} type='password' value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('common.access_passcode')} autoComplete='current-password' maxLength={LIMITS.passwordMaxLength} autoFocus leading={<KeyRound size={13}/>} invalid={Boolean(error)}/>
         {error && <p role='alert' className='text-[length:var(--text-12)] text-[var(--danger)]'>{error}</p>}
-        <Button type='submit' variant='primary' block loading={isLoading}>{t("share.view_content")}</Button>
+        <Button type='submit' variant='primary' block loading={isLoading}>{t('share.view_content')}</Button>
       </form>
     </div>
   )
@@ -131,7 +131,7 @@ function ShareNoteView({ note, renderBundle }: {
             <span>·</span>
             <span>{stats.words}{t('common.words')}</span>
             <span>·</span>
-            <span>{t("common.about")}{readingMinutes(stats.words)}{t('common.min')}</span>
+            <span>{t('common.about')}{readingMinutes(stats.words)}{t('common.min')}</span>
           </>)}
         </div>
       </header>
@@ -147,7 +147,7 @@ function ShareNoteView({ note, renderBundle }: {
 
       <footer className='mt-16 border-t border-[var(--border-subtle)] pt-6 text-center'>
         <a href='/' className="inline-flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:text-[var(--accent)]">
-          <Logo size={12}/>{t("share.shared_via_site", { site: note.site.name })}</a>
+          <Logo size={12}/>{t('share.shared_via_site', { site: note.site.name })}</a>
       </footer>
     </article>
   );

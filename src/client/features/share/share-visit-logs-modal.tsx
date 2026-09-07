@@ -21,6 +21,8 @@ import { countryFlag, countryNameLocalized } from './share-helpers'
 import type { useShareVisitLogs } from './use-share-visit-logs-modal'
 import { useShareVisitLogs as useVisitLogs } from './use-share-visit-logs-modal'
 
+const MODAL_WIDTH = 1050
+
 type LogsBundle = ReturnType<typeof useShareVisitLogs>
 
 export function ShareVisitLogsModal({
@@ -49,7 +51,7 @@ export function ShareVisitLogsModal({
         </div>
       }
       description={t('share.visit_logs_desc')}
-      width={1050}
+      width={MODAL_WIDTH}
     >
       <div className='flex flex-col gap-3'>
         <VisitLogsToolbar bundle={bundle} />

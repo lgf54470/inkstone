@@ -5,6 +5,8 @@ import { useRelativeTime } from '../../lib/hooks'
 import { useNotes } from '../../store/notes'
 import { t } from '../../lib/i18n'
 
+const SYNC_ICON_SIZE = 15
+
 function syncLabel(
   offline: boolean,
   pending: number,
@@ -44,7 +46,7 @@ function SyncGlyph({ label, saving, dirty, synced }: { label: string; saving: bo
   return (
     <Tooltip label={label} side='bottom'>
       <span role='img' aria-label={label} className='flex size-7 items-center justify-center'>
-        <svg width='15' height='15' viewBox='0 0 16 16' fill='none' aria-hidden='true'>
+        <svg width={SYNC_ICON_SIZE} height={SYNC_ICON_SIZE} viewBox='0 0 16 16' fill='none' aria-hidden='true'>
           <circle cx='8' cy='8' r='5.4' stroke='currentColor' strokeWidth='1.6' className={cn('transition-[opacity,color] duration-[var(--dur-base)]', saving ? 'text-[var(--text-quaternary)] opacity-30' : dirty ? 'text-[var(--text-quaternary)] opacity-40' : 'text-[var(--success)] opacity-30')} />
           <path d='M13.4 8A5.4 5.4 0 0 0 8 2.6' stroke='currentColor' strokeWidth='1.7' strokeLinecap='round' className={cn('origin-center text-[var(--accent)] transition-opacity duration-[var(--dur-fast)]', saving ? 'animate-[ink-spin_.72s_linear_infinite] opacity-100' : 'opacity-0')} />
           <circle cx='8' cy='8' r='2.4' fill='currentColor' className={cn('origin-center text-[var(--text-tertiary)] transition-[opacity,transform] duration-[var(--dur-base)] ease-[var(--ease-spring)]', dirty ? 'scale-100 opacity-100' : 'scale-0 opacity-0')} />

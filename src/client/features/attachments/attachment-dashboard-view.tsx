@@ -22,6 +22,9 @@ import { t } from '../../lib/i18n'
 import { IconButton } from '../../components/primitives'
 import { DEFAULT_QUOTA_BYTES, formatFileSize, getFileBadgeColor, getFileCategory, type AttachmentCategory } from './attachment-helpers'
 
+const DONUT_SIZE = 180
+const MIN_BAR_PCT = 2
+
 
 interface AttachmentDashboardViewProps {
   stats?: AttachmentStats
@@ -116,7 +119,7 @@ function StatCardsGrid({ stats, totalBytes, totalQuota, onPrune }: {
 }) {
   return (
     <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
-      <StatCard icon={<HardDrive size={20} />} iconClass="bg-blue-500/10 text-blue-500" label={t('attachments.total_files')} value={stats?.totalCount ?? 0} />
+      <StatCard icon={<HardDrive size={20} />} iconClass='bg-blue-500/10 text-blue-500' label={t('attachments.total_files')} value={stats?.totalCount ?? 0} />
       <StatCard icon={<Database size={20} />} iconClass='bg-purple-500/10 text-purple-500' label={t('attachments.stats_title')}>
         <div className='mt-0.5 text-xl font-bold text-[var(--text-primary)] truncate'>
           {formatFileSize(totalBytes)}
@@ -124,7 +127,7 @@ function StatCardsGrid({ stats, totalBytes, totalQuota, onPrune }: {
         </div>
       </StatCard>
       <UnreferencedCard count={stats?.unreferencedCount ?? 0} onPrune={onPrune} />
-      <StatCard icon={<FolderTree size={20} />} iconClass="bg-emerald-500/10 text-emerald-500" label={t('attachments.structure')}>
+      <StatCard icon={<FolderTree size={20} />} iconClass='bg-emerald-500/10 text-emerald-500' label={t('attachments.structure')}>
         <div className='mt-0.5 text-sm font-semibold text-[var(--text-primary)]'>
           {stats?.folderCount ?? 0} {t('navigation.folder')} · {stats?.tagCount ?? 0} {t('navigation.tag')}
         </div>
@@ -199,7 +202,7 @@ function StorageDonut({ usedPercentage, usedRatio, freeBytes }: { usedPercentage
   return (
     <div className='flex flex-col items-center justify-center py-6'>
       <div className='relative flex items-center justify-center'>
-        <svg width='180' height='180' className='-rotate-90 transform'>
+        <svg width={DONUT_SIZE} height={DONUT_SIZE} className='-rotate-90 transform'>
           <circle cx='90' cy='90' r={radius} stroke='currentColor' strokeWidth='14' fill='transparent' className='text-[var(--bg-hover)]' />
           <circle
             cx='90'
@@ -246,7 +249,7 @@ function CategoryRow({ cat, onSelectCategory }: { cat: CategoryBreakdown; onSele
         </div>
       </div>
       <div className='h-2 w-full overflow-hidden rounded-full bg-[var(--bg-subtle)]'>
-        <div className={cn('h-full rounded-full transition-all duration-[var(--dur-slow)]', cat.barColor)} style={{ width: `${Math.max(cat.bytes > 0 ? 2 : 0, Number(pct))}%` }} />
+        <div className={cn('h-full rounded-full transition-all duration-[var(--dur-slow)]', cat.barColor)} style={{ width: `${Math.max(cat.bytes > 0 ? MIN_BAR_PCT : 0, Number(pct))}%` }} />
       </div>
     </div>
   )

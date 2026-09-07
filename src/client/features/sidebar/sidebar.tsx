@@ -58,9 +58,9 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
           <div className='pt-2 pb-1'>
             <QuickNavGrid view={view} panel={panel} counts={counts} onGo={goTo}/>
           </div>
-          <ViewItem icon={<FileText size={14}/>} label={t("navigation.all_notes")} view='all' count={counts.all} active={view === 'all' && !panel} onSelect={openView}/>
-          <ViewItem icon={<Clock size={14}/>} label={t("navigation.recently_edited")} view="recent" active={view === 'recent' && !panel} onSelect={openView}/>
-          <ViewItem icon={<Inbox size={14}/>} label={t("navigation.unfiled")} view="unfiled" count={counts.unfiled} active={view === 'unfiled' && !panel} onSelect={openView}/>
+          <ViewItem icon={<FileText size={14}/>} label={t('navigation.all_notes')} view='all' count={counts.all} active={view === 'all' && !panel} onSelect={openView}/>
+          <ViewItem icon={<Clock size={14}/>} label={t('navigation.recently_edited')} view='recent' active={view === 'recent' && !panel} onSelect={openView}/>
+          <ViewItem icon={<Inbox size={14}/>} label={t('navigation.unfiled')} view='unfiled' count={counts.unfiled} active={view === 'unfiled' && !panel} onSelect={openView}/>
         </div>
 
         <FolderSection />
@@ -87,7 +87,7 @@ function SidebarHeader({ onCollapse }: {
       <div className='flex min-w-0 items-center gap-[9px] select-none'>
         <Logo size={24}/>
         <span className="min-w-0 truncate font-serif text-[length:var(--text-15\.5)] font-semibold tracking-[0.02em] text-[var(--text-primary)]">
-          {t("common.product_name")}
+          {t('common.product_name')}
         </span>
       </div>
       {onCollapse && (<Tooltip label={t('sidebar.collapse_navigation')}>
@@ -116,10 +116,10 @@ function QuickNavGrid({ view, panel, counts, onGo }: {
     const pinDrop = (ids: string[]) => ids.forEach((id) => void patchNote(id, { isPinned: true }));
     const starDrop = (ids: string[]) => ids.forEach((id) => void patchNote(id, { isStarred: true }));
     return (<div className='grid grid-cols-4 gap-1'>
-      <BottomNavButton icon={<Pin size={13.5} className='shrink-0'/>} label={t("navigation.pinned")} count={counts.pinned} active={view === 'pinned' && !panel} onClick={() => onGo('pinned')} acceptsDrop onDropNotes={pinDrop}/>
-      <BottomNavButton icon={<Star size={13.5} className='shrink-0'/>} label={t("navigation.favorites")} count={counts.starred} active={view === 'starred' && !panel} onClick={() => onGo('starred')} acceptsDrop onDropNotes={starDrop}/>
-      <BottomNavButton icon={<Share2 size={13.5} className='shrink-0 text-[var(--accent)]'/>} label={t("navigation.share")} count={shareCount} active={view === 'shared' && !panel} onClick={() => onGo('shared')}/>
-      <BottomNavButton icon={<Globe size={13.5} className='shrink-0 text-[var(--accent)]'/>} label={t("navigation.published")} count={publishedCount} active={view === 'published' && !panel} onClick={() => onGo('published')}/>
+      <BottomNavButton icon={<Pin size={13.5} className='shrink-0'/>} label={t('navigation.pinned')} count={counts.pinned} active={view === 'pinned' && !panel} onClick={() => onGo('pinned')} acceptsDrop onDropNotes={pinDrop}/>
+      <BottomNavButton icon={<Star size={13.5} className='shrink-0'/>} label={t('navigation.favorites')} count={counts.starred} active={view === 'starred' && !panel} onClick={() => onGo('starred')} acceptsDrop onDropNotes={starDrop}/>
+      <BottomNavButton icon={<Share2 size={13.5} className='shrink-0 text-[var(--accent)]'/>} label={t('navigation.share')} count={shareCount} active={view === 'shared' && !panel} onClick={() => onGo('shared')}/>
+      <BottomNavButton icon={<Globe size={13.5} className='shrink-0 text-[var(--accent)]'/>} label={t('navigation.published')} count={publishedCount} active={view === 'published' && !panel} onClick={() => onGo('published')}/>
     </div>);
 }
 
@@ -134,7 +134,7 @@ function ArchiveNavGrid({ view, panel, counts, onGo }: {
     const archiveDrop = (ids: string[]) => ids.forEach((id) => void patchNote(id, { isArchived: true }));
     const trashDrop = (ids: string[]) => ids.forEach((id) => void deleteNote(id));
     return (<>
-      <BottomNavButton icon={<Archive size={13.5} className='shrink-0'/>} label={t("navigation.archive")} count={counts.archived} active={view === 'archived' && !panel} onClick={() => onGo('archived')} acceptsDrop onDropNotes={archiveDrop}/>
-      <BottomNavButton icon={<Trash2 size={13.5} className='shrink-0'/>} label={t("navigation.trash")} count={counts.trash} active={view === 'trash' && !panel} onClick={() => onGo('trash')} acceptsDrop onDropNotes={trashDrop}/>
+      <BottomNavButton icon={<Archive size={13.5} className='shrink-0'/>} label={t('navigation.archive')} count={counts.archived} active={view === 'archived' && !panel} onClick={() => onGo('archived')} acceptsDrop onDropNotes={archiveDrop}/>
+      <BottomNavButton icon={<Trash2 size={13.5} className='shrink-0'/>} label={t('navigation.trash')} count={counts.trash} active={view === 'trash' && !panel} onClick={() => onGo('trash')} acceptsDrop onDropNotes={trashDrop}/>
     </>);
 }

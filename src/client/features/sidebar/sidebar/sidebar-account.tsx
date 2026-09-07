@@ -8,6 +8,8 @@ import { useSession } from '../../../store/session';
 import { useUpdate } from '../../../store/update';
 import { t } from '../../../lib/i18n';
 
+const ACCOUNT_MENU_WIDTH = 252
+
 export function SidebarAccount({ rail = false }: {
   rail?: boolean;
 }) {
@@ -32,7 +34,7 @@ export function SidebarAccount({ rail = false }: {
   const items = buildAccountMenuItems({ isDark, showUpdateDot, openPanel, toggleTheme, logout });
   return (<>
     <AccountButton rail={rail} buttonRef={buttonRef} user={user} displayName={displayName} showUpdateDot={user.role === 'owner' && updateAvailable} onOpenMenu={() => setIsMenuOpen(true)} openPanel={openPanel}/>
-    <Menu anchor={buttonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={items} width={252}/>
+    <Menu anchor={buttonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={items} width={ACCOUNT_MENU_WIDTH}/>
   </>);
 }
 
@@ -111,12 +113,12 @@ function AccountButton({ rail, buttonRef, user, displayName, showUpdateDot, onOp
         <span className="block truncate text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">@{user.username}</span>
       </span>
     </button>
-    <Tooltip label={t("blog.blog_hub")} side='top'>
+    <Tooltip label={t('blog.blog_hub')} side='top'>
       <IconButton label={t('blog.blog_hub')} size='sm' onClick={() => openPanel('blog-hub')} className='mr-0.5 shrink-0 text-[var(--text-quaternary)] hover:text-[var(--accent)]'>
         <Globe size={14}/>
       </IconButton>
     </Tooltip>
-    <Tooltip label={t("common.settings")} side='top'>
+    <Tooltip label={t('common.settings')} side='top'>
       <IconButton label={t('common.settings')} size='sm' onClick={() => openPanel('settings')} className='mr-1 shrink-0 text-[var(--text-quaternary)] group-hover:text-[var(--text-tertiary)]'>
         <SettingsIcon size={14} showDot={showUpdateDot}/>
       </IconButton>

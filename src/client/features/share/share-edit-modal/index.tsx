@@ -7,6 +7,8 @@ import { ShareQrModal } from '../share-qr-modal'
 import { useShareEditModal } from './use-share-edit-modal'
 import { EditModalFooter, ShareExpiryCard, ShareFolderCard, ShareLinkCard, SharePasswordCard, ShareSlugCard, ShareStatusCard, ShareTagsCard } from './sections'
 
+const MODAL_WIDTH = 500
+
 export function ShareEditModal({
   open,
   onClose,
@@ -35,7 +37,7 @@ export function ShareEditModal({
           </div>
         }
         description={noteTitle}
-        width={500}
+        width={MODAL_WIDTH}
         footer={<EditModalFooter b={b} onClose={onClose} />}
       >
         <div className='flex flex-col gap-3.5 py-1'>

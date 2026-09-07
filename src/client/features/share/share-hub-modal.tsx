@@ -12,6 +12,8 @@ import { ShareDashboardView } from './share-dashboard-view'
 import { ShareBatchBar } from './share-batch-bar'
 import { ShareQrModal } from './share-qr-modal'
 import { ShareEditModal } from './share-edit-modal'
+
+const MODAL_WIDTH = 1300
 import { ShareNoteAnalyticsModal } from './share-note-analytics-modal'
 import { ShareVisitLogsModal } from './share-visit-logs-modal'
 import { ShareSettingsModal } from './share-settings-modal'
@@ -31,7 +33,7 @@ export function ShareHubModal({
       <Modal
         open={open}
         onClose={onClose}
-        width={1300}
+        width={MODAL_WIDTH}
         className='h-[84vh] min-h-[580px] max-h-[880px] p-0 overflow-hidden flex flex-col'
         bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'
       >

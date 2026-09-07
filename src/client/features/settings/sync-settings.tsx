@@ -37,12 +37,12 @@ export function SyncSettings() {
     <SyncStatusCard online={online} lastSavedAt={lastSavedAt} pending={pending} savedAgo={savedAgo} isSyncing={isSyncing} onSyncNow={syncNow}/>
 
     <section>
-    {realtimeAvailable && (<SettingRow title={t('settings.realtime_sync')} description={t("settings.receive_changes_from_other_devices_quickly")}>
-      <Switch checked={sync.realtime} onChange={setRealtime} label={t("settings.realtime_sync")}/>
+    {realtimeAvailable && (<SettingRow title={t('settings.realtime_sync')} description={t('settings.receive_changes_from_other_devices_quickly')}>
+      <Switch checked={sync.realtime} onChange={setRealtime} label={t('settings.realtime_sync')}/>
     </SettingRow>)}
 
     <SettingRow title={t('settings.polling_interval')}>
-      <Slider label={t('settings.polling_interval')} className='w-[200px]' value={Math.round(sync.pollIntervalMs / 1000)} min={5} max={120} step={5} onChange={setPollInterval} suffix={t("settings.sec")}/>
+      <Slider label={t('settings.polling_interval')} className='w-[200px]' value={Math.round(sync.pollIntervalMs / 1000)} min={5} max={120} step={5} onChange={setPollInterval} suffix={t('settings.sec')}/>
     </SettingRow>
     </section>
   </div>);
@@ -107,17 +107,17 @@ function SyncStatusCard({ online, lastSavedAt, pending, savedAgo, isSyncing, onS
       </span>
       <div className='min-w-0 flex-1'>
       <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
-        {online ? t("settings.connected") : t('settings.offline')}
+        {online ? t('settings.connected') : t('settings.offline')}
       </div>
       <div className="mt-0.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
         {online
       ? lastSavedAt
-        ? t("settings.last_saved_value0", { value0: savedAgo }) : t('settings.no_saves_yet')
+        ? t('settings.last_saved_value0', { value0: savedAgo }) : t('settings.no_saves_yet')
       : pending
         ? t('settings.value0_changes_will_upload_automatically_after_reconnecting', { value0: pending }) : t('settings.changes_are_saved_locally_and_sync_automatically_after_reconnecting')}
       </div>
       </div>
-      <Button size='sm' variant='secondary' icon={<RefreshCw size={12}/>} loading={isSyncing} disabled={isSyncing} onClick={onSyncNow}>{t("settings.sync_now")}</Button>
+      <Button size='sm' variant='secondary' icon={<RefreshCw size={12}/>} loading={isSyncing} disabled={isSyncing} onClick={onSyncNow}>{t('settings.sync_now')}</Button>
     </div>
 
     </section>

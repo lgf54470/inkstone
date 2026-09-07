@@ -6,6 +6,8 @@ import { cn } from '../../lib/cn';
 import { t } from '../../lib/i18n';
 import { folderPathLabel } from '../../lib/folders';
 
+const DRAWER_WIDTH = 420
+
 export function FolderPicker({
   open,
   title,
@@ -44,18 +46,18 @@ export function FolderPicker({
   return (<Drawer open={open} onClose={() => {
     setQuery('');
     onClose();
-  }} title={title} width={420}>
+  }} title={title} width={DRAWER_WIDTH}>
     <div className='sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3'>
     <label className='relative block'>
       <Search size={14} aria-hidden='true' className='pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--text-quaternary)]'/>
-      <span className='sr-only'>{t("folders.search")}</span>
-      <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("folders.search")} className='h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pr-3 pl-9 text-[length:var(--text-13)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]'/>
+      <span className='sr-only'>{t('folders.search')}</span>
+      <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('folders.search')} className='h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pr-3 pl-9 text-[length:var(--text-13)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]'/>
     </label>
     </div>
     <div className='space-y-1 p-2'>
     {allowRoot && !query.trim() && (<FolderChoice label={rootLabel ?? t('folders.top_level')} selected={currentId === null} onClick={() => choose(null)}/>)}
     {choices.map(({ folder, path }) => (<FolderChoice key={folder.id} label={path} icon={folder.icon} color={folder.color} selected={currentId === folder.id} onClick={() => choose(folder.id)}/>))}
-    {choices.length === 0 && (query.trim() || !allowRoot) && (<p className="px-3 py-10 text-center text-[length:var(--text-12\.5)] text-[var(--text-quaternary)]">{t("folders.no_match")}</p>)}
+    {choices.length === 0 && (query.trim() || !allowRoot) && (<p className="px-3 py-10 text-center text-[length:var(--text-12\.5)] text-[var(--text-quaternary)]">{t('folders.no_match')}</p>)}
     </div>
   </Drawer>);
 }

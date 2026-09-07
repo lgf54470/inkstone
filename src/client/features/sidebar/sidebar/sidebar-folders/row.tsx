@@ -130,7 +130,7 @@ function FolderRowLabel({ node, folders, active, isInbox, renaming, onCommitRena
   onCancelRename: () => void;
   onStartRename: () => void;
 }) {
-  if (renaming) return (<input aria-label={t("sidebar.rename")} autoFocus defaultValue={node.name} onBlur={(e) => void onCommitRename(e.target.value)} onKeyDown={(e) => {
+  if (renaming) return (<input aria-label={t('sidebar.rename')} autoFocus defaultValue={node.name} onBlur={(e) => void onCommitRename(e.target.value)} onKeyDown={(e) => {
     if (e.key === 'Enter') void onCommitRename(e.currentTarget.value);
     if (e.key === 'Escape') {
       e.currentTarget.value = node.name;
@@ -165,7 +165,7 @@ function FolderRowMeta({ count, onOpenMenu }: {
     <span className='shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-0'>
       {count > 0 ? count : ''}
     </span>
-    <Tooltip label={t("common.more_actions")} side='left'>
+    <Tooltip label={t('common.more_actions')} side='left'>
       <IconButton label={t('common.more_actions')} size='sm' onClick={onOpenMenu} className='absolute right-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100'>
         <MoreHorizontal size={13}/>
       </IconButton>
