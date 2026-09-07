@@ -15,14 +15,17 @@
 //     are excluded because hand-authored illustration coordinates are
 //     one-shot specs the remediation commits never hoisted;
 //   - raw unit values inside Tailwind arbitrary-value classNames (w-[240px],
-//     text-[11px], tracking-[0.06em], grid-cols-[210px_...]) in className/class
-//     attributes and cn() string arguments. The compliant shape is a design
-//     token reference ([var(--...)] or the w-(--spacing-4) paren shorthand),
-//     the sanctioned style-constant-table pattern (a string inside a named
-//     initializer, e.g. a const holding the className, like the hex exemption
-//     below), or an existing utility class. Brackets and parens whose content
-//     is var()/calc()/min()/max()/clamp()/env() or a color function
-//     (oklch()/rgb()/...) are exempt: token references are the goal;
+//     text-[11px], grid-cols-[210px_...]) in className/class attributes and
+//     cn() string arguments, plus raw letter-spacing values (tracking-[0.06em])
+//     in ANY string literal — tracking is a dedicated --tracking-* token
+//     family, so a raw value stays a rule-2 violation even inside a named
+//     constant table, unlike other class strings. The compliant shape is a
+//     design token reference ([var(--...)] or the w-(--spacing-4) paren
+//     shorthand), the sanctioned style-constant-table pattern (a string inside
+//     a named initializer, e.g. a const holding the className, like the hex
+//     exemption below), or an existing utility class. Brackets and parens
+//     whose content is var()/calc()/min()/max()/clamp()/env() or a color
+//     function (oklch()/rgb()/...) are exempt: token references are the goal;
 //     calc/min/max/clamp/env are viewport-relative responsive math (safe-area
 //     insets, 100vw offsets); color functions carry % channels, not sizes.
 //     Paren groups that are bare custom-property references (--name, with an
@@ -227,7 +230,23 @@ function problemsFor(rel, text) {
   }
 
   // Part 3: raw unit values in Tailwind arbitrary-value classNames (brackets,
-  // named-group parens, arbitrary properties).
+  // named-group parens, arbitrary properties) in className/class and cn().
+  // Part 4: raw letter-spacing values anywhere, including named constants:
+  // letter-spacing is its own token family (--tracking-*), so tracking-[0.06em]
+  // must become tracking-[var(--tracking-label)] even as a hoisted class string.
+  function visitTracking(node) {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)
+      || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+      for (const match of node.text.matchAll(/tracking-\[([^\]]*)\]/g)) {
+        if (!isExemptArbitraryGroup(match[1])) {
+          push(lineOf(node), `raw letter-spacing in ${match[0]} (AGENTS.md rule 2): tracking values must reference a --tracking-* design token`)
+        }
+      }
+      return
+    }
+    ts.forEachChild(node, visitTracking)
+  }
+
   function scanClassString(node, report) {
     if (inNamedInitializer(node)) return
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
@@ -282,6 +301,7 @@ function problemsFor(rel, text) {
   visitHex(sf)
   if (rel.endsWith('.tsx')) visitNumbers(sf)
   visitClasses(sf)
+  visitTracking(sf)
   return found
 }
 

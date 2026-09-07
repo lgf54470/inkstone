@@ -85,3 +85,27 @@ describe('class-string loopholes via problemsFor', () => {
     expect(problems).toEqual([])
   })
 })
+
+describe('tracking token family via problemsFor', () => {
+  const rel = 'probe.tsx'
+
+  it('flags a raw tracking value even inside a named constant table', () => {
+    const problems = problemsFor(rel, `const T = 'tracking-[0.07em]'`)
+    expect(problems.join('\n')).toContain('raw letter-spacing in tracking-[0.07em]')
+  })
+
+  it('accepts a token-referencing tracking constant', () => {
+    const problems = problemsFor(rel, `const T = 'tracking-[var(--tracking-section)]'`)
+    expect(problems).toEqual([])
+  })
+
+  it('flags inline raw tracking class names', () => {
+    const problems = problemsFor(rel, `function Probe() { return <div className='tracking-[0.06em]'/> }`)
+    expect(problems.join('\n')).toContain('raw letter-spacing in tracking-[0.06em]')
+  })
+
+  it('flags raw tracking keys in clsx conditional objects', () => {
+    const problems = problemsFor(rel, `function Probe() { return <div className={cn({ 'tracking-[0.06em]': cond })}/> }`)
+    expect(problems.join('\n')).toContain('raw letter-spacing in tracking-[0.06em]')
+  })
+})
