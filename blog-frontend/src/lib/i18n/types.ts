@@ -112,6 +112,7 @@ export type MessageKey =
   | 'search.input_placeholder'
   | 'search.empty_query_hint'
   | 'search.no_results'
+  | 'search.error'
   | 'search.footer_matched'
   | 'search.footer_idle'
   | 'search.key_nav'

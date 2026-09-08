@@ -121,6 +121,7 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'search.input_placeholder': 'Search posts by title, excerpt, tag... (↑↓ navigate, Enter open)',
   'search.empty_query_hint': 'Type keywords to search across all posts (Cmd+K)',
   'search.no_results': 'No posts found matching "{query}"',
+  'search.error': 'Search is temporarily unavailable, please try again later',
   'search.footer_matched': '{total} matched across site, showing {count}',
   'search.footer_idle': 'Full-site post search supported',
   'search.key_nav': 'Navigate: ↑ ↓',

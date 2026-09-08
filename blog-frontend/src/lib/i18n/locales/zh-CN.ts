@@ -121,6 +121,7 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'search.input_placeholder': '搜索文章标题、摘要、标签... (↑↓ 选择，Enter 确认)',
   'search.empty_query_hint': '输入关键字进行全站搜索 (Cmd+K)',
   'search.no_results': '未找到与 "{query}" 相关的文章',
+  'search.error': '搜索服务暂时不可用，请稍后重试',
   'search.footer_matched': '全站匹配 {total} 篇，当前展示 {count} 篇',
   'search.footer_idle': '支持全站文章搜索',
   'search.key_nav': '导航: ↑ ↓',

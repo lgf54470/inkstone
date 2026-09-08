@@ -6,7 +6,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
-import { Search, X, Calendar, Tag, Loader2 } from 'lucide-react'
+import { Search, X, Calendar, Tag, Loader2, AlertCircle } from 'lucide-react'
 import { api } from '../lib/api'
 import type { BlogPost } from '../lib/types'
 import { SEARCH_RESULT_LIMIT, SEARCH_FOCUS_DELAY_MS, SEARCH_DEBOUNCE_MS } from '../lib/constants'
@@ -76,7 +76,7 @@ function useVisibility() {
 function useSearch(isOpen: boolean) {
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-  const { results, total, loading } = useServerSearch(query, isOpen)
+  const { results, total, loading, error } = useServerSearch(query, isOpen)
 
   // Focus on open; reset state on close
   useEffect(() => {
@@ -87,13 +87,14 @@ function useSearch(isOpen: boolean) {
     }
   }, [isOpen])
 
-  return { query, setQuery, results, total, loading, inputRef }
+  return { query, setQuery, results, total, loading, error, inputRef }
 }
 
 function useServerSearch(query: string, isOpen: boolean) {
   const [results, setResults] = useState<BlogPost[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
   const seqRef = useRef(0)
   const controllerRef = useRef<AbortController | null>(null)
 
@@ -105,9 +106,12 @@ function useServerSearch(query: string, isOpen: boolean) {
       setResults([])
       setTotal(0)
       setLoading(false)
+      setError(false)
       return
     }
 
+    // 新查询开始时清除上次的错误态，避免残留旧失败提示
+    setError(false)
     setLoading(true)
     const timer = setTimeout(() => {
       runSearchRequest({
@@ -118,6 +122,7 @@ function useServerSearch(query: string, isOpen: boolean) {
           setResults(posts)
           setTotal(total)
         },
+        onError: () => setError(true),
         onLoading: setLoading,
       })
     }, SEARCH_DEBOUNCE_MS)
@@ -125,7 +130,7 @@ function useServerSearch(query: string, isOpen: boolean) {
     return () => clearTimeout(timer)
   }, [query, isOpen])
 
-  return { results, total, loading }
+  return { results, total, loading, error }
 }
 
 async function runSearchRequest(options: {
@@ -133,9 +138,10 @@ async function runSearchRequest(options: {
   seqRef: RefObject<number>
   controllerRef: RefObject<AbortController | null>
   onResult: (posts: BlogPost[], total: number) => void
+  onError: () => void
   onLoading: (loading: boolean) => void
 }): Promise<void> {
-  const { q, seqRef, controllerRef, onResult, onLoading } = options
+  const { q, seqRef, controllerRef, onResult, onError, onLoading } = options
   const seq = seqRef.current
   const controller = new AbortController()
   controllerRef.current = controller
@@ -145,7 +151,8 @@ async function runSearchRequest(options: {
     onResult(res.posts, res.total)
   } catch {
     if (seq !== seqRef.current) return // 已被新查询取代的请求中止，丢弃
-    onResult([], 0)
+    // 网络失败与真实无结果区分展示，避免误导用户
+    onError()
   } finally {
     if (seq === seqRef.current) onLoading(false)
   }
@@ -182,7 +189,7 @@ function useSelection(results: BlogPost[]) {
 
 function useSearchModal() {
   const { isOpen, close } = useVisibility()
-  const { query, setQuery, results, total, loading, inputRef } = useSearch(isOpen)
+  const { query, setQuery, results, total, loading, error, inputRef } = useSearch(isOpen)
   const { selectedIndex, setSelectedIndex, handleKeyDownList } = useSelection(results)
   const clearQuery = () => setQuery('')
 
@@ -223,6 +230,7 @@ export default function SearchModal({ initialLocale }: SearchModalProps) {
       <SearchResultsPanel
         query={search.query}
         loading={search.loading}
+        error={search.error}
         results={search.results}
         selectedIndex={search.selectedIndex}
         locale={locale}
@@ -322,6 +330,7 @@ function SearchInputRow({
 function SearchResultsPanel({
   query,
   loading,
+  error,
   results,
   selectedIndex,
   locale,
@@ -329,6 +338,7 @@ function SearchResultsPanel({
 }: {
   query: string
   loading: boolean
+  error: boolean
   results: BlogPost[]
   selectedIndex: number
   locale: BlogLocale
@@ -339,6 +349,11 @@ function SearchResultsPanel({
       {query.trim() === '' ? (
         <div className='py-10 text-center text-xs text-[var(--text-tertiary)]'>
           {t('search.empty_query_hint', {}, locale)}
+        </div>
+      ) : error ? (
+        <div className='py-10 text-center text-xs text-[var(--danger)] flex items-center justify-center gap-1.5'>
+          <AlertCircle className='w-4 h-4 shrink-0' />
+          <span>{t('search.error', {}, locale)}</span>
         </div>
       ) : results.length === 0 && !loading ? (
         <div className='py-10 text-center text-xs text-[var(--text-tertiary)]'>
