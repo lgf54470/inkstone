@@ -56,7 +56,20 @@ const wordCount = bodyContent.replace(/\s+/g, '').length
 const readingMinutes = Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE))
 ---
 
-<Layout title={`${post.title} - Inkstone Blog`} description={post.excerpt} coverUrl={post.coverUrl} locale={locale}>
+<Layout
+  title={`${post.title} - Inkstone Blog`}
+  description={post.excerpt}
+  coverUrl={post.coverUrl}
+  locale={locale}
+  articleMeta={{
+    title: post.title,
+    description: post.excerpt,
+    coverUrl: post.coverUrl,
+    publishedAt: post.publishedAt || post.createdAt,
+    updatedAt: post.updatedAt,
+    url: Astro.url.href,
+  }}
+>
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
     {/* Main Article Content */}
     <main class={`space-y-8 ${headings.length > 0 ? 'lg:col-span-9' : 'lg:col-span-12'}`}>

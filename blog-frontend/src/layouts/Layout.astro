@@ -9,6 +9,15 @@ import { api, getApiBase } from '../lib/api'
 import type { BlogSiteInfo } from '../lib/types'
 import { DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
 
+interface ArticleMeta {
+  title: string
+  description?: string
+  coverUrl?: string | null
+  publishedAt?: number
+  updatedAt?: number
+  url?: string
+}
+
 interface Props {
   title?: string
   description?: string
@@ -16,6 +25,7 @@ interface Props {
   siteInfo?: BlogSiteInfo
   locale?: BlogLocale
   fitViewport?: boolean
+  articleMeta?: ArticleMeta
 }
 
 const {
@@ -25,6 +35,7 @@ const {
   siteInfo: propSiteInfo,
   locale: propLocale,
   fitViewport = false,
+  articleMeta,
 } = Astro.props
 
 
@@ -46,6 +57,20 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     {coverUrl && <meta property="og:image" content={coverUrl} />}
     <meta name="inkstone-api-url" content={getApiBase()} />
     <meta name="inkstone-locale" content={locale} />
+    <link rel="canonical" href={`${Astro.url.origin}${Astro.url.pathname}`} />
+    {articleMeta && (
+      <script type="application/ld+json" is:inline set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: articleMeta.title,
+        description: articleMeta.description || undefined,
+        image: articleMeta.coverUrl || undefined,
+        datePublished: articleMeta.publishedAt ? new Date(articleMeta.publishedAt).toISOString() : undefined,
+        dateModified: articleMeta.updatedAt ? new Date(articleMeta.updatedAt).toISOString() : undefined,
+        author: { '@type': 'Person', name: siteInfo.authorName },
+        url: articleMeta.url || undefined,
+      })} />
+    )}
 
     <!-- Immediately apply theme preferences before paint to prevent flicker -->
     <script is:inline define:vars={{ initialLocale: locale }}>

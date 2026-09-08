@@ -198,6 +198,7 @@ function useSearchModal() {
     isOpen,
     query,
     loading,
+    error,
     results,
     total,
     selectedIndex,
