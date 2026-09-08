@@ -113,8 +113,8 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     <Footer siteInfo={siteInfo} locale={locale} compact={fitViewport} />
 
 
-    <!-- Interactive Client Modals/Drawers -->
-    <AppearanceDrawer client:load initialLocale={locale} />
-    <SearchModal client:load initialLocale={locale} />
+    <!-- Interactive Client Modals/Drawers：非首屏交互，浏览器空闲后再水合 -->
+    <AppearanceDrawer client:idle initialLocale={locale} />
+    <SearchModal client:idle initialLocale={locale} />
   </body>
 </html>
