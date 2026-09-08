@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, FileText } from 'lucide-react'
 import { api } from '../lib/api'
 import type { CalendarDayPost } from '../lib/types'
@@ -83,6 +83,7 @@ function useMonthNav() {
 
 function useCalendarDays(initialDays: CalendarDayPost[], currentYear: number, currentMonth: number) {
   const [daysData, setDaysData] = useState<CalendarDayPost[]>(initialDays)
+  const skipInitialRef = useRef(true)
 
   useEffect(() => {
     let ignore = false
@@ -97,6 +98,11 @@ function useCalendarDays(initialDays: CalendarDayPost[], currentYear: number, cu
       }
     }
 
+    if (skipInitialRef.current) {
+      // SSR 已按当前月份预取（首页/日历页），挂载后跳过首次重复请求
+      skipInitialRef.current = false
+      return undefined
+    }
     loadData()
     return () => {
       ignore = true
