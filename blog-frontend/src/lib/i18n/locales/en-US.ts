@@ -55,6 +55,7 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'post.link_copied': 'Post link copied to clipboard!',
   'post.copied_short': 'Copied',
   'post.toc': 'Table of Contents',
+  'post.reading_progress': 'Reading progress, click to return to top',
   'common.outline': 'Outline',
 
   // Timeline

@@ -53,6 +53,7 @@ export type MessageKey =
   | 'post.link_copied'
   | 'post.copied_short'
   | 'post.toc'
+  | 'post.reading_progress'
   | 'common.outline'
   // Timeline
   | 'timeline.title'

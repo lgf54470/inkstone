@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro'
 import CommentsSection from '../../components/CommentsSection'
 import PostOutline from '../../components/PostOutline'
+import ReadingProgress from '../../components/ReadingProgress'
 // KaTeX 样式仅文章页需要（公式由服务端渲染），按需打包避免全站加载
 import 'katex/dist/katex.min.css'
 import { api } from '../../lib/api'
@@ -215,6 +216,8 @@ const readingMinutes = Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE))
       </aside>
     )}
   </div>
+
+  <ReadingProgress client:load initialLocale={locale} />
 
   <script>
     import { initInteractiveContent } from '../../lib/interactive'

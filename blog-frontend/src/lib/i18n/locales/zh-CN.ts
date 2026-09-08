@@ -55,6 +55,7 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'post.link_copied': '文章链接已复制到剪贴板！',
   'post.copied_short': '已复制',
   'post.toc': '文章目录',
+  'post.reading_progress': '阅读进度，点击返回顶部',
   'common.outline': '大纲',
 
   // Timeline
