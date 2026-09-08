@@ -53,6 +53,7 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'post.thanks_desc': '本文內容由 Inkstone 筆記系統發布並驅動，歡迎在下方發表交流與討論。',
   'post.share_link': '分享連結',
   'post.link_copied': '文章連結已複製到剪貼簿！',
+  'post.copied_short': '已複製',
   'post.toc': '文章目錄',
   'common.outline': '大綱',
 

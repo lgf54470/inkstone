@@ -16,11 +16,34 @@ export function initInteractiveContent() {
   if (typeof window === 'undefined') return
   initTabs()
   initCodeCopy()
+  initLinkCopy()
   initJsRunners()
   initTaskCheckboxes()
   renderMermaid()
   renderCharts()
   initThemeObserver()
+}
+
+/** 文章页分享按钮：复制成功后在按钮内显示“已复制”，代替 alert 弹窗 */
+function initLinkCopy() {
+  const copyBtn = document.getElementById('btn-copy-link')
+  if (!copyBtn) return
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+    } catch (err) {
+      console.warn('Clipboard write failed:', err)
+      return
+    }
+    const label = copyBtn.querySelector<HTMLElement>('[data-copy-label]')
+    if (!label) return
+    const original = label.textContent || ''
+    const copied = copyBtn.getAttribute('data-copied-text') || ''
+    label.textContent = copied
+    setTimeout(() => {
+      if (label.textContent === copied) label.textContent = original
+    }, COPY_FEEDBACK_MS)
+  })
 }
 
 function initTaskCheckboxes() {

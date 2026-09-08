@@ -53,6 +53,7 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'post.thanks_desc': '本文内容由 Inkstone 笔记系统发布并驱动，欢迎在下方发表交流与讨论。',
   'post.share_link': '分享链接',
   'post.link_copied': '文章链接已复制到剪贴板！',
+  'post.copied_short': '已复制',
   'post.toc': '文章目录',
   'common.outline': '大纲',
 

@@ -51,6 +51,7 @@ export type MessageKey =
   | 'post.thanks_desc'
   | 'post.share_link'
   | 'post.link_copied'
+  | 'post.copied_short'
   | 'post.toc'
   | 'common.outline'
   // Timeline

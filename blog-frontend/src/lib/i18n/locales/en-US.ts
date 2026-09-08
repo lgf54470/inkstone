@@ -53,6 +53,7 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'post.thanks_desc': 'Published and powered by Inkstone note system. Join discussions and comment below.',
   'post.share_link': 'Share Link',
   'post.link_copied': 'Post link copied to clipboard!',
+  'post.copied_short': 'Copied',
   'post.toc': 'Table of Contents',
   'common.outline': 'Outline',
 
