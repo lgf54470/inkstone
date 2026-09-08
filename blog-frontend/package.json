@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "dev:alt": "astro build && astro preview",
     "build": "astro build",
     "preview": "astro preview",
     "deploy": "astro build && wrangler deploy --config dist/server/wrangler.json",

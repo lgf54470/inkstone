@@ -43,12 +43,20 @@ blog-frontend/
 ```bash
 npm install        # 安装依赖
 npm run dev        # 启动开发服务器（默认 http://localhost:4321）
+npm run dev:alt    # 开发回退方案：build + preview（见下方已知问题）
 npm run build      # 生产构建到 dist/
 npm run preview    # 本地预览构建产物
 npm run typecheck  # Astro/TS 类型检查（astro check）
 npm run lint       # AGENTS.md 铁律 lint
 npm test           # 单元测试（vitest run）
+npm run smoke:e2e  # 对运行中的 preview 服务器做端点冒烟（配合 CI）
 ```
+
+### 已知问题：`astro dev` 下 workerd 模块解析崩溃
+
+`npm run dev`（Astro dev + `@cloudflare/vite-plugin` 的 workerd 运行时）在当前依赖组合下存在上游集成崩溃：请求任何页面都报 `workerd ... Unable to resolve [.../src/components/*.tsx]`，页面返回截断 HTML。已排查确认与项目代码无关（还原历史版本同样复现；清 vite 缓存 / workerd 持久状态 / 移除 Tailwind 插件均无效），且**生产构建与 `npm run preview` 完全正常**。
+
+日常开发请使用等效回路：`npm run dev:alt`（构建后由 wrangler 本地运行，SSR 与静态资产行为与生产一致；无 HMR，改代码后重新执行即可）。
 
 部署请见仓库根目录 `DEPLOYMENT.md`（Cloudflare Workers Static Assets / Pages 双方案）。
 
