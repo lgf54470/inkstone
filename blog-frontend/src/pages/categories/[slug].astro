@@ -9,14 +9,17 @@ import { t, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
 const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
 const slug = Astro.params.slug
 if (!slug) {
-  return Astro.redirect('/404')
+  Astro.response.status = 404
+  return Astro.rewrite('/404')
 }
 
 const [categories, siteInfo] = await Promise.all([api.getCategories(), api.getSiteInfo()])
 const category = categories.find((c) => c.slug === slug)
 
 if (!category) {
-  return Astro.redirect('/404')
+  // 保留原始 URL 并返回真实 404，避免 302 软 404 污染搜索引擎索引
+  Astro.response.status = 404
+  return Astro.rewrite('/404')
 }
 
 const url = Astro.url

@@ -14,14 +14,17 @@ const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
 
 const slug = Astro.params.slug
 if (!slug) {
-  return Astro.redirect('/404')
+  Astro.response.status = 404
+  return Astro.rewrite('/404')
 }
 
 // 不转发客户端可控的 x-forwarded-for/user-agent/referer 等请求头：
 // 访问统计统一由 API 侧读取 CF 边缘注入的 CF-Connecting-IP / cf-* 头，避免伪造刷量
 const post = await api.getPostBySlug(slug)
 if (!post) {
-  return Astro.redirect('/404')
+  // 保留原始 URL 并返回真实 404，避免 302 软 404 污染搜索引擎索引
+  Astro.response.status = 404
+  return Astro.rewrite('/404')
 }
 
 // Strip leading frontmatter from content if present
