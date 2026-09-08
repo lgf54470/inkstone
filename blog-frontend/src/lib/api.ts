@@ -28,20 +28,21 @@ export { extractCoverUrl } from './normalize'
 
 export function getApiBase(): string {
   if (typeof window !== 'undefined') {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     const custom = window.__INKSTONE_API_URL__
-    if (custom) return custom.replace(/\/+$/, '')
+    if (custom && (isLocal || !custom.includes('localhost'))) return custom.replace(/\/+$/, '')
     const meta = document.querySelector('meta[name="inkstone-api-url"]')
     const content = meta?.getAttribute('content')
-    if (content) return content.replace(/\/+$/, '')
+    if (content && (isLocal || !content.includes('localhost'))) return content.replace(/\/+$/, '')
   }
+  const isProd = typeof import.meta !== 'undefined' && import.meta.env?.PROD === true
   const envUrl =
     (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_API_URL) ||
     (typeof process !== 'undefined' && (process.env.PUBLIC_API_URL || process.env.API_URL))
-  if (envUrl) return envUrl.replace(/\/+$/, '')
+  if (envUrl && (!isProd || !envUrl.includes('localhost'))) return envUrl.replace(/\/+$/, '')
   return DEFAULT_API_URL
 }
 
-const API_BASE = getApiBase()
 
 // 健康状态只在浏览器端记录：SSR 侧失败不代表站点离线，且 Worker 跨请求共享模块实例，
 // 不能让一次瞬时失败污染后续请求的渲染。
@@ -79,7 +80,7 @@ async function fetchWithTimeout(path: string, init?: RequestInit): Promise<Respo
     else external.addEventListener('abort', onExternalAbort)
   }
   try {
-    return await fetch(`${API_BASE}${path}`, { ...init, signal: controller.signal })
+    return await fetch(`${getApiBase()}${path}`, { ...init, signal: controller.signal })
   } finally {
     clearTimeout(timer)
     external?.removeEventListener('abort', onExternalAbort)

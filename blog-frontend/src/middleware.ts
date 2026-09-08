@@ -9,9 +9,11 @@ import { LOCALE_COOKIE_NAME, isSupportedLocale, resolveLocale } from './lib/i18n
 // 继续被 script-src 'self' 阻断。
 function buildCsp(apiOrigin: string, nonce?: string): string {
   const scriptSrc = nonce ? `'self' 'nonce-${nonce}'` : "'self'"
+  const defaultOrigin = new URL(DEFAULT_API_URL).origin
+  const origins = Array.from(new Set([apiOrigin, defaultOrigin])).join(' ')
   return [
     "default-src 'self'",
-    `connect-src 'self' ${apiOrigin}`,
+    `connect-src 'self' ${origins}`,
     "img-src 'self' https: data:",
     "style-src 'self' 'unsafe-inline'",
     `script-src ${scriptSrc}`,
