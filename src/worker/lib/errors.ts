@@ -36,6 +36,12 @@ export class ApiError extends Error {
   static tooLarge(message: string) {
     return new ApiError(413, 'payload_too_large', message)
   }
+  static tooManyRequests(message = 'Too many requests') {
+    return new ApiError(429, 'too_many_attempts', message)
+  }
+  static internal(message = 'Internal server error') {
+    return new ApiError(500, 'internal', message)
+  }
 }
 
 export function errorResponse(c: Context, err: unknown): Response {

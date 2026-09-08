@@ -416,4 +416,32 @@ export const TABLE_STATEMENTS: readonly string[] = [
       is_self_referrer INTEGER NOT NULL DEFAULT 0,
       is_owner INTEGER NOT NULL DEFAULT 0
     )`,
+  `CREATE TABLE IF NOT EXISTS blog_links (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      url TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      avatar TEXT NOT NULL DEFAULT '',
+      email TEXT NOT NULL DEFAULT '',
+      category_id TEXT,
+      status TEXT NOT NULL DEFAULT 'approved',
+      is_pinned INTEGER NOT NULL DEFAULT 0,
+      pinned_order INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      clicks INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
+  `CREATE TABLE IF NOT EXISTS blog_link_categories (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      icon TEXT,
+      parent_id TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
 ]

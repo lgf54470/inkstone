@@ -111,3 +111,77 @@ export const blogSettingsSchema = z.object({
     language: z.enum(['zh-CN', 'en-US']).optional(),
   }).optional(),
 })
+
+export const blogLinkUpsertSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'Name is required').max(200),
+  url: z.string().min(1, 'URL is required').max(2000),
+  description: z.string().max(1000).optional().default(''),
+  avatar: z.string().max(2000).optional().default(''),
+  email: z.string().max(200).optional().default(''),
+  categoryId: z.string().nullable().optional(),
+  status: z.enum(['pending', 'approved', 'rejected']).optional().default('approved'),
+  isPinned: z.boolean().optional().default(false),
+  pinnedOrder: z.number().int().optional().default(0),
+  sortOrder: z.number().int().optional().default(0),
+  isActive: z.boolean().optional().default(true),
+})
+
+export const blogLinkCategoryUpsertSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'Category name is required').max(100),
+  icon: z.string().max(100).nullable().optional(),
+  parentId: z.string().nullable().optional(),
+  sortOrder: z.number().int().optional().default(0),
+})
+
+export const blogLinkStatusSchema = z.object({
+  status: z.enum(['pending', 'approved', 'rejected']),
+})
+
+export const blogLinkPinSchema = z.object({
+  isPinned: z.boolean(),
+})
+
+export const blogLinkBatchSchema = z.object({
+  action: z.enum(['approve', 'reject', 'delete', 'setCategory', 'setPinned']),
+  linkIds: z.array(z.string()).min(1),
+  categoryId: z.string().nullable().optional(),
+  isPinned: z.boolean().optional(),
+})
+
+export const blogPublicLinkRequestSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(200),
+  url: z.string().min(1, 'URL is required').max(2000),
+  description: z.string().max(1000).optional().default(''),
+  avatar: z.string().max(2000).optional().default(''),
+  email: z.string().max(200).optional().default(''),
+})
+
+export const blogLinkImportSchema = z.object({
+  links: z.array(
+    z.object({
+      id: z.string().optional(),
+      name: z.string().min(1).max(200),
+      url: z.string().min(1).max(2000),
+      description: z.string().max(1000).optional().default(''),
+      avatar: z.string().max(2000).optional().default(''),
+      email: z.string().max(200).optional().default(''),
+      categoryId: z.string().nullable().optional(),
+      status: z.enum(['pending', 'approved', 'rejected']).optional().default('approved'),
+      isPinned: z.boolean().optional().default(false),
+      pinnedOrder: z.number().int().optional().default(0),
+      sortOrder: z.number().int().optional().default(0),
+      isActive: z.boolean().optional().default(true),
+    }),
+  ),
+  categories: z.array(
+    z.object({
+      id: z.string().optional(),
+      name: z.string().min(1).max(100),
+      icon: z.string().nullable().optional(),
+      parentId: z.string().nullable().optional(),
+      sortOrder: z.number().int().optional().default(0),
+    }),
+  ).optional().default([]),
+})

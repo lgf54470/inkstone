@@ -1,4 +1,4 @@
-import type { Folder, Note, NoteSummary, Tag } from '@shared/types'
+import type { BlogLink, BlogLinkCategory, BlogLinkStatus, Folder, Note, NoteSummary, Tag } from '@shared/types'
 import { sortTagNames } from '@shared/markdown-utils'
 
 
@@ -227,4 +227,70 @@ export interface BlogCalendarRow {
   slug: string
   title: string
   published_at: number
+}
+
+export interface BlogLinkRow {
+  id: string
+  user_id: string
+  name: string
+  url: string
+  description: string
+  avatar: string
+  email: string
+  category_id: string | null
+  status: string
+  is_pinned: number
+  pinned_order: number
+  sort_order: number
+  is_active: number
+  clicks: number
+  created_at: number
+  updated_at: number
+}
+
+export interface BlogLinkCategoryRow {
+  id: string
+  user_id: string
+  name: string
+  icon: string | null
+  parent_id: string | null
+  sort_order: number
+  created_at: number
+  updated_at: number
+  links_count?: number
+}
+
+export function toBlogLink(row: BlogLinkRow): BlogLink {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    name: row.name,
+    url: row.url,
+    description: row.description,
+    avatar: row.avatar,
+    email: row.email,
+    categoryId: row.category_id,
+    status: (row.status as BlogLinkStatus) || 'approved',
+    isPinned: Boolean(row.is_pinned),
+    pinnedOrder: row.pinned_order,
+    sortOrder: row.sort_order,
+    isActive: Boolean(row.is_active),
+    clicks: row.clicks || 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export function toBlogLinkCategory(row: BlogLinkCategoryRow): BlogLinkCategory {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    name: row.name,
+    icon: row.icon,
+    parentId: row.parent_id,
+    sortOrder: row.sort_order,
+    linksCount: row.links_count,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
 }

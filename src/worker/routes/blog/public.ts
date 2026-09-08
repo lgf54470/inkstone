@@ -12,6 +12,8 @@ import { getBlogSettings } from './settings'
 import { safeDecodeTagParam, summarizePostTagCounts } from './helpers'
 
 
+import { registerBlogPublicLinksRoutes } from './public-links'
+
 export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): void {
   registerBlogCorsMiddleware(blogPublicRoutes)
   registerBlogSiteRoute(blogPublicRoutes)
@@ -21,6 +23,7 @@ export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): v
   registerBlogPublicTimelineRoute(blogPublicRoutes)
   registerBlogPublicCalendarRoute(blogPublicRoutes)
   registerBlogPublicCommentsRoutes(blogPublicRoutes)
+  registerBlogPublicLinksRoutes(blogPublicRoutes)
 }
 
 function registerBlogCorsMiddleware(blogPublicRoutes: Hono<AppBindings>): void {

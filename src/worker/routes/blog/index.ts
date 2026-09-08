@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { AppBindings } from '../../env'
 import { loadSession } from '../../middleware/auth'
 import { registerBlogCommentsRoutes } from './comments'
+import { registerBlogLinksRoutes } from './links'
 import { registerBlogOrganizerRoutes } from './organizer'
 import { registerBlogPostsRoutes } from './posts'
 import { registerBlogPublicRoutes } from './public'
@@ -19,4 +20,5 @@ registerBlogSettingsRoutes(blogManageRoutes)
 registerBlogPostsRoutes(blogManageRoutes)
 registerBlogOrganizerRoutes(blogManageRoutes)
 registerBlogCommentsRoutes(blogManageRoutes)
+registerBlogLinksRoutes(blogManageRoutes)
 registerBlogPublicRoutes(blogPublicRoutes)

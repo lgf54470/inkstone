@@ -60,6 +60,46 @@ export interface BlogTag {
 
 export type BlogCommentStatus = 'pending' | 'approved' | 'rejected' | 'spam'
 
+export type BlogLinkStatus = 'pending' | 'approved' | 'rejected'
+
+export interface BlogLink {
+  id: string
+  userId?: string
+  name: string
+  url: string
+  description: string
+  avatar: string
+  email?: string
+  categoryId: string | null
+  status: BlogLinkStatus
+  isPinned: boolean
+  pinnedOrder: number
+  sortOrder: number
+  isActive: boolean
+  clicks: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface BlogLinkCategory {
+  id: string
+  userId?: string
+  name: string
+  icon?: string | null
+  parentId: string | null
+  sortOrder: number
+  linksCount?: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface BlogLinkStats {
+  total: number
+  pending: number
+  approved: number
+  rejected: number
+}
+
 export interface BlogComment {
   id: string
   postId: string

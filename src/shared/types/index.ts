@@ -3,7 +3,7 @@ export type { ApiErrorBody, ApiErrorCode, DateRangeFilter, RelativeFilter } from
 export type { Attachment, AttachmentFolder, AttachmentStats, AttachmentTag, AttachmentWithUsage } from './attachments'
 export type { Backlink, CommunityTemplate, CommunityTemplateInput, Folder, Note, NoteSummary, NoteTemplate, NoteTemplateCategory, NoteVersion, NoteVersionMeta, Tag } from './notes'
 export type { BackupMode, BackupRun, BackupTarget, BackupTargetConfig, BackupTargetInput, BackupTargetPatchInput, BackupTargetResult, BackupTargetType, S3Config, TestConnectionResult, WebdavConfig } from './backup'
-export type { BlogCategory, BlogComment, BlogCommentStatus, BlogFolder, BlogGlobalAnalytics, BlogPost, BlogSettings, BlogStats, BlogTag, BlogVisitLog } from './blog'
+export type { BlogCategory, BlogComment, BlogCommentStatus, BlogFolder, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStats, BlogLinkStatus, BlogPost, BlogSettings, BlogStats, BlogTag, BlogVisitLog } from './blog'
 export type { ConflictPayload, CreateNoteBody, ListNotesQuery, ListNotesResponse, PatchNoteBody, SortKey, SortOrder, ViewKind } from './list'
 export type { ExportAttachment, ExportBundle, ImportResult } from './export'
 export type { GraphEdge, GraphNode, GraphQuery, GraphResponse } from './graph'

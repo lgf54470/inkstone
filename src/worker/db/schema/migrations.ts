@@ -438,4 +438,42 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_blog_tags_user ON blog_tags(user_id, name)`,
     ],
   },
+  {
+    version: 24,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS blog_links (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        avatar TEXT NOT NULL DEFAULT '',
+        email TEXT NOT NULL DEFAULT '',
+        category_id TEXT,
+        status TEXT NOT NULL DEFAULT 'approved',
+        is_pinned INTEGER NOT NULL DEFAULT 0,
+        pinned_order INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        clicks INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_links_user ON blog_links(user_id, status, is_pinned DESC, sort_order ASC, created_at ASC)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_links_category ON blog_links(category_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_links_url ON blog_links(url)`,
+      `CREATE TABLE IF NOT EXISTS blog_link_categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        icon TEXT,
+        parent_id TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_link_categories_user ON blog_link_categories(user_id, sort_order ASC)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_link_categories_parent ON blog_link_categories(parent_id)`,
+    ],
+  },
 ]
