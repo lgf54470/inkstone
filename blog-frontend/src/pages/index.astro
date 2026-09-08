@@ -2,15 +2,15 @@
 import Layout from '../layouts/Layout.astro'
 import HomeFeedView from '../components/home/HomeFeedView'
 import { api } from '../lib/api'
+import { parsePositiveInt } from '../lib/pagination'
 import { DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
 
 const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
 
-// Query params
+// Query params：非法值回退默认，避免 NaN 进请求
 const url = Astro.url
-const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10))
-const limitParam = parseInt(url.searchParams.get('limit') || '10', 10)
-const limit = Math.min(50, Math.max(1, Number.isNaN(limitParam) ? 10 : limitParam))
+const page = parsePositiveInt(url.searchParams.get('page'), 1)
+const limit = Math.min(50, parsePositiveInt(url.searchParams.get('limit'), 10))
 const tag = url.searchParams.get('tag') || null
 
 // Parallel data fetching for SSR
