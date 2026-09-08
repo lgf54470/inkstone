@@ -181,12 +181,16 @@ interface UseFeedQueryOptions {
   initialPosts: BlogPost[]
   initialTotal: number
   initialTotalPages: number
+  initialTag?: string | null
+  initialPage: number
+  initialLimit: number
   onScrollToTop?: () => void
 }
 
 // 标签/分页筛选请求的客户端缓存：博客文章更新频率低，同一筛选在 TTL 内重复
 // 点击（含浏览器前进/后退）直接秒开，不必每次往返远端 API。缓存挂在组件实例上，
-// 卸载即失效，避免跨会话/跨测试残留旧数据。
+// 卸载即失效，避免跨会话/跨测试残留旧数据。初始 SSR 页数据也一并种入缓存：
+// 否则从第 2 页/标签页后退回初始页时，会对已经在内存里的首页数据重新请求 API。
 const FEED_CACHE_TTL_MS = 60_000
 const FEED_CACHE_MAX_ENTRIES = 60
 
@@ -209,14 +213,40 @@ function feedCacheSet(cache: Map<string, FeedCacheEntry>, key: string, entry: Fe
   cache.set(key, entry)
 }
 
-function useFeedQuery({ initialPosts, initialTotal, initialTotalPages, onScrollToTop }: UseFeedQueryOptions) {
-  const [data, setData] = useState({
-    posts: initialPosts,
-    total: initialTotal,
-    totalPages: initialTotalPages,
-    loading: false,
+// 初始 SSR 页数据按真实缓存键种入：否则从第 2 页/标签页后退回初始页时，
+// 会对已经在内存里的首页数据重新请求 API
+function createSeededFeedCache(options: {
+  tag: string | null
+  page: number
+  limit: number
+  posts: BlogPost[]
+  total: number
+  totalPages: number
+}): Map<string, FeedCacheEntry> {
+  const cache = new Map<string, FeedCacheEntry>()
+  feedCacheSet(cache, feedCacheKey(options.tag, options.page, options.limit), {
+    at: Date.now(),
+    posts: options.posts,
+    total: options.total,
+    totalPages: options.totalPages,
   })
-  const cacheRef = useRef(new Map<string, FeedCacheEntry>())
+  return cache
+}
+
+async function fetchFeedPage(
+  tag: string | null,
+  page: number,
+  limit: number,
+  signal: AbortSignal,
+): Promise<{ posts: BlogPost[]; total: number; totalPages: number }> {
+  const res = await api.getPosts({ tag: tag || undefined, page, limit, signal })
+  return { posts: res.posts, total: res.total, totalPages: res.totalPages }
+}
+
+function useFeedQuery(options: UseFeedQueryOptions) {
+  const { initialPosts, initialTotal, initialTotalPages, initialTag = null, initialPage, initialLimit, onScrollToTop } = options
+  const [data, setData] = useState({ posts: initialPosts, total: initialTotal, totalPages: initialTotalPages, loading: false })
+  const cacheRef = useRef(createSeededFeedCache({ tag: initialTag, page: initialPage, limit: initialLimit, posts: initialPosts, total: initialTotal, totalPages: initialTotalPages }))
   const { begin, isLatest } = useLatestRequest()
 
   const fetchAndApply = async (targetTag: string | null, targetPage: number, targetLimit: number) => {
@@ -233,15 +263,10 @@ function useFeedQuery({ initialPosts, initialTotal, initialTotalPages, onScrollT
     const { seq, signal } = begin()
     setData((prev) => ({ ...prev, loading: true }))
     try {
-      const res = await api.getPosts({
-        tag: targetTag || undefined,
-        page: targetPage,
-        limit: targetLimit,
-        signal,
-      })
+      const result = await fetchFeedPage(targetTag, targetPage, targetLimit, signal)
       if (!isLatest(seq)) return
-      feedCacheSet(cache, key, { at: Date.now(), posts: res.posts, total: res.total, totalPages: res.totalPages })
-      setData({ posts: res.posts, total: res.total, totalPages: res.totalPages, loading: false })
+      feedCacheSet(cache, key, { at: Date.now(), ...result })
+      setData({ posts: result.posts, total: result.total, totalPages: result.totalPages, loading: false })
     } finally {
       if (isLatest(seq)) {
         setData((prev) => ({ ...prev, loading: false }))
@@ -265,7 +290,7 @@ function useFeedState({
   const [tag, setTag] = useState<string | null>(initialTag)
   const [page, setPage] = useState<number>(initialPage)
   const [pageSize, setPageSize] = useState<number>(initialLimit)
-  const { data, fetchAndApply } = useFeedQuery({ initialPosts, initialTotal, initialTotalPages, onScrollToTop })
+  const { data, fetchAndApply } = useFeedQuery({ initialPosts, initialTotal, initialTotalPages, initialTag, initialPage, initialLimit, onScrollToTop })
   const fetchAndApplyRef = useRef(fetchAndApply)
   useEffect(() => {
     fetchAndApplyRef.current = fetchAndApply

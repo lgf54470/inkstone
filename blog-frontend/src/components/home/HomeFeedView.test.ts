@@ -256,3 +256,32 @@ describe('HomeFeedView tag filter client cache', () => {
     expect(container.textContent).toContain('第一篇文章')
   })
 })
+
+describe('HomeFeedView initial page cache seed', () => {
+  it('serves browser back to the initial page from the seeded cache without refetching', async () => {
+    vi.restoreAllMocks()
+    const { container } = renderFeed()
+    const getPostsMock = vi.spyOn(api, 'getPosts').mockResolvedValue({
+      posts: [MOCK_POSTS[0]],
+      total: 1,
+      page: 1,
+      limit: 10,
+      totalPages: 1,
+    })
+
+    // 点击标签后 URL 变为 ?tag=tag-a（已请求一次 API）
+    await clickTag(container, '#tag-a')
+    expect(getPostsMock).toHaveBeenCalledTimes(1)
+
+    // 浏览器后退回到初始页：初始 SSR 数据已种入缓存，不应重新请求
+    await act(async () => {
+      window.history.pushState(null, '', '/')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+
+    expect(getPostsMock).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toContain('第一篇文章')
+    expect(container.textContent).toContain('第二篇文章')
+    expect(container.textContent).not.toContain('当前标签:')
+  })
+})
