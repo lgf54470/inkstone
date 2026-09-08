@@ -1,4 +1,4 @@
-import { useState, useEffect, type SyntheticEvent, type ChangeEvent } from 'react'
+import { useState, useEffect, useId, type SyntheticEvent, type ChangeEvent } from 'react'
 import {
   MessageSquare,
   Send,
@@ -312,15 +312,17 @@ function CommentInput({
   onChange: (e: ChangeEvent<HTMLInputElement>) => void
 }) {
   const Icon = config.icon
+  const inputId = useId()
   return (
     <div>
-      <label className='block text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] mb-1'>
+      <label htmlFor={inputId} className='block text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] mb-1'>
         {config.label}
         {config.required && <span className='text-[var(--accent)]'> *</span>}
       </label>
       <div className='relative flex items-center'>
         <Icon className='w-3.5 h-3.5 absolute left-2.5 text-[var(--text-quaternary)]' />
         <input
+          id={inputId}
           type={config.type}
           required={config.required}
           value={value}
@@ -342,12 +344,14 @@ function CommentContentField({
   locale: BlogLocale
   onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void
 }) {
+  const inputId = useId()
   return (
     <div>
-      <label className='block text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] mb-1'>
+      <label htmlFor={inputId} className='block text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] mb-1'>
         {t('comments.field_content', {}, locale)} <span className='text-[var(--accent)]'>*</span>
       </label>
       <textarea
+        id={inputId}
         required
         rows={3}
         value={value}
