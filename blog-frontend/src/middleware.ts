@@ -52,6 +52,34 @@ function pageCacheControl(url: URL, hasLocaleCookie: boolean): string | null {
   return 'public, max-age=0, s-maxage=60'
 }
 
+/**
+ * 开发模式交给 vite HMR（ws 连接），生产响应才下发 CSP。
+ * 带 src 的外部脚本无需 nonce（'self' 已放行）；Astro 岛水合脚本以
+ * <script type="module"> 内联输出，逐个打上当前响应专属 nonce。
+ */
+function applyCsp(response: Response): Response {
+  if (!import.meta.env.PROD) return response
+  const contentType = response.headers.get('content-type') ?? ''
+  let final = response
+  if (contentType.includes('text/html')) {
+    const nonce = randomNonce()
+    final = new HTMLRewriter()
+      .on('script', {
+        element(element) {
+          if (!element.hasAttribute('src') && !element.hasAttribute('nonce')) {
+            element.setAttribute('nonce', nonce)
+          }
+        },
+      })
+      .transform(new Response(response.body, response))
+    final.headers.set('Content-Security-Policy', buildCsp(apiOriginOf(), nonce))
+  } else {
+    final.headers.set('Content-Security-Policy', buildCsp(apiOriginOf()))
+  }
+  final.headers.set('X-Content-Type-Options', 'nosniff')
+  return final
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const queryLang = context.url.searchParams.get('lang')
   const cookieLang = context.cookies.get(LOCALE_COOKIE_NAME)?.value || context.cookies.get('inkstone_locale')?.value
@@ -68,30 +96,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     })
   }
 
-  const response = await next()
-  // 开发模式交给 vite HMR（ws 连接），生产响应才下发 CSP
-  let final = response
-  if (import.meta.env.PROD) {
-    const contentType = response.headers.get('content-type') ?? ''
-    if (contentType.includes('text/html')) {
-      // Astro 岛水合脚本以 <script type="module"> 内联输出，逐个打上当前
-      // 响应专属 nonce；带 src 的外部脚本无需 nonce（'self' 已放行）。
-      const nonce = randomNonce()
-      final = new HTMLRewriter()
-        .on('script', {
-          element(element) {
-            if (!element.hasAttribute('src') && !element.hasAttribute('nonce')) {
-              element.setAttribute('nonce', nonce)
-            }
-          },
-        })
-        .transform(new Response(response.body, response))
-      final.headers.set('Content-Security-Policy', buildCsp(apiOriginOf(), nonce))
-    } else {
-      final.headers.set('Content-Security-Policy', buildCsp(apiOriginOf()))
-    }
-    final.headers.set('X-Content-Type-Options', 'nosniff')
-  }
+  let final = applyCsp(await next())
 
   const contentType = final.headers.get('content-type') ?? ''
   if (contentType.includes('text/html')) {
