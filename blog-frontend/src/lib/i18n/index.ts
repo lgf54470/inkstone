@@ -20,6 +20,14 @@ export function isSupportedLocale(val: unknown): val is BlogLocale {
   return typeof val === 'string' && (SUPPORTED_LOCALES as readonly string[]).includes(val)
 }
 
+export function getCurrentLocale(): BlogLocale {
+  if (typeof document !== 'undefined') {
+    const lang = document.documentElement.getAttribute('lang')
+    if (isSupportedLocale(lang)) return lang
+  }
+  return DEFAULT_LOCALE
+}
+
 export function t(key: MessageKey, params?: InterpolationParams, locale: BlogLocale = DEFAULT_LOCALE): string {
   const dict = MESSAGES[locale] || MESSAGES[DEFAULT_LOCALE]
   const template = dict[key] || MESSAGES[DEFAULT_LOCALE][key] || key

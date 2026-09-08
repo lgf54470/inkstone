@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { initDiagramLazyRender, initInteractiveContent, selectMarkdownTab, showChartError, showMermaidError } from './interactive'
+import { initInteractiveContent, selectMarkdownTab } from './interactive'
+import { initDiagramLazyRender, showChartError, showMermaidError } from './diagram-reveal'
+import { createConcurrencyQueue } from './concurrency-queue'
 import { FakeWorker } from '../../tests/helpers/fake-worker'
 import { COPY_FEEDBACK_MS, JS_RUN_TIMEOUT_MS } from './constants'
 
@@ -11,9 +13,15 @@ vi.mock('mermaid', () => ({
   },
 }))
 
+// mock 前缀：vi.mock 工厂被提升后仍能引用该变量（首次动态 import 时才求值）
+const mockChartState = { constructed: 0 }
+
 vi.mock('chart.js/auto', () => ({
   default: class MockChart {
     destroy() {}
+    constructor() {
+      mockChartState.constructed++
+    }
   },
 }))
 
@@ -237,26 +245,163 @@ describe('diagram lazy rendering', () => {
 
 })
 
+const chartBlock = (label: string): string =>
+  `<div class="chartjs-block loading" data-chart="${encodeURIComponent('{"type":"line"}')}" aria-busy="true">${label}</div>`
+
+// chartRevealObserver 是模块级单例，后续测试复用首个创建的实例（不再新建），
+// 因此不能依赖 instances.at(-1)，而是按 observe 的 target 反查观察者。
+function chartObserverFor(block: HTMLElement): FakeIntersectionObserver {
+  const io = FakeIntersectionObserver.instances.find((observer) => observer.targets.has(block))
+  if (!io) throw new Error('no IntersectionObserver instance observing the chart block')
+  return io
+}
+
 describe('chart lazy rendering', () => {
   beforeEach(() => {
-    FakeIntersectionObserver.instances.length = 0
+    mockChartState.constructed = 0
     vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver)
   })
 
   it('renders a chart block only after it intersects', async () => {
-    document.body.innerHTML =
-      `<div class="chartjs-block loading" data-chart="${encodeURIComponent('{"type":"line"}')}" aria-busy="true">加载中</div>`
+    document.body.innerHTML = chartBlock('图A')
     initDiagramLazyRender()
+    const block = document.querySelector<HTMLElement>('.chartjs-block')!
 
-    const io = FakeIntersectionObserver.instances.at(-1)!
-    expect(io.targets.size).toBe(1)
+    const io = chartObserverFor(block)
     expect(document.querySelector('.chartjs-block canvas')).toBeNull()
 
-    io.fire([{ target: document.querySelector('.chartjs-block')!, isIntersecting: true }])
+    io.fire([{ target: block, isIntersecting: true }])
     await vi.waitFor(() => {
       expect(document.querySelector('.chartjs-block canvas')).not.toBeNull()
     })
     expect(document.querySelector('.chartjs-block')!.classList.contains('loading')).toBe(false)
+  })
+
+  it('renders each block exactly once when the observer fires repeatedly', async () => {
+    document.body.innerHTML = chartBlock('图B')
+    initDiagramLazyRender()
+    const block = document.querySelector<HTMLElement>('.chartjs-block')!
+
+    chartObserverFor(block).fire([{ target: block, isIntersecting: true }])
+    chartObserverFor(block).fire([{ target: block, isIntersecting: true }])
+    await vi.waitFor(() => {
+      expect(block.querySelector('canvas')).not.toBeNull()
+    })
+
+    expect(mockChartState.constructed).toBe(1)
+  })
+})
+
+describe('chart render queue drain', () => {
+  beforeEach(() => {
+    mockChartState.constructed = 0
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver)
+  })
+
+  it('drains charts queued by a fast scroll until all are rendered', async () => {
+    document.body.innerHTML = ['图1', '图2', '图3', '图4'].map(chartBlock).join('')
+    initDiagramLazyRender()
+
+    const blocks = [...document.querySelectorAll<HTMLElement>('.chartjs-block')]
+    chartObserverFor(blocks[0]!).fire(blocks.map((block) => ({ target: block, isIntersecting: true })))
+
+    await vi.waitFor(() => {
+      expect(document.querySelectorAll('.chartjs-block canvas').length).toBe(4)
+    })
+    expect(mockChartState.constructed).toBe(4)
+  })
+})
+
+describe('chart scroll settle fallback', () => {
+  beforeEach(() => {
+    mockChartState.constructed = 0
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver)
+  })
+
+  it('renders viewport-visible loading blocks after scrolling settles', async () => {
+    document.body.innerHTML = chartBlock('图C')
+    initDiagramLazyRender()
+    const block = document.querySelector<HTMLElement>('.chartjs-block')!
+    // jsdom 的 getBoundingClientRect 恒为全零，模拟块处于视口内
+    vi.spyOn(block, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 300, left: 0, right: 100, width: 100, height: 200, x: 0, y: 100, toJSON: () => ({}) })
+
+    // 观察者从未投递相交（快速滚动漏检），滚动停止后由兜底补渲染
+    window.dispatchEvent(new Event('scroll'))
+    await vi.waitFor(
+      () => {
+        expect(block.querySelector('canvas')).not.toBeNull()
+      },
+      { timeout: 2000 },
+    )
+    expect(mockChartState.constructed).toBe(1)
+  })
+})
+
+describe('createConcurrencyQueue concurrency bound', () => {
+  it('starts at most maxConcurrent tasks and queues the rest', async () => {
+    const queue = createConcurrencyQueue(2)
+    const started: number[] = []
+    const active = new Set<number>()
+    const gates: Array<() => void> = []
+    let maxActive = 0
+    for (let i = 0; i < 4; i++) {
+      queue.push(() => new Promise<void>((resolve) => {
+        started.push(i)
+        active.add(i)
+        maxActive = Math.max(maxActive, active.size)
+        gates.push(() => {
+          active.delete(i)
+          resolve()
+        })
+      }))
+    }
+
+    // 入队即泵起：前两个任务立即开始，其余排队等待空位
+    expect(started).toEqual([0, 1])
+    expect(active.size).toBe(2)
+    expect(queue.size).toBe(2)
+
+    // 逐批放行：放行会泵起新任务并注册新闸门，等闸门齐了再继续
+    for (let released = 0; released < 4; released++) {
+      await vi.waitFor(() => {
+        const gate = gates.shift()
+        if (!gate) throw new Error('task not started yet')
+        gate()
+      })
+    }
+    await vi.waitFor(() => {
+      expect(queue.size).toBe(0)
+      expect(active.size).toBe(0)
+    })
+    expect(maxActive).toBe(2)
+  })
+})
+
+describe('createConcurrencyQueue FIFO drain', () => {
+  it('starts queued tasks in FIFO order as in-flight ones finish', async () => {
+    const queue = createConcurrencyQueue(2)
+    const started: number[] = []
+    const gates: Array<() => void> = []
+    for (let i = 0; i < 4; i++) {
+      queue.push(() => new Promise<void>((resolve) => {
+        started.push(i)
+        gates.push(resolve)
+      }))
+    }
+
+    gates[0]!()
+    await vi.waitFor(() => {
+      expect(started).toEqual([0, 1, 2])
+    })
+    gates[1]!()
+    gates[2]!()
+    await vi.waitFor(() => {
+      expect(started).toEqual([0, 1, 2, 3])
+    })
+    gates[3]!()
+    await vi.waitFor(() => {
+      expect(queue.size).toBe(0)
+    })
   })
 })
 
