@@ -6,6 +6,8 @@ import type {
   BlogSiteInfo,
   TimelineGroup,
   CalendarDayPost,
+  BlogPublicLink,
+  BlogPublicLinkCategory,
 } from './types'
 import {
   asArray,
@@ -343,4 +345,67 @@ export const api = {
       comment: data.comment ? normalizeComment(data.comment) : undefined,
     }
   },
+}
+
+function normalizePublicLink(raw: unknown): BlogPublicLink {
+  const r = asRecord(raw)
+  return {
+    id: String(r.id || ''),
+    name: String(r.name || ''),
+    url: String(r.url || ''),
+    description: r.description ? String(r.description) : null,
+    avatar: r.avatar ? String(r.avatar) : null,
+    categoryId: r.categoryId ? String(r.categoryId) : null,
+    isPinned: Boolean(r.isPinned),
+    clicks: typeof r.clicks === 'number' ? r.clicks : 0,
+  }
+}
+
+function normalizePublicLinkCategory(raw: unknown): BlogPublicLinkCategory {
+  const r = asRecord(raw)
+  return {
+    id: String(r.id || ''),
+    name: String(r.name || ''),
+    icon: r.icon ? String(r.icon) : null,
+    parentId: r.parentId ? String(r.parentId) : null,
+    sortOrder: typeof r.sortOrder === 'number' ? r.sortOrder : 0,
+  }
+}
+
+export async function fetchPublicLinks(): Promise<{ links: BlogPublicLink[]; categories: BlogPublicLinkCategory[] }> {
+  try {
+    const raw = await requestJson('/api/blog/public/links')
+    const rec = asRecord(raw)
+    const links = asArray(rec.links).map(normalizePublicLink)
+    const categories = asArray(rec.categories).map(normalizePublicLinkCategory)
+    return { links, categories }
+  } catch {
+    return { links: [], categories: [] }
+  }
+}
+
+export async function submitPublicLinkRequest(data: {
+  name: string
+  url: string
+  description?: string
+  avatar?: string
+  email?: string
+}): Promise<{ ok: boolean; message?: string }> {
+  const res = await fetchWithTimeout('/api/blog/public/link-requests', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  const rec = asRecord(await res.json().catch(() => ({})))
+  if (!res.ok) {
+    throw new Error(typeof rec.error === 'string' ? rec.error : `HTTP ${res.status}`)
+  }
+  return {
+    ok: typeof rec.ok === 'boolean' ? rec.ok : true,
+    message: typeof rec.message === 'string' ? rec.message : 'OK',
+  }
+}
+
+export async function recordLinkClick(id: string): Promise<void> {
+  await fetchWithTimeout(`/api/blog/public/links/${id}/click`, { method: 'POST' }).catch(() => null)
 }

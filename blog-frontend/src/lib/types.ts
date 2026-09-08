@@ -92,3 +92,22 @@ export interface CalendarDayPost {
     slug: string
   }[]
 }
+
+export interface BlogPublicLink {
+  id: string
+  name: string
+  url: string
+  description: string | null
+  avatar: string | null
+  categoryId: string | null
+  isPinned: boolean
+  clicks?: number
+}
+
+export interface BlogPublicLinkCategory {
+  id: string
+  name: string
+  icon: string | null
+  parentId: string | null
+  sortOrder: number
+}
