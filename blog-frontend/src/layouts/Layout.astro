@@ -51,6 +51,7 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate" type="application/rss+xml" title={`${siteInfo.siteName} RSS`} href="/feed.xml" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
     <meta name="description" content={description} />

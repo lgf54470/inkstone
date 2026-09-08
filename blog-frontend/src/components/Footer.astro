@@ -53,6 +53,18 @@ const currentYear = new Date().getFullYear()
           {t('footer.author_label', {}, locale)}<span class="font-medium text-[var(--text-primary)]">{siteInfo.authorName}</span>
         </p>
         <div class="flex items-center gap-3 pt-1">
+          <a
+            href="/feed.xml"
+            class="p-2 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all shadow-2xs"
+            title="RSS"
+            aria-label="RSS"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M4 11a9 9 0 019 9" />
+              <path d="M4 4a16 16 0 0116 16" />
+              <circle cx="5" cy="19" r="1" />
+            </svg>
+          </a>
           {siteInfo.socialLinks?.github && (
             <a
               href={siteInfo.socialLinks.github}
