@@ -22,7 +22,8 @@ function pad2(value: number): string {
   return String(value).padStart(2, '0')
 }
 
-function isSameDate(today: Date, year: number, month: number, day: number): boolean {
+function isSameDate(today: Date | null, year: number, month: number, day: number): boolean {
+  if (today === null) return false
   return today.getFullYear() === year && today.getMonth() + 1 === month && today.getDate() === day
 }
 
@@ -98,12 +99,18 @@ export default function CalendarWidget({
   const { currentYear, currentMonth, prevMonth, nextMonth, goToday } = useMonthNav()
   const daysData = useCalendarDays(initialDays, currentYear, currentMonth)
   const [selectedDay, setSelectedDay] = useState<CalendarDayPost | null>(null)
+  // SSR runs in UTC, browser runs in the user's local timezone — using null as the
+  // shared initial value ensures both sides render identically before hydration.
+  // useEffect sets the real client date after mount so "today" highlights correctly.
+  const [today, setToday] = useState<Date | null>(null)
 
   useEffect(() => {
     setSelectedDay(null)
   }, [currentYear, currentMonth])
 
-  const today = new Date()
+  useEffect(() => {
+    setToday(new Date())
+  }, [])
 
   return (
     <CalendarShell isFullPage={isFullPage}>
@@ -131,6 +138,7 @@ export default function CalendarWidget({
     </CalendarShell>
   )
 }
+
 
 function CalendarShell({ isFullPage, children }: { isFullPage: boolean; children: ReactNode }) {
   return (
@@ -243,7 +251,7 @@ function DayGrid({
   daysData: CalendarDayPost[]
   currentYear: number
   currentMonth: number
-  today: Date
+  today: Date | null
   selectedDay: CalendarDayPost | null
   onSelectDay: (day: CalendarDayPost | null) => void
 }) {
@@ -287,7 +295,7 @@ function renderDayCell(
     currentYear: number
     currentMonth: number
     postsByDate: Map<string, CalendarDayPost>
-    today: Date
+    today: Date | null
     selectedDay: CalendarDayPost | null
     onSelectDay: (day: CalendarDayPost | null) => void
   }
@@ -310,6 +318,7 @@ function renderDayCell(
     />
   )
 }
+
 
 function DayCell({
   day,

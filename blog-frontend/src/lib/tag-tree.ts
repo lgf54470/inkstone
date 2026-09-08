@@ -55,7 +55,10 @@ function aggregateCounts(nodes: Map<string, TagTreeNode> | TagTreeNode[]): void 
 function sortNodes(nodes: TagTreeNode[]): TagTreeNode[] {
   return nodes
     .map((node) => ({ ...node, children: sortNodes(node.children) }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    // 'en' locale 固定排序规则：避免 Cloudflare Worker V8 默认 locale 与
+    // 用户浏览器 locale（如 zh-CN）的 localeCompare 结果不同，导致 SSR 和客户
+    // 端渲染出不同的节点顺序，进而触发 React hydration error #418。
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'en'))
 }
 
 // 模糊搜索：大小写不敏感子串匹配 label 或完整路径；命中的节点保留整条
