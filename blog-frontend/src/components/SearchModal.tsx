@@ -6,7 +6,8 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
-import { Search, X, Calendar, Tag, Loader2, AlertCircle } from 'lucide-react'
+import { Calendar, Tag, Loader2, AlertCircle } from 'lucide-react'
+import SearchInput from './SearchInput'
 import { api } from '../lib/api'
 import { useFocusTrap, useScrollLock } from '../lib/use-focus-trap'
 import { useCurrentLocale } from '../lib/i18n/use-current-locale'
@@ -171,7 +172,6 @@ function useSearchModal() {
   const { isOpen, close } = useVisibility()
   const { query, setQuery, results, total, loading, error, inputRef } = useSearch(isOpen)
   const { selectedIndex, setSelectedIndex, handleKeyDownList } = useSelection(results)
-  const clearQuery = () => setQuery('')
 
   return {
     isOpen,
@@ -182,7 +182,6 @@ function useSearchModal() {
     total,
     selectedIndex,
     inputRef,
-    clearQuery,
     close,
     onQueryChange: (value: string) => setQuery(value),
     onHoverRow: (idx: number) => setSelectedIndex(idx),
@@ -207,7 +206,6 @@ export default function SearchModal({ initialLocale }: SearchModalProps) {
         inputRef={search.inputRef}
         locale={locale}
         onQueryChange={search.onQueryChange}
-        onClear={search.clearQuery}
       />
       <SearchResultsPanel
         query={search.query}
@@ -278,41 +276,30 @@ function SearchInputRow({
   inputRef,
   locale,
   onQueryChange,
-  onClear,
 }: {
   query: string
   loading: boolean
   inputRef: RefObject<HTMLInputElement | null>
   locale: BlogLocale
   onQueryChange: (value: string) => void
-  onClear: () => void
 }) {
   return (
-    <div className='flex items-center px-4 py-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-raised)]'>
-      <Search className='w-5 h-5 text-[var(--text-tertiary)] mr-3 shrink-0' />
-      <input
-        ref={inputRef}
-        type='text'
+    <div className='px-4 py-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-raised)]'>
+      <SearchInput
         value={query}
-        onChange={(e) => onQueryChange(e.target.value)}
+        onChange={onQueryChange}
         placeholder={t('search.input_placeholder', {}, locale)}
-        className='flex-1 bg-transparent text-sm focus:outline-none placeholder:text-[var(--text-quaternary)] text-[var(--text-primary)]'
+        ariaLabel={t('nav.search_aria', {}, locale)}
+        clearLabel={t('search.clear', {}, locale)}
+        loading={loading}
+        inputRef={inputRef}
+        variant='bare'
+        trailingEmpty={
+          <kbd className='hidden sm:inline-block text-[length:var(--text-10)] font-mono px-1.5 py-0.5 rounded border border-[var(--border-subtle)] text-[var(--text-quaternary)] bg-[var(--bg-base)]'>
+            ESC
+          </kbd>
+        }
       />
-      {loading ? (
-        <Loader2 className='w-4 h-4 text-[var(--accent)] animate-spin shrink-0' />
-      ) : query ? (
-        <button
-          type='button'
-          onClick={onClear}
-          className='p-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer'
-        >
-          <X className='w-4 h-4' />
-        </button>
-      ) : (
-        <kbd className='hidden sm:inline-block text-[length:var(--text-10)] font-mono px-1.5 py-0.5 rounded border border-[var(--border-subtle)] text-[var(--text-quaternary)] bg-[var(--bg-base)]'>
-          ESC
-        </kbd>
-      )}
     </div>
   )
 }

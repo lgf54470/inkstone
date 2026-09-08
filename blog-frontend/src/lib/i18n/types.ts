@@ -120,6 +120,7 @@ export type MessageKey =
   | 'filter.no_matched'
   // Search Modal
   | 'search.input_placeholder'
+  | 'search.clear'
   | 'search.empty_query_hint'
   | 'search.no_results'
   | 'search.error'

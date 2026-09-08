@@ -10,9 +10,9 @@ import {
   Loader2,
   Search,
   Sun,
-  X,
   type LucideIcon,
 } from 'lucide-react'
+import SearchInput from './SearchInput'
 import { useCurrentLocale } from '../lib/i18n/use-current-locale'
 import { DEFAULT_WEATHER_CITY, WEATHER_CITY_SEARCH_DEBOUNCE_MS } from '../lib/constants'
 import { t, type BlogLocale, type MessageKey } from '../lib/i18n'
@@ -207,7 +207,6 @@ function WeatherBody({ weather, locale }: WeatherBodyProps): ReactElement {
         locale={locale}
         onQueryChange={search.setQuery}
         onSelect={selectCity}
-        onClear={search.clear}
       />
     )
   }
@@ -242,16 +241,10 @@ function CitySearch({
   locale: BlogLocale
   onQueryChange: (value: string) => void
   onSelect: (result: WeatherGeocodeResult) => void
-  onClear: () => void
 }): ReactElement {
   return (
     <div className='space-y-2'>
-      <CitySearchInput
-        query={query}
-        locale={locale}
-        onQueryChange={onQueryChange}
-        onClear={onClear}
-      />
+      <CitySearchInput query={query} locale={locale} onQueryChange={onQueryChange} />
 
       <SearchFeedback
         query={query}
@@ -269,35 +262,19 @@ function CitySearchInput({
   query,
   locale,
   onQueryChange,
-  onClear,
 }: {
   query: string
   locale: BlogLocale
   onQueryChange: (value: string) => void
-  onClear: () => void
 }): ReactElement {
   return (
-    <div className='relative'>
-      <Search className='w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-quaternary)]' aria-hidden='true' />
-      <input
-        type='text'
-        value={query}
-        onChange={(e) => onQueryChange(e.target.value)}
-        placeholder={t('weather.search_placeholder', {}, locale)}
-        aria-label={t('weather.search_aria', {}, locale)}
-        className='w-full pl-8 pr-8 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none focus:border-[var(--accent)] transition-colors'
-      />
-      {query !== '' && (
-        <button
-          type='button'
-          onClick={onClear}
-          aria-label={t('weather.clear_search', {}, locale)}
-          className='absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer'
-        >
-          <X className='w-3.5 h-3.5' aria-hidden='true' />
-        </button>
-      )}
-    </div>
+    <SearchInput
+      value={query}
+      onChange={onQueryChange}
+      placeholder={t('weather.search_placeholder', {}, locale)}
+      ariaLabel={t('weather.search_aria', {}, locale)}
+      clearLabel={t('weather.clear_search', {}, locale)}
+    />
   )
 }
 

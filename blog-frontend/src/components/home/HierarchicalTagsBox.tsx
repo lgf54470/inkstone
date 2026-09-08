@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactElement } from 'react'
-import { ChevronDown, ChevronRight, Tags, X, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, Tags } from 'lucide-react'
+import SearchInput from '../SearchInput'
 import { buildTagTree, filterTagTree, ancestorNames, type TagTreeNode } from '../../lib/tag-tree'
 import { t, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
 import type { BlogTag } from '../../lib/types'
@@ -94,26 +95,14 @@ function TagSearchInput({
   onChange: (value: string) => void
 }): ReactElement {
   return (
-    <div className='relative mb-2'>
-      <Search className='w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-quaternary)]' aria-hidden='true' />
-      <input
-        type='text'
+    <div className='mb-2'>
+      <SearchInput
         value={query}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
         placeholder={t('tagtree.search_placeholder', {}, locale)}
-        aria-label={t('tagtree.search_aria', {}, locale)}
-        className='w-full pl-8 pr-8 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none focus:border-[var(--accent)] transition-colors'
+        ariaLabel={t('tagtree.search_aria', {}, locale)}
+        clearLabel={t('tagtree.clear_search', {}, locale)}
       />
-      {query !== '' && (
-        <button
-          type='button'
-          onClick={() => onChange('')}
-          aria-label={t('tagtree.clear_search', {}, locale)}
-          className='absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer'
-        >
-          <X className='w-3.5 h-3.5' aria-hidden='true' />
-        </button>
-      )}
     </div>
   )
 }

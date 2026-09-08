@@ -130,6 +130,7 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
 
   // Search Modal
   'search.input_placeholder': '搜尋文章標題、摘要、標籤... (↑↓ 選擇，Enter 確認)',
+  'search.clear': '清除搜尋',
   'search.empty_query_hint': '輸入關鍵字進行全站搜尋 (Cmd+K)',
   'search.no_results': '未找到與 "{query}" 相關的文章',
   'search.error': '搜尋服務暫時不可用，請稍後重試',

@@ -130,6 +130,7 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
 
   // Search Modal
   'search.input_placeholder': 'Search posts by title, excerpt, tag... (↑↓ navigate, Enter open)',
+  'search.clear': 'Clear search',
   'search.empty_query_hint': 'Type keywords to search across all posts (Cmd+K)',
   'search.no_results': 'No posts found matching "{query}"',
   'search.error': 'Search is temporarily unavailable, please try again later',
