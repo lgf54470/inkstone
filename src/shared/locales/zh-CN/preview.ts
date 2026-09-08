@@ -25,4 +25,4 @@ export const messages = {
 'preview.zoom_in': '放大',
 'preview.zoom_out': '缩小',
 'preview.zoom_reset': '适应屏幕',
-};
+}

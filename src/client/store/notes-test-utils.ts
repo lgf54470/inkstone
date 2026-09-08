@@ -1,6 +1,6 @@
-import type { Note, NoteSummary } from '@shared/types';
-import { api, ApiError } from '../lib/api';
-import { localDb } from '../lib/db';
+import type { Note, NoteSummary } from '@shared/types'
+import { api, ApiError } from '../lib/api'
+import { localDb } from '../lib/db'
 
 /**
  * Reusable test harness for the notes store (src/client/store/notes.ts).
@@ -17,25 +17,25 @@ import { localDb } from '../lib/db';
 
 
 interface NotesPatchCall {
-    id: string;
-    rev: number;
-    patch: Record<string, unknown>;
+    id: string
+    rev: number
+    patch: Record<string, unknown>
 }
 
 /** In-memory stand-in for the account's server-side note storage. */
 
 interface NotesMockServer {
-    notes: Map<string, Note>;
-    patchCalls: NotesPatchCall[];
+    notes: Map<string, Note>
+    patchCalls: NotesPatchCall[]
     /** Note ids whose next patch should 409 once (simulating a write from another device), then succeed. */
-    conflicts: Set<string>;
+    conflicts: Set<string>
 }
 
 export const notesMockServer: NotesMockServer = {
     notes: new Map(),
     patchCalls: [],
     conflicts: new Set(),
-};
+}
 
 /**
  * Replace `api.notes.patch` with an in-memory implementation that applies the patch body to the
@@ -52,43 +52,43 @@ function applyPatchToNote(server: Note, body: Record<string, unknown>): Note {
         ...(typeof body.isArchived === 'boolean' ? { isArchived: body.isArchived } : {}),
         rev: server.rev + 1,
         updatedAt: Date.now(),
-    };
+    }
 }
 
 export function installNotesApiStub(): void {
     api.notes.patch = (async (id: string, body: { rev: number } & Record<string, unknown>): Promise<Note> => {
-        const server = notesMockServer.notes.get(id);
+        const server = notesMockServer.notes.get(id)
         if (!server)
-            throw new Error(`Mock server has no note "${id}"`);
-        notesMockServer.patchCalls.push({ id, rev: body.rev, patch: { ...body } });
+            throw new Error(`Mock server has no note "${id}"`)
+        notesMockServer.patchCalls.push({ id, rev: body.rev, patch: { ...body } })
         if (notesMockServer.conflicts.has(id)) {
-            notesMockServer.conflicts.delete(id);
+            notesMockServer.conflicts.delete(id)
             // Another device already advanced the note past the client's revision.
-            const theirs: Note = { ...server, rev: server.rev + 1, updatedAt: Date.now() };
-            throw new ApiError(409, 'conflict', 'The note changed on another device', { server: theirs });
+            const theirs: Note = { ...server, rev: server.rev + 1, updatedAt: Date.now() }
+            throw new ApiError(409, 'conflict', 'The note changed on another device', { server: theirs })
         }
-        const updated = applyPatchToNote(server, body);
-        notesMockServer.notes.set(id, updated);
-        return updated;
-    }) as unknown as typeof api.notes.patch;
+        const updated = applyPatchToNote(server, body)
+        notesMockServer.notes.set(id, updated)
+        return updated
+    }) as unknown as typeof api.notes.patch
 
     api.notes.remove = (async (id: string): Promise<Note> => {
-        const server = notesMockServer.notes.get(id);
+        const server = notesMockServer.notes.get(id)
         if (!server)
-            throw new Error(`Mock server has no note "${id}"`);
-        const removed: Note = { ...server, deletedAt: Date.now(), updatedAt: Date.now(), rev: server.rev + 1 };
-        notesMockServer.notes.set(id, removed);
-        return removed;
-    }) as unknown as typeof api.notes.remove;
+            throw new Error(`Mock server has no note "${id}"`)
+        const removed: Note = { ...server, deletedAt: Date.now(), updatedAt: Date.now(), rev: server.rev + 1 }
+        notesMockServer.notes.set(id, removed)
+        return removed
+    }) as unknown as typeof api.notes.remove
 
     api.notes.restore = (async (id: string): Promise<Note> => {
-        const server = notesMockServer.notes.get(id);
+        const server = notesMockServer.notes.get(id)
         if (!server)
-            throw new Error(`Mock server has no note "${id}"`);
-        const restored: Note = { ...server, deletedAt: null, updatedAt: Date.now(), rev: server.rev + 1 };
-        notesMockServer.notes.set(id, restored);
-        return restored;
-    }) as unknown as typeof api.notes.restore;
+            throw new Error(`Mock server has no note "${id}"`)
+        const restored: Note = { ...server, deletedAt: null, updatedAt: Date.now(), rev: server.rev + 1 }
+        notesMockServer.notes.set(id, restored)
+        return restored
+    }) as unknown as typeof api.notes.restore
 }
 
 /**
@@ -97,15 +97,15 @@ export function installNotesApiStub(): void {
  * Assignments go through a loose cast: the stubs intentionally ignore their real signatures.
  */
 export function installLocalDbStubs(): void {
-    const loose = localDb as unknown as Record<string, (...args: unknown[]) => unknown>;
-    loose.scheduleShellSave = () => undefined;
-    loose.setContent = async () => undefined;
-    loose.getContent = async () => undefined;
-    loose.dropContent = async () => undefined;
-    loose.bindUser = async () => undefined;
-    loose.loadShell = async () => null;
-    loose.getOutbox = async () => [];
-    loose.withOutboxReplayLock = async () => true;
+    const loose = localDb as unknown as Record<string, (...args: unknown[]) => unknown>
+    loose.scheduleShellSave = () => undefined
+    loose.setContent = async () => undefined
+    loose.getContent = async () => undefined
+    loose.dropContent = async () => undefined
+    loose.bindUser = async () => undefined
+    loose.loadShell = async () => null
+    loose.getOutbox = async () => []
+    loose.withOutboxReplayLock = async () => true
 }
 
 /** Build a minimal NoteSummary fixture. */
@@ -127,5 +127,5 @@ export function noteSummary(id: string, overrides: Partial<NoteSummary> = {}): N
         updatedAt: 1_000,
         deletedAt: null,
         ...overrides,
-    };
+    }
 }

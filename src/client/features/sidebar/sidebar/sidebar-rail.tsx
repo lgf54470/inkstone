@@ -7,20 +7,20 @@ import {
   Share2,
   Star,
   Trash2,
-} from 'lucide-react';
-import { IconButton } from '../../../components/primitives';
-import { Tooltip } from '../../../components/overlay';
-import { useUi } from '../../../store/ui';
-import { createContextualNote } from '../../../store/notes';
-import { t } from '../../../lib/i18n';
-import { SidebarAccount } from './sidebar-account';
+} from 'lucide-react'
+import { IconButton } from '../../../components/primitives'
+import { Tooltip } from '../../../components/overlay'
+import { useUi } from '../../../store/ui'
+import { createContextualNote } from '../../../store/notes'
+import { t } from '../../../lib/i18n'
+import { SidebarAccount } from './sidebar-account'
 
 export function SidebarRail({ onExpand }: {
-    onExpand?: () => void;
+    onExpand?: () => void
 }) {
-    const view = useUi((s) => s.view);
-    const panel = useUi((s) => s.panel);
-    const openView = useUi((s) => s.openView);
+    const view = useUi((s) => s.view)
+    const panel = useUi((s) => s.panel)
+    const openView = useUi((s) => s.openView)
     return (<aside className='flex h-full min-h-0 flex-col items-center bg-[var(--bg-sunken)]'>
       <div className='flex h-11 w-full shrink-0 items-center justify-center border-b border-[var(--border-subtle)]'>
         <Tooltip label={t('sidebar.expand_navigation')} side='right'>
@@ -47,22 +47,22 @@ export function SidebarRail({ onExpand }: {
       <div className='flex w-full shrink-0 justify-center border-t border-[var(--border-subtle)] py-2'>
         <SidebarAccount rail/>
       </div>
-    </aside>);
+    </aside>)
 }
 
 
 function RailButton({ label, combo, icon, active, accent, onClick, }: {
-    label: string;
-    combo?: string;
-    icon: React.ReactNode;
-    active?: boolean;
-    accent?: boolean;
-    onClick: () => void;
+    label: string
+    combo?: string
+    icon: React.ReactNode
+    active?: boolean
+    accent?: boolean
+    onClick: () => void
 }) {
     return (<Tooltip label={label} combo={combo} side='right'>
       <IconButton label={label} active={active} onClick={onClick} className={accent ? 'text-[var(--accent)]' : undefined}>
         {icon}
       </IconButton>
-    </Tooltip>);
+    </Tooltip>)
 }
 

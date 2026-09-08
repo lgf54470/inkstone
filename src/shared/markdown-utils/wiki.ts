@@ -1,5 +1,5 @@
-import { stripCodeRegions } from './code';
-import { splitFrontMatter } from './front-matter';
+import { stripCodeRegions } from './code'
+import { splitFrontMatter } from './front-matter'
 
 export const WIKI_RE = /\[\[([^[\]|\n]{1,400})(?:\|([^[\]\n]{0,200}))?\]\]/g
 

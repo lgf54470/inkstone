@@ -200,4 +200,4 @@ Add several WebDAV/S3 destinations and a schedule under **Settings → Backup**.
 
 Press \`Ctrl + ,\` to change the interface language, theme, typography, editor, sync, or backup settings. You now know everything needed to use Inkstone. Keep this note as a reference or delete it and start writing. #getting-started
 `,
-};
+}

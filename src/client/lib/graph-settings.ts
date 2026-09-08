@@ -1,6 +1,6 @@
-import type { MessageKey } from '@shared/locales/en-US';
+import type { MessageKey } from '@shared/locales/en-US'
 
-export type GroupBy = 'none' | 'folder' | 'tag';
+export type GroupBy = 'none' | 'folder' | 'tag'
 
 export interface GraphPreferences {
   mode: 'global' | 'local'
@@ -23,7 +23,7 @@ export interface GraphPreferences {
   nodeScale: number
 }
 
-type GraphTogglePref = { [K in keyof GraphPreferences]: GraphPreferences[K] extends boolean ? K : never }[keyof GraphPreferences];
+type GraphTogglePref = { [K in keyof GraphPreferences]: GraphPreferences[K] extends boolean ? K : never }[keyof GraphPreferences]
 
 
 interface GraphToggleControl {
@@ -41,8 +41,8 @@ export const GRAPH_SETTINGS_TOGGLES: ReadonlyArray<GraphToggleControl> = [
   { prefKey: 'includeUnresolved', labelKey: 'graph.show_unresolved', default: true },
   { prefKey: 'arrows', labelKey: 'graph.show_arrows', default: true },
   { prefKey: 'labels', labelKey: 'graph.show_labels', default: true },
-];
+]
 
-export const GRAPH_CLEAR_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'clearResetsTag' || control.prefKey === 'clearClosesPanel');
-export const GRAPH_SHOW_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'includeOrphans' || control.prefKey === 'includeUnresolved');
-export const GRAPH_APPEARANCE_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'arrows' || control.prefKey === 'labels');
+export const GRAPH_CLEAR_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'clearResetsTag' || control.prefKey === 'clearClosesPanel')
+export const GRAPH_SHOW_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'includeOrphans' || control.prefKey === 'includeUnresolved')
+export const GRAPH_APPEARANCE_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'arrows' || control.prefKey === 'labels')

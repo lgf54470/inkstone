@@ -1,8 +1,8 @@
-import type { McpToolCtx } from './context';
-import { z } from 'zod';
-import { MCP_SCOPES } from '../settings';
-import { exploreMcpGraph, listMcpBackupRuns, listMcpAttachments, readMcpAttachment, runMcpBackup, uploadMcpAttachment, deleteMcpAttachment } from '../library';
-import { customTool, writeTool, readOnlyAnnotations, writeAnnotations, generalOutputSchema, operationId, noteId } from './context';
+import type { McpToolCtx } from './context'
+import { z } from 'zod'
+import { MCP_SCOPES } from '../settings'
+import { exploreMcpGraph, listMcpBackupRuns, listMcpAttachments, readMcpAttachment, runMcpBackup, uploadMcpAttachment, deleteMcpAttachment } from '../library'
+import { customTool, writeTool, readOnlyAnnotations, writeAnnotations, generalOutputSchema, operationId, noteId } from './context'
 
 export function registerAssetsTools(ctx: McpToolCtx): void {
   registerExploreGraphTool(ctx)

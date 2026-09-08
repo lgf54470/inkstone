@@ -1,15 +1,15 @@
-import { Check, FolderClosed, Smile } from 'lucide-react';
-import { ORGANIZER_COLORS } from '@shared/organizer-colors';
-import type { Folder } from '@shared/types';
-import { Tooltip } from '../../../components/overlay';
-import { cn } from '../../../lib/cn';
-import { t } from '../../../lib/i18n';
-import { COMMON_FOLDER_ICONS } from './constants';
+import { Check, FolderClosed, Smile } from 'lucide-react'
+import { ORGANIZER_COLORS } from '@shared/organizer-colors'
+import type { Folder } from '@shared/types'
+import { Tooltip } from '../../../components/overlay'
+import { cn } from '../../../lib/cn'
+import { t } from '../../../lib/i18n'
+import { COMMON_FOLDER_ICONS } from './constants'
 
 export function FolderIconBadge({ folder, isOpen, onToggle }: {
-  folder: Folder;
-  isOpen: boolean;
-  onToggle: () => void;
+  folder: Folder
+  isOpen: boolean
+  onToggle: () => void
 }) {
   return (
     <Tooltip label={t('folders.icon')}>
@@ -31,12 +31,12 @@ export function FolderIconBadge({ folder, isOpen, onToggle }: {
         )}
       </button>
     </Tooltip>
-  );
+  )
 }
 
 export function FolderColorPicker({ folder, onPick }: {
-  folder: Folder;
-  onPick: (color: string | null) => void;
+  folder: Folder
+  onPick: (color: string | null) => void
 }) {
   return (
     <div className='mt-2 flex flex-wrap items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2'>
@@ -56,7 +56,7 @@ export function FolderColorPicker({ folder, onPick }: {
         </button>
       </Tooltip>
       {ORGANIZER_COLORS.map((color) => {
-        const isSelected = folder.color === color;
+        const isSelected = folder.color === color
         return (
           <Tooltip key={color} label={color}>
             <button
@@ -72,10 +72,10 @@ export function FolderColorPicker({ folder, onPick }: {
               {isSelected && <Check size={12} className='text-white drop-shadow-[var(--drop-shadow-sm)]' />}
             </button>
           </Tooltip>
-        );
+        )
       })}
     </div>
-  );
+  )
 }
 
 function FolderCustomIconInput({ onPick }: { onPick: (icon: string) => void }) {
@@ -86,21 +86,21 @@ function FolderCustomIconInput({ onPick }: { onPick: (icon: string) => void }) {
         type='text'
         placeholder={t('folders.custom_icon_placeholder')}
         onChange={(e) => {
-          const trimmed = e.target.value.trim();
+          const trimmed = e.target.value.trim()
           if (trimmed) {
-            const char = Array.from(trimmed)[0];
-            if (char) onPick(char);
+            const char = Array.from(trimmed)[0]
+            if (char) onPick(char)
           }
         }}
         className="h-6 w-48 rounded-[var(--r-xs)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-6 pr-2 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
       />
     </div>
-  );
+  )
 }
 
 export function FolderIconPicker({ folder, onPick }: {
-  folder: Folder;
-  onPick: (icon: string | null) => void;
+  folder: Folder
+  onPick: (icon: string | null) => void
 }) {
   return (
     <div className='mt-2 space-y-2 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2'>
@@ -121,7 +121,7 @@ export function FolderIconPicker({ folder, onPick }: {
           </button>
         </Tooltip>
         {COMMON_FOLDER_ICONS.map((icon) => {
-          const isSelected = folder.icon === icon;
+          const isSelected = folder.icon === icon
           return (
             <Tooltip key={icon} label={icon}>
               <button
@@ -138,10 +138,10 @@ export function FolderIconPicker({ folder, onPick }: {
                 {icon}
               </button>
             </Tooltip>
-          );
+          )
         })}
       </div>
       <FolderCustomIconInput onPick={onPick} />
     </div>
-  );
+  )
 }

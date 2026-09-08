@@ -1,1 +1,1 @@
-export { AttachmentDriveSidebar } from './sidebar';
+export { AttachmentDriveSidebar } from './sidebar'

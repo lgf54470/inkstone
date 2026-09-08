@@ -1,30 +1,30 @@
-import { useState } from 'react';
-import { KeyRound, Lock, Moon, Sun } from 'lucide-react';
-import { LIMITS } from '@shared/constants';
-import type { PublicNote } from '@shared/types';
-import { fullTime } from '../../../lib/time';
-import { readingMinutes, countText } from '@shared/markdown-utils';
-import { Avatar, Button, Logo } from '../../../components/primitives';
-import { Input } from '../../../components/form';
-import { LoadingBlock } from '../../../components/feedback';
-import { Tooltip } from '../../../components/overlay';
-import { t } from '../../../lib/i18n';
-import type { ShareRenderBundle } from './use-share-page';
-import { useShareLoad, useShareRendering } from './use-share-page';
+import { useState } from 'react'
+import { KeyRound, Lock, Moon, Sun } from 'lucide-react'
+import { LIMITS } from '@shared/constants'
+import type { PublicNote } from '@shared/types'
+import { fullTime } from '../../../lib/time'
+import { readingMinutes, countText } from '@shared/markdown-utils'
+import { Avatar, Button, Logo } from '../../../components/primitives'
+import { Input } from '../../../components/form'
+import { LoadingBlock } from '../../../components/feedback'
+import { Tooltip } from '../../../components/overlay'
+import { t } from '../../../lib/i18n'
+import type { ShareRenderBundle } from './use-share-page'
+import { useShareLoad, useShareRendering } from './use-share-page'
 
 const TRACKING_H1 = 'tracking-[var(--tracking-share-h1)]'
 
 export function SharePage({ slug }: {
-  slug: string;
+  slug: string
 }) {
-  const loadBundle = useShareLoad(slug);
-  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark');
+  const loadBundle = useShareLoad(slug)
+  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark')
   const toggleTheme = () => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.dataset.theme = next ? 'dark' : 'light';
-  };
-  const renderBundle = useShareRendering(loadBundle.note, dark);
+    const next = !dark
+    setDark(next)
+    document.documentElement.dataset.theme = next ? 'dark' : 'light'
+  }
+  const renderBundle = useShareRendering(loadBundle.note, dark)
   return (
     <div className='h-full overflow-y-auto overscroll-contain bg-[var(--bg-base)]'>
       <SharePageHeader siteName={loadBundle.note?.site.name ?? 'Inkstone'} dark={dark} onToggleTheme={toggleTheme} />
@@ -32,7 +32,7 @@ export function SharePage({ slug }: {
         <SharePageBody loadBundle={loadBundle} renderBundle={renderBundle} />
       </main>
     </div>
-  );
+  )
 }
 
 function SharePageHeader({ siteName, dark, onToggleTheme }: {
@@ -57,7 +57,7 @@ function SharePageHeader({ siteName, dark, onToggleTheme }: {
         </Tooltip>
       </div>
     </header>
-  );
+  )
 }
 
 type ShareLoadBundle = ReturnType<typeof useShareLoad>
@@ -100,8 +100,8 @@ function SharePasswordView({ loadBundle }: {
       <h1 className='text-[length:var(--text-16)] font-semibold text-[var(--text-primary)]'>{t('share.this_note_requires_a_password')}</h1>
       <p className="mt-1.5 text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">{t('share.ask_the_person_who_shared_this_note_for_its_passcode')}</p>
       <form className='mt-5 space-y-2.5' onSubmit={(event) => {
-        event.preventDefault();
-        void load(password);
+        event.preventDefault()
+        void load(password)
       }}>
         <Input aria-label={t('common.access_passcode')} type='password' value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('common.access_passcode')} autoComplete='current-password' maxLength={LIMITS.passwordMaxLength} autoFocus leading={<KeyRound size={13}/>} invalid={Boolean(error)}/>
         {error && <p role='alert' className='text-[length:var(--text-12)] text-[var(--danger)]'>{error}</p>}
@@ -115,7 +115,7 @@ function ShareNoteView({ note, renderBundle }: {
   note: PublicNote
   renderBundle: ShareRenderBundle
 }) {
-  const stats = countText(note.content);
+  const stats = countText(note.content)
   return (
     <article className='pt-7 md:pt-10'>
       <header className='mb-6 md:mb-8'>
@@ -152,5 +152,5 @@ function ShareNoteView({ note, renderBundle }: {
           <Logo size={12}/>{t('share.shared_via_site', { site: note.site.name })}</a>
       </footer>
     </article>
-  );
+  )
 }

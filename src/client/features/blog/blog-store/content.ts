@@ -1,5 +1,5 @@
-import { api } from '../../../lib/api';
-import type { BlogStoreState, SetBlogStoreState } from './types';
+import { api } from '../../../lib/api'
+import type { BlogStoreState, SetBlogStoreState } from './types'
 
 export const blogContentActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'createFolder' | 'patchFolder' | 'deleteFolder' | 'createTag' | 'patchTag' | 'deleteTag'> => ({
   createFolder: (name, parentId, color, icon) => createFolderImpl(name, parentId, color, icon, set),
@@ -8,7 +8,7 @@ export const blogContentActions = (set: SetBlogStoreState, get: () => BlogStoreS
   createTag: (name, color) => createTagImpl(name, color, set),
   patchTag: (id, patch) => patchTagImpl(id, patch, set),
   deleteTag: (id) => deleteTagImpl(id, set, get),
-});
+})
 
 async function createFolderImpl(
   name: Parameters<BlogStoreState['createFolder']>[0],
@@ -18,7 +18,7 @@ async function createFolderImpl(
   set: SetBlogStoreState,
 ): Promise<BlogStoreState['folders'][number] | null> {
   try {
-    const folder = await api.blog.folders.create({ name, parentId, color, icon });
+    const folder = await api.blog.folders.create({ name, parentId, color, icon })
     set((s) => ({
       folders: [...s.folders, folder],
       stats: s.stats
@@ -30,10 +30,10 @@ async function createFolderImpl(
           },
         }
         : null,
-    }));
-    return folder;
+    }))
+    return folder
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -43,27 +43,27 @@ async function patchFolderImpl(
   set: SetBlogStoreState,
 ): Promise<BlogStoreState['folders'][number] | null> {
   try {
-    const folder = await api.blog.folders.patch(id, patch);
+    const folder = await api.blog.folders.patch(id, patch)
     set((s) => ({
       folders: s.folders.map((f) => (f.id === id ? folder : f)),
-    }));
-    return folder;
+    }))
+    return folder
   } catch {
-    return null;
+    return null
   }
 }
 
 async function deleteFolderImpl(id: string, set: SetBlogStoreState, get: () => BlogStoreState): Promise<boolean> {
   try {
-    await api.blog.folders.remove(id);
+    await api.blog.folders.remove(id)
     set((s) => ({
       folders: s.folders.filter((f) => f.id !== id),
       folderId: s.folderId === id ? null : s.folderId,
-    }));
-    await Promise.all([get().loadPosts(), get().loadStats()]);
-    return true;
+    }))
+    await Promise.all([get().loadPosts(), get().loadStats()])
+    return true
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -73,7 +73,7 @@ async function createTagImpl(
   set: SetBlogStoreState,
 ): Promise<BlogStoreState['tags'][number] | null> {
   try {
-    const tag = await api.blog.tags.create({ name, color });
+    const tag = await api.blog.tags.create({ name, color })
     set((s) => ({
       tags: s.tags.some((t) => t.id === tag.id) ? s.tags : [...s.tags, tag],
       stats: s.stats
@@ -85,10 +85,10 @@ async function createTagImpl(
           },
         }
         : null,
-    }));
-    return tag;
+    }))
+    return tag
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -98,27 +98,27 @@ async function patchTagImpl(
   set: SetBlogStoreState,
 ): Promise<BlogStoreState['tags'][number] | null> {
   try {
-    const tag = await api.blog.tags.patch(id, patch);
+    const tag = await api.blog.tags.patch(id, patch)
     set((s) => ({
       tags: s.tags.map((t) => (t.id === id ? tag : t)),
-    }));
-    return tag;
+    }))
+    return tag
   } catch {
-    return null;
+    return null
   }
 }
 
 async function deleteTagImpl(id: string, set: SetBlogStoreState, get: () => BlogStoreState): Promise<boolean> {
   try {
-    await api.blog.tags.remove(id);
-    const removed = get().tags.find((t) => t.id === id);
+    await api.blog.tags.remove(id)
+    const removed = get().tags.find((t) => t.id === id)
     set((s) => ({
       tags: s.tags.filter((t) => t.id !== id),
       tag: removed && s.tag === removed.name ? null : s.tag,
-    }));
-    await Promise.all([get().loadPosts(), get().loadStats()]);
-    return true;
+    }))
+    await Promise.all([get().loadPosts(), get().loadStats()])
+    return true
   } catch {
-    return false;
+    return false
   }
 }

@@ -2,5 +2,5 @@ export const COMMON_FOLDER_ICONS = [
   '📁', '📚', '💼', '🧠', '💡', '🎯',
   '🗂️', '✨', '🚀', '📝', '📌', '🏷️',
   '⭐', '🔥', '☕', '🎨', '📦', '🛠️',
-] as const;
+] as const
 

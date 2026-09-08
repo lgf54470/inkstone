@@ -1,39 +1,39 @@
-import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, ExternalLink } from 'lucide-react';
-import { type BackupTarget, type BackupTargetConfig, type BackupTargetInput, type BackupTargetType, type TestConnectionResult } from '@shared/types';
-import { cn } from '../../../lib/cn';
-import { api, ApiError } from '../../../lib/api';
-import { Button } from '../../../components/primitives';
-import { Checkbox, Field, Input, Segmented } from '../../../components/form';
-import { Modal } from '../../../components/overlay';
-import { getBackupPresets, type BackupPreset } from '../backup-presets';
-import { useUi, type UiState } from '../../../store/ui';
-type ToastFn = UiState['toast'];
-import { t, translateServiceMessage } from '../../../lib/i18n';
+import { useEffect, useRef, useState } from 'react'
+import { AlertCircle, CheckCircle2, ExternalLink } from 'lucide-react'
+import { type BackupTarget, type BackupTargetConfig, type BackupTargetInput, type BackupTargetType, type TestConnectionResult } from '@shared/types'
+import { cn } from '../../../lib/cn'
+import { api, ApiError } from '../../../lib/api'
+import { Button } from '../../../components/primitives'
+import { Checkbox, Field, Input, Segmented } from '../../../components/form'
+import { Modal } from '../../../components/overlay'
+import { getBackupPresets, type BackupPreset } from '../backup-presets'
+import { useUi, type UiState } from '../../../store/ui'
+type ToastFn = UiState['toast']
+import { t, translateServiceMessage } from '../../../lib/i18n'
 
 const TRACKING_HINT = 'tracking-[var(--tracking-hint)]'
 const MODAL_WIDTH = 520
 
 interface TargetFormFields {
-  endpoint: string;
-  region: string;
-  bucket: string;
-  prefix: string;
-  pathStyle: boolean;
-  url: string;
-  username: string;
+  endpoint: string
+  region: string
+  bucket: string
+  prefix: string
+  pathStyle: boolean
+  url: string
+  username: string
 }
 
 export function TargetForm({ target, onClose, onSaved, }: {
-  target: BackupTarget | null;
-  onClose: () => void;
-  onSaved: () => Promise<void>;
+  target: BackupTarget | null
+  onClose: () => void
+  onSaved: () => Promise<void>
 }) {
-  const f = useTargetForm(target);
+  const f = useTargetForm(target)
   const close = () => {
-    if (!f.actionRef.current) onClose();
-  };
-  const s3 = f.type === 's3';
+    if (!f.actionRef.current) onClose()
+  }
+  const s3 = f.type === 's3'
   return (<Modal open onClose={close} title={target ? t('settings.edit_backup_target') : t('settings.add_backup_target')} description={f.canKeepSecret ? t('settings.leave_the_key_blank_to_leave_it_unchanged') : undefined} width={MODAL_WIDTH} footer={<>
       <Button variant='ghost' onClick={close} disabled={f.isSaving || f.isTesting}>{t('common.cancel')}</Button>
       <Button variant='secondary' loading={f.isTesting} disabled={f.isSaving} onClick={() => f.test()}>{t('settings.test_connection')}</Button>
@@ -62,16 +62,16 @@ export function TargetForm({ target, onClose, onSaved, }: {
 
     {f.result && <ResultNote result={f.result}/>}
     </fieldset>
-  </Modal>);
+  </Modal>)
 }
 
-type TargetFormState = ReturnType<typeof useTargetForm>;
+type TargetFormState = ReturnType<typeof useTargetForm>
 
 // Initial form fields from whichever config variant the target carries; the
 // `in` guards narrow the S3/WebDAV union so every field reads type-safe.
 function initialFormFields(config: BackupTargetConfig | null): TargetFormFields {
-  const s3 = config && 'endpoint' in config ? config : null;
-  const webdav = config && 'url' in config ? config : null;
+  const s3 = config && 'endpoint' in config ? config : null
+  const webdav = config && 'url' in config ? config : null
   return {
     endpoint: s3?.endpoint ?? '',
     region: s3?.region ?? 'auto',
@@ -80,48 +80,48 @@ function initialFormFields(config: BackupTargetConfig | null): TargetFormFields 
     pathStyle: s3 ? s3.pathStyle : true,
     url: webdav?.url ?? '',
     username: webdav?.username ?? '',
-  };
+  }
 }
 
 function useTargetForm(target: BackupTarget | null) {
-  const [type, setType] = useState<BackupTargetType>(target?.type ?? 's3');
-  const [name, setName] = useState(target?.name ?? '');
-  const [form, setForm] = useState<TargetFormFields>(initialFormFields(target?.config ?? null));
-  const [secret, setSecret] = useState({ accessKeyId: '', secretAccessKey: '', password: '' });
-  const [isSaving, setIsSaving] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [result, setResult] = useState<TestConnectionResult | null>(null);
-  const [activePreset, setActivePreset] = useState<string | null>(null);
-  const actionRef = useRef(false);
-  const toast = useUi((s) => s.toast);
-  const canKeepSecret = Boolean(target?.hasSecret && type === target.type);
-  useEffect(() => setResult(null), [type, form, secret]);
-  const patchField = (key: keyof TargetFormFields, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
+  const [type, setType] = useState<BackupTargetType>(target?.type ?? 's3')
+  const [name, setName] = useState(target?.name ?? '')
+  const [form, setForm] = useState<TargetFormFields>(initialFormFields(target?.config ?? null))
+  const [secret, setSecret] = useState({ accessKeyId: '', secretAccessKey: '', password: '' })
+  const [isSaving, setIsSaving] = useState(false)
+  const [isTesting, setIsTesting] = useState(false)
+  const [result, setResult] = useState<TestConnectionResult | null>(null)
+  const [activePreset, setActivePreset] = useState<string | null>(null)
+  const actionRef = useRef(false)
+  const toast = useUi((s) => s.toast)
+  const canKeepSecret = Boolean(target?.hasSecret && type === target.type)
+  useEffect(() => setResult(null), [type, form, secret])
+  const patchField = (key: keyof TargetFormFields, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }))
   const selectType = (nextType: BackupTargetType) => {
     if (nextType === type)
-      return;
-    setType(nextType);
+      return
+    setType(nextType)
     if (activePreset)
-      setName('');
-    setActivePreset(null);
-  };
+      setName('')
+    setActivePreset(null)
+  }
   const applyBackupPreset = (preset: BackupPreset) => {
-    setActivePreset(preset.id);
-    setType(preset.type);
-    setName(preset.name);
+    setActivePreset(preset.id)
+    setType(preset.type)
+    setName(preset.name)
     setForm((current) => ({
       ...current,
       endpoint: preset.fields.endpoint !== undefined ? preset.fields.endpoint : current.endpoint,
       region: preset.fields.region !== undefined ? preset.fields.region : current.region,
       pathStyle: preset.fields.pathStyle ?? current.pathStyle,
       url: preset.fields.url !== undefined ? preset.fields.url : current.url,
-    }));
-  };
-  const save = (onSaved: () => Promise<void>) => void saveTargetFlow({ target, type, name, form, secret, actionRef, setIsSaving, toast, onSaved });
-  const test = () => void testTargetFlow({ target, type, name, form, secret, actionRef, setIsTesting, setResult });
-  const guide = getBackupPresets().find((p) => p.id === activePreset) ?? null;
-  const recommendedPresets = getBackupPresets().filter((preset) => preset.type === type);
-  return { type, name, setName, form, patchField, setForm, secret, setSecret, isSaving, isTesting, result, activePreset, actionRef, canKeepSecret, selectType, applyBackupPreset, save, test, guide, recommendedPresets };
+    }))
+  }
+  const save = (onSaved: () => Promise<void>) => void saveTargetFlow({ target, type, name, form, secret, actionRef, setIsSaving, toast, onSaved })
+  const test = () => void testTargetFlow({ target, type, name, form, secret, actionRef, setIsTesting, setResult })
+  const guide = getBackupPresets().find((p) => p.id === activePreset) ?? null
+  const recommendedPresets = getBackupPresets().filter((preset) => preset.type === type)
+  return { type, name, setName, form, patchField, setForm, secret, setSecret, isSaving, isTesting, result, activePreset, actionRef, canKeepSecret, selectType, applyBackupPreset, save, test, guide, recommendedPresets }
 }
 
 function buildPayload(type: BackupTargetType, name: string, form: TargetFormFields, secret: { accessKeyId: string; secretAccessKey: string; password: string }): BackupTargetInput {
@@ -141,72 +141,72 @@ function buildPayload(type: BackupTargetType, name: string, form: TargetFormFiel
     secret: type === 's3'
       ? { accessKeyId: secret.accessKeyId, secretAccessKey: secret.secretAccessKey }
       : { password: secret.password },
-  };
+  }
 }
 
 async function saveTargetFlow({ target, type, name, form, secret, actionRef, setIsSaving, toast, onSaved }: {
-  target: BackupTarget | null;
-  type: BackupTargetType;
-  name: string;
-  form: TargetFormFields;
-  secret: { accessKeyId: string; secretAccessKey: string; password: string };
-  actionRef: React.MutableRefObject<boolean>;
-  setIsSaving: (saving: boolean) => void;
-  toast: ToastFn;
-  onSaved: () => Promise<void>;
+  target: BackupTarget | null
+  type: BackupTargetType
+  name: string
+  form: TargetFormFields
+  secret: { accessKeyId: string; secretAccessKey: string; password: string }
+  actionRef: React.MutableRefObject<boolean>
+  setIsSaving: (saving: boolean) => void
+  toast: ToastFn
+  onSaved: () => Promise<void>
 }) {
   if (actionRef.current)
-    return;
-  actionRef.current = true;
-  setIsSaving(true);
+    return
+  actionRef.current = true
+  setIsSaving(true)
   try {
-    const payload = buildPayload(type, name, form, secret);
+    const payload = buildPayload(type, name, form, secret)
     if (target)
-      await api.backup.patch(target.id, { ...payload, expectedUpdatedAt: target.updatedAt });
+      await api.backup.patch(target.id, { ...payload, expectedUpdatedAt: target.updatedAt })
     else
-      await api.backup.create(payload);
-    toast({ title: target ? t('settings.backup_target_updated') : t('settings.backup_target_added'), tone: 'success' });
-    await onSaved();
+      await api.backup.create(payload)
+    toast({ title: target ? t('settings.backup_target_updated') : t('settings.backup_target_added'), tone: 'success' })
+    await onSaved()
   }
   catch (err) {
     toast({
       title: t('common.save_failed'),
       description: err instanceof ApiError ? err.message : String(err),
       tone: 'danger',
-    });
+    })
   }
   finally {
-    actionRef.current = false;
-    setIsSaving(false);
+    actionRef.current = false
+    setIsSaving(false)
   }
 }
 
 async function testTargetFlow({ target, type, name, form, secret, actionRef, setIsTesting, setResult }: {
-  target: BackupTarget | null;
-  type: BackupTargetType;
-  name: string;
-  form: TargetFormFields;
-  secret: { accessKeyId: string; secretAccessKey: string; password: string };
-  actionRef: React.MutableRefObject<boolean>;
-  setIsTesting: (testing: boolean) => void;
-  setResult: (result: TestConnectionResult) => void;
+  target: BackupTarget | null
+  type: BackupTargetType
+  name: string
+  form: TargetFormFields
+  secret: { accessKeyId: string; secretAccessKey: string; password: string }
+  actionRef: React.MutableRefObject<boolean>
+  setIsTesting: (testing: boolean) => void
+  setResult: (result: TestConnectionResult) => void
 }) {
   if (actionRef.current)
-    return;
-  actionRef.current = true;
-  setIsTesting(true);
+    return
+  actionRef.current = true
+  setIsTesting(true)
   try {
-    const payload = buildPayload(type, name, form, secret);
+    const payload = buildPayload(type, name, form, secret)
     setResult(target
       ? await api.backup.test(target.id, payload)
-      : await api.backup.testDraft(payload));
+      : await api.backup.testDraft(payload))
   }
   catch (err) {
-    setResult({ ok: false, message: err instanceof ApiError ? err.message : String(err) });
+    setResult({ ok: false, message: err instanceof ApiError ? err.message : String(err) })
   }
   finally {
-    actionRef.current = false;
-    setIsTesting(false);
+    actionRef.current = false
+    setIsTesting(false)
   }
 }
 
@@ -216,7 +216,7 @@ function TypeChangeWarning() {
       <AlertCircle size={13} className='mt-0.5 shrink-0'/>
       <span>{t('settings.enter_the_complete_credentials_for_the_new_backup_type_after_switching_t')}</span>
     </div>
-  );
+  )
 }
 
 function PresetPicker({ f }: { f: TargetFormState }) {
@@ -241,7 +241,7 @@ function PresetPicker({ f }: { f: TargetFormState }) {
       </div>
       {f.guide && <PresetGuide guide={f.guide}/>}
     </div>
-  );
+  )
 }
 
 function PresetGuide({ guide }: { guide: BackupPreset }) {
@@ -273,11 +273,11 @@ function PresetGuide({ guide }: { guide: BackupPreset }) {
         </dl>
       </div>)}
     </div>
-  );
+  )
 }
 
 function S3Fields({ f }: { f: TargetFormState }) {
-  const { canKeepSecret } = f;
+  const { canKeepSecret } = f
   return (
     <>
       <Field label={t('settings.endpoint')} hint={t('settings.leave_blank_unless_the_provider_requires_it_for_r2_use_url')}>
@@ -301,11 +301,11 @@ function S3Fields({ f }: { f: TargetFormState }) {
       </div>
       <Checkbox checked={f.form.pathStyle} onChange={(pathStyle) => f.patchField('pathStyle', pathStyle)} label={t('settings.use_path_style_access_recommended_for_most_compatible_services')}/>
     </>
-  );
+  )
 }
 
 function WebdavFields({ f }: { f: TargetFormState }) {
-  const { canKeepSecret } = f;
+  const { canKeepSecret } = f
   return (
     <>
       <Field label={t('settings.webdav_address')} required hint={t('settings.https_only_redirects_within_the_same_site_are_handled_automatically')}>
@@ -320,7 +320,7 @@ function WebdavFields({ f }: { f: TargetFormState }) {
       </Field>
       </div>
     </>
-  );
+  )
 }
 
 function ResultNote({ result }: { result: TestConnectionResult }) {
@@ -331,5 +331,5 @@ function ResultNote({ result }: { result: TestConnectionResult }) {
       {result.ok ? (<CheckCircle2 size={13} className='mt-px shrink-0'/>) : (<AlertCircle size={13} className='mt-px shrink-0'/>)}
       <span>{translateServiceMessage(result.message)}</span>
     </div>
-  );
+  )
 }

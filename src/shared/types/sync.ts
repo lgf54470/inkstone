@@ -1,4 +1,4 @@
-import type { Folder, NoteSummary, Tag } from './notes';
+import type { Folder, NoteSummary, Tag } from './notes'
 
 export interface SyncDeletion {
   entity: 'note' | 'folder' | 'tag'

@@ -1,16 +1,16 @@
-import { Hono } from 'hono';
+import { Hono } from 'hono'
 
-import { drainAttachmentCleanup } from '../../attachments/cleanup';
-import { attachmentCleanupTarget, attachmentObjectKey } from '../../attachments/keys';
-import type { AppBindings } from '../../env';
-import { ApiError } from '../../lib/errors';
-import { isValidId } from '../../lib/id';
-import { requireAuth } from '../../middleware/auth';
-import { AttachmentRow } from './helpers';
-import { ATTACHMENT_SCAN_PAGE_SIZE } from './helpers';
-import { parseTags } from './helpers';
-import { collectAttachmentReferences } from './helpers';
-import { collectAttachmentIdsThroughBoundary } from './helpers';
+import { drainAttachmentCleanup } from '../../attachments/cleanup'
+import { attachmentCleanupTarget, attachmentObjectKey } from '../../attachments/keys'
+import type { AppBindings } from '../../env'
+import { ApiError } from '../../lib/errors'
+import { isValidId } from '../../lib/id'
+import { requireAuth } from '../../middleware/auth'
+import { AttachmentRow } from './helpers'
+import { ATTACHMENT_SCAN_PAGE_SIZE } from './helpers'
+import { parseTags } from './helpers'
+import { collectAttachmentReferences } from './helpers'
+import { collectAttachmentIdsThroughBoundary } from './helpers'
 
 interface AttachmentBatchBody {
   action: 'move' | 'star' | 'pin' | 'tag' | 'delete'

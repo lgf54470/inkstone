@@ -1,13 +1,13 @@
-import { Hono } from 'hono';
-import { LIMITS } from '@shared/constants';
-import type { AppBindings } from '../../env';
-import { ApiError } from '../../lib/errors';
-import { isValidId, newSlug } from '../../lib/id';
-import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request';
-import { hashPassword } from '../../lib/password';
-import { isValidCustomSlug } from '../../lib/share-analytics';
-import { shareCreateSchema } from './schemas';
-import { ShareRow, toShareInfo } from './shares';
+import { Hono } from 'hono'
+import { LIMITS } from '@shared/constants'
+import type { AppBindings } from '../../env'
+import { ApiError } from '../../lib/errors'
+import { isValidId, newSlug } from '../../lib/id'
+import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
+import { hashPassword } from '../../lib/password'
+import { isValidCustomSlug } from '../../lib/share-analytics'
+import { shareCreateSchema } from './schemas'
+import { ShareRow, toShareInfo } from './shares'
 
 export function registerShareNoteRoutes(shareManageRoutes: Hono<AppBindings>): void {
   registerShareNoteGetRoute(shareManageRoutes)

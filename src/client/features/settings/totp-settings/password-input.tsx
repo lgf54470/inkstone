@@ -1,6 +1,6 @@
-import { LIMITS } from '@shared/constants';
-import { Input } from '../../../components/form';
-import { t } from '../../../lib/i18n';
+import { LIMITS } from '@shared/constants'
+import { Input } from '../../../components/form'
+import { t } from '../../../lib/i18n'
 
 export function PasswordInput(props: {
   value: string

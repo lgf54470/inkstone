@@ -1,4 +1,4 @@
-import type { Folder, NoteSummary, NoteTemplate, NoteTemplateCategory, Tag } from '@shared/types';
+import type { Folder, NoteSummary, NoteTemplate, NoteTemplateCategory, Tag } from '@shared/types'
 export interface ShellData {
   notes: NoteSummary[]
   folders: Folder[]

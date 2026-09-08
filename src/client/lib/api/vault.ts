@@ -1,5 +1,5 @@
-import type { Backlink, Folder, GraphResponse, ListNotesResponse, Note, NoteVersion, NoteVersionMeta, PatchNoteBody, SearchResponse, SyncResponse, Tag } from '@shared/types';
-import { request, toQuery } from './transport';
+import type { Backlink, Folder, GraphResponse, ListNotesResponse, Note, NoteVersion, NoteVersionMeta, PatchNoteBody, SearchResponse, SyncResponse, Tag } from '@shared/types'
+import { request, toQuery } from './transport'
 export const vault = {
   notes: {
     list: (params: Record<string, string | number | undefined>) =>

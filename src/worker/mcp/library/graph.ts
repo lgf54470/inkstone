@@ -1,4 +1,4 @@
-import { requireOwnedNote } from './helpers';
+import { requireOwnedNote } from './helpers'
 
 // Per-node round trips (up to 2 queries x up to 100 nodes) serialized a whole
 // MCP graph exploration; batch each BFS level into chunked IN queries instead

@@ -1,15 +1,15 @@
-import { Check, Copy, Download, KeyRound, QrCode, RefreshCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
-import { type TotpSetupInfo, type TotpStatus } from '@shared/types';
-import { Badge, Button } from '../../../components/primitives';
-import { Input, SettingRow } from '../../../components/form';
-import { t } from '../../../lib/i18n';
-import { QR_BG_COLOR, QR_FG_COLOR } from '../../../lib/qr-colors';
-import { PasswordInput } from './password-input';
-import { CodeInput } from './code-input';
-import { ActionRow } from './action-row';
-import { InlineError } from './inline-error';
-import { useTotpSettings, type TotpPanel, type TotpSettingsState } from './use-totp-settings';
+import { Check, Copy, Download, KeyRound, QrCode, RefreshCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
+import { type TotpSetupInfo, type TotpStatus } from '@shared/types'
+import { Badge, Button } from '../../../components/primitives'
+import { Input, SettingRow } from '../../../components/form'
+import { t } from '../../../lib/i18n'
+import { QR_BG_COLOR, QR_FG_COLOR } from '../../../lib/qr-colors'
+import { PasswordInput } from './password-input'
+import { CodeInput } from './code-input'
+import { ActionRow } from './action-row'
+import { InlineError } from './inline-error'
+import { useTotpSettings, type TotpPanel, type TotpSettingsState } from './use-totp-settings'
 
 const TOTP_GRID_COLS = 'md:grid-cols-[210px_minmax(0,1fr)]'
 const TRACKING_CODE = 'tracking-[var(--tracking-code)]'
@@ -49,10 +49,10 @@ export function TotpSettings() {
 }
 
 function StatusHeader({ status, panel, onManage, onEnable }: {
-  status: TotpStatus;
-  panel: TotpPanel;
-  onManage: () => void;
-  onEnable: () => void;
+  status: TotpStatus
+  panel: TotpPanel
+  onManage: () => void
+  onEnable: () => void
 }) {
   const description = status.enabled
     ? t('settings.totp_enabled_description', { count: status.recoveryCodesRemaining })
@@ -86,8 +86,8 @@ function StatusHeader({ status, panel, onManage, onEnable }: {
 }
 
 function PanelForm({ onSubmit, children }: {
-  onSubmit: () => void;
-  children: React.ReactNode;
+  onSubmit: () => void
+  children: React.ReactNode
 }) {
   return (
     <form className='space-y-3 border-t border-[var(--border-subtle)] px-4 py-4' onSubmit={(event) => {

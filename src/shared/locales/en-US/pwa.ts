@@ -16,4 +16,4 @@ export const messages = {
 'pwa.refresh_now': 'Refresh now',
 'pwa.update_ready': 'An app update is ready',
 'pwa.update_ready_description': 'Refresh when convenient. Pending note changes are saved first.',
-};
+}

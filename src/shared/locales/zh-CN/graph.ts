@@ -58,4 +58,4 @@ export const messages = {
 'graph.tag': '标签',
 'graph.unresolved_short': '篇未创建',
 'graph.reset': '复位',
-};
+}

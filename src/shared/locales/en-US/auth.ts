@@ -24,4 +24,4 @@ export const messages = {
 'auth.use_authenticator_code': 'Use authenticator code',
 'auth.use_recovery_code': 'Use recovery code',
 'auth.verify_and_sign_in': 'Verify and sign in',
-};
+}

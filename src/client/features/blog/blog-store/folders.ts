@@ -1,5 +1,5 @@
-import type { BlogFolder } from '@shared/types';
-import type { BlogFolderNode } from './types';
+import type { BlogFolder } from '@shared/types'
+import type { BlogFolderNode } from './types'
 
 
 

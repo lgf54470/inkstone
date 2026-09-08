@@ -28,4 +28,4 @@ export const messages = {
 'api.invalid_server_response': 'The server returned an invalid response',
 'api.request_failed_status': 'Request failed ({status})',
 'api.request_timed_out': 'The request timed out',
-};
+}

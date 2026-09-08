@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import type { ShareStoreState } from './types'
 import { initialFilters, initialRetention } from './state'
-import { shareFiltersActions } from './filters';
-import { shareLoadersActions } from './loaders';
-import { shareContentActions } from './content';
-import { shareSharesActions } from './shares';
-import { getVisibilitySnapshot, pushVisibilitySnapshot } from '../../../store/visibility-sources';
+import { shareFiltersActions } from './filters'
+import { shareLoadersActions } from './loaders'
+import { shareContentActions } from './content'
+import { shareSharesActions } from './shares'
+import { getVisibilitySnapshot, pushVisibilitySnapshot } from '../../../store/visibility-sources'
 
 export const useShareStore = create<ShareStoreState>((set, get) => ({
     ...initialShareState(),
@@ -40,7 +40,7 @@ function initialShareState(): Partial<ShareStoreState> {
 }
 
 export type { ShareFolderNode, ShareStoreState } from './types'
-export { buildShareFolderTree } from './folders';
+export { buildShareFolderTree } from './folders'
 
 // Feed the notes store's visibility projection (shared note ids) without
 // creating a store → feature import edge: selectors read the neutral registry

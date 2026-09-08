@@ -1,66 +1,66 @@
-import { type EditorView } from '@codemirror/view';
-import { parseMarkdownTable } from '../../../lib/markdown/table-editor';
-import { type Text } from '@codemirror/state';
+import { type EditorView } from '@codemirror/view'
+import { parseMarkdownTable } from '../../../lib/markdown/table-editor'
+import { type Text } from '@codemirror/state'
 
-import type { EditorContextData } from './types';
+import type { EditorContextData } from './types'
 
 export function detectEditorContext(view: EditorView, pos: number): EditorContextData {
-  const doc = view.state.doc;
-  const clampedPos = Math.max(0, Math.min(pos, doc.length));
-  const line = doc.lineAt(clampedPos);
-  const lineNumber = line.number;
-  const lineText = line.text;
-  const offsetInLine = clampedPos - line.from;
+  const doc = view.state.doc
+  const clampedPos = Math.max(0, Math.min(pos, doc.length))
+  const line = doc.lineAt(clampedPos)
+  const lineNumber = line.number
+  const lineText = line.text
+  const offsetInLine = clampedPos - line.from
 
   return detectSelection(view, clampedPos, lineNumber)
     ?? detectFrontMatter(doc, clampedPos, lineNumber)
     ?? detectFencedBlock(doc, clampedPos, lineNumber)
     ?? detectTable(doc, lineText, lineNumber, offsetInLine, clampedPos)
     ?? detectLinePatterns(line, lineText, offsetInLine, clampedPos, lineNumber)
-    ?? { type: 'empty', pos: clampedPos, lineNumber };
+    ?? { type: 'empty', pos: clampedPos, lineNumber }
 }
 
 function detectSelection(view: EditorView, pos: number, lineNumber: number): EditorContextData | null {
-  const selection = view.state.selection.main;
-  if (selection.empty || pos < selection.from || pos > selection.to) return null;
-  const selectedText = view.state.sliceDoc(selection.from, selection.to);
+  const selection = view.state.selection.main
+  if (selection.empty || pos < selection.from || pos > selection.to) return null
+  const selectedText = view.state.sliceDoc(selection.from, selection.to)
   return {
     type: 'selection',
     pos,
     lineNumber,
     selectedText,
-  };
+  }
 }
 
 function detectFrontMatter(doc: Text, pos: number, lineNumber: number): EditorContextData | null {
-  const frontMatterMatch = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---/.exec(doc.toString());
-  if (!frontMatterMatch || pos > frontMatterMatch[0].length) return null;
+  const frontMatterMatch = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---/.exec(doc.toString())
+  if (!frontMatterMatch || pos > frontMatterMatch[0].length) return null
   return {
     type: 'frontmatter',
     pos,
     lineNumber,
-  };
+  }
 }
 
 function detectFencedBlock(doc: Text, pos: number, lineNumber: number): EditorContextData | null {
-  const codeFence = findCodeFenceAround(doc, pos);
-  if (codeFence) return codeFenceContext(pos, lineNumber, codeFence);
-  const mathBlock = findMathBlockAround(doc, pos);
-  if (mathBlock) return mathBlockContext(pos, lineNumber, mathBlock);
-  return null;
+  const codeFence = findCodeFenceAround(doc, pos)
+  if (codeFence) return codeFenceContext(pos, lineNumber, codeFence)
+  const mathBlock = findMathBlockAround(doc, pos)
+  if (mathBlock) return mathBlockContext(pos, lineNumber, mathBlock)
+  return null
 }
 
 function detectTable(doc: Text, lineText: string, lineNumber: number, offsetInLine: number, pos: number): EditorContextData | null {
-  if (!lineText.includes('|')) return null;
-  const lines = doc.toJSON();
-  const table = parseMarkdownTable(lines, lineNumber - 1, offsetInLine);
-  if (!table) return null;
+  if (!lineText.includes('|')) return null
+  const lines = doc.toJSON()
+  const table = parseMarkdownTable(lines, lineNumber - 1, offsetInLine)
+  if (!table) return null
   return {
     type: 'table',
     pos,
     lineNumber,
     table,
-  };
+  }
 }
 
 function detectLinePatterns(
@@ -87,8 +87,8 @@ function detectLinePatterns(
       pos,
       lineNumber,
       build: (m, from, to) => {
-        const parts = (m[1] ?? '').split('|');
-        return { type: 'wikilink', wikiLink: { target: parts[0] ? parts[0].trim() : '', alias: parts[1]?.trim(), from, to } };
+        const parts = (m[1] ?? '').split('|')
+        return { type: 'wikilink', wikiLink: { target: parts[0] ? parts[0].trim() : '', alias: parts[1]?.trim(), from, to } }
       },
     })
     ?? inlineMatchContext({
@@ -109,29 +109,29 @@ function detectLinePatterns(
       lineNumber,
       build: (m, from, to) => ({ type: 'math', math: { formula: m[1] ?? '', isBlock: false, from, to } }),
     })
-    ?? detectTask(lineText, line, pos, lineNumber);
+    ?? detectTask(lineText, line, pos, lineNumber)
 }
 
 function inlineMatchContext(args: {
-  regex: RegExp;
-  lineText: string;
-  offset: number;
-  lineFrom: number;
-  pos: number;
-  lineNumber: number;
-  build: (match: RegExpExecArray, from: number, to: number) => Omit<EditorContextData, 'pos' | 'lineNumber'>;
+  regex: RegExp
+  lineText: string
+  offset: number
+  lineFrom: number
+  pos: number
+  lineNumber: number
+  build: (match: RegExpExecArray, from: number, to: number) => Omit<EditorContextData, 'pos' | 'lineNumber'>
 }): EditorContextData | null {
-  const match = findMatchAt(args.regex, args.lineText, args.offset);
-  if (!match) return null;
-  const matchStart = match.index;
-  const matchEnd = matchStart + match[0].length;
-  const built = args.build(match, args.lineFrom + matchStart, args.lineFrom + matchEnd);
-  return { ...built, pos: args.pos, lineNumber: args.lineNumber };
+  const match = findMatchAt(args.regex, args.lineText, args.offset)
+  if (!match) return null
+  const matchStart = match.index
+  const matchEnd = matchStart + match[0].length
+  const built = args.build(match, args.lineFrom + matchStart, args.lineFrom + matchEnd)
+  return { ...built, pos: args.pos, lineNumber: args.lineNumber }
 }
 
 function detectTask(lineText: string, line: { from: number; to: number }, pos: number, lineNumber: number): EditorContextData | null {
-  const taskMatch = /^(\s*[-*+]\s+\[([ xX])\]\s+)(.*)$/.exec(lineText);
-  if (!taskMatch) return null;
+  const taskMatch = /^(\s*[-*+]\s+\[([ xX])\]\s+)(.*)$/.exec(lineText)
+  if (!taskMatch) return null
   return {
     type: 'task',
     pos,
@@ -142,15 +142,15 @@ function detectTask(lineText: string, line: { from: number; to: number }, pos: n
       from: line.from,
       to: line.to,
     },
-  };
+  }
 }
 
 function findMatchAt(regex: RegExp, lineText: string, offset: number): RegExpExecArray | null {
-  let match: RegExpExecArray | null;
+  let match: RegExpExecArray | null
   while ((match = regex.exec(lineText)) !== null) {
-    if (offset >= match.index && offset <= match.index + match[0].length) return match;
+    if (offset >= match.index && offset <= match.index + match[0].length) return match
   }
-  return null;
+  return null
 }
 
 function codeFenceContext(
@@ -168,7 +168,7 @@ function codeFenceContext(
         from: codeFence.from,
         to: codeFence.to,
       },
-    };
+    }
   }
   if (codeFence.language.toLowerCase() === 'chart' || codeFence.language.toLowerCase() === 'chartjs') {
     return {
@@ -180,7 +180,7 @@ function codeFenceContext(
         from: codeFence.from,
         to: codeFence.to,
       },
-    };
+    }
   }
   return {
     type: 'codeblock',
@@ -192,7 +192,7 @@ function codeFenceContext(
       from: codeFence.from,
       to: codeFence.to,
     },
-  };
+  }
 }
 
 function mathBlockContext(
@@ -210,48 +210,48 @@ function mathBlockContext(
       from: mathBlock.from,
       to: mathBlock.to,
     },
-  };
+  }
 }
 
 
 function findCodeFenceAround(doc: Text, pos: number): { language: string; code: string; from: number; to: number } | null {
-  const currentLine = doc.lineAt(pos);
-  let openFenceLine = -1;
-  let openLanguage = '';
+  const currentLine = doc.lineAt(pos)
+  let openFenceLine = -1
+  let openLanguage = ''
 
   for (let i = currentLine.number; i >= 1; i--) {
-    const l = doc.line(i);
-    const match = /^\s*```([a-zA-Z0-9_-]*)/.exec(l.text);
+    const l = doc.line(i)
+    const match = /^\s*```([a-zA-Z0-9_-]*)/.exec(l.text)
     if (match) {
       if (i === currentLine.number && /^\s*```\s*$/.test(l.text)) {
-        continue;
+        continue
       }
-      openFenceLine = i;
-      openLanguage = match[1] ?? '';
-      break;
+      openFenceLine = i
+      openLanguage = match[1] ?? ''
+      break
     }
   }
 
-  if (openFenceLine === -1) return null;
+  if (openFenceLine === -1) return null
 
-  let closeFenceLine = -1;
+  let closeFenceLine = -1
   for (let i = openFenceLine + 1; i <= doc.lines; i++) {
-    const l = doc.line(i);
+    const l = doc.line(i)
     if (/^\s*```\s*$/.test(l.text)) {
-      closeFenceLine = i;
-      break;
+      closeFenceLine = i
+      break
     }
   }
 
   if (closeFenceLine === -1 || currentLine.number > closeFenceLine) {
-    return null;
+    return null
   }
 
-  const from = doc.line(openFenceLine).from;
-  const to = doc.line(closeFenceLine).to;
-  const codeLines: string[] = [];
+  const from = doc.line(openFenceLine).from
+  const to = doc.line(closeFenceLine).to
+  const codeLines: string[] = []
   for (let i = openFenceLine + 1; i < closeFenceLine; i++) {
-    codeLines.push(doc.line(i).text);
+    codeLines.push(doc.line(i).text)
   }
 
   return {
@@ -259,47 +259,47 @@ function findCodeFenceAround(doc: Text, pos: number): { language: string; code: 
     code: codeLines.join('\n'),
     from,
     to,
-  };
+  }
 }
 
 
 function findMathBlockAround(doc: Text, pos: number): { formula: string; from: number; to: number } | null {
-  const currentLine = doc.lineAt(pos);
-  let openFenceLine = -1;
+  const currentLine = doc.lineAt(pos)
+  let openFenceLine = -1
 
   for (let i = currentLine.number; i >= 1; i--) {
-    const l = doc.line(i);
+    const l = doc.line(i)
     if (/^\s*\$\$\s*$/.test(l.text)) {
-      openFenceLine = i;
-      break;
+      openFenceLine = i
+      break
     }
   }
 
-  if (openFenceLine === -1) return null;
+  if (openFenceLine === -1) return null
 
-  let closeFenceLine = -1;
+  let closeFenceLine = -1
   for (let i = openFenceLine + 1; i <= doc.lines; i++) {
-    const l = doc.line(i);
+    const l = doc.line(i)
     if (/^\s*\$\$\s*$/.test(l.text)) {
-      closeFenceLine = i;
-      break;
+      closeFenceLine = i
+      break
     }
   }
 
   if (closeFenceLine === -1 || currentLine.number > closeFenceLine) {
-    return null;
+    return null
   }
 
-  const from = doc.line(openFenceLine).from;
-  const to = doc.line(closeFenceLine).to;
-  const mathLines: string[] = [];
+  const from = doc.line(openFenceLine).from
+  const to = doc.line(closeFenceLine).to
+  const mathLines: string[] = []
   for (let i = openFenceLine + 1; i < closeFenceLine; i++) {
-    mathLines.push(doc.line(i).text);
+    mathLines.push(doc.line(i).text)
   }
 
   return {
     formula: mathLines.join('\n'),
     from,
     to,
-  };
+  }
 }

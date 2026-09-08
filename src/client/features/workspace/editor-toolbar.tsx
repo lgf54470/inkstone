@@ -1,11 +1,11 @@
-import type { EditorView } from '@codemirror/view';
-import { Blocks, Bold, Braces, ChevronDown, Code, Heading, Highlighter, Image as ImageIcon, Italic, Link2, List, ListOrdered, ListTodo, Minus, Network, Paperclip, Quote, Sigma, Smile, Strikethrough, Table } from 'lucide-react';
-import { IconButton } from '../../components/primitives';
-import { Menu, Tooltip } from '../../components/overlay';
-import { cn } from '../../lib/cn';
-import { insertCodeBlock, insertHorizontalRule, insertLink, insertTable, insertText, toggleBold, toggleBulletList, toggleInlineCode, toggleItalic, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskList } from '../../editor/commands';
-import { useToolbarMenus, type ToolbarBundle } from './use-editor-toolbar';
-import { t } from '../../lib/i18n';
+import type { EditorView } from '@codemirror/view'
+import { Blocks, Bold, Braces, ChevronDown, Code, Heading, Highlighter, Image as ImageIcon, Italic, Link2, List, ListOrdered, ListTodo, Minus, Network, Paperclip, Quote, Sigma, Smile, Strikethrough, Table } from 'lucide-react'
+import { IconButton } from '../../components/primitives'
+import { Menu, Tooltip } from '../../components/overlay'
+import { cn } from '../../lib/cn'
+import { insertCodeBlock, insertHorizontalRule, insertLink, insertTable, insertText, toggleBold, toggleBulletList, toggleInlineCode, toggleItalic, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskList } from '../../editor/commands'
+import { useToolbarMenus, type ToolbarBundle } from './use-editor-toolbar'
+import { t } from '../../lib/i18n'
 
 
 const HEADING_MENU_WIDTH = 168
@@ -15,11 +15,11 @@ const NOTE_MENU_WIDTH = 184
 const BLOCK_MENU_WIDTH = 192
 
 interface EditorToolbarProps {
-  runCommand?: (command: (target: EditorView) => boolean) => void;
-  view?: EditorView | null;
-  onPickImage: () => void;
-  onPickFile?: () => void;
-  mobile?: boolean;
+  runCommand?: (command: (target: EditorView) => boolean) => void
+  view?: EditorView | null
+  onPickImage: () => void
+  onPickFile?: () => void
+  mobile?: boolean
 }
 
 function ToolButton({ label, combo, onClick, children }: { label: string; combo?: string; onClick: () => void; children: React.ReactNode }) {
@@ -29,7 +29,7 @@ function ToolButton({ label, combo, onClick, children }: { label: string; combo?
         {children}
       </IconButton>
     </Tooltip>
-  );
+  )
 }
 
 function MenuButton({ buttonRef, label, open, onClick, children, mobile }: { buttonRef: React.RefObject<HTMLButtonElement | null>; label: string; open: boolean; onClick: () => void; children: React.ReactNode; mobile: boolean }) {
@@ -48,11 +48,11 @@ function MenuButton({ buttonRef, label, open, onClick, children, mobile }: { but
         <ChevronDown size={10} className='opacity-60' />
       </button>
     </Tooltip>
-  );
+  )
 }
 
 function Divider() {
-  return <span className='mx-1 h-4 w-px shrink-0 bg-[var(--border-subtle)]' />;
+  return <span className='mx-1 h-4 w-px shrink-0 bg-[var(--border-subtle)]' />
 }
 
 function TextStyleButtons({ b }: { b: ToolbarBundle }) {
@@ -66,7 +66,7 @@ function TextStyleButtons({ b }: { b: ToolbarBundle }) {
         <Highlighter size={14} />
       </MenuButton>
     </>
-  );
+  )
 }
 
 function ListButtons({ b }: { b: ToolbarBundle }) {
@@ -80,7 +80,7 @@ function ListButtons({ b }: { b: ToolbarBundle }) {
         <Smile size={14} />
       </MenuButton>
     </>
-  );
+  )
 }
 
 function InsertButtons({ b, onPickImage, onPickFile }: { b: ToolbarBundle; onPickImage: () => void; onPickFile?: () => void }) {
@@ -93,7 +93,7 @@ function InsertButtons({ b, onPickImage, onPickFile }: { b: ToolbarBundle; onPic
         <Network size={14} />
       </MenuButton>
     </>
-  );
+  )
 }
 
 function BlockButtons({ b }: { b: ToolbarBundle }) {
@@ -107,7 +107,7 @@ function BlockButtons({ b }: { b: ToolbarBundle }) {
         <Blocks size={14} />
       </MenuButton>
     </>
-  );
+  )
 }
 
 function ToolbarMenus({ b }: { b: ToolbarBundle }) {
@@ -119,12 +119,12 @@ function ToolbarMenus({ b }: { b: ToolbarBundle }) {
       <Menu anchor={b.noteRef} open={b.openMenu === 'note'} onClose={() => b.setOpenMenu(null)} items={b.noteItems} width={NOTE_MENU_WIDTH} label={t('workspace.note_syntax')} />
       <Menu anchor={b.blockRef} open={b.openMenu === 'block'} onClose={() => b.setOpenMenu(null)} items={b.blockItems} width={BLOCK_MENU_WIDTH} label={t('workspace.more_blocks')} />
     </>
-  );
+  )
 }
 
 export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobile = false }: EditorToolbarProps) {
-  const menus = useToolbarMenus(runCommand, view);
-  const b: ToolbarBundle = { ...menus, mobile };
+  const menus = useToolbarMenus(runCommand, view)
+  const b: ToolbarBundle = { ...menus, mobile }
 
   return (
     <div className={cn('flex shrink-0 items-center overflow-x-auto border-b border-[var(--border-subtle)] px-2 no-scrollbar', mobile ? 'h-11 gap-1' : 'h-9 gap-0.5')}>
@@ -161,5 +161,5 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
 
       <ToolbarMenus b={b} />
     </div>
-  );
+  )
 }

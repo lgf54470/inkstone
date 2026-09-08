@@ -92,4 +92,4 @@ export const messages = {
 'workspace.upload_failed': 'Upload failed',
 'workspace.value0_unchanged_lines_hidden': '… {value0} unchanged lines hidden …',
 'workspace.will_appear_here': 'will appear here.',
-};
+}

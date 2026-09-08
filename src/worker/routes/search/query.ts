@@ -1,12 +1,12 @@
-import { Hono } from 'hono';
-import { LIMITS } from '@shared/constants';
-import { truncateText } from '@shared/text-utils';
-import type { SearchResponse } from '@shared/types';
-import type { AppBindings } from '../../env';
-import { scheduleFtsDrain } from '../../lib/notify';
-import { clampInt } from '../../lib/request';
-import { requireAuth } from '../../middleware/auth';
-import { searchUserNotes } from './helpers';
+import { Hono } from 'hono'
+import { LIMITS } from '@shared/constants'
+import { truncateText } from '@shared/text-utils'
+import type { SearchResponse } from '@shared/types'
+import type { AppBindings } from '../../env'
+import { scheduleFtsDrain } from '../../lib/notify'
+import { clampInt } from '../../lib/request'
+import { requireAuth } from '../../middleware/auth'
+import { searchUserNotes } from './helpers'
 
 export function registerSearchQueryRoutes(searchRoutes: Hono<AppBindings>): void {
 searchRoutes.get('/search', requireAuth, async (c) => {

@@ -16,4 +16,4 @@ export const messages = {
 'pwa.refresh_now': '立即刷新',
 'pwa.update_ready': '应用更新已就绪',
 'pwa.update_ready_description': '方便时刷新即可；刷新前会先保存待处理的笔记更改。',
-};
+}

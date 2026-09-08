@@ -36,4 +36,4 @@ export const messages = {
 'backup.service.read_failed': '写入成功但读取失败：{details}',
 'backup.service.upload_failed': '上传 {path} 失败：HTTP {status}',
 'backup.service.write_test_failed': '写入测试失败：HTTP {status}',
-};
+}

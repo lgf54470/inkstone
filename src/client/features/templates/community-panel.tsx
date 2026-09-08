@@ -1,36 +1,36 @@
-import { useMemo } from 'react';
-import { Download, FilePlus2, Globe, RotateCw, Trash2 } from 'lucide-react';
-import type { CommunityTemplate } from '@shared/types';
-import { Button, IconButton } from '../../components/primitives';
-import { Tooltip } from '../../components/overlay';
-import { t } from '../../lib/i18n';
+import { useMemo } from 'react'
+import { Download, FilePlus2, Globe, RotateCw, Trash2 } from 'lucide-react'
+import type { CommunityTemplate } from '@shared/types'
+import { Button, IconButton } from '../../components/primitives'
+import { Tooltip } from '../../components/overlay'
+import { t } from '../../lib/i18n'
 
 export function CommunityPanel({ items, loading, isError, myId, onRefresh, onUse, onImport, onUnpublish }: {
-  items: CommunityTemplate[];
-  loading: boolean;
-  isError: boolean;
-  myId: string | undefined;
-  onRefresh: () => void;
-  onUse: (item: CommunityTemplate) => void;
-  onImport: (item: CommunityTemplate) => void;
-  onUnpublish: (item: CommunityTemplate) => void;
+  items: CommunityTemplate[]
+  loading: boolean
+  isError: boolean
+  myId: string | undefined
+  onRefresh: () => void
+  onUse: (item: CommunityTemplate) => void
+  onImport: (item: CommunityTemplate) => void
+  onUnpublish: (item: CommunityTemplate) => void
 }) {
   if (loading && items.length === 0)
     return (<div className='grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3'>
       {[0, 1, 2].map((index) => (<div key={index} className='min-h-33 animate-pulse rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-raised)]'/>))}
-    </div>);
+    </div>)
   if (isError && items.length === 0)
     return (<div className='flex h-full min-h-60 flex-col items-center justify-center gap-3 text-center'>
       <Globe size={26} className='text-[var(--text-quaternary)]'/>
       <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]'>{t('templates.community_load_failed')}</p>
       <Button size='sm' variant='secondary' icon={<RotateCw size={13}/>} onClick={onRefresh}>{t('common.retry')}</Button>
-    </div>);
+    </div>)
   if (items.length === 0)
     return (<div className='flex h-full min-h-60 flex-col items-center justify-center gap-2 text-center'>
       <Globe size={26} className='text-[var(--text-quaternary)]'/>
       <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]'>{t('templates.community_empty')}</p>
       <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('templates.community_empty_hint')}</p>
-    </div>);
+    </div>)
   return (<div className='space-y-2.5'>
     <div className='flex items-center justify-between gap-2'>
       <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('templates.community_count_value0', { value0: items.length })}</p>
@@ -39,19 +39,19 @@ export function CommunityPanel({ items, loading, isError, myId, onRefresh, onUse
     <div className='grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3'>
       {items.map((item) => (<CommunityCard key={item.id} item={item} mine={item.authorId === myId} onUse={() => onUse(item)} onImport={() => onImport(item)} onUnpublish={() => onUnpublish(item)}/>))}
     </div>
-  </div>);
+  </div>)
 }
 
 
 function CommunityCard({ item, mine, onUse, onImport, onUnpublish }: {
-  item: CommunityTemplate;
-  mine: boolean;
-  onUse: () => void;
-  onImport: () => void;
-  onUnpublish: () => void;
+  item: CommunityTemplate
+  mine: boolean
+  onUse: () => void
+  onImport: () => void
+  onUnpublish: () => void
 }) {
-  const lineCount = useMemo(() => item.content.split('\n').filter((line) => line.trim()).length, [item.content]);
-  const date = useMemo(() => new Date(item.createdAt).toLocaleDateString(), [item.createdAt]);
+  const lineCount = useMemo(() => item.content.split('\n').filter((line) => line.trim()).length, [item.content])
+  const date = useMemo(() => new Date(item.createdAt).toLocaleDateString(), [item.createdAt])
   return (<div className='group relative flex min-h-33 flex-col rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 transition-[border-color,box-shadow] duration-[var(--dur-fast)] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)]'>
     <div className='flex min-w-0 items-center gap-1.5'>
       <h3 className='min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)]'>{item.name}</h3>
@@ -79,6 +79,6 @@ function CommunityCard({ item, mine, onUse, onImport, onUnpublish }: {
         </IconButton>
       </Tooltip>)}
     </div>
-  </div>);
+  </div>)
 }
 

@@ -4,4 +4,4 @@ export const messages = {
 'properties.delete_property': 'Delete property',
 'properties.property_name': 'Property name',
 'properties.property_value': 'Property value',
-};
+}

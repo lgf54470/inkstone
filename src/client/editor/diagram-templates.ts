@@ -1,11 +1,11 @@
-import { EditorSelection, type StateCommand } from '@codemirror/state';
-import type { MessageKey } from '../lib/i18n';
+import { EditorSelection, type StateCommand } from '@codemirror/state'
+import type { MessageKey } from '../lib/i18n'
 
 
 interface DiagramTemplate {
-  id: string;
-  labelKey: MessageKey;
-  code: string;
+  id: string
+  labelKey: MessageKey
+  code: string
 }
 
 export const MERMAID_TEMPLATES: DiagramTemplate[] = [
@@ -177,7 +177,7 @@ export const MERMAID_TEMPLATES: DiagramTemplate[] = [
     [Upgrade code block highlighting]
     [Table visual alignment]`,
   },
-];
+]
 
 export const CHARTJS_TEMPLATES: DiagramTemplate[] = [
   {
@@ -347,18 +347,18 @@ export const CHARTJS_TEMPLATES: DiagramTemplate[] = [
   }
 }`,
   },
-];
+]
 
 export function insertDiagramCode(lang: 'mermaid' | 'chart', code: string): StateCommand {
   return ({ state, dispatch }) => {
-    const range = state.selection.main;
-    const insert = `\`\`\`${lang}\n${code}\n\`\`\`\n`;
+    const range = state.selection.main
+    const insert = `\`\`\`${lang}\n${code}\n\`\`\`\n`
     dispatch(state.update({
       changes: { from: range.from, to: range.to, insert },
       selection: EditorSelection.cursor(range.from + insert.length),
       scrollIntoView: true,
       userEvent: 'input.insert',
-    }));
-    return true;
-  };
+    }))
+    return true
+  }
 }

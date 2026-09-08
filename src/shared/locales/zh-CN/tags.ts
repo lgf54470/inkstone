@@ -47,4 +47,4 @@ export const messages = {
 'tags.unpinned': '已取消置顶',
 'tags.untagged': '未打标笔记',
 'tags.updated_note_bodies_value0': '已同步处理 {value0} 篇笔记正文；打开中的笔记也已更新。',
-};
+}

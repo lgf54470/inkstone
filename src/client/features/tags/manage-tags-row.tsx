@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { Check, ExternalLink, GitMerge, Hash, Pencil, Pin, Trash2, X } from 'lucide-react';
-import type { Tag } from '@shared/types';
-import { ORGANIZER_COLORS } from '@shared/organizer-colors';
-import { Modal, Tooltip } from '../../components/overlay';
-import { Button, IconButton } from '../../components/primitives';
-import { useNotes } from '../../store/notes';
-import { cn } from '../../lib/cn';
-import { t } from '../../lib/i18n';
-import { deleteTag, renameTag, setTagColor, toggleTagPinned } from './tag-mutations';
+import { useState } from 'react'
+import { Check, ExternalLink, GitMerge, Hash, Pencil, Pin, Trash2, X } from 'lucide-react'
+import type { Tag } from '@shared/types'
+import { ORGANIZER_COLORS } from '@shared/organizer-colors'
+import { Modal, Tooltip } from '../../components/overlay'
+import { Button, IconButton } from '../../components/primitives'
+import { useNotes } from '../../store/notes'
+import { cn } from '../../lib/cn'
+import { t } from '../../lib/i18n'
+import { deleteTag, renameTag, setTagColor, toggleTagPinned } from './tag-mutations'
 
 const MERGE_MODAL_WIDTH = 440
 
@@ -15,24 +15,24 @@ export function TagManageRow({
   tag,
   onOpenTag,
 }: {
-  tag: Tag;
-  onOpenTag: (name: string) => void;
+  tag: Tag
+  onOpenTag: (name: string) => void
 }) {
-  const [renaming, setRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
-  const [colorOpen, setColorOpen] = useState(false);
-  const [merging, setMerging] = useState(false);
+  const [renaming, setRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const [colorOpen, setColorOpen] = useState(false)
+  const [merging, setMerging] = useState(false)
   const startRename = () => {
-    setRenaming(true);
-    setRenameValue(tag.name);
-  };
+    setRenaming(true)
+    setRenameValue(tag.name)
+  }
   const commitRename = () => {
-    const trimmed = renameValue.trim();
+    const trimmed = renameValue.trim()
     if (trimmed && trimmed !== tag.name) {
-      void renameTag(tag, trimmed);
+      void renameTag(tag, trimmed)
     }
-    setRenaming(false);
-  };
+    setRenaming(false)
+  }
   return (
     <div className='group rounded-[var(--r-md)] p-2 transition-colors hover:bg-[var(--bg-hover)]'>
       <div className='flex items-center justify-between gap-3'>
@@ -61,7 +61,7 @@ export function TagManageRow({
       {colorOpen && <TagColorPalette tag={tag} onClose={() => setColorOpen(false)} />}
       {merging && <MergeTagsModal source={tag} onClose={() => setMerging(false)} />}
     </div>
-  );
+  )
 }
 
 function TagColorButton({
@@ -69,11 +69,11 @@ function TagColorButton({
   open,
   onToggle,
 }: {
-  tag: Tag;
-  open: boolean;
-  onToggle: () => void;
+  tag: Tag
+  open: boolean
+  onToggle: () => void
 }) {
-  const color = tag.color ?? null;
+  const color = tag.color ?? null
   return (
     <Tooltip label={t('tags.color')}>
       <button
@@ -91,7 +91,7 @@ function TagColorButton({
         />
       </button>
     </Tooltip>
-  );
+  )
 }
 
 function TagRenameField({
@@ -100,10 +100,10 @@ function TagRenameField({
   onSave,
   onCancel,
 }: {
-  value: string;
-  onChange: (value: string) => void;
-  onSave: () => void;
-  onCancel: () => void;
+  value: string
+  onChange: (value: string) => void
+  onSave: () => void
+  onCancel: () => void
 }) {
   return (
     <div className='flex flex-1 items-center gap-1.5'>
@@ -113,8 +113,8 @@ function TagRenameField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') onSave();
-          if (e.key === 'Escape') onCancel();
+          if (e.key === 'Enter') onSave()
+          if (e.key === 'Escape') onCancel()
         }}
         className="h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12\\.5)] outline-none"
       />
@@ -129,11 +129,11 @@ function TagRenameField({
         </IconButton>
       </Tooltip>
     </div>
-  );
+  )
 }
 
 function TagRowTitle({ tag }: { tag: Tag }) {
-  const isPinned = Boolean(tag.isPinned);
+  const isPinned = Boolean(tag.isPinned)
   return (
     <div className='min-w-0 flex-1'>
       <div className='flex items-center gap-2'>
@@ -151,7 +151,7 @@ function TagRowTitle({ tag }: { tag: Tag }) {
         </span>
       </div>
     </div>
-  );
+  )
 }
 
 function TagRowActions({
@@ -160,12 +160,12 @@ function TagRowActions({
   onOpen,
   onMerge,
 }: {
-  tag: Tag;
-  onRename: () => void;
-  onOpen: () => void;
-  onMerge: () => void;
+  tag: Tag
+  onRename: () => void
+  onOpen: () => void
+  onMerge: () => void
 }) {
-  const isPinned = Boolean(tag.isPinned);
+  const isPinned = Boolean(tag.isPinned)
   return (
     <div className='flex shrink-0 items-center gap-0.5 opacity-85 group-hover:opacity-100'>
       <Tooltip label={isPinned ? t('tags.unpin') : t('tags.pin')}>
@@ -199,7 +199,7 @@ function TagRowActions({
         </IconButton>
       </Tooltip>
     </div>
-  );
+  )
 }
 
 function TagColorPalette({ tag, onClose }: { tag: Tag; onClose: () => void }) {
@@ -210,8 +210,8 @@ function TagColorPalette({ tag, onClose }: { tag: Tag; onClose: () => void }) {
           type='button'
           aria-label={t('tags.clear_color')}
           onClick={() => {
-            void setTagColor(tag, null);
-            onClose();
+            void setTagColor(tag, null)
+            onClose()
           }}
           className={cn(
             'flex size-6 items-center justify-center rounded-full border bg-[var(--bg-base)] text-[var(--text-quaternary)] transition-transform hover:scale-110',
@@ -229,8 +229,8 @@ function TagColorPalette({ tag, onClose }: { tag: Tag; onClose: () => void }) {
             type='button'
             aria-label={color}
             onClick={() => {
-              void setTagColor(tag, color);
-              onClose();
+              void setTagColor(tag, color)
+              onClose()
             }}
             className={cn(
               'flex size-6 items-center justify-center rounded-full transition-transform hover:scale-110',
@@ -243,12 +243,12 @@ function TagColorPalette({ tag, onClose }: { tag: Tag; onClose: () => void }) {
         </Tooltip>
       ))}
     </div>
-  );
+  )
 }
 
 function MergeTagsModal({ source, onClose }: { source: Tag; onClose: () => void }) {
-  const tags = useNotes((s) => s.tags ?? []);
-  const targets = tags.filter((tag) => tag.id !== source.id);
+  const tags = useNotes((s) => s.tags ?? [])
+  const targets = tags.filter((tag) => tag.id !== source.id)
   return (
     <Modal
       open
@@ -264,9 +264,9 @@ function MergeTagsModal({ source, onClose }: { source: Tag; onClose: () => void 
               key={target.id}
               target={target}
               onPick={() => {
-                const src = source;
-                onClose();
-                void renameTag(src, target.name);
+                const src = source
+                onClose()
+                void renameTag(src, target.name)
               }}
             />
           ))}
@@ -283,7 +283,7 @@ function MergeTagsModal({ source, onClose }: { source: Tag; onClose: () => void 
         </div>
       </div>
     </Modal>
-  );
+  )
 }
 
 function MergeTargetRow({ target, onPick }: { target: Tag; onPick: () => void }) {
@@ -303,5 +303,5 @@ function MergeTargetRow({ target, onPick }: { target: Tag; onPick: () => void })
         {t('tags.notes_count', { value0: target.count })}
       </span>
     </button>
-  );
+  )
 }

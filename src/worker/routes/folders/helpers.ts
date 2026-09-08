@@ -1,10 +1,10 @@
-import { z } from 'zod';
-import { LIMITS } from '@shared/constants';
-import { organizerColorOrNull } from '@shared/organizer-colors';
-import type { Folder } from '@shared/types';
-import { toFolder, type FolderRow } from '../../db/rows';
-import { ApiError } from '../../lib/errors';
-import { isValidId } from '../../lib/id';
+import { z } from 'zod'
+import { LIMITS } from '@shared/constants'
+import { organizerColorOrNull } from '@shared/organizer-colors'
+import type { Folder } from '@shared/types'
+import { toFolder, type FolderRow } from '../../db/rows'
+import { ApiError } from '../../lib/errors'
+import { isValidId } from '../../lib/id'
 
 export const createFolderSchema = z.object({
   id: z.string().refine(isValidId, 'id must be a valid folder id').optional(),

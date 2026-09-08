@@ -12,7 +12,7 @@ import { ApiError } from '../../lib/api'
 import { t } from '../../lib/i18n'
 import { useSession } from '../../store/session'
 import { useUi, type UiState } from '../../store/ui'
-type ToastFn = UiState['toast'];
+type ToastFn = UiState['toast']
 
 const MODAL_WIDTH = 620
 
@@ -55,7 +55,7 @@ export function AvatarPicker({
   )
 }
 
-type PickerState = ReturnType<typeof useAvatarPicker>;
+type PickerState = ReturnType<typeof useAvatarPicker>
 
 function useAvatarPicker({ open, onClose, displayName, preference }: { open: boolean; onClose: () => void; displayName: string; preference: string }) {
   const updateProfile = useSession((state) => state.updateProfile)
@@ -90,15 +90,15 @@ function useAvatarPicker({ open, onClose, displayName, preference }: { open: boo
 }
 
 async function saveAvatarFlow({ selected, preference, updateProfile, busyRef, processingRef, setIsBusy, setError, toast, close }: {
-  selected: string;
-  preference: string;
-  updateProfile: (patch: { name?: string; avatarUrl?: string }) => Promise<unknown>;
-  busyRef: React.MutableRefObject<boolean>;
-  processingRef: React.MutableRefObject<boolean>;
-  setIsBusy: (busy: boolean) => void;
-  setError: (error: string | null) => void;
-  toast: ToastFn;
-  close: () => void;
+  selected: string
+  preference: string
+  updateProfile: (patch: { name?: string; avatarUrl?: string }) => Promise<unknown>
+  busyRef: React.MutableRefObject<boolean>
+  processingRef: React.MutableRefObject<boolean>
+  setIsBusy: (busy: boolean) => void
+  setError: (error: string | null) => void
+  toast: ToastFn
+  close: () => void
 }) {
   if (busyRef.current || processingRef.current) return
   if (selected === preference) return close()
@@ -118,13 +118,13 @@ async function saveAvatarFlow({ selected, preference, updateProfile, busyRef, pr
 }
 
 async function chooseAvatarFileFlow({ file, busyRef, processingRef, setIsProcessing, setError, setSelected, inputRef }: {
-  file: File | undefined;
-  busyRef: React.MutableRefObject<boolean>;
-  processingRef: React.MutableRefObject<boolean>;
-  setIsProcessing: (processing: boolean) => void;
-  setError: (error: string | null) => void;
-  setSelected: (selected: string) => void;
-  inputRef: React.MutableRefObject<HTMLInputElement | null>;
+  file: File | undefined
+  busyRef: React.MutableRefObject<boolean>
+  processingRef: React.MutableRefObject<boolean>
+  setIsProcessing: (processing: boolean) => void
+  setError: (error: string | null) => void
+  setSelected: (selected: string) => void
+  inputRef: React.MutableRefObject<HTMLInputElement | null>
 }) {
   if (!file || busyRef.current || processingRef.current) return
   processingRef.current = true

@@ -47,4 +47,4 @@ export const messages = {
 'tags.unpinned': 'Tag unpinned',
 'tags.untagged': 'Untagged',
 'tags.updated_note_bodies_value0': 'Updated {value0} note bodies. Open notes were refreshed too.',
-};
+}

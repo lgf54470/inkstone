@@ -1,4 +1,4 @@
-import type { Folder, Note, Tag } from './notes';
+import type { Folder, Note, Tag } from './notes'
 
 export interface ExportBundle {
 

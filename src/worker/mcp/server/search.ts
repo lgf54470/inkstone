@@ -1,9 +1,9 @@
-import type { McpToolCtx } from './context';
-import { z } from 'zod';
-import { LIMITS } from '@shared/constants';
-import { fetchMcpNote, getMcpNoteContext, listMcpFolders, listMcpNotes, listMcpTags, readMcpNote, searchMcpNotes } from '../retrieval';
-import { MCP_SCOPES } from '../settings';
-import { customTool, requireScope, safeTool, structured, readOnlyAnnotations, generalOutputSchema, noteId } from './context';
+import type { McpToolCtx } from './context'
+import { z } from 'zod'
+import { LIMITS } from '@shared/constants'
+import { fetchMcpNote, getMcpNoteContext, listMcpFolders, listMcpNotes, listMcpTags, readMcpNote, searchMcpNotes } from '../retrieval'
+import { MCP_SCOPES } from '../settings'
+import { customTool, requireScope, safeTool, structured, readOnlyAnnotations, generalOutputSchema, noteId } from './context'
 
 export function registerSearchTools(ctx: McpToolCtx): void {
   registerSearchTool(ctx)

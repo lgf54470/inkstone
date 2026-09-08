@@ -153,4 +153,4 @@ export const messages = {
 'blog.selected_posts_count': '{value0} posts selected',
 'blog.batch_publish': 'Batch Publish',
 'blog.batch_unpublish': 'Batch Unpublish',
-};
+}

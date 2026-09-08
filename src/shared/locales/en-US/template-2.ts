@@ -375,4 +375,4 @@ tags: [product]
 `,
 'template.prd.description': 'Product requirements: background, users, scope and acceptance criteria.',
 'template.prd.name': 'Product Requirements',
-};
+}

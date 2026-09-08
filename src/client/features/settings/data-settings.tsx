@@ -1,22 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, Download, FileJson, FileUp, FolderOpen, ImageIcon, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react';
-import { api } from '../../lib/api';
-import { errorMessage } from '../../lib/errors';
-import { formatBytes, formatNumber } from '../../lib/time';
-import { Button } from '../../components/primitives';
-import { LoadingBlock } from '../../components/feedback';
-import { SettingRow } from '../../components/form';
-import { confirm } from '../../components/overlay';
-import { useUi, type UiState } from '../../store/ui';
-import { useNotes } from '../../store/notes';
-import { AttachmentManager } from '../attachments';
-import { t } from '../../lib/i18n';
-import { restoreMarkdownBackupFolder } from '../../lib/backup-import';
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { AlertCircle, Download, FileJson, FileUp, FolderOpen, ImageIcon, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { api } from '../../lib/api'
+import { errorMessage } from '../../lib/errors'
+import { formatBytes, formatNumber } from '../../lib/time'
+import { Button } from '../../components/primitives'
+import { LoadingBlock } from '../../components/feedback'
+import { SettingRow } from '../../components/form'
+import { confirm } from '../../components/overlay'
+import { useUi, type UiState } from '../../store/ui'
+import { useNotes } from '../../store/notes'
+import { AttachmentManager } from '../attachments'
+import { t } from '../../lib/i18n'
+import { restoreMarkdownBackupFolder } from '../../lib/backup-import'
 
 const TRACKING_STAT = 'tracking-[var(--tracking-stat)]'
 
 export function DataSettings() {
-  const d = useDataSettings();
+  const d = useDataSettings()
   return (<div className='space-y-6'>
     <OverviewSection d={d}/>
     <AttachmentSection d={d}/>
@@ -25,49 +25,49 @@ export function DataSettings() {
     <ImportSection d={d}/>
     <MaintenanceSection d={d}/>
     <AttachmentManager open={d.isAttachmentManagerOpen} onClose={() => d.setIsAttachmentManagerOpen(false)} onChanged={() => void d.loadStats()}/>
-  </div>);
+  </div>)
 }
 
-type DataState = ReturnType<typeof useDataSettings>;
-type ToastFn = UiState['toast'];
-type RunTask = (key: string, task: () => Promise<void>) => void;
-type DataStore = ReturnType<typeof useDataStore>;
+type DataState = ReturnType<typeof useDataSettings>
+type ToastFn = UiState['toast']
+type RunTask = (key: string, task: () => Promise<void>) => void
+type DataStore = ReturnType<typeof useDataStore>
 
 function useDataStore() {
-  const toast = useUi((s) => s.toast);
-  const openPanel = useUi((s) => s.openPanel);
-  const emptyTrash = useNotes((s) => s.emptyTrash);
-  const pull = useNotes((s) => s.pull);
-  return { toast, openPanel, emptyTrash, pull };
+  const toast = useUi((s) => s.toast)
+  const openPanel = useUi((s) => s.openPanel)
+  const emptyTrash = useNotes((s) => s.emptyTrash)
+  const pull = useNotes((s) => s.pull)
+  return { toast, openPanel, emptyTrash, pull }
 }
 
 function useDataBusy(): { busy: string | null; run: RunTask } {
-  const [busy, setBusy] = useState<string | null>(null);
-  const busyRef = useRef<string | null>(null);
-  const run = (key: string, task: () => Promise<void>) => void runTaskFlow({ key, task, busyRef, setBusy });
-  return { busy, run };
+  const [busy, setBusy] = useState<string | null>(null)
+  const busyRef = useRef<string | null>(null)
+  const run = (key: string, task: () => Promise<void>) => void runTaskFlow({ key, task, busyRef, setBusy })
+  return { busy, run }
 }
 
 function useDataSettings() {
-  const store = useDataStore();
-  const { busy, run } = useDataBusy();
-  const [isAttachmentManagerOpen, setIsAttachmentManagerOpen] = useState(false);
-  const [stats, setStats] = useState<Record<string, number> | null>(null);
-  const [statsError, setStatsError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const backupFolderRef = useRef<HTMLInputElement>(null);
-  const statsEpoch = useRef(0);
-  const mountedRef = useRef(true);
-  const loadStats = useCallback(() => void loadStatsFlow({ mountedRef, statsEpoch, setStats, setStatsError }), []);
+  const store = useDataStore()
+  const { busy, run } = useDataBusy()
+  const [isAttachmentManagerOpen, setIsAttachmentManagerOpen] = useState(false)
+  const [stats, setStats] = useState<Record<string, number> | null>(null)
+  const [statsError, setStatsError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const backupFolderRef = useRef<HTMLInputElement>(null)
+  const statsEpoch = useRef(0)
+  const mountedRef = useRef(true)
+  const loadStats = useCallback(() => void loadStatsFlow({ mountedRef, statsEpoch, setStats, setStatsError }), [])
   useEffect(() => {
-    mountedRef.current = true;
-    void loadStats();
+    mountedRef.current = true
+    void loadStats()
     return () => {
-      mountedRef.current = false;
-      statsEpoch.current++;
-    };
-  }, [loadStats]);
-  const actions = useDataActions(store, run, loadStats);
+      mountedRef.current = false
+      statsEpoch.current++
+    }
+  }, [loadStats])
+  const actions = useDataActions(store, run, loadStats)
   return {
     isAttachmentManagerOpen,
     setIsAttachmentManagerOpen,
@@ -79,106 +79,106 @@ function useDataSettings() {
     openPanel: store.openPanel,
     loadStats,
     ...actions,
-  };
+  }
 }
 
 function useDataActions(store: DataStore, run: RunTask, loadStats: () => void) {
-  const exportData = (format: 'zip' | 'json') => run(`export-${format}`, () => exportDataFlow(format, store.toast));
-  const restoreBackup = (files: File[]) => run('restore-backup', () => restoreBackupFlow(files, store, loadStats));
-  const importFiles = (files: File[]) => run('import', () => importFilesFlow(files, store, loadStats));
-  const reindex = () => run('reindex', () => reindexFlow(store));
-  const prune = () => run('prune', () => pruneFlow(store, loadStats));
-  const trash = () => run('trash', () => trashFlow(store, loadStats));
-  return { exportData, restoreBackup, importFiles, reindex, prune, trash };
+  const exportData = (format: 'zip' | 'json') => run(`export-${format}`, () => exportDataFlow(format, store.toast))
+  const restoreBackup = (files: File[]) => run('restore-backup', () => restoreBackupFlow(files, store, loadStats))
+  const importFiles = (files: File[]) => run('import', () => importFilesFlow(files, store, loadStats))
+  const reindex = () => run('reindex', () => reindexFlow(store))
+  const prune = () => run('prune', () => pruneFlow(store, loadStats))
+  const trash = () => run('trash', () => trashFlow(store, loadStats))
+  return { exportData, restoreBackup, importFiles, reindex, prune, trash }
 }
 
 async function loadStatsFlow({ mountedRef, statsEpoch, setStats, setStatsError }: {
-  mountedRef: React.MutableRefObject<boolean>;
-  statsEpoch: React.MutableRefObject<number>;
-  setStats: (stats: Record<string, number>) => void;
-  setStatsError: (error: string | null) => void;
+  mountedRef: React.MutableRefObject<boolean>
+  statsEpoch: React.MutableRefObject<number>
+  setStats: (stats: Record<string, number>) => void
+  setStatsError: (error: string | null) => void
 }) {
   if (!mountedRef.current)
-    return;
-  const epoch = ++statsEpoch.current;
-  setStatsError(null);
+    return
+  const epoch = ++statsEpoch.current
+  setStatsError(null)
   try {
-    const result = await api.settings.stats();
+    const result = await api.settings.stats()
     if (mountedRef.current && epoch === statsEpoch.current) {
-      setStats(result);
-      setStatsError(null);
+      setStats(result)
+      setStatsError(null)
     }
   }
   catch (error) {
     if (mountedRef.current && epoch === statsEpoch.current) {
-      setStatsError(error instanceof Error ? error.message : t('settings.could_not_load_data_overview'));
+      setStatsError(error instanceof Error ? error.message : t('settings.could_not_load_data_overview'))
     }
   }
 }
 
 async function runTaskFlow({ key, task, busyRef, setBusy }: {
-  key: string;
-  task: () => Promise<void>;
-  busyRef: React.MutableRefObject<string | null>;
-  setBusy: (busy: string | null) => void;
+  key: string
+  task: () => Promise<void>
+  busyRef: React.MutableRefObject<string | null>
+  setBusy: (busy: string | null) => void
 }) {
   if (busyRef.current)
-    return;
-  busyRef.current = key;
-  setBusy(key);
+    return
+  busyRef.current = key
+  setBusy(key)
   try {
-    await task();
+    await task()
   }
   finally {
     if (busyRef.current === key) {
-      busyRef.current = null;
-      setBusy(null);
+      busyRef.current = null
+      setBusy(null)
     }
   }
 }
 
 async function exportDataFlow(format: 'zip' | 'json', toast: ToastFn) {
   try {
-    await api.transfer.save(format);
+    await api.transfer.save(format)
   }
   catch (error) {
     toast({
       title: t('common.export_failed'),
       description: errorMessage(error),
       tone: 'danger',
-    });
+    })
   }
 }
 
-type ImportResult = Awaited<ReturnType<typeof api.transfer.import>>;
+type ImportResult = Awaited<ReturnType<typeof api.transfer.import>>
 
 async function restoreBackupFlow(files: File[], store: DataStore, loadStats: () => void) {
   try {
-    const result = await restoreMarkdownBackupFolder(files, (batch, manifest, paths) => api.transfer.import(batch, 'newer', { manifest, paths }));
-    await reportImportFlow({ result, pull: store.pull, loadStats, toast: store.toast });
+    const result = await restoreMarkdownBackupFolder(files, (batch, manifest, paths) => api.transfer.import(batch, 'newer', { manifest, paths }))
+    await reportImportFlow({ result, pull: store.pull, loadStats, toast: store.toast })
   }
   catch (err) {
-    store.toast({ title: t('settings.import_failed'), description: errorMessage(err), tone: 'danger' });
+    store.toast({ title: t('settings.import_failed'), description: errorMessage(err), tone: 'danger' })
   }
 }
 
 async function importFilesFlow(files: File[], store: DataStore, loadStats: () => void) {
   try {
-    const result = await api.transfer.import(files);
-    await reportImportFlow({ result, pull: store.pull, loadStats, toast: store.toast });
+    const result = await api.transfer.import(files)
+    await reportImportFlow({ result, pull: store.pull, loadStats, toast: store.toast })
   }
   catch (err) {
-    store.toast({ title: t('settings.import_failed'), description: errorMessage(err), tone: 'danger' });
+    store.toast({ title: t('settings.import_failed'), description: errorMessage(err), tone: 'danger' })
   }
 }
 
 async function reindexFlow(store: DataStore) {
   try {
-    const res = await api.reindex();
-    store.toast({ title: t('settings.rebuilt_the_index_for_value0_notes', { value0: res.indexed }), tone: 'success' });
+    const res = await api.reindex()
+    store.toast({ title: t('settings.rebuilt_the_index_for_value0_notes', { value0: res.indexed }), tone: 'success' })
   }
   catch (err) {
-    store.toast({ title: t('settings.rebuild_failed'), description: errorMessage(err), tone: 'danger' });
+    store.toast({ title: t('settings.rebuild_failed'), description: errorMessage(err), tone: 'danger' })
   }
 }
 
@@ -188,20 +188,20 @@ async function pruneFlow(store: DataStore, loadStats: () => void) {
     description: t('settings.only_files_that_do_not_appear_in_the_body_of_any_note_will_be_deleted_an'),
     confirmLabel: t('settings.clean_up'),
     tone: 'danger',
-  });
+  })
   if (!ok)
-    return;
+    return
   try {
-    const res = await api.files.prune();
-    void loadStats();
+    const res = await api.files.prune()
+    void loadStats()
     store.toast({
       title: res.removed ? t('settings.cleaned_value0_attachments', { value0: res.removed }) : t('settings.there_are_no_attachments_to_clean'),
       description: res.removed ? t('settings.freed_value0', { value0: formatBytes(res.freedBytes) }) : undefined,
       tone: 'success',
-    });
+    })
   }
   catch (err) {
-    store.toast({ title: t('settings.cleanup_failed'), description: errorMessage(err), tone: 'danger' });
+    store.toast({ title: t('settings.cleanup_failed'), description: errorMessage(err), tone: 'danger' })
   }
 }
 
@@ -211,43 +211,43 @@ async function trashFlow(store: DataStore, loadStats: () => void) {
     description: t('settings.cannot_be_undone'),
     confirmLabel: t('common.clear'),
     tone: 'danger',
-  });
+  })
   if (!ok)
-    return;
+    return
   try {
-    const purged = await store.emptyTrash();
+    const purged = await store.emptyTrash()
     if (purged === null)
-      return;
-    void loadStats();
-    store.toast({ title: t('common.permanently_deleted_value0_notes', { value0: purged }), tone: 'success' });
+      return
+    void loadStats()
+    store.toast({ title: t('common.permanently_deleted_value0_notes', { value0: purged }), tone: 'success' })
   }
   catch (err) {
-    store.toast({ title: t('common.delete_failed'), description: errorMessage(err), tone: 'danger' });
+    store.toast({ title: t('common.delete_failed'), description: errorMessage(err), tone: 'danger' })
   }
 }
 
 async function reportImportFlow({ result, pull, loadStats, toast }: {
-  result: ImportResult;
-  pull: DataStore['pull'];
-  loadStats: () => void;
-  toast: ToastFn;
+  result: ImportResult
+  pull: DataStore['pull']
+  loadStats: () => void
+  toast: ToastFn
 }) {
-  const refreshed = await pull({ force: true }).then(() => true, () => false);
-  void loadStats();
-  const summary = t('settings.created_value0_updated_value1_skipped_value2_restored_value3_attachments', { value0: result.createdNotes, value1: result.updatedNotes, value2: result.skippedNotes, value3: result.createdAttachments, value4: result.skippedAttachments });
-  const details = [summary];
+  const refreshed = await pull({ force: true }).then(() => true, () => false)
+  void loadStats()
+  const summary = t('settings.created_value0_updated_value1_skipped_value2_restored_value3_attachments', { value0: result.createdNotes, value1: result.updatedNotes, value2: result.skippedNotes, value3: result.createdAttachments, value4: result.skippedAttachments })
+  const details = [summary]
   if (result.warnings.length)
-    details.push(result.warnings[0]);
+    details.push(result.warnings[0])
   if (!refreshed)
-    details.push(t('settings.operation_completed_but_refresh_failed'));
+    details.push(t('settings.operation_completed_but_refresh_failed'))
   toast({
     title: t('settings.import_completed'),
     description: details.join('\uFF1B'),
     tone: result.warnings.length || !refreshed ? 'warning' : 'success',
     duration: 7000,
-  });
+  })
   if (result.warnings.length)
-    console.warn(t('settings.inkstone_import_reminder'), result.warnings);
+    console.warn(t('settings.inkstone_import_reminder'), result.warnings)
 }
 
 function OverviewSection({ d }: { d: DataState }) {
@@ -263,7 +263,7 @@ function OverviewSection({ d }: { d: DataState }) {
       </>
       )}
     </section>
-  );
+  )
 }
 
 function StatsLoadError({ d }: { d: DataState }) {
@@ -276,7 +276,7 @@ function StatsLoadError({ d }: { d: DataState }) {
       </div>
       <Button size='sm' variant='secondary' onClick={() => void d.loadStats()}>{t('common.retry')}</Button>
     </div>
-  );
+  )
 }
 
 function InlineStatsError({ d }: { d: DataState }) {
@@ -286,7 +286,7 @@ function InlineStatsError({ d }: { d: DataState }) {
       <span className='min-w-0 flex-1 break-words'>{d.statsError}</span>
       <button type='button' className='shrink-0 font-medium underline underline-offset-2' onClick={() => void d.loadStats()}>{t('common.retry')}</button>
     </div>
-  );
+  )
 }
 
 function StatsGrid({ stats }: { stats: Record<string, number> }) {
@@ -299,7 +299,7 @@ function StatsGrid({ stats }: { stats: Record<string, number> }) {
     { label: t('settings.version_history'), value: stats.versions ?? 0 },
     { label: t('settings.attachments'), value: stats.attachments ?? 0 },
     { label: t('navigation.trash'), value: stats.trashed ?? 0 },
-  ];
+  ]
   return (
     <>
       <div className='grid grid-cols-2 gap-2 md:grid-cols-4'>
@@ -315,7 +315,7 @@ function StatsGrid({ stats }: { stats: Record<string, number> }) {
       {stats.attachmentBytes ? (<p className="mt-2 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('settings.attachment_storage')}{formatBytes(stats.attachmentBytes)}
       </p>) : null}
     </>
-  );
+  )
 }
 
 function AttachmentSection({ d }: { d: DataState }) {
@@ -326,7 +326,7 @@ function AttachmentSection({ d }: { d: DataState }) {
       <Button size='sm' icon={<ImageIcon size={13}/>} onClick={() => d.setIsAttachmentManagerOpen(true)}>{t('attachments.manage')}</Button>
       </SettingRow>
     </section>
-  );
+  )
 }
 
 function ShareHubSection({ d }: { d: DataState }) {
@@ -337,7 +337,7 @@ function ShareHubSection({ d }: { d: DataState }) {
       <Button size='sm' icon={<Share2 size={13}/>} onClick={() => d.openPanel('share')}>{t('share.manage_shares')}</Button>
       </SettingRow>
     </section>
-  );
+  )
 }
 
 function ExportSection({ d }: { d: DataState }) {
@@ -351,7 +351,7 @@ function ExportSection({ d }: { d: DataState }) {
       <Button size='sm' variant='ghost' icon={<FileJson size={13}/>} loading={d.busy === 'export-json'} disabled={d.busy !== null} onClick={() => d.exportData('json')}>{t('settings.download_json')}</Button>
       </SettingRow>
     </section>
-  );
+  )
 }
 
 function ImportSection({ d }: { d: DataState }) {
@@ -362,22 +362,22 @@ function ImportSection({ d }: { d: DataState }) {
       <Button size='sm' icon={<FolderOpen size={13}/>} loading={d.busy === 'restore-backup'} disabled={d.busy !== null} onClick={() => d.backupFolderRef.current?.click()}>{t('settings.select_backup_folder')}</Button>
       </SettingRow>
       <input ref={d.backupFolderRef} type='file' hidden multiple {...({ webkitdirectory: '', directory: '' } as Record<string, string>)} onChange={async (event) => {
-      const files = [...(event.target.files ?? [])];
-      event.target.value = '';
+      const files = [...(event.target.files ?? [])]
+      event.target.value = ''
       if (files.length)
-        d.restoreBackup(files);
+        d.restoreBackup(files)
       }}/>
       <SettingRow title={t('settings.import_file')} description={t('settings.supports_md_txt_zip_and_inkstone_json_exports_for_matching_ids_the_newer')}>
       <Button size='sm' icon={<FileUp size={13}/>} loading={d.busy === 'import'} disabled={d.busy !== null} onClick={() => d.fileRef.current?.click()}>{t('settings.select_file')}</Button>
       </SettingRow>
       <input ref={d.fileRef} type='file' hidden multiple accept='.md,.markdown,.txt,.json,.zip' onChange={async (event) => {
-      const files = [...(event.target.files ?? [])];
-      event.target.value = '';
+      const files = [...(event.target.files ?? [])]
+      event.target.value = ''
       if (files.length)
-        d.importFiles(files);
+        d.importFiles(files)
       }}/>
     </section>
-  );
+  )
 }
 
 function MaintenanceSection({ d }: { d: DataState }) {
@@ -394,5 +394,5 @@ function MaintenanceSection({ d }: { d: DataState }) {
       <Button size='sm' variant='ghost' icon={<Trash2 size={13}/>} className='text-[var(--danger)]' loading={d.busy === 'trash'} disabled={d.busy !== null} onClick={d.trash}>{t('common.clear')}</Button>
       </SettingRow>
     </section>
-  );
+  )
 }

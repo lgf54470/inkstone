@@ -375,4 +375,4 @@ tags: [产品]
 `,
 'template.prd.description': '产品需求文档：背景、用户、范围与验收标准。',
 'template.prd.name': '产品需求文档',
-};
+}

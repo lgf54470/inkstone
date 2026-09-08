@@ -1,5 +1,5 @@
-import type { LibraryContext } from '../types';
-import { organizeMcpNote } from '../../writes';
+import type { LibraryContext } from '../types'
+import { organizeMcpNote } from '../../writes'
 
 export async function bulkOrganizeMcpNotes(
   context: LibraryContext,

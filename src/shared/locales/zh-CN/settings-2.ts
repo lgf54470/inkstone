@@ -152,4 +152,4 @@ export const messages = {
 'settings.no_backup_target_yet': '还没有备份目标',
 'settings.no_enabled_backup_targets': '没有可用的备份目标',
 'settings.no_saves_yet': '尚无写入记录',
-};
+}

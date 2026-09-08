@@ -1,5 +1,5 @@
-import { api } from '../../../lib/api';
-import type { ShareStoreState, SetShareStoreState } from './types';
+import { api } from '../../../lib/api'
+import type { ShareStoreState, SetShareStoreState } from './types'
 
 export const shareContentActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'createFolder' | 'patchFolder' | 'deleteFolder' | 'createTag' | 'patchTag' | 'deleteTag'> => ({
   createFolder: (name, parentId, color, icon) => createFolderImpl(name, parentId, color, icon, set),
@@ -8,7 +8,7 @@ export const shareContentActions = (set: SetShareStoreState, get: () => ShareSto
   createTag: (name, color) => createTagImpl(name, color, set),
   patchTag: (id, patch) => patchTagImpl(id, patch, set),
   deleteTag: (id) => deleteTagImpl(id, set, get),
-});
+})
 
 async function createFolderImpl(
   name: Parameters<ShareStoreState['createFolder']>[0],
@@ -18,7 +18,7 @@ async function createFolderImpl(
   set: SetShareStoreState,
 ): Promise<ShareStoreState['folders'][number] | null> {
   try {
-    const folder = await api.share.folders.create({ name, parentId, color, icon });
+    const folder = await api.share.folders.create({ name, parentId, color, icon })
     set((s) => ({
       folders: [...s.folders, folder],
       globalStats: s.globalStats
@@ -30,10 +30,10 @@ async function createFolderImpl(
           },
         }
         : null,
-    }));
-    return folder;
+    }))
+    return folder
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -43,27 +43,27 @@ async function patchFolderImpl(
   set: SetShareStoreState,
 ): Promise<ShareStoreState['folders'][number] | null> {
   try {
-    const folder = await api.share.folders.patch(id, patch);
+    const folder = await api.share.folders.patch(id, patch)
     set((s) => ({
       folders: s.folders.map((f) => (f.id === id ? folder : f)),
-    }));
-    return folder;
+    }))
+    return folder
   } catch {
-    return null;
+    return null
   }
 }
 
 async function deleteFolderImpl(id: string, set: SetShareStoreState, get: () => ShareStoreState): Promise<boolean> {
   try {
-    await api.share.folders.remove(id);
+    await api.share.folders.remove(id)
     set((s) => ({
       folders: s.folders.filter((f) => f.id !== id),
       folderId: s.folderId === id ? null : s.folderId,
-    }));
-    await get().loadShares();
-    return true;
+    }))
+    await get().loadShares()
+    return true
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -73,7 +73,7 @@ async function createTagImpl(
   set: SetShareStoreState,
 ): Promise<ShareStoreState['tags'][number] | null> {
   try {
-    const tag = await api.share.tags.create({ name, color });
+    const tag = await api.share.tags.create({ name, color })
     set((s) => ({
       tags: s.tags.some((t) => t.id === tag.id) ? s.tags : [...s.tags, tag],
       globalStats: s.globalStats
@@ -85,10 +85,10 @@ async function createTagImpl(
           },
         }
         : null,
-    }));
-    return tag;
+    }))
+    return tag
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -98,27 +98,27 @@ async function patchTagImpl(
   set: SetShareStoreState,
 ): Promise<ShareStoreState['tags'][number] | null> {
   try {
-    const tag = await api.share.tags.patch(id, patch);
+    const tag = await api.share.tags.patch(id, patch)
     set((s) => ({
       tags: s.tags.map((t) => (t.id === id ? tag : t)),
-    }));
-    return tag;
+    }))
+    return tag
   } catch {
-    return null;
+    return null
   }
 }
 
 async function deleteTagImpl(id: string, set: SetShareStoreState, get: () => ShareStoreState): Promise<boolean> {
   try {
-    const tag = get().tags.find((t) => t.id === id);
-    await api.share.tags.remove(id);
+    const tag = get().tags.find((t) => t.id === id)
+    await api.share.tags.remove(id)
     set((s) => ({
       tags: s.tags.filter((t) => t.id !== id),
       tag: tag && s.tag === tag.name ? null : s.tag,
-    }));
-    await get().loadShares();
-    return true;
+    }))
+    await get().loadShares()
+    return true
   } catch {
-    return false;
+    return false
   }
 }

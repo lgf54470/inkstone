@@ -1,25 +1,25 @@
-import { ArrowLeft, Columns2, Download, Eye, FolderClosed, Globe, Hash, History, LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Share2, Star, X } from 'lucide-react';
-import { readingMinutes } from '@shared/markdown-utils';
-import { LIMITS } from '@shared/constants';
-import { type EditorLayout } from '@shared/types';
-import { cn } from '../../../lib/cn';
-import { EditorContextMenu } from '../editor-context-menu';
-import { fullTime } from '../../../lib/time';
-import { IconButton } from '../../../components/primitives';
-import { Drawer, Menu, Tooltip, type MenuItem } from '../../../components/overlay';
-import { Segmented, type SegmentedOption } from '../../../components/form';
-import { CodeEditor } from '../../../editor/code-editor';
-import { insertFiles } from '../../../editor/paste';
-import { Outline, Preview } from '../../preview';
-import { SplitResizer, SaveIndicator } from '../../shell';
-import { EditorToolbar } from '../editor-toolbar';
-import { BacklinksPanel } from '../backlinks-panel';
-import { AttachmentDriveModal } from '../../attachments';
-import { folderPathLabel, openFolderView } from '../../../lib/folders';
-import { useUi } from '../../../store/ui';
-import { t } from '../../../lib/i18n';
-import type { WorkspaceBundle } from './use-workspace';
-import type { ExportNote } from './workspace-menus';
+import { ArrowLeft, Columns2, Download, Eye, FolderClosed, Globe, Hash, History, LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Share2, Star, X } from 'lucide-react'
+import { readingMinutes } from '@shared/markdown-utils'
+import { LIMITS } from '@shared/constants'
+import { type EditorLayout } from '@shared/types'
+import { cn } from '../../../lib/cn'
+import { EditorContextMenu } from '../editor-context-menu'
+import { fullTime } from '../../../lib/time'
+import { IconButton } from '../../../components/primitives'
+import { Drawer, Menu, Tooltip, type MenuItem } from '../../../components/overlay'
+import { Segmented, type SegmentedOption } from '../../../components/form'
+import { CodeEditor } from '../../../editor/code-editor'
+import { insertFiles } from '../../../editor/paste'
+import { Outline, Preview } from '../../preview'
+import { SplitResizer, SaveIndicator } from '../../shell'
+import { EditorToolbar } from '../editor-toolbar'
+import { BacklinksPanel } from '../backlinks-panel'
+import { AttachmentDriveModal } from '../../attachments'
+import { folderPathLabel, openFolderView } from '../../../lib/folders'
+import { useUi } from '../../../store/ui'
+import { t } from '../../../lib/i18n'
+import type { WorkspaceBundle } from './use-workspace'
+import type { ExportNote } from './workspace-menus'
 
 const EXPORT_MENU_WIDTH = 200
 const MORE_MENU_WIDTH = 220
@@ -30,7 +30,7 @@ function groupedLayoutOptions(): SegmentedOption<EditorLayout>[] {
     { value: 'edit', label: <Pencil size={12.5} />, title: t('workspace.edit_only') },
     { value: 'split', label: <Columns2 size={12.5} />, title: t('workspace.split_view') },
     { value: 'preview', label: <Eye size={12.5} />, title: t('workspace.preview_only') },
-  ];
+  ]
 }
 
 function standaloneLayoutOptions(): SegmentedOption<EditorLayout>[] {
@@ -38,11 +38,11 @@ function standaloneLayoutOptions(): SegmentedOption<EditorLayout>[] {
     { value: 'edit', label: <Pencil size={12.5} />, title: t('workspace.edit_only') },
     { value: 'split', label: <Columns2 size={12.5} />, title: t('workspace.split_view'), combo: 'mod+\\\\' },
     { value: 'preview', label: <Eye size={12.5} />, title: t('workspace.preview_only') },
-  ];
+  ]
 }
 
 function TitleArea({ b, grouped }: { b: WorkspaceBundle; grouped: boolean }) {
-  const { note, editTitle, view, isShared, isBlogPublished, updatedTime } = b;
+  const { note, editTitle, view, isShared, isBlogPublished, updatedTime } = b
   return (
     <div className='flex min-w-0 flex-1 items-center gap-1'>
       <input
@@ -56,10 +56,10 @@ function TitleArea({ b, grouped }: { b: WorkspaceBundle; grouped: boolean }) {
         onChange={(event) => editTitle(note.id, event.target.value)}
         onBlur={(event) => editTitle(note.id, event.currentTarget.value.trim())}
         onKeyDown={(event) => {
-          if (event.key !== 'Enter') return;
-          event.preventDefault();
-          if (view) view.focus();
-          else event.currentTarget.blur();
+          if (event.key !== 'Enter') return
+          event.preventDefault()
+          if (view) view.focus()
+          else event.currentTarget.blur()
         }}
       />
       {note.isStarred && <Star size={11} className='shrink-0 fill-current text-[var(--warning)]' />}
@@ -79,11 +79,11 @@ function TitleArea({ b, grouped }: { b: WorkspaceBundle; grouped: boolean }) {
         </span>
       )}
     </div>
-  );
+  )
 }
 
 function GroupedHeaderActions({ b }: { b: WorkspaceBundle }) {
-  const { layout, setEditorLayout, setIsMoreMenuOpen, pane, closeSecondaryNote, moreButtonRef } = b;
+  const { layout, setEditorLayout, setIsMoreMenuOpen, pane, closeSecondaryNote, moreButtonRef } = b
   return (
     <>
       <div className='mr-1 hidden 2xl:block'>
@@ -102,11 +102,11 @@ function GroupedHeaderActions({ b }: { b: WorkspaceBundle }) {
         </Tooltip>
       )}
     </>
-  );
+  )
 }
 
 function StandaloneHeaderActions({ b, exportMenuItems }: { b: WorkspaceBundle; exportMenuItems: MenuItem[] }) {
-  const { note, patchNote, isAttachmentDriveOpen, setIsAttachmentDriveOpen, backlinksOpen, toggleBacklinks, isMobile, openPanel, exportMenuRef, isExportMenuOpen, setIsExportMenuOpen, showPreview, outlineOpen, isMobileOutlineOpen, setIsMobileOutlineOpen, toggleOutline, moreButtonRef, setIsMoreMenuOpen } = b;
+  const { note, patchNote, isAttachmentDriveOpen, setIsAttachmentDriveOpen, backlinksOpen, toggleBacklinks, isMobile, openPanel, exportMenuRef, isExportMenuOpen, setIsExportMenuOpen, showPreview, outlineOpen, isMobileOutlineOpen, setIsMobileOutlineOpen, toggleOutline, moreButtonRef, setIsMoreMenuOpen } = b
   return (
     <>
       <span className='mr-1 hidden xl:inline-flex'><SaveIndicator /></span>
@@ -125,11 +125,11 @@ function StandaloneHeaderActions({ b, exportMenuItems }: { b: WorkspaceBundle; e
       {!isMobile && <Tooltip label={t('workspace.share')}><IconButton label={t('workspace.share')} size='sm' onClick={() => openPanel('share')}><Share2 size={14} /></IconButton></Tooltip>}
       {isMobile && <Tooltip label={t('common.more_actions')} side='left'><IconButton ref={moreButtonRef} label={t('common.more_actions')} size='sm' onClick={() => setIsMoreMenuOpen(true)}><MoreHorizontal size={16} /></IconButton></Tooltip>}
     </>
-  );
+  )
 }
 
 export function WorkspaceHeader({ b, grouped, onMobileBack, exportMenuItems }: { b: WorkspaceBundle; grouped: boolean; onMobileBack?: () => void; exportMenuItems: MenuItem[] }) {
-  const { isMobile } = b;
+  const { isMobile } = b
   return (
     <header className='flex h-11 shrink-0 items-center gap-2 border-b border-[var(--border-subtle)] px-3'>
       {isMobile && onMobileBack && (
@@ -144,11 +144,11 @@ export function WorkspaceHeader({ b, grouped, onMobileBack, exportMenuItems }: {
         {grouped ? <GroupedHeaderActions b={b} /> : <StandaloneHeaderActions b={b} exportMenuItems={exportMenuItems} />}
       </div>
     </header>
-  );
+  )
 }
 
 export function WorkspacePanes({ b }: { b: WorkspaceBundle }) {
-  const { showEditor, layout, editorWidth, note, content, onChange, editorSettings, sources, handlers, setView, handleEditorContextMenu, showPreview, previewWidth, previewScrollerRef, setHeadings, invalidateSyncAnchors, handlePreviewContextMenu, outlineVisible, headings, jumpToHeading, effectiveSplitRatio, containerRef, setLayout } = b;
+  const { showEditor, layout, editorWidth, note, content, onChange, editorSettings, sources, handlers, setView, handleEditorContextMenu, showPreview, previewWidth, previewScrollerRef, setHeadings, invalidateSyncAnchors, handlePreviewContextMenu, outlineVisible, headings, jumpToHeading, effectiveSplitRatio, containerRef, setLayout } = b
   return (
     <>
       {showEditor && (
@@ -166,11 +166,11 @@ export function WorkspacePanes({ b }: { b: WorkspaceBundle }) {
         </div>
       )}
     </>
-  );
+  )
 }
 
 export function WorkspaceOverlays({ b, grouped, exportNote, groupedItems, mobileItems }: { b: WorkspaceBundle; grouped: boolean; exportNote: ExportNote; groupedItems: MenuItem[]; mobileItems: MenuItem[] }) {
-  const { contextMenuPoint, closeContextMenu, view, editorContextData, previewContextData, content, note, onChange, handleJumpToLine, imageInputRef, fileInputRef, setEditorLayout, layout, previewScrollerRef, moreButtonRef, isMoreMenuOpen, setIsMoreMenuOpen, isMobile, showPreview, isMobileOutlineOpen, setIsMobileOutlineOpen, headings, jumpToHeading } = b;
+  const { contextMenuPoint, closeContextMenu, view, editorContextData, previewContextData, content, note, onChange, handleJumpToLine, imageInputRef, fileInputRef, setEditorLayout, layout, previewScrollerRef, moreButtonRef, isMoreMenuOpen, setIsMoreMenuOpen, isMobile, showPreview, isMobileOutlineOpen, setIsMobileOutlineOpen, headings, jumpToHeading } = b
   return (
     <>
       <EditorContextMenu
@@ -199,20 +199,20 @@ export function WorkspaceOverlays({ b, grouped, exportNote, groupedItems, mobile
             scrollerRef={previewScrollerRef}
             className='max-h-none w-full self-stretch py-3'
             onSelect={(heading) => {
-              jumpToHeading(heading);
-              setIsMobileOutlineOpen(false);
+              jumpToHeading(heading)
+              setIsMobileOutlineOpen(false)
             }}
           />
         </Drawer>
       )}
     </>
-  );
+  )
 }
 
 export function WorkspaceFooter({ b, grouped }: { b: WorkspaceBundle; grouped: boolean }) {
-  const { note, folders, tagColors, isMobile } = b;
-  const noteFolder = note.folderId ? folders.find((folder) => folder.id === note.folderId) ?? null : null;
-  const noteFolderPath = note.folderId ? folderPathLabel(folders, note.folderId) : '';
+  const { note, folders, tagColors, isMobile } = b
+  const noteFolder = note.folderId ? folders.find((folder) => folder.id === note.folderId) ?? null : null
+  const noteFolderPath = note.folderId ? folderPathLabel(folders, note.folderId) : ''
   return (
     <footer className='flex h-[var(--statusbar-h)] shrink-0 items-center gap-2 overflow-hidden border-t border-[var(--border-subtle)] px-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
       <span className='tabular'>{note.wordCount}{t('common.words')}</span>
@@ -248,22 +248,22 @@ export function WorkspaceFooter({ b, grouped }: { b: WorkspaceBundle; grouped: b
       <span className='flex-1' />
       <span className={cn('hidden', grouped ? '2xl:inline' : 'lg:inline')}>{t('common.created')}{fullTime(note.createdAt)}</span>
     </footer>
-  );
+  )
 }
 
 export function FileInputs({ b }: { b: WorkspaceBundle }) {
-  const { imageInputRef, fileInputRef, view, handlers } = b;
+  const { imageInputRef, fileInputRef, view, handlers } = b
   const onChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = [...(event.target.files ?? [])];
-    event.target.value = '';
-    if (view && files.length) await insertFiles(view, files, handlers);
-  };
+    const files = [...(event.target.files ?? [])]
+    event.target.value = ''
+    if (view && files.length) await insertFiles(view, files, handlers)
+  }
   return (
     <>
       <input ref={imageInputRef} type='file' accept='image/*' multiple hidden onChange={onChange} />
       <input ref={fileInputRef} type='file' multiple hidden onChange={onChange} />
     </>
-  );
+  )
 }
 
 export function WorkspaceToolbar({ b }: { b: WorkspaceBundle }) {
@@ -274,34 +274,34 @@ export function WorkspaceToolbar({ b }: { b: WorkspaceBundle }) {
       onPickImage={() => b.imageInputRef.current?.click()}
       onPickFile={() => b.fileInputRef.current?.click()}
     />
-  ) : null;
+  ) : null
 }
 
 export function BacklinksSection({ b }: { b: WorkspaceBundle }) {
-  return b.backlinksOpen && b.paneActive ? <BacklinksPanel noteId={b.note.id} /> : null;
+  return b.backlinksOpen && b.paneActive ? <BacklinksPanel noteId={b.note.id} /> : null
 }
 
 export function AttachmentDrive({ b }: { b: WorkspaceBundle }) {
-  const { isAttachmentDriveOpen, setIsAttachmentDriveOpen, view } = b;
+  const { isAttachmentDriveOpen, setIsAttachmentDriveOpen, view } = b
   return (
     <AttachmentDriveModal
       open={isAttachmentDriveOpen}
       onClose={() => setIsAttachmentDriveOpen(false)}
       onInsertFile={(file) => {
         if (!view) {
-          setIsAttachmentDriveOpen(false);
-          return;
+          setIsAttachmentDriveOpen(false)
+          return
         }
-        const isImage = file.mime.startsWith('image/');
-        const snippet = isImage ? `![${file.filename}](${file.url})` : `\n[${file.filename}](${file.url})\n`;
-        const sel = view.state.selection.main;
+        const isImage = file.mime.startsWith('image/')
+        const snippet = isImage ? `![${file.filename}](${file.url})` : `\n[${file.filename}](${file.url})\n`
+        const sel = view.state.selection.main
         view.dispatch({
           changes: { from: sel.from, to: sel.to, insert: snippet },
           selection: { anchor: sel.from + snippet.length },
-        });
-        view.focus();
-        setIsAttachmentDriveOpen(false);
+        })
+        view.focus()
+        setIsAttachmentDriveOpen(false)
       }}
     />
-  );
+  )
 }

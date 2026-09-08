@@ -40,4 +40,4 @@ export const messages = {
 'folders.clean_empty_success': '已成功清理 {value0} 个空文件夹',
 'folders.expand_all': '展开全部文件夹',
 'folders.collapse_all': '折叠全部文件夹',
-};
+}

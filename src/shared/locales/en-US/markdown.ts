@@ -41,4 +41,4 @@ export const messages = {
 'markdown.tip': 'Tip',
 'markdown.todo': 'Todo',
 'markdown.warning': 'Warning',
-};
+}

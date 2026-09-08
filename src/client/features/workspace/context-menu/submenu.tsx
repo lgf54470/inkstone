@@ -1,12 +1,12 @@
-import { Check } from 'lucide-react';
-import type { MenuItem } from '../../../components/overlay';
-import { Kbd } from '../../../components/primitives';
-import { cn } from '../../../lib/cn';
+import { Check } from 'lucide-react'
+import type { MenuItem } from '../../../components/overlay'
+import { Kbd } from '../../../components/primitives'
+import { cn } from '../../../lib/cn'
 
 export function submenuFor(items: MenuItem[], width?: number) {
   return ({ closeMenu }: { closeMenu: () => void }) => (
     <SubmenuList closeMenu={closeMenu} items={items} width={width} />
-  );
+  )
 }
 
 export function SubmenuList({
@@ -14,9 +14,9 @@ export function SubmenuList({
   closeMenu,
   width = 180,
 }: {
-  items: MenuItem[];
-  closeMenu: () => void;
-  width?: number;
+  items: MenuItem[]
+  closeMenu: () => void
+  width?: number
 }) {
   return (
     <div
@@ -33,8 +33,8 @@ export function SubmenuList({
             aria-checked={item.checked}
             disabled={item.disabled}
             onClick={() => {
-              item.onSelect?.();
-              closeMenu();
+              item.onSelect?.()
+              closeMenu()
             }}
             className={cn(
               'flex h-10 w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[length:var(--text-12\\.5)] md:h-7.5',
@@ -54,5 +54,5 @@ export function SubmenuList({
         </div>
       ))}
     </div>
-  );
+  )
 }

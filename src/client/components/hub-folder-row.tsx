@@ -1,8 +1,8 @@
-import { ChevronDown, ChevronRight, FolderClosed, FolderOpen, MoreHorizontal } from 'lucide-react';
-import { cn } from '../lib/cn';
-import { Switch } from './form';
-import { Tooltip } from './overlay';
-import type { FolderRowProps, HubFolderLabels, HubFolderNodeLike } from './use-hub-folder-item';
+import { ChevronDown, ChevronRight, FolderClosed, FolderOpen, MoreHorizontal } from 'lucide-react'
+import { cn } from '../lib/cn'
+import { Switch } from './form'
+import { Tooltip } from './overlay'
+import type { FolderRowProps, HubFolderLabels, HubFolderNodeLike } from './use-hub-folder-item'
 
 const TREE_INDENT_BASE = 8
 const TREE_INDENT_STEP = 12

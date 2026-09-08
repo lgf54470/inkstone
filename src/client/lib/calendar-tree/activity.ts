@@ -1,5 +1,5 @@
-import type { NoteSummary } from '@shared/types';
-import { dateKey } from '../time';
+import type { NoteSummary } from '@shared/types'
+import { dateKey } from '../time'
 
 // The activity-heatmap calendar derives three whole-vault structures from each
 // note (per-day updatedAt counts, first-note-per-title lookup, per-day note
@@ -38,31 +38,31 @@ interface ActivityProjectionSlot extends ActivityProjection {
 let activityProjectionSlot: ActivityProjectionSlot | null = null
 
 export function buildActivityProjectionFresh(notes: Record<string, NoteSummary>): ActivityProjectionSlot {
-  const counts = new Map<string, number>();
-  const noteIdByTitle = new Map<string, string>();
-  const notesByDay = new Map<string, ActivityDayNote[]>();
-  const byId = new Map<string, ActivityEntry>();
-  const titleCounts = new Map<string, number>();
+  const counts = new Map<string, number>()
+  const noteIdByTitle = new Map<string, string>()
+  const notesByDay = new Map<string, ActivityDayNote[]>()
+  const byId = new Map<string, ActivityEntry>()
+  const titleCounts = new Map<string, number>()
   for (const id in notes) {
-    const note = notes[id]!;
+    const note = notes[id]!
     if (note.deletedAt !== null)
-      continue;
-    const key = dateKey(new Date(note.updatedAt));
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-    byId.set(id, { ref: note, key, title: note.title });
-    titleCounts.set(note.title, (titleCounts.get(note.title) ?? 0) + 1);
+      continue
+    const key = dateKey(new Date(note.updatedAt))
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+    byId.set(id, { ref: note, key, title: note.title })
+    titleCounts.set(note.title, (titleCounts.get(note.title) ?? 0) + 1)
     if (!noteIdByTitle.has(note.title))
-      noteIdByTitle.set(note.title, id);
-    const list = notesByDay.get(key);
-    const item: ActivityDayNote = { id, title: note.title, updatedAt: note.updatedAt };
+      noteIdByTitle.set(note.title, id)
+    const list = notesByDay.get(key)
+    const item: ActivityDayNote = { id, title: note.title, updatedAt: note.updatedAt }
     if (list)
-      list.push(item);
+      list.push(item)
     else
-      notesByDay.set(key, [item]);
+      notesByDay.set(key, [item])
   }
   for (const list of notesByDay.values())
-    list.sort((a, b) => b.updatedAt - a.updatedAt);
-  return { notes, counts, noteIdByTitle, notesByDay, byId, titleCounts };
+    list.sort((a, b) => b.updatedAt - a.updatedAt)
+  return { notes, counts, noteIdByTitle, notesByDay, byId, titleCounts }
 }
 
 // First-wins over insertion order, matching the naive rebuild: the map holds
@@ -71,28 +71,28 @@ export function buildActivityProjectionFresh(notes: Record<string, NoteSummary>)
 
 function claimNextNoteWithTitle(notes: Record<string, NoteSummary>, title: string): string | null {
   for (const id in notes) {
-    const note = notes[id]!;
+    const note = notes[id]!
     if (note.deletedAt === null && note.title === title)
-      return id;
+      return id
   }
-  return null;
+  return null
 }
 
 
 function dropTitleClaim(titleCounts: Map<string, number>, titles: Map<string, string>, notes: Record<string, NoteSummary>, title: string, id: string): void {
-  const rest = (titleCounts.get(title) ?? 0) - 1;
+  const rest = (titleCounts.get(title) ?? 0) - 1
   if (rest > 0) {
-    titleCounts.set(title, rest);
+    titleCounts.set(title, rest)
     if (titles.get(title) === id) {
-      titles.delete(title);
-      const nextOwner = claimNextNoteWithTitle(notes, title);
+      titles.delete(title)
+      const nextOwner = claimNextNoteWithTitle(notes, title)
       if (nextOwner)
-        titles.set(title, nextOwner);
+        titles.set(title, nextOwner)
     }
   } else {
-    titleCounts.delete(title);
+    titleCounts.delete(title)
     if (titles.get(title) === id)
-      titles.delete(title);
+      titles.delete(title)
   }
 }
 
@@ -101,33 +101,33 @@ function dropTitleClaim(titleCounts: Map<string, number>, titles: Map<string, st
 // bounded and matches the reference shape exactly).
 
 function decrementCount(counts: Map<string, number>, key: string): void {
-  const next = (counts.get(key) ?? 0) - 1;
+  const next = (counts.get(key) ?? 0) - 1
   if (next > 0)
-    counts.set(key, next);
+    counts.set(key, next)
   else
-    counts.delete(key);
+    counts.delete(key)
 }
 
 
 function removeFromDay(byDay: Map<string, ActivityDayNote[]>, key: string, id: string): void {
-  const list = byDay.get(key);
+  const list = byDay.get(key)
   if (!list)
-    return;
-  const copy = list.filter((item) => item.id !== id);
+    return
+  const copy = list.filter((item) => item.id !== id)
   if (copy.length > 0)
-    byDay.set(key, copy);
+    byDay.set(key, copy)
   else
-    byDay.delete(key);
+    byDay.delete(key)
 }
 
 
 function upsertInDay(byDay: Map<string, ActivityDayNote[]>, key: string, item: ActivityDayNote): void {
-  const list = byDay.get(key);
-  const copy = list ? list.map((entry) => (entry.id === item.id ? item : entry)) : [];
+  const list = byDay.get(key)
+  const copy = list ? list.map((entry) => (entry.id === item.id ? item : entry)) : []
   if (!copy.some((entry) => entry.id === item.id))
-    copy.push(item);
-  copy.sort((a, b) => b.updatedAt - a.updatedAt);
-  byDay.set(key, copy);
+    copy.push(item)
+  copy.sort((a, b) => b.updatedAt - a.updatedAt)
+  byDay.set(key, copy)
 }
 
 // Copy-on-write helpers: the incremental path reuses the previous maps until
@@ -272,10 +272,10 @@ export function updateActivityProjection(slot: ActivityProjectionSlot, next: Rec
 }
 
 export function buildActivityProjectionCached(notes: Record<string, NoteSummary>): ActivityProjection {
-  const slot = activityProjectionSlot;
+  const slot = activityProjectionSlot
   if (slot && slot.notes === notes)
-    return slot;
-  const next = slot ? updateActivityProjection(slot, notes) : buildActivityProjectionFresh(notes);
-  activityProjectionSlot = next;
-  return next;
+    return slot
+  const next = slot ? updateActivityProjection(slot, notes) : buildActivityProjectionFresh(notes)
+  activityProjectionSlot = next
+  return next
 }

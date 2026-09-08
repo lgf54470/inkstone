@@ -1,4 +1,4 @@
-import type { Note, NoteSummary } from './notes';
+import type { Note, NoteSummary } from './notes'
 
 export type ViewKind =
   | 'all'

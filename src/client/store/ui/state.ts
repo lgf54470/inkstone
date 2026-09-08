@@ -1,8 +1,8 @@
-import type { AccentName, BackgroundName, DateRangeFilter, EditorLayout, RelativeFilter, SortKey, SortOrder, ThemePref, UiDensity, ViewKind } from '@shared/types';
-import { ACCENTS, LIMITS, VIEW_KINDS } from '@shared/constants';
-import { truncateText } from '@shared/text-utils';
-import { UI_STORAGE_KEY } from '../../lib/runtime';
-import type { WorkspacePane, UiState } from './types';
+import type { AccentName, BackgroundName, DateRangeFilter, EditorLayout, RelativeFilter, SortKey, SortOrder, ThemePref, UiDensity, ViewKind } from '@shared/types'
+import { ACCENTS, LIMITS, VIEW_KINDS } from '@shared/constants'
+import { truncateText } from '@shared/text-utils'
+import { UI_STORAGE_KEY } from '../../lib/runtime'
+import type { WorkspacePane, UiState } from './types'
 
 
 

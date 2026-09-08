@@ -1,5 +1,5 @@
-import { api } from '../../../lib/api';
-import type { BlogStoreState, SetBlogStoreState } from './types';
+import { api } from '../../../lib/api'
+import type { BlogStoreState, SetBlogStoreState } from './types'
 
 export const blogActionsActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'batchToggleGroup' | 'batchMoveToFolder' | 'savePost' | 'updatePost' | 'deletePost' | 'syncPost' | 'batchPosts' | 'updateCommentStatus' | 'deleteComment' | 'batchComments' | 'createCategory' | 'updateCategory' | 'deleteCategory' | 'saveSettings'> => ({
   batchToggleGroup: (type, target, enabled) => batchToggleGroupImpl(type, target, enabled, set, get),
@@ -16,7 +16,7 @@ export const blogActionsActions = (set: SetBlogStoreState, get: () => BlogStoreS
   updateCategory: (id, patch) => updateCategoryImpl(id, patch, get),
   deleteCategory: (id) => deleteCategoryImpl(id, get),
   saveSettings: (settings) => saveSettingsImpl(settings, set),
-});
+})
 
 async function batchToggleGroupImpl(
   type: Parameters<BlogStoreState['batchToggleGroup']>[0],
@@ -25,20 +25,20 @@ async function batchToggleGroupImpl(
   set: SetBlogStoreState,
   get: () => BlogStoreState,
 ): Promise<boolean> {
-  set({ batchBusy: true });
+  set({ batchBusy: true })
   set((state) => ({
     posts: toggledPostRows(type, target, enabled, state.posts),
     stats: toggledGroupStats(type, target, enabled, state.stats),
-  }));
+  }))
   try {
-    await api.blog.batchToggleGroup(type, target, enabled);
-    await Promise.all([get().loadPosts(), get().loadStats()]);
-    return true;
+    await api.blog.batchToggleGroup(type, target, enabled)
+    await Promise.all([get().loadPosts(), get().loadStats()])
+    return true
   } catch {
-    await Promise.all([get().loadPosts(), get().loadStats()]);
-    return false;
+    await Promise.all([get().loadPosts(), get().loadStats()])
+    return false
   } finally {
-    set({ batchBusy: false });
+    set({ batchBusy: false })
   }
 }
 
@@ -51,15 +51,15 @@ function toggledPostRows(
   return posts.map((p) => {
     if (type === 'folder') {
       if (p.folderId === target) {
-        return { ...p, isPublished: enabled };
+        return { ...p, isPublished: enabled }
       }
     } else if (type === 'tag') {
       if (Array.isArray(p.tags) && p.tags.includes(target)) {
-        return { ...p, isPublished: enabled };
+        return { ...p, isPublished: enabled }
       }
     }
-    return p;
-  });
+    return p
+  })
 }
 
 function toggledGroupStats(
@@ -68,28 +68,28 @@ function toggledGroupStats(
   enabled: boolean,
   stats: BlogStoreState['stats'],
 ): BlogStoreState['stats'] {
-  if (!stats) return stats;
+  if (!stats) return stats
   if (type === 'folder' && stats.folderCounts?.[target]) {
-    const prev = stats.folderCounts[target];
+    const prev = stats.folderCounts[target]
     return {
       ...stats,
       folderCounts: {
         ...stats.folderCounts,
         [target]: { total: prev.total, published: enabled ? prev.total : 0 },
       },
-    };
+    }
   }
   if (type === 'tag' && stats.tagCounts?.[target]) {
-    const prev = stats.tagCounts[target];
+    const prev = stats.tagCounts[target]
     return {
       ...stats,
       tagCounts: {
         ...stats.tagCounts,
         [target]: { total: prev.total, published: enabled ? prev.total : 0 },
       },
-    };
+    }
   }
-  return stats;
+  return stats
 }
 
 async function batchMoveToFolderImpl(
@@ -98,21 +98,21 @@ async function batchMoveToFolderImpl(
   set: SetBlogStoreState,
   get: () => BlogStoreState,
 ): Promise<boolean> {
-  if (!postIds.length) return false;
-  set({ batchBusy: true });
+  if (!postIds.length) return false
+  set({ batchBusy: true })
   set((state) => ({
     posts: state.posts.map((p) => (postIds.includes(p.id) ? { ...p, folderId } : p)),
-  }));
+  }))
   try {
-    await api.blog.posts.batch('setFolder', postIds, { folderId });
-    get().clearPostSelection();
-    await Promise.all([get().loadPosts(), get().loadStats()]);
-    return true;
+    await api.blog.posts.batch('setFolder', postIds, { folderId })
+    get().clearPostSelection()
+    await Promise.all([get().loadPosts(), get().loadStats()])
+    return true
   } catch {
-    await get().loadPosts();
-    return false;
+    await get().loadPosts()
+    return false
   } finally {
-    set({ batchBusy: false });
+    set({ batchBusy: false })
   }
 }
 
@@ -120,9 +120,9 @@ async function savePostImpl(
   data: Parameters<BlogStoreState['savePost']>[0],
   get: () => BlogStoreState,
 ): Promise<{ ok: boolean; id: string; slug: string }> {
-  const res = await api.blog.posts.create(data);
-  await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()]);
-  return res;
+  const res = await api.blog.posts.create(data)
+  await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
+  return res
 }
 
 async function updatePostImpl(
@@ -133,19 +133,19 @@ async function updatePostImpl(
 ): Promise<void> {
   set((state) => ({
     posts: state.posts.map((p) => (p.id === id ? { ...p, ...patch } : p)),
-  }));
-  await api.blog.posts.patch(id, patch);
-  await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()]);
+  }))
+  await api.blog.posts.patch(id, patch)
+  await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
 }
 
 async function deletePostImpl(id: string, get: () => BlogStoreState): Promise<void> {
-  await api.blog.posts.remove(id);
-  await Promise.all([get().loadPosts(), get().loadStats()]);
+  await api.blog.posts.remove(id)
+  await Promise.all([get().loadPosts(), get().loadStats()])
 }
 
 async function syncPostImpl(id: string, get: () => BlogStoreState): Promise<void> {
-  await api.blog.posts.sync(id);
-  await get().loadPosts();
+  await api.blog.posts.sync(id)
+  await get().loadPosts()
 }
 
 async function batchPostsImpl(
@@ -155,19 +155,19 @@ async function batchPostsImpl(
   set: SetBlogStoreState,
   get: () => BlogStoreState,
 ): Promise<void> {
-  const ids = Array.from(get().selectedPostIds);
-  if (!ids.length) return;
-  set({ batchBusy: true });
+  const ids = Array.from(get().selectedPostIds)
+  if (!ids.length) return
+  set({ batchBusy: true })
   try {
     await api.blog.posts.batch(action, ids, {
       categoryId: extraId,
       folderId: extraId,
       isPinned: pinnedState,
-    });
-    get().clearPostSelection();
-    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()]);
+    })
+    get().clearPostSelection()
+    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
   } finally {
-    set({ batchBusy: false });
+    set({ batchBusy: false })
   }
 }
 
@@ -176,13 +176,13 @@ async function updateCommentStatusImpl(
   status: Parameters<BlogStoreState['updateCommentStatus']>[1],
   get: () => BlogStoreState,
 ): Promise<void> {
-  await api.blog.comments.updateStatus(id, status);
-  await Promise.all([get().loadComments(), get().loadStats()]);
+  await api.blog.comments.updateStatus(id, status)
+  await Promise.all([get().loadComments(), get().loadStats()])
 }
 
 async function deleteCommentImpl(id: string, get: () => BlogStoreState): Promise<void> {
-  await api.blog.comments.remove(id);
-  await Promise.all([get().loadComments(), get().loadStats()]);
+  await api.blog.comments.remove(id)
+  await Promise.all([get().loadComments(), get().loadStats()])
 }
 
 async function batchCommentsImpl(
@@ -190,15 +190,15 @@ async function batchCommentsImpl(
   set: SetBlogStoreState,
   get: () => BlogStoreState,
 ): Promise<void> {
-  const ids = Array.from(get().selectedCommentIds);
-  if (!ids.length) return;
-  set({ batchBusy: true });
+  const ids = Array.from(get().selectedCommentIds)
+  if (!ids.length) return
+  set({ batchBusy: true })
   try {
-    await api.blog.comments.batch(action, ids);
-    get().clearCommentSelection();
-    await Promise.all([get().loadComments(), get().loadStats()]);
+    await api.blog.comments.batch(action, ids)
+    get().clearCommentSelection()
+    await Promise.all([get().loadComments(), get().loadStats()])
   } finally {
-    set({ batchBusy: false });
+    set({ batchBusy: false })
   }
 }
 
@@ -206,8 +206,8 @@ async function createCategoryImpl(
   data: Parameters<BlogStoreState['createCategory']>[0],
   get: () => BlogStoreState,
 ): Promise<void> {
-  await api.blog.categories.create(data);
-  await get().loadCategories();
+  await api.blog.categories.create(data)
+  await get().loadCategories()
 }
 
 async function updateCategoryImpl(
@@ -215,19 +215,19 @@ async function updateCategoryImpl(
   patch: Parameters<BlogStoreState['updateCategory']>[1],
   get: () => BlogStoreState,
 ): Promise<void> {
-  await api.blog.categories.patch(id, patch);
-  await get().loadCategories();
+  await api.blog.categories.patch(id, patch)
+  await get().loadCategories()
 }
 
 async function deleteCategoryImpl(id: string, get: () => BlogStoreState): Promise<void> {
-  await api.blog.categories.remove(id);
-  await Promise.all([get().loadCategories(), get().loadPosts()]);
+  await api.blog.categories.remove(id)
+  await Promise.all([get().loadCategories(), get().loadPosts()])
 }
 
 async function saveSettingsImpl(
   settings: Parameters<BlogStoreState['saveSettings']>[0],
   set: SetBlogStoreState,
 ): Promise<void> {
-  const res = await api.blog.settings.patch(settings);
-  set({ settings: res.settings });
+  const res = await api.blog.settings.patch(settings)
+  set({ settings: res.settings })
 }

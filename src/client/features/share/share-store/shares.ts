@@ -1,6 +1,6 @@
-import { api } from '../../../lib/api';
-import { useNotes } from '../../../store/notes';
-import type { ShareStoreState, SetShareStoreState } from './types';
+import { api } from '../../../lib/api'
+import { useNotes } from '../../../store/notes'
+import type { ShareStoreState, SetShareStoreState } from './types'
 
 export const shareSharesActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'batchToggleGroup' | 'toggleShare' | 'togglePin' | 'toggleStar' | 'batchToggle' | 'batchMoveToFolder' | 'batchFolderToggle' | 'batchTagToggle' | 'updateShare' | 'revokeShare'> => ({
   batchToggleGroup: (type, target, enabled) => batchToggleGroupImpl(type, target, enabled, set, get),
@@ -13,7 +13,7 @@ export const shareSharesActions = (set: SetShareStoreState, get: () => ShareStor
   batchTagToggle: (tag, enabled) => batchTagToggleImpl(tag, enabled, set, get),
   updateShare: (noteId, options) => updateShareImpl(noteId, options, get),
   revokeShare: (noteId) => revokeShareImpl(noteId, get),
-});
+})
 
 async function batchToggleGroupImpl(
   type: Parameters<ShareStoreState['batchToggleGroup']>[0],
@@ -22,20 +22,20 @@ async function batchToggleGroupImpl(
   set: SetShareStoreState,
   get: () => ShareStoreState,
 ): Promise<boolean> {
-  set({ batchBusy: true });
+  set({ batchBusy: true })
   set((s) => ({
     shares: toggledShareRows(type, target, enabled, s.shares),
     globalStats: toggledShareStats(type, target, enabled, s.globalStats),
-  }));
+  }))
   try {
-    await api.share.batchToggleGroup(type, target, enabled);
-    await get().loadShares();
-    return true;
+    await api.share.batchToggleGroup(type, target, enabled)
+    await get().loadShares()
+    return true
   } catch {
-    await get().loadShares();
-    return false;
+    await get().loadShares()
+    return false
   } finally {
-    set({ batchBusy: false });
+    set({ batchBusy: false })
   }
 }
 
@@ -46,18 +46,18 @@ function toggledShareRows(
   shares: ShareStoreState['shares'],
 ): ShareStoreState['shares'] {
   return shares.map((share) => {
-    let hasMatch = false;
+    let hasMatch = false
     if (type === 'folder' && (share.folderId === target || share.shareFolderId === target)) {
-      hasMatch = true;
+      hasMatch = true
     }
     if (type === 'tag' && share.shareTags?.includes(target)) {
-      hasMatch = true;
+      hasMatch = true
     }
     if (hasMatch) {
-      return { ...share, isEnabled: enabled };
+      return { ...share, isEnabled: enabled }
     }
-    return share;
-  });
+    return share
+  })
 }
 
 function toggledShareStats(
@@ -66,9 +66,9 @@ function toggledShareStats(
   enabled: boolean,
   globalStats: ShareStoreState['globalStats'],
 ): ShareStoreState['globalStats'] {
-  if (!globalStats) return globalStats;
+  if (!globalStats) return globalStats
   if (type === 'folder' && globalStats.folderCounts[target]) {
-    const prev = globalStats.folderCounts[target];
+    const prev = globalStats.folderCounts[target]
     return {
       ...globalStats,
       folderCounts: {
@@ -78,10 +78,10 @@ function toggledShareStats(
           shared: enabled ? prev.total : 0,
         },
       },
-    };
+    }
   }
   if (type === 'tag' && globalStats.tagCounts[target]) {
-    const prev = globalStats.tagCounts[target];
+    const prev = globalStats.tagCounts[target]
     return {
       ...globalStats,
       tagCounts: {
@@ -91,9 +91,9 @@ function toggledShareStats(
           shared: enabled ? prev.total : 0,
         },
       },
-    };
+    }
   }
-  return globalStats;
+  return globalStats
 }
 
 async function toggleShareImpl(noteId: string, enabled: boolean, set: SetShareStoreState, get: () => ShareStoreState): Promise<boolean> {
@@ -101,50 +101,50 @@ async function toggleShareImpl(noteId: string, enabled: boolean, set: SetShareSt
     shares: state.shares.map((s) =>
       s.noteId === noteId ? { ...s, isEnabled: enabled } : s,
     ),
-  }));
+  }))
   try {
-    await api.share.create(noteId, { isEnabled: enabled });
-    await get().loadShares();
-    return true;
+    await api.share.create(noteId, { isEnabled: enabled })
+    await get().loadShares()
+    return true
   } catch {
-    await get().loadShares();
-    return false;
+    await get().loadShares()
+    return false
   }
 }
 
 async function togglePinImpl(noteId: string, set: SetShareStoreState, get: () => ShareStoreState): Promise<boolean> {
-  const current = get().shares.find((s) => s.noteId === noteId)?.isPinned;
-  const nextVal = !current;
+  const current = get().shares.find((s) => s.noteId === noteId)?.isPinned
+  const nextVal = !current
   set((state) => ({
     shares: state.shares.map((s) =>
       s.noteId === noteId ? { ...s, isPinned: nextVal } : s,
     ),
-  }));
+  }))
   try {
-    await useNotes.getState().patchNote(noteId, { isPinned: nextVal });
-    await get().loadShares();
-    return true;
+    await useNotes.getState().patchNote(noteId, { isPinned: nextVal })
+    await get().loadShares()
+    return true
   } catch {
-    await get().loadShares();
-    return false;
+    await get().loadShares()
+    return false
   }
 }
 
 async function toggleStarImpl(noteId: string, set: SetShareStoreState, get: () => ShareStoreState): Promise<boolean> {
-  const current = get().shares.find((s) => s.noteId === noteId)?.isStarred;
-  const nextVal = !current;
+  const current = get().shares.find((s) => s.noteId === noteId)?.isStarred
+  const nextVal = !current
   set((state) => ({
     shares: state.shares.map((s) =>
       s.noteId === noteId ? { ...s, isStarred: nextVal } : s,
     ),
-  }));
+  }))
   try {
-    await useNotes.getState().patchNote(noteId, { isStarred: nextVal });
-    await get().loadShares();
-    return true;
+    await useNotes.getState().patchNote(noteId, { isStarred: nextVal })
+    await get().loadShares()
+    return true
   } catch {
-    await get().loadShares();
-    return false;
+    await get().loadShares()
+    return false
   }
 }
 
@@ -156,16 +156,16 @@ async function batchToggleImpl(
   set: SetShareStoreState,
   get: () => ShareStoreState,
 ): Promise<boolean> {
-  set({ batchBusy: true });
+  set({ batchBusy: true })
   try {
-    await api.share.batch(action, noteIds, expiresIn, folderId);
-    set({ selectedNoteIds: new Set() });
-    await get().loadShares();
-    return true;
+    await api.share.batch(action, noteIds, expiresIn, folderId)
+    set({ selectedNoteIds: new Set() })
+    await get().loadShares()
+    return true
   } catch {
-    return false;
+    return false
   } finally {
-    set({ batchBusy: false });
+    set({ batchBusy: false })
   }
 }
 
@@ -175,52 +175,52 @@ async function batchMoveToFolderImpl(
   set: SetShareStoreState,
   get: () => ShareStoreState,
 ): Promise<boolean> {
-  set({ batchBusy: true });
+  set({ batchBusy: true })
   set((s) => {
-    const idSet = new Set(noteIds);
+    const idSet = new Set(noteIds)
     const updatedShares = s.shares.map((share) => {
       if (idSet.has(share.noteId)) {
-        return { ...share, shareFolderId: folderId, folderId };
+        return { ...share, shareFolderId: folderId, folderId }
       }
-      return share;
-    });
-    return { shares: updatedShares, selectedNoteIds: new Set() };
-  });
+      return share
+    })
+    return { shares: updatedShares, selectedNoteIds: new Set() }
+  })
   try {
-    await api.share.batch('move', noteIds, undefined, folderId);
-    await get().loadShares();
-    return true;
+    await api.share.batch('move', noteIds, undefined, folderId)
+    await get().loadShares()
+    return true
   } catch {
-    await get().loadShares();
-    return false;
+    await get().loadShares()
+    return false
   } finally {
-    set({ batchBusy: false });
+    set({ batchBusy: false })
   }
 }
 
 async function batchFolderToggleImpl(folderId: string, enabled: boolean, set: SetShareStoreState, get: () => ShareStoreState): Promise<boolean> {
-  set({ batchBusy: true });
+  set({ batchBusy: true })
   try {
-    await api.share.batchFolder(folderId, enabled);
-    await get().loadShares();
-    return true;
+    await api.share.batchFolder(folderId, enabled)
+    await get().loadShares()
+    return true
   } catch {
-    return false;
+    return false
   } finally {
-    set({ batchBusy: false });
+    set({ batchBusy: false })
   }
 }
 
 async function batchTagToggleImpl(tag: string, enabled: boolean, set: SetShareStoreState, get: () => ShareStoreState): Promise<boolean> {
-  set({ batchBusy: true });
+  set({ batchBusy: true })
   try {
-    await api.share.batchTag(tag, enabled);
-    await get().loadShares();
-    return true;
+    await api.share.batchTag(tag, enabled)
+    await get().loadShares()
+    return true
   } catch {
-    return false;
+    return false
   } finally {
-    set({ batchBusy: false });
+    set({ batchBusy: false })
   }
 }
 
@@ -230,20 +230,20 @@ async function updateShareImpl(
   get: () => ShareStoreState,
 ): Promise<ShareStoreState['shares'][number] | null> {
   try {
-    const res = await api.share.create(noteId, options);
-    await get().loadShares();
-    return res.share;
+    const res = await api.share.create(noteId, options)
+    await get().loadShares()
+    return res.share
   } catch {
-    return null;
+    return null
   }
 }
 
 async function revokeShareImpl(noteId: string, get: () => ShareStoreState): Promise<boolean> {
   try {
-    await api.share.remove(noteId);
-    await get().loadShares();
-    return true;
+    await api.share.remove(noteId)
+    await get().loadShares()
+    return true
   } catch {
-    return false;
+    return false
   }
 }

@@ -1,5 +1,5 @@
-import type { Note } from '@shared/types';
-import { dbState } from './keys';
+import type { Note } from '@shared/types'
+import { dbState } from './keys'
 
 
 export type BroadcastPayload = (

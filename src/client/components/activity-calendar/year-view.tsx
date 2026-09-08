@@ -1,12 +1,12 @@
-import type { JSX } from 'react';
-import { cn } from '../../lib/cn';
-import { t } from '../../lib/i18n';
-import { YearGrid } from '../calendar-grids';
-import { HEAT_PERCENTS } from './strip';
-import type { YearViewBundle } from './use-activity-calendar';
+import type { JSX } from 'react'
+import { cn } from '../../lib/cn'
+import { t } from '../../lib/i18n'
+import { YearGrid } from '../calendar-grids'
+import { HEAT_PERCENTS } from './strip'
+import type { YearViewBundle } from './use-activity-calendar'
 
 
-type YearViewProps = YearViewBundle;
+type YearViewProps = YearViewBundle
 
 export function YearView({ cursor, weekStart, todayKey, columns, weekdayLabels, monthLabels, yearMeta, yearLevel, focusMonth, yearRangeAnchor, yearRangeHover, onKeyDown, onMonthClick, onWeekdayClick, onAnchorHover }: YearViewProps): JSX.Element {
   return (<>
@@ -21,7 +21,7 @@ export function YearView({ cursor, weekStart, todayKey, columns, weekdayLabels, 
       renderMonth={(month) => {
         const inRangePreview = yearRangeAnchor !== null && yearRangeHover !== null
           && month.month >= Math.min(yearRangeAnchor.month, yearRangeHover)
-          && month.month <= Math.max(yearRangeAnchor.month, yearRangeHover);
+          && month.month <= Math.max(yearRangeAnchor.month, yearRangeHover)
         return (<div key={month.month} data-month-card={month.month} className={cn('flex min-w-0 flex-col items-center gap-1 rounded-[var(--r-xs)] px-px py-1 transition-colors hover:bg-[var(--bg-hover)] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--accent)]', inRangePreview && 'bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]', yearRangeAnchor?.month === month.month && 'ring-1 ring-inset ring-[var(--accent)]')} onMouseEnter={() => { if (yearRangeAnchor !== null) onAnchorHover(month.month); }}>
           <span className="text-[length:var(--text-8\\.5)] font-medium text-[var(--text-quaternary)]">{monthLabels[month.month]}</span>
           <span className='grid w-full grid-cols-7 gap-px leading-none'>
@@ -34,11 +34,11 @@ export function YearView({ cursor, weekStart, todayKey, columns, weekdayLabels, 
               ? { backgroundColor: 'transparent' }
               : (yearLevel(cell.key) > 0 ? { backgroundColor: `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[yearLevel(cell.key)]}%, transparent)` } : { backgroundColor: 'var(--bg-inset)' })}/>))}
           </button>
-        </div>);
+        </div>)
       }}
     />
     {yearRangeAnchor !== null && (<div className='mt-1 px-0.5 text-[length:var(--text-9)] text-[var(--text-tertiary)]'>
       {t('sidebar.calendar_year_range_hint_value0', { value0: monthLabels[yearRangeAnchor.month] ?? '' })}
     </div>)}
-  </>);
+  </>)
 }

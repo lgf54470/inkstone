@@ -1,16 +1,16 @@
-import { Hono } from 'hono';
-import type { Context } from 'hono';
-import { LIMITS } from '@shared/constants';
-import { duplicateNoteTitle } from '@shared/text-utils';
-import type { AppBindings } from '../../env';
-import { toNote, type NoteRow } from '../../db/rows';
-import { buildNoteDerivedStatements, changeStatement, FTS_QUEUE_CONFLICT_SQL, LINK_TARGET_SUBQUERY, shiftSqlPlaceholders } from '../../db/writes';
-import { sha256Hex } from '../../lib/encoding';
-import { ApiError } from '../../lib/errors';
-import { broadcastCursor, scheduleFtsDrain } from '../../lib/notify';
-import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request';
-import { enqueueNoteIndex } from '../../mcp/ai-search';
-import { duplicateNoteSchema, guardedChangeStatement, loadNote, loadNoteRow, noteIdFromRequest } from './helpers';
+import { Hono } from 'hono'
+import type { Context } from 'hono'
+import { LIMITS } from '@shared/constants'
+import { duplicateNoteTitle } from '@shared/text-utils'
+import type { AppBindings } from '../../env'
+import { toNote, type NoteRow } from '../../db/rows'
+import { buildNoteDerivedStatements, changeStatement, FTS_QUEUE_CONFLICT_SQL, LINK_TARGET_SUBQUERY, shiftSqlPlaceholders } from '../../db/writes'
+import { sha256Hex } from '../../lib/encoding'
+import { ApiError } from '../../lib/errors'
+import { broadcastCursor, scheduleFtsDrain } from '../../lib/notify'
+import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
+import { enqueueNoteIndex } from '../../mcp/ai-search'
+import { duplicateNoteSchema, guardedChangeStatement, loadNote, loadNoteRow, noteIdFromRequest } from './helpers'
 
 const TRASHED_GUARD = `EXISTS (SELECT 1 FROM notes
     WHERE id = ?1 AND user_id = ?2 AND rev = ?3 AND deleted_at IS NOT NULL)`

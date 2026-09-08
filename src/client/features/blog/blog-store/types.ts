@@ -1,7 +1,7 @@
-import type { BlogPost, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag } from '@shared/types';
-import type { StoreApi } from 'zustand';
+import type { BlogPost, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag } from '@shared/types'
+import type { StoreApi } from 'zustand'
 
-export type SetBlogStoreState = StoreApi<BlogStoreState>['setState'];
+export type SetBlogStoreState = StoreApi<BlogStoreState>['setState']
 
 
 

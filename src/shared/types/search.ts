@@ -1,4 +1,4 @@
-import type { NoteSummary } from './notes';
+import type { NoteSummary } from './notes'
 
 export type SearchMode = 'fts' | 'like'
 

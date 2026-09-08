@@ -1,11 +1,11 @@
-import { clear as clearStore, del, getMany, set, setMany, update } from 'idb-keyval';
-import type { Folder, NoteSummary, SessionInfo, Tag } from '@shared/types';
-import { store, KEY, supportsUserNamespaces, dbState } from './keys';
-import type { ShellData, ShellBaseline, TemplateLibraryData, OutboxItem, CachedNoteContent } from './types';
-import { normalizeOutbox, safeGet, safeSet, userScopedKey, migrateLegacyData } from './store-io';
-import { foldersEqual, tagsEqual, isRecord, isPublicUser, isSiteInfo, isFiniteNumber, isNoteSummary, isFolder, isTag, isNoteTemplateCategory, isNoteTemplate } from './validators';
-import { collectBaselineShellWrites, collectFullShellWrites, loadIndexNotes, migrateLegacyNotes, SHELL_SET_CHUNK } from './shell-helpers';
-import { acquireOutboxReplayLease, refreshOutboxReplayLease, releaseOutboxReplayLease } from './outbox-lease';
+import { clear as clearStore, del, getMany, set, setMany, update } from 'idb-keyval'
+import type { Folder, NoteSummary, SessionInfo, Tag } from '@shared/types'
+import { store, KEY, supportsUserNamespaces, dbState } from './keys'
+import type { ShellData, ShellBaseline, TemplateLibraryData, OutboxItem, CachedNoteContent } from './types'
+import { normalizeOutbox, safeGet, safeSet, userScopedKey, migrateLegacyData } from './store-io'
+import { foldersEqual, tagsEqual, isRecord, isPublicUser, isSiteInfo, isFiniteNumber, isNoteSummary, isFolder, isTag, isNoteTemplateCategory, isNoteTemplate } from './validators'
+import { collectBaselineShellWrites, collectFullShellWrites, loadIndexNotes, migrateLegacyNotes, SHELL_SET_CHUNK } from './shell-helpers'
+import { acquireOutboxReplayLease, refreshOutboxReplayLease, releaseOutboxReplayLease } from './outbox-lease'
 // The shell cache is two-level: one `note-summary:<id>` key per note plus a
 // lightweight `noteIndex` id list. A typing-derived summary commit therefore
 // only upserts the one changed note instead of re-serializing the whole vault;

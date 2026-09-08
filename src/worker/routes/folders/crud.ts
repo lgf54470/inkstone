@@ -1,28 +1,28 @@
-import { Hono, type Context } from 'hono';
-import { z } from 'zod';
-import { LIMITS } from '@shared/constants';
-import { organizerColorOrNull } from '@shared/organizer-colors';
-import { truncateText } from '@shared/text-utils';
+import { Hono, type Context } from 'hono'
+import { z } from 'zod'
+import { LIMITS } from '@shared/constants'
+import { organizerColorOrNull } from '@shared/organizer-colors'
+import { truncateText } from '@shared/text-utils'
 
-import type { AppBindings } from '../../env';
-import { toFolder, type FolderRow } from '../../db/rows';
-import { ApiError } from '../../lib/errors';
-import { newId } from '../../lib/id';
-import { broadcastCursor } from '../../lib/notify';
-import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request';
-import { createFolderSchema } from './helpers';
-import { patchFolderSchema } from './helpers';
-import { FOLDER_SELECT } from './helpers';
-import { loadFolder } from './helpers';
-import { loadFolderGraph, type FolderGraph } from './helpers';
-import { availableFolderName } from './helpers';
-import { resolveFolderPosition } from './helpers';
-import { folderPromotionOrder } from './helpers';
-import { validateParent } from './helpers';
-import { subtreeCteWithRevision } from './helpers';
-import { parseFolderDeleteStrategy } from './helpers';
-import { folderDepth } from './helpers';
-import { subtreeHeight } from './helpers';
+import type { AppBindings } from '../../env'
+import { toFolder, type FolderRow } from '../../db/rows'
+import { ApiError } from '../../lib/errors'
+import { newId } from '../../lib/id'
+import { broadcastCursor } from '../../lib/notify'
+import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
+import { createFolderSchema } from './helpers'
+import { patchFolderSchema } from './helpers'
+import { FOLDER_SELECT } from './helpers'
+import { loadFolder } from './helpers'
+import { loadFolderGraph, type FolderGraph } from './helpers'
+import { availableFolderName } from './helpers'
+import { resolveFolderPosition } from './helpers'
+import { folderPromotionOrder } from './helpers'
+import { validateParent } from './helpers'
+import { subtreeCteWithRevision } from './helpers'
+import { parseFolderDeleteStrategy } from './helpers'
+import { folderDepth } from './helpers'
+import { subtreeHeight } from './helpers'
 
 type CreateFolderBody = z.infer<typeof createFolderSchema>
 type PatchFolderBody = z.infer<typeof patchFolderSchema>

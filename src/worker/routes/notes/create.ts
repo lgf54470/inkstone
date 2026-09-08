@@ -1,14 +1,14 @@
-import { Hono } from 'hono';
-import { countText, deriveExcerpt } from '@shared/markdown-utils';
-import type { AppBindings } from '../../env';
-import { NOTE_COLUMNS_FULL, toNote, type NoteRow } from '../../db/rows';
-import { buildNoteDerivedStatements } from '../../db/writes';
-import { sha256Hex } from '../../lib/encoding';
-import { ApiError } from '../../lib/errors';
-import { broadcastCursor, scheduleFtsDrain } from '../../lib/notify';
-import { assertContentSize, JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request';
-import { enqueueNoteIndex } from '../../mcp/ai-search';
-import { createNoteSchema, loadNote, noteIdFromRequest, resolveNoteTitle, resolveFolderId } from './helpers';
+import { Hono } from 'hono'
+import { countText, deriveExcerpt } from '@shared/markdown-utils'
+import type { AppBindings } from '../../env'
+import { NOTE_COLUMNS_FULL, toNote, type NoteRow } from '../../db/rows'
+import { buildNoteDerivedStatements } from '../../db/writes'
+import { sha256Hex } from '../../lib/encoding'
+import { ApiError } from '../../lib/errors'
+import { broadcastCursor, scheduleFtsDrain } from '../../lib/notify'
+import { assertContentSize, JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
+import { enqueueNoteIndex } from '../../mcp/ai-search'
+import { createNoteSchema, loadNote, noteIdFromRequest, resolveNoteTitle, resolveFolderId } from './helpers'
 
 export function registerNotesCreateRoutes(notesRoutes: Hono<AppBindings>): void {
   notesRoutes.get('/:id', async (c) => {

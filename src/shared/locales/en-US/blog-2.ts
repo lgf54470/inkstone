@@ -58,4 +58,4 @@ export const messages = {
 'blog.pin_post': 'Pin post',
 'blog.unpin_post': 'Unpin post',
 'blog.drag_to_folder_hint': 'Drag to sidebar folder to organize',
-};
+}

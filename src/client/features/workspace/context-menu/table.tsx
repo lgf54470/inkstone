@@ -14,53 +14,53 @@ import {
   Plus,
   Rows,
   Trash2,
-} from 'lucide-react';
-import type { EditorView } from '@codemirror/view';
-import type { MenuItem } from '../../../components/overlay';
-import { t } from '../../../lib/i18n';
-import { clearTableCell, clearTableRow, deleteEntireTableInText, deleteTableColumn, deleteTableRow, duplicateTableRow, formatMarkdownTable, insertTableColumn, insertTableRow, parseMarkdownTable, setColumnAlignment, sortTableRowByColumn, tableToCsv, type ParsedTable } from '../../../lib/markdown/table-editor';
-import type { MenuCtx } from './types';
-import { SubmenuList } from './submenu';
+} from 'lucide-react'
+import type { EditorView } from '@codemirror/view'
+import type { MenuItem } from '../../../components/overlay'
+import { t } from '../../../lib/i18n'
+import { clearTableCell, clearTableRow, deleteEntireTableInText, deleteTableColumn, deleteTableRow, duplicateTableRow, formatMarkdownTable, insertTableColumn, insertTableRow, parseMarkdownTable, setColumnAlignment, sortTableRowByColumn, tableToCsv, type ParsedTable } from '../../../lib/markdown/table-editor'
+import type { MenuCtx } from './types'
+import { SubmenuList } from './submenu'
 
-type TableApply = (next: ParsedTable) => void;
+type TableApply = (next: ParsedTable) => void
 
 function alignSubmenuItems(table: ParsedTable, apply: TableApply): MenuItem[] {
-  const col = table.cursorColIndex;
+  const col = table.cursorColIndex
   return [
     { id: 'align-left', label: t('contextmenu.table_align_left'), icon: <AlignLeft size={13} />, checked: table.alignments[col] === 'left', onSelect: () => apply(setColumnAlignment(table, col, 'left')) },
     { id: 'align-center', label: t('contextmenu.table_align_center'), icon: <AlignCenter size={13} />, checked: table.alignments[col] === 'center', onSelect: () => apply(setColumnAlignment(table, col, 'center')) },
     { id: 'align-right', label: t('contextmenu.table_align_right'), icon: <AlignRight size={13} />, checked: table.alignments[col] === 'right', onSelect: () => apply(setColumnAlignment(table, col, 'right')) },
     { id: 'align-default', label: t('contextmenu.table_align_default'), icon: <Minus size={13} />, checked: table.alignments[col] === 'default', onSelect: () => apply(setColumnAlignment(table, col, 'default')) },
-  ];
+  ]
 }
 
 function sortSubmenuItems(table: ParsedTable, apply: TableApply): MenuItem[] {
-  const col = table.cursorColIndex;
+  const col = table.cursorColIndex
   return [
     { id: 'sort-asc', label: t('contextmenu.table_sort_asc'), icon: <ArrowUpAZ size={13} />, onSelect: () => apply(sortTableRowByColumn(table, col, 'asc')) },
     { id: 'sort-desc', label: t('contextmenu.table_sort_desc'), icon: <ArrowDownAZ size={13} />, onSelect: () => apply(sortTableRowByColumn(table, col, 'desc')) },
-  ];
+  ]
 }
 
 function deleteTableInEditor(editorView: EditorView | null | undefined, table: ParsedTable) {
-  if (!editorView) return;
-  const doc = editorView.state.doc;
-  const from = doc.line(table.startLine + 1).from;
-  const to = Math.min(doc.length, doc.line(table.endLine + 1).to + 1);
-  editorView.dispatch({ changes: { from, to, insert: '' } });
+  if (!editorView) return
+  const doc = editorView.state.doc
+  const from = doc.line(table.startLine + 1).from
+  const to = Math.min(doc.length, doc.line(table.endLine + 1).to + 1)
+  editorView.dispatch({ changes: { from, to, insert: '' } })
 }
 
 function copyTableAs(content: string, sourceLine: number, handleCopy: (text: string) => void, format: (table: ParsedTable) => string) {
-  const lines = content.split('\n');
-  const table = parseMarkdownTable(lines, sourceLine);
-  if (table) handleCopy(format(table));
+  const lines = content.split('\n')
+  const table = parseMarkdownTable(lines, sourceLine)
+  if (table) handleCopy(format(table))
 }
 
 function buildEditorTableMenu(ctx: MenuCtx, table: ParsedTable): MenuItem[] {
-  const { replaceTableInEditor, handleCopy, editorView } = ctx;
-  const edit = (next: ParsedTable) => replaceTableInEditor(table, next);
-  const cursor = table.cursorRowIndex;
-  const col = table.cursorColIndex;
+  const { replaceTableInEditor, handleCopy, editorView } = ctx
+  const edit = (next: ParsedTable) => replaceTableInEditor(table, next)
+  const cursor = table.cursorRowIndex
+  const col = table.cursorColIndex
   return [
     { id: 'insert-row-above', label: t('contextmenu.table_insert_row_above'), icon: <Rows size={14} />, onSelect: () => edit(insertTableRow(table, cursor, 'above')) },
     { id: 'insert-row-below', label: t('contextmenu.table_insert_row_below'), icon: <Rows size={14} />, onSelect: () => edit(insertTableRow(table, cursor, 'below')) },
@@ -83,15 +83,15 @@ function buildEditorTableMenu(ctx: MenuCtx, table: ParsedTable): MenuItem[] {
     { id: 'copy-markdown', label: t('contextmenu.table_copy_markdown'), icon: <Copy size={14} />, onSelect: () => handleCopy(formatMarkdownTable(table).join('\n')) },
     { id: 'copy-csv', label: t('contextmenu.table_copy_csv'), icon: <Copy size={14} />, onSelect: () => handleCopy(tableToCsv(table)) },
     { id: 'delete-table', label: t('contextmenu.table_delete'), icon: <Trash2 size={14} />, tone: 'danger', separatorBefore: true, onSelect: () => deleteTableInEditor(editorView, table) },
-  ];
+  ]
 }
 
 export function buildEditorTableItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorContext } = ctx;
+  const { editorContext } = ctx
   if (editorContext?.type === 'table' && editorContext.table) {
-    return buildEditorTableMenu(ctx, editorContext.table);
+    return buildEditorTableMenu(ctx, editorContext.table)
   }
-  return null;
+  return null
 }
 
 function alignPreviewSubmenuItems(col: number, modify: (fn: (table: ParsedTable) => ParsedTable) => void): MenuItem[] {
@@ -100,21 +100,21 @@ function alignPreviewSubmenuItems(col: number, modify: (fn: (table: ParsedTable)
     { id: 'align-center-prev', label: t('contextmenu.table_align_center'), icon: <AlignCenter size={13} />, onSelect: () => modify((tbl) => setColumnAlignment(tbl, col, 'center')) },
     { id: 'align-right-prev', label: t('contextmenu.table_align_right'), icon: <AlignRight size={13} />, onSelect: () => modify((tbl) => setColumnAlignment(tbl, col, 'right')) },
     { id: 'align-default-prev', label: t('contextmenu.table_align_default'), icon: <Minus size={13} />, onSelect: () => modify((tbl) => setColumnAlignment(tbl, col, 'default')) },
-  ];
+  ]
 }
 
 function sortPreviewSubmenuItems(col: number, modify: (fn: (table: ParsedTable) => ParsedTable) => void): MenuItem[] {
   return [
     { id: 'sort-asc-prev', label: t('contextmenu.table_sort_asc'), icon: <ArrowUpAZ size={13} />, onSelect: () => modify((tbl) => sortTableRowByColumn(tbl, col, 'asc')) },
     { id: 'sort-desc-prev', label: t('contextmenu.table_sort_desc'), icon: <ArrowDownAZ size={13} />, onSelect: () => modify((tbl) => sortTableRowByColumn(tbl, col, 'desc')) },
-  ];
+  ]
 }
 
 function buildPreviewTableMenu(ctx: MenuCtx, pTable: { rowIndex: number; colIndex: number; sourceLine?: number }): MenuItem[] {
-  const { content, onEditContent, onJumpToLine, modifyTableInContent, handleCopy } = ctx;
-  const sLine = pTable.sourceLine ?? 0;
-  const rowIndex = pTable.rowIndex > 0 ? pTable.rowIndex - 1 : 0;
-  const modify = (fn: (table: ParsedTable) => ParsedTable) => modifyTableInContent(sLine, fn);
+  const { content, onEditContent, onJumpToLine, modifyTableInContent, handleCopy } = ctx
+  const sLine = pTable.sourceLine ?? 0
+  const rowIndex = pTable.rowIndex > 0 ? pTable.rowIndex - 1 : 0
+  const modify = (fn: (table: ParsedTable) => ParsedTable) => modifyTableInContent(sLine, fn)
   return [
     { id: 'jump-to-editor', label: t('contextmenu.table_jump_to_editor'), icon: <Pencil size={14} />, onSelect: () => onJumpToLine(sLine) },
     { id: 'insert-row-above', label: t('contextmenu.table_insert_row_above'), icon: <Rows size={14} />, separatorBefore: true, onSelect: () => modify((tbl) => insertTableRow(tbl, rowIndex, 'above')) },
@@ -138,13 +138,13 @@ function buildPreviewTableMenu(ctx: MenuCtx, pTable: { rowIndex: number; colInde
     { id: 'copy-markdown-prev', label: t('contextmenu.table_copy_markdown'), icon: <Copy size={14} />, onSelect: () => copyTableAs(content, sLine, handleCopy, (tbl) => formatMarkdownTable(tbl).join('\n')) },
     { id: 'copy-csv-prev', label: t('contextmenu.table_copy_csv'), icon: <Copy size={14} />, onSelect: () => copyTableAs(content, sLine, handleCopy, tableToCsv) },
     { id: 'delete-table-prev', label: t('contextmenu.table_delete'), icon: <Trash2 size={14} />, tone: 'danger', separatorBefore: true, onSelect: () => onEditContent(deleteEntireTableInText(content, sLine)) },
-  ];
+  ]
 }
 
 export function buildPreviewTableItems(ctx: MenuCtx): MenuItem[] | null {
-  const { previewContext } = ctx;
+  const { previewContext } = ctx
   if (previewContext?.type === 'table' && previewContext.table) {
-    return buildPreviewTableMenu(ctx, previewContext.table);
+    return buildPreviewTableMenu(ctx, previewContext.table)
   }
-  return null;
+  return null
 }

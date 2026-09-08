@@ -1,21 +1,21 @@
-import { History, RotateCcw } from 'lucide-react';
-import { cn } from '../../lib/cn';
-import { formatBytes, fullTime } from '../../lib/time';
-import { useRelativeTime } from '../../lib/hooks';
-import { Button } from '../../components/primitives';
-import { Modal } from '../../components/overlay';
-import { Empty, LoadingBlock } from '../../components/feedback';
-import { useVersionsPanel, type VersionsPanelBundle } from './use-versions-panel';
-import { t } from '../../lib/i18n';
+import { History, RotateCcw } from 'lucide-react'
+import { cn } from '../../lib/cn'
+import { formatBytes, fullTime } from '../../lib/time'
+import { useRelativeTime } from '../../lib/hooks'
+import { Button } from '../../components/primitives'
+import { Modal } from '../../components/overlay'
+import { Empty, LoadingBlock } from '../../components/feedback'
+import { useVersionsPanel, type VersionsPanelBundle } from './use-versions-panel'
+import { t } from '../../lib/i18n'
 
 const MODAL_WIDTH = 880
 
 function VersionAge({ timestamp }: { timestamp: number }) {
-  return useRelativeTime(timestamp);
+  return useRelativeTime(timestamp)
 }
 
 function ModalFooter({ b, onClose }: { b: VersionsPanelBundle; onClose: () => void }) {
-  const { selectedId, preview, previewError, isBusy, restore } = b;
+  const { selectedId, preview, previewError, isBusy, restore } = b
   return (
     <>
       <Button variant='ghost' onClick={onClose}>{t('common.close')}</Button>
@@ -29,11 +29,11 @@ function ModalFooter({ b, onClose }: { b: VersionsPanelBundle; onClose: () => vo
         {t('workspace.restore_this_version_da5169')}
       </Button>
     </>
-  );
+  )
 }
 
 function VersionList({ b }: { b: VersionsPanelBundle }) {
-  const { versions, note, selectedId, setSelected } = b;
+  const { versions, note, selectedId, setSelected } = b
   return (
     <ul className='flex w-full shrink-0 gap-1 overflow-x-auto border-b border-[var(--border-subtle)] pb-2 md:block md:w-52.5 md:space-y-px md:overflow-y-auto md:border-r md:border-b-0 md:pr-2 md:pb-0'>
       {versions!.map((version, index) => (
@@ -58,7 +58,7 @@ function VersionList({ b }: { b: VersionsPanelBundle }) {
         </li>
       ))}
     </ul>
-  );
+  )
 }
 
 function DiffLineRow({ line }: { line: { kind: 'same' | 'add' | 'remove'; text: string } }) {
@@ -69,11 +69,11 @@ function DiffLineRow({ line }: { line: { kind: 'same' | 'add' | 'remove'; text: 
       </span>
       {line.text || ' '}
     </div>
-  );
+  )
 }
 
 function DiffView({ b }: { b: VersionsPanelBundle }) {
-  const { diff, previewError, setPreviewReload } = b;
+  const { diff, previewError, setPreviewReload } = b
   if (previewError) {
     return (
       <Empty
@@ -83,9 +83,9 @@ function DiffView({ b }: { b: VersionsPanelBundle }) {
         description={previewError}
         action={<Button size='sm' variant='secondary' onClick={() => setPreviewReload((value) => value + 1)}>{t('common.retry')}</Button>}
       />
-    );
+    )
   }
-  if (!diff) return <LoadingBlock />;
+  if (!diff) return <LoadingBlock />
   return (
     <>
       <div className="sticky top-0 flex items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-inset)] px-3 py-1.5 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
@@ -100,7 +100,7 @@ function DiffView({ b }: { b: VersionsPanelBundle }) {
         ))}
       </pre>
     </>
-  );
+  )
 }
 
 function DiffPane({ b }: { b: VersionsPanelBundle }) {
@@ -108,12 +108,12 @@ function DiffPane({ b }: { b: VersionsPanelBundle }) {
     <div className='min-w-0 flex-1 overflow-y-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)]'>
       <DiffView b={b} />
     </div>
-  );
+  )
 }
 
 export function VersionsPanel({ onClose }: { onClose: () => void }) {
-  const b = useVersionsPanel(onClose);
-  const { note, versions, versionsError, setVersionsReload } = b;
+  const b = useVersionsPanel(onClose)
+  const { note, versions, versionsError, setVersionsReload } = b
 
   return (
     <Modal
@@ -143,5 +143,5 @@ export function VersionsPanel({ onClose }: { onClose: () => void }) {
         </div>
       )}
     </Modal>
-  );
+  )
 }

@@ -1,32 +1,32 @@
-import { cn } from '../../../lib/cn';
-import { EditorSkeleton } from '../../../components/feedback';
-import { createContextualNote } from '../../../store/notes';
-import { t } from '../../../lib/i18n';
-import type { WorkspacePane } from '../../../store/ui';
-import { NoNoteSelected } from './no-note-selected';
-import { useWorkspace, type WorkspaceBundle } from './use-workspace';
-import { buildExportMenuItems, buildMobileItems, buildGroupedItems, activateWorkspacePane } from './workspace-menus';
-import { WorkspaceHeader, WorkspacePanes, WorkspaceOverlays, WorkspaceFooter, FileInputs, WorkspaceToolbar, BacklinksSection, AttachmentDrive } from './workspace-views';
+import { cn } from '../../../lib/cn'
+import { EditorSkeleton } from '../../../components/feedback'
+import { createContextualNote } from '../../../store/notes'
+import { t } from '../../../lib/i18n'
+import type { WorkspacePane } from '../../../store/ui'
+import { NoNoteSelected } from './no-note-selected'
+import { useWorkspace, type WorkspaceBundle } from './use-workspace'
+import { buildExportMenuItems, buildMobileItems, buildGroupedItems, activateWorkspacePane } from './workspace-menus'
+import { WorkspaceHeader, WorkspacePanes, WorkspaceOverlays, WorkspaceFooter, FileInputs, WorkspaceToolbar, BacklinksSection, AttachmentDrive } from './workspace-views'
 
 export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active', grouped = false }: {
-    mobileLayout?: 'edit' | 'preview';
-    onMobileBack?: () => void;
-    pane?: WorkspacePane | 'active';
-    grouped?: boolean;
+    mobileLayout?: 'edit' | 'preview'
+    onMobileBack?: () => void
+    pane?: WorkspacePane | 'active'
+    grouped?: boolean
 } = {}) {
-  const raw = useWorkspace(pane, mobileLayout, grouped);
-  if (!raw.note) return <NoNoteSelected onCreate={() => void createContextualNote()} />;
+  const raw = useWorkspace(pane, mobileLayout, grouped)
+  if (!raw.note) return <NoNoteSelected onCreate={() => void createContextualNote()} />
   if (!raw.loaded) {
     return (
       <div className='h-full overflow-hidden bg-[var(--bg-editor)]' aria-busy='true' aria-label={t('workspace.loading_note_content')}>
         <EditorSkeleton />
       </div>
-    );
+    )
   }
-  const b: WorkspaceBundle = { ...raw, note: raw.note };
-  const exportMenuItems = buildExportMenuItems(b.exportNote);
-  const mobileItems = buildMobileItems(b.openPanel, b.exportNote);
-  const groupedItems = buildGroupedItems(b, b.exportNote);
+  const b: WorkspaceBundle = { ...raw, note: raw.note }
+  const exportMenuItems = buildExportMenuItems(b.exportNote)
+  const mobileItems = buildMobileItems(b.openPanel, b.exportNote)
+  const groupedItems = buildGroupedItems(b, b.exportNote)
   return (
     <div
       role={grouped ? 'region' : undefined}
@@ -47,5 +47,5 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
       <FileInputs b={b} />
       <AttachmentDrive b={b} />
     </div>
-  );
+  )
 }

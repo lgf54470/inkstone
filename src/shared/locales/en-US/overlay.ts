@@ -3,4 +3,4 @@ export const messages = {
 'overlay.dialog': 'Dialog',
 'overlay.menu': 'Menu',
 'overlay.side_panel': 'Side panel',
-};
+}

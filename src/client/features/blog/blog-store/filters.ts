@@ -1,5 +1,5 @@
-import { TRAFFIC_FILTERS_KEY, RETENTION_SETTINGS_KEY } from './state';
-import type { BlogStoreState, SetBlogStoreState } from './types';
+import { TRAFFIC_FILTERS_KEY, RETENTION_SETTINGS_KEY } from './state'
+import type { BlogStoreState, SetBlogStoreState } from './types'
 
 export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'setActiveTab' | 'setStatusFilter' | 'setCategoryId' | 'setFolderId' | 'setTag' | 'setSearch' | 'setSort' | 'setViewMode' | 'toggleSelectPost' | 'selectAllPosts' | 'clearPostSelection' | 'setCommentStatusFilter' | 'setCommentSearch' | 'toggleSelectComment' | 'selectAllComments' | 'clearCommentSelection' | 'setFilters' | 'setRetentionSettings'> => ({
   setFilters: (newFilters) => setFiltersImpl(newFilters, set, get),
@@ -20,23 +20,23 @@ export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreS
   toggleSelectComment: (id) => set((state) => ({ selectedCommentIds: toggleSelectedId(state.selectedCommentIds, id) })),
   selectAllComments: (ids) => set({ selectedCommentIds: new Set(ids) }),
   clearCommentSelection: () => set({ selectedCommentIds: new Set() }),
-});
+})
 
 function applyPostFilter(set: SetBlogStoreState, get: () => BlogStoreState, patch: Partial<BlogStoreState>): void {
-  set(patch);
-  void get().loadPosts();
+  set(patch)
+  void get().loadPosts()
 }
 
 function applyCommentFilter(set: SetBlogStoreState, get: () => BlogStoreState, patch: Partial<BlogStoreState>): void {
-  set(patch);
-  void get().loadComments();
+  set(patch)
+  void get().loadComments()
 }
 
 function toggleSelectedId(ids: Set<string>, id: string): Set<string> {
-  const next = new Set(ids);
-  if (next.has(id)) next.delete(id);
-  else next.add(id);
-  return next;
+  const next = new Set(ids)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  return next
 }
 
 function setFiltersImpl(
@@ -49,20 +49,20 @@ function setFiltersImpl(
       excludeBots: newFilters.excludeBots ?? state.excludeBots,
       excludeSelfReferrers: newFilters.excludeSelfReferrers ?? state.excludeSelfReferrers,
       excludeOwner: newFilters.excludeOwner ?? state.excludeOwner,
-    };
-    persistTrafficFilters(updated);
-    return updated;
-  });
-  void get().loadPosts();
-  void get().loadStats();
+    }
+    persistTrafficFilters(updated)
+    return updated
+  })
+  void get().loadPosts()
+  void get().loadStats()
 }
 
 function persistTrafficFilters(updated: { excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return
   try {
-    localStorage.setItem(TRAFFIC_FILTERS_KEY, JSON.stringify(updated));
+    localStorage.setItem(TRAFFIC_FILTERS_KEY, JSON.stringify(updated))
   } catch (error) {
-    console.warn('[blog-store] failed to persist traffic filters', error);
+    console.warn('[blog-store] failed to persist traffic filters', error)
   }
 }
 
@@ -73,15 +73,15 @@ function setRetentionSettingsImpl(
   set({
     logRetentionDays: newSettings.logRetentionDays,
     maxLogRecords: newSettings.maxLogRecords,
-  });
-  persistRetentionSettings(newSettings);
+  })
+  persistRetentionSettings(newSettings)
 }
 
 function persistRetentionSettings(settings: Parameters<BlogStoreState['setRetentionSettings']>[0]): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return
   try {
-    localStorage.setItem(RETENTION_SETTINGS_KEY, JSON.stringify(settings));
+    localStorage.setItem(RETENTION_SETTINGS_KEY, JSON.stringify(settings))
   } catch (error) {
-    console.warn('[blog-store] failed to persist retention settings', error);
+    console.warn('[blog-store] failed to persist retention settings', error)
   }
 }

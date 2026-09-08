@@ -1,8 +1,8 @@
-import type { Context } from 'hono';
-import type { AppBindings } from '../../env';
-import { requestClientIp } from '../../lib/request';
-import { isBot, parseDeviceType, parseOS, parseBrowser, parseReferrerHost, computeVisitorFingerprint } from '../../lib/share-analytics';
-import type { BlogPostPublicRow } from '../../db/rows';
+import type { Context } from 'hono'
+import type { AppBindings } from '../../env'
+import { requestClientIp } from '../../lib/request'
+import { isBot, parseDeviceType, parseOS, parseBrowser, parseReferrerHost, computeVisitorFingerprint } from '../../lib/share-analytics'
+import type { BlogPostPublicRow } from '../../db/rows'
 
 interface BlogVisitParams {
   userId: string | null

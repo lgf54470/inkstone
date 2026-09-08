@@ -1,20 +1,20 @@
-import { backupAttachmentPath, backupCompleteBody, backupCompletePath, backupManifestPath, parseMarkdownBackupManifest, type MarkdownBackupAttachmentEntry, type MarkdownBackupManifest, type MarkdownBackupNoteEntry, type MarkdownBackupNoteState, MARKDOWN_BACKUP_FORMAT, MARKDOWN_BACKUP_VERSION } from '@shared/backup-format';
-import { APP_VERSION, LIMITS } from '@shared/constants';
-import { extractAttachmentIds } from '@shared/markdown-utils';
-import { truncateText } from '@shared/text-utils';
-import type { Folder, Note } from '@shared/types';
-import { isAttachmentObjectStorage } from '../../attachments/backend';
-import { NOTE_COLUMNS_FULL, toFolder, toNote, type FolderRow, type NoteRow } from '../../db/rows';
-import type { Env } from '../../env';
-import { sha256Hex } from '../../lib/encoding';
-import { encoder } from './files';
-import { openPlannedNote } from './files';
-import { openVerifiedAttachment } from './files';
-import { renderNoteBody } from './files';
-import { staticFile } from './files';
-import { staticFileAsync, type BackupFile, type AttachmentSnapshotRow } from './files';
+import { backupAttachmentPath, backupCompleteBody, backupCompletePath, backupManifestPath, parseMarkdownBackupManifest, type MarkdownBackupAttachmentEntry, type MarkdownBackupManifest, type MarkdownBackupNoteEntry, type MarkdownBackupNoteState, MARKDOWN_BACKUP_FORMAT, MARKDOWN_BACKUP_VERSION } from '@shared/backup-format'
+import { APP_VERSION, LIMITS } from '@shared/constants'
+import { extractAttachmentIds } from '@shared/markdown-utils'
+import { truncateText } from '@shared/text-utils'
+import type { Folder, Note } from '@shared/types'
+import { isAttachmentObjectStorage } from '../../attachments/backend'
+import { NOTE_COLUMNS_FULL, toFolder, toNote, type FolderRow, type NoteRow } from '../../db/rows'
+import type { Env } from '../../env'
+import { sha256Hex } from '../../lib/encoding'
+import { encoder } from './files'
+import { openPlannedNote } from './files'
+import { openVerifiedAttachment } from './files'
+import { renderNoteBody } from './files'
+import { staticFile } from './files'
+import { staticFileAsync, type BackupFile, type AttachmentSnapshotRow } from './files'
 
-export type { BackupFile, BackupFileKind, AttachmentSnapshotRow } from './files';
+export type { BackupFile, BackupFileKind, AttachmentSnapshotRow } from './files'
 
 export interface Snapshot {
   payloadFiles: BackupFile[]

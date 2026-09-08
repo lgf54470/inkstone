@@ -1,7 +1,7 @@
-import { Hono } from 'hono';
-import type { AppBindings } from '../../env';
-import { FTS_QUEUE_CONFLICT_SQL, LINK_TARGET_SUBQUERY, pruneOrphanTags } from '../../db/writes';
-import { broadcastCursor, scheduleFtsDrain } from '../../lib/notify';
+import { Hono } from 'hono'
+import type { AppBindings } from '../../env'
+import { FTS_QUEUE_CONFLICT_SQL, LINK_TARGET_SUBQUERY, pruneOrphanTags } from '../../db/writes'
+import { broadcastCursor, scheduleFtsDrain } from '../../lib/notify'
 
 export function registerNotesTrashRoutes(notesRoutes: Hono<AppBindings>): void {
   notesRoutes.post('/trash/empty', async (c) => {

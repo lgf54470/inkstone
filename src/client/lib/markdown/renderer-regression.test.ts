@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { renderMarkdown } from './renderer';
+import { describe, expect, it } from 'vitest'
+import { renderMarkdown } from './renderer'
 
 const normalize = (html: string): string => html
   .replace(/data-task-placeholder="[^"]*"/g, 'data-task-placeholder="X"')
-  .replace(/ink-[a-f0-9-]{36}/g, 'ink-X');
+  .replace(/ink-[a-f0-9-]{36}/g, 'ink-X')
 
 const DOCS: string[] = [
   'a $x$ b',
@@ -28,18 +28,18 @@ const DOCS: string[] = [
   '```mermaid\ngraph TD; A-->B;\n```',
   '```chart\nbar\n```',
   'before %%hidden [[x]]%% after $x$',
-];
+]
 
 describe('renderer output regression', () => {
   it('locks math/wiki/fence rendering output', () => {
     const results = DOCS.map((doc) => {
-      const result = renderMarkdown(doc);
+      const result = renderMarkdown(doc)
       return {
         doc,
         html: normalize(result.html),
         hasMath: result.hasMath,
-      };
-    });
-    expect(results).toMatchSnapshot();
-  });
-});
+      }
+    })
+    expect(results).toMatchSnapshot()
+  })
+})

@@ -1,27 +1,27 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { BrainCircuit, Cloud, Database, FilePlus2, Info, Keyboard, Palette, RefreshCw, Type, UserRound, X, } from 'lucide-react';
-import { ACCENTS } from '@shared/constants';
-import { cn } from '../../lib/cn';
-import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../components/overlay';
-import { IconButton } from '../../components/primitives';
-import { LoadingBlock } from '../../components/feedback';
-import { AppearanceSettings } from './appearance-settings';
-import { useUi, type PanelName } from '../../store/ui';
-import { t } from '../../lib/i18n';
-const EditorSettings = lazy(() => import('./editor-settings').then((m) => ({ default: m.EditorSettings })));
-const NoteSettings = lazy(() => import('./note-settings').then((m) => ({ default: m.NoteSettings })));
-const SyncSettings = lazy(() => import('./sync-settings').then((m) => ({ default: m.SyncSettings })));
-const DataSettings = lazy(() => import('./data-settings').then((m) => ({ default: m.DataSettings })));
-const AccountSettings = lazy(() => import('./account-settings').then((m) => ({ default: m.AccountSettings })));
-const AboutSettings = lazy(() => import('./about-settings').then((m) => ({ default: m.AboutSettings })));
-const BackupSettings = lazy(() => import('./backup-settings').then((m) => ({ default: m.BackupSettings })));
-const McpSettings = lazy(() => import('./mcp-settings').then((m) => ({ default: m.McpSettings })));
-type Section = 'appearance' | 'editor' | 'notes' | 'backup' | 'sync' | 'mcp' | 'account' | 'data' | 'about';
+import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { BrainCircuit, Cloud, Database, FilePlus2, Info, Keyboard, Palette, RefreshCw, Type, UserRound, X, } from 'lucide-react'
+import { ACCENTS } from '@shared/constants'
+import { cn } from '../../lib/cn'
+import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../components/overlay'
+import { IconButton } from '../../components/primitives'
+import { LoadingBlock } from '../../components/feedback'
+import { AppearanceSettings } from './appearance-settings'
+import { useUi, type PanelName } from '../../store/ui'
+import { t } from '../../lib/i18n'
+const EditorSettings = lazy(() => import('./editor-settings').then((m) => ({ default: m.EditorSettings })))
+const NoteSettings = lazy(() => import('./note-settings').then((m) => ({ default: m.NoteSettings })))
+const SyncSettings = lazy(() => import('./sync-settings').then((m) => ({ default: m.SyncSettings })))
+const DataSettings = lazy(() => import('./data-settings').then((m) => ({ default: m.DataSettings })))
+const AccountSettings = lazy(() => import('./account-settings').then((m) => ({ default: m.AccountSettings })))
+const AboutSettings = lazy(() => import('./about-settings').then((m) => ({ default: m.AboutSettings })))
+const BackupSettings = lazy(() => import('./backup-settings').then((m) => ({ default: m.BackupSettings })))
+const McpSettings = lazy(() => import('./mcp-settings').then((m) => ({ default: m.McpSettings })))
+type Section = 'appearance' | 'editor' | 'notes' | 'backup' | 'sync' | 'mcp' | 'account' | 'data' | 'about'
 const SECTIONS: {
-  id: Section;
-  label: () => string;
-  icon: React.ReactNode;
+  id: Section
+  label: () => string
+  icon: React.ReactNode
 }[] = [
   { id: 'appearance', label: () => t('settings.appearance'), icon: <Palette size={14}/> },
   { id: 'editor', label: () => t('settings.editor'), icon: <Type size={14}/> },
@@ -32,21 +32,21 @@ const SECTIONS: {
   { id: 'account', label: () => t('settings.account'), icon: <UserRound size={14}/> },
   { id: 'data', label: () => t('settings.data'), icon: <Database size={14}/> },
   { id: 'about', label: () => t('settings.about'), icon: <Info size={14}/> },
-];
+]
 export function SettingsPanel({ onClose }: {
-  onClose: () => void;
+  onClose: () => void
 }) {
-  const [section, setSection] = useState<Section>('appearance');
-  const openPanel = useUi((s) => s.openPanel);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const titleId = useId();
-  useEscape(true, onClose);
-  useLockScroll(true);
-  useDialogFocus(true, panelRef);
+  const [section, setSection] = useState<Section>('appearance')
+  const openPanel = useUi((s) => s.openPanel)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  useEscape(true, onClose)
+  useLockScroll(true)
+  useDialogFocus(true, panelRef)
   useEffect(() => {
-    bodyRef.current?.scrollTo({ top: 0 });
-  }, [section]);
+    bodyRef.current?.scrollTo({ top: 0 })
+  }, [section])
   return createPortal(<div className='app-viewport-fixed fixed z-[var(--z-settings)] flex items-center justify-center md:p-8'>
     <div className='anim-fade absolute inset-0 bg-[var(--scrim)]' onClick={onClose} aria-hidden='true'/>
 
@@ -61,7 +61,7 @@ export function SettingsPanel({ onClose }: {
       </div>
     </div>
     </div>
-  </div>, document.body);
+  </div>, document.body)
 }
 
 function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { section: Section; onSelect: (section: Section) => void; onClose: () => void; openPanel: (panel: PanelName) => void; titleId: string }) {
@@ -78,8 +78,8 @@ function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { secti
         {item.label()}
         </button>))}
       <button type='button' onClick={() => {
-        onClose();
-        openPanel('shortcuts');
+        onClose()
+        openPanel('shortcuts')
       }} className="flex h-10 shrink-0 items-center gap-2.5 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12\.5)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] md:hidden">
         <Keyboard size={14}/>{t('settings.keyboard_shortcuts')}
       </button>
@@ -87,12 +87,12 @@ function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { secti
 
       <div className='flex-1'/>
       <button type='button' onClick={() => {
-      onClose();
-      openPanel('shortcuts');
+      onClose()
+      openPanel('shortcuts')
     }} className="hidden h-7.5 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12\.5)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] md:flex">
       <Keyboard size={14}/>{t('settings.keyboard_shortcuts')}</button>
     </nav>
-  );
+  )
 }
 
 function SettingsHeader({ section, onClose }: { section: Section; onClose: () => void }) {
@@ -107,7 +107,7 @@ function SettingsHeader({ section, onClose }: { section: Section; onClose: () =>
       </IconButton>
       </Tooltip>
     </header>
-  );
+  )
 }
 
 function SectionContent({ section }: { section: Section }) {
@@ -123,5 +123,5 @@ function SectionContent({ section }: { section: Section }) {
       {section === 'about' && <AboutSettings />}
       {section === 'backup' && <BackupSettings />}
     </Suspense>
-  );
+  )
 }

@@ -1,10 +1,10 @@
-import { requireOwnedNote } from './helpers';
-import type { LibraryContext } from './types';
-import { ApiError } from '../../lib/errors';
-import { newSlug } from '../../lib/id';
-import { hashPassword } from '../../lib/password';
-import { runIdempotent } from '.././operations';
-import { LIMITS } from '@shared/constants';
+import { requireOwnedNote } from './helpers'
+import type { LibraryContext } from './types'
+import { ApiError } from '../../lib/errors'
+import { newSlug } from '../../lib/id'
+import { hashPassword } from '../../lib/password'
+import { runIdempotent } from '.././operations'
+import { LIMITS } from '@shared/constants'
 
 export async function getMcpShare(db: D1Database, userId: string, origin: string, noteId: string) {
   await requireOwnedNote(db, userId, noteId)

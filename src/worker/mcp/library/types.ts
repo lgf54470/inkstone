@@ -1,4 +1,4 @@
-import type { McpWriteContext } from '.././writes';
+import type { McpWriteContext } from '.././writes'
 
 export interface LibraryContext extends McpWriteContext {
   origin: string

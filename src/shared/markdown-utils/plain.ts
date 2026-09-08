@@ -1,5 +1,5 @@
-import { stripCodeRegions } from './code';
-import { splitFrontMatter } from './front-matter';
+import { stripCodeRegions } from './code'
+import { splitFrontMatter } from './front-matter'
 import { truncateText } from '../text-utils'
 
 export function deriveTitle(content: string, fallback = 'Untitled note'): string {

@@ -1,9 +1,9 @@
-import type { DateRangeFilter, NoteSummary, ViewKind } from '@shared/types';
-import { CALENDAR_TREE, DEFAULT_TODO_TAG, isTodoFolderId, isVirtualFolderId, parseVirtualId, TODO_TREE, virtualPeriodMatchesNote } from './calendar-tree';
-import { dateKey } from './time';
+import type { DateRangeFilter, NoteSummary, ViewKind } from '@shared/types'
+import { CALENDAR_TREE, DEFAULT_TODO_TAG, isTodoFolderId, isVirtualFolderId, parseVirtualId, TODO_TREE, virtualPeriodMatchesNote } from './calendar-tree'
+import { dateKey } from './time'
 
 function noteHasTag(noteTags: readonly string[], target: string): boolean {
-  return noteTags.some((t) => t === target || t.startsWith(`${target}/`));
+  return noteTags.some((t) => t === target || t.startsWith(`${target}/`))
 }
 
 function matchesSelectedTags(
@@ -12,10 +12,10 @@ function matchesSelectedTags(
   selectedTagsMatch: 'any' | 'all',
 ): boolean {
   if (!selectedTags.length)
-    return true;
+    return true
   return selectedTagsMatch === 'all'
     ? selectedTags.every((name) => noteHasTag(note.tags, name))
-    : selectedTags.some((name) => noteHasTag(note.tags, name));
+    : selectedTags.some((name) => noteHasTag(note.tags, name))
 }
 
 function matchesFolderView(
@@ -25,17 +25,17 @@ function matchesFolderView(
   todoTagText: string = DEFAULT_TODO_TAG,
 ): boolean {
   if (!isVirtualFolderId(folderId))
-    return Boolean(note.folderId && (folderScope?.has(note.folderId) ?? note.folderId === folderId));
-  const ns = isTodoFolderId(folderId) ? TODO_TREE : CALENDAR_TREE;
-  const period = parseVirtualId(folderId, ns);
-  return period !== null && virtualPeriodMatchesNote(period, note, ns, todoTagText);
+    return Boolean(note.folderId && (folderScope?.has(note.folderId) ?? note.folderId === folderId))
+  const ns = isTodoFolderId(folderId) ? TODO_TREE : CALENDAR_TREE
+  const period = parseVirtualId(folderId, ns)
+  return period !== null && virtualPeriodMatchesNote(period, note, ns, todoTagText)
 }
 
 function matchesDateFilter(note: NoteSummary, dateFilter: DateRangeFilter | null): boolean {
   if (!dateFilter)
-    return true;
-  const key = dateKey(new Date(note.updatedAt));
-  return key >= dateFilter.start && key <= dateFilter.end;
+    return true
+  const key = dateKey(new Date(note.updatedAt))
+  return key >= dateFilter.start && key <= dateFilter.end
 }
 
 /** Decide whether a note belongs to the active list view, optionally stacked with a multi-tag selection (`any` or `all` must match). */
@@ -53,37 +53,37 @@ export function matchesView(
   publishedNoteIds?: ReadonlySet<string>,
 ): boolean {
   if (view === 'trash')
-    return Boolean(note.deletedAt);
+    return Boolean(note.deletedAt)
   if (note.deletedAt)
-    return false;
+    return false
   if (view === 'archived')
-    return note.isArchived;
+    return note.isArchived
   if (note.isArchived)
-    return false;
+    return false
   if (!matchesDateFilter(note, dateFilter))
-    return false;
+    return false
   if (!matchesSelectedTags(note, selectedTags, selectedTagsMatch))
-    return false;
+    return false
   switch (view) {
     case 'pinned':
-      return note.isPinned;
+      return note.isPinned
     case 'starred':
-      return note.isStarred;
+      return note.isStarred
     case 'shared':
-      return Boolean(sharedNoteIds?.has(note.id));
+      return Boolean(sharedNoteIds?.has(note.id))
     case 'published':
-      return Boolean(publishedNoteIds?.has(note.id));
+      return Boolean(publishedNoteIds?.has(note.id))
     case 'unfiled':
-      return !note.folderId;
+      return !note.folderId
     case 'folder':
-      return matchesFolderView(note, folderId, folderScope, todoTagText);
+      return matchesFolderView(note, folderId, folderScope, todoTagText)
     case 'tag':
-      return Boolean(tag && noteHasTag(note.tags, tag));
+      return Boolean(tag && noteHasTag(note.tags, tag))
     case 'untagged':
-      return note.tags.length === 0;
+      return note.tags.length === 0
     case 'recent':
     case 'all':
     default:
-      return true;
+      return true
   }
 }

@@ -58,4 +58,4 @@ export const messages = {
 'blog.pin_post': '置顶博文',
 'blog.unpin_post': '取消置顶',
 'blog.drag_to_folder_hint': '拖拽至左侧文件夹归类',
-};
+}

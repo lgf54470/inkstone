@@ -416,4 +416,4 @@ export const TABLE_STATEMENTS: readonly string[] = [
       is_self_referrer INTEGER NOT NULL DEFAULT 0,
       is_owner INTEGER NOT NULL DEFAULT 0
     )`,
-];
+]

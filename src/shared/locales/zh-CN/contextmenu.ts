@@ -113,4 +113,4 @@ export const messages = {
 'contextmenu.preview_search_selection': '在笔记中搜索选中文本',
 'contextmenu.preview_create_note_from_selection': '以此文本创建新笔记',
 'contextmenu.preview_jump_to_editor': '在编辑器中定位',
-};
+}

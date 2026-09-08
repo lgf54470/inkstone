@@ -1,18 +1,18 @@
-import { FolderPlus, Globe, Hash, LayoutTemplate, Pin, Plus, Star, Trash2 } from 'lucide-react';
-import { useNoteTemplates } from '../../store/note-templates';
-import { Button } from '../../components/primitives';
-import { Tooltip } from '../../components/overlay';
-import { t } from '../../lib/i18n';
-import { FilterChip, SidebarButton, CategoryRow } from './gallery-controls';
-import { TemplateCard } from './template-card';
-import { TemplateEditorModal, TemplateRenameDialog, MoveTemplateDialog, CategoryDialog, ImportTemplatesModal, BatchMoveDialog } from './gallery-modals';
-import { CommunityPanel } from './community-panel';
-import { KeyboardHelpModal, PublishTemplateDialog } from './misc-modals';
-import type { GalleryController } from './gallery-controller';
+import { FolderPlus, Globe, Hash, LayoutTemplate, Pin, Plus, Star, Trash2 } from 'lucide-react'
+import { useNoteTemplates } from '../../store/note-templates'
+import { Button } from '../../components/primitives'
+import { Tooltip } from '../../components/overlay'
+import { t } from '../../lib/i18n'
+import { FilterChip, SidebarButton, CategoryRow } from './gallery-controls'
+import { TemplateCard } from './template-card'
+import { TemplateEditorModal, TemplateRenameDialog, MoveTemplateDialog, CategoryDialog, ImportTemplatesModal, BatchMoveDialog } from './gallery-modals'
+import { CommunityPanel } from './community-panel'
+import { KeyboardHelpModal, PublishTemplateDialog } from './misc-modals'
+import type { GalleryController } from './gallery-controller'
 
 export function GalleryMobileChips({ g }: { g: GalleryController }) {
-  const { state, store, derived, filterActions, dragActions } = g;
-  const { filter, setFilter, draggingId, dropCategory } = state;
+  const { state, store, derived, filterActions, dragActions } = g
+  const { filter, setFilter, draggingId, dropCategory } = state
   return (
     <div className='flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-[var(--border-subtle)] px-3 py-2 md:hidden'>
       <FilterChip label={t('templates.all_templates')} count={store.templates.length} active={filter.kind === 'all'} onClick={() => setFilter({ kind: 'all' })}/>
@@ -20,22 +20,22 @@ export function GalleryMobileChips({ g }: { g: GalleryController }) {
       <FilterChip label={t('templates.community')} count={g.community.community.length} active={filter.kind === 'community'} onClick={() => setFilter({ kind: 'community' })}/>
       {derived.counts.uncategorized > 0 && <FilterChip label={t('templates.uncategorized')} count={derived.counts.uncategorized} active={filter.kind === 'uncategorized'} onClick={() => setFilter({ kind: 'uncategorized' })}/>}
       {store.categories.map((category) => (<FilterChip key={category.id} label={category.name} count={derived.counts.byCategory.get(category.id) ?? 0} active={filter.kind === 'category' && filter.id === category.id} onClick={() => setFilter({ kind: 'category', id: category.id })} dropTarget={draggingId !== null && dropCategory === category.id} onDragOver={(event) => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'move';
-        state.setDropCategory(category.id);
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+        state.setDropCategory(category.id)
       }} onDragLeave={() => state.setDropCategory((current) => current === category.id ? null : current)} onDrop={(event) => {
-        event.preventDefault();
-        dragActions.handleCategoryDrop(category.id);
+        event.preventDefault()
+        dragActions.handleCategoryDrop(category.id)
       }}/>))}
       {derived.tagList.map(([tag, count]) => (<FilterChip key={`tag-${tag}`} label={`#${tag}`} count={count} active={filter.kind === 'tag' && filter.tag === tag} onClick={() => filterActions.toggleTagFilter(tag)}/>))}
       <FilterChip label={t('templates.new_category')} count={null} active={false} onClick={() => state.setCategoryDialog({ mode: 'create' })}/>
     </div>
-  );
+  )
 }
 
 export function GallerySidebar({ g }: { g: GalleryController }) {
-  const { state, store, derived, filterActions, dragActions } = g;
-  const { filter, setFilter, draggingId, dropCategory } = state;
+  const { state, store, derived, filterActions, dragActions } = g
+  const { filter, setFilter, draggingId, dropCategory } = state
   return (
     <aside aria-label={t('templates.categories')} className='hidden w-54.5 shrink-0 flex-col overflow-y-auto border-r border-[var(--border-subtle)] p-2 md:flex'>
       <SidebarButton icon={<LayoutTemplate size={14}/>} label={t('templates.all_templates')} count={store.templates.length} active={filter.kind === 'all'} onClick={() => setFilter({ kind: 'all' })}/>
@@ -52,12 +52,12 @@ export function GallerySidebar({ g }: { g: GalleryController }) {
       </div>
       <div className='space-y-0.5'>
         {store.categories.map((category) => (<CategoryRow key={category.id} category={category} count={derived.counts.byCategory.get(category.id) ?? 0} active={filter.kind === 'category' && filter.id === category.id} dropTarget={draggingId !== null && dropCategory === category.id} onSelect={() => setFilter({ kind: 'category', id: category.id })} onRename={() => state.setCategoryDialog({ mode: 'rename', category })} onDelete={() => void filterActions.deleteCategory(category)} onDragOver={(event) => {
-          event.preventDefault();
-          event.dataTransfer.dropEffect = 'move';
-          state.setDropCategory(category.id);
+          event.preventDefault()
+          event.dataTransfer.dropEffect = 'move'
+          state.setDropCategory(category.id)
         }} onDragLeave={() => state.setDropCategory((current) => current === category.id ? null : current)} onDrop={(event) => {
-          event.preventDefault();
-          dragActions.handleCategoryDrop(category.id);
+          event.preventDefault()
+          dragActions.handleCategoryDrop(category.id)
         }}/>))}
       </div>
       {derived.tagList.length > 0 && (<>
@@ -70,12 +70,12 @@ export function GallerySidebar({ g }: { g: GalleryController }) {
         <Plus size={13}/>{t('templates.new_category')}
       </button>
     </aside>
-  );
+  )
 }
 
 export function GalleryMain({ g }: { g: GalleryController }) {
-  const { state, store, derived, templateActions, filterActions, communityActions, dragActions, selectActions, community } = g;
-  const { filter, selectedIds, focusedId, draggingId, dropHint, selectMode } = state;
+  const { state, store, derived, templateActions, filterActions, communityActions, dragActions, selectActions, community } = g
+  const { filter, selectedIds, focusedId, draggingId, dropHint, selectMode } = state
   return (
     <main className='min-h-0 flex-1 overflow-y-auto p-3 md:p-4'>
       {filter.kind === 'community' && <CommunityPanel items={community.community} loading={community.isCommunityLoading} isError={community.isCommunityError} myId={state.currentUserId} onRefresh={() => void community.refreshCommunity()} onUse={templateActions.useCommunityTemplate} onImport={templateActions.importCommunityTemplate} onUnpublish={(item) => void communityActions.unpublishCommunityTemplate(item)}/>}
@@ -90,16 +90,16 @@ export function GalleryMain({ g }: { g: GalleryController }) {
         <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('templates.no_templates_hint')}</p>
       </div>) : filter.kind !== 'community' && (<div ref={state.gridRef} className='grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3'>
         {derived.visible.map((template) => (<TemplateCard key={template.id} template={template} categoryName={filterActions.categoryName(template.categoryId)} selectMode={selectMode} selected={selectedIds.has(template.id)} focused={focusedId === template.id} dragging={draggingId === template.id} dropHint={dropHint?.id === template.id ? dropHint.after : null} onToggleSelect={() => selectActions.toggleSelect(template.id)} onDragStart={(id) => state.setDraggingId(id)} onDragOver={(id, after) => state.setDropHint({ id, after })} onDrop={(template, after) => dragActions.handleCardDrop(template, after)} onDragEnd={() => {
-            state.setDraggingId(null);
-            state.setDropHint(null);
+            state.setDraggingId(null)
+            state.setDropHint(null)
           }} onUse={() => templateActions.useTemplate(template)} onEdit={() => state.setEditing(template)} onRename={() => state.setRenaming(template)} onDuplicate={() => useNoteTemplates.getState().duplicateTemplate(template.id)} onMove={() => state.setMoving(template)} onDelete={() => void templateActions.deleteTemplate(template)} onPublish={() => state.setPublishing(template)} onTogglePin={() => store.togglePin(template.id)} onToggleStar={() => store.toggleStar(template.id)}/>))}
       </div>)}
     </main>
-  );
+  )
 }
 
 export function GallerySelectBar({ g }: { g: GalleryController }) {
-  const { state, derived, selectActions, batchActions } = g;
+  const { state, derived, selectActions, batchActions } = g
   return (
     <div className='flex shrink-0 flex-wrap items-center gap-2 border-t border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-4 py-2.5'>
       <span className="text-[length:var(--text-12\.5)] font-semibold text-[var(--text-secondary)]">{t('templates.selected_count_value0', { value0: state.selectedIds.size })}</span>
@@ -111,11 +111,11 @@ export function GallerySelectBar({ g }: { g: GalleryController }) {
         <Button size='sm' variant='ghost' onClick={selectActions.exitSelectMode}>{t('templates.exit_select_mode')}</Button>
       </div>
     </div>
-  );
+  )
 }
 
 export function GalleryModals({ g }: { g: GalleryController }) {
-  const { state, store, filterActions, batchActions, community } = g;
+  const { state, store, filterActions, batchActions, community } = g
   return (<>
     {state.editing && <TemplateEditorModal template={state.editing === 'new' ? null : state.editing} categories={store.categories} onClose={() => state.setEditing(null)}/>}
     {state.renaming && <TemplateRenameDialog template={state.renaming} onClose={() => state.setRenaming(null)}/>}
@@ -125,8 +125,8 @@ export function GalleryModals({ g }: { g: GalleryController }) {
     {state.isBatchMoving && <BatchMoveDialog categories={store.categories} onMove={batchActions.batchMove} onClose={() => state.setIsBatchMoving(false)}/>}
     {state.isHelpOpen && <KeyboardHelpModal onClose={() => state.setIsHelpOpen(false)}/>}
     {state.publishing && <PublishTemplateDialog template={state.publishing} category={state.publishing.categoryId === null ? t('templates.uncategorized') : filterActions.categoryName(state.publishing.categoryId)} onClose={() => state.setPublishing(null)} onPublished={() => {
-      state.setPublishing(null);
-      if (state.filter.kind === 'community') void community.refreshCommunity();
+      state.setPublishing(null)
+      if (state.filter.kind === 'community') void community.refreshCommunity()
     }}/>}
-  </>);
+  </>)
 }

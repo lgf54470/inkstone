@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { renderMarkdown as renderRoot } from '../src/client/lib/markdown/renderer';
-import { renderMarkdown as renderBlog } from '../blog-frontend/src/lib/markdown';
-import { SHOWCASE_CONTENT } from '../blog-frontend/src/data/showcase';
+import { describe, expect, it } from 'vitest'
+import { renderMarkdown as renderRoot } from '../src/client/lib/markdown/renderer'
+import { renderMarkdown as renderBlog } from '../blog-frontend/src/lib/markdown'
+import { SHOWCASE_CONTENT } from '../blog-frontend/src/data/showcase'
 
 const FIXTURES: Record<string, string> = {
   showcase: SHOWCASE_CONTENT,
@@ -27,7 +27,7 @@ const FIXTURES: Record<string, string> = {
   toc: '[TOC]\n\n# 标题一\n\n## 子标题',
   footnote: '引用[^1]\n\n[^1]: 注释内容',
   obsidianComment: '正文 %%隐藏%% 保留',
-};
+}
 
 // Structural parity baseline: root and blog renderers keep (and must not silently
 // change) these tag/class skeleton differences. Any baseline item that converges
@@ -48,41 +48,41 @@ const KNOWN_DIVERGENCE: Record<string, string> = {
   // Composed fixture: root renders a frontmatter properties card (blog strips it)
   // plus the fence/tag/embed/math differences above.
   showcase: 'frontmatter-card-plus-composed-diffs',
-};
+}
 
 // Skeleton compares tag names and class tokens only (attribute order insensitive),
 // ignoring text: the root renderer emits i18n key literals without a provider in
 // tests, and both trees pin full output text via their own baseline snapshots.
 function skeleton(html: string): string {
-  const tags = html.replace(/<!--[\s\S]*?-->/g, '').match(/<([a-z0-9-]+)((?:\s+[a-z-]+(?:="[^"]*")?)*)\s*\/?>/g) ?? [];
+  const tags = html.replace(/<!--[\s\S]*?-->/g, '').match(/<([a-z0-9-]+)((?:\s+[a-z-]+(?:="[^"]*")?)*)\s*\/?>/g) ?? []
   return tags
     .map((tag) => {
-      const match = /^<([a-z0-9-]+)((?:\s+[a-z-]+(?:="[^"]*")?)*)\s*\/?>$/.exec(tag)!;
+      const match = /^<([a-z0-9-]+)((?:\s+[a-z-]+(?:="[^"]*")?)*)\s*\/?>$/.exec(tag)!
       const classes = (match[2]!.match(/class="([^"]*)"/) ?? [])[1]
         ?.split(/\s+/)
         .filter(Boolean)
         .sort()
-        .join('.');
-      return `<${match[1]}${classes ? `:${classes}` : ''}>`;
+        .join('.')
+      return `<${match[1]}${classes ? `:${classes}` : ''}>`
     })
-    .join('\n');
+    .join('\n')
 }
 
 describe('markdown renderer cross-tree parity', () => {
   it('keeps root and blog renderers structurally in sync', () => {
-    const unexpected: string[] = [];
-    const converged: string[] = [];
+    const unexpected: string[] = []
+    const converged: string[] = []
     for (const [name, md] of Object.entries(FIXTURES)) {
-      const root = skeleton(renderRoot(md).html);
-      const blog = skeleton(renderBlog(md).html);
-      const known = name in KNOWN_DIVERGENCE;
+      const root = skeleton(renderRoot(md).html)
+      const blog = skeleton(renderBlog(md).html)
+      const known = name in KNOWN_DIVERGENCE
       if (root === blog) {
-        if (known) converged.push(name);
+        if (known) converged.push(name)
       } else if (!known) {
-        unexpected.push(`\n=== ${name} ===\nROOT:\n${root}\nBLOG:\n${blog}`);
+        unexpected.push(`\n=== ${name} ===\nROOT:\n${root}\nBLOG:\n${blog}`)
       }
     }
-    expect(converged).toEqual([]);
-    expect(unexpected.join('\n')).toBe('');
-  });
-});
+    expect(converged).toEqual([])
+    expect(unexpected.join('\n')).toBe('')
+  })
+})

@@ -1,6 +1,6 @@
-import { interpolateNewNoteTemplate } from '@shared/markdown-utils';
-import { ApiError } from '../../lib/errors';
-import { buildOutline } from '../retrieval';
+import { interpolateNewNoteTemplate } from '@shared/markdown-utils'
+import { ApiError } from '../../lib/errors'
+import { buildOutline } from '../retrieval'
 
 /** Final content for an MCP-created note: explicit content wins, blank notes follow the interpolated template. */
 export function buildMcpNoteContent(inputContent: string | undefined, title: string, template: string): string {

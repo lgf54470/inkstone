@@ -1,18 +1,18 @@
-import { useCallback, useMemo, useState } from 'react';
-import { DEFAULT_NEW_NOTE_TEMPLATE, DEFAULT_SETTINGS } from '@shared/constants';
-import { renderNewNoteTemplate } from '@shared/markdown-utils';
-import { Input, SettingRow, Switch, Textarea } from '../../components/form';
-import { Button } from '../../components/primitives';
-import { useSession } from '../../store/session';
-import { t, useLocale } from '../../lib/i18n';
+import { useCallback, useMemo, useState } from 'react'
+import { DEFAULT_NEW_NOTE_TEMPLATE, DEFAULT_SETTINGS } from '@shared/constants'
+import { renderNewNoteTemplate } from '@shared/markdown-utils'
+import { Input, SettingRow, Switch, Textarea } from '../../components/form'
+import { Button } from '../../components/primitives'
+import { useSession } from '../../store/session'
+import { t, useLocale } from '../../lib/i18n'
 
 export function NoteSettings() {
-  const notes = useSession((s) => s.settings.notes ?? DEFAULT_SETTINGS.notes);
-  const update = useSession((s) => s.updateSettings);
-  const setTemplate = useCallback((newNoteTemplate: string) => void update({ notes: { newNoteTemplate } }), [update]);
-  const restoreDefault = useCallback(() => void update({ notes: { newNoteTemplate: DEFAULT_NEW_NOTE_TEMPLATE } }), [update]);
-  const setSyncTitleToFrontMatter = useCallback((syncTitleToFrontMatter: boolean) => void update({ notes: { syncTitleToFrontMatter } }), [update]);
-  const setSyncFrontMatterTitle = useCallback((syncFrontMatterTitle: boolean) => void update({ notes: { syncFrontMatterTitle } }), [update]);
+  const notes = useSession((s) => s.settings.notes ?? DEFAULT_SETTINGS.notes)
+  const update = useSession((s) => s.updateSettings)
+  const setTemplate = useCallback((newNoteTemplate: string) => void update({ notes: { newNoteTemplate } }), [update])
+  const restoreDefault = useCallback(() => void update({ notes: { newNoteTemplate: DEFAULT_NEW_NOTE_TEMPLATE } }), [update])
+  const setSyncTitleToFrontMatter = useCallback((syncTitleToFrontMatter: boolean) => void update({ notes: { syncTitleToFrontMatter } }), [update])
+  const setSyncFrontMatterTitle = useCallback((syncFrontMatterTitle: boolean) => void update({ notes: { syncFrontMatterTitle } }), [update])
   return (<div className='space-y-6'>
     <section>
     <SettingRow
@@ -50,24 +50,24 @@ export function NoteSettings() {
       <Switch checked={notes.syncFrontMatterTitle} onChange={setSyncFrontMatterTitle} label={t('settings.sync_frontmatter_title')}/>
     </SettingRow>
     </section>
-  </div>);
+  </div>)
 }
 
 function TemplatePreview({ template }: { template: string }) {
-  const locale = useLocale();
-  const [demoTitle, setDemoTitle] = useState('');
-  const [demoFolder, setDemoFolder] = useState('');
-  const [demoTag, setDemoTag] = useState('');
+  const locale = useLocale()
+  const [demoTitle, setDemoTitle] = useState('')
+  const [demoFolder, setDemoFolder] = useState('')
+  const [demoTag, setDemoTag] = useState('')
   const preview = useMemo(() => {
-    const demoTags = demoTag.split(/[,]|\uFF0C/).map((item) => item.trim()).filter(Boolean).join(', ');
+    const demoTags = demoTag.split(/[,]|\uFF0C/).map((item) => item.trim()).filter(Boolean).join(', ')
     return renderNewNoteTemplate(
       template,
       demoTitle.trim() || t('common.new_note'),
       new Date(),
       { folder: demoFolder.trim(), tags: demoTags },
-    );
-  }, [template, demoTitle, demoFolder, demoTag, locale]);
-  const hasContextualPlaceholders = template.includes('{{folder}}') || template.includes('{{tags}}');
+    )
+  }, [template, demoTitle, demoFolder, demoTag, locale])
+  const hasContextualPlaceholders = template.includes('{{folder}}') || template.includes('{{tags}}')
   return (
     <div className='mt-4'>
       <h3 className='mb-1.5 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
@@ -87,5 +87,5 @@ function TemplatePreview({ template }: { template: string }) {
         {t('settings.template_preview_context')}
       </p>)}
     </div>
-  );
+  )
 }

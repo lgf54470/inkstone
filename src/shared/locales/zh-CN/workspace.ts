@@ -92,4 +92,4 @@ export const messages = {
 'workspace.upload_failed': '上传失败',
 'workspace.value0_unchanged_lines_hidden': '… 中间 {value0} 行未展开 …',
 'workspace.will_appear_here': '就会出现在这里。',
-};
+}

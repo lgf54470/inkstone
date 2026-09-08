@@ -152,4 +152,4 @@ export const messages = {
 'settings.no_backup_target_yet': 'No backup target yet',
 'settings.no_enabled_backup_targets': 'No enabled backup targets',
 'settings.no_saves_yet': 'No saves yet',
-};
+}

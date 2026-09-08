@@ -1,17 +1,17 @@
-import { useState } from 'react';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
-import { type BackupRun } from '@shared/types';
-import { cn } from '../../../lib/cn';
-import { formatBytes, formatDuration } from '../../../lib/time';
-import { useRelativeTime } from '../../../lib/hooks';
-import { t, translateServiceMessage } from '../../../lib/i18n';
+import { useState } from 'react'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
+import { type BackupRun } from '@shared/types'
+import { cn } from '../../../lib/cn'
+import { formatBytes, formatDuration } from '../../../lib/time'
+import { useRelativeTime } from '../../../lib/hooks'
+import { t, translateServiceMessage } from '../../../lib/i18n'
 
 export function RunRow({ run }: {
-  run: BackupRun;
+  run: BackupRun
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const tone = run.status === 'success' ? 'success' : run.status === 'partial' ? 'warning' : 'danger';
-  const startedTime = useRelativeTime(run.startedAt);
+  const [isOpen, setIsOpen] = useState(false)
+  const tone = run.status === 'success' ? 'success' : run.status === 'partial' ? 'warning' : 'danger'
+  const startedTime = useRelativeTime(run.startedAt)
   return (<li className='overflow-hidden rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)]'>
     <button type='button' aria-expanded={isOpen} onClick={() => setIsOpen((v) => !v)} className='flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]'>
     <span className={cn('size-1.5 shrink-0 rounded-full', tone === 'success'
@@ -38,5 +38,5 @@ export function RunRow({ run }: {
         </span>
       </li>))}
     </ul>)}
-  </li>);
+  </li>)
 }

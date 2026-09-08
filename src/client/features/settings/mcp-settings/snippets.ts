@@ -1,5 +1,5 @@
-import { t } from '../../../lib/i18n';
-import type { McpSettingsInfo } from '@shared/types';
+import { t } from '../../../lib/i18n'
+import type { McpSettingsInfo } from '@shared/types'
 
 export function clientSnippets(info: McpSettingsInfo): Array<{ id: string; name: string; value: string }> {
   const scopes = [

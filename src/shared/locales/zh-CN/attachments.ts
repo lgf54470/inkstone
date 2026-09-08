@@ -93,4 +93,4 @@ export const messages = {
 'attachments.zoom_lg': '大图',
 'attachments.zoom_md': '中图',
 'attachments.zoom_sm': '小图',
-};
+}

@@ -1,17 +1,17 @@
-import { FileCode, FileDown, FileText, Globe, History, LayoutGrid, LinkIcon, ListTree, Share2, Star } from 'lucide-react';
-import type { MenuItem } from '../../../components/overlay';
-import type { PanelName, WorkspacePane } from '../../../store/ui';
-import type { WorkspaceBundle } from './use-workspace';
-import { t } from '../../../lib/i18n';
+import { FileCode, FileDown, FileText, Globe, History, LayoutGrid, LinkIcon, ListTree, Share2, Star } from 'lucide-react'
+import type { MenuItem } from '../../../components/overlay'
+import type { PanelName, WorkspacePane } from '../../../store/ui'
+import type { WorkspaceBundle } from './use-workspace'
+import { t } from '../../../lib/i18n'
 
-export type ExportNote = (format: 'md' | 'html' | 'pdf') => void;
+export type ExportNote = (format: 'md' | 'html' | 'pdf') => void
 
 export function buildExportMenuItems(exportNote: ExportNote): MenuItem[] {
   return [
     { id: 'md', label: t('workspace.export_markdown'), icon: <FileText size={13} />, onSelect: () => void exportNote('md') },
     { id: 'html', label: t('workspace.export_html'), icon: <FileCode size={13} />, onSelect: () => void exportNote('html') },
     { id: 'pdf', label: t('workspace.export_pdf'), icon: <FileDown size={13} />, onSelect: () => void exportNote('pdf') },
-  ];
+  ]
 }
 
 export function buildMobileItems(openPanel: (panel: PanelName) => void, exportNote: ExportNote): MenuItem[] {
@@ -24,11 +24,11 @@ export function buildMobileItems(openPanel: (panel: PanelName) => void, exportNo
     { id: 'export-md', label: t('workspace.export_markdown'), icon: <FileText size={13} />, onSelect: () => void exportNote('md') },
     { id: 'export-html', label: t('workspace.export_html'), icon: <FileCode size={13} />, onSelect: () => void exportNote('html') },
     { id: 'export-pdf', label: t('workspace.export_pdf'), icon: <FileDown size={13} />, onSelect: () => void exportNote('pdf') },
-  ];
+  ]
 }
 
 export function buildGroupedItems(b: WorkspaceBundle, exportNote: ExportNote): MenuItem[] {
-  const { note, layout, setEditorLayout, patchNote, backlinksOpen, paneActive, toggleBacklinks, showPreview, outlineOpen, toggleOutline, openPanel } = b;
+  const { note, layout, setEditorLayout, patchNote, backlinksOpen, paneActive, toggleBacklinks, showPreview, outlineOpen, toggleOutline, openPanel } = b
   return [
     { id: 'layout-edit', label: t('workspace.edit_only'), checked: layout === 'edit', onSelect: () => setEditorLayout('edit') },
     { id: 'layout-split', label: t('workspace.split_view'), checked: layout === 'split', onSelect: () => setEditorLayout('split') },
@@ -59,9 +59,9 @@ export function buildGroupedItems(b: WorkspaceBundle, exportNote: ExportNote): M
         ]
       : []),
     ...buildMobileItems(openPanel, exportNote),
-  ];
+  ]
 }
 
 export function activateWorkspacePane(pane: WorkspacePane | 'active', grouped: boolean, paneActive: boolean, activatePane: (pane: WorkspacePane) => void) {
-  if (grouped && pane !== 'active' && !paneActive) activatePane(pane);
+  if (grouped && pane !== 'active' && !paneActive) activatePane(pane)
 }

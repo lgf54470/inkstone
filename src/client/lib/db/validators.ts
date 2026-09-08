@@ -1,4 +1,4 @@
-import type { Folder, NoteSummary, NoteTemplate, NoteTemplateCategory, PublicUser, SiteInfo, Tag } from '@shared/types';
+import type { Folder, NoteSummary, NoteTemplate, NoteTemplateCategory, PublicUser, SiteInfo, Tag } from '@shared/types'
 export function summariesEqual(a: NoteSummary, b: NoteSummary): boolean {
   if (a === b) return true
   return a.id === b.id &&

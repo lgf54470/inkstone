@@ -1,6 +1,6 @@
-import type { MarkdownBackupManifest } from '@shared/backup-format';
-import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types';
-import { request, saveDownload, toQuery } from './transport';
+import type { MarkdownBackupManifest } from '@shared/backup-format'
+import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
     list: (

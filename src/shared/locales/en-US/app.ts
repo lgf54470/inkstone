@@ -7,4 +7,4 @@ export const messages = {
 'app.error_boundary_description': 'An unexpected error occurred. Please reload the page to continue.',
 'app.reload': 'Reload',
 'app.section_unavailable': 'This section is temporarily unavailable',
-};
+}

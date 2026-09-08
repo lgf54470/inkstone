@@ -1,7 +1,7 @@
-import { Hono } from 'hono';
-import type { AppBindings } from '../../env';
-import { isValidSlug } from '../../lib/id';
-import { renderShareShell } from './public';
+import { Hono } from 'hono'
+import type { AppBindings } from '../../env'
+import { isValidSlug } from '../../lib/id'
+import { renderShareShell } from './public'
 
 export function registerSharePageRoutes(sharePageRoutes: Hono<AppBindings>): void {
 sharePageRoutes.get('/:slug', async (c) => {

@@ -361,4 +361,4 @@ tags: [report]
 `,
 'template.weekly_report.description': 'Summarize what you did, learned and plan next week.',
 'template.weekly_report.name': 'Weekly Report',
-};
+}

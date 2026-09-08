@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { FolderPlus, Palette, PauseCircle, Pencil, PlayCircle, Trash2 } from 'lucide-react';
-import { t } from '../lib/i18n';
-import { tryParseStringArray } from '../lib/json';
-import { useUi, type UiState } from '../store/ui';
-import { useContextMenu, type MenuItem } from './overlay';
-import { FolderColorSubmenu } from '../features/folders';
+import { useEffect, useRef, useState } from 'react'
+import { FolderPlus, Palette, PauseCircle, Pencil, PlayCircle, Trash2 } from 'lucide-react'
+import { t } from '../lib/i18n'
+import { tryParseStringArray } from '../lib/json'
+import { useUi, type UiState } from '../store/ui'
+import { useContextMenu, type MenuItem } from './overlay'
+import { FolderColorSubmenu } from '../features/folders'
 // FolderRowProps/FolderRowHandlers live here (not in hub-folder-row.tsx)
 // because use-hub-folder-item.tsx consumed them; the row component already
 // imports the other shared types from this module, so owning the props here

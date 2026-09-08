@@ -15,29 +15,29 @@ import {
   Star,
   StarOff,
   Trash2,
-} from 'lucide-react';
-import type { MenuItem } from '../../../components/overlay';
-import { t } from '../../../lib/i18n';
-import { MoveToFolderSubmenu } from '../../folders';
-import { BlogNoteSubmenu, useBlogStore } from '../../blog';
-import { ShareNoteSubmenu } from '../../share';
-import { useUi } from '../../../store/ui';
-import type { NoteRowState } from './note-row-state';
-import type { NoteRowActions } from './note-row-actions';
+} from 'lucide-react'
+import type { MenuItem } from '../../../components/overlay'
+import { t } from '../../../lib/i18n'
+import { MoveToFolderSubmenu } from '../../folders'
+import { BlogNoteSubmenu, useBlogStore } from '../../blog'
+import { ShareNoteSubmenu } from '../../share'
+import { useUi } from '../../../store/ui'
+import type { NoteRowState } from './note-row-state'
+import type { NoteRowActions } from './note-row-actions'
 
 export function useNoteRowMenuItems(state: NoteRowState, actions: NoteRowActions): MenuItem[] {
     if (state.inTrash)
-        return trashMenuItems(state, actions);
+        return trashMenuItems(state, actions)
     return [
         ...noteMenuTopItems(state),
         shareMenuItem(state),
         blogMenuItem(state),
         ...noteMenuBottomItems(state, actions),
-    ];
+    ]
 }
 
 function trashMenuItems(state: NoteRowState, actions: NoteRowActions): MenuItem[] {
-    const { note, restoreNote } = state;
+    const { note, restoreNote } = state
     return [
         { id: 'restore', label: t('common.restore'), icon: <RotateCcw size={13}/>, onSelect: () => void restoreNote(note.id) },
         {
@@ -49,11 +49,11 @@ function trashMenuItems(state: NoteRowState, actions: NoteRowActions): MenuItem[
             disabled: actions.isPurging,
             onSelect: () => void actions.purge(),
         },
-    ];
+    ]
 }
 
 function noteMenuTopItems(state: NoteRowState): MenuItem[] {
-    const { note, breakpoint, selectedIds, toggleSelected, openNote, setPinned, setStarred, duplicateNote } = state;
+    const { note, breakpoint, selectedIds, toggleSelected, openNote, setPinned, setStarred, duplicateNote } = state
     return [
         ...(breakpoint === 'desktop' ? [{
             id: 'open-side',
@@ -82,11 +82,11 @@ function noteMenuTopItems(state: NoteRowState): MenuItem[] {
             onSelect: () => void setStarred(note.id, !note.isStarred),
         },
         { id: 'duplicate', label: t('notes.create_a_copy'), icon: <Copy size={13}/>, onSelect: () => void duplicateNote(note.id) },
-    ];
+    ]
 }
 
 function shareMenuItem(state: NoteRowState): MenuItem {
-    const { note, noteShare, computedIsShared, setIsShareModalOpen, setQrModalData, setIsAnalyticsOpen } = state;
+    const { note, noteShare, computedIsShared, setIsShareModalOpen, setQrModalData, setIsAnalyticsOpen } = state
     return {
         id: 'share',
         label: t('workspace.share'),
@@ -106,11 +106,11 @@ function shareMenuItem(state: NoteRowState): MenuItem {
         } : {
             onSelect: () => setIsShareModalOpen(true),
         }),
-    };
+    }
 }
 
 function blogMenuItem(state: NoteRowState): MenuItem {
-    const { note, noteBlogPost, isBlogPublished, setIsBlogPublishOpen } = state;
+    const { note, noteBlogPost, isBlogPublished, setIsBlogPublishOpen } = state
     return {
         id: 'blog',
         label: isBlogPublished ? t('blog.blog_menu') : t('blog.publish_to_blog'),
@@ -123,19 +123,19 @@ function blogMenuItem(state: NoteRowState): MenuItem {
                     closeMenu={closeMenu}
                     onOpenSettings={() => setIsBlogPublishOpen(true)}
                     onOpenStats={() => {
-                        useBlogStore.getState().setActiveTab('comments');
-                        useUi.getState().openPanel('blog-hub');
+                        useBlogStore.getState().setActiveTab('comments')
+                        useUi.getState().openPanel('blog-hub')
                     }}
                 />
             ),
         } : {
             onSelect: () => setIsBlogPublishOpen(true),
         }),
-    };
+    }
 }
 
 function noteMenuBottomItems(state: NoteRowState, actions: NoteRowActions): MenuItem[] {
-    const { note, setArchived, setIsCreateFolderOpen, deleteNote } = state;
+    const { note, setArchived, setIsCreateFolderOpen, deleteNote } = state
     return [
         {
             id: 'archive',
@@ -169,5 +169,5 @@ function noteMenuBottomItems(state: NoteRowState, actions: NoteRowActions): Menu
             separatorBefore: true,
             onSelect: () => void deleteNote(note.id),
         },
-    ];
+    ]
 }

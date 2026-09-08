@@ -22,7 +22,7 @@ export function CalendarTree() {
       rootLabel={t('sidebar.calendar_folder')}
       rootIcon={<CalendarDays size={13}/>}
     />
-  );
+  )
 }
 
 export function TodoTree() {

@@ -6,4 +6,4 @@ export const messages = {
 'editor.tab_2': 'Tab 2',
 'editor.upload_failed_value0': '<!-- Upload failed: {value0} -->',
 'editor.uploading_value0': '![Uploading {value0}…]()',
-};
+}

@@ -152,4 +152,4 @@ export const messages = {
 'settings.value0_notes_value1': '{value0} notes · {value1}',
 'settings.version': 'Version',
 'settings.version_history': 'Version history',
-};
+}

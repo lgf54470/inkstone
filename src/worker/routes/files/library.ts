@@ -1,22 +1,22 @@
-import { Hono } from 'hono';
-import type { Context } from 'hono';
-import { getCookie } from 'hono/cookie';
-import { extractAttachmentIds } from '@shared/markdown-utils';
+import { Hono } from 'hono'
+import type { Context } from 'hono'
+import { getCookie } from 'hono/cookie'
+import { extractAttachmentIds } from '@shared/markdown-utils'
 
-import { hasAttachmentStorage, readAttachmentObjectStream } from '../../attachments/backend';
-import { attachmentObjectKey, legacyAttachmentObjectKey } from '../../attachments/keys';
-import type { AppBindings } from '../../env';
-import { ApiError } from '../../lib/errors';
-import { isValidId, isValidSlug } from '../../lib/id';
-import { isInlineSafe } from '../../lib/image';
-import { shareAssetCookieName, verifyShareAssetSession } from '../../lib/share-asset-session';
-import { requireAuth } from '../../middleware/auth';
-import { AttachmentRow } from './helpers';
-import { ATTACHMENT_LIST_PAGE_SIZE } from './helpers';
-import { readAttachmentReferenceCounts } from './helpers';
-import { encodeContentDispositionFilename } from './helpers';
-import { parseAttachmentListCursor } from './helpers';
-import { toAttachment } from './helpers';
+import { hasAttachmentStorage, readAttachmentObjectStream } from '../../attachments/backend'
+import { attachmentObjectKey, legacyAttachmentObjectKey } from '../../attachments/keys'
+import type { AppBindings } from '../../env'
+import { ApiError } from '../../lib/errors'
+import { isValidId, isValidSlug } from '../../lib/id'
+import { isInlineSafe } from '../../lib/image'
+import { shareAssetCookieName, verifyShareAssetSession } from '../../lib/share-asset-session'
+import { requireAuth } from '../../middleware/auth'
+import { AttachmentRow } from './helpers'
+import { ATTACHMENT_LIST_PAGE_SIZE } from './helpers'
+import { readAttachmentReferenceCounts } from './helpers'
+import { encodeContentDispositionFilename } from './helpers'
+import { parseAttachmentListCursor } from './helpers'
+import { toAttachment } from './helpers'
 
 const TOTAL_QUOTA_BYTES = 10 * 1024 * 1024 * 1024
 

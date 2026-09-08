@@ -1,7 +1,7 @@
-import type { ShareCategory, ShareFolder, ShareInfo, ShareListResponse, ShareTag } from '@shared/types';
-import type { StoreApi } from 'zustand';
+import type { ShareCategory, ShareFolder, ShareInfo, ShareListResponse, ShareTag } from '@shared/types'
+import type { StoreApi } from 'zustand'
 
-export type SetShareStoreState = StoreApi<ShareStoreState>['setState'];
+export type SetShareStoreState = StoreApi<ShareStoreState>['setState']
 
 
 

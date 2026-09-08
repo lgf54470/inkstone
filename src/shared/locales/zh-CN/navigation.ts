@@ -10,4 +10,4 @@ export const messages = {
 'navigation.tag': '标签',
 'navigation.trash': '回收站',
 'navigation.unfiled': '未归类',
-};
+}

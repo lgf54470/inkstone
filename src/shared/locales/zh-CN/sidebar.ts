@@ -67,4 +67,4 @@ export const messages = {
 'sidebar.switch_to_light': '切换到浅色',
 'sidebar.the_value0_notes_inside_move_up_one_level_and_are_not_deleted': '里面的 {value0} 篇笔记会移动到上一层，不会被删除。',
 'sidebar.this_folder_is_empty': '这个文件夹是空的。',
-};
+}

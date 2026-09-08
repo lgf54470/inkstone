@@ -1,7 +1,7 @@
-import { get, getMany, set, setMany } from 'idb-keyval';
-import { delMany, entries, store, KEY, supportsUserNamespaces } from './keys';
-import type { OutboxItem } from './types';
-import { dbState } from './keys';
+import { get, getMany, set, setMany } from 'idb-keyval'
+import { delMany, entries, store, KEY, supportsUserNamespaces } from './keys'
+import type { OutboxItem } from './types'
+import { dbState } from './keys'
 export function normalizeOutbox(value: unknown): OutboxItem[] {
   if (!Array.isArray(value)) return []
   return value.filter((item): item is OutboxItem => {

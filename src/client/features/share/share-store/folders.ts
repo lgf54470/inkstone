@@ -1,5 +1,5 @@
-import type { ShareFolder } from '@shared/types';
-import type { ShareFolderNode } from './types';
+import type { ShareFolder } from '@shared/types'
+import type { ShareFolderNode } from './types'
 
 
 

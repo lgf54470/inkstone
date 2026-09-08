@@ -1,6 +1,6 @@
-import type { FolderRow, LibraryContext } from './types';
-import { ApiError } from '../../lib/errors';
-import { broadcastUserCursor } from '../../lib/notify';
+import type { FolderRow, LibraryContext } from './types'
+import { ApiError } from '../../lib/errors'
+import { broadcastUserCursor } from '../../lib/notify'
 
 export async function requireOwnedNote(db: D1Database, userId: string, noteId: string): Promise<void> {
   const row = await db.prepare(`SELECT 1 FROM notes WHERE id = ?1 AND user_id = ?2`)

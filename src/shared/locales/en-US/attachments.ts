@@ -93,4 +93,4 @@ export const messages = {
 'attachments.zoom_lg': 'Large',
 'attachments.zoom_md': 'Medium',
 'attachments.zoom_sm': 'Small',
-};
+}

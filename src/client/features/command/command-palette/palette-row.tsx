@@ -1,25 +1,25 @@
-import { memo } from 'react';
-import { splitByRanges } from '../../../lib/fuzzy';
-import { cn } from '../../../lib/cn';
-import { Kbd } from '../../../components/primitives';
-import type { Item } from './types';
+import { memo } from 'react'
+import { splitByRanges } from '../../../lib/fuzzy'
+import { cn } from '../../../lib/cn'
+import { Kbd } from '../../../components/primitives'
+import type { Item } from './types'
 
 export const PaletteRow = memo(function PaletteRow({ item, active, index, listId, isKeyboardNav, onActivate, onPointerNav, onSelect, }: {
-  item: Item;
-  active: boolean;
-  index: number;
-  listId: string;
-  isKeyboardNav: boolean;
-  onActivate: (index: number) => void;
-  onPointerNav: () => void;
-  onSelect: (item: Item) => void;
+  item: Item
+  active: boolean
+  index: number
+  listId: string
+  isKeyboardNav: boolean
+  onActivate: (index: number) => void
+  onPointerNav: () => void
+  onSelect: (item: Item) => void
 }) {
   const parts = item.match
     ? splitByRanges(item.label, item.match.ranges)
-    : [{ text: item.label, hit: false }];
+    : [{ text: item.label, hit: false }]
   return (<button id={`${listId}-option-${index}`} type='button' role='option' aria-selected={active} tabIndex={-1} data-index={index} onMouseEnter={() => {
-    onPointerNav();
-    onActivate(index);
+    onPointerNav()
+    onActivate(index)
   }} onClick={() => onSelect(item)} className={cn('flex w-full items-center gap-2.5 rounded-[var(--r-md)] px-2.5 py-2 text-left', isKeyboardNav && 'transition-colors duration-[var(--dur-xs)]', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
     <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>
     {item.icon}
@@ -35,5 +35,5 @@ export const PaletteRow = memo(function PaletteRow({ item, active, index, listId
       </span>)}
     </span>
     {item.combo && <Kbd combo={item.combo}/>}
-  </button>);
+  </button>)
 })

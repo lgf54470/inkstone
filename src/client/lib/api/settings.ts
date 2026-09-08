@@ -1,6 +1,6 @@
-import type { McpAiSearchStatus, McpApiKey, McpSettingsInfo, UpdateCheckResponse, UserSettings } from '@shared/types';
-import { publishBroadcast } from '../db';
-import { CLIENT_ID, request } from './transport';
+import type { McpAiSearchStatus, McpApiKey, McpSettingsInfo, UpdateCheckResponse, UserSettings } from '@shared/types'
+import { publishBroadcast } from '../db'
+import { CLIENT_ID, request } from './transport'
 export const settings = {
   settings: {
     get: () => request<UserSettings>('/api/settings'),

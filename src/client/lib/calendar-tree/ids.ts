@@ -1,4 +1,4 @@
-import type { CalendarPeriod } from './types';
+import type { CalendarPeriod } from './types'
 
 export const CALENDAR_ROOT_ID = 'cal'
 
@@ -74,48 +74,48 @@ export function virtualId(period: CalendarPeriod, ns: VirtualTreeNamespace): str
 
 export function parseVirtualId(id: string | null | undefined, ns: VirtualTreeNamespace): CalendarPeriod | null {
   if (!id)
-    return null;
+    return null
   if (id === ns.rootId)
-    return { kind: 'root' };
+    return { kind: 'root' }
   if (!id.startsWith(ns.prefix))
-    return null;
-  const parts = id.slice(ns.prefix.length).split(':');
+    return null
+  const parts = id.slice(ns.prefix.length).split(':')
   if (parts.length < 1 || parts.length > 4)
-    return null;
-  const year = Number(parts[0]);
+    return null
+  const year = Number(parts[0])
   if (!/^\d{4}$/.test(parts[0] ?? '') || !Number.isInteger(year))
-    return null;
+    return null
   if (parts.length === 1)
-    return { kind: 'year', year };
-  const quarter = quarterOfPart(parts[1]);
+    return { kind: 'year', year }
+  const quarter = quarterOfPart(parts[1])
   if (quarter === null)
-    return null;
+    return null
   if (parts.length === 2)
-    return { kind: 'quarter', year, quarter };
-  const month = monthOfPart(parts[2]);
+    return { kind: 'quarter', year, quarter }
+  const month = monthOfPart(parts[2])
   if (month === null)
-    return null;
+    return null
   if (parts.length === 3)
-    return { kind: 'month', year, month };
-  const week = /^w(\d{2})$/.exec(parts[3] ?? '')?.[1];
-  const weekNumber = week ? Number(week) : NaN;
+    return { kind: 'month', year, month }
+  const week = /^w(\d{2})$/.exec(parts[3] ?? '')?.[1]
+  const weekNumber = week ? Number(week) : NaN
   if (!Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 53)
-    return null;
-  return { kind: 'week', year, month, week: weekNumber };
+    return null
+  return { kind: 'week', year, month, week: weekNumber }
 }
 
 
 function quarterOfPart(part: string | undefined): number | null {
-  const match = /^q([1-4])$/.exec(part ?? '');
-  return match ? Number(match[1]) : null;
+  const match = /^q([1-4])$/.exec(part ?? '')
+  return match ? Number(match[1]) : null
 }
 
 
 function monthOfPart(part: string | undefined): number | null {
-  const match = /^(0[1-9]|1[0-2])$/.exec(part ?? '');
-  return match ? Number(match[1]) : null;
+  const match = /^(0[1-9]|1[0-2])$/.exec(part ?? '')
+  return match ? Number(match[1]) : null
 }
 
 export function quarterOfMonth(month: number): number {
-  return Math.floor((month - 1) / 3) + 1;
+  return Math.floor((month - 1) / 3) + 1
 }

@@ -1,31 +1,31 @@
-import MarkdownIt from 'markdown-it';
-import type Token from 'markdown-it/lib/token.mjs';
-import { escapeHtml } from '@shared/escape';
-import { t } from '../../i18n';
-import { encodeDataValue } from '../data-attr';
-import { emptyEnvironment, renderEnv } from './env';
-import { stripObsidianComments, parseFenceInfo } from './parse';
-import type { FenceInfo } from './types';
-import { escapeAttr } from './util';
+import MarkdownIt from 'markdown-it'
+import type Token from 'markdown-it/lib/token.mjs'
+import { escapeHtml } from '@shared/escape'
+import { t } from '../../i18n'
+import { encodeDataValue } from '../data-attr'
+import { emptyEnvironment, renderEnv } from './env'
+import { stripObsidianComments, parseFenceInfo } from './parse'
+import type { FenceInfo } from './types'
+import { escapeAttr } from './util'
 
 function renderMarkdownExample(md: MarkdownIt, token: Token, line: string, rendererEnv: unknown, info: FenceInfo): string {
-  const parentEnv = renderEnv(rendererEnv);
-  const exampleId = ++parentEnv.exampleSequence;
-  const childEnv = emptyEnvironment();
-  childEnv.taskNonce = parentEnv.taskNonce;
-  childEnv.tabSequence = parentEnv.tabSequence;
-  childEnv.exampleSequence = parentEnv.exampleSequence;
-  childEnv.docId = `${parentEnv.docId}-example-${exampleId}`;
-  childEnv.externalImages = parentEnv.externalImages;
-  const preview = md.render(stripObsidianComments(token.content), childEnv).replace(/ data-line="\d+"/g, '');
-  parentEnv.hasMath ||= childEnv.hasMath;
-  parentEnv.hasMermaid ||= childEnv.hasMermaid;
-  parentEnv.hasChart ||= childEnv.hasChart;
-  parentEnv.hasEmbeds ||= childEnv.hasEmbeds;
-  parentEnv.tabSequence = childEnv.tabSequence;
-  parentEnv.exampleSequence = Math.max(parentEnv.exampleSequence, childEnv.exampleSequence);
-  const title = info.title || t('markdown.markdown_example');
-  const titleId = `${parentEnv.docId}-markdown-example-${exampleId}`;
+  const parentEnv = renderEnv(rendererEnv)
+  const exampleId = ++parentEnv.exampleSequence
+  const childEnv = emptyEnvironment()
+  childEnv.taskNonce = parentEnv.taskNonce
+  childEnv.tabSequence = parentEnv.tabSequence
+  childEnv.exampleSequence = parentEnv.exampleSequence
+  childEnv.docId = `${parentEnv.docId}-example-${exampleId}`
+  childEnv.externalImages = parentEnv.externalImages
+  const preview = md.render(stripObsidianComments(token.content), childEnv).replace(/ data-line="\d+"/g, '')
+  parentEnv.hasMath ||= childEnv.hasMath
+  parentEnv.hasMermaid ||= childEnv.hasMermaid
+  parentEnv.hasChart ||= childEnv.hasChart
+  parentEnv.hasEmbeds ||= childEnv.hasEmbeds
+  parentEnv.tabSequence = childEnv.tabSequence
+  parentEnv.exampleSequence = Math.max(parentEnv.exampleSequence, childEnv.exampleSequence)
+  const title = info.title || t('markdown.markdown_example')
+  const titleId = `${parentEnv.docId}-markdown-example-${exampleId}`
   return [
     `<section class="markdown-example"${line} aria-labelledby="${titleId}">`,
     `<div class="markdown-example-head"><span class="markdown-example-title" id="${titleId}">${escapeHtml(title)}</span></div>`,
@@ -41,11 +41,11 @@ function renderMarkdownExample(md: MarkdownIt, token: Token, line: string, rende
     `</section>`,
     `</div>`,
     `</section>`,
-  ].join('');
+  ].join('')
 }
 
 function renderJavaScriptExample(token: Token, line: string, info: FenceInfo): string {
-  const title = info.title || t('workspace.runnable_javascript_code');
+  const title = info.title || t('workspace.runnable_javascript_code')
   return [
     `<section class="markdown-example js-example-block"${line}>`,
     `<div class="markdown-example-head js-example-head">`,
@@ -84,26 +84,26 @@ function renderJavaScriptExample(token: Token, line: string, info: FenceInfo): s
     `</section>`,
     `</div>`,
     `</section>`,
-  ].join('');
+  ].join('')
 }
 
 function renderFence(md: MarkdownIt, tokens: Token[], index: number, rendererEnv: unknown): string {
-  const token = tokens[index]!;
-  const info = parseFenceInfo(token.info);
-  const line = token.map ? ` data-line="${token.map[0]}"` : '';
+  const token = tokens[index]!
+  const info = parseFenceInfo(token.info)
+  const line = token.map ? ` data-line="${token.map[0]}"` : ''
   if (info.language === 'md-example' || info.language === 'markdown-example')
-    return renderMarkdownExample(md, token, line, rendererEnv, info);
+    return renderMarkdownExample(md, token, line, rendererEnv, info)
   if (info.language === 'javascript-example' || info.language === 'js-example')
-    return renderJavaScriptExample(token, line, info);
+    return renderJavaScriptExample(token, line, info)
   if (info.language === 'mermaid') {
-    renderEnv(rendererEnv).hasMermaid = true;
-    return `<div class="mermaid-block loading"${line} data-mermaid="${escapeAttr(encodeDataValue(token.content))}" aria-busy="true">${escapeHtml(t('markdown.rendering_diagram'))}</div>`;
+    renderEnv(rendererEnv).hasMermaid = true
+    return `<div class="mermaid-block loading"${line} data-mermaid="${escapeAttr(encodeDataValue(token.content))}" aria-busy="true">${escapeHtml(t('markdown.rendering_diagram'))}</div>`
   }
   if (info.language === 'chart' || info.language === 'chartjs') {
-    renderEnv(rendererEnv).hasChart = true;
-    return `<div class="chartjs-block loading"${line} data-chart="${escapeAttr(encodeDataValue(token.content))}" aria-busy="true">${escapeHtml(t('markdown.rendering_chart'))}</div>`;
+    renderEnv(rendererEnv).hasChart = true
+    return `<div class="chartjs-block loading"${line} data-chart="${escapeAttr(encodeDataValue(token.content))}" aria-busy="true">${escapeHtml(t('markdown.rendering_chart'))}</div>`
   }
-  const title = info.title || info.language || t('markdown.code');
+  const title = info.title || info.language || t('markdown.code')
   return [
     `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}"${line} data-lang="${escapeAttr(info.language)}" data-code-start="${info.startLine}"${info.lineNumbers ? ' data-line-numbers="true"' : ''}${info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : ''}>`,
     `<div class="code-block-head">`,
@@ -113,9 +113,9 @@ function renderFence(md: MarkdownIt, tokens: Token[], index: number, rendererEnv
     `</div>`,
     `<pre><code>${escapeHtml(token.content)}</code></pre>`,
     `</div>`,
-  ].join('');
+  ].join('')
 }
 export function registerFence(md: MarkdownIt): void {
 
-  md.renderer.rules.fence = (tokens, index, _options, rendererEnv) => renderFence(md, tokens, index, rendererEnv);
+  md.renderer.rules.fence = (tokens, index, _options, rendererEnv) => renderFence(md, tokens, index, rendererEnv)
 }

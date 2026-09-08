@@ -6,4 +6,4 @@ export const messages = {
 'editor.tab_2': '标签 2',
 'editor.upload_failed_value0': '<!-- 上传失败：{value0} -->',
 'editor.uploading_value0': '![上传中 {value0}…]()',
-};
+}

@@ -36,10 +36,10 @@ export function TopPostsCard({ posts, frontendBase }: TopPostsCardProps) {
 }
 
 function TopPostRow({ post, index, maxViews, frontendBase }: {
-  post: BlogGlobalAnalytics['topPosts'][number];
-  index: number;
-  maxViews: number;
-  frontendBase: string;
+  post: BlogGlobalAnalytics['topPosts'][number]
+  index: number
+  maxViews: number
+  frontendBase: string
 }) {
   const pct = Math.max(2, Math.round((post.views / maxViews) * 100))
   return (

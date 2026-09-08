@@ -1,4 +1,4 @@
-import { SCHEMA_STATEMENTS } from './statements';
+import { SCHEMA_STATEMENTS } from './statements'
 
 export const DATABASE_STATE_KEY = 'database-state-v1'
 

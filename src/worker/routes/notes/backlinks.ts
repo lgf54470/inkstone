@@ -1,7 +1,7 @@
-import { Hono } from 'hono';
-import type { AppBindings } from '../../env';
-import { loadNoteRow } from './helpers';
-import { linkContext } from './helpers';
+import { Hono } from 'hono'
+import type { AppBindings } from '../../env'
+import { loadNoteRow } from './helpers'
+import { linkContext } from './helpers'
 
 export function registerNotesBacklinksRoutes(notesRoutes: Hono<AppBindings>): void {
 notesRoutes.get('/:id/backlinks', async (c) => {

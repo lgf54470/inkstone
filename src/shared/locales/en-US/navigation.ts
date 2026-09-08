@@ -10,4 +10,4 @@ export const messages = {
 'navigation.tag': 'Tag',
 'navigation.trash': 'Trash',
 'navigation.unfiled': 'Unfiled',
-};
+}

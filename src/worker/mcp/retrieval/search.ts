@@ -1,7 +1,7 @@
-import { truncateText } from '@shared/text-utils';
-import type { Env } from '../../env';
-import { searchUserNotes } from '../../routes/search';
-import { fuseByRrf, searchSemanticNotes, semanticSnippet, type SemanticSearchHit } from '../ai-search';
+import { truncateText } from '@shared/text-utils'
+import type { Env } from '../../env'
+import { searchUserNotes } from '../../routes/search'
+import { fuseByRrf, searchSemanticNotes, semanticSnippet, type SemanticSearchHit } from '../ai-search'
 
 const SEARCH_CANDIDATES = 40
 

@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { ChevronDown, Link2 } from 'lucide-react';
-import { cn } from '../../../lib/cn';
-import { t } from '../../../lib/i18n';
+import { useState } from 'react'
+import { ChevronDown, Link2 } from 'lucide-react'
+import { cn } from '../../../lib/cn'
+import { t } from '../../../lib/i18n'
 
 export function CardBacklinks({ links, onOpen }: {
   links: Array<{ id: string; title: string; context: string }>

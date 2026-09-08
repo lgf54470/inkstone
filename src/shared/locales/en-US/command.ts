@@ -62,4 +62,4 @@ export const messages = {
 'command.switch_to_light_theme': 'Switch to light theme',
 'command.triggered_as_you_type': 'Triggered as you type',
 'command.use_nearly_every_action_without_touching_the_mouse': 'Use nearly every action without touching the mouse',
-};
+}

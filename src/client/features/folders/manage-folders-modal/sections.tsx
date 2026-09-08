@@ -1,59 +1,59 @@
 import {
   Check, Download, ExternalLink, FolderClosed, FolderPlus, Inbox,
   LayoutTemplate, Palette, Pencil, Search, Trash2, X,
-} from 'lucide-react';
-import type { ReactNode } from 'react';
-import type { Folder, NoteTemplate } from '@shared/types';
-import { Tooltip } from '../../../components/overlay';
-import { Button, IconButton } from '../../../components/primitives';
-import { errorMessage } from '../../../lib/errors';
-import { exportFolderAsZip } from '../../../lib/export-folder';
-import { t } from '../../../lib/i18n';
-import type { ToastItem } from '../../../store/ui';
-import { FolderColorPicker, FolderIconBadge, FolderIconPicker } from './pickers';
+} from 'lucide-react'
+import type { ReactNode } from 'react'
+import type { Folder, NoteTemplate } from '@shared/types'
+import { Tooltip } from '../../../components/overlay'
+import { Button, IconButton } from '../../../components/primitives'
+import { errorMessage } from '../../../lib/errors'
+import { exportFolderAsZip } from '../../../lib/export-folder'
+import { t } from '../../../lib/i18n'
+import type { ToastItem } from '../../../store/ui'
+import { FolderColorPicker, FolderIconBadge, FolderIconPicker } from './pickers'
 
-export type ToastFn = (input: Omit<ToastItem, 'id' | 'duration' | 'tone'> & { tone?: ToastItem['tone']; duration?: number }) => string;
+export type ToastFn = (input: Omit<ToastItem, 'id' | 'duration' | 'tone'> & { tone?: ToastItem['tone']; duration?: number }) => string
 
 export interface FolderRowActions {
-  isIconPickerOpen: (folder: Folder) => boolean;
-  isColorPickerOpen: (folder: Folder) => boolean;
-  onToggleIconPicker: (id: string) => void;
-  onToggleColorPicker: (id: string) => void;
-  onStartRename: (folder: Folder) => void;
-  onRenameChange: (value: string) => void;
-  onSaveRename: (id: string) => void;
-  onCancelRename: () => void;
-  onToggleInbox: (folder: Folder) => void;
-  onOpen: (folder: Folder) => void;
-  onBindTemplate: (folder: Folder) => void;
-  onDelete: (folder: Folder) => void;
-  onPickColor: (id: string, color: string | null) => void;
-  onPickIcon: (id: string, icon: string | null) => void;
-  toast: ToastFn;
+  isIconPickerOpen: (folder: Folder) => boolean
+  isColorPickerOpen: (folder: Folder) => boolean
+  onToggleIconPicker: (id: string) => void
+  onToggleColorPicker: (id: string) => void
+  onStartRename: (folder: Folder) => void
+  onRenameChange: (value: string) => void
+  onSaveRename: (id: string) => void
+  onCancelRename: () => void
+  onToggleInbox: (folder: Folder) => void
+  onOpen: (folder: Folder) => void
+  onBindTemplate: (folder: Folder) => void
+  onDelete: (folder: Folder) => void
+  onPickColor: (id: string, color: string | null) => void
+  onPickIcon: (id: string, icon: string | null) => void
+  toast: ToastFn
 }
 
 export async function exportFolderZip(folderId: string, toast: ToastFn): Promise<void> {
   try {
-    const res = await exportFolderAsZip(folderId);
+    const res = await exportFolderAsZip(folderId)
     if (res.count === 0) {
-      toast({ title: t('folders.export_zip_empty'), tone: 'default' });
+      toast({ title: t('folders.export_zip_empty'), tone: 'default' })
     } else {
-      toast({ title: t('folders.export_zip_success', { value0: res.count }), tone: 'success' });
+      toast({ title: t('folders.export_zip_success', { value0: res.count }), tone: 'success' })
     }
   } catch (err) {
     toast({
       title: t('common.export_failed'),
       description: errorMessage(err),
       tone: 'danger',
-    });
+    })
   }
 }
 
 function RowActionButton({ label, icon, className, onClick }: {
-  label: string;
-  icon: ReactNode;
-  className?: string;
-  onClick: () => void;
+  label: string
+  icon: ReactNode
+  className?: string
+  onClick: () => void
 }) {
   return (
     <Tooltip label={label}>
@@ -61,16 +61,16 @@ function RowActionButton({ label, icon, className, onClick }: {
         {icon}
       </IconButton>
     </Tooltip>
-  );
+  )
 }
 
 export function FolderControlsBar({ query, onQueryChange, emptyFolders, isCreating, onClean, onAdd }: {
-  query: string;
-  onQueryChange: (value: string) => void;
-  emptyFolders: Folder[];
-  isCreating: boolean;
-  onClean: () => void;
-  onAdd: () => void;
+  query: string
+  onQueryChange: (value: string) => void
+  emptyFolders: Folder[]
+  isCreating: boolean
+  onClean: () => void
+  onAdd: () => void
 }) {
   return (
     <div className='flex items-center gap-2'>
@@ -113,14 +113,14 @@ export function FolderControlsBar({ query, onQueryChange, emptyFolders, isCreati
         </Tooltip>
       )}
     </div>
-  );
+  )
 }
 
 export function FolderCreateForm({ value, onChange, onSubmit, onCancel }: {
-  value: string;
-  onChange: (value: string) => void;
-  onSubmit: (event: React.FormEvent) => void;
-  onCancel: () => void;
+  value: string
+  onChange: (value: string) => void
+  onSubmit: (event: React.FormEvent) => void
+  onCancel: () => void
 }) {
   return (
     <form
@@ -134,7 +134,7 @@ export function FolderCreateForm({ value, onChange, onSubmit, onCancel }: {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') onCancel();
+          if (e.key === 'Escape') onCancel()
         }}
         placeholder={t('common.new_folder')}
         className="h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
@@ -159,7 +159,7 @@ export function FolderCreateForm({ value, onChange, onSubmit, onCancel }: {
         </IconButton>
       </Tooltip>
     </form>
-  );
+  )
 }
 
 function FolderListEmpty({ hasQuery }: { hasQuery: boolean }) {
@@ -167,14 +167,14 @@ function FolderListEmpty({ hasQuery }: { hasQuery: boolean }) {
     <div className="py-10 text-center text-[length:var(--text-12\.5)] text-[var(--text-quaternary)]">
       {hasQuery ? t('folders.no_match') : t('folders.no_folders')}
     </div>
-  );
+  )
 }
 
 function FolderRenameInput({ value, onChange, onSave, onCancel }: {
-  value: string;
-  onChange: (value: string) => void;
-  onSave: () => void;
-  onCancel: () => void;
+  value: string
+  onChange: (value: string) => void
+  onSave: () => void
+  onCancel: () => void
 }) {
   return (
     <div className='flex flex-1 items-center gap-1.5'>
@@ -184,8 +184,8 @@ function FolderRenameInput({ value, onChange, onSave, onCancel }: {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') onSave();
-          if (e.key === 'Escape') onCancel();
+          if (e.key === 'Enter') onSave()
+          if (e.key === 'Escape') onCancel()
         }}
         className="h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12\.5)] outline-none"
       />
@@ -208,14 +208,14 @@ function FolderRenameInput({ value, onChange, onSave, onCancel }: {
         </IconButton>
       </Tooltip>
     </div>
-  );
+  )
 }
 
 function FolderNameDisplay({ path, isInbox, boundTemplate, count }: {
-  path: string;
-  isInbox: boolean;
-  boundTemplate: NoteTemplate | null;
-  count: number;
+  path: string
+  isInbox: boolean
+  boundTemplate: NoteTemplate | null
+  count: number
 }) {
   return (
     <div className='min-w-0 flex-1'>
@@ -243,15 +243,15 @@ function FolderNameDisplay({ path, isInbox, boundTemplate, count }: {
         </span>
       </div>
     </div>
-  );
+  )
 }
 
 function FolderActionButtons({ folder, isInbox, isColorPickerOpen, boundTemplate, actions }: {
-  folder: Folder;
-  isInbox: boolean;
-  isColorPickerOpen: boolean;
-  boundTemplate: NoteTemplate | null;
-  actions: FolderRowActions;
+  folder: Folder
+  isInbox: boolean
+  isColorPickerOpen: boolean
+  boundTemplate: NoteTemplate | null
+  actions: FolderRowActions
 }) {
   return (
     <div className='flex shrink-0 items-center gap-0.5 opacity-85 group-hover:opacity-100'>
@@ -295,20 +295,20 @@ function FolderActionButtons({ folder, isInbox, isColorPickerOpen, boundTemplate
         onClick={() => actions.onDelete(folder)}
       />
     </div>
-  );
+  )
 }
 
 interface FolderRowProps {
-  folder: Folder;
-  path: string;
-  count: number;
-  isRenaming: boolean;
-  isInbox: boolean;
-  isColorPickerOpen: boolean;
-  isIconPickerOpen: boolean;
-  boundTemplate: NoteTemplate | null;
-  renameValue: string;
-  actions: FolderRowActions;
+  folder: Folder
+  path: string
+  count: number
+  isRenaming: boolean
+  isInbox: boolean
+  isColorPickerOpen: boolean
+  isIconPickerOpen: boolean
+  boundTemplate: NoteTemplate | null
+  renameValue: string
+  actions: FolderRowActions
 }
 
 function FolderRow({ folder, path, count, isRenaming, isInbox, isColorPickerOpen, isIconPickerOpen, boundTemplate, renameValue, actions }: FolderRowProps) {
@@ -334,28 +334,28 @@ function FolderRow({ folder, path, count, isRenaming, isInbox, isColorPickerOpen
         <FolderIconPicker folder={folder} onPick={(icon) => actions.onPickIcon(folder.id, icon)} />
       )}
     </div>
-  );
+  )
 }
 
 export function FolderRowList({ choices, folderCounts, folderTemplates, templates, renamingId, inboxFolderId, colorPickerFolderId, iconPickerFolderId, renameValue, query, actions }: {
-  choices: { folder: Folder; path: string }[];
-  folderCounts: ReadonlyMap<string, number>;
-  folderTemplates: Record<string, string>;
-  templates: NoteTemplate[];
-  renamingId: string | null;
-  inboxFolderId: string | null;
-  colorPickerFolderId: string | null;
-  iconPickerFolderId: string | null;
-  renameValue: string;
-  query: string;
-  actions: FolderRowActions;
+  choices: { folder: Folder; path: string }[]
+  folderCounts: ReadonlyMap<string, number>
+  folderTemplates: Record<string, string>
+  templates: NoteTemplate[]
+  renamingId: string | null
+  inboxFolderId: string | null
+  colorPickerFolderId: string | null
+  iconPickerFolderId: string | null
+  renameValue: string
+  query: string
+  actions: FolderRowActions
 }) {
   return (
     <div className='max-h-105 overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>
       {choices.map(({ folder, path }) => {
-        const count = folderCounts.get(folder.id) ?? 0;
-        const boundTemplateId = folderTemplates[folder.id];
-        const boundTemplate = boundTemplateId ? templates.find((template) => template.id === boundTemplateId) ?? null : null;
+        const count = folderCounts.get(folder.id) ?? 0
+        const boundTemplateId = folderTemplates[folder.id]
+        const boundTemplate = boundTemplateId ? templates.find((template) => template.id === boundTemplateId) ?? null : null
         return (
           <FolderRow
             key={folder.id}
@@ -370,9 +370,9 @@ export function FolderRowList({ choices, folderCounts, folderTemplates, template
             renameValue={renameValue}
             actions={actions}
           />
-        );
+        )
       })}
       {choices.length === 0 && <FolderListEmpty hasQuery={Boolean(query.trim())} />}
     </div>
-  );
+  )
 }

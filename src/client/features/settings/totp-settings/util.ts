@@ -1,5 +1,5 @@
-import { ApiError } from '../../../lib/api';
-import { t } from '../../../lib/i18n';
+import { ApiError } from '../../../lib/api'
+import { t } from '../../../lib/i18n'
 
 export function errorMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : t('settings.action_failed_try_again')

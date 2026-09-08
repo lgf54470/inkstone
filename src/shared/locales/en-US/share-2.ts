@@ -87,4 +87,4 @@ export const messages = {
 'share.view_all_logs': 'View All Logs',
 'share.visit_logs_desc': 'Inspect full visitor streams, referrers, and client devices with multi-dimensional filtering, CSV export, and retention cleanup',
 'share.visit_logs_title': 'Visit Logs',
-};
+}

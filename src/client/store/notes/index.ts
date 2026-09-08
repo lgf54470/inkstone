@@ -10,14 +10,14 @@
  * `../notes`, so the module graph stays acyclic.
  */
 
-import { create } from 'zustand';
-import { boot } from './boot';
-import { open } from './open';
-import { edit } from './edit';
-import { noteActions } from './note-actions';
-import { destructive } from './destructive';
-import { folderActions } from './folder-actions';
-import type { NotesState } from './model';
+import { create } from 'zustand'
+import { boot } from './boot'
+import { open } from './open'
+import { edit } from './edit'
+import { noteActions } from './note-actions'
+import { destructive } from './destructive'
+import { folderActions } from './folder-actions'
+import type { NotesState } from './model'
 
 export const useNotes = create<NotesState>((set, get) => ({
 notes: {},
@@ -47,10 +47,10 @@ notes: {},
     ...noteActions(set, get),
     ...destructive(set, get),
     ...folderActions(set, get),
-}));
+}))
 
-export type { NotesState, SaveStatus } from './model';
-export { noteState } from './model';
-export * from './selectors';
-export { acknowledgeOutboxBaseAdvanced, acknowledgeOutboxResult } from './acknowledge';
-export { takePendingEditorCursor } from './new-note';
+export type { NotesState, SaveStatus } from './model'
+export { noteState } from './model'
+export * from './selectors'
+export { acknowledgeOutboxBaseAdvanced, acknowledgeOutboxResult } from './acknowledge'
+export { takePendingEditorCursor } from './new-note'

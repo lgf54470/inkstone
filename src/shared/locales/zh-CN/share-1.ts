@@ -152,4 +152,4 @@ export const messages = {
 'share.top_referrers_title': '引荐来源渠道',
 'share.total_pv_views': '累计访问量 (PV)',
 'share.total_shares_count': '分享总数',
-};
+}

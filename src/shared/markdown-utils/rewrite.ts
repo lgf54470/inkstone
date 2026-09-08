@@ -1,5 +1,5 @@
-import { parseFrontMatter } from './front-matter';
-import { WIKI_RE, normalizeLinkKey, wikiNoteTarget } from './wiki';
+import { parseFrontMatter } from './front-matter'
+import { WIKI_RE, normalizeLinkKey, wikiNoteTarget } from './wiki'
 
 function replaceWikiLinkTargetLine(content: string, from: string, to: string): string {
   const fromKey = normalizeLinkKey(from)

@@ -1,5 +1,5 @@
-import type { UserSettings } from './settings';
-import type { SiteInfo } from './site';
+import type { UserSettings } from './settings'
+import type { SiteInfo } from './site'
 
 export type UserRole = 'owner' | 'member'
 

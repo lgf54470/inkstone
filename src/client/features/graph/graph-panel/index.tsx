@@ -131,9 +131,9 @@ function GraphStats({ data }: { data: GraphResponse }) {
 }
 
 function GraphScopeToggle({ mode, onModeChange, hasActiveNote }: {
-  mode: GraphPreferences['mode'];
-  onModeChange: (mode: GraphPreferences['mode']) => void;
-  hasActiveNote: boolean;
+  mode: GraphPreferences['mode']
+  onModeChange: (mode: GraphPreferences['mode']) => void
+  hasActiveNote: boolean
 }) {
   return (
     <div className='flex h-8 items-center rounded-[var(--r-md)] bg-[var(--bg-inset)] p-0.5' role='group' aria-label={t('graph.scope')}>
@@ -150,8 +150,8 @@ function GraphScopeToggle({ mode, onModeChange, hasActiveNote }: {
 }
 
 function GraphSearchBox({ search, onSearchChange }: {
-  search: string;
-  onSearchChange: (value: string) => void;
+  search: string
+  onSearchChange: (value: string) => void
 }) {
   return (
     <label className='flex h-8 min-w-37.5 flex-1 items-center gap-2 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2.5 md:max-w-80'>
@@ -165,13 +165,13 @@ function GraphSearchBox({ search, onSearchChange }: {
 }
 
 function GraphHeaderActions({ canZoom, isSettingsOpen, onZoomOut, onFit, onZoomIn, onToggleSettings, onClose }: {
-  canZoom: boolean;
-  isSettingsOpen: boolean;
-  onZoomOut: () => void;
-  onFit: () => void;
-  onZoomIn: () => void;
-  onToggleSettings: () => void;
-  onClose: () => void;
+  canZoom: boolean
+  isSettingsOpen: boolean
+  onZoomOut: () => void
+  onFit: () => void
+  onZoomIn: () => void
+  onToggleSettings: () => void
+  onClose: () => void
 }) {
   return (
     <div className='ml-auto flex items-center gap-1'>
@@ -185,20 +185,20 @@ function GraphHeaderActions({ canZoom, isSettingsOpen, onZoomOut, onFit, onZoomI
 }
 
 function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search, onSearchChange, canZoom, isSettingsOpen, onZoomOut, onFit, onZoomIn, onToggleSettings, onClose }: {
-  titleId: string;
-  data: GraphResponse | null;
-  prefs: GraphPreferences;
-  hasActiveNote: boolean;
-  onModeChange: (mode: GraphPreferences['mode']) => void;
-  search: string;
-  onSearchChange: (value: string) => void;
-  canZoom: boolean;
-  isSettingsOpen: boolean;
-  onZoomOut: () => void;
-  onFit: () => void;
-  onZoomIn: () => void;
-  onToggleSettings: () => void;
-  onClose: () => void;
+  titleId: string
+  data: GraphResponse | null
+  prefs: GraphPreferences
+  hasActiveNote: boolean
+  onModeChange: (mode: GraphPreferences['mode']) => void
+  search: string
+  onSearchChange: (value: string) => void
+  canZoom: boolean
+  isSettingsOpen: boolean
+  onZoomOut: () => void
+  onFit: () => void
+  onZoomIn: () => void
+  onToggleSettings: () => void
+  onClose: () => void
 }) {
   return (
     <header className='flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2 md:px-4'>
@@ -214,10 +214,10 @@ function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search
 }
 
 function GraphBody({ data, loadError, onRetry, children }: {
-  data: GraphResponse | null;
-  loadError: string | null;
-  onRetry: () => void;
-  children: (data: GraphResponse) => React.ReactNode;
+  data: GraphResponse | null
+  loadError: string | null
+  onRetry: () => void
+  children: (data: GraphResponse) => React.ReactNode
 }) {
   if (loadError)
     return <Empty art='notes' title={t('graph.could_not_load_graph')} description={loadError}

@@ -40,4 +40,4 @@ export const messages = {
 'folders.clean_empty_success': 'Successfully cleaned {value0} empty folders',
 'folders.expand_all': 'Expand all folders',
 'folders.collapse_all': 'Collapse all folders',
-};
+}

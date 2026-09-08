@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { decorateCodeBlock } from '../../../lib/markdown/enhance';
-import { highlightWithPrism } from '../../../lib/markdown/prism';
+import { useEffect, useRef } from 'react'
+import { decorateCodeBlock } from '../../../lib/markdown/enhance'
+import { highlightWithPrism } from '../../../lib/markdown/prism'
 
 export function CodeViewer({ code, ext }: { code: string; ext: string }) {
   const containerRef = useRef<HTMLDivElement>(null)

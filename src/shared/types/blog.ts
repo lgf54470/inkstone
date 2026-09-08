@@ -1,4 +1,4 @@
-import type { ShareBreakdownItem, ShareTimelinePoint, ShareTimelineRange } from './share';
+import type { ShareBreakdownItem, ShareTimelinePoint, ShareTimelineRange } from './share'
 
 export interface BlogPost {
   id: string

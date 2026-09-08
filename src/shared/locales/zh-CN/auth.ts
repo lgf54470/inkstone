@@ -24,4 +24,4 @@ export const messages = {
 'auth.use_authenticator_code': '使用验证器验证码',
 'auth.use_recovery_code': '使用恢复码',
 'auth.verify_and_sign_in': '验证并登录',
-};
+}

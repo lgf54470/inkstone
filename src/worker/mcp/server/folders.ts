@@ -1,8 +1,8 @@
-import type { McpToolCtx } from './context';
-import { z } from 'zod';
-import { MCP_SCOPES } from '../settings';
-import { bulkOrganizeMcpNotes, createMcpFolder, createMcpTag, deleteMcpTag, previewMcpFolderRemoval, previewMcpTagChange, removeMcpFolderAndPromote, updateMcpFolder, updateMcpTag } from '../library';
-import { customTool, writeTool, readOnlyAnnotations, writeAnnotations, generalOutputSchema, operationId, noteId, expectedRev } from './context';
+import type { McpToolCtx } from './context'
+import { z } from 'zod'
+import { MCP_SCOPES } from '../settings'
+import { bulkOrganizeMcpNotes, createMcpFolder, createMcpTag, deleteMcpTag, previewMcpFolderRemoval, previewMcpTagChange, removeMcpFolderAndPromote, updateMcpFolder, updateMcpTag } from '../library'
+import { customTool, writeTool, readOnlyAnnotations, writeAnnotations, generalOutputSchema, operationId, noteId, expectedRev } from './context'
 
 export function registerFoldersTools(ctx: McpToolCtx): void {
   registerCreateFolderTool(ctx)

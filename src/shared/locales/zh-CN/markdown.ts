@@ -41,4 +41,4 @@ export const messages = {
 'markdown.tip': '技巧',
 'markdown.todo': '待办',
 'markdown.warning': '警告',
-};
+}

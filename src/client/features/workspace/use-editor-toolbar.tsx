@@ -1,16 +1,16 @@
-import { useRef, useState } from 'react';
-import type { EditorView } from '@codemirror/view';
-import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline, toggleWikiLink } from '../../editor/commands';
-import type { MenuItem } from '../../components/overlay';
-import { t } from '../../lib/i18n';
-import { SubmenuList } from './context-menu/submenu';
+import { useRef, useState } from 'react'
+import type { EditorView } from '@codemirror/view'
+import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline, toggleWikiLink } from '../../editor/commands'
+import type { MenuItem } from '../../components/overlay'
+import { t } from '../../lib/i18n'
+import { SubmenuList } from './context-menu/submenu'
 
 const MERMAID_MENU_WIDTH = 190
 const CHART_MENU_WIDTH = 180
 const TASK_MENU_WIDTH = 180
 
-type MenuName = 'heading' | 'inline' | 'note' | 'block' | 'emoji';
-type Run = (command: (target: EditorView) => boolean) => () => void;
+type MenuName = 'heading' | 'inline' | 'note' | 'block' | 'emoji'
+type Run = (command: (target: EditorView) => boolean) => () => void
 
 function headingMenuItems(run: Run): MenuItem[] {
   return [1, 2, 3, 4, 5, 6].map((level) => ({
@@ -18,7 +18,7 @@ function headingMenuItems(run: Run): MenuItem[] {
     label: t('workspace.heading_value0', { value0: level }),
     combo: `mod+${level}`,
     onSelect: run(setHeading(level)),
-  }));
+  }))
 }
 
 function inlineMenuItems(run: Run): MenuItem[] {
@@ -29,7 +29,7 @@ function inlineMenuItems(run: Run): MenuItem[] {
     { id: 'superscript', label: t('workspace.superscript'), onSelect: run(toggleSuperscript) },
     { id: 'ruby', label: t('workspace.ruby_annotation'), onSelect: run(insertRuby) },
     { id: 'inline-math', label: t('workspace.inline_math'), onSelect: run(toggleInlineMath), separatorBefore: true },
-  ];
+  ]
 }
 
 function emojiMenuItems(run: Run): MenuItem[] {
@@ -37,7 +37,7 @@ function emojiMenuItems(run: Run): MenuItem[] {
     id: item.code,
     label: `${item.emoji}  ${item.code}`,
     onSelect: run(insertEmoji(item.emoji)),
-  }));
+  }))
 }
 
 function noteMenuItems(run: Run): MenuItem[] {
@@ -49,12 +49,12 @@ function noteMenuItems(run: Run): MenuItem[] {
     { id: 'block-id', label: t('workspace.block_id'), onSelect: run(insertBlockId) },
     { id: 'block-reference', label: t('workspace.block_reference'), onSelect: run(toggleBlockReference) },
     { id: 'footnote', label: t('workspace.footnote'), onSelect: run(insertFootnote), separatorBefore: true },
-  ];
+  ]
 }
 
 function diagramMenuItems(run: Run, kind: 'mermaid' | 'chart'): MenuItem[] {
-  const isMermaid = kind === 'mermaid';
-  const templates = isMermaid ? MERMAID_TEMPLATES : CHARTJS_TEMPLATES;
+  const isMermaid = kind === 'mermaid'
+  const templates = isMermaid ? MERMAID_TEMPLATES : CHARTJS_TEMPLATES
   return [
     {
       id: kind,
@@ -71,7 +71,7 @@ function diagramMenuItems(run: Run, kind: 'mermaid' | 'chart'): MenuItem[] {
         />
       ),
     },
-  ];
+  ]
 }
 
 function taskStatusMenuItems(run: Run): MenuItem[] {
@@ -92,7 +92,7 @@ function taskStatusMenuItems(run: Run): MenuItem[] {
         />
       ),
     },
-  ];
+  ]
 }
 
 function blockMenuItems(run: Run): MenuItem[] {
@@ -110,30 +110,30 @@ function blockMenuItems(run: Run): MenuItem[] {
     ...taskStatusMenuItems(run),
     { id: 'front-matter', label: 'Front Matter', onSelect: run(insertFrontMatter), separatorBefore: true },
     { id: 'note-template', label: t('workspace.insert_note_template'), onSelect: run(insertNoteTemplate), separatorBefore: true },
-  ];
+  ]
 }
 
 export function useToolbarMenus(runCommand: ((command: (target: EditorView) => boolean) => void) | undefined, view: EditorView | null | undefined) {
-  const [openMenu, setOpenMenu] = useState<MenuName | null>(null);
-  const headingRef = useRef<HTMLButtonElement>(null);
-  const inlineRef = useRef<HTMLButtonElement>(null);
-  const noteRef = useRef<HTMLButtonElement>(null);
-  const blockRef = useRef<HTMLButtonElement>(null);
-  const emojiRef = useRef<HTMLButtonElement>(null);
+  const [openMenu, setOpenMenu] = useState<MenuName | null>(null)
+  const headingRef = useRef<HTMLButtonElement>(null)
+  const inlineRef = useRef<HTMLButtonElement>(null)
+  const noteRef = useRef<HTMLButtonElement>(null)
+  const blockRef = useRef<HTMLButtonElement>(null)
+  const emojiRef = useRef<HTMLButtonElement>(null)
 
   const toggleMenu = (menu: MenuName) => {
-    setOpenMenu((current) => (current === menu ? null : menu));
-  };
+    setOpenMenu((current) => (current === menu ? null : menu))
+  }
 
   const run: Run = (command) => () => {
     if (runCommand) {
-      runCommand(command);
-      return;
+      runCommand(command)
+      return
     }
-    if (!view) return;
-    command(view);
-    view.focus();
-  };
+    if (!view) return
+    command(view)
+    view.focus()
+  }
 
   return {
     headingRef, inlineRef, noteRef, blockRef, emojiRef,
@@ -144,7 +144,7 @@ export function useToolbarMenus(runCommand: ((command: (target: EditorView) => b
     emojiItems: emojiMenuItems(run),
     noteItems: noteMenuItems(run),
     blockItems: blockMenuItems(run),
-  };
+  }
 }
 
 export type ToolbarBundle = ReturnType<typeof useToolbarMenus> & { mobile: boolean }

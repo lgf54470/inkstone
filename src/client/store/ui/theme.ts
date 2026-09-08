@@ -1,4 +1,4 @@
-import type { UiState } from './types';
+import type { UiState } from './types'
 
 /** Applies the current appearance to <html> data attributes (theme/accent/background). */
 export function applyThemeToDom(state: Pick<UiState, 'theme' | 'accent' | 'background' | 'fontScale'>): void {

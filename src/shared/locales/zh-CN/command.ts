@@ -62,4 +62,4 @@ export const messages = {
 'command.switch_to_light_theme': '切换到浅色主题',
 'command.triggered_as_you_type': '输入即触发',
 'command.use_nearly_every_action_without_touching_the_mouse': '几乎所有操作都可以不碰鼠标',
-};
+}

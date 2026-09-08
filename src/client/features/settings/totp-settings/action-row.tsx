@@ -1,5 +1,5 @@
-import { Button } from '../../../components/primitives';
-import { t } from '../../../lib/i18n';
+import { Button } from '../../../components/primitives'
+import { t } from '../../../lib/i18n'
 
 export function ActionRow(props: {
   isBusy: boolean

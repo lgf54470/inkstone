@@ -152,4 +152,4 @@ export const messages = {
 'settings.fade_content_outside_the_current_paragraph': '淡化当前段落之外的内容',
 'settings.files_that_have_been_backed_up_there_will_not_be_deleted': '已经备份到那边的文件不会被删除。',
 'settings.finally_click_manage_key_permissions_and_turn_on_admin_access_otherwise': '最后点击 Manage Key Permissions，把 Admin Access 打开，否则无法写入。',
-};
+}

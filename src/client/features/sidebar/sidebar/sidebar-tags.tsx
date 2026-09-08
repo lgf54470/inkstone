@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react'
 import {
   ChevronsDownUp,
   ChevronsUpDown,
@@ -10,48 +10,48 @@ import {
   Tag as TagIcon,
   Waypoints,
   X,
-} from 'lucide-react';
-import { LIMITS } from '@shared/constants';
-import type { Tag } from '@shared/types';
-import { cn } from '../../../lib/cn';
-import { sortTagsForPicker } from '../../../lib/tag-sort';
-import { clearTagSelection } from '../../../lib/tag-selection';
-import { IconButton, SectionLabel } from '../../../components/primitives';
-import { Tooltip } from '../../../components/overlay';
-import { useUi } from '../../../store/ui';
-import { useNavigationCounts } from '../../../store/notes';
-import { useNotes } from '../../../store/notes';
-import { createTag, renameTag } from '../../tags';
-import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../../lib/tag-tree';
-import { t } from '../../../lib/i18n';
-import { TagDraftRow, TagRow } from './sidebar-tags-row';
+} from 'lucide-react'
+import { LIMITS } from '@shared/constants'
+import type { Tag } from '@shared/types'
+import { cn } from '../../../lib/cn'
+import { sortTagsForPicker } from '../../../lib/tag-sort'
+import { clearTagSelection } from '../../../lib/tag-selection'
+import { IconButton, SectionLabel } from '../../../components/primitives'
+import { Tooltip } from '../../../components/overlay'
+import { useUi } from '../../../store/ui'
+import { useNavigationCounts } from '../../../store/notes'
+import { useNotes } from '../../../store/notes'
+import { createTag, renameTag } from '../../tags'
+import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../../lib/tag-tree'
+import { t } from '../../../lib/i18n'
+import { TagDraftRow, TagRow } from './sidebar-tags-row'
 
 export function TagSection() {
-    const tags = useNotes((s) => s.tags);
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [query, setQuery] = useState('');
-    const [activeIndex, setActiveIndex] = useState(0);
-    const [isCreating, setIsCreating] = useState(false);
-    const [renamingId, setRenamingId] = useState<string | null>(null);
-    const [expandedTagPaths, setExpandedTagPaths] = useState<Set<string>>(() => new Set());
-    const tagTree = useMemo(() => buildTagTree(tags), [tags]);
-    const flattenedTree = useMemo(() => flattenTagTree(tagTree, expandedTagPaths), [tagTree, expandedTagPaths]);
-    const parentTagPaths = useMemo(() => collectParentTagPaths(tagTree), [tagTree]);
-    const sortedTags = useMemo(() => sortTagsForPicker(tags, ''), [tags]);
-    const canToggleTags = parentTagPaths.length > 0 || flattenedTree.length > 10 || tags.length > 10;
-    const allParentsExpanded = parentTagPaths.length === 0 || parentTagPaths.every((p) => expandedTagPaths.has(p));
-    const isListExpanded = isExpanded || (flattenedTree.length <= 10 && tags.length <= 10);
-    const allTagsExpanded = allParentsExpanded && isListExpanded;
-    const searching = query.trim() !== '';
-    const visibleTags = searching ? sortTagsForPicker(sortedTags, query) : [];
-    const visibleNodes = searching ? [] : isExpanded ? flattenedTree : flattenedTree.slice(0, 10);
-    const highlightedIndex = Math.min(activeIndex, Math.max(0, (searching ? visibleTags.length : visibleNodes.length) - 1));
-    const toggleTagPath = (path: string) => setExpandedTagPaths((prev) => togglePathInSet(prev, path));
+    const tags = useNotes((s) => s.tags)
+    const [isExpanded, setIsExpanded] = useState(false)
+    const [query, setQuery] = useState('')
+    const [activeIndex, setActiveIndex] = useState(0)
+    const [isCreating, setIsCreating] = useState(false)
+    const [renamingId, setRenamingId] = useState<string | null>(null)
+    const [expandedTagPaths, setExpandedTagPaths] = useState<Set<string>>(() => new Set())
+    const tagTree = useMemo(() => buildTagTree(tags), [tags])
+    const flattenedTree = useMemo(() => flattenTagTree(tagTree, expandedTagPaths), [tagTree, expandedTagPaths])
+    const parentTagPaths = useMemo(() => collectParentTagPaths(tagTree), [tagTree])
+    const sortedTags = useMemo(() => sortTagsForPicker(tags, ''), [tags])
+    const canToggleTags = parentTagPaths.length > 0 || flattenedTree.length > 10 || tags.length > 10
+    const allParentsExpanded = parentTagPaths.length === 0 || parentTagPaths.every((p) => expandedTagPaths.has(p))
+    const isListExpanded = isExpanded || (flattenedTree.length <= 10 && tags.length <= 10)
+    const allTagsExpanded = allParentsExpanded && isListExpanded
+    const searching = query.trim() !== ''
+    const visibleTags = searching ? sortTagsForPicker(sortedTags, query) : []
+    const visibleNodes = searching ? [] : isExpanded ? flattenedTree : flattenedTree.slice(0, 10)
+    const highlightedIndex = Math.min(activeIndex, Math.max(0, (searching ? visibleTags.length : visibleNodes.length) - 1))
+    const toggleTagPath = (path: string) => setExpandedTagPaths((prev) => togglePathInSet(prev, path))
     const toggleAllTagsExpanded = () => {
-        const next = nextTagExpansion(allTagsExpanded, parentTagPaths);
-        setExpandedTagPaths(next.paths);
-        setIsExpanded(next.isList);
-    };
+        const next = nextTagExpansion(allTagsExpanded, parentTagPaths)
+        setExpandedTagPaths(next.paths)
+        setIsExpanded(next.isList)
+    }
     return (<>
       <section className='mt-4'>
         <TagSectionHeader canToggleTags={canToggleTags} allTagsExpanded={allTagsExpanded} onToggleAll={toggleAllTagsExpanded} onCreate={() => setIsCreating(true)}/>
@@ -66,16 +66,16 @@ export function TagSection() {
           <SelectedTagsBar/>
         </div>
       </section>
-    </>);
+    </>)
 }
 
 function TagSectionHeader({ canToggleTags, allTagsExpanded, onToggleAll, onCreate }: {
-    canToggleTags: boolean;
-    allTagsExpanded: boolean;
-    onToggleAll: () => void;
-    onCreate: () => void;
+    canToggleTags: boolean
+    allTagsExpanded: boolean
+    onToggleAll: () => void
+    onCreate: () => void
 }) {
-    const openPanel = useUi((s) => s.openPanel);
+    const openPanel = useUi((s) => s.openPanel)
     return (<div className='group/head flex items-center justify-between pr-1'>
         <SectionLabel>{t('navigation.tag')}</SectionLabel>
         <div className='flex items-center gap-0.5'>
@@ -97,145 +97,145 @@ function TagSectionHeader({ canToggleTags, allTagsExpanded, onToggleAll, onCreat
             </IconButton>
           </Tooltip>
         </div>
-      </div>);
+      </div>)
 }
 
 function TagSearchBox({ query, setQuery, setActiveIndex, searching, visibleTags, highlightedIndex }: {
-    query: string;
-    setQuery: React.Dispatch<React.SetStateAction<string>>;
-    setActiveIndex: React.Dispatch<React.SetStateAction<number>>;
-    searching: boolean;
-    visibleTags: Tag[];
-    highlightedIndex: number;
+    query: string
+    setQuery: React.Dispatch<React.SetStateAction<string>>
+    setActiveIndex: React.Dispatch<React.SetStateAction<number>>
+    searching: boolean
+    visibleTags: Tag[]
+    highlightedIndex: number
 }) {
     return (<div className='relative mt-1.5'>
         <Search size={12} className='pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-[var(--text-quaternary)]'/>
         <input aria-label={t('notes.tag_filter_search')} title={t('sidebar.tag_search_select_all')} value={query} onChange={(e) => {
-            setQuery(e.target.value);
-            setActiveIndex(0);
+            setQuery(e.target.value)
+            setActiveIndex(0)
         }} onKeyDown={(e) => handleTagSearchKeyDown(e, { searching, visibleTags, highlightedIndex, setQuery, setActiveIndex })} placeholder={t('notes.tag_filter_search')} className='h-7 w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-7 pl-6 text-[length:var(--text-12)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none'/>
         {searching && <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 tabular-nums text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">{visibleTags.length}</span>}
-    </div>);
+    </div>)
 }
 
 function handleTagSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>, args: {
-    searching: boolean;
-    visibleTags: Tag[];
-    highlightedIndex: number;
-    setQuery: React.Dispatch<React.SetStateAction<string>>;
-    setActiveIndex: React.Dispatch<React.SetStateAction<number>>;
+    searching: boolean
+    visibleTags: Tag[]
+    highlightedIndex: number
+    setQuery: React.Dispatch<React.SetStateAction<string>>
+    setActiveIndex: React.Dispatch<React.SetStateAction<number>>
 }) {
     if (event.key === 'Escape') {
-        args.setQuery('');
-        args.setActiveIndex(0);
-        return;
+        args.setQuery('')
+        args.setActiveIndex(0)
+        return
     }
     if (!args.searching || !args.visibleTags.length)
-        return;
+        return
     if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        event.stopPropagation();
-        args.setActiveIndex((i) => (i + 1) % args.visibleTags.length);
-        return;
+        event.preventDefault()
+        event.stopPropagation()
+        args.setActiveIndex((i) => (i + 1) % args.visibleTags.length)
+        return
     }
     if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        event.stopPropagation();
-        args.setActiveIndex((i) => (i - 1 + args.visibleTags.length) % args.visibleTags.length);
-        return;
+        event.preventDefault()
+        event.stopPropagation()
+        args.setActiveIndex((i) => (i - 1 + args.visibleTags.length) % args.visibleTags.length)
+        return
     }
     if (event.key !== 'Enter')
-        return;
-    event.preventDefault();
-    event.stopPropagation();
+        return
+    event.preventDefault()
+    event.stopPropagation()
     if (event.shiftKey) {
         if (useUi.getState().selectedTags.length >= LIMITS.tagSelectionMax) {
-            useUi.getState().toast({ title: t('tags.selection_limit', { value0: LIMITS.tagSelectionMax }), tone: 'danger' });
-            return;
+            useUi.getState().toast({ title: t('tags.selection_limit', { value0: LIMITS.tagSelectionMax }), tone: 'danger' })
+            return
         }
-        useUi.getState().selectTags(args.visibleTags.map((tag) => tag.name));
-        args.setQuery('');
-        args.setActiveIndex(0);
-        useUi.getState().toast({ title: t('sidebar.tags_selected', { value0: args.visibleTags.length }) });
-        return;
+        useUi.getState().selectTags(args.visibleTags.map((tag) => tag.name))
+        args.setQuery('')
+        args.setActiveIndex(0)
+        useUi.getState().toast({ title: t('sidebar.tags_selected', { value0: args.visibleTags.length }) })
+        return
     }
-    const target = args.visibleTags[args.highlightedIndex];
-    args.setQuery('');
-    args.setActiveIndex(0);
+    const target = args.visibleTags[args.highlightedIndex]
+    args.setQuery('')
+    args.setActiveIndex(0)
     if (target)
-        useUi.getState().openView('tag', { tag: target.name });
+        useUi.getState().openView('tag', { tag: target.name })
 }
 
 function TagRowList({ searching, visibleTags, visibleNodes, query, highlightedIndex, renamingId, setRenamingId, expandedTagPaths, onTogglePath }: {
-    searching: boolean;
-    visibleTags: Tag[];
-    visibleNodes: TagTreeNode[];
-    query: string;
-    highlightedIndex: number;
-    renamingId: string | null;
-    setRenamingId: (id: string | null) => void;
-    expandedTagPaths: ReadonlySet<string>;
-    onTogglePath: (path: string) => void;
+    searching: boolean
+    visibleTags: Tag[]
+    visibleNodes: TagTreeNode[]
+    query: string
+    highlightedIndex: number
+    renamingId: string | null
+    setRenamingId: (id: string | null) => void
+    expandedTagPaths: ReadonlySet<string>
+    onTogglePath: (path: string) => void
 }) {
-    const view = useUi((s) => s.view);
-    const activeTag = useUi((s) => s.tag);
-    const selectedTags = useUi((s) => s.selectedTags);
+    const view = useUi((s) => s.view)
+    const activeTag = useUi((s) => s.tag)
+    const selectedTags = useUi((s) => s.selectedTags)
     if (searching) return (<>{visibleTags.map((tag, index) => (
         <TagRow key={tag.id} tag={tag} active={view === 'tag' && activeTag === tag.name} selected={selectedTags.includes(tag.name)} highlighted={index === highlightedIndex} searchQuery={query} renaming={renamingId === tag.id} onOpen={(event) => openTagRow(event, tag.name)} onStartRename={() => setRenamingId(tag.id)} onFinishRename={(value) => finishRowRename(value, tag, setRenamingId)} onCancelRename={() => setRenamingId(null)}/>
-    ))}</>);
+    ))}</>)
     return (<>{visibleNodes.map((node) => (
         <TagRow key={node.fullPath} tag={node.tag} displayName={node.name} depth={node.depth} hasChildren={node.children.length > 0} isExpanded={expandedTagPaths.has(node.fullPath)} onToggleExpand={() => onTogglePath(node.fullPath)} count={node.children.length > 0 ? node.totalCount : node.count} active={view === 'tag' && activeTag === node.fullPath} selected={selectedTags.includes(node.fullPath)} highlighted={false} searchQuery='' renaming={renamingId === node.tag.id} onOpen={(event) => openTagRow(event, node.fullPath)} onStartRename={() => setRenamingId(node.tag.id)} onFinishRename={(value) => finishRowRename(value, node.tag, setRenamingId)} onCancelRename={() => setRenamingId(null)}/>
-    ))}</>);
+    ))}</>)
 }
 
 function UntaggedRow({ onOpen }: {
-    onOpen: () => void;
+    onOpen: () => void
 }) {
-    const view = useUi((s) => s.view);
-    const counts = useNavigationCounts();
+    const view = useUi((s) => s.view)
+    const counts = useNavigationCounts()
     return (<button type='button' aria-current={view === 'untagged' ? 'page' : undefined} onClick={onOpen} className={cn('group flex h-10 w-full items-center justify-between rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12)] font-medium transition-colors md:h-[var(--sp-7)]', view === 'untagged' ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]')}>
         <div className='flex min-w-0 items-center gap-2'>
             <TagIcon size={12} className={cn('shrink-0', view === 'untagged' ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}/>
             <span className='truncate'>{t('tags.untagged')}</span>
         </div>
         {counts.untagged > 0 && (<span className='shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)]'>{counts.untagged}</span>)}
-    </button>);
+    </button>)
 }
 
 function CreateFirstTagButton({ onCreate }: {
-    onCreate: () => void;
+    onCreate: () => void
 }) {
     return (<button type='button' onClick={onCreate} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-7.5">
         <Plus size={13}/>{t('tags.create_first')}
-    </button>);
+    </button>)
 }
 
 function TagSearchEmpty({ onClear }: {
-    onClear: () => void;
+    onClear: () => void
 }) {
     return (<div className='mt-1 flex flex-col items-center gap-1 rounded-[var(--r-md)] bg-[var(--bg-inset)] px-2 py-3 text-center'>
         <SearchX size={14} className='text-[var(--text-quaternary)]'/>
         <span className="text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">{t('notes.no_matching_tags')}</span>
         <button type='button' onClick={onClear} className="text-[length:var(--text-10\.5)] font-medium text-[var(--accent)] transition-colors hover:underline">{t('notes.clear_tag_search')}</button>
-    </div>);
+    </div>)
 }
 
 function ShowMoreTagsButton({ isExpanded, count, onToggle }: {
-    isExpanded: boolean;
-    count: number;
-    onToggle: () => void;
+    isExpanded: boolean
+    count: number
+    onToggle: () => void
 }) {
     return (<button type='button' onClick={onToggle} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-6.5">
         {isExpanded ? t('common.collapse') : t('sidebar.show_all_value0_tags', { value0: count })}
-    </button>);
+    </button>)
 }
 
 function SelectedTagsBar() {
-    const selectedTags = useUi((s) => s.selectedTags);
-    const toggleTagSelection = useUi((s) => s.toggleTagSelection);
-    const openPanel = useUi((s) => s.openPanel);
+    const selectedTags = useUi((s) => s.selectedTags)
+    const toggleTagSelection = useUi((s) => s.toggleTagSelection)
+    const openPanel = useUi((s) => s.openPanel)
     if (selectedTags.length === 0)
-        return null;
+        return null
     return (<div className='rounded-[var(--r-md)] bg-[var(--accent-soft)] px-2 py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
         <div className='flex h-5 items-center justify-between gap-2'>
             <span className='truncate'>{t('sidebar.tags_selected', { value0: selectedTags.length })}</span>
@@ -258,60 +258,60 @@ function SelectedTagsBar() {
                 <X size={9} className='shrink-0 text-[var(--text-quaternary)]'/>
             </button>))}
         </div>
-    </div>);
+    </div>)
 }
 
 function collectParentTagPaths(tagTree: readonly TagTreeNode[]): string[] {
-    const result: string[] = [];
+    const result: string[] = []
     const visit = (nodes: readonly TagTreeNode[]) => {
         for (const node of nodes) {
             if (node.children.length > 0) {
-                result.push(node.fullPath);
-                visit(node.children);
+                result.push(node.fullPath)
+                visit(node.children)
             }
         }
-    };
-    visit(tagTree);
-    return result;
+    }
+    visit(tagTree)
+    return result
 }
 
 function togglePathInSet(prev: Set<string>, path: string): Set<string> {
-    const next = new Set(prev);
+    const next = new Set(prev)
     if (next.has(path))
-        next.delete(path);
+        next.delete(path)
     else
-        next.add(path);
-    return next;
+        next.add(path)
+    return next
 }
 
 function nextTagExpansion(allTagsExpanded: boolean, parentTagPaths: string[]) {
     if (allTagsExpanded)
-        return { paths: new Set<string>(), isList: false };
-    return { paths: new Set(parentTagPaths), isList: true };
+        return { paths: new Set<string>(), isList: false }
+    return { paths: new Set(parentTagPaths), isList: true }
 }
 
 function finishTagDraft(value: string, setIsCreating: (value: boolean) => void) {
-    setIsCreating(false);
-    const id = createTag(value);
+    setIsCreating(false)
+    const id = createTag(value)
     if (!id)
-        return;
-    const tag = useNotes.getState().tags.find((candidate) => candidate.id === id);
+        return
+    const tag = useNotes.getState().tags.find((candidate) => candidate.id === id)
     if (tag)
-        useUi.getState().openView('tag', { tag: tag.name });
+        useUi.getState().openView('tag', { tag: tag.name })
 }
 
 function finishRowRename(value: string, tag: Tag, setRenamingId: (id: string | null) => void) {
-    setRenamingId(null);
-    void renameTag(tag, value);
+    setRenamingId(null)
+    void renameTag(tag, value)
 }
 
 function openTagRow(event: React.MouseEvent, name: string) {
-    const ui = useUi.getState();
+    const ui = useUi.getState()
     if (event.metaKey || event.ctrlKey) {
-        event.preventDefault();
-        ui.toggleTagSelection(name);
+        event.preventDefault()
+        ui.toggleTagSelection(name)
     }
     else {
-        ui.openView('tag', { tag: name });
+        ui.openView('tag', { tag: name })
     }
 }

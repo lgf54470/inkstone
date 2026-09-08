@@ -1,25 +1,25 @@
-import type { NotesState, SetNotesState, PendingNoteMutation } from './model';
-import { countText, deriveExcerpt, extractTags } from '@shared/markdown-utils';
-import { LIMITS } from '@shared/constants';
-import type { Note } from '@shared/types';
-import { api, ApiError } from '../../lib/api';
-import { localDb } from '../../lib/db';
-import { adoptNote } from './adopt';
-import { beginNoteMutation, compactOptimisticPatch, finishNoteMutation, recoverNoteMutation } from './note-mutations';
-import { buildNewNoteContent, currentFolderId, pendingEditorCursors } from './new-note';
-import { enqueueNoteWrite } from './persist';
-import { advanceDirtyRevision } from './runtime';
-import { scheduleShellSave } from './shell-save';
-import { commitPendingSummaryDerivation } from './summary';
-import { isVirtualFolderId } from '../../lib/calendar-tree';
-import { newLocalEntityId } from './util';
-import { captureWorkspaceState, restoreWorkspaceState, workspaceContainsNote } from './workspace';
-import { dirty, pendingNoteCreates } from './model';
-import { useUi } from '../ui';
-import { t, type MessageKey } from '../../lib/i18n';
-import { toastError, patchWithUndo, batchPatchTitle, type NotePatch } from './undo';
+import type { NotesState, SetNotesState, PendingNoteMutation } from './model'
+import { countText, deriveExcerpt, extractTags } from '@shared/markdown-utils'
+import { LIMITS } from '@shared/constants'
+import type { Note } from '@shared/types'
+import { api, ApiError } from '../../lib/api'
+import { localDb } from '../../lib/db'
+import { adoptNote } from './adopt'
+import { beginNoteMutation, compactOptimisticPatch, finishNoteMutation, recoverNoteMutation } from './note-mutations'
+import { buildNewNoteContent, currentFolderId, pendingEditorCursors } from './new-note'
+import { enqueueNoteWrite } from './persist'
+import { advanceDirtyRevision } from './runtime'
+import { scheduleShellSave } from './shell-save'
+import { commitPendingSummaryDerivation } from './summary'
+import { isVirtualFolderId } from '../../lib/calendar-tree'
+import { newLocalEntityId } from './util'
+import { captureWorkspaceState, restoreWorkspaceState, workspaceContainsNote } from './workspace'
+import { dirty, pendingNoteCreates } from './model'
+import { useUi } from '../ui'
+import { t, type MessageKey } from '../../lib/i18n'
+import { toastError, patchWithUndo, batchPatchTitle, type NotePatch } from './undo'
 
-type NoteActionsKey = 'createNote' | 'patchNote' | 'setArchived' | 'setArchivedMany' | 'setStarred' | 'setStarredMany' | 'setPinned' | 'setPinnedMany' | 'moveNotes';
+type NoteActionsKey = 'createNote' | 'patchNote' | 'setArchived' | 'setArchivedMany' | 'setStarred' | 'setStarredMany' | 'setPinned' | 'setPinnedMany' | 'moveNotes'
 
 export const noteActions = (set: SetNotesState, get: () => NotesState): Pick<NotesState, NoteActionsKey> => ({
   createNote: (input) => createNoteImpl(set, get, input),
@@ -31,35 +31,35 @@ export const noteActions = (set: SetNotesState, get: () => NotesState): Pick<Not
   setPinned: (id, pinned, options) => setPinnedImpl(get, id, pinned, options),
   setPinnedMany: (ids, pinned) => setPinnedManyImpl(get, ids, pinned),
   moveNotes: (ids, folderId) => moveNotesImpl(get, ids, folderId),
-});
+})
 
-type CreateNoteInput = Parameters<NotesState['createNote']>[0];
+type CreateNoteInput = Parameters<NotesState['createNote']>[0]
 
 async function createNoteImpl(
   set: SetNotesState,
   get: () => NotesState,
   input?: CreateNoteInput,
 ): Promise<string | null> {
-  const id = input?.id ?? newLocalEntityId();
-  const existing = get().notes[id];
-  const title = (input?.title ?? '').trim().slice(0, LIMITS.titleMaxLength);
-  const folderId = input?.folderId && !isVirtualFolderId(input.folderId) ? input.folderId : currentFolderId();
-  let content: string;
-  let cursor: number | null = null;
+  const id = input?.id ?? newLocalEntityId()
+  const existing = get().notes[id]
+  const title = (input?.title ?? '').trim().slice(0, LIMITS.titleMaxLength)
+  const folderId = input?.folderId && !isVirtualFolderId(input.folderId) ? input.folderId : currentFolderId()
+  let content: string
+  let cursor: number | null = null
   if (input?.content !== undefined) {
-    content = input.content;
+    content = input.content
   }
   else {
-    const built = buildNewNoteContent(title, input?.tags, folderId, get().folders);
-    content = built.content;
-    cursor = built.cursor;
+    const built = buildNewNoteContent(title, input?.tags, folderId, get().folders)
+    content = built.content
+    cursor = built.cursor
     if (cursor !== null)
-      pendingEditorCursors.set(id, cursor);
+      pendingEditorCursors.set(id, cursor)
   }
-  const isStarred = input?.isStarred ?? false;
+  const isStarred = input?.isStarred ?? false
   if (existing)
-    return createServerNote(id, title, content, folderId, isStarred, set, get);
-  return createOptimisticNote(id, title, content, folderId, isStarred, input?.open !== false, set, get);
+    return createServerNote(id, title, content, folderId, isStarred, set, get)
+  return createOptimisticNote(id, title, content, folderId, isStarred, input?.open !== false, set, get)
 }
 
 async function createServerNote(
@@ -71,22 +71,22 @@ async function createServerNote(
   set: SetNotesState,
   get: () => NotesState,
 ): Promise<string | null> {
-  const request = api.notes.create({ id, title, content, folderId, ...(isStarred ? { isStarred: true } : {}) });
-  pendingNoteCreates.set(id, request);
+  const request = api.notes.create({ id, title, content, folderId, ...(isStarred ? { isStarred: true } : {}) })
+  pendingNoteCreates.set(id, request)
   try {
-    const note = await request;
-    adoptNote(note, set, get);
+    const note = await request
+    adoptNote(note, set, get)
     if (isStarred && !note.isStarred)
-      await get().patchNote(note.id, { isStarred: true });
-    return note.id;
+      await get().patchNote(note.id, { isStarred: true })
+    return note.id
   }
   catch (err) {
-    toastError(err, t('notes.could_not_create_note'));
-    return null;
+    toastError(err, t('notes.could_not_create_note'))
+    return null
   }
   finally {
     if (pendingNoteCreates.get(id) === request)
-      pendingNoteCreates.delete(id);
+      pendingNoteCreates.delete(id)
   }
 }
 
@@ -100,8 +100,8 @@ async function createOptimisticNote(
   set: SetNotesState,
   get: () => NotesState,
 ): Promise<string | null> {
-  const now = Date.now();
-  const { words, chars } = countText(content);
+  const now = Date.now()
+  const { words, chars } = countText(content)
   const optimistic: Note = {
     id,
     title,
@@ -119,12 +119,12 @@ async function createOptimisticNote(
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
-  };
-  const previousWorkspace = captureWorkspaceState();
-  adoptNote(optimistic, set, get);
+  }
+  const previousWorkspace = captureWorkspaceState()
+  adoptNote(optimistic, set, get)
   if (open)
-    useUi.getState().setActiveNote(id);
-  return createPendingNote(id, title, content, folderId, isStarred, previousWorkspace, set, get);
+    useUi.getState().setActiveNote(id)
+  return createPendingNote(id, title, content, folderId, isStarred, previousWorkspace, set, get)
 }
 
 async function createPendingNote(
@@ -137,24 +137,24 @@ async function createPendingNote(
   set: SetNotesState,
   get: () => NotesState,
 ): Promise<string | null> {
-  const request = api.notes.create({ id, title, content, folderId, ...(isStarred ? { isStarred: true } : {}) });
-  pendingNoteCreates.set(id, request);
+  const request = api.notes.create({ id, title, content, folderId, ...(isStarred ? { isStarred: true } : {}) })
+  pendingNoteCreates.set(id, request)
   try {
-    const note = await request;
-    adoptNote(note, set, get);
+    const note = await request
+    adoptNote(note, set, get)
     if (isStarred && !note.isStarred)
-      await get().patchNote(note.id, { isStarred: true });
-    return note.id;
+      await get().patchNote(note.id, { isStarred: true })
+    return note.id
   }
   catch (err) {
     if (!dirty.has(id))
-      rollbackOptimisticCreate(id, previousWorkspace, set, get);
-    toastError(err, t('notes.could_not_create_note'));
-    return null;
+      rollbackOptimisticCreate(id, previousWorkspace, set, get)
+    toastError(err, t('notes.could_not_create_note'))
+    return null
   }
   finally {
     if (pendingNoteCreates.get(id) === request)
-      pendingNoteCreates.delete(id);
+      pendingNoteCreates.delete(id)
   }
 }
 
@@ -164,11 +164,11 @@ async function patchNoteImpl(
   id: string,
   patch: Parameters<NotesState['patchNote']>[1],
 ): Promise<void> {
-  commitPendingSummaryDerivation(id);
-  const mutation = beginNoteMutation(id, compactOptimisticPatch(patch), set, get);
+  commitPendingSummaryDerivation(id)
+  const mutation = beginNoteMutation(id, compactOptimisticPatch(patch), set, get)
   if (!mutation)
-    return;
-  await enqueueNoteWrite(id, () => patchNoteWriter(id, mutation, patch, set, get));
+    return
+  await enqueueNoteWrite(id, () => patchNoteWriter(id, mutation, patch, set, get))
 }
 
 async function patchNoteWriter(
@@ -178,12 +178,12 @@ async function patchNoteWriter(
   set: SetNotesState,
   get: () => NotesState,
 ): Promise<void> {
-  const summary = get().notes[id];
+  const summary = get().notes[id]
   if (!summary) {
-    finishNoteMutation(id, mutation);
-    return;
+    finishNoteMutation(id, mutation)
+    return
   }
-  await patchNoteWithRetry(id, mutation, patch, dirty.get(id)?.rev ?? summary.rev, 0, set, get);
+  await patchNoteWithRetry(id, mutation, patch, dirty.get(id)?.rev ?? summary.rev, 0, set, get)
 }
 
 async function patchNoteWithRetry(
@@ -196,22 +196,22 @@ async function patchNoteWithRetry(
   get: () => NotesState,
 ): Promise<void> {
   try {
-    const saved = await api.notes.patch(id, { rev, ...patch });
-    finishNoteMutation(id, mutation);
-    advanceDirtyRevision(id, rev, saved.rev, get);
-    adoptNote(saved, set, get);
+    const saved = await api.notes.patch(id, { rev, ...patch })
+    finishNoteMutation(id, mutation)
+    advanceDirtyRevision(id, rev, saved.rev, get)
+    adoptNote(saved, set, get)
   }
   catch (err) {
     const server = err instanceof ApiError && err.isConflict
       ? (err.details as { server?: Note } | undefined)?.server
-      : undefined;
+      : undefined
     if (server?.id === id && server.rev > rev && attempt < 3) {
-      adoptNote(server, set, get);
-      await patchNoteWithRetry(id, mutation, patch, server.rev, attempt + 1, set, get);
-      return;
+      adoptNote(server, set, get)
+      await patchNoteWithRetry(id, mutation, patch, server.rev, attempt + 1, set, get)
+      return
     }
-    await recoverNoteMutation(id, mutation, err, set, get);
-    toastError(err, t('common.action_failed'));
+    await recoverNoteMutation(id, mutation, err, set, get)
+    toastError(err, t('common.action_failed'))
   }
 }
 
@@ -222,16 +222,16 @@ function rollbackOptimisticCreate(
   get: () => NotesState,
 ): void {
   set((state) => {
-    const notes = { ...state.notes };
-    const contents = { ...state.contents };
-    delete notes[id];
-    delete contents[id];
-    return { notes, contents };
-  });
-  void localDb.dropContent(id);
+    const notes = { ...state.notes }
+    const contents = { ...state.contents }
+    delete notes[id]
+    delete contents[id]
+    return { notes, contents }
+  })
+  void localDb.dropContent(id)
   if (workspaceContainsNote(id))
-    restoreWorkspaceState(previousWorkspace);
-  scheduleShellSave(get);
+    restoreWorkspaceState(previousWorkspace)
+  scheduleShellSave(get)
 }
 
 async function setArchivedImpl(
@@ -240,9 +240,9 @@ async function setArchivedImpl(
   archived: boolean,
   options?: { notify?: 'undo' | 'confirm' | 'none' },
 ): Promise<void> {
-  const before = get().notes[id];
+  const before = get().notes[id]
   if (!before || before.isArchived === archived)
-    return;
+    return
   await patchWithUndo(
     get,
     new Map([[id, { isArchived: before.isArchived }]]),
@@ -250,7 +250,7 @@ async function setArchivedImpl(
     t(archived ? 'notes.archived' : 'common.unarchive'),
     t(archived ? 'notes.unarchived' : 'notes.archived'),
     options?.notify,
-  );
+  )
 }
 
 async function setArchivedManyImpl(
@@ -258,11 +258,11 @@ async function setArchivedManyImpl(
   ids: string[],
   archived: boolean,
 ): Promise<void> {
-  const undoPatches = new Map<string, NotePatch>();
+  const undoPatches = new Map<string, NotePatch>()
   for (const id of ids) {
-    const note = get().notes[id];
+    const note = get().notes[id]
     if (note && note.isArchived !== archived)
-      undoPatches.set(id, { isArchived: note.isArchived });
+      undoPatches.set(id, { isArchived: note.isArchived })
   }
   await patchWithUndo(
     get,
@@ -270,7 +270,7 @@ async function setArchivedManyImpl(
     { isArchived: archived },
     batchPatchTitle(archived ? 'notes.archived' : 'common.unarchive', undoPatches.size),
     batchPatchTitle(archived ? 'notes.unarchived' : 'notes.archived', undoPatches.size),
-  );
+  )
 }
 
 async function setStarredImpl(
@@ -279,9 +279,9 @@ async function setStarredImpl(
   starred: boolean,
   options?: { notify?: 'undo' | 'confirm' | 'none' },
 ): Promise<void> {
-  const before = get().notes[id];
+  const before = get().notes[id]
   if (!before || before.isStarred === starred)
-    return;
+    return
   await patchWithUndo(
     get,
     new Map([[id, { isStarred: before.isStarred }]]),
@@ -289,7 +289,7 @@ async function setStarredImpl(
     t(starred ? 'notes.added_to_favorites' : 'notes.removed_from_favorites'),
     t(starred ? 'notes.removed_from_favorites' : 'notes.added_to_favorites'),
     options?.notify,
-  );
+  )
 }
 
 async function setStarredManyImpl(
@@ -297,15 +297,15 @@ async function setStarredManyImpl(
   ids: string[],
   starred: boolean,
 ): Promise<void> {
-  const undoPatches = new Map<string, NotePatch>();
+  const undoPatches = new Map<string, NotePatch>()
   for (const id of ids) {
-    const note = get().notes[id];
+    const note = get().notes[id]
     if (note && note.isStarred !== starred)
-      undoPatches.set(id, { isStarred: note.isStarred });
+      undoPatches.set(id, { isStarred: note.isStarred })
   }
-  const titleKey: MessageKey = starred ? 'notes.added_to_favorites' : 'notes.removed_from_favorites';
-  const revertKey: MessageKey = starred ? 'notes.removed_from_favorites' : 'notes.added_to_favorites';
-  await patchWithUndo(get, undoPatches, { isStarred: starred }, batchPatchTitle(titleKey, undoPatches.size), batchPatchTitle(revertKey, undoPatches.size));
+  const titleKey: MessageKey = starred ? 'notes.added_to_favorites' : 'notes.removed_from_favorites'
+  const revertKey: MessageKey = starred ? 'notes.removed_from_favorites' : 'notes.added_to_favorites'
+  await patchWithUndo(get, undoPatches, { isStarred: starred }, batchPatchTitle(titleKey, undoPatches.size), batchPatchTitle(revertKey, undoPatches.size))
 }
 
 async function setPinnedImpl(
@@ -314,9 +314,9 @@ async function setPinnedImpl(
   pinned: boolean,
   options?: { notify?: 'undo' | 'confirm' | 'none' },
 ): Promise<void> {
-  const before = get().notes[id];
+  const before = get().notes[id]
   if (!before || before.isPinned === pinned)
-    return;
+    return
   await patchWithUndo(
     get,
     new Map([[id, { isPinned: before.isPinned }]]),
@@ -324,7 +324,7 @@ async function setPinnedImpl(
     t(pinned ? 'notes.pinned' : 'notes.unpinned'),
     t(pinned ? 'notes.unpinned' : 'notes.pinned'),
     options?.notify,
-  );
+  )
 }
 
 async function setPinnedManyImpl(
@@ -332,15 +332,15 @@ async function setPinnedManyImpl(
   ids: string[],
   pinned: boolean,
 ): Promise<void> {
-  const undoPatches = new Map<string, NotePatch>();
+  const undoPatches = new Map<string, NotePatch>()
   for (const id of ids) {
-    const note = get().notes[id];
+    const note = get().notes[id]
     if (note && note.isPinned !== pinned)
-      undoPatches.set(id, { isPinned: note.isPinned });
+      undoPatches.set(id, { isPinned: note.isPinned })
   }
-  const titleKey: MessageKey = pinned ? 'notes.pinned' : 'notes.unpinned';
-  const revertKey: MessageKey = pinned ? 'notes.unpinned' : 'notes.pinned';
-  await patchWithUndo(get, undoPatches, { isPinned: pinned }, batchPatchTitle(titleKey, undoPatches.size), batchPatchTitle(revertKey, undoPatches.size));
+  const titleKey: MessageKey = pinned ? 'notes.pinned' : 'notes.unpinned'
+  const revertKey: MessageKey = pinned ? 'notes.unpinned' : 'notes.pinned'
+  await patchWithUndo(get, undoPatches, { isPinned: pinned }, batchPatchTitle(titleKey, undoPatches.size), batchPatchTitle(revertKey, undoPatches.size))
 }
 
 async function moveNotesImpl(
@@ -348,13 +348,13 @@ async function moveNotesImpl(
   ids: string[],
   folderId: string | null,
 ): Promise<void> {
-  const undoPatches = new Map<string, NotePatch>();
+  const undoPatches = new Map<string, NotePatch>()
   for (const id of ids) {
-    const note = get().notes[id];
+    const note = get().notes[id]
     if (note && note.folderId !== folderId)
-      undoPatches.set(id, { folderId: note.folderId });
+      undoPatches.set(id, { folderId: note.folderId })
   }
-  const titleKey: MessageKey = folderId ? 'notes.moved' : 'notes.moved_out';
-  const revertKey: MessageKey = folderId ? 'notes.moved_out' : 'notes.moved';
-  await patchWithUndo(get, undoPatches, { folderId }, batchPatchTitle(titleKey, undoPatches.size), batchPatchTitle(revertKey, undoPatches.size));
+  const titleKey: MessageKey = folderId ? 'notes.moved' : 'notes.moved_out'
+  const revertKey: MessageKey = folderId ? 'notes.moved_out' : 'notes.moved'
+  await patchWithUndo(get, undoPatches, { folderId }, batchPatchTitle(titleKey, undoPatches.size), batchPatchTitle(revertKey, undoPatches.size))
 }

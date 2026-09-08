@@ -1,19 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Archive, ChevronsDownUp, ChevronsUpDown, Film, FileText, HardDrive, Images, LayoutDashboard, Link2Off, Pin, Plus, Star } from 'lucide-react';
-import type { ReactNode } from 'react';
-import type { AttachmentFolder, AttachmentStats, Folder, Tag } from '@shared/types';
-import { cn } from '../../../lib/cn';
-import { t } from '../../../lib/i18n';
-import type { FolderNode } from '../../../store/notes';
-import type { TagTreeNode } from '../../../lib/tag-tree';
-import { IconButton } from '../../../components/primitives';
-import { Tooltip } from '../../../components/overlay';
-import { FolderPicker } from '../../folders';
-import { DEFAULT_QUOTA_BYTES, formatFileSize, type AttachmentCategory } from '../attachment-helpers';
-import { useAttachmentFolderTree, useAttachmentStore, useAttachmentTagTree } from '../attachment-store';
-import { SectionLabel } from './label';
-import { DriveFolderRow } from './folder-row';
-import { DriveTagRow } from './tag-row';
+import { useEffect, useMemo, useState } from 'react'
+import { Archive, ChevronsDownUp, ChevronsUpDown, Film, FileText, HardDrive, Images, LayoutDashboard, Link2Off, Pin, Plus, Star } from 'lucide-react'
+import type { ReactNode } from 'react'
+import type { AttachmentFolder, AttachmentStats, Folder, Tag } from '@shared/types'
+import { cn } from '../../../lib/cn'
+import { t } from '../../../lib/i18n'
+import type { FolderNode } from '../../../store/notes'
+import type { TagTreeNode } from '../../../lib/tag-tree'
+import { IconButton } from '../../../components/primitives'
+import { Tooltip } from '../../../components/overlay'
+import { FolderPicker } from '../../folders'
+import { DEFAULT_QUOTA_BYTES, formatFileSize, type AttachmentCategory } from '../attachment-helpers'
+import { useAttachmentFolderTree, useAttachmentStore, useAttachmentTagTree } from '../attachment-store'
+import { SectionLabel } from './label'
+import { DriveFolderRow } from './folder-row'
+import { DriveTagRow } from './tag-row'
 
 
 interface AttachmentDriveSidebarProps {

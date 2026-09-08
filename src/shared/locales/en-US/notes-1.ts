@@ -152,4 +152,4 @@ export const messages = {
 'notes.unpinned': 'Unpinned',
 'notes.value0_value1_notes': '{value0} {value1} notes',
 'notes.value0_was_also_changed_elsewhere_your_version_was_saved_as_a_copy_value': '“{value0}” was also changed elsewhere. Your version was saved as a copy ({value1}).',
-};
+}

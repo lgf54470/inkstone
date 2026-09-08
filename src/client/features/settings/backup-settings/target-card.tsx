@@ -1,35 +1,35 @@
-import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, HardDrive, Loader2, MoreHorizontal, Server, Trash2 } from 'lucide-react';
-import { type BackupTarget, type TestConnectionResult } from '@shared/types';
-import { cn } from '../../../lib/cn';
-import { api, ApiError } from '../../../lib/api';
-import { useRelativeTime } from '../../../lib/hooks';
-import { Badge, Button, IconButton } from '../../../components/primitives';
-import { Switch } from '../../../components/form';
-import { Tooltip, confirm } from '../../../components/overlay';
-import { useUi, type UiState } from '../../../store/ui';
-import { t, translateServiceMessage } from '../../../lib/i18n';
+import { useEffect, useRef, useState } from 'react'
+import { AlertCircle, CheckCircle2, HardDrive, Loader2, MoreHorizontal, Server, Trash2 } from 'lucide-react'
+import { type BackupTarget, type TestConnectionResult } from '@shared/types'
+import { cn } from '../../../lib/cn'
+import { api, ApiError } from '../../../lib/api'
+import { useRelativeTime } from '../../../lib/hooks'
+import { Badge, Button, IconButton } from '../../../components/primitives'
+import { Switch } from '../../../components/form'
+import { Tooltip, confirm } from '../../../components/overlay'
+import { useUi, type UiState } from '../../../store/ui'
+import { t, translateServiceMessage } from '../../../lib/i18n'
 
 export function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRestore, }: {
-  target: BackupTarget;
-  onEdit: () => void;
-  onChanged: () => Promise<void>;
-  onPatch: (id: string, patch: Partial<BackupTarget>) => void;
-  onRemove: (id: string) => void;
-  onRestore: (target: BackupTarget) => void;
+  target: BackupTarget
+  onEdit: () => void
+  onChanged: () => Promise<void>
+  onPatch: (id: string, patch: Partial<BackupTarget>) => void
+  onRemove: (id: string) => void
+  onRestore: (target: BackupTarget) => void
 }) {
-  const toast = useUi((s) => s.toast);
-  const [isTesting, setIsTesting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [result, setResult] = useState<TestConnectionResult | null>(null);
-  const actionRef = useRef(false);
-  const busy = isTesting || isDeleting || isUpdating;
-  const lastRunTime = useRelativeTime(target.lastRunAt ?? 0, Boolean(target.lastRunAt));
-  useEffect(() => setResult(null), [target.updatedAt]);
+  const toast = useUi((s) => s.toast)
+  const [isTesting, setIsTesting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [result, setResult] = useState<TestConnectionResult | null>(null)
+  const actionRef = useRef(false)
+  const busy = isTesting || isDeleting || isUpdating
+  const lastRunTime = useRelativeTime(target.lastRunAt ?? 0, Boolean(target.lastRunAt))
+  useEffect(() => setResult(null), [target.updatedAt])
   const location = 'bucket' in target.config
     ? `${String(target.config.bucket ?? '')}${target.config.prefix ? `/${target.config.prefix}` : ''}`
-    : String(target.config.url ?? '');
+    : String(target.config.url ?? '')
   return (<div className={cn('rounded-[var(--r-lg)] border bg-[var(--bg-base)] p-3 transition-colors', target.enabled ? 'border-[var(--border-subtle)]' : 'border-[var(--border-subtle)] opacity-60')}>
     <div className='flex items-start gap-3'>
     <span className={cn('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-[var(--r-md)]', 'bg-[var(--bg-raised)] text-[var(--text-tertiary)]')}>
@@ -64,7 +64,7 @@ export function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRes
       </Tooltip>
     </div>
     </div>
-  </div>);
+  </div>)
 }
 
 function TargetStatus({ target, lastRunTime, result }: { target: BackupTarget; lastRunTime: string; result: TestConnectionResult | null }) {
@@ -86,92 +86,92 @@ function TargetStatus({ target, lastRunTime, result }: { target: BackupTarget; l
         </span>
       </div>)}
     </>
-  );
+  )
 }
 
 async function toggleEnabledFlow({ actionRef, target, enabled, setIsUpdating, onPatch, onChanged, toast }: {
-  actionRef: React.MutableRefObject<boolean>;
-  target: BackupTarget;
-  enabled: boolean;
-  setIsUpdating: (updating: boolean) => void;
-  onPatch: (id: string, patch: Partial<BackupTarget>) => void;
-  onChanged: () => Promise<void>;
-  toast: UiState['toast'];
+  actionRef: React.MutableRefObject<boolean>
+  target: BackupTarget
+  enabled: boolean
+  setIsUpdating: (updating: boolean) => void
+  onPatch: (id: string, patch: Partial<BackupTarget>) => void
+  onChanged: () => Promise<void>
+  toast: UiState['toast']
 }) {
   if (actionRef.current)
-    return;
-  actionRef.current = true;
-  setIsUpdating(true);
-  onPatch(target.id, { enabled });
+    return
+  actionRef.current = true
+  setIsUpdating(true)
+  onPatch(target.id, { enabled })
   try {
-    await api.backup.patch(target.id, { enabled, expectedUpdatedAt: target.updatedAt });
-    await onChanged();
+    await api.backup.patch(target.id, { enabled, expectedUpdatedAt: target.updatedAt })
+    await onChanged()
   }
   catch (error) {
-    onPatch(target.id, { enabled: target.enabled });
-    toast({ title: t('settings.update_failed'), description: error instanceof ApiError ? error.message : String(error), tone: 'danger' });
+    onPatch(target.id, { enabled: target.enabled })
+    toast({ title: t('settings.update_failed'), description: error instanceof ApiError ? error.message : String(error), tone: 'danger' })
   }
   finally {
-    actionRef.current = false;
-    setIsUpdating(false);
+    actionRef.current = false
+    setIsUpdating(false)
   }
 }
 
 async function testTargetFlow({ actionRef, target, setIsTesting, setResult }: {
-  actionRef: React.MutableRefObject<boolean>;
-  target: BackupTarget;
-  setIsTesting: (testing: boolean) => void;
-  setResult: (result: TestConnectionResult) => void;
+  actionRef: React.MutableRefObject<boolean>
+  target: BackupTarget
+  setIsTesting: (testing: boolean) => void
+  setResult: (result: TestConnectionResult) => void
 }) {
   if (actionRef.current)
-    return;
-  actionRef.current = true;
-  setIsTesting(true);
+    return
+  actionRef.current = true
+  setIsTesting(true)
   try {
-    setResult(await api.backup.test(target.id));
+    setResult(await api.backup.test(target.id))
   }
   catch (err) {
-    setResult({ ok: false, message: err instanceof ApiError ? err.message : String(err) });
+    setResult({ ok: false, message: err instanceof ApiError ? err.message : String(err) })
   }
   finally {
-    actionRef.current = false;
-    setIsTesting(false);
+    actionRef.current = false
+    setIsTesting(false)
   }
 }
 
 async function deleteTargetFlow({ actionRef, target, setIsDeleting, onRemove, onRestore, onChanged, toast }: {
-  actionRef: React.MutableRefObject<boolean>;
-  target: BackupTarget;
-  setIsDeleting: (deleting: boolean) => void;
-  onRemove: (id: string) => void;
-  onRestore: (target: BackupTarget) => void;
-  onChanged: () => Promise<void>;
-  toast: UiState['toast'];
+  actionRef: React.MutableRefObject<boolean>
+  target: BackupTarget
+  setIsDeleting: (deleting: boolean) => void
+  onRemove: (id: string) => void
+  onRestore: (target: BackupTarget) => void
+  onChanged: () => Promise<void>
+  toast: UiState['toast']
 }) {
   if (actionRef.current)
-    return;
-  actionRef.current = true;
-  setIsDeleting(true);
+    return
+  actionRef.current = true
+  setIsDeleting(true)
   try {
     const ok = await confirm({
       title: t('settings.delete_backup_target_value0', { value0: target.name }),
       description: t('settings.files_that_have_been_backed_up_there_will_not_be_deleted'),
       confirmLabel: t('common.delete'),
       tone: 'danger',
-    });
+    })
     if (!ok)
-      return;
-    onRemove(target.id);
-    await api.backup.remove(target.id);
-    toast({ title: t('settings.backup_target_deleted') });
-    await onChanged();
+      return
+    onRemove(target.id)
+    await api.backup.remove(target.id)
+    toast({ title: t('settings.backup_target_deleted') })
+    await onChanged()
   }
   catch (error) {
-    onRestore(target);
-    toast({ title: t('common.delete_failed'), description: error instanceof ApiError ? error.message : String(error), tone: 'danger' });
+    onRestore(target)
+    toast({ title: t('common.delete_failed'), description: error instanceof ApiError ? error.message : String(error), tone: 'danger' })
   }
   finally {
-    actionRef.current = false;
-    setIsDeleting(false);
+    actionRef.current = false
+    setIsDeleting(false)
   }
 }

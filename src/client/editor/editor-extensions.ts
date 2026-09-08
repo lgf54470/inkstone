@@ -1,48 +1,48 @@
-import { Annotation, Compartment, EditorState, type Extension } from '@codemirror/state';
-import { EditorView, drawSelection, dropCursor, keymap, lineNumbers, placeholder as placeholderExt, rectangularSelection, } from '@codemirror/view';
-import { foldGutter, indentOnInput, indentUnit, } from '@codemirror/language';
-import { defaultKeymap, history, historyKeymap, indentWithTab, standardKeymap, } from '@codemirror/commands';
-import { search, searchKeymap } from '@codemirror/search';
-import { acceptCompletion, autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap, } from '@codemirror/autocomplete';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import type { EditorSettings } from '@shared/types';
-import { editorTheme } from './theme';
-import { focusModePlugin, markdownDecorations, typewriterPlugin } from './decorations';
-import { codeFenceSource, tagSource, wikiLinkSource, type CompletionSources } from './completion';
-import { pasteExtension, type PasteHandlers } from './paste';
-import { linkHoverExtension, linkHoverFacet } from './link-hover-plugin';
-import { completeCodeFenceOnEnter, setHeading, smartEnter, tableTab, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleItalic, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskDone, toggleTaskList, } from './commands';
+import { Annotation, Compartment, EditorState, type Extension } from '@codemirror/state'
+import { EditorView, drawSelection, dropCursor, keymap, lineNumbers, placeholder as placeholderExt, rectangularSelection, } from '@codemirror/view'
+import { foldGutter, indentOnInput, indentUnit, } from '@codemirror/language'
+import { defaultKeymap, history, historyKeymap, indentWithTab, standardKeymap, } from '@codemirror/commands'
+import { search, searchKeymap } from '@codemirror/search'
+import { acceptCompletion, autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap, } from '@codemirror/autocomplete'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import type { EditorSettings } from '@shared/types'
+import { editorTheme } from './theme'
+import { focusModePlugin, markdownDecorations, typewriterPlugin } from './decorations'
+import { codeFenceSource, tagSource, wikiLinkSource, type CompletionSources } from './completion'
+import { pasteExtension, type PasteHandlers } from './paste'
+import { linkHoverExtension, linkHoverFacet } from './link-hover-plugin'
+import { completeCodeFenceOnEnter, setHeading, smartEnter, tableTab, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleItalic, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskDone, toggleTaskList, } from './commands'
 
-export const externalValueUpdate = Annotation.define<boolean>();
+export const externalValueUpdate = Annotation.define<boolean>()
 
 export interface CodeEditorCallbacks {
-  sources: CompletionSources;
-  handlers: PasteHandlers;
-  onChange: (value: string) => void;
-  onScroll?: (view: EditorView) => void;
-  onCursorLine?: (line: number) => void;
-  onContextMenu?: (event: MouseEvent, view: EditorView) => void;
+  sources: CompletionSources
+  handlers: PasteHandlers
+  onChange: (value: string) => void
+  onScroll?: (view: EditorView) => void
+  onCursorLine?: (line: number) => void
+  onContextMenu?: (event: MouseEvent, view: EditorView) => void
 }
 
 
 interface EditorLiveRefs {
-  cb: { current: CodeEditorCallbacks };
-  propose: { current: (link: HTMLElement | null, options?: { immediate?: boolean }) => void };
-  linkHover: { current: { card: unknown | null; hideNow: () => void } };
+  cb: { current: CodeEditorCallbacks }
+  propose: { current: (link: HTMLElement | null, options?: { immediate?: boolean }) => void }
+  linkHover: { current: { card: unknown | null; hideNow: () => void } }
 }
 
 export interface EditorCompartments {
-  lineNumbers: Compartment;
-  tabSize: Compartment;
-  placeholder: Compartment;
+  lineNumbers: Compartment
+  tabSize: Compartment
+  placeholder: Compartment
 }
 
 
 interface EditorExtensionInput {
-  settings: EditorSettings;
-  placeholder: string;
-  live: EditorLiveRefs;
-  compartments: EditorCompartments;
+  settings: EditorSettings
+  placeholder: string
+  live: EditorLiveRefs
+  compartments: EditorCompartments
 }
 
 export function editorExtensions(input: EditorExtensionInput): Extension[] {
@@ -62,7 +62,7 @@ export function editorExtensions(input: EditorExtensionInput): Extension[] {
     ...commandKeymaps(),
     ...frameworkKeymaps(),
     ...listenerExtensions(input.live),
-  ];
+  ]
 }
 
 function baseExtensions(): Extension[] {
@@ -75,18 +75,18 @@ function baseExtensions(): Extension[] {
     indentOnInput(),
     EditorState.allowMultipleSelections.of(true),
     EditorView.lineWrapping,
-  ];
+  ]
 }
 
 function lineNumberExtension(input: EditorExtensionInput): Extension[] {
-  return [input.compartments.lineNumbers.of(input.settings.lineNumbers ? [lineNumbers(), foldGutter()] : [])];
+  return [input.compartments.lineNumbers.of(input.settings.lineNumbers ? [lineNumbers(), foldGutter()] : [])]
 }
 
 function placeholderExtensions(input: EditorExtensionInput): Extension[] {
   return [input.compartments.placeholder.of([
     placeholderExt(input.placeholder),
     EditorView.contentAttributes.of({ 'aria-label': input.placeholder }),
-  ])];
+  ])]
 }
 
 function autocompleteExtensions(input: EditorExtensionInput): Extension[] {
@@ -100,7 +100,7 @@ function autocompleteExtensions(input: EditorExtensionInput): Extension[] {
     closeOnBlur: true,
     maxRenderedOptions: 24,
     icons: false,
-  })];
+  })]
 }
 
 function commandKeymaps(): Extension[] {
@@ -123,7 +123,7 @@ function commandKeymaps(): Extension[] {
     { key: 'Mod-4', run: setHeading(4) },
     { key: 'Mod-5', run: setHeading(5) },
     { key: 'Mod-6', run: setHeading(6) },
-  ])];
+  ])]
 }
 
 function frameworkKeymaps(): Extension[] {
@@ -132,41 +132,41 @@ function frameworkKeymaps(): Extension[] {
     keymap.of(standardKeymap),
     keymap.of(defaultKeymap),
     keymap.of([indentWithTab]),
-  ];
+  ]
 }
 
 function listenerExtensions(live: EditorLiveRefs): Extension[] {
   return [
     EditorView.updateListener.of((update) => {
-      const external = update.transactions.some((transaction) => transaction.annotation(externalValueUpdate));
+      const external = update.transactions.some((transaction) => transaction.annotation(externalValueUpdate))
       if (update.docChanged && !external) {
-        live.cb.current.onChange(update.state.doc.toString());
+        live.cb.current.onChange(update.state.doc.toString())
       }
       if (update.selectionSet && live.cb.current.onCursorLine) {
-        const line = update.state.doc.lineAt(update.state.selection.main.head).number;
-        live.cb.current.onCursorLine(line);
+        const line = update.state.doc.lineAt(update.state.selection.main.head).number
+        live.cb.current.onCursorLine(line)
       }
     }),
     EditorView.domEventHandlers({
       scroll(_event, view) {
-        live.cb.current.onScroll?.(view);
+        live.cb.current.onScroll?.(view)
       },
       contextmenu(event, view) {
         if (live.cb.current.onContextMenu) {
-          live.cb.current.onContextMenu(event, view);
-          return true;
+          live.cb.current.onContextMenu(event, view)
+          return true
         }
-        return false;
+        return false
       },
     }),
     linkHoverExtension(),
     linkHoverFacet.of({
       propose: (link, options) => live.propose.current(link, options),
       hide: () => {
-        if (!live.linkHover.current.card) return false;
-        live.linkHover.current.hideNow();
-        return true;
+        if (!live.linkHover.current.card) return false
+        live.linkHover.current.hideNow()
+        return true
       },
     }),
-  ];
+  ]
 }

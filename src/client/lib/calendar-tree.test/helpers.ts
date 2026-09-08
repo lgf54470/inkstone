@@ -1,4 +1,4 @@
-import type { NoteSummary } from '@shared/types';
+import type { NoteSummary } from '@shared/types'
 
 export function note(overrides: Partial<NoteSummary> = {}): NoteSummary {
   return {
@@ -18,5 +18,5 @@ export function note(overrides: Partial<NoteSummary> = {}): NoteSummary {
     updatedAt: 0,
     deletedAt: null,
     ...overrides,
-  };
+  }
 }

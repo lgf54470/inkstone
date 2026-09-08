@@ -1,15 +1,15 @@
-import { Hono } from 'hono';
-import { countText, deriveExcerpt } from '@shared/markdown-utils';
-import { utf8ByteLength } from '@shared/text-utils';
-import type { AppBindings } from '../../env';
-import { buildNoteDerivedStatements, shiftSqlPlaceholders } from '../../db/writes';
-import type { NoteRow } from '../../db/rows';
-import { sha256Hex } from '../../lib/encoding';
-import { ApiError } from '../../lib/errors';
-import { newId } from '../../lib/id';
-import { broadcastCursor, scheduleFtsDrain } from '../../lib/notify';
-import { enqueueNoteIndex } from '../../mcp/ai-search';
-import { loadNote, loadNoteRow, restoredVersionTitle, trimNoteVersionsStatement, guardedChangeStatement } from './helpers';
+import { Hono } from 'hono'
+import { countText, deriveExcerpt } from '@shared/markdown-utils'
+import { utf8ByteLength } from '@shared/text-utils'
+import type { AppBindings } from '../../env'
+import { buildNoteDerivedStatements, shiftSqlPlaceholders } from '../../db/writes'
+import type { NoteRow } from '../../db/rows'
+import { sha256Hex } from '../../lib/encoding'
+import { ApiError } from '../../lib/errors'
+import { newId } from '../../lib/id'
+import { broadcastCursor, scheduleFtsDrain } from '../../lib/notify'
+import { enqueueNoteIndex } from '../../mcp/ai-search'
+import { loadNote, loadNoteRow, restoredVersionTitle, trimNoteVersionsStatement, guardedChangeStatement } from './helpers'
 
 export function registerNotesVersionsRoutes(notesRoutes: Hono<AppBindings>): void {
   registerListVersionsRoute(notesRoutes)

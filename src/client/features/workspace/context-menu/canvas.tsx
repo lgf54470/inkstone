@@ -1,4 +1,4 @@
-import { EditorSelection } from '@codemirror/state';
+import { EditorSelection } from '@codemirror/state'
 import {
   BarChart2,
   BookOpen,
@@ -28,13 +28,13 @@ import {
   Sparkles,
   Table as TableIcon,
   Undo2,
-} from 'lucide-react';
-import type { MenuItem } from '../../../components/overlay';
-import { t } from '../../../lib/i18n';
-import { preferredScrollBehavior } from '../../../lib/motion';
-import { insertAdvancedCodeBlock, insertCallout, insertCodeBlock, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands';
-import type { MenuCtx } from './types';
-import { SubmenuList } from './submenu';
+} from 'lucide-react'
+import type { MenuItem } from '../../../components/overlay'
+import { t } from '../../../lib/i18n'
+import { preferredScrollBehavior } from '../../../lib/motion'
+import { insertAdvancedCodeBlock, insertCallout, insertCodeBlock, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands'
+import type { MenuCtx } from './types'
+import { SubmenuList } from './submenu'
 
 const MERMAID_MENU_WIDTH = 190
 const CHART_MENU_WIDTH = 180
@@ -43,7 +43,7 @@ const EMOJI_MENU_WIDTH = 180
 const INSERT_MENU_WIDTH = 200
 
 function basicInsertItems(ctx: MenuCtx): MenuItem[] {
-  const { onPickImage, onPickFile, runStateCommand } = ctx;
+  const { onPickImage, onPickFile, runStateCommand } = ctx
   return [
     { id: 'link', label: t('workspace.link'), icon: <Link2 size={13} />, onSelect: () => runStateCommand(insertLink()) },
     { id: 'image', label: t('workspace.insert_image'), icon: <ImageIcon size={13} />, onSelect: () => onPickImage?.() },
@@ -53,13 +53,13 @@ function basicInsertItems(ctx: MenuCtx): MenuItem[] {
     { id: 'advanced-code', label: t('workspace.enhanced_code_block'), icon: <FileCode size={13} />, onSelect: () => runStateCommand(insertAdvancedCodeBlock) },
     { id: 'js-example', label: t('workspace.runnable_js_block'), icon: <FileCode size={13} />, onSelect: () => runStateCommand(insertRunnableJsBlock) },
     { id: 'math', label: t('workspace.math'), icon: <Sigma size={13} />, onSelect: () => runStateCommand(toggleInlineMath) },
-  ];
+  ]
 }
 
 function diagramInsertItems(ctx: MenuCtx, kind: 'mermaid' | 'chart', closeParent: () => void): MenuItem[] {
-  const { runStateCommand } = ctx;
-  const isMermaid = kind === 'mermaid';
-  const templates = isMermaid ? MERMAID_TEMPLATES : CHARTJS_TEMPLATES;
+  const { runStateCommand } = ctx
+  const isMermaid = kind === 'mermaid'
+  const templates = isMermaid ? MERMAID_TEMPLATES : CHARTJS_TEMPLATES
   return [
     {
       id: kind,
@@ -68,8 +68,8 @@ function diagramInsertItems(ctx: MenuCtx, kind: 'mermaid' | 'chart', closeParent
       submenu: ({ closeMenu: closeSub }: { closeMenu: () => void }) => (
         <SubmenuList
           closeMenu={() => {
-            closeSub();
-            closeParent();
+            closeSub()
+            closeParent()
           }}
           width={isMermaid ? MERMAID_MENU_WIDTH : CHART_MENU_WIDTH}
           items={templates.map((tpl) => ({
@@ -80,11 +80,11 @@ function diagramInsertItems(ctx: MenuCtx, kind: 'mermaid' | 'chart', closeParent
         />
       ),
     },
-  ];
+  ]
 }
 
 function tailInsertItems(ctx: MenuCtx): MenuItem[] {
-  const { runStateCommand } = ctx;
+  const { runStateCommand } = ctx
   return [
     { id: 'callout', label: t('workspace.callout'), icon: <Quote size={13} />, onSelect: () => runStateCommand(insertCallout) },
     { id: 'divider', label: t('workspace.divider'), icon: <Minus size={13} />, onSelect: () => runStateCommand(insertHorizontalRule) },
@@ -95,11 +95,11 @@ function tailInsertItems(ctx: MenuCtx): MenuItem[] {
     { id: 'abbr', label: t('workspace.abbreviation'), icon: <HelpCircle size={13} />, onSelect: () => runStateCommand(insertAbbreviation) },
     { id: 'frontmatter', label: 'Front Matter', icon: <FileText size={13} />, onSelect: () => runStateCommand(insertFrontMatter) },
     { id: 'template', label: t('workspace.insert_note_template'), icon: <Calendar size={13} />, onSelect: () => runStateCommand(insertNoteTemplate) },
-  ];
+  ]
 }
 
 function taskStatusInsertItems(ctx: MenuCtx, closeParent: () => void): MenuItem[] {
-  const { runStateCommand } = ctx;
+  const { runStateCommand } = ctx
   return [
     {
       id: 'tasks-status',
@@ -108,8 +108,8 @@ function taskStatusInsertItems(ctx: MenuCtx, closeParent: () => void): MenuItem[
       submenu: ({ closeMenu: closeSub }: { closeMenu: () => void }) => (
         <SubmenuList
           closeMenu={() => {
-            closeSub();
-            closeParent();
+            closeSub()
+            closeParent()
           }}
           width={TASK_MENU_WIDTH}
           items={[
@@ -121,11 +121,11 @@ function taskStatusInsertItems(ctx: MenuCtx, closeParent: () => void): MenuItem[
         />
       ),
     },
-  ];
+  ]
 }
 
 function emojiInsertItems(ctx: MenuCtx, closeParent: () => void): MenuItem[] {
-  const { runStateCommand } = ctx;
+  const { runStateCommand } = ctx
   return [
     {
       id: 'emoji',
@@ -134,8 +134,8 @@ function emojiInsertItems(ctx: MenuCtx, closeParent: () => void): MenuItem[] {
       submenu: ({ closeMenu: closeSub }: { closeMenu: () => void }) => (
         <SubmenuList
           closeMenu={() => {
-            closeSub();
-            closeParent();
+            closeSub()
+            closeParent()
           }}
           width={EMOJI_MENU_WIDTH}
           items={COMMON_EMOJIS.map((item) => ({
@@ -146,7 +146,7 @@ function emojiInsertItems(ctx: MenuCtx, closeParent: () => void): MenuItem[] {
         />
       ),
     },
-  ];
+  ]
 }
 
 function buildInsertItem(ctx: MenuCtx): MenuItem {
@@ -169,11 +169,11 @@ function buildInsertItem(ctx: MenuCtx): MenuItem {
         ]}
       />
     ),
-  };
+  }
 }
 
 export function buildEditorBlankItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, previewContext, handlePasteIntoEditor } = ctx;
+  const { editorView, previewContext, handlePasteIntoEditor } = ctx
 
   if (editorView && (!previewContext || previewContext.type === 'empty')) {
     return [
@@ -204,18 +204,18 @@ export function buildEditorBlankItems(ctx: MenuCtx): MenuItem[] | null {
         icon: <CheckSquare size={14} />,
         combo: 'mod+a',
         onSelect: () => {
-          editorView.dispatch({ selection: EditorSelection.range(0, editorView.state.doc.length) });
+          editorView.dispatch({ selection: EditorSelection.range(0, editorView.state.doc.length) })
         },
       },
       buildInsertItem(ctx),
-    ];
+    ]
   }
-  return null;
+  return null
 }
 
 function buildExportItem(ctx: MenuCtx): MenuItem | null {
-  const { onExport } = ctx;
-  if (!onExport) return null;
+  const { onExport } = ctx
+  if (!onExport) return null
   return {
     id: 'export-sub',
     label: t('workspace.export'),
@@ -230,12 +230,12 @@ function buildExportItem(ctx: MenuCtx): MenuItem | null {
         ]}
       />
     ),
-  };
+  }
 }
 
 export function buildPreviewCanvasItems(ctx: MenuCtx): MenuItem[] {
-  const { content, onSwitchLayout, currentLayout, previewScrollerRef, handleCopy } = ctx;
-  const exportItem = buildExportItem(ctx);
+  const { content, onSwitchLayout, currentLayout, previewScrollerRef, handleCopy } = ctx
+  const exportItem = buildExportItem(ctx)
 
   return [
     {
@@ -265,7 +265,7 @@ export function buildPreviewCanvasItems(ctx: MenuCtx): MenuItem[] {
       icon: <Minus size={14} className='rotate-90' />,
       separatorBefore: true,
       onSelect: () => {
-        previewScrollerRef?.current?.scrollTo({ top: 0, behavior: preferredScrollBehavior() });
+        previewScrollerRef?.current?.scrollTo({ top: 0, behavior: preferredScrollBehavior() })
       },
     },
     {
@@ -277,9 +277,9 @@ export function buildPreviewCanvasItems(ctx: MenuCtx): MenuItem[] {
           previewScrollerRef.current.scrollTo({
             top: previewScrollerRef.current.scrollHeight,
             behavior: preferredScrollBehavior(),
-          });
+          })
         }
       },
     },
-  ];
+  ]
 }

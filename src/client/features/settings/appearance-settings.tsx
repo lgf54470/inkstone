@@ -50,8 +50,8 @@ export function AppearanceSettings({
   )
 }
 
-type AppearanceSettingsState = ReturnType<typeof useSession.getState>['settings']['appearance'];
-type Setters = ReturnType<typeof useAppearanceSettings>['setters'];
+type AppearanceSettingsState = ReturnType<typeof useSession.getState>['settings']['appearance']
+type Setters = ReturnType<typeof useAppearanceSettings>['setters']
 interface AppearanceOptions {
   languageOptions: SegmentedOption<AppLocale>[]
   themeOptions: SegmentedOption<ThemePref>[]
@@ -61,7 +61,7 @@ interface AppearanceOptions {
   yearGridOptions: SegmentedOption<YearGridColumnsPref>[]
 }
 
-type Options = AppearanceOptions;
+type Options = AppearanceOptions
 
 function useAppearanceSettings() {
   const appearance = useSession((s) => s.settings.appearance)

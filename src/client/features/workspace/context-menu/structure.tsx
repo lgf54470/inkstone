@@ -1,5 +1,5 @@
-import { EditorSelection } from '@codemirror/state';
-import type { EditorView } from '@codemirror/view';
+import { EditorSelection } from '@codemirror/state'
+import type { EditorView } from '@codemirror/view'
 import {
   CheckSquare,
   Columns2,
@@ -11,26 +11,26 @@ import {
   Pencil,
   Plus,
   Trash2,
-} from 'lucide-react';
-import type { MenuItem } from '../../../components/overlay';
-import { t } from '../../../lib/i18n';
-import { findNoteByTitle } from '../../../store/notes';
-import { toggleBulletList, toggleTaskDone } from '../../../editor/commands';
-import type { MenuCtx } from './types';
-import { SubmenuList } from './submenu';
+} from 'lucide-react'
+import type { MenuItem } from '../../../components/overlay'
+import { t } from '../../../lib/i18n'
+import { findNoteByTitle } from '../../../store/notes'
+import { toggleBulletList, toggleTaskDone } from '../../../editor/commands'
+import type { MenuCtx } from './types'
+import { SubmenuList } from './submenu'
 
 function buildWikiLinkMenu(ctx: MenuCtx, targetTitle: string): MenuItem[] {
-  const { previewContext, onJumpToLine, createNote, openNote, setWorkspaceNote, handleCopy } = ctx;
+  const { previewContext, onJumpToLine, createNote, openNote, setWorkspaceNote, handleCopy } = ctx
   return [
     {
       id: 'open-note',
       label: t('contextmenu.wikilink_open'),
       icon: <Network size={14} />,
       onSelect: () => {
-        if (!targetTitle) return;
-        const targetNote = findNoteByTitle(targetTitle);
-        if (targetNote) void openNote(targetNote.id);
-        else void createNote({ title: targetTitle, open: true });
+        if (!targetTitle) return
+        const targetNote = findNoteByTitle(targetTitle)
+        if (targetNote) void openNote(targetNote.id)
+        else void createNote({ title: targetTitle, open: true })
       },
     },
     {
@@ -38,9 +38,9 @@ function buildWikiLinkMenu(ctx: MenuCtx, targetTitle: string): MenuItem[] {
       label: t('contextmenu.wikilink_open_secondary'),
       icon: <Columns2 size={14} />,
       onSelect: () => {
-        if (!targetTitle) return;
-        const targetNote = findNoteByTitle(targetTitle);
-        if (targetNote) setWorkspaceNote('secondary', targetNote.id, true);
+        if (!targetTitle) return
+        const targetNote = findNoteByTitle(targetTitle)
+        if (targetNote) setWorkspaceNote('secondary', targetNote.id, true)
       },
     },
     {
@@ -67,30 +67,30 @@ function buildWikiLinkMenu(ctx: MenuCtx, targetTitle: string): MenuItem[] {
           },
         ]
       : []),
-  ];
+  ]
 }
 
 export function buildWikiLinkItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorContext, previewContext } = ctx;
+  const { editorContext, previewContext } = ctx
   if (editorContext?.type === 'wikilink' || previewContext?.type === 'wikilink') {
-    const targetTitle = editorContext?.wikiLink?.target ?? previewContext?.wikiLink?.noteTitle ?? '';
-    return buildWikiLinkMenu(ctx, targetTitle);
+    const targetTitle = editorContext?.wikiLink?.target ?? previewContext?.wikiLink?.noteTitle ?? ''
+    return buildWikiLinkMenu(ctx, targetTitle)
   }
-  return null;
+  return null
 }
 
 export function buildLinkItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, editorContext, previewContext, handleCopy } = ctx;
+  const { editorView, editorContext, previewContext, handleCopy } = ctx
 
   if (editorContext?.type === 'link' || previewContext?.type === 'link') {
-    const url = editorContext?.link?.url ?? previewContext?.link?.url ?? '';
+    const url = editorContext?.link?.url ?? previewContext?.link?.url ?? ''
     return [
       {
         id: 'open-link',
         label: t('contextmenu.link_open'),
         icon: <ExternalLink size={14} />,
         onSelect: () => {
-          if (url) window.open(url, '_blank', 'noopener,noreferrer');
+          if (url) window.open(url, '_blank', 'noopener,noreferrer')
         },
       },
       {
@@ -108,17 +108,17 @@ export function buildLinkItems(ctx: MenuCtx): MenuItem[] | null {
               tone: 'danger' as const,
               separatorBefore: true,
               onSelect: () => {
-                if (!editorView || !editorContext.link) return;
+                if (!editorView || !editorContext.link) return
                 editorView.dispatch({
                   changes: { from: editorContext.link.from, to: editorContext.link.to, insert: editorContext.link.text },
-                });
+                })
               },
             },
           ]
         : []),
-    ];
+    ]
   }
-  return null;
+  return null
 }
 
 function frontmatterPropertyTemplates() {
@@ -127,7 +127,7 @@ function frontmatterPropertyTemplates() {
     { id: 'aliases', label: 'aliases: []', text: 'aliases: []\n' },
     { id: 'status', label: 'status: draft', text: 'status: draft\n' },
     { id: 'created', label: 'createdAt: ' + new Date().toISOString().slice(0, 10), text: 'createdAt: ' + new Date().toISOString().slice(0, 10) + '\n' },
-  ];
+  ]
 }
 
 function frontmatterAddPropSubmenu(closeMenu: () => void, editorView: EditorView | null | undefined, propertyTemplates: Array<{ id: string; label: string; text: string }>) {
@@ -138,16 +138,16 @@ function frontmatterAddPropSubmenu(closeMenu: () => void, editorView: EditorView
         id: prop.id,
         label: prop.label,
         onSelect: () => {
-          if (!editorView) return;
-          const line = editorView.state.doc.line(2);
+          if (!editorView) return
+          const line = editorView.state.doc.line(2)
           editorView.dispatch({
             changes: { from: line.from, insert: prop.text },
             selection: EditorSelection.cursor(line.from + prop.text.length),
-          });
+          })
         },
       }))}
     />
-  );
+  )
 }
 
 function buildFrontmatterAddPropItem(editorView: EditorView | null | undefined, propertyTemplates: Array<{ id: string; label: string; text: string }>): MenuItem {
@@ -156,11 +156,11 @@ function buildFrontmatterAddPropItem(editorView: EditorView | null | undefined, 
     label: t('contextmenu.frontmatter_add_prop'),
     icon: <Plus size={14} />,
     submenu: ({ closeMenu }: { closeMenu: () => void }) => frontmatterAddPropSubmenu(closeMenu, editorView, propertyTemplates),
-  };
+  }
 }
 
 function buildFrontmatterMenu(ctx: MenuCtx): MenuItem[] {
-  const { editorContext, editorView, previewContext, content, onJumpToLine, handleCopy } = ctx;
+  const { editorContext, editorView, previewContext, content, onJumpToLine, handleCopy } = ctx
   return [
     ...(editorContext ? [buildFrontmatterAddPropItem(editorView, frontmatterPropertyTemplates())] : []),
     {
@@ -168,8 +168,8 @@ function buildFrontmatterMenu(ctx: MenuCtx): MenuItem[] {
       label: t('contextmenu.frontmatter_copy_yaml'),
       icon: <Copy size={14} />,
       onSelect: () => {
-        const match = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---/.exec(content);
-        if (match) handleCopy(match[1]!);
+        const match = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---/.exec(content)
+        if (match) handleCopy(match[1]!)
       },
     },
     ...(previewContext
@@ -183,26 +183,26 @@ function buildFrontmatterMenu(ctx: MenuCtx): MenuItem[] {
           },
         ]
       : []),
-  ];
+  ]
 }
 
 export function buildFrontmatterItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorContext, previewContext } = ctx;
+  const { editorContext, previewContext } = ctx
   if (editorContext?.type === 'frontmatter' || previewContext?.type === 'frontmatter') {
-    return buildFrontmatterMenu(ctx);
+    return buildFrontmatterMenu(ctx)
   }
-  return null;
+  return null
 }
 
 function deleteTaskLine(editorView: EditorView | null | undefined, lineNumber: number) {
-  if (!editorView) return;
-  const line = editorView.state.doc.line(lineNumber);
-  const to = Math.min(editorView.state.doc.length, line.to + 1);
-  editorView.dispatch({ changes: { from: line.from, to, insert: '' } });
+  if (!editorView) return
+  const line = editorView.state.doc.line(lineNumber)
+  const to = Math.min(editorView.state.doc.length, line.to + 1)
+  editorView.dispatch({ changes: { from: line.from, to, insert: '' } })
 }
 
 function buildTaskMenu(ctx: MenuCtx): MenuItem[] {
-  const { editorView, editorContext, previewContext, onJumpToLine, runStateCommand } = ctx;
+  const { editorView, editorContext, previewContext, onJumpToLine, runStateCommand } = ctx
   return [
     {
       id: 'toggle-task',
@@ -210,10 +210,10 @@ function buildTaskMenu(ctx: MenuCtx): MenuItem[] {
       icon: <CheckSquare size={14} />,
       onSelect: () => {
         if (editorView) {
-          runStateCommand(toggleTaskDone);
+          runStateCommand(toggleTaskDone)
         } else if (previewContext?.task) {
-          const checkbox = previewContext.target.closest<HTMLInputElement>('input[type="checkbox"]');
-          if (checkbox) checkbox.click();
+          const checkbox = previewContext.target.closest<HTMLInputElement>('input[type="checkbox"]')
+          if (checkbox) checkbox.click()
         }
       },
     },
@@ -246,13 +246,13 @@ function buildTaskMenu(ctx: MenuCtx): MenuItem[] {
           },
         ]
       : []),
-  ];
+  ]
 }
 
 export function buildTaskItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorContext, previewContext } = ctx;
+  const { editorContext, previewContext } = ctx
   if (editorContext?.type === 'task' || previewContext?.type === 'task') {
-    return buildTaskMenu(ctx);
+    return buildTaskMenu(ctx)
   }
-  return null;
+  return null
 }

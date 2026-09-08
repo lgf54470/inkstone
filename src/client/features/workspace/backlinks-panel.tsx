@@ -1,46 +1,46 @@
-import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, Link2 } from 'lucide-react';
-import type { Backlink } from '@shared/types';
-import { getNoteBacklinks } from '../../lib/backlinks';
-import { errorMessage } from '../../lib/errors';
-import { Button } from '../../components/primitives';
-import { useNotes } from '../../store/notes';
-import { t } from '../../lib/i18n';
+import { useEffect, useRef, useState } from 'react'
+import { ArrowUpRight, Link2 } from 'lucide-react'
+import type { Backlink } from '@shared/types'
+import { getNoteBacklinks } from '../../lib/backlinks'
+import { errorMessage } from '../../lib/errors'
+import { Button } from '../../components/primitives'
+import { useNotes } from '../../store/notes'
+import { t } from '../../lib/i18n'
 
 const PANEL_MAX_H = 'max-h-[36%]'
 
 export function BacklinksPanel({ noteId }: {
-  noteId: string;
+  noteId: string
 }) {
-  const [links, setLinks] = useState<Backlink[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [reload, setReload] = useState(0);
-  const forceRetryRef = useRef(false);
-  const openNote = useNotes((s) => s.openNote);
-  const rev = useNotes((s) => s.notes[noteId]?.rev ?? 0);
-  const cursor = useNotes((s) => s.cursor);
+  const [links, setLinks] = useState<Backlink[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reload, setReload] = useState(0)
+  const forceRetryRef = useRef(false)
+  const openNote = useNotes((s) => s.openNote)
+  const rev = useNotes((s) => s.notes[noteId]?.rev ?? 0)
+  const cursor = useNotes((s) => s.cursor)
   useEffect(() => {
-    const controller = new AbortController();
-    let isCancelled = false;
-    const forceRetry = forceRetryRef.current;
-    forceRetryRef.current = false;
-    setLinks(null);
-    setLoadError(null);
+    const controller = new AbortController()
+    let isCancelled = false
+    const forceRetry = forceRetryRef.current
+    forceRetryRef.current = false
+    setLinks(null)
+    setLoadError(null)
     void (async () => {
       try {
-        const res = await getNoteBacklinks(noteId, rev, cursor, controller.signal, { force: forceRetry });
+        const res = await getNoteBacklinks(noteId, rev, cursor, controller.signal, { force: forceRetry })
         if (!isCancelled)
-          setLinks(res);
+          setLinks(res)
       } catch (error) {
         if (!isCancelled)
-          setLoadError(errorMessage(error));
+          setLoadError(errorMessage(error))
       }
-    })();
+    })()
     return () => {
-      isCancelled = true;
-      controller.abort();
-    };
-  }, [noteId, rev, cursor, reload]);
+      isCancelled = true
+      controller.abort()
+    }
+  }, [noteId, rev, cursor, reload])
   return (<section className={`${PANEL_MAX_H} shrink-0 overflow-y-auto border-t border-[var(--border-subtle)] bg-[var(--bg-base)]`}>
     <div className="sticky top-0 z-[var(--z-sticky)] flex items-center gap-1.5 border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-[length:var(--text-10\.5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]">
     <Link2 size={11}/>{t('common.backlinks')}{links && links.length > 0 && <span className='tabular'>· {links.length}</span>}
@@ -57,5 +57,5 @@ export function BacklinksPanel({ noteId }: {
         </button>
       </li>))}
     </ul>)}
-  </section>);
+  </section>)
 }

@@ -1,11 +1,11 @@
-import { create, type StoreApi } from 'zustand';
-import type { ThemePref, ViewKind } from '@shared/types';
-import { LIMITS } from '@shared/constants';
-import { isVirtualFolderId } from '../../lib/calendar-tree';
-import { t } from '../../lib/i18n';
-import { DEFAULTS, loadPersisted, activatedNoteFields, persist, primePersistCache } from './state';
-import type { ToastItem, UiState, WorkspacePane } from './types';
-import { applyThemeToDom } from './theme';
+import { create, type StoreApi } from 'zustand'
+import type { ThemePref, ViewKind } from '@shared/types'
+import { LIMITS } from '@shared/constants'
+import { isVirtualFolderId } from '../../lib/calendar-tree'
+import { t } from '../../lib/i18n'
+import { DEFAULTS, loadPersisted, activatedNoteFields, persist, primePersistCache } from './state'
+import type { ToastItem, UiState, WorkspacePane } from './types'
+import { applyThemeToDom } from './theme'
 
 
 
@@ -70,7 +70,7 @@ export const useUi = create<UiState>((set, get) => ({
   toast: (input) => toastImpl(set, input),
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   applyAppearance: (patch) => applyAppearanceImpl(get, set, patch)
-}) as UiState);
+}) as UiState)
 
 primePersistCache(useUi.getState())
 useUi.subscribe(persist)
@@ -211,10 +211,10 @@ function openViewState(
 
 function toggleTagSelectionState(state: UiState, tag: string): Partial<UiState> {
   if (state.selectedTags.includes(tag))
-    return { selectedTags: state.selectedTags.filter((item) => item !== tag) };
+    return { selectedTags: state.selectedTags.filter((item) => item !== tag) }
   if (state.selectedTags.length >= LIMITS.tagSelectionMax)
-    return state;
-  return { selectedTags: [...state.selectedTags, tag] };
+    return state
+  return { selectedTags: [...state.selectedTags, tag] }
 }
 
 function selectTagsState(state: UiState, tags: string[]): Partial<UiState> {

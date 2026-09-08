@@ -152,4 +152,4 @@ export const messages = {
 'settings.value0_notes_value1': '{value0} 篇笔记，共 {value1}',
 'settings.version': '版本',
 'settings.version_history': '历史版本',
-};
+}

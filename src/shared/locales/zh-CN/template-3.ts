@@ -361,4 +361,4 @@ tags: [周报]
 `,
 'template.weekly_report.description': '总结本周进展、收获与下周计划。',
 'template.weekly_report.name': '周报',
-};
+}

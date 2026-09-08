@@ -1,17 +1,17 @@
-import { Hono } from 'hono';
-import type { Context } from 'hono';
-import { LIMITS } from '@shared/constants';
-import type { Attachment } from '@shared/types';
-import { persistAttachmentWithinQuota } from '../../attachments/storage';
-import type { AppBindings } from '../../env';
-import { ApiError } from '../../lib/errors';
-import { newId } from '../../lib/id';
-import { FORM_BODY_LIMITS, readFormDataWithinLimit } from '../../lib/request';
-import { createScopedFolder, createScopedTag, deleteScopedFolder, deleteScopedTag, listScopedFolders, listScopedTags, updateScopedFolder, updateScopedTag } from '../../lib/scoped-organizer';
-import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle';
-import { requireAuth } from '../../middleware/auth';
-import { removeTagFromAttachmentJson } from './helpers';
-import { renameTagInAttachmentJson } from './helpers';
+import { Hono } from 'hono'
+import type { Context } from 'hono'
+import { LIMITS } from '@shared/constants'
+import type { Attachment } from '@shared/types'
+import { persistAttachmentWithinQuota } from '../../attachments/storage'
+import type { AppBindings } from '../../env'
+import { ApiError } from '../../lib/errors'
+import { newId } from '../../lib/id'
+import { FORM_BODY_LIMITS, readFormDataWithinLimit } from '../../lib/request'
+import { createScopedFolder, createScopedTag, deleteScopedFolder, deleteScopedTag, listScopedFolders, listScopedTags, updateScopedFolder, updateScopedTag } from '../../lib/scoped-organizer'
+import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
+import { requireAuth } from '../../middleware/auth'
+import { removeTagFromAttachmentJson } from './helpers'
+import { renameTagInAttachmentJson } from './helpers'
 
 export function registerFilesOrganizerRoutes(filesRoutes: Hono<AppBindings>): void {
   registerFilesUploadRoute(filesRoutes)

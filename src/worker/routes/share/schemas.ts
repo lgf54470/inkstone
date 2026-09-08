@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod'
 
 export const shareBatchSchema = z.object({
   action: z.enum(['enable', 'disable', 'revoke', 'expire', 'move']),

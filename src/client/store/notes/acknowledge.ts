@@ -1,24 +1,24 @@
 /** Cross-tab broadcast acknowledgements: apply outbox results and base advancements from other tabs. */
-import { useNotes } from '../notes';
-import { adoptNote } from './adopt';
-import { pendingNoteCount, showOfflineRecoveryToast, type OutboxResult } from './outbox';
-import { advanceDirtyRevision, advanceDependentOutboxWrites } from './runtime';
-import { scheduleShellSave } from './shell-save';
-import { workspacePaneForNote } from './workspace';
-import { localDb, type BroadcastPayload } from '../../lib/db';
-import { CLIENT_ID } from '../../lib/api';
-import { useUi } from '../ui';
-import { dirty, validatedRevisions } from './model';
+import { useNotes } from '../notes'
+import { adoptNote } from './adopt'
+import { pendingNoteCount, showOfflineRecoveryToast, type OutboxResult } from './outbox'
+import { advanceDirtyRevision, advanceDependentOutboxWrites } from './runtime'
+import { scheduleShellSave } from './shell-save'
+import { workspacePaneForNote } from './workspace'
+import { localDb, type BroadcastPayload } from '../../lib/db'
+import { CLIENT_ID } from '../../lib/api'
+import { useUi } from '../ui'
+import { dirty, validatedRevisions } from './model'
 
 function refreshPendingCount(): void {
   void (async () => {
     try {
-      const outbox = await localDb.getOutbox();
-      useNotes.setState({ pendingCount: pendingNoteCount(outbox) });
+      const outbox = await localDb.getOutbox()
+      useNotes.setState({ pendingCount: pendingNoteCount(outbox) })
     } catch {
       // Best-effort count refresh; the next outbox event or pull retries it.
     }
-  })();
+  })()
 }
 export function acknowledgeOutboxBaseAdvanced(
   result: Extract<BroadcastPayload, { type: 'outbox-base-advanced' }>,
@@ -30,54 +30,54 @@ export function acknowledgeOutboxBaseAdvanced(
     result.nextRev,
     () => useNotes.getState(),
     false,
-  );
+  )
 }
 export function acknowledgeOutboxResult(result: OutboxResult): void {
   if (result.targetClientId !== CLIENT_ID)
-    return;
-  const pending = dirty.get(result.noteId);
+    return
+  const pending = dirty.get(result.noteId)
   if (!pending)
-    return;
+    return
   if (result.outcome === 'saved') {
-    applySavedOutboxResult(result, pending);
-    return;
+    applySavedOutboxResult(result, pending)
+    return
   }
-  applyFailedOutboxResult(result);
+  applyFailedOutboxResult(result)
 }
 
 function applySavedOutboxResult(result: OutboxResult, pending: NonNullable<ReturnType<typeof dirty.get>>): void {
   if (pending.writeId !== result.writeId) {
     if (result.rev !== undefined && result.rev > pending.rev) {
-      advanceDirtyRevision(result.noteId, pending.rev, result.rev, () => useNotes.getState());
-      void useNotes.getState().flush({ immediate: true });
+      advanceDirtyRevision(result.noteId, pending.rev, result.rev, () => useNotes.getState())
+      void useNotes.getState().flush({ immediate: true })
     }
-    return;
+    return
   }
-  dirty.delete(result.noteId);
+  dirty.delete(result.noteId)
   if (result.savedNote?.id === result.noteId) {
-    adoptNote(result.savedNote, useNotes.setState, () => useNotes.getState());
-    useNotes.setState({ lastSavedAt: Date.now() });
-    refreshPendingCount();
-    return;
+    adoptNote(result.savedNote, useNotes.setState, () => useNotes.getState())
+    useNotes.setState({ lastSavedAt: Date.now() })
+    refreshPendingCount()
+    return
   }
-  const state = useNotes.getState();
-  useNotes.setState((current) => savedNoteStateUpdater(current, result));
-  persistSavedContent(state, result);
-  scheduleShellSave(() => useNotes.getState());
-  refreshPendingCount();
+  const state = useNotes.getState()
+  useNotes.setState((current) => savedNoteStateUpdater(current, result))
+  persistSavedContent(state, result)
+  scheduleShellSave(() => useNotes.getState())
+  refreshPendingCount()
 }
 
 function savedNoteStateUpdater(
   current: ReturnType<typeof useNotes.getState>,
   result: OutboxResult,
 ): Partial<ReturnType<typeof useNotes.getState>> {
-  const note = current.notes[result.noteId];
+  const note = current.notes[result.noteId]
   const nextRev = note && result.rev !== undefined && result.rev > note.rev
     ? result.rev
-    : note?.rev;
+    : note?.rev
   const nextTitle = note && typeof result.savedTitle === 'string'
     ? result.savedTitle
-    : note?.title;
+    : note?.title
   const notes = note && (nextRev !== note.rev || nextTitle !== note.title)
     ? {
       ...current.notes,
@@ -88,48 +88,48 @@ function savedNoteStateUpdater(
         updatedAt: result.updatedAt ?? note.updatedAt,
       },
     }
-    : current.notes;
+    : current.notes
   return {
     notes,
     saveStatus: dirty.size ? current.saveStatus : 'synced',
     lastSavedAt: Date.now(),
-  };
+  }
 }
 
 function persistSavedContent(state: ReturnType<typeof useNotes.getState>, result: OutboxResult): void {
-  const content = state.contents[result.noteId];
+  const content = state.contents[result.noteId]
   if (content !== undefined && result.rev !== undefined) {
     void localDb.setContent(result.noteId, {
       content,
       rev: result.rev,
       updatedAt: result.updatedAt ?? Date.now(),
-    });
+    })
   }
 }
 
 function applyFailedOutboxResult(result: OutboxResult): void {
-  const pending = dirty.get(result.noteId);
+  const pending = dirty.get(result.noteId)
   if (!pending || pending.writeId !== result.writeId)
-    return;
-  dirty.delete(result.noteId);
-  validatedRevisions.delete(result.noteId);
-  const openPane = workspacePaneForNote(result.noteId);
-  const wasActive = useUi.getState().activeNoteId === result.noteId;
+    return
+  dirty.delete(result.noteId)
+  validatedRevisions.delete(result.noteId)
+  const openPane = workspacePaneForNote(result.noteId)
+  const wasActive = useUi.getState().activeNoteId === result.noteId
   useNotes.setState((current) => {
-    const contents = { ...current.contents };
-    delete contents[result.noteId];
+    const contents = { ...current.contents }
+    delete contents[result.noteId]
     return {
       contents,
       saveStatus: dirty.size ? current.saveStatus : 'synced',
-    };
-  });
-  void localDb.dropContent(result.noteId);
-  refreshPendingCount();
+    }
+  })
+  void localDb.dropContent(result.noteId)
+  refreshPendingCount()
   void (async () => {
-    await useNotes.getState().pull();
+    await useNotes.getState().pull()
     if (openPane && useNotes.getState().notes[result.noteId])
-      await useNotes.getState().openNote(result.noteId, { pane: openPane, activate: wasActive });
-  })();
+      await useNotes.getState().openNote(result.noteId, { pane: openPane, activate: wasActive })
+  })()
   if (result.copyId)
-    showOfflineRecoveryToast(() => useNotes.getState(), result.copyId, result.recoveryReason !== 'deleted');
+    showOfflineRecoveryToast(() => useNotes.getState(), result.copyId, result.recoveryReason !== 'deleted')
 }

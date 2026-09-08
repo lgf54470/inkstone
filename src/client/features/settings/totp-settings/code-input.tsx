@@ -1,5 +1,5 @@
-import { Input } from '../../../components/form';
-import { t } from '../../../lib/i18n';
+import { Input } from '../../../components/form'
+import { t } from '../../../lib/i18n'
 
 export function CodeInput(props: { value: string; isBusy: boolean; onChange: (value: string) => void }) {
   return (

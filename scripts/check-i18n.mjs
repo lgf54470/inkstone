@@ -1,8 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import ts from 'typescript';
-const root = path.resolve('src/client');
-const localeRoot = path.resolve('src/shared/locales');
+import fs from 'node:fs'
+import path from 'node:path'
+import ts from 'typescript'
+const root = path.resolve('src/client')
+const localeRoot = path.resolve('src/shared/locales')
 // Demo mode ships a pre-populated workspace whose seed data (welcome notes,
 // community gallery entries) is authored demo content in the demo locale, not
 // UI chrome rendered by the i18n layer. Like the OAuth consent page above, it
@@ -18,23 +18,23 @@ const localizedDemoFiles = new Set([
   path.resolve('src/client/demo/backend/routes/blog-mutations.ts'),
   path.resolve('src/client/demo/backend.test.ts'),
   path.resolve('src/client/demo/blog-smoke.test.ts'),
-]);
+])
 // Cross-tree renderer parity fixtures are authored Chinese markdown (input
 // data proving the root and blog renderers agree on CJK syntax), not UI copy
 // rendered by the i18n layer; same data category as the demo seed state above.
 const renderingFixtureFiles = new Set([
   path.resolve('tests/markdown-renderer-parity.test.ts'),
-]);
+])
 // The visual e2e matches locale-dependent UI labels (both zh-CN and en-US)
 // so the gate is locale-agnostic; the strings are test selectors, never UI
 // copy rendered by the i18n layer.
 const localizedFixtureFiles = new Set([
   path.resolve('scripts/e2e-visual.mjs'),
-]);
-const failures = [];
-const usedKeys = new Set();
-const forbiddenCjk = /[\p{Script=Han}\u3000-\u303f\uff00-\uffef]/u;
-const visibleAttributes = new Set(['alt', 'aria-label', 'description', 'hint', 'label', 'placeholder', 'title']);
+])
+const failures = []
+const usedKeys = new Set()
+const forbiddenCjk = /[\p{Script=Han}\u3000-\u303f\uff00-\uffef]/u
+const visibleAttributes = new Set(['alt', 'aria-label', 'description', 'hint', 'label', 'placeholder', 'title'])
 // Tag names are note data, not UI copy rendered by the i18n layer. The
 // built-in to-do tag is one such data constant; it is written here so the
 // raw-text scan below can blank it out.
@@ -43,7 +43,7 @@ const localizedDataFragments = new Map([
     [path.resolve('src/client/lib/calendar-tree.test/virtual-nodes.test.ts'), ['\u5f85\u529e']],
     [path.resolve('src/client/lib/calendar-tree.test/build-tree.test.ts'), ['\u5f85\u529e']],
     [path.resolve('src/client/lib/note-filter.test.ts'), ['\u5f85\u529e']],
-]);
+])
 const allowedHanFragments = new Map([
     [path.resolve('README.md'), ['<a href="./README_ZH.md">\u4e2d\u6587</a>']],
     // The OAuth consent page is a self-contained HTML document with its own
@@ -83,40 +83,40 @@ const allowedHanFragments = new Map([
         'Inkstone \u4f1a\u8bdd\u5df2\u8fc7\u671f\uff0c\u8bf7\u767b\u5f55\u540e\u91cd\u8bd5\u3002',
         '\u4e2d\u6587',
     ]],
-]);
+])
 function readMessagesDir(directory) {
-    const messages = new Map();
+    const messages = new Map()
     for (const file of walk(directory)) {
         if (!file.endsWith('.ts'))
-            continue;
+            continue
         for (const [key, value] of readMessages(file, 'messages')) {
             if (messages.has(key))
-                failures.push(`${path.relative(process.cwd(), file)}: duplicate message key ${key}`);
-            messages.set(key, value);
+                failures.push(`${path.relative(process.cwd(), file)}: duplicate message key ${key}`)
+            messages.set(key, value)
         }
     }
-    return messages;
+    return messages
 }
-const english = readMessagesDir(path.join(localeRoot, 'en-US'));
-const chinese = readMessagesDir(path.join(localeRoot, 'zh-CN'));
-const zhLocaleDir = path.join(localeRoot, 'zh-CN');
+const english = readMessagesDir(path.join(localeRoot, 'en-US'))
+const chinese = readMessagesDir(path.join(localeRoot, 'zh-CN'))
+const zhLocaleDir = path.join(localeRoot, 'zh-CN')
 for (const key of english.keys()) {
     if (!chinese.has(key))
-        failures.push(`missing zh-CN message: ${key}`);
+        failures.push(`missing zh-CN message: ${key}`)
     if (!/^[a-z][a-z0-9]*(?:\.[a-z0-9_]+)+$/.test(key))
-        failures.push(`invalid English message key: ${key}`);
+        failures.push(`invalid English message key: ${key}`)
     if (forbiddenCjk.test(key))
-        failures.push(`Chinese text used as a message key: ${key}`);
+        failures.push(`Chinese text used as a message key: ${key}`)
 }
 for (const key of chinese.keys()) {
     if (!english.has(key))
-        failures.push(`missing en-US message: ${key}`);
+        failures.push(`missing en-US message: ${key}`)
 }
 for (const [key, value] of english) {
     if (forbiddenCjk.test(value))
-        failures.push(`untranslated en-US message: ${key}`);
+        failures.push(`untranslated en-US message: ${key}`)
     if (placeholders(value) !== placeholders(chinese.get(key) ?? ''))
-        failures.push(`placeholder mismatch: ${key}`);
+        failures.push(`placeholder mismatch: ${key}`)
 }
 const englishOnlyPaths = [
     path.resolve('src'),
@@ -124,11 +124,11 @@ const englishOnlyPaths = [
     path.resolve('tests'),
     path.resolve('public'),
     path.resolve('.github'),
-];
+]
 for (const file of englishOnlyPaths.flatMap((target) => fs.existsSync(target) ? [...walk(target)] : [])) {
     if (localizedDemoFiles.has(file) || renderingFixtureFiles.has(file) || localizedFixtureFiles.has(file) || file.startsWith(zhLocaleDir + path.sep) || !isTextSource(file))
-        continue;
-    rejectHan(file);
+        continue
+    rejectHan(file)
 }
 for (const file of [
     'index.html',
@@ -141,51 +141,51 @@ for (const file of [
     'wrangler.toml',
     ...fs.readdirSync(process.cwd()).filter((name) => /^tsconfig.*\.json$/.test(name)),
 ]) {
-    const target = path.resolve(file);
+    const target = path.resolve(file)
     if (fs.existsSync(target))
-        rejectHan(target);
+        rejectHan(target)
 }
 for (const file of walk(root)) {
     if (localizedDemoFiles.has(file) || !/\.tsx?$/.test(file) || file.includes(`${path.sep}locales${path.sep}`) || file.endsWith(`${path.sep}i18n.ts`))
-        continue;
-    const sourceText = fs.readFileSync(file, 'utf8');
-    const isTestFile = file.includes('.test.');
-    const source = ts.createSourceFile(file, sourceText, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
-    visit(source);
+        continue
+    const sourceText = fs.readFileSync(file, 'utf8')
+    const isTestFile = file.includes('.test.')
+    const source = ts.createSourceFile(file, sourceText, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+    visit(source)
     function visit(node) {
         if (ts.isCallExpression(node) &&
             ts.isIdentifier(node.expression) &&
             node.expression.text === 't' &&
             node.arguments[0]) {
             if (!insideFunction(node))
-                report(node, 'module-scope t() freezes the initial locale');
-            const argument = node.arguments[0];
+                report(node, 'module-scope t() freezes the initial locale')
+            const argument = node.arguments[0]
             if (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) {
-                usedKeys.add(argument.text);
+                usedKeys.add(argument.text)
                 if (!english.has(argument.text))
-                    report(argument, `unknown message key ${JSON.stringify(argument.text)}`);
+                    report(argument, `unknown message key ${JSON.stringify(argument.text)}`)
                 if (/\p{Script=Han}/u.test(argument.text))
-                    report(argument, 'message keys must be English identifiers');
+                    report(argument, 'message keys must be English identifiers')
             }
         }
         if (!isTestFile && ts.isJsxText(node) && /[\p{L}\p{N}]/u.test(node.text) && node.text.trim())
-            report(node, `unlocalized JSX text ${JSON.stringify(node.text.trim())}`);
+            report(node, `unlocalized JSX text ${JSON.stringify(node.text.trim())}`)
         if (!isTestFile && ts.isJsxAttribute(node) && visibleAttributes.has(node.name.text) && node.initializer && ts.isStringLiteral(node.initializer)) {
-            const value = node.initializer.text.trim();
+            const value = node.initializer.text.trim()
             if (value && !isTechnicalPlaceholder(node.name.text, value))
-                report(node, `unlocalized ${node.name.text} attribute ${JSON.stringify(value)}`);
+                report(node, `unlocalized ${node.name.text} attribute ${JSON.stringify(value)}`)
         }            if (!isTestFile &&
                 (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) &&
                 /\p{Script=Han}/u.test(node.text) &&
                 !insideTranslationCall(node) &&
                 !insideDataConstant(node)) {
-                report(node, JSON.stringify(node.text));
+                report(node, JSON.stringify(node.text))
             }
-        ts.forEachChild(node, visit);
+        ts.forEachChild(node, visit)
     }
     function report(node, message) {
-        const position = source.getLineAndCharacterOfPosition(node.getStart(source));
-        failures.push(`${path.relative(process.cwd(), file)}:${position.line + 1}:${position.character + 1} ${message}`);
+        const position = source.getLineAndCharacterOfPosition(node.getStart(source))
+        failures.push(`${path.relative(process.cwd(), file)}:${position.line + 1}:${position.character + 1} ${message}`)
     }
 }
 // Tag-name constants (note data, not UI copy) are allowed to carry the
@@ -193,99 +193,99 @@ for (const file of walk(root)) {
 function insideDataConstant(node) {
     return ts.isVariableDeclaration(node.parent) &&
         ts.isIdentifier(node.parent.name) &&
-        node.parent.name.text === 'DEFAULT_TODO_TAG';
+        node.parent.name.text === 'DEFAULT_TODO_TAG'
 }
 if (failures.length) {
-    console.error(`i18n validation failed (${failures.length}):`);
-    failures.forEach((failure) => console.error(`  ${failure}`));
-    process.exit(1);
+    console.error(`i18n validation failed (${failures.length}):`)
+    failures.forEach((failure) => console.error(`  ${failure}`))
+    process.exit(1)
 }
-console.log(`i18n check passed: ${english.size} English keys with complete en-US and zh-CN resources`);
+console.log(`i18n check passed: ${english.size} English keys with complete en-US and zh-CN resources`)
 function placeholders(value) {
-    return [...value.matchAll(/\{[A-Za-z0-9_]+\}/g)].map((match) => match[0]).sort().join('|');
+    return [...value.matchAll(/\{[A-Za-z0-9_]+\}/g)].map((match) => match[0]).sort().join('|')
 }
 function isTechnicalPlaceholder(name, value) {
-    return name === 'placeholder' && (/^(?:https?:\/\/|[a-z0-9_.-]+\/?$)/i.test(value) || value === '…');
+    return name === 'placeholder' && (/^(?:https?:\/\/|[a-z0-9_.-]+\/?$)/i.test(value) || value === '…')
 }
 function isTextSource(file) {
-    return /\.(?:css|html|js|jsx|json|md|mjs|svg|toml|ts|tsx)$/.test(file);
+    return /\.(?:css|html|js|jsx|json|md|mjs|svg|toml|ts|tsx)$/.test(file)
 }
 function rejectHan(file) {
-    const source = fs.readFileSync(file, 'utf8');
+    const source = fs.readFileSync(file, 'utf8')
     // allowedHanFragments keeps first-occurrence replacement on purpose: some
     // fragments are substrings of others, so global replacement would blank
     // the shared prefix before the longer phrase ever gets a chance to match.
-    const checked = (allowedHanFragments.get(file) ?? []).reduce((text, fragment) => text.replace(fragment, ' '.repeat(fragment.length)), (localizedDataFragments.get(file) ?? []).reduce((text, fragment) => text.replaceAll(fragment, ' '.repeat(fragment.length)), source));
-    const match = forbiddenCjk.exec(checked);
+    const checked = (allowedHanFragments.get(file) ?? []).reduce((text, fragment) => text.replace(fragment, ' '.repeat(fragment.length)), (localizedDataFragments.get(file) ?? []).reduce((text, fragment) => text.replaceAll(fragment, ' '.repeat(fragment.length)), source))
+    const match = forbiddenCjk.exec(checked)
     if (!match)
-        return;
-    const before = checked.slice(0, match.index);
-    const line = before.split(/\r?\n/).length;
-    const column = match.index - Math.max(before.lastIndexOf('\n'), before.lastIndexOf('\r'));
-    failures.push(`${path.relative(process.cwd(), file)}:${line}:${column} Chinese text is allowed only under src/shared/locales/zh-CN/`);
+        return
+    const before = checked.slice(0, match.index)
+    const line = before.split(/\r?\n/).length
+    const column = match.index - Math.max(before.lastIndexOf('\n'), before.lastIndexOf('\r'))
+    failures.push(`${path.relative(process.cwd(), file)}:${line}:${column} Chinese text is allowed only under src/shared/locales/zh-CN/`)
 }
 function insideTranslationCall(node) {
-    let current = node;
+    let current = node
     while (current.parent && !ts.isStatement(current.parent) && !ts.isJsxElement(current.parent)) {
-        const parent = current.parent;
+        const parent = current.parent
         if (ts.isCallExpression(parent) &&
             ts.isIdentifier(parent.expression) &&
             parent.expression.text === 't' &&
             parent.arguments[0] &&
             contains(parent.arguments[0], node))
-            return true;
-        current = parent;
+            return true
+        current = parent
     }
-    return false;
+    return false
 }
 function contains(parent, child) {
-    return child.pos >= parent.pos && child.end <= parent.end;
+    return child.pos >= parent.pos && child.end <= parent.end
 }
 function insideFunction(node) {
-    let current = node.parent;
+    let current = node.parent
     while (current) {
         if (ts.isFunctionLike(current))
-            return true;
+            return true
         if (ts.isSourceFile(current))
-            return false;
-        current = current.parent;
+            return false
+        current = current.parent
     }
-    return false;
+    return false
 }
 function readMessages(file, variableName) {
-    const messages = new Map();
-    const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    visit(source);
-    return messages;
+    const messages = new Map()
+    const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    visit(source)
+    return messages
     function visit(node) {
         if (ts.isVariableDeclaration(node) &&
             ts.isIdentifier(node.name) &&
             node.name.text === variableName &&
             node.initializer) {
-            const initializer = unwrap(node.initializer);
+            const initializer = unwrap(node.initializer)
             if (!ts.isObjectLiteralExpression(initializer))
-                return;
+                return
             for (const property of initializer.properties) {
                 if (ts.isPropertyAssignment(property) &&
                     (ts.isStringLiteral(property.name) || ts.isIdentifier(property.name)) &&
                     ts.isStringLiteralLike(property.initializer))
-                    messages.set(property.name.text, property.initializer.text);
+                    messages.set(property.name.text, property.initializer.text)
             }
         }
-        ts.forEachChild(node, visit);
+        ts.forEachChild(node, visit)
     }
 }
 function unwrap(node) {
     while (ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isParenthesizedExpression(node))
-        node = node.expression;
-    return node;
+        node = node.expression
+    return node
 }
 function* walk(directory) {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-        const target = path.join(directory, entry.name);
+        const target = path.join(directory, entry.name)
         if (entry.isDirectory())
-            yield* walk(target);
+            yield* walk(target)
         else
-            yield target;
+            yield target
     }
 }

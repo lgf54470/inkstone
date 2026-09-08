@@ -29,4 +29,4 @@ tags: [fitness]
 `,
 'template.workout_plan.description': 'Weekly workout split with exercises, sets and reps.',
 'template.workout_plan.name': 'Workout Plan',
-};
+}

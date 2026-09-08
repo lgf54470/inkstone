@@ -339,4 +339,4 @@ tags: [费曼]
 `,
 'template.feynman.description': '用大白话讲清一个概念，找出自己的知识盲区。',
 'template.feynman.name': '费曼学习法',
-};
+}

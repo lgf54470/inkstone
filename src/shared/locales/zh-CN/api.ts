@@ -28,4 +28,4 @@ export const messages = {
 'api.invalid_server_response': '服务器返回了无效响应',
 'api.request_failed_status': '请求失败（{status}）',
 'api.request_timed_out': '请求超时',
-};
+}

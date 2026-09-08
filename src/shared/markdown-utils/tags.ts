@@ -1,5 +1,5 @@
-import { isEscaped } from './code';
-import { isPlainRecord, parseFrontMatter } from './front-matter';
+import { isEscaped } from './code'
+import { isPlainRecord, parseFrontMatter } from './front-matter'
 import { parseDocument } from 'yaml'
 
 const TAG_RE = /(^|[\s(\uff08[\u3010>\u300c\u300e\uff0c,\u3001;\uff1b])#([\p{L}\p{N}_\-/·]{1,60})(?![\p{L}\p{N}_\-/·])/gu

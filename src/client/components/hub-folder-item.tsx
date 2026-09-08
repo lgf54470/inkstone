@@ -1,6 +1,6 @@
-import { Menu } from './overlay';
-import { FolderRow } from './hub-folder-row';
-import { useHubFolderItem, type HubFolderItemProps } from './use-hub-folder-item';
+import { Menu } from './overlay'
+import { FolderRow } from './hub-folder-row'
+import { useHubFolderItem, type HubFolderItemProps } from './use-hub-folder-item'
 
 export function HubFolderItem(props: HubFolderItemProps) {
   const h = useHubFolderItem(props)

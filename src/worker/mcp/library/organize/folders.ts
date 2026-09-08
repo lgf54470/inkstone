@@ -1,10 +1,10 @@
-import { loadFolderOrNull, notifyMutation, recordChange } from '../helpers';
-import type { LibraryContext } from '../types';
-import { ApiError } from '../../../lib/errors';
-import { isValidId, newId } from '../../../lib/id';
-import { folderPromotionOrder } from '../../../routes/folders';
-import { runIdempotent } from '../../operations';
-import { LIMITS } from '@shared/constants';
+import { loadFolderOrNull, notifyMutation, recordChange } from '../helpers'
+import type { LibraryContext } from '../types'
+import { ApiError } from '../../../lib/errors'
+import { isValidId, newId } from '../../../lib/id'
+import { folderPromotionOrder } from '../../../routes/folders'
+import { runIdempotent } from '../../operations'
+import { LIMITS } from '@shared/constants'
 
 export async function createMcpFolder(
   context: LibraryContext,

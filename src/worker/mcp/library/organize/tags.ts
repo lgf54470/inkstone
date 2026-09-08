@@ -1,11 +1,11 @@
-import { loadTagOrNull, recordChange } from '../helpers';
-import type { LibraryContext } from '../types';
-import { ApiError } from '../../../lib/errors';
-import { isValidId, newId } from '../../../lib/id';
-import { rewriteTagInNotes } from '../../../routes/tags';
-import { runIdempotent } from '../../operations';
-import { LIMITS } from '@shared/constants';
-import { organizerColorOrNull } from '@shared/organizer-colors';
+import { loadTagOrNull, recordChange } from '../helpers'
+import type { LibraryContext } from '../types'
+import { ApiError } from '../../../lib/errors'
+import { isValidId, newId } from '../../../lib/id'
+import { rewriteTagInNotes } from '../../../routes/tags'
+import { runIdempotent } from '../../operations'
+import { LIMITS } from '@shared/constants'
+import { organizerColorOrNull } from '@shared/organizer-colors'
 
 export async function createMcpTag(
   context: LibraryContext,

@@ -90,4 +90,4 @@ export const messages = {
 'templates.keyboard_shortcuts': '键盘快捷键',
 'templates.publish_hint': '这会将模板公开发布到本实例的社区。任何登录用户都可以使用或复制它。',
 'templates.publish_to_community': '发布到社区',
-};
+}

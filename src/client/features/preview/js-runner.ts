@@ -1,76 +1,76 @@
-import { t } from '../../lib/i18n';
+import { t } from '../../lib/i18n'
 
 
 interface JsLogItem {
-  type: 'log' | 'info' | 'warn' | 'error';
-  text: string;
+  type: 'log' | 'info' | 'warn' | 'error'
+  text: string
 }
 
 
 interface JsExecutionResult {
-  logs: JsLogItem[];
-  result?: string;
-  error?: string;
-  durationMs: number;
+  logs: JsLogItem[]
+  result?: string
+  error?: string
+  durationMs: number
 }
 
 export function formatJsValue(val: unknown): string {
-  if (val === null) return 'null';
-  if (val === undefined) return 'undefined';
-  if (typeof val === 'string') return val;
+  if (val === null) return 'null'
+  if (val === undefined) return 'undefined'
+  if (typeof val === 'string') return val
   if (typeof val === 'number' || typeof val === 'boolean' || typeof val === 'symbol' || typeof val === 'bigint') {
-    return String(val);
+    return String(val)
   }
   if (typeof val === 'function') {
-    return val.toString();
+    return val.toString()
   }
   if (val instanceof Error) {
-    return `${val.name}: ${val.message}`;
+    return `${val.name}: ${val.message}`
   }
   try {
-    return JSON.stringify(val, null, 2);
+    return JSON.stringify(val, null, 2)
   } catch {
-    return String(val);
+    return String(val)
   }
 }
 
 export function executeJsExample(code: string): JsExecutionResult {
-  const logs: JsLogItem[] = [];
+  const logs: JsLogItem[] = []
 
   const fakeConsole = {
     log: (...args: unknown[]) => {
-      logs.push({ type: 'log', text: args.map(formatJsValue).join(' ') });
+      logs.push({ type: 'log', text: args.map(formatJsValue).join(' ') })
     },
     info: (...args: unknown[]) => {
-      logs.push({ type: 'info', text: args.map(formatJsValue).join(' ') });
+      logs.push({ type: 'info', text: args.map(formatJsValue).join(' ') })
     },
     warn: (...args: unknown[]) => {
-      logs.push({ type: 'warn', text: args.map(formatJsValue).join(' ') });
+      logs.push({ type: 'warn', text: args.map(formatJsValue).join(' ') })
     },
     error: (...args: unknown[]) => {
-      logs.push({ type: 'error', text: args.map(formatJsValue).join(' ') });
+      logs.push({ type: 'error', text: args.map(formatJsValue).join(' ') })
     },
-  };
+  }
 
-  const start = performance.now();
+  const start = performance.now()
   try {
-    const fn = new Function('console', `"use strict";\n${code}`);
-    const res = fn(fakeConsole);
-    const durationMs = Math.round(performance.now() - start);
-    let result: string | undefined;
+    const fn = new Function('console', `"use strict";\n${code}`)
+    const res = fn(fakeConsole)
+    const durationMs = Math.round(performance.now() - start)
+    let result: string | undefined
     if (res !== undefined) {
-      result = formatJsValue(res);
+      result = formatJsValue(res)
     }
-    return { logs, result, durationMs };
+    return { logs, result, durationMs }
   } catch (err: unknown) {
     if (err instanceof EvalError && typeof document !== 'undefined') {
-      const fallback = executeWithScriptElement(code, fakeConsole);
-      const durationMs = Math.round(performance.now() - start);
-      return { logs, result: fallback.result, error: fallback.error, durationMs };
+      const fallback = executeWithScriptElement(code, fakeConsole)
+      const durationMs = Math.round(performance.now() - start)
+      return { logs, result: fallback.result, error: fallback.error, durationMs }
     }
-    const durationMs = Math.round(performance.now() - start);
-    const error = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-    return { logs, error, durationMs };
+    const durationMs = Math.round(performance.now() - start)
+    const error = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+    return { logs, error, durationMs }
   }
 }
 
@@ -79,28 +79,28 @@ function executeWithScriptElement(
   fakeConsole: Record<string, unknown>,
 ): { result?: string; error?: string } {
   if (typeof document === 'undefined') {
-    return { error: 'Document is not available' };
+    return { error: 'Document is not available' }
   }
 
-  const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce || document.querySelector<HTMLScriptElement>('script[nonce]')?.getAttribute('nonce') || '';
+  const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce || document.querySelector<HTMLScriptElement>('script[nonce]')?.getAttribute('nonce') || ''
 
-  const runId = `__ink_run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  let capturedResult: string | undefined;
-  let capturedError: string | undefined;
+  const runId = `__ink_run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  let capturedResult: string | undefined
+  let capturedError: string | undefined
 
   Reflect.set(window, runId, {
     console: fakeConsole,
     onSuccess: (val: unknown) => {
-      if (val !== undefined) capturedResult = formatJsValue(val);
+      if (val !== undefined) capturedResult = formatJsValue(val)
     },
     onError: (err: unknown) => {
-      capturedError = formatJsError(err);
+      capturedError = formatJsError(err)
     },
-  });
+  })
 
-  const script = document.createElement('script');
+  const script = document.createElement('script')
   if (nonce) {
-    script.nonce = nonce; script.setAttribute('nonce', nonce);
+    script.nonce = nonce; script.setAttribute('nonce', nonce)
   }
   script.textContent = `(function() {
   "use strict";
@@ -114,94 +114,94 @@ function executeWithScriptElement(
   } catch (err) {
     runner.onError(err);
   }
-})();`;
+})();`
 
   try {
-    document.head.appendChild(script);
+    document.head.appendChild(script)
   } catch (err) {
-    capturedError = formatJsError(err);
+    capturedError = formatJsError(err)
   } finally {
-    script.remove(); Reflect.deleteProperty(window, runId);
+    script.remove(); Reflect.deleteProperty(window, runId)
   }
 
-  return { result: capturedResult, error: capturedError };
+  return { result: capturedResult, error: capturedError }
 }
 
 function formatJsError(err: unknown): string {
-  return err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  return err instanceof Error ? `${err.name}: ${err.message}` : String(err)
 }
 
 export function handleJsExampleSwitch(switchBtn: HTMLButtonElement): void {
-  const isChecked = switchBtn.classList.contains('is-checked');
-  const nextChecked = !isChecked;
-  switchBtn.classList.toggle('is-checked', nextChecked);
-  switchBtn.setAttribute('aria-checked', String(nextChecked));
+  const isChecked = switchBtn.classList.contains('is-checked')
+  const nextChecked = !isChecked
+  switchBtn.classList.toggle('is-checked', nextChecked)
+  switchBtn.setAttribute('aria-checked', String(nextChecked))
 
-  const block = switchBtn.closest<HTMLElement>('.js-example-block');
-  const codeBlock = block?.querySelector<HTMLElement>('.code-block');
+  const block = switchBtn.closest<HTMLElement>('.js-example-block')
+  const codeBlock = block?.querySelector<HTMLElement>('.code-block')
   if (codeBlock) {
-    codeBlock.classList.toggle('has-line-numbers', nextChecked);
-    codeBlock.dataset.lineNumbers = String(nextChecked);
+    codeBlock.classList.toggle('has-line-numbers', nextChecked)
+    codeBlock.dataset.lineNumbers = String(nextChecked)
   }
 }
 
 export function handleJsExampleRun(runBtn: HTMLButtonElement): void {
-  const block = runBtn.closest<HTMLElement>('.js-example-block');
-  if (!block) return;
+  const block = runBtn.closest<HTMLElement>('.js-example-block')
+  if (!block) return
 
-  const codeEl = block.querySelector<HTMLElement>('.code-block pre code');
-  const outputBody = block.querySelector<HTMLElement>('.js-example-output-body');
-  const statusEl = block.querySelector<HTMLElement>('.js-example-output-status');
-  if (!codeEl || !outputBody) return;
+  const codeEl = block.querySelector<HTMLElement>('.code-block pre code')
+  const outputBody = block.querySelector<HTMLElement>('.js-example-output-body')
+  const statusEl = block.querySelector<HTMLElement>('.js-example-output-status')
+  if (!codeEl || !outputBody) return
 
-  const code = codeEl.textContent ?? '';
-  const { logs, result, error, durationMs } = executeJsExample(code);
+  const code = codeEl.textContent ?? ''
+  const { logs, result, error, durationMs } = executeJsExample(code)
 
-  updateRunStatus(statusEl, error, durationMs);
-  outputBody.innerHTML = '';
+  updateRunStatus(statusEl, error, durationMs)
+  outputBody.innerHTML = ''
 
   if (logs.length === 0 && result === undefined && !error) {
-    const emptyRow = document.createElement('div');
-    emptyRow.className = 'js-example-empty-hint';
-    emptyRow.textContent = t('workspace.executed_no_output');
-    outputBody.appendChild(emptyRow);
-    return;
+    const emptyRow = document.createElement('div')
+    emptyRow.className = 'js-example-empty-hint'
+    emptyRow.textContent = t('workspace.executed_no_output')
+    outputBody.appendChild(emptyRow)
+    return
   }
 
   logs.forEach((item) => {
-    appendLogRow(outputBody, item.type, item.type === 'error' ? '✖' : item.type === 'warn' ? '▲' : '›', item.text);
-  });
+    appendLogRow(outputBody, item.type, item.type === 'error' ? '✖' : item.type === 'warn' ? '▲' : '›', item.text)
+  })
 
   if (result !== undefined) {
-    appendLogRow(outputBody, 'return', '←', result);
+    appendLogRow(outputBody, 'return', '←', result)
   }
 
   if (error) {
-    appendLogRow(outputBody, 'error-banner', '✖', error);
+    appendLogRow(outputBody, 'error-banner', '✖', error)
   }
 }
 
 function updateRunStatus(statusEl: HTMLElement | null, error: string | undefined, durationMs: number): void {
-  if (!statusEl) return;
+  if (!statusEl) return
   if (error) {
-    statusEl.className = 'js-example-output-status is-error';
-    statusEl.textContent = `✕ ${durationMs}ms`;
+    statusEl.className = 'js-example-output-status is-error'
+    statusEl.textContent = `✕ ${durationMs}ms`
   } else {
-    statusEl.className = 'js-example-output-status is-success';
-    statusEl.textContent = `✓ ${durationMs}ms`;
+    statusEl.className = 'js-example-output-status is-success'
+    statusEl.textContent = `✓ ${durationMs}ms`
   }
 }
 
 function appendLogRow(outputBody: HTMLElement, type: string, prefix: string, text: string): void {
-  const row = document.createElement('div');
-  row.className = `js-example-log-row is-${type}`;
-  const prefixEl = document.createElement('span');
-  prefixEl.className = 'js-example-log-prefix';
-  prefixEl.textContent = prefix;
-  const textEl = document.createElement('pre');
-  textEl.className = 'js-example-log-text';
-  textEl.textContent = text;
-  row.appendChild(prefixEl);
-  row.appendChild(textEl);
-  outputBody.appendChild(row);
+  const row = document.createElement('div')
+  row.className = `js-example-log-row is-${type}`
+  const prefixEl = document.createElement('span')
+  prefixEl.className = 'js-example-log-prefix'
+  prefixEl.textContent = prefix
+  const textEl = document.createElement('pre')
+  textEl.className = 'js-example-log-text'
+  textEl.textContent = text
+  row.appendChild(prefixEl)
+  row.appendChild(textEl)
+  outputBody.appendChild(row)
 }

@@ -90,4 +90,4 @@ export const messages = {
 'templates.keyboard_shortcuts': 'Keyboard shortcuts',
 'templates.publish_hint': "This publishes the template publicly to this instance's community. Anyone signed in can use or copy it.",
 'templates.publish_to_community': 'Publish to community',
-};
+}

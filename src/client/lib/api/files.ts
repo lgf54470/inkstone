@@ -1,5 +1,5 @@
-import type { Attachment, AttachmentFolder, AttachmentStats, AttachmentTag, AttachmentWithUsage, BackupRun, BackupTarget, BackupTargetInput, BackupTargetPatchInput, TestConnectionResult } from '@shared/types';
-import { request, toQuery } from './transport';
+import type { Attachment, AttachmentFolder, AttachmentStats, AttachmentTag, AttachmentWithUsage, BackupRun, BackupTarget, BackupTargetInput, BackupTargetPatchInput, TestConnectionResult } from '@shared/types'
+import { request, toQuery } from './transport'
 export const files = {
   files: {
     list: (

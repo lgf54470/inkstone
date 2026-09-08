@@ -9,26 +9,26 @@ import {
   Sparkles,
   Trash2,
   Unplug,
-} from 'lucide-react';
-import { type McpSettingsInfo } from '@shared/types';
-import { LoadingBlock } from '../../../components/feedback';
-import { Input, SettingRow, Switch } from '../../../components/form';
-import { Tooltip } from '../../../components/overlay';
-import { Badge, Button, IconButton } from '../../../components/primitives';
-import { t } from '../../../lib/i18n';
-import { fullTime, relativeTime } from '../../../lib/time';
-import { scopeSummary } from './snippets';
-import { useMcpSettings, type McpSettingsState } from './use-mcp-settings';
+} from 'lucide-react'
+import { type McpSettingsInfo } from '@shared/types'
+import { LoadingBlock } from '../../../components/feedback'
+import { Input, SettingRow, Switch } from '../../../components/form'
+import { Tooltip } from '../../../components/overlay'
+import { Badge, Button, IconButton } from '../../../components/primitives'
+import { t } from '../../../lib/i18n'
+import { fullTime, relativeTime } from '../../../lib/time'
+import { scopeSummary } from './snippets'
+import { useMcpSettings, type McpSettingsState } from './use-mcp-settings'
 
-type McpReady = Omit<McpSettingsState, 'info'> & { info: McpSettingsInfo };
+type McpReady = Omit<McpSettingsState, 'info'> & { info: McpSettingsInfo }
 
 export function McpSettings() {
-  const m = useMcpSettings();
-  if (m.isLoading && !m.info) return <LoadingBlock label={t('settings.mcp_loading')} />;
+  const m = useMcpSettings()
+  if (m.isLoading && !m.info) return <LoadingBlock label={t('settings.mcp_loading')} />
   if (!m.info) {
-    return <McpLoadError message={m.loadError ?? t('settings.mcp_load_failed')} onRetry={() => void m.load()} />;
+    return <McpLoadError message={m.loadError ?? t('settings.mcp_load_failed')} onRetry={() => void m.load()} />
   }
-  const v: McpReady = { ...m, info: m.info };
+  const v: McpReady = { ...m, info: m.info }
   return (
     <div className='space-y-6'>
       {v.displayOnly && <McpDemoBanner />}
@@ -40,7 +40,7 @@ export function McpSettings() {
       <ClientsSection v={v} />
       <McpPrivacyNote />
     </div>
-  );
+  )
 }
 
 function McpLoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -51,7 +51,7 @@ function McpLoadError({ message, onRetry }: { message: string; onRetry: () => vo
         {t('common.retry')}
       </Button>
     </div>
-  );
+  )
 }
 
 function McpDemoBanner() {
@@ -65,7 +65,7 @@ function McpDemoBanner() {
         </div>
       </div>
     </section>
-  );
+  )
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
@@ -73,7 +73,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
     <h3 className='mb-1 px-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
       {children}
     </h3>
-  );
+  )
 }
 
 function EndpointCard({ v }: { v: McpReady }) {
@@ -112,11 +112,11 @@ function EndpointCard({ v }: { v: McpReady }) {
         </p>
       </div>
     </section>
-  );
+  )
 }
 
 function PermissionsSection({ v }: { v: McpReady }) {
-  const disabled = v.displayOnly || !v.info.enabled || Boolean(v.busy);
+  const disabled = v.displayOnly || !v.info.enabled || Boolean(v.busy)
   const rows = [
     ...(v.info.canManageGlobal ? [{
       id: 'global' as const,
@@ -142,7 +142,7 @@ function PermissionsSection({ v }: { v: McpReady }) {
       disabled,
       onChange: (trashEnabled: boolean) => void v.savePreference('trash', { trashEnabled }),
     },
-  ];
+  ]
   return (
     <section>
       <SectionHeading>{t('settings.mcp_permissions')}</SectionHeading>
@@ -157,7 +157,7 @@ function PermissionsSection({ v }: { v: McpReady }) {
         </SettingRow>
       ))}
     </section>
-  );
+  )
 }
 
 function KeysSection({ v }: { v: McpReady }) {
@@ -173,7 +173,7 @@ function KeysSection({ v }: { v: McpReady }) {
       <KeyCreateRow v={v} />
       <ApiKeyList v={v} />
     </section>
-  );
+  )
 }
 
 function NewTokenCard({ v }: { v: McpReady }) {
@@ -195,11 +195,11 @@ function NewTokenCard({ v }: { v: McpReady }) {
       </div>
       <p className="mt-1.5 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">{t('settings.mcp_api_key_show_once')}</p>
     </div>
-  );
+  )
 }
 
 function KeyCreateRow({ v }: { v: McpReady }) {
-  const disabled = v.displayOnly || !v.info.enabled || Boolean(v.busy);
+  const disabled = v.displayOnly || !v.info.enabled || Boolean(v.busy)
   return (
     <div className='mb-2 flex items-center gap-2'>
       <Input
@@ -216,26 +216,26 @@ function KeyCreateRow({ v }: { v: McpReady }) {
         {t('settings.mcp_api_key_create')}
       </Button>
     </div>
-  );
+  )
 }
 
 function ApiKeyList({ v }: { v: McpReady }) {
-  const keys = v.info.apiKeys;
-  if (!keys.length) return <EmptyState text={t('settings.mcp_api_keys_empty')} />;
+  const keys = v.info.apiKeys
+  if (!keys.length) return <EmptyState text={t('settings.mcp_api_keys_empty')} />
   return (
     <div className='overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]'>
       {keys.map((key) => <ApiKeyRow key={key.id} v={v} id={key.id} name={key.name} scopes={key.scopes} lastUsedAt={key.lastUsedAt} createdAt={key.createdAt} />)}
     </div>
-  );
+  )
 }
 
 function ApiKeyRow({ v, id, name, scopes, lastUsedAt, createdAt }: {
-  v: McpReady;
-  id: string;
-  name: string;
-  scopes: string[];
-  lastUsedAt: number | null;
-  createdAt: number;
+  v: McpReady
+  id: string
+  name: string
+  scopes: string[]
+  lastUsedAt: number | null
+  createdAt: number
 }) {
   return (
     <div className='flex items-center gap-3 border-b border-[var(--border-subtle)] p-3.5 last:border-b-0'>
@@ -264,7 +264,7 @@ function ApiKeyRow({ v, id, name, scopes, lastUsedAt, createdAt }: {
         </IconButton>
       </Tooltip>
     </div>
-  );
+  )
 }
 
 function AiSearchSection({ v }: { v: McpReady }) {
@@ -273,11 +273,11 @@ function AiSearchSection({ v }: { v: McpReady }) {
       <AiSearchHeader v={v} />
       <AiSearchBody v={v} />
     </section>
-  );
+  )
 }
 
 function AiSearchHeader({ v }: { v: McpReady }) {
-  const aiSearch = v.info.aiSearch;
+  const aiSearch = v.info.aiSearch
   return (
     <div className='mb-2 flex items-center justify-between gap-3 px-1'>
       <div className='flex items-center gap-1.5'>
@@ -300,11 +300,11 @@ function AiSearchHeader({ v }: { v: McpReady }) {
         onChange={(enabled) => void v.toggleAiSearch(enabled)}
       />
     </div>
-  );
+  )
 }
 
 function AiSearchBody({ v }: { v: McpReady }) {
-  const aiSearch = v.info.aiSearch;
+  const aiSearch = v.info.aiSearch
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-3.5'>
       <p className="text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
@@ -332,7 +332,7 @@ function AiSearchBody({ v }: { v: McpReady }) {
         </Button>
       </div>
     </div>
-  );
+  )
 }
 
 function ConnectSection({ v }: { v: McpReady }) {
@@ -346,7 +346,7 @@ function ConnectSection({ v }: { v: McpReady }) {
         {v.snippets.map((snippet) => <SnippetRow key={snippet.id} v={v} snippet={snippet} />)}
       </div>
     </section>
-  );
+  )
 }
 
 function SnippetRow({ v, snippet }: { v: McpReady; snippet: { id: string; name: string; value: string } }) {
@@ -367,11 +367,11 @@ function SnippetRow({ v, snippet }: { v: McpReady; snippet: { id: string; name: 
         </div>
       </div>
     </details>
-  );
+  )
 }
 
 function ClientsSection({ v }: { v: McpReady }) {
-  const grants = v.info.grants;
+  const grants = v.info.grants
   return (
     <section>
       <div className='mb-2 flex items-center justify-between gap-3 px-1'>
@@ -392,15 +392,15 @@ function ClientsSection({ v }: { v: McpReady }) {
         <EmptyState text={t('settings.mcp_no_clients')} />
       )}
     </section>
-  );
+  )
 }
 
 function ClientRow({ v, clientName, scopes, createdAt, revoke }: {
-  v: McpReady;
-  clientName: string;
-  scopes: string[];
-  createdAt: number;
-  revoke: () => void;
+  v: McpReady
+  clientName: string
+  scopes: string[]
+  createdAt: number
+  revoke: () => void
 }) {
   return (
     <div className='flex items-center gap-3 border-b border-[var(--border-subtle)] p-3.5 last:border-b-0'>
@@ -424,7 +424,7 @@ function ClientRow({ v, clientName, scopes, createdAt, revoke }: {
         </IconButton>
       </Tooltip>
     </div>
-  );
+  )
 }
 
 function EmptyState({ text }: { text: string }) {
@@ -432,7 +432,7 @@ function EmptyState({ text }: { text: string }) {
     <div className="rounded-[var(--r-lg)] border border-dashed border-[var(--border-default)] p-5 text-center text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">
       {text}
     </div>
-  );
+  )
 }
 
 function McpPrivacyNote() {
@@ -446,5 +446,5 @@ function McpPrivacyNote() {
         </div>
       </div>
     </section>
-  );
+  )
 }

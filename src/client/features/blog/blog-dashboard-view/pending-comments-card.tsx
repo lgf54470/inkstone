@@ -39,12 +39,12 @@ export function PendingCommentsCard({ pendingComments, totalComments, totalPosts
         ))
       )}
     </div>
-  </div>);
+  </div>)
 }
 
 function AllCommentsReviewed({ onSwitchTab, totalPosts }: {
-  onSwitchTab: (tab: BlogTab) => void;
-  totalPosts: number;
+  onSwitchTab: (tab: BlogTab) => void
+  totalPosts: number
 }) {
   return (
     <div className='flex h-48 flex-col items-center justify-center text-[var(--text-quaternary)] space-y-2'>
@@ -59,8 +59,8 @@ function AllCommentsReviewed({ onSwitchTab, totalPosts }: {
 }
 
 function PendingCommentItem({ comment, updateCommentStatus }: {
-  comment: BlogComment;
-  updateCommentStatus: (id: string, status: BlogCommentStatus) => Promise<void>;
+  comment: BlogComment
+  updateCommentStatus: (id: string, status: BlogCommentStatus) => Promise<void>
 }) {
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-3 space-y-1.5'>

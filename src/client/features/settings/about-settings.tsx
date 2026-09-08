@@ -1,69 +1,69 @@
-import { useRef, useState } from 'react';
-import { Download, ExternalLink, GitFork, LogOut, RefreshCw, Shield, UserRound } from 'lucide-react';
-import { GITHUB_REPOSITORY_URL } from '@shared/constants';
-import type { PublicUser, SiteInfo, UpdateCheckResponse } from '@shared/types';
-import { fullTime } from '../../lib/time';
-import { Avatar, Badge, Button, Logo } from '../../components/primitives';
-import { SettingRow } from '../../components/form';
-import { confirm } from '../../components/overlay';
-import { useSession } from '../../store/session';
-import { usePwa } from '../../store/pwa';
-import { useUpdate } from '../../store/update';
-import { t } from '../../lib/i18n';
+import { useRef, useState } from 'react'
+import { Download, ExternalLink, GitFork, LogOut, RefreshCw, Shield, UserRound } from 'lucide-react'
+import { GITHUB_REPOSITORY_URL } from '@shared/constants'
+import type { PublicUser, SiteInfo, UpdateCheckResponse } from '@shared/types'
+import { fullTime } from '../../lib/time'
+import { Avatar, Badge, Button, Logo } from '../../components/primitives'
+import { SettingRow } from '../../components/form'
+import { confirm } from '../../components/overlay'
+import { useSession } from '../../store/session'
+import { usePwa } from '../../store/pwa'
+import { useUpdate } from '../../store/update'
+import { t } from '../../lib/i18n'
 export function AboutSettings() {
-  const user = useSession((s) => s.user);
-  const site = useSession((s) => s.site);
-  const logout = useSession((s) => s.logout);
-  const updateStatus = useUpdate((s) => s.status);
-  const updateInfo = useUpdate((s) => s.info);
-  const updateAvailable = useUpdate((s) => s.available);
-  const checkForUpdates = useUpdate((s) => s.check);
-  const openUpdatePage = useUpdate((s) => s.openUpdatePage);
-  const installAvailable = usePwa((s) => s.installAvailable);
-  const installed = usePwa((s) => s.installed);
-  const installing = usePwa((s) => s.installing);
-  const install = usePwa((s) => s.install);
-  const offlineStatus = usePwa((s) => s.offlineStatus);
-  const offlineCompleted = usePwa((s) => s.offlineCompleted);
-  const offlineTotal = usePwa((s) => s.offlineTotal);
-  const loggingOutRef = useRef(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const exit = () => void logoutFlow({ loggingOutRef, setIsLoggingOut, logout });
+  const user = useSession((s) => s.user)
+  const site = useSession((s) => s.site)
+  const logout = useSession((s) => s.logout)
+  const updateStatus = useUpdate((s) => s.status)
+  const updateInfo = useUpdate((s) => s.info)
+  const updateAvailable = useUpdate((s) => s.available)
+  const checkForUpdates = useUpdate((s) => s.check)
+  const openUpdatePage = useUpdate((s) => s.openUpdatePage)
+  const installAvailable = usePwa((s) => s.installAvailable)
+  const installed = usePwa((s) => s.installed)
+  const installing = usePwa((s) => s.installing)
+  const install = usePwa((s) => s.install)
+  const offlineStatus = usePwa((s) => s.offlineStatus)
+  const offlineCompleted = usePwa((s) => s.offlineCompleted)
+  const offlineTotal = usePwa((s) => s.offlineTotal)
+  const loggingOutRef = useRef(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const exit = () => void logoutFlow({ loggingOutRef, setIsLoggingOut, logout })
   return (<div className='space-y-6'>
     <ProfileCard user={user} isLoggingOut={isLoggingOut} onExit={exit}/>
     <AccessControlSection site={site}/>
     {user?.role === 'owner' && <UpdateSection site={site} updateStatus={updateStatus} updateInfo={updateInfo} updateAvailable={updateAvailable} checkForUpdates={checkForUpdates} openUpdatePage={openUpdatePage}/>}
     {(installAvailable || installed || offlineStatus !== 'idle') && <PwaSection installAvailable={installAvailable} installed={installed} installing={installing} install={install} offlineStatus={offlineStatus} offlineCompleted={offlineCompleted} offlineTotal={offlineTotal}/>}
     <FooterSection site={site}/>
-  </div>);
+  </div>)
 }
 
 async function logoutFlow({ loggingOutRef, setIsLoggingOut, logout }: {
-  loggingOutRef: React.MutableRefObject<boolean>;
-  setIsLoggingOut: (loggingOut: boolean) => void;
-  logout: () => Promise<void>;
+  loggingOutRef: React.MutableRefObject<boolean>
+  setIsLoggingOut: (loggingOut: boolean) => void
+  logout: () => Promise<void>
 }) {
   if (loggingOutRef.current)
-    return;
-  loggingOutRef.current = true;
-  setIsLoggingOut(true);
+    return
+  loggingOutRef.current = true
+  setIsLoggingOut(true)
   try {
     const ok = await confirm({
       title: t('common.log_out'),
       description: t('settings.the_local_cache_will_be_cleared_and_the_cloud_data_will_not_be_affected'),
       confirmLabel: t('common.exit'),
-    });
+    })
     if (ok)
-      await logout();
+      await logout()
   }
   finally {
-    loggingOutRef.current = false;
-    setIsLoggingOut(false);
+    loggingOutRef.current = false
+    setIsLoggingOut(false)
   }
 }
 
-type UpdateStatus = ReturnType<typeof useUpdate.getState>['status'];
-type OfflineStatus = ReturnType<typeof usePwa.getState>['offlineStatus'];
+type UpdateStatus = ReturnType<typeof useUpdate.getState>['status']
+type OfflineStatus = ReturnType<typeof usePwa.getState>['offlineStatus']
 
 function ProfileCard({ user, isLoggingOut, onExit }: { user: PublicUser | null; isLoggingOut: boolean; onExit: () => void }) {
   return (
@@ -86,7 +86,7 @@ function ProfileCard({ user, isLoggingOut, onExit }: { user: PublicUser | null; 
       {user && (<p className="mt-2 px-1 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('settings.joined')}{fullTime(user.createdAt)}
       </p>)}
     </section>
-  );
+  )
 }
 
 function AccessControlSection({ site }: { site: SiteInfo | null }) {
@@ -104,7 +104,7 @@ function AccessControlSection({ site }: { site: SiteInfo | null }) {
       <div className="text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{t('settings.to_add_users_open_registration_under_settings_account_they_can_then_crea')}</div>
       </div>
     </section>
-  );
+  )
 }
 
 function UpdateSection({ site, updateStatus, updateInfo, updateAvailable, checkForUpdates, openUpdatePage }: { site: SiteInfo | null; updateStatus: UpdateStatus; updateInfo: UpdateCheckResponse | null; updateAvailable: boolean; checkForUpdates: () => void; openUpdatePage: () => void }) {
@@ -134,7 +134,7 @@ function UpdateSection({ site, updateStatus, updateInfo, updateAvailable, checkF
       </Button>)}
       </div>
     </section>
-  );
+  )
 }
 
 function PwaSection({ installAvailable, installed, installing, install, offlineStatus, offlineCompleted, offlineTotal }: { installAvailable: boolean; installed: boolean; installing: boolean; install: () => void; offlineStatus: OfflineStatus; offlineCompleted: number; offlineTotal: number }) {
@@ -165,7 +165,7 @@ function PwaSection({ installAvailable, installed, installing, install, offlineS
       </Badge>
       </SettingRow>)}
     </section>
-  );
+  )
 }
 
 function FooterSection({ site }: { site: SiteInfo | null }) {
@@ -191,5 +191,5 @@ function FooterSection({ site }: { site: SiteInfo | null }) {
       {t('common.github')}
       </a>
     </section>
-  );
+  )
 }

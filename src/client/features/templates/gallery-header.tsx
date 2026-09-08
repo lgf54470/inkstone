@@ -57,5 +57,5 @@ export function GalleryHeader({ query, onQueryChange, searchRef, selectMode, onT
                     </IconButton>
                 </Tooltip>
             </header>
-    );
+    )
 }

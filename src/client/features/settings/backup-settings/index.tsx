@@ -1,118 +1,118 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, CloudUpload, Plus, Zap } from 'lucide-react';
-import { type BackupRun, type BackupSchedule, type BackupTarget } from '@shared/types';
-import { api, ApiError } from '../../../lib/api';
-import { formatBytes } from '../../../lib/time';
-import { Button } from '../../../components/primitives';
-import { Segmented, SettingRow, type SegmentedOption } from '../../../components/form';
-import { Empty, LoadingBlock } from '../../../components/feedback';
-import { useSession } from '../../../store/session';
-import { useUi, type UiState } from '../../../store/ui';
-import { t, translateServiceMessage, useLocale } from '../../../lib/i18n';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AlertCircle, CloudUpload, Plus, Zap } from 'lucide-react'
+import { type BackupRun, type BackupSchedule, type BackupTarget } from '@shared/types'
+import { api, ApiError } from '../../../lib/api'
+import { formatBytes } from '../../../lib/time'
+import { Button } from '../../../components/primitives'
+import { Segmented, SettingRow, type SegmentedOption } from '../../../components/form'
+import { Empty, LoadingBlock } from '../../../components/feedback'
+import { useSession } from '../../../store/session'
+import { useUi, type UiState } from '../../../store/ui'
+import { t, translateServiceMessage, useLocale } from '../../../lib/i18n'
 
-import { TargetCard } from './target-card';
-import { TargetForm } from './target-form';
-import { RunRow } from './run-row';
+import { TargetCard } from './target-card'
+import { TargetForm } from './target-form'
+import { RunRow } from './run-row'
 
 export function BackupSettings() {
-  const model = useBackupSettings();
+  const model = useBackupSettings()
   if (model.targets === null && model.loadError)
-    return <LoadErrorState error={model.loadError} onRetry={model.reload}/>;
+    return <LoadErrorState error={model.loadError} onRetry={model.reload}/>
   if (model.targets === null)
-    return <LoadingBlock label={t('settings.loading_backup_configuration')}/>;
-  const enabled = model.targets.filter((t) => t.enabled).length;
+    return <LoadingBlock label={t('settings.loading_backup_configuration')}/>
+  const enabled = model.targets.filter((t) => t.enabled).length
   return (<div className='space-y-6'>
     <ErrorBanner error={model.loadError} onRetry={model.reload}/>
     <BackupHero enabled={enabled} isRunning={model.isRunning} onRun={model.runBackup}/>
     <TargetsSection targets={model.targets} editing={model.editing} onAdd={() => model.setEditing('new')} onEdit={(target) => model.setEditing(target)} onChanged={model.reload} onPatch={model.patchTarget} onRemove={model.removeTarget} onRestore={model.restoreTarget} onCloseEdit={() => model.setEditing(null)}/>
     <ScheduleSection schedule={model.schedule} options={model.scheduleOptions} onChange={model.setSchedule}/>
     <RunsSection runs={model.runs}/>
-  </div>);
+  </div>)
 }
 
 function useBackupSettings() {
-  const schedule = useSession((s) => s.settings.backup.schedule);
-  const update = useSession((s) => s.updateSettings);
-  const locale = useLocale();
-  const toast = useUi((s) => s.toast);
-  const setSchedule = useCallback((next: BackupSchedule) => void update({ backup: { schedule: next } }), [update]);
+  const schedule = useSession((s) => s.settings.backup.schedule)
+  const update = useSession((s) => s.updateSettings)
+  const locale = useLocale()
+  const toast = useUi((s) => s.toast)
+  const setSchedule = useCallback((next: BackupSchedule) => void update({ backup: { schedule: next } }), [update])
   const scheduleOptions = useMemo(() => ([
     { value: 'off' as const, label: t('common.close') },
     { value: 'hourly' as const, label: t('settings.hourly') },
     { value: 'sixHourly' as const, label: t('settings.every_6_hours') },
     { value: 'daily' as const, label: t('settings.daily') },
-  ]), [locale]);
-  const [targets, setTargets] = useState<BackupTarget[] | null>(null);
-  const [runs, setRuns] = useState<BackupRun[]>([]);
-  const [editing, setEditing] = useState<BackupTarget | 'new' | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const reloadEpoch = useRef(0);
-  const runningRef = useRef(false);
-  const mountedRef = useRef(true);
-  const reload = useCallback(async () => { await reloadBackupFlow({ mountedRef, reloadEpoch, setTargets, setRuns, setLoadError }); }, []);
+  ]), [locale])
+  const [targets, setTargets] = useState<BackupTarget[] | null>(null)
+  const [runs, setRuns] = useState<BackupRun[]>([])
+  const [editing, setEditing] = useState<BackupTarget | 'new' | null>(null)
+  const [isRunning, setIsRunning] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const reloadEpoch = useRef(0)
+  const runningRef = useRef(false)
+  const mountedRef = useRef(true)
+  const reload = useCallback(async () => { await reloadBackupFlow({ mountedRef, reloadEpoch, setTargets, setRuns, setLoadError }); }, [])
   useEffect(() => {
-    mountedRef.current = true;
-    void reload();
+    mountedRef.current = true
+    void reload()
     return () => {
-      mountedRef.current = false;
-      runningRef.current = false;
-      reloadEpoch.current++;
-    };
-  }, [reload]);
-  const runBackup = () => void runBackupFlow({ runningRef, mountedRef, setIsRunning, reload, toast });
+      mountedRef.current = false
+      runningRef.current = false
+      reloadEpoch.current++
+    }
+  }, [reload])
+  const runBackup = () => void runBackupFlow({ runningRef, mountedRef, setIsRunning, reload, toast })
   const patchTarget = useCallback((id: string, patch: Partial<BackupTarget>) => {
-    setTargets((current) => current?.map((item) => item.id === id ? { ...item, ...patch } : item) ?? current);
-  }, []);
+    setTargets((current) => current?.map((item) => item.id === id ? { ...item, ...patch } : item) ?? current)
+  }, [])
   const removeTarget = useCallback((id: string) => {
-    setTargets((current) => current?.filter((item) => item.id !== id) ?? current);
-  }, []);
+    setTargets((current) => current?.filter((item) => item.id !== id) ?? current)
+  }, [])
   const restoreTarget = useCallback((removed: BackupTarget) => {
-    setTargets((current) => current && !current.some((item) => item.id === removed.id) ? [...current, removed] : current);
-  }, []);
-  return { schedule, setSchedule, scheduleOptions, targets, runs, editing, setEditing, isRunning, runBackup, reload, loadError, patchTarget, removeTarget, restoreTarget };
+    setTargets((current) => current && !current.some((item) => item.id === removed.id) ? [...current, removed] : current)
+  }, [])
+  return { schedule, setSchedule, scheduleOptions, targets, runs, editing, setEditing, isRunning, runBackup, reload, loadError, patchTarget, removeTarget, restoreTarget }
 }
 
 async function reloadBackupFlow({ mountedRef, reloadEpoch, setTargets, setRuns, setLoadError }: {
-  mountedRef: React.MutableRefObject<boolean>;
-  reloadEpoch: React.MutableRefObject<number>;
-  setTargets: (targets: BackupTarget[]) => void;
-  setRuns: (runs: BackupRun[]) => void;
-  setLoadError: (error: string | null) => void;
+  mountedRef: React.MutableRefObject<boolean>
+  reloadEpoch: React.MutableRefObject<number>
+  setTargets: (targets: BackupTarget[]) => void
+  setRuns: (runs: BackupRun[]) => void
+  setLoadError: (error: string | null) => void
 }) {
   if (!mountedRef.current)
-    return;
-  const epoch = ++reloadEpoch.current;
+    return
+  const epoch = ++reloadEpoch.current
   try {
-    const [t, r] = await Promise.all([api.backup.targets(), api.backup.runs()]);
+    const [t, r] = await Promise.all([api.backup.targets(), api.backup.runs()])
     if (!mountedRef.current || epoch !== reloadEpoch.current)
-      return;
-    setTargets(t.targets);
-    setRuns(r.runs);
-    setLoadError(null);
+      return
+    setTargets(t.targets)
+    setRuns(r.runs)
+    setLoadError(null)
   }
   catch (error) {
     if (!mountedRef.current || epoch !== reloadEpoch.current)
-      return;
-    setLoadError(error instanceof ApiError ? error.message : String(error));
+      return
+    setLoadError(error instanceof ApiError ? error.message : String(error))
   }
 }
 
 async function runBackupFlow({ runningRef, mountedRef, setIsRunning, reload, toast }: {
-  runningRef: React.MutableRefObject<boolean>;
-  mountedRef: React.MutableRefObject<boolean>;
-  setIsRunning: (running: boolean) => void;
-  reload: () => Promise<void>;
-  toast: UiState['toast'];
+  runningRef: React.MutableRefObject<boolean>
+  mountedRef: React.MutableRefObject<boolean>
+  setIsRunning: (running: boolean) => void
+  reload: () => Promise<void>
+  toast: UiState['toast']
 }) {
   if (runningRef.current)
-    return;
-  runningRef.current = true;
-  setIsRunning(true);
+    return
+  runningRef.current = true
+  setIsRunning(true)
   try {
-    const run = await api.backup.run();
-    await reload();
-    const ok = run.results.filter((r) => r.ok).length;
+    const run = await api.backup.run()
+    await reload()
+    const ok = run.results.filter((r) => r.ok).length
     toast({
       title: run.status === 'success'
         ? t('settings.backup_completed_value0_targets', { value0: ok }) : run.status === 'partial'
@@ -121,19 +121,19 @@ async function runBackupFlow({ runningRef, mountedRef, setIsRunning, reload, toa
         ? t('settings.value0_notes_value1', { value0: run.noteCount, value1: formatBytes(run.bytes) }) : translateServiceMessage(run.results.find((r) => !r.ok)?.error) || t('settings.no_enabled_backup_targets'),
       tone: run.status === 'success' ? 'success' : run.status === 'partial' ? 'warning' : 'danger',
       duration: 8000,
-    });
+    })
   }
   catch (err) {
     toast({
       title: t('settings.backup_failed'),
       description: err instanceof ApiError ? err.message : String(err),
       tone: 'danger',
-    });
+    })
   }
   finally {
-    runningRef.current = false;
+    runningRef.current = false
     if (mountedRef.current)
-      setIsRunning(false);
+      setIsRunning(false)
   }
 }
 
@@ -149,18 +149,18 @@ function LoadErrorState({ error, onRetry }: { error: string; onRetry: () => void
       <Button size='sm' variant='secondary' onClick={onRetry}>{t('common.retry')}</Button>
       </div>
     </div>
-  );
+  )
 }
 
 function ErrorBanner({ error, onRetry }: { error: string | null; onRetry: () => void }) {
-  if (!error) return null;
+  if (!error) return null
   return (
     <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--danger)]">
       <AlertCircle size={13} className='mt-0.5 shrink-0'/>
       <span className='min-w-0 flex-1 break-words'>{error}</span>
       <button type='button' className='shrink-0 font-medium underline underline-offset-2' onClick={onRetry}>{t('common.retry')}</button>
     </div>
-  );
+  )
 }
 
 function BackupHero({ enabled, isRunning, onRun }: { enabled: number; isRunning: boolean; onRun: () => void }) {
@@ -179,19 +179,19 @@ function BackupHero({ enabled, isRunning, onRun }: { enabled: number; isRunning:
       <Button size='sm' variant='primary' icon={isRunning ? undefined : <Zap size={13}/>} loading={isRunning} disabled={!enabled} onClick={onRun}>{t('settings.back_up_now')}</Button>
       </div>
     </section>
-  );
+  )
 }
 
 function TargetsSection({ targets, editing, onAdd, onEdit, onChanged, onPatch, onRemove, onRestore, onCloseEdit }: {
-  targets: BackupTarget[];
-  editing: BackupTarget | 'new' | null;
-  onAdd: () => void;
-  onEdit: (target: BackupTarget) => void;
-  onChanged: () => Promise<void>;
-  onPatch: (id: string, patch: Partial<BackupTarget>) => void;
-  onRemove: (id: string) => void;
-  onRestore: (target: BackupTarget) => void;
-  onCloseEdit: () => void;
+  targets: BackupTarget[]
+  editing: BackupTarget | 'new' | null
+  onAdd: () => void
+  onEdit: (target: BackupTarget) => void
+  onChanged: () => Promise<void>
+  onPatch: (id: string, patch: Partial<BackupTarget>) => void
+  onRemove: (id: string) => void
+  onRestore: (target: BackupTarget) => void
+  onCloseEdit: () => void
 }) {
   return (
     <section>
@@ -212,7 +212,7 @@ function TargetsSection({ targets, editing, onAdd, onEdit, onChanged, onPatch, o
 
       {editing && <TargetForm target={editing === 'new' ? null : editing} onClose={onCloseEdit} onSaved={async () => { onCloseEdit(); await onChanged(); }}/>}
     </section>
-  );
+  )
 }
 
 function ScheduleSection({ schedule, options, onChange }: { schedule: BackupSchedule; options: SegmentedOption<BackupSchedule>[]; onChange: (schedule: BackupSchedule) => void }) {
@@ -223,7 +223,7 @@ function ScheduleSection({ schedule, options, onChange }: { schedule: BackupSche
       <Segmented<BackupSchedule> label={t('settings.frequency')} value={schedule} onChange={onChange} options={options}/>
       </SettingRow>
     </section>
-  );
+  )
 }
 
 function RunsSection({ runs }: { runs: BackupRun[] }) {
@@ -238,5 +238,5 @@ function RunsSection({ runs }: { runs: BackupRun[] }) {
       </ul>
       )}
     </section>
-  );
+  )
 }

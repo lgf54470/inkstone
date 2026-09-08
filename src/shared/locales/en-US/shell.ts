@@ -21,4 +21,4 @@ export const messages = {
 'shell.synced': 'Synced',
 'shell.synced_value0': 'Synced · {value0}',
 'shell.unsaved_changes': 'Unsaved changes',
-};
+}

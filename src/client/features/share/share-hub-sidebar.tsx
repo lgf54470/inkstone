@@ -1,11 +1,11 @@
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { cn } from '../../lib/cn';
-import { t } from '../../lib/i18n';
-import { IconButton } from '../../components/primitives';
-import { Tooltip } from '../../components/overlay';
-import type { ShareHubSidebarBundle } from './use-share-hub-sidebar';
-import { useShareHubSidebar } from './use-share-hub-sidebar';
+import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { cn } from '../../lib/cn'
+import { t } from '../../lib/i18n'
+import { IconButton } from '../../components/primitives'
+import { Tooltip } from '../../components/overlay'
+import type { ShareHubSidebarBundle } from './use-share-hub-sidebar'
+import { useShareHubSidebar } from './use-share-hub-sidebar'
 
 export function ShareHubSidebar() {
   const bundle = useShareHubSidebar()

@@ -339,4 +339,4 @@ Rewrite with an analogy:
 `,
 'template.feynman.description': 'Explain a concept in plain language to find your knowledge gaps.',
 'template.feynman.name': 'Feynman Technique',
-};
+}

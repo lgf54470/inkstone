@@ -25,4 +25,4 @@ export const messages = {
 'preview.zoom_in': 'Zoom In',
 'preview.zoom_out': 'Zoom Out',
 'preview.zoom_reset': 'Fit Screen',
-};
+}

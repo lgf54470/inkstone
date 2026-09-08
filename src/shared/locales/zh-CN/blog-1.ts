@@ -153,4 +153,4 @@ export const messages = {
 'blog.selected_posts_count': '已选择 {value0} 篇',
 'blog.batch_publish': '批量发布',
 'blog.batch_unpublish': '批量下架',
-};
+}

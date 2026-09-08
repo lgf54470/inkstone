@@ -1,8 +1,8 @@
-import type { DatabaseState, Env } from '../../env';
-import { getMeta, setMeta } from '../metadata';
-import { DATABASE_STATE_KEY, INDEX_SCHEMA_STATEMENTS, REQUIRED_COLUMNS, REQUIRED_INDEXES, REQUIRED_TABLES, TABLE_SCHEMA_STATEMENTS } from './checks';
-import { SCHEMA_MIGRATIONS } from './migrations';
-import { FTS_STATEMENT, SCHEMA_STATEMENTS } from './statements';
+import type { DatabaseState, Env } from '../../env'
+import { getMeta, setMeta } from '../metadata'
+import { DATABASE_STATE_KEY, INDEX_SCHEMA_STATEMENTS, REQUIRED_COLUMNS, REQUIRED_INDEXES, REQUIRED_TABLES, TABLE_SCHEMA_STATEMENTS } from './checks'
+import { SCHEMA_MIGRATIONS } from './migrations'
+import { FTS_STATEMENT, SCHEMA_STATEMENTS } from './statements'
 
 const initializationCache = new WeakMap<D1Database, Promise<DatabaseState>>()
 

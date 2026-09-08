@@ -21,4 +21,4 @@ export const messages = {
 'shell.synced': '已同步',
 'shell.synced_value0': '已同步 · {value0}',
 'shell.unsaved_changes': '有未保存的改动',
-};
+}

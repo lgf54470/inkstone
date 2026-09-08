@@ -1,14 +1,14 @@
-import type { JSX } from 'react';
-import { RotateCcw } from 'lucide-react';
-import { cn } from '../../lib/cn';
-import { t } from '../../lib/i18n';
-import { Tooltip } from '../overlay';
-import { MonthGrid } from '../calendar-grids';
-import { HEAT_PERCENTS } from './strip';
-import type { MonthViewBundle } from './use-activity-calendar';
+import type { JSX } from 'react'
+import { RotateCcw } from 'lucide-react'
+import { cn } from '../../lib/cn'
+import { t } from '../../lib/i18n'
+import { Tooltip } from '../overlay'
+import { MonthGrid } from '../calendar-grids'
+import { HEAT_PERCENTS } from './strip'
+import type { MonthViewBundle } from './use-activity-calendar'
 
 
-type MonthViewProps = MonthViewBundle;
+type MonthViewProps = MonthViewBundle
 
 export function MonthView({ cursor, weekStart, todayKey, weekdayLabels, gridTitle, cellMeta, focusKey, inRange, gapLabel, isLatestOutside, gapAhead, latestOutsideDays, latestOutsideKey, getDiaryId, onGapDayClick, onKeyDown, onMouseDown, onMouseEnter, onActivateDay, onFocusDay, flashRef }: MonthViewProps): JSX.Element {
   return (<>
@@ -30,21 +30,21 @@ export function MonthView({ cursor, weekStart, todayKey, weekdayLabels, gridTitl
       onMouseEnter={onMouseEnter}
       className='mt-1.5 px-0.5'
       renderCell={(cell) => {
-        const count = cellMeta.byKey.get(cell.key) ?? 0;
-        const level = count === 0 ? 0 : Math.max(1, Math.round((4 * count) / Math.max(1, cellMeta.max)));
-        const diaryId = getDiaryId?.(cell.key) ?? null;
-        const selected = cell.inMonth && inRange(cell.key);
+        const count = cellMeta.byKey.get(cell.key) ?? 0
+        const level = count === 0 ? 0 : Math.max(1, Math.round((4 * count) / Math.max(1, cellMeta.max)))
+        const diaryId = getDiaryId?.(cell.key) ?? null
+        const selected = cell.inMonth && inRange(cell.key)
         return (<Tooltip label={gapLabel(cell.key)}>
           <button type='button' data-day-key={cell.key} tabIndex={cell.key === focusKey ? 0 : -1} aria-pressed={selected} aria-label={gapLabel(cell.key)} onClick={() => {
-            onFocusDay(cell.key);
-            onActivateDay(cell.key, diaryId);
+            onFocusDay(cell.key)
+            onActivateDay(cell.key, diaryId)
           }} className={cn('relative flex aspect-square items-center justify-center rounded-[var(--r-xs)] text-[length:var(--text-9\\.5)] leading-none transition-colors', 'hover:ring-1 hover:ring-inset hover:ring-[var(--accent-ring)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]', cell.inMonth ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-quaternary)] opacity-60', count > 0 && 'font-semibold text-[var(--text-primary)]', isLatestOutside(cell.key) && 'border border-dashed border-[var(--accent)]/80')} style={level > 0 ? { backgroundColor: `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[level]}%, transparent)` } : undefined}>
             {cell.day}
             {diaryId && (<span aria-hidden='true' className='absolute bottom-0.5 left-1/2 size-0.75 -translate-x-1/2 rounded-full bg-[var(--accent)]'/>)}
             {selected && (<span aria-hidden='true' className='absolute inset-x-1 bottom-[1px] h-0.5 rounded-full bg-[var(--accent)]'/>)}
           </button>
-        </Tooltip>);
+        </Tooltip>)
       }}
     /></div>
-  </>);
+  </>)
 }

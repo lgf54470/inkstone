@@ -1,18 +1,18 @@
-import { Hono, type Context } from 'hono';
-import { setCookie } from 'hono/cookie';
-import { LIMITS } from '@shared/constants';
-import { escapeHtml } from '@shared/escape';
-import { PublicNote } from '@shared/types';
-import type { AppBindings } from '../../env';
-import { ApiError } from '../../lib/errors';
-import { isValidSlug } from '../../lib/id';
-import { JSON_BODY_LIMITS, readOptionalJsonValidated, requestClientIp } from '../../lib/request';
-import { verifyPassword } from '../../lib/password';
-import { computeVisitorFingerprint, isBot, isSelfReferrer, parseBrowser, parseDeviceType, parseOS, parseReferrerHost } from '../../lib/share-analytics';
-import { createShareAssetSession, shareAssetCookieName } from '../../lib/share-asset-session';
-import { assertNotLocked, clearLoginFailures, consumeAttemptBudget, recordLoginFailure, ThrottleError } from '../../lib/throttle';
-import { shareAccessSchema } from './schemas';
-import { ShareRow } from './shares';
+import { Hono, type Context } from 'hono'
+import { setCookie } from 'hono/cookie'
+import { LIMITS } from '@shared/constants'
+import { escapeHtml } from '@shared/escape'
+import { PublicNote } from '@shared/types'
+import type { AppBindings } from '../../env'
+import { ApiError } from '../../lib/errors'
+import { isValidSlug } from '../../lib/id'
+import { JSON_BODY_LIMITS, readOptionalJsonValidated, requestClientIp } from '../../lib/request'
+import { verifyPassword } from '../../lib/password'
+import { computeVisitorFingerprint, isBot, isSelfReferrer, parseBrowser, parseDeviceType, parseOS, parseReferrerHost } from '../../lib/share-analytics'
+import { createShareAssetSession, shareAssetCookieName } from '../../lib/share-asset-session'
+import { assertNotLocked, clearLoginFailures, consumeAttemptBudget, recordLoginFailure, ThrottleError } from '../../lib/throttle'
+import { shareAccessSchema } from './schemas'
+import { ShareRow } from './shares'
 
 interface ShareAccessBody {
   password?: string

@@ -1,5 +1,5 @@
-import { api } from '../../../lib/api';
-import type { ShareStoreState, SetShareStoreState } from './types';
+import { api } from '../../../lib/api'
+import type { ShareStoreState, SetShareStoreState } from './types'
 
 export let loadEpoch = 0
 
@@ -7,31 +7,31 @@ export const shareLoadersActions = (set: SetShareStoreState, get: () => ShareSto
   loadFolders: () => loadFoldersImpl(set),
   loadTags: () => loadTagsImpl(set),
   loadShares: () => loadSharesImpl(set, get),
-});
+})
 
 async function loadFoldersImpl(set: SetShareStoreState): Promise<void> {
   try {
-    const folders = await api.share.folders.list();
-    set({ folders });
+    const folders = await api.share.folders.list()
+    set({ folders })
   } catch (error) {
-    console.warn('[share-store] failed to load folders', error);
+    console.warn('[share-store] failed to load folders', error)
   }
 }
 
 async function loadTagsImpl(set: SetShareStoreState): Promise<void> {
   try {
-    const tags = await api.share.tags.list();
-    set({ tags });
+    const tags = await api.share.tags.list()
+    set({ tags })
   } catch (error) {
-    console.warn('[share-store] failed to load tags', error);
+    console.warn('[share-store] failed to load tags', error)
   }
 }
 
 async function loadSharesImpl(set: SetShareStoreState, get: () => ShareStoreState): Promise<void> {
-  const epoch = ++loadEpoch;
-  set({ loading: true });
+  const epoch = ++loadEpoch
+  set({ loading: true })
   try {
-    const { folderId, tag, statusFilter, search, sort, excludeBots, excludeSelfReferrers, excludeOwner } = get();
+    const { folderId, tag, statusFilter, search, sort, excludeBots, excludeSelfReferrers, excludeOwner } = get()
     const res = await api.share.list({
       folderId,
       tag,
@@ -41,19 +41,19 @@ async function loadSharesImpl(set: SetShareStoreState, get: () => ShareStoreStat
       excludeBots,
       excludeSelf: excludeSelfReferrers,
       excludeOwner,
-    });
-    void get().loadFolders();
-    void get().loadTags();
+    })
+    void get().loadFolders()
+    void get().loadTags()
     if (epoch === loadEpoch) {
       set({
         shares: res.shares,
         globalStats: res.globalStats,
         loading: false,
-      });
+      })
     }
   } catch {
     if (epoch === loadEpoch) {
-      set({ loading: false });
+      set({ loading: false })
     }
   }
 }

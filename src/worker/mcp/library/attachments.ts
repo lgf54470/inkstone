@@ -1,16 +1,16 @@
-import { requireOwnedNote } from './helpers';
-import type { LibraryContext } from './types';
-import { readAttachmentObject } from '../../attachments/backend';
-import { drainAttachmentCleanup } from '../../attachments/cleanup';
-import { AttachmentObjectStorage, attachmentCleanupTarget, attachmentObjectKey, legacyAttachmentObjectKey } from '../../attachments/keys';
-import { persistAttachmentWithinQuota } from '../../attachments/storage';
-import type { Env } from '../../env';
-import { fromBase64, sha256Hex, toBase64 } from '../../lib/encoding';
-import { ApiError } from '../../lib/errors';
-import { isValidId, newId } from '../../lib/id';
-import { ThrottleError, consumeAttemptBudget } from '../../lib/throttle';
-import { runIdempotent } from '.././operations';
-import { LIMITS } from '@shared/constants';
+import { requireOwnedNote } from './helpers'
+import type { LibraryContext } from './types'
+import { readAttachmentObject } from '../../attachments/backend'
+import { drainAttachmentCleanup } from '../../attachments/cleanup'
+import { AttachmentObjectStorage, attachmentCleanupTarget, attachmentObjectKey, legacyAttachmentObjectKey } from '../../attachments/keys'
+import { persistAttachmentWithinQuota } from '../../attachments/storage'
+import type { Env } from '../../env'
+import { fromBase64, sha256Hex, toBase64 } from '../../lib/encoding'
+import { ApiError } from '../../lib/errors'
+import { isValidId, newId } from '../../lib/id'
+import { ThrottleError, consumeAttemptBudget } from '../../lib/throttle'
+import { runIdempotent } from '.././operations'
+import { LIMITS } from '@shared/constants'
 
 export async function listMcpAttachments(
   db: D1Database,

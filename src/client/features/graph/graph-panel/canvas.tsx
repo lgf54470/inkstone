@@ -298,10 +298,10 @@ function graphMenuItems(context: { x: number; y: number; node: CanvasNode } | nu
 }
 
 function GraphOverlays({ data, hover, selected, hint }: {
-  data: GraphResponse;
-  hover: CanvasNode | null;
-  selected: GraphResponse['nodes'][number] | null;
-  hint: string;
+  data: GraphResponse
+  hover: CanvasNode | null
+  selected: GraphResponse['nodes'][number] | null
+  hint: string
 }) {
   const shown = hover ?? selected
   return (
@@ -319,8 +319,8 @@ function GraphOverlays({ data, hover, selected, hint }: {
 }
 
 function GraphCanvasElement({ canvasRef, handlers }: {
-  canvasRef: RefObject<HTMLCanvasElement | null>;
-  handlers: CanvasHandlers;
+  canvasRef: RefObject<HTMLCanvasElement | null>
+  handlers: CanvasHandlers
 }) {
   return (
     <canvas ref={canvasRef} tabIndex={0} role='application' aria-label={t('graph.graph_canvas_accessible')}

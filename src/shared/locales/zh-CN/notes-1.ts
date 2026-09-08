@@ -152,4 +152,4 @@ export const messages = {
 'notes.unpinned': '已取消置顶',
 'notes.value0_value1_notes': '{value0} {value1} 篇笔记',
 'notes.value0_was_also_changed_elsewhere_your_version_was_saved_as_a_copy_value': '「{value0}」在别处也被修改过。你的版本已另存为副本（{value1}）。',
-};
+}

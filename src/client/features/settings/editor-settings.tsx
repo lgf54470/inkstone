@@ -1,33 +1,33 @@
-import { useCallback, useMemo } from 'react';
-import { Segmented, SettingRow, Slider, Switch, type SegmentedOption } from '../../components/form';
-import { useSession } from '../../store/session';
-import { t, useLocale } from '../../lib/i18n';
-import type { EditorSettings as SettingsEditor, PreviewSettings as SettingsPreview } from '@shared/types';
+import { useCallback, useMemo } from 'react'
+import { Segmented, SettingRow, Slider, Switch, type SegmentedOption } from '../../components/form'
+import { useSession } from '../../store/session'
+import { t, useLocale } from '../../lib/i18n'
+import type { EditorSettings as SettingsEditor, PreviewSettings as SettingsPreview } from '@shared/types'
 
 const TAB_SIZE_OPTIONS: SegmentedOption<string>[] = [
   { value: '2', label: '2' },
   { value: '4', label: '4' },
-];
+]
 
 export function EditorSettings() {
-  const editor = useSession((s) => s.settings.editor);
-  const preview = useSession((s) => s.settings.preview);
-  const setters = useEditorSetters();
+  const editor = useSession((s) => s.settings.editor)
+  const preview = useSession((s) => s.settings.preview)
+  const setters = useEditorSetters()
   return (<div className='space-y-6'>
     <FontSection editor={editor} setters={setters}/>
     <WritingModeSection editor={editor} setters={setters}/>
     <PreviewSection preview={preview} setters={setters}/>
     <MiscSection editor={editor} setters={setters}/>
-  </div>);
+  </div>)
 }
 
 function useEditorSetters() {
-  const update = useSession((s) => s.updateSettings);
-  const locale = useLocale();
+  const update = useSession((s) => s.updateSettings)
+  const locale = useLocale()
   const fontFamilyOptions = useMemo(() => ([
     { value: 'mono' as const, label: t('settings.monospace') },
     { value: 'sans' as const, label: t('common.sans_serif') },
-  ]), [locale]);
+  ]), [locale])
   return {
     fontFamilyOptions,
     setFontFamily: useCallback((fontFamily: 'mono' | 'sans') => void update({ editor: { fontFamily } }), [update]),
@@ -49,10 +49,10 @@ function useEditorSetters() {
     setExternalImages: useCallback((externalImages: boolean) => void update({ preview: { externalImages } }), [update]),
     setLinkHoverDelayMs: useCallback((linkHoverDelayMs: number) => void update({ preview: { linkHoverDelayMs } }), [update]),
     setLinkPreviewLength: useCallback((linkPreviewLength: number) => void update({ preview: { linkPreviewLength } }), [update]),
-  };
+  }
 }
 
-type EditorSetters = ReturnType<typeof useEditorSetters>;
+type EditorSetters = ReturnType<typeof useEditorSetters>
 
 function FontSection({ editor, setters }: { editor: SettingsEditor; setters: EditorSetters }) {
   return (
@@ -73,7 +73,7 @@ function FontSection({ editor, setters }: { editor: SettingsEditor; setters: Edi
       <Switch checked={editor.spellcheck} onChange={setters.setSpellcheck} label={t('settings.spellcheck')}/>
       </SettingRow>
     </section>
-  );
+  )
 }
 
 function WritingModeSection({ editor, setters }: { editor: SettingsEditor; setters: EditorSetters }) {
@@ -87,7 +87,7 @@ function WritingModeSection({ editor, setters }: { editor: SettingsEditor; sette
       <Switch checked={editor.focusMode} onChange={setters.setFocusMode} label={t('settings.focus_mode')}/>
       </SettingRow>
     </section>
-  );
+  )
 }
 
 function PreviewSection({ preview, setters }: { preview: SettingsPreview; setters: EditorSetters }) {
@@ -127,7 +127,7 @@ function PreviewSection({ preview, setters }: { preview: SettingsPreview; setter
       </SettingRow>
       </>}
     </section>
-  );
+  )
 }
 
 function MiscSection({ editor, setters }: { editor: SettingsEditor; setters: EditorSetters }) {
@@ -140,5 +140,5 @@ function MiscSection({ editor, setters }: { editor: SettingsEditor; setters: Edi
       <Segmented<string> label={t('settings.indent_width')} value={String(editor.tabSize)} onChange={setters.setTabSize} options={TAB_SIZE_OPTIONS}/>
       </SettingRow>
     </section>
-  );
+  )
 }

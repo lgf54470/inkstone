@@ -81,4 +81,4 @@ export const messages = {
 'common.zoom_in': 'Zoom in',
 'common.zoom_out': 'Zoom out',
 'common.refresh': 'Refresh',
-};
+}

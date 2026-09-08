@@ -1,8 +1,8 @@
-import { segmentCJK, toPlainText } from '@shared/markdown-utils';
-import { sliceText, truncateText } from '@shared/text-utils';
-import type { SearchHit } from '@shared/types';
-import { drainFtsQueue, hasPendingFtsWork } from '../../db/fts';
-import { NOTE_COLUMNS, toNoteSummary, type NoteRow } from '../../db/rows';
+import { segmentCJK, toPlainText } from '@shared/markdown-utils'
+import { sliceText, truncateText } from '@shared/text-utils'
+import type { SearchHit } from '@shared/types'
+import { drainFtsQueue, hasPendingFtsWork } from '../../db/fts'
+import { NOTE_COLUMNS, toNoteSummary, type NoteRow } from '../../db/rows'
 
 export const GRAPH_EDGE_CANDIDATE_LIMIT = 10_000
 

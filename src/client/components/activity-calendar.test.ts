@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { act, createElement, useState } from 'react';
-import { buildStripWeeks, monthRangeToKeys, ActivityCalendar } from './activity-calendar';
-import type { ActivityCalendarProps } from './activity-calendar/props';
-import { renderElement } from '../lib/test-render';
+import { describe, expect, it } from 'vitest'
+import { act, createElement, useState } from 'react'
+import { buildStripWeeks, monthRangeToKeys, ActivityCalendar } from './activity-calendar'
+import type { ActivityCalendarProps } from './activity-calendar/props'
+import { renderElement } from '../lib/test-render'
 
 function stripOptions(overrides: Partial<Parameters<typeof buildStripWeeks>[1]> = {}): Parameters<typeof buildStripWeeks>[1] {
   return {
@@ -10,7 +10,7 @@ function stripOptions(overrides: Partial<Parameters<typeof buildStripWeeks>[1]> 
     weekStart: 1,
     todayKey: '2026-09-02',
     ...overrides,
-  };
+  }
 }
 
 describe('buildStripWeeks', () => {
@@ -18,47 +18,47 @@ describe('buildStripWeeks', () => {
     const weeks = buildStripWeeks(new Map([
       ['2026-09-02', 3],
       ['2026-09-06', 1],
-    ]), stripOptions());
-    expect(weeks).toHaveLength(1);
-    expect(weeks[0]!.map((cell) => cell.key)).toEqual(['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05', '2026-09-06']);
-    expect(weeks[0]![2]!.count).toBe(3);
-    expect(weeks[0]![2]!.today).toBe(true);
-    expect(weeks[0]![6]!.count).toBe(1);
-  });
+    ]), stripOptions())
+    expect(weeks).toHaveLength(1)
+    expect(weeks[0]!.map((cell) => cell.key)).toEqual(['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05', '2026-09-06'])
+    expect(weeks[0]![2]!.count).toBe(3)
+    expect(weeks[0]![2]!.today).toBe(true)
+    expect(weeks[0]![6]!.count).toBe(1)
+  })
 
   it('aligns a mid-week range start backwards to the preceding week start', () => {
     const weeks = buildStripWeeks(new Map(), stripOptions({
       range: { start: new Date(2026, 8, 3), end: new Date(2026, 8, 8) },
-    }));
-    expect(weeks).toHaveLength(2);
-    expect(weeks[0]![0]!.key).toBe('2026-08-31');
-    expect(weeks[1]![0]!.key).toBe('2026-09-07');
-  });
+    }))
+    expect(weeks).toHaveLength(2)
+    expect(weeks[0]![0]!.key).toBe('2026-08-31')
+    expect(weeks[1]![0]!.key).toBe('2026-09-07')
+  })
 
   it('scales heat levels against the busiest day in range', () => {
     const weeks = buildStripWeeks(new Map([
       ['2026-09-02', 3],
       ['2026-09-03', 2],
       ['2026-09-04', 1],
-    ]), stripOptions());
-    const [week] = weeks;
-    expect(week![2]!.level).toBe(4);
-    expect(week![3]!.level).toBe(3);
-    expect(week![4]!.level).toBe(1);
-    expect(week![0]!.level).toBe(0);
-  });
+    ]), stripOptions())
+    const [week] = weeks
+    expect(week![2]!.level).toBe(4)
+    expect(week![3]!.level).toBe(3)
+    expect(week![4]!.level).toBe(1)
+    expect(week![0]!.level).toBe(0)
+  })
 
   it('defaults to the most recent 16 weeks when no range is given', () => {
     const weeks = buildStripWeeks(new Map(), {
       now: new Date(2026, 8, 2),
       weekStart: 1,
       todayKey: '2026-09-02',
-    });
-    expect(weeks).toHaveLength(16);
-    expect(weeks[15]![0]!.key).toBe('2026-08-31');
-    expect(weeks[15]![2]!.key).toBe('2026-09-02');
-  });
-});
+    })
+    expect(weeks).toHaveLength(16)
+    expect(weeks[15]![0]!.key).toBe('2026-08-31')
+    expect(weeks[15]![2]!.key).toBe('2026-09-02')
+  })
+})
 
 describe('buildStripWeeks notes, selection and month ranges', () => {
   it('resolves diary ids, per-day note lists, and the selected day', () => {
@@ -67,32 +67,32 @@ describe('buildStripWeeks notes, selection and month ranges', () => {
         { id: 'n1', title: 'Note 1' },
         { id: 'n2', title: 'Note 2' },
       ]],
-    ]);
+    ])
     const weeks = buildStripWeeks(new Map([['2026-09-02', 2]]), stripOptions({
       selectedRange: { start: '2026-09-02', end: '2026-09-04' },
       getDiaryId: (key) => (key === '2026-09-02' ? 'd9' : null),
       notesByDay: notes,
-    }));
-    expect(weeks[0]![2]!.diaryId).toBe('d9');
-    expect(weeks[0]![2]!.selected).toBe(true);
-    expect(weeks[0]![3]!.selected).toBe(true);
-    expect(weeks[0]![4]!.selected).toBe(true);
-    expect(weeks[0]![5]!.selected).toBe(false);
-    expect(weeks[0]![2]!.notes.map((item) => item.id)).toEqual(['n1', 'n2']);
-  });
+    }))
+    expect(weeks[0]![2]!.diaryId).toBe('d9')
+    expect(weeks[0]![2]!.selected).toBe(true)
+    expect(weeks[0]![3]!.selected).toBe(true)
+    expect(weeks[0]![4]!.selected).toBe(true)
+    expect(weeks[0]![5]!.selected).toBe(false)
+    expect(weeks[0]![2]!.notes.map((item) => item.id)).toEqual(['n1', 'n2'])
+  })
 
   it('turns an inclusive month range into day keys covering whole months', () => {
-    expect(monthRangeToKeys(2026, 8, 8)).toEqual({ start: '2026-09-01', end: '2026-09-30' });
-    expect(monthRangeToKeys(2026, 7, 8)).toEqual({ start: '2026-08-01', end: '2026-09-30' });
-    expect(monthRangeToKeys(2026, 0, 11)).toEqual({ start: '2026-01-01', end: '2026-12-31' });
-    expect(monthRangeToKeys(2026, 11, 11)).toEqual({ start: '2026-12-01', end: '2026-12-31' });
-  });
+    expect(monthRangeToKeys(2026, 8, 8)).toEqual({ start: '2026-09-01', end: '2026-09-30' })
+    expect(monthRangeToKeys(2026, 7, 8)).toEqual({ start: '2026-08-01', end: '2026-09-30' })
+    expect(monthRangeToKeys(2026, 0, 11)).toEqual({ start: '2026-01-01', end: '2026-12-31' })
+    expect(monthRangeToKeys(2026, 11, 11)).toEqual({ start: '2026-12-01', end: '2026-12-31' })
+  })
 
   it('normalizes reversed month ranges and leap-year February', () => {
-    expect(monthRangeToKeys(2024, 11, 0)).toEqual({ start: '2024-01-01', end: '2024-12-31' });
-    expect(monthRangeToKeys(2024, 1, 1)).toEqual({ start: '2024-02-01', end: '2024-02-29' });
-  });
-});
+    expect(monthRangeToKeys(2024, 11, 0)).toEqual({ start: '2024-01-01', end: '2024-12-31' })
+    expect(monthRangeToKeys(2024, 1, 1)).toEqual({ start: '2024-02-01', end: '2024-02-29' })
+  })
+})
 
 // jsdom has no layout engine, so these guards assert the anti-wrap CSS contract
 // (whitespace-nowrap + truncate) instead of pixel measurement.
@@ -113,180 +113,180 @@ function calendarProps(overrides: Partial<ActivityCalendarProps> = {}): Activity
     onNoteClick: () => {},
     getDiaryId: () => null,
     ...overrides,
-  };
+  }
 }
 
 function renderCalendar(): { container: HTMLElement; unmount: () => void } {
   function Harness() {
-    const [view, setView] = useState<'month' | 'weeks' | 'year'>('month');
-    return createElement('div', { style: { width: 196 } }, createElement(ActivityCalendar, calendarProps({ view, onViewChange: setView })));
+    const [view, setView] = useState<'month' | 'weeks' | 'year'>('month')
+    return createElement('div', { style: { width: 196 } }, createElement(ActivityCalendar, calendarProps({ view, onViewChange: setView })))
   }
-  return renderElement(createElement(Harness));
+  return renderElement(createElement(Harness))
 }
 
 function viewToggle(container: HTMLElement): HTMLButtonElement[] {
-  return [...container.querySelectorAll<HTMLButtonElement>('[aria-label="sidebar.calendar_view"] button')];
+  return [...container.querySelectorAll<HTMLButtonElement>('[aria-label="sidebar.calendar_view"] button')]
 }
 
 describe('view toggle wrapping contract', () => {
   it('keeps the toggle buttons single-line inside the 196px sidebar budget', () => {
-    const { container } = renderCalendar();
-    const group = container.querySelector('[aria-label="sidebar.calendar_view"]');
-    expect(group).not.toBeNull();
-    expect(group!.classList.contains('overflow-hidden')).toBe(true);
-    const buttons = viewToggle(container);
-    expect(buttons).toHaveLength(3);
+    const { container } = renderCalendar()
+    const group = container.querySelector('[aria-label="sidebar.calendar_view"]')
+    expect(group).not.toBeNull()
+    expect(group!.classList.contains('overflow-hidden')).toBe(true)
+    const buttons = viewToggle(container)
+    expect(buttons).toHaveLength(3)
     for (const button of buttons) {
-      expect(button.classList.contains('whitespace-nowrap')).toBe(true);
-      expect(button.classList.contains('min-w-0')).toBe(true);
-      expect(button.textContent).not.toContain('\n');
-      expect(button.querySelector('span.truncate')).not.toBeNull();
+      expect(button.classList.contains('whitespace-nowrap')).toBe(true)
+      expect(button.classList.contains('min-w-0')).toBe(true)
+      expect(button.textContent).not.toContain('\n')
+      expect(button.querySelector('span.truncate')).not.toBeNull()
     }
-    container.remove();
-  });
+    container.remove()
+  })
 
   it('renders the year grid with a weekday strip, clickable columns, and the measured column count', () => {
-    const { container, unmount } = renderCalendar();
-    act(() => { viewToggle(container)[2]!.click(); });
-    const grid = container.querySelector('[aria-label="sidebar.calendar_year_grid_aria"]');
-    expect(grid).not.toBeNull();
-    expect(grid!.classList.contains('grid-cols-3')).toBe(true);
-    const cards = [...grid!.querySelectorAll('[data-month-card]')];
-    expect(cards).toHaveLength(12);
+    const { container, unmount } = renderCalendar()
+    act(() => { viewToggle(container)[2]!.click(); })
+    const grid = container.querySelector('[aria-label="sidebar.calendar_year_grid_aria"]')
+    expect(grid).not.toBeNull()
+    expect(grid!.classList.contains('grid-cols-3')).toBe(true)
+    const cards = [...grid!.querySelectorAll('[data-month-card]')]
+    expect(cards).toHaveLength(12)
     for (const card of cards) {
-      const weekdayColumns = [...card.querySelectorAll('button[aria-label^="sidebar.calendar_year_weekday"]')];
+      const weekdayColumns = [...card.querySelectorAll('button[aria-label^="sidebar.calendar_year_weekday"]')]
       // One seven-column row of clickable weekday labels above the heat cells.
-      expect(weekdayColumns).toHaveLength(7);
-      expect(card.querySelector('[data-month]')!.classList.contains('grid-cols-7')).toBe(true);
+      expect(weekdayColumns).toHaveLength(7)
+      expect(card.querySelector('[data-month]')!.classList.contains('grid-cols-7')).toBe(true)
     }
-    unmount();
-  });
+    unmount()
+  })
 
   it('moves the year focus by the measured column count (ArrowUp/Down)', () => {
-    const { container, unmount } = renderCalendar();
-    act(() => { viewToggle(container)[2]!.click(); });
-    const september = container.querySelector('[data-month="8"]');
+    const { container, unmount } = renderCalendar()
+    act(() => { viewToggle(container)[2]!.click(); })
+    const september = container.querySelector('[data-month="8"]')
     expect(september).not.toBeNull();
-    (september as HTMLElement).focus();
-    act(() => { september!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })); });
-    expect(document.activeElement?.getAttribute('data-month')).toBe('11');
-    act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })); });
-    expect(document.activeElement?.getAttribute('data-month')).toBe('8');
-    unmount();
-  });
-});
+    (september as HTMLElement).focus()
+    act(() => { september!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })); })
+    expect(document.activeElement?.getAttribute('data-month')).toBe('11')
+    act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })); })
+    expect(document.activeElement?.getAttribute('data-month')).toBe('8')
+    unmount()
+  })
+})
 
 describe('year view keyboard and weekday behavior', () => {
   it('walks the focused card\'s weekday columns with arrows and returns to the card', () => {
-    const { container, unmount } = renderCalendar();
-    act(() => { viewToggle(container)[2]!.click(); });
-    const september = container.querySelector('[data-month="8"]') as HTMLElement;
-    september.focus();
-    act(() => { september.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); });
-    expect(document.activeElement?.getAttribute('data-weekday')).toBe('0');
-    act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); });
-    act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); });
-    expect(document.activeElement?.getAttribute('data-weekday')).toBe('2');
-    expect(document.activeElement?.closest('[data-month-card]')?.getAttribute('data-month-card')).toBe('8');
-    act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })); });
-    expect(document.activeElement?.getAttribute('data-month')).toBe('8');
-    unmount();
-  });
+    const { container, unmount } = renderCalendar()
+    act(() => { viewToggle(container)[2]!.click(); })
+    const september = container.querySelector('[data-month="8"]') as HTMLElement
+    september.focus()
+    act(() => { september.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); })
+    expect(document.activeElement?.getAttribute('data-weekday')).toBe('0')
+    act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); })
+    act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); })
+    expect(document.activeElement?.getAttribute('data-weekday')).toBe('2')
+    expect(document.activeElement?.closest('[data-month-card]')?.getAttribute('data-month-card')).toBe('8')
+    act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })); })
+    expect(document.activeElement?.getAttribute('data-month')).toBe('8')
+    unmount()
+  })
 
   it('respects a fixed columns preference over the measured width', () => {
-    const { container, unmount } = renderElement(createElement('div', { style: { width: 196 } }, createElement(ActivityCalendar, calendarProps({ view: 'year', columnsPreference: '4' }))));
-    const grid = container.querySelector('[aria-label="sidebar.calendar_year_grid_aria"]');
-    expect(grid!.classList.contains('grid-cols-4')).toBe(true);
-    unmount();
-  });
+    const { container, unmount } = renderElement(createElement('div', { style: { width: 196 } }, createElement(ActivityCalendar, calendarProps({ view: 'year', columnsPreference: '4' }))))
+    const grid = container.querySelector('[aria-label="sidebar.calendar_year_grid_aria"]')
+    expect(grid!.classList.contains('grid-cols-4')).toBe(true)
+    unmount()
+  })
 
   it('filters the week of the first tapped weekday and jumps to that month', () => {
-    const ranges: string[][] = [];
-    const cursors: { year: number; month: number }[] = [];
-    const views: string[] = [];
+    const ranges: string[][] = []
+    const cursors: { year: number; month: number }[] = []
+    const views: string[] = []
     function Harness() {
-      const [view, setView] = useState<'month' | 'weeks' | 'year'>('year');
+      const [view, setView] = useState<'month' | 'weeks' | 'year'>('year')
       return createElement('div', null, createElement(ActivityCalendar, calendarProps({
         view,
         onViewChange: (next) => { views.push(next); setView(next); },
         onCursorChange: (next) => { cursors.push(next); },
         onRangeSelect: (start, end) => { ranges.push([start, end]); },
-      })));
+      })))
     }
-    const { container, unmount } = renderElement(createElement(Harness));
+    const { container, unmount } = renderElement(createElement(Harness))
     // 2026-09 has the first Monday on the 7th: column 0 (Mon) filters 09-07..09-13.
-    const monday = container.querySelector('[data-month-card="8"] button[aria-label^="sidebar.calendar_year_weekday"]');
-    expect(monday).not.toBeNull();
-    act(() => { (monday as HTMLButtonElement).click(); });
-    expect(ranges).toEqual([['2026-09-07', '2026-09-13']]);
-    expect(cursors).toEqual([{ year: 2026, month: 8 }]);
-    expect(views).toEqual(['month']);
-    unmount();
-  });
-});
+    const monday = container.querySelector('[data-month-card="8"] button[aria-label^="sidebar.calendar_year_weekday"]')
+    expect(monday).not.toBeNull()
+    act(() => { (monday as HTMLButtonElement).click(); })
+    expect(ranges).toEqual([['2026-09-07', '2026-09-13']])
+    expect(cursors).toEqual([{ year: 2026, month: 8 }])
+    expect(views).toEqual(['month'])
+    unmount()
+  })
+})
 
 function captureAnimations(): { captured: Array<{ duration?: number; keyframes: Keyframe[] }>; restore: () => void } {
-  const captured: Array<{ duration?: number; keyframes: Keyframe[] }> = [];
-  const original = Element.prototype.animate;
+  const captured: Array<{ duration?: number; keyframes: Keyframe[] }> = []
+  const original = Element.prototype.animate
   Element.prototype.animate = function (this: Element, keyframes: Keyframe[], options?: KeyframeAnimationOptions) {
-    captured.push({ keyframes: [...keyframes], duration: typeof options?.duration === 'number' ? options.duration : undefined });
-    return { cancel: () => {}, finished: Promise.resolve(), play: () => {}, pause: () => {} } as unknown as Animation;
-  };
-  return { captured, restore: () => { Element.prototype.animate = original; } };
+    captured.push({ keyframes: [...keyframes], duration: typeof options?.duration === 'number' ? options.duration : undefined })
+    return { cancel: () => {}, finished: Promise.resolve(), play: () => {}, pause: () => {} } as unknown as Animation
+  }
+  return { captured, restore: () => { Element.prototype.animate = original; } }
 }
 
 describe('jump flash transition', () => {
   it('fades the month grid in with an accent ring when an external jump arrives', () => {
-    const { captured, restore } = captureAnimations();
+    const { captured, restore } = captureAnimations()
     try {
-      let bumpFlash = () => {};
+      let bumpFlash = () => {}
       function Harness() {
-        const [flash, setFlash] = useState(0);
-        bumpFlash = () => setFlash((value) => value + 1);
-        return createElement('div', null, createElement(ActivityCalendar, calendarProps({ view: 'month', jumpFlash: flash })));
+        const [flash, setFlash] = useState(0)
+        bumpFlash = () => setFlash((value) => value + 1)
+        return createElement('div', null, createElement(ActivityCalendar, calendarProps({ view: 'month', jumpFlash: flash })))
       }
-      const { unmount } = renderElement(createElement(Harness));
-      expect(captured).toHaveLength(0);
-      act(() => { bumpFlash(); });
-      expect(captured).toHaveLength(1);
-      expect(captured[0]!.duration).toBe(1100);
-      expect(captured[0]!.keyframes[0]!.boxShadow).toContain('var(--accent)');
-      expect(captured[0]!.keyframes[1]!.boxShadow).toContain('rgba(0, 0, 0, 0)');
-      unmount();
+      const { unmount } = renderElement(createElement(Harness))
+      expect(captured).toHaveLength(0)
+      act(() => { bumpFlash(); })
+      expect(captured).toHaveLength(1)
+      expect(captured[0]!.duration).toBe(1100)
+      expect(captured[0]!.keyframes[0]!.boxShadow).toContain('var(--accent)')
+      expect(captured[0]!.keyframes[1]!.boxShadow).toContain('rgba(0, 0, 0, 0)')
+      unmount()
     }
     finally {
-      restore();
+      restore()
     }
-  });
-});
+  })
+})
 
 describe('internal jump flash', () => {
   it('flashes the same accent ring for gap-day follows and week clicks', () => {
-    const { captured, restore } = captureAnimations();
+    const { captured, restore } = captureAnimations()
     try {
       function Harness() {
-        const [view, setView] = useState<'month' | 'weeks' | 'year'>('month');
+        const [view, setView] = useState<'month' | 'weeks' | 'year'>('month')
         return createElement('div', null, createElement(ActivityCalendar, calendarProps({
           range: { start: new Date(2026, 6, 1), end: new Date(2026, 7, 31) },
           selectedRange: { start: '2026-07-01', end: '2026-07-31' },
           latestEditKey: '2026-08-05',
           view,
           onViewChange: setView,
-        })));
+        })))
       }
-      const { container, unmount } = renderElement(createElement(Harness));
-      const banner = container.querySelector('[aria-label*="sidebar.calendar_gap_banner"]');
-      expect(banner).not.toBeNull();
-      act(() => { banner!.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
-      expect(captured).toHaveLength(1);
-      expect(captured[0]!.duration).toBe(1100);
-      act(() => { viewToggle(container)[1]!.click(); });
-      act(() => { (container.querySelector('[aria-label*="sidebar.calendar_expand_week"]') as HTMLButtonElement).click(); });
-      expect(captured.length).toBeGreaterThan(2);
-      unmount();
+      const { container, unmount } = renderElement(createElement(Harness))
+      const banner = container.querySelector('[aria-label*="sidebar.calendar_gap_banner"]')
+      expect(banner).not.toBeNull()
+      act(() => { banner!.dispatchEvent(new MouseEvent('click', { bubbles: true })); })
+      expect(captured).toHaveLength(1)
+      expect(captured[0]!.duration).toBe(1100)
+      act(() => { viewToggle(container)[1]!.click(); })
+      act(() => { (container.querySelector('[aria-label*="sidebar.calendar_expand_week"]') as HTMLButtonElement).click(); })
+      expect(captured.length).toBeGreaterThan(2)
+      unmount()
     }
     finally {
-      restore();
+      restore()
     }
-  });
-});
+  })
+})

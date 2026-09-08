@@ -67,4 +67,4 @@ export const messages = {
 'sidebar.switch_to_light': 'Switch to light',
 'sidebar.the_value0_notes_inside_move_up_one_level_and_are_not_deleted': 'The {value0} notes inside move up one level and are not deleted.',
 'sidebar.this_folder_is_empty': 'This folder is empty.',
-};
+}

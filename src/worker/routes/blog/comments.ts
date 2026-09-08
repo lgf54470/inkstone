@@ -1,13 +1,13 @@
-import { Hono } from 'hono';
-import type { BlogCommentStatus } from '@shared/types';
-import type { AppBindings } from '../../env';
-import { ApiError } from '../../lib/errors';
-import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request';
-import { requireAuth } from '../../middleware/auth';
-import type { BlogCommentModerationRow } from '../../db/rows';
-import { blogCommentStatusSchema } from './schemas';
-import { blogCommentBatchSchema } from './schemas';
-import { toBlogComment } from './helpers';
+import { Hono } from 'hono'
+import type { BlogCommentStatus } from '@shared/types'
+import type { AppBindings } from '../../env'
+import { ApiError } from '../../lib/errors'
+import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
+import { requireAuth } from '../../middleware/auth'
+import type { BlogCommentModerationRow } from '../../db/rows'
+import { blogCommentStatusSchema } from './schemas'
+import { blogCommentBatchSchema } from './schemas'
+import { toBlogComment } from './helpers'
 
 export function registerBlogCommentsRoutes(blogManageRoutes: Hono<AppBindings>): void {
   registerBlogCommentsListRoute(blogManageRoutes)

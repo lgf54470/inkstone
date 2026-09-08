@@ -1,11 +1,11 @@
-import { useRef, useState } from 'react';
-import { ChevronRight, Hash, MoreHorizontal, Palette, Pin, Trash2 } from 'lucide-react';
-import type { Tag } from '@shared/types';
-import { cn } from '../../../lib/cn';
-import { t } from '../../../lib/i18n';
-import type { TagTreeNode } from '../../../lib/tag-tree';
-import { Menu, useContextMenu, type MenuItem } from '../../../components/overlay';
-import { TagColorSubmenu } from '../../tags';
+import { useRef, useState } from 'react'
+import { ChevronRight, Hash, MoreHorizontal, Palette, Pin, Trash2 } from 'lucide-react'
+import type { Tag } from '@shared/types'
+import { cn } from '../../../lib/cn'
+import { t } from '../../../lib/i18n'
+import type { TagTreeNode } from '../../../lib/tag-tree'
+import { Menu, useContextMenu, type MenuItem } from '../../../components/overlay'
+import { TagColorSubmenu } from '../../tags'
 
 const TREE_INDENT_BASE = 6
 const TREE_INDENT_STEP = 12

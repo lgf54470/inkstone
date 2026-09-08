@@ -1,157 +1,157 @@
 
-type ColumnAlignment = 'left' | 'center' | 'right' | 'default';
+type ColumnAlignment = 'left' | 'center' | 'right' | 'default'
 
 export interface ParsedTable {
-  startLine: number;
-  endLine: number;
-  headerRow: string[];
-  alignments: ColumnAlignment[];
-  rows: string[][];
-  columnCount: number;
-  cursorRowIndex: number;
-  cursorColIndex: number;
+  startLine: number
+  endLine: number
+  headerRow: string[]
+  alignments: ColumnAlignment[]
+  rows: string[][]
+  columnCount: number
+  cursorRowIndex: number
+  cursorColIndex: number
 }
 
 interface SplitCellState {
-  current: string;
-  isEscaped: boolean;
+  current: string
+  isEscaped: boolean
 }
 
 export function splitTableRow(line: string): string[] {
-  const cells: string[] = [];
-  const state: SplitCellState = { current: '', isEscaped: false };
+  const cells: string[] = []
+  const state: SplitCellState = { current: '', isEscaped: false }
 
-  const trimmed = line.trim();
-  let str = trimmed.startsWith('|') ? trimmed.slice(1) : trimmed;
+  const trimmed = line.trim()
+  let str = trimmed.startsWith('|') ? trimmed.slice(1) : trimmed
   if (str.endsWith('|') && !str.endsWith('\\|')) {
-    str = str.slice(0, -1);
+    str = str.slice(0, -1)
   }
 
   for (let i = 0; i < str.length; i++) {
-    splitCellChar(state, cells, str[i]!);
+    splitCellChar(state, cells, str[i]!)
   }
-  cells.push(state.current.trim());
-  return cells;
+  cells.push(state.current.trim())
+  return cells
 }
 
 function splitCellChar(state: SplitCellState, cells: string[], char: string): void {
   if (state.isEscaped) {
-    state.current += char;
-    state.isEscaped = false;
-    return;
+    state.current += char
+    state.isEscaped = false
+    return
   }
   if (char === '\\') {
-    state.current += char;
-    state.isEscaped = true;
-    return;
+    state.current += char
+    state.isEscaped = true
+    return
   }
   if (char === '|') {
-    cells.push(state.current.trim());
-    state.current = '';
-    return;
+    cells.push(state.current.trim())
+    state.current = ''
+    return
   }
-  state.current += char;
+  state.current += char
 }
 
 export function isDelimiterRow(line: string): boolean {
-  const cells = splitTableRow(line);
-  if (cells.length === 0) return false;
-  return cells.every((cell) => /^:?-+:?$/.test(cell.trim()));
+  const cells = splitTableRow(line)
+  if (cells.length === 0) return false
+  return cells.every((cell) => /^:?-+:?$/.test(cell.trim()))
 }
 
 
 function parseCellAlignment(cell: string): ColumnAlignment {
-  const trimmed = cell.trim();
-  const leftColon = trimmed.startsWith(':');
-  const rightColon = trimmed.endsWith(':');
-  if (leftColon && rightColon) return 'center';
-  if (rightColon) return 'right';
-  if (leftColon) return 'left';
-  return 'default';
+  const trimmed = cell.trim()
+  const leftColon = trimmed.startsWith(':')
+  const rightColon = trimmed.endsWith(':')
+  if (leftColon && rightColon) return 'center'
+  if (rightColon) return 'right'
+  if (leftColon) return 'left'
+  return 'default'
 }
 
 
 function formatDelimiterCell(align: ColumnAlignment, width = 3): string {
-  const fillWidth = Math.max(3, width);
+  const fillWidth = Math.max(3, width)
   switch (align) {
     case 'center': {
-      const dashes = '-'.repeat(Math.max(1, fillWidth - 2));
-      return `:${dashes}:`;
+      const dashes = '-'.repeat(Math.max(1, fillWidth - 2))
+      return `:${dashes}:`
     }
     case 'right': {
-      const dashes = '-'.repeat(Math.max(2, fillWidth - 1));
-      return `${dashes}:`;
+      const dashes = '-'.repeat(Math.max(2, fillWidth - 1))
+      return `${dashes}:`
     }
     case 'left': {
-      const dashes = '-'.repeat(Math.max(2, fillWidth - 1));
-      return `:${dashes}`;
+      const dashes = '-'.repeat(Math.max(2, fillWidth - 1))
+      return `:${dashes}`
     }
     case 'default':
     default:
-      return '-'.repeat(fillWidth);
+      return '-'.repeat(fillWidth)
   }
 }
 
 interface ColumnOffsetState {
-  col: number;
-  isInEscape: boolean;
+  col: number
+  isInEscape: boolean
 }
 
 export function findColumnIndexAtOffset(line: string, offset: number): number {
-  const state: ColumnOffsetState = { col: 0, isInEscape: false };
-  const clampedOffset = Math.max(0, Math.min(offset, line.length));
+  const state: ColumnOffsetState = { col: 0, isInEscape: false }
+  const clampedOffset = Math.max(0, Math.min(offset, line.length))
 
   for (let i = 0; i < clampedOffset; i++) {
-    advanceColumnOffset(state, line, i);
+    advanceColumnOffset(state, line, i)
   }
-  return state.col;
+  return state.col
 }
 
 function advanceColumnOffset(state: ColumnOffsetState, line: string, i: number): void {
-  const char = line[i]!;
+  const char = line[i]!
   if (state.isInEscape) {
-    state.isInEscape = false;
-    return;
+    state.isInEscape = false
+    return
   }
   if (char === '\\') {
-    state.isInEscape = true;
-    return;
+    state.isInEscape = true
+    return
   }
   if (char === '|' && line.slice(0, i).trim() !== '') {
-    state.col++;
+    state.col++
   }
 }
 
 export function parseMarkdownTable(lines: string[], targetLineIndex: number, characterOffset = 0): ParsedTable | null {
-  if (targetLineIndex < 0 || targetLineIndex >= lines.length) return null;
-  const currentLine = lines[targetLineIndex] ?? '';
-  if (!currentLine.includes('|')) return null;
+  if (targetLineIndex < 0 || targetLineIndex >= lines.length) return null
+  const currentLine = lines[targetLineIndex] ?? ''
+  if (!currentLine.includes('|')) return null
 
-  const { startLine, endLine } = findTableBounds(lines, targetLineIndex);
-  if (endLine - startLine < 1) return null;
+  const { startLine, endLine } = findTableBounds(lines, targetLineIndex)
+  if (endLine - startLine < 1) return null
 
-  const delimiterLineIndex = findDelimiterLine(lines, startLine, endLine);
-  if (delimiterLineIndex === -1) return null;
+  const delimiterLineIndex = findDelimiterLine(lines, startLine, endLine)
+  if (delimiterLineIndex === -1) return null
 
-  const headerLineIndex = delimiterLineIndex - 1;
-  const rawHeaders = splitTableRow(lines[headerLineIndex] ?? '');
-  const rawDelimiters = splitTableRow(lines[delimiterLineIndex] ?? '');
+  const headerLineIndex = delimiterLineIndex - 1
+  const rawHeaders = splitTableRow(lines[headerLineIndex] ?? '')
+  const rawDelimiters = splitTableRow(lines[delimiterLineIndex] ?? '')
 
-  const { rows, columnCount } = collectTableRows(lines, delimiterLineIndex, endLine, rawHeaders.length, rawDelimiters.length);
-  const { headerRow, alignments } = buildHeaderAndAlignments(rawHeaders, rawDelimiters, columnCount);
-  const paddedRows = padRows(rows, columnCount);
+  const { rows, columnCount } = collectTableRows(lines, delimiterLineIndex, endLine, rawHeaders.length, rawDelimiters.length)
+  const { headerRow, alignments } = buildHeaderAndAlignments(rawHeaders, rawDelimiters, columnCount)
+  const paddedRows = padRows(rows, columnCount)
 
-  let cursorRowIndex = -1;
+  let cursorRowIndex = -1
   if (targetLineIndex === headerLineIndex || targetLineIndex === delimiterLineIndex) {
-    cursorRowIndex = -1;
+    cursorRowIndex = -1
   } else if (targetLineIndex > delimiterLineIndex) {
-    cursorRowIndex = targetLineIndex - delimiterLineIndex - 1;
+    cursorRowIndex = targetLineIndex - delimiterLineIndex - 1
   }
 
   const cursorColIndex = Math.min(
     columnCount - 1,
     Math.max(0, findColumnIndexAtOffset(currentLine, characterOffset)),
-  );
+  )
 
   return {
     startLine: headerLineIndex,
@@ -162,130 +162,130 @@ export function parseMarkdownTable(lines: string[], targetLineIndex: number, cha
     columnCount,
     cursorRowIndex,
     cursorColIndex,
-  };
+  }
 }
 
 function findTableBounds(lines: string[], targetLineIndex: number): { startLine: number; endLine: number } {
-  let startLine = targetLineIndex;
+  let startLine = targetLineIndex
   while (startLine > 0 && (lines[startLine - 1] ?? '').includes('|') && (lines[startLine - 1] ?? '').trim().length > 0) {
-    startLine--;
+    startLine--
   }
-  let endLine = targetLineIndex;
+  let endLine = targetLineIndex
   while (endLine + 1 < lines.length && (lines[endLine + 1] ?? '').includes('|') && (lines[endLine + 1] ?? '').trim().length > 0) {
-    endLine++;
+    endLine++
   }
-  return { startLine, endLine };
+  return { startLine, endLine }
 }
 
 function findDelimiterLine(lines: string[], startLine: number, endLine: number): number {
   for (let i = startLine + 1; i <= endLine; i++) {
-    if (isDelimiterRow(lines[i] ?? '')) return i;
+    if (isDelimiterRow(lines[i] ?? '')) return i
   }
-  return -1;
+  return -1
 }
 
 function collectTableRows(lines: string[], delimiterLineIndex: number, endLine: number, headerLen: number, delimiterLen: number): { rows: string[][]; columnCount: number } {
-  let columnCount = Math.max(headerLen, delimiterLen, 1);
-  const rows: string[][] = [];
+  let columnCount = Math.max(headerLen, delimiterLen, 1)
+  const rows: string[][] = []
   for (let i = delimiterLineIndex + 1; i <= endLine; i++) {
-    const rawRow = splitTableRow(lines[i] ?? '');
-    columnCount = Math.max(columnCount, rawRow.length);
-    rows.push(rawRow);
+    const rawRow = splitTableRow(lines[i] ?? '')
+    columnCount = Math.max(columnCount, rawRow.length)
+    rows.push(rawRow)
   }
-  return { rows, columnCount };
+  return { rows, columnCount }
 }
 
 function buildHeaderAndAlignments(rawHeaders: string[], rawDelimiters: string[], columnCount: number): { headerRow: string[]; alignments: ColumnAlignment[] } {
-  const headerRow: string[] = [];
-  const alignments: ColumnAlignment[] = [];
+  const headerRow: string[] = []
+  const alignments: ColumnAlignment[] = []
   for (let c = 0; c < columnCount; c++) {
-    headerRow.push(rawHeaders[c] ?? '');
-    alignments.push(rawDelimiters[c] ? parseCellAlignment(rawDelimiters[c]!) : 'default');
+    headerRow.push(rawHeaders[c] ?? '')
+    alignments.push(rawDelimiters[c] ? parseCellAlignment(rawDelimiters[c]!) : 'default')
   }
-  return { headerRow, alignments };
+  return { headerRow, alignments }
 }
 
 function padRows(rows: string[][], columnCount: number): string[][] {
   return rows.map((row) => {
-    const padded: string[] = [];
+    const padded: string[] = []
     for (let c = 0; c < columnCount; c++) {
-      padded.push(row[c] ?? '');
+      padded.push(row[c] ?? '')
     }
-    return padded;
-  });
+    return padded
+  })
 }
 
 export function insertTableRow(table: ParsedTable, rowIndex: number, position: 'above' | 'below'): ParsedTable {
-  const newRow = new Array<string>(table.columnCount).fill('');
-  const rows = [...table.rows.map((r) => [...r])];
+  const newRow = new Array<string>(table.columnCount).fill('')
+  const rows = [...table.rows.map((r) => [...r])]
 
   if (rowIndex < 0) {
     if (position === 'above') {
-      rows.unshift(table.headerRow);
+      rows.unshift(table.headerRow)
       return {
         ...table,
         headerRow: newRow,
         rows,
         cursorRowIndex: 0,
-      };
+      }
     } else {
-      rows.unshift(newRow);
+      rows.unshift(newRow)
       return {
         ...table,
         rows,
         cursorRowIndex: 0,
-      };
+      }
     }
   }
 
-  const insertIndex = position === 'above' ? rowIndex : rowIndex + 1;
-  rows.splice(insertIndex, 0, newRow);
+  const insertIndex = position === 'above' ? rowIndex : rowIndex + 1
+  rows.splice(insertIndex, 0, newRow)
 
   return {
     ...table,
     rows,
     cursorRowIndex: insertIndex,
-  };
+  }
 }
 
 export function deleteTableRow(table: ParsedTable, rowIndex: number): ParsedTable {
   if (rowIndex < 0) {
     if (table.rows.length === 0) {
-      return table;
+      return table
     }
-    const [newHeader, ...remainingRows] = table.rows;
+    const [newHeader, ...remainingRows] = table.rows
     return {
       ...table,
       headerRow: newHeader ?? table.headerRow,
       rows: remainingRows,
       cursorRowIndex: -1,
-    };
+    }
   }
 
-  const rows = table.rows.filter((_, idx) => idx !== rowIndex);
-  const nextCursor = Math.min(rowIndex, rows.length - 1);
+  const rows = table.rows.filter((_, idx) => idx !== rowIndex)
+  const nextCursor = Math.min(rowIndex, rows.length - 1)
   return {
     ...table,
     rows,
     cursorRowIndex: nextCursor,
-  };
+  }
 }
 
 export function insertTableColumn(table: ParsedTable, colIndex: number, position: 'left' | 'right'): ParsedTable {
-  const insertIndex = position === 'left' ? colIndex : colIndex + 1;
-  const columnCount = table.columnCount + 1;
+  const insertIndex = position === 'left' ? colIndex : colIndex + 1
+  const columnCount = table.columnCount + 1
 
-  const headerRow = [...table.headerRow];
-  headerRow.splice(insertIndex, 0, '');
+  const headerRow = [...table.headerRow]
+  headerRow.splice(insertIndex, 0, '')
 
-  const alignments = [...table.alignments];
-  alignments.splice(insertIndex, 0, 'default');
+  const alignments = [...table.alignments]
+  alignments.splice(insertIndex, 0, 'default')
 
   const rows = table.rows.map((row) => {
-    const updated = [...row];
-    updated.splice(insertIndex, 0, '');
-    return updated;
-  });
+    const updated = [...row]
+    updated.splice(insertIndex, 0, '')
+    return updated
+  })
 
   return {
     ...table,
@@ -294,17 +294,17 @@ export function insertTableColumn(table: ParsedTable, colIndex: number, position
     rows,
     columnCount,
     cursorColIndex: insertIndex,
-  };
+  }
 }
 
 export function deleteTableColumn(table: ParsedTable, colIndex: number): ParsedTable {
-  if (table.columnCount <= 1) return table;
+  if (table.columnCount <= 1) return table
 
-  const columnCount = table.columnCount - 1;
-  const headerRow = table.headerRow.filter((_, idx) => idx !== colIndex);
-  const alignments = table.alignments.filter((_, idx) => idx !== colIndex);
-  const rows = table.rows.map((row) => row.filter((_, idx) => idx !== colIndex));
-  const cursorColIndex = Math.min(colIndex, columnCount - 1);
+  const columnCount = table.columnCount - 1
+  const headerRow = table.headerRow.filter((_, idx) => idx !== colIndex)
+  const alignments = table.alignments.filter((_, idx) => idx !== colIndex)
+  const rows = table.rows.map((row) => row.filter((_, idx) => idx !== colIndex))
+  const cursorColIndex = Math.min(colIndex, columnCount - 1)
 
   return {
     ...table,
@@ -313,142 +313,142 @@ export function deleteTableColumn(table: ParsedTable, colIndex: number): ParsedT
     rows,
     columnCount,
     cursorColIndex,
-  };
+  }
 }
 
 export function setColumnAlignment(table: ParsedTable, colIndex: number, align: ColumnAlignment): ParsedTable {
-  if (colIndex < 0 || colIndex >= table.columnCount) return table;
-  const alignments = [...table.alignments];
-  alignments[colIndex] = align;
+  if (colIndex < 0 || colIndex >= table.columnCount) return table
+  const alignments = [...table.alignments]
+  alignments[colIndex] = align
   return {
     ...table,
     alignments,
-  };
+  }
 }
 
 export function formatMarkdownTable(table: ParsedTable): string[] {
-  const colWidths = new Array<number>(table.columnCount).fill(3);
+  const colWidths = new Array<number>(table.columnCount).fill(3)
 
   for (let c = 0; c < table.columnCount; c++) {
-    const headerLen = (table.headerRow[c] ?? '').length;
-    colWidths[c] = Math.max(colWidths[c]!, headerLen);
+    const headerLen = (table.headerRow[c] ?? '').length
+    colWidths[c] = Math.max(colWidths[c]!, headerLen)
     for (const row of table.rows) {
-      const cellLen = (row[c] ?? '').length;
-      colWidths[c] = Math.max(colWidths[c]!, cellLen);
+      const cellLen = (row[c] ?? '').length
+      colWidths[c] = Math.max(colWidths[c]!, cellLen)
     }
   }
 
-  const lines: string[] = [];
+  const lines: string[] = []
 
   const formattedHeader = table.headerRow
     .map((cell, c) => ` ${cell.padEnd(colWidths[c]!)} `)
-    .join('|');
-  lines.push(`|${formattedHeader}|`);
+    .join('|')
+  lines.push(`|${formattedHeader}|`)
 
   const formattedDelimiter = table.alignments
     .map((align, c) => ` ${formatDelimiterCell(align, colWidths[c]!)} `)
-    .join('|');
-  lines.push(`|${formattedDelimiter}|`);
+    .join('|')
+  lines.push(`|${formattedDelimiter}|`)
 
   for (const row of table.rows) {
     const formattedRow = row
       .map((cell, c) => ` ${cell.padEnd(colWidths[c]!)} `)
-      .join('|');
-    lines.push(`|${formattedRow}|`);
+      .join('|')
+    lines.push(`|${formattedRow}|`)
   }
 
-  return lines;
+  return lines
 }
 
 export function tableToCsv(table: ParsedTable): string {
   const escapeCsv = (val: string) => {
     if (val.includes(',') || val.includes('"') || val.includes('\n')) {
-      return `"${val.replace(/"/g, '""')}"`;
+      return `"${val.replace(/"/g, '""')}"`
     }
-    return val;
-  };
-
-  const lines: string[] = [];
-  lines.push(table.headerRow.map(escapeCsv).join(','));
-  for (const row of table.rows) {
-    lines.push(row.map(escapeCsv).join(','));
+    return val
   }
-  return lines.join('\n');
+
+  const lines: string[] = []
+  lines.push(table.headerRow.map(escapeCsv).join(','))
+  for (const row of table.rows) {
+    lines.push(row.map(escapeCsv).join(','))
+  }
+  return lines.join('\n')
 }
 
 export function updateTableCell(table: ParsedTable, rowIndex: number, colIndex: number, newContent: string): ParsedTable {
-  if (colIndex < 0 || colIndex >= table.columnCount) return table;
-  const safeContent = newContent.replace(/\|/g, '\\|');
+  if (colIndex < 0 || colIndex >= table.columnCount) return table
+  const safeContent = newContent.replace(/\|/g, '\\|')
 
   if (rowIndex === -1) {
-    const headerRow = [...table.headerRow];
-    headerRow[colIndex] = safeContent;
+    const headerRow = [...table.headerRow]
+    headerRow[colIndex] = safeContent
     return {
       ...table,
       headerRow,
-    };
+    }
   }
 
   if (rowIndex >= 0 && rowIndex < table.rows.length) {
     const rows = table.rows.map((r, rIdx) => {
-      if (rIdx !== rowIndex) return r;
-      const newRow = [...r];
-      newRow[colIndex] = safeContent;
-      return newRow;
-    });
+      if (rIdx !== rowIndex) return r
+      const newRow = [...r]
+      newRow[colIndex] = safeContent
+      return newRow
+    })
     return {
       ...table,
       rows,
-    };
+    }
   }
 
-  return table;
+  return table
 }
 
 export function sortTableRowByColumn(table: ParsedTable, colIndex: number, direction: 'asc' | 'desc'): ParsedTable {
-  if (colIndex < 0 || colIndex >= table.columnCount) return table;
+  if (colIndex < 0 || colIndex >= table.columnCount) return table
 
   const sortedRows = [...table.rows].sort((rowA, rowB) => {
-    const valA = (rowA[colIndex] ?? '').trim();
-    const valB = (rowB[colIndex] ?? '').trim();
+    const valA = (rowA[colIndex] ?? '').trim()
+    const valB = (rowB[colIndex] ?? '').trim()
 
-    const numA = Number(valA);
-    const numB = Number(valB);
-    const isNumA = valA !== '' && !Number.isNaN(numA);
-    const isNumB = valB !== '' && !Number.isNaN(numB);
+    const numA = Number(valA)
+    const numB = Number(valB)
+    const isNumA = valA !== '' && !Number.isNaN(numA)
+    const isNumB = valB !== '' && !Number.isNaN(numB)
 
-    let cmp = 0;
+    let cmp = 0
     if (isNumA && isNumB) {
-      cmp = numA - numB;
+      cmp = numA - numB
     } else {
-      cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+      cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })
     }
 
-    return direction === 'asc' ? cmp : -cmp;
-  });
+    return direction === 'asc' ? cmp : -cmp
+  })
 
   return {
     ...table,
     rows: sortedRows,
-  };
+  }
 }
 
 export function duplicateTableRow(table: ParsedTable, rowIndex: number): ParsedTable {
-  if (rowIndex < 0 || rowIndex >= table.rows.length) return table;
-  const sourceRow = table.rows[rowIndex]!;
-  const newRow = [...sourceRow];
-  const rows = [...table.rows];
-  rows.splice(rowIndex + 1, 0, newRow);
+  if (rowIndex < 0 || rowIndex >= table.rows.length) return table
+  const sourceRow = table.rows[rowIndex]!
+  const newRow = [...sourceRow]
+  const rows = [...table.rows]
+  rows.splice(rowIndex + 1, 0, newRow)
 
   return {
     ...table,
     rows,
     endLine: table.endLine + 1,
-  };
+  }
 }
 
 export function clearTableCell(table: ParsedTable, rowIndex: number, colIndex: number): ParsedTable {
-  return updateTableCell(table, rowIndex, colIndex, '');
+  return updateTableCell(table, rowIndex, colIndex, '')
 }
 
 export function clearTableRow(table: ParsedTable, rowIndex: number): ParsedTable {
@@ -456,24 +456,24 @@ export function clearTableRow(table: ParsedTable, rowIndex: number): ParsedTable
     return {
       ...table,
       headerRow: new Array(table.columnCount).fill(''),
-    };
+    }
   }
   if (rowIndex >= 0 && rowIndex < table.rows.length) {
     const rows = table.rows.map((r, rIdx) =>
       rIdx === rowIndex ? new Array(table.columnCount).fill('') : r,
-    );
+    )
     return {
       ...table,
       rows,
-    };
+    }
   }
-  return table;
+  return table
 }
 
 export function deleteEntireTableInText(content: string, sourceLine: number): string {
-  const lines = content.split('\n');
-  const table = parseMarkdownTable(lines, sourceLine);
-  if (!table) return content;
-  lines.splice(table.startLine, table.endLine - table.startLine + 1);
-  return lines.join('\n');
+  const lines = content.split('\n')
+  const table = parseMarkdownTable(lines, sourceLine)
+  if (!table) return content
+  lines.splice(table.startLine, table.endLine - table.startLine + 1)
+  return lines.join('\n')
 }

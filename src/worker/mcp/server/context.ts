@@ -1,12 +1,12 @@
-import type { McpServer, ServerContext } from '@modelcontextprotocol/server';
-import { z } from 'zod';
-import type { Env } from '../../env';
-import { ApiError } from '../../lib/errors';
-import { isValidId } from '../../lib/id';
-import { getMcpPreferences, MCP_SCOPES } from '../settings';
-import { createMcpNote } from '../writes';
-import type { LibraryContext } from '../library/types';
-import type { McpWriteContext } from '../writes';
+import type { McpServer, ServerContext } from '@modelcontextprotocol/server'
+import { z } from 'zod'
+import type { Env } from '../../env'
+import { ApiError } from '../../lib/errors'
+import { isValidId } from '../../lib/id'
+import { getMcpPreferences, MCP_SCOPES } from '../settings'
+import { createMcpNote } from '../writes'
+import type { LibraryContext } from '../library/types'
+import type { McpWriteContext } from '../writes'
 
 export interface McpAuthProps {
   userId: string

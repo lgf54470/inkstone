@@ -1,10 +1,10 @@
-import { requireOwnedNote } from './helpers';
-import type { LibraryContext } from './types';
-import { ApiError } from '../../lib/errors';
-import { createMcpNote, editMcpNote } from '.././writes';
-import { LIMITS } from '@shared/constants';
-import { parseFrontMatter } from '@shared/markdown-utils';
-import { stringify as stringifyYaml } from 'yaml';
+import { requireOwnedNote } from './helpers'
+import type { LibraryContext } from './types'
+import { ApiError } from '../../lib/errors'
+import { createMcpNote, editMcpNote } from '.././writes'
+import { LIMITS } from '@shared/constants'
+import { parseFrontMatter } from '@shared/markdown-utils'
+import { stringify as stringifyYaml } from 'yaml'
 
 export async function duplicateMcpNote(
   context: LibraryContext,

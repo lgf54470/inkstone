@@ -1,5 +1,5 @@
-import { isPlainRecord, parseFrontMatter } from './front-matter';
-import { frontMatterTags } from './tags';
+import { isPlainRecord, parseFrontMatter } from './front-matter'
+import { frontMatterTags } from './tags'
 import { parseDocument } from 'yaml'
 
 /**

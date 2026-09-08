@@ -113,4 +113,4 @@ export const messages = {
 'contextmenu.preview_search_selection': 'Search Notes for Selection',
 'contextmenu.preview_create_note_from_selection': 'Create Note with Selection',
 'contextmenu.preview_jump_to_editor': 'Locate in Editor',
-};
+}

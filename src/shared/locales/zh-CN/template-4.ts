@@ -29,4 +29,4 @@ tags: [健身]
 `,
 'template.workout_plan.description': '每周训练计划：动作、组数与次数。',
 'template.workout_plan.name': '健身计划',
-};
+}

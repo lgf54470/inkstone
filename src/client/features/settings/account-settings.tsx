@@ -43,11 +43,11 @@ export function AccountSettings() {
   )
 }
 
-type ProfileEditor = ReturnType<typeof useProfileEditor>;
-type PasswordForm = ReturnType<typeof usePasswordForm>;
-type RegistrationToggle = ReturnType<typeof useRegistrationToggle>;
-type ToastFn = UiState['toast'];
-type ProfileUser = PublicUser;
+type ProfileEditor = ReturnType<typeof useProfileEditor>
+type PasswordForm = ReturnType<typeof usePasswordForm>
+type RegistrationToggle = ReturnType<typeof useRegistrationToggle>
+type ToastFn = UiState['toast']
+type ProfileUser = PublicUser
 
 function useProfileEditor() {
   const user = useSession((state) => state.user)!
@@ -72,16 +72,16 @@ function useProfileEditor() {
 }
 
 async function saveNameFlow({ normalizedName, validName, changed, updateProfile, busyRef, setIsBusy, setError, setIsEdited, setName, toast }: {
-  normalizedName: string;
-  validName: boolean;
-  changed: boolean;
-  updateProfile: (patch: { name: string }) => Promise<ProfileUser>;
-  busyRef: React.MutableRefObject<boolean>;
-  setIsBusy: (busy: boolean) => void;
-  setError: (error: string | null) => void;
-  setIsEdited: (edited: boolean) => void;
-  setName: (name: string) => void;
-  toast: ToastFn;
+  normalizedName: string
+  validName: boolean
+  changed: boolean
+  updateProfile: (patch: { name: string }) => Promise<ProfileUser>
+  busyRef: React.MutableRefObject<boolean>
+  setIsBusy: (busy: boolean) => void
+  setError: (error: string | null) => void
+  setIsEdited: (edited: boolean) => void
+  setName: (name: string) => void
+  toast: ToastFn
 }) {
   if (busyRef.current) return
   if (!validName) {
@@ -212,9 +212,9 @@ function LogoutButton() {
 }
 
 async function confirmLogoutFlow({ busyRef, setIsBusy, logout }: {
-  busyRef: React.MutableRefObject<boolean>;
-  setIsBusy: (busy: boolean) => void;
-  logout: () => Promise<void>;
+  busyRef: React.MutableRefObject<boolean>
+  setIsBusy: (busy: boolean) => void
+  logout: () => Promise<void>
 }) {
   if (busyRef.current) return
   busyRef.current = true
@@ -257,15 +257,15 @@ function usePasswordForm() {
 }
 
 async function passwordFlow({ currentPassword, newPassword, confirmation, busyRef, setIsBusy, setError, setIsOpen, resetForm, toast }: {
-  currentPassword: string;
-  newPassword: string;
-  confirmation: string;
-  busyRef: React.MutableRefObject<boolean>;
-  setIsBusy: (busy: boolean) => void;
-  setError: (error: string | null) => void;
-  setIsOpen: (open: boolean) => void;
-  resetForm: () => void;
-  toast: ToastFn;
+  currentPassword: string
+  newPassword: string
+  confirmation: string
+  busyRef: React.MutableRefObject<boolean>
+  setIsBusy: (busy: boolean) => void
+  setError: (error: string | null) => void
+  setIsOpen: (open: boolean) => void
+  resetForm: () => void
+  toast: ToastFn
 }) {
   if (busyRef.current) return
   setError(null)
@@ -386,15 +386,15 @@ function useRegistrationToggle() {
 }
 
 async function registrationToggleFlow({ target, password, updateRegistration, busyRef, setIsBusy, setError, setTarget, setPassword, toast }: {
-  target: boolean | null;
-  password: string;
-  updateRegistration: (open: boolean, currentPassword: string) => Promise<void>;
-  busyRef: React.MutableRefObject<boolean>;
-  setIsBusy: (busy: boolean) => void;
-  setError: (error: string | null) => void;
-  setTarget: (target: boolean | null) => void;
-  setPassword: (password: string) => void;
-  toast: ToastFn;
+  target: boolean | null
+  password: string
+  updateRegistration: (open: boolean, currentPassword: string) => Promise<void>
+  busyRef: React.MutableRefObject<boolean>
+  setIsBusy: (busy: boolean) => void
+  setError: (error: string | null) => void
+  setTarget: (target: boolean | null) => void
+  setPassword: (password: string) => void
+  toast: ToastFn
 }) {
   if (busyRef.current || target === null) return
   const requested = target

@@ -1,17 +1,17 @@
-import { useState } from 'react';
-import { Send } from 'lucide-react';
-import type { NoteTemplate } from '@shared/types';
-import { api } from '../../lib/api';
-import { useUi } from '../../store/ui';
-import { Button, Kbd } from '../../components/primitives';
-import { Modal } from '../../components/overlay';
-import { t } from '../../lib/i18n';
+import { useState } from 'react'
+import { Send } from 'lucide-react'
+import type { NoteTemplate } from '@shared/types'
+import { api } from '../../lib/api'
+import { useUi } from '../../store/ui'
+import { Button, Kbd } from '../../components/primitives'
+import { Modal } from '../../components/overlay'
+import { t } from '../../lib/i18n'
 
 const HELP_MODAL_WIDTH = 440
 const PUBLISH_MODAL_WIDTH = 600
 
 export function KeyboardHelpModal({ onClose }: {
-  onClose: () => void;
+  onClose: () => void
 }) {
   const rows: { label: string; keys: string[] }[] = [
     { label: t('templates.help_move'), keys: ['↑', '↓', '←', '→'] },
@@ -21,13 +21,13 @@ export function KeyboardHelpModal({ onClose }: {
     { label: t('templates.help_tab'), keys: ['Tab'] },
     { label: t('templates.help_esc'), keys: ['Esc'] },
     { label: t('templates.help_help'), keys: ['?'] },
-  ];
+  ]
   const selectRows: { label: string; keys: string[] }[] = [
     { label: t('templates.help_select_mode'), keys: ['s'] },
     { label: t('templates.help_select_click'), keys: ['Click'] },
     { label: t('templates.help_select_focused'), keys: ['Space'] },
     { label: t('templates.help_select_all'), keys: ['a'] },
-  ];
+  ]
   return (<Modal open onClose={onClose} title={t('templates.keyboard_shortcuts')} width={HELP_MODAL_WIDTH}>
     <div className='divide-y divide-[var(--border-subtle)]'>
       {rows.map((row) => (<div key={row.label} className='flex items-center justify-between gap-3 py-2.5'>
@@ -40,20 +40,20 @@ export function KeyboardHelpModal({ onClose }: {
         <Kbd keys={row.keys}/>
       </div>))}
     </div>
-  </Modal>);
+  </Modal>)
 }
 
 export function PublishTemplateDialog({ template, category, onClose, onPublished }: {
-  template: NoteTemplate;
-  category: string;
-  onClose: () => void;
-  onPublished: () => void;
+  template: NoteTemplate
+  category: string
+  onClose: () => void
+  onPublished: () => void
 }) {
-  const [isBusy, setIsBusy] = useState(false);
+  const [isBusy, setIsBusy] = useState(false)
   const publish = async () => {
     if (isBusy)
-      return;
-    setIsBusy(true);
+      return
+    setIsBusy(true)
     try {
       await api.communityTemplates.publish({
         name: template.name,
@@ -61,17 +61,17 @@ export function PublishTemplateDialog({ template, category, onClose, onPublished
         content: template.content,
         tags: template.tags,
         category,
-      });
-      useUi.getState().toast({ title: t('templates.community_published'), tone: 'success' });
-      onPublished();
+      })
+      useUi.getState().toast({ title: t('templates.community_published'), tone: 'success' })
+      onPublished()
     }
     catch {
-      useUi.getState().toast({ title: t('common.action_failed'), tone: 'danger' });
+      useUi.getState().toast({ title: t('common.action_failed'), tone: 'danger' })
     }
     finally {
-      setIsBusy(false);
+      setIsBusy(false)
     }
-  };
+  }
   return (<Modal open onClose={onClose} title={t('templates.publish_to_community')} width={PUBLISH_MODAL_WIDTH} footer={<>
       <Button variant='ghost' onClick={onClose}>{t('common.cancel')}</Button>
       <Button variant='primary' icon={<Send size={13}/>} loading={isBusy} onClick={() => void publish()}>{t('templates.publish_to_community')}</Button>
@@ -90,6 +90,6 @@ export function PublishTemplateDialog({ template, category, onClose, onPublished
         <pre className='mt-2 max-h-55 overflow-y-auto text-[length:var(--text-11)] leading-relaxed whitespace-pre-wrap text-[var(--text-secondary)]'>{template.content}</pre>
       </div>
     </div>
-  </Modal>);
+  </Modal>)
 }
 

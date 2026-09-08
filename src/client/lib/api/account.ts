@@ -1,7 +1,7 @@
-import type { AppLocale, PasswordLoginResult, PublicUser, SessionInfo, TotpRecoveryCodesResult, TotpLoginResult, TotpSetupInfo, TotpStatus } from '@shared/types';
-import { publishBroadcast } from '../db';
-import { getLocale } from '../i18n';
-import { CLIENT_ID, request } from './transport';
+import type { AppLocale, PasswordLoginResult, PublicUser, SessionInfo, TotpRecoveryCodesResult, TotpLoginResult, TotpSetupInfo, TotpStatus } from '@shared/types'
+import { publishBroadcast } from '../db'
+import { getLocale } from '../i18n'
+import { CLIENT_ID, request } from './transport'
 export const account = {
   session: () => request<SessionInfo>('/api/auth/session'),
   logout: () => request<{ ok: true }>('/api/auth/logout', { method: 'POST' }),

@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import type { BlogStoreState } from './types'
 import { initialFilters, initialRetention } from './state'
-import { blogFiltersActions } from './filters';
-import { blogLoadersActions } from './loaders';
-import { blogContentActions } from './content';
-import { blogActionsActions } from './actions';
-import { getVisibilitySnapshot, pushVisibilitySnapshot } from '../../../store/visibility-sources';
+import { blogFiltersActions } from './filters'
+import { blogLoadersActions } from './loaders'
+import { blogContentActions } from './content'
+import { blogActionsActions } from './actions'
+import { getVisibilitySnapshot, pushVisibilitySnapshot } from '../../../store/visibility-sources'
 
 export const useBlogStore = create<BlogStoreState>((set, get) => ({
     ...initialBlogState(),
@@ -47,7 +47,7 @@ function initialBlogState(): Partial<BlogStoreState> {
 }
 
 export type { BlogTab, BlogFolderNode, BlogStoreState } from './types'
-export { buildBlogFolderTree } from './folders';
+export { buildBlogFolderTree } from './folders'
 
 // Feed the notes store's visibility projection (published note ids) without
 // creating a store → feature import edge: selectors read the neutral registry

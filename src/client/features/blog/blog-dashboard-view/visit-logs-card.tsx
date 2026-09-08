@@ -38,12 +38,12 @@ export function VisitLogsCard({ analytics, locale }: VisitLogsCardProps) {
         ))
       )}
     </div>
-  </div>);
+  </div>)
 }
 
 function VisitLogRow({ visit, locale }: {
-  visit: BlogGlobalAnalytics['recentVisits'][number];
-  locale: string;
+  visit: BlogGlobalAnalytics['recentVisits'][number]
+  locale: string
 }) {
   return (
     <div className='flex flex-wrap items-center justify-between gap-2 py-2.5 text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-[var(--r-md)] transition-colors'>

@@ -1,23 +1,23 @@
-import { useMemo, useState } from 'react';
-import { Hash, Plus, Search, X } from 'lucide-react';
-import type { Tag } from '@shared/types';
-import { Modal, Tooltip, confirm } from '../../components/overlay';
-import { Button, IconButton } from '../../components/primitives';
-import { useNotes } from '../../store/notes';
-import { useUi } from '../../store/ui';
-import { t } from '../../lib/i18n';
-import { createTag, deleteTag } from './tag-mutations';
-import { TagManageRow } from './manage-tags-row';
+import { useMemo, useState } from 'react'
+import { Hash, Plus, Search, X } from 'lucide-react'
+import type { Tag } from '@shared/types'
+import { Modal, Tooltip, confirm } from '../../components/overlay'
+import { Button, IconButton } from '../../components/primitives'
+import { useNotes } from '../../store/notes'
+import { useUi } from '../../store/ui'
+import { t } from '../../lib/i18n'
+import { createTag, deleteTag } from './tag-mutations'
+import { TagManageRow } from './manage-tags-row'
 
 const MODAL_WIDTH = 640
 
 export function ManageTagsModal({ onClose }: { onClose: () => void }) {
-  const tags = useNotes((s) => s.tags ?? []);
-  const openView = useUi((s) => s.openView);
+  const tags = useNotes((s) => s.tags ?? [])
+  const openView = useUi((s) => s.openView)
   const openTag = (name: string) => {
-    openView('tag', { tag: name });
-    onClose();
-  };
+    openView('tag', { tag: name })
+    onClose()
+  }
   return (
     <Modal
       open
@@ -28,18 +28,18 @@ export function ManageTagsModal({ onClose }: { onClose: () => void }) {
     >
       <TagsManagerPanel tags={tags} onOpenTag={openTag} />
     </Modal>
-  );
+  )
 }
 
 function TagsManagerPanel({
   tags,
   onOpenTag,
 }: {
-  tags: Tag[];
-  onOpenTag: (name: string) => void;
+  tags: Tag[]
+  onOpenTag: (name: string) => void
 }) {
-  const [query, setQuery] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
+  const [query, setQuery] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
   return (
     <div className='space-y-3 pt-1'>
       <TagsSearchRow
@@ -52,7 +52,7 @@ function TagsManagerPanel({
       {isCreating && <TagCreateForm onDone={() => setIsCreating(false)} />}
       <TagManageList tags={tags} query={query} onOpenTag={onOpenTag} />
     </div>
-  );
+  )
 }
 
 function TagsSearchRow({
@@ -62,13 +62,13 @@ function TagsSearchRow({
   isCreating,
   onToggleCreating,
 }: {
-  tags: Tag[];
-  query: string;
-  onQueryChange: (query: string) => void;
-  isCreating: boolean;
-  onToggleCreating: () => void;
+  tags: Tag[]
+  query: string
+  onQueryChange: (query: string) => void
+  isCreating: boolean
+  onToggleCreating: () => void
 }) {
-  const unusedTags = useMemo(() => tags.filter((tag) => tag.count === 0), [tags]);
+  const unusedTags = useMemo(() => tags.filter((tag) => tag.count === 0), [tags])
   return (
     <div className='flex items-center gap-2'>
       <div className='relative flex-1'>
@@ -110,34 +110,34 @@ function TagsSearchRow({
         </Tooltip>
       )}
     </div>
-  );
+  )
 }
 
 async function cleanUnusedTags(unusedTags: Tag[]): Promise<void> {
-  if (!unusedTags.length) return;
+  if (!unusedTags.length) return
   const ok = await confirm({
     title: t('tags.clean_unused'),
     description: t('tags.clean_unused_confirm_value0', { value0: unusedTags.length }),
     tone: 'danger',
     confirmLabel: t('common.delete'),
-  });
-  if (!ok) return;
+  })
+  if (!ok) return
   for (const tag of unusedTags) {
-    void deleteTag(tag);
+    void deleteTag(tag)
   }
 }
 
 function TagCreateForm({ onDone }: { onDone: () => void }) {
-  const [name, setName] = useState('');
+  const [name, setName] = useState('')
   const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
+    e.preventDefault()
+    const trimmed = name.trim()
+    if (!trimmed) return
     if (createTag(trimmed)) {
-      setName('');
-      onDone();
+      setName('')
+      onDone()
     }
-  };
+  }
   return (
     <form
       onSubmit={submit}
@@ -150,7 +150,7 @@ function TagCreateForm({ onDone }: { onDone: () => void }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') onDone();
+          if (e.key === 'Escape') onDone()
         }}
         placeholder={t('tags.new_placeholder')}
         className="h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[length:var(--text-12\\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
@@ -170,7 +170,7 @@ function TagCreateForm({ onDone }: { onDone: () => void }) {
         </IconButton>
       </Tooltip>
     </form>
-  );
+  )
 }
 
 function TagManageList({
@@ -178,21 +178,21 @@ function TagManageList({
   query,
   onOpenTag,
 }: {
-  tags: Tag[];
-  query: string;
-  onOpenTag: (name: string) => void;
+  tags: Tag[]
+  query: string
+  onOpenTag: (name: string) => void
 }) {
   const choices = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
+    const normalized = query.trim().toLocaleLowerCase()
     return tags
       .filter((tag) => !normalized || tag.name.toLocaleLowerCase().includes(normalized))
       .sort((a, b) => {
-        const aPinned = Boolean(a.isPinned);
-        const bPinned = Boolean(b.isPinned);
-        if (aPinned !== bPinned) return aPinned ? -1 : 1;
-        return b.count - a.count || a.name.localeCompare(b.name);
-      });
-  }, [tags, query]);
+        const aPinned = Boolean(a.isPinned)
+        const bPinned = Boolean(b.isPinned)
+        if (aPinned !== bPinned) return aPinned ? -1 : 1
+        return b.count - a.count || a.name.localeCompare(b.name)
+      })
+  }, [tags, query])
   return (
     <div className='max-h-105 overflow-y-auto space-y-1 divide-y divide-[var(--border-subtle)]/50'>
       {choices.map((tag) => (
@@ -204,7 +204,7 @@ function TagManageList({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 

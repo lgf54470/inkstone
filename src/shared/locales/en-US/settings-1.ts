@@ -152,4 +152,4 @@ export const messages = {
 'settings.fade_content_outside_the_current_paragraph': 'Fade content outside the current paragraph',
 'settings.files_that_have_been_backed_up_there_will_not_be_deleted': 'Files that have been backed up there will not be deleted.',
 'settings.finally_click_manage_key_permissions_and_turn_on_admin_access_otherwise': 'Finally, click Manage Key Permissions and turn on Admin Access, otherwise writing backups will fail.',
-};
+}

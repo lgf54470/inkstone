@@ -1,7 +1,7 @@
-import { createStore } from 'idb-keyval';
-import * as idbKeyval from 'idb-keyval';
-import type { UseStore } from 'idb-keyval';
-import { CLIENT_DATABASE_NAME } from '../runtime';
+import { createStore } from 'idb-keyval'
+import * as idbKeyval from 'idb-keyval'
+import type { UseStore } from 'idb-keyval'
+import { CLIENT_DATABASE_NAME } from '../runtime'
 
 const optionalIdbExport = (name: string): unknown => Object.prototype.hasOwnProperty.call(idbKeyval, name)
   ? Reflect.get(idbKeyval, name)

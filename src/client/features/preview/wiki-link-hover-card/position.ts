@@ -1,4 +1,4 @@
-import { getVisibleViewport } from '../../../lib/viewport';
+import { getVisibleViewport } from '../../../lib/viewport'
 
 export function placeHoverCard(anchor: DOMRect, card: DOMRect): { top: number; left: number } {
   const gap = 8

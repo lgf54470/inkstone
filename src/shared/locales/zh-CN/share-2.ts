@@ -87,4 +87,4 @@ export const messages = {
 'share.view_all_logs': '查看全量访问日志',
 'share.visit_logs_desc': '记录全量访问流水、来源与终端画像，支持多维过滤、导出与生命周期清理',
 'share.visit_logs_title': '访问日志',
-};
+}

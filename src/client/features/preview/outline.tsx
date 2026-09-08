@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ComponentType, type RefObject } from 'react'
 import {
   ListTree,
   Heading1,
@@ -8,13 +8,13 @@ import {
   Heading5,
   Heading6,
   type LucideProps,
-} from 'lucide-react';
-import type { Heading } from '../../lib/markdown/renderer';
-import { cn } from '../../lib/cn';
-import { Tooltip } from '../../components/overlay';
+} from 'lucide-react'
+import type { Heading } from '../../lib/markdown/renderer'
+import { cn } from '../../lib/cn'
+import { Tooltip } from '../../components/overlay'
 
 const ACTIVE_BAR_W = 'w-[var(--sp-0\\.625)]'
-import { t } from '../../lib/i18n';
+import { t } from '../../lib/i18n'
 
 const OUTLINE_INDENT_BASE = 8
 const OUTLINE_INDENT_STEP = 10
@@ -26,10 +26,10 @@ const HEADING_ICONS: Record<number, ComponentType<LucideProps>> = {
   4: Heading4,
   5: Heading5,
   6: Heading6,
-};
+}
 
 export function getHeadingIcon(level: number): ComponentType<LucideProps> {
-  return HEADING_ICONS[level] ?? Heading6;
+  return HEADING_ICONS[level] ?? Heading6
 }
 
 export function getHeadingTypography(level: number, isActive: boolean) {
@@ -42,7 +42,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
         iconSize: 12.5,
         iconColor: isActive ? 'text-[var(--accent)] opacity-100' : 'text-[var(--text-tertiary)] opacity-80',
         paddingY: 'py-1',
-      };
+      }
     case 2:
       return {
         fontSize: 'text-[length:var(--text-12)]',
@@ -51,7 +51,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
         iconSize: 11.5,
         iconColor: isActive ? 'text-[var(--accent)] opacity-100' : 'text-[var(--text-quaternary)] opacity-80',
         paddingY: 'py-1',
-      };
+      }
     case 3:
       return {
         fontSize: 'text-[length:var(--text-11\\.5)]',
@@ -60,7 +60,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
         iconSize: 11,
         iconColor: isActive ? 'text-[var(--accent)] opacity-100' : 'text-[var(--text-quaternary)] opacity-70',
         paddingY: 'py-0.5',
-      };
+      }
     case 4:
       return {
         fontSize: 'text-[length:var(--text-11)]',
@@ -69,7 +69,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
         iconSize: 10.5,
         iconColor: isActive ? 'text-[var(--accent)] opacity-100' : 'text-[var(--text-quaternary)] opacity-60',
         paddingY: 'py-0.5',
-      };
+      }
     default:
       return {
         fontSize: 'text-[length:var(--text-10\\.5)]',
@@ -78,59 +78,59 @@ export function getHeadingTypography(level: number, isActive: boolean) {
         iconSize: 10,
         iconColor: isActive ? 'text-[var(--accent)] opacity-100' : 'text-[var(--text-quaternary)] opacity-60',
         paddingY: 'py-0.5',
-      };
+      }
   }
 }
 
 
 function useOutlineActive(headings: Heading[], scrollerRef?: RefObject<HTMLElement | null>): string | null {
-  const [active, setActive] = useState<string | null>(null);
-  const rafRef = useRef(0);
+  const [active, setActive] = useState<string | null>(null)
+  const rafRef = useRef(0)
   useEffect(() => {
-    const scroller = scrollerRef?.current ?? document.querySelector<HTMLElement>('[data-preview-scroller]');
+    const scroller = scrollerRef?.current ?? document.querySelector<HTMLElement>('[data-preview-scroller]')
     if (!scroller || headings.length === 0)
-      return;
+      return
     const onScroll = () => {
-      cancelAnimationFrame(rafRef.current);
+      cancelAnimationFrame(rafRef.current)
       rafRef.current = requestAnimationFrame(() => {
-        setActive(activeHeadingSlug(scroller, headings));
-      });
-    };
-    onScroll();
-    scroller.addEventListener('scroll', onScroll, { passive: true });
+        setActive(activeHeadingSlug(scroller, headings))
+      })
+    }
+    onScroll()
+    scroller.addEventListener('scroll', onScroll, { passive: true })
     return () => {
-      scroller.removeEventListener('scroll', onScroll);
-      cancelAnimationFrame(rafRef.current);
-    };
-  }, [headings, scrollerRef]);
-  return active;
+      scroller.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(rafRef.current)
+    }
+  }, [headings, scrollerRef])
+  return active
 }
 
 function activeHeadingSlug(scroller: HTMLElement, headings: Heading[]): string | null {
-  const top = scroller.scrollTop + 60;
-  let current: string | null = headings[0]?.slug ?? null;
+  const top = scroller.scrollTop + 60
+  let current: string | null = headings[0]?.slug ?? null
   for (const heading of headings) {
-    const el = scroller.querySelector<HTMLElement>(`#${CSS.escape(heading.slug)}`);
+    const el = scroller.querySelector<HTMLElement>(`#${CSS.escape(heading.slug)}`)
     if (!el)
-      continue;
+      continue
     if (el.offsetTop <= top)
-      current = heading.slug;
+      current = heading.slug
     else
-      break;
+      break
   }
-  return current;
+  return current
 }
 
 export function Outline({ headings, onSelect, scrollerRef, className, }: {
-  headings: Heading[];
-  onSelect: (heading: Heading) => void;
-  scrollerRef?: RefObject<HTMLElement | null>;
-  className?: string;
+  headings: Heading[]
+  onSelect: (heading: Heading) => void
+  scrollerRef?: RefObject<HTMLElement | null>
+  className?: string
 }) {
-  const active = useOutlineActive(headings, scrollerRef);
+  const active = useOutlineActive(headings, scrollerRef)
   if (headings.length === 0)
-    return null;
-  const minLevel = Math.min(...headings.map((h) => h.level));
+    return null
+  const minLevel = Math.min(...headings.map((h) => h.level))
   return (<nav className={cn('sticky top-0 max-h-full w-42 shrink-0 self-start overflow-y-auto py-5 pr-3', className)} aria-label={t('common.outline')}>
     <div className="mb-2 flex items-center gap-1.5 px-2 text-[length:var(--text-10\\.5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]">
     <ListTree size={11}/>{t('common.outline')}</div>
@@ -147,22 +147,22 @@ export function Outline({ headings, onSelect, scrollerRef, className, }: {
       />
     ))}
     </ul>
-  </nav>);
+  </nav>)
 }
 
 function OutlineRow({ heading, index, active, minLevel, prevHeading, onSelect }: {
-  heading: Heading;
-  index: number;
-  active: string | null;
-  minLevel: number;
-  prevHeading: Heading | undefined;
-  onSelect: (heading: Heading) => void;
+  heading: Heading
+  index: number
+  active: string | null
+  minLevel: number
+  prevHeading: Heading | undefined
+  onSelect: (heading: Heading) => void
 }) {
-  const isActive = heading.slug === active;
-  const typography = getHeadingTypography(heading.level, isActive);
-  const HeadingIcon = getHeadingIcon(heading.level);
-  const relativeLevel = Math.min(Math.max(0, heading.level - minLevel), 4);
-  const marginTopClass = outlineMarginTop(heading, index, prevHeading);
+  const isActive = heading.slug === active
+  const typography = getHeadingTypography(heading.level, isActive)
+  const HeadingIcon = getHeadingIcon(heading.level)
+  const relativeLevel = Math.min(Math.max(0, heading.level - minLevel), 4)
+  const marginTopClass = outlineMarginTop(heading, index, prevHeading)
   return (<li className={marginTopClass}>
     <Tooltip label={heading.text || t('preview.untitled')} side='left'>
     <button type='button' aria-current={isActive ? 'location' : undefined} data-heading-level={heading.level} onClick={() => onSelect(heading)} className={cn('group relative flex w-full items-center gap-1.5 rounded-[var(--r-sm)] pr-1.5 text-left leading-snug', 'transition-colors duration-[var(--dur-fast)]', typography.fontSize, typography.fontWeight, typography.textColor, typography.paddingY, isActive
@@ -175,12 +175,12 @@ function OutlineRow({ heading, index, active, minLevel, prevHeading, onSelect }:
       </span>
     </button>
     </Tooltip>
-  </li>);
+  </li>)
 }
 
 function outlineMarginTop(heading: Heading, index: number, prevHeading: Heading | undefined): string {
-  if (index === 0) return '';
-  if (heading.level === 1) return 'mt-1.5';
-  if (heading.level === 2 && prevHeading && prevHeading.level !== 1) return 'mt-0.5';
-  return '';
+  if (index === 0) return ''
+  if (heading.level === 1) return 'mt-1.5'
+  if (heading.level === 2 && prevHeading && prevHeading.level !== 1) return 'mt-0.5'
+  return ''
 }

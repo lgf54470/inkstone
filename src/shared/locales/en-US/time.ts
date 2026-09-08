@@ -4,4 +4,4 @@ export const messages = {
 'time.this_week': 'This week',
 'time.today': 'Today',
 'time.yesterday': 'Yesterday',
-};
+}

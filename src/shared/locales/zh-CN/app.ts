@@ -7,4 +7,4 @@ export const messages = {
 'app.error_boundary_description': '发生了一个意外错误，请刷新页面继续使用。',
 'app.reload': '刷新',
 'app.section_unavailable': '该区域暂时不可用',
-};
+}

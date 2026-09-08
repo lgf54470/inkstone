@@ -1,33 +1,33 @@
-import { useId, useRef, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
-import { cn } from '../../lib/cn';
-import { IconButton } from '../primitives';
-import { t } from '../../lib/i18n';
-import { useEscape, useLockScroll, useDialogFocus } from './hooks';
-import { Tooltip } from './tooltip';
+import { useId, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { X } from 'lucide-react'
+import { cn } from '../../lib/cn'
+import { IconButton } from '../primitives'
+import { t } from '../../lib/i18n'
+import { useEscape, useLockScroll, useDialogFocus } from './hooks'
+import { Tooltip } from './tooltip'
 
 
 
 export function Modal({ open, onClose, title, description, children, footer, width = 560, className, bodyClassName, }: {
-  open: boolean;
-  onClose: () => void;
-  title?: ReactNode;
-  description?: ReactNode;
-  children: ReactNode;
-  footer?: ReactNode;
-  width?: number;
-  className?: string;
-  bodyClassName?: string;
+  open: boolean
+  onClose: () => void
+  title?: ReactNode
+  description?: ReactNode
+  children: ReactNode
+  footer?: ReactNode
+  width?: number
+  className?: string
+  bodyClassName?: string
 }) {
-  const panelRef = useRef<HTMLDivElement>(null);
-  const titleId = useId();
-  const descriptionId = useId();
-  useEscape(open, onClose);
-  useLockScroll(open);
-  useDialogFocus(open, panelRef);
+  const panelRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  const descriptionId = useId()
+  useEscape(open, onClose)
+  useLockScroll(open)
+  useDialogFocus(open, panelRef)
   if (!open)
-    return null;
+    return null
   return createPortal(
 
 
@@ -54,5 +54,5 @@ export function Modal({ open, onClose, title, description, children, footer, wid
       {footer}
       </div>)}
     </div>
-  </div>, document.body);
+  </div>, document.body)
 }

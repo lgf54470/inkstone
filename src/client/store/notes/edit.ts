@@ -1,74 +1,74 @@
-import type { NotesState, SetNotesState } from './model';
-import { setFrontMatterProperty } from '@shared/markdown-utils';
-import { LIMITS } from '@shared/constants';
-import { localDb } from '../../lib/db';
-import { frontMatterTitleOf } from './new-note';
-import { pendingNoteCount, replayOutbox } from './outbox';
-import { stageNoteTextWrite } from './persist';
-import { commitAllPendingSummaryDerivations } from './summary';
-import { hasOwnContent } from './util';
-import { dirty, notePersistCoalescer, noteState } from './model';
-import { useSession } from '../session';
+import type { NotesState, SetNotesState } from './model'
+import { setFrontMatterProperty } from '@shared/markdown-utils'
+import { LIMITS } from '@shared/constants'
+import { localDb } from '../../lib/db'
+import { frontMatterTitleOf } from './new-note'
+import { pendingNoteCount, replayOutbox } from './outbox'
+import { stageNoteTextWrite } from './persist'
+import { commitAllPendingSummaryDerivations } from './summary'
+import { hasOwnContent } from './util'
+import { dirty, notePersistCoalescer, noteState } from './model'
+import { useSession } from '../session'
 
 export const edit = (set: SetNotesState, get: () => NotesState): Pick<NotesState, 'editTitle' | 'editContent' | 'flush'> => ({
 
   editTitle(id, title) {
-    editTitleImpl(id, title, set, get);
+    editTitleImpl(id, title, set, get)
   },
 
   editContent(id, content) {
-    editContentImpl(id, content, set, get);
+    editContentImpl(id, content, set, get)
   },
 
   async flush(options) {
-    await notePersistCoalescer.flush();
-    commitAllPendingSummaryDerivations();
+    await notePersistCoalescer.flush()
+    commitAllPendingSummaryDerivations()
     if (options?.immediate)
-      window.clearTimeout(noteState.saveTimer);
+      window.clearTimeout(noteState.saveTimer)
     if (dirty.size)
-      set((state) => ({ saveStatus: state.online ? 'saving' : 'offline' }));
-    await replayOutbox(get, set);
-    commitAllPendingSummaryDerivations();
-    const remaining = await localDb.getOutbox();
-    const pendingCount = pendingNoteCount(remaining);
+      set((state) => ({ saveStatus: state.online ? 'saving' : 'offline' }))
+    await replayOutbox(get, set)
+    commitAllPendingSummaryDerivations()
+    const remaining = await localDb.getOutbox()
+    const pendingCount = pendingNoteCount(remaining)
     set((state) => ({
       saveStatus: pendingCount ? (state.online ? 'dirty' : 'offline') : 'synced',
       pendingCount,
-    }));
+    }))
   }
-});
+})
 
 function editTitleImpl(id: string, title: string, set: SetNotesState, get: () => NotesState): void {
-  const state = get();
-  const summary = state.notes[id];
-  const content = state.contents[id];
+  const state = get()
+  const summary = state.notes[id]
+  const content = state.contents[id]
   if (!summary || content === undefined)
-    return;
-  const nextTitle = title.slice(0, LIMITS.titleMaxLength);
+    return
+  const nextTitle = title.slice(0, LIMITS.titleMaxLength)
   if (summary.title === nextTitle)
-    return;
+    return
   // Keep the front matter `title` property in sync with the note title
   // whenever the note already declares one (opt-out per settings).
   const syncedContent = useSession.getState().settings.notes?.syncTitleToFrontMatter
     ? setFrontMatterProperty(content, 'title', nextTitle || null)
-    : null;
-  stageNoteTextWrite(id, syncedContent ?? content, nextTitle, set, get);
+    : null
+  stageNoteTextWrite(id, syncedContent ?? content, nextTitle, set, get)
 }
 
 function editContentImpl(id: string, content: string, set: SetNotesState, get: () => NotesState): void {
-  const state = get();
-  const summary = state.notes[id];
+  const state = get()
+  const summary = state.notes[id]
   if (!summary || !hasOwnContent(state.contents, id) || state.contents[id] === content)
-    return;
+    return
   // Reverse sync: when the body's front matter `title` property changes,
   // adopt it as the note title so both stay in agreement (opt-out per
   // settings).
-  let nextTitle = dirty.get(id)?.title;
+  let nextTitle = dirty.get(id)?.title
   if (useSession.getState().settings.notes?.syncFrontMatterTitle) {
-    const nextFrontMatterTitle = frontMatterTitleOf(content);
-    const previousFrontMatterTitle = frontMatterTitleOf(state.contents[id]);
+    const nextFrontMatterTitle = frontMatterTitleOf(content)
+    const previousFrontMatterTitle = frontMatterTitleOf(state.contents[id])
     if (nextFrontMatterTitle !== undefined && nextFrontMatterTitle !== previousFrontMatterTitle)
-      nextTitle = nextFrontMatterTitle.slice(0, LIMITS.titleMaxLength);
+      nextTitle = nextFrontMatterTitle.slice(0, LIMITS.titleMaxLength)
   }
-  stageNoteTextWrite(id, content, nextTitle, set, get);
+  stageNoteTextWrite(id, content, nextTitle, set, get)
 }

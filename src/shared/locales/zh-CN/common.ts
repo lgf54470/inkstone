@@ -81,4 +81,4 @@ export const messages = {
 'common.zoom_in': '放大',
 'common.zoom_out': '缩小',
 'common.refresh': '刷新',
-};
+}
