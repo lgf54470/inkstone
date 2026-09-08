@@ -15,7 +15,8 @@
     "astro": "astro",
     "typecheck": "astro check",
     "lint": "node scripts/agents-lint.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "smoke:e2e": "node scripts/blog-e2e-smoke.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.0",

@@ -68,3 +68,17 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+      - name: Smoke test endpoints against preview server
+        run: |
+          npm run preview > /tmp/blog-preview.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 90); do
+            if node scripts/blog-e2e-smoke.mjs --ping > /dev/null 2>&1; then ready=1; break; fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$ready" != "1" ]; then cat /tmp/blog-preview.log; exit 1; fi
+          node scripts/blog-e2e-smoke.mjs

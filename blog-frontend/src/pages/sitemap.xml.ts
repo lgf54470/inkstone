@@ -7,8 +7,9 @@ const STATIC_ROUTES = ['/', '/timeline', '/calendar', '/categories', '/tags']
 /**
  * 动态 sitemap：以请求 origin 自适应多环境（本地/预览/生产），
  * 文章列表来自 timeline 接口（覆盖全部已发布文章）。
+ * 独立为纯函数便于单测（tests/endpoints.test.ts）。
  */
-export const GET: APIRoute = async ({ url }) => {
+export async function getSitemapXml(url: URL): Promise<Response> {
   const origin = url.origin
   const timeline = await api.getTimeline()
   const postSlugs = new Set<string>()
@@ -33,3 +34,5 @@ export const GET: APIRoute = async ({ url }) => {
     headers: { 'Content-Type': 'application/xml; charset=utf-8' },
   })
 }
+
+export const GET: APIRoute = ({ url }) => getSitemapXml(url)
