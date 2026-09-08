@@ -105,6 +105,9 @@ export type MessageKey =
   | 'tagtree.expand'
   | 'tagtree.collapse'
   | 'tagtree.empty'
+  // Random Post
+  | 'random.button'
+  | 'random.loading'
   // 404
   | 'not_found.title'
   | 'not_found.heading'

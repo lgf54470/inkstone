@@ -113,6 +113,10 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'tagtree.collapse': '折叠',
   'tagtree.empty': '暂无标签',
 
+  // Random Post
+  'random.button': '随机一篇',
+  'random.loading': '正在抽取...',
+
   // 404
   'not_found.title': '404 - 页面未找到',
   'not_found.heading': '页面未找到',

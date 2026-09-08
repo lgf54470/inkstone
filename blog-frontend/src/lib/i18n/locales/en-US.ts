@@ -113,6 +113,10 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'tagtree.collapse': 'Collapse',
   'tagtree.empty': 'No tags yet',
 
+  // Random Post
+  'random.button': 'Random post',
+  'random.loading': 'Picking...',
+
   // 404
   'not_found.title': '404 - Page Not Found',
   'not_found.heading': 'Page Not Found',
