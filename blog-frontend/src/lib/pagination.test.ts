@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPageItems, getPageUrl } from './pagination'
+import { buildPageItems, getPageUrl, parsePositiveInt } from './pagination'
 
 describe('buildPageItems', () => {
   it('returns all pages when totalPages is 7 or less', () => {
@@ -38,5 +38,23 @@ describe('getPageUrl', () => {
 
   it('appends &page= for base urls that already carry a query', () => {
     expect(getPageUrl(3, '/search?q=x')).toBe('/search?q=x&page=3')
+  })
+})
+
+describe('parsePositiveInt', () => {
+  it('parses valid positive integers', () => {
+    expect(parsePositiveInt('3', 1)).toBe(3)
+  })
+
+  it('treats zero and below as invalid', () => {
+    expect(parsePositiveInt('0', 5)).toBe(5)
+  })
+
+  it('falls back to the default for invalid or missing input', () => {
+    expect(parsePositiveInt('abc', 1)).toBe(1)
+    expect(parsePositiveInt('-5', 1)).toBe(1)
+    expect(parsePositiveInt(null, 7)).toBe(7)
+    expect(parsePositiveInt(undefined, 7)).toBe(7)
+    expect(parsePositiveInt('', 7)).toBe(7)
   })
 })

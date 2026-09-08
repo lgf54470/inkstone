@@ -109,6 +109,49 @@ describe('HomeFeedView initial rendering', () => {
   })
 })
 
+type PostsResponse = {
+  posts: BlogPost[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+function renderFeed(): { container: HTMLDivElement; root: ReturnType<typeof createRoot> } {
+  const container = document.createElement('div')
+  const root = createRoot(container)
+  act(() => {
+    root.render(
+      createElement(HomeFeedView, {
+        initialPosts: MOCK_POSTS,
+        initialTotal: 2,
+        initialPage: 1,
+        initialLimit: 10,
+        initialTotalPages: 1,
+        categories: MOCK_CATEGORIES,
+        tags: MOCK_TAGS,
+        calendarDays: [],
+        siteInfo: MOCK_SITE,
+        locale: 'zh-CN',
+      })
+    )
+  })
+  return { container, root }
+}
+
+async function clickTag(container: HTMLDivElement, label: string): Promise<void> {
+  const tagButtons = container.querySelectorAll<HTMLButtonElement>('button')
+  const target = Array.from(tagButtons).find((b) => b.textContent?.includes(label))
+  await act(async () => {
+    target?.click()
+  })
+}
+
+function findTagButton(container: HTMLDivElement, label: string): HTMLButtonElement | undefined {
+  const tagButtons = container.querySelectorAll<HTMLButtonElement>('button')
+  return Array.from(tagButtons).find((b) => b.textContent?.includes(label))
+}
+
 describe('HomeFeedView tag filter interaction', () => {
   beforeEach(() => {
     vi.spyOn(api, 'getPosts').mockResolvedValue({
@@ -141,8 +184,7 @@ describe('HomeFeedView tag filter interaction', () => {
       )
     })
 
-    const tagButtons = container.querySelectorAll<HTMLButtonElement>('button')
-    const tagAButton = Array.from(tagButtons).find((b) => b.textContent?.includes('#tag-a'))
+    const tagAButton = findTagButton(container, '#tag-a')
 
     await act(async () => {
       tagAButton?.click()
@@ -157,5 +199,35 @@ describe('HomeFeedView tag filter interaction', () => {
 
     expect(container.textContent).toContain('当前标签:')
     expect(container.textContent).toContain('#tag-a')
+  })
+
+  it('discards stale responses when requests race', async () => {
+    const { container } = renderFeed()
+    const getPostsMock = vi.spyOn(api, 'getPosts')
+    let resolveSlow!: (value: PostsResponse) => void
+    let resolveFast!: (value: PostsResponse) => void
+    getPostsMock
+      .mockImplementationOnce(() => new Promise<PostsResponse>((resolve) => {
+        resolveSlow = resolve
+      }))
+      .mockImplementationOnce(() => new Promise<PostsResponse>((resolve) => {
+        resolveFast = resolve
+      }))
+
+    // 连续点击两个标签：第一次请求慢、第二次请求快
+    await clickTag(container, '#tag-a')
+    await clickTag(container, '#tag-b')
+
+    // 快请求先返回
+    await act(async () => {
+      resolveFast({ posts: [MOCK_POSTS[1]], total: 1, page: 1, limit: 10, totalPages: 1 })
+    })
+    // 慢请求后返回（过期响应，应被 seq 守卫丢弃）
+    await act(async () => {
+      resolveSlow({ posts: [MOCK_POSTS[0]], total: 1, page: 1, limit: 10, totalPages: 1 })
+    })
+
+    expect(container.textContent).toContain('第二篇文章')
+    expect(container.textContent).not.toContain('第一篇文章')
   })
 })
