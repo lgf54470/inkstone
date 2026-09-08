@@ -15,6 +15,7 @@
   <a href="https://inkstone-demo.pages.dev/">Demo</a>
 </p>
 
+
 ## About
 
 Inkstone is a browser-based notebook that runs on Cloudflare Workers. Notes always remain plain Markdown text; on top of that foundation, the application provides focused writing, live preview, lexical and optional semantic search, bidirectional links, offline editing, multi-device synchronization, private AI access, public sharing, and off-site backups.
