@@ -142,7 +142,6 @@ function CategorySection({
         isCollapsed={isCollapsed}
         onToggleCollapse={() => props.onToggleCollapse(cat.id)}
       />
-
       {childrenCategories.length > 0 && !isCollapsed && (
         <CategorySubPills
           catId={cat.id}
@@ -152,29 +151,43 @@ function CategorySection({
           onSelectSub={props.onSelectSectionSubCat}
         />
       )}
-
       {!isCollapsed && (
-        <div className={getGridClasses(props.viewMode, props.gridColumns)}>
-          {visibleLinks.map((link) => (
-            <LinkCard
-              key={link.id}
-              link={link}
-              categoryName={link.categoryId ? categoryMap.get(link.categoryId) : undefined}
-              isFavorite={props.favorites.has(link.id)}
-              isPinned={link.isPinned || props.pinnedIds.has(link.id)}
-              viewMode={props.viewMode}
-              onToggleFavorite={props.onToggleFavorite}
-              onContextMenu={props.onContextMenu}
-              onOpenQr={props.onOpenQr}
-              onCopyLink={props.onCopyLink}
-              onVisit={props.onVisit}
-            />
-          ))}
-        </div>
+        <CategoryLinksGrid links={visibleLinks} categoryMap={categoryMap} props={props} />
       )}
     </section>
   )
 }
+
+function CategoryLinksGrid({
+  links,
+  categoryMap,
+  props,
+}: {
+  links: BlogPublicLink[]
+  categoryMap: Map<string, string>
+  props: LinkSectionGroupProps
+}) {
+  return (
+    <div className={getGridClasses(props.viewMode, props.gridColumns)}>
+      {links.map((link) => (
+        <LinkCard
+          key={link.id}
+          link={link}
+          categoryName={link.categoryId ? categoryMap.get(link.categoryId) : undefined}
+          isFavorite={props.favorites.has(link.id)}
+          isPinned={link.isPinned || props.pinnedIds.has(link.id)}
+          viewMode={props.viewMode}
+          onToggleFavorite={props.onToggleFavorite}
+          onContextMenu={props.onContextMenu}
+          onOpenQr={props.onOpenQr}
+          onCopyLink={props.onCopyLink}
+          onVisit={props.onVisit}
+        />
+      ))}
+    </div>
+  )
+}
+
 
 function CategorySectionHeader({
   cat,
@@ -261,46 +274,49 @@ function UncategorizedSection({
 
   return (
     <section className='space-y-3 pt-2'>
-      <button
-        type='button'
-        onClick={() => props.onToggleCollapse('uncategorized')}
-        className='group flex items-center gap-2 cursor-pointer text-left focus:outline-hidden'
-      >
-        {isCollapsed ? (
-          <ChevronRight className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
-        ) : (
-          <ChevronDown className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
-        )}
-        <h3 className='text-base sm:text-lg font-bold text-[var(--text-primary)]'>
-          {t('links.filter_uncategorized', {}, locale)}
-        </h3>
-        <span className='rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-xs text-[var(--text-tertiary)] font-normal'>
-          {links.length}
-        </span>
-      </button>
-
+      <UncategorizedSectionHeader
+        count={links.length}
+        isCollapsed={isCollapsed}
+        label={t('links.filter_uncategorized', {}, locale)}
+        onToggle={() => props.onToggleCollapse('uncategorized')}
+      />
       {!isCollapsed && (
-        <div className={getGridClasses(props.viewMode, props.gridColumns)}>
-          {links.map((link) => (
-            <LinkCard
-              key={link.id}
-              link={link}
-              categoryName={undefined}
-              isFavorite={props.favorites.has(link.id)}
-              isPinned={link.isPinned || props.pinnedIds.has(link.id)}
-              viewMode={props.viewMode}
-              onToggleFavorite={props.onToggleFavorite}
-              onContextMenu={props.onContextMenu}
-              onOpenQr={props.onOpenQr}
-              onCopyLink={props.onCopyLink}
-              onVisit={props.onVisit}
-            />
-          ))}
-        </div>
+        <CategoryLinksGrid links={links} categoryMap={categoryMap} props={props} />
       )}
     </section>
   )
 }
+
+function UncategorizedSectionHeader({
+  count,
+  isCollapsed,
+  label,
+  onToggle,
+}: {
+  count: number
+  isCollapsed: boolean
+  label: string
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type='button'
+      onClick={onToggle}
+      className='group flex items-center gap-2 cursor-pointer text-left focus:outline-hidden'
+    >
+      {isCollapsed ? (
+        <ChevronRight className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
+      ) : (
+        <ChevronDown className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
+      )}
+      <h3 className='text-base sm:text-lg font-bold text-[var(--text-primary)]'>{label}</h3>
+      <span className='rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-xs text-[var(--text-tertiary)] font-normal'>
+        {count}
+      </span>
+    </button>
+  )
+}
+
 
 function getGridClasses(viewMode: ViewMode, columns: GridColumns): string {
   if (viewMode === 'simple') {

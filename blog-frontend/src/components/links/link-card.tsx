@@ -90,6 +90,31 @@ function DetailedLinkCard({
       onContextMenu={onContextMenu}
       className='group relative flex flex-col justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 sm:p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-default)] hover:shadow-xs cursor-pointer min-h-20'
     >
+      <DetailedLinkCardBody link={link} categoryName={categoryName} isFavorite={isFavorite} isPinned={isPinned} />
+      <CardActions
+        isFavorite={isFavorite}
+        onToggleFavorite={onToggleFavorite}
+        onOpenQr={onOpenQr}
+        onCopyLink={onCopyLink}
+        onOpenMenu={onOpenMenu}
+      />
+    </div>
+  )
+}
+
+function DetailedLinkCardBody({
+  link,
+  categoryName,
+  isFavorite,
+  isPinned,
+}: {
+  link: BlogPublicLink
+  categoryName?: string
+  isFavorite: boolean
+  isPinned: boolean
+}) {
+  return (
+    <>
       <div>
         <div className='flex items-center gap-2.5'>
           <CardAvatar avatar={link.avatar} name={link.name} size='md' />
@@ -114,19 +139,34 @@ function DetailedLinkCard({
           </p>
         )}
       </div>
-
       <p className='mt-1.5 truncate text-xs text-[var(--text-tertiary)]' title={link.url}>
         {link.url}
       </p>
+    </>
+  )
+}
 
-      <CardActions
-        isFavorite={isFavorite}
-        onToggleFavorite={onToggleFavorite}
-        onOpenQr={onOpenQr}
-        onCopyLink={onCopyLink}
-        onOpenMenu={onOpenMenu}
-      />
-    </div>
+
+function CardIconButton({
+  onClick,
+  title,
+  children,
+  className = 'text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
+}: {
+  onClick: (e: React.MouseEvent) => void
+  title: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <button
+      type='button'
+      onClick={onClick}
+      className={`p-1 rounded transition-colors cursor-pointer ${className}`}
+      title={title}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -148,47 +188,20 @@ function CardActions({
       className='absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded-lg bg-[var(--bg-surface)]/95 backdrop-blur-xs p-0.5 opacity-0 shadow-2xs border border-[var(--border-subtle)] transition-opacity group-hover:opacity-100 z-10'
       onClick={(e) => e.stopPropagation()}
     >
-      {onCopyLink && (
-        <button
-          type='button'
-          onClick={onCopyLink}
-          className='p-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer'
-          title='Copy link'
-        >
-          <Copy className='size-3' />
-        </button>
-      )}
-      {onOpenQr && (
-        <button
-          type='button'
-          onClick={onOpenQr}
-          className='p-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer'
-          title='Show QR'
-        >
-          <QrCode className='size-3' />
-        </button>
-      )}
-      <button
-        type='button'
+      {onCopyLink && <CardIconButton onClick={onCopyLink} title='Copy link'><Copy className='size-3' /></CardIconButton>}
+      {onOpenQr && <CardIconButton onClick={onOpenQr} title='Show QR'><QrCode className='size-3' /></CardIconButton>}
+      <CardIconButton
         onClick={onToggleFavorite}
-        className={`p-1 rounded transition-colors cursor-pointer hover:bg-[var(--bg-hover)] ${
-          isFavorite ? 'text-amber-500 fill-amber-500' : 'text-[var(--text-quaternary)] hover:text-amber-500'
-        }`}
         title='Favorite'
+        className={isFavorite ? 'text-amber-500 fill-amber-500 hover:bg-[var(--bg-hover)]' : 'text-[var(--text-quaternary)] hover:text-amber-500 hover:bg-[var(--bg-hover)]'}
       >
         <Star className={`size-3 ${isFavorite ? 'fill-current' : ''}`} />
-      </button>
-      <button
-        type='button'
-        onClick={onOpenMenu}
-        className='p-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer'
-        title='More'
-      >
-        <MoreVertical className='size-3' />
-      </button>
+      </CardIconButton>
+      <CardIconButton onClick={onOpenMenu} title='More'><MoreVertical className='size-3' /></CardIconButton>
     </div>
   )
 }
+
 
 function SimpleLinkItem({
   link,

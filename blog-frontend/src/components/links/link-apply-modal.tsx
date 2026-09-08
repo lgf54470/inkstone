@@ -183,9 +183,30 @@ function ApplyForm({
   onCancel: () => void
   isSubmitting: boolean
 }) {
-  const locale = useCurrentLocale()
   return (
     <form onSubmit={onSubmit} className='space-y-3 pt-1'>
+      <ApplyFormFields form={form} onChange={onChange} onFetchFavicon={onFetchFavicon} />
+      <FormSubmitButtons
+        isSubmitting={isSubmitting}
+        canSubmit={Boolean(form.name.trim() && form.url.trim())}
+        onCancel={onCancel}
+      />
+    </form>
+  )
+}
+
+function ApplyFormFields({
+  form,
+  onChange,
+  onFetchFavicon,
+}: {
+  form: { name: string; url: string; desc: string; avatar: string; email: string }
+  onChange: React.Dispatch<React.SetStateAction<{ name: string; url: string; desc: string; avatar: string; email: string }>>
+  onFetchFavicon: () => void
+}) {
+  const locale = useCurrentLocale()
+  return (
+    <>
       <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
         <FormField
           label={t('links.form_name', {}, locale)}
@@ -220,14 +241,10 @@ function ApplyForm({
         placeholder='contact@example.com'
         onChange={(v) => onChange((p) => ({ ...p, email: v }))}
       />
-      <FormSubmitButtons
-        isSubmitting={isSubmitting}
-        canSubmit={Boolean(form.name.trim() && form.url.trim())}
-        onCancel={onCancel}
-      />
-    </form>
+    </>
   )
 }
+
 
 function FormAvatarInput({
   value,

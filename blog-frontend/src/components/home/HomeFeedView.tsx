@@ -394,9 +394,46 @@ function FeedMainColumn({
   )
 }
 
+function useHydratedSidebarData(initialCategories: BlogCategory[], initialTags: BlogTag[]) {
+  const [categories, setCategories] = useState(initialCategories)
+  const [tags, setTags] = useState(initialTags)
+
+  useEffect(() => {
+    if (initialCategories.length > 0) setCategories(initialCategories)
+  }, [initialCategories])
+
+  useEffect(() => {
+    if (initialTags.length > 0) setTags(initialTags)
+  }, [initialTags])
+
+  useEffect(() => {
+    let active = true
+    api.getCategories()
+      .then((cats) => {
+        if (active && Array.isArray(cats) && cats.length > 0) setCategories(cats)
+      })
+      .catch((err) => {
+        console.warn('[HomeFeedView] categories hydrate skipped:', err)
+      })
+    api.getTags()
+      .then((t) => {
+        if (active && Array.isArray(t) && t.length > 0) setTags(t)
+      })
+      .catch((err) => {
+        console.warn('[HomeFeedView] tags hydrate skipped:', err)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  return { categories, tags }
+}
+
 export default function HomeFeedView(props: HomeFeedViewProps): ReactElement {
   const leftScrollRef = useRef<HTMLDivElement>(null)
-  const categoryMap = useMemo(() => new Map(props.categories.map((c) => [c.id, c])), [props.categories])
+  const { categories, tags } = useHydratedSidebarData(props.categories, props.tags)
+  const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
 
   const scrollToTop = () => {
     if (typeof leftScrollRef.current?.scrollTo === 'function') {
@@ -426,8 +463,8 @@ export default function HomeFeedView(props: HomeFeedViewProps): ReactElement {
       <div className='lg:col-span-4 h-full min-h-0 overflow-y-auto scrollbar-none'>
         <HomeSidebar
           siteInfo={props.siteInfo}
-          categories={props.categories}
-          tags={props.tags}
+          categories={categories}
+          tags={tags}
           calendarDays={props.calendarDays}
           selectedTag={state.selectedTag}
           totalPosts={props.initialTotal}

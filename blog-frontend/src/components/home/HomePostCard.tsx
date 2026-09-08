@@ -129,7 +129,12 @@ export default function HomePostCard({
             <a href={`/posts/${post.slug}`}>{post.title}</a>
           </h3>
           {post.excerpt && (
-            <p className='text-xs sm:text-sm text-[var(--text-secondary)] line-clamp-2 leading-relaxed mb-3'>
+            // suppressHydrationWarning: SSR encodes some Unicode chars (e.g. U+FF0C fullwidth comma)
+            // differently in HTML text nodes vs React client render — visually identical, safe to suppress.
+            <p
+              className='text-xs sm:text-sm text-[var(--text-secondary)] line-clamp-2 leading-relaxed mb-3'
+              suppressHydrationWarning
+            >
               {post.excerpt}
             </p>
           )}

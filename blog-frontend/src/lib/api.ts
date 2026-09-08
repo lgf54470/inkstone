@@ -102,31 +102,8 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
   }
 }
 
-function isSsr(): boolean {
-  return typeof import.meta !== 'undefined' && import.meta.env?.SSR === true
-}
-
-/**
- * SSR（Cloudflare Worker）侧 API 响应缓存：低频共享接口按 TTL 缓存，
- * 避免每请求回源后端；浏览器端与无 Cache API 环境直接请求。
- * 缓存写入为 best-effort（put 失败不影响主流程）。
- */
-async function requestJsonCached(path: string, ttlSeconds: number, init?: RequestInit): Promise<unknown> {
-  if (!isSsr() || typeof caches === 'undefined') return requestJson(path, init)
-  const cache = await caches.open('inkstone-blog-api-v1')
-  const request = new Request(`${API_BASE}${path}`, init)
-  const hit = await cache.match(request)
-  if (hit) return hit.json()
-  const data = await requestJson(path, init)
-  try {
-    const response = new Response(JSON.stringify(data), {
-      headers: { 'Cache-Control': `public, max-age=${ttlSeconds}` },
-    })
-    await cache.put(request, response)
-  } catch (err) {
-    console.warn('[api] cache put failed, serving uncached:', err)
-  }
-  return data
+async function requestJsonCached(path: string, _ttlSeconds: number, init?: RequestInit): Promise<unknown> {
+  return requestJson(path, init)
 }
 
 export const api = {
@@ -203,11 +180,8 @@ export const api = {
       const data = asRecord(await requestJsonCached('/api/blog/public/categories', 60))
       return asArray(data.categories).map(normalizeCategory)
     } catch (err) {
-      console.warn('[api.getCategories] request failed, using fallback categories:', err)
-      return [
-        { id: 'cat-tech', name: '技术随笔', slug: 'tech', color: 'oklch(62% 0.16 252)', postsCount: 2, createdAt: Date.now(), updatedAt: Date.now() },
-        { id: 'cat-life', name: '生活与思考', slug: 'life', color: 'oklch(66% 0.13 150)', postsCount: 0, createdAt: Date.now(), updatedAt: Date.now() },
-      ]
+      console.warn('[api.getCategories] request failed:', err)
+      return []
     }
   },
 
@@ -216,14 +190,8 @@ export const api = {
       const data = asRecord(await requestJsonCached('/api/blog/public/tags', 60))
       return asArray(data.tags).map(normalizeTag)
     } catch (err) {
-      console.warn('[api.getTags] request failed, using fallback tags:', err)
-      return [
-        { name: 'Inkstone', postsCount: 1 },
-        { name: 'Astro', postsCount: 1 },
-        { name: 'Markdown', postsCount: 2 },
-        { name: 'showcase', postsCount: 1 },
-        { name: 'cheatsheet', postsCount: 1 },
-      ]
+      console.warn('[api.getTags] request failed:', err)
+      return []
     }
   },
 
