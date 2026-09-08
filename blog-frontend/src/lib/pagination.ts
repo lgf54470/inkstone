@@ -16,6 +16,13 @@ export function buildPageItems(currentPage: number, totalPages: number): (number
   return pages
 }
 
+/** 解析正整数查询参数：非法输入回退默认值，避免 NaN 进请求 */
+export function parsePositiveInt(value: string | null | undefined, fallback: number): number {
+  if (!value) return fallback
+  const parsed = parseInt(value, 10)
+  return Number.isNaN(parsed) || parsed < 1 ? fallback : parsed
+}
+
 /** 页码到 URL：第 1 页省略查询参数，已带查询串的 baseUrl 用 & 拼接 */
 export function getPageUrl(page: number, baseUrl = ''): string {
   if (page === 1) return baseUrl || '/'

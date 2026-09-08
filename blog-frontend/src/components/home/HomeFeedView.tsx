@@ -3,6 +3,7 @@ import { X, Sparkles } from 'lucide-react'
 import HomePostCard from './HomePostCard'
 import HomePagination from './HomePagination'
 import HomeSidebar from './HomeSidebar'
+import { parsePositiveInt } from '../../lib/pagination'
 import { api } from '../../lib/api'
 import { t, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
 import type { BlogPost, BlogCategory, BlogTag, BlogSiteInfo, CalendarDayPost } from '../../lib/types'
@@ -31,9 +32,10 @@ function updateUrlParams(tag: string | null, page: number, limit: number): void 
     else url.searchParams.delete('page')
     if (limit !== 10) url.searchParams.set('limit', String(limit))
     else url.searchParams.delete('limit')
-    window.history.replaceState(null, '', url.pathname + url.search)
+    // pushState 保留历史条目：浏览器后退/前进可恢复此前的筛选与分页状态
+    window.history.pushState(null, '', url.pathname + url.search)
   } catch {
-    // ignore
+    // URL 构造失败（极少见，如不可解析的 base URL）时放弃同步，不影响页面功能
   }
 }
 
@@ -200,6 +202,27 @@ function useFeedState({
   const [page, setPage] = useState<number>(initialPage)
   const [pageSize, setPageSize] = useState<number>(initialLimit)
   const { data, fetchAndApply } = useFeedQuery({ initialPosts, initialTotal, initialTotalPages, onScrollToTop })
+  const fetchAndApplyRef = useRef(fetchAndApply)
+  useEffect(() => {
+    fetchAndApplyRef.current = fetchAndApply
+  })
+
+  // 浏览器前进/后退：按 URL 查询参数恢复筛选与分页，避免状态丢失
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URL(window.location.href).searchParams
+      const nextTag = params.get('tag')
+      const nextPage = parsePositiveInt(params.get('page'), 1)
+      const nextLimit = Math.min(50, parsePositiveInt(params.get('limit'), 10))
+      if (nextTag === tag && nextPage === page && nextLimit === pageSize) return
+      setTag(nextTag)
+      setPage(nextPage)
+      setPageSize(nextLimit)
+      fetchAndApplyRef.current(nextTag, nextPage, nextLimit)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [tag, page, pageSize])
 
   const queryPosts = (nextTag: string | null, nextPage: number, nextLimit: number) => {
     setTag(nextTag)
