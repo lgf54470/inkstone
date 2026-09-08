@@ -80,7 +80,7 @@ describe('sanitizeProseHtml whitelist behavior', () => {
     expect(html).toContain('<section class="tab-panel" hidden>面板</section>')
     expect(html).toContain('<input type="checkbox" class="task-list-item-checkbox" checked data-task-status="done" />')
     expect(html).toContain('<a href="/tags/x" target="_blank" rel="noopener noreferrer">外链</a>')
-    expect(html).toContain('<img src="data:image/png;base64,AAAA" alt="内嵌" />')
+    expect(html).toContain('<img src="data:image/png;base64,AAAA" alt="内嵌" loading="lazy" decoding="async" />')
     expect(html).toContain('<kbd>Ctrl</kbd>')
     expect(html).toContain('<rp>(</rp><rt>zhu</rt><rp>)</rp>')
     expect(html).toContain('data-lang="ts" data-code-start="1" data-line-numbers="true"')

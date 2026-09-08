@@ -92,6 +92,20 @@ function addNoopenerToBlankLinks(
   return { tagName: 'a', attribs }
 }
 
+/**
+ * 正文图片统一懒加载：长文多图时避免瀑布下载；
+ * 作者已显式书写的 loading/decoding 不覆盖。
+ */
+function addImageLazyLoading(
+  _tagName: string,
+  attribs: Record<string, string>
+): { tagName: string; attribs: Record<string, string> } {
+  const next = { ...attribs }
+  if (!next.loading) next.loading = 'lazy'
+  if (!next.decoding) next.decoding = 'async'
+  return { tagName: 'img', attribs: next }
+}
+
 export function sanitizeProseHtml(html: string): string {
   return sanitizeHtml(html, {
     allowedTags: ALLOWED_TAGS,
@@ -101,6 +115,6 @@ export function sanitizeProseHtml(html: string): string {
     nonTextTags: NON_TEXT_TAGS,
     allowedSchemes: ['http', 'https', 'ftp', 'mailto', 'tel'],
     allowedSchemesByTag: { img: ['data'] },
-    transformTags: { a: addNoopenerToBlankLinks },
+    transformTags: { a: addNoopenerToBlankLinks, img: addImageLazyLoading },
   })
 }
