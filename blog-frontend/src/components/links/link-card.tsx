@@ -88,31 +88,36 @@ function DetailedLinkCard({
     <div
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className='group relative flex items-center gap-3.5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 sm:p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-default)] hover:shadow-xs cursor-pointer'
+      className='group relative flex flex-col justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 sm:p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-default)] hover:shadow-xs cursor-pointer min-h-20'
     >
-      <CardAvatar avatar={link.avatar} name={link.name} />
-      <div className='min-w-0 flex-1 space-y-0.5'>
-        <div className='flex items-center gap-1.5'>
-          <h4 className='font-semibold text-sm sm:text-base text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors truncate'>
-            {link.name}
-          </h4>
-          {categoryName && (
-            <span className='rounded bg-[var(--bg-sunken)] px-1.5 py-0.2 text-xs text-[var(--text-tertiary)] shrink-0 hidden sm:inline-block'>
-              {categoryName}
-            </span>
-          )}
-          {isPinned && <Pin className='size-3 text-[var(--accent)] shrink-0' />}
-          {isFavorite && <Star className='size-3 text-amber-500 fill-amber-500 shrink-0' />}
+      <div>
+        <div className='flex items-center gap-2.5'>
+          <CardAvatar avatar={link.avatar} name={link.name} size='md' />
+          <div className='min-w-0 flex-1'>
+            <div className='flex items-center gap-1.5'>
+              <h4 className='truncate text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors' title={link.name}>
+                {link.name}
+              </h4>
+              {isPinned && <Pin className='size-3 text-amber-500 shrink-0' />}
+              {isFavorite && <Star className='size-3 text-amber-500 fill-amber-500 shrink-0' />}
+              {categoryName && (
+                <span className='rounded bg-[var(--bg-sunken)] px-1.5 py-0.5 text-xs text-[var(--text-tertiary)] shrink-0 hidden sm:inline-block'>
+                  {categoryName}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
         {link.description && (
-          <p className='text-xs text-[var(--text-secondary)] line-clamp-1 leading-relaxed'>
+          <p className='mt-1.5 line-clamp-2 text-xs text-[var(--text-secondary)] leading-relaxed' title={link.description}>
             {link.description}
           </p>
         )}
-        <p className='text-xs text-[var(--text-tertiary)] truncate'>
-          {formatDisplayUrl(link.url)}
-        </p>
       </div>
+
+      <p className='mt-1.5 truncate text-xs text-[var(--text-tertiary)]' title={link.url}>
+        {link.url}
+      </p>
 
       <CardActions
         isFavorite={isFavorite}
@@ -140,45 +145,46 @@ function CardActions({
 }) {
   return (
     <div
-      className='flex items-center gap-0.5 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity'
+      className='absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded-lg bg-[var(--bg-surface)]/95 backdrop-blur-xs p-0.5 opacity-0 shadow-2xs border border-[var(--border-subtle)] transition-opacity group-hover:opacity-100 z-10'
       onClick={(e) => e.stopPropagation()}
     >
       {onCopyLink && (
         <button
           type='button'
           onClick={onCopyLink}
-          className='p-1.5 rounded-lg text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer'
+          className='p-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer'
           title='Copy link'
         >
-          <Copy className='size-3.5' />
+          <Copy className='size-3' />
         </button>
       )}
       {onOpenQr && (
         <button
           type='button'
           onClick={onOpenQr}
-          className='p-1.5 rounded-lg text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer'
+          className='p-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer'
           title='Show QR'
         >
-          <QrCode className='size-3.5' />
+          <QrCode className='size-3' />
         </button>
       )}
       <button
         type='button'
         onClick={onToggleFavorite}
-        className={`p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-[var(--bg-hover)] ${
+        className={`p-1 rounded transition-colors cursor-pointer hover:bg-[var(--bg-hover)] ${
           isFavorite ? 'text-amber-500 fill-amber-500' : 'text-[var(--text-quaternary)] hover:text-amber-500'
         }`}
         title='Favorite'
       >
-        <Star className={`size-3.5 ${isFavorite ? 'fill-current' : ''}`} />
+        <Star className={`size-3 ${isFavorite ? 'fill-current' : ''}`} />
       </button>
       <button
         type='button'
         onClick={onOpenMenu}
-        className='p-1.5 rounded-lg text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer'
+        className='p-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer'
+        title='More'
       >
-        <MoreVertical className='size-3.5' />
+        <MoreVertical className='size-3' />
       </button>
     </div>
   )
@@ -203,21 +209,25 @@ function SimpleLinkItem({
     <div
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className='group flex items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2.5 transition-all hover:border-[var(--accent)] hover:bg-[var(--bg-hover)] cursor-pointer'
+      className='group relative flex items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-2 transition-all hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--bg-hover)] cursor-pointer overflow-hidden'
     >
-      <div className='flex items-center gap-2 min-w-0 flex-1'>
-        <CardAvatar avatar={link.avatar} name={link.name} size='sm' />
-        <span className='text-xs font-medium text-[var(--text-primary)] group-hover:text-[var(--accent)] truncate'>
+      <CardAvatar avatar={link.avatar} name={link.name} size='sm' />
+      <div className='flex items-center gap-1.5 min-w-0 flex-1'>
+        <span className='text-xs font-medium text-[var(--text-primary)] group-hover:text-[var(--accent)] truncate' title={link.name}>
           {link.name}
         </span>
-        {isPinned && <Pin className='size-2.5 text-[var(--accent)] shrink-0' />}
+        {isPinned && <Pin className='size-2.5 text-amber-500 shrink-0' />}
         {isFavorite && <Star className='size-2.5 text-amber-500 fill-amber-500 shrink-0' />}
       </div>
-      <div className='flex items-center gap-1 shrink-0' onClick={(e) => e.stopPropagation()}>
+      <div
+        className='absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded bg-[var(--bg-surface)]/90 backdrop-blur-xs px-1 py-0.5 opacity-0 group-hover:opacity-100 shadow-2xs border border-[var(--border-subtle)] transition-opacity'
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           type='button'
           onClick={onOpenMenu}
-          className='p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] cursor-pointer opacity-60 group-hover:opacity-100 transition-opacity'
+          className='p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] cursor-pointer'
+          title='More'
         >
           <MoreVertical className='size-3' />
         </button>
@@ -227,35 +237,35 @@ function SimpleLinkItem({
 }
 
 function CardAvatar({ avatar, name, size = 'md' }: { avatar: string | null; name: string; size?: 'sm' | 'md' }) {
-  const sizeClass = size === 'sm' ? 'size-6 rounded-md' : 'size-11 sm:size-12 rounded-xl'
+  const isSm = size === 'sm'
+  const containerClass = isSm
+    ? 'size-7 sm:size-8 rounded-md'
+    : 'size-9 sm:size-10 rounded-lg'
+  const imgClass = isSm ? 'size-4.5 sm:size-5' : 'size-6 sm:size-7'
+
   if (avatar) {
     return (
-      <img
-        src={avatar}
-        alt={name}
-        className={`${sizeClass} object-cover border border-[var(--border-subtle)] bg-[var(--bg-sunken)] shrink-0`}
-        onError={(e) => {
-          e.currentTarget.style.display = 'none'
-        }}
-      />
+      <div className={`${containerClass} overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-sunken)] flex items-center justify-center shrink-0`}>
+        <img
+          src={avatar}
+          alt={name}
+          className={`${imgClass} object-contain`}
+          loading='lazy'
+          referrerPolicy='no-referrer'
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+          }}
+        />
+      </div>
     )
   }
+
   return (
     <div
-      className={`${sizeClass} border border-[var(--border-subtle)] bg-[var(--accent-softer)] text-[var(--accent)] flex items-center justify-center font-bold text-xs sm:text-sm shrink-0`}
+      className={`${containerClass} border border-[var(--border-subtle)] bg-[var(--accent-softer)] text-[var(--accent)] flex items-center justify-center font-bold text-xs shrink-0`}
     >
       {name.charAt(0).toUpperCase()}
     </div>
   )
-}
-
-function formatDisplayUrl(url: string): string {
-  try {
-    const parsed = new URL(url)
-    return parsed.hostname.replace(/^www\./, '')
-  } catch (error) {
-    void error
-    return url.replace(/^https?:\/\//, '')
-  }
 }
 

@@ -154,7 +154,7 @@ function CategorySection({
       )}
 
       {!isCollapsed && (
-        <div className={`pl-0 sm:pl-7 ${getGridClasses(props.viewMode, props.gridColumns)}`}>
+        <div className={getGridClasses(props.viewMode, props.gridColumns)}>
           {visibleLinks.map((link) => (
             <LinkCard
               key={link.id}
@@ -222,7 +222,7 @@ function CategorySubPills({
   onSelectSub: (parentId: string, subId: string) => void
 }) {
   return (
-    <div className='flex flex-wrap items-center gap-1.5 pl-7'>
+    <div className='flex flex-wrap items-center gap-1.5'>
       {childrenCategories.map((sub) => {
         const count = links.filter((l) => l.categoryId === sub.id).length
         const isActive = activeSub === sub.id
@@ -280,7 +280,7 @@ function UncategorizedSection({
       </button>
 
       {!isCollapsed && (
-        <div className={`pl-0 sm:pl-7 ${getGridClasses(props.viewMode, props.gridColumns)}`}>
+        <div className={getGridClasses(props.viewMode, props.gridColumns)}>
           {links.map((link) => (
             <LinkCard
               key={link.id}
@@ -306,29 +306,33 @@ function getGridClasses(viewMode: ViewMode, columns: GridColumns): string {
   if (viewMode === 'simple') {
     switch (columns) {
       case 2:
-        return 'grid grid-cols-1 sm:grid-cols-2 gap-2.5'
+        return 'grid grid-cols-1 sm:grid-cols-2 gap-2'
       case 3:
-        return 'grid grid-cols-2 sm:grid-cols-3 gap-2.5'
+        return 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2'
       case 4:
-        return 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5'
+        return 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2'
       case 5:
-        return 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5'
+        return 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2'
+      case 6:
+        return 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2'
       default:
-        return 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5'
+        return 'grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]'
     }
   }
 
   switch (columns) {
     case 2:
-      return 'grid grid-cols-1 sm:grid-cols-2 gap-3.5'
+      return 'grid grid-cols-1 sm:grid-cols-2 gap-3'
     case 3:
-      return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5'
+      return 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3'
     case 4:
-      return 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5'
+      return 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3'
     case 5:
       return 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3'
+    case 6:
+      return 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3'
     default:
-      return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5'
+      return 'grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]'
   }
 }
 

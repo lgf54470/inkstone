@@ -248,7 +248,7 @@ function loadLocalMode(setMode: (m: ViewMode) => void) {
 function loadLocalColumns(setCols: (c: GridColumns) => void) {
   try {
     const raw = localStorage.getItem(COLUMNS_STORAGE_KEY)
-    if (raw === 'auto' || raw === '2' || raw === '3' || raw === '4' || raw === '5') {
+    if (raw === 'auto' || raw === '2' || raw === '3' || raw === '4' || raw === '5' || raw === '6') {
       setCols(raw === 'auto' ? 'auto' : (Number(raw) as GridColumns))
     }
   } catch (error) {
