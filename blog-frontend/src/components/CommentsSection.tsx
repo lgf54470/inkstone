@@ -11,10 +11,9 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
-import { useCurrentLocale } from '../lib/i18n/use-current-locale'
 import { COMMENT_MAX_LENGTH } from '../lib/constants'
 import type { BlogComment } from '../lib/types'
-import { t, formatDate, type BlogLocale } from '../lib/i18n'
+import { t, formatDate, useCurrentLocale, type BlogLocale } from '../lib/i18n'
 
 interface CommentsSectionProps {
   postId: string

@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react'
-import { useCurrentLocale } from '../lib/i18n/use-current-locale'
-import { t, type BlogLocale } from '../lib/i18n'
+import { t, useCurrentLocale, type BlogLocale } from '../lib/i18n'
 
 interface ReadingProgressProps {
   initialLocale?: BlogLocale

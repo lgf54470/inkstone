@@ -1,9 +1,8 @@
-import { LayoutGrid, List, Pin, Search, Star, X } from 'lucide-react'
+import { LayoutGrid, List, Pin, Plus, Search, Star, X } from 'lucide-react'
 import type { BlogPublicLinkCategory } from '../../lib/types'
-import { t } from '../../lib/i18n'
-import { useCurrentLocale } from '../../lib/i18n/use-current-locale'
+import { t, useCurrentLocale } from '../../lib/i18n'
 import { SEARCH_ENGINES } from './search-engines'
-import type { ViewMode } from './types'
+import type { GridColumns, ViewMode } from './types'
 
 export interface LinksToolbarProps {
   categories: BlogPublicLinkCategory[]
@@ -18,17 +17,21 @@ export interface LinksToolbarProps {
   onSearchSubmit: () => void
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
+  gridColumns: GridColumns
+  onGridColumnsChange: (cols: GridColumns) => void
+  onOpenApplyModal: () => void
   favCount: number
   pinCount: number
 }
 
 export function LinksToolbar(props: LinksToolbarProps) {
+  const locale = useCurrentLocale()
   const rootCategories = props.categories.filter((c) => !c.parentId)
   const activeRoot = props.categories.find((c) => c.id === props.activeCategory)
   const subCategories = activeRoot ? props.categories.filter((c) => c.parentId === activeRoot.id) : []
 
   return (
-    <div className='sticky top-15 z-30 mb-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-base)]/90 backdrop-blur-md p-3 sm:p-4 shadow-2xs space-y-3'>
+    <div className='sticky top-15 z-30 mb-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-base)]/90 backdrop-blur-md p-3.5 sm:p-4 shadow-2xs space-y-3'>
       <SearchEngineBar
         selectedEngines={props.selectedEngines}
         onToggleEngine={props.onToggleEngine}
@@ -37,7 +40,7 @@ export function LinksToolbar(props: LinksToolbarProps) {
         onSearchSubmit={props.onSearchSubmit}
       />
 
-      <div className='flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[var(--border-subtle)]'>
+      <div className='flex flex-wrap items-center justify-between gap-2.5 pt-1.5 border-t border-[var(--border-subtle)]'>
         <CategoryPills
           rootCategories={rootCategories}
           activeCategory={props.activeCategory}
@@ -46,7 +49,18 @@ export function LinksToolbar(props: LinksToolbarProps) {
           pinCount={props.pinCount}
         />
 
-        <ViewModeToggle mode={props.viewMode} onChange={props.onViewModeChange} />
+        <div className='flex items-center gap-2 shrink-0'>
+          <GridColumnsSelector columns={props.gridColumns} onChange={props.onGridColumnsChange} />
+          <ViewModeToggle mode={props.viewMode} onChange={props.onViewModeChange} />
+          <button
+            type='button'
+            onClick={props.onOpenApplyModal}
+            className='inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-[var(--accent)] text-white text-xs font-semibold shadow-xs hover:opacity-90 transition-opacity cursor-pointer'
+          >
+            <Plus className='size-3.5' />
+            <span>{t('links.btn_apply', {}, locale)}</span>
+          </button>
+        </div>
       </div>
 
       {subCategories.length > 0 && (
@@ -73,6 +87,16 @@ function SearchEngineBar({
   onSearchChange: (q: string) => void
   onSearchSubmit: () => void
 }) {
+  const locale = useCurrentLocale()
+  const names = Array.from(selectedEngines)
+    .map((id) => SEARCH_ENGINES.find((e) => e.id === id)?.name || id)
+    .join('、')
+
+  const hint =
+    selectedEngines.size === 0
+      ? t('links.search_mode_internal', {}, locale)
+      : t('links.search_mode_external', { count: selectedEngines.size, names }, locale)
+
   return (
     <div className='space-y-2'>
       <SearchEngineTags selectedEngines={selectedEngines} onToggleEngine={onToggleEngine} />
@@ -80,9 +104,10 @@ function SearchEngineBar({
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
         onSearchSubmit={onSearchSubmit}
-        hasSelected={selectedEngines.size > 0}
-        selectedCount={selectedEngines.size}
       />
+      <p className='text-xs text-[var(--text-tertiary)] leading-normal'>
+        {hint}
+      </p>
     </div>
   )
 }
@@ -91,37 +116,27 @@ function SearchInputField({
   searchQuery,
   onSearchChange,
   onSearchSubmit,
-  hasSelected,
-  selectedCount,
 }: {
   searchQuery: string
   onSearchChange: (q: string) => void
   onSearchSubmit: () => void
-  hasSelected: boolean
-  selectedCount: number
 }) {
   const locale = useCurrentLocale()
-  const placeholder = hasSelected
-    ? `${t('links.search_engines', {}, locale)} (${selectedCount}) ...`
-    : t('links.search_placeholder', {}, locale)
-
   return (
     <div className='flex items-center gap-2'>
       <SearchInputBox
         value={searchQuery}
-        placeholder={placeholder}
+        placeholder={t('links.search_placeholder', {}, locale)}
         onChange={onSearchChange}
         onSubmit={onSearchSubmit}
       />
-      {hasSelected && (
-        <button
-          type='button'
-          onClick={onSearchSubmit}
-          className='h-9.5 shrink-0 rounded-xl bg-[var(--accent)] px-4 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity cursor-pointer'
-        >
-          {t('nav.search_placeholder', {}, locale).replace('...', '')}
-        </button>
-      )}
+      <button
+        type='button'
+        onClick={onSearchSubmit}
+        className='h-9.5 shrink-0 rounded-xl bg-[var(--accent)] px-4 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center'
+      >
+        {t('links.search_btn', {}, locale)}
+      </button>
     </div>
   )
 }
@@ -172,7 +187,7 @@ function SearchEngineTags({
 }) {
   const locale = useCurrentLocale()
   return (
-    <div className='flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+    <div className='flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
       <span className='shrink-0 text-xs font-semibold text-[var(--text-tertiary)] mr-1'>
         {t('links.search_engines', {}, locale)}:
       </span>
@@ -319,6 +334,45 @@ function SubCategoryPills({
   )
 }
 
+function GridColumnsSelector({
+  columns,
+  onChange,
+}: {
+  columns: GridColumns
+  onChange: (cols: GridColumns) => void
+}) {
+  const locale = useCurrentLocale()
+  const options: { value: GridColumns; label: string }[] = [
+    { value: 'auto', label: t('links.columns_auto', {}, locale) },
+    { value: 2, label: '2' },
+    { value: 3, label: '3' },
+    { value: 4, label: '4' },
+    { value: 5, label: '5' },
+  ]
+
+  return (
+    <div className='hidden sm:flex items-center rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5'>
+      <span className='px-1.5 text-xs text-[var(--text-quaternary)] font-medium select-none'>
+        {t('links.columns_label', {}, locale)}
+      </span>
+      {options.map((opt) => (
+        <button
+          key={String(opt.value)}
+          type='button'
+          onClick={() => onChange(opt.value)}
+          className={`px-1.5 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer ${
+            columns === opt.value
+              ? 'bg-[var(--accent)] text-white shadow-2xs'
+              : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function ViewModeToggle({ mode, onChange }: { mode: ViewMode; onChange: (m: ViewMode) => void }) {
   const locale = useCurrentLocale()
   return (
@@ -350,3 +404,4 @@ function ViewModeToggle({ mode, onChange }: { mode: ViewMode; onChange: (m: View
     </div>
   )
 }
+

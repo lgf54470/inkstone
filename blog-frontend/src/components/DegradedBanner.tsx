@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TriangleAlert } from 'lucide-react'
 import { subscribeApiHealth } from '../lib/api'
-import { useCurrentLocale } from '../lib/i18n/use-current-locale'
-import { t, type BlogLocale } from '../lib/i18n'
+import { t, useCurrentLocale, type BlogLocale } from '../lib/i18n'
 
 interface DegradedBannerProps {
   initialLocale?: BlogLocale

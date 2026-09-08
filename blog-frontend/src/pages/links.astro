@@ -15,24 +15,13 @@ const data = await fetchPublicLinks()
   locale={locale}
   siteInfo={siteInfo}
 >
-  <div class='space-y-6'>
-    <header class='text-center py-6 border-b border-[var(--border-subtle)] space-y-2'>
-      <h1 class='text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]'>
-        {t('links.title', {}, locale)}
-      </h1>
-      <p class='text-xs text-[var(--text-tertiary)] max-w-lg mx-auto'>
-        {t('links.description', {}, locale)}
-      </p>
-    </header>
-
-    <LinksContainer
-      client:load
-      initialLinks={data.links}
-      categories={data.categories}
-      siteName={siteInfo.siteName || 'Inkstone Blog'}
-      siteUrl={siteInfo.socialLinks?.website}
-      siteDescription={siteInfo.bio || siteInfo.subtitle}
-      siteAvatar={siteInfo.authorAvatar}
-    />
-  </div>
+  <LinksContainer
+    client:load
+    initialLinks={data.links}
+    categories={data.categories}
+    siteName={siteInfo.siteName || 'Inkstone Blog'}
+    siteUrl={siteInfo.socialLinks?.website}
+    siteDescription={siteInfo.bio || siteInfo.subtitle}
+    siteAvatar={siteInfo.authorAvatar}
+  />
 </Layout>

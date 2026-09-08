@@ -9,8 +9,7 @@ import {
   Star,
 } from 'lucide-react'
 import type { BlogPublicLink } from '../../lib/types'
-import { t, type BlogLocale } from '../../lib/i18n'
-import { useCurrentLocale } from '../../lib/i18n/use-current-locale'
+import { t, useCurrentLocale, type BlogLocale } from '../../lib/i18n'
 import type { ContextMenuState } from './types'
 
 export interface LinkContextMenuProps {

@@ -1,1 +1,12 @@
-{}
+{
+  "blog-frontend/src/components/ReadingProgress.test.ts": {
+    "longFns": 1
+  },
+  "blog-frontend/src/components/WeatherWidget.test.ts": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "blog-frontend/src/components/home/RandomPostButton.test.ts": {
+    "longFns": 1
+  }
+}

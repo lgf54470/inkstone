@@ -10,10 +10,9 @@ import { Calendar, Tag, Loader2, AlertCircle } from 'lucide-react'
 import SearchInput from './SearchInput'
 import { api } from '../lib/api'
 import { useFocusTrap, useScrollLock } from '../lib/use-focus-trap'
-import { useCurrentLocale } from '../lib/i18n/use-current-locale'
 import type { BlogPost } from '../lib/types'
 import { SEARCH_RESULT_LIMIT, SEARCH_FOCUS_DELAY_MS, SEARCH_DEBOUNCE_MS } from '../lib/constants'
-import { t, formatDate, type BlogLocale } from '../lib/i18n'
+import { t, formatDate, useCurrentLocale, type BlogLocale } from '../lib/i18n'
 
 interface SearchModalProps {
   initialLocale?: BlogLocale

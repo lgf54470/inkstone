@@ -13,9 +13,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import SearchInput from './SearchInput'
-import { useCurrentLocale } from '../lib/i18n/use-current-locale'
 import { DEFAULT_WEATHER_CITY, WEATHER_CITY_SEARCH_DEBOUNCE_MS } from '../lib/constants'
-import { t, type BlogLocale, type MessageKey } from '../lib/i18n'
+import { t, useCurrentLocale, type BlogLocale, type MessageKey } from '../lib/i18n'
 import {
   loadSavedCity,
   parseForecast,

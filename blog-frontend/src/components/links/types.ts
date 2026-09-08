@@ -1,6 +1,7 @@
 import type { BlogPublicLink, BlogPublicLinkCategory } from '../../lib/types'
 
 export type ViewMode = 'detailed' | 'simple'
+export type GridColumns = 'auto' | 2 | 3 | 4 | 5
 
 export interface ContextMenuState {
   isOpen: boolean

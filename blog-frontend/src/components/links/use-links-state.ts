@@ -1,60 +1,165 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { BlogPublicLink, BlogPublicLinkCategory } from '../../lib/types'
-import { recordLinkClick } from '../../lib/api'
+import { fetchPublicLinks, recordLinkClick } from '../../lib/api'
 import { SEARCH_ENGINES } from './search-engines'
-import type { ContextMenuState, QRModalState, ViewMode } from './types'
+import type { ContextMenuState, GridColumns, QRModalState, ViewMode } from './types'
 
 const FAV_STORAGE_KEY = 'inkstone_blog_favorite_links'
 const PIN_STORAGE_KEY = 'inkstone_blog_pinned_links'
 const VIEW_MODE_STORAGE_KEY = 'inkstone_blog_links_view_mode'
+const COLUMNS_STORAGE_KEY = 'inkstone_blog_links_columns'
 
-export function useLinksState(initialLinks: BlogPublicLink[], categories: BlogPublicLinkCategory[]) {
-  const [links] = useState<BlogPublicLink[]>(initialLinks)
-  const [viewMode, setViewModeState] = useState<ViewMode>('detailed')
-  const [activeCategory, setActiveCategoryState] = useState<string>('all')
-  const [activeSubCategory, setActiveSubCategory] = useState<string>('')
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+export function useLinksState(initialLinks: BlogPublicLink[], initialCategories: BlogPublicLinkCategory[]) {
+  const [links, setLinks] = useState<BlogPublicLink[]>(initialLinks)
+  const [categories, setCategories] = useState<BlogPublicLinkCategory[]>(initialCategories)
 
+  const layout = useLayoutPreferences()
+  const nav = useCategoryNavigation()
   const favPin = useFavoritesAndPins()
   const search = useSearchAndEngines()
-  const modals = useLinkModals()
+  const ui = useModalsAndToast()
 
-  useEffect(() => {
-    loadLocalMode(setViewModeState)
-  }, [])
+  useHydrateLinks({ initialLinks, initialCategories, setLinks, setCategories })
+
+  const filteredLinks = useMemo(
+    () =>
+      computeFiltered(
+        links,
+        nav.activeCategory,
+        nav.activeSubCategory,
+        search.searchQuery,
+        favPin.favorites,
+        favPin.pinnedIds,
+        categories,
+      ),
+    [links, nav.activeCategory, nav.activeSubCategory, search.searchQuery, favPin.favorites, favPin.pinnedIds, categories],
+  )
+
+  return {
+    links,
+    categories,
+    filteredLinks,
+    ...layout,
+    ...nav,
+    ...favPin,
+    ...search,
+    ...ui,
+    handleVisitLink: (l: BlogPublicLink) => void recordLinkClick(l.id),
+  }
+}
+
+function useModalsAndToast() {
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false)
+  const modals = useLinkModals()
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 2500)
   }
 
+  return {
+    ...modals,
+    toastMessage,
+    showToast,
+    isApplyModalOpen,
+    openApplyModal: () => setIsApplyModalOpen(true),
+    closeApplyModal: () => setIsApplyModalOpen(false),
+  }
+}
+
+
+function useLayoutPreferences() {
+  const [viewMode, setViewModeState] = useState<ViewMode>('detailed')
+  const [gridColumns, setGridColumnsState] = useState<GridColumns>('auto')
+
+  useEffect(() => {
+    loadLocalMode(setViewModeState)
+    loadLocalColumns(setGridColumnsState)
+  }, [])
+
   const setViewMode = (mode: ViewMode) => {
     setViewModeState(mode)
     saveToStorage(VIEW_MODE_STORAGE_KEY, mode)
   }
+
+  const setGridColumns = (cols: GridColumns) => {
+    setGridColumnsState(cols)
+    saveToStorage(COLUMNS_STORAGE_KEY, cols)
+  }
+
+  return { viewMode, setViewMode, gridColumns, setGridColumns }
+}
+
+function useCategoryNavigation() {
+  const [activeCategory, setActiveCategoryState] = useState<string>('all')
+  const [activeSubCategory, setActiveSubCategory] = useState<string>('')
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => new Set())
+  const [sectionSubCats, setSectionSubCats] = useState<Record<string, string>>({})
 
   const setActiveCategory = (cat: string) => {
     setActiveCategoryState(cat)
     setActiveSubCategory('')
   }
 
-  const filteredLinks = useMemo(
-    () => computeFiltered(links, activeCategory, activeSubCategory, search.searchQuery, favPin.favorites, favPin.pinnedIds, categories),
-    [links, activeCategory, activeSubCategory, search.searchQuery, favPin.favorites, favPin.pinnedIds, categories],
-  )
+  const toggleSectionCollapse = (sectionId: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev)
+      next.has(sectionId) ? next.delete(sectionId) : next.add(sectionId)
+      return next
+    })
+  }
+
+  const setSectionSubCategory = (parentId: string, subId: string) => {
+    setSectionSubCats((prev) => ({
+      ...prev,
+      [parentId]: prev[parentId] === subId ? '' : subId,
+    }))
+  }
 
   return {
-    links, filteredLinks, viewMode, setViewMode,
-    favorites: favPin.favorites, toggleFavorite: favPin.toggleFavorite,
-    pinnedIds: favPin.pinnedIds, togglePin: favPin.togglePin,
-    activeCategory, setActiveCategory, activeSubCategory, setActiveSubCategory,
-    searchQuery: search.searchQuery, setSearchQuery: search.setSearchQuery,
-    selectedEngines: search.selectedEngines, toggleEngine: search.toggleEngine,
-    handleSearchSubmit: search.handleSearchSubmit,
-    contextMenu: modals.contextMenu, openContextMenu: modals.openContextMenu, closeContextMenu: modals.closeContextMenu,
-    qrModal: modals.qrModal, openQrModal: modals.openQrModal, closeQrModal: modals.closeQrModal,
-    toastMessage, showToast, handleVisitLink: (l: BlogPublicLink) => void recordLinkClick(l.id),
+    activeCategory,
+    setActiveCategory,
+    activeSubCategory,
+    setActiveSubCategory,
+    collapsedSections,
+    toggleSectionCollapse,
+    sectionSubCats,
+    setSectionSubCategory,
   }
+}
+
+function useHydrateLinks({
+  initialLinks,
+  initialCategories,
+  setLinks,
+  setCategories,
+}: {
+  initialLinks: BlogPublicLink[]
+  initialCategories: BlogPublicLinkCategory[]
+  setLinks: React.Dispatch<React.SetStateAction<BlogPublicLink[]>>
+  setCategories: React.Dispatch<React.SetStateAction<BlogPublicLinkCategory[]>>
+}) {
+  useEffect(() => {
+    if (initialLinks.length > 0) setLinks(initialLinks)
+    if (initialCategories.length > 0) setCategories(initialCategories)
+  }, [initialLinks, initialCategories, setLinks, setCategories])
+
+  useEffect(() => {
+    let active = true
+    fetchPublicLinks()
+      .then((res) => {
+        if (!active) return
+        if (res.links.length > 0) setLinks(res.links)
+        if (res.categories.length > 0) setCategories(res.categories)
+      })
+      .catch((error) => {
+        void error
+      })
+    return () => {
+      active = false
+    }
+  }, [setLinks, setCategories])
 }
 
 function useFavoritesAndPins() {
@@ -135,8 +240,19 @@ function loadLocalMode(setMode: (m: ViewMode) => void) {
   try {
     const modeRaw = localStorage.getItem(VIEW_MODE_STORAGE_KEY)
     if (modeRaw === 'detailed' || modeRaw === 'simple') setMode(modeRaw)
-  } catch {
-    // Best-effort local storage loading
+  } catch (error) {
+    void error
+  }
+}
+
+function loadLocalColumns(setCols: (c: GridColumns) => void) {
+  try {
+    const raw = localStorage.getItem(COLUMNS_STORAGE_KEY)
+    if (raw === 'auto' || raw === '2' || raw === '3' || raw === '4' || raw === '5') {
+      setCols(raw === 'auto' ? 'auto' : (Number(raw) as GridColumns))
+    }
+  } catch (error) {
+    void error
   }
 }
 
@@ -146,16 +262,16 @@ function loadLocalFavPin(setFav: (s: Set<string>) => void, setPin: (s: Set<strin
     if (favRaw) setFav(new Set(JSON.parse(favRaw)))
     const pinRaw = localStorage.getItem(PIN_STORAGE_KEY)
     if (pinRaw) setPin(new Set(JSON.parse(pinRaw)))
-  } catch {
-    // Best-effort local storage loading
+  } catch (error) {
+    void error
   }
 }
 
 function saveToStorage(key: string, value: unknown) {
   try {
     localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
-  } catch {
-    // Best-effort local storage saving
+  } catch (error) {
+    void error
   }
 }
 

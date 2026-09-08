@@ -61,8 +61,8 @@ const MOCK_LINKS: BlogPublicLink[] = [
 ]
 
 describe('SEARCH_ENGINES', () => {
-  it('defines 6 major search engines with correct query URL encoding', () => {
-    expect(SEARCH_ENGINES.length).toBe(6)
+  it('defines 12 major search engines with correct query URL encoding', () => {
+    expect(SEARCH_ENGINES.length).toBe(12)
     const google = SEARCH_ENGINES.find((e) => e.id === 'google')
     expect(google).toBeDefined()
     expect(google?.url('hello world')).toBe('https://www.google.com/search?q=hello%20world')

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { DEFAULT_LOCALE, isSupportedLocale, type BlogLocale } from './index'
+import { DEFAULT_LOCALE, isSupportedLocale, type BlogLocale } from './types'
 
 // 组件通过 props 收到 SSR 确定的 locale；未传时跟随 <html lang> 与
 // inkstone-locale-change 事件（外观抽屉切换语言后组件即时换文案）。

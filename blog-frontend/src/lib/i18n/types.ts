@@ -1,5 +1,14 @@
 export type BlogLocale = 'zh-CN' | 'zh-TW' | 'en-US'
 
+export const DEFAULT_LOCALE: BlogLocale = 'zh-CN'
+export const SUPPORTED_LOCALES: readonly BlogLocale[] = ['zh-CN', 'zh-TW', 'en-US'] as const
+export const LOCALE_STORAGE_KEY = 'inkstone-blog-lang'
+export const LOCALE_COOKIE_NAME = 'inkstone-blog-lang'
+
+export function isSupportedLocale(val: unknown): val is BlogLocale {
+  return typeof val === 'string' && (SUPPORTED_LOCALES as readonly string[]).includes(val)
+}
+
 export type InterpolationParams = Record<string, string | number>
 
 export type MessageKey =

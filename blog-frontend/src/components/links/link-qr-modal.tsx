@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Check, Copy, ExternalLink, X } from 'lucide-react'
-import { t, type BlogLocale } from '../../lib/i18n'
-import { useCurrentLocale } from '../../lib/i18n/use-current-locale'
+import { t, useCurrentLocale, type BlogLocale } from '../../lib/i18n'
 import type { BlogPublicLink } from '../../lib/types'
 import type { QRModalState } from './types'
 

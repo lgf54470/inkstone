@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, FileText } from 'lucide-react'
 import { api } from '../lib/api'
 import type { CalendarDayPost } from '../lib/types'
-import { useCurrentLocale } from '../lib/i18n/use-current-locale'
 import {
   t,
   formatMonthYear,
+  useCurrentLocale,
   type BlogLocale,
 } from '../lib/i18n'
 

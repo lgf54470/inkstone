@@ -4,20 +4,12 @@ import { ZH_TW_MESSAGES } from './locales/zh-TW'
 import { EN_US_MESSAGES } from './locales/en-US'
 
 export * from './types'
-
-export const DEFAULT_LOCALE: BlogLocale = 'zh-CN'
-export const SUPPORTED_LOCALES: readonly BlogLocale[] = ['zh-CN', 'zh-TW', 'en-US'] as const
-export const LOCALE_STORAGE_KEY = 'inkstone-blog-lang'
-export const LOCALE_COOKIE_NAME = 'inkstone-blog-lang'
+export { useCurrentLocale } from './use-current-locale'
 
 const MESSAGES: Record<BlogLocale, Record<MessageKey, string>> = {
   'zh-CN': ZH_CN_MESSAGES,
   'zh-TW': ZH_TW_MESSAGES,
   'en-US': EN_US_MESSAGES,
-}
-
-export function isSupportedLocale(val: unknown): val is BlogLocale {
-  return typeof val === 'string' && (SUPPORTED_LOCALES as readonly string[]).includes(val)
 }
 
 export function getCurrentLocale(): BlogLocale {

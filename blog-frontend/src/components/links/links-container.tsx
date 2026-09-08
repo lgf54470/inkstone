@@ -1,10 +1,9 @@
-import { CheckCircle2, Inbox } from 'lucide-react'
-import { t } from '../../lib/i18n'
-import { useCurrentLocale } from '../../lib/i18n/use-current-locale'
-import { LinkCard } from './link-card'
+import { CheckCircle2 } from 'lucide-react'
+import { t, useCurrentLocale } from '../../lib/i18n'
+import { LinkApplyModal } from './link-apply-modal'
 import { LinkContextMenu } from './link-context-menu'
 import { LinkQRModal } from './link-qr-modal'
-import { LinksApplySection } from './links-apply-section'
+import { LinkSectionGroup } from './link-section-group'
 import { LinksToolbar } from './links-toolbar'
 import type { LinksContainerProps } from './types'
 import { useLinksState } from './use-links-state'
@@ -13,7 +12,6 @@ export function LinksContainer(props: LinksContainerProps) {
   const locale = useCurrentLocale()
   const state = useLinksState(props.initialLinks, props.categories)
   const myInfo = buildMyInfo(props)
-  const categoryMap = new Map(props.categories.map((c) => [c.id, c.name]))
 
   const isFav = Boolean(state.contextMenu.link && state.favorites.has(state.contextMenu.link.id))
   const isPin = Boolean(
@@ -22,47 +20,15 @@ export function LinksContainer(props: LinksContainerProps) {
   )
 
   return (
-    <div className='relative w-full max-w-6xl mx-auto px-4 py-6 space-y-6'>
-      <LinksApplySection
-        siteName={myInfo.name}
-        siteUrl={myInfo.url}
-        siteDescription={myInfo.desc}
-        siteAvatar={myInfo.avatar}
-        onToast={state.showToast}
-      />
-
-      <LinksToolbarSection state={state} categories={props.categories} />
-
-      {state.filteredLinks.length === 0 ? (
-        <EmptyLinksState message={t('links.no_links_found', {}, locale)} />
-      ) : (
-        <LinksGrid
-          links={state.filteredLinks}
-          categoryMap={categoryMap}
-          viewMode={state.viewMode}
-          favorites={state.favorites}
-          pinnedIds={state.pinnedIds}
-          onToggleFavorite={state.toggleFavorite}
-          onContextMenu={state.openContextMenu}
-          onVisit={state.handleVisitLink}
-        />
-      )}
-
-      <LinksModals state={state} isFavorite={isFav} isPinned={isPin} />
+    <div className='relative w-full max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-5 space-y-6'>
+      <LinksContainerToolbar state={state} categories={props.categories} />
+      <LinksContainerGroup state={state} categories={props.categories} locale={locale} />
+      <LinksModals state={state} isFavorite={isFav} isPinned={isPin} myInfo={myInfo} />
     </div>
   )
 }
 
-function buildMyInfo(props: LinksContainerProps) {
-  return {
-    name: props.siteName,
-    url: props.siteUrl || (typeof window !== 'undefined' ? window.location.origin : ''),
-    desc: props.siteDescription || '',
-    avatar: props.siteAvatar || '',
-  }
-}
-
-function LinksToolbarSection({
+function LinksContainerToolbar({
   state,
   categories,
 }: {
@@ -83,20 +49,83 @@ function LinksToolbarSection({
       onSearchSubmit={state.handleSearchSubmit}
       viewMode={state.viewMode}
       onViewModeChange={state.setViewMode}
+      gridColumns={state.gridColumns}
+      onGridColumnsChange={state.setGridColumns}
+      onOpenApplyModal={state.openApplyModal}
       favCount={state.favorites.size}
       pinCount={state.pinnedIds.size}
     />
   )
 }
 
+function LinksContainerGroup({
+  state,
+  categories,
+  locale,
+}: {
+  state: ReturnType<typeof useLinksState>
+  categories: LinksContainerProps['categories']
+  locale: string
+}) {
+  const handleCopyLink = (url: string) => {
+    navigator.clipboard
+      .writeText(url)
+      .then(() => state.showToast(t('links.menu_copy_success', {}, locale)))
+      .catch((error) => {
+        void error
+      })
+  }
+
+  return (
+    <LinkSectionGroup
+      links={state.filteredLinks}
+      categories={categories}
+      activeCategory={state.activeCategory}
+      activeSubCategory={state.activeSubCategory}
+      viewMode={state.viewMode}
+      gridColumns={state.gridColumns}
+      favorites={state.favorites}
+      pinnedIds={state.pinnedIds}
+      collapsedSections={state.collapsedSections}
+      sectionSubCats={state.sectionSubCats}
+      onToggleCollapse={state.toggleSectionCollapse}
+      onSelectSectionSubCat={state.setSectionSubCategory}
+      onToggleFavorite={state.toggleFavorite}
+      onContextMenu={state.openContextMenu}
+      onOpenQr={state.openQrModal}
+      onCopyLink={handleCopyLink}
+      onVisit={state.handleVisitLink}
+      emptyMessage={t('links.no_links_found', {}, locale)}
+    />
+  )
+}
+
+function buildMyInfo(props: LinksContainerProps) {
+  return {
+    name: props.siteName || 'Inkstone Blog',
+    url: props.siteUrl || (typeof window !== 'undefined' ? window.location.origin : ''),
+    desc: props.siteDescription || '',
+    avatar: props.siteAvatar || '',
+  }
+}
+
+interface MyInfo {
+  name: string
+  url: string
+  desc: string
+  avatar: string
+}
+
 function LinksModals({
   state,
   isFavorite,
   isPinned,
+  myInfo,
 }: {
   state: ReturnType<typeof useLinksState>
   isFavorite: boolean
   isPinned: boolean
+  myInfo: MyInfo
 }) {
   return (
     <>
@@ -112,62 +141,17 @@ function LinksModals({
         onVisit={state.handleVisitLink}
       />
       <LinkQRModal state={state.qrModal} onClose={state.closeQrModal} />
+      <LinkApplyModal
+        isOpen={state.isApplyModalOpen}
+        onClose={state.closeApplyModal}
+        siteName={myInfo.name}
+        siteUrl={myInfo.url}
+        siteDescription={myInfo.desc}
+        siteAvatar={myInfo.avatar}
+        onToast={state.showToast}
+      />
       {state.toastMessage && <LinksToast message={state.toastMessage} />}
     </>
-  )
-}
-
-function LinksGrid({
-  links,
-  categoryMap,
-  viewMode,
-  favorites,
-  pinnedIds,
-  onToggleFavorite,
-  onContextMenu,
-  onVisit,
-}: {
-  links: LinksContainerProps['initialLinks']
-  categoryMap: Map<string, string>
-  viewMode: 'detailed' | 'simple'
-  favorites: Set<string>
-  pinnedIds: Set<string>
-  onToggleFavorite: (id: string) => void
-  onContextMenu: (link: LinksContainerProps['initialLinks'][number], x: number, y: number) => void
-  onVisit: (link: LinksContainerProps['initialLinks'][number]) => void
-}) {
-  const gridClasses =
-    viewMode === 'detailed'
-      ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
-      : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5'
-
-  return (
-    <div className={gridClasses}>
-      {links.map((link) => (
-        <LinkCard
-          key={link.id}
-          link={link}
-          categoryName={link.categoryId ? categoryMap.get(link.categoryId) : undefined}
-          isFavorite={favorites.has(link.id)}
-          isPinned={link.isPinned || pinnedIds.has(link.id)}
-          viewMode={viewMode}
-          onToggleFavorite={onToggleFavorite}
-          onContextMenu={onContextMenu}
-          onVisit={onVisit}
-        />
-      ))}
-    </div>
-  )
-}
-
-function EmptyLinksState({ message }: { message: string }) {
-  return (
-    <div className='flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
-      <div className='p-3 rounded-full bg-[var(--bg-sunken)] text-[var(--text-tertiary)] mb-3'>
-        <Inbox className='size-8' />
-      </div>
-      <p className='text-xs text-[var(--text-tertiary)]'>{message}</p>
-    </div>
   )
 }
 
