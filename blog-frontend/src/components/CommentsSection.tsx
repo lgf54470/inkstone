@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
+import { COMMENT_MAX_LENGTH } from '../lib/constants'
 import type { BlogComment } from '../lib/types'
 import { t, formatDate, DEFAULT_LOCALE, isSupportedLocale, type BlogLocale } from '../lib/i18n'
 
@@ -77,8 +78,9 @@ async function submitCommentRequest(
     const approved = res.comment && res.comment.status === 'approved' ? res.comment : undefined
     return { kind: 'success', comment: approved }
   } catch (err: unknown) {
-    const errorText = err instanceof Error ? err.message : String(err)
-    return { kind: 'error', message: errorText || t('comments.error_generic', {}, locale) }
+    // 后端错误细节（可能为英文）记录日志，界面上统一展示本地化文案
+    console.warn('Comment submission failed:', err)
+    return { kind: 'error', message: t('comments.error_generic', {}, locale) }
   }
 }
 
@@ -234,6 +236,7 @@ interface MetaFieldConfig {
   placeholder: string
   icon: LucideIcon
   required?: boolean
+  maxLength: number
 }
 
 function getFieldConfigs(locale: BlogLocale): MetaFieldConfig[] {
@@ -245,6 +248,7 @@ function getFieldConfigs(locale: BlogLocale): MetaFieldConfig[] {
       placeholder: t('comments.field_name_placeholder', {}, locale),
       icon: User,
       required: true,
+      maxLength: COMMENT_MAX_LENGTH.name,
     },
     {
       key: 'email',
@@ -253,6 +257,7 @@ function getFieldConfigs(locale: BlogLocale): MetaFieldConfig[] {
       placeholder: t('comments.field_email_placeholder', {}, locale),
       icon: Mail,
       required: true,
+      maxLength: COMMENT_MAX_LENGTH.email,
     },
     {
       key: 'url',
@@ -260,6 +265,7 @@ function getFieldConfigs(locale: BlogLocale): MetaFieldConfig[] {
       type: 'url',
       placeholder: t('comments.field_url_placeholder', {}, locale),
       icon: Globe,
+      maxLength: COMMENT_MAX_LENGTH.url,
     },
   ]
 }
@@ -325,6 +331,7 @@ function CommentInput({
           id={inputId}
           type={config.type}
           required={config.required}
+          maxLength={config.maxLength}
           value={value}
           onChange={onChange}
           placeholder={config.placeholder}
@@ -354,6 +361,7 @@ function CommentContentField({
         id={inputId}
         required
         rows={3}
+        maxLength={COMMENT_MAX_LENGTH.content}
         value={value}
         onChange={onChange}
         placeholder={t('comments.field_content_placeholder', {}, locale)}

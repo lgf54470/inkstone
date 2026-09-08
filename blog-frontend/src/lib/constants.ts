@@ -18,3 +18,10 @@ export const DEFAULT_API_URL = 'https://inkstone.333096.xyz'
 export const API_TIMEOUT_MS = 10_000
 /** javascript-example 运行超时（ms），超时即 terminate Worker 强制终止 */
 export const JS_RUN_TIMEOUT_MS = 2000
+/** 评论表单各字段最大长度（宽松上限，后端仍有最终校验） */
+export const COMMENT_MAX_LENGTH = {
+  name: 80,
+  email: 120,
+  url: 300,
+  content: 1000,
+} as const
