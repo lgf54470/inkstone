@@ -200,7 +200,9 @@ describe('HomeFeedView tag filter interaction', () => {
     expect(container.textContent).toContain('当前标签:')
     expect(container.textContent).toContain('#tag-a')
   })
+})
 
+describe('HomeFeedView tag filter race handling', () => {
   it('discards stale responses when requests race', async () => {
     const { container } = renderFeed()
     const getPostsMock = vi.spyOn(api, 'getPosts')
