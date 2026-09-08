@@ -134,6 +134,7 @@ function TagsBox({
               key={tag.name}
               type='button'
               onClick={() => onTagSelect(tag.name)}
+              aria-pressed={isActive}
               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs transition-colors cursor-pointer ${
                 isActive
                   ? 'bg-[var(--accent)] text-white shadow-xs font-semibold'
