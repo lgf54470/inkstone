@@ -99,10 +99,37 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
   }
 }
 
+function isSsr(): boolean {
+  return typeof import.meta !== 'undefined' && import.meta.env?.SSR === true
+}
+
+/**
+ * SSR（Cloudflare Worker）侧 API 响应缓存：低频共享接口按 TTL 缓存，
+ * 避免每请求回源后端；浏览器端与无 Cache API 环境直接请求。
+ * 缓存写入为 best-effort（put 失败不影响主流程）。
+ */
+async function requestJsonCached(path: string, ttlSeconds: number, init?: RequestInit): Promise<unknown> {
+  if (!isSsr() || typeof caches === 'undefined') return requestJson(path, init)
+  const cache = await caches.open('inkstone-blog-api-v1')
+  const request = new Request(`${API_BASE}${path}`, init)
+  const hit = await cache.match(request)
+  if (hit) return hit.json()
+  const data = await requestJson(path, init)
+  try {
+    const response = new Response(JSON.stringify(data), {
+      headers: { 'Cache-Control': `public, max-age=${ttlSeconds}` },
+    })
+    await cache.put(request, response)
+  } catch (err) {
+    console.warn('[api] cache put failed, serving uncached:', err)
+  }
+  return data
+}
+
 export const api = {
   async getSiteInfo(): Promise<BlogSiteInfo> {
     try {
-      return normalizeSiteInfo(await requestJson('/api/blog/public/site'))
+      return normalizeSiteInfo(await requestJsonCached('/api/blog/public/site', 60))
     } catch (err) {
       console.warn('[api.getSiteInfo] request failed, using fallback site info:', err)
       return FALLBACK_SITE_INFO
@@ -159,7 +186,7 @@ export const api = {
 
   async getPostBySlug(slug: string): Promise<BlogPost | null> {
     try {
-      const data = asRecord(await requestJson(`/api/blog/public/posts/${encodeURIComponent(slug)}`))
+      const data = asRecord(await requestJsonCached(`/api/blog/public/posts/${encodeURIComponent(slug)}`, 300))
       if (!data.post) return null
       return normalizePost(data.post)
     } catch (err) {
@@ -170,7 +197,7 @@ export const api = {
 
   async getCategories(): Promise<BlogCategory[]> {
     try {
-      const data = asRecord(await requestJson('/api/blog/public/categories'))
+      const data = asRecord(await requestJsonCached('/api/blog/public/categories', 60))
       return asArray(data.categories).map(normalizeCategory)
     } catch (err) {
       console.warn('[api.getCategories] request failed, using fallback categories:', err)
@@ -183,7 +210,7 @@ export const api = {
 
   async getTags(): Promise<BlogTag[]> {
     try {
-      const data = asRecord(await requestJson('/api/blog/public/tags'))
+      const data = asRecord(await requestJsonCached('/api/blog/public/tags', 60))
       return asArray(data.tags).map(normalizeTag)
     } catch (err) {
       console.warn('[api.getTags] request failed, using fallback tags:', err)
@@ -199,7 +226,7 @@ export const api = {
 
   async getTimeline(): Promise<TimelineGroup[]> {
     try {
-      const data = asRecord(await requestJson('/api/blog/public/timeline'))
+      const data = asRecord(await requestJsonCached('/api/blog/public/timeline', 120))
       if (Array.isArray(data.timeline)) {
         return asArray(data.timeline).map(normalizeTimelineGroup)
       }
@@ -248,7 +275,7 @@ export const api = {
       const q = new URLSearchParams()
       if (year) q.set('year', String(year))
       if (month) q.set('month', String(month))
-      const data = asRecord(await requestJson(`/api/blog/public/calendar?${q.toString()}`))
+      const data = asRecord(await requestJsonCached(`/api/blog/public/calendar?${q.toString()}`, 60))
       if (Array.isArray(data.days)) {
         return asArray(data.days).map(normalizeCalendarDay)
       }
@@ -272,7 +299,7 @@ export const api = {
 
   async getComments(postSlugOrId: string): Promise<BlogComment[]> {
     try {
-      const data = asRecord(await requestJson(`/api/blog/public/comments/${encodeURIComponent(postSlugOrId)}`))
+      const data = asRecord(await requestJsonCached(`/api/blog/public/comments/${encodeURIComponent(postSlugOrId)}`, 120))
       return asArray(data.comments).map(normalizeComment)
     } catch (err) {
       console.warn(`[api.getComments] request failed for "${postSlugOrId}":`, err)

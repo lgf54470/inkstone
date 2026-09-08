@@ -28,6 +28,17 @@ function apiOriginOf(): string {
   }
 }
 
+/**
+ * HTML 页面分级缓存：静态资产由 Cloudflare 按文件名 hash 长期缓存，
+ * 此处只负责 SSR 页面。自定义语言用户（带 locale cookie）不缓存，
+ * 避免 CDN 命中其他语言副本；其余页面按 Vary: Accept-Language 区分。
+ */
+function pageCacheControl(url: URL, hasLocaleCookie: boolean): string | null {
+  if (hasLocaleCookie) return 'private, no-store'
+  if (url.pathname.startsWith('/posts/')) return 'public, max-age=0, s-maxage=300'
+  return 'public, max-age=0, s-maxage=60'
+}
+
 const CSP = buildCsp(apiOriginOf())
 
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -51,6 +62,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (import.meta.env.PROD) {
     response.headers.set('Content-Security-Policy', CSP)
     response.headers.set('X-Content-Type-Options', 'nosniff')
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (contentType.includes('text/html')) {
+    const hasLocaleCookie = Boolean(cookieLang)
+    const cacheControl = pageCacheControl(context.url, hasLocaleCookie)
+    if (cacheControl) {
+      response.headers.set('Cache-Control', cacheControl)
+      response.headers.set('Vary', 'Accept-Language')
+    }
+  } else if (context.url.pathname === '/sitemap.xml') {
+    response.headers.set('Cache-Control', 'public, max-age=3600')
   }
   return response
 })
