@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { BlogLink, BlogLinkCategory } from '@shared/types'
+import type { BlogLink } from '@shared/types'
 import { confirm } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'

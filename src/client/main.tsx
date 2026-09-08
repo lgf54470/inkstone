@@ -7,6 +7,10 @@ import { installViewportSizing } from './lib/viewport'
 
 installViewportSizing()
 
+window.addEventListener('vite:preloadError', () => {
+  window.location.reload()
+})
+
 async function start(): Promise<void> {
   if (import.meta.env.MODE === 'demo') {
     localStorage.removeItem(UI_STORAGE_KEY)
