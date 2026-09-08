@@ -73,6 +73,9 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     </script>
   </head>
   <body class={`min-h-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] antialiased transition-colors selection:bg-[var(--selection)] ${fitViewport ? 'lg:h-screen lg:overflow-hidden' : ''}`}>
+    <!-- API 降级提示条：占文档流置顶，滚动后 Header 照常吸顶，不遮挡任何控件 -->
+    <DegradedBanner client:load initialLocale={locale} />
+
     <!-- Navigation Header -->
     <Header siteName={siteInfo.siteName} locale={locale} />
 
@@ -88,6 +91,5 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     <!-- Interactive Client Modals/Drawers -->
     <AppearanceDrawer client:load initialLocale={locale} />
     <SearchModal client:load initialLocale={locale} />
-    <DegradedBanner client:load initialLocale={locale} />
   </body>
 </html>

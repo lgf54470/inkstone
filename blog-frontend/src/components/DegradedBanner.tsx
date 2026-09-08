@@ -44,7 +44,7 @@ export default function DegradedBanner({ initialLocale }: DegradedBannerProps) {
   return (
     <div
       role='status'
-      className='fixed inset-x-0 top-0 z-40 flex items-center justify-center gap-1.5 bg-[var(--danger-soft)] border-b border-[var(--danger-border)] px-4 py-2 text-sm text-[var(--danger)]'
+      className='w-full flex items-center justify-center gap-1.5 bg-[var(--danger-soft)] border-b border-[var(--danger-border)] px-4 py-2 text-sm text-[var(--danger)]'
     >
       <TriangleAlert className='w-4 h-4 shrink-0' />
       <span>{t('degraded.banner', {}, locale)}</span>
