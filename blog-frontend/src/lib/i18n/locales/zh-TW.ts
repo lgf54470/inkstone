@@ -102,6 +102,16 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'tag.posts_count': '{count} 篇',
   'tag.no_posts': '該標籤下暫無文章',
 
+  // Hierarchical Tags Box
+  'tagtree.title': '多級標籤',
+  'tagtree.search_placeholder': '搜尋標籤（模糊比對）',
+  'tagtree.search_aria': '搜尋標籤',
+  'tagtree.clear_search': '清除搜尋',
+  'tagtree.no_match': '找不到符合的標籤',
+  'tagtree.expand': '展開',
+  'tagtree.collapse': '摺疊',
+  'tagtree.empty': '暫無標籤',
+
   // 404
   'not_found.title': '404 - 找不到頁面',
   'not_found.heading': '找不到頁面',

@@ -127,7 +127,7 @@ describe('WeatherWidget forecast display', () => {
       expect(container.textContent).toContain('天气服务暂不可用')
     })
 
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+    fetchMock.mockImplementation(async (input) => {
       if (String(input).includes('/api/weather/forecast')) return jsonResponse(FORECAST_FIXTURE)
       throw new Error('unexpected')
     })

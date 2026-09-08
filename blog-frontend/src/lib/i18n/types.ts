@@ -95,6 +95,15 @@ export type MessageKey =
   | 'tag.back_to_all'
   | 'tag.posts_count'
   | 'tag.no_posts'
+  // Hierarchical Tags Box
+  | 'tagtree.title'
+  | 'tagtree.search_placeholder'
+  | 'tagtree.search_aria'
+  | 'tagtree.clear_search'
+  | 'tagtree.no_match'
+  | 'tagtree.expand'
+  | 'tagtree.collapse'
+  | 'tagtree.empty'
   // 404
   | 'not_found.title'
   | 'not_found.heading'

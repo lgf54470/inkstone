@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import CalendarWidget from '../CalendarWidget'
 import WeatherWidget from '../WeatherWidget'
+import HierarchicalTagsBox from './HierarchicalTagsBox'
 import { categoryDotStyle } from '../../lib/category-style'
 import { t, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
 import type { BlogSiteInfo, BlogCategory, BlogTag, CalendarDayPost } from '../../lib/types'
@@ -181,6 +182,12 @@ export default function HomeSidebar({
       </div>
       <CategoriesBox categories={categories} locale={locale} />
       <TagsBox
+        tags={tags}
+        selectedTag={selectedTag}
+        locale={locale}
+        onTagSelect={onTagSelect}
+      />
+      <HierarchicalTagsBox
         tags={tags}
         selectedTag={selectedTag}
         locale={locale}

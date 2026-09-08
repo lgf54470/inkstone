@@ -102,6 +102,16 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'tag.posts_count': '{count} posts',
   'tag.no_posts': 'No posts with this tag yet',
 
+  // Hierarchical Tags Box
+  'tagtree.title': 'Tag Tree',
+  'tagtree.search_placeholder': 'Search tags (fuzzy)',
+  'tagtree.search_aria': 'Search tags',
+  'tagtree.clear_search': 'Clear search',
+  'tagtree.no_match': 'No matching tags found',
+  'tagtree.expand': 'Expand',
+  'tagtree.collapse': 'Collapse',
+  'tagtree.empty': 'No tags yet',
+
   // 404
   'not_found.title': '404 - Page Not Found',
   'not_found.heading': 'Page Not Found',

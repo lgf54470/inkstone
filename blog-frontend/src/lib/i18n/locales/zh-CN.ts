@@ -102,6 +102,16 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'tag.posts_count': '{count} 篇',
   'tag.no_posts': '该标签下暂无文章',
 
+  // Hierarchical Tags Box
+  'tagtree.title': '多级标签',
+  'tagtree.search_placeholder': '搜索标签（模糊匹配）',
+  'tagtree.search_aria': '搜索标签',
+  'tagtree.clear_search': '清除搜索',
+  'tagtree.no_match': '未找到匹配的标签',
+  'tagtree.expand': '展开',
+  'tagtree.collapse': '折叠',
+  'tagtree.empty': '暂无标签',
+
   // 404
   'not_found.title': '404 - 页面未找到',
   'not_found.heading': '页面未找到',
