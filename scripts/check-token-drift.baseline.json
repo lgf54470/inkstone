@@ -419,8 +419,8 @@
       "blog": "oklch(0.21 0.01 265)"
     },
     "--text-quaternary": {
-      "app": "oklch(0.51 0.008 265)",
-      "blog": "oklch(0.51 0.008 265)"
+      "app": "oklch(0.64 0.008 265)",
+      "blog": "oklch(0.64 0.008 265)"
     },
     "--text-secondary": {
       "app": "oklch(0.44 0.01 265)",
