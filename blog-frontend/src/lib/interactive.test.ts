@@ -1,8 +1,21 @@
 // @vitest-environment jsdom
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { initInteractiveContent, showChartError, showMermaidError } from './interactive'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { initDiagramLazyRender, initInteractiveContent, selectMarkdownTab, showChartError, showMermaidError } from './interactive'
 import { FakeWorker } from '../../tests/helpers/fake-worker'
 import { COPY_FEEDBACK_MS, JS_RUN_TIMEOUT_MS } from './constants'
+
+vi.mock('mermaid', () => ({
+  default: {
+    initialize: vi.fn(),
+    render: vi.fn(async () => ({ svg: '<svg class="mocked-mermaid"></svg>' })),
+  },
+}))
+
+vi.mock('chart.js/auto', () => ({
+  default: class MockChart {
+    destroy() {}
+  },
+}))
 
 const INJECTED = '</div><img src=x onerror=alert(1)>'
 
@@ -142,6 +155,108 @@ describe('task checkbox toggles', () => {
     const li = document.querySelector('li')!
     expect(li.classList.contains('done')).toBe(false)
     expect(li.dataset.taskStatus).toBe('todo')
+  })
+})
+
+// 懒渲染用：jsdom 无原生 IntersectionObserver，用可手动触发回调的替身验证
+// “进入视口才渲染”与“标签页激活才渲染”两条路径。
+class FakeIntersectionObserver {
+  static instances: FakeIntersectionObserver[] = []
+  readonly targets = new Set<Element>()
+  private readonly callback: (entries: Array<{ target: Element; isIntersecting: boolean }>) => void
+
+  constructor(callback: (entries: Array<{ target: Element; isIntersecting: boolean }>) => void) {
+    this.callback = callback
+    FakeIntersectionObserver.instances.push(this)
+  }
+
+  observe(target: Element): void {
+    this.targets.add(target)
+  }
+
+  unobserve(target: Element): void {
+    this.targets.delete(target)
+  }
+
+  disconnect(): void {
+    this.targets.clear()
+  }
+
+  fire(entries: Array<{ target: Element; isIntersecting: boolean }>): void {
+    this.callback(entries)
+  }
+}
+
+const mermaidBlock = (raw: string): string =>
+  `<div class="mermaid-block loading" data-mermaid="${encodeURIComponent(raw)}" aria-busy="true">加载中</div>`
+
+describe('diagram lazy rendering', () => {
+  beforeEach(() => {
+    FakeIntersectionObserver.instances.length = 0
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver)
+  })
+
+  it('keeps the mermaid block unrendered until it intersects the viewport', async () => {
+    document.body.innerHTML = mermaidBlock('graph TD\nA-->B')
+    initDiagramLazyRender()
+
+    const io = FakeIntersectionObserver.instances.at(-1)!
+    expect(io.targets.size).toBe(1)
+    expect(document.querySelector('.mermaid-block svg')).toBeNull()
+
+    io.fire([{ target: document.querySelector('.mermaid-block')!, isIntersecting: true }])
+    await vi.waitFor(() => {
+      expect(document.querySelector('.mermaid-block svg')).not.toBeNull()
+    })
+    expect(document.querySelector('.mermaid-block')!.classList.contains('loading')).toBe(false)
+    expect(io.targets.size).toBe(0)
+  })
+
+  it('renders a hidden tab panel mermaid block on first tab activation', async () => {
+    document.body.innerHTML = `
+      <div class="markdown-tabs" data-tabs>
+        <div class="tab-list" role="tablist">
+          <button type="button" data-tab-button="0" aria-selected="true">一</button>
+          <button type="button" data-tab-button="1" aria-selected="false">二</button>
+        </div>
+        <div data-tab-panel="0"></div>
+        <div data-tab-panel="1" hidden>
+          ${mermaidBlock('graph TD\nA-->B')}
+        </div>
+      </div>`
+    initDiagramLazyRender()
+
+    // 隐藏面板中的块不被提前渲染
+    expect(document.querySelector('[data-tab-panel="1"] .mermaid-block svg')).toBeNull()
+
+    selectMarkdownTab(document.querySelector('[data-tab-button="1"]') as HTMLButtonElement)
+    await vi.waitFor(() => {
+      expect(document.querySelector('[data-tab-panel="1"] .mermaid-block svg')).not.toBeNull()
+    })
+  })
+
+})
+
+describe('chart lazy rendering', () => {
+  beforeEach(() => {
+    FakeIntersectionObserver.instances.length = 0
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver)
+  })
+
+  it('renders a chart block only after it intersects', async () => {
+    document.body.innerHTML =
+      `<div class="chartjs-block loading" data-chart="${encodeURIComponent('{"type":"line"}')}" aria-busy="true">加载中</div>`
+    initDiagramLazyRender()
+
+    const io = FakeIntersectionObserver.instances.at(-1)!
+    expect(io.targets.size).toBe(1)
+    expect(document.querySelector('.chartjs-block canvas')).toBeNull()
+
+    io.fire([{ target: document.querySelector('.chartjs-block')!, isIntersecting: true }])
+    await vi.waitFor(() => {
+      expect(document.querySelector('.chartjs-block canvas')).not.toBeNull()
+    })
+    expect(document.querySelector('.chartjs-block')!.classList.contains('loading')).toBe(false)
   })
 })
 

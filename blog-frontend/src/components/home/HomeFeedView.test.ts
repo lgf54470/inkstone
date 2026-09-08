@@ -232,4 +232,27 @@ describe('HomeFeedView tag filter race handling', () => {
     expect(container.textContent).toContain('第二篇文章')
     expect(container.textContent).not.toContain('第一篇文章')
   })
+
+})
+
+describe('HomeFeedView tag filter client cache', () => {
+  it('serves repeated tag filters from the client cache without refetching', async () => {
+    vi.restoreAllMocks()
+    const { container } = renderFeed()
+    const getPostsMock = vi.spyOn(api, 'getPosts').mockResolvedValue({
+      posts: [MOCK_POSTS[0]],
+      total: 1,
+      page: 1,
+      limit: 10,
+      totalPages: 1,
+    })
+
+    await clickTag(container, '#tag-a')
+    await clickTag(container, '#tag-b')
+    // 再次点回 tag-a：命中客户端缓存，不再发起网络请求
+    await clickTag(container, '#tag-a')
+
+    expect(getPostsMock).toHaveBeenCalledTimes(2)
+    expect(container.textContent).toContain('第一篇文章')
+  })
 })

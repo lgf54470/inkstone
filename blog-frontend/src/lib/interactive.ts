@@ -12,15 +12,19 @@ function getCurrentLocale(): BlogLocale {
   return DEFAULT_LOCALE
 }
 
+let interactiveInitialized = false
+
+// document 级监听器只能注册一次：页面脚本与测试都可能重复调用本函数，
+// 重复注册会让同一事件触发多次处理（切换开关/复制反馈会被连续执行两次）。
 export function initInteractiveContent() {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined' || interactiveInitialized) return
+  interactiveInitialized = true
   initTabs()
   initCodeCopy()
   initLinkCopy()
   initJsRunners()
   initTaskCheckboxes()
-  renderMermaid()
-  renderCharts()
+  initDiagramLazyRender()
   initThemeObserver()
 }
 
@@ -75,6 +79,9 @@ export function selectMarkdownTab(button: HTMLButtonElement): void {
   tabs.querySelectorAll<HTMLElement>('[data-tab-panel]').forEach((panel) => {
     panel.hidden = panel.dataset.tabPanel !== index
   })
+  // 首次激活的标签页可能携带尚未渲染的图表，立即触发渲染（见 initDiagramLazyRender）
+  const active = tabs.querySelector<HTMLElement>(`[data-tab-panel="${index}"]`)
+  if (active) revealPanelBlocks(active)
 }
 
 export function moveMarkdownTabFocus(button: HTMLButtonElement, key: string): void {
@@ -196,6 +203,100 @@ function errorMessage(err: unknown): string {
 // 图表字体固定 13px，与代码字号量级一致，避免图内文字过大撑高容器
 const MERMAID_FONT_SIZE = '13px'
 
+// —— 图表懒渲染 ——
+// 文章页可能含大量图表（展示文 14 图 + 7 表），一次性全部渲染会长时间占满主线程，
+// 弱网/低端设备上页面交互（标签页切换、滚动）会整体卡顿。改为：块进入视口时渲染；
+// 藏在未激活标签页里的块，在标签页首次激活时渲染。无 IntersectionObserver 的环境
+// （测试/老浏览器）回退为一次性全部渲染。
+const DIAGRAM_REVEAL_MARGIN_PX = '240px 0px'
+
+const renderedMermaidBlocks = new WeakSet<HTMLElement>()
+const renderedChartBlocks = new WeakSet<HTMLElement>()
+let mermaidRevealObserver: IntersectionObserver | null = null
+let chartRevealObserver: IntersectionObserver | null = null
+let mermaidRenderChain: Promise<void> = Promise.resolve()
+let mermaidSeq = 0
+
+async function getMermaid() {
+  const { default: mermaid } = await import('mermaid')
+  // 每次渲染前按当前主题初始化：主题切换后旧图重渲染时能拿到新主题
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: isDarkMode() ? 'dark' : 'default',
+    // strict 关闭图表内 HTML/点击注入；博客只渲染作者本人内容，不需要 loose 的能力
+    securityLevel: 'strict',
+    themeVariables: {
+      fontSize: MERMAID_FONT_SIZE,
+      background: 'transparent',
+    },
+  })
+  return mermaid
+}
+
+// mermaid.render 内部状态非并发安全，串行化避免多块同时渲染互相干扰
+function queueMermaidRender(block: HTMLElement): void {
+  mermaidRenderChain = mermaidRenderChain
+    .then(() => renderMermaidBlock(block))
+    .catch(() => undefined)
+}
+
+function isBlockHidden(block: HTMLElement): boolean {
+  const panel = block.closest<HTMLElement>('[data-tab-panel]')
+  return Boolean(panel && panel.hidden)
+}
+
+function scheduleMermaidReveal(block: HTMLElement): void {
+  if (renderedMermaidBlocks.has(block)) return
+  if (isBlockHidden(block)) return
+  if (typeof IntersectionObserver === 'undefined') {
+    queueMermaidRender(block)
+    return
+  }
+  mermaidRevealObserver ??= new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        queueMermaidRender(entry.target as HTMLElement)
+      }
+    }
+  }, { rootMargin: DIAGRAM_REVEAL_MARGIN_PX })
+  mermaidRevealObserver.observe(block)
+}
+
+function scheduleChartReveal(block: HTMLElement): void {
+  if (renderedChartBlocks.has(block)) return
+  if (isBlockHidden(block)) return
+  if (typeof IntersectionObserver === 'undefined') {
+    void renderChartBlock(block)
+    return
+  }
+  chartRevealObserver ??= new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        void renderChartBlock(entry.target as HTMLElement)
+      }
+    }
+  }, { rootMargin: DIAGRAM_REVEAL_MARGIN_PX })
+  chartRevealObserver.observe(block)
+}
+
+// 标签页首次激活时把面板内未渲染的图表直接渲染（用户主动要看，不等滚动）
+function revealPanelBlocks(panel: HTMLElement): void {
+  for (const block of panel.querySelectorAll<HTMLElement>('.mermaid-block')) {
+    if (!renderedMermaidBlocks.has(block)) queueMermaidRender(block)
+  }
+  for (const block of panel.querySelectorAll<HTMLElement>('.chartjs-block')) {
+    if (!renderedChartBlocks.has(block)) void renderChartBlock(block)
+  }
+}
+
+export function initDiagramLazyRender(): void {
+  const mermaidBlocks = [...document.querySelectorAll<HTMLElement>('.mermaid-block')]
+  const chartBlocks = [...document.querySelectorAll<HTMLElement>('.chartjs-block')]
+  if (mermaidBlocks.length === 0 && chartBlocks.length === 0) return
+  for (const block of mermaidBlocks) scheduleMermaidReveal(block)
+  for (const block of chartBlocks) scheduleChartReveal(block)
+}
+
 // 错误分支用 textContent 而非 innerHTML 拼接：图表源码/报错信息可能含任意 HTML，
 // 与根仓库 showMermaidError 的防御式 DOM 构建保持一致
 export function showMermaidError(block: HTMLElement, err: unknown, raw: string): void {
@@ -230,36 +331,25 @@ export function showChartError(block: HTMLElement, err: unknown, raw: string): v
   block.classList.add('has-error')
 }
 
-async function renderMermaid() {
-  const blocks = document.querySelectorAll<HTMLElement>('.mermaid-block')
-  if (!blocks.length) return
-  const isDark = isDarkMode()
-  const { default: mermaid } = await import('mermaid')
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: isDark ? 'dark' : 'default',
-    // strict 关闭图表内 HTML/点击注入；博客只渲染作者本人内容，不需要 loose 的能力
-    securityLevel: 'strict',
-    themeVariables: {
-      fontSize: MERMAID_FONT_SIZE,
-      background: 'transparent',
-    },
-  })
-
-  let idx = 0
-  for (const block of blocks) {
-    const raw = decodeURIComponent(block.dataset.mermaid || '')
-    if (!raw) continue
-    try {
-      const id = `blog-mermaid-${Date.now()}-${++idx}`
-      const { svg } = await mermaid.render(id, raw)
-      block.innerHTML = svg
-      block.classList.remove('loading')
-      block.removeAttribute('aria-busy')
-    } catch (err: unknown) {
-      console.warn('Mermaid diagram render error:', err)
-      showMermaidError(block, err, raw)
-    }
+async function renderMermaidBlock(block: HTMLElement): Promise<void> {
+  if (renderedMermaidBlocks.has(block)) return
+  const raw = decodeURIComponent(block.dataset.mermaid || '')
+  if (!raw) return
+  try {
+    const mermaid = await getMermaid()
+    const id = `blog-mermaid-${Date.now()}-${++mermaidSeq}`
+    const { svg } = await mermaid.render(id, raw)
+    block.innerHTML = svg
+    block.classList.remove('loading')
+    block.removeAttribute('aria-busy')
+    renderedMermaidBlocks.add(block)
+    mermaidRevealObserver?.unobserve(block)
+  } catch (err: unknown) {
+    console.warn('Mermaid diagram render error:', err)
+    showMermaidError(block, err, raw)
+    // 失败也记账：错误态已是终态，滚动重入不再重试
+    renderedMermaidBlocks.add(block)
+    mermaidRevealObserver?.unobserve(block)
   }
 }
 
@@ -321,43 +411,61 @@ function buildChartConfig(config: Record<string, unknown>, textColor: string, gr
 const CHART_TEXT_FALLBACK = '#64748b'
 const CHART_GRID_FALLBACK = 'rgba(0, 0, 0, 0.08)'
 
-async function renderCharts() {
-  const blocks = document.querySelectorAll<HTMLElement>('.chartjs-block')
-  if (!blocks.length) return
-  const textColor = cssVarValue('--text-tertiary', CHART_TEXT_FALLBACK)
-  const gridColor = cssVarValue('--border-default', CHART_GRID_FALLBACK)
+async function renderChartBlock(block: HTMLElement): Promise<void> {
+  if (renderedChartBlocks.has(block)) return
+  const existing = chartInstances.get(block)
+  if (existing) {
+    existing.destroy()
+    chartInstances.delete(block)
+  }
 
-  const { default: Chart } = await import('chart.js/auto')
+  const raw = decodeURIComponent(block.dataset.chart || '')
+  if (!raw) return
+  try {
+    const textColor = cssVarValue('--text-tertiary', CHART_TEXT_FALLBACK)
+    const gridColor = cssVarValue('--border-default', CHART_GRID_FALLBACK)
+    const { default: Chart } = await import('chart.js/auto')
+    const config = asRecord(JSON.parse(raw))
+    block.innerHTML = ''
+    block.classList.remove('loading', 'has-error')
+    block.removeAttribute('aria-busy')
 
-  blocks.forEach((block) => {
-    const existing = chartInstances.get(block)
-    if (existing) {
-      existing.destroy()
-      chartInstances.delete(block)
+    const container = document.createElement('div')
+    container.className = 'chartjs-container'
+    const canvas = document.createElement('canvas')
+    canvas.className = 'chartjs-canvas'
+    container.appendChild(canvas)
+    block.appendChild(container)
+
+    const instance = new Chart(canvas, buildChartConfig(config, textColor, gridColor))
+    chartInstances.set(block, instance)
+    renderedChartBlocks.add(block)
+    chartRevealObserver?.unobserve(block)
+  } catch (err: unknown) {
+    console.warn('Chart.js render error:', err)
+    showChartError(block, err, raw)
+    renderedChartBlocks.add(block)
+    chartRevealObserver?.unobserve(block)
+  }
+}
+
+// 主题切换只重渲染当前可见的图；隐藏块标记为待渲染，展示时按新主题渲染。
+// 未渲染过的块不受影响（渲染时按当时主题初始化）。
+function rerenderDiagramsForTheme(): void {
+  for (const block of document.querySelectorAll<HTMLElement>('.mermaid-block')) {
+    if (!renderedMermaidBlocks.has(block)) continue
+    renderedMermaidBlocks.delete(block)
+    if (block.getClientRects().length > 0) {
+      queueMermaidRender(block)
     }
-
-    const raw = decodeURIComponent(block.dataset.chart || '')
-    if (!raw) return
-    try {
-      const config = asRecord(JSON.parse(raw))
-      block.innerHTML = ''
-      block.classList.remove('loading', 'has-error')
-      block.removeAttribute('aria-busy')
-
-      const container = document.createElement('div')
-      container.className = 'chartjs-container'
-      const canvas = document.createElement('canvas')
-      canvas.className = 'chartjs-canvas'
-      container.appendChild(canvas)
-      block.appendChild(container)
-
-      const instance = new Chart(canvas, buildChartConfig(config, textColor, gridColor))
-      chartInstances.set(block, instance)
-    } catch (err: unknown) {
-      console.warn('Chart.js render error:', err)
-      showChartError(block, err, raw)
+  }
+  for (const block of document.querySelectorAll<HTMLElement>('.chartjs-block')) {
+    if (!renderedChartBlocks.has(block)) continue
+    renderedChartBlocks.delete(block)
+    if (block.getClientRects().length > 0) {
+      void renderChartBlock(block)
     }
-  })
+  }
 }
 
 function initThemeObserver() {
@@ -366,8 +474,7 @@ function initThemeObserver() {
     const nextDark = isDarkMode()
     if (nextDark !== isDark) {
       isDark = nextDark
-      renderMermaid()
-      renderCharts()
+      rerenderDiagramsForTheme()
     }
   }
 

@@ -184,6 +184,31 @@ interface UseFeedQueryOptions {
   onScrollToTop?: () => void
 }
 
+// 标签/分页筛选请求的客户端缓存：博客文章更新频率低，同一筛选在 TTL 内重复
+// 点击（含浏览器前进/后退）直接秒开，不必每次往返远端 API。缓存挂在组件实例上，
+// 卸载即失效，避免跨会话/跨测试残留旧数据。
+const FEED_CACHE_TTL_MS = 60_000
+const FEED_CACHE_MAX_ENTRIES = 60
+
+interface FeedCacheEntry {
+  at: number
+  posts: BlogPost[]
+  total: number
+  totalPages: number
+}
+
+function feedCacheKey(tag: string | null, page: number, limit: number): string {
+  return `${tag ?? ''}|${page}|${limit}`
+}
+
+function feedCacheSet(cache: Map<string, FeedCacheEntry>, key: string, entry: FeedCacheEntry): void {
+  if (cache.size >= FEED_CACHE_MAX_ENTRIES) {
+    const oldest = cache.keys().next().value
+    if (oldest !== undefined) cache.delete(oldest)
+  }
+  cache.set(key, entry)
+}
+
 function useFeedQuery({ initialPosts, initialTotal, initialTotalPages, onScrollToTop }: UseFeedQueryOptions) {
   const [data, setData] = useState({
     posts: initialPosts,
@@ -191,9 +216,20 @@ function useFeedQuery({ initialPosts, initialTotal, initialTotalPages, onScrollT
     totalPages: initialTotalPages,
     loading: false,
   })
+  const cacheRef = useRef(new Map<string, FeedCacheEntry>())
   const { begin, isLatest } = useLatestRequest()
 
   const fetchAndApply = async (targetTag: string | null, targetPage: number, targetLimit: number) => {
+    const key = feedCacheKey(targetTag, targetPage, targetLimit)
+    const cache = cacheRef.current
+    const cached = cache.get(key)
+    if (cached && Date.now() - cached.at < FEED_CACHE_TTL_MS) {
+      // 缓存命中：中止在途请求（seq 作废），直接展示缓存结果
+      begin()
+      setData({ posts: cached.posts, total: cached.total, totalPages: cached.totalPages, loading: false })
+      onScrollToTop?.()
+      return
+    }
     const { seq, signal } = begin()
     setData((prev) => ({ ...prev, loading: true }))
     try {
@@ -204,6 +240,7 @@ function useFeedQuery({ initialPosts, initialTotal, initialTotalPages, onScrollT
         signal,
       })
       if (!isLatest(seq)) return
+      feedCacheSet(cache, key, { at: Date.now(), posts: res.posts, total: res.total, totalPages: res.totalPages })
       setData({ posts: res.posts, total: res.total, totalPages: res.totalPages, loading: false })
     } finally {
       if (isLatest(seq)) {
