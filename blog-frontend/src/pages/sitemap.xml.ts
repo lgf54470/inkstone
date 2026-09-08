@@ -1,20 +1,8 @@
 import type { APIRoute } from 'astro'
 import { api } from '../lib/api'
+import { escapeXml } from '../lib/xml'
 
 const STATIC_ROUTES = ['/', '/timeline', '/calendar', '/categories', '/tags']
-
-function escapeXml(value: string): string {
-  return value.replace(/[&<>"']/g, (ch) => {
-    const table: Record<string, string> = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&apos;',
-    }
-    return table[ch]!
-  })
-}
 
 /**
  * 动态 sitemap：以请求 origin 自适应多环境（本地/预览/生产），
