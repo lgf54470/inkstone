@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { X, Palette, Sun, Moon, Monitor, RotateCcw, Languages, type LucideIcon } from 'lucide-react'
+import { useFocusTrap, useScrollLock } from '../lib/use-focus-trap'
 import {
   type AppearanceConfig,
   type ThemeMode,
@@ -103,6 +104,8 @@ function DrawerLayer({
   title: string
   children: ReactNode
 }) {
+  const trapRef = useFocusTrap<HTMLElement>(isOpen)
+  useScrollLock(isOpen)
   return (
     <div
       className={`fixed inset-0 z-50 overflow-hidden flex justify-end transition-[visibility] duration-[var(--dur-base)] ${
@@ -117,6 +120,7 @@ function DrawerLayer({
         onClick={onClose}
       />
       <aside
+        ref={trapRef}
         className={`relative w-full max-w-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border-l border-[var(--border-default)] shadow-[var(--shadow-modal)] flex flex-col h-full z-10 transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)] transform will-change-transform ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}

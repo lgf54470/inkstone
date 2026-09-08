@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { Search, X, Calendar, Tag, Loader2, AlertCircle } from 'lucide-react'
 import { api } from '../lib/api'
+import { useFocusTrap, useScrollLock } from '../lib/use-focus-trap'
 import type { BlogPost } from '../lib/types'
 import { SEARCH_RESULT_LIMIT, SEARCH_FOCUS_DELAY_MS, SEARCH_DEBOUNCE_MS } from '../lib/constants'
 import { t, formatDate, DEFAULT_LOCALE, isSupportedLocale, type BlogLocale } from '../lib/i18n'
@@ -218,6 +219,7 @@ export default function SearchModal({ initialLocale }: SearchModalProps) {
       isOpen={search.isOpen}
       onClose={search.close}
       onKeyDown={search.handleKeyDownList}
+      ariaLabel={t('nav.search_aria', {}, locale)}
     >
       <SearchInputRow
         query={search.query}
@@ -250,15 +252,23 @@ function SearchLayer({
   isOpen,
   onClose,
   onKeyDown,
+  ariaLabel,
   children,
 }: {
   isOpen: boolean
   onClose: () => void
   onKeyDown: (e: ReactKeyboardEvent<HTMLDivElement>) => void
+  ariaLabel: string
   children: ReactNode
 }) {
+  const trapRef = useFocusTrap<HTMLDivElement>(isOpen)
+  useScrollLock(isOpen)
   return (
     <div
+      ref={trapRef}
+      role='dialog'
+      aria-modal='true'
+      aria-label={ariaLabel}
       className={`fixed inset-0 z-50 overflow-y-auto flex items-start justify-center pt-20 px-4 transition-[visibility] duration-[var(--dur-base)] ${
         isOpen ? 'visible pointer-events-auto' : 'invisible pointer-events-none'
       }`}
