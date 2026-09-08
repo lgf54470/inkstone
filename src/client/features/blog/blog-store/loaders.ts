@@ -23,6 +23,7 @@ async function loadAllImpl(set: SetBlogStoreState, get: () => BlogStoreState): P
       get().loadTags(),
       get().loadCategories(),
       get().loadComments(),
+      get().loadLinks(),
       get().loadSettings(),
     ])
   } finally {

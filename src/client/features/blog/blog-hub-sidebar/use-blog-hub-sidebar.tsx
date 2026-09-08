@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type MouseEvent, type ReactNode, type SetStateAction } from 'react'
-import { FileEdit, FileText, LayoutDashboard, MessageSquare, Pin, PlayCircle } from 'lucide-react'
+import { FileEdit, FileText, LayoutDashboard, Link2, MessageSquare, Pin, PlayCircle } from 'lucide-react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogStats, BlogTag, Tag } from '@shared/types'
 import { confirm } from '../../../components/overlay'
@@ -73,10 +73,8 @@ export function useBlogHubSidebar() {
 
   useBlogHubSidebarEffects(store, parentTagPaths, setExpandedTagPaths)
 
-  const pendingCommentsCount = store.comments.filter((c) => c.status === 'pending').length
   const frontendBase = (store.settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
-
-  const navItems = buildNavItems({ activeTab: store.activeTab, statusFilter: store.statusFilter, selectedFolderId: store.selectedFolderId, selectedTag: store.selectedTag, stats: store.stats, commentsCount: store.comments.length, pendingCommentsCount, setActiveTab: store.setActiveTab, setStatusFilter: store.setStatusFilter })
+  const navItems = buildSidebarNavItems(store)
   const handleCreateRootFolder = () => createRootFolder(store.createFolder, setExpandedFolders, setRenamingFolderId)
   const handleCreateNewTag = () => createNewTag(store.createTag)
 
@@ -131,6 +129,8 @@ function useBlogHubSidebarStore() {
   const settings = useBlogStore((s) => s.settings)
   const folders = useBlogStore((s) => s.folders)
   const tags = useBlogStore((s) => s.tags)
+  const links = useBlogStore((s) => s.links)
+  const linkStats = useBlogStore((s) => s.linkStats)
   const batchBusy = useBlogStore((s) => s.batchBusy)
   const loadFolders = useBlogStore((s) => s.loadFolders)
   const loadTags = useBlogStore((s) => s.loadTags)
@@ -145,7 +145,7 @@ function useBlogHubSidebarStore() {
   return {
     toast, activeTab, setActiveTab, statusFilter, setStatusFilter,
     selectedFolderId, setFolderId, selectedTag, setTag,
-    stats, comments, settings, folders, tags, batchBusy,
+    stats, comments, links, linkStats, settings, folders, tags, batchBusy,
     loadFolders, loadTags, createFolder, patchFolder, deleteFolder,
     createTag, patchTag, deleteTag, batchToggleGroup, batchMoveToFolder,
   }
@@ -201,12 +201,34 @@ interface NavCtx {
   stats: BlogStats | null
   commentsCount: number
   pendingCommentsCount: number
+  linksCount: number
+  pendingLinksCount: number
   setActiveTab: (tab: BlogTab) => void
   setStatusFilter: (status: 'all' | 'published' | 'draft' | 'pinned') => void
 }
 
 function isPostsTab(ctx: NavCtx, status: 'all' | 'published' | 'draft' | 'pinned'): boolean {
   return ctx.activeTab === 'posts' && ctx.statusFilter === status && !ctx.selectedFolderId && !ctx.selectedTag
+}
+
+function buildSidebarNavItems(store: ReturnType<typeof useBlogHubSidebarStore>): SidebarNavItem[] {
+  const pendingCommentsCount = store.comments.filter((c) => c.status === 'pending').length
+  const pendingLinksCount = store.linkStats?.pending ?? store.links.filter((l) => l.status === 'pending').length
+  const totalLinksCount = store.linkStats?.total ?? store.links.length
+
+  return buildNavItems({
+    activeTab: store.activeTab,
+    statusFilter: store.statusFilter,
+    selectedFolderId: store.selectedFolderId,
+    selectedTag: store.selectedTag,
+    stats: store.stats,
+    commentsCount: store.comments.length,
+    pendingCommentsCount,
+    linksCount: totalLinksCount,
+    pendingLinksCount,
+    setActiveTab: store.setActiveTab,
+    setStatusFilter: store.setStatusFilter,
+  })
 }
 
 function buildNavItems(ctx: NavCtx): SidebarNavItem[] {
@@ -231,6 +253,15 @@ function buildNavItems(ctx: NavCtx): SidebarNavItem[] {
       badgeTone: ctx.pendingCommentsCount > 0 ? 'danger' : 'default',
       active: ctx.activeTab === 'comments',
       onClick: () => ctx.setActiveTab('comments'),
+    },
+    {
+      id: 'links',
+      label: t('blog.links_tab'),
+      icon: <Link2 size={14} />,
+      count: ctx.pendingLinksCount > 0 ? ctx.pendingLinksCount : ctx.linksCount,
+      badgeTone: ctx.pendingLinksCount > 0 ? 'danger' : 'default',
+      active: ctx.activeTab === 'links',
+      onClick: () => ctx.setActiveTab('links'),
     },
   ]
 }

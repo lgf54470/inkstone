@@ -5,6 +5,7 @@ import { blogFiltersActions } from './filters'
 import { blogLoadersActions } from './loaders'
 import { blogContentActions } from './content'
 import { blogActionsActions } from './actions'
+import { blogLinksActions } from './links'
 import { getVisibilitySnapshot, pushVisibilitySnapshot } from '../../../store/visibility-sources'
 
 export const useBlogStore = create<BlogStoreState>((set, get) => ({
@@ -13,6 +14,7 @@ export const useBlogStore = create<BlogStoreState>((set, get) => ({
     ...blogLoadersActions(set, get),
     ...blogContentActions(set, get),
     ...blogActionsActions(set, get),
+    ...blogLinksActions(set, get),
 }) as BlogStoreState)
 
 function initialBlogState(): Partial<BlogStoreState> {
@@ -29,11 +31,18 @@ function initialBlogState(): Partial<BlogStoreState> {
         commentStatusFilter: 'all',
         commentSearch: '',
         selectedCommentIds: new Set<string>(),
+        linkStatusFilter: 'all',
+        linkCategoryId: null,
+        linkSearch: '',
+        selectedLinkIds: new Set<string>(),
         posts: [],
         folders: [],
         tags: [],
         categories: [],
         comments: [],
+        links: [],
+        linkCategories: [],
+        linkStats: null,
         stats: null,
         settings: null,
         loading: false,

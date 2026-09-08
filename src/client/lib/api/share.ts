@@ -1,5 +1,5 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
-import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -204,6 +204,35 @@ export const share = {
         request<{ ok: true }>(`/api/blog/comments/${id}`, { method: 'DELETE' }),
       batch: (action: 'approve' | 'reject' | 'spam' | 'delete', commentIds: string[]) =>
         request<{ ok: true; count: number }>('/api/blog/comments/batch', { method: 'POST', body: { action, commentIds } }),
+    },
+    links: {
+      list: (params?: { status?: string; categoryId?: string; search?: string }, signal?: AbortSignal) =>
+        request<{ links: BlogLink[]; categories: BlogLinkCategory[]; counts: BlogLinkStats }>(
+          `/api/blog/links${toQuery(params ?? {})}`,
+          { signal },
+        ),
+      create: (body: Partial<BlogLink>) =>
+        request<{ ok: true; link: BlogLink }>('/api/blog/links', { method: 'POST', body }),
+      patch: (id: string, body: Partial<BlogLink>) =>
+        request<{ ok: true; link: BlogLink }>(`/api/blog/links/${id}`, { method: 'PATCH', body }),
+      remove: (id: string) =>
+        request<{ ok: true }>(`/api/blog/links/${id}`, { method: 'DELETE' }),
+      updateStatus: (id: string, status: BlogLinkStatus) =>
+        request<{ ok: true; status: BlogLinkStatus }>(`/api/blog/links/${id}/status`, { method: 'PATCH', body: { status } }),
+      togglePin: (id: string, isPinned: boolean) =>
+        request<{ ok: true; isPinned: boolean }>(`/api/blog/links/${id}/pin`, { method: 'PATCH', body: { isPinned } }),
+      batch: (action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'pin' | 'unpin', linkIds: string[], categoryId?: string | null) =>
+        request<{ ok: true; count: number }>('/api/blog/links/batch', { method: 'POST', body: { action, linkIds, categoryId } }),
+      import: (payload: { categories: Array<{ id?: string; name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }>; links: Array<Partial<BlogLink>> }) =>
+        request<{ ok: true; importedCategories: number; importedLinks: number }>('/api/blog/links/import', { method: 'POST', body: payload }),
+    },
+    linkCategories: {
+      create: (body: { name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) =>
+        request<{ ok: true; category: BlogLinkCategory }>('/api/blog/links/categories', { method: 'POST', body }),
+      patch: (id: string, body: { name?: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) =>
+        request<{ ok: true; category: BlogLinkCategory }>(`/api/blog/links/categories/${id}`, { method: 'PATCH', body }),
+      remove: (id: string) =>
+        request<{ ok: true }>(`/api/blog/links/categories/${id}`, { method: 'DELETE' }),
     },
   },
   communityTemplates: {

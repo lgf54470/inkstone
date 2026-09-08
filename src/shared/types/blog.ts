@@ -67,9 +67,9 @@ export interface BlogLink {
   userId?: string
   name: string
   url: string
-  description: string
-  avatar: string
-  email?: string
+  description?: string | null
+  avatar?: string | null
+  email?: string | null
   categoryId: string | null
   status: BlogLinkStatus
   isPinned: boolean

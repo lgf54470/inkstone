@@ -1,11 +1,9 @@
-import type { BlogPost, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag } from '@shared/types'
+import type { BlogPost, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats } from '@shared/types'
 import type { StoreApi } from 'zustand'
 
 export type SetBlogStoreState = StoreApi<BlogStoreState>['setState']
 
-
-
-export type BlogTab = 'dashboard' | 'posts' | 'comments' | 'categories' | 'settings'
+export type BlogTab = 'dashboard' | 'posts' | 'comments' | 'categories' | 'links' | 'settings'
 
 
 
@@ -32,11 +30,19 @@ export interface BlogStoreState {
   commentSearch: string
   selectedCommentIds: Set<string>
 
+  linkStatusFilter: 'all' | 'pending' | 'approved' | 'rejected'
+  linkCategoryId: string | null
+  linkSearch: string
+  selectedLinkIds: Set<string>
+
   posts: BlogPost[]
   folders: BlogFolder[]
   tags: BlogTag[]
   categories: BlogCategory[]
   comments: BlogComment[]
+  links: BlogLink[]
+  linkCategories: BlogLinkCategory[]
+  linkStats: BlogLinkStats | null
   stats: BlogStats | null
   settings: BlogSettings | null
   loading: boolean
@@ -60,12 +66,20 @@ export interface BlogStoreState {
   selectAllComments: (ids: string[]) => void
   clearCommentSelection: () => void
 
+  setLinkStatusFilter: (status: 'all' | 'pending' | 'approved' | 'rejected') => void
+  setLinkCategoryId: (id: string | null) => void
+  setLinkSearch: (search: string) => void
+  toggleSelectLink: (id: string) => void
+  selectAllLinks: (ids: string[]) => void
+  clearLinkSelection: () => void
+
   loadAll: () => Promise<void>
   loadPosts: () => Promise<void>
   loadFolders: () => Promise<void>
   loadTags: () => Promise<void>
   loadCategories: () => Promise<void>
   loadComments: () => Promise<void>
+  loadLinks: () => Promise<void>
   loadStats: () => Promise<void>
   loadSettings: () => Promise<void>
 
@@ -110,6 +124,18 @@ export interface BlogStoreState {
   createCategory: (data: { name: string; slug?: string; description?: string; color?: string; icon?: string }) => Promise<void>
   updateCategory: (id: string, patch: Partial<BlogCategory>) => Promise<void>
   deleteCategory: (id: string) => Promise<void>
+
+  createLink: (data: Partial<BlogLink>) => Promise<BlogLink | null>
+  updateLink: (id: string, patch: Partial<BlogLink>) => Promise<void>
+  deleteLink: (id: string) => Promise<void>
+  updateLinkStatus: (id: string, status: BlogLinkStatus) => Promise<void>
+  togglePinLink: (id: string, isPinned: boolean) => Promise<void>
+  batchLinks: (action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'pin' | 'unpin', categoryId?: string | null) => Promise<void>
+
+  createLinkCategory: (data: { name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<BlogLinkCategory | null>
+  updateLinkCategory: (id: string, patch: { name?: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<void>
+  deleteLinkCategory: (id: string) => Promise<void>
+  importLinksData: (payload: { categories: Array<{ id?: string; name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }>; links: Array<Partial<BlogLink>> }) => Promise<{ importedCategories: number; importedLinks: number }>
 
   excludeBots: boolean
   excludeSelfReferrers: boolean

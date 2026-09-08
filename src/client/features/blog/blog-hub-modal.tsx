@@ -10,6 +10,7 @@ import { BlogTableView } from './blog-table-view'
 import { BlogGridView } from './blog-grid-view'
 import { BlogBatchBar } from './blog-batch-bar'
 import { BlogCommentsView } from './blog-comments-view'
+import { BlogLinksView } from './blog-links-view'
 import { BlogPublishModal } from './blog-publish-modal'
 import { BlogCategoriesModal } from './blog-categories-modal'
 import { BlogSettingsModal } from './blog-settings-modal'
@@ -101,6 +102,8 @@ function BlogHubContent({ bundle }: { bundle: BlogHubModalBundle }) {
         />
       ) : bundle.activeTab === 'comments' ? (
         <BlogCommentsView />
+      ) : bundle.activeTab === 'links' ? (
+        <BlogLinksView />
       ) : (
         <>
           <BlogHubToolbar
