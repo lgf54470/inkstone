@@ -2,6 +2,37 @@
 @import './tokens.css';
 @import './prose/index.css';
 
+/* Inter latin 子集自托管（Google Fonts v20，OFL-1.1，单文件覆盖全部字重）：
+   UI 字体跨平台一致；CSP font-src 'self' 兼容，与 --font-ui 首位声明同名命中 */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+}
+
 @theme inline {
   --color-sunken: var(--bg-sunken);
   --color-canvas: var(--bg-base);
