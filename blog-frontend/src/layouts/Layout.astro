@@ -72,6 +72,22 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
       })} />
     )}
 
+    <!-- 语言切换整页刷新后恢复滚动位置（一次性读取，正常导航无影响） -->
+    <script is:inline>
+      ;(function () {
+        try {
+          const key = 'inkstone-blog-scroll-restore'
+          const y = sessionStorage.getItem(key)
+          if (y !== null) {
+            sessionStorage.removeItem(key)
+            window.addEventListener('load', () => window.scrollTo(0, Number(y)), { once: true })
+          }
+        } catch (e) {
+          console.warn('Failed to restore scroll position:', e)
+        }
+      })()
+    </script>
+
     <!-- Immediately apply theme preferences before paint to prevent flicker -->
     <script is:inline define:vars={{ initialLocale: locale }}>
       ;(function () {

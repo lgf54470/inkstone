@@ -22,6 +22,12 @@ interface PickerProps {
   update: (partial: Partial<AppearanceConfig>) => void
 }
 
+/** 语言切换需整页刷新：先保存滚动位置，刷新后由 Layout 恢复 */
+function persistScrollForReload(): void {
+  if (typeof window === 'undefined') return
+  sessionStorage.setItem('inkstone-blog-scroll-restore', String(window.scrollY))
+}
+
 const LANGUAGE_OPTIONS: { id: BlogLocale; label: string }[] = [
   { id: 'zh-CN', label: '简体中文' },
   { id: 'zh-TW', label: '繁體中文' },
@@ -63,9 +69,8 @@ function useAppearanceDrawerState(initialLocale?: BlogLocale) {
     setConfig(next)
     applyAppearance(next)
     if (partial.lang && partial.lang !== config.lang) {
-      if (typeof window !== 'undefined') {
-        setTimeout(() => window.location.reload(), 80)
-      }
+      persistScrollForReload()
+      setTimeout(() => window.location.reload(), 80)
     }
   }
 
