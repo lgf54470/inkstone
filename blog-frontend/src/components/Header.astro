@@ -93,6 +93,8 @@ const currentPath = Astro.url.pathname
         id="btn-toggle-mobile-menu"
         class="md:hidden p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-all cursor-pointer"
         aria-label={t('nav.mobile_menu_toggle', {}, locale)}
+        aria-expanded="false"
+        aria-controls="mobile-nav-panel"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -125,10 +127,23 @@ const currentPath = Astro.url.pathname
     window.dispatchEvent(new CustomEvent('open-appearance-drawer'))
   })
 
-  // Mobile menu toggle
+  // Mobile menu toggle: 同步 aria-expanded，点击外部或按 Escape 时关闭
   const mobileBtn = document.getElementById('btn-toggle-mobile-menu')
   const mobilePanel = document.getElementById('mobile-nav-panel')
-  mobileBtn?.addEventListener('click', () => {
-    mobilePanel?.classList.toggle('hidden')
+  const closeMobileMenu = () => {
+    mobilePanel?.classList.add('hidden')
+    mobileBtn?.setAttribute('aria-expanded', 'false')
+  }
+  mobileBtn?.addEventListener('click', (e) => {
+    e.stopPropagation()
+    const isOpen = mobilePanel?.classList.toggle('hidden') === false
+    mobileBtn?.setAttribute('aria-expanded', String(isOpen))
+  })
+  document.addEventListener('click', (e) => {
+    if (mobilePanel?.contains(e.target as Node) || mobileBtn?.contains(e.target as Node)) return
+    closeMobileMenu()
+  })
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMobileMenu()
   })
 </script>
