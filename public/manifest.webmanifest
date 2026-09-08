@@ -10,6 +10,22 @@
   "background_color": "#faf9f7",
   "theme_color": "#faf9f7",
   "categories": ["productivity", "utilities"],
+  "screenshots": [
+    {
+      "src": "/inkstone-screenshot-desktop.png",
+      "sizes": "1280x640",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Inkstone desktop workspace"
+    },
+    {
+      "src": "/inkstone-screenshot-mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Inkstone mobile workspace"
+    }
+  ],
   "icons": [
     {
       "src": "/pwa-192x192.png",
