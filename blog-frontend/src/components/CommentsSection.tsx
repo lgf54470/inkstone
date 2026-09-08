@@ -11,9 +11,10 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
+import { useCurrentLocale } from '../lib/i18n/use-current-locale'
 import { COMMENT_MAX_LENGTH } from '../lib/constants'
 import type { BlogComment } from '../lib/types'
-import { t, formatDate, DEFAULT_LOCALE, isSupportedLocale, type BlogLocale } from '../lib/i18n'
+import { t, formatDate, type BlogLocale } from '../lib/i18n'
 
 interface CommentsSectionProps {
   postId: string
@@ -33,28 +34,6 @@ interface CommentFields {
 const EMPTY_FIELDS: CommentFields = { name: '', email: '', url: '', content: '' }
 
 type SubmitResult = { kind: 'success'; comment?: BlogComment } | { kind: 'error'; message: string }
-
-function useCurrentLocale(propLocale?: BlogLocale): BlogLocale {
-  const [locale, setLocale] = useState<BlogLocale>(() => {
-    if (propLocale) return propLocale
-    if (typeof document !== 'undefined') {
-      const docLang = document.documentElement.getAttribute('lang')
-      if (isSupportedLocale(docLang)) return docLang
-    }
-    return DEFAULT_LOCALE
-  })
-
-  useEffect(() => {
-    const handleLocaleChange = (e: Event) => {
-      const custom = e as CustomEvent<BlogLocale>
-      if (isSupportedLocale(custom.detail)) setLocale(custom.detail)
-    }
-    window.addEventListener('inkstone-locale-change', handleLocaleChange)
-    return () => window.removeEventListener('inkstone-locale-change', handleLocaleChange)
-  }, [])
-
-  return propLocale || locale
-}
 
 async function submitCommentRequest(
   postId: string,

@@ -2,11 +2,10 @@ import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, FileText } from 'lucide-react'
 import { api } from '../lib/api'
 import type { CalendarDayPost } from '../lib/types'
+import { useCurrentLocale } from '../lib/i18n/use-current-locale'
 import {
   t,
   formatMonthYear,
-  DEFAULT_LOCALE,
-  isSupportedLocale,
   type BlogLocale,
 } from '../lib/i18n'
 
@@ -18,28 +17,6 @@ interface CalendarWidgetProps {
 
 const WEEK_HEADERS_ZH = ['日', '一', '二', '三', '四', '五', '六']
 const WEEK_HEADERS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-function useCurrentLocale(propLocale?: BlogLocale): BlogLocale {
-  const [locale, setLocale] = useState<BlogLocale>(() => {
-    if (propLocale) return propLocale
-    if (typeof document !== 'undefined') {
-      const docLang = document.documentElement.getAttribute('lang')
-      if (isSupportedLocale(docLang)) return docLang
-    }
-    return DEFAULT_LOCALE
-  })
-
-  useEffect(() => {
-    const handleLocaleChange = (e: Event) => {
-      const custom = e as CustomEvent<BlogLocale>
-      if (isSupportedLocale(custom.detail)) setLocale(custom.detail)
-    }
-    window.addEventListener('inkstone-locale-change', handleLocaleChange)
-    return () => window.removeEventListener('inkstone-locale-change', handleLocaleChange)
-  }, [])
-
-  return propLocale || locale
-}
 
 function pad2(value: number): string {
   return String(value).padStart(2, '0')

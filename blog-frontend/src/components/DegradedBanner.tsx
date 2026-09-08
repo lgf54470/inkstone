@@ -1,32 +1,11 @@
 import { useEffect, useState } from 'react'
 import { TriangleAlert } from 'lucide-react'
 import { subscribeApiHealth } from '../lib/api'
-import { t, DEFAULT_LOCALE, isSupportedLocale, type BlogLocale } from '../lib/i18n'
+import { useCurrentLocale } from '../lib/i18n/use-current-locale'
+import { t, type BlogLocale } from '../lib/i18n'
 
 interface DegradedBannerProps {
   initialLocale?: BlogLocale
-}
-
-function useCurrentLocale(propLocale?: BlogLocale): BlogLocale {
-  const [locale, setLocale] = useState<BlogLocale>(() => {
-    if (propLocale) return propLocale
-    if (typeof document !== 'undefined') {
-      const docLang = document.documentElement.getAttribute('lang')
-      if (isSupportedLocale(docLang)) return docLang
-    }
-    return DEFAULT_LOCALE
-  })
-
-  useEffect(() => {
-    const handleLocaleChange = (e: Event) => {
-      const custom = e as CustomEvent<BlogLocale>
-      if (isSupportedLocale(custom.detail)) setLocale(custom.detail)
-    }
-    window.addEventListener('inkstone-locale-change', handleLocaleChange)
-    return () => window.removeEventListener('inkstone-locale-change', handleLocaleChange)
-  }, [])
-
-  return propLocale || locale
 }
 
 /**
