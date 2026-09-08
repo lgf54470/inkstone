@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import CalendarWidget from '../CalendarWidget'
+import WeatherWidget from '../WeatherWidget'
 import { categoryDotStyle } from '../../lib/category-style'
 import { t, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
 import type { BlogSiteInfo, BlogCategory, BlogTag, CalendarDayPost } from '../../lib/types'
@@ -172,6 +173,9 @@ export default function HomeSidebar({
         tagCount={tags.length}
         locale={locale}
       />
+      <div>
+        <WeatherWidget initialLocale={locale} />
+      </div>
       <div>
         <CalendarWidget initialDays={calendarDays} initialLocale={locale} />
       </div>

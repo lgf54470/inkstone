@@ -25,3 +25,12 @@ export const COMMENT_MAX_LENGTH = {
   url: 300,
   content: 1000,
 } as const
+/** 天气默认城市（未搜索/本地无记忆时展示；名称按当前语言选择） */
+export const DEFAULT_WEATHER_CITY = {
+  nameZh: '上海',
+  nameEn: 'Shanghai',
+  latitude: 31.22222,
+  longitude: 121.45806,
+} as const
+/** 天气城市搜索输入防抖延迟（ms） */
+export const WEATHER_CITY_SEARCH_DEBOUNCE_MS = 300

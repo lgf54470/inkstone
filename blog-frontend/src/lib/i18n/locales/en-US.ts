@@ -186,6 +186,32 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   // Degraded Banner
   'degraded.banner': 'Unable to connect to blog server, showing cached offline content',
 
+  // Weather Widget
+  'weather.title': 'Weather',
+  'weather.change_city': 'Change city',
+  'weather.search_placeholder': 'Search city (EN / 中文)',
+  'weather.search_aria': 'Search city',
+  'weather.clear_search': 'Clear search',
+  'weather.searching': 'Searching...',
+  'weather.search_error': 'City search failed, please try again later',
+  'weather.no_city': 'No city found for "{query}"',
+  'weather.loading': 'Loading weather...',
+  'weather.error': 'Weather service is temporarily unavailable',
+  'weather.retry': 'Retry',
+  'weather.humidity': 'Humidity {value}%',
+  'weather.wind': 'Wind {value} km/h',
+  'weather.today': 'Today',
+  'weather.tomorrow': 'Tomorrow',
+  'weather.cond_clear': 'Clear',
+  'weather.cond_partly_cloudy': 'Partly cloudy',
+  'weather.cond_cloudy': 'Cloudy',
+  'weather.cond_fog': 'Fog',
+  'weather.cond_drizzle': 'Drizzle',
+  'weather.cond_rain': 'Rain',
+  'weather.cond_snow': 'Snow',
+  'weather.cond_thunder': 'Thunderstorm',
+  'weather.cond_unknown': 'Weather',
+
   // Interactive copy & runner
   'interactive.copy': 'Copy',
   'interactive.copied': 'Copied',

@@ -186,6 +186,32 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   // Degraded Banner
   'degraded.banner': '無法連線至部落格伺服器，目前顯示離線快取內容',
 
+  // Weather Widget
+  'weather.title': '天氣',
+  'weather.change_city': '切換城市',
+  'weather.search_placeholder': '搜尋城市（支援中/英文）',
+  'weather.search_aria': '搜尋城市',
+  'weather.clear_search': '清除搜尋',
+  'weather.searching': '正在搜尋...',
+  'weather.search_error': '城市搜尋失敗，請稍後重試',
+  'weather.no_city': '找不到城市 "{query}"',
+  'weather.loading': '正在取得天氣...',
+  'weather.error': '天氣服務暫時無法使用',
+  'weather.retry': '重試',
+  'weather.humidity': '濕度 {value}%',
+  'weather.wind': '風 {value} km/h',
+  'weather.today': '今天',
+  'weather.tomorrow': '明天',
+  'weather.cond_clear': '晴',
+  'weather.cond_partly_cloudy': '多雲',
+  'weather.cond_cloudy': '陰',
+  'weather.cond_fog': '霧',
+  'weather.cond_drizzle': '毛毛雨',
+  'weather.cond_rain': '雨',
+  'weather.cond_snow': '雪',
+  'weather.cond_thunder': '雷雨',
+  'weather.cond_unknown': '天氣',
+
   // Interactive copy & runner
   'interactive.copy': '複製',
   'interactive.copied': '已複製',

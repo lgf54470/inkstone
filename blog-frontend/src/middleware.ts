@@ -80,7 +80,78 @@ function applyCsp(response: Response): Response {
   return final
 }
 
+// —— 天气数据同源代理 ——
+// 浏览器端直接请求 Open-Meteo 会被 CSP connect-src 拦下（只放行 self 与 API 源），
+// 统一走同源代理：参数白名单校验后转发，响应带 Cache-Control 让 CDN 边缘缓存公共数据。
+const WEATHER_API_PREFIX = '/api/weather/'
+const WEATHER_UPSTREAM_TIMEOUT_MS = 8000
+const WEATHER_GEOCODE_URL = 'https://geocoding-api.open-meteo.com/v1/search'
+const WEATHER_FORECAST_URL = 'https://api.open-meteo.com/v1/forecast'
+
+function weatherJson(data: unknown, status: number, cacheControl: string): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': cacheControl,
+    },
+  })
+}
+
+// 上游失败返回 502 与固定错误体（不透传上游细节）；超时由 AbortSignal.timeout 兜底
+async function fetchWeatherUpstream(upstream: URL, cacheControl: string): Promise<Response> {
+  try {
+    const res = await fetch(upstream, { signal: AbortSignal.timeout(WEATHER_UPSTREAM_TIMEOUT_MS) })
+    const text = await res.text()
+    return new Response(text, {
+      status: res.status,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': cacheControl,
+      },
+    })
+  } catch (err) {
+    console.warn('[weather] upstream request failed:', err)
+    return weatherJson({ error: 'upstream_unavailable' }, 502, 'no-store')
+  }
+}
+
+// 只按固定模板拼上游 URL，不透传任意路径/主机，避免变成开放代理
+function handleWeatherProxy(url: URL): Promise<Response> | Response {
+  const { pathname, searchParams } = url
+  if (pathname === '/api/weather/geocode') {
+    const name = (searchParams.get('q') ?? '').trim().slice(0, 64)
+    if (!name) return weatherJson({ error: 'missing_query' }, 400, 'no-store')
+    const upstream = new URL(WEATHER_GEOCODE_URL)
+    upstream.searchParams.set('name', name)
+    upstream.searchParams.set('count', '6')
+    upstream.searchParams.set('language', searchParams.get('language') === 'en' ? 'en' : 'zh')
+    upstream.searchParams.set('format', 'json')
+    return fetchWeatherUpstream(upstream, 'public, max-age=86400')
+  }
+  if (pathname === '/api/weather/forecast') {
+    const lat = Number(searchParams.get('lat'))
+    const lon = Number(searchParams.get('lon'))
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+      return weatherJson({ error: 'invalid_coordinates' }, 400, 'no-store')
+    }
+    const upstream = new URL(WEATHER_FORECAST_URL)
+    upstream.searchParams.set('latitude', String(lat))
+    upstream.searchParams.set('longitude', String(lon))
+    upstream.searchParams.set('current', 'temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m')
+    upstream.searchParams.set('daily', 'weather_code,temperature_2m_max,temperature_2m_min')
+    upstream.searchParams.set('timezone', 'auto')
+    upstream.searchParams.set('forecast_days', '3')
+    return fetchWeatherUpstream(upstream, 'public, max-age=300')
+  }
+  return weatherJson({ error: 'not_found' }, 404, 'no-store')
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
+  if (context.url.pathname.startsWith(WEATHER_API_PREFIX)) {
+    return applyCsp(await handleWeatherProxy(context.url))
+  }
+
   const queryLang = context.url.searchParams.get('lang')
   const cookieLang = context.cookies.get(LOCALE_COOKIE_NAME)?.value || context.cookies.get('inkstone_locale')?.value
   const acceptLanguage = context.request.headers.get('accept-language')

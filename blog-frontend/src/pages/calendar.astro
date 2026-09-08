@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro'
 import CalendarWidget from '../components/CalendarWidget'
+import WeatherWidget from '../components/WeatherWidget'
 import { api } from '../lib/api'
 import { t, DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
 
@@ -19,6 +20,13 @@ const calendarDays = await api.getCalendar()
         {t('calendar.intro', {}, locale)}
       </p>
     </header>
+
+    <!-- Weather Widget -->
+    <section class="py-4">
+      <div class="max-w-2xl mx-auto">
+        <WeatherWidget client:load initialLocale={locale} />
+      </div>
+    </section>
 
     <!-- Full Calendar Component -->
     <section class="py-4">

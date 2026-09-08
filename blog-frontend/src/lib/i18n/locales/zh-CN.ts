@@ -186,6 +186,32 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   // Degraded Banner
   'degraded.banner': '无法连接博客服务器，当前展示离线缓存内容',
 
+  // Weather Widget
+  'weather.title': '天气',
+  'weather.change_city': '切换城市',
+  'weather.search_placeholder': '搜索城市（支持中/英文）',
+  'weather.search_aria': '搜索城市',
+  'weather.clear_search': '清除搜索',
+  'weather.searching': '正在搜索...',
+  'weather.search_error': '城市搜索失败，请稍后重试',
+  'weather.no_city': '未找到城市 "{query}"',
+  'weather.loading': '正在获取天气...',
+  'weather.error': '天气服务暂不可用',
+  'weather.retry': '重试',
+  'weather.humidity': '湿度 {value}%',
+  'weather.wind': '风 {value} km/h',
+  'weather.today': '今天',
+  'weather.tomorrow': '明天',
+  'weather.cond_clear': '晴',
+  'weather.cond_partly_cloudy': '多云',
+  'weather.cond_cloudy': '阴',
+  'weather.cond_fog': '雾',
+  'weather.cond_drizzle': '毛毛雨',
+  'weather.cond_rain': '雨',
+  'weather.cond_snow': '雪',
+  'weather.cond_thunder': '雷雨',
+  'weather.cond_unknown': '天气',
+
   // Interactive copy & runner
   'interactive.copy': '复制',
   'interactive.copied': '已复制',
