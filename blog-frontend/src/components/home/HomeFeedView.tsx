@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, type ReactElement } from 'react'
+import { useState, useRef, useMemo, useEffect, useCallback, type ReactElement } from 'react'
 import { X, Sparkles } from 'lucide-react'
 import HomePostCard from './HomePostCard'
 import HomePagination from './HomePagination'
@@ -128,6 +128,65 @@ interface UseFeedStateOptions {
   onScrollToTop?: () => void
 }
 
+function useLatestRequest() {
+  const seqRef = useRef(0)
+  const controllerRef = useRef<AbortController | null>(null)
+
+  // 卸载时中止在途请求：避免卸载后 setState 与无谓的网络消耗
+  useEffect(() => () => controllerRef.current?.abort(), [])
+
+  const begin = useCallback((): { seq: number; signal: AbortSignal } => {
+    // 新请求取代旧请求：中止在途 fetch，seq 守卫保证过期响应不会覆盖新结果
+    controllerRef.current?.abort()
+    const controller = new AbortController()
+    controllerRef.current = controller
+    return { seq: ++seqRef.current, signal: controller.signal }
+  }, [])
+
+  const isLatest = useCallback((seq: number): boolean => seq === seqRef.current, [])
+
+  return { begin, isLatest }
+}
+
+interface UseFeedQueryOptions {
+  initialPosts: BlogPost[]
+  initialTotal: number
+  initialTotalPages: number
+  onScrollToTop?: () => void
+}
+
+function useFeedQuery({ initialPosts, initialTotal, initialTotalPages, onScrollToTop }: UseFeedQueryOptions) {
+  const [data, setData] = useState({
+    posts: initialPosts,
+    total: initialTotal,
+    totalPages: initialTotalPages,
+    loading: false,
+  })
+  const { begin, isLatest } = useLatestRequest()
+
+  const fetchAndApply = async (targetTag: string | null, targetPage: number, targetLimit: number) => {
+    const { seq, signal } = begin()
+    setData((prev) => ({ ...prev, loading: true }))
+    try {
+      const res = await api.getPosts({
+        tag: targetTag || undefined,
+        page: targetPage,
+        limit: targetLimit,
+        signal,
+      })
+      if (!isLatest(seq)) return
+      setData({ posts: res.posts, total: res.total, totalPages: res.totalPages, loading: false })
+    } finally {
+      if (isLatest(seq)) {
+        setData((prev) => ({ ...prev, loading: false }))
+        onScrollToTop?.()
+      }
+    }
+  }
+
+  return { data, fetchAndApply }
+}
+
 function useFeedState({
   initialPosts,
   initialTotal,
@@ -140,23 +199,7 @@ function useFeedState({
   const [tag, setTag] = useState<string | null>(initialTag)
   const [page, setPage] = useState<number>(initialPage)
   const [pageSize, setPageSize] = useState<number>(initialLimit)
-  const [data, setData] = useState({
-    posts: initialPosts,
-    total: initialTotal,
-    totalPages: initialTotalPages,
-    loading: false,
-  })
-
-  const fetchAndApply = async (targetTag: string | null, targetPage: number, targetLimit: number) => {
-    setData((prev) => ({ ...prev, loading: true }))
-    try {
-      const res = await api.getPosts({ tag: targetTag || undefined, page: targetPage, limit: targetLimit })
-      setData({ posts: res.posts, total: res.total, totalPages: res.totalPages, loading: false })
-    } finally {
-      setData((prev) => ({ ...prev, loading: false }))
-      onScrollToTop?.()
-    }
-  }
+  const { data, fetchAndApply } = useFeedQuery({ initialPosts, initialTotal, initialTotalPages, onScrollToTop })
 
   const queryPosts = (nextTag: string | null, nextPage: number, nextLimit: number) => {
     setTag(nextTag)

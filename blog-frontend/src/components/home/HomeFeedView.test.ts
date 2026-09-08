@@ -152,6 +152,7 @@ describe('HomeFeedView tag filter interaction', () => {
       tag: 'tag-a',
       page: 1,
       limit: 10,
+      signal: expect.any(AbortSignal),
     })
 
     expect(container.textContent).toContain('当前标签:')
