@@ -117,7 +117,7 @@ describe('WeatherWidget forecast display', () => {
   })
 
   it('shows error state when the forecast request fails and recovers on retry', async () => {
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL): Promise<Response> => {
       throw new Error('network down')
     })
     vi.stubGlobal('fetch', fetchMock)

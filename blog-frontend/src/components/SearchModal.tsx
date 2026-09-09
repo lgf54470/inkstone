@@ -6,7 +6,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
-import { Calendar, Tag, Loader2, AlertCircle } from 'lucide-react'
+import { Calendar, Tag, AlertCircle } from 'lucide-react'
 import SearchInput from './SearchInput'
 import { api } from '../lib/api'
 import { useFocusTrap, useScrollLock } from '../lib/use-focus-trap'

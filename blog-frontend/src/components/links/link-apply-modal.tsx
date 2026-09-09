@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, type SyntheticEvent } from 'react'
 import { Check, Copy, Loader2, Sparkles, X } from 'lucide-react'
 import { submitPublicLinkRequest } from '../../lib/api'
-import { t, useCurrentLocale } from '../../lib/i18n'
+import { t, useCurrentLocale, type BlogLocale } from '../../lib/i18n'
 
 export interface LinkApplyModalProps {
   isOpen: boolean
@@ -70,7 +70,7 @@ function useApplyModalForm(props: LinkApplyModalProps) {
     setForm((prev) => ({ ...prev, avatar: computeFaviconUrl(form.url) }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!form.name.trim() || !form.url.trim()) return
     setIsSubmitting(true)
@@ -179,7 +179,7 @@ function ApplyForm({
   form: { name: string; url: string; desc: string; avatar: string; email: string }
   onChange: React.Dispatch<React.SetStateAction<{ name: string; url: string; desc: string; avatar: string; email: string }>>
   onFetchFavicon: () => void
-  onSubmit: (e: React.FormEvent) => void
+  onSubmit: (e: SyntheticEvent<HTMLFormElement>) => void
   onCancel: () => void
   isSubmitting: boolean
 }) {
@@ -346,7 +346,7 @@ function FormField({
   )
 }
 
-function formatSiteInfo(props: LinkApplyModalProps, locale: string) {
+function formatSiteInfo(props: LinkApplyModalProps, locale: BlogLocale) {
   return `${t('links.form_name', {}, locale).replace(' *', '')}: ${props.siteName}
 ${t('links.form_url', {}, locale).replace(' *', '')}: ${props.siteUrl}
 ${t('links.form_desc', {}, locale)}: ${props.siteDescription}

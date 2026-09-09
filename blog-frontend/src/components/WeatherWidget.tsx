@@ -231,7 +231,6 @@ function CitySearch({
   locale,
   onQueryChange,
   onSelect,
-  onClear,
 }: {
   query: string
   results: WeatherGeocodeResult[]

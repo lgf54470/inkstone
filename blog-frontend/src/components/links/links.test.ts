@@ -10,9 +10,9 @@ import { useLinksState } from './use-links-state'
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const MOCK_CATEGORIES: BlogPublicLinkCategory[] = [
-  { id: 'cat-tech', name: '技术开发', sortOrder: 1 },
-  { id: 'cat-frontend', name: '前端工具', parentId: 'cat-tech', sortOrder: 1 },
-  { id: 'cat-life', name: '生活随笔', sortOrder: 2 },
+  { id: 'cat-tech', name: '技术开发', icon: null, parentId: null, sortOrder: 1 },
+  { id: 'cat-frontend', name: '前端工具', icon: null, parentId: 'cat-tech', sortOrder: 1 },
+  { id: 'cat-life', name: '生活随笔', icon: null, parentId: null, sortOrder: 2 },
 ]
 
 const MOCK_LINKS: BlogPublicLink[] = [
@@ -23,12 +23,8 @@ const MOCK_LINKS: BlogPublicLink[] = [
     description: '渐进式 JavaScript 框架',
     avatar: 'https://vuejs.org/logo.png',
     categoryId: 'cat-frontend',
-    sortOrder: 1,
     isPinned: false,
     clicks: 10,
-    status: 'approved',
-    createdAt: 1000,
-    updatedAt: 1000,
   },
   {
     id: 'link-2',
@@ -37,12 +33,8 @@ const MOCK_LINKS: BlogPublicLink[] = [
     description: '快速内容驱动的网站框架',
     avatar: null,
     categoryId: 'cat-frontend',
-    sortOrder: 2,
     isPinned: true,
     clicks: 50,
-    status: 'approved',
-    createdAt: 2000,
-    updatedAt: 2000,
   },
   {
     id: 'link-3',
@@ -51,12 +43,8 @@ const MOCK_LINKS: BlogPublicLink[] = [
     description: '生活与思考',
     avatar: null,
     categoryId: 'cat-life',
-    sortOrder: 3,
     isPinned: false,
     clicks: 5,
-    status: 'approved',
-    createdAt: 3000,
-    updatedAt: 3000,
   },
 ]
 

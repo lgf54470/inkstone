@@ -1,5 +1,5 @@
 import { CheckCircle2 } from 'lucide-react'
-import { t, useCurrentLocale } from '../../lib/i18n'
+import { t, useCurrentLocale, type BlogLocale } from '../../lib/i18n'
 import { LinkApplyModal } from './link-apply-modal'
 import { LinkContextMenu } from './link-context-menu'
 import { LinkQRModal } from './link-qr-modal'
@@ -65,12 +65,12 @@ function LinksContainerGroup({
 }: {
   state: ReturnType<typeof useLinksState>
   categories: LinksContainerProps['categories']
-  locale: string
+  locale: BlogLocale
 }) {
   const handleCopyLink = (url: string) => {
     navigator.clipboard
       .writeText(url)
-      .then(() => state.showToast(t('links.menu_copy_success', {}, locale)))
+      .then(() => state.showToast(t('links.copied_toast', {}, locale)))
       .catch((error) => {
         void error
       })
