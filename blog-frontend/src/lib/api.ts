@@ -115,6 +115,7 @@ export function clearApiMemoryCache(): void {
 }
 
 async function requestJsonCached(path: string, ttlSeconds: number, init?: RequestInit): Promise<unknown> {
+  if (typeof window === 'undefined') return requestJson(path, init)
   if (init?.method && init.method !== 'GET') return requestJson(path, init)
   if (init?.cache === 'no-store' || init?.cache === 'no-cache') return requestJson(path, init)
   const cached = apiMemoryCache.get(path)

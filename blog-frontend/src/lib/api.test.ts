@@ -235,4 +235,15 @@ describe('api in-memory caching', () => {
     expect(third).toHaveLength(1)
     expect(fetchMock).toHaveBeenCalledTimes(2) // Refetched after cache cleared
   })
+
+  it('bypasses memory cache when running in SSR environment', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ categories: [{ id: 'c1', name: 'Cat' }] }))
+    vi.stubGlobal('fetch', fetchMock)
+    clearApiMemoryCache()
+
+    vi.stubGlobal('window', undefined)
+    await api.getCategories()
+    await api.getCategories()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
 })
