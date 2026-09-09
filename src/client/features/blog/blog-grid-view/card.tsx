@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react'
 import { Copy, ExternalLink, Eye, FolderClosed, FolderInput, MessageSquare, Pin, RefreshCw, Settings2, Trash2 } from 'lucide-react'
 import type { BlogCategory, BlogFolder, BlogPost } from '@shared/types'
+import { Checkbox } from '../../../components/form'
 import { IconButton } from '../../../components/primitives'
 import { Menu, type MenuItem } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
@@ -118,11 +119,11 @@ function CardTopControls({
   return (
     <>
       <div className='absolute top-2.5 left-2.5 z-[var(--z-sticky)]'>
-        <input
-          type='checkbox'
+        <Checkbox
           checked={isSelected}
           onChange={onToggleSelect}
-          className='size-4 rounded accent-[var(--accent)] cursor-pointer drop-shadow-[var(--drop-shadow-sm)]'
+          aria-label={post.title}
+          className='min-h-0 drop-shadow-[var(--drop-shadow-sm)]'
         />
       </div>
 

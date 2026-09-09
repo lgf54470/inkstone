@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { BarChart2, ExternalLink, FolderClosed, FolderInput, Lock, QrCode, Settings2 } from 'lucide-react'
 import type { ShareFolder, ShareInfo } from '@shared/types'
-import { Switch } from '../../../components/form'
+import { Checkbox, Switch } from '../../../components/form'
 import { IconButton } from '../../../components/primitives'
 import { Menu, useContextMenu } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
@@ -42,7 +42,7 @@ export function ShareTableRow({ share, isSelected, folders, copiedSlug, onToggle
       className={cn('group transition-colors hover:bg-[var(--bg-hover)] cursor-grab active:cursor-grabbing select-none', isSelected ? 'bg-[var(--accent-subtle)]/30' : '')}
     >
       <td className='px-3 py-2.5 text-center'>
-        <input type='checkbox' checked={isSelected} onChange={onToggleSelect} className='rounded border-[var(--border-default)] accent-[var(--accent)]' />
+        <Checkbox checked={isSelected} onChange={onToggleSelect} aria-label={share.noteTitle || t('common.untitled_note')} className='min-h-0' />
       </td>
       <td className='px-3 py-2.5'>
         <RowTitleCell share={share} folders={folders} onTogglePin={onTogglePin} onToggleStar={onToggleStar} onOpenEdit={() => onOpenEdit(share)} />

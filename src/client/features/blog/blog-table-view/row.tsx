@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Copy, ExternalLink, FolderClosed, FolderInput, Pin, RefreshCw, Settings2, Trash2 } from 'lucide-react'
 import type { BlogCategory, BlogFolder, BlogPost } from '@shared/types'
+import { Checkbox } from '../../../components/form'
 import { IconButton } from '../../../components/primitives'
 import { Menu } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
@@ -51,11 +52,11 @@ export function BlogTableRow({
       title={t('blog.drag_to_folder_hint')}
     >
       <td className='px-3 py-2.5 text-center'>
-        <input
-          type='checkbox'
+        <Checkbox
           checked={isSelected}
           onChange={onToggleSelect}
-          className='rounded border-[var(--border-default)] accent-[var(--accent)] cursor-pointer'
+          aria-label={post.title}
+          className='min-h-0'
         />
       </td>
       <TableRowTitleCell post={post} />

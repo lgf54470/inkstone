@@ -448,21 +448,30 @@ export function SettingRow({
 function CheckboxInner({
   checked,
   onChange,
+  disabled,
   label,
   className,
+  'aria-label': ariaLabel,
 }: {
   checked: boolean
   onChange: (next: boolean) => void
+  disabled?: boolean
   label?: ReactNode
   className?: string
+  'aria-label'?: string
 }) {
   return (
     <button
       type='button'
       role='checkbox'
       aria-checked={checked}
+      aria-label={ariaLabel}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={cn('inline-flex min-h-10 items-center gap-2 text-[length:var(--text-13)] md:min-h-0', className)}
+      className={cn(
+        'inline-flex min-h-10 items-center gap-2 text-[length:var(--text-13)] disabled:opacity-45 md:min-h-0',
+        className,
+      )}
     >
       <span
         className={cn(

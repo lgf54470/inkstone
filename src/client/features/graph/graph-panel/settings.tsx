@@ -10,7 +10,7 @@ import {
   type GroupBy,
 } from '../../../lib/graph-settings'
 import { IconButton } from '../../../components/primitives'
-import { Select } from '../../../components/form'
+import { Select, Switch } from '../../../components/form'
 import { Tooltip } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 
@@ -88,7 +88,21 @@ function GraphSelect({ label, value, onChange, options }: { label: string; value
 
 function GraphToggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (value: boolean) => void }) {
   const hintId = useId()
-  return <label className='flex cursor-pointer items-center justify-between gap-3 text-[length:var(--text-12)] text-[var(--text-secondary)]'><span className='flex min-w-0 items-center gap-1'><span className='truncate'>{label}</span>{hint && <Tooltip label={hint}><span role='img' aria-label={hint} id={hintId} className='inline-flex shrink-0 text-[var(--text-quaternary)]'><Info size={11}/></span></Tooltip>}</span><input type='checkbox' aria-describedby={hint ? hintId : undefined} checked={checked} onChange={(event) => onChange(event.target.checked)} className='size-4 accent-[var(--accent)]'/></label>
+  return (
+    <div className='flex items-center justify-between gap-3 text-[length:var(--text-12)] text-[var(--text-secondary)]'>
+      <span className='flex min-w-0 items-center gap-1'>
+        <span className='truncate'>{label}</span>
+        {hint && (
+          <Tooltip label={hint}>
+            <span role='img' aria-label={hint} id={hintId} className='inline-flex shrink-0 text-[var(--text-quaternary)]'>
+              <Info size={11} />
+            </span>
+          </Tooltip>
+        )}
+      </span>
+      <Switch checked={checked} onChange={onChange} label={label} />
+    </div>
+  )
 }
 
 function GraphRange({ label, min, max, step, value, onChange }: { label: string; min: number; max: number; step: number; value: number; onChange: (value: number) => void }) {

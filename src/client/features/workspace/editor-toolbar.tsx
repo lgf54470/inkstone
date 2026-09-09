@@ -1,6 +1,6 @@
 import type { EditorView } from '@codemirror/view'
 import { Blocks, Bold, Braces, ChevronDown, Code, Heading, Highlighter, Image as ImageIcon, Italic, Link2, List, ListOrdered, ListTodo, Minus, Network, Paperclip, Quote, Sigma, Smile, Strikethrough, Table } from 'lucide-react'
-import { IconButton } from '../../components/primitives'
+import { Divider, IconButton } from '../../components/primitives'
 import { Menu, Tooltip } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { insertCodeBlock, insertHorizontalRule, insertLink, insertTable, insertText, toggleBold, toggleBulletList, toggleInlineCode, toggleItalic, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskList } from '../../editor/commands'
@@ -49,10 +49,6 @@ function MenuButton({ buttonRef, label, open, onClick, children, mobile }: { but
       </button>
     </Tooltip>
   )
-}
-
-function Divider() {
-  return <span className='mx-1 h-4 w-px shrink-0 bg-[var(--border-subtle)]' />
 }
 
 function TextStyleButtons({ b }: { b: ToolbarBundle }) {
@@ -143,19 +139,19 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
         </button>
       </Tooltip>
 
-      <Divider />
+      <Divider vertical className='mx-1' />
 
       <TextStyleButtons b={b} />
 
-      <Divider />
+      <Divider vertical className='mx-1' />
 
       <ListButtons b={b} />
 
-      <Divider />
+      <Divider vertical className='mx-1' />
 
       <InsertButtons b={b} onPickImage={onPickImage} onPickFile={onPickFile} />
 
-      <Divider />
+      <Divider vertical className='mx-1' />
 
       <BlockButtons b={b} />
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { BlogLink, BlogLinkCategory, BlogLinkStatus } from '@shared/types'
 import { Modal } from '../../../components/overlay'
 import { Button } from '../../../components/primitives'
-import { Field, Input, Select, Textarea } from '../../../components/form'
+import { Checkbox, Field, Input, Select, Textarea } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 
 export interface LinkEditModalProps {
@@ -185,10 +185,7 @@ function LinkMetaFields({
         <Input value={email} onChange={(e) => setEmail(e.target.value)} type='email' placeholder={t('blog.link_email_placeholder')} />
       </Field>
       <div className='flex items-center gap-2 pt-1'>
-        <label className='flex items-center gap-2 cursor-pointer select-none text-[length:var(--text-12)] text-[var(--text-primary)]'>
-          <input type='checkbox' checked={isPinned} onChange={(e) => setIsPinned(e.target.checked)} className='size-4 rounded accent-[var(--accent)]' />
-          {t('blog.link_pin')}
-        </label>
+        <Checkbox checked={isPinned} onChange={setIsPinned} label={t('blog.link_pin')} />
       </div>
     </>
   )

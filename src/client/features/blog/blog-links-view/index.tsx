@@ -1,7 +1,7 @@
 import { Folder, Inbox, Plus, RefreshCw, Search, UploadCloud } from 'lucide-react'
 import type { BlogLinkStatus } from '@shared/types'
 import { Button, IconButton } from '../../../components/primitives'
-import { Input, Select } from '../../../components/form'
+import { Checkbox, Input, Select } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 import { useBlogLinksView } from './use-blog-links-view'
 import { LinkCardRow } from './link-card-row'
@@ -64,11 +64,11 @@ function LinksListContent({ view }: { view: ReturnType<typeof useBlogLinksView> 
   return (
     <>
       <div className='flex items-center gap-2 px-1 pb-1'>
-        <input
-          type='checkbox'
+        <Checkbox
           checked={view.isAllSelected}
           onChange={view.handleToggleSelectAll}
-          className='size-3.5 rounded accent-[var(--accent)] cursor-pointer'
+          aria-label={t('blog.select_all_list')}
+          className='min-h-0'
         />
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)] select-none'>
           {t('blog.select_all_list')} ({view.filteredLinks.length})

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { AlertTriangle, CheckCircle, ExternalLink, Inbox, RefreshCw, Search, ShieldCheck, Trash2, User, XCircle } from 'lucide-react'
 import type { BlogComment, BlogCommentStatus } from '@shared/types'
 import { Button, IconButton } from '../../components/primitives'
-import { Input } from '../../components/form'
+import { Checkbox, Input } from '../../components/form'
 import { t } from '../../lib/i18n'
 import { useBlogCommentsView } from './use-blog-comments-view'
 
@@ -33,7 +33,12 @@ export function BlogCommentsView() {
       <div className='flex-1 overflow-y-auto p-4 space-y-3'>
         {view.filteredComments.length > 0 && (
           <div className='flex items-center gap-2 px-1 pb-1'>
-            <input type='checkbox' checked={view.isAllSelected} onChange={view.handleToggleSelectAll} className='size-3.5 rounded accent-[var(--accent)] cursor-pointer' />
+            <Checkbox
+              checked={view.isAllSelected}
+              onChange={view.handleToggleSelectAll}
+              aria-label={t('blog.select_all_list')}
+              className='min-h-0'
+            />
             <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)] select-none'>{t('blog.select_all_list')} ({view.filteredComments.length})</span>
           </div>
         )}
@@ -261,7 +266,7 @@ function CommentCardHeader({ bundle }: { bundle: CommentCardBundle }) {
   return (
     <div className='flex items-start justify-between gap-3'>
       <div className='flex items-start gap-2.5'>
-        <input type='checkbox' checked={isSelected} onChange={onToggleSelect} className='mt-1 size-3.5 rounded accent-[var(--accent)] cursor-pointer' />
+        <Checkbox checked={isSelected} onChange={onToggleSelect} aria-label={comment.authorName} className='mt-1 min-h-0' />
         <CommentAuthorAvatar comment={comment} />
 
         <div>

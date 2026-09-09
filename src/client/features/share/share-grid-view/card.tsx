@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { BarChart2, ExternalLink, Eye, FolderClosed, FolderInput, Lock, QrCode, Settings2, Timer, Users } from 'lucide-react'
 import type { ShareFolder, ShareInfo } from '@shared/types'
-import { Switch } from '../../../components/form'
+import { Checkbox, Switch } from '../../../components/form'
 import { IconButton } from '../../../components/primitives'
 import { Menu, useContextMenu } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
@@ -72,7 +72,7 @@ function CardHeader({ share, isSelected, onToggleSelect, onTogglePin, onToggleSt
   return (
     <div className='flex items-start justify-between gap-2 pb-2'>
       <div className='flex items-center gap-1.5 min-w-0'>
-        <input type='checkbox' checked={isSelected} onChange={onToggleSelect} className='rounded border-[var(--border-default)] accent-[var(--accent)] shrink-0' />
+        <Checkbox checked={isSelected} onChange={onToggleSelect} aria-label={share.noteTitle || t('common.untitled_note')} className='shrink-0 min-h-0' />
         <PinStarButtons share={share} onTogglePin={onTogglePin} onToggleStar={onToggleStar} compact />
         <span onClick={onOpenEdit} className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer'>
           {share.noteTitle || t('common.untitled_note')}

@@ -1,5 +1,6 @@
 import { Share2 } from 'lucide-react'
 import type { ShareInfo } from '@shared/types'
+import { Checkbox } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 import { useShareList } from '../use-share-list'
 import { ShareTableRow } from './row'
@@ -67,11 +68,11 @@ function ShareTableHeader({ allSelected, onToggleAll }: { allSelected: boolean; 
     <thead className='sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-card)] shadow-[var(--shadow-xs)]'>
       <tr className='border-b border-[var(--border-subtle)] text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
         <th className='w-10 px-3 py-2 text-center'>
-          <input
-            type='checkbox'
+          <Checkbox
             checked={allSelected}
             onChange={onToggleAll}
-            className='rounded border-[var(--border-default)] accent-[var(--accent)]'
+            aria-label={t('contextmenu.select_all')}
+            className='min-h-0'
           />
         </th>
         <th className='px-3 py-2'>{t('share.table_note_title')}</th>

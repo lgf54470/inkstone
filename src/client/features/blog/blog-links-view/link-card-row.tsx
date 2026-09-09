@@ -1,6 +1,7 @@
 import { Check, Edit2, ExternalLink, Globe, Pin, Trash2, X } from 'lucide-react'
 import type { BlogLink, BlogLinkCategory } from '@shared/types'
 import { Badge, IconButton } from '../../../components/primitives'
+import { Checkbox } from '../../../components/form'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
 
@@ -99,11 +100,11 @@ function LinkRowInfo({
 }) {
   return (
     <div className='flex items-center gap-3 min-w-0 flex-1'>
-      <input
-        type='checkbox'
+      <Checkbox
         checked={isSelected}
         onChange={onToggleSelect}
-        className='size-4 rounded accent-[var(--accent)] cursor-pointer shrink-0'
+        aria-label={link.name}
+        className='shrink-0 min-h-0'
       />
       <LinkAvatar avatar={link.avatar} name={link.name} />
       <div className='min-w-0 flex-1 space-y-1'>
