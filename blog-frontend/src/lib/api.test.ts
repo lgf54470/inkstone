@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, extractCoverUrl, isApiDegraded, subscribeApiHealth } from './api'
+import { api, extractCoverUrl, isApiDegraded, subscribeApiHealth, clearApiMemoryCache } from './api'
 import { API_TIMEOUT_MS } from './constants'
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -17,6 +17,7 @@ function stubFetch(body: unknown, ok = true, status = 200): void {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.useRealTimers()
+  clearApiMemoryCache()
 })
 
 const SNAKE_CASE_POST = {
@@ -186,25 +187,52 @@ describe('api health state', () => {
     expect(info.siteName).toBe('Inkstone Blog')
     expect(isApiDegraded()).toBe(true)
   })
+})
 
+describe('api health subscriber', () => {
   it('notifies subscribers on change and stops after unsubscribe', async () => {
     stubFetch({ settings: { siteName: 'Back' } })
+    clearApiMemoryCache()
     await api.getSiteInfo() // 先回到健康状态，保证测试与执行顺序无关
     const seen: boolean[] = []
     const unsubscribe = subscribeApiHealth((value) => seen.push(value))
     expect(seen).toEqual([false])
 
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('down') }))
+    clearApiMemoryCache()
     await api.getSiteInfo()
     expect(seen).toEqual([false, true])
 
     stubFetch({ settings: { siteName: 'Back' } })
+    clearApiMemoryCache()
     await api.getSiteInfo()
     expect(seen).toEqual([false, true, false])
 
     unsubscribe()
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('down again') }))
+    clearApiMemoryCache()
     await api.getSiteInfo()
     expect(seen).toEqual([false, true, false])
+  })
+})
+
+describe('api in-memory caching', () => {
+  it('serves repeated requests from memory cache without invoking fetch', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ categories: [{ id: 'c1', name: 'Cat' }] }))
+    vi.stubGlobal('fetch', fetchMock)
+    clearApiMemoryCache()
+
+    const first = await api.getCategories()
+    expect(first).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    const second = await api.getCategories()
+    expect(second).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1) // Still 1: served from memory cache!
+
+    clearApiMemoryCache()
+    const third = await api.getCategories()
+    expect(third).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2) // Refetched after cache cleared
   })
 })

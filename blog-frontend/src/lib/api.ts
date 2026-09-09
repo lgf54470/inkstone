@@ -102,8 +102,32 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
   }
 }
 
-async function requestJsonCached(path: string, _ttlSeconds: number, init?: RequestInit): Promise<unknown> {
-  return requestJson(path, init)
+interface ApiCacheEntry {
+  expiresAt: number
+  data: unknown
+}
+
+const apiMemoryCache = new Map<string, ApiCacheEntry>()
+const MAX_API_CACHE_ENTRIES = 128
+
+export function clearApiMemoryCache(): void {
+  apiMemoryCache.clear()
+}
+
+async function requestJsonCached(path: string, ttlSeconds: number, init?: RequestInit): Promise<unknown> {
+  if (init?.method && init.method !== 'GET') return requestJson(path, init)
+  if (init?.cache === 'no-store' || init?.cache === 'no-cache') return requestJson(path, init)
+  const cached = apiMemoryCache.get(path)
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data
+  }
+  const data = await requestJson(path, init)
+  if (apiMemoryCache.size >= MAX_API_CACHE_ENTRIES) {
+    const oldest = apiMemoryCache.keys().next().value
+    if (oldest !== undefined) apiMemoryCache.delete(oldest)
+  }
+  apiMemoryCache.set(path, { expiresAt: Date.now() + ttlSeconds * 1000, data })
+  return data
 }
 
 export const api = {
@@ -343,7 +367,7 @@ function normalizePublicLinkCategory(raw: unknown): BlogPublicLinkCategory {
 
 export async function fetchPublicLinks(): Promise<{ links: BlogPublicLink[]; categories: BlogPublicLinkCategory[] }> {
   try {
-    const raw = await requestJson('/api/blog/public/links')
+    const raw = await requestJsonCached('/api/blog/public/links', 60)
     const rec = asRecord(raw)
     const links = asArray(rec.links).map(normalizePublicLink)
     const categories = asArray(rec.categories).map(normalizePublicLinkCategory)
