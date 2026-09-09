@@ -7,6 +7,7 @@ import SearchModal from '../components/SearchModal'
 import DegradedBanner from '../components/DegradedBanner'
 import { api, getApiBase } from '../lib/api'
 import type { BlogSiteInfo } from '../lib/types'
+import { ClientRouter } from 'astro:transitions'
 import { DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
 
 interface ArticleMeta {
@@ -59,6 +60,7 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     <meta name="inkstone-api-url" content={getApiBase()} />
     <meta name="inkstone-locale" content={locale} />
     <link rel="canonical" href={`${Astro.url.origin}${Astro.url.pathname}`} />
+    <ClientRouter />
     {articleMeta && (
       <script type="application/ld+json" is:inline set:html={JSON.stringify({
         '@context': 'https://schema.org',
@@ -89,28 +91,32 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
       })()
     </script>
 
-    <!-- Immediately apply theme preferences before paint to prevent flicker -->
+    <!-- Immediately apply theme preferences before paint and on client route swap -->
     <script is:inline define:vars={{ initialLocale: locale }}>
       ;(function () {
-        try {
-          const raw = localStorage.getItem('inkstone-blog-appearance')
-          const cfg = raw ? JSON.parse(raw) : {}
-          const theme = cfg.theme || 'system'
-          const resolvedTheme =
-            theme === 'system'
-              ? window.matchMedia('(prefers-color-scheme: dark)').matches
-                ? 'dark'
-                : 'light'
-              : theme
-          const doc = document.documentElement
-          doc.setAttribute('data-theme', resolvedTheme)
-          doc.setAttribute('data-accent', cfg.accent || 'cinnabar')
-          doc.setAttribute('data-background', cfg.background || 'paper')
-          doc.setAttribute('data-density', cfg.density || 'comfortable')
-          doc.setAttribute('lang', cfg.lang || initialLocale)
-        } catch (e) {
-          console.warn('Failed to restore appearance before paint:', e)
+        function applyAppearance() {
+          try {
+            const raw = localStorage.getItem('inkstone-blog-appearance')
+            const cfg = raw ? JSON.parse(raw) : {}
+            const theme = cfg.theme || 'system'
+            const resolvedTheme =
+              theme === 'system'
+                ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                  ? 'dark'
+                  : 'light'
+                : theme
+            const doc = document.documentElement
+            doc.setAttribute('data-theme', resolvedTheme)
+            doc.setAttribute('data-accent', cfg.accent || 'cinnabar')
+            doc.setAttribute('data-background', cfg.background || 'paper')
+            doc.setAttribute('data-density', cfg.density || 'comfortable')
+            doc.setAttribute('lang', cfg.lang || initialLocale)
+          } catch (e) {
+            console.warn('Failed to restore appearance before paint:', e)
+          }
         }
+        applyAppearance()
+        document.addEventListener('astro:after-swap', applyAppearance)
       })()
     </script>
   </head>
