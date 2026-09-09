@@ -4,7 +4,6 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   // Navigation & Header
   'nav.home': 'Home',
   'nav.timeline': 'Timeline',
-  'nav.calendar': 'Calendar',
   'nav.categories': 'Categories',
   'nav.tags': 'Tags',
   'nav.links': 'Links',
@@ -18,7 +17,6 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'footer.quick_nav': 'Quick Navigation',
   'footer.nav_featured': 'Featured Posts',
   'footer.nav_timeline': 'Full Timeline',
-  'footer.nav_calendar': 'Post Calendar',
   'footer.nav_categories': 'Topic Categories',
   'footer.nav_tags': 'Tag Index',
   'footer.about_author': 'About Author',
@@ -70,12 +68,6 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'timeline.views_suffix': '{views} reads',
 
   // Calendar
-  'calendar.title': 'Post Calendar - Inkstone Blog',
-  'calendar.description': 'Browse post records interactively by year, month and day',
-  'calendar.header_title': 'Post Calendar',
-  'calendar.intro': 'Interactive calendar widget. Tap marked dates to reveal published posts.',
-  'calendar.tips_title': '💡 Instructions',
-  'calendar.tips_desc': 'Highlighted dates indicate published articles. Click any date to view titles in the panel below and jump to reading.',
   'calendar.prev_month': 'Previous Month',
   'calendar.next_month': 'Next Month',
   'calendar.today': 'Today',

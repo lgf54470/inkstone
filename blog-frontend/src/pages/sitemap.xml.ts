@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro'
 import { api } from '../lib/api'
 import { escapeXml } from '../lib/xml'
 
-const STATIC_ROUTES = ['/', '/timeline', '/calendar', '/categories', '/tags']
+const STATIC_ROUTES = ['/', '/timeline', '/categories', '/tags']
 
 /**
  * 动态 sitemap：以请求 origin 自适应多环境（本地/预览/生产），

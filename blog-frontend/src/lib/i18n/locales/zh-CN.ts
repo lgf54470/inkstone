@@ -4,7 +4,6 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   // Navigation & Header
   'nav.home': '首页',
   'nav.timeline': '时间轴',
-  'nav.calendar': '日历',
   'nav.categories': '分类',
   'nav.tags': '标签',
   'nav.links': '友链',
@@ -18,7 +17,6 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'footer.quick_nav': '快速导航',
   'footer.nav_featured': '文章精选',
   'footer.nav_timeline': '全量时间轴',
-  'footer.nav_calendar': '发文日历',
   'footer.nav_categories': '分类专题',
   'footer.nav_tags': '标签检索',
   'footer.about_author': '关于博主',
@@ -70,12 +68,6 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'timeline.views_suffix': '{views} 阅读',
 
   // Calendar
-  'calendar.title': '发文日历 - Inkstone Blog',
-  'calendar.description': '按月份与日期交互式查看博文发布记录',
-  'calendar.header_title': '发文日历',
-  'calendar.intro': '交互式日历组件，轻点有标记的日期即可展开当天发布的博文',
-  'calendar.tips_title': '💡 使用说明',
-  'calendar.tips_desc': '日历网格中高亮色块标示该天有公开发布的笔记文章。点击具体日期可在下方抽屉中查阅标题并快速跳转正文阅读。',
   'calendar.prev_month': '上个月',
   'calendar.next_month': '下个月',
   'calendar.today': '今',

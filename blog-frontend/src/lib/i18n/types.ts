@@ -15,7 +15,6 @@ export type MessageKey =
   // Navigation & Header
   | 'nav.home'
   | 'nav.timeline'
-  | 'nav.calendar'
   | 'nav.categories'
   | 'nav.tags'
   | 'nav.links'
@@ -28,7 +27,6 @@ export type MessageKey =
   | 'footer.quick_nav'
   | 'footer.nav_featured'
   | 'footer.nav_timeline'
-  | 'footer.nav_calendar'
   | 'footer.nav_categories'
   | 'footer.nav_tags'
   | 'footer.about_author'
@@ -75,12 +73,6 @@ export type MessageKey =
   | 'timeline.month_suffix'
   | 'timeline.views_suffix'
   // Calendar
-  | 'calendar.title'
-  | 'calendar.description'
-  | 'calendar.header_title'
-  | 'calendar.intro'
-  | 'calendar.tips_title'
-  | 'calendar.tips_desc'
   | 'calendar.prev_month'
   | 'calendar.next_month'
   | 'calendar.today'

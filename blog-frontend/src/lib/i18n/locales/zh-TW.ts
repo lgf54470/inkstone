@@ -4,7 +4,6 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   // Navigation & Header
   'nav.home': '首頁',
   'nav.timeline': '時間軸',
-  'nav.calendar': '日曆',
   'nav.categories': '分類',
   'nav.tags': '標籤',
   'nav.links': '友鏈',
@@ -18,7 +17,6 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'footer.quick_nav': '快速導覽',
   'footer.nav_featured': '文章精選',
   'footer.nav_timeline': '全量時間軸',
-  'footer.nav_calendar': '發文日曆',
   'footer.nav_categories': '分類專題',
   'footer.nav_tags': '標籤檢索',
   'footer.about_author': '關於作者',
@@ -70,12 +68,6 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'timeline.views_suffix': '{views} 閱讀',
 
   // Calendar
-  'calendar.title': '發文日曆 - Inkstone Blog',
-  'calendar.description': '按月份與日期互動式查看文章發布記錄',
-  'calendar.header_title': '發文日曆',
-  'calendar.intro': '互動式日曆組件，點擊有標記的日期即可展開當天發布的文章',
-  'calendar.tips_title': '💡 使用說明',
-  'calendar.tips_desc': '日曆網格中高亮色塊標示該天有公開發布的筆記文章。點擊具體日期可在下方抽屜中查閱標題並快速跳轉內文閱讀。',
   'calendar.prev_month': '上個月',
   'calendar.next_month': '下個月',
   'calendar.today': '今',
