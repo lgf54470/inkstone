@@ -4,7 +4,8 @@ import FeedPostsList from './FeedPostsList'
 import HomePagination from './HomePagination'
 import HomeSidebar from './HomeSidebar'
 import { parsePositiveInt } from '../../lib/pagination'
-import { api } from '../../lib/api'
+import { api, isApiDegraded } from '../../lib/api'
+import { safeDecodeTag } from '../../lib/content'
 import { t, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
 import type { BlogPost, BlogCategory, BlogTag, BlogSiteInfo, CalendarDayPost } from '../../lib/types'
 
@@ -194,14 +195,37 @@ function findOptimisticPosts(
   fallbackPosts: BlogPost[],
 ): BlogPost[] | null {
   if (!targetTag) return fallbackPosts.length > 0 ? fallbackPosts : null
+  const clean = safeDecodeTag(targetTag)
   const matches: BlogPost[] = []
   for (const post of knownPosts.values()) {
-    if (post.tags?.includes(targetTag)) {
+    if (post.tags?.some((t) => t === clean || t.startsWith(`${clean}/`))) {
       matches.push(post)
       if (matches.length >= limit) break
     }
   }
   return matches.length > 0 ? matches : null
+}
+
+function checkFeedCache(cache: Map<string, FeedCacheEntry>, key: string): FeedCacheEntry | null {
+  const cached = cache.get(key)
+  return cached && Date.now() - cached.at < FEED_CACHE_TTL_MS ? cached : null
+}
+
+function applyFeedResult(
+  result: { posts: BlogPost[]; total: number; totalPages: number },
+  optimistic: BlogPost[] | null,
+  key: string,
+  cache: Map<string, FeedCacheEntry>,
+  knownPosts: Map<string, BlogPost>,
+  setData: (updater: (prev: { posts: BlogPost[]; total: number; totalPages: number; loading: boolean }) => { posts: BlogPost[]; total: number; totalPages: number; loading: boolean }) => void,
+): void {
+  if (result.posts.length === 0 && optimistic && optimistic.length > 0 && isApiDegraded()) {
+    setData((prev) => ({ ...prev, loading: false }))
+    return
+  }
+  for (const p of result.posts) knownPosts.set(p.id, p)
+  feedCacheSet(cache, key, { at: Date.now(), ...result })
+  setData((prev) => ({ ...prev, posts: result.posts, total: result.total, totalPages: result.totalPages, loading: false }))
 }
 
 function useFeedQuery(options: UseFeedQueryOptions) {
@@ -217,9 +241,8 @@ function useFeedQuery(options: UseFeedQueryOptions) {
 
   const fetchAndApply = async (targetTag: string | null, targetPage: number, targetLimit: number) => {
     const key = feedCacheKey(targetTag, targetPage, targetLimit)
-    const cache = cacheRef.current
-    const cached = cache.get(key)
-    if (cached && Date.now() - cached.at < FEED_CACHE_TTL_MS) {
+    const cached = checkFeedCache(cacheRef.current, key)
+    if (cached) {
       begin()
       setData({ posts: cached.posts, total: cached.total, totalPages: cached.totalPages, loading: false })
       onScrollToTop?.()
@@ -236,9 +259,11 @@ function useFeedQuery(options: UseFeedQueryOptions) {
     try {
       const result = await fetchFeedPage(targetTag, targetPage, targetLimit, signal)
       if (!isLatest(seq)) return
-      for (const p of result.posts) knownPostsRef.current.set(p.id, p)
-      feedCacheSet(cache, key, { at: Date.now(), ...result })
-      setData({ posts: result.posts, total: result.total, totalPages: result.totalPages, loading: false })
+      applyFeedResult(result, optimistic, key, cacheRef.current, knownPostsRef.current, setData)
+    } catch {
+      if (isLatest(seq) && optimistic && optimistic.length > 0) {
+        setData((prev) => ({ ...prev, loading: false }))
+      }
     } finally {
       if (isLatest(seq)) {
         setData((prev) => ({ ...prev, loading: false }))

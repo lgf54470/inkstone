@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { act } from 'react'
 import HomeFeedView from './HomeFeedView'
+import * as apiModule from '../../lib/api'
 import { api } from '../../lib/api'
 import type { BlogPost, BlogCategory, BlogTag, BlogSiteInfo } from '../../lib/types'
 
@@ -311,6 +312,24 @@ describe('HomeFeedView optimistic tag filtering', () => {
     })
 
     expect(container.textContent).toContain('第一篇文章')
+  })
+
+  it('preserves optimistic matching posts when API is degraded with empty fallback', async () => {
+    vi.restoreAllMocks()
+    const { container } = renderFeed()
+    vi.spyOn(api, 'getPosts').mockResolvedValueOnce({
+      posts: [],
+      total: 0,
+      page: 1,
+      limit: 10,
+      totalPages: 1,
+    })
+    const isDegradedSpy = vi.spyOn(apiModule, 'isApiDegraded').mockReturnValue(true)
+
+    await clickTag(container, '#tag-a')
+
+    expect(container.textContent).toContain('第一篇文章')
+    isDegradedSpy.mockRestore()
   })
 })
 
