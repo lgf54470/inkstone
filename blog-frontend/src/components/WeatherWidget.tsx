@@ -14,11 +14,10 @@ import {
 } from 'lucide-react'
 import SearchInput from './SearchInput'
 import { DEFAULT_WEATHER_CITY, WEATHER_CITY_SEARCH_DEBOUNCE_MS } from '../lib/constants'
+import { fetchWeatherForecast, fetchWeatherGeocode } from '../lib/api'
 import { t, useCurrentLocale, type BlogLocale, type MessageKey } from '../lib/i18n'
 import {
   loadSavedCity,
-  parseForecast,
-  parseGeocodeResults,
   saveCity,
   weatherConditionKey,
   type WeatherCity,
@@ -82,9 +81,7 @@ function useForecast(city: WeatherCity | null) {
     setForecastError(false)
     setForecast(null)
     try {
-      const res = await fetch(`/api/weather/forecast?lat=${target.latitude}&lon=${target.longitude}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = parseForecast(await res.json())
+      const data = await fetchWeatherForecast(target.latitude, target.longitude)
       if (seq !== seqRef.current) return
       if (!data) throw new Error('malformed forecast payload')
       setForecast(data)
@@ -120,9 +117,8 @@ function useCitySearch(active: boolean, locale: BlogLocale) {
     const timer = setTimeout(async () => {
       try {
         const lang = locale === 'en-US' ? 'en' : 'zh'
-        const res = await fetch(`/api/weather/geocode?q=${encodeURIComponent(q)}&language=${lang}`)
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        setResults(parseGeocodeResults(await res.json()))
+        const data = await fetchWeatherGeocode(q, lang)
+        setResults(data)
         setSearchError(false)
       } catch (err) {
         console.warn('Failed to search weather city:', err)

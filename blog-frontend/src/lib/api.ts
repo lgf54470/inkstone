@@ -23,6 +23,12 @@ import {
 import { FALLBACK_POSTS, FALLBACK_SITE_INFO } from './fallbacks'
 import { POSTS_PER_PAGE_DEFAULT, DEFAULT_API_URL, API_TIMEOUT_MS } from './constants'
 import { safeDecodeTag } from './content'
+import {
+  parseForecast,
+  parseGeocodeResults,
+  type WeatherForecast,
+  type WeatherGeocodeResult,
+} from './weather'
 
 export { extractCoverUrl } from './normalize'
 
@@ -402,4 +408,16 @@ export async function submitPublicLinkRequest(data: {
 
 export async function recordLinkClick(id: string): Promise<void> {
   await fetchWithTimeout(`/api/blog/public/links/${id}/click`, { method: 'POST' }).catch(() => null)
+}
+
+export async function fetchWeatherForecast(lat: number, lon: number): Promise<WeatherForecast | null> {
+  const res = await fetch(`/api/weather/forecast?lat=${lat}&lon=${lon}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return parseForecast(await res.json())
+}
+
+export async function fetchWeatherGeocode(query: string, language: 'en' | 'zh'): Promise<WeatherGeocodeResult[]> {
+  const res = await fetch(`/api/weather/geocode?q=${encodeURIComponent(query)}&language=${language}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return parseGeocodeResults(await res.json())
 }

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { buildPageItems } from '../../lib/pagination'
 import { t, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
 
@@ -32,18 +32,21 @@ function PageSizeSelector({
 }): ReactElement {
   return (
     <div className='flex items-center gap-2'>
-      <select
-        value={pageSize}
-        onChange={(e) => onPageSizeChange(Number(e.target.value))}
-        className='rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--border-default)] focus:border-[var(--accent)] focus:outline-hidden'
-        aria-label={t('pagination.page_size', { size: pageSize }, locale)}
-      >
-        {options.map((opt) => (
-          <option key={opt} value={opt}>
-            {t('pagination.page_size', { size: opt }, locale)}
-          </option>
-        ))}
-      </select>
+      <div className='relative flex items-center'>
+        <select
+          value={pageSize}
+          onChange={(e) => onPageSizeChange(Number(e.target.value))}
+          className='appearance-none rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] py-1 pl-2.5 pr-6 text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--border-default)] focus:border-[var(--accent)] focus:outline-hidden cursor-pointer'
+          aria-label={t('pagination.page_size', { size: pageSize }, locale)}
+        >
+          {options.map((opt) => (
+            <option key={opt} value={opt}>
+              {t('pagination.page_size', { size: opt }, locale)}
+            </option>
+          ))}
+        </select>
+        <ChevronDown size={12} className='pointer-events-none absolute right-2 text-[var(--text-tertiary)]' aria-hidden='true' />
+      </div>
       <span className='text-xs text-[var(--text-tertiary)]'>
         {t('pagination.total_count', { total }, locale)}
       </span>

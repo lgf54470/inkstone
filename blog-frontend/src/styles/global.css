@@ -113,6 +113,15 @@
   ::selection {
     background-color: var(--selection);
   }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+  }
 }
 
 /* UI Density settings */
