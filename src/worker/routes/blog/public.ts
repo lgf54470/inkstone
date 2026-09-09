@@ -16,6 +16,7 @@ import { registerBlogPublicLinksRoutes } from './public-links'
 
 export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): void {
   registerBlogCorsMiddleware(blogPublicRoutes)
+  registerBlogCacheMiddleware(blogPublicRoutes)
   registerBlogSiteRoute(blogPublicRoutes)
   registerBlogPublicPostsRoutes(blogPublicRoutes)
   registerBlogPublicCategoriesRoute(blogPublicRoutes)
@@ -35,6 +36,18 @@ function registerBlogCorsMiddleware(blogPublicRoutes: Hono<AppBindings>): void {
       return c.body(null, 204)
     }
     await next()
+  })
+}
+
+function registerBlogCacheMiddleware(blogPublicRoutes: Hono<AppBindings>): void {
+  blogPublicRoutes.use('*', async (c, next) => {
+    await next()
+    if (c.req.method === 'GET' && c.res.status === 200) {
+      c.res.headers.set(
+        'Cache-Control',
+        'public, max-age=15, s-maxage=60, stale-while-revalidate=300',
+      )
+    }
   })
 }
 
