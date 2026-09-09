@@ -49,9 +49,9 @@ function randomNonce(): string {
  * 避免 CDN 命中其他语言副本；其余页面按 Vary: Accept-Language 区分。
  */
 function pageCacheControl(url: URL, hasLocaleCookie: boolean): string | null {
-  if (hasLocaleCookie) return 'private, max-age=15, stale-while-revalidate=120'
-  if (url.pathname.startsWith('/posts/')) return 'public, max-age=15, s-maxage=300, stale-while-revalidate=600'
-  return 'public, max-age=15, s-maxage=120, stale-while-revalidate=300'
+  if (hasLocaleCookie) return 'private, no-store'
+  if (url.pathname.startsWith('/posts/')) return 'public, max-age=0, s-maxage=300'
+  return 'public, max-age=0, s-maxage=60'
 }
 
 /**

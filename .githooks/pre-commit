@@ -31,4 +31,4 @@ fi
 npm run typecheck --silent
 
 # shellcheck disable=SC2086  # word-splitting is intended for the file list
-npx --no-install vitest related $staged_ts --passWithNoTests
+npx --no-install vitest related --run $staged_ts --passWithNoTests
