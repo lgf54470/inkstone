@@ -7,6 +7,8 @@
 | 日期 | 标题 / 故障主题 | 严重程度 | 涉及服务 / 模块 | 报告链接 |
 | :--- | :--- | :--- | :--- | :--- |
 | **2026-09-09** | 博客系统与服务端渲染 (SSR) 水合缺陷深度复盘（含 React #418、HTTP 500、CSP 阻断、多列布局崩坏等） | P1 (高) | `blog-frontend` (Astro/React SSR) | [查看复盘文档](./2026-09-09-blog-frontend-ssr-and-hydration-postmortem.md) |
+| **2026-09-08** | 生产数据库 D1 模式不兼容与指纹缓存脱节致全站 HTTP 500 深度复盘与预部署检查防范 | P0 (致命) | `inkstone` 核心 Worker (`db/schema`) | [查看复盘文档](./2026-09-08-d1-schema-migration-mismatch-internal-error.md) |
+
 
 ## 撰写规范
 
