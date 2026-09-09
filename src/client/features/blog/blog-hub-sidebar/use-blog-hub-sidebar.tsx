@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type Dispatch, type MouseEvent, type Reac
 import { FileEdit, FileText, LayoutDashboard, Link2, MessageSquare, Pin, PlayCircle } from 'lucide-react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogStats, BlogTag, Tag } from '@shared/types'
-import { confirm } from '../../../components/overlay'
+import { confirm, prompt } from '../../../components/overlay'
 import { HubFolderItem } from '../../../components/hub-folder-item'
 import { t } from '../../../lib/i18n'
 import type { UiState } from '../../../store/ui'
@@ -365,7 +365,7 @@ async function createRootFolder(createFolder: BlogStoreState['createFolder'], se
 }
 
 async function createNewTag(createTag: BlogStoreState['createTag']): Promise<void> {
-  const name = window.prompt(t('tags.new_placeholder'))
+  const name = await prompt({ title: t('tags.new'), placeholder: t('tags.new_placeholder') })
   if (name?.trim()) {
     await createTag(name.trim())
   }

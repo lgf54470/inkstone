@@ -31,7 +31,7 @@ let enqueueConfirm: ((request: ConfirmRequest) => void) | null = null
 
 export function confirm(options: ConfirmOptions): Promise<boolean> {
   if (!enqueueConfirm)
-    return Promise.resolve(window.confirm(options.title))
+    return Promise.resolve(false)
   return new Promise((resolve) => {
     enqueueConfirm?.({ options, resolve })
   })

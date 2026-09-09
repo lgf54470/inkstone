@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import type { ShareCategory, ShareFolder, ShareTag } from '@shared/types'
 import { t } from '../../lib/i18n'
-import { confirm } from '../../components/overlay'
+import { confirm, prompt } from '../../components/overlay'
 import { useUi } from '../../store/ui'
 import type { UiState } from '../../store/ui'
 import { HubFolderItem } from '../../components/hub-folder-item'
@@ -40,7 +40,7 @@ function useShareHubSidebarState() {
     }
   }
   const handleCreateNewTag = async () => {
-    const name = window.prompt(t('tags.new_placeholder'))
+    const name = await prompt({ title: t('tags.new'), placeholder: t('tags.new_placeholder') })
     if (name?.trim()) {
       await createTag(name.trim())
     }

@@ -10,6 +10,7 @@ import { api, ApiError } from '../lib/api'
 import { setLocale, t } from '../lib/i18n'
 import { localDb } from '../lib/db'
 import { applyThemeToDom, useUi } from './ui'
+import { confirm } from '../components/overlay'
 
 interface SessionState {
   status: 'loading' | 'anonymous' | 'authed'
@@ -231,7 +232,7 @@ async function logoutImpl(set: SessionSetter, get: () => SessionState): Promise<
     await flushSettingsPatch(set, get)
     const unsaved = pending + (pendingSettingsPatch ? 1 : 0)
     if (unsaved > 0) {
-      const proceed = window.confirm(t('session.logout_pending_changes', { count: String(unsaved) }))
+      const proceed = await confirm({ title: t('session.logout_pending_changes', { count: String(unsaved) }), tone: 'danger' })
       if (!proceed) return
     }
 

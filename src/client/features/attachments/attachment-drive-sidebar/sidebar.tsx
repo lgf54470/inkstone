@@ -7,7 +7,7 @@ import { t } from '../../../lib/i18n'
 import type { FolderNode } from '../../../store/notes'
 import type { TagTreeNode } from '../../../lib/tag-tree'
 import { IconButton } from '../../../components/primitives'
-import { Tooltip } from '../../../components/overlay'
+import { Tooltip, prompt } from '../../../components/overlay'
 import { FolderPicker } from '../../folders'
 import { DEFAULT_QUOTA_BYTES, formatFileSize, type AttachmentCategory } from '../attachment-helpers'
 import { useAttachmentFolderTree, useAttachmentStore, useAttachmentTagTree } from '../attachment-store'
@@ -119,7 +119,7 @@ export function AttachmentDriveSidebar(props: AttachmentDriveSidebarProps) {
   }
 
   const handleCreateNewTag = async () => {
-    const name = window.prompt(t('tags.new_placeholder'))
+    const name = await prompt({ title: t('tags.new'), placeholder: t('tags.new_placeholder') })
     if (name?.trim()) await store.createTag(name.trim())
   }
 
