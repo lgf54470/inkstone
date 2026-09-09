@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { BlogPost } from '@shared/types'
 import { Modal } from '../../../components/overlay'
 import { Button, IconButton } from '../../../components/primitives'
-import { Input, Switch } from '../../../components/form'
+import { Input, Select, Switch, Textarea } from '../../../components/form'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
 import { useBlogPublishForm } from './use-blog-publish-form'
@@ -109,13 +109,13 @@ function PublishSelect({
   children: ReactNode
 }) {
   return (
-    <select
+    <Select
       value={value || ''}
       onChange={(e) => onValueChange(e.target.value || null)}
-      className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2.5 text-[length:var(--text-12\\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+      className='w-full'
     >
       {children}
-    </select>
+    </Select>
   )
 }
 
@@ -268,12 +268,12 @@ function ExcerptField({ form }: { form: PublishForm }) {
   return (
     <div>
       <FieldLabel>{t('blog.excerpt')}</FieldLabel>
-      <textarea
+      <Textarea
         value={excerpt}
         onChange={(e) => setExcerpt(e.target.value)}
         rows={2}
         placeholder={t('blog.excerpt_placeholder')}
-        className='w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] p-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] resize-none'
+        className='resize-none'
       />
     </div>
   )

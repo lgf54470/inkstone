@@ -10,6 +10,7 @@ import {
   type GroupBy,
 } from '../../../lib/graph-settings'
 import { IconButton } from '../../../components/primitives'
+import { Select } from '../../../components/form'
 import { Tooltip } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 
@@ -75,7 +76,14 @@ function GraphSection({ icon, title, children }: { icon: ReactNode; title: strin
 }
 
 function GraphSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
-  return <label className='flex items-center justify-between gap-3 text-[length:var(--text-12)] text-[var(--text-secondary)]'><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-8 max-w-40 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2 text-[length:var(--text-11\.5)] outline-none focus:border-[var(--accent)]">{options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}</select></label>
+  return (
+    <label className='flex items-center justify-between gap-3 text-[length:var(--text-12)] text-[var(--text-secondary)]'>
+      <span>{label}</span>
+      <Select value={value} onChange={(event) => onChange(event.target.value)} className="h-8 max-w-40 text-[length:var(--text-11\.5)]">
+        {options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}
+      </Select>
+    </label>
+  )
 }
 
 function GraphToggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (value: boolean) => void }) {

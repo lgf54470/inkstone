@@ -1,7 +1,7 @@
 import { BarChart3, Check, Copy, Dices, ExternalLink, FolderClosed, Hash, LayoutGrid, Plus, QrCode, ShieldAlert, Trash2, X } from 'lucide-react'
 import { LIMITS } from '@shared/constants'
 import { Button } from '../../../components/primitives'
-import { Input, Segmented, Switch } from '../../../components/form'
+import { Input, Segmented, Select, Switch } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 import { KEEP_CURRENT_EXPIRY } from '../share-form'
 import { generateRandomSlug } from '../share-helpers'
@@ -81,10 +81,10 @@ export function ShareFolderCard({ b }: { b: ShareEditModalBundle }) {
         <FolderClosed size={14} className='text-[var(--text-tertiary)]' />
         <span>{t('share.folders_isolation')}</span>
       </div>
-      <select
+      <Select
         value={shareFolderId ?? ''}
         onChange={(e) => setShareFolderId(e.target.value ? e.target.value : null)}
-        className='w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
+        className='w-full'
       >
         <option value=''>{t('navigation.unfiled')}</option>
         {shareFolders.map((f) => (
@@ -92,7 +92,7 @@ export function ShareFolderCard({ b }: { b: ShareEditModalBundle }) {
             {f.name}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   )
 }

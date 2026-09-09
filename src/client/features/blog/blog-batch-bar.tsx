@@ -2,6 +2,7 @@ import { useRef, useState, type RefObject } from 'react'
 import { CheckCircle, FolderInput, Pin, Trash2, XCircle } from 'lucide-react'
 import type { BlogCategory } from '@shared/types'
 import { Button } from '../../components/primitives'
+import { Select } from '../../components/form'
 import { Menu, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
@@ -114,23 +115,21 @@ function BatchCategorySelect({
   batchPosts: BlogStoreState['batchPosts']
 }) {
   return (
-    <div className='relative flex items-center'>
-      <select
-        onChange={(e) => void batchSetCategory(batchPosts, e.target.value)}
-        defaultValue=''
-        className="h-7 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)] outline-none"
-      >
-        <option value='' disabled>
-          {t('blog.change_category')}
+    <Select
+      onChange={(e) => void batchSetCategory(batchPosts, e.target.value)}
+      defaultValue=''
+      className="h-7 text-[length:var(--text-11\.5)] text-[var(--text-secondary)]"
+    >
+      <option value='' disabled>
+        {t('blog.change_category')}
+      </option>
+      <option value=''>{t('blog.remove_category')}</option>
+      {categories.map((c) => (
+        <option key={c.id} value={c.id}>
+          {c.name}
         </option>
-        <option value=''>{t('blog.remove_category')}</option>
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-    </div>
+      ))}
+    </Select>
   )
 }
 
