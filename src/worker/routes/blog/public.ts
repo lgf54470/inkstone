@@ -261,7 +261,7 @@ function registerBlogPublicTimelineRoute(blogPublicRoutes: Hono<AppBindings>): v
   blogPublicRoutes.get('/timeline', async (c) => {
     const { results } = await c.env.DB
       .prepare(`
-        SELECT id, slug, title, published_at, cover_url, tags
+        SELECT id, slug, title, published_at, cover_url, tags, views
         FROM blog_posts
         WHERE is_published = 1
         ORDER BY published_at DESC
@@ -279,6 +279,7 @@ interface BlogTimelineEntry {
   publishedAt: number
   coverUrl: string
   tags: unknown[]
+  views: number
 }
 
 function buildBlogTimelineMap(rows: BlogTimelineRow[]): Record<number, Record<number, BlogTimelineEntry[]>> {
@@ -296,6 +297,7 @@ function buildBlogTimelineMap(rows: BlogTimelineRow[]): Record<number, Record<nu
       publishedAt: row.published_at,
       coverUrl: row.cover_url,
       tags: JSON.parse(row.tags || '[]'),
+      views: row.views || 0,
     })
   }
   return timelineMap

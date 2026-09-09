@@ -203,6 +203,17 @@ describe('blog public routes (real D1)', () => {
     expect(post.title).toBe('Published')
     expect(post.views).toBe(1)
 
+    const timelineRes = await request(app, '/api/blog/public/timeline')
+    expect(timelineRes.status).toBe(200)
+    const timelineData = await timelineRes.json()
+    const postDate = new Date(H.now)
+    const postYear = postDate.getFullYear()
+    const postMonth = postDate.getMonth() + 1
+    const timelinePosts = timelineData.timeline[postYear]?.[postMonth] || []
+    expect(timelinePosts).toHaveLength(1)
+    expect(timelinePosts[0].slug).toBe('published-one')
+    expect(timelinePosts[0].views).toBe(1)
+
     const hidden = await request(app, '/api/blog/public/posts/draft-one')
     expect(hidden.status).toBe(404)
   })

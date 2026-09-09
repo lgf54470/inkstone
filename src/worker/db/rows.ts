@@ -221,6 +221,7 @@ export interface BlogTimelineRow {
   published_at: number
   cover_url: string
   tags: string
+  views: number
 }
 
 export interface BlogCalendarRow {
