@@ -31,7 +31,7 @@ export function LinksToolbar(props: LinksToolbarProps) {
   const subCategories = activeRoot ? props.categories.filter((c) => c.parentId === activeRoot.id) : []
 
   return (
-    <div className='sticky top-15 z-30 mb-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-base)]/90 backdrop-blur-md p-3.5 sm:p-4 shadow-2xs space-y-3'>
+    <div className='mb-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-base)]/90 backdrop-blur-md p-3.5 sm:p-4 shadow-2xs space-y-3'>
       <SearchEngineBar
         selectedEngines={props.selectedEngines}
         onToggleEngine={props.onToggleEngine}
