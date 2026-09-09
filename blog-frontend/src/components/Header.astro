@@ -24,7 +24,7 @@ const currentPath = Astro.url.pathname
 <header class="sticky top-0 z-40 w-full border-b border-[var(--border-subtle)] bg-[var(--bg-base)]/85 backdrop-blur-md transition-colors">
   <div class="max-w-5xl mx-auto px-4 sm:px-6 h-15 flex items-center justify-between gap-4">
     <!-- Brand Logo -->
-    <a href="/" data-astro-prefetch="viewport" class="flex items-center gap-2.5 group">
+    <a href="/" class="flex items-center gap-2.5 group">
       <div class="w-8 h-8 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center font-serif font-bold text-base shadow-[var(--shadow-xs)] group-hover:scale-105 transition-transform">
         墨
       </div>
@@ -45,7 +45,6 @@ const currentPath = Astro.url.pathname
         return (
           <a
             href={item.href}
-            data-astro-prefetch="viewport"
             class={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               isActive
                 ? 'bg-[var(--accent-softer)] text-[var(--accent)] font-semibold'
@@ -110,7 +109,6 @@ const currentPath = Astro.url.pathname
     {navItems.map((item) => (
       <a
         href={item.href}
-        data-astro-prefetch="viewport"
         class="block px-3 py-2 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
       >
         {item.label}

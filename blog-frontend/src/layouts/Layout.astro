@@ -7,7 +7,6 @@ import SearchModal from '../components/SearchModal'
 import DegradedBanner from '../components/DegradedBanner'
 import { api, getApiBase } from '../lib/api'
 import type { BlogSiteInfo } from '../lib/types'
-import { ClientRouter } from 'astro:transitions'
 import { DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
 
 interface ArticleMeta {
@@ -60,7 +59,6 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     <meta name="inkstone-api-url" content={getApiBase()} />
     <meta name="inkstone-locale" content={locale} />
     <link rel="canonical" href={`${Astro.url.origin}${Astro.url.pathname}`} />
-    <ClientRouter />
     {articleMeta && (
       <script type="application/ld+json" is:inline set:html={JSON.stringify({
         '@context': 'https://schema.org',
@@ -116,45 +114,10 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
           }
         }
         applyAppearance()
-        document.addEventListener('astro:after-swap', applyAppearance)
-
-        const getBar = () => document.getElementById('route-progress')
-        document.addEventListener('astro:before-preparation', () => {
-          const bar = getBar()
-          if (bar) {
-            bar.style.transition = 'transform 300ms ease, opacity 150ms ease'
-            bar.style.opacity = '1'
-            bar.style.transform = 'scaleX(0.7)'
-          }
-        })
-        document.addEventListener('astro:before-swap', () => {
-          const bar = getBar()
-          if (bar) bar.style.transform = 'scaleX(0.92)'
-        })
-        document.addEventListener('astro:page-load', () => {
-          const bar = getBar()
-          if (bar) {
-            bar.style.transform = 'scaleX(1)'
-            setTimeout(() => {
-              bar.style.opacity = '0'
-              setTimeout(() => {
-                bar.style.transition = 'none'
-                bar.style.transform = 'scaleX(0)'
-              }, 200)
-            }, 150)
-          }
-        })
       })()
     </script>
   </head>
   <body class={`min-h-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] antialiased transition-colors selection:bg-[var(--selection)] ${fitViewport ? 'lg:h-screen lg:overflow-hidden' : ''}`}>
-    <!-- Top Route Loading Progress Bar -->
-    <div
-      id="route-progress"
-      aria-hidden="true"
-      class="fixed top-0 left-0 right-0 h-0.5 z-50 pointer-events-none opacity-0 bg-[var(--accent)] transition-all duration-300"
-      style="transform: scaleX(0); transform-origin: left;"
-    />
 
     <!-- API 降级提示条：占文档流置顶，滚动后 Header 照常吸顶，不遮挡任何控件 -->
     <DegradedBanner client:load initialLocale={locale} />

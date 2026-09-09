@@ -8,10 +8,6 @@ export default defineConfig({
   output: 'server',
   adapter: cloudflare(),
   integrations: [react()],
-  prefetch: {
-    prefetchAll: true,
-    defaultStrategy: 'hover',
-  },
   vite: {
     plugins: [tailwindcss()],
     build: {
