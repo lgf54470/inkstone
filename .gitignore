@@ -37,7 +37,8 @@ worker-configuration.d.ts
 .vscode/
 
 # Private project documentation
-/docs/
+/docs/*
+!/docs/bug/
 RELEASE_NOTES.md
 
 # Test and temporary artifacts
