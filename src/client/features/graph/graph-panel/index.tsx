@@ -159,7 +159,16 @@ function GraphSearchBox({ search, onSearchChange }: {
       <span className='sr-only'>{t('graph.search_notes')}</span>
       <input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder={t('graph.search_notes')}
         className='min-w-0 flex-1 bg-transparent text-[length:var(--text-12)] outline-none placeholder:text-[var(--text-quaternary)]'/>
-      {search && <button type='button' aria-label={t('common.clear')} onClick={() => onSearchChange('')}><X size={12}/></button>}
+      {search && (
+        <button
+          type='button'
+          aria-label={t('common.clear')}
+          onClick={() => onSearchChange('')}
+          className='flex size-5 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]'
+        >
+          <X size={12}/>
+        </button>
+      )}
     </label>
   )
 }
