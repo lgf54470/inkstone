@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Edit2, Folder, Plus, Trash2 } from 'lucide-react'
+import { Edit2, Folder, Palette, Plus, Trash2 } from 'lucide-react'
 import type { BlogLinkCategory } from '@shared/types'
 import { Modal, confirm } from '../../../components/overlay'
 import { Button, IconButton } from '../../../components/primitives'
 import { Input, Select } from '../../../components/form'
 import { t } from '../../../lib/i18n'
+import { LinkDynamicIcon } from './link-dynamic-icon'
+import { LinkIconSelector } from './link-icon-selector'
 
 export interface LinkCategoryModalProps {
   open: boolean
@@ -119,14 +121,23 @@ function CategoryCreateForm({
   onChangeParentId: (v: string) => void
   onSubmit: (e: React.FormEvent) => void
 }) {
+  const [showPicker, setShowPicker] = useState(false)
   return (
     <form onSubmit={onSubmit} className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-3 space-y-3'>
       <span className='text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
         {t('blog.link_category_add_root')}
       </span>
-      <div className='grid grid-cols-3 gap-2'>
+      <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
         <Input value={name} onChange={(e) => onChangeName(e.target.value)} placeholder={t('blog.link_category_name')} required />
-        <Input value={icon} onChange={(e) => onChangeIcon(e.target.value)} placeholder={t('blog.link_category_icon')} />
+        <div className='flex gap-1 items-center'>
+          <div className='size-8 flex items-center justify-center rounded-[var(--r-sm)] bg-[var(--bg-surface)] border border-[var(--border-subtle)] shrink-0'>
+            <LinkDynamicIcon icon={icon} size={16} fallback={<Folder size={16} className='text-[var(--text-tertiary)]' />} />
+          </div>
+          <Input value={icon} onChange={(e) => onChangeIcon(e.target.value)} placeholder={t('blog.link_category_icon')} className='flex-1 min-w-0' />
+          <Button type='button' variant='secondary' size='sm' onClick={() => setShowPicker(!showPicker)}>
+            <Palette size={13} />
+          </Button>
+        </div>
         <Select value={parentId} onChange={(e) => onChangeParentId(e.target.value)}>
           {parentOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -135,6 +146,15 @@ function CategoryCreateForm({
           ))}
         </Select>
       </div>
+      {showPicker && (
+        <LinkIconSelector
+          value={icon}
+          onChange={(val) => {
+            onChangeIcon(val)
+            setShowPicker(false)
+          }}
+        />
+      )}
       <div className='flex justify-end'>
         <Button type='submit' variant='primary' size='sm' loading={creating} disabled={!name.trim()}>
           <Plus size={14} />
@@ -307,18 +327,24 @@ function CategoryRowItem({
 }) {
   return (
     <div className='flex items-center justify-between py-1 px-1.5 rounded hover:bg-[var(--bg-hover)]'>
-      <div className='flex items-center gap-2'>
-        <Folder size={isSub ? 13 : 15} className='text-[var(--accent)]' />
-        <span className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
+      <div className='flex items-center gap-2 min-w-0'>
+        <div className='size-5 flex items-center justify-center shrink-0'>
+          <LinkDynamicIcon
+            icon={cat.icon || undefined}
+            size={isSub ? 13 : 15}
+            fallback={<Folder size={isSub ? 13 : 15} className='text-[var(--accent)]' />}
+          />
+        </div>
+        <span className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)] truncate'>
           {cat.name}
         </span>
         {cat.icon && (
-          <span className='text-[length:var(--text-10)] text-[var(--text-tertiary)] bg-[var(--bg-sunken)] px-1 py-0.5 rounded'>
+          <span className='text-[length:var(--text-10)] text-[var(--text-tertiary)] bg-[var(--bg-sunken)] px-1 py-0.5 rounded truncate max-w-24'>
             {cat.icon}
           </span>
         )}
       </div>
-      <div className='flex items-center gap-1'>
+      <div className='flex items-center gap-1 shrink-0'>
         <IconButton label={t('common.edit')} size='sm' onClick={onStartEdit}>
           <Edit2 size={13} />
         </IconButton>
@@ -351,23 +377,43 @@ function InlineCategoryEdit({
   onSave: () => void
   onCancel: () => void
 }) {
+  const [showPicker, setShowPicker] = useState(false)
   return (
-    <div className='flex items-center gap-2 p-1 bg-[var(--bg-sunken)] rounded'>
-      <Input value={name} onChange={(e) => onChangeName(e.target.value)} className='h-8 text-[length:var(--text-12)] flex-1' />
-      <Input value={icon} onChange={(e) => onChangeIcon(e.target.value)} placeholder={t('blog.link_category_icon')} className='h-8 text-[length:var(--text-12)] w-24' />
-      <Select value={parentId} onChange={(e) => onChangeParent(e.target.value)} className='h-8 text-[length:var(--text-12)] w-32'>
-        {parentOptions.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </Select>
-      <Button type='button' variant='primary' size='sm' onClick={onSave} disabled={!name.trim()}>
-        {t('common.save')}
-      </Button>
-      <Button type='button' variant='ghost' size='sm' onClick={onCancel}>
-        {t('common.cancel')}
-      </Button>
+    <div className='space-y-2 p-1.5 bg-[var(--bg-sunken)] rounded'>
+      <div className='flex items-center gap-2 flex-wrap sm:flex-nowrap'>
+        <Input value={name} onChange={(e) => onChangeName(e.target.value)} className='h-8 text-[length:var(--text-12)] flex-1 min-w-30' />
+        <div className='flex gap-1 items-center w-36 shrink-0'>
+          <div className='size-8 flex items-center justify-center rounded-[var(--r-sm)] bg-[var(--bg-surface)] border border-[var(--border-subtle)] shrink-0'>
+            <LinkDynamicIcon icon={icon} size={14} fallback={<Folder size={14} className='text-[var(--text-tertiary)]' />} />
+          </div>
+          <Input value={icon} onChange={(e) => onChangeIcon(e.target.value)} placeholder={t('blog.link_category_icon')} className='h-8 text-[length:var(--text-12)] flex-1 min-w-0' />
+          <Button type='button' variant='secondary' size='sm' onClick={() => setShowPicker(!showPicker)}>
+            <Palette size={13} />
+          </Button>
+        </div>
+        <Select value={parentId} onChange={(e) => onChangeParent(e.target.value)} className='h-8 text-[length:var(--text-12)] w-28 shrink-0'>
+          {parentOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </Select>
+        <Button type='button' variant='primary' size='sm' onClick={onSave} disabled={!name.trim()}>
+          {t('common.save')}
+        </Button>
+        <Button type='button' variant='ghost' size='sm' onClick={onCancel}>
+          {t('common.cancel')}
+        </Button>
+      </div>
+      {showPicker && (
+        <LinkIconSelector
+          value={icon}
+          onChange={(val) => {
+            onChangeIcon(val)
+            setShowPicker(false)
+          }}
+        />
+      )}
     </div>
   )
 }

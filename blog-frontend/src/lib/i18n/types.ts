@@ -273,4 +273,6 @@ export type MessageKey =
   | 'links.search_btn'
   | 'links.search_mode_internal'
   | 'links.search_mode_external'
+  | 'links.sort_mode'
+  | 'links.sort_done'
 

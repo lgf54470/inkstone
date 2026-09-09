@@ -90,6 +90,7 @@ export const INDEX_STATEMENTS: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_blog_links_user ON blog_links(user_id, status, is_pinned DESC, sort_order ASC, created_at ASC)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_links_category ON blog_links(category_id)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_links_url ON blog_links(url)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_links_fav ON blog_links(user_id, is_favorite DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_link_categories_user ON blog_link_categories(user_id, sort_order ASC)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_link_categories_parent ON blog_link_categories(parent_id)`,
 ]

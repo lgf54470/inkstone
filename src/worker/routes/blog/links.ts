@@ -15,11 +15,15 @@ import {
 import {
   blogLinkBatchSchema,
   blogLinkCategoryUpsertSchema,
+  blogLinkCheckSchema,
+  blogLinkFavoriteSchema,
   blogLinkImportSchema,
   blogLinkPinSchema,
+  blogLinkReorderSchema,
   blogLinkStatusSchema,
   blogLinkUpsertSchema,
 } from './schemas'
+import { checkUrlsBatch } from './link-checker'
 
 export function registerBlogLinksRoutes(blogManageRoutes: Hono<AppBindings>): void {
   registerBlogLinksGetRoute(blogManageRoutes)
@@ -27,6 +31,9 @@ export function registerBlogLinksRoutes(blogManageRoutes: Hono<AppBindings>): vo
   registerBlogLinksDeleteRoute(blogManageRoutes)
   registerBlogLinksStatusRoute(blogManageRoutes)
   registerBlogLinksPinRoute(blogManageRoutes)
+  registerBlogLinksFavoriteRoute(blogManageRoutes)
+  registerBlogLinksReorderRoute(blogManageRoutes)
+  registerBlogLinksCheckRoute(blogManageRoutes)
   registerBlogLinksBatchRoute(blogManageRoutes)
   registerBlogLinkCategoryUpsertRoute(blogManageRoutes)
   registerBlogLinkCategoryDeleteRoute(blogManageRoutes)
@@ -99,9 +106,9 @@ function prepareLinkUpsertStatement(
   return db.prepare(`
     INSERT INTO blog_links (
       id, user_id, name, url, description, avatar, email, category_id,
-      status, is_pinned, pinned_order, sort_order, is_active, clicks,
+      status, is_pinned, pinned_order, is_favorite, sort_order, is_active, clicks,
       created_at, updated_at
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 0, ?14, ?14)
+    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?15)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       url = excluded.url,
@@ -112,6 +119,7 @@ function prepareLinkUpsertStatement(
       status = excluded.status,
       is_pinned = excluded.is_pinned,
       pinned_order = excluded.pinned_order,
+      is_favorite = excluded.is_favorite,
       sort_order = excluded.sort_order,
       is_active = excluded.is_active,
       updated_at = excluded.updated_at
@@ -127,6 +135,7 @@ function prepareLinkUpsertStatement(
     body.status || 'approved',
     body.isPinned ? 1 : 0,
     body.pinnedOrder || 0,
+    body.isFavorite ? 1 : 0,
     body.sortOrder || 0,
     body.isActive !== false ? 1 : 0,
     now,
@@ -178,6 +187,59 @@ function registerBlogLinksPinRoute(blogManageRoutes: Hono<AppBindings>): void {
   })
 }
 
+function registerBlogLinksFavoriteRoute(blogManageRoutes: Hono<AppBindings>): void {
+  blogManageRoutes.patch('/links/:id/favorite', requireAuth, async (c) => {
+    const userId = c.get('userId')!
+    const id = c.req.param('id')
+    const body = await readJsonValidated(c, blogLinkFavoriteSchema, JSON_BODY_LIMITS.small)
+    const now = Date.now()
+
+    await c.env.DB.prepare(`
+      UPDATE blog_links
+      SET is_favorite = ?1, updated_at = ?2
+      WHERE id = ?3 AND user_id = ?4
+    `).bind(body.isFavorite ? 1 : 0, now, id, userId).run()
+
+    return c.json({ ok: true, isFavorite: body.isFavorite })
+  })
+}
+
+function registerBlogLinksReorderRoute(blogManageRoutes: Hono<AppBindings>): void {
+  blogManageRoutes.post('/links/reorder', requireAuth, async (c) => {
+    const userId = c.get('userId')!
+    const body = await readJsonValidated(c, blogLinkReorderSchema, JSON_BODY_LIMITS.note)
+    const now = Date.now()
+
+    const stmts = body.orders.map((o) => {
+      if (o.pinnedOrder !== undefined) {
+        return c.env.DB.prepare(`
+          UPDATE blog_links
+          SET pinned_order = ?1, updated_at = ?2
+          WHERE id = ?3 AND user_id = ?4
+        `).bind(o.pinnedOrder, now, o.id, userId)
+      }
+      return c.env.DB.prepare(`
+        UPDATE blog_links
+        SET sort_order = ?1, updated_at = ?2
+        WHERE id = ?3 AND user_id = ?4
+      `).bind(o.sortOrder ?? 0, now, o.id, userId)
+    })
+
+    if (stmts.length > 0) {
+      await c.env.DB.batch(stmts)
+    }
+    return c.json({ ok: true, count: stmts.length })
+  })
+}
+
+function registerBlogLinksCheckRoute(blogManageRoutes: Hono<AppBindings>): void {
+  blogManageRoutes.post('/links/check', requireAuth, async (c) => {
+    const body = await readJsonValidated(c, blogLinkCheckSchema, JSON_BODY_LIMITS.note)
+    const results = await checkUrlsBatch(body.urls)
+    return c.json({ results })
+  })
+}
+
 function registerBlogLinksBatchRoute(blogManageRoutes: Hono<AppBindings>): void {
   blogManageRoutes.post('/links/batch', requireAuth, async (c) => {
     const userId = c.get('userId')!
@@ -192,10 +254,11 @@ function buildBatchItemStatement(
   db: D1Database,
   userId: string,
   id: string,
-  action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'setPinned',
+  action: z.infer<typeof blogLinkBatchSchema>['action'],
   now: number,
   categoryId?: string | null,
   isPinned?: boolean,
+  isFavorite?: boolean,
 ): D1PreparedStatement {
   switch (action) {
     case 'delete':
@@ -208,6 +271,16 @@ function buildBatchItemStatement(
       return db.prepare('UPDATE blog_links SET category_id = ?1, updated_at = ?2 WHERE id = ?3 AND user_id = ?4').bind(categoryId || null, now, id, userId)
     case 'setPinned':
       return db.prepare('UPDATE blog_links SET is_pinned = ?1, updated_at = ?2 WHERE id = ?3 AND user_id = ?4').bind(isPinned ? 1 : 0, now, id, userId)
+    case 'pin':
+      return db.prepare('UPDATE blog_links SET is_pinned = 1, updated_at = ?1 WHERE id = ?2 AND user_id = ?3').bind(now, id, userId)
+    case 'unpin':
+      return db.prepare('UPDATE blog_links SET is_pinned = 0, updated_at = ?1 WHERE id = ?2 AND user_id = ?3').bind(now, id, userId)
+    case 'setFavorite':
+      return db.prepare('UPDATE blog_links SET is_favorite = ?1, updated_at = ?2 WHERE id = ?3 AND user_id = ?4').bind(isFavorite ? 1 : 0, now, id, userId)
+    case 'favorite':
+      return db.prepare('UPDATE blog_links SET is_favorite = 1, updated_at = ?1 WHERE id = ?2 AND user_id = ?3').bind(now, id, userId)
+    case 'unfavorite':
+      return db.prepare('UPDATE blog_links SET is_favorite = 0, updated_at = ?1 WHERE id = ?2 AND user_id = ?3').bind(now, id, userId)
   }
 }
 
@@ -216,10 +289,10 @@ async function executeLinksBatch(
   userId: string,
   body: z.infer<typeof blogLinkBatchSchema>,
 ): Promise<number> {
-  const { action, linkIds, categoryId, isPinned } = body
+  const { action, linkIds, categoryId, isPinned, isFavorite } = body
   const now = Date.now()
   const stmts = linkIds.map((id) =>
-    buildBatchItemStatement(db, userId, id, action, now, categoryId, isPinned),
+    buildBatchItemStatement(db, userId, id, action, now, categoryId, isPinned, isFavorite),
   )
 
   if (stmts.length > 0) {
@@ -355,9 +428,9 @@ function prepareImportItemStatement(
   return db.prepare(`
     INSERT INTO blog_links (
       id, user_id, name, url, description, avatar, email, category_id,
-      status, is_pinned, pinned_order, sort_order, is_active, clicks,
+      status, is_pinned, pinned_order, is_favorite, sort_order, is_active, clicks,
       created_at, updated_at
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 0, ?14, ?14)
+    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?15)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       url = excluded.url,
@@ -368,6 +441,7 @@ function prepareImportItemStatement(
       status = excluded.status,
       is_pinned = excluded.is_pinned,
       pinned_order = excluded.pinned_order,
+      is_favorite = excluded.is_favorite,
       sort_order = excluded.sort_order,
       is_active = excluded.is_active,
       updated_at = excluded.updated_at
@@ -383,6 +457,7 @@ function prepareImportItemStatement(
     item.status || 'approved',
     item.isPinned ? 1 : 0,
     item.pinnedOrder || 0,
+    item.isFavorite ? 1 : 0,
     item.sortOrder || 0,
     item.isActive !== false ? 1 : 0,
     now,

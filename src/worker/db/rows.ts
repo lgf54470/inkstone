@@ -242,6 +242,7 @@ export interface BlogLinkRow {
   status: string
   is_pinned: number
   pinned_order: number
+  is_favorite: number
   sort_order: number
   is_active: number
   clicks: number
@@ -274,6 +275,7 @@ export function toBlogLink(row: BlogLinkRow): BlogLink {
     status: (row.status as BlogLinkStatus) || 'approved',
     isPinned: Boolean(row.is_pinned),
     pinnedOrder: row.pinned_order,
+    isFavorite: Boolean(row.is_favorite),
     sortOrder: row.sort_order,
     isActive: Boolean(row.is_active),
     clicks: row.clicks || 0,

@@ -428,6 +428,7 @@ export const TABLE_STATEMENTS: readonly string[] = [
       status TEXT NOT NULL DEFAULT 'approved',
       is_pinned INTEGER NOT NULL DEFAULT 0,
       pinned_order INTEGER NOT NULL DEFAULT 0,
+      is_favorite INTEGER NOT NULL DEFAULT 0,
       sort_order INTEGER NOT NULL DEFAULT 0,
       is_active INTEGER NOT NULL DEFAULT 1,
       clicks INTEGER NOT NULL DEFAULT 0,

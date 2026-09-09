@@ -88,6 +88,12 @@ function LinksContainerGroup({
       pinnedIds={state.pinnedIds}
       collapsedSections={state.collapsedSections}
       sectionSubCats={state.sectionSubCats}
+      sortingSectionId={state.sortingSectionId}
+      onToggleSectionSorting={state.toggleSectionSorting}
+      onLinkDragStart={state.handleLinkDragStart}
+      onLinkDragOver={state.handleLinkDragOver}
+      onLinkDrop={state.handleLinkDrop}
+      onLinkDragEnd={state.handleLinkDragEnd}
       onToggleCollapse={state.toggleSectionCollapse}
       onSelectSectionSubCat={state.setSectionSubCategory}
       onToggleFavorite={state.toggleFavorite}

@@ -216,8 +216,26 @@ function FormatSelectButton({ current, target, label, icon, onSelect }: { curren
 
 function parseJsonLinks(text: string) {
   const parsed = JSON.parse(text)
-  const categories = Array.isArray(parsed.categories) ? parsed.categories : []
-  const links = Array.isArray(parsed.links) ? parsed.links : Array.isArray(parsed) ? parsed : []
+  const rawCats = Array.isArray(parsed.categories) ? parsed.categories : []
+  const rawLinks = Array.isArray(parsed.links) ? parsed.links : Array.isArray(parsed) ? parsed : []
+  const categories = rawCats.map((c: Record<string, unknown>) => ({
+    id: typeof c.id === 'string' ? c.id : undefined,
+    name: String(c.name || c.title || 'Untitled'),
+    icon: typeof c.icon === 'string' ? c.icon : null,
+    parentId: typeof c.parentId === 'string' ? c.parentId : null,
+    sortOrder: typeof c.sortOrder === 'number' ? c.sortOrder : 0,
+  }))
+  const links = rawLinks.map((l: Record<string, unknown>) => ({
+    name: String(l.name || l.title || ''),
+    url: String(l.url || ''),
+    description: typeof l.description === 'string' ? l.description : null,
+    avatar: typeof l.avatar === 'string' ? l.avatar : typeof l.icon === 'string' ? l.icon : null,
+    categoryId: typeof l.categoryId === 'string' && l.categoryId !== 'default' ? l.categoryId : null,
+    isPinned: Boolean(l.isPinned ?? l.pinned),
+    isFavorite: Boolean(l.isFavorite ?? l.favorite),
+    pinnedOrder: typeof l.pinnedOrder === 'number' ? l.pinnedOrder : 0,
+    sortOrder: typeof l.sortOrder === 'number' ? l.sortOrder : 0,
+  }))
   return { categories, links }
 }
 
@@ -328,11 +346,16 @@ function generateCfAstroJson(links: BlogLink[], categories: BlogLinkCategory[]):
   const linkItems = links.map((l) => ({
     id: l.id,
     title: l.name,
+    name: l.name,
     url: l.url,
     icon: l.avatar || null,
+    avatar: l.avatar || null,
     description: l.description || null,
     categoryId: l.categoryId || 'default',
     pinned: Boolean(l.isPinned),
+    isPinned: Boolean(l.isPinned),
+    favorite: Boolean(l.isFavorite),
+    isFavorite: Boolean(l.isFavorite),
     pinnedOrder: l.pinnedOrder || 0,
     sortOrder: l.sortOrder || 0,
     createdAt: l.createdAt || Date.now(),

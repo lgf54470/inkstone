@@ -1,5 +1,6 @@
-import { Copy, MoreVertical, Pin, QrCode, Star } from 'lucide-react'
+import { Copy, GripVertical, MoreVertical, Pin, QrCode, Star } from 'lucide-react'
 import type { BlogPublicLink } from '../../lib/types'
+import { LinkDynamicIcon } from './link-dynamic-icon'
 import type { ViewMode } from './types'
 
 export interface LinkCardProps {
@@ -8,6 +9,11 @@ export interface LinkCardProps {
   isFavorite: boolean
   isPinned: boolean
   viewMode: ViewMode
+  draggable?: boolean
+  onDragStart?: (e: React.DragEvent) => void
+  onDragOver?: (e: React.DragEvent) => void
+  onDrop?: (e: React.DragEvent) => void
+  onDragEnd?: (e: React.DragEvent) => void
   onToggleFavorite: (id: string) => void
   onContextMenu: (link: BlogPublicLink, x: number, y: number) => void
   onOpenQr?: (link: BlogPublicLink) => void
@@ -26,76 +32,63 @@ export function LinkCard(props: LinkCardProps) {
     window.open(props.link.url, '_blank', 'noopener,noreferrer')
   }
 
+  const handleOpenMenu = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    props.onContextMenu(props.link, e.clientX, e.clientY)
+  }
+
   if (props.viewMode === 'simple') {
     return (
       <SimpleLinkItem
-        link={props.link}
-        isFavorite={props.isFavorite}
-        isPinned={props.isPinned}
+        props={props}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        onOpenMenu={(e) => {
-          e.stopPropagation()
-          props.onContextMenu(props.link, e.clientX, e.clientY)
-        }}
+        onOpenMenu={handleOpenMenu}
       />
     )
   }
 
   return (
     <DetailedLinkCard
-      link={props.link}
-      categoryName={props.categoryName}
-      isFavorite={props.isFavorite}
-      isPinned={props.isPinned}
+      props={props}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
-      onToggleFavorite={() => props.onToggleFavorite(props.link.id)}
-      onOpenQr={props.onOpenQr ? () => props.onOpenQr?.(props.link) : undefined}
-      onCopyLink={props.onCopyLink ? () => props.onCopyLink?.(props.link.url) : undefined}
-      onOpenMenu={(e) => {
-        e.stopPropagation()
-        props.onContextMenu(props.link, e.clientX, e.clientY)
-      }}
+      onOpenMenu={handleOpenMenu}
     />
   )
 }
 
 function DetailedLinkCard({
-  link,
-  categoryName,
-  isFavorite,
-  isPinned,
+  props,
   onClick,
   onContextMenu,
-  onToggleFavorite,
-  onOpenQr,
-  onCopyLink,
   onOpenMenu,
 }: {
-  link: BlogPublicLink
-  categoryName?: string
-  isFavorite: boolean
-  isPinned: boolean
+  props: LinkCardProps
   onClick: (e: React.MouseEvent) => void
   onContextMenu: (e: React.MouseEvent) => void
-  onToggleFavorite: () => void
-  onOpenQr?: () => void
-  onCopyLink?: () => void
   onOpenMenu: (e: React.MouseEvent) => void
 }) {
+  const { link, isFavorite, isPinned, draggable } = props
   return (
     <div
+      draggable={draggable}
+      onDragStart={props.onDragStart}
+      onDragOver={props.onDragOver}
+      onDrop={props.onDrop}
+      onDragEnd={props.onDragEnd}
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className='group relative flex flex-col justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 sm:p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-default)] hover:shadow-xs cursor-pointer min-h-20'
+      className={`group relative flex flex-col justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 sm:p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-default)] hover:shadow-xs cursor-pointer min-h-20 ${
+        draggable ? 'cursor-grab active:cursor-grabbing' : ''
+      }`}
     >
-      <DetailedLinkCardBody link={link} categoryName={categoryName} isFavorite={isFavorite} isPinned={isPinned} />
+      <DetailedLinkCardBody link={link} categoryName={props.categoryName} isFavorite={isFavorite} isPinned={isPinned} draggable={draggable} />
       <CardActions
         isFavorite={isFavorite}
-        onToggleFavorite={onToggleFavorite}
-        onOpenQr={onOpenQr}
-        onCopyLink={onCopyLink}
+        onToggleFavorite={() => props.onToggleFavorite(link.id)}
+        onOpenQr={props.onOpenQr ? () => props.onOpenQr?.(link) : undefined}
+        onCopyLink={props.onCopyLink ? () => props.onCopyLink?.(link.url) : undefined}
         onOpenMenu={onOpenMenu}
       />
     </div>
@@ -107,16 +100,19 @@ function DetailedLinkCardBody({
   categoryName,
   isFavorite,
   isPinned,
+  draggable,
 }: {
   link: BlogPublicLink
   categoryName?: string
   isFavorite: boolean
   isPinned: boolean
+  draggable?: boolean
 }) {
   return (
     <>
       <div>
         <div className='flex items-center gap-2.5'>
+          {draggable && <GripVertical className='size-3.5 text-[var(--text-tertiary)] shrink-0 cursor-grab' />}
           <CardAvatar avatar={link.avatar} name={link.name} size='md' />
           <div className='min-w-0 flex-1'>
             <div className='flex items-center gap-1.5'>
@@ -204,26 +200,31 @@ function CardActions({
 
 
 function SimpleLinkItem({
-  link,
-  isFavorite,
-  isPinned,
+  props,
   onClick,
   onContextMenu,
   onOpenMenu,
 }: {
-  link: BlogPublicLink
-  isFavorite: boolean
-  isPinned: boolean
+  props: LinkCardProps
   onClick: (e: React.MouseEvent) => void
   onContextMenu: (e: React.MouseEvent) => void
   onOpenMenu: (e: React.MouseEvent) => void
 }) {
+  const { link, isFavorite, isPinned, draggable } = props
   return (
     <div
+      draggable={draggable}
+      onDragStart={props.onDragStart}
+      onDragOver={props.onDragOver}
+      onDrop={props.onDrop}
+      onDragEnd={props.onDragEnd}
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className='group relative flex items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-2 transition-all hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--bg-hover)] cursor-pointer overflow-hidden'
+      className={`group relative flex items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-2 transition-all hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--bg-hover)] cursor-pointer overflow-hidden ${
+        draggable ? 'cursor-grab active:cursor-grabbing' : ''
+      }`}
     >
+      {draggable && <GripVertical className='size-3 text-[var(--text-tertiary)] shrink-0 cursor-grab' />}
       <CardAvatar avatar={link.avatar} name={link.name} size='sm' />
       <div className='flex items-center gap-1.5 min-w-0 flex-1'>
         <span className='text-xs font-medium text-[var(--text-primary)] group-hover:text-[var(--accent)] truncate' title={link.name}>
@@ -232,19 +233,25 @@ function SimpleLinkItem({
         {isPinned && <Pin className='size-2.5 text-amber-500 shrink-0' />}
         {isFavorite && <Star className='size-2.5 text-amber-500 fill-amber-500 shrink-0' />}
       </div>
-      <div
-        className='absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded bg-[var(--bg-surface)]/90 backdrop-blur-xs px-1 py-0.5 opacity-0 group-hover:opacity-100 shadow-2xs border border-[var(--border-subtle)] transition-opacity'
-        onClick={(e) => e.stopPropagation()}
+      <SimpleLinkMenuButton onOpenMenu={onOpenMenu} />
+    </div>
+  )
+}
+
+function SimpleLinkMenuButton({ onOpenMenu }: { onOpenMenu: (e: React.MouseEvent) => void }) {
+  return (
+    <div
+      className='absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded bg-[var(--bg-surface)]/90 backdrop-blur-xs px-1 py-0.5 opacity-0 group-hover:opacity-100 shadow-2xs border border-[var(--border-subtle)] transition-opacity'
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type='button'
+        onClick={onOpenMenu}
+        className='p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] cursor-pointer'
+        title='More'
       >
-        <button
-          type='button'
-          onClick={onOpenMenu}
-          className='p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] cursor-pointer'
-          title='More'
-        >
-          <MoreVertical className='size-3' />
-        </button>
-      </div>
+        <MoreVertical className='size-3' />
+      </button>
     </div>
   )
 }
@@ -254,30 +261,11 @@ function CardAvatar({ avatar, name, size = 'md' }: { avatar: string | null; name
   const containerClass = isSm
     ? 'size-7 sm:size-8 rounded-md'
     : 'size-9 sm:size-10 rounded-lg'
-  const imgClass = isSm ? 'size-4.5 sm:size-5' : 'size-6 sm:size-7'
-
-  if (avatar) {
-    return (
-      <div className={`${containerClass} overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-sunken)] flex items-center justify-center shrink-0`}>
-        <img
-          src={avatar}
-          alt={name}
-          className={`${imgClass} object-contain`}
-          loading='lazy'
-          referrerPolicy='no-referrer'
-          onError={(e) => {
-            e.currentTarget.style.display = 'none'
-          }}
-        />
-      </div>
-    )
-  }
+  const iconSize = isSm ? 18 : 22
 
   return (
-    <div
-      className={`${containerClass} border border-[var(--border-subtle)] bg-[var(--accent-softer)] text-[var(--accent)] flex items-center justify-center font-bold text-xs shrink-0`}
-    >
-      {name.charAt(0).toUpperCase()}
+    <div className={`${containerClass} overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-sunken)] flex items-center justify-center shrink-0`}>
+      <LinkDynamicIcon icon={avatar} name={name} size={iconSize} />
     </div>
   )
 }

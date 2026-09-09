@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Inbox } from 'lucide-react'
+import { ChevronDown, ChevronRight, GripVertical, Inbox } from 'lucide-react'
 import type { BlogPublicLink, BlogPublicLinkCategory } from '../../lib/types'
 import { t, useCurrentLocale } from '../../lib/i18n'
 import { LinkCard } from './link-card'
@@ -15,6 +15,12 @@ export interface LinkSectionGroupProps {
   pinnedIds: Set<string>
   collapsedSections: Set<string>
   sectionSubCats: Record<string, string>
+  sortingSectionId?: string | null
+  onToggleSectionSorting?: (sectionId: string) => void
+  onLinkDragStart?: (e: React.DragEvent, id: string) => void
+  onLinkDragOver?: (e: React.DragEvent) => void
+  onLinkDrop?: (e: React.DragEvent, targetId: string) => void
+  onLinkDragEnd?: () => void
   onToggleCollapse: (sectionId: string) => void
   onSelectSectionSubCat: (parentId: string, subId: string) => void
   onToggleFavorite: (id: string) => void
@@ -39,6 +45,24 @@ export function LinkSectionGroup(props: LinkSectionGroupProps) {
   return <RootCategoriesSections props={props} categoryMap={categoryMap} />
 }
 
+function SectionSortButton({ isSorting, onClick }: { isSorting?: boolean; onClick: () => void }) {
+  const locale = useCurrentLocale()
+  return (
+    <button
+      type='button'
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors cursor-pointer border ${
+        isSorting
+          ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
+          : 'border-[var(--border-subtle)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+      }`}
+    >
+      <GripVertical className='size-3' />
+      <span>{isSorting ? t('links.sort_done', {}, locale) : t('links.sort_mode', {}, locale)}</span>
+    </button>
+  )
+}
+
 function FilteredCategoryGrid({
   props,
   categoryMap,
@@ -46,23 +70,23 @@ function FilteredCategoryGrid({
   props: LinkSectionGroupProps
   categoryMap: Map<string, string>
 }) {
+  const isSorting = props.sortingSectionId === props.activeCategory
   return (
-    <div className={getGridClasses(props.viewMode, props.gridColumns)}>
-      {props.links.map((link) => (
-        <LinkCard
-          key={link.id}
-          link={link}
-          categoryName={link.categoryId ? categoryMap.get(link.categoryId) : undefined}
-          isFavorite={props.favorites.has(link.id)}
-          isPinned={link.isPinned || props.pinnedIds.has(link.id)}
-          viewMode={props.viewMode}
-          onToggleFavorite={props.onToggleFavorite}
-          onContextMenu={props.onContextMenu}
-          onOpenQr={props.onOpenQr}
-          onCopyLink={props.onCopyLink}
-          onVisit={props.onVisit}
-        />
-      ))}
+    <div className='space-y-3'>
+      {props.onToggleSectionSorting && (
+        <div className='flex justify-end'>
+          <SectionSortButton
+            isSorting={isSorting}
+            onClick={() => props.onToggleSectionSorting?.(props.activeCategory)}
+          />
+        </div>
+      )}
+      <CategoryLinksGrid
+        links={props.links}
+        categoryMap={categoryMap}
+        props={props}
+        isSorting={isSorting}
+      />
     </div>
   )
 }
@@ -115,16 +139,7 @@ function RootCategoriesSections({
   )
 }
 
-function CategorySection({
-  cat,
-  childrenCategories,
-  allLinksCount,
-  visibleLinks,
-  activeSub,
-  isCollapsed,
-  categoryMap,
-  props,
-}: {
+interface CategorySectionProps {
   cat: BlogPublicLinkCategory
   childrenCategories: BlogPublicLinkCategory[]
   allLinksCount: number
@@ -133,14 +148,21 @@ function CategorySection({
   isCollapsed: boolean
   categoryMap: Map<string, string>
   props: LinkSectionGroupProps
-}) {
+}
+
+function CategorySection({
+  cat, childrenCategories, allLinksCount, visibleLinks, activeSub, isCollapsed, categoryMap, props,
+}: CategorySectionProps) {
+  const isSorting = props.sortingSectionId === cat.id
   return (
     <section className='space-y-3'>
       <CategorySectionHeader
         cat={cat}
         allLinksCount={allLinksCount}
         isCollapsed={isCollapsed}
+        isSorting={isSorting}
         onToggleCollapse={() => props.onToggleCollapse(cat.id)}
+        onToggleSorting={props.onToggleSectionSorting ? () => props.onToggleSectionSorting?.(cat.id) : undefined}
       />
       {childrenCategories.length > 0 && !isCollapsed && (
         <CategorySubPills
@@ -152,7 +174,7 @@ function CategorySection({
         />
       )}
       {!isCollapsed && (
-        <CategoryLinksGrid links={visibleLinks} categoryMap={categoryMap} props={props} />
+        <CategoryLinksGrid links={visibleLinks} categoryMap={categoryMap} props={props} sectionId={cat.id} isSorting={isSorting} />
       )}
     </section>
   )
@@ -162,11 +184,16 @@ function CategoryLinksGrid({
   links,
   categoryMap,
   props,
+  sectionId,
+  isSorting,
 }: {
   links: BlogPublicLink[]
   categoryMap: Map<string, string>
   props: LinkSectionGroupProps
+  sectionId?: string
+  isSorting?: boolean
 }) {
+  const canDrag = Boolean(isSorting || (sectionId && props.sortingSectionId === sectionId))
   return (
     <div className={getGridClasses(props.viewMode, props.gridColumns)}>
       {links.map((link) => (
@@ -177,6 +204,11 @@ function CategoryLinksGrid({
           isFavorite={props.favorites.has(link.id)}
           isPinned={link.isPinned || props.pinnedIds.has(link.id)}
           viewMode={props.viewMode}
+          draggable={canDrag}
+          onDragStart={(e) => props.onLinkDragStart?.(e, link.id)}
+          onDragOver={props.onLinkDragOver}
+          onDrop={(e) => props.onLinkDrop?.(e, link.id)}
+          onDragEnd={props.onLinkDragEnd}
           onToggleFavorite={props.onToggleFavorite}
           onContextMenu={props.onContextMenu}
           onOpenQr={props.onOpenQr}
@@ -188,36 +220,40 @@ function CategoryLinksGrid({
   )
 }
 
-
 function CategorySectionHeader({
-  cat,
-  allLinksCount,
-  isCollapsed,
-  onToggleCollapse,
+  cat, allLinksCount, isCollapsed, isSorting, onToggleCollapse, onToggleSorting,
 }: {
   cat: BlogPublicLinkCategory
   allLinksCount: number
   isCollapsed: boolean
+  isSorting?: boolean
   onToggleCollapse: () => void
+  onToggleSorting?: () => void
 }) {
   return (
-    <button
-      type='button'
-      onClick={onToggleCollapse}
-      className='group flex items-center gap-2 cursor-pointer text-left focus:outline-hidden'
-    >
-      {isCollapsed ? (
-        <ChevronRight className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
-      ) : (
-        <ChevronDown className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
+    <div className='flex items-center justify-between'>
+      <button
+        type='button'
+        onClick={onToggleCollapse}
+        className='group flex items-center gap-2 cursor-pointer text-left focus:outline-hidden'
+      >
+        {isCollapsed ? (
+          <ChevronRight className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
+        ) : (
+          <ChevronDown className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
+        )}
+        <h3 className='text-base sm:text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors'>
+          {cat.name}
+        </h3>
+        <span className='rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-xs text-[var(--text-tertiary)] font-normal'>
+          {allLinksCount}
+        </span>
+      </button>
+
+      {onToggleSorting && !isCollapsed && (
+        <SectionSortButton isSorting={isSorting} onClick={onToggleSorting} />
       )}
-      <h3 className='text-base sm:text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors'>
-        {cat.name}
-      </h3>
-      <span className='rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-xs text-[var(--text-tertiary)] font-normal'>
-        {allLinksCount}
-      </span>
-    </button>
+    </div>
   )
 }
 
@@ -271,49 +307,63 @@ function UncategorizedSection({
   const locale = useCurrentLocale()
   if (links.length === 0) return null
   const isCollapsed = props.collapsedSections.has('uncategorized')
+  const isSorting = props.sortingSectionId === 'uncategorized'
 
   return (
     <section className='space-y-3 pt-2'>
       <UncategorizedSectionHeader
         count={links.length}
         isCollapsed={isCollapsed}
+        isSorting={isSorting}
         label={t('links.filter_uncategorized', {}, locale)}
         onToggle={() => props.onToggleCollapse('uncategorized')}
+        onToggleSorting={props.onToggleSectionSorting ? () => props.onToggleSectionSorting?.('uncategorized') : undefined}
       />
       {!isCollapsed && (
-        <CategoryLinksGrid links={links} categoryMap={categoryMap} props={props} />
+        <CategoryLinksGrid
+          links={links}
+          categoryMap={categoryMap}
+          props={props}
+          sectionId='uncategorized'
+          isSorting={isSorting}
+        />
       )}
     </section>
   )
 }
 
 function UncategorizedSectionHeader({
-  count,
-  isCollapsed,
-  label,
-  onToggle,
+  count, isCollapsed, isSorting, label, onToggle, onToggleSorting,
 }: {
   count: number
   isCollapsed: boolean
+  isSorting?: boolean
   label: string
   onToggle: () => void
+  onToggleSorting?: () => void
 }) {
   return (
-    <button
-      type='button'
-      onClick={onToggle}
-      className='group flex items-center gap-2 cursor-pointer text-left focus:outline-hidden'
-    >
-      {isCollapsed ? (
-        <ChevronRight className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
-      ) : (
-        <ChevronDown className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
+    <div className='flex items-center justify-between'>
+      <button
+        type='button'
+        onClick={onToggle}
+        className='group flex items-center gap-2 cursor-pointer text-left focus:outline-hidden'
+      >
+        {isCollapsed ? (
+          <ChevronRight className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
+        ) : (
+          <ChevronDown className='size-5 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors' />
+        )}
+        <h3 className='text-base sm:text-lg font-bold text-[var(--text-primary)]'>{label}</h3>
+        <span className='rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-xs text-[var(--text-tertiary)] font-normal'>
+          {count}
+        </span>
+      </button>
+
+      {onToggleSorting && !isCollapsed && (
+        <SectionSortButton isSorting={isSorting} onClick={onToggleSorting} />
       )}
-      <h3 className='text-base sm:text-lg font-bold text-[var(--text-primary)]'>{label}</h3>
-      <span className='rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-xs text-[var(--text-tertiary)] font-normal'>
-        {count}
-      </span>
-    </button>
+    </div>
   )
 }
 

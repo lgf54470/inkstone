@@ -357,6 +357,9 @@ function normalizePublicLink(raw: unknown): BlogPublicLink {
     avatar: r.avatar ? String(r.avatar) : null,
     categoryId: r.categoryId ? String(r.categoryId) : null,
     isPinned: Boolean(r.isPinned),
+    isFavorite: Boolean(r.isFavorite),
+    pinnedOrder: typeof r.pinnedOrder === 'number' ? r.pinnedOrder : 0,
+    sortOrder: typeof r.sortOrder === 'number' ? r.sortOrder : 0,
     clicks: typeof r.clicks === 'number' ? r.clicks : 0,
   }
 }

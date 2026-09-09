@@ -19,6 +19,8 @@ export const blogLinksActions = (
   | 'deleteLink'
   | 'updateLinkStatus'
   | 'togglePinLink'
+  | 'toggleFavoriteLink'
+  | 'reorderLinks'
   | 'batchLinks'
   | 'createLinkCategory'
   | 'updateLinkCategory'
@@ -52,6 +54,8 @@ export const blogLinksActions = (
   deleteLink: (id) => deleteLinkImpl(id, get),
   updateLinkStatus: (id, status) => updateLinkStatusImpl(id, status, get),
   togglePinLink: (id, isPinned) => togglePinLinkImpl(id, isPinned, get),
+  toggleFavoriteLink: (id, isFavorite) => toggleFavoriteLinkImpl(id, isFavorite, get),
+  reorderLinks: (orders) => reorderLinksImpl(orders, get),
   batchLinks: (action, categoryId) => batchLinksImpl(action, categoryId, set, get),
 
   createLinkCategory: (data) => createLinkCategoryImpl(data, get),
@@ -109,8 +113,21 @@ async function togglePinLinkImpl(id: string, isPinned: boolean, get: () => BlogS
   await get().loadLinks()
 }
 
+async function toggleFavoriteLinkImpl(id: string, isFavorite: boolean, get: () => BlogStoreState): Promise<void> {
+  await api.blog.links.toggleFavorite(id, isFavorite)
+  await get().loadLinks()
+}
+
+async function reorderLinksImpl(
+  orders: Array<{ id: string; sortOrder?: number; pinnedOrder?: number }>,
+  get: () => BlogStoreState,
+): Promise<void> {
+  await api.blog.links.reorder(orders)
+  await get().loadLinks()
+}
+
 async function batchLinksImpl(
-  action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'pin' | 'unpin',
+  action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'pin' | 'unpin' | 'favorite' | 'unfavorite',
   categoryId: string | null | undefined,
   set: SetBlogStoreState,
   get: () => BlogStoreState,

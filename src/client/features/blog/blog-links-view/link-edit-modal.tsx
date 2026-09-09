@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
+import { Palette } from 'lucide-react'
 import type { BlogLink, BlogLinkCategory, BlogLinkStatus } from '@shared/types'
 import { Modal } from '../../../components/overlay'
 import { Button } from '../../../components/primitives'
 import { Checkbox, Field, Input, Select, Textarea } from '../../../components/form'
 import { t } from '../../../lib/i18n'
+import { LinkDynamicIcon } from './link-dynamic-icon'
+import { LinkIconSelector } from './link-icon-selector'
 
 export interface LinkEditModalProps {
   open: boolean
@@ -13,7 +16,7 @@ export interface LinkEditModalProps {
   onSave: (data: Partial<BlogLink>) => Promise<void>
 }
 
-const MODAL_WIDTH = 540
+const MODAL_WIDTH = 560
 
 export function LinkEditModal(props: LinkEditModalProps) {
   const form = useLinkEditForm(props)
@@ -42,6 +45,8 @@ export function LinkEditModal(props: LinkEditModalProps) {
           setEmail={form.setEmail}
           isPinned={form.isPinned}
           setIsPinned={form.setIsPinned}
+          isFavorite={form.isFavorite}
+          setIsFavorite={form.setIsFavorite}
           categoryOptions={categoryOptions}
         />
         <div className='flex justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]'>
@@ -57,12 +62,12 @@ export function LinkEditModal(props: LinkEditModalProps) {
   )
 }
 
-function fetchGoogleFavicon(url: string): string {
+function fetchFavicon(url: string): string {
   try {
     const parsed = new URL(url.startsWith('http') ? url : `https://${url}`)
-    return `https://www.google.com/s2/favicons?domain=${parsed.hostname}&sz=128`
+    return `https://t3.gstatic.cn/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&size=128&url=https://${parsed.hostname}`
   } catch {
-    return `https://www.google.com/s2/favicons?domain=${url.trim()}&sz=128`
+    return `https://t3.gstatic.cn/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&size=128&url=https://${url.trim()}`
   }
 }
 
@@ -75,17 +80,21 @@ function useLinkEditForm({ link, open, onSave, onClose }: LinkEditModalProps) {
   const [categoryId, setCategoryId] = useState('')
   const [status, setStatus] = useState<BlogLinkStatus>('approved')
   const [isPinned, setIsPinned] = useState(false)
+  const [isFavorite, setIsFavorite] = useState(false)
   const [sortOrder, setSortOrder] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
     setName(link?.name ?? ''); setUrl(link?.url ?? ''); setDescription(link?.description ?? '')
     setAvatar(link?.avatar ?? ''); setEmail(link?.email ?? ''); setCategoryId(link?.categoryId ?? '')
-    setStatus(link?.status ?? 'approved'); setIsPinned(Boolean(link?.isPinned)); setSortOrder(link?.sortOrder ?? 0)
+    setStatus(link?.status ?? 'approved'); setIsPinned(Boolean(link?.isPinned))
+    setIsFavorite(Boolean(link?.isFavorite)); setSortOrder(link?.sortOrder ?? 0)
+    setShowPicker(false)
   }, [link, open])
 
   const handleAutoFetchIcon = () => {
-    if (url.trim()) setAvatar(fetchGoogleFavicon(url))
+    if (url.trim()) setAvatar(fetchFavicon(url))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,7 +105,7 @@ function useLinkEditForm({ link, open, onSave, onClose }: LinkEditModalProps) {
       await onSave({
         name: name.trim(), url: url.trim(), description: description.trim() || null,
         avatar: avatar.trim() || null, email: email.trim() || null, categoryId: categoryId || null,
-        status, isPinned, sortOrder,
+        status, isPinned, isFavorite, sortOrder,
       })
       onClose()
     } finally {
@@ -107,13 +116,15 @@ function useLinkEditForm({ link, open, onSave, onClose }: LinkEditModalProps) {
   return {
     name, setName, url, setUrl, description, setDescription,
     avatar, setAvatar, email, setEmail, categoryId, setCategoryId,
-    status, setStatus, isPinned, setIsPinned, saving,
+    status, setStatus, isPinned, setIsPinned, isFavorite, setIsFavorite,
+    saving, showPicker, setShowPicker,
     handleAutoFetchIcon, handleSubmit,
   }
 }
 
 function LinkBasicFields({
   name, setName, url, setUrl, avatar, setAvatar, description, setDescription, onAutoFetchIcon,
+  showPicker, setShowPicker,
 }: {
   name: string
   setName: (v: string) => void
@@ -124,6 +135,8 @@ function LinkBasicFields({
   description: string
   setDescription: (v: string) => void
   onAutoFetchIcon: () => void
+  showPicker?: boolean
+  setShowPicker?: (v: boolean) => void
 }) {
   return (
     <>
@@ -134,11 +147,23 @@ function LinkBasicFields({
         <Input value={url} onChange={(e) => setUrl(e.target.value)} required placeholder={t('blog.link_url_placeholder')} />
       </Field>
       <Field label={t('blog.link_avatar')}>
-        <div className='flex gap-2'>
-          <Input value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder={t('blog.link_avatar_placeholder')} className='flex-1' />
-          <Button type='button' variant='secondary' size='sm' onClick={onAutoFetchIcon} disabled={!url.trim()}>
-            {t('blog.link_auto_fetch_favicon')}
-          </Button>
+        <div className='space-y-2'>
+          <div className='flex gap-2 items-center'>
+            <div className='size-8 flex items-center justify-center rounded-[var(--r-md)] bg-[var(--bg-sunken)] border border-[var(--border-subtle)] shrink-0 overflow-hidden'>
+              <LinkDynamicIcon icon={avatar} name={name} url={url} size={18} />
+            </div>
+            <Input value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder={t('blog.link_avatar_placeholder')} className='flex-1' />
+            {setShowPicker && (
+              <Button type='button' variant='secondary' size='sm' onClick={() => setShowPicker(!showPicker)}>
+                <Palette size={13} />
+                {t('blog.link_icon_picker')}
+              </Button>
+            )}
+            <Button type='button' variant='secondary' size='sm' onClick={onAutoFetchIcon} disabled={!url.trim()}>
+              {t('blog.link_auto_fetch_favicon')}
+            </Button>
+          </div>
+          {showPicker && <LinkIconSelector value={avatar} onChange={(val) => { setAvatar(val); setShowPicker?.(false) }} />}
         </div>
       </Field>
       <Field label={t('blog.link_description')}>
@@ -149,7 +174,7 @@ function LinkBasicFields({
 }
 
 function LinkMetaFields({
-  categoryId, setCategoryId, status, setStatus, email, setEmail, isPinned, setIsPinned, categoryOptions,
+  categoryId, setCategoryId, status, setStatus, email, setEmail, isPinned, setIsPinned, isFavorite, setIsFavorite, categoryOptions,
 }: {
   categoryId: string
   setCategoryId: (v: string) => void
@@ -159,6 +184,8 @@ function LinkMetaFields({
   setEmail: (v: string) => void
   isPinned: boolean
   setIsPinned: (v: boolean) => void
+  isFavorite: boolean
+  setIsFavorite: (v: boolean) => void
   categoryOptions: Array<{ value: string; label: string }>
 }) {
   return (
@@ -184,8 +211,9 @@ function LinkMetaFields({
       <Field label={t('blog.link_email')}>
         <Input value={email} onChange={(e) => setEmail(e.target.value)} type='email' placeholder={t('blog.link_email_placeholder')} />
       </Field>
-      <div className='flex items-center gap-2 pt-1'>
+      <div className='flex items-center gap-4 pt-1'>
         <Checkbox checked={isPinned} onChange={setIsPinned} label={t('blog.link_pin')} />
+        <Checkbox checked={isFavorite} onChange={setIsFavorite} label={t('blog.link_favorite')} />
       </div>
     </>
   )

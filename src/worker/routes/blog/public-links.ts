@@ -25,7 +25,7 @@ function registerPublicLinksListRoute(blogPublicRoutes: Hono<AppBindings>): void
       `).all<BlogLinkCategoryRow>(),
       db.prepare(`
         SELECT id, name, url, description, avatar, category_id,
-          is_pinned, pinned_order, sort_order, clicks, created_at
+          is_pinned, pinned_order, is_favorite, sort_order, clicks, created_at
         FROM blog_links
         WHERE status = 'approved' AND is_active = 1
         ORDER BY is_pinned DESC, pinned_order ASC, sort_order ASC, created_at ASC
@@ -48,6 +48,9 @@ function registerPublicLinksListRoute(blogPublicRoutes: Hono<AppBindings>): void
       avatar: link.avatar,
       categoryId: link.category_id,
       isPinned: Boolean(link.is_pinned),
+      pinnedOrder: link.pinned_order,
+      isFavorite: Boolean(link.is_favorite),
+      sortOrder: link.sort_order,
       clicks: link.clicks || 0,
       createdAt: link.created_at,
     }))

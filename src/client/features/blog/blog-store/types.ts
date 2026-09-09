@@ -15,6 +15,8 @@ export interface BlogFolderNode {
 
 
 
+export type BlogLinkFilterType = 'all' | 'pending' | 'approved' | 'rejected' | 'pinned' | 'favorite'
+
 export interface BlogStoreState {
   activeTab: BlogTab
   statusFilter: 'all' | 'published' | 'draft' | 'pinned'
@@ -30,7 +32,7 @@ export interface BlogStoreState {
   commentSearch: string
   selectedCommentIds: Set<string>
 
-  linkStatusFilter: 'all' | 'pending' | 'approved' | 'rejected'
+  linkStatusFilter: BlogLinkFilterType
   linkCategoryId: string | null
   linkSearch: string
   selectedLinkIds: Set<string>
@@ -66,7 +68,7 @@ export interface BlogStoreState {
   selectAllComments: (ids: string[]) => void
   clearCommentSelection: () => void
 
-  setLinkStatusFilter: (status: 'all' | 'pending' | 'approved' | 'rejected') => void
+  setLinkStatusFilter: (status: BlogLinkFilterType) => void
   setLinkCategoryId: (id: string | null) => void
   setLinkSearch: (search: string) => void
   toggleSelectLink: (id: string) => void
@@ -130,7 +132,12 @@ export interface BlogStoreState {
   deleteLink: (id: string) => Promise<void>
   updateLinkStatus: (id: string, status: BlogLinkStatus) => Promise<void>
   togglePinLink: (id: string, isPinned: boolean) => Promise<void>
-  batchLinks: (action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'pin' | 'unpin', categoryId?: string | null) => Promise<void>
+  toggleFavoriteLink: (id: string, isFavorite: boolean) => Promise<void>
+  reorderLinks: (orders: Array<{ id: string; sortOrder?: number; pinnedOrder?: number }>) => Promise<void>
+  batchLinks: (
+    action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'pin' | 'unpin' | 'favorite' | 'unfavorite',
+    categoryId?: string | null,
+  ) => Promise<void>
 
   createLinkCategory: (data: { name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<BlogLinkCategory | null>
   updateLinkCategory: (id: string, patch: { name?: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<void>

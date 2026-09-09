@@ -18,6 +18,7 @@ export function useLinksState(initialLinks: BlogPublicLink[], initialCategories:
   const favPin = useFavoritesAndPins()
   const search = useSearchAndEngines()
   const ui = useModalsAndToast()
+  const sortState = useDragSortState(setLinks)
 
   useHydrateLinks({ initialLinks, initialCategories, setLinks, setCategories })
 
@@ -44,6 +45,7 @@ export function useLinksState(initialLinks: BlogPublicLink[], initialCategories:
     ...favPin,
     ...search,
     ...ui,
+    ...sortState,
     handleVisitLink: (l: BlogPublicLink) => void recordLinkClick(l.id),
   }
 }
@@ -141,7 +143,7 @@ function useHydrateLinks({
   setCategories: React.Dispatch<React.SetStateAction<BlogPublicLinkCategory[]>>
 }) {
   useEffect(() => {
-    if (initialLinks.length > 0) setLinks(initialLinks)
+    if (initialLinks.length > 0) setLinks(applyCustomOrder(initialLinks))
     if (initialCategories.length > 0) setCategories(initialCategories)
   }, [initialLinks, initialCategories, setLinks, setCategories])
 
@@ -150,7 +152,7 @@ function useHydrateLinks({
     fetchPublicLinks()
       .then((res) => {
         if (!active) return
-        if (res.links.length > 0) setLinks(res.links)
+        if (res.links.length > 0) setLinks(applyCustomOrder(res.links))
         if (res.categories.length > 0) setCategories(res.categories)
       })
       .catch((error) => {
@@ -299,6 +301,88 @@ function computeFiltered(
   return sortLinks(list, pinnedIds)
 }
 
+const ORDER_STORAGE_KEY = 'inkstone_blog_link_orders'
+
+function saveCustomOrder(links: BlogPublicLink[]) {
+  try {
+    const orderMap: Record<string, number> = {}
+    links.forEach((l, idx) => {
+      orderMap[l.id] = idx
+    })
+    localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(orderMap))
+  } catch (error) {
+    void error
+  }
+}
+
+function applyCustomOrder(links: BlogPublicLink[]): BlogPublicLink[] {
+  try {
+    const raw = localStorage.getItem(ORDER_STORAGE_KEY)
+    if (!raw) return links
+    const orderMap: Record<string, number> = JSON.parse(raw)
+    return [...links].sort((a, b) => {
+      const ordA = orderMap[a.id]
+      const ordB = orderMap[b.id]
+      if (ordA !== undefined && ordB !== undefined) return ordA - ordB
+      if (ordA !== undefined) return -1
+      if (ordB !== undefined) return 1
+      return 0
+    })
+  } catch (error) {
+    void error
+    return links
+  }
+}
+
+function useDragSortState(setLinks: React.Dispatch<React.SetStateAction<BlogPublicLink[]>>) {
+  const [sortingSectionId, setSortingSectionId] = useState<string | null>(null)
+  const [draggedLinkId, setDraggedLinkId] = useState<string | null>(null)
+
+  const toggleSectionSorting = (sectionId: string) => {
+    setSortingSectionId((prev) => (prev === sectionId ? null : sectionId))
+  }
+
+  const handleLinkDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id)
+    setDraggedLinkId(id)
+  }
+
+  const handleLinkDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleLinkDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    const sourceId = e.dataTransfer.getData('text/plain') || draggedLinkId
+    setDraggedLinkId(null)
+    if (!sourceId || sourceId === targetId) return
+    setLinks((prev) => {
+      const next = [...prev]
+      const sourceIdx = next.findIndex((l) => l.id === sourceId)
+      const targetIdx = next.findIndex((l) => l.id === targetId)
+      if (sourceIdx === -1 || targetIdx === -1) return prev
+      const [item] = next.splice(sourceIdx, 1)
+      next.splice(targetIdx, 0, item)
+      saveCustomOrder(next)
+      return next
+    })
+  }
+
+  const handleLinkDragEnd = () => {
+    setDraggedLinkId(null)
+  }
+
+  return {
+    sortingSectionId,
+    toggleSectionSorting,
+    handleLinkDragStart,
+    handleLinkDragOver,
+    handleLinkDrop,
+    handleLinkDragEnd,
+  }
+}
+
 function filterByCategory(
   links: BlogPublicLink[],
   cat: string,
@@ -307,7 +391,7 @@ function filterByCategory(
   pinnedIds: Set<string>,
   categories: BlogPublicLinkCategory[],
 ): BlogPublicLink[] {
-  if (cat === 'favorites') return links.filter((l) => favorites.has(l.id))
+  if (cat === 'favorites') return links.filter((l) => l.isFavorite || favorites.has(l.id))
   if (cat === 'pinned') return links.filter((l) => l.isPinned || pinnedIds.has(l.id))
   if (cat === 'none') return links.filter((l) => !l.categoryId)
   if (cat === 'all') return links
@@ -324,6 +408,12 @@ function sortLinks(links: BlogPublicLink[], pinnedIds: Set<string>): BlogPublicL
     const aPin = a.isPinned || pinnedIds.has(a.id) ? 1 : 0
     const bPin = b.isPinned || pinnedIds.has(b.id) ? 1 : 0
     if (aPin !== bPin) return bPin - aPin
+    if (aPin && bPin && typeof a.pinnedOrder === 'number' && typeof b.pinnedOrder === 'number' && a.pinnedOrder !== b.pinnedOrder) {
+      return a.pinnedOrder - b.pinnedOrder
+    }
+    if (typeof a.sortOrder === 'number' && typeof b.sortOrder === 'number' && a.sortOrder !== b.sortOrder) {
+      return a.sortOrder - b.sortOrder
+    }
     return (b.clicks ?? 0) - (a.clicks ?? 0)
   })
 }

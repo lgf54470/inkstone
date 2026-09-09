@@ -281,4 +281,6 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'links.search_btn': 'Search',
   'links.search_mode_internal': 'Searching in-site: filtering links in real-time. Selecting engines switches to external multi-tab search.',
   'links.search_mode_external': '{count} engine(s) selected ({names}). Search will open in external tabs.',
+  'links.sort_mode': 'Reorder',
+  'links.sort_done': 'Finish Reordering',
 }

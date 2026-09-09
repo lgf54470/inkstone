@@ -74,6 +74,7 @@ export interface BlogLink {
   status: BlogLinkStatus
   isPinned: boolean
   pinnedOrder: number
+  isFavorite: boolean
   sortOrder: number
   isActive: boolean
   clicks: number

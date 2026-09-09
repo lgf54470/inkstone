@@ -281,4 +281,6 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'links.search_btn': '搜索',
   'links.search_mode_internal': '当前为站内搜索：实时过滤友链；选中搜索引擎后切换为站外搜索（多选同时打开多个新标签页）',
   'links.search_mode_external': '已选 {count} 个引擎（{names}），搜索将站外打开新标签页',
+  'links.sort_mode': '排序',
+  'links.sort_done': '完成排序',
 }

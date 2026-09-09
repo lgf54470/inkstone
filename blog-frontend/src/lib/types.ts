@@ -101,6 +101,9 @@ export interface BlogPublicLink {
   avatar: string | null
   categoryId: string | null
   isPinned: boolean
+  isFavorite: boolean
+  pinnedOrder?: number
+  sortOrder?: number
   clicks?: number
 }
 

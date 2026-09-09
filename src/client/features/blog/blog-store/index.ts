@@ -55,7 +55,7 @@ function initialBlogState(): Partial<BlogStoreState> {
     }
 }
 
-export type { BlogTab, BlogFolderNode, BlogStoreState } from './types'
+export type { BlogTab, BlogFolderNode, BlogStoreState, BlogLinkFilterType } from './types'
 export { buildBlogFolderTree } from './folders'
 
 // Feed the notes store's visibility projection (published note ids) without

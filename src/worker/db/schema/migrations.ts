@@ -476,4 +476,13 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_blog_link_categories_parent ON blog_link_categories(parent_id)`,
     ],
   },
+  {
+    version: 25,
+    skipIfColumnExists: { table: 'blog_links', column: 'is_favorite' },
+    statements: [
+      `ALTER TABLE blog_links ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_links_fav ON blog_links(user_id, is_favorite DESC)`,
+    ],
+  },
 ]
+

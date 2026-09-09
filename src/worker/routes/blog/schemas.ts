@@ -123,6 +123,7 @@ export const blogLinkUpsertSchema = z.object({
   status: z.enum(['pending', 'approved', 'rejected']).optional().default('approved'),
   isPinned: z.boolean().optional().default(false),
   pinnedOrder: z.number().int().optional().default(0),
+  isFavorite: z.boolean().optional().default(false),
   sortOrder: z.number().int().optional().default(0),
   isActive: z.boolean().optional().default(true),
 })
@@ -143,11 +144,41 @@ export const blogLinkPinSchema = z.object({
   isPinned: z.boolean(),
 })
 
+export const blogLinkFavoriteSchema = z.object({
+  isFavorite: z.boolean(),
+})
+
 export const blogLinkBatchSchema = z.object({
-  action: z.enum(['approve', 'reject', 'delete', 'setCategory', 'setPinned']),
+  action: z.enum([
+    'approve',
+    'reject',
+    'delete',
+    'setCategory',
+    'setPinned',
+    'pin',
+    'unpin',
+    'setFavorite',
+    'favorite',
+    'unfavorite',
+  ]),
   linkIds: z.array(z.string()).min(1),
   categoryId: z.string().nullable().optional(),
   isPinned: z.boolean().optional(),
+  isFavorite: z.boolean().optional(),
+})
+
+export const blogLinkReorderSchema = z.object({
+  orders: z.array(
+    z.object({
+      id: z.string(),
+      sortOrder: z.number().int().optional(),
+      pinnedOrder: z.number().int().optional(),
+    }),
+  ).min(1),
+})
+
+export const blogLinkCheckSchema = z.object({
+  urls: z.array(z.string().min(1)).min(1).max(15),
 })
 
 export const blogPublicLinkRequestSchema = z.object({
@@ -171,6 +202,7 @@ export const blogLinkImportSchema = z.object({
       status: z.enum(['pending', 'approved', 'rejected']).optional().default('approved'),
       isPinned: z.boolean().optional().default(false),
       pinnedOrder: z.number().int().optional().default(0),
+      isFavorite: z.boolean().optional().default(false),
       sortOrder: z.number().int().optional().default(0),
       isActive: z.boolean().optional().default(true),
     }),
@@ -185,3 +217,4 @@ export const blogLinkImportSchema = z.object({
     }),
   ).optional().default([]),
 })
+

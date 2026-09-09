@@ -1,9 +1,10 @@
-import { Check, Edit2, ExternalLink, Globe, Pin, Trash2, X } from 'lucide-react'
+import { Check, Edit2, ExternalLink, GripVertical, Pin, Star, Trash2, X } from 'lucide-react'
 import type { BlogLink, BlogLinkCategory } from '@shared/types'
 import { Badge, IconButton } from '../../../components/primitives'
 import { Checkbox } from '../../../components/form'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
+import { LinkDynamicIcon } from './link-dynamic-icon'
 
 export interface LinkCardRowProps {
   link: BlogLink
@@ -15,6 +16,13 @@ export interface LinkCardRowProps {
   onEdit: () => void
   onDelete: () => void
   onTogglePin: () => void
+  onToggleFavorite: () => void
+  onContextMenu?: (e: React.MouseEvent) => void
+  draggable?: boolean
+  onDragStart?: (e: React.DragEvent) => void
+  onDragOver?: (e: React.DragEvent) => void
+  onDrop?: (e: React.DragEvent) => void
+  onDragEnd?: (e: React.DragEvent) => void
 }
 
 export function LinkCardRow({
@@ -27,22 +35,48 @@ export function LinkCardRow({
   onEdit,
   onDelete,
   onTogglePin,
+  onToggleFavorite,
+  onContextMenu,
+  draggable,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: LinkCardRowProps) {
   const categoryLabel = getCategoryLabel(link.categoryId, categories)
 
   return (
     <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      onContextMenu={(e) => {
+        if (onContextMenu) {
+          e.preventDefault()
+          onContextMenu(e)
+        }
+      }}
       className={cn(
         'group flex items-center justify-between gap-3 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 transition-colors hover:border-[var(--border-default)] hover:bg-[var(--bg-hover)]',
         isSelected && 'border-[var(--accent)] bg-[var(--accent-subtle)]/20',
+        draggable && 'cursor-grab active:cursor-grabbing',
       )}
     >
-      <LinkRowInfo
-        link={link}
-        categoryLabel={categoryLabel}
-        isSelected={isSelected}
-        onToggleSelect={onToggleSelect}
-      />
+      <div className='flex items-center gap-2 min-w-0 flex-1'>
+        {draggable && (
+          <span className='cursor-grab text-[var(--text-quaternary)] hover:text-[var(--text-primary)] shrink-0'>
+            <GripVertical size={14} />
+          </span>
+        )}
+        <LinkRowInfo
+          link={link}
+          categoryLabel={categoryLabel}
+          isSelected={isSelected}
+          onToggleSelect={onToggleSelect}
+        />
+      </div>
       <LinkRowActions
         link={link}
         onApprove={onApprove}
@@ -50,6 +84,7 @@ export function LinkCardRow({
         onEdit={onEdit}
         onDelete={onDelete}
         onTogglePin={onTogglePin}
+        onToggleFavorite={onToggleFavorite}
       />
     </div>
   )
@@ -58,11 +93,13 @@ export function LinkCardRow({
 function LinkRowHeader({
   name,
   isPinned,
+  isFavorite,
   status,
   categoryLabel,
 }: {
   name: string
   isPinned?: boolean
+  isFavorite?: boolean
   status: BlogLink['status']
   categoryLabel?: string | null
 }) {
@@ -75,6 +112,12 @@ function LinkRowHeader({
         <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-medium bg-[var(--accent-subtle)] text-[var(--accent)]'>
           <Pin size={10} />
           {t('blog.link_pin')}
+        </span>
+      )}
+      {isFavorite && (
+        <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400'>
+          <Star size={10} className='fill-current' />
+          {t('blog.link_favorite')}
         </span>
       )}
       <StatusBadge status={status} />
@@ -106,11 +149,14 @@ function LinkRowInfo({
         aria-label={link.name}
         className='shrink-0 min-h-0'
       />
-      <LinkAvatar avatar={link.avatar} name={link.name} />
+      <div className='size-8 flex items-center justify-center rounded-[var(--r-md)] bg-[var(--bg-sunken)] border border-[var(--border-subtle)] shrink-0 overflow-hidden'>
+        <LinkDynamicIcon icon={link.avatar} name={link.name} url={link.url} size={18} />
+      </div>
       <div className='min-w-0 flex-1 space-y-1'>
         <LinkRowHeader
           name={link.name}
           isPinned={link.isPinned}
+          isFavorite={link.isFavorite}
           status={link.status}
           categoryLabel={categoryLabel}
         />
@@ -144,6 +190,7 @@ function LinkRowActions({
   onEdit,
   onDelete,
   onTogglePin,
+  onToggleFavorite,
 }: {
   link: BlogLink
   onApprove?: () => void
@@ -151,6 +198,7 @@ function LinkRowActions({
   onEdit: () => void
   onDelete: () => void
   onTogglePin: () => void
+  onToggleFavorite: () => void
 }) {
   return (
     <div className='flex items-center gap-1 shrink-0'>
@@ -164,6 +212,15 @@ function LinkRowActions({
           </IconButton>
         </>
       )}
+
+      <IconButton
+        label={link.isFavorite ? t('blog.link_unfavorite') : t('blog.link_favorite')}
+        size='sm'
+        onClick={onToggleFavorite}
+        className={link.isFavorite ? 'text-amber-500 fill-amber-500' : 'text-[var(--text-quaternary)] hover:text-amber-500'}
+      >
+        <Star size={14} className={link.isFavorite ? 'fill-current' : ''} />
+      </IconButton>
 
       <IconButton
         label={link.isPinned ? t('blog.link_unpin') : t('blog.link_pin')}
@@ -181,27 +238,6 @@ function LinkRowActions({
       <IconButton label={t('blog.delete_link')} size='sm' onClick={onDelete} className='hover:text-[var(--danger)]'>
         <Trash2 size={14} />
       </IconButton>
-    </div>
-  )
-}
-
-function LinkAvatar({ avatar, name }: { avatar?: string | null; name: string }) {
-  if (avatar) {
-    return (
-      <img
-        src={avatar}
-        alt={name}
-        className='size-8 rounded-[var(--r-md)] object-cover bg-[var(--bg-sunken)] border border-[var(--border-subtle)] shrink-0'
-        onError={(e) => {
-          e.currentTarget.style.display = 'none'
-          e.currentTarget.parentElement?.querySelector('.avatar-fallback')?.classList.remove('hidden')
-        }}
-      />
-    )
-  }
-  return (
-    <div className='size-8 rounded-[var(--r-md)] bg-[var(--bg-raised)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-tertiary)] shrink-0'>
-      <Globe size={16} />
     </div>
   )
 }

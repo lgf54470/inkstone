@@ -232,4 +232,56 @@ describe('blog links management and public routes', () => {
     expect(listData.links.length).toBe(2)
     expect(listData.categories.length).toBe(2)
   })
+
+  it('toggles favorite and reorders links', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    const r1 = await postJson(app, '/api/blog/links', { name: 'A', url: 'https://a.com' })
+    const r2 = await postJson(app, '/api/blog/links', { name: 'B', url: 'https://b.com' })
+    const { link: l1 } = await r1.json() as any
+    const { link: l2 } = await r2.json() as any
+
+    const favRes = await patchJson(app, `/api/blog/links/${l1.id}/favorite`, { isFavorite: true })
+    expect(favRes.status).toBe(200)
+    const favData = await favRes.json() as any
+    expect(favData.isFavorite).toBe(true)
+
+    const reorderRes = await postJson(app, '/api/blog/links/reorder', {
+      orders: [
+        { id: l2.id, sortOrder: 0 },
+        { id: l1.id, sortOrder: 1 },
+      ],
+    })
+    expect(reorderRes.status).toBe(200)
+
+    const batchFavRes = await postJson(app, '/api/blog/links/batch', {
+      action: 'unfavorite',
+      linkIds: [l1.id],
+    })
+    expect(batchFavRes.status).toBe(200)
+
+    const listRes = await request(app, '/api/blog/links')
+    const listData = await listRes.json() as any
+    const foundL1 = listData.links.find((l: any) => l.id === l1.id)
+    expect(foundL1.isFavorite).toBe(false)
+    expect(foundL1.sortOrder).toBe(1)
+  })
+
+  it('checks link URLs via link checker route', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    const checkRes = await postJson(app, '/api/blog/links/check', {
+      urls: ['https://invalid-non-existent-domain-xyz-123.org'],
+    })
+    expect(checkRes.status).toBe(200)
+    const checkData = await checkRes.json() as any
+    expect(Array.isArray(checkData.results)).toBe(true)
+    expect(checkData.results.length).toBe(1)
+    expect(checkData.results[0].level).toBe('broken')
+  })
 })
+

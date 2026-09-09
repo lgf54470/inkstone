@@ -1,13 +1,16 @@
-import { Folder, Inbox, Plus, RefreshCw, Search, UploadCloud } from 'lucide-react'
-import type { BlogLinkStatus } from '@shared/types'
+import { ArrowUpDown, CheckCircle2, Folder, Inbox, Plus, RefreshCw, Search, UploadCloud } from 'lucide-react'
 import { Button, IconButton } from '../../../components/primitives'
 import { Checkbox, Input, Select } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 import { useBlogLinksView } from './use-blog-links-view'
+import type { BlogLinkFilterType } from '../blog-store'
 import { LinkCardRow } from './link-card-row'
 import { LinkEditModal } from './link-edit-modal'
 import { LinkCategoryModal } from './link-category-modal'
 import { LinkImportExportModal } from './link-import-export-modal'
+import { LinkCheckerModal } from './link-checker-modal'
+import { LinkQrModal } from './link-qr-modal'
+import { LinkContextMenu } from './link-context-menu'
 
 export function BlogLinksView() {
   const view = useBlogLinksView()
@@ -18,6 +21,9 @@ export function BlogLinksView() {
         onOpenAdd={view.handleOpenAdd}
         onOpenCategories={() => view.setIsCategoryModalOpen(true)}
         onOpenImportExport={() => view.setIsImportExportModalOpen(true)}
+        onOpenChecker={() => view.setIsCheckerModalOpen(true)}
+        isSortingMode={view.isSortingMode}
+        onToggleSortingMode={() => view.setIsSortingMode(!view.isSortingMode)}
         onRefresh={() => void view.loadLinks()}
         loading={view.loading}
       />
@@ -87,6 +93,13 @@ function LinksListContent({ view }: { view: ReturnType<typeof useBlogLinksView> 
           onEdit={() => view.handleOpenEdit(link)}
           onDelete={() => void view.handleDelete(link)}
           onTogglePin={() => void view.togglePinLink(link.id, !link.isPinned)}
+          onToggleFavorite={() => void view.toggleFavoriteLink(link.id, !link.isFavorite)}
+          onContextMenu={(e) => view.handleContextMenu(e, link)}
+          draggable={view.isSortingMode}
+          onDragStart={(e) => view.handleDragStart(e, link.id)}
+          onDragOver={view.handleDragOver}
+          onDrop={(e) => void view.handleDrop(e, link.id)}
+          onDragEnd={view.handleDragEnd}
         />
       ))}
     </>
@@ -94,6 +107,15 @@ function LinksListContent({ view }: { view: ReturnType<typeof useBlogLinksView> 
 }
 
 function LinksModals({ view }: { view: ReturnType<typeof useBlogLinksView> }) {
+  return (
+    <>
+      <LinksCoreModals view={view} />
+      <LinksToolModals view={view} />
+    </>
+  )
+}
+
+function LinksCoreModals({ view }: { view: ReturnType<typeof useBlogLinksView> }) {
   return (
     <>
       <LinkEditModal
@@ -130,16 +152,62 @@ function LinksModals({ view }: { view: ReturnType<typeof useBlogLinksView> }) {
   )
 }
 
+function LinksToolModals({ view }: { view: ReturnType<typeof useBlogLinksView> }) {
+  return (
+    <>
+      <LinkCheckerModal
+        open={view.isCheckerModalOpen}
+        onClose={() => view.setIsCheckerModalOpen(false)}
+        links={view.links}
+        categories={view.linkCategories}
+        onDeleteLink={view.handleDelete}
+        onBatchDeleteLinks={view.handleBatchDeleteLinks}
+        onEditLink={view.handleOpenEdit}
+      />
+
+      <LinkQrModal
+        open={Boolean(view.qrModalLink)}
+        onClose={() => view.setQrModalLink(null)}
+        link={view.qrModalLink}
+      />
+
+      <LinkContextMenu
+        state={view.contextMenu}
+        categories={view.linkCategories}
+        onClose={view.handleCloseContextMenu}
+        onCopy={(link) => {
+          void navigator.clipboard.writeText(link.url)
+        }}
+        onQRCode={(link) => view.setQrModalLink(link)}
+        onTogglePin={(link) => void view.togglePinLink(link.id, !link.isPinned)}
+        onToggleFavorite={(link) => void view.toggleFavoriteLink(link.id, !link.isFavorite)}
+        onMoveCategory={(link, categoryId) => void view.updateLink(link.id, { categoryId })}
+        onCheckLink={(_link) => {
+          view.setIsCheckerModalOpen(true)
+        }}
+        onEdit={(link) => view.handleOpenEdit(link)}
+        onDelete={(link) => void view.handleDelete(link)}
+      />
+    </>
+  )
+}
+
 function LinksHeader({
   onOpenAdd,
   onOpenCategories,
   onOpenImportExport,
+  onOpenChecker,
+  isSortingMode,
+  onToggleSortingMode,
   onRefresh,
   loading,
 }: {
   onOpenAdd: () => void
   onOpenCategories: () => void
   onOpenImportExport: () => void
+  onOpenChecker: () => void
+  isSortingMode: boolean
+  onToggleSortingMode: () => void
   onRefresh: () => void
   loading: boolean
 }) {
@@ -154,10 +222,18 @@ function LinksHeader({
         </p>
       </div>
 
-      <div className='flex items-center gap-2'>
+      <div className='flex items-center gap-2 flex-wrap'>
         <Button variant='primary' size='sm' onClick={onOpenAdd}>
           <Plus size={14} />
           {t('blog.add_link')}
+        </Button>
+        <Button variant={isSortingMode ? 'primary' : 'secondary'} size='sm' onClick={onToggleSortingMode}>
+          <ArrowUpDown size={14} />
+          {isSortingMode ? t('blog.link_reorder_finish') : t('blog.link_reorder_mode')}
+        </Button>
+        <Button variant='secondary' size='sm' onClick={onOpenChecker}>
+          <CheckCircle2 size={14} />
+          {t('blog.link_batch_check')}
         </Button>
         <Button variant='secondary' size='sm' onClick={onOpenCategories}>
           <Folder size={14} />
@@ -185,9 +261,9 @@ function LinksFilterBar({
   search,
   onSearchChange,
 }: {
-  statusFilter: BlogLinkStatus | 'all'
-  onSelectStatus: (s: BlogLinkStatus | 'all') => void
-  statusCounts: { all: number; pending: number; approved: number; rejected: number }
+  statusFilter: BlogLinkFilterType
+  onSelectStatus: (s: BlogLinkFilterType) => void
+  statusCounts: { all: number; pending: number; approved: number; rejected: number; pinned: number; favorite: number }
   categoryId: string | null
   onSelectCategory: (id: string | null) => void
   categories: Array<{ id: string; name: string; parentId?: string | null }>
@@ -217,12 +293,12 @@ function StatusFilterTabs({
   statusCounts,
   onSelectStatus,
 }: {
-  statusFilter: BlogLinkStatus | 'all'
-  statusCounts: { all: number; pending: number; approved: number; rejected: number }
-  onSelectStatus: (s: BlogLinkStatus | 'all') => void
+  statusFilter: BlogLinkFilterType
+  statusCounts: { all: number; pending: number; approved: number; rejected: number; pinned: number; favorite: number }
+  onSelectStatus: (s: BlogLinkFilterType) => void
 }) {
   return (
-    <div className='flex items-center gap-1.5'>
+    <div className='flex items-center gap-1.5 flex-wrap'>
       <StatusTabButton
         active={statusFilter === 'all'}
         label={t('blog.link_status_all')}
@@ -247,6 +323,18 @@ function StatusFilterTabs({
         label={t('blog.link_status_rejected')}
         count={statusCounts.rejected}
         onClick={() => onSelectStatus('rejected')}
+      />
+      <StatusTabButton
+        active={statusFilter === 'pinned'}
+        label={t('blog.link_filter_pinned')}
+        count={statusCounts.pinned}
+        onClick={() => onSelectStatus('pinned')}
+      />
+      <StatusTabButton
+        active={statusFilter === 'favorite'}
+        label={t('blog.link_filter_favorite')}
+        count={statusCounts.favorite}
+        onClick={() => onSelectStatus('favorite')}
       />
     </div>
   )
@@ -348,7 +436,7 @@ function LinksBatchBar({
 }: {
   selectedCount: number
   busy: boolean
-  onBatch: (action: 'approve' | 'reject' | 'delete' | 'pin' | 'unpin' | 'setCategory', catId?: string | null) => void
+  onBatch: (action: 'approve' | 'reject' | 'delete' | 'pin' | 'unpin' | 'favorite' | 'unfavorite' | 'setCategory', catId?: string | null) => void
   onClear: () => void
 }) {
   return (
@@ -357,7 +445,7 @@ function LinksBatchBar({
         {t('blog.selected_links_count', { value0: selectedCount })}
       </span>
 
-      <div className='flex items-center gap-2'>
+      <div className='flex items-center gap-2 flex-wrap'>
         <Button variant='secondary' size='sm' loading={busy} onClick={() => onBatch('approve')}>
           {t('blog.link_batch_approve')}
         </Button>
@@ -369,6 +457,12 @@ function LinksBatchBar({
         </Button>
         <Button variant='secondary' size='sm' loading={busy} onClick={() => onBatch('unpin')}>
           {t('blog.link_unpin')}
+        </Button>
+        <Button variant='secondary' size='sm' loading={busy} onClick={() => onBatch('favorite')}>
+          {t('blog.link_favorite')}
+        </Button>
+        <Button variant='secondary' size='sm' loading={busy} onClick={() => onBatch('unfavorite')}>
+          {t('blog.link_unfavorite')}
         </Button>
         <Button variant='danger' size='sm' loading={busy} onClick={() => onBatch('delete')}>
           {t('blog.link_batch_delete')}

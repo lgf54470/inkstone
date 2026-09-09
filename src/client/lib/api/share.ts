@@ -221,7 +221,27 @@ export const share = {
         request<{ ok: true; status: BlogLinkStatus }>(`/api/blog/links/${id}/status`, { method: 'PATCH', body: { status } }),
       togglePin: (id: string, isPinned: boolean) =>
         request<{ ok: true; isPinned: boolean }>(`/api/blog/links/${id}/pin`, { method: 'PATCH', body: { isPinned } }),
-      batch: (action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'pin' | 'unpin', linkIds: string[], categoryId?: string | null) =>
+      toggleFavorite: (id: string, isFavorite: boolean) =>
+        request<{ ok: true; isFavorite: boolean }>(`/api/blog/links/${id}/favorite`, { method: 'PATCH', body: { isFavorite } }),
+      reorder: (orders: Array<{ id: string; sortOrder?: number; pinnedOrder?: number }>) =>
+        request<{ ok: true; count: number }>('/api/blog/links/reorder', { method: 'POST', body: { orders } }),
+      check: (urls: string[]) =>
+        request<{
+          results: Array<{
+            url: string
+            status: number | null
+            ok: boolean
+            level: 'ok' | 'warning' | 'broken' | 'skipped'
+            durationMs: number
+            error?: string
+            finalUrl?: string
+          }>
+        }>('/api/blog/links/check', { method: 'POST', body: { urls } }),
+      batch: (
+        action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'pin' | 'unpin' | 'favorite' | 'unfavorite',
+        linkIds: string[],
+        categoryId?: string | null,
+      ) =>
         request<{ ok: true; count: number }>('/api/blog/links/batch', { method: 'POST', body: { action, linkIds, categoryId } }),
       import: (payload: { categories: Array<{ id?: string; name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }>; links: Array<Partial<BlogLink>> }) =>
         request<{ ok: true; importedCategories: number; importedLinks: number }>('/api/blog/links/import', { method: 'POST', body: payload }),

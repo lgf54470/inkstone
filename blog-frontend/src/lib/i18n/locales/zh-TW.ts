@@ -281,4 +281,6 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'links.search_btn': '搜尋',
   'links.search_mode_internal': '目前為站內搜尋：即時篩選友鏈；選取搜尋引擎後切換為站外搜尋（多選同時開啟多個新分頁）',
   'links.search_mode_external': '已選 {count} 個引擎（{names}），搜尋將站外開啟新分頁',
+  'links.sort_mode': '排序',
+  'links.sort_done': '完成排序',
 }
