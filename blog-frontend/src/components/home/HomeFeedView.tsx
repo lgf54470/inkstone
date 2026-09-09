@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect, useCallback, type ReactElement } from 'react'
 import { X, Sparkles } from 'lucide-react'
-import HomePostCard from './HomePostCard'
+import FeedPostsList from './FeedPostsList'
 import HomePagination from './HomePagination'
 import HomeSidebar from './HomeSidebar'
 import { parsePositiveInt } from '../../lib/pagination'
@@ -39,17 +39,36 @@ function updateUrlParams(tag: string | null, page: number, limit: number): void 
   }
 }
 
-function FeedHeader({
-  total,
-  selectedTag,
-  locale,
-  onClearTag,
-}: {
+interface FeedHeaderProps {
   total: number
   selectedTag: string | null
   locale: BlogLocale
+  loading?: boolean
   onClearTag: () => void
-}): ReactElement {
+}
+
+function ActiveTagBanner({ tag, locale, onClear }: { tag: string; locale: BlogLocale; onClear: () => void }): ReactElement {
+  return (
+    <div className='flex items-center justify-between rounded-xl border border-[var(--accent-muted)]/40 bg-[var(--accent-softer)]/60 px-3.5 py-2 text-xs'>
+      <div className='flex items-center gap-2 text-[var(--accent)] font-medium'>
+        <span>{t('filter.tag_active', {}, locale)}:</span>
+        <span className='rounded-md bg-[var(--accent)] px-2 py-0.5 text-[length:var(--text-11)] font-semibold text-white shadow-2xs'>
+          #{tag}
+        </span>
+      </div>
+      <button
+        type='button'
+        onClick={onClear}
+        className='flex items-center gap-1 text-xs text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer'
+      >
+        <span>{t('filter.clear', {}, locale)}</span>
+        <X size={13} aria-hidden='true' />
+      </button>
+    </div>
+  )
+}
+
+function FeedHeader({ total, selectedTag, locale, loading = false, onClearTag }: FeedHeaderProps): ReactElement {
   return (
     <div className='space-y-3 pb-2 border-b border-[var(--border-subtle)]'>
       <div className='flex items-center justify-between'>
@@ -59,90 +78,15 @@ function FeedHeader({
           <span className='text-xs font-normal text-[var(--text-tertiary)]'>
             {t('home.posts_count', { count: total }, locale)}
           </span>
+          {loading && (
+            <span
+              className='inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent'
+              aria-label='Loading'
+            />
+          )}
         </h2>
       </div>
-
-      {selectedTag && (
-        <div className='flex items-center justify-between rounded-xl border border-[var(--accent-muted)]/40 bg-[var(--accent-softer)]/60 px-3.5 py-2 text-xs'>
-          <div className='flex items-center gap-2 text-[var(--accent)] font-medium'>
-            <span>{t('filter.tag_active', {}, locale)}:</span>
-            <span className='rounded-md bg-[var(--accent)] px-2 py-0.5 text-[length:var(--text-11)] font-semibold text-white shadow-2xs'>
-              #{selectedTag}
-            </span>
-          </div>
-          <button
-            type='button'
-            onClick={onClearTag}
-            className='flex items-center gap-1 text-xs text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer'
-          >
-            <span>{t('filter.clear', {}, locale)}</span>
-            <X size={13} aria-hidden='true' />
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function PostCardSkeleton({ count }: { count: number }): ReactElement {
-  return (
-    <>
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          aria-hidden='true'
-          className='flex flex-col sm:flex-row gap-5 p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] animate-pulse'
-        >
-          <div className='sm:w-48 sm:h-36 w-full h-44 shrink-0 rounded-xl bg-[var(--bg-hover)]' />
-          <div className='flex-1 space-y-3 py-1'>
-            <div className='h-3 w-24 rounded bg-[var(--bg-hover)]' />
-            <div className='h-4 w-3/4 rounded bg-[var(--bg-hover)]' />
-            <div className='h-3 w-full rounded bg-[var(--bg-hover)]' />
-            <div className='h-3 w-5/6 rounded bg-[var(--bg-hover)]' />
-            <div className='h-8 w-2/3 rounded-lg bg-[var(--bg-hover)] mt-4' />
-          </div>
-        </div>
-      ))}
-    </>
-  )
-}
-
-function FeedPostsList({
-  posts,
-  loading,
-  categoryMap,
-  locale,
-  onTagClick,
-}: {
-  posts: BlogPost[]
-  loading: boolean
-  categoryMap: Map<string, BlogCategory>
-  locale: BlogLocale
-  onTagClick: (tag: string) => void
-}): ReactElement {
-  if (posts.length === 0 && !loading) {
-    return (
-      <div className='py-16 text-center rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--bg-surface)]'>
-        <p className='text-sm text-[var(--text-tertiary)]'>{t('filter.no_matched', {}, locale)}</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className='space-y-4'>
-      {loading ? (
-        <PostCardSkeleton count={3} />
-      ) : (
-        posts.map((post) => (
-          <HomePostCard
-            key={post.id}
-            post={post}
-            category={post.categoryId ? categoryMap.get(post.categoryId) : undefined}
-            locale={locale}
-            onTagClick={onTagClick}
-          />
-        ))
-      )}
+      {selectedTag && <ActiveTagBanner tag={selectedTag} locale={locale} onClear={onClearTag} />}
     </div>
   )
 }
@@ -365,6 +309,7 @@ function FeedMainColumn({
         total={total}
         selectedTag={selectedTag}
         locale={locale}
+        loading={loading}
         onClearTag={() => onTagToggle(selectedTag!)}
       />
       <div
