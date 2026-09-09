@@ -25,6 +25,7 @@ interface Props {
   siteInfo?: BlogSiteInfo
   locale?: BlogLocale
   fitViewport?: boolean
+  scrollableMain?: boolean
   articleMeta?: ArticleMeta
 }
 
@@ -35,6 +36,7 @@ const {
   siteInfo: propSiteInfo,
   locale: propLocale,
   fitViewport = false,
+  scrollableMain = true,
   articleMeta,
 } = Astro.props
 
@@ -117,7 +119,7 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
       })()
     </script>
   </head>
-  <body class={`min-h-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] antialiased transition-colors selection:bg-[var(--selection)] ${fitViewport ? 'lg:h-screen lg:overflow-hidden' : ''}`}>
+  <body class={`min-h-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] antialiased transition-colors selection:bg-[var(--selection)] ${fitViewport ? 'h-screen h-[100dvh] overflow-hidden' : ''}`}>
 
     <!-- API 降级提示条：占文档流置顶，滚动后 Header 照常吸顶，不遮挡任何控件 -->
     <DegradedBanner client:load initialLocale={locale} />
@@ -126,7 +128,7 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     <Header siteName={siteInfo.siteName} locale={locale} />
 
     <!-- Main Page Content -->
-    <main class={`flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 ${fitViewport ? 'py-3 lg:py-4 flex flex-col min-h-0 overflow-hidden' : 'py-8'}`}>
+    <main class={`flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 ${fitViewport ? `py-3 lg:py-4 flex flex-col min-h-0 ${scrollableMain ? 'overflow-y-auto' : 'overflow-y-auto lg:overflow-hidden'}` : 'py-8'}`}>
       <slot />
     </main>
 
