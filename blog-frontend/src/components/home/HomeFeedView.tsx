@@ -187,28 +187,56 @@ async function fetchFeedPage(
   return { posts: res.posts, total: res.total, totalPages: res.totalPages }
 }
 
+function findOptimisticPosts(
+  knownPosts: Map<string, BlogPost>,
+  targetTag: string | null,
+  limit: number,
+  fallbackPosts: BlogPost[],
+): BlogPost[] | null {
+  if (!targetTag) return fallbackPosts.length > 0 ? fallbackPosts : null
+  const matches: BlogPost[] = []
+  for (const post of knownPosts.values()) {
+    if (post.tags?.includes(targetTag)) {
+      matches.push(post)
+      if (matches.length >= limit) break
+    }
+  }
+  return matches.length > 0 ? matches : null
+}
+
 function useFeedQuery(options: UseFeedQueryOptions) {
   const { initialPosts, initialTotal, initialTotalPages, initialTag = null, initialPage, initialLimit, onScrollToTop } = options
   const [data, setData] = useState({ posts: initialPosts, total: initialTotal, totalPages: initialTotalPages, loading: false })
   const cacheRef = useRef(createSeededFeedCache({ tag: initialTag, page: initialPage, limit: initialLimit, posts: initialPosts, total: initialTotal, totalPages: initialTotalPages }))
+  const knownPostsRef = useRef<Map<string, BlogPost>>(new Map(initialPosts.map((p) => [p.id, p])))
   const { begin, isLatest } = useLatestRequest()
+
+  useEffect(() => {
+    for (const p of initialPosts) knownPostsRef.current.set(p.id, p)
+  }, [initialPosts])
 
   const fetchAndApply = async (targetTag: string | null, targetPage: number, targetLimit: number) => {
     const key = feedCacheKey(targetTag, targetPage, targetLimit)
     const cache = cacheRef.current
     const cached = cache.get(key)
     if (cached && Date.now() - cached.at < FEED_CACHE_TTL_MS) {
-      // 缓存命中：中止在途请求（seq 作废），直接展示缓存结果
       begin()
       setData({ posts: cached.posts, total: cached.total, totalPages: cached.totalPages, loading: false })
       onScrollToTop?.()
       return
     }
+    const optimistic = targetPage === 1 ? findOptimisticPosts(knownPostsRef.current, targetTag, targetLimit, initialPosts) : null
     const { seq, signal } = begin()
-    setData((prev) => ({ ...prev, loading: true }))
+    setData((prev) => ({
+      posts: optimistic ?? prev.posts,
+      total: optimistic ? (targetTag ? optimistic.length : initialTotal) : prev.total,
+      totalPages: prev.totalPages,
+      loading: true,
+    }))
     try {
       const result = await fetchFeedPage(targetTag, targetPage, targetLimit, signal)
       if (!isLatest(seq)) return
+      for (const p of result.posts) knownPostsRef.current.set(p.id, p)
       feedCacheSet(cache, key, { at: Date.now(), ...result })
       setData({ posts: result.posts, total: result.total, totalPages: result.totalPages, loading: false })
     } finally {

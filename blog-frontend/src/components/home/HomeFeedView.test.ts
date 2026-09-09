@@ -285,3 +285,32 @@ describe('HomeFeedView initial page cache seed', () => {
     expect(container.textContent).not.toContain('当前标签:')
   })
 })
+
+describe('HomeFeedView optimistic tag filtering', () => {
+  it('optimistically displays matching in-memory posts while request is pending', async () => {
+    vi.restoreAllMocks()
+    const { container } = renderFeed()
+    let resolveRequest!: (value: PostsResponse) => void
+    vi.spyOn(api, 'getPosts').mockImplementationOnce(() => new Promise<PostsResponse>((resolve) => {
+      resolveRequest = resolve
+    }))
+
+    await clickTag(container, '#tag-a')
+
+    expect(container.textContent).toContain('第一篇文章')
+    expect(container.textContent).not.toContain('第二篇文章')
+
+    await act(async () => {
+      resolveRequest({
+        posts: [MOCK_POSTS[0]],
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      })
+    })
+
+    expect(container.textContent).toContain('第一篇文章')
+  })
+})
+
