@@ -17,6 +17,7 @@ node scripts/check-i18n.mjs
 node scripts/check-module-state.mjs
 node scripts/check-deep-imports.mjs
 node scripts/check-code-style.mjs
+node scripts/check-migration-immutability.mjs
 
 # Type/test gates — scoped to the staged TypeScript files so local commits
 # stay fast; the full suite still runs in CI. `tsc -b` is incremental (via

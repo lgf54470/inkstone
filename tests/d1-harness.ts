@@ -61,19 +61,26 @@ export function createD1Database(extraSchema = ''): D1Shim {
   sqlite.exec(BASE_SCHEMA + '\n' + extraSchema)
   const prepare = (sql: string) => {
     const makeStatement = (values: unknown[]): D1Prepared => {
-      const statement = sqlite.prepare(sql)
+      const getStatement = () => sqlite.prepare(sql)
       const returnsRows = /\bRETURNING\b/i.test(sql) || /^\s*(?:SELECT|WITH)\b/i.test(sql)
       return {
         bind: (...bound: unknown[]) => makeStatement(bound),
         run: async () => {
+          const statement = getStatement()
           if (returnsRows) {
             return { meta: { changes: 0 }, results: statement.all(...values) as Array<Record<string, unknown>> }
           }
           const info = statement.run(...values)
           return { meta: { changes: Number(info.changes) } }
         },
-        all: () => ({ results: statement.all(...values) as Array<Record<string, unknown>> }),
-        first: () => (statement.get(...values) as Record<string, unknown> | undefined) ?? null,
+        all: () => {
+          const statement = getStatement()
+          return { results: statement.all(...values) as Array<Record<string, unknown>> }
+        },
+        first: () => {
+          const statement = getStatement()
+          return (statement.get(...values) as Record<string, unknown> | undefined) ?? null
+        },
       }
     }
     return makeStatement([])
