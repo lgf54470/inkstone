@@ -329,27 +329,27 @@ fix(theme): 修复暗色切换时派生 CSS 变量不重放
 
 > 全文件唯一需按项目修改的章节。正文规范均引用此处。不适用填「不适用」，不留空。
 
-- 技术栈：
-- 运行环境：
+- 技术栈：TypeScript 5.9 + React 19 + Zustand 5 + Tailwind CSS 4 + CodeMirror 6 + markdown-it（含 KaTeX/Mermaid/Prism）前端；Cloudflare Workers + Hono 4 后端（D1/FTS5、R2 或 Workers KV、KV OAuth、Durable Objects、可选 Workers AI）；Zod 4 校验；远程 MCP 服务 + OAuth 2.1/PKCE。Vite 8（rolldown）构建，Vitest 4 测试。`blog-frontend/` 为独立 Astro 7 + React 19 + Tailwind 4 博客前台。
+- 运行环境：Node ^24.15.0 + npm（锁文件为 `package-lock.json`，必须提交）。应用运行于 Cloudflare Workers，`compatibility_date = 2026-05-01`，`compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]`。本地经 `@cloudflare/vite-plugin` 的 workerd 运行，默认 http://localhost:7712；`blog-frontend/` 要求 Node >= 22.12.0，开发端口 4321。
 - 常用命令：
-  - 安装：
-  - Lint：
-  - 类型检查：
-  - 测试：；watch：
-  - 构建 / 开发：
-  - 自定义门禁脚本：
-- 业务 scope 清单：
-- 目录结构要点：
-- 环境变量：
-- 公共契约与弃用策略：
-- 数据迁移：
-- 安全基线：
-- 可访问性基线：
-- 国际化范围：
-- 状态与数据获取：
-- 设计令牌位置：
-- 测试策略：
-- 可观测性：
-- 分支与发布：
-- CI 门禁：
-- 代码所有者：
+  - 安装：`npm ci`（仓库根）；`cd blog-frontend && npm ci`
+  - Lint：主项目无 ESLint，由 `npm run style:check` 等门禁脚本承担；`blog-frontend` 用 `npm run lint`（`scripts/agents-lint.mjs`）
+  - 类型检查：`npm run typecheck`（`tsc -b`，client/worker/node 三项目）；`blog-frontend`：`npm run typecheck`（`astro check`）
+  - 测试：`npm run test:unit`（Vitest 单元/集成）；watch：`npx vitest --config vitest.config.ts`；`blog-frontend`：`npm test`
+  - 构建 / 开发：`npm run dev`（R2）、`npm run dev:kv`（KV）、`npm run dev:demo`（纯前端体验版）；`npm run build` / `build:kv` / `build:demo`、`npm run preview`；`blog-frontend`：`npm run dev` / `build` / `preview`
+  - 自定义门禁脚本：`style:check`、`size:check`、`comments:check`、`escape:check`、`empty-catch:check`、`hardcoded:check`、`tokens:check`、`i18n:check`、`module-state:check`、`deep-imports:check`、`vendor:check`、`budget:check`；`blog-frontend` 复用 `size:check:blog`、`deep-imports:check:blog`；端到端 `test:e2e`（`scripts/e2e.mjs`、`scripts/e2e-visual.mjs`）
+- 业务 scope 清单：auth、notes、folders、tags、search、sync、files/attachments、avatars、backup、settings、share、blog、mcp、graph、templates、transfer、update；基础设施 scope 沿用正文通用表（theme、ui、i18n、db、infra、docs、auth、api），另可用 editor、preview、workspace、sidebar、command、pwa、demo。
+- 目录结构要点：`src/client/` React 界面（`components` 通用组件、`editor` 编辑器、`features/<domain>` 业务、`store` Zustand、`lib` 数据层、`styles` 令牌与样式、`demo` 纯前端后端模拟）；`src/shared/` 共享类型、locales、markdown 工具、常量、zip；`src/worker/` Hono 应用（`routes/<domain>`、`db/schema` 迁移与 FTS、`mcp`、`backup`、`attachments`、`realtime`、`durable`、`middleware`、`lib`）；`blog-frontend/` 独立 Astro 站点；`tests/` 跨模块回归 + D1 测试基座；`scripts/` 门禁与端到端脚本；`public/` 静态资源。跨模块只经各目录 `index.ts` 公开入口（`deep-imports:check` 强制）。
+- 环境变量：主 Worker 通过 `wrangler.toml` 的 `[vars]`/绑定与 `wrangler secret put`（无根 `.env.example`，`.dev.vars` 已 gitignore）：`APP_NAME`（默认 Inkstone）、`PUBLIC_URL`（OAuth 规范 origin，可选）、`DEV_SEED`（仅 `wrangler.kv.toml` 本地，开启 `/api/dev/seed`）；绑定 `DB`(D1)、`FILES`(R2) 或 `FILES_KV`(KV)、`OAUTH_KV`、`SYNC_HUB`(DO)、`CREDENTIAL_VAULT`(DO)、`AI`(可选)、`ASSETS`。`blog-frontend/.env.example`：`PUBLIC_API_URL`（另有 `window.__INKSTONE_API_URL__` / `<meta name="inkstone-api-url">` 覆盖）。构建/测试：`INKSTONE_EPHEMERAL_DEV=1`、`INKSTONE_CHROME_PATH`、`INKSTONE_VISUAL_USERNAME/PASSWORD`、`BASE_URL`、`SEED_USER/PASS`、`SIZE_LIMITS`。
+- 公共契约与弃用策略：接口契约集中在 `src/shared/types/`，请求体经 Zod（`src/worker/lib/request.ts`）在服务端二次校验；导出/备份格式见 `src/shared/backup-format.ts`。公共 API、开放接口与持久化迁移的变更走「deprecation 标记 + 迁移窗口 + 到期删除」，不叠加长期 fallback；历史 `inkstone_session` cookie 与新的 `__Host-inkstone_session` 并存过渡。已应用迁移不可修改。
+- 数据迁移：`src/worker/db/schema/migrations.ts` 中带版本号、幂等、只增不改的 SQL，由 `initializeDatabase()` 启动时按 `schema_migrations` 应用；新改动只能追加新 migration，`check-migration-immutability` 与 `tests/schema-migrations.test.ts` 守卫；部署升级前先备份。
+- 安全基线：scrypt(N=2^14, r=8, p=5) 密码哈希 + 常量时间比较；会话 token 仅存 SHA-256 摘要，90 天滑动 TTL，`__Host-` cookie；登录失败/IP 递增锁定节流；TOTP 双因素与恢复码。逐响应 nonce 的 CSP（script-src 不用 `unsafe-inline`，当前因可运行 JS 示例保留 `'unsafe-eval'`，见 `SECURITY.md` S1）、HSTS、X-Frame-Options、Referrer-Policy、Permissions-Policy，API 响应 `no-store`。DOMPurify + markdown 渲染闸门；上传校验类型/大小/配额且与执行目录隔离；MCP 走 OAuth 2.1/PKCE 与可撤销 `ink_` Key；密钥不入仓库，前端只放公开配置。
+- 可访问性基线：交互控件必须使用 `src/client/components`（primitives、form、overlay 等）基于原生语义元素；Overlay 组件实现焦点陷阱、ESC 关闭、焦点归还与 ARIA；状态变化用 `role="status"`/`aria-live`；颜色由 oklch 令牌保证对比度；`tokens.css` 在 `prefers-reduced-motion: reduce` 下将动效时长归零。当前无自动化 axe/a11y 门禁，靠组件实现与评审保证。
+- 国际化范围：主应用 en-US + zh-CN，资源在 `src/shared/locales/{en-US,zh-CN}/*.ts`，运行时按需加载（`src/client/lib/i18n.ts`），`npm run i18n:check` 校验键一致；源码 UI 文案必须使用英文 message id，中文只允许出现在 zh-CN 资源。`blog-frontend` 支持 zh-CN（默认）、zh-TW、en-US（`src/lib/i18n/locales`）。日期/数字用 `Intl`，存储用 UTC。
+- 状态与数据获取：客户端用 Zustand：`store/notes`（组合根 + 职责子模块，见 `store/notes/README.md`）、`store/ui`、`store/session`、`store/pwa`、`store/update`、`store/pinned-windows`；网络经 `src/client/lib/api`（transport + 领域模块），展示层不直接请求。离线用 IndexedDB（`src/client/lib/db` + `idb-keyval`）缓存与 outbox 写入队列、乐观更新与回滚、跨标签广播；实时用 `SyncHub` Durable Object + 轮询降级。
+- 设计令牌位置：`src/client/styles/tokens.css` 与 `blog-frontend/src/styles/tokens.css`（共享契约，`npm run tokens:check` + `scripts/check-token-drift.baseline.json` 守卫漂移）；z-index 见 `src/client/lib/z-index.ts`；`npm run hardcoded:check` 禁止内联视觉字面量。
+- 测试策略：Vitest 双工程（`vitest.config.ts`）：`jsdom` 覆盖客户端与多数测试，`node` 覆盖 worker/D1/demo 测试；同目录 `*.test.ts` + `tests/` 跨模块回归（基座 `tests/d1-harness.ts`，node:sqlite）。以行为为准，修 bug 先写复现；Markdown 渲染用带显式断言的快照；`blog-frontend` 有 markdown 基线与 SSR 冒烟。端到端 `npm run test:e2e`（对 :7712 的全新本地实例）与 `scripts/e2e-visual.mjs`（Puppeteer），CI 以 `INKSTONE_EPHEMERAL_DEV=1 npm run dev:kv` 运行。
+- 可观测性：Worker `[observability] enabled = true`，日志用 `console.warn/error` 并带 `[inkstone]`/`[share]` 前缀；`/api/health` 暴露组件就绪状态；Cron `0,15,30,45 * * * *` 执行备份、附件清理、索引与维护；错误响应不泄露堆栈，日志不含密钥/敏感数据；`module-state:check` 保证 Worker 无模块级可变状态。
+- 分支与发布：`main` 为稳定/发布分支，`dev` 为集成分支；CI 在 push `main`/`dev` 与全部 PR 上运行。版本唯一来源为根 `package.json`（SemVer，无 `v` 前缀/预发布），构建时嵌入并与上游 `main` 的 package.json 比对以提示更新。发布用 `npm run deploy`（R2）/ `deploy:kv` / `deploy:demo` / `deploy:blog`；提交遵循 Conventional Commits。
+- CI 门禁：`.github/workflows/ci.yml` 主任务依次执行 `typecheck`、`test:unit`、`ci-bench-report`、`i18n:check`、`comments:check`、`escape:check`、`empty-catch:check`、`module-state:check`、`deep-imports:check`、`style:check`、`hardcoded:check`、`tokens:check`、`size:check`、`size:check:blog`、`deep-imports:check:blog`、`build`、`check-bundle-budget`、`vendor:check`，再对本地实例跑 `scripts/e2e.mjs` 与 `scripts/e2e-visual.mjs`；`blog-frontend` 任务独立跑 `typecheck`、`lint`、`test`、`build`、smoke。`.githooks/pre-commit` 在本地镜像大部分静态门禁，并对暂存 TS 文件跑增量 `tsc -b` 与 `vitest related`。
+- 代码所有者：仓库无 `CODEOWNERS` 文件；上游维护者为 `shuaiplus/inkstone`，本地为 fork（`lgf54470/inkstone`）。所有改动按本文件要求走 PR 评审。
