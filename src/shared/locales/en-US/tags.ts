@@ -37,6 +37,7 @@ export const messages = {
 'tags.pin_failed': 'Could not pin tag',
 'tags.pinned': 'Tag pinned',
 'tags.remove_from_note': 'Remove tag from note',
+'tags.create_child': 'New sub-tag',
 'tags.rename': 'Rename',
 'tags.rename_failed': 'Could not rename tag',
 'tags.renamed': 'Tag renamed',

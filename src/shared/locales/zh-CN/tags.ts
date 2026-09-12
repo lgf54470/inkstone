@@ -37,6 +37,7 @@ export const messages = {
 'tags.pin_failed': '置顶标签失败',
 'tags.pinned': '已置顶',
 'tags.remove_from_note': '从笔记中移除标签',
+'tags.create_child': '创建子标签',
 'tags.rename': '重命名',
 'tags.rename_failed': '重命名失败',
 'tags.renamed': '标签已重命名',

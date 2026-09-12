@@ -10,6 +10,7 @@ interface TagPillProps {
   color?: string | null
   size?: 'sm' | 'md'
   removable?: boolean
+  removeLabel?: string
   onClick?: (e?: MouseEvent) => void
   onRemove?: (e?: MouseEvent) => void
   className?: string
@@ -38,12 +39,14 @@ function handlePillKeyDown(e: KeyboardEvent, onClick?: (e?: MouseEvent) => void)
 
 function TagPillRemove({
   isSm,
+  label,
   onRemove,
 }: {
   isSm: boolean
+  label?: string
   onRemove: (e?: MouseEvent) => void
 }) {
-  const ariaLabel = t('tags.remove_from_note')
+  const ariaLabel = label ?? t('tags.remove_from_note')
   return (
     <button
       type='button'
@@ -69,6 +72,7 @@ export const TagPill = memo(function TagPill({
   color,
   size = 'sm',
   removable = false,
+  removeLabel,
   onClick,
   onRemove,
   className,
@@ -92,7 +96,7 @@ export const TagPill = memo(function TagPill({
     >
       <Hash size={isSm ? 10 : 12} className='shrink-0 opacity-70' />
       <span className='truncate max-w-37.5'>{tag}</span>
-      {removable && onRemove && <TagPillRemove isSm={isSm} onRemove={onRemove} />}
+      {removable && onRemove && <TagPillRemove isSm={isSm} label={removeLabel} onRemove={onRemove} />}
     </span>
   )
 })

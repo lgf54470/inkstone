@@ -1,31 +1,47 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronRight, Hash, MoreHorizontal, Pin, Palette, Pencil, Settings2, Trash2 } from 'lucide-react'
+import { ChevronRight, FolderPlus, Hash, MoreHorizontal, Pin, Palette, Pencil, Settings2, Trash2 } from 'lucide-react'
 import type { Tag } from '@shared/types'
-import { cn } from '../../../lib/cn'
-import { TagNameHighlight } from '../../../components/tag-name-highlight'
-import { IconButton } from '../../../components/primitives'
-import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../../components/overlay'
-import { useUi, type PanelName } from '../../../store/ui'
-import { deleteTag, setTagColor, TagColorSubmenu, toggleTagPinned } from '../../tags'
-import { t } from '../../../lib/i18n'
+import { cn } from '../../lib/cn'
+import { TagNameHighlight } from '../../components/tag-name-highlight'
+import { IconButton } from '../../components/primitives'
+import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../components/overlay'
+import { TagColorSubmenu } from './tag-color-submenu'
+import { t } from '../../lib/i18n'
 
+const DRAFT_FOCUS_GUARD_MS = 300
 const TAG_INDENT_BASE = 8
 const TAG_INDENT_STEP = 14
 
-export function TagDraftRow({ onFinish, onCancel }: {
+export function TagDraftRow({ onFinish, onCancel, initialValue = '' }: {
   onFinish: (value: string) => void
   onCancel: () => void
+  initialValue?: string
 }) {
   const finishedRef = useRef(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const readyRef = useRef(false)
+  useEffect(() => {
+    const timer = window.setTimeout(() => { readyRef.current = true }, DRAFT_FOCUS_GUARD_MS)
+    return () => window.clearTimeout(timer)
+  }, [])
   const finish = (value: string) => {
     if (finishedRef.current)
       return
     finishedRef.current = true
+    if (!value.trim() || value.trim() === initialValue) {
+      onCancel()
+      return
+    }
     onFinish(value)
   }
   return (<div className='flex h-10 items-center gap-2 rounded-[var(--r-md)] px-2 md:h-7.5'>
     <Hash size={13} className='shrink-0 text-[var(--text-quaternary)]'/>
-    <input aria-label={t('tags.new')} autoFocus placeholder={t('tags.new_placeholder')} onBlur={(event) => {
+    <input ref={inputRef} aria-label={t('tags.new')} autoFocus defaultValue={initialValue} placeholder={t('tags.new_placeholder')} onBlur={(event) => {
+      // The menu or a row click can steal focus right after mount; keep the draft alive instead of cancelling it.
+      if (!readyRef.current) {
+        inputRef.current?.focus()
+        return
+      }
       if (event.currentTarget.value.trim())
         finish(event.currentTarget.value)
       else
@@ -56,17 +72,25 @@ interface TagRowProps {
   highlighted: boolean
   searchQuery: string
   renaming: boolean
+  actions: TagRowActions
   onOpen: (event: React.MouseEvent<HTMLButtonElement>) => void
   onStartRename: () => void
   onFinishRename: (value: string) => void
   onCancelRename: () => void
 }
 
-export function TagRow({ tag, displayName, depth = 0, hasChildren = false, isExpanded = false, onToggleExpand, count, active, selected, highlighted, searchQuery, renaming, onOpen, onStartRename, onFinishRename, onCancelRename }: TagRowProps) {
+export interface TagRowActions {
+  onTogglePin: () => void
+  onSelectColor: (color: string | null) => void
+  onManageTags: () => void
+  onDelete: () => void
+  onCreateChild?: () => void
+}
+
+export function TagRow({ tag, displayName, depth = 0, hasChildren = false, isExpanded = false, onToggleExpand, count, active, selected, highlighted, searchQuery, renaming, actions, onOpen, onStartRename, onFinishRename, onCancelRename }: TagRowProps) {
   const menu = useContextMenu()
   const rowRef = useRef<HTMLDivElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const openPanel = useUi((s) => s.openPanel)
   const displayLabel = displayName ?? tag.name
   const noteCount = count !== undefined ? count : tag.count
   useEffect(() => {
@@ -80,7 +104,7 @@ export function TagRow({ tag, displayName, depth = 0, hasChildren = false, isExp
     finishedRef.current = true
     onFinishRename(value)
   }
-  const menuItems = buildTagMenuItems(tag, onStartRename, openPanel)
+  const menuItems = buildTagMenuItems(tag, onStartRename, actions)
   return (<div ref={rowRef} onContextMenu={(event) => { setIsMenuOpen(false); menu.onContextMenu(event); }} style={depth > 0 ? { paddingLeft: `${depth * TAG_INDENT_STEP + TAG_INDENT_BASE}px` } : undefined} className={cn('group relative flex h-10 items-center gap-1.5 rounded-[var(--r-md)] px-2 md:h-7.5', 'transition-colors duration-[var(--dur-fast)]', active || selected ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', highlighted && 'ring-1 ring-[var(--accent)]')}>
     <TagRowChevron hasChildren={hasChildren} depth={depth} isExpanded={isExpanded} onToggleExpand={onToggleExpand}/>
     <Hash size={13} className='shrink-0' style={{ color: tag.color ?? (active || selected ? 'var(--accent)' : 'var(--text-quaternary)') }}/>
@@ -152,32 +176,35 @@ function TagRowMeta({ noteCount, onOpenMenu }: {
   </>)
 }
 
-function buildTagMenuItems(tag: Tag, onStartRename: () => void, openPanel: (panel: PanelName) => void): MenuItem[] {
+function buildTagMenuItems(tag: Tag, onStartRename: () => void, actions: TagRowActions): MenuItem[] {
   return [
     {
       id: 'pin',
       label: tag.isPinned ? t('tags.unpin') : t('tags.pin'),
       icon: <Pin size={13} className={tag.isPinned ? 'fill-current' : undefined}/>,
-      onSelect: () => void toggleTagPinned(tag),
+      onSelect: actions.onTogglePin,
     },
     { id: 'rename', label: t('tags.rename'), icon: <Pencil size={13}/>, onSelect: onStartRename },
-    { id: 'color', label: t('tags.color'), icon: <Palette size={13}/>, submenu: tagColorSubmenu(tag) },
-    { id: 'manage-tags', label: t('tags.manage_tags'), icon: <Settings2 size={13}/>, onSelect: () => openPanel('tags') },
-    { id: 'delete', label: t('tags.delete'), icon: <Trash2 size={13}/>, tone: 'danger', separatorBefore: true, onSelect: () => void deleteTag(tag) },
+    ...(actions.onCreateChild
+      ? [{ id: 'create-child', label: t('tags.create_child'), icon: <FolderPlus size={13}/>, onSelect: actions.onCreateChild }]
+      : []),
+    { id: 'color', label: t('tags.color'), icon: <Palette size={13}/>, submenu: tagColorSubmenu(tag, actions) },
+    { id: 'manage-tags', label: t('tags.manage_tags'), icon: <Settings2 size={13}/>, onSelect: actions.onManageTags },
+    { id: 'delete', label: t('tags.delete'), icon: <Trash2 size={13}/>, tone: 'danger', separatorBefore: true, onSelect: actions.onDelete },
   ]
 }
 
-function tagColorSubmenu(tag: Tag): MenuItem['submenu'] {
+function tagColorSubmenu(tag: Tag, actions: TagRowActions): MenuItem['submenu'] {
   return ({ closeMenu }) => (
     <TagColorSubmenu
       tag={tag}
       onSelectColor={(color) => {
-        void setTagColor(tag, color)
+        actions.onSelectColor(color)
         closeMenu()
       }}
       onManageTags={() => {
         closeMenu()
-        useUi.getState().openPanel('tags')
+        actions.onManageTags()
       }}
     />
   )

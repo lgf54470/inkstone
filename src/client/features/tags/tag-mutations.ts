@@ -8,6 +8,7 @@ import { t } from '../../lib/i18n'
 import { setOptimisticTagCache } from '../../store/notes'
 import { useNotes } from '../../store/notes'
 import { useUi } from '../../store/ui'
+import type { TagRowActions } from './tag-row'
 
 const TAG_ID_ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz'
 
@@ -261,6 +262,16 @@ async function setTagPinned(tag: Tag, isPinned: boolean): Promise<void> {
 
 export function toggleTagPinned(tag: Tag): Promise<void> {
   return setTagPinned(tag, !tag.isPinned)
+}
+
+export function noteTagRowActions(tag: Tag, onCreateChild?: () => void): TagRowActions {
+  return {
+    onTogglePin: () => void toggleTagPinned(tag),
+    onSelectColor: (color) => void setTagColor(tag, color),
+    onManageTags: () => useUi.getState().openPanel('tags'),
+    onDelete: () => void deleteTag(tag),
+    onCreateChild,
+  }
 }
 
 function showRefreshWarning(): void {
