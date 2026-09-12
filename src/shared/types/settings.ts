@@ -61,6 +61,8 @@ export interface PreviewSettings {
 
 export interface BackupSettings {
   schedule: BackupSchedule
+  musicTargetId: string | null
+  musicDir: string
 }
 
 export interface SyncSettings {

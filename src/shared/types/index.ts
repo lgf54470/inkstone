@@ -12,5 +12,6 @@ export type { PasswordLoginResult, PublicUser, SessionInfo, TotpLoginChallenge, 
 export type { PublicNote, ShareAnalyticsFilters, ShareBreakdownItem, ShareCategory, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareTag, ShareTimelinePoint, ShareTimelineRange, ShareVisitLog, ShareVisitsResponse } from './share'
 export type { RealtimeMessage, SyncDeletion, SyncResponse } from './sync'
 export type { SearchHit, SearchMode, SearchResponse } from './search'
+export type { MusicFormat, MusicLibrary, MusicPlayback, MusicPlaybackInput, MusicPlaylist, MusicPlaylistDetail, MusicPlaylistItem, MusicPlayMode, MusicSearchResponse, MusicSource, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry } from './music'
 export type { SiteInfo } from './site'
 export type { UpdateCheckResponse, UpdateCheckStatus } from './update'

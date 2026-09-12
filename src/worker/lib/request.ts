@@ -9,12 +9,14 @@ export const JSON_BODY_LIMITS = {
   backup: 32 * 1024,
   profile: 256 * 1024,
   note: LIMITS.contentMaxBytes * 6 + 64 * 1024,
+  musicTrack: 1024 * 1024,
 } as const
 
 export const FORM_BODY_LIMITS = {
   authorization: 16 * 1024,
   attachment: LIMITS.attachmentMaxBytes + 512 * 1024,
   import: LIMITS.importUploadMaxBytes + 1024 * 1024,
+  music: LIMITS.musicTrackMaxBytes + 512 * 1024,
 } as const
 
 

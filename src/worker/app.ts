@@ -23,6 +23,7 @@ import { blogManageRoutes, blogPublicRoutes } from './routes/blog'
 import { transferRoutes } from './routes/transfer'
 import { updateRoutes } from './routes/update'
 import { communityTemplatesRoutes } from './routes/community-templates'
+import { musicRoutes } from './routes/music'
 import { mcpAuthorizeRoutes } from './routes/mcp-authorize'
 import { mcpSettingsRoutes } from './routes/mcp-settings'
 import type { AppBindings } from './env'
@@ -150,6 +151,7 @@ function registerApiRoutes(app: Hono<AppBindings>): void {
   app.route('/api/public', shareRoutes)
   app.route('/api/blog/public', blogPublicRoutes)
   app.route('/api/blog', blogManageRoutes)
+  app.route('/api/music', musicRoutes)
   app.route('/api/templates/community', communityTemplatesRoutes)
   app.route('/api', transferRoutes)
 }

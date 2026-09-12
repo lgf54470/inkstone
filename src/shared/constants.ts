@@ -1,3 +1,4 @@
+import { normalizeMusicDir } from './music-path'
 import type {
   AccentName,
   AppLocale,
@@ -72,6 +73,17 @@ export const LIMITS = {
   searchLimit: 50,
 
   ftsContentChars: 200_000,
+
+  musicTrackMaxBytes: 64 * 1024 * 1024,
+  musicQuotaBytes: 4 * 1024 * 1024 * 1024,
+  musicUploadsPerHour: 200,
+  musicTitleMaxLength: 200,
+  musicArtistMaxLength: 200,
+  musicAlbumMaxLength: 200,
+  musicLyricMaxBytes: 128 * 1024,
+  musicPlaylistNameMaxLength: 120,
+  musicPlaylistDescriptionMaxLength: 500,
+  musicPlaylistItemsMax: 5000,
 } as const
 
 export const ACCENTS: { name: AccentName; swatch: string; foreground: string }[] = [
@@ -144,6 +156,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   },
   backup: {
     schedule: 'sixHourly',
+    musicTargetId: null,
+    musicDir: 'music',
   },
   sync: {
     realtime: true,
@@ -327,6 +341,8 @@ function mergePreview(current: Record<string, unknown>, patch: Record<string, un
 function mergeBackup(current: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
   return {
     schedule: enumValue(patch.schedule, BACKUP_SCHEDULES, current.schedule as BackupSchedule),
+    musicTargetId: nullableStringValue(patch.musicTargetId, current.musicTargetId as string | null, 64),
+    musicDir: normalizeMusicDir(patch.musicDir, current.musicDir as string),
   }
 }
 
