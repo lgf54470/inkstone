@@ -1,4 +1,6 @@
 import { api } from '../../../lib/api'
+import { t } from '../../../lib/i18n'
+import { useUi } from '../../../store/ui'
 import type { ShareStoreState, SetShareStoreState } from './types'
 
 export let loadEpoch = 0
@@ -54,6 +56,7 @@ async function loadSharesImpl(set: SetShareStoreState, get: () => ShareStoreStat
   } catch {
     if (epoch === loadEpoch) {
       set({ loading: false })
+      useUi.getState().toast({ title: t('share.could_not_load_sharing_status'), tone: 'danger' })
     }
   }
 }

@@ -70,16 +70,4 @@ export interface ShareStoreState {
   batchToggleGroup: (type: 'folder' | 'tag', target: string, enabled: boolean) => Promise<boolean>
   batchFolderToggle: (folderId: string, enabled: boolean) => Promise<boolean>
   batchTagToggle: (tag: string, enabled: boolean) => Promise<boolean>
-  updateShare: (
-    noteId: string,
-    options: {
-      password?: string | null
-      expiresIn?: number | null
-      customSlug?: string
-      isEnabled?: boolean
-      folderId?: string | null
-      tags?: string[]
-    },
-  ) => Promise<ShareInfo | null>
-  revokeShare: (noteId: string) => Promise<boolean>
 }

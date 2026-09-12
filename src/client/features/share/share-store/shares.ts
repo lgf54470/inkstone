@@ -1,8 +1,14 @@
 import { api } from '../../../lib/api'
+import { t } from '../../../lib/i18n'
 import { useNotes } from '../../../store/notes'
+import { useUi } from '../../../store/ui'
 import type { ShareStoreState, SetShareStoreState } from './types'
 
-export const shareSharesActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'batchToggleGroup' | 'toggleShare' | 'togglePin' | 'toggleStar' | 'batchToggle' | 'batchMoveToFolder' | 'batchFolderToggle' | 'batchTagToggle' | 'updateShare' | 'revokeShare'> => ({
+function notifyActionFailed(): void {
+  useUi.getState().toast({ title: t('common.action_failed'), tone: 'danger' })
+}
+
+export const shareSharesActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'batchToggleGroup' | 'toggleShare' | 'togglePin' | 'toggleStar' | 'batchToggle' | 'batchMoveToFolder' | 'batchFolderToggle' | 'batchTagToggle'> => ({
   batchToggleGroup: (type, target, enabled) => batchToggleGroupImpl(type, target, enabled, set, get),
   toggleShare: (noteId, enabled) => toggleShareImpl(noteId, enabled, set, get),
   togglePin: (noteId) => togglePinImpl(noteId, set, get),
@@ -11,8 +17,6 @@ export const shareSharesActions = (set: SetShareStoreState, get: () => ShareStor
   batchMoveToFolder: (noteIds, folderId) => batchMoveToFolderImpl(noteIds, folderId, set, get),
   batchFolderToggle: (folderId, enabled) => batchFolderToggleImpl(folderId, enabled, set, get),
   batchTagToggle: (tag, enabled) => batchTagToggleImpl(tag, enabled, set, get),
-  updateShare: (noteId, options) => updateShareImpl(noteId, options, get),
-  revokeShare: (noteId) => revokeShareImpl(noteId, get),
 })
 
 async function batchToggleGroupImpl(
@@ -32,6 +36,7 @@ async function batchToggleGroupImpl(
     await get().loadShares()
     return true
   } catch {
+    notifyActionFailed()
     await get().loadShares()
     return false
   } finally {
@@ -107,6 +112,7 @@ async function toggleShareImpl(noteId: string, enabled: boolean, set: SetShareSt
     await get().loadShares()
     return true
   } catch {
+    notifyActionFailed()
     await get().loadShares()
     return false
   }
@@ -125,6 +131,7 @@ async function togglePinImpl(noteId: string, set: SetShareStoreState, get: () =>
     await get().loadShares()
     return true
   } catch {
+    notifyActionFailed()
     await get().loadShares()
     return false
   }
@@ -143,6 +150,7 @@ async function toggleStarImpl(noteId: string, set: SetShareStoreState, get: () =
     await get().loadShares()
     return true
   } catch {
+    notifyActionFailed()
     await get().loadShares()
     return false
   }
@@ -163,6 +171,7 @@ async function batchToggleImpl(
     await get().loadShares()
     return true
   } catch {
+    notifyActionFailed()
     return false
   } finally {
     set({ batchBusy: false })
@@ -191,6 +200,7 @@ async function batchMoveToFolderImpl(
     await get().loadShares()
     return true
   } catch {
+    notifyActionFailed()
     await get().loadShares()
     return false
   } finally {
@@ -205,6 +215,7 @@ async function batchFolderToggleImpl(folderId: string, enabled: boolean, set: Se
     await get().loadShares()
     return true
   } catch {
+    notifyActionFailed()
     return false
   } finally {
     set({ batchBusy: false })
@@ -218,32 +229,10 @@ async function batchTagToggleImpl(tag: string, enabled: boolean, set: SetShareSt
     await get().loadShares()
     return true
   } catch {
+    notifyActionFailed()
     return false
   } finally {
     set({ batchBusy: false })
   }
 }
 
-async function updateShareImpl(
-  noteId: string,
-  options: Parameters<ShareStoreState['updateShare']>[1],
-  get: () => ShareStoreState,
-): Promise<ShareStoreState['shares'][number] | null> {
-  try {
-    const res = await api.share.create(noteId, options)
-    await get().loadShares()
-    return res.share
-  } catch {
-    return null
-  }
-}
-
-async function revokeShareImpl(noteId: string, get: () => ShareStoreState): Promise<boolean> {
-  try {
-    await api.share.remove(noteId)
-    await get().loadShares()
-    return true
-  } catch {
-    return false
-  }
-}
