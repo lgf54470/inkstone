@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { getCookie } from 'hono/cookie'
+import { LIMITS } from '@shared/constants'
 import { extractAttachmentIds } from '@shared/markdown-utils'
 
 import { hasAttachmentStorage, readAttachmentObjectStreamForRow } from '../../attachments/backend'
@@ -16,8 +17,6 @@ import { readAttachmentReferenceCounts } from './helpers'
 import { encodeContentDispositionFilename } from './helpers'
 import { parseAttachmentListCursor } from './helpers'
 import { toAttachment } from './helpers'
-
-const TOTAL_QUOTA_BYTES = 10 * 1024 * 1024 * 1024
 
 const ATTACHMENT_TYPE_CONDITIONS: Record<string, string> = {
   image: "mime LIKE 'image/%'",
@@ -380,7 +379,7 @@ function attachmentLibraryPayload(input: LibraryPayloadInput): object {
     stats: {
       totalCount: input.statsRow?.total_count ?? 0,
       totalBytes,
-      totalQuotaBytes: TOTAL_QUOTA_BYTES,
+      totalQuotaBytes: LIMITS.attachmentQuotaBytes,
       imageBytes,
       documentBytes,
       mediaBytes,
