@@ -43,6 +43,13 @@ const localizedDataFragments = new Map([
     [path.resolve('src/client/lib/calendar-tree.test/virtual-nodes.test.ts'), ['\u5f85\u529e']],
     [path.resolve('src/client/lib/calendar-tree.test/build-tree.test.ts'), ['\u5f85\u529e']],
     [path.resolve('src/client/lib/note-filter.test.ts'), ['\u5f85\u529e']],
+    // Music titles and artists in the search test are library data proving the
+    // pinyin index matches hanzi, not UI copy rendered by the i18n layer.
+    [path.resolve('src/worker/routes/music/webdav-xml.test.ts'), ['\u6708\u5149']],
+    [path.resolve('src/client/features/music/music-search.test.ts'), ['\u5929\u884c\u4e5d\u6b4c', '\u970d\u5c0a', '\u6708\u5149', '\u80e1\u5f66\u658c', '\u5fc3\u4e4b\u9006\u9cde', '\u9b4f\u5c0f\u6db5']],
+    // Cover matching is proved against real Chinese library titles, which are data rather than UI copy.
+    [path.resolve('src/shared/music-cover-match.test.ts'), ['\u8c2a\u4ed9 (DJ\u540d\u9f99 Mix)', '\u4f0a\u683c\u8d5b\u542c & Li Ye', '\u6a31\u82b1\u6811\u4e0b\u7684\u7ea6\u5b9a\uff08\u5b8c\u6574\u7248\uff09-\u65fa\u4ed4\u5c0f\u4e54', '\u6a31\u82b1\u6811\u4e0b\u7684\u7ea6\u5b9a', '\u5de6\u624b\u6307\u6708 (\u7247\u5c3e\u66f2)', '\u8428\u9876\u9876', '\u4f0a\u683c\u8d5b\u542c', '\u6211\u662f\u897f\u5355\u5973\u5b69', '\u897f\u5355\u5973\u5b69', '\u8c2a\u4ed9', '\u5de6\u624b\u6307\u6708', '\u539f\u70b9']],
+    [path.resolve('tests/schema-migrations.test.ts'), ['\u66f2\u98ce/\u53e4\u98ce', '\u7f18\u8d77', '\u5468\u6df1', '\u6708\u5149', '\u80e1\u5f66\u658c', '\u591c\u542c']],
 ])
 const allowedHanFragments = new Map([
     [path.resolve('README.md'), ['<a href="./README_ZH.md">\u4e2d\u6587</a>']],

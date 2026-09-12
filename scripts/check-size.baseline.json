@@ -1,1 +1,5 @@
-{}
+{
+  "src/worker/db/schema/migrations.ts": {
+    "lines": 502
+  }
+}

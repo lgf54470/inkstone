@@ -23,8 +23,6 @@ const allowed = new Map([
     '//   - quotes: only a double-quoted literal that could be converted safely',
     '//     (no single quote inside, no escapes other than `\\"`) is flagged;',
     '//     strings that need double quotes are exempt.',
-    '// pass the real kind so .tsx parses as TSX; parsing it as plain TS turned',
-    '// JSX into a parse-error tree whose string/quote tokens never materialized',
     '// Tokens that continue the previous expression after a newline; ASI would',
     '// not insert a semicolon before them, so a trailing `;` must stay.',
     '// First non-trivia character after `from`; skips whitespace and comments so',
@@ -35,6 +33,8 @@ const allowed = new Map([
     '// would delete the body itself.',
     '// SourceFile/EndOfFileToken span the whole file and would match any `;`',
     '// that happens to be the last character.',
+    '// pass the real kind so .tsx parses as TSX; parsing it as plain TS turned',
+    '// JSX into a parse-error tree whose string/quote tokens never materialized',
     '// A statement and its outer wrapper (if/while/case/label) can end at the',
     '// same `;`; report each position once.',
   ]],
@@ -214,6 +214,9 @@ const allowed = new Map([
     '// Tag names are note data, not UI copy rendered by the i18n layer. The',
     '// built-in to-do tag is one such data constant; it is written here so the',
     '// raw-text scan below can blank it out.',
+    '// Music titles and artists in the search test are library data proving the',
+    '// pinyin index matches hanzi, not UI copy rendered by the i18n layer.',
+    '// Cover matching is proved against real Chinese library titles, which are data rather than UI copy.',
     '// The OAuth consent page is a self-contained HTML document with its own',
     '// language switch (cookie-based); it does not use the React i18n layer.',
     '// Tag-name constants (note data, not UI copy) are allowed to carry the',
@@ -510,6 +513,125 @@ const allowed = new Map([
     '/** Subscribes to note saves: any edit mutates the notes store, so `latestEditKey` recomputes the moment a note is written and the window re-materializes with zero latency. A single midnight-aligned tick covers only the today-anchored direction. */',
     '/** Keeps the rolling date filter materialized: the window recomputes whenever a note save (or the day rollover) changes its anchor. Mount once, anywhere in the tree. */',
   ]],
+  ['src/client/features/music/audio-engine.ts', [
+    '// Kept in the document so browsers that require a live node keep routing media keys.',
+    '// Routing the element through a suspended context would silence playback, so the graph is only',
+    '// built once the browser lets audio run; callers get null until then and retry on the next play.',
+  ]],
+  ['src/client/features/music/music-cover-lookup.ts', [
+    '// The Worker queries the catalogue and returns the image, keeping third party calls off the page.',
+  ]],
+  ['src/client/features/music/music-cover.ts', [
+    '// ID3v2 APIC parsing must survive tag sizes beyond the Blob constructor\'s typed-array view.',
+    '// ID3v2.2 frames use 3 character ids (PIC, ULT); v2.3 and v2.4 use 4 (APIC, USLT).',
+    '// ID3v2.2 pictures carry a three character format instead of a mime type.',
+    '// Lyrics live in USLT (plain) or a LYRICS TXXX frame, depending on the tagger.',
+    '// mime terminator + picture type byte, then the encoded description.',
+    '// UTF-16 descriptions end on a null code unit, single byte encodings on one null.',
+  ]],
+  ['src/client/features/music/music-drag.ts', [
+    '// Listening on the window keeps a container from capturing the pointer, which would swallow every button click inside it.',
+    '// The dragged element follows the cursor, so the release still lands on it',
+    '// and would fire a click. Swallow that one click after a real drag.',
+    '// The card is dragged by a handle inside it, so the clamp has to track the card',
+    '// box itself: a fixed size would let either variant hang off-screen.',
+  ]],
+  ['src/client/features/music/music-duration.test.ts', [
+    '// STREAMINFO starts after the 4 byte magic and its block header; sample rate and total samples are adjacent.',
+  ]],
+  ['src/client/features/music/music-duration.ts', [
+    '// Audio players get the duration from the file header; do the same instead of buffering audio.',
+    '// FLAC STREAMINFO packs sample rate and total samples into the first metadata block.',
+  ]],
+  ['src/client/features/music/music-export.ts', [
+    '// Shared by playlist export and track downloads: the browser saves what we hand it.',
+  ]],
+  ['src/client/features/music/music-flac.ts', [
+    '// FLAC keeps artwork in a PICTURE block and lyrics in a Vorbis comment, not ID3.',
+    '// Vorbis comments store their lengths little endian, unlike the FLAC blocks around them.',
+  ]],
+  ['src/client/features/music/music-floating-lyrics.tsx', [
+    '// Two lines are enough for a 288px widget; the immersive player shows the whole scroll.',
+  ]],
+  ['src/client/features/music/music-hub-modal.tsx', [
+    '// Dialog state lives here, so the panels below are memoised: opening a dialog must',
+    '// not re-render the whole library (hundreds of rows).',
+    '// Stable callbacks: the memoised panels below must not re-render when a dialog opens.',
+  ]],
+  ['src/client/features/music/music-metadata.test.ts', [
+    '// A wrongly labelled FLAC that actually holds an ID3 tag followed by MP3 frames.',
+  ]],
+  ['src/client/features/music/music-metadata.ts', [
+    '// Only the tag is downloaded: an ID3 header reveals its size, FLAC blocks are walked in place.',
+    '// A few FLAC files carry a legacy ID3 tag, so the block walk has to start after it.',
+    '// Duration alone needs no artwork, so the caller can skip downloading the whole tag.',
+    '// Artwork can reach several megabytes inside one tag, so the tag is streamed and parsing',
+    '// stops as soon as the picture and lyrics are complete instead of waiting for the whole tag.',
+    '// The first audio frame carries the bitrate, and usually a Xing/Info frame count for VBR files.',
+    '// Returns null when the bytes are not FLAC after all, so the caller can try the ID3 path.',
+    '// Blocks arrive in order, so a large comment or padding block can hide the picture.',
+    '// The movie box sits at the head in most files, but some muxers append it at the end.',
+    '// One long range can outlive the timeout on a slow remote, so large spans arrive in chunks.',
+  ]],
+  ['src/client/features/music/music-mp4.ts', [
+    '// MP4/M4A keeps duration in mvhd and artwork in the ilst covr atom, all inside moov.',
+    '// The meta box carries its own version and flags before its children.',
+    '// Metadata atoms wrap their value in a data box: version and flags, value type, locale, payload.',
+  ]],
+  ['src/client/features/music/music-popover.tsx', [
+    '// Anchored panel for the compact transports. It renders through a portal with',
+    '// fixed coordinates because the note status bar clips its overflow: an inline',
+    '// panel would be invisible there, and the floating card has to escape its own',
+    '// stacking context too.',
+  ]],
+  ['src/client/features/music/music-search.ts', [
+    '// The pinyin-pro dictionary is large: keep it behind this dynamic import so the always-mounted player never pulls it into the entry bundle.',
+  ]],
+  ['src/client/features/music/music-store/library-collections.ts', [
+    '// "demo/test" creates the parent path first, matching how note tags nest by name.',
+  ]],
+  ['src/client/features/music/music-store/library-covers.ts', [
+    '// Cover lookup reaches a public catalogue, so it only runs while the listener asks for it.',
+  ]],
+  ['src/client/features/music/music-store/library-load.ts', [
+    '// The pinyin dictionary is only needed for search, so loading the library stays cheap.',
+  ]],
+  ['src/client/features/music/music-store/library-tracks.ts', [
+    '// Imported tracks often arrive without artwork or lyrics; the ID3 tag still has them.',
+  ]],
+  ['src/client/features/music/music-store/player.ts', [
+    '// Imported tracks can arrive without a duration; the decoder knows it once played.',
+    '// The hub loads the library lazily, so the transport has to fetch it itself',
+    '// rather than dropping the click on an empty store.',
+    '// Both the media error event and the stall watchdog can fire for one attempt,',
+    '// and they race: one reporter keeps the user from getting two messages.',
+    '// A slow WebDAV object streams below realtime, so waiting for the first frame',
+    '// forever would look like a frozen player. Surface it and stop pretending.',
+  ]],
+  ['src/client/features/music/music-store/state.ts', [
+    '// Quota or private-mode writes can throw; in-memory preferences stay authoritative.',
+  ]],
+  ['src/client/features/music/music-store/transfers.ts', [
+    '// Downloads buffer the whole file so the browser can report real byte progress before saving.',
+    '// Read chunk by chunk so the progress bar moves instead of waiting for the whole file.',
+    '// A downloaded view can sit on a shared buffer, which the Blob constructor refuses.',
+  ]],
+  ['src/client/features/music/music-store/webdav.ts', [
+    '// The saved duration only labels the list; a failed patch must not undo an import.',
+  ]],
+  ['src/client/features/music/music-tag-rows.ts', [
+    '// Older music tags stored a palette name instead of hex; display keeps working either way.',
+  ]],
+  ['src/client/features/music/music-track-menu.tsx', [
+    '// Menu actions close the menu before they run, so focus returns to the list first.',
+  ]],
+  ['src/client/features/music/music-track-row.tsx', [
+    '// Off-screen rows skip layout and paint; the intrinsic size reserves their height.',
+  ]],
+  ['src/client/features/music/music-visualizer.tsx', [
+    '// Frequencies are sampled on a curve so the bass bins do not swallow the whole picture.',
+    '// A paused player still shows a calm baseline so the strip keeps its place in the layout.',
+  ]],
   ['src/client/features/preview/file-preview-modal/code-viewer.tsx', [
     '// Highlighting is best-effort; the plain text code stays visible on failure.',
   ]],
@@ -559,10 +681,16 @@ const allowed = new Map([
   ['src/client/features/sidebar/use-tree-children.ts', [
     '/** Shared expand/collapse mount animation for sidebar tree children (keeps the\n * closing subtree mounted briefly so the collapse transition can play). */',
   ]],
+  ['src/client/features/tags/tag-manager-controller.ts', [
+    '// The shared tag manager owns the layout; every tag surface supplies its own data layer here.',
+  ]],
   ['src/client/features/tags/tag-mutations.ts', [
     '// The rollback already surfaced the failure toast; a refresh warning would double-toast.',
     '// The tail chain must never reject; each operation reports its own failure.',
     '// The mutation already surfaced its failure; a refresh warning would double-toast.',
+  ]],
+  ['src/client/features/tags/tag-row.tsx', [
+    '// The menu or a row click can steal focus right after mount; keep the draft alive instead of cancelling it.',
   ]],
   ['src/client/features/templates/gallery-keyboard.ts', [
     '// True while a dialog/editor owns the keyboard or the event target is an input.',
@@ -1180,6 +1308,11 @@ const allowed = new Map([
     '/**\n * Merges tags into a rendered template\'s front matter `tags` list, shifting a\n * pending caret position by the bytes inserted before it. Must run after\n * placeholder interpolation: the YAML round-trip would mangle raw `{{...}}`\n * tokens (they parse as flow mappings) and leave them unreplaced.\n */',
     '/**\n * Renders a new-note template into final content, removing the `{{cursor}}`\n * marker (if any) and reporting its position so callers can place the caret.\n * Shared by note creation, the settings preview, and the editor command that\n * inserts the template at the caret. The sentinel character cannot occur in\n * real template output, so the reported position is always in final content.\n */',
   ]],
+  ['src/shared/music-cover-match.ts', [
+    '// Catalogue titles carry qualifiers the file name does not — "Song (DJ Mix)" against "Song" —',
+    '// and some imports fold the artist into the title, so both sides lose brackets and punctuation.',
+    '// Full width brackets, separators and punctuation differ between file names and catalogue titles.',
+  ]],
   ['src/shared/note-templates.ts', [
     '/**\n * Built-in template library catalog.\n *\n * The gallery is seeded per user from this catalog on first run. Names,\n * descriptions and Markdown bodies live in the locale resources (one entry per\n * language), so the catalog only references message keys. Bump\n * `TEMPLATE_SEED_VERSION` when adding or changing built-in entries: hydration\n * merges the missing/updated entries into existing user libraries without\n * touching user-created templates or user edits.\n */',
     '/**\n * Cross-cutting labels (not categories) used to tag built-in templates. Each\n * key maps to a localized label; user templates keep arbitrary free-form tags.\n */',
@@ -1244,6 +1377,14 @@ const allowed = new Map([
     '// Source-side graph traversal (local graph mode BFS, MCP explore) queries',
     '// links by user + source and by user + target; the OR join can only use',
     '// both branches when each side has its own user-scoped index.',
+  ]],
+  ['src/worker/db/schema/music.ts', [
+    '// Databases created before the music tag tree shipped can hold a music_tags',
+    '// table without these columns; CREATE TABLE IF NOT EXISTS never adds them.',
+    '// An abandoned earlier build shipped a music schema with different column names',
+    '// (duration/size/source_path/is_favorited) and tag links by name. Rebuild those',
+    '// tables in place and carry the rows across instead of dropping the library.',
+    '// Legacy index names collide with the current ones; drop them so the new tables get their own.',
   ]],
   ['src/worker/db/schema/runtime.ts', [
     '// Existing installations must converge additively. CREATE IF NOT EXISTS',
@@ -1462,6 +1603,24 @@ const allowed = new Map([
     '// A failed drain is safe: the queue rows stay enqueued and the next cron trigger retries them.',
     '// A failed drain is safe: the queue rows stay enqueued and the next cron trigger retries them.',
   ]],
+  ['src/worker/routes/music/cover.ts', [
+    '// Shared by uploads and metadata refreshes; a failed cover write must not fail the caller.',
+  ]],
+  ['src/worker/routes/music/lookup.ts', [
+    '// The catalogue request runs here because the page\'s CSP forbids third party connections.',
+  ]],
+  ['src/worker/routes/music/storage.ts', [
+    '// KV values cap at 25 MiB, well under the R2 allowance, so the upload limit follows the backend.',
+  ]],
+  ['src/worker/routes/music/tracks.ts', [
+    '// Scanned artwork replaces the stored object; a decode failure keeps the previous cover.',
+  ]],
+  ['src/worker/routes/music/webdav-routes.ts', [
+    '// Artwork is a nicety: a failed cover write must not fail the track upload.',
+  ]],
+  ['src/worker/routes/music/webdav.ts', [
+    '// A fresh ArrayBuffer keeps the PUT body assignable to BodyInit without a cast.',
+  ]],
   ['src/worker/routes/notes/edit.ts', [
     '// The SQL SET fragments derive from the same patches list that answers',
     '// the local row projection, so the two can never drift apart.',
@@ -1522,6 +1681,11 @@ const allowed = new Map([
     '// Skeleton compares tag names and class tokens only (attribute order insensitive),',
     '// ignoring text: the root renderer emits i18n key literals without a provider in',
     '// tests, and both trees pin full output text via their own baseline snapshots.',
+  ]],
+  ['tests/schema-migrations.test.ts', [
+    '// Simulate a database whose music tables came from an earlier build: different',
+    '// column names, tag links by name, seconds instead of milliseconds.',
+    '// A new handle and a cleared fingerprint force the migration pass to run again.',
   ]],
   ['tests/share-analytics.test.ts', [
     '// too short (< 3)',
