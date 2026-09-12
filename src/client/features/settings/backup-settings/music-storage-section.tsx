@@ -3,7 +3,7 @@ import { FolderClosed, HardDrive, Server } from 'lucide-react'
 import type { BackupTarget } from '@shared/types'
 import { api } from '../../../lib/api'
 import { Button, SectionLabel } from '../../../components/primitives'
-import { Field, Input, SettingRow, Select } from '../../../components/form'
+import { Field, Input, SettingRow, Select, Switch } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 import { useSession } from '../../../store/session'
 
@@ -57,6 +57,7 @@ export function MusicStorageSection() {
           onChange={(next) => void update({ backup: { musicTargetId: next || null } })}
         />
         <MusicDirField draft={draft} onDraft={setDraft} onCommit={commitDir} />
+        <PublicLibraryRow />
         {targets !== null && targets.length === 0 && (
           <p className='flex items-center gap-1.5 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
             <Server size={12} />{t('music.webdav_not_configured')}
@@ -64,6 +65,49 @@ export function MusicStorageSection() {
         )}
       </div>
     </section>
+  )
+}
+
+// Publishing only exposes a read-only view; uploads and edits stay inside the app.
+function PublicLibraryRow() {
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void api.music.publicSettings()
+      .then((result) => {
+        if (!cancelled) setEnabled(result.enabled)
+      })
+      .catch(() => {
+        if (!cancelled) setEnabled(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const toggle = (next: boolean): void => {
+    setBusy(true)
+    void api.music.savePublicSettings(next)
+      .then((result) => setEnabled(result.enabled))
+      .finally(() => setBusy(false))
+  }
+
+  return (
+    <SettingRow title={t('music.public_music')} description={t('music.public_music_hint')}>
+      <div className='flex items-center gap-2'>
+        <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+          {enabled === null ? t('music.public_music_unknown') : enabled ? t('music.public_music_on') : t('music.public_music_off')}
+        </span>
+        <Switch
+          aria-label={t('music.public_music')}
+          checked={enabled === true}
+          disabled={enabled === null || busy}
+          onChange={toggle}
+        />
+      </div>
+    </SettingRow>
   )
 }
 

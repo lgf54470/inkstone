@@ -66,6 +66,11 @@ export const music = {
 
   library: () => request<MusicLibrary>('/api/music/library'),
 
+  publicSettings: () => request<{ enabled: boolean }>('/api/music/public-settings'),
+
+  savePublicSettings: (enabled: boolean) =>
+    request<{ enabled: boolean }>('/api/music/public-settings', { method: 'PUT', body: { enabled } }),
+
   playback: () => request<{ playback: MusicPlayback | null }>('/api/music/playback'),
 
   savePlayback: (input: MusicPlaybackInput) =>
