@@ -24,6 +24,7 @@ const MOCK_LINKS: BlogPublicLink[] = [
     avatar: 'https://vuejs.org/logo.png',
     categoryId: 'cat-frontend',
     isPinned: false,
+    isFavorite: false,
     clicks: 10,
   },
   {
@@ -34,6 +35,7 @@ const MOCK_LINKS: BlogPublicLink[] = [
     avatar: null,
     categoryId: 'cat-frontend',
     isPinned: true,
+    isFavorite: true,
     clicks: 50,
   },
   {
@@ -44,6 +46,7 @@ const MOCK_LINKS: BlogPublicLink[] = [
     avatar: null,
     categoryId: 'cat-life',
     isPinned: false,
+    isFavorite: false,
     clicks: 5,
   },
 ]
