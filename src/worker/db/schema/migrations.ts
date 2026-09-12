@@ -1,5 +1,5 @@
+import { MUSIC_LEGACY_REBUILD_STATEMENTS, MUSIC_PLAYBACK_MIGRATION_STATEMENTS, MUSIC_SCHEMA_STATEMENTS, MUSIC_SOURCE_MIGRATION_STATEMENTS, MUSIC_TAG_ORDER_MIGRATION_STATEMENTS, MUSIC_TAG_PARENT_MIGRATION_STATEMENTS, MUSIC_TAG_SCOPE_MIGRATION_STATEMENTS } from './music'
 import type { SchemaMigration } from './types'
-
 export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   {
     // Explicit whitelist (not a regex over SCHEMA_STATEMENTS) so later
@@ -484,5 +484,18 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_blog_links_fav ON blog_links(user_id, is_favorite DESC)`,
     ],
   },
+  {
+    version: 26,
+    statements: [...MUSIC_SCHEMA_STATEMENTS],
+  },
+  {
+    version: 27,
+    skipIfColumnExists: { table: 'music_tracks', column: 'source' },
+    statements: [...MUSIC_SOURCE_MIGRATION_STATEMENTS],
+  },
+  { version: 28, statements: [...MUSIC_PLAYBACK_MIGRATION_STATEMENTS] },
+  { version: 29, skipIfColumnExists: { table: 'music_tags', column: 'parent_id' }, statements: MUSIC_TAG_PARENT_MIGRATION_STATEMENTS },
+  { version: 30, skipIfColumnExists: { table: 'music_tags', column: 'sort_order' }, statements: MUSIC_TAG_ORDER_MIGRATION_STATEMENTS },
+  { version: 31, statements: MUSIC_TAG_SCOPE_MIGRATION_STATEMENTS },
+  { version: 32, skipIfColumnExists: { table: 'music_tracks', column: 'duration_ms' }, statements: MUSIC_LEGACY_REBUILD_STATEMENTS },
 ]
-

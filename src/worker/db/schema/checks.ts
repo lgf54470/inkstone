@@ -54,6 +54,11 @@ export const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   blog_visits: ['id', 'user_id', 'post_id', 'slug', 'visited_at', 'visitor_fp', 'country', 'region', 'city', 'referrer', 'referrer_host', 'device_type', 'os', 'browser', 'language', 'user_agent', 'is_bot', 'is_self_referrer', 'is_owner'],
   blog_links: ['id', 'user_id', 'name', 'url', 'description', 'avatar', 'email', 'category_id', 'status', 'is_pinned', 'pinned_order', 'is_favorite', 'sort_order', 'is_active', 'clicks', 'created_at', 'updated_at'],
   blog_link_categories: ['id', 'user_id', 'name', 'icon', 'parent_id', 'sort_order', 'created_at', 'updated_at'],
+  music_tracks: ['id', 'user_id', 'title', 'artist', 'album', 'duration_ms', 'source', 'object_key', 'mime', 'size_bytes', 'cover_url', 'lyric', 'is_favorite', 'is_pinned', 'play_count', 'created_at', 'updated_at'],
+  music_tags: ['id', 'user_id', 'name', 'color', 'parent_id', 'is_pinned', 'sort_order', 'created_at'],
+  music_track_tags: ['user_id', 'track_id', 'tag_id'],
+  music_playlists: ['id', 'user_id', 'name', 'description', 'is_pinned', 'is_favorite', 'sort_order', 'created_at', 'updated_at'],
+  music_playlist_items: ['id', 'user_id', 'playlist_id', 'track_id', 'sort_order', 'created_at'],
 } as const
 
 export const REQUIRED_TABLES = [
@@ -100,6 +105,11 @@ export const REQUIRED_TABLES = [
   'blog_visits',
   'blog_links',
   'blog_link_categories',
+  'music_tracks',
+  'music_tags',
+  'music_track_tags',
+  'music_playlists',
+  'music_playlist_items',
 ] as const
 
 export const REQUIRED_INDEXES = [
@@ -176,4 +186,14 @@ export const REQUIRED_INDEXES = [
   'idx_blog_links_fav',
   'idx_blog_link_categories_user',
   'idx_blog_link_categories_parent',
+  'idx_music_tracks_object',
+  'idx_music_tracks_list',
+  'idx_music_tracks_favorite',
+  'idx_music_tracks_source',
+  'idx_music_tags_parent_name',
+  'idx_music_tags_list',
+  'idx_music_track_tags_tag',
+  'idx_music_playlists_list',
+  'idx_music_playlist_items_unique',
+  'idx_music_playlist_items_list',
 ] as const

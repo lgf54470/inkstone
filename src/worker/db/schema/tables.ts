@@ -1,3 +1,5 @@
+import { MUSIC_TABLE_STATEMENTS } from './music'
+
 export const TABLE_STATEMENTS: readonly string[] = [
   `CREATE TABLE IF NOT EXISTS app_meta (
       key TEXT PRIMARY KEY,
@@ -445,4 +447,5 @@ export const TABLE_STATEMENTS: readonly string[] = [
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`,
+  ...MUSIC_TABLE_STATEMENTS,
 ]
