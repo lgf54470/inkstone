@@ -7,7 +7,7 @@ import MusicFloatingLyrics from './music-floating-lyrics'
 import MusicQueuePanel from './music-queue-panel'
 import { MusicModeButton, MusicNudgeButton, MusicPlayButtons, MusicRateButton, MusicVolumeControl } from './music-transport'
 import { MusicVisualizer } from './music-visualizer'
-import { clampPosition, useCardDrag, useMeasuredSize, type CardDrag } from './music-drag'
+import { clampPosition, preventNativeDrag, useCardDrag, useMeasuredSize, type CardDrag } from './music-drag'
 import {
   currentMusicTrack,
   formatMusicTime,
@@ -67,6 +67,7 @@ function MusicBadge({ state, track, drag, cardRef, locale }: PlayerProps) {
       style={drag.style}
       onPointerDown={drag.startDrag}
       onKeyDown={drag.onKeyDown}
+      onDragStart={preventNativeDrag}
       onClick={() => {
         if (!drag.isClickAfterDrag()) togglePlayerExpanded()
       }}
@@ -75,7 +76,7 @@ function MusicBadge({ state, track, drag, cardRef, locale }: PlayerProps) {
     >
       <BadgeRing progress={progress} />
       {track?.coverUrl
-        ? <img src={track.coverUrl} alt='' className='absolute inset-1.5 rounded-full object-cover' loading='lazy' />
+        ? <img src={track.coverUrl} alt='' draggable={false} className='absolute inset-1.5 rounded-full object-cover' loading='lazy' />
         : <Music size={18} className='text-[var(--accent)]' aria-hidden='true' />}
       {state.playing && (
         <span className='absolute right-1 bottom-1 size-2.5 rounded-full bg-[var(--success)] ring-2 ring-[var(--bg-overlay)]' aria-hidden='true' />
@@ -131,6 +132,7 @@ function FloatHeader({ drag, locale }: { drag: CardDrag; locale: BlogLocale }) {
   return (
     <div
       onPointerDown={drag.startDrag}
+      onDragStart={preventNativeDrag}
       className={`flex h-9 shrink-0 touch-none items-center gap-1.5 border-b border-[var(--border-subtle)] px-2.5 ${drag.isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
     >
       <span
@@ -162,7 +164,7 @@ function FloatTrack({ track, locale }: { track: BlogMusicTrack | null; locale: B
     <div className='flex shrink-0 items-center gap-2.5 p-2.5'>
       <span className='flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-[var(--r-md)] bg-[var(--bg-inset)]'>
         {track?.coverUrl
-          ? <img src={track.coverUrl} alt='' className='size-full object-cover' loading='lazy' />
+          ? <img src={track.coverUrl} alt='' draggable={false} className='size-full object-cover' loading='lazy' />
           : <Music size={20} className='text-[var(--text-quaternary)]' aria-hidden='true' />}
       </span>
       <span className='min-w-0 flex-1'>

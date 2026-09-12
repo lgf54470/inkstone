@@ -52,6 +52,11 @@ export function keyboardPosition(base: Point, key: string, size: Size, viewport:
   return clampPosition({ x: base.x + delta.x, y: base.y + delta.y }, size, viewport)
 }
 
+/** 图片与链接默认可原生拖拽，会截断指针事件，拖拽把手里的内容一律禁止 */
+export function preventNativeDrag(event: React.DragEvent<HTMLElement>): void {
+  event.preventDefault()
+}
+
 function viewportSize(): Size {
   return { width: window.innerWidth, height: window.innerHeight }
 }
