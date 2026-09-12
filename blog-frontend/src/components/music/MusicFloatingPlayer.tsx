@@ -63,6 +63,7 @@ function MusicBadge({ state, track, drag, cardRef, locale }: PlayerProps) {
     <button
       ref={cardRef}
       type='button'
+      data-drag-root=''
       style={drag.style}
       onPointerDown={drag.startDrag}
       onKeyDown={drag.onKeyDown}
@@ -107,6 +108,7 @@ function MusicCard({ state, track, drag, cardRef, locale }: PlayerProps) {
   return (
     <aside
       ref={cardRef}
+      data-drag-root=''
       aria-label={t('music.now_playing', {}, locale)}
       style={drag.style}
       className={`${CARD_SHELL} w-72 ${drag.style ? '' : DEFAULT_ANCHOR}`}

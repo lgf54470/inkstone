@@ -56,6 +56,11 @@ function viewportSize(): Size {
   return { width: window.innerWidth, height: window.innerHeight }
 }
 
+// 事件可能来自卡片内部的把手，几何基准要取整块控件的矩形
+function rootRect(target: HTMLElement): DOMRect {
+  return (target.closest('[data-drag-root]') ?? target).getBoundingClientRect()
+}
+
 function sameSize(a: Size, b: Size): boolean {
   return a.width === b.width && a.height === b.height
 }
@@ -155,7 +160,7 @@ export function useCardDrag(
   const startDrag = useCallback((event: React.PointerEvent<HTMLElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return
     // 首次拖动前控件停在右下角默认位置，取实际矩形作为起点，避免跳动
-    const rect = event.currentTarget.getBoundingClientRect()
+    const rect = rootRect(event.currentTarget)
     originRef.current = {
       pointerX: event.clientX,
       pointerY: event.clientY,
@@ -167,7 +172,7 @@ export function useCardDrag(
   }, [current])
 
   const onKeyDown = useCallback((event: React.KeyboardEvent<HTMLElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect()
+    const rect = rootRect(event.currentTarget)
     const base = current ?? { x: rect.left, y: rect.top }
     const next = keyboardPosition(base, event.key, size, viewportSize())
     if (!next) return
