@@ -23,6 +23,7 @@ interface UploadFields {
   album: string
   durationMs: number
   coverUrl: string | null
+  lyric: string | null
   tagIds: string[]
 }
 
@@ -55,7 +56,7 @@ export function registerMusicUploadRoutes(routes: Hono<AppBindings>): void {
       mime,
       size_bytes: bytes.byteLength,
       cover_url: await storeCoverObject(c.env, id, now, fields.coverUrl),
-      lyric: null,
+      lyric: fields.lyric,
       is_favorite: 0,
       is_pinned: 0,
       play_count: 0,
@@ -110,6 +111,7 @@ async function readUploadFields(c: Context<AppBindings>): Promise<UploadFields> 
     album: readText(form, 'album', LIMITS.musicAlbumMaxLength),
     durationMs: readDuration(form.get('durationMs')),
     coverUrl: sanitizeCoverUrl(readText(form, 'coverUrl', 400_000)),
+    lyric: readText(form, 'lyric', LIMITS.musicLyricMaxBytes) || null,
     tagIds: readTagIds(form.get('tagIds')),
   }
 }

@@ -55,7 +55,7 @@ export const messages = {
 'music.download_done': 'Downloaded {value0}',
 'music.download_failed': 'Download failed',
 'music.download_selected': 'Download {value0}',
-'music.upload_hint': 'Drop audio files here or choose them from your device.',
+'music.upload_hint': 'Drop audio files here or choose them from your device. Title, artist, album, cover and lyrics are read from the file tags.',
 'music.upload_choose': 'Choose files',
 'music.upload_progress': 'Uploading {value0}%',
 'music.upload_done': 'Uploaded {value0} track(s)',

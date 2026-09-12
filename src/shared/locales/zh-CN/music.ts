@@ -55,7 +55,7 @@ export const messages = {
 'music.download_done': '已下载 {value0}',
 'music.download_failed': '下载失败',
 'music.download_selected': '下载所选 {value0} 首',
-'music.upload_hint': '把音频文件拖到这里，或从设备中选择文件。',
+'music.upload_hint': '把音频文件拖到这里，或从设备中选择文件；标题、歌手、专辑、封面与歌词会自动读取文件内标签。',
 'music.upload_choose': '选择文件',
 'music.upload_progress': '正在上传 {value0}%',
 'music.upload_done': '已上传 {value0} 首歌曲',

@@ -133,7 +133,7 @@ export function musicCoverLookupUrl(title: string, artist: string): string {
 
 export function uploadMusicTrack(
   file: File,
-  meta: { title: string; artist: string; album: string; durationMs: number; tagIds: string[]; coverUrl?: string | null },
+  meta: { title: string; artist: string; album: string; durationMs: number; tagIds: string[]; coverUrl?: string | null; lyric?: string | null },
   onProgress: (percent: number) => void,
   signal?: AbortSignal,
 ): Promise<MusicUploadResult> {
@@ -146,6 +146,7 @@ export function uploadMusicTrack(
     form.append('durationMs', String(meta.durationMs))
     form.append('tagIds', JSON.stringify(meta.tagIds))
     if (meta.coverUrl) form.append('coverUrl', meta.coverUrl)
+    if (meta.lyric) form.append('lyric', meta.lyric)
 
     const xhr = new XMLHttpRequest()
     xhr.open('POST', '/api/music/tracks')
@@ -165,7 +166,7 @@ export function uploadMusicTrack(
 
 export function uploadMusicToWebdav(
   file: File,
-  meta: { title: string; artist: string; album: string; durationMs: number; coverUrl: string | null },
+  meta: { title: string; artist: string; album: string; durationMs: number; coverUrl: string | null; lyric?: string | null },
   onProgress: (percent: number) => void,
 ): Promise<MusicUploadResult> {
   const form = new FormData()
@@ -175,6 +176,7 @@ export function uploadMusicToWebdav(
   form.append('album', meta.album)
   form.append('durationMs', String(meta.durationMs))
   if (meta.coverUrl) form.append('coverUrl', meta.coverUrl)
+  if (meta.lyric) form.append('lyric', meta.lyric)
   return sendUpload('/api/music/webdav/upload', form, onProgress)
 }
 

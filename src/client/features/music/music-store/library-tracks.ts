@@ -1,7 +1,8 @@
 import type { MusicTrack } from '@shared/types'
 import { api, type MusicBatchAction } from '../../../lib/api'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
-import { probeTrackDuration, scanTrackMetadata } from '../music-metadata'
+import { probeTrackDuration, scanTrackMetadata, type ScannedMetadata } from '../music-metadata'
+import { isArtistSuffixedTitle } from '../music-utils'
 import type { MusicGet, MusicSet, MusicTrackPatchInput } from './types'
 
 // Imported tracks often arrive without artwork or lyrics; the ID3 tag still has them.
@@ -15,16 +16,13 @@ export async function refreshTrackMetadata(set: MusicSet, get: MusicGet, ids: st
     if (!track) continue
     const scanned = needsTagScan(track) ? await scanTrackMetadata(track) : null
     const durationMs = track.durationMs > 0 ? 0 : (scanned?.durationMs ?? await probeTrackDuration(track))
-    if (!scanned?.coverDataUrl && !scanned?.lyric && durationMs <= 0) {
-      unreadable += 1
+    const patch = scanPatch(track, scanned, durationMs)
+    if (!Object.keys(patch).length) {
+      if (!scanned?.coverDataUrl && !scanned?.lyric && !scanned?.artist) unreadable += 1
       continue
     }
     try {
-      const updatedTrack = await api.music.patchTrack(id, {
-        ...(scanned?.coverDataUrl ? { coverDataUrl: scanned.coverDataUrl } : {}),
-        ...(scanned?.lyric ? { lyric: scanned.lyric } : {}),
-        ...(durationMs > 0 ? { durationMs } : {}),
-      })
+      const updatedTrack = await api.music.patchTrack(id, patch)
       set((state) => ({ tracks: state.tracks.map((entry) => (entry.id === id ? updatedTrack : entry)) }))
       updated += 1
     } catch (error) {
@@ -37,7 +35,19 @@ export async function refreshTrackMetadata(set: MusicSet, get: MusicGet, ids: st
 }
 
 function needsTagScan(track: MusicTrack): boolean {
-  return !track.coverUrl || !track.lyric
+  return !track.coverUrl || !track.lyric || !track.artist || !track.album
+}
+
+// A scan only fills gaps: manual edits and existing artwork always win.
+function scanPatch(track: MusicTrack, scanned: ScannedMetadata | null, durationMs: number): MusicTrackPatchInput {
+  const patch: MusicTrackPatchInput = {}
+  if (scanned?.coverDataUrl && !track.coverUrl) patch.coverDataUrl = scanned.coverDataUrl
+  if (scanned?.lyric && !track.lyric) patch.lyric = scanned.lyric
+  if (scanned?.artist && !track.artist) patch.artist = scanned.artist
+  if (scanned?.album && !track.album) patch.album = scanned.album
+  if (scanned?.title && isArtistSuffixedTitle(track.title, scanned.title, scanned.artist ?? '')) patch.title = scanned.title
+  if (durationMs > 0) patch.durationMs = durationMs
+  return patch
 }
 
 export async function patchTrack(

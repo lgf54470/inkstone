@@ -100,6 +100,16 @@ export function activeLyricIndex(lines: LyricLine[], timeMs: number): number {
   return answer
 }
 
+// Uploads name a track after its file; the tag title wins when the file only adds the artist.
+export function isArtistSuffixedTitle(current: string, title: string, artist: string): boolean {
+  if (!title || current === title) return false
+  if (!current.startsWith(title)) return false
+  const suffix = current.slice(title.length).trimStart()
+  if (!suffix.startsWith('-')) return false
+  const tail = suffix.slice(1).trim()
+  return tail.length > 0 && (!artist || tail === artist)
+}
+
 export function collectTagIds(tagId: string, tags: MusicTag[]): Set<string> {
   const ids = new Set<string>([tagId])
   let grew = true

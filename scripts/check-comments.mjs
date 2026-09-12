@@ -525,7 +525,9 @@ const allowed = new Map([
     '// ID3v2 APIC parsing must survive tag sizes beyond the Blob constructor\'s typed-array view.',
     '// ID3v2.2 frames use 3 character ids (PIC, ULT); v2.3 and v2.4 use 4 (APIC, USLT).',
     '// ID3v2.2 pictures carry a three character format instead of a mime type.',
+    '// Text frames keep the same meaning across ID3v2.2 (three character ids) and v2.3+/v2.4.',
     '// Lyrics live in USLT (plain) or a LYRICS TXXX frame, depending on the tagger.',
+    '// An empty descriptor still carries its terminator, which decodes as a leading null.',
     '// mime terminator + picture type byte, then the encoded description.',
     '// UTF-16 descriptions end on a null code unit, single byte encodings on one null.',
   ]],
@@ -560,11 +562,13 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-metadata.test.ts', [
     '// A wrongly labelled FLAC that actually holds an ID3 tag followed by MP3 frames.',
+    '// ID3v2.3 frames: encoding byte, synchsafe-free big endian size, two flag bytes, payload.',
   ]],
   ['src/client/features/music/music-metadata.ts', [
     '// Only the tag is downloaded: an ID3 header reveals its size, FLAC blocks are walked in place.',
     '// A few FLAC files carry a legacy ID3 tag, so the block walk has to start after it.',
     '// Duration alone needs no artwork, so the caller can skip downloading the whole tag.',
+    '// Uploads read the same tags straight from the picked file, so the library keeps artist and lyrics.',
     '// Artwork can reach several megabytes inside one tag, so the tag is streamed and parsing',
     '// stops as soon as the picture and lyrics are complete instead of waiting for the whole tag.',
     '// The first audio frame carries the bitrate, and usually a Xing/Info frame count for VBR files.',
@@ -598,6 +602,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-store/library-tracks.ts', [
     '// Imported tracks often arrive without artwork or lyrics; the ID3 tag still has them.',
+    '// A scan only fills gaps: manual edits and existing artwork always win.',
   ]],
   ['src/client/features/music/music-store/player.ts', [
     '// Imported tracks can arrive without a duration; the decoder knows it once played.',
@@ -627,6 +632,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-track-row.tsx', [
     '// Off-screen rows skip layout and paint; the intrinsic size reserves their height.',
+  ]],
+  ['src/client/features/music/music-utils.ts', [
+    '// Uploads name a track after its file; the tag title wins when the file only adds the artist.',
   ]],
   ['src/client/features/music/music-visualizer.tsx', [
     '// Frequencies are sampled on a curve so the bass bins do not swallow the whole picture.',

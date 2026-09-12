@@ -99,6 +99,7 @@ async function uploadTrack(app: Hono<AppBindings>, name = 'song.mp3', type = 'au
   form.append('file', new File([AUDIO], name, { type }))
   form.append('artist', 'Artist')
   form.append('durationMs', '123000')
+  form.append('lyric', '[00:01.000]first line')
   const res = await request(app, '/api/music/tracks', { method: 'POST', body: form })
   expect(res.status).toBe(201)
   return res.json() as Promise<Record<string, unknown>>
@@ -124,6 +125,7 @@ describe('music routes (real D1 + fake R2)', () => {
     const track = await uploadTrack(app)
     expect(track.title).toBe('song')
     expect(track.artist).toBe('Artist')
+    expect(track.lyric).toBe('[00:01.000]first line')
     expect(track.mime).toBe('audio/mpeg')
     expect(track.durationMs).toBe(123000)
     expect(String(track.objectKey)).toMatch(/^music\/\d{4}-\d{2}-\d{2}\//)

@@ -1,7 +1,7 @@
 import type { MusicTag } from '@shared/types'
 import { api, uploadMusicToWebdav, uploadMusicTrack } from '../../../lib/api'
 import { toastMusic, toastMusicError, toastUploadError } from '../music-feedback'
-import { extractCoverDataUrl } from '../music-cover'
+import { readFileMetadata } from '../music-metadata'
 import { readDurationMs } from '../music-probe'
 import type { MusicGet, MusicSet, MusicTransferTarget, MusicUploadTask } from './types'
 
@@ -141,16 +141,22 @@ export async function uploadFiles(set: MusicSet, get: MusicGet, files: File[], t
 }
 
 async function uploadOne(set: MusicSet, file: File, task: MusicUploadTask): Promise<void> {
-  const durationMs = await readDurationMs(file).catch(() => 0)
-  const coverUrl = await extractCoverDataUrl(file)
+  const [durationMs, tags] = await Promise.all([
+    readDurationMs(file).catch(() => 0),
+    readFileMetadata(file).catch(() => null),
+  ])
+  const meta = {
+    title: tags?.title || fileTitle(file.name),
+    artist: tags?.artist ?? '',
+    album: tags?.album ?? '',
+    lyric: tags?.lyric ?? null,
+    durationMs,
+    coverUrl: tags?.coverDataUrl ?? null,
+  }
   const progress = (percent: number): void => updateUpload(set, task.id, { percent })
   const result = task.target === 'webdav'
-    ? await uploadMusicToWebdav(file, {
-      title: fileTitle(file.name), artist: '', album: '', durationMs, coverUrl,
-    }, progress)
-    : await uploadMusicTrack(file, {
-      title: fileTitle(file.name), artist: '', album: '', durationMs, tagIds: [], coverUrl,
-    }, progress)
+    ? await uploadMusicToWebdav(file, meta, progress)
+    : await uploadMusicTrack(file, { ...meta, tagIds: [] }, progress)
   if (result.track) {
     updateUpload(set, task.id, { percent: 100, status: 'done' })
     toastMusic(task.target === 'webdav' ? 'music.upload_webdav_done' : 'music.upload_done', { value0: 1 })

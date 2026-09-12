@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { MusicTag } from '@shared/types'
 import {
   activeLyricIndex, collectTagIds, computeNextIndex, computePrevIndex, flattenTags,
-  formatBytes, formatDuration, formatTotalDuration, nextPlayMode, parseLyric, tagColorValue,
+  formatBytes, formatDuration, formatTotalDuration, isArtistSuffixedTitle, nextPlayMode, parseLyric,
+  tagColorValue,
 } from './music-utils'
 
 function tag(id: string, parentId: string | null, name = id, isPinned = false): MusicTag {
@@ -85,6 +86,21 @@ describe('lrc parsing', () => {
     expect(activeLyricIndex(lines, 2500)).toBe(1)
     expect(activeLyricIndex(lines, 99_000)).toBe(2)
     expect(activeLyricIndex([], 1000)).toBe(-1)
+  })
+})
+
+describe('isArtistSuffixedTitle', () => {
+  it('accepts a file name that only adds the artist to the tag title', () => {
+    expect(isArtistSuffixedTitle('Moonlight - Hu Yanbin', 'Moonlight', 'Hu Yanbin')).toBe(true)
+    expect(isArtistSuffixedTitle('Moonlight-Hu Yanbin', 'Moonlight', 'Hu Yanbin')).toBe(true)
+    expect(isArtistSuffixedTitle('Moonlight - Hu Yanbin', 'Moonlight', '')).toBe(true)
+  })
+
+  it('leaves manually edited names and unrelated files alone', () => {
+    expect(isArtistSuffixedTitle('Moonlight', 'Moonlight', 'Hu Yanbin')).toBe(false)
+    expect(isArtistSuffixedTitle('Moonlight (Live)', 'Moonlight', 'Hu Yanbin')).toBe(false)
+    expect(isArtistSuffixedTitle('Moonlight - Someone Else', 'Moonlight', 'Hu Yanbin')).toBe(false)
+    expect(isArtistSuffixedTitle('Other Song - Hu Yanbin', 'Moonlight', 'Hu Yanbin')).toBe(false)
   })
 })
 

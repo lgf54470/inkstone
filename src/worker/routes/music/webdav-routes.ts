@@ -112,7 +112,7 @@ async function uploadTrack(c: Context<AppBindings>): Promise<Response> {
     mime,
     size_bytes: bytes.byteLength,
     cover_url: await storeWebdavCover(c.env, id, now, readCover(form)),
-    lyric: null,
+    lyric: readText(form, 'lyric', LIMITS.musicLyricMaxBytes) || null,
     is_favorite: 0,
     is_pinned: 0,
     play_count: 0,
