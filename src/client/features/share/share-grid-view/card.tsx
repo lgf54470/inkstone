@@ -74,9 +74,9 @@ function CardHeader({ share, isSelected, onToggleSelect, onTogglePin, onToggleSt
       <div className='flex items-center gap-1.5 min-w-0'>
         <Checkbox checked={isSelected} onChange={onToggleSelect} aria-label={share.noteTitle || t('common.untitled_note')} className='shrink-0 min-h-0' />
         <PinStarButtons share={share} onTogglePin={onTogglePin} onToggleStar={onToggleStar} compact />
-        <span onClick={onOpenEdit} className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer'>
+        <button type='button' onClick={onOpenEdit} className='min-w-0 truncate text-left text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer'>
           {share.noteTitle || t('common.untitled_note')}
-        </span>
+        </button>
       </div>
       <Switch checked={share.isEnabled} onChange={onToggleShare} />
     </div>

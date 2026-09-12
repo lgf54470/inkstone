@@ -84,9 +84,9 @@ function RowTitleCell({ share, folders, onTogglePin, onToggleStar, onOpenEdit }:
     <div className='flex flex-col'>
       <div className='flex items-center gap-1.5'>
         <PinStarButtons share={share} onTogglePin={onTogglePin} onToggleStar={onToggleStar} />
-        <span onClick={onOpenEdit} className='font-medium text-[length:var(--text-13)] text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer'>
+        <button type='button' onClick={onOpenEdit} className='min-w-0 truncate text-left font-medium text-[length:var(--text-13)] text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer'>
           {share.noteTitle || t('common.untitled_note')}
-        </span>
+        </button>
       </div>
       <div className='flex flex-wrap items-center gap-1.5 pt-1 pl-12'>
         {folder && (
