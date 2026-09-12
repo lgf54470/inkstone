@@ -308,6 +308,34 @@ describe('files update & maintenance routes (real D1)', () => {
     expect((await invalid.json()).count).toBe(0)
   })
 
+  it('rejects malformed batch bodies instead of silently ignoring them', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    const unknownAction = await postJson(app, '/api/files/batch', { action: 'nuke', ids: [validId('1')] })
+    expect(unknownAction.status).toBe(400)
+
+    const oversized = await postJson(app, '/api/files/batch', {
+      action: 'delete',
+      ids: Array.from({ length: 101 }, (_, i) => validId(String(i + 1))),
+    })
+    expect(oversized.status).toBe(400)
+
+    const notAnArray = await postJson(app, '/api/files/batch', { action: 'delete', ids: 'all' })
+    expect(notAnArray.status).toBe(400)
+  })
+
+  it('rejects an oversized rename payload', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const id = await seedAttachment(db, { filename: 'old.png' })
+
+    const app = makeApp()
+    const patched = await patchJson(app, `/api/files/${id}`, { filename: 'x'.repeat(201) })
+    expect(patched.status).toBe(400)
+  })
+
   it('lists notes referencing an attachment and prunes unreferenced ones', async () => {
     const db = await makeDb()
     await seedUser(db)

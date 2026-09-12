@@ -1,20 +1,22 @@
 import { Hono } from 'hono'
+import { z } from 'zod'
 
 import { sanitizeAttachmentFilename } from '../../attachments/storage'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
+import { readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { AttachmentRow } from './helpers'
 import { toAttachment } from './helpers'
 
-interface AttachmentPatchBody {
-  filename?: string
-  folderId?: string | null
-  isStarred?: boolean
-  isPinned?: boolean
-  tags?: string[]
-  updateNoteReferences?: boolean
-}
+const attachmentPatchSchema = z.object({
+  filename: z.string().max(200).optional(),
+  folderId: z.string().max(128).nullable().optional(),
+  isStarred: z.boolean().optional(),
+  isPinned: z.boolean().optional(),
+  tags: z.array(z.string().max(100)).max(100).optional(),
+  updateNoteReferences: z.boolean().optional(),
+})
 
 export function registerFilesUpdateRoutes(filesRoutes: Hono<AppBindings>): void {
   registerFilesPatchRoute(filesRoutes)
@@ -24,7 +26,7 @@ function registerFilesPatchRoute(filesRoutes: Hono<AppBindings>): void {
   filesRoutes.patch('/:id', requireAuth, async (c) => {
     const userId = c.get('userId')
     const id = c.req.param('id')
-    const body = await c.req.json<AttachmentPatchBody>()
+    const body = await readJsonValidated(c, attachmentPatchSchema, 64 * 1024)
 
     const existing = await c.env.DB.prepare(
       `SELECT id, user_id, filename, folder_id, is_starred, is_pinned, tags FROM attachments WHERE id = ?1 AND user_id = ?2`,
@@ -54,7 +56,7 @@ function registerFilesPatchRoute(filesRoutes: Hono<AppBindings>): void {
 }
 
 function attachmentPatchValues(
-  body: AttachmentPatchBody,
+  body: z.infer<typeof attachmentPatchSchema>,
   existing: AttachmentRow,
 ): { filename: string; folderId: string | null; isStarred: number; isPinned: number; tags: string } {
   return {

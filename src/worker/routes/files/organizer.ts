@@ -6,7 +6,7 @@ import { persistAttachmentWithinQuota } from '../../attachments/storage'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
-import { FORM_BODY_LIMITS, readFormDataWithinLimit } from '../../lib/request'
+import { FORM_BODY_LIMITS, JSON_BODY_LIMITS, readFormDataWithinLimit, readJson } from '../../lib/request'
 import { createScopedFolder, createScopedTag, deleteScopedFolder, deleteScopedTag, listScopedFolders, listScopedTags, updateScopedFolder, updateScopedTag } from '../../lib/scoped-organizer'
 import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import { requireAuth } from '../../middleware/auth'
@@ -112,12 +112,12 @@ function registerFilesFolderRoutes(filesRoutes: Hono<AppBindings>): void {
   })
 
   filesRoutes.post('/folders', requireAuth, async (c) => {
-    const body = await c.req.json<Parameters<typeof createScopedFolder>[3]>()
+    const body = await readJson<Parameters<typeof createScopedFolder>[3]>(c, JSON_BODY_LIMITS.small)
     return c.json(await createScopedFolder(c.env.DB, 'attachment_folders', c.get('userId'), body), 201)
   })
 
   filesRoutes.patch('/folders/:id', requireAuth, async (c) => {
-    const body = await c.req.json<Parameters<typeof createScopedFolder>[3]>()
+    const body = await readJson<Parameters<typeof createScopedFolder>[3]>(c, JSON_BODY_LIMITS.small)
     return c.json(await updateScopedFolder(c.env.DB, 'attachment_folders', c.get('userId'), c.req.param('id'), body))
   })
 
@@ -133,14 +133,14 @@ function registerFilesTagRoutes(filesRoutes: Hono<AppBindings>): void {
   })
 
   filesRoutes.post('/tags', requireAuth, async (c) => {
-    const body = await c.req.json<Parameters<typeof createScopedTag>[4]>()
+    const body = await readJson<Parameters<typeof createScopedTag>[4]>(c, JSON_BODY_LIMITS.small)
     const { tag } = await createScopedTag(c.env.DB, 'attachment_tags', 'upsert', c.get('userId'), body)
     return c.json(tag, 201)
   })
 
   filesRoutes.patch('/tags/:id', requireAuth, async (c) => {
     const userId = c.get('userId')
-    const body = await c.req.json<Parameters<typeof updateScopedTag>[4]>()
+    const body = await readJson<Parameters<typeof updateScopedTag>[4]>(c, JSON_BODY_LIMITS.small)
     const { tag, previousName } = await updateScopedTag(c.env.DB, 'attachment_tags', userId, c.req.param('id'), body)
     if (previousName !== tag.name) {
       await renameTagInAttachmentJson(c.env.DB, userId, previousName, tag.name)

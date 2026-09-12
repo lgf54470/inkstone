@@ -1,16 +1,28 @@
 import { Hono } from 'hono'
+import { z } from 'zod'
 
 import { drainAttachmentCleanup } from '../../attachments/cleanup'
 import { attachmentCleanupTarget, attachmentObjectKeyCandidates } from '../../attachments/keys'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { isValidId } from '../../lib/id'
+import { readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { AttachmentRow } from './helpers'
 import { ATTACHMENT_SCAN_PAGE_SIZE } from './helpers'
 import { parseTags } from './helpers'
 import { collectAttachmentReferences } from './helpers'
 import { collectAttachmentIdsThroughBoundary } from './helpers'
+
+const attachmentBatchSchema = z.object({
+  action: z.enum(['move', 'star', 'pin', 'tag', 'delete']),
+  ids: z.array(z.string().max(128)).max(100),
+  folderId: z.string().max(128).nullable().optional(),
+  isStarred: z.boolean().optional(),
+  isPinned: z.boolean().optional(),
+  addTags: z.array(z.string().max(100)).max(50).optional(),
+  removeTags: z.array(z.string().max(100)).max(50).optional(),
+})
 
 interface AttachmentBatchBody {
   action: 'move' | 'star' | 'pin' | 'tag' | 'delete'
@@ -34,7 +46,7 @@ type BatchAction = (
   body: AttachmentBatchBody,
 ) => Promise<number>
 
-const ATTACHMENT_BATCH_ACTIONS: Record<string, BatchAction> = {
+const ATTACHMENT_BATCH_ACTIONS: Record<AttachmentBatchBody['action'], BatchAction> = {
   move: async ({ db }, ids, userId, body) => {
     const targetFolderId = body.folderId ?? null
     const statements = ids.map((id) =>
@@ -73,17 +85,15 @@ export function registerFilesMaintenanceRoutes(filesRoutes: Hono<AppBindings>): 
 function registerFilesBatchRoute(filesRoutes: Hono<AppBindings>): void {
   filesRoutes.post('/batch', requireAuth, async (c) => {
     const userId = c.get('userId')
-    const body = await c.req.json<AttachmentBatchBody>()
+    const body = await readJsonValidated(c, attachmentBatchSchema, 64 * 1024)
 
-    if (!Array.isArray(body.ids) || !body.ids.length) {
+    if (!body.ids.length) {
       return c.json({ ok: true, count: 0 })
     }
     const ids = body.ids.filter(isValidId)
     if (!ids.length) return c.json({ ok: true, count: 0 })
 
-    const action = ATTACHMENT_BATCH_ACTIONS[body.action]
-    if (!action) return c.json({ ok: true, count: 0 })
-    const count = await action({ env: c.env, db: c.env.DB }, ids, userId, body)
+    const count = await ATTACHMENT_BATCH_ACTIONS[body.action]({ env: c.env, db: c.env.DB }, ids, userId, body)
     return c.json({ ok: true, count })
   })
 }

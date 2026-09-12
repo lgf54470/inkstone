@@ -1,7 +1,16 @@
 import { Hono } from 'hono'
 import type { AppBindings } from '../../env'
+import { z } from 'zod'
+
 import { createScopedFolder, createScopedTag, deleteScopedFolder, deleteScopedTag, listScopedFolders, listScopedTags, updateScopedFolder, updateScopedTag } from '../../lib/scoped-organizer'
+import { JSON_BODY_LIMITS, readJson, readJsonValidated } from '../../lib/request'
 import { isValidCustomSlug } from '../../lib/share-analytics'
+
+const shareGroupToggleSchema = z.object({
+  type: z.enum(['folder', 'tag']),
+  target: z.string().min(1).max(200),
+  enabled: z.boolean(),
+})
 
 export function registerShareOrganizerRoutes(shareManageRoutes: Hono<AppBindings>): void {
   registerShareSlugCheckRoute(shareManageRoutes)
@@ -35,11 +44,11 @@ function registerShareFolderRoutes(shareManageRoutes: Hono<AppBindings>): void {
     return c.json(await listScopedFolders(c.env.DB, 'share_folders', c.get('userId')))
   })
   shareManageRoutes.post('/folders', async (c) => {
-    const body = await c.req.json<Parameters<typeof createScopedFolder>[3]>()
+    const body = await readJson<Parameters<typeof createScopedFolder>[3]>(c, JSON_BODY_LIMITS.small)
     return c.json(await createScopedFolder(c.env.DB, 'share_folders', c.get('userId'), body), 201)
   })
   shareManageRoutes.patch('/folders/:id', async (c) => {
-    const body = await c.req.json<Parameters<typeof createScopedFolder>[3]>()
+    const body = await readJson<Parameters<typeof createScopedFolder>[3]>(c, JSON_BODY_LIMITS.small)
     return c.json(await updateScopedFolder(c.env.DB, 'share_folders', c.get('userId'), c.req.param('id'), body))
   })
   shareManageRoutes.delete('/folders/:id', async (c) => {
@@ -53,12 +62,12 @@ function registerShareTagRoutes(shareManageRoutes: Hono<AppBindings>): void {
     return c.json(await listScopedTags(c.env.DB, 'share_tags', c.get('userId')))
   })
   shareManageRoutes.post('/tags', async (c) => {
-    const body = await c.req.json<Parameters<typeof createScopedTag>[4]>()
+    const body = await readJson<Parameters<typeof createScopedTag>[4]>(c, JSON_BODY_LIMITS.small)
     const { tag, status } = await createScopedTag(c.env.DB, 'share_tags', 'keep-existing', c.get('userId'), body)
     return c.json(tag, status)
   })
   shareManageRoutes.patch('/tags/:id', async (c) => {
-    const body = await c.req.json<Parameters<typeof updateScopedTag>[4]>()
+    const body = await readJson<Parameters<typeof updateScopedTag>[4]>(c, JSON_BODY_LIMITS.small)
     const { tag } = await updateScopedTag(c.env.DB, 'share_tags', c.get('userId'), c.req.param('id'), body)
     return c.json(tag)
   })
@@ -71,11 +80,7 @@ function registerShareTagRoutes(shareManageRoutes: Hono<AppBindings>): void {
 function registerShareGroupToggleRoute(shareManageRoutes: Hono<AppBindings>): void {
   shareManageRoutes.post('/batch-toggle-group', async (c) => {
     const userId = c.get('userId')
-    const body = await c.req.json<{
-      type: 'folder' | 'tag'
-      target: string
-      enabled: boolean
-    }>()
+    const body = await readJsonValidated(c, shareGroupToggleSchema, JSON_BODY_LIMITS.small)
     const isEnabled = body.enabled ? 1 : 0
 
     if (body.type === 'folder') {
