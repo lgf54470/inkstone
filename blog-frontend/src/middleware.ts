@@ -14,7 +14,9 @@ function buildCsp(apiOrigin: string, nonce?: string): string {
   return [
     "default-src 'self'",
     `connect-src 'self' ${origins}`,
-    "img-src 'self' https: data:",
+    `img-src 'self' https: data: ${origins}`,
+    // 悬浮播放器直接从 API 源取音频：media-src 必须单独放行该来源
+    `media-src 'self' ${origins}`,
     "style-src 'self' 'unsafe-inline'",
     `script-src ${scriptSrc}`,
     "font-src 'self' data:",
