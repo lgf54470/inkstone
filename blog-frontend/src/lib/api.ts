@@ -146,7 +146,7 @@ export const api = {
       return normalizeMusicLibrary(await requestJsonCached('/api/blog/public/music/library', 30))
     } catch (err) {
       console.warn('[api.getMusicLibrary] request failed, hiding the player:', err)
-      return { enabled: false, tracks: [], tags: [] }
+      return { enabled: false, tracks: [], tags: [], queue: { ids: [], currentId: null } }
     }
   },
 

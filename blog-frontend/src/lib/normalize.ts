@@ -7,6 +7,7 @@ import type {
   TimelineGroup,
   CalendarDayPost,
   BlogMusicLibrary,
+  BlogMusicQueue,
   BlogMusicTag,
   BlogMusicTrack,
 } from './types'
@@ -46,6 +47,15 @@ export function normalizeMusicLibrary(value: unknown): BlogMusicLibrary {
     enabled: root.enabled === true,
     tracks: asArray(root.tracks).map(normalizeMusicTrack).filter((track) => track.id !== '' && track.streamUrl !== ''),
     tags: asArray(root.tags).map(normalizeMusicTag).filter((tag) => tag.id !== '' && tag.name !== ''),
+    queue: normalizeMusicQueue(root.queue),
+  }
+}
+
+function normalizeMusicQueue(value: unknown): BlogMusicQueue {
+  const row = asRecord(value)
+  return {
+    ids: asArray(row.ids).filter((id): id is string => typeof id === 'string' && id !== ''),
+    currentId: typeof row.currentId === 'string' && row.currentId !== '' ? row.currentId : null,
   }
 }
 

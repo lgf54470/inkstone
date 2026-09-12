@@ -136,8 +136,15 @@ export interface BlogMusicTrack {
   createdAt: number
 }
 
+/** 笔记应用内的播放队列投影，博客以它作为初始播放列表 */
+export interface BlogMusicQueue {
+  ids: string[]
+  currentId: string | null
+}
+
 export interface BlogMusicLibrary {
   enabled: boolean
   tracks: BlogMusicTrack[]
   tags: BlogMusicTag[]
+  queue: BlogMusicQueue
 }

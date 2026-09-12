@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { api } from '../../lib/api'
-import type { BlogMusicTag, BlogMusicTrack } from '../../lib/types'
+import type { BlogMusicLibrary, BlogMusicTag, BlogMusicTrack } from '../../lib/types'
 
 export type MusicStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
 
@@ -60,6 +60,8 @@ const ANALYSER_SMOOTHING = 0.82
 let analyserContext: AudioContext | null = null
 let analyserNode: AnalyserNode | null = null
 let corsBlocked = false
+// 初始队列来自笔记应用；用户从队列之外点歌后，队列改回跟随当前筛选结果
+let queueSeeded = false
 
 /** 单例 store + 单个 audio 元素：博客前台只需要一条播放通道，无需引入状态库 */
 export function subscribeMusic(listener: () => void): () => void {
@@ -142,7 +144,19 @@ export async function loadMusicLibrary(force = false): Promise<void> {
     status: library.enabled && library.tracks.length > 0 ? 'ready' : 'unavailable',
     tracks: library.enabled ? library.tracks : [],
     tags: library.enabled ? library.tags : [],
+    // 应用内队列作为博客的初始播放列表，本机已经选过曲时保持本地状态
+    ...(snapshot.currentId ? {} : seedFromAppQueue(library)),
   })
+}
+
+/** 把笔记应用的播放队列投影成本地初始状态，已删除的曲目 id 直接丢弃 */
+function seedFromAppQueue(library: BlogMusicLibrary): Partial<MusicPlayerSnapshot> {
+  const known = new Set(library.tracks.map((track) => track.id))
+  const queue = library.queue.ids.filter((id) => known.has(id))
+  const currentId = library.queue.currentId && queue.includes(library.queue.currentId) ? library.queue.currentId : null
+  const track = currentId ? library.tracks.find((entry) => entry.id === currentId) : undefined
+  queueSeeded = queue.length > 0
+  return { queue, currentId, timeMs: 0, durationMs: track?.durationMs ?? 0 }
 }
 
 export function filterTracks(tracks: BlogMusicTrack[], query: string, tagId: string | null): BlogMusicTrack[] {
@@ -206,7 +220,11 @@ export function playTrack(id: string): void {
   const track = snapshot.tracks.find((entry) => entry.id === id)
   const element = track ? ensureAudio() : null
   if (!track) return
-  setMusicState({ currentId: id, queue: visibleQueue(id), timeMs: 0, durationMs: track.durationMs, playing: Boolean(element) })
+  // 应用队列仍在时点歌保留其顺序，否则按当前筛选结果重建
+  const keepSeeded = queueSeeded && snapshot.queue.includes(id)
+  if (!keepSeeded) queueSeeded = false
+  const queue = keepSeeded ? snapshot.queue : visibleQueue(id)
+  setMusicState({ currentId: id, queue, timeMs: 0, durationMs: track.durationMs, playing: Boolean(element) })
   if (!element) return
   if (!element.src.endsWith(track.streamUrl)) element.src = track.streamUrl
   void element.play().catch(() => setMusicState({ playing: false }))
