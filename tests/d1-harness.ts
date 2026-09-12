@@ -89,7 +89,18 @@ export function createD1Database(extraSchema = ''): D1Shim {
     prepare,
     batch: async (statements) => {
       const out: Array<{ meta: { changes: number }; results?: Array<Record<string, unknown>> }> = []
-      for (const statement of statements) out.push(await statement.run())
+      if (!statements.length) return out
+      // Real D1 batch commits atomically; a savepoint reproduces that here and
+      // still works when a test drives nested batches.
+      sqlite.exec('SAVEPOINT d1_batch')
+      try {
+        for (const statement of statements) out.push(await statement.run())
+      } catch (error) {
+        sqlite.exec('ROLLBACK TO d1_batch')
+        sqlite.exec('RELEASE d1_batch')
+        throw error
+      }
+      sqlite.exec('RELEASE d1_batch')
       return out
     },
   }

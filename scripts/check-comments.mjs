@@ -1734,6 +1734,10 @@ const allowed = new Map([
     '// The guarded write was lost to a concurrent edit: re-read just this',
     '// note and retry with fresh state.',
   ]],
+  ['tests/d1-harness.ts', [
+    '// Real D1 batch commits atomically; a savepoint reproduces that here and',
+    '// still works when a test drives nested batches.',
+  ]],
   ['tests/markdown-renderer-parity.test.ts', [
     '// Structural parity baseline: root and blog renderers keep (and must not silently',
     '// change) these tag/class skeleton differences. Any baseline item that converges',
