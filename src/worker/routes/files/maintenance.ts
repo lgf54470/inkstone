@@ -46,6 +46,8 @@ type BatchAction = (
   body: AttachmentBatchBody,
 ) => Promise<number>
 
+const STATEMENT_BATCH_SIZE = 100
+
 const ATTACHMENT_BATCH_ACTIONS: Record<AttachmentBatchBody['action'], BatchAction> = {
   move: async ({ db }, ids, userId, body) => {
     const targetFolderId = body.folderId ?? null
@@ -106,13 +108,16 @@ async function applyAttachmentTagChanges(
 ): Promise<number> {
   const add = new Set(body.addTags ?? [])
   const remove = new Set(body.removeTags ?? [])
-  for (const id of ids) {
-    const row = await db.prepare(`SELECT tags FROM attachments WHERE id = ?1 AND user_id = ?2`).bind(id, userId).first<{ tags: string }>()
-    if (!row) continue
-    const merged = mergeAttachmentTags(row.tags, add, remove)
-    await db.prepare(`UPDATE attachments SET tags = ?1 WHERE id = ?2 AND user_id = ?3`).bind(JSON.stringify(merged), id, userId).run()
-  }
-  return ids.length
+  const { results } = await db
+    .prepare(`SELECT id, tags FROM attachments WHERE user_id = ?1 AND id IN (SELECT value FROM json_each(?2))`)
+    .bind(userId, JSON.stringify(ids))
+    .all<{ id: string; tags: string }>()
+  if (!results.length) return 0
+  await db.batch(results.map((row) =>
+    db.prepare(`UPDATE attachments SET tags = ?1 WHERE id = ?2 AND user_id = ?3`)
+      .bind(JSON.stringify(mergeAttachmentTags(row.tags, add, remove)), row.id, userId),
+  ))
+  return results.length
 }
 
 function mergeAttachmentTags(raw: string, add: Set<string>, remove: Set<string>): string[] {
@@ -130,18 +135,21 @@ async function deleteAttachmentsBatch(
   ids: string[],
   userId: string,
 ): Promise<number> {
-  let deletedCount = 0
-  for (const id of ids) {
-    const row = await db.prepare(
-      `SELECT id, user_id, filename, mime, storage, object_key, created_at FROM attachments WHERE id = ?1 AND user_id = ?2`,
-    ).bind(id, userId).first<AttachmentRow>()
-    if (!row) continue
-    await db.batch(attachmentDeleteStatements(db, userId, row))
-    deletedCount++
+  const { results } = await db
+    .prepare(
+      `SELECT id, user_id, filename, mime, storage, object_key, created_at FROM attachments
+        WHERE user_id = ?1 AND id IN (SELECT value FROM json_each(?2))`,
+    )
+    .bind(userId, JSON.stringify(ids))
+    .all<AttachmentRow>()
+  if (!results.length) return 0
+  const statements = results.flatMap((row) => attachmentDeleteStatements(db, userId, row))
+  for (let offset = 0; offset < statements.length; offset += STATEMENT_BATCH_SIZE) {
+    await db.batch(statements.slice(offset, offset + STATEMENT_BATCH_SIZE))
   }
   // A failed drain is safe: cleanup rows stay queued and the next scheduled run retries them.
   void drainAttachmentCleanup(env, userId).catch(() => {})
-  return deletedCount
+  return results.length
 }
 
 function attachmentDeleteStatements(db: D1Database, userId: string, row: AttachmentRow): D1PreparedStatement[] {

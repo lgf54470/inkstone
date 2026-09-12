@@ -184,18 +184,18 @@ async function loadShareFolderCounts(db: D1Database, userId: string, now: number
 }
 
 async function loadShareTagCounts(db: D1Database, userId: string, now: number): Promise<Record<string, { total: number; shared: number }>> {
-  const allShareTags = await db.prepare(
-    `SELECT name FROM share_tags WHERE user_id = ?1`,
-  ).bind(userId).all<{ name: string }>()
+  const { results } = await db.prepare(
+    `SELECT t.name AS name,
+            COUNT(s.slug) AS total,
+            COUNT(CASE WHEN (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) AS shared
+       FROM share_tags t
+       LEFT JOIN shares s ON s.user_id = t.user_id AND s.tags LIKE '%' || '"' || t.name || '"' || '%'
+      WHERE t.user_id = ?1
+      GROUP BY t.name`,
+  ).bind(userId, now).all<{ name: string; total: number; shared: number }>()
   const tagCounts: Record<string, { total: number; shared: number }> = {}
-  for (const t of allShareTags.results ?? []) {
-    const tRow = await db.prepare(
-      `SELECT COUNT(*) as total,
-              COUNT(CASE WHEN (is_enabled = 1 OR is_enabled IS NULL) AND (expires_at IS NULL OR expires_at > ?3) THEN 1 END) as shared
-         FROM shares
-        WHERE user_id = ?1 AND tags LIKE ?2`,
-    ).bind(userId, `%"${t.name}"%`, now).first<{ total: number; shared: number }>()
-    tagCounts[t.name] = { total: tRow?.total ?? 0, shared: Math.min(tRow?.shared ?? 0, tRow?.total ?? 0) }
+  for (const row of results ?? []) {
+    tagCounts[row.name] = { total: row.total, shared: Math.min(row.shared, row.total) }
   }
   return tagCounts
 }
