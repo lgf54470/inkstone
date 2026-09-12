@@ -1,10 +1,12 @@
 import type { z } from 'zod'
 import { Hono } from 'hono'
+import type { Context } from 'hono'
 import type { BlogCommentStatus } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated, requestClientIp } from '../../lib/request'
+import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import type { BlogCalendarRow, BlogPostPublicRow, BlogPublicCategoryRow, BlogPublicCommentRow, BlogTimelineRow } from '../../db/rows'
 import { recordBlogVisit } from './visits'
 import { blogPublicCommentSchema } from './schemas'
@@ -374,7 +376,7 @@ function registerBlogPublicCommentsListRoute(blogPublicRoutes: Hono<AppBindings>
 
 function registerBlogPublicCommentSubmitRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.post('/comments', async (c) => {
-    const body = await readJsonValidated(c, blogPublicCommentSchema, JSON_BODY_LIMITS.note)
+    const body = await readJsonValidated(c, blogPublicCommentSchema, JSON_BODY_LIMITS.comment)
     assertPublicCommentValid(body)
 
     const post = await c.env.DB
@@ -383,6 +385,9 @@ function registerBlogPublicCommentSubmitRoute(blogPublicRoutes: Hono<AppBindings
       .first<{ id: string; allow_comments: number }>()
     if (!post) throw ApiError.notFound('Post not found')
     if (!post.allow_comments) throw ApiError.forbidden('Comments are disabled for this post')
+
+    await assertCommentRateBudget(c.env.DB, c, body.postSlug)
+    if (body.parentId) await assertParentCommentOnPost(c.env.DB, body.parentId, post.id)
 
     const settings = await getBlogSettings(c.env.DB)
     const status: BlogCommentStatus = settings.requireCommentApproval ? 'pending' : 'approved'
@@ -401,6 +406,31 @@ function registerBlogPublicCommentSubmitRoute(blogPublicRoutes: Hono<AppBindings
 
     return c.json(publicCommentSubmitResponse(status))
   })
+}
+
+const BLOG_COMMENT_IP_BUDGET = { key: '', maxAttempts: 5, windowMs: 10 * 60 * 1000, lockMs: 10 * 60 * 1000 }
+const BLOG_COMMENT_POST_BUDGET = { key: '', maxAttempts: 100, windowMs: 10 * 60 * 1000, lockMs: 10 * 60 * 1000 }
+
+async function assertCommentRateBudget(db: D1Database, c: Context<AppBindings>, postSlug: string): Promise<void> {
+  try {
+    await consumeAttemptBudget(db, [
+      { ...BLOG_COMMENT_IP_BUDGET, key: `blog-comment:ip:${requestClientIp(c)}` },
+      { ...BLOG_COMMENT_POST_BUDGET, key: `blog-comment:post:${postSlug}` },
+    ])
+  } catch (error) {
+    if (error instanceof ThrottleError) {
+      throw new ApiError(429, 'too_many_attempts', `Too many comments. Try again in ${error.retryAfterSec} seconds`, { retryAfter: error.retryAfterSec })
+    }
+    throw error
+  }
+}
+
+async function assertParentCommentOnPost(db: D1Database, parentId: string, postId: string): Promise<void> {
+  const parent = await db
+    .prepare('SELECT 1 AS present FROM blog_comments WHERE id = ?1 AND post_id = ?2')
+    .bind(parentId, postId)
+    .first<{ present: number }>()
+  if (!parent) throw ApiError.badRequest('The parent comment does not exist on this post')
 }
 
 function publicCommentInsertStatement(

@@ -79,13 +79,13 @@ export const blogCommentBatchSchema = z.object({
 })
 
 export const blogPublicCommentSchema = z.object({
-  postSlug: z.string(),
-  parentId: z.string().nullable().optional(),
-  authorName: z.string(),
-  authorEmail: z.string(),
-  authorUrl: z.string().optional(),
-  authorAvatar: z.string().optional(),
-  content: z.string(),
+  postSlug: z.string().min(1).max(200),
+  parentId: z.string().max(64).nullable().optional(),
+  authorName: z.string().max(100),
+  authorEmail: z.string().max(200),
+  authorUrl: z.string().max(500).optional(),
+  authorAvatar: z.string().max(2048).optional(),
+  content: z.string().min(1).max(4000),
 })
 
 export const blogSettingsSchema = z.object({

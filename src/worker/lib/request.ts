@@ -5,6 +5,7 @@ import { ApiError } from './errors'
 
 export const JSON_BODY_LIMITS = {
   small: 8 * 1024,
+  comment: 16 * 1024,
   settings: 16 * 1024,
   backup: 32 * 1024,
   profile: 256 * 1024,

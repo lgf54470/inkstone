@@ -282,6 +282,62 @@ describe('blog public routes (real D1)', () => {
     })
     expect(invalid.status).toBe(400)
   })
+
+  it('rejects oversized comments and comments whose parent belongs to another post', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'parent-post', title: 'Parent Post' })
+    await seedBlogPost(db, { slug: 'other-post', title: 'Other Post' })
+
+    const app = makeApp()
+    const seededParent = await postJson(app, '/api/blog/public/comments', {
+      postSlug: 'other-post',
+      authorName: 'Other Reader',
+      authorEmail: 'other@example.com',
+      content: 'On the other post',
+    })
+    expect(seededParent.status).toBe(200)
+    const manage = await request(app, '/api/blog/comments')
+    const { comments: allComments } = await manage.json()
+    const otherPostCommentId = allComments[0].id
+
+    const oversized = await postJson(app, '/api/blog/public/comments', {
+      postSlug: 'parent-post',
+      authorName: 'Reader',
+      authorEmail: 'reader@example.com',
+      content: 'x'.repeat(4001),
+    })
+    expect(oversized.status).toBe(400)
+
+    const wrongParent = await postJson(app, '/api/blog/public/comments', {
+      postSlug: 'parent-post',
+      authorName: 'Reader',
+      authorEmail: 'reader@example.com',
+      parentId: otherPostCommentId,
+      content: 'Reply from the wrong thread',
+    })
+    expect(wrongParent.status).toBe(400)
+  })
+
+  it('throttles anonymous comment floods per ip', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'flooded-post', title: 'Flooded' })
+
+    const app = makeApp()
+    let lastStatus = 0
+    for (let index = 0; index < 6; index++) {
+      const res = await postJson(app, '/api/blog/public/comments', {
+        postSlug: 'flooded-post',
+        authorName: `Reader ${index}`,
+        authorEmail: 'reader@example.com',
+        content: `Comment number ${index}`,
+      })
+      lastStatus = res.status
+      if (index < 5) expect(lastStatus).toBe(200)
+    }
+    expect(lastStatus).toBe(429)
+  })
 })
 
 describe('blog settings routes (real D1)', () => {
