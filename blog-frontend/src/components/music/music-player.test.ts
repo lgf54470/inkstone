@@ -74,6 +74,8 @@ interface FakeAudio {
   duration: number
   playbackRate: number
   preservesPitch: boolean
+  crossOrigin: string | null
+  removeAttribute: (name: string) => void
   listeners: Map<string, () => void>
 }
 
@@ -91,6 +93,10 @@ function installFakeAudio(): { instances: FakeAudio[]; element: FakeAudio; emit:
     duration = 0
     playbackRate = 1
     preservesPitch = false
+    crossOrigin: string | null = null
+    removeAttribute(name: string): void {
+      if (name === 'crossorigin') this.crossOrigin = null
+    }
     listeners = new Map<string, () => void>()
     constructor() {
       instances.push(this)
@@ -317,5 +323,20 @@ describe('transport controls', () => {
     expect(musicSnapshot().rate).toBe(1.25)
     expect(element.playbackRate).toBe(1.25)
     expect(element.preservesPitch).toBe(true)
+  })
+})
+describe('media fallback', () => {
+  it('retries without CORS when the audio response cannot be read cross-origin', async () => {
+    stubLibrary(libraryBody([track({ id: 'a' })]))
+    await loadMusicLibrary(true)
+    const fake = installFakeAudio()
+    playTrack('a')
+    const element = fake.element
+    element.crossOrigin = 'anonymous'
+    element.paused = false
+    fake.emit('error')
+    expect(element.crossOrigin).toBeNull()
+    expect(element.paused).toBe(false)
+    expect(element.src).toContain('/api/blog/public/music/tracks/a/stream')
   })
 })

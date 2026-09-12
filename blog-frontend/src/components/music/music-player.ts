@@ -59,6 +59,7 @@ const ANALYSER_FFT_SIZE = 256
 const ANALYSER_SMOOTHING = 0.82
 let analyserContext: AudioContext | null = null
 let analyserNode: AnalyserNode | null = null
+let corsBlocked = false
 
 /** 单例 store + 单个 audio 元素：博客前台只需要一条播放通道，无需引入状态库 */
 export function subscribeMusic(listener: () => void): () => void {
@@ -100,8 +101,20 @@ function ensureAudio(): HTMLAudioElement | null {
   element.addEventListener('play', () => setMusicState({ playing: true }))
   element.addEventListener('pause', () => setMusicState({ playing: false }))
   element.addEventListener('ended', handleTrackEnded)
+  element.addEventListener('error', () => handleMediaError(element))
   audioElement = element
   return element
+}
+
+// 旧版接口的音频响应没有 CORS 头，带 crossOrigin 会整段加载失败：降级为普通加载并放弃频谱
+function handleMediaError(element: HTMLAudioElement): void {
+  if (element.crossOrigin !== 'anonymous') return
+  corsBlocked = true
+  element.removeAttribute('crossorigin')
+  const source = element.src
+  if (!source) return
+  element.src = source
+  void element.play().catch(() => setMusicState({ playing: false }))
 }
 
 // 单曲循环在音频元素上重播，其余模式交给队列推进
@@ -278,7 +291,7 @@ export function setFloatPosition(position: { x: number; y: number } | null): voi
 // 媒体元素只能接入音频图一次；上下文未运行时返回 null，组件在下次播放时重试
 export async function ensureMusicAnalyser(): Promise<AnalyserNode | null> {
   const element = ensureAudio()
-  if (!element || typeof AudioContext !== 'function') return null
+  if (!element || corsBlocked || typeof AudioContext !== 'function') return null
   const context = analyserContext ?? new AudioContext()
   analyserContext = context
   if (context.state === 'suspended') {
