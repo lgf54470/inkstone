@@ -1,0 +1,7 @@
+export { MusicStatusBar } from './music-status-bar'
+export { MusicFloatingPlayer } from './music-floating-player'
+export { MusicImmersiveOverlay } from './music-immersive-player'
+export { MusicSessionSync } from './music-session-sync'
+export { MusicHubModal } from './music-hub-lazy'
+export { useMusic, useCurrentTrack, useVisibleTracks } from './music-store'
+export type { MusicPlaylistDetail, MusicScope, MusicSort, MusicTag, MusicTrack, MusicUploadTask } from './music-api-types'

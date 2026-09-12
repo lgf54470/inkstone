@@ -8,6 +8,7 @@ import { fullTime } from '../../../lib/time'
 import { IconButton } from '../../../components/primitives'
 import { Drawer, Menu, Tooltip, type MenuItem } from '../../../components/overlay'
 import { Segmented, type SegmentedOption } from '../../../components/form'
+import { MusicStatusBar } from '../../music'
 import { CodeEditor } from '../../../editor/code-editor'
 import { insertFiles } from '../../../editor/paste'
 import { Outline, Preview } from '../../preview'
@@ -16,7 +17,7 @@ import { EditorToolbar } from '../editor-toolbar'
 import { BacklinksPanel } from '../backlinks-panel'
 import { AttachmentDriveModal } from '../../attachments'
 import { folderPathLabel, openFolderView } from '../../../lib/folders'
-import { useUi } from '../../../store/ui'
+import { useUi, type WorkspacePane } from '../../../store/ui'
 import { t } from '../../../lib/i18n'
 import type { WorkspaceBundle } from './use-workspace'
 import type { ExportNote } from './workspace-menus'
@@ -209,44 +210,52 @@ export function WorkspaceOverlays({ b, grouped, exportNote, groupedItems, mobile
   )
 }
 
-export function WorkspaceFooter({ b, grouped }: { b: WorkspaceBundle; grouped: boolean }) {
+export function WorkspaceFooter({ b, grouped, pane }: { b: WorkspaceBundle; grouped: boolean; pane: WorkspacePane | 'active' }) {
   const { note, folders, tagColors, isMobile } = b
   const noteFolder = note.folderId ? folders.find((folder) => folder.id === note.folderId) ?? null : null
   const noteFolderPath = note.folderId ? folderPathLabel(folders, note.folderId) : ''
   return (
     <footer className='flex h-[var(--statusbar-h)] shrink-0 items-center gap-2 overflow-hidden border-t border-[var(--border-subtle)] px-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-      <span className='tabular'>{note.wordCount}{t('common.words')}</span>
-      <span className='hidden tabular sm:inline'>{note.charCount}{t('workspace.characters')}</span>
-      <span className='hidden tabular md:inline'>{t('common.about')}{readingMinutes(note.wordCount)}{t('common.min')}</span>
-      {noteFolder && noteFolderPath && (
-        <Tooltip label={noteFolderPath} side='top'>
-          <button
-            type='button'
-            onClick={() => openFolderView(folders, noteFolder.id)}
-            className='inline-flex min-w-0 max-w-40 items-center gap-1 truncate rounded px-1 py-0.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--accent)] md:max-w-48'
-          >
-            <FolderClosed size={11} className='shrink-0' style={{ color: noteFolder.color ?? undefined }} />
-            <span className='truncate'>{noteFolderPath}</span>
-          </button>
-        </Tooltip>
-      )}
-      {note.tags.length > 0 && (
-        <span className='flex min-w-0 items-center gap-0.5 overflow-hidden'>
-          {note.tags.slice(0, isMobile ? 2 : 4).map((name) => (
+      <div className='flex min-w-0 flex-1 items-center gap-2 overflow-hidden'>
+        <span className='shrink-0 whitespace-nowrap tabular'>{note.wordCount}{t('common.words')}</span>
+        <span className='hidden shrink-0 whitespace-nowrap tabular sm:inline'>{note.charCount}{t('workspace.characters')}</span>
+        <span className='hidden shrink-0 whitespace-nowrap tabular md:inline'>{t('common.about')}{readingMinutes(note.wordCount)}{t('common.min')}</span>
+        {noteFolder && noteFolderPath && (
+          <Tooltip label={noteFolderPath} side='top'>
             <button
-              key={name}
               type='button'
-              onClick={() => useUi.getState().openView('tag', { tag: name })}
-              className='inline-flex min-w-0 items-center gap-0.5 rounded px-1 py-0.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--accent)]'
+              onClick={() => openFolderView(folders, noteFolder.id)}
+              className='inline-flex min-w-0 max-w-40 items-center gap-1 truncate rounded px-1 py-0.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--accent)] md:max-w-48'
             >
-              <Hash size={9} className='shrink-0' style={{ color: tagColors.get(name) ?? undefined }} />
-              <span className='truncate'>{name}</span>
+              <FolderClosed size={11} className='shrink-0' style={{ color: noteFolder.color ?? undefined }} />
+              <span className='truncate'>{noteFolderPath}</span>
             </button>
-          ))}
-        </span>
+          </Tooltip>
+        )}
+        {note.tags.length > 0 && (
+          <span className='flex min-w-0 items-center gap-0.5 overflow-hidden'>
+            {note.tags.slice(0, isMobile ? 2 : 4).map((name) => (
+              <button
+                key={name}
+                type='button'
+                onClick={() => useUi.getState().openView('tag', { tag: name })}
+                className='inline-flex min-w-0 items-center gap-0.5 rounded px-1 py-0.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--accent)]'
+              >
+                <Hash size={9} className='shrink-0' style={{ color: tagColors.get(name) ?? undefined }} />
+                <span className='truncate'>{name}</span>
+              </button>
+            ))}
+          </span>
+        )}
+      </div>
+      {pane !== 'secondary' && (
+        <div className='hidden shrink-0 md:flex'>
+          <MusicStatusBar />
+        </div>
       )}
-      <span className='flex-1' />
-      <span className={cn('hidden', grouped ? '2xl:inline' : 'lg:inline')}>{t('common.created')}{fullTime(note.createdAt)}</span>
+      <div className='flex min-w-0 flex-1 items-center justify-end gap-2 overflow-hidden'>
+        <span className={cn('hidden whitespace-nowrap', grouped ? '2xl:inline' : 'lg:inline')}>{t('common.created')}{fullTime(note.createdAt)}</span>
+      </div>
     </footer>
   )
 }

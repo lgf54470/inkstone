@@ -13,6 +13,7 @@ export type PanelName =
   | 'share-hub'
   | 'blog-hub'
   | 'blog-publish'
+  | 'music-hub'
   | 'templates'
   | 'info'
   | 'folders'

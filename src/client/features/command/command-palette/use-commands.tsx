@@ -13,6 +13,7 @@ import {
   Keyboard,
   LayoutTemplate,
   Moon,
+  Music,
   Palette,
   Pencil,
   Plus,
@@ -108,6 +109,7 @@ function hubCommands(deps: { openPanel: (panel: PanelName) => void }): CommandIt
   return [
     { id: 'cmd-share-hub', kind: 'command', label: t('share.hub_title'), icon: <Share2 size={14} />, group: t('command.commands'), run: () => deps.openPanel('share-hub') },
     { id: 'cmd-blog-hub', kind: 'command', label: t('blog.blog_hub'), icon: <Globe size={14} />, group: t('command.commands'), run: () => deps.openPanel('blog-hub') },
+    { id: 'cmd-music-hub', kind: 'command', label: t('music.hub_title'), icon: <Music size={14} />, combo: 'mod+shift+m', group: t('command.commands'), run: () => deps.openPanel('music-hub') },
     { id: 'cmd-settings', kind: 'command', label: t('common.open_settings'), icon: <Settings size={14} />, combo: 'mod+,', group: t('command.commands'), run: () => deps.openPanel('settings') },
     { id: 'cmd-shortcuts', kind: 'command', label: t('command.keyboard_shortcuts'), icon: <Keyboard size={14} />, combo: 'shift+?', group: t('command.commands'), run: () => deps.openPanel('shortcuts') },
     { id: 'cmd-export', kind: 'command', label: t('command.export_all_notes_zip'), icon: <Download size={14} />, group: t('command.commands'), run: () => runExportZip() },

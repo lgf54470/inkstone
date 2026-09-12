@@ -10,6 +10,7 @@ import { useSession } from '../../../store/session'
 import { useUi, type UiState } from '../../../store/ui'
 import { t, translateServiceMessage, useLocale } from '../../../lib/i18n'
 
+import { MusicStorageSection } from './music-storage-section'
 import { TargetCard } from './target-card'
 import { TargetForm } from './target-form'
 import { RunRow } from './run-row'
@@ -25,6 +26,7 @@ export function BackupSettings() {
     <ErrorBanner error={model.loadError} onRetry={model.reload}/>
     <BackupHero enabled={enabled} isRunning={model.isRunning} onRun={model.runBackup}/>
     <TargetsSection targets={model.targets} editing={model.editing} onAdd={() => model.setEditing('new')} onEdit={(target) => model.setEditing(target)} onChanged={model.reload} onPatch={model.patchTarget} onRemove={model.removeTarget} onRestore={model.restoreTarget} onCloseEdit={() => model.setEditing(null)}/>
+    <MusicStorageSection/>
     <ScheduleSection schedule={model.schedule} options={model.scheduleOptions} onChange={model.setSchedule}/>
     <RunsSection runs={model.runs}/>
   </div>)

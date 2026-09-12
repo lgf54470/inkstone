@@ -16,6 +16,7 @@ import { useSession } from '../../store/session'
 import { useUpdate } from '../../store/update'
 import { NoteList, useGapIndicator, useRollingDateFilter } from '../list'
 import { Sidebar } from '../sidebar'
+import { MusicFloatingPlayer, MusicHubModal, MusicImmersiveOverlay, MusicSessionSync } from '../music'
 import { FloatingSearch } from './floating-search'
 import { Resizer, SplitResizer } from './resizer'
 import { PinnedWindowsLayer } from '../preview'
@@ -49,9 +50,13 @@ export function AppShell() {
   useGapIndicator()
   useShellBootstrap()
   const isMobile = useBreakpoint() === 'mobile'
-  if (isMobile)
-    return <MobileShell />
-  return <DesktopShell />
+  return (
+    <>
+      {isMobile ? <MobileShell /> : <DesktopShell />}
+      <MusicImmersiveOverlay />
+      <MusicSessionSync />
+    </>
+  )
 }
 
 function useShellBootstrap(): void {
@@ -100,6 +105,7 @@ function DesktopShell() {
     </div>
 
     <FloatingSearch />
+    <MusicFloatingPlayer />
 
     {navAsDrawer && (<Drawer open onClose={() => toggleNavDrawer(false)} side='left' width={NAV_DRAWER_WIDTH} title={t('common.navigation')}>
       <Sidebar onCollapse={() => toggleNavDrawer(false)}/>
@@ -198,6 +204,7 @@ function MobileShell() {
     </div>
 
     <FloatingSearch compact/>
+    <MusicFloatingPlayer />
 
     <PinnedWindowsLayer />
     <nav aria-label={t('shell.mobile_navigation')} className='flex h-[calc(56px+env(safe-area-inset-bottom))] shrink-0 items-stretch justify-around border-t border-[var(--border-subtle)] bg-[var(--bg-sunken)] pb-[env(safe-area-inset-bottom)]'>
@@ -251,6 +258,7 @@ function OverlayHost() {
     {panel === 'blog-hub' && (
       <BlogHubModal open={true} onClose={closePanel} initialNoteId={activeNoteId ?? undefined} />
     )}
+    {panel === 'music-hub' && <MusicHubModal open={true} onClose={closePanel} />}
     {panel === 'blog-publish' && activeNoteId && (
       <BlogPublishModal
       open={true}
@@ -410,6 +418,14 @@ const GLOBAL_HOTKEYS: Hotkey[] = [
     group: () => t('common.interface'),
     allowInInput: true,
     handler: () => uiState().toggleOutline(),
+  },
+  {
+    id: 'music-hub',
+    combo: 'mod+shift+m',
+    description: () => t('music.hub_title'),
+    group: () => t('shell.global'),
+    allowInInput: true,
+    handler: () => uiState().togglePanel('music-hub'),
   },
   {
     id: 'graph',

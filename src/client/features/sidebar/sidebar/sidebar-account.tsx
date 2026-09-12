@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Globe, LogOut, Moon, Settings, Sun, Waypoints } from 'lucide-react'
+import { Globe, LogOut, Moon, Music, Settings, Sun, Waypoints } from 'lucide-react'
 import type { PublicUser } from '@shared/types'
 import { Avatar, IconButton } from '../../../components/primitives'
 import { Menu, Tooltip, type MenuItem } from '../../../components/overlay'
@@ -66,6 +66,13 @@ function buildAccountMenuItems(opts: {
       onSelect: () => opts.openPanel('blog-hub'),
     },
     {
+      id: 'music-hub',
+      label: t('music.hub_title'),
+      icon: <Music size={13}/>,
+      combo: 'mod+shift+m',
+      onSelect: () => opts.openPanel('music-hub'),
+    },
+    {
       id: 'graph',
       label: t('common.graph'),
       icon: <Waypoints size={13}/>,
@@ -113,6 +120,11 @@ function AccountButton({ rail, buttonRef, user, displayName, showUpdateDot, onOp
         <span className="block truncate text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">@{user.username}</span>
       </span>
     </button>
+    <Tooltip label={t('music.hub_title')} side='top'>
+      <IconButton label={t('music.hub_title')} size='sm' onClick={() => openPanel('music-hub')} className='mr-0.5 shrink-0 text-[var(--text-quaternary)] hover:text-[var(--accent)]'>
+        <Music size={14}/>
+      </IconButton>
+    </Tooltip>
     <Tooltip label={t('blog.blog_hub')} side='top'>
       <IconButton label={t('blog.blog_hub')} size='sm' onClick={() => openPanel('blog-hub')} className='mr-0.5 shrink-0 text-[var(--text-quaternary)] hover:text-[var(--accent)]'>
         <Globe size={14}/>
