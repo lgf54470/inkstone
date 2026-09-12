@@ -72,10 +72,12 @@ function makeApp(authed = true): Hono<AppBindings> {
   if (authed) {
     app.use('/api/music', async (c, next) => {
       c.set('userId', USER)
+      c.set('user', { id: USER, username: 'owner', login: 'login', name: 'Author', avatarUrl: '', role: 'owner', createdAt: H.now, settingsRaw: '{}' })
       await next()
     })
     app.use('/api/music/*', async (c, next) => {
       c.set('userId', USER)
+      c.set('user', { id: USER, username: 'owner', login: 'login', name: 'Author', avatarUrl: '', role: 'owner', createdAt: H.now, settingsRaw: '{}' })
       await next()
     })
   }

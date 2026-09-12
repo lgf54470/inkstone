@@ -639,6 +639,9 @@ const allowed = new Map([
     '/** DOM click handling for the rendered preview body: file/table/JS-runner actions, mermaid retry, code copy/collapse, task checkboxes, wiki/block/tag navigation, lightbox, anchors. */',
     '// Malformed percent-encoding falls back to the raw id.',
   ]],
+  ['src/client/features/settings/backup-settings/music-storage-section.tsx', [
+    '// Publishing only exposes a read-only view; uploads and edits stay inside the app.',
+  ]],
   ['src/client/features/settings/backup-settings/target-form.tsx', [
     '// Initial form fields from whichever config variant the target carries; the',
     '// `in` guards narrow the S3/WebDAV union so every field reads type-safe.',
@@ -1553,6 +1556,10 @@ const allowed = new Map([
   ['src/worker/routes/blog/index.ts', [
     '// Ensure session loaded for manage routes',
   ]],
+  ['src/worker/routes/blog/public.ts', [
+    '// The blog player reads the owner\'s music library read-only, gated by the publish switch.',
+    '// Routes that know their own lifetime (artwork, audio) keep the header they set.',
+  ]],
   ['src/worker/routes/blog/stats.ts', [
     '/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */',
   ]],
@@ -1604,13 +1611,24 @@ const allowed = new Map([
     '// A failed drain is safe: the queue rows stay enqueued and the next cron trigger retries them.',
   ]],
   ['src/worker/routes/music/cover.ts', [
+    '// Shared by the authenticated library and the public blog player.',
     '// Shared by uploads and metadata refreshes; a failed cover write must not fail the caller.',
   ]],
   ['src/worker/routes/music/lookup.ts', [
     '// The catalogue request runs here because the page\'s CSP forbids third party connections.',
   ]],
+  ['src/worker/routes/music/public.ts', [
+    '// Read-only projection of the owner\'s library for the blog player: no keys, sizes or flags.',
+  ]],
+  ['src/worker/routes/music/settings.ts', [
+    '// Publishing is opt-in: the public blog routes read this before serving anything.',
+  ]],
   ['src/worker/routes/music/storage.ts', [
     '// KV values cap at 25 MiB, well under the R2 allowance, so the upload limit follows the backend.',
+  ]],
+  ['src/worker/routes/music/stream.ts', [
+    '// Shared by the authenticated library and the public blog player: only the owner and the',
+    '// cache policy differ, the range and WebDAV handling stay in one place.',
   ]],
   ['src/worker/routes/music/tracks.ts', [
     '// Scanned artwork replaces the stored object; a decode failure keeps the previous cover.',

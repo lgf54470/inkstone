@@ -1,18 +1,16 @@
-import type { Context, Hono } from 'hono'
+import type { Hono } from 'hono'
 import type { MusicTrack } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
-import { coverHeaders, coverMimeFor, decodeCoverDataUrl, isCoverObjectKey, readCoverBytes, storeCoverObject } from './cover'
+import { coverResponse, storeCoverObject } from './cover'
 import { isMusicObjectKey } from './keys'
-import { parseByteRange, contentRangeHeader } from './range'
 import { TRACK_COLUMNS, toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
 import { batchTrackSchema, patchTrackSchema } from './schemas'
-import { readMusicObjectStream, requireMusicStorage } from './storage'
-import { fetchMusicObject, resolveMusicWebdav } from './webdav'
-import { cancelStreamBestEffort } from '../../lib/streams'
+import { requireMusicStorage } from './storage'
+import { streamTrackResponse } from './stream'
 import { pathParam } from './params'
 
 export function registerMusicTrackRoutes(routes: Hono<AppBindings>): void {
@@ -28,36 +26,11 @@ function registerStreamRoute(routes: Hono<AppBindings>): void {
   routes.get('/tracks/:id/stream', requireAuth, async (c) => {
     const row = await loadTrackRow(c.env.DB, c.get('userId'), pathParam(c, 'id'))
     if (!row) throw ApiError.notFound('Track not found')
-    if (row.source === 'webdav') return streamWebdavTrack(c, row)
-    if (!isMusicObjectKey(row.object_key)) throw ApiError.internal('The track storage key is invalid')
-
-    const storage = requireMusicStorage(c.env)
-    const requested = parseByteRange(c.req.header('Range'), row.size_bytes)
-    if (requested.kind === 'unsatisfiable') {
-      return new Response(null, {
-        status: 416,
-        headers: { 'Content-Range': `bytes */${row.size_bytes}`, 'Accept-Ranges': 'bytes' },
-      })
-    }
-    const range = requested.kind === 'partial' ? requested.range : null
-    const object = await readMusicObjectStream(c.env, storage, row.object_key, range)
-    if (!object) throw ApiError.notFound('Track data is missing')
-
-    const headers: Record<string, string> = {
-      'Content-Type': row.mime,
-      'Content-Length': String(object.length),
-      'Accept-Ranges': 'bytes',
-      'Cache-Control': 'private, max-age=3600',
-      'X-Content-Type-Options': 'nosniff',
-    }
-    if (c.req.query('download')) {
-      headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodeURIComponent(row.title)}`
-    }
-    if (range) {
-      headers['Content-Range'] = contentRangeHeader(range, row.size_bytes)
-      return new Response(object.body as BodyInit, { status: 206, headers })
-    }
-    return new Response(object.body as BodyInit, { status: 200, headers })
+    const owner = { userId: c.get('userId'), settingsRaw: c.get('user').settingsRaw }
+    return streamTrackResponse(c, row, owner, {
+      download: Boolean(c.req.query('download')),
+      cacheControl: 'private, max-age=3600',
+    })
   })
 }
 
@@ -120,45 +93,11 @@ function registerDeleteRoute(routes: Hono<AppBindings>): void {
 function registerCoverRoute(routes: Hono<AppBindings>): void {
   routes.get('/tracks/:id/cover', requireAuth, async (c) => {
     const row = await loadTrackRow(c.env.DB, c.get('userId'), pathParam(c, 'id'))
-    if (!row?.cover_url) throw ApiError.notFound('Cover not found')
-    if (row.cover_url.startsWith('data:')) {
-      const decoded = decodeCoverDataUrl(row.cover_url)
-      if (!decoded) throw ApiError.notFound('Cover not found')
-      return new Response(decoded.bytes, { headers: coverHeaders(decoded.mime) })
-    }
-    if (!isCoverObjectKey(row.cover_url)) throw ApiError.notFound('Cover not found')
-    const bytes = await readCoverBytes(c.env, requireMusicStorage(c.env), row.cover_url)
-    if (!bytes) throw ApiError.notFound('Cover data is missing')
-    return new Response(bytes, { headers: coverHeaders(coverMimeFor(row.cover_url)) })
+    if (!row) throw ApiError.notFound('Cover not found')
+    return coverResponse(c.env, row)
   })
 }
 
-
-async function streamWebdavTrack(c: Context<AppBindings>, row: MusicTrackRow): Promise<Response> {
-  const ctx = await resolveMusicWebdav(c.env, c.get('user'), c.get('userId'))
-  const upstream = await fetchMusicObject(ctx, row.object_key, c.req.header('Range') ?? null)
-  if (upstream.status === 401) throw new ApiError(401, 'unauthenticated', 'The WebDAV credentials were rejected')
-  if (upstream.status === 404) throw ApiError.notFound('The track no longer exists on the WebDAV server')
-  if (upstream.status !== 200 && upstream.status !== 206) {
-    await cancelStreamBestEffort(upstream.body)
-    throw new ApiError(502, 'storage_unavailable', `WebDAV playback failed: HTTP ${upstream.status}`)
-  }
-  const headers: Record<string, string> = {
-    'Content-Type': upstream.headers.get('Content-Type') ?? row.mime,
-    'Accept-Ranges': 'bytes',
-    'Cache-Control': 'private, max-age=0, no-store',
-    'X-Content-Type-Options': 'nosniff',
-  }
-  for (const header of ['Content-Length', 'Content-Range'] as const) {
-    const value = upstream.headers.get(header)
-    if (value) headers[header] = value
-  }
-  if (!headers['Content-Range'] && row.size_bytes > 0) headers['Content-Length'] = String(row.size_bytes)
-  if (c.req.query('download')) {
-    headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodeURIComponent(row.title)}`
-  }
-  return new Response(upstream.body as BodyInit, { status: upstream.status === 206 ? 206 : 200, headers })
-}
 
 async function deleteTracks(env: AppBindings['Bindings'], userId: string, ids: string[], keys: string[]): Promise<void> {
   const placeholders = ids.map((_, index) => `?${index + 2}`).join(', ')

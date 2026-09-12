@@ -8,6 +8,24 @@ import type { AttachmentObjectStorage } from '../../attachments/keys'
 const COVER_DATA_URL_RE = /^data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)$/
 const COVER_MAX_BYTES = 512 * 1024
 
+// Shared by the authenticated library and the public blog player.
+export async function coverResponse(
+  env: AppBindings['Bindings'],
+  row: { cover_url: string | null },
+  cacheControl = 'private, max-age=86400',
+): Promise<Response> {
+  if (!row.cover_url) throw ApiError.notFound('Cover not found')
+  if (row.cover_url.startsWith('data:')) {
+    const decoded = decodeCoverDataUrl(row.cover_url)
+    if (!decoded) throw ApiError.notFound('Cover not found')
+    return new Response(decoded.bytes, { headers: { ...coverHeaders(decoded.mime), 'Cache-Control': cacheControl } })
+  }
+  if (!isCoverObjectKey(row.cover_url)) throw ApiError.notFound('Cover not found')
+  const bytes = await readCoverBytes(env, requireMusicStorage(env), row.cover_url)
+  if (!bytes) throw ApiError.notFound('Cover data is missing')
+  return new Response(bytes, { headers: { ...coverHeaders(coverMimeFor(row.cover_url)), 'Cache-Control': cacheControl } })
+}
+
 export function coverHeaders(mime: string): Record<string, string> {
   return {
     'Content-Type': mime,

@@ -12,6 +12,7 @@ import { getBlogSettings } from './settings'
 import { safeDecodeTagParam, summarizePostTagCounts } from './helpers'
 
 
+import { registerMusicPublicRoutes } from '../music'
 import { registerBlogPublicLinksRoutes } from './public-links'
 
 export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): void {
@@ -25,6 +26,14 @@ export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): v
   registerBlogPublicCalendarRoute(blogPublicRoutes)
   registerBlogPublicCommentsRoutes(blogPublicRoutes)
   registerBlogPublicLinksRoutes(blogPublicRoutes)
+  registerPublicMusicRoutes(blogPublicRoutes)
+}
+
+// The blog player reads the owner's music library read-only, gated by the publish switch.
+function registerPublicMusicRoutes(blogPublicRoutes: Hono<AppBindings>): void {
+  const musicPublicRoutes = new Hono<AppBindings>()
+  registerMusicPublicRoutes(musicPublicRoutes)
+  blogPublicRoutes.route('/music', musicPublicRoutes)
 }
 
 function registerBlogCorsMiddleware(blogPublicRoutes: Hono<AppBindings>): void {
@@ -42,7 +51,8 @@ function registerBlogCorsMiddleware(blogPublicRoutes: Hono<AppBindings>): void {
 function registerBlogCacheMiddleware(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.use('*', async (c, next) => {
     await next()
-    if (c.req.method === 'GET' && c.res.status === 200) {
+    // Routes that know their own lifetime (artwork, audio) keep the header they set.
+    if (c.req.method === 'GET' && c.res.status === 200 && !c.res.headers.has('Cache-Control')) {
       c.res.headers.set(
         'Cache-Control',
         'public, max-age=15, s-maxage=60, stale-while-revalidate=300',

@@ -21,6 +21,8 @@ export const patchTrackSchema = z
 
 export type PatchTrackBody = z.infer<typeof patchTrackSchema>
 
+export const musicPublicSettingsSchema = z.object({ enabled: z.boolean() })
+
 export const coverLookupQuerySchema = z.object({
   title: trimmed(LIMITS.musicTitleMaxLength).min(1),
   artist: optionalTrimmed(LIMITS.musicArtistMaxLength),

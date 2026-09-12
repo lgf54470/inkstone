@@ -4,6 +4,7 @@ import { registerMusicCoverLookupRoutes } from './lookup'
 import { registerMusicLibraryRoutes } from './library'
 import { registerMusicPlaybackRoutes } from './playback'
 import { registerMusicPlaylistRoutes } from './playlists'
+import { registerMusicSettingsRoutes } from './settings'
 import { registerMusicTagRoutes } from './tags'
 import { registerMusicTrackRoutes } from './tracks'
 import { registerMusicUploadRoutes } from './upload'
@@ -19,3 +20,6 @@ registerMusicTrackRoutes(musicRoutes)
 registerMusicCoverLookupRoutes(musicRoutes)
 registerMusicTagRoutes(musicRoutes)
 registerMusicPlaylistRoutes(musicRoutes)
+registerMusicSettingsRoutes(musicRoutes)
+
+export { registerMusicPublicRoutes } from './public'
