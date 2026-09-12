@@ -15,6 +15,7 @@ export interface AttachmentRow {
   width: number | null
   height: number | null
   storage: AttachmentObjectStorage
+  object_key: string | null
   is_starred: number
   is_pinned: number
   tags: string

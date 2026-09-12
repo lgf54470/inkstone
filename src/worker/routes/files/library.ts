@@ -3,8 +3,7 @@ import type { Context } from 'hono'
 import { getCookie } from 'hono/cookie'
 import { extractAttachmentIds } from '@shared/markdown-utils'
 
-import { hasAttachmentStorage, readAttachmentObjectStream } from '../../attachments/backend'
-import { attachmentObjectKey, legacyAttachmentObjectKey } from '../../attachments/keys'
+import { hasAttachmentStorage, readAttachmentObjectStreamForRow } from '../../attachments/backend'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { isValidId, isValidSlug } from '../../lib/id'
@@ -88,7 +87,7 @@ function registerFilesReadRoute(filesRoutes: Hono<AppBindings>): void {
 
 async function loadAttachmentRow(db: D1Database, id: string): Promise<AttachmentRow | null> {
   return db.prepare(
-    `SELECT id, user_id, note_id, filename, mime, size, width, height, storage, created_at
+    `SELECT id, user_id, note_id, filename, mime, size, width, height, storage, object_key, created_at
        FROM attachments WHERE id = ?1`,
   ).bind(id).first<AttachmentRow>()
 }
@@ -137,11 +136,7 @@ async function loadAttachmentObject(
       `${row.storage === 'r2' ? 'R2' : 'Workers KV'} attachment storage is not bound, so the attachment cannot be read`,
     )
   }
-  let object = await readAttachmentObjectStream(env, row.storage, attachmentObjectKey(row))
-  if (!object) {
-    object = await readAttachmentObjectStream(env, row.storage, legacyAttachmentObjectKey(row))
-  }
-  return object
+  return readAttachmentObjectStreamForRow(env, row)
 }
 
 function buildAttachmentHeaders(row: AttachmentRow, isPreview: boolean): Headers {

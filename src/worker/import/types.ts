@@ -90,4 +90,5 @@ export interface ExistingAttachmentRow {
   size: number
   sha256: string
   storage: AttachmentObjectStorage
+  object_key: string | null
 }

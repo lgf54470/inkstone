@@ -4,10 +4,9 @@ import { LIMITS } from '@shared/constants'
 import { validateAttachmentArchivePath } from './zip'
 import {
   hasAttachmentStorage,
-  readAttachmentObject,
+  readAttachmentObjectForRow,
   selectAttachmentStorage,
 } from '../attachments/backend'
-import { attachmentObjectKey, legacyAttachmentObjectKey } from '../attachments/keys'
 import {
   persistAttachmentWithinQuota,
   rollbackPersistedAttachments,
@@ -54,7 +53,7 @@ export async function importBackupAttachment(
   }
 
   const sameContent = await env.DB.prepare(
-    `SELECT id, user_id, filename, mime, size, sha256, storage
+    `SELECT id, user_id, filename, mime, size, sha256, storage, object_key
        FROM attachments
       WHERE user_id = ?1 AND sha256 = ?2
       ORDER BY created_at ASC, id ASC LIMIT 1`,
@@ -302,7 +301,7 @@ async function loadExistingAttachments(
     const chunk = ids.slice(offset, offset + 80)
     const placeholders = chunk.map((_, index) => `?${index + 2}`).join(', ')
     const { results: mappedRows } = await db.prepare(
-      `SELECT m.source_id, a.id, a.user_id, a.filename, a.mime, a.size, a.sha256, a.storage
+      `SELECT m.source_id, a.id, a.user_id, a.filename, a.mime, a.size, a.sha256, a.storage, a.object_key
          FROM import_mappings m
          JOIN attachments a ON a.id = m.target_id AND a.user_id = m.user_id
         WHERE m.user_id = ?1 AND m.entity = 'attachment'
@@ -314,7 +313,7 @@ async function loadExistingAttachments(
 
     const directPlaceholders = chunk.map((_, index) => `?${index + 1}`).join(', ')
     const { results: directRows } = await db.prepare(
-      `SELECT id, user_id, filename, mime, size, sha256, storage
+      `SELECT id, user_id, filename, mime, size, sha256, storage, object_key
          FROM attachments WHERE id IN (${directPlaceholders})`,
     )
       .bind(...chunk)
@@ -365,10 +364,7 @@ async function existingAttachmentMatches(
 ): Promise<boolean> {
   if (row.size !== candidate.bytes.byteLength || row.sha256 !== candidate.sha256) return false
   if (!hasAttachmentStorage(env, row.storage)) return false
-  let bytes = await readAttachmentObject(env, row.storage, attachmentObjectKey(row))
-  if (!bytes) {
-    bytes = await readAttachmentObject(env, row.storage, legacyAttachmentObjectKey(row))
-  }
+  const bytes = await readAttachmentObjectForRow(env, row)
   if (!bytes) return false
   return bytes.byteLength === candidate.bytes.byteLength &&
     (await sha256Hex(bytes)) === candidate.sha256

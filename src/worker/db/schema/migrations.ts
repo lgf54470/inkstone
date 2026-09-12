@@ -498,4 +498,21 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   { version: 30, skipIfColumnExists: { table: 'music_tags', column: 'sort_order' }, statements: MUSIC_TAG_ORDER_MIGRATION_STATEMENTS },
   { version: 31, statements: MUSIC_TAG_SCOPE_MIGRATION_STATEMENTS },
   { version: 32, skipIfColumnExists: { table: 'music_tracks', column: 'duration_ms' }, statements: MUSIC_LEGACY_REBUILD_STATEMENTS },
+  {
+    // Persist the storage key per row: reads and deletes stop rebuilding keys
+    // from mutable row fields, and new uploads write user-scoped keys. The
+    // backfill reproduces the pre-user_id key layout that existing objects
+    // were written under; the oldest per-user id layout stays reachable via
+    // the legacy fallback.
+    version: 33,
+    skipIfColumnExists: { table: 'attachments', column: 'object_key' },
+    statements: [
+      `ALTER TABLE attachments ADD COLUMN object_key TEXT`,
+      `UPDATE attachments SET object_key =
+         (CASE WHEN mime LIKE 'image/%' THEN 'images' ELSE 'files' END)
+         || '/' || strftime('%Y-%m-%d', created_at / 1000, 'unixepoch')
+         || '/' || filename
+       WHERE object_key IS NULL`,
+    ],
+  },
 ]

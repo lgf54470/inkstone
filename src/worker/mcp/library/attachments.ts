@@ -1,8 +1,8 @@
 import { requireOwnedNote } from './helpers'
 import type { LibraryContext } from './types'
-import { readAttachmentObject } from '../../attachments/backend'
+import { readAttachmentObjectForRow } from '../../attachments/backend'
 import { drainAttachmentCleanup } from '../../attachments/cleanup'
-import { AttachmentObjectStorage, attachmentCleanupTarget, attachmentObjectKey, legacyAttachmentObjectKey } from '../../attachments/keys'
+import { AttachmentObjectStorage, attachmentCleanupTarget, attachmentObjectKeyCandidates } from '../../attachments/keys'
 import { persistAttachmentWithinQuota } from '../../attachments/storage'
 import type { Env } from '../../env'
 import { fromBase64, sha256Hex, toBase64 } from '../../lib/encoding'
@@ -55,7 +55,7 @@ export async function readMcpAttachment(
   input: { attachmentId: string; cursor?: number; maxBytes?: number },
 ) {
   const row = await env.DB.prepare(
-    `SELECT id, user_id, note_id, filename, mime, size, sha256, storage, created_at
+    `SELECT id, user_id, note_id, filename, mime, size, sha256, storage, object_key, created_at
        FROM attachments WHERE id = ?1 AND user_id = ?2`,
   ).bind(input.attachmentId, userId).first<{
     id: string
@@ -66,13 +66,11 @@ export async function readMcpAttachment(
     size: number
     sha256: string
     storage: AttachmentObjectStorage
+    object_key: string | null
     created_at: number
   }>()
   if (!row) throw ApiError.notFound('Attachment not found')
-  let bytes = await readAttachmentObject(env, row.storage, attachmentObjectKey(row))
-  if (!bytes) {
-    bytes = await readAttachmentObject(env, row.storage, legacyAttachmentObjectKey(row))
-  }
+  const bytes = await readAttachmentObjectForRow(env, row)
   if (!bytes) throw ApiError.notFound('Attachment data is missing')
   const start = Math.max(0, Math.min(bytes.byteLength, Math.trunc(input.cursor ?? 0)))
   const maxBytes = Math.max(1024, Math.min(1024 * 1024, Math.trunc(input.maxBytes ?? 256 * 1024)))
@@ -237,26 +235,30 @@ export async function deleteMcpAttachment(
     },
     execute: async () => {
       const row = await context.env.DB.prepare(
-        `SELECT id, user_id, filename, mime, storage FROM attachments WHERE id = ?1 AND user_id = ?2`,
+        `SELECT id, user_id, filename, mime, storage, object_key, created_at FROM attachments WHERE id = ?1 AND user_id = ?2`,
       ).bind(input.attachmentId, context.userId).first<{
         id: string
         user_id: string
         filename: string
         mime: string
         storage: AttachmentObjectStorage
+        object_key: string | null
+        created_at: number
       }>()
       if (!row) throw ApiError.notFound('Attachment not found')
       const results = await context.env.DB.batch([
-        context.env.DB.prepare(
-          `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at) VALUES (?1, ?2, ?3)`,
-        ).bind(attachmentCleanupTarget(row.storage, attachmentObjectKey(row)), context.userId, Date.now()),
+        ...attachmentObjectKeyCandidates(row).map((key) =>
+          context.env.DB.prepare(
+            `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at) VALUES (?1, ?2, ?3)`,
+          ).bind(attachmentCleanupTarget(row.storage, key), context.userId, Date.now()),
+        ),
         context.env.DB.prepare(
           `DELETE FROM import_mappings WHERE user_id = ?1 AND entity = 'attachment' AND target_id = ?2`,
         ).bind(context.userId, row.id),
         context.env.DB.prepare(`DELETE FROM attachments WHERE id = ?1 AND user_id = ?2`)
           .bind(row.id, context.userId),
       ])
-      if (!results[2]?.meta.changes) throw ApiError.notFound('Attachment not found')
+      if (!results.at(-1)?.meta.changes) throw ApiError.notFound('Attachment not found')
       const cleanup = await drainAttachmentCleanup(context.env, context.userId).catch(() => ({
         processed: 0,
         pending: true,

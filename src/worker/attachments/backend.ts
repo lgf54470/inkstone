@@ -1,5 +1,5 @@
 import type { Env } from '../env'
-import type { AttachmentObjectStorage } from './keys'
+import { attachmentObjectKeyCandidates, type AttachmentObjectStorage, type StoredAttachmentKey } from './keys'
 
 
 interface AttachmentObjectMetadata {
@@ -134,4 +134,31 @@ export async function deleteAttachmentObjects(
   for (let offset = 0; offset < keys.length; offset += 25) {
     await Promise.all(keys.slice(offset, offset + 25).map((key) => env.FILES_KV!.delete(key)))
   }
+}
+
+// Row-aware readers walk every key era a row may have lived under (persisted
+// key, current layout, legacy layout) and reject objects whose stored
+// metadata names a different owner. Metadata is absent only on KV shims
+// without getWithMetadata; real R2 and Workers KV always carry it, so a
+// missing userId may safely fall through to ownership-by-key.
+export async function readAttachmentObjectStreamForRow(
+  env: Env,
+  row: StoredAttachmentKey & { storage: AttachmentObjectStorage },
+): Promise<AttachmentObjectStream | null> {
+  for (const key of attachmentObjectKeyCandidates(row)) {
+    const object = await readAttachmentObjectStream(env, row.storage, key)
+    if (!object) continue
+    if (object.metadata?.userId && object.metadata.userId !== row.user_id) continue
+    return object
+  }
+  return null
+}
+
+export async function readAttachmentObjectForRow(
+  env: Env,
+  row: StoredAttachmentKey & { storage: AttachmentObjectStorage },
+): Promise<Uint8Array | null> {
+  const object = await readAttachmentObjectStreamForRow(env, row)
+  if (!object) return null
+  return new Uint8Array(await new Response(object.body as BodyInit).arrayBuffer())
 }

@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 
+import { sanitizeAttachmentFilename } from '../../attachments/storage'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { requireAuth } from '../../middleware/auth'
@@ -57,7 +58,7 @@ function attachmentPatchValues(
   existing: AttachmentRow,
 ): { filename: string; folderId: string | null; isStarred: number; isPinned: number; tags: string } {
   return {
-    filename: typeof body.filename === 'string' && body.filename.trim() ? body.filename.trim() : existing.filename,
+    filename: typeof body.filename === 'string' && body.filename.trim() ? sanitizeAttachmentFilename(body.filename) : existing.filename,
     folderId: body.folderId !== undefined ? body.folderId : existing.folder_id,
     isStarred: body.isStarred !== undefined ? (body.isStarred ? 1 : 0) : existing.is_starred,
     isPinned: body.isPinned !== undefined ? (body.isPinned ? 1 : 0) : existing.is_pinned,

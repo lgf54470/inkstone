@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   attachmentDateFolder,
   attachmentObjectKey,
+  attachmentObjectKeyCandidates,
   legacyAttachmentObjectKey,
 } from '../src/worker/attachments/keys'
 import { renderMarkdown } from '../src/client/lib/markdown/renderer'
@@ -12,7 +13,7 @@ describe('attachment keys', () => {
     expect(attachmentDateFolder(ts)).toBe('2026-09-03')
   })
 
-  it('generates image object key with images folder and original filename', () => {
+  it('scopes the object key to the owning user', () => {
     const ts = Date.UTC(2026, 8, 3, 10, 0, 0)
     const key = attachmentObjectKey({
       id: 'att-1',
@@ -21,10 +22,10 @@ describe('attachment keys', () => {
       mime: 'image/png',
       created_at: ts,
     })
-    expect(key).toBe('images/2026-09-03/my-avatar.png')
+    expect(key).toBe('images/2026-09-03/user-1/my-avatar.png')
   })
 
-  it('generates document object key with files folder and original filename', () => {
+  it('keeps documents in the files folder under the owning user', () => {
     const ts = Date.UTC(2026, 8, 3, 10, 0, 0)
     const key = attachmentObjectKey({
       id: 'att-2',
@@ -33,7 +34,25 @@ describe('attachment keys', () => {
       mime: 'application/pdf',
       created_at: ts,
     })
-    expect(key).toBe('files/2026-09-03/report.pdf')
+    expect(key).toBe('files/2026-09-03/user-1/report.pdf')
+  })
+
+  it('prefers the persisted key and falls back to the legacy layout', () => {
+    const row = {
+      id: 'att-3',
+      user_id: 'user-1',
+      filename: 'photo.jpg',
+      mime: 'image/jpeg',
+      created_at: Date.UTC(2026, 8, 3, 10, 0, 0),
+      object_key: 'images/2026-09-03/photo.jpg',
+    }
+    expect(attachmentObjectKeyCandidates(row)).toEqual([
+      'images/2026-09-03/photo.jpg',
+      'user-1/att-3.jpg',
+    ])
+
+    const unmigrated = { ...row, object_key: null }
+    expect(attachmentObjectKeyCandidates(unmigrated)[0]).toBe('images/2026-09-03/user-1/photo.jpg')
   })
 
   it('generates legacy attachment object key for backward compatibility', () => {

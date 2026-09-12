@@ -1,5 +1,4 @@
-import { hasAttachmentStorage, isAttachmentObjectStorage, readAttachmentObjectStream } from '../../attachments/backend'
-import { attachmentObjectKey, legacyAttachmentObjectKey } from '../../attachments/keys'
+import { hasAttachmentStorage, isAttachmentObjectStorage, readAttachmentObjectStreamForRow } from '../../attachments/backend'
 import { NOTE_COLUMNS_FULL, type NoteRow } from '../../db/rows'
 import type { Env } from '../../env'
 import { sha256Hex } from '../../lib/encoding'
@@ -27,6 +26,7 @@ export interface AttachmentSnapshotRow {
   size: number
   sha256: string
   storage: string
+  object_key: string | null
   created_at: number
 }
 
@@ -74,13 +74,11 @@ export async function openVerifiedAttachment(
   env: Env,
   row: AttachmentSnapshotRow,
 ): Promise<ReadableStream<Uint8Array>> {
-  if (!isAttachmentObjectStorage(row.storage) || !hasAttachmentStorage(env, row.storage)) {
+  const storage = row.storage
+  if (!isAttachmentObjectStorage(storage) || !hasAttachmentStorage(env, storage)) {
     throw new Error(`Attachment storage is unavailable: ${row.filename}`)
   }
-  let object = await readAttachmentObjectStream(env, row.storage, attachmentObjectKey(row))
-  if (!object) {
-    object = await readAttachmentObjectStream(env, row.storage, legacyAttachmentObjectKey(row))
-  }
+  const object = await readAttachmentObjectStreamForRow(env, { ...row, storage })
   if (!object) throw new Error(`Attachment data is missing: ${row.filename}`)
   if (object.size !== null && object.size !== row.size) {
     await cancelStreamBestEffort(object.body)

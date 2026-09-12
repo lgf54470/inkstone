@@ -44,6 +44,7 @@ export interface PersistedAttachment {
   width: number | null
   height: number | null
   storage: AttachmentObjectStorage
+  objectKey: string
   createdAt: number
 }
 
@@ -117,6 +118,7 @@ async function persistAttachment(
     width: meta.dimensions?.width ?? null,
     height: meta.dimensions?.height ?? null,
     storage,
+    objectKey,
     createdAt: input.createdAt,
   }
 }
@@ -161,8 +163,8 @@ async function writeAttachmentRow(
 ): Promise<void> {
   try {
     await env.DB.prepare(
-      `INSERT INTO attachments (id, user_id, note_id, folder_id, filename, mime, size, sha256, width, height, storage, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)`,
+      `INSERT INTO attachments (id, user_id, note_id, folder_id, filename, mime, size, sha256, width, height, storage, object_key, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`,
     )
       .bind(
         input.id,
@@ -176,6 +178,7 @@ async function writeAttachmentRow(
         derived.dimensions?.width ?? null,
         derived.dimensions?.height ?? null,
         storage,
+        objectKey,
         input.createdAt,
       )
       .run()
@@ -208,7 +211,7 @@ async function rollbackStoredObject(
 }
 
 
-function sanitizeAttachmentFilename(name: string): string {
+export function sanitizeAttachmentFilename(name: string): string {
   const cleaned = name
     .replace(/[\\/:*?"<>|]/g, '-')
     .replace(/[\x00-\x1f]/g, '')
@@ -263,19 +266,12 @@ export async function rollbackPersistedAttachments(
   for (const attachment of attachments) {
     const needed = 3
     if (statements.length + needed > 100) await flush()
-    const objectKey = attachmentObjectKey({
-      user_id: attachment.userId,
-      id: attachment.id,
-      mime: attachment.mime,
-      filename: attachment.filename,
-      created_at: attachment.createdAt,
-    })
     statements.push(
       env.DB.prepare(
         `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at)
          SELECT ?1, user_id, ?2 FROM attachments WHERE id = ?3 AND user_id = ?4`,
       ).bind(
-        attachmentCleanupTarget(attachment.storage, objectKey),
+        attachmentCleanupTarget(attachment.storage, attachment.objectKey),
         Date.now(),
         attachment.id,
         attachment.userId,

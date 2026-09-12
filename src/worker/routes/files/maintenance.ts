@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 
 import { drainAttachmentCleanup } from '../../attachments/cleanup'
-import { attachmentCleanupTarget, attachmentObjectKey } from '../../attachments/keys'
+import { attachmentCleanupTarget, attachmentObjectKeyCandidates } from '../../attachments/keys'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { isValidId } from '../../lib/id'
@@ -123,7 +123,7 @@ async function deleteAttachmentsBatch(
   let deletedCount = 0
   for (const id of ids) {
     const row = await db.prepare(
-      `SELECT id, user_id, filename, mime, storage FROM attachments WHERE id = ?1 AND user_id = ?2`,
+      `SELECT id, user_id, filename, mime, storage, object_key, created_at FROM attachments WHERE id = ?1 AND user_id = ?2`,
     ).bind(id, userId).first<AttachmentRow>()
     if (!row) continue
     await db.batch(attachmentDeleteStatements(db, userId, row))
@@ -136,10 +136,12 @@ async function deleteAttachmentsBatch(
 
 function attachmentDeleteStatements(db: D1Database, userId: string, row: AttachmentRow): D1PreparedStatement[] {
   return [
-    db.prepare(
-      `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at)
-       SELECT ?1, user_id, ?2 FROM attachments WHERE id = ?3 AND user_id = ?4`,
-    ).bind(attachmentCleanupTarget(row.storage, attachmentObjectKey(row)), Date.now(), row.id, userId),
+    ...attachmentObjectKeyCandidates(row).map((key) =>
+      db.prepare(
+        `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at)
+         SELECT ?1, user_id, ?2 FROM attachments WHERE id = ?3 AND user_id = ?4`,
+      ).bind(attachmentCleanupTarget(row.storage, key), Date.now(), row.id, userId),
+    ),
     db.prepare(
       `DELETE FROM import_mappings WHERE user_id = ?1 AND entity = 'attachment' AND target_id = ?2`,
     ).bind(userId, row.id),
@@ -186,7 +188,7 @@ function registerFilesDeleteRoute(filesRoutes: Hono<AppBindings>): void {
 
 async function loadOwnedAttachment(db: D1Database, userId: string, id: string): Promise<AttachmentRow | null> {
   return db.prepare(
-    `SELECT id, user_id, filename, mime, storage FROM attachments WHERE id = ?1 AND user_id = ?2`,
+    `SELECT id, user_id, filename, mime, storage, object_key, created_at FROM attachments WHERE id = ?1 AND user_id = ?2`,
   ).bind(id, userId).first<AttachmentRow>()
 }
 
@@ -253,7 +255,7 @@ async function loadPrunePage(
 ): Promise<AttachmentRow[]> {
   const query: D1PreparedStatement = pageCursor
     ? db.prepare(
-        `SELECT id, user_id, note_id, filename, mime, size, width, height, storage, created_at
+        `SELECT id, user_id, note_id, filename, mime, size, width, height, storage, object_key, created_at
            FROM attachments WHERE user_id = ?1
             AND (created_at < ?2 OR (created_at = ?2 AND id <= ?3))
             AND (created_at > ?4 OR (created_at = ?4 AND id > ?5))
@@ -267,7 +269,7 @@ async function loadPrunePage(
         ATTACHMENT_SCAN_PAGE_SIZE,
       )
     : db.prepare(
-        `SELECT id, user_id, note_id, filename, mime, size, width, height, storage, created_at
+        `SELECT id, user_id, note_id, filename, mime, size, width, height, storage, object_key, created_at
            FROM attachments WHERE user_id = ?1
             AND (created_at < ?2 OR (created_at = ?2 AND id <= ?3))
           ORDER BY created_at ASC, id ASC LIMIT ?4`,
@@ -277,7 +279,7 @@ async function loadPrunePage(
 
 class AttachmentPruneCollector {
   private statements: D1PreparedStatement[] = []
-  private operations: Array<{ kind: 'queue' } | { kind: 'mapping' } | { kind: 'delete'; file: AttachmentRow }> = []
+  private operations: Array<{ kind: 'queue' | 'mapping' | 'delete'; file?: AttachmentRow }> = []
   private removed = 0
   private freedBytes = 0
 
@@ -292,21 +294,23 @@ class AttachmentPruneCollector {
       SELECT 1 FROM changes c
        WHERE c.user_id = ?2 AND c.entity = 'note' AND c.seq > ?3
     )`
-    const needed = 3
+    const needed = 2 + attachmentObjectKeyCandidates(file).length
     if (this.statements.length + needed > 100) await this.flush()
-    this.statements.push(
-      this.db.prepare(
-        `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at)
-         SELECT ?4, user_id, ?5 FROM attachments WHERE ${guard}`,
-      ).bind(
-        file.id,
-        this.userId,
-        this.scanCursor,
-        attachmentCleanupTarget(file.storage, attachmentObjectKey(file)),
-        Date.now(),
-      ),
-    )
-    this.operations.push({ kind: 'queue' })
+    for (const key of attachmentObjectKeyCandidates(file)) {
+      this.statements.push(
+        this.db.prepare(
+          `INSERT OR IGNORE INTO attachment_cleanup (object_key, user_id, created_at)
+           SELECT ?4, user_id, ?5 FROM attachments WHERE ${guard}`,
+        ).bind(
+          file.id,
+          this.userId,
+          this.scanCursor,
+          attachmentCleanupTarget(file.storage, key),
+          Date.now(),
+        ),
+      )
+      this.operations.push({ kind: 'queue' })
+    }
     this.statements.push(
       this.db.prepare(
         `DELETE FROM import_mappings
@@ -332,7 +336,7 @@ class AttachmentPruneCollector {
     const results = await this.db.batch(this.statements)
     results.forEach((result, index) => {
       const operation = this.operations[index]
-      if (operation?.kind === 'delete' && result.meta.changes) {
+      if (operation?.kind === 'delete' && operation.file && result.meta.changes) {
         this.removed += 1
         this.freedBytes += operation.file.size
       }

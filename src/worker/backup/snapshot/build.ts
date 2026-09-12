@@ -375,7 +375,7 @@ async function loadReferencedAttachments(
   for (let offset = 0; offset < values.length; offset += ATTACHMENT_LOOKUP_BATCH) {
     const chunk = values.slice(offset, offset + ATTACHMENT_LOOKUP_BATCH)
     const { results } = await db.prepare(
-      `SELECT id, user_id, filename, mime, size, sha256, storage, created_at
+      `SELECT id, user_id, filename, mime, size, sha256, storage, object_key, created_at
          FROM attachments
         WHERE user_id = ?1 AND id IN (SELECT value FROM json_each(?2))`,
     ).bind(userId, JSON.stringify(chunk)).all<AttachmentSnapshotRow>()

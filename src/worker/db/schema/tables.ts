@@ -93,6 +93,7 @@ export const TABLE_STATEMENTS: readonly string[] = [
       mime TEXT NOT NULL,
       size INTEGER NOT NULL,
       sha256 TEXT NOT NULL,
+      object_key TEXT,
       width INTEGER,
       height INTEGER,
       storage TEXT NOT NULL CHECK (storage IN ('r2', 'kv')),

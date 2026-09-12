@@ -20,7 +20,7 @@ export const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   note_tags: ['note_id', 'tag_id'],
   links: ['source_note_id', 'target_key', 'target_title', 'target_note_id', 'user_id'],
   note_versions: ['id', 'note_id', 'user_id', 'title', 'content', 'size', 'created_at'],
-  attachments: ['id', 'user_id', 'note_id', 'folder_id', 'filename', 'mime', 'size', 'sha256', 'width', 'height', 'storage', 'is_starred', 'is_pinned', 'tags', 'created_at'],
+  attachments: ['id', 'user_id', 'note_id', 'folder_id', 'filename', 'mime', 'size', 'sha256', 'object_key', 'width', 'height', 'storage', 'is_starred', 'is_pinned', 'tags', 'created_at'],
   attachment_folders: ['id', 'user_id', 'parent_id', 'name', 'icon', 'color', 'position', 'created_at', 'updated_at'],
   attachment_tags: ['id', 'user_id', 'name', 'color', 'is_pinned', 'created_at'],
   attachment_refs: ['user_id', 'attachment_id', 'count'],
