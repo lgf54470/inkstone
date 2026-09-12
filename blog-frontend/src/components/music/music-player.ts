@@ -4,6 +4,13 @@ import type { BlogMusicTag, BlogMusicTrack } from '../../lib/types'
 
 export type MusicStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
 
+/** 播放模式与笔记应用保持一致，博客前台只在本地记住，不做持久化 */
+export type MusicPlayMode = 'order' | 'repeat-all' | 'repeat-one' | 'shuffle'
+
+export const MUSIC_PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
+export const MUSIC_PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 2]
+export const SEEK_STEP_MS = 10_000
+
 export interface MusicPlayerSnapshot {
   status: MusicStatus
   tracks: BlogMusicTrack[]
@@ -15,6 +22,9 @@ export interface MusicPlayerSnapshot {
   volume: number
   muted: boolean
   queue: string[]
+  mode: MusicPlayMode
+  rate: number
+  floatPosition: { x: number; y: number } | null
   centerOpen: boolean
   expanded: boolean
   query: string
@@ -34,6 +44,9 @@ let snapshot: MusicPlayerSnapshot = {
   volume: INITIAL_VOLUME,
   muted: false,
   queue: [],
+  mode: 'order',
+  rate: 1,
+  floatPosition: null,
   centerOpen: false,
   expanded: false,
   query: '',
@@ -42,6 +55,10 @@ let snapshot: MusicPlayerSnapshot = {
 
 const listeners = new Set<() => void>()
 let audioElement: HTMLAudioElement | null = null
+const ANALYSER_FFT_SIZE = 256
+const ANALYSER_SMOOTHING = 0.82
+let analyserContext: AudioContext | null = null
+let analyserNode: AnalyserNode | null = null
 
 /** 单例 store + 单个 audio 元素：博客前台只需要一条播放通道，无需引入状态库 */
 export function subscribeMusic(listener: () => void): () => void {
@@ -70,15 +87,38 @@ function ensureAudio(): HTMLAudioElement | null {
   const element = new Audio()
   element.preload = 'metadata'
   element.volume = snapshot.volume
+  element.playbackRate = snapshot.rate
+  // 频谱分析要求跨域媒体带上 CORS 头，公开音乐接口对博客来源已放开
+  element.crossOrigin = 'anonymous'
+  // 保活到文档里，Safari 与媒体键只有在挂载的媒体元素上才稳定工作
+  element.hidden = true
+  if (typeof document !== 'undefined') document.body.appendChild(element)
   element.addEventListener('timeupdate', () => setMusicState({ timeMs: element.currentTime * 1000 }))
   element.addEventListener('durationchange', () => {
     if (Number.isFinite(element.duration)) setMusicState({ durationMs: element.duration * 1000 })
   })
   element.addEventListener('play', () => setMusicState({ playing: true }))
   element.addEventListener('pause', () => setMusicState({ playing: false }))
-  element.addEventListener('ended', () => playNext())
+  element.addEventListener('ended', handleTrackEnded)
   audioElement = element
   return element
+}
+
+// 单曲循环在音频元素上重播，其余模式交给队列推进
+function handleTrackEnded(): void {
+  if (snapshot.mode === 'repeat-one') {
+    replayCurrentTrack()
+    return
+  }
+  playNext()
+}
+
+function replayCurrentTrack(): void {
+  const element = ensureAudio()
+  if (!element) return
+  element.currentTime = 0
+  setMusicState({ timeMs: 0 })
+  void element.play().catch(() => setMusicState({ playing: false }))
 }
 
 export async function loadMusicLibrary(force = false): Promise<void> {
@@ -101,10 +141,36 @@ export function filterTracks(tracks: BlogMusicTrack[], query: string, tagId: str
   })
 }
 
-export function stepIndex(length: number, current: number, delta: number): number {
+export function nextPlayMode(mode: MusicPlayMode): MusicPlayMode {
+  return MUSIC_PLAY_MODES[(MUSIC_PLAY_MODES.indexOf(mode) + 1) % MUSIC_PLAY_MODES.length] ?? 'order'
+}
+
+export function nextPlaybackRate(rate: number): number {
+  const index = MUSIC_PLAYBACK_RATES.indexOf(rate)
+  return MUSIC_PLAYBACK_RATES[(index + 1) % MUSIC_PLAYBACK_RATES.length] ?? 1
+}
+
+export function computeNextQueueIndex(currentIndex: number, length: number, mode: MusicPlayMode): number {
   if (length <= 0) return -1
-  if (current < 0) return delta >= 0 ? 0 : length - 1
-  return (current + delta + length) % length
+  if (mode === 'repeat-one') return currentIndex
+  if (mode === 'shuffle') return randomOtherIndex(currentIndex, length)
+  const next = currentIndex + 1
+  if (next < length) return next
+  return mode === 'repeat-all' ? 0 : -1
+}
+
+export function computePrevQueueIndex(currentIndex: number, length: number, mode: MusicPlayMode): number {
+  if (length <= 0) return -1
+  if (mode === 'shuffle') return randomOtherIndex(currentIndex, length)
+  const prev = currentIndex - 1
+  if (prev >= 0) return prev
+  return mode === 'repeat-all' ? length - 1 : 0
+}
+
+function randomOtherIndex(currentIndex: number, length: number): number {
+  if (length <= 1) return Math.max(0, currentIndex)
+  const draw = Math.floor(Math.random() * (length - 1))
+  return draw >= currentIndex ? draw + 1 : draw
 }
 
 export function formatMusicTime(ms: number): string {
@@ -146,13 +212,21 @@ export function togglePlay(): void {
 }
 
 export function playNext(): void {
-  const nextId = snapshot.queue[stepIndex(snapshot.queue.length, snapshot.queue.indexOf(snapshot.currentId ?? ''), 1)]
-  if (nextId) playTrack(nextId)
+  playQueueOffset(1)
 }
 
 export function playPrevious(): void {
-  const previousId = snapshot.queue[stepIndex(snapshot.queue.length, snapshot.queue.indexOf(snapshot.currentId ?? ''), -1)]
-  if (previousId) playTrack(previousId)
+  playQueueOffset(-1)
+}
+
+function playQueueOffset(delta: 1 | -1): void {
+  const length = snapshot.queue.length
+  const current = snapshot.queue.indexOf(snapshot.currentId ?? '')
+  const index = delta === 1
+    ? computeNextQueueIndex(current, length, snapshot.mode)
+    : computePrevQueueIndex(current, length, snapshot.mode)
+  const id = index >= 0 ? snapshot.queue[index] : undefined
+  if (id) playTrack(id)
 }
 
 export function seekTo(ms: number): void {
@@ -177,6 +251,52 @@ export function toggleMute(): void {
   const element = ensureAudio()
   if (element) element.muted = muted
   setMusicState({ muted })
+}
+
+export function cycleMusicMode(): void {
+  setMusicState({ mode: nextPlayMode(snapshot.mode) })
+}
+
+export function nudgeMusicSeek(deltaMs: number): void {
+  const target = snapshot.timeMs + deltaMs
+  seekTo(snapshot.durationMs > 0 ? Math.min(Math.max(0, target), snapshot.durationMs) : Math.max(0, target))
+}
+
+export function setMusicRate(rate: number): void {
+  const element = ensureAudio()
+  if (element) {
+    element.playbackRate = rate
+    element.preservesPitch = true
+  }
+  setMusicState({ rate })
+}
+
+export function setFloatPosition(position: { x: number; y: number } | null): void {
+  setMusicState({ floatPosition: position })
+}
+
+// 媒体元素只能接入音频图一次；上下文未运行时返回 null，组件在下次播放时重试
+export async function ensureMusicAnalyser(): Promise<AnalyserNode | null> {
+  const element = ensureAudio()
+  if (!element || typeof AudioContext !== 'function') return null
+  const context = analyserContext ?? new AudioContext()
+  analyserContext = context
+  if (context.state === 'suspended') {
+    try {
+      await context.resume()
+    } catch {
+      return null
+    }
+  }
+  if (context.state !== 'running') return null
+  if (analyserNode) return analyserNode
+  const node = context.createAnalyser()
+  node.fftSize = ANALYSER_FFT_SIZE
+  node.smoothingTimeConstant = ANALYSER_SMOOTHING
+  context.createMediaElementSource(element).connect(node)
+  node.connect(context.destination)
+  analyserNode = node
+  return node
 }
 
 export function setMusicQuery(query: string): void {
