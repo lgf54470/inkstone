@@ -43,7 +43,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
       </div>
       <BacklinksSection b={b} />
       <WorkspaceOverlays b={b} grouped={grouped} exportNote={b.exportNote} groupedItems={groupedItems} mobileItems={mobileItems} />
-      <WorkspaceFooter b={b} grouped={grouped} />
+      <WorkspaceFooter b={b} grouped={grouped} pane={pane} />
       <FileInputs b={b} />
       <AttachmentDrive b={b} />
     </div>

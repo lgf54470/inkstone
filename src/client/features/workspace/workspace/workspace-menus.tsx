@@ -1,4 +1,4 @@
-import { FileCode, FileDown, FileText, Globe, History, LayoutGrid, LinkIcon, ListTree, Share2, Star } from 'lucide-react'
+import { FileCode, FileDown, FileText, Globe, History, LayoutGrid, LinkIcon, ListTree, Music, Share2, Star } from 'lucide-react'
 import type { MenuItem } from '../../../components/overlay'
 import type { PanelName, WorkspacePane } from '../../../store/ui'
 import type { WorkspaceBundle } from './use-workspace'
@@ -21,6 +21,7 @@ export function buildMobileItems(openPanel: (panel: PanelName) => void, exportNo
     { id: 'share-hub', label: t('share.manage_shares'), icon: <LayoutGrid size={13} />, onSelect: () => openPanel('share-hub') },
     { id: 'blog-publish', label: t('blog.publish_to_blog'), icon: <Globe size={13} />, onSelect: () => openPanel('blog-publish') },
     { id: 'blog-hub', label: t('blog.blog_hub'), icon: <Globe size={13} />, onSelect: () => openPanel('blog-hub') },
+    { id: 'music-hub', label: t('music.hub_title'), icon: <Music size={13} />, onSelect: () => openPanel('music-hub') },
     { id: 'export-md', label: t('workspace.export_markdown'), icon: <FileText size={13} />, onSelect: () => void exportNote('md') },
     { id: 'export-html', label: t('workspace.export_html'), icon: <FileCode size={13} />, onSelect: () => void exportNote('html') },
     { id: 'export-pdf', label: t('workspace.export_pdf'), icon: <FileDown size={13} />, onSelect: () => void exportNote('pdf') },

@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react'
-import type { MenuItem } from '../../../components/overlay'
-import { Kbd } from '../../../components/primitives'
-import { cn } from '../../../lib/cn'
+import type { MenuItem } from './use-menu'
+import { Kbd } from '../primitives'
+import { cn } from '../../lib/cn'
 
 export function submenuFor(items: MenuItem[], width?: number) {
   return ({ closeMenu }: { closeMenu: () => void }) => (

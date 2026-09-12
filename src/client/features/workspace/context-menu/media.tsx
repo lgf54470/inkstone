@@ -19,7 +19,7 @@ import { formatCode } from '../../../lib/markdown/code-formatter'
 import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES } from '../../../editor/commands'
 import type { EditorContextData, PreviewContextData } from '../context-menu-detect'
 import type { MenuCtx } from './types'
-import { submenuFor } from './submenu'
+import { submenuFor } from '../../../components/overlay'
 
 type CodeBlockData = NonNullable<EditorContextData['codeBlock']>
 type MathData = NonNullable<EditorContextData['math']>

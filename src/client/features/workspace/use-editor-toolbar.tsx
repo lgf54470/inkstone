@@ -3,7 +3,7 @@ import type { EditorView } from '@codemirror/view'
 import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline, toggleWikiLink } from '../../editor/commands'
 import type { MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
-import { SubmenuList } from './context-menu/submenu'
+import { SubmenuList } from '../../components/overlay'
 
 const MERMAID_MENU_WIDTH = 190
 const CHART_MENU_WIDTH = 180

@@ -20,7 +20,7 @@ import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { clearTableCell, clearTableRow, deleteEntireTableInText, deleteTableColumn, deleteTableRow, duplicateTableRow, formatMarkdownTable, insertTableColumn, insertTableRow, parseMarkdownTable, setColumnAlignment, sortTableRowByColumn, tableToCsv, type ParsedTable } from '../../../lib/markdown/table-editor'
 import type { MenuCtx } from './types'
-import { SubmenuList } from './submenu'
+import { SubmenuList } from '../../../components/overlay'
 
 type TableApply = (next: ParsedTable) => void
 

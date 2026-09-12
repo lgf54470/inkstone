@@ -17,7 +17,7 @@ import { t } from '../../../lib/i18n'
 import { findNoteByTitle } from '../../../store/notes'
 import { toggleBulletList, toggleTaskDone } from '../../../editor/commands'
 import type { MenuCtx } from './types'
-import { SubmenuList } from './submenu'
+import { SubmenuList } from '../../../components/overlay'
 
 function buildWikiLinkMenu(ctx: MenuCtx, targetTitle: string): MenuItem[] {
   const { previewContext, onJumpToLine, createNote, openNote, setWorkspaceNote, handleCopy } = ctx
