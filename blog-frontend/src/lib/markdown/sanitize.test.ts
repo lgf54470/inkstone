@@ -87,6 +87,12 @@ describe('sanitizeProseHtml whitelist behavior', () => {
     expect(html).toContain('<label class="js-example-switch-wrap" title="显示行号">行号</label>')
   })
 
+  it('keeps http(s) image sources so remote note attachments still render', () => {
+    const html = sanitizeProseHtml('<img src="https://cdn.example.com/cover.png" alt="远程">')
+    expect(html).toContain('src="https://cdn.example.com/cover.png"')
+    expect(html).toContain('alt="远程"')
+  })
+
   it('strips style attributes from prose but keeps KaTeX layout styles', () => {
     const prose = sanitizeProseHtml('<p style="color:red">x</p><th style="text-align:right" align="right">a</th>')
     expect(prose).not.toContain('style=')

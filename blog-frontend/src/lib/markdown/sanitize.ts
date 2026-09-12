@@ -114,7 +114,7 @@ export function sanitizeProseHtml(html: string): string {
     nonBooleanAttributes: NON_BOOLEAN_ATTRIBUTES,
     nonTextTags: NON_TEXT_TAGS,
     allowedSchemes: ['http', 'https', 'ftp', 'mailto', 'tel'],
-    allowedSchemesByTag: { img: ['data'] },
+    allowedSchemesByTag: { img: ['http', 'https', 'data'] },
     transformTags: { a: addNoopenerToBlankLinks, img: addImageLazyLoading },
   })
 }
