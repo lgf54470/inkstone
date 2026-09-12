@@ -8,6 +8,7 @@ import type {
   CalendarDayPost,
   BlogPublicLink,
   BlogPublicLinkCategory,
+  BlogMusicLibrary,
 } from './types'
 import {
   asArray,
@@ -17,6 +18,7 @@ import {
   normalizeComment,
   normalizePost,
   normalizeSiteInfo,
+  normalizeMusicLibrary,
   normalizeTag,
   normalizeTimelineGroup,
 } from './normalize'
@@ -138,6 +140,16 @@ async function requestJsonCached(path: string, ttlSeconds: number, init?: Reques
 }
 
 export const api = {
+  /** 音乐库只读投影：未公开或请求失败时返回空库，前台据此隐藏播放器 */
+  async getMusicLibrary(): Promise<BlogMusicLibrary> {
+    try {
+      return normalizeMusicLibrary(await requestJsonCached('/api/blog/public/music/library', 30))
+    } catch (err) {
+      console.warn('[api.getMusicLibrary] request failed, hiding the player:', err)
+      return { enabled: false, tracks: [], tags: [] }
+    }
+  },
+
   async getSiteInfo(): Promise<BlogSiteInfo> {
     try {
       return normalizeSiteInfo(await requestJsonCached('/api/blog/public/site', 60))

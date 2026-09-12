@@ -114,3 +114,30 @@ export interface BlogPublicLinkCategory {
   parentId: string | null
   sortOrder: number
 }
+
+export interface BlogMusicTag {
+  id: string
+  name: string
+  color: string | null
+  parentId: string | null
+}
+
+/** 音乐库只读投影：仅播放与搜索所需字段，不含存储键、体积与个人标记 */
+export interface BlogMusicTrack {
+  id: string
+  title: string
+  artist: string
+  album: string
+  durationMs: number
+  lyric: string | null
+  coverUrl: string | null
+  streamUrl: string
+  tagIds: string[]
+  createdAt: number
+}
+
+export interface BlogMusicLibrary {
+  enabled: boolean
+  tracks: BlogMusicTrack[]
+  tags: BlogMusicTag[]
+}

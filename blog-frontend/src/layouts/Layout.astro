@@ -4,6 +4,7 @@ import Header from '../components/Header.astro'
 import Footer from '../components/Footer.astro'
 import AppearanceDrawer from '../components/AppearanceDrawer'
 import SearchModal from '../components/SearchModal'
+import MusicWidget from '../components/music/MusicWidget'
 import DegradedBanner from '../components/DegradedBanner'
 import { api, getApiBase } from '../lib/api'
 import type { BlogSiteInfo } from '../lib/types'
@@ -139,5 +140,7 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     <!-- Interactive Client Modals/Drawers：非首屏交互，浏览器空闲后再水合 -->
     <AppearanceDrawer client:idle initialLocale={locale} />
     <SearchModal client:idle initialLocale={locale} />
+    <!-- 音乐悬浮控件：数据来自笔记应用的只读音乐库，未公开时自身不渲染 -->
+    <MusicWidget client:idle initialLocale={locale} />
   </body>
 </html>

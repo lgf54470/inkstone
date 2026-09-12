@@ -6,6 +6,9 @@ import type {
   BlogSiteInfo,
   TimelineGroup,
   CalendarDayPost,
+  BlogMusicLibrary,
+  BlogMusicTag,
+  BlogMusicTrack,
 } from './types'
 import { FALLBACK_SITE_INFO } from './fallbacks'
 import { POSTS_PER_PAGE_DEFAULT } from './constants'
@@ -35,6 +38,41 @@ function toTimestamp(value: unknown): number {
     if (Number.isFinite(parsed)) return parsed
   }
   return 0
+}
+
+export function normalizeMusicLibrary(value: unknown): BlogMusicLibrary {
+  const root = asRecord(value)
+  return {
+    enabled: root.enabled === true,
+    tracks: asArray(root.tracks).map(normalizeMusicTrack).filter((track) => track.id !== '' && track.streamUrl !== ''),
+    tags: asArray(root.tags).map(normalizeMusicTag).filter((tag) => tag.id !== '' && tag.name !== ''),
+  }
+}
+
+function normalizeMusicTrack(value: unknown): BlogMusicTrack {
+  const row = asRecord(value)
+  return {
+    id: asString(row.id),
+    title: asString(row.title),
+    artist: asString(row.artist),
+    album: asString(row.album),
+    durationMs: toNumber(row.durationMs),
+    lyric: typeof row.lyric === 'string' && row.lyric.trim() !== '' ? row.lyric : null,
+    coverUrl: typeof row.coverUrl === 'string' && row.coverUrl !== '' ? row.coverUrl : null,
+    streamUrl: asString(row.streamUrl),
+    tagIds: asArray(row.tagIds).filter((id): id is string => typeof id === 'string'),
+    createdAt: toNumber(row.createdAt),
+  }
+}
+
+function normalizeMusicTag(value: unknown): BlogMusicTag {
+  const row = asRecord(value)
+  return {
+    id: asString(row.id),
+    name: asString(row.name),
+    color: typeof row.color === 'string' && row.color !== '' ? row.color : null,
+    parentId: typeof row.parentId === 'string' && row.parentId !== '' ? row.parentId : null,
+  }
 }
 
 export function extractCoverUrl(raw?: string | null): string {
