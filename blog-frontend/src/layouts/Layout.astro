@@ -7,6 +7,7 @@ import SearchModal from '../components/SearchModal'
 import MusicWidget from '../components/music/MusicWidget'
 import DegradedBanner from '../components/DegradedBanner'
 import { api, getApiBase } from '../lib/api'
+import { serializeLdJson } from '../lib/ld-json'
 import type { BlogSiteInfo } from '../lib/types'
 import { DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
 
@@ -63,7 +64,7 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     <meta name="inkstone-locale" content={locale} />
     <link rel="canonical" href={`${Astro.url.origin}${Astro.url.pathname}`} />
     {articleMeta && (
-      <script type="application/ld+json" is:inline set:html={JSON.stringify({
+      <script type="application/ld+json" is:inline set:html={serializeLdJson({
         '@context': 'https://schema.org',
         '@type': 'BlogPosting',
         headline: articleMeta.title,
