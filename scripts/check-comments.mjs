@@ -1642,8 +1642,12 @@ const allowed = new Map([
   ['src/worker/routes/music/lookup.ts', [
     '// The catalogue request runs here because the page\'s CSP forbids third party connections.',
   ]],
+  ['src/worker/routes/music/playback.ts', [
+    '// Shared with the public blog projection so both sides read a stored queue the same way.',
+  ]],
   ['src/worker/routes/music/public.ts', [
     '// Read-only projection of the owner\'s library for the blog player: no keys, sizes or flags.',
+    '// The blog mirrors the queue the owner is listening to, so ids that left the library are dropped.',
   ]],
   ['src/worker/routes/music/settings.ts', [
     '// Publishing is opt-in: the public blog routes read this before serving anything.',

@@ -5,6 +5,7 @@ import { coverResponse } from './cover'
 import { pathParam } from './params'
 import { TRACK_COLUMNS } from './rows'
 import type { MusicTrackRow } from './rows'
+import { parseStoredMusicQueue } from './playback'
 import { loadMusicPublicScope } from './settings'
 import { streamTrackResponse, type StreamOwner } from './stream'
 
@@ -26,14 +27,16 @@ interface TrackTagRow {
 export function registerMusicPublicRoutes(routes: Hono<AppBindings>): void {
   routes.get('/library', async (c) => {
     const scope = await loadMusicPublicScope(c.env.DB)
-    if (!scope) return c.json({ enabled: false, tracks: [], tags: [] })
-    const [tracks, tags, links] = await Promise.all([
+    if (!scope) return c.json({ enabled: false, tracks: [], tags: [], queue: { ids: [], currentId: null } })
+    const [tracks, tags, links, playback] = await Promise.all([
       c.env.DB.prepare(`SELECT ${TRACK_COLUMNS} FROM music_tracks t WHERE t.user_id = ?1 ORDER BY t.created_at DESC`)
         .bind(scope.userId).all<MusicTrackRow>(),
       c.env.DB.prepare('SELECT id, name, color, parent_id FROM music_tags WHERE user_id = ?1 ORDER BY sort_order ASC, name ASC')
         .bind(scope.userId).all<PublicTagRow>(),
       c.env.DB.prepare('SELECT track_id, tag_id FROM music_track_tags WHERE user_id = ?1')
         .bind(scope.userId).all<TrackTagRow>(),
+      c.env.DB.prepare('SELECT queue, current_index FROM music_playback WHERE user_id = ?1')
+        .bind(scope.userId).first<{ queue: string; current_index: number }>(),
     ])
     const origin = new URL(c.req.url).origin
     const byTrack = new Map<string, string[]>()
@@ -46,6 +49,7 @@ export function registerMusicPublicRoutes(routes: Hono<AppBindings>): void {
       enabled: true,
       tracks: tracks.results.map((row) => toPublicTrack(row, origin, byTrack.get(row.id) ?? [])),
       tags: tags.results.map((row) => ({ id: row.id, name: row.name, color: row.color, parentId: row.parent_id })),
+      queue: toPublicQueue(playback, tracks.results),
     })
   })
 
@@ -58,6 +62,22 @@ export function registerMusicPublicRoutes(routes: Hono<AppBindings>): void {
     const target = await loadPublicTrack(c, pathParam(c, 'id'))
     return coverResponse(c.env, target.row, 'public, max-age=86400')
   })
+}
+
+interface PublicQueue {
+  ids: string[]
+  currentId: string | null
+}
+
+// The blog mirrors the queue the owner is listening to, so ids that left the library are dropped.
+function toPublicQueue(
+  playback: { queue: string; current_index: number } | null,
+  tracks: MusicTrackRow[],
+): PublicQueue {
+  if (!playback) return { ids: [], currentId: null }
+  const known = new Set(tracks.map((row) => row.id))
+  const ids = parseStoredMusicQueue(playback.queue).filter((id) => known.has(id))
+  return { ids, currentId: ids[playback.current_index] ?? null }
 }
 
 interface PublicTrackTarget {

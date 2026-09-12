@@ -9,6 +9,18 @@ import { savePlaybackSchema } from './schemas'
 
 const QUEUE_CHUNK = 50
 
+// Shared with the public blog projection so both sides read a stored queue the same way.
+export function parseStoredMusicQueue(raw: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((id): id is string => typeof id === 'string' && id.length > 0)
+  } catch (error) {
+    console.warn('[inkstone] stored music queue is not readable:', error)
+    return []
+  }
+}
+
 export function registerMusicPlaybackRoutes(routes: Hono<AppBindings>): void {
   routes.get('/playback', requireAuth, async (c) => {
     const userId = c.get('userId')
@@ -16,7 +28,7 @@ export function registerMusicPlaybackRoutes(routes: Hono<AppBindings>): void {
       'SELECT queue, current_index, position_ms FROM music_playback WHERE user_id = ?1',
     ).bind(userId).first<{ queue: string; current_index: number; position_ms: number }>()
     if (!row) return c.json({ playback: null })
-    const queue = parseQueue(row.queue)
+    const queue = parseStoredMusicQueue(row.queue)
     const playback: MusicPlayback = {
       queue,
       currentIndex: row.current_index,
@@ -37,17 +49,6 @@ export function registerMusicPlaybackRoutes(routes: Hono<AppBindings>): void {
     ).bind(userId, JSON.stringify(body.queue), currentIndex, body.positionMs, Date.now()).run()
     return c.json({ ok: true })
   })
-}
-
-function parseQueue(raw: string): string[] {
-  try {
-    const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((id): id is string => typeof id === 'string' && id.length > 0)
-  } catch (error) {
-    console.warn('[inkstone] stored music queue is not readable:', error)
-    return []
-  }
 }
 
 async function loadQueueTracks(db: D1Database, userId: string, queue: string[]): Promise<MusicTrack[]> {

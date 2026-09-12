@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Hono } from 'hono'
 import type { D1Database } from '@cloudflare/workers-types'
+import { MUSIC_PLAYBACK_MIGRATION_STATEMENTS } from '../src/worker/db/schema/music'
 import { TABLE_STATEMENTS } from '../src/worker/db/schema/tables'
 import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import type { AppBindings } from '../src/worker/env'
@@ -49,6 +50,7 @@ async function makeDb(): Promise<D1Shim> {
   const db = createDb()
   for (const statement of TABLE_STATEMENTS) await runSql(db, statement)
   for (const statement of INDEX_STATEMENTS) await runSql(db, statement)
+  for (const statement of MUSIC_PLAYBACK_MIGRATION_STATEMENTS) await runSql(db, statement)
   DB_ENV.env.DB = db as unknown as D1Database
   DB_ENV.env.FILES = fakeR2() as unknown as AppBindings['Bindings']['FILES']
   await runSql(
@@ -115,7 +117,7 @@ describe('public music routes (real D1 + fake R2)', () => {
 
     const library = await request(app, '/api/blog/public/music/library')
     expect(library.status).toBe(200)
-    expect(await library.json()).toEqual({ enabled: false, tracks: [], tags: [] })
+    expect(await library.json()).toEqual({ enabled: false, tracks: [], tags: [], queue: { ids: [], currentId: null } })
     expect((await request(app, `/api/blog/public/music/tracks/${track.id}/stream`)).status).toBe(404)
     expect((await request(app, `/api/blog/public/music/tracks/${track.id}/cover`)).status).toBe(404)
   })
@@ -126,9 +128,21 @@ describe('public music routes (real D1 + fake R2)', () => {
     const track = await uploadTrack(app)
     expect((await publish(app, true)).status).toBe(200)
 
+    const saved = await request(app, '/api/music/playback', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ queue: [track.id, 'deleted-track'], currentIndex: 0, positionMs: 1_000 }),
+    })
+    expect(saved.status, await saved.clone().text()).toBe(200)
+
     const library = await request(app, '/api/blog/public/music/library')
     expect(library.headers.get('Access-Control-Allow-Origin')).toBe('*')
-    const payload = await library.json() as { enabled: boolean; tracks: Array<Record<string, unknown>>; tags: unknown[] }
+    const payload = await library.json() as {
+      enabled: boolean
+      tracks: Array<Record<string, unknown>>
+      tags: unknown[]
+      queue: { ids: string[]; currentId: string | null }
+    }
     expect(payload.enabled).toBe(true)
     expect(payload.tags).toEqual([])
     expect(payload.tracks).toHaveLength(1)
@@ -140,6 +154,7 @@ describe('public music routes (real D1 + fake R2)', () => {
     expect(String(entry.streamUrl)).toMatch(/\/api\/blog\/public\/music\/tracks\/.+\/stream$/)
     expect(entry.objectKey).toBeUndefined()
     expect(entry.sizeBytes).toBeUndefined()
+    expect(payload.queue).toEqual({ ids: [track.id], currentId: track.id })
 
     const full = await request(app, `/api/blog/public/music/tracks/${track.id}/stream`)
     expect(full.status).toBe(200)
