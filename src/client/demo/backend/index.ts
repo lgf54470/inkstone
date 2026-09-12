@@ -13,6 +13,8 @@ import { registerShareRoutes } from './routes/share'
 import { registerShareAdminRoutes } from './routes/share-admin'
 import { registerBackupRoutes } from './routes/backup'
 import { registerBlogRoutes } from './routes/blog'
+import { registerMusicRoutes } from './routes/music'
+import { registerMusicOrganizerRoutes } from './routes/music-organizer'
 
 interface DemoBackend {
   fetch: (request: Request) => Promise<Response>
@@ -48,6 +50,8 @@ export function createDemoBackend(): DemoBackend {
   registerShareAdminRoutes(app, state)
   registerBackupRoutes(app, state)
   registerBlogRoutes(app, state)
+  registerMusicRoutes(app, state)
+  registerMusicOrganizerRoutes(app, state)
 
   app.all('/api/*', () => apiError(404, 'not_found', 'Demo endpoint not found'))
 

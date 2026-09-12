@@ -15,12 +15,20 @@ import type {
   ShareFolder,
   ShareInfo,
   ShareTag,
+  MusicPlaylistDetail,
+  MusicTag,
+  MusicTrack,
   Tag,
   UserSettings,
 } from '@shared/types'
 
 export interface DemoAttachment {
   meta: Attachment
+  file: File
+}
+
+export interface DemoMusicTrack {
+  track: MusicTrack
   file: File
 }
 
@@ -49,6 +57,9 @@ export interface DemoState {
   backupTargets: Map<string, BackupTarget>
   backupRuns: BackupRun[]
   communityTemplates: CommunityTemplate[]
+  musicTracks: Map<string, DemoMusicTrack>
+  musicTags: Map<string, MusicTag>
+  musicPlaylists: Map<string, MusicPlaylistDetail>
 }
 
 const seedId = (value: number) => `01j${String(value).padStart(23, '0')}`
@@ -256,6 +267,33 @@ export function createDemoState(): DemoState {
     backupTargets: new Map(),
     backupRuns: [],
     communityTemplates: communityTemplatesSeed(now),
+    musicTracks: new Map(),
+    musicTags: new Map(),
+    musicPlaylists: new Map(),
+  }
+}
+
+export function demoMusicLibrary(state: DemoState) {
+  const tracks = [...state.musicTracks.values()]
+    .map((entry) => entry.track)
+    .sort((left, right) => Number(right.isPinned) - Number(left.isPinned) || right.createdAt - left.createdAt)
+  const tags = [...state.musicTags.values()].sort((left, right) => left.name.localeCompare(right.name))
+  const playlists = [...state.musicPlaylists.values()].sort(
+    (left, right) => Number(right.isPinned) - Number(left.isPinned) || left.sortOrder - right.sortOrder,
+  )
+  return {
+    tracks,
+    tags,
+    playlists,
+    stats: {
+      trackCount: tracks.length,
+      favoriteCount: tracks.filter((track) => track.isFavorite).length,
+      pinnedCount: tracks.filter((track) => track.isPinned).length,
+      playlistCount: playlists.length,
+      tagCount: tags.length,
+      totalBytes: tracks.reduce((total, track) => total + track.sizeBytes, 0),
+      totalDurationMs: tracks.reduce((total, track) => total + track.durationMs, 0),
+    },
   }
 }
 
