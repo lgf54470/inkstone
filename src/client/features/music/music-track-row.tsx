@@ -16,8 +16,38 @@ const ROW_CONTAINMENT = { contentVisibility: 'auto', containIntrinsicSize: 'auto
 export interface TrackRowHandlers {
   onPlay: (track: MusicTrack) => void
   onToggleFavorite: (id: string) => void
+  onSelect: (track: MusicTrack, modifiers: { shift: boolean; additive: boolean }) => void
   onContextMenu: (event: React.MouseEvent, target: TrackMenuTarget) => void
   onEdit: (track: MusicTrack) => void
+}
+
+// Clicks on the row's own controls must not change the selection.
+export function isInteractiveTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(target.closest('button, a, input, select, textarea, [role="menu"]'))
+}
+
+export function TrackCheckbox({
+  checked,
+  label,
+  onToggle,
+}: {
+  checked: boolean
+  label: string
+  onToggle: (event: React.MouseEvent<HTMLInputElement>) => void
+}) {
+  return (
+    <input
+      type='checkbox'
+      checked={checked}
+      readOnly
+      aria-label={label}
+      onClick={(event) => {
+        event.stopPropagation()
+        onToggle(event)
+      }}
+      className='size-3.5 shrink-0 cursor-pointer accent-[var(--accent)]'
+    />
+  )
 }
 
 export interface TrackRowProps {
@@ -42,22 +72,29 @@ export const MusicTrackRow = memo(function MusicTrackRow({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const handleFavourite = useCallback(() => handlers.onToggleFavorite(track.id), [handlers, track.id])
+  const handleSelect = useCallback((event: React.MouseEvent) => {
+    if (isInteractiveTarget(event.target)) return
+    handlers.onSelect(track, { shift: event.shiftKey, additive: event.metaKey || event.ctrlKey })
+  }, [handlers, track])
   const label = isCurrent && isPlaying ? t('music.pause') : t('music.play')
 
   return (
     <div
       role='row'
+      aria-selected={isSelected}
       aria-current={isCurrent ? 'true' : undefined}
+      onClick={handleSelect}
       onDoubleClick={() => handlers.onPlay(track)}
       onContextMenu={(event) => handlers.onContextMenu(event, { track })}
       style={ROW_CONTAINMENT}
       className={cn(
-        'group/row flex h-12 items-center gap-2 rounded-[var(--r-md)] px-2 transition-colors',
+        'group/row flex h-12 cursor-default items-center gap-2 rounded-[var(--r-md)] px-2 transition-colors',
         'hover:bg-[var(--bg-hover)]',
         isCurrent && 'bg-[var(--accent-soft)]',
-        isSelected && 'ring-1 ring-[var(--accent)]',
+        isSelected && 'bg-[var(--accent-softer)] ring-1 ring-[var(--accent)]',
       )}
     >
+      <RowSelectCell track={track} isSelected={isSelected} onSelect={handlers.onSelect} />
       <RowIndex index={index} isPlaying={isCurrent && isPlaying} />
       <RowArtwork
         track={track}
@@ -69,6 +106,41 @@ export const MusicTrackRow = memo(function MusicTrackRow({
       />
 
       <TrackTitle track={track} isCurrent={isCurrent} onPlay={handlers.onPlay} />
+      <RowMeta track={track} />
+      <RowActions
+        isFavorite={track.isFavorite}
+        menuRef={menuButtonRef}
+        onToggleFavorite={handleFavourite}
+        onOpenMenu={() => setIsMenuOpen(true)}
+      />
+      <MusicTrackMenu target={{ track }} anchor={menuButtonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} onEdit={handlers.onEdit} />
+    </div>
+  )
+})
+
+function RowSelectCell({
+  track,
+  isSelected,
+  onSelect,
+}: {
+  track: MusicTrack
+  isSelected: boolean
+  onSelect: TrackRowHandlers['onSelect']
+}) {
+  return (
+    <span role='gridcell' className='flex w-6 shrink-0 items-center justify-center'>
+      <TrackCheckbox
+        checked={isSelected}
+        label={t('music.select_track') + ': ' + track.title}
+        onToggle={(event) => onSelect(track, { shift: event.shiftKey, additive: true })}
+      />
+    </span>
+  )
+}
+
+function RowMeta({ track }: { track: MusicTrack }) {
+  return (
+    <>
       <span className='hidden w-40 shrink-0 truncate text-[length:var(--text-11)] text-[var(--text-quaternary)] xl:block'>
         {track.album || '—'}
       </span>
@@ -76,18 +148,9 @@ export const MusicTrackRow = memo(function MusicTrackRow({
       <span className='tabular w-11 shrink-0 text-right text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {formatDuration(track.durationMs)}
       </span>
-
-      <RowActions
-        isFavorite={track.isFavorite}
-        menuRef={menuButtonRef}
-        onToggleFavorite={handleFavourite}
-        onOpenMenu={() => setIsMenuOpen(true)}
-      />
-
-      <MusicTrackMenu target={{ track }} anchor={menuButtonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} onEdit={handlers.onEdit} />
-    </div>
+    </>
   )
-})
+}
 
 function RowIndex({ index, isPlaying }: { index: number; isPlaying: boolean }) {
   return (

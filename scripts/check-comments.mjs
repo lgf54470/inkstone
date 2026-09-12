@@ -591,8 +591,12 @@ const allowed = new Map([
   ['src/client/features/music/music-search.ts', [
     '// The pinyin-pro dictionary is large: keep it behind this dynamic import so the always-mounted player never pulls it into the entry bundle.',
   ]],
+  ['src/client/features/music/music-selection-bar.tsx', [
+    '// Multi-select toolbar: file-manager style batches; select all and invert use the visible list.',
+  ]],
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
+    '// Multi-select actions: moving replaces the tag set, playlists append.',
   ]],
   ['src/client/features/music/music-store/library-covers.ts', [
     '// Cover lookup reaches a public catalogue, so it only runs while the listener asks for it.',
@@ -627,18 +631,29 @@ const allowed = new Map([
   ['src/client/features/music/music-tag-rows.ts', [
     '// Older music tags stored a palette name instead of hex; display keeps working either way.',
   ]],
+  ['src/client/features/music/music-track-list.tsx', [
+    '// Ctrl/Cmd+A selects the visible list, matching the file-manager habit; text fields keep their own.',
+  ]],
   ['src/client/features/music/music-track-menu.tsx', [
     '// Menu actions close the menu before they run, so focus returns to the list first.',
   ]],
   ['src/client/features/music/music-track-row.tsx', [
     '// Off-screen rows skip layout and paint; the intrinsic size reserves their height.',
+    '// Clicks on the row\'s own controls must not change the selection.',
+  ]],
+  ['src/client/features/music/music-track-table.tsx', [
+    '// The header box shows a dash while only part of the visible list is selected.',
   ]],
   ['src/client/features/music/music-utils.ts', [
+    '// Shift-click selects everything between the anchor row and the clicked row.',
     '// Uploads name a track after its file; the tag title wins when the file only adds the artist.',
   ]],
   ['src/client/features/music/music-visualizer.tsx', [
     '// Frequencies are sampled on a curve so the bass bins do not swallow the whole picture.',
     '// A paused player still shows a calm baseline so the strip keeps its place in the layout.',
+  ]],
+  ['src/client/features/music/use-track-list.ts', [
+    '// File-manager semantics: click selects one row, Ctrl toggles a row, Shift extends from the anchor.',
   ]],
   ['src/client/features/preview/file-preview-modal/code-viewer.tsx', [
     '// Highlighting is best-effort; the plain text code stays visible on failure.',

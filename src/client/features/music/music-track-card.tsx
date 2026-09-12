@@ -1,5 +1,5 @@
 import { Heart, MoreHorizontal, Pause, Pin, Play } from 'lucide-react'
-import { memo, useRef, useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import { IconButton, Spinner } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -8,7 +8,7 @@ import { MusicTrackMenu, type TrackMenuTarget } from './music-track-menu'
 import { MusicSourceBadge } from './music-source-badge'
 import { MusicTrackTags } from './music-track-tags'
 import { formatDuration } from './music-utils'
-import type { TrackRowProps } from './music-track-row'
+import { TrackCheckbox, isInteractiveTarget, type TrackRowProps } from './music-track-row'
 
 function CardArtwork({
   track,
@@ -78,13 +78,56 @@ function CardActions({
   )
 }
 
+function CardSelectCheckbox({
+  track,
+  isSelected,
+  onSelect,
+}: {
+  track: TrackRowProps['track']
+  isSelected: boolean
+  onSelect: TrackRowProps['handlers']['onSelect']
+}) {
+  return (
+    <span className='absolute top-3 left-3 z-10 flex size-5 items-center justify-center rounded-[var(--r-xs)] bg-[var(--bg-overlay)] shadow-[var(--shadow-sm)]'>
+      <TrackCheckbox
+        checked={isSelected}
+        label={t('music.select_track') + ': ' + track.title}
+        onToggle={(event) => onSelect(track, { shift: event.shiftKey, additive: true })}
+      />
+    </span>
+  )
+}
+
+function CardInfo({ track, isCurrent }: { track: TrackRowProps['track']; isCurrent: boolean }) {
+  return (
+    <div className='min-w-0 px-0.5'>
+      <div className='flex items-center gap-1'>
+        {track.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--warning)]' aria-hidden='true' />}
+        <span className={cn('truncate text-[length:var(--text-12)] font-medium', isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]')}>
+          {track.title}
+        </span>
+      </div>
+      <span className='block truncate text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
+        {track.artist || t('music.unknown_artist')}
+      </span>
+      <MusicSourceBadge source={track.source} className='mt-1' />
+      <MusicTrackTags track={track} max={4} className='mt-1 flex-wrap' />
+    </div>
+  )
+}
+
 export const MusicTrackCard = memo(function MusicTrackCard({ track, isCurrent, isPlaying, isStreamLoading, isSelected, handlers }: TrackRowProps) {
   const menuTarget: TrackMenuTarget = { track }
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const handleSelect = useCallback((event: React.MouseEvent) => {
+    if (isInteractiveTarget(event.target)) return
+    handlers.onSelect(track, { shift: event.shiftKey, additive: event.metaKey || event.ctrlKey })
+  }, [handlers, track])
   const label = isCurrent && isPlaying ? t('music.pause') : t('music.play')
   return (
     <div
+      onClick={handleSelect}
       onDoubleClick={() => handlers.onPlay(track)}
       onContextMenu={(event) => handlers.onContextMenu(event, menuTarget)}
       className={cn(
@@ -102,20 +145,8 @@ export const MusicTrackCard = memo(function MusicTrackCard({ track, isCurrent, i
         isStreamLoading={isStreamLoading}
         onPlay={() => handlers.onPlay(track)}
       />
-
-      <div className='min-w-0 px-0.5'>
-        <div className='flex items-center gap-1'>
-          {track.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--warning)]' aria-hidden='true' />}
-          <span className={cn('truncate text-[length:var(--text-12)] font-medium', isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]')}>
-            {track.title}
-          </span>
-        </div>
-        <span className='block truncate text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-          {track.artist || t('music.unknown_artist')}
-        </span>
-        <MusicSourceBadge source={track.source} className='mt-1' />
-        <MusicTrackTags track={track} max={4} className='mt-1 flex-wrap' />
-      </div>
+      <CardSelectCheckbox track={track} isSelected={isSelected} onSelect={handlers.onSelect} />
+      <CardInfo track={track} isCurrent={isCurrent} />
 
       <CardActions
         isFavorite={track.isFavorite}

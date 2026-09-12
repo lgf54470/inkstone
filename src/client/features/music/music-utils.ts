@@ -100,6 +100,15 @@ export function activeLyricIndex(lines: LyricLine[], timeMs: number): number {
   return answer
 }
 
+// Shift-click selects everything between the anchor row and the clicked row.
+export function rangeIds(ordered: string[], fromId: string, toId: string): string[] {
+  const to = ordered.indexOf(toId)
+  if (to < 0) return []
+  const from = ordered.indexOf(fromId)
+  if (from < 0) return [ordered[to]!]
+  return ordered.slice(Math.min(from, to), Math.max(from, to) + 1)
+}
+
 // Uploads name a track after its file; the tag title wins when the file only adds the artist.
 export function isArtistSuffixedTitle(current: string, title: string, artist: string): boolean {
   if (!title || current === title) return false

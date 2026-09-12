@@ -1,14 +1,14 @@
 import type { MusicBatchAction } from '../../../lib/api'
 import {
-  clearSearchHistory, clearSelection, commitQuery, loadLibrary, prepareRomanization,
+  clearSearchHistory, clearSelection, commitQuery, invertSelection, loadLibrary, prepareRomanization,
   selectAll, setQuery, setScope, setSort, setSourceFilter, setViewMode, toggleSelect,
 } from './library-load'
 import { batchTracks, deleteTrack, patchTrack, refreshTrackMetadata, setTrackTags, toggleFavorite, togglePin } from './library-tracks'
 import { matchMissingCovers } from './library-covers'
 import { dismissDownload, downloadTracks, setTransfersOpen, setUploadTarget } from './transfers'
 import {
-  addToPlaylist, createPlaylist, createTag, deletePlaylist, deleteTag, dismissUpload,
-  patchTag, removeFromPlaylist, renamePlaylist, uploadFiles,
+  addSelectionToPlaylist, addToPlaylist, createPlaylist, createTag, deletePlaylist, deleteTag, dismissUpload,
+  moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist, uploadFiles,
 } from './library-collections'
 import { browseWebdav, deleteWebdavObjects, importWebdavFolder, importWebdavTrack } from './webdav'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
@@ -16,7 +16,8 @@ import type { MusicGet, MusicSet, MusicStoreState } from './types'
 type LibrarySlice = Pick<MusicStoreState,
   | 'loadLibrary' | 'setScope' | 'setQuery' | 'commitQuery' | 'clearSearchHistory' | 'setSort' | 'prepareRomanization'
   | 'setViewMode' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
-  | 'toggleSelect' | 'selectAll' | 'clearSelection'
+  | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
+  | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks' | 'setTrackTags'
   | 'createTag' | 'patchTag' | 'deleteTag'
   | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'addToPlaylist' | 'removeFromPlaylist'
@@ -36,7 +37,10 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     prepareRomanization: () => prepareRomanization(set, get),
     toggleSelect: (id, additive) => toggleSelect(set, id, additive),
     selectAll: (ids) => selectAll(set, ids),
+    invertSelection: (ids) => invertSelection(set, ids),
     clearSelection: () => clearSelection(set),
+    moveSelectionToTag: (tagId) => moveSelectionToTag(set, get, tagId),
+    addSelectionToPlaylist: (playlistId) => addSelectionToPlaylist(set, get, playlistId),
 
     patchTrack: (id, patch) => patchTrack(set, get, id, patch),
     refreshTrackMetadata: (ids) => refreshTrackMetadata(set, get, ids),

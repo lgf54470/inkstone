@@ -3,7 +3,7 @@ import type { MusicTag } from '@shared/types'
 import {
   activeLyricIndex, collectTagIds, computeNextIndex, computePrevIndex, flattenTags,
   formatBytes, formatDuration, formatTotalDuration, isArtistSuffixedTitle, nextPlayMode, parseLyric,
-  tagColorValue,
+  rangeIds, tagColorValue,
 } from './music-utils'
 
 function tag(id: string, parentId: string | null, name = id, isPinned = false): MusicTag {
@@ -86,6 +86,21 @@ describe('lrc parsing', () => {
     expect(activeLyricIndex(lines, 2500)).toBe(1)
     expect(activeLyricIndex(lines, 99_000)).toBe(2)
     expect(activeLyricIndex([], 1000)).toBe(-1)
+  })
+})
+
+describe('rangeIds', () => {
+  const order = ['a', 'b', 'c', 'd']
+
+  it('returns the inclusive slice in both directions', () => {
+    expect(rangeIds(order, 'a', 'c')).toEqual(['a', 'b', 'c'])
+    expect(rangeIds(order, 'd', 'b')).toEqual(['b', 'c', 'd'])
+    expect(rangeIds(order, 'b', 'b')).toEqual(['b'])
+  })
+
+  it('falls back to the clicked row when the anchor is gone', () => {
+    expect(rangeIds(order, 'missing', 'c')).toEqual(['c'])
+    expect(rangeIds(order, 'a', 'missing')).toEqual([])
   })
 })
 

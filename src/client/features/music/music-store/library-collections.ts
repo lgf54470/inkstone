@@ -104,6 +104,35 @@ export async function deletePlaylist(set: MusicSet, get: MusicGet, id: string): 
   }
 }
 
+// Multi-select actions: moving replaces the tag set, playlists append.
+export async function moveSelectionToTag(set: MusicSet, get: MusicGet, tagId: string): Promise<void> {
+  const ids = get().selectedIds
+  if (!ids.length) return
+  try {
+    const updated = await Promise.all(ids.map((id) => api.music.patchTrack(id, { tagIds: [tagId] })))
+    const byId = new Map(updated.map((track) => [track.id, track]))
+    set((state) => ({ tracks: state.tracks.map((track) => byId.get(track.id) ?? track), selectedIds: [] }))
+    toastMusic('music.moved_to_tag', { value0: updated.length })
+  } catch (error) {
+    toastMusicError(error, 'music.action_failed')
+    await get().loadLibrary()
+  }
+}
+
+export async function addSelectionToPlaylist(set: MusicSet, get: MusicGet, playlistId: string): Promise<void> {
+  const ids = get().selectedIds
+  if (!ids.length) return
+  const name = get().playlists.find((entry) => entry.id === playlistId)?.name ?? ''
+  try {
+    for (const id of ids) await api.music.addPlaylistItem(playlistId, id)
+    set({ selectedIds: [] })
+    await get().loadLibrary()
+    toastMusic('music.added_to_playlist', { value0: name })
+  } catch (error) {
+    toastMusicError(error, 'music.action_failed')
+  }
+}
+
 export async function addToPlaylist(get: MusicGet, playlistId: string, trackId: string): Promise<void> {
   const name = get().playlists.find((entry) => entry.id === playlistId)?.name ?? ''
   try {

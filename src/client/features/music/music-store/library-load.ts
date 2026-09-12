@@ -74,6 +74,13 @@ export function selectAll(set: MusicSet, ids: string[]): void {
   set({ selectedIds: ids })
 }
 
+export function invertSelection(set: MusicSet, ids: string[]): void {
+  set((state) => {
+    const current = new Set(state.selectedIds)
+    return { selectedIds: ids.filter((id) => !current.has(id)) }
+  })
+}
+
 export function clearSelection(set: MusicSet): void {
   set({ selectedIds: [] })
 }

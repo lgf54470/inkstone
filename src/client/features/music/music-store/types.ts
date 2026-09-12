@@ -101,7 +101,10 @@ export interface MusicStoreState {
   prepareRomanization: () => Promise<void>
   toggleSelect: (id: string, additive: boolean) => void
   selectAll: (ids: string[]) => void
+  invertSelection: (ids: string[]) => void
   clearSelection: () => void
+  moveSelectionToTag: (tagId: string) => Promise<void>
+  addSelectionToPlaylist: (playlistId: string) => Promise<void>
 
   playTrack: (id: string) => Promise<void>
   playCollection: (ids: string[], startIndex?: number) => Promise<void>
