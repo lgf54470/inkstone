@@ -143,17 +143,20 @@ describe('public music routes (real D1 + fake R2)', () => {
 
     const full = await request(app, `/api/blog/public/music/tracks/${track.id}/stream`)
     expect(full.status).toBe(200)
+    expect(full.headers.get('Access-Control-Allow-Origin')).toBe('*')
     expect(full.headers.get('Accept-Ranges')).toBe('bytes')
     expect(full.headers.get('Content-Length')).toBe(String(AUDIO.byteLength))
     expect(new Uint8Array(await full.arrayBuffer())).toEqual(AUDIO)
 
     const partial = await request(app, `/api/blog/public/music/tracks/${track.id}/stream`, { headers: { Range: 'bytes=4-7' } })
     expect(partial.status).toBe(206)
+    expect(partial.headers.get('Access-Control-Allow-Origin')).toBe('*')
     expect(partial.headers.get('Content-Range')).toBe(`bytes 4-7/${AUDIO.byteLength}`)
     expect(new TextDecoder().decode(await partial.arrayBuffer())).toBe('4567')
 
     const cover = await request(app, `/api/blog/public/music/tracks/${track.id}/cover`)
     expect(cover.status).toBe(200)
+    expect(cover.headers.get('Access-Control-Allow-Origin')).toBe('*')
     expect(cover.headers.get('Content-Type')).toBe('image/jpeg')
     expect(cover.headers.get('Cache-Control')).toBe('public, max-age=86400')
     expect(new Uint8Array(await cover.arrayBuffer())).toEqual(COVER)

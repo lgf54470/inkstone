@@ -1581,6 +1581,8 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/blog/public.ts', [
     '// The blog player reads the owner\'s music library read-only, gated by the publish switch.',
+    '// Audio and artwork routes build their own Response, which drops headers set on the context,',
+    '// so the origin has to be stamped on the final response to keep cross-origin playback working.',
     '// Routes that know their own lifetime (artwork, audio) keep the header they set.',
   ]],
   ['src/worker/routes/blog/stats.ts', [

@@ -36,15 +36,18 @@ function registerPublicMusicRoutes(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.route('/music', musicPublicRoutes)
 }
 
+// Audio and artwork routes build their own Response, which drops headers set on the context,
+// so the origin has to be stamped on the final response to keep cross-origin playback working.
 function registerBlogCorsMiddleware(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.use('*', async (c, next) => {
-    c.header('Access-Control-Allow-Origin', '*')
-    c.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    c.header('Access-Control-Allow-Headers', 'Content-Type')
     if (c.req.method === 'OPTIONS') {
+      c.header('Access-Control-Allow-Origin', '*')
+      c.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      c.header('Access-Control-Allow-Headers', 'Content-Type')
       return c.body(null, 204)
     }
     await next()
+    c.res.headers.set('Access-Control-Allow-Origin', '*')
   })
 }
 
