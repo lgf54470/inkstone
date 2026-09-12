@@ -5,15 +5,18 @@ interface IconButtonProps {
   onClick: () => void
   active?: boolean
   disabled?: boolean
+  variant?: 'ghost' | 'primary'
   className?: string
   children: ReactNode
 }
 
-/** 播放器与音乐中心的图标按钮：统一 aria-label 与设计令牌 */
-export function MusicIconButton({ label, onClick, active, disabled, className = '', children }: IconButtonProps) {
-  const tone = active
-    ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+/** 播放器与音乐中心的图标按钮：形状与笔记应用一致（圆角方块），统一 aria-label 与设计令牌 */
+export function MusicIconButton({ label, onClick, active, disabled, variant = 'ghost', className = '', children }: IconButtonProps) {
+  const tone = variant === 'primary'
+    ? 'bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent)]'
+    : active
+      ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
   return (
     <button
       type='button'
@@ -21,7 +24,7 @@ export function MusicIconButton({ label, onClick, active, disabled, className = 
       aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex size-8 shrink-0 items-center justify-center rounded-full transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] disabled:opacity-40 ${tone} ${className}`}
+      className={`inline-flex size-8 shrink-0 items-center justify-center rounded-[var(--r-md)] transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] disabled:opacity-40 ${tone} ${className}`}
     >
       {children}
     </button>
