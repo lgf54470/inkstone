@@ -12,6 +12,35 @@ import { scheduleShellSave } from './shell-save'
 import { workspacePaneForNote } from './workspace'
 import { dirty, pendingNoteCreates, recoveredOutboxWrites, type DirtyNoteWrite, type NotesState, type RecoveryResult, type SetNotesState } from './model'
 
+const OUTBOX_RETRY_BASE_DELAY_MS = 30_000
+const OUTBOX_RETRY_MAX_DELAY_MS = 30 * 60_000
+const OUTBOX_RETRY_NOTIFY_ATTEMPTS = 5
+
+// Replays are event-driven (boot, edits, pulls), so a write the server keeps
+// rejecting would otherwise be retried on every trigger. Exponential backoff
+// with a ceiling keeps the write queued — no data loss — while bounding its cost.
+export function outboxRetryDue(item: OutboxItem, now: number = Date.now()): boolean {
+  if (item.attempts <= 0 || !item.lastAttemptAt) return true
+  const delay = Math.min(OUTBOX_RETRY_BASE_DELAY_MS * 2 ** (item.attempts - 1), OUTBOX_RETRY_MAX_DELAY_MS)
+  return now - item.lastAttemptAt >= delay
+}
+
+const poisonNotified = new Set<string>()
+
+async function markOutboxFailureAndNotify(item: OutboxItem, message: string): Promise<void> {
+  await localDb.markOutboxFailure(item.id, item.writeId, message).catch(() => { })
+  const key = `${item.id}\u0000${item.writeId}`
+  if (item.attempts + 1 < OUTBOX_RETRY_NOTIFY_ATTEMPTS || poisonNotified.has(key))
+    return
+  poisonNotified.add(key)
+  useUi.getState().toast({
+    title: t('notes.offline_changes_still_pending'),
+    description: t('notes.offline_changes_still_pending_description'),
+    tone: 'warning',
+    duration: 10_000,
+  })
+}
+
 function dirtyOutboxItem(noteId: string, pending: DirtyNoteWrite): OutboxItem {
   return {
     id: pending.queueId,
@@ -49,7 +78,7 @@ async function loadReplayOutbox(): Promise<OutboxItem[]> {
   const latestSlots = new Map([...dirty.values()].map((pending) => [pending.queueId, pending.writeId]))
   return sortOutboxForReplay(outbox.filter((item) => {
     const latestWriteId = latestSlots.get(item.id)
-    return !latestWriteId || latestWriteId === item.writeId
+    return (!latestWriteId || latestWriteId === item.writeId) && outboxRetryDue(item)
   }))
 }
 
@@ -242,7 +271,7 @@ async function prepareReplayPayload(item: OutboxItem, get: () => NotesState): Pr
   const rev = latestLocal?.rev ?? item.payload.rev
   if (typeof content !== 'string' || !Number.isInteger(rev) || (rev as number) < 1) {
     // The mark is best-effort; in-memory attempts stay authoritative for this session.
-    await localDb.markOutboxFailure(item.id, item.writeId, 'invalid offline journal payload').catch(() => { })
+    await markOutboxFailureAndNotify(item, 'invalid offline journal payload')
     return null
   }
   return {
@@ -275,11 +304,7 @@ async function replayOutboxItem(item: OutboxItem, batch: OutboxItem[], get: () =
       return 'stop'
     }
     // The mark is best-effort; in-memory attempts stay authoritative for this session.
-    await localDb.markOutboxFailure(
-      item.id,
-      item.writeId,
-      errorMessage(err),
-    ).catch(() => {})
+    await markOutboxFailureAndNotify(item, errorMessage(err))
     return 'ok'
   }
 }
@@ -364,7 +389,7 @@ async function handleConflictError(err: ApiError, item: OutboxItem, payload: Rep
     return isRestartRound ? 'restart' : 'ok'
   }
   // The mark is best-effort; in-memory attempts stay authoritative for this session.
-  await localDb.markOutboxFailure(item.id, item.writeId, 'conflict response did not include the server note').catch(() => { })
+  await markOutboxFailureAndNotify(item, 'conflict response did not include the server note')
   return 'ok'
 }
 
@@ -384,7 +409,7 @@ async function handleNotFoundError(err: ApiError, item: OutboxItem, payload: Rep
     }
     catch {
       // The mark is best-effort; in-memory attempts stay authoritative for this session.
-      await localDb.markOutboxFailure(item.id, recoveredWriteId, 'could not persist the recovery note id').catch(() => { })
+      await markOutboxFailureAndNotify({ ...item, writeId: recoveredWriteId }, 'could not persist the recovery note id')
       return 'ok'
     }
   }

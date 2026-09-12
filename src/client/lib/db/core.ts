@@ -336,7 +336,7 @@ export const localDb = {
       userScopedKey(KEY.outbox),
       (current) => normalizeOutbox(current)
         .map((item) => item.id === id && item.writeId === writeId
-          ? { ...item, attempts: item.attempts + 1, lastError: message }
+          ? { ...item, attempts: item.attempts + 1, lastError: message, lastAttemptAt: Date.now() }
           : item),
       store,
     )

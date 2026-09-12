@@ -18,6 +18,8 @@ export const messages = {
 'notes.content_conflict': 'Content conflict',
 'notes.could_not_create_note': 'Could not create note',
 'notes.could_not_update_the_offline_queue_state': 'Could not update the offline queue state',
+'notes.offline_changes_still_pending': 'Offline changes could not be synced yet',
+'notes.offline_changes_still_pending_description': 'They stay saved on this device and will retry automatically.',
 'notes.create_a_copy': 'Create a copy',
 'notes.created': 'Created',
 'notes.data_kept_changing_during_the_full_sync_try_again_later': 'Data kept changing during the full sync. Try again later',

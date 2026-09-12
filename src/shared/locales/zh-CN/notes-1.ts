@@ -18,6 +18,8 @@ export const messages = {
 'notes.content_conflict': '内容有冲突',
 'notes.could_not_create_note': '新建笔记失败',
 'notes.could_not_update_the_offline_queue_state': '离线队列状态保存失败',
+'notes.offline_changes_still_pending': '离线更改暂未能同步',
+'notes.offline_changes_still_pending_description': '更改已保存在本设备，之后会自动重试。',
 'notes.create_a_copy': '创建副本',
 'notes.created': '按创建时间',
 'notes.data_kept_changing_during_the_full_sync_try_again_later': '全量同步期间数据持续变化，请稍后重试',

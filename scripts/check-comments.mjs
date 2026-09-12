@@ -1201,6 +1201,9 @@ const allowed = new Map([
     '// The mark is best-effort; in-memory attempts stay authoritative for this session.',
     '// The mark is best-effort; in-memory attempts stay authoritative for this session.',
     '// The mark is best-effort; in-memory attempts stay authoritative for this session.',
+    '// Replays are event-driven (boot, edits, pulls), so a write the server keeps',
+    '// rejecting would otherwise be retried on every trigger. Exponential backoff',
+    '// with a ceiling keeps the write queued — no data loss — while bounding its cost.',
     '// Best-effort follow-up pull; the next event or manual refresh retries.',
   ]],
   ['src/client/store/notes/outbox.ts', [

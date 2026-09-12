@@ -31,6 +31,7 @@ export interface OutboxItem {
   attempts: number
   createdAt: number
   lastError?: string
+  lastAttemptAt?: number
 }
 
 
