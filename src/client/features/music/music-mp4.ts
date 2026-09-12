@@ -61,6 +61,29 @@ export function readMp4Cover(bytes: Uint8Array): ApicFrame | null {
   return { mime: data.kind === COVER_TYPE_PNG ? 'image/png' : 'image/jpeg', bytes: picture }
 }
 
+export interface Mp4Tags {
+  title: string | null
+  artist: string | null
+  album: string | null
+  lyric: string | null
+}
+
+export function readMp4Tags(bytes: Uint8Array): Mp4Tags {
+  return {
+    title: readMp4Text(bytes, COPYRIGHT_SIGN + 'nam'),
+    artist: readMp4Text(bytes, COPYRIGHT_SIGN + 'ART'),
+    album: readMp4Text(bytes, COPYRIGHT_SIGN + 'alb'),
+    lyric: readMp4Lyrics(bytes),
+  }
+}
+
+function readMp4Text(bytes: Uint8Array, atom: string): string | null {
+  const data = readAtomData(bytes, atom)
+  if (!data) return null
+  const text = new TextDecoder().decode(bytes.subarray(data.start, data.end)).trim()
+  return text || null
+}
+
 export function readMp4Lyrics(bytes: Uint8Array): string | null {
   const data = readAtomData(bytes, LYRICS_ATOM)
   if (!data) return null

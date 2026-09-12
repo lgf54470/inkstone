@@ -1,8 +1,8 @@
 import { musicStreamUrl } from '../../lib/api'
-import { coverDataUrlFromBytes, coverDataUrlFromFrame, readEmbeddedLyrics, readTagSize } from './music-cover'
+import { coverDataUrlFromBytes, coverDataUrlFromFrame, readEmbeddedTags, readTagSize, type EmbeddedTags } from './music-cover'
 import { readFlacDurationMs, readMp3DurationMs } from './music-duration'
 import { isFlac, readFlacMetadata } from './music-flac'
-import { findMp4Box, isMp4, readMp4Cover, readMp4DurationMs, readMp4Lyrics, type Mp4Box } from './music-mp4'
+import { findMp4Box, isMp4, readMp4Cover, readMp4DurationMs, readMp4Tags, type Mp4Box } from './music-mp4'
 
 const ID3_HEADER_BYTES = 10
 const CHUNK_BYTES = 256 * 1024
@@ -21,16 +21,15 @@ export interface TrackProbe {
   mime: string
 }
 
-interface TagScan {
+export interface TagScan extends EmbeddedTags {
   coverDataUrl: string | null
-  lyric: string | null
 }
 
 export interface ScannedMetadata extends TagScan {
   durationMs: number
 }
 
-const NO_TAGS: TagScan = { coverDataUrl: null, lyric: null }
+const NO_TAGS: TagScan = { coverDataUrl: null, title: null, artist: null, album: null, lyric: null }
 
 // Only the tag is downloaded: an ID3 header reveals its size, FLAC blocks are walked in place.
 export async function scanTrackMetadata(track: TrackProbe): Promise<ScannedMetadata> {
@@ -45,7 +44,7 @@ export async function scanTrackMetadata(track: TrackProbe): Promise<ScannedMetad
     if (flac) return flac
   }
   const tags = tagSize > 0 ? await readId3Tags(track.id, tagSize) : NO_TAGS
-  return { coverDataUrl: tags.coverDataUrl, lyric: tags.lyric, durationMs: await scanMp3Duration(track.id, tagSize, track.sizeBytes) }
+  return { ...tags, durationMs: await scanMp3Duration(track.id, tagSize, track.sizeBytes) }
 }
 
 // Duration alone needs no artwork, so the caller can skip downloading the whole tag.
@@ -66,6 +65,44 @@ export async function probeTrackDuration(track: TrackProbe): Promise<number> {
   return scanMp3Duration(track.id, tagSize, track.sizeBytes)
 }
 
+// Uploads read the same tags straight from the picked file, so the library keeps artist and lyrics.
+export async function readFileMetadata(file: File): Promise<TagScan> {
+  const head = new Uint8Array(await file.slice(0, MAX_TAG_BYTES).arrayBuffer())
+  if (isFlac(head)) return flacFileTags(file, head)
+  if (isMp4(head)) return mp4FileTags(file, head)
+  const tagSize = readTagSize(head)
+  const bytes = tagSize > 0 ? head.subarray(0, tagSize + ID3_HEADER_BYTES) : head
+  return { coverDataUrl: await coverDataUrlFromBytes(bytes), ...readEmbeddedTags(bytes) }
+}
+
+async function flacFileTags(file: File, head: Uint8Array): Promise<TagScan> {
+  let window = head
+  let scanned = readFlacMetadata(window)
+  if (scanned.neededBytes > window.byteLength && scanned.neededBytes <= file.size) {
+    window = new Uint8Array(await file.slice(0, scanned.neededBytes).arrayBuffer())
+    scanned = readFlacMetadata(window)
+  }
+  return {
+    coverDataUrl: scanned.cover ? await coverDataUrlFromFrame(scanned.cover) : null,
+    title: scanned.title,
+    artist: scanned.artist,
+    album: scanned.album,
+    lyric: scanned.lyric,
+  }
+}
+
+async function mp4FileTags(file: File, head: Uint8Array): Promise<TagScan> {
+  if (findMp4Box(head, 0, head.byteLength, 'moov')) return mp4TagsFrom(head)
+  const tailStart = Math.max(0, file.size - MAX_TAG_BYTES)
+  const tail = new Uint8Array(await file.slice(tailStart).arrayBuffer())
+  return findMp4Box(tail, 0, tail.byteLength, 'moov') ? mp4TagsFrom(tail) : NO_TAGS
+}
+
+async function mp4TagsFrom(bytes: Uint8Array): Promise<TagScan> {
+  const cover = readMp4Cover(bytes)
+  return { coverDataUrl: cover ? await coverDataUrlFromFrame(cover) : null, ...readMp4Tags(bytes) }
+}
+
 async function readFlacWindowDuration(trackId: string, start: number): Promise<number> {
   const window = await fetchRange(trackId, start, start + FLAC_WINDOW_BYTES - 1)
   return window ? readFlacDurationMs(window) : 0
@@ -79,11 +116,10 @@ async function readId3Tags(trackId: string, tagSize: number): Promise<TagScan> {
   if (!bytes) return NO_TAGS
   for (;;) {
     const coverDataUrl = await coverDataUrlFromBytes(bytes)
-    const lyric = readEmbeddedLyrics(bytes)
-    const next = bytes.byteLength >= limit || coverDataUrl || lyric
-      ? null
-      : await fetchRange(trackId, bytes.byteLength, Math.min(bytes.byteLength + CHUNK_BYTES, limit) - 1)
-    if (!next || next.byteLength === 0) return { coverDataUrl, lyric }
+    const tags = readEmbeddedTags(bytes)
+    const complete = bytes.byteLength >= limit || Boolean(coverDataUrl && tags.lyric)
+    const next = complete ? null : await fetchRange(trackId, bytes.byteLength, Math.min(bytes.byteLength + CHUNK_BYTES, limit) - 1)
+    if (!next || next.byteLength === 0) return { coverDataUrl, ...tags }
     bytes = concatBytes(bytes, next)
   }
 }
@@ -112,6 +148,9 @@ async function scanFlacTrack(trackId: string, start: number): Promise<ScannedMet
   }
   return {
     coverDataUrl: scanned.cover ? await coverDataUrlFromFrame(scanned.cover) : null,
+    title: scanned.title,
+    artist: scanned.artist,
+    album: scanned.album,
     lyric: scanned.lyric,
     durationMs: readFlacDurationMs(window),
   }
@@ -123,7 +162,7 @@ async function scanMp4Track(track: TrackProbe): Promise<ScannedMetadata> {
   const cover = readMp4Cover(moov)
   return {
     coverDataUrl: cover ? await coverDataUrlFromFrame(cover) : null,
-    lyric: readMp4Lyrics(moov),
+    ...readMp4Tags(moov),
     durationMs: readMp4DurationMs(moov),
   }
 }

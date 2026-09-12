@@ -84,6 +84,15 @@ describe('readFlacMetadata', () => {
     expect(readFlacMetadata(flacFile(block(BLOCK_VORBIS_COMMENT, comment, true))).lyric).toBe('plain')
   })
 
+  it('reads title, artist and album entries from the same comment', () => {
+    const comment = vorbisComment(['TITLE=Moonlight', 'ARTIST=Hu Yanbin', 'ALBUM=Qin Moon', 'LYRICS=first line'])
+    const scanned = readFlacMetadata(flacFile(block(BLOCK_VORBIS_COMMENT, comment, true)))
+    expect(scanned.title).toBe('Moonlight')
+    expect(scanned.artist).toBe('Hu Yanbin')
+    expect(scanned.album).toBe('Qin Moon')
+    expect(scanned.lyric).toBe('first line')
+  })
+
   it('returns no lyrics for a comment without a lyrics entry', () => {
     const bytes = flacFile(block(BLOCK_VORBIS_COMMENT, vorbisComment(['TITLE=Song', 'ARTIST=Someone']), true))
     expect(readFlacMetadata(bytes).lyric).toBeNull()

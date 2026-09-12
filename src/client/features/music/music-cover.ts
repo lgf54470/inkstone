@@ -89,19 +89,42 @@ function parsePicPayload(frame: Uint8Array): ApicFrame | null {
   return { mime, bytes: picture }
 }
 
+export interface EmbeddedTags {
+  title: string | null
+  artist: string | null
+  album: string | null
+  lyric: string | null
+}
+
+// Text frames keep the same meaning across ID3v2.2 (three character ids) and v2.3+/v2.4.
+const TEXT_FRAMES: Record<string, 'title' | 'artist' | 'album'> = {
+  TIT2: 'title',
+  TT2: 'title',
+  TPE1: 'artist',
+  TP1: 'artist',
+  TALB: 'album',
+  TAL: 'album',
+}
+
 // Lyrics live in USLT (plain) or a LYRICS TXXX frame, depending on the tagger.
-export function readEmbeddedLyrics(bytes: Uint8Array): string | null {
+export function readEmbeddedTags(bytes: Uint8Array): EmbeddedTags {
+  const tags: EmbeddedTags = { title: null, artist: null, album: null, lyric: null }
   for (const frame of readFrames(bytes)) {
-    if (frame.id === 'USLT' || frame.id === 'ULT') {
-      const text = decodeLyricPayload(frame.payload)
-      if (text) return text
+    const field = TEXT_FRAMES[frame.id]
+    if (field) {
+      tags[field] ??= decodeTextFrame(frame.payload)
+      continue
     }
-    if (frame.id === 'TXXX' || frame.id === 'TXX') {
-      const text = decodeUserText(frame.payload)
-      if (text) return text
-    }
+    if (frame.id === 'USLT' || frame.id === 'ULT') tags.lyric ??= decodeLyricPayload(frame.payload)
+    else if (frame.id === 'TXXX' || frame.id === 'TXX') tags.lyric ??= decodeUserText(frame.payload)
   }
-  return null
+  return tags
+}
+
+function decodeTextFrame(payload: Uint8Array): string | null {
+  if (payload.byteLength < 2) return null
+  const text = decodeText(payload.subarray(1), payload[0] ?? 0).replace(/\u0000+$/, '').trim()
+  return text || null
 }
 
 function decodeUserText(payload: Uint8Array): string | null {
@@ -120,7 +143,8 @@ function decodeLyricPayload(payload: Uint8Array): string | null {
   const body = payload.subarray(4)
   const separator = encoding === 1 || encoding === 2 ? findDoubleZero(body) : findSingleZero(body)
   const from = separator.end > 0 ? separator.end + separator.size : 0
-  const text = decodeText(body.subarray(from), encoding).trim()
+  // An empty descriptor still carries its terminator, which decodes as a leading null.
+  const text = decodeText(body.subarray(from), encoding).replace(/^\u0000+/, '').trim()
   return text || null
 }
 
@@ -189,16 +213,6 @@ export async function coverDataUrlFromBytes(bytes: Uint8Array): Promise<string |
 
 export async function coverDataUrlFromFrame(frame: ApicFrame): Promise<string | null> {
   return downscale(frame)
-}
-
-export async function extractCoverDataUrl(file: File): Promise<string | null> {
-  try {
-    const head = new Uint8Array(await file.slice(0, MAX_TAG_SCAN_BYTES).arrayBuffer())
-    return await coverDataUrlFromBytes(head)
-  } catch (error) {
-    console.warn('[inkstone] cover extraction failed:', error)
-    return null
-  }
 }
 
 async function downscale(frame: ApicFrame): Promise<string | null> {

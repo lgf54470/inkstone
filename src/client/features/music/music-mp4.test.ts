@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { findMp4Box, isMp4, readMp4Cover, readMp4DurationMs, readMp4Lyrics } from './music-mp4'
+import { findMp4Box, isMp4, readMp4Cover, readMp4DurationMs, readMp4Lyrics, readMp4Tags } from './music-mp4'
 
-const COPYRIGHT_LYRICS_ATOM = String.fromCharCode(0xa9) + 'lyr'
+const COPYRIGHT_SIGN = String.fromCharCode(0xa9)
+const COPYRIGHT_LYRICS_ATOM = COPYRIGHT_SIGN + 'lyr'
 const PICTURE_BYTES = concat(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), new Uint8Array(76))
 
 function box(type: string, payload: Uint8Array): Uint8Array {
@@ -95,6 +96,25 @@ describe('readMp4Cover', () => {
 
   it('returns null when the file carries no artwork atom', () => {
     expect(readMp4Cover(moovWith([mvhdBox(0, 1000, 1000)]))).toBeNull()
+  })
+})
+
+describe('readMp4Tags', () => {
+  it('reads the title, artist and album atoms next to the lyrics', () => {
+    const encode = (value: string) => new TextEncoder().encode(value)
+    const atoms = [
+      box(COPYRIGHT_SIGN + 'nam', dataAtom(1, encode('Moonlight'))),
+      box(COPYRIGHT_SIGN + 'ART', dataAtom(1, encode('Hu Yanbin'))),
+      box(COPYRIGHT_SIGN + 'alb', dataAtom(1, encode('Qin Moon'))),
+      box(COPYRIGHT_LYRICS_ATOM, dataAtom(1, encode('first line'))),
+    ]
+    const bytes = box('moov', box('udta', box('meta', concat(new Uint8Array(4), box('ilst', concat(...atoms)))))) 
+    expect(readMp4Tags(bytes)).toEqual({ title: 'Moonlight', artist: 'Hu Yanbin', album: 'Qin Moon', lyric: 'first line' })
+  })
+
+  it('returns empty tags when the movie box carries none', () => {
+    const bytes = box('moov', box('udta', box('meta', concat(new Uint8Array(4), box('ilst', box(COPYRIGHT_SIGN + 'too', dataAtom(1, new Uint8Array(3))))))))
+    expect(readMp4Tags(bytes)).toEqual({ title: null, artist: null, album: null, lyric: null })
   })
 })
 
