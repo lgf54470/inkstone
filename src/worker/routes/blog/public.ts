@@ -205,12 +205,13 @@ function registerBlogPublicPostDetailRoute(blogPublicRoutes: Hono<AppBindings>):
 
     const now = Date.now()
 
-    await c.env.DB
-      .prepare('UPDATE blog_posts SET views = views + 1 WHERE id = ?1')
-      .bind(row.id)
-      .run()
-
-    await recordBlogVisit(c, row, now)
+    const countsForViews = await recordBlogVisit(c, row, now)
+    if (countsForViews) {
+      await c.env.DB
+        .prepare('UPDATE blog_posts SET views = views + 1 WHERE id = ?1')
+        .bind(row.id)
+        .run()
+    }
 
     const post = {
       ...toPublicPostSummary(row),
@@ -218,7 +219,7 @@ function registerBlogPublicPostDetailRoute(blogPublicRoutes: Hono<AppBindings>):
       content: row.content,
       allowComments: Boolean(row.allow_comments),
       isPinned: Boolean(row.is_pinned),
-      views: (row.views || 0) + 1,
+      views: (row.views || 0) + (countsForViews ? 1 : 0),
     }
 
     const prevPost = await loadAdjacentPost(c.env.DB, row.published_at, false)

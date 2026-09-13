@@ -1,7 +1,7 @@
 import type { Context } from 'hono'
 import type { AppBindings } from '../../env'
 import { requestClientIp } from '../../lib/request'
-import { isBot, parseDeviceType, parseOS, parseBrowser, parseReferrerHost, computeVisitorFingerprint } from '../../lib/share-analytics'
+import { VIEW_DEDUPE_WINDOW_MS, isBot, parseDeviceType, parseOS, parseBrowser, parseReferrerHost, computeVisitorFingerprint } from '../../lib/share-analytics'
 import type { BlogPostPublicRow } from '../../db/rows'
 
 interface BlogVisitParams {
@@ -84,10 +84,23 @@ async function insertBlogVisit(db: D1Database, params: BlogVisitParams): Promise
     .run()
 }
 
-export async function recordBlogVisit(c: Context<AppBindings>, row: BlogPostPublicRow, now: number): Promise<void> {
+// The analytics row is written for every visit; the boolean tells the caller
+// whether this visit should bump the post's views counter (new fingerprint
+// within the dedupe window, not a bot).
+export async function recordBlogVisit(c: Context<AppBindings>, row: BlogPostPublicRow, now: number): Promise<boolean> {
   try {
-    await insertBlogVisit(c.env.DB, await collectVisitParams(c, row, now))
+    const params = await collectVisitParams(c, row, now)
+    if (params.visitorFp) {
+      const seen = await c.env.DB
+        .prepare('SELECT 1 AS seen FROM blog_visits WHERE post_id = ?1 AND visitor_fp = ?2 AND visited_at > ?3')
+        .bind(row.id, params.visitorFp, now - VIEW_DEDUPE_WINDOW_MS)
+        .first()
+      if (seen) return false
+    }
+    await insertBlogVisit(c.env.DB, params)
+    return !params.isBot
   } catch (err) {
     console.error('Failed to log blog visit', err)
+    return false
   }
 }

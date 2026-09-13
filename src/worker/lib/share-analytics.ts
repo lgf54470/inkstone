@@ -222,6 +222,8 @@ function utcDateKey(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
+export const VIEW_DEDUPE_WINDOW_MS = 30 * 60 * 1000
+
 export async function computeVisitorFingerprint(
   ip: string | null | undefined,
   userAgent: string | null | undefined,

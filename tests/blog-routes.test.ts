@@ -78,6 +78,10 @@ function makeApp(): Hono<AppBindings> {
   return app
 }
 
+function firstRow(db: D1Shim, sql: string, ...values: unknown[]): Promise<Record<string, unknown> | null> {
+  return db.prepare(sql).bind(...values).first()
+}
+
 function request(app: Hono<AppBindings>, path: string, init?: RequestInit): Promise<Response> {
   return app.request(path, init, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
 }
@@ -197,7 +201,9 @@ describe('blog public routes (real D1)', () => {
     expect(body.posts[0].slug).toBe('published-one')
     expect(body.pagination.total).toBe(1)
 
-    const detail = await request(app, '/api/blog/public/posts/published-one')
+    const detail = await request(app, '/api/blog/public/posts/published-one', {
+      headers: { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' },
+    })
     expect(detail.status).toBe(200)
     const { post } = await detail.json()
     expect(post.title).toBe('Published')
@@ -216,6 +222,26 @@ describe('blog public routes (real D1)', () => {
 
     const hidden = await request(app, '/api/blog/public/posts/draft-one')
     expect(hidden.status).toBe(404)
+  })
+
+  it('counts blog views once per visitor fingerprint within the dedupe window', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'viewed-post', title: 'Viewed' })
+
+    const app = makeApp()
+    const ua = { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' }
+    const first = await request(app, '/api/blog/public/posts/viewed-post', { headers: ua })
+    expect((await first.json()).post.views).toBe(1)
+    const second = await request(app, '/api/blog/public/posts/viewed-post', { headers: ua })
+    expect((await second.json()).post.views).toBe(1)
+    const row = await firstRow(db, 'SELECT views FROM blog_posts WHERE slug = ?1', 'viewed-post')
+    expect(row?.views).toBe(1)
+
+    const freshVisitor = await request(app, '/api/blog/public/posts/viewed-post', {
+      headers: { 'user-agent': 'Mozilla/5.0 FreshVisitor/1.0' },
+    })
+    expect((await freshVisitor.json()).post.views).toBe(2)
   })
 
   it('pushes tag hierarchy and pagination into SQL with correct totals', async () => {

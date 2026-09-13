@@ -1636,6 +1636,9 @@ const allowed = new Map([
     '// outbound fetch.',
   ]],
   ['src/worker/routes/blog/visits.ts', [
+    '// The analytics row is written for every visit; the boolean tells the caller',
+    "// whether this visit should bump the post's views counter (new fingerprint",
+    '// within the dedupe window, not a bot).',
     '// CF-Connecting-IP is injected by the Cloudflare edge (see requestClientIp);',
     '// raw x-forwarded-for is client-controlled and must not feed analytics.',
   ]],
@@ -1772,6 +1775,9 @@ const allowed = new Map([
   ]],
   ['tests/graph-routes.test.ts', [
     '// 26-char valid ids ([0-9a-hjkmnp-tv-z]{26}); the graph route validates center/folder formats',
+  ]],
+  ['tests/share-routes.test.ts', [
+    '// visit recording runs via waitUntil; the test context must let us await it',
   ]],
   ['tests/markdown-renderer-parity.test.ts', [
     '// Structural parity baseline: root and blog renderers keep (and must not silently',

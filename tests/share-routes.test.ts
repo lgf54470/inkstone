@@ -114,7 +114,15 @@ function request(app: Hono<AppBindings>, path: string, init?: RequestInit): Prom
   return app.request(path, init, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
 }
 
-function postJson(app: Hono<AppBindings>, path: string, body: unknown): Promise<Response> {
+function postJson(app: Hono<AppBindings>, path: string, body: unknown, headers: Record<string, string> = {}): Promise<Response> {
+  return request(app, path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  })
+}
+
+function postJsonUnused(app: Hono<AppBindings>, path: string, body: unknown): Promise<Response> {
   return request(app, path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -356,6 +364,37 @@ describe('share public note route (real D1)', () => {
 
     expect((await postJson(app, '/api/public/off-1', {})).status).toBe(403)
     expect((await postJson(app, '/api/public/old-1', {})).status).toBe(404)
+  })
+
+  it('counts share views once per visitor fingerprint within the dedupe window', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'view-counted', is_enabled: 1 })
+    const app = makeApp()
+
+    // visit recording runs via waitUntil; the test context must let us await it
+    const pending: Promise<unknown>[] = []
+    const ctx = { waitUntil: (task: Promise<unknown>) => pending.push(task) } as unknown as ExecutionContext
+    const access = async (ua: string): Promise<Response> => {
+      pending.length = 0
+      const res = await app.request('/api/public/view-counted', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'user-agent': ua },
+        body: JSON.stringify({}),
+      }, DB_ENV.env as AppBindings['Bindings'], ctx)
+      await Promise.all(pending)
+      return res
+    }
+
+    await access('Mozilla/5.0 ShareTest/1.0')
+    await access('Mozilla/5.0 ShareTest/1.0')
+    let row = await firstRow(db, 'SELECT views FROM shares WHERE slug = ?1', 'view-counted')
+    expect(row?.views).toBe(1)
+
+    await access('Mozilla/5.0 ShareOther/1.0')
+    row = await firstRow(db, 'SELECT views FROM shares WHERE slug = ?1', 'view-counted')
+    expect(row?.views).toBe(2)
   })
 
   it('requires the correct password for a password-protected share', async () => {

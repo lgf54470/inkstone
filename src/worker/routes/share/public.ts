@@ -8,7 +8,7 @@ import { ApiError } from '../../lib/errors'
 import { isValidSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readOptionalJsonValidated, requestClientIp } from '../../lib/request'
 import { verifyPassword } from '../../lib/password'
-import { computeVisitorFingerprint, isBot, isSelfReferrer, parseBrowser, parseDeviceType, parseOS, parseReferrerHost } from '../../lib/share-analytics'
+import { VIEW_DEDUPE_WINDOW_MS, computeVisitorFingerprint, isBot, isSelfReferrer, parseBrowser, parseDeviceType, parseOS, parseReferrerHost } from '../../lib/share-analytics'
 import { createShareAssetSession, shareAssetCookieName } from '../../lib/share-asset-session'
 import { assertNotLocked, clearLoginFailures, consumeAttemptBudget, recordLoginFailure, ThrottleError } from '../../lib/throttle'
 import { shareAccessSchema } from './schemas'
@@ -191,7 +191,15 @@ async function recordShareVisit(
     const isSelf = referrerInfo.selfReferrer ? 1 : 0
     const loggedInUserId = c.get('userId')
     const isOwner = loggedInUserId && loggedInUserId === share.user_id ? 1 : 0
-    const updateShareStmt = bot === 0
+    let countsForViews = bot === 0
+    if (countsForViews && visitorFp) {
+      const seen = await c.env.DB
+        .prepare('SELECT 1 AS seen FROM share_visits WHERE slug = ?1 AND visitor_fp = ?2 AND visited_at > ?3')
+        .bind(slug, visitorFp, now - VIEW_DEDUPE_WINDOW_MS)
+        .first()
+      countsForViews = !seen
+    }
+    const updateShareStmt = countsForViews
       ? c.env.DB.prepare(`UPDATE shares SET views = views + 1, last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)
       : c.env.DB.prepare(`UPDATE shares SET last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)
     const geo = {
