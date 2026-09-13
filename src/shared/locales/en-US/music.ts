@@ -121,6 +121,7 @@ export const messages = {
 'music.no_tags': 'No tags yet',
 'music.untagged': 'Untagged',
 'music.track_tags': 'Tags for this track',
+'music.add_tag': 'Add tag',
 'music.no_tag_match': 'No matching tags',
 'music.sort': 'Sort',
 'music.sort_recent': 'Recently added',

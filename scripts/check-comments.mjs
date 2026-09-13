@@ -641,6 +641,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-track-menu.tsx', [
     '// Menu actions close the menu before they run, so focus returns to the list first.',
+    '// Plays the current list starting at the clicked track, like the toolbar\'s play-all button.',
+    '// Checkmarks show the track\'s current tags; picking one toggles it.',
   ]],
   ['src/client/features/music/music-track-row.tsx', [
     '// Off-screen rows skip layout and paint; the intrinsic size reserves their height.',

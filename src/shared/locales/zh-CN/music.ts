@@ -121,6 +121,7 @@ export const messages = {
 'music.no_tags': '还没有标签',
 'music.untagged': '未分类',
 'music.track_tags': '这首歌的标签',
+'music.add_tag': '添加标签',
 'music.no_tag_match': '没有匹配的标签',
 'music.sort': '排序',
 'music.sort_recent': '最近添加',
