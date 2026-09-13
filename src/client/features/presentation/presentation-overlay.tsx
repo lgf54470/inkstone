@@ -14,6 +14,32 @@ import { splitIntoSlides } from './slides'
 // so proportions stay stable from phone to projector (same approach as reveal.js).
 const SLIDE_WIDTH = 1280
 const SLIDE_HEIGHT = 720
+const SLIDE_PAD_X = 56
+const SLIDE_PAD_Y = 40
+const SLIDE_CONTENT_WIDTH = SLIDE_WIDTH - SLIDE_PAD_X * 2
+const SLIDE_CONTENT_HEIGHT = SLIDE_HEIGHT - SLIDE_PAD_Y * 2
+const SLIDE_HTML_CACHE_LIMIT = 60
+
+// Enhanced per-slide markup keyed by content fingerprint + theme + slide index,
+// so a remount (e.g. across fullscreen toggles) reuses the last good html instead
+// of resetting diagrams to their loading placeholders.
+const slideHtmlCache = new Map<string, string>()
+
+function hashContent(value: string): string {
+  let hash = 5381
+  for (let index = 0; index < value.length; index++) hash = ((hash << 5) + hash + value.charCodeAt(index)) | 0
+  return `${value.length}:${(hash >>> 0).toString(36)}`
+}
+
+function rememberSlideHtml(key: string, html: string): void {
+  slideHtmlCache.delete(key)
+  slideHtmlCache.set(key, html)
+  while (slideHtmlCache.size > SLIDE_HTML_CACHE_LIMIT) {
+    const oldest = slideHtmlCache.keys().next().value
+    if (oldest === undefined) break
+    slideHtmlCache.delete(oldest)
+  }
+}
 
 export interface PresentationOverlayProps {
   open: boolean
@@ -25,17 +51,20 @@ export interface PresentationOverlayProps {
 export function PresentationOverlay({ open, onClose, content, noteTitle }: PresentationOverlayProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  const deck = useMemo(() => splitIntoSlides(content), [content])
+  const { presentedContent, deck, fingerprint } = useFrozenDeck(open, content)
+  const dark = useIsDarkTheme()
   const { index, goNext, goPrev, jumpTo } = useDeckIndex(deck.length)
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
   const scale = useStageScale(stageRef)
   useEscape(open, onClose)
   useLockScroll(open)
-  useDialogFocus(open, panelRef)
+  useDialogFocus(open, panelRef, panelRef)
+  useSlideHtml({ open, deck, index, fingerprint, content: presentedContent, noteTitle, dark })
   usePresentationKeys(open, deck.length, goNext, goPrev, jumpTo, toggleFullscreen)
 
   if (!open) return null
 
+  const cacheKey = `${fingerprint}:${dark ? 'd' : 'l'}:${index}`
   return createPortal(
     <div
       ref={panelRef}
@@ -43,16 +72,14 @@ export function PresentationOverlay({ open, onClose, content, noteTitle }: Prese
       role='dialog'
       aria-modal='true'
       aria-label={t('workspace.presentation_mode')}
-      className='app-viewport-fixed anim-fade fixed inset-0 z-[var(--z-modal)] flex flex-col bg-[var(--bg-base)] outline-none'
+      className='anim-fade fixed inset-0 z-[var(--z-modal)] flex flex-col bg-[var(--bg-base)] outline-none'
     >
-      <div ref={stageRef} className='flex min-h-0 flex-1 items-center justify-center overflow-hidden p-6'>
+      <div ref={stageRef} className='flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3'>
         <div
           className='shrink-0 overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-editor)] shadow-[var(--shadow-modal)]'
           style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})` }}
         >
-          <div key={index} className='anim-fade h-full overflow-y-auto px-14 py-10'>
-            <SlideView source={deck[index] ?? ''} noteContent={content} noteTitle={noteTitle} />
-          </div>
+          <SlideCanvas key={index} cacheKey={cacheKey} source={deck[index] ?? ''} />
         </div>
       </div>
       <PresentationControls
@@ -64,12 +91,63 @@ export function PresentationOverlay({ open, onClose, content, noteTitle }: Prese
         toggleFullscreen={toggleFullscreen}
         onClose={onClose}
       />
-      <div className='pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-[var(--border-subtle)]' aria-hidden='true'>
-        <div className='h-full bg-[var(--accent)]' style={{ width: `${Math.round(((index + 1) / deck.length) * 100)}%` }} />
-      </div>
+      <SlideProgress index={index} count={deck.length} />
     </div>,
     document.body,
   )
+}
+
+function SlideProgress({ index, count }: { index: number; count: number }) {
+  return (
+    <div className='pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-[var(--border-subtle)]' aria-hidden='true'>
+      <div className='h-full bg-[var(--accent)]' style={{ width: `${Math.round(((index + 1) / count) * 100)}%` }} />
+    </div>
+  )
+}
+
+// Freeze the deck on open: presenting shows a snapshot, and store/editor content
+// updates (which flap during fullscreen resizes) must not re-split the deck
+// mid-show and remount every slide.
+function useFrozenDeck(open: boolean, content: string) {
+  const [frozenContent, setFrozenContent] = useState<string | null>(null)
+  if (open && frozenContent === null) setFrozenContent(content)
+  if (!open && frozenContent !== null) setFrozenContent(null)
+  const presentedContent = frozenContent ?? content
+  const deck = useMemo(() => splitIntoSlides(presentedContent), [presentedContent])
+  const fingerprint = useMemo(() => hashContent(presentedContent), [presentedContent])
+  return { presentedContent, deck, fingerprint }
+}
+
+// Renders the enhanced markup off-DOM and caches it per slide; the cache hit is
+// what keeps diagrams alive across any remount of the slide subtree.
+function useSlideHtml(options: { open: boolean; deck: string[]; index: number; fingerprint: string; content: string; noteTitle: string; dark: boolean }): void {
+  const { open, deck, index, fingerprint, content, noteTitle, dark } = options
+  const preview = useSession((s) => s.settings.preview)
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!open) return
+    const key = `${fingerprint}:${dark ? 'd' : 'l'}:${index}`
+    if (slideHtmlCache.has(key)) return
+    let cancelled = false
+    const rendered = renderMarkdown(deck[index] ?? '', { externalImages: preview.externalImages, hideFrontMatter: true })
+    rememberSlideHtml(key, rendered.html)
+    setTick((tick) => tick + 1)
+    const staging = document.createElement('div')
+    staging.innerHTML = rendered.html
+    const prepare = async () => {
+      if (rendered.hasEmbeds) {
+        await resolveNoteEmbeds(staging, { currentContent: content, currentTitle: noteTitle, isCurrent: () => !cancelled })
+      }
+      await enhancePreview(staging, { math: preview.math, mermaid: preview.mermaid, dark, codeBlockCollapseLines: 0 })
+      if (cancelled) return
+      rememberSlideHtml(key, staging.innerHTML)
+      setTick((tick) => tick + 1)
+    }
+    void prepare()
+    return () => {
+      cancelled = true
+    }
+  }, [open, deck, index, fingerprint, content, noteTitle, dark, preview.externalImages, preview.math, preview.mermaid])
 }
 
 function useDeckIndex(deckLength: number) {
@@ -104,6 +182,8 @@ function useFullscreenToggle(open: boolean, panelRef: RefObject<HTMLDivElement |
   return { isFullscreen, toggleFullscreen }
 }
 
+// Navigation keys always move slides so a stray focused control can never trap
+// the keyboard; Space/Enter yield to the focused control to avoid double actions.
 function usePresentationKeys(open: boolean, deckLength: number, goNext: () => void, goPrev: () => void, jumpTo: (next: number) => void, toggleFullscreen: () => void) {
   useEffect(() => {
     if (!open) return
@@ -115,7 +195,11 @@ function usePresentationKeys(open: boolean, deckLength: number, goNext: () => vo
         case 'ArrowRight':
         case 'ArrowDown':
         case 'PageDown':
+          event.preventDefault()
+          goNext()
+          return
         case ' ':
+        case 'Enter':
           if (onControl) return
           event.preventDefault()
           goNext()
@@ -123,7 +207,6 @@ function usePresentationKeys(open: boolean, deckLength: number, goNext: () => vo
         case 'ArrowLeft':
         case 'ArrowUp':
         case 'PageUp':
-          if (onControl) return
           event.preventDefault()
           goPrev()
           return
@@ -137,10 +220,8 @@ function usePresentationKeys(open: boolean, deckLength: number, goNext: () => vo
           return
         case 'f':
         case 'F':
-          if (!onControl) {
-            event.preventDefault()
-            toggleFullscreen()
-          }
+          event.preventDefault()
+          toggleFullscreen()
       }
     }
     window.addEventListener('keydown', onKeyDown, true)
@@ -148,49 +229,75 @@ function usePresentationKeys(open: boolean, deckLength: number, goNext: () => vo
   }, [open, deckLength, goNext, goPrev, jumpTo, toggleFullscreen])
 }
 
-// Only the active slide stays mounted: Chart.js measures its canvas box, so
-// display-none slides would render broken charts.
-function SlideView({ source, noteContent, noteTitle }: { source: string; noteContent: string; noteTitle: string }) {
-  const preview = useSession((s) => s.settings.preview)
+function SlideCanvas({ cacheKey, source }: { cacheKey: string; source: string }) {
   const proseFont = useSession((s) => s.settings.appearance.proseFont)
+  const preview = useSession((s) => s.settings.preview)
   const dark = useIsDarkTheme()
   const hostRef = useRef<HTMLDivElement>(null)
-  const rendered = useMemo(
-    () => renderMarkdown(source, { externalImages: preview.externalImages, hideFrontMatter: true }),
+  const fallbackHtml = useMemo(
+    () => renderMarkdown(source, { externalImages: preview.externalImages, hideFrontMatter: true }).html,
     [source, preview.externalImages],
   )
-  const [html, setHtml] = useState(rendered.html)
+  const html = slideHtmlCache.get(cacheKey) ?? fallbackHtml
 
-  useEffect(() => {
-    let cancelled = false
-    const staging = document.createElement('div')
-    staging.innerHTML = rendered.html
-    const prepare = async () => {
-      if (rendered.hasEmbeds) {
-        await resolveNoteEmbeds(staging, { currentContent: noteContent, currentTitle: noteTitle, isCurrent: () => !cancelled })
-      }
-      await enhancePreview(staging, { math: preview.math, mermaid: preview.mermaid, dark, codeBlockCollapseLines: 0 })
-      if (!cancelled) setHtml(staging.innerHTML)
-    }
-    void prepare()
-    return () => {
-      cancelled = true
-    }
-  }, [rendered, noteContent, noteTitle, preview.math, preview.mermaid, dark])
+  // Diagram rendering is observer-driven: whatever commits new slide markup
+  // (cache fill, remount, fullscreen relayout), pending chart/mermaid blocks on
+  // the live host get rendered; the data-rendered signature keeps re-runs cheap.
+  useSlideDiagramRendering(hostRef, dark)
+  const fit = useSlideFit(hostRef)
 
+  return (
+    <div className='relative h-full w-full overflow-hidden'>
+      <div className='absolute inset-x-0' style={{ top: SLIDE_PAD_Y }}>
+        <div className='mx-auto' style={{ width: SLIDE_CONTENT_WIDTH, transform: `scale(${fit})`, transformOrigin: 'top center' }}>
+          <div className='ink-preview-container' data-font={proseFont}>
+            <div ref={hostRef} data-font={proseFont} className='ink-prose' dangerouslySetInnerHTML={{ __html: html }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function useSlideDiagramRendering(hostRef: RefObject<HTMLDivElement | null>, dark: boolean): void {
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
-    void renderPendingMermaid(host, dark)
-    void renderChartJs(host, dark)
-    return () => destroyChartInstances(host)
-  }, [html, dark])
+    let generation = 0
+    const run = () => {
+      const current = ++generation
+      void renderPendingMermaid(host, dark).then(() => {
+        if (current === generation) return renderChartJs(host, dark)
+      })
+    }
+    run()
+    const observer = new MutationObserver(() => run())
+    observer.observe(host, { childList: true })
+    return () => {
+      generation++
+      observer.disconnect()
+      destroyChartInstances(host)
+    }
+  }, [dark, hostRef])
+}
 
-  return (
-    <div className='ink-preview-container' data-font={proseFont}>
-      <div ref={hostRef} data-font={proseFont} className='ink-prose' dangerouslySetInnerHTML={{ __html: html }} />
-    </div>
-  )
+// Oversized slides shrink to fit the fixed canvas instead of scrolling; the
+// transform never changes layout, so measuring the host stays loop-free.
+function useSlideFit(hostRef: RefObject<HTMLDivElement | null>): number {
+  const [fit, setFit] = useState(1)
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => {
+      const height = host.offsetHeight
+      if (height < 1) return
+      const next = Math.min(1, SLIDE_CONTENT_HEIGHT / height, SLIDE_CONTENT_WIDTH / Math.max(host.scrollWidth, 1))
+      setFit((current) => (Math.abs(current - next) < 0.004 ? current : next))
+    })
+    observer.observe(host)
+    return () => observer.disconnect()
+  }, [hostRef])
+  return fit
 }
 
 function PresentationControls({ slideIndex, slideCount, isFullscreen, goNext, goPrev, toggleFullscreen, onClose }: {
