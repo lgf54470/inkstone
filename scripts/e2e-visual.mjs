@@ -479,18 +479,37 @@ async function assertPresentationAccessibility(page) {
   await sleep(600)
 }
 
-// Exporting the deck runs through the browser's print pipeline, so this asserts two things the
-// promise rests on: the sheet it prints holds one page box per deck page (built from the same
-// measured plans the show walks), and the PDF Chrome actually renders from it has that many
-// pages. The PDF is counted by its page objects, which is what "the pages match the show" means.
+// Exporting the deck runs through the browser's print pipeline, so this asserts what the promise
+// rests on: the sheet it prints holds one page box per deck page (built from the same measured
+// plans the show walks), the pages are the slide at the stage's own scale rather than the reader's
+// prose scale (a page sliced against the slide layout reflows against any other), the charts are
+// drawn live onto the sheet's canvases instead of printing the picture the cache carries, and the
+// PDF Chrome actually renders from it has that many pages. The PDF is counted by its page objects,
+// which is what "the pages match the show" means.
 async function assertDeckExport(page) {
   await clickButton(page, LABELS.present)
   await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
   const entries = await waitForRailFilled(page)
+  const stageFont = await page.evaluate(() => getComputedStyle(document.querySelector('[data-slide-canvas] [data-slide-page]')).fontSize)
   await clickPresentationControl(page, LABELS.presentExport)
-  await sleep(800)
+  // The sheet prints once it has drawn what the show draws, so its own readiness marker is what
+  // makes the reads below land on a finished sheet rather than a half-drawn one.
+  await page.waitForSelector('[data-deck-print][data-deck-print-ready="true"]', { timeout: 20_000 })
   const sheet = await page.evaluate(() => {
     const pages = [...document.querySelectorAll('[data-deck-print] .deck-print-page')]
+    const painted = () => {
+      const canvas = document.querySelector('[data-deck-print] [data-chart] canvas')
+      if (!canvas) return 0
+      try {
+        const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+        let drawn = 0
+        for (let index = 3; index < data.length; index += 400) if (data[index] > 0) drawn++
+        return drawn
+      } catch {
+        return -1
+      }
+    }
+    const blocks = [...document.querySelectorAll('[data-deck-print] [data-chart]')]
     return {
       pages: pages.length,
       withContent: pages.filter((box) => box.querySelector('.ink-prose')?.children.length ?? 0 > 0).length,
@@ -499,13 +518,18 @@ async function assertDeckExport(page) {
         .filter((rule) => rule.constructor.name === 'CSSPageRule')
         .map((rule) => rule.cssText)
         .find((text) => /size:/.test(text)) ?? '',
-      charts: document.querySelectorAll('[data-deck-print] [data-chart] img.chartjs-still').length,
+      live: blocks.filter((block) => block.__chartInstance && block.querySelector('canvas')?.width > 0).length,
+      stills: document.querySelectorAll('[data-deck-print] [data-chart] img.chartjs-still').length,
+      painted: painted(),
+      font: getComputedStyle(document.querySelector('[data-deck-print] .deck-print-body [data-slide-page]')).fontSize,
     }
   })
   check('export: the print sheet holds one page per deck page', sheet.pages > 1 && sheet.pages === entries, `sheet=${sheet.pages} rail=${entries}`)
   check('export: every printed page carries its own content', sheet.withContent === sheet.pages, `content=${sheet.withContent}/${sheet.pages}`)
   check('export: the print page size follows the design canvas', /size: \d+px \d+px/.test(sheet.pageRule), sheet.pageRule.slice(0, 60))
-  check('export: the printed deck carries the chart picture', sheet.charts > 0, `charts=${sheet.charts}`)
+  check('export: the printed deck draws its charts live', sheet.live > 0 && sheet.painted > 0, `live=${sheet.live} painted=${sheet.painted}`)
+  check('export: the printed deck prints no chart stills left over', sheet.stills === 0, `stills=${sheet.stills}`)
+  check('export: a printed page uses the slide type scale', sheet.font === stageFont, `sheet=${sheet.font} stage=${stageFont}`)
 
   const pdf = Buffer.from(await page.pdf({ printBackground: true, preferCSSPageSize: true }))
   const printed = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length

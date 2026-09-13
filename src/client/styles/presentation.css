@@ -50,7 +50,25 @@
 }
 
 .deck-print-sheet {
-  display: none;
+  position: fixed;
+  top: 0;
+  left: -100000px;
+  width: var(--deck-page-width);
+  background: var(--bg-editor);
+}
+
+.deck-print-page {
+  position: relative;
+  overflow: hidden;
+  width: var(--deck-page-width);
+  height: var(--deck-page-height);
+  background: var(--bg-editor);
+}
+
+.deck-print-body {
+  position: absolute;
+  top: var(--deck-pad-y);
+  left: var(--deck-pad-x);
 }
 
 @media print {
@@ -65,27 +83,16 @@
   }
 
   .deck-print-sheet {
-    display: block;
-    background: var(--bg-editor);
+    position: static;
+    left: auto;
   }
 
   .deck-print-page {
-    position: relative;
-    overflow: hidden;
-    width: var(--deck-page-width);
-    height: var(--deck-page-height);
-    background: var(--bg-editor);
     break-after: page;
     print-color-adjust: exact;
   }
 
   .deck-print-page:last-child {
     break-after: auto;
-  }
-
-  .deck-print-body {
-    position: absolute;
-    top: var(--deck-pad-y);
-    left: var(--deck-pad-x);
   }
 }
