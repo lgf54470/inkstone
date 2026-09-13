@@ -93,6 +93,9 @@
   font-weight: 650;
   line-height: 1.4;
 }
+[data-theme='light'] .ink-prose .callout-title {
+  color: color-mix(in oklab, var(--callout-color) 55%, var(--text-primary));
+}
 .ink-prose summary.callout-title { cursor: pointer; }
 .ink-prose .callout-title::before {
   width: 0.58em;

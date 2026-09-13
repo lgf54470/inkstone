@@ -93,6 +93,12 @@
   font-weight: 650;
   line-height: 1.4;
 }
+/* The accent alone reads at about 2.2:1 on the light callout tint — below AA, and the title is
+   text, not decoration. Mixing it toward the body text keeps each callout kind's hue while
+   meeting the contrast the rest of the prose keeps; the dark acents already have it. */
+[data-theme='light'] .ink-prose .callout-title {
+  color: color-mix(in oklab, var(--callout-color) 55%, var(--text-primary));
+}
 .ink-prose summary.callout-title { cursor: pointer; }
 .ink-prose .callout-title::before {
   width: 0.58em;
