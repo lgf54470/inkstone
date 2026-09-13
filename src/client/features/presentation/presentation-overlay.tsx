@@ -41,6 +41,10 @@ function rememberSlideHtml(key: string, html: string): void {
   }
 }
 
+function slideCacheKey(fingerprint: string, dark: boolean, index: number): string {
+  return `${fingerprint}:${dark ? 'd' : 'l'}:${index}`
+}
+
 export interface PresentationOverlayProps {
   open: boolean
   onClose: () => void
@@ -53,7 +57,7 @@ export function PresentationOverlay({ open, onClose, content, noteTitle }: Prese
   const stageRef = useRef<HTMLDivElement>(null)
   const { presentedContent, deck, fingerprint } = useFrozenDeck(open, content)
   const dark = useIsDarkTheme()
-  const { index, goNext, goPrev, jumpTo } = useDeckIndex(deck.length)
+  const { index, sub, pageCount, handlePageCount, goNext, goPrev, jumpTo } = usePresentationNav(deck.length)
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
   const scale = useStageScale(stageRef)
   useEscape(open, onClose)
@@ -64,7 +68,6 @@ export function PresentationOverlay({ open, onClose, content, noteTitle }: Prese
 
   if (!open) return null
 
-  const cacheKey = `${fingerprint}:${dark ? 'd' : 'l'}:${index}`
   return createPortal(
     <div
       ref={panelRef}
@@ -79,11 +82,13 @@ export function PresentationOverlay({ open, onClose, content, noteTitle }: Prese
           className='shrink-0 overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-editor)] shadow-[var(--shadow-modal)]'
           style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})` }}
         >
-          <SlideCanvas key={index} cacheKey={cacheKey} source={deck[index] ?? ''} />
+          <SlideCanvas key={index} cacheKey={slideCacheKey(fingerprint, dark, index)} source={deck[index] ?? ''} subPage={sub} onPageCount={handlePageCount} />
         </div>
       </div>
       <PresentationControls
         slideIndex={index}
+        subPage={sub}
+        pageCount={pageCount}
         slideCount={deck.length}
         isFullscreen={isFullscreen}
         goNext={goNext}
@@ -91,6 +96,7 @@ export function PresentationOverlay({ open, onClose, content, noteTitle }: Prese
         toggleFullscreen={toggleFullscreen}
         onClose={onClose}
       />
+      <SlideProgress index={index} count={deck.length} />
       <SlideProgress index={index} count={deck.length} />
     </div>,
     document.body,
@@ -126,7 +132,7 @@ function useSlideHtml(options: { open: boolean; deck: string[]; index: number; f
   const [, setTick] = useState(0)
   useEffect(() => {
     if (!open) return
-    const key = `${fingerprint}:${dark ? 'd' : 'l'}:${index}`
+    const key = slideCacheKey(fingerprint, dark, index)
     if (slideHtmlCache.has(key)) return
     let cancelled = false
     const rendered = renderMarkdown(deck[index] ?? '', { externalImages: preview.externalImages, hideFrontMatter: true })
@@ -155,16 +161,45 @@ function useDeckIndex(deckLength: number) {
   useEffect(() => {
     setIndex((current) => Math.min(current, deckLength - 1))
   }, [deckLength])
-  const goNext = useCallback(() => {
-    setIndex((current) => Math.min(current + 1, deckLength - 1))
-  }, [deckLength])
-  const goPrev = useCallback(() => {
-    setIndex((current) => Math.max(current - 1, 0))
+  const goTo = useCallback((next: number) => setIndex(Math.max(0, Math.min(next, deckLength - 1))), [deckLength])
+  return { index, goTo }
+}
+
+// Slide-level position plus auto-pagination sub-pages: a slide whose rendered
+// blocks overflow the fixed canvas reports its page count, and next/prev walk
+// through its sub-pages before moving to the neighboring slide.
+function usePresentationNav(deckLength: number) {
+  const { index, goTo } = useDeckIndex(deckLength)
+  const [subPage, setSubPage] = useState(0)
+  const [pageCounts, setPageCounts] = useState<Record<number, number>>({})
+  useEffect(() => {
+    setSubPage(0)
+  }, [index])
+  const registerPageCount = useCallback((slide: number, count: number) => {
+    setPageCounts((current) => (current[slide] === count ? current : { ...current, [slide]: count }))
   }, [])
-  const jumpTo = useCallback((next: number) => {
-    setIndex(Math.max(0, Math.min(next, deckLength - 1)))
-  }, [deckLength])
-  return { index: Math.min(index, deckLength - 1), goNext, goPrev, jumpTo }
+  const handlePageCount = useCallback((count: number) => registerPageCount(index, count), [index, registerPageCount])
+  const pageCount = pageCounts[index] ?? 1
+  const sub = Math.min(subPage, pageCount - 1)
+  const goNext = useCallback(() => {
+    if (sub < pageCount - 1) setSubPage(sub + 1)
+    else if (index < deckLength - 1) {
+      goTo(index + 1)
+      setSubPage(0)
+    }
+  }, [sub, pageCount, index, deckLength, goTo])
+  const goPrev = useCallback(() => {
+    if (sub > 0) setSubPage(sub - 1)
+    else if (index > 0) {
+      goTo(index - 1)
+      setSubPage(0)
+    }
+  }, [sub, index, goTo])
+  const jumpTo = useCallback((slide: number) => {
+    goTo(slide)
+    setSubPage(0)
+  }, [goTo])
+  return { index, sub, pageCount, handlePageCount, goNext, goPrev, jumpTo }
 }
 
 function useFullscreenToggle(open: boolean, panelRef: RefObject<HTMLDivElement | null>) {
@@ -229,7 +264,13 @@ function usePresentationKeys(open: boolean, deckLength: number, goNext: () => vo
   }, [open, deckLength, goNext, goPrev, jumpTo, toggleFullscreen])
 }
 
-function SlideCanvas({ cacheKey, source }: { cacheKey: string; source: string }) {
+interface SlidePage {
+  from: number
+  to: number
+  top: number
+}
+
+function SlideCanvas({ cacheKey, source, subPage, onPageCount }: { cacheKey: string; source: string; subPage: number; onPageCount: (count: number) => void }) {
   const proseFont = useSession((s) => s.settings.appearance.proseFont)
   const preview = useSession((s) => s.settings.preview)
   const dark = useIsDarkTheme()
@@ -239,19 +280,15 @@ function SlideCanvas({ cacheKey, source }: { cacheKey: string; source: string })
     [source, preview.externalImages],
   )
   const html = slideHtmlCache.get(cacheKey) ?? fallbackHtml
-
-  // Diagram rendering is observer-driven: whatever commits new slide markup
-  // (cache fill, remount, fullscreen relayout), pending chart/mermaid blocks on
-  // the live host get rendered; the data-rendered signature keeps re-runs cheap.
   useSlideDiagramRendering(hostRef, dark)
-  const fit = useSlideFit(hostRef)
+  const pageTop = useSlidePagination(hostRef, html, subPage, onPageCount)
 
   return (
     <div className='relative h-full w-full overflow-hidden'>
-      <div className='absolute inset-x-0' style={{ top: SLIDE_PAD_Y }}>
-        <div className='mx-auto' style={{ width: SLIDE_CONTENT_WIDTH, transform: `scale(${fit})`, transformOrigin: 'top center' }}>
+      <div className='absolute inset-x-0' style={{ top: SLIDE_PAD_Y, transform: `translateY(-${pageTop}px)` }}>
+        <div className='mx-auto' style={{ width: SLIDE_CONTENT_WIDTH }}>
           <div className='ink-preview-container' data-font={proseFont}>
-            <div ref={hostRef} data-font={proseFont} className='ink-prose' dangerouslySetInnerHTML={{ __html: html }} />
+            <div ref={hostRef} data-font={proseFont} className='ink-prose relative' dangerouslySetInnerHTML={{ __html: html }} />
           </div>
         </div>
       </div>
@@ -259,6 +296,9 @@ function SlideCanvas({ cacheKey, source }: { cacheKey: string; source: string })
   )
 }
 
+// Diagram rendering is observer-driven: whatever commits new slide markup
+// (cache fill, remount, fullscreen relayout), pending chart/mermaid blocks on
+// the live host get rendered; the data-rendered signature keeps re-runs cheap.
 function useSlideDiagramRendering(hostRef: RefObject<HTMLDivElement | null>, dark: boolean): void {
   useEffect(() => {
     const host = hostRef.current
@@ -281,27 +321,65 @@ function useSlideDiagramRendering(hostRef: RefObject<HTMLDivElement | null>, dar
   }, [dark, hostRef])
 }
 
-// Oversized slides shrink to fit the fixed canvas instead of scrolling; the
-// transform never changes layout, so measuring the host stays loop-free.
-function useSlideFit(hostRef: RefObject<HTMLDivElement | null>): number {
-  const [fit, setFit] = useState(1)
+// Oversized slides flow across pages instead of scrolling or shrinking: page
+// boundaries snap to block edges, off-page blocks hide via visibility (layout
+// stays intact so charts never re-measure), and the wrapper translates so the
+// current page starts at the top.
+function useSlidePagination(hostRef: RefObject<HTMLDivElement | null>, html: string, subPage: number, onPageCount: (count: number) => void): number {
+  const [pages, setPages] = useState<SlidePage[]>([])
   useEffect(() => {
     const host = hostRef.current
-    if (!host || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => {
-      const height = host.offsetHeight
-      if (height < 1) return
-      const next = Math.min(1, SLIDE_CONTENT_HEIGHT / height, SLIDE_CONTENT_WIDTH / Math.max(host.scrollWidth, 1))
-      setFit((current) => (Math.abs(current - next) < 0.004 ? current : next))
-    })
+    if (!host) return
+    let lastHeight = -1
+    const compute = () => {
+      const total = host.scrollHeight
+      if (total < 1 || total === lastHeight) return
+      lastHeight = total
+      const children = [...host.children] as HTMLElement[]
+      const next: SlidePage[] = [{ from: 0, to: children.length, top: 0 }]
+      let pageTop = 0
+      children.forEach((child, i) => {
+        const page = next[next.length - 1]
+        const bottom = child.offsetTop + child.offsetHeight
+        if (bottom > pageTop + SLIDE_CONTENT_HEIGHT && child.offsetTop > pageTop) {
+          // Keep headings attached to the block that follows them across breaks.
+          let cut = i
+          while (cut > page.from && /^H[1-6]$/.test(children[cut - 1]?.tagName ?? '')) cut--
+          page.to = cut
+          next.push({ from: cut, to: children.length, top: children[cut]!.offsetTop })
+          pageTop = children[cut]!.offsetTop
+        }
+      })
+      setPages(next)
+      onPageCount(next.length)
+    }
+    compute()
+    const observer = new ResizeObserver(compute)
     observer.observe(host)
     return () => observer.disconnect()
-  }, [hostRef])
-  return fit
+  }, [hostRef, html, onPageCount])
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+    const children = [...host.children] as HTMLElement[]
+    const page = pages[subPage] ?? null
+    children.forEach((child, i) => {
+      const inPage = !page || (i >= page.from && i < page.to)
+      child.style.visibility = inPage ? '' : 'hidden'
+      const lone = Boolean(page) && page.to - page.from === 1 && child.offsetHeight > SLIDE_CONTENT_HEIGHT
+      child.style.maxHeight = lone ? `${SLIDE_CONTENT_HEIGHT}px` : ''
+      child.style.overflowY = lone ? 'auto' : ''
+    })
+  }, [pages, subPage, html, hostRef])
+
+  return pages[subPage]?.top ?? 0
 }
 
-function PresentationControls({ slideIndex, slideCount, isFullscreen, goNext, goPrev, toggleFullscreen, onClose }: {
+function PresentationControls({ slideIndex, subPage, pageCount, slideCount, isFullscreen, goNext, goPrev, toggleFullscreen, onClose }: {
   slideIndex: number
+  subPage: number
+  pageCount: number
   slideCount: number
   isFullscreen: boolean
   goNext: () => void
@@ -310,18 +388,19 @@ function PresentationControls({ slideIndex, slideCount, isFullscreen, goNext, go
   onClose: () => void
 }) {
   const fullscreenLabel = isFullscreen ? t('workspace.presentation_exit_fullscreen') : t('workspace.presentation_fullscreen')
+  const position = pageCount > 1 ? `${slideIndex + 1}.${subPage + 1}` : `${slideIndex + 1}`
   return (
     <div className='absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'>
       <Tooltip label={t('workspace.presentation_prev')} side='top'>
-        <IconButton label={t('workspace.presentation_prev')} size='sm' onClick={goPrev} disabled={slideIndex === 0}>
+        <IconButton label={t('workspace.presentation_prev')} size='sm' onClick={goPrev} disabled={slideIndex === 0 && subPage === 0}>
           <ChevronLeft size={15} />
         </IconButton>
       </Tooltip>
       <span aria-live='polite' className='tabular min-w-14 text-center text-[length:var(--text-12)] text-[var(--text-secondary)]'>
-        {slideIndex + 1} / {slideCount}
+        {position} / {slideCount}
       </span>
       <Tooltip label={t('workspace.presentation_next')} side='top'>
-        <IconButton label={t('workspace.presentation_next')} size='sm' onClick={goNext} disabled={slideIndex === slideCount - 1}>
+        <IconButton label={t('workspace.presentation_next')} size='sm' onClick={goNext} disabled={slideIndex === slideCount - 1 && subPage === pageCount - 1}>
           <ChevronRight size={15} />
         </IconButton>
       </Tooltip>
