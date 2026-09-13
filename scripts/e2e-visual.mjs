@@ -435,6 +435,9 @@ async function assertPresentationPages(page) {
 // allowed in this repository, and this gate is what keeps it honest.
 function isReviewedIncomplete(item) {
   if (item.id === 'aria-hidden-focus' || item.id === 'duplicate-id-aria') return true
+  // axe cannot compute the background of a one-character label ("it cannot decide whether a single
+  // digit is text"), which is a review item rather than a failure. Real contrast failures still
+  // arrive as violations — the light-theme callout title above was one.
   return item.id === 'color-contrast' && /too short to determine/.test(item.note)
 }
 
@@ -573,15 +576,15 @@ async function readDeckSize(page) {
 }
 
 // The list fills one slide per idle slice, so this waits for it to stop growing.
+// The pass reports its completeness on the dialog, so this waits for the state itself instead of
+// reading "the count has not changed lately" — a slice that is still measuring looks like that,
+// and the page assertions then ran against a list that had barely started.
 async function waitForRailFilled(page) {
-  let previous = -1
-  for (let attempt = 0; attempt < 40; attempt++) {
-    const entries = await page.evaluate(() => document.querySelectorAll('[data-presentation-rail] [data-entry-index]').length)
-    if (entries > 0 && entries === previous) return entries
-    previous = entries
-    await sleep(500)
-  }
-  return previous
+  await page.waitForFunction(
+    () => document.querySelector('[data-slide-list-complete="true"]') !== null,
+    { timeout: 60_000 },
+  )
+  return page.evaluate(() => document.querySelectorAll('[data-presentation-rail] [data-entry-index]').length)
 }
 
 // Clicks the first page of each slide and reads the counter, which is the canvas's own

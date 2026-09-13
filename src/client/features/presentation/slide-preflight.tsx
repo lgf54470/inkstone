@@ -38,12 +38,15 @@ export interface SlidePreflightProps {
   content: string
   noteTitle: string
   onPlan: (slide: number, plan: SlidePlan) => void
+  /** Reports whether the pass has listed every page of the deck yet. */
+  onFinished: (finished: boolean) => void
 }
 
-export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, content, noteTitle, onPlan }: SlidePreflightProps) {
+export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, content, noteTitle, onPlan, onFinished }: SlidePreflightProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const dark = useIsDarkTheme()
-  const { cursor, report } = usePreflightPass({ deckLength: deck.length, fingerprint, dark, cacheKeys, hostRef, onPlan })
+  const { cursor, report, finished } = usePreflightPass({ deckLength: deck.length, fingerprint, dark, cacheKeys, hostRef, onPlan })
+  useEffect(() => onFinished(finished), [finished, onFinished])
   useSlideHtml({ open: cursor !== null, deck, index: cursor ?? 0, fingerprint, content, noteTitle, dark })
   const key = cursor === null ? '' : cacheKeys[cursor] ?? ''
   // The canvas waits one frame after the markup lands. Preparing a slide is a markdown render,
@@ -87,6 +90,16 @@ function useDeferredMount(ready: boolean, token: string): boolean {
   return ready && mounted === token
 }
 
+// An edited note re-splits into different slides and a theme flip invalidates every slide's
+// markup, so either way the pass starts over and waits for idle before its first mount rather
+// than competing with the show's first paint.
+function usePassRestart(key: string, restart: () => void, idle: RefObject<(() => void) | null>): void {
+  useEffect(() => {
+    restart()
+    return () => idle.current?.()
+  }, [key, restart, idle])
+}
+
 // The pass keeps its own progress and its own timers: what it has visited, what it gave up on,
 // the idle handle it would cancel, and how long the last slice took. Deriving the progress from
 // the measured plans would be wrong, because a plan outlives a theme flip while the markup it was
@@ -120,10 +133,13 @@ function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, o
   cacheKeys: string[]
   hostRef: RefObject<HTMLDivElement | null>
   onPlan: (slide: number, plan: SlidePlan) => void
-}): { cursor: number | null; report: (plan: SlidePlan) => void } {
+}): { cursor: number | null; report: (plan: SlidePlan) => void; finished: boolean } {
   const pass = usePassState()
   const { done, skipped, idle, sliceStart, sliceCost, cursorRef } = pass
   const [cursor, setCursor] = useState<number | null>(null)
+  // A deck is listed once the pass has nothing left to measure, which is the state the show hands
+  // to the slide list: a list that is still filling must never be read as a finished one.
+  const [finished, setFinished] = useState(false)
   cursorRef.current = cursor
 
   // One slide per idle slice keeps a long deck from holding frames while someone is talking; the
@@ -132,20 +148,20 @@ function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, o
     idle.current?.()
     const gap = nextSliceGap(sliceCost.current, SLICE_DUTY, MIN_SLICE_GAP_MS)
     idle.current = scheduleIdle(() => {
+      const next = nextUnmeasuredSlide(deckLength, [...done.current, ...skipped.current], from)
       sliceStart.current = performance.now()
-      setCursor(nextUnmeasuredSlide(deckLength, [...done.current, ...skipped.current], from))
+      setCursor(next)
+      setFinished(next === null)
     }, gap)
   }, [deckLength, done, skipped, idle, sliceStart, sliceCost])
 
-  // An edited note re-splits into different slides and a theme flip invalidates every slide's
-  // markup, so either way the pass starts over and waits for idle before its first mount rather
-  // than competing with the show's first paint.
-  useEffect(() => {
+  const restart = useCallback(() => {
     done.current = new Set()
     skipped.current = new Set()
+    setFinished(false)
     scheduleNext(0)
-    return () => idle.current?.()
-  }, [deckLength, fingerprint, dark, scheduleNext, done, skipped, idle])
+  }, [done, skipped, scheduleNext])
+  usePassRestart(`${deckLength}:${fingerprint}:${dark}`, restart, idle)
 
   const report = useCallback((plan: SlidePlan) => {
     const slide = cursorRef.current
@@ -164,7 +180,7 @@ function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, o
   }, [scheduleNext])
   useStallGuard(cursor, skipStalled)
 
-  return { cursor, report }
+  return { cursor, report, finished }
 }
 
 // What a measurement means: the markup it came from goes back to the cache under the slide's key
