@@ -44,6 +44,50 @@ export function subscribeSlideHtml(listener: () => void): () => void {
   }
 }
 
+// What the measuring canvas captured for a slide, as markup for the cache. The capture is a
+// source other surfaces render from again — the projector, the slide list, the printed deck — so
+// it has to be as re-renderable as the markup it came from. A chart is the one block that is not:
+// its instance and its canvas pixels cannot be serialized, so the clone gets a still of what was
+// on screen (a chart picture for the list and the printed page) and no "already rendered" marker
+// (a still is not a chart), which is what makes the projector draw a live one on its own canvas.
+// A diagram's SVG does survive serialization, and its marker is what lets the cached copy be
+// hydrated instead of re-rendered, so that one is left alone.
+export function captureSlideHtml(host: HTMLElement | null): string | null {
+  const page = host?.querySelector<HTMLElement>('[data-slide-page]')
+  if (!page) return null
+  const clone = page.cloneNode(true) as HTMLElement
+  const live = page.querySelectorAll<HTMLElement>('[data-chart]')
+  // Both trees come from the same markup, so their chart blocks line up by their walking order.
+  clone.querySelectorAll<HTMLElement>('[data-chart]').forEach((block, index) => {
+    const source = live[index]
+    if (source) freezeChart(block, source)
+  })
+  return clone.innerHTML
+}
+
+// A clone's canvas has no pixels — `cloneNode` copies the element, not the drawing — so the still
+// comes from the live canvas and replaces the clone's canvas in place.
+function freezeChart(block: HTMLElement, source: HTMLElement): void {
+  const canvas = source.querySelector('canvas')
+  delete block.dataset.rendered
+  if (!canvas) return
+  try {
+    const still = document.createElement('img')
+    still.className = 'chartjs-still'
+    still.alt = ''
+    still.src = canvas.toDataURL('image/png')
+    const target = block.querySelector('canvas')
+    if (target) target.replaceWith(still)
+    else block.appendChild(still)
+  }
+  catch (error: unknown) {
+    // Best-effort: a canvas chart.js drew a cross-origin image into cannot be read back, and its
+    // block still renders live on the projector — only the list and the printed page lose the
+    // picture for that one chart.
+    console.warn('[inkstone] chart capture failed', error)
+  }
+}
+
 // The un-enhanced render is both the thumbnail source and the first paint of a
 // slide canvas, before diagrams finish rendering into the cache.
 export function renderSlideSource(source: string, externalImages: boolean): RenderResult {

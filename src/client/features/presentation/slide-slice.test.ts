@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { slicePageHtml } from './slide-html'
+import { describe, expect, it, vi } from 'vitest'
+import { captureSlideHtml, slicePageHtml } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 
 const SLIDE = '<p>one</p><p>two</p><h2>three</h2><p>four</p>'
@@ -38,5 +38,49 @@ describe('slicePageHtml', () => {
   it('ignores markup positions the measured slide no longer has', () => {
     const stale: SlidePlan = { pages: [{ from: 3, to: 9, top: 0 }], scales: [1, 1, 1, 1] }
     expect(slicePageHtml(SLIDE, stale, 0, CONTENT_WIDTH, CONTENT_HEIGHT)).toBe('<p>four</p>')
+  })
+})
+
+// The measuring canvas hands back what it captured, and every other surface renders from that:
+// the projector draws live charts again, the list and the printed deck show the still.
+function measuredPage(markup: string): HTMLElement {
+  const host = document.createElement('div')
+  host.innerHTML = `<div data-slide-page>${markup}</div>`
+  return host
+}
+
+const CHART = '<div class="chartjs-block" data-chart="%7B%7D" data-rendered="l:2:abc"><div class="chartjs-container"><canvas></canvas></div></div>'
+const DIAGRAM = '<div class="mermaid-block" data-mermaid="%7B%7D" data-rendered="l:2:abc"><svg></svg></div>'
+
+describe('captureSlideHtml', () => {
+  it('drops the chart marker that would otherwise hand an empty canvas to every later mount', () => {
+    const captured = captureSlideHtml(measuredPage(CHART))
+    expect(captured).not.toContain('data-rendered')
+    expect(captured).toContain('data-chart')
+  })
+
+  it('keeps the still of the chart, so the slide list and the printed deck have a picture', () => {
+    const host = measuredPage(CHART)
+    vi.spyOn(host.querySelector('canvas')!, 'toDataURL').mockReturnValue('data:image/png;base64,still')
+    const captured = captureSlideHtml(host)
+    expect(captured).toContain('data:image/png;base64,still')
+    expect(captured).not.toContain('<canvas')
+  })
+
+  it('keeps a diagram marker, because the cached copy is hydrated instead of re-rendered', () => {
+    expect(captureSlideHtml(measuredPage(DIAGRAM))).toContain('data-rendered="l:2:abc"')
+  })
+
+  it('leaves the markup it measured untouched', () => {
+    const host = measuredPage(CHART)
+    vi.spyOn(host.querySelector('canvas')!, 'toDataURL').mockReturnValue('data:image/png;base64,still')
+    captureSlideHtml(host)
+    expect(host.innerHTML).toContain('data-rendered')
+    expect(host.innerHTML).toContain('<canvas')
+  })
+
+  it('reports nothing to capture when no measured page is mounted', () => {
+    expect(captureSlideHtml(null)).toBeNull()
+    expect(captureSlideHtml(document.createElement('div'))).toBeNull()
   })
 })

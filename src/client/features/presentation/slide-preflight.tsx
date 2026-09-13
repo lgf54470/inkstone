@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { nextSliceGap, nextUnmeasuredSlide } from './presentation-state'
 import { useIsDarkTheme } from './presentation-theme'
 import { SlideCanvas } from './slide-canvas'
-import { readSlideHtml, rememberSlideHtml } from './slide-html'
+import { captureSlideHtml, readSlideHtml, rememberSlideHtml } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
 import { useSlideHtml } from './use-slide-html'
@@ -191,8 +191,8 @@ function publishPlan(slide: number, plan: SlidePlan, { hostRef, cacheKeys, onPla
   cacheKeys: string[]
   onPlan: (slide: number, plan: SlidePlan) => void
 }): void {
-  const html = hostRef.current?.querySelector<HTMLElement>('[data-slide-page]')?.innerHTML
   const key = cacheKeys[slide]
+  const html = captureSlideHtml(hostRef.current)
   if (html && key) rememberSlideHtml(key, html)
   onPlan(slide, plan)
 }

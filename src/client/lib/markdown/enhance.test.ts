@@ -156,6 +156,38 @@ describe('chart rendering', () => {
   })
 })
 
+describe('chart rendering from cached markup', () => {
+  it('draws again when the markup carries the marker but no live instance', async () => {
+    const originalGetContext = mockCanvasGetContext()
+    const root = document.createElement('div')
+    const chartJson = JSON.stringify({ type: 'bar', data: { labels: ['A'], datasets: [{ data: [1] }] } })
+    root.innerHTML = `<div class="chartjs-block loading" data-chart="${encodeDataValue(chartJson)}"></div>`
+    document.body.appendChild(root)
+    try {
+      await renderChartJs(root, false)
+      const marker = root.querySelector<HTMLElement>('[data-chart]')!.dataset.rendered
+      expect(marker).toBeTruthy()
+      // What the slide cache holds: the attribute survives serialization, the canvas pixels and the
+      // instance do not.
+      const cached = document.createElement('div')
+      cached.innerHTML = root.innerHTML
+      expect(cached.querySelector<HTMLElement>('[data-chart]')!.dataset.rendered).toBe(marker)
+      // The serialized canvas has no drawing, so a fresh canvas node is what proves the chart was
+      // built again rather than trusted as already rendered.
+      const serialized = cached.querySelector('canvas')
+      await renderChartJs(cached, false)
+      const block = cached.querySelector<HTMLElement>('[data-chart]')!
+      expect(block.classList.contains('has-error')).toBe(false)
+      expect(cached.querySelector('canvas.chartjs-canvas')).not.toBeNull()
+      expect(cached.querySelector('canvas')).not.toBe(serialized)
+      destroyChartInstances(cached)
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+      root.remove()
+    }
+  })
+})
+
 describe('chart rendering — tolerant config parsing', () => {
   it('parses charts with tolerant formatting such as trailing commas or markdown markers', async () => {
     const originalGetContext = mockCanvasGetContext()

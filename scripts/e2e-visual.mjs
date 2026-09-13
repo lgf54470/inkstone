@@ -403,6 +403,8 @@ async function assertPresentationPages(page) {
   await jumpToFirstPage(page)
   const prepared = await waitForRenderedMarkup(page)
   check('presentation pages: a thumbnail renders the markup the projector prepared', sameArtifacts(prepared), `stage=${describeArtifacts(prepared.stage)} thumb=${describeArtifacts(prepared.thumb)}`)
+  check('presentation pages: the projector draws the chart on its own canvas', prepared.stage.live && prepared.stage.painted > 0, describeArtifacts(prepared.stage))
+  check('presentation pages: the slide list shows the chart as a picture', prepared.thumb.still > 0, describeArtifacts(prepared.thumb))
 
   await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])
   await sleep(400)
@@ -435,10 +437,11 @@ async function assertPresentationPages(page) {
 // allowed in this repository, and this gate is what keeps it honest.
 function isReviewedIncomplete(item) {
   if (item.id === 'aria-hidden-focus' || item.id === 'duplicate-id-aria') return true
-  // axe cannot compute the background of a one-character label ("it cannot decide whether a single
-  // digit is text"), which is a review item rather than a failure. Real contrast failures still
-  // arrive as violations — the light-theme callout title above was one.
-  return item.id === 'color-contrast' && /too short to determine/.test(item.note)
+  // axe cannot compute a background it only partly sees, which is a review item rather than a
+  // failure: a one-character label ("it cannot decide whether a single digit is text") and text the
+  // scaled slide canvas overlaps (a chart's rendered image) both land here. Real contrast failures
+  // still arrive as violations — the light-theme callout title above was one.
+  return item.id === 'color-contrast' && /too short to determine|partially overlaps/.test(item.note)
 }
 
 async function assertPresentationAccessibility(page) {
@@ -496,11 +499,13 @@ async function assertDeckExport(page) {
         .filter((rule) => rule.constructor.name === 'CSSPageRule')
         .map((rule) => rule.cssText)
         .find((text) => /size:/.test(text)) ?? '',
+      charts: document.querySelectorAll('[data-deck-print] [data-chart] img.chartjs-still').length,
     }
   })
   check('export: the print sheet holds one page per deck page', sheet.pages > 1 && sheet.pages === entries, `sheet=${sheet.pages} rail=${entries}`)
   check('export: every printed page carries its own content', sheet.withContent === sheet.pages, `content=${sheet.withContent}/${sheet.pages}`)
   check('export: the print page size follows the design canvas', /size: \d+px \d+px/.test(sheet.pageRule), sheet.pageRule.slice(0, 60))
+  check('export: the printed deck carries the chart picture', sheet.charts > 0, `charts=${sheet.charts}`)
 
   const pdf = Buffer.from(await page.pdf({ printBackground: true, preferCSSPageSize: true }))
   const printed = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length
@@ -521,10 +526,34 @@ async function jumpToFirstPage(page) {
 
 // The rendered artifacts (a diagram, rendered math) a slide surface shows, taken from the active
 // page's thumbnail next to the projector itself.
+// `painted` samples the chart's canvas for non-transparent pixels: a chart block whose canvas was
+// never drawn (the cached-markup path used to trust a serialized "already rendered" marker) has
+// the right box and no drawing, which is exactly the failure this reads out.
 async function readRenderedMarkup(page) {
   return page.evaluate(() => {
     const count = (root, selector) => root?.querySelectorAll(selector).length ?? 0
-    const artifacts = (root) => ({ svg: count(root, 'svg'), katex: count(root, '.katex') })
+    const painted = (root) => {
+      const canvas = root?.querySelector('[data-chart] canvas')
+      if (!canvas) return 0
+      try {
+        const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+        let drawn = 0
+        for (let index = 3; index < data.length; index += 400) if (data[index] > 0) drawn++
+        return drawn
+      } catch {
+        return -1
+      }
+    }
+    const artifacts = (root) => ({
+      svg: count(root, 'svg'),
+      katex: count(root, '.katex'),
+      // The projector draws a chart live; the list and the printed page show the still the cache
+      // holds, so a chart counts as present either way and `painted` tells the two apart.
+      charts: count(root, '[data-chart] canvas') + count(root, '[data-chart] img.chartjs-still'),
+      still: count(root, '[data-chart] img.chartjs-still'),
+      live: Boolean(root?.querySelector('[data-chart]')?.__chartInstance),
+      painted: painted(root),
+    })
     const panel = document.querySelector('[role="dialog"]')
     const stage = panel?.querySelector('[data-slide-canvas] [data-slide-page]')
     const active = panel?.querySelector('[data-presentation-rail] [data-entry-index][aria-current="true"] .ink-slide-rail-thumb .ink-prose')
@@ -537,11 +566,11 @@ async function readRenderedMarkup(page) {
 }
 
 function sameArtifacts(markup) {
-  return markup.stage.svg > 0 && markup.thumb.svg === markup.stage.svg && markup.thumb.katex === markup.stage.katex
+  return markup.stage.svg > 0 && markup.thumb.svg === markup.stage.svg && markup.thumb.katex === markup.stage.katex && markup.thumb.charts === markup.stage.charts
 }
 
 function describeArtifacts(artifacts) {
-  return `svg=${artifacts.svg},katex=${artifacts.katex}`
+  return `svg=${artifacts.svg},katex=${artifacts.katex},charts=${artifacts.charts},live=${artifacts.live},painted=${artifacts.painted}`
 }
 
 // The deck is re-prepared one slide per idle slice, so the list catches up asynchronously.
@@ -674,11 +703,15 @@ const LIVE_EDIT_TWO = '\n\n---\n\n## Ignored\n\nWritten after the freeze.\n\n'
 const PAGINATED_DECK = [
   '# Short opening',
   '',
-  'One page of talk, with a diagram and math so the slide list has rendered markup to show.',
+  'One page of talk, with a diagram, a chart and math so the slide list has rendered markup to show.',
   '',
   '```mermaid',
   'flowchart LR',
   '  A[Source] --> B[Preview]',
+  '```',
+  '',
+  '```chart',
+  '{"type":"bar","data":{"labels":["A","B","C"],"datasets":[{"label":"Series","data":[3,7,4]}]}}',
   '```',
   '',
   'Inline $E = mc^2$ and a block:',

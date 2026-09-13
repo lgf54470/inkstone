@@ -156,12 +156,21 @@ async function renderChartNode(root: HTMLElement, node: HTMLElement, raw: string
   }
 }
 
+// A chart is "already rendered" only when the live instance is still there. The marker alone is
+// not enough: it is an attribute, so it survives being serialized into cached slide markup, while
+// the canvas pixels and the instance do not — trusting the marker showed an empty chart box
+// wherever the markup was mounted from the cache. A destroyed instance clears the property and
+// leaves the marker, which lands on the same path, so both draw again.
+function hasLiveChart(node: HTMLElement): boolean {
+  return Boolean((node as unknown as { __chartInstance?: unknown }).__chartInstance)
+}
+
 export async function renderChartJs(root: HTMLElement, dark: boolean): Promise<void> {
   const nodes = [...root.querySelectorAll<HTMLElement>('[data-chart]')]
   for (const node of nodes) {
     const raw = decodeDataValue(node.dataset.chart)
     const signature = `${dark ? 'd' : 'l'}:${raw.length}:${shortHash(raw)}`
-    if (node.dataset.rendered === signature)
+    if (node.dataset.rendered === signature && hasLiveChart(node))
       continue
     await renderChartNode(root, node, raw, signature, dark)
   }
