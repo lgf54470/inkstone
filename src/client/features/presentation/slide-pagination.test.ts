@@ -100,6 +100,100 @@ describe('planSlidePages — invariants', () => {
   })
 })
 
+// Deterministic pseudo-random decks: a 32-bit LCG, so a failing case is
+// reproducible from its seed without adding a property-testing dependency.
+function lcg(seed: number): (max: number) => number {
+  let state = seed
+  return (max: number) => {
+    state = (Math.imul(state, 1103515245) + 12345) | 0
+    return ((state >>> 0) / 4294967296) * max
+  }
+}
+
+// Tops accumulate from the final heights: a fixture whose offsets disagree with
+// its heights measures a layout that cannot exist.
+function stackHeights(heights: number[], headings: boolean[]): SlideBlock[] {
+  let top = 0
+  return heights.map((height, index) => {
+    const block = { top, height, heading: headings[index] === true }
+    top += height
+    return block
+  })
+}
+
+function generatedDeck(seed: number, count: number): SlideBlock[] {
+  const next = lcg(seed)
+  return stackHeights(
+    Array.from({ length: count }, () => Math.round(20 + next(700))),
+    Array.from({ length: count }, () => next(1) > 0.7),
+  )
+}
+
+function headingDenseDeck(seed: number, count: number): SlideBlock[] {
+  const next = lcg(seed)
+  return stackHeights(
+    Array.from({ length: count }, () => Math.round(20 + next(700))),
+    Array.from({ length: count }, (_unused, index) => index % 2 === 0),
+  )
+}
+
+// Every block fits a page on its own and no heading forces an early break, so
+// white space on these decks is waste rather than layout intent.
+function packableDeck(seed: number, count: number): SlideBlock[] {
+  const next = lcg(seed)
+  return stackHeights(
+    Array.from({ length: count }, () => Math.round(40 + next(300))),
+    Array.from({ length: count }, () => false),
+  )
+}
+
+function spanOf(blocks: SlideBlock[]): number {
+  if (blocks.length === 0) return 0
+  const last = blocks[blocks.length - 1]!
+  return last.top + last.height - blocks[0]!.top
+}
+
+// The regression this guards: a break rule that is too eager silently turns one
+// slide into several half-empty pages. Counting pages against `ceil(span / page)`
+// is not a valid ceiling — a subsection and an atomic oversized block each own a
+// page on purpose — so the budget is expressed as the white space a page may
+// leave, which is where the waste would actually show up.
+describe('planSlidePages — no avoidable blank space', () => {
+  const LIMIT = 640
+
+  it('fills every page but the last to within one block of the canvas', () => {
+    for (let seed = 1; seed <= 60; seed++) {
+      const blocks = packableDeck(seed, 9)
+      const maxBlock = Math.max(...blocks.map((block) => block.height))
+      expect(maxBlock).toBeLessThan(LIMIT)
+      const plan = planSlidePages(blocks, LIMIT)
+      plan.pages.slice(0, -1).forEach((page, index) => {
+        const used = blocks[page.to - 1]!.top + blocks[page.to - 1]!.height - page.top
+        expect(used, `seed ${seed} page ${index}`).toBeGreaterThan(LIMIT - maxBlock)
+      })
+      // Sound consequence of the same bound: each page but the last is more than
+      // `LIMIT - maxBlock` tall, so the deck cannot need more pages than that allows.
+      expect((plan.pages.length - 1) * (LIMIT - maxBlock), `seed ${seed}`).toBeLessThan(spanOf(blocks))
+    }
+  })
+
+  it('starts every page after the first at a heading or a block that did not fit', () => {
+    for (let seed = 1; seed <= 60; seed++) {
+      for (const blocks of [generatedDeck(seed, 9), headingDenseDeck(seed, 12)]) {
+        const plan = planSlidePages(blocks, 480)
+        plan.pages.forEach((page, index) => {
+          if (index === 0) return
+          const previous = plan.pages[index - 1]!
+          const first = blocks[page.from]!
+          const fitsOnPreviousPage = first.top + first.height - previous.top <= 480
+          // A page may only start early to keep a subsection whole, never to leave white space.
+          expect(Boolean(first.heading) || !fitsOnPreviousPage, `seed ${seed} page ${index}`).toBe(true)
+        })
+      }
+    }
+  })
+})
+
 describe('resolvePageIndex', () => {
   it('clamps a sub-page into the current plan instead of rendering off-plan', () => {
     const plan = planSlidePages(stack([[300], [300], [300]]), 640)
