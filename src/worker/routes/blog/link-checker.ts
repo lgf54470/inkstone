@@ -8,7 +8,10 @@ export interface LinkCheckResult {
   finalUrl?: string
 }
 
+import { isAllowedOutboundUrl } from '../../lib/outbound-url'
+
 const TIMEOUT_MS = 8000
+const MAX_REDIRECTS = 4
 const USER_AGENT = 'Mozilla/5.0 (compatible; InkstoneLinkChecker/1.0; +https://github.com/shuaiplus/inkstone)'
 
 function classifyLevel(status: number | null, error?: string): LinkCheckResult['level'] {
@@ -18,33 +21,55 @@ function classifyLevel(status: number | null, error?: string): LinkCheckResult['
   return 'broken'
 }
 
-async function fetchWithMethod(url: string, method: 'HEAD' | 'GET'): Promise<Response> {
-  const res = await fetch(url, {
-    method,
-    redirect: 'follow',
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-    headers: {
-      'User-Agent': USER_AGENT,
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    },
-  })
-  if (method === 'GET' && res.body) {
-    try {
-      await res.body.cancel()
-    } catch {
-      return res
+// Every hop is re-validated, so a public URL cannot redirect the checker
+// into private or reserved networks; relative redirects resolve against the
+// current hop. The caller receives the first non-redirect response.
+async function fetchWithMethod(rawUrl: string, method: 'HEAD' | 'GET'): Promise<{ res: Response; finalUrl: string }> {
+  let current = new URL(rawUrl)
+  for (let hop = 0; hop < MAX_REDIRECTS; hop++) {
+    if (!isAllowedOutboundUrl(current, { allowHttp: true })) {
+      throw new Error('Blocked outbound URL (private or reserved network)')
     }
+    const res = await fetch(current, {
+      method,
+      redirect: 'manual',
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    })
+    const isRedirect = res.status >= 300 && res.status < 400 && res.headers.get('location')
+    if (!isRedirect) {
+      await releaseBody(method, res)
+      return { res, finalUrl: current.toString() }
+    }
+    await releaseBody(method, res)
+    current = new URL(isRedirect, current)
   }
-  return res
+  throw new Error('Too many redirects')
 }
 
-async function probeUrl(url: string): Promise<Response> {
+async function releaseBody(method: 'HEAD' | 'GET', res: Response): Promise<void> {
+  if (method !== 'GET' || !res.body) return
+  await cancelBodyQuietly(res.body)
+}
+
+async function cancelBodyQuietly(body: ReadableStream): Promise<void> {
   try {
-    const res = await fetchWithMethod(url, 'HEAD')
-    if (res.status === 405 || res.status === 403) {
+    await body.cancel()
+  } catch {
+    // Best-effort body release; a failed cancel does not change the verdict.
+  }
+}
+
+async function probeUrl(url: string): Promise<{ res: Response; finalUrl: string }> {
+  try {
+    const head = await fetchWithMethod(url, 'HEAD')
+    if (head.res.status === 405 || head.res.status === 403) {
       return await fetchWithMethod(url, 'GET')
     }
-    return res
+    return head
   } catch {
     return await fetchWithMethod(url, 'GET')
   }
@@ -66,12 +91,11 @@ export async function checkSingleUrl(url: string): Promise<LinkCheckResult> {
   }
 
   try {
-    const res = await probeUrl(url)
+    const { res, finalUrl } = await probeUrl(url)
     const durationMs = Date.now() - start
     const status = res.status
-    const finalUrl = res.url && res.url !== url ? res.url : undefined
     const level = classifyLevel(status)
-    return { url, status, ok: level === 'ok', level, durationMs, finalUrl }
+    return { url, status, ok: level === 'ok', level, durationMs, finalUrl: finalUrl !== url ? finalUrl : undefined }
   } catch (err: unknown) {
     return formatCheckError(err, url, Date.now() - start)
   }

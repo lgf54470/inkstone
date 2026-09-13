@@ -1619,8 +1619,21 @@ const allowed = new Map([
     '// so the origin has to be stamped on the final response to keep cross-origin playback working.',
     '// Routes that know their own lifetime (artwork, audio) keep the header they set.',
   ]],
+  ['src/worker/routes/blog/link-checker.ts', [
+    '// into private or reserved networks; relative redirects resolve against the',
+    '// Every hop is re-validated, so a public URL cannot redirect the checker',
+    '// current hop. The caller receives the first non-redirect response.',
+    '// Best-effort body release; a failed cancel does not change the verdict.',
+    '// current hop. The caller receives the first non-redirect response.',
+  ]],
   ['src/worker/routes/blog/stats.ts', [
     '/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */',
+  ]],
+  ['src/worker/lib/outbound-url.ts', [
+    '// Shared outbound-request guards: the hostname and IP safety checks back both',
+    '// the backup adapters (HTTPS-only) and the blog link checker (HTTP allowed),',
+    '// so private/reserved networks stay unreachable from every user-controlled',
+    '// outbound fetch.',
   ]],
   ['src/worker/routes/blog/visits.ts', [
     '// CF-Connecting-IP is injected by the Cloudflare edge (see requestClientIp);',
