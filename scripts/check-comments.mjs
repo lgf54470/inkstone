@@ -1738,6 +1738,10 @@ const allowed = new Map([
     '// Real D1 batch commits atomically; a savepoint reproduces that here and',
     '// still works when a test drives nested batches.',
   ]],
+  ['tests/auth-routes.test.ts', [
+    '// Password rotation destroys the presented session too and replaces it',
+    '// with a fresh one; every other device session is revoked.',
+  ]],
   ['tests/markdown-renderer-parity.test.ts', [
     '// Structural parity baseline: root and blog renderers keep (and must not silently',
     '// change) these tag/class skeleton differences. Any baseline item that converges',
