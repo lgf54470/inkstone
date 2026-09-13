@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Radio, Snowflake, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Radio, Snowflake, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton } from '../../components/primitives'
@@ -18,10 +18,11 @@ export interface PresentationControlsProps {
   onToggleRail: () => void
   onToggleFollowing: () => void
   onToggleFullscreen: () => void
+  onExport: () => void
   onClose: () => void
 }
 
-export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, following, chromeHidden, onPrev, onNext, onToggleRail, onToggleFollowing, onToggleFullscreen, onClose }: PresentationControlsProps) {
+export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, following, chromeHidden, onPrev, onNext, onToggleRail, onToggleFollowing, onToggleFullscreen, onExport, onClose }: PresentationControlsProps) {
   const fullscreenLabel = isFullscreen ? t('workspace.presentation_exit_fullscreen') : t('workspace.presentation_fullscreen')
   const railLabel = railOpen ? t('workspace.presentation_hide_slides') : t('workspace.presentation_show_slides')
   const followLabel = following ? t('workspace.presentation_freeze') : t('workspace.presentation_follow')
@@ -49,6 +50,11 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
       <Tooltip label={fullscreenLabel} side='top'>
         <IconButton label={fullscreenLabel} size='sm' onClick={onToggleFullscreen}>
           {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+        </IconButton>
+      </Tooltip>
+      <Tooltip label={t('workspace.presentation_export')} side='top'>
+        <IconButton label={t('workspace.presentation_export')} size='sm' onClick={onExport}>
+          <Download size={14} />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('workspace.presentation_exit')} side='top'>

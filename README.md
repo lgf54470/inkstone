@@ -28,7 +28,7 @@ Every new account automatically receives two standard starter notes, one in Chin
 
 | Area | Included |
 | --- | --- |
-| Writing | CodeMirror 6 editor, independently editable note titles, **two-note editor groups**, per-group editor/split/preview layouts, synchronized scrolling, outline, **focus mode**, **typewriter mode**, **autosave**, **version history**, and **presentation mode** (decks split on `---`, fullscreen playback, slide list, live follow with a freeze switch) |
+| Writing | CodeMirror 6 editor, independently editable note titles, **two-note editor groups**, per-group editor/split/preview layouts, synchronized scrolling, outline, **focus mode**, **typewriter mode**, **autosave**, **version history**, and **presentation mode** (decks split on `---`, fullscreen playback, slide list, live follow with a freeze switch, PDF export) |
 | Markdown | GFM tables and task lists, footnotes, Obsidian-style comments, WikiLinks, embeds, block IDs, callouts, details blocks, tabs, **math**, **Mermaid diagrams**, **PrismJS syntax highlighting**, and **Front Matter** |
 | Organization | Nested folders with drag-and-drop ordering, inline tags, favorites, pinning, archive, trash, **wiki links**, backlinks, block references, note embeds, and a relationship graph |
 | Search | D1 FTS5 **full-text search** with Chinese indexing, filters, recent notes, command-palette navigation, and optional private **semantic/hybrid search** powered by Workers AI |
@@ -55,6 +55,8 @@ A show follows the note it was started from, so an edit — including one arrivi
 | `Esc` | Exit the show and return focus to the button that started it |
 
 The list on the left is a page list, not a slide list: every page gets an entry with a thumbnail of that page, and a click jumps straight to it. A `---` slide that paginates shows all of its pages, so a note written without any `---` still gets a full sidebar. The whole deck is measured in the background while the show is idle, so every page is listed from the start — including the slides the show has not reached yet. During a show the controls fade out and come back on the next pointer move or key press.
+
+Exporting the deck runs through the browser's print pipeline: the download control builds one printable page per page the show has, from the same measured pages and the same prepared markup, so "Save as PDF" produces a handout that matches the talk page for page.
 
 ## New note templates
 

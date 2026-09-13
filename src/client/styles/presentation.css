@@ -41,3 +41,44 @@
 .ink-slide-rail-thumb .ink-prose {
   pointer-events: none;
 }
+
+.deck-print-sheet {
+  display: none;
+}
+
+@media print {
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body > *:not(.deck-print-sheet) {
+    display: none !important;
+  }
+
+  .deck-print-sheet {
+    display: block;
+    background: var(--bg-editor);
+  }
+
+  .deck-print-page {
+    position: relative;
+    overflow: hidden;
+    width: var(--deck-page-width);
+    height: var(--deck-page-height);
+    background: var(--bg-editor);
+    break-after: page;
+    print-color-adjust: exact;
+  }
+
+  .deck-print-page:last-child {
+    break-after: auto;
+  }
+
+  .deck-print-body {
+    position: absolute;
+    top: var(--deck-pad-y);
+    left: var(--deck-pad-x);
+  }
+}

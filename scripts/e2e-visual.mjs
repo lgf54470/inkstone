@@ -85,6 +85,7 @@ const LABELS = {
   preview: ['预览', 'Preview'],
   present: ['演示模式', 'Presentation mode'],
   presentExit: ['退出演示', 'Exit presentation'],
+  presentExport: ['导出幻灯片为 PDF', 'Export deck as PDF'],
   presentFreeze: ['冻结当前快照', 'Freeze this snapshot'],
   presentFollow: ['跟随笔记更新', 'Follow the note'],
 }
@@ -398,6 +399,40 @@ async function assertPresentationPages(page) {
   await sleep(600)
 }
 
+// Exporting the deck runs through the browser's print pipeline, so this asserts two things the
+// promise rests on: the sheet it prints holds one page box per deck page (built from the same
+// measured plans the show walks), and the PDF Chrome actually renders from it has that many
+// pages. The PDF is counted by its page objects, which is what "the pages match the show" means.
+async function assertDeckExport(page) {
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  const entries = await waitForRailFilled(page)
+  await clickPresentationControl(page, LABELS.presentExport)
+  await sleep(800)
+  const sheet = await page.evaluate(() => {
+    const pages = [...document.querySelectorAll('[data-deck-print] .deck-print-page')]
+    return {
+      pages: pages.length,
+      withContent: pages.filter((box) => box.querySelector('.ink-prose')?.children.length ?? 0 > 0).length,
+      pageRule: [...document.styleSheets]
+        .flatMap((sheet) => { try { return [...sheet.cssRules] } catch { return [] } })
+        .filter((rule) => rule.constructor.name === 'CSSPageRule')
+        .map((rule) => rule.cssText)
+        .find((text) => /size:/.test(text)) ?? '',
+    }
+  })
+  check('export: the print sheet holds one page per deck page', sheet.pages > 1 && sheet.pages === entries, `sheet=${sheet.pages} rail=${entries}`)
+  check('export: every printed page carries its own content', sheet.withContent === sheet.pages, `content=${sheet.withContent}/${sheet.pages}`)
+  check('export: the print page size follows the design canvas', /size: \d+px \d+px/.test(sheet.pageRule), sheet.pageRule.slice(0, 60))
+
+  const pdf = Buffer.from(await page.pdf({ printBackground: true, preferCSSPageSize: true }))
+  const printed = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length
+  check('export: the printed PDF has the deck page count', printed === sheet.pages, `pdf=${printed} sheet=${sheet.pages}`)
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+}
+
 // A fresh note pasted with a fixed deck, so the assertions do not depend on where the
 // caret happened to be in the note the earlier steps were editing.
 async function openDeckNote(page) {
@@ -575,6 +610,7 @@ async function main() {
     await assertPresentation(page)
     await assertPresentationSession(page)
     await assertPresentationPages(page)
+    await assertDeckExport(page)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.
