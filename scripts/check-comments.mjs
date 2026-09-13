@@ -1719,6 +1719,8 @@ const allowed = new Map([
     '// the cost does not grow with every deleted row the index has to walk.',
   ]],
   ['src/worker/routes/search/graph.ts', [
+    '// Link degrees are aggregated once per user (single pass over links) and',
+    '// joined by note id, instead of three correlated sub-probes per note row.',
     '// `tagsMatch=all` intersects the tag filters, otherwise any match qualifies.',
   ]],
   ['src/worker/routes/search/query.ts', [
@@ -1754,6 +1756,9 @@ const allowed = new Map([
   ['tests/auth-routes.test.ts', [
     '// Password rotation destroys the presented session too and replaces it',
     '// with a fresh one; every other device session is revoked.',
+  ]],
+  ['tests/graph-routes.test.ts', [
+    '// 26-char valid ids ([0-9a-hjkmnp-tv-z]{26}); the graph route validates center/folder formats',
   ]],
   ['tests/markdown-renderer-parity.test.ts', [
     '// Structural parity baseline: root and blog renderers keep (and must not silently',

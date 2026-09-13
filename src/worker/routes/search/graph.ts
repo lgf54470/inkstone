@@ -38,12 +38,25 @@ type GraphRow = {
   out_degree: number
 }
 
-const degreeSelect = `
-  (SELECT COUNT(*) FROM links ld WHERE ld.user_id = ? AND ld.target_note_id IS NOT NULL
-    AND (ld.source_note_id = n.id OR ld.target_note_id = n.id)) AS degree,
-  (SELECT COUNT(*) FROM links li WHERE li.user_id = ? AND li.target_note_id = n.id) AS in_degree,
-  (SELECT COUNT(*) FROM links lo WHERE lo.user_id = ? AND lo.source_note_id = n.id
-    AND lo.target_note_id IS NOT NULL) AS out_degree`
+// Link degrees are aggregated once per user (single pass over links) and
+// joined by note id, instead of three correlated sub-probes per note row.
+const degreeJoin = `
+  LEFT JOIN (
+    SELECT note_id,
+           SUM(is_endpoint) AS degree,
+           SUM(is_target) AS in_degree,
+           SUM(is_source) AS out_degree
+    FROM (
+      SELECT source_note_id AS note_id, 1 AS is_endpoint, 0 AS is_target, 1 AS is_source
+        FROM links WHERE user_id = ? AND target_note_id IS NOT NULL
+      UNION ALL
+      SELECT target_note_id AS note_id, 1, 1, 0
+        FROM links WHERE user_id = ? AND target_note_id IS NOT NULL
+    ) GROUP BY note_id
+  ) d ON d.note_id = n.id`
+
+const degreeColumns = `COALESCE(d.degree, 0) AS degree,
+  COALESCE(d.in_degree, 0) AS in_degree, COALESCE(d.out_degree, 0) AS out_degree`
 
 export function registerSearchGraphRoutes(searchRoutes: Hono<AppBindings>): void {
   searchRoutes.get('/graph', requireAuth, graphHandler)
@@ -138,7 +151,7 @@ function buildGraphFilters(params: GraphParams): { filters: string[]; filterBind
         filters.push(`EXISTS (
           SELECT 1 FROM note_tags nt_filter
           JOIN tags t_filter ON t_filter.id = nt_filter.tag_id AND t_filter.user_id = n.user_id
-          WHERE nt_filter.note_id = n.id AND t_filter.name = ?${filterBinds.length + 1} COLLATE NOCASE
+          WHERE nt_filter.note_id = n.id AND t_filter.name = ? COLLATE NOCASE
         )`)
         filterBinds.push(tag)
       }
@@ -185,12 +198,13 @@ async function runLocalGraphQuery(
   const result = await db.prepare(
     `${neighborhood}
      SELECT n.id, n.title, n.folder_id, f.name AS folder_name, f.color AS folder_color,
-       ${degreeSelect}, nearby.depth
+       ${degreeColumns}, nearby.depth
      FROM nearby JOIN notes n ON n.id = nearby.id
      LEFT JOIN folders f ON f.id = n.folder_id AND f.user_id = n.user_id
+     ${degreeJoin}
      WHERE ${filters.join(' AND ')}
-     ORDER BY nearby.depth ASC, degree DESC, n.updated_at DESC, n.id ASC LIMIT ?`,
-  ).bind(...prefixBinds, params.userId, params.userId, params.userId, ...filterBinds, params.limit + 1).all<GraphRow>()
+     ORDER BY nearby.depth ASC, COALESCE(d.degree, 0) DESC, n.updated_at DESC, n.id ASC LIMIT ?`,
+  ).bind(...prefixBinds, params.userId, params.userId, ...filterBinds, params.limit + 1).all<GraphRow>()
   const count = await db.prepare(
     `${neighborhood} SELECT COUNT(*) AS count FROM nearby JOIN notes n ON n.id = nearby.id
      WHERE ${filters.join(' AND ')}`,
@@ -206,11 +220,12 @@ async function runGlobalGraphQuery(
 ): Promise<{ rows: GraphRow[]; totalNodes: number }> {
   const result = await db.prepare(
     `SELECT n.id, n.title, n.folder_id, f.name AS folder_name, f.color AS folder_color,
-       ${degreeSelect}
+       ${degreeColumns}
      FROM notes n LEFT JOIN folders f ON f.id = n.folder_id AND f.user_id = n.user_id
+     ${degreeJoin}
      WHERE ${filters.join(' AND ')}
-     ORDER BY degree DESC, n.updated_at DESC, n.id ASC LIMIT ?`,
-  ).bind(params.userId, params.userId, params.userId, ...filterBinds, params.limit + 1).all<GraphRow>()
+     ORDER BY COALESCE(d.degree, 0) DESC, n.updated_at DESC, n.id ASC LIMIT ?`,
+  ).bind(params.userId, params.userId, ...filterBinds, params.limit + 1).all<GraphRow>()
   const count = await db.prepare(
     `SELECT COUNT(*) AS count FROM notes n WHERE ${filters.join(' AND ')}`,
   ).bind(...filterBinds).first<{ count: number }>()
