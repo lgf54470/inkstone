@@ -395,6 +395,22 @@ async function assertPresentationPages(page) {
 
   const second = await clickPageEntry(page, deck.widestSlide, 1)
   check('presentation pages: clicking a page entry lands on that page', second.numerator === 2, `chip=${second.numerator}/${second.denominator}`)
+
+  // The list renders the same prepared markup the projector shows — diagrams and math included —
+  // and keeps doing so when the theme changes mid-talk, which is what happens to anyone on the
+  // "system" setting when the OS flips. The deck is re-prepared for the new theme, so this polls
+  // for the list to catch up instead of asserting on the frame right after the flip.
+  await jumpToFirstPage(page)
+  const prepared = await waitForRenderedMarkup(page)
+  check('presentation pages: a thumbnail renders the markup the projector prepared', sameArtifacts(prepared), `stage=${describeArtifacts(prepared.stage)} thumb=${describeArtifacts(prepared.thumb)}`)
+
+  await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])
+  await sleep(400)
+  check('presentation pages: the system theme flip reaches the show', (await readRenderedMarkup(page)).theme === 'dark')
+  const flipped = await waitForRenderedMarkup(page)
+  check('presentation pages: a theme flip re-prepares the list instead of leaving placeholders', sameArtifacts(flipped), `stage=${describeArtifacts(flipped.stage)} thumb=${describeArtifacts(flipped.thumb)}`)
+  await page.emulateMediaFeatures([])
+
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
 }
@@ -489,6 +505,50 @@ async function assertDeckExport(page) {
 
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
+}
+
+// Jumps back to the deck's first page, so the thumbnail under test is the one holding the
+// diagram and the math.
+async function jumpToFirstPage(page) {
+  await page.evaluate(() => {
+    document.querySelector('[data-presentation-rail] [data-entry-index][data-slide-index="0"][data-slide-page="0"]')?.click()
+  })
+  await sleep(900)
+}
+
+// The rendered artifacts (a diagram, rendered math) a slide surface shows, taken from the active
+// page's thumbnail next to the projector itself.
+async function readRenderedMarkup(page) {
+  return page.evaluate(() => {
+    const count = (root, selector) => root?.querySelectorAll(selector).length ?? 0
+    const artifacts = (root) => ({ svg: count(root, 'svg'), katex: count(root, '.katex') })
+    const panel = document.querySelector('[role="dialog"]')
+    const stage = panel?.querySelector('[data-slide-canvas] [data-slide-page]')
+    const active = panel?.querySelector('[data-presentation-rail] [data-entry-index][aria-current="true"] .ink-slide-rail-thumb .ink-prose')
+    return {
+      theme: document.documentElement.dataset.theme ?? '',
+      stage: artifacts(stage),
+      thumb: artifacts(active),
+    }
+  })
+}
+
+function sameArtifacts(markup) {
+  return markup.stage.svg > 0 && markup.thumb.svg === markup.stage.svg && markup.thumb.katex === markup.stage.katex
+}
+
+function describeArtifacts(artifacts) {
+  return `svg=${artifacts.svg},katex=${artifacts.katex}`
+}
+
+// The deck is re-prepared one slide per idle slice, so the list catches up asynchronously.
+async function waitForRenderedMarkup(page) {
+  let markup = await readRenderedMarkup(page)
+  for (let attempt = 0; attempt < 30 && !sameArtifacts(markup); attempt++) {
+    await sleep(500)
+    markup = await readRenderedMarkup(page)
+  }
+  return markup
 }
 
 // A fresh note pasted with a fixed deck, so the assertions do not depend on where the
@@ -611,7 +671,18 @@ const LIVE_EDIT_TWO = '\n\n---\n\n## Ignored\n\nWritten after the freeze.\n\n'
 const PAGINATED_DECK = [
   '# Short opening',
   '',
-  'One page of talk.',
+  'One page of talk, with a diagram and math so the slide list has rendered markup to show.',
+  '',
+  '```mermaid',
+  'flowchart LR',
+  '  A[Source] --> B[Preview]',
+  '```',
+  '',
+  'Inline $E = mc^2$ and a block:',
+  '',
+  '$$',
+  'a^2 + b^2 = c^2',
+  '$$',
   '',
   '---',
   '',

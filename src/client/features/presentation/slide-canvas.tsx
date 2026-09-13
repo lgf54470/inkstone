@@ -64,9 +64,12 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   // for the first commit: reporting that would tell the show — and the slide list — that
   // the new slide has as many pages as the old one, and the show clamps the presenter's
   // page against that number, which bounced a click on page 2 back to page 1.
+  // A rendered diagram bumps the version, and that report matters too: the deck-measuring
+  // pass captures the canvas's markup for the slide list, and the capture has to be the one
+  // taken after the diagrams are in place, or the list shows their loading placeholders.
   useEffect(() => {
     if (measured) onPlan(plan)
-  }, [measured, plan, onPlan])
+  }, [measured, plan, renderVersion, onPlan])
   const page = plan.pages[resolvePageIndex(plan, subPage)]
 
   return (

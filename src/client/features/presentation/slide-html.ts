@@ -7,6 +7,7 @@ import { resolvePageIndex, type SlidePlan } from './slide-pagination'
 // same cache, which is why the key is derived here instead of inside the canvas.
 const slideHtmlCache = new Map<string, string>()
 const SLIDE_HTML_CACHE_LIMIT = 60
+const slideHtmlListeners = new Set<() => void>()
 
 export function hashContent(value: string): string {
   let hash = 5381
@@ -29,6 +30,17 @@ export function rememberSlideHtml(key: string, html: string): void {
     const oldest = slideHtmlCache.keys().next().value
     if (oldest === undefined) break
     slideHtmlCache.delete(oldest)
+  }
+  for (const listener of slideHtmlListeners) listener()
+}
+
+// Readers that render from the cache subscribe to it: a slide's markup is written several
+// times (the plain render, then the enhanced one, then a canvas's diagram-bearing capture),
+// and a reader that only looked once would keep the placeholder it saw first.
+export function subscribeSlideHtml(listener: () => void): () => void {
+  slideHtmlListeners.add(listener)
+  return () => {
+    slideHtmlListeners.delete(listener)
   }
 }
 

@@ -211,7 +211,7 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
     toggleFollowing,
     exportDeck: print.exportDeck,
     print: print.sheet,
-    preflight: { deck, cacheKeys, fingerprint, metrics, plans, content: presentedContent, noteTitle, onPlan: nav.reportPlan },
+    preflight: { deck, cacheKeys, fingerprint, metrics, content: presentedContent, noteTitle, onPlan: nav.reportPlan },
   }
 }
 

@@ -23,16 +23,15 @@ export interface SlidePreflightProps {
   cacheKeys: string[]
   fingerprint: string
   metrics: StageMetrics
-  plans: Record<number, SlidePlan>
   content: string
   noteTitle: string
   onPlan: (slide: number, plan: SlidePlan) => void
 }
 
-export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, plans, content, noteTitle, onPlan }: SlidePreflightProps) {
+export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, content, noteTitle, onPlan }: SlidePreflightProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const dark = useIsDarkTheme()
-  const { cursor, report } = usePreflightPass({ deckLength: deck.length, fingerprint, cacheKeys, plans, hostRef, onPlan })
+  const { cursor, report } = usePreflightPass({ deckLength: deck.length, fingerprint, dark, cacheKeys, hostRef, onPlan })
   useSlideHtml({ open: cursor !== null, deck, index: cursor ?? 0, fingerprint, content, noteTitle, dark })
   const key = cursor === null ? '' : cacheKeys[cursor] ?? ''
   if (!key || !readSlideHtml(key)) return null
@@ -59,68 +58,98 @@ export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, plans, c
   )
 }
 
+// The pass keeps its own progress and its own timer: what it has visited, what it gave up on,
+// and the idle handle it would cancel. Deriving the progress from the measured plans would be
+// wrong, because a plan outlives a theme flip while the markup it was measured from does not —
+// every slide has to be visited again to put the diagrams back into the cache for the new theme.
+function usePassState(): {
+  done: RefObject<Set<number>>
+  skipped: RefObject<Set<number>>
+  idle: RefObject<(() => void) | null>
+  cursorRef: RefObject<number | null>
+} {
+  return {
+    done: useRef<Set<number>>(new Set()),
+    skipped: useRef<Set<number>>(new Set()),
+    idle: useRef<(() => void) | null>(null),
+    cursorRef: useRef<number | null>(null),
+  }
+}
+
 // The pass itself: which slide is being measured, what to do with its measurement and how
 // one slide hands over to the next. It advances on the canvas's own report, so a slide's
 // plan is always the one measured from the markup that was really on screen.
-function usePreflightPass({ deckLength, fingerprint, cacheKeys, plans, hostRef, onPlan }: {
+function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, onPlan }: {
   deckLength: number
   fingerprint: string
+  dark: boolean
   cacheKeys: string[]
-  plans: Record<number, SlidePlan>
   hostRef: RefObject<HTMLDivElement | null>
   onPlan: (slide: number, plan: SlidePlan) => void
 }): { cursor: number | null; report: (plan: SlidePlan) => void } {
-  const reported = useRef(plans)
-  reported.current = plans
-  const skipped = useRef<Set<number>>(new Set())
-  const idle = useRef<(() => void) | null>(null)
+  const pass = usePassState()
+  const { done, skipped, idle, cursorRef } = pass
   const [cursor, setCursor] = useState<number | null>(null)
-  const cursorRef = useRef<number | null>(null)
   cursorRef.current = cursor
 
-  // One slide per idle slice keeps a long deck from holding frames while someone is
-  // talking; the fallback timer covers browsers without requestIdleCallback.
+  // One slide per idle slice keeps a long deck from holding frames while someone is talking; the
+  // fallback timer covers browsers without requestIdleCallback.
   const scheduleNext = useCallback((from: number) => {
     idle.current?.()
     idle.current = scheduleIdle(() => {
-      setCursor(nextUnmeasuredSlide(deckLength, measuredSlides(reported.current, skipped.current), from))
+      setCursor(nextUnmeasuredSlide(deckLength, [...done.current, ...skipped.current], from))
     })
-  }, [deckLength])
+  }, [deckLength, done, skipped, idle])
 
-  // An edited note re-splits into different slides, so the pass starts over and waits
-  // for idle before its first mount rather than competing with the show's first paint.
+  // An edited note re-splits into different slides and a theme flip invalidates every slide's
+  // markup, so either way the pass starts over and waits for idle before its first mount rather
+  // than competing with the show's first paint.
   useEffect(() => {
+    done.current = new Set()
     skipped.current = new Set()
     scheduleNext(0)
     return () => idle.current?.()
-  }, [deckLength, fingerprint, scheduleNext])
+  }, [deckLength, fingerprint, dark, scheduleNext, done, skipped, idle])
 
   const report = useCallback((plan: SlidePlan) => {
     const slide = cursorRef.current
     if (slide === null) return
-    const html = hostRef.current?.querySelector<HTMLElement>('[data-slide-page]')?.innerHTML
-    const key = cacheKeys[slide]
-    if (html && key) rememberSlideHtml(key, html)
-    onPlan(slide, plan)
+    publishPlan(slide, plan, { hostRef, cacheKeys, onPlan })
+    done.current.add(slide)
     scheduleNext(slide + 1)
   }, [cacheKeys, hostRef, onPlan, scheduleNext])
 
-  // A slide that never reports (a pathological diagram, say) is skipped instead of
-  // pausing the pass; the canvas still measures it when the presenter reaches it.
-  useEffect(() => {
-    if (cursor === null) return
-    const stalled = window.setTimeout(() => {
-      skipped.current.add(cursor)
-      scheduleNext(cursor + 1)
-    }, STALL_MS)
-    return () => window.clearTimeout(stalled)
-  }, [cursor, scheduleNext])
+  // A slide that never reports (a pathological diagram, say) is skipped instead of pausing the
+  // pass; the canvas still measures it when the presenter reaches it.
+  const skipStalled = useCallback((slide: number) => {
+    skipped.current.add(slide)
+    scheduleNext(slide + 1)
+  }, [scheduleNext])
+  useStallGuard(cursor, skipStalled)
 
   return { cursor, report }
 }
 
-function measuredSlides(plans: Record<number, SlidePlan>, skipped: Set<number>): number[] {
-  return [...Object.keys(plans).map(Number), ...skipped]
+// What a measurement means: the markup it came from goes back to the cache under the slide's key
+// (so the projector's later visit is a cache hit instead of a second render) and the plan goes to
+// the show, which lists this slide's pages.
+function publishPlan(slide: number, plan: SlidePlan, { hostRef, cacheKeys, onPlan }: {
+  hostRef: RefObject<HTMLDivElement | null>
+  cacheKeys: string[]
+  onPlan: (slide: number, plan: SlidePlan) => void
+}): void {
+  const html = hostRef.current?.querySelector<HTMLElement>('[data-slide-page]')?.innerHTML
+  const key = cacheKeys[slide]
+  if (html && key) rememberSlideHtml(key, html)
+  onPlan(slide, plan)
+}
+
+function useStallGuard(cursor: number | null, onStall: (slide: number) => void): void {
+  useEffect(() => {
+    if (cursor === null) return
+    const stalled = window.setTimeout(() => onStall(cursor), STALL_MS)
+    return () => window.clearTimeout(stalled)
+  }, [cursor, onStall])
 }
 
 function scheduleIdle(callback: () => void): () => void {

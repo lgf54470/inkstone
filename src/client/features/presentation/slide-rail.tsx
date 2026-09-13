@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent, type RefObject } from 'react'
 import type { ProseFont } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { entryIndexOf, railEntries, type RailEntry } from './presentation-state'
-import { readSlideHtml, renderSlideSource, slicePageHtml } from './slide-html'
+import { readSlideHtml, renderSlideSource, slicePageHtml, subscribeSlideHtml } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import { SlideProse } from './slide-prose'
 import { SLIDE_PAD_X, SLIDE_PAD_Y } from './slide-stage'
@@ -163,7 +163,11 @@ function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, 
 }) {
   const thumbRef = useRef<HTMLSpanElement>(null)
   const near = useNearViewport(thumbRef)
-  const html = usePageHtml({ near, cacheKey, source, plan, sub: entry.sub, view })
+  // The thumbnail renders the prepared markup the projector shows, so it follows the cache
+  // rather than reading it once: a theme flip or an edit replaces a slide's markup under it,
+  // and a single read left the thumbnail on an un-rendered placeholder for the rest of the show.
+  const cached = useSyncExternalStore(subscribeSlideHtml, () => readSlideHtml(cacheKey) ?? '', () => '')
+  const html = usePageHtml({ near, cacheKey, cached, source, plan, sub: entry.sub, view })
 
   return (
     <button
@@ -205,13 +209,13 @@ function pageLabel(entry: RailEntry, deckLength: number): string {
 // Thumbnails render from the same cached markup the canvas measured, so a page's
 // image matches what the projector shows for it; the slice keeps one page's blocks
 // per entry instead of mounting the whole slide once per page.
-function usePageHtml({ near, cacheKey, source, plan, sub, view }: { near: boolean; cacheKey: string; source: string; plan: SlidePlan | undefined; sub: number; view: RailView }): string {
+function usePageHtml({ near, cacheKey, cached, source, plan, sub, view }: { near: boolean; cacheKey: string; cached: string; source: string; plan: SlidePlan | undefined; sub: number; view: RailView }): string {
   return useMemo(() => {
     if (!near) return ''
-    const html = readSlideHtml(cacheKey) ?? renderSlideSource(source, view.externalImages).html
+    const html = cached || renderSlideSource(source, view.externalImages).html
     if (!plan) return html
     return slicePageHtml(html, plan, sub, view.thumb.contentWidth, view.thumb.contentHeight)
-  }, [near, cacheKey, source, plan, sub, view])
+  }, [near, cacheKey, cached, source, plan, sub, view])
 }
 
 // Thumbnails are decorative and rendered from the same design canvas, so they show
