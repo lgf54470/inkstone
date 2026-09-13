@@ -441,25 +441,100 @@ async function assertPresentationPages(page) {
 function isReviewedIncomplete(item) {
   if (item.id === 'aria-hidden-focus' || item.id === 'duplicate-id-aria') return true
   // axe cannot compute a background it only partly sees, which is a review item rather than a
-  // failure: a one-character label ("it cannot decide whether a single digit is text") and text the
-  // scaled slide canvas overlaps (a chart's rendered image) both land here. Real contrast failures
-  // still arrive as violations — the light-theme callout title above was one.
-  return item.id === 'color-contrast' && /too short to determine|partially overlaps/.test(item.note)
+  // failure: a one-character label ("it cannot decide whether a single digit is text"), a keyboard
+  // badge that is drawn from glyphs rather than letters, and text the scaled slide canvas overlaps
+  // (a chart's rendered image) all land here. Real contrast failures still arrive as violations —
+  // the light-theme callout title and the two token fixes below were all found this way.
+  return item.id === 'color-contrast' && /too short to determine|partially overlaps|partially obscured|only non-text characters/.test(item.note)
+}
+
+// Injected once per page: axe ships its own browser build, and evaluating it keeps the app's CSP
+// untouched (a script tag would be refused).
+async function ensureAxe(page) {
+  if (await page.evaluate(() => Boolean(window.axe))) return
+  await page.evaluate(fs.readFileSync('node_modules/axe-core/axe.min.js', 'utf8'))
+}
+
+// Both of the shell's panels are named rather than found: "the dialog" in this app is whatever was
+// opened last, and the palette and the settings panel are the two the scenario cares about.
+const PALETTE_PANEL = '[role="dialog"]:has(input[role="combobox"])'
+const SETTINGS_PANEL = '[role="dialog"]:not(:has(input[role="combobox"]))'
+
+// A panel animates in, and opacity is part of what axe reads: a dialog measured mid-flight reads as
+// dimmed text and reports a contrast failure that is really about the animation.
+async function waitForPanelSettled(page, selector) {
+  await page.waitForFunction((sel) => {
+    const panel = document.querySelector(sel)
+    return Boolean(panel) && getComputedStyle(panel).opacity === '1'
+  }, { timeout: 10_000 }, selector)
+}
+
+async function runAxe(page, selector) {
+  return page.evaluate(async (root) => {
+    const target = root ? document.querySelector(root) : document
+    if (!target) throw new Error(`axe: no element matching ${root}`)
+    const results = await window.axe.run(target, { resultTypes: ['violations', 'incomplete'] })
+    const summarize = (items) => items.map((item) => ({
+      id: item.id,
+      count: item.nodes.length,
+      target: (item.nodes[0]?.target ?? []).join(' ').slice(0, 90),
+      note: (item.nodes[0]?.failureSummary ?? '').replace(/\s+/g, ' ').slice(0, 140),
+      // The node itself, because a failing target is a Tailwind class soup nobody can read.
+      html: (item.nodes[0]?.html ?? '').replace(/\s+/g, ' ').slice(0, 200),
+    }))
+    return { violations: summarize(results.violations), incomplete: summarize(results.incomplete), passes: results.passes.length }
+  }, selector)
+}
+
+// The shell the slide surface sits in: the sidebar the deck is listed in, the palette a presenter
+// reaches for mid-talk, and the settings dialog they open to change the type scale. Each is its own
+// scenario with its own assertion, so a regression names the surface it happened on.
+//
+// The token contrast the gate found here was real and shared: the dim text tiers sat at 4.29 and
+// 3.28 on light surfaces, and an accent sat at 3.92 on its own soft tint (where the sidebar and the
+// palette both put it as text). They are fixed in styles/tokens.css — the drift baseline records
+// the deliberate change — and this gate is what keeps them there. Dark-theme tokens are not covered
+// here: the run is in the light theme, which is what the app resolves to under the default system
+// preference.
+async function assertShellAccessibility(page) {
+  await ensureAxe(page)
+  // The show leaves its own dialog behind for a beat after it closes, so the scenarios below wait
+  // for the slide surface to be gone before they measure anything — and they name the panel they
+  // mean on top of that, because "the dialog" is not one thing in this shell.
+  await page.waitForFunction(() => !document.querySelector('[data-presentation-rail]'), { timeout: 15_000 })
+  const sidebar = await runAxe(page, 'aside')
+  check('a11y: the sidebar has no axe violations', sidebar.violations.length === 0, JSON.stringify(sidebar.violations.slice(0, 3)))
+  check('a11y: axe inspected the sidebar tree', sidebar.passes >= 20, `passes=${sidebar.passes}`)
+
+  await page.keyboard.down('Control')
+  await page.keyboard.press('k')
+  await page.keyboard.up('Control')
+  await page.waitForSelector('[role="dialog"] input[role="combobox"]', { timeout: 10_000 })
+  await waitForPanelSettled(page, PALETTE_PANEL)
+  const palette = await runAxe(page, PALETTE_PANEL)
+  check('a11y: the command palette has no axe violations', palette.violations.length === 0, JSON.stringify(palette.violations.slice(0, 3)))
+  await page.keyboard.press('Escape')
+  await sleep(400)
+
+  await page.keyboard.down('Control')
+  await page.keyboard.press(',')
+  await page.keyboard.up('Control')
+  await waitForPanelSettled(page, SETTINGS_PANEL)
+  const settings = await runAxe(page, SETTINGS_PANEL)
+  check('a11y: the settings dialog has no axe violations', settings.violations.length === 0, JSON.stringify(settings.violations.slice(0, 3)))
+
+  const unexpected = [...sidebar.incomplete, ...palette.incomplete, ...settings.incomplete].filter((item) => !isReviewedIncomplete(item))
+  check('a11y: no unexpected axe review items in the shell', unexpected.length === 0, JSON.stringify(unexpected.slice(0, 3)))
+  await page.keyboard.press('Escape')
+  await sleep(400)
 }
 
 async function assertPresentationAccessibility(page) {
   await clickButton(page, LABELS.present)
   await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
   await waitForRailFilled(page)
-  await page.evaluate(fs.readFileSync('node_modules/axe-core/axe.min.js', 'utf8'))
-  const report = await page.evaluate(async () => {
-    const results = await window.axe.run(document.querySelector('[role="dialog"]'), { resultTypes: ['violations', 'incomplete'] })
-    return {
-      violations: results.violations.map((item) => `${item.id} (${item.nodes.length}): ${(item.nodes[0]?.target ?? []).join(' ')}`),
-      incomplete: results.incomplete.map((item) => ({ id: item.id, target: (item.nodes[0]?.target ?? []).join(' ').slice(0, 80), note: (item.nodes[0]?.failureSummary ?? '').replace(/\s+/g, ' ').slice(0, 120) })),
-      passes: results.passes.length,
-    }
-  })
+  await ensureAxe(page)
+  const report = await runAxe(page, '[role="dialog"]')
   check('a11y: the presentation overlay has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
   const unexpected = report.incomplete.filter((item) => !isReviewedIncomplete(item))
   check('a11y: no unexpected axe review items', unexpected.length === 0, JSON.stringify(unexpected))
@@ -833,6 +908,7 @@ async function main() {
     await assertPresentation(page)
     await assertPresentationSession(page)
     await assertPresentationPages(page)
+    await assertShellAccessibility(page)
     await assertPresentationAccessibility(page)
     await assertDeckExport(page)
     await assertDeckImageExport(page)
