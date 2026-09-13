@@ -13,6 +13,8 @@
 //
 // Usage: node scripts/e2e-visual.mjs [baseUrl]   (default http://localhost:7712)
 import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import puppeteer from 'puppeteer-core'
 
 const BASE = process.argv[2] ?? 'http://localhost:7712'
@@ -86,6 +88,7 @@ const LABELS = {
   present: ['演示模式', 'Presentation mode'],
   presentExit: ['退出演示', 'Exit presentation'],
   presentExport: ['导出幻灯片为 PDF', 'Export deck as PDF'],
+  presentExportImages: ['导出幻灯片为图片序列', 'Export deck as images'],
   presentFreeze: ['冻结当前快照', 'Freeze this snapshot'],
   presentFollow: ['跟随笔记更新', 'Follow the note'],
 }
@@ -539,6 +542,37 @@ async function assertDeckExport(page) {
   await sleep(600)
 }
 
+// The image export is the same deck through a different renderer, so what it has to prove is that a
+// file came out of it: every page rasterized (the sheet reports that itself, and it only reports it
+// after the archive was handed to the browser) and the browser then wrote the archive somewhere.
+// Its pages are the page boxes the PDF export uses, built from the same measured plans.
+async function assertDeckImageExport(page) {
+  const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'inkstone-deck-images-'))
+  const client = await page.createCDPSession()
+  await client.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir })
+
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  const entries = await waitForRailFilled(page)
+  await clickPresentationControl(page, LABELS.presentExportImages)
+  await page.waitForSelector('[data-deck-print][data-deck-image-ready="true"]', { timeout: 60_000 })
+  const images = await page.evaluate(() => {
+    const sheet = document.querySelector('[data-deck-print][data-deck-image-ready]')
+    return {
+      pages: sheet?.querySelectorAll('.deck-print-page').length ?? 0,
+      charts: sheet?.querySelectorAll('[data-chart] canvas').length ?? 0,
+    }
+  })
+  check('export: the image export carries one page per deck page', images.pages > 1 && images.pages === entries, `images=${images.pages} rail=${entries}`)
+  check('export: the image export draws its charts on the sheet', images.charts > 0, `charts=${images.charts}`)
+
+  await sleep(2000)
+  const saved = fs.readdirSync(downloadDir)
+  check('export: the deck images are saved as one archive', saved.some((name) => name.endsWith('.zip')), JSON.stringify(saved))
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+}
+
 // Jumps back to the deck's first page, so the thumbnail under test is the one holding the
 // diagram and the math.
 async function jumpToFirstPage(page) {
@@ -801,6 +835,7 @@ async function main() {
     await assertPresentationPages(page)
     await assertPresentationAccessibility(page)
     await assertDeckExport(page)
+    await assertDeckImageExport(page)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.

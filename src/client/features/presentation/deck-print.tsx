@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { ProseFont } from '@shared/types'
+import { safeFileName } from '../../lib/export-folder'
+import { t } from '../../lib/i18n'
 import { destroyChartInstances, enhancePreview, renderPendingMermaid } from '../../lib/markdown/enhance'
+import { useUi } from '../../store/ui'
+import { collectDeckCss, deckImageGeometry, renderDeckPagePng, saveDeckImages, zipDeckImages } from './deck-image'
 import { railEntries } from './presentation-state'
 import { readSlideHtml, renderSlideSource, slicePageHtml } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
@@ -79,9 +83,30 @@ export function DeckPrintSheet({ pages, metrics, font, dark, onDone }: DeckSheet
   return <DeckSheet sheetRef={sheetRef} pages={pages} metrics={metrics} font={font} dark={dark} />
 }
 
-// The export's lifecycle: mount the sheet, let it finish drawing what it has to draw, hand the
-// finished sheet over, and tear everything down when the export is over for either reason — the
-// caller saying so (`onDone`) or the overlay closing under it.
+// Exporting the deck as images uses the same pages: each is rendered to a PNG and the set is
+// archived, because a download per page is a burst a browser may block.
+export function DeckImageSheet({ pages, metrics, font, dark, title, onDone }: DeckSheetProps & { title: string; onDone: () => void }) {
+  const sheetRef = useRef<HTMLDivElement>(null)
+  useDeckSheetReady(sheetRef, dark, async (root) => {
+    try {
+      const count = await saveDeckPages(root, metrics, title)
+      root.dataset.deckImageReady = 'true'
+      useUi.getState().toast({ title: t('workspace.presentation_images_saved', { value0: count }), tone: 'success' })
+    }
+    catch (error: unknown) {
+      // A failed export is the one thing here the presenter has to be told about: nothing was
+      // downloaded, so the toast is the only signal there is.
+      console.warn('[inkstone] deck image export failed', error)
+      root.dataset.deckImageReady = 'failed'
+      useUi.getState().toast({ title: t('workspace.presentation_images_failed'), tone: 'danger' })
+    }
+  }, onDone)
+  return <DeckSheet sheetRef={sheetRef} pages={pages} metrics={metrics} font={font} dark={dark} />
+}
+
+// Both exports share one lifecycle: mount the sheet, let it finish drawing what it has to draw, hand
+// the finished sheet over, and tear everything down when the export is over for either reason —
+// the caller saying so (`onDone`) or the overlay closing under it.
 function useDeckSheetReady(
   sheetRef: React.RefObject<HTMLDivElement | null>,
   dark: boolean,
@@ -104,6 +129,18 @@ function useDeckSheetReady(
       destroyChartInstances(sheetRef.current)
     }
   }, [dark, handOver, onDone, sheetRef])
+}
+
+async function saveDeckPages(root: HTMLElement, metrics: StageMetrics, title: string): Promise<number> {
+  const pages = [...root.querySelectorAll<HTMLElement>('.deck-print-page')]
+  const geometry = deckImageGeometry(metrics)
+  const css = await collectDeckCss()
+  const images: { path: string; blob: Blob }[] = []
+  for (const [index, page] of pages.entries()) {
+    images.push({ path: `${safeFileName(title) || 'deck'}-${String(index + 1).padStart(2, '0')}.png`, blob: await renderDeckPagePng(page, geometry, css) })
+  }
+  saveDeckImages(await zipDeckImages(images), `${safeFileName(title) || 'deck'}-images.zip`)
+  return images.length
 }
 
 // What the page is made of has to be on it before the export reads it. The captured markup carries a

@@ -4,7 +4,8 @@ import type { ProseFont } from '@shared/types'
 import { useBreakpoint, useDebounced } from '../../lib/hooks'
 import { t } from '../../lib/i18n'
 import { useDialogFocus, useEscape, useLockScroll } from '../../components/overlay'
-import { buildDeckPages, DeckPrintSheet } from './deck-print'
+import { DeckImageSheet, DeckPrintSheet } from './deck-print'
+import { useDeckExport, type DeckSheetPayload } from './deck-export'
 import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
 import { useSession } from '../../store/session'
@@ -59,6 +60,9 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         tabIndex={-1}
         role='dialog'
         data-slide-list-complete={session.listProgress.finished ? 'true' : 'false'}
+        // Rasterizing a deck takes a beat per page, and the export says nothing until it lands: the
+        // busy state is what tells a screen reader that the deck is being written out.
+        aria-busy={session.images ? 'true' : undefined}
         aria-modal='true'
         aria-label={t('workspace.presentation_mode')}
         className='anim-fade fixed inset-0 z-[var(--z-modal)] flex overflow-hidden bg-[var(--bg-base)] outline-none'
@@ -90,6 +94,9 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
       {session.print && (
         <DeckPrintSheet pages={session.print.pages} metrics={session.print.metrics} font={session.proseFont} dark={session.print.dark} onDone={session.print.done} />
       )}
+      {session.images && (
+        <DeckImageSheet pages={session.images.pages} metrics={session.images.metrics} font={session.proseFont} dark={session.images.dark} title={session.images.title} onDone={session.images.done} />
+      )}
     </>
   )
 }
@@ -112,6 +119,7 @@ function controlProps(session: PresentationSession, onClose: () => void): Presen
     onToggleFollowing: session.toggleFollowing,
     onToggleFullscreen: session.toggleFullscreen,
     onExport: session.exportDeck,
+    onExportImages: session.exportImages,
     onClose,
   }
 }
@@ -158,7 +166,10 @@ interface PresentationSession {
   listProgress: PreflightProgress
   /** Builds the printable deck; the sheet appears until the print dialog is done with it. */
   exportDeck: () => void
-  print: { pages: string[]; metrics: StageMetrics; dark: boolean; done: () => void } | null
+  print: DeckSheetPayload | null
+  /** Builds the same deck as images; the sheet appears until the PNGs are saved. */
+  exportImages: () => void
+  images: (DeckSheetPayload & { title: string }) | null
   /** Everything the idle deck-measuring pass needs, grouped so the dialog can spread it. */
   preflight: SlidePreflightProps
 }
@@ -186,7 +197,7 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
   const toggleFollowing = useCallback(() => usePresentation.getState().setFollowing(!following), [following])
   const noteTitle = liveTitle ?? storedTitle
   const cacheKeys = useMemo(() => deck.map((_, item) => slideCacheKey(fingerprint, dark, item)), [deck, fingerprint, dark])
-  const print = useDeckPrint({ deck, cacheKeys, plans, metrics, externalImages, dark })
+  const exports = useDeckExport({ deck, cacheKeys, plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
   useDialogBehavior(open, panelRef, onClose)
   useSlideHtml({ open, deck, index, fingerprint, content: presentedContent, noteTitle, dark })
@@ -214,8 +225,7 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
     toggleFullscreen,
     toggleRail,
     toggleFollowing,
-    exportDeck: print.exportDeck,
-    print: print.sheet,
+    ...exports,
     preflight: { deck, cacheKeys, fingerprint, metrics, content: presentedContent, noteTitle, onPlan: nav.reportPlan, onProgress },
     listProgress,
   }
@@ -228,24 +238,6 @@ function useListProgress(): { listProgress: PreflightProgress; onProgress: (prog
   const [listProgress, setListProgress] = useState<PreflightProgress>({ measured: 0, slides: 0, finished: false })
   const onProgress = useCallback((progress: PreflightProgress) => setListProgress(progress), [])
   return { listProgress, onProgress }
-}
-
-// Exporting the deck is a print: the sheet is built from the measured plans and the prepared
-// markup, mounted for as long as the dialog needs it, and torn down when printing is over. The
-// pages are only built when someone asks for them, because slicing the whole deck is not work
-// the show should do on the chance that it is exported.
-function useDeckPrint({ deck, cacheKeys, plans, metrics, externalImages, dark }: {
-  deck: string[]
-  cacheKeys: string[]
-  plans: Record<number, SlidePlan>
-  metrics: StageMetrics
-  externalImages: boolean
-  dark: boolean
-}): { exportDeck: () => void; sheet: PresentationSession['print'] } {
-  const [pages, setPages] = useState<string[] | null>(null)
-  const exportDeck = useCallback(() => setPages(buildDeckPages(deck, cacheKeys, plans, metrics, externalImages)), [deck, cacheKeys, plans, metrics, externalImages])
-  const done = useCallback(() => setPages(null), [])
-  return { exportDeck, sheet: pages ? { pages, metrics, dark, done } : null }
 }
 
 // What the show puts on screen: the note body while following, the frozen copy while
