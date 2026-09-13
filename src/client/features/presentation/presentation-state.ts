@@ -71,6 +71,30 @@ export function nextSliceGap(lastSliceMs: number, duty: number, floorMs: number)
   return Math.max(floorMs, Math.round(lastSliceMs * (duty - 1)))
 }
 
+// A frame this long between two slices means the page was not keeping up on its own, so the gap
+// the slice cost implies is not enough room on this machine right now.
+export const LAG_FRAME_MS = 50
+
+// How many gaps in a row have to be quiet before the pace comes back down.
+const QUIET_RUN = 2
+
+/** How many quanta of the computed gap the pass waits, and how many quiet gaps it has seen. */
+export interface SlicePace {
+  factor: number
+  quietRun: number
+}
+
+// The pass's pace, as a multiple of the gap its slice cost implies: a gap that dropped frames
+// doubles it, one quiet gap is not enough to undo that, and two are — so a machine that is busy
+// for a while (a diagram rendering, another tab, a heavy note) gets a slower fill instead of
+// company, and gets the fast fill back as soon as it can take it. `max` bounds how far a busy
+// stretch can push the list towards never finishing.
+export function nextSlicePace(current: number, quietRun: number, max: number): number {
+  if (quietRun === 0) return Math.min(max, current * 2)
+  if (quietRun >= QUIET_RUN) return Math.max(1, current / 2)
+  return current
+}
+
 // The entry the show is on, so the list can mark and scroll to it. A slide whose
 // pages shrank under a re-measure still resolves to its nearest page.
 export function entryIndexOf(entries: RailEntry[], slide: number, sub: number): number {
