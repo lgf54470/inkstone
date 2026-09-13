@@ -1,5 +1,9 @@
 import { t } from '../../lib/i18n'
+import type { JsRunOutcome } from './js-runner-core'
 
+export { formatJsValue } from './js-runner-core'
+
+export const JS_RUN_TIMEOUT_MS = 2000
 
 interface JsLogItem {
   type: 'log' | 'info' | 'warn' | 'error'
@@ -14,120 +18,65 @@ interface JsExecutionResult {
   durationMs: number
 }
 
-export function formatJsValue(val: unknown): string {
-  if (val === null) return 'null'
-  if (val === undefined) return 'undefined'
-  if (typeof val === 'string') return val
-  if (typeof val === 'number' || typeof val === 'boolean' || typeof val === 'symbol' || typeof val === 'bigint') {
-    return String(val)
-  }
-  if (typeof val === 'function') {
-    return val.toString()
-  }
-  if (val instanceof Error) {
-    return `${val.name}: ${val.message}`
-  }
-  try {
-    return JSON.stringify(val, null, 2)
-  } catch {
-    return String(val)
-  }
+export interface JsRunnerWorker {
+  postMessage(code: string): void
+  terminate(): void
+  onmessage: ((event: { data: JsRunOutcome }) => void) | null
+  onerror: (() => void) | null
 }
 
-export function executeJsExample(code: string): JsExecutionResult {
-  const logs: JsLogItem[] = []
-
-  const fakeConsole = {
-    log: (...args: unknown[]) => {
-      logs.push({ type: 'log', text: args.map(formatJsValue).join(' ') })
-    },
-    info: (...args: unknown[]) => {
-      logs.push({ type: 'info', text: args.map(formatJsValue).join(' ') })
-    },
-    warn: (...args: unknown[]) => {
-      logs.push({ type: 'warn', text: args.map(formatJsValue).join(' ') })
-    },
-    error: (...args: unknown[]) => {
-      logs.push({ type: 'error', text: args.map(formatJsValue).join(' ') })
-    },
-  }
-
-  const start = performance.now()
-  try {
-    const fn = new Function('console', `"use strict";\n${code}`)
-    const res = fn(fakeConsole)
-    const durationMs = Math.round(performance.now() - start)
-    let result: string | undefined
-    if (res !== undefined) {
-      result = formatJsValue(res)
-    }
-    return { logs, result, durationMs }
-  } catch (err: unknown) {
-    if (err instanceof EvalError && typeof document !== 'undefined') {
-      const fallback = executeWithScriptElement(code, fakeConsole)
-      const durationMs = Math.round(performance.now() - start)
-      return { logs, result: fallback.result, error: fallback.error, durationMs }
-    }
-    const durationMs = Math.round(performance.now() - start)
-    const error = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-    return { logs, error, durationMs }
-  }
+function spawnDefaultWorker(): JsRunnerWorker {
+  return new Worker(new URL('./js-runner.worker.ts', import.meta.url), { type: 'module' }) as unknown as JsRunnerWorker
 }
 
-function executeWithScriptElement(
+// The Worker thread is the sandbox: user code cannot reach page DOM or
+// storage, and terminate() is the only hard stop for endless loops.
+export function executeJsExample(
   code: string,
-  fakeConsole: Record<string, unknown>,
-): { result?: string; error?: string } {
-  if (typeof document === 'undefined') {
-    return { error: 'Document is not available' }
-  }
+  spawnWorker: () => JsRunnerWorker = spawnDefaultWorker,
+): Promise<JsExecutionResult> {
+  return new Promise((resolve) => {
+    let worker: JsRunnerWorker
+    try {
+      worker = spawnWorker()
+    } catch (err) {
+      resolve({ logs: [], error: formatSpawnError(err), durationMs: 0 })
+      return
+    }
+    const timer = setTimeout(() => {
+      worker.terminate()
+      resolve({
+        logs: [],
+        error: `TimeoutError: execution exceeded ${JS_RUN_TIMEOUT_MS}ms and was terminated`,
+        durationMs: JS_RUN_TIMEOUT_MS,
+      })
+    }, JS_RUN_TIMEOUT_MS)
 
-  const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce || document.querySelector<HTMLScriptElement>('script[nonce]')?.getAttribute('nonce') || ''
-
-  const runId = `__ink_run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-  let capturedResult: string | undefined
-  let capturedError: string | undefined
-
-  Reflect.set(window, runId, {
-    console: fakeConsole,
-    onSuccess: (val: unknown) => {
-      if (val !== undefined) capturedResult = formatJsValue(val)
-    },
-    onError: (err: unknown) => {
-      capturedError = formatJsError(err)
-    },
+    worker.onmessage = (event) => {
+      clearTimeout(timer)
+      worker.terminate()
+      resolve(toExecutionResult(event.data))
+    }
+    worker.onerror = () => {
+      clearTimeout(timer)
+      worker.terminate()
+      resolve({ logs: [], error: 'WorkerError: the runner terminated unexpectedly', durationMs: 0 })
+    }
+    worker.postMessage(code)
   })
-
-  const script = document.createElement('script')
-  if (nonce) {
-    script.nonce = nonce; script.setAttribute('nonce', nonce)
-  }
-  script.textContent = `(function() {
-  "use strict";
-  const runner = window['${runId}'];
-  if (!runner) return;
-  try {
-    const res = (function(console) {
-      ${code}
-    })(runner.console);
-    runner.onSuccess(res);
-  } catch (err) {
-    runner.onError(err);
-  }
-})();`
-
-  try {
-    document.head.appendChild(script)
-  } catch (err) {
-    capturedError = formatJsError(err)
-  } finally {
-    script.remove(); Reflect.deleteProperty(window, runId)
-  }
-
-  return { result: capturedResult, error: capturedError }
 }
 
-function formatJsError(err: unknown): string {
+function toExecutionResult(outcome: JsRunOutcome): JsExecutionResult {
+  const result: JsExecutionResult = {
+    logs: outcome.logs.map((item) => ({ type: item.type as JsLogItem['type'], text: item.text })),
+    durationMs: outcome.durationMs,
+  }
+  if (outcome.resultText) result.result = outcome.resultText
+  if (outcome.errorText) result.error = outcome.errorText
+  return result
+}
+
+function formatSpawnError(err: unknown): string {
   return err instanceof Error ? `${err.name}: ${err.message}` : String(err)
 }
 
@@ -154,31 +103,30 @@ export function handleJsExampleRun(runBtn: HTMLButtonElement): void {
   const statusEl = block.querySelector<HTMLElement>('.js-example-output-status')
   if (!codeEl || !outputBody) return
 
-  const code = codeEl.textContent ?? ''
-  const { logs, result, error, durationMs } = executeJsExample(code)
+  void executeJsExample(codeEl.textContent ?? '').then(({ logs, result, error, durationMs }) => {
+    updateRunStatus(statusEl, error, durationMs)
+    outputBody.innerHTML = ''
 
-  updateRunStatus(statusEl, error, durationMs)
-  outputBody.innerHTML = ''
+    if (logs.length === 0 && result === undefined && !error) {
+      const emptyRow = document.createElement('div')
+      emptyRow.className = 'js-example-empty-hint'
+      emptyRow.textContent = t('workspace.executed_no_output')
+      outputBody.appendChild(emptyRow)
+      return
+    }
 
-  if (logs.length === 0 && result === undefined && !error) {
-    const emptyRow = document.createElement('div')
-    emptyRow.className = 'js-example-empty-hint'
-    emptyRow.textContent = t('workspace.executed_no_output')
-    outputBody.appendChild(emptyRow)
-    return
-  }
+    logs.forEach((item) => {
+      appendLogRow(outputBody, item.type, item.type === 'error' ? '✖' : item.type === 'warn' ? '▲' : '›', item.text)
+    })
 
-  logs.forEach((item) => {
-    appendLogRow(outputBody, item.type, item.type === 'error' ? '✖' : item.type === 'warn' ? '▲' : '›', item.text)
+    if (result !== undefined) {
+      appendLogRow(outputBody, 'return', '←', result)
+    }
+
+    if (error) {
+      appendLogRow(outputBody, 'error-banner', '✖', error)
+    }
   })
-
-  if (result !== undefined) {
-    appendLogRow(outputBody, 'return', '←', result)
-  }
-
-  if (error) {
-    appendLogRow(outputBody, 'error-banner', '✖', error)
-  }
 }
 
 function updateRunStatus(statusEl: HTMLElement | null, error: string | undefined, durationMs: number): void {

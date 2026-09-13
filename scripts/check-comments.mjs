@@ -655,6 +655,16 @@ const allowed = new Map([
   ['src/client/features/music/use-track-list.ts', [
     '// File-manager semantics: click selects one row, Ctrl toggles a row, Shift extends from the anchor.',
   ]],
+  ['src/client/features/preview/js-runner-core.ts', [
+    '/**\n * Executes user javascript-example code inside the dedicated Worker thread.\n * Results cross the postMessage boundary as plain strings only, and the Worker\n * has no DOM or parent-page reference, so preview code cannot reach page data.\n * A dedicated thread is also the only way to hard-stop while(true) loops via\n * terminate(); timeouts live in the page-side bridge (js-runner.ts).\n */',
+    '// Shadowed to undefined so direct calls raise TypeError; reachable through',
+    '// globalThis indirection, so this is defense in depth — the primary fence is',
+    '// "no DOM, no parent reference" plus the page-side terminate timeout.',
+  ]],
+  ['src/client/features/preview/js-runner.ts', [
+    '// The Worker thread is the sandbox: user code cannot reach page DOM or',
+    '// storage, and terminate() is the only hard stop for endless loops.',
+  ]],
   ['src/client/features/preview/file-preview-modal/code-viewer.tsx', [
     '// Highlighting is best-effort; the plain text code stays visible on failure.',
   ]],

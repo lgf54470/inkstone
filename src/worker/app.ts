@@ -68,6 +68,8 @@ function registerSecurityHeaders(app: Hono<AppBindings>): void {
     // Inline scripts (theme bootstrap, MCP login page, dev React preamble)
     // are allowed through a fresh per-response nonce instead of
     // 'unsafe-inline', so a future injection point cannot execute scripts.
+    // User js-example code runs inside a dedicated Worker whose asset is
+    // served without this document CSP, so the page itself never needs eval.
     const scriptSource = contentType.includes('text/html')
       ? applyScriptNonce(c)
       : "'self'"
@@ -78,7 +80,7 @@ function registerSecurityHeaders(app: Hono<AppBindings>): void {
     c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
     c.header(
       'Content-Security-Policy',
-        `default-src 'self'; base-uri 'self'; script-src ${scriptSource} 'unsafe-eval'; style-src 'self' 'unsafe-inline'; ` +
+        `default-src 'self'; base-uri 'self'; script-src ${scriptSource}; style-src 'self' 'unsafe-inline'; ` +
         `img-src 'self' data: blob: ${imageSchemes}; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; ` +
         `manifest-src 'self'; media-src 'self' blob:; form-action ${formAction}; frame-src 'none'; ` +
         "frame-ancestors 'none'; object-src 'none'",

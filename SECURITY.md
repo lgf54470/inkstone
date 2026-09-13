@@ -20,9 +20,13 @@ Please avoid accessing data that is not yours, degrading a production service, o
 
 Inkstone is self-hosted software, not a hosted service. Deployment owners are responsible for their Cloudflare account, custom domains, access policies, backup destinations, and timely updates. Inkstone does not provide a password-reset bypass; losing the owner password requires restoring from a trusted backup or reinitializing the instance.
 
-## Deferred hardening notes
+## Sandbox notes
 
-- **S3:** The app page CSP currently includes `'unsafe-eval'` because the
-  runnable-JS example blocks (`js-example` fenced blocks) execute user code in
-  the preview. Remove `'unsafe-eval'` once the example runner is sandboxed
-  (tracked as S1); the two items ship together.
+- **S1 (resolved):** Runnable-JS example blocks (`js-example` fenced blocks)
+  execute author code inside a dedicated Worker (`js-runner.worker.ts`) that has
+  no DOM or parent-page reference; endless loops are stopped by terminating the
+  Worker after a timeout. The page CSP no longer contains `'unsafe-eval'`.
+  Residual surface: the Worker is same-origin, so example code could still
+  reach same-origin `fetch` through indirect global access; common network and
+  storage globals are shadowed as defense in depth.
+

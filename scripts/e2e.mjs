@@ -94,6 +94,10 @@ console.log('[setup]')
   check('API responses disable MIME sniffing', health.headers.get('x-content-type-options') === 'nosniff')
   check('API responses deny framing', health.headers.get('x-frame-options') === 'DENY')
   check('API responses are not cached', health.headers.get('cache-control') === 'no-store')
+  const home = await fetch(BASE + '/')
+  const homeCsp = home.headers.get('content-security-policy') ?? ''
+  check('app page CSP drops unsafe-eval', homeCsp.includes("'nonce-") && !homeCsp.includes('unsafe-eval'))
+  check('app page CSP allows same-origin workers', homeCsp.includes("worker-src 'self' blob:"))
 }
 
 console.log('[register validation]')

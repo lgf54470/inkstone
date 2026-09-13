@@ -63,6 +63,8 @@ const ALLOWED_DOUBLE_CASTS = new Map([
   ['src/client/lib/markdown/enhance/math.ts', 'KaTeX dynamic import: ESM/CJS interop shape differs between bundler output and vitest module resolution'],
   ['src/client/lib/markdown/enhance/chart.ts', 'Chart.js dynamic import interop plus per-node instance metadata stashed on a DOM element'],
   ['src/worker/backup/s3-test.ts', 'worker-side S3 connectivity probe: aws4fetch RequestInit accepts streams the DOM lib types do not model'],
+  ['src/client/features/preview/js-runner.worker.ts', 'dedicated-worker scope: DOM lib types `self` as Window, so the WorkerGlobalScope surface must be asserted explicitly'],
+  ['src/client/features/preview/js-runner.ts', 'the DOM Worker type does not model the injectable message contract used for sandbox bridge tests'],
 ])
 
 const problems = []
