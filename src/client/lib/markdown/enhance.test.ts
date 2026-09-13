@@ -3,33 +3,11 @@ import { initI18n } from '../i18n'
 import { configureCodeBlockCollapsing, decorateCodeBlock, destroyChartInstances, enhancePreview, renderChartJs, toggleCodeBlockCollapse } from './enhance'
 import { highlightWithPrism } from './prism'
 import { encodeDataValue } from './data-attr'
+import { stubCanvasContext } from './enhance.test-helpers'
 
 beforeAll(async () => {
   await initI18n()
 })
-
-// Chart.js only ever assigns to the 2D context; a fresh stub per test keeps
-// assignments from leaking across tests.
-const fakeCanvasContext = () => ({
-  canvas: document.createElement('canvas'),
-  clearRect: () => {},
-  fillRect: () => {},
-  beginPath: () => {},
-  moveTo: () => {},
-  lineTo: () => {},
-  stroke: () => {},
-  fill: () => {},
-  arc: () => {},
-  measureText: () => ({ width: 0 }),
-  save: () => {},
-  restore: () => {},
-})
-
-function mockCanvasGetContext(): typeof HTMLCanvasElement.prototype.getContext {
-  const original = HTMLCanvasElement.prototype.getContext
-  HTMLCanvasElement.prototype.getContext = (() => fakeCanvasContext()) as never
-  return original
-}
 
 describe('code block collapsing — Prism languages', () => {
   it('loads every configured Prism language on demand', async () => {
@@ -139,7 +117,7 @@ describe('code block collapsing — hostile markup inertness', () => {
 
 describe('chart rendering', () => {
   it('renders and destroys chart blocks', async () => {
-    const originalGetContext = mockCanvasGetContext()
+    const restoreCanvasContext = stubCanvasContext()
     const root = document.createElement('div')
     const chartJson = JSON.stringify({ type: 'bar', data: { labels: ['A'], datasets: [{ data: [1] }] } })
     const encoded = encodeDataValue(chartJson)
@@ -150,7 +128,7 @@ describe('chart rendering', () => {
       expect(root.querySelector('canvas.chartjs-canvas')).not.toBeNull()
       destroyChartInstances(root)
     } finally {
-      HTMLCanvasElement.prototype.getContext = originalGetContext
+      restoreCanvasContext()
       root.remove()
     }
   })
@@ -158,7 +136,7 @@ describe('chart rendering', () => {
 
 describe('chart rendering from cached markup', () => {
   it('draws again when the markup carries the marker but no live instance', async () => {
-    const originalGetContext = mockCanvasGetContext()
+    const restoreCanvasContext = stubCanvasContext()
     const root = document.createElement('div')
     const chartJson = JSON.stringify({ type: 'bar', data: { labels: ['A'], datasets: [{ data: [1] }] } })
     root.innerHTML = `<div class="chartjs-block loading" data-chart="${encodeDataValue(chartJson)}"></div>`
@@ -182,7 +160,7 @@ describe('chart rendering from cached markup', () => {
       expect(cached.querySelector('canvas')).not.toBe(serialized)
       destroyChartInstances(cached)
     } finally {
-      HTMLCanvasElement.prototype.getContext = originalGetContext
+      restoreCanvasContext()
       root.remove()
     }
   })
@@ -190,7 +168,7 @@ describe('chart rendering from cached markup', () => {
 
 describe('chart rendering — tolerant config parsing', () => {
   it('parses charts with tolerant formatting such as trailing commas or markdown markers', async () => {
-    const originalGetContext = mockCanvasGetContext()
+    const restoreCanvasContext = stubCanvasContext()
     const root = document.createElement('div')
     const rawWithGlitch = '{\n  "type": "bar",**\n  "data": {\n    "labels": ["A",],\n    "datasets": [{ "data": [10,] }]\n  }\n}'
     const encoded = encodeDataValue(rawWithGlitch)
@@ -201,7 +179,7 @@ describe('chart rendering — tolerant config parsing', () => {
       expect(root.querySelector('canvas.chartjs-canvas')).not.toBeNull()
       destroyChartInstances(root)
     } finally {
-      HTMLCanvasElement.prototype.getContext = originalGetContext
+      restoreCanvasContext()
       root.remove()
     }
   })
