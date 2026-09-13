@@ -28,7 +28,7 @@ Every new account automatically receives two standard starter notes, one in Chin
 
 | Area | Included |
 | --- | --- |
-| Writing | CodeMirror 6 editor, independently editable note titles, **two-note editor groups**, per-group editor/split/preview layouts, synchronized scrolling, outline, **focus mode**, **typewriter mode**, **autosave**, **version history**, and **presentation mode** (decks split on `---`, fullscreen playback, slide list) |
+| Writing | CodeMirror 6 editor, independently editable note titles, **two-note editor groups**, per-group editor/split/preview layouts, synchronized scrolling, outline, **focus mode**, **typewriter mode**, **autosave**, **version history**, and **presentation mode** (decks split on `---`, fullscreen playback, slide list, live follow with a freeze switch) |
 | Markdown | GFM tables and task lists, footnotes, Obsidian-style comments, WikiLinks, embeds, block IDs, callouts, details blocks, tabs, **math**, **Mermaid diagrams**, **PrismJS syntax highlighting**, and **Front Matter** |
 | Organization | Nested folders with drag-and-drop ordering, inline tags, favorites, pinning, archive, trash, **wiki links**, backlinks, block references, note embeds, and a relationship graph |
 | Search | D1 FTS5 **full-text search** with Chinese indexing, filters, recent notes, command-palette navigation, and optional private **semantic/hybrid search** powered by Workers AI |
@@ -37,6 +37,24 @@ Every new account automatically receives two standard starter notes, one in Chin
 | Sharing | Public note links with optional access passwords and expiration dates |
 | Portability | JSON and ZIP exports, directly readable **Markdown**, attachment export, and **manual or scheduled WebDAV/S3 backups** |
 | Interface | **Desktop and mobile layouts**, **dark/light themes**, accent colors, Simplified Chinese, English, and owner-only update notifications |
+
+## Presentation mode
+
+Note bodies split into slides on `---` rules. A block that is too tall is scaled down to fit; content that still does not fit continues on the next slide, and the counter reads `3 / 14` with a `1/2` badge while a slide is split further.
+
+A show follows the note it was started from, so an edit — including one arriving from another tab, another device, or an MCP write — lands on the projector. "Freeze this snapshot" pins the deck to what is on screen for the actual talk.
+
+| Key | Action |
+| --- | --- |
+| `→` `↓` `PageDown` `Space` | Next slide (`Space` and `Enter` yield to a focused control) |
+| `←` `↑` `PageUp` | Previous slide |
+| `Home` / `End` | First / last slide |
+| `F` | Enter or leave fullscreen |
+| `S` | Show or hide the slide list |
+| `L` | Switch between following the note and the frozen snapshot |
+| `Esc` | Exit the show and return focus to the button that started it |
+
+The slide list on the left jumps to any page by click. During a show the controls fade out and come back on the next pointer move or key press.
 
 ## New note templates
 
