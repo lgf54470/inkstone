@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { useSession } from '../../store/session'
 import { destroyChartInstances, renderChartJs, renderPendingMermaid } from '../../lib/markdown/enhance'
 import { useIsDarkTheme } from './presentation-theme'
-import { readSlideHtml, renderSlideSource } from './slide-html'
+import { readSlideHtml, renderSlideSource, subscribeSlideHtml } from './slide-html'
 import { planSlidePages, resolvePageIndex, samePlan, type SlideBlock, type SlidePlan } from './slide-pagination'
 import { SlideProse } from './slide-prose'
 import { SLIDE_PAD_Y, type StageMetrics } from './slide-stage'
@@ -49,11 +49,15 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   const preview = useSession((s) => s.settings.preview)
   const dark = useIsDarkTheme()
   const hostRef = useRef<HTMLDivElement>(null)
-  const fallbackHtml = useMemo(
-    () => renderSlideSource(source, preview.externalImages).html,
-    [source, preview.externalImages],
+  const prepared = useSyncExternalStore(subscribeSlideHtml, () => readSlideHtml(cacheKey))
+  // The cache is the prepared markup for this slide; the plain render only exists to cover the
+  // first paint before it lands. Rendering it unconditionally would double the markdown work of
+  // every slide the measuring pass walks — the pass has just prepared that slide, so the cache
+  // hits and the plain render is pure waste in the middle of a talk.
+  const html = useMemo(
+    () => prepared ?? renderSlideSource(source, preview.externalImages).html,
+    [prepared, source, preview.externalImages],
   )
-  const html = readSlideHtml(cacheKey) ?? fallbackHtml
   const [renderVersion, setRenderVersion] = useState(0)
   const markDiagramsRendered = useCallback(() => setRenderVersion((version) => version + 1), [])
   const { plan, measured } = useSlideLayout(hostRef, html, subPage, contentWidth, contentHeight, renderVersion)

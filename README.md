@@ -54,7 +54,7 @@ A show follows the note it was started from, so an edit — including one arrivi
 | `L` | Switch between following the note and the frozen snapshot |
 | `Esc` | Exit the show and return focus to the button that started it |
 
-The list on the left is a page list, not a slide list: every page gets an entry with a thumbnail of that page, and a click jumps straight to it. A `---` slide that paginates shows all of its pages, so a note written without any `---` still gets a full sidebar. The whole deck is measured in the background while the show is idle, so every page is listed from the start — including the slides the show has not reached yet. During a show the controls fade out and come back on the next pointer move or key press.
+The list on the left is a page list, not a slide list: every page gets an entry with a thumbnail of that page, and a click jumps straight to it. A `---` slide that paginates shows all of its pages, so a note written without any `---` still gets a full sidebar. The whole deck is measured in the background while the show is idle, so every page is listed from the start — including the slides the show has not reached yet. One slide per idle window is measured, and the pause before the next one follows what the last one cost, so filling a long deck never takes over the main thread. During a show the controls fade out and come back on the next pointer move or key press.
 
 Exporting the deck runs through the browser's print pipeline: the download control builds one printable page per page the show has, from the same measured pages and the same prepared markup, so "Save as PDF" produces a handout that matches the talk page for page.
 
@@ -179,8 +179,11 @@ Existing databases are upgraded automatically through versioned, idempotent migr
 | `npm run deploy:kv` | Build and deploy with `wrangler.kv.toml` |
 | `npm run deploy:demo` | Build and deploy the static browser-only demo |
 | `npm run test:e2e` | Exercise the API against a running disposable local instance |
+| `node scripts/measure-preflight.mjs` | Measure what the presentation's background deck measurement costs the main thread |
 
 The end-to-end script creates, changes, and deletes data at `http://localhost:7712`. Run it only against a fresh local state dedicated to testing.
+
+The preflight measurement is a manual harness rather than a gate: frame timing on shared CI runners is not a stable signal, so it prints the numbers and a verdict for a human. It signs in with `INKSTONE_VISUAL_USERNAME`/`INKSTONE_VISUAL_PASSWORD` and builds its own long, diagram-heavy deck.
 
 ### Local dev account
 

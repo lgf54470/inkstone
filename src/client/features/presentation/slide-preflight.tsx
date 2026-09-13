@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
-import { nextUnmeasuredSlide } from './presentation-state'
+import { nextSliceGap, nextUnmeasuredSlide } from './presentation-state'
 import { useIsDarkTheme } from './presentation-theme'
 import { SlideCanvas } from './slide-canvas'
 import { readSlideHtml, rememberSlideHtml } from './slide-html'
@@ -16,7 +16,19 @@ import { useSlideHtml } from './use-slide-html'
 // the projector's later visit is a cache hit instead of a second render).
 const STALL_MS = 4_000
 const IDLE_FALLBACK_MS = 60
-const IDLE_TIMEOUT_MS = 600
+// Waiting for a real idle window (bounded by the timeout, so the pass always finishes) is what
+// keeps this background work off the presenter's frames; the timeout is generous because filling
+// the slide list slightly later costs nothing, while a stutter during a talk does.
+const IDLE_TIMEOUT_MS = 2_500
+// Rendering one slide — markup, diagrams, a pagination measurement — is a single commit of tens
+// of milliseconds that cannot be preempted, so starting it in a nearly spent idle window is
+// exactly what drops a frame. A slice runs only when the browser reports this much headroom.
+const SLICE_BUDGET_MS = 14
+// A quiet gap between two slides so consecutive renders cannot cluster into a busy stretch,
+// widened in proportion to what the last slice cost: the pass aims to use a quarter of the
+// main thread (see nextSliceGap), so the deck fills without holding frames.
+const SLICE_DUTY = 4
+const MIN_SLICE_GAP_MS = 120
 
 export interface SlidePreflightProps {
   deck: string[]
@@ -34,7 +46,11 @@ export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, content,
   const { cursor, report } = usePreflightPass({ deckLength: deck.length, fingerprint, dark, cacheKeys, hostRef, onPlan })
   useSlideHtml({ open: cursor !== null, deck, index: cursor ?? 0, fingerprint, content, noteTitle, dark })
   const key = cursor === null ? '' : cacheKeys[cursor] ?? ''
-  if (!key || !readSlideHtml(key)) return null
+  // The canvas waits one frame after the markup lands. Preparing a slide is a markdown render,
+  // and React would otherwise flush the mount and its layout measure into the same task, making
+  // one long commit out of work the browser could have interleaved with a frame.
+  const ready = useDeferredMount(Boolean(key) && Boolean(readSlideHtml(key)), key)
+  if (!ready) return null
 
   return (
     <div
@@ -58,20 +74,38 @@ export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, content,
   )
 }
 
-// The pass keeps its own progress and its own timer: what it has visited, what it gave up on,
-// and the idle handle it would cancel. Deriving the progress from the measured plans would be
-// wrong, because a plan outlives a theme flip while the markup it was measured from does not —
-// every slide has to be visited again to put the diagrams back into the cache for the new theme.
+// True one frame after `ready` flips for this token, so whatever the flag announces is committed
+// in a task of its own instead of extending the task that produced it.
+function useDeferredMount(ready: boolean, token: string): boolean {
+  const [mounted, setMounted] = useState('')
+  useEffect(() => {
+    setMounted('')
+    if (!ready) return
+    const frame = window.requestAnimationFrame(() => setMounted(token))
+    return () => window.cancelAnimationFrame(frame)
+  }, [ready, token])
+  return ready && mounted === token
+}
+
+// The pass keeps its own progress and its own timers: what it has visited, what it gave up on,
+// the idle handle it would cancel, and how long the last slice took. Deriving the progress from
+// the measured plans would be wrong, because a plan outlives a theme flip while the markup it was
+// measured from does not — every slide has to be visited again to put the diagrams back into the
+// cache for the new theme.
 function usePassState(): {
   done: RefObject<Set<number>>
   skipped: RefObject<Set<number>>
   idle: RefObject<(() => void) | null>
+  sliceStart: RefObject<number>
+  sliceCost: RefObject<number>
   cursorRef: RefObject<number | null>
 } {
   return {
     done: useRef<Set<number>>(new Set()),
     skipped: useRef<Set<number>>(new Set()),
     idle: useRef<(() => void) | null>(null),
+    sliceStart: useRef(0),
+    sliceCost: useRef(0),
     cursorRef: useRef<number | null>(null),
   }
 }
@@ -88,7 +122,7 @@ function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, o
   onPlan: (slide: number, plan: SlidePlan) => void
 }): { cursor: number | null; report: (plan: SlidePlan) => void } {
   const pass = usePassState()
-  const { done, skipped, idle, cursorRef } = pass
+  const { done, skipped, idle, sliceStart, sliceCost, cursorRef } = pass
   const [cursor, setCursor] = useState<number | null>(null)
   cursorRef.current = cursor
 
@@ -96,10 +130,12 @@ function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, o
   // fallback timer covers browsers without requestIdleCallback.
   const scheduleNext = useCallback((from: number) => {
     idle.current?.()
+    const gap = nextSliceGap(sliceCost.current, SLICE_DUTY, MIN_SLICE_GAP_MS)
     idle.current = scheduleIdle(() => {
+      sliceStart.current = performance.now()
       setCursor(nextUnmeasuredSlide(deckLength, [...done.current, ...skipped.current], from))
-    })
-  }, [deckLength, done, skipped, idle])
+    }, gap)
+  }, [deckLength, done, skipped, idle, sliceStart, sliceCost])
 
   // An edited note re-splits into different slides and a theme flip invalidates every slide's
   // markup, so either way the pass starts over and waits for idle before its first mount rather
@@ -115,6 +151,7 @@ function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, o
     const slide = cursorRef.current
     if (slide === null) return
     publishPlan(slide, plan, { hostRef, cacheKeys, onPlan })
+    noteSliceCost(sliceStart, sliceCost)
     done.current.add(slide)
     scheduleNext(slide + 1)
   }, [cacheKeys, hostRef, onPlan, scheduleNext])
@@ -144,6 +181,11 @@ function publishPlan(slide: number, plan: SlidePlan, { hostRef, cacheKeys, onPla
   onPlan(slide, plan)
 }
 
+function noteSliceCost(sliceStart: RefObject<number>, sliceCost: RefObject<number>): void {
+  const cost = performance.now() - sliceStart.current
+  if (cost > 0 && cost < STALL_MS) sliceCost.current = cost
+}
+
 function useStallGuard(cursor: number | null, onStall: (slide: number) => void): void {
   useEffect(() => {
     if (cursor === null) return
@@ -152,11 +194,32 @@ function useStallGuard(cursor: number | null, onStall: (slide: number) => void):
   }, [cursor, onStall])
 }
 
-function scheduleIdle(callback: () => void): () => void {
-  if (typeof window.requestIdleCallback === 'function') {
-    const handle = window.requestIdleCallback(callback, { timeout: IDLE_TIMEOUT_MS })
-    return () => window.cancelIdleCallback(handle)
+// An idle slice after a quiet gap: the gap keeps slices apart, and the idle callback makes the
+// browser hand over a window it considers free — with the deadline re-checked, so a slice is
+// deferred to the next window instead of blocking a frame. Browsers without requestIdleCallback
+// simply run one slice per timer tick.
+function scheduleIdle(callback: () => void, gapMs: number): () => void {
+  const idle = typeof window.requestIdleCallback === 'function' && typeof window.cancelIdleCallback === 'function'
+  let cancelled = false
+  let idleHandle = 0
+  let timer = 0
+  const request = () => {
+    if (!idle) {
+      timer = window.setTimeout(() => {
+        if (!cancelled) callback()
+      }, IDLE_FALLBACK_MS)
+      return
+    }
+    idleHandle = window.requestIdleCallback((deadline) => {
+      if (cancelled) return
+      if (deadline.didTimeout || deadline.timeRemaining() >= SLICE_BUDGET_MS) callback()
+      else request()
+    }, { timeout: IDLE_TIMEOUT_MS })
   }
-  const timer = window.setTimeout(callback, IDLE_FALLBACK_MS)
-  return () => window.clearTimeout(timer)
+  timer = window.setTimeout(request, gapMs)
+  return () => {
+    cancelled = true
+    window.clearTimeout(timer)
+    if (idleHandle) window.cancelIdleCallback(idleHandle)
+  }
 }

@@ -61,6 +61,16 @@ export function nextUnmeasuredSlide(deckLength: number, measured: Iterable<numbe
   return null
 }
 
+// How long the idle pass waits before its next slice. One slice is a single unpausable
+// commit — a markdown render, a diagram and a pagination measure — worth tens of
+// milliseconds, so the wait is derived from what the last slice actually cost rather than
+// from a fixed delay: the pass then uses at most a fixed share of the main thread on any
+// machine, and a slower one takes longer to fill the list instead of stuttering through a
+// talk. The floor keeps back-to-back slices from clustering into a busy stretch.
+export function nextSliceGap(lastSliceMs: number, duty: number, floorMs: number): number {
+  return Math.max(floorMs, Math.round(lastSliceMs * (duty - 1)))
+}
+
 // The entry the show is on, so the list can mark and scroll to it. A slide whose
 // pages shrank under a re-measure still resolves to its nearest page.
 export function entryIndexOf(entries: RailEntry[], slide: number, sub: number): number {

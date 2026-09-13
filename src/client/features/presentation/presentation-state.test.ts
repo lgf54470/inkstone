@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entryIndexOf, nextUnmeasuredSlide, presentedNoteContent, railEntries, railOpenFor } from './presentation-state'
+import { entryIndexOf, nextSliceGap, nextUnmeasuredSlide, presentedNoteContent, railEntries, railOpenFor } from './presentation-state'
 import type { SlidePlan } from './slide-pagination'
 
 const planOf = (pages: number): SlidePlan => ({
@@ -91,6 +91,22 @@ describe('nextUnmeasuredSlide', () => {
   it('reports the pass as finished once every slide is measured', () => {
     expect(nextUnmeasuredSlide(0, [], 0)).toBeNull()
     expect(nextUnmeasuredSlide(2, [0, 1], 1)).toBeNull()
+  })
+})
+
+describe('nextSliceGap', () => {
+  it('waits longer than the last slice cost, so the pass keeps a fixed share of the thread', () => {
+    expect(nextSliceGap(80, 4, 120)).toBe(240)
+    expect(nextSliceGap(300, 4, 120)).toBe(900)
+  })
+
+  it('keeps a floor so cheap slices cannot cluster into a busy stretch', () => {
+    expect(nextSliceGap(5, 4, 120)).toBe(120)
+    expect(nextSliceGap(0, 4, 120)).toBe(120)
+  })
+
+  it('treats a pass that gave up as the floor rather than an infinite wait', () => {
+    expect(nextSliceGap(-1, 4, 120)).toBe(120)
   })
 })
 
