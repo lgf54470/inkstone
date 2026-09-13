@@ -1,20 +1,15 @@
-import type { z } from 'zod'
 import { Hono } from 'hono'
-import type { Context } from 'hono'
-import type { BlogCommentStatus } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
-import { newId } from '../../lib/id'
-import { JSON_BODY_LIMITS, readJsonValidated, requestClientIp } from '../../lib/request'
-import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
-import type { BlogCalendarRow, BlogPostPublicRow, BlogPublicCategoryRow, BlogPublicCommentRow, BlogTimelineRow } from '../../db/rows'
+import type { BlogCalendarRow, BlogPostPublicRow, BlogPublicCategoryRow, BlogTimelineRow } from '../../db/rows'
+import { escapeLike } from '../../lib/like'
 import { recordBlogVisit } from './visits'
-import { blogPublicCommentSchema } from './schemas'
-import { getBlogSettings } from './settings'
 import { safeDecodeTagParam, summarizePostTagCounts } from './helpers'
 
 
 import { registerMusicPublicRoutes } from '../music'
+import { getBlogSettings } from './settings'
+import { registerBlogPublicCommentsRoutes } from './public-comments'
 import { registerBlogPublicLinksRoutes } from './public-links'
 
 export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): void {
@@ -87,19 +82,16 @@ function registerBlogPublicPostsListRoute(blogPublicRoutes: Hono<AppBindings>): 
     const categorySlug = c.req.query('category')?.trim()
     const search = c.req.query('search')?.trim()
 
-    const { sql, params } = blogPublicPostsQuery({ categorySlug, search })
-    const { results } = await c.env.DB.prepare(sql).bind(...params).all<BlogPostPublicRow>()
+    const pageQuery = blogPublicPostsQuery({ categorySlug, search, tag }, limit, offset)
+    const [pageResult, countRow] = await Promise.all([
+      c.env.DB.prepare(pageQuery.sql).bind(...pageQuery.params).all<BlogPostPublicRow>(),
+      c.env.DB.prepare(blogPublicPostsCountQuery({ categorySlug, search, tag }).sql).bind(...blogPublicPostsCountQuery({ categorySlug, search, tag }).params).first<{ n: number }>(),
+    ])
 
-    let items = (results || []).map(toPublicPostSummary)
-    if (tag) {
-      items = items.filter((p) => p.tags.some((t: string) => t === tag || t.startsWith(`${tag}/`)))
-    }
-
-    const total = items.length
-    const paginated = items.slice(offset, offset + limit)
+    const total = countRow?.n ?? 0
 
     return c.json({
-      posts: paginated,
+      posts: (pageResult.results || []).map(toPublicPostSummary),
       pagination: {
         page,
         limit,
@@ -113,36 +105,65 @@ function registerBlogPublicPostsListRoute(blogPublicRoutes: Hono<AppBindings>): 
 interface PublicPostsFilter {
   categorySlug?: string
   search?: string
+  tag?: string
 }
 
-function blogPublicPostsQuery(filter: PublicPostsFilter): { sql: string; params: unknown[] } {
-  const { categorySlug, search } = filter
-  let sql = `
+// A blog tag lives inside a JSON array column, so the LIKE needle must be the
+// JSON-escaped tag text, LIKE-escaped on top (ESCAPE '\\'); the second
+// pattern keeps the parent-tag-matches-descendants hierarchy semantics.
+function blogTagNeedles(tag: string): [string, string] {
+  const inner = escapeLike(JSON.stringify(tag).slice(1, -1))
+  return [`%"${inner}"%`, `%"${inner}/%`]
+}
+
+function blogPublicPostsWhere(filter: PublicPostsFilter): { clauses: string; params: unknown[] } {
+  const clauses = ['p.is_published = 1']
+  const params: unknown[] = []
+  let idx = 1
+
+  if (filter.categorySlug) {
+    clauses.push(`c.slug = ?${idx++}`)
+    params.push(filter.categorySlug)
+  }
+
+  if (filter.search) {
+    clauses.push(`(p.title LIKE ?${idx} OR p.excerpt LIKE ?${idx} OR p.content LIKE ?${idx})`)
+    params.push(`%${filter.search}%`)
+    idx++
+  }
+
+  if (filter.tag) {
+    const [exact, descendant] = blogTagNeedles(filter.tag)
+    clauses.push(`(p.tags LIKE ?${idx} ESCAPE '\\' OR p.tags LIKE ?${idx + 1} ESCAPE '\\')`)
+    params.push(exact, descendant)
+    idx += 2
+  }
+
+  return { clauses: clauses.join(' AND '), params }
+}
+
+function blogPublicPostsQuery(filter: PublicPostsFilter, limit: number, offset: number): { sql: string; params: unknown[] } {
+  const { clauses, params } = blogPublicPostsWhere(filter)
+  const sql = `
     SELECT p.id, p.slug, p.title, p.excerpt, p.cover_url, p.category_id, p.tags,
            p.views, p.published_at, p.updated_at,
            c.name as category_name, c.slug as category_slug,
            (SELECT COUNT(*) FROM blog_comments cm WHERE cm.post_id = p.id AND cm.status = 'approved') as comments_count
     FROM blog_posts p
     LEFT JOIN blog_categories c ON p.category_id = c.id
-    WHERE p.is_published = 1
+    WHERE ${clauses}
+    ORDER BY p.is_pinned DESC, p.published_at DESC
+    LIMIT ?${params.length + 1} OFFSET ?${params.length + 2}
   `
-  const params: unknown[] = []
-  let idx = 1
+  return { sql, params: [...params, limit, offset] }
+}
 
-  if (categorySlug) {
-    sql += ` AND c.slug = ?${idx++}`
-    params.push(categorySlug)
+function blogPublicPostsCountQuery(filter: PublicPostsFilter): { sql: string; params: unknown[] } {
+  const { clauses, params } = blogPublicPostsWhere(filter)
+  return {
+    sql: `SELECT COUNT(*) AS n FROM blog_posts p LEFT JOIN blog_categories c ON p.category_id = c.id WHERE ${clauses}`,
+    params,
   }
-
-  if (search) {
-    sql += ` AND (p.title LIKE ?${idx} OR p.excerpt LIKE ?${idx} OR p.content LIKE ?${idx})`
-    params.push(`%${search}%`)
-    idx++
-  }
-
-  sql += ` ORDER BY p.is_pinned DESC, p.published_at DESC`
-
-  return { sql, params }
 }
 
 function toPublicPostSummary(row: BlogPostPublicRow): {
@@ -340,155 +361,4 @@ function buildBlogCalendarMap(rows: BlogCalendarRow[]): Record<string, { count: 
     calendarMap[dateStr].posts.push({ slug: row.slug, title: row.title })
   }
   return calendarMap
-}
-
-function registerBlogPublicCommentsRoutes(blogPublicRoutes: Hono<AppBindings>): void {
-  registerBlogPublicCommentsListRoute(blogPublicRoutes)
-  registerBlogPublicCommentSubmitRoute(blogPublicRoutes)
-}
-
-function registerBlogPublicCommentsListRoute(blogPublicRoutes: Hono<AppBindings>): void {
-  blogPublicRoutes.get('/comments/:postSlug', async (c) => {
-    const postSlug = c.req.param('postSlug')
-
-    const post = await c.env.DB
-      .prepare('SELECT id, allow_comments FROM blog_posts WHERE (slug = ?1 OR id = ?1) AND is_published = 1')
-      .bind(postSlug)
-      .first<{ id: string; allow_comments: number }>()
-    if (!post) throw ApiError.notFound('Post not found')
-
-    const { results } = await c.env.DB
-      .prepare(`
-        SELECT id, post_id, parent_id, author_name, author_url, author_avatar, content, created_at
-        FROM blog_comments
-        WHERE post_id = ?1 AND status = 'approved'
-        ORDER BY created_at ASC
-      `)
-      .bind(post.id)
-      .all<BlogPublicCommentRow>()
-
-    return c.json({
-      allowComments: Boolean(post.allow_comments),
-      comments: results || [],
-    })
-  })
-}
-
-function registerBlogPublicCommentSubmitRoute(blogPublicRoutes: Hono<AppBindings>): void {
-  blogPublicRoutes.post('/comments', async (c) => {
-    const body = await readJsonValidated(c, blogPublicCommentSchema, JSON_BODY_LIMITS.comment)
-    assertPublicCommentValid(body)
-
-    const post = await c.env.DB
-      .prepare('SELECT id, allow_comments FROM blog_posts WHERE (slug = ?1 OR id = ?1) AND is_published = 1')
-      .bind(body.postSlug)
-      .first<{ id: string; allow_comments: number }>()
-    if (!post) throw ApiError.notFound('Post not found')
-    if (!post.allow_comments) throw ApiError.forbidden('Comments are disabled for this post')
-
-    await assertCommentRateBudget(c.env.DB, c, body.postSlug)
-    if (body.parentId) await assertParentCommentOnPost(c.env.DB, body.parentId, post.id)
-
-    const settings = await getBlogSettings(c.env.DB)
-    const status: BlogCommentStatus = settings.requireCommentApproval ? 'pending' : 'approved'
-    const avatar = body.authorAvatar || `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(body.authorName)}`
-
-    await publicCommentInsertStatement(c.env.DB, {
-      id: newId(),
-      postId: post.id,
-      body,
-      status,
-      ip: requestClientIp(c) || null,
-      ua: c.req.header('User-Agent') || null,
-      avatar,
-      now: Date.now(),
-    }).run()
-
-    return c.json(publicCommentSubmitResponse(status))
-  })
-}
-
-const BLOG_COMMENT_IP_BUDGET = { key: '', maxAttempts: 5, windowMs: 10 * 60 * 1000, lockMs: 10 * 60 * 1000 }
-const BLOG_COMMENT_POST_BUDGET = { key: '', maxAttempts: 100, windowMs: 10 * 60 * 1000, lockMs: 10 * 60 * 1000 }
-
-async function assertCommentRateBudget(db: D1Database, c: Context<AppBindings>, postSlug: string): Promise<void> {
-  try {
-    await consumeAttemptBudget(db, [
-      { ...BLOG_COMMENT_IP_BUDGET, key: `blog-comment:ip:${requestClientIp(c)}` },
-      { ...BLOG_COMMENT_POST_BUDGET, key: `blog-comment:post:${postSlug}` },
-    ])
-  } catch (error) {
-    if (error instanceof ThrottleError) {
-      throw new ApiError(429, 'too_many_attempts', `Too many comments. Try again in ${error.retryAfterSec} seconds`, { retryAfter: error.retryAfterSec })
-    }
-    throw error
-  }
-}
-
-async function assertParentCommentOnPost(db: D1Database, parentId: string, postId: string): Promise<void> {
-  const parent = await db
-    .prepare('SELECT 1 AS present FROM blog_comments WHERE id = ?1 AND post_id = ?2')
-    .bind(parentId, postId)
-    .first<{ present: number }>()
-  if (!parent) throw ApiError.badRequest('The parent comment does not exist on this post')
-}
-
-function publicCommentInsertStatement(
-  db: D1Database,
-  params: {
-    id: string
-    postId: string
-    body: z.infer<typeof blogPublicCommentSchema>
-    status: BlogCommentStatus
-    ip: string | null
-    ua: string | null
-    avatar: string
-    now: number
-  },
-): D1PreparedStatement {
-  return db
-    .prepare(`
-      INSERT INTO blog_comments (
-        id, post_id, parent_id, author_name, author_email, author_url,
-        author_avatar, content, status, ip, user_agent, created_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
-    `)
-    .bind(
-      params.id,
-      params.postId,
-      params.body.parentId || null,
-      params.body.authorName.trim(),
-      params.body.authorEmail.trim(),
-      params.body.authorUrl?.trim() || null,
-      params.avatar,
-      params.body.content.trim(),
-      params.status,
-      params.ip,
-      params.ua,
-      params.now,
-    )
-}
-
-function publicCommentSubmitResponse(status: BlogCommentStatus): {
-  ok: true
-  status: BlogCommentStatus
-  message: string
-} {
-  return {
-    ok: true,
-    status,
-    message:
-      status === 'pending'
-        ? 'Comment submitted and pending moderation'
-        : 'Comment published successfully',
-  }
-}
-
-function assertPublicCommentValid(body: { postSlug: string; authorName?: string; authorEmail?: string; content?: string }): void {
-  if (!body.postSlug) throw ApiError.badRequest('postSlug is required')
-  if (!body.authorName?.trim()) throw ApiError.badRequest('Name is required')
-  if (!body.authorEmail?.trim() || !body.authorEmail.includes('@')) {
-    throw ApiError.badRequest('Valid email is required')
-  }
-  if (!body.content?.trim()) throw ApiError.badRequest('Comment content is required')
 }

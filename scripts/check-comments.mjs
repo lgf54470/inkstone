@@ -1611,6 +1611,9 @@ const allowed = new Map([
     '// Ensure session loaded for manage routes',
   ]],
   ['src/worker/routes/blog/public.ts', [
+    '// A blog tag lives inside a JSON array column, so the LIKE needle must be the',
+    "// JSON-escaped tag text, LIKE-escaped on top (ESCAPE '\\\\'); the second",
+    '// pattern keeps the parent-tag-matches-descendants hierarchy semantics.',
     '// The blog player reads the owner\'s music library read-only, gated by the publish switch.',
     '// Audio and artwork routes build their own Response, which drops headers set on the context,',
     '// so the origin has to be stamped on the final response to keep cross-origin playback working.',

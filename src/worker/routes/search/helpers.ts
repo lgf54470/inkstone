@@ -323,9 +323,9 @@ function countOccurrences(text: string, query: string, limit: number): number {
   return count
 }
 
-export function escapeLike(text: string): string {
-  return text.replace(/[\\%_]/g, (ch) => `\\${ch}`)
-}
+import { escapeLike } from '../../lib/like'
+
+export { escapeLike }
 
 
 function contentWindowSql(termBindIndex: number): string {

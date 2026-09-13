@@ -218,6 +218,35 @@ describe('blog public routes (real D1)', () => {
     expect(hidden.status).toBe(404)
   })
 
+  it('pushes tag hierarchy and pagination into SQL with correct totals', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'tech-exact', title: 'Exact', tags: ['tech'] })
+    await seedBlogPost(db, { slug: 'tech-child', title: 'Child', tags: ['tech/ai'] })
+    await seedBlogPost(db, { slug: 'life-post', title: 'Life', tags: ['life'] })
+    await seedBlogPost(db, { slug: 'discount', title: 'Discount', tags: ['50%off'] })
+
+    const app = makeApp()
+    const tech = await request(app, '/api/blog/public/posts?tag=tech')
+    const techBody = await tech.json()
+    expect(techBody.pagination.total).toBe(2)
+    expect(techBody.posts.map((p: { slug: string }) => p.slug).sort()).toEqual(['tech-child', 'tech-exact'])
+
+    const exactOnly = await request(app, '/api/blog/public/posts?tag=50%25off')
+    expect((await exactOnly.json()).pagination.total).toBe(1)
+
+    const paged = await request(app, '/api/blog/public/posts?page=2&limit=2')
+    const pagedBody = await paged.json()
+    expect(pagedBody.pagination.total).toBe(4)
+    expect(pagedBody.pagination.totalPages).toBe(2)
+    expect(pagedBody.posts).toHaveLength(2)
+
+    const combined = await request(app, '/api/blog/public/posts?tag=tech&search=Exact')
+    const combinedBody = await combined.json()
+    expect(combinedBody.pagination.total).toBe(1)
+    expect(combinedBody.posts[0].slug).toBe('tech-exact')
+  })
+
   it('submits a pending comment and exposes it publicly only after approval', async () => {
     const db = await makeDb()
     await seedUser(db)
