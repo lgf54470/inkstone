@@ -14,7 +14,7 @@ import { PresentationControls, SlideProgress, type PresentationControlsProps } f
 import { SlideViewport } from './slide-canvas'
 import { hashContent, slideCacheKey } from './slide-html'
 import { samePlan, type SlidePlan } from './slide-pagination'
-import { SlidePreflight, type SlidePreflightProps } from './slide-preflight'
+import { SlidePreflight, type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
 import { SlideRail } from './slide-rail'
 import { useStageMetrics, type StageMetrics } from './slide-stage'
 import { splitIntoSlides } from './slides'
@@ -58,7 +58,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         ref={panelRef}
         tabIndex={-1}
         role='dialog'
-        data-slide-list-complete={session.listComplete ? 'true' : 'false'}
+        data-slide-list-complete={session.listProgress.finished ? 'true' : 'false'}
         aria-modal='true'
         aria-label={t('workspace.presentation_mode')}
         className='anim-fade fixed inset-0 z-[var(--z-modal)] flex overflow-hidden bg-[var(--bg-base)] outline-none'
@@ -76,6 +76,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
             externalImages={session.externalImages}
             proseFont={session.proseFont}
             chromeHidden={session.chromeHidden}
+            progress={session.listProgress}
             onSelectPage={session.jumpToPage}
           />
         )}
@@ -153,8 +154,8 @@ interface PresentationSession {
   toggleFullscreen: () => void
   toggleRail: () => void
   toggleFollowing: () => void
-  /** False while the idle pass is still listing pages the deck has not shown yet. */
-  listComplete: boolean
+  /** How far the idle pass has got in listing the pages the deck has not shown yet. */
+  listProgress: PreflightProgress
   /** Builds the printable deck; the sheet appears until the print dialog is done with it. */
   exportDeck: () => void
   print: { pages: string[]; metrics: StageMetrics; done: () => void } | null
@@ -186,7 +187,7 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
   const noteTitle = liveTitle ?? storedTitle
   const cacheKeys = useMemo(() => deck.map((_, item) => slideCacheKey(fingerprint, dark, item)), [deck, fingerprint, dark])
   const print = useDeckPrint({ deck, cacheKeys, plans, metrics, externalImages })
-  const { listComplete, onFinished } = useListComplete()
+  const { listProgress, onProgress } = useListProgress()
   useDialogBehavior(open, panelRef, onClose)
   useSlideHtml({ open, deck, index, fingerprint, content: presentedContent, noteTitle, dark })
   usePresentationKeys({ open, slideCount: deck.length, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing })
@@ -215,18 +216,18 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
     toggleFollowing,
     exportDeck: print.exportDeck,
     print: print.sheet,
-    preflight: { deck, cacheKeys, fingerprint, metrics, content: presentedContent, noteTitle, onPlan: nav.reportPlan, onFinished },
-    listComplete,
+    preflight: { deck, cacheKeys, fingerprint, metrics, content: presentedContent, noteTitle, onPlan: nav.reportPlan, onProgress },
+    listProgress,
   }
 }
 
-// Whether the idle pass has listed every page the deck has. It is state rather than a guess about
-// whether the list happens to be growing, because a slice that is still measuring looks identical
-// to a finished pass from the outside; the dialog carries it as markup so it is observable.
-function useListComplete(): { listComplete: boolean; onFinished: (finished: boolean) => void } {
-  const [listComplete, setListComplete] = useState(false)
-  const onFinished = useCallback((finished: boolean) => setListComplete(finished), [])
-  return { listComplete, onFinished }
+// How far the idle pass has got in listing the deck. It is state rather than a guess about whether
+// the list happens to be growing, because a slice that is still measuring looks identical to a
+// finished pass from the outside; the dialog carries the flag as markup so it is observable.
+function useListProgress(): { listProgress: PreflightProgress; onProgress: (progress: PreflightProgress) => void } {
+  const [listProgress, setListProgress] = useState<PreflightProgress>({ measured: 0, slides: 0, finished: false })
+  const onProgress = useCallback((progress: PreflightProgress) => setListProgress(progress), [])
+  return { listProgress, onProgress }
 }
 
 // Exporting the deck is a print: the sheet is built from the measured plans and the prepared

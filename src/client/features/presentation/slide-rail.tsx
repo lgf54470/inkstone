@@ -3,6 +3,7 @@ import type { ProseFont } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { entryIndexOf, railEntries, type RailEntry } from './presentation-state'
+import type { PreflightProgress } from './slide-preflight'
 import { readSlideHtml, renderSlideSource, slicePageHtml, subscribeSlideHtml } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import { SlideProse } from './slide-prose'
@@ -51,10 +52,11 @@ export interface SlideRailProps {
   externalImages: boolean
   proseFont: ProseFont
   chromeHidden: boolean
+  progress: PreflightProgress
   onSelectPage: (slide: number, sub: number) => void
 }
 
-export function SlideRail({ deck, cacheKeys, plans, index, sub, designWidth, designHeight, title, externalImages, proseFont, chromeHidden, onSelectPage }: SlideRailProps) {
+export function SlideRail({ deck, cacheKeys, plans, index, sub, designWidth, designHeight, title, externalImages, proseFont, chromeHidden, progress, onSelectPage }: SlideRailProps) {
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const entries = useMemo(() => railEntries(deck.length, plans), [deck.length, plans])
   const active = entryIndexOf(entries, index, sub)
@@ -88,8 +90,14 @@ export function SlideRail({ deck, cacheKeys, plans, index, sub, designWidth, des
       style={{ width: SLIDE_RAIL_WIDTH }}
       onKeyDown={onKeyDown}
     >
-      <p className='truncate px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11)] font-medium tracking-[var(--tracking-label)] text-[var(--text-tertiary)] uppercase'>
+      <p className='truncate px-[var(--sp-3)] pt-[var(--sp-2)] text-[length:var(--text-11)] font-medium tracking-[var(--tracking-label)] text-[var(--text-tertiary)] uppercase'>
         {title}
+      </p>
+      {/* The list fills from the background pass, so it says so while that is happening and gets
+          out of the way once every page is there. Plain text rather than a live region: the count
+          changes per slide, and a reader would be read a stream of numbers. */}
+      <p className={cn('px-[var(--sp-3)] pb-[var(--sp-2)] text-[length:var(--text-11)] text-[var(--text-tertiary)]', progress.finished && 'hidden')} data-slide-list-measuring={progress.finished ? undefined : 'true'}>
+        {t('workspace.presentation_measuring', { value0: Math.min(progress.measured, progress.slides), value1: progress.slides })}
       </p>
       <SlideRailList deck={deck} cacheKeys={cacheKeys} plans={plans} entries={entries} active={active} view={view} onSelectPage={onSelectPage} registerItem={registerItem} />
     </nav>

@@ -41,15 +41,23 @@ export interface SlidePreflightProps {
   content: string
   noteTitle: string
   onPlan: (slide: number, plan: SlidePlan) => void
-  /** Reports whether the pass has listed every page of the deck yet. */
-  onFinished: (finished: boolean) => void
+  /** Reports how much of the deck the pass has listed, and whether it is done. */
+  onProgress: (progress: PreflightProgress) => void
 }
 
-export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, content, noteTitle, onPlan, onFinished }: SlidePreflightProps) {
+/** How far the background pass has got: slides visited out of the deck, and whether it is done. */
+export interface PreflightProgress {
+  measured: number
+  slides: number
+  finished: boolean
+}
+
+export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, content, noteTitle, onPlan, onProgress }: SlidePreflightProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const dark = useIsDarkTheme()
-  const { cursor, report, finished } = usePreflightPass({ deckLength: deck.length, fingerprint, dark, cacheKeys, hostRef, onPlan })
-  useEffect(() => onFinished(finished), [finished, onFinished])
+  const { cursor, report, measured, finished } = usePreflightPass({ deckLength: deck.length, fingerprint, dark, cacheKeys, hostRef, onPlan })
+  const slides = deck.length
+  useEffect(() => onProgress({ measured, slides, finished }), [measured, slides, finished, onProgress])
   useSlideHtml({ open: cursor !== null, deck, index: cursor ?? 0, fingerprint, content, noteTitle, dark })
   const key = cursor === null ? '' : cacheKeys[cursor] ?? ''
   // The canvas waits one frame after the markup lands. Preparing a slide is a markdown render,
@@ -140,11 +148,11 @@ function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, o
   cacheKeys: string[]
   hostRef: RefObject<HTMLDivElement | null>
   onPlan: (slide: number, plan: SlidePlan) => void
-}): { cursor: number | null; report: (plan: SlidePlan) => void; finished: boolean } {
+}): { cursor: number | null; report: (plan: SlidePlan) => void; measured: number; finished: boolean } {
   const pass = usePassState()
   const { done, skipped, sliceStart, sliceCost, cursorRef } = pass
   const queue = useSliceQueue({ deckLength, fingerprint, dark, pass })
-  const { cursor, scheduleNext } = queue
+  const { cursor, scheduleNext, countVisited } = queue
   cursorRef.current = cursor
 
   const report = useCallback((plan: SlidePlan) => {
@@ -153,36 +161,40 @@ function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, o
     publishPlan(slide, plan, { hostRef, cacheKeys, onPlan })
     noteSliceCost(sliceStart, sliceCost)
     done.current.add(slide)
+    countVisited()
     scheduleNext(slide + 1)
-  }, [cacheKeys, hostRef, onPlan, scheduleNext, cursorRef, done, sliceCost, sliceStart])
+  }, [cacheKeys, hostRef, onPlan, scheduleNext, countVisited, cursorRef, done, sliceCost, sliceStart])
 
   // A slide that never reports (a pathological diagram, say) is skipped instead of pausing the
   // pass; the canvas still measures it when the presenter reaches it.
   const skipStalled = useCallback((slide: number) => {
     skipped.current.add(slide)
+    countVisited()
     scheduleNext(slide + 1)
-  }, [scheduleNext, skipped])
+  }, [scheduleNext, countVisited, skipped])
   useStallGuard(cursor, skipStalled)
 
-  return { cursor, report, finished: queue.finished }
+  return { cursor, report, measured: queue.measured, finished: queue.finished }
 }
 
-// The queue the pass walks: which slide is up next, and how long to wait before it. It restarts
-// whenever the deck or the markup under it changes — an edited note re-splits into different
-// slides, and a theme flip invalidates every slide's markup, so either way every slide has to be
-// visited again.
+// The queue the pass walks: which slide is up next, how long to wait before it, and how far the
+// deck has been listed. It restarts whenever the deck or the markup under it changes — an edited
+// note re-splits into different slides, and a theme flip invalidates every slide's markup, so
+// either way every slide has to be visited again.
 function useSliceQueue({ deckLength, fingerprint, dark, pass }: {
   deckLength: number
   fingerprint: string
   dark: boolean
   pass: PassState
-}): { cursor: number | null; finished: boolean; scheduleNext: (from: number) => void } {
+}): { cursor: number | null; finished: boolean; measured: number; scheduleNext: (from: number) => void; countVisited: () => void } {
   const { done, skipped, idle, sliceStart, sliceCost, pace } = pass
   const [cursor, setCursor] = useState<number | null>(null)
   const sampler = useFrameSampler(cursor !== null)
   // A deck is listed once the pass has nothing left to measure, which is the state the show hands
-  // to the slide list: a list that is still filling must never be read as a finished one.
+  // to the slide list — a list that is still filling must never be read as a finished one — and
+  // `measured` is how far along that filling is, for the list to show while it happens.
   const [finished, setFinished] = useState(false)
+  const [measured, setMeasured] = useState(0)
 
   // One slide per idle slice keeps a long deck from holding frames while someone is talking; the
   // fallback timer covers browsers without requestIdleCallback.
@@ -199,16 +211,18 @@ function useSliceQueue({ deckLength, fingerprint, dark, pass }: {
     }, gap)
   }, [deckLength, done, skipped, idle, sliceStart, sliceCost, sampler, pace])
 
+  const countVisited = useCallback(() => setMeasured(done.current.size + skipped.current.size), [done, skipped])
   const restart = useCallback(() => {
     done.current = new Set()
     skipped.current = new Set()
     pace.current = { factor: 1, quietRun: 0 }
     setFinished(false)
+    setMeasured(0)
     scheduleNext(0)
   }, [done, skipped, pace, scheduleNext])
   usePassRestart(`${deckLength}:${fingerprint}:${dark}`, restart, idle)
 
-  return { cursor, finished, scheduleNext }
+  return { cursor, finished, measured, scheduleNext, countVisited }
 }
 
 // What a measurement means: the markup it came from goes back to the cache under the slide's key
