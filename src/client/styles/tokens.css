@@ -94,6 +94,12 @@
   --editor-size: 15px;
 
 
+  --slide-prose-size: 28px;
+  --slide-line-height: 1.44;
+  --slide-code-size: 0.74em;
+  --slide-chart-height: 340px;
+
+
   --writing-line: 1.64;
   --heading-line: 1.28;
   --heading-1-size: 1.52em;

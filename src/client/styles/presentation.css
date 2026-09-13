@@ -1,0 +1,43 @@
+.ink-slide {
+  --prose-size: var(--slide-prose-size);
+  --prose-line: var(--slide-line-height);
+  --code-size: var(--slide-code-size);
+}
+
+.ink-slide .ink-preview-container,
+.ink-slide .ink-prose {
+  max-width: none;
+}
+
+.ink-slide .ink-prose {
+  padding-block: 0;
+}
+
+.ink-slide .ink-prose > :first-child {
+  margin-top: 0;
+}
+
+.ink-slide .ink-prose .chartjs-block {
+  margin: 0.5em 0;
+}
+
+.ink-slide .ink-prose .chartjs-container {
+  max-width: none;
+  max-height: none;
+  height: var(--slide-chart-height);
+}
+
+.ink-slide .ink-prose .mermaid-block,
+.ink-slide .ink-prose .table-wrap,
+.ink-slide .ink-prose .code-block {
+  max-width: none;
+}
+
+.ink-slide-rail-thumb .chartjs-block.loading::before,
+.ink-slide-rail-thumb .mermaid-block.loading::before {
+  display: none;
+}
+
+.ink-slide-rail-thumb .ink-prose {
+  pointer-events: none;
+}

@@ -1,49 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, ChevronRight, Maximize, Minimize, X } from 'lucide-react'
+import type { ProseFont } from '@shared/types'
 import { t } from '../../lib/i18n'
-import { renderMarkdown } from '../../lib/markdown/renderer'
 import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
-import { destroyChartInstances, enhancePreview, renderChartJs, renderPendingMermaid } from '../../lib/markdown/enhance'
-import { IconButton } from '../../components/primitives'
-import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../components/overlay'
+import { enhancePreview } from '../../lib/markdown/enhance'
+import { useDialogFocus, useEscape, useLockScroll } from '../../components/overlay'
 import { useSession } from '../../store/session'
+import { useIsDarkTheme } from './presentation-theme'
+import { PresentationControls, SlideProgress } from './presentation-controls'
+import { SlideViewport } from './slide-canvas'
+import { hashContent, readSlideHtml, rememberSlideHtml, renderSlideSource, slideCacheKey } from './slide-html'
+import { SlideRail } from './slide-rail'
+import { useStageMetrics, type StageMetrics } from './slide-stage'
 import { splitIntoSlides } from './slides'
+import { usePresentationKeys } from './use-presentation-keys'
 
-// Slide canvases are laid out at a fixed 16:9 design size and scaled to the stage,
-// so proportions stay stable from phone to projector (same approach as reveal.js).
-const SLIDE_WIDTH = 1280
-const SLIDE_HEIGHT = 720
-const SLIDE_PAD_X = 56
-const SLIDE_PAD_Y = 40
-const SLIDE_CONTENT_WIDTH = SLIDE_WIDTH - SLIDE_PAD_X * 2
-const SLIDE_CONTENT_HEIGHT = SLIDE_HEIGHT - SLIDE_PAD_Y * 2
-const SLIDE_HTML_CACHE_LIMIT = 60
-
-// Enhanced per-slide markup keyed by content fingerprint + theme + slide index,
-// so a remount (e.g. across fullscreen toggles) reuses the last good html instead
-// of resetting diagrams to their loading placeholders.
-const slideHtmlCache = new Map<string, string>()
-
-function hashContent(value: string): string {
-  let hash = 5381
-  for (let index = 0; index < value.length; index++) hash = ((hash << 5) + hash + value.charCodeAt(index)) | 0
-  return `${value.length}:${(hash >>> 0).toString(36)}`
-}
-
-function rememberSlideHtml(key: string, html: string): void {
-  slideHtmlCache.delete(key)
-  slideHtmlCache.set(key, html)
-  while (slideHtmlCache.size > SLIDE_HTML_CACHE_LIMIT) {
-    const oldest = slideHtmlCache.keys().next().value
-    if (oldest === undefined) break
-    slideHtmlCache.delete(oldest)
-  }
-}
-
-function slideCacheKey(fingerprint: string, dark: boolean, index: number): string {
-  return `${fingerprint}:${dark ? 'd' : 'l'}:${index}`
-}
+const CHROME_IDLE_MS = 2600
+const RAIL_DEFAULT_MIN_WIDTH = 768
 
 export interface PresentationOverlayProps {
   open: boolean
@@ -55,16 +28,7 @@ export interface PresentationOverlayProps {
 export function PresentationOverlay({ open, onClose, content, noteTitle }: PresentationOverlayProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  const { presentedContent, deck, fingerprint } = useFrozenDeck(open, content)
-  const dark = useIsDarkTheme()
-  const { index, sub, pageCount, handlePageCount, goNext, goPrev, jumpTo } = usePresentationNav(deck.length)
-  const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
-  const scale = useStageScale(stageRef)
-  useEscape(open, onClose)
-  useLockScroll(open)
-  useDialogFocus(open, panelRef, panelRef)
-  useSlideHtml({ open, deck, index, fingerprint, content: presentedContent, noteTitle, dark })
-  usePresentationKeys(open, deck.length, goNext, goPrev, jumpTo, toggleFullscreen)
+  const session = usePresentationSession({ open, content, noteTitle, panelRef, stageRef, onClose })
 
   if (!open) return null
 
@@ -75,40 +39,155 @@ export function PresentationOverlay({ open, onClose, content, noteTitle }: Prese
       role='dialog'
       aria-modal='true'
       aria-label={t('workspace.presentation_mode')}
-      className='anim-fade fixed inset-0 z-[var(--z-modal)] flex flex-col bg-[var(--bg-base)] outline-none'
+      className='anim-fade fixed inset-0 z-[var(--z-modal)] flex overflow-hidden bg-[var(--bg-base)] outline-none'
     >
-      <div ref={stageRef} className='flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3'>
-        <div
-          className='shrink-0 overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-editor)] shadow-[var(--shadow-modal)]'
-          style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})` }}
-        >
-          <SlideCanvas key={index} cacheKey={slideCacheKey(fingerprint, dark, index)} source={deck[index] ?? ''} subPage={sub} onPageCount={handlePageCount} />
-        </div>
-      </div>
+      {session.railOpen && (
+        <SlideRail
+          deck={session.deck}
+          cacheKeys={session.cacheKeys}
+          index={session.index}
+          designWidth={session.metrics.designWidth}
+          designHeight={session.metrics.designHeight}
+          title={noteTitle}
+          externalImages={session.externalImages}
+          proseFont={session.proseFont}
+          chromeHidden={session.chromeHidden}
+          onSelect={session.jumpTo}
+        />
+      )}
+      <PresentationStage stageRef={stageRef} session={session} />
       <PresentationControls
-        slideIndex={index}
-        subPage={sub}
-        pageCount={pageCount}
-        slideCount={deck.length}
-        isFullscreen={isFullscreen}
-        goNext={goNext}
-        goPrev={goPrev}
-        toggleFullscreen={toggleFullscreen}
+        slideIndex={session.index}
+        slideCount={session.deck.length}
+        subPage={session.sub}
+        pageCount={session.pageCount}
+        isFullscreen={session.isFullscreen}
+        railOpen={session.railOpen}
+        chromeHidden={session.chromeHidden}
+        onPrev={session.goPrev}
+        onNext={session.goNext}
+        onToggleRail={session.toggleRail}
+        onToggleFullscreen={session.toggleFullscreen}
         onClose={onClose}
       />
-      <SlideProgress index={index} count={deck.length} />
-      <SlideProgress index={index} count={deck.length} />
+      <SlideProgress index={session.index} count={session.deck.length} chromeHidden={session.chromeHidden} />
     </div>,
     document.body,
   )
 }
 
-function SlideProgress({ index, count }: { index: number; count: number }) {
+function PresentationStage({ stageRef, session }: { stageRef: RefObject<HTMLDivElement | null>; session: PresentationSession }) {
   return (
-    <div className='pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-[var(--border-subtle)]' aria-hidden='true'>
-      <div className='h-full bg-[var(--accent)]' style={{ width: `${Math.round(((index + 1) / count) * 100)}%` }} />
+    <div ref={stageRef} className='relative flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden'>
+      <SlideViewport
+        metrics={session.metrics}
+        cacheKey={session.cacheKeys[session.index] ?? ''}
+        source={session.deck[session.index] ?? ''}
+        subPage={session.sub}
+        onPageCount={session.handlePageCount}
+      />
     </div>
   )
+}
+
+interface PresentationSession {
+  deck: string[]
+  cacheKeys: string[]
+  index: number
+  sub: number
+  pageCount: number
+  railOpen: boolean
+  chromeHidden: boolean
+  isFullscreen: boolean
+  metrics: StageMetrics
+  proseFont: ProseFont
+  externalImages: boolean
+  handlePageCount: (count: number) => void
+  goNext: () => void
+  goPrev: () => void
+  jumpTo: (index: number) => void
+  toggleFullscreen: () => void
+  toggleRail: () => void
+}
+
+function usePresentationSession({ open, content, noteTitle, panelRef, stageRef, onClose }: {
+  open: boolean
+  content: string
+  noteTitle: string
+  panelRef: RefObject<HTMLDivElement | null>
+  stageRef: RefObject<HTMLDivElement | null>
+  onClose: () => void
+}): PresentationSession {
+  const { presentedContent, deck, fingerprint } = useFrozenDeck(open, content)
+  const dark = useIsDarkTheme()
+  const externalImages = useSession((s) => s.settings.preview.externalImages)
+  const proseFont = useSession((s) => s.settings.appearance.proseFont)
+  const { index, sub, pageCount, handlePageCount, goNext, goPrev, jumpTo } = usePresentationNav(deck.length)
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
+  const metrics = useStageMetrics(open, stageRef)
+  const [railOpen, setRailOpen] = useState(defaultRailOpen)
+  const chromeHidden = useChromeAutoHide(open && isFullscreen)
+  const toggleRail = useCallback(() => setRailOpen((current) => !current), [])
+  const cacheKeys = useMemo(() => deck.map((_, item) => slideCacheKey(fingerprint, dark, item)), [deck, fingerprint, dark])
+  useEscape(open, onClose)
+  useLockScroll(open)
+  useDialogFocus(open, panelRef, panelRef)
+  useSlideHtml({ open, deck, index, fingerprint, content: presentedContent, noteTitle, dark })
+  usePresentationKeys({ open, slideCount: deck.length, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail })
+  return {
+    deck,
+    cacheKeys,
+    index,
+    sub,
+    pageCount,
+    railOpen,
+    chromeHidden,
+    isFullscreen,
+    metrics,
+    proseFont,
+    externalImages,
+    handlePageCount,
+    goNext,
+    goPrev,
+    jumpTo,
+    toggleFullscreen,
+    toggleRail,
+  }
+}
+
+function defaultRailOpen(): boolean {
+  if (typeof window.matchMedia !== 'function') return false
+  return window.matchMedia(`(min-width: ${RAIL_DEFAULT_MIN_WIDTH}px)`).matches
+}
+
+// Presenting is a full-screen activity: the controls and the slide list fade out
+// while nothing happens and come back on the next pointer move or key press, so
+// the slide itself owns the whole screen.
+function useChromeAutoHide(active: boolean): boolean {
+  const [hidden, setHidden] = useState(false)
+  useEffect(() => {
+    if (!active) {
+      setHidden(false)
+      return
+    }
+    let timer = 0
+    const reveal = () => {
+      window.clearTimeout(timer)
+      setHidden(false)
+      timer = window.setTimeout(() => setHidden(true), CHROME_IDLE_MS)
+    }
+    window.addEventListener('pointermove', reveal)
+    window.addEventListener('pointerdown', reveal)
+    window.addEventListener('keydown', reveal, true)
+    reveal()
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('pointermove', reveal)
+      window.removeEventListener('pointerdown', reveal)
+      window.removeEventListener('keydown', reveal, true)
+    }
+  }, [active])
+  return hidden
 }
 
 // Freeze the deck on open: presenting shows a snapshot, and store/editor content
@@ -133,9 +212,11 @@ function useSlideHtml(options: { open: boolean; deck: string[]; index: number; f
   useEffect(() => {
     if (!open) return
     const key = slideCacheKey(fingerprint, dark, index)
-    if (slideHtmlCache.has(key)) return
+    // A cache hit was already enhanced (or is being enhanced), which is what keeps
+    // diagrams from resetting to their loading placeholders on every remount.
+    if (readSlideHtml(key)) return
     let cancelled = false
-    const rendered = renderMarkdown(deck[index] ?? '', { externalImages: preview.externalImages, hideFrontMatter: true })
+    const rendered = renderSlideSource(deck[index] ?? '', preview.externalImages)
     rememberSlideHtml(key, rendered.html)
     setTick((tick) => tick + 1)
     const staging = document.createElement('div')
@@ -166,21 +247,26 @@ function useDeckIndex(deckLength: number) {
 }
 
 // Slide-level position plus auto-pagination sub-pages: a slide whose rendered
-// blocks overflow the fixed canvas reports its page count, and next/prev walk
-// through its sub-pages before moving to the neighboring slide.
+// blocks overflow the canvas reports its page count, and next/prev walk through
+// its sub-pages before moving to the neighboring slide.
 function usePresentationNav(deckLength: number) {
   const { index, goTo } = useDeckIndex(deckLength)
   const [subPage, setSubPage] = useState(0)
   const [pageCounts, setPageCounts] = useState<Record<number, number>>({})
+  const pageCount = pageCounts[index] ?? 1
   useEffect(() => {
     setSubPage(0)
   }, [index])
+  // A re-measure can shrink a slide back to fewer pages; clamping the state (not
+  // just the rendered value) keeps every consumer on a page that exists.
+  useEffect(() => {
+    setSubPage((current) => Math.min(current, pageCount - 1))
+  }, [pageCount])
   const registerPageCount = useCallback((slide: number, count: number) => {
     setPageCounts((current) => (current[slide] === count ? current : { ...current, [slide]: count }))
   }, [])
   const handlePageCount = useCallback((count: number) => registerPageCount(index, count), [index, registerPageCount])
-  const pageCount = pageCounts[index] ?? 1
-  const sub = Math.min(subPage, pageCount - 1)
+  const sub = Math.min(Math.max(subPage, 0), pageCount - 1)
   const goNext = useCallback(() => {
     if (sub < pageCount - 1) setSubPage(sub + 1)
     else if (index < deckLength - 1) {
@@ -204,245 +290,38 @@ function usePresentationNav(deckLength: number) {
 
 function useFullscreenToggle(open: boolean, panelRef: RefObject<HTMLDivElement | null>) {
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const toggleFullscreen = useCallback(() => {
-    const request = document.fullscreenElement ? document.exitFullscreen() : panelRef.current?.requestFullscreen()
-    if (request) request.catch((err) => console.debug('[inkstone] fullscreen request rejected', err))
+  const report = (scope: string) => (error: unknown) => console.debug(`[inkstone] ${scope} rejected`, error)
+  const enter = useCallback(() => {
+    const panel = panelRef.current
+    if (!panel || document.fullscreenElement) return
+    const pending = panel.requestFullscreen()
+    pending.catch(report('fullscreen request'))
   }, [panelRef])
+  const exit = useCallback(() => {
+    if (!panelRef.current || document.fullscreenElement !== panelRef.current) return
+    void document.exitFullscreen().catch(report('exit fullscreen'))
+  }, [panelRef])
+  // Starting the show enters fullscreen, and the request has to happen while the
+  // click that opened the overlay is still a user gesture: a layout effect runs
+  // inside that same task, a plain effect after it does not.
+  useLayoutEffect(() => {
+    if (open) enter()
+  }, [open, enter])
   useEffect(() => {
     if (!open) return
-    const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement))
-    document.addEventListener('fullscreenchange', onFullscreenChange)
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
-  }, [open])
-  return { isFullscreen, toggleFullscreen }
-}
-
-// Navigation keys always move slides so a stray focused control can never trap
-// the keyboard; Space/Enter yield to the focused control to avoid double actions.
-function usePresentationKeys(open: boolean, deckLength: number, goNext: () => void, goPrev: () => void, jumpTo: (next: number) => void, toggleFullscreen: () => void) {
-  useEffect(() => {
-    if (!open) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      const onControl = Boolean(target?.closest('button, a, input, select, textarea, [contenteditable="true"]'))
-      switch (event.key) {
-        case 'ArrowRight':
-        case 'ArrowDown':
-        case 'PageDown':
-          event.preventDefault()
-          goNext()
-          return
-        case ' ':
-        case 'Enter':
-          if (onControl) return
-          event.preventDefault()
-          goNext()
-          return
-        case 'ArrowLeft':
-        case 'ArrowUp':
-        case 'PageUp':
-          event.preventDefault()
-          goPrev()
-          return
-        case 'Home':
-          event.preventDefault()
-          jumpTo(0)
-          return
-        case 'End':
-          event.preventDefault()
-          jumpTo(deckLength - 1)
-          return
-        case 'f':
-        case 'F':
-          event.preventDefault()
-          toggleFullscreen()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown, true)
-    return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [open, deckLength, goNext, goPrev, jumpTo, toggleFullscreen])
-}
-
-interface SlidePage {
-  from: number
-  to: number
-  top: number
-}
-
-function SlideCanvas({ cacheKey, source, subPage, onPageCount }: { cacheKey: string; source: string; subPage: number; onPageCount: (count: number) => void }) {
-  const proseFont = useSession((s) => s.settings.appearance.proseFont)
-  const preview = useSession((s) => s.settings.preview)
-  const dark = useIsDarkTheme()
-  const hostRef = useRef<HTMLDivElement>(null)
-  const fallbackHtml = useMemo(
-    () => renderMarkdown(source, { externalImages: preview.externalImages, hideFrontMatter: true }).html,
-    [source, preview.externalImages],
-  )
-  const html = slideHtmlCache.get(cacheKey) ?? fallbackHtml
-  useSlideDiagramRendering(hostRef, dark)
-  const pageTop = useSlidePagination(hostRef, html, subPage, onPageCount)
-
-  return (
-    <div className='relative h-full w-full overflow-hidden'>
-      <div className='absolute inset-x-0' style={{ top: SLIDE_PAD_Y, transform: `translateY(-${pageTop}px)` }}>
-        <div className='mx-auto' style={{ width: SLIDE_CONTENT_WIDTH }}>
-          <div className='ink-preview-container' data-font={proseFont}>
-            <div ref={hostRef} data-font={proseFont} className='ink-prose relative' dangerouslySetInnerHTML={{ __html: html }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Diagram rendering is observer-driven: whatever commits new slide markup
-// (cache fill, remount, fullscreen relayout), pending chart/mermaid blocks on
-// the live host get rendered; the data-rendered signature keeps re-runs cheap.
-function useSlideDiagramRendering(hostRef: RefObject<HTMLDivElement | null>, dark: boolean): void {
-  useEffect(() => {
-    const host = hostRef.current
-    if (!host) return
-    let generation = 0
-    const run = () => {
-      const current = ++generation
-      void renderPendingMermaid(host, dark).then(() => {
-        if (current === generation) return renderChartJs(host, dark)
-      })
-    }
-    run()
-    const observer = new MutationObserver(() => run())
-    observer.observe(host, { childList: true })
+    const owned = () => document.fullscreenElement === panelRef.current
+    const sync = () => setIsFullscreen(owned())
+    sync()
+    document.addEventListener('fullscreenchange', sync)
     return () => {
-      generation++
-      observer.disconnect()
-      destroyChartInstances(host)
+      document.removeEventListener('fullscreenchange', sync)
+      // Leaving the show must not leave the browser holding the app fullscreen.
+      if (owned()) exit()
     }
-  }, [dark, hostRef])
-}
-
-// Oversized slides flow across pages instead of scrolling or shrinking: page
-// boundaries snap to block edges, off-page blocks hide via visibility (layout
-// stays intact so charts never re-measure), and the wrapper translates so the
-// current page starts at the top.
-function useSlidePagination(hostRef: RefObject<HTMLDivElement | null>, html: string, subPage: number, onPageCount: (count: number) => void): number {
-  const [pages, setPages] = useState<SlidePage[]>([])
-  useEffect(() => {
-    const host = hostRef.current
-    if (!host) return
-    let lastHeight = -1
-    const compute = () => {
-      const total = host.scrollHeight
-      if (total < 1 || total === lastHeight) return
-      lastHeight = total
-      const children = [...host.children] as HTMLElement[]
-      const next: SlidePage[] = [{ from: 0, to: children.length, top: 0 }]
-      let pageTop = 0
-      children.forEach((child, i) => {
-        const page = next[next.length - 1]
-        const bottom = child.offsetTop + child.offsetHeight
-        if (bottom > pageTop + SLIDE_CONTENT_HEIGHT && child.offsetTop > pageTop) {
-          // Keep headings attached to the block that follows them across breaks.
-          let cut = i
-          while (cut > page.from && /^H[1-6]$/.test(children[cut - 1]?.tagName ?? '')) cut--
-          page.to = cut
-          next.push({ from: cut, to: children.length, top: children[cut]!.offsetTop })
-          pageTop = children[cut]!.offsetTop
-        }
-      })
-      setPages(next)
-      onPageCount(next.length)
-    }
-    compute()
-    const observer = new ResizeObserver(compute)
-    observer.observe(host)
-    return () => observer.disconnect()
-  }, [hostRef, html, onPageCount])
-
-  useEffect(() => {
-    const host = hostRef.current
-    if (!host) return
-    const children = [...host.children] as HTMLElement[]
-    const page = pages[subPage] ?? null
-    children.forEach((child, i) => {
-      const inPage = !page || (i >= page.from && i < page.to)
-      child.style.visibility = inPage ? '' : 'hidden'
-      const lone = Boolean(page) && page.to - page.from === 1 && child.offsetHeight > SLIDE_CONTENT_HEIGHT
-      child.style.maxHeight = lone ? `${SLIDE_CONTENT_HEIGHT}px` : ''
-      child.style.overflowY = lone ? 'auto' : ''
-    })
-  }, [pages, subPage, html, hostRef])
-
-  return pages[subPage]?.top ?? 0
-}
-
-function PresentationControls({ slideIndex, subPage, pageCount, slideCount, isFullscreen, goNext, goPrev, toggleFullscreen, onClose }: {
-  slideIndex: number
-  subPage: number
-  pageCount: number
-  slideCount: number
-  isFullscreen: boolean
-  goNext: () => void
-  goPrev: () => void
-  toggleFullscreen: () => void
-  onClose: () => void
-}) {
-  const fullscreenLabel = isFullscreen ? t('workspace.presentation_exit_fullscreen') : t('workspace.presentation_fullscreen')
-  const position = pageCount > 1 ? `${slideIndex + 1}.${subPage + 1}` : `${slideIndex + 1}`
-  return (
-    <div className='absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'>
-      <Tooltip label={t('workspace.presentation_prev')} side='top'>
-        <IconButton label={t('workspace.presentation_prev')} size='sm' onClick={goPrev} disabled={slideIndex === 0 && subPage === 0}>
-          <ChevronLeft size={15} />
-        </IconButton>
-      </Tooltip>
-      <span aria-live='polite' className='tabular min-w-14 text-center text-[length:var(--text-12)] text-[var(--text-secondary)]'>
-        {position} / {slideCount}
-      </span>
-      <Tooltip label={t('workspace.presentation_next')} side='top'>
-        <IconButton label={t('workspace.presentation_next')} size='sm' onClick={goNext} disabled={slideIndex === slideCount - 1 && subPage === pageCount - 1}>
-          <ChevronRight size={15} />
-        </IconButton>
-      </Tooltip>
-      <span className='mx-1 h-4 w-px bg-[var(--border-subtle)]' aria-hidden='true' />
-      <Tooltip label={fullscreenLabel} side='top'>
-        <IconButton label={fullscreenLabel} size='sm' onClick={toggleFullscreen}>
-          {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-        </IconButton>
-      </Tooltip>
-      <Tooltip label={t('workspace.presentation_exit')} side='top'>
-        <IconButton label={t('workspace.presentation_exit')} size='sm' onClick={onClose}>
-          <X size={15} />
-        </IconButton>
-      </Tooltip>
-    </div>
-  )
-}
-
-function useStageScale(stageRef: RefObject<HTMLDivElement | null>): number {
-  const [scale, setScale] = useState(1)
-  useEffect(() => {
-    const stage = stageRef.current
-    if (!stage) return
-    const observer = new ResizeObserver((entries) => {
-      const { width, height } = entries[0]?.contentRect ?? { width: 0, height: 0 }
-      if (width < 1 || height < 1) return
-      setScale(Math.min(width / SLIDE_WIDTH, height / SLIDE_HEIGHT))
-    })
-    observer.observe(stage)
-    return () => observer.disconnect()
-  }, [stageRef])
-  return scale
-}
-
-function useIsDarkTheme(): boolean {
-  const [dark, setDark] = useState(() => (document.documentElement.dataset.theme ?? 'dark') === 'dark')
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setDark((document.documentElement.dataset.theme ?? 'dark') === 'dark')
-    })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => observer.disconnect()
-  }, [])
-  return dark
+  }, [open, panelRef, exit])
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement === panelRef.current) exit()
+    else enter()
+  }, [enter, exit])
+  return { isFullscreen, toggleFullscreen }
 }

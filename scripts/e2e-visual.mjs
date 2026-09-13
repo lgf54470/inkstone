@@ -38,6 +38,8 @@ const NOTE_MARKDOWN = [
   '  A[Markdown] --> B[Preview]',
   '```',
   '',
+  '---',
+  '',
   'Inline math $E = mc^2$ and display math:',
   '',
   '$$',
@@ -81,6 +83,8 @@ const LABELS = {
   list: ['笔记', 'Notes'],
   edit: ['编辑', 'Edit'],
   preview: ['预览', 'Preview'],
+  present: ['演示模式', 'Presentation mode'],
+  presentExit: ['退出演示', 'Exit presentation'],
 }
 
 function labelSelector(labels) {
@@ -250,6 +254,41 @@ async function assertDesktopSplit(page) {
   await assertProseSurface(page, 'desktop-split')
 }
 
+// Presentation mode is asserted from its own contract rather than the editor's:
+// the design canvas has to fill the stage at any window size, the type has to be
+// large enough to read from the back of a room, the slide list has to list the
+// deck, and no block may spill past the canvas bottom.
+async function assertPresentation(page) {
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(1_500)
+
+  const deck = await page.evaluate(() => {
+    const canvas = document.querySelector('[data-slide-canvas]')
+    const stage = canvas.parentElement.getBoundingClientRect()
+    const box = canvas.getBoundingClientRect()
+    const host = canvas.querySelector('[data-slide-page]')
+    const visible = [...host.children].filter((el) => el.style.visibility !== 'hidden')
+    return {
+      fills: box.width >= stage.width - 1 && box.height >= stage.height - 1,
+      contentFills: host.getBoundingClientRect().width > box.width * 0.85,
+      fontSize: Number.parseFloat(getComputedStyle(host).fontSize),
+      slides: document.querySelectorAll('[data-presentation-rail] [data-slide-index]').length,
+      overflow: visible.some((el) => el.getBoundingClientRect().bottom > box.bottom + 2),
+    }
+  })
+
+  check('presentation: canvas fills the stage', deck.fills)
+  check('presentation: prose column fills the canvas', deck.contentFills)
+  check('presentation: type is enlarged for the projector', deck.fontSize >= 24, `fontSize=${deck.fontSize}px`)
+  check('presentation: slide list lists the deck', deck.slides >= 2, `slides=${deck.slides}`)
+  check('presentation: no block overflows the canvas', !deck.overflow)
+
+  await clickButton(page, LABELS.presentExit)
+  await sleep(600)
+  check('presentation: exit returns to the note', await page.evaluate(() => !document.querySelector('[data-slide-canvas]')))
+}
+
 async function main() {
   console.log(`visual e2e against ${BASE}`)
   const browser = await puppeteer.launch({
@@ -275,6 +314,7 @@ async function main() {
     await assertProseSurface(page, 'mobile-preview')
     await assertPaneTransition(page)
     await assertDesktopSplit(page)
+    await assertPresentation(page)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.
