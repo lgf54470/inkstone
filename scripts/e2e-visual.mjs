@@ -399,6 +399,64 @@ async function assertPresentationPages(page) {
   await sleep(600)
 }
 
+// The presentation surface is a modal dialog around a scaled canvas: exactly the shape where a
+// missing role, an unnamed control or a low-contrast token goes unnoticed by eye. axe-core is
+// injected into the live page (its own browser build, evaluated rather than added as a script
+// tag so the app's CSP stays untouched) and run over the whole overlay with the slide list open.
+//
+// Three results come back as "incomplete" rather than violations. Two of them are because the
+// list renders the same slide markup once per page — aria-hidden-focus (those copies are inert,
+// so nothing inside them is focusable) and duplicate-id-aria (the copies are inert and
+// aria-hidden, so their ids are not reachable) — and one is axe's own caveat on a one-character
+// label: it cannot decide whether a single digit is text, which is exactly the visible page
+// number in the list (the entry's accessible name already carries the position). These are
+// allowed by id and reason, so any new kind of review item still fails the gate; the violation
+// list has to stay empty.
+//
+// The one violation this run found is why the light theme mixes a callout title's accent toward
+// the body text (styles/prose/blocks.css): the accent alone read at about 2.2:1 on the callout
+// tint, below AA for text. The override has no comment of its own because CSS comments are not
+// allowed in this repository, and this gate is what keeps it honest.
+function isReviewedIncomplete(item) {
+  if (item.id === 'aria-hidden-focus' || item.id === 'duplicate-id-aria') return true
+  return item.id === 'color-contrast' && /too short to determine/.test(item.note)
+}
+
+async function assertPresentationAccessibility(page) {
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await waitForRailFilled(page)
+  await page.evaluate(fs.readFileSync('node_modules/axe-core/axe.min.js', 'utf8'))
+  const report = await page.evaluate(async () => {
+    const results = await window.axe.run(document.querySelector('[role="dialog"]'), { resultTypes: ['violations', 'incomplete'] })
+    return {
+      violations: results.violations.map((item) => `${item.id} (${item.nodes.length}): ${(item.nodes[0]?.target ?? []).join(' ')}`),
+      incomplete: results.incomplete.map((item) => ({ id: item.id, target: (item.nodes[0]?.target ?? []).join(' ').slice(0, 80), note: (item.nodes[0]?.failureSummary ?? '').replace(/\s+/g, ' ').slice(0, 120) })),
+      passes: results.passes.length,
+    }
+  })
+  check('a11y: the presentation overlay has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
+  const unexpected = report.incomplete.filter((item) => !isReviewedIncomplete(item))
+  check('a11y: no unexpected axe review items', unexpected.length === 0, JSON.stringify(unexpected))
+  check('a11y: axe actually inspected the slide surface', report.passes >= 10, `passes=${report.passes}`)
+
+  // Keyboard path next to the automated rules: the slide list walks its own pages with the
+  // arrows, and the counter follows it there.
+  const walked = await page.evaluate(async () => {
+    const rail = document.querySelector('[data-presentation-rail]')
+    const active = () => rail.querySelector('[data-entry-index][aria-current="true"]')
+    active()?.focus()
+    const before = active()?.dataset.entryIndex ?? ''
+    rail.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    const after = active()
+    return { before, after: after?.dataset.entryIndex ?? '', chip: document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? '' }
+  })
+  check('a11y: the slide list walks its pages from the keyboard', walked.after !== '' && walked.after !== walked.before, JSON.stringify(walked))
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+}
+
 // Exporting the deck runs through the browser's print pipeline, so this asserts two things the
 // promise rests on: the sheet it prints holds one page box per deck page (built from the same
 // measured plans the show walks), and the PDF Chrome actually renders from it has that many
@@ -610,6 +668,7 @@ async function main() {
     await assertPresentation(page)
     await assertPresentationSession(page)
     await assertPresentationPages(page)
+    await assertPresentationAccessibility(page)
     await assertDeckExport(page)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
