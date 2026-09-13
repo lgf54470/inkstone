@@ -162,6 +162,15 @@ Existing databases are upgraded automatically through versioned, idempotent migr
 
 The end-to-end script creates, changes, and deletes data at `http://localhost:7712`. Run it only against a fresh local state dedicated to testing.
 
+### Local dev account
+
+```bash
+node scripts/dev-account-setup.mjs                        # registers admin / admin123
+node scripts/dev-account-setup.mjs -u test -p test12345   # custom credentials
+```
+
+On a fresh local instance the first registered account becomes the owner. If the account already exists, the script verifies the password by logging in; if the instance already has accounts and registration is closed, enable registration in its settings before creating additional ones. Passwords need at least 8 characters. This is a dev tool — never point it at a deployed instance.
+
 ## Repository layout
 
 ```text

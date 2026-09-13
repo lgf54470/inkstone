@@ -162,6 +162,15 @@ aliases:
 
 端到端脚本会在 `http://localhost:7712` 创建、修改并删除数据，只能对专门用于测试的全新本地状态运行。
 
+### 本地开发账号
+
+```bash
+node scripts/dev-account-setup.mjs                        # 注册 admin / admin123
+node scripts/dev-account-setup.mjs -u test -p test12345   # 自定义账号密码
+```
+
+在全新的本地实例上，第一个注册的账号会成为所有者（owner）。如果账号已存在，脚本会尝试用给定密码登录验证；如果实例已有账号且注册已关闭，需要先在设置里开放注册才能创建更多账号。密码至少 8 个字符。此脚本仅供本地开发使用，切勿指向已部署的实例。
+
 ## 目录结构
 
 ```text
