@@ -28,19 +28,16 @@ export const MusicHubSidebar = memo(function MusicHubSidebar({
   )
 })
 
-function recentCount(): number {
-  return useMusic.getState().recentIds.length
-}
-
 function CollectionNav() {
   const stats = useMusic((state) => state.stats)
   const scope = useMusic((state) => state.scope)
   const setScope = useMusic((state) => state.setScope)
+  const recentCount = useMusic((state) => state.recentIds.length)
   const items: { scope: MusicScope; icon: React.ReactNode; label: string; count: number }[] = [
     { scope: { kind: 'all' }, icon: <Library size={13} />, label: t('music.all_tracks'), count: stats?.trackCount ?? 0 },
     { scope: { kind: 'favorites' }, icon: <Heart size={13} />, label: t('music.favorites'), count: stats?.favoriteCount ?? 0 },
     { scope: { kind: 'pinned' }, icon: <Pin size={13} />, label: t('music.pinned'), count: stats?.pinnedCount ?? 0 },
-    { scope: { kind: 'recent' }, icon: <Clock3 size={13} />, label: t('music.recently_played'), count: recentCount() },
+    { scope: { kind: 'recent' }, icon: <Clock3 size={13} />, label: t('music.recently_played'), count: recentCount },
   ]
   return (
     <div className='space-y-0.5'>

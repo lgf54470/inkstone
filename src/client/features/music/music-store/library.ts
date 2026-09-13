@@ -3,7 +3,7 @@ import {
   clearSearchHistory, clearSelection, commitQuery, invertSelection, loadLibrary, prepareRomanization,
   selectAll, setQuery, setScope, setSort, setSourceFilter, setViewMode, toggleSelect,
 } from './library-load'
-import { batchTracks, deleteTrack, patchTrack, refreshTrackMetadata, setTrackTags, toggleFavorite, togglePin } from './library-tracks'
+import { batchTracks, deleteTrack, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin } from './library-tracks'
 import { matchMissingCovers } from './library-covers'
 import { dismissDownload, downloadTracks, setTransfersOpen, setUploadTarget } from './transfers'
 import {
@@ -18,7 +18,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'setViewMode' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
-  | 'patchTrack' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks' | 'setTrackTags'
+  | 'patchTrack' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
   | 'createTag' | 'patchTag' | 'deleteTag'
   | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'addToPlaylist' | 'removeFromPlaylist'
   | 'uploadFiles' | 'dismissUpload'
@@ -49,7 +49,6 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     togglePin: (id) => togglePin(set, get, id),
     deleteTrack: (id) => deleteTrack(set, get, id),
     batchTracks: (action) => batchTracks(set, get, action as MusicBatchAction),
-    setTrackTags: (id, tagIds) => setTrackTags(set, id, tagIds),
 
     createTag: (name, color) => createTag(set, get, name, color),
     patchTag: (id, patch) => patchTag(set, id, patch),

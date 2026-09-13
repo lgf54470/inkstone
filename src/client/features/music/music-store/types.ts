@@ -133,7 +133,6 @@ export interface MusicStoreState {
   createTag: (name: string, color?: string | null) => Promise<void>
   patchTag: (id: string, patch: { name?: string; color?: string | null; isPinned?: boolean }) => Promise<void>
   deleteTag: (id: string) => Promise<void>
-  setTrackTags: (id: string, tagIds: string[]) => Promise<void>
 
   createPlaylist: (name: string) => Promise<void>
   renamePlaylist: (id: string, name: string) => Promise<void>

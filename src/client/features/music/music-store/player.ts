@@ -3,8 +3,8 @@ import { api } from '../../../lib/api'
 import { toastMusicError, toastMusicNotice } from '../music-feedback'
 import { computeNextIndex, computePrevIndex, nextPlayMode } from '../music-utils'
 import {
-  applyVolume, audioElement, bindMediaSessionActions, configureAudio, pausePlayback,
-  publishMediaSession, resumePlayback, seekTo, startPlayback,
+  applyVolume, audioElement, bindMediaSessionActions, configureAudio, pausePlayback, publishMediaSession,
+  resumePlayback, seekTo, startPlayback, stopPlayback,
 } from '../audio-engine'
 import { loadLibrary, visibleTracks } from './library-load'
 import { pushRecent, savePreferences } from './state'
@@ -229,8 +229,21 @@ export function removeFromQueue(set: MusicSet, get: MusicGet, index: number): vo
   const { queue, currentIndex } = get()
   if (index < 0 || index >= queue.length) return
   const nextQueue = queue.filter((_entry, position) => position !== index)
-  const nextIndex = index < currentIndex ? currentIndex - 1 : currentIndex
-  set({ queue: nextQueue, currentIndex: Math.max(0, Math.min(nextIndex, nextQueue.length - 1)) })
+  if (index !== currentIndex) {
+    const nextIndex = index < currentIndex ? currentIndex - 1 : currentIndex
+    set({ queue: nextQueue, currentIndex: Math.max(0, Math.min(nextIndex, nextQueue.length - 1)) })
+    return
+  }
+  // Removing the playing track: keep the audio and the queue pointing at the same song.
+  const nextIndex = Math.max(0, Math.min(index, nextQueue.length - 1))
+  set({ queue: nextQueue, currentIndex: nextIndex })
+  if (get().isPlaying && nextQueue.length) {
+    void playQueueAt(set, get, nextIndex)
+    return
+  }
+  stopPlayback()
+  set({ isPlaying: false, currentTimeMs: 0, durationMs: 0 })
+  publishMediaSession(nextQueue.length ? currentTrack(get()) : null, false)
 }
 
 export function clearQueue(set: MusicSet): void {

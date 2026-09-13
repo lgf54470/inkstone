@@ -1,9 +1,8 @@
 import { useMemo } from 'react'
-import type { MusicTag, MusicTrack } from '@shared/types'
+import type { MusicTrack } from '@shared/types'
 import { useMusic } from './index'
 import { visibleTracks } from './library-load'
 import { currentTrack } from './player'
-import { collectTagIds } from '../music-utils'
 
 export function useVisibleTracks(): MusicTrack[] {
   const tracks = useMusic((s) => s.tracks)
@@ -43,15 +42,14 @@ export function useScopeTracks(scope: { kind: 'favorites' } | { kind: 'pinned' }
 
 export function useTagCounts(): Map<string, number> {
   const tracks = useMusic((s) => s.tracks)
-  const tags = useMusic((s) => s.tags)
-  return useMemo(() => buildTagCounts(tracks, tags), [tracks, tags])
+  return useMemo(() => buildTagCounts(tracks), [tracks])
 }
 
-export function buildTagCounts(tracks: MusicTrack[], tags: MusicTag[]): Map<string, number> {
+// Counts tracks per tag directly; the sidebar tree rolls descendants into the parent's total.
+export function buildTagCounts(tracks: MusicTrack[]): Map<string, number> {
   const counts = new Map<string, number>()
-  for (const tag of tags) {
-    const ids = collectTagIds(tag.id, tags)
-    counts.set(tag.id, tracks.filter((track) => track.tagIds.some((id) => ids.has(id))).length)
+  for (const track of tracks) {
+    for (const tagId of track.tagIds) counts.set(tagId, (counts.get(tagId) ?? 0) + 1)
   }
   return counts
 }

@@ -123,16 +123,6 @@ export async function batchTracks(set: MusicSet, get: MusicGet, action: MusicBat
   }
 }
 
-export async function setTrackTags(set: MusicSet, id: string, tagIds: string[]): Promise<void> {
-  applyLocal(set, id, { tagIds })
-  try {
-    const updated = await api.music.patchTrack(id, { tagIds })
-    set((state) => ({ tracks: state.tracks.map((track) => (track.id === id ? updated : track)) }))
-  } catch (error) {
-    toastMusicError(error, 'music.save_failed')
-  }
-}
-
 function applyLocal(set: MusicSet, id: string, patch: Partial<MusicTrack>): void {
   set((state) => ({ tracks: state.tracks.map((track) => (track.id === id ? { ...track, ...patch } : track)) }))
 }

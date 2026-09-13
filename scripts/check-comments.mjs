@@ -597,6 +597,7 @@ const allowed = new Map([
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
     '// Multi-select actions: moving replaces the tag set, playlists append.',
+    '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
   ]],
   ['src/client/features/music/music-store/library-covers.ts', [
     '// Cover lookup reaches a public catalogue, so it only runs while the listener asks for it.',
@@ -616,6 +617,10 @@ const allowed = new Map([
     '// and they race: one reporter keeps the user from getting two messages.',
     '// A slow WebDAV object streams below realtime, so waiting for the first frame',
     '// forever would look like a frozen player. Surface it and stop pretending.',
+    '// Removing the playing track: keep the audio and the queue pointing at the same song.',
+  ]],
+  ['src/client/features/music/music-store/selectors.ts', [
+    '// Counts tracks per tag directly; the sidebar tree rolls descendants into the parent\'s total.',
   ]],
   ['src/client/features/music/music-store/state.ts', [
     '// Quota or private-mode writes can throw; in-memory preferences stay authoritative.',

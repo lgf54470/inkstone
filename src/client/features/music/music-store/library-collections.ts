@@ -57,11 +57,21 @@ export async function patchTag(
 export async function deleteTag(set: MusicSet, id: string): Promise<void> {
   try {
     await api.music.deleteTag(id)
-    set((state) => ({
-      tags: state.tags.filter((tag) => tag.id !== id),
-      tracks: state.tracks.map((track) => ({ ...track, tagIds: track.tagIds.filter((tagId) => tagId !== id) })),
-      scope: state.scope.kind === 'tag' && state.scope.tagId === id ? { kind: 'all' } : state.scope,
-    }))
+    set((state) => {
+      // The server re-parents children of the deleted tag to its parent; mirror that locally.
+      const parentId = state.tags.find((tag) => tag.id === id)?.parentId ?? null
+      return {
+        tags: state.tags.filter((tag) => tag.id !== id).map((tag) => {
+          if (tag.parentId !== id) return tag
+          const clashing = state.tags.some((other) => other.id !== id
+            && other.parentId === parentId
+            && other.name === tag.name)
+          return clashing ? tag : { ...tag, parentId }
+        }),
+        tracks: state.tracks.map((track) => ({ ...track, tagIds: track.tagIds.filter((tagId) => tagId !== id) })),
+        scope: state.scope.kind === 'tag' && state.scope.tagId === id ? { kind: 'all' } : state.scope,
+      }
+    })
     toastMusic('music.tag_deleted')
   } catch (error) {
     toastMusicError(error, 'music.action_failed')
