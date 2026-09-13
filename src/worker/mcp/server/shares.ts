@@ -118,7 +118,7 @@ function registerCreateNoteShareTool(toolCtx: McpToolCtx): void {
       inputSchema: z.object({
         operation_id: operationId,
         note_id: noteId,
-        password: z.string().min(4).max(128).nullable().optional(),
+        password: z.string().min(6).max(128).nullable().optional(),
         expires_in_seconds: z.number().int().min(0).max(365 * 24 * 60 * 60).nullable().optional(),
       }),
       outputSchema: generalOutputSchema,

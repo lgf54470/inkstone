@@ -235,7 +235,7 @@ type SaveEditFlow = {
 }
 
 async function saveEditShareFlow({ share, noteId, fields, slug, setIsSaving, toast, onSaved, onClose }: SaveEditFlow): Promise<void> {
-  if (fields.shouldUsePassword && fields.password.length > 0 && fields.password.length < 4) {
+  if (fields.shouldUsePassword && fields.password.length > 0 && fields.password.length < 6) {
     toast({ title: t('share.passcode_too_short'), tone: 'danger' })
     return
   }

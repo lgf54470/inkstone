@@ -15,7 +15,7 @@ export const messages = {
 'share.generate_public_link': 'Generate public link',
 'share.incorrect_passcode': 'Incorrect passcode',
 'share.enter_a_passcode': 'Enter a passcode first',
-'share.passcode_too_short': 'The passcode must be at least 4 characters',
+'share.passcode_too_short': 'The passcode must be at least 6 characters',
 'share.keep_current_expiration': 'Keep current',
 'share.leave_blank_to_keep_the_current_passcode': 'Leave blank to keep the current passcode',
 'share.link_revoked': 'Link revoked',

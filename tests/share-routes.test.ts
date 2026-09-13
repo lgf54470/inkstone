@@ -14,6 +14,7 @@ import { TABLE_STATEMENTS } from '../src/worker/db/schema/tables'
 import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
+import { hashPassword } from '../src/worker/lib/password'
 import { shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
 import { createD1Database as createDb, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
@@ -371,5 +372,25 @@ describe('share public note route (real D1)', () => {
     const wrong = await postJson(app, '/api/public/pw-1', { password: 'nope' })
     expect(wrong.status).toBe(401)
     expect((await wrong.json()).error.code).toBe('password_invalid')
+  })
+
+  it('enforces the 6-character minimum on new passwords but keeps legacy 4-character ones verifiable', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, { title: 'Short' })
+    await seedShare(db, { note_id: n1, slug: 'legacy-short', password_hash: await hashPassword('abcd') })
+    const n2 = await seedNote(db, { title: 'New' })
+    const app = makeApp()
+
+    const tooShort = await postJson(app, `/api/share/${n2}`, { password: 'abcde' })
+    expect(tooShort.status).toBe(400)
+    expect((await tooShort.json()).error.message).toContain('at least 6')
+
+    const accepted = await postJson(app, `/api/share/${n2}`, { password: 'abcdef' })
+    expect(accepted.status).toBe(200)
+    expect((await accepted.json()).share.hasPassword).toBe(true)
+
+    const legacy = await postJson(app, '/api/public/legacy-short', { password: 'abcd' })
+    expect(legacy.status).toBe(200)
   })
 })
