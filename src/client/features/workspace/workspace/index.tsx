@@ -25,7 +25,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
   }
   const b: WorkspaceBundle = { ...raw, note: raw.note }
   const exportMenuItems = buildExportMenuItems(b.exportNote)
-  const mobileItems = buildMobileItems(b.openPanel, b.exportNote)
+  const mobileItems = buildMobileItems(b.openPanel, b.exportNote, b.startPresentation)
   const groupedItems = buildGroupedItems(b, b.exportNote)
   return (
     <div

@@ -1,4 +1,4 @@
-import { FileCode, FileDown, FileText, Globe, History, LayoutGrid, LinkIcon, ListTree, Music, Share2, Star } from 'lucide-react'
+import { FileCode, FileDown, FileText, Globe, History, LayoutGrid, LinkIcon, ListTree, Music, Presentation, Share2, Star } from 'lucide-react'
 import type { MenuItem } from '../../../components/overlay'
 import type { PanelName, WorkspacePane } from '../../../store/ui'
 import type { WorkspaceBundle } from './use-workspace'
@@ -14,8 +14,9 @@ export function buildExportMenuItems(exportNote: ExportNote): MenuItem[] {
   ]
 }
 
-export function buildMobileItems(openPanel: (panel: PanelName) => void, exportNote: ExportNote): MenuItem[] {
+export function buildMobileItems(openPanel: (panel: PanelName) => void, exportNote: ExportNote, startPresentation: () => void): MenuItem[] {
   return [
+    { id: 'presentation', label: t('workspace.presentation_mode'), icon: <Presentation size={13} />, onSelect: startPresentation },
     { id: 'versions', label: t('common.version_history'), icon: <History size={13} />, onSelect: () => openPanel('versions') },
     { id: 'share', label: t('workspace.share'), icon: <Share2 size={13} />, onSelect: () => openPanel('share') },
     { id: 'share-hub', label: t('share.manage_shares'), icon: <LayoutGrid size={13} />, onSelect: () => openPanel('share-hub') },
@@ -29,7 +30,7 @@ export function buildMobileItems(openPanel: (panel: PanelName) => void, exportNo
 }
 
 export function buildGroupedItems(b: WorkspaceBundle, exportNote: ExportNote): MenuItem[] {
-  const { note, layout, setEditorLayout, patchNote, backlinksOpen, paneActive, toggleBacklinks, showPreview, outlineOpen, toggleOutline, openPanel } = b
+  const { note, layout, setEditorLayout, patchNote, backlinksOpen, paneActive, toggleBacklinks, showPreview, outlineOpen, toggleOutline, openPanel, startPresentation } = b
   return [
     { id: 'layout-edit', label: t('workspace.edit_only'), checked: layout === 'edit', onSelect: () => setEditorLayout('edit') },
     { id: 'layout-split', label: t('workspace.split_view'), checked: layout === 'split', onSelect: () => setEditorLayout('split') },
@@ -59,7 +60,7 @@ export function buildGroupedItems(b: WorkspaceBundle, exportNote: ExportNote): M
           } satisfies MenuItem,
         ]
       : []),
-    ...buildMobileItems(openPanel, exportNote),
+    ...buildMobileItems(openPanel, exportNote, startPresentation),
   ]
 }
 

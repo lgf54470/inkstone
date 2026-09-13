@@ -596,8 +596,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
-    '// Multi-select actions: moving replaces the tag set, playlists append.',
     '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
+    '// Multi-select actions: moving replaces the tag set, playlists append.',
   ]],
   ['src/client/features/music/music-store/library-covers.ts', [
     '// Cover lookup reaches a public catalogue, so it only runs while the listener asks for it.',
@@ -613,11 +613,11 @@ const allowed = new Map([
     '// Imported tracks can arrive without a duration; the decoder knows it once played.',
     '// The hub loads the library lazily, so the transport has to fetch it itself',
     '// rather than dropping the click on an empty store.',
+    '// Removing the playing track: keep the audio and the queue pointing at the same song.',
     '// Both the media error event and the stall watchdog can fire for one attempt,',
     '// and they race: one reporter keeps the user from getting two messages.',
     '// A slow WebDAV object streams below realtime, so waiting for the first frame',
     '// forever would look like a frozen player. Surface it and stop pretending.',
-    '// Removing the playing track: keep the audio and the queue pointing at the same song.',
   ]],
   ['src/client/features/music/music-store/selectors.ts', [
     '// Counts tracks per tag directly; the sidebar tree rolls descendants into the parent\'s total.',
@@ -640,9 +640,9 @@ const allowed = new Map([
     '// Ctrl/Cmd+A selects the visible list, matching the file-manager habit; text fields keep their own.',
   ]],
   ['src/client/features/music/music-track-menu.tsx', [
-    '// Menu actions close the menu before they run, so focus returns to the list first.',
     '// Plays the current list starting at the clicked track, like the toolbar\'s play-all button.',
     '// Checkmarks show the track\'s current tags; picking one toggles it.',
+    '// Menu actions close the menu before they run, so focus returns to the list first.',
   ]],
   ['src/client/features/music/music-track-row.tsx', [
     '// Off-screen rows skip layout and paint; the intrinsic size reserves their height.',
@@ -662,6 +662,22 @@ const allowed = new Map([
   ['src/client/features/music/use-track-list.ts', [
     '// File-manager semantics: click selects one row, Ctrl toggles a row, Shift extends from the anchor.',
   ]],
+  ['src/client/features/presentation/presentation-overlay.tsx', [
+    '// Slide canvases are laid out at a fixed 16:9 design size and scaled to the stage,',
+    '// so proportions stay stable from phone to projector (same approach as reveal.js).',
+    '// Only the active slide stays mounted: Chart.js measures its canvas box, so',
+    '// display-none slides would render broken charts.',
+  ]],
+  ['src/client/features/presentation/slides.ts', [
+    '// A `---` with a non-blank line directly above is a setext heading rather than a',
+    '// rule, so it must not split the deck; requiring a blank line (or deck start) keeps',
+    '// slide boundaries identical to how the preview renders horizontal rules.',
+    '// Edge separators (e.g. an unclosed front matter opener) would otherwise yield',
+    '// blank first/last slides; blank slides between two breaks stay as written.',
+  ]],
+  ['src/client/features/preview/file-preview-modal/code-viewer.tsx', [
+    '// Highlighting is best-effort; the plain text code stays visible on failure.',
+  ]],
   ['src/client/features/preview/js-runner-core.ts', [
     '/**\n * Executes user javascript-example code inside the dedicated Worker thread.\n * Results cross the postMessage boundary as plain strings only, and the Worker\n * has no DOM or parent-page reference, so preview code cannot reach page data.\n * A dedicated thread is also the only way to hard-stop while(true) loops via\n * terminate(); timeouts live in the page-side bridge (js-runner.ts).\n */',
     '// Shadowed to undefined so direct calls raise TypeError; reachable through',
@@ -671,9 +687,6 @@ const allowed = new Map([
   ['src/client/features/preview/js-runner.ts', [
     '// The Worker thread is the sandbox: user code cannot reach page DOM or',
     '// storage, and terminate() is the only hard stop for endless loops.',
-  ]],
-  ['src/client/features/preview/file-preview-modal/code-viewer.tsx', [
-    '// Highlighting is best-effort; the plain text code stays visible on failure.',
   ]],
   ['src/client/features/preview/preview-interactions.ts', [
     '/** DOM click handling for the rendered preview body: file/table/JS-runner actions, mermaid retry, code copy/collapse, task checkboxes, wiki/block/tag navigation, lightbox, anchors. */',
@@ -1213,14 +1226,14 @@ const allowed = new Map([
   ]],
   ['src/client/store/notes/outbox-replay.ts', [
     '/** Outbox replay machinery: dependency-ordered flush, conflict rebase, and 404 recovery (extracted from outbox.ts). */',
+    '// Replays are event-driven (boot, edits, pulls), so a write the server keeps',
+    '// rejecting would otherwise be retried on every trigger. Exponential backoff',
+    '// with a ceiling keeps the write queued — no data loss — while bounding its cost.',
     '// Best-effort journal cleanup; the in-memory recovered-write map stays authoritative for this session.',
     '// The mark is best-effort; in-memory attempts stay authoritative for this session.',
     '// The mark is best-effort; in-memory attempts stay authoritative for this session.',
     '// The mark is best-effort; in-memory attempts stay authoritative for this session.',
     '// The mark is best-effort; in-memory attempts stay authoritative for this session.',
-    '// Replays are event-driven (boot, edits, pulls), so a write the server keeps',
-    '// rejecting would otherwise be retried on every trigger. Exponential backoff',
-    '// with a ceiling keeps the write queued — no data loss — while bounding its cost.',
     '// Best-effort follow-up pull; the next event or manual refresh retries.',
   ]],
   ['src/client/store/notes/outbox.ts', [
@@ -1399,8 +1412,8 @@ const allowed = new Map([
     '// missing userId may safely fall through to ownership-by-key.',
   ]],
   ['src/worker/attachments/keys.ts', [
-    "// The key embeds user_id so one account's upload can never collide with",
-    "// another account's object; objects written before this format exist under",
+    '// The key embeds user_id so one account\'s upload can never collide with',
+    '// another account\'s object; objects written before this format exist under',
     '// the per-day layout without user_id and stay reachable through the',
     '// persisted object_key column.',
   ]],
@@ -1433,14 +1446,14 @@ const allowed = new Map([
     '// ALTER TABLE ADD COLUMN with constraints, so the AI search preference',
     '// lives in app_meta (key `ai-search-enabled:<userId>`) instead of a',
     '// new column on the pre-existing mcp_preferences table.',
+    '// Source-side graph traversal (local graph mode BFS, MCP explore) queries',
+    '// links by user + source and by user + target; the OR join can only use',
+    '// both branches when each side has its own user-scoped index.',
     '// Persist the storage key per row: reads and deletes stop rebuilding keys',
     '// from mutable row fields, and new uploads write user-scoped keys. The',
     '// backfill reproduces the pre-user_id key layout that existing objects',
     '// were written under; the oldest per-user id layout stays reachable via',
     '// the legacy fallback.',
-    '// Source-side graph traversal (local graph mode BFS, MCP explore) queries',
-    '// links by user + source and by user + target; the OR join can only use',
-    '// both branches when each side has its own user-scoped index.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
@@ -1503,6 +1516,12 @@ const allowed = new Map([
   ]],
   ['src/worker/lib/image.ts', [
     '// Malformed or truncated image data is routine for probes; degrade to unknown dimensions.',
+  ]],
+  ['src/worker/lib/outbound-url.ts', [
+    '// Shared outbound-request guards: the hostname and IP safety checks back both',
+    '// the backup adapters (HTTPS-only) and the blog link checker (HTTP allowed),',
+    '// so private/reserved networks stay unreachable from every user-controlled',
+    '// outbound fetch.',
   ]],
   ['src/worker/lib/password.ts', [
     '// Measured on a dev machine (node:crypto, avg of 5): ~250 ms per hash with these',
@@ -1617,37 +1636,30 @@ const allowed = new Map([
   ['src/worker/routes/blog/index.ts', [
     '// Ensure session loaded for manage routes',
   ]],
+  ['src/worker/routes/blog/link-checker.ts', [
+    '// Every hop is re-validated, so a public URL cannot redirect the checker',
+    '// into private or reserved networks; relative redirects resolve against the',
+    '// current hop. The caller receives the first non-redirect response.',
+    '// Best-effort body release; a failed cancel does not change the verdict.',
+  ]],
   ['src/worker/routes/blog/public.ts', [
-    '// A blog tag lives inside a JSON array column, so the LIKE needle must be the',
-    "// JSON-escaped tag text, LIKE-escaped on top (ESCAPE '\\\\'); the second",
-    '// pattern keeps the parent-tag-matches-descendants hierarchy semantics.',
     '// The blog player reads the owner\'s music library read-only, gated by the publish switch.',
     '// Audio and artwork routes build their own Response, which drops headers set on the context,',
     '// so the origin has to be stamped on the final response to keep cross-origin playback working.',
     '// Routes that know their own lifetime (artwork, audio) keep the header they set.',
-  ]],
-  ['src/worker/routes/blog/link-checker.ts', [
-    '// into private or reserved networks; relative redirects resolve against the',
-    '// Every hop is re-validated, so a public URL cannot redirect the checker',
-    '// current hop. The caller receives the first non-redirect response.',
-    '// Best-effort body release; a failed cancel does not change the verdict.',
-    '// current hop. The caller receives the first non-redirect response.',
+    '// A blog tag lives inside a JSON array column, so the LIKE needle must be the',
+    '// JSON-escaped tag text, LIKE-escaped on top (ESCAPE \'\\\\\'); the second',
+    '// pattern keeps the parent-tag-matches-descendants hierarchy semantics.',
   ]],
   ['src/worker/routes/blog/stats.ts', [
     '/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */',
   ]],
-  ['src/worker/lib/outbound-url.ts', [
-    '// Shared outbound-request guards: the hostname and IP safety checks back both',
-    '// the backup adapters (HTTPS-only) and the blog link checker (HTTP allowed),',
-    '// so private/reserved networks stay unreachable from every user-controlled',
-    '// outbound fetch.',
-  ]],
   ['src/worker/routes/blog/visits.ts', [
-    '// The analytics row is written for every visit; the boolean tells the caller',
-    "// whether this visit should bump the post's views counter (new fingerprint",
-    '// within the dedupe window, not a bot).',
     '// CF-Connecting-IP is injected by the Cloudflare edge (see requestClientIp);',
     '// raw x-forwarded-for is client-controlled and must not feed analytics.',
+    '// The analytics row is written for every visit; the boolean tells the caller',
+    '// whether this visit should bump the post\'s views counter (new fingerprint',
+    '// within the dedupe window, not a bot).',
   ]],
   ['src/worker/routes/community-templates.ts', [
     '// Publishing (or updating) counts against a per-user hourly budget so a',
@@ -1772,19 +1784,16 @@ const allowed = new Map([
     '// The guarded write was lost to a concurrent edit: re-read just this',
     '// note and retry with fresh state.',
   ]],
-  ['tests/d1-harness.ts', [
-    '// Real D1 batch commits atomically; a savepoint reproduces that here and',
-    '// still works when a test drives nested batches.',
-  ]],
   ['tests/auth-routes.test.ts', [
     '// Password rotation destroys the presented session too and replaces it',
     '// with a fresh one; every other device session is revoked.',
   ]],
+  ['tests/d1-harness.ts', [
+    '// Real D1 batch commits atomically; a savepoint reproduces that here and',
+    '// still works when a test drives nested batches.',
+  ]],
   ['tests/graph-routes.test.ts', [
     '// 26-char valid ids ([0-9a-hjkmnp-tv-z]{26}); the graph route validates center/folder formats',
-  ]],
-  ['tests/share-routes.test.ts', [
-    '// visit recording runs via waitUntil; the test context must let us await it',
   ]],
   ['tests/markdown-renderer-parity.test.ts', [
     '// Structural parity baseline: root and blog renderers keep (and must not silently',
@@ -1818,6 +1827,9 @@ const allowed = new Map([
     '// Exclude bots only:',
     '// All disabled:',
     '// With table alias:',
+  ]],
+  ['tests/share-routes.test.ts', [
+    '// visit recording runs via waitUntil; the test context must let us await it',
   ]],
   ['tests/throttle-session.test.ts', [
     '// Rewind the last attempt far enough to expire the window and the lock.',

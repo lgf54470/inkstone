@@ -21,6 +21,7 @@ import {
   Paperclip,
   Pencil,
   Plus,
+  Presentation,
   Quote,
   Redo2,
   Sigma,
@@ -172,41 +173,56 @@ function buildInsertItem(ctx: MenuCtx): MenuItem {
   }
 }
 
+function buildPresentationItem(ctx: MenuCtx): MenuItem | null {
+  if (!ctx.onPresent) return null
+  return { id: 'presentation', label: t('workspace.presentation_mode'), icon: <Presentation size={14} />, onSelect: ctx.onPresent }
+}
+
+function buildClipboardItems(ctx: MenuCtx): MenuItem[] {
+  const { editorView, handlePasteIntoEditor } = ctx
+  return [
+    {
+      id: 'undo',
+      label: t('contextmenu.undo'),
+      icon: <Undo2 size={14} />,
+      combo: 'mod+z',
+      onSelect: () => document.execCommand('undo'),
+    },
+    {
+      id: 'redo',
+      label: t('contextmenu.redo'),
+      icon: <Redo2 size={14} />,
+      combo: 'mod+shift+z',
+      onSelect: () => document.execCommand('redo'),
+    },
+    {
+      id: 'paste',
+      label: t('contextmenu.paste'),
+      icon: <Copy size={14} className='rotate-90' />,
+      combo: 'mod+v',
+      onSelect: handlePasteIntoEditor,
+    },
+    {
+      id: 'select-all',
+      label: t('contextmenu.select_all'),
+      icon: <CheckSquare size={14} />,
+      combo: 'mod+a',
+      onSelect: () => {
+        if (!editorView) return
+        editorView.dispatch({ selection: EditorSelection.range(0, editorView.state.doc.length) })
+      },
+    },
+  ]
+}
+
 export function buildEditorBlankItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, previewContext, handlePasteIntoEditor } = ctx
+  const { editorView, previewContext } = ctx
+  const presentationItem = buildPresentationItem(ctx)
 
   if (editorView && (!previewContext || previewContext.type === 'empty')) {
     return [
-      {
-        id: 'undo',
-        label: t('contextmenu.undo'),
-        icon: <Undo2 size={14} />,
-        combo: 'mod+z',
-        onSelect: () => document.execCommand('undo'),
-      },
-      {
-        id: 'redo',
-        label: t('contextmenu.redo'),
-        icon: <Redo2 size={14} />,
-        combo: 'mod+shift+z',
-        onSelect: () => document.execCommand('redo'),
-      },
-      {
-        id: 'paste',
-        label: t('contextmenu.paste'),
-        icon: <Copy size={14} className='rotate-90' />,
-        combo: 'mod+v',
-        onSelect: handlePasteIntoEditor,
-      },
-      {
-        id: 'select-all',
-        label: t('contextmenu.select_all'),
-        icon: <CheckSquare size={14} />,
-        combo: 'mod+a',
-        onSelect: () => {
-          editorView.dispatch({ selection: EditorSelection.range(0, editorView.state.doc.length) })
-        },
-      },
+      ...buildClipboardItems(ctx),
+      ...(presentationItem ? [presentationItem] : []),
       buildInsertItem(ctx),
     ]
   }
@@ -233,10 +249,8 @@ function buildExportItem(ctx: MenuCtx): MenuItem | null {
   }
 }
 
-export function buildPreviewCanvasItems(ctx: MenuCtx): MenuItem[] {
-  const { content, onSwitchLayout, currentLayout, previewScrollerRef, handleCopy } = ctx
-  const exportItem = buildExportItem(ctx)
-
+function buildLayoutSwitchItems(ctx: MenuCtx): MenuItem[] {
+  const { onSwitchLayout, currentLayout } = ctx
   return [
     {
       id: 'switch-edit',
@@ -251,6 +265,17 @@ export function buildPreviewCanvasItems(ctx: MenuCtx): MenuItem[] {
       checked: currentLayout === 'split',
       onSelect: () => onSwitchLayout?.('split'),
     },
+  ]
+}
+
+export function buildPreviewCanvasItems(ctx: MenuCtx): MenuItem[] {
+  const { content, previewScrollerRef, handleCopy } = ctx
+  const exportItem = buildExportItem(ctx)
+  const presentationItem = buildPresentationItem(ctx)
+
+  return [
+    ...buildLayoutSwitchItems(ctx),
+    ...(presentationItem ? [presentationItem] : []),
     {
       id: 'copy-full-md',
       label: t('contextmenu.preview_copy_markdown'),

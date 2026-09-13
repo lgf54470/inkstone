@@ -30,6 +30,7 @@ export interface EditorContextMenuProps {
   currentLayout?: 'edit' | 'split' | 'preview'
   previewScrollerRef?: React.RefObject<HTMLDivElement | null>
   onExport?: (format: 'md' | 'html' | 'pdf') => void
+  onPresent?: () => void
 }
 
 function useRunStateCommand(editorView: EditorView | null | undefined) {
@@ -114,7 +115,7 @@ function useClipboardActions(editorView: EditorView | null | undefined) {
 }
 
 export function useEditorMenuItems(props: EditorContextMenuProps): MenuItem[] {
-  const { editorView, editorContext, previewContext, content, onEditContent, onJumpToLine, onPickImage, onPickFile, onSwitchLayout, currentLayout, previewScrollerRef, onExport } = props
+  const { editorView, editorContext, previewContext, content, onEditContent, onJumpToLine, onPickImage, onPickFile, onSwitchLayout, currentLayout, previewScrollerRef, onExport, onPresent } = props
   const openNote = useNotes((s) => s.openNote)
   const createNote = useNotes((s) => s.createNote)
   const setWorkspaceNote = useUi((s) => s.setWorkspaceNote)
@@ -125,12 +126,12 @@ export function useEditorMenuItems(props: EditorContextMenuProps): MenuItem[] {
   const ctx = useMemo<MenuCtx>(
     () => ({
       editorView, editorContext, previewContext, content, onEditContent, onJumpToLine,
-      onPickImage, onPickFile, onSwitchLayout, currentLayout, previewScrollerRef, onExport,
+      onPickImage, onPickFile, onSwitchLayout, currentLayout, previewScrollerRef, onExport, onPresent,
       createNote, openNote, setWorkspaceNote,
       runStateCommand, replaceTableInEditor, modifyTableInContent,
       ...clipboard,
     }),
-    [editorView, editorContext, previewContext, content, onEditContent, onJumpToLine, onPickImage, onPickFile, onSwitchLayout, currentLayout, previewScrollerRef, onExport, createNote, openNote, setWorkspaceNote, runStateCommand, replaceTableInEditor, modifyTableInContent, clipboard.handleCopy, clipboard.handlePasteIntoEditor, clipboard.handleCutFromEditor],
+    [editorView, editorContext, previewContext, content, onEditContent, onJumpToLine, onPickImage, onPickFile, onSwitchLayout, currentLayout, previewScrollerRef, onExport, onPresent, createNote, openNote, setWorkspaceNote, runStateCommand, replaceTableInEditor, modifyTableInContent, clipboard.handleCopy, clipboard.handlePasteIntoEditor, clipboard.handleCutFromEditor],
   )
 
   return useMemo(

@@ -1,4 +1,4 @@
-import { ArrowLeft, Columns2, Download, Eye, FolderClosed, Globe, Hash, History, LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Share2, Star, X } from 'lucide-react'
+import { ArrowLeft, Columns2, Download, Eye, FolderClosed, Globe, Hash, History, LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Presentation, Share2, Star, X } from 'lucide-react'
 import { readingMinutes } from '@shared/markdown-utils'
 import { LIMITS } from '@shared/constants'
 import { type EditorLayout } from '@shared/types'
@@ -12,6 +12,7 @@ import { MusicStatusBar } from '../../music'
 import { CodeEditor } from '../../../editor/code-editor'
 import { insertFiles } from '../../../editor/paste'
 import { Outline, Preview } from '../../preview'
+import { PresentationOverlay } from '../../presentation'
 import { SplitResizer, SaveIndicator } from '../../shell'
 import { EditorToolbar } from '../editor-toolbar'
 import { BacklinksPanel } from '../backlinks-panel'
@@ -107,11 +108,12 @@ function GroupedHeaderActions({ b }: { b: WorkspaceBundle }) {
 }
 
 function StandaloneHeaderActions({ b, exportMenuItems }: { b: WorkspaceBundle; exportMenuItems: MenuItem[] }) {
-  const { note, patchNote, isAttachmentDriveOpen, setIsAttachmentDriveOpen, backlinksOpen, toggleBacklinks, isMobile, openPanel, exportMenuRef, isExportMenuOpen, setIsExportMenuOpen, showPreview, outlineOpen, isMobileOutlineOpen, setIsMobileOutlineOpen, toggleOutline, moreButtonRef, setIsMoreMenuOpen } = b
+  const { note, patchNote, isAttachmentDriveOpen, setIsAttachmentDriveOpen, backlinksOpen, toggleBacklinks, isMobile, openPanel, exportMenuRef, isExportMenuOpen, setIsExportMenuOpen, showPreview, outlineOpen, isMobileOutlineOpen, setIsMobileOutlineOpen, toggleOutline, moreButtonRef, setIsMoreMenuOpen, startPresentation } = b
   return (
     <>
       <span className='mr-1 hidden xl:inline-flex'><SaveIndicator /></span>
       <div className='mr-1 hidden lg:block'><Segmented label={t('workspace.layout')} size='sm' value={b.layout} onChange={b.setEditorLayout} options={standaloneLayoutOptions()} /></div>
+      <Tooltip label={t('workspace.presentation_mode')}><IconButton label={t('workspace.presentation_mode')} size='sm' onClick={startPresentation}><Presentation size={14} /></IconButton></Tooltip>
       <Tooltip label={note.isStarred ? t('common.remove_from_favorites') : t('navigation.favorites')} combo='mod+d'><IconButton label={note.isStarred ? t('common.remove_from_favorites') : t('navigation.favorites')} size='sm' active={note.isStarred} onClick={() => void patchNote(note.id, { isStarred: !note.isStarred })}><Star size={14} className={note.isStarred ? 'fill-current' : undefined} /></IconButton></Tooltip>
       <Tooltip label={t('attachments.manage')}><IconButton label={t('attachments.manage')} size='sm' active={isAttachmentDriveOpen} onClick={() => setIsAttachmentDriveOpen(true)}><Paperclip size={14} /></IconButton></Tooltip>
       <Tooltip label={t('common.backlinks')}><IconButton label={t('common.backlinks')} size='sm' active={backlinksOpen} onClick={toggleBacklinks}><LinkIcon size={14} /></IconButton></Tooltip>
@@ -171,7 +173,7 @@ export function WorkspacePanes({ b }: { b: WorkspaceBundle }) {
 }
 
 export function WorkspaceOverlays({ b, grouped, exportNote, groupedItems, mobileItems }: { b: WorkspaceBundle; grouped: boolean; exportNote: ExportNote; groupedItems: MenuItem[]; mobileItems: MenuItem[] }) {
-  const { contextMenuPoint, closeContextMenu, view, editorContextData, previewContextData, content, note, onChange, handleJumpToLine, imageInputRef, fileInputRef, setEditorLayout, layout, previewScrollerRef, moreButtonRef, isMoreMenuOpen, setIsMoreMenuOpen, isMobile, showPreview, isMobileOutlineOpen, setIsMobileOutlineOpen, headings, jumpToHeading } = b
+  const { contextMenuPoint, closeContextMenu, view, editorContextData, previewContextData, content, note, onChange, handleJumpToLine, imageInputRef, fileInputRef, setEditorLayout, layout, previewScrollerRef, moreButtonRef, isMoreMenuOpen, setIsMoreMenuOpen, isMobile, showPreview, isMobileOutlineOpen, setIsMobileOutlineOpen, headings, jumpToHeading, isPresenting, setIsPresenting, startPresentation } = b
   return (
     <>
       <EditorContextMenu
@@ -191,7 +193,9 @@ export function WorkspaceOverlays({ b, grouped, exportNote, groupedItems, mobile
         currentLayout={layout}
         previewScrollerRef={previewScrollerRef}
         onExport={exportNote}
+        onPresent={startPresentation}
       />
+      <PresentationOverlay open={isPresenting} onClose={() => setIsPresenting(false)} content={content} noteTitle={note.title} />
       <Menu anchor={moreButtonRef} open={isMoreMenuOpen} onClose={() => setIsMoreMenuOpen(false)} items={grouped ? groupedItems : mobileItems} align='end' width={MORE_MENU_WIDTH} />
       {isMobile && showPreview && (
         <Drawer open={isMobileOutlineOpen} onClose={() => setIsMobileOutlineOpen(false)} side='right' width={OUTLINE_DRAWER_WIDTH} title={t('common.outline')}>

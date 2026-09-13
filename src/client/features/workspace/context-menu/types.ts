@@ -24,6 +24,7 @@ export interface MenuCtx {
   currentLayout?: 'edit' | 'split' | 'preview'
   previewScrollerRef?: RefObject<HTMLDivElement | null>
   onExport?: (format: 'md' | 'html' | 'pdf') => void
+  onPresent?: () => void
   createNote: NotesState['createNote']
   openNote: NotesState['openNote']
   setWorkspaceNote: (pane: WorkspacePane, id: string | null, activate?: boolean) => void

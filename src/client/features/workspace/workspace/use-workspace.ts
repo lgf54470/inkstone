@@ -101,6 +101,7 @@ function useWorkspaceLocalState() {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false)
   const [isMobileOutlineOpen, setIsMobileOutlineOpen] = useState(false)
   const [isAttachmentDriveOpen, setIsAttachmentDriveOpen] = useState(false)
+  const [isPresenting, setIsPresenting] = useState(false)
   const [containerWidth, setContainerWidth] = useState(0)
   return {
     view, setView,
@@ -109,6 +110,7 @@ function useWorkspaceLocalState() {
     isExportMenuOpen, setIsExportMenuOpen,
     isMobileOutlineOpen, setIsMobileOutlineOpen,
     isAttachmentDriveOpen, setIsAttachmentDriveOpen,
+    isPresenting, setIsPresenting,
     containerWidth, setContainerWidth,
   }
 }
@@ -332,6 +334,7 @@ export function useWorkspace(pane: WorkspacePane | 'active', mobileLayout: 'edit
   const updatedTime = useRelativeTime(store.note?.updatedAt ?? 0, Boolean(store.note))
   const cmds = useWorkspaceCommands({ note: store.note, editContent: store.editContent, view: local.view, layout: derived.layout, grouped, pane, setWorkspacePaneLayout: store.setWorkspacePaneLayout, updateSettings: store.updateSettings, previewScrollerRef: refs.previewScrollerRef })
   const menu = useWorkspaceContextMenu()
+  const startPresentation = useCallback(() => local.setIsPresenting(true), [])
   const exportNote = useCallback(async (format: 'md' | 'html' | 'pdf') => {
     local.setIsExportMenuOpen(false)
     if (!store.note) return
@@ -358,6 +361,7 @@ export function useWorkspace(pane: WorkspacePane | 'active', mobileLayout: 'edit
     isExportMenuOpen: local.isExportMenuOpen, setIsExportMenuOpen: local.setIsExportMenuOpen,
     isMobileOutlineOpen: local.isMobileOutlineOpen, setIsMobileOutlineOpen: local.setIsMobileOutlineOpen,
     isAttachmentDriveOpen: local.isAttachmentDriveOpen, setIsAttachmentDriveOpen: local.setIsAttachmentDriveOpen,
+    isPresenting: local.isPresenting, setIsPresenting: local.setIsPresenting, startPresentation,
     isMobile, paneActive,
     ...derived,
     tagColors, updatedTime,
