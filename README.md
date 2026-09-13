@@ -54,9 +54,12 @@ A show follows the note it was started from, so an edit — including one arrivi
 | `L` | Switch between following the note and the frozen snapshot |
 | `Esc` | Exit the show and return focus to the button that started it |
 
-The list on the left is a page list, not a slide list: every page gets an entry with a thumbnail of that page, and a click jumps straight to it. A `---` slide that paginates shows all of its pages, so a note written without any `---` still gets a full sidebar. The whole deck is measured in the background while the show is idle, so every page is listed from the start — including the slides the show has not reached yet. One slide per idle window is measured, and the pause before the next one follows what the last one cost, so filling a long deck never takes over the main thread. During a show the controls fade out and come back on the next pointer move or key press.
+The list on the left is a page list, not a slide list: every page gets an entry with a thumbnail of that page, and a click jumps straight to it. A `---` slide that paginates shows all of its pages, so a note written without any `---` still gets a full sidebar. The whole deck is measured in the background while the show is idle, so every page is listed from the start — including the slides the show has not reached yet. One slide per idle window is measured, and the pause before the next one follows what the last one cost and how the display is keeping up: a gap that dropped frames doubles the pause (up to four times), and two quiet gaps bring it back down. The list says how far the measuring has got while it is running and stops saying it once every page is there. During a show the controls fade out and come back on the next pointer move or key press.
 
-Exporting the deck runs through the browser's print pipeline: the download control builds one printable page per page the show has, from the same measured pages and the same prepared markup, so "Save as PDF" produces a handout that matches the talk page for page.
+There are two exports:
+
+- Exporting as PDF runs through the browser's print pipeline. The sheet builds one printable page per page the show has, from the same measured pages, and draws its charts on its own canvases with the slide's own type scale and chart height before the print dialog opens, so "Save as PDF" produces a handout that matches the talk page for page rather than a reflow of it.
+- Exporting as images rasterizes those same pages to PNGs (two pixels per design pixel, numbered from `deck-01.png`) and downloads them as one zip. No screenshot library is involved: a page is serialized into an SVG that the browser draws and a canvas encodes, and a chart is swapped for a still of itself first, because a canvas cannot travel inside the serialized markup.
 
 ## New note templates
 
