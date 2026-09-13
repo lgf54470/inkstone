@@ -298,10 +298,11 @@ function buildWorkspaceSources(notes: NotesState['notes'], tags: NotesState['tag
 }
 
 // Presenting is owned by the shell, which survives the mobile-breakpoint switch that
-// unmounts this workspace; a pane can only hand the deck a snapshot to present.
+// unmounts this workspace; a pane only names the note to present and the show then
+// follows it, so a pane-local copy of the buffer is never the deck's source.
 function useStartPresentation(note: NotesState['notes'][string] | null | undefined, content: string): () => void {
   return useCallback(() => {
-    if (note) usePresentation.getState().start({ content, title: note.title })
+    if (note) usePresentation.getState().start({ noteId: note.id, content, title: note.title })
   }, [note, content])
 }
 

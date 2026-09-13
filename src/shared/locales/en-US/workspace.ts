@@ -73,6 +73,8 @@ export const messages = {
 'workspace.presentation_hide_slides': 'Hide slide list',
 'workspace.presentation_slide_number': 'Slide {value0} of {value1}',
 'workspace.presentation_page_of': 'Page {value0} of {value1}',
+'workspace.presentation_follow': 'Follow the note',
+'workspace.presentation_freeze': 'Freeze this snapshot',
 'workspace.remote_image': 'Remote image',
 'workspace.resize_editor_and_preview_panes': 'Resize editor and preview panes',
 'workspace.right_note_pane': 'Right note pane',

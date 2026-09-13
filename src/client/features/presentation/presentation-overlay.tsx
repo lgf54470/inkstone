@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { ProseFont } from '@shared/types'
-import { useBreakpoint } from '../../lib/hooks'
+import { useBreakpoint, useDebounced } from '../../lib/hooks'
 import { t } from '../../lib/i18n'
 import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
 import { enhancePreview } from '../../lib/markdown/enhance'
 import { useDialogFocus, useEscape, useLockScroll } from '../../components/overlay'
+import { useNotes } from '../../store/notes'
+import { usePresentation } from '../../store/presentation'
 import { useSession } from '../../store/session'
+import { presentedNoteContent, railOpenFor } from './presentation-state'
 import { useIsDarkTheme } from './presentation-theme'
 import { PresentationControls, SlideProgress } from './presentation-controls'
 import { SlideViewport } from './slide-canvas'
@@ -17,22 +20,37 @@ import { splitIntoSlides } from './slides'
 import { usePresentationKeys } from './use-presentation-keys'
 
 const CHROME_IDLE_MS = 2600
+// Followed edits land on the projector, but a re-split per keystroke would remount
+// the deck under the presenter: one debounce also coalesces a sync burst.
+const FOLLOW_DEBOUNCE_MS = 400
 
-export interface PresentationOverlayProps {
-  open: boolean
-  onClose: () => void
-  content: string
-  noteTitle: string
-}
-
-export function PresentationOverlay({ open, onClose, content, noteTitle }: PresentationOverlayProps) {
+// The show reads its own store, which the shell hosts: that is what keeps a talk
+// alive across the layout switch that unmounts the workspace it started from.
+export function PresentationOverlay() {
+  const open = usePresentation((s) => s.open)
+  const noteId = usePresentation((s) => s.noteId)
+  const snapshot = usePresentation((s) => s.snapshot)
+  const following = usePresentation((s) => s.following)
+  const storedTitle = usePresentation((s) => s.title)
+  const onClose = usePresentation((s) => s.stop)
   const panelRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  const session = usePresentationSession({ open, content, noteTitle, panelRef, stageRef, onClose })
+  const session = usePresentationSession({ open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose })
 
   if (!open) return null
 
-  return createPortal(
+  return createPortal(<PresentationDialog panelRef={panelRef} stageRef={stageRef} session={session} onClose={onClose} />, document.body)
+}
+
+// The slide surface itself: the list, the canvas and the controls are one dialog so
+// the focus trap, the idle fade and the portal all belong to a single element.
+function PresentationDialog({ panelRef, stageRef, session, onClose }: {
+  panelRef: RefObject<HTMLDivElement | null>
+  stageRef: RefObject<HTMLDivElement | null>
+  session: PresentationSession
+  onClose: () => void
+}) {
+  return (
     <div
       ref={panelRef}
       tabIndex={-1}
@@ -48,7 +66,7 @@ export function PresentationOverlay({ open, onClose, content, noteTitle }: Prese
           index={session.index}
           designWidth={session.metrics.designWidth}
           designHeight={session.metrics.designHeight}
-          title={noteTitle}
+          title={session.noteTitle}
           externalImages={session.externalImages}
           proseFont={session.proseFont}
           chromeHidden={session.chromeHidden}
@@ -63,16 +81,17 @@ export function PresentationOverlay({ open, onClose, content, noteTitle }: Prese
         pageCount={session.pageCount}
         isFullscreen={session.isFullscreen}
         railOpen={session.railOpen}
+        following={session.following}
         chromeHidden={session.chromeHidden}
         onPrev={session.goPrev}
         onNext={session.goNext}
         onToggleRail={session.toggleRail}
+        onToggleFollowing={session.toggleFollowing}
         onToggleFullscreen={session.toggleFullscreen}
         onClose={onClose}
       />
       <SlideProgress index={session.index} count={session.deck.length} chromeHidden={session.chromeHidden} />
-    </div>,
-    document.body,
+    </div>
   )
 }
 
@@ -97,51 +116,58 @@ interface PresentationSession {
   sub: number
   pageCount: number
   railOpen: boolean
+  following: boolean
   chromeHidden: boolean
   isFullscreen: boolean
   metrics: StageMetrics
   proseFont: ProseFont
   externalImages: boolean
+  noteTitle: string
   handlePageCount: (count: number) => void
   goNext: () => void
   goPrev: () => void
   jumpTo: (index: number) => void
   toggleFullscreen: () => void
   toggleRail: () => void
+  toggleFollowing: () => void
 }
 
-function usePresentationSession({ open, content, noteTitle, panelRef, stageRef, onClose }: {
+function usePresentationSession({ open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose }: {
   open: boolean
-  content: string
-  noteTitle: string
+  noteId: string | null
+  snapshot: string
+  following: boolean
+  storedTitle: string
   panelRef: RefObject<HTMLDivElement | null>
   stageRef: RefObject<HTMLDivElement | null>
   onClose: () => void
 }): PresentationSession {
-  const { presentedContent, deck, fingerprint } = useFrozenDeck(open, content)
+  const liveContent = useNotes((s) => (noteId ? s.contents[noteId] : undefined))
+  const noteExists = useNotes((s) => Boolean(noteId && s.notes[noteId]))
+  const liveTitle = useNotes((s) => (noteId ? s.notes[noteId]?.title : undefined))
+  const debouncedContent = useDebounced(liveContent ?? '', FOLLOW_DEBOUNCE_MS)
+  const presentedContent = presentedNoteContent({
+    following,
+    snapshot,
+    live: liveContent === undefined ? undefined : debouncedContent,
+    noteExists,
+  })
+  const { deck, fingerprint } = useShowDeck(presentedContent)
+  useCapturePresented(open, following, presentedContent)
   const dark = useIsDarkTheme()
   const externalImages = useSession((s) => s.settings.preview.externalImages)
   const proseFont = useSession((s) => s.settings.appearance.proseFont)
   const { index, sub, pageCount, handlePageCount, goNext, goPrev, jumpTo } = usePresentationNav(deck.length)
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
   const metrics = useStageMetrics(open, stageRef)
-  // The overlay outlives a single show now that the shell hosts it, so the list
-  // follows the viewport instead of a value frozen at app start: it is open on
-  // screens with room for it, and an explicit toggle during the show wins.
-  const railFitsViewport = useBreakpoint() !== 'mobile'
-  const [railChoice, setRailChoice] = useState<boolean | null>(null)
-  const railOpen = railChoice ?? railFitsViewport
-  useLayoutEffect(() => {
-    if (open) setRailChoice(null)
-  }, [open])
+  const { railOpen, toggleRail } = useSlideList(open)
   const chromeHidden = useChromeAutoHide(open && isFullscreen)
-  const toggleRail = useCallback(() => setRailChoice(!railOpen), [railOpen])
+  const toggleFollowing = useCallback(() => usePresentation.getState().setFollowing(!following), [following])
+  const noteTitle = liveTitle ?? storedTitle
   const cacheKeys = useMemo(() => deck.map((_, item) => slideCacheKey(fingerprint, dark, item)), [deck, fingerprint, dark])
-  useEscape(open, onClose)
-  useLockScroll(open)
-  useDialogFocus(open, panelRef, panelRef)
+  useDialogBehavior(open, panelRef, onClose)
   useSlideHtml({ open, deck, index, fingerprint, content: presentedContent, noteTitle, dark })
-  usePresentationKeys({ open, slideCount: deck.length, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail })
+  usePresentationKeys({ open, slideCount: deck.length, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing })
   return {
     deck,
     cacheKeys,
@@ -149,18 +175,43 @@ function usePresentationSession({ open, content, noteTitle, panelRef, stageRef, 
     sub,
     pageCount,
     railOpen,
+    following,
     chromeHidden,
     isFullscreen,
     metrics,
     proseFont,
     externalImages,
+    noteTitle,
     handlePageCount,
     goNext,
     goPrev,
     jumpTo,
     toggleFullscreen,
     toggleRail,
+    toggleFollowing,
   }
+}
+
+// The overlay outlives a single show now that the shell hosts it, so the list follows
+// the viewport instead of a value frozen at app start: it is open on screens with room
+// for it, and an explicit toggle during the show wins until the next show opens.
+function useSlideList(open: boolean): { railOpen: boolean; toggleRail: () => void } {
+  const [choice, setChoice] = useState<boolean | null>(null)
+  const fitsViewport = useBreakpoint() !== 'mobile'
+  useLayoutEffect(() => {
+    if (open) setChoice(null)
+  }, [open])
+  const railOpen = railOpenFor(choice, fitsViewport)
+  const toggleRail = useCallback(() => setChoice(!railOpen), [railOpen])
+  return { railOpen, toggleRail }
+}
+
+// The dialog's own browser contracts: Escape closes, the page behind stops scrolling,
+// and focus stays inside the dialog until it goes back to whatever opened it.
+function useDialogBehavior(open: boolean, panelRef: RefObject<HTMLDivElement | null>, onClose: () => void): void {
+  useEscape(open, onClose)
+  useLockScroll(open)
+  useDialogFocus(open, panelRef, panelRef)
 }
 
 // Presenting is a full-screen activity: the controls and the slide list fade out
@@ -193,17 +244,22 @@ function useChromeAutoHide(active: boolean): boolean {
   return hidden
 }
 
-// Freeze the deck on open: presenting shows a snapshot, and store/editor content
-// updates (which flap during fullscreen resizes) must not re-split the deck
-// mid-show and remount every slide.
-function useFrozenDeck(open: boolean, content: string) {
-  const [frozenContent, setFrozenContent] = useState<string | null>(null)
-  if (open && frozenContent === null) setFrozenContent(content)
-  if (!open && frozenContent !== null) setFrozenContent(null)
-  const presentedContent = frozenContent ?? content
+// The deck is exactly what the show presents: while following, every debounced edit
+// re-splits it; a frozen snapshot is a plain string that cannot move under the
+// presenter.
+function useShowDeck(presentedContent: string) {
   const deck = useMemo(() => splitIntoSlides(presentedContent), [presentedContent])
   const fingerprint = useMemo(() => hashContent(presentedContent), [presentedContent])
-  return { presentedContent, deck, fingerprint }
+  return { deck, fingerprint }
+}
+
+// Following keeps the store's snapshot equal to what is on screen: freezing then
+// pins exactly that, and a note that disappears mid-talk still has a last-seen deck
+// to fall back to.
+function useCapturePresented(open: boolean, following: boolean, presentedContent: string): void {
+  useEffect(() => {
+    if (open && following) usePresentation.getState().capture(presentedContent)
+  }, [open, following, presentedContent])
 }
 
 // Renders the enhanced markup off-DOM and caches it per slide; the cache hit is

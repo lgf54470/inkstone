@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Radio, Snowflake, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton } from '../../components/primitives'
@@ -11,17 +11,20 @@ export interface PresentationControlsProps {
   pageCount: number
   isFullscreen: boolean
   railOpen: boolean
+  following: boolean
   chromeHidden: boolean
   onPrev: () => void
   onNext: () => void
   onToggleRail: () => void
+  onToggleFollowing: () => void
   onToggleFullscreen: () => void
   onClose: () => void
 }
 
-export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, chromeHidden, onPrev, onNext, onToggleRail, onToggleFullscreen, onClose }: PresentationControlsProps) {
+export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, following, chromeHidden, onPrev, onNext, onToggleRail, onToggleFollowing, onToggleFullscreen, onClose }: PresentationControlsProps) {
   const fullscreenLabel = isFullscreen ? t('workspace.presentation_exit_fullscreen') : t('workspace.presentation_fullscreen')
   const railLabel = railOpen ? t('workspace.presentation_hide_slides') : t('workspace.presentation_show_slides')
+  const followLabel = following ? t('workspace.presentation_freeze') : t('workspace.presentation_follow')
   return (
     <div
       data-presentation-chrome
@@ -36,6 +39,11 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
       <Tooltip label={railLabel} side='top'>
         <IconButton label={railLabel} size='sm' active={railOpen} onClick={onToggleRail}>
           {railOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+        </IconButton>
+      </Tooltip>
+      <Tooltip label={followLabel} side='top'>
+        <IconButton label={followLabel} size='sm' active={following} onClick={onToggleFollowing}>
+          {following ? <Snowflake size={14} /> : <Radio size={14} />}
         </IconButton>
       </Tooltip>
       <Tooltip label={fullscreenLabel} side='top'>

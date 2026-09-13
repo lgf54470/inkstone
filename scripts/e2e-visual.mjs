@@ -85,6 +85,8 @@ const LABELS = {
   preview: ['预览', 'Preview'],
   present: ['演示模式', 'Presentation mode'],
   presentExit: ['退出演示', 'Exit presentation'],
+  presentFreeze: ['冻结当前快照', 'Freeze this snapshot'],
+  presentFollow: ['跟随笔记更新', 'Follow the note'],
 }
 
 function labelSelector(labels) {
@@ -289,6 +291,126 @@ async function assertPresentation(page) {
   check('presentation: exit returns to the note', await page.evaluate(() => !document.querySelector('[data-slide-canvas]')))
 }
 
+// The session contract: a show follows the note it was started from (so an edit
+// reaching this tab — another tab, another device, an MCP write — lands on the
+// projector), freezing pins what is on screen, and the show outlives the layout
+// switch that unmounts the workspace it started from.
+async function assertPresentationSession(page) {
+  const started = await page.evaluate(() => {
+    const button = [...document.querySelectorAll('button')].find((item) => /演示模式|Presentation mode/.test(item.getAttribute('aria-label') ?? ''))
+    button.focus()
+    button.click()
+    return document.activeElement === button
+  })
+  check('presentation session: the start control takes focus', started)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(1_500)
+
+  const before = await presentationSession(page)
+  check('presentation session: starts following the note', LABELS.presentFreeze.includes(before.followLabel), `label=${before.followLabel}`)
+
+  // The deck length is read from the page counter, not from the slide list: the rail
+  // mounts thumbnails lazily, so a deck that grows past the fold lists fewer items
+  // than it has pages.
+  await appendToNote(page, LIVE_EDIT_ONE)
+  await sleep(2_000)
+  const followed = await presentationSession(page)
+  check('presentation session: an edit lands on the projector while following', followed.total === before.total + 1, `before=${before.position} after=${followed.position}`)
+
+  await clickPresentationControl(page, LABELS.presentFreeze)
+  await sleep(800)
+  const frozen = await presentationSession(page)
+  check('presentation session: freezing switches the control back to following', LABELS.presentFollow.includes(frozen.followLabel), `label=${frozen.followLabel}`)
+
+  await appendToNote(page, LIVE_EDIT_TWO)
+  await sleep(2_000)
+  const pinned = await presentationSession(page)
+  check('presentation session: a frozen deck ignores further edits', pinned.total === followed.total, `position=${pinned.position}`)
+
+  await clickPresentationControl(page, LABELS.presentFollow)
+  await sleep(2_000)
+  const resumed = await presentationSession(page)
+  check('presentation session: unfreezing catches up with the note', resumed.total === before.total + 2, `position=${resumed.position}`)
+
+  // Crossing the mobile breakpoint rebuilds the whole shell subtree, which used to
+  // take the workspace (and the show with it) down mid-talk.
+  await page.setViewport(MOBILE_VIEWPORT)
+  await sleep(1_500)
+  const mobile = await presentationSession(page)
+  check('presentation session: the show survives the mobile breakpoint', mobile.open && mobile.position === resumed.position, `position=${mobile.position}`)
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(1_500)
+  const desktop = await presentationSession(page)
+  check('presentation session: the show survives switching back', desktop.open && desktop.position === resumed.position, `position=${desktop.position}`)
+  check('presentation session: the canvas refills the stage', desktop.filled)
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(800)
+  const closed = await presentationSession(page)
+  check('presentation session: exit still works after the round trip', !closed.open)
+  check('presentation session: focus is never left inside the closed overlay', !closed.inDialog)
+  check('presentation session: the note is still open behind the show', await page.evaluate(() => Boolean(document.querySelector('.cm-content'))))
+}
+
+async function presentationSession(page) {
+  return page.evaluate(() => {
+    const panel = document.querySelector('[role="dialog"]')
+    const canvas = document.querySelector('[data-slide-canvas]')
+    const stage = canvas?.parentElement?.getBoundingClientRect()
+    const box = canvas?.getBoundingClientRect()
+    const follow = [...(panel?.querySelectorAll('[data-presentation-chrome] button') ?? [])]
+      .find((item) => /跟随|冻结|Follow|Freeze/.test(item.getAttribute('aria-label') ?? ''))
+    const position = panel?.querySelector('[aria-live="polite"]')?.textContent?.trim() ?? ''
+    return {
+      open: Boolean(canvas),
+      position,
+      total: Number.parseInt(position.split('/')[1] ?? '', 10) || 0,
+      slides: panel?.querySelectorAll('[data-presentation-rail] [data-slide-index]').length ?? 0,
+      followLabel: follow?.getAttribute('aria-label') ?? '',
+      inDialog: Boolean(document.activeElement?.closest?.('[role="dialog"]')),
+      filled: Boolean(box && stage) && box.height >= stage.height - 1 && box.width >= stage.width - 1,
+    }
+  })
+}
+
+// Presentation controls carry a locale-dependent aria-label; match either locale the
+// way the other label helpers in this gate do.
+async function clickPresentationControl(page, labels) {
+  const clicked = await page.evaluate((options) => {
+    const panel = document.querySelector('[role="dialog"]')
+    const button = [...(panel?.querySelectorAll('[data-presentation-chrome] button') ?? [])]
+      .find((item) => options.includes(item.getAttribute('aria-label')))
+    if (!button) return false
+    button.click()
+    return true
+  }, labels)
+  if (!clicked) throw new Error(`presentation control missing: ${labels[0]}`)
+}
+
+// Each remote edit opens its own slide and ends on a blank line, so it adds exactly
+// one page wherever the editor's caret happens to sit when the text arrives — a
+// break is honoured both by the note that follows it and the deck that ends there.
+const LIVE_EDIT_ONE = '\n\n---\n\n## Editorial addition\n\nAdded from another writer.\n\n'
+const LIVE_EDIT_TWO = '\n\n---\n\n## Ignored\n\nWritten after the freeze.\n\n'
+
+// Writes into the editor while the show is on screen: a presenter never types there
+// directly (the overlay covers it), but a live edit arrives from another tab, another
+// device, or an MCP write through the same store. CodeMirror is fed a paste event
+// rather than execCommand('insertText'): the overlay's focus trap keeps DOM focus in
+// the dialog, and a paste inserts at the editor's own cursor instead of relying on it.
+async function appendToNote(page, markdown) {
+  const appended = await page.evaluate((text) => {
+    const content = document.querySelector('.cm-content')
+    if (!content) return false
+    const data = new DataTransfer()
+    data.setData('text/plain', text)
+    content.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+    return true
+  }, markdown)
+  if (!appended) throw new Error('appendToNote: the editor is not mounted')
+  await sleep(1_200) // autosave debounce, then the show's own follow debounce
+}
+
 async function main() {
   console.log(`visual e2e against ${BASE}`)
   const browser = await puppeteer.launch({
@@ -315,6 +437,7 @@ async function main() {
     await assertPaneTransition(page)
     await assertDesktopSplit(page)
     await assertPresentation(page)
+    await assertPresentationSession(page)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.

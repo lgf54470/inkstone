@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
+import { presentationCommand, type PresentationCommand } from './presentation-keys'
 
 export interface PresentationKeysOptions {
   open: boolean
@@ -8,58 +9,47 @@ export interface PresentationKeysOptions {
   jumpTo: (index: number) => void
   toggleFullscreen: () => void
   toggleRail: () => void
+  toggleFollowing: () => void
 }
 
-// Navigation keys always move slides so a stray focused control can never trap the
-// keyboard; Space/Enter yield to the focused control to avoid double actions, and
-// the slide list keeps the arrows it needs to walk its own items.
-export function usePresentationKeys({ open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail }: PresentationKeysOptions): void {
+export function usePresentationKeys(options: PresentationKeysOptions): void {
+  const { open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing } = options
+  // One runner per command keeps the listener itself short, and a command that is not
+  // claimed leaves the event alone instead of swallowing it for the rest of the page.
+  const run = useCallback((command: PresentationCommand) => {
+    switch (command) {
+      case 'next':
+        return goNext()
+      case 'prev':
+        return goPrev()
+      case 'first':
+        return jumpTo(0)
+      case 'last':
+        return jumpTo(slideCount - 1)
+      case 'fullscreen':
+        return toggleFullscreen()
+      case 'slideList':
+        return toggleRail()
+      case 'follow':
+        return toggleFollowing()
+    }
+  }, [goNext, goPrev, jumpTo, slideCount, toggleFullscreen, toggleRail, toggleFollowing])
+
+  const onKeyDown = useCallback((event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+    const target = event.target as HTMLElement | null
+    const command = presentationCommand(event.key, {
+      onControl: Boolean(target?.closest('button, a, input, select, textarea, [contenteditable="true"]')),
+      onSlideList: Boolean(target?.closest('[data-presentation-rail]')),
+    })
+    if (!command) return
+    event.preventDefault()
+    run(command)
+  }, [run])
+
   useEffect(() => {
     if (!open) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      const onControl = Boolean(target?.closest('button, a, input, select, textarea, [contenteditable="true"]'))
-      const onRail = Boolean(target?.closest('[data-presentation-rail]'))
-      switch (event.key) {
-        case 'ArrowRight':
-        case 'PageDown':
-          event.preventDefault()
-          goNext()
-          return
-        case 'ArrowLeft':
-        case 'PageUp':
-          event.preventDefault()
-          goPrev()
-          return
-        case 'ArrowDown':
-        case 'ArrowUp':
-        case 'Home':
-        case 'End':
-          if (onRail) return
-          event.preventDefault()
-          if (event.key === 'ArrowDown') goNext()
-          else if (event.key === 'ArrowUp') goPrev()
-          else jumpTo(event.key === 'Home' ? 0 : slideCount - 1)
-          return
-        case ' ':
-        case 'Enter':
-          if (onControl) return
-          event.preventDefault()
-          goNext()
-          return
-        case 'f':
-        case 'F':
-          event.preventDefault()
-          toggleFullscreen()
-          return
-        case 's':
-        case 'S':
-          event.preventDefault()
-          toggleRail()
-      }
-    }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail])
+  }, [open, onKeyDown])
 }
