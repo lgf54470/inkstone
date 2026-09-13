@@ -22,10 +22,13 @@ async function getChartJs(): Promise<typeof import('chart.js/auto')> {
 }
 
 function destroyChartInstance(node: HTMLElement): void {
-  const existing = (node as unknown as { __chartInstance?: { destroy: () => void } }).__chartInstance
+  const holder = node as unknown as { __chartInstance?: { destroy: () => void }; __chartObserver?: ResizeObserver }
+  holder.__chartObserver?.disconnect()
+  delete holder.__chartObserver
+  const existing = holder.__chartInstance
   if (existing && typeof existing.destroy === 'function') {
     existing.destroy()
-    delete (node as unknown as { __chartInstance?: unknown }).__chartInstance
+    delete holder.__chartInstance
   }
 }
 
@@ -92,30 +95,59 @@ function themedScales(userScales: Record<string, unknown>, textColor: string, gr
   return scales
 }
 
-function buildChartConfig(config: Record<string, unknown>, dark: boolean): Record<string, unknown> {
+function buildChartConfig(config: Record<string, unknown>, dark: boolean, sized: boolean): Record<string, unknown> {
   const { text, grid } = chartThemeColors(dark)
   const userOptions = (config.options && typeof config.options === 'object' ? config.options : {}) as Record<string, unknown>
   const userScales = (userOptions.scales && typeof userOptions.scales === 'object' ? userOptions.scales : {}) as Record<string, unknown>
   const userPlugins = (userOptions.plugins && typeof userOptions.plugins === 'object' ? userOptions.plugins : {}) as Record<string, unknown>
   const scales = themedScales(userScales, text, grid)
-  return {
-    ...config,
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      color: text,
-      ...userOptions,
-      scales: Object.keys(scales).length > 0 ? scales : undefined,
-      plugins: {
-        legend: {
-          labels: {
-            color: text,
-          },
+  const options: Record<string, unknown> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    color: text,
+    ...userOptions,
+    scales: Object.keys(scales).length > 0 ? scales : undefined,
+    plugins: {
+      legend: {
+        labels: {
+          color: text,
         },
-        ...userPlugins,
       },
+      ...userPlugins,
     },
   }
+  // The chart was handed its size (see chartSize): measuring would read the same inflated rect
+  // again. Without `responsive` the library keeps the canvas's own size, and the device pixel
+  // ratio has to be passed because that is the only other thing the responsive path set up.
+  if (sized) {
+    options.responsive = false
+    options.devicePixelRatio = window.devicePixelRatio
+  }
+  return { ...config, options }
+}
+
+// The size the chart really has: the container's layout box. Chart.js measures a responsive chart
+// from its container's *bounding rect*, and the slide canvas is scaled with a CSS transform — so the
+// canvas came out stage-scale times too wide and tall (the chart block grew a scrollbar in both
+// directions), and every geometry change multiplied it again. A container that has not been laid out
+// (an off-document render) returns null and keeps the library's own measurement.
+function chartSize(container: HTMLElement): { width: number; height: number } | null {
+  const width = Math.round(container.clientWidth)
+  const height = Math.round(container.clientHeight)
+  return width > 0 && height > 0 ? { width, height } : null
+}
+
+// A layout change (a narrower stage, the slide list opening, a re-measure) resizes the container, and
+// the chart has to follow it: with `responsive` off nothing else would notice, and the canvas would
+// keep a size its box no longer has.
+function watchChartSize(node: HTMLElement, container: HTMLElement, instance: { resize: (width: number, height: number) => void }): void {
+  const observer = new ResizeObserver(() => {
+    const size = chartSize(container)
+    if (size) instance.resize(size.width, size.height)
+  })
+  observer.observe(container)
+  const holder = node as unknown as { __chartObserver?: ResizeObserver }
+  holder.__chartObserver = observer
 }
 
 // One block: parse the config, then instantiate the chart; both failures land
@@ -145,8 +177,15 @@ async function renderChartNode(root: HTMLElement, node: HTMLElement, raw: string
     canvas.className = 'chartjs-canvas'
     container.appendChild(canvas)
     node.appendChild(container)
-    const instance = new Chart(canvas, buildChartConfig(config, dark) as never);
+    // The canvas carries the size before the chart reads it, and that is what the chart draws at.
+    const size = chartSize(container)
+    if (size) {
+      canvas.width = size.width
+      canvas.height = size.height
+    }
+    const instance = new Chart(canvas, buildChartConfig(config, dark, size !== null) as never);
     (node as unknown as { __chartInstance?: unknown }).__chartInstance = instance
+    if (size) watchChartSize(node, container, instance)
     node.dataset.rendered = signature
   }
   catch (err: unknown) {

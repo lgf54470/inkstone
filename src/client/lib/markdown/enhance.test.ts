@@ -3,6 +3,7 @@ import { initI18n } from '../i18n'
 import { configureCodeBlockCollapsing, decorateCodeBlock, destroyChartInstances, enhancePreview, renderChartJs, toggleCodeBlockCollapse } from './enhance'
 import { highlightWithPrism } from './prism'
 import { encodeDataValue } from './data-attr'
+import { installTestGlobals } from '../test-render'
 import { stubCanvasContext } from './enhance.test-helpers'
 
 beforeAll(async () => {
@@ -128,6 +129,57 @@ describe('chart rendering', () => {
       expect(root.querySelector('canvas.chartjs-canvas')).not.toBeNull()
       destroyChartInstances(root)
     } finally {
+      restoreCanvasContext()
+      root.remove()
+    }
+  })
+})
+
+describe('chart sizing', () => {
+  // jsdom lays nothing out, so the box the stylesheet would give the container is stubbed. This is
+  // the size the chart has to be drawn at: the slide canvas is scaled with a CSS transform, and a
+  // chart that measures the container's bounding rect comes out stage-scale times too big — the
+  // chart block then grows a scrollbar in both directions, one size larger on every geometry change.
+  function stubContainerBox(width: number, height: number): () => void {
+    const originalWidth = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')
+    const originalHeight = Object.getOwnPropertyDescriptor(Element.prototype, 'clientHeight')
+    const box = (value: number, original: PropertyDescriptor | undefined): PropertyDescriptor => ({
+      configurable: true,
+      get(this: Element): number {
+        return this.classList.contains('chartjs-container') ? value : (original?.get?.call(this) ?? 0)
+      },
+    })
+    Object.defineProperty(Element.prototype, 'clientWidth', box(width, originalWidth))
+    Object.defineProperty(Element.prototype, 'clientHeight', box(height, originalHeight))
+    return () => {
+      const none = (): number => 0
+      Object.defineProperty(Element.prototype, 'clientWidth', originalWidth ?? { configurable: true, get: none })
+      Object.defineProperty(Element.prototype, 'clientHeight', originalHeight ?? { configurable: true, get: none })
+    }
+  }
+
+  it('draws at the container box instead of the library measuring a scaled rect', async () => {
+    installTestGlobals()
+    const restoreCanvasContext = stubCanvasContext()
+    const restoreBox = stubContainerBox(480, 260)
+    const root = document.createElement('div')
+    root.innerHTML = `<div data-chart="${encodeDataValue(JSON.stringify({ type: 'bar', data: { labels: ['A'], datasets: [{ data: [1] }] } }))}"></div>`
+    document.body.appendChild(root)
+    const node = root.querySelector<HTMLElement>('[data-chart]')!
+    try {
+      await renderChartJs(root, false)
+      const container = node.querySelector<HTMLElement>('.chartjs-container')!
+      const canvas = node.querySelector('canvas')!
+      // The canvas carries the box's size, which is the size chart.js then reads as its own: it
+      // would otherwise measure the container's bounding rect and come out stage-scale too big.
+      expect(`${container.clientWidth}x${container.clientHeight}`).toBe('480x260')
+      expect(`${canvas.width}x${canvas.height}`).toBe('480x260')
+      // jsdom cannot take a chart further than this (its stubbed 2D context is not one chart.js
+      // accepts), so the rest of the promise — no scrollbar after a geometry change — is asserted
+      // in the visual gate, against the real renderer in a real browser.
+    } finally {
+      destroyChartInstances(root)
+      restoreBox()
       restoreCanvasContext()
       root.remove()
     }

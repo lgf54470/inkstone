@@ -89,6 +89,7 @@ const LABELS = {
   presentExit: ['退出演示', 'Exit presentation'],
   presentExport: ['导出幻灯片为 PDF', 'Export deck as PDF'],
   presentExportImages: ['导出幻灯片为图片序列', 'Export deck as images'],
+  presentRail: ['显示幻灯片列表', '隐藏幻灯片列表', 'Show slides', 'Hide slides'],
   presentFreeze: ['冻结当前快照', 'Freeze this snapshot'],
   presentFollow: ['跟随笔记更新', 'Follow the note'],
 }
@@ -362,6 +363,26 @@ async function assertPresentationSession(page) {
 // show on a two-slide deck, navigates nowhere, and then checks that the list already
 // knows every slide's pages — and that each slide's entry count equals the page count
 // the canvas reports when the show actually displays that slide.
+// The chart node in the stage: the block that holds it, its container, and the canvas the projector
+// drew on. `scrolls` is the property the slide surface must never have — the chart block is the one
+// box in a slide that can grow a scrollbar.
+async function readChartBox(page) {
+  return page.evaluate(() => {
+    const block = document.querySelector('[data-slide-canvas] [data-chart]')
+    if (!block) return null
+    const container = block.querySelector('.chartjs-container')
+    const canvas = block.querySelector('canvas')
+    return {
+      block: `${block.clientWidth}x${block.clientHeight}`,
+      scroll: `${block.scrollWidth}x${block.scrollHeight}`,
+      scrolls: block.scrollWidth > block.clientWidth + 1 || block.scrollHeight > block.clientHeight + 1,
+      container: `${container?.clientWidth}x${container?.clientHeight}`,
+      canvas: `${canvas?.clientWidth}x${canvas?.clientHeight}`,
+      drawn: canvas ? canvas.width > 0 && canvas.height > 0 : false,
+    }
+  })
+}
+
 async function assertPresentationPages(page) {
   await openDeckNote(page)
   await clickButton(page, LABELS.present)
@@ -415,6 +436,30 @@ async function assertPresentationPages(page) {
   const flipped = await waitForRenderedMarkup(page)
   check('presentation pages: a theme flip re-prepares the list instead of leaving placeholders', sameArtifacts(flipped), `stage=${describeArtifacts(flipped.stage)} thumb=${describeArtifacts(flipped.thumb)}`)
   await page.emulateMediaFeatures([])
+
+  // The slide canvas is scaled with a CSS transform, so a chart must not measure through it: the
+  // canvas has to be exactly the size of its box, or it is drawn stage-scale times too big — the
+  // chart block then grows a scrollbar in both directions, and one size larger on the next change.
+  // The check happens while the show is on this slide, not at the end: a later redraw can happen to
+  // be measured while the stage is unscaled, which hides the mis-sized canvas the show was showing.
+  const chartBox = await readChartBox(page)
+  check('presentation pages: the chart canvas is the size of its box', chartBox?.canvas === chartBox?.container && chartBox?.drawn, JSON.stringify(chartBox))
+  check('presentation pages: the chart block carries no scrollbar', chartBox?.scrolls === false, JSON.stringify(chartBox))
+
+  // And it has to stay that way through a geometry change. The stage has to *grow* for a scrollbar to
+  // be possible at all (a stage smaller than the design canvas scales it down, and a canvas measured
+  // too small leaves a gap), and the chart has to be redrawn to be measured again: re-slicing the
+  // page is what remounts it, and hiding and showing the slide list is what re-slices it.
+  await page.setViewport({ width: 1600, height: 1000 })
+  await sleep(700)
+  await clickPresentationControl(page, LABELS.presentRail)
+  await sleep(1_200)
+  await clickPresentationControl(page, LABELS.presentRail)
+  await sleep(1_200)
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(700)
+  const resized = await readChartBox(page)
+  check('presentation pages: the chart is still the size of its box after the stage resizes', resized?.canvas === resized?.container && resized?.scrolls === false, JSON.stringify(resized))
 
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
