@@ -72,6 +72,7 @@ export const messages = {
 'workspace.presentation_show_slides': 'Show slide list',
 'workspace.presentation_hide_slides': 'Hide slide list',
 'workspace.presentation_slide_number': 'Slide {value0} of {value1}',
+'workspace.presentation_slide_page_number': 'Slide {value0} of {value1}, page {value2} of {value3}',
 'workspace.presentation_page_of': 'Page {value0} of {value1}',
 'workspace.presentation_follow': 'Follow the note',
 'workspace.presentation_freeze': 'Freeze this snapshot',

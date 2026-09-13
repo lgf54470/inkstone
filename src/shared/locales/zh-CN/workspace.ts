@@ -72,6 +72,7 @@ export const messages = {
 'workspace.presentation_show_slides': '显示幻灯片列表',
 'workspace.presentation_hide_slides': '隐藏幻灯片列表',
 'workspace.presentation_slide_number': '第 {value0} 张，共 {value1} 张',
+'workspace.presentation_slide_page_number': '第 {value0} 张，共 {value1} 张；第 {value2} 页，共 {value3} 页',
 'workspace.presentation_page_of': '第 {value0} 页，共 {value1} 页',
 'workspace.presentation_follow': '跟随笔记更新',
 'workspace.presentation_freeze': '冻结当前快照',

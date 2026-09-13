@@ -352,6 +352,127 @@ async function assertPresentationSession(page) {
   check('presentation session: the note is still open behind the show', await page.evaluate(() => Boolean(document.querySelector('.cm-content'))))
 }
 
+// The slide list is a page list: a note that never uses `---` is one slide but many
+// pages, and listing only the `---` slides left a 14-page deck with a one-entry
+// sidebar. The deck is measured off-screen while the show is idle, so this opens a
+// show on a two-slide deck, navigates nowhere, and then checks that the list already
+// knows every slide's pages — and that each slide's entry count equals the page count
+// the canvas reports when the show actually displays that slide.
+async function assertPresentationPages(page) {
+  await openDeckNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  // Read the deck the show opens on, before the idle pass fills the list: a show that
+  // starts on the content the closed overlay was holding reports a one-slide deck here.
+  const opening = await readDeckSize(page)
+  await waitForRailFilled(page)
+
+  const deck = await page.evaluate(() => {
+    const panel = document.querySelector('[role="dialog"]')
+    const entries = [...panel.querySelectorAll('[data-presentation-rail] [data-entry-index]')]
+    const counts = {}
+    for (const entry of entries) counts[entry.dataset.slideIndex] = (counts[entry.dataset.slideIndex] ?? 0) + 1
+    const current = entries.find((entry) => entry.getAttribute('aria-current') === 'true')
+    const openedOn = Number(current?.dataset.slideIndex ?? 0)
+    const widest = Object.keys(counts).reduce((best, slide) => (counts[slide] > counts[best] ? slide : best), Object.keys(counts)[0])
+    return {
+      entries: entries.length,
+      slides: Number.parseInt((panel.querySelector('[aria-live="polite"]')?.textContent ?? '').split('/')[1] ?? '', 10) || 0,
+      counts,
+      openedOn,
+      aheadEntries: counts[String(openedOn + 1)] ?? 0,
+      widestSlide: Number(widest),
+    }
+  })
+  check('presentation pages: a show opens on the deck the note has now', opening.slides === deck.slides, `opening=${opening.position} settled=${deck.slides} slides`)
+  check('presentation pages: the list lists pages, not only slides', deck.entries > deck.slides, `entries=${deck.entries} slides=${deck.slides}`)
+  check('presentation pages: the idle pass measured a slide the show has not reached', deck.aheadEntries > 1, `slide ${deck.openedOn + 1} has ${deck.aheadEntries} entries`)
+
+  const counts = await readPageCountsPerSlide(page, deck.counts)
+  const mismatch = counts.find((item) => item.entries !== item.pages)
+  check('presentation pages: every slide lists exactly the pages the canvas measures', !mismatch, mismatch ? `slide=${mismatch.slide} entries=${mismatch.entries} pages=${mismatch.pages}` : `${counts.length} slides agree`)
+
+  const second = await clickPageEntry(page, deck.widestSlide, 1)
+  check('presentation pages: clicking a page entry lands on that page', second.numerator === 2, `chip=${second.numerator}/${second.denominator}`)
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+}
+
+// A fresh note pasted with a fixed deck, so the assertions do not depend on where the
+// caret happened to be in the note the earlier steps were editing.
+async function openDeckNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await appendToNote(page, `${PAGINATED_DECK}\n`)
+  await sleep(1_500)
+}
+
+// The deck the show is on, as the controls report it.
+async function readDeckSize(page) {
+  return page.evaluate(() => {
+    const position = document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? ''
+    const [current, total] = position.split('/').map((part) => Number.parseInt(part.trim(), 10))
+    return { position, current, slides: total || 0 }
+  })
+}
+
+// The list fills one slide per idle slice, so this waits for it to stop growing.
+async function waitForRailFilled(page) {
+  let previous = -1
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const entries = await page.evaluate(() => document.querySelectorAll('[data-presentation-rail] [data-entry-index]').length)
+    if (entries > 0 && entries === previous) return entries
+    previous = entries
+    await sleep(500)
+  }
+  return previous
+}
+
+// Clicks the first page of each slide and reads the counter, which is the canvas's own
+// measurement of that slide, then hands it back next to the list's entry count.
+async function readPageCountsPerSlide(page, expected) {
+  const results = []
+  for (const slide of Object.keys(expected).map(Number)) {
+    const clicked = await page.evaluate((target) => {
+      const entry = document.querySelector(`[data-presentation-rail] [data-entry-index][data-slide-index="${target}"]`)
+      entry?.click()
+      return Boolean(entry)
+    }, slide)
+    if (!clicked) continue
+    await sleep(800)
+    const pages = await page.evaluate(() => {
+      const panel = document.querySelector('[role="dialog"]')
+      const chip = [...panel.querySelectorAll('span')].find((item) => /^\d+\/\d+$/.test(item.textContent ?? ''))
+      return chip ? Number(chip.textContent.split('/')[1]) : 1
+    })
+    results.push({ slide, entries: expected[slide], pages })
+  }
+  return results
+}
+
+// Clicks one page entry of a slide and reports the counter it landed on, which is
+// what the presenter reads back from the controls.
+async function clickPageEntry(browser, slide, pageOffset) {
+  const clicked = await browser.evaluate((options) => {
+    const entries = [...document.querySelectorAll('[data-presentation-rail] [data-entry-index]')]
+      .filter((item) => Number(item.dataset.slideIndex) === options.slide)
+    const entry = entries[options.pageOffset]
+    entry?.click()
+    return Boolean(entry)
+  }, { slide, pageOffset })
+  if (!clicked) throw new Error(`slide list has no page ${pageOffset + 1} on slide ${slide}`)
+  await sleep(900)
+  return browser.evaluate(() => {
+    const panel = document.querySelector('[role="dialog"]')
+    const chip = [...panel.querySelectorAll('span')].find((item) => /^\d+\/\d+$/.test(item.textContent ?? ''))
+    const [numerator, denominator] = (chip?.textContent ?? '').split('/')
+    return { numerator: Number(numerator), denominator: Number(denominator) }
+  })
+}
+
 async function presentationSession(page) {
   return page.evaluate(() => {
     const panel = document.querySelector('[role="dialog"]')
@@ -392,6 +513,21 @@ async function clickPresentationControl(page, labels) {
 // break is honoured both by the note that follows it and the deck that ends there.
 const LIVE_EDIT_ONE = '\n\n---\n\n## Editorial addition\n\nAdded from another writer.\n\n'
 const LIVE_EDIT_TWO = '\n\n---\n\n## Ignored\n\nWritten after the freeze.\n\n'
+// A two-slide deck whose second slide cannot fit one canvas: the show opens on slide 1,
+// so slide 2 is the slide the presenter has not reached yet.
+const PAGINATED_DECK = [
+  '# Short opening',
+  '',
+  'One page of talk.',
+  '',
+  '---',
+  '',
+  '## Slide that paginates',
+  '',
+  // One block per paragraph: a soft-wrapped run is a single block, and an oversized
+  // block is scaled to fit its page instead of paginating.
+  ...Array.from({ length: 28 }, (_, index) => `Paragraph ${index + 1} of a slide that has to paginate.`).flatMap((line) => [line, '']),
+].join('\n')
 
 // Writes into the editor while the show is on screen: a presenter never types there
 // directly (the overlay covers it), but a live edit arrives from another tab, another
@@ -438,6 +574,7 @@ async function main() {
     await assertDesktopSplit(page)
     await assertPresentation(page)
     await assertPresentationSession(page)
+    await assertPresentationPages(page)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.

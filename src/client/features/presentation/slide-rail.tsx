@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, 
 import type { ProseFont } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { readSlideHtml, renderSlideSource } from './slide-html'
+import { entryIndexOf, railEntries, type RailEntry } from './presentation-state'
+import { readSlideHtml, renderSlideSource, slicePageHtml } from './slide-html'
+import type { SlidePlan } from './slide-pagination'
 import { SlideProse } from './slide-prose'
 import { SLIDE_PAD_X, SLIDE_PAD_Y } from './slide-stage'
 
@@ -15,6 +17,7 @@ interface ThumbMetrics {
   height: number
   scale: number
   contentWidth: number
+  contentHeight: number
 }
 
 interface RailView {
@@ -32,41 +35,46 @@ function thumbMetrics(designWidth: number, designHeight: number): ThumbMetrics {
     height: designHeight * scale,
     scale,
     contentWidth: designWidth - SLIDE_PAD_X * 2,
+    contentHeight: designHeight - SLIDE_PAD_Y * 2,
   }
 }
 
 export interface SlideRailProps {
   deck: string[]
   cacheKeys: string[]
+  plans: Record<number, SlidePlan>
   index: number
+  sub: number
   designWidth: number
   designHeight: number
   title: string
   externalImages: boolean
   proseFont: ProseFont
   chromeHidden: boolean
-  onSelect: (index: number) => void
+  onSelectPage: (slide: number, sub: number) => void
 }
 
-export function SlideRail({ deck, cacheKeys, index, designWidth, designHeight, title, externalImages, proseFont, chromeHidden, onSelect }: SlideRailProps) {
+export function SlideRail({ deck, cacheKeys, plans, index, sub, designWidth, designHeight, title, externalImages, proseFont, chromeHidden, onSelectPage }: SlideRailProps) {
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const entries = useMemo(() => railEntries(deck.length, plans), [deck.length, plans])
+  const active = entryIndexOf(entries, index, sub)
   const view = useMemo<RailView>(
     () => ({ thumb: thumbMetrics(designWidth, designHeight), designWidth, designHeight, externalImages, proseFont }),
     [designWidth, designHeight, externalImages, proseFont],
   )
-  // One stable ref callback for the whole list: the item index rides on the
+  // One stable ref callback for the whole list: the entry index rides on the
   // element, so re-renders never detach and re-attach every button.
   const registerItem = useCallback((element: HTMLButtonElement | null) => {
     if (!element) return
-    const item = Number(element.dataset.slideIndex)
-    if (Number.isInteger(item)) itemRefs.current[item] = element
+    const entry = Number(element.dataset.entryIndex)
+    if (Number.isInteger(entry)) itemRefs.current[entry] = element
   }, [])
-  // The rail drives selection: focus moves with the deck so the next arrow key
-  // continues from where the presenter is, and the active thumbnail stays in view.
+  // The list drives selection: focus moves with the show so the next arrow key
+  // continues from where the presenter is, and the active page stays in view.
   useEffect(() => {
-    itemRefs.current[index]?.scrollIntoView({ block: 'nearest' })
-  }, [index])
-  const onKeyDown = useRailKeyboard(deck.length, index, onSelect, itemRefs)
+    itemRefs.current[active]?.scrollIntoView({ block: 'nearest' })
+  }, [active])
+  const onKeyDown = useRailKeyboard(entries, active, onSelectPage, itemRefs)
 
   return (
     <nav
@@ -83,50 +91,57 @@ export function SlideRail({ deck, cacheKeys, index, designWidth, designHeight, t
       <p className='truncate px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11)] font-medium tracking-[var(--tracking-label)] text-[var(--text-tertiary)] uppercase'>
         {title}
       </p>
-      <SlideRailList deck={deck} cacheKeys={cacheKeys} index={index} view={view} onSelect={onSelect} registerItem={registerItem} />
+      <SlideRailList deck={deck} cacheKeys={cacheKeys} plans={plans} entries={entries} active={active} view={view} onSelectPage={onSelectPage} registerItem={registerItem} />
     </nav>
   )
 }
 
-// The rail walks its own items with the arrows, which is why the window-level
+// The rail walks its own pages with the arrows, which is why the window-level
 // presentation keys yield those four keys while focus sits inside the rail.
-function useRailKeyboard(deckLength: number, index: number, onSelect: (index: number) => void, itemRefs: RefObject<(HTMLButtonElement | null)[]>): (event: KeyboardEvent<HTMLElement>) => void {
+function useRailKeyboard(entries: RailEntry[], active: number, onSelectPage: (slide: number, sub: number) => void, itemRefs: RefObject<(HTMLButtonElement | null)[]>): (event: KeyboardEvent<HTMLElement>) => void {
   return useCallback((event: KeyboardEvent<HTMLElement>) => {
-    const last = deckLength - 1
-    const target = event.key === 'ArrowDown' ? index + 1
-      : event.key === 'ArrowUp' ? index - 1
+    const last = entries.length - 1
+    const from = active < 0 ? 0 : active
+    const target = event.key === 'ArrowDown' ? from + 1
+      : event.key === 'ArrowUp' ? from - 1
         : event.key === 'Home' ? 0
           : event.key === 'End' ? last
             : null
-    if (target === null) return
+    if (target === null || entries.length === 0) return
     event.preventDefault()
     event.stopPropagation()
     const next = Math.min(Math.max(target, 0), last)
-    onSelect(next)
+    const entry = entries[next]
+    if (!entry) return
+    onSelectPage(entry.slide, entry.sub)
     itemRefs.current[next]?.focus({ preventScroll: true })
-  }, [deckLength, index, onSelect, itemRefs])
+  }, [entries, active, onSelectPage, itemRefs])
 }
 
-function SlideRailList({ deck, cacheKeys, index, view, onSelect, registerItem }: {
+function SlideRailList({ deck, cacheKeys, plans, entries, active, view, onSelectPage, registerItem }: {
   deck: string[]
   cacheKeys: string[]
-  index: number
+  plans: Record<number, SlidePlan>
+  entries: RailEntry[]
+  active: number
   view: RailView
-  onSelect: (index: number) => void
+  onSelectPage: (slide: number, sub: number) => void
   registerItem: (element: HTMLButtonElement | null) => void
 }) {
   return (
     <div className='flex min-h-0 flex-1 flex-col gap-[var(--sp-1)] overflow-y-auto px-[var(--sp-2)] pb-[var(--sp-3)]'>
-      {deck.map((source, item) => (
+      {entries.map((entry, item) => (
         <SlideRailItem
-          key={item}
-          index={item}
-          cacheKey={cacheKeys[item] ?? ''}
-          source={source}
-          total={deck.length}
-          active={item === index}
+          key={`${entry.slide}-${entry.sub}`}
+          entry={entry}
+          entryIndex={item}
+          cacheKey={cacheKeys[entry.slide] ?? ''}
+          source={deck[entry.slide] ?? ''}
+          plan={plans[entry.slide]}
+          deckLength={deck.length}
+          active={item === active}
           view={view}
-          onSelect={onSelect}
+          onSelectPage={onSelectPage}
           buttonRef={registerItem}
         />
       ))}
@@ -134,33 +149,33 @@ function SlideRailList({ deck, cacheKeys, index, view, onSelect, registerItem }:
   )
 }
 
-function SlideRailItem({ index, cacheKey, source, total, active, view, onSelect, buttonRef }: {
-  index: number
+function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, active, view, onSelectPage, buttonRef }: {
+  entry: RailEntry
+  entryIndex: number
   cacheKey: string
   source: string
-  total: number
+  plan: SlidePlan | undefined
+  deckLength: number
   active: boolean
   view: RailView
-  onSelect: (index: number) => void
+  onSelectPage: (slide: number, sub: number) => void
   buttonRef: (element: HTMLButtonElement | null) => void
 }) {
   const thumbRef = useRef<HTMLSpanElement>(null)
   const near = useNearViewport(thumbRef)
-  const html = useMemo(
-    () => (near ? readSlideHtml(cacheKey) ?? renderSlideSource(source, view.externalImages).html : ''),
-    [near, cacheKey, source, view.externalImages],
-  )
-  const position = index + 1
+  const html = usePageHtml({ near, cacheKey, source, plan, sub: entry.sub, view })
 
   return (
     <button
       ref={buttonRef}
       type='button'
-      data-slide-index={index}
+      data-entry-index={entryIndex}
+      data-slide-index={entry.slide}
+      data-slide-page={entry.sub}
       aria-current={active ? 'true' : undefined}
-      aria-label={t('workspace.presentation_slide_number', { value0: position, value1: total })}
+      aria-label={pageLabel(entry, deckLength)}
       tabIndex={active ? 0 : -1}
-      onClick={() => onSelect(index)}
+      onClick={() => onSelectPage(entry.slide, entry.sub)}
       className={cn(
         'flex items-start gap-[var(--sp-2)] rounded-[var(--r-md)] p-[var(--sp-1)] text-left',
         'transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)]',
@@ -168,16 +183,40 @@ function SlideRailItem({ index, cacheKey, source, total, active, view, onSelect,
       )}
     >
       <span className={cn('tabular w-[var(--sp-4)] shrink-0 pt-0.5 text-center text-[length:var(--text-11)]', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')} aria-hidden='true'>
-        {position}
+        {entryIndex + 1}
       </span>
       <SlideThumb thumbRef={thumbRef} near={near} html={html} active={active} view={view} />
     </button>
   )
 }
 
+// A page's label has to name the slide as well: the list is pages, and a presenter
+// jumping to "page 3 of 14" still needs to know which `---` slide it belongs to.
+function pageLabel(entry: RailEntry, deckLength: number): string {
+  if (entry.pageCount <= 1) return t('workspace.presentation_slide_number', { value0: entry.slide + 1, value1: deckLength })
+  return t('workspace.presentation_slide_page_number', {
+    value0: entry.slide + 1,
+    value1: deckLength,
+    value2: entry.sub + 1,
+    value3: entry.pageCount,
+  })
+}
+
+// Thumbnails render from the same cached markup the canvas measured, so a page's
+// image matches what the projector shows for it; the slice keeps one page's blocks
+// per entry instead of mounting the whole slide once per page.
+function usePageHtml({ near, cacheKey, source, plan, sub, view }: { near: boolean; cacheKey: string; source: string; plan: SlidePlan | undefined; sub: number; view: RailView }): string {
+  return useMemo(() => {
+    if (!near) return ''
+    const html = readSlideHtml(cacheKey) ?? renderSlideSource(source, view.externalImages).html
+    if (!plan) return html
+    return slicePageHtml(html, plan, sub, view.thumb.contentWidth, view.thumb.contentHeight)
+  }, [near, cacheKey, source, plan, sub, view])
+}
+
 // Thumbnails are decorative and rendered from the same design canvas, so they show
 // the slide's real layout; they mount only near the viewport because a long deck
-// would otherwise render every slide's markup up front.
+// would otherwise render every page's markup up front.
 function SlideThumb({ thumbRef, near, html, active, view }: {
   thumbRef: RefObject<HTMLSpanElement | null>
   near: boolean

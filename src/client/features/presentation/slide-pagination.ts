@@ -53,3 +53,14 @@ function breakIndex(blocks: SlideBlock[], from: number, to: number): number {
 export function resolvePageIndex(plan: SlidePlan, subPage: number): number {
   return Math.min(Math.max(subPage, 0), Math.max(plan.pages.length - 1, 0))
 }
+
+// Plans are compared by value because a re-measure usually produces the same plan:
+// keeping the previous object identity is what lets consumers memoize on it.
+export function samePlan(a: SlidePlan | undefined, b: SlidePlan): boolean {
+  if (!a || a.pages.length !== b.pages.length || a.scales.length !== b.scales.length) return false
+  const pages = a.pages.every((page, index) => {
+    const other = b.pages[index]
+    return Boolean(other) && page.from === other.from && page.to === other.to && page.top === other.top
+  })
+  return pages && a.scales.every((scale, index) => scale === b.scales[index])
+}

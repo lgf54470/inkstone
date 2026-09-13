@@ -3,7 +3,7 @@ import { useSession } from '../../store/session'
 import { destroyChartInstances, renderChartJs, renderPendingMermaid } from '../../lib/markdown/enhance'
 import { useIsDarkTheme } from './presentation-theme'
 import { readSlideHtml, renderSlideSource } from './slide-html'
-import { planSlidePages, resolvePageIndex, type SlideBlock, type SlidePlan } from './slide-pagination'
+import { planSlidePages, resolvePageIndex, samePlan, type SlideBlock, type SlidePlan } from './slide-pagination'
 import { SlideProse } from './slide-prose'
 import { SLIDE_PAD_Y, type StageMetrics } from './slide-stage'
 
@@ -15,12 +15,17 @@ export interface SlideCanvasProps {
   subPage: number
   contentWidth: number
   contentHeight: number
-  onPageCount: (count: number) => void
+  /**
+   * The measured plan, shared with the show so the slide list can list this
+   * slide's pages and the counter can name them. The canvas is the only place a
+   * plan is measured because it renders the same markup the projector shows.
+   */
+  onPlan: (plan: SlidePlan) => void
 }
 
 // The design canvas is laid out at its design size and scaled, so the slide image
 // matches the stage box exactly and the browser does the scaling on the compositor.
-export function SlideViewport({ metrics, cacheKey, source, subPage, onPageCount }: { metrics: StageMetrics } & Omit<SlideCanvasProps, 'contentWidth' | 'contentHeight'>) {
+export function SlideViewport({ metrics, cacheKey, source, subPage, onPlan }: { metrics: StageMetrics } & Omit<SlideCanvasProps, 'contentWidth' | 'contentHeight'>) {
   return (
     <div
       data-slide-canvas
@@ -33,13 +38,13 @@ export function SlideViewport({ metrics, cacheKey, source, subPage, onPageCount 
         subPage={subPage}
         contentWidth={metrics.contentWidth}
         contentHeight={metrics.contentHeight}
-        onPageCount={onPageCount}
+        onPlan={onPlan}
       />
     </div>
   )
 }
 
-export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHeight, onPageCount }: SlideCanvasProps) {
+export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHeight, onPlan }: SlideCanvasProps) {
   const proseFont = useSession((s) => s.settings.appearance.proseFont)
   const preview = useSession((s) => s.settings.preview)
   const dark = useIsDarkTheme()
@@ -51,12 +56,17 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   const html = readSlideHtml(cacheKey) ?? fallbackHtml
   const [renderVersion, setRenderVersion] = useState(0)
   const markDiagramsRendered = useCallback(() => setRenderVersion((version) => version + 1), [])
-  const plan = useSlideLayout(hostRef, html, subPage, contentWidth, contentHeight, renderVersion)
+  const { plan, measured } = useSlideLayout(hostRef, html, subPage, contentWidth, contentHeight, renderVersion)
   useSlideDiagrams(hostRef, html, dark, markDiagramsRendered)
   useFontLoadedMeasure(markDiagramsRendered)
+  // Only a measurement of the markup on screen is published. The canvas is reused when
+  // the show moves to another slide, so its state still holds the previous slide's plan
+  // for the first commit: reporting that would tell the show — and the slide list — that
+  // the new slide has as many pages as the old one, and the show clamps the presenter's
+  // page against that number, which bounced a click on page 2 back to page 1.
   useEffect(() => {
-    onPageCount(plan.pages.length)
-  }, [plan, onPageCount])
+    if (measured) onPlan(plan)
+  }, [measured, plan, onPlan])
   const page = plan.pages[resolvePageIndex(plan, subPage)]
 
   return (
@@ -72,8 +82,11 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
 // must never survive a re-measure that produced the same plan: the ResizeObserver
 // re-runs after every style write, and a plan-diffed effect would skip restoring
 // the shrink the reset step just cleared.
-function useSlideLayout(hostRef: RefObject<HTMLDivElement | null>, html: string, subPage: number, contentWidth: number, contentHeight: number, renderVersion: number): SlidePlan {
-  const [plan, setPlan] = useState<SlidePlan>(() => planSlidePages([], contentHeight))
+function useSlideLayout(hostRef: RefObject<HTMLDivElement | null>, html: string, subPage: number, contentWidth: number, contentHeight: number, renderVersion: number): { plan: SlidePlan; measured: boolean } {
+  // The plan is stored next to the markup it was measured from, so a plan that
+  // describes a slide the canvas no longer shows is never handed out as current.
+  const [layout, setLayout] = useState<{ html: string; plan: SlidePlan } | null>(null)
+  const placeholder = useMemo(() => planSlidePages([], contentHeight), [contentHeight])
   const subPageRef = useRef(subPage)
   subPageRef.current = subPage
   useLayoutEffect(() => {
@@ -90,7 +103,7 @@ function useSlideLayout(hostRef: RefObject<HTMLDivElement | null>, html: string,
       }))
       const next = planSlidePages(blocks, contentHeight)
       applySlidePage(children, next, subPageRef.current, contentWidth, contentHeight)
-      setPlan((current) => (samePlan(current, next) ? current : next))
+      setLayout((current) => (current?.html === html && samePlan(current.plan, next) ? current : { html, plan: next }))
     }
     const schedule = () => {
       window.cancelAnimationFrame(frame)
@@ -107,9 +120,10 @@ function useSlideLayout(hostRef: RefObject<HTMLDivElement | null>, html: string,
   useLayoutEffect(() => {
     const host = hostRef.current
     if (!host) return
-    applySlidePage([...host.children] as HTMLElement[], plan, subPage, contentWidth, contentHeight)
-  }, [hostRef, plan, subPage, contentWidth, contentHeight])
-  return plan
+    applySlidePage([...host.children] as HTMLElement[], layout?.html === html ? layout.plan : placeholder, subPage, contentWidth, contentHeight)
+  }, [hostRef, layout, html, placeholder, subPage, contentWidth, contentHeight])
+  const current = layout?.html === html
+  return { plan: current ? layout.plan : placeholder, measured: current }
 }
 
 function resetBlockFit(children: HTMLElement[]): void {
@@ -144,14 +158,6 @@ function applySlidePage(children: HTMLElement[], plan: SlidePlan, subPage: numbe
     child.style.height = `${contentHeight / scale}px`
     child.style.overflow = 'hidden'
   })
-}
-
-function samePlan(a: SlidePlan, b: SlidePlan): boolean {
-  if (a.pages.length !== b.pages.length || a.scales.length !== b.scales.length) return false
-  return a.pages.every((page, index) => {
-    const other = b.pages[index]
-    return Boolean(other) && page.from === other.from && page.to === other.to && page.top === other.top
-  }) && a.scales.every((scale, index) => scale === b.scales[index])
 }
 
 // Diagrams are rendered once per committed markup and theme, exactly like the

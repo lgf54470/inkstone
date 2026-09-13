@@ -25,13 +25,16 @@ export function useBreakpoint(): Breakpoint {
 }
 
 
-export function useDebounced<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value)
+// Trailing debounce. `resetKey` names the subject the value belongs to: when it changes
+// (another note, a session that just started) the held value belongs to the previous
+// subject, so the current one is returned at once instead of after the delay.
+export function useDebounced<T>(value: T, delay: number, resetKey?: unknown): T {
+  const [debounced, setDebounced] = useState<{ key: unknown; value: T }>({ key: resetKey, value })
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(value), delay)
+    const timer = window.setTimeout(() => setDebounced({ key: resetKey, value }), delay)
     return () => window.clearTimeout(timer)
-  }, [value, delay])
-  return debounced
+  }, [value, delay, resetKey])
+  return debounced.key === resetKey ? debounced.value : value
 }
 
 

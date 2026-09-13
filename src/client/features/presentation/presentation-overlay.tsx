@@ -3,21 +3,22 @@ import { createPortal } from 'react-dom'
 import type { ProseFont } from '@shared/types'
 import { useBreakpoint, useDebounced } from '../../lib/hooks'
 import { t } from '../../lib/i18n'
-import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
-import { enhancePreview } from '../../lib/markdown/enhance'
 import { useDialogFocus, useEscape, useLockScroll } from '../../components/overlay'
 import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
 import { useSession } from '../../store/session'
 import { presentedNoteContent, railOpenFor } from './presentation-state'
 import { useIsDarkTheme } from './presentation-theme'
-import { PresentationControls, SlideProgress } from './presentation-controls'
+import { PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
 import { SlideViewport } from './slide-canvas'
-import { hashContent, readSlideHtml, rememberSlideHtml, renderSlideSource, slideCacheKey } from './slide-html'
+import { hashContent, slideCacheKey } from './slide-html'
+import { samePlan, type SlidePlan } from './slide-pagination'
+import { SlidePreflight, type SlidePreflightProps } from './slide-preflight'
 import { SlideRail } from './slide-rail'
 import { useStageMetrics, type StageMetrics } from './slide-stage'
 import { splitIntoSlides } from './slides'
 import { usePresentationKeys } from './use-presentation-keys'
+import { useSlideHtml } from './use-slide-html'
 
 const CHROME_IDLE_MS = 2600
 // Followed edits land on the projector, but a re-split per keystroke would remount
@@ -51,48 +52,61 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
   onClose: () => void
 }) {
   return (
-    <div
-      ref={panelRef}
-      tabIndex={-1}
-      role='dialog'
-      aria-modal='true'
-      aria-label={t('workspace.presentation_mode')}
-      className='anim-fade fixed inset-0 z-[var(--z-modal)] flex overflow-hidden bg-[var(--bg-base)] outline-none'
-    >
-      {session.railOpen && (
-        <SlideRail
-          deck={session.deck}
-          cacheKeys={session.cacheKeys}
-          index={session.index}
-          designWidth={session.metrics.designWidth}
-          designHeight={session.metrics.designHeight}
-          title={session.noteTitle}
-          externalImages={session.externalImages}
-          proseFont={session.proseFont}
-          chromeHidden={session.chromeHidden}
-          onSelect={session.jumpTo}
-        />
-      )}
-      <PresentationStage stageRef={stageRef} session={session} />
-      <PresentationControls
-        slideIndex={session.index}
-        slideCount={session.deck.length}
-        subPage={session.sub}
-        pageCount={session.pageCount}
-        isFullscreen={session.isFullscreen}
-        railOpen={session.railOpen}
-        following={session.following}
-        chromeHidden={session.chromeHidden}
-        onPrev={session.goPrev}
-        onNext={session.goNext}
-        onToggleRail={session.toggleRail}
-        onToggleFollowing={session.toggleFollowing}
-        onToggleFullscreen={session.toggleFullscreen}
-        onClose={onClose}
-      />
-      <SlideProgress index={session.index} count={session.deck.length} chromeHidden={session.chromeHidden} />
-    </div>
+    <>
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        role='dialog'
+        aria-modal='true'
+        aria-label={t('workspace.presentation_mode')}
+        className='anim-fade fixed inset-0 z-[var(--z-modal)] flex overflow-hidden bg-[var(--bg-base)] outline-none'
+      >
+        {session.railOpen && (
+          <SlideRail
+            deck={session.deck}
+            cacheKeys={session.cacheKeys}
+            plans={session.plans}
+            index={session.index}
+            sub={session.sub}
+            designWidth={session.metrics.designWidth}
+            designHeight={session.metrics.designHeight}
+            title={session.noteTitle}
+            externalImages={session.externalImages}
+            proseFont={session.proseFont}
+            chromeHidden={session.chromeHidden}
+            onSelectPage={session.jumpToPage}
+          />
+        )}
+        <PresentationStage stageRef={stageRef} session={session} />
+        <PresentationControls {...controlProps(session, onClose)} />
+        <SlideProgress index={session.index} count={session.deck.length} chromeHidden={session.chromeHidden} />
+      </div>
+      {/* The whole deck is measured off-screen while the show is open, so the slide
+          list lists every page from the start instead of only the slides visited. */}
+      <SlidePreflight {...session.preflight} />
+    </>
   )
+}
+
+// The controls read the session's position and toggles as flat props, so mapping them in
+// one place keeps the dialog's markup about the slide surface rather than about plumbing.
+function controlProps(session: PresentationSession, onClose: () => void): PresentationControlsProps {
+  return {
+    slideIndex: session.index,
+    slideCount: session.deck.length,
+    subPage: session.sub,
+    pageCount: session.pageCount,
+    isFullscreen: session.isFullscreen,
+    railOpen: session.railOpen,
+    following: session.following,
+    chromeHidden: session.chromeHidden,
+    onPrev: session.goPrev,
+    onNext: session.goNext,
+    onToggleRail: session.toggleRail,
+    onToggleFollowing: session.toggleFollowing,
+    onToggleFullscreen: session.toggleFullscreen,
+    onClose,
+  }
 }
 
 function PresentationStage({ stageRef, session }: { stageRef: RefObject<HTMLDivElement | null>; session: PresentationSession }) {
@@ -103,7 +117,7 @@ function PresentationStage({ stageRef, session }: { stageRef: RefObject<HTMLDivE
         cacheKey={session.cacheKeys[session.index] ?? ''}
         source={session.deck[session.index] ?? ''}
         subPage={session.sub}
-        onPageCount={session.handlePageCount}
+        onPlan={session.handlePlan}
       />
     </div>
   )
@@ -123,13 +137,18 @@ interface PresentationSession {
   proseFont: ProseFont
   externalImages: boolean
   noteTitle: string
-  handlePageCount: (count: number) => void
+  /** Page layout measured per slide, the slide list's page list and the counter's totals. */
+  plans: Record<number, SlidePlan>
+  handlePlan: (plan: SlidePlan) => void
   goNext: () => void
   goPrev: () => void
   jumpTo: (index: number) => void
+  jumpToPage: (index: number, sub: number) => void
   toggleFullscreen: () => void
   toggleRail: () => void
   toggleFollowing: () => void
+  /** Everything the idle deck-measuring pass needs, grouped so the dialog can spread it. */
+  preflight: SlidePreflightProps
 }
 
 function usePresentationSession({ open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose }: {
@@ -142,22 +161,12 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
   stageRef: RefObject<HTMLDivElement | null>
   onClose: () => void
 }): PresentationSession {
-  const liveContent = useNotes((s) => (noteId ? s.contents[noteId] : undefined))
-  const noteExists = useNotes((s) => Boolean(noteId && s.notes[noteId]))
-  const liveTitle = useNotes((s) => (noteId ? s.notes[noteId]?.title : undefined))
-  const debouncedContent = useDebounced(liveContent ?? '', FOLLOW_DEBOUNCE_MS)
-  const presentedContent = presentedNoteContent({
-    following,
-    snapshot,
-    live: liveContent === undefined ? undefined : debouncedContent,
-    noteExists,
-  })
+  const { content: presentedContent, title: liveTitle } = usePresentedContent({ open, noteId, snapshot, following })
   const { deck, fingerprint } = useShowDeck(presentedContent)
   useCapturePresented(open, following, presentedContent)
-  const dark = useIsDarkTheme()
-  const externalImages = useSession((s) => s.settings.preview.externalImages)
-  const proseFont = useSession((s) => s.settings.appearance.proseFont)
-  const { index, sub, pageCount, handlePageCount, goNext, goPrev, jumpTo } = usePresentationNav(deck.length)
+  const { dark, externalImages, proseFont } = useShowSettings()
+  const nav = usePresentationNav(deck.length, fingerprint)
+  const { index, sub, pageCount, plans, handlePlan, goNext, goPrev, jumpTo, jumpToPage } = nav
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
   const metrics = useStageMetrics(open, stageRef)
   const { railOpen, toggleRail } = useSlideList(open)
@@ -182,14 +191,52 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
     proseFont,
     externalImages,
     noteTitle,
-    handlePageCount,
+    plans,
+    handlePlan,
     goNext,
     goPrev,
     jumpTo,
+    jumpToPage,
     toggleFullscreen,
     toggleRail,
     toggleFollowing,
+    preflight: { deck, cacheKeys, fingerprint, metrics, plans, content: presentedContent, noteTitle, onPlan: nav.reportPlan },
   }
+}
+
+// What the show puts on screen: the note body while following, the frozen copy while
+// frozen. The debounce coalesces a burst of keystrokes into a single re-split of the deck,
+// and the note id keys it so a show that opens presents the deck the note has now instead
+// of replaying what the closed overlay was holding — which was an empty deck, so the slide
+// list showed one page until the real deck arrived.
+function usePresentedContent({ open, noteId, snapshot, following }: {
+  open: boolean
+  noteId: string | null
+  snapshot: string
+  following: boolean
+}): { content: string; title: string | undefined } {
+  const { content: live, title, exists } = useLiveNote(noteId)
+  const debounced = useDebounced(live ?? '', FOLLOW_DEBOUNCE_MS, open ? noteId : null)
+  const content = presentedNoteContent({ following, snapshot, live: live === undefined ? undefined : debounced, noteExists: exists })
+  return { content, title }
+}
+
+// The show reads the note it follows straight from the store instead of taking a copy
+// at start, so an edit from another tab, device or MCP write reaches the projector.
+function useLiveNote(noteId: string | null) {
+  const content = useNotes((s) => (noteId ? s.contents[noteId] : undefined))
+  const title = useNotes((s) => (noteId ? s.notes[noteId]?.title : undefined))
+  const exists = useNotes((s) => Boolean(noteId && s.notes[noteId]))
+  return { content, title, exists }
+}
+
+// Presentation typography follows the reader's settings, so the projector looks like
+// the preview the deck was written against.
+function useShowSettings() {
+  const dark = useIsDarkTheme()
+  const externalImages = useSession((s) => s.settings.preview.externalImages)
+  const proseFont = useSession((s) => s.settings.appearance.proseFont)
+  return { dark, externalImages, proseFont }
 }
 
 // The overlay outlives a single show now that the shell hosts it, so the list follows
@@ -264,38 +311,6 @@ function useCapturePresented(open: boolean, following: boolean, presentedContent
 
 // Renders the enhanced markup off-DOM and caches it per slide; the cache hit is
 // what keeps diagrams alive across any remount of the slide subtree.
-function useSlideHtml(options: { open: boolean; deck: string[]; index: number; fingerprint: string; content: string; noteTitle: string; dark: boolean }): void {
-  const { open, deck, index, fingerprint, content, noteTitle, dark } = options
-  const preview = useSession((s) => s.settings.preview)
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    if (!open) return
-    const key = slideCacheKey(fingerprint, dark, index)
-    // A cache hit was already enhanced (or is being enhanced), which is what keeps
-    // diagrams from resetting to their loading placeholders on every remount.
-    if (readSlideHtml(key)) return
-    let cancelled = false
-    const rendered = renderSlideSource(deck[index] ?? '', preview.externalImages)
-    rememberSlideHtml(key, rendered.html)
-    setTick((tick) => tick + 1)
-    const staging = document.createElement('div')
-    staging.innerHTML = rendered.html
-    const prepare = async () => {
-      if (rendered.hasEmbeds) {
-        await resolveNoteEmbeds(staging, { currentContent: content, currentTitle: noteTitle, isCurrent: () => !cancelled })
-      }
-      await enhancePreview(staging, { math: preview.math, mermaid: preview.mermaid, dark, codeBlockCollapseLines: 0 })
-      if (cancelled) return
-      rememberSlideHtml(key, staging.innerHTML)
-      setTick((tick) => tick + 1)
-    }
-    void prepare()
-    return () => {
-      cancelled = true
-    }
-  }, [open, deck, index, fingerprint, content, noteTitle, dark, preview.externalImages, preview.math, preview.mermaid])
-}
-
 function useDeckIndex(deckLength: number) {
   const [index, setIndex] = useState(0)
   useEffect(() => {
@@ -306,45 +321,84 @@ function useDeckIndex(deckLength: number) {
 }
 
 // Slide-level position plus auto-pagination sub-pages: a slide whose rendered
-// blocks overflow the canvas reports its page count, and next/prev walk through
-// its sub-pages before moving to the neighboring slide.
-function usePresentationNav(deckLength: number) {
+// blocks overflow the canvas reports its page plan, and next/prev walk through its
+// sub-pages before moving to the neighboring slide. The plans also drive the slide
+// list, which is why the show keeps them instead of only the current page count.
+function usePresentationNav(deckLength: number, fingerprint: string) {
   const { index, goTo } = useDeckIndex(deckLength)
-  const [subPage, setSubPage] = useState(0)
-  const [pageCounts, setPageCounts] = useState<Record<number, number>>({})
-  const pageCount = pageCounts[index] ?? 1
-  useEffect(() => {
-    setSubPage(0)
-  }, [index])
-  // A re-measure can shrink a slide back to fewer pages; clamping the state (not
-  // just the rendered value) keeps every consumer on a page that exists.
-  useEffect(() => {
-    setSubPage((current) => Math.min(current, pageCount - 1))
-  }, [pageCount])
-  const registerPageCount = useCallback((slide: number, count: number) => {
-    setPageCounts((current) => (current[slide] === count ? current : { ...current, [slide]: count }))
-  }, [])
-  const handlePageCount = useCallback((count: number) => registerPageCount(index, count), [index, registerPageCount])
-  const sub = Math.min(Math.max(subPage, 0), pageCount - 1)
+  const { plans, reportPlan } = useSlidePlans(fingerprint)
+  const currentPlan = plans[index]
+  const pageCount = currentPlan?.pages.length ?? 1
+  const { sub, setSubPage, carryPage } = useSubPage(index, pageCount, Boolean(currentPlan))
+  const handlePlan = useCallback((plan: SlidePlan) => reportPlan(index, plan), [index, reportPlan])
   const goNext = useCallback(() => {
     if (sub < pageCount - 1) setSubPage(sub + 1)
     else if (index < deckLength - 1) {
+      carryPage(0)
       goTo(index + 1)
-      setSubPage(0)
     }
-  }, [sub, pageCount, index, deckLength, goTo])
+  }, [sub, pageCount, index, deckLength, goTo, carryPage, setSubPage])
   const goPrev = useCallback(() => {
     if (sub > 0) setSubPage(sub - 1)
     else if (index > 0) {
+      carryPage(0)
       goTo(index - 1)
-      setSubPage(0)
     }
-  }, [sub, index, goTo])
+  }, [sub, index, goTo, carryPage, setSubPage])
   const jumpTo = useCallback((slide: number) => {
+    carryPage(0)
     goTo(slide)
-    setSubPage(0)
-  }, [goTo])
-  return { index, sub, pageCount, handlePageCount, goNext, goPrev, jumpTo }
+  }, [goTo, carryPage])
+  // The slide list lists pages, so a click lands on the exact page it shows rather
+  // than the top of the slide that contains it.
+  const jumpToPage = useCallback((slide: number, page: number) => {
+    const target = Math.max(page, 0)
+    if (slide === index) setSubPage(target)
+    else {
+      carryPage(target)
+      goTo(slide)
+    }
+  }, [goTo, index, carryPage, setSubPage])
+  return { index, sub, pageCount, plans, handlePlan, reportPlan, goNext, goPrev, jumpTo, jumpToPage }
+}
+
+// Page plans live in one map because the show and the slide list both read them: the
+// canvas measures the slide it renders and the list turns those measurements into pages.
+function useSlidePlans(fingerprint: string) {
+  const [plans, setPlans] = useState<Record<number, SlidePlan>>({})
+  // Edited content re-splits the deck, so plans measured for the previous text would
+  // describe pages that no longer exist.
+  useEffect(() => {
+    setPlans({})
+  }, [fingerprint])
+  const reportPlan = useCallback((slide: number, plan: SlidePlan) => {
+    setPlans((current) => (samePlan(current[slide], plan) ? current : { ...current, [slide]: plan }))
+  }, [])
+  return { plans, reportPlan }
+}
+
+// The page inside the current slide: entering a slide starts at its top, while a jump
+// from the slide list carries the page it named across the slide change, and a
+// re-measure that shrank the slide pulls the state back onto a page that exists.
+// Clamping waits for a known plan: an edit mid-talk re-splits the deck, and a clamp
+// against the "one page" a missing plan implies would bounce the presenter to the top
+// of the slide on every unrelated write.
+function useSubPage(index: number, pageCount: number, known: boolean) {
+  const [subPage, setSubPage] = useState(0)
+  const pending = useRef<number | null>(null)
+  useEffect(() => {
+    const target = pending.current
+    pending.current = null
+    setSubPage(target ?? 0)
+  }, [index])
+  useEffect(() => {
+    if (!known) return
+    setSubPage((current) => Math.min(current, pageCount - 1))
+  }, [known, pageCount])
+  const carryPage = useCallback((page: number) => {
+    pending.current = page
+  }, [])
+  return { sub: Math.min(Math.max(subPage, 0), pageCount - 1), setSubPage, carryPage }
 }
 
 function useFullscreenToggle(open: boolean, panelRef: RefObject<HTMLDivElement | null>) {

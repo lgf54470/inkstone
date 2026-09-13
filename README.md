@@ -54,7 +54,7 @@ A show follows the note it was started from, so an edit — including one arrivi
 | `L` | Switch between following the note and the frozen snapshot |
 | `Esc` | Exit the show and return focus to the button that started it |
 
-The slide list on the left jumps to any page by click. During a show the controls fade out and come back on the next pointer move or key press.
+The list on the left is a page list, not a slide list: every page gets an entry with a thumbnail of that page, and a click jumps straight to it. A `---` slide that paginates shows all of its pages, so a note written without any `---` still gets a full sidebar. The whole deck is measured in the background while the show is idle, so every page is listed from the start — including the slides the show has not reached yet. During a show the controls fade out and come back on the next pointer move or key press.
 
 ## New note templates
 
