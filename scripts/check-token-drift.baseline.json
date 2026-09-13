@@ -91,7 +91,7 @@
   ],
   "values": {
     "--accent": {
-      "app": "oklch(0.54 0.15 30)",
+      "app": "oklch(0.49 0.15 30)",
       "blog": "oklch(0.54 0.15 30)"
     },
     "--accent-contrast": {
@@ -99,23 +99,23 @@
       "blog": "oklch(0.16 0.008 265)"
     },
     "--accent-hover": {
-      "app": "oklch(0.485 0.155 30)",
+      "app": "oklch(0.44 0.155 30)",
       "blog": "oklch(0.485 0.155 30)"
     },
     "--accent-muted": {
-      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.58 0.009 265))",
-      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.58 0.009 265))"
+      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 62%, oklch(0.5 0.009 265))",
+      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.5 0.009 265))"
     },
     "--accent-ring": {
-      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 34%, transparent)",
+      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 34%, transparent)",
       "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 34%, transparent)"
     },
     "--accent-soft": {
-      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 14%, transparent)",
+      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 14%, transparent)",
       "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 14%, transparent)"
     },
     "--accent-softer": {
-      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 7%, transparent)",
+      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 7%, transparent)",
       "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 7%, transparent)"
     },
     "--anim-spin": {
@@ -259,8 +259,8 @@
       "blog": "1.28"
     },
     "--list-marker": {
-      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.58 0.009 265))",
-      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.58 0.009 265))"
+      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 62%, oklch(0.5 0.009 265))",
+      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.5 0.009 265))"
     },
     "--prose-line": {
       "app": "1.65",
@@ -303,7 +303,7 @@
       "blog": "4px"
     },
     "--selection": {
-      "app": "color-mix(in oklab, oklch(0.54 0.15 30) 22%, transparent)",
+      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 22%, transparent)",
       "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 22%, transparent)"
     },
     "--shadow-float": {
@@ -419,16 +419,16 @@
       "blog": "oklch(0.21 0.01 265)"
     },
     "--text-quaternary": {
-      "app": "oklch(0.64 0.008 265)",
-      "blog": "oklch(0.64 0.008 265)"
+      "app": "oklch(0.52 0.008 265)",
+      "blog": "oklch(0.52 0.008 265)"
     },
     "--text-secondary": {
       "app": "oklch(0.44 0.01 265)",
       "blog": "oklch(0.44 0.01 265)"
     },
     "--text-tertiary": {
-      "app": "oklch(0.58 0.009 265)",
-      "blog": "oklch(0.58 0.009 265)"
+      "app": "oklch(0.5 0.009 265)",
+      "blog": "oklch(0.5 0.009 265)"
     },
     "--tracking-label": {
       "app": "0.06em",

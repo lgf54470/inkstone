@@ -493,6 +493,10 @@ const allowed = new Map([
   ['src/client/components/activity-calendar/range.ts', [
     '/** Convert an inclusive month range (0-11 indices within a year) to inclusive day keys. */',
   ]],
+  ['src/client/components/activity-calendar/strip.ts', [
+    '// The darkest level is capped by contrast rather than by taste: a day number is primary text on',
+    '// this tint, and at 76% the tint took it to 4.1:1 where AA needs 4.5.',
+  ]],
   ['src/client/components/activity-calendar/types.ts', [
     '// Shared hook state shapes for the activity calendar. Kept in their own module',
     '// so use-calendar-handlers.ts can consume them without importing the main hook',

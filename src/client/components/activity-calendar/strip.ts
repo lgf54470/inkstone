@@ -4,7 +4,9 @@ import { alignWeekStart } from './range'
 
 
 
-export const HEAT_PERCENTS = [0, 16, 34, 54, 76] as const
+// The darkest level is capped by contrast rather than by taste: a day number is primary text on
+// this tint, and at 76% the tint took it to 4.1:1 where AA needs 4.5.
+export const HEAT_PERCENTS = [0, 16, 34, 54, 70] as const
 
 
 
