@@ -12,7 +12,6 @@ import { MusicStatusBar } from '../../music'
 import { CodeEditor } from '../../../editor/code-editor'
 import { insertFiles } from '../../../editor/paste'
 import { Outline, Preview } from '../../preview'
-import { PresentationOverlay } from '../../presentation'
 import { SplitResizer, SaveIndicator } from '../../shell'
 import { EditorToolbar } from '../editor-toolbar'
 import { BacklinksPanel } from '../backlinks-panel'
@@ -173,7 +172,7 @@ export function WorkspacePanes({ b }: { b: WorkspaceBundle }) {
 }
 
 export function WorkspaceOverlays({ b, grouped, exportNote, groupedItems, mobileItems }: { b: WorkspaceBundle; grouped: boolean; exportNote: ExportNote; groupedItems: MenuItem[]; mobileItems: MenuItem[] }) {
-  const { contextMenuPoint, closeContextMenu, view, editorContextData, previewContextData, content, note, onChange, handleJumpToLine, imageInputRef, fileInputRef, setEditorLayout, layout, previewScrollerRef, moreButtonRef, isMoreMenuOpen, setIsMoreMenuOpen, isMobile, showPreview, isMobileOutlineOpen, setIsMobileOutlineOpen, headings, jumpToHeading, isPresenting, setIsPresenting, startPresentation } = b
+  const { contextMenuPoint, closeContextMenu, view, editorContextData, previewContextData, content, note, onChange, handleJumpToLine, imageInputRef, fileInputRef, setEditorLayout, layout, previewScrollerRef, moreButtonRef, isMoreMenuOpen, setIsMoreMenuOpen, isMobile, showPreview, isMobileOutlineOpen, setIsMobileOutlineOpen, headings, jumpToHeading, startPresentation } = b
   return (
     <>
       <EditorContextMenu
@@ -195,7 +194,6 @@ export function WorkspaceOverlays({ b, grouped, exportNote, groupedItems, mobile
         onExport={exportNote}
         onPresent={startPresentation}
       />
-      <PresentationOverlay open={isPresenting} onClose={() => setIsPresenting(false)} content={content} noteTitle={note.title} />
       <Menu anchor={moreButtonRef} open={isMoreMenuOpen} onClose={() => setIsMoreMenuOpen(false)} items={grouped ? groupedItems : mobileItems} align='end' width={MORE_MENU_WIDTH} />
       {isMobile && showPreview && (
         <Drawer open={isMobileOutlineOpen} onClose={() => setIsMobileOutlineOpen(false)} side='right' width={OUTLINE_DRAWER_WIDTH} title={t('common.outline')}>

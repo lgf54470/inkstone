@@ -671,6 +671,9 @@ const allowed = new Map([
     '// its sub-page as a separate chip so "3.2 / 14" can never be misread as a slide.',
   ]],
   ['src/client/features/presentation/presentation-overlay.tsx', [
+    '// The overlay outlives a single show now that the shell hosts it, so the list',
+    '// follows the viewport instead of a value frozen at app start: it is open on',
+    '// screens with room for it, and an explicit toggle during the show wins.',
     '// Presenting is a full-screen activity: the controls and the slide list fade out',
     '// while nothing happens and come back on the next pointer move or key press, so',
     '// the slide itself owns the whole screen.',
@@ -825,6 +828,13 @@ const allowed = new Map([
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
   ]],
+  ['src/client/features/shell/app-shell.tsx', [
+    '// A show outlives the layout that started it: the desktop and mobile shells mount',
+    '// different workspace subtrees, so hosting the overlay here is what keeps a',
+    '// presentation alive when the window crosses the mobile breakpoint (or when the',
+    '// mobile shell switches away from the editor pane) instead of dropping the',
+    '// presenter back to the note mid-talk.',
+  ]],
   ['src/client/features/sidebar/calendar-persist.ts', [
     '// Quota or private-mode writes can throw; the calendar view stays authoritative in memory.',
   ]],
@@ -862,6 +872,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/workspace/context-menu/types.ts', [
     '/**\n * Everything an EditorContextMenu item builder can read or trigger.\n * Assembled once per render by the `EditorContextMenu` component and handed to\n * the per-context builder modules so each branch stays a pure function of the\n * menu state (decoupled from the component\'s hooks and DOM plumbing).\n */',
+  ]],
+  ['src/client/features/workspace/workspace/use-workspace.ts', [
+    '// Presenting is owned by the shell, which survives the mobile-breakpoint switch that',
+    '// unmounts this workspace; a pane can only hand the deck a snapshot to present.',
   ]],
   ['src/client/lib/api/transport.ts', [
     '/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker\'s ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */',
@@ -1386,6 +1400,13 @@ const allowed = new Map([
   ]],
   ['src/client/store/pinned-windows.ts', [
     '// Quota or private-mode writes can throw; pinned windows stay authoritative in memory.',
+  ]],
+  ['src/client/store/presentation.ts', [
+    '// Presenting belongs to the shell, not to a workspace pane: crossing the mobile',
+    '// breakpoint swaps the whole shell subtree, and a show owned by the workspace',
+    '// would be torn down mid-presentation. The deck is snapshotted at start() so a',
+    '// breakpoint switch (or an autosave landing meanwhile) cannot re-split the slides',
+    '// under the presenter\'s feet.',
   ]],
   ['src/client/store/pwa.ts', [
     '// Best-effort worker update check; the next visibility change retries.',

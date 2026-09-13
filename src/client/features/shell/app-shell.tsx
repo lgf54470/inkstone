@@ -13,7 +13,9 @@ import { createContextualNote } from '../../store/notes'
 import { useNotes } from '../../store/notes'
 import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands'
 import { useSession } from '../../store/session'
+import { usePresentation } from '../../store/presentation'
 import { useUpdate } from '../../store/update'
+import { PresentationOverlay } from '../presentation'
 import { NoteList, useGapIndicator, useRollingDateFilter } from '../list'
 import { Sidebar } from '../sidebar'
 import { MusicFloatingPlayer, MusicHubModal, MusicImmersiveOverlay, MusicSessionSync } from '../music'
@@ -53,10 +55,24 @@ export function AppShell() {
   return (
     <>
       {isMobile ? <MobileShell /> : <DesktopShell />}
+      <PresentationHost />
       <MusicImmersiveOverlay />
       <MusicSessionSync />
     </>
   )
+}
+
+// A show outlives the layout that started it: the desktop and mobile shells mount
+// different workspace subtrees, so hosting the overlay here is what keeps a
+// presentation alive when the window crosses the mobile breakpoint (or when the
+// mobile shell switches away from the editor pane) instead of dropping the
+// presenter back to the note mid-talk.
+function PresentationHost() {
+  const open = usePresentation((s) => s.open)
+  const content = usePresentation((s) => s.content)
+  const title = usePresentation((s) => s.title)
+  const stop = usePresentation((s) => s.stop)
+  return <PresentationOverlay open={open} content={content} noteTitle={title} onClose={stop} />
 }
 
 function useShellBootstrap(): void {

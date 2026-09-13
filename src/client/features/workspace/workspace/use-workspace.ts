@@ -16,6 +16,7 @@ import type { WorkspacePane, UiState } from '../../../store/ui'
 import { useUi } from '../../../store/ui'
 import { useSession } from '../../../store/session'
 import { useActiveNote, useNotes, type NotesState } from '../../../store/notes'
+import { usePresentation } from '../../../store/presentation'
 import { useSyncScroll } from '../sync-scroll'
 import { t, useLocale } from '../../../lib/i18n'
 import { preferredScrollBehavior } from '../../../lib/motion'
@@ -101,7 +102,6 @@ function useWorkspaceLocalState() {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false)
   const [isMobileOutlineOpen, setIsMobileOutlineOpen] = useState(false)
   const [isAttachmentDriveOpen, setIsAttachmentDriveOpen] = useState(false)
-  const [isPresenting, setIsPresenting] = useState(false)
   const [containerWidth, setContainerWidth] = useState(0)
   return {
     view, setView,
@@ -110,7 +110,6 @@ function useWorkspaceLocalState() {
     isExportMenuOpen, setIsExportMenuOpen,
     isMobileOutlineOpen, setIsMobileOutlineOpen,
     isAttachmentDriveOpen, setIsAttachmentDriveOpen,
-    isPresenting, setIsPresenting,
     containerWidth, setContainerWidth,
   }
 }
@@ -298,6 +297,14 @@ function buildWorkspaceSources(notes: NotesState['notes'], tags: NotesState['tag
   }
 }
 
+// Presenting is owned by the shell, which survives the mobile-breakpoint switch that
+// unmounts this workspace; a pane can only hand the deck a snapshot to present.
+function useStartPresentation(note: NotesState['notes'][string] | null | undefined, content: string): () => void {
+  return useCallback(() => {
+    if (note) usePresentation.getState().start({ content, title: note.title })
+  }, [note, content])
+}
+
 function buildWorkspaceHandlers(note: NotesState['notes'][string] | null | undefined, toast: UiState['toast']) {
   return {
     uploadFile: async (file: File) => {
@@ -334,7 +341,7 @@ export function useWorkspace(pane: WorkspacePane | 'active', mobileLayout: 'edit
   const updatedTime = useRelativeTime(store.note?.updatedAt ?? 0, Boolean(store.note))
   const cmds = useWorkspaceCommands({ note: store.note, editContent: store.editContent, view: local.view, layout: derived.layout, grouped, pane, setWorkspacePaneLayout: store.setWorkspacePaneLayout, updateSettings: store.updateSettings, previewScrollerRef: refs.previewScrollerRef })
   const menu = useWorkspaceContextMenu()
-  const startPresentation = useCallback(() => local.setIsPresenting(true), [])
+  const startPresentation = useStartPresentation(store.note, store.content)
   const exportNote = useCallback(async (format: 'md' | 'html' | 'pdf') => {
     local.setIsExportMenuOpen(false)
     if (!store.note) return
@@ -361,7 +368,7 @@ export function useWorkspace(pane: WorkspacePane | 'active', mobileLayout: 'edit
     isExportMenuOpen: local.isExportMenuOpen, setIsExportMenuOpen: local.setIsExportMenuOpen,
     isMobileOutlineOpen: local.isMobileOutlineOpen, setIsMobileOutlineOpen: local.setIsMobileOutlineOpen,
     isAttachmentDriveOpen: local.isAttachmentDriveOpen, setIsAttachmentDriveOpen: local.setIsAttachmentDriveOpen,
-    isPresenting: local.isPresenting, setIsPresenting: local.setIsPresenting, startPresentation,
+    startPresentation,
     isMobile, paneActive,
     ...derived,
     tagColors, updatedTime,

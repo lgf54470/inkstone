@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { ProseFont } from '@shared/types'
+import { useBreakpoint } from '../../lib/hooks'
 import { t } from '../../lib/i18n'
 import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
 import { enhancePreview } from '../../lib/markdown/enhance'
@@ -16,7 +17,6 @@ import { splitIntoSlides } from './slides'
 import { usePresentationKeys } from './use-presentation-keys'
 
 const CHROME_IDLE_MS = 2600
-const RAIL_DEFAULT_MIN_WIDTH = 768
 
 export interface PresentationOverlayProps {
   open: boolean
@@ -125,9 +125,17 @@ function usePresentationSession({ open, content, noteTitle, panelRef, stageRef, 
   const { index, sub, pageCount, handlePageCount, goNext, goPrev, jumpTo } = usePresentationNav(deck.length)
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
   const metrics = useStageMetrics(open, stageRef)
-  const [railOpen, setRailOpen] = useState(defaultRailOpen)
+  // The overlay outlives a single show now that the shell hosts it, so the list
+  // follows the viewport instead of a value frozen at app start: it is open on
+  // screens with room for it, and an explicit toggle during the show wins.
+  const railFitsViewport = useBreakpoint() !== 'mobile'
+  const [railChoice, setRailChoice] = useState<boolean | null>(null)
+  const railOpen = railChoice ?? railFitsViewport
+  useLayoutEffect(() => {
+    if (open) setRailChoice(null)
+  }, [open])
   const chromeHidden = useChromeAutoHide(open && isFullscreen)
-  const toggleRail = useCallback(() => setRailOpen((current) => !current), [])
+  const toggleRail = useCallback(() => setRailChoice(!railOpen), [railOpen])
   const cacheKeys = useMemo(() => deck.map((_, item) => slideCacheKey(fingerprint, dark, item)), [deck, fingerprint, dark])
   useEscape(open, onClose)
   useLockScroll(open)
@@ -153,11 +161,6 @@ function usePresentationSession({ open, content, noteTitle, panelRef, stageRef, 
     toggleFullscreen,
     toggleRail,
   }
-}
-
-function defaultRailOpen(): boolean {
-  if (typeof window.matchMedia !== 'function') return false
-  return window.matchMedia(`(min-width: ${RAIL_DEFAULT_MIN_WIDTH}px)`).matches
 }
 
 // Presenting is a full-screen activity: the controls and the slide list fade out
