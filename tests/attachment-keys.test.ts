@@ -5,6 +5,8 @@ import {
   attachmentObjectKeyCandidates,
   legacyAttachmentObjectKey,
 } from '../src/worker/attachments/keys'
+import { attachmentQuotaBytesForStorage } from '../src/worker/attachments/backend'
+import { LIMITS } from '../src/shared/constants'
 import { renderMarkdown } from '../src/client/lib/markdown/renderer'
 
 describe('attachment keys', () => {
@@ -63,6 +65,12 @@ describe('attachment keys', () => {
       mime: 'image/jpeg',
     })
     expect(key).toBe('01m1dkaegwjdna4r97vrshptp9/01m1j6t8963cpjw0eme1b7spsm.jpg')
+  })
+
+  it('selects the quota by the bound storage backend', () => {
+    expect(attachmentQuotaBytesForStorage('r2')).toBe(LIMITS.attachmentQuotaBytesR2)
+    expect(attachmentQuotaBytesForStorage('kv')).toBe(LIMITS.attachmentQuotaBytesKv)
+    expect(attachmentQuotaBytesForStorage(null)).toBe(LIMITS.attachmentQuotaBytesR2)
   })
 })
 

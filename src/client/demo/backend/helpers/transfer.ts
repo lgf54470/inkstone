@@ -244,7 +244,7 @@ async function importBundleAttachments(
     prepared.push(item)
   }
   const usedBytes = [...state.attachments.values()].reduce((total, attachment) => total + attachment.meta.size, 0)
-  if (usedBytes + importedBytes > LIMITS.attachmentQuotaBytes) {
+  if (usedBytes + importedBytes > LIMITS.attachmentQuotaBytesR2) {
     throw new Error('The imported attachments would exceed the account quota')
   }
   return installPreparedAttachments(state, prepared, result)

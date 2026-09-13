@@ -2,7 +2,7 @@ import { LIMITS } from '@shared/constants'
 import type { AttachmentWithUsage } from '@shared/types'
 import { t } from '../../lib/i18n'
 
-export const DEFAULT_QUOTA_BYTES = LIMITS.attachmentQuotaBytes
+export const DEFAULT_QUOTA_BYTES = LIMITS.attachmentQuotaBytesR2
 
 export type AttachmentCategory =
   | 'dashboard'

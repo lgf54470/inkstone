@@ -417,7 +417,7 @@ describe('importBackupFileBatch attachments (fake KV storage)', () => {
          storage, is_starred, is_pinned, tags, created_at)
        VALUES ('quota-1', ?1, NULL, NULL, 'big.bin', 'application/octet-stream', ?2, ?3, NULL, NULL, 'kv', 0, 0, '[]', ?4)`,
       USER,
-      LIMITS.attachmentQuotaBytes - 5,
+      LIMITS.attachmentQuotaBytesKv - 5,
       'b'.repeat(64),
       H.now - 2000,
     )

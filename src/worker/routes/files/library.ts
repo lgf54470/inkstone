@@ -1,10 +1,9 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { getCookie } from 'hono/cookie'
-import { LIMITS } from '@shared/constants'
 import { extractAttachmentIds } from '@shared/markdown-utils'
 
-import { hasAttachmentStorage, readAttachmentObjectStreamForRow } from '../../attachments/backend'
+import { attachmentQuotaBytesForStorage, hasAttachmentStorage, readAttachmentObjectStreamForRow, selectAttachmentStorage } from '../../attachments/backend'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { isValidId, isValidSlug } from '../../lib/id'
@@ -188,6 +187,7 @@ function registerFilesListRoute(filesRoutes: Hono<AppBindings>): void {
         page,
         hasMore,
         pageSize: params.pageSize,
+        totalQuotaBytes: attachmentQuotaBytesForStorage(selectAttachmentStorage(c.env)),
         statsRow,
         references,
         folderCountRow,
@@ -343,6 +343,7 @@ interface LibraryPayloadInput {
   page: AttachmentRow[]
   hasMore: boolean
   pageSize: number
+  totalQuotaBytes: number
   statsRow: {
     total_count: number
     total_bytes: number
@@ -379,7 +380,7 @@ function attachmentLibraryPayload(input: LibraryPayloadInput): object {
     stats: {
       totalCount: input.statsRow?.total_count ?? 0,
       totalBytes,
-      totalQuotaBytes: LIMITS.attachmentQuotaBytes,
+      totalQuotaBytes: input.totalQuotaBytes,
       imageBytes,
       documentBytes,
       mediaBytes,

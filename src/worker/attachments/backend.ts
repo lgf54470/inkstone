@@ -1,3 +1,4 @@
+import { LIMITS } from '@shared/constants'
 import type { Env } from '../env'
 import { attachmentObjectKeyCandidates, type AttachmentObjectStorage, type StoredAttachmentKey } from './keys'
 
@@ -22,6 +23,10 @@ export function selectAttachmentStorage(env: Env): AttachmentObjectStorage | nul
   if (env.FILES) return 'r2'
   if (env.FILES_KV) return 'kv'
   return null
+}
+
+export function attachmentQuotaBytesForStorage(storage: AttachmentObjectStorage | null): number {
+  return storage === 'kv' ? LIMITS.attachmentQuotaBytesKv : LIMITS.attachmentQuotaBytesR2
 }
 
 export function isAttachmentObjectStorage(value: string): value is AttachmentObjectStorage {

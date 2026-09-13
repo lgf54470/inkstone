@@ -64,7 +64,7 @@ async function createFileHandler(c: Context, state: DemoState): Promise<Response
   }
   const usedBytes = [...state.attachments.values()]
     .reduce((total, attachment) => total + attachment.meta.size, 0)
-  if (usedBytes + file.size > LIMITS.attachmentQuotaBytes) {
+  if (usedBytes + file.size > LIMITS.attachmentQuotaBytesR2) {
     return apiError(413, 'payload_too_large', 'The account attachment quota has been reached')
   }
   const rawNoteId = form.get('noteId')

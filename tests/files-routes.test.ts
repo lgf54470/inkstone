@@ -360,6 +360,60 @@ describe('files update & maintenance routes (real D1)', () => {
   })
 })
 
+describe('files quota by storage backend (real D1)', () => {
+  function fakeKv() {
+    return {
+      put: vi.fn(async () => ({})),
+      get: vi.fn(async () => null),
+      delete: vi.fn(async () => ({})),
+    }
+  }
+
+  async function upload(app: Hono<AppBindings>): Promise<Response> {
+    const form = new FormData()
+    form.append('file', new File(['hello'], 'a.txt', { type: 'text/plain' }))
+    return request(app, '/api/files', { method: 'POST', body: form })
+  }
+
+  it('enforces the 1 GB quota when attachments live in KV', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedAttachment(db, { filename: 'big.bin', mime: 'application/octet-stream', size: 1024 * 1024 * 1024 + 1 })
+    DB_ENV.env.FILES = undefined as unknown as AppBindings['Bindings']['FILES']
+    DB_ENV.env.FILES_KV = fakeKv() as unknown as AppBindings['Bindings']['FILES_KV']
+
+    const app = makeApp()
+    const res = await upload(app)
+    expect(res.status).toBe(413)
+  })
+
+  it('keeps the same usage uploadable when attachments live in R2', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedAttachment(db, { filename: 'big.bin', mime: 'application/octet-stream', size: 1024 * 1024 * 1024 + 1 })
+    DB_ENV.env.FILES = fakeR2() as unknown as AppBindings['Bindings']['FILES']
+    DB_ENV.env.FILES_KV = undefined as unknown as AppBindings['Bindings']['FILES_KV']
+
+    const app = makeApp()
+    const res = await upload(app)
+    expect(res.status).toBe(201)
+
+    const listed = await request(app, '/api/files')
+    expect((await listed.json()).stats.totalQuotaBytes).toBe(10 * 1024 * 1024 * 1024)
+  })
+
+  it('reports the kv quota in library stats when kv is bound', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    DB_ENV.env.FILES = undefined as unknown as AppBindings['Bindings']['FILES']
+    DB_ENV.env.FILES_KV = fakeKv() as unknown as AppBindings['Bindings']['FILES_KV']
+
+    const app = makeApp()
+    const res = await request(app, '/api/files')
+    expect((await res.json()).stats.totalQuotaBytes).toBe(1024 * 1024 * 1024)
+  })
+})
+
 describe('files organizer routes (real D1)', () => {
   it('uploads a file and persists it to storage', async () => {
     const db = await makeDb()
