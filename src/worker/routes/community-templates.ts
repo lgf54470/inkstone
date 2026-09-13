@@ -49,11 +49,35 @@ function toCommunityTemplate(row: CommunityRow): CommunityTemplate {
 const COMMUNITY_SELECT = `id, author_id, author_name, name, description, content, tags, category, created_at`
 
 communityTemplatesRoutes.get('/', async (c) => {
+  const limitRaw = Number(c.req.query('limit'))
+  const limit = Number.isFinite(limitRaw) ? Math.min(500, Math.max(1, Math.trunc(limitRaw))) : 100
+  const before = parseCommunityCursor(c.req.query('before'))
+  const where = before ? 'WHERE (created_at < ?1 OR (created_at = ?1 AND id < ?2))' : ''
+  const binds = before ? [before.createdAt, before.id, limit + 1] : [limit + 1]
   const { results } = await c.env.DB.prepare(
-    `SELECT ${COMMUNITY_SELECT} FROM community_templates ORDER BY created_at DESC, id ASC`,
-  ).all<CommunityRow>()
-  return c.json({ templates: results.map(toCommunityTemplate) })
+    `SELECT ${COMMUNITY_SELECT} FROM community_templates ${where} ORDER BY created_at DESC, id ASC LIMIT ?`,
+  ).bind(...binds).all<CommunityRow>()
+  const hasMore = results.length > limit
+  const page = results.slice(0, limit)
+  const last = page[page.length - 1]
+  return c.json({
+    templates: page.map(toCommunityTemplate),
+    hasMore,
+    nextCursor: hasMore && last ? `${last.created_at}_${last.id}` : null,
+  })
 })
+
+function parseCommunityCursor(raw: string | undefined): { createdAt: number; id: string } | null {
+  if (!raw) return null
+  const separator = raw.lastIndexOf('_')
+  if (separator <= 0) throw ApiError.badRequest('Invalid pagination cursor')
+  const createdAt = Number(raw.slice(0, separator))
+  const id = raw.slice(separator + 1)
+  if (!Number.isSafeInteger(createdAt) || createdAt < 0 || !isValidId(id)) {
+    throw ApiError.badRequest('Invalid pagination cursor')
+  }
+  return { createdAt, id }
+}
 
 function parseCommunityInput(body: Partial<CommunityTemplateInput>): CommunityTemplateInput {
   if (typeof body.name !== 'string' || !body.name.trim()) {

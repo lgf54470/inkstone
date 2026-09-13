@@ -256,7 +256,7 @@ export const share = {
     },
   },
   communityTemplates: {
-    list: () => request<{ templates: CommunityTemplate[] }>('/api/templates/community'),
+    list: (before?: string) => request<{ templates: CommunityTemplate[]; hasMore: boolean; nextCursor: string | null }>(`/api/templates/community${before ? `?before=${encodeURIComponent(before)}` : ''}`),
     publish: (input: CommunityTemplateInput) => request<{ template: CommunityTemplate }>('/api/templates/community', { method: 'POST', body: input }),
     remove: (id: string) => request<{ ok: true }>(`/api/templates/community/${id}`, { method: 'DELETE' }),
   },

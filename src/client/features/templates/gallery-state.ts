@@ -80,6 +80,8 @@ export function useGalleryEffects(state: GalleryLocalState, store: ReturnType<ty
   }, [store.categories, store.hydrated, store.templates])
 }
 
+const MAX_COMMUNITY_PAGES = 50
+
 export function useGalleryCommunity(filter: GalleryFilter) {
   const [community, setCommunity] = useState<CommunityTemplate[]>([])
   const [isCommunityLoading, setIsCommunityLoading] = useState(false)
@@ -89,8 +91,15 @@ export function useGalleryCommunity(filter: GalleryFilter) {
     setIsCommunityLoading(true)
     setIsCommunityError(false)
     try {
-      const { templates: items } = await api.communityTemplates.list()
-      setCommunity(items)
+      const collected: CommunityTemplate[] = []
+      let cursor: string | null = null
+      for (let page = 0; page < MAX_COMMUNITY_PAGES; page++) {
+        const res = await api.communityTemplates.list(cursor ?? undefined)
+        collected.push(...res.templates)
+        if (!res.hasMore || !res.nextCursor) break
+        cursor = res.nextCursor
+      }
+      setCommunity(collected)
     }
     catch {
       setIsCommunityError(true)
