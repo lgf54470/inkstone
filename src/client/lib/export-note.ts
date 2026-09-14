@@ -12,8 +12,7 @@ import {
 
 const KATEX_CSS_URL = 'https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css'
 
-export function downloadTextFile(filename: string, text: string, mime: string): void {
-  const blob = new Blob([text], { type: mime })
+export function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
@@ -22,6 +21,10 @@ export function downloadTextFile(filename: string, text: string, mime: string): 
   anchor.click()
   anchor.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+export function downloadTextFile(filename: string, text: string, mime: string): void {
+  downloadBlob(filename, new Blob([text], { type: mime }))
 }
 
 export function exportNoteAsMarkdown(note: { title: string; content: string }): void {
@@ -85,6 +88,8 @@ async function runExportEnhancements(container: HTMLDivElement, hasEmbeds: boole
     await enhancePreview(container, {
       math: true,
       mermaid: true,
+      // The exported document is standalone, so a map travels as a drawn image.
+      mindmap: 'snapshot',
       dark: false,
       codeBlockCollapseLines: 0,
     })
@@ -416,6 +421,8 @@ details[open] summary { margin-bottom: 0.5em; }
 .mermaid-block svg { max-width: 100%; height: auto; }
 .chartjs-block { margin: 1.4em 0; padding: 1em; border: 1px solid ${EXPORT_PALETTE.ink200}; border-radius: 8px; background: ${EXPORT_PALETTE.ink50}; display: flex; justify-content: center; overflow-x: auto; }
 .chartjs-image { max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px; }
+.mindmap-block { margin: 1.4em 0; padding: 1em; border: 1px solid ${EXPORT_PALETTE.ink200}; border-radius: 8px; background: ${EXPORT_PALETTE.ink50}; display: flex; justify-content: center; overflow-x: auto; }
+.mindmap-image { max-width: 100%; height: auto; display: block; margin: 0 auto; }
 
 .note-embed { margin: 1em 0; border: 1px solid ${EXPORT_PALETTE.ink200}; border-radius: 8px; overflow: hidden; background: ${EXPORT_PALETTE.white}; }
 .note-embed-head { display: block; padding: 0.4em 0.8em; background: ${EXPORT_PALETTE.ink50}; border-bottom: 1px solid ${EXPORT_PALETTE.ink200}; font-size: 0.82em; font-weight: 600; color: ${EXPORT_PALETTE.ink600}; }

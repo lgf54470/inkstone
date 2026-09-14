@@ -149,7 +149,7 @@ async function saveDeckPages(root: HTMLElement, metrics: StageMetrics, title: st
 // webfonts have to be laid out too, or every page reflows while it is being drawn.
 async function prepareDeckSheet(root: HTMLElement, dark: boolean): Promise<void> {
   try {
-    await enhancePreview(root, { math: true, mermaid: true, dark, codeBlockCollapseLines: 0 })
+    await enhancePreview(root, { math: true, mermaid: true, mindmap: 'snapshot', dark, codeBlockCollapseLines: 0 })
     await renderPendingMermaid(root, dark)
     await settleWithin(Promise.all([document.fonts.ready, decodeImages(root)]), PRINT_PREPARE_TIMEOUT_MS)
   }

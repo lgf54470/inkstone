@@ -77,7 +77,7 @@ export function useShareRendering(note: PublicNote | null, dark: boolean) {
     let isCancelled = false
     const isCurrent = () => !isCancelled && revisionRef.current === revision && hostRef.current === host
     void (async () => {
-      await enhancePreview(host, { math: true, mermaid: true, dark, codeBlockCollapseLines: 24 })
+      await enhancePreview(host, { math: true, mermaid: true, mindmap: 'snapshot', dark, codeBlockCollapseLines: 24 })
       if (!isCurrent())
         return
       await renderPendingMermaid(host, dark, { isCurrent })

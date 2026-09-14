@@ -26,7 +26,7 @@ export function useSlideHtml(options: { open: boolean; deck: string[]; index: nu
       if (rendered.hasEmbeds) {
         await resolveNoteEmbeds(staging, { currentContent: content, currentTitle: noteTitle, isCurrent: () => !cancelled })
       }
-      await enhancePreview(staging, { math: preview.math, mermaid: preview.mermaid, dark, codeBlockCollapseLines: 0 })
+      await enhancePreview(staging, { math: preview.math, mermaid: preview.mermaid, mindmap: 'snapshot', dark, codeBlockCollapseLines: 0 })
       if (cancelled) return
       rememberSlideHtml(key, staging.innerHTML)
       setTick((tick) => tick + 1)
