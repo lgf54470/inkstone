@@ -5,6 +5,7 @@ import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
 import type { TagTreeNode } from '../../../lib/tag-tree'
 import { Menu, useContextMenu, type MenuItem } from '../../../components/overlay'
+import { useUi } from '../../../store/ui'
 import { TagColorSubmenu } from '../../tags'
 
 const TREE_INDENT_BASE = 6
@@ -58,7 +59,10 @@ function buildTagMenuItems(ctx: TagMenuContext): MenuItem[] {
                 if (node.tag) void ctx.patchTag(node.tag.id, { color })
                 closeMenu()
               }}
-              onManageTags={closeMenu}
+              onManageTags={() => {
+                closeMenu()
+                useUi.getState().openPanel('tags')
+              }}
             />
           )
         : null,

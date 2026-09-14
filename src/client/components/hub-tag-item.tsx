@@ -84,7 +84,10 @@ function ColorMenuEntry({ ctx, closeMenu }: { ctx: MenuContext; closeMenu: () =>
         ctx.onColorChange(color)
         closeMenu()
       }}
-      onManageTags={closeMenu}
+      onManageTags={() => {
+        closeMenu()
+        useUi.getState().openPanel('tags')
+      }}
     />
   )
 }
