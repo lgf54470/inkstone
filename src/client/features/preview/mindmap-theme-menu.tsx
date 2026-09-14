@@ -9,6 +9,7 @@ import { useEffect, useMemo } from 'react'
 import { Menu, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import {
+  mindmapThemeButton,
   mindmapThemeLabel,
   mindmapThemeMenuPicks,
   pickMindmapTheme,
@@ -21,9 +22,12 @@ const MENU_WIDTH_PX = 196
 
 export function MindmapThemeMenu({ state, onClose }: { state: MindmapThemeMenuState; onClose: () => void }) {
   const { node, choice } = state
-  // A ref-shaped anchor is what the menu positions against, and the node is a plain
-  // element from the prose, so the object is memoized rather than rebuilt per render.
-  const anchor = useMemo(() => ({ current: node }), [node])
+  // The menu hangs off the header's own control, not off the block: the block is the map,
+  // hundreds of pixels tall, so anchoring to it would drop the menu below the drawing
+  // area instead of under the button that was just pressed. A ref-shaped anchor is what
+  // the menu positions against, and both elements come from the prose, so the object is
+  // memoized rather than rebuilt per render.
+  const anchor = useMemo(() => ({ current: mindmapThemeButton(node) ?? node }), [node])
 
   // The menu is what says the button is expanded, and the markup it sits on is re-rendered
   // from the note, so the state is asserted here rather than left to the renderer.
