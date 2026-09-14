@@ -3,6 +3,7 @@ import { t } from '../../lib/i18n'
 import { decodeDataValue } from '../../lib/markdown/data-attr'
 import { parseWikiTarget } from '../../lib/markdown/renderer'
 import { resetMermaidNode, toggleCodeBlockCollapse } from '../../lib/markdown/enhance'
+import { MINDMAP_NATIVE_FULLSCREEN_SELECTOR, fitMindmapBlock, retryMindmap } from '../../lib/markdown/mindmap'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { updateTaskAtSourceLine } from '../../editor/commands'
 import { useUi } from '../../store/ui'
@@ -40,6 +41,7 @@ interface PreviewClickParams {
   wikiScrollCleanupRef: RefObject<() => void>
   hideHover: () => void
   startMermaidRender: () => void
+  openMindmapFullscreen: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -54,6 +56,7 @@ interface PreviewClickContext {
   wikiScrollCleanupRef: RefObject<() => void>
   hideHover: () => void
   startMermaidRender: () => void
+  openMindmapFullscreen: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -70,11 +73,13 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
     wikiScrollCleanupRef: params.wikiScrollCleanupRef,
     hideHover: params.hideHover,
     startMermaidRender: params.startMermaidRender,
+    openMindmapFullscreen: params.openMindmapFullscreen,
     api: params.api,
   }
   return async (event: ReactMouseEvent) => {
     const target = event.target as HTMLElement
     ctx.hideHover()
+    if (await handleMindmap(target, ctx)) return
     if (await handleFileActionBtn(event, target, ctx)) return
     if (await handleTableActionBtn(event, target, ctx)) return
     if (await handleJsSwitchBtn(event, target)) return
@@ -91,6 +96,33 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
     if (await handleImage(event, target, ctx)) return
     handleAnchor(event, target, ctx)
   }
+}
+
+async function handleMindmap(target: HTMLElement, ctx: PreviewClickContext): Promise<boolean> {
+  const block = target.closest<HTMLElement>('[data-mindmap]')
+  if (!block) return false
+  if (target.closest('[data-mindmap-fit]')) {
+    fitMindmapBlock(block)
+    return true
+  }
+  if (target.closest('[data-mindmap-fullscreen]')) {
+    ctx.openMindmapFullscreen(block)
+    return true
+  }
+  // The library's toolbar has a full screen button of its own (`#fullscreen`);
+  // its native request is switched off in the registry, and the click lands here
+  // so both buttons open the same overlay.
+  if (target.closest(MINDMAP_NATIVE_FULLSCREEN_SELECTOR)) {
+    ctx.openMindmapFullscreen(block)
+    return true
+  }
+  if (target.closest('[data-mindmap-retry]')) {
+    await retryMindmap(block)
+    return true
+  }
+  // Everything else inside the canvas belongs to the library: a node's link would
+  // otherwise be read as a preview anchor and swallowed.
+  return Boolean(target.closest('[data-mindmap-canvas]'))
 }
 
 function handleTableCellSelectionIfPresent(target: HTMLElement, ctx: PreviewClickContext): void {

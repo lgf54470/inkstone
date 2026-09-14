@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from 'react'
 import type { PreviewSettings } from '@shared/types/settings'
 import type { Tag } from '@shared/types/notes'
 import { useDebounced } from '../../lib/hooks'
@@ -19,6 +19,7 @@ import { useLinkHover } from './link-hover'
 import { capturePreviewViewport, restorePreviewViewport, type PreviewViewport } from './viewport'
 import { usePinnedWindows } from '../../store/pinned-windows'
 import { enhanceTablesInRoot, startTableCellEditing } from './table-interactive'
+import { useMindmapBlocks } from './use-mindmap-blocks'
 
 const PREVIEW_DEBOUNCE_MS = 90
 const MERMAID_RENDER_DELAY_MS = 60
@@ -55,6 +56,8 @@ async function prepareStagedHtml(opts: {
   await enhancePreview(staging, {
     math: preview.math,
     mermaid: preview.mermaid,
+    // Mind maps are mounted live, from the committed markup, by useMindmapBlocks.
+    mindmap: 'live',
     dark: theme === 'dark',
     codeBlockCollapseLines: preview.codeBlockCollapse ? preview.codeBlockCollapseLines : 0,
   })
@@ -348,9 +351,10 @@ function usePreviewInteractions(opts: {
   startMermaidRender: () => void
   hideHover: () => void
   setPreviewFile: Dispatch<SetStateAction<{ url: string; filename: string } | null>>
+  openMindmapFullscreen: (node: HTMLElement) => void
   api: PreviewSource['api']
 }) {
-  const { content, sourceNoteId, hostRef, scrollerRef, committedSourceRef, startMermaidRender, hideHover, setPreviewFile, api } = opts
+  const { content, sourceNoteId, hostRef, scrollerRef, committedSourceRef, startMermaidRender, hideHover, setPreviewFile, openMindmapFullscreen, api } = opts
   const copyResetTimersRef = useRef(new Map<HTMLElement, number>())
   const wikiNavigationRef = useRef(0)
   const wikiScrollCleanupRef = useRef<() => void>(() => {})
@@ -373,6 +377,7 @@ function usePreviewInteractions(opts: {
     wikiScrollCleanupRef,
     hideHover,
     startMermaidRender,
+    openMindmapFullscreen,
     api: { ...api, setPreviewFile },
   })
 }
@@ -431,8 +436,12 @@ export function usePreview(props: PreviewProps) {
   useTagColors(src.hostRef, html.committedHtml, src.allTags)
   const startMermaidRender = usePreviewPostRender({ committedHtml: html.committedHtml, theme, hostRef: src.hostRef, scrollerRef: src.scrollerRef, onRendered: src.onRendered, pendingViewportRef: html.pendingViewportRef, mermaidEpoch: html.mermaidEpoch, preview: src.preview })
   const hover = usePreviewLinkHover({ sourceNoteId: src.sourceNoteId, preview: src.preview, committedHtml: html.committedHtml })
+  // One scope per preview instance: two panes showing the same note must not
+  // claim each other's map instances.
+  const mindmapScope = useId()
+  const mindmap = useMindmapBlocks({ scope: `preview${mindmapScope}`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
   const [previewFile, setPreviewFile] = useState<{ url: string; filename: string } | null>(null)
-  const onClick = usePreviewInteractions({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, scrollerRef: src.scrollerRef, committedSourceRef: html.committedSourceRef, startMermaidRender, hideHover: hover.linkHover.hideNow, setPreviewFile, api: src.api })
+  const onClick = usePreviewInteractions({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, scrollerRef: src.scrollerRef, committedSourceRef: html.committedSourceRef, startMermaidRender, hideHover: hover.linkHover.hideNow, setPreviewFile, openMindmapFullscreen: mindmap.openFullscreen, api: src.api })
   const keyboard = usePreviewKeyboard({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, editContent: src.editContent, hideHover: hover.linkHover.hideNow })
 
   return {
@@ -442,6 +451,7 @@ export function usePreview(props: PreviewProps) {
     previewFile, setPreviewFile,
     hoverCard: hover.hoverCard, linkHover: hover.linkHover, handlePin: hover.handlePin,
     onMouseLeave: hover.onMouseLeave, onFocus: hover.onFocus, onBlur: hover.onBlur,
+    mindmapFullscreen: mindmap.fullscreen, closeMindmapFullscreen: mindmap.closeFullscreen,
     onClick,
     ...keyboard,
   }

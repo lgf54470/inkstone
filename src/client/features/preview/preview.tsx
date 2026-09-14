@@ -4,6 +4,7 @@ import { usePreview, type PreviewProps } from './use-preview'
 import { NotePropertiesEditor } from './note-properties-editor'
 import { WikiLinkHoverCard } from './wiki-link-hover-card'
 import { FilePreviewModal } from './file-preview-modal'
+import { MindmapFullscreen } from './mindmap-fullscreen'
 
 export type { PreviewProps } from './use-preview'
 
@@ -55,6 +56,9 @@ function PreviewOverlays({ b }: { b: ReturnType<typeof usePreview> }) {
           onLeave={b.linkHover.armHide}
           onPin={b.handlePin}
         />
+      )}
+      {b.mindmapFullscreen && (
+        <MindmapFullscreen session={b.mindmapFullscreen.session} onClose={b.closeMindmapFullscreen} />
       )}
       {b.previewFile && (
         <FilePreviewModal
