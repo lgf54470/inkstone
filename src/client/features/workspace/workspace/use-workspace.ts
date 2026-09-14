@@ -156,6 +156,7 @@ function computeWorkspaceLayout(opts: {
 function useWorkspaceEffects(opts: {
   note: NotesState['notes'][string] | null | undefined
   showPreview: boolean
+  showEditor: boolean
   containerRef: React.RefObject<HTMLDivElement | null>
   loaded: boolean
   paneActive: boolean
@@ -165,7 +166,7 @@ function useWorkspaceEffects(opts: {
   setIsMobileOutlineOpen: (open: boolean) => void
   setContainerWidth: (width: number | ((current: number) => number)) => void
 }) {
-  const { note, showPreview, containerRef, loaded, paneActive, titleInputRef, view, setHeadings, setIsMobileOutlineOpen, setContainerWidth } = opts
+  const { note, showPreview, showEditor, containerRef, loaded, paneActive, titleInputRef, view, setHeadings, setIsMobileOutlineOpen, setContainerWidth } = opts
 
   useLayoutEffect(() => {
     setHeadings([])
@@ -193,10 +194,12 @@ function useWorkspaceEffects(opts: {
     if (!note || !paneActive) return
     const frame = window.requestAnimationFrame(() => {
       if (!note.title) titleInputRef.current?.focus()
-      else view?.focus()
+      // The deferred editor can stay mounted while hidden; focusing it there
+      // would drop focus on the floor, so only a shown editor claims focus.
+      else if (showEditor) view?.focus()
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [note?.id, paneActive, view])
+  }, [note?.id, paneActive, showEditor, view])
 }
 
 function useWorkspaceCommands(opts: {
@@ -354,7 +357,7 @@ export function useWorkspace(pane: WorkspacePane | 'active', mobileLayout: 'edit
   const sources = useMemo(() => buildWorkspaceSources(store.notes, store.tags, store.note), [store.notes, store.tags, store.note?.id])
   const handlers = useMemo(() => buildWorkspaceHandlers(store.note, store.toast), [store.note?.id, store.toast])
   const invalidateSyncAnchors = useSyncScroll(local.view, refs.previewScrollerRef, store.previewSettings.syncScroll && derived.layout === 'split')
-  useWorkspaceEffects({ note: store.note, showPreview: derived.showPreview, containerRef: refs.containerRef, loaded: store.loaded, paneActive, titleInputRef: refs.titleInputRef, view: local.view, setHeadings: local.setHeadings, setIsMobileOutlineOpen: local.setIsMobileOutlineOpen, setContainerWidth: local.setContainerWidth })
+  useWorkspaceEffects({ note: store.note, showPreview: derived.showPreview, showEditor: derived.showEditor, containerRef: refs.containerRef, loaded: store.loaded, paneActive, titleInputRef: refs.titleInputRef, view: local.view, setHeadings: local.setHeadings, setIsMobileOutlineOpen: local.setIsMobileOutlineOpen, setContainerWidth: local.setContainerWidth })
 
   return {
     pane,

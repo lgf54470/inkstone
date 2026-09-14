@@ -9,7 +9,7 @@ import { IconButton } from '../../../components/primitives'
 import { Drawer, Menu, Tooltip, type MenuItem } from '../../../components/overlay'
 import { Segmented, type SegmentedOption } from '../../../components/form'
 import { MusicStatusBar } from '../../music'
-import { CodeEditor } from '../../../editor/code-editor'
+import { DeferredCodeEditor } from '../../../editor/code-editor'
 import { insertFiles } from '../../../editor/paste'
 import { Outline, Preview } from '../../preview'
 import { SplitResizer, SaveIndicator } from '../../shell'
@@ -155,11 +155,12 @@ export function WorkspacePanes({ b }: { b: WorkspaceBundle }) {
   const { showEditor, layout, editorWidth, note, content, onChange, editorSettings, sources, handlers, setView, handleEditorContextMenu, showPreview, previewWidth, previewScrollerRef, setHeadings, invalidateSyncAnchors, handlePreviewContextMenu, outlineVisible, headings, jumpToHeading, effectiveSplitRatio, containerRef, setLayout } = b
   return (
     <>
-      {showEditor && (
-        <div className='min-w-0' style={{ width: layout === 'split' ? editorWidth : '100%' }}>
-          <CodeEditor key={note.id} value={content} onChange={onChange} settings={editorSettings} sources={sources} handlers={handlers} noteId={note.id} onReady={setView} onContextMenu={handleEditorContextMenu} live={b.livePreview} />
-        </div>
-      )}
+      {/* The host stays in the tree hidden once the editor has mounted so layout
+          flips keep undo history; CodeMirror itself only builds at first
+          visibility, and `inert` keeps the hidden host out of focus reach. */}
+      <div hidden={!showEditor} inert={!showEditor} className='min-w-0' style={{ width: layout === 'split' ? editorWidth : '100%' }}>
+        <DeferredCodeEditor key={note.id} visible={showEditor} value={content} onChange={onChange} settings={editorSettings} sources={sources} handlers={handlers} noteId={note.id} onReady={setView} onContextMenu={handleEditorContextMenu} live={b.livePreview} />
+      </div>
       {layout === 'split' && (
         <SplitResizer label={t('workspace.resize_editor_and_preview_panes')} containerRef={containerRef} ratio={effectiveSplitRatio} onChange={(splitRatio) => setLayout({ splitRatio })} onReset={() => setLayout({ splitRatio: null })} />
       )}

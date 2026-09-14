@@ -434,10 +434,10 @@ const allowed = new Map([
     '// "system" has no resolved theme of its own — it is whatever the OS preference says — so it is',
     '// always driven, and verified through the control being checked rather than through a colour.',
     '/** Presses a combo the way the app\'s own hotkey map reads it: modifiers held, the key last. */',
-    '// One more attempt than the layout cycle has layouts: the shortcut walks',
-    '// edit → live → split → preview, so reaching a pane can cost three presses.',
     '/**\n * The editor layout is a per-account setting the app cycles with its own shortcut: a scenario that has\n * to type a fence into the note and then read the prose back needs two different layouts, and both\n * gates reach them the way a person does rather than by writing the setting.\n */',
     '/** Cycles the layout until the pane holding `selector` is on screen; false when it never was. */',
+    '// One more attempt than the layout cycle has layouts: the shortcut walks',
+    '// edit → live → split → preview, so reaching a pane can cost three presses.',
     '// Injected once per page: axe ships its own browser build, and evaluating it keeps the app\'s CSP',
     '// untouched (a script tag would be refused).',
     '/** Both of the shell\'s panels are named rather than found: "the dialog" is whatever was opened last. */',
@@ -947,6 +947,12 @@ const allowed = new Map([
     '// Welcome notes are deliberately dated a few weeks back: with no edits within the last ~10 days,',
     '// the rolling date filter\'s follow-edit window stays parked at the newest edit and the gap hint',
     '// (newest edit outside a today-anchored window) is directly visible in the demo.',
+  ]],
+  ['src/client/editor/code-editor.tsx', [
+    '// Sticky mount: CodeMirror is built the first time its pane is shown and then',
+    '// stays alive under the caller\'s hidden host, so layout flips keep undo',
+    '// history instead of paying a full rebuild; `visible ||` covers the render',
+    '// that happens before the effect flips `initialized`.',
   ]],
   ['src/client/editor/live-preview.ts', [
     '/**\n * Splits rendered Markdown into top-level blocks by the source line each one\n * started on. The renderer stamps `data-line` on every level-0 token, so blocks\n * map back onto document positions without a second parse of the source.\n */',
@@ -1818,9 +1824,14 @@ const allowed = new Map([
   ['src/client/features/workspace/workspace/use-workspace.ts', [
     '// live keeps the editor on screen and renders the block around the caret in',
     '// place, so it is an editor layout with no preview pane beside it.',
+    '// The deferred editor can stay mounted while hidden; focusing it there',
+    '// would drop focus on the floor, so only a shown editor claims focus.',
     '// Presenting is owned by the shell, which survives the mobile-breakpoint switch that',
     '// unmounts this workspace; a pane only names the note to present and the show then',
     '// follows it, so a pane-local copy of the buffer is never the deck\'s source.',
+  ]],
+  ['src/client/features/workspace/workspace/workspace-views.tsx', [
+    '/* The host stays in the tree hidden once the editor has mounted so layout\n          flips keep undo history; CodeMirror itself only builds at first\n          visibility, and `inert` keeps the hidden host out of focus reach. */',
   ]],
   ['src/client/lib/api/transport.ts', [
     '/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker\'s ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */',
@@ -2797,10 +2808,10 @@ const allowed = new Map([
   ['src/shared/markdown-utils/wiki.ts', [
     '// md-example fences are rendered as live Markdown by the client renderer, so',
     '// a reference inside one is real even though stripCodeRegions drops the fence.',
-    '// CommonMark: a marker followed by anything but whitespace opens a fence',
-    '// instead of closing one, so it cannot end the example.',
     '// Inner fences stay in the body so the recursive call reads them again:',
     '// an ordinary one is stripped, a nested example is rendered as markdown.',
+    '// CommonMark: a marker followed by anything but whitespace opens a fence',
+    '// instead of closing one, so it cannot end the example.',
   ]],
   ['src/shared/music-cover-match.ts', [
     '// Catalogue titles carry qualifiers the file name does not — "Song (DJ Mix)" against "Song" —',
@@ -3242,14 +3253,14 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/tags/helpers.ts', [
     '// Format is checked after the ownership lookup so cross-user writes surface 404 first.',
+    '// The count reads one tag\'s rows through idx_note_tags_tag instead of joining a',
+    '// subquery that groups every tag the user owns, which the single-tag reads (and',
+    '// the sync chunks that take a handful of ids by id) never need.',
     '// Read every candidate once in a single batched query instead of one SELECT',
     '// per candidate; the guarded UPDATE still catches concurrent edits and only',
     '// conflicting candidates get a fresh single-row read on retry.',
     '// The guarded write was lost to a concurrent edit: re-read just this',
     '// note and retry with fresh state.',
-    '// The count reads one tag\'s rows through idx_note_tags_tag instead of joining a',
-    '// subquery that groups every tag the user owns, which the single-tag reads (and',
-    '// the sync chunks that take a handful of ids by id) never need.',
   ]],
   ['tests/auth-routes.test.ts', [
     '// Password rotation destroys the presented session too and replaces it',
