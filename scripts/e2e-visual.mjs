@@ -634,6 +634,39 @@ async function assertMindmapBlock(page) {
   check('mindmap: the overlay is announced by the map title', full.label === 'Visual Probe', `label=${full.label}`)
   check('mindmap: the map takes the focus in full screen', full.focused)
 
+  // The keyboard reference is a layer of the drawing area, not a row of the toolbar: opening it there
+  // must leave the head the size it was, or it pushes the button that was just pressed out from
+  // under the pointer.
+  const reference = await page.evaluate(async () => {
+    const head = document.querySelector('.mindmap-fullscreen-head')
+    const canvas = document.querySelector('.mindmap-fullscreen-canvas')
+    const before = head?.getBoundingClientRect().height ?? 0
+    const toggle = [...(head?.querySelectorAll('button') ?? [])]
+      .find((element) => /shortcut|快捷键/.test(element.getAttribute('aria-label') ?? ''))
+    toggle?.click()
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    const card = document.querySelector('.mindmap-shortcuts')
+    const cardBox = card?.getBoundingClientRect()
+    const canvasBox = canvas?.getBoundingClientRect()
+    return {
+      opened: Boolean(card),
+      inHead: Boolean(card && head?.contains(card)),
+      inDrawingArea: Boolean(cardBox && canvasBox
+        && cardBox.top >= canvasBox.top && cardBox.bottom <= canvasBox.bottom
+        && cardBox.left >= canvasBox.left && cardBox.right <= canvasBox.right),
+      headGrowth: Math.round((head?.getBoundingClientRect().height ?? 0) - before),
+    }
+  })
+  check('mindmap: the keyboard reference opens', reference.opened, JSON.stringify(reference))
+  check('mindmap: the keyboard reference sits in the drawing area, not the toolbar', reference.inDrawingArea && !reference.inHead, JSON.stringify(reference))
+  check('mindmap: opening the keyboard reference leaves the toolbar its size', reference.headGrowth === 0, JSON.stringify(reference))
+  await page.keyboard.press('Escape')
+  const referenceClosed = await page.waitForFunction(
+    () => !document.querySelector('.mindmap-shortcuts') && !!document.querySelector('.mindmap-fullscreen'),
+    { timeout: 15_000 },
+  ).then(() => true, () => false)
+  check('mindmap: escape puts the keyboard reference away without leaving full screen', referenceClosed)
+
   await ensureAxe(page)
   const report = await runAxe(page, '.mindmap-fullscreen')
   check('a11y: the mind map full screen has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))

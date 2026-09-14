@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { act, createElement, useState } from 'react'
-import { initI18n } from '../../lib/i18n'
+import { initI18n, t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import {
@@ -116,6 +116,30 @@ function Harness({ session }: { session: MindmapSession }) {
   )
 }
 
+/** Mounts the overlay and opens the keyboard reference through its own button. */
+async function openShortcuts(): Promise<{
+  surface: Surface
+  head: HTMLElement
+  card: HTMLElement
+  unmount: () => void
+}> {
+  const surface = await mountSurface()
+  const rendered = renderElement(createElement(Harness, { session: surface.session }))
+  await act(async () => {
+    rendered.container.querySelector<HTMLButtonElement>('[data-mindmap-fullscreen]')!.click()
+  })
+  const head = document.querySelector<HTMLElement>('.mindmap-fullscreen-head')!
+  await act(async () => {
+    head.querySelector<HTMLButtonElement>(`button[aria-label="${t('preview.mindmap_shortcuts')}"]`)!.click()
+  })
+  const card = document.querySelector<HTMLElement>('.mindmap-shortcuts')!
+  expect(card).not.toBeNull()
+  return { surface, head, card, unmount: () => {
+    rendered.unmount()
+    surface.host.remove()
+  } }
+}
+
 describe('mind map full screen — keyboard only', () => {
   it('adds nodes with the map’s keys, writes them to the note, and gives the focus back on Escape', async () => {
     const surface = await mountSurface()
@@ -158,5 +182,35 @@ describe('mind map full screen — keyboard only', () => {
 
     rendered.unmount()
     surface.host.remove()
+  })
+})
+
+describe('mind map full screen — keyboard reference', () => {
+  it('opens over the drawing area, never inside the toolbar', async () => {
+    const view = await openShortcuts()
+
+    // The card is a layer of the drawing area, beside the live map: opening it there cannot reflow the
+    // head and move the button the user just pressed.
+    expect(view.head.contains(view.card)).toBe(false)
+    expect(view.card.closest('.mindmap-fullscreen-stage')?.querySelector('.mindmap-canvas')).toBe(view.surface.canvas)
+
+    view.unmount()
+  })
+
+  it('puts the keyboard reference away with Escape before leaving full screen', async () => {
+    const view = await openShortcuts()
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    expect(document.querySelector('.mindmap-shortcuts')).toBeNull()
+    expect(document.querySelector('.mindmap-fullscreen')).not.toBeNull()
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    expect(document.querySelector('.mindmap-fullscreen')).toBeNull()
+
+    view.unmount()
   })
 })
