@@ -251,13 +251,13 @@ async function mountBlock(node: HTMLElement, entry: MindmapBlockEntry, options: 
   entry.editable = options.editable && entry.ref !== null
   setMindmapThemePickerEnabled(node, entry.editable)
   if (entry.handle) {
+    // In the document first: the library measures node boxes as it draws (MindmapHandle.layout).
+    placeContainer(entry)
     if (themeChanged) applyEntryTheme(entry)
-    // The markup is rebuilt from the note on every commit and the renderer's control carries
-    // the classic default, so the answer is written back even when nothing moved: a fresh
-    // button reading "follow the app" over a map drawn dark is the mismatch this avoids.
+    // The fresh control ships the classic default, so the answer is written back even when
+    // nothing moved: "follow the app" over a map drawn dark is the mismatch this avoids.
     else showMindmapThemeChoice(node, entry.choice)
     syncEntry(entry, body)
-    placeContainer(entry)
     return
   }
   await createInstance(entry)

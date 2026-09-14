@@ -17,6 +17,14 @@ export interface StubMap {
   focusCalls: number
   layoutCalls: number
   fitCalls: number
+  /**
+   * The drawing calls that measure the map, with whether its element was in the document
+   * when they were made. The library reads node boxes and its own width, so a call taken
+   * while the element is out of the document measures zero — the real library draws NaN
+   * connectors from that, which is why the order of re-parenting and refreshing is a
+   * contract and not an implementation detail.
+   */
+  measuredWhileAttached: { call: 'refresh' | 'layout' | 'toCenter' | 'scaleFit'; connected: boolean }[]
   /** The toolbar button the real library points at the browser's full screen. */
   toolbarFullscreen: HTMLElement | null
   nativeFullscreenCalls: number
@@ -80,6 +88,7 @@ function newStubMap(options: MindmapCreateOptions): StubMap {
     focusCalls: 0,
     layoutCalls: 0,
     fitCalls: 0,
+    measuredWhileAttached: [],
     toolbarFullscreen: null,
     nativeFullscreenCalls: 0,
     toolbarCenterCalls: 0,
@@ -91,17 +100,22 @@ function stubHandle(record: StubMap): MindmapHandle {
   return {
     getData: () => ({ current: record.current }),
     refresh: (body) => {
+      record.measuredWhileAttached.push({ call: 'refresh', connected: record.el.isConnected })
       record.refreshes.push(body)
       record.current = String((body.data as { body?: string }).body ?? '')
     },
     applyTheme: (theme) => {
       record.paints.push(theme)
     },
-    toCenter: () => {},
+    toCenter: () => {
+      record.measuredWhileAttached.push({ call: 'toCenter', connected: record.el.isConnected })
+    },
     layout: () => {
+      record.measuredWhileAttached.push({ call: 'layout', connected: record.el.isConnected })
       record.layoutCalls += 1
     },
     scaleFit: () => {
+      record.measuredWhileAttached.push({ call: 'scaleFit', connected: record.el.isConnected })
       record.fitCalls += 1
     },
     focus: () => {

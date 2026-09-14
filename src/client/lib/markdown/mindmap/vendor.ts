@@ -153,7 +153,19 @@ function createHandle(instance: MindElixirInstance, options: MindmapCreateOption
       paintTheme(instance, theme)
     },
     toCenter: () => instance.toCenter(),
-    layout: () => instance.layout(),
+    // A relayout rebuilds every node and draws no connector: the library's own pass
+    // (`linkDiv`) is what paints them, and the groups a branch carries were measured
+    // against the nodes that just went away. A bare `layout()` therefore loses every
+    // level below the first — the main lines survive only because they hang off an
+    // element that is re-appended into the new tree, and stale at that. Both callers
+    // (the container watcher in ./resize, the full screen overlay in ../registry) want
+    // the connectors drawn again; the watcher is why a fresh map arrived without them,
+    // since a ResizeObserver reports once the moment it starts observing, right after
+    // the library's own `init()` had drawn them.
+    layout: () => {
+      instance.layout()
+      instance.linkDiv()
+    },
     scaleFit: () => instance.scaleFit(),
     // The library binds every shortcut to its inner container (which carries
     // tabindex=0) and focuses it itself when an inline edit ends — this exposes

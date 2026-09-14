@@ -2,9 +2,11 @@
  * The one place the real library meets a test. jsdom never lays the map out, and it
  * does not have to: what is asserted here is the palette an instance paints, which the
  * library writes as inline styles on the element it draws in, plus the branch colour it
- * bakes into the connectors when it draws them. The registry tests drive a stub because
- * they are about adoption; this one drives mind-elixir itself, which is the only way to
- * see a body's own `theme` reach the instance that draws (see ./theme).
+ * bakes into the connectors when it draws them — and that a relayout draws those
+ * connectors again, since the nodes it rebuilds take the old ones with them. The
+ * registry tests drive a stub because they are about adoption; this one drives
+ * mind-elixir itself, which is the only way to see a body's own `theme` reach the
+ * instance that draws (see ./theme).
  */
 import { beforeAll, describe, expect, it } from 'vitest'
 import { APP_THEME_CHOICE, type MindmapThemeChoice } from './theme'
@@ -51,13 +53,33 @@ function parsedBody(theme: MindmapThemeChoice): MindmapParsedBody {
   }
 }
 
+/** Deep enough for a connector below the root's own children: those are the ones a relayout dropped. */
+function nestedBody(theme: MindmapThemeChoice): MindmapParsedBody {
+  return {
+    data: {
+      nodeData: {
+        id: 'root',
+        topic: 'Root',
+        children: [{ id: 'a', topic: 'Child', children: [{ id: 'b', topic: 'Grandchild' }] }],
+      },
+    },
+    extra: {},
+    theme,
+  }
+}
+
 /** Draws one map and always destroys it: an instance owns DOM nodes and listeners. */
-function mountAndRun(theme: MindmapThemeChoice, dark: boolean, run: (map: { el: HTMLElement; handle: MindmapHandle }) => void): void {
+function mountAndRun(
+  theme: MindmapThemeChoice,
+  dark: boolean,
+  run: (map: { el: HTMLElement; handle: MindmapHandle }) => void,
+  body: (theme: MindmapThemeChoice) => MindmapParsedBody = parsedBody,
+): void {
   const el = document.createElement('div')
   document.body.append(el)
   const options: MindmapCreateOptions = {
     el,
-    body: parsedBody(theme),
+    body: body(theme),
     editable: true,
     dark,
     locale: 'en-US',
@@ -91,6 +113,16 @@ function expectRoot(el: HTMLElement, root: string): void {
   expect(painted(el).root).toBe(root)
 }
 
+/**
+ * The connectors below the root's own children, as the library draws them: one group per
+ * top-level branch, holding a path per node under it. jsdom measures every node as
+ * zero-sized, so the geometry here is degenerate — what is read is whether the group and
+ * its paths exist at all, which is exactly what a relayout used to take away.
+ */
+function nestedConnectors(el: HTMLElement): number {
+  return el.querySelectorAll('svg.subLines path').length
+}
+
 /** The app's setting changes on its own; the body's own choice is carried along. */
 function switchAppearance(handle: MindmapHandle, dark: boolean, choice: MindmapThemeChoice = APP_THEME_CHOICE): void {
   handle.applyTheme({ dark, choice })
@@ -119,6 +151,22 @@ describe('mind map vendor — the palette the app setting picks', () => {
       expect(darkBranch.length).toBeGreaterThan(0)
       expect(darkBranch).not.toBe(lightBranch)
     })
+  })
+})
+
+// The library rebuilds every node on a relayout and draws no connector while doing it, so
+// the group under each branch has to be drawn again afterwards — the app relayouts the map
+// whenever its container changes size, which includes the first delivery every
+// ResizeObserver makes, so a map that just mounted would otherwise arrive with its
+// connectors gone below the root's own children.
+describe('mind map vendor — a relayout keeps the connectors', () => {
+  it('draws the branch connectors again after layout() rebuilt the nodes', () => {
+    mountAndRun(APP_THEME_CHOICE, false, (map) => {
+      const drawn = nestedConnectors(map.el)
+      expect(drawn).toBeGreaterThan(0)
+      map.handle.layout()
+      expect(nestedConnectors(map.el)).toBe(drawn)
+    }, nestedBody)
   })
 })
 

@@ -52,6 +52,28 @@ describe('mindmap registry — adoption across re-renders', () => {
     }
   })
 })
+
+// What a keystroke in the note looks like from the registry's side, and the order the
+// drawing calls have to happen in: the markup is replaced wholesale (which takes the map's
+// element out of the document with it), and the library measures node boxes as it draws, so
+// a refresh taken too early measures every node as zero — the real library draws `NaN`
+// connectors and leaves the camera at the origin. Reading the stub's own `el` answers the
+// same question the real one would.
+describe('mindmap registry — measuring an adopted map', () => {
+  it('puts the map back in the document before the library measures it again', async () => {
+    const h = scopeHarness(noteSource('- Root\n  - A'))
+    try {
+      await h.mount(noteSource('- Root\n  - A'))
+      const map = h.records[0]!
+      await h.mount(noteSource('- Root\n  - A\n  - B'))
+      expect(map.measuredWhileAttached.length).toBeGreaterThan(1)
+      expect(map.measuredWhileAttached.filter((call) => !call.connected)).toEqual([])
+    }
+    finally {
+      h.dispose()
+    }
+  })
+})
 describe('mindmap registry — overlapping mount passes', () => {
   it('keeps the map a newer pass installed when an overtaken pass finishes late', async () => {
     // The load is deliberately held open: a pass that spans awaits can be

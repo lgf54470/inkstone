@@ -34,6 +34,15 @@ export interface MindmapHandle {
    */
   applyTheme(theme: MindmapThemeInput): void
   toCenter(): void
+  /**
+   * Rebuilds the nodes for the box the map now has. The library draws the connectors in a
+   * pass of its own and rebuilding takes the drawn ones with it, so the palette's own
+   * branch groups are drawn again here: a caller that only wanted the new geometry still
+   * wants the map connected. Every measurement it takes comes off the DOM, so the caller
+   * has to have the element in the document already — a detached map reads zero-sized
+   * nodes and draws `NaN` connectors from them (the preview re-parents it on every
+   * commit, which is what makes this an ordering contract rather than a detail).
+   */
   layout(): void
   scaleFit(): void
   /** Puts DOM focus on the map's own keyboard surface, so its shortcuts fire. */
