@@ -515,4 +515,20 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
        WHERE object_key IS NULL`,
     ],
   },
+  {
+    // Version and backup-run lists page by (created_at DESC, id DESC) and tag
+    // lists order by name COLLATE NOCASE, while note lookups and per-user
+    // version retention filter by user_id alone; the existing indexes match
+    // none of those shapes, so each of those reads scans the user's rows.
+    version: 34,
+    statements: [
+      `DROP INDEX IF EXISTS idx_versions_note`,
+      `CREATE INDEX idx_versions_note ON note_versions(note_id, created_at DESC, id DESC)`,
+      `DROP INDEX IF EXISTS idx_runs_user`,
+      `CREATE INDEX idx_runs_user ON backup_runs(user_id, started_at DESC, id DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id, id)`,
+      `CREATE INDEX IF NOT EXISTS idx_tags_name_nocase ON tags(user_id, name COLLATE NOCASE)`,
+      `CREATE INDEX IF NOT EXISTS idx_versions_user ON note_versions(user_id)`,
+    ],
+  },
 ]

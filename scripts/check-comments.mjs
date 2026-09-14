@@ -2852,6 +2852,10 @@ const allowed = new Map([
   ['src/worker/backup/snapshot/index.ts', [
     '/** Produces restorable JSON, readable Markdown, and attachment files for every backup target. */',
   ]],
+  ['src/worker/db/fts.ts', [
+    '// Every delete below targets one note_id, and an FTS5 table only reaches its',
+    '// own index through MATCH, so without this each delete scans the whole table.',
+  ]],
   ['src/worker/db/schema/index.ts', [
     '/** Defines the idempotent final D1 schema initialized by every Worker isolate. */',
   ]],
@@ -2870,6 +2874,10 @@ const allowed = new Map([
     '// backfill reproduces the pre-user_id key layout that existing objects',
     '// were written under; the oldest per-user id layout stays reachable via',
     '// the legacy fallback.',
+    '// Version and backup-run lists page by (created_at DESC, id DESC) and tag',
+    '// lists order by name COLLATE NOCASE, while note lookups and per-user',
+    '// version retention filter by user_id alone; the existing indexes match',
+    '// none of those shapes, so each of those reads scans the user\'s rows.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
