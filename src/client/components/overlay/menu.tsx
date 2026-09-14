@@ -73,7 +73,7 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
   useClickOutside(anchorRef ? [menuRef, anchorRef, submenuRef] : [menuRef, submenuRef], open, onClose)
   useFocusRestore(open)
   useCursorFocus(open, cursor, menuRef)
-  useMenuCursorKeys(open, items, setCursor)
+  useMenuCursorKeys(open, items, setCursor, submenuRef)
   useMenuActionKeys(open, items, cursor, onClose, menuRef, submenuRef, setActiveSubmenuId, setSubmenuAnchorRect)
 
   const { handleHover, handleClick } = useMenuInteractions(setCursor, setActiveSubmenuId, setSubmenuAnchorRect, onClose)

@@ -125,11 +125,24 @@ export function useCursorFocus(open: boolean, cursor: number, menuRef: RefObject
   }, [open, cursor, menuRef])
 }
 
-export function useMenuCursorKeys(open: boolean, items: MenuItem[], setCursor: React.Dispatch<React.SetStateAction<number>>): void {
+/**
+ * Whether a key event started inside the open submenu. Those rows are buttons of their
+ * own, and a row there can open a panel of its own, so a key taken here would act on the
+ * parent's cursor instead of the row the user is on — which is how Enter inside a submenu
+ * came to toggle the parent's submenu shut without running anything at all.
+ */
+function fromSubmenu(event: KeyboardEvent, submenuRef: RefObject<HTMLElement | null> | null): boolean {
+  if (!submenuRef?.current) return false
+  return event.target instanceof Node && submenuRef.current.contains(event.target)
+}
+
+export function useMenuCursorKeys(open: boolean, items: MenuItem[], setCursor: React.Dispatch<React.SetStateAction<number>>, submenuRef: RefObject<HTMLElement | null> | null = null): void {
   useEffect(() => {
     if (!open)
       return
     const onKeyDown = (event: KeyboardEvent) => {
+      if (fromSubmenu(event, submenuRef))
+        return
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault()
         const step = event.key === 'ArrowDown' ? 1 : -1
@@ -146,7 +159,7 @@ export function useMenuCursorKeys(open: boolean, items: MenuItem[], setCursor: R
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [open, items, setCursor])
+  }, [open, items, setCursor, submenuRef])
 }
 
 export function useMenuActionKeys(open: boolean, items: MenuItem[], cursor: number, onClose: () => void, menuRef: RefObject<HTMLDivElement | null>, submenuRef: RefObject<HTMLDivElement | null>, setActiveSubmenuId: React.Dispatch<React.SetStateAction<string | null>>, setSubmenuAnchorRect: React.Dispatch<React.SetStateAction<DOMRect | null>>): void {
@@ -154,6 +167,8 @@ export function useMenuActionKeys(open: boolean, items: MenuItem[], cursor: numb
     if (!open)
       return
     const onKeyDown = (event: KeyboardEvent) => {
+      if (fromSubmenu(event, submenuRef))
+        return
       if (event.key === 'ArrowRight') {
         const item = items[cursor]
         if (!item?.submenu)
