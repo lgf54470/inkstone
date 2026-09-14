@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react'
-import { Crosshair, Download, Expand, FileJson, ImageDown, Keyboard, ListTree, Redo2, Undo2, X } from 'lucide-react'
+import { Crosshair, Download, Expand, FileJson, Heading, ImageDown, Keyboard, List, ListTree, Redo2, Undo2, X } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { Menu, Modal, Tooltip, useClickOutside, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { downloadBlob } from '../../lib/export-note'
 import { safeFileName } from '../../lib/export-folder'
 import { captureMindmapFocus, subscribeMindmaps, type MindmapMode, type MindmapSession } from '../../lib/markdown/mindmap'
+import { writeMindmapOutline, type MindmapOutlinePlacement } from './mindmap-outline'
 import { useUi } from '../../store/ui'
 
 const MINDMAP_MENU_WIDTH = 220
@@ -28,6 +29,8 @@ interface MindmapActions {
   copy(text: string | null): void
   convert(mode: MindmapMode): void
   download(kind: 'svg' | 'png'): void
+  /** Writes the tree into the note as headings and lists. */
+  outline(placement: MindmapOutlinePlacement): void
 }
 
 async function copyBody(text: string | null, toast: RaiseToast): Promise<void> {
@@ -89,8 +92,30 @@ function buildMenuItems(session: MindmapSession, actions: MindmapActions): MenuI
       onSelect: () => actions.convert(convertMode),
       separatorBefore: true,
     })
+    items.push(
+      { id: 'outline-replace', label: t('preview.mindmap_outline_replace'), icon: <Heading size={13} />, onSelect: () => actions.outline('replace'), separatorBefore: true },
+      { id: 'outline-insert', label: t('preview.mindmap_outline_insert'), icon: <List size={13} />, onSelect: () => actions.outline('after') },
+    )
   }
   return items
+}
+
+/** Why the tree could not be written out, as the message the user gets. */
+function outlineFailure(result: 'empty' | 'conflict' | 'missing'): { title: string; tone: 'warning' | 'danger' } {
+  if (result === 'conflict') return { title: t('preview.mindmap_source_moved'), tone: 'warning' }
+  if (result === 'empty') return { title: t('preview.mindmap_outline_empty'), tone: 'warning' }
+  return { title: t('preview.mindmap_outline_failed'), tone: 'danger' }
+}
+
+function outlineBody(session: MindmapSession, placement: MindmapOutlinePlacement, toast: RaiseToast, onDone: () => void): void {
+  const result = writeMindmapOutline(session, placement)
+  if (result === 'written') {
+    // A replaced fence takes the block out of the note, so the overlay has
+    // nothing left to be full screen on.
+    if (placement === 'replace') onDone()
+    return
+  }
+  toast(outlineFailure(result))
 }
 
 /**
@@ -253,7 +278,8 @@ export function MindmapFullscreen({ session, onClose }: { session: MindmapSessio
     copy: (text) => void copyBody(text, toast),
     convert: (mode) => convertBody(session, mode, toast),
     download: (kind) => void downloadBody(session, kind, toast),
-  }), [session, toast])
+    outline: (placement) => outlineBody(session, placement, toast, onClose),
+  }), [onClose, session, toast])
 
   return (
     <Modal open onClose={handleClose} variant='fullscreen' ariaLabel={session.title() || t('preview.mindmap')} className='mindmap-fullscreen' bodyClassName='mindmap-fullscreen-body'>

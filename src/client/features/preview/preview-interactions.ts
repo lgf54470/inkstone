@@ -3,7 +3,7 @@ import { t } from '../../lib/i18n'
 import { decodeDataValue } from '../../lib/markdown/data-attr'
 import { parseWikiTarget } from '../../lib/markdown/renderer'
 import { resetMermaidNode, toggleCodeBlockCollapse } from '../../lib/markdown/enhance'
-import { MINDMAP_NATIVE_FULLSCREEN_SELECTOR, fitMindmapBlock, retryMindmap } from '../../lib/markdown/mindmap'
+import { MINDMAP_NATIVE_FULLSCREEN_SELECTOR, MINDMAP_NODE_LINK_ATTR, fitMindmapBlock, retryMindmap } from '../../lib/markdown/mindmap'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { updateTaskAtSourceLine } from '../../editor/commands'
 import { useUi } from '../../store/ui'
@@ -129,6 +129,10 @@ async function handleMindmap(target: HTMLElement, ctx: PreviewClickContext): Pro
     await retryMindmap(block)
     return true
   }
+  // A node that is a link to another note carries the same `data-wikilink` a
+  // prose link does, so it is handed to the wiki navigation below rather than
+  // swallowed with the rest of the canvas.
+  if (target.closest(`[${MINDMAP_NODE_LINK_ATTR}]`)) return false
   // Everything else inside the canvas belongs to the library: a node's link would
   // otherwise be read as a preview anchor and swallowed.
   return Boolean(target.closest('[data-mindmap-canvas]'))
@@ -327,6 +331,7 @@ async function handleWikiLink(event: ReactMouseEvent, target: HTMLElement, ctx: 
     if (isCurrent()) {
       ctx.wikiScrollCleanupRef.current = scrollToWikiTarget(ctx.hostRef, parsed, isCurrent)
     }
+    offerReturn(wikilink, ctx)
     return true
   }
   if (!parsed.noteTitle) return true
@@ -341,6 +346,24 @@ async function handleWikiLink(event: ReactMouseEvent, target: HTMLElement, ctx: 
     }
   }
   return true
+}
+
+/**
+ * A jump out of a mind map node is the one navigation with no trail back: the
+ * note it left is still open behind the new one, but nothing on screen says so
+ * once the map is out of view. The way back is offered on the jump itself.
+ */
+function offerReturn(wikilink: HTMLElement, ctx: PreviewClickContext): void {
+  if (!wikilink.hasAttribute(MINDMAP_NODE_LINK_ATTR)) return
+  const sourceNoteId = ctx.sourceNoteId
+  if (!sourceNoteId || sourceNoteId === useUi.getState().activeNoteId) return
+  const source = useNotes.getState().notes[sourceNoteId]
+  if (!source) return
+  ctx.api.toast({
+    title: source.title,
+    action: { label: t('preview.mindmap_node_link_return'), run: () => void ctx.api.openNote(sourceNoteId) },
+    duration: 8000,
+  })
 }
 
 async function handleBlockReference(event: ReactMouseEvent, target: HTMLElement, ctx: PreviewClickContext): Promise<boolean> {
