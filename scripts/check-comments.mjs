@@ -2775,6 +2775,14 @@ const allowed = new Map([
     '/**\n * Merges tags into a rendered template\'s front matter `tags` list, shifting a\n * pending caret position by the bytes inserted before it. Must run after\n * placeholder interpolation: the YAML round-trip would mangle raw `{{...}}`\n * tokens (they parse as flow mappings) and leave them unreplaced.\n */',
     '/**\n * Renders a new-note template into final content, removing the `{{cursor}}`\n * marker (if any) and reporting its position so callers can place the caret.\n * Shared by note creation, the settings preview, and the editor command that\n * inserts the template at the caret. The sentinel character cannot occur in\n * real template output, so the reported position is always in final content.\n */',
   ]],
+  ['src/shared/markdown-utils/wiki.ts', [
+    '// md-example fences are rendered as live Markdown by the client renderer, so',
+    '// a reference inside one is real even though stripCodeRegions drops the fence.',
+    '// CommonMark: a marker followed by anything but whitespace opens a fence',
+    '// instead of closing one, so it cannot end the example.',
+    '// Inner fences stay in the body so the recursive call reads them again:',
+    '// an ordinary one is stripped, a nested example is rendered as markdown.',
+  ]],
   ['src/shared/music-cover-match.ts', [
     '// Catalogue titles carry qualifiers the file name does not — "Song (DJ Mix)" against "Song" —',
     '// and some imports fold the artist into the title, so both sides lose brackets and punctuation.',
