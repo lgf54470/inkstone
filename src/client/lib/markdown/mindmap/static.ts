@@ -10,8 +10,9 @@ import { errorMessage } from '../../errors'
 import { t } from '../../i18n'
 import { detectMindmapMode } from './body'
 import { loadMindmapVendor } from './loader'
+import { fenceThemeChoice } from './theme'
 import type { MindmapParsedBody, MindmapVendor, MindmapVendorLoader } from './types'
-import { MINDMAP_CANVAS_CLASS, markMindmapReady, mindmapBlocks, mindmapBody, showMindmapSource } from './view'
+import { MINDMAP_CANVAS_CLASS, markMindmapReady, mindmapBlocks, mindmapBody, mindmapThemeAnnotation, showMindmapSource } from './view'
 
 export interface StaticMindmapOptions {
   dark: boolean
@@ -67,7 +68,14 @@ async function renderStaticBlock(node: HTMLElement, options: StaticMindmapOption
     showMindmapSource(node)
     return
   }
-  const handle = drawInto(container, vendor, parsed, options)
+  // The snapshot draws what the fence asks for, exactly like the live map: the
+  // annotation is the outline format's only home for it (./theme).
+  const declared = fenceThemeChoice(parsed.theme, mindmapThemeAnnotation(node))
+  if ('error' in declared) {
+    showMindmapSource(node)
+    return
+  }
+  const handle = drawInto(container, vendor, { ...parsed, theme: declared.choice }, options)
   try {
     const blob = await handle.exportSvg()
     const image = document.createElement('img')

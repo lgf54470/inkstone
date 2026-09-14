@@ -3,7 +3,7 @@ import type Token from 'markdown-it/lib/token.mjs'
 import { escapeHtml } from '@shared/escape'
 import { t } from '../../i18n'
 import { encodeDataValue } from '../data-attr'
-import { detectMindmapMode, MINDMAP_LANGUAGES } from '../mindmap'
+import { detectMindmapMode, MINDMAP_LANGUAGES, MINDMAP_THEME_ATTR, readFenceAnnotation } from '../mindmap'
 import { emptyEnvironment, renderEnv } from './env'
 import { stripObsidianComments, parseFenceInfo } from './parse'
 import type { FenceInfo } from './types'
@@ -130,8 +130,11 @@ function renderMindmapBlock(token: Token, line: string, rendererEnv: unknown): s
   const modeLabel = mode === 'json' ? t('preview.mindmap_mode_json') : t('preview.mindmap_mode_outline')
   const fitLabel = escapeAttr(t('preview.mindmap_fit'))
   const fullscreenLabel = escapeAttr(t('preview.mindmap_fullscreen'))
+  // The fence's own palette, as written in its info string; the registry reads it and
+  // hands it to the same reader the JSON body's field goes through (see mindmap/theme).
+  const annotation = readFenceAnnotation(token.info)
   return [
-    `<div class="mindmap-block loading"${line} data-mindmap="${escapeAttr(encodeDataValue(body))}" data-mindmap-mode="${mode}" data-mindmap-index="${index}" aria-busy="true">`,
+    `<div class="mindmap-block loading"${line} data-mindmap="${escapeAttr(encodeDataValue(body))}" data-mindmap-mode="${mode}" data-mindmap-index="${index}"${annotation === null ? '' : ` ${MINDMAP_THEME_ATTR}="${escapeAttr(annotation)}"`} aria-busy="true">`,
     `<div class="mindmap-block-head">`,
     `<span class="mindmap-block-title">${escapeHtml(t('preview.mindmap'))}</span>`,
     `<span class="mindmap-block-mode">${escapeHtml(modeLabel)}</span>`,

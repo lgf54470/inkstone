@@ -7,6 +7,7 @@
 import { t } from '../../i18n'
 import { decodeDataValue } from '../data-attr'
 import { normalizeEol } from './body'
+import { MINDMAP_THEME_ATTR } from './theme'
 import type { MindmapFenceRef } from './types'
 
 export const MINDMAP_BLOCK_SELECTOR = '[data-mindmap]'
@@ -83,6 +84,15 @@ export function mindmapBlocks(root: ParentNode): HTMLElement[] {
  */
 export function mindmapBody(node: HTMLElement): string {
   return normalizeEol(decodeDataValue(node.dataset.mindmap)).replace(/\n$/, '')
+}
+
+/**
+ * The palette the fence asks for in its own info string (` ```mindmap theme=dark `), as
+ * written, or null when it names none. The renderer puts it on the block because the
+ * registry is the only layer that gets to interpret it (see ./theme).
+ */
+export function mindmapThemeAnnotation(node: HTMLElement): string | null {
+  return node.getAttribute(MINDMAP_THEME_ATTR)
 }
 
 export function mindmapIndex(node: HTMLElement): number {

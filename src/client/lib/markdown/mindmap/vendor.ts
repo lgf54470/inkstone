@@ -16,8 +16,8 @@ import type { MindElixirData, MindElixirInstance, Options } from 'mind-elixir'
 import type { AppLocale } from '@shared/types'
 import { errorMessage } from '../../errors'
 import { normalizeEol, type MindmapMode } from './body'
-import { APP_THEME_CHOICE, readThemeChoice, resolveThemeChoice, type MindmapPalette, type MindmapThemeChoice } from './theme'
-import type { MindmapCreateOptions, MindmapHandle, MindmapParseResult, MindmapVendor } from './types'
+import { APP_THEME_CHOICE, readThemeChoice, resolveThemeChoice, type MindmapPalette } from './theme'
+import type { MindmapCreateOptions, MindmapHandle, MindmapParseResult, MindmapThemeInput, MindmapVendor } from './types'
 
 const WHEEL_ZOOM_FACTOR = 0.0015
 const SCALE_MIN = 0.3
@@ -119,15 +119,6 @@ function zoomByWheel(instance: MindElixirInstance, event: WheelEvent): void {
 }
 
 /**
- * The two inputs an instance's palette resolves from, kept current together: the
- * app's appearance setting and the palette the fence body asks for (./theme).
- */
-interface ThemeState {
-  dark: boolean
-  choice: MindmapThemeChoice
-}
-
-/**
  * Paints the palette those inputs resolve to. A theme lives inside the instance:
  * `changeTheme` writes the colour variables as inline styles on the map's own
  * element, and the branch palette (`theme.palette`) is read when the connectors are
@@ -138,15 +129,15 @@ interface ThemeState {
  * Re-drawing the connectors is all a new palette needs, and a palette that is
  * already on screen is left alone.
  */
-function paintTheme(instance: MindElixirInstance, state: ThemeState): void {
-  const next = libraryTheme(resolveThemeChoice(state.choice, state.dark))
+function paintTheme(instance: MindElixirInstance, input: MindmapThemeInput): void {
+  const next = libraryTheme(resolveThemeChoice(input.choice, input.dark))
   if (next === instance.theme) return
   instance.changeTheme(next, false)
   instance.linkDiv()
 }
 
 function createHandle(instance: MindElixirInstance, options: MindmapCreateOptions): MindmapHandle {
-  const theme: ThemeState = { dark: options.dark, choice: options.body.theme }
+  const theme: MindmapThemeInput = { dark: options.dark, choice: options.body.theme }
   return {
     getData: () => instance.getData(),
     refresh: (body) => {
@@ -156,8 +147,9 @@ function createHandle(instance: MindElixirInstance, options: MindmapCreateOption
       // instance already had.
       paintTheme(instance, theme)
     },
-    applyTheme: (dark) => {
-      theme.dark = dark
+    applyTheme: (next) => {
+      theme.dark = next.dark
+      theme.choice = next.choice
       paintTheme(instance, theme)
     },
     toCenter: () => instance.toCenter(),

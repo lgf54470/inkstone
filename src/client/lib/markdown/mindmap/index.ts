@@ -9,27 +9,34 @@
 export { applyBodyAtFence, detectMindmapMode, MINDMAP_LANGUAGES, normalizeEol, type MindmapFence, type MindmapMode } from './body'
 export { loadMindmapVendor } from './loader'
 export {
-  applyEntryBody,
   attachMindmapToOverlay,
   captureMindmapFocus,
   destroyAllMindmaps,
   destroyMindmaps,
   detachMindmapFromOverlay,
-  flushEntry,
   flushMindmaps,
   fitMindmapBlock,
   mindmapEntryForNode,
   mindmapEntryKey,
   mountMindmaps,
   retryMindmap,
-  serializeEntry,
-  serializeEntryAs,
   subscribeMindmaps,
   type MindmapBlockEntry,
   type MindmapMountOptions,
 } from './registry'
+export { applyEntryBody, flushEntry, serializeEntry, serializeEntryAs } from './write'
 export { openMindmapSession, type MindmapSession } from './session'
-export { APP_THEME_CHOICE, readThemeChoice, resolveThemeChoice, type MindmapPalette, type MindmapThemeChoice } from './theme'
+export {
+  APP_THEME_CHOICE,
+  MINDMAP_THEME_ATTR,
+  fenceThemeChoice,
+  readFenceAnnotation,
+  readThemeChoice,
+  resolveThemeChoice,
+  withFenceAnnotation,
+  type MindmapPalette,
+  type MindmapThemeChoice,
+} from './theme'
 export { MINDMAP_IMAGE_CLASS, renderStaticMindmapBlocks, renderStaticMindmaps, type StaticMindmapOptions } from './static'
 export {
   MINDMAP_NATIVE_FULLSCREEN_SELECTOR,
@@ -40,6 +47,7 @@ export {
   mindmapBlocks,
   mindmapBody,
   mindmapIndex,
+  mindmapThemeAnnotation,
   mindmapPlaceholder,
   resetMindmapNode,
   showMindmapError,
@@ -51,6 +59,7 @@ export type {
   MindmapFenceRef,
   MindmapHandle,
   MindmapParsedBody,
+  MindmapThemeInput,
   MindmapVendor,
   MindmapVendorLoader,
   MindmapWriter,

@@ -10,7 +10,9 @@
  * rule holds everywhere a map is drawn: the preview, the full screen view, the
  * share page, the slides and every export all resolve one of these choices.
  *
- * The field is JSON-only: the outline format has nowhere to put it.
+ * The field is JSON-only, and that is why the fence's info string carries the same
+ * statement for the formats that cannot hold it: ` ```mindmap theme=dark ` is read by
+ * the same reader the JSON field goes through, so the two cannot drift apart.
  */
 
 /**
@@ -55,6 +57,53 @@ export function readThemeChoice(value: unknown): { choice: MindmapThemeChoice } 
 
 function themeFieldError(): string {
   return '"theme" must be "light", "dark", "auto" or a theme object'
+}
+
+/** The name the annotation goes by in a fence's info string, next to the language. */
+export const THEME_ANNOTATION_KEY = 'theme'
+
+/**
+ * Where the renderer carries the annotation out of the fence and onto the block, for the
+ * registry — the only layer that interprets it — to read back (see view.ts).
+ */
+export const MINDMAP_THEME_ATTR = 'data-mindmap-theme'
+
+const ANNOTATION_RE = /(?:^|\s)theme=(?:"([^"]*)"|'([^']*)'|([^\s{}]+))/i
+/** The same shape, matching the whole annotation so it can be taken out of a line. */
+const ANNOTATION_WHOLE_RE = /(?:^|\s)theme=(?:"[^"]*"|'[^']*'|[^\s{}]+)/gi
+
+/**
+ * The raw `theme=` value a fence's info string carries, or null when it names none. The
+ * value is handed on as written: it goes through `readThemeChoice` like the JSON body's
+ * field, so what a note may write is in one place and an unknown name reports itself.
+ */
+export function readFenceAnnotation(info: string): string | null {
+  const match = ANNOTATION_RE.exec(info)
+  if (!match) return null
+  return (match[1] ?? match[2] ?? match[3] ?? '').slice(0, 64)
+}
+
+/**
+ * The same info string with its `theme=` annotation set to `raw`, or removed when `raw`
+ * is null. Everything else in the line is left untouched, so the language, a title and
+ * any other metadata survive a palette change.
+ */
+export function withFenceAnnotation(info: string, raw: string | null): string {
+  // The match swallows the space before the annotation, so taking it out leaves the
+  // rest of the line's spacing alone.
+  const without = info.replace(ANNOTATION_WHOLE_RE, '').trim()
+  return raw === null ? without : `${without} ${THEME_ANNOTATION_KEY}=${raw}`.trim()
+}
+
+/**
+ * The palette a fence asks for: the field in its own body when it names one, the
+ * annotation beside it otherwise. `auto` counts as naming nothing, which is what makes
+ * the annotation a fallback rather than a second opinion — and it is the only home the
+ * outline format has.
+ */
+export function fenceThemeChoice(body: MindmapThemeChoice, annotation: string | null): { choice: MindmapThemeChoice } | { error: string } {
+  if (body.kind !== 'app' || annotation === null) return { choice: body }
+  return readThemeChoice(annotation)
 }
 
 /**

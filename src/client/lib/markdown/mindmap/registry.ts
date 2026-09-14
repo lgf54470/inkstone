@@ -1,6 +1,5 @@
 /**
- * Live mind map instances, one per block, plus the write-back that keeps the
- * note source in step with them.
+ * Live mind map instances, one per block; the write-back itself lives in ./write.
  *
  * The preview re-renders by replacing the note's HTML wholesale, which destroys
  * every node inside it — including a map's DOM. So the registry owns the map's
@@ -16,41 +15,19 @@
 import type { AppLocale } from '@shared/types'
 import { errorMessage } from '../../errors'
 import { t } from '../../i18n'
-import { detectMindmapMode, normalizeEol, type MindmapMode } from './body'
+import { detectMindmapMode, normalizeEol } from './body'
+import type { MindmapBlockEntry } from './entry'
 import { loadMindmapVendor } from './loader'
 import { watchMindmapContainer } from './resize'
 import { renderStaticMindmapBlocks } from './static'
-import type { MindmapFenceRef, MindmapHandle, MindmapVendor, MindmapVendorLoader, MindmapWriteResult, MindmapWriter } from './types'
-import { MINDMAP_CANVAS_CLASS, MINDMAP_PLACEHOLDER_SELECTOR, decorateMindmapControls, disarmNativeFullscreen, isMindmapWritableHere, markMindmapLoading, markMindmapReady, mindmapBlocks, mindmapBody, mindmapIndex, showMindmapError } from './view'
+import { APP_THEME_CHOICE, fenceThemeChoice } from './theme'
+import type { MindmapVendorLoader, MindmapWriter } from './types'
+import { flushEntry, scheduleWrite } from './write'
 
-/** Operations are coalesced: dragging a node fires many, the note gets one write. */
-const WRITE_DEBOUNCE_MS = 400
+// Re-exported here because the registry is what hands an entry out ({@link MindmapBlockEntry}).
+import { MINDMAP_CANVAS_CLASS, MINDMAP_PLACEHOLDER_SELECTOR, decorateMindmapControls, disarmNativeFullscreen, isMindmapWritableHere, markMindmapLoading, markMindmapReady, mindmapBlocks, mindmapBody, mindmapIndex, mindmapThemeAnnotation, showMindmapError } from './view'
 
-export interface MindmapBlockEntry {
-  key: string
-  scope: string
-  index: number
-  host: HTMLElement
-  mode: MindmapMode
-  source: string
-  extra: Record<string, unknown>
-  editable: boolean
-  owner: 'inline' | 'overlay'
-  dark: boolean
-  locale: AppLocale
-  load: MindmapVendorLoader
-  vendor: MindmapVendor | null
-  handle: MindmapHandle | null
-  container: HTMLElement | null
-  /** Watches the inline container so a pane resize re-fits the drawing. */
-  observer: ReturnType<typeof watchMindmapContainer>
-  ref: MindmapFenceRef | null
-  write: MindmapWriter | null
-  dirty: boolean
-  timer: number | null
-  /** The instance currently being built for this block, shared by concurrent passes. */
-  pending: Promise<void> | null
-}
+export type { MindmapBlockEntry } from './entry'
 
 export interface MindmapMountOptions {
   /** Stable id of the surface that owns these blocks (one per preview instance). */
@@ -234,6 +211,9 @@ function createEntry(node: HTMLElement, options: MindmapMountOptions, load: Mind
     editable: options.editable,
     owner: 'inline',
     dark: options.dark,
+    bodyChoice: APP_THEME_CHOICE,
+    annotation: null,
+    choice: APP_THEME_CHOICE,
     locale: options.locale,
     load,
     vendor: null,
@@ -254,16 +234,19 @@ async function mountBlock(node: HTMLElement, entry: MindmapBlockEntry, options: 
   const body = normalizeEol(mindmapBody(node))
   entry.host = node
   decorateMindmapControls(node)
-  // The instance outlives the markup it was built for, so a theme switch has to be handed to it.
-  const themeChanged = entry.dark !== options.dark
+  // The instance outlives the markup it was built for, so a palette switch has to be
+  // handed to it: both the fence's own annotation and the app's setting can move.
+  const annotation = mindmapThemeAnnotation(node)
+  const themeChanged = entry.dark !== options.dark || entry.annotation !== annotation
   entry.dark = options.dark
+  entry.annotation = annotation
   entry.locale = options.locale
   entry.load = options.loadVendor ?? loadMindmapVendor
   entry.ref = isMindmapWritableHere(node) ? { line: Number(node.dataset.line), body } : null
   entry.write = options.writeBack ?? null
   entry.editable = options.editable && entry.ref !== null
   if (entry.handle) {
-    if (themeChanged) entry.handle.applyTheme(entry.dark)
+    if (themeChanged) applyEntryTheme(entry)
     syncEntry(entry, body)
     placeContainer(entry)
     return
@@ -284,11 +267,29 @@ function syncEntry(entry: MindmapBlockEntry, body: string): void {
     return
   }
   entry.extra = parsed.extra
-  handle.refresh(parsed)
+  entry.bodyChoice = parsed.theme
+  if (!applyEntryTheme(entry)) return
+  handle.refresh({ ...parsed, theme: entry.choice })
   handle.clearHistory()
   handle.toCenter()
   markMindmapReady(entry.host)
   notify(entry.scope)
+}
+
+/**
+ * Resolves the palette the fence asks for — its body's own field, else the annotation
+ * beside it (./theme) — and paints it. Reports false when neither could be read, having
+ * told the block why; the map then keeps whatever it was drawing rather than a guess.
+ */
+function applyEntryTheme(entry: MindmapBlockEntry): boolean {
+  const declared = fenceThemeChoice(entry.bodyChoice, entry.annotation)
+  if ('error' in declared) {
+    showMindmapError(entry.host, declared.error)
+    return false
+  }
+  entry.choice = declared.choice
+  entry.handle?.applyTheme({ dark: entry.dark, choice: entry.choice })
+  return true
 }
 
 function createCanvas(entry: MindmapBlockEntry): HTMLElement {
@@ -330,6 +331,11 @@ async function buildInstance(entry: MindmapBlockEntry): Promise<void> {
   entry.vendor = vendor
   entry.mode = mode
   entry.extra = parsed.extra
+  entry.bodyChoice = parsed.theme
+  // An annotation nobody can read leaves the block on its source, like a body the
+  // vendor refused: a map drawn in some other palette than the one written would be
+  // worse than one that says why it did not draw.
+  if (!applyEntryTheme(entry)) return
   // The library measures node boxes as it draws, so the canvas has to be in the
   // document (inside the placeholder that gives it its height) before init runs;
   // a detached one lays out as zeros and draws NaN link paths.
@@ -337,7 +343,7 @@ async function buildInstance(entry: MindmapBlockEntry): Promise<void> {
   placeContainer(entry)
   entry.handle = vendor.create({
     el: container,
-    body: parsed,
+    body: { ...parsed, theme: entry.choice },
     editable: entry.editable,
     dark: entry.dark,
     locale: entry.locale,
@@ -371,39 +377,6 @@ function pruneScope(scope: string, keep: Set<MindmapBlockEntry>): void {
   }
 }
 
-function scheduleWrite(entry: MindmapBlockEntry): void {
-  if (!entry.handle || !entry.write || !entry.ref) return
-  entry.dirty = true
-  if (entry.timer !== null) window.clearTimeout(entry.timer)
-  entry.timer = window.setTimeout(() => {
-    entry.timer = null
-    flushEntry(entry)
-  }, WRITE_DEBOUNCE_MS)
-}
-
-/**
- * Serializes the live map into the note. The writer resolves the fence against
- * the note's *current* text and reports 'conflict'/'missing' when the fence no
- * longer holds the body this map was built from — in that case the note is left
- * alone, because writing would drop whatever the user typed since.
- */
-export function flushEntry(entry: MindmapBlockEntry): MindmapWriteResult | null {
-  if (entry.timer !== null) {
-    window.clearTimeout(entry.timer)
-    entry.timer = null
-  }
-  if (!entry.handle || !entry.vendor || !entry.write || !entry.ref || !entry.dirty) return null
-  entry.dirty = false
-  const nextBody = entry.vendor.serialize(entry.handle.getData(), entry.mode, entry.extra)
-  if (nextBody === entry.source) return null
-  const result = entry.write(entry.ref, nextBody)
-  if (result === 'written' || result === 'moved') {
-    entry.source = nextBody
-    entry.ref = { line: entry.ref.line, body: nextBody }
-  }
-  return result
-}
-
 export function flushMindmaps(scope: string): void {
   for (const entry of entries.values()) {
     if (entry.scope === scope) flushEntry(entry)
@@ -435,16 +408,6 @@ function destroyEntry(entry: MindmapBlockEntry, flush = true): void {
   notify(entry.scope)
 }
 
-/** The current body text for a block, in the given mode (used by copy/convert actions). */
-export function serializeEntryAs(entry: MindmapBlockEntry, mode: MindmapMode): string | null {
-  if (!entry.handle || !entry.vendor) return null
-  return entry.vendor.serialize(entry.handle.getData(), mode, mode === 'json' ? entry.extra : {})
-}
-
-export function serializeEntry(entry: MindmapBlockEntry): string | null {
-  return serializeEntryAs(entry, entry.mode)
-}
-
 /**
  * Builds a block again after a failed render: the retry button on the error
  * banner has no other way back, since the mount pass only runs when the note's
@@ -456,19 +419,6 @@ export async function retryMindmap(node: HTMLElement): Promise<void> {
   if (entry) destroyEntry(entry, false)
   if (!options) return
   await mountMindmaps(node.parentElement ?? node, options)
-}
-
-/** Writes an explicit body (a format conversion), bypassing the operation debounce. */
-export function applyEntryBody(entry: MindmapBlockEntry, nextBody: string): MindmapWriteResult {
-  if (!entry.write || !entry.ref) return 'missing'
-  const result = entry.write(entry.ref, nextBody)
-  if (result === 'written' || result === 'moved') {
-    entry.source = nextBody
-    entry.mode = detectMindmapMode(nextBody)
-    entry.extra = {}
-    entry.ref = { line: entry.ref.line, body: nextBody }
-  }
-  return result
 }
 
 /**

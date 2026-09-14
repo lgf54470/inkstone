@@ -26,14 +26,13 @@ export interface MindmapHandle {
   /** Loads a body the fence no longer matches, palette included. */
   refresh(body: MindmapParsedBody): void
   /**
-   * The app's appearance setting changed. The palette the instance draws with is
-   * re-resolved from it and the body's own request (./theme), so a map that pinned
-   * a theme keeps it; the library bakes a theme into the element it draws in (the
-   * colour variables are written as inline styles, and the branch palette is
-   * painted into the connectors when they are drawn), which is why the map has to
-   * be told rather than left to follow the app's CSS.
+   * Paints the palette those two inputs resolve to (./theme). The library bakes a
+   * theme into the element it draws in (the colour variables are written as inline
+   * styles, and the branch palette is painted into the connectors when they are
+   * drawn), which is why a map has to be told rather than left to follow the app's
+   * CSS — and why a pin it cannot honour is not something it can notice by itself.
    */
-  applyTheme(dark: boolean): void
+  applyTheme(theme: MindmapThemeInput): void
   toCenter(): void
   layout(): void
   scaleFit(): void
@@ -46,6 +45,16 @@ export interface MindmapHandle {
   /** SVG snapshot used by the share page, slides, HTML/PDF export and the export menu. */
   exportSvg(): Promise<Blob>
   exportPng(): Promise<Blob | null>
+}
+
+/**
+ * What a map draws its palette from: the app's appearance setting, and the palette the
+ * fence it lives in asks for. Both travel together because either can change on its own
+ * and the answer is only meaningful as a pair.
+ */
+export interface MindmapThemeInput {
+  dark: boolean
+  choice: MindmapThemeChoice
 }
 
 export interface MindmapCreateOptions {

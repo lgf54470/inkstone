@@ -91,6 +91,11 @@ function expectRoot(el: HTMLElement, root: string): void {
   expect(painted(el).root).toBe(root)
 }
 
+/** The app's setting changes on its own; the body's own choice is carried along. */
+function switchAppearance(handle: MindmapHandle, dark: boolean, choice: MindmapThemeChoice = APP_THEME_CHOICE): void {
+  handle.applyTheme({ dark, choice })
+}
+
 describe('mind map vendor — the palette the app setting picks', () => {
   it('follows the app setting when the body names no palette', () => {
     mountAndRun(APP_THEME_CHOICE, false, (map) => expectRoot(map.el, LIGHT_ROOT))
@@ -100,7 +105,7 @@ describe('mind map vendor — the palette the app setting picks', () => {
   it('hands an app switch to the live map instead of only the next one', () => {
     mountAndRun(APP_THEME_CHOICE, false, (map) => {
       expectRoot(map.el, LIGHT_ROOT)
-      map.handle.applyTheme(true)
+      switchAppearance(map.handle, true)
       expectRoot(map.el, DARK_ROOT)
     })
   })
@@ -109,7 +114,7 @@ describe('mind map vendor — the palette the app setting picks', () => {
     mountAndRun(APP_THEME_CHOICE, false, (map) => {
       const lightBranch = painted(map.el).branch
       expect(lightBranch.length).toBeGreaterThan(0)
-      map.handle.applyTheme(true)
+      switchAppearance(map.handle, true)
       const darkBranch = painted(map.el).branch
       expect(darkBranch.length).toBeGreaterThan(0)
       expect(darkBranch).not.toBe(lightBranch)
@@ -126,8 +131,8 @@ describe('mind map vendor — the palette a body names', () => {
 
   it('leaves a map that named its own palette alone when the app switches', () => {
     mountAndRun({ kind: 'dark' }, false, (map) => {
-      map.handle.applyTheme(true)
-      map.handle.applyTheme(false)
+      switchAppearance(map.handle, true, { kind: 'dark' })
+      switchAppearance(map.handle, false, { kind: 'dark' })
       expectRoot(map.el, DARK_ROOT)
     })
   })

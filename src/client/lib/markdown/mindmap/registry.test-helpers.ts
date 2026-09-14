@@ -2,7 +2,7 @@ import { vi } from 'vitest'
 import { renderMarkdown } from '../renderer'
 import { mountMindmaps } from './registry'
 import { APP_THEME_CHOICE, type MindmapThemeChoice } from './theme'
-import type { MindmapCreateOptions, MindmapFenceRef, MindmapHandle, MindmapParsedBody, MindmapVendor, MindmapWriteResult } from './types'
+import type { MindmapCreateOptions, MindmapFenceRef, MindmapHandle, MindmapParsedBody, MindmapThemeInput, MindmapVendor, MindmapWriteResult } from './types'
 
 export interface StubMap {
   el: HTMLElement
@@ -10,8 +10,8 @@ export interface StubMap {
   current: string
   /** The parsed bodies a fence edit loaded into the instance, oldest first. */
   refreshes: MindmapParsedBody[]
-  /** Themes handed to a live instance through applyTheme, oldest first. */
-  themes: boolean[]
+  /** Palettes handed to a live instance through applyTheme, oldest first. */
+  paints: MindmapThemeInput[]
   historyCleared: boolean
   destroyed: boolean
   focusCalls: number
@@ -70,7 +70,7 @@ function newStubMap(options: MindmapCreateOptions): StubMap {
     options,
     current: String((options.body.data as { body?: string }).body ?? ''),
     refreshes: [],
-    themes: [],
+    paints: [],
     historyCleared: false,
     destroyed: false,
     focusCalls: 0,
@@ -90,8 +90,8 @@ function stubHandle(record: StubMap): MindmapHandle {
       record.refreshes.push(body)
       record.current = String((body.data as { body?: string }).body ?? '')
     },
-    applyTheme: (dark) => {
-      record.themes.push(dark)
+    applyTheme: (theme) => {
+      record.paints.push(theme)
     },
     toCenter: () => {},
     layout: () => {
@@ -116,8 +116,9 @@ function stubHandle(record: StubMap): MindmapHandle {
   }
 }
 
-export function noteSource(body: string): string {
-  return ['# Title', '', '```mindmap', body, '```', '', 'tail'].join('\n')
+/** `annotation` lands in the fence's info string: ` ```mindmap theme=dark `. */
+export function noteSource(body: string, annotation?: string): string {
+  return ['# Title', '', `\`\`\`mindmap${annotation === undefined ? '' : ` ${annotation}`}`, body, '```', '', 'tail'].join('\n')
 }
 
 function paint(host: HTMLElement, source: string): void {

@@ -5,7 +5,8 @@
  */
 import type { MindmapMode } from './body'
 import type { MindmapWriteResult } from './types'
-import { applyEntryBody, attachMindmapToOverlay, detachMindmapFromOverlay, flushEntry, mindmapEntryForNode, serializeEntryAs, type MindmapBlockEntry } from './registry'
+import { attachMindmapToOverlay, detachMindmapFromOverlay, mindmapEntryForNode, type MindmapBlockEntry } from './registry'
+import { applyEntryBody, flushEntry, serializeEntryAs } from './write'
 import { mindmapEditing } from './view'
 
 export interface MindmapSession {

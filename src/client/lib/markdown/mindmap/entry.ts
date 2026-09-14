@@ -1,0 +1,43 @@
+/**
+ * What the registry keeps per block: the instance, the element it draws in and
+ * everything the mount pass, the write-back and the full screen overlay need to
+ * act on it later. It lives in its own module so those layers can share it
+ * without importing each other.
+ */
+import type { AppLocale } from '@shared/types'
+import type { MindmapMode } from './body'
+import type { watchMindmapContainer } from './resize'
+import type { MindmapThemeChoice } from './theme'
+import type { MindmapFenceRef, MindmapHandle, MindmapVendor, MindmapVendorLoader, MindmapWriter } from './types'
+
+export interface MindmapBlockEntry {
+  key: string
+  scope: string
+  index: number
+  host: HTMLElement
+  mode: MindmapMode
+  source: string
+  extra: Record<string, unknown>
+  editable: boolean
+  owner: 'inline' | 'overlay'
+  dark: boolean
+  /** What the fence's own body says about its palette (./theme). */
+  bodyChoice: MindmapThemeChoice
+  /** The palette the fence names in its info string, as written, or null. */
+  annotation: string | null
+  /** What the map draws with once both of the above have been resolved. */
+  choice: MindmapThemeChoice
+  locale: AppLocale
+  load: MindmapVendorLoader
+  vendor: MindmapVendor | null
+  handle: MindmapHandle | null
+  container: HTMLElement | null
+  /** Watches the inline container so a pane resize re-fits the drawing. */
+  observer: ReturnType<typeof watchMindmapContainer>
+  ref: MindmapFenceRef | null
+  write: MindmapWriter | null
+  dirty: boolean
+  timer: number | null
+  /** The instance currently being built for this block, shared by concurrent passes. */
+  pending: Promise<void> | null
+}
