@@ -30,7 +30,7 @@ export const PaletteRow = memo(function PaletteRow({ item, active, index, listId
         {part.text}
         </mark>) : (<span key={i}>{part.text}</span>))}
     </span>
-    {item.detail && (<span className='mt-0.5 block truncate text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+    {item.detail && (<span className={cn('mt-0.5 block truncate text-[length:var(--text-11)]', active ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]')}>
       {item.detail}
       </span>)}
     </span>

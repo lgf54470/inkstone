@@ -3,6 +3,7 @@ import type { ViewKind } from '@shared/types'
 import { cn } from '../../../lib/cn'
 import { useNotes } from '../../../store/notes'
 import { isNoteDragEvent, leftDropTarget, readDraggedNoteIds } from './sidebar-drop'
+import { countBadgeTone } from './count-badge'
 
 
 function WeChatBadge({ count }: { count?: number }) {
@@ -124,7 +125,7 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
         {icon}
       </span>
       <span className="min-w-0 flex-1 truncate text-[length:var(--text-12\.5)] font-medium">{label}</span>
-      {count != null && count > 0 && (<span className='shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)]'>{count}</span>)}
+      {count != null && count > 0 && (<span className={countBadgeTone(active)}>{count}</span>)}
     </button>)
 }
 

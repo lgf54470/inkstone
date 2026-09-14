@@ -93,9 +93,9 @@
   --border-strong: oklch(100% 0 0 / 17%);
 
   --text-primary: oklch(93% 0.004 265);
-  --text-secondary: oklch(72% 0.008 265);
-  --text-tertiary: oklch(56% 0.009 265);
-  --text-quaternary: oklch(43% 0.008 265);
+  --text-secondary: oklch(74% 0.008 265);
+  --text-tertiary: oklch(70% 0.009 265);
+  --text-quaternary: oklch(67% 0.008 265);
   --text-inverse: oklch(16% 0.008 265);
 
   --shadow-pop: 0 0 0 1px oklch(100% 0 0 / 7%), 0 8px 24px -6px oklch(0% 0 0 / 60%),
@@ -222,7 +222,7 @@
 .accent-swatch[data-accent='wisteria'] { background-color: var(--accent-wisteria); }
 .accent-swatch[data-accent='graphite'] { background-color: var(--accent-graphite); }
 
-:root[data-accent='cinnabar'][data-theme='dark'] { --accent: oklch(66.5% 0.15 32); --accent-hover: oklch(71% 0.145 32); }
+:root[data-accent='cinnabar'][data-theme='dark'] { --accent: oklch(71.5% 0.15 32); --accent-hover: oklch(76.5% 0.145 32); }
 :root[data-accent='cinnabar'][data-theme='light'] { --accent: var(--accent-cinnabar); --accent-hover: oklch(48.5% 0.155 30); }
 
 :root[data-accent='indigo'][data-theme='dark'] { --accent: oklch(72% 0.13 252); --accent-hover: oklch(77% 0.125 252); }

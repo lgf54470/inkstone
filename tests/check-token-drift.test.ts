@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { driftProblems, normalizeName, normalizeValue, resolveVars, snapshotPayload, staleProblems, tokenEntries } from '../scripts/check-token-drift.mjs'
+import { driftProblems, normalizeName, normalizeValue, resolveVars, snapshotPayload, staleProblems, tokenEntries, tokenValues } from '../scripts/check-token-drift.mjs'
 
 describe('token name/value extraction', () => {
   it('normalizes CSS-escaped token names', () => {
@@ -74,6 +74,27 @@ describe('snapshot payload', () => {
     const payload = snapshotPayload(app, blog)
     expect(payload.tokens).toEqual(['--a'])
     expect(payload.values['--a']).toEqual({ app: '1px', blog: '1px' })
+  })
+
+  it('keeps every declaration of a token, so a themed value is not lost', () => {
+    const css = ":root[data-theme='dark'] { --t: oklch(62% 0.008 265); } :root[data-theme='light'] { --t: oklch(52% 0.008 265); }"
+    expect(tokenValues(css).get('--t')).toEqual(['oklch(0.62 0.008 265)', 'oklch(0.52 0.008 265)'])
+  })
+})
+
+describe('themed drift', () => {
+  const darkOnly = ":root[data-theme='dark'] { --t: 1px; } :root[data-theme='light'] { --t: 2px; }"
+  const lists = (text) => tokenValues(text)
+  const baseline = { tokens: ['--t'], values: { '--t': { app: lists(darkOnly).get('--t'), blog: lists(darkOnly).get('--t') } } }
+
+  it('passes when both themes match on both sides', () => {
+    expect(driftProblems(tokenEntries(darkOnly), tokenEntries(darkOnly), baseline, { app: lists(darkOnly), blog: lists(darkOnly) })).toEqual([])
+  })
+
+  it('flags a dark-only change on one side', () => {
+    const changed = ":root[data-theme='dark'] { --t: 9px; } :root[data-theme='light'] { --t: 2px; }"
+    const problems = driftProblems(tokenEntries(changed), tokenEntries(darkOnly), baseline, { app: lists(changed), blog: lists(darkOnly) })
+    expect(problems.some((problem) => problem.includes('--t value drifted'))).toBe(true)
   })
 })
 

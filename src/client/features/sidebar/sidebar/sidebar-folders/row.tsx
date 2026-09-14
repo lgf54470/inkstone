@@ -18,6 +18,7 @@ import { t } from '../../../../lib/i18n'
 import { FOLDER_DRAG_TYPE, NOTE_DRAG_TYPE, NOTES_DRAG_TYPE, leftDropTarget, readDraggedNoteIds } from '../sidebar-drop'
 import { FolderMotionIcon } from './motion-icon'
 import { TreeExpandButton } from '../../tree-expand-button'
+import { countBadgeTone } from '../count-badge'
 import { useTreeChildrenMount } from '../../use-tree-children'
 
 type DropState = 'none' | 'before' | 'inside' | 'after'
@@ -73,7 +74,7 @@ export function FolderRow({ node, siblings, index, parentNode, parentSiblings, o
         <TreeExpandButton expanded={expanded} hasChildren={hasChildren} onToggle={() => toggleFolder(node.id)}/>
         <FolderRowIcon node={node} active={active} open={expanded && hasChildren} justCreated={justCreated}/>
         <FolderRowLabel node={node} folders={folders} active={active} isInbox={isInbox} renaming={renaming} onCommitRename={(value) => commitRename(value, node, patchFolder, renamingRef, onFinishRename)} onCancelRename={onFinishRename} onStartRename={() => onStartRename(node.id)}/>
-        {!renaming && <FolderRowMeta count={node.totalNotes} onOpenMenu={(event) => { event.stopPropagation(); menu.close(); setIsMenuOpen(true); }}/>}
+        {!renaming && <FolderRowMeta count={node.totalNotes} active={active} onOpenMenu={(event) => { event.stopPropagation(); menu.close(); setIsMenuOpen(true); }}/>}
       </div>
       {childrenMounted && <FolderTreeChildren node={node} siblings={siblings} childrenVisible={childrenVisible} createdFolderId={createdFolderId} renamingId={renamingId} onCreateChild={onCreateChild} onMove={onMove} onChooseParent={onChooseParent} onStartRename={onStartRename} onFinishRename={onFinishRename}/>}
       <Menu anchor={buttonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={menuItems}/>
@@ -157,12 +158,13 @@ function FolderRowIcon({ node, active, open, justCreated }: {
   </span>)
 }
 
-function FolderRowMeta({ count, onOpenMenu }: {
+function FolderRowMeta({ count, active, onOpenMenu }: {
   count: number
+  active: boolean
   onOpenMenu: (event: React.MouseEvent) => void
 }) {
   return (<>
-    <span className='shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-0'>
+    <span className={cn(countBadgeTone(active), 'transition-opacity group-hover:opacity-0')}>
       {count > 0 ? count : ''}
     </span>
     <Tooltip label={t('common.more_actions')} side='left'>

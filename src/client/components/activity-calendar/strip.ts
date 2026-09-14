@@ -5,8 +5,11 @@ import { alignWeekStart } from './range'
 
 
 // The darkest level is capped by contrast rather than by taste: a day number is primary text on
-// this tint, and at 76% the tint took it to 4.1:1 where AA needs 4.5.
-export const HEAT_PERCENTS = [0, 16, 34, 54, 70] as const
+// this tint, and the cap has to hold for every accent the appearance setting offers, in both
+// themes — at 70% the darkest cells read 3.58:1 under indigo (dark) and 3.90:1 under graphite
+// (light), where AA needs 4.5. 50% is the highest level all fourteen measure above it
+// (scripts/check-contrast.mjs re-measures the cells for each accent and theme).
+export const HEAT_PERCENTS = [0, 12, 24, 36, 50] as const
 
 
 

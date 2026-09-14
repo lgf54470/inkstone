@@ -91,356 +91,881 @@
   ],
   "values": {
     "--accent": {
-      "app": "oklch(0.49 0.15 30)",
-      "blog": "oklch(0.54 0.15 30)"
+      "app": [
+        "oklch(0.715 0.15 32)",
+        "oklch(0.49 0.15 30)",
+        "oklch(0.72 0.13 252)",
+        "oklch(0.47 0.14 252)",
+        "oklch(0.74 0.12 150)",
+        "oklch(0.45 0.13 150)",
+        "oklch(0.8 0.14 95)",
+        "oklch(0.47 0.105 95)",
+        "oklch(0.76 0.105 205)",
+        "oklch(0.46 0.075 205)",
+        "oklch(0.72 0.13 300)",
+        "oklch(0.49 0.16 300)",
+        "oklch(0.8 0.025 250)",
+        "oklch(0.38 0.03 250)",
+        "oklch(0.49 0.15 30)"
+      ],
+      "blog": [
+        "oklch(0.715 0.15 32)",
+        "oklch(0.54 0.15 30)",
+        "oklch(0.72 0.13 252)",
+        "oklch(0.52 0.14 252)",
+        "oklch(0.74 0.12 150)",
+        "oklch(0.49 0.13 150)",
+        "oklch(0.8 0.14 95)",
+        "oklch(0.56 0.105 95)",
+        "oklch(0.76 0.105 205)",
+        "oklch(0.49 0.075 205)",
+        "oklch(0.72 0.13 300)",
+        "oklch(0.52 0.16 300)",
+        "oklch(0.8 0.025 250)",
+        "oklch(0.38 0.03 250)",
+        "oklch(0.54 0.15 30)"
+      ]
     },
     "--accent-contrast": {
-      "app": "oklch(0.16 0.008 265)",
-      "blog": "oklch(0.16 0.008 265)"
+      "app": [
+        "oklch(0.99 0 0)",
+        "oklch(0.16 0.008 265)"
+      ],
+      "blog": [
+        "oklch(0.99 0 0)",
+        "oklch(0.16 0.008 265)"
+      ]
     },
     "--accent-hover": {
-      "app": "oklch(0.44 0.155 30)",
-      "blog": "oklch(0.485 0.155 30)"
+      "app": [
+        "oklch(0.765 0.145 32)",
+        "oklch(0.44 0.155 30)",
+        "oklch(0.77 0.125 252)",
+        "oklch(0.42 0.13 252)",
+        "oklch(0.79 0.115 150)",
+        "oklch(0.4 0.11 150)",
+        "oklch(0.85 0.13 95)",
+        "oklch(0.42 0.1 95)",
+        "oklch(0.81 0.1 205)",
+        "oklch(0.41 0.07 205)",
+        "oklch(0.77 0.13 300)",
+        "oklch(0.44 0.15 300)",
+        "oklch(0.86 0.02 250)",
+        "oklch(0.3 0.025 250)",
+        "oklch(0.44 0.155 30)"
+      ],
+      "blog": [
+        "oklch(0.765 0.145 32)",
+        "oklch(0.485 0.155 30)",
+        "oklch(0.77 0.125 252)",
+        "oklch(0.46 0.13 252)",
+        "oklch(0.79 0.115 150)",
+        "oklch(0.43 0.11 150)",
+        "oklch(0.85 0.13 95)",
+        "oklch(0.5 0.1 95)",
+        "oklch(0.81 0.1 205)",
+        "oklch(0.43 0.07 205)",
+        "oklch(0.77 0.13 300)",
+        "oklch(0.46 0.15 300)",
+        "oklch(0.86 0.02 250)",
+        "oklch(0.3 0.025 250)",
+        "oklch(0.485 0.155 30)"
+      ]
     },
     "--accent-muted": {
-      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 62%, oklch(0.5 0.009 265))",
-      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.5 0.009 265))"
+      "app": [
+        "color-mix(in oklab, oklch(0.49 0.15 30) 62%, oklch(0.5 0.009 265))"
+      ],
+      "blog": [
+        "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.5 0.009 265))"
+      ]
     },
     "--accent-ring": {
-      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 34%, transparent)",
-      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 34%, transparent)"
+      "app": [
+        "color-mix(in oklab, oklch(0.49 0.15 30) 34%, transparent)"
+      ],
+      "blog": [
+        "color-mix(in oklab, oklch(0.54 0.15 30) 34%, transparent)"
+      ]
     },
     "--accent-soft": {
-      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 14%, transparent)",
-      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 14%, transparent)"
+      "app": [
+        "color-mix(in oklab, oklch(0.49 0.15 30) 14%, transparent)"
+      ],
+      "blog": [
+        "color-mix(in oklab, oklch(0.54 0.15 30) 14%, transparent)"
+      ]
     },
     "--accent-softer": {
-      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 7%, transparent)",
-      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 7%, transparent)"
+      "app": [
+        "color-mix(in oklab, oklch(0.49 0.15 30) 7%, transparent)"
+      ],
+      "blog": [
+        "color-mix(in oklab, oklch(0.54 0.15 30) 7%, transparent)"
+      ]
     },
     "--anim-spin": {
-      "app": "0.8s",
-      "blog": "0.8s"
+      "app": [
+        "0.8s"
+      ],
+      "blog": [
+        "0.8s"
+      ]
     },
     "--bg-active": {
-      "app": "oklch(0.2 0.01 265 / 0.07)",
-      "blog": "oklch(0.2 0.01 265 / 0.07)"
+      "app": [
+        "oklch(1 0 0 / 0.08)",
+        "oklch(0.2 0.01 265 / 0.07)"
+      ],
+      "blog": [
+        "oklch(1 0 0 / 0.08)",
+        "oklch(0.2 0.01 265 / 0.07)"
+      ]
     },
     "--bg-base": {
-      "app": "#151617",
-      "blog": "#151617"
+      "app": [
+        "#181614",
+        "#f7f5f1",
+        "#ffffff",
+        "#151617"
+      ],
+      "blog": [
+        "#181614",
+        "#f7f5f1",
+        "#ffffff",
+        "#151617"
+      ]
     },
     "--bg-editor": {
-      "app": "#1b1c1e",
-      "blog": "#1b1c1e"
+      "app": [
+        "#1e1b19",
+        "#fdfcfa",
+        "#ffffff",
+        "#1b1c1e"
+      ],
+      "blog": [
+        "#1e1b19",
+        "#fdfcfa",
+        "#ffffff",
+        "#1b1c1e"
+      ]
     },
     "--bg-hover": {
-      "app": "oklch(0.2 0.01 265 / 0.04)",
-      "blog": "oklch(0.2 0.01 265 / 0.04)"
+      "app": [
+        "oklch(1 0 0 / 0.045)",
+        "oklch(0.2 0.01 265 / 0.04)"
+      ],
+      "blog": [
+        "oklch(1 0 0 / 0.045)",
+        "oklch(0.2 0.01 265 / 0.04)"
+      ]
     },
     "--bg-inset": {
-      "app": "#111214",
-      "blog": "#111214"
+      "app": [
+        "oklch(0.14 0.008 265)",
+        "oklch(0.968 0.005 90)",
+        "#f4f5f6",
+        "#111214"
+      ],
+      "blog": [
+        "oklch(0.14 0.008 265)",
+        "oklch(0.968 0.005 90)",
+        "#f4f5f6",
+        "#111214"
+      ]
     },
     "--bg-overlay": {
-      "app": "#292a2d",
-      "blog": "#292a2d"
+      "app": [
+        "oklch(0.27 0.012 265)",
+        "oklch(1 0 0)",
+        "#ffffff",
+        "#292a2d"
+      ],
+      "blog": [
+        "oklch(0.27 0.012 265)",
+        "oklch(1 0 0)",
+        "#ffffff",
+        "#292a2d"
+      ]
     },
     "--bg-raised": {
-      "app": "#252629",
-      "blog": "#252629"
+      "app": [
+        "oklch(0.25 0.011 265)",
+        "oklch(1 0 0)",
+        "#ffffff",
+        "#252629"
+      ],
+      "blog": [
+        "oklch(0.25 0.011 265)",
+        "oklch(1 0 0)",
+        "#ffffff",
+        "#252629"
+      ]
     },
     "--bg-sunken": {
-      "app": "#0f1011",
-      "blog": "#0f1011"
+      "app": [
+        "#131110",
+        "#f1efe9",
+        "#f7f7f8",
+        "#0f1011"
+      ],
+      "blog": [
+        "#131110",
+        "#f1efe9",
+        "#f7f7f8",
+        "#0f1011"
+      ]
     },
     "--bg-surface": {
-      "app": "#202123",
-      "blog": "#202123"
+      "app": [
+        "oklch(0.215 0.01 265)",
+        "oklch(1 0 0)",
+        "#ffffff",
+        "#202123"
+      ],
+      "blog": [
+        "oklch(0.215 0.01 265)",
+        "oklch(1 0 0)",
+        "#ffffff",
+        "#202123"
+      ]
     },
     "--border-default": {
-      "app": "oklch(0.2 0.01 265 / 0.11)",
-      "blog": "oklch(0.2 0.01 265 / 0.11)"
+      "app": [
+        "oklch(1 0 0 / 0.1)",
+        "oklch(0.2 0.01 265 / 0.11)"
+      ],
+      "blog": [
+        "oklch(1 0 0 / 0.1)",
+        "oklch(0.2 0.01 265 / 0.11)"
+      ]
     },
     "--border-strong": {
-      "app": "oklch(0.2 0.01 265 / 0.17)",
-      "blog": "oklch(0.2 0.01 265 / 0.17)"
+      "app": [
+        "oklch(1 0 0 / 0.17)",
+        "oklch(0.2 0.01 265 / 0.17)"
+      ],
+      "blog": [
+        "oklch(1 0 0 / 0.17)",
+        "oklch(0.2 0.01 265 / 0.17)"
+      ]
     },
     "--border-subtle": {
-      "app": "oklch(0.2 0.01 265 / 0.07)",
-      "blog": "oklch(0.2 0.01 265 / 0.07)"
+      "app": [
+        "oklch(1 0 0 / 0.06)",
+        "oklch(0.2 0.01 265 / 0.07)"
+      ],
+      "blog": [
+        "oklch(1 0 0 / 0.06)",
+        "oklch(0.2 0.01 265 / 0.07)"
+      ]
     },
     "--code-fg": {
-      "app": "#24292e",
-      "blog": "#24292e"
+      "app": [
+        "#adbac7",
+        "#24292e"
+      ],
+      "blog": [
+        "#adbac7",
+        "#24292e"
+      ]
     },
     "--code-inline-fg": {
-      "app": "#005cc5",
-      "blog": "#005cc5"
+      "app": [
+        "#6cb6ff",
+        "#005cc5"
+      ],
+      "blog": [
+        "#6cb6ff",
+        "#005cc5"
+      ]
     },
     "--code-line": {
-      "app": "1.56",
-      "blog": "1.56"
+      "app": [
+        "1.56"
+      ],
+      "blog": [
+        "1.56"
+      ]
     },
     "--code-size": {
-      "app": "var(--editor-size, 15px)",
-      "blog": "var(--editor-size, 15px)"
+      "app": [
+        "var(--editor-size, 15px)"
+      ],
+      "blog": [
+        "var(--editor-size, 15px)"
+      ]
     },
     "--code-spacing": {
-      "app": "-0.012em",
-      "blog": "-0.012em"
+      "app": [
+        "-0.012em"
+      ],
+      "blog": [
+        "-0.012em"
+      ]
     },
     "--code-weight": {
-      "app": "400",
-      "blog": "400"
+      "app": [
+        "400"
+      ],
+      "blog": [
+        "400"
+      ]
     },
     "--danger": {
-      "app": "oklch(0.68 0.185 22)",
-      "blog": "oklch(0.68 0.185 22)"
+      "app": [
+        "oklch(0.64 0.19 22)",
+        "oklch(0.68 0.185 22)"
+      ],
+      "blog": [
+        "oklch(0.64 0.19 22)",
+        "oklch(0.68 0.185 22)"
+      ]
     },
     "--dur-base": {
-      "app": "1ms",
-      "blog": "1ms"
+      "app": [
+        "220ms",
+        "1ms"
+      ],
+      "blog": [
+        "220ms",
+        "1ms"
+      ]
     },
     "--dur-fast": {
-      "app": "1ms",
-      "blog": "1ms"
+      "app": [
+        "130ms",
+        "1ms"
+      ],
+      "blog": [
+        "130ms",
+        "1ms"
+      ]
     },
     "--dur-slow": {
-      "app": "1ms",
-      "blog": "1ms"
+      "app": [
+        "340ms",
+        "1ms"
+      ],
+      "blog": [
+        "340ms",
+        "1ms"
+      ]
     },
     "--ease-in-out": {
-      "app": "cubic-bezier(0.65, 0, 0.35, 1)",
-      "blog": "cubic-bezier(0.65, 0, 0.35, 1)"
+      "app": [
+        "cubic-bezier(0.65, 0, 0.35, 1)"
+      ],
+      "blog": [
+        "cubic-bezier(0.65, 0, 0.35, 1)"
+      ]
     },
     "--ease-out": {
-      "app": "cubic-bezier(0.22, 1, 0.36, 1)",
-      "blog": "cubic-bezier(0.22, 1, 0.36, 1)"
+      "app": [
+        "cubic-bezier(0.22, 1, 0.36, 1)"
+      ],
+      "blog": [
+        "cubic-bezier(0.22, 1, 0.36, 1)"
+      ]
     },
     "--editor-size": {
-      "app": "15px",
-      "blog": "15px"
+      "app": [
+        "15px"
+      ],
+      "blog": [
+        "15px"
+      ]
     },
     "--font-mono": {
-      "app": "ui-monospace, 'sf mono', 'jetbrains mono', 'cascadia code', 'cascadia mono', consolas, 'liberation mono', menlo, 'sarasa mono sc', monospace",
-      "blog": "ui-monospace, 'sf mono', 'jetbrains mono', 'cascadia code', 'cascadia mono', consolas, 'liberation mono', menlo, 'sarasa mono sc', monospace"
+      "app": [
+        "ui-monospace, 'sf mono', 'jetbrains mono', 'cascadia code', 'cascadia mono', consolas, 'liberation mono', menlo, 'sarasa mono sc', monospace"
+      ],
+      "blog": [
+        "ui-monospace, 'sf mono', 'jetbrains mono', 'cascadia code', 'cascadia mono', consolas, 'liberation mono', menlo, 'sarasa mono sc', monospace"
+      ]
     },
     "--font-serif": {
-      "app": "'iowan old style', 'source serif 4', charter, georgia, 'songti sc', 'noto serif cjk sc', 'source han serif sc', 'simsun', serif",
-      "blog": "'iowan old style', 'source serif 4', charter, georgia, 'songti sc', 'noto serif cjk sc', 'source han serif sc', 'simsun', serif"
+      "app": [
+        "'iowan old style', 'source serif 4', charter, georgia, 'songti sc', 'noto serif cjk sc', 'source han serif sc', 'simsun', serif"
+      ],
+      "blog": [
+        "'iowan old style', 'source serif 4', charter, georgia, 'songti sc', 'noto serif cjk sc', 'source han serif sc', 'simsun', serif"
+      ]
     },
     "--font-ui": {
-      "app": "'inter variable', -apple-system, blinkmacsystemfont, 'segoe ui variable text', 'segoe ui', inter, roboto, 'pingfang sc', 'hiragino sans gb', 'microsoft yahei ui', 'microsoft yahei', sans-serif",
-      "blog": "'inter variable', -apple-system, blinkmacsystemfont, 'segoe ui variable text', 'segoe ui', inter, roboto, 'pingfang sc', 'hiragino sans gb', 'microsoft yahei ui', 'microsoft yahei', sans-serif"
+      "app": [
+        "'inter variable', -apple-system, blinkmacsystemfont, 'segoe ui variable text', 'segoe ui', inter, roboto, 'pingfang sc', 'hiragino sans gb', 'microsoft yahei ui', 'microsoft yahei', sans-serif"
+      ],
+      "blog": [
+        "'inter variable', -apple-system, blinkmacsystemfont, 'segoe ui variable text', 'segoe ui', inter, roboto, 'pingfang sc', 'hiragino sans gb', 'microsoft yahei ui', 'microsoft yahei', sans-serif"
+      ]
     },
     "--heading-1-size": {
-      "app": "1.52em",
-      "blog": "1.52em"
+      "app": [
+        "1.52em"
+      ],
+      "blog": [
+        "1.52em"
+      ]
     },
     "--heading-2-size": {
-      "app": "1.28em",
-      "blog": "1.28em"
+      "app": [
+        "1.28em"
+      ],
+      "blog": [
+        "1.28em"
+      ]
     },
     "--heading-3-size": {
-      "app": "1.14em",
-      "blog": "1.14em"
+      "app": [
+        "1.14em"
+      ],
+      "blog": [
+        "1.14em"
+      ]
     },
     "--heading-4-size": {
-      "app": "1.03em",
-      "blog": "1.03em"
+      "app": [
+        "1.03em"
+      ],
+      "blog": [
+        "1.03em"
+      ]
     },
     "--heading-5-size": {
-      "app": "0.94em",
-      "blog": "0.94em"
+      "app": [
+        "0.94em"
+      ],
+      "blog": [
+        "0.94em"
+      ]
     },
     "--heading-line": {
-      "app": "1.28",
-      "blog": "1.28"
+      "app": [
+        "1.28"
+      ],
+      "blog": [
+        "1.28"
+      ]
     },
     "--list-marker": {
-      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 62%, oklch(0.5 0.009 265))",
-      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.5 0.009 265))"
+      "app": [
+        "color-mix(in oklab, oklch(0.49 0.15 30) 62%, oklch(0.5 0.009 265))"
+      ],
+      "blog": [
+        "color-mix(in oklab, oklch(0.54 0.15 30) 62%, oklch(0.5 0.009 265))"
+      ]
     },
     "--prose-line": {
-      "app": "1.65",
-      "blog": "1.65"
+      "app": [
+        "1.65"
+      ],
+      "blog": [
+        "1.65"
+      ]
     },
     "--prose-size": {
-      "app": "16px",
-      "blog": "16px"
+      "app": [
+        "16px"
+      ],
+      "blog": [
+        "16px"
+      ]
     },
     "--prose-width": {
-      "app": "72ch",
-      "blog": "72ch"
+      "app": [
+        "72ch"
+      ],
+      "blog": [
+        "72ch"
+      ]
     },
     "--r-2xl": {
-      "app": "20px",
-      "blog": "20px"
+      "app": [
+        "20px"
+      ],
+      "blog": [
+        "20px"
+      ]
     },
     "--r-full": {
-      "app": "999px",
-      "blog": "999px"
+      "app": [
+        "999px"
+      ],
+      "blog": [
+        "999px"
+      ]
     },
     "--r-lg": {
-      "app": "12px",
-      "blog": "12px"
+      "app": [
+        "12px"
+      ],
+      "blog": [
+        "12px"
+      ]
     },
     "--r-md": {
-      "app": "8px",
-      "blog": "8px"
+      "app": [
+        "8px"
+      ],
+      "blog": [
+        "8px"
+      ]
     },
     "--r-sm": {
-      "app": "6px",
-      "blog": "6px"
+      "app": [
+        "6px"
+      ],
+      "blog": [
+        "6px"
+      ]
     },
     "--r-xl": {
-      "app": "16px",
-      "blog": "16px"
+      "app": [
+        "16px"
+      ],
+      "blog": [
+        "16px"
+      ]
     },
     "--r-xs": {
-      "app": "4px",
-      "blog": "4px"
+      "app": [
+        "4px"
+      ],
+      "blog": [
+        "4px"
+      ]
     },
     "--selection": {
-      "app": "color-mix(in oklab, oklch(0.49 0.15 30) 22%, transparent)",
-      "blog": "color-mix(in oklab, oklch(0.54 0.15 30) 22%, transparent)"
+      "app": [
+        "color-mix(in oklab, oklch(0.49 0.15 30) 30%, transparent)",
+        "color-mix(in oklab, oklch(0.49 0.15 30) 22%, transparent)"
+      ],
+      "blog": [
+        "color-mix(in oklab, oklch(0.54 0.15 30) 30%, transparent)",
+        "color-mix(in oklab, oklch(0.54 0.15 30) 22%, transparent)"
+      ]
     },
     "--shadow-float": {
-      "app": "0 1px 2px oklch(0.2 0.01 265 / 0.12)",
-      "blog": "0 1px 2px oklch(0 0 0 / 0.12)"
+      "app": [
+        "0 1px 2px oklch(0 0 0 / 0.12)",
+        "0 1px 2px oklch(0.2 0.01 265 / 0.12)"
+      ],
+      "blog": [
+        "0 1px 2px oklch(0 0 0 / 0.12)"
+      ]
     },
     "--shadow-hover": {
-      "app": "0 4px 6px -1px oklch(0.2 0.01 265 / 0.1), 0 2px 4px -2px oklch(0.2 0.01 265 / 0.1)",
-      "blog": "0 4px 6px -1px oklch(0.2 0.01 265 / 0.1), 0 2px 4px -2px oklch(0.2 0.01 265 / 0.1)"
+      "app": [
+        "0 4px 6px -1px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.1)",
+        "0 4px 6px -1px oklch(0.2 0.01 265 / 0.1), 0 2px 4px -2px oklch(0.2 0.01 265 / 0.1)"
+      ],
+      "blog": [
+        "0 4px 6px -1px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.1)",
+        "0 4px 6px -1px oklch(0.2 0.01 265 / 0.1), 0 2px 4px -2px oklch(0.2 0.01 265 / 0.1)"
+      ]
     },
     "--shadow-modal": {
-      "app": "0 0 0 1px oklch(0.2 0.01 265 / 0.07), 0 8px 16px -4px oklch(0.2 0.01 265 / 0.08), 0 24px 48px -12px oklch(0.2 0.01 265 / 0.16)",
-      "blog": "0 0 0 1px oklch(0.2 0.01 265 / 0.07), 0 8px 16px -4px oklch(0.2 0.01 265 / 0.08), 0 24px 48px -12px oklch(0.2 0.01 265 / 0.16)"
+      "app": [
+        "0 0 0 1px oklch(1 0 0 / 0.08), 0 16px 40px -8px oklch(0 0 0 / 0.65), 0 40px 80px -20px oklch(0 0 0 / 0.55)",
+        "0 0 0 1px oklch(0.2 0.01 265 / 0.07), 0 8px 16px -4px oklch(0.2 0.01 265 / 0.08), 0 24px 48px -12px oklch(0.2 0.01 265 / 0.16)"
+      ],
+      "blog": [
+        "0 0 0 1px oklch(1 0 0 / 0.08), 0 16px 40px -8px oklch(0 0 0 / 0.65), 0 40px 80px -20px oklch(0 0 0 / 0.55)",
+        "0 0 0 1px oklch(0.2 0.01 265 / 0.07), 0 8px 16px -4px oklch(0.2 0.01 265 / 0.08), 0 24px 48px -12px oklch(0.2 0.01 265 / 0.16)"
+      ]
     },
     "--shadow-pop": {
-      "app": "0 0 0 1px oklch(0.2 0.01 265 / 0.06), 0 2px 4px -1px oklch(0.2 0.01 265 / 0.05), 0 12px 28px -8px oklch(0.2 0.01 265 / 0.12), 0 24px 56px -16px oklch(0.2 0.01 265 / 0.1)",
-      "blog": "0 0 0 1px oklch(0.2 0.01 265 / 0.06), 0 2px 4px -1px oklch(0.2 0.01 265 / 0.05), 0 12px 28px -8px oklch(0.2 0.01 265 / 0.12), 0 24px 56px -16px oklch(0.2 0.01 265 / 0.1)"
+      "app": [
+        "0 0 0 1px oklch(1 0 0 / 0.07), 0 8px 24px -6px oklch(0 0 0 / 0.6), 0 20px 48px -12px oklch(0 0 0 / 0.45)",
+        "0 0 0 1px oklch(0.2 0.01 265 / 0.06), 0 2px 4px -1px oklch(0.2 0.01 265 / 0.05), 0 12px 28px -8px oklch(0.2 0.01 265 / 0.12), 0 24px 56px -16px oklch(0.2 0.01 265 / 0.1)"
+      ],
+      "blog": [
+        "0 0 0 1px oklch(1 0 0 / 0.07), 0 8px 24px -6px oklch(0 0 0 / 0.6), 0 20px 48px -12px oklch(0 0 0 / 0.45)",
+        "0 0 0 1px oklch(0.2 0.01 265 / 0.06), 0 2px 4px -1px oklch(0.2 0.01 265 / 0.05), 0 12px 28px -8px oklch(0.2 0.01 265 / 0.12), 0 24px 56px -16px oklch(0.2 0.01 265 / 0.1)"
+      ]
     },
     "--shadow-sm": {
-      "app": "0 1px 2px oklch(0.2 0.01 265 / 0.06)",
-      "blog": "0 1px 2px oklch(0.2 0.01 265 / 0.06)"
+      "app": [
+        "0 1px 2px oklch(0 0 0 / 0.4)",
+        "0 1px 2px oklch(0.2 0.01 265 / 0.06)"
+      ],
+      "blog": [
+        "0 1px 2px oklch(0 0 0 / 0.4)",
+        "0 1px 2px oklch(0.2 0.01 265 / 0.06)"
+      ]
     },
     "--shadow-xs": {
-      "app": "0 1px 2px oklch(0.2 0.01 265 / 0.05)",
-      "blog": "0 1px 2px oklch(0.2 0.01 265 / 0.05)"
+      "app": [
+        "0 1px 2px oklch(0 0 0 / 0.05)",
+        "0 1px 2px oklch(0.2 0.01 265 / 0.05)"
+      ],
+      "blog": [
+        "0 1px 2px oklch(0 0 0 / 0.05)",
+        "0 1px 2px oklch(0.2 0.01 265 / 0.05)"
+      ]
     },
     "--sp-0.625": {
-      "app": "2.5px",
-      "blog": "2.5px"
+      "app": [
+        "2.5px"
+      ],
+      "blog": [
+        "2.5px"
+      ]
     },
     "--success": {
-      "app": "oklch(0.72 0.145 155)",
-      "blog": "oklch(0.72 0.145 155)"
+      "app": [
+        "oklch(0.7 0.14 155)",
+        "oklch(0.72 0.145 155)"
+      ],
+      "blog": [
+        "oklch(0.7 0.14 155)",
+        "oklch(0.72 0.145 155)"
+      ]
     },
     "--syntax-comment": {
-      "app": "#6a737d",
-      "blog": "#6a737d"
+      "app": [
+        "#768390",
+        "#6a737d"
+      ],
+      "blog": [
+        "#768390",
+        "#6a737d"
+      ]
     },
     "--syntax-constant": {
-      "app": "#005cc5",
-      "blog": "#005cc5"
+      "app": [
+        "#6cb6ff",
+        "#005cc5"
+      ],
+      "blog": [
+        "#6cb6ff",
+        "#005cc5"
+      ]
     },
     "--syntax-function": {
-      "app": "#6f42c1",
-      "blog": "#6f42c1"
+      "app": [
+        "#dcbdfb",
+        "#6f42c1"
+      ],
+      "blog": [
+        "#dcbdfb",
+        "#6f42c1"
+      ]
     },
     "--syntax-keyword": {
-      "app": "#d73a49",
-      "blog": "#d73a49"
+      "app": [
+        "#f47067",
+        "#d73a49"
+      ],
+      "blog": [
+        "#f47067",
+        "#d73a49"
+      ]
     },
     "--syntax-number": {
-      "app": "#005cc5",
-      "blog": "#005cc5"
+      "app": [
+        "#6cb6ff",
+        "#005cc5"
+      ],
+      "blog": [
+        "#6cb6ff",
+        "#005cc5"
+      ]
     },
     "--syntax-operator": {
-      "app": "#d73a49",
-      "blog": "#d73a49"
+      "app": [
+        "#f47067",
+        "#d73a49"
+      ],
+      "blog": [
+        "#f47067",
+        "#d73a49"
+      ]
     },
     "--syntax-property": {
-      "app": "#e36209",
-      "blog": "#e36209"
+      "app": [
+        "#f69d50",
+        "#e36209"
+      ],
+      "blog": [
+        "#f69d50",
+        "#e36209"
+      ]
     },
     "--syntax-punctuation": {
-      "app": "#24292e",
-      "blog": "#24292e"
+      "app": [
+        "#adbac7",
+        "#24292e"
+      ],
+      "blog": [
+        "#adbac7",
+        "#24292e"
+      ]
     },
     "--syntax-string": {
-      "app": "#032f62",
-      "blog": "#032f62"
+      "app": [
+        "#96d0ff",
+        "#032f62"
+      ],
+      "blog": [
+        "#96d0ff",
+        "#032f62"
+      ]
     },
     "--syntax-type": {
-      "app": "#005cc5",
-      "blog": "#005cc5"
+      "app": [
+        "#6cb6ff",
+        "#005cc5"
+      ],
+      "blog": [
+        "#6cb6ff",
+        "#005cc5"
+      ]
     },
     "--syntax-type-definition": {
-      "app": "#6f42c1",
-      "blog": "#6f42c1"
+      "app": [
+        "#f69d50",
+        "#6f42c1"
+      ],
+      "blog": [
+        "#f69d50",
+        "#6f42c1"
+      ]
     },
     "--syntax-variable": {
-      "app": "#24292e",
-      "blog": "#24292e"
+      "app": [
+        "#adbac7",
+        "#24292e"
+      ],
+      "blog": [
+        "#adbac7",
+        "#24292e"
+      ]
     },
     "--text-10": {
-      "app": "10px",
-      "blog": "10px"
+      "app": [
+        "10px"
+      ],
+      "blog": [
+        "10px"
+      ]
     },
     "--text-10.5": {
-      "app": "10.5px",
-      "blog": "10.5px"
+      "app": [
+        "10.5px"
+      ],
+      "blog": [
+        "10.5px"
+      ]
     },
     "--text-11": {
-      "app": "11px",
-      "blog": "11px"
+      "app": [
+        "11px"
+      ],
+      "blog": [
+        "11px"
+      ]
     },
     "--text-11.5": {
-      "app": "11.5px",
-      "blog": "11.5px"
+      "app": [
+        "11.5px"
+      ],
+      "blog": [
+        "11.5px"
+      ]
     },
     "--text-12": {
-      "app": "12px",
-      "blog": "12px"
+      "app": [
+        "12px"
+      ],
+      "blog": [
+        "12px"
+      ]
     },
     "--text-13": {
-      "app": "13px",
-      "blog": "13px"
+      "app": [
+        "13px"
+      ],
+      "blog": [
+        "13px"
+      ]
     },
     "--text-inverse": {
-      "app": "oklch(0.99 0 0)",
-      "blog": "oklch(0.99 0 0)"
+      "app": [
+        "oklch(0.16 0.008 265)",
+        "oklch(0.99 0 0)"
+      ],
+      "blog": [
+        "oklch(0.16 0.008 265)",
+        "oklch(0.99 0 0)"
+      ]
     },
     "--text-primary": {
-      "app": "oklch(0.21 0.01 265)",
-      "blog": "oklch(0.21 0.01 265)"
+      "app": [
+        "oklch(0.93 0.004 265)",
+        "oklch(0.21 0.01 265)"
+      ],
+      "blog": [
+        "oklch(0.93 0.004 265)",
+        "oklch(0.21 0.01 265)"
+      ]
     },
     "--text-quaternary": {
-      "app": "oklch(0.52 0.008 265)",
-      "blog": "oklch(0.52 0.008 265)"
+      "app": [
+        "oklch(0.67 0.008 265)",
+        "oklch(0.52 0.008 265)"
+      ],
+      "blog": [
+        "oklch(0.67 0.008 265)",
+        "oklch(0.52 0.008 265)"
+      ]
     },
     "--text-secondary": {
-      "app": "oklch(0.44 0.01 265)",
-      "blog": "oklch(0.44 0.01 265)"
+      "app": [
+        "oklch(0.74 0.008 265)",
+        "oklch(0.44 0.01 265)"
+      ],
+      "blog": [
+        "oklch(0.74 0.008 265)",
+        "oklch(0.44 0.01 265)"
+      ]
     },
     "--text-tertiary": {
-      "app": "oklch(0.5 0.009 265)",
-      "blog": "oklch(0.5 0.009 265)"
+      "app": [
+        "oklch(0.7 0.009 265)",
+        "oklch(0.5 0.009 265)"
+      ],
+      "blog": [
+        "oklch(0.7 0.009 265)",
+        "oklch(0.5 0.009 265)"
+      ]
     },
     "--tracking-label": {
-      "app": "0.06em",
-      "blog": "0.06em"
+      "app": [
+        "0.06em"
+      ],
+      "blog": [
+        "0.06em"
+      ]
     },
     "--warning": {
-      "app": "oklch(0.8 0.15 82)",
-      "blog": "oklch(0.8 0.15 82)"
+      "app": [
+        "oklch(0.76 0.145 80)",
+        "oklch(0.8 0.15 82)"
+      ],
+      "blog": [
+        "oklch(0.76 0.145 80)",
+        "oklch(0.8 0.15 82)"
+      ]
     },
     "--z-float": {
-      "app": "30",
-      "blog": "1"
+      "app": [
+        "30"
+      ],
+      "blog": [
+        "1"
+      ]
     }
   }
 }

@@ -11,6 +11,7 @@ import { Tooltip } from '../../components/overlay'
 import { useCalendarTreeShowEmpty, useCalendarTreeVisible } from '../../lib/calendar-prefs'
 import { useTreeChildrenMount } from './use-tree-children'
 import { TreeExpandButton } from './tree-expand-button'
+import { countBadgeTone } from './sidebar/count-badge'
 
 const NOTE_DRAG_TYPE = 'application/x-inkstone-note'
 const FOLDER_DRAG_TYPE = 'application/x-inkstone-folder'
@@ -105,7 +106,7 @@ function VirtualRow({ ns, rootLabel, rootIcon, node }: {
         <TreeExpandButton expanded={expanded} hasChildren={hasChildren} onToggle={() => toggleFolder(node.id)}/>
         <VirtualRowIcon active={active} isRoot={isRoot} rootIcon={rootIcon} open={expanded && hasChildren}/>
         <VirtualRowLabel active={active} isRoot={isRoot} rootLabel={rootLabel} name={node.name} tooltip={tooltip} onOpen={open}/>
-        {node.count > 0 && (<span className='shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)] transition-opacity group-hover:opacity-70'>{node.count}</span>)}
+        {node.count > 0 && (<span className={cn(countBadgeTone(active), 'transition-opacity group-hover:opacity-70')}>{node.count}</span>)}
       </div>
       {childrenMounted && (<div role='group' aria-hidden={!childrenVisible} inert={!childrenVisible} className={cn('folder-children-grid', childrenVisible && 'is-expanded')}>
         <div className='min-h-0 space-y-px overflow-hidden'>

@@ -174,6 +174,23 @@ function tokenEntries(text) {
   return entries
 }
 
+// A shared token can be declared more than once per file: --text-quaternary
+// exists in the dark block and in the light block, and a flat map would only
+// remember whichever came last, so a dark-only change would never count as
+// drift. These keep every declaration, normalized the same way, so the
+// baseline records each theme's value on both sides.
+function tokenValues(text) {
+  const flat = tokenEntries(text)
+  const values = new Map()
+  for (const match of text.matchAll(DECL_RE)) {
+    const name = normalizeName(match[1])
+    const list = values.get(name) ?? []
+    list.push(normalizeValue(resolveVars(normalizeValue(match[2]), flat)))
+    values.set(name, list)
+  }
+  return values
+}
+
 // Shared-token set plus per-side values — the baseline payload.
 function snapshotPayload(app, blog) {
   const tokens = [...app.keys()].filter((name) => blog.has(name)).sort()
@@ -182,10 +199,19 @@ function snapshotPayload(app, blog) {
   return { tokens, values }
 }
 
+// The CLI's payload: one entry per declaration, per side.
+function snapshotPairPayload(appValues, blogValues) {
+  const tokens = [...appValues.keys()].filter((name) => blogValues.has(name)).sort()
+  const values = {}
+  for (const name of tokens) values[name] = { app: appValues.get(name), blog: blogValues.get(name) }
+  return { tokens, values }
+}
+
 // A baseline token fails when it vanished from a side, or when a side's
 // value no longer matches the snapshotted pair.
-function driftProblems(app, blog, baseline) {
+function driftProblems(app, blog, baseline, lists) {
   const problems = []
+  const show = (value) => (Array.isArray(value) ? value.join(' | ') : String(value))
   for (const name of baseline.tokens) {
     if (!app.has(name) || !blog.has(name)) {
       const sides = []
@@ -195,11 +221,14 @@ function driftProblems(app, blog, baseline) {
       continue
     }
     const recorded = baseline.values && baseline.values[name]
-    const current = { app: app.get(name), blog: blog.get(name) }
-    if (recorded && (current.app !== recorded.app || current.blog !== recorded.blog)) {
-      problems.push(`${name} value drifted: ${APP_TOKENS} '${current.app}' != baseline '${recorded.app}', ${BLOG_TOKENS} '${current.blog}' != baseline '${recorded.blog}'`)
+    const current = lists
+      ? { app: lists.app.get(name), blog: lists.blog.get(name) }
+      : { app: app.get(name), blog: blog.get(name) }
+    const same = (side) => show(current[side]) === show(recorded?.[side])
+    if (recorded && (!same('app') || !same('blog'))) {
+      problems.push(`${name} value drifted: ${APP_TOKENS} '${show(current.app)}' != baseline '${show(recorded.app)}', ${BLOG_TOKENS} '${show(current.blog)}' != baseline '${show(recorded.blog)}'`)
     } else if (!recorded && current.app !== current.blog) {
-      problems.push(`${name} value differs between trees: '${current.app}' vs '${current.blog}'`)
+      problems.push(`${name} value differs between trees: '${show(current.app)}' vs '${show(current.blog)}'`)
     }
   }
   return problems
@@ -219,18 +248,21 @@ function staleProblems(app, blog, baseline) {
 // Importable by unit tests; the tree scan only runs when invoked as a CLI.
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
-  const app = tokenEntries(fs.readFileSync(APP_TOKENS, 'utf8'))
-  const blog = tokenEntries(fs.readFileSync(BLOG_TOKENS, 'utf8'))
+  const appText = fs.readFileSync(APP_TOKENS, 'utf8')
+  const blogText = fs.readFileSync(BLOG_TOKENS, 'utf8')
+  const app = tokenEntries(appText)
+  const blog = tokenEntries(blogText)
+  const lists = { app: tokenValues(appText), blog: tokenValues(blogText) }
 
   if (process.argv.includes('--update-baseline')) {
-    const payload = snapshotPayload(app, blog)
+    const payload = snapshotPairPayload(lists.app, lists.blog)
     fs.writeFileSync(BASELINE, `${JSON.stringify(payload, null, 2)}\n`)
     console.log(`token drift baseline updated: ${payload.tokens.length} shared tokens`)
     process.exit(0)
   }
 
   const baseline = JSON.parse(fs.readFileSync(BASELINE, 'utf8'))
-  const problems = [...driftProblems(app, blog, baseline), ...staleProblems(app, blog, baseline)]
+  const problems = [...driftProblems(app, blog, baseline, lists), ...staleProblems(app, blog, baseline)]
   if (problems.length > 0) {
     console.error(`token drift check failed: ${problems.length} shared-token problem(s)`)
     for (const problem of problems) console.error(`  ${problem}`)
@@ -240,4 +272,4 @@ if (isMain) {
   console.log(`token drift check passed: baseline matches the current shared token layer (${baseline.tokens.length} tokens, values stable)`)
 }
 
-export { normalizeName, normalizeValue, normalizeColors, resolveVars, tokenEntries, snapshotPayload, driftProblems, staleProblems }
+export { normalizeName, normalizeValue, normalizeColors, resolveVars, tokenEntries, tokenValues, snapshotPayload, snapshotPairPayload, driftProblems, staleProblems }

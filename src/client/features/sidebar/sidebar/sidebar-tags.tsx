@@ -14,6 +14,7 @@ import {
 import { LIMITS } from '@shared/constants'
 import type { Tag } from '@shared/types'
 import { cn } from '../../../lib/cn'
+import { countBadgeTone } from './count-badge'
 import { sortTagsForPicker } from '../../../lib/tag-sort'
 import { clearTagSelection } from '../../../lib/tag-selection'
 import { IconButton, SectionLabel } from '../../../components/primitives'
@@ -222,7 +223,7 @@ function UntaggedRow({ onOpen }: { onOpen: () => void }) {
         <TagIcon size={12} className={cn('shrink-0', view === 'untagged' ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')} />
         <span className='truncate'>{t('tags.untagged')}</span>
       </div>
-      {counts.untagged > 0 && <span className='shrink-0 text-[length:var(--text-11)] tabular text-[var(--text-quaternary)]'>{counts.untagged}</span>}
+      {counts.untagged > 0 && <span className={countBadgeTone(view === 'untagged')}>{counts.untagged}</span>}
     </button>
   )
 }
