@@ -5,6 +5,7 @@ const HEAVY_VENDORS = [
   { name: 'qrcode.react', needles: ['QRCodeSVG'] },
   { name: '@dicebear/*', needles: ['micah'] },
   { name: 'client-zip', needles: ['predictLength', 'makeZip'] },
+  { name: 'mind-elixir', needles: ['mind-elixir-toolbar', 'me-tpc'] },
 ]
 
 const STATIC_IMPORT_RE = /import"\.\/([A-Za-z0-9_.-]+\.js)"/g

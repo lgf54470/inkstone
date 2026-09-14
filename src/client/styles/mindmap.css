@@ -1,0 +1,182 @@
+.ink-prose .mindmap-block {
+  margin: 1em 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-inset);
+  overflow: hidden;
+}
+.ink-prose .mindmap-block-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-raised);
+}
+.ink-prose .mindmap-block-title {
+  font-size: var(--text-12);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.ink-prose .mindmap-block-mode {
+  padding: 0 var(--sp-1\.5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  font-size: var(--text-10);
+  line-height: var(--sp-4);
+}
+.ink-prose .mindmap-block-actions {
+  display: flex;
+  gap: var(--sp-0\.5);
+  margin-inline-start: auto;
+}
+.ink-prose .mindmap-block-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sp-6);
+  height: var(--sp-6);
+  border: 0;
+  border-radius: var(--r-sm);
+  color: var(--text-tertiary);
+  background: none;
+  cursor: pointer;
+}
+.ink-prose .mindmap-block-btn:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+.ink-prose .mindmap-block-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-ring);
+}
+.ink-prose .mindmap-block-btn svg {
+  width: var(--sp-3\.5);
+  height: var(--sp-3\.5);
+}
+.ink-prose .mindmap-block-placeholder {
+  min-height: var(--sp-16);
+  position: relative;
+}
+.ink-prose .mindmap-block-status {
+  padding: var(--sp-4);
+  color: var(--text-secondary);
+  font-size: var(--text-12);
+  text-align: center;
+}
+.ink-prose .mindmap-block.mindmap-source pre,
+.ink-prose .mindmap-error pre {
+  margin: 0;
+  padding: var(--sp-3);
+  overflow-x: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
+  white-space: pre;
+}
+.ink-prose .mindmap-error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  color: var(--danger);
+  font-size: var(--text-12);
+}
+.ink-prose .mindmap-error-message {
+  flex: 1 1 100%;
+  overflow-wrap: anywhere;
+}
+.ink-prose .mindmap-error pre {
+  flex: 1 1 100%;
+  padding: 0;
+  background: none;
+}
+.ink-prose .mindmap-retry {
+  align-self: start;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  padding: var(--sp-0\.75) var(--sp-2\.25);
+  color: var(--text-primary);
+  background: var(--bg-overlay);
+  cursor: pointer;
+}
+.ink-prose .mindmap-retry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ink-prose .mindmap-canvas {
+  width: 100%;
+  height: 320px;
+  border-radius: 0;
+  outline: none;
+}
+.ink-prose .mindmap-canvas:focus-visible,
+.ink-prose .mindmap-canvas:focus-within {
+  box-shadow: inset var(--shadow-ring);
+}
+.ink-prose .mindmap-canvas.is-static {
+  height: auto;
+}
+.ink-prose .mindmap-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  padding: var(--sp-2);
+}
+.mindmap-fullscreen {
+  background: var(--bg-base);
+}
+.mindmap-fullscreen-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2\.5) var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  position: relative;
+}
+.mindmap-fullscreen-head > div:first-child {
+  flex: 1 1 auto;
+}
+.mindmap-shortcuts {
+  flex: 1 1 100%;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--bg-overlay);
+  box-shadow: var(--shadow-pop);
+}
+.mindmap-shortcuts ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--sp-16), 1fr));
+  gap: var(--sp-1) var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-secondary);
+  font-size: var(--text-12);
+}
+.mindmap-fullscreen-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.mindmap-fullscreen-canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.mindmap-fullscreen-canvas .mindmap-canvas.is-fullscreen {
+  height: 100%;
+  width: 100%;
+}
+.mindmap-fullscreen-canvas .mindmap-canvas.is-fullscreen #fullscreen {
+  display: none;
+}
+.mindmap-fullscreen-canvas .mindmap-canvas:focus-within {
+  box-shadow: inset var(--shadow-ring);
+}

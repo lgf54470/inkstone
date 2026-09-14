@@ -58,6 +58,7 @@ const ALLOWED_DOUBLE_CASTS = new Map([
   ['src/shared/constants.ts', 'deep-merge of recursive partials: the combined object type cannot be expressed without a recursive conditional type'],
   ['src/client/lib/db/core.ts', 'shell cache load: validators above confirm the stored session shape; the composite SessionInfo type is reconstructed from validated parts'],
   ['src/client/lib/test-render.ts', 'jsdom shim: stub constructor is structurally compatible but not assignable to the DOM lib type'],
+  ['src/client/lib/markdown/mindmap/registry.test-helpers.ts', 'jsdom test stub: ResizeObserver/ResizeObserverEntry cannot be constructed in jsdom; the stubs are structurally compatible'],
   ['src/client/store/notes-test-utils.ts', 'test harness: in-memory api/db stubs intentionally ignore their real signatures'],
   ['src/client/demo/backend/routes/backup.ts', 'demo backend: jsonBody returns unknown and the demo intentionally skips runtime config validation the real worker performs'],
   ['src/client/lib/markdown/enhance/math.ts', 'KaTeX dynamic import: ESM/CJS interop shape differs between bundler output and vitest module resolution'],

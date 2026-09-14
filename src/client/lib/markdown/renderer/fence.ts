@@ -3,6 +3,7 @@ import type Token from 'markdown-it/lib/token.mjs'
 import { escapeHtml } from '@shared/escape'
 import { t } from '../../i18n'
 import { encodeDataValue } from '../data-attr'
+import { detectMindmapMode, MINDMAP_LANGUAGES } from '../mindmap'
 import { emptyEnvironment, renderEnv } from './env'
 import { stripObsidianComments, parseFenceInfo } from './parse'
 import type { FenceInfo } from './types'
@@ -15,15 +16,18 @@ function renderMarkdownExample(md: MarkdownIt, token: Token, line: string, rende
   childEnv.taskNonce = parentEnv.taskNonce
   childEnv.tabSequence = parentEnv.tabSequence
   childEnv.exampleSequence = parentEnv.exampleSequence
+  childEnv.mindmapSequence = parentEnv.mindmapSequence
   childEnv.docId = `${parentEnv.docId}-example-${exampleId}`
   childEnv.externalImages = parentEnv.externalImages
   const preview = md.render(stripObsidianComments(token.content), childEnv).replace(/ data-line="\d+"/g, '')
   parentEnv.hasMath ||= childEnv.hasMath
   parentEnv.hasMermaid ||= childEnv.hasMermaid
   parentEnv.hasChart ||= childEnv.hasChart
+  parentEnv.hasMindmap ||= childEnv.hasMindmap
   parentEnv.hasEmbeds ||= childEnv.hasEmbeds
   parentEnv.tabSequence = childEnv.tabSequence
   parentEnv.exampleSequence = Math.max(parentEnv.exampleSequence, childEnv.exampleSequence)
+  parentEnv.mindmapSequence = Math.max(parentEnv.mindmapSequence, childEnv.mindmapSequence)
   const title = info.title || t('markdown.markdown_example')
   const titleId = `${parentEnv.docId}-markdown-example-${exampleId}`
   return [
@@ -103,6 +107,8 @@ function renderFence(md: MarkdownIt, tokens: Token[], index: number, rendererEnv
     renderEnv(rendererEnv).hasChart = true
     return `<div class="chartjs-block loading"${line} data-chart="${escapeAttr(encodeDataValue(token.content))}" aria-busy="true">${escapeHtml(t('markdown.rendering_chart'))}</div>`
   }
+  if ((MINDMAP_LANGUAGES as readonly string[]).includes(info.language))
+    return renderMindmapBlock(token, line, rendererEnv)
   const title = info.title || info.language || t('markdown.code')
   return [
     `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}"${line} data-lang="${escapeAttr(info.language)}" data-code-start="${info.startLine}"${info.lineNumbers ? ' data-line-numbers="true"' : ''}${info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : ''}>`,
@@ -115,6 +121,30 @@ function renderFence(md: MarkdownIt, tokens: Token[], index: number, rendererEnv
     `</div>`,
   ].join('')
 }
+function renderMindmapBlock(token: Token, line: string, rendererEnv: unknown): string {
+  const env = renderEnv(rendererEnv)
+  env.hasMindmap = true
+  const index = env.mindmapSequence++
+  const body = token.content
+  const mode = detectMindmapMode(body)
+  const modeLabel = mode === 'json' ? t('preview.mindmap_mode_json') : t('preview.mindmap_mode_outline')
+  const fitLabel = escapeAttr(t('preview.mindmap_fit'))
+  const fullscreenLabel = escapeAttr(t('preview.mindmap_fullscreen'))
+  return [
+    `<div class="mindmap-block loading"${line} data-mindmap="${escapeAttr(encodeDataValue(body))}" data-mindmap-mode="${mode}" data-mindmap-index="${index}" aria-busy="true">`,
+    `<div class="mindmap-block-head">`,
+    `<span class="mindmap-block-title">${escapeHtml(t('preview.mindmap'))}</span>`,
+    `<span class="mindmap-block-mode">${escapeHtml(modeLabel)}</span>`,
+    `<span class="mindmap-block-actions">`,
+    `<button type="button" class="mindmap-block-btn" data-mindmap-fit aria-label="${fitLabel}" title="${fitLabel}"></button>`,
+    `<button type="button" class="mindmap-block-btn" data-mindmap-fullscreen aria-label="${fullscreenLabel}" title="${fullscreenLabel}"></button>`,
+    `</span>`,
+    `</div>`,
+    `<div class="mindmap-block-placeholder" data-mindmap-placeholder>${escapeHtml(t('preview.mindmap_loading'))}</div>`,
+    `</div>`,
+  ].join('')
+}
+
 export function registerFence(md: MarkdownIt): void {
 
   md.renderer.rules.fence = (tokens, index, _options, rendererEnv) => renderFence(md, tokens, index, rendererEnv)

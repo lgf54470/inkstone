@@ -12,6 +12,7 @@ export interface RenderResult {
   hasMath: boolean
   hasMermaid: boolean
   hasChart: boolean
+  hasMindmap: boolean
   hasEmbeds: boolean
   frontMatter: Record<string, unknown>
   frontMatterErrors: string[]
@@ -22,12 +23,15 @@ interface RenderEnvironment {
   hasMath: boolean
   hasMermaid: boolean
   hasChart: boolean
+  hasMindmap: boolean
   hasEmbeds: boolean
   frontMatter: Record<string, unknown>
   frontMatterErrors: string[]
   taskNonce: string
   tabSequence: number
   exampleSequence: number
+  /** Document-scoped block number; the mind map registry identifies blocks by it. */
+  mindmapSequence: number
   docId: string
   /** `true` when the caller opted into loading external https images (preview.externalImages). */
   externalImages: boolean
