@@ -53,6 +53,8 @@ export const messages = {
 'workspace.mermaid_diagram': 'Mermaid 图表',
 'workspace.chartjs_diagram': 'Chart.js 统计图表',
 'workspace.mind_map': '思维导图',
+'workspace.mindmap_from_outline': '从此大纲生成思维导图',
+'workspace.mindmap_from_outline_empty': '这里没有可以生成思维导图的标题或列表',
 'workspace.more_blocks': '更多块',
 'workspace.more_inline_styles': '更多行内格式',
 'workspace.could_not_load_backlinks': '无法加载反向链接',

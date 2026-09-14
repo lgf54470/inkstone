@@ -13,6 +13,7 @@ export const messages = {
 'contextmenu.convert_to_link': 'Hyperlink',
 'contextmenu.convert_to_wikilink': 'WikiLink',
 'contextmenu.convert_to_codeblock': 'Code Block',
+'contextmenu.convert_to_mindmap': 'Mind map',
 'contextmenu.convert_to_callout': 'Callout',
 'contextmenu.insert': 'Insert',
 'contextmenu.insert_datetime': 'Current Date & Time',

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { EditorView } from '@codemirror/view'
-import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline, toggleWikiLink } from '../../editor/commands'
+import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, generateMindmapFromOutline, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline, toggleWikiLink } from '../../editor/commands'
 import type { DiagramTemplate } from '../../editor/diagram-templates'
 import type { MessageKey } from '../../lib/i18n'
 import type { MenuItem } from '../../components/overlay'
@@ -110,6 +110,7 @@ function blockMenuItems(run: Run): MenuItem[] {
     ...diagramMenuItems(run, 'mermaid'),
     ...diagramMenuItems(run, 'chart'),
     ...diagramMenuItems(run, 'mindmap'),
+    { id: 'mindmap-from-outline', label: t('workspace.mindmap_from_outline'), onSelect: run(generateMindmapFromOutline) },
     { id: 'advanced-code', label: t('workspace.enhanced_code_block'), onSelect: run(insertAdvancedCodeBlock) },
     { id: 'js-example', label: t('workspace.runnable_js_block'), onSelect: run(insertRunnableJsBlock) },
     { id: 'callout', label: t('workspace.callout'), onSelect: run(insertCallout) },

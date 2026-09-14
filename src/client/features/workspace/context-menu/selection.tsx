@@ -25,7 +25,7 @@ import {
 } from 'lucide-react'
 import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
-import { insertCallout, insertCodeBlock, insertLink, insertRuby, setHeading, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleUnderline, toggleSubscript, toggleSuperscript, toggleTaskList, toggleWikiLink } from '../../../editor/commands'
+import { generateMindmapFromOutline, insertCallout, insertCodeBlock, insertLink, insertRuby, setHeading, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleInlineMath, toggleItalic, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleUnderline, toggleSubscript, toggleSuperscript, toggleTaskList, toggleWikiLink } from '../../../editor/commands'
 import type { MenuCtx } from './types'
 import { submenuFor } from '../../../components/overlay'
 
@@ -90,6 +90,7 @@ function buildConvertItems(ctx: MenuCtx): MenuItem[] {
     { id: 'link', label: t('contextmenu.convert_to_link'), icon: <Link2 size={13} />, onSelect: () => run(insertLink()) },
     { id: 'wikilink', label: t('contextmenu.convert_to_wikilink'), icon: <Network size={13} />, onSelect: () => run(toggleWikiLink) },
     { id: 'codeblock', label: t('contextmenu.convert_to_codeblock'), icon: <Braces size={13} />, onSelect: () => run(insertCodeBlock) },
+    { id: 'mindmap', label: t('contextmenu.convert_to_mindmap'), icon: <Network size={13} />, onSelect: () => run(generateMindmapFromOutline) },
   ]
 }
 

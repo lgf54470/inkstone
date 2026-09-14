@@ -13,6 +13,7 @@ export const messages = {
 'contextmenu.convert_to_link': '超链接',
 'contextmenu.convert_to_wikilink': '双链',
 'contextmenu.convert_to_codeblock': '代码块',
+'contextmenu.convert_to_mindmap': '思维导图',
 'contextmenu.convert_to_callout': '提示框',
 'contextmenu.insert': '插入',
 'contextmenu.insert_datetime': '当前日期时间',
