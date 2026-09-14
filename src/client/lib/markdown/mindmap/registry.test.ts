@@ -51,7 +51,40 @@ describe('mindmap registry — adoption across re-renders', () => {
       h.dispose()
     }
   })
+})
 
+describe('mindmap registry — theme following', () => {
+  it('hands a theme switch to the live map instead of rebuilding it', async () => {
+    const h = scopeHarness(noteSource('- Root\n  - A'))
+    try {
+      await h.mount(noteSource('- Root\n  - A'))
+      const map = h.records[0]!
+      // The same markup, one commit later, under the other theme: the map draws
+      // its own palette into its element, so the instance has to be told. A
+      // rebuild here would be the bug — and so would a refresh, which drops the
+      // camera, the selection and any open topic editor.
+      await h.mount(noteSource('- Root\n  - A'), { dark: true })
+      expect(h.records).toHaveLength(1)
+      expect(h.records[0]!.el).toBe(map.el)
+      expect(map.themes).toEqual([true])
+      expect(map.refreshes).toHaveLength(0)
+    }
+    finally {
+      h.dispose()
+    }
+  })
+
+  it('leaves the live map alone when the theme did not change', async () => {
+    const h = scopeHarness(noteSource('- Root\n  - A'))
+    try {
+      await h.mount(noteSource('- Root\n  - A'))
+      await h.mount(noteSource('- Root\n  - A'))
+      expect(h.records[0]!.themes).toEqual([])
+    }
+    finally {
+      h.dispose()
+    }
+  })
 })
 
 describe('mindmap registry — overlapping mount passes', () => {

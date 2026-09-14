@@ -10,6 +10,14 @@ import type { MindmapMode } from './body'
 export interface MindmapHandle {
   getData(): unknown
   refresh(data: unknown): void
+  /**
+   * Switches the drawing's own palette. The library bakes a theme into the
+   * element it draws in (the colour variables are written as inline styles, and
+   * the branch palette is painted into the connectors when they are drawn), so a
+   * live instance has to be told about a theme change; the app's theme is not
+   * something the map picks up on its own.
+   */
+  applyTheme(dark: boolean): void
   toCenter(): void
   layout(): void
   scaleFit(): void

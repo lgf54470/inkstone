@@ -558,6 +558,29 @@ const MINDMAP_MARKDOWN = ['', '', '```mindmap', '- Visual Probe', '  - Live bloc
 // The layout cycling the mind map scenarios need (the editor to type a fence, the prose to read it
 // back) is shared plumbing now: e2e-harness.mjs cycles it for this gate and the contrast gate alike.
 
+/**
+ * What the map paints from its own theme: the colour variables the library writes as inline styles on
+ * the element it draws in, and the branch colour it bakes into the nodes that carry one. Both are
+ * read off that element rather than off the stylesheet, because a theme that never reached the
+ * instance is exactly the state under test. The branch colour comes from the first node that has one
+ * — only the topics a connector is drawn for are painted, the rest inherit — and it is read beside
+ * the canvas an earlier step stashed, so a rebuild cannot pass as a repaint.
+ */
+async function readMindmapTheme(page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('.ink-prose .mindmap-canvas')
+    const stage = canvas?.querySelector('.map-container')
+    const branch = [...(canvas?.querySelectorAll('me-tpc') ?? [])]
+      .map((node) => node.style.borderColor)
+      .find((color) => color.length > 0) ?? ''
+    return {
+      sameElement: canvas === window.__mindmapCanvas,
+      root: stage?.style.getPropertyValue('--root-bgcolor').trim() ?? '',
+      branch,
+    }
+  })
+}
+
 async function assertMindmapBlock(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(600)
@@ -751,6 +774,46 @@ async function assertMindmapBlock(page) {
     await page.keyboard.press('Escape')
     await page.waitForFunction(() => !document.querySelector('.mindmap-fullscreen'), { timeout: 15_000 })
   }
+
+  // The map carries its own palette: the library writes a theme's colours as inline styles on the
+  // element it draws in and bakes the branch colours into the nodes when it draws the connectors, so
+  // a live instance has to be told about a switch. The state refuted here is the map that keeps the
+  // colours it was born with until the page is reloaded. Two things are read rather than one: the
+  // colour variable, which the instance always carries, and the branch colour, which only a connector
+  // pass bakes in — a switch that moved the variables alone would leave every branch the colour of
+  // the theme before it. The branch colour is compared between the two switched states instead of
+  // against the baseline, because a layout-only pass (opening the overlay re-lays the map out) leaves
+  // the nodes without one until something draws them again, which is exactly what the fix does. The
+  // canvas element is compared on every read: the same element across the switch is what proves the
+  // colours came from the instance on screen rather than from a rebuilt one. The account theme goes
+  // back to light afterwards, because the rest of this run measures the light one.
+  const lightTheme = await readMindmapTheme(page)
+  check('mindmap: the live map is the element the earlier steps drove', lightTheme.sameElement && lightTheme.root.length > 0, JSON.stringify(lightTheme))
+  await setAppTheme(page, 'dark')
+  await page.waitForFunction(
+    (previous) => document.querySelector('.ink-prose .mindmap-canvas .map-container')?.style.getPropertyValue('--root-bgcolor').trim() !== previous,
+    { timeout: 5_000 },
+    lightTheme.root,
+  ).then(() => true, () => false)
+  const darkTheme = await readMindmapTheme(page)
+  await setAppTheme(page, 'light')
+  await page.waitForFunction(
+    (expected) => document.querySelector('.ink-prose .mindmap-canvas .map-container')?.style.getPropertyValue('--root-bgcolor').trim() === expected,
+    { timeout: 5_000 },
+    lightTheme.root,
+  ).then(() => true, () => false)
+  const backToLight = await readMindmapTheme(page)
+  check(
+    'mindmap: the theme switch reaches the live map without a reload',
+    darkTheme.sameElement && backToLight.sameElement
+    && darkTheme.root !== lightTheme.root && backToLight.root === lightTheme.root,
+    `light=${JSON.stringify(lightTheme)} dark=${JSON.stringify(darkTheme)} back=${JSON.stringify(backToLight)}`,
+  )
+  check(
+    'mindmap: the map paints the palette of the theme it is showing',
+    darkTheme.branch.length > 0 && backToLight.branch.length > 0 && darkTheme.branch !== backToLight.branch,
+    `dark=${JSON.stringify(darkTheme)} back=${JSON.stringify(backToLight)}`,
+  )
 }
 
 // The library takes its selection from a pointer event on the node's own box, and a click that only

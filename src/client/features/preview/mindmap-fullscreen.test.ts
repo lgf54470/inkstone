@@ -60,6 +60,7 @@ function keyboardVendor(model: { body: string }): MindmapVendor {
       return {
         getData: () => ({ body: model.body }),
         refresh: () => {},
+        applyTheme: () => {},
         toCenter: () => {},
         layout: () => {},
         scaleFit: () => {},

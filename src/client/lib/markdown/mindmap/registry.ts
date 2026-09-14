@@ -254,6 +254,8 @@ async function mountBlock(node: HTMLElement, entry: MindmapBlockEntry, options: 
   const body = normalizeEol(mindmapBody(node))
   entry.host = node
   decorateMindmapControls(node)
+  // The instance outlives the markup it was built for, so a theme switch has to be handed to it.
+  const themeChanged = entry.dark !== options.dark
   entry.dark = options.dark
   entry.locale = options.locale
   entry.load = options.loadVendor ?? loadMindmapVendor
@@ -261,6 +263,7 @@ async function mountBlock(node: HTMLElement, entry: MindmapBlockEntry, options: 
   entry.write = options.writeBack ?? null
   entry.editable = options.editable && entry.ref !== null
   if (entry.handle) {
+    if (themeChanged) entry.handle.applyTheme(entry.dark)
     syncEntry(entry, body)
     placeContainer(entry)
     return

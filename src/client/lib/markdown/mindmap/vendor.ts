@@ -99,6 +99,18 @@ function createHandle(instance: MindElixirInstance): MindmapHandle {
   return {
     getData: () => instance.getData(),
     refresh: (data) => instance.refresh(asData(data)),
+    // A theme lives inside the instance: `changeTheme` writes the colour
+    // variables as inline styles on the map's own element, and the branch palette
+    // (`theme.palette`) is read when the connectors are drawn, so the old colours
+    // survive until the connector pass runs again. `shouldRefresh` is passed
+    // explicitly: the library defaults it to true, and that path rebuilds every
+    // node and re-centres the camera, which would drop the selection, the scroll
+    // position and any open inline topic editor with it. Re-drawing the
+    // connectors is all the new palette needs.
+    applyTheme: (dark) => {
+      instance.changeTheme(dark ? MindElixir.DARK_THEME : MindElixir.THEME, false)
+      instance.linkDiv()
+    },
     toCenter: () => instance.toCenter(),
     layout: () => instance.layout(),
     scaleFit: () => instance.scaleFit(),

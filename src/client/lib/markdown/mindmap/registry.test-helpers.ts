@@ -8,6 +8,8 @@ export interface StubMap {
   options: MindmapCreateOptions
   current: string
   refreshes: unknown[]
+  /** Themes handed to a live instance through applyTheme, oldest first. */
+  themes: boolean[]
   historyCleared: boolean
   destroyed: boolean
   focusCalls: number
@@ -63,6 +65,7 @@ function newStubMap(options: MindmapCreateOptions): StubMap {
     options,
     current: String((options.data as { body?: string }).body ?? ''),
     refreshes: [],
+    themes: [],
     historyCleared: false,
     destroyed: false,
     focusCalls: 0,
@@ -81,6 +84,9 @@ function stubHandle(record: StubMap): MindmapHandle {
     refresh: (data) => {
       record.refreshes.push(data)
       record.current = String((data as { body?: string }).body ?? '')
+    },
+    applyTheme: (dark) => {
+      record.themes.push(dark)
     },
     toCenter: () => {},
     layout: () => {
