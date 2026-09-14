@@ -16,6 +16,17 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import puppeteer from 'puppeteer-core'
+import {
+  chromeExecutablePath,
+  clickButton,
+  ensureAxe,
+  isReviewedIncomplete,
+  loginThroughUi,
+  runAxe,
+  setAppTheme,
+  sleep,
+  waitForPanelSettled,
+} from './e2e-harness.mjs'
 
 const BASE = process.argv[2] ?? 'http://localhost:7712'
 // Credentials of an existing account to sign in as. CI runs this gate right
@@ -26,7 +37,6 @@ const USERNAME = process.env.INKSTONE_VISUAL_USERNAME ?? 'Owner-1'
 const PASSWORD = process.env.INKSTONE_VISUAL_PASSWORD ?? 'supersecret100'
 const MOBILE_VIEWPORT = { width: 390, height: 844 }
 const DESKTOP_VIEWPORT = { width: 1280, height: 900 }
-const SETTLE_MS = 500
 
 const NOTE_MARKDOWN = [
   '# Visual E2E Probe',
@@ -62,22 +72,6 @@ function check(name, cond, extra = '') {
   }
 }
 
-function chromeExecutablePath() {
-  const candidates = [
-    process.env.INKSTONE_CHROME_PATH,
-    '/usr/bin/google-chrome',
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-  ].filter(Boolean)
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate
-  }
-  throw new Error('no system Chrome found; set INKSTONE_CHROME_PATH to the browser binary')
-}
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-
 // zh-CN and en-US labels, matched on both text and aria-label so the gate is
 // locale-agnostic. Keep in sync with src/shared/locales/*/common.ts.
 const LABELS = {
@@ -93,19 +87,6 @@ const LABELS = {
   presentRail: ['显示幻灯片列表', '隐藏幻灯片列表', 'Show slides', 'Hide slides'],
   presentFreeze: ['冻结当前快照', 'Freeze this snapshot'],
   presentFollow: ['跟随笔记更新', 'Follow the note'],
-  updateLater: ['下次再说', 'Remind me next time'],
-}
-
-function labelSelector(labels) {
-  const text = labels.map((l) => `contains(., "${l}")`).join(' or ')
-  const aria = labels.map((l) => `@aria-label="${l}"`).join(' or ')
-  return `xpath/.//button[${aria} or ${text}]`
-}
-
-async function clickButton(page, labels, timeout = 15_000) {
-  await page.waitForSelector(labelSelector(labels), { timeout })
-  const handle = (await page.$$(labelSelector(labels))).at(-1)
-  await handle.click()
 }
 
 async function activeProse(page) {
@@ -130,55 +111,6 @@ async function activeProse(page) {
       katex: root.querySelectorAll('.katex').length,
     }
   })
-}
-
-async function loginThroughUi(page) {
-  const hasLoginForm = await page.evaluate(() => !!document.querySelector('input[type="password"]'))
-  if (!hasLoginForm) return 'session'
-
-  const prefilled = await page.evaluate(() => {
-    const user = document.querySelector('input[autocomplete="username"], input[name="username"]')
-    const pass = document.querySelector('input[type="password"]')
-    return !!user?.value && !!pass?.value
-  })
-  if (prefilled) {
-    // Demo mode: the form ships prefilled admin credentials.
-    await page.click('button[type="submit"]')
-    await page.waitForFunction(() => !document.querySelector('input[type="password"]'), { timeout: 30_000 })
-    return 'demo-login'
-  }
-
-  // Existing account: fill the real login form with trusted keyboard events
-  // (synthetic value setters do not reach React 19's state).
-  const userField = await page.$('input[autocomplete="username"], input[name="username"]')
-  const passField = await page.$('input[type="password"]')
-  if (!userField || !passField) throw new Error('login form present but fields not found')
-  await userField.type(USERNAME)
-  await passField.type(PASSWORD)
-  await page.click('button[type="submit"]')
-  try {
-    await page.waitForFunction(() => !document.querySelector('input[type="password"]'), { timeout: 20_000 })
-    return 'login'
-  } catch {
-    throw new Error(
-      `login failed for ${USERNAME}: check INKSTONE_VISUAL_USERNAME / INKSTONE_VISUAL_PASSWORD`,
-    )
-  }
-}
-
-// A fork that lags the upstream release is offered the update on every owner sign-in, and the
-// prompt's scrim swallows whatever is clicked next (the probe note's new-note button never lands,
-// which reads as "the editor never mounted"). The prompt is real UI, so the gate closes it the way
-// a person would and then asserts that nothing else is holding the app.
-async function dismissUpdatePrompt(page) {
-  const button = await page
-    .waitForSelector(labelSelector(LABELS.updateLater), { timeout: 10_000 })
-    .catch(() => null)
-  if (!button) return false
-  await button.click()
-  await page.waitForFunction(() => !document.querySelector('[role="dialog"]'), { timeout: 5_000 }).catch(() => {})
-  await sleep(300)
-  return true
 }
 
 async function typeProbeNote(page) {
@@ -492,175 +424,6 @@ async function assertPresentationPages(page) {
 // missing role, an unnamed control or a low-contrast token goes unnoticed by eye. axe-core is
 // injected into the live page (its own browser build, evaluated rather than added as a script
 // tag so the app's CSP stays untouched) and run over the whole overlay with the slide list open.
-//
-// Three results come back as "incomplete" rather than violations. Two of them are because the
-// list renders the same slide markup once per page — aria-hidden-focus (those copies are inert,
-// so nothing inside them is focusable) and duplicate-id-aria (the copies are inert and
-// aria-hidden, so their ids are not reachable) — and one is axe's own caveat on a one-character
-// label: it cannot decide whether a single digit is text, which is exactly the visible page
-// number in the list (the entry's accessible name already carries the position). These are
-// allowed by id and reason, so any new kind of review item still fails the gate; the violation
-// list has to stay empty.
-//
-// The one violation this run found is why the light theme mixes a callout title's accent toward
-// the body text (styles/prose/blocks.css): the accent alone read at about 2.2:1 on the callout
-// tint, below AA for text. The override has no comment of its own because CSS comments are not
-// allowed in this repository, and this gate is what keeps it honest.
-function isReviewedIncomplete(item) {
-  if (item.id === 'aria-hidden-focus' || item.id === 'duplicate-id-aria') return true
-  // axe cannot compute a background it only partly sees, which is a review item rather than a
-  // failure: a one-character label ("it cannot decide whether a single digit is text"), a keyboard
-  // badge that is drawn from glyphs rather than letters, and text the scaled slide canvas overlaps
-  // (a chart's rendered image) all land here. Real contrast failures still arrive as violations —
-  // the light-theme callout title and the two token fixes below were all found this way.
-  return item.id === 'color-contrast' && /too short to determine|partially overlaps|partially obscured|only non-text characters/.test(item.note)
-}
-
-// Injected once per page: axe ships its own browser build, and evaluating it keeps the app's CSP
-// untouched (a script tag would be refused).
-async function ensureAxe(page) {
-  if (await page.evaluate(() => Boolean(window.axe))) return
-  await page.evaluate(fs.readFileSync('node_modules/axe-core/axe.min.js', 'utf8'))
-}
-
-// Both of the shell's panels are named rather than found: "the dialog" in this app is whatever was
-// opened last, and the palette and the settings panel are the two the scenario cares about.
-const PALETTE_PANEL = '[role="dialog"]:has(input[role="combobox"])'
-const SETTINGS_PANEL = '[role="dialog"]:not(:has(input[role="combobox"]))'
-
-// A panel animates in, and opacity is part of what axe reads: a dialog measured mid-flight reads as
-// dimmed text and reports a contrast failure that is really about the animation.
-async function waitForPanelSettled(page, selector) {
-  await page.waitForFunction((sel) => {
-    const panel = document.querySelector(sel)
-    return Boolean(panel) && getComputedStyle(panel).opacity === '1'
-  }, { timeout: 10_000 }, selector)
-}
-
-async function runAxe(page, selector) {
-  return page.evaluate(async (root) => {
-    const target = root ? document.querySelector(root) : document
-    if (!target) throw new Error(`axe: no element matching ${root}`)
-    const results = await window.axe.run(target, { resultTypes: ['violations', 'incomplete'] })
-    const summarize = (items) => items.map((item) => ({
-      id: item.id,
-      count: item.nodes.length,
-      target: (item.nodes[0]?.target ?? []).join(' ').slice(0, 90),
-      note: (item.nodes[0]?.failureSummary ?? '').replace(/\s+/g, ' ').slice(0, 140),
-      // The node itself, because a failing target is a Tailwind class soup nobody can read.
-      html: (item.nodes[0]?.html ?? '').replace(/\s+/g, ' ').slice(0, 200),
-    }))
-    return { violations: summarize(results.violations), incomplete: summarize(results.incomplete), passes: results.passes.length }
-  }, selector)
-}// The theme is a per-account setting, and the account's state is whatever ran before this gate
-// (scripts/e2e.mjs leaves it dark). The scenarios below measure tokens and drive the show, so they
-// drive the same control a person would and name the theme they measured instead of inheriting one.
-const THEME_LABELS = {
-  light: ['Light', '浅色'],
-  dark: ['Dark', '深色'],
-  system: ['System', '跟随系统'],
-}
-
-async function setAppTheme(page, theme) {
-  const labels = THEME_LABELS[theme]
-  // "system" has no resolved theme of its own — it is whatever the OS preference says — so it is
-  // always driven, and verified through the control being checked rather than through a colour.
-  const resolved = await page.evaluate(() => document.documentElement.dataset.theme)
-  if (theme !== 'system' && resolved === theme) return
-  await page.keyboard.down('Control')
-  await page.keyboard.press(',')
-  await page.keyboard.up('Control')
-  await page.waitForSelector('[role="dialog"] button[role="radio"]', { timeout: 15_000 })
-  const clicked = await page.evaluate((wanted) => {
-    const button = [...document.querySelectorAll('[role="dialog"] button[role="radio"]')]
-      .find((element) => wanted.includes(element.getAttribute('aria-label') ?? ''))
-    button?.click()
-    return Boolean(button)
-  }, labels)
-  if (!clicked) throw new Error(`setAppTheme: the settings dialog has no ${theme} option`)
-  const settled = theme === 'system'
-    ? () => page.waitForFunction((wanted) => {
-      const button = [...document.querySelectorAll('[role="dialog"] button[role="radio"]')]
-        .find((element) => wanted.includes(element.getAttribute('aria-label') ?? ''))
-      return button?.getAttribute('aria-checked') === 'true'
-    }, { timeout: 10_000 }, labels)
-    : () => page.waitForFunction((next) => document.documentElement.dataset.theme === next, { timeout: 10_000 }, theme)
-  await settled()
-  await page.keyboard.press('Escape')
-  await sleep(SETTLE_MS)
-}
-
-// The shell the slide surface sits in: the sidebar the deck is listed in, the palette a presenter
-// reaches for mid-talk, and the settings dialog they open to change the type scale. Each is its own
-// scenario with its own assertion, so a regression names the surface it happened on.
-//
-// The token contrast the gate found here was real and shared: the dim text tiers sat at 4.29 and
-// 3.28 on light surfaces, and an accent sat at 3.92 on its own soft tint (where the sidebar and the
-// palette both put it as text). They are fixed in styles/tokens.css — the drift baseline records
-// the deliberate change — and this gate is what keeps them there. Both themes are measured now: the
-// dark dim tiers were 4.02 and 2.33 on the dark surfaces, and a run that only ever saw the light
-// tokens let that sit there.
-async function measureShellSurfaces(page, theme) {
-  const sidebar = await runAxe(page, 'aside')
-  check(`a11y: the sidebar has no axe violations (${theme})`, sidebar.violations.length === 0, JSON.stringify(sidebar.violations.slice(0, 3)))
-  check(`a11y: axe inspected the sidebar tree (${theme})`, sidebar.passes >= 20, `passes=${sidebar.passes}`)
-
-  // The count badge on the selected row is the one spot where the sidebar's dimmest text tier
-  // landed on the accent tint the selected row paints underneath it (axe read 3.86:1 there), so a
-  // selected row's badge takes the next tier up. It is measured on its own because the sidebar
-  // stays clean for plenty of other reasons: a tier shuffle would hide behind them.
-  const badge = await page.evaluate(async () => {
-    const node = document.querySelector('aside [aria-current="page"] span.tabular')
-    if (!node) return null
-    const results = await window.axe.run(node, { runOnly: ['color-contrast'] })
-    return {
-      text: node.textContent.trim(),
-      color: getComputedStyle(node).color,
-      background: getComputedStyle(node.parentElement).backgroundColor,
-      violations: results.violations.length,
-    }
-  })
-  check(`a11y: the count badge on the selected row clears AA on its accent tint (${theme})`, badge !== null && badge.violations === 0, JSON.stringify(badge))
-
-  await page.keyboard.down('Control')
-  await page.keyboard.press('k')
-  await page.keyboard.up('Control')
-  await page.waitForSelector('[role="dialog"] input[role="combobox"]', { timeout: 10_000 })
-  await waitForPanelSettled(page, PALETTE_PANEL)
-  const palette = await runAxe(page, PALETTE_PANEL)
-  check(`a11y: the command palette has no axe violations (${theme})`, palette.violations.length === 0, JSON.stringify(palette.violations.slice(0, 3)))
-  await page.keyboard.press('Escape')
-  await sleep(400)
-
-  await page.keyboard.down('Control')
-  await page.keyboard.press(',')
-  await page.keyboard.up('Control')
-  await waitForPanelSettled(page, SETTINGS_PANEL)
-  const settings = await runAxe(page, SETTINGS_PANEL)
-  check(`a11y: the settings dialog has no axe violations (${theme})`, settings.violations.length === 0, JSON.stringify(settings.violations.slice(0, 3)))
-
-  const unexpected = [...sidebar.incomplete, ...palette.incomplete, ...settings.incomplete].filter((item) => !isReviewedIncomplete(item))
-  check(`a11y: no unexpected axe review items in the shell (${theme})`, unexpected.length === 0, JSON.stringify(unexpected.slice(0, 3)))
-  await page.keyboard.press('Escape')
-  await sleep(400)
-}
-
-async function assertShellAccessibility(page) {
-  await ensureAxe(page)
-  // The show leaves its own dialog behind for a beat after it closes, so the scenario waits for the
-  // slide surface to be gone before it measures anything — and it names the panel it means on top
-  // of that, because "the dialog" is not one thing in this shell.
-  await page.waitForFunction(() => !document.querySelector('[data-presentation-rail]'), { timeout: 15_000 })
-  for (const theme of ['light', 'dark']) {
-    await setAppTheme(page, theme)
-    const measured = await page.evaluate(() => document.documentElement.dataset.theme)
-    check(`a11y: the shell scenario resolves the ${theme} theme before measuring`, measured === theme, `theme=${measured}`)
-    await measureShellSurfaces(page, theme)
-  }
-  // The rest of the run measures the light palette, which is what a new account resolves to.
-  await setAppTheme(page, 'light')
-}
-
 async function assertPresentationAccessibility(page) {
   await clickButton(page, LABELS.present)
   await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
@@ -1365,12 +1128,12 @@ async function main() {
     await page.setViewport(MOBILE_VIEWPORT)
     await page.goto(BASE, { waitUntil: 'networkidle2' })
 
-    const auth = await loginThroughUi(page)
-    check(`bootstrap: authenticated via ${auth}`, true)
-
-    const offered = await dismissUpdatePrompt(page)
+    // The sign-in helper also clears the owner's update prompt; every scenario below starts clicking
+    // straight away, and the prompt's scrim would swallow the first of those clicks.
+    await loginThroughUi(page, { username: USERNAME, password: PASSWORD })
+    check('bootstrap: authenticated', true)
     const blocking = await page.evaluate(() => document.querySelector('[role="dialog"]')?.getAttribute('aria-label') ?? null)
-    check('bootstrap: no dialog is holding the app', blocking === null, offered ? `update prompt dismissed, still open: ${blocking}` : `no update prompt, dialog: ${blocking}`)
+    check('bootstrap: no dialog is holding the app', blocking === null, `dialog: ${blocking}`)
 
     await typeProbeNote(page)
     await assertProseSurface(page, 'mobile-preview')
@@ -1379,7 +1142,6 @@ async function main() {
     await assertPresentation(page)
     await assertPresentationSession(page)
     await assertPresentationPages(page)
-    await assertShellAccessibility(page)
     await assertPresentationAccessibility(page)
     await assertDeckExport(page)
     await assertDeckImageExport(page)

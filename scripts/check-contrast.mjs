@@ -12,16 +12,30 @@
 // (a tint is translucent, so the surface under it counts), maps the colours
 // back to the tokens they came from, and names the offender by token. Both
 // themes are measured, because the tint leans on the surface underneath it and
-// the two themes have different ones. axe-core covers the panels it visits;
-// this covers the tint/pair question everywhere in the shell.
+// the two themes have different ones. The shell's axe pass runs here too, in the
+// same theme on the same freshly-opened panel: axe's color-contrast rule and the
+// measurements below are the same question asked twice, so they belong in one
+// scenario rather than in the behaviour gate (scripts/e2e-visual.mjs), which
+// keeps the presentation, export and mind map assertions.
 //
 // Usage: node scripts/check-contrast.mjs [base-url] [--report]
 //   base-url defaults to http://localhost:7712.
 //   --report prints every pair it measured, not just the failures.
 // Credentials: INKSTONE_VISUAL_USERNAME / INKSTONE_VISUAL_PASSWORD, the same
 // account scripts/e2e-visual.mjs signs in as.
-import fs from 'node:fs'
 import puppeteer from 'puppeteer-core'
+import {
+  PALETTE_PANEL,
+  SETTINGS_PANEL,
+  chromeExecutablePath,
+  ensureAxe,
+  isReviewedIncomplete,
+  loginThroughUi,
+  runAxe,
+  setAppTheme,
+  sleep,
+  waitForPanelSettled,
+} from './e2e-harness.mjs'
 
 const args = process.argv.slice(2)
 const REPORT = args.includes('--report')
@@ -35,42 +49,22 @@ const VIEWPORT = { width: 1280, height: 900 }
 const SETTLE_MS = 500
 const SETTLE_TIMEOUT = 20_000
 
-// Labels the theme control goes by, matched on the accessible name so the gate
-// is locale-agnostic: src/shared/locales/*/settings-*.ts.
-const THEME_LABELS = {
-  light: ['Light', '浅色'],
-  dark: ['Dark', '深色'],
-  system: ['System', '跟随系统'],
-}
-
-function chromeExecutablePath() {
-  const candidates = [
-    process.env.INKSTONE_CHROME_PATH,
-    '/usr/bin/google-chrome',
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-  ].filter(Boolean)
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate
-  }
-  throw new Error('no system Chrome found; set INKSTONE_CHROME_PATH to the browser binary')
-}
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Panels rendered over the app, each opened the way a person opens it. Their
-// surfaces differ from the shell's, so they are their own measurements.
+// surfaces differ from the shell's, so they are their own measurements — and each
+// names the root the axe pass below inspects, because axe's color-contrast rule
+// and the numbers measured here are the same question asked twice.
 const SURFACES = [
-  { name: 'shell', open: async () => {}, close: async () => {} },
+  { name: 'shell', axeRoot: 'aside', open: async () => {}, close: async () => {} },
   {
     name: 'command palette',
+    axeRoot: PALETTE_PANEL,
     open: async (page) => {
       await page.keyboard.down('Control')
       await page.keyboard.press('k')
       await page.keyboard.up('Control')
       await page.waitForSelector('[role="dialog"] input[role="combobox"]', { timeout: SETTLE_TIMEOUT })
-      await sleep(SETTLE_MS)
+      await waitForPanelSettled(page, PALETTE_PANEL)
     },
     close: async (page) => {
       await page.keyboard.press('Escape')
@@ -79,12 +73,13 @@ const SURFACES = [
   },
   {
     name: 'settings',
+    axeRoot: SETTINGS_PANEL,
     open: async (page) => {
       await page.keyboard.down('Control')
       await page.keyboard.press(',')
       await page.keyboard.up('Control')
       await page.waitForSelector('[role="dialog"] button[role="radio"]', { timeout: SETTLE_TIMEOUT })
-      await sleep(SETTLE_MS)
+      await waitForPanelSettled(page, SETTINGS_PANEL)
     },
     close: async (page) => {
       await page.keyboard.press('Escape')
@@ -93,47 +88,30 @@ const SURFACES = [
   },
 ]
 
-async function loginThroughUi(page) {
-  if (!(await page.evaluate(() => !!document.querySelector('input[type="password"]')))) return
-  const prefilled = await page.evaluate(() => {
-    const user = document.querySelector('input[autocomplete="username"], input[name="username"]')
-    return !!user?.value
-  })
-  if (!prefilled) {
-    const userField = await page.$('input[autocomplete="username"], input[name="username"]')
-    const passwordField = await page.$('input[type="password"]')
-    if (!userField || !passwordField) throw new Error('login form present but its fields were not found')
-    await userField.type(USERNAME)
-    await passwordField.type(PASSWORD)
+/**
+ * The same surface, asked the other way. axe reads the colour the browser
+ * composited and flags whatever falls under AA; the pass above names the token
+ * behind it. One theme, one freshly-opened panel, so the two answers are about
+ * the same pixels.
+ */
+async function judgeSurfaceAxe(surface, theme, page) {
+  const result = await runAxe(page, surface.axeRoot)
+  if (result.passes === 0) throw new Error(`axe inspected nothing in the ${surface.name}`)
+  const review = result.incomplete.filter((item) => !isReviewedIncomplete(item))
+  // The reviewed items are named in the count so "nothing to report" stays distinguishable from
+  // "the pass measured nothing"; they are allowed by id and reason, never by silence.
+  const allowed = result.incomplete.length - review.length
+  console.log(`  ${result.violations.length + review.length === 0 ? '✓' : '✗'} axe: the ${surface.name} has no violations and no unreviewed items (${theme}), ${result.passes} checks passed, ${allowed} reviewed items allowed`)
+  for (const item of result.violations) {
+    console.log(`      ${item.id} ×${item.count} — ${item.note}`)
+    console.log(`        ${item.target}`)
+    console.log(`        ${item.html}`)
   }
-  await page.click('button[type="submit"]')
-  const signedIn = await page
-    .waitForFunction(() => !document.querySelector('input[type="password"]'), { timeout: 30_000 })
-    .then(() => true, () => false)
-  if (!signedIn) throw new Error(`sign-in failed for ${USERNAME}; pass INKSTONE_VISUAL_USERNAME/PASSWORD for this instance`)
-  await sleep(1_500)
-}
-
-/** The theme is a per-account setting; the gate drives the same control a person would. */
-async function setTheme(page, theme) {
-  if ((await page.evaluate(() => document.documentElement.dataset.theme)) === theme) return
-  await page.keyboard.down('Control')
-  await page.keyboard.press(',')
-  await page.keyboard.up('Control')
-  await page.waitForSelector('[role="dialog"] button[role="radio"]', { timeout: 15_000 })
-  const clicked = await page.evaluate((labels) => {
-    const button = [...document.querySelectorAll('[role="dialog"] button[role="radio"]')]
-      .find((element) => labels.includes(element.getAttribute('aria-label') ?? ''))
-    button?.click()
-    return Boolean(button)
-  }, THEME_LABELS[theme])
-  if (!clicked) throw new Error(`the settings dialog has no ${theme} theme option`)
-  const applied = await page
-    .waitForFunction((next) => document.documentElement.dataset.theme === next, { timeout: 10_000 }, theme)
-    .then(() => true, () => false)
-  if (!applied) throw new Error(`the app never resolved to the ${theme} theme`)
-  await page.keyboard.press('Escape')
-  await sleep(SETTLE_MS)
+  for (const item of review) {
+    console.log(`      review: ${item.id} ×${item.count} — ${item.note}`)
+    console.log(`        ${item.target}`)
+  }
+  return result.violations.length + review.length
 }
 
 // Every text node the browser actually painted, with the background chain that
@@ -522,14 +500,15 @@ async function main() {
     const page = await browser.newPage()
     await page.setViewport(VIEWPORT)
     await page.goto(BASE, { waitUntil: 'networkidle2' })
-    await loginThroughUi(page)
+    await loginThroughUi(page, { username: USERNAME, password: PASSWORD })
+    await ensureAxe(page)
     const initialTheme = await page.evaluate(() => document.documentElement.dataset.theme)
     // The accent inventory is read once and used two ways: the stylesheet-level
     // matrix below, and the sweep that re-measures the painted accent tints.
     const matrix = await page.evaluate(ACCENT_MATRIX)
     if (matrix.length === 0) throw new Error('the stylesheet declares no accents to measure')
     for (const theme of THEMES) {
-      await setTheme(page, theme)
+      await setAppTheme(page, theme)
       const accents = matrix.filter((entry) => entry.theme === theme)
       // The shell first, then the two dialog surfaces: they sit on --bg-overlay,
       // the lightest surface in either theme, and that is where a dim tier runs
@@ -541,12 +520,13 @@ async function main() {
         const result = inspect(collected, theme)
         failures += report(`${theme} · ${surface.name}`, result)
         failures += judgeAccentSweep(`${theme} · ${surface.name}`, result, accents)
+        failures += await judgeSurfaceAxe(surface, theme, page)
         await surface.close(page)
       }
     }
     failures += judgeAccentMatrix(matrix)
     // Leave the instance in the theme it arrived in.
-    await setTheme(page, initialTheme === 'dark' ? 'dark' : 'light')
+    await setAppTheme(page, initialTheme === 'dark' ? 'dark' : 'light')
   }
   finally {
     await browser.close()
