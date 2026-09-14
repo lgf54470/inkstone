@@ -264,11 +264,27 @@ export function toggleTagPinned(tag: Tag): Promise<void> {
   return setTagPinned(tag, !tag.isPinned)
 }
 
+/** Opens the tag manager panel. */
+export function openTagManager(): void {
+  useUi.getState().openPanel('tags')
+}
+
+/**
+ * The same thing from a menu row: the menu has to go first, or it covers the panel it just
+ * opened.
+ */
+export function manageTagsFrom(closeMenu: () => void): () => void {
+  return () => {
+    closeMenu()
+    openTagManager()
+  }
+}
+
 export function noteTagRowActions(tag: Tag, onCreateChild?: () => void): TagRowActions {
   return {
     onTogglePin: () => void toggleTagPinned(tag),
     onSelectColor: (color) => void setTagColor(tag, color),
-    onManageTags: () => useUi.getState().openPanel('tags'),
+    onManageTags: openTagManager,
     onDelete: () => void deleteTag(tag),
     onCreateChild,
   }

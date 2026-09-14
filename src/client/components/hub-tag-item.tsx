@@ -16,7 +16,7 @@ import { t } from '../lib/i18n'
 import { Switch } from './form'
 import { Menu, Tooltip, useContextMenu, type MenuItem } from './overlay'
 import { useUi } from '../store/ui'
-import { TagColorSubmenu } from '../features/tags'
+import { manageTagsFrom, TagColorSubmenu } from '../features/tags'
 
 const TREE_INDENT_BASE = 8
 const TREE_INDENT_STEP = 12
@@ -84,10 +84,7 @@ function ColorMenuEntry({ ctx, closeMenu }: { ctx: MenuContext; closeMenu: () =>
         ctx.onColorChange(color)
         closeMenu()
       }}
-      onManageTags={() => {
-        closeMenu()
-        useUi.getState().openPanel('tags')
-      }}
+      onManageTags={manageTagsFrom(closeMenu)}
     />
   )
 }

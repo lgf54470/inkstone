@@ -1770,6 +1770,8 @@ const allowed = new Map([
     '// The rollback already surfaced the failure toast; a refresh warning would double-toast.',
     '// The tail chain must never reject; each operation reports its own failure.',
     '// The mutation already surfaced its failure; a refresh warning would double-toast.',
+    '/** Opens the tag manager panel. */',
+    '/**\n * The same thing from a menu row: the menu has to go first, or it covers the panel it just\n * opened.\n */',
   ]],
   ['src/client/features/tags/tag-row.tsx', [
     '// The menu or a row click can steal focus right after mount; keep the draft alive instead of cancelling it.',
