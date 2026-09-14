@@ -9,6 +9,7 @@ type ContextType =
   | 'codeblock'
   | 'mermaid'
   | 'chart'
+  | 'mindmap'
   | 'wikilink'
   | 'link'
   | 'frontmatter'
@@ -26,6 +27,7 @@ export interface EditorContextData {
   codeBlock?: { language: string; code: string; from: number; to: number }
   mermaid?: { code: string; from: number; to: number }
   chart?: { code: string; from: number; to: number }
+  mindmap?: { code: string; from: number; to: number }
   wikiLink?: { target: string; alias?: string; from: number; to: number }
   link?: { text: string; url: string; from: number; to: number }
   task?: { checked: boolean; text: string; from: number; to: number }
@@ -61,6 +63,10 @@ export interface PreviewContextData {
     sourceLine?: number
   }
   chart?: {
+    code: string
+    sourceLine?: number
+  }
+  mindmap?: {
     code: string
     sourceLine?: number
   }

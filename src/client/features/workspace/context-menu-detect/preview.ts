@@ -61,6 +61,12 @@ function detectChart(target: HTMLElement): PreviewContextData | null {
   return { type: 'chart', target, chart: { code: decodeDataValue(chartEl.dataset.chart ?? '') || chartEl.textContent || '', sourceLine: getSourceLine(chartEl) } }
 }
 
+function detectMindmap(target: HTMLElement): PreviewContextData | null {
+  const mindmapEl = target.closest<HTMLElement>('[data-mindmap], .mindmap-block')
+  if (!mindmapEl) return null
+  return { type: 'mindmap', target, mindmap: { code: decodeDataValue(mindmapEl.dataset.mindmap ?? ''), sourceLine: getSourceLine(mindmapEl) } }
+}
+
 function detectCodeBlock(target: HTMLElement): PreviewContextData | null {
   const codeEl = target.closest<HTMLElement>('pre code, pre')
   if (!codeEl) return null
@@ -106,6 +112,7 @@ const DETECTORS: Array<(target: HTMLElement) => PreviewContextData | null> = [
   detectMath,
   detectMermaid,
   detectChart,
+  detectMindmap,
   detectCodeBlock,
   detectWikiLink,
   detectLink,

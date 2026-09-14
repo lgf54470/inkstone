@@ -33,15 +33,24 @@ import {
 import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { preferredScrollBehavior } from '../../../lib/motion'
-import { insertAdvancedCodeBlock, insertCallout, insertCodeBlock, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands'
+import { insertAdvancedCodeBlock, insertCallout, insertCodeBlock, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands'
 import type { MenuCtx } from './types'
 import { SubmenuList } from '../../../components/overlay'
 
 const MERMAID_MENU_WIDTH = 190
 const CHART_MENU_WIDTH = 180
+const MINDMAP_MENU_WIDTH = 180
 const TASK_MENU_WIDTH = 180
 const EMOJI_MENU_WIDTH = 180
 const INSERT_MENU_WIDTH = 200
+
+const DIAGRAM_MENUS = {
+  mermaid: { labelKey: 'workspace.mermaid_diagram', templates: MERMAID_TEMPLATES, width: MERMAID_MENU_WIDTH, icon: <Sparkles size={13} /> },
+  chart: { labelKey: 'workspace.chartjs_diagram', templates: CHARTJS_TEMPLATES, width: CHART_MENU_WIDTH, icon: <BarChart2 size={13} /> },
+  mindmap: { labelKey: 'workspace.mind_map', templates: MINDMAP_TEMPLATES, width: MINDMAP_MENU_WIDTH, icon: <ListTree size={13} /> },
+} as const
+
+type DiagramKind = keyof typeof DIAGRAM_MENUS
 
 function basicInsertItems(ctx: MenuCtx): MenuItem[] {
   const { onPickImage, onPickFile, runStateCommand } = ctx
@@ -57,22 +66,21 @@ function basicInsertItems(ctx: MenuCtx): MenuItem[] {
   ]
 }
 
-function diagramInsertItems(ctx: MenuCtx, kind: 'mermaid' | 'chart', closeParent: () => void): MenuItem[] {
+function diagramInsertItems(ctx: MenuCtx, kind: DiagramKind, closeParent: () => void): MenuItem[] {
   const { runStateCommand } = ctx
-  const isMermaid = kind === 'mermaid'
-  const templates = isMermaid ? MERMAID_TEMPLATES : CHARTJS_TEMPLATES
+  const { labelKey, templates, width, icon } = DIAGRAM_MENUS[kind]
   return [
     {
       id: kind,
-      label: t(isMermaid ? 'workspace.mermaid_diagram' : 'workspace.chartjs_diagram'),
-      icon: isMermaid ? <Sparkles size={13} /> : <BarChart2 size={13} />,
+      label: t(labelKey),
+      icon,
       submenu: ({ closeMenu: closeSub }: { closeMenu: () => void }) => (
         <SubmenuList
           closeMenu={() => {
             closeSub()
             closeParent()
           }}
-          width={isMermaid ? MERMAID_MENU_WIDTH : CHART_MENU_WIDTH}
+          width={width}
           items={templates.map((tpl) => ({
             id: tpl.id,
             label: t(tpl.labelKey),
@@ -164,6 +172,7 @@ function buildInsertItem(ctx: MenuCtx): MenuItem {
           ...basicInsertItems(ctx),
           ...diagramInsertItems(ctx, 'mermaid', closeMenu),
           ...diagramInsertItems(ctx, 'chart', closeMenu),
+          ...diagramInsertItems(ctx, 'mindmap', closeMenu),
           ...tailInsertItems(ctx),
           ...taskStatusInsertItems(ctx, closeMenu),
           ...emojiInsertItems(ctx, closeMenu),

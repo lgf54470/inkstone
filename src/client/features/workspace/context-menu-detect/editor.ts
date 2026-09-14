@@ -170,6 +170,18 @@ function codeFenceContext(
       },
     }
   }
+  if (codeFence.language.toLowerCase() === 'mindmap' || codeFence.language.toLowerCase() === 'mind-elixir') {
+    return {
+      type: 'mindmap',
+      pos,
+      lineNumber,
+      mindmap: {
+        code: codeFence.code,
+        from: codeFence.from,
+        to: codeFence.to,
+      },
+    }
+  }
   if (codeFence.language.toLowerCase() === 'chart' || codeFence.language.toLowerCase() === 'chartjs') {
     return {
       type: 'chart',

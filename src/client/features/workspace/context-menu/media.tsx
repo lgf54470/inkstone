@@ -16,7 +16,7 @@ import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
 import { formatCode } from '../../../lib/markdown/code-formatter'
-import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES } from '../../../editor/commands'
+import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, MINDMAP_TEMPLATES } from '../../../editor/commands'
 import type { EditorContextData, PreviewContextData } from '../context-menu-detect'
 import type { MenuCtx } from './types'
 import { submenuFor } from '../../../components/overlay'
@@ -26,6 +26,7 @@ type MathData = NonNullable<EditorContextData['math']>
 type PreviewCodeBlockData = NonNullable<PreviewContextData['codeBlock']>
 
 const CODE_LANGUAGES = [
+  'mindmap',
   'typescript',
   'javascript',
   'python',
@@ -201,6 +202,35 @@ export function buildMermaidItems(ctx: MenuCtx): MenuItem[] | null {
       ...(previewContext
         ? [
             { id: 'jump-mermaid', label: t('contextmenu.mermaid_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
+          ]
+        : []),
+    ]
+  }
+  return null
+}
+
+/**
+ * A mind map block's menu matches the diagram ones: copy the source, swap in a
+ * template while the fence is being edited from the note, and jump back to it
+ * from the rendered block.
+ */
+export function buildMindmapItems(ctx: MenuCtx): MenuItem[] | null {
+  const { editorView, editorContext, previewContext, onJumpToLine, handleCopy } = ctx
+
+  const mindmapData = editorContext?.mindmap ?? previewContext?.mindmap
+  if (editorContext?.type === 'mindmap' || previewContext?.type === 'mindmap') {
+    const code = mindmapData?.code ?? ''
+    const templates = MINDMAP_TEMPLATES.map((tpl) => ({ id: tpl.id, label: t(tpl.labelKey), text: tpl.code }))
+    return [
+      { id: 'copy-mindmap', label: t('contextmenu.mermaid_copy'), icon: <Copy size={14} />, onSelect: () => handleCopy(code) },
+      ...(editorContext?.mindmap
+        ? [
+            { id: 'mindmap-templates-sub', label: t('contextmenu.mindmap_templates'), icon: <Sparkles size={14} />, separatorBefore: true, submenu: submenuFor(buildTemplateItems(editorView, editorContext.mindmap.from, editorContext.mindmap.to, 'mindmap', templates), 190) },
+          ]
+        : []),
+      ...(previewContext
+        ? [
+            { id: 'jump-mindmap', label: t('contextmenu.mermaid_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
           ]
         : []),
     ]

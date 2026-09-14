@@ -8,7 +8,7 @@ import { formatMarkdownTable, parseMarkdownTable, type ParsedTable } from '../..
 import type { MenuCtx } from './context-menu/types'
 import { buildEditorSelectionItems, buildPreviewSelectionItems } from './context-menu/selection'
 import { buildEditorTableItems, buildPreviewTableItems } from './context-menu/table'
-import { buildImageItems, buildMathItems, buildCodeBlockItems, buildMermaidItems, buildChartItems } from './context-menu/media'
+import { buildImageItems, buildMathItems, buildCodeBlockItems, buildMermaidItems, buildChartItems, buildMindmapItems } from './context-menu/media'
 import { buildWikiLinkItems, buildLinkItems, buildFrontmatterItems, buildTaskItems } from './context-menu/structure'
 import { buildEditorBlankItems, buildPreviewCanvasItems } from './context-menu/canvas'
 import type { EditorContextData, PreviewContextData } from './context-menu-detect'
@@ -145,6 +145,7 @@ export function useEditorMenuItems(props: EditorContextMenuProps): MenuItem[] {
       buildCodeBlockItems(ctx) ??
       buildMermaidItems(ctx) ??
       buildChartItems(ctx) ??
+      buildMindmapItems(ctx) ??
       buildWikiLinkItems(ctx) ??
       buildLinkItems(ctx) ??
       buildFrontmatterItems(ctx) ??

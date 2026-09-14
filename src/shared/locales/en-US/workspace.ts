@@ -51,6 +51,7 @@ export const messages = {
 'workspace.math': 'Math',
 'workspace.mermaid_diagram': 'Mermaid diagram',
 'workspace.chartjs_diagram': 'Chart.js chart',
+'workspace.mind_map': 'Mind map',
 'workspace.more_blocks': 'More blocks',
 'workspace.more_inline_styles': 'More inline styles',
 'workspace.could_not_load_backlinks': 'Could not load backlinks',

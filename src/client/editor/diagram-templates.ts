@@ -2,7 +2,7 @@ import { EditorSelection, type StateCommand } from '@codemirror/state'
 import type { MessageKey } from '../lib/i18n'
 
 
-interface DiagramTemplate {
+export interface DiagramTemplate {
   id: string
   labelKey: MessageKey
   code: string
@@ -349,7 +349,46 @@ export const CHARTJS_TEMPLATES: DiagramTemplate[] = [
   },
 ]
 
-export function insertDiagramCode(lang: 'mermaid' | 'chart', code: string): StateCommand {
+export const MINDMAP_TEMPLATES: DiagramTemplate[] = [
+  {
+    id: 'outline',
+    labelKey: 'contextmenu.mindmap_outline',
+    code: `- Core Topic
+  - Product
+    - Target Audience
+    - Key Value
+  - Architecture
+    - Web Client
+    - Edge Runtime
+  - Operations
+    - Community`,
+  },
+  {
+    id: 'json',
+    labelKey: 'contextmenu.mindmap_json',
+    code: `{
+  "nodeData": {
+    "topic": "Core Topic",
+    "children": [
+      {
+        "topic": "Product",
+        "children": [{ "topic": "Target Audience" }, { "topic": "Key Value" }]
+      },
+      {
+        "topic": "Architecture",
+        "children": [{ "topic": "Web Client" }, { "topic": "Edge Runtime" }]
+      },
+      {
+        "topic": "Operations",
+        "children": [{ "topic": "Community" }]
+      }
+    ]
+  }
+}`,
+  },
+]
+
+export function insertDiagramCode(lang: 'mermaid' | 'chart' | 'mindmap', code: string): StateCommand {
   return ({ state, dispatch }) => {
     const range = state.selection.main
     const insert = `\`\`\`${lang}\n${code}\n\`\`\`\n`

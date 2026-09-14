@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react'
 import type { EditorView } from '@codemirror/view'
-import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline, toggleWikiLink } from '../../editor/commands'
+import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline, toggleWikiLink } from '../../editor/commands'
+import type { DiagramTemplate } from '../../editor/diagram-templates'
+import type { MessageKey } from '../../lib/i18n'
 import type { MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { SubmenuList } from '../../components/overlay'
 
 const MERMAID_MENU_WIDTH = 190
 const CHART_MENU_WIDTH = 180
+const MINDMAP_MENU_WIDTH = 180
 const TASK_MENU_WIDTH = 180
 
 type MenuName = 'heading' | 'inline' | 'note' | 'block' | 'emoji'
@@ -52,17 +55,24 @@ function noteMenuItems(run: Run): MenuItem[] {
   ]
 }
 
-function diagramMenuItems(run: Run, kind: 'mermaid' | 'chart'): MenuItem[] {
-  const isMermaid = kind === 'mermaid'
-  const templates = isMermaid ? MERMAID_TEMPLATES : CHARTJS_TEMPLATES
+type DiagramKind = 'mermaid' | 'chart' | 'mindmap'
+
+const DIAGRAM_MENUS: Record<DiagramKind, { labelKey: MessageKey; templates: DiagramTemplate[]; width: number }> = {
+  mermaid: { labelKey: 'workspace.mermaid_diagram', templates: MERMAID_TEMPLATES, width: MERMAID_MENU_WIDTH },
+  chart: { labelKey: 'workspace.chartjs_diagram', templates: CHARTJS_TEMPLATES, width: CHART_MENU_WIDTH },
+  mindmap: { labelKey: 'workspace.mind_map', templates: MINDMAP_TEMPLATES, width: MINDMAP_MENU_WIDTH },
+}
+
+function diagramMenuItems(run: Run, kind: DiagramKind): MenuItem[] {
+  const { labelKey, templates, width } = DIAGRAM_MENUS[kind]
   return [
     {
       id: kind,
-      label: t(isMermaid ? 'workspace.mermaid_diagram' : 'workspace.chartjs_diagram'),
+      label: t(labelKey),
       submenu: ({ closeMenu }: { closeMenu: () => void }) => (
         <SubmenuList
           closeMenu={closeMenu}
-          width={isMermaid ? MERMAID_MENU_WIDTH : CHART_MENU_WIDTH}
+          width={width}
           items={templates.map((tpl) => ({
             id: tpl.id,
             label: t(tpl.labelKey),
@@ -99,6 +109,7 @@ function blockMenuItems(run: Run): MenuItem[] {
   return [
     ...diagramMenuItems(run, 'mermaid'),
     ...diagramMenuItems(run, 'chart'),
+    ...diagramMenuItems(run, 'mindmap'),
     { id: 'advanced-code', label: t('workspace.enhanced_code_block'), onSelect: run(insertAdvancedCodeBlock) },
     { id: 'js-example', label: t('workspace.runnable_js_block'), onSelect: run(insertRunnableJsBlock) },
     { id: 'callout', label: t('workspace.callout'), onSelect: run(insertCallout) },
