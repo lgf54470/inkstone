@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react'
 import { Crosshair, Download, Expand, FileJson, ImageDown, Keyboard, ListTree, Redo2, Undo2, X } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
-import { Menu, Modal, Tooltip, type MenuItem } from '../../components/overlay'
+import { Menu, Modal, Tooltip, useClickOutside, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { downloadBlob } from '../../lib/export-note'
 import { safeFileName } from '../../lib/export-folder'
@@ -135,19 +135,37 @@ function MindmapActionsButton(props: {
 }
 
 /** Keyboard is the map's main input method, so the reference is one click away. */
-function MindmapShortcutToggle() {
-  const [isOpen, setIsOpen] = useState(false)
+function MindmapShortcutToggle({ isOpen, onToggle, buttonRef }: {
+  isOpen: boolean
+  onToggle: () => void
+  buttonRef: RefObject<HTMLButtonElement | null>
+}) {
   return (
-    <>
-      <Tooltip label={t('preview.mindmap_shortcuts')}>
-        <IconButton label={t('preview.mindmap_shortcuts')} size='sm' active={isOpen} onClick={() => setIsOpen((open) => !open)}><Keyboard size={15} /></IconButton>
-      </Tooltip>
-      {isOpen && (
-        <section className='mindmap-shortcuts' aria-label={t('preview.mindmap_shortcuts')}>
-          <ul>{SHORTCUT_KEYS.map((key) => <li key={key}>{t(key)}</li>)}</ul>
-        </section>
-      )}
-    </>
+    <Tooltip label={t('preview.mindmap_shortcuts')}>
+      <IconButton ref={buttonRef} label={t('preview.mindmap_shortcuts')} size='sm' active={isOpen} onClick={onToggle}><Keyboard size={15} /></IconButton>
+    </Tooltip>
+  )
+}
+
+/**
+ * The keyboard reference is a card over the map, not a row inside the toolbar:
+ * growing the toolbar reflows the head and moves the button the user just
+ * pressed away from the pointer. It belongs to the drawing area instead, and
+ * Escape or a click outside dismisses it like any other popover.
+ */
+function MindmapShortcuts({ open, onClose, anchor }: {
+  open: boolean
+  onClose: () => void
+  anchor: RefObject<HTMLButtonElement | null>
+}) {
+  const panelRef = useRef<HTMLElement>(null)
+  useClickOutside([panelRef, anchor], open, onClose)
+  if (!open)
+    return null
+  return (
+    <section ref={panelRef} className='mindmap-shortcuts' aria-label={t('preview.mindmap_shortcuts')}>
+      <ul>{SHORTCUT_KEYS.map((key) => <li key={key}>{t(key)}</li>)}</ul>
+    </section>
   )
 }
 
@@ -155,8 +173,11 @@ function MindmapHeader(props: {
   session: MindmapSession
   actions: MindmapActions
   onClose: () => void
+  isShortcutsOpen: boolean
+  onToggleShortcuts: () => void
+  shortcutButtonRef: RefObject<HTMLButtonElement | null>
 }) {
-  const { session, actions, onClose } = props
+  const { session, actions, onClose, isShortcutsOpen, onToggleShortcuts, shortcutButtonRef } = props
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const editable = session.isEditable()
@@ -189,7 +210,7 @@ function MindmapHeader(props: {
         <Tooltip label={t('preview.mindmap_center')}>
           <IconButton label={t('preview.mindmap_center')} size='sm' onClick={() => session.center()}><Crosshair size={15} /></IconButton>
         </Tooltip>
-        <MindmapShortcutToggle />
+        <MindmapShortcutToggle isOpen={isShortcutsOpen} onToggle={onToggleShortcuts} buttonRef={shortcutButtonRef} />
         <MindmapActionsButton isMenuOpen={isMenuOpen} onToggle={() => setIsMenuOpen((open) => !open)} buttonRef={buttonRef} menuItems={menuItems} />
         <Tooltip label={t('preview.mindmap_exit_fullscreen')} combo='escape'>
           <IconButton label={t('preview.mindmap_exit_fullscreen')} size='sm' onClick={onClose}><X size={15} /></IconButton>
@@ -207,14 +228,26 @@ function MindmapHeader(props: {
  */
 export function MindmapFullscreen({ session, onClose }: { session: MindmapSession; onClose: () => void }) {
   const bodyRef = useRef<HTMLDivElement>(null)
+  const shortcutButtonRef = useRef<HTMLButtonElement>(null)
+  const [isShortcutsOpen, setShortcutsOpen] = useState(false)
   const toast = useUi((state) => state.toast)
   useOverlaySession(session, bodyRef)
 
+  const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
+  const toggleShortcuts = useCallback(() => setShortcutsOpen((open) => !open), [])
+
   // While a topic is being edited the library consumes Escape to cancel that
-  // edit (see the overlay hook exemption), so this only leaves full screen.
+  // edit (see the overlay hook exemption), so this only leaves full screen. The
+  // reference card is the transient layer Escape puts away first; the header's
+  // close button leaves full screen outright.
   const handleClose = useCallback(() => {
-    if (!session.isEditing()) onClose()
-  }, [onClose, session])
+    if (session.isEditing()) return
+    if (isShortcutsOpen) {
+      closeShortcuts()
+      return
+    }
+    onClose()
+  }, [closeShortcuts, isShortcutsOpen, onClose, session])
 
   const actions = useMemo<MindmapActions>(() => ({
     copy: (text) => void copyBody(text, toast),
@@ -224,8 +257,11 @@ export function MindmapFullscreen({ session, onClose }: { session: MindmapSessio
 
   return (
     <Modal open onClose={handleClose} variant='fullscreen' ariaLabel={session.title() || t('preview.mindmap')} className='mindmap-fullscreen' bodyClassName='mindmap-fullscreen-body'>
-      <MindmapHeader session={session} actions={actions} onClose={handleClose} />
-      <div ref={bodyRef} className='mindmap-fullscreen-canvas' />
+      <MindmapHeader session={session} actions={actions} onClose={onClose} isShortcutsOpen={isShortcutsOpen} onToggleShortcuts={toggleShortcuts} shortcutButtonRef={shortcutButtonRef} />
+      <div className='mindmap-fullscreen-stage'>
+        <div ref={bodyRef} className='mindmap-fullscreen-canvas' />
+        <MindmapShortcuts open={isShortcutsOpen} onClose={closeShortcuts} anchor={shortcutButtonRef} />
+      </div>
     </Modal>
   )
 }
