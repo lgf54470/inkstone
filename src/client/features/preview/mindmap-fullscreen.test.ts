@@ -4,6 +4,7 @@ import { initI18n, t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import {
+  APP_THEME_CHOICE,
   destroyMindmaps,
   flushMindmaps,
   mountMindmaps,
@@ -45,7 +46,7 @@ function previewHost(body = '- Root'): HTMLElement {
  */
 function keyboardVendor(model: { body: string }): MindmapVendor {
   return {
-    parse: (body) => ({ ok: true, data: { body }, extra: {} }),
+    parse: (body) => ({ ok: true, data: { body }, extra: {}, theme: APP_THEME_CHOICE }),
     serialize: () => model.body,
     create: (options: MindmapCreateOptions): MindmapHandle => {
       const onKeyDown = (event: Event) => {

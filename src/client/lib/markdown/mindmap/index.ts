@@ -29,6 +29,7 @@ export {
   type MindmapMountOptions,
 } from './registry'
 export { openMindmapSession, type MindmapSession } from './session'
+export { APP_THEME_CHOICE, readThemeChoice, resolveThemeChoice, type MindmapPalette, type MindmapThemeChoice } from './theme'
 export { MINDMAP_IMAGE_CLASS, renderStaticMindmapBlocks, renderStaticMindmaps, type StaticMindmapOptions } from './static'
 export {
   MINDMAP_NATIVE_FULLSCREEN_SELECTOR,
@@ -49,6 +50,7 @@ export type {
   MindmapCreateOptions,
   MindmapFenceRef,
   MindmapHandle,
+  MindmapParsedBody,
   MindmapVendor,
   MindmapVendorLoader,
   MindmapWriter,

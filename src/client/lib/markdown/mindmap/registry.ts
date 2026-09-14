@@ -284,7 +284,7 @@ function syncEntry(entry: MindmapBlockEntry, body: string): void {
     return
   }
   entry.extra = parsed.extra
-  handle.refresh(parsed.data)
+  handle.refresh(parsed)
   handle.clearHistory()
   handle.toCenter()
   markMindmapReady(entry.host)
@@ -337,7 +337,7 @@ async function buildInstance(entry: MindmapBlockEntry): Promise<void> {
   placeContainer(entry)
   entry.handle = vendor.create({
     el: container,
-    data: parsed.data,
+    body: parsed,
     editable: entry.editable,
     dark: entry.dark,
     locale: entry.locale,

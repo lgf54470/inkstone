@@ -10,7 +10,7 @@ import { errorMessage } from '../../errors'
 import { t } from '../../i18n'
 import { detectMindmapMode } from './body'
 import { loadMindmapVendor } from './loader'
-import type { MindmapVendor, MindmapVendorLoader } from './types'
+import type { MindmapParsedBody, MindmapVendor, MindmapVendorLoader } from './types'
 import { MINDMAP_CANVAS_CLASS, markMindmapReady, mindmapBlocks, mindmapBody, showMindmapSource } from './view'
 
 export interface StaticMindmapOptions {
@@ -38,10 +38,10 @@ function rootTopic(data: unknown): string | null {
   return typeof topic === 'string' && topic.trim() ? topic.trim() : null
 }
 
-function drawInto(container: HTMLElement, vendor: MindmapVendor, data: unknown, options: StaticMindmapOptions) {
+function drawInto(container: HTMLElement, vendor: MindmapVendor, body: MindmapParsedBody, options: StaticMindmapOptions) {
   return vendor.create({
     el: container,
-    data,
+    body,
     editable: false,
     dark: options.dark,
     locale: options.locale,
@@ -67,7 +67,7 @@ async function renderStaticBlock(node: HTMLElement, options: StaticMindmapOption
     showMindmapSource(node)
     return
   }
-  const handle = drawInto(container, vendor, parsed.data, options)
+  const handle = drawInto(container, vendor, parsed, options)
   try {
     const blob = await handle.exportSvg()
     const image = document.createElement('img')

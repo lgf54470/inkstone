@@ -16,6 +16,7 @@ import type { MindElixirData, MindElixirInstance, Options } from 'mind-elixir'
 import type { AppLocale } from '@shared/types'
 import { errorMessage } from '../../errors'
 import { normalizeEol, type MindmapMode } from './body'
+import { APP_THEME_CHOICE, readThemeChoice, resolveThemeChoice, type MindmapPalette, type MindmapThemeChoice } from './theme'
 import type { MindmapCreateOptions, MindmapHandle, MindmapParseResult, MindmapVendor } from './types'
 
 const WHEEL_ZOOM_FACTOR = 0.0015
@@ -45,7 +46,7 @@ function asData(value: unknown): MindElixirData {
 /** JSON bodies are validated before use; the outline parser reports its own errors. */
 function parseBody(body: string, mode: MindmapMode, fallbackTitle: string): MindmapParseResult {
   const text = normalizeEol(body).trim()
-  if (!text) return { ok: true, data: MindElixir.new(fallbackTitle), extra: {} }
+  if (!text) return { ok: true, data: MindElixir.new(fallbackTitle), extra: {}, theme: APP_THEME_CHOICE }
   if (mode === 'json') {
     let parsed: unknown
     try {
@@ -57,14 +58,20 @@ function parseBody(body: string, mode: MindmapMode, fallbackTitle: string): Mind
     const { nodeData, arrows, summaries, ...extra } = isRecord(parsed) ? parsed : {}
     if (!isRecord(nodeData) || typeof nodeData.topic !== 'string')
       return { ok: false, error: 'a JSON body needs a "nodeData" object with a "topic"' }
+    // Read out of `extra` instead of destructuring it away: the field is written back
+    // verbatim by the serializer, so a round-trip keeps the body as it was typed.
+    const theme = readThemeChoice(extra.theme)
+    if ('error' in theme) return { ok: false, error: theme.error }
     return {
       ok: true,
       data: { ...(present(arrows) ? { arrows } : {}), ...(present(summaries) ? { summaries } : {}), nodeData },
       extra,
+      theme: theme.choice,
     }
   }
   try {
-    return { ok: true, data: plaintextToMindElixir(text, fallbackTitle), extra: {} }
+    // The outline format carries no fields of its own, so it always follows the app.
+    return { ok: true, data: plaintextToMindElixir(text, fallbackTitle), extra: {}, theme: APP_THEME_CHOICE }
   }
   catch (err) {
     return { ok: false, error: errorMessage(err) }
@@ -89,27 +96,69 @@ function serializeData(data: unknown, mode: MindmapMode, extra: Record<string, u
   return JSON.stringify(payload, null, 2)
 }
 
+/**
+ * Maps a resolved palette onto the library's own theme objects. A custom theme is
+ * used as written (the shape the library's own data files carry), laid over the
+ * base its `type` names: the library reads `theme.palette` while drawing the
+ * connectors and does not fall back, so a body that overrides only the colour
+ * variables would otherwise throw on the first branch it paints.
+ */
+function libraryTheme(palette: MindmapPalette): typeof MindElixir.THEME {
+  if (palette.kind === 'custom') {
+    const custom = palette.theme as Partial<typeof MindElixir.THEME>
+    const base = custom.type === 'dark' ? MindElixir.DARK_THEME : MindElixir.THEME
+    return { ...base, ...custom }
+  }
+  return palette.kind === 'dark' ? MindElixir.DARK_THEME : MindElixir.THEME
+}
+
 function zoomByWheel(instance: MindElixirInstance, event: WheelEvent): void {
   event.preventDefault()
   const next = clamp(instance.scaleVal * (1 - event.deltaY * WHEEL_ZOOM_FACTOR), SCALE_MIN, SCALE_MAX)
   instance.scale(next, { x: event.clientX, y: event.clientY })
 }
 
-function createHandle(instance: MindElixirInstance): MindmapHandle {
+/**
+ * The two inputs an instance's palette resolves from, kept current together: the
+ * app's appearance setting and the palette the fence body asks for (./theme).
+ */
+interface ThemeState {
+  dark: boolean
+  choice: MindmapThemeChoice
+}
+
+/**
+ * Paints the palette those inputs resolve to. A theme lives inside the instance:
+ * `changeTheme` writes the colour variables as inline styles on the map's own
+ * element, and the branch palette (`theme.palette`) is read when the connectors are
+ * drawn, so the old colours survive until the connector pass runs again.
+ * `shouldRefresh` is passed explicitly: the library defaults it to true, and that
+ * path rebuilds every node and re-centres the camera, which would drop the
+ * selection, the scroll position and any open inline topic editor with it.
+ * Re-drawing the connectors is all a new palette needs, and a palette that is
+ * already on screen is left alone.
+ */
+function paintTheme(instance: MindElixirInstance, state: ThemeState): void {
+  const next = libraryTheme(resolveThemeChoice(state.choice, state.dark))
+  if (next === instance.theme) return
+  instance.changeTheme(next, false)
+  instance.linkDiv()
+}
+
+function createHandle(instance: MindElixirInstance, options: MindmapCreateOptions): MindmapHandle {
+  const theme: ThemeState = { dark: options.dark, choice: options.body.theme }
   return {
     getData: () => instance.getData(),
-    refresh: (data) => instance.refresh(asData(data)),
-    // A theme lives inside the instance: `changeTheme` writes the colour
-    // variables as inline styles on the map's own element, and the branch palette
-    // (`theme.palette`) is read when the connectors are drawn, so the old colours
-    // survive until the connector pass runs again. `shouldRefresh` is passed
-    // explicitly: the library defaults it to true, and that path rebuilds every
-    // node and re-centres the camera, which would drop the selection, the scroll
-    // position and any open inline topic editor with it. Re-drawing the
-    // connectors is all the new palette needs.
+    refresh: (body) => {
+      theme.choice = body.theme
+      instance.refresh(asData(body.data))
+      // The new body may name a different palette; refresh() draws with the one the
+      // instance already had.
+      paintTheme(instance, theme)
+    },
     applyTheme: (dark) => {
-      instance.changeTheme(dark ? MindElixir.DARK_THEME : MindElixir.THEME, false)
-      instance.linkDiv()
+      theme.dark = dark
+      paintTheme(instance, theme)
     },
     toCenter: () => instance.toCenter(),
     layout: () => instance.layout(),
@@ -154,7 +203,7 @@ function createMindmap(options: MindmapCreateOptions): MindmapHandle {
     allowUndo: options.editable,
     mouseSelectionButton: 0,
     mobileMultiSelect: true,
-    theme: options.dark ? MindElixir.DARK_THEME : MindElixir.THEME,
+    theme: libraryTheme(resolveThemeChoice(options.body.theme, options.dark)),
     newTopicName: options.newTopicName,
     scaleMin: SCALE_MIN,
     scaleMax: SCALE_MAX,
@@ -168,9 +217,9 @@ function createMindmap(options: MindmapCreateOptions): MindmapHandle {
     options.onOperation()
   })
   instance.bus.addListener('expandNode', () => options.onOperation())
-  const failure = instance.init(asData(options.data))
+  const failure = instance.init(asData(options.body.data))
   if (failure) throw failure
-  return createHandle(instance)
+  return createHandle(instance, options)
 }
 
 /** Entry point of the dynamic import; wired up by ./loader. */

@@ -1,13 +1,15 @@
 import { vi } from 'vitest'
 import { renderMarkdown } from '../renderer'
 import { mountMindmaps } from './registry'
-import type { MindmapCreateOptions, MindmapFenceRef, MindmapHandle, MindmapVendor, MindmapWriteResult } from './types'
+import { APP_THEME_CHOICE, type MindmapThemeChoice } from './theme'
+import type { MindmapCreateOptions, MindmapFenceRef, MindmapHandle, MindmapParsedBody, MindmapVendor, MindmapWriteResult } from './types'
 
 export interface StubMap {
   el: HTMLElement
   options: MindmapCreateOptions
   current: string
-  refreshes: unknown[]
+  /** The parsed bodies a fence edit loaded into the instance, oldest first. */
+  refreshes: MindmapParsedBody[]
   /** Themes handed to a live instance through applyTheme, oldest first. */
   themes: boolean[]
   historyCleared: boolean
@@ -46,9 +48,12 @@ function installToolbarStub(record: StubMap): void {
 }
 
 /** A controllable fake mind map: operations are recorded, nothing renders. */
-export function stubVendor(records: StubMap[]): MindmapVendor {
+export function stubVendor(records: StubMap[], theme: MindmapThemeChoice | (() => MindmapThemeChoice) = APP_THEME_CHOICE): MindmapVendor {
+  // The real vendor reads the palette out of the fence; the stub is told. A getter is
+  // what lets a test replay a fence edit that names another palette on a live instance.
+  const readTheme = typeof theme === 'function' ? theme : () => theme
   return {
-    parse: (body) => ({ ok: true, data: { body }, extra: {} }),
+    parse: (body) => ({ ok: true, data: { body }, extra: {}, theme: readTheme() }),
     serialize: (data) => String((data as { current?: string }).current ?? ''),
     create: (options) => {
       const record = newStubMap(options)
@@ -63,7 +68,7 @@ function newStubMap(options: MindmapCreateOptions): StubMap {
   return {
     el: options.el,
     options,
-    current: String((options.data as { body?: string }).body ?? ''),
+    current: String((options.body.data as { body?: string }).body ?? ''),
     refreshes: [],
     themes: [],
     historyCleared: false,
@@ -81,9 +86,9 @@ function newStubMap(options: MindmapCreateOptions): StubMap {
 function stubHandle(record: StubMap): MindmapHandle {
   return {
     getData: () => ({ current: record.current }),
-    refresh: (data) => {
-      record.refreshes.push(data)
-      record.current = String((data as { body?: string }).body ?? '')
+    refresh: (body) => {
+      record.refreshes.push(body)
+      record.current = String((body.data as { body?: string }).body ?? '')
     },
     applyTheme: (dark) => {
       record.themes.push(dark)
@@ -122,13 +127,19 @@ function paint(host: HTMLElement, source: string): void {
 /** A mounted preview surface backed by `stubVendor`; `mount` replays a re-render. */
 export function scopeHarness(
   source: string,
-  options: { editable?: boolean; writeBack?: (ref: MindmapFenceRef, next: string) => MindmapWriteResult } = {},
+  options: {
+    editable?: boolean
+    writeBack?: (ref: MindmapFenceRef, next: string) => MindmapWriteResult
+    /** What this surface's bodies parse to (the vendor reads the fence; the stub is told). */
+    theme?: MindmapThemeChoice
+  } = {},
 ) {
   const records: StubMap[] = []
   const host = document.createElement('div')
   document.body.append(host)
   paint(host, source)
   const mounts: string[] = []
+  let parsedTheme: MindmapThemeChoice = options.theme ?? APP_THEME_CHOICE
   const mount = async (next: string, overrides: Partial<Parameters<typeof mountMindmaps>[1]> = {}) => {
     paint(host, next)
     await mountMindmaps(host, {
@@ -138,12 +149,21 @@ export function scopeHarness(
       locale: 'en-US',
       editable: options.editable ?? true,
       writeBack: options.writeBack,
-      loadVendor: async () => stubVendor(records),
+      loadVendor: async () => stubVendor(records, () => parsedTheme),
       ...overrides,
     })
     mounts.push(next)
   }
-  return { host, records, mount, dispose: () => host.remove() }
+  return {
+    host,
+    records,
+    mount,
+    /** What the next parse of this surface's bodies reports, as a fence edit would. */
+    setBodyTheme: (theme: MindmapThemeChoice) => {
+      parsedTheme = theme
+    },
+    dispose: () => host.remove(),
+  }
 }
 
 /**

@@ -1,5 +1,19 @@
 import type { AppLocale } from '@shared/types'
 import type { MindmapMode } from './body'
+import type { MindmapThemeChoice } from './theme'
+
+/**
+ * One fence body as the vendor read it: what the library draws from, the fields
+ * the outline format cannot carry, and the palette the body asks for (see
+ * ./theme for how that meets the app's own setting). The three travel together
+ * through the vendor's create/refresh pair, so a caller cannot hand over the data
+ * and forget the theme it came with.
+ */
+export interface MindmapParsedBody {
+  data: unknown
+  extra: Record<string, unknown>
+  theme: MindmapThemeChoice
+}
 
 /**
  * The narrow surface the rest of the app talks to. mind-elixir is wrapped
@@ -9,13 +23,15 @@ import type { MindmapMode } from './body'
  */
 export interface MindmapHandle {
   getData(): unknown
-  refresh(data: unknown): void
+  /** Loads a body the fence no longer matches, palette included. */
+  refresh(body: MindmapParsedBody): void
   /**
-   * Switches the drawing's own palette. The library bakes a theme into the
-   * element it draws in (the colour variables are written as inline styles, and
-   * the branch palette is painted into the connectors when they are drawn), so a
-   * live instance has to be told about a theme change; the app's theme is not
-   * something the map picks up on its own.
+   * The app's appearance setting changed. The palette the instance draws with is
+   * re-resolved from it and the body's own request (./theme), so a map that pinned
+   * a theme keeps it; the library bakes a theme into the element it draws in (the
+   * colour variables are written as inline styles, and the branch palette is
+   * painted into the connectors when they are drawn), which is why the map has to
+   * be told rather than left to follow the app's CSS.
    */
   applyTheme(dark: boolean): void
   toCenter(): void
@@ -34,7 +50,7 @@ export interface MindmapHandle {
 
 export interface MindmapCreateOptions {
   el: HTMLElement
-  data: unknown
+  body: MindmapParsedBody
   editable: boolean
   dark: boolean
   locale: AppLocale
@@ -49,9 +65,7 @@ export interface MindmapCreateOptions {
   onEditingChange: (editing: boolean) => void
 }
 
-export type MindmapParseResult =
-  | { ok: true; data: unknown; extra: Record<string, unknown> }
-  | { ok: false; error: string }
+export type MindmapParseResult = ({ ok: true } & MindmapParsedBody) | { ok: false; error: string }
 
 export interface MindmapVendor {
   create(options: MindmapCreateOptions): MindmapHandle

@@ -85,6 +85,41 @@ describe('mindmap registry — theme following', () => {
       h.dispose()
     }
   })
+
+})
+
+// Separate from the app's own switch: these are about what the fence body itself asks
+// for, which outranks the setting the other describe drives.
+describe('mindmap registry — a body\'s own palette', () => {
+  it('creates the map with the palette its own body asks for', async () => {
+    // The body's choice travels with the body: the vendor resolves it against the
+    // app's setting (see ./theme), and it has to reach the instance that draws.
+    const h = scopeHarness(noteSource('- Root'), { theme: { kind: 'light' } })
+    try {
+      await h.mount(noteSource('- Root'), { dark: true })
+      expect(h.records[0]!.options.body.theme).toEqual({ kind: 'light' })
+      expect(h.records[0]!.options.dark).toBe(true)
+    }
+    finally {
+      h.dispose()
+    }
+  })
+
+  it('loads the palette a new body asks for into the live instance', async () => {
+    const h = scopeHarness(noteSource('- Root'))
+    try {
+      await h.mount(noteSource('- Root'))
+      const map = h.records[0]!
+      // The fence now says `"theme": "dark"`, so the next parse reports it.
+      h.setBodyTheme({ kind: 'dark' })
+      await h.mount(noteSource('- Root\n  - A'))
+      expect(h.records).toHaveLength(1)
+      expect(map.refreshes.map((body) => body.theme)).toEqual([{ kind: 'dark' }])
+    }
+    finally {
+      h.dispose()
+    }
+  })
 })
 
 describe('mindmap registry — overlapping mount passes', () => {
@@ -440,7 +475,7 @@ describe('mindmap registry — external fence edits', () => {
       await h.mount(noteSource('- Root\n  - A'))
       const map = h.records[0]!
       await h.mount(noteSource('- Root\n  - A\n  - Typed by hand'))
-      expect(map.refreshes).toEqual([{ body: '- Root\n  - A\n  - Typed by hand' }])
+      expect(map.refreshes.map((body) => body.data)).toEqual([{ body: '- Root\n  - A\n  - Typed by hand' }])
       expect(map.current).toBe('- Root\n  - A\n  - Typed by hand')
       // The map was rebuilt around the new body, so undoing into the old one has
       // to be impossible; the note's own edit is never overwritten either.
