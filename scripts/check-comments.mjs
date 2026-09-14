@@ -3050,6 +3050,9 @@ const allowed = new Map([
     '// current hop. The caller receives the first non-redirect response.',
     '// Best-effort body release; a failed cancel does not change the verdict.',
   ]],
+  ['src/worker/routes/blog/public-links.ts', [
+    '/**\n * The budget one visitor gets for applying: the count used to be over the whole table, so\n * five applications from anywhere took the endpoint down for everyone for a minute while\n * doing nothing to stop the one source that sent them.\n */',
+  ]],
   ['src/worker/routes/blog/public.ts', [
     '// The blog player reads the owner\'s music library read-only, gated by the publish switch.',
     '// Audio and artwork routes build their own Response, which drops headers set on the context,',
@@ -3209,6 +3212,11 @@ const allowed = new Map([
   ['tests/auth-routes.test.ts', [
     '// Password rotation destroys the presented session too and replaces it',
     '// with a fresh one; every other device session is revoked.',
+  ]],
+  ['tests/blog-links-routes.test.ts', [
+    '// Every request in the harness arrives from the same client, which is what makes the',
+    '// budget observable at all: the count used to be over the whole table, so the sixth',
+    '// application here would have been the sixth from anywhere.',
   ]],
   ['tests/d1-harness.ts', [
     '// D1 rejects a statement that binds more than 100 variables ("too many SQL variables"); the',

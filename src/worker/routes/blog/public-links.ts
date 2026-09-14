@@ -4,6 +4,7 @@ import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated, requestClientIp } from '../../lib/request'
+import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import type { BlogLinkCategoryRow, BlogLinkRow } from '../../db/rows'
 import { blogPublicLinkRequestSchema } from './schemas'
 
@@ -65,7 +66,7 @@ function registerPublicLinkRequestRoute(blogPublicRoutes: Hono<AppBindings>): vo
     const body = await readJsonValidated(c, blogPublicLinkRequestSchema, JSON_BODY_LIMITS.note)
     const now = Date.now()
 
-    await enforcePublicRateLimit(c, db, now)
+    await enforcePublicRateLimit(c, db)
     await checkDuplicateUrl(db, body.url)
 
     const admin = await db.prepare('SELECT id FROM users ORDER BY created_at ASC LIMIT 1').first<{ id: string }>()
@@ -95,18 +96,23 @@ function registerPublicLinkRequestRoute(blogPublicRoutes: Hono<AppBindings>): vo
   })
 }
 
-async function enforcePublicRateLimit(c: Context<AppBindings>, db: D1Database, now: number): Promise<void> {
-  const ip = requestClientIp(c)
-  if (!ip) return
+/**
+ * The budget one visitor gets for applying: the count used to be over the whole table, so
+ * five applications from anywhere took the endpoint down for everyone for a minute while
+ * doing nothing to stop the one source that sent them.
+ */
+const LINK_REQUEST_BUDGET = { maxAttempts: 5, windowMs: 60_000, lockMs: 60_000 }
 
-  const oneMinuteAgo = now - 60_000
-  const recent = await db.prepare(`
-    SELECT COUNT(*) as cnt FROM blog_links
-    WHERE status = 'pending' AND created_at > ?1
-  `).bind(oneMinuteAgo).first<{ cnt: number }>()
-
-  if (Number(recent?.cnt ?? 0) >= 5) {
-    throw ApiError.tooManyRequests('Too many requests, please try again later')
+async function enforcePublicRateLimit(c: Context<AppBindings>, db: D1Database): Promise<void> {
+  try {
+    await consumeAttemptBudget(db, [{ ...LINK_REQUEST_BUDGET, key: `blog-link-request:${requestClientIp(c)}` }])
+  } catch (error) {
+    if (error instanceof ThrottleError) {
+      throw new ApiError(429, 'too_many_attempts', `Too many applications. Try again in ${error.retryAfterSec} seconds`, {
+        retryAfter: error.retryAfterSec,
+      })
+    }
+    throw error
   }
 }
 

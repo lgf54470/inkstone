@@ -205,6 +205,29 @@ describe('blog links management and public routes', () => {
     expect(clickRes.status).toBe(200)
   })
 
+  // Every request in the harness arrives from the same client, which is what makes the
+  // budget observable at all: the count used to be over the whole table, so the sixth
+  // application here would have been the sixth from anywhere.
+  it('caps the applications one client can send within a minute', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    for (let index = 0; index < 5; index += 1) {
+      const res = await postJson(app, '/api/blog/public/link-requests', {
+        name: `Blog ${index}`,
+        url: `https://blog-${index}.com`,
+      })
+      expect(res.status).toBe(200)
+    }
+
+    const overBudget = await postJson(app, '/api/blog/public/link-requests', {
+      name: 'One Too Many',
+      url: 'https://one-too-many.com',
+    })
+    expect(overBudget.status).toBe(429)
+  })
+
   it('imports links and categories preserving category hierarchy', async () => {
     const db = await makeDb()
     await seedUser(db)
