@@ -1,3 +1,4 @@
+import { decorateMindmapLinks } from './node-links'
 import type { MindmapHandle } from './types'
 
 /** The slice of a registry entry the watcher needs; keeps this module decoupled. */
@@ -24,6 +25,10 @@ export function watchMindmapContainer(entry: MindmapResizeTarget): ResizeObserve
     if (!box || box.width === 0 || box.height === 0) return
     entry.handle?.layout()
     entry.handle?.scaleFit()
+    // A relayout rebuilds every node from its topic text, taking any link the
+    // decorator had put on it with it — and the observer reports once the moment
+    // it starts observing, which is right after the map was first drawn.
+    decorateMindmapLinks(entry.container)
   })
   observer.observe(entry.container)
   return observer

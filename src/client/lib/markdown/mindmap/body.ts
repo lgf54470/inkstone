@@ -114,41 +114,101 @@ export interface MindmapFencePatch {
   annotation?: string | null
 }
 
-/** Rewrites the fence that opens at `line` when its body still equals `expectedBody`. */
-function replaceFenceAt(lines: string[], line: number, expectedBody: string, patch: MindmapFencePatch): string[] | null {
-  const opening = parseFenceOpening(lines[line] ?? '')
-  if (!opening) return null
-  const closing = findClosingLine(lines, line, opening)
-  if (fenceBody(lines, line, closing) !== expectedBody) return null
-  const info = patch.annotation === undefined ? opening.info : withFenceAnnotation(opening.info, patch.annotation)
-  const body = patch.body === undefined ? expectedBody : normalizeEol(patch.body)
-  const replaced = buildFenceLines({ ...opening, info }, lines, closing, body)
-  return closing === -1
-    ? [...lines.slice(0, line), ...replaced]
-    : [...lines.slice(0, line), ...replaced, ...lines.slice(closing + 1)]
+/** A fence the note still holds the expected body in, with its closing line resolved. */
+interface FenceLocation {
+  line: number
+  closing: number
+  opening: FenceOpening
+}
+
+/**
+ * Where the fence is *now*. The recorded line is tried first; when the fence moved
+ * (someone edited above it) the single fence whose body still matches `target.body`
+ * is the one. Returns null when neither holds — guessing would overwrite whatever the
+ * user typed since the map was rendered, so every caller must then decline to write.
+ */
+function locateFence(lines: string[], target: MindmapFence): FenceLocation | null {
+  const expectedBody = normalizeEol(target.body)
+  const matchAt = (line: number): FenceLocation | null => {
+    const opening = parseFenceOpening(lines[line] ?? '')
+    if (!opening) return null
+    const closing = findClosingLine(lines, line, opening)
+    return fenceBody(lines, line, closing) === expectedBody ? { line, closing, opening } : null
+  }
+  const direct = matchAt(target.line)
+  if (direct) return direct
+  const moved: number[] = []
+  for (let index = 0; index < lines.length; index++) {
+    if (matchAt(index)) moved.push(index)
+  }
+  return moved.length === 1 ? matchAt(moved[0]!) : null
+}
+
+/** The lines a text block contributes; an empty text contributes none. */
+function textLines(text: string): string[] {
+  const body = normalizeEol(text).replace(/\n+$/, '')
+  return body.length > 0 ? body.split('\n') : []
+}
+
+/**
+ * The block's line span in the note: the opening fence through its closing line,
+ * or through the end of the file when the fence is left open. An editor caller
+ * maps these to character positions to replace the block in one transaction.
+ */
+export interface MindmapFenceRange {
+  /** 0-based line of the opening fence. */
+  start: number
+  /** 0-based line one past the block. */
+  end: number
+}
+
+export function mindmapFenceRange(content: string, target: MindmapFence): MindmapFenceRange | null {
+  const { lines } = splitLines(content)
+  const at = locateFence(lines, target)
+  if (!at) return null
+  return { start: at.line, end: at.closing === -1 ? lines.length : at.closing + 1 }
+}
+
+/**
+ * Rewrites the whole block as plain text — the fence, its body and its closing
+ * line all go. Used when a mind map becomes a Markdown outline.
+ */
+export function replaceFenceWithText(content: string, target: MindmapFence, text: string): string | null {
+  const { lines, eol, trailingNewline } = splitLines(content)
+  const at = locateFence(lines, target)
+  if (!at) return null
+  const end = at.closing === -1 ? lines.length : at.closing + 1
+  const next = [...lines.slice(0, at.line), ...textLines(text), ...lines.slice(end)]
+  return joinLines(next, eol, trailingNewline)
+}
+
+/** Inserts text on its own lines right after the block, leaving the fence alone. */
+export function insertTextAfterFence(content: string, target: MindmapFence, text: string): string | null {
+  const { lines, eol, trailingNewline } = splitLines(content)
+  const at = locateFence(lines, target)
+  if (!at) return null
+  const end = at.closing === -1 ? lines.length : at.closing + 1
+  const next = [...lines.slice(0, end), ...textLines(text), ...lines.slice(end)]
+  return joinLines(next, eol, trailingNewline)
 }
 
 /**
  * Rewrites one mind map fence, keeping the note's EOL style and every line outside the
- * block byte-identical. The recorded line is used first; when the fence moved (someone
- * edited above it) the single fence whose body still matches `target.body` is rewritten
- * instead. A fence is widened when the new body contains a line that would otherwise
- * close it early. Returns null when neither location holds that body — guessing would
- * overwrite whatever the user typed since the map was rendered, so the caller must not
- * write.
+ * block byte-identical. A fence is widened when the new body contains a line that would
+ * otherwise close it early. Returns null when the fence is no longer where the map last
+ * saw it, for the reason given in {@link locateFence}.
  */
 export function applyFencePatchAtSource(content: string, target: MindmapFence, patch: MindmapFencePatch): string | null {
   const { lines, eol, trailingNewline } = splitLines(content)
-  const expectedBody = normalizeEol(target.body)
-  const direct = replaceFenceAt(lines, target.line, expectedBody, patch)
-  if (direct) return joinLines(direct, eol, trailingNewline)
-  const matches: number[] = []
-  for (let index = 0; index < lines.length; index++) {
-    if (replaceFenceAt(lines, index, expectedBody, patch)) matches.push(index)
-  }
-  if (matches.length !== 1) return null
-  const moved = replaceFenceAt(lines, matches[0]!, expectedBody, patch)
-  return moved ? joinLines(moved, eol, trailingNewline) : null
+  const at = locateFence(lines, target)
+  if (!at) return null
+  const info = patch.annotation === undefined ? at.opening.info : withFenceAnnotation(at.opening.info, patch.annotation)
+  const body = patch.body === undefined ? normalizeEol(target.body) : normalizeEol(patch.body)
+  const replaced = buildFenceLines({ ...at.opening, info }, lines, at.closing, body)
+  const next = at.closing === -1
+    ? [...lines.slice(0, at.line), ...replaced]
+    : [...lines.slice(0, at.line), ...replaced, ...lines.slice(at.closing + 1)]
+  return joinLines(next, eol, trailingNewline)
 }
 
 /** The body-only case of {@link applyFencePatchAtSource}, for the map's own writes. */

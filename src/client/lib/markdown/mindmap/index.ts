@@ -6,7 +6,20 @@
  * `loadMindmapVendor`, which imports it dynamically so a note without a mind map
  * never downloads it.
  */
-export { applyBodyAtFence, applyFencePatchAtSource, detectMindmapMode, MINDMAP_LANGUAGES, normalizeEol, type MindmapFence, type MindmapFencePatch, type MindmapMode } from './body'
+export {
+  applyBodyAtFence,
+  applyFencePatchAtSource,
+  detectMindmapMode,
+  insertTextAfterFence,
+  mindmapFenceRange,
+  MINDMAP_LANGUAGES,
+  normalizeEol,
+  replaceFenceWithText,
+  type MindmapFence,
+  type MindmapFencePatch,
+  type MindmapFenceRange,
+  type MindmapMode,
+} from './body'
 export { loadMindmapVendor } from './loader'
 export {
   attachMindmapToOverlay,
@@ -30,6 +43,9 @@ export {
 } from './registry'
 export { applyEntryBody, flushEntry, serializeEntry, serializeEntryAs } from './write'
 export { openMindmapSession, type MindmapSession } from './session'
+export { markdownToMindmapOutline, mindmapOutlineToMarkdown } from './outline'
+export { parseMindmapNodeLink } from './links'
+export { decorateMindmapLinks, MINDMAP_NODE_LINK_ATTR, MINDMAP_NODE_LINK_CLASS } from './node-links'
 export {
   APP_THEME_CHOICE,
   MINDMAP_THEME_ATTR,
@@ -41,7 +57,7 @@ export {
   type MindmapPalette,
   type MindmapThemeChoice,
 } from './theme'
-export { MINDMAP_IMAGE_CLASS, renderStaticMindmapBlocks, renderStaticMindmaps, type StaticMindmapOptions } from './static'
+export { MINDMAP_IMAGE_CLASS, renderStaticMindmapBlocks, renderStaticMindmaps, type MindmapBox, type StaticMindmapOptions } from './static'
 export {
   MINDMAP_NATIVE_FULLSCREEN_SELECTOR,
   disarmNativeFullscreen,

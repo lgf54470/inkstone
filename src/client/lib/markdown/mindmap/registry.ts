@@ -18,6 +18,7 @@ import { t } from '../../i18n'
 import { detectMindmapMode, normalizeEol } from './body'
 import type { MindmapBlockEntry } from './entry'
 import { loadMindmapVendor } from './loader'
+import { decorateMindmapLinks } from './node-links'
 import { watchMindmapContainer } from './resize'
 import { renderStaticMindmapBlocks } from './static'
 import { APP_THEME_CHOICE, fenceThemeChoice, type MindmapThemeChoice } from './theme'
@@ -25,7 +26,7 @@ import type { MindmapFenceWriter, MindmapVendorLoader, MindmapWriteResult, Mindm
 import { flushEntry, scheduleWrite, setEntryTheme } from './write'
 
 // Re-exported here because the registry is what hands an entry out ({@link MindmapBlockEntry}).
-import { MINDMAP_CANVAS_CLASS, MINDMAP_PLACEHOLDER_SELECTOR, decorateMindmapControls, disarmNativeFullscreen, isMindmapWritableHere, markMindmapLoading, markMindmapReady, mindmapBlocks, mindmapBody, mindmapIndex, mindmapThemeAnnotation, markMindmapThemeMenuOpen, setMindmapThemePickerEnabled, showMindmapError, showMindmapThemeChoice, type MindmapThemePickName } from './view'
+import { MINDMAP_PLACEHOLDER_SELECTOR, createMindmapCanvas, decorateMindmapControls, disarmNativeFullscreen, isMindmapWritableHere, markMindmapLoading, markMindmapReady, mindmapBlocks, mindmapBody, mindmapIndex, mindmapThemeAnnotation, markMindmapThemeMenuOpen, setMindmapThemePickerEnabled, showMindmapError, showMindmapThemeChoice, type MindmapThemePickName } from './view'
 
 export type { MindmapBlockEntry } from './entry'
 
@@ -205,6 +206,7 @@ function createEntry(node: HTMLElement, options: MindmapMountOptions, load: Mind
     // Temporary key: assignEntries() rekeys every entry once it owns a block.
     key: `${options.scope}@new-${++pendingKey}`,
     scope: options.scope,
+    noteId: options.noteId,
     index: mindmapIndex(node),
     host: node,
     mode: detectMindmapMode(body),
@@ -237,6 +239,7 @@ function createEntry(node: HTMLElement, options: MindmapMountOptions, load: Mind
 async function mountBlock(node: HTMLElement, entry: MindmapBlockEntry, options: MindmapMountOptions): Promise<void> {
   const body = normalizeEol(mindmapBody(node))
   entry.host = node
+  entry.noteId = options.noteId
   decorateMindmapControls(node)
   // The instance outlives the markup it was built for, so a palette switch has to be
   // handed to it: both the fence's own annotation and the app's setting can move.
@@ -289,6 +292,8 @@ function syncEntry(entry: MindmapBlockEntry, body: string): void {
     handle.clearHistory()
     handle.toCenter()
   }
+  // A refresh rebuilds every node, and a rebuilt node is drawn from its topic text again.
+  decorateMindmapLinks(entry.container)
   markMindmapReady(entry.host)
   notify(entry.scope)
 }
@@ -308,19 +313,6 @@ function applyEntryTheme(entry: MindmapBlockEntry): boolean {
   showMindmapThemeChoice(entry.host, entry.choice)
   entry.handle?.applyTheme({ dark: entry.dark, choice: entry.choice })
   return true
-}
-
-function createCanvas(entry: MindmapBlockEntry): HTMLElement {
-  const container = document.createElement('div')
-  container.className = MINDMAP_CANVAS_CLASS
-  container.dataset.mindmapCanvas = '1'
-  container.tabIndex = 0
-  // A canvas-like widget: the library owns arrow keys, Tab and Enter inside it,
-  // which is what `application` tells assistive tech to expect.
-  container.setAttribute('role', 'application')
-  container.setAttribute('aria-label', t('preview.mindmap'))
-  if (!entry.editable) container.classList.add('is-readonly')
-  return container
 }
 
 /**
@@ -345,7 +337,7 @@ async function buildInstance(entry: MindmapBlockEntry): Promise<void> {
     showMindmapError(entry.host, parsed.error)
     return
   }
-  const container = createCanvas(entry)
+  const container = createMindmapCanvas(entry.editable)
   entry.vendor = vendor
   entry.mode = mode
   entry.extra = parsed.extra
@@ -369,8 +361,14 @@ async function buildInstance(entry: MindmapBlockEntry): Promise<void> {
     newTopicName: t('preview.mindmap_new_topic'),
     modifierWheelZoom: true,
     onOperation: () => scheduleWrite(entry),
-    onEditingChange: () => notify(entry.scope),
+    onEditingChange: (editing) => {
+      // Finishing an inline topic edit rebuilds that node, and a rebuilt node is
+      // drawn from its topic text — the link has to be put back on it.
+      if (!editing) decorateMindmapLinks(entry.container)
+      notify(entry.scope)
+    },
   })
+  decorateMindmapLinks(entry.container)
   // The library's own full screen button cannot survive the re-parenting below,
   // so it hands over to the overlay rather than dropping out of the browser's
   // full screen on the first write.
@@ -485,6 +483,7 @@ export function attachMindmapToOverlay(entry: MindmapBlockEntry, target: HTMLEle
   requestAnimationFrame(() => {
     entry.handle?.layout()
     entry.handle?.scaleFit()
+    decorateMindmapLinks(entry.container)
   })
   notify(entry.scope)
 }

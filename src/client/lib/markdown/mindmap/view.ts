@@ -74,6 +74,22 @@ export function disarmNativeFullscreen(root: ParentNode): void {
   if (button) button.onclick = null
 }
 
+/**
+ * The element the library draws in. Its ARIA role says what the widget is: the
+ * library owns the arrow keys, Tab and Enter inside it, which is what
+ * `application` tells assistive tech to expect.
+ */
+export function createMindmapCanvas(editable: boolean): HTMLElement {
+  const container = document.createElement('div')
+  container.className = MINDMAP_CANVAS_CLASS
+  container.dataset.mindmapCanvas = '1'
+  container.tabIndex = 0
+  container.setAttribute('role', 'application')
+  container.setAttribute('aria-label', t('preview.mindmap'))
+  if (!editable) container.classList.add('is-readonly')
+  return container
+}
+
 export function mindmapBlocks(root: ParentNode): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(MINDMAP_BLOCK_SELECTOR)]
 }

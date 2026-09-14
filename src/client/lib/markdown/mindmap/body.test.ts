@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyBodyAtFence, detectMindmapMode, normalizeEol } from './body'
+import { applyBodyAtFence, detectMindmapMode, insertTextAfterFence, mindmapFenceRange, normalizeEol, replaceFenceWithText } from './body'
 
 function fence(language: string, body: string): string {
   return ['```' + language, body, '```'].join('\n')
@@ -82,6 +82,63 @@ describe('applyBodyAtFence fence resolution', () => {
   it('drops a trailing newline from the note-level split when the fence has an empty body', () => {
     const content = '```mindmap\n\n```\n'
     expect(applyBodyAtFence(content, { line: 0, body: '' }, '- Root')).toBe('```mindmap\n- Root\n```\n')
+  })
+})
+
+describe('mindmapFenceRange', () => {
+  it('spans the opening and closing fence lines', () => {
+    const content = ['# Title', '', fence('mindmap', '- Root'), '', 'tail'].join('\n')
+    expect(mindmapFenceRange(content, { line: 2, body: '- Root' })).toEqual({ start: 2, end: 5 })
+  })
+
+  it('runs to the end of the note when the fence is left open', () => {
+    const content = ['# Title', '```mindmap', '- Root'].join('\n')
+    expect(mindmapFenceRange(content, { line: 1, body: '- Root' })).toEqual({ start: 1, end: 3 })
+  })
+
+  it('follows the fence when lines above it moved', () => {
+    const content = ['# Inserted', '', fence('mindmap', '- Root')].join('\n')
+    expect(mindmapFenceRange(content, { line: 2, body: '- Root' })).toEqual({ start: 2, end: 5 })
+  })
+
+  it('refuses to guess when the body is gone', () => {
+    const content = fence('mindmap', '- typed by hand')
+    expect(mindmapFenceRange(content, { line: 0, body: '- Root' })).toBeNull()
+  })
+})
+
+describe('replaceFenceWithText', () => {
+  it('writes the outline where the block was and keeps every other line', () => {
+    const content = ['# Title', '', fence('mindmap', '- Root\n  - A'), '', 'tail'].join('\n')
+    const next = replaceFenceWithText(content, { line: 2, body: '- Root\n  - A' }, '# Root\n## A')
+    expect(next).toBe(['# Title', '', '# Root', '## A', '', 'tail'].join('\n'))
+  })
+
+  it('keeps CRLF notes in CRLF', () => {
+    const content = 'before\r\n```mindmap\r\n- Root\r\n```\r\nafter'
+    expect(replaceFenceWithText(content, { line: 1, body: '- Root' }, '# Root')).toBe('before\r\n# Root\r\nafter')
+  })
+
+  it('refuses to write when the block moved out from under the caller', () => {
+    const content = fence('mindmap', '- typed by hand')
+    expect(replaceFenceWithText(content, { line: 0, body: '- Root' }, '# Root')).toBeNull()
+  })
+})
+
+describe('insertTextAfterFence', () => {
+  it('adds the text on its own lines after the closing fence', () => {
+    const content = fence('mindmap', '- Root')
+    expect(insertTextAfterFence(content, { line: 0, body: '- Root' }, '# Root')).toBe('```mindmap\n- Root\n```\n# Root')
+  })
+
+  it('appends at the end of the note when the fence is left open', () => {
+    const content = '# Title\n```mindmap\n- Root'
+    expect(insertTextAfterFence(content, { line: 1, body: '- Root' }, '# Root')).toBe('# Title\n```mindmap\n- Root\n# Root')
+  })
+
+  it('refuses to write when the body no longer matches', () => {
+    const content = fence('mindmap', '- typed by hand')
+    expect(insertTextAfterFence(content, { line: 0, body: '- Root' }, '# Root')).toBeNull()
   })
 })
 

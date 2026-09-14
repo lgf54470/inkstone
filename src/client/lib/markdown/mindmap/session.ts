@@ -4,13 +4,18 @@
  * overlay (which re-parents the block but keeps the instance alive).
  */
 import type { MindmapMode } from './body'
-import type { MindmapWriteResult } from './types'
+import { mindmapOutlineToMarkdown } from './outline'
+import type { MindmapFenceRef, MindmapWriteResult } from './types'
 import { attachMindmapToOverlay, detachMindmapFromOverlay, mindmapEntryForNode, type MindmapBlockEntry } from './registry'
 import { applyEntryBody, flushEntry, serializeEntryAs } from './write'
 import { mindmapEditing } from './view'
 
 export interface MindmapSession {
   readonly key: string
+  /** The note this block writes to, so an action can rewrite the note around the fence. */
+  noteId(): string | null
+  /** Where the fence is in that note, or null when the block is view-only. */
+  fence(): MindmapFenceRef | null
   title(): string
   isReady(): boolean
   isEditable(): boolean
@@ -24,6 +29,8 @@ export interface MindmapSession {
   undo(): void
   redo(): void
   serialize(mode: MindmapMode): string | null
+  /** The tree as Markdown headings and lists, for the "write as outline" actions. */
+  outlineMarkdown(): string | null
   apply(nextBody: string): MindmapWriteResult
   exportSvg(): Promise<Blob | null>
   exportPng(): Promise<Blob | null>
@@ -71,7 +78,18 @@ function sessionFor(entry: MindmapBlockEntry): MindmapSession {
     // The handle targets the library's inner container — the element its own
     // keymap is bound to — not our wrapper around it.
     focus: () => entry.handle?.focus(),
+    noteId: () => entry.noteId,
+    fence: () => entry.ref,
     mode: () => entry.mode,
+    /**
+     * The tree as a Markdown outline: headings down to the sixth level, then a
+     * nested list. Read from the map itself, so what lands in the note is what
+     * is on screen — including a topic edited but not yet written back.
+     */
+    outlineMarkdown: () => {
+      const outline = serializeEntryAs(entry, 'outline')
+      return outline === null ? null : mindmapOutlineToMarkdown(outline)
+    },
     moveInto: (target) => attachMindmapToOverlay(entry, target),
     moveBack: () => detachMindmapFromOverlay(entry),
     fit: () => entry.handle?.scaleFit(),

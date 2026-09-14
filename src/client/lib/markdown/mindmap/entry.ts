@@ -13,6 +13,8 @@ import type { MindmapFenceRef, MindmapFenceWriter, MindmapHandle, MindmapVendor,
 export interface MindmapBlockEntry {
   key: string
   scope: string
+  /** The note the block belongs to, so an action can rewrite it around the fence. */
+  noteId: string | null
   index: number
   host: HTMLElement
   mode: MindmapMode
