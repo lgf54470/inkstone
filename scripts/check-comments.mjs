@@ -1535,11 +1535,13 @@ const allowed = new Map([
     '/**\n * The writer handed to the registry. Conflicts are reported at most once every\n * few seconds: a drag emits operations continuously and each one would otherwise\n * queue the same toast.\n */',
   ]],
   ['src/client/features/preview/preview-interactions.test.ts', [
-    '/**\n * The click handler only reads `event.target` before it decides the mind map\n * branch is its own, so the rest of the surface is stubbed.\n */',
+    '/**\n * The click handler reads `event.target` to pick a branch and cancels the\n * browser\'s own handling once one takes it, so the rest of the surface is\n * stubbed.\n */',
     '// The library builds its toolbar once the block is mounted; the markup above',
     '// stops at the placeholder, so the canvas is added here with the toolbar the',
     '// real instance would carry.',
     '// The toast store returns the id it assigned; the branch under test never posts one.',
+    '// What Enter and Space on the wrapping button produce, and what a pointer click on',
+    '// the image inside it produces: one click event whose target is the button.',
   ]],
   ['src/client/features/preview/preview-interactions.ts', [
     '/** DOM click handling for the rendered preview body: file/table/JS-runner actions, mermaid retry, code copy/collapse, task checkboxes, wiki/block/tag navigation, lightbox, anchors. */',
@@ -1548,6 +1550,9 @@ const allowed = new Map([
     '// so both buttons open the same overlay.',
     '// Everything else inside the canvas belongs to the library: a node\'s link would',
     '// otherwise be read as a preview anchor and swallowed.',
+    '// A prose image is a button (enhance/image.ts), and a button fires a click for Enter and',
+    '// Space the same way it does for a pointer — so the two paths meet here. Surfaces that',
+    '// render the markup without wrapping it (the share page) still arrive as a bare image.',
     '// Malformed percent-encoding falls back to the raw id.',
   ]],
   ['src/client/features/preview/use-mindmap-blocks.ts', [
@@ -1559,6 +1564,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/preview/use-preview.ts', [
     '// Mind maps are mounted live, from the committed markup, by useMindmapBlocks.',
+    '// The preview is where the lightbox lives, so this is the surface whose images are controls.',
     '// One scope per preview instance: two panes showing the same note must not',
     '// claim each other\'s map instances.',
   ]],
@@ -1946,8 +1952,18 @@ const allowed = new Map([
     '// wherever the markup was mounted from the cache. A destroyed instance clears the property and',
     '// leaves the marker, which lands on the same path, so both draw again.',
   ]],
+  ['src/client/lib/markdown/enhance/image.test.ts', [
+    '// The image itself keeps the markdown\'s own attributes: only its parent changed.',
+  ]],
+  ['src/client/lib/markdown/enhance/image.ts', [
+    '// Images a widget drew for itself, or that are already inside a link or an example\'s',
+    '// own preview, keep their own semantics: wrapping them would either nest a control',
+    '// inside a control or break the widget.',
+    '/**\n * Makes a prose image an actual control: the lightbox opens on Enter or Space the way\n * it opens on a click, and Escape hands focus back to something that can hold it. The\n * image stays where it was — this only puts a button around it, so `img` styles and the\n * markdown it came from are untouched. The button takes no box of its own (content.css),\n * which is what keeps an image the size and position the stylesheet already gave it.\n */',
+  ]],
   ['src/client/lib/markdown/enhance/index.ts', [
     '/**\n   * How this surface treats ```mindmap blocks. `live` means the caller mounts\n   * them itself (the preview pane); `snapshot` draws a still image here, for\n   * surfaces whose markup gets serialized or printed; omitted means the block\n   * shows its source, which is what a surface that knows nothing about mind maps\n   * should look like.\n   */',
+    '/**\n   * Whether a prose image is a control that opens the lightbox. Surfaces that print or\n   * serialize their markup (export, share, slides) leave it off: a button there would be\n   * a control nobody can press once the markup is a document.\n   */',
     '// Pre-warm is best-effort; the on-demand loader retries when a diagram renders.',
   ]],
   ['src/client/lib/markdown/enhance/math.ts', [

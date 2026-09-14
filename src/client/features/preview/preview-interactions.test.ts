@@ -8,14 +8,15 @@ function ref<T>(current: T): RefObject<T> {
 }
 
 /**
- * The click handler only reads `event.target` before it decides the mind map
- * branch is its own, so the rest of the surface is stubbed.
+ * The click handler reads `event.target` to pick a branch and cancels the
+ * browser's own handling once one takes it, so the rest of the surface is
+ * stubbed.
  */
 function clickOn(target: EventTarget): ReactMouseEvent {
-  return { target } as unknown as ReactMouseEvent
+  return { target, preventDefault: () => {}, stopPropagation: () => {} } as unknown as ReactMouseEvent
 }
 
-function mountHandler(openMindmapFullscreen: (node: HTMLElement) => void) {
+function mountHandler(openMindmapFullscreen: (node: HTMLElement) => void, setLightbox: (value: { src: string; alt: string } | null) => void = () => {}) {
   const host = document.createElement('div')
   host.className = 'ink-prose'
   host.innerHTML = renderMarkdown('```mindmap\n- Root\n  - Child\n```').html
@@ -44,7 +45,7 @@ function mountHandler(openMindmapFullscreen: (node: HTMLElement) => void) {
     startMermaidRender: noop,
     openMindmapFullscreen,
     api: {
-      setLightbox: noop,
+      setLightbox,
       setPreviewFile: noop,
       openNote: async () => {},
       createNote: async () => null,
@@ -78,6 +79,32 @@ describe('preview clicks on a mind map block', () => {
     try {
       await handler(clickOn(canvas))
       expect(open).not.toHaveBeenCalled()
+    }
+    finally {
+      host.remove()
+    }
+  })
+})
+
+describe('preview clicks on a prose image', () => {
+  it('opens the lightbox for the control the image is wrapped in', async () => {
+    const lightbox = vi.fn()
+    const { host, handler } = mountHandler(vi.fn(), lightbox)
+    try {
+      // What Enter and Space on the wrapping button produce, and what a pointer click on
+      // the image inside it produces: one click event whose target is the button.
+      const trigger = document.createElement('button')
+      trigger.type = 'button'
+      trigger.dataset.imageZoom = '1'
+      const image = document.createElement('img')
+      image.src = '/probe.png'
+      image.alt = 'probe'
+      trigger.append(image)
+      host.append(trigger)
+
+      await handler(clickOn(trigger))
+
+      expect(lightbox).toHaveBeenCalledWith({ src: image.src, alt: 'probe' })
     }
     finally {
       host.remove()

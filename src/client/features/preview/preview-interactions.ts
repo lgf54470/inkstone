@@ -350,8 +350,12 @@ async function handleTag(event: ReactMouseEvent, target: HTMLElement, ctx: Previ
   return true
 }
 
+// A prose image is a button (enhance/image.ts), and a button fires a click for Enter and
+// Space the same way it does for a pointer — so the two paths meet here. Surfaces that
+// render the markup without wrapping it (the share page) still arrive as a bare image.
 async function handleImage(event: ReactMouseEvent, target: HTMLElement, ctx: PreviewClickContext): Promise<boolean> {
-  const image = target.closest<HTMLImageElement>('img')
+  const trigger = target.closest<HTMLElement>('[data-image-zoom]')
+  const image = trigger?.querySelector<HTMLImageElement>('img') ?? target.closest<HTMLImageElement>('img')
   if (!image?.src) return false
   event.preventDefault()
   ctx.api.setLightbox({ src: image.src, alt: image.alt })

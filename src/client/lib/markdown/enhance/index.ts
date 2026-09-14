@@ -1,5 +1,6 @@
 import { configureCodeBlockCollapsing } from './code'
 import { highlightCodeBlocks } from './code'
+import { wrapZoomableImages } from './image'
 import { showMathSource } from './math'
 import { renderMath } from './math'
 import { hydrateCachedMermaid } from './mermaid'
@@ -23,8 +24,16 @@ interface EnhanceOptions {
    * should look like.
    */
   mindmap?: 'live' | 'snapshot'
+  /**
+   * Whether a prose image is a control that opens the lightbox. Surfaces that print or
+   * serialize their markup (export, share, slides) leave it off: a button there would be
+   * a control nobody can press once the markup is a document.
+   */
+  zoomableImages?: boolean
 }
 export async function enhancePreview(root: HTMLElement, options: EnhanceOptions): Promise<void> {
+  if (options.zoomableImages)
+    wrapZoomableImages(root)
   if (options.mermaid) {
     hydrateCachedMermaid(root, options.dark)
     const hasPendingDiagram = [...root.querySelectorAll<HTMLElement>('[data-mermaid]')].some((node) => node.dataset.rendered !== currentSignature(node, options.dark))
@@ -47,6 +56,7 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
   ])
   configureCodeBlockCollapsing(root, options.codeBlockCollapseLines ?? 24)
 }
+export { wrapZoomableImages } from './image'
 export { decorateCodeBlock } from './code'
 export { configureCodeBlockCollapsing } from './code'
 export { toggleCodeBlockCollapse } from './code'

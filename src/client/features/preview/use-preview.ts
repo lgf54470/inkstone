@@ -58,6 +58,8 @@ async function prepareStagedHtml(opts: {
     mermaid: preview.mermaid,
     // Mind maps are mounted live, from the committed markup, by useMindmapBlocks.
     mindmap: 'live',
+    // The preview is where the lightbox lives, so this is the surface whose images are controls.
+    zoomableImages: true,
     dark: theme === 'dark',
     codeBlockCollapseLines: preview.codeBlockCollapse ? preview.codeBlockCollapseLines : 0,
   })

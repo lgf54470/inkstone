@@ -278,6 +278,14 @@
   cursor: zoom-in;
   background: var(--bg-inset);
 }
+.ink-prose .image-zoom {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
 .ink-prose figure {
   margin: 1em 0;
 }
