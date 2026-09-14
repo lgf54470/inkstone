@@ -20,6 +20,8 @@ npm run dev
 
 The local application is available at `http://localhost:7712`. Wrangler stores local D1, R2, and Durable Object state under `.wrangler/state/`.
 
+`npm run dev` omits the Workers AI binding so startup does not wait for a remote AI connection; the local Worker and MCP stay available with keyword search instead of AI semantic search. Use `npm run dev:ai` to exercise real Workers AI (requires Cloudflare authentication and network access). Production builds keep the AI binding from `wrangler.toml`.
+
 ## Local pre-commit gate
 
 `npm install` / `npm ci` automatically points Git at `.githooks/` (`core.hooksPath`, wired by the `prepare` script), so every commit is policy-gated before it can reach CI:
