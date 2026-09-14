@@ -1784,6 +1784,11 @@ const allowed = new Map([
   ['src/client/features/sidebar/sidebar/count-badge.ts', [
     '/**\n * Count badges sit on rows that take the accent tint when they are selected,\n * and the dimmest text tier does not clear AA on that tint (the axe gate\n * measured 3.86:1 on a selected row), so the selected row uses the next tier up.\n */',
   ]],
+  ['src/client/features/sidebar/sidebar/search-button.tsx', [
+    '// The one search entry for every shell (sidebar row, collapsed rail icon): it',
+    '// replaces the floating button so the corner it used to claim stays free for',
+    '// the music player on mobile.',
+  ]],
   ['src/client/features/sidebar/sidebar/sidebar-drop.ts', [
     '/** Reads the dropped note ids from a DataTransfer, accepting both the\n * multi-select payload and its single-note fallback. */',
   ]],

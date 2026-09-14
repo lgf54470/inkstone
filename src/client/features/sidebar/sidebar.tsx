@@ -25,6 +25,7 @@ import { BottomNavButton } from './sidebar/sidebar-nav-buttons'
 import { FolderSection } from './sidebar/sidebar-folders'
 import { SidebarAccount } from './sidebar/sidebar-account'
 import { SidebarRail } from './sidebar/sidebar-rail'
+import { SearchButton } from './sidebar/search-button'
 import { TagSection } from './sidebar/sidebar-tags'
 import { ViewItem } from './sidebar/sidebar-nav-buttons'
 
@@ -53,6 +54,8 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
     return (<>
         {collapsed ? <SidebarRail onExpand={onCollapse}/> : (<aside className='flex h-full min-h-0 flex-col bg-[var(--bg-sunken)]'>
       <SidebarHeader onCollapse={onCollapse}/>
+
+      <div className='shrink-0 px-2 pt-2'><SearchButton /></div>
 
       <div className='min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-4'>
         <SidebarCalendar />

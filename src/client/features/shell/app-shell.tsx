@@ -18,7 +18,6 @@ import { PresentationOverlay } from '../presentation'
 import { NoteList, useGapIndicator, useRollingDateFilter } from '../list'
 import { Sidebar } from '../sidebar'
 import { MusicFloatingPlayer, MusicHubModal, MusicImmersiveOverlay, MusicSessionSync } from '../music'
-import { FloatingSearch } from './floating-search'
 import { Resizer, SplitResizer } from './resizer'
 import { PinnedWindowsLayer } from '../preview'
 import { t } from '../../lib/i18n'
@@ -110,7 +109,6 @@ function DesktopShell() {
     <WorkspaceArea desktop={!isTablet} />
     </div>
 
-    <FloatingSearch />
     <MusicFloatingPlayer />
 
     {navAsDrawer && (<Drawer open onClose={() => toggleNavDrawer(false)} side='left' width={NAV_DRAWER_WIDTH} title={t('common.navigation')}>
@@ -209,7 +207,6 @@ function MobileShell() {
     </div>
     </div>
 
-    <FloatingSearch compact/>
     <MusicFloatingPlayer />
 
     <PinnedWindowsLayer />

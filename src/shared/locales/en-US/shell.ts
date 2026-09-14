@@ -15,6 +15,7 @@ export const messages = {
 'shell.insert_note_template': 'Insert note template at the caret',
 'shell.save_now': 'Save now',
 'shell.saving': 'Saving…',
+'shell.search': 'Search',
 'shell.search_all_notes': 'Search all notes',
 'shell.search_notes_or_run_a_command': 'Search notes or run a command…',
 'shell.show_hide_outline': 'Show/hide outline',

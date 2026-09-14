@@ -15,6 +15,7 @@ export const messages = {
 'shell.insert_note_template': '在当前光标处插入笔记模板',
 'shell.save_now': '立即保存',
 'shell.saving': '正在保存…',
+'shell.search': '搜索',
 'shell.search_all_notes': '全文搜索',
 'shell.search_notes_or_run_a_command': '搜索笔记、执行命令…',
 'shell.show_hide_outline': '显示 / 隐藏大纲',

@@ -14,6 +14,7 @@ import { useUi } from '../../../store/ui'
 import { createContextualNote } from '../../../store/notes'
 import { t } from '../../../lib/i18n'
 import { SidebarAccount } from './sidebar-account'
+import { SearchButton } from './search-button'
 
 export function SidebarRail({ onExpand }: {
     onExpand?: () => void
@@ -31,6 +32,7 @@ export function SidebarRail({ onExpand }: {
       </div>
 
       <div className='flex w-full flex-col items-center gap-1 py-2'>
+        <SearchButton variant='icon' />
         <RailButton label={t('navigation.pinned')} active={view === 'pinned' && !panel} icon={<Pin size={16}/>} onClick={() => openView('pinned')}/>
         <RailButton label={t('navigation.favorites')} active={view === 'starred' && !panel} icon={<Star size={16}/>} onClick={() => openView('starred')}/>
         <RailButton label={t('navigation.share')} active={(view === 'shared' || panel === 'share-hub')} icon={<Share2 size={16}/>} onClick={() => openView('shared')}/>
