@@ -51,6 +51,12 @@ export interface D1Prepared {
   first(): Promise<Record<string, unknown> | null>
 }
 
+// D1 rejects a statement that binds more than 100 variables ("too many SQL variables"); the
+// in-process sqlite here takes as many as it is given, so a statement that binds one id per note
+// passes every test and then answers a 500 in workerd. The budget is enforced, so that gap fails
+// here instead of in the browser.
+export const D1_BOUND_PARAMETER_LIMIT = 100
+
 export interface D1Shim {
   prepare(sql: string): D1Prepared
   batch(statements: D1Prepared[]): Promise<Array<{ meta: { changes: number }; results?: Array<Record<string, unknown>> }>>
@@ -61,7 +67,12 @@ export function createD1Database(extraSchema = ''): D1Shim {
   sqlite.exec(BASE_SCHEMA + '\n' + extraSchema)
   const prepare = (sql: string) => {
     const makeStatement = (values: unknown[]): D1Prepared => {
-      const getStatement = () => sqlite.prepare(sql)
+      const getStatement = () => {
+        if (values.length > D1_BOUND_PARAMETER_LIMIT) {
+          throw new Error(`D1_ERROR: too many SQL variables — ${values.length} bound, the limit is ${D1_BOUND_PARAMETER_LIMIT}: ${sql.slice(0, 120)}`)
+        }
+        return sqlite.prepare(sql)
+      }
       const returnsRows = /\bRETURNING\b/i.test(sql) || /^\s*(?:SELECT|WITH)\b/i.test(sql)
       return {
         bind: (...bound: unknown[]) => makeStatement(bound),

@@ -10,6 +10,12 @@ import { requireAuth } from '../../middleware/auth'
 import { GRAPH_EDGE_CANDIDATE_LIMIT } from './helpers'
 import { escapeLike } from './helpers'
 
+// D1 refuses a statement with more than 100 bound variables, and the edge query binds the user once
+// plus the note ids on both sides of the join (and its own LIMIT), so a page of notes has to be
+// walked in chunks: the graph asks for up to 350 notes, which as one statement is a 500-too-many-
+// variables error instead of a graph. 40 keeps the widest of the two queries at 82 bindings.
+const GRAPH_NOTE_ID_CHUNK = 40
+
 interface GraphParams {
   userId: string
   mode: 'local' | 'global'
@@ -37,6 +43,15 @@ type GraphRow = {
   in_degree: number
   out_degree: number
 }
+
+type GraphLinkRow = {
+  source_note_id: string
+  target_note_id: string | null
+  target_key: string
+  target_title: string
+}
+
+type GraphTagRow = { note_id: string; name: string; color: string | null }
 
 // Link degrees are aggregated once per user (single pass over links) and
 // joined by note id, instead of three correlated sub-probes per note row.
@@ -247,7 +262,7 @@ async function loadGraphEdgesAndTags(
   if (!ids.length) {
     return { edges: [], unresolved: new Map(), tagsByNote: new Map(), truncated: false }
   }
-  const { linkResult, tagResult } = await loadGraphLinkRows(db, userId, ids, includeUnresolved)
+  const { linkResult, tagResult } = await loadGraphLinkRows(db, userId, ids)
   const { edges, unresolved, truncated } = buildGraphEdges(linkResult.results, includeUnresolved)
   return { edges, unresolved, tagsByNote: groupTagsByNote(tagResult), truncated }
 }
@@ -256,36 +271,46 @@ async function loadGraphLinkRows(
   db: D1Database,
   userId: string,
   ids: string[],
-  includeUnresolved: boolean,
-): Promise<{
-  linkResult: { results: Array<{
-    source_note_id: string
-    target_note_id: string | null
-    target_key: string
-    target_title: string
-  }> }
-  tagResult: { results: Array<{ note_id: string; name: string; color: string | null }> }
-}> {
-  const placeholders = ids.map(() => '?').join(',')
-  const [linkResult, tagResult] = await Promise.all([
-    db.prepare(
-      `SELECT source_note_id, target_note_id, target_key, target_title FROM links
-       WHERE user_id = ? AND source_note_id IN (${placeholders})
-         AND (target_note_id IN (${placeholders})${includeUnresolved ? ' OR target_note_id IS NULL' : ''})
-       ORDER BY source_note_id ASC, target_key ASC LIMIT ?`,
-    ).bind(userId, ...ids, ...ids, GRAPH_EDGE_CANDIDATE_LIMIT + 1).all<{
-      source_note_id: string
-      target_note_id: string | null
-      target_key: string
-      target_title: string
-    }>(),
-    db.prepare(
-      `SELECT nt.note_id, t.name, t.color FROM note_tags nt
-       JOIN tags t ON t.id = nt.tag_id AND t.user_id = ?
-       WHERE nt.note_id IN (${placeholders}) ORDER BY t.name COLLATE NOCASE ASC`,
-    ).bind(userId, ...ids).all<{ note_id: string; name: string; color: string | null }>(),
-  ])
-  return { linkResult, tagResult }
+): Promise<{ linkResult: { results: GraphLinkRow[] }; tagResult: { results: GraphTagRow[] } }> {
+  const pageIds = new Set(ids)
+  const linkRows: GraphLinkRow[] = []
+  const tagRows: GraphTagRow[] = []
+  for (let index = 0; index < ids.length; index += GRAPH_NOTE_ID_CHUNK) {
+    const chunk = ids.slice(index, index + GRAPH_NOTE_ID_CHUNK)
+    const placeholders = chunk.map(() => '?').join(',')
+    // A chunk asks for the links leaving its own notes only: binding the page on the target side as
+    // well would not fit a statement a second time. Which of those links stay in the page is decided
+    // below instead, because a link that leaves the page and comes back in a later chunk would be
+    // dropped by a per-chunk target list. The edge candidate cap is applied when the edges are built,
+    // on the whole page at once, so no statement carries its own LIMIT any more.
+    const [linkResult, tagResult] = await Promise.all([
+      db.prepare(
+        `SELECT source_note_id, target_note_id, target_key, target_title FROM links
+         WHERE user_id = ? AND source_note_id IN (${placeholders})
+         ORDER BY target_key ASC`,
+      ).bind(userId, ...chunk).all<GraphLinkRow>(),
+      db.prepare(
+        `SELECT nt.note_id, t.name, t.color FROM note_tags nt
+         JOIN tags t ON t.id = nt.tag_id AND t.user_id = ?
+         WHERE nt.note_id IN (${placeholders}) ORDER BY t.name COLLATE NOCASE ASC`,
+      ).bind(userId, ...chunk).all<GraphTagRow>(),
+    ])
+    for (const row of linkResult.results) {
+      // Unresolved links (no target note) stay in: they become nodes of their own when the caller
+      // asked for them and are skipped otherwise. Everything else has to end inside the page.
+      if (row.target_note_id === null || pageIds.has(row.target_note_id)) linkRows.push(row)
+    }
+    tagRows.push(...tagResult.results)
+  }
+  // Each chunk was ordered on its own, so the rows are put back into the order a single statement
+  // would have produced: the edge cap keeps whichever rows come first, and those should not depend
+  // on how the id list happened to be split. Tags are grouped per note, so they need no reordering.
+  linkRows.sort((a, b) => (
+    a.source_note_id === b.source_note_id
+      ? (a.target_key < b.target_key ? -1 : a.target_key > b.target_key ? 1 : 0)
+      : (a.source_note_id < b.source_note_id ? -1 : 1)
+  ))
+  return { linkResult: { results: linkRows }, tagResult: { results: tagRows } }
 }
 
 function buildGraphEdges(

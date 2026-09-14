@@ -124,6 +124,30 @@ describe('graph route degree aggregation (real D1)', () => {
     expect(hub).toMatchObject({ degree: 1, inDegree: 1, outDegree: 0 })
   })
 
+  it('answers a library too large to bind in one statement', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    // 60 notes is the smallest page the route accepts and every edge query binds a note id on both
+    // sides of its join, so as one statement this is 122 variables — past D1's limit of 100, which
+    // the graph used to answer with a 500 instead of a graph.
+    const ids = Array.from({ length: 60 }, (_, index) => vid(`b${index}`))
+    for (const [index, id] of ids.entries()) await seedNote(id, userId, NOW + index)
+    for (const [index, id] of ids.entries()) await seedLink(userId, id, ids[(index + 1) % ids.length])
+    const token = await signIn(userId)
+    const app = makeApp()
+
+    const res = await request(app, '/api/search/graph?limit=60', token)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.nodes).toHaveLength(60)
+    expect(body.edges).toHaveLength(60)
+    expect(body.meta.totalNodes).toBe(60)
+    // The links that came back are the ones that were seeded, and the degrees still come from the one
+    // pre-aggregated pass over links rather than from the chunking.
+    const byId = new Map<string, GraphNode>(body.nodes.map((node: GraphNode) => [node.id, node]))
+    for (const id of ids) expect(byId.get(id)).toMatchObject({ degree: 2, inDegree: 1, outDegree: 1 })
+  })
+
   it('limits the local graph to the configured depth around the center', async () => {
     await makeDb()
     const userId = await seedUser()
