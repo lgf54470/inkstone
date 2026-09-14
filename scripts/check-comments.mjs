@@ -952,6 +952,10 @@ const allowed = new Map([
   ['src/client/features/attachments/attachment-drive-modal/hooks.ts', [
     '/** All state + async actions behind the attachment drive modal, so the modal component stays a thin JSX shell. */',
   ]],
+  ['src/client/features/attachments/attachment-store.ts', [
+    '// Rebuilt only when the folders change: every consumer of the tree reads it on each',
+    '// render, and a new array each time would invalidate theirs as well.',
+  ]],
   ['src/client/features/blog/blog-store/index.ts', [
     '// Feed the notes store\'s visibility projection (published note ids) without',
     '// creating a store → feature import edge: selectors read the neutral registry',

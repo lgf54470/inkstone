@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import type { AttachmentFolder, AttachmentTag, Folder, Tag } from '@shared/types'
 import { api } from '../../lib/api'
@@ -154,17 +155,21 @@ export const useAttachmentStore = create<AttachmentStoreState>()((set) => ({
 
 export function useAttachmentFolderTree(): FolderNode[] {
   const folders = useAttachmentStore((s) => s.folders)
-  const castFolders: Folder[] = folders.map((f) => ({
-    id: f.id,
-    parentId: f.parentId,
-    name: f.name,
-    icon: f.icon ?? null,
-    color: f.color ?? null,
-    position: f.position ?? 0,
-    createdAt: f.createdAt,
-    updatedAt: f.updatedAt,
-  }))
-  return buildFolderTree(castFolders, new Map())
+  // Rebuilt only when the folders change: every consumer of the tree reads it on each
+  // render, and a new array each time would invalidate theirs as well.
+  return useMemo(() => {
+    const castFolders: Folder[] = folders.map((f) => ({
+      id: f.id,
+      parentId: f.parentId,
+      name: f.name,
+      icon: f.icon ?? null,
+      color: f.color ?? null,
+      position: f.position ?? 0,
+      createdAt: f.createdAt,
+      updatedAt: f.updatedAt,
+    }))
+    return buildFolderTree(castFolders, new Map())
+  }, [folders])
 }
 
 export function useAttachmentTagTree(): {
@@ -173,15 +178,17 @@ export function useAttachmentTagTree(): {
 } {
   const tags = useAttachmentStore((s) => s.tags)
   const expandedTagPaths = useAttachmentStore((s) => s.expandedTagPaths)
-  const castTags: Tag[] = tags.map((t) => ({
-    id: t.id,
-    name: t.name,
-    color: t.color ?? null,
-    isPinned: Boolean(t.isPinned),
-    count: 0,
-    createdAt: t.createdAt,
-  }))
-  const tree = buildTagTree(castTags)
-  const flatTree = flattenTagTree(tree, expandedTagPaths)
-  return { tree, flatTree }
+  return useMemo(() => {
+    const castTags: Tag[] = tags.map((t) => ({
+      id: t.id,
+      name: t.name,
+      color: t.color ?? null,
+      isPinned: Boolean(t.isPinned),
+      count: 0,
+      createdAt: t.createdAt,
+    }))
+    const tree = buildTagTree(castTags)
+    const flatTree = flattenTagTree(tree, expandedTagPaths)
+    return { tree, flatTree }
+  }, [tags, expandedTagPaths])
 }
