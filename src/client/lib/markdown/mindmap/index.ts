@@ -46,6 +46,7 @@ export {
   showMindmapSourceAll,
 } from './view'
 export type {
+  MindmapCreateOptions,
   MindmapFenceRef,
   MindmapHandle,
   MindmapVendor,
