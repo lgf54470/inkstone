@@ -50,6 +50,9 @@ jobs:
           if [ "$ready" != "1" ]; then cat /tmp/inkstone-dev.log; exit 1; fi
           node scripts/e2e.mjs
           node scripts/e2e-visual.mjs
+          # Measures the tokens the app actually paints, in both themes and for
+          # every accent, against a real browser (scripts/check-contrast.mjs).
+          node scripts/check-contrast.mjs
 
   blog-frontend:
     runs-on: ubuntu-latest

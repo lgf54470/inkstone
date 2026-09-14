@@ -38,6 +38,7 @@
     "bench:typing": "vitest run --config vitest.config.ts src/client/lib/note-persist.test.ts src/client/lib/db-shell.test.ts src/client/lib/calendar-tree.test -t benchmark",
     "budget:check": "npm run build && node scripts/check-bundle-budget.mjs",
     "vendor:check": "node scripts/check-vendor-isolation.mjs",
+    "contrast:check": "node scripts/check-contrast.mjs",
     "i18n:check": "node scripts/check-i18n.mjs",
     "comments:check": "node scripts/check-comments.mjs",
     "escape:check": "node scripts/check-escape-hatches.mjs",

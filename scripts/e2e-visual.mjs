@@ -26,6 +26,7 @@ const USERNAME = process.env.INKSTONE_VISUAL_USERNAME ?? 'Owner-1'
 const PASSWORD = process.env.INKSTONE_VISUAL_PASSWORD ?? 'supersecret100'
 const MOBILE_VIEWPORT = { width: 390, height: 844 }
 const DESKTOP_VIEWPORT = { width: 1280, height: 900 }
+const SETTLE_MS = 500
 
 const NOTE_MARKDOWN = [
   '# Visual E2E Probe',
@@ -531,6 +532,32 @@ async function runAxe(page, selector) {
   }, selector)
 }
 
+// The theme is a per-account setting, and the account's state is whatever ran before this gate
+// (scripts/e2e.mjs leaves it dark). The scenarios below measure tokens, so they drive the same
+// control a person would and name the theme they measured instead of inheriting one.
+const THEME_LABELS = {
+  light: ['Light', '浅色'],
+  dark: ['Dark', '深色'],
+}
+
+async function setAppTheme(page, theme) {
+  if ((await page.evaluate(() => document.documentElement.dataset.theme)) === theme) return
+  await page.keyboard.down('Control')
+  await page.keyboard.press(',')
+  await page.keyboard.up('Control')
+  await page.waitForSelector('[role="dialog"] button[role="radio"]', { timeout: 15_000 })
+  const clicked = await page.evaluate((labels) => {
+    const button = [...document.querySelectorAll('[role="dialog"] button[role="radio"]')]
+      .find((element) => labels.includes(element.getAttribute('aria-label') ?? ''))
+    button?.click()
+    return Boolean(button)
+  }, THEME_LABELS[theme])
+  if (!clicked) throw new Error(`setAppTheme: the settings dialog has no ${theme} option`)
+  await page.waitForFunction((next) => document.documentElement.dataset.theme === next, { timeout: 10_000 }, theme)
+  await page.keyboard.press('Escape')
+  await sleep(SETTLE_MS)
+}
+
 // The shell the slide surface sits in: the sidebar the deck is listed in, the palette a presenter
 // reaches for mid-talk, and the settings dialog they open to change the type scale. Each is its own
 // scenario with its own assertion, so a regression names the surface it happened on.
@@ -538,18 +565,30 @@ async function runAxe(page, selector) {
 // The token contrast the gate found here was real and shared: the dim text tiers sat at 4.29 and
 // 3.28 on light surfaces, and an accent sat at 3.92 on its own soft tint (where the sidebar and the
 // palette both put it as text). They are fixed in styles/tokens.css — the drift baseline records
-// the deliberate change — and this gate is what keeps them there. Dark-theme tokens are not covered
-// here: the run is in the light theme, which is what the app resolves to under the default system
-// preference.
-async function assertShellAccessibility(page) {
-  await ensureAxe(page)
-  // The show leaves its own dialog behind for a beat after it closes, so the scenarios below wait
-  // for the slide surface to be gone before they measure anything — and they name the panel they
-  // mean on top of that, because "the dialog" is not one thing in this shell.
-  await page.waitForFunction(() => !document.querySelector('[data-presentation-rail]'), { timeout: 15_000 })
+// the deliberate change — and this gate is what keeps them there. Both themes are measured now: the
+// dark dim tiers were 4.02 and 2.33 on the dark surfaces, and a run that only ever saw the light
+// tokens let that sit there.
+async function measureShellSurfaces(page, theme) {
   const sidebar = await runAxe(page, 'aside')
-  check('a11y: the sidebar has no axe violations', sidebar.violations.length === 0, JSON.stringify(sidebar.violations.slice(0, 3)))
-  check('a11y: axe inspected the sidebar tree', sidebar.passes >= 20, `passes=${sidebar.passes}`)
+  check(`a11y: the sidebar has no axe violations (${theme})`, sidebar.violations.length === 0, JSON.stringify(sidebar.violations.slice(0, 3)))
+  check(`a11y: axe inspected the sidebar tree (${theme})`, sidebar.passes >= 20, `passes=${sidebar.passes}`)
+
+  // The count badge on the selected row is the one spot where the sidebar's dimmest text tier
+  // landed on the accent tint the selected row paints underneath it (axe read 3.86:1 there), so a
+  // selected row's badge takes the next tier up. It is measured on its own because the sidebar
+  // stays clean for plenty of other reasons: a tier shuffle would hide behind them.
+  const badge = await page.evaluate(async () => {
+    const node = document.querySelector('aside [aria-current="page"] span.tabular')
+    if (!node) return null
+    const results = await window.axe.run(node, { runOnly: ['color-contrast'] })
+    return {
+      text: node.textContent.trim(),
+      color: getComputedStyle(node).color,
+      background: getComputedStyle(node.parentElement).backgroundColor,
+      violations: results.violations.length,
+    }
+  })
+  check(`a11y: the count badge on the selected row clears AA on its accent tint (${theme})`, badge !== null && badge.violations === 0, JSON.stringify(badge))
 
   await page.keyboard.down('Control')
   await page.keyboard.press('k')
@@ -557,7 +596,7 @@ async function assertShellAccessibility(page) {
   await page.waitForSelector('[role="dialog"] input[role="combobox"]', { timeout: 10_000 })
   await waitForPanelSettled(page, PALETTE_PANEL)
   const palette = await runAxe(page, PALETTE_PANEL)
-  check('a11y: the command palette has no axe violations', palette.violations.length === 0, JSON.stringify(palette.violations.slice(0, 3)))
+  check(`a11y: the command palette has no axe violations (${theme})`, palette.violations.length === 0, JSON.stringify(palette.violations.slice(0, 3)))
   await page.keyboard.press('Escape')
   await sleep(400)
 
@@ -566,12 +605,28 @@ async function assertShellAccessibility(page) {
   await page.keyboard.up('Control')
   await waitForPanelSettled(page, SETTINGS_PANEL)
   const settings = await runAxe(page, SETTINGS_PANEL)
-  check('a11y: the settings dialog has no axe violations', settings.violations.length === 0, JSON.stringify(settings.violations.slice(0, 3)))
+  check(`a11y: the settings dialog has no axe violations (${theme})`, settings.violations.length === 0, JSON.stringify(settings.violations.slice(0, 3)))
 
   const unexpected = [...sidebar.incomplete, ...palette.incomplete, ...settings.incomplete].filter((item) => !isReviewedIncomplete(item))
-  check('a11y: no unexpected axe review items in the shell', unexpected.length === 0, JSON.stringify(unexpected.slice(0, 3)))
+  check(`a11y: no unexpected axe review items in the shell (${theme})`, unexpected.length === 0, JSON.stringify(unexpected.slice(0, 3)))
   await page.keyboard.press('Escape')
   await sleep(400)
+}
+
+async function assertShellAccessibility(page) {
+  await ensureAxe(page)
+  // The show leaves its own dialog behind for a beat after it closes, so the scenario waits for the
+  // slide surface to be gone before it measures anything — and it names the panel it means on top
+  // of that, because "the dialog" is not one thing in this shell.
+  await page.waitForFunction(() => !document.querySelector('[data-presentation-rail]'), { timeout: 15_000 })
+  for (const theme of ['light', 'dark']) {
+    await setAppTheme(page, theme)
+    const measured = await page.evaluate(() => document.documentElement.dataset.theme)
+    check(`a11y: the shell scenario resolves the ${theme} theme before measuring`, measured === theme, `theme=${measured}`)
+    await measureShellSurfaces(page, theme)
+  }
+  // The rest of the run measures the light palette, which is what a new account resolves to.
+  await setAppTheme(page, 'light')
 }
 
 async function assertPresentationAccessibility(page) {
@@ -691,6 +746,280 @@ async function assertDeckImageExport(page) {
   check('export: the deck images are saved as one archive', saved.some((name) => name.endsWith('.zip')), JSON.stringify(saved))
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
+}
+
+// The mind map block is the surface with the most moving parts: the library loads on demand, the
+// live instance is re-parented into every new render (that adoption is what two-way editing rests
+// on), and full screen moves the very same element rather than drawing a second copy of the map.
+// The scenario appends a fence to the probe note, then reads the preview, the overlay and the
+// hand-back of the focus.
+const MINDMAP_MARKDOWN = ['', '', '```mindmap', '- Visual Probe', '  - Live block', '  - Two way editing', '```'].join('\n')
+
+// Ctrl+\ cycles edit -> split -> preview on the desktop shell; the mind map scenario needs the
+// editor to type a fence and then the prose to read it, which is two different layouts.
+async function cycleLayout(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('Backslash')
+  await page.keyboard.up('Control')
+  await sleep(800)
+}
+
+async function ensurePaneVisible(page, selector) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const visible = await page.evaluate((sel) => {
+      const element = document.querySelector(sel)
+      return Boolean(element) && element.getClientRects().length > 0
+    }, selector)
+    if (visible) return true
+    await cycleLayout(page)
+  }
+  return false
+}
+
+async function assertMindmapBlock(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(600)
+  if (!(await ensurePaneVisible(page, '.cm-content'))) throw new Error('mindmap scenario: the editor pane never became visible')
+  await page.evaluate((markdown) => {
+    const content = document.querySelector('.cm-content')
+    content.focus()
+    const selection = window.getSelection()
+    selection.selectAllChildren(content)
+    selection.collapseToEnd()
+    document.execCommand('insertText', false, markdown)
+  }, MINDMAP_MARKDOWN)
+  await sleep(1_500)
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('mindmap scenario: the preview pane never became visible')
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('.ink-prose .mindmap-block .mindmap-canvas')
+    const box = canvas?.getBoundingClientRect()
+    return !!box && box.width > 100 && box.height > 100
+  }, { timeout: 30_000 })
+
+  const block = await page.evaluate(() => {
+    const node = document.querySelector('.ink-prose .mindmap-block')
+    const canvas = node?.querySelector('.mindmap-canvas')
+    const box = canvas?.getBoundingClientRect()
+    return {
+      ready: Boolean(node?.classList.contains('is-ready')),
+      height: Math.round(box?.height ?? 0),
+      role: canvas?.getAttribute('role') ?? '',
+      label: canvas?.getAttribute('aria-label') ?? '',
+      controls: node?.querySelectorAll('[data-mindmap-fit], [data-mindmap-fullscreen]').length ?? 0,
+    }
+  })
+  check('mindmap: the block renders a live canvas', block.ready, JSON.stringify(block))
+  check('mindmap: the canvas is announced as an application widget', block.role === 'application' && block.label.length > 0, JSON.stringify(block))
+  check('mindmap: the block header offers fit and full screen', block.controls === 2, `controls=${block.controls}`)
+
+  await page.evaluate(() => {
+    window.__mindmapCanvas = document.querySelector('.ink-prose .mindmap-canvas')
+  })
+  await page.click('.ink-prose .mindmap-block [data-mindmap-fullscreen]')
+  await page.waitForSelector('.mindmap-fullscreen-canvas .mindmap-canvas', { timeout: 15_000 })
+  await waitForPanelSettled(page, '.mindmap-fullscreen')
+  await sleep(600)
+
+  const full = await page.evaluate(() => {
+    const dialog = document.querySelector('.mindmap-fullscreen')
+    const canvas = dialog?.querySelector('.mindmap-canvas')
+    const box = canvas?.getBoundingClientRect()
+    return {
+      hosted: Boolean(canvas) && canvas === window.__mindmapCanvas,
+      height: Math.round(box?.height ?? 0),
+      label: dialog?.getAttribute('aria-label') ?? '',
+      controls: dialog?.querySelectorAll('button[aria-label]').length ?? 0,
+      focused: Boolean(document.activeElement?.closest?.('.mindmap-canvas')),
+      nodes: dialog?.querySelectorAll('me-tpc').length ?? 0,
+    }
+  })
+  check('mindmap: full screen hosts the same live element', full.hosted, JSON.stringify(full))
+  check('mindmap: full screen gives the map the viewport', full.height > block.height, `inline=${block.height} full=${full.height}`)
+  check('mindmap: full screen exposes the view, shortcut and export controls', full.controls >= 6, `controls=${full.controls}`)
+  check('mindmap: the overlay is announced by the map title', full.label === 'Visual Probe', `label=${full.label}`)
+  check('mindmap: the map takes the focus in full screen', full.focused)
+
+  await ensureAxe(page)
+  const report = await runAxe(page, '.mindmap-fullscreen')
+  check('a11y: the mind map full screen has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
+  check('a11y: axe inspected the mind map surface', report.passes >= 10, `passes=${report.passes}`)
+
+  // Keyboard path: Tab on the focused map is the library's add-child shortcut, and Tab or Enter in the
+  // node editor commits it. The new node has to reach the note source, because the map and the fence
+  // it came from are one document.
+  await page.click('.mindmap-fullscreen-canvas me-tpc')
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Enter')
+  const written = await page.waitForFunction(
+    (names) => names.some((name) => (document.querySelector('.cm-content')?.textContent ?? '').includes(name)),
+    { timeout: 15_000 },
+    ['New node', '新节点'],
+  ).then(() => true, () => false)
+  check('mindmap: a node added from the keyboard reaches the note source', written)
+  const nodes = await page.evaluate(() => document.querySelectorAll('.mindmap-fullscreen-canvas me-tpc').length)
+  check('mindmap: the added node is on the map too', nodes === full.nodes + 1, `before=${full.nodes} after=${nodes}`)
+
+  // Enter is the map's add-sibling shortcut and it opens the new node for editing. The overlay has to
+  // survive both the operation and the write it schedules: whoever is building the map loses their
+  // place, and the camera with it, if full screen drops out from under them mid-edit.
+  await sleep(600)
+  await page.keyboard.press('Enter')
+  await sleep(400)
+  const sibling = await page.evaluate(() => ({
+    full: Boolean(document.querySelector('.mindmap-fullscreen')),
+    hosted: Boolean(document.querySelector('.mindmap-fullscreen-canvas .mindmap-canvas')),
+    inline: Boolean(document.querySelector('.ink-prose .mindmap-canvas')),
+    nodes: document.querySelectorAll('.mindmap-fullscreen-canvas me-tpc').length,
+    editing: Boolean(document.querySelector('.mindmap-canvas #input-box')),
+  }))
+  check('mindmap: enter opens a sibling without leaving full screen', sibling.full && sibling.hosted && !sibling.inline && sibling.nodes === nodes + 1, JSON.stringify(sibling))
+  check('mindmap: the new sibling is open for editing', sibling.editing, JSON.stringify(sibling))
+  await page.keyboard.type('Keyboard sibling')
+  await sleep(250)
+  await page.keyboard.press('Enter')
+  await sleep(1_200)
+  const afterSibling = await page.evaluate(() => ({
+    full: Boolean(document.querySelector('.mindmap-fullscreen')),
+    hosted: Boolean(document.querySelector('.mindmap-fullscreen-canvas .mindmap-canvas')),
+    written: (document.querySelector('.cm-content')?.textContent ?? '').includes('Keyboard sibling'),
+  }))
+  check('mindmap: the sibling reaches the note with full screen still open', afterSibling.full && afterSibling.hosted && afterSibling.written, JSON.stringify(afterSibling))
+
+  await page.keyboard.press('Escape')
+  await page.waitForFunction(() => !document.querySelector('.mindmap-fullscreen'), { timeout: 15_000 })
+  const closed = await page.evaluate(() => ({
+    focusBack: document.activeElement?.hasAttribute('data-mindmap-fullscreen') ?? false,
+    canvases: document.querySelectorAll('.mindmap-canvas').length,
+    inline: Boolean(document.querySelector('.ink-prose .mindmap-canvas')),
+  }))
+  check('mindmap: escape leaves full screen and the map moves back', closed.inline && closed.canvases === 1, JSON.stringify(closed))
+  check('mindmap: focus returns to the control that opened full screen', closed.focusBack, JSON.stringify(closed))
+
+  // The library's toolbar ships a full screen button of its own. Left alone it asks the browser for
+  // native full screen on the canvas, which cannot survive the re-render any edit brings: the
+  // registry re-parents the canvas into the fresh placeholder, the browser sees the full screen
+  // element leave the document and drops out of full screen — press Enter to add a sibling and the
+  // map falls back to the pane. The button is routed to the overlay instead, so both affordances
+  // open the same view and neither can be pulled out from under an edit. It is clicked through the
+  // page so the check reads the app's own handler rather than a hit-test at a pixel, and the map is
+  // left exactly as found: the scenario below counts nodes and edits through the same instance.
+  const nativeHandler = await page.evaluate(() => typeof document.querySelector('.ink-prose .mindmap-canvas #fullscreen')?.onclick === 'function')
+  check('mindmap: the library full screen button no longer requests native full screen', !nativeHandler)
+  const libraryClick = await page.evaluate(() => {
+    const span = document.querySelector('.ink-prose .mindmap-canvas #fullscreen')
+    if (!span) return false
+    span.click()
+    return true
+  })
+  check('mindmap: the library toolbar offers its full screen button', libraryClick)
+  if (libraryClick) {
+    await page.waitForSelector('.mindmap-fullscreen-canvas .mindmap-canvas', { timeout: 15_000 })
+    await waitForPanelSettled(page, '.mindmap-fullscreen')
+    const routed = await page.evaluate(() => ({
+      hosted: document.querySelector('.mindmap-fullscreen-canvas .mindmap-canvas') === window.__mindmapCanvas,
+      native: document.fullscreenElement === null,
+      label: document.querySelector('.mindmap-fullscreen')?.getAttribute('aria-label') ?? '',
+      control: getComputedStyle(document.querySelector('.mindmap-fullscreen-canvas #fullscreen')).display,
+      inline: Boolean(document.querySelector('.ink-prose .mindmap-canvas')),
+    }))
+    check('mindmap: the library full screen button opens the overlay on the live map', routed.hosted && routed.native && routed.label.length > 0 && !routed.inline, JSON.stringify(routed))
+    check('mindmap: the library button leaves no dead control in the overlay', routed.control === 'none', JSON.stringify(routed))
+    await page.keyboard.press('Escape')
+    await page.waitForFunction(() => !document.querySelector('.mindmap-fullscreen'), { timeout: 15_000 })
+  }
+}
+
+// The edit the note's source holds, watched until it matches: the write is debounced, and the
+// preview re-renders after it, so an assertion on the frame right after a keypress would race both.
+async function sourceHas(page, text, present = true) {
+  return page.waitForFunction(([needle, wanted]) => {
+    const source = document.querySelector('.cm-content')?.textContent ?? ''
+    return source.includes(needle) === wanted
+  }, { timeout: 15_000 }, [text, present]).then(() => true, () => false)
+}
+
+// Full screen is the loud surface; the preview column is the one people actually edit in. The
+// library's own bindings are the input method there too — Tab adds a child, Enter commits it and
+// opens a sibling, Delete removes the selected node, Ctrl+Z undoes, Alt+arrow reorders — and every
+// one of them has to land in the note while the same instance stays alive through the re-render
+// that follows.
+async function assertMindmapSplitEditing(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('mindmap split scenario: the preview pane never became visible')
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('.ink-prose .mindmap-canvas')
+    const box = canvas?.getBoundingClientRect()
+    return !!box && box.width > 100 && box.height > 100
+  }, { timeout: 30_000 })
+  await sleep(600)
+  const start = await page.evaluate(() => ({
+    nodes: document.querySelectorAll('.ink-prose .mindmap-canvas me-tpc').length,
+    same: document.querySelector('.ink-prose .mindmap-canvas') === window.__mindmapCanvas,
+  }))
+  check('mindmap: the map returns to the preview column on the same instance', start.same && start.nodes > 0, JSON.stringify(start))
+
+  await page.click('.ink-prose .mindmap-canvas me-tpc')
+  await page.keyboard.press('Tab')
+  await sleep(250)
+  await page.keyboard.type('Split child')
+  await page.keyboard.press('Enter')
+  check('mindmap: a child added in the preview column reaches the note', await sourceHas(page, 'Split child'), await readSource(page))
+  const added = await page.evaluate(() => ({
+    nodes: document.querySelectorAll('.ink-prose .mindmap-canvas me-tpc').length,
+    same: document.querySelector('.ink-prose .mindmap-canvas') === window.__mindmapCanvas,
+  }))
+  check('mindmap: the child is on the map and the instance survived the write', added.same && added.nodes === start.nodes + 1, JSON.stringify(added))
+
+  // The node the library just committed stays selected, so Delete removes it and Ctrl+Z puts it
+  // back. Both write through the same debounce as an edit does.
+  await page.keyboard.press('Delete')
+  check('mindmap: deleting the selected node leaves the note', await sourceHas(page, 'Split child', false), await readSource(page))
+  await page.keyboard.down('Control')
+  await page.keyboard.press('z')
+  await page.keyboard.up('Control')
+  check('mindmap: undo restores the deleted node in the note', await sourceHas(page, 'Split child'), await readSource(page))
+  const undone = await page.evaluate(() => ({
+    nodes: document.querySelectorAll('.ink-prose .mindmap-canvas me-tpc').length,
+    same: document.querySelector('.ink-prose .mindmap-canvas') === window.__mindmapCanvas,
+  }))
+  check('mindmap: undo kept the same instance', undone.same && undone.nodes === added.nodes, JSON.stringify(undone))
+
+  // Alt + an arrow reorders the selected node, and the new order has to reach the note rather than
+  // only repaint the map. The selection is put on the node this scenario added, because an undo can
+  // leave the selection somewhere else.
+  const orderOf = () => page.evaluate(() => {
+    const source = (document.querySelector('.cm-content')?.textContent ?? '').replace(/\s+/g, ' ')
+    return ['Live block', 'Two way editing', 'Keyboard sibling', 'Split child']
+      .map((name) => ({ name, at: source.indexOf(name) }))
+      .filter((entry) => entry.at >= 0)
+      .sort((a, b) => a.at - b.at)
+      .map((entry) => entry.name)
+  })
+  const beforeMove = await orderOf()
+  const target = await page.evaluate(() => {
+    const atom = [...document.querySelectorAll('.ink-prose .mindmap-canvas me-tpc')].find((node) => node.textContent.includes('Split child'))
+    if (!atom) return null
+    const box = atom.getBoundingClientRect()
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  })
+  if (target) await page.mouse.click(target.x, target.y)
+  await page.keyboard.down('Alt')
+  await page.keyboard.press('ArrowUp')
+  await page.keyboard.up('Alt')
+  await sleep(1_200)
+  const afterMove = await orderOf()
+  const reordered = await page.evaluate(() => ({
+    nodes: document.querySelectorAll('.ink-prose .mindmap-canvas me-tpc').length,
+    same: document.querySelector('.ink-prose .mindmap-canvas') === window.__mindmapCanvas,
+  }))
+  check('mindmap: alt+arrow reorders the node in the note', Boolean(target) && afterMove.join(' > ') !== beforeMove.join(' > ') && afterMove.includes('Split child'), `${beforeMove.join(' > ')} → ${afterMove.join(' > ')}`)
+  check('mindmap: reordering kept the same instance', reordered.same && reordered.nodes === undone.nodes, JSON.stringify(reordered))
+}
+
+async function readSource(page) {
+  const source = await page.evaluate(() => (document.querySelector('.cm-content')?.textContent ?? '').replace(/\s+/g, ' '))
+  const at = source.indexOf('mindmap')
+  return at < 0 ? '(no fence in the editor)' : source.slice(at - 6, at + 90)
 }
 
 // Jumps back to the deck's first page, so the thumbnail under test is the one holding the
@@ -957,6 +1286,8 @@ async function main() {
     await assertPresentationAccessibility(page)
     await assertDeckExport(page)
     await assertDeckImageExport(page)
+    await assertMindmapBlock(page)
+    await assertMindmapSplitEditing(page)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.
