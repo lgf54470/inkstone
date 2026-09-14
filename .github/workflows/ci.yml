@@ -24,6 +24,7 @@ jobs:
       - run: npm run empty-catch:check
       - run: npm run module-state:check
       - run: npm run deep-imports:check
+      - run: npm run surfaces:check
       - run: npm run style:check
       - run: npm run hardcoded:check
       - run: npm run tokens:check
