@@ -1,20 +1,21 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import { Download, Play, Shuffle } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { Button } from '../../components/primitives'
 import { Empty, LoadingBlock } from '../../components/feedback'
-import { useContextMenu, Tooltip } from '../../components/overlay'
+import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { useMusic } from './music-store'
 import type { MusicViewMode } from './music-store'
 import { MusicSelectionBar } from './music-selection-bar'
 import { MusicTrackCard } from './music-track-card'
-import { MusicTrackMenu, type TrackMenuTarget } from './music-track-menu'
+import { MusicTrackMenu } from './music-track-menu'
 import { MusicTrackTable } from './music-track-table'
 import type { TrackRowHandlers } from './music-track-row'
 import { useTrackListActions, useTrackSelection, shuffledIds, type TrackSelection } from './use-track-list'
 import { downloadM3u } from './music-export'
+import { useTrackMenu } from './use-track-menu'
 
 export const MusicTrackList = memo(function MusicTrackList({
   tracks,
@@ -141,16 +142,8 @@ function TrackGrid({
   handlers: TrackRowHandlers
   onEdit: (track: MusicTrack) => void
 }) {
-  const contextMenu = useContextMenu()
-  const [menuTarget, setMenuTarget] = useState<TrackMenuTarget | null>(null)
-  const handleContextMenu = useCallback((event: React.MouseEvent, target: TrackMenuTarget) => {
-    setMenuTarget(target)
-    contextMenu.onContextMenu(event)
-  }, [contextMenu])
-  const closeMenu = useCallback(() => {
-    setMenuTarget(null)
-    contextMenu.close()
-  }, [contextMenu])
+  const { menu, rowHandlers } = useTrackMenu(handlers)
+  const selected = useMemo(() => new Set(selection.selectedIds), [selection.selectedIds])
   return (
     <div className='min-h-0 flex-1 overflow-y-auto p-3'>
       <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5'>
@@ -162,16 +155,16 @@ function TrackGrid({
             isCurrent={track.id === currentId}
             isPlaying={playback.isPlaying}
             isStreamLoading={playback.isStreamLoading}
-            isSelected={selection.selectedIds.includes(track.id)}
-            handlers={{ ...handlers, onContextMenu: handleContextMenu }}
+            isSelected={selected.has(track.id)}
+            handlers={rowHandlers}
           />
         ))}
       </div>
       <MusicTrackMenu
-        target={menuTarget}
-        anchor={contextMenu.point ?? { x: 0, y: 0 }}
-        open={Boolean(contextMenu.point) && Boolean(menuTarget)}
-        onClose={closeMenu}
+        target={menu.target}
+        anchor={menu.anchor}
+        open={menu.open}
+        onClose={menu.onClose}
         onEdit={onEdit}
       />
     </div>

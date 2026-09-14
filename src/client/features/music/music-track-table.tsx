@@ -1,10 +1,10 @@
 import type { MusicTrack } from '@shared/types'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
 import { t } from '../../lib/i18n'
-import { useContextMenu } from '../../components/overlay'
 import { MusicTrackRow, type TrackRowHandlers } from './music-track-row'
-import { MusicTrackMenu, type TrackMenuTarget } from './music-track-menu'
+import { MusicTrackMenu } from './music-track-menu'
 import type { TrackSelection } from './use-track-list'
+import { useTrackMenu } from './use-track-menu'
 
 export const MusicTrackTable = memo(function MusicTrackTable({
   tracks,
@@ -21,21 +21,10 @@ export const MusicTrackTable = memo(function MusicTrackTable({
   handlers: TrackRowHandlers
   onEdit: (track: MusicTrack) => void
 }) {
-  const contextMenu = useContextMenu()
-  const [menuTarget, setMenuTarget] = useState<TrackMenuTarget | null>(null)
+  const { menu, rowHandlers } = useTrackMenu(handlers)
   const selected = useMemo(() => new Set(selection.selectedIds), [selection.selectedIds])
   const allSelected = tracks.length > 0 && tracks.every((track) => selected.has(track.id))
   const someSelected = tracks.some((track) => selected.has(track.id))
-
-  const handleContextMenu = useCallback((event: React.MouseEvent, target: TrackMenuTarget) => {
-    setMenuTarget(target)
-    contextMenu.onContextMenu(event)
-  }, [contextMenu])
-
-  const closeMenu = useCallback(() => {
-    setMenuTarget(null)
-    contextMenu.close()
-  }, [contextMenu])
 
   return (
     <div role='grid' aria-multiselectable='true' aria-label={t('music.tracks')} className='flex min-h-0 flex-1 flex-col'>
@@ -54,15 +43,15 @@ export const MusicTrackTable = memo(function MusicTrackTable({
             isPlaying={playback.isPlaying}
             isStreamLoading={playback.isStreamLoading}
             isSelected={selected.has(track.id)}
-            handlers={{ ...handlers, onContextMenu: handleContextMenu }}
+            handlers={rowHandlers}
           />
         ))}
       </div>
       <MusicTrackMenu
-        target={menuTarget}
-        anchor={contextMenu.point ?? { x: 0, y: 0 }}
-        open={Boolean(contextMenu.point) && Boolean(menuTarget)}
-        onClose={closeMenu}
+        target={menu.target}
+        anchor={menu.anchor}
+        open={menu.open}
+        onClose={menu.onClose}
         onEdit={onEdit}
       />
     </div>

@@ -1160,6 +1160,9 @@ const allowed = new Map([
   ['src/client/features/music/use-track-list.ts', [
     '// File-manager semantics: click selects one row, Ctrl toggles a row, Shift extends from the anchor.',
   ]],
+  ['src/client/features/music/use-track-menu.ts', [
+    '/**\n * The menu a right click on a row or a card opens, and the handlers the rows share. The\n * handlers are one object for the whole list on purpose: a fresh one per row would give\n * every row new props on every render and the memo on the row would never hold.\n */',
+  ]],
   ['src/client/features/presentation/deck-export.ts', [
     '// Exporting a deck is the same pages read out two ways: printed, and rasterized to images. Both',
     '// exports slice the whole deck against the measured plans, which is not work the show should do on',
