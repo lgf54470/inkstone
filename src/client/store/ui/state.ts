@@ -154,8 +154,8 @@ function readWorkspaceFields(value: Record<string, unknown>, out: Partial<UiStat
   if (value.workspacePaneLayouts && typeof value.workspacePaneLayouts === 'object' && !Array.isArray(value.workspacePaneLayouts)) {
     const layouts = value.workspacePaneLayouts as Record<string, unknown>
     out.workspacePaneLayouts = {
-      primary: isChoice(layouts.primary, ['edit', 'split', 'preview']) ? layouts.primary as EditorLayout : 'edit',
-      secondary: isChoice(layouts.secondary, ['edit', 'split', 'preview']) ? layouts.secondary as EditorLayout : 'edit',
+      primary: isChoice(layouts.primary, ['edit', 'live', 'split', 'preview']) ? layouts.primary as EditorLayout : 'edit',
+      secondary: isChoice(layouts.secondary, ['edit', 'live', 'split', 'preview']) ? layouts.secondary as EditorLayout : 'edit',
     }
   }
 }

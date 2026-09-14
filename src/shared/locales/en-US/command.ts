@@ -24,6 +24,7 @@ export const messages = {
 'command.keyboard_shortcuts': 'Keyboard shortcuts',
 'command.keyboard_shortcuts_021cf9': 'Keyboard shortcuts',
 'command.layout_editor_only': 'Layout: Editor only',
+'command.layout_live_preview': 'Layout: Live preview',
 'command.layout_preview_only': 'Layout: Preview only',
 'command.layout_split_view': 'Layout: Split view',
 'command.link_to_another_note_autocomplete': 'Link to another note (autocomplete)',

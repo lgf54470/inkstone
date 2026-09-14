@@ -434,6 +434,8 @@ const allowed = new Map([
     '// "system" has no resolved theme of its own — it is whatever the OS preference says — so it is',
     '// always driven, and verified through the control being checked rather than through a colour.',
     '/** Presses a combo the way the app\'s own hotkey map reads it: modifiers held, the key last. */',
+    '// One more attempt than the layout cycle has layouts: the shortcut walks',
+    '// edit → live → split → preview, so reaching a pane can cost three presses.',
     '/**\n * The editor layout is a per-account setting the app cycles with its own shortcut: a scenario that has\n * to type a fence into the note and then read the prose back needs two different layouts, and both\n * gates reach them the way a person does rather than by writing the setting.\n */',
     '/** Cycles the layout until the pane holding `selector` is on screen; false when it never was. */',
     '// Injected once per page: axe ships its own browser build, and evaluating it keeps the app\'s CSP',
@@ -945,6 +947,14 @@ const allowed = new Map([
     '// Welcome notes are deliberately dated a few weeks back: with no edits within the last ~10 days,',
     '// the rolling date filter\'s follow-edit window stays parked at the newest edit and the gap hint',
     '// (newest edit outside a today-anchored window) is directly visible in the demo.',
+  ]],
+  ['src/client/editor/live-preview.ts', [
+    '/**\n * Splits rendered Markdown into top-level blocks by the source line each one\n * started on. The renderer stamps `data-line` on every level-0 token, so blocks\n * map back onto document positions without a second parse of the source.\n */',
+    '// A missing attribute must not read as line 0: Number(\'\') is 0, and that',
+    '// would move an unpositioned block over the very first line of the note.',
+    '// The block holding the caret stays source: that is the one being edited.',
+    '// Clicking a rendered block drops the caret into its source, which then',
+    '// shows through because the caret block is never replaced.',
   ]],
   ['src/client/editor/paste.ts', [
     '// Upload failure degrades to the error placeholder below via the null result.',
@@ -1799,6 +1809,8 @@ const allowed = new Map([
     '/**\n * Everything an EditorContextMenu item builder can read or trigger.\n * Assembled once per render by the `EditorContextMenu` component and handed to\n * the per-context builder modules so each branch stays a pure function of the\n * menu state (decoupled from the component\'s hooks and DOM plumbing).\n */',
   ]],
   ['src/client/features/workspace/workspace/use-workspace.ts', [
+    '// live keeps the editor on screen and renders the block around the caret in',
+    '// place, so it is an editor layout with no preview pane beside it.',
     '// Presenting is owned by the shell, which survives the mobile-breakpoint switch that',
     '// unmounts this workspace; a pane only names the note to present and the show then',
     '// follows it, so a pane-local copy of the buffer is never the deck\'s source.',

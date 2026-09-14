@@ -22,6 +22,7 @@ import {
   Star,
   Sun,
   Trash2,
+  Type,
   Waypoints,
 } from 'lucide-react'
 import { t, useLocale, type MessageKey } from '../../../lib/i18n'
@@ -96,6 +97,7 @@ function currentNoteCommands(activeNote: { id: string; isStarred: boolean; isArc
 function interfaceCommands(deps: { isDark: boolean; yearGridColumns: YearGridColumnsPref; openPanel: (panel: PanelName) => void; updateSettings: (patch: object) => void }): CommandItem[] {
   return [
     { id: 'cmd-layout-edit', kind: 'command', label: t('command.layout_editor_only'), icon: <Pencil size={14} />, group: t('common.interface'), run: () => void deps.updateSettings({ preview: { layout: 'edit' } }) },
+    { id: 'cmd-layout-live', kind: 'command', label: t('command.layout_live_preview'), icon: <Type size={14} />, group: t('common.interface'), run: () => void deps.updateSettings({ preview: { layout: 'live' } }) },
     { id: 'cmd-layout-split', kind: 'command', label: t('command.layout_split_view'), icon: <Columns2 size={14} />, combo: 'mod+\\\\', group: t('common.interface'), run: () => void deps.updateSettings({ preview: { layout: 'split' } }) },
     { id: 'cmd-layout-preview', kind: 'command', label: t('command.layout_preview_only'), icon: <Eye size={14} />, group: t('common.interface'), run: () => void deps.updateSettings({ preview: { layout: 'preview' } }) },
     { id: 'cmd-theme', kind: 'command', label: deps.isDark ? t('command.switch_to_light_theme') : t('command.switch_to_dark_theme'), icon: deps.isDark ? <Sun size={14} /> : <Moon size={14} />, group: t('common.interface'), run: () => void deps.updateSettings({ appearance: { theme: deps.isDark ? 'light' : 'dark' } }) },

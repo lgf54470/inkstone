@@ -12,7 +12,7 @@ export type ProseFont = 'sans' | 'serif'
 
 export type ProseWidth = 'narrow' | 'normal' | 'wide' | 'full'
 
-export type EditorLayout = 'edit' | 'split' | 'preview'
+export type EditorLayout = 'edit' | 'live' | 'split' | 'preview'
 
 export type BackupSchedule = 'off' | 'hourly' | 'sixHourly' | 'daily'
 

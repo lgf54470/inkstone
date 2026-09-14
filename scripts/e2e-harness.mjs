@@ -139,7 +139,9 @@ export async function cycleEditorLayout(page) {
 
 /** Cycles the layout until the pane holding `selector` is on screen; false when it never was. */
 export async function ensurePaneVisible(page, selector) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // One more attempt than the layout cycle has layouts: the shortcut walks
+  // edit → live → split → preview, so reaching a pane can cost three presses.
+  for (let attempt = 0; attempt < 4; attempt++) {
     const visible = await page.evaluate((sel) => {
       const element = document.querySelector(sel)
       return Boolean(element) && element.getClientRects().length > 0

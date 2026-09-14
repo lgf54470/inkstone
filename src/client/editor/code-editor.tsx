@@ -6,7 +6,7 @@ export type { CodeEditorProps } from './use-code-editor'
 
 export function CodeEditor(props: CodeEditorProps) {
   const { hostRef, dark, card, hideNow, clearPendingHide, armHide, handlePin, handleHostContextMenu } = useCodeEditor(props)
-  return (<div ref={hostRef} onContextMenu={handleHostContextMenu} className={cn('ink-editor', props.className)} data-family={props.settings.fontFamily} data-focus-mode={props.settings.focusMode} data-typewriter={props.settings.typewriter}>
+  return (<div ref={hostRef} onContextMenu={handleHostContextMenu} className={cn('ink-editor', props.className)} data-family={props.settings.fontFamily} data-focus-mode={props.settings.focusMode} data-typewriter={props.settings.typewriter} data-live={props.live ? 'true' : undefined}>
     {card && (
     <WikiLinkHoverCard
       card={card}

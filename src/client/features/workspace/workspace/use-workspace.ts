@@ -129,7 +129,10 @@ function computeWorkspaceLayout(opts: {
 }) {
   const { isMobile, mobileLayout, grouped, pane, workspacePaneLayouts, previewSettings, outlineOpen, paneActive, headings, containerWidth, splitRatio } = opts
   const layout = isMobile ? mobileLayout : grouped && pane !== 'active' ? workspacePaneLayouts[pane] : previewSettings.layout
-  const showEditor = layout === 'edit' || layout === 'split'
+  // live keeps the editor on screen and renders the block around the caret in
+  // place, so it is an editor layout with no preview pane beside it.
+  const livePreview = layout === 'live'
+  const showEditor = layout !== 'preview'
   const showPreview = layout === 'preview' || layout === 'split'
   const outlineVisible = !isMobile && outlineOpen && paneActive && headings.length > 0
   const defaultOutlineWidth = outlineVisible ? OUTLINE_WIDTH : 0
@@ -147,7 +150,7 @@ function computeWorkspaceLayout(opts: {
       ? `${defaultPreviewWidth}px`
       : `calc((100% + ${PREVIEW_BORDER_WIDTH + defaultOutlineWidth - SPLIT_HANDLE_WIDTH}px) / 2)`
     : `${(1 - splitRatio) * 100}%`
-  return { layout, showEditor, showPreview, outlineVisible, effectiveSplitRatio, editorWidth, previewWidth }
+  return { layout, livePreview, showEditor, showPreview, outlineVisible, effectiveSplitRatio, editorWidth, previewWidth }
 }
 
 function useWorkspaceEffects(opts: {

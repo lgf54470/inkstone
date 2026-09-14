@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react'
+import type { EditorLayout } from '@shared/types'
 import type { EditorView } from '@codemirror/view'
 import { EditorSelection } from '@codemirror/state'
 import type { MenuItem } from '../../components/overlay'
@@ -26,8 +27,8 @@ export interface EditorContextMenuProps {
   onJumpToLine: (lineNumber: number) => void
   onPickImage?: () => void
   onPickFile?: () => void
-  onSwitchLayout?: (layout: 'edit' | 'split' | 'preview') => void
-  currentLayout?: 'edit' | 'split' | 'preview'
+  onSwitchLayout?: (layout: EditorLayout) => void
+  currentLayout?: EditorLayout
   previewScrollerRef?: React.RefObject<HTMLDivElement | null>
   onExport?: (format: 'md' | 'html' | 'pdf') => void
   onPresent?: () => void

@@ -405,6 +405,18 @@
 }
 
 
+.ink-editor[data-live='true'] .cm-live-block {
+  cursor: text;
+  padding: var(--sp-1) 0;
+}
+.ink-editor[data-live='true'] .cm-live-block > :first-child {
+  margin-top: 0;
+}
+.ink-editor[data-live='true'] .cm-live-block > :last-child {
+  margin-bottom: 0;
+}
+
+
 .cm-invisible {
   color: var(--text-quaternary);
   opacity: 0.55;

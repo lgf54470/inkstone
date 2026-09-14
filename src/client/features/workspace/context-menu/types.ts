@@ -3,6 +3,7 @@ import type { RefObject } from 'react'
 import type { ParsedTable } from '../../../lib/markdown/table-editor'
 import type { NotesState } from '../../../store/notes'
 import type { WorkspacePane } from '../../../store/ui'
+import type { EditorLayout } from '@shared/types'
 import type { EditorContextData, PreviewContextData } from '../context-menu-detect'
 
 /**
@@ -20,8 +21,8 @@ export interface MenuCtx {
   onJumpToLine: (lineNumber: number) => void
   onPickImage?: () => void
   onPickFile?: () => void
-  onSwitchLayout?: (layout: 'edit' | 'split' | 'preview') => void
-  currentLayout?: 'edit' | 'split' | 'preview'
+  onSwitchLayout?: (layout: EditorLayout) => void
+  currentLayout?: EditorLayout
   previewScrollerRef?: RefObject<HTMLDivElement | null>
   onExport?: (format: 'md' | 'html' | 'pdf') => void
   onPresent?: () => void

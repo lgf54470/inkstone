@@ -1,4 +1,4 @@
-import { ArrowLeft, Columns2, Download, Eye, FolderClosed, Globe, Hash, History, LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Presentation, Share2, Star, X } from 'lucide-react'
+import { ArrowLeft, Columns2, Download, Eye, FolderClosed, Globe, Hash, History, LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Presentation, Share2, Star, Type, X } from 'lucide-react'
 import { readingMinutes } from '@shared/markdown-utils'
 import { LIMITS } from '@shared/constants'
 import { type EditorLayout } from '@shared/types'
@@ -29,6 +29,7 @@ const OUTLINE_DRAWER_WIDTH = 320
 function groupedLayoutOptions(): SegmentedOption<EditorLayout>[] {
   return [
     { value: 'edit', label: <Pencil size={12.5} />, title: t('workspace.edit_only') },
+    { value: 'live', label: <Type size={12.5} />, title: t('workspace.live_preview') },
     { value: 'split', label: <Columns2 size={12.5} />, title: t('workspace.split_view') },
     { value: 'preview', label: <Eye size={12.5} />, title: t('workspace.preview_only') },
   ]
@@ -37,6 +38,7 @@ function groupedLayoutOptions(): SegmentedOption<EditorLayout>[] {
 function standaloneLayoutOptions(): SegmentedOption<EditorLayout>[] {
   return [
     { value: 'edit', label: <Pencil size={12.5} />, title: t('workspace.edit_only') },
+    { value: 'live', label: <Type size={12.5} />, title: t('workspace.live_preview') },
     { value: 'split', label: <Columns2 size={12.5} />, title: t('workspace.split_view'), combo: 'mod+\\\\' },
     { value: 'preview', label: <Eye size={12.5} />, title: t('workspace.preview_only') },
   ]
@@ -155,7 +157,7 @@ export function WorkspacePanes({ b }: { b: WorkspaceBundle }) {
     <>
       {showEditor && (
         <div className='min-w-0' style={{ width: layout === 'split' ? editorWidth : '100%' }}>
-          <CodeEditor key={note.id} value={content} onChange={onChange} settings={editorSettings} sources={sources} handlers={handlers} noteId={note.id} onReady={setView} onContextMenu={handleEditorContextMenu} />
+          <CodeEditor key={note.id} value={content} onChange={onChange} settings={editorSettings} sources={sources} handlers={handlers} noteId={note.id} onReady={setView} onContextMenu={handleEditorContextMenu} live={b.livePreview} />
         </div>
       )}
       {layout === 'split' && (

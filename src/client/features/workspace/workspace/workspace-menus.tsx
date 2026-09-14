@@ -33,6 +33,7 @@ export function buildGroupedItems(b: WorkspaceBundle, exportNote: ExportNote): M
   const { note, layout, setEditorLayout, patchNote, backlinksOpen, paneActive, toggleBacklinks, showPreview, outlineOpen, toggleOutline, openPanel, startPresentation } = b
   return [
     { id: 'layout-edit', label: t('workspace.edit_only'), checked: layout === 'edit', onSelect: () => setEditorLayout('edit') },
+    { id: 'layout-live', label: t('workspace.live_preview'), checked: layout === 'live', onSelect: () => setEditorLayout('live') },
     { id: 'layout-split', label: t('workspace.split_view'), checked: layout === 'split', onSelect: () => setEditorLayout('split') },
     { id: 'layout-preview', label: t('workspace.preview_only'), checked: layout === 'preview', onSelect: () => setEditorLayout('preview') },
     {

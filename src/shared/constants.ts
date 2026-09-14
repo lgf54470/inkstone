@@ -187,7 +187,7 @@ const DENSITIES = ['comfortable', 'compact'] as const
 const PROSE_FONTS = ['sans', 'serif'] as const
 const PROSE_WIDTHS = ['narrow', 'normal', 'wide', 'full'] as const
 const EDITOR_FONTS = ['mono', 'sans'] as const
-const EDITOR_LAYOUTS = ['edit', 'split', 'preview'] as const
+const EDITOR_LAYOUTS = ['edit', 'live', 'split', 'preview'] as const
 const BACKUP_SCHEDULES = ['off', 'hourly', 'sixHourly', 'daily'] as const
 
 

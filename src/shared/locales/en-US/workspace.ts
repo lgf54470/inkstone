@@ -40,6 +40,7 @@ export const messages = {
 'workspace.latest': 'Latest',
 'workspace.layout': 'Layout',
 'workspace.left_note_pane': 'Left note pane',
+'workspace.live_preview': 'Live preview',
 'workspace.link': 'Link',
 'workspace.loading_note_content': 'Loading note content',
 'workspace.preview_file': 'preview',

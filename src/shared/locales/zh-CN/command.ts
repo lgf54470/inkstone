@@ -24,6 +24,7 @@ export const messages = {
 'command.keyboard_shortcuts': '快捷键一览',
 'command.keyboard_shortcuts_021cf9': '键盘快捷键',
 'command.layout_editor_only': '布局：仅编辑',
+'command.layout_live_preview': '布局：实时预览',
 'command.layout_preview_only': '布局：仅预览',
 'command.layout_split_view': '布局：分栏预览',
 'command.link_to_another_note_autocomplete': '链接到另一篇笔记（自动补全）',

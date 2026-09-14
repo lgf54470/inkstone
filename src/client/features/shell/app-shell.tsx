@@ -352,7 +352,7 @@ const GLOBAL_HOTKEYS: Hotkey[] = [
     group: () => t('common.interface'),
     allowInInput: true,
     handler: () => {
-      const order = ['edit', 'split', 'preview'] as const
+      const order = ['edit', 'live', 'split', 'preview'] as const
       const ui = uiState()
       if (ui.workspaceSecondaryNoteId) {
         const pane = ui.activeWorkspacePane

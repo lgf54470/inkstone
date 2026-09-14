@@ -29,6 +29,7 @@ export interface CodeEditorProps {
   onContextMenu?: (event: MouseEvent, view: EditorView) => void
   placeholder?: string
   className?: string
+  live?: boolean
 }
 
 

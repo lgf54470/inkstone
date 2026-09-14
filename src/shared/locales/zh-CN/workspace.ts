@@ -40,6 +40,7 @@ export const messages = {
 'workspace.latest': '最近一次',
 'workspace.layout': '布局',
 'workspace.left_note_pane': '左侧笔记窗格',
+'workspace.live_preview': '实时预览',
 'workspace.link': '链接',
 'workspace.loading_note_content': '正在载入笔记正文',
 'workspace.preview_file': '预览',
