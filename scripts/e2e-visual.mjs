@@ -1216,32 +1216,38 @@ async function appendToNote(page, markdown) {
 // header of exactly the same height, so stability alone would read as a pass for a surface nobody can
 // use. `loaded` is the smallest thing that only exists once the data is there — and for a surface
 // whose content is a picture, the count is of pictures the browser actually decoded.
+//
+// Every surface is also opened from a control the sweep marks, because two more things are asserted
+// on the way out: Escape closes it, and the control that opened it has the focus again. Opening by
+// shortcut is one of those paths — the app hands focus back to whatever held it when the panel
+// opened — so the entry names the control the shortcut is pressed with, and the assertion names the
+// same element either way. `opener.labels` are the accessible names the control goes by in both
+// locales; `focus` marks the shortcut path.
 const LIGHTBOX_MARKDOWN = ['', '![Visual probe](/inkstone-logo.svg)', ''].join('\n')
 
 const TOOLBAR_SURFACES = [
-  { name: 'graph', open: (page) => pressCombo(page, ['Control', 'Shift', 'g']), root: '[data-surface="graph"]', toolbar: '[data-surface="graph"] > header', minToggles: 2, loaded: { selector: 'canvas', min: 1 } },
-  { name: 'template library', open: (page) => pressCombo(page, ['Control', 'Shift', 'n']), root: '[data-surface="templates"]', toolbar: '[data-surface="templates"] > header', minToggles: 1, loaded: { selector: '[data-template-id]', min: 1 } },
-  { name: 'settings', open: (page) => pressCombo(page, ['Control', ',']), root: SETTINGS_PANEL, toolbar: `${SETTINGS_PANEL} header`, minToggles: 0, loaded: { selector: 'nav button', min: 3 } },
-  { name: 'command palette', open: (page) => pressCombo(page, ['Control', 'k']), root: PALETTE_PANEL, toolbar: `${PALETTE_PANEL} > div`, minToggles: 0, loaded: { selector: '[role="option"]', min: 1 } },
+  // The graph has no button of its own at this width: its entry point is the account menu, which
+  // unmounts on the way to the panel, so a person reaches it by shortcut. The sidebar's account
+  // control is what holds the keyboard while that shortcut runs, and that is the element focus has to
+  // come back to.
+  { name: 'graph', open: (page) => pressOpener(page, { labels: ['设置', 'Settings'], combo: ['Control', 'Shift', 'g'] }), root: '[data-surface="graph"]', toolbar: '[data-surface="graph"] > header', minToggles: 2, loaded: { selector: 'canvas', min: 1 } },
+  { name: 'template library', open: (page) => pressOpener(page, { labels: ['从模板新建笔记', 'New note from template'] }), root: '[data-surface="templates"]', toolbar: '[data-surface="templates"] > header', minToggles: 1, loaded: { selector: '[data-template-id]', min: 1 } },
+  { name: 'settings', open: (page) => pressOpener(page, { labels: ['设置', 'Settings'] }), root: SETTINGS_PANEL, toolbar: `${SETTINGS_PANEL} header`, minToggles: 0, loaded: { selector: 'nav button', min: 3 } },
+  { name: 'command palette', open: (page) => pressOpener(page, { labels: ['搜索笔记、执行命令', 'Search notes or run a command'] }), root: PALETTE_PANEL, toolbar: `${PALETTE_PANEL} > div`, minToggles: 0, loaded: { selector: '[role="option"]', min: 1 } },
   // The show's chrome is the one toolbar that floats over its surface instead of sitting at the top
   // of it, and the slide list is one of the four places an expansion is allowed to live: pressing the
   // two toggles is what has to leave the pill the size it was.
-  { name: 'presentation', open: openPresentation, root: '[data-surface="presentation"]', toolbar: '[data-presentation-chrome]', minToggles: 2, loaded: { selector: '[data-slide-canvas]', min: 1 } },
+  { name: 'presentation', open: (page) => pressOpener(page, { labels: ['演示模式', 'Presentation mode'] }), root: '[data-surface="presentation"]', toolbar: '[data-presentation-chrome]', minToggles: 2, loaded: { selector: '[data-slide-canvas]', min: 1 } },
   // The lightbox has no toggle (zoom is two plain buttons), so what the sweep can say about it is
   // that it arrives on the picture it was opened for and holds its toolbar: the picture is appended
   // to the note here, at the end of the run, because the deck counts measured above are counts of the
-  // note's own markdown.
+  // note's own markdown. What opens it is the button the preview puts around a prose image, and that
+  // button is also where focus has to land again — a bare image could not hold it.
   { name: 'lightbox', open: openLightbox, root: '[data-surface="lightbox"]', toolbar: '[data-lightbox-toolbar]', minToggles: 0, loaded: { selector: 'img', min: 1, decoded: true } },
   // The outline only lives in the drawer shell at the phone breakpoint, which is where that side
   // panel is part of the shell rather than a column of the split view.
   { name: 'outline drawer', open: openOutlineDrawer, root: '[data-surface="drawer"]', toolbar: '[data-surface="drawer"] header', minToggles: 0, viewport: MOBILE_VIEWPORT, loaded: { selector: '[data-heading-level]', min: 1 } },
 ]
-
-/** The control a show is started from, pressed where it is drawn: the header is not always on screen. */
-async function openPresentation(page) {
-  const pressed = await pressVisibleControl(page, /演示模式|Presentation mode/)
-  if (!pressed) throw new Error('the presentation surface has no start control on screen')
-}
 
 /**
  * The lightbox needs a picture in the note. A same-origin asset is used rather than a remote URL, so
@@ -1274,36 +1280,41 @@ async function openLightbox(page) {
     return Boolean(image && image.complete && image.naturalWidth > 0)
   }, { timeout: 30_000 }).then(() => true, () => false)
   if (!rendered) throw new Error('lightbox: the picture put into the note never decoded')
-  await page.click('.ink-prose img')
+  await pressOpener(page, { labels: ['图片预览', 'Image preview'] })
 }
 
 /** The outline control of the pane on screen, pressed where it is drawn. */
 async function openOutlineDrawer(page) {
   await clickButton(page, LABELS.preview)
   await sleep(700)
-  const pressed = await pressVisibleControl(page, /大纲|Outline/i, '.mobile-pane-layer[data-active]')
-  if (!pressed) throw new Error('the outline drawer has no control on screen')
+  await pressOpener(page, { labels: ['大纲', 'outline'], scope: '.mobile-pane-layer[data-active]' })
 }
 
 /**
- * Presses the first control matching `label` that is drawn inside `scope` (the whole document by
- * default), with a real pointer click on its centre. Half the shell is mounted but off screen at any
- * breakpoint, and a click on an element nobody can see is not a click a person could have made.
+ * Presses the control one surface is opened from, and marks it so the assertion after Escape can
+ * say whether focus came back. A real pointer click is how a person presses a control that is drawn;
+ * when the surface is reached by shortcut instead, the marked control takes the keyboard first and
+ * the combo is pressed the way the app's own hotkey map reads it. Marks from earlier surfaces are
+ * cleared, so the element the assertion finds is always this surface's opener.
  */
-async function pressVisibleControl(page, label, scope = '') {
-  const point = await page.evaluate(({ label, flags, scope }) => {
-    const pattern = new RegExp(label, flags)
+async function pressOpener(page, { labels, combo = null, scope = '' }) {
+  const point = await page.evaluate(({ labels, scope }) => {
+    for (const marked of document.querySelectorAll('[data-gate-opener]')) delete marked.dataset.gateOpener
     const root = scope ? document.querySelector(scope) : document
     const control = [...(root?.querySelectorAll('button') ?? [])]
-      .find((item) => pattern.test(item.getAttribute('aria-label') ?? ''))
-    if (!control) return null
-    const box = control.getBoundingClientRect()
-    if (box.width < 1 || box.height < 1) return null
+      .find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    const box = control?.getBoundingClientRect()
+    if (!control || !box || box.width < 1 || box.height < 1) return null
+    control.dataset.gateOpener = '1'
     return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
-  }, { label: label.source, flags: label.flags, scope })
-  if (!point) return false
+  }, { labels, scope })
+  if (!point) throw new Error(`the sweep found no control named ${labels.join(' / ')} to open a surface from`)
+  if (combo) {
+    await page.evaluate(() => document.querySelector('[data-gate-opener]')?.focus())
+    await pressCombo(page, combo)
+    return
+  }
   await page.mouse.click(point.x, point.y)
-  return true
 }
 
 /** One toggle's row, read from the toolbar it sits in: where it is, and whether it is still inside. */
@@ -1436,6 +1447,23 @@ async function assertFullscreenToolbars(page) {
       if (!closed) await sleep(240)
     }
     check(`toolbar stability: the ${surface.name} closes with escape`, closed, `escapes=${escapes}`)
+    // Escape is only half of it: the keyboard has to come back to where it was, or the person who
+    // opened this surface is left with no place on the page. The control is the one marked before it
+    // was pressed, so a surface that hands focus to the body, or deep inside a panel that is gone,
+    // fails here and says which element ended up holding it.
+    const focus = await page.evaluate(() => {
+      const describe = (element) => (element
+        ? `${element.tagName.toLowerCase()}${element.getAttribute('aria-label') ? `[${element.getAttribute('aria-label')}]` : ''}`
+        : 'nothing')
+      const opener = document.querySelector('[data-gate-opener]')
+      const active = document.activeElement
+      return {
+        opener: describe(opener),
+        active: describe(active instanceof HTMLElement ? active : null),
+        returned: Boolean(opener) && active === opener,
+      }
+    })
+    check(`surface keyboard: the ${surface.name} hands focus back to the control it was opened from`, focus.returned, JSON.stringify(focus))
   }
   // The drawer's entry is the one that changed the window: the run leaves the app as it found it.
   await page.setViewport(DESKTOP_VIEWPORT)
