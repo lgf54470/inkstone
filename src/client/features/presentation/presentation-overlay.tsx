@@ -197,11 +197,14 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
   const chromeHidden = useChromeAutoHide(open && isFullscreen)
   const toggleFollowing = useCallback(() => usePresentation.getState().setFollowing(!following), [following])
   const noteTitle = liveTitle ?? storedTitle
-  const cacheKeys = useMemo(() => deck.map((_, item) => slideCacheKey(fingerprint, dark, item)), [deck, fingerprint, dark])
+  const cacheKeys = useMemo(
+    () => deck.map((_, item) => slideCacheKey({ fingerprint, dark, index: item, contentWidth: metrics.contentWidth, contentHeight: metrics.contentHeight })),
+    [deck, fingerprint, dark, metrics.contentWidth, metrics.contentHeight],
+  )
   const exports = useDeckExport({ deck, cacheKeys, plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
   useDialogBehavior(open, panelRef, onClose)
-  useSlideHtml({ open, deck, index, fingerprint, content: presentedContent, noteTitle, dark })
+  useSlideHtml({ open, deck, index, fingerprint, content: presentedContent, noteTitle, dark, metrics })
   usePresentationKeys({ open, slideCount: deck.length, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing })
   return {
     deck,

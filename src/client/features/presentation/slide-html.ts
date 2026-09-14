@@ -15,8 +15,15 @@ export function hashContent(value: string): string {
   return `${value.length}:${(hash >>> 0).toString(36)}`
 }
 
-export function slideCacheKey(fingerprint: string, dark: boolean, index: number): string {
-  return `${fingerprint}:${dark ? 'd' : 'l'}:${index}`
+/**
+ * The content box is part of the key because a diagram is drawn for it: a slide
+ * prepared for a laptop's stage and the same slide prepared for a projector draw
+ * their mind maps at different sizes, and reusing one for the other would show a
+ * picture measured for a box that is no longer the one on screen.
+ */
+export function slideCacheKey(options: { fingerprint: string; dark: boolean; index: number; contentWidth: number; contentHeight: number }): string {
+  const { fingerprint, dark, index, contentWidth, contentHeight } = options
+  return `${fingerprint}:${dark ? 'd' : 'l'}:${index}:${Math.round(contentWidth)}x${Math.round(contentHeight)}`
 }
 
 export function readSlideHtml(key: string): string | undefined {

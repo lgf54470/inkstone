@@ -9,7 +9,7 @@ import { getMermaid } from './mermaid'
 import { showMermaidSource } from './mermaid'
 import { renderChartJs } from './chart'
 import { getLocale } from '../../i18n'
-import { renderStaticMindmaps, showMindmapSourceAll } from '../mindmap'
+import { renderStaticMindmaps, showMindmapSourceAll, type MindmapBox } from '../mindmap'
 
 interface EnhanceOptions {
   math: boolean
@@ -24,6 +24,12 @@ interface EnhanceOptions {
    * should look like.
    */
   mindmap?: 'live' | 'snapshot'
+  /**
+   * The box a `snapshot` mind map is drawn and fitted for. Surfaces that size
+   * their blocks themselves (a note, a share page) leave it out; a slide passes
+   * its content area, because a map drawn at the wrong size is a cropped one.
+   */
+  mindmapBox?: MindmapBox
   /**
    * Whether a prose image is a control that opens the lightbox. Surfaces that print or
    * serialize their markup (export, share, slides) leave it off: a button there would be
@@ -52,7 +58,7 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
     highlightCodeBlocks(root),
     options.math ? renderMath(root) : Promise.resolve(),
     root.isConnected ? renderChartJs(root, options.dark) : Promise.resolve(),
-    options.mindmap === 'snapshot' ? renderStaticMindmaps(root, { dark: options.dark, locale: getLocale() }) : Promise.resolve(),
+    options.mindmap === 'snapshot' ? renderStaticMindmaps(root, { dark: options.dark, locale: getLocale(), box: options.mindmapBox }) : Promise.resolve(),
   ])
   configureCodeBlockCollapsing(root, options.codeBlockCollapseLines ?? 24)
 }

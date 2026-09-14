@@ -16,7 +16,7 @@ const PAGINATED: SlidePlan = {
 }
 
 const deck = [FIRST, SECOND]
-const cacheKeys = deck.map((_, index) => slideCacheKey('fingerprint', false, index))
+const cacheKeys = deck.map((_, index) => slideCacheKey({ fingerprint: 'fingerprint', dark: false, index, contentWidth: METRICS.contentWidth, contentHeight: METRICS.contentHeight }))
 
 beforeEach(() => {
   rememberSlideHtml(cacheKeys[0], FIRST)

@@ -74,7 +74,7 @@ function DeckSheet({ sheetRef, pages, metrics, font }: DeckSheetProps & { sheetR
 // design canvas at 1:1, so "Print to PDF" produces exactly the pages the show has.
 export function DeckPrintSheet({ pages, metrics, font, dark, onDone }: DeckSheetProps & { onDone: () => void }) {
   const sheetRef = useRef<HTMLDivElement>(null)
-  useDeckSheetReady(sheetRef, dark, (root) => {
+  useDeckSheetReady(sheetRef, dark, metrics, (root) => {
     // Written straight to the node: the print dialog blocks right after this line, so a re-render
     // would never land in time for observers of the sheet.
     root.dataset.deckPrintReady = 'true'
@@ -87,7 +87,7 @@ export function DeckPrintSheet({ pages, metrics, font, dark, onDone }: DeckSheet
 // archived, because a download per page is a burst a browser may block.
 export function DeckImageSheet({ pages, metrics, font, dark, title, onDone }: DeckSheetProps & { title: string; onDone: () => void }) {
   const sheetRef = useRef<HTMLDivElement>(null)
-  useDeckSheetReady(sheetRef, dark, async (root) => {
+  useDeckSheetReady(sheetRef, dark, metrics, async (root) => {
     try {
       const count = await saveDeckPages(root, metrics, title)
       root.dataset.deckImageReady = 'true'
@@ -110,6 +110,7 @@ export function DeckImageSheet({ pages, metrics, font, dark, title, onDone }: De
 function useDeckSheetReady(
   sheetRef: React.RefObject<HTMLDivElement | null>,
   dark: boolean,
+  metrics: StageMetrics,
   handOver: (root: HTMLDivElement) => void | Promise<void>,
   onDone: () => void,
 ): void {
@@ -118,7 +119,7 @@ function useDeckSheetReady(
     const run = async () => {
       const root = sheetRef.current
       if (!root) return
-      await prepareDeckSheet(root, dark)
+      await prepareDeckSheet(root, dark, metrics)
       if (!cancelled) await handOver(root)
     }
     window.addEventListener('afterprint', onDone)
@@ -128,7 +129,7 @@ function useDeckSheetReady(
       window.removeEventListener('afterprint', onDone)
       destroyChartInstances(sheetRef.current)
     }
-  }, [dark, handOver, onDone, sheetRef])
+  }, [dark, metrics, handOver, onDone, sheetRef])
 }
 
 async function saveDeckPages(root: HTMLElement, metrics: StageMetrics, title: string): Promise<number> {
@@ -147,9 +148,18 @@ async function saveDeckPages(root: HTMLElement, metrics: StageMetrics, title: st
 // chart as a still — a picture of a canvas at whatever size that canvas had — so the sheet draws
 // live charts on its own canvases first, through the same enhancement the editor preview runs. The
 // webfonts have to be laid out too, or every page reflows while it is being drawn.
-async function prepareDeckSheet(root: HTMLElement, dark: boolean): Promise<void> {
+async function prepareDeckSheet(root: HTMLElement, dark: boolean, metrics: StageMetrics): Promise<void> {
   try {
-    await enhancePreview(root, { math: true, mermaid: true, mindmap: 'snapshot', dark, codeBlockCollapseLines: 0 })
+    await enhancePreview(root, {
+      math: true,
+      mermaid: true,
+      mindmap: 'snapshot',
+      dark,
+      codeBlockCollapseLines: 0,
+      // The printed page is the design canvas, so a mind map on it is drawn for
+      // the same content box the show measured it in.
+      mindmapBox: { width: metrics.contentWidth, height: metrics.contentHeight },
+    })
     await renderPendingMermaid(root, dark)
     await settleWithin(Promise.all([document.fonts.ready, decodeImages(root)]), PRINT_PREPARE_TIMEOUT_MS)
   }

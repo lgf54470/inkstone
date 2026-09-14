@@ -58,7 +58,7 @@ export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, content,
   const { cursor, report, measured, finished } = usePreflightPass({ deckLength: deck.length, fingerprint, dark, cacheKeys, hostRef, onPlan })
   const slides = deck.length
   useEffect(() => onProgress({ measured, slides, finished }), [measured, slides, finished, onProgress])
-  useSlideHtml({ open: cursor !== null, deck, index: cursor ?? 0, fingerprint, content, noteTitle, dark })
+  useSlideHtml({ open: cursor !== null, deck, index: cursor ?? 0, fingerprint, content, noteTitle, dark, metrics })
   const key = cursor === null ? '' : cacheKeys[cursor] ?? ''
   // The canvas waits one frame after the markup lands. Preparing a slide is a markdown render,
   // and React would otherwise flush the mount and its layout measure into the same task, making
