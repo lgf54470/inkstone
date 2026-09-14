@@ -120,6 +120,36 @@ export async function setAppTheme(page, theme) {
   await sleep(500)
 }
 
+/** Presses a combo the way the app's own hotkey map reads it: modifiers held, the key last. */
+export async function pressCombo(page, keys) {
+  for (const key of keys.slice(0, -1)) await page.keyboard.down(key)
+  await page.keyboard.press(keys.at(-1))
+  for (const key of keys.slice(0, -1)) await page.keyboard.up(key)
+}
+
+/**
+ * The editor layout is a per-account setting the app cycles with its own shortcut: a scenario that has
+ * to type a fence into the note and then read the prose back needs two different layouts, and both
+ * gates reach them the way a person does rather than by writing the setting.
+ */
+export async function cycleEditorLayout(page) {
+  await pressCombo(page, ['Control', 'Backslash'])
+  await sleep(800)
+}
+
+/** Cycles the layout until the pane holding `selector` is on screen; false when it never was. */
+export async function ensurePaneVisible(page, selector) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const visible = await page.evaluate((sel) => {
+      const element = document.querySelector(sel)
+      return Boolean(element) && element.getClientRects().length > 0
+    }, selector)
+    if (visible) return true
+    await cycleEditorLayout(page)
+  }
+  return false
+}
+
 // Injected once per page: axe ships its own browser build, and evaluating it keeps the app's CSP
 // untouched (a script tag would be refused).
 export async function ensureAxe(page) {

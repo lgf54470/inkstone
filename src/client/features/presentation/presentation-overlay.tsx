@@ -65,6 +65,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         aria-busy={session.images ? 'true' : undefined}
         aria-modal='true'
         aria-label={t('workspace.presentation_mode')}
+        data-surface='presentation'
         className='anim-fade fixed inset-0 z-[var(--z-modal)] flex overflow-hidden bg-[var(--bg-base)] outline-none'
       >
         {session.railOpen && (

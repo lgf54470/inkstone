@@ -108,6 +108,7 @@ function LightboxToolbar({
 }) {
   return (
     <div
+      data-lightbox-toolbar
       className='absolute top-[calc(12px+env(safe-area-inset-top))] right-2 flex items-center gap-1 md:top-4 md:right-4'
       onClick={(e) => e.stopPropagation()}
     >
@@ -191,6 +192,7 @@ export function Lightbox() {
       aria-modal='true'
       aria-label={t('preview.image_preview')}
       tabIndex={-1}
+      data-surface='lightbox'
       className='app-viewport-fixed anim-fade fixed z-[var(--z-pop)] flex items-center justify-center bg-[oklch(0%_0_0/78%)] outline-none'
       onClick={close}
     >

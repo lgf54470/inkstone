@@ -17,11 +17,15 @@ import os from 'node:os'
 import path from 'node:path'
 import puppeteer from 'puppeteer-core'
 import {
+  PALETTE_PANEL,
+  SETTINGS_PANEL,
   chromeExecutablePath,
   clickButton,
   ensureAxe,
+  ensurePaneVisible,
   isReviewedIncomplete,
   loginThroughUi,
+  pressCombo,
   runAxe,
   setAppTheme,
   sleep,
@@ -87,6 +91,7 @@ const LABELS = {
   presentRail: ['显示幻灯片列表', '隐藏幻灯片列表', 'Show slides', 'Hide slides'],
   presentFreeze: ['冻结当前快照', 'Freeze this snapshot'],
   presentFollow: ['跟随笔记更新', 'Follow the note'],
+  outline: ['大纲', 'Outline', 'outline'],
 }
 
 async function activeProse(page) {
@@ -550,26 +555,8 @@ async function assertDeckImageExport(page) {
 // hand-back of the focus.
 const MINDMAP_MARKDOWN = ['', '', '```mindmap', '- Visual Probe', '  - Live block', '  - Two way editing', '```'].join('\n')
 
-// Ctrl+\ cycles edit -> split -> preview on the desktop shell; the mind map scenario needs the
-// editor to type a fence and then the prose to read it, which is two different layouts.
-async function cycleLayout(page) {
-  await page.keyboard.down('Control')
-  await page.keyboard.press('Backslash')
-  await page.keyboard.up('Control')
-  await sleep(800)
-}
-
-async function ensurePaneVisible(page, selector) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const visible = await page.evaluate((sel) => {
-      const element = document.querySelector(sel)
-      return Boolean(element) && element.getClientRects().length > 0
-    }, selector)
-    if (visible) return true
-    await cycleLayout(page)
-  }
-  return false
-}
+// The layout cycling the mind map scenarios need (the editor to type a fence, the prose to read it
+// back) is shared plumbing now: e2e-harness.mjs cycles it for this gate and the contrast gate alike.
 
 async function assertMindmapBlock(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
@@ -660,17 +647,26 @@ async function assertMindmapBlock(page) {
   check('mindmap: the keyboard reference opens', reference.opened, JSON.stringify(reference))
   check('mindmap: the keyboard reference sits in the drawing area, not the toolbar', reference.inDrawingArea && !reference.inHead, JSON.stringify(reference))
   check('mindmap: opening the keyboard reference leaves the toolbar its size', reference.headGrowth === 0, JSON.stringify(reference))
+
+  // The card is measured while it is open: axe only reads what is on screen, and closing it first
+  // would leave the one surface this gate added unread. The contrast gate opens the same overlay with
+  // the same card in both themes; here the run is the light one the later scenarios measure on.
+  await ensureAxe(page)
+  const report = await runAxe(page, '.mindmap-fullscreen')
+  check('a11y: the mind map full screen has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
+  check('a11y: axe inspected the mind map surface', report.passes >= 10, `passes=${report.passes}`)
+  const referenceAudited = await page.evaluate(() => {
+    const card = document.querySelector('.mindmap-shortcuts')
+    return { open: Boolean(card), lines: card?.querySelectorAll('li').length ?? 0 }
+  })
+  check('a11y: the keyboard reference was on screen for the axe pass', referenceAudited.open && referenceAudited.lines >= 9, JSON.stringify(referenceAudited))
+
   await page.keyboard.press('Escape')
   const referenceClosed = await page.waitForFunction(
     () => !document.querySelector('.mindmap-shortcuts') && !!document.querySelector('.mindmap-fullscreen'),
     { timeout: 15_000 },
   ).then(() => true, () => false)
   check('mindmap: escape puts the keyboard reference away without leaving full screen', referenceClosed)
-
-  await ensureAxe(page)
-  const report = await runAxe(page, '.mindmap-fullscreen')
-  check('a11y: the mind map full screen has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
-  check('a11y: axe inspected the mind map surface', report.passes >= 10, `passes=${report.passes}`)
 
   // Keyboard path: Tab on the focused map is the library's add-child shortcut, and Tab or Enter in the
   // node editor commits it. The new node has to reach the note source, because the map and the fence
@@ -1143,6 +1139,246 @@ async function appendToNote(page, markdown) {
   await sleep(1_200) // autosave debounce, then the show's own follow debounce
 }
 
+// A toolbar is one row: expanding a panel inside it must not change its height, or the control that
+// was just pressed moves out from under the pointer — the mind map's keyboard reference card used to
+// wrap to a second row and grow the full screen toolbar that way. The audit that found that is this
+// loop, run rather than written down: every full screen surface is opened the way a person opens it,
+// each toggle in its toolbar is pressed once, the toolbar's height and the toggle's own box are
+// compared before and after, and the surface is closed again. The mind map overlay is not listed —
+// its scenario above asserts the same two things for its one toggle, plus where the card lands — and
+// that scenario is also what covers the modal shell, whose only consumer in the full screen variant
+// is that overlay. The drawer shell is audited where it exists, at the phone breakpoint.
+//
+// Each surface also has to arrive with its content: a panel that opened on a failed request keeps a
+// header of exactly the same height, so stability alone would read as a pass for a surface nobody can
+// use. `loaded` is the smallest thing that only exists once the data is there — and for a surface
+// whose content is a picture, the count is of pictures the browser actually decoded.
+const LIGHTBOX_MARKDOWN = ['', '![Visual probe](/inkstone-logo.svg)', ''].join('\n')
+
+const TOOLBAR_SURFACES = [
+  { name: 'graph', open: (page) => pressCombo(page, ['Control', 'Shift', 'g']), root: '[data-surface="graph"]', toolbar: '[data-surface="graph"] > header', minToggles: 2, loaded: { selector: 'canvas', min: 1 } },
+  { name: 'template library', open: (page) => pressCombo(page, ['Control', 'Shift', 'n']), root: '[data-surface="templates"]', toolbar: '[data-surface="templates"] > header', minToggles: 1, loaded: { selector: '[data-template-id]', min: 1 } },
+  { name: 'settings', open: (page) => pressCombo(page, ['Control', ',']), root: SETTINGS_PANEL, toolbar: `${SETTINGS_PANEL} header`, minToggles: 0, loaded: { selector: 'nav button', min: 3 } },
+  { name: 'command palette', open: (page) => pressCombo(page, ['Control', 'k']), root: PALETTE_PANEL, toolbar: `${PALETTE_PANEL} > div`, minToggles: 0, loaded: { selector: '[role="option"]', min: 1 } },
+  // The show's chrome is the one toolbar that floats over its surface instead of sitting at the top
+  // of it, and the slide list is one of the four places an expansion is allowed to live: pressing the
+  // two toggles is what has to leave the pill the size it was.
+  { name: 'presentation', open: openPresentation, root: '[data-surface="presentation"]', toolbar: '[data-presentation-chrome]', minToggles: 2, loaded: { selector: '[data-slide-canvas]', min: 1 } },
+  // The lightbox has no toggle (zoom is two plain buttons), so what the sweep can say about it is
+  // that it arrives on the picture it was opened for and holds its toolbar: the picture is appended
+  // to the note here, at the end of the run, because the deck counts measured above are counts of the
+  // note's own markdown.
+  { name: 'lightbox', open: openLightbox, root: '[data-surface="lightbox"]', toolbar: '[data-lightbox-toolbar]', minToggles: 0, loaded: { selector: 'img', min: 1, decoded: true } },
+  // The outline only lives in the drawer shell at the phone breakpoint, which is where that side
+  // panel is part of the shell rather than a column of the split view.
+  { name: 'outline drawer', open: openOutlineDrawer, root: '[data-surface="drawer"]', toolbar: '[data-surface="drawer"] header', minToggles: 0, viewport: MOBILE_VIEWPORT, loaded: { selector: '[data-heading-level]', min: 1 } },
+]
+
+/** The control a show is started from, pressed where it is drawn: the header is not always on screen. */
+async function openPresentation(page) {
+  const pressed = await pressVisibleControl(page, /演示模式|Presentation mode/)
+  if (!pressed) throw new Error('the presentation surface has no start control on screen')
+}
+
+/**
+ * The lightbox needs a picture in the note. A same-origin asset is used rather than a remote URL, so
+ * the surface is exercised without the run depending on the network, and the failure state is not
+ * mistaken for the surface: the click waits until the browser has decoded what it is clicking.
+ */
+async function openLightbox(page) {
+  if (!(await ensurePaneVisible(page, '.cm-content'))) throw new Error('lightbox: the editor pane never became visible')
+  // The scenarios above leave the cursor wherever they last put it — the mind map one leaves it inside
+  // the fence it wrote — so the picture is written at the end of the note instead of at the cursor.
+  const written = await page.evaluate((markdown) => {
+    const content = document.querySelector('.cm-content')
+    if (!content) return false
+    content.focus()
+    const selection = window.getSelection()
+    selection.selectAllChildren(content)
+    selection.collapseToEnd()
+    return document.execCommand('insertText', false, markdown)
+  }, LIGHTBOX_MARKDOWN)
+  if (!written) throw new Error('lightbox: the note could not be edited')
+  await sleep(1_200) // autosave debounce
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('lightbox: the preview pane never became visible')
+  const picture = await page.waitForSelector('.ink-prose img', { timeout: 30_000 }).then((handle) => handle, () => null)
+  if (!picture) throw new Error('lightbox: the note holds no picture for the lightbox to open')
+  // The renderer marks images lazy, so one appended past the fold is never fetched until it is looked
+  // at; a reader scrolls to it, and so does this.
+  await picture.evaluate((element) => element.scrollIntoView({ block: 'center' }))
+  const rendered = await page.waitForFunction(() => {
+    const image = document.querySelector('.ink-prose img')
+    return Boolean(image && image.complete && image.naturalWidth > 0)
+  }, { timeout: 30_000 }).then(() => true, () => false)
+  if (!rendered) throw new Error('lightbox: the picture put into the note never decoded')
+  await page.click('.ink-prose img')
+}
+
+/** The outline control of the pane on screen, pressed where it is drawn. */
+async function openOutlineDrawer(page) {
+  await clickButton(page, LABELS.preview)
+  await sleep(700)
+  const pressed = await pressVisibleControl(page, /大纲|Outline/i, '.mobile-pane-layer[data-active]')
+  if (!pressed) throw new Error('the outline drawer has no control on screen')
+}
+
+/**
+ * Presses the first control matching `label` that is drawn inside `scope` (the whole document by
+ * default), with a real pointer click on its centre. Half the shell is mounted but off screen at any
+ * breakpoint, and a click on an element nobody can see is not a click a person could have made.
+ */
+async function pressVisibleControl(page, label, scope = '') {
+  const point = await page.evaluate(({ label, flags, scope }) => {
+    const pattern = new RegExp(label, flags)
+    const root = scope ? document.querySelector(scope) : document
+    const control = [...(root?.querySelectorAll('button') ?? [])]
+      .find((item) => pattern.test(item.getAttribute('aria-label') ?? ''))
+    if (!control) return null
+    const box = control.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return null
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, { label: label.source, flags: label.flags, scope })
+  if (!point) return false
+  await page.mouse.click(point.x, point.y)
+  return true
+}
+
+/** One toggle's row, read from the toolbar it sits in: where it is, and whether it is still inside. */
+async function readToggle(page, toolbar, index) {
+  return page.evaluate(({ toolbar, index }) => {
+    const bar = document.querySelector(toolbar)
+    const toggle = bar?.querySelectorAll('button[aria-pressed], button[aria-expanded]')[index]
+    if (!bar || !toggle) return null
+    const barBox = bar.getBoundingClientRect()
+    const box = toggle.getBoundingClientRect()
+    return {
+      height: Math.round(barBox.height),
+      top: Math.round(box.top),
+      left: Math.round(box.left),
+      inside: box.top >= barBox.top - 1 && box.bottom <= barBox.bottom + 1,
+      label: (toggle.getAttribute('aria-label') || toggle.textContent.trim()).slice(0, 24),
+    }
+  }, { toolbar, index })
+}
+
+/** Presses one toolbar toggle the way a person does: a real pointer click on the control's centre. */
+async function clickToggle(page, toolbar, index) {
+  const point = await page.evaluate(({ toolbar, index }) => {
+    const toggle = document.querySelector(toolbar)?.querySelectorAll('button[aria-pressed], button[aria-expanded]')[index]
+    if (!toggle) return null
+    const box = toggle.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, { toolbar, index })
+  if (!point) return
+  await page.mouse.click(point.x, point.y)
+}
+
+/**
+ * A toolbar control can open a portaled popover or menu rather than anything inside the toolbar, and
+ * those close on their own terms: the palette's tag filter only ever opens, so a second press leaves
+ * it up. Escape is what a person reaches for, and it closes those layers one at a time, so the sweep
+ * dismisses them before the next toggle instead of assuming a control toggles.
+ */
+async function dismissTransientLayers(page, root) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const layers = await page.evaluate((selector) => [...document.querySelectorAll('[role="dialog"], [role="menu"]')]
+      .filter((element) => !element.matches(selector) && !element.closest(selector)).length, root)
+    if (layers === 0) return
+    await page.keyboard.press('Escape')
+    await sleep(240)
+  }
+}
+
+/**
+ * Presses every toggle in one toolbar and reports what the toolbar and the toggle itself did.
+ *
+ * The height is the assertion the mind map's reference card failed; "inside" is its sibling, for a
+ * control that stays in the toolbar but wraps to a row of its own. A sideways move is recorded and
+ * not failed: the graph's scope buttons sit after a count that changes width with the data, so a
+ * legitimate repaint moves them without the toolbar growing.
+ */
+async function sweepToolbar(page, surface) {
+  const bar = await page.evaluate((selector) => {
+    const element = document.querySelector(selector)
+    if (!element) return null
+    return {
+      height: Math.round(element.getBoundingClientRect().height),
+      toggles: element.querySelectorAll('button[aria-pressed], button[aria-expanded]').length,
+    }
+  }, surface.toolbar)
+  if (!bar) throw new Error(`toolbar sweep: the ${surface.name} has no toolbar matching ${surface.toolbar}`)
+  let growth = 0
+  let rowShift = 0
+  let sideways = 0
+  let outside = 0
+  const labels = []
+  for (let index = 0; index < bar.toggles; index += 1) {
+    const before = await readToggle(page, surface.toolbar, index)
+    await clickToggle(page, surface.toolbar, index)
+    await sleep(320)
+    const after = await readToggle(page, surface.toolbar, index)
+    if (!before || !after) {
+      outside += 1
+      labels.push(`${before?.label ?? index}:gone`)
+      continue
+    }
+    growth = Math.max(growth, after.height - before.height)
+    rowShift = Math.max(rowShift, Math.abs(after.top - before.top))
+    sideways = Math.max(sideways, Math.abs(after.left - before.left))
+    if (!after.inside) outside += 1
+    labels.push(`${after.label}:${after.height - before.height}/${after.top - before.top}/${after.left - before.left}`)
+    await dismissTransientLayers(page, surface.root)
+  }
+  return { height: bar.height, toggles: bar.toggles, growth, rowShift, sideways, outside, labels: labels.join(', ') }
+}
+
+async function assertFullscreenToolbars(page) {
+  // The hotkeys below are the app's own, and half of them are refused while a text field has the
+  // keyboard: each surface starts from no focus at all rather than from wherever the last scenario
+  // left it. The window is part of the surface — the outline is a drawer at phone width — so the
+  // entry says which one it is audited in, and the desktop width comes back between them.
+  for (const surface of TOOLBAR_SURFACES) {
+    await page.setViewport(surface.viewport ?? DESKTOP_VIEWPORT)
+    await sleep(500)
+    await page.evaluate(() => {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    })
+    await sleep(300)
+    await surface.open(page)
+    await page.waitForSelector(surface.root, { timeout: 15_000 })
+    await waitForPanelSettled(page, surface.root)
+    await sleep(400)
+    const loaded = await page.evaluate(({ root, selector, decoded }) => {
+      const scope = document.querySelector(root)
+      const found = scope ? [...scope.querySelectorAll(selector)] : []
+      const settled = decoded ? found.filter((element) => element.complete && element.naturalWidth > 0) : found
+      return { count: found.length, settled: settled.length, selector }
+    }, { root: surface.root, selector: surface.loaded.selector, decoded: Boolean(surface.loaded.decoded) })
+    check(`toolbar stability: the ${surface.name} opened with its content, not an error state`, loaded.count >= surface.loaded.min && loaded.settled >= surface.loaded.min, JSON.stringify(loaded))
+    const result = await sweepToolbar(page, surface)
+    check(`toolbar stability: the ${surface.name} toolbar holds its height`, result.growth === 0, JSON.stringify(result))
+    check(`toolbar stability: the ${surface.name} toggles stay on the toolbar row`, result.rowShift === 0 && result.outside === 0, JSON.stringify(result))
+    // A surface with no toggle is still counted: the sweep says it found none rather than passing
+    // silently over a control it did not recognize.
+    check(`toolbar stability: the ${surface.name} toolbar exercised its toggles`, result.toggles >= surface.minToggles, JSON.stringify(result))
+    // The sweep's own presses can leave the surface in a mode of its own — the template library is
+    // still selecting — so the count is reported rather than pinned to one press; what has to hold is
+    // that Escape gets out.
+    let escapes = 0
+    let closed = false
+    while (!closed && escapes < 3) {
+      escapes += 1
+      await page.keyboard.press('Escape')
+      closed = await page.waitForFunction((root) => !document.querySelector(root), { timeout: 5_000 }, surface.root).then(() => true, () => false)
+      if (!closed) await sleep(240)
+    }
+    check(`toolbar stability: the ${surface.name} closes with escape`, closed, `escapes=${escapes}`)
+  }
+  // The drawer's entry is the one that changed the window: the run leaves the app as it found it.
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(300)
+}
+
 async function main() {
   console.log(`visual e2e against ${BASE}`)
   const browser = await puppeteer.launch({
@@ -1180,6 +1416,7 @@ async function main() {
     await assertDeckImageExport(page)
     await assertMindmapBlock(page)
     await assertMindmapSplitEditing(page)
+    await assertFullscreenToolbars(page)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.

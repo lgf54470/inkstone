@@ -30,7 +30,7 @@ export function Drawer({ open, onClose, side = 'right', width = 380, children, t
     return null
   return createPortal(<div className='app-viewport-fixed fixed' style={{ zIndex }}>
     <div className='anim-fade absolute inset-0 bg-[var(--scrim)]' onClick={onClose} aria-hidden='true'/>
-    <aside ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={title ? titleId : undefined} aria-label={title ? undefined : t('overlay.side_panel')} tabIndex={-1} className={cn('absolute top-0 bottom-0 flex flex-col border-[var(--border-default)] bg-[var(--bg-surface)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-modal)] outline-none md:py-0', side === 'right' ? 'right-0 border-l' : 'left-0 border-r')} style={{
+    <aside ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={title ? titleId : undefined} aria-label={title ? undefined : t('overlay.side_panel')} tabIndex={-1} data-surface='drawer' className={cn('absolute top-0 bottom-0 flex flex-col border-[var(--border-default)] bg-[var(--bg-surface)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-modal)] outline-none md:py-0', side === 'right' ? 'right-0 border-l' : 'left-0 border-r')} style={{
       width: Math.min(width, window.innerWidth < DRAWER_FIT_BREAKPOINT ? window.innerWidth : window.innerWidth - DRAWER_SIDE_GAP),
       animation: `ink-slide-in-${side} var(--dur-slow) var(--ease-out) both`,
     }}>

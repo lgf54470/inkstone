@@ -274,7 +274,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     if (prefs.clearClosesPanel)
       closePanel()
   }
-  return createPortal(<div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1}
+  return createPortal(<div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1} data-surface='graph'
     className='app-viewport-fixed fixed z-[var(--z-graph)] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0'>
     <GraphHeader titleId={titleId} data={data} prefs={prefs} hasActiveNote={Boolean(activeNoteId)} onModeChange={(mode) => changePref('mode', mode)} search={search} onSearchChange={setSearch} canZoom={Boolean(data?.nodes.length)} isSettingsOpen={isSettingsOpen} onZoomOut={() => refs.controlsRef.current?.zoomOut()} onFit={() => refs.controlsRef.current?.fit()} onZoomIn={() => refs.controlsRef.current?.zoomIn()} onToggleSettings={() => setIsSettingsOpen((value) => !value)} onClose={onClose}/>
     <div className='relative flex min-h-0 flex-1 overflow-hidden'>

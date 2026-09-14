@@ -15,8 +15,8 @@
 // the two themes have different ones. The shell's axe pass runs here too, in the
 // same theme on the same freshly-opened panel: axe's color-contrast rule and the
 // measurements below are the same question asked twice, so they belong in one
-// scenario rather than in the behaviour gate (scripts/e2e-visual.mjs), which
-// keeps the presentation, export and mind map assertions.
+// scenario rather than in the behaviour gate (scripts/e2e-visual.mjs), which keeps
+// the presentation and export assertions and the mind map's behaviour ones.
 //
 // Usage: node scripts/check-contrast.mjs [base-url] [--report]
 //   base-url defaults to http://localhost:7712.
@@ -29,8 +29,10 @@ import {
   SETTINGS_PANEL,
   chromeExecutablePath,
   ensureAxe,
+  ensurePaneVisible,
   isReviewedIncomplete,
   loginThroughUi,
+  pressCombo,
   runAxe,
   setAppTheme,
   sleep,
@@ -49,6 +51,88 @@ const VIEWPORT = { width: 1280, height: 900 }
 const SETTLE_MS = 500
 const SETTLE_TIMEOUT = 20_000
 
+
+const MINDMAP_FULLSCREEN = '.mindmap-fullscreen'
+const MINDMAP_FENCE = ['', '```mindmap', '- Contrast Probe', '  - Keyboard reference', '```'].join('\n')
+// axe's wording for text it will not judge because something is painted over it: the pass run under
+// a transient layer has to recognize its own items by it, and the pass without the layer must not
+// see one at all.
+const OCCLUSION_NOTE = 'overlapped by another element'
+
+/**
+ * The mind map's full screen view, opened with its keyboard reference card up.
+ *
+ * The card is the point of this surface: the behaviour gate runs its axe pass on
+ * the same overlay, but the card was closed again before it did, so the one
+ * surface that panel added was never read by either gate. Opening it here — in
+ * both themes, on the same freshly-opened overlay the measurements below read —
+ * leaves nothing skipped. The view needs a live map, so a note holding a fence is
+ * made through the app's own new-note shortcut when the vault has none; the fence
+ * is the same one the behaviour gate types.
+ */
+async function openMindmapFullscreen(page) {
+  const existing = await page.evaluate(() => Boolean(document.querySelector('.ink-prose [data-mindmap]')))
+  if (!existing) {
+    if (!(await ensurePaneVisible(page, '.cm-content'))) throw new Error('mind map surface: the editor pane never became visible')
+    await pressCombo(page, ['Control', 'n'])
+    await sleep(1_200)
+    const typed = await page.evaluate((markdown) => {
+      const content = document.querySelector('.cm-content')
+      if (!content) return false
+      content.focus()
+      const selection = window.getSelection()
+      selection.selectAllChildren(content)
+      selection.collapseToEnd()
+      return document.execCommand('insertText', false, markdown)
+    }, MINDMAP_FENCE)
+    if (!typed) throw new Error('mind map surface: the editor is not mounted to type the fence into')
+    await sleep(1_200)
+  }
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('mind map surface: the preview pane never became visible')
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('.ink-prose .mindmap-canvas')
+    const box = canvas?.getBoundingClientRect()
+    return Boolean(box && box.width > 100 && box.height > 100)
+  }, { timeout: 30_000 })
+  await page.click('.ink-prose .mindmap-block [data-mindmap-fullscreen]')
+  await page.waitForSelector(MINDMAP_FULLSCREEN, { timeout: SETTLE_TIMEOUT })
+  await waitForPanelSettled(page, MINDMAP_FULLSCREEN)
+  await sleep(SETTLE_MS)
+  const toggled = await page.evaluate(() => {
+    const head = document.querySelector('.mindmap-fullscreen-head')
+    const toggle = [...(head?.querySelectorAll('button') ?? [])]
+      .find((element) => /shortcut|快捷键/.test(element.getAttribute('aria-label') ?? ''))
+    toggle?.click()
+    return Boolean(toggle)
+  })
+  if (!toggled) throw new Error('mind map surface: the overlay has no keyboard reference toggle')
+  await page.waitForSelector('.mindmap-shortcuts', { timeout: SETTLE_TIMEOUT })
+  await sleep(SETTLE_MS)
+}
+
+/**
+ * The card is the transient layer: this puts it away without leaving full screen, so the map's own
+ * topic text can be read on its own. The card is drawn over the middle of the drawing area, and the
+ * topic labels it covers are exactly the ones axe refuses to judge while it is up — a review item
+ * that is true about the pixels and useless as a failure, because the layer is the thing being
+ * measured. Measuring the surface twice keeps both answers and neither is taken on trust: the card
+ * is judged with it open, the map's text with it away on the same instance, and the first pass is
+ * only allowed to report the occlusion because the second has to come back without it.
+ */
+async function dismissMindmapCard(page) {
+  await page.keyboard.press('Escape')
+  await page.waitForFunction(() => !document.querySelector('.mindmap-shortcuts'), { timeout: SETTLE_TIMEOUT })
+  await sleep(SETTLE_MS)
+}
+
+/** The second Escape is the one that leaves full screen. */
+async function closeMindmapFullscreen(page) {
+  await page.keyboard.press('Escape')
+  await sleep(SETTLE_MS)
+  await page.keyboard.press('Escape')
+  await page.waitForFunction((selector) => !document.querySelector(selector), { timeout: SETTLE_TIMEOUT }, MINDMAP_FULLSCREEN)
+  await sleep(SETTLE_MS)
+}
 
 // Panels rendered over the app, each opened the way a person opens it. Their
 // surfaces differ from the shell's, so they are their own measurements — and each
@@ -86,6 +170,17 @@ const SURFACES = [
       await sleep(SETTLE_MS)
     },
   },
+  {
+    name: 'mind map full screen',
+    axeRoot: MINDMAP_FULLSCREEN,
+    open: openMindmapFullscreen,
+    close: closeMindmapFullscreen,
+    // The card is this surface's own transient layer: the measurements and the first axe pass run
+    // with it up, because the card is the surface that was skipped, and the same instance is then
+    // read a second time with the card away. Only a surface that declares the second read has the
+    // items its layer occludes set aside, and only because that read has to pass without them.
+    occluder: { layer: 'keyboard reference card', dismiss: dismissMindmapCard },
+  },
 ]
 
 /**
@@ -94,18 +189,29 @@ const SURFACES = [
  * behind it. One theme, one freshly-opened panel, so the two answers are about
  * the same pixels.
  */
-async function judgeSurfaceAxe(surface, theme, page) {
+async function judgeSurfaceAxe(surface, theme, page, occluder = null) {
   const result = await runAxe(page, surface.axeRoot)
   if (result.passes === 0) throw new Error(`axe inspected nothing in the ${surface.name}`)
-  const review = result.incomplete.filter((item) => !isReviewedIncomplete(item))
+  // Under a transient layer the surface draws itself, text the layer covers comes back from axe as
+  // something it could not judge rather than as something it measured. Those items are set aside for
+  // this pass alone: the caller runs the second read of the same instance, and that one must return
+  // without them, so a surface no longer gets quieter by painting over its own text.
+  const isOccluded = (item) => Boolean(occluder) && item.id === 'color-contrast' && item.note.includes(OCCLUSION_NOTE)
+  const occluded = result.incomplete.filter(isOccluded)
+  const review = result.incomplete.filter((item) => !isReviewedIncomplete(item) && !isOccluded(item))
   // The reviewed items are named in the count so "nothing to report" stays distinguishable from
   // "the pass measured nothing"; they are allowed by id and reason, never by silence.
   const allowed = result.incomplete.length - review.length
-  console.log(`  ${result.violations.length + review.length === 0 ? '✓' : '✗'} axe: the ${surface.name} has no violations and no unreviewed items (${theme}), ${result.passes} checks passed, ${allowed} reviewed items allowed`)
+  const occlusion = occluded.length ? `, ${occluded.length} of them occluded by the ${occluder.layer} and read again below` : ''
+  console.log(`  ${result.violations.length + review.length === 0 ? '✓' : '✗'} axe: the ${surface.name} has no violations and no unreviewed items (${theme}), ${result.passes} checks passed, ${allowed} reviewed items allowed${occlusion}`)
   for (const item of result.violations) {
     console.log(`      ${item.id} ×${item.count} — ${item.note}`)
     console.log(`        ${item.target}`)
     console.log(`        ${item.html}`)
+  }
+  for (const item of occluded) {
+    console.log(`      occluded: ${item.id} ×${item.count} — under the ${occluder.layer}`)
+    console.log(`        ${item.target}`)
   }
   for (const item of review) {
     console.log(`      review: ${item.id} ×${item.count} — ${item.note}`)
@@ -510,9 +616,10 @@ async function main() {
     for (const theme of THEMES) {
       await setAppTheme(page, theme)
       const accents = matrix.filter((entry) => entry.theme === theme)
-      // The shell first, then the two dialog surfaces: they sit on --bg-overlay,
-      // the lightest surface in either theme, and that is where a dim tier runs
-      // out of contrast first.
+      // The shell first, then the dialog surfaces: they sit on --bg-overlay, the
+      // lightest surface in either theme, and that is where a dim tier runs out of
+      // contrast first. The mind map's full screen view joins them with its keyboard
+      // reference card up. It is opened last because it lands on a note of its own.
       for (const surface of SURFACES) {
         await surface.open(page)
         const collected = await page.evaluate(COLLECT)
@@ -520,7 +627,15 @@ async function main() {
         const result = inspect(collected, theme)
         failures += report(`${theme} · ${surface.name}`, result)
         failures += judgeAccentSweep(`${theme} · ${surface.name}`, result, accents)
-        failures += await judgeSurfaceAxe(surface, theme, page)
+        // A surface opened under a layer it draws itself has text that layer covers, and axe reports
+        // exactly that text as unjudgeable instead of reading it. Those items fail nothing here
+        // because the same instance is read again below with the layer away, where they have to be
+        // absent; the count line names how many were, so nothing is excused in silence.
+        failures += await judgeSurfaceAxe(surface, theme, page, surface.occluder)
+        if (surface.occluder) {
+          await surface.occluder.dismiss(page)
+          failures += await judgeSurfaceAxe({ ...surface, name: `${surface.name} without its ${surface.occluder.layer}` }, theme, page)
+        }
         await surface.close(page)
       }
     }
