@@ -581,6 +581,50 @@ async function readMindmapTheme(page) {
   })
 }
 
+/** The palettes the header menu offers, by the names a fence stores. */
+const MINDMAP_PALETTES = {
+  auto: ['Follow the app', '跟随应用'],
+  light: ['Light', '浅色'],
+  dark: ['Dark', '深色'],
+}
+
+/**
+ * Opens the block header's palette menu and picks a palette. The pick is waited for on the block's
+ * own attribute, which the renderer emits from the fence: the preview is re-rendered from the note's
+ * committed text, so seeing it there means the pick reached the note and not merely the map. The
+ * menu is read before the pick, and the map after it, against the canvas the scenario started with —
+ * the same element across a pick is what separates a repaint from a rebuild.
+ */
+async function pickMindmapPalette(page, palette) {
+  await page.click('.ink-prose .mindmap-block [data-mindmap-theme-pick]')
+  await page.waitForSelector('[role="menu"] [role="menuitemcheckbox"]', { timeout: 15_000 })
+  // The Menu appends its check glyph to the selected row's label, so the rows are read without it.
+  const menu = await page.evaluate((wanted) => {
+    const items = [...document.querySelectorAll('[role="menu"] [role="menuitemcheckbox"]')]
+    const labelOf = (element) => (element.textContent ?? '').replace('✓', '').trim()
+    const labels = items.map(labelOf)
+    const target = items.find((element) => wanted.includes(labelOf(element)))
+    target?.click()
+    return {
+      labels,
+      checked: labels.filter((_, index) => items[index].getAttribute('aria-checked') === 'true'),
+      clicked: Boolean(target),
+    }
+  }, MINDMAP_PALETTES[palette])
+  if (!menu.clicked) throw new Error(`the palette menu has no ${palette} entry`)
+  await page.waitForFunction(
+    (wanted) => (document.querySelector('.ink-prose .mindmap-block')?.getAttribute('data-mindmap-theme') ?? null) === wanted,
+    { timeout: 15_000 },
+    palette === 'auto' ? null : palette,
+  )
+  await sleep(600)
+  const choice = await page.evaluate(() => ({
+    control: document.querySelector('.ink-prose .mindmap-block [data-mindmap-theme-pick]')?.textContent?.trim() ?? '',
+    annotation: document.querySelector('.ink-prose .mindmap-block')?.getAttribute('data-mindmap-theme') ?? null,
+  }))
+  return { menu, ...choice, theme: await readMindmapTheme(page) }
+}
+
 async function assertMindmapBlock(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(600)
@@ -620,6 +664,46 @@ async function assertMindmapBlock(page) {
   await page.evaluate(() => {
     window.__mindmapCanvas = document.querySelector('.ink-prose .mindmap-canvas')
   })
+
+  // The header's palette control, end to end: it states the palette the fence asks for, a pick is
+  // written into that same fence and painted on the instance already on screen, and picking the app
+  // palette clears the statement again. The scenario leaves the fence following the app, because the
+  // theme-follow step at the end of it measures exactly that. The custom entry is absent here on
+  // purpose — this fence is an outline, which has no field to carry a theme object.
+  const initial = await page.evaluate(() => ({
+    control: document.querySelector('.ink-prose .mindmap-block [data-mindmap-theme-pick]')?.textContent?.trim() ?? '',
+    annotation: document.querySelector('.ink-prose .mindmap-block')?.getAttribute('data-mindmap-theme') ?? null,
+  }))
+  check(
+    'mindmap: the header names the palette the map draws with',
+    MINDMAP_PALETTES.auto.includes(initial.control) && initial.annotation === null,
+    JSON.stringify(initial),
+  )
+  const pickedLight = await pickMindmapPalette(page, 'light')
+  check('mindmap: the palette menu offers the app palette, light and dark', pickedLight.menu.labels.length === 3, JSON.stringify(pickedLight.menu))
+  check(
+    'mindmap: the palette menu marks the palette the fence states',
+    pickedLight.menu.checked.length === 1 && MINDMAP_PALETTES.auto.includes(pickedLight.menu.checked[0]),
+    JSON.stringify(pickedLight.menu),
+  )
+  check(
+    'mindmap: a pick is written into the fence and named by the control',
+    pickedLight.annotation === 'light' && MINDMAP_PALETTES.light.includes(pickedLight.control),
+    JSON.stringify(pickedLight),
+  )
+  const pickedDark = await pickMindmapPalette(page, 'dark')
+  check(
+    'mindmap: the picked palette repaints the live map without rebuilding it',
+    pickedDark.annotation === 'dark' && pickedDark.theme.sameElement
+    && pickedDark.theme.root.length > 0 && pickedDark.theme.root !== pickedLight.theme.root,
+    `light=${JSON.stringify(pickedLight.theme)} dark=${JSON.stringify(pickedDark.theme)}`,
+  )
+  const pickedAuto = await pickMindmapPalette(page, 'auto')
+  check(
+    'mindmap: picking the app palette clears the fence statement again',
+    pickedAuto.annotation === null && pickedAuto.theme.sameElement && MINDMAP_PALETTES.auto.includes(pickedAuto.control),
+    JSON.stringify(pickedAuto),
+  )
   await page.click('.ink-prose .mindmap-block [data-mindmap-fullscreen]')
   await page.waitForSelector('.mindmap-fullscreen-canvas .mindmap-canvas', { timeout: 15_000 })
   await waitForPanelSettled(page, '.mindmap-fullscreen')

@@ -5,6 +5,7 @@ import { NotePropertiesEditor } from './note-properties-editor'
 import { WikiLinkHoverCard } from './wiki-link-hover-card'
 import { FilePreviewModal } from './file-preview-modal'
 import { MindmapFullscreen } from './mindmap-fullscreen'
+import { MindmapThemeMenu } from './mindmap-theme-menu'
 
 export type { PreviewProps } from './use-preview'
 
@@ -59,6 +60,9 @@ function PreviewOverlays({ b }: { b: ReturnType<typeof usePreview> }) {
       )}
       {b.mindmapFullscreen && (
         <MindmapFullscreen session={b.mindmapFullscreen.session} onClose={b.closeMindmapFullscreen} />
+      )}
+      {b.mindmapThemeMenu && (
+        <MindmapThemeMenu state={b.mindmapThemeMenu} onClose={b.closeMindmapThemeMenu} />
       )}
       {b.previewFile && (
         <FilePreviewModal

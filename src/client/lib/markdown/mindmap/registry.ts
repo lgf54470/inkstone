@@ -20,12 +20,12 @@ import type { MindmapBlockEntry } from './entry'
 import { loadMindmapVendor } from './loader'
 import { watchMindmapContainer } from './resize'
 import { renderStaticMindmapBlocks } from './static'
-import { APP_THEME_CHOICE, fenceThemeChoice } from './theme'
-import type { MindmapVendorLoader, MindmapWriter } from './types'
-import { flushEntry, scheduleWrite } from './write'
+import { APP_THEME_CHOICE, fenceThemeChoice, type MindmapThemeChoice } from './theme'
+import type { MindmapFenceWriter, MindmapVendorLoader, MindmapWriteResult, MindmapWriter } from './types'
+import { flushEntry, scheduleWrite, setEntryTheme } from './write'
 
 // Re-exported here because the registry is what hands an entry out ({@link MindmapBlockEntry}).
-import { MINDMAP_CANVAS_CLASS, MINDMAP_PLACEHOLDER_SELECTOR, decorateMindmapControls, disarmNativeFullscreen, isMindmapWritableHere, markMindmapLoading, markMindmapReady, mindmapBlocks, mindmapBody, mindmapIndex, mindmapThemeAnnotation, showMindmapError } from './view'
+import { MINDMAP_CANVAS_CLASS, MINDMAP_PLACEHOLDER_SELECTOR, decorateMindmapControls, disarmNativeFullscreen, isMindmapWritableHere, markMindmapLoading, markMindmapReady, mindmapBlocks, mindmapBody, mindmapIndex, mindmapThemeAnnotation, markMindmapThemeMenuOpen, setMindmapThemePickerEnabled, showMindmapError, showMindmapThemeChoice, type MindmapThemePickName } from './view'
 
 export type { MindmapBlockEntry } from './entry'
 
@@ -37,6 +37,8 @@ export interface MindmapMountOptions {
   locale: AppLocale
   editable: boolean
   writeBack?: MindmapWriter
+  /** How the header's palette control rewrites the fence; without it the control is dead. */
+  writeFence?: MindmapFenceWriter
   loadVendor?: MindmapVendorLoader
 }
 
@@ -222,6 +224,8 @@ function createEntry(node: HTMLElement, options: MindmapMountOptions, load: Mind
     observer: null,
     ref: null,
     write: options.writeBack ?? null,
+    writeFence: options.writeFence ?? null,
+    dataKey: '',
     dirty: false,
     timer: null,
     pending: null,
@@ -245,8 +249,13 @@ async function mountBlock(node: HTMLElement, entry: MindmapBlockEntry, options: 
   entry.ref = isMindmapWritableHere(node) ? { line: Number(node.dataset.line), body } : null
   entry.write = options.writeBack ?? null
   entry.editable = options.editable && entry.ref !== null
+  setMindmapThemePickerEnabled(node, entry.editable)
   if (entry.handle) {
     if (themeChanged) applyEntryTheme(entry)
+    // The markup is rebuilt from the note on every commit and the renderer's control carries
+    // the classic default, so the answer is written back even when nothing moved: a fresh
+    // button reading "follow the app" over a map drawn dark is the mismatch this avoids.
+    else showMindmapThemeChoice(node, entry.choice)
     syncEntry(entry, body)
     placeContainer(entry)
     return
@@ -266,12 +275,20 @@ function syncEntry(entry: MindmapBlockEntry, body: string): void {
     showMindmapError(entry.host, parsed.error)
     return
   }
+  const dataKey = JSON.stringify(parsed.data)
+  const dataChanged = dataKey !== entry.dataKey
+  entry.dataKey = dataKey
   entry.extra = parsed.extra
   entry.bodyChoice = parsed.theme
   if (!applyEntryTheme(entry)) return
-  handle.refresh({ ...parsed, theme: entry.choice })
-  handle.clearHistory()
-  handle.toCenter()
+  // A fence edit that moved only the palette (or a field the drawing does not read) leaves
+  // the map on screen exactly right: it is told about the new palette, while a refresh
+  // would drop the camera, the selection and the undo stack for a colour change.
+  if (dataChanged) {
+    handle.refresh({ ...parsed, theme: entry.choice })
+    handle.clearHistory()
+    handle.toCenter()
+  }
   markMindmapReady(entry.host)
   notify(entry.scope)
 }
@@ -288,6 +305,7 @@ function applyEntryTheme(entry: MindmapBlockEntry): boolean {
     return false
   }
   entry.choice = declared.choice
+  showMindmapThemeChoice(entry.host, entry.choice)
   entry.handle?.applyTheme({ dark: entry.dark, choice: entry.choice })
   return true
 }
@@ -332,6 +350,7 @@ async function buildInstance(entry: MindmapBlockEntry): Promise<void> {
   entry.mode = mode
   entry.extra = parsed.extra
   entry.bodyChoice = parsed.theme
+  entry.dataKey = JSON.stringify(parsed.data)
   // An annotation nobody can read leaves the block on its source, like a body the
   // vendor refused: a map drawn in some other palette than the one written would be
   // worse than one that says why it did not draw.
@@ -406,6 +425,38 @@ function destroyEntry(entry: MindmapBlockEntry, flush = true): void {
   entry.container = null
   if (entries.get(entry.key) === entry) entries.delete(entry.key)
   notify(entry.scope)
+}
+
+/**
+ * Everything the header's palette menu needs about the block it is open on: what the map
+ * draws with now (the menu marks it and offers nothing else as selectable), and whether
+ * the fence carries a theme object of its own, which is the only case the custom entry
+ * can mean anything.
+ */
+export interface MindmapThemeMenuState {
+  node: HTMLElement
+  choice: MindmapThemeChoice
+}
+
+export function mindmapThemeMenuState(node: HTMLElement): MindmapThemeMenuState | null {
+  const entry = mindmapEntryForNode(node)
+  // A read-only block keeps its control (it still says what the map draws with); there is
+  // simply nothing the menu could write, and the button on it is disabled.
+  return entry && entry.editable ? { node, choice: entry.choice } : null
+}
+
+/** Marks the block's control as open, so the menu and the button agree on the state. */
+export function setMindmapThemeMenuOpen(node: HTMLElement, open: boolean): void {
+  if (mindmapEntryForNode(node)) markMindmapThemeMenuOpen(node, open)
+}
+
+/** Applies one of the menu's palettes to the block, writing the fence and repainting. */
+export function pickMindmapTheme(node: HTMLElement, pick: MindmapThemePickName): MindmapWriteResult {
+  const entry = mindmapEntryForNode(node)
+  if (!entry || !entry.editable) return 'missing'
+  const result = setEntryTheme(entry, pick)
+  if (result === 'written' || result === 'moved') applyEntryTheme(entry)
+  return result
 }
 
 /**

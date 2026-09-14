@@ -121,6 +121,17 @@ function renderFence(md: MarkdownIt, tokens: Token[], index: number, rendererEnv
     `</div>`,
   ].join('')
 }
+/**
+ * The header's palette control. It ships as a button carrying the classic name of the
+ * palette a fence without one draws with; the registry replaces the text with what the
+ * map actually draws with, and the menu itself is a React overlay (the prose whitelist
+ * keeps form controls out, so a button and an app menu is the shape available).
+ */
+function renderThemePicker(): string {
+  const label = escapeAttr(t('preview.mindmap_theme'))
+  return `<button type="button" class="mindmap-block-theme" data-mindmap-theme-pick aria-haspopup="menu" aria-expanded="false" aria-label="${label}" title="${label}">${escapeHtml(t('preview.mindmap_theme_auto'))}</button>`
+}
+
 function renderMindmapBlock(token: Token, line: string, rendererEnv: unknown): string {
   const env = renderEnv(rendererEnv)
   env.hasMindmap = true
@@ -139,6 +150,7 @@ function renderMindmapBlock(token: Token, line: string, rendererEnv: unknown): s
     `<span class="mindmap-block-title">${escapeHtml(t('preview.mindmap'))}</span>`,
     `<span class="mindmap-block-mode">${escapeHtml(modeLabel)}</span>`,
     `<span class="mindmap-block-actions">`,
+    renderThemePicker(),
     `<button type="button" class="mindmap-block-btn" data-mindmap-fit aria-label="${fitLabel}" title="${fitLabel}"></button>`,
     `<button type="button" class="mindmap-block-btn" data-mindmap-fullscreen aria-label="${fullscreenLabel}" title="${fullscreenLabel}"></button>`,
     `</span>`,

@@ -28,8 +28,32 @@
 }
 .ink-prose .mindmap-block-actions {
   display: flex;
+  align-items: center;
   gap: var(--sp-0\.5);
   margin-inline-start: auto;
+}
+.ink-prose .mindmap-block-theme {
+  height: var(--sp-5);
+  padding: 0 var(--sp-1\.5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  background: var(--bg-inset);
+  font-family: inherit;
+  font-size: var(--text-10);
+  line-height: var(--sp-4);
+  cursor: pointer;
+}
+.ink-prose .mindmap-block-theme:hover,
+.ink-prose .mindmap-block-theme:focus-visible {
+  color: var(--accent);
+  border-color: var(--border-default);
+  outline: none;
+  box-shadow: var(--shadow-ring);
+}
+.ink-prose .mindmap-block-theme:disabled {
+  color: var(--text-quaternary);
+  cursor: default;
 }
 .ink-prose .mindmap-block-btn {
   display: inline-flex;

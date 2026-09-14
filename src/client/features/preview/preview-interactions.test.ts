@@ -16,7 +16,7 @@ function clickOn(target: EventTarget): ReactMouseEvent {
   return { target, preventDefault: () => {}, stopPropagation: () => {} } as unknown as ReactMouseEvent
 }
 
-function mountHandler(openMindmapFullscreen: (node: HTMLElement) => void, setLightbox: (value: { src: string; alt: string } | null) => void = () => {}) {
+function mountHandler(openMindmapFullscreen: (node: HTMLElement) => void, setLightbox: (value: { src: string; alt: string } | null) => void = () => {}, openMindmapThemeMenu: (node: HTMLElement) => void = () => {}) {
   const host = document.createElement('div')
   host.className = 'ink-prose'
   host.innerHTML = renderMarkdown('```mindmap\n- Root\n  - Child\n```').html
@@ -44,6 +44,7 @@ function mountHandler(openMindmapFullscreen: (node: HTMLElement) => void, setLig
     hideHover: noop,
     startMermaidRender: noop,
     openMindmapFullscreen,
+    openMindmapThemeMenu,
     api: {
       setLightbox,
       setPreviewFile: noop,
@@ -67,6 +68,22 @@ describe('preview clicks on a mind map block', () => {
       await handler(clickOn(button))
       expect(open).toHaveBeenCalledTimes(1)
       expect(open).toHaveBeenCalledWith(block)
+    }
+    finally {
+      host.remove()
+    }
+  })
+
+  it('opens the palette menu from the header button', async () => {
+    const openMenu = vi.fn()
+    const open = vi.fn()
+    const { host, handler, block } = mountHandler(open, () => {}, openMenu)
+    try {
+      const button = host.querySelector<HTMLElement>('[data-mindmap-theme-pick]')!
+      await handler(clickOn(button))
+      expect(openMenu).toHaveBeenCalledWith(block)
+      // The header's own controls do not fall through to the overlay or to the library.
+      expect(open).not.toHaveBeenCalled()
     }
     finally {
       host.remove()

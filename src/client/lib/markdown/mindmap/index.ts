@@ -6,7 +6,7 @@
  * `loadMindmapVendor`, which imports it dynamically so a note without a mind map
  * never downloads it.
  */
-export { applyBodyAtFence, detectMindmapMode, MINDMAP_LANGUAGES, normalizeEol, type MindmapFence, type MindmapMode } from './body'
+export { applyBodyAtFence, applyFencePatchAtSource, detectMindmapMode, MINDMAP_LANGUAGES, normalizeEol, type MindmapFence, type MindmapFencePatch, type MindmapMode } from './body'
 export { loadMindmapVendor } from './loader'
 export {
   attachMindmapToOverlay,
@@ -18,11 +18,15 @@ export {
   fitMindmapBlock,
   mindmapEntryForNode,
   mindmapEntryKey,
+  mindmapThemeMenuState,
   mountMindmaps,
+  pickMindmapTheme,
   retryMindmap,
+  setMindmapThemeMenuOpen,
   subscribeMindmaps,
   type MindmapBlockEntry,
   type MindmapMountOptions,
+  type MindmapThemeMenuState,
 } from './registry'
 export { applyEntryBody, flushEntry, serializeEntry, serializeEntryAs } from './write'
 export { openMindmapSession, type MindmapSession } from './session'
@@ -48,6 +52,12 @@ export {
   mindmapBody,
   mindmapIndex,
   mindmapThemeAnnotation,
+  mindmapThemeButton,
+  mindmapThemeLabel,
+  mindmapThemeMenuPicks,
+  setMindmapThemePickerEnabled,
+  type MindmapThemePick,
+  type MindmapThemePickName,
   mindmapPlaceholder,
   resetMindmapNode,
   showMindmapError,
@@ -57,6 +67,7 @@ export {
 export type {
   MindmapCreateOptions,
   MindmapFenceRef,
+  MindmapFenceWriter,
   MindmapHandle,
   MindmapParsedBody,
   MindmapThemeInput,

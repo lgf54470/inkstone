@@ -7,7 +7,7 @@
 import { t } from '../../i18n'
 import { decodeDataValue } from '../data-attr'
 import { normalizeEol } from './body'
-import { MINDMAP_THEME_ATTR } from './theme'
+import { MINDMAP_THEME_ATTR, type MindmapThemeChoice } from './theme'
 import type { MindmapFenceRef } from './types'
 
 export const MINDMAP_BLOCK_SELECTOR = '[data-mindmap]'
@@ -15,6 +15,8 @@ export const MINDMAP_PLACEHOLDER_SELECTOR = '[data-mindmap-placeholder]'
 export const MINDMAP_CANVAS_CLASS = 'mindmap-canvas'
 /** The library's own toolbar button that asks the browser for native full screen. */
 export const MINDMAP_NATIVE_FULLSCREEN_SELECTOR = '#fullscreen'
+/** The header's palette control; the value it holds is one of the `theme=` names. */
+export const MINDMAP_THEME_PICK_SELECTOR = '[data-mindmap-theme-pick]'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
@@ -131,7 +133,77 @@ export function mindmapEditing(node: HTMLElement | null): boolean {
 }
 
 function removeHeadControls(node: HTMLElement): void {
-  node.querySelectorAll<HTMLElement>('[data-mindmap-fullscreen], [data-mindmap-fit]').forEach((button) => button.remove())
+  node.querySelectorAll<HTMLElement>(`[data-mindmap-fullscreen], [data-mindmap-fit], ${MINDMAP_THEME_PICK_SELECTOR}`).forEach((control) => control.remove())
+}
+
+/**
+ * The palette control the block's header carries, or null when this render emitted none
+ * (the degraded states remove it along with the other head controls).
+ */
+export function mindmapThemeButton(node: HTMLElement): HTMLButtonElement | null {
+  return node.querySelector<HTMLButtonElement>(MINDMAP_THEME_PICK_SELECTOR)
+}
+
+/** What the picker's own values are called; the fence stores `theme=<one of these>`. */
+export type MindmapThemePick = 'auto' | 'light' | 'dark' | 'custom'
+
+export const MINDMAP_THEME_AUTO = 'auto'
+
+/** The picks that name a palette a fence can be written to draw with. */
+export type MindmapThemePickName = Exclude<MindmapThemePick, 'custom'>
+
+/** The palettes a fence can be told to draw with, in the order the menu offers them. */
+export const MINDMAP_THEME_PICKS: MindmapThemePick[] = ['auto', 'light', 'dark']
+
+/**
+ * What the menu offers: the three named palettes, plus the custom entry only when the
+ * fence already carries a theme object — choosing it means "keep that object", so for
+ * every other body there is nothing it could do.
+ */
+export function mindmapThemeMenuPicks(choice: MindmapThemeChoice): MindmapThemePick[] {
+  return choice.kind === 'custom' ? [...MINDMAP_THEME_PICKS, 'custom'] : [...MINDMAP_THEME_PICKS]
+}
+
+/** A read-only surface still says what the map draws with, but cannot rewrite the note. */
+export function setMindmapThemePickerEnabled(node: HTMLElement, enabled: boolean): void {
+  const button = mindmapThemeButton(node)
+  if (button) button.disabled = !enabled
+}
+
+const THEME_LABELS = {
+  auto: 'preview.mindmap_theme_auto',
+  light: 'preview.mindmap_theme_light',
+  dark: 'preview.mindmap_theme_dark',
+  custom: 'preview.mindmap_theme_custom',
+} as const
+
+/** The name a palette goes by in the control and in the menu; a pick names itself. */
+export function mindmapThemeLabel(choice: MindmapThemeChoice | MindmapThemePick): string {
+  const name: keyof typeof THEME_LABELS = typeof choice === 'string'
+    ? choice
+    : choice.kind === 'app' ? 'auto' : choice.kind
+  return t(THEME_LABELS[name])
+}
+
+/**
+ * Shows what the map draws with, on the control itself: the palette's own name as the
+ * button's text, and the full statement as its accessible name. A body that carries a
+ * theme object of its own reads as "custom" here — picking another palette is what
+ * replaces that object, and there is nowhere else to write one.
+ */
+export function showMindmapThemeChoice(node: HTMLElement, choice: MindmapThemeChoice, open = false): void {
+  const button = mindmapThemeButton(node)
+  if (!button) return
+  const label = mindmapThemeLabel(choice)
+  button.textContent = label
+  button.setAttribute('aria-label', `${t('preview.mindmap_theme')}: ${label}`)
+  if (choice.kind === 'custom') button.title = t('preview.mindmap_theme_custom_hint')
+  else button.removeAttribute('title')
+  button.setAttribute('aria-expanded', String(open))
+}
+
+export function markMindmapThemeMenuOpen(node: HTMLElement, open: boolean): void {
+  mindmapThemeButton(node)?.setAttribute('aria-expanded', String(open))
 }
 
 export function markMindmapLoading(node: HTMLElement): void {

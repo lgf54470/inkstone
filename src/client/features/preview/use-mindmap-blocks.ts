@@ -3,12 +3,14 @@ import {
   captureMindmapFocus,
   destroyMindmaps,
   flushMindmaps,
+  mindmapThemeMenuState,
   mountMindmaps,
   openMindmapSession,
   type MindmapSession,
+  type MindmapThemeMenuState,
 } from '../../lib/markdown/mindmap'
 import { useLocale } from '../../lib/i18n'
-import { createMindmapWriter } from './mindmap-sync'
+import { createMindmapFenceWriter, createMindmapWriter } from './mindmap-sync'
 
 export interface MindmapFullscreenState {
   session: MindmapSession
@@ -31,19 +33,21 @@ export function useMindmapBlocks(options: UseMindmapBlocksOptions) {
   const { scope, noteId, hostRef, committedHtml, dark } = options
   const locale = useLocale()
   const writer = useMemo(() => createMindmapWriter(noteId), [noteId])
+  const fenceWriter = useMemo(() => createMindmapFenceWriter(noteId), [noteId])
   const [fullscreen, setFullscreen] = useState<MindmapFullscreenState | null>(null)
+  const [themeMenu, setThemeMenu] = useState<MindmapThemeMenuState | null>(null)
 
   useLayoutEffect(() => {
     const host = hostRef.current
     if (!host) return
-    void mountMindmaps(host, { scope, noteId, dark, locale, editable: true, writeBack: writer }).catch((err: unknown) => {
+    void mountMindmaps(host, { scope, noteId, dark, locale, editable: true, writeBack: writer, writeFence: fenceWriter }).catch((err: unknown) => {
       // Per-block failures render their own error banner; this only catches a
       // wholesale failure such as a detached host.
       console.warn('[inkstone] mind map mount failed', err)
     })
-  }, [committedHtml, dark, locale, noteId, scope, writer, hostRef])
+  }, [committedHtml, dark, locale, noteId, scope, writer, fenceWriter, hostRef])
 
-  useMindmapTeardown(scope, setFullscreen)
+  useMindmapTeardown(scope, setFullscreen, setThemeMenu)
   useMindmapPointerFocus(hostRef, committedHtml)
 
   const openFullscreen = useCallback((node: HTMLElement) => {
@@ -59,18 +63,32 @@ export function useMindmapBlocks(options: UseMindmapBlocksOptions) {
     })
   }, [])
 
-  return { fullscreen, openFullscreen, closeFullscreen }
+  // The block's state is read when the button is clicked, not kept: the map is the source
+  // of truth for what it draws with, and a menu left open over a re-render would otherwise
+  // mark a palette the fence has since changed.
+  const openThemeMenu = useCallback((node: HTMLElement) => {
+    const state = mindmapThemeMenuState(node)
+    if (state) setThemeMenu(state)
+  }, [])
+  const closeThemeMenu = useCallback(() => setThemeMenu(null), [])
+
+  return { fullscreen, openFullscreen, closeFullscreen, themeMenu, openThemeMenu, closeThemeMenu }
 }
 
 /** Leaving the note (or the pane) writes the last edit and drops the instances. */
-function useMindmapTeardown(scope: string, setFullscreen: Dispatch<SetStateAction<MindmapFullscreenState | null>>): void {
+function useMindmapTeardown(
+  scope: string,
+  setFullscreen: Dispatch<SetStateAction<MindmapFullscreenState | null>>,
+  setThemeMenu: Dispatch<SetStateAction<MindmapThemeMenuState | null>>,
+): void {
   useEffect(() => {
     return () => {
       flushMindmaps(scope)
       destroyMindmaps(scope)
       setFullscreen(null)
+      setThemeMenu(null)
     }
-  }, [scope, setFullscreen])
+  }, [scope, setFullscreen, setThemeMenu])
 }
 
 /**

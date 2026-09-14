@@ -8,7 +8,7 @@ import type { AppLocale } from '@shared/types'
 import type { MindmapMode } from './body'
 import type { watchMindmapContainer } from './resize'
 import type { MindmapThemeChoice } from './theme'
-import type { MindmapFenceRef, MindmapHandle, MindmapVendor, MindmapVendorLoader, MindmapWriter } from './types'
+import type { MindmapFenceRef, MindmapFenceWriter, MindmapHandle, MindmapVendor, MindmapVendorLoader, MindmapWriter } from './types'
 
 export interface MindmapBlockEntry {
   key: string
@@ -36,6 +36,10 @@ export interface MindmapBlockEntry {
   observer: ReturnType<typeof watchMindmapContainer>
   ref: MindmapFenceRef | null
   write: MindmapWriter | null
+  /** Rewrites the whole fence (body and/or annotation) for the header's palette control. */
+  writeFence: MindmapFenceWriter | null
+  /** The body's drawing data, to tell a palette-only fence edit from a real one. */
+  dataKey: string
   dirty: boolean
   timer: number | null
   /** The instance currently being built for this block, shared by concurrent passes. */

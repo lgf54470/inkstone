@@ -1,5 +1,5 @@
 import type { AppLocale } from '@shared/types'
-import type { MindmapMode } from './body'
+import type { MindmapFencePatch, MindmapMode } from './body'
 import type { MindmapThemeChoice } from './theme'
 
 /**
@@ -94,3 +94,10 @@ export type MindmapWriteResult = 'written' | 'moved' | 'conflict' | 'missing'
 
 /** Writes a new fence body back into the note; see features/preview/mindmap-sync.ts. */
 export type MindmapWriter = (ref: MindmapFenceRef, nextBody: string) => MindmapWriteResult
+
+/**
+ * Rewrites the fence itself — the body, the palette named on its info line, or both at
+ * once, in a single note edit. The header's palette control goes through this one,
+ * because the two places a palette can be stated have to move together.
+ */
+export type MindmapFenceWriter = (ref: MindmapFenceRef, patch: MindmapFencePatch) => MindmapWriteResult

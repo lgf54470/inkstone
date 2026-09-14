@@ -354,9 +354,10 @@ function usePreviewInteractions(opts: {
   hideHover: () => void
   setPreviewFile: Dispatch<SetStateAction<{ url: string; filename: string } | null>>
   openMindmapFullscreen: (node: HTMLElement) => void
+  openMindmapThemeMenu: (node: HTMLElement) => void
   api: PreviewSource['api']
 }) {
-  const { content, sourceNoteId, hostRef, scrollerRef, committedSourceRef, startMermaidRender, hideHover, setPreviewFile, openMindmapFullscreen, api } = opts
+  const { content, sourceNoteId, hostRef, scrollerRef, committedSourceRef, startMermaidRender, hideHover, setPreviewFile, openMindmapFullscreen, openMindmapThemeMenu, api } = opts
   const copyResetTimersRef = useRef(new Map<HTMLElement, number>())
   const wikiNavigationRef = useRef(0)
   const wikiScrollCleanupRef = useRef<() => void>(() => {})
@@ -380,6 +381,7 @@ function usePreviewInteractions(opts: {
     hideHover,
     startMermaidRender,
     openMindmapFullscreen,
+    openMindmapThemeMenu,
     api: { ...api, setPreviewFile },
   })
 }
@@ -443,7 +445,7 @@ export function usePreview(props: PreviewProps) {
   const mindmapScope = useId()
   const mindmap = useMindmapBlocks({ scope: `preview${mindmapScope}`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
   const [previewFile, setPreviewFile] = useState<{ url: string; filename: string } | null>(null)
-  const onClick = usePreviewInteractions({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, scrollerRef: src.scrollerRef, committedSourceRef: html.committedSourceRef, startMermaidRender, hideHover: hover.linkHover.hideNow, setPreviewFile, openMindmapFullscreen: mindmap.openFullscreen, api: src.api })
+  const onClick = usePreviewInteractions({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, scrollerRef: src.scrollerRef, committedSourceRef: html.committedSourceRef, startMermaidRender, hideHover: hover.linkHover.hideNow, setPreviewFile, openMindmapFullscreen: mindmap.openFullscreen, openMindmapThemeMenu: mindmap.openThemeMenu, api: src.api })
   const keyboard = usePreviewKeyboard({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, editContent: src.editContent, hideHover: hover.linkHover.hideNow })
 
   return {
@@ -454,6 +456,7 @@ export function usePreview(props: PreviewProps) {
     hoverCard: hover.hoverCard, linkHover: hover.linkHover, handlePin: hover.handlePin,
     onMouseLeave: hover.onMouseLeave, onFocus: hover.onFocus, onBlur: hover.onBlur,
     mindmapFullscreen: mindmap.fullscreen, closeMindmapFullscreen: mindmap.closeFullscreen,
+    mindmapThemeMenu: mindmap.themeMenu, closeMindmapThemeMenu: mindmap.closeThemeMenu,
     onClick,
     ...keyboard,
   }

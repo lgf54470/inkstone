@@ -42,6 +42,7 @@ interface PreviewClickParams {
   hideHover: () => void
   startMermaidRender: () => void
   openMindmapFullscreen: (node: HTMLElement) => void
+  openMindmapThemeMenu: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -57,6 +58,7 @@ interface PreviewClickContext {
   hideHover: () => void
   startMermaidRender: () => void
   openMindmapFullscreen: (node: HTMLElement) => void
+  openMindmapThemeMenu: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -74,6 +76,7 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
     hideHover: params.hideHover,
     startMermaidRender: params.startMermaidRender,
     openMindmapFullscreen: params.openMindmapFullscreen,
+    openMindmapThemeMenu: params.openMindmapThemeMenu,
     api: params.api,
   }
   return async (event: ReactMouseEvent) => {
@@ -103,6 +106,12 @@ async function handleMindmap(target: HTMLElement, ctx: PreviewClickContext): Pro
   if (!block) return false
   if (target.closest('[data-mindmap-fit]')) {
     fitMindmapBlock(block)
+    return true
+  }
+  // The palette menu is a React overlay anchored to this button (see
+  // mindmap-theme-menu.tsx): the click only asks for it to be opened.
+  if (target.closest('[data-mindmap-theme-pick]')) {
+    ctx.openMindmapThemeMenu(block)
     return true
   }
   if (target.closest('[data-mindmap-fullscreen]')) {

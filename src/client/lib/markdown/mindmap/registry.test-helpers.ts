@@ -2,7 +2,7 @@ import { vi } from 'vitest'
 import { renderMarkdown } from '../renderer'
 import { mountMindmaps } from './registry'
 import { APP_THEME_CHOICE, type MindmapThemeChoice } from './theme'
-import type { MindmapCreateOptions, MindmapFenceRef, MindmapHandle, MindmapParsedBody, MindmapThemeInput, MindmapVendor, MindmapWriteResult } from './types'
+import type { MindmapCreateOptions, MindmapFenceWriter, MindmapHandle, MindmapParsedBody, MindmapThemeInput, MindmapVendor, MindmapWriter } from './types'
 
 export interface StubMap {
   el: HTMLElement
@@ -54,7 +54,11 @@ export function stubVendor(records: StubMap[], theme: MindmapThemeChoice | (() =
   const readTheme = typeof theme === 'function' ? theme : () => theme
   return {
     parse: (body) => ({ ok: true, data: { body }, extra: {}, theme: readTheme() }),
-    serialize: (data) => String((data as { current?: string }).current ?? ''),
+    // Faithful to the real pair in shape: outline mode writes the line format back, JSON
+    // mode carries the fields the outline format has nowhere to put (theme included).
+    serialize: (data, mode, extra) => (mode === 'json'
+      ? JSON.stringify({ ...extra, ...(data as Record<string, unknown>) }, null, 2)
+      : String((data as { current?: string }).current ?? '')),
     create: (options) => {
       const record = newStubMap(options)
       records.push(record)
@@ -130,7 +134,9 @@ export function scopeHarness(
   source: string,
   options: {
     editable?: boolean
-    writeBack?: (ref: MindmapFenceRef, next: string) => MindmapWriteResult
+    writeBack?: MindmapWriter
+    /** How this surface rewrites a fence for its header control, when a test drives one. */
+    writeFence?: MindmapFenceWriter
     /** What this surface's bodies parse to (the vendor reads the fence; the stub is told). */
     theme?: MindmapThemeChoice
   } = {},
@@ -150,6 +156,7 @@ export function scopeHarness(
       locale: 'en-US',
       editable: options.editable ?? true,
       writeBack: options.writeBack,
+      writeFence: options.writeFence,
       loadVendor: async () => stubVendor(records, () => parsedTheme),
       ...overrides,
     })
