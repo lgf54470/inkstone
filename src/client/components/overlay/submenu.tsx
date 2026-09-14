@@ -11,7 +11,7 @@
  * first level: the row states `aria-haspopup` and `aria-expanded`, the panel is a `menu`
  * named after its row, and Escape (the menu's own) or a press elsewhere closes it.
  */
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Check, ChevronRight } from 'lucide-react'
 import { Kbd } from '../primitives'
 import { cn } from '../../lib/cn'
@@ -159,9 +159,10 @@ function closeRowPanel(list: HTMLElement | null, id: string, setOpenRow: React.D
   list?.querySelector<HTMLElement>(`[data-submenu-row="${CSS.escape(id)}"]`)?.focus({ preventScroll: true })
 }
 
-function RowButton({ item, open, listRef, leavePanel, onOpen, onSelect }: {
+function RowButton({ item, open, panelId, listRef, leavePanel, onOpen, onSelect }: {
   item: MenuItem
   open: boolean
+  panelId: string
   listRef: RefObject<HTMLDivElement | null>
   leavePanel: (() => void) | null
   onOpen: (focus: boolean) => void
@@ -172,7 +173,9 @@ function RowButton({ item, open, listRef, leavePanel, onOpen, onSelect }: {
       type='button'
       role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
       aria-checked={item.checked}
-      {...(item.submenu ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': open } : {})}
+      {...(item.submenu
+        ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': open, ...(open ? { 'aria-controls': panelId } : {}) }
+        : {})}
       data-submenu-row={item.id}
       disabled={item.disabled}
       onMouseEnter={() => onOpen(false)}
@@ -212,12 +215,14 @@ function SubmenuRow({ item, openRow, setOpenRow, closeMenu, listRef }: {
 }) {
   const open = openRow?.id === item.id
   const closePanel = useContext(ClosePanelContext)
+  const panelId = useId()
   return (
     <div>
       {item.separatorBefore && <div role='separator' className='my-1 h-px bg-[var(--border-subtle)]' />}
       <RowButton
         item={item}
         open={open}
+        panelId={panelId}
         listRef={listRef}
         leavePanel={closePanel}
         onOpen={(focus) => setOpenRow(item.submenu ? { id: item.id, focus } : null)}
@@ -228,6 +233,7 @@ function SubmenuRow({ item, openRow, setOpenRow, closeMenu, listRef }: {
       />
       {open && item.submenu && (
         <NestedPanel
+          id={panelId}
           listRef={listRef}
           row={openRow!}
           label={item.label}
@@ -288,12 +294,29 @@ function panelPosition(rowElement: HTMLElement, panel: HTMLElement): { top: numb
 }
 
 /**
+ * Re-measures while the panel is open: it is placed from its row's box, so anything that
+ * moves that box — the window resizing, the page scrolling under it — otherwise leaves the
+ * panel behind, pointing at where the row used to be.
+ */
+function useRepositionOnViewportChange(measure: () => void): void {
+  useEffect(() => {
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure, true)
+    }
+  }, [measure])
+}
+
+/**
  * One level further in. It is a DOM child of the list it belongs to (see the file header),
  * so its box is read from `fixed` coordinates taken off the row's own — shifted back into
  * whatever block `fixed` really resolves against — and its content is whatever the row's
  * `submenu` renders, a `SubmenuList` of its own when the items nest again.
  */
-function NestedPanel({ listRef, row, label, children, onClose }: {
+function NestedPanel({ id, listRef, row, label, children, onClose }: {
+  id: string
   listRef: RefObject<HTMLDivElement | null>
   row: OpenRow
   label: string
@@ -306,12 +329,18 @@ function NestedPanel({ listRef, row, label, children, onClose }: {
   // before the menu that owns it does and the levels close one at a time.
   useEscape(true, onClose)
 
-  useLayoutEffect(() => {
+  const measure = useCallback(() => {
     const rowElement = rowElementOf(listRef.current, row.id)
     const panel = panelRef.current
     if (!rowElement || !panel) return
     setPosition(panelPosition(rowElement, panel))
   }, [listRef, row.id])
+
+  useLayoutEffect(() => {
+    measure()
+  }, [measure])
+
+  useRepositionOnViewportChange(measure)
 
   // Only a keyboard opening steps in: the pointer is already where it wants to be, and
   // taking the focus out of the list under it would be a surprise.
@@ -325,6 +354,7 @@ function NestedPanel({ listRef, row, label, children, onClose }: {
   return (
     <div
       ref={panelRef}
+      id={id}
       role='menu'
       aria-label={label}
       style={{ top: position?.top ?? 0, left: position?.left ?? 0 }}

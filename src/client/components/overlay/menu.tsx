@@ -89,10 +89,11 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
       submenuRef={submenuRef}
       submenuPos={submenuPos}
       zIndex={zIndex}
-      cursor={cursor}
-      menuRef={menuRef}
       onClose={onClose}
-      onEsc={() => setActiveSubmenuId(null)}
+      onEsc={() => {
+        setActiveSubmenuId(null)
+        menuRef.current?.querySelector<HTMLElement>(`[data-menu-index="${cursor}"]`)?.focus({ preventScroll: true })
+      }}
     />)}
   </>)
 }
@@ -121,16 +122,18 @@ function useMenuInteractions(setCursor: React.Dispatch<React.SetStateAction<numb
   return { handleHover, handleClick }
 }
 
-function MenuSubmenu({ submenu, submenuRef, submenuPos, zIndex, cursor, menuRef, onClose, onEsc }: {
+function MenuSubmenu({ submenu, submenuRef, submenuPos, zIndex, onClose, onEsc }: {
   submenu: Exclude<MenuItem['submenu'], undefined>
   submenuRef: React.RefObject<HTMLDivElement | null>
   submenuPos: { top: number; left: number }
   zIndex?: number
-  cursor: number
-  menuRef: React.RefObject<HTMLDivElement | null>
   onClose: () => void
   onEsc: () => void
 }) {
+  // Escape closes one level at a time: useEscape runs the top of its stack and nothing
+  // else, so the menu stays open behind the submenu, and a panel nested in the submenu
+  // still closes before both of them.
+  useEscape(true, onEsc)
   return createPortal(
     <div
       ref={submenuRef}
@@ -140,13 +143,6 @@ function MenuSubmenu({ submenu, submenuRef, submenuPos, zIndex, cursor, menuRef,
         top: submenuPos.top,
         left: submenuPos.left,
         zIndex: (zIndex ?? Z_INDEX.menu) + SUBMENU_STACK_DELTA,
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.stopPropagation()
-          onEsc()
-          menuRef.current?.querySelector<HTMLElement>(`[data-menu-index="${cursor}"]`)?.focus()
-        }
       }}
     >
       {typeof submenu === 'function'

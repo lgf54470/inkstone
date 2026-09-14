@@ -61,6 +61,11 @@ async function openSubmenu(): Promise<void> {
   await settle()
 }
 
+/** The menu the nested list hangs off, opened at a point with the caret on its first row. */
+function renderMenu(onClose: () => void): void {
+  renderElement(h(Menu, { open: true, anchor: { x: 10, y: 10 }, items: menuItems(), onClose }))
+}
+
 afterEach(() => {
   document.body.replaceChildren()
 })
@@ -96,8 +101,20 @@ describe('a submenu inside a menu', () => {
     expect(document.activeElement).toBe(row('two'))
   })
 
+  it('names a row\'s panel after the row and points the row at it', () => {
+    renderElement(h(SubmenuList, { items: nestedItems(), closeMenu: () => {} }))
+    act(() => { row('two').focus() })
+
+    press(row('two'), 'ArrowRight')
+    const panel = document.querySelector<HTMLElement>('[role="menu"][aria-label="Two"]')!
+    expect(panel.id).toBeTruthy()
+    expect(row('two').getAttribute('aria-controls')).toBe(panel.id)
+  })
+})
+
+describe('a submenu and its panels inside a menu', () => {
   it('leaves a key pressed inside the submenu to the row it was pressed on', async () => {
-    renderElement(h(Menu, { open: true, anchor: { x: 10, y: 10 }, items: menuItems(), onClose: () => {} }))
+    renderMenu(() => {})
     await openSubmenu()
     expect(hasRow('two')).toBe(true)
 
@@ -110,12 +127,7 @@ describe('a submenu inside a menu', () => {
 
   it('closes the open panel on Escape and leaves the menu behind it open', async () => {
     let closed = 0
-    renderElement(h(Menu, {
-      open: true,
-      anchor: { x: 10, y: 10 },
-      items: menuItems(),
-      onClose: () => { closed += 1 },
-    }))
+    renderMenu(() => { closed += 1 })
     await openSubmenu()
 
     press(row('two'), 'ArrowRight')
@@ -127,5 +139,17 @@ describe('a submenu inside a menu', () => {
     expect(hasRow('deep')).toBe(false)
     expect(hasRow('two')).toBe(true)
     expect(closed).toBe(0)
+  })
+
+  it('closes the submenu on Escape without closing the menu that opened it', async () => {
+    let closed = 0
+    renderMenu(() => { closed += 1 })
+    await openSubmenu()
+
+    press(document.activeElement as HTMLElement, 'Escape')
+    await settle()
+    expect(hasRow('two')).toBe(false)
+    expect(closed).toBe(0)
+    expect(document.activeElement).toBe(document.querySelector('[data-menu-index="1"]'))
   })
 })

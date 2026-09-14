@@ -852,6 +852,11 @@ const allowed = new Map([
     '// and `[data-x=""]` matches them, so they are part of the signature too.',
     '/** Elements of a canvas widget (mind map) that give an event its own meaning. */',
   ]],
+  ['src/client/components/overlay/menu.tsx', [
+    '// Escape closes one level at a time: useEscape runs the top of its stack and nothing',
+    '// else, so the menu stays open behind the submenu, and a panel nested in the submenu',
+    '// still closes before both of them.',
+  ]],
   ['src/client/components/overlay/modal.tsx', [
     '/** `fullscreen` fills the viewport and hands the body to a single surface (e.g. a mind map). */',
     '/** Accessible name for a surface that renders its own heading instead of using `title`. */',
@@ -860,6 +865,7 @@ const allowed = new Map([
     '/**\n * A list that nests one level deeper: the second row opens a panel of its own, and the\n * third row is disabled — the one the arrow keys have to step over rather than onto.\n */',
     '/** The menu the nested list hangs off: a plain row, then a row that opens that list. */',
     '/**\n * Opens the menu\'s submenu the way the keyboard does: the cursor starts on the first row,\n * so it takes an ArrowDown to reach the row that carries one, and ArrowRight to open it.\n */',
+    '/** The menu the nested list hangs off, opened at a point with the caret on its first row. */',
     '// Enter belongs to the row under the caret, not to the parent\'s cursor: the parent',
     '// used to read it as a toggle and shut the submenu without running anything.',
   ]],
@@ -884,6 +890,7 @@ const allowed = new Map([
     '// inside its border.',
     '/** The row a panel hangs off, found by the id its rows are marked with. */',
     '/**\n * Where a panel goes: beside the row that opened it, flipped to the other side and\n * clamped when the near edge of the viewport is closer than the panel is wide.\n */',
+    '/**\n * Re-measures while the panel is open: it is placed from its row\'s box, so anything that\n * moves that box — the window resizing, the page scrolling under it — otherwise leaves the\n * panel behind, pointing at where the row used to be.\n */',
     '/**\n * One level further in. It is a DOM child of the list it belongs to (see the file header),\n * so its box is read from `fixed` coordinates taken off the row\'s own — shifted back into\n * whatever block `fixed` really resolves against — and its content is whatever the row\'s\n * `submenu` renders, a `SubmenuList` of its own when the items nest again.\n */',
     '// useEscape runs the top of its stack and nothing else, so the panel takes Escape',
     '// before the menu that owns it does and the levels close one at a time.',
