@@ -24,15 +24,13 @@ export const patchTagSchema = z.object({
   isPinned: z.boolean().optional(),
 })
 
+// The count reads one tag's rows through idx_note_tags_tag instead of joining a
+// subquery that groups every tag the user owns, which the single-tag reads (and
+// the sync chunks that take a handful of ids by id) never need.
 export const TAG_SELECT = `t.id, t.name, t.color, t.is_pinned, t.created_at,
-  COALESCE(nc.count, 0) AS note_count`
-
-export const TAG_COUNT_JOIN = `LEFT JOIN (
-  SELECT nt.tag_id, COUNT(*) AS count
-    FROM note_tags nt JOIN notes n ON n.id = nt.note_id
-   WHERE n.user_id = ?1 AND n.deleted_at IS NULL AND n.is_archived = 0
-   GROUP BY nt.tag_id
-) nc ON nc.tag_id = t.id`
+  (SELECT COUNT(*) FROM note_tags nt JOIN notes n ON n.id = nt.note_id
+    WHERE nt.tag_id = t.id AND n.user_id = t.user_id
+      AND n.deleted_at IS NULL AND n.is_archived = 0) AS note_count`
 
 export async function loadTag(
   db: D1Database,
@@ -41,7 +39,6 @@ export async function loadTag(
 ): Promise<ReturnType<typeof toTag> | null> {
   const row = await db.prepare(
     `SELECT ${TAG_SELECT} FROM tags t
-      ${TAG_COUNT_JOIN}
      WHERE t.id = ?2 AND t.user_id = ?1`,
   ).bind(userId, id).first<TagRow>()
   return row ? toTag(row) : null

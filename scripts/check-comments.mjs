@@ -3205,6 +3205,10 @@ const allowed = new Map([
     '// index instead of silently falling back to LIKE. The background drain',
     '// keeps handling the remainder and deletes.',
   ]],
+  ['src/worker/routes/settings.ts', [
+    '// notes and attachments carry several counts each; one pass over each table',
+    '// replaces the four and two separate scans the per-metric subqueries made.',
+  ]],
   ['src/worker/routes/share/public.ts', [
     '/* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */',
     '/* An unparseable referer header simply means "no external referrer". */',
@@ -3224,6 +3228,9 @@ const allowed = new Map([
     '// conflicting candidates get a fresh single-row read on retry.',
     '// The guarded write was lost to a concurrent edit: re-read just this',
     '// note and retry with fresh state.',
+    '// The count reads one tag\'s rows through idx_note_tags_tag instead of joining a',
+    '// subquery that groups every tag the user owns, which the single-tag reads (and',
+    '// the sync chunks that take a handful of ids by id) never need.',
   ]],
   ['tests/auth-routes.test.ts', [
     '// Password rotation destroys the presented session too and replaces it',

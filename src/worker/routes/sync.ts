@@ -6,6 +6,7 @@ import { NOTE_COLUMNS, toFolder, toNoteSummary, toTag, type FolderRow, type Note
 import { ApiError } from '../lib/errors'
 import { clampInt } from '../lib/request'
 import { requireAuth } from '../middleware/auth'
+import { TAG_SELECT } from './tags'
 
 export const syncRoutes = new Hono<AppBindings>()
 
@@ -15,16 +16,6 @@ const CHANGE_BOUNDS_SQL = `SELECT
   (SELECT seq FROM changes WHERE user_id = ?1 ORDER BY seq DESC LIMIT 1) AS hi`
 
 const FOLDER_SELECT = `f.id, f.parent_id, f.name, f.icon, f.color, f.position, f.created_at, f.updated_at`
-
-const TAG_SELECT = `t.id, t.name, t.color, t.is_pinned, t.created_at,
-  COALESCE(nc.count, 0) AS note_count`
-
-const TAG_COUNT_JOIN = `LEFT JOIN (
-  SELECT nt.tag_id, COUNT(*) AS count
-    FROM note_tags nt JOIN notes n ON n.id = nt.note_id
-   WHERE n.user_id = ?1 AND n.deleted_at IS NULL AND n.is_archived = 0
-   GROUP BY nt.tag_id
-) nc ON nc.tag_id = t.id`
 
 
 syncRoutes.get('/', requireAuth, async (c) => {
@@ -226,7 +217,6 @@ async function loadChangedFacets(
     ? (
         await c.env.DB.prepare(
           `SELECT ${TAG_SELECT} FROM tags t
-            ${TAG_COUNT_JOIN}
            WHERE t.user_id = ?1 ORDER BY t.name COLLATE NOCASE`,
         )
           .bind(userId)
@@ -235,7 +225,6 @@ async function loadChangedFacets(
     : await loadInChunks(split.tagIds, (ids) =>
         c.env.DB.prepare(
           `SELECT ${TAG_SELECT} FROM tags t
-            ${TAG_COUNT_JOIN}
            WHERE t.user_id = ?1 AND t.id IN (${placeholders(ids.length, 2)})`,
         )
           .bind(userId, ...ids)
@@ -310,7 +299,6 @@ async function fullSnapshot(
       ? db
           .prepare(
             `SELECT ${TAG_SELECT} FROM tags t
-              ${TAG_COUNT_JOIN}
              WHERE t.user_id = ?1 ORDER BY t.name COLLATE NOCASE`,
           )
           .bind(userId)

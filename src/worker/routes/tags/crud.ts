@@ -13,7 +13,6 @@ import {
   loadTag,
   patchTagSchema,
   rewriteTagInNotes,
-  TAG_COUNT_JOIN,
   TAG_SELECT,
   type TagRewriteResult,
 } from './helpers'
@@ -36,7 +35,6 @@ function registerTagListRoute(tagsRoutes: Hono<AppBindings>): void {
   tagsRoutes.get('/', async (c) => {
     const { results } = await c.env.DB.prepare(
       `SELECT ${TAG_SELECT} FROM tags t
-        ${TAG_COUNT_JOIN}
        WHERE t.user_id = ?1 ORDER BY t.is_pinned DESC, t.name COLLATE NOCASE ASC`,
     )
       .bind(c.get('userId'))
@@ -311,7 +309,6 @@ async function patchTagAppearance(
   }
   const row = await c.env.DB.prepare(
     `SELECT ${TAG_SELECT} FROM tags t
-      ${TAG_COUNT_JOIN}
      WHERE t.id = ?2 AND t.user_id = ?1`,
   )
     .bind(userId, tag.id)

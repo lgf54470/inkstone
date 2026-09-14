@@ -9,4 +9,4 @@ tagsRoutes.use('*', requireAuth)
 
 registerTagsCrudRoutes(tagsRoutes)
 
-export { rewriteTagInNotes } from './helpers'
+export { rewriteTagInNotes, TAG_SELECT } from './helpers'
