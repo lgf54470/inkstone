@@ -62,6 +62,7 @@ export const messages = {
 'settings.loading_backup_configuration': '读取备份配置…',
 'settings.loading_backup_settings': '加载备份设置…',
 'settings.login_password': '登录密码',
+'settings.section_unavailable': '该分区加载失败。',
 'settings.look_at_home_together': '会像这样和谐地排在一起。',
 'settings.maintenance': '维护',
 'settings.manual': '手动',

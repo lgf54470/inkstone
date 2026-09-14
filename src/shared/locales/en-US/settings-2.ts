@@ -62,6 +62,7 @@ export const messages = {
 'settings.loading_backup_configuration': 'Loading backup configuration…',
 'settings.loading_backup_settings': 'Loading backup settings…',
 'settings.login_password': 'Login password',
+'settings.section_unavailable': 'This section could not be loaded.',
 'settings.look_at_home_together': 'look at home together.',
 'settings.maintenance': 'Maintenance',
 'settings.manual': 'Manual',

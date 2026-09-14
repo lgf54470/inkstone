@@ -1736,6 +1736,13 @@ const allowed = new Map([
     '// Initial form fields from whichever config variant the target carries; the',
     '// `in` guards narrow the S3/WebDAV union so every field reads type-safe.',
   ]],
+  ['src/client/features/settings/section-warmup.ts', [
+    '/**\n * Warms the lazily imported settings sections in the background: one chunk per\n * idle slice, so opening the panel never pays for a section the visitor has not\n * asked for yet, and the one they ask for is already in memory.\n *\n * The scheduled work is cancelled when the panel closes, and a loader that\n * rejects is left to the section\'s own error boundary rather than retried here\n * — a failed chunk import is reported to the person who tried to open it.\n */',
+  ]],
+  ['src/client/features/settings/settings-panel.tsx', [
+    '// One loader per lazy section, so the same import both renders the section on',
+    '// demand and warms it before it is asked for.',
+  ]],
   ['src/client/features/settings/totp-settings/use-totp-settings.ts', [
     '// Best-effort server cleanup; an orphaned pending setup expires server-side.',
   ]],

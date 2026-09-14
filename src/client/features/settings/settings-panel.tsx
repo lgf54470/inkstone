@@ -6,17 +6,33 @@ import { cn } from '../../lib/cn'
 import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { LoadingBlock } from '../../components/feedback'
+import { Button } from '../../components/primitives'
+import { ErrorBoundary } from '../../components/error-boundary'
 import { AppearanceSettings } from './appearance-settings'
 import { useUi, type PanelName } from '../../store/ui'
+import { scheduleWhenIdle, warmSections } from './section-warmup'
 import { t } from '../../lib/i18n'
-const EditorSettings = lazy(() => import('./editor-settings').then((m) => ({ default: m.EditorSettings })))
-const NoteSettings = lazy(() => import('./note-settings').then((m) => ({ default: m.NoteSettings })))
-const SyncSettings = lazy(() => import('./sync-settings').then((m) => ({ default: m.SyncSettings })))
-const DataSettings = lazy(() => import('./data-settings').then((m) => ({ default: m.DataSettings })))
-const AccountSettings = lazy(() => import('./account-settings').then((m) => ({ default: m.AccountSettings })))
-const AboutSettings = lazy(() => import('./about-settings').then((m) => ({ default: m.AboutSettings })))
-const BackupSettings = lazy(() => import('./backup-settings').then((m) => ({ default: m.BackupSettings })))
-const McpSettings = lazy(() => import('./mcp-settings').then((m) => ({ default: m.McpSettings })))
+
+// One loader per lazy section, so the same import both renders the section on
+// demand and warms it before it is asked for.
+const SECTION_LOADERS = {
+  editor: () => import('./editor-settings').then((m) => ({ default: m.EditorSettings })),
+  notes: () => import('./note-settings').then((m) => ({ default: m.NoteSettings })),
+  sync: () => import('./sync-settings').then((m) => ({ default: m.SyncSettings })),
+  data: () => import('./data-settings').then((m) => ({ default: m.DataSettings })),
+  account: () => import('./account-settings').then((m) => ({ default: m.AccountSettings })),
+  about: () => import('./about-settings').then((m) => ({ default: m.AboutSettings })),
+  backup: () => import('./backup-settings').then((m) => ({ default: m.BackupSettings })),
+  mcp: () => import('./mcp-settings').then((m) => ({ default: m.McpSettings })),
+}
+const EditorSettings = lazy(SECTION_LOADERS.editor)
+const NoteSettings = lazy(SECTION_LOADERS.notes)
+const SyncSettings = lazy(SECTION_LOADERS.sync)
+const DataSettings = lazy(SECTION_LOADERS.data)
+const AccountSettings = lazy(SECTION_LOADERS.account)
+const AboutSettings = lazy(SECTION_LOADERS.about)
+const BackupSettings = lazy(SECTION_LOADERS.backup)
+const McpSettings = lazy(SECTION_LOADERS.mcp)
 type Section = 'appearance' | 'editor' | 'notes' | 'backup' | 'sync' | 'mcp' | 'account' | 'data' | 'about'
 const SECTIONS: {
   id: Section
@@ -37,6 +53,7 @@ export function SettingsPanel({ onClose }: {
   onClose: () => void
 }) {
   const [section, setSection] = useState<Section>('appearance')
+  const [reloadKey, setReloadKey] = useState(0)
   const openPanel = useUi((s) => s.openPanel)
   const panelRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -47,6 +64,7 @@ export function SettingsPanel({ onClose }: {
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: 0 })
   }, [section])
+  useEffect(() => warmSections(Object.values(SECTION_LOADERS), scheduleWhenIdle), [])
   return createPortal(<div className='app-viewport-fixed fixed z-[var(--z-settings)] flex items-center justify-center md:p-8'>
     <div className='anim-fade absolute inset-0 bg-[var(--scrim)]' onClick={onClose} aria-hidden='true'/>
 
@@ -56,7 +74,9 @@ export function SettingsPanel({ onClose }: {
       <SettingsHeader section={section} onClose={onClose}/>
       <div ref={bodyRef} className='min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] md:px-5 md:py-4'>
       <div key={section} className='anim-view-content'>
-        <SectionContent section={section}/>
+        <ErrorBoundary key={reloadKey} fallback={<SectionLoadError onRetry={() => setReloadKey((key) => key + 1)}/>}>
+          <SectionContent section={section}/>
+        </ErrorBoundary>
       </div>
       </div>
     </div>
@@ -107,6 +127,15 @@ function SettingsHeader({ section, onClose }: { section: Section; onClose: () =>
       </IconButton>
       </Tooltip>
     </header>
+  )
+}
+
+function SectionLoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div role='alert' className='flex flex-col items-center gap-3 py-10 text-center'>
+      <p className="text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">{t('settings.section_unavailable')}</p>
+      <Button size='sm' variant='secondary' onClick={onRetry}>{t('common.retry')}</Button>
+    </div>
   )
 }
 
