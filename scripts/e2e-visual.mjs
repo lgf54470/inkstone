@@ -92,6 +92,9 @@ const LABELS = {
   presentFreeze: ['冻结当前快照', 'Freeze this snapshot'],
   presentFollow: ['跟随笔记更新', 'Follow the note'],
   outline: ['大纲', 'Outline', 'outline'],
+  insert: ['插入', 'Insert'],
+  mindMap: ['思维导图', 'Mind map'],
+  mindMapOutline: ['大纲思维导图', 'Outline Mind Map'],
 }
 
 async function activeProse(page) {
@@ -1554,6 +1557,96 @@ async function assertFullscreenToolbars(page) {
   await sleep(300)
 }
 
+/**
+ * A row of a submenu that opens a panel of its own. The editor's context menu nests three
+ * deep — insert, then the mind map row, then a template — and the third level is a `fixed`
+ * box living inside the submenu its pop-in animation owns, which makes that animation's
+ * settled transform the block the panel is placed in instead of the viewport: read as
+ * viewport coordinates it was drawn a whole submenu down and to the right, off screen, and
+ * the row looked dead. The panel is asserted where it has to be — on screen, and beside the
+ * row that opened it — and then used, because a panel that is merely visible proves nothing
+ * about the row it serves.
+ */
+async function assertContextMenuNesting(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(500)
+  if (!(await ensurePaneVisible(page, '.cm-content'))) throw new Error('context menu scenario: the editor pane never became visible')
+
+  // The blank-canvas menu is the one that carries the insert row, and an empty line at the
+  // end of the note is what gives it: the caret is moved there and the right click lands on it.
+  await page.evaluate(() => document.querySelector('.cm-content')?.focus())
+  await pressCombo(page, ['Control', 'End'])
+  await page.keyboard.press('Enter')
+  await sleep(300)
+  const caret = await page.evaluate(() => {
+    const cursor = document.querySelector('.cm-cursor-primary') ?? document.querySelector('.cm-line:last-child')
+    const box = cursor?.getBoundingClientRect()
+    return box ? { x: Math.round(box.x + 4), y: Math.round(box.y + box.height / 2) } : null
+  })
+  if (!caret) throw new Error('context menu scenario: the editor has no caret to right-click')
+  await page.mouse.click(caret.x, caret.y, { button: 'right' })
+
+  const rowBox = async (labels) => page.evaluate((wanted) => {
+    const button = [...document.querySelectorAll('[role="menu"] button, body > div button')]
+      .find((candidate) => wanted.includes(candidate.textContent.trim()))
+    if (!button) return null
+    const box = button.getBoundingClientRect()
+    return { x: box.x, y: box.y, width: box.width, height: box.height }
+  }, labels)
+  const hoverRow = async (labels, what) => {
+    const box = await rowBox(labels)
+    if (!box) throw new Error(`context menu scenario: the ${what} row never appeared`)
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await sleep(450)
+    return box
+  }
+
+  await page.waitForSelector('[role="menu"]', { timeout: 15_000 })
+  check('context menu: right-clicking the editor opens the menu', true)
+  await hoverRow(LABELS.insert, 'insert')
+  const row = await hoverRow(LABELS.mindMap, 'mind map')
+
+  const panel = await page.evaluate((wanted) => {
+    const menu = [...document.querySelectorAll('[role="menu"]')]
+      .find((candidate) => wanted.includes(candidate.getAttribute('aria-label') ?? ''))
+    if (!menu) return null
+    const box = menu.getBoundingClientRect()
+    return {
+      x: Math.round(box.x), y: Math.round(box.y),
+      width: Math.round(box.width), height: Math.round(box.height),
+      rows: [...menu.querySelectorAll('button')].map((button) => button.textContent.trim()),
+    }
+  }, LABELS.mindMap)
+  check('context menu: the mind map row opens a panel of templates', Boolean(panel) && panel.rows.length > 0, JSON.stringify(panel))
+  if (!panel) return
+  const onScreen = panel.x >= 0 && panel.y >= 0
+    && panel.x + panel.width <= 1280 && panel.y + panel.height <= 900
+  check('context menu: the nested panel is drawn inside the window', onScreen, JSON.stringify(panel))
+  const besideRow = Math.abs(panel.x - (row.x + row.width)) <= 8
+    && Math.abs(panel.y - row.y) <= row.height
+  check('context menu: the nested panel sits beside the row that opened it', besideRow, `panel=${JSON.stringify(panel)} row=${JSON.stringify(row)}`)
+
+  const template = await rowBox(LABELS.mindMapOutline)
+  check('context menu: the template row is reachable', Boolean(template))
+  if (!template) return
+  // The note already carries a mind map fence from its own scenario above, so the mark of this
+  // insertion is the template's own topic rather than the fence it arrives in.
+  await page.mouse.click(template.x + template.width / 2, template.y + template.height / 2)
+  const inserted = await page
+    .waitForFunction(() => (document.querySelector('.cm-content')?.textContent ?? '').includes('- Core Topic'), { timeout: 15_000 })
+    .then(() => true, () => false)
+  check('context menu: picking a template writes the mind map fence', inserted)
+  // The note is shared with the scenarios above and this one owns no content of its own.
+  await pressCombo(page, ['Control', 'z'])
+  await sleep(1_200)
+  const undone = await page
+    .waitForFunction(() => !(document.querySelector('.cm-content')?.textContent ?? '').includes('- Core Topic'), { timeout: 15_000 })
+    .then(() => true, () => false)
+  check('context menu: the insertion is undone again', undone)
+  await page.keyboard.press('Escape')
+  await sleep(300)
+}
+
 async function main() {
   console.log(`visual e2e against ${BASE}`)
   const browser = await puppeteer.launch({
@@ -1592,6 +1685,7 @@ async function main() {
     await assertMindmapBlock(page)
     await assertMindmapSplitEditing(page)
     await assertFullscreenToolbars(page)
+    await assertContextMenuNesting(page)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.

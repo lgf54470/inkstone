@@ -132,10 +132,35 @@ function SubmenuRow({ item, openRow, setOpenRow, closeMenu, listRef }: {
 }
 
 /**
+ * Where a `fixed` box inside `element` is placed from: the viewport, unless an ancestor
+ * establishes a containing block of its own — and the menu's own pop-in animation does.
+ * `anim-pop` fills forwards, so the transform it settles on is the identity matrix rather
+ * than `none`, which still counts; a panel that read the row's box as viewport
+ * coordinates was then drawn a whole submenu down and to the right of it, off screen.
+ */
+function containingBlockOrigin(element: HTMLElement): { x: number; y: number } {
+  for (let node = element.parentElement; node; node = node.parentElement) {
+    const style = getComputedStyle(node)
+    const isContainingBlock =
+      style.transform !== 'none' ||
+      style.perspective !== 'none' ||
+      style.filter !== 'none' ||
+      style.backdropFilter !== 'none' ||
+      style.willChange.includes('transform')
+    if (!isContainingBlock) continue
+    const rect = node.getBoundingClientRect()
+    // The block such a box is placed in is the ancestor's padding box, which starts
+    // inside its border.
+    return { x: rect.left + node.clientLeft, y: rect.top + node.clientTop }
+  }
+  return { x: 0, y: 0 }
+}
+
+/**
  * One level further in. It is a DOM child of the list it belongs to (see the file header),
- * so its box is read from `fixed` coordinates taken off the row's own, and its content is
- * whatever the row's `submenu` renders — a `SubmenuList` of its own when the items nest
- * again.
+ * so its box is read from `fixed` coordinates taken off the row's own — shifted back into
+ * whatever block `fixed` really resolves against — and its content is whatever the row's
+ * `submenu` renders, a `SubmenuList` of its own when the items nest again.
  */
 function NestedPanel({ listRef, row, label, children }: {
   listRef: RefObject<HTMLDivElement | null>
@@ -160,7 +185,8 @@ function NestedPanel({ listRef, row, label, children }: {
     let top = rect.top - NESTED_GAP * 2
     if (top + panelHeight > viewport.bottom - VIEWPORT_MARGIN)
       top = Math.max(viewport.top + VIEWPORT_MARGIN, viewport.bottom - panelHeight - VIEWPORT_MARGIN)
-    setPosition({ top, left })
+    const origin = containingBlockOrigin(panel)
+    setPosition({ top: top - origin.y, left: left - origin.x })
   }, [listRef, row.id])
 
   // Only a keyboard opening steps in: the pointer is already where it wants to be, and
