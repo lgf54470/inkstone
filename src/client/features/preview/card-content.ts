@@ -128,7 +128,7 @@ async function renderCardHtml(content: string, args: LoadCardArgs): Promise<{ ht
   if (nextHtml === undefined) {
     const staging = document.createElement('div')
     staging.innerHTML = renderMarkdown(truncatedContent, { externalImages }).html
-    if (staging.querySelector('pre code') || staging.querySelector('[data-math]')) {
+    if (staging.querySelector('pre code') || staging.querySelector('[data-math]') || staging.querySelector('[data-mermaid]') || staging.querySelector('[data-mindmap]')) {
       await enhancePreview(staging, {
         math: args.previewMath,
         mermaid: false,

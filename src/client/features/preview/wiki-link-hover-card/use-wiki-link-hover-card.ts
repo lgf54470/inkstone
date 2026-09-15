@@ -2,14 +2,18 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { Z_INDEX } from '../../../lib/z-index'
 import { decodeDataValue } from '../../../lib/markdown/data-attr'
 import { parseWikiTarget } from '../../../lib/markdown/renderer'
+import { destroyChartInstances, renderChartJs, renderPendingMermaid, showMermaidSource } from '../../../lib/markdown/enhance'
+import { renderStaticMindmaps } from '../../../lib/markdown/mindmap'
 import { findNoteByTitle } from '../../../store/notes'
 import { useNotes } from '../../../store/notes'
 import { useSession } from '../../../store/session'
 import { getVisibleViewport } from '../../../lib/viewport'
+import { getLocale } from '../../../lib/i18n'
 import { MAX_HOVER_CARD_DEPTH, useLinkHover } from '../link-hover'
 import { useNoteBacklinks, useNoteCardContent } from '../card-content'
 import { pushLinkHoverTarget } from '../link-signal'
 import { placeHoverCard } from './position'
+import type { PreviewSettings } from '@shared/types/settings'
 import type { PinnedWindowGeometry } from '../../../store/pinned-windows'
 import type { WikiLinkHoverCardState, PinnedNoteCardState } from '../../../types/hover-card'
 import type { MenuItem } from '../../../components/overlay'
@@ -19,6 +23,7 @@ const MIN_PINNED_HEIGHT = 140
 const CARD_WIDTH = 340
 const CARD_MARGIN = 8
 const HIDE_GRACE_MS = 200
+const PINNED_PREVIEW_LENGTH = Number.MAX_SAFE_INTEGER
 
 type Rect = { x: number; y: number; width: number; height: number }
 
@@ -86,9 +91,11 @@ function computeHoverCardPosition(cardEl: HTMLDivElement, card: WikiLinkHoverCar
 function clampWindowRect(next: Rect) {
   const viewport = getVisibleViewport()
   const width = Math.max(MIN_PINNED_WIDTH, Math.min(next.width, viewport.right - next.x - CARD_MARGIN))
-  const height = Math.max(MIN_PINNED_HEIGHT, Math.min(next.height, viewport.bottom - next.y - CARD_MARGIN))
+  const height = next.height > 0
+    ? Math.max(MIN_PINNED_HEIGHT, Math.min(next.height, viewport.bottom - next.y - CARD_MARGIN))
+    : 0
   const x = Math.min(Math.max(next.x, viewport.left), Math.max(viewport.left, viewport.right - width - CARD_MARGIN))
-  const y = Math.min(Math.max(next.y, viewport.top), Math.max(viewport.top, viewport.bottom - height - CARD_MARGIN))
+  const y = Math.min(Math.max(next.y, viewport.top), Math.max(viewport.top, viewport.bottom - Math.max(height, MIN_PINNED_HEIGHT) - CARD_MARGIN))
   return { x, y, width, height }
 }
 
@@ -142,7 +149,7 @@ function useCardPositioning(card: WikiLinkHoverCardState, pinned: boolean, onClo
   return { cardRef, position }
 }
 
-function useCardPinnedGeometry(pinnedInit: PinnedNoteCardState | undefined, onGeometryChange: ((geometry: PinnedWindowGeometry) => void) | undefined) {
+function useCardPinnedGeometry(pinnedInit: PinnedNoteCardState | undefined, onGeometryChange: ((geometry: PinnedWindowGeometry) => void) | undefined, cardRef: RefObject<HTMLDivElement | null>) {
   const [pinnedRect, setPinnedRect] = useState<Rect>(() => ({
     x: pinnedInit?.x ?? 0,
     y: pinnedInit?.y ?? 0,
@@ -168,8 +175,12 @@ function useCardPinnedGeometry(pinnedInit: PinnedNoteCardState | undefined, onGe
     if (event.button !== 0) return
     event.preventDefault()
     const origin = { ...pinnedRectRef.current }
+    if (origin.height <= 0) {
+      const rendered = cardRef.current?.getBoundingClientRect()
+      if (rendered) origin.height = rendered.height
+    }
     trackPointerDrag(event, (dx, dy) => ({ ...origin, width: origin.width + dx, height: origin.height + dy }), commitRect)
-  }, [commitRect])
+  }, [cardRef, commitRect])
 
   return { pinnedRect, beginDrag, beginResize }
 }
@@ -238,14 +249,48 @@ function useCardActions(opts: { card: WikiLinkHoverCardState; pinned: boolean; o
   return { stop: stopEvent, onCardKeyDown, handlePin, openInCurrentPane, openInSidePane, openBacklink }
 }
 
+function usePinnedRichBlocks(opts: {
+  pinned: boolean
+  status: 'loading' | 'ready' | 'missing' | 'error'
+  html: string
+  dark: boolean
+  preview: PreviewSettings
+  cardRef: RefObject<HTMLDivElement | null>
+}): void {
+  const { pinned, status, html, dark, preview, cardRef } = opts
+  useEffect(() => {
+    if (!pinned || status !== 'ready' || !html) return
+    const body = cardRef.current?.querySelector<HTMLElement>('.wiki-hover-body')
+    if (!body) return
+    let cancelled = false
+    const isCurrent = () => !cancelled && body.isConnected
+    void (async () => {
+      if (preview.mermaid)
+        await renderPendingMermaid(body, dark, { isCurrent })
+      else
+        showMermaidSource(body)
+      if (!isCurrent()) return
+      await Promise.allSettled([
+        renderChartJs(body, dark),
+        renderStaticMindmaps(body, { dark, locale: getLocale() }),
+      ])
+    })()
+    return () => {
+      cancelled = true
+      destroyChartInstances(body)
+    }
+  }, [pinned, status, html, dark, preview.mermaid, cardRef])
+}
+
 export function useWikiLinkHoverCard(props: WikiLinkHoverCardProps) {
   const { card, path, depth, dark, pinned = false, pinnedInit, onClose, onPin, onGeometryChange } = props
   const preview = useSession((s) => s.settings.preview)
-  const content = useNoteCardContent({ noteId: card.noteId, missing: card.missing, headline: card.headline }, dark, preview.math, preview.linkPreviewLength)
+  const content = useNoteCardContent({ noteId: card.noteId, missing: card.missing, headline: card.headline }, dark, preview.math, pinned ? PINNED_PREVIEW_LENGTH : preview.linkPreviewLength)
   const { status, html, isTruncated } = content
   const { cardRef, position } = useCardPositioning(card, pinned, onClose)
   const describedBy = useCardAccessibility(card, pinned)
-  const { pinnedRect, beginDrag, beginResize } = useCardPinnedGeometry(pinnedInit, onGeometryChange)
+  const { pinnedRect, beginDrag, beginResize } = useCardPinnedGeometry(pinnedInit, onGeometryChange, cardRef)
+  usePinnedRichBlocks({ pinned, status, html, dark, preview, cardRef })
   const resolve = useCallback((link: HTMLElement) => resolveNestedCandidate(link, card, depth, path), [card, depth, path])
   const machine = useLinkHover({
     resolve,
