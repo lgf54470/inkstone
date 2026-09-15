@@ -1,7 +1,7 @@
 import { RangeSetBuilder, StateEffect, StateField, type EditorState, type Extension, type Range, type Text } from '@codemirror/state'
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { destroyChartInstances, enhancePreview, renderPendingMermaid } from '../lib/markdown/enhance'
-import { MINDMAP_IMAGE_CLASS } from '../lib/markdown/mindmap'
+import { loadMindmapVendor, MINDMAP_IMAGE_CLASS } from '../lib/markdown/mindmap'
 import { renderMarkdown } from '../lib/markdown/renderer'
 import { useSession } from '../store/session'
 
@@ -68,14 +68,30 @@ function isDarkTheme(): boolean {
 }
 
 /**
+ * Whether the block is on screen with a layout to measure. Every renderer here
+ * measures what it draws into, and a map drawn while its pane is hidden measures
+ * nothing: the still comes out as NaN, which the browser reports as one attribute
+ * error per shape. CodeMirror also drops block widgets as they scroll, so a paint
+ * that landed in a discarded node would leave that block stuck on its
+ * placeholder. jsdom has no layout at all, so the check is skipped where the API
+ * does not exist.
+ */
+function isLaidOut(host: HTMLElement): boolean {
+  return host.isConnected && !discardedBlocks.has(host) && (host.checkVisibility?.() ?? true)
+}
+
+/**
  * A live block carries markup, not a picture: the diagrams, the formulas and the
  * highlighted code inside it only appear once the same enhancers the preview pane
- * runs have passed over it. They measure the node they draw into, so this starts
- * after the widget's DOM was inserted, and the writes are guarded — CodeMirror
- * rebuilds block widgets as they scroll, and a paint that landed in a discarded
- * node would leave that block stuck on its placeholder.
+ * runs have passed over it.
  */
 async function paintLiveBlock(host: HTMLElement): Promise<void> {
+  // Loading the mind map vendor is the long stretch of this paint, and the pane
+  // can go hidden while it runs (switching the layout away from live hides the
+  // editor). Awaiting it first makes the check below read the pane as it is when
+  // the drawing starts; a load failure stays the renderer's own to report.
+  if (host.querySelector('.mindmap-block')) await loadMindmapVendor().catch(() => undefined)
+  if (!isLaidOut(host)) return
   const preview = useSession.getState().settings.preview
   const dark = isDarkTheme()
   await enhancePreview(host, {
@@ -90,18 +106,18 @@ async function paintLiveBlock(host: HTMLElement): Promise<void> {
     // into the source instead, so the block keeps its code unfolded.
     codeBlockCollapseLines: 0,
   })
-  if (!host.isConnected || discardedBlocks.has(host)) {
+  if (!isLaidOut(host)) {
     // The chart renderer only checks that the node is inside its root, so a chart
     // can outlive the block that started it; the instance has to go with it.
     destroyChartInstances(host)
     return
   }
-  await renderPendingMermaid(host, dark, { isCurrent: () => host.isConnected && !discardedBlocks.has(host) })
+  await renderPendingMermaid(host, dark, { isCurrent: () => isLaidOut(host) })
 }
 
 /** Paints a block again because its palette went stale, dropping the still drawn for the old one. */
 function repaintLiveBlock(host: HTMLElement): void {
-  if (discardedBlocks.has(host)) return
+  if (!isLaidOut(host)) return
   host.querySelector(`.${MINDMAP_IMAGE_CLASS}`)?.remove()
   void paintLiveBlock(host)
 }

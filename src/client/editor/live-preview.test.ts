@@ -115,6 +115,9 @@ describe('livePreviewExtensions', () => {
     }
   })
 
+})
+
+describe('live block painting — formulas', () => {
   it('draws the formula a block holds instead of leaving the renderer placeholder', async () => {
     const { view, hosts } = mountLive('# Title\n\nValue: $x^2$ here\n')
     try {
@@ -128,6 +131,32 @@ describe('livePreviewExtensions', () => {
     }
   })
 
+  it('draws nothing while the pane holding the block has no layout', async () => {
+    const original = HTMLElement.prototype.checkVisibility
+    const laidOut = { value: false }
+    HTMLElement.prototype.checkVisibility = () => laidOut.value
+    try {
+      const hidden = mountLive('# Title\n\nValue: $x^2$ here\n')
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      expect(hidden.view.contentDOM.querySelector('.cm-live-block .katex')).toBeNull()
+      hidden.view.destroy()
+      hidden.hosts.remove()
+
+      laidOut.value = true
+      const visible = mountLive('# Title\n\nValue: $x^2$ here\n')
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      expect(visible.view.contentDOM.querySelector('.cm-live-block .katex')).not.toBeNull()
+      visible.view.destroy()
+      visible.hosts.remove()
+    } finally {
+      if (original) HTMLElement.prototype.checkVisibility = original
+      else Reflect.deleteProperty(HTMLElement.prototype, 'checkVisibility')
+    }
+  })
+
+})
+
+describe('live block painting — charts', () => {
   it('draws the chart a block holds with the renderer the preview pane uses', async () => {
     const restoreCanvasContext = stubCanvasContext()
     const config = JSON.stringify({ type: 'bar', data: { labels: ['A'], datasets: [{ data: [1] }] } })
