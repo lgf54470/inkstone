@@ -212,7 +212,7 @@ function useScrollHide(hideNow: () => void) {
         return
       hideNow()
     }
-    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true })
     return () => window.removeEventListener('scroll', onScroll, true)
   }, [hideNow])
 }

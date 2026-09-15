@@ -320,7 +320,7 @@ function usePreviewLinkHover(opts: { sourceNoteId: string | null; preview: Previ
       if (target && typeof target.closest === 'function' && target.closest('[role="tooltip"]')) return
       linkHover.hideNow()
     }
-    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true })
     return () => window.removeEventListener('scroll', onScroll, true)
   }, [linkHover.hideNow])
 
