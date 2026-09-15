@@ -14,6 +14,7 @@ import { type CompletionSources } from './completion'
 import { type PasteHandlers } from './paste'
 import { useLinkHover, type WikiLinkHoverCardState } from '../features/preview'
 import { editorExtensions, externalValueUpdate, type CodeEditorCallbacks, type EditorCompartments } from './editor-extensions'
+import { livePreviewExtensions } from './live-preview'
 import { t } from '../lib/i18n'
 
 export interface CodeEditorProps {
@@ -51,10 +52,11 @@ export function useCodeEditor(props: CodeEditorProps): CodeEditorBundle {
   const hover = useEditorHover(props.noteId ?? null, useSession((s) => s.settings.preview))
   const cbRef = useRef<CodeEditorCallbacks>({ sources: props.sources, handlers: props.handlers, onChange: props.onChange, onScroll: props.onScroll, onCursorLine: props.onCursorLine, onContextMenu: props.onContextMenu })
   cbRef.current = { sources: props.sources, handlers: props.handlers, onChange: props.onChange, onScroll: props.onScroll, onCursorLine: props.onCursorLine, onContextMenu: props.onContextMenu }
-  const compartments = useMemo(() => ({ lineNumbers: new Compartment(), tabSize: new Compartment(), placeholder: new Compartment() }), [])
+  const compartments = useMemo(() => ({ lineNumbers: new Compartment(), tabSize: new Compartment(), placeholder: new Compartment(), livePreview: new Compartment() }), [])
   useMountEditor({ hostRef, viewRef, cbRef, hover, compartments, props })
   useExternalValueSync(viewRef, props.value)
   useSettingsSync(viewRef, props.settings, props.placeholder ?? t('editor.start_writing'), compartments)
+  useReconfigure(viewRef, compartments.livePreview, props.live === true ? livePreviewExtensions() : [], props.live === true)
   useScrollHide(hover.hideNow)
   const handleHostContextMenu = (event: ReactMouseEvent) => {
     if (event.defaultPrevented) return

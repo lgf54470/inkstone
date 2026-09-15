@@ -10,7 +10,6 @@ import { editorTheme } from './theme'
 import { focusModePlugin, markdownDecorations, typewriterPlugin } from './decorations'
 import { codeFenceSource, tagSource, wikiLinkSource, type CompletionSources } from './completion'
 import { pasteExtension, type PasteHandlers } from './paste'
-import { livePreviewExtensions } from './live-preview'
 import { linkHoverExtension, linkHoverFacet } from './link-hover-plugin'
 import { completeCodeFenceOnEnter, setHeading, smartEnter, tableTab, toggleBold, toggleBulletList, toggleHighlight, toggleInlineCode, toggleItalic, toggleOrderedList, toggleQuote, toggleStrikethrough, toggleTaskDone, toggleTaskList, } from './commands'
 
@@ -36,6 +35,7 @@ export interface EditorCompartments {
   lineNumbers: Compartment
   tabSize: Compartment
   placeholder: Compartment
+  livePreview: Compartment
 }
 
 
@@ -59,7 +59,7 @@ export function editorExtensions(input: EditorExtensionInput): Extension[] {
     markdownDecorations,
     focusModePlugin,
     typewriterPlugin,
-    ...livePreviewExtensions(),
+    input.compartments.livePreview.of([]),
     pasteExtension(input.live.cb.current.handlers),
     ...commandKeymaps(),
     ...frameworkKeymaps(),
