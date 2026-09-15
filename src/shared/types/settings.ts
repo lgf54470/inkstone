@@ -40,6 +40,8 @@ export interface EditorSettings {
   autoSaveDelay: number
 }
 
+export type PinnedWindowSizeName = 'small' | 'medium' | 'large' | 'custom'
+
 export interface PreviewSettings {
   layout: EditorLayout
   syncScroll: boolean
@@ -57,6 +59,9 @@ export interface PreviewSettings {
    *  images in notes stay blocked on the app page and are ALWAYS blocked on
    *  share pages (/s/*), where visitors never opt in. */
   externalImages: boolean
+  pinnedWindowSize: PinnedWindowSizeName
+  pinnedWindowWidth: number
+  pinnedWindowHeight: number
 }
 
 export interface BackupSettings {

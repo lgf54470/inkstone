@@ -2907,6 +2907,7 @@ const allowed = new Map([
     '// External https images are blocked by default (renderer placeholder + CSP',
     '// `img-src` without `https:`); opt in per user. Share pages stay blocked',
     '// regardless of this value.',
+    '/** Built-in floating-window sizes; `custom` reads width/height from the settings. */',
     '/**\n * Merge a partial patch into the current settings.\n *\n * Sections that the patch does not touch are passed through by reference,\n * so subscribers observing a specific section (e.g. `settings.editor`) are\n * not re-rendered when an unrelated section changes.\n */',
     '/**\n * Guards the referential-stability contract of mergeSettingsPatch: sections\n * the patch did not touch must keep their object identity, otherwise narrow\n * store subscriptions silently regress into full-app re-renders on every\n * settings change.\n */',
   ]],

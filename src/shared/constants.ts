@@ -6,6 +6,7 @@ import type {
   BackupSchedule,
   EditorLayout,
   EditorSettings,
+  PreviewSettings,
   ProseFont,
   ProseWidth,
   ThemePref,
@@ -154,6 +155,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
     // `img-src` without `https:`); opt in per user. Share pages stay blocked
     // regardless of this value.
     externalImages: false,
+    pinnedWindowSize: 'medium',
+    pinnedWindowWidth: 460,
+    pinnedWindowHeight: 520,
   },
   backup: {
     schedule: 'sixHourly',
@@ -189,6 +193,16 @@ const PROSE_WIDTHS = ['narrow', 'normal', 'wide', 'full'] as const
 const EDITOR_FONTS = ['mono', 'sans'] as const
 const EDITOR_LAYOUTS = ['edit', 'live', 'split', 'preview'] as const
 const BACKUP_SCHEDULES = ['off', 'hourly', 'sixHourly', 'daily'] as const
+const PINNED_WINDOW_SIZES = ['small', 'medium', 'large', 'custom'] as const
+
+/** Built-in floating-window sizes; `custom` reads width/height from the settings. */
+export const PINNED_WINDOW_PRESETS: Record<'small' | 'medium' | 'large', { width: number; height: number }> = {
+  small: { width: 340, height: 380 },
+  medium: { width: 460, height: 520 },
+  large: { width: 620, height: 680 },
+}
+export const PINNED_WINDOW_WIDTH_RANGE = [260, 1200] as const
+export const PINNED_WINDOW_HEIGHT_RANGE = [140, 2000] as const
 
 
 const SETTINGS_SECTIONS = ['appearance', 'editor', 'preview', 'backup', 'sync', 'notes'] as const
@@ -335,6 +349,29 @@ function mergePreview(current: Record<string, unknown>, patch: Record<string, un
       300,
       8000,
       current.linkPreviewLength as number,
+    ),
+    ...mergePinnedWindow(current, patch),
+  }
+}
+
+function mergePinnedWindow(current: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  return {
+    pinnedWindowSize: enumValue(
+      patch.pinnedWindowSize,
+      PINNED_WINDOW_SIZES,
+      current.pinnedWindowSize as PreviewSettings['pinnedWindowSize'],
+    ),
+    pinnedWindowWidth: integerInRange(
+      patch.pinnedWindowWidth,
+      PINNED_WINDOW_WIDTH_RANGE[0],
+      PINNED_WINDOW_WIDTH_RANGE[1],
+      current.pinnedWindowWidth as number,
+    ),
+    pinnedWindowHeight: integerInRange(
+      patch.pinnedWindowHeight,
+      PINNED_WINDOW_HEIGHT_RANGE[0],
+      PINNED_WINDOW_HEIGHT_RANGE[1],
+      current.pinnedWindowHeight as number,
     ),
   }
 }

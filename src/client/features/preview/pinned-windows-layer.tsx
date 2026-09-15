@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { t } from '../../lib/i18n'
 import type { MenuItem } from '../../components/overlay'
 import { usePinnedWindows, type PersistedPinnedWindow } from '../../store/pinned-windows'
+import { withPinnedWindowSize } from '../../lib/pinned-window-size'
 import { WikiLinkHoverCard, type WikiLinkHoverCardState } from './wiki-link-hover-card'
 
 const anchorCache = new Map<number, HTMLElement>()
@@ -45,7 +46,7 @@ export const PinnedWindowsLayer = memo(function PinnedWindowsLayer() {
           onClose={() => state.close(item.id)}
           onEnter={() => {}}
           onLeave={() => {}}
-          onPin={(cardState, rect) => state.pin(cardState, rect)}
+          onPin={(cardState, rect) => state.pin(cardState, withPinnedWindowSize(rect))}
           onGeometryChange={(geometry) => state.updateGeometry(item.id, geometry)}
           flash={state.flashId === item.id}
         />

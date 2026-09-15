@@ -18,6 +18,7 @@ import type { WikiLinkHoverCardState } from './wiki-link-hover-card'
 import { useLinkHover } from './link-hover'
 import { capturePreviewViewport, restorePreviewViewport, type PreviewViewport } from './viewport'
 import { usePinnedWindows } from '../../store/pinned-windows'
+import { withPinnedWindowSize } from '../../lib/pinned-window-size'
 import { enhanceTablesInRoot, startTableCellEditing } from './table-interactive'
 import { useMindmapBlocks } from './use-mindmap-blocks'
 
@@ -306,7 +307,7 @@ function usePreviewLinkHover(opts: { sourceNoteId: string | null; preview: Previ
   })
 
   const handlePin = useCallback((card: WikiLinkHoverCardState, rect: DOMRect) => {
-    usePinnedWindows.getState().pin(card, rect)
+    usePinnedWindows.getState().pin(card, withPinnedWindowSize(rect))
     linkHover.hideNow()
   }, [linkHover.hideNow])
 

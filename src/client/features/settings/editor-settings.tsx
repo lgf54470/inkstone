@@ -49,6 +49,9 @@ function useEditorSetters() {
     setExternalImages: useCallback((externalImages: boolean) => void update({ preview: { externalImages } }), [update]),
     setLinkHoverDelayMs: useCallback((linkHoverDelayMs: number) => void update({ preview: { linkHoverDelayMs } }), [update]),
     setLinkPreviewLength: useCallback((linkPreviewLength: number) => void update({ preview: { linkPreviewLength } }), [update]),
+    setPinnedWindowSize: useCallback((pinnedWindowSize: 'small' | 'medium' | 'large' | 'custom') => void update({ preview: { pinnedWindowSize } }), [update]),
+    setPinnedWindowWidth: useCallback((pinnedWindowWidth: number) => void update({ preview: { pinnedWindowWidth } }), [update]),
+    setPinnedWindowHeight: useCallback((pinnedWindowHeight: number) => void update({ preview: { pinnedWindowHeight } }), [update]),
   }
 }
 
@@ -126,8 +129,30 @@ function PreviewSection({ preview, setters }: { preview: SettingsPreview; setter
         <Slider label={t('settings.link_preview_length')} className='w-50' value={preview.linkPreviewLength} min={300} max={8000} step={100} onChange={setters.setLinkPreviewLength} suffix={t('settings.characters')}/>
       </SettingRow>
       </>}
+      <FloatingWindowRows preview={preview} setters={setters}/>
     </section>
   )
+}
+
+function FloatingWindowRows({ preview, setters }: { preview: SettingsPreview; setters: EditorSetters }) {
+  return (<>
+    <SettingRow title={t('settings.floating_window_size')} description={t('settings.floating_window_size_description')}>
+      <Segmented<'small' | 'medium' | 'large' | 'custom'> label={t('settings.floating_window_size')} value={preview.pinnedWindowSize} onChange={setters.setPinnedWindowSize} options={[
+        { value: 'small', label: t('settings.floating_window_small') },
+        { value: 'medium', label: t('settings.floating_window_medium') },
+        { value: 'large', label: t('settings.floating_window_large') },
+        { value: 'custom', label: t('settings.floating_window_custom') },
+      ]}/>
+    </SettingRow>
+    {preview.pinnedWindowSize === 'custom' && <>
+    <SettingRow title={t('settings.floating_window_width')}>
+      <Slider label={t('settings.floating_window_width')} className='w-50' value={preview.pinnedWindowWidth} min={260} max={1200} step={20} onChange={setters.setPinnedWindowWidth} suffix='px'/>
+    </SettingRow>
+    <SettingRow title={t('settings.floating_window_height')}>
+      <Slider label={t('settings.floating_window_height')} className='w-50' value={preview.pinnedWindowHeight} min={140} max={2000} step={20} onChange={setters.setPinnedWindowHeight} suffix='px'/>
+    </SettingRow>
+    </>}
+  </>)
 }
 
 function MiscSection({ editor, setters }: { editor: SettingsEditor; setters: EditorSetters }) {
