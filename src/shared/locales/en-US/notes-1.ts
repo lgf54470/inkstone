@@ -112,6 +112,7 @@ export const messages = {
 'notes.open_a_copy': 'Open a copy',
 'notes.open_navigation': 'Open navigation',
 'notes.open_to_side': 'Open to side',
+'notes.open_in_floating_window': 'Open in floating window',
 'notes.other': 'Other',
 'notes.permanent_deletion_failed': 'Permanent deletion failed',
 'notes.permanent_deletion_was_canceled_because_the_note_body_is_not_safely_sync': 'Permanent deletion was canceled because the note body is not safely synced',

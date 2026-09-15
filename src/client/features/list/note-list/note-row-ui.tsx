@@ -1,10 +1,11 @@
-import { Columns2, FolderClosed, MoreHorizontal, Pin, Share2, Star, Globe } from 'lucide-react'
+import { Columns2, FolderClosed, MoreHorizontal, PictureInPicture2, Pin, Share2, Star, Globe } from 'lucide-react'
 import type { Folder } from '@shared/types'
 import { cn } from '../../../lib/cn'
 import { IconButton } from '../../../components/primitives'
 import { Menu, Tooltip, type MenuItem } from '../../../components/overlay'
 import { useUi } from '../../../store/ui'
 import { openFolderView } from '../../../lib/folders'
+import { openNoteFloatingWindow } from './note-row-actions'
 import { CreateFolderModal } from '../../folders'
 import { BlogPublishModal } from '../../blog'
 import { ShareEditModal, ShareNoteAnalyticsModal, ShareQrModal } from '../../share'
@@ -58,7 +59,7 @@ function useNoteRowHandlers(state: NoteRowState) {
 
 function noteRowClassName(state: NoteRowState): string {
   const { density, selectionHighlighted, active, openInSecondary } = state
-  return cn('motion-note-row group relative cursor-default rounded-[var(--r-md)] border border-transparent px-2.5 pr-11 transition-[background-color,border-color,box-shadow,transform] duration-[var(--dur-fast)] md:pr-10', density === 'compact' ? 'py-1.75' : 'py-2.5', selectionHighlighted
+  return cn('motion-note-row group relative cursor-default rounded-[var(--r-md)] border border-transparent px-2.5 pr-11 transition-[background-color,border-color,box-shadow,transform] duration-[var(--dur-fast)] md:pr-14', density === 'compact' ? 'py-1.75' : 'py-2.5', selectionHighlighted
     ? 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]/40'
     : active
       ? 'border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'
@@ -181,14 +182,26 @@ function NoteRowMain({ state }: { state: NoteRowState }) {
 function NoteRowSideButtons({ state }: { state: NoteRowState }) {
   const { breakpoint, openInSecondary, openNote, note, menuButtonRef, menu, setIsMenuOpen } = state
   return (<>
-    {breakpoint === 'desktop' && (<Tooltip label={t('notes.open_to_side')} side='left'>
-      <IconButton label={t('notes.open_to_side')} size='sm' active={openInSecondary} onClick={(event) => {
-        event.stopPropagation()
-        void openNote(note.id, { pane: 'secondary' })
-      }} className='absolute top-1.5 right-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100' >
-        <Columns2 size={14}/>
-      </IconButton>
-    </Tooltip>)}
+    {breakpoint === 'desktop' && (
+      <div className='absolute top-1.5 right-1.5 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100'>
+        <Tooltip label={t('notes.open_to_side')} side='left'>
+          <IconButton label={t('notes.open_to_side')} size='sm' active={openInSecondary} onClick={(event) => {
+            event.stopPropagation()
+            void openNote(note.id, { pane: 'secondary' })
+          }}>
+            <Columns2 size={14}/>
+          </IconButton>
+        </Tooltip>
+        <Tooltip label={t('notes.open_in_floating_window')} side='left'>
+          <IconButton label={t('notes.open_in_floating_window')} size='sm' onClick={(event) => {
+            event.stopPropagation()
+            openNoteFloatingWindow(note, event.currentTarget.closest('[data-note-id]')?.getBoundingClientRect() ?? null)
+          }}>
+            <PictureInPicture2 size={14}/>
+          </IconButton>
+        </Tooltip>
+      </div>
+    )}
     {breakpoint === 'mobile' && (<Tooltip label={t('common.more_actions')} side='left'>
       <IconButton ref={menuButtonRef} label={t('common.more_actions')} size='sm' onClick={(event) => {
         event.stopPropagation()

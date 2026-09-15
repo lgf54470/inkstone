@@ -112,6 +112,7 @@ export const messages = {
 'notes.open_a_copy': '打开副本',
 'notes.open_navigation': '打开导航',
 'notes.open_to_side': '在侧边打开',
+'notes.open_in_floating_window': '以浮窗打开',
 'notes.other': '其他',
 'notes.permanent_deletion_failed': '彻底删除失败',
 'notes.permanent_deletion_was_canceled_because_the_note_body_is_not_safely_sync': '正文尚未安全同步，已取消彻底删除',

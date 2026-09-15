@@ -4,8 +4,33 @@ import { exportNoteAsHtml, exportNoteAsMarkdown, exportNoteAsPdf } from '../../.
 import { confirm } from '../../../components/overlay'
 import { useUi } from '../../../store/ui'
 import { useNotes } from '../../../store/notes'
+import { usePinnedWindows } from '../../../store/pinned-windows'
+import { getVisibleViewport } from '../../../lib/viewport'
 import { t } from '../../../lib/i18n'
+import type { NoteSummary } from '@shared/types'
 import type { NoteRowState } from './note-row-state'
+
+const FLOAT_WINDOW_WIDTH = 340
+const FLOAT_WINDOW_MARGIN = 8
+
+export function openNoteFloatingWindow(note: NoteSummary, rowRect?: DOMRect | null): void {
+  const pinned = usePinnedWindows.getState()
+  if (pinned.focusPinnedByNote(note.id)) return
+  const viewport = getVisibleViewport()
+  const maxX = viewport.right - FLOAT_WINDOW_WIDTH - FLOAT_WINDOW_MARGIN
+  const x = Math.max(viewport.left, Math.min(rowRect?.left ?? maxX, maxX))
+  const y = rowRect?.top ?? viewport.top + FLOAT_WINDOW_MARGIN
+  pinned.pin(
+    {
+      anchor: document.createElement('span'),
+      title: note.title,
+      noteId: note.id,
+      missing: false,
+      headline: note.title,
+    },
+    new DOMRect(x, y, FLOAT_WINDOW_WIDTH, 0),
+  )
+}
 
 export function useNoteRowMoveActions(state: NoteRowState) {
   const { note, folders, toast, selectedIds, moveNotes } = state

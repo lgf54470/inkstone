@@ -8,6 +8,7 @@ import {
   FileText,
   FolderInput,
   Globe,
+  PictureInPicture2,
   Pin,
   PinOff,
   RotateCcw,
@@ -23,6 +24,7 @@ import { BlogNoteSubmenu, useBlogStore } from '../../blog'
 import { ShareNoteSubmenu } from '../../share'
 import { useUi } from '../../../store/ui'
 import type { NoteRowState } from './note-row-state'
+import { openNoteFloatingWindow } from './note-row-actions'
 import type { NoteRowActions } from './note-row-actions'
 
 export function useNoteRowMenuItems(state: NoteRowState, actions: NoteRowActions): MenuItem[] {
@@ -60,6 +62,11 @@ function noteMenuTopItems(state: NoteRowState): MenuItem[] {
             label: t('notes.open_to_side'),
             icon: <Columns2 size={13}/>,
             onSelect: () => void openNote(note.id, { pane: 'secondary' }),
+        } satisfies MenuItem, {
+            id: 'open-float',
+            label: t('notes.open_in_floating_window'),
+            icon: <PictureInPicture2 size={13}/>,
+            onSelect: () => openNoteFloatingWindow(note, document.getElementById(`note-option-${note.id}`)?.getBoundingClientRect() ?? null),
         } satisfies MenuItem] : []),
         ...(breakpoint === 'mobile' ? [{
             id: 'multi-select',
