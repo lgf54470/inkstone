@@ -62,5 +62,7 @@ Thumbs.db
 .freebuff/
 .zcode
 .workbuddy/
-
+.codebuddy/
+.vscode-server/
+.idea/
 
