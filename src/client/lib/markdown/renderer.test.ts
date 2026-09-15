@@ -176,6 +176,15 @@ describe('renderMarkdown extension golden output — blocks and containers', () 
     expect(fragment.querySelector('.note-embed[data-embed-target]')).not.toBeNull()
     expect(fragment.querySelector('table tbody td')?.textContent).toBe('1')
   })
+
+  it('renders wiki links inside callout titles and details summaries', () => {
+    const rendered = renderMarkdown('> [!note] See [[Target note]]\n> body\n\n::: details Details [[Wiki]]\nhidden\n:::')
+    const fragment = parse(rendered.html)
+    const calloutLink = fragment.querySelector('.callout-title a[data-wikilink]')
+    expect(calloutLink?.textContent).toBe('Target note')
+    const summaryLink = fragment.querySelector('details.markdown-details > summary a[data-wikilink]')
+    expect(summaryLink?.textContent).toBe('Wiki')
+  })
 })
 
 describe('renderMarkdown extension golden output — headings and tables', () => {

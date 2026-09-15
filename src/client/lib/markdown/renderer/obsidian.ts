@@ -1,7 +1,6 @@
 import MarkdownIt from 'markdown-it'
 import type StateCore from 'markdown-it/lib/rules_core/state_core.mjs'
 import type Token from 'markdown-it/lib/token.mjs'
-import { escapeHtml } from '@shared/escape'
 import { t } from '../../i18n'
 import { escapeAttr } from './util'
 
@@ -190,6 +189,9 @@ export function registerObsidian(md: MarkdownIt): void {
 
   md.core.ruler.before('github-task-lists', 'obsidian_blocks', (state) => obsidianBlocksRule(state))
   md.core.ruler.after('github-task-lists', 'obsidian_callouts', (state) => obsidianCalloutsRule(state))
+  // The title goes through the inline rules so a `[[wiki link]]` in it is a link
+  // like any other; the whole render is sanitized afterwards either way.
+  const renderTitle = (title: string): string => md.renderInline(title)
   md.renderer.rules.callout_open = (tokens, index) => {
     const sourceLine = tokens[index]!.map?.[0]
     const line = sourceLine === undefined ? '' : ` data-line="${sourceLine}"`
@@ -199,9 +201,9 @@ export function registerObsidian(md: MarkdownIt): void {
       fold: string
     }
     if (fold) {
-      return `<details class="callout callout-${escapeAttr(type)}" data-callout="${escapeAttr(type)}"${line}${fold === '+' ? ' open' : ''}><summary class="callout-title">${escapeHtml(title)}</summary><div class="callout-content">`
+      return `<details class="callout callout-${escapeAttr(type)}" data-callout="${escapeAttr(type)}"${line}${fold === '+' ? ' open' : ''}><summary class="callout-title">${renderTitle(title)}</summary><div class="callout-content">`
     }
-    return `<aside class="callout callout-${escapeAttr(type)}" data-callout="${escapeAttr(type)}"${line}><div class="callout-title">${escapeHtml(title)}</div><div class="callout-content">`
+    return `<aside class="callout callout-${escapeAttr(type)}" data-callout="${escapeAttr(type)}"${line}><div class="callout-title">${renderTitle(title)}</div><div class="callout-content">`
   }
   md.renderer.rules.callout_close = (tokens, index) => `</div>${(tokens[index]!.meta as {
     fold: string

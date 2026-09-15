@@ -8,7 +8,7 @@ function map(...topics: string[]): HTMLElement {
   return container
 }
 
-describe('decorateMindmapLinks', () => {
+describe('decorateMindmapLinks — whole-topic links', () => {
   it('turns only the linked topics into anchors the wiki navigation reads', () => {
     const container = map('[[Other note]]', 'plain topic')
     decorateMindmapLinks(container)
@@ -40,5 +40,34 @@ describe('decorateMindmapLinks', () => {
 
   it('does nothing without a map', () => {
     expect(() => decorateMindmapLinks(null)).not.toThrow()
+  })
+})
+
+describe('decorateMindmapLinks — links embedded in a topic', () => {
+  it('keeps the text around the link and links the note', () => {
+    const container = map('Community [[AGENTS.md]] rocks')
+    decorateMindmapLinks(container)
+    const topic = container.querySelector('me-tpc')!
+    const link = topic.querySelector('a')!
+    expect(link.className).toBe(MINDMAP_NODE_LINK_CLASS)
+    expect(decodeDataValue(link.dataset.wikilink ?? '')).toBe('AGENTS.md')
+    expect(link.textContent).toBe('AGENTS.md')
+    expect(topic.textContent).toBe('Community AGENTS.md rocks')
+    expect(topic.firstChild?.nodeType).toBe(Node.TEXT_NODE)
+  })
+
+  it('keeps an empty link as literal text', () => {
+    const container = map('a [[]] b')
+    decorateMindmapLinks(container)
+    const topic = container.querySelector('me-tpc')!
+    expect(topic.querySelector('a')).toBeNull()
+    expect(topic.textContent).toBe('a [[]] b')
+  })
+
+  it('is idempotent for embedded links too', () => {
+    const container = map('Community [[AGENTS.md]]')
+    decorateMindmapLinks(container)
+    decorateMindmapLinks(container)
+    expect(container.querySelectorAll('a')).toHaveLength(1)
   })
 })

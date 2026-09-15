@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseMindmapNodeLink } from './links'
+import { parseMindmapNodeLink, splitMindmapTopicLinks } from './links'
 
 describe('parseMindmapNodeLink', () => {
   it('reads a topic that is one wiki link', () => {
@@ -25,5 +25,31 @@ describe('parseMindmapNodeLink', () => {
 
   it('tolerates surrounding whitespace', () => {
     expect(parseMindmapNodeLink('  [[Target]]  ')).toBe('Target')
+  })
+})
+
+describe('splitMindmapTopicLinks', () => {
+  it('keeps plain text around links embedded in a topic', () => {
+    expect(splitMindmapTopicLinks('Community [[AGENTS.md]] rocks')).toEqual([
+      { text: 'Community ' },
+      { text: 'AGENTS.md', target: 'AGENTS.md' },
+      { text: ' rocks' },
+    ])
+  })
+
+  it('splits every link in the topic in reading order', () => {
+    expect(splitMindmapTopicLinks('[[A]] then [[B|bee]]')).toEqual([
+      { text: 'A', target: 'A' },
+      { text: ' then ' },
+      { text: 'B|bee', target: 'B|bee' },
+    ])
+  })
+
+  it('keeps an empty link as literal text', () => {
+    expect(splitMindmapTopicLinks('a [[]] b')).toEqual([{ text: 'a [[]] b' }])
+  })
+
+  it('returns one plain segment when the topic has no link', () => {
+    expect(splitMindmapTopicLinks('plain topic')).toEqual([{ text: 'plain topic' }])
   })
 })

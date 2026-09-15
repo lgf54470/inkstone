@@ -255,7 +255,7 @@ export function registerContainers(md: MarkdownIt): void {
     })?.open)
     return `<details class="markdown-details"${sourceLine === undefined ? '' : ` data-line="${sourceLine}"`}${open ? ' open' : ''}>`
   }
-  md.renderer.rules.details_summary = (tokens, index) => `<summary>${escapeHtml(tokens[index]!.content)}</summary>`
+  md.renderer.rules.details_summary = (tokens, index) => `<summary>${md.renderInline(tokens[index]!.content)}</summary>`
   md.renderer.rules.details_close = () => '</details>'
   md.renderer.rules.tabs_open = (tokens, index) => {
     const sourceLine = tokens[index]!.map?.[0]

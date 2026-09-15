@@ -5,7 +5,10 @@ import { Menu, Modal, Tooltip, useClickOutside, type MenuItem } from '../../comp
 import { t } from '../../lib/i18n'
 import { downloadBlob } from '../../lib/export-note'
 import { safeFileName } from '../../lib/export-folder'
-import { captureMindmapFocus, subscribeMindmaps, type MindmapMode, type MindmapSession } from '../../lib/markdown/mindmap'
+import { decodeDataValue } from '../../lib/markdown/data-attr'
+import { parseWikiTarget } from '../../lib/markdown/renderer'
+import { MINDMAP_NODE_LINK_ATTR, captureMindmapFocus, subscribeMindmaps, type MindmapMode, type MindmapSession } from '../../lib/markdown/mindmap'
+import { findNoteByTitle, useNotes } from '../../store/notes'
 import { writeMindmapOutline, type MindmapOutlinePlacement } from './mindmap-outline'
 import { useUi } from '../../store/ui'
 
@@ -119,11 +122,40 @@ function outlineBody(session: MindmapSession, placement: MindmapOutlinePlacement
 }
 
 /**
+ * Opening a wiki target from the overlay. The preview's own wiki click handler
+ * cannot see these clicks (the modal is portaled outside its host), so the
+ * navigation is repeated here without the scroll-into-view part: the preview
+ * it would scroll is hidden behind the overlay. The overlay is closed by the
+ * click handler first, so the jump the user just asked for is the thing on
+ * screen.
+ */
+async function openWikiTargetFromOverlay(raw: string, sourceNoteId: string | null, toast: RaiseToast): Promise<void> {
+  const parsed = parseWikiTarget(raw)
+  const state = useNotes.getState()
+  const note = parsed.noteTitle ? findNoteByTitle(parsed.noteTitle) : sourceNoteId ? state.notes[sourceNoteId] : undefined
+  if (!note) {
+    if (!parsed.noteTitle) return
+    const id = await useNotes.getState().createNote({ title: parsed.noteTitle, open: false })
+    if (id) toast({ title: t('preview.created_title', { title: parsed.noteTitle }), tone: 'success' })
+    return
+  }
+  await useNotes.getState().openNote(note.id)
+  const source = sourceNoteId ? useNotes.getState().notes[sourceNoteId] : undefined
+  if (source && useUi.getState().activeNoteId !== source.id) {
+    toast({
+      title: source.title,
+      action: { label: t('preview.mindmap_node_link_return'), run: () => void useNotes.getState().openNote(source.id) },
+      duration: 8000,
+    })
+  }
+}
+
+/**
  * Keeps the header in step with the block and hands the overlay the live
  * instance while it is open — moving the element, never copying it, so the
  * camera, selection and undo stack carry over.
  */
-function useOverlaySession(session: MindmapSession, bodyRef: RefObject<HTMLDivElement | null>): void {
+function useOverlaySession(session: MindmapSession, bodyRef: RefObject<HTMLDivElement | null>, onClose: () => void): void {
   const [, refresh] = useReducer((count: number) => count + 1, 0)
   useEffect(() => subscribeMindmaps(() => refresh()), [])
   useEffect(() => {
@@ -135,11 +167,22 @@ function useOverlaySession(session: MindmapSession, bodyRef: RefObject<HTMLDivEl
     // The modal is portaled outside the preview host, so clicks on the full
     // screen canvas need their own pointer listener.
     const releaseFocusCapture = captureMindmapFocus(body)
+    const onWikiClick = (event: MouseEvent) => {
+      if (!(event.target instanceof Element)) return
+      const link = event.target.closest<HTMLElement>(`[${MINDMAP_NODE_LINK_ATTR}]`)
+      if (!link) return
+      event.preventDefault()
+      event.stopPropagation()
+      onClose()
+      void openWikiTargetFromOverlay(decodeDataValue(link.dataset.wikilink ?? ''), session.noteId(), useUi.getState().toast)
+    }
+    body.addEventListener('click', onWikiClick)
     return () => {
       releaseFocusCapture()
+      body.removeEventListener('click', onWikiClick)
       session.moveBack()
     }
-  }, [session, bodyRef])
+  }, [onClose, session, bodyRef])
 }
 
 function MindmapActionsButton(props: {
@@ -256,7 +299,7 @@ export function MindmapFullscreen({ session, onClose }: { session: MindmapSessio
   const shortcutButtonRef = useRef<HTMLButtonElement>(null)
   const [isShortcutsOpen, setShortcutsOpen] = useState(false)
   const toast = useUi((state) => state.toast)
-  useOverlaySession(session, bodyRef)
+  useOverlaySession(session, bodyRef, onClose)
 
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
   const toggleShortcuts = useCallback(() => setShortcutsOpen((open) => !open), [])
