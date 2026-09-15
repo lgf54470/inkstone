@@ -1,4 +1,5 @@
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete'
+import type { EditorView } from '@codemirror/view'
 import { normalizeLinkKey } from '@shared/markdown-utils'
 import { truncateText } from '@shared/text-utils'
 import { fuzzyMatch } from '../lib/fuzzy'
@@ -55,6 +56,17 @@ export function wikiLinkSource(getSources: () => CompletionSources) {
   }
 }
 
+function applyNoteCompletion(view: EditorView, from: number, to: number, title: string): void {
+  let end = to
+  if (view.state.sliceDoc(end, end + 2) === ']]')
+    end += 2
+  const insert = `${title}]]`
+  view.dispatch({
+    changes: { from, to: end, insert },
+    selection: { anchor: from + insert.length },
+  })
+}
+
 function noteOption(note: NoteSource, query: string): Completion | null {
   const match = query ? fuzzyMatch(note.title, query) : { score: 0, ranges: [] }
   if (!match)
@@ -64,11 +76,7 @@ function noteOption(note: NoteSource, query: string): Completion | null {
     detail: note.excerpt ? truncateText(note.excerpt, 34) : undefined,
     boost: match.score / 10,
     apply: (view, _completion, from, to) => {
-      const insert = `${note.title}]]`
-      view.dispatch({
-        changes: { from, to, insert },
-        selection: { anchor: from + insert.length },
-      })
+      applyNoteCompletion(view, from, to, note.title)
     },
   }
 }
@@ -79,8 +87,7 @@ function createNoteOption(query: string): Completion {
     detail: t('editor.create_new_note'),
     boost: -20,
     apply: (view, _completion, from, to) => {
-      const insert = `${query.trim()}]]`
-      view.dispatch({ changes: { from, to, insert }, selection: { anchor: from + insert.length } })
+      applyNoteCompletion(view, from, to, query.trim())
     },
   }
 }

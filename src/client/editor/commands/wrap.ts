@@ -1,4 +1,6 @@
-import { EditorSelection, type ChangeSpec, EditorState, SelectionRange, StateCommand } from '@codemirror/state'
+import { startCompletion } from '@codemirror/autocomplete'
+import { EditorSelection, type ChangeSpec, EditorState, SelectionRange, type StateCommand } from '@codemirror/state'
+import type { EditorView } from '@codemirror/view'
 import { selectedLineBounds, lineIndent, linePrefixMatch } from './enter'
 
 
@@ -207,6 +209,14 @@ export const toggleInlineMath = toggleWrap('$')
 
 
 export const toggleWikiLink = toggleWrap('[[', ']]')
+
+
+export const insertWikiLink: StateCommand = (target) => {
+  if (!toggleWikiLink(target))
+    return false
+  startCompletion(target as EditorView)
+  return true
+}
 
 
 export const toggleNoteEmbed = toggleWrap('![[', ']]')
