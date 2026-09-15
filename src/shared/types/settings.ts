@@ -62,6 +62,8 @@ export interface PreviewSettings {
   pinnedWindowSize: PinnedWindowSizeName
   pinnedWindowWidth: number
   pinnedWindowHeight: number
+  /** Name of the whiteboard library the boards open; `default` is the reserved one. */
+  boardLibrary: string
 }
 
 export interface BackupSettings {

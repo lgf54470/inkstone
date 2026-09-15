@@ -7,6 +7,7 @@ export type BroadcastPayload = (
   | { type: 'pulled'; cursor: number; clientId: string }
   | { type: 'claim-leader'; clientId: string; at: number }
   | { type: 'settings-changed'; clientId: string }
+  | { type: 'board-library-changed'; clientId: string }
   | { type: 'profile-changed'; clientId: string }
   | { type: 'site-changed'; clientId: string }
   | {

@@ -46,6 +46,7 @@ function mountHandler(openMindmapFullscreen: (node: HTMLElement) => void, setLig
     openMindmapFullscreen,
     openMindmapThemeMenu,
     openExcalidrawFullscreen: noop,
+    openExcalidrawLibraryMenu: noop,
     api: {
       setLightbox,
       setPreviewFile: noop,

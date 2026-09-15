@@ -86,7 +86,13 @@ export const LIMITS = {
   musicPlaylistNameMaxLength: 120,
   musicPlaylistDescriptionMaxLength: 500,
   musicPlaylistItemsMax: 5000,
+
+  boardLibraryMaxBytes: 8 * 1024 * 1024,
+  boardLibraryNameMaxLength: 60,
 } as const
+
+/** The library a board starts from: a named one like any other, shown as the default. */
+export const BOARD_LIBRARY_DEFAULT_NAME = 'default'
 
 export const ACCENTS: { name: AccentName; swatch: string; foreground: string }[] = [
   { name: 'cinnabar', swatch: 'oklch(58% 0.15 31)', foreground: 'white' },
@@ -158,6 +164,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
     pinnedWindowSize: 'medium',
     pinnedWindowWidth: 460,
     pinnedWindowHeight: 520,
+    boardLibrary: BOARD_LIBRARY_DEFAULT_NAME,
   },
   backup: {
     schedule: 'sixHourly',
@@ -350,6 +357,7 @@ function mergePreview(current: Record<string, unknown>, patch: Record<string, un
       8000,
       current.linkPreviewLength as number,
     ),
+    boardLibrary: stringValue(patch.boardLibrary, current.boardLibrary as string, LIMITS.boardLibraryNameMaxLength),
     ...mergePinnedWindow(current, patch),
   }
 }

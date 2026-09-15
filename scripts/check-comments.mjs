@@ -933,6 +933,9 @@ const allowed = new Map([
     '// Unnamed fallbacks below are authored demo seed data (mirroring the welcome',
     '// content in blog-seed.ts), not UI copy: the i18n layer never renders them.',
   ]],
+  ['src/client/demo/backend/routes/board-library.ts', [
+    '/**\n * The demo keeps the named whiteboard libraries in memory like the rest of its state, with\n * the same contract as the worker route: one JSON document per name, stored verbatim, so\n * the picker and the boards behave here exactly as they do against a real instance within\n * one session.\n */',
+  ]],
   ['src/client/demo/backend/routes/files.ts', [
     '// Match the real worker contract: facetsFull may only be true when the response carries the',
     '// complete folders/tags lists. The demo always sends full snapshots when anything changed, so',
@@ -945,6 +948,7 @@ const allowed = new Map([
     '// as a silent 404 console flood in demo mode.',
   ]],
   ['src/client/demo/state.ts', [
+    '/** Named whiteboard libraries, exactly as the endpoint stores them: name -> items JSON. */',
     '// Welcome notes are deliberately dated a few weeks back: with no edits within the last ~10 days,',
     '// the rolling date filter\'s follow-edit window stays parked at the newest edit and the gap hint',
     '// (newest edit outside a today-anchored window) is directly visible in the demo.',
@@ -1681,6 +1685,22 @@ const allowed = new Map([
     '// closing the library\'s own dialog must not also close the overlay.',
     '/**\n * Moves the live board into the overlay and back — the element, never a copy — so the\n * camera, the selection and the undo stack carry over. The modal is portaled outside\n * the preview host, so the canvas needs its own pointer listener here.\n */',
   ]],
+  ['src/client/features/preview/excalidraw-library-menu.tsx', [
+    '/**\n * The library picker the whiteboard block\'s header button (or the board\'s own corner\n * control) opens. An account owns named libraries (lib/markdown/excalidraw/library.ts), a\n * board draws from the selected one, and a library is also a file — so this is where the\n * boards are pointed somewhere else, where a library is created or dropped, and where one\n * is imported from or saved to an `.excalidrawlib` file.\n *\n * Both file actions go through our own picker and download rather than the library\'s,\n * whose file dialogs are native (File System Access) and therefore neither testable nor\n * available outside a secure context.\n *\n * It is a React overlay over the prose for the same reason the palette menu is: the\n * block\'s markup is re-rendered wholesale from the note, so the menu\'s own state has to\n * live outside it.\n */',
+    '/** Wide enough for a library name beside its check mark. */',
+    '/** Long enough for the picker to be given the file the user chose. */',
+    '/** The reserved name is shown as a label; every other name is the user\'s own. */',
+    '// The menu hangs off the control that opened it rather than off the block: the block is a',
+    '// canvas hundreds of pixels tall, so anchoring to it would drop the menu below the',
+    '// drawing area. The anchor is a ref-shaped object, memoized because it is rebuilt per',
+    '// render otherwise.',
+    '/** What the account owns, then what can be done to it. */',
+    '/**\n * A file picker created on demand and kept in the document until it answers. It cannot be\n * part of the menu: the menu closes on a pick, and an input that unmounts while the native\n * dialog is open never reports the file the user chose.\n */',
+    '/** Opens the picker, then imports whatever it answered with. */',
+    '/** Importing adds to what the boards show, which is how the library\'s own merge works. */',
+    '/** Saving is a blob download: no native dialog, and it works outside a secure context. */',
+    '/** Creation is a name to type, so it asks for one; a blank or unusable name changes nothing. */',
+  ]],
   ['src/client/features/preview/excalidraw-sync.ts', [
     '/**\n * Bridges the whiteboard registry (pure view state) to the note store: a board\'s\n * operations are serialized into the fence it came from.\n *\n * The fence is resolved against the note\'s *current* text, not against the markup the\n * preview rendered from: the user may have typed since, and writing on top of a stale\n * snapshot would throw those edits away. When the fence no longer holds the body the\n * board was built from, nothing is written and the user is told, because silently\n * dropping either side would be worse.\n */',
     '/** The note\'s text with the fence rewritten, or null when the fence moved out from under us. */',
@@ -1803,6 +1823,7 @@ const allowed = new Map([
     '// subtree, so without this the note\'s menu opens over the one already there.',
   ]],
   ['src/client/features/preview/use-excalidraw-blocks.ts', [
+    '/** The block whose header button opened the picker; it anchors the menu. */',
     '/**\n * Mounts a live whiteboard per block after each commit and keeps them out of the\n * preview\'s way: the board\'s element is re-parented into the fresh markup before paint,\n * so typing in the editor never restarts a board.\n */',
     '// Per-block failures render their own error banner; this only catches a',
     '// wholesale failure such as a detached host.',
@@ -1935,6 +1956,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/workspace/workspace/workspace-views.tsx', [
     '/* The host stays in the tree hidden once the editor has mounted so layout\n          flips keep undo history; CodeMirror itself only builds at first\n          visibility, and `inert` keeps the hidden host out of focus reach. */',
+  ]],
+  ['src/client/lib/api/board-library.ts', [
+    '/**\n * Whiteboard libraries (lib/markdown/excalidraw/library.ts) are a set of named documents\n * per account, so the API hands each one back verbatim and stores whatever it is given:\n * keeping the format knowledge on the client is what lets an `.excalidrawlib` body\n * round-trip with excalidraw.com untouched.\n */',
   ]],
   ['src/client/lib/api/transport.ts', [
     '/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker\'s ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */',
@@ -2287,6 +2311,41 @@ const allowed = new Map([
   ['src/client/lib/markdown/excalidraw/index.ts', [
     '/**\n * Whiteboard blocks (```excalidraw) drawn with Excalidraw.\n *\n * `body.ts` owns the note-facing format (scene JSON, fence surgery) and is\n * dependency-free; everything that needs the library goes through\n * `loadExcalidrawVendor`, which imports it dynamically so a note without a whiteboard\n * never downloads it.\n */',
   ]],
+  ['src/client/lib/markdown/excalidraw/library.test.ts', [
+    '/** The library-side file helpers, stubbed: parsing real files is the library\'s own job. */',
+    '/** The settings the boards read their library from; switching writes back into this. */',
+    '/** Delivers a payload the way another tab\'s channel would, to every listener in this one. */',
+    '/** A library as the endpoint hands it back. */',
+    '/**\n * Each case starts from a cold module: the store deliberately keeps its cache, its debounce\n * and its board set at module scope, so only a fresh import can prove the first read.\n */',
+  ]],
+  ['src/client/lib/markdown/excalidraw/library.ts', [
+    '/**\n * An account owns named whiteboard libraries, the way the public directory lists them:\n * each name is one JSON document of its own, and every board draws from the library the\n * user selected (`preview.boardLibrary`), so all notes show the same items.\n *\n * This module is the account side of that contract — the active library for the boards to\n * seed from, a debounced save on change, a cache so the boards of one client agree, and\n * the list the header\'s picker shows. Excalidraw hands a board\'s library to the host:\n * `initialData.libraryItems` seeds the sidebar and `onLibraryChange` reports edits (see\n * ./vendor).\n *\n * A failed read blocks writes on purpose: with an empty cache, the first edit would\n * replace a stored library with the one or two items this session happened to add.\n */',
+    '/** Long enough to batch a burst of edits, short enough to survive closing the tab. */',
+    '/** One toast per window, so a broken endpoint does not queue one per drag. */',
+    '/** The library `cache` holds; the picker can point the boards elsewhere at any time. */',
+    '/** The library the boards open, as the settings hold it. */',
+    '/** What a board seeds its sidebar with; empty until the active library has been read. */',
+    '/** Hands the active library\'s items to every board but the one that reported them. */',
+    '/**\n * Reads one library. A read already on its way answers for both callers, but a forced one\n * (another tab saved, the picker switched) has to happen again afterwards: the answer in\n * flight was composed before that, and showing it would leave the boards behind.\n */',
+    '// Only a read that never produced a library blocks the writes (see the header):',
+    '// a failed refresh still has the items this client already knows.',
+    '/**\n * Reported by every board on a library change. The library fires this for its own pushes\n * too, so identical content is dropped here instead of at the API.\n */',
+    '// Nothing is written before the active library has been read: a mounting board reports',
+    '// its own (empty) state, and saving that over a stored library would erase it.',
+    '/** Writes whatever is pending right now; the debounce and the hidden-tab path both land here. */',
+    '/**\n * Adds items to the library the boards are showing, the way an import does. The library\n * merges by item id, so importing the same file twice leaves one copy of each shape, and\n * the change reaches the account through the same save path as any other edit.\n */',
+    '/** The items of an `.excalidrawlib` file, read by the library\'s own parser (both versions). */',
+    '/** The active library as a file: the text to save, and the name to save it under. */',
+    '/** Every library the account owns, for the picker. */',
+    '// The default library is always offered, saved or not: a board starts there, so the',
+    '// picker has to be able to point back at it after switching away.',
+    '/** Points the boards at another library, which is a settings change like any other. */',
+    '/** A new library starts empty; writing it now is what makes it show up in the picker. */',
+    '/** Drops a library; the boards fall back to the default one instead of an orphan name. */',
+    '/**\n * Ties one live board to the account\'s libraries; the returned release runs when the\n * board\'s root goes away. Registering is also what triggers the first read, so a note with\n * a board never fetches a library until one is on screen.\n */',
+    '/** Another tab saved: re-read, so both tabs show the same items. */',
+    '/** A tab being hidden may never come back, so the last edit is written while it can be. */',
+  ]],
   ['src/client/lib/markdown/excalidraw/loader.ts', [
     '/** Where the library looks for the fonts it draws with (see ./loader). */',
     '/** One `url(...)` entry of a font face\'s source list, with its format hint dropped. */',
@@ -2353,6 +2412,8 @@ const allowed = new Map([
     '/** Re-measures the canvas after its box changed (a pane resize, a move to the overlay). */',
     '/** Fires when the scene changed in a way worth writing back (not on every pointer move). */',
     '/** The scene as an SVG document, for surfaces that print or export their markup. */',
+    '/**\n   * The items of an `.excalidrawlib` file, whichever version wrote it: the library\'s own\n   * reader migrates the old `library: [[element…]…]` layout, which is what the public\n   * directory still hands out. Rejects when the file is not a library.\n   */',
+    '/** The items as `.excalidrawlib` text, so a library can be saved and shared as a file. */',
   ]],
   ['src/client/lib/markdown/excalidraw/vendor.tsx', [
     '/**\n * The only module that touches Excalidraw (MIT, official React component). It is\n * reached exclusively through a dynamic import (see ./loader), so the library, its\n * stylesheet and its fonts stay in an async chunk and never reach the first screen.\n *\n * Excalidraw is a React component rather than a command-driven library, so this file\n * gives each block its own React root: the root renders the board into the element the\n * registry owns, and later prop changes (theme, variant, read-only) are applied by\n * rendering into that same root — which reconciles the tree instead of remounting it,\n * so the camera, the selection and the undo stack survive. Everything above this file\n * sees only ./types: a handle with the operations a block needs.\n */',
@@ -2360,6 +2421,11 @@ const allowed = new Map([
     '/** Everything the root renders from; mutated in place so a re-render keeps the board. */',
     '/** Fingerprint of the scene as last seen, so a look around does not count as a change. */',
     '/**\n * Keyboard shortcuts stay bound to the board\'s own element (the library\'s default), so\n * a board inside a note never swallows the editor\'s keys — a pointer interaction hands\n * it the focus explicitly (see ./registry).\n */',
+    '// The library follows the account rather than the note (see ./library): the sidebar is',
+    '// seeded from the shared cache, changes are reported back, and the board joins the set',
+    '// the store pushes to when another board (or tab) saves. The library hands over its API',
+    '// while its own tree is mounting, so the registration rides on that callback and is',
+    '// released by the effect below.',
     '// Opening a file replaces the whole scene, so it stays out of the narrow',
     '// inline block where it is one stray click away.',
     '/**\n * The canvas background is the one app state field handed back to the library: it is\n * plain `string`, so it needs no cast, while the toolbar\'s `currentItem*` unions (fill\n * style, arrowheads, alignment) cannot be validated here without duplicating the\n * library\'s own reader. Those are still persisted in the note, so a scene copied out to\n * excalidraw.com keeps them.\n */',
@@ -2370,7 +2436,8 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/excalidraw/view.ts', [
     '/**\n * DOM helpers for whiteboard blocks: reading what the renderer emitted into a\n * placeholder, and the two degraded states (source fallback, error banner). These are\n * the only paths that touch the block markup, so the mount pass and the preview\n * interaction handlers stay in sync on the contract.\n */',
-    '/**\n * The block\'s header buttons ship as empty markup because the sanitizer keeps SVG out\n * of the prose whitelist, so their icons are appended as DOM nodes here. Path data:\n * lucide\'s expand and maximize-2, the same two a mind map block\'s header carries.\n */',
+    '/** The library picker\'s own icon (lucide\'s library), used by the block header button. */',
+    '/**\n * The block\'s header buttons ship as empty markup because the sanitizer keeps SVG out\n * of the prose whitelist, so their icons are appended as DOM nodes here. Path data:\n * lucide\'s library, expand and maximize-2, the same shapes a mind map block\'s header\n * carries.\n */',
     '/** Adds the header icons to a freshly rendered block; a no-op on later passes. */',
     '/** The element the board draws in; the library owns its own focusable surface inside it. */',
     '/**\n * A surface the board answers for itself: its canvas, or the full screen room it is moved\n * into. Both bring the library\'s own right-click menu, so the note\'s menu opening there\n * too would leave two of them stacked on one click.\n */',
@@ -3079,6 +3146,7 @@ const allowed = new Map([
     '// Blog settings fallback used across the worker default, the demo seed, and',
     '// every client consumer that renders links before the user configures a URL.',
     '/**\n * Session lifetime design (sliding window):\n * - `SESSION_TTL_MS` (90d): absolute cap. A session row/cookie never outlives 90 days,\n *   bounding the window in which a stolen session token stays usable.\n * - `SESSION_RENEW_BEFORE_MS` (45d = TTL/2): renewal threshold. On an authenticated\n *   request, if less than this much TTL remains, the session is extended back to the\n *   full 90 days (see middleware/auth.ts and lib/session-store.ts).\n *\n * Trade-offs: renewal only happens for requests that already presented a valid\n * session, so an abandoned session dies within at most 90 days (no idle-forever\n * sessions, maintenance sweeps the rows), while an active user never gets logged out\n * as long as they authenticate at least once per 45 days. The half-life threshold\n * also bounds write amplification: each session triggers at most one DB renewal\n * write per 45 days of activity. The 45-day window is generous enough to survive\n * the app\'s offline period (offline edits are queued locally and flushed on\n * reconnect, which needs a still-valid session) yet short enough that a freshly\n * stolen cookie\'s remaining lifetime stays bounded.\n */',
+    '/** The library a board starts from: a named one like any other, shown as the default. */',
     '/**\n * Default template inserted at the top of new notes. Keep placeholders ASCII:\n * they are filled in at creation time with the localized note title and the\n * current date/time. First line must be `---` (a leading blank line would\n * prevent the front matter from being parsed).\n */',
     '// External https images are blocked by default (renderer placeholder + CSP',
     '// `img-src` without `https:`); opt in per user. Share pages stay blocked',
@@ -3130,6 +3198,10 @@ const allowed = new Map([
   ['src/shared/types/api.ts', [
     '/** A rolling date filter: N days ending either at the newest edit (`edit`) or at today (`today`). */',
   ]],
+  ['src/shared/types/board-library.ts', [
+    '/**\n * Whiteboard libraries as the API hands them around: an account owns a set of *named*\n * libraries — the same shape the public directory lists — and each one is a single\n * `.excalidrawlib` document stored as its own object. Boards draw from the one the user\n * selected (`preview.boardLibrary`), so every note sees the same items.\n */',
+    '/**\n   * The library\'s items as JSON text: an `.excalidrawlib` body (the format is JSON, not an\n   * archive), kept verbatim so a file round-trips with excalidraw.com. Null before the\n   * first save, which the boards read as an empty library.\n   */',
+  ]],
   ['src/shared/types/graph.ts', [
     '/** Tags to filter by. Overrides `tag`; sent comma-separated. */',
     '/** How multiple tags combine: `any` (default) for union, `all` for intersection. */',
@@ -3145,6 +3217,7 @@ const allowed = new Map([
   ]],
   ['src/shared/types/settings.ts', [
     '/** Load external (https) images in rendered notes. Off by default: external\n   *  images are replaced with a blocked placeholder (renderer-level), and the\n   *  server drops `https:` from CSP `img-src` while it is off — so raw-HTML\n   *  images in notes stay blocked on the app page and are ALWAYS blocked on\n   *  share pages (/s/*), where visitors never opt in. */',
+    '/** Name of the whiteboard library the boards open; `default` is the reserved one. */',
     '/** Tag(s, comma-separated) that file notes into the sidebar to-do tree; null falls back to the locale default. */',
   ]],
   ['src/worker/app.ts', [
@@ -3184,9 +3257,27 @@ const allowed = new Map([
   ['src/worker/backup/snapshot/index.ts', [
     '/** Produces restorable JSON, readable Markdown, and attachment files for every backup target. */',
   ]],
+  ['src/worker/board-library/keys.ts', [
+    '/**\n * Object layout for whiteboard libraries: `<prefix>/<account>/<name>.json`, one object per\n * named library, so what the user calls a library is exactly what the bucket holds.\n */',
+    '/** Names the object kind in its stored metadata, next to the attachment kinds. */',
+    '/** A name may not forge a path segment or carry control characters. */',
+    '/** The name as stored: trimmed, non-empty, and safe as an object key segment. */',
+  ]],
+  ['src/worker/board-library/store.ts', [
+    '/**\n * Reading and writing an account\'s named whiteboard libraries.\n *\n * Each library is one JSON document — `.excalidrawlib`, the format the library exports and\n * installs, is JSON rather than an archive — kept as an object next to the attachments\n * while D1 holds one row per name with its size and hash. That way a library can grow\n * without crowding a row, listing is a single query, and a re-save of identical content\n * costs one row update instead of an object rewrite (the boards save on every change).\n */',
+    '/** Rejects what the API should not have accepted: junk, or a library past the cap. */',
+    '/**\n * Reads the object from the backend the row names, falling back to the one this instance\n * has configured: an instance that gained (or lost) its R2 bucket must still find the\n * libraries that were written before the switch.\n */',
+    '/** Every library the account owns, by name, so the picker can list them without objects. */',
+    '// A library that moved between R2 and KV (or was renamed onto a new key) leaves one',
+    '// object behind; writing in place means that is the only orphan this feature can make.',
+    '/** Drops a library and its object; the caller decides what a board falls back to. */',
+  ]],
   ['src/worker/db/fts.ts', [
     '// Every delete below targets one note_id, and an FTS5 table only reaches its',
     '// own index through MATCH, so without this each delete scans the whole table.',
+  ]],
+  ['src/worker/db/schema/board-library.ts', [
+    '/**\n * An account owns a set of *named* whiteboard libraries, the way the public directory\n * lists them: one row per name, one JSON object per row (see attachments/backend.ts) —\n * a library can grow past what a D1 row should carry, and the stored hash lets a re-save\n * of identical content skip the object write.\n */',
   ]],
   ['src/worker/db/schema/index.ts', [
     '/** Defines the idempotent final D1 schema initialized by every Worker isolate. */',
@@ -3210,6 +3301,13 @@ const allowed = new Map([
     '// lists order by name COLLATE NOCASE, while note lookups and per-user',
     '// version retention filter by user_id alone; the existing indexes match',
     '// none of those shapes, so each of those reads scans the user\'s rows.',
+    '// Whiteboard libraries arrived after every other table, so the baseline carries',
+    '// the definition (schema/board-library.ts) and this migration only makes existing',
+    '// instances catch up with it.',
+    '// Version 35 kept one document per account; a library is a named collection (the',
+    '// shape the public directory lists), so the table becomes one row per name. The',
+    '// single document an instance may already hold is carried over as the default',
+    '// library, keeping its object key — no object is moved or rewritten.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
@@ -3420,6 +3518,9 @@ const allowed = new Map([
     '// whether this visit should bump the post\'s views counter (new fingerprint',
     '// within the dedupe window, not a bot).',
   ]],
+  ['src/worker/routes/board-library.ts', [
+    '/**\n * The whiteboard library endpoint. An account owns named libraries — one document each —\n * so the same route answers the picker (no `name`: the list), a board opening its library\n * (`?name=`), a save, and a delete. It is not part of the note stream: boards load their\n * library once and save it on change (lib/markdown/excalidraw/library.ts).\n */',
+  ]],
   ['src/worker/routes/community-templates.ts', [
     '// Publishing (or updating) counts against a per-user hourly budget so a',
     '// single account cannot flood the shared directory; authors updating',
@@ -3572,6 +3673,9 @@ const allowed = new Map([
     '// Every request in the harness arrives from the same client, which is what makes the',
     '// budget observable at all: the count used to be over the whole table, so the sixth',
     '// application here would have been the sixth from anywhere.',
+  ]],
+  ['tests/board-library-routes.test.ts', [
+    '/** A bucket that keeps what it is given, so a test can count the objects it holds. */',
   ]],
   ['tests/d1-harness.ts', [
     '// D1 rejects a statement that binds more than 100 variables ("too many SQL variables"); the',

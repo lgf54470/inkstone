@@ -12,6 +12,8 @@ function stillVendor(svg: string | null = STILL): ExcalidrawVendor {
     parse: parseExcalidrawScene,
     serialize: serializeExcalidrawScene,
     renderStaticSvg: async () => svg,
+    parseLibrary: async () => [],
+    serializeLibrary: () => '',
     create: (options: ExcalidrawCreateOptions): ExcalidrawHandle => {
       const handle = {
         getScene: () => ({ type: 'excalidraw' as const, version: 2, source: 'inkstone', elements: [], appState: {}, files: {} }),

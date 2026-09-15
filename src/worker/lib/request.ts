@@ -11,6 +11,7 @@ export const JSON_BODY_LIMITS = {
   profile: 256 * 1024,
   note: LIMITS.contentMaxBytes * 6 + 64 * 1024,
   musicTrack: 1024 * 1024,
+  boardLibrary: LIMITS.boardLibraryMaxBytes + 64 * 1024,
 } as const
 
 export const FORM_BODY_LIMITS = {

@@ -18,6 +18,7 @@ import { filesRoutes } from './routes/files'
 import { avatarRoutes } from './routes/avatars'
 import { backupRoutes } from './routes/backup'
 import { settingsRoutes } from './routes/settings'
+import { boardLibraryRoutes } from './routes/board-library'
 import { shareManageRoutes, sharePageRoutes, shareRoutes } from './routes/share'
 import { blogManageRoutes, blogPublicRoutes } from './routes/blog'
 import { transferRoutes } from './routes/transfer'
@@ -147,6 +148,7 @@ function registerApiRoutes(app: Hono<AppBindings>): void {
   app.route('/api/avatars', avatarRoutes)
   app.route('/api/backup', backupRoutes)
   app.route('/api/settings', settingsRoutes)
+  app.route('/api/board-library', boardLibraryRoutes)
   app.route('/api/update', updateRoutes)
   app.route('/api/mcp', mcpSettingsRoutes)
   app.route('/api/share', shareManageRoutes)

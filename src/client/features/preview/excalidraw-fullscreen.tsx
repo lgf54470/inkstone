@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { Expand, X } from 'lucide-react'
+import { Expand, Library, X } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { Modal, Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
@@ -21,7 +21,7 @@ import { EXCALIDRAW_FULLSCREEN_CLASS, captureExcalidrawFocus, type ExcalidrawSes
  * measured, and a board whose bottom edge stops short of the window shows the note's own
  * furniture — a status bar under a canvas that is meant to be the whole surface.
  */
-export function ExcalidrawFullscreen({ session, onClose }: { session: ExcalidrawSession; onClose: () => void }) {
+export function ExcalidrawFullscreen({ session, onClose, onOpenLibrary }: { session: ExcalidrawSession; onClose: () => void; onOpenLibrary: (node: HTMLElement) => void }) {
   const bodyRef = useRef<HTMLDivElement>(null)
   useOverlaySession(session, bodyRef, onClose)
 
@@ -42,6 +42,9 @@ export function ExcalidrawFullscreen({ session, onClose }: { session: Excalidraw
           </p>
         </div>
         <div className='flex shrink-0 items-center gap-0.5'>
+          <Tooltip label={t('preview.excalidraw_library')}>
+            <IconButton label={t('preview.excalidraw_library')} size='sm' onClick={(event) => onOpenLibrary(event.currentTarget)}><Library size={15} /></IconButton>
+          </Tooltip>
           <Tooltip label={t('preview.excalidraw_fit')}>
             <IconButton label={t('preview.excalidraw_fit')} size='sm' onClick={() => session.fit()}><Expand size={15} /></IconButton>
           </Tooltip>

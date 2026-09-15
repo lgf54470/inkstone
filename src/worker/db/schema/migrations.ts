@@ -1,3 +1,5 @@
+import { BOARD_LIBRARY_DEFAULT_NAME } from '@shared/constants'
+import { BOARD_LIBRARY_TABLE_STATEMENTS } from './board-library'
 import { MUSIC_LEGACY_REBUILD_STATEMENTS, MUSIC_PLAYBACK_MIGRATION_STATEMENTS, MUSIC_SCHEMA_STATEMENTS, MUSIC_SOURCE_MIGRATION_STATEMENTS, MUSIC_TAG_ORDER_MIGRATION_STATEMENTS, MUSIC_TAG_PARENT_MIGRATION_STATEMENTS, MUSIC_TAG_SCOPE_MIGRATION_STATEMENTS } from './music'
 import type { SchemaMigration } from './types'
 export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
@@ -529,6 +531,28 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id, id)`,
       `CREATE INDEX IF NOT EXISTS idx_tags_name_nocase ON tags(user_id, name COLLATE NOCASE)`,
       `CREATE INDEX IF NOT EXISTS idx_versions_user ON note_versions(user_id)`,
+    ],
+  },
+  {
+    // Whiteboard libraries arrived after every other table, so the baseline carries
+    // the definition (schema/board-library.ts) and this migration only makes existing
+    // instances catch up with it.
+    version: 35,
+    statements: [...BOARD_LIBRARY_TABLE_STATEMENTS],
+  },
+  {
+    // Version 35 kept one document per account; a library is a named collection (the
+    // shape the public directory lists), so the table becomes one row per name. The
+    // single document an instance may already hold is carried over as the default
+    // library, keeping its object key — no object is moved or rewritten.
+    version: 36,
+    statements: [
+      `ALTER TABLE board_library RENAME TO board_library_flat`,
+      ...BOARD_LIBRARY_TABLE_STATEMENTS,
+      `INSERT INTO board_library (user_id, name, storage, object_key, size, sha256, updated_at)
+         SELECT user_id, '${BOARD_LIBRARY_DEFAULT_NAME}', storage, object_key, size, sha256, updated_at
+         FROM board_library_flat`,
+      `DROP TABLE board_library_flat`,
     ],
   },
 ]

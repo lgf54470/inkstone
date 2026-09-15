@@ -173,11 +173,13 @@ function renderExcalidrawBlock(token: Token, line: string, rendererEnv: unknown)
   const index = env.excalidrawSequence++
   const fitLabel = escapeAttr(t('preview.excalidraw_fit'))
   const fullscreenLabel = escapeAttr(t('preview.excalidraw_fullscreen'))
+  const libraryLabel = escapeAttr(t('preview.excalidraw_library'))
   return [
     `<div class="excalidraw-block loading"${line} data-excalidraw="${escapeAttr(encodeDataValue(token.content))}" data-excalidraw-index="${index}" aria-busy="true">`,
     `<div class="excalidraw-block-head">`,
     `<span class="excalidraw-block-title">${escapeHtml(t('preview.excalidraw'))}</span>`,
     `<span class="excalidraw-block-actions">`,
+    `<button type="button" class="excalidraw-block-btn" data-excalidraw-library aria-label="${libraryLabel}" title="${libraryLabel}"></button>`,
     `<button type="button" class="excalidraw-block-btn" data-excalidraw-fit aria-label="${fitLabel}" title="${fitLabel}"></button>`,
     `<button type="button" class="excalidraw-block-btn" data-excalidraw-fullscreen aria-label="${fullscreenLabel}" title="${fullscreenLabel}"></button>`,
     `</span>`,

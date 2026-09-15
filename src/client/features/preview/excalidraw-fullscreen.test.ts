@@ -62,6 +62,8 @@ function stubVendor(model: BoardModel): ExcalidrawVendor {
     parse: parseExcalidrawScene,
     serialize: (scene) => JSON.stringify({ elements: scene.elements }),
     renderStaticSvg: async () => null,
+    parseLibrary: async () => [],
+    serializeLibrary: () => '',
     create: (options: ExcalidrawCreateOptions): ExcalidrawHandle => {
       const onDraw = (): void => {
         model.elements += 1
@@ -134,7 +136,7 @@ function Harness({ session }: { session: ExcalidrawSession }) {
     'div',
     null,
     createElement('button', { type: 'button', 'data-excalidraw-fullscreen': '', onClick: () => setOpen(true) }, 'full screen'),
-    open ? createElement(ExcalidrawFullscreen, { session, onClose: () => setOpen(false) }) : null,
+    open ? createElement(ExcalidrawFullscreen, { session, onClose: () => setOpen(false), onOpenLibrary: () => {} }) : null,
   )
 }
 

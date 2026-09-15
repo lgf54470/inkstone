@@ -15,6 +15,11 @@ export interface ExcalidrawFullscreenState {
   session: ExcalidrawSession
 }
 
+export interface ExcalidrawLibraryMenuState {
+  /** The block whose header button opened the picker; it anchors the menu. */
+  node: HTMLElement
+}
+
 interface UseExcalidrawBlocksOptions {
   scope: string
   noteId: string | null
@@ -33,6 +38,7 @@ export function useExcalidrawBlocks(options: UseExcalidrawBlocksOptions) {
   const locale = useLocale()
   const writer = useMemo(() => createExcalidrawWriter(noteId), [noteId])
   const [fullscreen, setFullscreen] = useState<ExcalidrawFullscreenState | null>(null)
+  const [libraryMenu, setLibraryMenu] = useState<ExcalidrawLibraryMenuState | null>(null)
 
   useLayoutEffect(() => {
     const host = hostRef.current
@@ -44,7 +50,7 @@ export function useExcalidrawBlocks(options: UseExcalidrawBlocksOptions) {
     })
   }, [committedHtml, dark, locale, noteId, scope, writer, hostRef])
 
-  useExcalidrawTeardown(scope, setFullscreen)
+  useExcalidrawTeardown(scope, setFullscreen, setLibraryMenu)
   useExcalidrawPointerFocus(hostRef, committedHtml)
 
   const openFullscreen = useCallback((node: HTMLElement) => {
@@ -60,21 +66,26 @@ export function useExcalidrawBlocks(options: UseExcalidrawBlocksOptions) {
     })
   }, [])
 
-  return { fullscreen, openFullscreen, closeFullscreen }
+  const openLibraryMenu = useCallback((node: HTMLElement) => setLibraryMenu({ node }), [])
+  const closeLibraryMenu = useCallback(() => setLibraryMenu(null), [])
+
+  return { fullscreen, openFullscreen, closeFullscreen, libraryMenu, openLibraryMenu, closeLibraryMenu }
 }
 
 /** Leaving the note (or the pane) writes the last drawing and drops the instances. */
 function useExcalidrawTeardown(
   scope: string,
   setFullscreen: Dispatch<SetStateAction<ExcalidrawFullscreenState | null>>,
+  setLibraryMenu: Dispatch<SetStateAction<ExcalidrawLibraryMenuState | null>>,
 ): void {
   useEffect(() => {
     return () => {
       flushExcalidraws(scope)
       destroyExcalidraws(scope)
       setFullscreen(null)
+      setLibraryMenu(null)
     }
-  }, [scope, setFullscreen])
+  }, [scope, setFullscreen, setLibraryMenu])
 }
 
 /**

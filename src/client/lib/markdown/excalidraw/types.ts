@@ -9,7 +9,7 @@
  * view, and keeping them would rewrite the note on every pan (see ./body).
  */
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
-import type { BinaryFiles } from '@excalidraw/excalidraw/types'
+import type { BinaryFiles, LibraryItems } from '@excalidraw/excalidraw/types'
 import type { AppLocale } from '@shared/types'
 
 /** App state fields a note keeps, as written. Unknown fields are dropped on read. */
@@ -78,6 +78,14 @@ export interface ExcalidrawVendor {
   serialize(scene: ExcalidrawScene): string
   /** The scene as an SVG document, for surfaces that print or export their markup. */
   renderStaticSvg(scene: ExcalidrawScene, dark: boolean): Promise<string | null>
+  /**
+   * The items of an `.excalidrawlib` file, whichever version wrote it: the library's own
+   * reader migrates the old `library: [[element…]…]` layout, which is what the public
+   * directory still hands out. Rejects when the file is not a library.
+   */
+  parseLibrary(file: Blob): Promise<LibraryItems>
+  /** The items as `.excalidrawlib` text, so a library can be saved and shared as a file. */
+  serializeLibrary(items: LibraryItems): string
 }
 
 export type ExcalidrawVendorLoader = () => Promise<ExcalidrawVendor>

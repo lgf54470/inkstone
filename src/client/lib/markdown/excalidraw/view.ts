@@ -14,12 +14,17 @@ export const EXCALIDRAW_CANVAS_CLASS = 'excalidraw-canvas'
 export const EXCALIDRAW_CANVAS_SELECTOR = '[data-excalidraw-canvas]'
 export const EXCALIDRAW_FULLSCREEN_CLASS = 'excalidraw-fullscreen'
 
+/** The library picker's own icon (lucide's library), used by the block header button. */
+const EXCALIDRAW_LIBRARY_ICON: readonly string[] = ['m16 6 4 14', 'M12 6v14', 'M8 8v12', 'M4 4v16']
+
 /**
  * The block's header buttons ship as empty markup because the sanitizer keeps SVG out
  * of the prose whitelist, so their icons are appended as DOM nodes here. Path data:
- * lucide's expand and maximize-2, the same two a mind map block's header carries.
+ * lucide's library, expand and maximize-2, the same shapes a mind map block's header
+ * carries.
  */
 const CONTROL_ICONS: Record<string, string[]> = {
+  'data-excalidraw-library': [...EXCALIDRAW_LIBRARY_ICON],
   'data-excalidraw-fit': ['m15 15 6 6', 'm15 9 6-6', 'M21 16v5h-5', 'M21 8V3h-5', 'M3 16v5h5', 'm3 21 6-6', 'M3 8V3h5', 'M9 9 3 3'],
   'data-excalidraw-fullscreen': ['M15 3h6v6', 'm21 3-7 7', 'm3 21 7-7', 'M9 21H3v-6'],
 }
@@ -123,7 +128,7 @@ export function markExcalidrawReady(node: HTMLElement): void {
 }
 
 function removeHeadControls(node: HTMLElement): void {
-  node.querySelectorAll<HTMLElement>('[data-excalidraw-fullscreen], [data-excalidraw-fit]').forEach((control) => control.remove())
+  node.querySelectorAll<HTMLElement>('[data-excalidraw-fullscreen], [data-excalidraw-fit], [data-excalidraw-library]').forEach((control) => control.remove())
 }
 
 /** Fallback where a live board cannot run: show the scene, drop the inert controls. */

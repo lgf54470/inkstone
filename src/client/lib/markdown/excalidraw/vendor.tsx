@@ -10,18 +10,22 @@
  * so the camera, the selection and the undo stack survive. Everything above this file
  * sees only ./types: a handle with the operations a block needs.
  */
+import { useEffect, useRef } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import {
   Excalidraw,
   exportToBlob,
   exportToSvg,
   getSceneVersion,
+  loadLibraryFromBlob,
   restoreElements,
+  serializeLibraryAsJSON,
 } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import type { ExcalidrawImperativeAPI, BinaryFiles } from '@excalidraw/excalidraw/types'
 import type { AppLocale } from '@shared/types'
 import { parseExcalidrawScene, sceneAppState, serializeExcalidrawScene } from './body'
+import { boardLibraryItems, noticeBoardLibraryChange, registerBoardLibraryBoard } from './library'
 import type {
   ExcalidrawCreateOptions,
   ExcalidrawHandle,
@@ -57,10 +61,21 @@ function Board({ model, onApi, onChange }: {
   onApi: (api: ExcalidrawImperativeAPI) => void
   onChange: (elements: readonly { version?: number }[], appState: unknown) => void
 }) {
+  // The library follows the account rather than the note (see ./library): the sidebar is
+  // seeded from the shared cache, changes are reported back, and the board joins the set
+  // the store pushes to when another board (or tab) saves. The library hands over its API
+  // while its own tree is mounting, so the registration rides on that callback and is
+  // released by the effect below.
+  const library = useRef<{ release: (() => void) | null }>({ release: null })
+  useEffect(() => () => library.current.release?.(), [])
   return (
     <Excalidraw
-      initialData={{ elements: model.scene.elements, files: model.scene.files, appState: backgroundOf(model.scene), scrollToContent: true }}
-      excalidrawAPI={onApi}
+      initialData={{ elements: model.scene.elements, files: model.scene.files, appState: backgroundOf(model.scene), libraryItems: boardLibraryItems(), scrollToContent: true }}
+      excalidrawAPI={(api) => {
+        onApi(api)
+        library.current.release = registerBoardLibraryBoard(api)
+      }}
+      onLibraryChange={(items) => noticeBoardLibraryChange(items)}
       onChange={(elements, appState) => onChange(elements, appState)}
       theme={model.dark ? 'dark' : 'light'}
       langCode={model.locale}
@@ -268,5 +283,12 @@ async function renderStaticSvg(scene: ExcalidrawScene, dark: boolean): Promise<s
 
 /** Entry point of the dynamic import; wired up by ./loader. */
 export function createExcalidrawVendor(): ExcalidrawVendor {
-  return { create, parse: parseExcalidrawScene, serialize: serializeExcalidrawScene, renderStaticSvg }
+  return {
+    create,
+    parse: parseExcalidrawScene,
+    serialize: serializeExcalidrawScene,
+    renderStaticSvg,
+    parseLibrary: (file) => loadLibraryFromBlob(file),
+    serializeLibrary: (items) => serializeLibraryAsJSON(items),
+  }
 }

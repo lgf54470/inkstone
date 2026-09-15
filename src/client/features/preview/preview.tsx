@@ -7,6 +7,7 @@ import { FilePreviewModal } from './file-preview-modal'
 import { MindmapFullscreen } from './mindmap-fullscreen'
 import { MindmapThemeMenu } from './mindmap-theme-menu'
 import { ExcalidrawFullscreen } from './excalidraw-fullscreen'
+import { ExcalidrawLibraryMenu } from './excalidraw-library-menu'
 import { isExcalidrawSurface } from '../../lib/markdown/excalidraw'
 
 export type { PreviewProps } from './use-preview'
@@ -71,7 +72,10 @@ function PreviewOverlays({ b }: { b: ReturnType<typeof usePreview> }) {
         <MindmapThemeMenu state={b.mindmapThemeMenu} onClose={b.closeMindmapThemeMenu} />
       )}
       {b.excalidrawFullscreen && (
-        <ExcalidrawFullscreen session={b.excalidrawFullscreen.session} onClose={b.closeExcalidrawFullscreen} />
+        <ExcalidrawFullscreen session={b.excalidrawFullscreen.session} onClose={b.closeExcalidrawFullscreen} onOpenLibrary={b.openExcalidrawLibraryMenu} />
+      )}
+      {b.excalidrawLibraryMenu && (
+        <ExcalidrawLibraryMenu node={b.excalidrawLibraryMenu.node} onClose={b.closeExcalidrawLibraryMenu} />
       )}
       {b.previewFile && (
         <FilePreviewModal

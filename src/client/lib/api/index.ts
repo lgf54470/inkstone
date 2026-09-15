@@ -10,6 +10,7 @@ import { files } from './files'
 import { settings } from './settings'
 import { share } from './share'
 import { music } from './music'
+import { boardLibrary } from './board-library'
 export const api = {
   ...account,
   ...vault,
@@ -17,4 +18,5 @@ export const api = {
   ...settings,
   ...share,
   music,
+  boardLibrary,
 }

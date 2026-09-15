@@ -1,3 +1,4 @@
+import { BOARD_LIBRARY_TABLE_STATEMENTS } from './board-library'
 import { MUSIC_TABLE_STATEMENTS } from './music'
 
 export const TABLE_STATEMENTS: readonly string[] = [
@@ -449,4 +450,5 @@ export const TABLE_STATEMENTS: readonly string[] = [
       updated_at INTEGER NOT NULL
     )`,
   ...MUSIC_TABLE_STATEMENTS,
+  ...BOARD_LIBRARY_TABLE_STATEMENTS,
 ]

@@ -15,6 +15,20 @@ export {
   sceneAppState,
   serializeExcalidrawScene,
 } from './body'
+export {
+  activeBoardLibraryName,
+  addBoardLibraryItems,
+  boardLibraryItems,
+  createBoardLibrary,
+  deleteBoardLibrary,
+  exportBoardLibraryFile,
+  flushBoardLibrary,
+  listBoardLibraries,
+  noticeBoardLibraryChange,
+  readBoardLibraryFile,
+  registerBoardLibraryBoard,
+  selectBoardLibrary,
+} from './library'
 export { loadExcalidrawVendor } from './loader'
 export {
   captureExcalidrawContextMenu,

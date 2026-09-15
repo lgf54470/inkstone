@@ -45,6 +45,8 @@ export interface DemoState {
   cursor: number
   user: PublicUser
   settings: UserSettings
+  /** Named whiteboard libraries, exactly as the endpoint stores them: name -> items JSON. */
+  boardLibraries: Map<string, string>
   notes: Map<string, Note>
   folders: Map<string, Folder>
   tagIds: Map<string, string>
@@ -255,6 +257,7 @@ export function createDemoState(): DemoState {
       createdAt: now - 86_400_000 * 30,
     },
     settings: mergeSettings({ sync: { realtime: false, pollIntervalMs: 300_000 } }),
+    boardLibraries: new Map(),
     notes: new Map(notes.map((item) => [item.id, item])),
     folders: new Map<string, Folder>(),
     tagIds,

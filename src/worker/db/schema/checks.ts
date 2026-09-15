@@ -59,6 +59,7 @@ export const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   music_track_tags: ['user_id', 'track_id', 'tag_id'],
   music_playlists: ['id', 'user_id', 'name', 'description', 'is_pinned', 'is_favorite', 'sort_order', 'created_at', 'updated_at'],
   music_playlist_items: ['id', 'user_id', 'playlist_id', 'track_id', 'sort_order', 'created_at'],
+  board_library: ['user_id', 'name', 'storage', 'object_key', 'size', 'sha256', 'updated_at'],
 } as const
 
 export const REQUIRED_TABLES = [
@@ -110,6 +111,7 @@ export const REQUIRED_TABLES = [
   'music_track_tags',
   'music_playlists',
   'music_playlist_items',
+  'board_library',
 ] as const
 
 export const REQUIRED_INDEXES = [

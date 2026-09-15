@@ -6,7 +6,7 @@ import { attachmentObjectKeyCandidates, type AttachmentObjectStorage, type Store
 interface AttachmentObjectMetadata {
   userId: string
   objectId: string
-  kind: 'attachment' | 'avatar'
+  kind: 'attachment' | 'avatar' | 'board-library'
   filename: string
   mime: string
   sha256: string

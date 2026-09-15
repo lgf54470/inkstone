@@ -45,6 +45,7 @@ interface PreviewClickParams {
   openMindmapFullscreen: (node: HTMLElement) => void
   openMindmapThemeMenu: (node: HTMLElement) => void
   openExcalidrawFullscreen: (node: HTMLElement) => void
+  openExcalidrawLibraryMenu: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -62,6 +63,7 @@ interface PreviewClickContext {
   openMindmapFullscreen: (node: HTMLElement) => void
   openMindmapThemeMenu: (node: HTMLElement) => void
   openExcalidrawFullscreen: (node: HTMLElement) => void
+  openExcalidrawLibraryMenu: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -81,6 +83,7 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
     openMindmapFullscreen: params.openMindmapFullscreen,
     openMindmapThemeMenu: params.openMindmapThemeMenu,
     openExcalidrawFullscreen: params.openExcalidrawFullscreen,
+    openExcalidrawLibraryMenu: params.openExcalidrawLibraryMenu,
     api: params.api,
   }
   return async (event: ReactMouseEvent) => {
@@ -151,6 +154,10 @@ async function handleMindmap(target: HTMLElement, ctx: PreviewClickContext): Pro
 async function handleExcalidraw(target: HTMLElement, ctx: PreviewClickContext): Promise<boolean> {
   const block = target.closest<HTMLElement>('[data-excalidraw]')
   if (!block) return false
+  if (target.closest('[data-excalidraw-library]')) {
+    ctx.openExcalidrawLibraryMenu(block)
+    return true
+  }
   if (target.closest('[data-excalidraw-fit]')) {
     fitExcalidrawBlock(block)
     return true
