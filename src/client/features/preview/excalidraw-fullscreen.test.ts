@@ -86,6 +86,7 @@ function stubVendor(model: BoardModel): ExcalidrawVendor {
         },
         zoomToFit: () => {},
         refresh: () => {},
+    centerView: () => {},
         focus: () => options.el.focus(),
         setTheme: () => {},
         setVariant: () => {},

@@ -327,6 +327,10 @@ async function buildInstance(entry: ExcalidrawBlockEntry): Promise<void> {
     onChange: () => scheduleWrite(entry),
   })
   entry.observer = watchContainer(entry)
+  // A freshly mounted board centers from `initialData.scrollToContent`, but only against
+  // the box it measured then — a pane that settles afterwards leaves the drawing off to
+  // one side. One more fit after layout lands it where it belongs.
+  centerExcalidrawView(entry)
   markExcalidrawReady(entry.host)
   notify(entry.scope)
 }
@@ -338,6 +342,20 @@ function watchContainer(entry: ExcalidrawBlockEntry): ResizeObserver {
   })
   if (entry.container) observer.observe(entry.container)
   return observer
+}
+
+/**
+ * Re-centers a board after its box changed size, keeping the zoom: the library preserves
+ * the scroll it had, so a board moved between the note and the full screen overlay — or
+ * measured before its pane settled — reads as off to one side. The re-measure and the wait
+ * for the new size live in the vendor (handle.centerView), where the library's own state is
+ * reachable.
+ */
+function centerExcalidrawView(entry: ExcalidrawBlockEntry): void {
+  requestAnimationFrame(() => {
+    if (!entry.container?.isConnected) return
+    entry.handle?.centerView()
+  })
 }
 
 /** Re-parents the board's element into the current placeholder (or leaves it in the overlay). */
@@ -410,12 +428,9 @@ export function attachExcalidrawToOverlay(entry: ExcalidrawBlockEntry, target: H
   entry.container.classList.add('is-fullscreen')
   target.replaceChildren(entry.container)
   entry.handle?.setVariant('fullscreen')
-  requestAnimationFrame(() => {
-    entry.handle?.refresh()
-    // The overlay is much larger than the block was: what the board drew is brought
-    // to the middle, the way the map overlay fits its drawing on arrival.
-    entry.handle?.scrollToContent()
-  })
+  // The overlay is much larger than the block was: what the board drew is brought back
+  // to the middle, the way the map overlay fits its drawing on arrival.
+  centerExcalidrawView(entry)
   notify(entry.scope)
 }
 
@@ -425,6 +440,8 @@ export function detachExcalidrawFromOverlay(entry: ExcalidrawBlockEntry): void {
   entry.container.classList.remove('is-fullscreen')
   placeContainer(entry)
   entry.handle?.setVariant('inline')
-  entry.handle?.refresh()
+  // The block is much smaller than the overlay was; re-centering there mirrors the move
+  // in, so a board that was panned or zoomed still lands with its drawing in view.
+  centerExcalidrawView(entry)
   notify(entry.scope)
 }

@@ -47,6 +47,8 @@ export interface ExcalidrawHandle {
   updateScene(scene: ExcalidrawScene): void
   scrollToContent(): void
   zoomToFit(): void
+  /** Re-centers the view on the content without changing the zoom (after the box resized). */
+  centerView(): void
   /** Re-measures the canvas after its box changed (a pane resize, a move to the overlay). */
   refresh(): void
   focus(): void

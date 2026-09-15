@@ -201,7 +201,7 @@ function handleFor(parts: HandleParts): ExcalidrawHandle {
   }
 }
 
-function sceneActions({ options, holder, model }: HandleParts): Pick<ExcalidrawHandle, 'getScene' | 'updateScene' | 'scrollToContent' | 'zoomToFit' | 'refresh' | 'focus'> {
+function sceneActions({ options, holder, model }: HandleParts): Pick<ExcalidrawHandle, 'getScene' | 'updateScene' | 'scrollToContent' | 'zoomToFit' | 'centerView' | 'refresh' | 'focus'> {
   const withApi = (work: (api: ExcalidrawImperativeAPI) => void): void => {
     if (holder.api) work(holder.api)
   }
@@ -219,6 +219,22 @@ function sceneActions({ options, holder, model }: HandleParts): Pick<ExcalidrawH
     },
     scrollToContent: () => withApi((api) => api.scrollToContent(undefined, { fitToContent: true })),
     zoomToFit: () => withApi((api) => api.scrollToContent(undefined, { fitToContent: true })),
+    centerView: () => withApi((api) => {
+      // `refresh()` re-measures but keeps the scroll, and the library's state only picks
+      // the new size up on a later frame. Re-centering against the box the board just left
+      // would leave the drawing off to one side, so it waits for the state to carry the
+      // container's size first (a bounded wait, in case the box never settles).
+      let attempts = 12
+      const recenter = (): void => {
+        const state = api.getAppState()
+        const el = options.el
+        const sized = Math.abs(state.width - el.clientWidth) < 1 && Math.abs(state.height - el.clientHeight) < 1
+        if (sized || attempts-- <= 0) api.scrollToContent(undefined)
+        else requestAnimationFrame(recenter)
+      }
+      api.refresh()
+      requestAnimationFrame(recenter)
+    }),
     refresh: () => withApi((api) => api.refresh()),
     focus: () => {
       options.el.querySelector<HTMLElement>('.excalidraw')?.focus()

@@ -21,6 +21,7 @@ function stillVendor(svg: string | null = STILL): ExcalidrawVendor {
         scrollToContent: () => {},
         zoomToFit: () => {},
         refresh: () => {},
+    centerView: () => {},
         focus: () => {},
         setTheme: () => {},
         setVariant: () => {},
