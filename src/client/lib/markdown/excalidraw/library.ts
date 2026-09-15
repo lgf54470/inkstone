@@ -208,8 +208,11 @@ export async function selectBoardLibrary(name: string): Promise<void> {
 export async function createBoardLibrary(name: string): Promise<void> {
   await flushBoardLibrary()
   const snapshot = await api.boardLibrary.save(name, '[]')
-  publish(snapshot.name, [], null)
+  // The boards follow the active name, and publish() only pushes to them once the
+  // settings point at what it is publishing — so the selection lands first, or the boards
+  // would keep showing the library this one was created from.
   useSession.getState().updateSettings({ preview: { boardLibrary: snapshot.name } })
+  publish(snapshot.name, [], null)
 }
 
 /** Drops a library; the boards fall back to the default one instead of an orphan name. */

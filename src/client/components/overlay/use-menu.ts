@@ -105,6 +105,13 @@ export function useFocusRestore(open: boolean): void {
       return
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     return () => {
+      // A menu action can hand focus somewhere else in the very commit that closes the
+      // menu — the prompt a picker item opens mounts then and moves it into its own
+      // field. Restoring would yank it back out of that field, so only focus that was
+      // left hanging (nothing claimed it, which leaves it on the body) goes back.
+      const current = document.activeElement
+      if (current instanceof HTMLElement && current !== document.body)
+        return
       if (previousFocus?.isConnected)
         previousFocus.focus({ preventScroll: true })
     }

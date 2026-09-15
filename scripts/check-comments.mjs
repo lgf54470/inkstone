@@ -902,10 +902,17 @@ const allowed = new Map([
     '// Measured and placed before the first paint; until then it has no position, and a',
     '// panel sitting at the origin for a frame is the flash this avoids.',
   ]],
+  ['src/client/components/overlay/use-menu.test.ts', [
+    '/**\n * Menu harness for the focus-return contract: closing hands focus back to the opener,\n * unless something else claimed it in the same commit — the prompt a menu action opens\n * mounts then, and its field must keep the caret.\n */',
+  ]],
   ['src/client/components/overlay/use-menu.ts', [
     '// MenuItem lives here (not in menu.tsx) because menu.tsx already imports the',
     '// runtime hooks from this module; defining the item shape here keeps the pair',
     '// free of an import cycle.',
+    '// A menu action can hand focus somewhere else in the very commit that closes the',
+    '// menu — the prompt a picker item opens mounts then and moves it into its own',
+    '// field. Restoring would yank it back out of that field, so only focus that was',
+    '// left hanging (nothing claimed it, which leaves it on the body) goes back.',
     '/**\n * Whether a key event started inside the open submenu. Those rows are buttons of their\n * own, and a row there can open a panel of its own, so a key taken here would act on the\n * parent\'s cursor instead of the row the user is on — which is how Enter inside a submenu\n * came to toggle the parent\'s submenu shut without running anything at all.\n */',
   ]],
   ['src/client/components/overlay/use-tooltip.ts', [
@@ -2317,6 +2324,8 @@ const allowed = new Map([
     '/** Delivers a payload the way another tab\'s channel would, to every listener in this one. */',
     '/** A library as the endpoint hands it back. */',
     '/**\n * Each case starts from a cold module: the store deliberately keeps its cache, its debounce\n * and its board set at module scope, so only a fresh import can prove the first read.\n */',
+    '// The boards follow the selection: an empty library has to reach them, or the sidebar',
+    '// keeps showing whatever the previous library held.',
   ]],
   ['src/client/lib/markdown/excalidraw/library.ts', [
     '/**\n * An account owns named whiteboard libraries, the way the public directory lists them:\n * each name is one JSON document of its own, and every board draws from the library the\n * user selected (`preview.boardLibrary`), so all notes show the same items.\n *\n * This module is the account side of that contract — the active library for the boards to\n * seed from, a debounced save on change, a cache so the boards of one client agree, and\n * the list the header\'s picker shows. Excalidraw hands a board\'s library to the host:\n * `initialData.libraryItems` seeds the sidebar and `onLibraryChange` reports edits (see\n * ./vendor).\n *\n * A failed read blocks writes on purpose: with an empty cache, the first edit would\n * replace a stored library with the one or two items this session happened to add.\n */',
@@ -2341,6 +2350,9 @@ const allowed = new Map([
     '// picker has to be able to point back at it after switching away.',
     '/** Points the boards at another library, which is a settings change like any other. */',
     '/** A new library starts empty; writing it now is what makes it show up in the picker. */',
+    '// The boards follow the active name, and publish() only pushes to them once the',
+    '// settings point at what it is publishing — so the selection lands first, or the boards',
+    '// would keep showing the library this one was created from.',
     '/** Drops a library; the boards fall back to the default one instead of an orphan name. */',
     '/**\n * Ties one live board to the account\'s libraries; the returned release runs when the\n * board\'s root goes away. Registering is also what triggers the first read, so a note with\n * a board never fetches a library until one is on screen.\n */',
     '/** Another tab saved: re-read, so both tabs show the same items. */',

@@ -215,9 +215,10 @@ describe('whiteboard library selection', () => {
     expect(target.updateLibrary).toHaveBeenLastCalledWith({ libraryItems: elsewhere, merge: false })
   })
 
-  it('creates a library as an empty one and selects it', async () => {
+  it('creates a library as an empty one, selects it and empties the boards', async () => {
     const { library } = await store()
-    library.registerBoardLibraryBoard(board().api)
+    const target = board()
+    library.registerBoardLibraryBoard(target.api)
     await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(1))
 
     await library.createBoardLibrary('software architecture')
@@ -225,6 +226,9 @@ describe('whiteboard library selection', () => {
     expect(mocks.save).toHaveBeenCalledWith('software architecture', '[]')
     expect(library.activeBoardLibraryName()).toBe('software architecture')
     expect(library.boardLibraryItems()).toEqual([])
+    // The boards follow the selection: an empty library has to reach them, or the sidebar
+    // keeps showing whatever the previous library held.
+    expect(target.updateLibrary).toHaveBeenLastCalledWith({ libraryItems: [], merge: false })
   })
 
 })

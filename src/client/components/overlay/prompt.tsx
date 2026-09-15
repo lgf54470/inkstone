@@ -97,7 +97,6 @@ function PromptDialog({ request, finish }: {
             variant='primary'
             disabled={!canSubmit}
             onClick={() => finish(value.trim())}
-            data-autofocus
           >
             {options.confirmLabel ?? t('overlay.confirm')}
           </Button>
@@ -107,6 +106,7 @@ function PromptDialog({ request, finish }: {
       <form onSubmit={handleSubmit} className='mt-2'>
         <Input
           autoFocus
+          data-autofocus
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={options.placeholder}
