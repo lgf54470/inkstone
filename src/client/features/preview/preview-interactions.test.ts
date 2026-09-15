@@ -45,6 +45,7 @@ function mountHandler(openMindmapFullscreen: (node: HTMLElement) => void, setLig
     startMermaidRender: noop,
     openMindmapFullscreen,
     openMindmapThemeMenu,
+    openExcalidrawFullscreen: noop,
     api: {
       setLightbox,
       setPreviewFile: noop,

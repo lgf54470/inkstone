@@ -17,6 +17,7 @@ function emptyEnvironment(): RenderEnvironment {
     tabSequence: 0,
     exampleSequence: 0,
     mindmapSequence: 0,
+    excalidrawSequence: 0,
     docId: `ink-${nonce}`,
     externalImages: false,
   }

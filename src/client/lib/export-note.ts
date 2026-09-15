@@ -90,6 +90,8 @@ async function runExportEnhancements(container: HTMLDivElement, hasEmbeds: boole
       mermaid: true,
       // The exported document is standalone, so a map travels as a drawn image.
       mindmap: 'snapshot',
+      // The same for a whiteboard: a board cannot draw itself inside a document.
+      excalidraw: 'snapshot',
       dark: false,
       codeBlockCollapseLines: 0,
     })
@@ -423,6 +425,9 @@ details[open] summary { margin-bottom: 0.5em; }
 .chartjs-image { max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px; }
 .mindmap-block { margin: 1.4em 0; padding: 1em; border: 1px solid ${EXPORT_PALETTE.ink200}; border-radius: 8px; background: ${EXPORT_PALETTE.ink50}; display: flex; justify-content: center; overflow-x: auto; }
 .mindmap-image { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.excalidraw-block { margin: 1.4em 0; padding: 1em; border: 1px solid ${EXPORT_PALETTE.ink200}; border-radius: 8px; background: ${EXPORT_PALETTE.ink50}; display: flex; justify-content: center; overflow-x: auto; }
+.excalidraw-block-head { display: none; }
+.excalidraw-image { max-width: 100%; height: auto; display: block; margin: 0 auto; }
 
 .note-embed { margin: 1em 0; border: 1px solid ${EXPORT_PALETTE.ink200}; border-radius: 8px; overflow: hidden; background: ${EXPORT_PALETTE.white}; }
 .note-embed-head { display: block; padding: 0.4em 0.8em; background: ${EXPORT_PALETTE.ink50}; border-bottom: 1px solid ${EXPORT_PALETTE.ink200}; font-size: 0.82em; font-weight: 600; color: ${EXPORT_PALETTE.ink600}; }

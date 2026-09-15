@@ -101,6 +101,8 @@ async function paintLiveBlock(host: HTMLElement): Promise<void> {
     // the map itself is edited, so this surface draws the still image the share
     // page draws rather than mounting a second editable map inside the editor.
     mindmap: 'snapshot',
+    // The same reason holds for a whiteboard: the block in the pane is a picture.
+    excalidraw: 'snapshot',
     dark,
     // Collapsing is a control, and a click anywhere in the block drops the caret
     // into the source instead, so the block keeps its code unfolded.

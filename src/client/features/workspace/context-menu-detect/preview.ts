@@ -67,6 +67,12 @@ function detectMindmap(target: HTMLElement): PreviewContextData | null {
   return { type: 'mindmap', target, mindmap: { code: decodeDataValue(mindmapEl.dataset.mindmap ?? ''), sourceLine: getSourceLine(mindmapEl) } }
 }
 
+function detectExcalidraw(target: HTMLElement): PreviewContextData | null {
+  const boardEl = target.closest<HTMLElement>('[data-excalidraw], .excalidraw-block')
+  if (!boardEl) return null
+  return { type: 'excalidraw', target, excalidraw: { code: decodeDataValue(boardEl.dataset.excalidraw ?? ''), sourceLine: getSourceLine(boardEl) } }
+}
+
 function detectCodeBlock(target: HTMLElement): PreviewContextData | null {
   const codeEl = target.closest<HTMLElement>('pre code, pre')
   if (!codeEl) return null
@@ -113,6 +119,7 @@ const DETECTORS: Array<(target: HTMLElement) => PreviewContextData | null> = [
   detectMermaid,
   detectChart,
   detectMindmap,
+  detectExcalidraw,
   detectCodeBlock,
   detectWikiLink,
   detectLink,

@@ -5,6 +5,7 @@ coverage/
 .vite/
 *.tsbuildinfo
 worker-configuration.d.ts
+public/fonts/
 
 # Cloudflare local state and secrets
 .wrangler/

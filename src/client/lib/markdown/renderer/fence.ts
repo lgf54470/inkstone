@@ -3,6 +3,7 @@ import type Token from 'markdown-it/lib/token.mjs'
 import { escapeHtml } from '@shared/escape'
 import { t } from '../../i18n'
 import { encodeDataValue } from '../data-attr'
+import { EXCALIDRAW_LANGUAGES } from '../excalidraw'
 import { detectMindmapMode, MINDMAP_LANGUAGES, MINDMAP_THEME_ATTR, readFenceAnnotation } from '../mindmap'
 import { emptyEnvironment, renderEnv } from './env'
 import { stripObsidianComments, parseFenceInfo } from './parse'
@@ -109,6 +110,8 @@ function renderFence(md: MarkdownIt, tokens: Token[], index: number, rendererEnv
   }
   if ((MINDMAP_LANGUAGES as readonly string[]).includes(info.language))
     return renderMindmapBlock(token, line, rendererEnv)
+  if ((EXCALIDRAW_LANGUAGES as readonly string[]).includes(info.language))
+    return renderExcalidrawBlock(token, line, rendererEnv)
   const title = info.title || info.language || t('markdown.code')
   return [
     `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}"${line} data-lang="${escapeAttr(info.language)}" data-code-start="${info.startLine}"${info.lineNumbers ? ' data-line-numbers="true"' : ''}${info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : ''}>`,
@@ -156,6 +159,30 @@ function renderMindmapBlock(token: Token, line: string, rendererEnv: unknown): s
     `</span>`,
     `</div>`,
     `<div class="mindmap-block-placeholder" data-mindmap-placeholder>${escapeHtml(t('preview.mindmap_loading'))}</div>`,
+    `</div>`,
+  ].join('')
+}
+
+/**
+ * The whiteboard placeholder. The scene travels in `data-excalidraw` (the same
+ * encoded attribute a mind map uses) and the board is mounted into the placeholder
+ * after the markup is committed, so a keystroke in the editor never rebuilds it.
+ */
+function renderExcalidrawBlock(token: Token, line: string, rendererEnv: unknown): string {
+  const env = renderEnv(rendererEnv)
+  const index = env.excalidrawSequence++
+  const fitLabel = escapeAttr(t('preview.excalidraw_fit'))
+  const fullscreenLabel = escapeAttr(t('preview.excalidraw_fullscreen'))
+  return [
+    `<div class="excalidraw-block loading"${line} data-excalidraw="${escapeAttr(encodeDataValue(token.content))}" data-excalidraw-index="${index}" aria-busy="true">`,
+    `<div class="excalidraw-block-head">`,
+    `<span class="excalidraw-block-title">${escapeHtml(t('preview.excalidraw'))}</span>`,
+    `<span class="excalidraw-block-actions">`,
+    `<button type="button" class="excalidraw-block-btn" data-excalidraw-fit aria-label="${fitLabel}" title="${fitLabel}"></button>`,
+    `<button type="button" class="excalidraw-block-btn" data-excalidraw-fullscreen aria-label="${fullscreenLabel}" title="${fullscreenLabel}"></button>`,
+    `</span>`,
+    `</div>`,
+    `<div class="excalidraw-block-placeholder" data-excalidraw-placeholder>${escapeHtml(t('preview.excalidraw_loading'))}</div>`,
     `</div>`,
   ].join('')
 }

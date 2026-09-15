@@ -6,6 +6,8 @@ import { WikiLinkHoverCard } from './wiki-link-hover-card'
 import { FilePreviewModal } from './file-preview-modal'
 import { MindmapFullscreen } from './mindmap-fullscreen'
 import { MindmapThemeMenu } from './mindmap-theme-menu'
+import { ExcalidrawFullscreen } from './excalidraw-fullscreen'
+import { isExcalidrawSurface } from '../../lib/markdown/excalidraw'
 
 export type { PreviewProps } from './use-preview'
 
@@ -16,6 +18,10 @@ export const Preview = memo(function Preview(props: PreviewProps) {
     <div
       ref={b.scrollerRef}
       onContextMenu={(event) => {
+        // A board answers a right-click on its own surface with the library's canvas menu,
+        // and the full screen overlay is that surface too — it is portaled into this
+        // subtree, so without this the note's menu opens over the one already there.
+        if (isExcalidrawSurface(event.target as HTMLElement)) return
         event.preventDefault()
         onContextMenu?.(event, event.target as HTMLElement)
       }}
@@ -63,6 +69,9 @@ function PreviewOverlays({ b }: { b: ReturnType<typeof usePreview> }) {
       )}
       {b.mindmapThemeMenu && (
         <MindmapThemeMenu state={b.mindmapThemeMenu} onClose={b.closeMindmapThemeMenu} />
+      )}
+      {b.excalidrawFullscreen && (
+        <ExcalidrawFullscreen session={b.excalidrawFullscreen.session} onClose={b.closeExcalidrawFullscreen} />
       )}
       {b.previewFile && (
         <FilePreviewModal

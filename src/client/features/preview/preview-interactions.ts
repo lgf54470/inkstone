@@ -4,6 +4,7 @@ import { decodeDataValue } from '../../lib/markdown/data-attr'
 import { parseWikiTarget } from '../../lib/markdown/renderer'
 import { resetMermaidNode, toggleCodeBlockCollapse } from '../../lib/markdown/enhance'
 import { MINDMAP_NATIVE_FULLSCREEN_SELECTOR, MINDMAP_NODE_LINK_ATTR, fitMindmapBlock, retryMindmap } from '../../lib/markdown/mindmap'
+import { fitExcalidrawBlock, retryExcalidraw } from '../../lib/markdown/excalidraw'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { updateTaskAtSourceLine } from '../../editor/commands'
 import { useUi } from '../../store/ui'
@@ -43,6 +44,7 @@ interface PreviewClickParams {
   startMermaidRender: () => void
   openMindmapFullscreen: (node: HTMLElement) => void
   openMindmapThemeMenu: (node: HTMLElement) => void
+  openExcalidrawFullscreen: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -59,6 +61,7 @@ interface PreviewClickContext {
   startMermaidRender: () => void
   openMindmapFullscreen: (node: HTMLElement) => void
   openMindmapThemeMenu: (node: HTMLElement) => void
+  openExcalidrawFullscreen: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -77,12 +80,14 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
     startMermaidRender: params.startMermaidRender,
     openMindmapFullscreen: params.openMindmapFullscreen,
     openMindmapThemeMenu: params.openMindmapThemeMenu,
+    openExcalidrawFullscreen: params.openExcalidrawFullscreen,
     api: params.api,
   }
   return async (event: ReactMouseEvent) => {
     const target = event.target as HTMLElement
     ctx.hideHover()
     if (await handleMindmap(target, ctx)) return
+    if (await handleExcalidraw(target, ctx)) return
     if (await handleFileActionBtn(event, target, ctx)) return
     if (await handleTableActionBtn(event, target, ctx)) return
     if (await handleJsSwitchBtn(event, target)) return
@@ -136,6 +141,29 @@ async function handleMindmap(target: HTMLElement, ctx: PreviewClickContext): Pro
   // Everything else inside the canvas belongs to the library: a node's link would
   // otherwise be read as a preview anchor and swallowed.
   return Boolean(target.closest('[data-mindmap-canvas]'))
+}
+
+/**
+ * A whiteboard owns everything inside its canvas: clicks on a shape, on its toolbar and
+ * on its own dialogs are the library's, and must not be read as preview anchors or code
+ * block controls. Only the block's header buttons are ours.
+ */
+async function handleExcalidraw(target: HTMLElement, ctx: PreviewClickContext): Promise<boolean> {
+  const block = target.closest<HTMLElement>('[data-excalidraw]')
+  if (!block) return false
+  if (target.closest('[data-excalidraw-fit]')) {
+    fitExcalidrawBlock(block)
+    return true
+  }
+  if (target.closest('[data-excalidraw-fullscreen]')) {
+    ctx.openExcalidrawFullscreen(block)
+    return true
+  }
+  if (target.closest('[data-excalidraw-retry]')) {
+    await retryExcalidraw(block)
+    return true
+  }
+  return Boolean(target.closest('[data-excalidraw-canvas]'))
 }
 
 function handleTableCellSelectionIfPresent(target: HTMLElement, ctx: PreviewClickContext): void {

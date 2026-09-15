@@ -53,6 +53,7 @@ export const messages = {
 'workspace.mermaid_diagram': 'Mermaid diagram',
 'workspace.chartjs_diagram': 'Chart.js chart',
 'workspace.mind_map': 'Mind map',
+'workspace.whiteboard': 'Excalidraw whiteboard',
 'workspace.mindmap_from_outline': 'Generate mind map from outline',
 'workspace.mindmap_from_outline_empty': 'There are no headings or lists here to turn into a mind map',
 'workspace.more_blocks': 'More blocks',

@@ -32,6 +32,8 @@ interface RenderEnvironment {
   exampleSequence: number
   /** Document-scoped block number; the mind map registry identifies blocks by it. */
   mindmapSequence: number
+  /** Document-scoped block number; the whiteboard registry identifies blocks by it. */
+  excalidrawSequence: number
   docId: string
   /** `true` when the caller opted into loading external https images (preview.externalImages). */
   externalImages: boolean

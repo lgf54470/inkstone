@@ -42,6 +42,7 @@ export function useSlideHtml(options: {
         math: preview.math,
         mermaid: preview.mermaid,
         mindmap: 'snapshot',
+        excalidraw: 'snapshot',
         dark,
         codeBlockCollapseLines: 0,
         // A mind map is drawn for a box, not for wherever the block happens to sit:

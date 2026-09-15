@@ -388,7 +388,85 @@ export const MINDMAP_TEMPLATES: DiagramTemplate[] = [
   },
 ]
 
-export function insertDiagramCode(lang: 'mermaid' | 'chart' | 'mindmap', code: string): StateCommand {
+/**
+ * Whiteboard starter scenes. The body is the standard `.excalidraw` scene, so the shape
+ * of an element here is the library's own (see lib/markdown/excalidraw/body.ts); a blank
+ * board is a scene with no elements, which the reader turns into an empty canvas.
+ */
+export const EXCALIDRAW_TEMPLATES: DiagramTemplate[] = [
+  {
+    id: 'starter',
+    labelKey: 'contextmenu.excalidraw_starter',
+    code: `{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "inkstone",
+  "elements": [
+    {
+      "id": "ink-note-1",
+      "type": "rectangle",
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "height": 120,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": { "type": 3 },
+      "seed": 1,
+      "versionNonce": 1,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "ink-note-2",
+      "type": "rectangle",
+      "x": 280,
+      "y": 0,
+      "width": 200,
+      "height": 120,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": { "type": 3 },
+      "seed": 2,
+      "versionNonce": 2,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1,
+      "link": null,
+      "locked": false
+    }
+  ],
+  "appState": { "viewBackgroundColor": "#ffffff" },
+  "files": {}
+}`,
+  },
+  {
+    id: 'blank',
+    labelKey: 'contextmenu.excalidraw_blank',
+    code: '',
+  },
+]
+
+export function insertDiagramCode(lang: 'mermaid' | 'chart' | 'mindmap' | 'excalidraw', code: string): StateCommand {
   return ({ state, dispatch }) => {
     const range = state.selection.main
     const insert = `\`\`\`${lang}\n${code}\n\`\`\`\n`

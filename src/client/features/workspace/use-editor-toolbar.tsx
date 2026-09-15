@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { EditorView } from '@codemirror/view'
-import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, generateMindmapFromOutline, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, insertWikiLink, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline } from '../../editor/commands'
+import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, EXCALIDRAW_TEMPLATES, generateMindmapFromOutline, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, insertWikiLink, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline } from '../../editor/commands'
 import type { DiagramTemplate } from '../../editor/diagram-templates'
 import type { MessageKey } from '../../lib/i18n'
 import type { MenuItem } from '../../components/overlay'
@@ -10,6 +10,7 @@ import { SubmenuList } from '../../components/overlay'
 const MERMAID_MENU_WIDTH = 190
 const CHART_MENU_WIDTH = 180
 const MINDMAP_MENU_WIDTH = 180
+const EXCALIDRAW_MENU_WIDTH = 180
 const TASK_MENU_WIDTH = 180
 
 type MenuName = 'heading' | 'inline' | 'note' | 'block' | 'emoji'
@@ -55,12 +56,13 @@ function noteMenuItems(run: Run): MenuItem[] {
   ]
 }
 
-type DiagramKind = 'mermaid' | 'chart' | 'mindmap'
+type DiagramKind = 'mermaid' | 'chart' | 'mindmap' | 'excalidraw'
 
 const DIAGRAM_MENUS: Record<DiagramKind, { labelKey: MessageKey; templates: DiagramTemplate[]; width: number }> = {
   mermaid: { labelKey: 'workspace.mermaid_diagram', templates: MERMAID_TEMPLATES, width: MERMAID_MENU_WIDTH },
   chart: { labelKey: 'workspace.chartjs_diagram', templates: CHARTJS_TEMPLATES, width: CHART_MENU_WIDTH },
   mindmap: { labelKey: 'workspace.mind_map', templates: MINDMAP_TEMPLATES, width: MINDMAP_MENU_WIDTH },
+  excalidraw: { labelKey: 'workspace.whiteboard', templates: EXCALIDRAW_TEMPLATES, width: EXCALIDRAW_MENU_WIDTH },
 }
 
 function diagramMenuItems(run: Run, kind: DiagramKind): MenuItem[] {
@@ -110,6 +112,7 @@ function blockMenuItems(run: Run): MenuItem[] {
     ...diagramMenuItems(run, 'mermaid'),
     ...diagramMenuItems(run, 'chart'),
     ...diagramMenuItems(run, 'mindmap'),
+    ...diagramMenuItems(run, 'excalidraw'),
     { id: 'mindmap-from-outline', label: t('workspace.mindmap_from_outline'), onSelect: run(generateMindmapFromOutline) },
     { id: 'advanced-code', label: t('workspace.enhanced_code_block'), onSelect: run(insertAdvancedCodeBlock) },
     { id: 'js-example', label: t('workspace.runnable_js_block'), onSelect: run(insertRunnableJsBlock) },

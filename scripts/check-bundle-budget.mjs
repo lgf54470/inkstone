@@ -15,6 +15,16 @@ const BUDGETS = {
   'mcp-settings': 60_000,
 }
 
+/**
+ * A lazy library whose chunks are named by its own build — and one of which is shared
+ * with other node modules — cannot be watched by prefix, so it is watched by content:
+ * every chunk carrying the needle counts towards one budget. The shared chunk makes the
+ * total an upper bound, one that only falls when the library does.
+ */
+const CONTENT_BUDGETS = [
+  { name: '@excalidraw/excalidraw', needle: 'Excalifont', budget: 1_500_000 },
+]
+
 const failures = []
 const report = []
 
@@ -38,6 +48,20 @@ for (const [prefix, budget] of Object.entries(BUDGETS)) {
     if (bytes > budget) {
       failures.push(`${prefix}: ${file} is ${kib} KiB, exceeding the ${(budget / 1024).toFixed(1)} KiB budget`)
     }
+  }
+}
+
+for (const { name, needle, budget } of CONTENT_BUDGETS) {
+  const matches = files.filter((file) => fs.readFileSync(path.join(ASSETS_DIR, file)).includes(needle))
+  if (matches.length === 0) {
+    failures.push(`${name}: no chunk carries "${needle}" (the library may have been dropped)`)
+    continue
+  }
+  const bytes = matches.reduce((sum, file) => sum + fs.statSync(path.join(ASSETS_DIR, file)).size, 0)
+  const kib = (bytes / 1024).toFixed(1)
+  report.push(`${name}: ${kib} KiB across ${matches.length} chunks (budget ${(budget / 1024).toFixed(1)} KiB)`)
+  if (bytes > budget) {
+    failures.push(`${name}: ${kib} KiB across ${matches.length} chunks, exceeding the ${(budget / 1024).toFixed(1)} KiB budget`)
   }
 }
 

@@ -10,6 +10,7 @@ import { showMermaidSource } from './mermaid'
 import { renderChartJs } from './chart'
 import { getLocale } from '../../i18n'
 import { renderStaticMindmaps, showMindmapSourceAll, type MindmapBox } from '../mindmap'
+import { renderStaticExcalidraws, showExcalidrawSourceAll } from '../excalidraw'
 
 interface EnhanceOptions {
   math: boolean
@@ -24,6 +25,12 @@ interface EnhanceOptions {
    * should look like.
    */
   mindmap?: 'live' | 'snapshot'
+  /**
+   * How this surface treats ```excalidraw blocks, with the same three answers a mind
+   * map gets: `live` where the caller mounts the boards itself, `snapshot` where the
+   * markup gets serialized or printed, and omitted where the block shows its scene.
+   */
+  excalidraw?: 'live' | 'snapshot'
   /**
    * The box a `snapshot` mind map is drawn and fitted for. Surfaces that size
    * their blocks themselves (a note, a share page) leave it out; a slide passes
@@ -52,6 +59,8 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
   }
   if (!options.mindmap)
     showMindmapSourceAll(root)
+  if (!options.excalidraw)
+    showExcalidrawSourceAll(root)
   if (!options.math)
     showMathSource(root)
   await Promise.allSettled([
@@ -59,6 +68,7 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
     options.math ? renderMath(root) : Promise.resolve(),
     root.isConnected ? renderChartJs(root, options.dark) : Promise.resolve(),
     options.mindmap === 'snapshot' ? renderStaticMindmaps(root, { dark: options.dark, locale: getLocale(), box: options.mindmapBox }) : Promise.resolve(),
+    options.excalidraw === 'snapshot' ? renderStaticExcalidraws(root, { dark: options.dark }) : Promise.resolve(),
   ])
   configureCodeBlockCollapsing(root, options.codeBlockCollapseLines ?? 24)
 }

@@ -21,6 +21,7 @@ import { usePinnedWindows } from '../../store/pinned-windows'
 import { withPinnedWindowSize } from '../../lib/pinned-window-size'
 import { enhanceTablesInRoot, startTableCellEditing } from './table-interactive'
 import { useMindmapBlocks } from './use-mindmap-blocks'
+import { useExcalidrawBlocks } from './use-excalidraw-blocks'
 
 const PREVIEW_DEBOUNCE_MS = 90
 const MERMAID_RENDER_DELAY_MS = 60
@@ -59,6 +60,8 @@ async function prepareStagedHtml(opts: {
     mermaid: preview.mermaid,
     // Mind maps are mounted live, from the committed markup, by useMindmapBlocks.
     mindmap: 'live',
+    // Whiteboards are mounted live, from the committed markup, by useExcalidrawBlocks.
+    excalidraw: 'live',
     // The preview is where the lightbox lives, so this is the surface whose images are controls.
     zoomableImages: true,
     dark: theme === 'dark',
@@ -356,9 +359,10 @@ function usePreviewInteractions(opts: {
   setPreviewFile: Dispatch<SetStateAction<{ url: string; filename: string } | null>>
   openMindmapFullscreen: (node: HTMLElement) => void
   openMindmapThemeMenu: (node: HTMLElement) => void
+  openExcalidrawFullscreen: (node: HTMLElement) => void
   api: PreviewSource['api']
 }) {
-  const { content, sourceNoteId, hostRef, scrollerRef, committedSourceRef, startMermaidRender, hideHover, setPreviewFile, openMindmapFullscreen, openMindmapThemeMenu, api } = opts
+  const { content, sourceNoteId, hostRef, scrollerRef, committedSourceRef, startMermaidRender, hideHover, setPreviewFile, openMindmapFullscreen, openMindmapThemeMenu, openExcalidrawFullscreen, api } = opts
   const copyResetTimersRef = useRef(new Map<HTMLElement, number>())
   const wikiNavigationRef = useRef(0)
   const wikiScrollCleanupRef = useRef<() => void>(() => {})
@@ -383,6 +387,7 @@ function usePreviewInteractions(opts: {
     startMermaidRender,
     openMindmapFullscreen,
     openMindmapThemeMenu,
+    openExcalidrawFullscreen,
     api: { ...api, setPreviewFile },
   })
 }
@@ -442,11 +447,13 @@ export function usePreview(props: PreviewProps) {
   const startMermaidRender = usePreviewPostRender({ committedHtml: html.committedHtml, theme, hostRef: src.hostRef, scrollerRef: src.scrollerRef, onRendered: src.onRendered, pendingViewportRef: html.pendingViewportRef, mermaidEpoch: html.mermaidEpoch, preview: src.preview })
   const hover = usePreviewLinkHover({ sourceNoteId: src.sourceNoteId, preview: src.preview, committedHtml: html.committedHtml })
   // One scope per preview instance: two panes showing the same note must not
-  // claim each other's map instances.
-  const mindmapScope = useId()
-  const mindmap = useMindmapBlocks({ scope: `preview${mindmapScope}`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
+  // claim each other's map or board instances.
+  const instanceScope = useId()
+  const mindmap = useMindmapBlocks({ scope: `preview${instanceScope}`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
+  // Whiteboards are mounted live, from the committed markup, by useExcalidrawBlocks.
+  const excalidraw = useExcalidrawBlocks({ scope: `preview${instanceScope}-excalidraw`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
   const [previewFile, setPreviewFile] = useState<{ url: string; filename: string } | null>(null)
-  const onClick = usePreviewInteractions({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, scrollerRef: src.scrollerRef, committedSourceRef: html.committedSourceRef, startMermaidRender, hideHover: hover.linkHover.hideNow, setPreviewFile, openMindmapFullscreen: mindmap.openFullscreen, openMindmapThemeMenu: mindmap.openThemeMenu, api: src.api })
+  const onClick = usePreviewInteractions({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, scrollerRef: src.scrollerRef, committedSourceRef: html.committedSourceRef, startMermaidRender, hideHover: hover.linkHover.hideNow, setPreviewFile, openMindmapFullscreen: mindmap.openFullscreen, openMindmapThemeMenu: mindmap.openThemeMenu, openExcalidrawFullscreen: excalidraw.openFullscreen, api: src.api })
   const keyboard = usePreviewKeyboard({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, editContent: src.editContent, hideHover: hover.linkHover.hideNow })
 
   return {
@@ -458,6 +465,7 @@ export function usePreview(props: PreviewProps) {
     onMouseLeave: hover.onMouseLeave, onFocus: hover.onFocus, onBlur: hover.onBlur,
     mindmapFullscreen: mindmap.fullscreen, closeMindmapFullscreen: mindmap.closeFullscreen,
     mindmapThemeMenu: mindmap.themeMenu, closeMindmapThemeMenu: mindmap.closeThemeMenu,
+    excalidrawFullscreen: excalidraw.fullscreen, closeExcalidrawFullscreen: excalidraw.closeFullscreen,
     onClick,
     ...keyboard,
   }

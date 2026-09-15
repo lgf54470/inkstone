@@ -154,6 +154,7 @@ async function prepareDeckSheet(root: HTMLElement, dark: boolean, metrics: Stage
       math: true,
       mermaid: true,
       mindmap: 'snapshot',
+      excalidraw: 'snapshot',
       dark,
       codeBlockCollapseLines: 0,
       // The printed page is the design canvas, so a mind map on it is drawn for

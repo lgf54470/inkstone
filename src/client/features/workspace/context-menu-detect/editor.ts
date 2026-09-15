@@ -153,47 +153,25 @@ function findMatchAt(regex: RegExp, lineText: string, offset: number): RegExpExe
   return null
 }
 
+type LiveFenceKind = 'mermaid' | 'mindmap' | 'excalidraw' | 'chart'
+
+/** The fences whose own menu replaces the code block's, by every name the language goes by. */
+const LIVE_FENCE_KINDS: Record<string, LiveFenceKind> = {
+  mermaid: 'mermaid',
+  mindmap: 'mindmap',
+  'mind-elixir': 'mindmap',
+  excalidraw: 'excalidraw',
+  chart: 'chart',
+  chartjs: 'chart',
+}
+
 function codeFenceContext(
   pos: number,
   lineNumber: number,
   codeFence: { language: string; code: string; from: number; to: number },
 ): EditorContextData {
-  if (codeFence.language.toLowerCase() === 'mermaid') {
-    return {
-      type: 'mermaid',
-      pos,
-      lineNumber,
-      mermaid: {
-        code: codeFence.code,
-        from: codeFence.from,
-        to: codeFence.to,
-      },
-    }
-  }
-  if (codeFence.language.toLowerCase() === 'mindmap' || codeFence.language.toLowerCase() === 'mind-elixir') {
-    return {
-      type: 'mindmap',
-      pos,
-      lineNumber,
-      mindmap: {
-        code: codeFence.code,
-        from: codeFence.from,
-        to: codeFence.to,
-      },
-    }
-  }
-  if (codeFence.language.toLowerCase() === 'chart' || codeFence.language.toLowerCase() === 'chartjs') {
-    return {
-      type: 'chart',
-      pos,
-      lineNumber,
-      chart: {
-        code: codeFence.code,
-        from: codeFence.from,
-        to: codeFence.to,
-      },
-    }
-  }
+  const live = liveFenceContext(pos, lineNumber, codeFence)
+  if (live) return live
   return {
     type: 'codeblock',
     pos,
@@ -205,6 +183,21 @@ function codeFenceContext(
       to: codeFence.to,
     },
   }
+}
+
+/** The context a diagram fence carries: its source and the range a template would replace. */
+function liveFenceContext(
+  pos: number,
+  lineNumber: number,
+  codeFence: { language: string; code: string; from: number; to: number },
+): EditorContextData | null {
+  const kind = LIVE_FENCE_KINDS[codeFence.language.toLowerCase()]
+  const source = { code: codeFence.code, from: codeFence.from, to: codeFence.to }
+  if (kind === 'mermaid') return { type: 'mermaid', pos, lineNumber, mermaid: source }
+  if (kind === 'mindmap') return { type: 'mindmap', pos, lineNumber, mindmap: source }
+  if (kind === 'excalidraw') return { type: 'excalidraw', pos, lineNumber, excalidraw: source }
+  if (kind === 'chart') return { type: 'chart', pos, lineNumber, chart: source }
+  return null
 }
 
 function mathBlockContext(

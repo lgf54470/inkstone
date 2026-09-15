@@ -16,7 +16,7 @@ import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
 import { formatCode } from '../../../lib/markdown/code-formatter'
-import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, MINDMAP_TEMPLATES } from '../../../editor/commands'
+import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, EXCALIDRAW_TEMPLATES } from '../../../editor/commands'
 import type { EditorContextData, PreviewContextData } from '../context-menu-detect'
 import type { MenuCtx } from './types'
 import { submenuFor } from '../../../components/overlay'
@@ -231,6 +231,36 @@ export function buildMindmapItems(ctx: MenuCtx): MenuItem[] | null {
       ...(previewContext
         ? [
             { id: 'jump-mindmap', label: t('contextmenu.mermaid_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
+          ]
+        : []),
+    ]
+  }
+  return null
+}
+
+/**
+ * A whiteboard block's menu is the one every other block gets: the note owns the
+ * right-click, so the source is what can be copied here and a template is what can be
+ * swapped in while the fence is being edited — the library's own canvas menu belongs to
+ * the full screen view, where the board is the surface being worked on.
+ */
+export function buildExcalidrawItems(ctx: MenuCtx): MenuItem[] | null {
+  const { editorView, editorContext, previewContext, onJumpToLine, handleCopy } = ctx
+
+  const boardData = editorContext?.excalidraw ?? previewContext?.excalidraw
+  if (editorContext?.type === 'excalidraw' || previewContext?.type === 'excalidraw') {
+    const code = boardData?.code ?? ''
+    const templates = EXCALIDRAW_TEMPLATES.map((tpl) => ({ id: tpl.id, label: t(tpl.labelKey), text: tpl.code }))
+    return [
+      { id: 'copy-excalidraw', label: t('contextmenu.excalidraw_copy'), icon: <Copy size={14} />, onSelect: () => handleCopy(code) },
+      ...(editorContext?.excalidraw
+        ? [
+            { id: 'excalidraw-templates-sub', label: t('contextmenu.excalidraw_templates'), icon: <Sparkles size={14} />, separatorBefore: true, submenu: submenuFor(buildTemplateItems(editorView, editorContext.excalidraw.from, editorContext.excalidraw.to, 'excalidraw', templates), 190) },
+          ]
+        : []),
+      ...(previewContext
+        ? [
+            { id: 'jump-excalidraw', label: t('contextmenu.excalidraw_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
           ]
         : []),
     ]

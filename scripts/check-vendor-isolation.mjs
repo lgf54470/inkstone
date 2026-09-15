@@ -6,6 +6,7 @@ const HEAVY_VENDORS = [
   { name: '@dicebear/*', needles: ['micah'] },
   { name: 'client-zip', needles: ['predictLength', 'makeZip'] },
   { name: 'mind-elixir', needles: ['mind-elixir-toolbar', 'me-tpc'] },
+  { name: '@excalidraw/excalidraw', needles: ['Excalifont'] },
 ]
 
 const STATIC_IMPORT_RE = /import"\.\/([A-Za-z0-9_.-]+\.js)"/g

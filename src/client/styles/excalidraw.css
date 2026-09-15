@@ -1,0 +1,167 @@
+.ink-prose .excalidraw-block {
+  margin: 1em 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-inset);
+  overflow: hidden;
+}
+.ink-prose .excalidraw-block-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-raised);
+}
+.ink-prose .excalidraw-block-title {
+  font-size: var(--text-12);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.ink-prose .excalidraw-block-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-0\.5);
+  margin-inline-start: auto;
+}
+.ink-prose .excalidraw-block-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sp-6);
+  height: var(--sp-6);
+  border: 0;
+  border-radius: var(--r-sm);
+  color: var(--text-tertiary);
+  background: none;
+  cursor: pointer;
+}
+.ink-prose .excalidraw-block-btn:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+.ink-prose .excalidraw-block-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-ring);
+}
+.ink-prose .excalidraw-block-btn svg {
+  width: var(--sp-3\.5);
+  height: var(--sp-3\.5);
+}
+.ink-prose .excalidraw-block-placeholder {
+  position: relative;
+  min-height: var(--sp-16);
+}
+.ink-prose .excalidraw-block.loading .excalidraw-block-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: var(--text-12);
+}
+.ink-prose .excalidraw-block.excalidraw-source pre,
+.ink-prose .excalidraw-error pre {
+  margin: 0;
+  padding: var(--sp-3);
+  overflow-x: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
+  white-space: pre;
+}
+.ink-prose .excalidraw-error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  color: var(--danger);
+  font-size: var(--text-12);
+}
+.ink-prose .excalidraw-error-message {
+  flex: 1 1 100%;
+  overflow-wrap: anywhere;
+}
+.ink-prose .excalidraw-error pre {
+  flex: 1 1 100%;
+  padding: 0;
+  background: none;
+}
+.ink-prose .excalidraw-retry {
+  align-self: start;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  padding: var(--sp-0\.75) var(--sp-2\.25);
+  color: var(--text-primary);
+  background: var(--bg-overlay);
+  cursor: pointer;
+}
+.ink-prose .excalidraw-retry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ink-prose .excalidraw-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  padding: var(--sp-2);
+}
+.ink-prose .excalidraw-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--sp-16);
+  color: var(--text-tertiary);
+  font-size: var(--text-12);
+}
+.excalidraw-canvas {
+  position: relative;
+  width: 100%;
+  height: 360px;
+  outline: none;
+}
+.excalidraw-canvas > .excalidraw {
+  width: 100%;
+  height: 100%;
+}
+.excalidraw-canvas:focus-within {
+  box-shadow: inset var(--shadow-ring);
+}
+.excalidraw-fullscreen {
+  background: var(--bg-base);
+}
+.app-viewport-fixed:has(> .excalidraw-fullscreen),
+.excalidraw-fullscreen {
+  min-height: 100dvh;
+}
+.excalidraw-fullscreen.anim-pop {
+  animation: ink-fade-in var(--dur-base) var(--ease-out) both;
+}
+.excalidraw-fullscreen-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2\.5) var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+.excalidraw-fullscreen-head > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.excalidraw-fullscreen-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.excalidraw-fullscreen-stage {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.excalidraw-canvas.is-fullscreen {
+  height: 100%;
+}

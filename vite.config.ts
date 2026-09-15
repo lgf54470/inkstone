@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin, UserConfigFnPromise } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -48,6 +50,37 @@ const katexWoff2Only = (): Plugin => ({
   },
 })
 
+const EXCALIDRAW_FONT_SOURCE = 'node_modules/@excalidraw/excalidraw/dist/prod/fonts'
+const EXCALIDRAW_FONT_DESTINATION = 'public/fonts'
+const EXCALIDRAW_FONT_MARKER = `${EXCALIDRAW_FONT_DESTINATION}/.materialized`
+
+/**
+ * The whiteboard library resolves the fonts it draws with at runtime, from paths
+ * relative to the app root (`/fonts/<family>/<file>`), and falls back to its own CDN
+ * when they are missing — which a self-hosted instance's CSP blocks, leaving the board
+ * drawn with system fonts instead of the hand-drawn ones. The package's font files are
+ * therefore materialized into public/ (generated output, gitignored) before dev and
+ * build; the copy is skipped while it is current, and refreshed when the package moves.
+ */
+const excalidrawFonts = (): Plugin => {
+  const materialize = () => {
+    const source = r(`./${EXCALIDRAW_FONT_SOURCE}`)
+    const destination = r(`./${EXCALIDRAW_FONT_DESTINATION}`)
+    if (!fs.existsSync(source)) return
+    const stamp = `${JSON.parse(fs.readFileSync(r('./node_modules/@excalidraw/excalidraw/package.json'), 'utf8')).version}`
+    const marker = r(`./${EXCALIDRAW_FONT_MARKER}`)
+    if (fs.existsSync(marker) && fs.readFileSync(marker, 'utf8') === stamp) return
+    fs.rmSync(destination, { recursive: true, force: true })
+    fs.cpSync(source, destination, { recursive: true })
+    fs.writeFileSync(marker, stamp)
+  }
+  return {
+    name: 'inkstone:excalidraw-fonts',
+    buildStart: materialize,
+    configureServer: materialize,
+  }
+}
+
 const getVendorChunkName = (id: string) => {
   if (!id.includes('node_modules') || preservesOnDemandBoundary(id)) return null
 
@@ -67,6 +100,7 @@ const config: UserConfigFnPromise = async ({ mode, command }) => ({
   plugins: [
     react(),
     katexWoff2Only(),
+    excalidrawFonts(),
     tailwindcss(),
     inkstonePwa(),
     ...(mode === 'demo'
