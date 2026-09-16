@@ -2495,6 +2495,12 @@ const allowed = new Map([
     '/** Rewrites the whole block as plain text: the fence, its body and its closing line all go. */',
     '/** Inserts text on its own lines right after the block, leaving the fence alone. */',
   ]],
+  ['src/client/lib/markdown/kanban/body.ts', [
+    '/**\n * DOM-free helpers behind the ```kanban fence: format detection, JSON/Outline parsing\n * and fence surgery that two-way editing needs.\n */',
+  ]],
+  ['src/client/lib/markdown/kanban/types.ts', [
+    '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
+  ]],
   ['src/client/lib/markdown/mindmap/body.ts', [
     '/**\n * DOM-free helpers behind the ```mindmap fence: format detection, EOL handling\n * and the fence surgery that two-way editing needs (the map\'s own writes, and the\n * header\'s palette control). The vendor-backed parse/serialize pair lives in ./vendor,\n * so this file (and its tests) can be imported without pulling mind-elixir into the\n * caller\'s chunk.\n *\n * The surgery itself is not mind map specific — any block that rewrites its own\n * fence needs the same locate-and-replace — so it lives in ../fence-edit and this\n * module only adds what a mind map fence carries on top: its languages, its two\n * body formats, and the palette annotation on its info line.\n */',
     '/** Fence languages that render as a mind map block. */',
@@ -2878,6 +2884,7 @@ const allowed = new Map([
   ['src/client/lib/markdown/renderer/types.ts', [
     '/** Document-scoped block number; the mind map registry identifies blocks by it. */',
     '/** Document-scoped block number; the whiteboard registry identifies blocks by it. */',
+    '/** Document-scoped block number; the kanban registry identifies blocks by it. */',
     '/** `true` when the caller opted into loading external https images (preview.externalImages). */',
   ]],
   ['src/client/lib/markdown/sanitize.ts', [

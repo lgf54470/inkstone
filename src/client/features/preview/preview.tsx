@@ -9,6 +9,7 @@ import { MindmapThemeMenu } from './mindmap-theme-menu'
 import { ExcalidrawFullscreen } from './excalidraw-fullscreen'
 import { ExcalidrawLibraryMenu } from './excalidraw-library-menu'
 import { isExcalidrawSurface } from '../../lib/markdown/excalidraw'
+import { KanbanFullscreen } from '../../lib/markdown/kanban'
 
 export type { PreviewProps } from './use-preview'
 
@@ -76,6 +77,9 @@ function PreviewOverlays({ b }: { b: ReturnType<typeof usePreview> }) {
       )}
       {b.excalidrawLibraryMenu && (
         <ExcalidrawLibraryMenu node={b.excalidrawLibraryMenu.node} onClose={b.closeExcalidrawLibraryMenu} />
+      )}
+      {b.kanbanFullscreen && (
+        <KanbanFullscreen session={b.kanbanFullscreen.session} onClose={b.closeKanbanFullscreen} />
       )}
       {b.previewFile && (
         <FilePreviewModal

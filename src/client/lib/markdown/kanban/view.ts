@@ -1,0 +1,112 @@
+import { t } from '../../i18n'
+import { decodeDataValue } from '../data-attr'
+import type { KanbanFenceRef } from './types'
+
+export const KANBAN_BLOCK_SELECTOR = '[data-kanban]'
+export const KANBAN_PLACEHOLDER_SELECTOR = '[data-kanban-placeholder]'
+export const KANBAN_CANVAS_CLASS = 'kanban-canvas'
+export const KANBAN_CANVAS_SELECTOR = '[data-kanban-canvas]'
+export const KANBAN_FULLSCREEN_CLASS = 'kanban-fullscreen'
+
+const CONTROL_ICONS: Record<string, string[]> = {
+  'data-kanban-fullscreen': ['M15 3h6v6', 'm21 3-7 7', 'm3 21 7-7', 'M9 21H3v-6'],
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
+function iconSvg(paths: string[]): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('fill', 'none')
+  svg.setAttribute('stroke', 'currentColor')
+  svg.setAttribute('stroke-width', '2')
+  svg.setAttribute('stroke-linecap', 'round')
+  svg.setAttribute('stroke-linejoin', 'round')
+  svg.setAttribute('aria-hidden', 'true')
+  svg.setAttribute('focusable', 'false')
+  for (const data of paths) {
+    const path = document.createElementNS(SVG_NS, 'path')
+    path.setAttribute('d', data)
+    svg.append(path)
+  }
+  return svg
+}
+
+export function decorateKanbanControls(node: HTMLElement): void {
+  for (const [attribute, paths] of Object.entries(CONTROL_ICONS)) {
+    const button = node.querySelector<HTMLElement>(`[${attribute}]`)
+    if (button && !button.querySelector('svg')) button.append(iconSvg(paths))
+  }
+}
+
+export function createKanbanCanvas(editable: boolean): HTMLElement {
+  const container = document.createElement('div')
+  container.className = KANBAN_CANVAS_CLASS
+  container.dataset.kanbanCanvas = '1'
+  container.setAttribute('role', 'region')
+  container.setAttribute('aria-label', t('preview.kanban'))
+  if (!editable) container.classList.add('is-readonly')
+  return container
+}
+
+export function kanbanBlocks(root: ParentNode): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(KANBAN_BLOCK_SELECTOR)]
+}
+
+export function kanbanBody(node: HTMLElement): string {
+  return decodeDataValue(node.dataset.kanban ?? '').replace(/\r\n/g, '\n').replace(/\n$/, '')
+}
+
+export function kanbanIndex(node: HTMLElement): number {
+  const value = Number(node.dataset.kanbanIndex)
+  return Number.isInteger(value) && value >= 0 ? value : 0
+}
+
+export function kanbanPlaceholder(node: HTMLElement): HTMLElement | null {
+  return node.querySelector<HTMLElement>(KANBAN_PLACEHOLDER_SELECTOR)
+}
+
+export function kanbanFenceRef(node: HTMLElement): KanbanFenceRef | null {
+  const raw = node.dataset.line
+  if (raw === undefined || !/^\d+$/.test(raw)) return null
+  return { line: Number(raw), body: kanbanBody(node) }
+}
+
+export function isKanbanWritableHere(node: HTMLElement): boolean {
+  return Boolean(kanbanFenceRef(node)) && !node.closest('.note-embed-body, .markdown-example-preview')
+}
+
+export function markKanbanLoading(node: HTMLElement): void {
+  node.classList.add('loading')
+  node.classList.remove('is-ready', 'has-error', 'kanban-source')
+  node.setAttribute('aria-busy', 'true')
+}
+
+export function markKanbanReady(node: HTMLElement): void {
+  node.classList.remove('loading', 'has-error', 'kanban-source')
+  node.classList.add('is-ready')
+  node.setAttribute('aria-busy', 'false')
+}
+
+export function showKanbanError(node: HTMLElement, detail: string): void {
+  node.classList.remove('loading', 'is-ready')
+  node.classList.add('has-error')
+  node.setAttribute('aria-busy', 'false')
+  const placeholder = kanbanPlaceholder(node) ?? node
+  const wrap = document.createElement('div')
+  wrap.className = 'kanban-error'
+  const message = document.createElement('span')
+  message.className = 'kanban-error-message'
+  message.textContent = `${t('preview.kanban_render_failed')}: ${detail.slice(0, 500)}`
+  const retry = document.createElement('button')
+  retry.type = 'button'
+  retry.className = 'kanban-retry'
+  retry.dataset.kanbanRetry = '1'
+  retry.textContent = t('common.retry')
+  const pre = document.createElement('pre')
+  const code = document.createElement('code')
+  code.textContent = kanbanBody(node)
+  pre.append(code)
+  wrap.append(message, retry, pre)
+  placeholder.replaceChildren(wrap)
+}

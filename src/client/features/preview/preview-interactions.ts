@@ -5,6 +5,7 @@ import { parseWikiTarget } from '../../lib/markdown/renderer'
 import { resetMermaidNode, toggleCodeBlockCollapse } from '../../lib/markdown/enhance'
 import { MINDMAP_NATIVE_FULLSCREEN_SELECTOR, MINDMAP_NODE_LINK_ATTR, fitMindmapBlock, retryMindmap } from '../../lib/markdown/mindmap'
 import { fitExcalidrawBlock, retryExcalidraw } from '../../lib/markdown/excalidraw'
+import { retryKanban } from '../../lib/markdown/kanban'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { updateTaskAtSourceLine } from '../../editor/commands'
 import { useUi } from '../../store/ui'
@@ -46,6 +47,7 @@ interface PreviewClickParams {
   openMindmapThemeMenu: (node: HTMLElement) => void
   openExcalidrawFullscreen: (node: HTMLElement) => void
   openExcalidrawLibraryMenu: (node: HTMLElement) => void
+  openKanbanFullscreen?: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -64,6 +66,7 @@ interface PreviewClickContext {
   openMindmapThemeMenu: (node: HTMLElement) => void
   openExcalidrawFullscreen: (node: HTMLElement) => void
   openExcalidrawLibraryMenu: (node: HTMLElement) => void
+  openKanbanFullscreen?: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -84,6 +87,7 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
     openMindmapThemeMenu: params.openMindmapThemeMenu,
     openExcalidrawFullscreen: params.openExcalidrawFullscreen,
     openExcalidrawLibraryMenu: params.openExcalidrawLibraryMenu,
+    openKanbanFullscreen: params.openKanbanFullscreen,
     api: params.api,
   }
   return async (event: ReactMouseEvent) => {
@@ -91,6 +95,7 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
     ctx.hideHover()
     if (await handleMindmap(target, ctx)) return
     if (await handleExcalidraw(target, ctx)) return
+    if (await handleKanban(target, ctx)) return
     if (await handleFileActionBtn(event, target, ctx)) return
     if (await handleTableActionBtn(event, target, ctx)) return
     if (await handleJsSwitchBtn(event, target)) return
@@ -171,6 +176,20 @@ async function handleExcalidraw(target: HTMLElement, ctx: PreviewClickContext): 
     return true
   }
   return Boolean(target.closest('[data-excalidraw-canvas]'))
+}
+
+async function handleKanban(target: HTMLElement, ctx: PreviewClickContext): Promise<boolean> {
+  const block = target.closest<HTMLElement>('[data-kanban]')
+  if (!block) return false
+  if (target.closest('[data-kanban-fullscreen]')) {
+    ctx.openKanbanFullscreen?.(block)
+    return true
+  }
+  if (target.closest('[data-kanban-retry]')) {
+    await retryKanban(block)
+    return true
+  }
+  return Boolean(target.closest('[data-kanban-canvas]'))
 }
 
 function handleTableCellSelectionIfPresent(target: HTMLElement, ctx: PreviewClickContext): void {

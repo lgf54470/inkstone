@@ -10,6 +10,7 @@ function emptyEnvironment(): RenderEnvironment {
     hasMermaid: false,
     hasChart: false,
     hasMindmap: false,
+    hasKanban: false,
     hasEmbeds: false,
     frontMatter: {},
     frontMatterErrors: [],
@@ -18,6 +19,7 @@ function emptyEnvironment(): RenderEnvironment {
     exampleSequence: 0,
     mindmapSequence: 0,
     excalidrawSequence: 0,
+    kanbanSequence: 0,
     docId: `ink-${nonce}`,
     externalImages: false,
   }

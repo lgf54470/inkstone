@@ -13,6 +13,7 @@ export interface RenderResult {
   hasMermaid: boolean
   hasChart: boolean
   hasMindmap: boolean
+  hasKanban: boolean
   hasEmbeds: boolean
   frontMatter: Record<string, unknown>
   frontMatterErrors: string[]
@@ -24,6 +25,7 @@ interface RenderEnvironment {
   hasMermaid: boolean
   hasChart: boolean
   hasMindmap: boolean
+  hasKanban: boolean
   hasEmbeds: boolean
   frontMatter: Record<string, unknown>
   frontMatterErrors: string[]
@@ -34,6 +36,8 @@ interface RenderEnvironment {
   mindmapSequence: number
   /** Document-scoped block number; the whiteboard registry identifies blocks by it. */
   excalidrawSequence: number
+  /** Document-scoped block number; the kanban registry identifies blocks by it. */
+  kanbanSequence: number
   docId: string
   /** `true` when the caller opted into loading external https images (preview.externalImages). */
   externalImages: boolean

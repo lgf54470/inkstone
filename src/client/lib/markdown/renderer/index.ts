@@ -90,6 +90,7 @@ export function renderMarkdown(source: string, options?: {
     hasChart: env.hasChart,
     hasMindmap: env.hasMindmap,
     hasEmbeds: env.hasEmbeds,
+    hasKanban: env.hasKanban,
     frontMatter: env.frontMatter,
     frontMatterErrors: env.frontMatterErrors,
   }

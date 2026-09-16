@@ -4,6 +4,7 @@ import { escapeHtml } from '@shared/escape'
 import { t } from '../../i18n'
 import { encodeDataValue } from '../data-attr'
 import { EXCALIDRAW_LANGUAGES } from '../excalidraw'
+import { detectKanbanMode, KANBAN_LANGUAGES } from '../kanban'
 import { detectMindmapMode, MINDMAP_LANGUAGES, MINDMAP_THEME_ATTR, readFenceAnnotation } from '../mindmap'
 import { emptyEnvironment, renderEnv } from './env'
 import { stripObsidianComments, parseFenceInfo } from './parse'
@@ -112,6 +113,8 @@ function renderFence(md: MarkdownIt, tokens: Token[], index: number, rendererEnv
     return renderMindmapBlock(token, line, rendererEnv)
   if ((EXCALIDRAW_LANGUAGES as readonly string[]).includes(info.language))
     return renderExcalidrawBlock(token, line, rendererEnv)
+  if ((KANBAN_LANGUAGES as readonly string[]).includes(info.language))
+    return renderKanbanBlock(token, line, rendererEnv)
   const title = info.title || info.language || t('markdown.code')
   return [
     `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}"${line} data-lang="${escapeAttr(info.language)}" data-code-start="${info.startLine}"${info.lineNumbers ? ' data-line-numbers="true"' : ''}${info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : ''}>`,
@@ -185,6 +188,27 @@ function renderExcalidrawBlock(token: Token, line: string, rendererEnv: unknown)
     `</span>`,
     `</div>`,
     `<div class="excalidraw-block-placeholder" data-excalidraw-placeholder>${escapeHtml(t('preview.excalidraw_loading'))}</div>`,
+    `</div>`,
+  ].join('')
+}
+
+function renderKanbanBlock(token: Token, line: string, rendererEnv: unknown): string {
+  const env = renderEnv(rendererEnv)
+  env.hasKanban = true
+  const index = env.kanbanSequence++
+  const body = token.content
+  const mode = detectKanbanMode(body)
+  const fullscreenLabel = escapeAttr(t('preview.kanban_fullscreen'))
+  return [
+    `<div class="kanban-block loading"${line} data-kanban="${escapeAttr(encodeDataValue(body))}" data-kanban-index="${index}" aria-busy="true">`,
+    `<div class="kanban-block-head">`,
+    `<span class="kanban-block-title">${escapeHtml(t('preview.kanban'))}</span>`,
+    `<span class="kanban-block-mode">${escapeHtml(mode)}</span>`,
+    `<span class="kanban-block-actions">`,
+    `<button type="button" class="kanban-block-btn" data-kanban-fullscreen aria-label="${fullscreenLabel}" title="${fullscreenLabel}"></button>`,
+    `</span>`,
+    `</div>`,
+    `<div class="kanban-block-placeholder" data-kanban-placeholder>${escapeHtml(t('preview.kanban_loading'))}</div>`,
     `</div>`,
   ].join('')
 }

@@ -1,0 +1,167 @@
+:root {
+  --kanban-tag-gray-bg: rgba(120, 119, 116, 0.16);
+  --kanban-tag-gray-fg: #5a5a57;
+  --kanban-tag-brown-bg: rgba(159, 107, 83, 0.16);
+  --kanban-tag-brown-fg: #9f6b53;
+  --kanban-tag-orange-bg: rgba(217, 115, 13, 0.16);
+  --kanban-tag-orange-fg: #d9730d;
+  --kanban-tag-yellow-bg: rgba(203, 145, 47, 0.18);
+  --kanban-tag-yellow-fg: #cb912f;
+  --kanban-tag-green-bg: rgba(68, 131, 97, 0.16);
+  --kanban-tag-green-fg: #448361;
+  --kanban-tag-blue-bg: rgba(51, 126, 169, 0.16);
+  --kanban-tag-blue-fg: #337ea9;
+  --kanban-tag-purple-bg: rgba(144, 101, 176, 0.16);
+  --kanban-tag-purple-fg: #9065b0;
+  --kanban-tag-pink-bg: rgba(193, 76, 138, 0.16);
+  --kanban-tag-pink-fg: #c14c8a;
+  --kanban-tag-red-bg: rgba(212, 76, 71, 0.16);
+  --kanban-tag-red-fg: #d44c47;
+}
+
+:root[data-theme='dark'] {
+  --kanban-tag-gray-bg: rgba(151, 154, 157, 0.22);
+  --kanban-tag-gray-fg: #979a9d;
+  --kanban-tag-brown-bg: rgba(147, 114, 100, 0.25);
+  --kanban-tag-brown-fg: #ba856f;
+  --kanban-tag-orange-bg: rgba(199, 125, 72, 0.25);
+  --kanban-tag-orange-fg: #c77d48;
+  --kanban-tag-yellow-bg: rgba(202, 152, 73, 0.25);
+  --kanban-tag-yellow-fg: #ca9849;
+  --kanban-tag-green-bg: rgba(82, 158, 114, 0.25);
+  --kanban-tag-green-fg: #529e72;
+  --kanban-tag-blue-bg: rgba(94, 135, 201, 0.25);
+  --kanban-tag-blue-fg: #5e87c9;
+  --kanban-tag-purple-bg: rgba(157, 104, 211, 0.25);
+  --kanban-tag-purple-fg: #9d68d3;
+  --kanban-tag-pink-bg: rgba(193, 76, 138, 0.25);
+  --kanban-tag-pink-fg: #e255a1;
+  --kanban-tag-red-bg: rgba(223, 84, 80, 0.25);
+  --kanban-tag-red-fg: #df5450;
+}
+
+.ink-prose .kanban-block {
+  margin: 1em 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-inset);
+  overflow: hidden;
+}
+
+.ink-prose .kanban-block-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-raised);
+}
+
+.ink-prose .kanban-block-title {
+  font-size: var(--text-12);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ink-prose .kanban-block-mode {
+  padding: var(--sp-0\.5) var(--sp-1\.5);
+  border-radius: var(--r-sm);
+  background: var(--bg-hover);
+  font-size: var(--text-10);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.ink-prose .kanban-block-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-0\.5);
+  margin-inline-start: auto;
+}
+
+.ink-prose .kanban-block-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sp-6);
+  height: var(--sp-6);
+  border: 0;
+  border-radius: var(--r-sm);
+  color: var(--text-tertiary);
+  background: none;
+  cursor: pointer;
+}
+
+.ink-prose .kanban-block-btn:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.ink-prose .kanban-block-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-ring);
+}
+
+.ink-prose .kanban-block-btn svg {
+  width: var(--sp-3\.5);
+  height: var(--sp-3\.5);
+}
+
+.ink-prose .kanban-block-placeholder {
+  position: relative;
+  min-height: var(--sp-16);
+}
+
+.ink-prose .kanban-block.loading .kanban-block-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: var(--text-12);
+}
+
+.ink-prose .kanban-canvas {
+  width: 100%;
+  height: 480px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ink-prose .kanban-error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  color: var(--danger);
+  font-size: var(--text-12);
+}
+
+.ink-prose .kanban-error-message {
+  flex: 1 1 100%;
+  overflow-wrap: anywhere;
+}
+
+.ink-prose .kanban-error pre {
+  flex: 1 1 100%;
+  padding: 0;
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--code-font-size);
+}
+
+.ink-prose .kanban-retry {
+  align-self: start;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  padding: var(--sp-0\.75) var(--sp-2\.25);
+  color: var(--text-primary);
+  background: var(--bg-overlay);
+  cursor: pointer;
+}
+
+.ink-prose .kanban-retry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
