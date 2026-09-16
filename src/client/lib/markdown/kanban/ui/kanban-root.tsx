@@ -239,6 +239,7 @@ export const KanbanRoot = memo(function KanbanRoot({
         onClose={() => state.setDetailItem(null)}
         onUpdate={state.items.handleUpdateItem}
         onDelete={state.items.handleDeleteItem}
+        onAddColumnOption={state.columnOps.handleAddColumnOption}
       />
     </div>
   )

@@ -58,7 +58,7 @@ function GanttTaskSidebar({
             className='flex h-10 cursor-pointer items-center justify-between px-3 text-[length:var(--text-13)] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           >
             <div className='flex min-w-0 items-center gap-1.5'>
-              <KanbanIconBadge icon={item.icon} size={14} />
+              <KanbanIconBadge icon={item.icon || '📝'} size={14} />
               <span className='truncate'>{item.title}</span>
             </div>
             <span className='shrink-0 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>

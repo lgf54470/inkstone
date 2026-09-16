@@ -1,13 +1,89 @@
-import { Download } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Download, ExternalLink, Loader2 } from 'lucide-react'
 import { Modal } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import type { KanbanFile } from '../types'
 
 const PREVIEW_MODAL_WIDTH = 768
 
-interface KanbanFilePreviewModalProps {
-  file: KanbanFile | null
-  onClose: () => void
+function isPdfFile(file: KanbanFile): boolean {
+  return file.mime === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+}
+
+function isTextFile(file: KanbanFile): boolean {
+  return (
+    file.mime.startsWith('text/') ||
+    file.name.toLowerCase().endsWith('.txt') ||
+    file.name.toLowerCase().endsWith('.md') ||
+    file.name.toLowerCase().endsWith('.json') ||
+    file.name.toLowerCase().endsWith('.csv')
+  )
+}
+
+function TextFilePreview({ url }: { url: string }) {
+  const [content, setContent] = useState<string>('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    fetch(url)
+      .then((res) => res.text())
+      .then((text) => {
+        if (active) {
+          setContent(text)
+          setLoading(false)
+        }
+      })
+      .catch(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [url])
+
+  if (loading) {
+    return (
+      <div className='flex h-32 items-center justify-center text-[var(--text-tertiary)]'>
+        <Loader2 size={16} className='animate-spin' />
+      </div>
+    )
+  }
+
+  return (
+    <div className='max-h-[65vh] overflow-auto p-4'>
+      <pre className='whitespace-pre-wrap break-words rounded-[var(--r-md)] bg-[var(--bg-inset)] p-3 text-[length:var(--text-12)] font-mono text-[var(--text-primary)]'>
+        {content}
+      </pre>
+    </div>
+  )
+}
+
+function PdfPreview({ file }: { file: KanbanFile }) {
+  return (
+    <div className='h-[70vh] w-full p-2'>
+      <object
+        data={file.url}
+        type='application/pdf'
+        className='h-full w-full rounded-[var(--r-md)] border border-[var(--border-subtle)]'
+      >
+        <div className='flex h-full flex-col items-center justify-center gap-3 p-8 text-center'>
+          <p className='text-[length:var(--text-13)] text-[var(--text-secondary)]'>
+            {file.name}
+          </p>
+          <a
+            href={file.url}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-white transition-opacity hover:opacity-90'
+          >
+            <ExternalLink size={13} />
+            <span>{t('preview.open_in_new_tab')}</span>
+          </a>
+        </div>
+      </object>
+    </div>
+  )
 }
 
 function PreviewContent({ file }: { file: KanbanFile }) {
@@ -19,12 +95,12 @@ function PreviewContent({ file }: { file: KanbanFile }) {
     )
   }
 
-  if (file.mime === 'application/pdf') {
-    return (
-      <div className='h-[70vh] w-full p-2'>
-        <iframe src={file.url} title={file.name} className='h-full w-full rounded-[var(--r-md)] border border-[var(--border-subtle)]' />
-      </div>
-    )
+  if (isPdfFile(file)) {
+    return <PdfPreview file={file} />
+  }
+
+  if (isTextFile(file)) {
+    return <TextFilePreview url={file.url} />
   }
 
   return (
@@ -37,6 +113,11 @@ function PreviewContent({ file }: { file: KanbanFile }) {
   )
 }
 
+interface KanbanFilePreviewModalProps {
+  file: KanbanFile | null
+  onClose: () => void
+}
+
 export function KanbanFilePreviewModal({ file, onClose }: KanbanFilePreviewModalProps) {
   if (!file) return null
 
@@ -47,14 +128,25 @@ export function KanbanFilePreviewModal({ file, onClose }: KanbanFilePreviewModal
       title={file.name}
       width={PREVIEW_MODAL_WIDTH}
       footer={
-        <a
-          href={file.url}
-          download={file.name}
-          className='flex items-center gap-2 rounded-[var(--r-md)] bg-[var(--accent)] px-4 py-2 text-[length:var(--text-13)] font-medium text-white transition-opacity hover:opacity-90'
-        >
-          <Download size={14} />
-          <span>{t('preview.kanban_download_file')}</span>
-        </a>
+        <div className='flex w-full items-center justify-between'>
+          <a
+            href={file.url}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
+          >
+            <ExternalLink size={14} />
+            <span>{t('preview.open_in_new_tab')}</span>
+          </a>
+          <a
+            href={file.url}
+            download={file.name}
+            className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-white transition-opacity hover:opacity-90'
+          >
+            <Download size={14} />
+            <span>{t('preview.kanban_download_file')}</span>
+          </a>
+        </div>
       }
     >
       <PreviewContent file={file} />

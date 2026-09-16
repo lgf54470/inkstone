@@ -217,7 +217,7 @@ function GalleryCard({
           tagsCol={tagsCol}
           onToggleSelect={() => onToggleSelect(item.id)}
         />
-        <GalleryCardTitleDesc title={item.title} icon={item.icon} desc={desc} />
+        <GalleryCardTitleDesc title={item.title} icon={item.icon || '📝'} desc={desc} />
         <KanbanCardSubtasks
           itemId={item.id}
           subtasks={item.subtasks || []}

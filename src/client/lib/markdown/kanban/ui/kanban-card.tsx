@@ -285,7 +285,7 @@ function CardBody({
       <div className='min-w-0 flex-1'>
         <CardTitle
           title={item.title}
-          icon={item.icon}
+          icon={item.icon || '📝'}
           isEditing={titleState.isEditing}
           titleText={titleState.text}
           onChangeText={titleState.setText}

@@ -12,6 +12,16 @@ interface KanbanTagPickerProps {
   onAddOption?: (newOption: KanbanOption) => void
 }
 
+function getDeterministicTagColor(name: string): KanbanColorName {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash << 5) - hash + name.charCodeAt(i)
+    hash |= 0
+  }
+  const colors: readonly KanbanColorName[] = ['blue', 'green', 'yellow', 'purple', 'pink', 'orange', 'red', 'teal']
+  return colors[Math.abs(hash) % colors.length]!
+}
+
 function TagChip({
   tag,
   options,
@@ -22,7 +32,7 @@ function TagChip({
   onRemove: (tag: string) => void
 }) {
   const opt = options?.find((o) => o.id === tag || o.label === tag)
-  const color = opt?.color ?? 'gray'
+  const color = opt?.color ?? getDeterministicTagColor(tag)
   const label = opt?.label ?? tag
 
   return (
@@ -77,7 +87,7 @@ function ExistingOptionsList({
   onSelectOption,
 }: {
   unselectedOptions: KanbanOption[]
-  onSelectOption: (id: string) => void
+  onSelectOption: (opt: KanbanOption) => void
 }) {
   if (unselectedOptions.length === 0) return null
 
@@ -87,7 +97,7 @@ function ExistingOptionsList({
         <button
           key={opt.id}
           type='button'
-          onClick={() => onSelectOption(opt.id)}
+          onClick={() => onSelectOption(opt)}
           style={getKanbanTagStyle(opt.color)}
           className='rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium transition-opacity hover:opacity-80'
         >
@@ -187,8 +197,8 @@ function TagCreatePopover({
       <div className='flex flex-col gap-2'>
         <ExistingOptionsList
           unselectedOptions={unselectedOptions}
-          onSelectOption={(id) => {
-            onAddTag(id, tagColor)
+          onSelectOption={(opt) => {
+            onAddTag(opt.label || opt.id, opt.color)
             onClose()
           }}
         />

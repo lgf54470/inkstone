@@ -12,6 +12,7 @@ import type {
   KanbanFilter,
   KanbanItem,
   KanbanOption,
+  KanbanProperty,
   KanbanSort,
   KanbanView,
 } from '../types'
@@ -98,6 +99,28 @@ function deleteColumnFromData(data: KanbanData, groupKey: string, groupByPropert
   return { ...data, columns: nextCols, items: nextItems }
 }
 
+function updateColumnInList(
+  columns: KanbanProperty[],
+  groupByPropertyId: string,
+  groupKey: string,
+  patch: { label?: string; color?: KanbanColorName },
+): KanbanProperty[] {
+  return columns.map((col) => {
+    if (col.id !== groupByPropertyId || !col.options) return col
+    const nextOptions = col.options.map((opt: KanbanOption) => (opt.id === groupKey ? { ...opt, ...patch } : opt))
+    return { ...col, options: nextOptions }
+  })
+}
+
+function appendOptionToColumn(columns: KanbanProperty[], columnId: string, option: KanbanOption): KanbanProperty[] {
+  return columns.map((col) => {
+    if (col.id !== columnId) return col
+    const existing = col.options ?? []
+    if (existing.some((o: KanbanOption) => o.id === option.id || o.label === option.label)) return col
+    return { ...col, options: [...existing, option] }
+  })
+}
+
 export function useKanbanColumnOperations(
   data: KanbanData,
   commitData: (next: KanbanData) => void,
@@ -107,20 +130,14 @@ export function useKanbanColumnOperations(
 
   const handleReorderColumns = useCallback(
     (sourceGroupKey: string, targetGroupKey: string) => {
-      const nextCols = reorderKanbanColumns(data.columns, groupByPropertyId, sourceGroupKey, targetGroupKey)
-      commitData({ ...data, columns: nextCols })
+      commitData({ ...data, columns: reorderKanbanColumns(data.columns, groupByPropertyId, sourceGroupKey, targetGroupKey) })
     },
     [data, groupByPropertyId, commitData],
   )
 
   const handleUpdateColumn = useCallback(
     (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => {
-      const nextCols = data.columns.map((col) => {
-        if (col.id !== groupByPropertyId || !col.options) return col
-        const nextOptions = col.options.map((opt) => (opt.id === groupKey ? { ...opt, ...patch } : opt))
-        return { ...col, options: nextOptions }
-      })
-      commitData({ ...data, columns: nextCols })
+      commitData({ ...data, columns: updateColumnInList(data.columns, groupByPropertyId, groupKey, patch) })
     },
     [data, groupByPropertyId, commitData],
   )
@@ -140,7 +157,14 @@ export function useKanbanColumnOperations(
     [data, activeView.id, commitData],
   )
 
-  return { handleReorderColumns, handleUpdateColumn, handleDeleteColumn, handleChangeGroupBy }
+  const handleAddColumnOption = useCallback(
+    (columnId: string, option: KanbanOption) => {
+      commitData({ ...data, columns: appendOptionToColumn(data.columns, columnId, option) })
+    },
+    [data, commitData],
+  )
+
+  return { handleReorderColumns, handleUpdateColumn, handleDeleteColumn, handleChangeGroupBy, handleAddColumnOption }
 }
 
 export function useKanbanAddOperations(
