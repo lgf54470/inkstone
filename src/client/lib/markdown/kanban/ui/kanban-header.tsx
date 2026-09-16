@@ -14,8 +14,10 @@ import {
 } from 'lucide-react'
 import type { KanbanData, KanbanFilter, KanbanSort, KanbanView, KanbanViewType } from '../types'
 import { t } from '../../../i18n'
+import { formatKanbanViewName } from '../i18n-helpers'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanSortPopover } from './kanban-sort-popover'
+import { KanbanViewOptions, type CardSize } from './kanban-view-options'
 
 interface KanbanHeaderProps {
   data: KanbanData
@@ -23,11 +25,14 @@ interface KanbanHeaderProps {
   searchQuery: string
   filters: KanbanFilter[]
   sorts: KanbanSort[]
+  cardSize?: CardSize
   isFullscreen?: boolean
   onSelectView: (viewId: string) => void
   onSearchChange: (q: string) => void
   onChangeFilters: (filters: KanbanFilter[]) => void
   onChangeSorts: (sorts: KanbanSort[]) => void
+  onChangeCardSize?: (size: CardSize) => void
+  onChangeGroupBy?: (propId: string) => void
   onAddItem: () => void
   onToggleFullscreen?: () => void
 }
@@ -80,7 +85,7 @@ function KanbanViewTabs({
             }`}
           >
             {viewIcon(v.type)}
-            <span>{v.name}</span>
+            <span>{formatKanbanViewName(v)}</span>
           </button>
         )
       })}
@@ -130,12 +135,60 @@ interface HeaderActionsProps {
   filters: KanbanFilter[]
   sorts: KanbanSort[]
   searchQuery: string
+  activeView: KanbanView
+  cardSize?: CardSize
   isFullscreen?: boolean
   onSearchChange: (q: string) => void
   onChangeFilters: (filters: KanbanFilter[]) => void
   onChangeSorts: (sorts: KanbanSort[]) => void
+  onChangeCardSize?: (size: CardSize) => void
+  onChangeGroupBy?: (propId: string) => void
   onAddItem: () => void
   onToggleFullscreen?: () => void
+}
+
+function KanbanViewOptionsAction({
+  columns,
+  groupBy,
+  cardSize,
+  onChangeGroupBy,
+  onChangeCardSize,
+}: {
+  columns: KanbanData['columns']
+  groupBy: string
+  cardSize?: CardSize
+  onChangeGroupBy?: (propId: string) => void
+  onChangeCardSize?: (size: CardSize) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  if (!onChangeGroupBy || !onChangeCardSize || !cardSize) return null
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type='button'
+        onClick={() => setIsOpen((o) => !o)}
+        className='inline-flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+        aria-label={t('preview.kanban_group_by')}
+      >
+        <SlidersHorizontal size={13} />
+        <span>{t('preview.kanban_group_by')}</span>
+      </button>
+      <KanbanViewOptions
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        anchorRef={btnRef}
+        columns={columns}
+        groupBy={groupBy}
+        cardSize={cardSize}
+        onChangeGroupBy={onChangeGroupBy}
+        onChangeCardSize={onChangeCardSize}
+      />
+    </>
+  )
 }
 
 function KanbanFilterAction({
@@ -217,10 +270,14 @@ function KanbanHeaderActions({
   filters,
   sorts,
   searchQuery,
+  activeView,
+  cardSize,
   isFullscreen,
   onSearchChange,
   onChangeFilters,
   onChangeSorts,
+  onChangeCardSize,
+  onChangeGroupBy,
   onAddItem,
   onToggleFullscreen,
 }: HeaderActionsProps) {
@@ -229,6 +286,15 @@ function KanbanHeaderActions({
       <KanbanSearchBox searchQuery={searchQuery} onSearchChange={onSearchChange} />
       <KanbanFilterAction columns={columns} filters={filters} onChangeFilters={onChangeFilters} />
       <KanbanSortAction columns={columns} sorts={sorts} onChangeSorts={onChangeSorts} />
+      {activeView.type === 'board' && (
+        <KanbanViewOptionsAction
+          columns={columns}
+          groupBy={activeView.groupBy || 'status'}
+          cardSize={cardSize}
+          onChangeGroupBy={onChangeGroupBy}
+          onChangeCardSize={onChangeCardSize}
+        />
+      )}
 
       <button
         type='button'
@@ -259,11 +325,14 @@ export const KanbanHeader = memo(function KanbanHeader({
   searchQuery,
   filters,
   sorts,
+  cardSize,
   isFullscreen,
   onSelectView,
   onSearchChange,
   onChangeFilters,
   onChangeSorts,
+  onChangeCardSize,
+  onChangeGroupBy,
   onAddItem,
   onToggleFullscreen,
 }: KanbanHeaderProps) {
@@ -288,10 +357,14 @@ export const KanbanHeader = memo(function KanbanHeader({
           filters={filters}
           sorts={sorts}
           searchQuery={searchQuery}
+          activeView={activeView}
+          cardSize={cardSize}
           isFullscreen={isFullscreen}
           onSearchChange={onSearchChange}
           onChangeFilters={onChangeFilters}
           onChangeSorts={onChangeSorts}
+          onChangeCardSize={onChangeCardSize}
+          onChangeGroupBy={onChangeGroupBy}
           onAddItem={onAddItem}
           onToggleFullscreen={onToggleFullscreen}
         />

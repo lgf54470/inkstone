@@ -2,6 +2,7 @@ import { memo, useState } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { Modal } from '../../../../components/overlay'
 import { t } from '../../../i18n'
+import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanItem, KanbanProperty, KanbanSubtask } from '../types'
 
 interface KanbanItemDetailProps {
@@ -71,7 +72,7 @@ function DetailPropertyField({
   return (
     <div className='flex flex-col gap-1'>
       <label className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
-        {column.name}
+        {formatKanbanPropertyName(column)}
       </label>
       {column.type === 'select' ? (
         <select
@@ -82,7 +83,7 @@ function DetailPropertyField({
           <option value=''>{t('preview.kanban_not_set')}</option>
           {column.options?.map((opt) => (
             <option key={opt.id} value={opt.id}>
-              {opt.label}
+              {formatKanbanOptionLabel(opt, column.id)}
             </option>
           ))}
         </select>
@@ -210,9 +211,35 @@ function DetailSubtasks({
   )
 }
 
+function DetailDescription({
+  content,
+  onChange,
+}: {
+  content?: string
+  onChange: (text: string) => void
+}) {
+  return (
+    <div className='flex flex-col gap-2'>
+      <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
+        {t('preview.kanban_card_description')}
+      </h4>
+      <textarea
+        value={content ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t('preview.kanban_card_description')}
+        rows={4}
+        className='w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none resize-y focus:border-[var(--accent)]'
+      />
+    </div>
+  )
+}
+
 function useDetailHandlers(item: KanbanItem, onUpdate: (updated: KanbanItem) => void) {
   const handlePropertyChange = (propertyId: string, value: unknown) => {
     onUpdate({ ...item, properties: { ...item.properties, [propertyId]: value } })
+  }
+  const handleContentChange = (content: string) => {
+    onUpdate({ ...item, content })
   }
   const handleAddSubtask = (title: string) => {
     const subtask: KanbanSubtask = { id: `subtask-${Date.now()}`, title, completed: false }
@@ -226,7 +253,7 @@ function useDetailHandlers(item: KanbanItem, onUpdate: (updated: KanbanItem) => 
     const next = (item.subtasks ?? []).filter((s) => s.id !== id)
     onUpdate({ ...item, subtasks: next })
   }
-  return { handlePropertyChange, handleAddSubtask, handleToggleSubtask, handleDeleteSubtask }
+  return { handlePropertyChange, handleContentChange, handleAddSubtask, handleToggleSubtask, handleDeleteSubtask }
 }
 
 export const KanbanItemDetail = memo(function KanbanItemDetail({
@@ -238,7 +265,7 @@ export const KanbanItemDetail = memo(function KanbanItemDetail({
 }: KanbanItemDetailProps) {
   if (!item) return null
 
-  const { handlePropertyChange, handleAddSubtask, handleToggleSubtask, handleDeleteSubtask } =
+  const { handlePropertyChange, handleContentChange, handleAddSubtask, handleToggleSubtask, handleDeleteSubtask } =
     useDetailHandlers(item, onUpdate)
 
   return (
@@ -260,6 +287,10 @@ export const KanbanItemDetail = memo(function KanbanItemDetail({
             />
           ))}
         </div>
+        <DetailDescription
+          content={item.content}
+          onChange={handleContentChange}
+        />
         <DetailSubtasks
           subtasks={item.subtasks ?? []}
           onAddSubtask={handleAddSubtask}

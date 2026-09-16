@@ -2,6 +2,7 @@ import { memo, useMemo, useRef } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { useClickOutside } from '../../../../components/overlay'
 import { t } from '../../../i18n'
+import { formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanFilter, KanbanFilterOperator, KanbanProperty } from '../types'
 
 interface KanbanFilterPopoverProps {
@@ -52,7 +53,7 @@ function FilterRow({ filter, index, columns, operators, onUpdate, onRemove }: Fi
       >
         {columns.map((c) => (
           <option key={c.id} value={c.id}>
-            {c.name}
+            {formatKanbanPropertyName(c)}
           </option>
         ))}
       </select>

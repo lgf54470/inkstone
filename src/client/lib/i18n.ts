@@ -116,7 +116,7 @@ export function translateServiceMessage(message: string | null | undefined): str
 export function getLocale(): AppLocale {
   return locale
 }
-export function setLocale(next: AppLocale, persist = true): void {
+export async function setLocale(next: AppLocale, persist = true): Promise<void> {
   if (next !== 'zh-CN' && next !== 'en-US')
     return
   locale = next
@@ -133,11 +133,9 @@ export function setLocale(next: AppLocale, persist = true): void {
     listeners.forEach((listener) => listener())
     return
   }
-  void (async () => {
-    await ensureLocaleLoaded(next)
-    applyLocaleToDom()
-    listeners.forEach((listener) => listener())
-  })()
+  await ensureLocaleLoaded(next)
+  applyLocaleToDom()
+  listeners.forEach((listener) => listener())
 }
 
 

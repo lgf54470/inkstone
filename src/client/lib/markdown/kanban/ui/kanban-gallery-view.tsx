@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
+import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty } from '../types'
 
 interface KanbanGalleryViewProps {
@@ -60,7 +61,7 @@ function GalleryCard({ item, statusCol, isSelected, onToggleSelect, onOpenDetail
               style={getKanbanTagStyle(statusOpt.color)}
               className='inline-flex items-center rounded-[var(--r-xs)] px-2 py-0.5 text-[length:var(--text-11)] font-medium'
             >
-              {statusOpt.label}
+              {formatKanbanOptionLabel(statusOpt, 'status')}
             </span>
           </div>
         )}

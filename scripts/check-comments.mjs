@@ -2498,6 +2498,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/body.ts', [
     '/**\n * DOM-free helpers behind the ```kanban fence: format detection, JSON/Outline parsing\n * and fence surgery that two-way editing needs.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/dnd.ts', [
+    '// best-effort fallback if JSON parsing fails',
+  ]],
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
   ]],

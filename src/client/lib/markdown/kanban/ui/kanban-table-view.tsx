@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
+import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty } from '../types'
 
 interface KanbanTableViewProps {
@@ -35,7 +36,7 @@ function TableHeaderRow({ columns, isAllSelected, onToggleAll, onAddColumn }: Ta
       </div>
       {columns.map((col) => (
         <div key={col.id} className='flex-1 min-w-32 border-l border-[var(--border-subtle)] px-3 py-2'>
-          {col.name}
+          {formatKanbanPropertyName(col)}
         </div>
       ))}
       <div className='w-10 shrink-0 border-l border-[var(--border-subtle)] p-2 text-center'>
@@ -74,7 +75,7 @@ function TableCell({
           style={getKanbanTagStyle(opt.color)}
           className='inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium'
         >
-          {opt.label}
+          {formatKanbanOptionLabel(opt, column.id)}
         </span>
       ) : (
         <span className='text-[var(--text-primary)]'>{String(val ?? '')}</span>

@@ -2,6 +2,7 @@ import { memo, useRef } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { useClickOutside } from '../../../../components/overlay'
 import { t } from '../../../i18n'
+import { formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanProperty, KanbanSort } from '../types'
 
 interface KanbanSortPopoverProps {
@@ -53,7 +54,7 @@ function SortRow({
       >
         {columns.map((c) => (
           <option key={c.id} value={c.id}>
-            {c.name}
+            {formatKanbanPropertyName(c)}
           </option>
         ))}
       </select>

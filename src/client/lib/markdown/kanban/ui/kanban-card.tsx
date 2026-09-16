@@ -2,17 +2,22 @@ import { memo, useState, type KeyboardEvent } from 'react'
 import { Calendar, CheckSquare, MoreHorizontal, User } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
+import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanItem, KanbanProperty } from '../types'
 
 interface KanbanCardProps {
   item: KanbanItem
   columns: KanbanProperty[]
   isSelected: boolean
+  cardSize?: 'small' | 'medium' | 'large'
+  dropIndicator?: 'top' | 'bottom' | null
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
   onUpdateTitle: (id: string, newTitle: string) => void
   onDragStart: (e: React.DragEvent, id: string) => void
   onDragEnd: (e: React.DragEvent) => void
+  onDragOverCard?: (e: React.DragEvent, id: string) => void
+  onDropOnCard?: (e: React.DragEvent, id: string) => void
   onMoveColumn?: (id: string, direction: 'prev' | 'next') => void
 }
 
@@ -98,7 +103,7 @@ function CardTitle({
       }}
       className='line-clamp-2 text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'
     >
-      {title || 'Untitled'}
+      {title || t('preview.kanban_untitled')}
     </h4>
   )
 }
@@ -121,19 +126,20 @@ function CardTags({
           style={getKanbanTagStyle(priorityOpt.color)}
           className='inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium'
         >
-          {priorityOpt.label}
+          {formatKanbanOptionLabel(priorityOpt.label, 'priority')}
         </span>
       )}
       {tagVals.map((tag) => {
         const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
         const color: KanbanColorName = opt?.color ?? 'gray'
+        const label = opt?.label ?? tag
         return (
           <span
             key={tag}
             style={getKanbanTagStyle(color)}
             className='inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium'
           >
-            {opt?.label ?? tag}
+            {formatKanbanOptionLabel(label, 'tags')}
           </span>
         )
       })}
@@ -227,39 +233,49 @@ function getCardDisplayProps(item: KanbanItem, columns: KanbanProperty[]) {
   return { priorityOpt, tagsCol, tagVals, completedSubtasks, totalSubtasks }
 }
 
-export const KanbanCard = memo(function KanbanCard({
-  item,
-  columns,
-  isSelected,
-  onToggleSelect,
-  onOpenDetail,
-  onUpdateTitle,
-  onDragStart,
-  onDragEnd,
-  onMoveColumn,
-}: KanbanCardProps) {
-  const titleState = useKanbanCardTitle(item.title, (t) => onUpdateTitle(item.id, t))
-  const display = getCardDisplayProps(item, columns)
+function CardDropIndicator({ dropIndicator }: { dropIndicator?: 'top' | 'bottom' | null }) {
+  if (dropIndicator === 'top') {
+    return <div className='pointer-events-none absolute -top-1 left-0 right-0 h-0.5 rounded-full bg-[var(--accent)] shadow-[var(--shadow-sm)]' />
+  }
+  if (dropIndicator === 'bottom') {
+    return <div className='pointer-events-none absolute -bottom-1 left-0 right-0 h-0.5 rounded-full bg-[var(--accent)] shadow-[var(--shadow-sm)]' />
+  }
+  return null
+}
 
+function useCardDragHandlers(
+  itemId: string,
+  onDragOverCard?: (e: React.DragEvent, id: string) => void,
+  onDropOnCard?: (e: React.DragEvent, id: string) => void,
+) {
+  const handleDragOver = (e: React.DragEvent) => {
+    if (onDragOverCard) {
+      e.preventDefault()
+      e.stopPropagation()
+      onDragOverCard(e, itemId)
+    }
+  }
+  const handleDrop = (e: React.DragEvent) => {
+    if (onDropOnCard) {
+      e.preventDefault()
+      e.stopPropagation()
+      onDropOnCard(e, itemId)
+    }
+  }
+  return { handleDragOver, handleDrop }
+}
+
+function CardBody({
+  item,
+  titleState,
+  display,
+}: {
+  item: KanbanItem
+  titleState: ReturnType<typeof useKanbanCardTitle>
+  display: ReturnType<typeof getCardDisplayProps>
+}) {
   return (
-    <div
-      role='button'
-      tabIndex={0}
-      draggable={!titleState.isEditing}
-      onDragStart={(e) => onDragStart(e, item.id)}
-      onDragEnd={onDragEnd}
-      onClick={() => onOpenDetail(item)}
-      onKeyDown={(e) => handleCardKeyDown(e, titleState.isEditing, () => onOpenDetail(item), onMoveColumn ? (dir) => onMoveColumn(item.id, dir) : undefined)}
-      className={`group/card relative flex flex-col gap-2 rounded-[var(--r-md)] border bg-[var(--bg-surface)] p-3 text-left shadow-[var(--shadow-xs)] transition-[box-shadow,border-color,background-color] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] ${
-        isSelected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border-subtle)]'
-      }`}
-    >
-      <CardHeader
-        isSelected={isSelected}
-        icon={item.icon}
-        onToggleSelect={() => onToggleSelect(item.id)}
-        onOpenDetail={() => onOpenDetail(item)}
-      />
+    <>
       <div className='min-w-0 flex-1'>
         <CardTitle
           title={item.title}
@@ -278,6 +294,60 @@ export const KanbanCard = memo(function KanbanCard({
         completedSubtasks={display.completedSubtasks}
         totalSubtasks={display.totalSubtasks}
       />
+    </>
+  )
+}
+
+export const KanbanCard = memo(function KanbanCard({
+  item,
+  columns,
+  isSelected,
+  cardSize = 'medium',
+  dropIndicator,
+  onToggleSelect,
+  onOpenDetail,
+  onUpdateTitle,
+  onDragStart,
+  onDragEnd,
+  onDragOverCard,
+  onDropOnCard,
+  onMoveColumn,
+}: KanbanCardProps) {
+  const titleState = useKanbanCardTitle(item.title, (t) => onUpdateTitle(item.id, t))
+  const display = getCardDisplayProps(item, columns)
+  const dndHandlers = useCardDragHandlers(item.id, onDragOverCard, onDropOnCard)
+  const padClass = cardSize === 'small' ? 'p-2 gap-1.5' : cardSize === 'large' ? 'p-4 gap-3' : 'p-3 gap-2'
+
+  return (
+    <div
+      role='button'
+      tabIndex={0}
+      draggable={!titleState.isEditing}
+      onDragStart={(e) => onDragStart(e, item.id)}
+      onDragEnd={onDragEnd}
+      onDragOver={dndHandlers.handleDragOver}
+      onDrop={dndHandlers.handleDrop}
+      onClick={() => onOpenDetail(item)}
+      onKeyDown={(e) =>
+        handleCardKeyDown(
+          e,
+          titleState.isEditing,
+          () => onOpenDetail(item),
+          onMoveColumn ? (dir) => onMoveColumn(item.id, dir) : undefined,
+        )
+      }
+      className={`group/card relative flex flex-col rounded-[var(--r-md)] border bg-[var(--bg-surface)] text-left shadow-[var(--shadow-xs)] transition-[box-shadow,border-color,background-color] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] ${padClass} ${
+        isSelected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border-subtle)]'
+      }`}
+    >
+      <CardDropIndicator dropIndicator={dropIndicator} />
+      <CardHeader
+        isSelected={isSelected}
+        icon={item.icon}
+        onToggleSelect={() => onToggleSelect(item.id)}
+        onOpenDetail={() => onOpenDetail(item)}
+      />
+      <CardBody item={item} titleState={titleState} display={display} />
     </div>
   )
 })

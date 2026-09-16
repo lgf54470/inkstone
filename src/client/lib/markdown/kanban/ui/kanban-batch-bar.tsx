@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { Trash2, X } from 'lucide-react'
 import { t } from '../../../i18n'
+import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanProperty } from '../types'
 
 interface KanbanBatchBarProps {
@@ -34,7 +35,7 @@ function BatchStatusSelect({ statusColumn, onBatchStatusChange }: BatchStatusSel
       </option>
       {statusColumn.options.map((opt) => (
         <option key={opt.id} value={opt.id}>
-          {opt.label}
+          {formatKanbanOptionLabel(opt, 'status')}
         </option>
       ))}
     </select>
