@@ -1,9 +1,10 @@
 import { memo, useState, type KeyboardEvent } from 'react'
-import { Calendar, CheckSquare, MoreHorizontal, User } from 'lucide-react'
+import { Calendar, CheckSquare, MoreHorizontal, Paperclip, User } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanItem, KanbanProperty } from '../types'
+import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanCardProps {
   item: KanbanItem
@@ -43,7 +44,7 @@ function CardHeader({
           className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 transition-opacity group-hover/card:opacity-100 checked:opacity-100'
           aria-label={t('preview.kanban_select_card')}
         />
-        {icon && <span className='text-[length:var(--text-14)]'>{icon}</span>}
+        {icon && <KanbanIconBadge icon={icon} size={15} />}
       </div>
       <button
         type='button'
@@ -149,16 +150,18 @@ function CardTags({
 
 function CardMeta({
   assignee,
-  startDate,
+  dueDate,
   completedSubtasks,
   totalSubtasks,
+  filesCount,
 }: {
   assignee?: unknown
-  startDate?: unknown
+  dueDate?: unknown
   completedSubtasks: number
   totalSubtasks: number
+  filesCount: number
 }) {
-  if (!assignee && !startDate && totalSubtasks === 0) return null
+  if (!assignee && !dueDate && totalSubtasks === 0 && filesCount === 0) return null
 
   return (
     <div className='flex flex-wrap items-center gap-2 pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
@@ -168,16 +171,22 @@ function CardMeta({
           <span>{String(assignee)}</span>
         </span>
       )}
-      {Boolean(startDate) && (
+      {Boolean(dueDate) && (
         <span className='inline-flex items-center gap-1'>
           <Calendar size={12} />
-          <span>{String(startDate)}</span>
+          <span>{String(dueDate)}</span>
         </span>
       )}
       {totalSubtasks > 0 && (
         <span className='inline-flex items-center gap-1'>
           <CheckSquare size={12} />
           <span>{completedSubtasks}/{totalSubtasks}</span>
+        </span>
+      )}
+      {filesCount > 0 && (
+        <span className='inline-flex items-center gap-1'>
+          <Paperclip size={12} />
+          <span>{filesCount}</span>
         </span>
       )}
     </div>
@@ -230,7 +239,9 @@ function getCardDisplayProps(item: KanbanItem, columns: KanbanProperty[]) {
   const tagVals = Array.isArray(item.properties.tags) ? item.properties.tags : []
   const completedSubtasks = item.subtasks?.filter((s) => s.completed).length ?? 0
   const totalSubtasks = item.subtasks?.length ?? 0
-  return { priorityOpt, tagsCol, tagVals, completedSubtasks, totalSubtasks }
+  const filesCount = item.files?.length ?? 0
+  const dueDate = item.properties.dueDate || item.properties.startDate || item.properties.date
+  return { priorityOpt, tagsCol, tagVals, completedSubtasks, totalSubtasks, filesCount, dueDate }
 }
 
 function CardDropIndicator({ dropIndicator }: { dropIndicator?: 'top' | 'bottom' | null }) {
@@ -290,9 +301,10 @@ function CardBody({
       <CardTags priorityOpt={display.priorityOpt} tagVals={display.tagVals} tagsCol={display.tagsCol} />
       <CardMeta
         assignee={item.properties.assignee}
-        startDate={item.properties.startDate}
+        dueDate={display.dueDate}
         completedSubtasks={display.completedSubtasks}
         totalSubtasks={display.totalSubtasks}
+        filesCount={display.filesCount}
       />
     </>
   )

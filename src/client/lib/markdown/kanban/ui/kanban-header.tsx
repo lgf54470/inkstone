@@ -1,5 +1,6 @@
 import { memo, useRef, useState } from 'react'
 import {
+  BarChart2,
   Calendar,
   Filter,
   Kanban,
@@ -16,6 +17,7 @@ import type { KanbanData, KanbanFilter, KanbanSort, KanbanView, KanbanViewType }
 import { t } from '../../../i18n'
 import { formatKanbanViewName } from '../i18n-helpers'
 import { KanbanFilterPopover } from './kanban-filter-popover'
+import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSortPopover } from './kanban-sort-popover'
 import { KanbanViewOptions, type CardSize } from './kanban-view-options'
 
@@ -52,6 +54,8 @@ function viewIcon(type: KanbanViewType) {
       return <List size={14} />
     case 'gallery':
       return <LayoutGrid size={14} />
+    case 'chart':
+      return <BarChart2 size={14} />
     default:
       return <Kanban size={14} />
   }
@@ -132,6 +136,7 @@ function KanbanSearchBox({
 
 interface HeaderActionsProps {
   columns: KanbanData['columns']
+  items: KanbanData['items']
   filters: KanbanFilter[]
   sorts: KanbanSort[]
   searchQuery: string
@@ -265,8 +270,11 @@ function KanbanSortAction({
   )
 }
 
+const STATUS_PROGRESS_BAR_HEIGHT = 6
+
 function KanbanHeaderActions({
   columns,
+  items,
   filters,
   sorts,
   searchQuery,
@@ -281,8 +289,13 @@ function KanbanHeaderActions({
   onAddItem,
   onToggleFullscreen,
 }: HeaderActionsProps) {
+  const statusCol = columns.find((c) => c.id === 'status')
+
   return (
     <div className='relative flex items-center gap-1.5'>
+      <div className='hidden md:flex items-center mr-1 w-28'>
+        <KanbanProgressBar items={items} statusColumn={statusCol} height={STATUS_PROGRESS_BAR_HEIGHT} />
+      </div>
       <KanbanSearchBox searchQuery={searchQuery} onSearchChange={onSearchChange} />
       <KanbanFilterAction columns={columns} filters={filters} onChangeFilters={onChangeFilters} />
       <KanbanSortAction columns={columns} sorts={sorts} onChangeSorts={onChangeSorts} />
@@ -354,6 +367,7 @@ export const KanbanHeader = memo(function KanbanHeader({
         />
         <KanbanHeaderActions
           columns={data.columns}
+          items={data.items}
           filters={filters}
           sorts={sorts}
           searchQuery={searchQuery}

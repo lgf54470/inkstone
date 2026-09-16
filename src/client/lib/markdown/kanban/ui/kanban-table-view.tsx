@@ -1,30 +1,31 @@
 import { memo } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
-import { getKanbanTagStyle } from '../colors'
-import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
-import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty } from '../types'
+import { groupKanbanItems } from '../filter-sort'
+import type { KanbanData, KanbanItem, KanbanSubtask, KanbanView } from '../types'
+import { KanbanTableGroup } from './kanban-table-group'
 
 interface KanbanTableViewProps {
   data: KanbanData
+  view?: KanbanView
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
   onUpdateProperty?: (itemId: string, propertyId: string, value: unknown) => void
-  onAddItem: () => void
-  onAddColumn: () => void
+  onUpdateSubtasks?: (itemId: string, subtasks: KanbanSubtask[]) => void
+  onAddItem: (propertyDefaults?: Record<string, unknown>) => void
+  onAddColumn?: () => void
+  onAddGroup?: () => void
 }
 
 interface TableHeaderRowProps {
-  columns: KanbanProperty[]
   isAllSelected: boolean
   onToggleAll: () => void
-  onAddColumn: () => void
 }
 
-function TableHeaderRow({ columns, isAllSelected, onToggleAll, onAddColumn }: TableHeaderRowProps) {
+function TableHeaderRow({ isAllSelected, onToggleAll }: TableHeaderRowProps) {
   return (
-    <div className='flex items-center border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
+    <div className='flex items-center border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
       <div className='w-10 shrink-0 p-2.5 text-center'>
         <input
           type='checkbox'
@@ -34,120 +35,37 @@ function TableHeaderRow({ columns, isAllSelected, onToggleAll, onAddColumn }: Ta
           aria-label={t('preview.kanban_select_all')}
         />
       </div>
-      {columns.map((col) => (
-        <div key={col.id} className='flex-1 min-w-32 border-l border-[var(--border-subtle)] px-3 py-2'>
-          {formatKanbanPropertyName(col)}
-        </div>
-      ))}
-      <div className='w-10 shrink-0 border-l border-[var(--border-subtle)] p-2 text-center'>
-        <button
-          type='button'
-          onClick={onAddColumn}
-          className='inline-flex size-6 items-center justify-center rounded-[var(--r-xs)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-          aria-label={t('preview.kanban_add_column')}
-        >
-          <Plus size={14} />
-        </button>
+      <div className='flex flex-1 min-w-48 items-center border-l border-[var(--border-subtle)] px-3 py-2'>
+        <span>{t('preview.kanban_task_name')}</span>
+      </div>
+      <div className='w-20 shrink-0 border-l border-[var(--border-subtle)] px-2 py-2 text-center'>
+        <span>{t('preview.kanban_owner')}</span>
+      </div>
+      <div className='w-36 shrink-0 border-l border-[var(--border-subtle)] px-3 py-2 text-center'>
+        <span>{t('preview.kanban_prop_status')}</span>
+      </div>
+      <div className='w-32 shrink-0 border-l border-[var(--border-subtle)] px-3 py-2'>
+        <span>{t('preview.kanban_due_date')}</span>
+      </div>
+      <div className='w-32 shrink-0 border-l border-[var(--border-subtle)] px-3 py-2'>
+        <span>{t('preview.kanban_timeline')}</span>
+      </div>
+      <div className='w-40 shrink-0 border-l border-[var(--border-subtle)] px-3 py-2 text-center'>
+        <span>{t('preview.kanban_files')}</span>
       </div>
     </div>
   )
 }
 
-function TableCell({
-  column,
-  item,
-  onOpenDetail,
-}: {
-  column: KanbanProperty
-  item: KanbanItem
-  onOpenDetail: () => void
-}) {
-  const val = column.id === 'title' ? item.title : item.properties[column.id]
-  const opt = column.options?.find((o: KanbanOption) => o.id === val || o.label === val)
-
-  return (
-    <div
-      onClick={onOpenDetail}
-      className='flex-1 min-w-32 cursor-pointer truncate border-l border-[var(--border-subtle)] px-3 py-2'
-    >
-      {opt ? (
-        <span
-          style={getKanbanTagStyle(opt.color)}
-          className='inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium'
-        >
-          {formatKanbanOptionLabel(opt, column.id)}
-        </span>
-      ) : (
-        <span className='text-[var(--text-primary)]'>{String(val ?? '')}</span>
-      )}
-    </div>
-  )
-}
-
-function TableRow({
-  item,
-  columns,
-  isSelected,
-  onToggleSelect,
-  onOpenDetail,
-}: {
-  item: KanbanItem
-  columns: KanbanProperty[]
-  isSelected: boolean
-  onToggleSelect: () => void
-  onOpenDetail: () => void
-}) {
-  return (
-    <div
-      className={`flex items-center text-[length:var(--text-13)] hover:bg-[var(--bg-hover)] ${
-        isSelected ? 'bg-[var(--accent-softer)]' : ''
-      }`}
-    >
-      <div className='w-10 shrink-0 p-2.5 text-center'>
-        <input
-          type='checkbox'
-          checked={isSelected}
-          onChange={onToggleSelect}
-          className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)]'
-          aria-label={t('preview.kanban_select_card')}
-        />
-      </div>
-      {columns.map((col) => (
-        <TableCell key={col.id} column={col} item={item} onOpenDetail={onOpenDetail} />
-      ))}
-      <div className='w-10 shrink-0 border-l border-[var(--border-subtle)]' />
-    </div>
-  )
-}
-
-function TableAddRow({ onAddItem }: { onAddItem: () => void }) {
-  return (
-    <div className='border-t border-[var(--border-subtle)] p-2'>
-      <button
-        type='button'
-        onClick={onAddItem}
-        className='flex items-center gap-1.5 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-      >
-        <Plus size={13} />
-        <span>{t('preview.kanban_new_item')}</span>
-      </button>
-    </div>
-  )
-}
-
-export const KanbanTableView = memo(function KanbanTableView({
-  data,
-  selectedIds,
-  onToggleSelect,
-  onOpenDetail,
-  onAddItem,
-  onAddColumn,
-}: KanbanTableViewProps) {
-  const isAllSelected = data.items.length > 0 && selectedIds.size === data.items.length
-
+function useTableToggleAll(
+  items: KanbanItem[],
+  selectedIds: Set<string>,
+  onToggleSelect: (id: string) => void,
+) {
+  const isAllSelected = items.length > 0 && selectedIds.size === items.length
   const handleToggleAll = () => {
     const shouldSelectAll = !isAllSelected
-    for (const item of data.items) {
+    for (const item of items) {
       if (shouldSelectAll && !selectedIds.has(item.id)) {
         onToggleSelect(item.id)
       } else if (!shouldSelectAll && selectedIds.has(item.id)) {
@@ -155,29 +73,59 @@ export const KanbanTableView = memo(function KanbanTableView({
       }
     }
   }
+  return { isAllSelected, handleToggleAll }
+}
+
+export const KanbanTableView = memo(function KanbanTableView({
+  data,
+  view,
+  selectedIds,
+  onToggleSelect,
+  onOpenDetail,
+  onUpdateProperty,
+  onUpdateSubtasks,
+  onAddItem,
+  onAddGroup,
+}: KanbanTableViewProps) {
+  const groupByProp = view?.groupBy || 'status'
+  const groupCol = data.columns.find((c) => c.id === groupByProp)
+  const groups = groupKanbanItems(data.items, groupByProp, groupCol)
+  const { isAllSelected, handleToggleAll } = useTableToggleAll(data.items, selectedIds, onToggleSelect)
 
   return (
     <div className='h-full w-full overflow-auto p-4' role='region' aria-label={t('preview.kanban_view_table')}>
       <div className='w-full min-w-max rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
-        <TableHeaderRow
-          columns={data.columns}
-          isAllSelected={isAllSelected}
-          onToggleAll={handleToggleAll}
-          onAddColumn={onAddColumn}
-        />
-        <div className='divide-y divide-[var(--border-subtle)]'>
-          {data.items.map((item) => (
-            <TableRow
-              key={item.id}
-              item={item}
+        <TableHeaderRow isAllSelected={isAllSelected} onToggleAll={handleToggleAll} />
+        <div className='p-3'>
+          {groups.map((group) => (
+            <KanbanTableGroup
+              key={group.groupKey}
+              groupKey={group.groupKey}
+              label={group.label}
+              color={group.color}
+              items={group.items}
               columns={data.columns}
-              isSelected={selectedIds.has(item.id)}
-              onToggleSelect={() => onToggleSelect(item.id)}
-              onOpenDetail={() => onOpenDetail(item)}
+              selectedIds={selectedIds}
+              onToggleSelect={onToggleSelect}
+              onOpenDetail={onOpenDetail}
+              onUpdateProperty={onUpdateProperty}
+              onUpdateSubtasks={onUpdateSubtasks}
+              onAddItemInGroup={() => {
+                const defaults = group.groupKey !== '__none__' ? { [groupByProp]: group.groupKey } : {}
+                onAddItem(defaults)
+              }}
             />
           ))}
+
+          <button
+            type='button'
+            onClick={() => (onAddGroup ? onAddGroup() : onAddItem())}
+            className='flex items-center gap-1.5 rounded-[var(--r-md)] border border-dashed border-[var(--border-default)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
+          >
+            <Plus size={14} />
+            <span>+ {t('preview.kanban_add_new_group')}</span>
+          </button>
         </div>
-        <TableAddRow onAddItem={onAddItem} />
       </div>
     </div>
   )

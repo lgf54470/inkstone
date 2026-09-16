@@ -1,9 +1,13 @@
-import { memo, useState } from 'react'
-import { Plus, Trash2, X } from 'lucide-react'
+import { memo, useRef, useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import { Modal } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
-import type { KanbanItem, KanbanProperty, KanbanSubtask } from '../types'
+import type { KanbanItem, KanbanProperty } from '../types'
+import { KanbanFilesCell } from './kanban-files-cell'
+import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanIconPicker } from './kanban-icon-picker'
+import { KanbanSubtaskList } from './kanban-subtask-list'
 
 interface KanbanItemDetailProps {
   item: KanbanItem | null
@@ -18,15 +22,35 @@ const DETAIL_MODAL_WIDTH = 640
 function DetailHeader({
   icon,
   title,
+  onChangeIcon,
   onChangeTitle,
 }: {
   icon?: string
   title: string
+  onChangeIcon: (icon: string | null) => void
   onChangeTitle: (t: string) => void
 }) {
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
+  const iconBtnRef = useRef<HTMLButtonElement>(null)
+
   return (
     <div className='flex items-center gap-2'>
-      <span>{icon || '📝'}</span>
+      <button
+        ref={iconBtnRef}
+        type='button'
+        onClick={() => setIconPickerOpen((o) => !o)}
+        className='flex size-8 shrink-0 items-center justify-center rounded-[var(--r-sm)] hover:bg-[var(--bg-hover)]'
+        title={t('preview.kanban_icon_picker')}
+      >
+        <KanbanIconBadge icon={icon || '📝'} size={20} />
+      </button>
+      <KanbanIconPicker
+        open={iconPickerOpen}
+        anchorRef={iconBtnRef}
+        onClose={() => setIconPickerOpen(false)}
+        onSelectIcon={onChangeIcon}
+        currentIcon={icon}
+      />
       <input
         type='text'
         value={title}
@@ -113,104 +137,6 @@ function DetailPropertyField({
   )
 }
 
-function SubtaskRow({
-  subtask,
-  onToggle,
-  onDelete,
-}: {
-  subtask: KanbanSubtask
-  onToggle: () => void
-  onDelete: () => void
-}) {
-  return (
-    <div className='flex items-center justify-between gap-2 p-2'>
-      <label className='flex items-center gap-2 text-[length:var(--text-13)]'>
-        <input
-          type='checkbox'
-          checked={subtask.completed}
-          onChange={onToggle}
-          className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)]'
-        />
-        <span className={subtask.completed ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}>
-          {subtask.title}
-        </span>
-      </label>
-      <button
-        type='button'
-        onClick={onDelete}
-        className='text-[var(--text-tertiary)] hover:text-[var(--danger)]'
-        aria-label={t('preview.kanban_delete_rule')}
-      >
-        <X size={13} />
-      </button>
-    </div>
-  )
-}
-
-function SubtaskAddInput({ onAdd }: { onAdd: (title: string) => void }) {
-  const [newTitle, setNewTitle] = useState('')
-  const handleAdd = () => {
-    if (!newTitle.trim()) return
-    onAdd(newTitle.trim())
-    setNewTitle('')
-  }
-  return (
-    <div className='flex items-center gap-2 p-2'>
-      <input
-        type='text'
-        value={newTitle}
-        onChange={(e) => setNewTitle(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') handleAdd()
-        }}
-        placeholder={t('preview.kanban_add_subtask')}
-        className='flex-1 border-0 bg-transparent text-[length:var(--text-12)] outline-none'
-      />
-      <button
-        type='button'
-        onClick={handleAdd}
-        className='inline-flex size-6 items-center justify-center rounded-[var(--r-xs)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
-        aria-label={t('preview.kanban_add_subtask')}
-      >
-        <Plus size={14} />
-      </button>
-    </div>
-  )
-}
-
-function DetailSubtasks({
-  subtasks,
-  onAddSubtask,
-  onToggleSubtask,
-  onDeleteSubtask,
-}: {
-  subtasks: KanbanSubtask[]
-  onAddSubtask: (title: string) => void
-  onToggleSubtask: (id: string) => void
-  onDeleteSubtask: (id: string) => void
-}) {
-  const completedCount = subtasks.filter((s) => s.completed).length
-
-  return (
-    <div className='flex flex-col gap-2'>
-      <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
-        {t('preview.kanban_subtasks')} ({completedCount}/{subtasks.length})
-      </h4>
-      <div className='divide-y divide-[var(--border-subtle)] rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
-        {subtasks.map((subtask) => (
-          <SubtaskRow
-            key={subtask.id}
-            subtask={subtask}
-            onToggle={() => onToggleSubtask(subtask.id)}
-            onDelete={() => onDeleteSubtask(subtask.id)}
-          />
-        ))}
-        <SubtaskAddInput onAdd={onAddSubtask} />
-      </div>
-    </div>
-  )
-}
-
 function DetailDescription({
   content,
   onChange,
@@ -234,26 +160,60 @@ function DetailDescription({
   )
 }
 
-function useDetailHandlers(item: KanbanItem, onUpdate: (updated: KanbanItem) => void) {
-  const handlePropertyChange = (propertyId: string, value: unknown) => {
-    onUpdate({ ...item, properties: { ...item.properties, [propertyId]: value } })
-  }
-  const handleContentChange = (content: string) => {
-    onUpdate({ ...item, content })
-  }
-  const handleAddSubtask = (title: string) => {
-    const subtask: KanbanSubtask = { id: `subtask-${Date.now()}`, title, completed: false }
-    onUpdate({ ...item, subtasks: [...(item.subtasks ?? []), subtask] })
-  }
-  const handleToggleSubtask = (id: string) => {
-    const next = (item.subtasks ?? []).map((s) => (s.id === id ? { ...s, completed: !s.completed } : s))
-    onUpdate({ ...item, subtasks: next })
-  }
-  const handleDeleteSubtask = (id: string) => {
-    const next = (item.subtasks ?? []).filter((s) => s.id !== id)
-    onUpdate({ ...item, subtasks: next })
-  }
-  return { handlePropertyChange, handleContentChange, handleAddSubtask, handleToggleSubtask, handleDeleteSubtask }
+function DetailPropertiesGrid({
+  columns,
+  properties,
+  onChangeProperty,
+}: {
+  columns: KanbanProperty[]
+  properties: Record<string, unknown>
+  onChangeProperty: (id: string, val: unknown) => void
+}) {
+  return (
+    <div className='grid grid-cols-2 gap-4 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-raised)] p-3.5'>
+      {columns
+        .filter((c) => c.id !== 'title' && c.type !== 'files')
+        .map((col) => (
+          <DetailPropertyField
+            key={col.id}
+            column={col}
+            value={properties[col.id]}
+            onChange={(val) => onChangeProperty(col.id, val)}
+          />
+        ))}
+    </div>
+  )
+}
+
+function DetailAttachmentsAndSubtasks({
+  item,
+  onUpdate,
+}: {
+  item: KanbanItem
+  onUpdate: (updated: KanbanItem) => void
+}) {
+  return (
+    <>
+      <div className='flex flex-col gap-2'>
+        <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
+          {t('preview.kanban_files')}
+        </h4>
+        <KanbanFilesCell
+          files={item.files}
+          onChangeFiles={(files) => onUpdate({ ...item, files })}
+        />
+      </div>
+      <div className='flex flex-col gap-2'>
+        <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
+          {t('preview.kanban_subtasks')}
+        </h4>
+        <KanbanSubtaskList
+          subtasks={item.subtasks ?? []}
+          onUpdateSubtasks={(subtasks) => onUpdate({ ...item, subtasks })}
+        />
+      </div>
+    </>
+  )
 }
 
 export const KanbanItemDetail = memo(function KanbanItemDetail({
@@ -265,38 +225,36 @@ export const KanbanItemDetail = memo(function KanbanItemDetail({
 }: KanbanItemDetailProps) {
   if (!item) return null
 
-  const { handlePropertyChange, handleContentChange, handleAddSubtask, handleToggleSubtask, handleDeleteSubtask } =
-    useDetailHandlers(item, onUpdate)
+  const handlePropertyChange = (propertyId: string, value: unknown) => {
+    onUpdate({ ...item, properties: { ...item.properties, [propertyId]: value } })
+  }
 
   return (
     <Modal
       open={Boolean(item)}
       onClose={onClose}
       width={DETAIL_MODAL_WIDTH}
-      title={<DetailHeader icon={item.icon} title={item.title} onChangeTitle={(title) => onUpdate({ ...item, title })} />}
+      title={
+        <DetailHeader
+          icon={item.icon}
+          title={item.title}
+          onChangeIcon={(icon) => onUpdate({ ...item, icon: icon ?? undefined })}
+          onChangeTitle={(title) => onUpdate({ ...item, title })}
+        />
+      }
       footer={<DetailFooter onDelete={() => { onDelete(item.id); onClose() }} onClose={onClose} />}
     >
       <div className='flex flex-col gap-6 py-2'>
-        <div className='grid grid-cols-2 gap-4 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-raised)] p-3.5'>
-          {columns.filter((c) => c.id !== 'title').map((col) => (
-            <DetailPropertyField
-              key={col.id}
-              column={col}
-              value={item.properties[col.id]}
-              onChange={(val) => handlePropertyChange(col.id, val)}
-            />
-          ))}
-        </div>
+        <DetailPropertiesGrid
+          columns={columns}
+          properties={item.properties}
+          onChangeProperty={handlePropertyChange}
+        />
         <DetailDescription
           content={item.content}
-          onChange={handleContentChange}
+          onChange={(content) => onUpdate({ ...item, content })}
         />
-        <DetailSubtasks
-          subtasks={item.subtasks ?? []}
-          onAddSubtask={handleAddSubtask}
-          onToggleSubtask={handleToggleSubtask}
-          onDeleteSubtask={handleDeleteSubtask}
-        />
+        <DetailAttachmentsAndSubtasks item={item} onUpdate={onUpdate} />
       </div>
     </Modal>
   )

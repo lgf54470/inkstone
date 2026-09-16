@@ -9,6 +9,7 @@ const VIEW_NAME_MAP: Record<string, MessageKey> = {
   gantt: 'preview.kanban_view_gantt',
   list: 'preview.kanban_view_list',
   gallery: 'preview.kanban_view_gallery',
+  chart: 'preview.kanban_view_chart',
 }
 
 export function formatKanbanViewName(view: KanbanView): string {
@@ -35,6 +36,8 @@ const PROPERTY_NAME_MAP: Record<string, MessageKey> = {
   end_date: 'preview.kanban_prop_end_date',
   progress: 'preview.kanban_prop_progress',
   tags: 'preview.kanban_prop_tags',
+  files: 'preview.kanban_files',
+  subtasks: 'preview.kanban_subtasks',
 }
 
 export function formatKanbanPropertyName(prop: KanbanProperty | string): string {

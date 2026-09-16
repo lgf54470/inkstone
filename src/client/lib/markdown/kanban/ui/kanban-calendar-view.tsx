@@ -1,7 +1,9 @@
 import { memo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
-import type { KanbanData, KanbanItem } from '../types'
+import { getKanbanTagStyle } from '../colors'
+import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
+import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanCalendarViewProps {
   data: KanbanData
@@ -67,18 +69,56 @@ function CalendarWeekHeader() {
   )
 }
 
+function CalendarEventBar({
+  item,
+  statusCol,
+  onOpenDetail,
+}: {
+  item: KanbanItem
+  statusCol?: KanbanProperty
+  onOpenDetail: (item: KanbanItem) => void
+}) {
+  const statusVal = String(item.properties.status || '')
+  const statusOpt = statusCol?.options?.find((o) => o.id === statusVal || o.label === statusVal)
+  const tagStyle = getKanbanTagStyle(statusOpt?.color || 'blue')
+
+  return (
+    <button
+      key={item.id}
+      type='button'
+      onClick={(e) => {
+        e.stopPropagation()
+        onOpenDetail(item)
+      }}
+      style={tagStyle}
+      className='flex w-full items-center gap-1 truncate rounded-[var(--r-xs)] px-1.5 py-0.5 text-left text-[length:var(--text-11)] font-medium shadow-2xs transition-opacity hover:opacity-85'
+    >
+      <KanbanIconBadge icon={item.icon} size={12} />
+      <span className='truncate'>{item.title}</span>
+    </button>
+  )
+}
+
 interface CalendarDayCellProps {
   dateStr: string
   dayNum: number
   items: KanbanItem[]
+  statusCol?: KanbanProperty
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: (dateStr: string) => void
 }
 
-function CalendarDayCell({ dateStr, dayNum, items, onOpenDetail, onAddItem }: CalendarDayCellProps) {
+function CalendarDayCell({
+  dateStr,
+  dayNum,
+  items,
+  statusCol,
+  onOpenDetail,
+  onAddItem,
+}: CalendarDayCellProps) {
   const matchedItems = items.filter((item) => {
-    const start = String(item.properties.startDate || '')
-    return start.startsWith(dateStr)
+    const d = String(item.properties.startDate || item.properties.dueDate || item.properties.date || '')
+    return d.startsWith(dateStr)
   })
 
   return (
@@ -105,17 +145,12 @@ function CalendarDayCell({ dateStr, dayNum, items, onOpenDetail, onAddItem }: Ca
 
       <div className='flex flex-1 flex-col gap-1 overflow-hidden'>
         {matchedItems.map((item) => (
-          <button
+          <CalendarEventBar
             key={item.id}
-            type='button'
-            onClick={(e) => {
-              e.stopPropagation()
-              onOpenDetail(item)
-            }}
-            className='w-full truncate rounded-[var(--r-xs)] border border-[var(--border-subtle)] bg-[var(--bg-raised)] px-1.5 py-0.5 text-left text-[length:var(--text-11)] font-medium text-[var(--text-primary)] hover:border-[var(--accent)]'
-          >
-            {item.title}
-          </button>
+            item={item}
+            statusCol={statusCol}
+            onOpenDetail={onOpenDetail}
+          />
         ))}
       </div>
     </div>
@@ -146,6 +181,7 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
   const firstDay = new Date(year, month, 1).getDay()
   const blanks = Array.from({ length: firstDay })
   const days = buildCalendarDays(year, month)
+  const statusCol = data.columns.find((c) => c.id === 'status')
 
   return (
     <div className='flex h-full w-full flex-col overflow-hidden p-4' role='region' aria-label={t('preview.kanban_view_calendar')}>
@@ -159,14 +195,15 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
       <CalendarWeekHeader />
       <div className='grid flex-1 grid-cols-7 auto-rows-fr gap-px overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--border-subtle)]'>
         {blanks.map((_, i) => (
-          <div key={`blank-${i}`} className='min-h-20 bg-[var(--bg-surface)] p-1.5 opacity-40' />
+          <div key={`blank-${i}`} className='bg-[var(--bg-surface)] opacity-30' />
         ))}
-        {days.map(({ dateStr, dayNum }) => (
+        {days.map((d) => (
           <CalendarDayCell
-            key={dateStr}
-            dateStr={dateStr}
-            dayNum={dayNum}
+            key={d.dateStr}
+            dateStr={d.dateStr}
+            dayNum={d.dayNum}
             items={data.items}
+            statusCol={statusCol}
             onOpenDetail={onOpenDetail}
             onAddItem={onAddItem}
           />

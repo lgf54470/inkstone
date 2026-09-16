@@ -1,7 +1,7 @@
 import { memo, useRef, useState } from 'react'
 import { MoreHorizontal, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
-import { getKanbanDotColor } from '../colors'
+import { getKanbanDotColor, getKanbanTagStyle } from '../colors'
 import { groupKanbanItems } from '../filter-sort'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanData, KanbanItem, KanbanView } from '../types'
@@ -35,11 +35,13 @@ function ColumnHeaderTitle({
   count: number
   color?: KanbanColorName
 }) {
-  const dotColor = getKanbanDotColor(color)
+  const tagStyle = getKanbanTagStyle(color)
   return (
-    <div className='flex min-w-0 items-center gap-2'>
-      {dotColor && <span className='size-2.5 shrink-0 rounded-full' style={{ backgroundColor: dotColor }} />}
-      <span className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
+    <div className='flex min-w-0 items-center gap-1.5'>
+      <span
+        style={tagStyle}
+        className='truncate rounded-[var(--r-sm)] px-2.5 py-0.5 text-[length:var(--text-12)] font-bold shadow-2xs'
+      >
         {label}
       </span>
       <span className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-surface)] px-1.5 py-0.5 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>

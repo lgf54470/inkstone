@@ -11,6 +11,7 @@ import { settings } from './settings'
 import { share } from './share'
 import { music } from './music'
 import { boardLibrary } from './board-library'
+import { uploadKanbanFile, deleteKanbanFile } from './kanban'
 export const api = {
   ...account,
   ...vault,
@@ -19,4 +20,9 @@ export const api = {
   ...share,
   music,
   boardLibrary,
+  kanban: {
+    upload: uploadKanbanFile,
+    remove: deleteKanbanFile,
+  },
 }
+export { uploadKanbanFile, deleteKanbanFile }

@@ -11,6 +11,7 @@ export type KanbanPropertyType =
   | 'number'
   | 'checkbox'
   | 'person'
+  | 'files'
 
 export type KanbanColorName =
   | 'gray'
@@ -22,6 +23,9 @@ export type KanbanColorName =
   | 'purple'
   | 'pink'
   | 'red'
+  | 'coral'
+  | 'teal'
+  | 'slate'
 
 export interface KanbanOption {
   id: string
@@ -36,10 +40,22 @@ export interface KanbanProperty {
   options?: KanbanOption[]
 }
 
+export interface KanbanFile {
+  id: string
+  name: string
+  size: number
+  mime: string
+  url: string
+  r2Key?: string
+}
+
 export interface KanbanSubtask {
   id: string
   title: string
   completed: boolean
+  status?: string
+  dueDate?: string
+  owner?: string
 }
 
 export interface KanbanItem {
@@ -48,6 +64,7 @@ export interface KanbanItem {
   icon?: string
   cover?: string
   content?: string
+  files?: KanbanFile[]
   subtasks?: KanbanSubtask[]
   properties: Record<string, unknown>
 }
@@ -60,6 +77,22 @@ export type KanbanViewType =
   | 'gantt'
   | 'list'
   | 'gallery'
+  | 'chart'
+
+export type KanbanChartType =
+  | 'bar'
+  | 'line'
+  | 'pie'
+  | 'doughnut'
+  | 'polarArea'
+  | 'radar'
+
+export interface KanbanChartDataset {
+  labels: string[]
+  data: number[]
+  colors: string[]
+  total: number
+}
 
 export type KanbanFilterOperator =
   | 'equals'
@@ -90,6 +123,9 @@ export interface KanbanView {
   endField?: string
   progressField?: string
   coverField?: string
+  chartType?: KanbanChartType
+  chartGroupBy?: string
+  chartMetric?: string
   filters?: KanbanFilter[]
   sorts?: KanbanSort[]
   hiddenProperties?: string[]

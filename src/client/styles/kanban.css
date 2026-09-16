@@ -17,6 +17,12 @@
   --kanban-tag-pink-fg: #c14c8a;
   --kanban-tag-red-bg: rgba(212, 76, 71, 0.16);
   --kanban-tag-red-fg: #d44c47;
+  --kanban-tag-coral-bg: rgba(225, 90, 80, 0.16);
+  --kanban-tag-coral-fg: #e15a50;
+  --kanban-tag-teal-bg: rgba(20, 160, 155, 0.16);
+  --kanban-tag-teal-fg: #14a09b;
+  --kanban-tag-slate-bg: rgba(100, 116, 139, 0.16);
+  --kanban-tag-slate-fg: #64748b;
 }
 
 :root[data-theme='dark'] {
@@ -38,6 +44,12 @@
   --kanban-tag-pink-fg: #e255a1;
   --kanban-tag-red-bg: rgba(223, 84, 80, 0.25);
   --kanban-tag-red-fg: #df5450;
+  --kanban-tag-coral-bg: rgba(235, 105, 95, 0.25);
+  --kanban-tag-coral-fg: #eb695f;
+  --kanban-tag-teal-bg: rgba(45, 185, 180, 0.25);
+  --kanban-tag-teal-fg: #2db9b4;
+  --kanban-tag-slate-bg: rgba(148, 163, 184, 0.25);
+  --kanban-tag-slate-fg: #94a3b8;
 }
 
 .ink-prose .kanban-block {

@@ -114,4 +114,23 @@ export function registerFilesRoutes(app: Hono, state: DemoState): void {
   app.post('/api/files', (c) => createFileHandler(c, state))
   app.get('/api/files/:id', (c) => getFileHandler(c, state))
   app.delete('/api/files/:id', (c) => deleteFileHandler(c, state))
+  app.post('/api/kanban/upload', async (c) => {
+    const form = await c.req.raw.formData()
+    const file = form.get('file') as File | null
+    const kanbanName = (form.get('kanbanName') as string) || 'default'
+    if (!file) return apiError(400, 'bad_request', 'No file uploaded')
+    const id = newDemoId()
+    const url = await browserFileUrl(file)
+    const meta = {
+      id,
+      name: file.name,
+      size: file.size,
+      mime: file.type || 'application/octet-stream',
+      url,
+      r2Key: `kanban/${kanbanName}/${id}-${file.name}`,
+    }
+    return c.json(meta, 201)
+  })
+  app.get('/api/kanban/file/:kanbanName/:filename', () => new Response('mock file', { headers: { 'Content-Type': 'text/plain' } }))
+  app.delete('/api/kanban/file/:kanbanName/:filename', (c) => c.json({ ok: true }))
 }

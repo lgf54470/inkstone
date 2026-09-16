@@ -11,6 +11,9 @@ export const KANBAN_COLOR_NAMES: readonly KanbanColorName[] = [
   'purple',
   'pink',
   'red',
+  'coral',
+  'teal',
+  'slate',
 ] as const
 
 export function getKanbanTagStyle(color?: KanbanColorName | string | null): CSSProperties {

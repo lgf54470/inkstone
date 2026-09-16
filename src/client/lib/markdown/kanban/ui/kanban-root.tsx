@@ -7,6 +7,7 @@ import type {
 import { KanbanBatchBar } from './kanban-batch-bar'
 import { KanbanBoardView } from './kanban-board-view'
 import { KanbanCalendarView } from './kanban-calendar-view'
+import { KanbanChartView } from './kanban-chart-view'
 import { KanbanGalleryView } from './kanban-gallery-view'
 import { KanbanGanttView } from './kanban-gantt-view'
 import { KanbanHeader } from './kanban-header'
@@ -35,7 +36,7 @@ interface KanbanViewRendererProps {
   setDetailItem: (item: KanbanItem | null) => void
   handleUpdateTitle: (id: string, newTitle: string) => void
   handleMoveItem: (itemId: string, targetGroupKey: string, targetIndex?: number) => void
-  handleAddItem: (defaultGroupKey?: string) => void
+  handleAddItem: (defaultGroupKey?: string | Record<string, unknown>) => void
   handleAddColumn: () => void
   handleReorderColumns: (sourceGroupKey: string, targetGroupKey: string) => void
   handleUpdateColumn: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
@@ -85,11 +86,16 @@ function BoardTableView(props: KanbanViewRendererProps) {
   return (
     <KanbanTableView
       data={props.viewData}
+      view={props.activeView}
       selectedIds={props.selectedIds}
       onToggleSelect={props.handleToggleSelect}
       onOpenDetail={props.setDetailItem}
       onUpdateProperty={(id, prop, val) => {
         const next = props.data.items.map((it) => (it.id === id ? { ...it, properties: { ...it.properties, [prop]: val } } : it))
+        props.commitData({ ...props.data, items: next })
+      }}
+      onUpdateSubtasks={(id, subtasks) => {
+        const next = props.data.items.map((it) => (it.id === id ? { ...it, subtasks } : it))
         props.commitData({ ...props.data, items: next })
       }}
       onAddItem={props.handleAddItem}
@@ -123,6 +129,18 @@ function ListGalleryView({ activeView, viewData, selectedIds, handleToggleSelect
 
 function KanbanViewRenderer(props: KanbanViewRendererProps) {
   const type = props.activeView.type
+  if (type === 'chart') {
+    return (
+      <KanbanChartView
+        data={props.viewData}
+        view={props.activeView}
+        onUpdateView={(patch) => {
+          const nextViews = props.data.views.map((v) => (v.id === props.activeView.id ? { ...v, ...patch } : v))
+          props.commitData({ ...props.data, views: nextViews })
+        }}
+      />
+    )
+  }
   if (type === 'calendar' || type === 'timeline' || type === 'gantt') {
     return <KanbanTimelineViews {...props} />
   }

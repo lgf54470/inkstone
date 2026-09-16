@@ -148,14 +148,21 @@ export function useKanbanAddOperations(
   commitData: (next: KanbanData) => void,
   setDetailItem: (item: KanbanItem | null) => void,
 ) {
-  const handleAddItem = useCallback((defaultGroupKey?: string) => {
+  const handleAddItem = useCallback((defaults?: string | Record<string, unknown>) => {
     const newItemId = `item-${Date.now()}`
-    const groupKey = defaultGroupKey && defaultGroupKey !== '__none__' ? defaultGroupKey : undefined
-    const statusVal = groupKey || data.columns.find((c) => c.id === 'status')?.options?.[0]?.id || 'todo'
+    let propsObj: Record<string, unknown> = {}
+    if (typeof defaults === 'object' && defaults !== null) {
+      propsObj = { ...defaults }
+    } else if (typeof defaults === 'string' && defaults !== '__none__') {
+      propsObj = { status: defaults }
+    } else {
+      const statusVal = data.columns.find((c) => c.id === 'status')?.options?.[0]?.id || 'todo'
+      propsObj = { status: statusVal }
+    }
     const newItem: KanbanItem = {
       id: newItemId,
       title: t('preview.kanban_new_task'),
-      properties: { status: statusVal },
+      properties: propsObj,
     }
     commitData({ ...data, items: [...data.items, newItem] })
     setDetailItem(newItem)
