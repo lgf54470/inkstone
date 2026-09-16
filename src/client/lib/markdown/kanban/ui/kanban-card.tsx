@@ -1,10 +1,11 @@
 import { memo, useState, type KeyboardEvent } from 'react'
-import { Calendar, CheckSquare, MoreHorizontal, Paperclip, User } from 'lucide-react'
+import { Calendar, Flag, MoreHorizontal, Paperclip } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
-import type { KanbanColorName, KanbanItem, KanbanProperty } from '../types'
+import type { KanbanColorName, KanbanItem, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanCardSubtasks } from './kanban-card-subtasks'
 
 interface KanbanCardProps {
   item: KanbanItem
@@ -15,6 +16,7 @@ interface KanbanCardProps {
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
   onUpdateTitle: (id: string, newTitle: string) => void
+  onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onDragStart: (e: React.DragEvent, id: string) => void
   onDragEnd: (e: React.DragEvent) => void
   onDragOverCard?: (e: React.DragEvent, id: string) => void
@@ -25,26 +27,44 @@ interface KanbanCardProps {
 function CardHeader({
   isSelected,
   icon,
+  tagVals,
+  tagsCol,
   onToggleSelect,
   onOpenDetail,
 }: {
   isSelected: boolean
   icon?: string
+  tagVals: string[]
+  tagsCol?: KanbanProperty
   onToggleSelect: () => void
   onOpenDetail: () => void
 }) {
   return (
-    <div className='flex items-start justify-between gap-1'>
-      <div className='flex items-center gap-1.5'>
+    <div className='flex items-center justify-between gap-1.5'>
+      <div className='flex min-w-0 flex-wrap items-center gap-1.5'>
         <input
           type='checkbox'
           checked={isSelected}
           onClick={(e) => e.stopPropagation()}
           onChange={onToggleSelect}
-          className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 transition-opacity group-hover/card:opacity-100 checked:opacity-100'
+          className='size-3.5 shrink-0 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 transition-opacity group-hover/card:opacity-100 checked:opacity-100'
           aria-label={t('preview.kanban_select_card')}
         />
         {icon && <KanbanIconBadge icon={icon} size={15} />}
+        {tagVals.slice(0, 2).map((tag) => {
+          const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
+          const color = opt?.color ?? 'gray'
+          const label = opt?.label ?? tag
+          return (
+            <span
+              key={tag}
+              style={getKanbanTagStyle(color)}
+              className='inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-semibold'
+            >
+              {formatKanbanOptionLabel(label, 'tags')}
+            </span>
+          )
+        })}
       </div>
       <button
         type='button'
@@ -91,7 +111,7 @@ function CardTitle({
           if (e.key === 'Enter') onBlur()
           if (e.key === 'Escape') onCancel()
         }}
-        className='w-full rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-inset)] px-1 py-0.5 text-[length:var(--text-13)] font-medium text-[var(--text-primary)] outline-none'
+        className='w-full rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-inset)] px-1.5 py-0.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] outline-none'
       />
     )
   }
@@ -102,92 +122,58 @@ function CardTitle({
         e.stopPropagation()
         onStartEditing()
       }}
-      className='line-clamp-2 text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'
+      className='line-clamp-2 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] leading-snug'
     >
       {title || t('preview.kanban_untitled')}
     </h4>
   )
 }
 
-function CardTags({
+function CardFooter({
   priorityOpt,
-  tagVals,
-  tagsCol,
-}: {
-  priorityOpt?: { label: string; color?: KanbanColorName }
-  tagVals: string[]
-  tagsCol?: KanbanProperty
-}) {
-  if (!priorityOpt && tagVals.length === 0) return null
-
-  return (
-    <div className='flex flex-wrap items-center gap-1'>
-      {priorityOpt && (
-        <span
-          style={getKanbanTagStyle(priorityOpt.color)}
-          className='inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium'
-        >
-          {formatKanbanOptionLabel(priorityOpt.label, 'priority')}
-        </span>
-      )}
-      {tagVals.map((tag) => {
-        const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
-        const color: KanbanColorName = opt?.color ?? 'gray'
-        const label = opt?.label ?? tag
-        return (
-          <span
-            key={tag}
-            style={getKanbanTagStyle(color)}
-            className='inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium'
-          >
-            {formatKanbanOptionLabel(label, 'tags')}
-          </span>
-        )
-      })}
-    </div>
-  )
-}
-
-function CardMeta({
   assignee,
   dueDate,
-  completedSubtasks,
-  totalSubtasks,
   filesCount,
 }: {
+  priorityOpt?: { label: string; color?: KanbanColorName }
   assignee?: unknown
   dueDate?: unknown
-  completedSubtasks: number
-  totalSubtasks: number
   filesCount: number
 }) {
-  if (!assignee && !dueDate && totalSubtasks === 0 && filesCount === 0) return null
+  if (!priorityOpt && !assignee && !dueDate && filesCount === 0) return null
 
   return (
-    <div className='flex flex-wrap items-center gap-2 pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+    <div className='flex flex-wrap items-center justify-between gap-1.5 pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+      <div className='flex flex-wrap items-center gap-1.5'>
+        {priorityOpt && (
+          <span
+            style={getKanbanTagStyle(priorityOpt.color)}
+            className='inline-flex items-center gap-1 rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium'
+          >
+            <Flag size={11} />
+            <span>{formatKanbanOptionLabel(priorityOpt.label, 'priority')}</span>
+          </span>
+        )}
+        {Boolean(dueDate) && (
+          <span className='inline-flex items-center gap-1 rounded-[var(--r-xs)] bg-[var(--bg-inset)] px-1.5 py-0.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
+            <Calendar size={11} className='text-[var(--text-tertiary)]' />
+            <span>{String(dueDate)}</span>
+          </span>
+        )}
+        {filesCount > 0 && (
+          <span className='inline-flex items-center gap-0.5 text-[var(--text-tertiary)]'>
+            <Paperclip size={11} />
+            <span>{filesCount}</span>
+          </span>
+        )}
+      </div>
       {Boolean(assignee) && (
-        <span className='inline-flex items-center gap-1'>
-          <User size={12} />
-          <span>{String(assignee)}</span>
-        </span>
-      )}
-      {Boolean(dueDate) && (
-        <span className='inline-flex items-center gap-1'>
-          <Calendar size={12} />
-          <span>{String(dueDate)}</span>
-        </span>
-      )}
-      {totalSubtasks > 0 && (
-        <span className='inline-flex items-center gap-1'>
-          <CheckSquare size={12} />
-          <span>{completedSubtasks}/{totalSubtasks}</span>
-        </span>
-      )}
-      {filesCount > 0 && (
-        <span className='inline-flex items-center gap-1'>
-          <Paperclip size={12} />
-          <span>{filesCount}</span>
-        </span>
+        <div
+          title={String(assignee)}
+          className='flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[length:var(--text-10)] font-bold text-[var(--accent)]'
+        >
+          {String(assignee).slice(0, 2).toUpperCase()}
+        </div>
       )}
     </div>
   )
@@ -237,11 +223,9 @@ function getCardDisplayProps(item: KanbanItem, columns: KanbanProperty[]) {
   const priorityOpt = priorityCol?.options?.find((o) => o.id === item.properties.priority || o.label === item.properties.priority)
   const tagsCol = columns.find((c) => c.id === 'tags')
   const tagVals = Array.isArray(item.properties.tags) ? item.properties.tags : []
-  const completedSubtasks = item.subtasks?.filter((s) => s.completed).length ?? 0
-  const totalSubtasks = item.subtasks?.length ?? 0
   const filesCount = item.files?.length ?? 0
   const dueDate = item.properties.dueDate || item.properties.startDate || item.properties.date
-  return { priorityOpt, tagsCol, tagVals, completedSubtasks, totalSubtasks, filesCount, dueDate }
+  return { priorityOpt, tagsCol, tagVals, filesCount, dueDate }
 }
 
 function CardDropIndicator({ dropIndicator }: { dropIndicator?: 'top' | 'bottom' | null }) {
@@ -280,11 +264,15 @@ function CardBody({
   item,
   titleState,
   display,
+  onUpdateSubtasks,
 }: {
   item: KanbanItem
   titleState: ReturnType<typeof useKanbanCardTitle>
   display: ReturnType<typeof getCardDisplayProps>
+  onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
 }) {
+  const desc = item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
+
   return (
     <>
       <div className='min-w-0 flex-1'>
@@ -297,13 +285,21 @@ function CardBody({
           onBlur={titleState.handleBlur}
           onCancel={titleState.handleCancel}
         />
+        {desc && (
+          <p className='mt-1 line-clamp-2 text-[length:var(--text-12)] text-[var(--text-tertiary)] leading-normal'>
+            {desc}
+          </p>
+        )}
       </div>
-      <CardTags priorityOpt={display.priorityOpt} tagVals={display.tagVals} tagsCol={display.tagsCol} />
-      <CardMeta
+      <KanbanCardSubtasks
+        itemId={item.id}
+        subtasks={item.subtasks || []}
+        onUpdateSubtasks={onUpdateSubtasks}
+      />
+      <CardFooter
+        priorityOpt={display.priorityOpt}
         assignee={item.properties.assignee}
         dueDate={display.dueDate}
-        completedSubtasks={display.completedSubtasks}
-        totalSubtasks={display.totalSubtasks}
         filesCount={display.filesCount}
       />
     </>
@@ -319,6 +315,7 @@ export const KanbanCard = memo(function KanbanCard({
   onToggleSelect,
   onOpenDetail,
   onUpdateTitle,
+  onUpdateSubtasks,
   onDragStart,
   onDragEnd,
   onDragOverCard,
@@ -328,7 +325,7 @@ export const KanbanCard = memo(function KanbanCard({
   const titleState = useKanbanCardTitle(item.title, (t) => onUpdateTitle(item.id, t))
   const display = getCardDisplayProps(item, columns)
   const dndHandlers = useCardDragHandlers(item.id, onDragOverCard, onDropOnCard)
-  const padClass = cardSize === 'small' ? 'p-2 gap-1.5' : cardSize === 'large' ? 'p-4 gap-3' : 'p-3 gap-2'
+  const padClass = cardSize === 'small' ? 'p-2.5 gap-1.5' : cardSize === 'large' ? 'p-4 gap-3' : 'p-3 gap-2'
 
   return (
     <div
@@ -348,7 +345,7 @@ export const KanbanCard = memo(function KanbanCard({
           onMoveColumn ? (dir) => onMoveColumn(item.id, dir) : undefined,
         )
       }
-      className={`group/card relative flex flex-col rounded-[var(--r-md)] border bg-[var(--bg-surface)] text-left shadow-[var(--shadow-xs)] transition-[box-shadow,border-color,background-color] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] ${padClass} ${
+      className={`group/card relative flex flex-col rounded-[var(--r-lg)] border bg-[var(--bg-surface)] text-left shadow-[var(--shadow-xs)] transition-[box-shadow,border-color,background-color] hover:border-[var(--border-default)] hover:shadow-[var(--shadow-sm)] ${padClass} ${
         isSelected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border-subtle)]'
       }`}
     >
@@ -356,10 +353,17 @@ export const KanbanCard = memo(function KanbanCard({
       <CardHeader
         isSelected={isSelected}
         icon={item.icon}
+        tagVals={display.tagVals}
+        tagsCol={display.tagsCol}
         onToggleSelect={() => onToggleSelect(item.id)}
         onOpenDetail={() => onOpenDetail(item)}
       />
-      <CardBody item={item} titleState={titleState} display={display} />
+      <CardBody
+        item={item}
+        titleState={titleState}
+        display={display}
+        onUpdateSubtasks={onUpdateSubtasks}
+      />
     </div>
   )
 })

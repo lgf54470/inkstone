@@ -1,10 +1,10 @@
 import { memo, useRef, useState } from 'react'
 import { MoreHorizontal, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
-import { getKanbanDotColor, getKanbanTagStyle } from '../colors'
+import { getKanbanDotColor } from '../colors'
 import { groupKanbanItems } from '../filter-sort'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
-import type { KanbanColorName, KanbanData, KanbanItem, KanbanView } from '../types'
+import type { KanbanColorName, KanbanData, KanbanItem, KanbanSubtask, KanbanView } from '../types'
 import { useKanbanBoardDndState, type CardDropTarget } from './kanban-board-dnd'
 import { KanbanCard } from './kanban-card'
 import { KanbanColumnMenu } from './kanban-column-menu'
@@ -18,6 +18,7 @@ interface KanbanBoardViewProps {
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
   onUpdateTitle: (id: string, newTitle: string) => void
+  onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onMoveItem: (itemId: string, targetGroupKey: string, targetIndex?: number) => void
   onAddItem: (groupKey?: string) => void
   onAddColumn: () => void
@@ -35,16 +36,17 @@ function ColumnHeaderTitle({
   count: number
   color?: KanbanColorName
 }) {
-  const tagStyle = getKanbanTagStyle(color)
+  const dotColor = getKanbanDotColor(color)
   return (
-    <div className='flex min-w-0 items-center gap-1.5'>
+    <div className='flex min-w-0 items-center gap-2'>
       <span
-        style={tagStyle}
-        className='truncate rounded-[var(--r-sm)] px-2.5 py-0.5 text-[length:var(--text-12)] font-bold shadow-2xs'
-      >
+        className='size-2.5 shrink-0 rounded-full'
+        style={{ backgroundColor: dotColor }}
+      />
+      <span className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
         {label}
       </span>
-      <span className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-surface)] px-1.5 py-0.5 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+      <span className='shrink-0 rounded-full bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
         {count}
       </span>
     </div>
@@ -161,6 +163,7 @@ interface ColumnCardsListProps {
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
   onUpdateTitle: (id: string, newTitle: string) => void
+  onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onDragStartCard: (e: React.DragEvent, id: string, sourceGroupKey: string) => void
   onDragEnd: () => void
   onDragOverCard: (e: React.DragEvent, id: string) => void
@@ -172,24 +175,31 @@ interface ColumnCardsListProps {
 function ColumnCardsList(props: ColumnCardsListProps) {
   return (
     <div className='mt-2 flex flex-1 flex-col gap-2 overflow-y-auto'>
-      {props.items.map((item) => (
-        <KanbanCard
-          key={item.id}
-          item={item}
-          columns={props.columns}
-          isSelected={props.selectedIds.has(item.id)}
-          cardSize={props.cardSize}
-          dropIndicator={props.cardDropTarget?.cardId === item.id ? props.cardDropTarget.position : null}
-          onToggleSelect={props.onToggleSelect}
-          onOpenDetail={props.onOpenDetail}
-          onUpdateTitle={props.onUpdateTitle}
-          onDragStart={(e) => props.onDragStartCard(e, item.id, props.groupKey)}
-          onDragEnd={props.onDragEnd}
-          onDragOverCard={props.onDragOverCard}
-          onDropOnCard={props.onDropCard}
-          onMoveColumn={(_id, dir) => props.onMoveColumn(item.id, dir)}
-        />
-      ))}
+      {props.items.length === 0 ? (
+        <div className='flex h-20 items-center justify-center rounded-[var(--r-lg)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)]/50 text-[length:var(--text-12)] font-medium text-[var(--text-tertiary)]'>
+          {t('preview.kanban_empty_column')}
+        </div>
+      ) : (
+        props.items.map((item) => (
+          <KanbanCard
+            key={item.id}
+            item={item}
+            columns={props.columns}
+            isSelected={props.selectedIds.has(item.id)}
+            cardSize={props.cardSize}
+            dropIndicator={props.cardDropTarget?.cardId === item.id ? props.cardDropTarget.position : null}
+            onToggleSelect={props.onToggleSelect}
+            onOpenDetail={props.onOpenDetail}
+            onUpdateTitle={props.onUpdateTitle}
+            onUpdateSubtasks={props.onUpdateSubtasks}
+            onDragStart={(e) => props.onDragStartCard(e, item.id, props.groupKey)}
+            onDragEnd={props.onDragEnd}
+            onDragOverCard={props.onDragOverCard}
+            onDropOnCard={props.onDropCard}
+            onMoveColumn={(_id, dir) => props.onMoveColumn(item.id, dir)}
+          />
+        ))
+      )}
 
       <button
         type='button'
@@ -220,6 +230,7 @@ interface KanbanBoardColumnProps {
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
   onUpdateTitle: (id: string, newTitle: string) => void
+  onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onMoveColumn: (itemId: string, dir: 'prev' | 'next') => void
   onAddItem: () => void
   onRenameColumn: (newLabel: string) => void
@@ -245,6 +256,7 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn({
   onToggleSelect,
   onOpenDetail,
   onUpdateTitle,
+  onUpdateSubtasks,
   onMoveColumn,
   onAddItem,
   onRenameColumn,
@@ -282,6 +294,7 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn({
         onToggleSelect={onToggleSelect}
         onOpenDetail={onOpenDetail}
         onUpdateTitle={onUpdateTitle}
+        onUpdateSubtasks={onUpdateSubtasks}
         onDragStartCard={onDragStartCard}
         onDragEnd={onDragEnd}
         onDragOverCard={onDragOverCard}
@@ -342,6 +355,7 @@ interface BoardColumnItemProps {
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
   onUpdateTitle: (id: string, newTitle: string) => void
+  onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onMoveColumn: (itemId: string, dir: 'prev' | 'next') => void
   onAddItem: (groupKey: string) => void
   onUpdateColumn?: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
@@ -361,6 +375,7 @@ function BoardColumnItem({
   onToggleSelect,
   onOpenDetail,
   onUpdateTitle,
+  onUpdateSubtasks,
   onMoveColumn,
   onAddItem,
   onUpdateColumn,
@@ -402,6 +417,7 @@ function BoardColumnItem({
       onToggleSelect={onToggleSelect}
       onOpenDetail={onOpenDetail}
       onUpdateTitle={onUpdateTitle}
+      onUpdateSubtasks={onUpdateSubtasks}
       onMoveColumn={onMoveColumn}
       onAddItem={() => onAddItem(group.groupKey)}
       onRenameColumn={(newLabel) => onUpdateColumn?.(group.groupKey, { label: newLabel })}
@@ -443,6 +459,7 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
           onToggleSelect={props.onToggleSelect}
           onOpenDetail={props.onOpenDetail}
           onUpdateTitle={props.onUpdateTitle}
+          onUpdateSubtasks={props.onUpdateSubtasks}
           onMoveColumn={(itemId, dir) => handleMoveColumn(itemId, group.groupKey, dir)}
           onAddItem={props.onAddItem}
           onUpdateColumn={props.onUpdateColumn}

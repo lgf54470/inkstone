@@ -4,6 +4,7 @@ function defaultViews() {
   return [
     { id: 'view-board', name: 'Board', type: 'board' as const, groupBy: 'status' },
     { id: 'view-table', name: 'Table', type: 'table' as const },
+    { id: 'view-chart', name: 'Chart', type: 'chart' as const, chartType: 'bar' as const, chartGroupBy: 'status' },
     { id: 'view-calendar', name: 'Calendar', type: 'calendar' as const, dateField: 'startDate' },
     { id: 'view-timeline', name: 'Timeline', type: 'timeline' as const, startField: 'startDate', endField: 'endDate' },
     { id: 'view-gantt', name: 'Gantt', type: 'gantt' as const, startField: 'startDate', endField: 'endDate', progressField: 'progress' },

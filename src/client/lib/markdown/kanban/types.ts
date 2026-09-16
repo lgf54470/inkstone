@@ -64,6 +64,7 @@ export interface KanbanItem {
   icon?: string
   cover?: string
   content?: string
+  description?: string
   files?: KanbanFile[]
   subtasks?: KanbanSubtask[]
   properties: Record<string, unknown>

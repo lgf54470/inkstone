@@ -51,6 +51,7 @@ function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
   const defaultViews: KanbanView[] = [
     { id: 'view-board', name: 'Board', type: 'board', groupBy: 'status' },
     { id: 'view-table', name: 'Table', type: 'table' },
+    { id: 'view-chart', name: 'Chart', type: 'chart', chartType: 'bar', chartGroupBy: 'status' },
     { id: 'view-calendar', name: 'Calendar', type: 'calendar', dateField: 'startDate' },
     { id: 'view-timeline', name: 'Timeline', type: 'timeline', startField: 'startDate', endField: 'endDate' },
     { id: 'view-gantt', name: 'Gantt', type: 'gantt', startField: 'startDate', endField: 'endDate', progressField: 'progress' },
@@ -59,7 +60,10 @@ function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
   ]
 
   const columns = Array.isArray(raw.columns) && raw.columns.length > 0 ? raw.columns : defaultColumns
-  const views = Array.isArray(raw.views) && raw.views.length > 0 ? raw.views : defaultViews
+  const baseViews = Array.isArray(raw.views) && raw.views.length > 0 ? raw.views : defaultViews
+  const views = baseViews.some((v) => v.type === 'chart')
+    ? baseViews
+    : [...baseViews, { id: 'view-chart', name: 'Chart', type: 'chart' as const, chartType: 'bar' as const, chartGroupBy: 'status' }]
   const items = Array.isArray(raw.items) ? raw.items : []
 
   return {

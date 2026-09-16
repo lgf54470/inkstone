@@ -1,0 +1,228 @@
+import { useState, type KeyboardEvent } from 'react'
+import { Check, ChevronDown, ChevronRight, ListTodo, Plus } from 'lucide-react'
+import { t } from '../../../i18n'
+import type { KanbanSubtask } from '../types'
+
+interface KanbanCardSubtasksProps {
+  itemId: string
+  subtasks: KanbanSubtask[]
+  onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
+}
+
+function SubtaskItemRow({
+  subtask,
+  onToggle,
+}: {
+  subtask: KanbanSubtask
+  onToggle: () => void
+}) {
+  return (
+    <div
+      className='group/st flex items-center gap-2 text-[length:var(--text-12)]'
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type='button'
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggle()
+        }}
+        className='flex size-3.5 shrink-0 items-center justify-center rounded-[var(--r-xs)] border transition-colors'
+        style={{
+          borderColor: subtask.completed ? 'var(--accent)' : 'var(--border-default)',
+          backgroundColor: subtask.completed ? 'var(--accent)' : 'transparent',
+        }}
+        aria-label={subtask.title}
+      >
+        {subtask.completed && <Check size={10} className='text-white' />}
+      </button>
+      <span
+        className={`min-w-0 flex-1 truncate ${
+          subtask.completed ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'
+        }`}
+      >
+        {subtask.title}
+      </span>
+    </div>
+  )
+}
+
+function AddSubtaskInput({
+  onAdd,
+  onCancel,
+}: {
+  onAdd: (title: string) => void
+  onCancel: () => void
+}) {
+  const [val, setVal] = useState('')
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      e.stopPropagation()
+      if (val.trim()) {
+        onAdd(val.trim())
+        setVal('')
+      }
+    } else if (e.key === 'Escape') {
+      e.stopPropagation()
+      onCancel()
+    }
+  }
+
+  return (
+    <div className='pt-1' onClick={(e) => e.stopPropagation()}>
+      <input
+        type='text'
+        autoFocus
+        value={val}
+        placeholder={t('preview.kanban_add_subtask')}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={onCancel}
+        className='w-full rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1.5 py-0.5 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
+      />
+    </div>
+  )
+}
+
+function SubtaskListExpanded({
+  subtasks,
+  isAdding,
+  onToggleSubtask,
+  onAddSubtask,
+  onStartAdding,
+  onCancelAdding,
+}: {
+  subtasks: KanbanSubtask[]
+  isAdding: boolean
+  onToggleSubtask: (id: string) => void
+  onAddSubtask: (title: string) => void
+  onStartAdding: () => void
+  onCancelAdding: () => void
+}) {
+  return (
+    <div
+      className='mt-1.5 flex flex-col gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)]/50 p-2'
+      onClick={(e) => e.stopPropagation()}
+    >
+      {subtasks.map((st) => (
+        <SubtaskItemRow key={st.id} subtask={st} onToggle={() => onToggleSubtask(st.id)} />
+      ))}
+      {isAdding ? (
+        <AddSubtaskInput onAdd={onAddSubtask} onCancel={onCancelAdding} />
+      ) : (
+        <button
+          type='button'
+          onClick={(e) => {
+            e.stopPropagation()
+            onStartAdding()
+          }}
+          className='flex items-center gap-1 pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)] hover:text-[var(--accent)]'
+        >
+          <Plus size={12} />
+          <span>{t('preview.kanban_add_subtask')}</span>
+        </button>
+      )}
+    </div>
+  )
+}
+
+function SubtaskSummaryBar({
+  completedCount,
+  totalCount,
+  percent,
+  isExpanded,
+  onToggleExpand,
+}: {
+  completedCount: number
+  totalCount: number
+  percent: number
+  isExpanded: boolean
+  onToggleExpand: () => void
+}) {
+  return (
+    <div
+      role='button'
+      tabIndex={0}
+      onClick={(e) => {
+        e.stopPropagation()
+        onToggleExpand()
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.stopPropagation()
+          onToggleExpand()
+        }
+      }}
+      className='flex cursor-pointer items-center justify-between gap-2 py-0.5 text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)]'
+    >
+      <div className='flex items-center gap-1.5 font-medium'>
+        <ListTodo size={12} className='text-[var(--accent)]' />
+        <span>{`${completedCount}/${totalCount}`}</span>
+      </div>
+      <div className='flex items-center gap-2'>
+        <div className='h-1.5 w-16 overflow-hidden rounded-full bg-[var(--border-subtle)]'>
+          <div
+            className='h-full rounded-full bg-[var(--accent)] transition-[width] duration-200'
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+      </div>
+    </div>
+  )
+}
+
+export function KanbanCardSubtasks({
+  itemId,
+  subtasks,
+  onUpdateSubtasks,
+}: KanbanCardSubtasksProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isAdding, setIsAdding] = useState(false)
+  const completedCount = subtasks.filter((s) => s.completed).length
+  const totalCount = subtasks.length
+  const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+
+  if (totalCount === 0) return null
+
+  const handleToggleSubtask = (stId: string) => {
+    if (!onUpdateSubtasks) return
+    const next = subtasks.map((s) => (s.id === stId ? { ...s, completed: !s.completed } : s))
+    onUpdateSubtasks(itemId, next)
+  }
+
+  const handleAddSubtask = (title: string) => {
+    if (!onUpdateSubtasks) return
+    const newSt: KanbanSubtask = {
+      id: `st-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      title,
+      completed: false,
+    }
+    onUpdateSubtasks(itemId, [...subtasks, newSt])
+    setIsAdding(false)
+  }
+
+  return (
+    <div className='flex flex-col'>
+      <SubtaskSummaryBar
+        completedCount={completedCount}
+        totalCount={totalCount}
+        percent={percent}
+        isExpanded={isExpanded}
+        onToggleExpand={() => setIsExpanded((prev) => !prev)}
+      />
+      {isExpanded && (
+        <SubtaskListExpanded
+          subtasks={subtasks}
+          isAdding={isAdding}
+          onToggleSubtask={handleToggleSubtask}
+          onAddSubtask={handleAddSubtask}
+          onStartAdding={() => setIsAdding(true)}
+          onCancelAdding={() => setIsAdding(false)}
+        />
+      )}
+    </div>
+  )
+}

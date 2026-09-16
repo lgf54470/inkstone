@@ -3,6 +3,7 @@ import type {
   KanbanColorName,
   KanbanData,
   KanbanItem,
+  KanbanSubtask,
 } from '../types'
 import { KanbanBatchBar } from './kanban-batch-bar'
 import { KanbanBoardView } from './kanban-board-view'
@@ -64,6 +65,11 @@ function KanbanTimelineViews({ activeView, viewData, data, commitData, setDetail
 }
 
 function BoardTableView(props: KanbanViewRendererProps) {
+  const handleUpdateSubtasks = (id: string, subtasks: KanbanSubtask[]) => {
+    const next = props.data.items.map((it) => (it.id === id ? { ...it, subtasks } : it))
+    props.commitData({ ...props.data, items: next })
+  }
+
   if (props.activeView.type === 'board') {
     return (
       <KanbanBoardView
@@ -74,6 +80,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
         onToggleSelect={props.handleToggleSelect}
         onOpenDetail={props.setDetailItem}
         onUpdateTitle={props.handleUpdateTitle}
+        onUpdateSubtasks={handleUpdateSubtasks}
         onMoveItem={props.handleMoveItem}
         onAddItem={props.handleAddItem}
         onAddColumn={props.handleAddColumn}
@@ -94,10 +101,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
         const next = props.data.items.map((it) => (it.id === id ? { ...it, properties: { ...it.properties, [prop]: val } } : it))
         props.commitData({ ...props.data, items: next })
       }}
-      onUpdateSubtasks={(id, subtasks) => {
-        const next = props.data.items.map((it) => (it.id === id ? { ...it, subtasks } : it))
-        props.commitData({ ...props.data, items: next })
-      }}
+      onUpdateSubtasks={handleUpdateSubtasks}
       onAddItem={props.handleAddItem}
       onAddColumn={props.handleAddColumn}
     />
