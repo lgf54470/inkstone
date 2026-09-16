@@ -108,25 +108,31 @@ function BoardTableView(props: KanbanViewRendererProps) {
   )
 }
 
-function ListGalleryView({ activeView, viewData, selectedIds, handleToggleSelect, setDetailItem, handleAddItem }: KanbanViewRendererProps) {
-  if (activeView.type === 'list') {
+function ListGalleryView(props: KanbanViewRendererProps) {
+  const handleUpdateSubtasks = (itemId: string, nextSubtasks: KanbanSubtask[]) => {
+    const next = props.data.items.map((it) => (it.id === itemId ? { ...it, subtasks: nextSubtasks } : it))
+    props.commitData({ ...props.data, items: next })
+  }
+
+  if (props.activeView.type === 'list') {
     return (
       <KanbanListView
-        data={viewData}
-        selectedIds={selectedIds}
-        onToggleSelect={handleToggleSelect}
-        onOpenDetail={setDetailItem}
-        onAddItem={handleAddItem}
+        data={props.viewData}
+        selectedIds={props.selectedIds}
+        onToggleSelect={props.handleToggleSelect}
+        onOpenDetail={props.setDetailItem}
+        onAddItem={props.handleAddItem}
       />
     )
   }
   return (
     <KanbanGalleryView
-      data={viewData}
-      selectedIds={selectedIds}
-      onToggleSelect={handleToggleSelect}
-      onOpenDetail={setDetailItem}
-      onAddItem={handleAddItem}
+      data={props.viewData}
+      selectedIds={props.selectedIds}
+      onToggleSelect={props.handleToggleSelect}
+      onOpenDetail={props.setDetailItem}
+      onAddItem={props.handleAddItem}
+      onUpdateSubtasks={handleUpdateSubtasks}
     />
   )
 }

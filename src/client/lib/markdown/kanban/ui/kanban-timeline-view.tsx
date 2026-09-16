@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import type { KanbanData, KanbanItem } from '../types'
+import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanTimelineViewProps {
   data: KanbanData
@@ -52,8 +53,9 @@ function TimelineTaskSidebar({
           <div
             key={item.id}
             onClick={() => onOpenDetail(item)}
-            className='flex h-10 cursor-pointer items-center px-3 text-[length:var(--text-13)] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            className='flex h-10 cursor-pointer items-center gap-1.5 px-3 text-[length:var(--text-13)] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           >
+            <KanbanIconBadge icon={item.icon} size={14} />
             <span className='truncate'>{item.title}</span>
           </div>
         ))}

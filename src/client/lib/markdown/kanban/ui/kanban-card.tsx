@@ -26,14 +26,12 @@ interface KanbanCardProps {
 
 function CardHeader({
   isSelected,
-  icon,
   tagVals,
   tagsCol,
   onToggleSelect,
   onOpenDetail,
 }: {
   isSelected: boolean
-  icon?: string
   tagVals: string[]
   tagsCol?: KanbanProperty
   onToggleSelect: () => void
@@ -50,8 +48,7 @@ function CardHeader({
           className='size-3.5 shrink-0 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 transition-opacity group-hover/card:opacity-100 checked:opacity-100'
           aria-label={t('preview.kanban_select_card')}
         />
-        {icon && <KanbanIconBadge icon={icon} size={15} />}
-        {tagVals.slice(0, 2).map((tag) => {
+        {tagVals.slice(0, 3).map((tag) => {
           const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
           const color = opt?.color ?? 'gray'
           const label = opt?.label ?? tag
@@ -83,6 +80,7 @@ function CardHeader({
 
 function CardTitle({
   title,
+  icon,
   isEditing,
   titleText,
   onChangeText,
@@ -91,6 +89,7 @@ function CardTitle({
   onCancel,
 }: {
   title: string
+  icon?: string
   isEditing: boolean
   titleText: string
   onChangeText: (text: string) => void
@@ -100,19 +99,22 @@ function CardTitle({
 }) {
   if (isEditing) {
     return (
-      <input
-        type='text'
-        value={titleText}
-        autoFocus
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => onChangeText(e.target.value)}
-        onBlur={onBlur}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') onBlur()
-          if (e.key === 'Escape') onCancel()
-        }}
-        className='w-full rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-inset)] px-1.5 py-0.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] outline-none'
-      />
+      <div className='flex items-center gap-1.5'>
+        {icon && <KanbanIconBadge icon={icon} size={15} />}
+        <input
+          type='text'
+          value={titleText}
+          autoFocus
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => onChangeText(e.target.value)}
+          onBlur={onBlur}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onBlur()
+            if (e.key === 'Escape') onCancel()
+          }}
+          className='w-full rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-inset)] px-1.5 py-0.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] outline-none'
+        />
+      </div>
     )
   }
 
@@ -122,9 +124,14 @@ function CardTitle({
         e.stopPropagation()
         onStartEditing()
       }}
-      className='line-clamp-2 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] leading-snug'
+      className='flex items-start gap-1.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] leading-snug'
     >
-      {title || t('preview.kanban_untitled')}
+      {icon && (
+        <span className='mt-0.5 shrink-0'>
+          <KanbanIconBadge icon={icon} size={15} />
+        </span>
+      )}
+      <span className='line-clamp-2'>{title || t('preview.kanban_untitled')}</span>
     </h4>
   )
 }
@@ -271,13 +278,14 @@ function CardBody({
   display: ReturnType<typeof getCardDisplayProps>
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
 }) {
-  const desc = item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
+  const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
 
   return (
     <>
       <div className='min-w-0 flex-1'>
         <CardTitle
           title={item.title}
+          icon={item.icon}
           isEditing={titleState.isEditing}
           titleText={titleState.text}
           onChangeText={titleState.setText}
@@ -352,7 +360,6 @@ export const KanbanCard = memo(function KanbanCard({
       <CardDropIndicator dropIndicator={dropIndicator} />
       <CardHeader
         isSelected={isSelected}
-        icon={item.icon}
         tagVals={display.tagVals}
         tagsCol={display.tagsCol}
         onToggleSelect={() => onToggleSelect(item.id)}

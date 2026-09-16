@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import type { KanbanData, KanbanItem } from '../types'
+import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanGanttViewProps {
   data: KanbanData
@@ -56,8 +57,11 @@ function GanttTaskSidebar({
             onClick={() => onOpenDetail(item)}
             className='flex h-10 cursor-pointer items-center justify-between px-3 text-[length:var(--text-13)] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           >
-            <span className='truncate'>{item.title}</span>
-            <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+            <div className='flex min-w-0 items-center gap-1.5'>
+              <KanbanIconBadge icon={item.icon} size={14} />
+              <span className='truncate'>{item.title}</span>
+            </div>
+            <span className='shrink-0 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
               {Number(item.properties.progress || 0)}%
             </span>
           </div>

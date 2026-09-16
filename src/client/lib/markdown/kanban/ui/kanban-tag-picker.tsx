@@ -1,0 +1,258 @@
+import { useEffect, useRef, useState } from 'react'
+import { Plus, X } from 'lucide-react'
+import { t } from '../../../i18n'
+import { getKanbanTagStyle, KANBAN_COLOR_NAMES } from '../colors'
+import { formatKanbanOptionLabel } from '../i18n-helpers'
+import type { KanbanColorName, KanbanOption } from '../types'
+
+interface KanbanTagPickerProps {
+  tags: string[]
+  options?: KanbanOption[]
+  onChangeTags: (tags: string[]) => void
+  onAddOption?: (newOption: KanbanOption) => void
+}
+
+function TagChip({
+  tag,
+  options,
+  onRemove,
+}: {
+  tag: string
+  options?: KanbanOption[]
+  onRemove: (tag: string) => void
+}) {
+  const opt = options?.find((o) => o.id === tag || o.label === tag)
+  const color = opt?.color ?? 'gray'
+  const label = opt?.label ?? tag
+
+  return (
+    <span
+      style={getKanbanTagStyle(color)}
+      className='inline-flex items-center gap-1 rounded-[var(--r-xs)] px-2 py-0.5 text-[length:var(--text-11)] font-semibold'
+    >
+      <span>{formatKanbanOptionLabel(label, 'tags')}</span>
+      <button
+        type='button'
+        onClick={(e) => {
+          e.stopPropagation()
+          onRemove(tag)
+        }}
+        className='opacity-60 transition-opacity hover:opacity-100'
+        aria-label={t('preview.mindmap_shortcut_remove')}
+      >
+        <X size={10} />
+      </button>
+    </span>
+  )
+}
+
+function ColorDotPicker({
+  selected,
+  onSelect,
+}: {
+  selected: KanbanColorName
+  onSelect: (c: KanbanColorName) => void
+}) {
+  return (
+    <div className='flex flex-wrap gap-1'>
+      {KANBAN_COLOR_NAMES.slice(0, 8).map((c) => (
+        <button
+          key={c}
+          type='button'
+          onClick={() => onSelect(c)}
+          title={c}
+          aria-label={c}
+          className={`size-4 rounded-full transition-transform hover:scale-125 ${
+            selected === c ? 'ring-2 ring-[var(--accent)]' : ''
+          }`}
+          style={{ backgroundColor: `var(--kanban-tag-${c}-fg)` }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function ExistingOptionsList({
+  unselectedOptions,
+  onSelectOption,
+}: {
+  unselectedOptions: KanbanOption[]
+  onSelectOption: (id: string) => void
+}) {
+  if (unselectedOptions.length === 0) return null
+
+  return (
+    <div className='flex flex-wrap gap-1 border-b border-[var(--border-subtle)] pb-2'>
+      {unselectedOptions.map((opt) => (
+        <button
+          key={opt.id}
+          type='button'
+          onClick={() => onSelectOption(opt.id)}
+          style={getKanbanTagStyle(opt.color)}
+          className='rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium transition-opacity hover:opacity-80'
+        >
+          + {formatKanbanOptionLabel(opt, 'tags')}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function usePopoverDismiss(
+  popoverRef: React.RefObject<HTMLElement | null>,
+  anchorRef: React.RefObject<HTMLElement | null>,
+  onClose: () => void,
+) {
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (
+        popoverRef.current?.contains(e.target as Node) ||
+        anchorRef.current?.contains(e.target as Node)
+      ) {
+        return
+      }
+      onClose()
+    }
+    window.addEventListener('mousedown', handleClick)
+    return () => window.removeEventListener('mousedown', handleClick)
+  }, [anchorRef, onClose, popoverRef])
+}
+
+function TagInputField({
+  tagName,
+  tagColor,
+  onChangeName,
+  onAddTag,
+  onClose,
+}: {
+  tagName: string
+  tagColor: KanbanColorName
+  onChangeName: (name: string) => void
+  onAddTag: (name: string, color: KanbanColorName) => void
+  onClose: () => void
+}) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && tagName.trim()) {
+      e.preventDefault()
+      onAddTag(tagName.trim(), tagColor)
+      onClose()
+    } else if (e.key === 'Escape') {
+      onClose()
+    }
+  }
+
+  return (
+    <input
+      type='text'
+      autoFocus
+      value={tagName}
+      onChange={(e) => onChangeName(e.target.value)}
+      onKeyDown={handleKeyDown}
+      placeholder={t('preview.kanban_tag_name')}
+      className='w-full rounded-[var(--r-xs)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
+    />
+  )
+}
+
+function TagCreatePopover({
+  options,
+  existingTags,
+  anchorRef,
+  onClose,
+  onAddTag,
+}: {
+  options?: KanbanOption[]
+  existingTags: string[]
+  anchorRef: React.RefObject<HTMLButtonElement | null>
+  onClose: () => void
+  onAddTag: (name: string, color: KanbanColorName) => void
+}) {
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const [tagName, setTagName] = useState('')
+  const [tagColor, setTagColor] = useState<KanbanColorName>('blue')
+
+  usePopoverDismiss(popoverRef, anchorRef, onClose)
+
+  const unselectedOptions = (options ?? []).filter(
+    (o) => !existingTags.includes(o.id) && !existingTags.includes(o.label),
+  )
+
+  return (
+    <div
+      ref={popoverRef}
+      role='dialog'
+      aria-label={t('preview.kanban_add_tag')}
+      className='absolute left-0 top-full z-50 mt-1 w-56 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2.5 shadow-[var(--shadow-pop)]'
+    >
+      <div className='flex flex-col gap-2'>
+        <ExistingOptionsList
+          unselectedOptions={unselectedOptions}
+          onSelectOption={(id) => {
+            onAddTag(id, tagColor)
+            onClose()
+          }}
+        />
+        <TagInputField
+          tagName={tagName}
+          tagColor={tagColor}
+          onChangeName={setTagName}
+          onAddTag={onAddTag}
+          onClose={onClose}
+        />
+        <ColorDotPicker selected={tagColor} onSelect={setTagColor} />
+      </div>
+    </div>
+  )
+}
+
+export function KanbanTagPicker({
+  tags = [],
+  options = [],
+  onChangeTags,
+  onAddOption,
+}: KanbanTagPickerProps) {
+  const [open, setOpen] = useState(false)
+  const addBtnRef = useRef<HTMLButtonElement>(null)
+
+  const handleRemove = (tagToRemove: string) => {
+    onChangeTags(tags.filter((t) => t !== tagToRemove))
+  }
+
+  const handleAdd = (name: string, color: KanbanColorName) => {
+    const existing = options.find((o) => o.id === name || o.label === name)
+    const tagId = existing ? existing.id : name.toLowerCase().replace(/\s+/g, '_')
+    if (!tags.includes(tagId) && !tags.includes(name)) {
+      onChangeTags([...tags, tagId])
+    }
+    if (!existing && onAddOption) {
+      onAddOption({ id: tagId, label: name, color })
+    }
+  }
+
+  return (
+    <div className='relative flex flex-wrap items-center gap-1.5'>
+      {tags.map((tag) => (
+        <TagChip key={tag} tag={tag} options={options} onRemove={handleRemove} />
+      ))}
+      <button
+        ref={addBtnRef}
+        type='button'
+        onClick={() => setOpen((o) => !o)}
+        className='inline-flex items-center gap-1 rounded-[var(--r-xs)] border border-dashed border-[var(--border-default)] px-2 py-0.5 text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
+        aria-label={t('preview.kanban_new_tag')}
+      >
+        <Plus size={11} />
+        <span>{t('preview.kanban_new_tag')}</span>
+      </button>
+      {open && (
+        <TagCreatePopover
+          options={options}
+          existingTags={tags}
+          anchorRef={addBtnRef}
+          onClose={() => setOpen(false)}
+          onAddTag={handleAdd}
+        />
+      )}
+    </div>
+  )
+}

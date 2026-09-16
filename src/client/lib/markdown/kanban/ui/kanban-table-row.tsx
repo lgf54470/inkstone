@@ -158,12 +158,16 @@ function ItemTitleCell({
   item,
   subtasksCount,
   expanded,
+  tagsCol,
+  tagVals,
   onToggleExpand,
   onOpenDetail,
 }: {
   item: KanbanItem
   subtasksCount: number
   expanded: boolean
+  tagsCol?: KanbanProperty
+  tagVals: string[]
   onToggleExpand: () => void
   onOpenDetail: () => void
 }) {
@@ -186,6 +190,20 @@ function ItemTitleCell({
       >
         {item.title}
       </button>
+      {tagVals.slice(0, 2).map((tag) => {
+        const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
+        const color = opt?.color ?? 'gray'
+        const label = opt?.label ?? tag
+        return (
+          <span
+            key={tag}
+            style={getKanbanTagStyle(color)}
+            className='hidden sm:inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold'
+          >
+            {formatKanbanOptionLabel(label, 'tags')}
+          </span>
+        )
+      })}
       {subtasksCount > 0 && (
         <span className='rounded-[var(--r-full)] bg-[var(--bg-hover)] px-1.5 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
           {subtasksCount}
@@ -267,6 +285,8 @@ export function KanbanTableRow({
 }: KanbanTableRowProps) {
   const [expanded, setExpanded] = useState(false)
   const statusCol = columns.find((c) => c.id === 'status')
+  const tagsCol = columns.find((c) => c.id === 'tags')
+  const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
   const subtasks = item.subtasks || []
 
   return (
@@ -285,6 +305,8 @@ export function KanbanTableRow({
           item={item}
           subtasksCount={subtasks.length}
           expanded={expanded}
+          tagsCol={tagsCol}
+          tagVals={tagVals}
           onToggleExpand={() => setExpanded((e) => !e)}
           onOpenDetail={onOpenDetail}
         />
