@@ -42,6 +42,15 @@ function mountChart(): HTMLDivElement {
   return chart
 }
 
+function mountKanban(): HTMLDivElement {
+  const kanban = document.createElement('div')
+  kanban.className = 'kanban-block'
+  kanban.dataset.kanban = encodeDataValue('{"title":"Project"}')
+  kanban.dataset.sourceLine = '20'
+  document.body.appendChild(kanban)
+  return kanban
+}
+
 function detectAt(doc: string, pos: number, selection?: { from: number; to: number }): ReturnType<typeof detectEditorContext> {
   let result!: ReturnType<typeof detectEditorContext>
   withView(doc, selection, (view) => {
@@ -50,7 +59,7 @@ function detectAt(doc: string, pos: number, selection?: { from: number; to: numb
   return result
 }
 
-describe('detectEditorContext', () => {
+describe('detectEditorContext basic syntax', () => {
   it('detects text selection', () => {
     const ctx = detectAt('Hello world from Inkstone', 8, { from: 6, to: 11 })
     expect(ctx.type).toBe('selection')
@@ -64,6 +73,20 @@ describe('detectEditorContext', () => {
     expect(ctx.table?.columnCount).toBe(2)
   })
 
+  it('detects wikilink and normal link', () => {
+    const wikiCtx = detectAt('Check this [[My Note|Alias]] and [Inkstone](https://inkstone.app)', 18)
+    expect(wikiCtx.type).toBe('wikilink')
+    expect(wikiCtx.wikiLink?.target).toBe('My Note')
+    expect(wikiCtx.wikiLink?.alias).toBe('Alias')
+
+    const linkCtx = detectAt('Check this [[My Note|Alias]] and [Inkstone](https://inkstone.app)', 40)
+    expect(linkCtx.type).toBe('link')
+    expect(linkCtx.link?.text).toBe('Inkstone')
+    expect(linkCtx.link?.url).toBe('https://inkstone.app')
+  })
+})
+
+describe('detectEditorContext blocks and diagrams', () => {
   it('detects fenced code block', () => {
     const ctx = detectAt('```typescript\nconst x = 1;\n```', 18)
     expect(ctx.type).toBe('codeblock')
@@ -83,16 +106,10 @@ describe('detectEditorContext', () => {
     expect(ctx.chart?.code).toBe('{"type":"bar"}')
   })
 
-  it('detects wikilink and normal link', () => {
-    const wikiCtx = detectAt('Check this [[My Note|Alias]] and [Inkstone](https://inkstone.app)', 18)
-    expect(wikiCtx.type).toBe('wikilink')
-    expect(wikiCtx.wikiLink?.target).toBe('My Note')
-    expect(wikiCtx.wikiLink?.alias).toBe('Alias')
-
-    const linkCtx = detectAt('Check this [[My Note|Alias]] and [Inkstone](https://inkstone.app)', 40)
-    expect(linkCtx.type).toBe('link')
-    expect(linkCtx.link?.text).toBe('Inkstone')
-    expect(linkCtx.link?.url).toBe('https://inkstone.app')
+  it('detects kanban block', () => {
+    const ctx = detectAt('```kanban\n## Todo\n- Task 1\n```', 15)
+    expect(ctx.type).toBe('kanban')
+    expect(ctx.kanban?.code).toBe('## Todo\n- Task 1')
   })
 })
 
@@ -115,5 +132,14 @@ describe('detectPreviewContext', () => {
     expect(ctx.chart?.code).toBe('{"type":"bar"}')
     expect(ctx.chart?.sourceLine).toBe(15)
     chart.remove()
+  })
+
+  it('detects kanban element in preview DOM', () => {
+    const kanban = mountKanban()
+    const ctx = detectPreviewContext(kanban)
+    expect(ctx.type).toBe('kanban')
+    expect(ctx.kanban?.code).toBe('{"title":"Project"}')
+    expect(ctx.kanban?.sourceLine).toBe(20)
+    kanban.remove()
   })
 })

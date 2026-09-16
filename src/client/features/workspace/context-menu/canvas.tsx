@@ -14,6 +14,7 @@ import {
   FileDown,
   FileText,
   Image as ImageIcon,
+  Kanban,
   Link2,
   ListTodo,
   ListTree,
@@ -34,13 +35,14 @@ import {
 import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { preferredScrollBehavior } from '../../../lib/motion'
-import { insertAdvancedCodeBlock, insertCallout, insertCodeBlock, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, EXCALIDRAW_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands'
+import { insertAdvancedCodeBlock, insertCallout, insertCodeBlock, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands'
 import type { MenuCtx } from './types'
 import { SubmenuList } from '../../../components/overlay'
 
 const MERMAID_MENU_WIDTH = 190
 const CHART_MENU_WIDTH = 180
 const MINDMAP_MENU_WIDTH = 180
+const KANBAN_MENU_WIDTH = 180
 const EXCALIDRAW_MENU_WIDTH = 180
 const TASK_MENU_WIDTH = 180
 const EMOJI_MENU_WIDTH = 180
@@ -50,6 +52,7 @@ const DIAGRAM_MENUS = {
   mermaid: { labelKey: 'workspace.mermaid_diagram', templates: MERMAID_TEMPLATES, width: MERMAID_MENU_WIDTH, icon: <Sparkles size={13} /> },
   chart: { labelKey: 'workspace.chartjs_diagram', templates: CHARTJS_TEMPLATES, width: CHART_MENU_WIDTH, icon: <BarChart2 size={13} /> },
   mindmap: { labelKey: 'workspace.mind_map', templates: MINDMAP_TEMPLATES, width: MINDMAP_MENU_WIDTH, icon: <ListTree size={13} /> },
+  kanban: { labelKey: 'workspace.kanban', templates: KANBAN_TEMPLATES, width: KANBAN_MENU_WIDTH, icon: <Kanban size={13} /> },
   excalidraw: { labelKey: 'workspace.whiteboard', templates: EXCALIDRAW_TEMPLATES, width: EXCALIDRAW_MENU_WIDTH, icon: <PenTool size={13} /> },
 } as const
 
@@ -176,6 +179,7 @@ function buildInsertItem(ctx: MenuCtx): MenuItem {
           ...diagramInsertItems(ctx, 'mermaid', closeMenu),
           ...diagramInsertItems(ctx, 'chart', closeMenu),
           ...diagramInsertItems(ctx, 'mindmap', closeMenu),
+          ...diagramInsertItems(ctx, 'kanban', closeMenu),
           ...diagramInsertItems(ctx, 'excalidraw', closeMenu),
           ...tailInsertItems(ctx),
           ...taskStatusInsertItems(ctx, closeMenu),

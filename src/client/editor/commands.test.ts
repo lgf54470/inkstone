@@ -1,6 +1,6 @@
 import { EditorSelection, EditorState } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
-import { completeCodeFenceOnEnter, insertAbbreviation, insertChartJs, insertDefinitionList, insertEmoji, insertMermaid, insertRuby, insertTableOfContents, insertTaskWithStatus, toggleSubscript, toggleSuperscript, toggleTaskDone, toggleUnderline } from './commands'
+import { completeCodeFenceOnEnter, insertAbbreviation, insertChartJs, insertDefinitionList, insertEmoji, insertKanban, insertKanbanFromOutline, insertMermaid, insertRuby, insertTableOfContents, insertTaskWithStatus, toggleSubscript, toggleSuperscript, toggleTaskDone, toggleUnderline } from './commands'
 
 function runFenceCompletion(doc: string, cursor = doc.length) {
   const state = EditorState.create({ doc, selection: EditorSelection.cursor(cursor) })
@@ -39,6 +39,31 @@ describe('insertDiagramCode', () => {
     let next = state
     insertChartJs({ state, dispatch: (tr) => { next = tr.state } })
     expect(next.doc.toString()).toContain('```chart\n{\n  "type": "bar"')
+  })
+
+  it('inserts kanban block', () => {
+    const state = EditorState.create({ doc: '', selection: EditorSelection.cursor(0) })
+    let next = state
+    insertKanban({ state, dispatch: (tr) => { next = tr.state } })
+    expect(next.doc.toString()).toContain('```kanban\n## To Do')
+  })
+})
+
+describe('insertKanbanFromOutline', () => {
+  it('inserts kanban from outline when document has outline headings', () => {
+    const doc = '## Todo\n- Task 1\n- Task 2\n## Done\n- Task 3'
+    const state = EditorState.create({ doc, selection: EditorSelection.cursor(0) })
+    let next = state
+    const res = insertKanbanFromOutline({ state, dispatch: (tr) => { next = tr.state } })
+    expect(res).toBe(true)
+    expect(next.doc.toString()).toContain('```kanban\n## Todo\n- Task 1\n- Task 2\n## Done\n- Task 3\n```')
+  })
+
+  it('rejects inserting kanban from outline when no headings or lists present', () => {
+    const doc = 'Just some plain text without headings'
+    const state = EditorState.create({ doc, selection: EditorSelection.cursor(0) })
+    const res = insertKanbanFromOutline({ state, dispatch: () => {} })
+    expect(res).toBe(false)
   })
 })
 

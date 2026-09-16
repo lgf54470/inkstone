@@ -466,7 +466,7 @@ export const EXCALIDRAW_TEMPLATES: DiagramTemplate[] = [
   },
 ]
 
-export function insertDiagramCode(lang: 'mermaid' | 'chart' | 'mindmap' | 'excalidraw', code: string): StateCommand {
+export function insertDiagramCode(lang: 'mermaid' | 'chart' | 'mindmap' | 'excalidraw' | 'kanban', code: string): StateCommand {
   return ({ state, dispatch }) => {
     const range = state.selection.main
     const insert = `\`\`\`${lang}\n${code}\n\`\`\`\n`

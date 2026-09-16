@@ -73,6 +73,12 @@ function detectExcalidraw(target: HTMLElement): PreviewContextData | null {
   return { type: 'excalidraw', target, excalidraw: { code: decodeDataValue(boardEl.dataset.excalidraw ?? ''), sourceLine: getSourceLine(boardEl) } }
 }
 
+function detectKanban(target: HTMLElement): PreviewContextData | null {
+  const kanbanEl = target.closest<HTMLElement>('[data-kanban], .kanban-block')
+  if (!kanbanEl) return null
+  return { type: 'kanban', target, kanban: { code: decodeDataValue(kanbanEl.dataset.kanban ?? ''), sourceLine: getSourceLine(kanbanEl) } }
+}
+
 function detectCodeBlock(target: HTMLElement): PreviewContextData | null {
   const codeEl = target.closest<HTMLElement>('pre code, pre')
   if (!codeEl) return null
@@ -120,6 +126,7 @@ const DETECTORS: Array<(target: HTMLElement) => PreviewContextData | null> = [
   detectChart,
   detectMindmap,
   detectExcalidraw,
+  detectKanban,
   detectCodeBlock,
   detectWikiLink,
   detectLink,

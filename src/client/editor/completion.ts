@@ -129,6 +129,7 @@ const LANGUAGES = [
   'javascript', 'typescript', 'tsx', 'jsx', 'python', 'go', 'rust', 'java', 'kotlin', 'swift',
   'c', 'cpp', 'csharp', 'php', 'ruby', 'sql', 'bash', 'shell', 'powershell', 'json', 'yaml',
   'toml', 'xml', 'html', 'css', 'scss', 'markdown', 'diff', 'dockerfile', 'nginx', 'mermaid',
+  'chart', 'mindmap', 'excalidraw', 'kanban',
 ]
 export function codeFenceSource(context: CompletionContext): CompletionResult | null {
   const before = context.matchBefore(/^```([a-zA-Z0-9+#-]*)$/)

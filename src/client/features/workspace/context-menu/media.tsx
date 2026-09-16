@@ -16,7 +16,7 @@ import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
 import { formatCode } from '../../../lib/markdown/code-formatter'
-import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, EXCALIDRAW_TEMPLATES } from '../../../editor/commands'
+import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES } from '../../../editor/commands'
 import type { EditorContextData, PreviewContextData } from '../context-menu-detect'
 import type { MenuCtx } from './types'
 import { submenuFor } from '../../../components/overlay'
@@ -26,6 +26,7 @@ type MathData = NonNullable<EditorContextData['math']>
 type PreviewCodeBlockData = NonNullable<PreviewContextData['codeBlock']>
 
 const CODE_LANGUAGES = [
+  'kanban',
   'mindmap',
   'typescript',
   'javascript',
@@ -231,6 +232,30 @@ export function buildMindmapItems(ctx: MenuCtx): MenuItem[] | null {
       ...(previewContext
         ? [
             { id: 'jump-mindmap', label: t('contextmenu.mermaid_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
+          ]
+        : []),
+    ]
+  }
+  return null
+}
+
+export function buildKanbanItems(ctx: MenuCtx): MenuItem[] | null {
+  const { editorView, editorContext, previewContext, onJumpToLine, handleCopy } = ctx
+
+  const kanbanData = editorContext?.kanban ?? previewContext?.kanban
+  if (editorContext?.type === 'kanban' || previewContext?.type === 'kanban') {
+    const code = kanbanData?.code ?? ''
+    const templates = KANBAN_TEMPLATES.map((tpl) => ({ id: tpl.id, label: t(tpl.labelKey), text: tpl.code }))
+    return [
+      { id: 'copy-kanban', label: t('contextmenu.mermaid_copy'), icon: <Copy size={14} />, onSelect: () => handleCopy(code) },
+      ...(editorContext?.kanban
+        ? [
+            { id: 'kanban-templates-sub', label: t('contextmenu.kanban_templates'), icon: <Sparkles size={14} />, separatorBefore: true, submenu: submenuFor(buildTemplateItems(editorView, editorContext.kanban.from, editorContext.kanban.to, 'kanban', templates), 190) },
+          ]
+        : []),
+      ...(previewContext
+        ? [
+            { id: 'jump-kanban', label: t('contextmenu.mermaid_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
           ]
         : []),
     ]

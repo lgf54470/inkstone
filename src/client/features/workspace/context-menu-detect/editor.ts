@@ -153,7 +153,7 @@ function findMatchAt(regex: RegExp, lineText: string, offset: number): RegExpExe
   return null
 }
 
-type LiveFenceKind = 'mermaid' | 'mindmap' | 'excalidraw' | 'chart'
+type LiveFenceKind = 'mermaid' | 'mindmap' | 'excalidraw' | 'chart' | 'kanban'
 
 /** The fences whose own menu replaces the code block's, by every name the language goes by. */
 const LIVE_FENCE_KINDS: Record<string, LiveFenceKind> = {
@@ -163,6 +163,9 @@ const LIVE_FENCE_KINDS: Record<string, LiveFenceKind> = {
   excalidraw: 'excalidraw',
   chart: 'chart',
   chartjs: 'chart',
+  kanban: 'kanban',
+  'notion-kanban': 'kanban',
+  board: 'kanban',
 }
 
 function codeFenceContext(
@@ -197,6 +200,7 @@ function liveFenceContext(
   if (kind === 'mindmap') return { type: 'mindmap', pos, lineNumber, mindmap: source }
   if (kind === 'excalidraw') return { type: 'excalidraw', pos, lineNumber, excalidraw: source }
   if (kind === 'chart') return { type: 'chart', pos, lineNumber, chart: source }
+  if (kind === 'kanban') return { type: 'kanban', pos, lineNumber, kanban: source }
   return null
 }
 
