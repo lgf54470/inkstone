@@ -4,7 +4,7 @@ import { t } from '../../../i18n'
 import { getKanbanDotColor } from '../colors'
 import { groupKanbanItems } from '../filter-sort'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
-import type { KanbanColorName, KanbanData, KanbanItem, KanbanSubtask, KanbanView } from '../types'
+import type { KanbanColorName, KanbanData, KanbanItem, KanbanOption, KanbanSubtask, KanbanView } from '../types'
 import { useKanbanBoardDndState, type CardDropTarget } from './kanban-board-dnd'
 import { KanbanCard } from './kanban-card'
 import { KanbanColumnMenu } from './kanban-column-menu'
@@ -25,6 +25,8 @@ interface KanbanBoardViewProps {
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void
   onUpdateColumn?: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
   onDeleteColumn?: (groupKey: string) => void
+  onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
+  onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
 function ColumnHeaderTitle({
@@ -170,6 +172,8 @@ interface ColumnCardsListProps {
   onDropCard: (e: React.DragEvent, id: string) => void
   onMoveColumn: (itemId: string, dir: 'prev' | 'next') => void
   onAddItem: () => void
+  onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
+  onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
 function ColumnCardsList(props: ColumnCardsListProps) {
@@ -197,6 +201,8 @@ function ColumnCardsList(props: ColumnCardsListProps) {
             onDragOverCard={props.onDragOverCard}
             onDropOnCard={props.onDropCard}
             onMoveColumn={(_id, dir) => props.onMoveColumn(item.id, dir)}
+            onUpdateTags={props.onUpdateTags}
+            onAddColumnOption={props.onAddColumnOption}
           />
         ))
       )}
@@ -237,6 +243,8 @@ interface KanbanBoardColumnProps {
   onChangeColumnColor: (newColor: KanbanColorName) => void
   onCollapseColumn: () => void
   onDeleteColumn?: () => void
+  onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
+  onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
 const KanbanBoardColumn = memo(function KanbanBoardColumn({
@@ -263,6 +271,8 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn({
   onChangeColumnColor,
   onCollapseColumn,
   onDeleteColumn,
+  onUpdateTags,
+  onAddColumnOption,
 }: KanbanBoardColumnProps) {
   return (
     <div
@@ -301,6 +311,8 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn({
         onDropCard={(e, id) => onDropCard(e, group, id)}
         onMoveColumn={onMoveColumn}
         onAddItem={onAddItem}
+        onUpdateTags={onUpdateTags}
+        onAddColumnOption={onAddColumnOption}
       />
     </div>
   )
@@ -360,6 +372,8 @@ interface BoardColumnItemProps {
   onAddItem: (groupKey: string) => void
   onUpdateColumn?: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
   onDeleteColumn?: (groupKey: string) => void
+  onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
+  onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
 function BoardColumnItem({
@@ -380,6 +394,8 @@ function BoardColumnItem({
   onAddItem,
   onUpdateColumn,
   onDeleteColumn,
+  onUpdateTags,
+  onAddColumnOption,
 }: BoardColumnItemProps) {
   if (isCollapsed) {
     return (
@@ -424,6 +440,8 @@ function BoardColumnItem({
       onChangeColumnColor={(newColor) => onUpdateColumn?.(group.groupKey, { color: newColor })}
       onCollapseColumn={() => onToggleCollapse(group.groupKey)}
       onDeleteColumn={onDeleteColumn ? () => onDeleteColumn(group.groupKey) : undefined}
+      onUpdateTags={onUpdateTags}
+      onAddColumnOption={onAddColumnOption}
     />
   )
 }
@@ -464,6 +482,8 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
           onAddItem={props.onAddItem}
           onUpdateColumn={props.onUpdateColumn}
           onDeleteColumn={props.onDeleteColumn}
+          onUpdateTags={props.onUpdateTags}
+          onAddColumnOption={props.onAddColumnOption}
         />
       ))}
       <AddColumnButton onAddColumn={props.onAddColumn} />

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { t } from '../../../i18n'
-import { getKanbanTagStyle, KANBAN_COLOR_NAMES } from '../colors'
+import { getKanbanTagStyle, KANBAN_COLOR_NAMES, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanOption } from '../types'
 
@@ -10,16 +10,6 @@ interface KanbanTagPickerProps {
   options?: KanbanOption[]
   onChangeTags: (tags: string[]) => void
   onAddOption?: (newOption: KanbanOption) => void
-}
-
-function getDeterministicTagColor(name: string): KanbanColorName {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = (hash << 5) - hash + name.charCodeAt(i)
-    hash |= 0
-  }
-  const colors: readonly KanbanColorName[] = ['blue', 'green', 'yellow', 'purple', 'pink', 'orange', 'red', 'teal']
-  return colors[Math.abs(hash) % colors.length]!
 }
 
 function TagChip({
@@ -32,7 +22,7 @@ function TagChip({
   onRemove: (tag: string) => void
 }) {
   const opt = options?.find((o) => o.id === tag || o.label === tag)
-  const color = opt?.color ?? getDeterministicTagColor(tag)
+  const color = resolveKanbanTagColor(tag, options)
   const label = opt?.label ?? tag
 
   return (
@@ -152,19 +142,35 @@ function TagInputField({
   }
 
   return (
-    <input
-      type='text'
-      autoFocus
-      value={tagName}
-      onChange={(e) => onChangeName(e.target.value)}
-      onKeyDown={handleKeyDown}
-      placeholder={t('preview.kanban_tag_name')}
-      className='w-full rounded-[var(--r-xs)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
-    />
+    <div className='flex items-center gap-1'>
+      <input
+        type='text'
+        autoFocus
+        value={tagName}
+        onChange={(e) => onChangeName(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={t('preview.kanban_tag_name')}
+        className='min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
+      />
+      <button
+        type='button'
+        disabled={!tagName.trim()}
+        onClick={() => {
+          if (tagName.trim()) {
+            onAddTag(tagName.trim(), tagColor)
+            onClose()
+          }
+        }}
+        className='inline-flex shrink-0 items-center justify-center rounded-[var(--r-xs)] bg-[var(--accent)] px-2 py-1 text-[length:var(--text-11)] font-medium text-[var(--accent-fg)] opacity-90 transition-opacity hover:opacity-100 disabled:opacity-40'
+        aria-label={t('preview.kanban_add_tag')}
+      >
+        <Plus size={11} />
+      </button>
+    </div>
   )
 }
 
-function TagCreatePopover({
+export function TagCreatePopover({
   options,
   existingTags,
   anchorRef,
@@ -192,6 +198,9 @@ function TagCreatePopover({
       ref={popoverRef}
       role='dialog'
       aria-label={t('preview.kanban_add_tag')}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
       className='absolute left-0 top-full z-50 mt-1 w-56 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2.5 shadow-[var(--shadow-pop)]'
     >
       <div className='flex flex-col gap-2'>

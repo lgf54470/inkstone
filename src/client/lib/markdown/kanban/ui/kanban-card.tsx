@@ -1,11 +1,12 @@
-import { memo, useState, type KeyboardEvent } from 'react'
-import { Calendar, Flag, MoreHorizontal, Paperclip } from 'lucide-react'
+import { memo, useRef, useState, type KeyboardEvent } from 'react'
+import { Calendar, Flag, MoreHorizontal, Paperclip, Plus, X } from 'lucide-react'
 import { t } from '../../../i18n'
-import { getKanbanTagStyle } from '../colors'
+import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
-import type { KanbanColorName, KanbanItem, KanbanProperty, KanbanSubtask } from '../types'
+import type { KanbanColorName, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanCardSubtasks } from './kanban-card-subtasks'
+import { TagCreatePopover } from './kanban-tag-picker'
 
 interface KanbanCardProps {
   item: KanbanItem
@@ -22,21 +23,132 @@ interface KanbanCardProps {
   onDragOverCard?: (e: React.DragEvent, id: string) => void
   onDropOnCard?: (e: React.DragEvent, id: string) => void
   onMoveColumn?: (id: string, direction: 'prev' | 'next') => void
+  onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
+  onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
-function CardHeader({
-  isSelected,
-  tagVals,
-  tagsCol,
-  onToggleSelect,
-  onOpenDetail,
+function CardTagItem({
+  tag,
+  options,
+  onRemove,
 }: {
+  tag: string
+  options?: KanbanOption[]
+  onRemove?: (tag: string) => void
+}) {
+  const color = resolveKanbanTagColor(tag, options)
+  const opt = options?.find((o) => o.id === tag || o.label === tag)
+  const label = opt?.label ?? tag
+
+  return (
+    <span
+      style={getKanbanTagStyle(color)}
+      className='group/tag inline-flex items-center gap-0.5 rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-semibold'
+    >
+      <span>{formatKanbanOptionLabel(label, 'tags')}</span>
+      {onRemove && (
+        <button
+          type='button'
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            onRemove(tag)
+          }}
+          className='ml-0.5 rounded-[var(--r-xs)] p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 group-hover/tag:!opacity-100 hover:text-[var(--text-primary)]'
+          aria-label={t('preview.kanban_remove_tag')}
+        >
+          <X size={10} />
+        </button>
+      )}
+    </span>
+  )
+}
+
+interface CardAddTagButtonProps {
+  itemId: string
+  tagVals: string[]
+  tagsCol?: KanbanProperty
+  onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
+  onAddColumnOption?: (columnId: string, option: KanbanOption) => void
+}
+
+function computeTagAddition(name: string, color: KanbanColorName, tagVals: string[], options?: KanbanOption[]) {
+  const existing = options?.find((o) => o.id === name || o.label === name)
+  const tagId = existing ? existing.id : name.toLowerCase().replace(/\s+/g, '_')
+  const nextTags = !tagVals.includes(tagId) && !tagVals.includes(name) ? [...tagVals, tagId] : tagVals
+  const newOption = !existing || existing.color !== color ? { id: tagId, label: name, color } : undefined
+  return { nextTags, newOption }
+}
+
+function CardAddTagButton({ itemId, tagVals, tagsCol, onUpdateTags, onAddColumnOption }: CardAddTagButtonProps) {
+  const [open, setOpen] = useState(false)
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  if (!onUpdateTags) return null
+
+  const handleAdd = (name: string, color: KanbanColorName) => {
+    const { nextTags, newOption } = computeTagAddition(name, color, tagVals, tagsCol?.options)
+    onUpdateTags(itemId, nextTags, newOption)
+    if (newOption && onAddColumnOption) onAddColumnOption('tags', newOption)
+  }
+
+  return (
+    <div className='relative inline-flex items-center'>
+      <button
+        ref={btnRef}
+        type='button'
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          setOpen((prev) => !prev)
+        }}
+        className='inline-flex items-center gap-0.5 rounded-[var(--r-xs)] border border-dashed border-[var(--border-default)] px-1 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)] opacity-0 transition-opacity group-hover/card:opacity-100 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
+        aria-label={t('preview.kanban_new_tag')}
+        title={t('preview.kanban_new_tag')}
+      >
+        <Plus size={10} />
+        <span>{t('preview.kanban_new_tag')}</span>
+      </button>
+      {open && (
+        <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+          <TagCreatePopover
+            options={tagsCol?.options}
+            existingTags={tagVals}
+            anchorRef={btnRef}
+            onClose={() => setOpen(false)}
+            onAddTag={handleAdd}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface CardHeaderProps {
   isSelected: boolean
+  itemId: string
   tagVals: string[]
   tagsCol?: KanbanProperty
   onToggleSelect: () => void
   onOpenDetail: () => void
-}) {
+  onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
+  onAddColumnOption?: (columnId: string, option: KanbanOption) => void
+}
+
+function CardHeader({
+  isSelected,
+  itemId,
+  tagVals,
+  tagsCol,
+  onToggleSelect,
+  onOpenDetail,
+  onUpdateTags,
+  onAddColumnOption,
+}: CardHeaderProps) {
+  const handleRemove = onUpdateTags
+    ? (tag: string) => onUpdateTags(itemId, tagVals.filter((t) => t !== tag))
+    : undefined
+
   return (
     <div className='flex items-center justify-between gap-1.5'>
       <div className='flex min-w-0 flex-wrap items-center gap-1.5'>
@@ -48,20 +160,21 @@ function CardHeader({
           className='size-3.5 shrink-0 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 transition-opacity group-hover/card:opacity-100 checked:opacity-100'
           aria-label={t('preview.kanban_select_card')}
         />
-        {tagVals.slice(0, 3).map((tag) => {
-          const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
-          const color = opt?.color ?? 'gray'
-          const label = opt?.label ?? tag
-          return (
-            <span
-              key={tag}
-              style={getKanbanTagStyle(color)}
-              className='inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-semibold'
-            >
-              {formatKanbanOptionLabel(label, 'tags')}
-            </span>
-          )
-        })}
+        {tagVals.slice(0, 5).map((tag) => (
+          <CardTagItem
+            key={tag}
+            tag={tag}
+            options={tagsCol?.options}
+            onRemove={handleRemove}
+          />
+        ))}
+        <CardAddTagButton
+          itemId={itemId}
+          tagVals={tagVals}
+          tagsCol={tagsCol}
+          onUpdateTags={onUpdateTags}
+          onAddColumnOption={onAddColumnOption}
+        />
       </div>
       <button
         type='button'
@@ -192,11 +305,8 @@ function useKanbanCardTitle(initialTitle: string, onUpdate: (title: string) => v
 
   const handleBlur = () => {
     setIsEditing(false)
-    if (text.trim() && text !== initialTitle) {
-      onUpdate(text.trim())
-    } else {
-      setText(initialTitle)
-    }
+    if (text.trim() && text !== initialTitle) onUpdate(text.trim())
+    else setText(initialTitle)
   }
 
   const handleCancel = () => {
@@ -216,12 +326,9 @@ function handleCardKeyDown(
   if (e.key === 'Enter' && !isEditing) {
     e.preventDefault()
     onOpen()
-  } else if (e.altKey && e.key === 'ArrowRight') {
+  } else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
     e.preventDefault()
-    onMove?.('next')
-  } else if (e.altKey && e.key === 'ArrowLeft') {
-    e.preventDefault()
-    onMove?.('prev')
+    onMove?.(e.key === 'ArrowRight' ? 'next' : 'prev')
   }
 }
 
@@ -236,13 +343,9 @@ function getCardDisplayProps(item: KanbanItem, columns: KanbanProperty[]) {
 }
 
 function CardDropIndicator({ dropIndicator }: { dropIndicator?: 'top' | 'bottom' | null }) {
-  if (dropIndicator === 'top') {
-    return <div className='pointer-events-none absolute -top-1 left-0 right-0 h-0.5 rounded-full bg-[var(--accent)] shadow-[var(--shadow-sm)]' />
-  }
-  if (dropIndicator === 'bottom') {
-    return <div className='pointer-events-none absolute -bottom-1 left-0 right-0 h-0.5 rounded-full bg-[var(--accent)] shadow-[var(--shadow-sm)]' />
-  }
-  return null
+  if (!dropIndicator) return null
+  const posClass = dropIndicator === 'top' ? '-top-1' : '-bottom-1'
+  return <div className={`pointer-events-none absolute ${posClass} left-0 right-0 h-0.5 rounded-full bg-[var(--accent)] shadow-[var(--shadow-sm)]`} />
 }
 
 function useCardDragHandlers(
@@ -329,6 +432,8 @@ export const KanbanCard = memo(function KanbanCard({
   onDragOverCard,
   onDropOnCard,
   onMoveColumn,
+  onUpdateTags,
+  onAddColumnOption,
 }: KanbanCardProps) {
   const titleState = useKanbanCardTitle(item.title, (t) => onUpdateTitle(item.id, t))
   const display = getCardDisplayProps(item, columns)
@@ -360,10 +465,13 @@ export const KanbanCard = memo(function KanbanCard({
       <CardDropIndicator dropIndicator={dropIndicator} />
       <CardHeader
         isSelected={isSelected}
+        itemId={item.id}
         tagVals={display.tagVals}
         tagsCol={display.tagsCol}
         onToggleSelect={() => onToggleSelect(item.id)}
         onOpenDetail={() => onOpenDetail(item)}
+        onUpdateTags={onUpdateTags}
+        onAddColumnOption={onAddColumnOption}
       />
       <CardBody
         item={item}

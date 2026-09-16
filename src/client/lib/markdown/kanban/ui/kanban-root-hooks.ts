@@ -46,7 +46,7 @@ export function useKanbanFilterSort(data: KanbanData, activeViewId: string) {
 
 export function useKanbanItemMutations(
   data: KanbanData,
-  commitData: (next: KanbanData) => void,
+  commitData: (next: KanbanData | ((prev: KanbanData) => KanbanData)) => void,
   activeView: KanbanView,
   detailItem: KanbanItem | null,
   setDetailItem: (item: KanbanItem | null) => void,
@@ -82,8 +82,20 @@ export function useKanbanItemMutations(
       return next
     })
   }, [data, detailItem, commitData, setDetailItem, setSelectedIds])
+  const handleUpdateTags = useCallback(
+    (id: string, tags: string[], newOption?: KanbanOption) => {
+      commitData((prev: KanbanData) => {
+        const nextItems = prev.items.map((item) =>
+          item.id === id ? { ...item, properties: { ...item.properties, tags } } : item,
+        )
+        const nextColumns = newOption ? appendOptionToColumn(prev.columns, 'tags', newOption) : prev.columns
+        return { ...prev, items: nextItems, columns: nextColumns }
+      })
+    },
+    [commitData],
+  )
 
-  return { handleMoveItem, handleUpdateTitle, handleUpdateItem, handleDeleteItem }
+  return { handleMoveItem, handleUpdateTitle, handleUpdateItem, handleDeleteItem, handleUpdateTags }
 }
 
 function deleteColumnFromData(data: KanbanData, groupKey: string, groupByPropertyId: string): KanbanData {
@@ -113,17 +125,26 @@ function updateColumnInList(
 }
 
 function appendOptionToColumn(columns: KanbanProperty[], columnId: string, option: KanbanOption): KanbanProperty[] {
+  const colIndex = columns.findIndex((col) => col.id === columnId)
+  if (colIndex === -1) {
+    return [...columns, { id: columnId, name: columnId === 'tags' ? 'Tags' : columnId, type: 'multi-select', options: [option] }]
+  }
   return columns.map((col) => {
     if (col.id !== columnId) return col
     const existing = col.options ?? []
-    if (existing.some((o: KanbanOption) => o.id === option.id || o.label === option.label)) return col
+    const matchIndex = existing.findIndex((o: KanbanOption) => o.id === option.id || o.label === option.label)
+    if (matchIndex !== -1) {
+      const updated = [...existing]
+      updated[matchIndex] = { ...updated[matchIndex]!, color: option.color }
+      return { ...col, options: updated }
+    }
     return { ...col, options: [...existing, option] }
   })
 }
 
 export function useKanbanColumnOperations(
   data: KanbanData,
-  commitData: (next: KanbanData) => void,
+  commitData: (next: KanbanData | ((prev: KanbanData) => KanbanData)) => void,
   activeView: KanbanView,
 ) {
   const groupByPropertyId = activeView.groupBy || 'status'
@@ -159,9 +180,12 @@ export function useKanbanColumnOperations(
 
   const handleAddColumnOption = useCallback(
     (columnId: string, option: KanbanOption) => {
-      commitData({ ...data, columns: appendOptionToColumn(data.columns, columnId, option) })
+      commitData((prev: KanbanData) => ({
+        ...prev,
+        columns: appendOptionToColumn(prev.columns, columnId, option),
+      }))
     },
-    [data, commitData],
+    [commitData],
   )
 
   return { handleReorderColumns, handleUpdateColumn, handleDeleteColumn, handleChangeGroupBy, handleAddColumnOption }
@@ -249,10 +273,16 @@ export function useKanbanRootState(initialData: KanbanData, onUpdateData: (next:
   const [detailItem, setDetailItem] = useState<KanbanItem | null>(null)
   const [cardSize, setCardSize] = useState<CardSize>('medium')
 
-  const commitData = useCallback((next: KanbanData) => {
-    setData(next)
-    onUpdateData(next)
-  }, [onUpdateData])
+  const commitData = useCallback(
+    (nextOrUpdater: KanbanData | ((prev: KanbanData) => KanbanData)) => {
+      setData((prev) => {
+        const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(prev) : nextOrUpdater
+        onUpdateData(next)
+        return next
+      })
+    },
+    [onUpdateData],
+  )
 
   const filterSort = useKanbanFilterSort(data, activeViewId)
   const selection = useKanbanSelection(data, commitData)

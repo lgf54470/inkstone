@@ -3,6 +3,7 @@ import type {
   KanbanColorName,
   KanbanData,
   KanbanItem,
+  KanbanOption,
   KanbanSubtask,
 } from '../types'
 import { KanbanBatchBar } from './kanban-batch-bar'
@@ -42,6 +43,8 @@ interface KanbanViewRendererProps {
   handleReorderColumns: (sourceGroupKey: string, targetGroupKey: string) => void
   handleUpdateColumn: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
   handleDeleteColumn: (groupKey: string) => void
+  handleUpdateTags?: (id: string, tags: string[], newOption?: KanbanOption) => void
+  handleAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
 function KanbanTimelineViews({ activeView, viewData, data, commitData, setDetailItem, handleAddItem }: KanbanViewRendererProps) {
@@ -87,6 +90,8 @@ function BoardTableView(props: KanbanViewRendererProps) {
         onReorderColumns={props.handleReorderColumns}
         onUpdateColumn={props.handleUpdateColumn}
         onDeleteColumn={props.handleDeleteColumn}
+        onUpdateTags={props.handleUpdateTags}
+        onAddColumnOption={props.handleAddColumnOption}
       />
     )
   }
@@ -209,6 +214,8 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
         handleReorderColumns={state.columnOps.handleReorderColumns}
         handleUpdateColumn={state.columnOps.handleUpdateColumn}
         handleDeleteColumn={state.columnOps.handleDeleteColumn}
+        handleUpdateTags={state.items.handleUpdateTags}
+        handleAddColumnOption={state.columnOps.handleAddColumnOption}
       />
       <KanbanBatchBar
         selectedCount={state.selection.selectedIds.size}

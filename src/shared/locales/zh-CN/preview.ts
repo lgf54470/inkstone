@@ -177,6 +177,7 @@ export const messages = {
 'preview.kanban_file_upload_failed': '文件上传失败',
 'preview.kanban_color_picker': '选择颜色',
 'preview.kanban_add_tag': '添加标签',
+'preview.kanban_remove_tag': '移除标签',
 'preview.kanban_new_tag': '标签',
 'preview.kanban_tag_name': '标签名称',
 'preview.kanban_clear_date': '清除',

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { KanbanColorName } from './types'
+import type { KanbanColorName, KanbanOption } from './types'
 
 export const KANBAN_COLOR_NAMES: readonly KanbanColorName[] = [
   'gray',
@@ -37,4 +37,19 @@ export function getKanbanDotColor(color?: KanbanColorName | string | null): stri
     return 'var(--text-tertiary)'
   }
   return `var(--kanban-tag-${color}-fg)`
+}
+
+export function getDeterministicTagColor(name: string): KanbanColorName {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash << 5) - hash + name.charCodeAt(i)
+    hash |= 0
+  }
+  const colors: readonly KanbanColorName[] = ['blue', 'green', 'yellow', 'purple', 'pink', 'orange', 'red', 'teal']
+  return colors[Math.abs(hash) % colors.length]!
+}
+
+export function resolveKanbanTagColor(tag: string, options?: KanbanOption[]): KanbanColorName {
+  const opt = options?.find((o) => o.id === tag || o.label === tag)
+  return opt?.color ?? getDeterministicTagColor(tag)
 }

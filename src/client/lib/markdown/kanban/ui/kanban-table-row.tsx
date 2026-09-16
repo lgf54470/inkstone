@@ -9,7 +9,7 @@ import {
   User as UserIcon,
 } from 'lucide-react'
 import { t } from '../../../i18n'
-import { getKanbanTagStyle } from '../colors'
+import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanItem, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanFilesCell } from './kanban-files-cell'
@@ -192,7 +192,7 @@ function ItemTitleCell({
       </button>
       {tagVals.slice(0, 2).map((tag) => {
         const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
-        const color = opt?.color ?? 'gray'
+        const color = resolveKanbanTagColor(tag, tagsCol?.options)
         const label = opt?.label ?? tag
         return (
           <span

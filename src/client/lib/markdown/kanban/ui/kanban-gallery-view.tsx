@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { Calendar, Flag, Paperclip, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
-import { getKanbanTagStyle } from '../colors'
+import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanCardSubtasks } from './kanban-card-subtasks'
@@ -74,7 +74,7 @@ function GalleryTagsHeader({
         />
         {tagVals.slice(0, 3).map((tag) => {
           const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
-          const color = opt?.color ?? 'gray'
+          const color = resolveKanbanTagColor(tag, tagsCol?.options)
           const label = opt?.label ?? tag
           return (
             <span
