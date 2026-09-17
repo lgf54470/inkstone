@@ -2960,6 +2960,9 @@ const allowed = new Map([
     '/** An address a link may point at: a web address or a path inside the app. */',
     '/** The address an embed shows, or the empty string when it carries none worth offering. */',
   ]],
+  ['tests/slides-interop.test.ts', [
+    '/**\n * What happens when a note holds a deck this build did not author: a document in the\n * format\'s own shape, with the element kinds, slide fields and document tables an export\n * carries. Two things must hold, and neither is visible from the editor\'s side. The model\n * must carry every field through parse → edit → write (a field it drops is gone from the\n * note the next time anything is edited), and every element must DRAW SOMETHING — a deck\n * whose picture is missing an element looks finished, so the failure has no symptom until\n * the reader compares it with the original.\n */',
+  ]],
   ['src/client/lib/markdown/slides/crop.ts', [
     '/**\n * A crop is a window into a picture that COVERS its frame: `scale` enlarges it inside, and\n * `x`/`y` (0..1) pick which edge the frame aligns to. The mapping below is the format\'s own\n * (bento/slides crop.ts): the picture is `scale × 100%` of the frame on both axes with\n * `object-fit: cover`, offset by `-(scale − 1) × x` of the frame, and `object-position` moves\n * the cover overflow by the same fraction. Both moves use the same number, so the mapping is\n * monotonic and the frame can never show empty space at any x, y or scale.\n */',
     '/**\n * Out-of-range numbers clamp rather than drop: a hand-edited 1.2 means "the right edge", and\n * a crop that names only some of its three numbers takes the middle for the rest. The input is\n * a partial because it arrives from a file, where any shape of object is possible.\n */',
