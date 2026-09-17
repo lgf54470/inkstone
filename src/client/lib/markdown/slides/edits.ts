@@ -1,4 +1,5 @@
-import type { BentoDoc, SlideElement } from './types'
+import { secureRandomId } from '../../id'
+import type { BentoDoc, Slide, SlideElement } from './types'
 
 /**
  * The document edits behind the keys and the clipboard, as functions over a document rather than
@@ -47,6 +48,36 @@ export function appendElements(
 ): BentoDoc {
   if (elements.length === 0) return doc
   return replaceElements(doc, slideId, (current) => [...current, ...elements], assets)
+}
+
+/** The deck with pages added at one spot; the pages themselves carry their own fresh ids. */
+export function insertSlides(doc: BentoDoc, at: number, slides: Slide[]): BentoDoc {
+  if (slides.length === 0) return doc
+  const index = Math.min(Math.max(at, 0), doc.slides.length)
+  return { ...doc, slides: [...doc.slides.slice(0, index), ...slides, ...doc.slides.slice(index)] }
+}
+
+/**
+ * The deck with a copy of one page right after it, and where the copy landed. The copy is a new
+ * page with new element ids — a duplicate that shared an id with what it copied would make two
+ * boxes that cannot be selected apart. `copySuffix` is the caller's localized tail for the copied
+ * title; a page that carried no title keeps carrying none, so no user-visible word is born here.
+ */
+export function duplicateSlide(
+  doc: BentoDoc,
+  slideId: string,
+  copySuffix: string,
+): { doc: BentoDoc; index: number } {
+  const index = doc.slides.findIndex((slide) => slide.id === slideId)
+  const source = doc.slides[index]
+  if (index === -1 || !source) return { doc, index: -1 }
+  const copy: Slide = {
+    ...structuredClone(source),
+    id: `slide-${secureRandomId()}`,
+    ...(source.title ? { title: `${source.title}${copySuffix}` } : {}),
+    elements: source.elements.map((element) => ({ ...element, id: `${element.type}-${secureRandomId()}` })),
+  }
+  return { doc: insertSlides(doc, index + 1, [copy]), index: index + 1 }
 }
 
 export function removeElements(doc: BentoDoc, slideId: string, ids: Iterable<string>): BentoDoc {

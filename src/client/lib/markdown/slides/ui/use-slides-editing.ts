@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef } from 'react'
 import { t } from '../../../i18n'
 import { useUi } from '../../../../store/ui'
 import type { BentoDoc, SlideElement } from '../types'
-import { PASTE_OFFSET, clipElements, pasteClip, readClip } from '../clipboard'
-import { appendElements, moveElements, pickElements, removeElements } from '../edits'
+import { PASTE_OFFSET, clipElements, clipSlides, pasteClip, pasteSlides, readClip, readSlidesClip } from '../clipboard'
+import { appendElements, insertSlides, moveElements, pickElements, removeElements } from '../edits'
 import { createTextFromClipboard } from './element-factories'
 import { useSlidesKeys, type SlidesClipboardData, type SlidesKeyIntents } from './use-slides-keys'
 
@@ -20,6 +20,8 @@ export interface SlidesEditingHost {
   zoom: (command: 'in' | 'out' | 'reset') => void
   /** A pasted picture goes through the same upload the insert dialog uses. */
   pasteImage: (file: File) => void
+  /** A pasted page becomes the one the editor is on; optional for a host with no rail. */
+  selectSlide?: (slideId: string | null) => void
 }
 
 export interface SlidesEditing {
@@ -30,6 +32,9 @@ export interface SlidesEditing {
   pasteText: (text: string) => boolean
   /** The menu's Paste: the clipboard is read on demand, and a pasted nothing says so. */
   pasteFromClipboard: () => void
+  /** Copy a whole page (the rail's row), and paste one after another. */
+  copyPage: (slideId: string) => void
+  pastePage: (afterSlideId: string) => void
 }
 
 /**
@@ -67,7 +72,7 @@ export function useSlidesEditing(host: SlidesEditingHost): SlidesEditing {
   }, [current])
 
   const intents: SlidesKeyIntents = {
-    onCopy: () => payloadOf(current()),
+    onCopy: () => copyIntent(current()),
     onCut: () => cutPayload(current()),
     onPaste: (data: SlidesClipboardData) => pasteClipboard(current(), data),
     onDelete: () => deleteSelection(current()),
@@ -78,15 +83,63 @@ export function useSlidesEditing(host: SlidesEditingHost): SlidesEditing {
       return true
     },
   }
+  const copyPage = useCallback((slideId: string) => copyPageToClipboard(current(), slideId), [current])
+  const pastePage = useCallback((afterSlideId: string) => {
+    void readSystemClipboardText().then((text) => {
+      if (!text || !pastePageFrom(current(), afterSlideId, text)) {
+        useUi.getState().toast({ title: t('slides.paste_nothing'), tone: 'danger' })
+      }
+    })
+  }, [current])
+
   useSlidesKeys(host.enabled, intents)
 
-  return { copy, cut, pasteText, pasteFromClipboard }
+  return { copy, cut, pasteText, pasteFromClipboard, copyPage, pastePage }
 }
 
 /** The elements named by ids, in the slide's own order rather than the order they were named. */
 function namedElements(host: SlidesEditingHost, ids: Iterable<string>): SlideElement[] {
   const wanted = new Set(ids)
   return pickElements(host.doc, host.targetSlideId(), wanted).filter((element) => wanted.has(element.id))
+}
+
+/** A page travels with its elements' bytes, its notes and its background — the whole page. */
+function copyPageToClipboard(host: SlidesEditingHost, slideId: string): void {
+  const slide = host.doc.slides.find((candidate) => candidate.id === slideId)
+  if (!slide) return
+  void writeSystemClipboard(clipSlides([slide], host.doc.assets))
+}
+
+/** Pasted after the page the menu was opened on, which is where a reader expects a copy to land. */
+function pastePageFrom(host: SlidesEditingHost, afterSlideId: string, payload: string): boolean {
+  const clip = readSlidesClip(payload)
+  const at = host.doc.slides.findIndex((slide) => slide.id === afterSlideId)
+  if (!clip || at === -1) return false
+  const { slides, assets } = pasteSlides(clip, host.doc.assets)
+  host.commit((previous) => ({ ...insertSlides(previous, at + 1, slides), assets }))
+  host.selectSlide?.(slides[0]?.id ?? null)
+  return true
+}
+
+/**
+ * What ⌘C puts on the clipboard: the selected elements, or the page itself when nothing is
+ * selected — which is how a page travels to another deck without going through a menu. A passage
+ * the reader has highlighted is left to the browser, because a deck's prose stays selectable
+ * outside edit mode and taking that copy away would cost more than the shortcut gains.
+ */
+function copyIntent(host: SlidesEditingHost): string | null {
+  const elements = payloadOf(host)
+  if (elements) return elements
+  const slide = host.doc.slides.find((candidate) => candidate.id === host.targetSlideId())
+  if (!slide || hasTextSelection()) return null
+  useUi.getState().toast({ title: t('slides.slide_copied'), tone: 'default' })
+  return clipSlides([slide], host.doc.assets)
+}
+
+/** A highlighted passage, as far as a copy is concerned: something the browser already owns. */
+function hasTextSelection(): boolean {
+  const selection = window.getSelection()
+  return selection !== null && !selection.isCollapsed && selection.toString().trim().length > 0
 }
 
 /**
@@ -125,6 +178,10 @@ function pasteClipboard(host: SlidesEditingHost, data: SlidesClipboardData): boo
     host.pasteImage(data.image)
     return true
   }
+  // A page payload is tried first: it is the only one that adds a page rather than elements, and
+  // it lands after the page the reader is on — the same spot the rail's Paste row uses.
+  const slideId = host.targetSlideId()
+  if (slideId && pastePageFrom(host, slideId, data.text)) return true
   return pasteClipboardText(host, data.text)
 }
 

@@ -38,10 +38,10 @@ let mounted: ReturnType<typeof renderElement> | null = null
  * picture path. Assertions read the harness, so what is checked is the document the hook edited
  * rather than the internals of the hook.
  */
-function DeckHost({ start, harness }: { start: BentoDoc; harness: Harness }) {
+function DeckHost({ start, harness, selected: initially }: { start: BentoDoc; harness: Harness; selected: string[] }) {
   const [data, setData] = useState(start)
   const [zoom, setZoom] = useState(1)
-  const selected = useRef<string[]>(['a'])
+  const selected = useRef<string[]>(initially)
   const editing = useSlidesEditing({
     enabled: true,
     doc: data,
@@ -81,9 +81,9 @@ const IDLE_INTENTS: SlidesKeyIntents = {
   onZoom: () => true,
 }
 
-function mount(start = deck()): Harness {
-  const harness: Harness = { doc: start, selected: ['a'], zoom: 1, images: [] }
-  mounted = renderElement(createElement(DeckHost, { start, harness }))
+function mount(start = deck(), selected: string[] = ['a']): Harness {
+  const harness: Harness = { doc: start, selected, zoom: 1, images: [] }
+  mounted = renderElement(createElement(DeckHost, { start, harness, selected }))
   return harness
 }
 
@@ -183,6 +183,38 @@ describe('the clipboard in the editor', () => {
     expect(key.defaultPrevented).toBe(false)
     expect(elements(harness)).toEqual(['a', 'b'])
     box.remove()
+  })
+})
+
+describe('a page on the clipboard', () => {
+  it('copies the page itself when nothing is selected, and pastes it back as a new page', () => {
+    const harness = mount(deck(), [])
+    const copied = fire('copy')
+    expect(copied.prevented).toBe(true)
+    expect(JSON.parse(copied.written).kind).toBe('slides')
+
+    fire('paste', { text: copied.written })
+    expect(harness.doc.slides).toHaveLength(2)
+    const [source, pasted] = harness.doc.slides
+    expect(pasted?.id).not.toBe(source?.id)
+    expect(pasted?.elements).toHaveLength(2)
+    expect(pasted?.elements.map((element) => element.id)).not.toEqual(source?.elements.map((element) => element.id))
+  })
+
+  it('leaves a highlighted passage to the browser rather than taking the copy for the page', () => {
+    const harness = mount(deck(), [])
+    const range = document.createRange()
+    range.selectNodeContents(document.body)
+    const selection = window.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+
+    const copied = fire('copy')
+    expect(copied.prevented).toBe(false)
+    expect(copied.written).toBe('')
+    expect(harness.doc.slides).toHaveLength(1)
+
+    selection?.removeAllRanges()
   })
 })
 

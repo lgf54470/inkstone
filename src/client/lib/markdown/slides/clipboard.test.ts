@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { ShapeElement, SlideElement, TextElement } from './types'
-import { PASTE_OFFSET, collectClipAssets, clipElements, pasteClip, readClip } from './clipboard'
+import type { Slide } from './types'
+import {
+  PASTE_OFFSET,
+  clipElements,
+  clipSlides,
+  collectClipAssets,
+  pasteClip,
+  pasteSlides,
+  readClip,
+  readSlidesClip,
+} from './clipboard'
 
 const ASSETS = { photo: 'data:image/png;base64,AAA', clip: 'data:video/mp4;base64,BBB' }
 
@@ -45,6 +55,7 @@ describe('reading a clip off the clipboard', () => {
     const payload = JSON.stringify({
       mark: 'inkstone/slides-clip',
       version: 1,
+      kind: 'elements',
       elements: [text(), { id: 'x', type: 'timeline', x: 0, y: 0, w: 10, h: 10 }],
     })
     const clip = readClip(payload)
@@ -55,9 +66,63 @@ describe('reading a clip off the clipboard', () => {
     const payload = JSON.stringify({
       mark: 'inkstone/slides-clip',
       version: 1,
+      kind: 'elements',
       elements: [{ id: 'x', type: 'shape', shape: 'rect', fill: '#fff', x: 0, y: 0, w: 0, h: 10 }],
     })
     expect(readClip(payload)).toBeNull()
+  })
+})
+
+/** A page with everything a page can carry beyond its boxes: title, background, notes, a state. */
+function page(over: Partial<Slide> = {}): Slide {
+  return {
+    id: 'slide-1',
+    title: 'Opening',
+    background: '#0D1B2E',
+    notes: 'Say hello',
+    stateOf: 'slide-0',
+    elements: [{ id: 'i1', type: 'image', src: 'asset:photo', x: 0, y: 0, w: 10, h: 10 }],
+    ...over,
+  }
+}
+
+describe('a copy of a whole page', () => {
+  it('comes back with its backgrounds, notes and elements', () => {
+    const clip = readSlidesClip(clipSlides([page()], ASSETS))
+    const slide = clip?.slides[0]
+    expect(slide?.title).toBe('Opening')
+    expect(slide?.background).toBe('#0D1B2E')
+    expect(slide?.notes).toBe('Say hello')
+    expect(slide?.elements).toHaveLength(1)
+    expect(clip?.assets).toEqual({ photo: ASSETS.photo })
+  })
+
+  it('pastes as a new page with new ids, and without the state it continued', () => {
+    const clip = readSlidesClip(clipSlides([page()], ASSETS))
+    const pasted = clip ? pasteSlides(clip, ASSETS).slides : []
+    expect(pasted[0]?.id).not.toBe('slide-1')
+    expect(pasted[0]?.elements[0]?.id).not.toBe('i1')
+    expect(pasted[0]?.stateOf).toBeUndefined()
+    expect(pasted[0]?.notes).toBe('Say hello')
+  })
+
+  it('keeps a page that was blank, and drops one whose elements all failed to read', () => {
+    const blank = readSlidesClip(clipSlides([{ id: 'slide-2', elements: [] }], ASSETS))
+    expect(blank?.slides).toHaveLength(1)
+
+    const broken = JSON.stringify({
+      mark: 'inkstone/slides-clip',
+      version: 1,
+      kind: 'slides',
+      slides: [{ id: 'slide-3', elements: [{ id: 'x', type: 'timeline', x: 0, y: 0, w: 10, h: 10 }] }],
+    })
+    expect(readSlidesClip(broken)).toBeNull()
+  })
+
+  it('reads a page payload as pages and an element payload as elements', () => {
+    const pages = clipSlides([{ id: 'slide-1', elements: [] }], ASSETS)
+    expect(readClip(pages)).toBeNull()
+    expect(readSlidesClip(clipElements([text()], ASSETS))).toBeNull()
   })
 })
 

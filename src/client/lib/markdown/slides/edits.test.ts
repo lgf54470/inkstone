@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { BentoDoc, Slide, TextElement } from './types'
-import { appendElements, moveElements, pickElements, removeElements, replaceElements, slideElements } from './edits'
+import {
+  appendElements,
+  duplicateSlide,
+  insertSlides,
+  moveElements,
+  pickElements,
+  removeElements,
+  replaceElements,
+  slideElements,
+} from './edits'
 
 function text(id: string, x = 0, y = 0): TextElement {
   return { id, type: 'text', html: `<p>${id}</p>`, fontSize: 24, x, y, w: 200, h: 60 }
@@ -53,7 +62,46 @@ describe('editing a slide by its elements', () => {
     expect(pickElements(doc(), 'one', ['b', 'a']).map((element) => element.id)).toEqual(['a', 'b'])
     expect(pickElements(doc(), null, ['a'])).toEqual([])
   })
+})
 
+describe('editing the pages of a deck', () => {
+  it('inserts pages at one spot, clamping a spot past the end to the end', () => {
+    const next = insertSlides(doc(), 1, [slide('new', [text('x')])])
+    expect(next.slides.map((page) => page.id)).toEqual(['one', 'new', 'two'])
+    expect(insertSlides(doc(), 99, [slide('last', [])]).slides.map((page) => page.id)).toEqual([
+      'one',
+      'two',
+      'last',
+    ])
+    const current = doc()
+    expect(insertSlides(current, 0, [])).toBe(current)
+  })
+
+  it('duplicates a page after itself with new ids for it and its elements', () => {
+    const { doc: next, index } = duplicateSlide(doc(), 'one', ' (Copy)')
+    expect(index).toBe(1)
+    expect(next.slides.map((page) => page.id)[1]).not.toBe('one')
+    expect(next.slides[1]?.elements.map((element) => element.id)).not.toEqual(['a', 'b'])
+    expect(next.slides[0]?.elements.map((element) => element.id)).toEqual(['a', 'b'])
+  })
+
+  it('marks the copy with the suffix it was handed, and does not name a page that had no name', () => {
+    const base = doc()
+    const named: BentoDoc = {
+      ...base,
+      slides: base.slides.map((page) => (page.id === 'one' ? { ...page, title: 'Intro' } : page)),
+    }
+    expect(duplicateSlide(named, 'one', ' (Copy)').doc.slides[1]?.title).toBe('Intro (Copy)')
+    expect(duplicateSlide(base, 'one', ' (Copy)').doc.slides[1]?.title).toBeUndefined()
+  })
+
+  it('returns the same deck when the page to duplicate is gone', () => {
+    const current = doc()
+    expect(duplicateSlide(current, 'gone', ' (Copy)')).toEqual({ doc: current, index: -1 })
+  })
+})
+
+describe('assets arriving with the elements that need them', () => {
   it('merges an asset table in the same step as the elements that need it', () => {
     const next = appendElements(doc(), 'one', [text('c')], { photo: 'data:image/png;base64,AAA' })
     expect(next.assets).toEqual({ photo: 'data:image/png;base64,AAA' })

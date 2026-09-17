@@ -1,5 +1,5 @@
 import { secureRandomId } from '../../id'
-import type { SlideElement } from './types'
+import type { Slide, SlideElement } from './types'
 
 /** The marker that says the clipboard text carries deck elements rather than prose. */
 export const SLIDES_CLIP_MARK = 'inkstone/slides-clip'
@@ -8,6 +8,7 @@ export const SLIDES_CLIP_VERSION = 1
 /** A slide's worth of elements is far below this. Anything larger is not a copy of one. */
 const MAX_CLIP_TEXT = 4 * 1024 * 1024
 const MAX_CLIP_ELEMENTS = 200
+const MAX_CLIP_SLIDES = 50
 /** A paste lands nudged, so it is visible rather than exactly under what it was copied from. */
 export const PASTE_OFFSET = 20
 /** What this build can carry. A kind it does not know is dropped rather than pasted blind. */
@@ -26,6 +27,11 @@ const CLIP_ELEMENT_TYPES = new Set([
 export interface SlidesClip {
   elements: SlideElement[]
   /** The bytes those elements point at, so a paste into another deck brings the pixels along. */
+  assets: Record<string, string>
+}
+
+export interface SlidesPagesClip {
+  slides: Slide[]
   assets: Record<string, string>
 }
 
@@ -72,13 +78,64 @@ export function collectClipAssets(
  * plain-text branch.
  */
 export function readClip(text: string): SlidesClip | null {
-  if (!text || text.length > MAX_CLIP_TEXT) return null
-  const raw = parseRecord(text)
-  if (!raw || raw.mark !== SLIDES_CLIP_MARK) return null
+  const raw = readPayload(text, 'elements')
+  if (!raw) return null
   const listed = Array.isArray(raw.elements) ? raw.elements.slice(0, MAX_CLIP_ELEMENTS) : []
   const elements = listed.filter(isClipElement)
   if (elements.length === 0) return null
   return { elements, assets: readAssetTable(raw.assets) }
+}
+
+/**
+ * Pages as clipboard text, the other half of the same channel: a copy of a page has to bring
+ * everything the page is — its elements, its background, its notes — or pasting it would produce
+ * a page that only looks like the one it came from.
+ */
+export function clipSlides(slides: Slide[], assets?: Record<string, string>): string {
+  return JSON.stringify({
+    mark: SLIDES_CLIP_MARK,
+    version: SLIDES_CLIP_VERSION,
+    kind: 'slides',
+    slides,
+    assets: collectClipAssets(
+      slides.flatMap((slide) => slide.elements),
+      assets,
+    ),
+  })
+}
+
+export function readSlidesClip(text: string): SlidesPagesClip | null {
+  const raw = readPayload(text, 'slides')
+  if (!raw) return null
+  const listed = Array.isArray(raw.slides) ? raw.slides.slice(0, MAX_CLIP_SLIDES) : []
+  const slides = listed.map(readSlide).filter((slide): slide is Slide => slide !== null)
+  if (slides.length === 0) return null
+  return { slides, assets: readAssetTable(raw.assets) }
+}
+
+/**
+ * The pasted pages: fresh slide and element ids (a pasted page is a new page), no `stateOf` — a
+ * state becomes a normal page outside the deck it belonged to, where the page it continued does
+ * not exist — and the asset table merged underneath, with references repointed.
+ */
+export function pasteSlides(
+  clip: SlidesPagesClip,
+  existingAssets?: Record<string, string>,
+): { slides: Slide[]; assets: Record<string, string> } {
+  const { assets, remap } = mergeClipAssets(existingAssets, clip.assets)
+  const slides = clip.slides.map((slide) => {
+    const copy = structuredClone(slide)
+    if (copy.stateOf) delete copy.stateOf
+    return {
+      ...copy,
+      id: `slide-${secureRandomId()}`,
+      elements: rewriteAssetRefs(
+        copy.elements.map((element) => ({ ...element, id: `${element.type}-${secureRandomId()}` })),
+        remap,
+      ),
+    }
+  })
+  return { slides, assets }
 }
 
 /**
@@ -166,6 +223,30 @@ function parseRecord(text: string): Record<string, unknown> | null {
     return null
   }
   return typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : null
+}
+
+/** The envelope both halves share: size ceiling, marker, version, and which kind was written. */
+function readPayload(text: string, kind: 'elements' | 'slides'): Record<string, unknown> | null {
+  if (!text || text.length > MAX_CLIP_TEXT) return null
+  const raw = parseRecord(text)
+  if (!raw || raw.mark !== SLIDES_CLIP_MARK || raw.kind !== kind) return null
+  return raw
+}
+
+/**
+ * One page from a payload. A page without an identity, or one whose elements were all dropped,
+ * is not a page this build can paste — but a page that was blank stays blank, because an empty
+ * page is something an author makes on purpose.
+ */
+function readSlide(value: unknown): Slide | null {
+  if (typeof value !== 'object' || value === null) return null
+  const raw = value as Record<string, unknown>
+  if (typeof raw.id !== 'string' || !raw.id) return null
+  if (!Array.isArray(raw.elements)) return null
+  const listed = raw.elements.slice(0, MAX_CLIP_ELEMENTS)
+  const elements = listed.filter(isClipElement)
+  if (listed.length > 0 && elements.length === 0) return null
+  return { ...raw, id: raw.id, elements } as Slide
 }
 
 function isClipElement(value: unknown): value is SlideElement {

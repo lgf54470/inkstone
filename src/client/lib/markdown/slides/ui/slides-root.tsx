@@ -19,6 +19,7 @@ import { LayoutPicker } from './layout-picker'
 import { useSlidesPrint } from './slides-print'
 import { SlidesContextMenu, type SlidesMenuState, type SlidesMenuTarget } from './slides-context-menu'
 import { instantiateLayout, layoutById } from '../layouts'
+import { duplicateSlide } from '../edits'
 import { moveSlide, reorderElement, reorderSlide } from '../order'
 import { copySlidesLink } from './copy-link'
 import { useSlidesImages } from './insert-image'
@@ -177,6 +178,10 @@ export const SlidesRoot = memo(function SlidesRoot({
     select: (elementIds) => setActiveElementId(elementIds[0] ?? null),
     zoom: applyZoom,
     pasteImage: (file) => void handlePasteImage(file),
+    selectSlide: (slideId) => {
+      const index = data.slides.findIndex((slide) => slide.id === slideId)
+      if (index !== -1) setActiveSlideIndex(index)
+    },
   })
 
   const handleAddTable = useCallback(() => {
@@ -222,20 +227,12 @@ export const SlidesRoot = memo(function SlidesRoot({
 
   const handleDuplicateSlide = useCallback(
     (id: string) => {
-      const target = slides.find((s) => s.id === id)
-      if (!target) return
-      const dup: Slide = {
-        ...target,
-        id: `slide-${Date.now()}`,
-        title: `${target.title || 'Slide'} (Copy)`,
-        elements: target.elements.map((el) => ({ ...el, id: `${el.id}-copy` })),
-      }
-      const idx = slides.findIndex((s) => s.id === id)
-      const next = [...slides.slice(0, idx + 1), dup, ...slides.slice(idx + 1)]
-      commitData({ ...data, slides: next })
-      setActiveSlideIndex(idx + 1)
+      const { doc, index } = duplicateSlide(data, id, t('slides.copy_suffix'))
+      if (index === -1) return
+      commitData(doc)
+      setActiveSlideIndex(index)
     },
-    [commitData, data, slides],
+    [commitData, data],
   )
 
   const handleDeleteSlide = useCallback(
@@ -417,6 +414,8 @@ export const SlidesRoot = memo(function SlidesRoot({
         onClose={() => setMenu(null)}
         actions={{
           onEditText: startTypingElement,
+          onCopySlide: editing.copyPage,
+          onPasteSlide: editing.pastePage,
           onCopyElement: (elementId) => editing.copy([elementId]),
           onCutElement: (elementId) => editing.cut([elementId]),
           onPaste: editing.pasteFromClipboard,

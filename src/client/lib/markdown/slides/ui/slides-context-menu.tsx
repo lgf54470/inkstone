@@ -24,6 +24,8 @@ export interface SlidesMenuActions {
   onReorderElement: (elementId: string, direction: 'front' | 'back') => void
   onDeleteElement: (elementId: string) => void
   onAddSlide: () => void
+  onCopySlide: (slideId: string) => void
+  onPasteSlide: (afterSlideId: string) => void
   onDuplicateSlide: (slideId: string) => void
   onMoveSlide: (slideId: string, direction: 'up' | 'down') => void
   onDeleteSlide: (slideId: string) => void
@@ -162,6 +164,18 @@ function slideItems(slideId: string, actions: SlidesMenuActions): MenuItem[] {
       label: t('slides.add_slide'),
       icon: <Plus size={13} />,
       onSelect: actions.onAddSlide,
+    },
+    {
+      id: 'copy-slide',
+      label: t('slides.copy_page'),
+      icon: <Copy size={13} />,
+      onSelect: () => actions.onCopySlide(slideId),
+    },
+    {
+      id: 'paste-slide',
+      label: t('slides.paste_page'),
+      icon: <ClipboardPaste size={13} />,
+      onSelect: () => actions.onPasteSlide(slideId),
     },
     {
       id: 'move-slide-up',

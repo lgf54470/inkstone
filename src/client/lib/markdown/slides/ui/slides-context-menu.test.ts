@@ -212,3 +212,25 @@ describe('the page context menus', () => {
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain(t('slides.choose_layout'))
   })
 })
+
+describe('a page travelling through the clipboard', () => {
+  it('copies the whole page from the rail, and pastes it back as a page after it', async () => {
+    const { committed } = mountDeck()
+    rightClick(thumbnailAt(0))
+    expect(menuRow(t('slides.copy_page'))).toBeDefined()
+
+    clickRow(t('slides.copy_page'))
+    await act(async () => {})
+    const payload = JSON.parse(written.at(-1) ?? '{}')
+    expect(payload.kind).toBe('slides')
+    expect(payload.slides).toHaveLength(1)
+
+    rightClick(thumbnailAt(0))
+    clickRow(t('slides.paste_page'))
+    await act(async () => {})
+    const slides = committed.at(-1)?.slides ?? []
+    expect(slides).toHaveLength(3)
+    expect(contentOf(slides[1])).toEqual(contentOf(slides[0]))
+    expect(slides[1]?.id).not.toBe(slides[0]?.id)
+  })
+})
