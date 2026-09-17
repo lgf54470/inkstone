@@ -118,7 +118,8 @@
   flex: 1;
   min-width: 0;
   position: relative;
-  overflow: hidden;
+  overflow: auto;
+  overscroll-behavior: contain;
   background:
     radial-gradient(circle at 1px 1px, var(--border-default) 1px, transparent 0) 0 0 / 22px 22px,
     var(--bg-sunken);

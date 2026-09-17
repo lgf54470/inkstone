@@ -41,6 +41,7 @@ function sections(): HelpSection[] {
         { keyCaps: ['Alt'], label: t('slides.help_tip_snap') },
         { label: t('slides.help_tip_inspector') },
         { label: t('slides.help_tip_sidebar') },
+        { keyCaps: ['Space'], label: t('slides.help_tip_pan') },
       ],
     },
     {

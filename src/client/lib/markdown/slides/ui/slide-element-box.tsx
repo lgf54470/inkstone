@@ -38,6 +38,8 @@ interface SlideElementBoxProps {
   /** Whether the handles belong to this box (the last one picked) rather than to the ring alone. */
   isPrimary: boolean
   editing: boolean
+  /** A pan is armed: the page refuses the pointer so the next press moves the view. */
+  frozen?: boolean
   /**
    * Where every box this one's drag carries sits right now: itself alone, or the whole selection
    * when it is part of one. Read at the press, which is what keeps a group drag a rigid move and
@@ -69,6 +71,7 @@ export const SlideElementBox = memo(function SlideElementBox({
   isSelected,
   isPrimary,
   editing,
+  frozen,
   targets,
   snap,
   assets,
@@ -78,7 +81,7 @@ export const SlideElementBox = memo(function SlideElementBox({
   onMove,
 }: SlideElementBoxProps) {
   const isBackground = isBackgroundLayer(el, page)
-  const takesPointer = editable && (!isBackground || isSelected)
+  const takesPointer = editable && !frozen && (!isBackground || isSelected)
   const startDrag = useElementDrag(targets, scale, page, snap, onMove)
 
   return (
@@ -86,7 +89,7 @@ export const SlideElementBox = memo(function SlideElementBox({
       data-slide-element={el.id}
       style={{
         ...getElementBoxStyle(el),
-        pointerEvents: elementPointerEvents(el, { editable, isSelected, isBackground }),
+        pointerEvents: elementPointerEvents(el, { editable, isSelected, isBackground, frozen }),
       }}
       onMouseDown={(e) => {
         if (!takesPointer) return

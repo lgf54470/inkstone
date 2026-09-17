@@ -107,11 +107,15 @@ export function elementIdAt(target: EventTarget | null): string | null {
  * background layer, which stays inert until it is selected or nothing on top of it could
  * ever be grabbed. In a show nothing is draggable, so only a clip keeps its own controls,
  * which is the whole point of it being on the slide.
+ *
+ * `frozen` outranks all of it: while a pan is armed the next press is the view's, so nothing on
+ * the page may claim the gesture — nor offer a move cursor that would promise a drag.
  */
 export function elementPointerEvents(
   el: SlideElement,
-  state: { editable: boolean; isSelected: boolean; isBackground: boolean },
+  state: { editable: boolean; isSelected: boolean; isBackground: boolean; frozen?: boolean },
 ): 'auto' | 'none' {
+  if (state.frozen) return 'none'
   if (state.isBackground && !state.isSelected) return 'none'
   if (state.editable) return 'auto'
   return el.type === 'media' ? 'auto' : 'none'

@@ -22,6 +22,8 @@ interface CanvasProps {
   primaryId?: string | null
   /** The element the reader is typing into, which is what puts the caret in a text box. */
   editingElementId?: string | null
+  /** A pan is armed: the page takes no pointer, so the gesture is the view's. */
+  frozen?: boolean
   assets?: Record<string, string>
   onSelectElement?: (id: string | null, additive?: boolean) => void
   onSelectMany?: (ids: string[]) => void
@@ -44,12 +46,12 @@ interface LayersProps extends CanvasProps {
  * backdrop means (the rubber band, in use-slides-marquee.ts).
  */
 export const SlidesCanvas = memo(function SlidesCanvas(props: CanvasProps) {
-  const { slide, page, scale = 1, editable = false, onSelectElement, onSelectMany } = props
+  const { slide, page, scale = 1, editable = false, frozen, onSelectElement, onSelectMany } = props
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const [guides, setGuides] = useState<SnapGuide[]>([])
   const { band, start } = useSlidesMarquee({
     canvasRef,
-    enabled: editable && Boolean(onSelectMany),
+    enabled: editable && !frozen && Boolean(onSelectMany),
     scale,
     elements: slide.elements,
     page,
@@ -161,6 +163,7 @@ const CanvasLayers = memo(function CanvasLayers({
   selectedIds,
   primaryId,
   editingElementId,
+  frozen,
   assets,
   onSelectElement,
   onUpdateElement,
@@ -192,6 +195,7 @@ const CanvasLayers = memo(function CanvasLayers({
           isSelected={editable && selected.has(el.id)}
           isPrimary={editable && primaryId === el.id}
           editing={editingElementId === el.id}
+          frozen={frozen}
           targets={selected.has(el.id) ? targets : [{ id: el.id, x: el.x, y: el.y, w: el.w, h: el.h }]}
           snap={{ boxes, report: onGuides }}
           assets={assets}

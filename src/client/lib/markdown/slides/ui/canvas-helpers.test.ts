@@ -60,6 +60,12 @@ describe('pointer input', () => {
     expect(elementPointerEvents(clip(), state)).toBe('auto')
     expect(elementPointerEvents({ ...clip(), type: 'text', html: 'x', fontSize: 20 } as TextElement, state)).toBe('none')
   })
+
+  it('freezes everything, clip included, while a pan is armed', () => {
+    const state = { editable: true, isBackground: false, isSelected: true, frozen: true }
+    expect(elementPointerEvents(clip(), state)).toBe('none')
+    expect(elementPointerEvents({ ...clip(), type: 'text', html: 'x', fontSize: 20 } as TextElement, state)).toBe('none')
+  })
 })
 
 describe('canvas dimensions & layout', () => {
