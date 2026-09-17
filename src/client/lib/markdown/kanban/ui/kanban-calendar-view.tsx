@@ -1,6 +1,7 @@
-import { memo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
+import { getMonthWeeks, getWeekEventSegments, type CalendarDay, type WeekEventSegment } from '../calendar-helpers'
 import { getKanbanTagStyle } from '../colors'
 import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
@@ -70,84 +71,125 @@ function CalendarWeekHeader() {
 }
 
 function CalendarEventBar({
-  item,
+  segment,
   statusCol,
   onOpenDetail,
 }: {
-  item: KanbanItem
+  segment: WeekEventSegment
   statusCol?: KanbanProperty
   onOpenDetail: (item: KanbanItem) => void
 }) {
+  const { item, startCol, endCol, isSegmentStart, isSegmentEnd, track } = segment
   const statusVal = String(item.properties.status || '')
   const statusOpt = statusCol?.options?.find((o) => o.id === statusVal || o.label === statusVal)
   const tagStyle = getKanbanTagStyle(statusOpt?.color || 'blue')
 
+  const roundedLeft = isSegmentStart ? 'rounded-l-[var(--r-xs)]' : 'rounded-l-none'
+  const roundedRight = isSegmentEnd ? 'rounded-r-[var(--r-xs)]' : 'rounded-r-none'
+
+  const colSpan = endCol - startCol + 1
+
   return (
     <button
-      key={item.id}
       type='button'
       onClick={(e) => {
         e.stopPropagation()
         onOpenDetail(item)
       }}
-      style={tagStyle}
-      className='flex w-full items-center gap-1 truncate rounded-[var(--r-xs)] px-1.5 py-0.5 text-left text-[length:var(--text-11)] font-medium shadow-2xs transition-opacity hover:opacity-85'
+      style={{
+        ...tagStyle,
+        gridColumn: `${startCol + 1} / span ${colSpan}`,
+        gridRow: track + 1,
+      }}
+      className={`z-10 flex h-6 items-center gap-1 overflow-hidden px-1.5 text-left text-[length:var(--text-11)] font-medium shadow-2xs transition-opacity hover:opacity-85 ${roundedLeft} ${roundedRight}`}
     >
       <KanbanIconBadge icon={item.icon} size={12} />
-      <span className='truncate'>{item.title}</span>
+      <span className='truncate'>{item.title || t('preview.kanban_untitled')}</span>
     </button>
   )
 }
 
-interface CalendarDayCellProps {
-  dateStr: string
-  dayNum: number
-  items: KanbanItem[]
-  statusCol?: KanbanProperty
-  onOpenDetail: (item: KanbanItem) => void
+function CalendarDayCellHeader({
+  day,
+  onAddItem,
+}: {
+  day: CalendarDay
   onAddItem: (dateStr: string) => void
+}) {
+  return (
+    <div
+      onClick={() => onAddItem(day.dateStr)}
+      className='group/day flex cursor-pointer items-center justify-between p-1.5 transition-colors hover:bg-[var(--bg-hover)]/30'
+    >
+      <span
+        className={`text-[length:var(--text-12)] ${
+          day.isToday
+            ? 'flex size-5 items-center justify-center rounded-full bg-[var(--accent)] font-bold text-white shadow-2xs'
+            : day.isCurrentMonth
+            ? 'font-medium text-[var(--text-secondary)]'
+            : 'text-[var(--text-quaternary)]'
+        }`}
+      >
+        {day.dayNum}
+      </span>
+      <button
+        type='button'
+        onClick={(e) => {
+          e.stopPropagation()
+          onAddItem(day.dateStr)
+        }}
+        className='p-0.5 opacity-0 transition-opacity group-hover/day:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+        aria-label={t('preview.kanban_new_item')}
+      >
+        <Plus size={12} />
+      </button>
+    </div>
+  )
 }
 
-function CalendarDayCell({
-  dateStr,
-  dayNum,
+function CalendarWeekRow({
+  week,
   items,
   statusCol,
   onOpenDetail,
   onAddItem,
-}: CalendarDayCellProps) {
-  const matchedItems = items.filter((item) => {
-    const d = String(item.properties.startDate || item.properties.dueDate || item.properties.date || '')
-    return d.startsWith(dateStr)
-  })
+}: {
+  week: CalendarDay[]
+  items: KanbanItem[]
+  statusCol?: KanbanProperty
+  onOpenDetail: (item: KanbanItem) => void
+  onAddItem: (dateStr: string) => void
+}) {
+  const segments = useMemo(() => getWeekEventSegments(items, week), [items, week])
 
   return (
-    <div
-      onClick={() => onAddItem(dateStr)}
-      className='group/cell relative flex min-h-20 flex-col gap-1 bg-[var(--bg-surface)] p-1.5 hover:bg-[var(--bg-raised)]'
-    >
-      <div className='flex items-center justify-between'>
-        <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
-          {dayNum}
-        </span>
-        <button
-          type='button'
-          onClick={(e) => {
-            e.stopPropagation()
-            onAddItem(dateStr)
-          }}
-          className='opacity-0 transition-opacity group-hover/cell:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
-          aria-label={t('preview.kanban_new_item')}
-        >
-          <Plus size={12} />
-        </button>
+    <div className='relative flex min-h-24 flex-1 flex-col border-b border-[var(--border-subtle)] last:border-b-0'>
+      <div className='pointer-events-none absolute inset-0 grid grid-cols-7 divide-x divide-[var(--border-subtle)]'>
+        {week.map((day) => (
+          <div
+            key={day.dateStr}
+            className={`${day.isCurrentMonth ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-surface)] opacity-40'} ${
+              day.isToday ? 'bg-[var(--accent-softer)]/30' : ''
+            }`}
+          />
+        ))}
       </div>
 
-      <div className='flex flex-1 flex-col gap-1 overflow-hidden'>
-        {matchedItems.map((item) => (
+      <div className='relative z-10 grid grid-cols-7'>
+        {week.map((day) => (
+          <CalendarDayCellHeader
+            key={day.dateStr}
+            day={day}
+            onAddItem={onAddItem}
+          />
+        ))}
+      </div>
+
+      <div className='relative z-10 grid flex-1 grid-cols-7 auto-rows-max gap-y-1 px-1 pb-1'>
+        {segments.map((seg) => (
           <CalendarEventBar
-            key={item.id}
-            item={item}
+            key={`${seg.item.id}-${seg.startCol}`}
+            segment={seg}
             statusCol={statusCol}
             onOpenDetail={onOpenDetail}
           />
@@ -155,19 +197,6 @@ function CalendarDayCell({
       </div>
     </div>
   )
-}
-
-function buildCalendarDays(year: number, month: number) {
-  const padZero = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const days: { dateStr: string; dayNum: number }[] = []
-  for (let i = 1; i <= daysInMonth; i++) {
-    days.push({
-      dateStr: `${year}-${padZero(month + 1)}-${padZero(i)}`,
-      dayNum: i,
-    })
-  }
-  return days
 }
 
 export const KanbanCalendarView = memo(function KanbanCalendarView({
@@ -178,9 +207,7 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
-  const firstDay = new Date(year, month, 1).getDay()
-  const blanks = Array.from({ length: firstDay })
-  const days = buildCalendarDays(year, month)
+  const weeks = useMemo(() => getMonthWeeks(year, month), [year, month])
   const statusCol = data.columns.find((c) => c.id === 'status')
 
   return (
@@ -193,15 +220,11 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
         onToday={() => setCurrentDate(new Date())}
       />
       <CalendarWeekHeader />
-      <div className='grid flex-1 grid-cols-7 auto-rows-fr gap-px overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--border-subtle)]'>
-        {blanks.map((_, i) => (
-          <div key={`blank-${i}`} className='bg-[var(--bg-surface)] opacity-30' />
-        ))}
-        {days.map((d) => (
-          <CalendarDayCell
-            key={d.dateStr}
-            dateStr={d.dateStr}
-            dayNum={d.dayNum}
+      <div className='flex flex-1 flex-col overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--border-subtle)]'>
+        {weeks.map((week, idx) => (
+          <CalendarWeekRow
+            key={week[0].dateStr || idx}
+            week={week}
             items={data.items}
             statusCol={statusCol}
             onOpenDetail={onOpenDetail}
