@@ -124,3 +124,46 @@ export function isBackgroundLayer(el: SlideElement, page: PageSize): boolean {
     (el.type === 'svg' && (el.asset === 'grain' || el.asset === 'dots-ink' || el.asset === 'dots-paper'))
   )
 }
+
+/** A rectangle in page pixels, which is the space every element's box is written in. */
+export interface Rect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** The rectangle two corners describe: a rubber band may be drawn any of the four ways. */
+export function rectFromPoints(start: { x: number; y: number }, end: { x: number; y: number }): Rect {
+  return {
+    x: Math.min(start.x, end.x),
+    y: Math.min(start.y, end.y),
+    w: Math.abs(end.x - start.x),
+    h: Math.abs(end.y - start.y),
+  }
+}
+
+/**
+ * What a rubber band caught, in the page's own paint order. The backdrop is left out on purpose:
+ * a full-bleed layer overlaps every band a reader could draw across the page, and while something
+ * is painted on top of it an unselected backdrop cannot be clicked either — so catching it would
+ * mean the marquee could never mean anything but the backdrop.
+ *
+ * Rotation is not folded into the box: an element is caught by the rectangle its own width and
+ * height describe, which is the same box the handles and the drag work in.
+ */
+export function elementIdsInRect(elements: SlideElement[], rect: Rect, page: PageSize): string[] {
+  return elements
+    .filter((element) => !isBackgroundLayer(element, page))
+    .filter((element) => overlapsRect(element, rect))
+    .map((element) => element.id)
+}
+
+function overlapsRect(element: SlideElement, rect: Rect): boolean {
+  return (
+    element.x < rect.x + rect.w &&
+    element.x + element.w > rect.x &&
+    element.y < rect.y + rect.h &&
+    element.y + element.h > rect.y
+  )
+}

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  elementIdsInRect,
   elementPointerEvents,
   getElementBoxStyle,
   getShapeStyle,
   getTableStyle,
   getTextStyle,
   isBackgroundLayer,
+  rectFromPoints,
 } from './canvas-helpers'
 import { DEFAULT_PAGE_SIZE } from '../page'
 import type {
@@ -20,6 +22,31 @@ const DEFAULT_PAGE = DEFAULT_PAGE_SIZE
 function clip(): MediaElement {
   return { id: 'm1', type: 'media', kind: 'video', src: 'https://example.com/a.mp4', x: 0, y: 0, w: 100, h: 100 }
 }
+
+describe('the rubber band', () => {
+  const page = DEFAULT_PAGE
+  const backdrop: ShapeElement = { id: 'backdrop', type: 'shape', shape: 'rect', x: 0, y: 0, w: 1280, h: 720, fill: '#FFF' }
+  const one: TextElement = { id: 'one', type: 'text', html: 'x', fontSize: 20, x: 100, y: 100, w: 100, h: 50 }
+  const two: TextElement = { id: 'two', type: 'text', html: 'y', fontSize: 20, x: 400, y: 400, w: 100, h: 50 }
+
+  it('describes the same rectangle whichever way the band was drawn', () => {
+    expect(rectFromPoints({ x: 10, y: 20 }, { x: 40, y: 60 })).toEqual({ x: 10, y: 20, w: 30, h: 40 })
+    expect(rectFromPoints({ x: 40, y: 60 }, { x: 10, y: 20 })).toEqual({ x: 10, y: 20, w: 30, h: 40 })
+  })
+
+  it('catches what the band overlaps, in the page order, and never the backdrop', () => {
+    const band = rectFromPoints({ x: 80, y: 80 }, { x: 450, y: 450 })
+    expect(elementIdsInRect([backdrop, one, two], band, page)).toEqual(['one', 'two'])
+  })
+
+  it('touches only what the band reaches, and reports nothing for a band over empty page', () => {
+    const around = rectFromPoints({ x: 90, y: 90 }, { x: 210, y: 200 })
+    expect(elementIdsInRect([backdrop, one, two], around, page)).toEqual(['one'])
+
+    const empty = rectFromPoints({ x: 800, y: 80 }, { x: 900, y: 200 })
+    expect(elementIdsInRect([backdrop, one, two], empty, page)).toEqual([])
+  })
+})
 
 describe('pointer input', () => {
   it('keeps the background layer inert on the canvas until it is selected', () => {

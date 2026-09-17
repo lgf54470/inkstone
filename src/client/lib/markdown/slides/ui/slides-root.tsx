@@ -13,7 +13,7 @@ import { LayoutPicker } from './layout-picker'
 import { useSlidesPrint } from './slides-print'
 import { SlidesContextMenu, type SlidesMenuState, type SlidesMenuTarget } from './slides-context-menu'
 import { instantiateLayout, layoutById } from '../layouts'
-import { duplicateSlide } from '../edits'
+import { duplicateSlide, placeElements, type ElementPosition } from '../edits'
 import { moveSlide, reorderSlide } from '../order'
 import { copySlidesLink } from './copy-link'
 import { useSlidesImages } from './insert-image'
@@ -48,7 +48,7 @@ export const SlidesRoot = memo(function SlidesRoot({
   )
 
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
-  const [activeElementId, setActiveElementId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [isPresentationMode, setIsPresentationMode] = useState(false)
   const [openDialog, setOpenDialog] = useState<'settings' | 'help' | 'layouts' | null>(null)
   const [editingElementId, setEditingElementId] = useState<string | null>(null)
@@ -60,6 +60,23 @@ export const SlidesRoot = memo(function SlidesRoot({
 
   const slides = data.slides
   const activeSlide = slides[activeSlideIndex] || slides[0]
+  // The last box picked is the primary one: it is what the inspector edits and where the
+  // resize and rotate handles sit on a multiple selection.
+  const activeElementId = selectedIds[selectedIds.length - 1] ?? null
+
+  const selectElement = useCallback((id: string | null, additive = false) => {
+    if (!id) {
+      setSelectedIds([])
+      return
+    }
+    setSelectedIds((previous) => {
+      if (!additive) return previous.length === 1 && previous[0] === id ? previous : [id]
+      return previous.includes(id) ? previous.filter((candidate) => candidate !== id) : [...previous, id]
+    })
+  }, [])
+
+  /** One box, chosen by something other than a click on the canvas: a layer row, a menu, an insert. */
+  const selectOne = useCallback((id: string | null) => setSelectedIds(id ? [id] : []), [])
 
   useEffect(() => {
     if (!isFullscreen && inlineContainerRef.current) {
@@ -79,7 +96,7 @@ export const SlidesRoot = memo(function SlidesRoot({
     slideIndex: activeSlideIndex,
     commit: commitData,
     selectedId: () => activeElementId,
-    select: setActiveElementId,
+    select: (elementId) => setSelectedIds(elementId ? [elementId] : []),
   })
 
   /**
@@ -109,7 +126,7 @@ export const SlidesRoot = memo(function SlidesRoot({
     noteId,
     targetSlideId: () => activeSlide?.id ?? null,
     insert: insertElementInto,
-    select: setActiveElementId,
+    select: selectOne,
   })
 
   const applyZoom = useCallback((command: 'in' | 'out' | 'reset') => {
@@ -125,7 +142,7 @@ export const SlidesRoot = memo(function SlidesRoot({
       const next = activeSlideIndex + direction
       if (next < 0 || next >= slides.length) return false
       setActiveSlideIndex(next)
-      setActiveElementId(null)
+      setSelectedIds([])
       setEditingElementId(null)
       return true
     },
@@ -143,9 +160,9 @@ export const SlidesRoot = memo(function SlidesRoot({
     enabled: isFullscreen,
     doc: data,
     targetSlideId: () => activeSlide?.id ?? null,
-    selectedIds: () => (activeElementId ? [activeElementId] : []),
+    selectedIds: () => selectedIds,
     commit: commitData,
-    select: (elementIds) => setActiveElementId(elementIds[0] ?? null),
+    select: (elementIds) => setSelectedIds(elementIds),
     zoom: applyZoom,
     pasteImage: (file) => void handlePasteImage(file),
     selectSlide: (slideId) => {
@@ -176,7 +193,7 @@ export const SlidesRoot = memo(function SlidesRoot({
       })
       commitData({ ...data, slides: [...slides, newSlide] })
       setActiveSlideIndex(slides.length)
-      setActiveElementId(null)
+      setSelectedIds([])
     },
     [commitData, data, slides],
   )
@@ -234,19 +251,33 @@ export const SlidesRoot = memo(function SlidesRoot({
     (elementId: string) => {
       const element = activeSlide?.elements.find((el) => el.id === elementId)
       if (element?.type !== 'text') return
-      setActiveElementId(elementId)
+      setSelectedIds([elementId])
       setEditingElementId(elementId)
     },
     [activeSlide],
   )
 
+  /**
+   * Right clicking a box that is part of a selection keeps that selection, so the menu's rows act
+   * on what the reader can see is selected; any other box is picked on its own the way it looks.
+   */
   const handleStageContextMenu = useCallback(
     (elementId: string | null, event: ReactMouseEvent<HTMLElement>) => {
       const element = elementId ? activeSlide?.elements.find((el) => el.id === elementId) : undefined
-      if (element) setActiveElementId(element.id)
+      if (element && !selectedIds.includes(element.id)) selectOne(element.id)
       openMenuAt(event, element ? { kind: 'element', element } : { kind: 'canvas' })
     },
-    [activeSlide, openMenuAt],
+    [activeSlide, openMenuAt, selectOne, selectedIds],
+  )
+
+  /** Where a drag lands: every box it carried, at the position the drag computed for it. */
+  const handleMoveElements = useCallback(
+    (positions: ElementPosition[]) => {
+      const slideId = activeSlide?.id
+      if (!slideId || positions.length === 0) return
+      commitData((previous) => placeElements(previous, slideId, positions))
+    },
+    [activeSlide?.id, commitData],
   )
 
   const handleUpdateTheme = useCallback(
@@ -369,7 +400,7 @@ export const SlidesRoot = memo(function SlidesRoot({
             const idx = slides.findIndex((s) => s.id === id)
             if (idx !== -1) {
               setActiveSlideIndex(idx)
-              setActiveElementId(null)
+              setSelectedIds([])
             }
           }}
           onAddSlide={() => setOpenDialog('layouts')}
@@ -385,11 +416,13 @@ export const SlidesRoot = memo(function SlidesRoot({
           theme={data.theme}
           page={data.size}
           zoom={zoom}
-          activeElementId={activeElementId}
+          selectedIds={selectedIds}
           editingElementId={editingElementId}
           assets={data.assets}
-          onSelectElement={setActiveElementId}
+          onSelectElement={selectElement}
+          onSelectMany={setSelectedIds}
           onUpdateElement={pageEdits.updateElement}
+          onMoveElements={handleMoveElements}
           onZoom={setZoom}
           onStartSlideshow={() => setIsPresentationMode(true)}
           onContextMenuAt={handleStageContextMenu}
@@ -403,7 +436,7 @@ export const SlidesRoot = memo(function SlidesRoot({
             theme={data.theme}
             docSize={data.size}
             presentSettings={data.present}
-            onSelectElement={setActiveElementId}
+            onSelectElement={selectOne}
             onUpdateSlide={pageEdits.updateSlide}
             onUpdateElement={pageEdits.updateElement}
             onDeleteElement={pageEdits.deleteElement}

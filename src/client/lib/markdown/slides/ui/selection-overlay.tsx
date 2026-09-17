@@ -6,6 +6,12 @@ interface SelectionOverlayProps {
   scale: number
   onUpdate: (patch: Partial<SlideElement>) => void
   canvasRef: RefObject<HTMLDivElement | null>
+  /**
+   * Whether this element is the one the handles belong to. A multi-selection draws a ring on
+   * every box it holds and keeps the handles on the last one picked, because resizing a group
+   * is not a gesture this editor has — the ring still says what a drag will carry.
+   */
+  handles?: boolean
 }
 
 type ResizeHandle = 'nw' | 'n' | 'ne' | 'w' | 'e' | 'sw' | 's' | 'se'
@@ -145,14 +151,22 @@ export const SelectionOverlay = memo(function SelectionOverlay({
   scale,
   onUpdate,
   canvasRef,
+  handles = true,
 }: SelectionOverlayProps) {
   const handleResizeStart = useResizeGesture(element, scale, onUpdate)
   const handleRotateStart = useRotateGesture(element, scale, canvasRef, onUpdate)
 
   return (
-    <div className='absolute inset-0 border border-[var(--accent)] pointer-events-none z-30'>
-      <RotationHandle onRotateStart={handleRotateStart} />
-      <ResizeHandles onResizeStart={handleResizeStart} />
+    <div
+      data-slide-selection={handles ? 'primary' : 'multi'}
+      className='absolute inset-0 border border-[var(--accent)] pointer-events-none z-30'
+    >
+      {handles && (
+        <>
+          <RotationHandle onRotateStart={handleRotateStart} />
+          <ResizeHandles onResizeStart={handleResizeStart} />
+        </>
+      )}
     </div>
   )
 })

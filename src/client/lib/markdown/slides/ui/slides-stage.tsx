@@ -1,4 +1,5 @@
 import { memo, type MouseEvent as ReactMouseEvent } from 'react'
+import type { ElementPosition } from '../edits'
 import type { PageSize } from '../page'
 import type { Slide, SlideElement, SlidesTheme } from '../types'
 import { elementIdAt } from './canvas-helpers'
@@ -28,11 +29,14 @@ interface SlidesStageProps {
   theme: SlidesTheme
   page: PageSize
   zoom: number
-  activeElementId: string | null
+  /** Every selected box; the last one picked is the one the handles belong to. */
+  selectedIds: string[]
   editingElementId: string | null
   assets?: Record<string, string>
-  onSelectElement: (id: string | null) => void
+  onSelectElement: (id: string | null, additive?: boolean) => void
+  onSelectMany: (ids: string[]) => void
   onUpdateElement: (id: string, patch: Partial<SlideElement>) => void
+  onMoveElements: (positions: ElementPosition[]) => void
   onZoom: (zoom: number) => void
   onStartSlideshow: () => void
   onContextMenuAt: (elementId: string | null, event: ReactMouseEvent<HTMLElement>) => void
@@ -52,11 +56,13 @@ export const SlidesStage = memo(function SlidesStage({
   theme,
   page,
   zoom,
-  activeElementId,
+  selectedIds,
   editingElementId,
   assets,
   onSelectElement,
+  onSelectMany,
   onUpdateElement,
+  onMoveElements,
   onZoom,
   onStartSlideshow,
   onContextMenuAt,
@@ -82,11 +88,14 @@ export const SlidesStage = memo(function SlidesStage({
             page={page}
             scale={zoom}
             editable={true}
-            activeElementId={activeElementId}
+            selectedIds={selectedIds}
+            primaryId={selectedIds[selectedIds.length - 1] ?? null}
             editingElementId={editingElementId}
             assets={assets}
             onSelectElement={onSelectElement}
+            onSelectMany={onSelectMany}
             onUpdateElement={onUpdateElement}
+            onMoveElements={onMoveElements}
           />
         </div>
       )}

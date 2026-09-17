@@ -86,6 +86,29 @@ export function removeElements(doc: BentoDoc, slideId: string, ids: Iterable<str
   return replaceElements(doc, slideId, (current) => current.filter((element) => !doomed.has(element.id)))
 }
 
+/** Where one element ended up, as an absolute position: what a drag computes before it lands. */
+export interface ElementPosition {
+  id: string
+  x: number
+  y: number
+}
+
+/**
+ * The deck with the named elements placed at absolute positions. A drag hands over the whole
+ * move at once — every box it is carrying, each from the position it started at — so the result
+ * depends on where the drag began rather than on how many move events it took to get there.
+ */
+export function placeElements(doc: BentoDoc, slideId: string, positions: ElementPosition[]): BentoDoc {
+  if (positions.length === 0) return doc
+  const byId = new Map(positions.map((position) => [position.id, position]))
+  return replaceElements(doc, slideId, (current) =>
+    current.map((element) => {
+      const position = byId.get(element.id)
+      return position ? { ...element, x: position.x, y: position.y } : element
+    }),
+  )
+}
+
 export function moveElements(
   doc: BentoDoc,
   slideId: string,

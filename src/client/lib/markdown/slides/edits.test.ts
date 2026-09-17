@@ -6,6 +6,7 @@ import {
   insertSlides,
   moveElements,
   pickElements,
+  placeElements,
   removeElements,
   replaceElements,
   slideElements,
@@ -29,6 +30,29 @@ function doc(): BentoDoc {
     slides: [slide('one', [text('a'), text('b')]), slide('two', [text('c')])],
   }
 }
+
+describe('placing elements where a drag left them', () => {
+  it('moves the named elements and leaves the others where they were', () => {
+    const next = placeElements(doc(), 'one', [
+      { id: 'a', x: 40, y: 30 },
+      { id: 'b', x: 240, y: 130 },
+    ])
+    expect(slideElements(next, 'one').map((element) => [element.id, element.x, element.y])).toEqual([
+      ['a', 40, 30],
+      ['b', 240, 130],
+    ])
+    expect(slideElements(next, 'two').map((element) => element.x)).toEqual([0])
+  })
+
+  it('ignores an id that is not on the page, and returns the same document for an empty move', () => {
+    const withGhost = placeElements(doc(), 'one', [{ id: 'ghost', x: 1, y: 1 }])
+    expect(slideElements(withGhost, 'one').map((element) => element.x)).toEqual([0, 0])
+
+    const current = doc()
+    expect(placeElements(current, 'one', [])).toBe(current)
+    expect(placeElements(current, 'nowhere', [{ id: 'a', x: 9, y: 9 }])).toBe(current)
+  })
+})
 
 describe('editing a slide by its elements', () => {
   it('appends in the order given, and leaves the document alone when there is nothing to add', () => {
