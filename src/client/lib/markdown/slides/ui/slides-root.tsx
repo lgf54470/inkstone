@@ -57,11 +57,6 @@ export const SlidesRoot = memo(function SlidesRoot({
     initialData,
     onUpdateData,
   )
-  // An added picture arrives after a dialog and an upload, by which time the render this
-  // handler belongs to may be stale; the ref is what those writes read instead of a
-  // snapshot that predates whatever happened while the file dialog was open.
-  const dataRef = useRef(data)
-  dataRef.current = data
 
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
   const [activeElementId, setActiveElementId] = useState<string | null>(null)
@@ -138,16 +133,25 @@ export const SlidesRoot = memo(function SlidesRoot({
     [activeSlide, data.theme.accent, handleUpdateSlide],
   )
 
+  /**
+   * Adds one element to the slide it was asked for. The change resolves against the document
+   * as it is now rather than as the render it came from — this request outlives that render
+   * (a picture is chosen, then uploaded) and the slide may be gone by the time it lands.
+   */
   const insertElementInto = useCallback(
     (slideId: string, element: SlideElement): boolean => {
-      const current = dataRef.current
-      const at = current.slides.findIndex((slide) => slide.id === slideId)
-      if (at < 0) return false
-      const nextSlides = current.slides.map((slide, idx) =>
-        idx === at ? { ...slide, elements: [...slide.elements, element] } : slide,
-      )
-      commitData({ ...current, slides: nextSlides })
-      return true
+      let inserted = false
+      commitData((prev) => {
+        if (!prev.slides.some((slide) => slide.id === slideId)) return prev
+        inserted = true
+        return {
+          ...prev,
+          slides: prev.slides.map((slide) =>
+            slide.id === slideId ? { ...slide, elements: [...slide.elements, element] } : slide,
+          ),
+        }
+      })
+      return inserted
     },
     [commitData],
   )

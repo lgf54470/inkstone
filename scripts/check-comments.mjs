@@ -2931,9 +2931,18 @@ const allowed = new Map([
     '/** Told whether an edit is still waiting for its write — the surface\'s unsaved-change state. */',
   ]],
   ['src/client/lib/markdown/slides/history.ts', [
+    '// A caller that resolves a change from the document itself (a paste, an insert that',
+    '// finished after an upload) may hold a handler from an older render. Reading the latest',
+    '// document through a ref is what keeps such a change from being applied to — and',
+    '// therefore written back as — the snapshot that caller was created with.',
     '// A document written by another surface starts a new lineage: its steps are not this',
     "// surface's steps, so they are dropped rather than offered as undoable edits.",
     '/**\n   * The document belongs to the block, not to one surface of it. The full screen editor\n   * commits through the same entry, so a card mounted before those edits has to adopt\n   * them or it keeps painting the deck as it was when the block was mounted — the note\n   * says one thing and the card next to it another. A commit from this surface arrives\n   * as the very object it just dispatched, so this only ever fires for an outside writer.\n   */',
+  ]],
+  ['src/client/lib/markdown/slides/history.test.ts', [
+    '/**\n * The hook, plus the commit handler of the FIRST render — the one a deferred caller would\n * still be holding, which is the whole point of asking the question here.\n */',
+    '// The host hands the committed document back in as `initialData` (registry.ts does the',
+    '// same), which is what tells the hook the change came from this surface.',
   ]],
   ['src/client/lib/markdown/slides/chart-geometry.test.ts', [
     '// Centre plus radius at -90°, i.e. straight up from the middle.',
@@ -3166,9 +3175,7 @@ const allowed = new Map([
     '/** Whether every edit has reached the note; undefined on a surface without a save control. */',
     '/** The note holding the deck, which owns any picture added here; null on a surface with no note. */',
     '/** A double click and the menu\'s own row are the two ways into typing; both land here. */',
-    '// An added picture arrives after a dialog and an upload, by which time the render this',
-    '// handler belongs to may be stale; the ref is what those writes read instead of a',
-    '// snapshot that predates whatever happened while the file dialog was open.',
+    '/**\n   * Adds one element to the slide it was asked for. The change resolves against the document\n   * as it is now rather than as the render it came from — this request outlives that render\n   * (a picture is chosen, then uploaded) and the slide may be gone by the time it lands.\n   */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-settings-dialog.tsx', [
     '// A colour input only accepts `#rrggbb`; a theme written as a named colour or a CSS',

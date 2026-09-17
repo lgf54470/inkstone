@@ -1,5 +1,8 @@
+import { createElement } from 'react'
+import { act } from 'react'
 import { describe, expect, it } from 'vitest'
-import { historyReducer, type HistoryState } from './history'
+import { renderElement } from '../../test-render'
+import { historyReducer, useSlidesHistory, type HistoryState } from './history'
 import type { BentoDoc } from './types'
 
 function makeDoc(title: string): BentoDoc {
@@ -89,5 +92,50 @@ describe('historyReducer', () => {
 
     const afterRedo = historyReducer(s0, { type: 'redo' })
     expect(afterRedo).toBe(s0)
+  })
+})
+
+interface Harness {
+  commit: (next: BentoDoc | ((prev: BentoDoc) => BentoDoc)) => void
+  data: BentoDoc
+}
+
+/**
+ * The hook, plus the commit handler of the FIRST render — the one a deferred caller would
+ * still be holding, which is the whole point of asking the question here.
+ */
+function renderHistory(): { staleCommit: Harness['commit']; read: () => BentoDoc } {
+  // The host hands the committed document back in as `initialData` (registry.ts does the
+  // same), which is what tells the hook the change came from this surface.
+  const host: { doc: BentoDoc } = { doc: makeDoc('Start') }
+  const renders: Harness[] = []
+  function Probe() {
+    const { data, commitData } = useSlidesHistory(host.doc, (next) => {
+      host.doc = next
+    })
+    renders.push({ commit: commitData, data })
+    return null
+  }
+  renderElement(createElement(Probe))
+  const first = renders[0]
+  if (!first) throw new Error('the history hook did not render')
+  return {
+    staleCommit: first.commit,
+    read: () => {
+      const last = renders[renders.length - 1]
+      if (!last) throw new Error('the history hook did not render')
+      return last.data
+    },
+  }
+}
+
+describe('useSlidesHistory commit handler', () => {
+  it('resolves a change from the latest document, not from the render it came from', () => {
+    const { staleCommit, read } = renderHistory()
+
+    act(() => staleCommit((prev) => ({ ...prev, title: 'typed' })))
+    act(() => staleCommit((prev) => ({ ...prev, title: `${prev.title}+pasted` })))
+
+    expect(read().title).toBe('typed+pasted')
   })
 })

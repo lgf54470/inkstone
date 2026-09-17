@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useReducer, useRef } from 'react'
 import type { BentoDoc } from './types'
 
 const MAX_HISTORY_STEPS = 30
@@ -60,6 +60,12 @@ export function useSlidesHistory(
     past: [],
     future: [],
   })
+  // A caller that resolves a change from the document itself (a paste, an insert that
+  // finished after an upload) may hold a handler from an older render. Reading the latest
+  // document through a ref is what keeps such a change from being applied to — and
+  // therefore written back as — the snapshot that caller was created with.
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   /**
    * The document belongs to the block, not to one surface of it. The full screen editor
@@ -75,7 +81,7 @@ export function useSlidesHistory(
 
   const commitData = useCallback(
     (nextOrUpdater: BentoDoc | ((prev: BentoDoc) => BentoDoc)) => {
-      const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(state.data) : nextOrUpdater
+      const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(stateRef.current.data) : nextOrUpdater
       dispatch({ type: 'commit', next })
       onUpdateData(next)
     },
