@@ -66,4 +66,7 @@ Thumbs.db
 .codebuddy/
 .vscode-server/
 .idea/
+.trae/
+.trae-cn/
+
 
