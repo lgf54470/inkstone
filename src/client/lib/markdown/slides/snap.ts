@@ -9,13 +9,21 @@ export interface SnapBox {
 }
 
 /** What a line came from, which is also how it is drawn differently from the others. */
-export type SnapSource = 'element' | 'page' | 'margin'
+export type SnapSource = 'element' | 'page' | 'margin' | 'spacing'
 
 export interface SnapGuide {
   axis: 'x' | 'y'
   /** Where the line sits on the page, in page pixels. */
   at: number
   source: SnapSource
+  /**
+   * A gap rather than a whole line: how far the segment runs **along** the constrained axis,
+   * while `at` stays where it sits across it — so an `x` guide with a span is a horizontal
+   * segment at `at`, and the same guide without one is the vertical line the whole page over.
+   */
+  span?: { from: number; to: number }
+  /** How wide the gap is, in page pixels, which is what a spacing guide labels itself with. */
+  size?: number
 }
 
 export interface SnapResult {

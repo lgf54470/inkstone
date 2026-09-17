@@ -2,6 +2,7 @@ import { memo, useRef, type MouseEvent, type RefObject } from 'react'
 import type { SlideElement, SlidesTheme } from '../types'
 import type { ElementPosition } from '../edits'
 import { snapMove, unionBox, type SnapBox, type SnapGuide, type SnapResult } from '../snap'
+import { spacingSnap } from '../spacing'
 import type { PageSize } from '../page'
 import { elementPointerEvents, getElementBoxStyle, isBackgroundLayer } from './canvas-helpers'
 import { SelectionOverlay } from './selection-overlay'
@@ -187,6 +188,12 @@ function useElementDrag(
  * What would line up, judged on the rectangle the carried boxes occupy at the proposed move and
  * against the boxes that are staying put. A rotation is not folded in: the geometry is the
  * axis-aligned frame the handles work in.
+ *
+ * Two questions are asked of that rectangle, and the page's own lines and the gaps between boxes
+ * answer them in that order: an edge that lands on another edge or on the page is the sharper
+ * intent, so the even spacing (spacing.ts) only fills in the axis the lines left alone. Both the
+ * ordinary guides and the spacing guides travel out together, which is what lets the canvas say
+ * why the box stopped where it did.
  */
 function resolveSnap(
   targets: DragTarget[],
@@ -199,7 +206,16 @@ function resolveSnap(
   const moving = unionBox(offsetTargets(targets, dx, dy))
   if (!moving) return FREE_MOVE
   const others = boxes.filter((candidate) => !carried.has(candidate.id))
-  return snapMove({ moving, others, page })
+  const edge = snapMove({ moving, others, page })
+  const spacing = spacingSnap({ moving, others })
+  // A guide is only ever pushed for an axis the lines answered, so its presence is the same
+  // question as whether that axis was decided by an edge.
+  const fromEdge = new Set(edge.guides.map((guide) => guide.axis))
+  return {
+    dx: fromEdge.has('x') ? edge.dx : spacing.dx,
+    dy: fromEdge.has('y') ? edge.dy : spacing.dy,
+    guides: [...edge.guides, ...spacing.guides.filter((guide) => !fromEdge.has(guide.axis))],
+  }
 }
 
 function offsetTargets(targets: DragTarget[], dx: number, dy: number): DragTarget[] {

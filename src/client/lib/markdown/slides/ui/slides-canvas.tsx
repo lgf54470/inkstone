@@ -118,22 +118,74 @@ function SlidePageBox({
  * The lines a drag is lined up on: one per axis, drawn across the page wherever the box it is
  * carrying met something. They are what makes the jump legible — a box that stops six pixels
  * short of where the pointer is is a bug unless the page says why.
+ *
+ * A guide that carries a span is not a line but a gap, and it is drawn as one (SpacingLine): the
+ * `data-slide-gap` marker is what tells the two apart, since both are guides on the axis.
  */
 function GuideLines({ guides }: { guides: SnapGuide[] }) {
   return (
     <>
-      {guides.map((guide, index) => (
-        <div
-          key={`${guide.axis}-${guide.at}-${guide.source}-${index}`}
-          data-slide-guide={guide.axis}
-          className='pointer-events-none absolute z-30 bg-[var(--accent)]'
-          style={
-            guide.axis === 'x'
-              ? { left: `${guide.at}px`, top: 0, width: `${GUIDE_WIDTH}px`, height: '100%' }
-              : { top: `${guide.at}px`, left: 0, height: `${GUIDE_WIDTH}px`, width: '100%' }
-          }
-        />
-      ))}
+      {guides.map((guide, index) =>
+        guide.span ? (
+          <SpacingLine key={`gap-${guide.axis}-${guide.at}-${index}`} guide={guide} span={guide.span} />
+        ) : (
+          <div
+            key={`${guide.axis}-${guide.at}-${guide.source}-${index}`}
+            data-slide-guide={guide.axis}
+            className='pointer-events-none absolute z-30 bg-[var(--accent)]'
+            style={
+              guide.axis === 'x'
+                ? { left: `${guide.at}px`, top: 0, width: `${GUIDE_WIDTH}px`, height: '100%' }
+                : { top: `${guide.at}px`, left: 0, height: `${GUIDE_WIDTH}px`, width: '100%' }
+            }
+          />
+        ),
+      )}
+    </>
+  )
+}
+
+/**
+ * A gap the drag is keeping even: drawn from one edge to the other across the space it measures,
+ * with the width written at its middle. A line running the whole page could not say which two
+ * boxes its number belongs to, which is the entire question an even spacing asks.
+ *
+ * The label is on an opaque surface rather than on the accent itself: it is painted over the
+ * slide's own background, which is the reader's colour and not one a token can promise contrast
+ * against.
+ */
+function SpacingLine({
+  guide,
+  span,
+}: {
+  guide: SnapGuide
+  span: NonNullable<SnapGuide['span']>
+}) {
+  const horizontal = guide.axis === 'x'
+  const middle = (span.from + span.to) / 2
+  return (
+    <>
+      <div
+        data-slide-guide={guide.axis}
+        data-slide-gap=''
+        className='pointer-events-none absolute z-30 bg-[var(--accent)]'
+        style={
+          horizontal
+            ? { left: `${span.from}px`, top: `${guide.at}px`, width: `${span.to - span.from}px`, height: `${GUIDE_WIDTH}px` }
+            : { top: `${span.from}px`, left: `${guide.at}px`, height: `${span.to - span.from}px`, width: `${GUIDE_WIDTH}px` }
+        }
+      />
+      <span
+        data-slide-gap-size=''
+        className='tabular pointer-events-none absolute z-30 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-overlay)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)]'
+        style={
+          horizontal
+            ? { left: `${middle}px`, top: `${guide.at}px`, transform: 'translate(-50%, -50%)' }
+            : { top: `${middle}px`, left: `${guide.at}px`, transform: 'translate(-50%, -50%)' }
+        }
+      >
+        {Math.round(guide.size ?? span.to - span.from)}
+      </span>
     </>
   )
 }
