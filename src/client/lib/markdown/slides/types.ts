@@ -232,7 +232,8 @@ export interface ChartDatum {
 export interface ChartElement extends ElementBase {
   type: 'chart'
   preset: 'bar' | 'line' | 'pie' | 'scatter'
-  data: ChartDatum[]
+  /** The values the preset draws. A deck authored elsewhere keeps them in `option` instead. */
+  data?: ChartDatum[]
   title?: string
   color?: string
   /** A chart's own option object, as the format's chart engine carries it. */

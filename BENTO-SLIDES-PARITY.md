@@ -94,7 +94,7 @@
 | 9 种界面语言 + 语言包 | en-US / zh-CN，按本项目 i18n 现状 | 与应用其余部分共用同一套资源与门禁 |
 | 自更新、密码信封加密文件、单文件应用外壳 | 不做（导出形态在 P4 决策） | 块活在笔记里，文件级能力由 Inkstone 的分享/备份/实时栈承担 |
 | 媒体自动播放 | 遵守 `prefers-reduced-motion`，且自动播放一律静音 | 读者偏好优先；浏览器只允许静音自发播放 |
-| charts-lite 的 `option` 图表（数据可来自表格） | 仅 `preset`/`data` 路径已绘制 | `option` 图表的引擎与表格联动属 P2 面板项 |
+| charts-lite 的 `option` 图表（数据可来自表格） | 仅 `preset`/`data` 路径已绘制；值只在 `option` 里、没有 `data` 的图表画成占位框并告警（自带的 Showcase 模板就是这种形状），不再让整张幻灯片抛 `TypeError` 崩掉——守卫：`ui/chart-block.test.ts`、`tests/slides-interop.test.ts` | `option` 图表的引擎与表格联动属 P2 面板项 |
 
 ---
 

@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../../test-render'
 import type { ChartElement } from '../types'
 import { SlideChartBlock } from './chart-block'
@@ -32,6 +32,23 @@ const marks = {
   pie: '[data-slice]',
   scatter: '[data-point]',
 } as const
+
+/**
+ * The shape the app's own showcase deck ships in: a preset and the format's chart-engine
+ * option, and no `data` list at all — mapping that missing list is what used to throw.
+ */
+function optionChart(): ChartElement {
+  return {
+    id: 'chart-2',
+    type: 'chart',
+    preset: 'bar',
+    option: { xAxis: { data: ['Mon'] }, series: [{ type: 'bar', data: [42] }] },
+    x: 0,
+    y: 0,
+    w: 400,
+    h: 300,
+  }
+}
 
 /** A line carries its dots, so it is the one preset that draws another preset's mark too. */
 const drawsAlongside: Partial<Record<keyof typeof marks, (keyof typeof marks)[]>> = {
@@ -72,6 +89,17 @@ describe('a slide chart', () => {
   it('names itself for a reader who cannot see the marks', () => {
     const view = draw(chart('line'))
     expect(view.container.querySelector('svg')?.getAttribute('aria-label')).toBe('Monthly')
+    view.unmount()
+  })
+
+  it('announces a chart whose values live in the option it was authored with', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const view = draw(optionChart())
+    expect(view.container.querySelector('[data-bar]')).toBeNull()
+    const frame = view.container.querySelector('[data-slide-unsupported="chart"]')
+    expect(frame?.textContent).toContain('chart: option')
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('unsupported element type "chart"'))
+    warn.mockRestore()
     view.unmount()
   })
 })

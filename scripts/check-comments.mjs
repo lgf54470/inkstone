@@ -3211,6 +3211,7 @@ const allowed = new Map([
     '/** SVG path data: a `path` shape\'s geometry is its own coordinates, not a box. */',
     '/**\n * Another Bento view carried inside the deck. `view` is inline artwork the file itself\n * carries; `url` is an address, which only runs where embedding is allowed (`live`),\n * because a note is not a viewer for arbitrary pages.\n */',
     '/** A chart\'s own option object, as the format\'s chart engine carries it. */',
+    '/** The values the preset draws. A deck authored elsewhere keeps them in `option` instead. */',
     '/** The same source under the format\'s own name for it: an imported block carries only this. */',
     '/** A review thread anchored to an element, a point on a slide, or the slide itself. */',
     '/** The slide whose interaction state this one continues, which is how states navigate. */',
@@ -3228,11 +3229,13 @@ const allowed = new Map([
     '/**\n * What a rubber band caught, in the page\'s own paint order. The backdrop is left out on purpose:\n * a full-bleed layer overlaps every band a reader could draw across the page, and while something\n * is painted on top of it an unselected backdrop cannot be clicked either — so catching it would\n * mean the marquee could never mean anything but the backdrop.\n *\n * Rotation is not folded into the box: an element is caught by the rectangle its own width and\n * height describe, which is the same box the handles and the drag work in.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/chart-block.test.ts', [
+    '/**\n * The shape the app\'s own showcase deck ships in: a preset and the format\'s chart-engine\n * option, and no `data` list at all — mapping that missing list is what used to throw.\n */',
     '/** A line carries its dots, so it is the one preset that draws another preset\'s mark too. */',
   ]],
   ['src/client/lib/markdown/slides/ui/chart-block.tsx', [
     '/** The deck\'s chart colours, cycled per value; the element\'s own colour is the fallback. */',
     '/**\n * A chart is drawn as markup rather than onto a canvas: a slide is printed, exported and\n * shown at whatever size the page turns out to be, and vector marks keep all three exact.\n * The preset decides the marks — bars, a polyline, wedges, points — and the deck\'s palette\n * decides their colours, so recolouring a deck\'s charts needs no edit here.\n */',
+    '/**\n * The values a chart draws from, or null when the element carries none this build can read.\n * A deck the format\'s own tool authored keeps its numbers inside the `option` object its\n * chart engine runs (charts-lite), which is not the `data` list a chart made here carries.\n * Running that engine is a feature of its own, so such a chart is announced rather than\n * drawn from a guess — and never mapped blind, which took the whole slide down instead.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/code-block.test.ts', [
     '// The grammar is loaded on demand; loading it here is what the effect would have to',
@@ -4472,12 +4475,18 @@ const allowed = new Map([
     '// visit recording runs via waitUntil; the test context must let us await it',
   ]],
   ['tests/slides-interop.test.ts', [
+    '// A chart whose values are inside the format\'s own chart-engine option is announced for the',
+    '// same reason: this build draws the `data` path only, and drawing a preset over values it',
+    '// cannot read would be a picture the document never asked for.',
     '/**\n * What happens when a note holds a deck this build did not author: a document in the\n * format\'s own shape, with the element kinds, slide fields and document tables an export\n * carries. Two things must hold, and neither is visible from the editor\'s side. The model\n * must carry every field through parse → edit → write (a field it drops is gone from the\n * note the next time anything is edited), and every element must DRAW SOMETHING — a deck\n * whose picture is missing an element looks finished, so the failure has no symptom until\n * the reader compares it with the original.\n */',
     '// The picture is bytes the file carries, so what the canvas loads is the asset behind',
     '// the key rather than the key itself (which would be an image the browser cannot fetch).',
   ]],
   ['tests/slides-sanitize-policy.test.ts', [
     '/**\n * A bento-slides body is untrusted input rendered as MARKUP (a note can carry a deck from\n * anywhere), so every injection site has to pass through lib/markdown/slides/sanitize.ts.\n * The renderer is where a bypass would be introduced — one `dangerouslySetInnerHTML` fed\n * a model field straight — and a bypass is invisible in review, because the code looks\n * like every other renderer in the tree. This walks the feature\'s source the way\n * tests/fullscreen-policy.test.ts walks src/client for native full screen: the shape is\n * the contract, and a new site that skips the gate fails here instead of shipping.\n */',
+  ]],
+  ['tests/starter-deck-render.test.ts', [
+    '/**\n * The deck this app inserts as its own slides showcase is content it ships, so a change here\n * would otherwise only surface when somebody opened the template. Its charts carry the\n * format\'s chart-engine `option` and no `data` list, which is the shape that used to take\n * the whole slide down with a TypeError mid-render; every chart element now has to end up\n * either drawn or announced, never missing and never thrown on.\n */',
   ]],
   ['tests/throttle-session.test.ts', [
     '// Rewind the last attempt far enough to expire the window and the lock.',

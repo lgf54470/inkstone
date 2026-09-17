@@ -10,6 +10,7 @@ import {
 } from '../chart-geometry'
 import { t } from '../../../i18n'
 import type { ChartElement } from '../types'
+import { UnsupportedElement } from './unsupported-element'
 
 const LABEL_SIZE = 11
 const LABEL_INSET = 4
@@ -26,6 +27,18 @@ interface SlideChartBlockProps {
 }
 
 /**
+ * The values a chart draws from, or null when the element carries none this build can read.
+ * A deck the format's own tool authored keeps its numbers inside the `option` object its
+ * chart engine runs (charts-lite), which is not the `data` list a chart made here carries.
+ * Running that engine is a feature of its own, so such a chart is announced rather than
+ * drawn from a guess — and never mapped blind, which took the whole slide down instead.
+ */
+function chartPoints(el: ChartElement): ChartPoint[] | null {
+  if (!Array.isArray(el.data)) return null
+  return el.data.map((datum) => ({ label: datum.label, value: datum.value }))
+}
+
+/**
  * A chart is drawn as markup rather than onto a canvas: a slide is printed, exported and
  * shown at whatever size the page turns out to be, and vector marks keep all three exact.
  * The preset decides the marks — bars, a polyline, wedges, points — and the deck's palette
@@ -36,11 +49,11 @@ export const SlideChartBlock = memo(function SlideChartBlock({
   palette,
   defaultAccent,
 }: SlideChartBlockProps) {
+  const points = chartPoints(el)
+  if (!points) {
+    return <UnsupportedElement el={el} reason={el.option ? 'chart: option' : 'chart: data'} />
+  }
   const box: ChartBox = { width: el.w, height: el.h }
-  const points: ChartPoint[] = el.data.map((datum) => ({
-    label: datum.label,
-    value: datum.value,
-  }))
   const colorAt = (index: number): string =>
     palette?.[index % Math.max(palette.length, 1)] || el.color || defaultAccent || 'currentColor'
   const plotTop = el.title ? CHART_PADDING + TITLE_SIZE + TITLE_INSET : CHART_PADDING

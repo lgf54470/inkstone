@@ -92,7 +92,7 @@ describe('rich element factories', () => {
     const barChart = createDefaultChart('bar')
     expect(barChart.type).toBe('chart')
     expect(barChart.preset).toBe('bar')
-    expect(barChart.data.length).toBe(4)
+    expect(barChart.data?.length).toBe(4)
 
     const lineChart = createDefaultChart('line')
     expect(lineChart.preset).toBe('line')

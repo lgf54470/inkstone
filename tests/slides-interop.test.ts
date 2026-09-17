@@ -8,7 +8,7 @@
  * the reader compares it with the original.
  */
 import { createElement } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { parseSlidesBody, serializeSlides } from '../src/client/lib/markdown/slides/body'
 import { SlidesCanvas } from '../src/client/lib/markdown/slides/ui'
 import { renderElement } from '../src/client/lib/test-render'
@@ -85,6 +85,16 @@ const OFFICIAL_DECK = JSON.stringify({
           grammarName: 'typescript',
           fontSize: 15,
         },
+        {
+          id: 'trend-1',
+          type: 'chart',
+          preset: 'bar',
+          option: { xAxis: { data: ['Mon'] }, series: [{ type: 'bar', data: [42] }] },
+          x: 980,
+          y: 20,
+          w: 320,
+          h: 200,
+        },
         { id: 'newer-1', type: 'timeline', x: 20, y: 20, w: 200, h: 80 },
       ],
     },
@@ -143,8 +153,14 @@ describe('a deck in the format own shape', () => {
   })
 
   it('says which element it could not draw rather than leaving a hole', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const view = draw(parse())
     expect(view.container.querySelector('[data-slide-unsupported="timeline"]')).not.toBeNull()
+    // A chart whose values are inside the format's own chart-engine option is announced for the
+    // same reason: this build draws the `data` path only, and drawing a preset over values it
+    // cannot read would be a picture the document never asked for.
+    expect(view.container.querySelector('[data-slide-unsupported="chart"]')).not.toBeNull()
+    warn.mockRestore()
     view.unmount()
   })
 })
