@@ -39,6 +39,7 @@
 | 多选与框选：⌘/⇧ 点击增删选中、背景按下拖出橡皮筋（满页背景层不被框选、未移动的按下仍是清选）、手柄只给主元素（末位选中的那个），删除/微移/⌘D 对整组生效 | `ui/slides-selection.test.ts`、`ui/canvas-helpers.test.ts` | `90c3d749` |
 | 整组拖动：一次拖动的每个事件都按起点解算，整组因此不会越拖越歪；右键已在选中集合内的元素保留整组选择 | `ui/slides-selection.test.ts`、`edits.test.ts`（`placeElements`） | `90c3d749` |
 | 拖动吸附与参考线：对齐其他元素的边与中线、页面中线与边距（边距按页面比例，取自内置版式的 120/1600）；两个轴各自判定，拖动中的盒子按整组包围盒判定；Alt 拖动不吸附也不画线；被拖动的盒子从可对齐名单里剔除，避免与自己的边对齐 | `snap.test.ts`、`ui/slides-selection.test.ts` | `a1f7ee86` |
+| 拖动时的等距间距：同行带内两侧间隙接近相等时落到正中间（split），只有一个邻居时把间隙对齐到该行已有的宽度（copy）；间隙画成两端之间的线段并在中点写出宽度，已经等距时只报数不改位，被边线吸附过的那一轴不再接受间距位移 | `spacing.test.ts`、`ui/slides-spacing.test.ts` | `3350be3e` |
 | 空格 / 中键平移与「适应窗口」：舞台即滚动盒（`overflow: auto`），按住空格或中键在**捕获阶段**接手按下并滚动，控件上的空格与中键不被抢；平移待命时页面整体不接受指针（`elementPointerEvents` 的 `frozen`，框选一并关闭）；角落新增测量式 fit 控件（取页面与可用框的较小比，不向上取整），页面改 `m-auto` 居中以免放大后起始边不可达 | `ui/slides-viewport.test.ts`、`ui/canvas-helpers.test.ts` | `e5bae768` |
 
 > `6e55f34b` 是工作区里既有的在途改动（代码块净化移到渲染处），提交前只补了缺失的白名单条目——它的缺失会让仓库级 `comments:check` 为红、pre-commit 钩子拦下所有提交。
