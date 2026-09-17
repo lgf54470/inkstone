@@ -14,6 +14,7 @@ export interface RenderResult {
   hasChart: boolean
   hasMindmap: boolean
   hasKanban: boolean
+  hasBentoSlides: boolean
   hasEmbeds: boolean
   frontMatter: Record<string, unknown>
   frontMatterErrors: string[]
@@ -26,6 +27,7 @@ interface RenderEnvironment {
   hasChart: boolean
   hasMindmap: boolean
   hasKanban: boolean
+  hasBentoSlides: boolean
   hasEmbeds: boolean
   frontMatter: Record<string, unknown>
   frontMatterErrors: string[]
@@ -38,6 +40,7 @@ interface RenderEnvironment {
   excalidrawSequence: number
   /** Document-scoped block number; the kanban registry identifies blocks by it. */
   kanbanSequence: number
+  bentoSlidesSequence: number
   docId: string
   /** `true` when the caller opted into loading external https images (preview.externalImages). */
   externalImages: boolean

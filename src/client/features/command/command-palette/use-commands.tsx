@@ -19,6 +19,7 @@ import {
   Palette,
   Pencil,
   Plus,
+  Presentation,
   Settings,
   Share2,
   Star,
@@ -36,7 +37,7 @@ import { useUi, type PanelName } from '../../../store/ui'
 import { useNotes } from '../../../store/notes'
 import { useSession } from '../../../store/session'
 import { createContextualNote } from '../../../store/notes'
-import { generateKanbanFromOutline, generateMindmapFromOutline, getActiveEditorView, insertNoteTemplate } from '../../../editor/commands'
+import { generateKanbanFromOutline, generateMindmapFromOutline, generateSlidesFromOutline, getActiveEditorView, insertNoteTemplate } from '../../../editor/commands'
 import type { Item } from './types'
 import type { ViewKind } from '@shared/types'
 
@@ -92,6 +93,7 @@ function currentNoteCommands(activeNote: { id: string; isStarred: boolean; isArc
     { id: 'cmd-insert-template', kind: 'command', label: t('command.insert_note_template'), icon: <FilePlus2 size={14} />, group: currentNoteGroup, run: () => { const view = getActiveEditorView(); if (view) insertNoteTemplate(view) } },
     { id: 'cmd-mindmap-from-outline', kind: 'command', label: t('workspace.mindmap_from_outline'), icon: <Network size={14} />, group: currentNoteGroup, run: () => { const view = getActiveEditorView(); if (view) generateMindmapFromOutline(view) } },
     { id: 'cmd-kanban-from-outline', kind: 'command', label: t('workspace.kanban_from_outline'), icon: <Kanban size={14} />, group: currentNoteGroup, run: () => { const view = getActiveEditorView(); if (view) generateKanbanFromOutline(view) } },
+    { id: 'cmd-slides-from-outline', kind: 'command', label: t('workspace.slides_from_outline'), icon: <Presentation size={14} />, group: currentNoteGroup, run: () => { const view = getActiveEditorView(); if (view) generateSlidesFromOutline(view) } },
     { id: 'cmd-share', kind: 'command', label: t('command.share_current_note'), icon: <Share2 size={14} />, group: currentNoteGroup, run: () => deps.openPanel('share') },
     { id: 'cmd-blog-publish', kind: 'command', label: t('blog.publish_to_blog'), icon: <Globe size={14} />, group: currentNoteGroup, run: () => deps.openPanel('blog-publish') },
     { id: 'cmd-delete', kind: 'command', label: t('command.move_the_current_note_to_trash'), icon: <Trash2 size={14} />, combo: 'mod+backspace', group: currentNoteGroup, run: () => void deps.deleteNote(activeNote.id) },

@@ -39,6 +39,7 @@ import { messages as messages38 } from './template-4'
 import { messages as messages39 } from './templates'
 import { messages as messages40 } from './seed'
 import { messages as messages41 } from './music'
+import { messages as messages42 } from './slides'
 
 export const EN_US_MESSAGES = {
   ...messages1,
@@ -82,5 +83,6 @@ export const EN_US_MESSAGES = {
   ...messages39,
   ...messages40,
   ...messages41,
+  ...messages42,
 }
 export type MessageKey = keyof typeof EN_US_MESSAGES

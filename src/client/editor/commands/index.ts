@@ -7,3 +7,5 @@ export { insertCallout, insertDetails, insertTabs, insertNoteTemplate, insertFro
 export { completeCodeFenceOnEnter, smartEnter, tableTab, toggleTaskDone, setTaskAtLine, updateTaskAtSourceLine } from './enter'
 export { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES, MINDMAP_TEMPLATES, EXCALIDRAW_TEMPLATES } from './diagram'
 export { insertMindmapFromOutline, generateMindmapFromOutline } from './mindmap'
+export { insertSlides, BENTO_SLIDES_TEMPLATES, insertSlidesFromOutline, generateSlidesFromOutline } from './slides'
+

@@ -1,4 +1,39 @@
 {
+  "src/client/lib/markdown/slides/body.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/slides/history.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/slides/history.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/slides/outline.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/slides/outline.ts": {
+    "longFns": 3,
+    "deepFns": 2
+  },
+  "src/client/lib/markdown/slides/ui/slides-canvas.tsx": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/slides/ui/slides-inspector.tsx": {
+    "longFns": 4
+  },
+  "src/client/lib/markdown/slides/ui/slides-presenter.tsx": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/client/lib/markdown/slides/ui/slides-root.tsx": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/slides/ui/slides-sidebar.tsx": {
+    "longFns": 2
+  },
+  "src/client/lib/markdown/slides/ui/slides-topbar.tsx": {
+    "longFns": 1
+  },
   "src/worker/db/schema/migrations.ts": {
     "lines": 559
   }

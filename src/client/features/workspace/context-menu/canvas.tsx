@@ -35,7 +35,7 @@ import {
 import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { preferredScrollBehavior } from '../../../lib/motion'
-import { insertAdvancedCodeBlock, insertCallout, insertCodeBlock, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands'
+import { insertAdvancedCodeBlock, insertCallout, insertCodeBlock, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, BENTO_SLIDES_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands'
 import type { MenuCtx } from './types'
 import { SubmenuList } from '../../../components/overlay'
 
@@ -44,6 +44,7 @@ const CHART_MENU_WIDTH = 180
 const MINDMAP_MENU_WIDTH = 180
 const KANBAN_MENU_WIDTH = 180
 const EXCALIDRAW_MENU_WIDTH = 180
+const SLIDES_MENU_WIDTH = 180
 const TASK_MENU_WIDTH = 180
 const EMOJI_MENU_WIDTH = 180
 const INSERT_MENU_WIDTH = 200
@@ -54,6 +55,7 @@ const DIAGRAM_MENUS = {
   mindmap: { labelKey: 'workspace.mind_map', templates: MINDMAP_TEMPLATES, width: MINDMAP_MENU_WIDTH, icon: <ListTree size={13} /> },
   kanban: { labelKey: 'workspace.kanban', templates: KANBAN_TEMPLATES, width: KANBAN_MENU_WIDTH, icon: <Kanban size={13} /> },
   excalidraw: { labelKey: 'workspace.whiteboard', templates: EXCALIDRAW_TEMPLATES, width: EXCALIDRAW_MENU_WIDTH, icon: <PenTool size={13} /> },
+  slides: { labelKey: 'workspace.slides', templates: BENTO_SLIDES_TEMPLATES, width: SLIDES_MENU_WIDTH, icon: <Presentation size={13} /> },
 } as const
 
 type DiagramKind = keyof typeof DIAGRAM_MENUS
@@ -73,8 +75,9 @@ function basicInsertItems(ctx: MenuCtx): MenuItem[] {
 }
 
 function diagramInsertItems(ctx: MenuCtx, kind: DiagramKind, closeParent: () => void): MenuItem[] {
-  const { runStateCommand } = ctx
   const { labelKey, templates, width, icon } = DIAGRAM_MENUS[kind]
+  const { runStateCommand } = ctx
+  const fenceLang = kind === 'slides' ? 'bento-slides' : kind
   return [
     {
       id: kind,
@@ -90,7 +93,7 @@ function diagramInsertItems(ctx: MenuCtx, kind: DiagramKind, closeParent: () => 
           items={templates.map((tpl) => ({
             id: tpl.id,
             label: t(tpl.labelKey),
-            onSelect: () => runStateCommand(insertDiagramCode(kind, tpl.code)),
+            onSelect: () => runStateCommand(insertDiagramCode(fenceLang, tpl.code)),
           }))}
         />
       ),
@@ -181,6 +184,7 @@ function buildInsertItem(ctx: MenuCtx): MenuItem {
           ...diagramInsertItems(ctx, 'mindmap', closeMenu),
           ...diagramInsertItems(ctx, 'kanban', closeMenu),
           ...diagramInsertItems(ctx, 'excalidraw', closeMenu),
+          ...diagramInsertItems(ctx, 'slides', closeMenu),
           ...tailInsertItems(ctx),
           ...taskStatusInsertItems(ctx, closeMenu),
           ...emojiInsertItems(ctx, closeMenu),

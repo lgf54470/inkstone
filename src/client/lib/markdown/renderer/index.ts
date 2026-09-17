@@ -91,6 +91,7 @@ export function renderMarkdown(source: string, options?: {
     hasMindmap: env.hasMindmap,
     hasEmbeds: env.hasEmbeds,
     hasKanban: env.hasKanban,
+    hasBentoSlides: env.hasBentoSlides,
     frontMatter: env.frontMatter,
     frontMatterErrors: env.frontMatterErrors,
   }

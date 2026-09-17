@@ -16,7 +16,7 @@ import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
 import { formatCode } from '../../../lib/markdown/code-formatter'
-import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES } from '../../../editor/commands'
+import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, BENTO_SLIDES_TEMPLATES } from '../../../editor/commands'
 import type { EditorContextData, PreviewContextData } from '../context-menu-detect'
 import type { MenuCtx } from './types'
 import { submenuFor } from '../../../components/overlay'
@@ -26,6 +26,7 @@ type MathData = NonNullable<EditorContextData['math']>
 type PreviewCodeBlockData = NonNullable<PreviewContextData['codeBlock']>
 
 const CODE_LANGUAGES = [
+  'bento-slides',
   'kanban',
   'mindmap',
   'typescript',
@@ -256,6 +257,30 @@ export function buildKanbanItems(ctx: MenuCtx): MenuItem[] | null {
       ...(previewContext
         ? [
             { id: 'jump-kanban', label: t('contextmenu.mermaid_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
+          ]
+        : []),
+    ]
+  }
+  return null
+}
+
+export function buildSlidesItems(ctx: MenuCtx): MenuItem[] | null {
+  const { editorView, editorContext, previewContext, onJumpToLine, handleCopy } = ctx
+
+  const slidesData = editorContext?.slides ?? previewContext?.slides
+  if (editorContext?.type === 'slides' || previewContext?.type === 'slides') {
+    const code = slidesData?.code ?? ''
+    const templates = BENTO_SLIDES_TEMPLATES.map((tpl) => ({ id: tpl.id, label: t(tpl.labelKey), text: tpl.code }))
+    return [
+      { id: 'copy-slides', label: t('contextmenu.mermaid_copy'), icon: <Copy size={14} />, onSelect: () => handleCopy(code) },
+      ...(editorContext?.slides
+        ? [
+            { id: 'slides-templates-sub', label: t('contextmenu.slides_templates'), icon: <Sparkles size={14} />, separatorBefore: true, submenu: submenuFor(buildTemplateItems(editorView, editorContext.slides.from, editorContext.slides.to, 'bento-slides', templates), 190) },
+          ]
+        : []),
+      ...(previewContext
+        ? [
+            { id: 'jump-slides', label: t('contextmenu.mermaid_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
           ]
         : []),
     ]

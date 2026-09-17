@@ -10,6 +10,7 @@ import { ExcalidrawFullscreen } from './excalidraw-fullscreen'
 import { ExcalidrawLibraryMenu } from './excalidraw-library-menu'
 import { isExcalidrawSurface } from '../../lib/markdown/excalidraw'
 import { KanbanFullscreen } from '../../lib/markdown/kanban'
+import { SlidesFullscreen } from '../../lib/markdown/slides'
 
 export type { PreviewProps } from './use-preview'
 
@@ -25,6 +26,7 @@ export const Preview = memo(function Preview(props: PreviewProps) {
         // subtree, so without this the note's menu opens over the one already there.
         if (isExcalidrawSurface(event.target as HTMLElement)) return
         if (Boolean(b.kanbanFullscreen) || Boolean((event.target as HTMLElement)?.closest('.kanban-fullscreen'))) return
+        if (Boolean(b.slidesFullscreen) || Boolean((event.target as HTMLElement)?.closest('.bento-slides-fullscreen'))) return
         event.preventDefault()
         onContextMenu?.(event, event.target as HTMLElement)
       }}
@@ -81,6 +83,9 @@ function PreviewOverlays({ b }: { b: ReturnType<typeof usePreview> }) {
       )}
       {b.kanbanFullscreen && (
         <KanbanFullscreen session={b.kanbanFullscreen.session} onClose={b.closeKanbanFullscreen} />
+      )}
+      {b.slidesFullscreen && (
+        <SlidesFullscreen session={b.slidesFullscreen.session} onClose={b.closeSlidesFullscreen} />
       )}
       {b.previewFile && (
         <FilePreviewModal

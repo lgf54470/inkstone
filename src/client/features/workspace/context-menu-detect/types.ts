@@ -12,6 +12,7 @@ type ContextType =
   | 'mindmap'
   | 'excalidraw'
   | 'kanban'
+  | 'slides'
   | 'wikilink'
   | 'link'
   | 'frontmatter'
@@ -32,6 +33,7 @@ export interface EditorContextData {
   mindmap?: { code: string; from: number; to: number }
   excalidraw?: { code: string; from: number; to: number }
   kanban?: { code: string; from: number; to: number }
+  slides?: { code: string; from: number; to: number }
   wikiLink?: { target: string; alias?: string; from: number; to: number }
   link?: { text: string; url: string; from: number; to: number }
   task?: { checked: boolean; text: string; from: number; to: number }
@@ -79,6 +81,10 @@ export interface PreviewContextData {
     sourceLine?: number
   }
   kanban?: {
+    code: string
+    sourceLine?: number
+  }
+  slides?: {
     code: string
     sourceLine?: number
   }

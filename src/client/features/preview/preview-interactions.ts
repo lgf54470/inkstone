@@ -48,6 +48,7 @@ interface PreviewClickParams {
   openExcalidrawFullscreen: (node: HTMLElement) => void
   openExcalidrawLibraryMenu: (node: HTMLElement) => void
   openKanbanFullscreen?: (node: HTMLElement) => void
+  openSlidesFullscreen?: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -67,6 +68,7 @@ interface PreviewClickContext {
   openExcalidrawFullscreen: (node: HTMLElement) => void
   openExcalidrawLibraryMenu: (node: HTMLElement) => void
   openKanbanFullscreen?: (node: HTMLElement) => void
+  openSlidesFullscreen?: (node: HTMLElement) => void
   api: PreviewClickApi
 }
 
@@ -88,6 +90,7 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
     openExcalidrawFullscreen: params.openExcalidrawFullscreen,
     openExcalidrawLibraryMenu: params.openExcalidrawLibraryMenu,
     openKanbanFullscreen: params.openKanbanFullscreen,
+    openSlidesFullscreen: params.openSlidesFullscreen,
     api: params.api,
   }
   return async (event: ReactMouseEvent) => {
@@ -96,6 +99,7 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
     if (await handleMindmap(target, ctx)) return
     if (await handleExcalidraw(target, ctx)) return
     if (await handleKanban(target, ctx)) return
+    if (await handleBentoSlides(target, ctx)) return
     if (await handleFileActionBtn(event, target, ctx)) return
     if (await handleTableActionBtn(event, target, ctx)) return
     if (await handleJsSwitchBtn(event, target)) return
@@ -190,6 +194,16 @@ async function handleKanban(target: HTMLElement, ctx: PreviewClickContext): Prom
     return true
   }
   return Boolean(target.closest('[data-kanban-canvas]'))
+}
+
+async function handleBentoSlides(target: HTMLElement, ctx: PreviewClickContext): Promise<boolean> {
+  const block = target.closest<HTMLElement>('[data-bento-slides]')
+  if (!block) return false
+  if (target.closest('[data-bento-slides-fullscreen]')) {
+    ctx.openSlidesFullscreen?.(block)
+    return true
+  }
+  return Boolean(target.closest('[data-bento-slides-canvas]'))
 }
 
 function handleTableCellSelectionIfPresent(target: HTMLElement, ctx: PreviewClickContext): void {

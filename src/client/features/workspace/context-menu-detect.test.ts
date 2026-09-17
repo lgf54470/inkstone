@@ -51,6 +51,15 @@ function mountKanban(): HTMLDivElement {
   return kanban
 }
 
+function mountSlides(): HTMLDivElement {
+  const slides = document.createElement('div')
+  slides.className = 'bento-slides-block'
+  slides.dataset.bentoSlides = encodeDataValue('{"title":"Demo Deck"}')
+  slides.dataset.sourceLine = '25'
+  document.body.appendChild(slides)
+  return slides
+}
+
 function detectAt(doc: string, pos: number, selection?: { from: number; to: number }): ReturnType<typeof detectEditorContext> {
   let result!: ReturnType<typeof detectEditorContext>
   withView(doc, selection, (view) => {
@@ -111,6 +120,18 @@ describe('detectEditorContext blocks and diagrams', () => {
     expect(ctx.type).toBe('kanban')
     expect(ctx.kanban?.code).toBe('## Todo\n- Task 1')
   })
+
+  it('detects bento-slides block', () => {
+    const ctx = detectAt('```bento-slides\n# Slide 1\n```', 20)
+    expect(ctx.type).toBe('slides')
+    expect(ctx.slides?.code).toBe('# Slide 1')
+  })
+
+  it('detects ppt block', () => {
+    const ctx = detectAt('```ppt\n# Slide A\n```', 10)
+    expect(ctx.type).toBe('slides')
+    expect(ctx.slides?.code).toBe('# Slide A')
+  })
 })
 
 describe('detectPreviewContext', () => {
@@ -141,5 +162,14 @@ describe('detectPreviewContext', () => {
     expect(ctx.kanban?.code).toBe('{"title":"Project"}')
     expect(ctx.kanban?.sourceLine).toBe(20)
     kanban.remove()
+  })
+
+  it('detects slides element in preview DOM', () => {
+    const slides = mountSlides()
+    const ctx = detectPreviewContext(slides)
+    expect(ctx.type).toBe('slides')
+    expect(ctx.slides?.code).toBe('{"title":"Demo Deck"}')
+    expect(ctx.slides?.sourceLine).toBe(25)
+    slides.remove()
   })
 })

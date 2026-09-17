@@ -5,6 +5,7 @@ import { t } from '../../i18n'
 import { encodeDataValue } from '../data-attr'
 import { EXCALIDRAW_LANGUAGES } from '../excalidraw'
 import { detectKanbanMode, KANBAN_LANGUAGES } from '../kanban'
+import { detectSlidesMode, BENTO_SLIDES_LANGUAGES } from '../slides'
 import { detectMindmapMode, MINDMAP_LANGUAGES, MINDMAP_THEME_ATTR, readFenceAnnotation } from '../mindmap'
 import { emptyEnvironment, renderEnv } from './env'
 import { stripObsidianComments, parseFenceInfo } from './parse'
@@ -115,6 +116,8 @@ function renderFence(md: MarkdownIt, tokens: Token[], index: number, rendererEnv
     return renderExcalidrawBlock(token, line, rendererEnv)
   if ((KANBAN_LANGUAGES as readonly string[]).includes(info.language))
     return renderKanbanBlock(token, line, rendererEnv)
+  if ((BENTO_SLIDES_LANGUAGES as readonly string[]).includes(info.language))
+    return renderBentoSlidesBlock(token, line, rendererEnv)
   const title = info.title || info.language || t('markdown.code')
   return [
     `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}"${line} data-lang="${escapeAttr(info.language)}" data-code-start="${info.startLine}"${info.lineNumbers ? ' data-line-numbers="true"' : ''}${info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : ''}>`,
@@ -209,6 +212,27 @@ function renderKanbanBlock(token: Token, line: string, rendererEnv: unknown): st
     `</span>`,
     `</div>`,
     `<div class="kanban-block-placeholder" data-kanban-placeholder>${escapeHtml(t('preview.kanban_loading'))}</div>`,
+    `</div>`,
+  ].join('')
+}
+
+function renderBentoSlidesBlock(token: Token, line: string, rendererEnv: unknown): string {
+  const env = renderEnv(rendererEnv)
+  env.hasBentoSlides = true
+  const index = env.bentoSlidesSequence++
+  const body = token.content
+  const mode = detectSlidesMode(body)
+  const fullscreenLabel = escapeAttr(t('preview.slides_fullscreen'))
+  return [
+    `<div class="bento-slides-block loading"${line} data-bento-slides="${escapeAttr(encodeDataValue(body))}" data-bento-slides-index="${index}" aria-busy="true">`,
+    `<div class="bento-slides-block-head">`,
+    `<span class="bento-slides-block-title">${escapeHtml(t('preview.slides'))}</span>`,
+    `<span class="bento-slides-block-mode">${escapeHtml(mode)}</span>`,
+    `<span class="bento-slides-block-actions">`,
+    `<button type="button" class="bento-slides-block-btn" data-bento-slides-fullscreen aria-label="${fullscreenLabel}" title="${fullscreenLabel}"></button>`,
+    `</span>`,
+    `</div>`,
+    `<div class="bento-slides-block-placeholder" data-bento-slides-placeholder>${escapeHtml(t('preview.slides_loading'))}</div>`,
     `</div>`,
   ].join('')
 }

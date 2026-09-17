@@ -79,6 +79,12 @@ function detectKanban(target: HTMLElement): PreviewContextData | null {
   return { type: 'kanban', target, kanban: { code: decodeDataValue(kanbanEl.dataset.kanban ?? ''), sourceLine: getSourceLine(kanbanEl) } }
 }
 
+function detectSlides(target: HTMLElement): PreviewContextData | null {
+  const slidesEl = target.closest<HTMLElement>('[data-bento-slides], .bento-slides-block')
+  if (!slidesEl) return null
+  return { type: 'slides', target, slides: { code: decodeDataValue(slidesEl.dataset.bentoSlides ?? ''), sourceLine: getSourceLine(slidesEl) } }
+}
+
 function detectCodeBlock(target: HTMLElement): PreviewContextData | null {
   const codeEl = target.closest<HTMLElement>('pre code, pre')
   if (!codeEl) return null
@@ -127,6 +133,7 @@ const DETECTORS: Array<(target: HTMLElement) => PreviewContextData | null> = [
   detectMindmap,
   detectExcalidraw,
   detectKanban,
+  detectSlides,
   detectCodeBlock,
   detectWikiLink,
   detectLink,

@@ -1,0 +1,7 @@
+export { SlidesRoot } from './slides-root'
+export { SlidesFullscreen } from './slides-fullscreen'
+export { SlidesPresenter } from './slides-presenter'
+export { SlidesCanvas } from './slides-canvas'
+export { SlidesTopbar } from './slides-topbar'
+export { SlidesSidebar } from './slides-sidebar'
+export { SlidesInspector } from './slides-inspector'

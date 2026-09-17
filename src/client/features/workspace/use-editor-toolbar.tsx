@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { EditorView } from '@codemirror/view'
-import { CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, generateKanbanFromOutline, generateMindmapFromOutline, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, insertWikiLink, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline } from '../../editor/commands'
+import { BENTO_SLIDES_TEMPLATES, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, generateKanbanFromOutline, generateMindmapFromOutline, generateSlidesFromOutline, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, insertWikiLink, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline } from '../../editor/commands'
 import type { DiagramTemplate } from '../../editor/diagram-templates'
 import type { MessageKey } from '../../lib/i18n'
 import type { MenuItem } from '../../components/overlay'
@@ -12,6 +12,7 @@ const CHART_MENU_WIDTH = 180
 const MINDMAP_MENU_WIDTH = 180
 const KANBAN_MENU_WIDTH = 180
 const EXCALIDRAW_MENU_WIDTH = 180
+const SLIDES_MENU_WIDTH = 180
 const TASK_MENU_WIDTH = 180
 
 type MenuName = 'heading' | 'inline' | 'note' | 'block' | 'emoji'
@@ -57,7 +58,7 @@ function noteMenuItems(run: Run): MenuItem[] {
   ]
 }
 
-type DiagramKind = 'mermaid' | 'chart' | 'mindmap' | 'kanban' | 'excalidraw'
+type DiagramKind = 'mermaid' | 'chart' | 'mindmap' | 'kanban' | 'excalidraw' | 'slides'
 
 const DIAGRAM_MENUS: Record<DiagramKind, { labelKey: MessageKey; templates: DiagramTemplate[]; width: number }> = {
   mermaid: { labelKey: 'workspace.mermaid_diagram', templates: MERMAID_TEMPLATES, width: MERMAID_MENU_WIDTH },
@@ -65,10 +66,12 @@ const DIAGRAM_MENUS: Record<DiagramKind, { labelKey: MessageKey; templates: Diag
   mindmap: { labelKey: 'workspace.mind_map', templates: MINDMAP_TEMPLATES, width: MINDMAP_MENU_WIDTH },
   kanban: { labelKey: 'workspace.kanban', templates: KANBAN_TEMPLATES, width: KANBAN_MENU_WIDTH },
   excalidraw: { labelKey: 'workspace.whiteboard', templates: EXCALIDRAW_TEMPLATES, width: EXCALIDRAW_MENU_WIDTH },
+  slides: { labelKey: 'workspace.slides', templates: BENTO_SLIDES_TEMPLATES, width: SLIDES_MENU_WIDTH },
 }
 
 function diagramMenuItems(run: Run, kind: DiagramKind): MenuItem[] {
   const { labelKey, templates, width } = DIAGRAM_MENUS[kind]
+  const fenceLang = kind === 'slides' ? 'bento-slides' : kind
   return [
     {
       id: kind,
@@ -80,7 +83,7 @@ function diagramMenuItems(run: Run, kind: DiagramKind): MenuItem[] {
           items={templates.map((tpl) => ({
             id: tpl.id,
             label: t(tpl.labelKey),
-            onSelect: run(insertDiagramCode(kind, tpl.code)),
+            onSelect: run(insertDiagramCode(fenceLang, tpl.code)),
           }))}
         />
       ),
@@ -116,8 +119,10 @@ function blockMenuItems(run: Run): MenuItem[] {
     ...diagramMenuItems(run, 'mindmap'),
     ...diagramMenuItems(run, 'kanban'),
     ...diagramMenuItems(run, 'excalidraw'),
+    ...diagramMenuItems(run, 'slides'),
     { id: 'mindmap-from-outline', label: t('workspace.mindmap_from_outline'), onSelect: run(generateMindmapFromOutline) },
     { id: 'kanban-from-outline', label: t('workspace.kanban_from_outline'), onSelect: run(generateKanbanFromOutline) },
+    { id: 'slides-from-outline', label: t('workspace.slides_from_outline'), onSelect: run(generateSlidesFromOutline) },
     { id: 'advanced-code', label: t('workspace.enhanced_code_block'), onSelect: run(insertAdvancedCodeBlock) },
     { id: 'js-example', label: t('workspace.runnable_js_block'), onSelect: run(insertRunnableJsBlock) },
     { id: 'callout', label: t('workspace.callout'), onSelect: run(insertCallout) },

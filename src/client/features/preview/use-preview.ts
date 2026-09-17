@@ -23,6 +23,7 @@ import { enhanceTablesInRoot, startTableCellEditing } from './table-interactive'
 import { useMindmapBlocks } from './use-mindmap-blocks'
 import { useExcalidrawBlocks } from './use-excalidraw-blocks'
 import { useKanbanBlocks } from './use-kanban-blocks'
+import { useBentoSlidesBlocks } from './use-bento-slides-blocks'
 
 const PREVIEW_DEBOUNCE_MS = 90
 const MERMAID_RENDER_DELAY_MS = 60
@@ -363,9 +364,10 @@ function usePreviewInteractions(opts: {
   openExcalidrawFullscreen: (node: HTMLElement) => void
   openExcalidrawLibraryMenu: (node: HTMLElement) => void
   openKanbanFullscreen: (node: HTMLElement) => void
+  openSlidesFullscreen: (node: HTMLElement) => void
   api: PreviewSource['api']
 }) {
-  const { content, sourceNoteId, hostRef, scrollerRef, committedSourceRef, startMermaidRender, hideHover, setPreviewFile, openMindmapFullscreen, openMindmapThemeMenu, openExcalidrawFullscreen, openExcalidrawLibraryMenu, openKanbanFullscreen, api } = opts
+  const { content, sourceNoteId, hostRef, scrollerRef, committedSourceRef, startMermaidRender, hideHover, setPreviewFile, openMindmapFullscreen, openMindmapThemeMenu, openExcalidrawFullscreen, openExcalidrawLibraryMenu, openKanbanFullscreen, openSlidesFullscreen, api } = opts
   const copyResetTimersRef = useRef(new Map<HTMLElement, number>())
   const wikiNavigationRef = useRef(0)
   const wikiScrollCleanupRef = useRef<() => void>(() => {})
@@ -393,6 +395,7 @@ function usePreviewInteractions(opts: {
     openExcalidrawFullscreen,
     openExcalidrawLibraryMenu,
     openKanbanFullscreen,
+    openSlidesFullscreen,
     api: { ...api, setPreviewFile },
   })
 }
@@ -458,8 +461,9 @@ export function usePreview(props: PreviewProps) {
   // Whiteboards are mounted live, from the committed markup, by useExcalidrawBlocks.
   const excalidraw = useExcalidrawBlocks({ scope: `preview${instanceScope}-excalidraw`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
   const kanban = useKanbanBlocks({ scope: `preview${instanceScope}-kanban`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
+  const slides = useBentoSlidesBlocks({ scope: `preview${instanceScope}-slides`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
   const [previewFile, setPreviewFile] = useState<{ url: string; filename: string } | null>(null)
-  const onClick = usePreviewInteractions({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, scrollerRef: src.scrollerRef, committedSourceRef: html.committedSourceRef, startMermaidRender, hideHover: hover.linkHover.hideNow, setPreviewFile, openMindmapFullscreen: mindmap.openFullscreen, openMindmapThemeMenu: mindmap.openThemeMenu, openExcalidrawFullscreen: excalidraw.openFullscreen, openExcalidrawLibraryMenu: excalidraw.openLibraryMenu, openKanbanFullscreen: kanban.openFullscreen, api: src.api })
+  const onClick = usePreviewInteractions({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, scrollerRef: src.scrollerRef, committedSourceRef: html.committedSourceRef, startMermaidRender, hideHover: hover.linkHover.hideNow, setPreviewFile, openMindmapFullscreen: mindmap.openFullscreen, openMindmapThemeMenu: mindmap.openThemeMenu, openExcalidrawFullscreen: excalidraw.openFullscreen, openExcalidrawLibraryMenu: excalidraw.openLibraryMenu, openKanbanFullscreen: kanban.openFullscreen, openSlidesFullscreen: slides.openFullscreen, api: src.api })
   const keyboard = usePreviewKeyboard({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, editContent: src.editContent, hideHover: hover.linkHover.hideNow })
 
   return {
@@ -475,6 +479,7 @@ export function usePreview(props: PreviewProps) {
     openExcalidrawLibraryMenu: excalidraw.openLibraryMenu,
     excalidrawLibraryMenu: excalidraw.libraryMenu, closeExcalidrawLibraryMenu: excalidraw.closeLibraryMenu,
     kanbanFullscreen: kanban.fullscreen, closeKanbanFullscreen: kanban.closeFullscreen,
+    slidesFullscreen: slides.fullscreen, closeSlidesFullscreen: slides.closeFullscreen,
     onClick,
     ...keyboard,
   }

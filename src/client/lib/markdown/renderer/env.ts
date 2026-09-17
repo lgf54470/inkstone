@@ -11,6 +11,7 @@ function emptyEnvironment(): RenderEnvironment {
     hasChart: false,
     hasMindmap: false,
     hasKanban: false,
+    hasBentoSlides: false,
     hasEmbeds: false,
     frontMatter: {},
     frontMatterErrors: [],
@@ -20,6 +21,7 @@ function emptyEnvironment(): RenderEnvironment {
     mindmapSequence: 0,
     excalidrawSequence: 0,
     kanbanSequence: 0,
+    bentoSlidesSequence: 0,
     docId: `ink-${nonce}`,
     externalImages: false,
   }
