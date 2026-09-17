@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { File as FileIcon, FileText, Image as ImageIcon, Loader2, Plus, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { uploadKanbanFile } from '../../../api'
+import { useUi } from '../../../../store/ui'
 import type { KanbanFile } from '../types'
 import { KanbanFilePreviewModal } from './kanban-file-preview-modal'
 
@@ -81,6 +82,12 @@ function FileUploadButton({
         uploaded.push(result)
       }
       onChangeFiles?.([...files, ...uploaded])
+    } catch (err: unknown) {
+      console.error('[kanban] file upload failed', err)
+      useUi.getState().toast({
+        title: t('preview.kanban_file_upload_failed'),
+        tone: 'danger',
+      })
     } finally {
       setUploading(false)
       if (inputRef.current) inputRef.current.value = ''

@@ -55,7 +55,7 @@ function TimelineTaskSidebar({
             onClick={() => onOpenDetail(item)}
             className='flex h-10 cursor-pointer items-center gap-1.5 px-3 text-[length:var(--text-13)] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           >
-            <KanbanIconBadge icon={item.icon || '📝'} size={14} />
+            <KanbanIconBadge icon={item.icon} size={14} />
             <span className='truncate'>{item.title}</span>
           </div>
         ))}

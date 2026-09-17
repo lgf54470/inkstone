@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Smile } from 'lucide-react'
 import { Modal } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { getKanbanDotColor } from '../colors'
@@ -120,7 +120,7 @@ function DetailHeader({
           className='flex size-9 shrink-0 items-center justify-center rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-raised)] hover:bg-[var(--bg-hover)]'
           title={t('preview.kanban_icon_picker')}
         >
-          <KanbanIconBadge icon={icon || '📝'} size={20} />
+          {icon ? <KanbanIconBadge icon={icon} size={20} /> : <Smile size={18} className='text-[var(--text-tertiary)]' />}
         </button>
         <KanbanIconPicker
           open={iconPickerOpen}

@@ -49,7 +49,7 @@ function ListRowLeading({
         className='size-3.5 shrink-0 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)]'
         aria-label={t('preview.kanban_select_card')}
       />
-      <KanbanIconBadge icon={item.icon || '📝'} size={15} />
+      <KanbanIconBadge icon={item.icon} size={15} />
       <span className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
         {item.title || t('preview.kanban_untitled')}
       </span>

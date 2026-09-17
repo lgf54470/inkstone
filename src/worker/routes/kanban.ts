@@ -54,6 +54,23 @@ kanbanRoutes.post('/upload', requireAuth, async (c) => {
   })
 })
 
+const DANGEROUS_INLINE_MIMES = new Set([
+  'image/svg+xml',
+  'text/html',
+  'application/xhtml+xml',
+  'text/xml',
+  'application/xml',
+])
+
+function isSafeInlineMime(mime: string): boolean {
+  const normalized = mime.toLowerCase()
+  if (DANGEROUS_INLINE_MIMES.has(normalized)) return false
+  if (normalized.startsWith('image/')) return true
+  if (normalized === 'application/pdf') return true
+  if (normalized.startsWith('text/') && !normalized.includes('html')) return true
+  return false
+}
+
 kanbanRoutes.get('/file/:kanbanName/:filename', async (c) => {
   const kanbanName = sanitizePathPart(c.req.param('kanbanName'), 'default')
   const filename = sanitizePathPart(c.req.param('filename'), 'file')
@@ -69,7 +86,7 @@ kanbanRoutes.get('/file/:kanbanName/:filename', async (c) => {
   }
 
   const contentType = object.httpMetadata?.contentType || 'application/octet-stream'
-  const isInline = contentType.startsWith('image/') || contentType === 'application/pdf' || contentType.startsWith('text/')
+  const isInline = isSafeInlineMime(contentType)
   const disposition = `${isInline ? 'inline' : 'attachment'}; filename="${encodeURIComponent(filename)}"`
 
   return new Response(object.body as BodyInit, {
@@ -78,6 +95,7 @@ kanbanRoutes.get('/file/:kanbanName/:filename', async (c) => {
       'Content-Disposition': disposition,
       'Cache-Control': 'private, max-age=3600',
       'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; sandbox",
     },
   })
 })
@@ -88,6 +106,15 @@ kanbanRoutes.delete('/file/:kanbanName/:filename', requireAuth, async (c) => {
   const r2Key = `kanban/${kanbanName}/${filename}`
 
   if (c.env.FILES) {
+    const head = await c.env.FILES.head(r2Key)
+    if (!head) {
+      throw ApiError.notFound('File not found')
+    }
+    const ownerId = head.customMetadata?.userId
+    const currentUserId = c.get('userId')
+    if (ownerId && ownerId !== currentUserId) {
+      throw ApiError.forbidden('You do not have permission to delete this file')
+    }
     await c.env.FILES.delete(r2Key)
   }
 

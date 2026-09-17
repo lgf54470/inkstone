@@ -182,7 +182,7 @@ function ItemTitleCell({
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
       )}
-      <KanbanIconBadge icon={item.icon || '📝'} size={15} />
+      <KanbanIconBadge icon={item.icon} size={15} />
       <button
         type='button'
         onClick={onOpenDetail}

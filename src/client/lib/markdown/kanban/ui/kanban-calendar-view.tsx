@@ -93,7 +93,7 @@ function CalendarEventBar({
       style={tagStyle}
       className='flex w-full items-center gap-1 truncate rounded-[var(--r-xs)] px-1.5 py-0.5 text-left text-[length:var(--text-11)] font-medium shadow-2xs transition-opacity hover:opacity-85'
     >
-      <KanbanIconBadge icon={item.icon || '📝'} size={12} />
+      <KanbanIconBadge icon={item.icon} size={12} />
       <span className='truncate'>{item.title}</span>
     </button>
   )
