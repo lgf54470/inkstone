@@ -1,6 +1,11 @@
 import { memo, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
+import {
+  buildTimelineDays,
+  calculateTimelineBarGeometry,
+  type TimelineDay,
+} from '../timeline-helpers'
 import type { KanbanData, KanbanItem } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
@@ -8,30 +13,6 @@ interface KanbanTimelineViewProps {
   data: KanbanData
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: () => void
-}
-
-interface TimelineDay {
-  day: number
-  dateStr: string
-  isToday: boolean
-}
-
-function buildTimelineDays(): TimelineDay[] {
-  const list: TimelineDay[] = []
-  const now = new Date()
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-
-  for (let i = -7; i <= 21; i++) {
-    const d = new Date()
-    d.setDate(now.getDate() + i)
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    list.push({
-      day: d.getDate(),
-      dateStr,
-      isToday: dateStr === todayStr,
-    })
-  }
-  return list
 }
 
 function TimelineTaskSidebar({
@@ -106,16 +87,13 @@ function TimelineChart({
 
       <div className='min-w-max divide-y divide-[var(--border-subtle)]'>
         {items.map((item) => {
-          const start = String(item.properties.startDate || '')
-          const startIndex = days.findIndex((d) => d.dateStr === start)
-          const leftPos = startIndex >= 0 ? startIndex * 48 + 4 : 48
-          const width = 140
+          const { left, width } = calculateTimelineBarGeometry(item, days)
 
           return (
             <div key={item.id} className='relative h-10'>
               <div
                 onClick={() => onOpenDetail(item)}
-                style={{ left: `${leftPos}px`, width: `${width}px` }}
+                style={{ left: `${left}px`, width: `${width}px` }}
                 className='absolute top-2 h-6 cursor-pointer rounded-[var(--r-full)] bg-[var(--accent)] px-2.5 text-[length:var(--text-11)] font-medium text-[var(--accent-contrast)] shadow-[var(--shadow-xs)] hover:opacity-90 flex items-center justify-between'
               >
                 <span className='truncate'>{item.title}</span>

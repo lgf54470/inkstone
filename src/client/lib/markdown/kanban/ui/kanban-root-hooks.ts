@@ -17,6 +17,7 @@ import type {
   KanbanView,
 } from '../types'
 import type { CardSize } from './kanban-view-options'
+import { useKanbanHistory } from './kanban-history'
 
 function filterAndSortItems(
   items: KanbanItem[],
@@ -308,20 +309,17 @@ export function useKanbanSelection(
 }
 
 export function useKanbanRootState(initialData: KanbanData, onUpdateData: (next: KanbanData) => void) {
-  const [data, setData] = useState<KanbanData>(initialData)
+  const history = useKanbanHistory(initialData, onUpdateData)
+  const { data, commitData } = history
   const [activeViewId, setActiveViewId] = useState<string>(() => initialData.activeViewId || initialData.views[0]?.id || 'view-board')
   const [detailItem, setDetailItem] = useState<KanbanItem | null>(null)
   const [cardSize, setCardSize] = useState<CardSize>('medium')
 
-  const commitData = useCallback(
-    (nextOrUpdater: KanbanData | ((prev: KanbanData) => KanbanData)) => {
-      setData((prev) => {
-        const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(prev) : nextOrUpdater
-        onUpdateData(next)
-        return next
-      })
+  const handleUpdateBoardTitle = useCallback(
+    (title: string) => {
+      commitData((prev: KanbanData) => ({ ...prev, title }))
     },
-    [onUpdateData],
+    [commitData],
   )
 
   const filterSort = useKanbanFilterSort(data, activeViewId)
@@ -343,5 +341,7 @@ export function useKanbanRootState(initialData: KanbanData, onUpdateData: (next:
     items,
     adds,
     columnOps,
+    history,
+    handleUpdateBoardTitle,
   }
 }

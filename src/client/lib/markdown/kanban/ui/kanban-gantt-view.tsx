@@ -1,6 +1,11 @@
 import { memo, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
+import {
+  buildTimelineDays,
+  calculateTimelineBarGeometry,
+  type TimelineDay,
+} from '../timeline-helpers'
 import type { KanbanData, KanbanItem } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
@@ -9,30 +14,6 @@ interface KanbanGanttViewProps {
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: () => void
   onUpdateProgress: (itemId: string, progress: number) => void
-}
-
-interface GanttDay {
-  day: number
-  dateStr: string
-  isToday: boolean
-}
-
-function buildGanttDays(): GanttDay[] {
-  const list: GanttDay[] = []
-  const now = new Date()
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-
-  for (let i = -7; i <= 21; i++) {
-    const d = new Date()
-    d.setDate(now.getDate() + i)
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    list.push({
-      day: d.getDate(),
-      dateStr,
-      isToday: dateStr === todayStr,
-    })
-  }
-  return list
 }
 
 function GanttTaskSidebar({
@@ -88,14 +69,11 @@ function GanttBar({
   onUpdateProgress,
 }: {
   item: KanbanItem
-  days: GanttDay[]
+  days: TimelineDay[]
   onOpenDetail: (item: KanbanItem) => void
   onUpdateProgress: (itemId: string, progress: number) => void
 }) {
-  const start = String(item.properties.startDate || '')
-  const startIndex = days.findIndex((d) => d.dateStr === start)
-  const leftPos = startIndex >= 0 ? startIndex * 48 + 4 : 48
-  const width = 160
+  const { left, width } = calculateTimelineBarGeometry(item, days)
   const progress = Math.min(100, Math.max(0, Number(item.properties.progress || 0)))
 
   return (
@@ -106,7 +84,7 @@ function GanttBar({
           e.stopPropagation()
           onUpdateProgress(item.id, (progress + 25) % 125)
         }}
-        style={{ left: `${leftPos}px`, width: `${width}px` }}
+        style={{ left: `${left}px`, width: `${width}px` }}
         className='group/bar absolute top-2 h-6 cursor-pointer overflow-hidden rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-xs)]'
       >
         <div style={{ width: `${progress}%` }} className='h-full bg-[var(--accent)] transition-all' />
@@ -126,7 +104,7 @@ function GanttTimelineChart({
   onUpdateProgress,
 }: {
   items: KanbanItem[]
-  days: GanttDay[]
+  days: TimelineDay[]
   onOpenDetail: (item: KanbanItem) => void
   onUpdateProgress: (itemId: string, progress: number) => void
 }) {
@@ -172,7 +150,7 @@ export const KanbanGanttView = memo(function KanbanGanttView({
   onAddItem,
   onUpdateProgress,
 }: KanbanGanttViewProps) {
-  const days = useMemo(() => buildGanttDays(), [])
+  const days = useMemo(() => buildTimelineDays(), [])
 
   return (
     <div className='flex h-full w-full flex-col overflow-hidden p-4' role='region' aria-label={t('preview.kanban_view_gantt')}>

@@ -1,25 +1,19 @@
 import { memo, useRef, useState } from 'react'
 import {
-  BarChart2,
-  Calendar,
   Filter,
-  Kanban,
-  LayoutGrid,
-  List,
   Maximize2,
   Minimize2,
   Plus,
+  Redo2,
   Search,
   SlidersHorizontal,
-  Table,
+  Undo2,
 } from 'lucide-react'
-import { formatKanbanViewName } from '../i18n-helpers'
 import type {
   KanbanData,
   KanbanFilter,
   KanbanSort,
   KanbanView,
-  KanbanViewType,
 } from '../types'
 import { t } from '../../../i18n'
 import { KanbanFilterPopover } from './kanban-filter-popover'
@@ -27,6 +21,7 @@ import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSortPopover } from './kanban-sort-popover'
 import { KanbanTagFilterBar } from './kanban-tag-filter-bar'
 import { KanbanViewOptions, type CardSize } from './kanban-view-options'
+import { KanbanViewTabs } from './kanban-view-tabs'
 
 interface KanbanHeaderProps {
   data: KanbanData
@@ -37,6 +32,11 @@ interface KanbanHeaderProps {
   selectedTags?: string[]
   cardSize?: CardSize
   isFullscreen?: boolean
+  canUndo?: boolean
+  canRedo?: boolean
+  onUndo?: () => void
+  onRedo?: () => void
+  onUpdateBoardTitle?: (title: string) => void
   onSelectView: (viewId: string) => void
   onSearchChange: (q: string) => void
   onChangeFilters: (filters: KanbanFilter[]) => void
@@ -47,64 +47,6 @@ interface KanbanHeaderProps {
   onChangeGroupBy?: (propId: string) => void
   onAddItem: () => void
   onToggleFullscreen?: () => void
-}
-
-function viewIcon(type: KanbanViewType) {
-  switch (type) {
-    case 'board':
-      return <Kanban size={14} />
-    case 'table':
-      return <Table size={14} />
-    case 'calendar':
-      return <Calendar size={14} />
-    case 'timeline':
-    case 'gantt':
-      return <SlidersHorizontal size={14} />
-    case 'list':
-      return <List size={14} />
-    case 'gallery':
-      return <LayoutGrid size={14} />
-    case 'chart':
-      return <BarChart2 size={14} />
-    default:
-      return <Kanban size={14} />
-  }
-}
-
-function KanbanViewTabs({
-  views,
-  activeViewId,
-  onSelectView,
-}: {
-  views: KanbanView[]
-  activeViewId: string
-  onSelectView: (viewId: string) => void
-}) {
-  return (
-    <div className='flex flex-wrap items-center gap-1' role='tablist' aria-label={t('preview.kanban_views')}>
-      {views.map((v) => {
-        const isActive = v.id === activeViewId
-        return (
-          <button
-            key={v.id}
-            role='tab'
-            aria-selected={isActive}
-            data-view-type={v.type}
-            type='button'
-            onClick={() => onSelectView(v.id)}
-            className={`flex items-center gap-1.5 rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-12)] font-medium transition-colors ${
-              isActive
-                ? 'bg-[var(--bg-raised)] text-[var(--text-primary)] shadow-[var(--shadow-xs)]'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            {viewIcon(v.type)}
-            <span>{formatKanbanViewName(v)}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
 }
 
 function KanbanSearchBox({
@@ -153,6 +95,10 @@ interface HeaderActionsProps {
   activeView: KanbanView
   cardSize?: CardSize
   isFullscreen?: boolean
+  canUndo?: boolean
+  canRedo?: boolean
+  onUndo?: () => void
+  onRedo?: () => void
   onSearchChange: (q: string) => void
   onChangeFilters: (filters: KanbanFilter[]) => void
   onChangeSorts: (sorts: KanbanSort[]) => void
@@ -282,43 +228,49 @@ function KanbanSortAction({
 
 const STATUS_PROGRESS_BAR_HEIGHT = 6
 
-function KanbanHeaderActions({
-  columns,
-  items,
-  filters,
-  sorts,
-  searchQuery,
-  activeView,
-  cardSize,
-  isFullscreen,
-  onSearchChange,
-  onChangeFilters,
-  onChangeSorts,
-  onChangeCardSize,
-  onChangeGroupBy,
+function KanbanHeaderToolbar({
   onAddItem,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  isFullscreen,
   onToggleFullscreen,
-}: HeaderActionsProps) {
-  const statusCol = columns.find((c) => c.id === 'status')
-
+}: {
+  onAddItem: () => void
+  canUndo?: boolean
+  canRedo?: boolean
+  onUndo?: () => void
+  onRedo?: () => void
+  isFullscreen?: boolean
+  onToggleFullscreen?: () => void
+}) {
   return (
-    <div className='relative flex items-center gap-1.5'>
-      <div className='hidden md:flex items-center mr-1 w-28'>
-        <KanbanProgressBar items={items} statusColumn={statusCol} height={STATUS_PROGRESS_BAR_HEIGHT} />
-      </div>
-      <KanbanSearchBox searchQuery={searchQuery} onSearchChange={onSearchChange} />
-      <KanbanFilterAction columns={columns} filters={filters} onChangeFilters={onChangeFilters} />
-      <KanbanSortAction columns={columns} sorts={sorts} onChangeSorts={onChangeSorts} />
-      {activeView.type === 'board' && (
-        <KanbanViewOptionsAction
-          columns={columns}
-          groupBy={activeView.groupBy || 'status'}
-          cardSize={cardSize}
-          onChangeGroupBy={onChangeGroupBy}
-          onChangeCardSize={onChangeCardSize}
-        />
+    <div className='flex items-center gap-1'>
+      {onUndo && (
+        <button
+          type='button'
+          disabled={!canUndo}
+          onClick={onUndo}
+          className='inline-flex size-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-30 disabled:pointer-events-none'
+          title={`${t('common.undo')} (Ctrl+Z)`}
+          aria-label={t('common.undo')}
+        >
+          <Undo2 size={14} />
+        </button>
       )}
-
+      {onRedo && (
+        <button
+          type='button'
+          disabled={!canRedo}
+          onClick={onRedo}
+          className='inline-flex size-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-30 disabled:pointer-events-none'
+          title={`${t('command.redo')} (Ctrl+Y)`}
+          aria-label={t('command.redo')}
+        >
+          <Redo2 size={14} />
+        </button>
+      )}
       <button
         type='button'
         onClick={onAddItem}
@@ -327,7 +279,6 @@ function KanbanHeaderActions({
         <Plus size={14} />
         <span>{t('preview.kanban_new_item')}</span>
       </button>
-
       {onToggleFullscreen && (
         <button
           type='button'
@@ -342,35 +293,104 @@ function KanbanHeaderActions({
   )
 }
 
-export const KanbanHeader = memo(function KanbanHeader({
-  data,
-  activeView,
-  searchQuery,
-  filters,
-  sorts,
-  selectedTags,
-  cardSize,
-  isFullscreen,
-  onSelectView,
-  onSearchChange,
-  onChangeFilters,
-  onChangeSorts,
-  onToggleTag,
-  onClearTags,
-  onChangeCardSize,
-  onChangeGroupBy,
-  onAddItem,
-  onToggleFullscreen,
-}: KanbanHeaderProps) {
+function KanbanFullscreenTitle({
+  title,
+  onUpdateTitle,
+}: {
+  title?: string
+  onUpdateTitle?: (title: string) => void
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [val, setVal] = useState(title || '')
+
+  const handleFinish = () => {
+    setIsEditing(false)
+    if (val.trim() && val !== title) onUpdateTitle?.(val.trim())
+  }
+
+  if (isEditing && onUpdateTitle) {
+    return (
+      <input
+        type='text'
+        value={val}
+        autoFocus
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={handleFinish}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') handleFinish()
+          else if (e.key === 'Escape') {
+            setVal(title || '')
+            setIsEditing(false)
+          }
+        }}
+        className='rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-18)] font-bold text-[var(--text-primary)] outline-none'
+      />
+    )
+  }
+
+  return (
+    <h2
+      onClick={() => {
+        if (onUpdateTitle) {
+          setVal(title || '')
+          setIsEditing(true)
+        }
+      }}
+      className={`text-[length:var(--text-18)] font-bold tracking-[var(--tracking-title)] text-[var(--text-primary)] ${
+        onUpdateTitle ? 'cursor-pointer hover:opacity-80' : ''
+      }`}
+    >
+      {title || t('preview.kanban_untitled')}
+    </h2>
+  )
+}
+
+function KanbanHeaderActions(props: HeaderActionsProps) {
+  const { columns, items, filters, sorts, searchQuery, activeView, cardSize } = props
+  const statusCol = columns.find((c) => c.id === 'status')
+
+  return (
+    <div className='relative flex items-center gap-1.5'>
+      <div className='hidden md:flex items-center mr-1 w-28'>
+        <KanbanProgressBar items={items} statusColumn={statusCol} height={STATUS_PROGRESS_BAR_HEIGHT} />
+      </div>
+      <KanbanSearchBox searchQuery={searchQuery} onSearchChange={props.onSearchChange} />
+      <KanbanFilterAction columns={columns} filters={filters} onChangeFilters={props.onChangeFilters} />
+      <KanbanSortAction columns={columns} sorts={sorts} onChangeSorts={props.onChangeSorts} />
+      {activeView.type === 'board' && (
+        <KanbanViewOptionsAction
+          columns={columns}
+          groupBy={activeView.groupBy || 'status'}
+          cardSize={cardSize}
+          onChangeGroupBy={props.onChangeGroupBy}
+          onChangeCardSize={props.onChangeCardSize}
+        />
+      )}
+      <KanbanHeaderToolbar
+        onAddItem={props.onAddItem}
+        canUndo={props.canUndo}
+        canRedo={props.canRedo}
+        onUndo={props.onUndo}
+        onRedo={props.onRedo}
+        isFullscreen={props.isFullscreen}
+        onToggleFullscreen={props.onToggleFullscreen}
+      />
+    </div>
+  )
+}
+
+export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps) {
+  const { data, activeView, isFullscreen, onUpdateBoardTitle } = props
   const tagsCol = data.columns.find((c) => c.id === 'tags')
 
   return (
     <header className='flex flex-col gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3'>
-      {isFullscreen && data.title && (
+      {isFullscreen && (
         <div className='flex items-center justify-between'>
-          <h2 className='text-[length:var(--text-18)] font-bold tracking-[var(--tracking-title)] text-[var(--text-primary)]'>
-            {data.title}
-          </h2>
+          <KanbanFullscreenTitle
+            title={data.title}
+            onUpdateTitle={onUpdateBoardTitle}
+          />
         </div>
       )}
 
@@ -378,33 +398,22 @@ export const KanbanHeader = memo(function KanbanHeader({
         <KanbanViewTabs
           views={data.views}
           activeViewId={activeView.id}
-          onSelectView={onSelectView}
+          onSelectView={props.onSelectView}
         />
         <KanbanHeaderActions
+          {...props}
           columns={data.columns}
           items={data.items}
-          filters={filters}
-          sorts={sorts}
-          searchQuery={searchQuery}
           activeView={activeView}
-          cardSize={cardSize}
-          isFullscreen={isFullscreen}
-          onSearchChange={onSearchChange}
-          onChangeFilters={onChangeFilters}
-          onChangeSorts={onChangeSorts}
-          onChangeCardSize={onChangeCardSize}
-          onChangeGroupBy={onChangeGroupBy}
-          onAddItem={onAddItem}
-          onToggleFullscreen={onToggleFullscreen}
         />
       </div>
 
       <KanbanTagFilterBar
         tagsColumn={tagsCol}
         items={data.items}
-        selectedTags={selectedTags}
-        onToggleTag={onToggleTag}
-        onClearTags={onClearTags}
+        selectedTags={props.selectedTags}
+        onToggleTag={props.onToggleTag}
+        onClearTags={props.onClearTags}
       />
     </header>
   )

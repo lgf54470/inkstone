@@ -190,6 +190,11 @@ function KanbanTopBar({
       selectedTags={state.filterSort.selectedTags}
       cardSize={state.cardSize}
       isFullscreen={isFullscreen}
+      canUndo={state.history.canUndo}
+      canRedo={state.history.canRedo}
+      onUndo={state.history.undo}
+      onRedo={state.history.redo}
+      onUpdateBoardTitle={state.handleUpdateBoardTitle}
       onSelectView={state.setActiveViewId}
       onSearchChange={state.filterSort.setSearchQuery}
       onChangeFilters={state.filterSort.setFilters}
