@@ -2949,6 +2949,12 @@ const allowed = new Map([
     '/**\n * The colours a code element\'s tokens are painted with. A deck may name any of them in\n * `theme.codePalette`; the values here are what a deck that names none is drawn with, and\n * the palette inspector edits the same table rather than keeping a second copy of it.\n *\n * The keys are single letters because the palette is written into the fence body, where a\n * slide\'s code colours travel next to everything else a reader might hand-edit.\n */',
     '/**\n * The palette as custom properties on the element that holds the highlighted markup: the\n * colours are per-deck and change while the reader drags a colour input, which is exactly\n * what a CSS variable is for. The stylesheet names them once for every surface that draws\n * code, so the canvas, a thumbnail and a printed page cannot drift apart.\n */',
   ]],
+  ['src/client/lib/markdown/slides/order.ts', [
+    '/**\n * Order is the one thing a deck and a slide both have: pages in the rail, elements in a\n * stack. Both are the same operation — take one out, put it back somewhere else — so it lives\n * in one pure place with one set of rules, rather than as two hand-rolled splices that drift\n * apart. Nothing here mutates its input: a deck is committed by replacing it, and an undo step\n * has to be able to hold the array it replaced.\n *\n * `moveItem` takes the TARGET\'S SLOT: the moved item ends up where the item that was at\n * index `to` used to be, with everything between closing ranks. That is what a drop on a\n * thumbnail means ("put it here"), and it is the only reading that stays stable while the\n * array is being reordered under the pointer.\n */',
+    '/** The deck with one page moved a step, or null when it is already at that end. */',
+    '/** The deck with one page dropped onto another\'s slot. */',
+    '/**\n * The stack with one element moved. The array IS the stack — the last element paints on top —\n * so "up" is toward the end and "front" is the end itself, which is why the layer list shows\n * the array reversed and both directions stay one rule.\n */',
+  ]],
   ['src/client/lib/markdown/slides/media.ts', [
     '/**\n * What a media element is allowed to point at. A deck\'s body is untrusted input, and a\n * media source is a URL a browser will fetch or a data: URI it will decode, so the rule is\n * the same one the SVG gate uses: bytes the file itself carries, or a plain web address.\n * `javascript:`, `file:` and friends never become a source, and a data: URI only counts\n * when its own media type is media — `data:text/html` is a document, not a clip.\n */',
     '// No scheme at all is a relative or root-relative path, which resolves inside the app.',
@@ -3087,6 +3093,10 @@ const allowed = new Map([
     '// A browser only starts a clip on its own while it is muted, so an autoplaying',
     '// element is muted here rather than left to the document to remember.',
   ]],
+  ['src/client/lib/markdown/slides/ui/slides-sidebar.test.ts', [
+    '// Drag events are continuous in React\'s priority model, so the state they set is only',
+    '// flushed inside act() — a bare dispatch would be read before the re-render.',
+  ]],
   ['src/client/lib/markdown/slides/ui/slides-canvas.tsx', [
     '/** The page this deck is authored against; the canvas never assumes a default one. */',
     '/** The element the reader is typing into, which is what puts the caret in a text box. */',
@@ -3147,6 +3157,8 @@ const allowed = new Map([
     "/** The deck's page, so a 4:3 deck gets 4:3 thumbnails instead of a cropped 16:9 one. */",
     '/** The picture of a page: clicking it selects the page, and the buttons on top act on it. */',
     '/** Duplicate, delete and move, reachable from the keyboard once the page is selected. */',
+    '/** Set while a page is being dragged onto another one\'s slot. */',
+    '/**\n * The drag a thumbnail takes part in. The id rides in component state rather than in\n * dataTransfer: a page reorder is an edit to this document, not a transfer to another one,\n * and the drag has to work on a surface where dragging text out of the app was never the\n * intent.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-topbar.test.ts', [
     '// The overlay is a modal: it portals into the body, not into the render container.',

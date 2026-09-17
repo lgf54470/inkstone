@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+import { act, createElement } from 'react'
 import { describe, expect, it } from 'vitest'
 import { renderElement } from '../../../test-render'
 import { t } from '../../../i18n'
@@ -41,6 +41,12 @@ function thumbnailSize(size: { width: number; height: number }) {
   const thumb = view.container.querySelector<HTMLElement>('[data-slide-thumbnail]')
   view.unmount()
   return { width: thumb?.style.width, height: thumb?.style.height }
+}
+
+function drag(node: HTMLElement, type: string) {
+  act(() => {
+    node.dispatchEvent(new Event(type, { bubbles: true, cancelable: true }))
+  })
 }
 
 function rail(
@@ -86,6 +92,55 @@ describe('the slide rail', () => {
     expect(down?.disabled).toBe(false)
     down?.click()
     expect(moved).toEqual([[slide.id, 'down']])
+    view.unmount()
+  })
+})
+
+describe('drag reordering the rail', () => {
+  function railWithDrop(onReorder: (fromId: string, toId: string) => void) {
+    return renderElement(
+      createElement(SlidesSidebar, {
+        slides: [slide, { ...slide, id: 'slide-2' }, { ...slide, id: 'slide-3' }],
+        size: { width: 1280, height: 720 },
+        activeSlideId: slide.id,
+        theme: { background: '#0B1220', color: '#F8FAFC', accent: '#FF9E8A' },
+        onSelectSlide: () => {},
+        onAddSlide: () => {},
+        onDuplicateSlide: () => {},
+        onDeleteSlide: () => {},
+        onMoveSlide: () => {},
+        onReorderSlide: onReorder,
+      }),
+    )
+  }
+
+  it('drops a page onto the slot of the one it lands on', () => {
+    const dropped: [string, string][] = []
+    const view = railWithDrop((from, to) => dropped.push([from, to]))
+    const [first, , third] = [...view.container.querySelectorAll<HTMLElement>('[data-slide-thumbnail]')]
+
+    // Drag events are continuous in React's priority model, so the state they set is only
+    // flushed inside act() — a bare dispatch would be read before the re-render.
+    drag(first!, 'dragstart')
+    drag(third!, 'dragover')
+    drag(third!, 'drop')
+
+    expect(dropped).toEqual([[slide.id, 'slide-3']])
+    view.unmount()
+  })
+
+  it('marks the page being dragged and refuses a drop on itself', () => {
+    const dropped: [string, string][] = []
+    const view = railWithDrop((from, to) => dropped.push([from, to]))
+    const [first] = [...view.container.querySelectorAll<HTMLElement>('[data-slide-thumbnail]')]
+
+    drag(first!, 'dragstart')
+    expect(first!.getAttribute('data-slide-dragging')).toBe('true')
+    drag(first!, 'drop')
+    expect(dropped).toEqual([])
+
+    drag(first!, 'dragend')
+    expect(first!.hasAttribute('data-slide-dragging')).toBe(false)
     view.unmount()
   })
 })

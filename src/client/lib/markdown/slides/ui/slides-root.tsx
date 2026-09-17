@@ -18,6 +18,7 @@ import { SlidesInlinePreview } from './slides-inline-preview'
 import { LayoutPicker } from './layout-picker'
 import { SlidesContextMenu, type SlidesMenuState, type SlidesMenuTarget } from './slides-context-menu'
 import { instantiateLayout, layoutById } from '../layouts'
+import { moveSlide, reorderElement, reorderSlide } from '../order'
 import { copySlidesLink } from './copy-link'
 import {
   createDefaultChart,
@@ -205,23 +206,20 @@ export const SlidesRoot = memo(function SlidesRoot({
 
   const handleMoveSlide = useCallback(
     (id: string, direction: 'up' | 'down') => {
-      const idx = slides.findIndex((s) => s.id === id)
-      if (idx === -1) return
-      if (direction === 'up' && idx > 0) {
-        const next = [...slides]
-        const temp = next[idx - 1]!
-        next[idx - 1] = next[idx]!
-        next[idx] = temp
-        commitData({ ...data, slides: next })
-        setActiveSlideIndex(idx - 1)
-      } else if (direction === 'down' && idx < slides.length - 1) {
-        const next = [...slides]
-        const temp = next[idx + 1]!
-        next[idx + 1] = next[idx]!
-        next[idx] = temp
-        commitData({ ...data, slides: next })
-        setActiveSlideIndex(idx + 1)
-      }
+      const moved = moveSlide(slides, id, direction)
+      if (!moved) return
+      commitData({ ...data, slides: moved.slides })
+      setActiveSlideIndex(moved.index)
+    },
+    [commitData, data, slides],
+  )
+
+  const handleDropSlide = useCallback(
+    (fromId: string, toId: string) => {
+      const next = reorderSlide(slides, fromId, toId)
+      if (!next) return
+      commitData({ ...data, slides: next })
+      setActiveSlideIndex(next.findIndex((slide) => slide.id === fromId))
     },
     [commitData, data, slides],
   )
@@ -313,21 +311,8 @@ export const SlidesRoot = memo(function SlidesRoot({
   const handleReorderElement = useCallback(
     (elId: string, direction: 'up' | 'down' | 'front' | 'back') => {
       if (!activeSlide) return
-      const idx = activeSlide.elements.findIndex((e) => e.id === elId)
-      if (idx === -1) return
-      const targetIdx =
-        direction === 'front'
-          ? activeSlide.elements.length - 1
-          : direction === 'back'
-            ? 0
-            : direction === 'up'
-              ? idx + 1
-              : idx - 1
-      if (targetIdx === idx) return
-      if (targetIdx < 0 || targetIdx >= activeSlide.elements.length) return
-      const next = [...activeSlide.elements]
-      const [item] = next.splice(idx, 1)
-      if (item) next.splice(targetIdx, 0, item)
+      const next = reorderElement(activeSlide.elements, elId, direction)
+      if (!next) return
       handleUpdateSlide({ elements: next })
     },
     [activeSlide, handleUpdateSlide],
@@ -414,6 +399,7 @@ export const SlidesRoot = memo(function SlidesRoot({
           onDuplicateSlide={handleDuplicateSlide}
           onDeleteSlide={handleDeleteSlide}
           onMoveSlide={handleMoveSlide}
+          onReorderSlide={handleDropSlide}
           onContextMenuSlide={(slideId, event) => openMenuAt(event, { kind: 'slide', slideId })}
         />
 

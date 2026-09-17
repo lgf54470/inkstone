@@ -1,4 +1,4 @@
-import { memo, type MouseEvent } from 'react'
+import { memo, useState, type DragEvent, type MouseEvent } from 'react'
 import { ChevronDown, ChevronUp, Copy, Plus, Trash2 } from 'lucide-react'
 import { IconButton } from '../../../../components/primitives'
 import type { Slide, SlidesTheme } from '../types'
@@ -24,6 +24,10 @@ interface SlideThumbnailProps {
   onDelete: (id: string) => void
   onMove: (id: string, direction: 'up' | 'down') => void
   onContextMenu?: (slideId: string, event: MouseEvent) => void
+  /** Set while a page is being dragged onto another one's slot. */
+  draggingId?: string | null
+  onDragStateChange?: (id: string | null) => void
+  onDropSlide?: (fromId: string, toId: string) => void
 }
 
 /** The picture of a page: clicking it selects the page, and the buttons on top act on it. */
@@ -99,19 +103,55 @@ function ThumbnailActions({
   )
 }
 
+/**
+ * The drag a thumbnail takes part in. The id rides in component state rather than in
+ * dataTransfer: a page reorder is an edit to this document, not a transfer to another one,
+ * and the drag has to work on a surface where dragging text out of the app was never the
+ * intent.
+ */
+function useThumbnailDrag(props: SlideThumbnailProps) {
+  const { slide, draggingId, onDragStateChange, onDropSlide } = props
+  const isDropTarget = Boolean(draggingId) && draggingId !== slide.id
+  return {
+    isDropTarget,
+    handlers: {
+      onDragStart: (event: DragEvent<HTMLDivElement>) => {
+        event.stopPropagation()
+        onDragStateChange?.(slide.id)
+      },
+      onDragOver: (event: DragEvent<HTMLDivElement>) => {
+        if (isDropTarget) event.preventDefault()
+      },
+      onDrop: (event: DragEvent<HTMLDivElement>) => {
+        if (!isDropTarget || !draggingId) return
+        event.preventDefault()
+        onDropSlide?.(draggingId, slide.id)
+        onDragStateChange?.(null)
+      },
+      onDragEnd: () => onDragStateChange?.(null),
+    },
+  }
+}
+
 const SlideThumbnail = memo(function SlideThumbnail(props: SlideThumbnailProps) {
-  const { slide, idx, isActive, size, onSelect, onContextMenu } = props
+  const { slide, idx, isActive, size, onSelect, onContextMenu, draggingId, onDropSlide } = props
   const scale = THUMB_WIDTH / size.width
   const thumbHeight = Math.round(size.height * scale)
+  const { isDropTarget, handlers } = useThumbnailDrag(props)
 
   return (
     <div
       data-slide-thumbnail
+      data-slide-dragging={draggingId === slide.id ? 'true' : undefined}
+      draggable={Boolean(onDropSlide)}
+      {...handlers}
       onContextMenu={(event) => onContextMenu?.(slide.id, event)}
       className={`group relative shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
         isActive
           ? 'border-[var(--accent)] ring-1 ring-[var(--accent)] shadow-xs'
           : 'border-[var(--border-subtle)] hover:border-[var(--border-strong)]'
+      } ${draggingId === slide.id ? 'opacity-50' : ''} ${
+        isDropTarget && draggingId ? 'border-dashed border-[var(--accent)]' : ''
       }`}
       style={{ width: `${THUMB_WIDTH}px`, height: `${thumbHeight}px` }}
     >
@@ -147,6 +187,7 @@ interface SlidesSidebarProps {
   onDeleteSlide: (id: string) => void
   onMoveSlide: (id: string, direction: 'up' | 'down') => void
   onContextMenuSlide?: (slideId: string, event: MouseEvent) => void
+  onReorderSlide?: (fromId: string, toId: string) => void
 }
 
 export const SlidesSidebar = memo(function SlidesSidebar({
@@ -161,7 +202,10 @@ export const SlidesSidebar = memo(function SlidesSidebar({
   onDeleteSlide,
   onMoveSlide,
   onContextMenuSlide,
+  onReorderSlide,
 }: SlidesSidebarProps) {
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+
   return (
     <aside
       aria-label={t('slides.slide_list')}
@@ -184,6 +228,9 @@ export const SlidesSidebar = memo(function SlidesSidebar({
           onDelete={onDeleteSlide}
           onMove={onMoveSlide}
           onContextMenu={onContextMenuSlide}
+          draggingId={draggingId}
+          onDragStateChange={setDraggingId}
+          onDropSlide={onReorderSlide}
         />
       ))}
 
