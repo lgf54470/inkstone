@@ -1,17 +1,10 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type {
   BentoDoc,
-  ChartDatum,
-  ChartElement,
-  CodeElement,
-  ImageElement,
-  ShapeElement,
   ShapeType,
   Slide,
   SlideElement,
   SlidesTheme,
-  TableElement,
-  TextElement,
 } from '../types'
 import { useSlidesHistory } from '../history'
 import { SlidesCanvas } from './slides-canvas'
@@ -20,6 +13,14 @@ import { SlidesSidebar } from './slides-sidebar'
 import { SlidesInspector } from './slides-inspector'
 import { SlidesPresenter } from './slides-presenter'
 import { VIRTUAL_CANVAS_WIDTH, VIRTUAL_CANVAS_HEIGHT } from './canvas-helpers'
+import {
+  createDefaultChart,
+  createDefaultCode,
+  createDefaultImage,
+  createDefaultShape,
+  createDefaultTable,
+  createDefaultText,
+} from './element-factories'
 import { t } from '../../../i18n'
 
 interface SlidesRootProps {
@@ -97,17 +98,7 @@ export const SlidesRoot = memo(function SlidesRoot({
 
   const handleAddText = useCallback(() => {
     if (!activeSlide) return
-    const newText: TextElement = {
-      id: `text-${Date.now()}`,
-      type: 'text',
-      html: 'Click to edit text',
-      fontSize: 28,
-      fontWeight: 400,
-      x: 200,
-      y: 200,
-      w: 400,
-      h: 80,
-    }
+    const newText = createDefaultText()
     handleUpdateSlide({ elements: [...activeSlide.elements, newText] })
     setActiveElementId(newText.id)
   }, [activeSlide, handleUpdateSlide])
@@ -115,17 +106,7 @@ export const SlidesRoot = memo(function SlidesRoot({
   const handleAddShape = useCallback(
     (shape: ShapeType) => {
       if (!activeSlide) return
-      const newShape: ShapeElement = {
-        id: `shape-${Date.now()}`,
-        type: 'shape',
-        shape,
-        fill: data.theme.accent || 'var(--accent)',
-        x: 300,
-        y: 250,
-        w: 240,
-        h: 160,
-        radius: 12,
-      }
+      const newShape = createDefaultShape(shape, data.theme.accent || 'var(--accent)')
       handleUpdateSlide({ elements: [...activeSlide.elements, newShape] })
       setActiveElementId(newShape.id)
     },
@@ -134,61 +115,22 @@ export const SlidesRoot = memo(function SlidesRoot({
 
   const handleAddImage = useCallback(() => {
     if (!activeSlide) return
-    const newImg: ImageElement = {
-      id: `img-${Date.now()}`,
-      type: 'image',
-      src: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800',
-      fit: 'cover',
-      x: 240,
-      y: 160,
-      w: 480,
-      h: 320,
-      radius: 8,
-    }
+    const newImg = createDefaultImage()
     handleUpdateSlide({ elements: [...activeSlide.elements, newImg] })
     setActiveElementId(newImg.id)
   }, [activeSlide, handleUpdateSlide])
 
   const handleAddTable = useCallback(() => {
     if (!activeSlide) return
-    const newTable: TableElement = {
-      id: `table-${Date.now()}`,
-      type: 'table',
-      x: 200,
-      y: 180,
-      w: 600,
-      h: 240,
-      columns: [{ w: 1 }, { w: 1 }, { w: 1 }],
-      rows: [
-        { cells: [{ html: 'Metric', bold: true }, { html: 'Q1', bold: true }, { html: 'Q2', bold: true }] },
-        { cells: [{ html: 'Revenue' }, { html: '$120k' }, { html: '$180k' }] },
-        { cells: [{ html: 'Active Users' }, { html: '4,200' }, { html: '8,900' }] },
-      ],
-    }
+    const newTable = createDefaultTable()
     handleUpdateSlide({ elements: [...activeSlide.elements, newTable] })
     setActiveElementId(newTable.id)
   }, [activeSlide, handleUpdateSlide])
 
   const handleAddChart = useCallback(
-    (preset: 'bar' | 'line' | 'pie') => {
+    (preset: 'bar' | 'line' | 'pie' | 'scatter') => {
       if (!activeSlide) return
-      const chartData: ChartDatum[] = [
-        { label: 'Jan', value: 35 },
-        { label: 'Feb', value: 55 },
-        { label: 'Mar', value: 80 },
-        { label: 'Apr', value: 120 },
-      ]
-      const newChart: ChartElement = {
-        id: `chart-${Date.now()}`,
-        type: 'chart',
-        preset,
-        data: chartData,
-        title: 'Monthly Progress',
-        x: 220,
-        y: 160,
-        w: 520,
-        h: 300,
-      }
+      const newChart = createDefaultChart(preset)
       handleUpdateSlide({ elements: [...activeSlide.elements, newChart] })
       setActiveElementId(newChart.id)
     },
@@ -197,16 +139,7 @@ export const SlidesRoot = memo(function SlidesRoot({
 
   const handleAddCode = useCallback(() => {
     if (!activeSlide) return
-    const newCode: CodeElement = {
-      id: `code-${Date.now()}`,
-      type: 'code',
-      code: 'function hello() {\n  return "Bento Slides";\n}',
-      lang: 'typescript',
-      x: 240,
-      y: 180,
-      w: 480,
-      h: 220,
-    }
+    const newCode = createDefaultCode()
     handleUpdateSlide({ elements: [...activeSlide.elements, newCode] })
     setActiveElementId(newCode.id)
   }, [activeSlide, handleUpdateSlide])
@@ -384,6 +317,21 @@ export const SlidesRoot = memo(function SlidesRoot({
     )
   }
 
+  const handleReorderElement = useCallback(
+    (elId: string, direction: 'up' | 'down') => {
+      if (!activeSlide) return
+      const idx = activeSlide.elements.findIndex((e) => e.id === elId)
+      if (idx === -1) return
+      const targetIdx = direction === 'up' ? idx + 1 : idx - 1
+      if (targetIdx < 0 || targetIdx >= activeSlide.elements.length) return
+      const next = [...activeSlide.elements]
+      const [item] = next.splice(idx, 1)
+      if (item) next.splice(targetIdx, 0, item)
+      handleUpdateSlide({ elements: next })
+    },
+    [activeSlide, handleUpdateSlide],
+  )
+
   return (
     <div className='flex flex-col size-full overflow-hidden bg-[var(--bg-surface)]'>
       <SlidesTopbar
@@ -399,10 +347,13 @@ export const SlidesRoot = memo(function SlidesRoot({
         onAddTable={handleAddTable}
         onAddChart={handleAddChart}
         onAddCode={handleAddCode}
-        onPresent={() => setIsPresentationMode(true)}
         onClose={() => onToggleFullscreen?.()}
-        zoom={zoom}
-        onZoomChange={(delta) => setZoom((z) => Math.max(0.4, Math.min(2.0, z + delta)))}
+        onExportPdf={() => window.print()}
+        onShare={() => {
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(window.location.href)
+          }
+        }}
       />
 
       <div className='flex flex-1 overflow-hidden'>
@@ -423,14 +374,14 @@ export const SlidesRoot = memo(function SlidesRoot({
           onMoveSlide={handleMoveSlide}
         />
 
-        <main className='flex flex-1 items-center justify-center bg-[var(--bg-inset)] overflow-auto p-6'>
+        <main className='bento-canvas-stage flex flex-1 items-center justify-center overflow-auto p-8 relative'>
           {activeSlide && (
             <div
               style={{
-                width: `${VIRTUAL_CANVAS_WIDTH * zoom}px`,
-                height: `${VIRTUAL_CANVAS_HEIGHT * zoom}px`,
+                width: `${data.size.width * zoom}px`,
+                height: `${data.size.height * zoom}px`,
               }}
-              className='relative'
+              className='relative shrink-0'
             >
               <SlidesCanvas
                 slide={activeSlide}
@@ -443,6 +394,45 @@ export const SlidesRoot = memo(function SlidesRoot({
               />
             </div>
           )}
+
+          <div className='bento-corner-controls'>
+            <button
+              type='button'
+              onClick={() => setIsPresentationMode(true)}
+              className='bento-pill-button'
+              title={t('slides.slideshow')}
+            >
+              <span>▶</span>
+              <span>{t('slides.slideshow')}</span>
+            </button>
+
+            <div className='bento-zoom-cluster'>
+              <button
+                type='button'
+                onClick={() => setZoom((z) => Math.max(0.4, Number((z - 0.1).toFixed(1))))}
+                className='bento-zoom-btn'
+                title={t('common.zoom_out')}
+              >
+                −
+              </button>
+              <button
+                type='button'
+                onClick={() => setZoom(1)}
+                className='bento-zoom-label hover:text-[var(--text-primary)] cursor-pointer'
+                title={t('slides.reset_zoom')}
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <button
+                type='button'
+                onClick={() => setZoom((z) => Math.min(2.0, Number((z + 0.1).toFixed(1))))}
+                className='bento-zoom-btn'
+                title={t('common.zoom_in')}
+              >
+                +
+              </button>
+            </div>
+          </div>
         </main>
 
         {activeSlide && (
@@ -450,10 +440,18 @@ export const SlidesRoot = memo(function SlidesRoot({
             slide={activeSlide}
             selectedElement={selectedElement}
             theme={data.theme}
+            docSize={data.size}
+            presentSettings={data.present}
+            onSelectElement={setActiveElementId}
             onUpdateSlide={handleUpdateSlide}
             onUpdateElement={handleUpdateElement}
             onDeleteElement={handleDeleteElement}
+            onReorderElement={handleReorderElement}
             onUpdateTheme={handleUpdateTheme}
+            onUpdateDocSize={(size) => commitData({ ...data, size })}
+            onUpdatePresentSettings={(presentPatch) =>
+              commitData({ ...data, present: { ...(data.present || {}), ...presentPatch } })
+            }
           />
         )}
       </div>

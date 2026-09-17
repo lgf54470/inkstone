@@ -81,3 +81,92 @@
 .bento-slides-fullscreen {
   z-index: var(--z-modal);
 }
+
+.bento-canvas-stage {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 1px 1px, var(--border-default) 1px, transparent 0) 0 0 / 22px 22px,
+    var(--bg-sunken);
+}
+
+.bento-slide-shadow {
+  box-shadow: 0 10px 40px rgb(20 30 45 / 0.18), 0 2px 8px rgb(20 30 45 / 0.10);
+}
+
+.bento-corner-controls {
+  position: absolute;
+  inset-inline-end: var(--sp-4);
+  bottom: var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  z-index: 20;
+}
+
+.bento-pill-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1\.5);
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: var(--text-12);
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgb(20 30 45 / 0.10);
+  cursor: pointer;
+  transition: background-color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.bento-pill-button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.bento-zoom-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-0\.5);
+  padding: var(--sp-0\.5) var(--sp-1\.5);
+  border-radius: var(--r-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  box-shadow: 0 4px 14px rgb(20 30 45 / 0.10);
+}
+
+.bento-zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sp-6);
+  height: var(--sp-6);
+  border-radius: var(--r-full);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-14);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--dur-fast);
+}
+
+.bento-zoom-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.bento-zoom-label {
+  min-width: var(--sp-11);
+  text-align: center;
+  font-size: var(--text-11);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.bento-title-font {
+  font-family: 'Fraunces', var(--font-serif);
+}

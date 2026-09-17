@@ -84,7 +84,7 @@ export const SlidesCanvas = memo(function SlidesCanvas({
 
   return (
     <div
-      className='relative overflow-hidden shadow-2xl select-none'
+      className='relative overflow-hidden select-none bento-slide-shadow rounded-xs'
       style={{
         width: `${VIRTUAL_CANVAS_WIDTH}px`,
         height: `${VIRTUAL_CANVAS_HEIGHT}px`,
@@ -142,6 +142,10 @@ function ElementRenderer({
       )
     case 'shape':
       return <ShapeRenderer el={el} />
+    case 'svg':
+      return el.svg ? (
+        <div className='size-full overflow-hidden' dangerouslySetInnerHTML={{ __html: el.svg }} />
+      ) : null
     case 'image':
       return <ImageRenderer el={el} />
     case 'table':

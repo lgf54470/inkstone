@@ -1,6 +1,13 @@
 import { memo } from 'react'
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown } from 'lucide-react'
 import type { Slide, SlidesTheme } from '../types'
+import { SlidesCanvas } from './slides-canvas'
+import { VIRTUAL_CANVAS_WIDTH, VIRTUAL_CANVAS_HEIGHT } from './canvas-helpers'
 import { t } from '../../../i18n'
+
+const THUMB_WIDTH = 156
+const THUMB_SCALE = THUMB_WIDTH / VIRTUAL_CANVAS_WIDTH
+const THUMB_HEIGHT = Math.round(VIRTUAL_CANVAS_HEIGHT * THUMB_SCALE)
 
 interface SlidesSidebarProps {
   slides: Slide[]
@@ -33,16 +40,15 @@ export const SlidesSidebar = memo(function SlidesSidebar({
           type='button'
           onClick={onAddSlide}
           title={t('slides.add_slide')}
-          className='flex size-6 items-center justify-center rounded-md bg-[var(--accent)] text-white text-sm font-bold shadow-xs hover:brightness-110'
+          className='flex size-6 items-center justify-center rounded-md bg-[var(--accent)] text-white text-xs font-bold shadow-xs hover:brightness-110'
         >
-          +
+          <Plus size={13} />
         </button>
       </div>
 
-      <div className='flex-1 overflow-y-auto p-2 space-y-2'>
+      <div className='flex-1 overflow-y-auto p-2 space-y-2.5'>
         {slides.map((slide, idx) => {
           const isActive = slide.id === activeSlideId
-          const bg = slide.background || theme.background || 'var(--bg-inset)'
 
           return (
             <div
@@ -50,7 +56,7 @@ export const SlidesSidebar = memo(function SlidesSidebar({
               onClick={() => onSelectSlide(slide.id)}
               className={`group relative flex flex-col rounded-lg border p-1.5 transition-all cursor-pointer ${
                 isActive
-                  ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/30 bg-[var(--bg-hover)]'
+                  ? 'border-[var(--accent)] ring-1 ring-[var(--accent)] bg-[var(--bg-hover)]'
                   : 'border-[var(--border-subtle)] hover:border-[var(--border-strong)] bg-[var(--bg-surface)]'
               }`}
             >
@@ -59,7 +65,7 @@ export const SlidesSidebar = memo(function SlidesSidebar({
                 <span className='truncate max-w-20 font-medium'>
                   {slide.title || `Slide ${idx + 1}`}
                 </span>
-                <div className='hidden group-hover:flex items-center gap-1'>
+                <div className='hidden group-hover:flex items-center gap-0.5'>
                   <button
                     type='button'
                     onClick={(e) => {
@@ -69,7 +75,7 @@ export const SlidesSidebar = memo(function SlidesSidebar({
                     disabled={idx === 0}
                     className='size-4 flex items-center justify-center rounded hover:bg-[var(--bg-inset)] disabled:opacity-20'
                   >
-                    ▲
+                    <ChevronUp size={11} />
                   </button>
                   <button
                     type='button'
@@ -80,21 +86,33 @@ export const SlidesSidebar = memo(function SlidesSidebar({
                     disabled={idx === slides.length - 1}
                     className='size-4 flex items-center justify-center rounded hover:bg-[var(--bg-inset)] disabled:opacity-20'
                   >
-                    ▼
+                    <ChevronDown size={11} />
                   </button>
                 </div>
               </div>
 
               <div
-                style={{ backgroundColor: bg }}
-                className='relative aspect-video w-full rounded border border-[var(--border-subtle)]/40 overflow-hidden flex items-center justify-center p-1'
+                style={{
+                  width: `${THUMB_WIDTH}px`,
+                  height: `${THUMB_HEIGHT}px`,
+                }}
+                className='relative rounded-xs border border-[var(--border-subtle)]/60 overflow-hidden shrink-0 pointer-events-none'
               >
-                <span
-                  style={{ color: theme.color || 'var(--text-primary)' }}
-                  className='text-[length:var(--text-9)] font-semibold text-center truncate w-full opacity-80'
+                <div
+                  style={{
+                    width: `${VIRTUAL_CANVAS_WIDTH}px`,
+                    height: `${VIRTUAL_CANVAS_HEIGHT}px`,
+                    transform: `scale(${THUMB_SCALE})`,
+                    transformOrigin: 'top left',
+                  }}
                 >
-                  {slide.title || `Slide ${idx + 1}`}
-                </span>
+                  <SlidesCanvas
+                    slide={slide}
+                    theme={theme}
+                    scale={1}
+                    editable={false}
+                  />
+                </div>
               </div>
 
               <div className='hidden group-hover:flex items-center justify-end gap-1 mt-1 pt-1 border-t border-[var(--border-subtle)] text-[length:var(--text-10)]'>
@@ -104,28 +122,36 @@ export const SlidesSidebar = memo(function SlidesSidebar({
                     e.stopPropagation()
                     onDuplicateSlide(slide.id)
                   }}
-                  className='px-1 py-0.5 rounded hover:bg-[var(--bg-inset)] text-[var(--text-secondary)]'
                   title={t('slides.duplicate_slide')}
+                  className='p-1 rounded hover:bg-[var(--bg-inset)] text-[var(--text-secondary)]'
                 >
-                  {t('common.copy')}
+                  <Copy size={11} />
                 </button>
-                {slides.length > 1 && (
-                  <button
-                    type='button'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDeleteSlide(slide.id)
-                    }}
-                    className='px-1 py-0.5 rounded hover:bg-[var(--bg-inset)] text-[var(--danger)]'
-                    title={t('slides.delete_slide')}
-                  >
-                    {t('common.delete')}
-                  </button>
-                )}
+                <button
+                  type='button'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteSlide(slide.id)
+                  }}
+                  disabled={slides.length <= 1}
+                  title={t('slides.delete_slide')}
+                  className='p-1 rounded hover:bg-[var(--bg-inset)] text-[var(--danger)] disabled:opacity-30'
+                >
+                  <Trash2 size={11} />
+                </button>
               </div>
             </div>
           )
         })}
+
+        <button
+          type='button'
+          onClick={onAddSlide}
+          className='flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-[var(--border-default)] py-2 text-xs font-medium text-[var(--text-tertiary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors'
+        >
+          <Plus size={13} />
+          <span>{t('slides.add_slide')}</span>
+        </button>
       </div>
     </aside>
   )

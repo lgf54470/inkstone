@@ -15,11 +15,20 @@
     "longFns": 3,
     "deepFns": 2
   },
-  "src/client/lib/markdown/slides/ui/slides-canvas.tsx": {
+  "src/client/lib/markdown/slides/ui/inspector-element.tsx": {
     "longFns": 1
   },
-  "src/client/lib/markdown/slides/ui/slides-inspector.tsx": {
-    "longFns": 4
+  "src/client/lib/markdown/slides/ui/inspector-layers.tsx": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/slides/ui/inspector-slide.tsx": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/slides/ui/inspector-theme.tsx": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/slides/ui/slides-canvas.tsx": {
+    "longFns": 1
   },
   "src/client/lib/markdown/slides/ui/slides-presenter.tsx": {
     "longFns": 1,

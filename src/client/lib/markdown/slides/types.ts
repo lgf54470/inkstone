@@ -18,21 +18,50 @@ export interface TextElement extends ElementBase {
   html: string
   fontSize: number
   fontWeight?: number | string
+  fontFamily?: string
   color?: string
   align?: 'left' | 'center' | 'right'
   valign?: 'top' | 'center' | 'bottom'
   lineHeight?: number
+  letterSpacing?: number
 }
 
-export type ShapeType = 'rect' | 'rounded' | 'circle' | 'card'
+export type ShapeType = 'rect' | 'rounded' | 'circle' | 'card' | 'ellipse' | 'triangle' | 'arrow' | 'line'
+
+export interface ShapeGradientStop {
+  at: number
+  color: string
+}
+
+export interface ShapeGradient {
+  angle: number
+  stops: ShapeGradientStop[]
+}
+
+export interface ShapeShadow {
+  x?: number
+  y?: number
+  blur: number
+  spread?: number
+  color: string
+}
 
 export interface ShapeElement extends ElementBase {
   type: 'shape'
   shape: ShapeType
   fill: string
+  fillGradient?: ShapeGradient
+  shadow?: ShapeShadow[]
   stroke?: string
   strokeWidth?: number
+  strokeStyle?: 'solid' | 'dashed' | 'dotted'
   radius?: number
+}
+
+export interface SvgElement extends ElementBase {
+  type: 'svg'
+  asset?: string
+  svg?: string
 }
 
 export interface ImageElement extends ElementBase {
@@ -80,7 +109,7 @@ export interface ChartDatum {
 
 export interface ChartElement extends ElementBase {
   type: 'chart'
-  preset: 'bar' | 'line' | 'pie'
+  preset: 'bar' | 'line' | 'pie' | 'scatter'
   data: ChartDatum[]
   title?: string
   color?: string
@@ -96,6 +125,7 @@ export interface CodeElement extends ElementBase {
 export type SlideElement =
   | TextElement
   | ShapeElement
+  | SvgElement
   | ImageElement
   | TableElement
   | ChartElement
@@ -109,6 +139,14 @@ export interface Slide {
   notes?: string
   transition?: SlideTransitionKind
   hidden?: boolean
+  unnumbered?: boolean
+}
+
+export interface SlidesPresentSettings {
+  slideNumber?: boolean
+  progress?: boolean
+  controls?: boolean
+  numberHidden?: boolean
 }
 
 export interface SlidesTheme {
@@ -116,6 +154,8 @@ export interface SlidesTheme {
   color: string
   accent: string
   fontFamily?: string
+  chartPalette?: string[]
+  codePalette?: Record<string, string>
 }
 
 export interface BentoDoc {
@@ -125,6 +165,8 @@ export interface BentoDoc {
   size: { width: number; height: number }
   theme: SlidesTheme
   slides: Slide[]
+  present?: SlidesPresentSettings
+  assets?: Record<string, string>
 }
 
 export type SlidesMode = 'json' | 'outline'

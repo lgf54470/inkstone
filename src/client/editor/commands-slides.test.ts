@@ -13,7 +13,8 @@ describe('slides editor commands', () => {
     let next = state
     insertSlides({ state, dispatch: (tr) => { next = tr.state } })
     expect(next.doc.toString()).toContain('```bento-slides')
-    expect(next.doc.toString()).toContain('# Bento Slides Showcase')
+    expect(next.doc.toString()).toContain('bento/slides')
+    expect(next.doc.toString()).toContain('Bento Slides Showcase')
   })
 
   it('inserts slides from outline when document has headings', () => {
