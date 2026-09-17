@@ -41,6 +41,7 @@
 | 拖动吸附与参考线：对齐其他元素的边与中线、页面中线与边距（边距按页面比例，取自内置版式的 120/1600）；两个轴各自判定，拖动中的盒子按整组包围盒判定；Alt 拖动不吸附也不画线；被拖动的盒子从可对齐名单里剔除，避免与自己的边对齐 | `snap.test.ts`、`ui/slides-selection.test.ts` | `a1f7ee86` |
 | 拖动时的等距间距：同行带内两侧间隙接近相等时落到正中间（split），只有一个邻居时把间隙对齐到该行已有的宽度（copy）；间隙画成两端之间的线段并在中点写出宽度，已经等距时只报数不改位，被边线吸附过的那一轴不再接受间距位移 | `spacing.test.ts`、`ui/slides-spacing.test.ts` | `3350be3e` |
 | 空格 / 中键平移与「适应窗口」：舞台即滚动盒（`overflow: auto`），按住空格或中键在**捕获阶段**接手按下并滚动，控件上的空格与中键不被抢；平移待命时页面整体不接受指针（`elementPointerEvents` 的 `frozen`，框选一并关闭）；角落新增测量式 fit 控件（取页面与可用框的较小比，不向上取整），页面改 `m-auto` 居中以免放大后起始边不可达 | `ui/slides-viewport.test.ts`、`ui/canvas-helpers.test.ts` | `e5bae768` |
+| 编辑器全屏的可访问名称与焦点归属：每个图标控件、颜色井、下拉与复选框都有名称，舞台不再是第二个 `main`，缩放三键各自命名；axe 报告为 0 违规，它不愿判定的项必须落在页面上的盒子里且不超过盒子数；Escape 关闭后焦点回到打开它的那个控件（记下的节点会被写回触发的重渲染换掉，所以按属性重新查找，最多顺延几帧） | `scripts/e2e-visual.mjs`（幻灯片编辑器场景）、`ui/slides-{topbar,stage}.tsx`、`ui/inspector-*.tsx` | `d411a395` |
 
 > `6e55f34b` 是工作区里既有的在途改动（代码块净化移到渲染处），提交前只补了缺失的白名单条目——它的缺失会让仓库级 `comments:check` 为红、pre-commit 钩子拦下所有提交。
 
@@ -80,7 +81,7 @@
 
 - compact 输入形式（agent 友好：省略默认值、`layout` 槽位、自动量高与重排、drop 报告）。
 - `validate()`（未知键、文本溢出、出界、永不触发的效果、坏链接/坏 asset 引用）、`measure()`、发布用 JSON Schema。
-- 把 bento-slides 全屏表面加入 `scripts/e2e-visual.mjs` 的逐表面工具栏扫描与 `scripts/check-surface-coverage.mjs` 名单（现在只被 `modal.tsx` 的思维导图断言间接覆盖），并补 axe 场景：右键菜单、版式选择器、演讲者窗口、帮助与设置弹窗。
+- 全屏表面已进 `scripts/e2e-visual.mjs` 的逐表面工具栏扫描，`check-surface-coverage.mjs` 里 `modal.tsx` 的 `checkedBy` 也已说明它现在有两条场景在守；仍缺 axe 场景：右键菜单、版式选择器、演讲者窗口、帮助与设置弹窗（编辑器本身已有，见上表）。
 - 收口 `slides.*` 里仍未接线的文案键（如字体/行高/字距、真·置顶置底、主题预设）。
 
 ---
