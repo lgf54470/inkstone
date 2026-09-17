@@ -43,7 +43,7 @@ function mountDeck(doc: BentoDoc) {
 }
 
 function box(id: string): HTMLElement {
-  const node = document.querySelector<HTMLElement>(`main [data-slide-element="${id}"]`)
+  const node = document.querySelector<HTMLElement>(`.bento-canvas-stage [data-slide-element="${id}"]`)
   if (!node) throw new Error(`no box for ${id}`)
   return node
 }
@@ -68,7 +68,7 @@ function release(): void {
 
 /** The widths the drag is currently writing on the page, in the order they are drawn. */
 function gapSizes(): string[] {
-  return [...document.querySelectorAll<HTMLElement>('main [data-slide-gap-size]')].map(
+  return [...document.querySelectorAll<HTMLElement>('.bento-canvas-stage [data-slide-gap-size]')].map(
     (badge) => badge.textContent ?? '',
   )
 }
@@ -91,7 +91,7 @@ describe('even spacing while dragging', () => {
 
     // 200…384 of room around a 100-wide box: 42 either side, written on both segments.
     expect(gapSizes()).toEqual(['42', '42'])
-    expect(document.querySelectorAll('main [data-slide-gap]')).toHaveLength(2)
+    expect(document.querySelectorAll('.bento-canvas-stage [data-slide-gap]')).toHaveLength(2)
 
     release()
     expect(at('b', live.doc)).toEqual([242, 100])

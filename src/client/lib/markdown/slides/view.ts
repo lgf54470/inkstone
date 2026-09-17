@@ -7,6 +7,7 @@ export const SLIDES_PLACEHOLDER_SELECTOR = '[data-bento-slides-placeholder]'
 export const SLIDES_CANVAS_CLASS = 'bento-slides-canvas'
 export const SLIDES_CANVAS_SELECTOR = '[data-bento-slides-canvas]'
 export const SLIDES_FULLSCREEN_CLASS = 'bento-slides-fullscreen'
+export const SLIDES_FULLSCREEN_CONTROL = '[data-bento-slides-fullscreen]'
 
 const CONTROL_ICONS: Record<string, string[]> = {
   'data-bento-slides-fullscreen': ['M15 3h6v6', 'm21 3-7 7', 'm3 21 7-7', 'M9 21H3v-6'],
@@ -61,6 +62,15 @@ export function slidesBody(node: HTMLElement): string {
 export function slidesIndex(node: HTMLElement): number {
   const value = Number(node.dataset.bentoSlidesIndex)
   return Number.isInteger(value) && value >= 0 ? value : 0
+}
+
+/**
+ * The control of a block that opens the full screen editor, asked for by attribute rather than kept as
+ * a node. Closing the editor flushes the pending write, the note re-renders the block, and the button
+ * that was pressed is replaced — a remembered node would be a detached one.
+ */
+export function slidesFullscreenControl(node: HTMLElement): HTMLElement | null {
+  return node.querySelector<HTMLElement>(SLIDES_FULLSCREEN_CONTROL)
 }
 
 export function slidesPlaceholder(node: HTMLElement): HTMLElement | null {

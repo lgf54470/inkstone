@@ -30,7 +30,7 @@ function contentOf(slide: Slide | undefined): string[] {
 }
 
 function canvasElement(id?: string): Element | null {
-  return document.querySelector(id ? `main [data-slide-element="${id}"]` : 'main [data-slide-element]')
+  return document.querySelector(id ? `.bento-canvas-stage [data-slide-element="${id}"]` : '.bento-canvas-stage [data-slide-element]')
 }
 
 /** Three boxes on the first page, so an order change is visible in the committed document. */
@@ -169,7 +169,7 @@ describe('the clipboard rows', () => {
     rightClick(canvasElement())
     clickRow(t('slides.cut'))
     await act(async () => {})
-    expect(document.querySelectorAll('main [data-slide-element]')).toHaveLength(2)
+    expect(document.querySelectorAll('.bento-canvas-stage [data-slide-element]')).toHaveLength(2)
     expect(useUi.getState().toasts.map((toast) => toast.title)).toEqual([t('slides.copy_failed')])
   })
 })
@@ -197,7 +197,7 @@ describe('the page context menus', () => {
     clickRow(t('common.copy'))
     await act(async () => {})
 
-    rightClick(document.querySelector('main'))
+    rightClick(document.querySelector('.bento-canvas-stage'))
     expect(menuRow(t('slides.paste'))).toBeDefined()
     clickRow(t('slides.paste'))
     await act(async () => {})
@@ -206,7 +206,7 @@ describe('the page context menus', () => {
 
   it('opens the built-in picker from a bare page right click', () => {
     mountDeck()
-    const stage = document.querySelector('main')
+    const stage = document.querySelector('.bento-canvas-stage')
     rightClick(stage)
     clickRow(t('slides.add_slide'))
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain(t('slides.choose_layout'))

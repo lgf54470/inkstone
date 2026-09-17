@@ -82,7 +82,9 @@ export const SlidesStage = memo(function SlidesStage(props: SlidesStageProps) {
 
   return (
     <div className='relative flex flex-1 min-w-0'>
-      <main
+      {/* A box, not a `<main>`: the overlay is opened over the app, whose own main landmark is the
+          note behind it, and a second one makes the page report two. */}
+      <div
         ref={stageRef}
         className='bento-canvas-stage flex'
         style={{
@@ -94,7 +96,7 @@ export const SlidesStage = memo(function SlidesStage(props: SlidesStageProps) {
         onDoubleClick={(event) => startTypingAt(event, props.onStartTyping)}
       >
         {slide && <StagePage {...props} frozen={isPan} />}
-      </main>
+      </div>
 
       <StageControls {...{ zoom, onZoom, onStartSlideshow, onFitToWindow: fitToWindow }} />
     </div>
@@ -146,7 +148,7 @@ function useStageViewport({
   page: PageSize
   onZoom: (zoom: number) => void
 }) {
-  const stageRef = useRef<HTMLElement | null>(null)
+  const stageRef = useRef<HTMLDivElement | null>(null)
   const pan = useSlidesPan(stageRef)
 
   const fitToWindow = () => {
@@ -188,31 +190,46 @@ function StageControls({
           <span aria-hidden='true'>⤢</span>
         </IconButton>
 
-        <button
-          type='button'
-          onClick={() => onZoom(steppedZoom(zoom, -1))}
-          className='bento-zoom-btn'
-          title={t('common.zoom_out')}
-        >
-          −
-        </button>
-        <button
-          type='button'
-          onClick={() => onZoom(1)}
-          className='bento-zoom-label hover:text-[var(--text-primary)] cursor-pointer'
-          title={t('slides.reset_zoom')}
-        >
-          {Math.round(zoom * 100)}%
-        </button>
-        <button
-          type='button'
-          onClick={() => onZoom(steppedZoom(zoom, 1))}
-          className='bento-zoom-btn'
-          title={t('common.zoom_in')}
-        >
-          +
-        </button>
+        <ZoomCluster zoom={zoom} onZoom={onZoom} />
       </div>
     </div>
+  )
+}
+
+/**
+ * The three controls about the zoom level and nothing else. The glyphs are "−", the percentage and
+ * "+", so each has to state its own name: the character a reader would otherwise hear is "plus".
+ */
+function ZoomCluster({ zoom, onZoom }: { zoom: number; onZoom: (zoom: number) => void }) {
+  return (
+    <>
+      <button
+        type='button'
+        onClick={() => onZoom(steppedZoom(zoom, -1))}
+        className='bento-zoom-btn'
+        aria-label={t('common.zoom_out')}
+        title={t('common.zoom_out')}
+      >
+        −
+      </button>
+      <button
+        type='button'
+        onClick={() => onZoom(1)}
+        className='bento-zoom-label hover:text-[var(--text-primary)] cursor-pointer'
+        aria-label={t('slides.reset_zoom')}
+        title={t('slides.reset_zoom')}
+      >
+        {Math.round(zoom * 100)}%
+      </button>
+      <button
+        type='button'
+        onClick={() => onZoom(steppedZoom(zoom, 1))}
+        className='bento-zoom-btn'
+        aria-label={t('common.zoom_in')}
+        title={t('common.zoom_in')}
+      >
+        +
+      </button>
+    </>
   )
 }

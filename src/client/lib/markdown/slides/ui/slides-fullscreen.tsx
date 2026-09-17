@@ -33,6 +33,10 @@ export const SlidesFullscreen = memo(function SlidesFullscreen({
   const handleClose = useCallback(() => {
     session.flush()
     onClose()
+    // The editor owes the keyboard back to the control it was opened from, and it cannot simply
+    // remember it: the write that flushing schedules re-renders the card, so the control is looked up
+    // again on the frames that follow the overlay's own focus trap letting go.
+    session.focusOpener()
   }, [session, onClose])
 
   if (!data) return null

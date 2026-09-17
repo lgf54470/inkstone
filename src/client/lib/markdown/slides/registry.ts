@@ -14,6 +14,7 @@ import {
   showSlidesError,
   slidesBlocks,
   slidesBody,
+  slidesFullscreenControl,
   slidesIndex,
   slidesPlaceholder,
 } from './view'
@@ -45,6 +46,32 @@ let pendingKey = 0
 
 export function slidesEntryKey(scope: string, index: number): string {
   return `${scope}#${index}`
+}
+
+/**
+ * Remembers which control opened the editor, so that closing it can hand the focus back rather than
+ * drop it on the body. Called as the overlay opens, while the pressed button still holds the focus.
+ */
+export function rememberSlidesOpener(entry: SlidesBlockEntry): void {
+  entry.opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+}
+
+/**
+ * Hands the focus back to the control the editor was opened from. One lookup is not enough: closing
+ * flushes the pending write, the note re-renders the block, and the button that was pressed is
+ * replaced — so the block is asked again for its control on the frames that follow, and the loop
+ * stops the moment the focus is actually there.
+ */
+export function restoreSlidesOpener(entry: SlidesBlockEntry): void {
+  let attempts = 3
+  const focus = (): void => {
+    const remembered = entry.opener?.isConnected ? entry.opener : null
+    const control = remembered ?? slidesFullscreenControl(entry.host)
+    if (control) control.focus({ preventScroll: true })
+    if (document.activeElement === control || attempts-- <= 0) return
+    requestAnimationFrame(focus)
+  }
+  requestAnimationFrame(focus)
 }
 
 export function slidesEntryForNode(node: HTMLElement): SlidesBlockEntry | null {
@@ -123,6 +150,7 @@ function createEntry(node: HTMLElement, options: SlidesMountOptions): SlidesBloc
     locale: options.locale,
     container: null,
     root: null,
+    opener: null,
     ref: null,
     write: options.writeBack ?? null,
     notice: options.onNotice ?? null,
@@ -143,6 +171,18 @@ function reportFor(
   const report = options.onPendingChange
   if (!report) return null
   return (pending) => report(entry.key, pending)
+}
+
+/**
+ * Tears one block's React root down. The unmount is deferred by a microtask because both callers run
+ * inside the host tree's own commit — the preview re-renders, a block leaves the note, and React
+ * refuses to take one root down from inside another root's render: it warns and leaves the teardown to
+ * race the commit it interrupted.
+ */
+function disposeEntry(entry: SlidesBlockEntry): void {
+  if (entry.timer !== null) window.clearTimeout(entry.timer)
+  const root = entry.root
+  if (root) queueMicrotask(() => root.unmount())
 }
 
 function renderSlidesEntry(entry: SlidesBlockEntry, options: SlidesMountOptions): void {
@@ -206,8 +246,7 @@ export async function mountBentoSlides(root: HTMLElement, options: SlidesMountOp
 
   for (const [key, entry] of entries) {
     if (entry.scope === options.scope && !assignments.some((a) => a.entry === entry)) {
-      if (entry.timer !== null) window.clearTimeout(entry.timer)
-      entry.root?.unmount()
+      disposeEntry(entry)
       entries.delete(key)
     }
   }
@@ -243,8 +282,7 @@ export function flushBentoSlides(scope: string): void {
 export function destroyBentoSlides(scope: string): void {
   for (const [key, entry] of entries) {
     if (entry.scope === scope) {
-      if (entry.timer !== null) window.clearTimeout(entry.timer)
-      entry.root?.unmount()
+      disposeEntry(entry)
       entries.delete(key)
     }
   }

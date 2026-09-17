@@ -180,14 +180,22 @@ export async function runAxe(page, selector) {
     const target = root ? document.querySelector(root) : document
     if (!target) throw new Error(`axe: no element matching ${root}`)
     const results = await window.axe.run(target, { resultTypes: ['violations', 'incomplete'] })
-    const summarize = (items) => items.map((item) => ({
+    const summarize = (items) => items.map((item) => {
+      // The deck box the failing node sits in, when it is one of the deck's own. axe hands back no
+      // element, and the path below is cut for the log, so this is read from the path in full — the
+      // box's own attribute is in it, which is what tells a deck's canvas apart from the app's chrome.
+      const path = (item.nodes[0]?.target ?? []).join(' ')
+      const box = /\[data-slide-element="([^"]+)"\]/.exec(path)?.[1] ?? ''
+      return {
       id: item.id,
       count: item.nodes.length,
+      box,
       target: (item.nodes[0]?.target ?? []).join(' ').slice(0, 90),
       note: (item.nodes[0]?.failureSummary ?? '').replace(/\s+/g, ' ').slice(0, 140),
       // The node itself, because a failing target is a Tailwind class soup nobody can read.
       html: (item.nodes[0]?.html ?? '').replace(/\s+/g, ' ').slice(0, 200),
-    }))
+      }
+    })
     return { violations: summarize(results.violations), incomplete: summarize(results.incomplete), passes: results.passes.length }
   }, selector)
 }

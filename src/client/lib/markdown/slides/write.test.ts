@@ -44,6 +44,7 @@ function entryFor(data: BentoDoc, mode: 'json' | 'outline', body: string, result
     locale: 'en-US',
     container: null,
     root: null,
+    opener: null,
     ref: { line: 3, body },
     write: (_ref, nextBody): SlidesWriteResult => {
       written.push(nextBody)

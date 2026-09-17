@@ -23,7 +23,7 @@ function mountDeck(initialData: BentoDoc = parseSlidesOutline(source)) {
 
 /** The box on the page. The rail draws its own copies, so every query is scoped to the page. */
 function box(): HTMLElement {
-  const target = document.querySelector<HTMLElement>('main [data-slide-element]')
+  const target = document.querySelector<HTMLElement>('.bento-canvas-stage [data-slide-element]')
   expect(target, 'a box on the page').not.toBeNull()
   return target!
 }

@@ -17,6 +17,8 @@ export interface SlidesBlockEntry {
   locale: AppLocale
   container: HTMLElement | null
   root: Root | null
+  /** The control the editor was opened from, so closing it can put the focus back where it was. */
+  opener: HTMLElement | null
   ref: SlidesFenceRef | null
   write: SlidesWriter | null
   /** Host feedback for a change the user has to be told about (the body switching syntax). */

@@ -3,6 +3,8 @@ import type { SlidesBlockEntry } from './entry'
 import {
   attachSlidesToOverlay,
   detachSlidesFromOverlay,
+  rememberSlidesOpener,
+  restoreSlidesOpener,
   slidesEntryForNode,
   updateSlidesData,
 } from './registry'
@@ -21,6 +23,8 @@ export interface SlidesSession {
   getMode(): SlidesMode
   moveInto(target: HTMLElement): void
   moveBack(): void
+  /** Hands the focus back to the control the editor was opened from. */
+  focusOpener(): void
   title(): string
   serialize(): string | null
   flush(): SlidesWriteResult | null
@@ -28,7 +32,11 @@ export interface SlidesSession {
 
 export function openSlidesSession(node: HTMLElement): SlidesSession | null {
   const opened = slidesEntryForNode(node)
-  return opened ? sessionFor(opened) : null
+  if (!opened) return null
+  // Read here, on the way in: the pressed control is what holds the focus, and by the time the
+  // overlay closes the block has been re-rendered under it.
+  rememberSlidesOpener(opened)
+  return sessionFor(opened)
 }
 
 function sessionFor(entry: SlidesBlockEntry): SlidesSession {
@@ -43,6 +51,7 @@ function sessionFor(entry: SlidesBlockEntry): SlidesSession {
     getMode: () => entry.mode,
     moveInto: (target) => attachSlidesToOverlay(entry, target),
     moveBack: () => detachSlidesFromOverlay(entry),
+    focusOpener: () => restoreSlidesOpener(entry),
     title: () => entry.data?.title || 'Slides',
     serialize: () => {
       if (!entry.data) return null

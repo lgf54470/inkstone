@@ -61,10 +61,11 @@ const SURFACES = [
   {
     file: 'src/client/components/overlay/modal.tsx',
     component: 'Modal',
-    // The shell is a container, not a surface of its own: its one consumer in the full
-    // screen variant is the mind map overlay, and that overlay's scenario asserts the
-    // same two things (Escape closes it, the keyboard reference does not grow the head)
-    // on the element this file renders.
+    // The shell is a container, not a surface of its own, and two overlays take its full
+    // screen variant: the mind map, whose scenario asserts the same two things (Escape
+    // closes it, the keyboard reference does not grow the head) on the element this file
+    // renders, and the slides editor, whose scenario asserts the same pair from the control
+    // it was opened from. The name below is the assertion both live behind.
     checkedBy: 'mindmap: opening the keyboard reference leaves the toolbar its size',
   },
 ]

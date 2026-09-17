@@ -44,13 +44,13 @@ function mountDeck() {
 }
 
 function stage(): HTMLElement {
-  const node = document.querySelector<HTMLElement>('main.bento-canvas-stage')
+  const node = document.querySelector<HTMLElement>('.bento-canvas-stage')
   if (!node) throw new Error('the stage is not on screen')
   return node
 }
 
 function box(id: string): HTMLElement {
-  const node = document.querySelector<HTMLElement>(`main [data-slide-element="${id}"]`)
+  const node = document.querySelector<HTMLElement>(`.bento-canvas-stage [data-slide-element="${id}"]`)
   if (!node) throw new Error(`no box for ${id}`)
   return node
 }
@@ -170,7 +170,7 @@ describe('the middle button', () => {
     release()
 
     expect(node.scrollLeft).toBe(80)
-    expect(document.querySelector('main [data-slide-selection]')).toBeNull()
+    expect(document.querySelector('.bento-canvas-stage [data-slide-selection]')).toBeNull()
   })
 })
 

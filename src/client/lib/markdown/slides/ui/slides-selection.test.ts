@@ -43,13 +43,13 @@ function mountDeck() {
 }
 
 function box(id: string): HTMLElement {
-  const node = document.querySelector<HTMLElement>(`main [data-slide-element="${id}"]`)
+  const node = document.querySelector<HTMLElement>(`.bento-canvas-stage [data-slide-element="${id}"]`)
   if (!node) throw new Error(`no box for ${id}`)
   return node
 }
 
 function page(): HTMLElement {
-  const node = document.querySelector<HTMLElement>('main [data-slide-element="a"]')?.parentElement
+  const node = document.querySelector<HTMLElement>('.bento-canvas-stage [data-slide-element="a"]')?.parentElement
   if (!node) throw new Error('the page is not on screen')
   return node
 }
@@ -80,7 +80,7 @@ function click(node: HTMLElement, options: MouseEventInit = {}): void {
 
 /** The selection as the canvas draws it: which boxes carry a ring, and which one has the handles. */
 function rings(): Array<{ id: string; handles: boolean }> {
-  return [...document.querySelectorAll<HTMLElement>('main [data-slide-element]')]
+  return [...document.querySelectorAll<HTMLElement>('.bento-canvas-stage [data-slide-element]')]
     .map((node) => ({
       id: node.getAttribute('data-slide-element') ?? '',
       overlay: node.querySelector<HTMLElement>('[data-slide-selection]'),
@@ -169,7 +169,7 @@ describe('the rubber band', () => {
 describe('what a dragged box lines up with', () => {
   /** Where the guide line is drawn, or null when no line is on the page. */
   function guideAt(axis: 'x' | 'y'): number | null {
-    const line = document.querySelector<HTMLElement>(`main [data-slide-guide="${axis}"]`)
+    const line = document.querySelector<HTMLElement>(`.bento-canvas-stage [data-slide-guide="${axis}"]`)
     if (!line) return null
     return Number.parseFloat((axis === 'x' ? line.style.left : line.style.top).replace('px', ''))
   }
@@ -193,7 +193,7 @@ describe('what a dragged box lines up with', () => {
     const live = mountDeck()
     press(box('a'), { clientX: 0, clientY: 0 })
     moveTo(397, 3, { altKey: true })
-    expect(document.querySelector('main [data-slide-guide]')).toBeNull()
+    expect(document.querySelector('.bento-canvas-stage [data-slide-guide]')).toBeNull()
 
     release(397, 3)
     const a = live.doc.slides[0]?.elements.find((element) => element.id === 'a')
@@ -206,7 +206,7 @@ describe('what a dragged box lines up with', () => {
     // which sit three pixels away from where it already is.
     press(box('a'), { clientX: 0, clientY: 0 })
     moveTo(3, 3)
-    expect(document.querySelector('main [data-slide-guide]')).toBeNull()
+    expect(document.querySelector('.bento-canvas-stage [data-slide-guide]')).toBeNull()
 
     release(3, 3)
     const a = live.doc.slides[0]?.elements.find((element) => element.id === 'a')

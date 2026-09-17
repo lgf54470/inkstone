@@ -27,6 +27,7 @@ function makeEntry(data: BentoDoc, source: string) {
     locale: 'en-US',
     container: null,
     root: null,
+    opener: null,
     ref: { line: 1, body: source },
     write: (_ref, nextBody): SlidesWriteResult => {
       writes.push(nextBody)
@@ -59,6 +60,7 @@ function sessionFor(entry: SlidesBlockEntry): SlidesSession {
     title: () => entry.data?.title ?? 'Slides',
     serialize: () => null,
     flush: () => flushSlidesEntry(entry),
+    focusOpener: () => {},
   }
 }
 

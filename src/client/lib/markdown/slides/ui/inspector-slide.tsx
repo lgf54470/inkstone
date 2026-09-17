@@ -51,6 +51,7 @@ export const InspectorSlide = memo(function InspectorSlide({
           <div className='flex items-center justify-between gap-2 text-xs'>
             <span className='text-[var(--text-secondary)]'>{t('slides.page_size')}</span>
             <select
+              aria-label={t('slides.page_size')}
               value={selectedSizeKey}
               onChange={(e) => handlePageSizeChange(e.target.value)}
               className='w-28 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-xs outline-none focus:border-[var(--accent)]'
@@ -66,6 +67,7 @@ export const InspectorSlide = memo(function InspectorSlide({
             <span className='text-[var(--text-secondary)]'>{t('slides.background_color')}</span>
             <input
               type='color'
+              aria-label={t('slides.background_color')}
               value={slide.background?.startsWith('#') ? slide.background : DEFAULT_SLIDE_BG}
               onChange={(e) => onUpdateSlide({ background: e.target.value })}
               className='w-28 h-6 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5 cursor-pointer'
@@ -75,6 +77,7 @@ export const InspectorSlide = memo(function InspectorSlide({
           <div className='flex items-center justify-between gap-2 text-xs'>
             <span className='text-[var(--text-secondary)]'>{t('slides.transition')}</span>
             <select
+              aria-label={t('slides.transition')}
               value={slide.transition || 'none'}
               onChange={(e) => onUpdateSlide({ transition: e.target.value as SlideTransitionKind })}
               className='w-28 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-xs outline-none focus:border-[var(--accent)]'
@@ -97,6 +100,7 @@ export const InspectorSlide = memo(function InspectorSlide({
             <span className='text-[var(--text-secondary)]'>{t('slides.hide_slide')}</span>
             <input
               type='checkbox'
+              aria-label={t('slides.hide_slide')}
               checked={!!slide.hidden}
               onChange={(e) => onUpdateSlide({ hidden: e.target.checked })}
               className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'
@@ -107,6 +111,7 @@ export const InspectorSlide = memo(function InspectorSlide({
             <span className='text-[var(--text-secondary)]'>{t('slides.unnumbered')}</span>
             <input
               type='checkbox'
+              aria-label={t('slides.unnumbered')}
               checked={!!slide.unnumbered}
               onChange={(e) => onUpdateSlide({ unnumbered: e.target.checked })}
               className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'
@@ -121,6 +126,7 @@ export const InspectorSlide = memo(function InspectorSlide({
             <span className='text-[var(--text-secondary)]'>{t('slides.slide_number')}</span>
             <input
               type='checkbox'
+              aria-label={t('slides.slide_number')}
               checked={presentSettings.slideNumber ?? true}
               onChange={(e) => onUpdatePresentSettings({ slideNumber: e.target.checked })}
               className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'
@@ -131,6 +137,7 @@ export const InspectorSlide = memo(function InspectorSlide({
             <span className='text-[var(--text-secondary)]'>{t('slides.progress_bar')}</span>
             <input
               type='checkbox'
+              aria-label={t('slides.progress_bar')}
               checked={presentSettings.progress ?? true}
               onChange={(e) => onUpdatePresentSettings({ progress: e.target.checked })}
               className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'
@@ -141,6 +148,7 @@ export const InspectorSlide = memo(function InspectorSlide({
             <span className='text-[var(--text-secondary)]'>{t('slides.corner_arrows')}</span>
             <input
               type='checkbox'
+              aria-label={t('slides.corner_arrows')}
               checked={presentSettings.controls ?? false}
               onChange={(e) => onUpdatePresentSettings({ controls: e.target.checked })}
               className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'
@@ -151,6 +159,7 @@ export const InspectorSlide = memo(function InspectorSlide({
             <span className='text-[var(--text-secondary)]'>{t('slides.number_hidden')}</span>
             <input
               type='checkbox'
+              aria-label={t('slides.number_hidden')}
               checked={presentSettings.numberHidden ?? false}
               onChange={(e) => onUpdatePresentSettings({ numberHidden: e.target.checked })}
               className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'

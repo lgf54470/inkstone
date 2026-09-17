@@ -88,6 +88,8 @@ const LABELS = {
   presentExit: ['退出演示', 'Exit presentation'],
   presentExport: ['导出幻灯片为 PDF', 'Export deck as PDF'],
   presentExportImages: ['导出幻灯片为图片序列', 'Export deck as images'],
+  slidesPrint: ['打印 / PDF', 'Print / PDF'],
+  slidesDuplicate: ['再复制一个', 'Duplicate'],
   presentRail: ['显示幻灯片列表', '隐藏幻灯片列表', 'Show slides', 'Hide slides'],
   presentFreeze: ['冻结当前快照', 'Freeze this snapshot'],
   presentFollow: ['跟随笔记更新', 'Follow the note'],
@@ -436,6 +438,15 @@ async function assertPresentationAccessibility(page) {
   await clickButton(page, LABELS.present)
   await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
   await waitForRailFilled(page)
+  // axe measures what is painted, and two things in this overlay paint at less than full opacity for
+  // a moment: the dialog's own entrance animation, and the control pill, which fades itself out while
+  // the show sits idle. A counter read mid-fade composites towards the page under it and comes back
+  // as a 1.08:1 violation that no token can explain. The pointer brings the pill back and both waits
+  // hold until the painted opacity is 1, rather than until the elements merely exist.
+  const viewport = page.viewport() ?? DESKTOP_VIEWPORT
+  await page.mouse.move(Math.round(viewport.width / 2), Math.round(viewport.height / 2))
+  await waitForPanelSettled(page, '[role="dialog"]')
+  await waitForPanelSettled(page, '[data-presentation-chrome]')
   await ensureAxe(page)
   const report = await runAxe(page, '[role="dialog"]')
   check('a11y: the presentation overlay has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
@@ -936,12 +947,13 @@ async function waitForMindmapNodes(page, scope, expected, timeout = 15_000) {
   { timeout }, [scope, expected]).then(() => true, () => false)
 }
 
-// The fence body as the document itself holds it, decoded from the block's own attribute. The editor
+// A block's body as the document itself holds it, decoded from the block's own attribute. The editor
 // is not a stable place to read it from: CodeMirror renders only the lines in view, so its text
 // depends on where the caret and the scroll happen to be. The preview always carries the body the
-// note was last committed with, which is exactly what these assertions are about.
-function readFenceBody(root) {
-  const encoded = document.querySelector(`${root} .mindmap-block[data-mindmap]`)?.getAttribute('data-mindmap') ?? ''
+// note was last committed with, which is exactly what these assertions are about. Every block
+// encodes its body the same way (lib/markdown/data-attr.ts), so one reader serves them all.
+function readBlockBody({ scope, block, attribute }) {
+  const encoded = document.querySelector(`${scope} ${block}`)?.getAttribute(attribute) ?? ''
   if (!encoded.startsWith('b64.')) return encoded
   try {
     const tail = encoded.slice(4).replace(/-/g, '+').replace(/_/g, '/')
@@ -954,7 +966,7 @@ function readFenceBody(root) {
 }
 
 async function readNoteBody(page, scope) {
-  return page.evaluate(readFenceBody, scope)
+  return page.evaluate(readBlockBody, { scope, block: '.mindmap-block[data-mindmap]', attribute: 'data-mindmap' })
 }
 
 // The write is debounced and the preview re-renders after it, so an assertion on the frame right
@@ -1334,7 +1346,32 @@ const TOOLBAR_SURFACES = [
   // The outline only lives in the drawer shell at the phone breakpoint, which is where that side
   // panel is part of the shell rather than a column of the split view.
   { name: 'outline drawer', open: openOutlineDrawer, root: '[data-surface="drawer"]', toolbar: '[data-surface="drawer"] header', minToggles: 0, viewport: MOBILE_VIEWPORT, loaded: { selector: '[data-heading-level]', min: 1 } },
+  // The slides editor is reached from a block in the note rather than from a control in the shell,
+  // and its toolbar is the editor's own top bar. Two of its controls disclose panels that hang
+  // under that bar, which is exactly what the sweep holds to its size: a panel drawn as a row of
+  // the header would push the control that opened it out from under the pointer.
+  { name: 'slides editor', open: openSlidesEditor, root: '.bento-slides-fullscreen', toolbar: '.bento-slides-fullscreen header', minToggles: 2, loaded: { selector: '.bento-canvas-stage [data-slide-element]', min: 3 } },
 ]
+
+/**
+ * Writes markdown at the end of the note and waits for it to reach the note source. The scenarios
+ * that append to the probe note do it here rather than at the cursor because the cursor is wherever
+ * the last scenario left it — the mind map one leaves it inside the fence it wrote — and a block
+ * typed into the middle of someone else's markdown is not what the reader is being simulated doing.
+ */
+async function writeAtEndOfNote(page, markdown, scenario) {
+  const written = await page.evaluate((text) => {
+    const content = document.querySelector('.cm-content')
+    if (!content) return false
+    content.focus()
+    const selection = window.getSelection()
+    selection.selectAllChildren(content)
+    selection.collapseToEnd()
+    return document.execCommand('insertText', false, text)
+  }, markdown)
+  if (!written) throw new Error(`${scenario}: the note could not be edited`)
+  await sleep(1_200) // autosave debounce
+}
 
 /**
  * The lightbox needs a picture in the note. A same-origin asset is used rather than a remote URL, so
@@ -1343,19 +1380,7 @@ const TOOLBAR_SURFACES = [
  */
 async function openLightbox(page) {
   if (!(await ensurePaneVisible(page, '.cm-content'))) throw new Error('lightbox: the editor pane never became visible')
-  // The scenarios above leave the cursor wherever they last put it — the mind map one leaves it inside
-  // the fence it wrote — so the picture is written at the end of the note instead of at the cursor.
-  const written = await page.evaluate((markdown) => {
-    const content = document.querySelector('.cm-content')
-    if (!content) return false
-    content.focus()
-    const selection = window.getSelection()
-    selection.selectAllChildren(content)
-    selection.collapseToEnd()
-    return document.execCommand('insertText', false, markdown)
-  }, LIGHTBOX_MARKDOWN)
-  if (!written) throw new Error('lightbox: the note could not be edited')
-  await sleep(1_200) // autosave debounce
+  await writeAtEndOfNote(page, LIGHTBOX_MARKDOWN, 'lightbox')
   if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('lightbox: the preview pane never became visible')
   const picture = await page.waitForSelector('.ink-prose img', { timeout: 30_000 }).then((handle) => handle, () => null)
   if (!picture) throw new Error('lightbox: the note holds no picture for the lightbox to open')
@@ -1368,6 +1393,37 @@ async function openLightbox(page) {
   }, { timeout: 30_000 }).then(() => true, () => false)
   if (!rendered) throw new Error('lightbox: the picture put into the note never decoded')
   await pressOpener(page, { labels: ['图片预览', 'Image preview'] })
+}
+
+/**
+ * The deck's own card in the note is what opens the editor, so the sweep waits for it to be drawn
+ * with its elements before pressing the control: a block that failed to parse offers a full screen
+ * control over nothing, and the sweep would then read an empty surface as a stable one.
+ */
+async function openSlidesEditor(page) {
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('slides editor: the preview pane never became visible')
+  // The sweep runs after scenarios that write the note, so the deck may no longer be in it: the
+  // surface is reached by putting one there rather than by assuming an earlier scenario left one
+  // behind, which is also what keeps this entry runnable on its own.
+  if (!(await slidesDeckOnScreen(page))) {
+    await ensurePaneVisible(page, '.cm-content')
+    await writeAtEndOfNote(page, SLIDES_FENCE, 'slides editor')
+    if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('slides editor: the preview pane never became visible')
+  }
+  const card = await page.waitForFunction(() => {
+    const box = document.querySelector('.ink-prose [data-bento-slides] [data-slide-element]')
+    return Boolean(box && box.getClientRects().length > 0)
+  }, { timeout: 20_000 }).then(() => true, () => false)
+  if (!card) throw new Error('slides editor: the note holds no deck for the sweep to open')
+  await pressOpener(page, { labels: ['全屏', 'Full screen'], scope: '.ink-prose [data-bento-slides]' })
+}
+
+/** Whether the note on screen already draws a deck, which is what its full screen control needs. */
+async function slidesDeckOnScreen(page) {
+  return page.evaluate(() => {
+    const box = document.querySelector('.ink-prose [data-bento-slides] [data-slide-element]')
+    return Boolean(box && box.getClientRects().length > 0)
+  })
 }
 
 /** The outline control of the pane on screen, pressed where it is drawn. */
@@ -1390,8 +1446,13 @@ async function pressOpener(page, { labels, combo = null, scope = '' }) {
     const root = scope ? document.querySelector(scope) : document
     const control = [...(root?.querySelectorAll('button') ?? [])]
       .find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
-    const box = control?.getBoundingClientRect()
-    if (!control || !box || box.width < 1 || box.height < 1) return null
+    if (!control) return null
+    // A control further down a long note is off screen, and a press is a real pointer click at a
+    // measured point: it has to be brought into view first, or it lands on whatever is at those
+    // coordinates — which is how a card at the end of the probe note read as a dead control.
+    control.scrollIntoView({ block: 'center' })
+    const box = control.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return null
     control.dataset.gateOpener = '1'
     return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
   }, { labels, scope })
@@ -1491,6 +1552,396 @@ async function sweepToolbar(page, surface) {
     await dismissTransientLayers(page, surface.root)
   }
   return { height: bar.height, toggles: bar.toggles, growth, rowShift, sideways, outside, labels: labels.join(', ') }
+}
+
+/**
+ * A deck whose three cards share one row: 100 wide, 40 between the first pair and 44 between the
+ * second, so the even spacing the drag below lands on is 42. Written as a JSON body, which is the
+ * one form the fence takes where every coordinate is stated rather than parsed out of an outline.
+ */
+const SLIDES_FENCE = [
+  '',
+  '```bento-slides',
+  JSON.stringify(
+    {
+      title: 'Gate deck',
+      slides: [
+        {
+          id: 'gate-slide',
+          elements: [100, 240, 384].map((x, index) => ({
+            id: ['gate-a', 'gate-b', 'gate-c'][index],
+            type: 'text',
+            html: `Card ${index + 1}`,
+            fontSize: 24,
+            x,
+            y: 100,
+            w: 100,
+            h: 100,
+          })),
+        },
+      ],
+    },
+    null,
+    2,
+  ),
+  '```',
+  '',
+].join('\n')
+
+/**
+ * What the page looked like when the card's control did not open the editor: whether the control the
+ * sweep marked is still on screen, how many preview roots are mounted, and whether any of them is
+ * the mounted copy — the block hands a session back only from the pane that mounted it, and the
+ * split draws its markup twice.
+ */
+async function slidesOpenProbe(page) {
+  return page.evaluate(() => {
+    const opener = document.querySelector('[data-gate-opener]')
+    const rect = opener?.getBoundingClientRect()
+    const block = opener?.closest('[data-bento-slides],[data-mindmap],[data-excalidraw],[data-kanban]')
+    return {
+      opener: opener ? { label: opener.getAttribute('aria-label'), onScreen: Boolean(rect && rect.width > 0 && rect.top >= 0 && rect.bottom <= window.innerHeight), top: rect ? Math.round(rect.top) : null } : null,
+      // Which block the marked control belonged to, since every rich block names its own.
+      openerBlock: block ? [...block.attributes].map((attribute) => attribute.name).filter((name) => name.startsWith('data-')).join(',') : null,
+      viewport: window.innerHeight,
+      previewRoots: [...document.querySelectorAll('.ink-prose')].map((root) => ({
+        rects: root.getClientRects().length,
+        blocks: root.querySelectorAll('[data-bento-slides]').length,
+        ready: root.querySelectorAll('[data-bento-slides].is-ready').length,
+      })),
+      editors: document.querySelectorAll('.cm-content').length,
+      activeLayers: [...document.querySelectorAll('.mobile-pane-layer')].filter((layer) => layer.hasAttribute('data-active')).length,
+      dialogs: [...document.querySelectorAll('[role="dialog"]')].map((dialog) => dialog.getAttribute('aria-label') ?? dialog.className.toString().slice(0, 40)),
+      // What the press actually met: a control can be on screen and still be under something.
+      hit: rect
+        ? (() => {
+          const met = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+          return met ? `${met.tagName.toLowerCase()}[${met.getAttribute('class')?.slice(0, 30) ?? ''}]` : 'nothing'
+        })()
+        : null,
+    }
+  })
+}
+
+/** The percentage the slides stage is drawn at, read off the corner cluster's own label. */
+async function readSlidesZoom(page) {
+  return page.evaluate(() => {
+    const label = [...document.querySelectorAll('.bento-slides-fullscreen button')]
+      .map((button) => button.textContent.trim())
+      .find((text) => /^\d+%$/.test(text))
+    return label ? Number.parseInt(label, 10) : null
+  })
+}
+
+/** The deck the note was last committed with, read off the block rather than out of the editor. */
+async function readSlidesSource(page) {
+  return page.evaluate(readBlockBody, { scope: '.ink-prose', block: '[data-bento-slides]', attribute: 'data-bento-slides' })
+}
+
+/** The write back into the fence is debounced and the preview re-renders after it, so this waits. */
+async function waitForSlidesSource(page, settled, timeout = 15_000) {
+  const deadline = Date.now() + timeout
+  let body = await readSlidesSource(page)
+  while (!settled(body) && Date.now() < deadline) {
+    await sleep(200)
+    body = await readSlidesSource(page)
+  }
+  return body
+}
+
+/** Where the second card of the deck stands in the committed deck, as its own x. */
+const SLIDES_LANDED = /"x"\s*:\s*242/
+
+/** How many boxes the page holds, which is what an edit through the menu shows up as. */
+async function slidesElementCount(page) {
+  return page.evaluate(() => document.querySelectorAll('.bento-slides-fullscreen .bento-canvas-stage [data-slide-element]').length)
+}
+
+/** The centre of one row of the editor's own menu, addressed by the text it carries. */
+async function menuRowCentre(page, labels) {
+  return page.evaluate((wanted) => {
+    const row = [...document.querySelectorAll('[role="menu"] button')]
+      .find((candidate) => wanted.includes(candidate.textContent.trim()))
+    if (!row) return null
+    const box = row.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, labels)
+}
+
+/** Where an element box is on screen, in page pixels of the editor's own stage. */
+async function slidesElementCentre(page, id) {
+  return page.evaluate((elementId) => {
+    const box = document.querySelector(`.bento-slides-fullscreen .bento-canvas-stage [data-slide-element="${elementId}"]`)
+    const rect = box?.getBoundingClientRect()
+    if (!rect || rect.width < 1) return null
+    return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) }
+  }, id)
+}
+
+/**
+ * The slides editor is where a deck is edited, and it is the one surface in this gate that edits a
+ * *document* rather than a setting: its rail, stage and inspector are drawn from the deck's own
+ * tokens, its stage scrolls under the page, and an edit is committed back into the fence it came
+ * from. So the scenario opens it the way a person does — the block card's own full screen control —
+ * and then drives the three gestures that have no API-level equivalent: dragging an element onto the
+ * even spacing its row already shares, fitting the page to the stage, and panning the stage with
+ * Space held while the page stays exactly where it was.
+ *
+ * The a11y pass belongs to this surface for the same reason the mind map's does: it is a full
+ * screen overlay nobody reaches by keyboard alone, and a missing role or an unnamed control in it
+ * goes unnoticed by eye.
+ */
+async function assertSlidesEditor(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(500)
+  if (!(await ensurePaneVisible(page, '.cm-content'))) throw new Error('slides editor: the editor pane never became visible')
+  await writeAtEndOfNote(page, SLIDES_FENCE, 'slides editor')
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('slides editor: the preview pane never became visible')
+
+  // The card has to arrive before its control is pressed: the block renders one slide with the real
+  // element boxes, so a card that failed to parse would offer a full screen control over nothing.
+  const card = await page.waitForFunction(() => {
+    const box = document.querySelector('.ink-prose [data-slide-element="gate-b"]')
+    return Boolean(box && box.getClientRects().length > 0)
+  }, { timeout: 20_000 }).then(() => true, () => false)
+  check('slides editor: the deck card renders the page it was given', card)
+
+  // The control is pressed inside the deck's own block, not across the preview pane: every rich
+  // block in the note carries a full screen control under the same name, and the mind map's sits
+  // ahead of this one in the document — a scene-wide search opens the map instead of the deck.
+  // Only the preview's copy is mounted, which is where a reader's pointer would be anyway.
+  await pressOpener(page, { labels: ['全屏', 'Full screen'], scope: '.ink-prose [data-bento-slides]' })
+  const surfaced = await page
+    .waitForFunction(() => Boolean(document.querySelector('.bento-slides-fullscreen')), { timeout: 15_000 })
+    .then(() => true, () => false)
+  check('slides editor: the block card opens the editor', surfaced, JSON.stringify(await slidesOpenProbe(page)))
+  if (!surfaced) return
+  await waitForPanelSettled(page, '.bento-slides-fullscreen')
+  await sleep(400)
+  const ready = await page.evaluate(() => ({
+    elements: document.querySelectorAll('.bento-slides-fullscreen .bento-canvas-stage [data-slide-element]').length,
+    zoom: [...document.querySelectorAll('.bento-slides-fullscreen button')]
+      .map((button) => button.textContent.trim())
+      .find((text) => /^\d+%$/.test(text)) ?? '',
+  }))
+  check('slides editor: it opens on the deck with every element drawn', ready.elements >= 3, JSON.stringify(ready))
+  // The zoom is what turns a distance on screen into a distance on the page, and every gesture
+  // below is driven with the mouse: a drag is measured in the deck's own pixels.
+  const scale = (Number.parseInt(ready.zoom, 10) || 100) / 100
+
+  // The row's even spacing, dragged live: three pixels to the right is 43 and 41 apart, inside the
+  // threshold, so the drag lands on 42 either side and the two widths are written on the page while
+  // the pointer is still down.
+  const middle = await slidesElementCentre(page, 'gate-b')
+  if (!middle) throw new Error('slides editor: the middle card of the row is not on screen')
+  await page.mouse.move(middle.x, middle.y)
+  await page.mouse.down()
+  await page.mouse.move(middle.x + 3 * scale, middle.y, { steps: 4 })
+  await sleep(200)
+  const gaps = await page.evaluate(() => [...document.querySelectorAll('.bento-slides-fullscreen [data-slide-gap-size]')]
+    .map((badge) => badge.textContent.trim()))
+  await page.mouse.up()
+  check('slides editor: an even gap is written on the page while the drag runs', gaps.length === 2 && gaps.every((gap) => gap === '42'), JSON.stringify(gaps))
+  // The write back into the fence is debounced, and the preview carries the body the note was last
+  // committed with — so this waits for the edit to arrive there rather than for the clock.
+  const committed = await waitForSlidesSource(page, (body) => SLIDES_LANDED.test(body))
+  const landed = await page.evaluate(() => ({
+    left: document.querySelector('.bento-slides-fullscreen .bento-canvas-stage [data-slide-element="gate-b"]')?.style.left ?? '',
+  }))
+  check('slides editor: the drag lands the card on the equal gaps and reaches the note source', landed.left === '242px' && SLIDES_LANDED.test(committed), `${JSON.stringify(landed)} committed=${SLIDES_LANDED.test(committed)}`)
+
+  // The other half of a guide: an edge that reaches another box rather than the page's own lines.
+  // The first card is dragged down onto the row's bottom edge — 44 page pixels, so its top edge
+  // reaches 150 — and the line it stops on is drawn while the pointer is down and goes the moment
+  // the pointer is let go.
+  const first = await slidesElementCentre(page, 'gate-a')
+  if (!first) throw new Error('slides editor: the first card of the row is not on screen')
+  await page.mouse.move(first.x, first.y)
+  await page.mouse.down()
+  await page.mouse.move(first.x, first.y + 44 * scale, { steps: 6 })
+  await sleep(200)
+  const lines = await page.evaluate(() => [...document.querySelectorAll('.bento-slides-fullscreen [data-slide-guide]')]
+    .filter((guide) => !guide.hasAttribute('data-slide-gap'))
+    .map((guide) => guide.getAttribute('data-slide-guide')))
+  await page.mouse.up()
+  await sleep(300)
+  const dropped = await page.evaluate(() => ({
+    top: document.querySelector('.bento-slides-fullscreen .bento-canvas-stage [data-slide-element="gate-a"]')?.style.top ?? '',
+    guides: document.querySelectorAll('.bento-slides-fullscreen [data-slide-guide]').length,
+  }))
+  check('slides editor: an edge that reaches another box draws its line while the drag runs', lines.includes('y'), JSON.stringify(lines))
+  check('slides editor: the drag lands on that line and the line goes with the pointer', dropped.top === '150px' && dropped.guides === 0, JSON.stringify(dropped))
+
+  // The a11y pass runs on the panel as a reader leaves it: with nothing selected, because the
+  // selection frame and its handles sit over the box they belong to, and axe can then neither read
+  // the text under them nor the background behind it — which it reports as a review item rather
+  // than a violation, so a selected box would quietly take its own text out of the pass. A press on
+  // the page where nothing is drawn is what clears the selection, and the point is taken from the
+  // part of the page that is on screen rather than from the page's far corner.
+  const empty = await page.evaluate(() => {
+    const canvas = document.querySelector('.bento-slides-fullscreen .bento-canvas-stage .bento-slide-shadow')?.getBoundingClientRect()
+    const stage = document.querySelector('.bento-slides-fullscreen .bento-canvas-stage')?.getBoundingClientRect()
+    if (!canvas || !stage) return null
+    const left = Math.max(canvas.left, stage.left)
+    const top = Math.max(canvas.top, stage.top)
+    const right = Math.min(canvas.right, stage.right)
+    const bottom = Math.min(canvas.bottom, stage.bottom)
+    // Every box of this deck sits in the top left of the page, so its bottom left corner is empty.
+    return right - 40 > left && bottom - 40 > top ? { x: Math.round(left + 40), y: Math.round(bottom - 40) } : null
+  })
+  if (empty) await page.mouse.click(empty.x, empty.y)
+  await sleep(300)
+
+  await ensureAxe(page)
+  const report = await runAxe(page, '.bento-slides-fullscreen')
+  check('a11y: the slides editor has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
+  // The deck paints its own colours — the page and the boxes in it are the author's theme, not the
+  // app's tokens — so axe cannot judge the text on them and hands the call to a reviewer. What was
+  // measured rather than assumed: the stack of elements at that text is the text itself, and hiding
+  // the editor's two side columns makes the item disappear, so nothing of the editor's is over it.
+  // The allowance is counted and located, not waved through: every item has to name a box on the page,
+  // and there can be at most one per box — so a review item on anything that is not a box, or on the
+  // editor's own chrome, still fails. How many of the boxes axe declines to judge is not pinned: it
+  // depends on which text it can resolve a background for, and the drags above move the boxes over
+  // each other, so the count is bounded by the deck rather than fixed at it.
+  const deckCanvas = report.incomplete.filter((item) => item.id === 'color-contrast' && /overlapped by another element/.test(item.note))
+  const unexpected = report.incomplete.filter((item) => !isReviewedIncomplete(item) && !deckCanvas.includes(item))
+  const onBoxes = deckCanvas.every((item) => Boolean(item.box))
+  check('a11y: no unexpected axe review items in the slides editor', unexpected.length === 0, JSON.stringify(unexpected))
+  check(
+    'a11y: every axe review item in the slides editor is text on one of the deck\'s own boxes',
+    deckCanvas.length >= 1 && deckCanvas.length <= ready.elements && onBoxes,
+    `canvas=${deckCanvas.length} boxes=${ready.elements} onBoxes=${onBoxes} found=${JSON.stringify(deckCanvas.map((item) => item.box))}`,
+  )
+  check('a11y: axe inspected the slides editor', report.passes >= 10, `passes=${report.passes}`)
+
+  // The menu belongs to this editor and to nothing else, and a row that cannot reach the document
+  // would read as a live menu that edits nothing: the last card is duplicated from it — one more
+  // box on the page — and then taken back with the editor's own undo.
+  const last = await slidesElementCentre(page, 'gate-c')
+  if (!last) throw new Error('slides editor: the last card of the row is not on screen')
+  await page.mouse.click(last.x, last.y, { button: 'right' })
+  const opened = await page.waitForSelector('[role="menu"]', { timeout: 10_000 }).then(() => true, () => false)
+  const rows = await page.evaluate(() => [...document.querySelectorAll('[role="menu"] button')].map((row) => row.textContent.trim()))
+  check('slides editor: right-clicking an element opens the editor\'s own menu', opened, JSON.stringify(rows))
+  check('slides editor: the menu carries the rows this editor can do', rows.length >= 5, JSON.stringify(rows))
+  const duplicate = await menuRowCentre(page, LABELS.slidesDuplicate)
+  check('slides editor: the menu offers a duplicate row', Boolean(duplicate))
+  if (duplicate) {
+    await page.mouse.click(duplicate.x, duplicate.y)
+    await sleep(400)
+    const grown = await slidesElementCount(page)
+    check('slides editor: duplicating a card puts a second box on the page', grown === 4, `elements=${grown}`)
+    await pressCombo(page, ['Control', 'z'])
+    await sleep(400)
+    const undone = await slidesElementCount(page)
+    check('slides editor: the editor takes its own edit back from the keyboard', undone === 3, `elements=${undone}`)
+  }
+
+  // Fitting the page is the one view control whose answer is measured rather than stepped: the
+  // stage is narrower than the deck at this size, so the whole page cannot be on screen at 100%.
+  const beforeFit = await readSlidesZoom(page)
+  await clickButton(page, ['页面适应窗口', 'Fit the page to the window'])
+  await sleep(400)
+  const fitted = await readSlidesZoom(page)
+  check('slides editor: fitting the page shows all of it at once', fitted !== null && beforeFit !== null && fitted < beforeFit, `before=${beforeFit} after=${fitted}`)
+
+  // Panning needs something to pan to, so the view is zoomed past the page again and the stage is
+  // asked to scroll. What has to hold is both halves: the stage moves, and the document does not.
+  await clickButton(page, ['放大', 'Zoom in'])
+  await clickButton(page, ['放大', 'Zoom in'])
+  await sleep(400)
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+  })
+  const stage = await page.evaluate(() => {
+    const element = document.querySelector('.bento-slides-fullscreen .bento-canvas-stage')
+    const rect = element.getBoundingClientRect()
+    return {
+      x: Math.round(rect.left + rect.width / 2),
+      y: Math.round(rect.top + rect.height / 2),
+      scrollLeft: element.scrollLeft,
+      overflow: element.scrollWidth - element.clientWidth,
+    }
+  })
+  await page.keyboard.down(' ')
+  await page.mouse.move(stage.x, stage.y)
+  await page.mouse.down()
+  await page.mouse.move(stage.x - 80, stage.y, { steps: 8 })
+  await page.mouse.up()
+  await page.keyboard.up(' ')
+  await sleep(300)
+  const panned = await page.evaluate(() => ({
+    scrollLeft: document.querySelector('.bento-slides-fullscreen .bento-canvas-stage').scrollLeft,
+  }))
+  check('slides editor: space and a drag pan the view', stage.overflow > 0 && panned.scrollLeft > stage.scrollLeft, JSON.stringify({ stage, panned }))
+  check('slides editor: panning leaves the page where it was', SLIDES_LANDED.test(await readSlidesSource(page)))
+
+
+  await assertSlidesPrint(page)
+
+  await page.keyboard.press('Escape')
+  const closed = await page.waitForFunction(
+    () => !document.querySelector('.bento-slides-fullscreen'),
+    { timeout: 10_000 },
+  ).then(() => true, () => false)
+  check('slides editor: escape closes it', closed)
+  // The focus is asserted against the deck's own full screen control rather than against the marked
+  // node the scenario pressed: the drags above are edits, the write they schedule re-renders the
+  // card, and the button that was pressed does not exist any more. What has to hold is that the
+  // keyboard came back to the control that opens this editor — found by its own attribute — and not
+  // that it fell to the body or stayed in the surface that just closed.
+  const focus = await page.evaluate(() => {
+    const control = document.querySelector('.ink-prose [data-bento-slides] [data-bento-slides-fullscreen]')
+    return {
+      returned: Boolean(control) && document.activeElement === control,
+      active: document.activeElement instanceof HTMLElement
+        ? document.activeElement.getAttribute('aria-label') ?? document.activeElement.tagName.toLowerCase()
+        : 'nothing',
+    }
+  })
+  check('slides editor: it hands focus back to the control it was opened from', focus.returned, JSON.stringify(focus))
+}
+
+/**
+ * The editor's other exit: the print control hands the browser a sheet built from the deck rather
+ * than from the screen. The dialog blocks the thread and cannot be read from a gate, so what is
+ * asserted is the paper the dialog is called on — one page box per page of the deck, each at the
+ * deck's own page size, laid out off screen and out of the tab order. The sheet lives only as long
+ * as the dialog, so the page watches it from inside instead of sampling it after the press.
+ */
+async function assertSlidesPrint(page) {
+  const rail = await page.evaluate(() => document.querySelectorAll('.bento-slides-fullscreen [data-slide-thumbnail]').length)
+  await page.evaluate(() => {
+    window.__gatePrintSheet = null
+    window.__gatePrintWatch = window.setInterval(() => {
+      const sheet = document.querySelector('[data-bento-print]')
+      if (!sheet || window.__gatePrintSheet) return
+      const box = sheet.querySelector('.bento-print-page')?.getBoundingClientRect()
+      const rule = [...document.styleSheets]
+        .flatMap((style) => { try { return [...style.cssRules] } catch { return [] } })
+        .find((entry) => entry.constructor.name === 'CSSPageRule')
+      window.__gatePrintSheet = {
+        pages: sheet.querySelectorAll('.bento-print-page').length,
+        hidden: sheet.getAttribute('aria-hidden') === 'true',
+        inert: sheet.hasAttribute('inert'),
+        size: box ? `${Math.round(box.width)}x${Math.round(box.height)}` : '',
+        rule: rule?.cssText ?? '',
+        // Off screen rather than hidden: a hidden subtree has no box, and a canvas with no box
+        // draws nothing onto the paper.
+        offScreen: sheet.getBoundingClientRect().left < 0,
+      }
+    }, 50)
+  })
+  await clickButton(page, LABELS.slidesPrint)
+  await sleep(2_500)
+  const sheet = await page.evaluate(() => {
+    window.clearInterval(window.__gatePrintWatch)
+    return window.__gatePrintSheet
+  })
+  check('slides editor: the print control hands the browser a sheet', Boolean(sheet) && sheet.pages === rail && rail > 0, `sheet=${JSON.stringify(sheet)} rail=${rail}`)
+  check('slides editor: the sheet is the deck\'s own page at 1:1', sheet?.size === '1280x720' && /size:\s*1280px 720px/.test(sheet?.rule ?? ''), JSON.stringify(sheet))
+  check('slides editor: the sheet is off screen and out of the tab order', Boolean(sheet) && sheet.offScreen && sheet.hidden && sheet.inert, JSON.stringify(sheet))
 }
 
 async function assertFullscreenToolbars(page) {
@@ -1684,6 +2135,7 @@ async function main() {
     await assertDeckImageExport(page)
     await assertMindmapBlock(page)
     await assertMindmapSplitEditing(page)
+    await assertSlidesEditor(page)
     await assertFullscreenToolbars(page)
     await assertContextMenuNesting(page)
 

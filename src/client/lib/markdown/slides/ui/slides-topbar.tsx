@@ -133,6 +133,9 @@ export const SlidesTopbar = memo(function SlidesTopbar({
             type='button'
             onClick={onUndo}
             disabled={!canUndo}
+            // The icon is the whole control, so the name has to be stated: `title` is a tooltip
+            // first and a last-resort name second, and the browser gate presses controls by name.
+            aria-label={t('common.undo')}
             title={t('common.undo')}
             className='flex size-7 items-center justify-center rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] disabled:opacity-30'
           >
@@ -142,6 +145,7 @@ export const SlidesTopbar = memo(function SlidesTopbar({
             type='button'
             onClick={onRedo}
             disabled={!canRedo}
+            aria-label={t('contextmenu.redo')}
             title={t('contextmenu.redo')}
             className='flex size-7 items-center justify-center rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] disabled:opacity-30'
           >
@@ -165,6 +169,11 @@ export const SlidesTopbar = memo(function SlidesTopbar({
             <button
               type='button'
               onClick={() => setShapeMenuOpen((o) => !o)}
+              // A disclosure, not a command: the panel it opens is drawn below the control, so the
+              // open state is what a screen reader has to hear — and what the toolbar sweep reads
+              // the control as, which is how the two panels stay under the gate.
+              aria-expanded={shapeMenuOpen}
+              aria-haspopup='menu'
               className='flex items-center gap-1 h-7 rounded px-2 font-medium hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             >
               <Square size={13} />
@@ -329,6 +338,8 @@ export const SlidesTopbar = memo(function SlidesTopbar({
             <button
               type='button'
               onClick={() => setChartMenuOpen((o) => !o)}
+              aria-expanded={chartMenuOpen}
+              aria-haspopup='menu'
               className='flex items-center gap-1 h-7 rounded px-2 font-medium hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             >
               <BarChart3 size={13} />
@@ -399,6 +410,7 @@ export const SlidesTopbar = memo(function SlidesTopbar({
           type='button'
           onClick={onExportPdf}
           disabled={!onExportPdf}
+          aria-label={onExportPdf ? t('slides.tool_print') : t('slides.print_unavailable')}
           title={onExportPdf ? t('slides.tool_print') : t('slides.print_unavailable')}
           className='flex size-7 items-center justify-center rounded hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] disabled:pointer-events-none disabled:opacity-40'
         >
@@ -439,6 +451,7 @@ export const SlidesTopbar = memo(function SlidesTopbar({
         <button
           type='button'
           onClick={onOpenSettings}
+          aria-label={t('slides.tool_settings')}
           title={t('slides.tool_settings')}
           className='flex size-7 items-center justify-center rounded hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         >
@@ -448,6 +461,7 @@ export const SlidesTopbar = memo(function SlidesTopbar({
         <button
           type='button'
           onClick={onOpenHelp}
+          aria-label={t('slides.tool_help')}
           title={t('slides.tool_help')}
           className='flex size-7 items-center justify-center rounded hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         >
@@ -459,6 +473,7 @@ export const SlidesTopbar = memo(function SlidesTopbar({
         <button
           type='button'
           onClick={onClose}
+          aria-label={t('common.close')}
           title={t('common.close')}
           className='flex size-7 items-center justify-center rounded hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         >
