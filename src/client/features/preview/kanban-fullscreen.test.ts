@@ -117,6 +117,30 @@ describe('kanban full screen mounting and views', () => {
   })
 })
 
+describe('kanban full screen context menu', () => {
+  it('opens dedicated Kanban context menu on right click in fullscreen', async () => {
+    const surface = await mountSurface()
+    const rendered = renderElement(createElement(Harness, { session: surface.session }))
+
+    await act(async () => {
+      rendered.container.querySelector<HTMLButtonElement>('[data-kanban-fullscreen-trigger]')!.click()
+    })
+
+    const overlay = document.querySelector<HTMLElement>('.kanban-fullscreen')!
+    const board = overlay.querySelector<HTMLElement>('[data-item-id]') || overlay.querySelector<HTMLElement>('main')!
+
+    await act(async () => {
+      board.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 200, clientY: 200 }))
+    })
+
+    const menu = document.querySelector<HTMLElement>('[role="menu"]')
+    expect(menu).not.toBeNull()
+
+    rendered.unmount()
+    surface.host.remove()
+  })
+})
+
 describe('kanban full screen close and session updates', () => {
   it('closes on Escape key press and flushes session data', async () => {
     const surface = await mountSurface()

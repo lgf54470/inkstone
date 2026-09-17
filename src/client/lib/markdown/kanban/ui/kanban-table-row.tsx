@@ -298,7 +298,7 @@ export function KanbanTableRow({
   const subtasks = item.subtasks || []
 
   return (
-    <div className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-colors hover:bg-[var(--bg-hover)]'>
+    <div data-item-id={item.id} className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-colors hover:bg-[var(--bg-hover)]'>
       <div className='flex min-h-10 items-center text-[length:var(--text-12)]'>
         <div className='w-10 shrink-0 p-2.5 text-center'>
           <input

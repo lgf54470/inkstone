@@ -79,6 +79,7 @@ function GanttBar({
   return (
     <div className='relative h-10'>
       <div
+        data-item-id={item.id}
         onClick={() => onOpenDetail(item)}
         onDoubleClick={(e) => {
           e.stopPropagation()

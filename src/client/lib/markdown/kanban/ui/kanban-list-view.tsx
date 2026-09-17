@@ -267,7 +267,7 @@ function KanbanListRow({
   const subtasks = item.subtasks ?? []
 
   return (
-    <div className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] last:border-b-0'>
+    <div data-item-id={item.id} className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] last:border-b-0'>
       <div
         role='button'
         tabIndex={0}

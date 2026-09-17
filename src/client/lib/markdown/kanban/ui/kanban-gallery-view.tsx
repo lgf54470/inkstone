@@ -201,6 +201,7 @@ function GalleryCard({
     <div
       role='button'
       tabIndex={0}
+      data-item-id={item.id}
       onClick={() => onOpenDetail(item)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') onOpenDetail(item)

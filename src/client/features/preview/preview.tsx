@@ -24,6 +24,7 @@ export const Preview = memo(function Preview(props: PreviewProps) {
         // and the full screen overlay is that surface too — it is portaled into this
         // subtree, so without this the note's menu opens over the one already there.
         if (isExcalidrawSurface(event.target as HTMLElement)) return
+        if (Boolean(b.kanbanFullscreen) || Boolean((event.target as HTMLElement)?.closest('.kanban-fullscreen'))) return
         event.preventDefault()
         onContextMenu?.(event, event.target as HTMLElement)
       }}

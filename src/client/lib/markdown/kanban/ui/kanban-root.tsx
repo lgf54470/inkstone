@@ -10,6 +10,7 @@ import { KanbanBatchBar } from './kanban-batch-bar'
 import { KanbanBoardView } from './kanban-board-view'
 import { KanbanCalendarView } from './kanban-calendar-view'
 import { KanbanChartView } from './kanban-chart-view'
+import { KanbanContextMenu } from './kanban-context-menu'
 import { KanbanGalleryView } from './kanban-gallery-view'
 import { KanbanGanttView } from './kanban-gantt-view'
 import { KanbanHeader } from './kanban-header'
@@ -17,7 +18,7 @@ import { KanbanItemDetail } from './kanban-item-detail'
 import { KanbanListView } from './kanban-list-view'
 import { KanbanTableView } from './kanban-table-view'
 import { KanbanTimelineView } from './kanban-timeline-view'
-import { useKanbanRootState } from './kanban-root-hooks'
+import { useKanbanContextMenuState, useKanbanRootState } from './kanban-root-hooks'
 import type { CardSize } from './kanban-view-options'
 
 interface KanbanRootProps {
@@ -244,18 +245,19 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
   )
 }
 
-export const KanbanRoot = memo(function KanbanRoot({
-  initialData,
+function KanbanRootOverlays({
+  state,
+  menu,
   isFullscreen,
-  onUpdateData,
   onToggleFullscreen,
-}: KanbanRootProps) {
-  const state = useKanbanRootState(initialData, onUpdateData)
-
+}: {
+  state: ReturnType<typeof useKanbanRootState>
+  menu: ReturnType<typeof useKanbanContextMenuState>
+  isFullscreen?: boolean
+  onToggleFullscreen?: () => void
+}) {
   return (
-    <div className='flex h-full w-full flex-col overflow-hidden bg-[var(--bg-surface)] text-[var(--text-primary)]'>
-      <KanbanTopBar state={state} isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
-      <KanbanMain state={state} />
+    <>
       <KanbanItemDetail
         item={state.detailItem}
         columns={state.data.columns}
@@ -264,6 +266,51 @@ export const KanbanRoot = memo(function KanbanRoot({
         onDelete={state.items.handleDeleteItem}
         onAddColumnOption={state.columnOps.handleAddColumnOption}
       />
+      <KanbanContextMenu
+        point={menu.point}
+        targetItem={menu.targetItem}
+        selectedCount={state.selection.selectedIds.size}
+        activeView={state.filterSort.activeView}
+        views={state.data.views}
+        cardSize={state.cardSize}
+        canUndo={state.history.canUndo}
+        canRedo={state.history.canRedo}
+        isFullscreen={isFullscreen}
+        onClose={menu.handleClose}
+        onOpenDetail={state.setDetailItem}
+        onDuplicateItem={menu.handleDuplicateItem}
+        onDeleteItem={state.items.handleDeleteItem}
+        onAddItem={() => state.adds.handleAddItem()}
+        onAddColumn={state.adds.handleAddColumn}
+        onSelectView={state.setActiveViewId}
+        onChangeCardSize={state.setCardSize}
+        onBatchDelete={state.selection.handleBatchDelete}
+        onClearSelection={state.selection.handleClearSelection}
+        onUndo={state.history.undo}
+        onRedo={state.history.redo}
+        onToggleFullscreen={onToggleFullscreen}
+      />
+    </>
+  )
+}
+
+export const KanbanRoot = memo(function KanbanRoot({
+  initialData,
+  isFullscreen,
+  onUpdateData,
+  onToggleFullscreen,
+}: KanbanRootProps) {
+  const state = useKanbanRootState(initialData, onUpdateData)
+  const menu = useKanbanContextMenuState(state.data, state.commitData)
+
+  return (
+    <div
+      onContextMenu={menu.handleContextMenu}
+      className='flex h-full w-full flex-col overflow-hidden bg-[var(--bg-surface)] text-[var(--text-primary)]'
+    >
+      <KanbanTopBar state={state} isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
+      <KanbanMain state={state} />
+      <KanbanRootOverlays state={state} menu={menu} isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
     </div>
   )
 })

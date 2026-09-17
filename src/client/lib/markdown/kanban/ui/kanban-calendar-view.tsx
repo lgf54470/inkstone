@@ -92,6 +92,7 @@ function CalendarEventBar({
   return (
     <button
       type='button'
+      data-item-id={item.id}
       onClick={(e) => {
         e.stopPropagation()
         onOpenDetail(item)

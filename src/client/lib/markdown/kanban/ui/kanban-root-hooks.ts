@@ -345,3 +345,63 @@ export function useKanbanRootState(initialData: KanbanData, onUpdateData: (next:
     handleUpdateBoardTitle,
   }
 }
+
+function duplicateKanbanItem(item: KanbanItem): KanbanItem {
+  return {
+    ...item,
+    id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    title: `${item.title} (${t('common.copy')})`,
+    subtasks: item.subtasks?.map((st) => ({
+      ...st,
+      id: `subtask-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    })),
+  }
+}
+
+export function useKanbanContextMenuState(
+  data: KanbanData,
+  commitData: (next: KanbanData) => void,
+) {
+  const [point, setPoint] = useState<{ x: number; y: number } | null>(null)
+  const [targetItem, setTargetItem] = useState<KanbanItem | null>(null)
+
+  const handleDuplicateItem = useCallback(
+    (item: KanbanItem) => {
+      const newItem = duplicateKanbanItem(item)
+      const idx = data.items.findIndex((i) => i.id === item.id)
+      const nextItems = [...data.items]
+      if (idx >= 0) nextItems.splice(idx + 1, 0, newItem)
+      else nextItems.push(newItem)
+      commitData({ ...data, items: nextItems })
+    },
+    [data, commitData],
+  )
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('input, textarea, [contenteditable="true"]')) {
+        e.stopPropagation()
+        return
+      }
+      e.preventDefault()
+      e.stopPropagation()
+
+      const itemEl = target.closest('[data-item-id]') as HTMLElement | null
+      const itemId = itemEl?.dataset.itemId
+      const found = itemId ? data.items.find((it) => it.id === itemId) || null : null
+
+      setTargetItem(found)
+      setPoint({ x: e.clientX, y: e.clientY })
+    },
+    [data.items],
+  )
+
+  const handleClose = useCallback(() => {
+    setPoint(null)
+    setTargetItem(null)
+  }, [])
+
+  return { point, targetItem, handleContextMenu, handleClose, handleDuplicateItem }
+}
+

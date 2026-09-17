@@ -92,6 +92,7 @@ function TimelineChart({
           return (
             <div key={item.id} className='relative h-10'>
               <div
+                data-item-id={item.id}
                 onClick={() => onOpenDetail(item)}
                 style={{ left: `${left}px`, width: `${width}px` }}
                 className='absolute top-2 h-6 cursor-pointer rounded-[var(--r-full)] bg-[var(--accent)] px-2.5 text-[length:var(--text-11)] font-medium text-[var(--accent-contrast)] shadow-[var(--shadow-xs)] hover:opacity-90 flex items-center justify-between'

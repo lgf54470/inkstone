@@ -284,20 +284,14 @@ export const KanbanCard = memo(function KanbanCard({
     <div
       role='button'
       tabIndex={0}
+      data-item-id={item.id}
       draggable={!titleState.isEditing}
       onDragStart={(e) => onDragStart(e, item.id)}
       onDragEnd={onDragEnd}
       onDragOver={dndHandlers.handleDragOver}
       onDrop={dndHandlers.handleDrop}
       onClick={() => onOpenDetail(item)}
-      onKeyDown={(e) =>
-        handleCardKeyDown(
-          e,
-          titleState.isEditing,
-          () => onOpenDetail(item),
-          onMoveColumn ? (dir) => onMoveColumn(item.id, dir) : undefined,
-        )
-      }
+      onKeyDown={(e) => handleCardKeyDown(e, titleState.isEditing, () => onOpenDetail(item), onMoveColumn ? (d) => onMoveColumn(item.id, d) : undefined)}
       className={`group/card relative flex flex-col rounded-[var(--r-lg)] border bg-[var(--bg-surface)] text-left shadow-[var(--shadow-xs)] transition-[box-shadow,border-color,background-color] hover:border-[var(--border-default)] hover:shadow-[var(--shadow-sm)] ${padClass} ${
         isSelected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border-subtle)]'
       }`}

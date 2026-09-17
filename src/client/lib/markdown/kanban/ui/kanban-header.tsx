@@ -323,7 +323,7 @@ function KanbanFullscreenTitle({
             setIsEditing(false)
           }
         }}
-        className='rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-18)] font-bold text-[var(--text-primary)] outline-none'
+        className='rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-14)] font-bold text-[var(--text-primary)] outline-none'
       />
     )
   }
@@ -336,9 +336,10 @@ function KanbanFullscreenTitle({
           setIsEditing(true)
         }
       }}
-      className={`text-[length:var(--text-18)] font-bold tracking-[var(--tracking-title)] text-[var(--text-primary)] ${
+      className={`text-[length:var(--text-14)] font-bold tracking-[var(--tracking-title)] text-[var(--text-primary)] max-w-44 truncate ${
         onUpdateTitle ? 'cursor-pointer hover:opacity-80' : ''
       }`}
+      title={title || t('preview.kanban_untitled')}
     >
       {title || t('preview.kanban_untitled')}
     </h2>
@@ -384,22 +385,24 @@ export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps)
   const tagsCol = data.columns.find((c) => c.id === 'tags')
 
   return (
-    <header className='flex flex-col gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3'>
-      {isFullscreen && (
-        <div className='flex items-center justify-between'>
-          <KanbanFullscreenTitle
-            title={data.title}
-            onUpdateTitle={onUpdateBoardTitle}
+    <header className='flex flex-col gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'>
+      <div className='flex flex-wrap items-center justify-between gap-2.5'>
+        <div className='flex items-center gap-2.5 min-w-0'>
+          {isFullscreen && (
+            <>
+              <KanbanFullscreenTitle
+                title={data.title}
+                onUpdateTitle={onUpdateBoardTitle}
+              />
+              <div className='h-4 w-px bg-[var(--border-subtle)] shrink-0' />
+            </>
+          )}
+          <KanbanViewTabs
+            views={data.views}
+            activeViewId={activeView.id}
+            onSelectView={props.onSelectView}
           />
         </div>
-      )}
-
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <KanbanViewTabs
-          views={data.views}
-          activeViewId={activeView.id}
-          onSelectView={props.onSelectView}
-        />
         <KanbanHeaderActions
           {...props}
           columns={data.columns}
