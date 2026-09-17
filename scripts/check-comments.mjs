@@ -2955,6 +2955,18 @@ const allowed = new Map([
     '/** The deck with one page dropped onto another\'s slot. */',
     '/**\n * The stack with one element moved. The array IS the stack — the last element paints on top —\n * so "up" is toward the end and "front" is the end itself, which is why the layer list shows\n * the array reversed and both directions stay one rule.\n */',
   ]],
+  ['src/client/lib/markdown/slides/image-asset.ts', [
+    '/**\n * Sizing a picture a person just added to a slide. The bytes themselves live in Inkstone\'s\n * attachment store and the slide keeps the address — the deck\'s own `assets` table stays\n * what it is for a deck imported from a self-contained file, where the bytes travel with it.\n */',
+    '/** A courtesy cap, so a huge file is refused before a slow upload starts; the server is still the authority. */',
+    '/** How wide a new picture lands on the page; its height follows the picture\'s own shape. */',
+    '/**\n * The picture\'s own pixel size, or null when the browser will not say — no decoder, or a\n * format it refuses to touch. Null is not a failure: the caller falls back to a default box,\n * which crops the picture rather than distorting it.\n */',
+    '// Best effort by design: the size only picks the starting box, so an undecodable file is',
+    '// answered by the default box instead of by an error the person cannot act on.',
+    '// Best-effort bitmap release; a failed close only leaks until GC reclaims it.',
+  ]],
+  ['src/client/lib/markdown/slides/image-asset.test.ts', [
+    '/** jsdom has no image decoder, so each case installs the one it needs and puts back what was there. */',
+  ]],
   ['src/client/lib/markdown/slides/media.ts', [
     '/**\n * What a media element is allowed to point at. A deck\'s body is untrusted input, and a\n * media source is a URL a browser will fetch or a data: URI it will decode, so the rule is\n * the same one the SVG gate uses: bytes the file itself carries, or a plain web address.\n * `javascript:`, `file:` and friends never become a source, and a data: URI only counts\n * when its own media type is media — `data:text/html` is a document, not a clip.\n */',
     '// No scheme at all is a relative or root-relative path, which resolves inside the app.',
@@ -3031,6 +3043,21 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/session.ts', [
     '/** An edit exists that the note has not taken yet. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/element-factories.ts', [
+    '/**\n * A picture the person chose. The source is theirs — there is no sample artwork to fall\n * back on, because a placeholder photograph that silently stands in for the file they\n * picked is worse than an insert that says it failed.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/insert-image.ts', [
+    '/**\n * One picture, from the dialog to a source address the slide can point at. Every ending is\n * named rather than thrown: the person who cancelled sees nothing, and the person whose\n * file was refused is told which of the two things went wrong — the file was too large, or\n * the upload did not work — instead of a button that appeared to do nothing.\n */',
+    '/** The real wiring: the browser\'s dialog, the deck\'s note as the attachment\'s owner, Inkstone\'s store as the host. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/insert-image.test.ts', [
+    '// The hint interpolates the cap; without the locale resources loaded the message id',
+    '// comes back as-is, so what is asserted here is which message the cap goes into.',
+  ]],
+  ['src/client/lib/markdown/slides/ui/pick-image.ts', [
+    '// Safari has no `cancel` event on a file input: the dialog closing hands focus back to',
+    '// the window with no change, and that is the only signal that nothing was picked.',
   ]],
   ['src/client/lib/markdown/slides/ui/copy-link.ts', [
     '/**\n * Copies the address of the page the deck is open on, which is the link to the note\n * holding it — the app keeps no per-note route, so the address bar is the most\n * specific thing pointing at this note.\n *\n * Copying fails for reasons the reader cannot see: an insecure origin, a denied\n * clipboard permission, a browser without the API at all. Each of those ends in a\n * toast rather than silence, because a copy that quietly did nothing is worse than\n * one that says it did not work — and the failure is logged for whoever has to\n * explain it later.\n */',
@@ -3137,7 +3164,11 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/slides-root.tsx', [
     '/** Whether every edit has reached the note; undefined on a surface without a save control. */',
+    '/** The note holding the deck, which owns any picture added here; null on a surface with no note. */',
     '/** A double click and the menu\'s own row are the two ways into typing; both land here. */',
+    '// An added picture arrives after a dialog and an upload, by which time the render this',
+    '// handler belongs to may be stale; the ref is what those writes read instead of a',
+    '// snapshot that predates whatever happened while the file dialog was open.',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-settings-dialog.tsx', [
     '// A colour input only accepts `#rrggbb`; a theme written as a named colour or a CSS',

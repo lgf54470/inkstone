@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { imageBoxForAspect } from '../image-asset'
 import {
   createDefaultChart,
   createDefaultCode,
@@ -49,12 +50,19 @@ describe('basic element factories', () => {
     }
   })
 
-  it('creates default image element with fallback source', () => {
-    const img = createDefaultImage()
+})
+
+describe('image factory', () => {
+  it('points at the chosen picture and takes the shape it was measured at', () => {
+    const img = createDefaultImage('/api/files/abc/content', { w: 320, h: 180 })
     expect(img.type).toBe('image')
-    expect(img.src).toContain('unsplash.com')
-    expect(img.w).toBe(480)
-    expect(img.h).toBe(300)
+    expect(img.src).toBe('/api/files/abc/content')
+    expect({ w: img.w, h: img.h }).toEqual({ w: 320, h: 180 })
+  })
+
+  it('falls back to the same landscape box the unknown-size path uses', () => {
+    const img = createDefaultImage('/api/files/abc/content')
+    expect({ w: img.w, h: img.h }).toEqual(imageBoxForAspect())
   })
 })
 

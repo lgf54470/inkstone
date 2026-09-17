@@ -150,6 +150,7 @@ function renderSlidesEntry(entry: SlidesBlockEntry, options: SlidesMountOptions)
   entry.root.render(
     createElement(SlidesRoot, {
       initialData: entry.data,
+      noteId: entry.noteId,
       onUpdateData: (next) => updateSlidesData(entry, () => next),
       onToggleFullscreen: () => options.onOpenFullscreen?.(entry.host),
     }),

@@ -51,6 +51,7 @@ export const SlidesFullscreen = memo(function SlidesFullscreen({
           initialData={data}
           isFullscreen
           isSaved={isSaved}
+          noteId={session.noteId()}
           onSave={onSave}
           onUpdateData={handleUpdate}
           onToggleFullscreen={handleClose}

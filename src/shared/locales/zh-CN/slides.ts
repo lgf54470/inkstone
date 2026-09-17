@@ -177,4 +177,8 @@ export const messages = {
 'slides.embed_no_live': '在新标签页打开——笔记内不运行嵌入视图',
 'slides.embed_unavailable': '视图不可用',
 'slides.element_unsupported': '不支持的元素',
+'slides.image_failed': '插入图片失败',
+'slides.image_too_large': '图片过大',
+'slides.image_too_large_hint': '请选择小于 {value0} MB 的图片。',
+'slides.image_slide_gone': '这张图片原本要放入的幻灯片已不存在。',
 }

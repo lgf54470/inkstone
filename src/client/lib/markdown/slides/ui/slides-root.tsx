@@ -19,7 +19,9 @@ import { LayoutPicker } from './layout-picker'
 import { SlidesContextMenu, type SlidesMenuState, type SlidesMenuTarget } from './slides-context-menu'
 import { instantiateLayout, layoutById } from '../layouts'
 import { moveSlide, reorderElement, reorderSlide } from '../order'
+import { useUi } from '../../../../store/ui'
 import { copySlidesLink } from './copy-link'
+import { imageInsertToast, insertImageFromPicker, noteImageDeps } from './insert-image'
 import {
   createDefaultChart,
   createDefaultCode,
@@ -35,6 +37,8 @@ interface SlidesRootProps {
   isFullscreen?: boolean
   /** Whether every edit has reached the note; undefined on a surface without a save control. */
   isSaved?: boolean
+  /** The note holding the deck, which owns any picture added here; null on a surface with no note. */
+  noteId?: string | null
   onSave?: () => void
   onUpdateData: (data: BentoDoc) => void
   onToggleFullscreen?: () => void
@@ -44,6 +48,7 @@ export const SlidesRoot = memo(function SlidesRoot({
   initialData,
   isFullscreen = false,
   isSaved,
+  noteId = null,
   onSave,
   onUpdateData,
   onToggleFullscreen,
@@ -52,6 +57,11 @@ export const SlidesRoot = memo(function SlidesRoot({
     initialData,
     onUpdateData,
   )
+  // An added picture arrives after a dialog and an upload, by which time the render this
+  // handler belongs to may be stale; the ref is what those writes read instead of a
+  // snapshot that predates whatever happened while the file dialog was open.
+  const dataRef = useRef(data)
+  dataRef.current = data
 
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
   const [activeElementId, setActiveElementId] = useState<string | null>(null)
@@ -128,12 +138,41 @@ export const SlidesRoot = memo(function SlidesRoot({
     [activeSlide, data.theme.accent, handleUpdateSlide],
   )
 
-  const handleAddImage = useCallback(() => {
+  const insertElementInto = useCallback(
+    (slideId: string, element: SlideElement): boolean => {
+      const current = dataRef.current
+      const at = current.slides.findIndex((slide) => slide.id === slideId)
+      if (at < 0) return false
+      const nextSlides = current.slides.map((slide, idx) =>
+        idx === at ? { ...slide, elements: [...slide.elements, element] } : slide,
+      )
+      commitData({ ...current, slides: nextSlides })
+      return true
+    },
+    [commitData],
+  )
+
+  const handleAddImage = useCallback(async () => {
     if (!activeSlide) return
-    const newImg = createDefaultImage()
-    handleUpdateSlide({ elements: [...activeSlide.elements, newImg] })
+    const slideId = activeSlide.id
+    const result = await insertImageFromPicker(noteImageDeps(noteId))
+    if (result.status === 'cancelled') return
+    if (result.status !== 'inserted') {
+      useUi.getState().toast(imageInsertToast(result))
+      return
+    }
+    const newImg = createDefaultImage(result.src, result.box)
+    if (!insertElementInto(slideId, newImg)) {
+      console.warn('[slides] the picture is uploaded but its slide is gone')
+      useUi.getState().toast({
+        title: t('slides.image_failed'),
+        description: t('slides.image_slide_gone'),
+        tone: 'danger',
+      })
+      return
+    }
     setActiveElementId(newImg.id)
-  }, [activeSlide, handleUpdateSlide])
+  }, [activeSlide, insertElementInto, noteId])
 
   const handleAddTable = useCallback(() => {
     if (!activeSlide) return

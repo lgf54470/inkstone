@@ -1,3 +1,4 @@
+import { imageBoxForAspect } from '../image-asset'
 import type {
   ChartDatum,
   ChartElement,
@@ -44,15 +45,21 @@ export function createDefaultShape(shape: ShapeType, fill: string): ShapeElement
   }
 }
 
-export function createDefaultImage(): ImageElement {
+/**
+ * A picture the person chose. The source is theirs — there is no sample artwork to fall
+ * back on, because a placeholder photograph that silently stands in for the file they
+ * picked is worse than an insert that says it failed.
+ */
+export function createDefaultImage(src: string, box?: { w: number; h: number }): ImageElement {
+  const fallback = imageBoxForAspect()
   return {
     id: `img-${Date.now()}`,
     type: 'image',
-    src: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800',
+    src,
     x: 240,
     y: 180,
-    w: 480,
-    h: 300,
+    w: box?.w ?? fallback.w,
+    h: box?.h ?? fallback.h,
     radius: 12,
   }
 }

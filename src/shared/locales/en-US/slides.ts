@@ -177,4 +177,8 @@ export const messages = {
 'slides.embed_no_live': 'Opens in a new tab — embeds do not run in a note',
 'slides.embed_unavailable': 'View unavailable',
 'slides.element_unsupported': 'Unsupported element',
+'slides.image_failed': 'Adding the picture failed',
+'slides.image_too_large': 'Image is too large',
+'slides.image_too_large_hint': 'Pick an image under {value0} MB.',
+'slides.image_slide_gone': 'The slide this picture was meant for no longer exists.',
 }
