@@ -27,6 +27,10 @@
 | 图片裁剪（cover + x/y/scale）、文本渐变与描边、元素 blur/blend/backdropFilter、空框占位符 | `crop.test.ts`、`element-renderer.test.ts` | `859c3f3a` |
 | 不认识的元素/几何显示占位并告警，不再静默消失 | `element-renderer.test.ts` | `b67a1cd8` |
 | 官方 1.2.0 形状文档的互操作回归（字段可读、往返无损、每个元素都画出东西） | `tests/slides-interop.test.ts` | `4ad2a7f5` |
+| 侧栏拖拽重排（`order.ts` 纯函数 + 两个宿主接线） | `order.test.ts`、`slides-sidebar.test.ts` | `937ebe03` |
+| 插入图片：本地选文件 → 优化 → 附件上传 → 按原图比例落框；取消/过大/上传失败/目标页已删各有提示 | `image-asset.test.ts`、`ui/insert-image.test.ts`、`ui/pick-image.test.ts`、`ui/element-factories.test.ts` | `5906a1ea` |
+| 导出 PDF：顶栏打印入口可用；每页按 `doc.size` 1:1 离屏排版（`inert` + `aria-hidden`），图片/字体落定后开打印框，`afterprint` 收尾；全页隐藏时提示而不开空打印框 | `flow.test.ts`、`ui/slides-print.test.ts`、`ui/slides-topbar.test.ts` | `5012ff15` |
+| 「放映与打印走哪几页」单一出处（`audienceSlides`，隐藏页既不上屏也不上纸） | `flow.test.ts`、`ui/slides-presenter.test.ts` | `5012ff15` |
 
 > `6e55f34b` 是工作区里既有的在途改动（代码块净化移到渲染处），提交前只补了缺失的白名单条目——它的缺失会让仓库级 `comments:check` 为红、pre-commit 钩子拦下所有提交。
 
@@ -37,8 +41,8 @@
 ### P2 编辑器核心
 
 - 多选、框选（marquee）、吸附与参考线、空格/中键平移、⌘±/0 缩放与 fit。
-- 系统剪贴板：元素 / 整页 / 图片 / 文本（跨笔记），以及粘贴图片走 Inkstone 附件上传——**当前 `element-factories.createDefaultImage()` 仍写死 Unsplash 外链**，这是插入图片路径的主要缺口。
-- 图层拖拽排序与真·置顶/置底（现状只有上移/下移）。
+- 系统剪贴板：元素 / 整页 / 图片 / 文本（跨笔记）。插入图片已走 Inkstone 附件上传（`5906a1ea`）；元素级复制/粘贴与图片粘贴仍缺。
+- 图层真·置顶/置底已具备（`inspector-layers.tsx` 调 `reorderElement`）；图层列表内的拖拽排序仍缺。
 - 右侧面板分区补齐：排版（字族/行高/字距）、填充与描边、图片（fit/圆角/裁剪）、图表数据与表格联动、表格就地编辑、媒体源与播放、代码语言与主题、嵌入、效果、放映、布局、备注、交互。
 - 评论线程（元素/点/整页锚点、回复、已解决；仅编辑器可见，不进放映与打印）。
 - 顶栏测量式折叠与手机端 Insert/More 菜单。
@@ -49,13 +53,12 @@
 - 过渡与 morph（按 `morphId ?? id` 配对）、元素入场与交错、`countUp`、`kenburns`、`fx.loop`（motion-path / dash-march）。
 - `fx.step` 逐条显示：→ 逐条、← 回收、画布上的顺序徽标、右键菜单的真实行为。
 - 演讲者独立窗口（笔记 / 计时 / 当前与下一页预览 / `G` 全览 / 被拦截时的降级）。
-- 激光笔、黑屏、减少动画、元素 `link` 跳转、`stateOf` 状态页导航、`hover{focusGroup|reveal}`、`{{page}}/{{date}}` 字段。
+- 激光笔、黑屏、减少动画、元素 `link` 跳转、`stateOf` 状态页导航、`hover{focusGroup|reveal}`、`{{page}}/{{date}}` 字段。`stateOf` 落地前，`audienceSlides`（`flow.ts`）刻意不把它移出线性流：没有状态导航时移出会让那些内容无处可达；两份过滤在同一处，改的时候一次改完。
 - 触屏手势（点击/滑动翻页、双指缩放、长按菜单）。
 
 ### P4 输出
 
-- PDF：当前顶栏的打印入口在不可用时是禁用态，尚无真正的演示稿打印管线（项目里已有 `features/presentation/deck-print.tsx` 可复用其分页与离屏布局思路）。
-- 逐页 PNG/SVG 导出 + zip 打包。
+- 逐页 PNG/SVG 导出 + zip 打包（PDF 已走浏览器打印管线，见上表；栅格化可直接复用 `features/presentation/deck-image.ts`）。
 - `.bento.html` / `.bento.json` 导出与导入（含官方文件），导入时给出 findings。
 - 版本历史 / 恢复（与笔记历史、IndexedDB 快照打通）。
 
