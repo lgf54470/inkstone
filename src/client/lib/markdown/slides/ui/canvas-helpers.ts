@@ -14,6 +14,11 @@ export function getElementBoxStyle(el: SlideElement): CSSProperties {
     height: `${el.h}px`,
     transform: rot,
     opacity: op,
+    // The three ways the format lets an element sit INTO the page rather than on it: it can
+    // be blurred, mixed with what is under it, or filter what shows through it.
+    filter: el.blur ? `blur(${el.blur}px)` : undefined,
+    mixBlendMode: (el.blend as CSSProperties['mixBlendMode']) || undefined,
+    backdropFilter: el.backdropFilter || undefined,
     boxSizing: 'border-box',
   }
 }
@@ -21,11 +26,24 @@ export function getElementBoxStyle(el: SlideElement): CSSProperties {
 export function getTextStyle(el: TextElement): CSSProperties {
   const isHeadline = el.fontSize >= 40
   const defaultFamily = isHeadline ? "'Fraunces', Georgia, serif" : undefined
+  const gradient = el.colorGradient?.stops?.length
+    ? `linear-gradient(${el.colorGradient.angle}deg, ${el.colorGradient.stops
+        .map((stop) => `${stop.color} ${Math.round(stop.at * 100)}%`)
+        .join(', ')})`
+    : undefined
 
   return {
     fontSize: `${el.fontSize}px`,
     fontWeight: el.fontWeight ?? (isHeadline ? 900 : 'normal'),
-    color: el.color ?? 'inherit',
+    // A gradient is painted through the glyphs, which is why the fill colour has to go
+    // transparent: the letters become the shape the background is clipped to.
+    color: gradient ? 'transparent' : (el.color ?? 'inherit'),
+    backgroundImage: gradient,
+    backgroundClip: gradient ? 'text' : undefined,
+    WebkitBackgroundClip: gradient ? 'text' : undefined,
+    WebkitTextFillColor: gradient ? 'transparent' : undefined,
+    WebkitTextStrokeWidth: el.textStroke?.width ? `${el.textStroke.width}px` : undefined,
+    WebkitTextStrokeColor: el.textStroke?.color,
     textAlign: el.align ?? 'left',
     lineHeight: el.lineHeight ?? (isHeadline ? 1.05 : 1.3),
     letterSpacing: el.letterSpacing ? `${el.letterSpacing}px` : undefined,

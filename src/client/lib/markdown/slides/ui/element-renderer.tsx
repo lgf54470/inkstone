@@ -8,6 +8,7 @@ import type {
   TextElement,
 } from '../types'
 import { getShapeStyle, getTableStyle, getTextStyle } from './canvas-helpers'
+import { cropImageStyle, isIdentityCrop } from '../crop'
 import { pasteSlideRichText, sanitizeSlideRichText, sanitizeSlideSvgMarkup } from '../sanitize'
 import { pathDataIsDrawable, pathViewBox } from '../shape-path'
 import { SlideChartBlock } from './chart-block'
@@ -90,10 +91,25 @@ function TextRenderer({
   onUpdate?: (patch: Partial<SlideElement>) => void
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
+  const isEmpty = !el.html?.trim()
 
   useEffect(() => {
     if (editing) boxRef.current?.focus()
   }, [editing])
+
+  // An empty box that shows nothing is indistinguishable from a box that failed to render,
+  // so the editor draws the document's own placeholder; a show and a print never do.
+  if (isEmpty && editable && el.placeholder) {
+    return (
+      <div
+        data-slide-placeholder
+        style={getTextStyle(el)}
+        className='size-full overflow-hidden leading-snug break-words opacity-40'
+      >
+        {el.placeholder}
+      </div>
+    )
+  }
 
   return (
     <div
@@ -187,17 +203,25 @@ function ShapeRenderer({ el }: { el: ShapeElement }) {
 }
 
 function ImageRenderer({ el }: { el: ImageElement }) {
-  const fitClass = el.fit === 'cover' ? 'object-cover' : 'object-contain'
-  const style = el.radius ? { borderRadius: `${el.radius}px` } : undefined
-
-  return (
+  const radius = el.radius ? `${el.radius}px` : undefined
+  const cropped = !isIdentityCrop(el.crop)
+  const picture = (
     <img
       src={el.src}
       alt=''
-      style={style}
-      className={`size-full overflow-hidden ${fitClass}`}
+      style={cropped && el.crop ? cropImageStyle(el.crop) : { borderRadius: radius }}
+      className={`size-full overflow-hidden ${el.fit === 'cover' ? 'object-cover' : 'object-contain'}`}
       draggable={false}
     />
+  )
+
+  // A crop needs a frame that clips: the picture inside is larger than the box and moves
+  // under it, so the radius belongs to the frame rather than to the picture.
+  if (!cropped) return picture
+  return (
+    <div style={{ borderRadius: radius }} className='relative size-full overflow-hidden'>
+      {picture}
+    </div>
   )
 }
 
