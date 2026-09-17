@@ -1,5 +1,5 @@
-import { memo } from 'react'
-import { Calendar, CheckSquare, Flag, Paperclip, Plus } from 'lucide-react'
+import { memo, useState } from 'react'
+import { Calendar, Check, CheckSquare, ChevronDown, ChevronRight, Flag, Paperclip, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
@@ -24,35 +24,15 @@ interface KanbanListRowProps {
   onOpenDetail: (item: KanbanItem) => void
 }
 
-function ListRowLeading({
-  item,
-  isSelected,
+function ListRowTagBadges({
   tagVals,
   tagsCol,
-  desc,
-  onToggleSelect,
 }: {
-  item: KanbanItem
-  isSelected: boolean
   tagVals: string[]
   tagsCol?: KanbanProperty
-  desc?: string
-  onToggleSelect: () => void
 }) {
   return (
-    <div className='flex min-w-0 flex-1 items-center gap-2.5'>
-      <input
-        type='checkbox'
-        checked={isSelected}
-        onClick={(e) => e.stopPropagation()}
-        onChange={onToggleSelect}
-        className='size-3.5 shrink-0 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)]'
-        aria-label={t('preview.kanban_select_card')}
-      />
-      <KanbanIconBadge icon={item.icon} size={15} />
-      <span className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
-        {item.title || t('preview.kanban_untitled')}
-      </span>
+    <>
       {tagVals.slice(0, 2).map((tag) => {
         const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
         const color = resolveKanbanTagColor(tag, tagsCol?.options)
@@ -67,6 +47,58 @@ function ListRowLeading({
           </span>
         )
       })}
+    </>
+  )
+}
+
+function ListRowLeading({
+  item,
+  isSelected,
+  tagVals,
+  tagsCol,
+  desc,
+  expanded,
+  onToggleExpand,
+  onToggleSelect,
+}: {
+  item: KanbanItem
+  isSelected: boolean
+  tagVals: string[]
+  tagsCol?: KanbanProperty
+  desc?: string
+  expanded?: boolean
+  onToggleExpand?: () => void
+  onToggleSelect: () => void
+}) {
+  const hasSubtasks = (item.subtasks?.length ?? 0) > 0
+
+  return (
+    <div className='flex min-w-0 flex-1 items-center gap-2'>
+      {hasSubtasks && (
+        <button
+          type='button'
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleExpand?.()
+          }}
+          className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+        >
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+      )}
+      <input
+        type='checkbox'
+        checked={isSelected}
+        onClick={(e) => e.stopPropagation()}
+        onChange={onToggleSelect}
+        className='size-3.5 shrink-0 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)]'
+        aria-label={t('preview.kanban_select_card')}
+      />
+      <KanbanIconBadge icon={item.icon} size={15} />
+      <span className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
+        {item.title || t('preview.kanban_untitled')}
+      </span>
+      <ListRowTagBadges tagVals={tagVals} tagsCol={tagsCol} />
       {desc && (
         <span className='hidden md:inline truncate max-w-xs text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
           — {desc}
@@ -156,6 +188,33 @@ function ListRowTrailing({
   )
 }
 
+function ListSubtasksExpanded({ subtasks }: { subtasks: KanbanSubtask[] }) {
+  return (
+    <div className='flex flex-col gap-1 border-t border-[var(--border-subtle)] bg-[var(--bg-inset)]/50 py-2 pl-12 pr-4'>
+      {subtasks.map((st) => (
+        <div key={st.id} className='flex items-center gap-2 text-[length:var(--text-12)]'>
+          <span
+            className={`flex size-3.5 shrink-0 items-center justify-center rounded-[var(--r-xs)] border ${
+              st.completed ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-[var(--border-default)]'
+            }`}
+          >
+            {st.completed && <Check size={10} />}
+          </span>
+          {st.icon && <KanbanIconBadge icon={st.icon} size={13} />}
+          <span className={`truncate ${st.completed ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>
+            {st.title}
+          </span>
+          {st.description && (
+            <span className='truncate text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+              — {st.description}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function KanbanListRow({
   item,
   statusCol,
@@ -165,6 +224,7 @@ function KanbanListRow({
   onToggleSelect,
   onOpenDetail,
 }: KanbanListRowProps) {
+  const [expanded, setExpanded] = useState(false)
   const statusVal = item.properties.status
   const statusOpt = statusCol?.options?.find((o: KanbanOption) => o.id === statusVal || o.label === statusVal)
   const priorityVal = item.properties.priority
@@ -172,33 +232,40 @@ function KanbanListRow({
   const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
   const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
   const dueDate = String(item.properties.dueDate || item.properties.startDate || '')
+  const subtasks = item.subtasks ?? []
 
   return (
-    <div
-      role='button'
-      tabIndex={0}
-      onClick={() => onOpenDetail(item)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') onOpenDetail(item)
-      }}
-      className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--bg-hover)] ${
-        isSelected ? 'bg-[var(--accent-softer)]' : ''
-      }`}
-    >
-      <ListRowLeading
-        item={item}
-        isSelected={isSelected}
-        tagVals={tagVals}
-        tagsCol={tagsCol}
-        desc={desc}
-        onToggleSelect={() => onToggleSelect(item.id)}
-      />
-      <ListRowTrailing
-        item={item}
-        statusOpt={statusOpt}
-        priorityOpt={priorityOpt}
-        dueDate={dueDate || undefined}
-      />
+    <div className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] last:border-b-0'>
+      <div
+        role='button'
+        tabIndex={0}
+        onClick={() => onOpenDetail(item)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') onOpenDetail(item)
+        }}
+        className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--bg-hover)] ${
+          isSelected ? 'bg-[var(--accent-softer)]' : ''
+        }`}
+      >
+        <ListRowLeading
+          item={item}
+          isSelected={isSelected}
+          tagVals={tagVals}
+          tagsCol={tagsCol}
+          desc={desc}
+          expanded={expanded}
+          onToggleExpand={() => setExpanded((x) => !x)}
+          onToggleSelect={() => onToggleSelect(item.id)}
+        />
+        <ListRowTrailing
+          item={item}
+          statusOpt={statusOpt}
+          priorityOpt={priorityOpt}
+          dueDate={dueDate || undefined}
+        />
+      </div>
+
+      {expanded && subtasks.length > 0 && <ListSubtasksExpanded subtasks={subtasks} />}
     </div>
   )
 }

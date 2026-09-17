@@ -81,23 +81,31 @@ function SubitemItemRow({
   onDelete: () => void
 }) {
   return (
-    <div className='flex items-center gap-2 rounded-[var(--r-xs)] bg-[var(--bg-surface)] px-2 py-1 text-[length:var(--text-12)] shadow-2xs'>
-      <input
-        type='checkbox'
-        checked={subtask.completed}
-        onChange={onToggle}
-        className='size-3 rounded-[var(--r-xs)] accent-[var(--accent)]'
-      />
-      <span className={`flex-1 ${subtask.completed ? 'text-[var(--text-tertiary)] line-through' : 'text-[var(--text-primary)]'}`}>
-        {subtask.title}
-      </span>
-      <button
-        type='button'
-        onClick={onDelete}
-        className='text-[var(--text-tertiary)] hover:text-[var(--danger)]'
-      >
-        <Trash2 size={11} />
-      </button>
+    <div className='flex flex-col gap-0.5 rounded-[var(--r-xs)] bg-[var(--bg-surface)] px-2 py-1 text-[length:var(--text-12)] shadow-2xs'>
+      <div className='flex items-center gap-2'>
+        <input
+          type='checkbox'
+          checked={subtask.completed}
+          onChange={onToggle}
+          className='size-3 rounded-[var(--r-xs)] accent-[var(--accent)]'
+        />
+        {subtask.icon && <KanbanIconBadge icon={subtask.icon} size={13} />}
+        <span className={`flex-1 ${subtask.completed ? 'text-[var(--text-tertiary)] line-through' : 'text-[var(--text-primary)]'}`}>
+          {subtask.title}
+        </span>
+        <button
+          type='button'
+          onClick={onDelete}
+          className='text-[var(--text-tertiary)] hover:text-[var(--danger)]'
+        >
+          <Trash2 size={11} />
+        </button>
+      </div>
+      {subtask.description && (
+        <p className='pl-5 text-[length:var(--text-11)] text-[var(--text-tertiary)] line-clamp-1'>
+          {subtask.description}
+        </p>
+      )}
     </div>
   )
 }

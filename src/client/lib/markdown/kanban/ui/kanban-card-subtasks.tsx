@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent } from 'react'
 import { Check, ChevronDown, ChevronRight, ListTodo, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import type { KanbanSubtask } from '../types'
+import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanCardSubtasksProps {
   itemId: string
@@ -18,31 +19,39 @@ function SubtaskItemRow({
 }) {
   return (
     <div
-      className='group/st flex items-center gap-2 text-[length:var(--text-12)]'
+      className='group/st flex flex-col gap-0.5 text-[length:var(--text-12)]'
       onClick={(e) => e.stopPropagation()}
     >
-      <button
-        type='button'
-        onClick={(e) => {
-          e.stopPropagation()
-          onToggle()
-        }}
-        className='flex size-3.5 shrink-0 items-center justify-center rounded-[var(--r-xs)] border transition-colors'
-        style={{
-          borderColor: subtask.completed ? 'var(--accent)' : 'var(--border-default)',
-          backgroundColor: subtask.completed ? 'var(--accent)' : 'transparent',
-        }}
-        aria-label={subtask.title}
-      >
-        {subtask.completed && <Check size={10} className='text-white' />}
-      </button>
-      <span
-        className={`min-w-0 flex-1 truncate ${
-          subtask.completed ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'
-        }`}
-      >
-        {subtask.title}
-      </span>
+      <div className='flex items-center gap-2'>
+        <button
+          type='button'
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggle()
+          }}
+          className='flex size-3.5 shrink-0 items-center justify-center rounded-[var(--r-xs)] border transition-colors'
+          style={{
+            borderColor: subtask.completed ? 'var(--accent)' : 'var(--border-default)',
+            backgroundColor: subtask.completed ? 'var(--accent)' : 'transparent',
+          }}
+          aria-label={subtask.title}
+        >
+          {subtask.completed && <Check size={10} className='text-white' />}
+        </button>
+        {subtask.icon && <KanbanIconBadge icon={subtask.icon} size={13} />}
+        <span
+          className={`min-w-0 flex-1 truncate ${
+            subtask.completed ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'
+          }`}
+        >
+          {subtask.title}
+        </span>
+      </div>
+      {subtask.description && (
+        <p className='pl-5.5 text-[length:var(--text-11)] text-[var(--text-tertiary)] line-clamp-1'>
+          {subtask.description}
+        </p>
+      )}
     </div>
   )
 }

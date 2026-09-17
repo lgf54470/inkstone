@@ -53,8 +53,12 @@ export interface KanbanSubtask {
   id: string
   title: string
   completed: boolean
+  icon?: string
+  description?: string
   status?: string
   dueDate?: string
+  startDate?: string
+  priority?: string
   owner?: string
 }
 

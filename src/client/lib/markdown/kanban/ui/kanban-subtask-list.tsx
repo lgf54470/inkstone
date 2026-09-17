@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
-import { CheckSquare, MoreHorizontal, Plus, Square } from 'lucide-react'
+import { AlignLeft, CheckSquare, MoreHorizontal, Plus, Smile, Square } from 'lucide-react'
 import { t } from '../../../i18n'
 import type { KanbanSubtask } from '../types'
+import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanIconPicker } from './kanban-icon-picker'
 import { KanbanSubtaskMenu } from './kanban-subtask-menu'
 
 interface KanbanSubtaskListProps {
@@ -10,17 +12,37 @@ interface KanbanSubtaskListProps {
   onConvertToItem?: (subtask: KanbanSubtask) => void
 }
 
-function SubtaskRow({
+function SubtaskDescInput({
+  description,
+  onChange,
+}: {
+  description: string
+  onChange: (desc: string) => void
+}) {
+  return (
+    <div className='mt-1 pl-12 pr-1'>
+      <input
+        type='text'
+        value={description}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t('preview.kanban_card_description_placeholder')}
+        className='w-full rounded-[var(--r-xs)] border-none bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-11)] text-[var(--text-secondary)] placeholder:text-[var(--text-quaternary)] outline-none focus:ring-1 focus:ring-[var(--accent)]'
+      />
+    </div>
+  )
+}
+
+function SubtaskTrailingActions({
+  hasDescription,
   subtask,
-  onToggle,
-  onUpdateTitle,
+  onToggleDesc,
   onDuplicate,
   onConvertToItem,
   onDelete,
 }: {
+  hasDescription: boolean
   subtask: KanbanSubtask
-  onToggle: () => void
-  onUpdateTitle: (title: string) => void
+  onToggleDesc: () => void
   onDuplicate: () => void
   onConvertToItem: () => void
   onDelete: () => void
@@ -29,28 +51,17 @@ function SubtaskRow({
   const menuBtnRef = useRef<HTMLButtonElement>(null)
 
   return (
-    <div className='group/sub flex items-center gap-1.5 rounded-[var(--r-xs)] px-1.5 py-1 text-[length:var(--text-12)] hover:bg-[var(--bg-hover)]'>
+    <div className='flex items-center gap-0.5'>
       <button
         type='button'
-        onClick={onToggle}
-        className='shrink-0 text-[var(--text-tertiary)] hover:text-[var(--accent)]'
-        aria-label={subtask.completed ? 'Mark incomplete' : 'Mark complete'}
-      >
-        {subtask.completed ? <CheckSquare size={13} className='text-[var(--accent)]' /> : <Square size={13} />}
-      </button>
-
-      <input
-        type='text'
-        defaultValue={subtask.title}
-        onBlur={(e) => {
-          if (e.target.value !== subtask.title) {
-            onUpdateTitle(e.target.value)
-          }
-        }}
-        className={`flex-1 border-none bg-transparent p-0 text-[length:var(--text-12)] outline-none ${
-          subtask.completed ? 'text-[var(--text-tertiary)] line-through' : 'text-[var(--text-secondary)]'
+        onClick={onToggleDesc}
+        title={t('preview.kanban_card_description')}
+        className={`opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 ${
+          hasDescription ? '!opacity-100 text-[var(--accent)]' : ''
         }`}
-      />
+      >
+        <AlignLeft size={13} />
+      </button>
 
       <div className='relative'>
         <button
@@ -71,6 +82,144 @@ function SubtaskRow({
           onDelete={onDelete}
         />
       </div>
+    </div>
+  )
+}
+
+function SubtaskIconSelect({
+  icon,
+  onSelectIcon,
+}: {
+  icon?: string
+  onSelectIcon: (icon?: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type='button'
+        onClick={() => setOpen((o) => !o)}
+        className='flex size-5 shrink-0 items-center justify-center rounded-[var(--r-xs)] hover:bg-[var(--bg-raised)]'
+        title={t('preview.kanban_icon_picker')}
+      >
+        {icon ? (
+          <KanbanIconBadge icon={icon} size={14} />
+        ) : (
+          <Smile size={13} className='text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]' />
+        )}
+      </button>
+      <KanbanIconPicker
+        open={open}
+        anchorRef={btnRef}
+        onClose={() => setOpen(false)}
+        onSelectIcon={(newIcon) => onSelectIcon(newIcon || undefined)}
+        currentIcon={icon}
+      />
+    </>
+  )
+}
+
+function SubtaskMainRow({
+  subtask,
+  onToggle,
+  onUpdateTitle,
+  onUpdateSubtask,
+  onToggleDesc,
+  onDuplicate,
+  onConvertToItem,
+  onDelete,
+}: {
+  subtask: KanbanSubtask
+  onToggle: () => void
+  onUpdateTitle: (title: string) => void
+  onUpdateSubtask: (updated: KanbanSubtask) => void
+  onToggleDesc: () => void
+  onDuplicate: () => void
+  onConvertToItem: () => void
+  onDelete: () => void
+}) {
+  return (
+    <div className='flex items-center gap-1.5'>
+      <button
+        type='button'
+        onClick={onToggle}
+        className='shrink-0 text-[var(--text-tertiary)] hover:text-[var(--accent)]'
+        aria-label={subtask.completed ? 'Mark incomplete' : 'Mark complete'}
+      >
+        {subtask.completed ? <CheckSquare size={13} className='text-[var(--accent)]' /> : <Square size={13} />}
+      </button>
+
+      <SubtaskIconSelect
+        icon={subtask.icon}
+        onSelectIcon={(icon) => onUpdateSubtask({ ...subtask, icon })}
+      />
+
+      <input
+        type='text'
+        defaultValue={subtask.title}
+        onBlur={(e) => {
+          if (e.target.value !== subtask.title) {
+            onUpdateTitle(e.target.value)
+          }
+        }}
+        className={`flex-1 border-none bg-transparent p-0 text-[length:var(--text-12)] outline-none ${
+          subtask.completed ? 'text-[var(--text-tertiary)] line-through' : 'text-[var(--text-secondary)]'
+        }`}
+      />
+
+      <SubtaskTrailingActions
+        hasDescription={Boolean(subtask.description)}
+        subtask={subtask}
+        onToggleDesc={onToggleDesc}
+        onDuplicate={onDuplicate}
+        onConvertToItem={onConvertToItem}
+        onDelete={onDelete}
+      />
+    </div>
+  )
+}
+
+function SubtaskRow({
+  subtask,
+  onToggle,
+  onUpdateTitle,
+  onUpdateSubtask,
+  onDuplicate,
+  onConvertToItem,
+  onDelete,
+}: {
+  subtask: KanbanSubtask
+  onToggle: () => void
+  onUpdateTitle: (title: string) => void
+  onUpdateSubtask: (updated: KanbanSubtask) => void
+  onDuplicate: () => void
+  onConvertToItem: () => void
+  onDelete: () => void
+}) {
+  const [showDesc, setShowDesc] = useState(Boolean(subtask.description))
+
+  return (
+    <div className='group/sub flex flex-col rounded-[var(--r-xs)] px-1.5 py-1 text-[length:var(--text-12)] hover:bg-[var(--bg-hover)]'>
+      <SubtaskMainRow
+        subtask={subtask}
+        onToggle={onToggle}
+        onUpdateTitle={onUpdateTitle}
+        onUpdateSubtask={onUpdateSubtask}
+        onToggleDesc={() => setShowDesc((prev) => !prev)}
+        onDuplicate={onDuplicate}
+        onConvertToItem={onConvertToItem}
+        onDelete={onDelete}
+      />
+
+      {(showDesc || subtask.description) && (
+        <SubtaskDescInput
+          description={subtask.description || ''}
+          onChange={(desc) => onUpdateSubtask({ ...subtask, description: desc })}
+        />
+      )}
     </div>
   )
 }
@@ -113,6 +262,10 @@ export function KanbanSubtaskList({
     onUpdateSubtasks(subtasks.map((s) => (s.id === id ? { ...s, title } : s)))
   }
 
+  const handleUpdateSubtask = (updated: KanbanSubtask) => {
+    onUpdateSubtasks(subtasks.map((s) => (s.id === updated.id ? updated : s)))
+  }
+
   const handleDuplicate = (st: KanbanSubtask) => {
     onUpdateSubtasks([...subtasks, { ...st, id: `sub_${Date.now()}` }])
   }
@@ -129,6 +282,7 @@ export function KanbanSubtaskList({
           subtask={st}
           onToggle={() => handleToggle(st.id)}
           onUpdateTitle={(title) => handleUpdateTitle(st.id, title)}
+          onUpdateSubtask={handleUpdateSubtask}
           onDuplicate={() => handleDuplicate(st)}
           onConvertToItem={() => onConvertToItem?.(st)}
           onDelete={() => handleDelete(st.id)}
