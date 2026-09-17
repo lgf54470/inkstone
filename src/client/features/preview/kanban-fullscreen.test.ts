@@ -182,3 +182,72 @@ describe('kanban full screen close and session updates', () => {
     surface.host.remove()
   })
 })
+
+describe('kanban full screen title double click edit', () => {
+  it('supports in-place title editing on double click', async () => {
+    const surface = await mountSurface()
+    const rendered = renderElement(createElement(Harness, { session: surface.session }))
+
+    await act(async () => {
+      rendered.container.querySelector<HTMLButtonElement>('[data-kanban-fullscreen-trigger]')!.click()
+    })
+
+    const overlay = document.querySelector<HTMLElement>('.kanban-fullscreen')!
+    const heading = overlay.querySelector<HTMLHeadingElement>('h2')!
+    expect(heading).not.toBeNull()
+
+    await act(async () => {
+      heading.click()
+    })
+    expect(overlay.querySelector('input[data-owns-escape="true"]')).toBeNull()
+
+    await act(async () => {
+      heading.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+    })
+    const input = overlay.querySelector<HTMLInputElement>('input[data-owns-escape="true"]')!
+    expect(input).not.toBeNull()
+
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+      setter?.call(input, 'Renamed Project')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+
+    expect(overlay.querySelector('input[data-owns-escape="true"]')).toBeNull()
+    expect(overlay.querySelector('h2')?.textContent).toBe('Renamed Project')
+
+    rendered.unmount()
+    surface.host.remove()
+  })
+})
+
+describe('kanban full screen title pencil edit', () => {
+  it('supports title editing with pencil button and cancels on Escape', async () => {
+    const surface = await mountSurface()
+    const rendered = renderElement(createElement(Harness, { session: surface.session }))
+
+    await act(async () => {
+      rendered.container.querySelector<HTMLButtonElement>('[data-kanban-fullscreen-trigger]')!.click()
+    })
+
+    const overlay = document.querySelector<HTMLElement>('.kanban-fullscreen')!
+    const editBtn = overlay.querySelector<HTMLButtonElement>('button[aria-label]')!
+    expect(editBtn).not.toBeNull()
+    await act(async () => {
+      editBtn.click()
+    })
+    const input = overlay.querySelector<HTMLInputElement>('input[data-owns-escape="true"]')!
+    expect(input).not.toBeNull()
+
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    expect(overlay.querySelector('input[data-owns-escape="true"]')).toBeNull()
+    expect(document.querySelector('.kanban-fullscreen')).not.toBeNull()
+
+    rendered.unmount()
+    surface.host.remove()
+  })
+})

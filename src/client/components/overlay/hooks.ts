@@ -236,7 +236,10 @@ function cycleFocus(event: KeyboardEvent, panel: HTMLElement): void {
 const CANVAS_SELECTOR = '[data-mindmap-canvas]'
 
 function ownsEscape(target: EventTarget | null): boolean {
-  return target instanceof Element && Boolean(target.closest(`${CANVAS_SELECTOR} [contenteditable]`))
+  return (
+    target instanceof Element &&
+    Boolean(target.closest(`${CANVAS_SELECTOR} [contenteditable], [data-owns-escape]`))
+  )
 }
 
 function ownsTab(target: EventTarget | null): boolean {

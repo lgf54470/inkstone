@@ -54,6 +54,7 @@ function CardTitle({
         {icon && <KanbanIconBadge icon={icon} size={15} />}
         <input
           type='text'
+          data-owns-escape='true'
           value={titleText}
           autoFocus
           onClick={(e) => e.stopPropagation()}

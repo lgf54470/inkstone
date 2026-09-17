@@ -1,8 +1,9 @@
-import { memo, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import {
   Filter,
   Maximize2,
   Minimize2,
+  Pencil,
   Plus,
   Redo2,
   Search,
@@ -293,6 +294,74 @@ function KanbanHeaderToolbar({
   )
 }
 
+function KanbanFullscreenTitleEditor({
+  value,
+  onChange,
+  onFinish,
+  onCancel,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onFinish: () => void
+  onCancel: () => void
+}) {
+  return (
+    <input
+      type='text'
+      data-owns-escape='true'
+      value={value}
+      autoFocus
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onFocus={(e) => e.target.select()}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onFinish}
+      onKeyDown={(e) => {
+        e.stopPropagation()
+        if (e.key === 'Enter') onFinish()
+        else if (e.key === 'Escape') onCancel()
+      }}
+      className='min-w-28 max-w-56 rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-14)] font-bold text-[var(--text-primary)] outline-none'
+    />
+  )
+}
+
+function KanbanFullscreenTitleView({
+  title,
+  canEdit,
+  onStartEdit,
+}: {
+  title?: string
+  canEdit: boolean
+  onStartEdit: (e?: React.MouseEvent) => void
+}) {
+  return (
+    <div className='group flex items-center gap-1 min-w-0'>
+      <h2
+        onDoubleClick={onStartEdit}
+        className={`text-[length:var(--text-14)] font-bold tracking-[var(--tracking-title)] text-[var(--text-primary)] max-w-44 truncate select-none ${
+          canEdit ? 'cursor-pointer hover:opacity-80' : ''
+        }`}
+        title={title || t('preview.kanban_untitled')}
+      >
+        {title || t('preview.kanban_untitled')}
+      </h2>
+      {canEdit && (
+        <button
+          type='button'
+          onClick={onStartEdit}
+          className='opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded-[var(--r-xs)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+          title={t('common.edit')}
+          aria-label={t('common.edit')}
+        >
+          <Pencil size={11} />
+        </button>
+      )}
+    </div>
+  )
+}
+
 function KanbanFullscreenTitle({
   title,
   onUpdateTitle,
@@ -303,46 +372,44 @@ function KanbanFullscreenTitle({
   const [isEditing, setIsEditing] = useState(false)
   const [val, setVal] = useState(title || '')
 
+  useEffect(() => {
+    if (!isEditing) setVal(title || '')
+  }, [title, isEditing])
+
   const handleFinish = () => {
     setIsEditing(false)
-    if (val.trim() && val !== title) onUpdateTitle?.(val.trim())
+    const trimmed = val.trim()
+    if (trimmed && trimmed !== title) onUpdateTitle?.(trimmed)
+    else setVal(title || '')
+  }
+
+  const startEditing = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    if (!onUpdateTitle) return
+    setVal(title || '')
+    setIsEditing(true)
   }
 
   if (isEditing && onUpdateTitle) {
     return (
-      <input
-        type='text'
+      <KanbanFullscreenTitleEditor
         value={val}
-        autoFocus
-        onChange={(e) => setVal(e.target.value)}
-        onBlur={handleFinish}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') handleFinish()
-          else if (e.key === 'Escape') {
-            setVal(title || '')
-            setIsEditing(false)
-          }
+        onChange={setVal}
+        onFinish={handleFinish}
+        onCancel={() => {
+          setVal(title || '')
+          setIsEditing(false)
         }}
-        className='rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-14)] font-bold text-[var(--text-primary)] outline-none'
       />
     )
   }
 
   return (
-    <h2
-      onClick={() => {
-        if (onUpdateTitle) {
-          setVal(title || '')
-          setIsEditing(true)
-        }
-      }}
-      className={`text-[length:var(--text-14)] font-bold tracking-[var(--tracking-title)] text-[var(--text-primary)] max-w-44 truncate ${
-        onUpdateTitle ? 'cursor-pointer hover:opacity-80' : ''
-      }`}
-      title={title || t('preview.kanban_untitled')}
-    >
-      {title || t('preview.kanban_untitled')}
-    </h2>
+    <KanbanFullscreenTitleView
+      title={title}
+      canEdit={Boolean(onUpdateTitle)}
+      onStartEdit={startEditing}
+    />
   )
 }
 
