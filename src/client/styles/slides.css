@@ -128,6 +128,49 @@
   box-shadow: 0 10px 40px rgb(20 30 45 / 0.18), 0 2px 8px rgb(20 30 45 / 0.10);
 }
 
+@keyframes bento-show-arrive-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes bento-show-arrive-forward {
+  from {
+    opacity: 0;
+    transform: translateX(6%);
+  }
+}
+
+@keyframes bento-show-arrive-back {
+  from {
+    opacity: 0;
+    transform: translateX(-6%);
+  }
+}
+
+@keyframes bento-show-arrive-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+.bento-show-page[data-transition='fade'] {
+  animation: bento-show-arrive-fade var(--dur-base) ease-out;
+}
+
+.bento-show-page[data-transition='slide'][data-direction='forward'] {
+  animation: bento-show-arrive-forward var(--dur-base) ease-out;
+}
+
+.bento-show-page[data-transition='slide'][data-direction='back'] {
+  animation: bento-show-arrive-back var(--dur-base) ease-out;
+}
+
+.bento-show-page[data-transition='zoom'] {
+  animation: bento-show-arrive-zoom var(--dur-base) ease-out;
+}
+
 .bento-corner-controls {
   position: absolute;
   inset-inline-end: var(--sp-4);

@@ -87,6 +87,12 @@ export const InspectorSlide = memo(function InspectorSlide({
             </select>
           </div>
 
+          {slide.transition === 'morph' && (
+            <p data-slide-morph-pending className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+              {t('slides.transition_morph_pending')}
+            </p>
+          )}
+
           <div className='flex items-center justify-between text-xs'>
             <span className='text-[var(--text-secondary)]'>{t('slides.hide_slide')}</span>
             <input

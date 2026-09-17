@@ -59,6 +59,7 @@ export const messages = {
 'slides.transition_slide': '滑动',
 'slides.transition_zoom': '缩放',
 'slides.transition_morph': '变形',
+'slides.transition_morph_pending': '变形过渡尚未绘制——这一页按直接切换播放',
 'slides.speaker_notes_placeholder': '在此输入该页的演讲备注...',
 'slides.font_size': '字号',
 'slides.text_align': '对齐',

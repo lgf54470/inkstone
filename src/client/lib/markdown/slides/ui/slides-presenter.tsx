@@ -1,9 +1,20 @@
-import { memo, useEffect, useState, useMemo } from 'react'
-import type { BentoDoc } from '../types'
+import { memo, useCallback, useEffect, useState, useMemo } from 'react'
+import type { BentoDoc, SlideTransitionKind } from '../types'
 import { SlidesCanvas } from './slides-canvas'
 import { audienceSlides } from '../flow'
 import { fitPageScale } from '../page'
 import { t } from '../../../i18n'
+
+/**
+ * What a page does as it arrives. Only the transitions this build can draw are named: a `morph`
+ * (or a kind from a newer file) is shown as `none`, because an element-to-element morph is a
+ * pairing this build does not compute, and a fade standing in for one would claim a continuity
+ * the show never worked out. The kinds that are named animate in CSS, so a reader who asked for
+ * less motion gets a plain cut (the duration tokens go to zero).
+ */
+function showTransition(kind: SlideTransitionKind | undefined): 'none' | 'fade' | 'slide' | 'zoom' {
+  return kind === 'fade' || kind === 'slide' || kind === 'zoom' ? kind : 'none'
+}
 
 /** How much air a show leaves around the page on a screen that is not the page's shape. */
 const SHOW_PADDING = 40
@@ -22,6 +33,7 @@ export const SlidesPresenter = memo(function SlidesPresenter({
   onClose,
 }: SlidesPresenterProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
+  const [direction, setDirection] = useState<1 | -1>(1)
   const [showNotes, setShowNotes] = useState(false)
   const [scale, setScale] = useState(1)
 
@@ -29,13 +41,15 @@ export const SlidesPresenter = memo(function SlidesPresenter({
   const currentSlide = slides[currentIndex] || slides[0]
   const total = slides.length
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
+    setDirection(1)
     setCurrentIndex((prev) => (prev < total - 1 ? prev + 1 : prev))
-  }
+  }, [total])
 
-  const goPrev = () => {
+  const goPrev = useCallback(() => {
+    setDirection(-1)
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : 0))
-  }
+  }, [])
 
   useEffect(() => {
     const handleResize = () => {
@@ -52,7 +66,7 @@ export const SlidesPresenter = memo(function SlidesPresenter({
   }, [doc.size])
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
         e.preventDefault()
         goNext()
@@ -70,7 +84,7 @@ export const SlidesPresenter = memo(function SlidesPresenter({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [total, onClose])
+  }, [goNext, goPrev, onClose])
 
   if (!currentSlide) return null
 
@@ -88,11 +102,15 @@ export const SlidesPresenter = memo(function SlidesPresenter({
     <div className='fixed top-0 left-0 size-full z-50 flex flex-col items-center justify-center bg-black select-none'>
       <div className='flex flex-1 items-center justify-center w-full h-full overflow-hidden'>
         <div
+          key={currentSlide.id}
+          data-bento-show-page
+          data-transition={showTransition(currentSlide.transition)}
+          data-direction={direction === 1 ? 'forward' : 'back'}
           style={{
             width: `${doc.size.width * scale}px`,
             height: `${doc.size.height * scale}px`,
           }}
-          className='relative flex items-center justify-center'
+          className='bento-show-page relative flex items-center justify-center'
         >
           <SlidesCanvas
             slide={currentSlide}

@@ -1,4 +1,4 @@
-import { act, createElement } from 'react'
+import { act, createElement, useState } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { renderElement } from '../../../test-render'
 import { t } from '../../../i18n'
@@ -21,6 +21,20 @@ function mountDeck() {
     }),
   )
   return { committed }
+}
+
+/**
+ * The same deck hosted the way the app hosts it: the committed document is handed back in as
+ * `initialData`, which is what tells the history the change came from this surface rather than
+ * from another writer, and what makes the editor keep painting what was just committed.
+ */
+function LiveDeck() {
+  const [data, setData] = useState<BentoDoc>(() => parseSlidesOutline(source))
+  return createElement(SlidesRoot, { initialData: data, isFullscreen: true, onUpdateData: setData })
+}
+
+function mountLiveDeck() {
+  mounted = renderElement(createElement(LiveDeck))
 }
 
 function dialog(): HTMLElement | null {
@@ -85,6 +99,27 @@ describe('slides deck dialogs', () => {
     expect(added.title).toBe(t('slides.layout_three_cards'))
     // Three cards, each a backdrop plus its text, behind the title.
     expect(added.elements).toHaveLength(7)
+  })
+
+  it('says a morph transition is not drawn yet, at the moment it is chosen', () => {
+    mountLiveDeck()
+    const select = [...document.querySelectorAll<HTMLSelectElement>('select')].find((candidate) =>
+      [...candidate.options].some((option) => option.value === 'morph'),
+    )
+    expect(select, 'the inspector offers the page transition').toBeDefined()
+    expect(document.querySelector('[data-slide-morph-pending]')).toBeNull()
+
+    // A select's own value assignment updates React's tracker without firing its change, so the
+    // value is written the way the browser writes it and the event is dispatched after.
+    const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set
+    act(() => {
+      if (!select || !setValue) return
+      setValue.call(select, 'morph')
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(document.querySelector('[data-slide-morph-pending]')?.textContent).toBe(
+      t('slides.transition_morph_pending'),
+    )
   })
 
   it('opens the help panel from the question mark and lists the presenter keys', () => {

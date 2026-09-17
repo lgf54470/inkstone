@@ -3176,6 +3176,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/slides-dialogs.test.ts', [
     '// Three cards, each a backdrop plus its text, behind the title.',
+    '/**\n * The same deck hosted the way the app hosts it: the committed document is handed back in as\n * `initialData`, which is what tells the history the change came from this surface rather than\n * from another writer, and what makes the editor keep painting what was just committed.\n */',
+    "// A select's own value assignment updates React's tracker without firing its change, so the",
+    '// value is written the way the browser writes it and the event is dispatched after.',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-doc-sync.test.ts', [
     '// renderElement() hands out a mount without a second render, and adoption is precisely',
@@ -3200,6 +3203,7 @@ const allowed = new Map([
     '/** One, a hidden middle page, and Two — the deck that separates numbering from the show order. */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-presenter.tsx', [
+    '/**\n * What a page does as it arrives. Only the transitions this build can draw are named: a `morph`\n * (or a kind from a newer file) is shown as `none`, because an element-to-element morph is a\n * pairing this build does not compute, and a fade standing in for one would claim a continuity\n * the show never worked out. The kinds that are named animate in CSS, so a reader who asked for\n * less motion gets a plain cut (the duration tokens go to zero).\n */',
     '/** How much air a show leaves around the page on a screen that is not the page\'s shape. */',
     '/** A page blown up past this is a projector seen from far away, not a larger page. */',
     '// "Number hidden slides" decides whether the pages the show skips are numbered at all:',

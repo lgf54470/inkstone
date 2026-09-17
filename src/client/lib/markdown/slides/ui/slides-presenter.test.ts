@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+import { act, createElement } from 'react'
 import { describe, expect, it } from 'vitest'
 import { renderElement } from '../../../test-render'
 import { parseSlidesOutline } from '../outline'
@@ -44,6 +44,45 @@ describe('the presenter chrome', () => {
     on.unmount()
   })
 
+})
+
+describe('how a page arrives', () => {
+  function page(transition?: BentoDoc['slides'][number]['transition']) {
+    const doc = deck({})
+    doc.slides[0] = { ...doc.slides[0]!, transition }
+    return show(doc)
+  }
+
+  it('names the transition the page asked for', () => {
+    for (const kind of ['fade', 'slide', 'zoom'] as const) {
+      const view = page(kind)
+      expect(view.container.querySelector('[data-bento-show-page]')?.getAttribute('data-transition')).toBe(kind)
+      view.unmount()
+    }
+  })
+
+  it('shows a morph as a plain cut rather than a fade that would claim a continuity', () => {
+    const view = page('morph')
+    expect(view.container.querySelector('[data-bento-show-page]')?.getAttribute('data-transition')).toBe('none')
+    view.unmount()
+  })
+
+  it('carries the direction of the step, so going back does not arrive like going forward', () => {
+    const view = page('slide')
+    const target = (): string | null =>
+      view.container.querySelector('[data-bento-show-page]')?.getAttribute('data-direction') ?? null
+    expect(target()).toBe('forward')
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', cancelable: true }))
+    })
+    expect(target()).toBe('back')
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true }))
+    })
+    expect(target()).toBe('forward')
+    view.unmount()
+  })
 })
 
 describe('page numbering in a show', () => {

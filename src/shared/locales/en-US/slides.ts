@@ -59,6 +59,7 @@ export const messages = {
 'slides.transition_slide': 'Slide',
 'slides.transition_zoom': 'Zoom',
 'slides.transition_morph': 'Morph',
+'slides.transition_morph_pending': 'Morph is not drawn yet — this page cuts',
 'slides.speaker_notes_placeholder': 'Enter speaker notes for this slide...',
 'slides.font_size': 'Font Size',
 'slides.text_align': 'Alignment',
