@@ -3056,11 +3056,16 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/element-renderer.tsx', [
     '/**\n * One element\'s own markup, chosen by its type. Everything a surface needs to draw a deck —\n * the canvas, a thumbnail, a printed page — comes through here, which is what keeps those\n * three from disagreeing about what an element looks like.\n */',
-    '/**\n * A path is drawn from its own geometry or not at all: the default curve below is a shape of\n * its own, and drawing it for a path whose `d` says something else would be a picture of\n * nothing the document asked for.\n */',
+    '/**\n * A path is drawn from its own geometry or not at all: the default curve below is a shape of\n * its own, and drawing it for a path whose `d` says something else would be a picture of\n * nothing the document asked for — a claim the deck never made, so the unusable path is\n * announced as unusable instead.\n */',
+    '// A type this build does not know is still the document\'s element: drawing nothing',
+    '// would read as an empty slide, so it is announced instead.',
     '// An empty box that shows nothing is indistinguishable from a box that failed to render,',
     '// so the editor draws the document\'s own placeholder; a show and a print never do.',
     '// A crop needs a frame that clips: the picture inside is larger than the box and moves',
     '// under it, so the radius belongs to the frame rather than to the picture.',
+  ]],
+  ['src/client/lib/markdown/slides/ui/unsupported-element.tsx', [
+    '/**\n * The frame a deck gets when this build cannot draw one of its elements: a newer element\n * type, or a shape whose geometry does not parse. It exists because the alternative — the\n * empty box this replaced — is the one failure nobody can act on: the deck looks finished,\n * the element is simply missing from the picture, and by the time anyone notices the file has\n * been written back without a clue. The type name is shown rather than translated, so a\n * person can search for it, and the console line gives the same fact to whoever is reading.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/slide-element-box.tsx', [
     '/**\n * One element as the pointer meets it: where it sits, whether it takes a click at all, the\n * drag it starts, and the handles a selection grows. It lives apart from the page it is\n * drawn on because those are two different questions — the box knows geometry and gestures,\n * the canvas knows which page is showing and what an edit means — and because a box has to\n * be able to own its own drag without the page listening for it.\n */',

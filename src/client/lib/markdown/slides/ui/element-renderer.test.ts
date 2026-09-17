@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../../test-render'
 import type { ImageElement, SlideElement, ShapeElement, SlidesTheme, TextElement } from '../types'
 import { ElementRenderer } from './element-renderer'
@@ -95,9 +95,27 @@ describe('a path shape', () => {
     view.unmount()
   })
 
-  it('draws nothing for a path that is not geometry, rather than a curve that would lie', () => {
+  it('announces a path that is not geometry instead of drawing a curve that would lie', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const view = draw(path({ d: 'M 0 0" onload="alert(1)' }))
     expect(view.container.querySelector('svg')).toBeNull()
+    expect(view.container.querySelector('[data-slide-unsupported]')).not.toBeNull()
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+    view.unmount()
+  })
+})
+
+describe('an element this build cannot draw', () => {
+  it('shows what it is instead of leaving the slide looking finished', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const unknown = { id: 'x1', type: 'timeline', x: 0, y: 0, w: 100, h: 60 } as unknown as SlideElement
+    const view = draw(unknown)
+    const frame = view.container.querySelector('[data-slide-unsupported="timeline"]')
+    expect(frame).not.toBeNull()
+    expect(frame?.textContent).toContain('timeline')
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('unsupported element type'))
+    warn.mockRestore()
     view.unmount()
   })
 })

@@ -15,6 +15,7 @@ import { SlideChartBlock } from './chart-block'
 import { SlideCodeBlock } from './code-block'
 import { SlideEmbedBlock } from './embed-block'
 import { SlideMediaBlock } from './media-block'
+import { UnsupportedElement } from './unsupported-element'
 
 const CIRCLE_RADIUS = '50%'
 
@@ -73,7 +74,9 @@ export function ElementRenderer({
     case 'code':
       return <SlideCodeBlock el={el} palette={theme.codePalette} />
     default:
-      return null
+      // A type this build does not know is still the document's element: drawing nothing
+      // would read as an empty slide, so it is announced instead.
+      return <UnsupportedElement el={el} />
   }
 }
 
@@ -173,10 +176,11 @@ function renderSvgShape(el: ShapeElement): ReactNode {
 /**
  * A path is drawn from its own geometry or not at all: the default curve below is a shape of
  * its own, and drawing it for a path whose `d` says something else would be a picture of
- * nothing the document asked for.
+ * nothing the document asked for — a claim the deck never made, so the unusable path is
+ * announced as unusable instead.
  */
 function PathShape({ el }: { el: ShapeElement }) {
-  if (!pathDataIsDrawable(el.d)) return null
+  if (!pathDataIsDrawable(el.d)) return <UnsupportedElement el={el} reason='shape: path' />
   return (
     <svg viewBox={pathViewBox(el)} preserveAspectRatio='none' className='size-full overflow-visible'>
       <path
