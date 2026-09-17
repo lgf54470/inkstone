@@ -11,6 +11,13 @@ import {
   ChevronDown,
   Type,
   Square,
+  Circle,
+  Triangle,
+  ArrowRight,
+  ArrowLeftRight,
+  Slash,
+  Pencil,
+  Hexagon,
   Image as ImageIcon,
   LayoutGrid,
   Table as TableIcon,
@@ -165,7 +172,7 @@ export const SlidesTopbar = memo(function SlidesTopbar({
               <ChevronDown size={11} className='opacity-60' />
             </button>
             {shapeMenuOpen && (
-              <div className='absolute left-0 top-full mt-1 w-32 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-1 shadow-lg z-50'>
+              <div className='absolute left-0 top-full mt-1 w-36 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-1 shadow-lg z-50'>
                 <button
                   type='button'
                   onClick={() => {
@@ -180,35 +187,112 @@ export const SlidesTopbar = memo(function SlidesTopbar({
                 <button
                   type='button'
                   onClick={() => {
-                    onAddShape('rounded')
+                    onAddShape('ellipse')
                     setShapeMenuOpen(false)
                   }}
                   className='flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
                 >
-                  <Square size={12} className='rounded-xs' />
-                  <span>{t('slides.shape_rounded_rect')}</span>
+                  <Circle size={12} />
+                  <span>{t('slides.shape_ellipse')}</span>
                 </button>
                 <button
                   type='button'
                   onClick={() => {
-                    onAddShape('circle')
+                    onAddShape('triangle')
                     setShapeMenuOpen(false)
                   }}
                   className='flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
                 >
-                  <span className='size-3 rounded-full border border-current' />
-                  <span>{t('slides.shape_circle')}</span>
+                  <Triangle size={12} />
+                  <span>{t('slides.shape_triangle')}</span>
                 </button>
                 <button
                   type='button'
                   onClick={() => {
-                    onAddShape('card')
+                    onAddShape('arrow')
                     setShapeMenuOpen(false)
                   }}
                   className='flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
                 >
-                  <LayoutGrid size={12} />
-                  <span>{t('slides.shape_bento_box')}</span>
+                  <ArrowRight size={12} />
+                  <span>{t('slides.shape_arrow')}</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() => {
+                    onAddShape('arrow2')
+                    setShapeMenuOpen(false)
+                  }}
+                  className='flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                >
+                  <ArrowLeftRight size={12} />
+                  <span>{t('slides.shape_arrow2')}</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() => {
+                    onAddShape('line')
+                    setShapeMenuOpen(false)
+                  }}
+                  className='flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                >
+                  <Slash size={12} />
+                  <span>{t('slides.shape_line')}</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() => {
+                    onAddShape('curve')
+                    setShapeMenuOpen(false)
+                  }}
+                  className='flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                >
+                  <svg className='size-3' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M3 18 C 7 6, 17 6, 21 18'/></svg>
+                  <span>{t('slides.shape_curve')}</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() => {
+                    onAddShape('connector')
+                    setShapeMenuOpen(false)
+                  }}
+                  className='flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                >
+                  <svg className='size-3' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><circle cx='5' cy='19' r='2.4'/><circle cx='19' cy='5' r='2.4'/><path d='M7 17 L 17 7'/></svg>
+                  <span>{t('slides.shape_connector')}</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() => {
+                    onAddShape('curve-connector')
+                    setShapeMenuOpen(false)
+                  }}
+                  className='flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                >
+                  <svg className='size-3' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><circle cx='5' cy='19' r='2.4'/><circle cx='19' cy='5' r='2.4'/><path d='M7 17 C 9 9, 11 7, 17 7'/></svg>
+                  <span>{t('slides.shape_curve_connector')}</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() => {
+                    onAddShape('free')
+                    setShapeMenuOpen(false)
+                  }}
+                  className='flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                >
+                  <Pencil size={12} />
+                  <span>{t('slides.shape_freeform')}</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() => {
+                    onAddShape('poly')
+                    setShapeMenuOpen(false)
+                  }}
+                  className='flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                >
+                  <Hexagon size={12} />
+                  <span>{t('slides.shape_polygon')}</span>
                 </button>
               </div>
             )}

@@ -24,16 +24,23 @@ export function createDefaultText(): TextElement {
 }
 
 export function createDefaultShape(shape: ShapeType, fill: string): ShapeElement {
+  const isLineOrArrow = shape === 'line' || shape === 'arrow' || shape === 'arrow2'
+  const isSquareLike = shape === 'triangle' || shape === 'ellipse' || shape === 'circle' || shape === 'poly'
+  const w = isLineOrArrow ? 240 : isSquareLike ? 200 : 240
+  const h = isLineOrArrow ? 48 : isSquareLike ? 200 : 160
+
   return {
     id: `shape-${Date.now()}`,
     type: 'shape',
     shape,
-    fill,
+    fill: isLineOrArrow ? 'transparent' : fill,
+    stroke: isLineOrArrow ? fill : undefined,
+    strokeWidth: isLineOrArrow ? 3 : undefined,
     x: 300,
     y: 250,
-    w: 240,
-    h: 160,
-    radius: 12,
+    w,
+    h,
+    radius: shape === 'rounded' || shape === 'card' ? 12 : 0,
   }
 }
 

@@ -18,8 +18,8 @@ describe('slides-templates', () => {
     expect(parsed.format).toBe('bento/slides')
     expect(parsed.version).toBe(1)
     expect(parsed.title).toBe('Bento Slides Showcase')
-    expect(parsed.slides.length).toBeGreaterThanOrEqual(3)
-    expect(parsed.slides[0]?.title).toBe('The file is the software.')
+    expect(parsed.slides.length).toBeGreaterThanOrEqual(12)
+    expect(parsed.slides[0]?.elements.length).toBeGreaterThan(10)
   })
 
   it('provides valid outline template separated by hr rules', () => {

@@ -307,6 +307,7 @@ export const SlidesRoot = memo(function SlidesRoot({
               <SlidesCanvas
                 slide={activeSlide}
                 theme={data.theme}
+                assets={data.assets}
                 scale={inlineScale}
                 editable={false}
               />
@@ -361,6 +362,7 @@ export const SlidesRoot = memo(function SlidesRoot({
           slides={slides}
           activeSlideId={activeSlide?.id || ''}
           theme={data.theme}
+          assets={data.assets}
           onSelectSlide={(id) => {
             const idx = slides.findIndex((s) => s.id === id)
             if (idx !== -1) {
@@ -389,6 +391,7 @@ export const SlidesRoot = memo(function SlidesRoot({
                 scale={zoom}
                 editable={true}
                 activeElementId={activeElementId}
+                assets={data.assets}
                 onSelectElement={setActiveElementId}
                 onUpdateElement={handleUpdateElement}
               />
@@ -396,17 +399,19 @@ export const SlidesRoot = memo(function SlidesRoot({
           )}
 
           <div className='bento-corner-controls'>
-            <button
-              type='button'
-              onClick={() => setIsPresentationMode(true)}
-              className='bento-pill-button'
-              title={t('slides.slideshow')}
-            >
-              <span>▶</span>
-              <span>{t('slides.slideshow')}</span>
-            </button>
+            <div className='bento-zoom-cluster flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-full px-2 py-0.5 shadow-md gap-1'>
+              <button
+                type='button'
+                onClick={() => setIsPresentationMode(true)}
+                className='flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors'
+                title={t('slides.slideshow')}
+              >
+                <span className='text-[length:var(--text-10)]'>▶</span>
+                <span>{t('slides.slideshow')}</span>
+              </button>
 
-            <div className='bento-zoom-cluster'>
+              <span className='h-3.5 w-px bg-[var(--border-subtle)]' />
+
               <button
                 type='button'
                 onClick={() => setZoom((z) => Math.max(0.4, Number((z - 0.1).toFixed(1))))}

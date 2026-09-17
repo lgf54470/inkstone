@@ -37,120 +37,105 @@ export const InspectorTheme = memo(function InspectorTheme({
   return (
     <InspectorSection title={t('slides.tab_theme')} defaultOpen={true}>
       <div className='space-y-3 text-xs'>
-        <p className='text-[length:var(--text-10)] text-[var(--text-tertiary)] leading-relaxed'>
+        <div className='text-[length:var(--text-11)] leading-relaxed text-[var(--text-tertiary)] bg-[var(--bg-inset)] rounded-md p-2'>
           {t('slides.theme_hint')}
-        </p>
+        </div>
 
         <div className='space-y-2'>
           <div className='flex items-center justify-between'>
-            <span className='text-[var(--text-secondary)] font-medium'>{t('slides.theme_background')}</span>
-            <div className='flex items-center gap-1.5'>
-              <input
-                type='color'
-                value={theme.background.startsWith('#') ? theme.background : DEFAULT_THEME_BG}
-                onChange={(e) => onUpdateTheme({ background: e.target.value })}
-                className='size-6 rounded border border-[var(--border-subtle)] bg-transparent p-0 cursor-pointer'
-              />
-              <span className='font-mono text-[length:var(--text-10)] text-[var(--text-tertiary)] w-16 text-right'>
-                {theme.background}
-              </span>
-            </div>
+            <span className='text-[var(--text-secondary)]'>{t('slides.theme_background')}</span>
+            <input
+              type='color'
+              value={theme.background.startsWith('#') ? theme.background : DEFAULT_THEME_BG}
+              onChange={(e) => onUpdateTheme({ background: e.target.value })}
+              className='w-28 h-6 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5 cursor-pointer'
+            />
           </div>
 
           <div className='flex items-center justify-between'>
-            <span className='text-[var(--text-secondary)] font-medium'>{t('slides.theme_color')}</span>
-            <div className='flex items-center gap-1.5'>
-              <input
-                type='color'
-                value={theme.color.startsWith('#') ? theme.color : DEFAULT_THEME_TEXT}
-                onChange={(e) => onUpdateTheme({ color: e.target.value })}
-                className='size-6 rounded border border-[var(--border-subtle)] bg-transparent p-0 cursor-pointer'
-              />
-              <span className='font-mono text-[length:var(--text-10)] text-[var(--text-tertiary)] w-16 text-right'>
-                {theme.color}
-              </span>
-            </div>
+            <span className='text-[var(--text-secondary)]'>{t('slides.theme_color')}</span>
+            <input
+              type='color'
+              value={theme.color.startsWith('#') ? theme.color : DEFAULT_THEME_TEXT}
+              onChange={(e) => onUpdateTheme({ color: e.target.value })}
+              className='w-28 h-6 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5 cursor-pointer'
+            />
           </div>
 
           <div className='flex items-center justify-between'>
-            <span className='text-[var(--text-secondary)] font-medium'>{t('slides.theme_accent')}</span>
-            <div className='flex items-center gap-1.5'>
-              <input
-                type='color'
-                value={theme.accent.startsWith('#') ? theme.accent : DEFAULT_THEME_ACCENT}
-                onChange={(e) => onUpdateTheme({ accent: e.target.value })}
-                className='size-6 rounded border border-[var(--border-subtle)] bg-transparent p-0 cursor-pointer'
-              />
-              <span className='font-mono text-[length:var(--text-10)] text-[var(--text-tertiary)] w-16 text-right'>
-                {theme.accent}
-              </span>
-            </div>
+            <span className='text-[var(--text-secondary)]'>{t('slides.theme_accent')}</span>
+            <input
+              type='color'
+              value={theme.accent.startsWith('#') ? theme.accent : DEFAULT_THEME_ACCENT}
+              onChange={(e) => onUpdateTheme({ accent: e.target.value })}
+              className='w-28 h-6 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5 cursor-pointer'
+            />
           </div>
         </div>
 
         <div className='pt-2 border-t border-[var(--border-subtle)] space-y-2'>
-          <p className='text-[length:var(--text-10)] text-[var(--text-tertiary)] leading-relaxed'>
+          <div className='text-[length:var(--text-11)] leading-relaxed text-[var(--text-tertiary)] bg-[var(--bg-inset)] rounded-md p-2'>
             {t('slides.code_palette_hint')}
-          </p>
+          </div>
 
-          <div className='space-y-1.5'>
+          <div className='space-y-2'>
             <div className='flex items-center justify-between'>
-              <span className='text-[var(--text-secondary)] text-[length:var(--text-11)]'>{t('slides.code_comment')}</span>
+              <span className='text-[var(--text-secondary)]'>{t('slides.code_comment')}</span>
               <input
                 type='color'
                 value={codePalette.c || DEFAULT_CODE_COMMENT}
                 onChange={(e) => handleUpdateCodeScope('c', e.target.value)}
-                className='size-5 rounded border border-[var(--border-subtle)] bg-transparent p-0 cursor-pointer'
+                className='w-28 h-6 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5 cursor-pointer'
               />
             </div>
 
             <div className='flex items-center justify-between'>
-              <span className='text-[var(--text-secondary)] text-[length:var(--text-11)]'>{t('slides.code_string')}</span>
+              <span className='text-[var(--text-secondary)]'>{t('slides.code_string')}</span>
               <input
                 type='color'
                 value={codePalette.s || DEFAULT_CODE_STRING}
                 onChange={(e) => handleUpdateCodeScope('s', e.target.value)}
-                className='size-5 rounded border border-[var(--border-subtle)] bg-transparent p-0 cursor-pointer'
+                className='w-28 h-6 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5 cursor-pointer'
               />
             </div>
 
             <div className='flex items-center justify-between'>
-              <span className='text-[var(--text-secondary)] text-[length:var(--text-11)]'>{t('slides.code_number')}</span>
+              <span className='text-[var(--text-secondary)]'>{t('slides.code_number')}</span>
               <input
                 type='color'
                 value={codePalette.n || DEFAULT_CODE_NUMBER}
                 onChange={(e) => handleUpdateCodeScope('n', e.target.value)}
-                className='size-5 rounded border border-[var(--border-subtle)] bg-transparent p-0 cursor-pointer'
+                className='w-28 h-6 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5 cursor-pointer'
               />
             </div>
 
             <div className='flex items-center justify-between'>
-              <span className='text-[var(--text-secondary)] text-[length:var(--text-11)]'>{t('slides.code_keyword')}</span>
+              <span className='text-[var(--text-secondary)]'>{t('slides.code_keyword')}</span>
               <input
                 type='color'
                 value={codePalette.k || DEFAULT_CODE_KEYWORD}
                 onChange={(e) => handleUpdateCodeScope('k', e.target.value)}
-                className='size-5 rounded border border-[var(--border-subtle)] bg-transparent p-0 cursor-pointer'
+                className='w-28 h-6 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5 cursor-pointer'
               />
             </div>
 
             <div className='flex items-center justify-between'>
-              <span className='text-[var(--text-secondary)] text-[length:var(--text-11)]'>{t('slides.code_call')}</span>
+              <span className='text-[var(--text-secondary)]'>{t('slides.code_call')}</span>
               <input
                 type='color'
                 value={codePalette.f || DEFAULT_CODE_CALL}
                 onChange={(e) => handleUpdateCodeScope('f', e.target.value)}
-                className='size-5 rounded border border-[var(--border-subtle)] bg-transparent p-0 cursor-pointer'
+                className='w-28 h-6 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5 cursor-pointer'
               />
             </div>
 
             <div className='flex items-center justify-between'>
-              <span className='text-[var(--text-secondary)] text-[length:var(--text-11)]'>{t('slides.code_punctuation')}</span>
+              <span className='text-[var(--text-secondary)]'>{t('slides.code_punctuation')}</span>
               <input
                 type='color'
                 value={codePalette.p || DEFAULT_CODE_PUNCTUATION}
                 onChange={(e) => handleUpdateCodeScope('p', e.target.value)}
-                className='size-5 rounded border border-[var(--border-subtle)] bg-transparent p-0 cursor-pointer'
+                className='w-28 h-6 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5 cursor-pointer'
               />
             </div>
           </div>

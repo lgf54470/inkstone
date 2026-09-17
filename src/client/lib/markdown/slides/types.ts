@@ -26,7 +26,21 @@ export interface TextElement extends ElementBase {
   letterSpacing?: number
 }
 
-export type ShapeType = 'rect' | 'rounded' | 'circle' | 'card' | 'ellipse' | 'triangle' | 'arrow' | 'line'
+export type ShapeType =
+  | 'rect'
+  | 'ellipse'
+  | 'triangle'
+  | 'arrow'
+  | 'arrow2'
+  | 'line'
+  | 'curve'
+  | 'connector'
+  | 'curve-connector'
+  | 'free'
+  | 'poly'
+  | 'rounded'
+  | 'circle'
+  | 'card'
 
 export interface ShapeGradientStop {
   at: number
@@ -61,7 +75,9 @@ export interface ShapeElement extends ElementBase {
 export interface SvgElement extends ElementBase {
   type: 'svg'
   asset?: string
+  markup?: string
   svg?: string
+  css?: string
 }
 
 export interface ImageElement extends ElementBase {

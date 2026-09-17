@@ -1,11 +1,11 @@
 import { memo } from 'react'
 import {
   Type,
+  Code2,
   Square,
   Image as ImageIcon,
   Table as TableIcon,
   BarChart3,
-  Code2,
   Layers,
   ChevronUp,
   ChevronDown,
@@ -25,7 +25,7 @@ function getElementExcerpt(el: SlideElement): string {
   switch (el.type) {
     case 'text': {
       const clean = el.html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
-      return clean ? (clean.length > 20 ? `${clean.slice(0, 19)}…` : clean) : t('slides.layer_text')
+      return clean || t('slides.layer_text')
     }
     case 'shape':
       return el.shape === 'rect'
@@ -51,19 +51,19 @@ function getElementExcerpt(el: SlideElement): string {
 function getElementIcon(el: SlideElement) {
   switch (el.type) {
     case 'text':
-      return <Type size={12} className='text-[var(--accent)] shrink-0' />
+      return <Type size={11} className='text-[var(--text-tertiary)] shrink-0' />
     case 'shape':
-      return <Square size={12} className='text-amber-500 shrink-0' />
+      return <Square size={11} className='text-[var(--text-tertiary)] shrink-0' />
     case 'image':
-      return <ImageIcon size={12} className='text-emerald-500 shrink-0' />
+      return <ImageIcon size={11} className='text-[var(--text-tertiary)] shrink-0' />
     case 'table':
-      return <TableIcon size={12} className='text-sky-500 shrink-0' />
+      return <TableIcon size={11} className='text-[var(--text-tertiary)] shrink-0' />
     case 'chart':
-      return <BarChart3 size={12} className='text-indigo-500 shrink-0' />
+      return <BarChart3 size={11} className='text-[var(--text-tertiary)] shrink-0' />
     case 'code':
-      return <Code2 size={12} className='text-purple-500 shrink-0' />
+      return <Code2 size={11} className='text-[var(--text-tertiary)] shrink-0' />
     default:
-      return <Layers size={12} className='shrink-0' />
+      return <Layers size={11} className='text-[var(--text-tertiary)] shrink-0' />
   }
 }
 
@@ -80,7 +80,7 @@ export const InspectorLayers = memo(function InspectorLayers({
       {reversedElements.length === 0 ? (
         <p className='text-xs text-[var(--text-tertiary)] py-1'>{t('slides.layers_empty')}</p>
       ) : (
-        <div className='space-y-1 max-h-56 overflow-y-auto pr-0.5'>
+        <div className='space-y-0.5 max-h-72 overflow-y-auto pr-0.5'>
           {reversedElements.map((el, revIdx) => {
             const isSelected = el.id === selectedElementId
             const origIdx = slide.elements.length - 1 - revIdx
@@ -95,7 +95,7 @@ export const InspectorLayers = memo(function InspectorLayers({
                     : 'hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
                 }`}
               >
-                <div className='flex items-center gap-1.5 min-w-0 flex-1 mr-1'>
+                <div className='flex items-center gap-2 min-w-0 flex-1 mr-1'>
                   {getElementIcon(el)}
                   <span className='truncate text-[length:var(--text-11)]'>
                     {getElementExcerpt(el)}

@@ -19,14 +19,34 @@ describe('basic element factories', () => {
   })
 
   it('creates default shape elements for all supported types', () => {
-    const rect = createDefaultShape('rect', '#3B82F6')
-    expect(rect.type).toBe('shape')
-    expect(rect.shape).toBe('rect')
-    expect(rect.fill).toBe('#3B82F6')
+    const shapes = [
+      'rect',
+      'card',
+      'rounded',
+      'circle',
+      'ellipse',
+      'triangle',
+      'arrow',
+      'arrow2',
+      'line',
+      'curve',
+      'connector',
+      'curve-connector',
+      'free',
+      'poly',
+    ] as const
 
-    const card = createDefaultShape('card', '#1E293B')
-    expect(card.shape).toBe('card')
-    expect(card.radius).toBe(12)
+    for (const shapeType of shapes) {
+      const shape = createDefaultShape(shapeType, '#3B82F6')
+      expect(shape.type).toBe('shape')
+      expect(shape.shape).toBe(shapeType)
+      if (shapeType === 'line' || shapeType === 'arrow' || shapeType === 'arrow2') {
+        expect(shape.fill).toBe('transparent')
+        expect(shape.stroke).toBe('#3B82F6')
+      } else {
+        expect(shape.fill).toBe('#3B82F6')
+      }
+    }
   })
 
   it('creates default image element with fallback source', () => {

@@ -48,14 +48,12 @@ export const InspectorSlide = memo(function InspectorSlide({
     <>
       <InspectorSection title={t('slides.tab_slide')} defaultOpen={true}>
         <div className='space-y-2.5'>
-          <div>
-            <label className='block font-medium mb-1 text-[var(--text-secondary)] text-[length:var(--text-11)]'>
-              {t('slides.page_size')}
-            </label>
+          <div className='flex items-center justify-between gap-2 text-xs'>
+            <span className='text-[var(--text-secondary)]'>{t('slides.page_size')}</span>
             <select
               value={selectedSizeKey}
               onChange={(e) => handlePageSizeChange(e.target.value)}
-              className='w-full rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-xs outline-none focus:border-[var(--accent)]'
+              className='w-28 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-xs outline-none focus:border-[var(--accent)]'
             >
               <option value='16:9'>{t('slides.size_16_9')}</option>
               <option value='4:3'>{t('slides.size_4_3')}</option>
@@ -64,35 +62,22 @@ export const InspectorSlide = memo(function InspectorSlide({
             </select>
           </div>
 
-          <div>
-            <label className='block font-medium mb-1 text-[var(--text-secondary)] text-[length:var(--text-11)]'>
-              {t('slides.background_color')}
-            </label>
-            <div className='flex items-center gap-2'>
-              <input
-                type='color'
-                value={slide.background?.startsWith('#') ? slide.background : DEFAULT_SLIDE_BG}
-                onChange={(e) => onUpdateSlide({ background: e.target.value })}
-                className='size-7 rounded border border-[var(--border-subtle)] bg-transparent p-0 cursor-pointer shrink-0'
-              />
-              <input
-                type='text'
-                value={slide.background || ''}
-                placeholder={t('slides.background_placeholder')}
-                onChange={(e) => onUpdateSlide({ background: e.target.value })}
-                className='flex-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 outline-none focus:border-[var(--accent)] font-mono text-[length:var(--text-11)]'
-              />
-            </div>
+          <div className='flex items-center justify-between gap-2 text-xs'>
+            <span className='text-[var(--text-secondary)]'>{t('slides.background_color')}</span>
+            <input
+              type='color'
+              value={slide.background?.startsWith('#') ? slide.background : DEFAULT_SLIDE_BG}
+              onChange={(e) => onUpdateSlide({ background: e.target.value })}
+              className='w-28 h-6 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5 cursor-pointer'
+            />
           </div>
 
-          <div>
-            <label className='block font-medium mb-1 text-[var(--text-secondary)] text-[length:var(--text-11)]'>
-              {t('slides.transition')}
-            </label>
+          <div className='flex items-center justify-between gap-2 text-xs'>
+            <span className='text-[var(--text-secondary)]'>{t('slides.transition')}</span>
             <select
               value={slide.transition || 'none'}
               onChange={(e) => onUpdateSlide({ transition: e.target.value as SlideTransitionKind })}
-              className='w-full rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-xs outline-none focus:border-[var(--accent)]'
+              className='w-28 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-xs outline-none focus:border-[var(--accent)]'
             >
               <option value='none'>{t('slides.transition_none')}</option>
               <option value='fade'>{t('slides.transition_fade')}</option>
@@ -102,71 +87,69 @@ export const InspectorSlide = memo(function InspectorSlide({
             </select>
           </div>
 
-          <div className='pt-1 space-y-1.5'>
-            <label className='flex items-center gap-2 text-[length:var(--text-11)] text-[var(--text-primary)] cursor-pointer'>
-              <input
-                type='checkbox'
-                checked={!!slide.hidden}
-                onChange={(e) => onUpdateSlide({ hidden: e.target.checked })}
-                className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0'
-              />
-              <span>{t('slides.hide_slide')}</span>
-            </label>
+          <div className='flex items-center justify-between text-xs'>
+            <span className='text-[var(--text-secondary)]'>{t('slides.hide_slide')}</span>
+            <input
+              type='checkbox'
+              checked={!!slide.hidden}
+              onChange={(e) => onUpdateSlide({ hidden: e.target.checked })}
+              className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'
+            />
+          </div>
 
-            <label className='flex items-center gap-2 text-[length:var(--text-11)] text-[var(--text-primary)] cursor-pointer'>
-              <input
-                type='checkbox'
-                checked={!!slide.unnumbered}
-                onChange={(e) => onUpdateSlide({ unnumbered: e.target.checked })}
-                className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0'
-              />
-              <span>{t('slides.unnumbered')}</span>
-            </label>
+          <div className='flex items-center justify-between text-xs'>
+            <span className='text-[var(--text-secondary)]'>{t('slides.unnumbered')}</span>
+            <input
+              type='checkbox'
+              checked={!!slide.unnumbered}
+              onChange={(e) => onUpdateSlide({ unnumbered: e.target.checked })}
+              className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'
+            />
           </div>
         </div>
       </InspectorSection>
 
       <InspectorSection title={t('slides.slideshow_settings')} defaultOpen={true}>
-        <div className='space-y-2 text-[length:var(--text-11)] text-[var(--text-primary)]'>
-          <label className='flex items-center gap-2 cursor-pointer'>
+        <div className='space-y-2 text-xs'>
+          <div className='flex items-center justify-between'>
+            <span className='text-[var(--text-secondary)]'>{t('slides.slide_number')}</span>
             <input
               type='checkbox'
               checked={presentSettings.slideNumber ?? true}
               onChange={(e) => onUpdatePresentSettings({ slideNumber: e.target.checked })}
-              className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0'
+              className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'
             />
-            <span>{t('slides.slide_number')}</span>
-          </label>
+          </div>
 
-          <label className='flex items-center gap-2 cursor-pointer'>
+          <div className='flex items-center justify-between'>
+            <span className='text-[var(--text-secondary)]'>{t('slides.progress_bar')}</span>
             <input
               type='checkbox'
               checked={presentSettings.progress ?? true}
               onChange={(e) => onUpdatePresentSettings({ progress: e.target.checked })}
-              className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0'
+              className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'
             />
-            <span>{t('slides.progress_bar')}</span>
-          </label>
+          </div>
 
-          <label className='flex items-center gap-2 cursor-pointer'>
+          <div className='flex items-center justify-between'>
+            <span className='text-[var(--text-secondary)]'>{t('slides.corner_arrows')}</span>
             <input
               type='checkbox'
               checked={presentSettings.controls ?? false}
               onChange={(e) => onUpdatePresentSettings({ controls: e.target.checked })}
-              className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0'
+              className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'
             />
-            <span>{t('slides.corner_arrows')}</span>
-          </label>
+          </div>
 
-          <label className='flex items-center gap-2 cursor-pointer'>
+          <div className='flex items-center justify-between'>
+            <span className='text-[var(--text-secondary)]'>{t('slides.number_hidden')}</span>
             <input
               type='checkbox'
               checked={presentSettings.numberHidden ?? false}
               onChange={(e) => onUpdatePresentSettings({ numberHidden: e.target.checked })}
-              className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0'
+              className='rounded border-[var(--border-subtle)] text-[var(--accent)] focus:ring-0 size-4'
             />
-            <span>{t('slides.number_hidden')}</span>
-          </label>
+          </div>
         </div>
       </InspectorSection>
     </>
