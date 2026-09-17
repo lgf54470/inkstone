@@ -38,6 +38,7 @@ function sections(): HelpSection[] {
         { label: t('slides.help_tip_select') },
         { label: t('slides.help_tip_edit_text') },
         { label: t('slides.help_tip_resize') },
+        { keyCaps: ['Alt'], label: t('slides.help_tip_snap') },
         { label: t('slides.help_tip_inspector') },
         { label: t('slides.help_tip_sidebar') },
       ],

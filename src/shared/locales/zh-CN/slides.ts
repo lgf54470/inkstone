@@ -155,6 +155,7 @@ export const messages = {
 'slides.help_tip_select': '点击画布上的元素即可选中',
 'slides.help_tip_edit_text': '选中的文本框可直接编辑——点进去输入即可',
 'slides.help_tip_resize': '拖动角上的圆点缩放，拖动本体移动',
+'slides.help_tip_snap': '按住 Alt 拖动可不受对齐参考线约束，自由移动',
 'slides.help_tip_inspector': '右侧面板编辑选中元素与当前幻灯片',
 'slides.help_tip_sidebar': '左侧栏用于翻页、新增、复制或删除幻灯片',
 'slides.help_present_next': '下一张（也可用空格、Page Down）',

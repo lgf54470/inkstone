@@ -155,6 +155,7 @@ export const messages = {
 'slides.help_tip_select': 'Click an element on the canvas to select it',
 'slides.help_tip_edit_text': 'A selected text box is editable in place — click it and type',
 'slides.help_tip_resize': 'Drag the round handles to resize, drag the body to move',
+'slides.help_tip_snap': 'Drag with Alt to move freely, without lining up with the guides',
 'slides.help_tip_inspector': 'The right panel edits the selection and the slide',
 'slides.help_tip_sidebar': 'The left rail walks the deck and adds, duplicates or removes slides',
 'slides.help_present_next': 'Next slide (also Space, Page Down)',

@@ -1,10 +1,14 @@
-import { memo, useRef, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from 'react'
+import { memo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from 'react'
 import type { Slide, SlideElement, SlidesTheme } from '../types'
 import type { ElementPosition } from '../edits'
 import type { PageSize } from '../page'
-import type { Rect } from './canvas-helpers'
-import { SlideElementBox } from './slide-element-box'
+import type { SnapGuide } from '../snap'
+import { isBackgroundLayer, type Rect } from './canvas-helpers'
+import { SlideElementBox, type DragTarget } from './slide-element-box'
 import { useSlidesMarquee } from './use-slides-marquee'
+
+/** The width of a guide line, in page pixels: one, so it reads as a line rather than a band. */
+const GUIDE_WIDTH = 1
 
 interface CanvasProps {
   slide: Slide
@@ -29,6 +33,8 @@ interface LayersProps extends CanvasProps {
   scale: number
   editable: boolean
   canvasRef: RefObject<HTMLDivElement | null>
+  /** Where a drag hands the lines it is using, so the page can draw them while it runs. */
+  onGuides: (guides: SnapGuide[]) => void
 }
 
 /**
@@ -40,6 +46,7 @@ interface LayersProps extends CanvasProps {
 export const SlidesCanvas = memo(function SlidesCanvas(props: CanvasProps) {
   const { slide, page, scale = 1, editable = false, onSelectElement, onSelectMany } = props
   const canvasRef = useRef<HTMLDivElement | null>(null)
+  const [guides, setGuides] = useState<SnapGuide[]>([])
   const { band, start } = useSlidesMarquee({
     canvasRef,
     enabled: editable && Boolean(onSelectMany),
@@ -52,7 +59,14 @@ export const SlidesCanvas = memo(function SlidesCanvas(props: CanvasProps) {
 
   return (
     <SlidePageBox {...props} scale={scale} canvasRef={canvasRef} onBackdropPress={start}>
-      <CanvasLayers {...props} scale={scale} editable={editable} canvasRef={canvasRef} />
+      <CanvasLayers
+        {...props}
+        scale={scale}
+        editable={editable}
+        canvasRef={canvasRef}
+        onGuides={setGuides}
+      />
+      <GuideLines guides={guides} />
       {band && <MarqueeBand band={band} />}
     </SlidePageBox>
   )
@@ -98,6 +112,30 @@ function SlidePageBox({
   )
 }
 
+/**
+ * The lines a drag is lined up on: one per axis, drawn across the page wherever the box it is
+ * carrying met something. They are what makes the jump legible — a box that stops six pixels
+ * short of where the pointer is is a bug unless the page says why.
+ */
+function GuideLines({ guides }: { guides: SnapGuide[] }) {
+  return (
+    <>
+      {guides.map((guide, index) => (
+        <div
+          key={`${guide.axis}-${guide.at}-${guide.source}-${index}`}
+          data-slide-guide={guide.axis}
+          className='pointer-events-none absolute z-30 bg-[var(--accent)]'
+          style={
+            guide.axis === 'x'
+              ? { left: `${guide.at}px`, top: 0, width: `${GUIDE_WIDTH}px`, height: '100%' }
+              : { top: `${guide.at}px`, left: 0, height: `${GUIDE_WIDTH}px`, width: '100%' }
+          }
+        />
+      ))}
+    </>
+  )
+}
+
 /** The rubber band while it is being drawn, over everything it is choosing between. */
 function MarqueeBand({ band }: { band: Rect }) {
   return (
@@ -128,11 +166,18 @@ const CanvasLayers = memo(function CanvasLayers({
   onUpdateElement,
   onMoveElements,
   canvasRef,
+  onGuides,
 }: LayersProps) {
   const selected = new Set(selectedIds ?? [])
-  const targets = slide.elements
+  const targets: DragTarget[] = slide.elements
     .filter((element) => selected.has(element.id))
-    .map((element) => ({ id: element.id, x: element.x, y: element.y }))
+    .map((element) => ({ id: element.id, x: element.x, y: element.y, w: element.w, h: element.h }))
+  // Every box on the page as something a drag can line up against, minus the backdrop — it covers
+  // the whole page, so it would offer a line on every edge at once. The drag itself takes the
+  // boxes it is carrying out of this list.
+  const boxes = slide.elements
+    .filter((element) => !isBackgroundLayer(element, page))
+    .map((element) => ({ id: element.id, x: element.x, y: element.y, w: element.w, h: element.h }))
 
   return (
     <>
@@ -147,7 +192,8 @@ const CanvasLayers = memo(function CanvasLayers({
           isSelected={editable && selected.has(el.id)}
           isPrimary={editable && primaryId === el.id}
           editing={editingElementId === el.id}
-          targets={selected.has(el.id) ? targets : [{ id: el.id, x: el.x, y: el.y }]}
+          targets={selected.has(el.id) ? targets : [{ id: el.id, x: el.x, y: el.y, w: el.w, h: el.h }]}
+          snap={{ boxes, report: onGuides }}
           assets={assets}
           canvasRef={canvasRef}
           onSelect={onSelectElement}

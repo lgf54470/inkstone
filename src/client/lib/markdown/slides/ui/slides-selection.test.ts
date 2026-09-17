@@ -60,9 +60,9 @@ function press(target: HTMLElement, options: MouseEventInit = {}): void {
   })
 }
 
-function moveTo(clientX: number, clientY: number): void {
+function moveTo(clientX: number, clientY: number, options: MouseEventInit = {}): void {
   act(() => {
-    window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX, clientY }))
+    window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX, clientY, ...options }))
   })
 }
 
@@ -163,6 +163,54 @@ describe('the rubber band', () => {
     release(900, 600)
 
     expect(rings()).toEqual([])
+  })
+})
+
+describe('what a dragged box lines up with', () => {
+  /** Where the guide line is drawn, or null when no line is on the page. */
+  function guideAt(axis: 'x' | 'y'): number | null {
+    const line = document.querySelector<HTMLElement>(`main [data-slide-guide="${axis}"]`)
+    if (!line) return null
+    return Number.parseFloat((axis === 'x' ? line.style.left : line.style.top).replace('px', ''))
+  }
+
+  it('stops the box on a neighbour it was aimed at, and shows the line while it moves', () => {
+    const live = mountDeck()
+    // The box starts at 100, so 397 puts it at 497 — three pixels short of the neighbour's left
+    // edge at 500, which is inside the threshold.
+    press(box('a'), { clientX: 0, clientY: 0 })
+    moveTo(397, 3)
+    expect(guideAt('x')).toBe(500)
+    expect(guideAt('y')).toBeNull()
+
+    release(397, 3)
+    expect(guideAt('x')).toBeNull()
+    const a = live.doc.slides[0]?.elements.find((element) => element.id === 'a')
+    expect([a?.x, a?.y]).toEqual([500, 103])
+  })
+
+  it('leaves the box where the pointer put it while Alt is held, and draws nothing', () => {
+    const live = mountDeck()
+    press(box('a'), { clientX: 0, clientY: 0 })
+    moveTo(397, 3, { altKey: true })
+    expect(document.querySelector('main [data-slide-guide]')).toBeNull()
+
+    release(397, 3)
+    const a = live.doc.slides[0]?.elements.find((element) => element.id === 'a')
+    expect([a?.x, a?.y]).toEqual([497, 103])
+  })
+
+  it('never lines a box up with itself, which is what it would do if the moving list were not taken out', () => {
+    const live = mountDeck()
+    // Nothing else is near: a drag of a few pixels must not be answered by the box's own edges,
+    // which sit three pixels away from where it already is.
+    press(box('a'), { clientX: 0, clientY: 0 })
+    moveTo(3, 3)
+    expect(document.querySelector('main [data-slide-guide]')).toBeNull()
+
+    release(3, 3)
+    const a = live.doc.slides[0]?.elements.find((element) => element.id === 'a')
+    expect([a?.x, a?.y]).toEqual([103, 103])
   })
 })
 
