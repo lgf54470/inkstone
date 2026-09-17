@@ -15,6 +15,8 @@ import { SlidesPresenter } from './slides-presenter'
 import { SlidesHelpDialog } from './slides-help-dialog'
 import { SlidesSettingsDialog } from './slides-settings-dialog'
 import { SlidesInlinePreview } from './slides-inline-preview'
+import { LayoutPicker } from './layout-picker'
+import { instantiateLayout, layoutById } from '../layouts'
 import { copySlidesLink } from './copy-link'
 import {
   createDefaultChart,
@@ -52,7 +54,7 @@ export const SlidesRoot = memo(function SlidesRoot({
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
   const [activeElementId, setActiveElementId] = useState<string | null>(null)
   const [isPresentationMode, setIsPresentationMode] = useState(false)
-  const [openDialog, setOpenDialog] = useState<'settings' | 'help' | null>(null)
+  const [openDialog, setOpenDialog] = useState<'settings' | 'help' | 'layouts' | null>(null)
   const [zoom, setZoom] = useState(1)
   const [inlineScale, setInlineScale] = useState(0.5)
   const inlineContainerRef = useRef<HTMLDivElement>(null)
@@ -153,29 +155,22 @@ export const SlidesRoot = memo(function SlidesRoot({
     setActiveElementId(newCode.id)
   }, [activeSlide, handleUpdateSlide])
 
-  const handleAddSlide = useCallback(() => {
-    const newSlide: Slide = {
-      id: `slide-${Date.now()}`,
-      title: `Slide ${slides.length + 1}`,
-      elements: [
-        {
-          id: `title-${Date.now()}`,
-          type: 'text',
-          html: `Slide ${slides.length + 1}`,
-          fontSize: 44,
-          fontWeight: 700,
-          align: 'left',
-          valign: 'top',
-          x: 96,
-          y: 80,
-          w: 1088,
-          h: 80,
-        },
-      ],
-    }
-    commitData({ ...data, slides: [...slides, newSlide] })
-    setActiveSlideIndex(slides.length)
-  }, [commitData, data, slides])
+  const addSlideFromLayout = useCallback(
+    (layoutId: string) => {
+      const layout = layoutById(layoutId)
+      if (!layout) return
+      const seed = `${Date.now()}-${slides.length}`
+      const newSlide = instantiateLayout(layout, data.size, {
+        accent: data.theme.accent,
+        message: (key) => t(key),
+        seed,
+      })
+      commitData({ ...data, slides: [...slides, newSlide] })
+      setActiveSlideIndex(slides.length)
+      setActiveElementId(null)
+    },
+    [commitData, data, slides],
+  )
 
   const handleDuplicateSlide = useCallback(
     (id: string) => {
@@ -336,6 +331,17 @@ export const SlidesRoot = memo(function SlidesRoot({
 
       <SlidesHelpDialog open={openDialog === 'help'} onClose={() => setOpenDialog(null)} />
 
+      <LayoutPicker
+        open={openDialog === 'layouts'}
+        theme={data.theme}
+        page={data.size}
+        onPick={(layoutId) => {
+          addSlideFromLayout(layoutId)
+          setOpenDialog(null)
+        }}
+        onClose={() => setOpenDialog(null)}
+      />
+
       <div className='flex flex-1 overflow-hidden'>
         <SlidesSidebar
           slides={slides}
@@ -350,7 +356,7 @@ export const SlidesRoot = memo(function SlidesRoot({
               setActiveElementId(null)
             }
           }}
-          onAddSlide={handleAddSlide}
+          onAddSlide={() => setOpenDialog('layouts')}
           onDuplicateSlide={handleDuplicateSlide}
           onDeleteSlide={handleDeleteSlide}
           onMoveSlide={handleMoveSlide}

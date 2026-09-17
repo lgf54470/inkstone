@@ -2932,6 +2932,23 @@ const allowed = new Map([
     '/**\n * The colours a code element\'s tokens are painted with. A deck may name any of them in\n * `theme.codePalette`; the values here are what a deck that names none is drawn with, and\n * the palette inspector edits the same table rather than keeping a second copy of it.\n *\n * The keys are single letters because the palette is written into the fence body, where a\n * slide\'s code colours travel next to everything else a reader might hand-edit.\n */',
     '/**\n * The palette as custom properties on the element that holds the highlighted markup: the\n * colours are per-deck and change while the reader drags a colour input, which is exactly\n * what a CSS variable is for. The stylesheet names them once for every surface that draws\n * code, so the canvas, a thumbnail and a printed page cannot drift apart.\n */',
   ]],
+  ['src/client/lib/markdown/slides/layouts.test.ts', [
+    '// 160 x (1280/1600) = 128, 404 x (720/900) = 323.',
+    '// Height is unscaled, so the 44pt heading keeps its size even though the page doubled.',
+  ]],
+  ['src/client/lib/markdown/slides/layouts.ts', [
+    '/**\n * Where a new slide starts from.\n *\n * The nine layouts are the ones the bento/slides format offers out of the box, drawn on\n * the format\'s own 1600x900 authoring page and scaled to whatever page the deck uses, so\n * a 4:3 deck gets 4:3 compositions instead of the 16:9 ones cropped at the right edge.\n * A layout\'s text is a hint the reader retypes rather than content the deck owns, so it\n * is stored as a message id here and resolved when the slide is created: the hint lands\n * in the reader\'s own language and is never part of this module\'s state.\n */',
+    '/** The colour token a layout\'s rule/bar takes from the deck rather than naming itself. */',
+    '/** A card is a backdrop plus the text that sits on it, inset by the same 32px on every side. */',
+    '/** Names the new slide; the caller\'s uniqueness is what keeps two copies apart. */',
+    '/**\n * A slide from a layout: geometry rescaled onto this deck\'s page, text hints resolved,\n * and accent-coloured marks given the deck\'s accent.\n *\n * Element ids are KEPT rather than regenerated, which is what the format does: an id is\n * how a morph pairs one slide\'s element with the next one\'s, so two slides made from the\n * same layout share the ids of the layout they came from. Only the slide\'s own id is\n * new, and `seed` is what makes it unique in the deck.\n */',
+    '// Type follows the smaller axis: on a squarer page that is the side that decides',
+    '// whether a heading still fits its box.',
+    "/** Message id resolved to the element's html when the slide is created. */",
+    "/** Message id of the layout's name in the picker. */",
+    "/** Deck-wide accent, which the layouts' rules and bars take instead of naming a colour. */",
+    "/** Resolves a layout's text hint, so the hint lands in the reader's language. */",
+  ]],
   ['src/client/lib/markdown/slides/page.ts', [
     "/** The page a deck gets when its body names no size of its own: the format's 16:9 default. */",
     '/**\n * The one scale a surface needs. Geometry is authored in absolute pixels of the page, so\n * a thumbnail, a card in a note and a projector all draw the same numbers behind a\n * different scale — none of them may assume the default page, because a deck that names\n * its own size would then be cropped (a 4:3 deck into a 16:9 frame) or stretched.\n */',
@@ -2978,6 +2995,9 @@ const allowed = new Map([
     "/** The deck's chart colours, cycled per value; the element's own colour is the fallback. */",
     '/**\n * A chart is drawn as markup rather than onto a canvas: a slide is printed, exported and\n * shown at whatever size the page turns out to be, and vector marks keep all three exact.\n * The preset decides the marks — bars, a polyline, wedges, points — and the deck\'s palette\n * decides their colours, so recolouring a deck\'s charts needs no edit here.\n */',
   ]],
+  ['src/client/lib/markdown/slides/ui/layout-picker.tsx', [
+    '/**\n * The way into a new slide: a page of the deck\'s own size and shape, so what the reader\n * picks is what they get. The previews are the real canvas drawing the real layout, which\n * is why a deck\'s page size and palette show up in them without either being a parameter\n * of this file.\n */',
+  ]],
   ['src/client/lib/markdown/slides/ui/code-block.test.ts', [
     '// The grammar is loaded on demand; loading it here is what the effect would have to',
     '// wait for, so the paint under test is the swap rather than the network.',
@@ -2987,6 +3007,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/slides-canvas.tsx', [
     '/** The page this deck is authored against; the canvas never assumes a default one. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-dialogs.test.ts', [
+    '// Three cards, each a backdrop plus its text, behind the title.',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-doc-sync.test.ts', [
     '// renderElement() hands out a mount without a second render, and adoption is precisely',

@@ -8,6 +8,9 @@
   "src/client/lib/markdown/slides/history.ts": {
     "longFns": 1
   },
+  "src/client/lib/markdown/slides/layouts.test.ts": {
+    "longFns": 1
+  },
   "src/client/lib/markdown/slides/outline.test.ts": {
     "longFns": 1
   },
@@ -31,6 +34,9 @@
     "longFns": 1
   },
   "src/client/lib/markdown/slides/ui/slides-canvas.tsx": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/slides/ui/slides-dialogs.test.ts": {
     "longFns": 1
   },
   "src/client/lib/markdown/slides/ui/slides-presenter.tsx": {

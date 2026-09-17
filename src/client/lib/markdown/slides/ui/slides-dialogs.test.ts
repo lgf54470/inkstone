@@ -59,6 +59,34 @@ describe('slides deck dialogs', () => {
     expect(committed.at(-1)?.size).toEqual({ width: 1280, height: 800 })
   })
 
+  it('adds a slide from the layout the reader picks', () => {
+    const { committed } = mountDeck()
+
+    const add = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent === t('slides.add_slide'),
+    )
+    expect(add, 'the rail offers a way to add a slide').toBeDefined()
+    act(() => {
+      add?.click()
+    })
+    expect(dialog()?.textContent).toContain(t('slides.choose_layout'))
+
+    const option = document.querySelector<HTMLButtonElement>(
+      '[data-layout-option="layout-three-cards"]',
+    )
+    expect(option).not.toBeNull()
+    act(() => {
+      option?.click()
+    })
+
+    const deck = committed.at(-1)!
+    expect(deck.slides).toHaveLength(2)
+    const added = deck.slides[1]!
+    expect(added.title).toBe(t('slides.layout_three_cards'))
+    // Three cards, each a backdrop plus its text, behind the title.
+    expect(added.elements).toHaveLength(7)
+  })
+
   it('opens the help panel from the question mark and lists the presenter keys', () => {
     mountDeck()
 
