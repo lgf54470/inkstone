@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpToLine, Copy, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpToLine, ClipboardPaste, Copy, Pencil, Plus, Scissors, Trash2 } from 'lucide-react'
 import { Menu, type MenuItem } from '../../../../components/overlay'
 import { Z_INDEX } from '../../../../lib/z-index'
 import { t } from '../../../i18n'
@@ -17,6 +17,9 @@ export interface SlidesMenuState {
 
 export interface SlidesMenuActions {
   onEditText: (elementId: string) => void
+  onCopyElement: (elementId: string) => void
+  onCutElement: (elementId: string) => void
+  onPaste: () => void
   onDuplicateElement: (elementId: string) => void
   onReorderElement: (elementId: string, direction: 'front' | 'back') => void
   onDeleteElement: (elementId: string) => void
@@ -34,8 +37,8 @@ const MENU_WIDTH = 220
  * A menu row exists only where there is a handler behind it: a deck's canvas is the one
  * place where a reader expects a full menu, so a row that quietly does nothing is worse
  * there than a shorter menu — the reader learns the menu is unreliable instead of learning
- * the feature is missing. Slice, group and paste rows therefore arrive with their features
- * (the clipboard and grouping pass), not before them.
+ * the feature is missing. Slice and group rows therefore arrive with their features (the
+ * grouping pass), not before them; the clipboard rows are here because it has landed.
  */
 export function SlidesContextMenu({
   menu,
@@ -66,23 +69,59 @@ function itemsFor(target: SlidesMenuTarget, actions: SlidesMenuActions): MenuIte
 }
 
 function elementItems(element: SlideElement, actions: SlidesMenuActions): MenuItem[] {
-  const items: MenuItem[] = []
-  if (element.type === 'text') {
-    items.push({
+  return [
+    ...editRows(element, actions),
+    ...clipboardRows(element, actions),
+    ...arrangeRows(element, actions),
+    {
+      id: 'delete-element',
+      label: t('common.delete'),
+      icon: <Trash2 size={13} />,
+      tone: 'danger',
+      separatorBefore: true,
+      onSelect: () => actions.onDeleteElement(element.id),
+    },
+  ]
+}
+
+function editRows(element: SlideElement, actions: SlidesMenuActions): MenuItem[] {
+  if (element.type !== 'text') return []
+  return [
+    {
       id: 'edit-text',
       label: t('slides.edit_text'),
       icon: <Pencil size={13} />,
       onSelect: () => actions.onEditText(element.id),
-    })
-  }
+    },
+  ]
+}
+
+/** Copy and cut are the rows a reader reaches for most, so they sit above the rest of the edits. */
+function clipboardRows(element: SlideElement, actions: SlidesMenuActions): MenuItem[] {
   return [
-    ...items,
+    {
+      id: 'copy-element',
+      label: t('common.copy'),
+      icon: <Copy size={13} />,
+      onSelect: () => actions.onCopyElement(element.id),
+    },
+    {
+      id: 'cut-element',
+      label: t('slides.cut'),
+      icon: <Scissors size={13} />,
+      onSelect: () => actions.onCutElement(element.id),
+    },
     {
       id: 'duplicate-element',
       label: t('slides.duplicate_element'),
       icon: <Copy size={13} />,
       onSelect: () => actions.onDuplicateElement(element.id),
     },
+  ]
+}
+
+function arrangeRows(element: SlideElement, actions: SlidesMenuActions): MenuItem[] {
+  return [
     {
       id: 'bring-to-front',
       label: t('slides.bring_to_front'),
@@ -95,14 +134,6 @@ function elementItems(element: SlideElement, actions: SlidesMenuActions): MenuIt
       icon: <ArrowDownToLine size={13} />,
       onSelect: () => actions.onReorderElement(element.id, 'back'),
     },
-    {
-      id: 'delete-element',
-      label: t('common.delete'),
-      icon: <Trash2 size={13} />,
-      tone: 'danger',
-      separatorBefore: true,
-      onSelect: () => actions.onDeleteElement(element.id),
-    },
   ]
 }
 
@@ -113,6 +144,13 @@ function canvasItems(actions: SlidesMenuActions): MenuItem[] {
       label: t('slides.add_slide'),
       icon: <Plus size={13} />,
       onSelect: actions.onAddSlide,
+    },
+    {
+      id: 'paste',
+      label: t('slides.paste'),
+      icon: <ClipboardPaste size={13} />,
+      separatorBefore: true,
+      onSelect: actions.onPaste,
     },
   ]
 }

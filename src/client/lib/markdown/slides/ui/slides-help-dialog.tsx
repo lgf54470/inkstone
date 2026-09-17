@@ -8,6 +8,8 @@ const HELP_DIALOG_WIDTH = 640
 interface HelpRow {
   /** Key combination shown in the row, or a plain action name for a tip row. */
   keys?: string
+  /** Separate caps, for a row that stands for a set of keys rather than one combination. */
+  keyCaps?: string[]
   label: string
 }
 
@@ -25,6 +27,11 @@ function sections(): HelpSection[] {
       rows: [
         { keys: 'mod+z', label: t('common.undo') },
         { keys: 'mod+shift+z', label: t('contextmenu.redo') },
+        { keys: 'mod+c', label: t('slides.help_keys_copy') },
+        { keys: 'mod+x', label: t('slides.help_keys_cut') },
+        { keys: 'mod+v', label: t('slides.help_keys_paste') },
+        { keys: 'mod+d', label: t('slides.help_keys_duplicate') },
+        { keyCaps: ['←', '↑', '↓', '→'], label: t('slides.help_keys_nudge') },
         { label: t('slides.help_tip_select') },
         { label: t('slides.help_tip_edit_text') },
         { label: t('slides.help_tip_resize') },
@@ -39,6 +46,9 @@ function sections(): HelpSection[] {
         { keys: 'arrowleft', label: t('slides.help_present_prev') },
         { keys: 's', label: t('slides.speaker_notes') },
         { keys: 'escape', label: t('slides.help_present_exit') },
+        { keys: 'mod+=', label: t('slides.help_keys_zoom_in') },
+        { keys: 'mod+-', label: t('slides.help_keys_zoom_out') },
+        { keys: 'mod+0', label: t('slides.reset_zoom') },
       ],
     },
     {
@@ -76,9 +86,9 @@ export const SlidesHelpDialog = memo(function SlidesHelpDialog({
             <ul className='space-y-2'>
               {section.rows.map((row) => (
                 <li key={row.label} className='flex items-start gap-2.5 text-[length:var(--text-12\\.5)] leading-relaxed'>
-                  {row.keys && (
+                  {(row.keys || row.keyCaps) && (
                     <span className='shrink-0 pt-0.5'>
-                      <Kbd combo={row.keys} />
+                      <Kbd combo={row.keys} keys={row.keyCaps} />
                     </span>
                   )}
                   <span className='text-[var(--text-secondary)]'>{row.label}</span>

@@ -1,9 +1,13 @@
+import { useCallback, useEffect, useRef } from 'react'
 import { api } from '../../../api'
 import { errorMessage } from '../../../errors'
 import { optimizeImageFile } from '../../../image'
 import { t } from '../../../i18n'
+import type { SlideElement } from '../types'
 import { MAX_SLIDE_IMAGE_BYTES, decodeImageSize, imageBoxForAspect, imageTooLarge } from '../image-asset'
+import { createDefaultImage } from './element-factories'
 import { pickImageFile } from './pick-image'
+import { useUi } from '../../../../store/ui'
 
 export type InsertImageResult =
   | { status: 'inserted'; src: string; box: { w: number; h: number } }
@@ -27,6 +31,14 @@ export interface InsertImageDeps {
 export async function insertImageFromPicker(deps: InsertImageDeps): Promise<InsertImageResult> {
   const file = await deps.pick()
   if (!file) return { status: 'cancelled' }
+  return await insertImageFromFile(file, deps)
+}
+
+/** The same journey for a file already in hand — a paste carries the bytes, not a dialog. */
+export async function insertImageFromFile(
+  file: File,
+  deps: Omit<InsertImageDeps, 'pick'>,
+): Promise<InsertImageResult> {
   if (imageTooLarge(file.size)) return { status: 'too-large' }
   try {
     const prepared = await (deps.prepare ?? optimizeImageFile)(file)
@@ -46,6 +58,68 @@ export function noteImageDeps(noteId: string | null): InsertImageDeps {
     pick: pickImageFile,
     upload: async (file) => (await api.files.upload(file, noteId ?? undefined)).url,
   }
+}
+
+export interface SlidesImageHost {
+  /** The note that owns the upload; null on a surface with no note. */
+  noteId: string | null
+  /** The slide the picture is meant for, read when it lands rather than when it was asked for. */
+  targetSlideId: () => string | null
+  /** Puts one element on that slide; false when the slide is gone by then. */
+  insert: (slideId: string, element: SlideElement) => boolean
+  /** The element the reader now has selected. */
+  select: (elementId: string) => void
+}
+
+/**
+ * The editor's two ways in for a picture — the file dialog and a paste — ending the same way:
+ * the upload becomes an element on the slide the reader was on, and every ending that is not
+ * that one is said out loud. A picture whose slide vanished while it uploaded keeps its bytes
+ * (the upload belongs to the note) and loses only its place, which is what the toast says.
+ */
+export function useSlidesImages(host: SlidesImageHost): {
+  addFromPicker: () => Promise<void>
+  addFile: (file: File) => Promise<void>
+} {
+  const latest = useRef(host)
+  useEffect(() => {
+    latest.current = host
+  })
+
+  const deliver = useCallback(async (result: Promise<InsertImageResult>): Promise<void> => {
+    const landed = await result
+    if (landed.status === 'cancelled') return
+    if (landed.status !== 'inserted') {
+      useUi.getState().toast(imageInsertToast(landed))
+      return
+    }
+    const current = latest.current
+    const element = createDefaultImage(landed.src, landed.box)
+    const slideId = current.targetSlideId()
+    if (!slideId || !current.insert(slideId, element)) {
+      console.warn('[slides] the picture is uploaded but its slide is gone')
+      useUi.getState().toast({
+        title: t('slides.image_failed'),
+        description: t('slides.image_slide_gone'),
+        tone: 'danger',
+      })
+      return
+    }
+    current.select(element.id)
+  }, [])
+
+  const addFromPicker = useCallback(async (): Promise<void> => {
+    await deliver(insertImageFromPicker(noteImageDeps(latest.current.noteId)))
+  }, [deliver])
+
+  const addFile = useCallback(
+    async (file: File): Promise<void> => {
+      await deliver(insertImageFromFile(file, noteImageDeps(latest.current.noteId)))
+    },
+    [deliver],
+  )
+
+  return { addFromPicker, addFile }
 }
 
 export type InsertImageToast = { title: string; description: string; tone: 'danger' }

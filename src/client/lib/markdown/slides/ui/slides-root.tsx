@@ -7,7 +7,7 @@ import type {
   SlidesTheme,
 } from '../types'
 import { useSlidesHistory } from '../history'
-import { SlidesStage } from './slides-stage'
+import { SlidesStage, zoomCommand } from './slides-stage'
 import { SlidesTopbar } from './slides-topbar'
 import { SlidesSidebar } from './slides-sidebar'
 import { SlidesInspector } from './slides-inspector'
@@ -20,13 +20,12 @@ import { useSlidesPrint } from './slides-print'
 import { SlidesContextMenu, type SlidesMenuState, type SlidesMenuTarget } from './slides-context-menu'
 import { instantiateLayout, layoutById } from '../layouts'
 import { moveSlide, reorderElement, reorderSlide } from '../order'
-import { useUi } from '../../../../store/ui'
 import { copySlidesLink } from './copy-link'
-import { imageInsertToast, insertImageFromPicker, noteImageDeps } from './insert-image'
+import { useSlidesImages } from './insert-image'
+import { useSlidesEditing } from './use-slides-editing'
 import {
   createDefaultChart,
   createDefaultCode,
-  createDefaultImage,
   createDefaultShape,
   createDefaultTable,
   createDefaultText,
@@ -158,27 +157,27 @@ export const SlidesRoot = memo(function SlidesRoot({
     [commitData],
   )
 
-  const handleAddImage = useCallback(async () => {
-    if (!activeSlide) return
-    const slideId = activeSlide.id
-    const result = await insertImageFromPicker(noteImageDeps(noteId))
-    if (result.status === 'cancelled') return
-    if (result.status !== 'inserted') {
-      useUi.getState().toast(imageInsertToast(result))
-      return
-    }
-    const newImg = createDefaultImage(result.src, result.box)
-    if (!insertElementInto(slideId, newImg)) {
-      console.warn('[slides] the picture is uploaded but its slide is gone')
-      useUi.getState().toast({
-        title: t('slides.image_failed'),
-        description: t('slides.image_slide_gone'),
-        tone: 'danger',
-      })
-      return
-    }
-    setActiveElementId(newImg.id)
-  }, [activeSlide, insertElementInto, noteId])
+  const { addFromPicker: handleAddImage, addFile: handlePasteImage } = useSlidesImages({
+    noteId,
+    targetSlideId: () => activeSlide?.id ?? null,
+    insert: insertElementInto,
+    select: setActiveElementId,
+  })
+
+  const applyZoom = useCallback((command: 'in' | 'out' | 'reset') => {
+    setZoom((current) => zoomCommand(current, command))
+  }, [])
+
+  const editing = useSlidesEditing({
+    enabled: isFullscreen,
+    doc: data,
+    targetSlideId: () => activeSlide?.id ?? null,
+    selectedIds: () => (activeElementId ? [activeElementId] : []),
+    commit: commitData,
+    select: (elementIds) => setActiveElementId(elementIds[0] ?? null),
+    zoom: applyZoom,
+    pasteImage: (file) => void handlePasteImage(file),
+  })
 
   const handleAddTable = useCallback(() => {
     if (!activeSlide) return
@@ -418,6 +417,9 @@ export const SlidesRoot = memo(function SlidesRoot({
         onClose={() => setMenu(null)}
         actions={{
           onEditText: startTypingElement,
+          onCopyElement: (elementId) => editing.copy([elementId]),
+          onCutElement: (elementId) => editing.cut([elementId]),
+          onPaste: editing.pasteFromClipboard,
           onDuplicateElement: handleDuplicateElement,
           onReorderElement: handleReorderElement,
           onDeleteElement: handleDeleteElement,

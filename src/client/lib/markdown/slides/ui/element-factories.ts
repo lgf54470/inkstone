@@ -1,4 +1,5 @@
 import { imageBoxForAspect } from '../image-asset'
+import { secureRandomId } from '../../../id'
 import type {
   ChartDatum,
   ChartElement,
@@ -62,6 +63,37 @@ export function createDefaultImage(src: string, box?: { w: number; h: number }):
     h: box?.h ?? fallback.h,
     radius: 12,
   }
+}
+
+/** How much of a paste becomes a text box before the rest is dropped: a page of prose pasted by
+ * accident should not become a slide nobody can read past. */
+const CLIP_TEXT_LIMIT = 2000
+
+/**
+ * A text box made from something that arrived as plain text. The markup is built and escaped
+ * here rather than handed on as markup, because the paste came from somewhere this app does not
+ * control: the render path sanitizes again, and this is what keeps it from having to repair a
+ * document that never should have held someone else's tags in the first place.
+ */
+export function createTextFromClipboard(text: string): TextElement {
+  return {
+    id: `text-${secureRandomId()}`,
+    type: 'text',
+    html: escapePastedText(text.slice(0, CLIP_TEXT_LIMIT)),
+    fontSize: 24,
+    x: 160,
+    y: 160,
+    w: 560,
+    h: 120,
+  }
+}
+
+function escapePastedText(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
 }
 
 export function createDefaultTable(): TableElement {

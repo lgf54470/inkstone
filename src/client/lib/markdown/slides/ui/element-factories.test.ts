@@ -7,7 +7,20 @@ import {
   createDefaultShape,
   createDefaultTable,
   createDefaultText,
+  createTextFromClipboard,
 } from './element-factories'
+
+describe('a text box made from a paste', () => {
+  it('escapes what it was given, so somebody else\'s tags stay text', () => {
+    const el = createTextFromClipboard('<b>hi</b> & <i>bye</i>')
+    expect(el.html).toBe('&lt;b&gt;hi&lt;/b&gt; &amp; &lt;i&gt;bye&lt;/i&gt;')
+  })
+
+  it('keeps line breaks and stops at a length a slide can hold', () => {
+    expect(createTextFromClipboard('one\ntwo').html).toBe('one<br>two')
+    expect(createTextFromClipboard('x'.repeat(5000)).html.length).toBe(2000)
+  })
+})
 
 describe('basic element factories', () => {
   it('creates default text element with valid dimensions', () => {

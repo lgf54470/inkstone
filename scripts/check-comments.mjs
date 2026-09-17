@@ -2910,40 +2910,8 @@ const allowed = new Map([
   ['src/client/lib/markdown/slides/body.test.ts', [
     '/** The format\'s own element kinds, read through the model rather than as leftovers. */',
   ]],
-  ['src/client/lib/markdown/slides/types.ts', [
-    '/**\n * The picture\'s window into its frame: the image COVERS the frame, `scale` enlarges it\n * inside, and `x`/`y` (0..1) pick which edge the frame aligns to. Absent means the whole\n * cover-fitted picture, centred at 1:1.\n */',
-    '/**\n * Presentation effects on one element. The editor authors these and the show consumes\n * them, which is why they ride in the document rather than in the show\'s own state.\n */',
-    '/** Element identity across slides, which is what a morph transition pairs on. */',
-    '/** What a layout calls this element when it is applied to another slide. */',
-    '/** What an empty box shows in the editor; never drawn in a show or a print. */',
-    '/** SVG path data: a `path` shape\'s geometry is its own coordinates, not a box. */',
-    '/**\n * Another Bento view carried inside the deck. `view` is inline artwork the file itself\n * carries; `url` is an address, which only runs where embedding is allowed (`live`),\n * because a note is not a viewer for arbitrary pages.\n */',
-    '/** A chart\'s own option object, as the format\'s chart engine carries it. */',
-    '/** The same source under the format\'s own name for it: an imported block carries only this. */',
-    '/** A review thread anchored to an element, a point on a slide, or the slide itself. */',
-    '/** The slide whose interaction state this one continues, which is how states navigate. */',
-    '/** Slide-shaped templates the document carries alongside the built-in ones. */',
-  ]],
   ['src/client/lib/markdown/slides/body.ts', [
     '/**\n * Fills in what the editor needs while carrying everything else through: this model\n * is a superset of the body, not a projection of it. The fence body is the user\'s own\n * document, and an edit rewrites it whole, so a field this build does not model\n * (a layout, an embedded font, a remark on a slide) must survive parse → edit → write\n * rather than disappear because the normalizer never named it. Unknown keys are\n * therefore spread through at every level the writer touches, and a value that is\n * absent here stays absent — inventing a default would put a statement in the file\n * the author never made.\n */',
-  ]],
-  ['src/client/lib/markdown/slides/entry.ts', [
-    '/** Host feedback for a change the user has to be told about (the body switching syntax). */',
-    '/** Told whether an edit is still waiting for its write — the surface\'s unsaved-change state. */',
-  ]],
-  ['src/client/lib/markdown/slides/history.ts', [
-    '// A caller that resolves a change from the document itself (a paste, an insert that',
-    '// finished after an upload) may hold a handler from an older render. Reading the latest',
-    '// document through a ref is what keeps such a change from being applied to — and',
-    '// therefore written back as — the snapshot that caller was created with.',
-    '// A document written by another surface starts a new lineage: its steps are not this',
-    "// surface's steps, so they are dropped rather than offered as undoable edits.",
-    '/**\n   * The document belongs to the block, not to one surface of it. The full screen editor\n   * commits through the same entry, so a card mounted before those edits has to adopt\n   * them or it keeps painting the deck as it was when the block was mounted — the note\n   * says one thing and the card next to it another. A commit from this surface arrives\n   * as the very object it just dispatched, so this only ever fires for an outside writer.\n   */',
-  ]],
-  ['src/client/lib/markdown/slides/history.test.ts', [
-    '/**\n * The hook, plus the commit handler of the FIRST render — the one a deferred caller would\n * still be holding, which is the whole point of asking the question here.\n */',
-    '// The host hands the committed document back in as `initialData` (registry.ts does the',
-    '// same), which is what tells the hook the change came from this surface.',
   ]],
   ['src/client/lib/markdown/slides/chart-geometry.test.ts', [
     '// Centre plus radius at -90°, i.e. straight up from the middle.',
@@ -2955,15 +2923,63 @@ const allowed = new Map([
     '/** One path through the dots: a line chart is the polyline, its dots are the same points. */',
     '/**\n * Slices start at twelve o\'clock and run clockwise, so a deck\'s first value is always the\n * top-right wedge however many values follow it. Values are clamped at zero: a negative\n * count in a pie is not a smaller wedge, it is data the preset cannot show.\n */',
   ]],
+  ['src/client/lib/markdown/slides/clipboard.ts', [
+    '/** The marker that says the clipboard text carries deck elements rather than prose. */',
+    '/** The payload shape this build writes and reads; a version it does not know is not read. */',
+    '/** A slide\'s worth of elements is far below this. Anything larger is not a copy of one. */',
+    '/** A paste lands nudged, so it is visible rather than exactly under what it was copied from. */',
+    '/** What this build can carry. A kind it does not know is dropped rather than pasted blind. */',
+    '/** The bytes those elements point at, so a paste into another deck brings the pixels along. */',
+    '/**\n * Elements as clipboard text. Plain text rather than a private flavour on purpose: the\n * clipboard is the one place two decks can meet — another note, another tab, another window —\n * and a payload that survives the trip has to be something the OS clipboard carries.\n */',
+    '/**\n * The asset entries these elements use. Only the keys the elements point at travel, so a copy\n * of one picture does not drag the whole deck\'s table along — and a key the document does not\n * have simply does not travel.\n */',
+    '/**\n * Read a payload off the system clipboard. The clipboard is public: text sitting on it need not\n * have come from this app, so nothing here is trusted — a payload is rebuilt from the parts that\n * match the shape this build writes (a known marker, known element kinds, geometry that is a\n * number), and whatever does not match is dropped rather than repaired. A payload that says\n * nothing this build can paste returns null, which is what lets the caller fall through to its\n * plain-text branch.\n */',
+    '/**\n * The pasted elements: fresh ids (a copy of an element is another element, not the same one\n * twice) and a nudge, with the document\'s asset table merged underneath them. An asset key\n * already in the target deck with DIFFERENT bytes gets a new key and the pasted elements\'\n * references are repointed, so a paste can never overwrite the pixels another element draws.\n */',
+    '/** The asset keys one element refers to: a clip or picture source, its poster, or an svg\'s own table key. */',
+  ]],
   ['src/client/lib/markdown/slides/code-palette.ts', [
     '/**\n * The colours a code element\'s tokens are painted with. A deck may name any of them in\n * `theme.codePalette`; the values here are what a deck that names none is drawn with, and\n * the palette inspector edits the same table rather than keeping a second copy of it.\n *\n * The keys are single letters because the palette is written into the fence body, where a\n * slide\'s code colours travel next to everything else a reader might hand-edit.\n */',
     '/**\n * The palette as custom properties on the element that holds the highlighted markup: the\n * colours are per-deck and change while the reader drags a colour input, which is exactly\n * what a CSS variable is for. The stylesheet names them once for every surface that draws\n * code, so the canvas, a thumbnail and a printed page cannot drift apart.\n */',
   ]],
-  ['src/client/lib/markdown/slides/order.ts', [
-    '/**\n * Order is the one thing a deck and a slide both have: pages in the rail, elements in a\n * stack. Both are the same operation — take one out, put it back somewhere else — so it lives\n * in one pure place with one set of rules, rather than as two hand-rolled splices that drift\n * apart. Nothing here mutates its input: a deck is committed by replacing it, and an undo step\n * has to be able to hold the array it replaced.\n *\n * `moveItem` takes the TARGET\'S SLOT: the moved item ends up where the item that was at\n * index `to` used to be, with everything between closing ranks. That is what a drop on a\n * thumbnail means ("put it here"), and it is the only reading that stays stable while the\n * array is being reordered under the pointer.\n */',
-    '/** The deck with one page moved a step, or null when it is already at that end. */',
-    '/** The deck with one page dropped onto another\'s slot. */',
-    '/**\n * The stack with one element moved. The array IS the stack — the last element paints on top —\n * so "up" is toward the end and "front" is the end itself, which is why the layer list shows\n * the array reversed and both directions stay one rule.\n */',
+  ['src/client/lib/markdown/slides/crop.ts', [
+    '/**\n * A crop is a window into a picture that COVERS its frame: `scale` enlarges it inside, and\n * `x`/`y` (0..1) pick which edge the frame aligns to. The mapping below is the format\'s own\n * (bento/slides crop.ts): the picture is `scale × 100%` of the frame on both axes with\n * `object-fit: cover`, offset by `-(scale − 1) × x` of the frame, and `object-position` moves\n * the cover overflow by the same fraction. Both moves use the same number, so the mapping is\n * monotonic and the frame can never show empty space at any x, y or scale.\n */',
+    '/**\n * Out-of-range numbers clamp rather than drop: a hand-edited 1.2 means "the right edge", and\n * a crop that names only some of its three numbers takes the middle for the rest. The input is\n * a partial because it arrives from a file, where any shape of object is possible.\n */',
+    '/** Is this picture the same as no crop at all (cover-fitted, centred, 1×)? */',
+    '/** The style for the picture inside a frame that carries the crop. */',
+  ]],
+  ['src/client/lib/markdown/slides/edits.ts', [
+    '/**\n * The document edits behind the keys and the clipboard, as functions over a document rather than\n * methods on a store. Every one of them returns the document it was given when the edit has no\n * effect (an unknown slide, an empty selection), so a caller can hand the result straight to the\n * history — the same object is how the history is told there was nothing to record.\n *\n * They are pure on purpose: what a cut, a nudge or a paste does to a deck is the part worth\n * testing without a browser, and the components above them are then only wiring.\n */',
+    '/** The elements of one slide, in the order they paint. */',
+    '/** The elements named by `ids`, in the slide\'s own order rather than the order they were named. */',
+    '/** The same document with the elements on one slide replaced; assets may be merged in the same step. */',
+  ]],
+  ['src/client/lib/markdown/slides/embed.ts', [
+    '/**\n * What an embed may put on a slide. `view` is artwork the file carries, which is drawn; `url`\n * is an address, which is offered as a link and never loaded in place — a note is not a viewer\n * for arbitrary pages, and a live frame in a note runs someone else\'s script under the note\'s\n * own origin. The decision is a pure function so the renderer, a test and (later) validation\n * all answer it the same way.\n */',
+    '/** An address a link may point at: a web address or a path inside the app. */',
+    '/** The address an embed shows, or the empty string when it carries none worth offering. */',
+  ]],
+  ['src/client/lib/markdown/slides/entry.ts', [
+    '/** Host feedback for a change the user has to be told about (the body switching syntax). */',
+    '/** Told whether an edit is still waiting for its write — the surface\'s unsaved-change state. */',
+  ]],
+  ['src/client/lib/markdown/slides/flow.ts', [
+    '/**\n * The pages the audience is handed: the show walks them and a print lays them out, in deck\n * order. A hidden page is deliberate material the author kept off the screen, so it becomes\n * neither a projector page nor a sheet of paper — and the two agree because they ask this one\n * function rather than filtering for themselves.\n *\n * A state page (`stateOf`) is deliberately NOT filtered out here yet. The format reaches such a\n * page by interacting with the one it continues, and this build has no state navigation, so\n * leaving it out would put its content somewhere no reader could get to. It stays in the flow\n * until that navigation lands; the print side of the ledger records the same decision.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/history.test.ts', [
+    '/**\n * The hook, plus the commit handler of the FIRST render — the one a deferred caller would\n * still be holding, which is the whole point of asking the question here.\n */',
+    '// The host hands the committed document back in as `initialData` (registry.ts does the',
+    '// same), which is what tells the hook the change came from this surface.',
+  ]],
+  ['src/client/lib/markdown/slides/history.ts', [
+    '// A document written by another surface starts a new lineage: its steps are not this',
+    '// surface\'s steps, so they are dropped rather than offered as undoable edits.',
+    '// A caller that resolves a change from the document itself (a paste, an insert that',
+    '// finished after an upload) may hold a handler from an older render. Reading the latest',
+    '// document through a ref is what keeps such a change from being applied to — and',
+    '// therefore written back as — the snapshot that caller was created with.',
+    '/**\n   * The document belongs to the block, not to one surface of it. The full screen editor\n   * commits through the same entry, so a card mounted before those edits has to adopt\n   * them or it keeps painting the deck as it was when the block was mounted — the note\n   * says one thing and the card next to it another. A commit from this surface arrives\n   * as the very object it just dispatched, so this only ever fires for an outside writer.\n   */',
+  ]],
+  ['src/client/lib/markdown/slides/image-asset.test.ts', [
+    '/** jsdom has no image decoder, so each case installs the one it needs and puts back what was there. */',
   ]],
   ['src/client/lib/markdown/slides/image-asset.ts', [
     '/**\n * Sizing a picture a person just added to a slide. The bytes themselves live in Inkstone\'s\n * attachment store and the slide keeps the address — the deck\'s own `assets` table stays\n * what it is for a deck imported from a self-contained file, where the bytes travel with it.\n */',
@@ -2974,35 +2990,6 @@ const allowed = new Map([
     '// answered by the default box instead of by an error the person cannot act on.',
     '// Best-effort bitmap release; a failed close only leaks until GC reclaims it.',
   ]],
-  ['src/client/lib/markdown/slides/image-asset.test.ts', [
-    '/** jsdom has no image decoder, so each case installs the one it needs and puts back what was there. */',
-  ]],
-  ['src/client/lib/markdown/slides/media.ts', [
-    '/**\n * What a media element is allowed to point at. A deck\'s body is untrusted input, and a\n * media source is a URL a browser will fetch or a data: URI it will decode, so the rule is\n * the same one the SVG gate uses: bytes the file itself carries, or a plain web address.\n * `javascript:`, `file:` and friends never become a source, and a data: URI only counts\n * when its own media type is media — `data:text/html` is a document, not a clip.\n */',
-    '// No scheme at all is a relative or root-relative path, which resolves inside the app.',
-    '/**\n * The address an element actually loads — a clip, a picture, a poster: the format names bytes\n * the file carries as `asset:<key>` and everything else is the source as written, so one rule\n * covers every source an element can point at. An asset key with no entry resolves to the empty\n * string, so the caller paints a frame that says so rather than a `<video>` or an `<img>` that\n * silently loads nothing.\n */',
-    '/**\n * Whether a clip starts itself. Reduced motion wins over the document: a deck asking for\n * autoplay is a request, and the reader\'s system preference is the answer. Browsers only\n * start an unmuted clip on their own, which is why the caller mutes an autoplaying element.\n */',
-  ]],
-  ['src/client/lib/markdown/slides/embed.ts', [
-    '/**\n * What an embed may put on a slide. `view` is artwork the file carries, which is drawn; `url`\n * is an address, which is offered as a link and never loaded in place — a note is not a viewer\n * for arbitrary pages, and a live frame in a note runs someone else\'s script under the note\'s\n * own origin. The decision is a pure function so the renderer, a test and (later) validation\n * all answer it the same way.\n */',
-    '/** An address a link may point at: a web address or a path inside the app. */',
-    '/** The address an embed shows, or the empty string when it carries none worth offering. */',
-  ]],
-  ['tests/slides-interop.test.ts', [
-    '// The picture is bytes the file carries, so what the canvas loads is the asset behind',
-    '// the key rather than the key itself (which would be an image the browser cannot fetch).',
-    '/**\n * What happens when a note holds a deck this build did not author: a document in the\n * format\'s own shape, with the element kinds, slide fields and document tables an export\n * carries. Two things must hold, and neither is visible from the editor\'s side. The model\n * must carry every field through parse → edit → write (a field it drops is gone from the\n * note the next time anything is edited), and every element must DRAW SOMETHING — a deck\n * whose picture is missing an element looks finished, so the failure has no symptom until\n * the reader compares it with the original.\n */',
-  ]],
-  ['src/client/lib/markdown/slides/crop.ts', [
-    '/**\n * A crop is a window into a picture that COVERS its frame: `scale` enlarges it inside, and\n * `x`/`y` (0..1) pick which edge the frame aligns to. The mapping below is the format\'s own\n * (bento/slides crop.ts): the picture is `scale × 100%` of the frame on both axes with\n * `object-fit: cover`, offset by `-(scale − 1) × x` of the frame, and `object-position` moves\n * the cover overflow by the same fraction. Both moves use the same number, so the mapping is\n * monotonic and the frame can never show empty space at any x, y or scale.\n */',
-    '/**\n * Out-of-range numbers clamp rather than drop: a hand-edited 1.2 means "the right edge", and\n * a crop that names only some of its three numbers takes the middle for the rest. The input is\n * a partial because it arrives from a file, where any shape of object is possible.\n */',
-    '/** Is this picture the same as no crop at all (cover-fitted, centred, 1×)? */',
-    '/** The style for the picture inside a frame that carries the crop. */',
-  ]],
-  ['src/client/lib/markdown/slides/shape-path.ts', [
-    '/**\n * The characters an SVG path may be written with: path commands, digits and the separators\n * between them. A `d` that carries anything else is not geometry — and since a deck\'s body is\n * untrusted input, a value that is not geometry must not reach an attribute a browser parses\n * as one. Requiring a moveto as well is what keeps a lone number from drawing nothing at all\n * with no way to notice.\n */',
-    '/**\n * The coordinate space a path is written in. A path shape carries its own `pathBox`, because\n * its geometry is not a 0..100 square the way the built-in shapes are; without one the\n * conventional unit box is the only honest guess.\n */',
-  ]],
   ['src/client/lib/markdown/slides/layouts.test.ts', [
     '// 160 x (1280/1600) = 128, 404 x (720/900) = 323.',
     '// Height is unscaled, so the 44pt heading keeps its size even though the page doubled.',
@@ -3010,22 +2997,27 @@ const allowed = new Map([
   ['src/client/lib/markdown/slides/layouts.ts', [
     '/**\n * Where a new slide starts from.\n *\n * The nine layouts are the ones the bento/slides format offers out of the box, drawn on\n * the format\'s own 1600x900 authoring page and scaled to whatever page the deck uses, so\n * a 4:3 deck gets 4:3 compositions instead of the 16:9 ones cropped at the right edge.\n * A layout\'s text is a hint the reader retypes rather than content the deck owns, so it\n * is stored as a message id here and resolved when the slide is created: the hint lands\n * in the reader\'s own language and is never part of this module\'s state.\n */',
     '/** The colour token a layout\'s rule/bar takes from the deck rather than naming itself. */',
+    '/** Message id resolved to the element\'s html when the slide is created. */',
+    '/** Message id of the layout\'s name in the picker. */',
     '/** A card is a backdrop plus the text that sits on it, inset by the same 32px on every side. */',
+    '/** Deck-wide accent, which the layouts\' rules and bars take instead of naming a colour. */',
+    '/** Resolves a layout\'s text hint, so the hint lands in the reader\'s language. */',
     '/** Names the new slide; the caller\'s uniqueness is what keeps two copies apart. */',
     '/**\n * A slide from a layout: geometry rescaled onto this deck\'s page, text hints resolved,\n * and accent-coloured marks given the deck\'s accent.\n *\n * Element ids are KEPT rather than regenerated, which is what the format does: an id is\n * how a morph pairs one slide\'s element with the next one\'s, so two slides made from the\n * same layout share the ids of the layout they came from. Only the slide\'s own id is\n * new, and `seed` is what makes it unique in the deck.\n */',
     '// Type follows the smaller axis: on a squarer page that is the side that decides',
     '// whether a heading still fits its box.',
-    "/** Message id resolved to the element's html when the slide is created. */",
-    "/** Message id of the layout's name in the picker. */",
-    "/** Deck-wide accent, which the layouts' rules and bars take instead of naming a colour. */",
-    "/** Resolves a layout's text hint, so the hint lands in the reader's language. */",
   ]],
-  ['src/client/lib/markdown/slides/page.ts', [
-    "/** The page a deck gets when its body names no size of its own: the format's 16:9 default. */",
-    '/**\n * The one scale a surface needs. Geometry is authored in absolute pixels of the page, so\n * a thumbnail, a card in a note and a projector all draw the same numbers behind a\n * different scale — none of them may assume the default page, because a deck that names\n * its own size would then be cropped (a 4:3 deck into a 16:9 frame) or stretched.\n */',
+  ['src/client/lib/markdown/slides/media.ts', [
+    '/**\n * What a media element is allowed to point at. A deck\'s body is untrusted input, and a\n * media source is a URL a browser will fetch or a data: URI it will decode, so the rule is\n * the same one the SVG gate uses: bytes the file itself carries, or a plain web address.\n * `javascript:`, `file:` and friends never become a source, and a data: URI only counts\n * when its own media type is media — `data:text/html` is a document, not a clip.\n */',
+    '// No scheme at all is a relative or root-relative path, which resolves inside the app.',
+    '/**\n * The address an element actually loads — a clip, a picture, a poster: the format names bytes\n * the file carries as `asset:<key>` and everything else is the source as written, so one rule\n * covers every source an element can point at. An asset key with no entry resolves to the empty\n * string, so the caller paints a frame that says so rather than a `<video>` or an `<img>` that\n * silently loads nothing.\n */',
+    '/**\n * Whether a clip starts itself. Reduced motion wins over the document: a deck asking for\n * autoplay is a request, and the reader\'s system preference is the answer. Browsers only\n * start an unmuted clip on their own, which is why the caller mutes an autoplaying element.\n */',
   ]],
-  ['src/client/lib/markdown/slides/flow.ts', [
-    '/**\n * The pages the audience is handed: the show walks them and a print lays them out, in deck\n * order. A hidden page is deliberate material the author kept off the screen, so it becomes\n * neither a projector page nor a sheet of paper — and the two agree because they ask this one\n * function rather than filtering for themselves.\n *\n * A state page (`stateOf`) is deliberately NOT filtered out here yet. The format reaches such a\n * page by interacting with the one it continues, and this build has no state navigation, so\n * leaving it out would put its content somewhere no reader could get to. It stays in the flow\n * until that navigation lands; the print side of the ledger records the same decision.\n */',
+  ['src/client/lib/markdown/slides/order.ts', [
+    '/**\n * Order is the one thing a deck and a slide both have: pages in the rail, elements in a\n * stack. Both are the same operation — take one out, put it back somewhere else — so it lives\n * in one pure place with one set of rules, rather than as two hand-rolled splices that drift\n * apart. Nothing here mutates its input: a deck is committed by replacing it, and an undo step\n * has to be able to hold the array it replaced.\n *\n * `moveItem` takes the TARGET\'S SLOT: the moved item ends up where the item that was at\n * index `to` used to be, with everything between closing ranks. That is what a drop on a\n * thumbnail means ("put it here"), and it is the only reading that stays stable while the\n * array is being reordered under the pointer.\n */',
+    '/** The deck with one page moved a step, or null when it is already at that end. */',
+    '/** The deck with one page dropped onto another\'s slot. */',
+    '/**\n * The stack with one element moved. The array IS the stack — the last element paints on top —\n * so "up" is toward the end and "front" is the end itself, which is why the layer list shows\n * the array reversed and both directions stay one rule.\n */',
   ]],
   ['src/client/lib/markdown/slides/outline.test.ts', [
     '/** Every edit that leaves the dialect behind: it is the list write.ts must refuse to flatten. */',
@@ -3033,6 +3025,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/slides/outline.ts', [
     '/**\n * The outline dialect is a readable projection of a deck, not a faithful one: it carries\n * titles, bullets, images, code and tables at the positions its own parser assigns, and\n * nothing else — no shapes, charts, hand-placed geometry, assets or theme. A body in this\n * mode therefore may only be written back while the document still round-trips through it;\n * the moment an edit leaves the dialect behind, write.ts writes JSON instead, because\n * losing the edit to keep the syntax is the one outcome nobody can see happening.\n */',
     '/**\n * Key-order-insensitive comparison. The editor builds documents by spreading the ones it\n * has (which keeps the author\'s key order) while the parser builds its own, so comparing\n * the two as raw JSON text would report a loss that never happened and migrate a deck to\n * JSON for no reason. `undefined` is dropped for the same reason JSON.stringify drops it.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/page.ts', [
+    '/** The page a deck gets when its body names no size of its own: the format\'s 16:9 default. */',
+    '/**\n * The one scale a surface needs. Geometry is authored in absolute pixels of the page, so\n * a thumbnail, a card in a note and a projector all draw the same numbers behind a\n * different scale — none of them may assume the default page, because a deck that names\n * its own size would then be cropped (a 4:3 deck into a 16:9 frame) or stretched.\n */',
   ]],
   ['src/client/lib/markdown/slides/registry.ts', [
     '/** Told when a body leaves the outline syntax, so the host can say so once. */',
@@ -3059,41 +3055,38 @@ const allowed = new Map([
   ['src/client/lib/markdown/slides/session.ts', [
     '/** An edit exists that the note has not taken yet. */',
   ]],
-  ['src/client/lib/markdown/slides/ui/element-factories.ts', [
-    '/**\n * A picture the person chose. The source is theirs — there is no sample artwork to fall\n * back on, because a placeholder photograph that silently stands in for the file they\n * picked is worse than an insert that says it failed.\n */',
+  ['src/client/lib/markdown/slides/shape-path.ts', [
+    '/**\n * The characters an SVG path may be written with: path commands, digits and the separators\n * between them. A `d` that carries anything else is not geometry — and since a deck\'s body is\n * untrusted input, a value that is not geometry must not reach an attribute a browser parses\n * as one. Requiring a moveto as well is what keeps a lone number from drawing nothing at all\n * with no way to notice.\n */',
+    '/**\n * The coordinate space a path is written in. A path shape carries its own `pathBox`, because\n * its geometry is not a 0..100 square the way the built-in shapes are; without one the\n * conventional unit box is the only honest guess.\n */',
   ]],
-  ['src/client/lib/markdown/slides/ui/insert-image.ts', [
-    '/**\n * One picture, from the dialog to a source address the slide can point at. Every ending is\n * named rather than thrown: the person who cancelled sees nothing, and the person whose\n * file was refused is told which of the two things went wrong — the file was too large, or\n * the upload did not work — instead of a button that appeared to do nothing.\n */',
-    '/** The real wiring: the browser\'s dialog, the deck\'s note as the attachment\'s owner, Inkstone\'s store as the host. */',
-  ]],
-  ['src/client/lib/markdown/slides/ui/insert-image.test.ts', [
-    '// The hint interpolates the cap; without the locale resources loaded the message id',
-    '// comes back as-is, so what is asserted here is which message the cap goes into.',
-  ]],
-  ['src/client/lib/markdown/slides/ui/pick-image.ts', [
-    '// Safari has no `cancel` event on a file input: the dialog closing hands focus back to',
-    '// the window with no change, and that is the only signal that nothing was picked.',
-  ]],
-  ['src/client/lib/markdown/slides/ui/copy-link.ts', [
-    '/**\n * Copies the address of the page the deck is open on, which is the link to the note\n * holding it — the app keeps no per-note route, so the address bar is the most\n * specific thing pointing at this note.\n *\n * Copying fails for reasons the reader cannot see: an insecure origin, a denied\n * clipboard permission, a browser without the API at all. Each of those ends in a\n * toast rather than silence, because a copy that quietly did nothing is worse than\n * one that says it did not work — and the failure is logged for whoever has to\n * explain it later.\n */',
+  ['src/client/lib/markdown/slides/types.ts', [
+    '/**\n * The picture\'s window into its frame: the image COVERS the frame, `scale` enlarges it\n * inside, and `x`/`y` (0..1) pick which edge the frame aligns to. Absent means the whole\n * cover-fitted picture, centred at 1:1.\n */',
+    '/**\n * Presentation effects on one element. The editor authors these and the show consumes\n * them, which is why they ride in the document rather than in the show\'s own state.\n */',
+    '/** Element identity across slides, which is what a morph transition pairs on. */',
+    '/** What a layout calls this element when it is applied to another slide. */',
+    '/** What an empty box shows in the editor; never drawn in a show or a print. */',
+    '/** SVG path data: a `path` shape\'s geometry is its own coordinates, not a box. */',
+    '/**\n * Another Bento view carried inside the deck. `view` is inline artwork the file itself\n * carries; `url` is an address, which only runs where embedding is allowed (`live`),\n * because a note is not a viewer for arbitrary pages.\n */',
+    '/** A chart\'s own option object, as the format\'s chart engine carries it. */',
+    '/** The same source under the format\'s own name for it: an imported block carries only this. */',
+    '/** A review thread anchored to an element, a point on a slide, or the slide itself. */',
+    '/** The slide whose interaction state this one continues, which is how states navigate. */',
+    '/** Slide-shaped templates the document carries alongside the built-in ones. */',
   ]],
   ['src/client/lib/markdown/slides/ui/canvas-helpers.ts', [
-    '/** The element a pointer landed on, read from the box the canvas tags each element with. */',
     '// The three ways the format lets an element sit INTO the page rather than on it: it can',
     '// be blurred, mixed with what is under it, or filter what shows through it.',
     '// A gradient is painted through the glyphs, which is why the fill colour has to go',
     '// transparent: the letters become the shape the background is clipped to.',
+    '/** The element a pointer landed on, read from the box the canvas tags each element with. */',
     '/**\n * Who takes a pointer on the canvas. While editing, an element is draggable — except the\n * background layer, which stays inert until it is selected or nothing on top of it could\n * ever be grabbed. In a show nothing is draggable, so only a clip keeps its own controls,\n * which is the whole point of it being on the slide.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/chart-block.test.ts', [
-    "/** A line carries its dots, so it is the one preset that draws another preset's mark too. */",
+    '/** A line carries its dots, so it is the one preset that draws another preset\'s mark too. */',
   ]],
   ['src/client/lib/markdown/slides/ui/chart-block.tsx', [
-    "/** The deck's chart colours, cycled per value; the element's own colour is the fallback. */",
+    '/** The deck\'s chart colours, cycled per value; the element\'s own colour is the fallback. */',
     '/**\n * A chart is drawn as markup rather than onto a canvas: a slide is printed, exported and\n * shown at whatever size the page turns out to be, and vector marks keep all three exact.\n * The preset decides the marks — bars, a polyline, wedges, points — and the deck\'s palette\n * decides their colours, so recolouring a deck\'s charts needs no edit here.\n */',
-  ]],
-  ['src/client/lib/markdown/slides/ui/layout-picker.tsx', [
-    '/**\n * The way into a new slide: a page of the deck\'s own size and shape, so what the reader\n * picks is what they get. The previews are the real canvas drawing the real layout, which\n * is why a deck\'s page size and palette show up in them without either being a parameter\n * of this file.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/code-block.test.ts', [
     '// The grammar is loaded on demand; loading it here is what the effect would have to',
@@ -3102,11 +3095,13 @@ const allowed = new Map([
   ['src/client/lib/markdown/slides/ui/code-block.tsx', [
     '/**\n * A code element is text plus a language, and the language is what turns it into tokens a\n * deck can colour. Prism is loaded per language on demand, so this paints the plain text\n * first and swaps in the highlighted markup when the grammar arrives — a snippet is\n * readable either way, and a language nobody supports simply stays plain.\n *\n * The palette reaches the tokens as custom properties (see code-palette.ts): a deck may\n * recolour its code while the show is open, and the stylesheet names the variables once.\n *\n * The sanitizer runs in the render expression rather than when the grammar arrives, because\n * the injection site is what the markup policy reads (tests/slides-sanitize-policy.test.ts):\n * a call one step away from the `__html` is the shape a future bypass hides in.\n */',
   ]],
-  ['src/client/lib/markdown/slides/ui/embed-block.tsx', [
-    '/**\n * A view carried in the file is drawn; a view that is an address is offered as a link. The\n * second half is a deliberate limitation rather than a missing feature: running another\n * page\'s script inside a note would give that page the note\'s origin, so the deck\'s own\n * affordance — click through and look at it there — is what a note can honestly offer.\n */',
-    '// The sanitizer is called in the injection expression rather than one step away: the',
-    '// policy that reads this file looks for the call AT the site, which is where a future',
-    '// bypass would hide (tests/slides-sanitize-policy.test.ts).',
+  ['src/client/lib/markdown/slides/ui/copy-link.ts', [
+    '/**\n * Copies the address of the page the deck is open on, which is the link to the note\n * holding it — the app keeps no per-note route, so the address bar is the most\n * specific thing pointing at this note.\n *\n * Copying fails for reasons the reader cannot see: an insecure origin, a denied\n * clipboard permission, a browser without the API at all. Each of those ends in a\n * toast rather than silence, because a copy that quietly did nothing is worse than\n * one that says it did not work — and the failure is logged for whoever has to\n * explain it later.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/element-factories.ts', [
+    '/**\n * A picture the person chose. The source is theirs — there is no sample artwork to fall\n * back on, because a placeholder photograph that silently stands in for the file they\n * picked is worse than an insert that says it failed.\n */',
+    '/** How much of a paste becomes a text box before the rest is dropped: a page of prose pasted by\n * accident should not become a slide nobody can read past. */',
+    '/**\n * A text box made from something that arrived as plain text. The markup is built and escaped\n * here rather than handed on as markup, because the paste came from somewhere this app does not\n * control: the render path sanitizes again, and this is what keeps it from having to repair a\n * document that never should have held someone else\'s tags in the first place.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/element-renderer.test.ts', [
     '// A source these tests need nothing from but the box it is drawn in, which is what the',
@@ -3114,21 +3109,36 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/element-renderer.tsx', [
     '/**\n * One element\'s own markup, chosen by its type. Everything a surface needs to draw a deck —\n * the canvas, a thumbnail, a printed page — comes through here, which is what keeps those\n * three from disagreeing about what an element looks like.\n */',
-    '/**\n * A path is drawn from its own geometry or not at all: the default curve below is a shape of\n * its own, and drawing it for a path whose `d` says something else would be a picture of\n * nothing the document asked for — a claim the deck never made, so the unusable path is\n * announced as unusable instead.\n */',
     '// A type this build does not know is still the document\'s element: drawing nothing',
     '// would read as an empty slide, so it is announced instead.',
     '// An empty box that shows nothing is indistinguishable from a box that failed to render,',
     '// so the editor draws the document\'s own placeholder; a show and a print never do.',
+    '/**\n * A path is drawn from its own geometry or not at all: the default curve below is a shape of\n * its own, and drawing it for a path whose `d` says something else would be a picture of\n * nothing the document asked for — a claim the deck never made, so the unusable path is\n * announced as unusable instead.\n */',
     '// A crop needs a frame that clips: the picture inside is larger than the box and moves',
     '// under it, so the radius belongs to the frame rather than to the picture.',
   ]],
-  ['src/client/lib/markdown/slides/ui/unsupported-element.tsx', [
-    '/**\n * The frame an element gets when its bytes are not in the file: the element is drawn, and what\n * is drawn says which part is missing. It replaces an empty box — or worse, a `<video>` or an\n * `<img>` pointing at an address that resolves to nothing, which reads as a page that loaded\n * slowly forever. The kind serves the tests; the label serves the reader.\n */',
-    '/**\n * The frame a deck gets when this build cannot draw one of its elements: a newer element\n * type, or a shape whose geometry does not parse. It exists because the alternative — the\n * empty box this replaced — is the one failure nobody can act on: the deck looks finished,\n * the element is simply missing from the picture, and by the time anyone notices the file has\n * been written back without a clue. The type name is shown rather than translated, so a\n * person can search for it, and the console line gives the same fact to whoever is reading.\n */',
+  ['src/client/lib/markdown/slides/ui/embed-block.tsx', [
+    '/**\n * A view carried in the file is drawn; a view that is an address is offered as a link. The\n * second half is a deliberate limitation rather than a missing feature: running another\n * page\'s script inside a note would give that page the note\'s origin, so the deck\'s own\n * affordance — click through and look at it there — is what a note can honestly offer.\n */',
+    '// The sanitizer is called in the injection expression rather than one step away: the',
+    '// policy that reads this file looks for the call AT the site, which is where a future',
+    '// bypass would hide (tests/slides-sanitize-policy.test.ts).',
   ]],
-  ['src/client/lib/markdown/slides/ui/slide-element-box.tsx', [
-    '/**\n * One element as the pointer meets it: where it sits, whether it takes a click at all, the\n * drag it starts, and the handles a selection grows. It lives apart from the page it is\n * drawn on because those are two different questions — the box knows geometry and gestures,\n * the canvas knows which page is showing and what an edit means — and because a box has to\n * be able to own its own drag without the page listening for it.\n */',
-    '/** A drag is a pair of listeners on the window, so it keeps following a fast pointer. */',
+  ['src/client/lib/markdown/slides/ui/insert-image.test.ts', [
+    '// The hint interpolates the cap; without the locale resources loaded the message id',
+    '// comes back as-is, so what is asserted here is which message the cap goes into.',
+  ]],
+  ['src/client/lib/markdown/slides/ui/insert-image.ts', [
+    '/**\n * One picture, from the dialog to a source address the slide can point at. Every ending is\n * named rather than thrown: the person who cancelled sees nothing, and the person whose\n * file was refused is told which of the two things went wrong — the file was too large, or\n * the upload did not work — instead of a button that appeared to do nothing.\n */',
+    '/** The same journey for a file already in hand — a paste carries the bytes, not a dialog. */',
+    '/** The real wiring: the browser\'s dialog, the deck\'s note as the attachment\'s owner, Inkstone\'s store as the host. */',
+    '/** The note that owns the upload; null on a surface with no note. */',
+    '/** The slide the picture is meant for, read when it lands rather than when it was asked for. */',
+    '/** Puts one element on that slide; false when the slide is gone by then. */',
+    '/** The element the reader now has selected. */',
+    '/**\n * The editor\'s two ways in for a picture — the file dialog and a paste — ending the same way:\n * the upload becomes an element on the slide the reader was on, and every ending that is not\n * that one is said out loud. A picture whose slide vanished while it uploaded keeps its bytes\n * (the upload belongs to the note) and loses only its place, which is what the toast says.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/layout-picker.tsx', [
+    '/**\n * The way into a new slide: a page of the deck\'s own size and shape, so what the reader\n * picks is what they get. The previews are the real canvas drawing the real layout, which\n * is why a deck\'s page size and palette show up in them without either being a parameter\n * of this file.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/media-block.test.ts', [
     '// React sets `muted` as a property rather than an attribute, so the property is where',
@@ -3140,26 +3150,29 @@ const allowed = new Map([
     '// A browser only starts a clip on its own while it is muted, so an autoplaying',
     '// element is muted here rather than left to the document to remember.',
   ]],
-  ['src/client/lib/markdown/slides/ui/slides-sidebar.test.ts', [
-    '// Drag events are continuous in React\'s priority model, so the state they set is only',
-    '// flushed inside act() — a bare dispatch would be read before the re-render.',
+  ['src/client/lib/markdown/slides/ui/pick-image.ts', [
+    '// Safari has no `cancel` event on a file input: the dialog closing hands focus back to',
+    '// the window with no change, and that is the only signal that nothing was picked.',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slide-element-box.tsx', [
+    '/**\n * One element as the pointer meets it: where it sits, whether it takes a click at all, the\n * drag it starts, and the handles a selection grows. It lives apart from the page it is\n * drawn on because those are two different questions — the box knows geometry and gestures,\n * the canvas knows which page is showing and what an edit means — and because a box has to\n * be able to own its own drag without the page listening for it.\n */',
+    '/** A drag is a pair of listeners on the window, so it keeps following a fast pointer. */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-canvas.tsx', [
     '/** The page this deck is authored against; the canvas never assumes a default one. */',
     '/** The element the reader is typing into, which is what puts the caret in a text box. */',
     '/**\n * The page itself: its size, its colours and the boxes on it. What each box is and what the\n * pointer does to it belong to the box (see slide-element-box.tsx); this file answers the\n * other half of the question — which page is being drawn, and that a click on the page\'s own\n * background is a click on nothing.\n */',
   ]],
-  ['src/client/lib/markdown/slides/ui/slides-stage.tsx', [
-    '/** Rounds away the float noise a repeated ±0.1 leaves behind, so the label reads 110% not 110.00000000000001%. */',
-    '/**\n * The stage the deck is edited on: the active page at authoring scale, the corner controls that\n * show it or fit it back, and the pointer gestures the page itself owns.\n *\n * What the page *is* and what an edit to it *means* are two questions, so they live apart: this\n * file reads the pointer, the page size and the zoom, and hands every intent to the shell as a\n * callback. Nothing here reaches for the document.\n */',
-    '/** The corner cluster: start the show, or fit the page by a step at a time. */',
-  ]],
   ['src/client/lib/markdown/slides/ui/slides-context-menu.test.ts', [
     '/** The thumbnail rail draws the same element boxes as the page, so every query is scoped to the page. */',
     '/** Three boxes on the first page, so an order change is visible in the committed document. */',
+    '// The clipboard is the browser\'s, and jsdom does not carry one: the two calls the editor makes',
+    '// are stubbed so a menu row can be followed all the way to what it put on the clipboard.',
+    '// Picking a row closes the menu, so the cut is reached by opening it again.',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-context-menu.tsx', [
-    '/**\n * The right-click menus, built from what this editor can actually do.\n *\n * A menu row exists only where there is a handler behind it: a deck\'s canvas is the one\n * place where a reader expects a full menu, so a row that quietly does nothing is worse\n * there than a shorter menu — the reader learns the menu is unreliable instead of learning\n * the feature is missing. Slice, group and paste rows therefore arrive with their features\n * (the clipboard and grouping pass), not before them.\n */',
+    '/**\n * The right-click menus, built from what this editor can actually do.\n *\n * A menu row exists only where there is a handler behind it: a deck\'s canvas is the one\n * place where a reader expects a full menu, so a row that quietly does nothing is worse\n * there than a shorter menu — the reader learns the menu is unreliable instead of learning\n * the feature is missing. Slice and group rows therefore arrive with their features (the\n * grouping pass), not before them; the clipboard rows are here because it has landed.\n */',
+    '/** Copy and cut are the rows a reader reaches for most, so they sit above the rest of the edits. */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-dialogs.test.ts', [
     '// Three cards, each a backdrop plus its text, behind the title.',
@@ -3174,6 +3187,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/slides-help-dialog.tsx', [
     '/** Key combination shown in the row, or a plain action name for a tip row. */',
+    '/** Separate caps, for a row that stands for a set of keys rather than one combination. */',
     '// Only what this editor actually does: a help panel that lists shortcuts the app never',
     '// binds teaches the reader to distrust it.',
   ]],
@@ -3182,25 +3196,15 @@ const allowed = new Map([
     '/** The three things this surface can do with a deck: step, play in place, or open the editor. */',
     '/** The card a note shows for the block: one slide, page stepping, and the way into the editor. */',
   ]],
-  ['src/client/lib/markdown/slides/ui/slides-root.tsx', [
-    '/** Whether every edit has reached the note; undefined on a surface without a save control. */',
-    '/** The note holding the deck, which owns any picture added here; null on a surface with no note. */',
-    '/** A double click and the menu\'s own row are the two ways into typing; both land here. */',
-    '/**\n   * Adds one element to the slide it was asked for. The change resolves against the document\n   * as it is now rather than as the render it came from — this request outlives that render\n   * (a picture is chosen, then uploaded) and the slide may be gone by the time it lands.\n   */',
-  ]],
-  ['src/client/lib/markdown/slides/ui/slides-settings-dialog.tsx', [
-    '// A colour input only accepts `#rrggbb`; a theme written as a named colour or a CSS',
-    '// variable keeps its own value until the reader picks a new one here.',
-  ]],
   ['src/client/lib/markdown/slides/ui/slides-presenter.test.ts', [
     '/** One, a hidden middle page, and Two — the deck that separates numbering from the show order. */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-presenter.tsx', [
-    '// "Number hidden slides" decides whether the pages the show skips are numbered at all:',
-    "// with it on, both the count and the total follow the deck's own order instead of the",
-    '// order of what the audience happens to see.',
-    "/** How much air a show leaves around the page on a screen that is not the page's shape. */",
+    '/** How much air a show leaves around the page on a screen that is not the page\'s shape. */',
     '/** A page blown up past this is a projector seen from far away, not a larger page. */',
+    '// "Number hidden slides" decides whether the pages the show skips are numbered at all:',
+    '// with it on, both the count and the total follow the deck\'s own order instead of the',
+    '// order of what the audience happens to see.',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-print.test.ts', [
     '// A sheet left mounted would print into the next test\'s assertions, so every test starts clean.',
@@ -3216,15 +3220,72 @@ const allowed = new Map([
     '/**\n * The editor\'s side of the export: the request the print control makes, and the sheet to render\n * while it runs. A deck with nothing on the paper — every page hidden — is refused out loud\n * instead of opening a print dialog over an empty sheet.\n */',
     '/** Waits for the sheet\'s own pictures and fonts, then a beat for the paint they triggered. */',
   ]],
+  ['src/client/lib/markdown/slides/ui/slides-root.tsx', [
+    '/** Whether every edit has reached the note; undefined on a surface without a save control. */',
+    '/** The note holding the deck, which owns any picture added here; null on a surface with no note. */',
+    '/**\n   * Adds one element to the slide it was asked for. The change resolves against the document\n   * as it is now rather than as the render it came from — this request outlives that render\n   * (a picture is chosen, then uploaded) and the slide may be gone by the time it lands.\n   */',
+    '/** A double click and the menu\'s own row are the two ways into typing; both land here. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-settings-dialog.tsx', [
+    '// A colour input only accepts `#rrggbb`; a theme written as a named colour or a CSS',
+    '// variable keeps its own value until the reader picks a new one here.',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-sidebar.test.ts', [
+    '// Drag events are continuous in React\'s priority model, so the state they set is only',
+    '// flushed inside act() — a bare dispatch would be read before the re-render.',
+  ]],
   ['src/client/lib/markdown/slides/ui/slides-sidebar.tsx', [
-    "/** The deck's page, so a 4:3 deck gets 4:3 thumbnails instead of a cropped 16:9 one. */",
+    '/** The deck\'s page, so a 4:3 deck gets 4:3 thumbnails instead of a cropped 16:9 one. */',
+    '/** Set while a page is being dragged onto another one\'s slot. */',
     '/** The picture of a page: clicking it selects the page, and the buttons on top act on it. */',
     '/** Duplicate, delete and move, reachable from the keyboard once the page is selected. */',
-    '/** Set while a page is being dragged onto another one\'s slot. */',
     '/**\n * The drag a thumbnail takes part in. The id rides in component state rather than in\n * dataTransfer: a page reorder is an edit to this document, not a transfer to another one,\n * and the drag has to work on a surface where dragging text out of the app was never the\n * intent.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-stage.tsx', [
+    '/** What a page is drawn at when nothing has been asked for. */',
+    '/** Rounds away the float noise a repeated ±0.1 leaves behind, so the label reads 110% not 110.00000000000001%. */',
+    '/** The zoom a command asks for, which is the same step the corner controls take. */',
+    '/**\n * The stage the deck is edited on: the active page at authoring scale, the corner controls that\n * show it or fit it back, and the pointer gestures the page itself owns.\n *\n * What the page *is* and what an edit to it *means* are two questions, so they live apart: this\n * file reads the pointer, the page size and the zoom, and hands every intent to the shell as a\n * callback. Nothing here reaches for the document.\n */',
+    '/** The corner cluster: start the show, or fit the page by a step at a time. */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-topbar.test.ts', [
     '// The overlay is a modal: it portals into the body, not into the render container.',
+  ]],
+  ['src/client/lib/markdown/slides/ui/unsupported-element.tsx', [
+    '/**\n * The frame a deck gets when this build cannot draw one of its elements: a newer element\n * type, or a shape whose geometry does not parse. It exists because the alternative — the\n * empty box this replaced — is the one failure nobody can act on: the deck looks finished,\n * the element is simply missing from the picture, and by the time anyone notices the file has\n * been written back without a clue. The type name is shown rather than translated, so a\n * person can search for it, and the console line gives the same fact to whoever is reading.\n */',
+    '/**\n * The frame an element gets when its bytes are not in the file: the element is drawn, and what\n * is drawn says which part is missing. It replaces an empty box — or worse, a `<video>` or an\n * `<img>` pointing at an address that resolves to nothing, which reads as a page that loaded\n * slowly forever. The kind serves the tests; the label serves the reader.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/use-slides-editing.test.ts', [
+    '/**\n * The editor reduced to what the hook needs: a document in state, a selection, a zoom, and the\n * picture path. Assertions read the harness, so what is checked is the document the hook edited\n * rather than the internals of the hook.\n */',
+    '/** The keys intents of a host that does nothing, for the cases where only the event matters. */',
+    '/** A clipboard event jsdom does not build: the property is what the listener reads. */',
+    '/** The keys hook on its own: what it does with an event when the editor has no selection at all. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/use-slides-editing.ts', [
+    '/** Only the full screen editor listens; a card in a note has to leave the keys to the note. */',
+    '/** The slide an edit lands on, read when the edit happens rather than when the key was pressed. */',
+    '/** The history\'s own commit, so a paste is one undo step like any other edit. */',
+    '/** A pasted picture goes through the same upload the insert dialog uses. */',
+    '/** Copy the named elements to the system clipboard (the menu\'s row, and the keyboard\'s path). */',
+    '/** Paste text the menu read from the clipboard; false when it was not deck material. */',
+    '/** The menu\'s Paste: the clipboard is read on demand, and a pasted nothing says so. */',
+    '/**\n * Editing by clipboard and by key: what the reader means when they press ⌘C, ⌘V, ⌘D, delete or an\n * arrow, and what a paste off the system clipboard means for this document.\n *\n * Three things arrive on a clipboard and all three land somewhere: this deck\'s own payload\n * (elements, with the bytes they point at), somebody else\'s text (a text box, escaped — a\n * fragment pasted from a web page is text, never markup), and a picture (the same upload path\n * the insert dialog takes). Nothing is pasted on a guess: a payload this build cannot read is\n * not a copy of an element, so it falls through to the text it plainly is.\n *\n * The host is read through a ref, so the listeners registered once still apply to the document\n * as it is now — the slide a paste lands on may have been reordered or deleted between the copy\n * and the paste, which is exactly why the target is looked up rather than remembered.\n */',
+    '/** The elements named by ids, in the slide\'s own order rather than the order they were named. */',
+    '/**\n * Copying from a menu row rather than from a key. A keystroke comes with a clipboard event in\n * hand, so the payload goes straight into it; a click has no such event, which is why this half\n * writes through the async clipboard and says so when a browser refuses the write.\n */',
+    '/** A cut removes what it copied, so it waits for the copy to land: a refused write keeps the elements. */',
+    '/** The cut\'s own payload: copy first, and only remove once there is something on the clipboard. */',
+    '/**\n * The clipboard, read on demand. A browser may refuse the read (an unfocused document, a denied\n * permission), and the answer to a refused read is the same as the answer to an empty one: the\n * menu row says there was nothing to paste rather than appearing to do nothing.\n */',
+    '/** The write side of the same door: false means the reader was told, and nothing was copied. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/use-slides-keys.ts', [
+    '/** What the clipboard carried: the deck\'s own payload, somebody else\'s text, or a picture. */',
+    '/**\n * What the editor does with a key or a clipboard event. Every intent answers whether it acted:\n * a false lets the event through to the browser\'s own behaviour, which is what makes copying a\n * passage of someone\'s text still work while nothing on the canvas is selected.\n */',
+    '/** The payload to put on the clipboard, or null to leave the copy to the browser. */',
+    '/** The payload to put on the clipboard, having also removed what it copied. */',
+    '/**\n * The editor\'s keyboard and its side of the system clipboard, as one listener set.\n *\n * Both live here because both are the same question — "is the document listening right now?" —\n * and both have the same answer for the same reason: a text box, a code editor or an input owns\n * them while the reader is typing in it. The intents are read through a ref, so the listeners\n * are registered once and still see the handlers of the newest render.\n */',
+    '/** Registers the four listeners and returns the unmount that takes them off again. */',
+    '/** The path a held modifier takes: history-free commands only, because ⌘Z belongs to the browser. */',
+    '/**\n * Typing owns the keyboard and the clipboard: a text box, a form control, or the code editor.\n * The attribute is checked alongside the app\'s own editable-target rule because it is what the\n * browser reads, and because `isContentEditable` is not implemented everywhere. An ancestor\n * saying `contenteditable="false"` is not editable, which is how a deck\'s own toolbar sits\n * inside one.\n */',
   ]],
   ['src/client/lib/markdown/slides/write.test.ts', [
     '/** Rewrites the text element an outline body produced, which is the edit that has to stay expressible. */',
@@ -4097,6 +4158,11 @@ const allowed = new Map([
   ]],
   ['tests/share-routes.test.ts', [
     '// visit recording runs via waitUntil; the test context must let us await it',
+  ]],
+  ['tests/slides-interop.test.ts', [
+    '/**\n * What happens when a note holds a deck this build did not author: a document in the\n * format\'s own shape, with the element kinds, slide fields and document tables an export\n * carries. Two things must hold, and neither is visible from the editor\'s side. The model\n * must carry every field through parse → edit → write (a field it drops is gone from the\n * note the next time anything is edited), and every element must DRAW SOMETHING — a deck\n * whose picture is missing an element looks finished, so the failure has no symptom until\n * the reader compares it with the original.\n */',
+    '// The picture is bytes the file carries, so what the canvas loads is the asset behind',
+    '// the key rather than the key itself (which would be an image the browser cannot fetch).',
   ]],
   ['tests/slides-sanitize-policy.test.ts', [
     '/**\n * A bento-slides body is untrusted input rendered as MARKUP (a note can carry a deck from\n * anywhere), so every injection site has to pass through lib/markdown/slides/sanitize.ts.\n * The renderer is where a bypass would be introduced — one `dangerouslySetInnerHTML` fed\n * a model field straight — and a bypass is invisible in review, because the code looks\n * like every other renderer in the tree. This walks the feature\'s source the way\n * tests/fullscreen-policy.test.ts walks src/client for native full screen: the shape is\n * the contract, and a new site that skips the gate fails here instead of shipping.\n */',

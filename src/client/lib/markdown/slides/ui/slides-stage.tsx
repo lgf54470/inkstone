@@ -8,11 +8,19 @@ import { t } from '../../../i18n'
 const MIN_ZOOM = 0.4
 const MAX_ZOOM = 2
 const ZOOM_STEP = 0.1
+/** What a page is drawn at when nothing has been asked for. */
+const RESET_ZOOM = 1
 
 /** Rounds away the float noise a repeated ±0.1 leaves behind, so the label reads 110% not 110.00000000000001%. */
-function steppedZoom(zoom: number, direction: 1 | -1): number {
+export function steppedZoom(zoom: number, direction: 1 | -1): number {
   const next = Number((zoom + direction * ZOOM_STEP).toFixed(1))
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next))
+}
+
+/** The zoom a command asks for, which is the same step the corner controls take. */
+export function zoomCommand(zoom: number, command: 'in' | 'out' | 'reset'): number {
+  if (command === 'reset') return RESET_ZOOM
+  return steppedZoom(zoom, command === 'in' ? 1 : -1)
 }
 
 interface SlidesStageProps {

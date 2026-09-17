@@ -1,5 +1,6 @@
 import { act, createElement } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useUi } from '../../../../store/ui'
 import { renderElement } from '../../../test-render'
 import { t } from '../../../i18n'
 import { parseSlidesOutline } from '../outline'
@@ -66,6 +67,27 @@ function clickRow(label: string): void {
   })
 }
 
+let written: string[] = []
+let writeFails = false
+
+// The clipboard is the browser's, and jsdom does not carry one: the two calls the editor makes
+// are stubbed so a menu row can be followed all the way to what it put on the clipboard.
+beforeEach(() => {
+  written = []
+  writeFails = false
+  useUi.setState({ toasts: [] })
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: {
+      writeText: vi.fn(async (text: string) => {
+        if (writeFails) throw new Error('refused')
+        written.push(text)
+      }),
+      readText: vi.fn(async () => written.at(-1) ?? ''),
+    },
+  })
+})
+
 afterEach(() => {
   mounted?.unmount()
   mounted = null
@@ -117,7 +139,39 @@ describe('the element context menu', () => {
       'second-box',
     ])
   })
+})
 
+describe('the clipboard rows', () => {
+  it('copies the box the menu was opened on, and cuts it out of the page', async () => {
+    const { committed } = mountDeck()
+    const target = canvasElement()?.getAttribute('data-slide-element')
+    rightClick(canvasElement())
+    expect(menuRow(t('common.copy'))).toBeDefined()
+    expect(menuRow(t('slides.cut'))).toBeDefined()
+
+    clickRow(t('common.copy'))
+    await act(async () => {})
+    const payload = JSON.parse(written.at(-1) ?? '{}')
+    expect(payload.mark).toBe('inkstone/slides-clip')
+    expect(payload.elements.map((element: { id: string }) => element.id)).toEqual([target])
+    expect(committed).toHaveLength(0)
+
+    // Picking a row closes the menu, so the cut is reached by opening it again.
+    rightClick(canvasElement(target ?? undefined))
+    clickRow(t('slides.cut'))
+    await act(async () => {})
+    expect(committed.at(-1)?.slides[0]?.elements.map((el) => el.id)).not.toContain(target)
+  })
+
+  it('keeps the box when the clipboard refuses the cut, and says so', async () => {
+    mountDeck()
+    writeFails = true
+    rightClick(canvasElement())
+    clickRow(t('slides.cut'))
+    await act(async () => {})
+    expect(document.querySelectorAll('main [data-slide-element]')).toHaveLength(2)
+    expect(useUi.getState().toasts.map((toast) => toast.title)).toEqual([t('slides.copy_failed')])
+  })
 })
 
 describe('the page context menus', () => {
@@ -135,6 +189,19 @@ describe('the page context menus', () => {
     expect(contentOf(slides[2])).toEqual(contentOf(slides[1]))
     expect(slides[2]?.id).not.toBe(slides[1]?.id)
     expect(slides[2]?.elements.map((el) => el.id)).not.toEqual(slides[1]?.elements.map((el) => el.id))
+  })
+
+  it('pastes what the clipboard holds from the bare page menu', async () => {
+    const { committed } = mountDeck()
+    rightClick(canvasElement())
+    clickRow(t('common.copy'))
+    await act(async () => {})
+
+    rightClick(document.querySelector('main'))
+    expect(menuRow(t('slides.paste'))).toBeDefined()
+    clickRow(t('slides.paste'))
+    await act(async () => {})
+    expect(committed.at(-1)?.slides[0]?.elements).toHaveLength(3)
   })
 
   it('opens the built-in picker from a bare page right click', () => {
