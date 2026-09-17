@@ -32,7 +32,8 @@
 | 导出 PDF：顶栏打印入口可用；每页按 `doc.size` 1:1 离屏排版（`inert` + `aria-hidden`），图片/字体落定后开打印框，`afterprint` 收尾；全页隐藏时提示而不开空打印框 | `flow.test.ts`、`ui/slides-print.test.ts`、`ui/slides-topbar.test.ts` | `5012ff15` |
 | 「放映与打印走哪几页」单一出处（`audienceSlides`，隐藏页既不上屏也不上纸） | `flow.test.ts`、`ui/slides-presenter.test.ts` | `5012ff15` |
 | 系统剪贴板四路：元素（跨笔记的纯文本载荷、asset 一并走）、图片（粘贴进同一条附件上传路）、文本（转义成文本框）、整页 | `clipboard.test.ts`、`edits.test.ts`、`ui/use-slides-editing.test.ts`、`ui/slides-context-menu.test.ts` | `f72b7af2`、`3386f261` |
-| 编辑器键盘：⌘C/⌘X/⌘V、⌘D 复制、Delete、方向键平移（⇧ 十像素）、⌘±/0 缩放；有高亮选区时把剪贴板还给浏览器 | `ui/use-slides-editing.test.ts` | `f72b7af2`、`3386f261` |
+| 编辑器键盘：⌘C/⌘X/⌘V、⌘D 复制、Delete、方向键平移（⇧ 十像素）、⌘±/0 缩放；没有任何可微移的对象时 ←/→ 翻页（端头交还浏览器）；`F5` 放映、`⌘S` 保存、`?` 帮助；有高亮选区时把剪贴板还给浏览器 | `ui/use-slides-editing.test.ts` | `f72b7af2`、`3386f261`、`f624df05` |
+| ⌘Z/⌘⇧Z 的历史键监听（`⌘Z` 归它而不是浏览器；输入框内让位） | `history.test.ts` | `f624df05` |
 | 就地编辑文本框（双击进入、失焦提交、提交前净化；输入框内键盘与剪贴板让位） | `ui/slides-inplace-edit.test.ts`、`ui/use-slides-editing.test.ts` | `f72b7af2` |
 | 放映的页面过渡（按 `transition` 画入场，`morph` 明说不画——避免把静态快照冒充变形） | `ui/slides-presenter.test.ts`、`ui/slides-dialogs.test.ts` | `0e77af38` |
 
@@ -49,8 +50,7 @@
 - 右侧面板分区补齐：排版（字族/行高/字距）、填充与描边、图片（fit/圆角/裁剪）、图表数据与表格联动、表格就地编辑、媒体源与播放、代码语言与主题、嵌入、效果、放映、布局、备注、交互。
 - 评论线程（元素/点/整页锚点、回复、已解决；仅编辑器可见，不进放映与打印）。
 - 顶栏测量式折叠与手机端 Insert/More 菜单。
-- ⌘Z/⌘⇧Z 由 `history.ts` 自己的监听提供（纯 reducer 有 `history.test.ts`，键监听本身尚无守卫）。
-- 快捷键收口：无选中时方向键翻页、`F5` 放映、`⌘S` 保存、`?` 帮助、`[`/`]` 面板开关、`⌘G` 成组、`c` 评论模式——帮助弹窗已列出已实现的键，这些尚未接线的不在其中。
+- 快捷键收口（剩余）：`[`/`]` 面板开关、`⌘G` 成组、`c` 评论模式尚未接线——成组与评论模式本身也还没有实现，所以帮助弹窗暂不列它们。
 
 ### P3 放映
 
