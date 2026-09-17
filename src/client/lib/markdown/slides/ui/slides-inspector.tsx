@@ -15,6 +15,7 @@ interface SlidesInspectorProps {
   onUpdateSlide: (patch: Partial<Slide>) => void
   onUpdateElement: (id: string, patch: Partial<SlideElement>) => void
   onDeleteElement: (id: string) => void
+  onDuplicateElement?: (id: string) => void
   onReorderElement: (id: string, direction: 'up' | 'down') => void
   onUpdateTheme: (patch: Partial<SlidesTheme>) => void
   onUpdateDocSize: (size: { width: number; height: number }) => void
@@ -31,6 +32,7 @@ export const SlidesInspector = memo(function SlidesInspector({
   onUpdateSlide,
   onUpdateElement,
   onDeleteElement,
+  onDuplicateElement,
   onReorderElement,
   onUpdateTheme,
   onUpdateDocSize,
@@ -39,20 +41,13 @@ export const SlidesInspector = memo(function SlidesInspector({
   return (
     <aside className='flex w-64 flex-col border-l border-[var(--border-subtle)] bg-[var(--bg-surface)] select-none shrink-0 text-xs overflow-y-auto'>
       {selectedElement ? (
-        <>
-          <InspectorElement
-            element={selectedElement}
-            onUpdate={(patch) => onUpdateElement(selectedElement.id, patch)}
-            onDelete={() => onDeleteElement(selectedElement.id)}
-            onReorder={(direction) => onReorderElement(selectedElement.id, direction)}
-          />
-          <InspectorLayers
-            slide={slide}
-            selectedElementId={selectedElement.id}
-            onSelectElement={(id) => onSelectElement(id)}
-            onReorderElement={onReorderElement}
-          />
-        </>
+        <InspectorElement
+          element={selectedElement}
+          onUpdate={(patch) => onUpdateElement(selectedElement.id, patch)}
+          onDelete={() => onDeleteElement(selectedElement.id)}
+          onDuplicate={() => onDuplicateElement?.(selectedElement.id)}
+          onReorder={(direction) => onReorderElement(selectedElement.id, direction)}
+        />
       ) : (
         <>
           <InspectorLayers

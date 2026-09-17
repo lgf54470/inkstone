@@ -83,3 +83,11 @@ export function getTableStyle(el: TableElement): CSSProperties {
 export function getChartColor(el: ChartElement, defaultAccent: string): string {
   return el.color || defaultAccent || 'var(--accent)'
 }
+
+export function isBackgroundLayer(el: SlideElement): boolean {
+  return (
+    (el.x === 0 && el.y === 0 && el.w >= VIRTUAL_CANVAS_WIDTH && el.h >= VIRTUAL_CANVAS_HEIGHT) ||
+    el.id === 'sd-glow' ||
+    (el.type === 'svg' && (el.asset === 'grain' || el.asset === 'dots-ink' || el.asset === 'dots-paper'))
+  )
+}

@@ -219,6 +219,23 @@ export const SlidesRoot = memo(function SlidesRoot({
     [commitData, data, slides],
   )
 
+  const handleDuplicateElement = useCallback(
+    (id: string) => {
+      if (!activeSlide) return
+      const target = activeSlide.elements.find((el) => el.id === id)
+      if (!target) return
+      const dup: SlideElement = {
+        ...target,
+        id: `${target.type}-${Date.now()}`,
+        x: target.x + 20,
+        y: target.y + 20,
+      }
+      handleUpdateSlide({ elements: [...activeSlide.elements, dup] })
+      setActiveElementId(dup.id)
+    },
+    [activeSlide, handleUpdateSlide],
+  )
+
   const handleUpdateTheme = useCallback(
     (patch: Partial<SlidesTheme>) => {
       commitData({ ...data, theme: { ...data.theme, ...patch } })
@@ -451,6 +468,7 @@ export const SlidesRoot = memo(function SlidesRoot({
             onUpdateSlide={handleUpdateSlide}
             onUpdateElement={handleUpdateElement}
             onDeleteElement={handleDeleteElement}
+            onDuplicateElement={handleDuplicateElement}
             onReorderElement={handleReorderElement}
             onUpdateTheme={handleUpdateTheme}
             onUpdateDocSize={(size) => commitData({ ...data, size })}

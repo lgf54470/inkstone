@@ -16,9 +16,11 @@ import {
   getTableStyle,
   getTextStyle,
   getChartColor,
+  isBackgroundLayer,
   VIRTUAL_CANVAS_WIDTH,
   VIRTUAL_CANVAS_HEIGHT,
 } from './canvas-helpers'
+import { SelectionOverlay } from './selection-overlay'
 
 const CIRCLE_RADIUS = '50%'
 
@@ -43,6 +45,7 @@ export const SlidesCanvas = memo(function SlidesCanvas({
   onSelectElement,
   onUpdateElement,
 }: SlidesCanvasProps) {
+  const canvasRef = useRef<HTMLDivElement | null>(null)
   const canvasBg = slide.background || theme.background || 'var(--bg-inset)'
   const textColor = theme.color || 'var(--text-primary)'
   const dragRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null)
@@ -88,24 +91,45 @@ export const SlidesCanvas = memo(function SlidesCanvas({
 
   return (
     <div
+      ref={canvasRef}
       className='relative overflow-hidden select-none bento-slide-shadow rounded-xs'
       style={{
         width: `${VIRTUAL_CANVAS_WIDTH}px`,
         height: `${VIRTUAL_CANVAS_HEIGHT}px`,
         ...containerStyle,
       }}
-      onClick={() => onSelectElement?.(null)}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onSelectElement?.(null)
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onSelectElement?.(null)
+      }}
     >
       {slide.elements.map((el) => {
         const isSelected = editable && activeElementId === el.id
+        const isBg = isBackgroundLayer(el)
+        const pointerEvents = !editable || (isBg && !isSelected) ? 'none' : 'auto'
+
         return (
           <div
             key={el.id}
-            style={getElementBoxStyle(el)}
-            onMouseDown={(e) => handlePointerDown(e, el)}
+            style={{
+              ...getElementBoxStyle(el),
+              pointerEvents,
+            }}
+            onMouseDown={(e) => {
+              if (!editable || (isBg && !isSelected)) return
+              handlePointerDown(e, el)
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (editable && (!isBg || isSelected)) {
+                onSelectElement?.(el.id)
+              }
+            }}
             className={`group transition-shadow ${
-              editable ? 'cursor-move' : ''
-            } ${isSelected ? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-transparent' : ''}`}
+              editable && (!isBg || isSelected) ? 'cursor-move' : ''
+            }`}
           >
             <ElementRenderer
               el={el}
@@ -115,6 +139,14 @@ export const SlidesCanvas = memo(function SlidesCanvas({
               assets={assets}
               onUpdate={(patch) => onUpdateElement?.(el.id, patch)}
             />
+            {isSelected && onUpdateElement && (
+              <SelectionOverlay
+                element={el}
+                scale={scale}
+                onUpdate={(patch) => onUpdateElement(el.id, patch)}
+                canvasRef={canvasRef}
+              />
+            )}
           </div>
         )
       })}

@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import {
+  Copy,
   Trash2,
   ChevronUp,
   ChevronDown,
@@ -19,13 +20,34 @@ interface InspectorElementProps {
   element: SlideElement
   onUpdate: (patch: Partial<SlideElement>) => void
   onDelete: () => void
+  onDuplicate?: () => void
   onReorder: (direction: 'up' | 'down') => void
+}
+
+function getElementTitle(type: SlideElement['type']): string {
+  switch (type) {
+    case 'shape':
+      return t('slides.layer_shape')
+    case 'text':
+      return t('slides.layer_text')
+    case 'image':
+      return t('slides.layer_image')
+    case 'table':
+      return t('slides.layer_table')
+    case 'chart':
+      return t('slides.layer_chart')
+    case 'code':
+      return t('slides.layer_code')
+    default:
+      return t('slides.layer_embed')
+  }
 }
 
 export const InspectorElement = memo(function InspectorElement({
   element,
   onUpdate,
   onDelete,
+  onDuplicate,
   onReorder,
 }: InspectorElementProps) {
   const isText = element.type === 'text'
@@ -35,6 +57,37 @@ export const InspectorElement = memo(function InspectorElement({
 
   return (
     <>
+      <InspectorSection
+        title={getElementTitle(element.type)}
+        defaultOpen={true}
+        action={
+          <div className='flex items-center gap-1'>
+            {onDuplicate && (
+              <button
+                type='button'
+                onClick={onDuplicate}
+                title={t('slides.duplicate_slide')}
+                className='p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              >
+                <Copy size={12} />
+              </button>
+            )}
+            <button
+              type='button'
+              onClick={onDelete}
+              title={t('common.delete')}
+              className='p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--danger)]'
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+        }
+      >
+        <div className='flex items-center justify-between text-[length:var(--text-11)] text-[var(--text-secondary)]'>
+          <span className='font-mono'>#{element.id}</span>
+          <span className='capitalize font-medium'>{element.type}</span>
+        </div>
+      </InspectorSection>
       <InspectorSection title={t('slides.position_and_size')} defaultOpen={true}>
         <div className='grid grid-cols-2 gap-2 text-xs'>
           <div>

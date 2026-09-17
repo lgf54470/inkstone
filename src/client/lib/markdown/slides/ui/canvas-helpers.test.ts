@@ -5,6 +5,7 @@ import {
   getShapeStyle,
   getTableStyle,
   getTextStyle,
+  isBackgroundLayer,
   VIRTUAL_CANVAS_HEIGHT,
   VIRTUAL_CANVAS_WIDTH,
 } from './canvas-helpers'
@@ -118,5 +119,45 @@ describe('table and chart elements', () => {
       color: '#ff0000',
     }
     expect(getChartColor(chart, '#00ff00')).toBe('#ff0000')
+  })
+})
+
+describe('isBackgroundLayer', () => {
+  it('identifies full-bleed elements and background textures', () => {
+    const fullBleed: ShapeElement = {
+      id: 'bg-1',
+      type: 'shape',
+      shape: 'rect',
+      fill: 'transparent',
+      x: 0,
+      y: 0,
+      w: 1280,
+      h: 720,
+    }
+    expect(isBackgroundLayer(fullBleed)).toBe(true)
+
+    const glow: ShapeElement = {
+      id: 'sd-glow',
+      type: 'shape',
+      shape: 'rect',
+      fill: 'transparent',
+      x: 0,
+      y: 0,
+      w: 500,
+      h: 500,
+    }
+    expect(isBackgroundLayer(glow)).toBe(true)
+
+    const normalShape: ShapeElement = {
+      id: 's-normal',
+      type: 'shape',
+      shape: 'card',
+      fill: '#3B82F6',
+      x: 100,
+      y: 100,
+      w: 300,
+      h: 200,
+    }
+    expect(isBackgroundLayer(normalShape)).toBe(false)
   })
 })
