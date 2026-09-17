@@ -9,8 +9,10 @@ import { KanbanIconBadge } from './kanban-icon-badge'
 interface KanbanListViewProps {
   data: KanbanData
   selectedIds: Set<string>
+  selectedTags?: string[]
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
+  onToggleTag?: (tag: string) => void
   onAddItem: () => void
 }
 
@@ -20,16 +22,22 @@ interface KanbanListRowProps {
   priorityCol?: KanbanProperty
   tagsCol?: KanbanProperty
   isSelected: boolean
+  selectedTags?: string[]
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
+  onToggleTag?: (tag: string) => void
 }
 
 function ListRowTagBadges({
   tagVals,
   tagsCol,
+  selectedTags,
+  onToggleTag,
 }: {
   tagVals: string[]
   tagsCol?: KanbanProperty
+  selectedTags?: string[]
+  onToggleTag?: (tag: string) => void
 }) {
   return (
     <>
@@ -37,14 +45,22 @@ function ListRowTagBadges({
         const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
         const color = resolveKanbanTagColor(tag, tagsCol?.options)
         const label = opt?.label ?? tag
+        const isSelected = selectedTags?.includes(tag)
         return (
-          <span
+          <button
             key={tag}
+            type='button'
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleTag?.(tag)
+            }}
             style={getKanbanTagStyle(color)}
-            className='hidden sm:inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold'
+            className={`hidden sm:inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold transition-all ${
+              isSelected ? 'ring-2 ring-[var(--accent)] shadow-2xs font-bold' : ''
+            }`}
           >
             {formatKanbanOptionLabel(label, 'tags')}
-          </span>
+          </button>
         )
       })}
     </>
@@ -58,8 +74,10 @@ function ListRowLeading({
   tagsCol,
   desc,
   expanded,
+  selectedTags,
   onToggleExpand,
   onToggleSelect,
+  onToggleTag,
 }: {
   item: KanbanItem
   isSelected: boolean
@@ -67,8 +85,10 @@ function ListRowLeading({
   tagsCol?: KanbanProperty
   desc?: string
   expanded?: boolean
+  selectedTags?: string[]
   onToggleExpand?: () => void
   onToggleSelect: () => void
+  onToggleTag?: (tag: string) => void
 }) {
   const hasSubtasks = (item.subtasks?.length ?? 0) > 0
 
@@ -98,7 +118,12 @@ function ListRowLeading({
       <span className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
         {item.title || t('preview.kanban_untitled')}
       </span>
-      <ListRowTagBadges tagVals={tagVals} tagsCol={tagsCol} />
+      <ListRowTagBadges
+        tagVals={tagVals}
+        tagsCol={tagsCol}
+        selectedTags={selectedTags}
+        onToggleTag={onToggleTag}
+      />
       {desc && (
         <span className='hidden md:inline truncate max-w-xs text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
           — {desc}
@@ -215,16 +240,7 @@ function ListSubtasksExpanded({ subtasks }: { subtasks: KanbanSubtask[] }) {
   )
 }
 
-function KanbanListRow({
-  item,
-  statusCol,
-  priorityCol,
-  tagsCol,
-  isSelected,
-  onToggleSelect,
-  onOpenDetail,
-}: KanbanListRowProps) {
-  const [expanded, setExpanded] = useState(false)
+function getListItemDisplay(item: KanbanItem, statusCol?: KanbanProperty, priorityCol?: KanbanProperty) {
   const statusVal = item.properties.status
   const statusOpt = statusCol?.options?.find((o: KanbanOption) => o.id === statusVal || o.label === statusVal)
   const priorityVal = item.properties.priority
@@ -232,6 +248,22 @@ function KanbanListRow({
   const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
   const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
   const dueDate = String(item.properties.dueDate || item.properties.startDate || '')
+  return { statusOpt, priorityOpt, tagVals, desc, dueDate }
+}
+
+function KanbanListRow({
+  item,
+  statusCol,
+  priorityCol,
+  tagsCol,
+  isSelected,
+  selectedTags,
+  onToggleSelect,
+  onOpenDetail,
+  onToggleTag,
+}: KanbanListRowProps) {
+  const [expanded, setExpanded] = useState(false)
+  const { statusOpt, priorityOpt, tagVals, desc, dueDate } = getListItemDisplay(item, statusCol, priorityCol)
   const subtasks = item.subtasks ?? []
 
   return (
@@ -254,8 +286,10 @@ function KanbanListRow({
           tagsCol={tagsCol}
           desc={desc}
           expanded={expanded}
+          selectedTags={selectedTags}
           onToggleExpand={() => setExpanded((x) => !x)}
           onToggleSelect={() => onToggleSelect(item.id)}
+          onToggleTag={onToggleTag}
         />
         <ListRowTrailing
           item={item}
@@ -273,8 +307,10 @@ function KanbanListRow({
 export const KanbanListView = memo(function KanbanListView({
   data,
   selectedIds,
+  selectedTags,
   onToggleSelect,
   onOpenDetail,
+  onToggleTag,
   onAddItem,
 }: KanbanListViewProps) {
   const statusCol = data.columns.find((c) => c.id === 'status')
@@ -292,8 +328,10 @@ export const KanbanListView = memo(function KanbanListView({
             priorityCol={priorityCol}
             tagsCol={tagsCol}
             isSelected={selectedIds.has(item.id)}
+            selectedTags={selectedTags}
             onToggleSelect={onToggleSelect}
             onOpenDetail={onOpenDetail}
+            onToggleTag={onToggleTag}
           />
         ))}
 

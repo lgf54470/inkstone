@@ -135,6 +135,30 @@ describe('searchKanbanItems', () => {
     expect(searchKanbanItems(items, 'infra').map((i) => i.id)).toEqual(['item-1'])
   })
 
+  it('searches across item description and subtasks', () => {
+    const richItems: KanbanItem[] = [
+      {
+        id: 't-1',
+        title: 'Main Task',
+        description: 'Deep architectural details here',
+        properties: {},
+      },
+      {
+        id: 't-2',
+        title: 'Other Task',
+        properties: {},
+        subtasks: [
+          { id: 'st-1', title: 'Subtask for authentication', completed: false },
+          { id: 'st-2', title: 'Nested', description: 'Secret subtask info', completed: false },
+        ],
+      },
+    ]
+
+    expect(searchKanbanItems(richItems, 'architectural').map((i) => i.id)).toEqual(['t-1'])
+    expect(searchKanbanItems(richItems, 'authentication').map((i) => i.id)).toEqual(['t-2'])
+    expect(searchKanbanItems(richItems, 'Secret').map((i) => i.id)).toEqual(['t-2'])
+  })
+
   it('returns all items when query is empty or spaces', () => {
     expect(searchKanbanItems(items, '')).toEqual(items)
     expect(searchKanbanItems(items, '   ')).toEqual(items)

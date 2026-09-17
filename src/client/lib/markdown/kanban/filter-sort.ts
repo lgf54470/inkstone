@@ -22,10 +22,26 @@ function matchesFilter(item: KanbanItem, filter: KanbanFilter): boolean {
     case 'is_not_empty':
       return !isValueEmpty(itemVal)
     case 'equals': {
+      if (propertyId === 'tags') {
+        const itemTags = Array.isArray(itemVal) ? (itemVal as string[]) : []
+        const hasInItem = itemTags.some((t) => t.toLowerCase() === value.toLowerCase())
+        const hasInSubtasks = item.subtasks?.some((st) =>
+          st.tags?.some((t) => t.toLowerCase() === value.toLowerCase()),
+        )
+        return hasInItem || Boolean(hasInSubtasks)
+      }
       if (Array.isArray(itemVal)) return itemVal.includes(value)
       return String(itemVal ?? '').toLowerCase() === value.toLowerCase()
     }
     case 'not_equals': {
+      if (propertyId === 'tags') {
+        const itemTags = Array.isArray(itemVal) ? (itemVal as string[]) : []
+        const hasInItem = itemTags.some((t) => t.toLowerCase() === value.toLowerCase())
+        const hasInSubtasks = item.subtasks?.some((st) =>
+          st.tags?.some((t) => t.toLowerCase() === value.toLowerCase()),
+        )
+        return !hasInItem && !hasInSubtasks
+      }
       if (Array.isArray(itemVal)) return !itemVal.includes(value)
       return String(itemVal ?? '').toLowerCase() !== value.toLowerCase()
     }
@@ -59,17 +75,28 @@ export function applyKanbanSorts(items: KanbanItem[], sorts?: KanbanSort[]): Kan
   })
 }
 
+function itemMatchesQuery(item: KanbanItem, q: string): boolean {
+  if (item.title.toLowerCase().includes(q)) return true
+  if (item.description?.toLowerCase().includes(q)) return true
+  if (item.content?.toLowerCase().includes(q)) return true
+  for (const val of Object.values(item.properties)) {
+    if (typeof val === 'string' && val.toLowerCase().includes(q)) return true
+    if (Array.isArray(val) && val.some((v) => String(v).toLowerCase().includes(q))) return true
+  }
+  if (item.subtasks?.some((st) =>
+    st.title.toLowerCase().includes(q) ||
+    (st.description && st.description.toLowerCase().includes(q)) ||
+    (st.tags && st.tags.some((t) => t.toLowerCase().includes(q))),
+  )) {
+    return true
+  }
+  return false
+}
+
 export function searchKanbanItems(items: KanbanItem[], query: string): KanbanItem[] {
   const trimmed = query.trim().toLowerCase()
   if (!trimmed) return items
-  return items.filter((item) => {
-    if (item.title.toLowerCase().includes(trimmed)) return true
-    for (const val of Object.values(item.properties)) {
-      if (typeof val === 'string' && val.toLowerCase().includes(trimmed)) return true
-      if (Array.isArray(val) && val.some((v) => String(v).toLowerCase().includes(trimmed))) return true
-    }
-    return false
-  })
+  return items.filter((item) => itemMatchesQuery(item, trimmed))
 }
 
 export interface KanbanGroup {

@@ -60,6 +60,7 @@ export interface KanbanSubtask {
   startDate?: string
   priority?: string
   owner?: string
+  tags?: string[]
 }
 
 export interface KanbanItem {

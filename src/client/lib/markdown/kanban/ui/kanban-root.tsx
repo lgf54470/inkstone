@@ -32,11 +32,13 @@ interface KanbanViewRendererProps {
   viewData: KanbanData
   data: KanbanData
   selectedIds: Set<string>
-  cardSize: CardSize
-  commitData: (next: KanbanData) => void
+  cardSize?: CardSize
+  selectedTags?: string[]
+  onToggleTag?: (tag: string) => void
+  commitData: (d: KanbanData) => void
   handleToggleSelect: (id: string) => void
   setDetailItem: (item: KanbanItem | null) => void
-  handleUpdateTitle: (id: string, newTitle: string) => void
+  handleUpdateTitle: (id: string, title: string) => void
   handleMoveItem: (itemId: string, targetGroupKey: string, targetIndex?: number) => void
   handleAddItem: (defaultGroupKey?: string | Record<string, unknown>) => void
   handleAddColumn: () => void
@@ -80,6 +82,8 @@ function BoardTableView(props: KanbanViewRendererProps) {
         view={props.activeView}
         selectedIds={props.selectedIds}
         cardSize={props.cardSize}
+        selectedTags={props.selectedTags}
+        onToggleTag={props.onToggleTag}
         onToggleSelect={props.handleToggleSelect}
         onOpenDetail={props.setDetailItem}
         onUpdateTitle={props.handleUpdateTitle}
@@ -124,6 +128,8 @@ function ListGalleryView(props: KanbanViewRendererProps) {
       <KanbanListView
         data={props.viewData}
         selectedIds={props.selectedIds}
+        selectedTags={props.selectedTags}
+        onToggleTag={props.onToggleTag}
         onToggleSelect={props.handleToggleSelect}
         onOpenDetail={props.setDetailItem}
         onAddItem={props.handleAddItem}
@@ -181,12 +187,15 @@ function KanbanTopBar({
       searchQuery={state.filterSort.searchQuery}
       filters={state.filterSort.filters}
       sorts={state.filterSort.sorts}
+      selectedTags={state.filterSort.selectedTags}
       cardSize={state.cardSize}
       isFullscreen={isFullscreen}
       onSelectView={state.setActiveViewId}
       onSearchChange={state.filterSort.setSearchQuery}
       onChangeFilters={state.filterSort.setFilters}
       onChangeSorts={state.filterSort.setSorts}
+      onToggleTag={state.filterSort.onToggleTag}
+      onClearTags={state.filterSort.onClearTags}
       onChangeCardSize={state.setCardSize}
       onChangeGroupBy={state.columnOps.handleChangeGroupBy}
       onAddItem={() => state.adds.handleAddItem()}
@@ -204,6 +213,8 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
         data={state.data}
         selectedIds={state.selection.selectedIds}
         cardSize={state.cardSize}
+        selectedTags={state.filterSort.selectedTags}
+        onToggleTag={state.filterSort.onToggleTag}
         commitData={state.commitData}
         handleToggleSelect={state.selection.handleToggleSelect}
         setDetailItem={state.setDetailItem}

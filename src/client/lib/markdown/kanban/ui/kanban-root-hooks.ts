@@ -18,10 +18,31 @@ import type {
 } from '../types'
 import type { CardSize } from './kanban-view-options'
 
+function filterAndSortItems(
+  items: KanbanItem[],
+  searchQuery: string,
+  selectedTags: string[],
+  filters: KanbanFilter[],
+  sorts: KanbanSort[],
+): KanbanItem[] {
+  let result = searchKanbanItems(items, searchQuery)
+  if (selectedTags.length > 0) {
+    result = result.filter((item) => {
+      const itemTags = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
+      const subtaskTags = item.subtasks?.flatMap((st) => st.tags || []) || []
+      const combined = [...itemTags, ...subtaskTags]
+      return selectedTags.some((tag) => combined.includes(tag))
+    })
+  }
+  result = applyKanbanFilters(result, filters)
+  return applyKanbanSorts(result, sorts)
+}
+
 export function useKanbanFilterSort(data: KanbanData, activeViewId: string) {
   const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState<KanbanFilter[]>([])
   const [sorts, setSorts] = useState<KanbanSort[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
 
   const activeView: KanbanView = useMemo(() => {
     return data.views.find((v) => v.id === activeViewId) || data.views[0] || {
@@ -32,16 +53,35 @@ export function useKanbanFilterSort(data: KanbanData, activeViewId: string) {
     }
   }, [data.views, activeViewId])
 
-  const filteredItems = useMemo(() => {
-    let result = searchKanbanItems(data.items, searchQuery)
-    result = applyKanbanFilters(result, filters)
-    result = applyKanbanSorts(result, sorts)
-    return result
-  }, [data.items, searchQuery, filters, sorts])
+  const filteredItems = useMemo(
+    () => filterAndSortItems(data.items, searchQuery, selectedTags, filters, sorts),
+    [data.items, searchQuery, selectedTags, filters, sorts],
+  )
+
+  const onToggleTag = useCallback((tag: string) => {
+    setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+  }, [])
+
+  const onClearTags = useCallback(() => {
+    setSelectedTags([])
+  }, [])
 
   const viewData: KanbanData = useMemo(() => ({ ...data, items: filteredItems }), [data, filteredItems])
 
-  return { activeView, searchQuery, setSearchQuery, filters, setFilters, sorts, setSorts, viewData }
+  return {
+    activeView,
+    searchQuery,
+    setSearchQuery,
+    filters,
+    setFilters,
+    sorts,
+    setSorts,
+    selectedTags,
+    setSelectedTags,
+    onToggleTag,
+    onClearTags,
+    viewData,
+  }
 }
 
 export function useKanbanItemMutations(

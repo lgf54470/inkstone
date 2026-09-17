@@ -13,12 +13,19 @@ import {
   SlidersHorizontal,
   Table,
 } from 'lucide-react'
-import type { KanbanData, KanbanFilter, KanbanSort, KanbanView, KanbanViewType } from '../types'
-import { t } from '../../../i18n'
 import { formatKanbanViewName } from '../i18n-helpers'
+import type {
+  KanbanData,
+  KanbanFilter,
+  KanbanSort,
+  KanbanView,
+  KanbanViewType,
+} from '../types'
+import { t } from '../../../i18n'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSortPopover } from './kanban-sort-popover'
+import { KanbanTagFilterBar } from './kanban-tag-filter-bar'
 import { KanbanViewOptions, type CardSize } from './kanban-view-options'
 
 interface KanbanHeaderProps {
@@ -27,12 +34,15 @@ interface KanbanHeaderProps {
   searchQuery: string
   filters: KanbanFilter[]
   sorts: KanbanSort[]
+  selectedTags?: string[]
   cardSize?: CardSize
   isFullscreen?: boolean
   onSelectView: (viewId: string) => void
   onSearchChange: (q: string) => void
   onChangeFilters: (filters: KanbanFilter[]) => void
   onChangeSorts: (sorts: KanbanSort[]) => void
+  onToggleTag?: (tag: string) => void
+  onClearTags?: () => void
   onChangeCardSize?: (size: CardSize) => void
   onChangeGroupBy?: (propId: string) => void
   onAddItem: () => void
@@ -338,17 +348,22 @@ export const KanbanHeader = memo(function KanbanHeader({
   searchQuery,
   filters,
   sorts,
+  selectedTags,
   cardSize,
   isFullscreen,
   onSelectView,
   onSearchChange,
   onChangeFilters,
   onChangeSorts,
+  onToggleTag,
+  onClearTags,
   onChangeCardSize,
   onChangeGroupBy,
   onAddItem,
   onToggleFullscreen,
 }: KanbanHeaderProps) {
+  const tagsCol = data.columns.find((c) => c.id === 'tags')
+
   return (
     <header className='flex flex-col gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3'>
       {isFullscreen && data.title && (
@@ -383,6 +398,14 @@ export const KanbanHeader = memo(function KanbanHeader({
           onToggleFullscreen={onToggleFullscreen}
         />
       </div>
+
+      <KanbanTagFilterBar
+        tagsColumn={tagsCol}
+        items={data.items}
+        selectedTags={selectedTags}
+        onToggleTag={onToggleTag}
+        onClearTags={onClearTags}
+      />
     </header>
   )
 })

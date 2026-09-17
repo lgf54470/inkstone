@@ -1,13 +1,11 @@
-import { memo, useRef, useState } from 'react'
-import { MoreHorizontal, Plus } from 'lucide-react'
+import { memo, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
-import { getKanbanDotColor } from '../colors'
 import { groupKanbanItems } from '../filter-sort'
-import { formatKanbanGroupLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanData, KanbanItem, KanbanOption, KanbanSubtask, KanbanView } from '../types'
 import { useKanbanBoardDndState, type CardDropTarget } from './kanban-board-dnd'
 import { KanbanCard } from './kanban-card'
-import { KanbanColumnMenu } from './kanban-column-menu'
+import { CollapsedColumn, KanbanColumnHeader } from './kanban-column-header'
 import type { CardSize } from './kanban-view-options'
 
 interface KanbanBoardViewProps {
@@ -15,8 +13,10 @@ interface KanbanBoardViewProps {
   view: KanbanView
   selectedIds: Set<string>
   cardSize?: CardSize
+  selectedTags?: string[]
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
+  onToggleTag?: (tag: string) => void
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onMoveItem: (itemId: string, targetGroupKey: string, targetIndex?: number) => void
@@ -29,141 +29,17 @@ interface KanbanBoardViewProps {
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
-function ColumnHeaderTitle({
-  label,
-  count,
-  color,
-}: {
-  label: string
-  count: number
-  color?: KanbanColorName
-}) {
-  const dotColor = getKanbanDotColor(color)
-  return (
-    <div className='flex min-w-0 items-center gap-2'>
-      <span
-        className='size-2.5 shrink-0 rounded-full'
-        style={{ backgroundColor: dotColor }}
-      />
-      <span className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
-        {label}
-      </span>
-      <span className='shrink-0 rounded-full bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
-        {count}
-      </span>
-    </div>
-  )
-}
-
-function KanbanColumnHeader({
-  groupKey,
-  label,
-  count,
-  color,
-  onDragStart,
-  onRename,
-  onChangeColor,
-  onCollapse,
-  onDelete,
-}: {
-  groupKey: string
-  label: string
-  count: number
-  color?: KanbanColorName
-  onDragStart: (e: React.DragEvent) => void
-  onRename: (newLabel: string) => void
-  onChangeColor: (newColor: KanbanColorName) => void
-  onCollapse: () => void
-  onDelete?: () => void
-}) {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const menuBtnRef = useRef<HTMLButtonElement>(null)
-  const localizedLabel = formatKanbanGroupLabel(groupKey, label)
-
-  return (
-    <div
-      draggable={groupKey !== '__none__'}
-      onDragStart={onDragStart}
-      className='relative flex cursor-grab items-center justify-between px-2 py-1.5 active:cursor-grabbing'
-    >
-      <ColumnHeaderTitle label={localizedLabel} count={count} color={color} />
-      <button
-        ref={menuBtnRef}
-        type='button'
-        onClick={() => setMenuOpen((o) => !o)}
-        className='rounded-[var(--r-xs)] p-0.5 text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-        aria-label={localizedLabel}
-      >
-        <MoreHorizontal size={14} />
-      </button>
-      <KanbanColumnMenu
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        anchorRef={menuBtnRef}
-        groupKey={groupKey}
-        label={label}
-        color={color}
-        onRename={onRename}
-        onChangeColor={onChangeColor}
-        onCollapse={onCollapse}
-        onDelete={onDelete}
-      />
-    </div>
-  )
-}
-
-function CollapsedColumn({
-  group,
-  onExpand,
-  onDrop,
-  onDragOver,
-  isDragOver,
-}: {
-  group: ReturnType<typeof groupKanbanItems>[number]
-  onExpand: () => void
-  onDrop: (e: React.DragEvent) => void
-  onDragOver: (e: React.DragEvent) => void
-  isDragOver: boolean
-}) {
-  const dotColor = getKanbanDotColor(group.color)
-  const localizedLabel = formatKanbanGroupLabel(group.groupKey, group.label)
-
-  return (
-    <div
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onClick={onExpand}
-      role='button'
-      tabIndex={0}
-      aria-label={`${t('preview.kanban_expand_column')}: ${localizedLabel}`}
-      className={`flex w-10 shrink-0 cursor-pointer flex-col items-center rounded-[var(--r-lg)] border py-3 transition-colors ${
-        isDragOver
-          ? 'border-[var(--accent)] bg-[var(--accent-softer)]'
-          : 'border-[var(--border-subtle)] bg-[var(--bg-raised)] hover:bg-[var(--bg-hover)]'
-      }`}
-    >
-      <div className='flex flex-col items-center gap-2'>
-        {dotColor && <span className='size-2.5 rounded-full' style={{ backgroundColor: dotColor }} />}
-        <span className='rounded-[var(--r-full)] bg-[var(--bg-surface)] px-1 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
-          {group.items.length}
-        </span>
-      </div>
-      <div className='mt-4 flex flex-1 items-center justify-center [writing-mode:vertical-rl] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
-        {localizedLabel}
-      </div>
-    </div>
-  )
-}
-
 interface ColumnCardsListProps {
   items: KanbanItem[]
   columns: KanbanData['columns']
   selectedIds: Set<string>
   cardSize?: CardSize
+  selectedTags?: string[]
   cardDropTarget: CardDropTarget | null
   groupKey: string
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
+  onToggleTag?: (tag: string) => void
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onDragStartCard: (e: React.DragEvent, id: string, sourceGroupKey: string) => void
@@ -191,9 +67,11 @@ function ColumnCardsList(props: ColumnCardsListProps) {
             columns={props.columns}
             isSelected={props.selectedIds.has(item.id)}
             cardSize={props.cardSize}
+            selectedTags={props.selectedTags}
             dropIndicator={props.cardDropTarget?.cardId === item.id ? props.cardDropTarget.position : null}
             onToggleSelect={props.onToggleSelect}
             onOpenDetail={props.onOpenDetail}
+            onToggleTag={props.onToggleTag}
             onUpdateTitle={props.onUpdateTitle}
             onUpdateSubtasks={props.onUpdateSubtasks}
             onDragStart={(e) => props.onDragStartCard(e, item.id, props.groupKey)}
@@ -224,6 +102,7 @@ interface KanbanBoardColumnProps {
   columns: KanbanData['columns']
   selectedIds: Set<string>
   cardSize?: CardSize
+  selectedTags?: string[]
   cardDropTarget: CardDropTarget | null
   isDragOver: boolean
   onDragOver: (e: React.DragEvent) => void
@@ -235,6 +114,7 @@ interface KanbanBoardColumnProps {
   onDragStartColumn: (e: React.DragEvent) => void
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
+  onToggleTag?: (tag: string) => void
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onMoveColumn: (itemId: string, dir: 'prev' | 'next') => void
@@ -252,6 +132,7 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn({
   columns,
   selectedIds,
   cardSize,
+  selectedTags,
   cardDropTarget,
   isDragOver,
   onDragOver,
@@ -263,6 +144,7 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn({
   onDragStartColumn,
   onToggleSelect,
   onOpenDetail,
+  onToggleTag,
   onUpdateTitle,
   onUpdateSubtasks,
   onMoveColumn,
@@ -299,10 +181,12 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn({
         columns={columns}
         selectedIds={selectedIds}
         cardSize={cardSize}
+        selectedTags={selectedTags}
         cardDropTarget={cardDropTarget}
         groupKey={group.groupKey}
         onToggleSelect={onToggleSelect}
         onOpenDetail={onOpenDetail}
+        onToggleTag={onToggleTag}
         onUpdateTitle={onUpdateTitle}
         onUpdateSubtasks={onUpdateSubtasks}
         onDragStartCard={onDragStartCard}
@@ -361,11 +245,13 @@ interface BoardColumnItemProps {
   isDragOver: boolean
   cardSize?: CardSize
   selectedIds: Set<string>
+  selectedTags?: string[]
   cardDropTarget: CardDropTarget | null
   dnd: ReturnType<typeof useKanbanBoardDndState>
   onToggleCollapse: (groupKey: string) => void
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
+  onToggleTag?: (tag: string) => void
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onMoveColumn: (itemId: string, dir: 'prev' | 'next') => void
@@ -376,50 +262,42 @@ interface BoardColumnItemProps {
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
-function BoardColumnItem({
+function CollapsedColumnItem({
   group,
-  columns,
-  isCollapsed,
   isDragOver,
-  cardSize,
-  selectedIds,
-  cardDropTarget,
   dnd,
   onToggleCollapse,
-  onToggleSelect,
-  onOpenDetail,
-  onUpdateTitle,
-  onUpdateSubtasks,
-  onMoveColumn,
-  onAddItem,
-  onUpdateColumn,
-  onDeleteColumn,
-  onUpdateTags,
-  onAddColumnOption,
-}: BoardColumnItemProps) {
-  if (isCollapsed) {
-    return (
-      <CollapsedColumn
-        group={group}
-        isDragOver={isDragOver}
-        onExpand={() => onToggleCollapse(group.groupKey)}
-        onDragOver={(e) => {
-          e.preventDefault()
-          dnd.setDragOverGroupKey(group.groupKey)
-        }}
-        onDrop={(e) => dnd.handleColumnDrop(e, group.groupKey)}
-      />
-    )
-  }
+}: {
+  group: ReturnType<typeof groupKanbanItems>[number]
+  isDragOver: boolean
+  dnd: ReturnType<typeof useKanbanBoardDndState>
+  onToggleCollapse: (key: string) => void
+}) {
+  return (
+    <CollapsedColumn
+      group={group}
+      isDragOver={isDragOver}
+      onExpand={() => onToggleCollapse(group.groupKey)}
+      onDragOver={(e) => {
+        e.preventDefault()
+        dnd.setDragOverGroupKey(group.groupKey)
+      }}
+      onDrop={(e) => dnd.handleColumnDrop(e, group.groupKey)}
+    />
+  )
+}
 
+function ExpandedBoardColumn(props: BoardColumnItemProps) {
+  const { group, dnd } = props
   return (
     <KanbanBoardColumn
       group={group}
-      columns={columns}
-      selectedIds={selectedIds}
-      cardSize={cardSize}
-      cardDropTarget={cardDropTarget}
-      isDragOver={isDragOver}
+      columns={props.columns}
+      selectedIds={props.selectedIds}
+      cardSize={props.cardSize}
+      selectedTags={props.selectedTags}
+      cardDropTarget={props.cardDropTarget}
+      isDragOver={props.isDragOver}
       onDragOver={(e) => {
         e.preventDefault()
         dnd.setDragOverGroupKey(group.groupKey)
@@ -430,20 +308,35 @@ function BoardColumnItem({
       onDragOverCard={dnd.handleCardDragOver}
       onDropCard={dnd.handleCardDrop}
       onDragStartColumn={(e) => dnd.handleColumnDragStart(e, group.groupKey)}
-      onToggleSelect={onToggleSelect}
-      onOpenDetail={onOpenDetail}
-      onUpdateTitle={onUpdateTitle}
-      onUpdateSubtasks={onUpdateSubtasks}
-      onMoveColumn={onMoveColumn}
-      onAddItem={() => onAddItem(group.groupKey)}
-      onRenameColumn={(newLabel) => onUpdateColumn?.(group.groupKey, { label: newLabel })}
-      onChangeColumnColor={(newColor) => onUpdateColumn?.(group.groupKey, { color: newColor })}
-      onCollapseColumn={() => onToggleCollapse(group.groupKey)}
-      onDeleteColumn={onDeleteColumn ? () => onDeleteColumn(group.groupKey) : undefined}
-      onUpdateTags={onUpdateTags}
-      onAddColumnOption={onAddColumnOption}
+      onToggleSelect={props.onToggleSelect}
+      onOpenDetail={props.onOpenDetail}
+      onToggleTag={props.onToggleTag}
+      onUpdateTitle={props.onUpdateTitle}
+      onUpdateSubtasks={props.onUpdateSubtasks}
+      onMoveColumn={props.onMoveColumn}
+      onAddItem={() => props.onAddItem(group.groupKey)}
+      onRenameColumn={(newLabel) => props.onUpdateColumn?.(group.groupKey, { label: newLabel })}
+      onChangeColumnColor={(newColor) => props.onUpdateColumn?.(group.groupKey, { color: newColor })}
+      onCollapseColumn={() => props.onToggleCollapse(group.groupKey)}
+      onDeleteColumn={() => props.onDeleteColumn?.(group.groupKey)}
+      onUpdateTags={props.onUpdateTags}
+      onAddColumnOption={props.onAddColumnOption}
     />
   )
+}
+
+function BoardColumnItem(props: BoardColumnItemProps) {
+  if (props.isCollapsed) {
+    return (
+      <CollapsedColumnItem
+        group={props.group}
+        isDragOver={props.isDragOver}
+        dnd={props.dnd}
+        onToggleCollapse={props.onToggleCollapse}
+      />
+    )
+  }
+  return <ExpandedBoardColumn {...props} />
 }
 
 export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardViewProps) {
@@ -471,11 +364,13 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
           isDragOver={dnd.dragOverGroupKey === group.groupKey}
           cardSize={props.cardSize}
           selectedIds={props.selectedIds}
+          selectedTags={props.selectedTags}
           cardDropTarget={dnd.cardDropTarget}
           dnd={dnd}
           onToggleCollapse={toggleCollapse}
           onToggleSelect={props.onToggleSelect}
           onOpenDetail={props.onOpenDetail}
+          onToggleTag={props.onToggleTag}
           onUpdateTitle={props.onUpdateTitle}
           onUpdateSubtasks={props.onUpdateSubtasks}
           onMoveColumn={(itemId, dir) => handleMoveColumn(itemId, group.groupKey, dir)}
