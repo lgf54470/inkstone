@@ -3056,6 +3056,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/embed-block.tsx', [
     '/**\n * A view carried in the file is drawn; a view that is an address is offered as a link. The\n * second half is a deliberate limitation rather than a missing feature: running another\n * page\'s script inside a note would give that page the note\'s origin, so the deck\'s own\n * affordance — click through and look at it there — is what a note can honestly offer.\n */',
+    '// The sanitizer is called in the injection expression rather than one step away: the',
+    '// policy that reads this file looks for the call AT the site, which is where a future',
+    '// bypass would hide (tests/slides-sanitize-policy.test.ts).',
   ]],
   ['src/client/lib/markdown/slides/ui/element-renderer.tsx', [
     '/**\n * One element\'s own markup, chosen by its type. Everything a surface needs to draw a deck —\n * the canvas, a thumbnail, a printed page — comes through here, which is what keeps those\n * three from disagreeing about what an element looks like.\n */',

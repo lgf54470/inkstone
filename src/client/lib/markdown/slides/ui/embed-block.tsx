@@ -12,16 +12,16 @@ import { sanitizeSlideSvgMarkup } from '../sanitize'
  */
 export const SlideEmbedBlock = memo(function SlideEmbedBlock({ el }: { el: EmbedElement }) {
   if (embedViewIsInline(el.view)) {
-    const markup = sanitizeSlideSvgMarkup(el.view ?? '')
-    if (markup) {
-      return (
-        <div
-          data-slide-embed='inline'
-          className='size-full overflow-hidden'
-          dangerouslySetInnerHTML={{ __html: markup }}
-        />
-      )
-    }
+    // The sanitizer is called in the injection expression rather than one step away: the
+    // policy that reads this file looks for the call AT the site, which is where a future
+    // bypass would hide (tests/slides-sanitize-policy.test.ts).
+    return (
+      <div
+        data-slide-embed='inline'
+        className='size-full overflow-hidden'
+        dangerouslySetInnerHTML={{ __html: sanitizeSlideSvgMarkup(el.view ?? '') }}
+      />
+    )
   }
 
   const address = embedUrl(el.url) || el.view || ''
