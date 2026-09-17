@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | 解析 → 编辑 → 写回无损（`present`/`assets`/`fonts`/`layouts`/`docId`/`modified`/`meta`/主题调色板/未知键） | `body.test.ts`（含官方形状第二页）、`tests/slides-interop.test.ts` | 既有 + `cd47be86` |
 | 大纲体写回有损防护（写不进去的内容改走 JSON 体并提示） | `write.test.ts`、`outline.test.ts` | 既有 |
-| HTML / SVG / 粘贴净化，且净化调用必须在注入表达式内 | `sanitize.test.ts`、`tests/slides-sanitize-policy.test.ts` | 既有 + `ee55f34b`（见下） |
+| HTML / SVG / 粘贴净化，且净化调用必须在注入表达式内 | `sanitize.test.ts`、`tests/slides-sanitize-policy.test.ts` | 既有 + `6e55f34b`（见下） |
 | 顶栏保存 / 共享 / 设置 / 帮助接线与脏点 | `slides-topbar.test.ts`、`copy-link.test.ts` | 既有 |
 | `doc.present` 全量生效（页码、进度、角落箭头、为隐藏页编号） | `slides-presenter.test.ts` | 既有 |
 | 页面尺寸单一坐标系（缩略图 / 内联 / 放映 / 编辑同用 `doc.size`） | `page.test.ts`、`canvas-helpers.test.ts` | 既有 |
@@ -28,7 +28,7 @@
 | 不认识的元素/几何显示占位并告警，不再静默消失 | `element-renderer.test.ts` | `b67a1cd8` |
 | 官方 1.2.0 形状文档的互操作回归（字段可读、往返无损、每个元素都画出东西） | `tests/slides-interop.test.ts` | `4ad2a7f5` |
 
-> `ee55f34b` 是工作区里既有的在途改动（代码块净化移到渲染处），提交前只补了缺失的白名单条目——它的缺失会让仓库级 `comments:check` 为红、pre-commit 钩子拦下所有提交。
+> `6e55f34b` 是工作区里既有的在途改动（代码块净化移到渲染处），提交前只补了缺失的白名单条目——它的缺失会让仓库级 `comments:check` 为红、pre-commit 钩子拦下所有提交。
 
 ---
 
