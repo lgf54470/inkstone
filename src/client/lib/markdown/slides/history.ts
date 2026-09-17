@@ -13,6 +13,7 @@ export type HistoryAction =
   | { type: 'commit'; next: BentoDoc }
   | { type: 'undo' }
   | { type: 'redo' }
+  | { type: 'adopt'; next: BentoDoc }
 
 export function historyReducer(state: HistoryState, action: HistoryAction): HistoryState {
   if (action.type === 'commit') {
@@ -22,6 +23,12 @@ export function historyReducer(state: HistoryState, action: HistoryAction): Hist
       past: [...state.past.slice(-(MAX_HISTORY_STEPS - 1)), state.data],
       future: [],
     }
+  }
+  // A document written by another surface starts a new lineage: its steps are not this
+  // surface's steps, so they are dropped rather than offered as undoable edits.
+  if (action.type === 'adopt') {
+    if (action.next === state.data) return state
+    return { data: action.next, past: [], future: [] }
   }
   if (action.type === 'undo') {
     if (state.past.length === 0) return state
@@ -53,6 +60,18 @@ export function useSlidesHistory(
     past: [],
     future: [],
   })
+
+  /**
+   * The document belongs to the block, not to one surface of it. The full screen editor
+   * commits through the same entry, so a card mounted before those edits has to adopt
+   * them or it keeps painting the deck as it was when the block was mounted — the note
+   * says one thing and the card next to it another. A commit from this surface arrives
+   * as the very object it just dispatched, so this only ever fires for an outside writer.
+   */
+  useEffect(() => {
+    if (initialData === state.data) return
+    dispatch({ type: 'adopt', next: initialData })
+  }, [initialData, state.data])
 
   const commitData = useCallback(
     (nextOrUpdater: BentoDoc | ((prev: BentoDoc) => BentoDoc)) => {

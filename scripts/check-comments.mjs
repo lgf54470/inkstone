@@ -2913,6 +2913,11 @@ const allowed = new Map([
     '/** Host feedback for a change the user has to be told about (the body switching syntax). */',
     '/** Told whether an edit is still waiting for its write — the surface\'s unsaved-change state. */',
   ]],
+  ['src/client/lib/markdown/slides/history.ts', [
+    '// A document written by another surface starts a new lineage: its steps are not this',
+    "// surface's steps, so they are dropped rather than offered as undoable edits.",
+    '/**\n   * The document belongs to the block, not to one surface of it. The full screen editor\n   * commits through the same entry, so a card mounted before those edits has to adopt\n   * them or it keeps painting the deck as it was when the block was mounted — the note\n   * says one thing and the card next to it another. A commit from this surface arrives\n   * as the very object it just dispatched, so this only ever fires for an outside writer.\n   */',
+  ]],
   ['src/client/lib/markdown/slides/outline.test.ts', [
     '/** Every edit that leaves the dialect behind: it is the list write.ts must refuse to flatten. */',
   ]],
@@ -2947,6 +2952,11 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/copy-link.ts', [
     '/**\n * Copies the address of the page the deck is open on, which is the link to the note\n * holding it — the app keeps no per-note route, so the address bar is the most\n * specific thing pointing at this note.\n *\n * Copying fails for reasons the reader cannot see: an insecure origin, a denied\n * clipboard permission, a browser without the API at all. Each of those ends in a\n * toast rather than silence, because a copy that quietly did nothing is worse than\n * one that says it did not work — and the failure is logged for whoever has to\n * explain it later.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-doc-sync.test.ts', [
+    '// renderElement() hands out a mount without a second render, and adoption is precisely',
+    '// about what a later render does to an already mounted surface, so this file drives its',
+    '// own root instead.',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-fullscreen.tsx', [
     '/** Every edit has reached the note. */',

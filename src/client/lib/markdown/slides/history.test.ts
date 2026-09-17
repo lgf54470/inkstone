@@ -60,6 +60,23 @@ describe('historyReducer', () => {
     expect(s2.future.length).toBe(0)
   })
 
+  it('adopts a document another surface wrote and restarts the history', () => {
+    const mine = makeDoc('Edited here')
+    const theirs = makeDoc('Edited in full screen')
+    const s1: HistoryState = { data: mine, past: [makeDoc('V0')], future: [] }
+
+    const s2 = historyReducer(s1, { type: 'adopt', next: theirs })
+    expect(s2.data).toBe(theirs)
+    expect(s2.past).toEqual([])
+    expect(s2.future).toEqual([])
+  })
+
+  it('keeps the same state when the adopted document is the current one', () => {
+    const doc = makeDoc('V1')
+    const s0: HistoryState = { data: doc, past: [], future: [] }
+    expect(historyReducer(s0, { type: 'adopt', next: doc })).toBe(s0)
+  })
+
   it('no-ops when undoing empty past or redoing empty future', () => {
     const s0: HistoryState = {
       data: makeDoc('V1'),
