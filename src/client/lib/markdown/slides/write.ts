@@ -8,6 +8,7 @@ const WRITE_DEBOUNCE_MS = 500
 export function scheduleSlidesWrite(entry: SlidesBlockEntry): void {
   if (!entry.write || !entry.ref || !entry.editable || !entry.data) return
   entry.dirty = true
+  entry.report?.(true)
   if (entry.timer !== null) window.clearTimeout(entry.timer)
   entry.timer = window.setTimeout(() => {
     entry.timer = null
@@ -15,11 +16,23 @@ export function scheduleSlidesWrite(entry: SlidesBlockEntry): void {
   }, WRITE_DEBOUNCE_MS)
 }
 
+/**
+ * Writes the pending change and reports whether it is still pending, which is the state
+ * the surface paints (an unsaved-changes dot on Save). A write that landed leaves nothing
+ * pending; a refused one — a conflicted fence, a note without content — is still the
+ * user's unsaved work and keeps the dot, because the next save is the only way out of it.
+ */
 export function flushSlidesEntry(entry: SlidesBlockEntry): SlidesWriteResult | null {
   if (entry.timer !== null) {
     window.clearTimeout(entry.timer)
     entry.timer = null
   }
+  const result = writeSlidesEntry(entry)
+  entry.report?.(result !== 'written' && result !== null)
+  return result
+}
+
+function writeSlidesEntry(entry: SlidesBlockEntry): SlidesWriteResult | null {
   if (!entry.write || !entry.ref || !entry.dirty || !entry.data) return null
   entry.dirty = false
   const mode = resolveWriteMode(entry)

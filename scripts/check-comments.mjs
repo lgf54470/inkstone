@@ -1829,6 +1829,12 @@ const allowed = new Map([
     '// and the full screen overlay is that surface too — it is portaled into this',
     '// subtree, so without this the note\'s menu opens over the one already there.',
   ]],
+  ['src/client/features/preview/use-bento-slides-blocks.ts', [
+    '/** Every edit has reached the note; false while one is still waiting for its write. */',
+    '/** Fullscreen session state: which block is open, whether its edits have reached the note, and the actions the topbar drives. */',
+    '// The mount effect wires the callbacks once, so they read the open block\'s key from a',
+    '// ref rather than from a closure that would still name the block opened at mount time.',
+  ]],
   ['src/client/features/preview/use-excalidraw-blocks.ts', [
     '/** The block whose header button opened the picker; it anchors the menu. */',
     '/**\n * Mounts a live whiteboard per block after each commit and keeps them out of the\n * preview\'s way: the board\'s element is re-parented into the fresh markup before paint,\n * so typing in the editor never restarts a board.\n */',
@@ -2905,6 +2911,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/entry.ts', [
     '/** Host feedback for a change the user has to be told about (the body switching syntax). */',
+    '/** Told whether an edit is still waiting for its write — the surface\'s unsaved-change state. */',
   ]],
   ['src/client/lib/markdown/slides/outline.test.ts', [
     '/** Every edit that leaves the dialect behind: it is the list write.ts must refuse to flatten. */',
@@ -2915,6 +2922,8 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/registry.ts', [
     '/** Told when a body leaves the outline syntax, so the host can say so once. */',
+    '/** Told whether the block whose key this is has an edit still waiting for its write. */',
+    '/** The entry\'s key is reassigned as blocks are matched to nodes, so the callback reads it late. */',
   ]],
   ['src/client/lib/markdown/slides/sanitize.ts', [
     '/**\n * The one gate every piece of markup a slide paints goes through.\n *\n * A block\'s body is untrusted input: it arrives from a note, from a pasted deck, from an\n * import, or from an agent writing the fence, and the text/table/SVG paths below inject it\n * as markup rather than as text. DOMPurify is the project\'s sanitizer of record, and the\n * two configs here are deliberately narrower than prose\'s: a slide\'s rich text is\n * ATTRIBUTE-FREE except for an anchor\'s href, so a tag can only ever mean what its name\n * means, and a diagram\'s markup is an SVG-only allowlist with no HTML and no remote refs.\n * Sanitizing runs on the way in as well as on the way out, so what a person edits is what\n * gets stored — a note never carries the payload forward to the next reader.\n */',
@@ -2933,10 +2942,23 @@ const allowed = new Map([
     '/** Pasted text as markup, with the line breaks a plain-text paste carries. */',
     '/**\n * Inserts sanitized clipboard content at the caret and returns whether there was anything\n * to insert. The caller must therefore prevent the browser\'s own paste whenever this\n * answers true — letting the default run would put the unsanitized markup in the same box\n * this function just cleaned. With no caret inside `target` (a paste arriving from a\n * menu, say) the content lands at the end rather than nowhere.\n */',
   ]],
+  ['src/client/lib/markdown/slides/session.ts', [
+    '/** An edit exists that the note has not taken yet. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-fullscreen.tsx', [
+    '/** Every edit has reached the note. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-root.tsx', [
+    '/** Whether every edit has reached the note; undefined on a surface without a save control. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-topbar.test.ts', [
+    '// The overlay is a modal: it portals into the body, not into the render container.',
+  ]],
   ['src/client/lib/markdown/slides/write.test.ts', [
     '/** Rewrites the text element an outline body produced, which is the edit that has to stay expressible. */',
   ]],
   ['src/client/lib/markdown/slides/write.ts', [
+    '/**\n * Writes the pending change and reports whether it is still pending, which is the state\n * the surface paints (an unsaved-changes dot on Save). A write that landed leaves nothing\n * pending; a refused one — a conflicted fence, a note without content — is still the\n * user\'s unsaved work and keeps the dot, because the next save is the only way out of it.\n */',
     '/**\n * Which syntax the body is written back in. An outline body stays an outline for as long\n * as the document still fits it; an edit it cannot express (a shape, a moved element, an\n * imported asset) writes JSON from now on, so the note keeps holding the deck the editor\n * is showing. The mode is remembered rather than re-decided per write: the document is the\n * rich one from here on, and a retry after a failed write must not fall back to dropping it.\n */',
   ]],
   ['src/client/lib/note-filter.ts', [

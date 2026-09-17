@@ -88,6 +88,8 @@ export const messages = {
 'slides.tool_print': '打印 / PDF',
 'slides.tool_share': '共享',
 'slides.tool_save': '保存',
+'slides.saved': '已保存到笔记',
+'slides.unsaved_changes': '演示稿有未保存的修改',
 'slides.tool_settings': '设置',
 'slides.tool_help': '帮助',
 'slides.reset_zoom': '重置缩放',

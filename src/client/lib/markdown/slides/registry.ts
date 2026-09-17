@@ -29,6 +29,8 @@ export interface SlidesMountOptions {
   onOpenFullscreen?: (node: HTMLElement) => void
   /** Told when a body leaves the outline syntax, so the host can say so once. */
   onNotice?: () => void
+  /** Told whether the block whose key this is has an edit still waiting for its write. */
+  onPendingChange?: (key: string, pending: boolean) => void
 }
 
 interface Assignment {
@@ -124,11 +126,23 @@ function createEntry(node: HTMLElement, options: SlidesMountOptions): SlidesBloc
     ref: null,
     write: options.writeBack ?? null,
     notice: options.onNotice ?? null,
+    report: null,
     dirty: false,
     timer: null,
   }
+  created.report = reportFor(created, options)
   entries.set(created.key, created)
   return created
+}
+
+/** The entry's key is reassigned as blocks are matched to nodes, so the callback reads it late. */
+function reportFor(
+  entry: SlidesBlockEntry,
+  options: SlidesMountOptions,
+): ((pending: boolean) => void) | null {
+  const report = options.onPendingChange
+  if (!report) return null
+  return (pending) => report(entry.key, pending)
 }
 
 function renderSlidesEntry(entry: SlidesBlockEntry, options: SlidesMountOptions): void {
@@ -152,6 +166,7 @@ function mountBlock(node: HTMLElement, entry: SlidesBlockEntry, options: SlidesM
   entry.ref = isSlidesWritableHere(node) ? { line: Number(node.dataset.line), body } : null
   entry.write = options.writeBack ?? null
   entry.notice = options.onNotice ?? null
+  entry.report = reportFor(entry, options)
 
   const parsed = parseSlidesBody(body)
   if (!parsed.ok) {

@@ -7,11 +7,16 @@ import { SlidesRoot } from './slides-root'
 
 interface SlidesFullscreenProps {
   session: SlidesSession
+  /** Every edit has reached the note. */
+  isSaved: boolean
+  onSave: () => void
   onClose: () => void
 }
 
 export const SlidesFullscreen = memo(function SlidesFullscreen({
   session,
+  isSaved,
+  onSave,
   onClose,
 }: SlidesFullscreenProps) {
   const initialData = session.getData()
@@ -45,6 +50,8 @@ export const SlidesFullscreen = memo(function SlidesFullscreen({
         <SlidesRoot
           initialData={data}
           isFullscreen
+          isSaved={isSaved}
+          onSave={onSave}
           onUpdateData={handleUpdate}
           onToggleFullscreen={handleClose}
         />

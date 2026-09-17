@@ -21,6 +21,8 @@ export interface SlidesBlockEntry {
   write: SlidesWriter | null
   /** Host feedback for a change the user has to be told about (the body switching syntax). */
   notice: (() => void) | null
+  /** Told whether an edit is still waiting for its write — the surface's unsaved-change state. */
+  report: ((pending: boolean) => void) | null
   dirty: boolean
   timer: number | null
 }

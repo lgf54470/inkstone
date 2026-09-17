@@ -479,7 +479,7 @@ export function usePreview(props: PreviewProps) {
     openExcalidrawLibraryMenu: excalidraw.openLibraryMenu,
     excalidrawLibraryMenu: excalidraw.libraryMenu, closeExcalidrawLibraryMenu: excalidraw.closeLibraryMenu,
     kanbanFullscreen: kanban.fullscreen, closeKanbanFullscreen: kanban.closeFullscreen,
-    slidesFullscreen: slides.fullscreen, closeSlidesFullscreen: slides.closeFullscreen,
+    slidesFullscreen: slides.fullscreen, saveSlides: slides.saveNow, closeSlidesFullscreen: slides.closeFullscreen,
     onClick,
     ...keyboard,
   }

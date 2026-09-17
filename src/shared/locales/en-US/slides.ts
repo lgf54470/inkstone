@@ -88,6 +88,8 @@ export const messages = {
 'slides.tool_print': 'Print / PDF',
 'slides.tool_share': 'Share',
 'slides.tool_save': 'Save',
+'slides.saved': 'Saved to the note',
+'slides.unsaved_changes': 'Unsaved changes to this deck',
 'slides.tool_settings': 'Settings',
 'slides.tool_help': 'Help',
 'slides.reset_zoom': 'Reset zoom',

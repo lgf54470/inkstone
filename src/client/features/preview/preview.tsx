@@ -85,7 +85,12 @@ function PreviewOverlays({ b }: { b: ReturnType<typeof usePreview> }) {
         <KanbanFullscreen session={b.kanbanFullscreen.session} onClose={b.closeKanbanFullscreen} />
       )}
       {b.slidesFullscreen && (
-        <SlidesFullscreen session={b.slidesFullscreen.session} onClose={b.closeSlidesFullscreen} />
+        <SlidesFullscreen
+          session={b.slidesFullscreen.session}
+          isSaved={b.slidesFullscreen.isSaved}
+          onSave={b.saveSlides}
+          onClose={b.closeSlidesFullscreen}
+        />
       )}
       {b.previewFile && (
         <FilePreviewModal

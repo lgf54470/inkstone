@@ -6,7 +6,7 @@ import {
   slidesEntryForNode,
   updateSlidesData,
 } from './registry'
-import type { BentoDoc, SlidesMode } from './types'
+import type { BentoDoc, SlidesMode, SlidesWriteResult } from './types'
 import { flushSlidesEntry } from './write'
 
 export interface SlidesSession {
@@ -14,6 +14,8 @@ export interface SlidesSession {
   noteId(): string | null
   isReady(): boolean
   isEditable(): boolean
+  /** An edit exists that the note has not taken yet. */
+  isDirty(): boolean
   getData(): BentoDoc | null
   updateData(updater: (prev: BentoDoc) => BentoDoc): void
   getMode(): SlidesMode
@@ -21,7 +23,7 @@ export interface SlidesSession {
   moveBack(): void
   title(): string
   serialize(): string | null
-  flush(): void
+  flush(): SlidesWriteResult | null
 }
 
 export function openSlidesSession(node: HTMLElement): SlidesSession | null {
@@ -35,6 +37,7 @@ function sessionFor(entry: SlidesBlockEntry): SlidesSession {
     noteId: () => entry.noteId,
     isReady: () => Boolean(entry.data),
     isEditable: () => Boolean(entry.editable),
+    isDirty: () => entry.dirty || entry.timer !== null,
     getData: () => entry.data,
     updateData: (updater) => updateSlidesData(entry, updater),
     getMode: () => entry.mode,
@@ -45,8 +48,6 @@ function sessionFor(entry: SlidesBlockEntry): SlidesSession {
       if (!entry.data) return null
       return serializeSlides(entry.data, entry.mode)
     },
-    flush: () => {
-      flushSlidesEntry(entry)
-    },
+    flush: () => flushSlidesEntry(entry),
   }
 }

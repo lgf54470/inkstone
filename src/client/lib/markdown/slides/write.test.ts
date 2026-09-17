@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { flushSlidesEntry } from './write'
+import { flushSlidesEntry, scheduleSlidesWrite } from './write'
 import { parseSlidesOutline } from './outline'
 import { serializeSlides } from './body'
 import type { SlidesBlockEntry } from './entry'
 import type { BentoDoc, SlideElement, SlidesWriteResult } from './types'
+import { vi } from 'vitest'
 
 /** Rewrites the text element an outline body produced, which is the edit that has to stay expressible. */
 function editBodyText(doc: BentoDoc, html: string): BentoDoc {
@@ -24,8 +25,9 @@ function editBodyText(doc: BentoDoc, html: string): BentoDoc {
 
 const SHAPE: SlideElement = { id: 'shape-1', type: 'shape', shape: 'rect', fill: '#FF9E8A', x: 40, y: 40, w: 120, h: 80 }
 
-function entryFor(data: BentoDoc, mode: 'json' | 'outline', body: string) {
+function entryFor(data: BentoDoc, mode: 'json' | 'outline', body: string, result: SlidesWriteResult = 'written') {
   const written: string[] = []
+  const pending: boolean[] = []
   let notices = 0
   const entry: SlidesBlockEntry = {
     key: 'scope#1',
@@ -45,15 +47,16 @@ function entryFor(data: BentoDoc, mode: 'json' | 'outline', body: string) {
     ref: { line: 3, body },
     write: (_ref, nextBody): SlidesWriteResult => {
       written.push(nextBody)
-      return 'written'
+      return result
     },
     notice: () => {
       notices += 1
     },
+    report: (value) => pending.push(value),
     dirty: true,
     timer: null,
   }
-  return { entry, written, notices: () => notices }
+  return { entry, written, pending, notices: () => notices }
 }
 
 describe('flushSlidesEntry', () => {
@@ -102,5 +105,32 @@ describe('flushSlidesEntry', () => {
     entry.ref = { line: 1, body: '# Title' }
     entry.write = null
     expect(flushSlidesEntry(entry)).toBeNull()
+  })
+})
+
+describe('flushSlidesEntry pending state', () => {
+  it('reports the pending state from the edit until the write lands', () => {
+    vi.useFakeTimers()
+    try {
+      const source = '# Title\nBody text'
+      const doc = parseSlidesOutline(source)
+      const { entry, pending } = entryFor(doc, 'outline', source)
+      entry.dirty = false
+      vi.spyOn(window, 'setTimeout')
+      scheduleSlidesWrite(entry)
+      expect(pending).toEqual([true])
+      vi.runAllTimers()
+      expect(pending).toEqual([true, false])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps the pending state when the note refused the write', () => {
+    const source = '# Title\nBody text'
+    const doc = parseSlidesOutline(source)
+    const { entry, pending } = entryFor(editBodyText(doc, '<p>Edited</p>'), 'outline', source, 'conflict')
+    expect(flushSlidesEntry(entry)).toBe('conflict')
+    expect(pending).toEqual([true])
   })
 })

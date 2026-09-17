@@ -424,11 +424,16 @@ export const SlidesTopbar = memo(function SlidesTopbar({
           <span>{t('slides.tool_save')}</span>
           {!isSaved && (
             <span
+              data-bento-slides-unsaved
               className='size-1.5 rounded-full'
               style={{ backgroundColor: DIRTY_DOT_COLOR }}
             />
           )}
         </button>
+
+        <span className='sr-only' role='status' data-bento-slides-save-status>
+          {isSaved ? t('slides.saved') : t('slides.unsaved_changes')}
+        </span>
 
         <button
           type='button'

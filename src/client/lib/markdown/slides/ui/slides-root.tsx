@@ -26,6 +26,9 @@ import { t } from '../../../i18n'
 interface SlidesRootProps {
   initialData: BentoDoc
   isFullscreen?: boolean
+  /** Whether every edit has reached the note; undefined on a surface without a save control. */
+  isSaved?: boolean
+  onSave?: () => void
   onUpdateData: (data: BentoDoc) => void
   onToggleFullscreen?: () => void
 }
@@ -33,6 +36,8 @@ interface SlidesRootProps {
 export const SlidesRoot = memo(function SlidesRoot({
   initialData,
   isFullscreen = false,
+  isSaved,
+  onSave,
   onUpdateData,
   onToggleFullscreen,
 }: SlidesRootProps) {
@@ -372,6 +377,8 @@ export const SlidesRoot = memo(function SlidesRoot({
             navigator.clipboard.writeText(window.location.href)
           }
         }}
+        isSaved={isSaved ?? true}
+        onSave={onSave}
       />
 
       <div className='flex flex-1 overflow-hidden'>
