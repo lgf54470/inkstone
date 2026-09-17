@@ -2955,6 +2955,11 @@ const allowed = new Map([
     '/**\n * The address a media element actually loads: `asset:<key>` names bytes in the document\'s\n * own table, everything else is the source as written. An asset key with no entry resolves\n * to the empty string so the caller paints a frame that says so, rather than a `<video>`\n * that silently plays nothing.\n */',
     '/**\n * Whether a clip starts itself. Reduced motion wins over the document: a deck asking for\n * autoplay is a request, and the reader\'s system preference is the answer. Browsers only\n * start an unmuted clip on their own, which is why the caller mutes an autoplaying element.\n */',
   ]],
+  ['src/client/lib/markdown/slides/embed.ts', [
+    '/**\n * What an embed may put on a slide. `view` is artwork the file carries, which is drawn; `url`\n * is an address, which is offered as a link and never loaded in place — a note is not a viewer\n * for arbitrary pages, and a live frame in a note runs someone else\'s script under the note\'s\n * own origin. The decision is a pure function so the renderer, a test and (later) validation\n * all answer it the same way.\n */',
+    '/** An address a link may point at: a web address or a path inside the app. */',
+    '/** The address an embed shows, or the empty string when it carries none worth offering. */',
+  ]],
   ['src/client/lib/markdown/slides/layouts.test.ts', [
     '// 160 x (1280/1600) = 128, 404 x (720/900) = 323.',
     '// Height is unscaled, so the 44pt heading keeps its size even though the page doubled.',
@@ -3031,6 +3036,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/code-block.tsx', [
     '/**\n * A code element is text plus a language, and the language is what turns it into tokens a\n * deck can colour. Prism is loaded per language on demand, so this paints the plain text\n * first and swaps in the highlighted markup when the grammar arrives — a snippet is\n * readable either way, and a language nobody supports simply stays plain.\n *\n * The palette reaches the tokens as custom properties (see code-palette.ts): a deck may\n * recolour its code while the show is open, and the stylesheet names the variables once.\n *\n * The sanitizer runs in the render expression rather than when the grammar arrives, because\n * the injection site is what the markup policy reads (tests/slides-sanitize-policy.test.ts):\n * a call one step away from the `__html` is the shape a future bypass hides in.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/embed-block.tsx', [
+    '/**\n * A view carried in the file is drawn; a view that is an address is offered as a link. The\n * second half is a deliberate limitation rather than a missing feature: running another\n * page\'s script inside a note would give that page the note\'s origin, so the deck\'s own\n * affordance — click through and look at it there — is what a note can honestly offer.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/element-renderer.tsx', [
     '/**\n * One element\'s own markup, chosen by its type. Everything a surface needs to draw a deck —\n * the canvas, a thumbnail, a printed page — comes through here, which is what keeps those\n * three from disagreeing about what an element looks like.\n */',

@@ -11,6 +11,7 @@ import { getShapeStyle, getTableStyle, getTextStyle } from './canvas-helpers'
 import { pasteSlideRichText, sanitizeSlideRichText, sanitizeSlideSvgMarkup } from '../sanitize'
 import { SlideChartBlock } from './chart-block'
 import { SlideCodeBlock } from './code-block'
+import { SlideEmbedBlock } from './embed-block'
 import { SlideMediaBlock } from './media-block'
 
 const CIRCLE_RADIUS = '50%'
@@ -61,6 +62,8 @@ export function ElementRenderer({
       return <ImageRenderer el={el} />
     case 'media':
       return <SlideMediaBlock el={el} assets={assets} interactive={!editable} />
+    case 'embed':
+      return <SlideEmbedBlock el={el} />
     case 'table':
       return <TableRenderer el={el} />
     case 'chart':
