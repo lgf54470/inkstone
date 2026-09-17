@@ -3,6 +3,9 @@ import path from 'node:path'
 import ts from 'typescript'
 
 const allowed = new Map([
+  ['src/client/lib/markdown/slides/body.ts', [
+    '/**\n * Fills in what the editor needs while carrying everything else through: this model\n * is a superset of the body, not a projection of it. The fence body is the user\'s own\n * document, and an edit rewrites it whole, so a field this build does not model\n * (a layout, an embedded font, a remark on a slide) must survive parse → edit → write\n * rather than disappear because the normalizer never named it. Unknown keys are\n * therefore spread through at every level the writer touches, and a value that is\n * absent here stays absent — inventing a default would put a statement in the file\n * the author never made.\n */',
+  ]],
   ['scripts/bench-scrypt.mjs', [
     '/**\n * Measures scrypt cost with the production parameters\n * (SCRYPT_N = 2**14, r = 8, p = 5) so parameter and throttle-budget\n * decisions are grounded in measured numbers, not guesses.\n */',
     '// p worker threads need ~128 * N * r * p bytes of memory',

@@ -129,6 +129,92 @@ describe('serializeSlides', () => {
   })
 })
 
+const FOREIGN_FIELDS_BODY = JSON.stringify({
+  format: 'bento/slides',
+  version: 1,
+  docId: 'doc-7f1c',
+  modified: '2026-09-17T08:00:00.000Z',
+  title: 'Ported deck',
+  size: { width: 1600, height: 900, unit: 'px' },
+  present: { slideNumber: false, progress: false, controls: true, numberHidden: true },
+  assets: { grain: 'data:image/svg+xml;base64,PHN2Zy8+', logo: 'data:image/png;base64,AAA' },
+  fonts: [{ family: 'Fraunces', asset: 'builtin:fraunces-900', weight: '900' }],
+  layouts: [
+    { id: 'layout-two-col', name: 'Two columns', background: '#FFFFFF', transition: 'fade', notes: '', elements: [] },
+  ],
+  theme: {
+    background: '#0D1B2E',
+    color: '#FFFFFF',
+    accent: '#FF9E8A',
+    fontFamily: "'Instrument Sans', sans-serif",
+    chartPalette: ['#5E7699', '#FF9E8A'],
+    codePalette: { c: '#6B7F8F', k: '#5B8DEF' },
+  },
+  slides: [
+    {
+      id: 'slide-1',
+      name: 'Opening',
+      background: '#0D1B2E',
+      transition: 'morph',
+      notes: 'Welcome',
+      themeRefs: { background: 'accent' },
+      elements: [
+        {
+          id: 'sd-glow',
+          type: 'svg',
+          asset: 'grain',
+          x: 0,
+          y: 0,
+          w: 1600,
+          h: 900,
+          morphId: 'glow',
+          fx: { enter: 'fade-up', step: 1 },
+        },
+      ],
+    },
+  ],
+})
+
+describe('lossless round trip', () => {
+  it('keeps the fields the model does not name', () => {
+    const result = parseSlidesBody(FOREIGN_FIELDS_BODY)
+    if (!result.ok) throw new Error(`parse failed: ${result.error}`)
+    expect(result.data.present).toEqual({
+      slideNumber: false,
+      progress: false,
+      controls: true,
+      numberHidden: true,
+    })
+    expect(result.data.assets).toEqual({
+      grain: 'data:image/svg+xml;base64,PHN2Zy8+',
+      logo: 'data:image/png;base64,AAA',
+    })
+    expect(result.data.theme.codePalette).toEqual({ c: '#6B7F8F', k: '#5B8DEF' })
+    expect(result.data.theme.chartPalette).toEqual(['#5E7699', '#FF9E8A'])
+  })
+
+  it('writes back exactly what it was given, adding nothing and dropping nothing', () => {
+    const result = parseSlidesBody(FOREIGN_FIELDS_BODY)
+    if (!result.ok) throw new Error(`parse failed: ${result.error}`)
+    expect(JSON.parse(serializeSlides(result.data, 'json'))).toEqual(JSON.parse(FOREIGN_FIELDS_BODY))
+  })
+
+  it('round-trips an asset reference so an edited deck keeps its pictures', () => {
+    const result = parseSlidesBody(FOREIGN_FIELDS_BODY)
+    if (!result.ok) throw new Error(`parse failed: ${result.error}`)
+    const elements = result.data.slides[0]?.elements ?? []
+    expect(elements[0]).toMatchObject({ type: 'svg', asset: 'grain' })
+    expect(result.data.assets?.grain).toBe('data:image/svg+xml;base64,PHN2Zy8+')
+  })
+
+  it('seeds a starter slide when the body carries none', () => {
+    const result = parseSlidesBody(JSON.stringify({ title: 'Empty' }))
+    if (!result.ok) throw new Error(`parse failed: ${result.error}`)
+    expect(result.data.slides).toHaveLength(1)
+    expect(result.data.slides[0]?.elements[0]).toMatchObject({ type: 'text', html: 'Empty' })
+  })
+})
+
 describe('applySlidesBodyAtFence & slidesFenceRange', () => {
   it('locates and updates slides fence content', () => {
     const doc = 'Intro text\n\n```bento-slides\n# Old Slide\n```\n\nOutro text'

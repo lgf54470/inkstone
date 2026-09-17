@@ -13,6 +13,7 @@ import {
   BENTO_SLIDES_FORMAT,
   BENTO_SLIDES_VERSION,
   type BentoDoc,
+  type Slide,
   type SlidesFenceRef,
   type SlidesMode,
   type SlidesParseResult,
@@ -31,30 +32,44 @@ export function detectSlidesMode(body: string): SlidesMode {
   return trimmed.startsWith('{') || trimmed.startsWith('[') ? 'json' : 'outline'
 }
 
-function normalizeBentoDoc(raw: Partial<BentoDoc>): BentoDoc {
-  const slides = Array.isArray(raw.slides) && raw.slides.length > 0 ? raw.slides : []
-  if (slides.length === 0) {
-    slides.push({
-      id: 'slide-1',
-      title: typeof raw.title === 'string' ? raw.title : 'Welcome',
-      elements: [
-        {
-          id: 'title-1',
-          type: 'text',
-          html: typeof raw.title === 'string' ? raw.title : 'Welcome',
-          fontSize: 44,
-          fontWeight: 700,
-          align: 'left',
-          valign: 'top',
-          x: 96,
-          y: 80,
-          w: 1088,
-          h: 80,
-        },
-      ],
-    })
-  }
+const DEFAULT_CANVAS_SIZE = { width: 1280, height: 720 }
 
+function defaultSlide(title: unknown): Slide {
+  const text = typeof title === 'string' ? title : 'Welcome'
+  return {
+    id: 'slide-1',
+    title: text,
+    elements: [
+      {
+        id: 'title-1',
+        type: 'text',
+        html: text,
+        fontSize: 44,
+        fontWeight: 700,
+        align: 'left',
+        valign: 'top',
+        x: 96,
+        y: 80,
+        w: 1088,
+        h: 80,
+      },
+    ],
+  }
+}
+
+/**
+ * Fills in what the editor needs while carrying everything else through: this model
+ * is a superset of the body, not a projection of it. The fence body is the user's own
+ * document, and an edit rewrites it whole, so a field this build does not model
+ * (a layout, an embedded font, a remark on a slide) must survive parse → edit → write
+ * rather than disappear because the normalizer never named it. Unknown keys are
+ * therefore spread through at every level the writer touches, and a value that is
+ * absent here stays absent — inventing a default would put a statement in the file
+ * the author never made.
+ */
+function normalizeBentoDoc(raw: Partial<BentoDoc>): BentoDoc {
+  const slides =
+    Array.isArray(raw.slides) && raw.slides.length > 0 ? raw.slides : [defaultSlide(raw.title)]
   const rawTheme = raw.theme ?? {
     background: DEFAULT_DARK_BG,
     color: DEFAULT_DARK_COLOR,
@@ -62,15 +77,16 @@ function normalizeBentoDoc(raw: Partial<BentoDoc>): BentoDoc {
   }
 
   return {
+    ...raw,
     format: raw.format || BENTO_SLIDES_FORMAT,
     version: raw.version || BENTO_SLIDES_VERSION,
     title: typeof raw.title === 'string' ? raw.title : 'Bento Slides',
-    size: raw.size && raw.size.width > 0 ? raw.size : { width: 1280, height: 720 },
+    size: raw.size && raw.size.width > 0 ? { ...raw.size } : { ...DEFAULT_CANVAS_SIZE },
     theme: {
+      ...rawTheme,
       background: rawTheme.background || DEFAULT_DARK_BG,
       color: rawTheme.color || DEFAULT_DARK_COLOR,
       accent: rawTheme.accent || DEFAULT_ACCENT_COLOR,
-      fontFamily: rawTheme.fontFamily,
     },
     slides,
   }
