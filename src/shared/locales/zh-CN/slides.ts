@@ -113,6 +113,7 @@ export const messages = {
 'slides.tool_comment': '评论',
 'slides.tool_print': '打印 / PDF',
 'slides.print_unavailable': '暂不支持打印演示稿',
+'slides.print_empty': '没有可打印的内容——每一页都被隐藏了',
 'slides.tool_share': '共享',
 'slides.tool_save': '保存',
 'slides.saved': '已保存到笔记',

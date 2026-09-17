@@ -78,7 +78,7 @@
     overflow: visible !important;
   }
 
-  body > *:not(.deck-print-sheet) {
+  body > *:not(.deck-print-sheet):not(.bento-print-sheet) {
     display: none !important;
   }
 

@@ -82,6 +82,38 @@
   z-index: var(--z-modal);
 }
 
+.bento-print-sheet {
+  position: fixed;
+  top: 0;
+  left: -100000px;
+  background: var(--bg-surface);
+}
+
+.bento-print-page {
+  position: relative;
+  overflow: hidden;
+}
+
+.bento-print-page .bento-slide-shadow {
+  box-shadow: none;
+}
+
+@media print {
+  .bento-print-sheet {
+    position: static;
+    left: auto;
+  }
+
+  .bento-print-page {
+    break-after: page;
+    print-color-adjust: exact;
+  }
+
+  .bento-print-page:last-child {
+    break-after: auto;
+  }
+}
+
 .bento-canvas-stage {
   flex: 1;
   min-width: 0;

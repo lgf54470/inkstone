@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { ProseFont } from '@shared/types'
+import { settleWithin } from '../../lib/async'
 import { safeFileName } from '../../lib/export-folder'
 import { t } from '../../lib/i18n'
 import { destroyChartInstances, enhancePreview, renderPendingMermaid } from '../../lib/markdown/enhance'
@@ -176,18 +177,6 @@ async function decodeImages(root: HTMLElement): Promise<void> {
   await Promise.allSettled(images.map((image) => image.decode()))
 }
 
-// Resolves when the work does or when it has had long enough, so a slow artifact delays the export
-// instead of hanging it.
-function settleWithin(work: Promise<unknown>, timeoutMs: number): Promise<void> {
-  return new Promise<void>((resolve) => {
-    const timer = window.setTimeout(resolve, timeoutMs)
-    const done = (): void => {
-      window.clearTimeout(timer)
-      resolve()
-    }
-    void work.then(done, done)
-  })
-}
 
 // The stage reports fractional design sizes (it divides by the scale), which would print as
 // fractional page boxes; a PDF page is a whole number of pixels.

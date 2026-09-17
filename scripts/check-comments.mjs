@@ -1307,8 +1307,6 @@ const allowed = new Map([
     '// the same content box the show measured it in.',
     '// Best-effort: a page whose charts or fonts did not settle still exports with the still picture',
     '// its markup already carries, which is what the export showed before live charts.',
-    '// Resolves when the work does or when it has had long enough, so a slow artifact delays the export',
-    '// instead of hanging it.',
     '// The stage reports fractional design sizes (it divides by the scale), which would print as',
     '// fractional page boxes; a PDF page is a whole number of pixels.',
   ]],
@@ -1975,6 +1973,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/api/transport.ts', [
     '/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker\'s ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */',
+  ]],
+  ['src/client/lib/async.ts', [
+    '/**\n * Resolves when the work does or when it has had long enough, so a slow artifact delays what\n * comes next instead of hanging it. The timeout is the contract: the caller cannot wait\n * forever, and it must not learn about a failure it can do nothing about.\n */',
   ]],
   ['src/client/lib/calendar-prefs.ts', [
     '// Corrupt or missing stored prefs fall back to the defaults below.',
@@ -3021,6 +3022,9 @@ const allowed = new Map([
     "/** The page a deck gets when its body names no size of its own: the format's 16:9 default. */",
     '/**\n * The one scale a surface needs. Geometry is authored in absolute pixels of the page, so\n * a thumbnail, a card in a note and a projector all draw the same numbers behind a\n * different scale — none of them may assume the default page, because a deck that names\n * its own size would then be cropped (a 4:3 deck into a 16:9 frame) or stretched.\n */',
   ]],
+  ['src/client/lib/markdown/slides/flow.ts', [
+    '/**\n * The pages the audience is handed: the show walks them and a print lays them out, in deck\n * order. A hidden page is deliberate material the author kept off the screen, so it becomes\n * neither a projector page nor a sheet of paper — and the two agree because they ask this one\n * function rather than filtering for themselves.\n *\n * A state page (`stateOf`) is deliberately NOT filtered out here yet. The format reaches such a\n * page by interacting with the one it continues, and this build has no state navigation, so\n * leaving it out would put its content somewhere no reader could get to. It stays in the flow\n * until that navigation lands; the print side of the ledger records the same decision.\n */',
+  ]],
   ['src/client/lib/markdown/slides/outline.test.ts', [
     '/** Every edit that leaves the dialect behind: it is the list write.ts must refuse to flatten. */',
   ]],
@@ -3190,6 +3194,20 @@ const allowed = new Map([
     '// order of what the audience happens to see.',
     "/** How much air a show leaves around the page on a screen that is not the page's shape. */",
     '/** A page blown up past this is a projector seen from far away, not a larger page. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-print.test.ts', [
+    '// A sheet left mounted would print into the next test\'s assertions, so every test starts clean.',
+    '/** The editor\'s own control, so the tests drive the export the way the print button does. */',
+    '/** Everything in the sheet has to have settled before the dialog opens, so the wait is real time. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-print.tsx', [
+    '/** Pictures and webfonts are what a page needs before it can be printed, and both may be slow. */',
+    '/** A last beat on the main thread: the print dialog blocks it, so a page the browser accepted but has not painted would reach the paper empty. */',
+    '/**\n * The paper a deck prints into: one page box per page, each the deck\'s own page at 1:1 — the\n * page is the design, so the @page size is the deck\'s size rather than a paper size the deck was\n * never drawn for, and the margin is zero for the same reason.\n */',
+    '/** The export is over, whether the deck was printed or the dialog was dismissed. */',
+    '/**\n * The deck as paper: the pages the show walks, drawn at 1:1 into one page box each and laid out\n * off-screen for the browser\'s own print pipeline, so "Save as PDF" produces the deck rather than\n * a picture of the editor. Off-screen rather than hidden, because a `display: none` subtree has no\n * size — and `inert`, because the markup of a page carries controls that must not join the tab\n * order of the editor around it.\n *\n * The dialog blocks the thread, so the sheet waits for its pictures and fonts before calling it:\n * that wait is bounded (a picture that never settles costs the export the picture, not the\n * export), and the caller keeps the sheet mounted until `afterprint` says the reader is done.\n */',
+    '/**\n * The editor\'s side of the export: the request the print control makes, and the sheet to render\n * while it runs. A deck with nothing on the paper — every page hidden — is refused out loud\n * instead of opening a print dialog over an empty sheet.\n */',
+    '/** Waits for the sheet\'s own pictures and fonts, then a beat for the paint they triggered. */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-sidebar.tsx', [
     "/** The deck's page, so a 4:3 deck gets 4:3 thumbnails instead of a cropped 16:9 one. */",

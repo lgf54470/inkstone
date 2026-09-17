@@ -16,6 +16,7 @@ import { SlidesHelpDialog } from './slides-help-dialog'
 import { SlidesSettingsDialog } from './slides-settings-dialog'
 import { SlidesInlinePreview } from './slides-inline-preview'
 import { LayoutPicker } from './layout-picker'
+import { useSlidesPrint } from './slides-print'
 import { SlidesContextMenu, type SlidesMenuState, type SlidesMenuTarget } from './slides-context-menu'
 import { instantiateLayout, layoutById } from '../layouts'
 import { moveSlide, reorderElement, reorderSlide } from '../order'
@@ -65,6 +66,7 @@ export const SlidesRoot = memo(function SlidesRoot({
   const [editingElementId, setEditingElementId] = useState<string | null>(null)
   const [menu, setMenu] = useState<SlidesMenuState | null>(null)
   const [zoom, setZoom] = useState(1)
+  const { requestPrint, printSheet } = useSlidesPrint(data)
   const [inlineScale, setInlineScale] = useState(0.5)
   const inlineContainerRef = useRef<HTMLDivElement>(null)
 
@@ -377,7 +379,7 @@ export const SlidesRoot = memo(function SlidesRoot({
         onAddChart={handleAddChart}
         onAddCode={handleAddCode}
         onClose={() => onToggleFullscreen?.()}
-
+        onExportPdf={requestPrint}
         onShare={() => void copySlidesLink()}
         isSaved={isSaved ?? true}
         onSave={onSave}
@@ -397,6 +399,8 @@ export const SlidesRoot = memo(function SlidesRoot({
       />
 
       <SlidesHelpDialog open={openDialog === 'help'} onClose={() => setOpenDialog(null)} />
+
+      {printSheet}
 
       <LayoutPicker
         open={openDialog === 'layouts'}

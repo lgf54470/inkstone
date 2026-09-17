@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+import { act, createElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../../test-render'
 import { SlidesFullscreen } from './slides-fullscreen'
@@ -102,7 +102,7 @@ describe('SlidesFullscreen save control', () => {
 })
 
 describe('SlidesFullscreen print control', () => {
-  it('offers no print button while printing a deck has no pipeline behind it', () => {
+  it('prints the deck from the top bar, through the sheet the shell lays out', () => {
     const { entry } = makeEntry(parseSlidesOutline(source), source)
     const view = renderElement(
       createElement(SlidesFullscreen, {
@@ -112,10 +112,14 @@ describe('SlidesFullscreen print control', () => {
         onClose: () => {},
       }),
     )
-    const print = document.querySelector<HTMLButtonElement>(
-      `button[title="${t('slides.print_unavailable')}"]`,
-    )
-    expect(print?.disabled).toBe(true)
+    const print = document.querySelector<HTMLButtonElement>(`button[title="${t('slides.tool_print')}"]`)
+    expect(print?.disabled).toBe(false)
+    expect(document.querySelector('[data-bento-print]')).toBeNull()
+
+    act(() => {
+      print?.click()
+    })
+    expect(document.querySelector('[data-bento-print]')).not.toBeNull()
     view.unmount()
   })
 })

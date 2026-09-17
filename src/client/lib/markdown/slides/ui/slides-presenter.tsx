@@ -1,6 +1,7 @@
 import { memo, useEffect, useState, useMemo } from 'react'
 import type { BentoDoc } from '../types'
 import { SlidesCanvas } from './slides-canvas'
+import { audienceSlides } from '../flow'
 import { fitPageScale } from '../page'
 import { t } from '../../../i18n'
 
@@ -24,7 +25,7 @@ export const SlidesPresenter = memo(function SlidesPresenter({
   const [showNotes, setShowNotes] = useState(false)
   const [scale, setScale] = useState(1)
 
-  const slides = useMemo(() => doc.slides.filter((s) => !s.hidden), [doc.slides])
+  const slides = useMemo(() => audienceSlides(doc), [doc])
   const currentSlide = slides[currentIndex] || slides[0]
   const total = slides.length
 

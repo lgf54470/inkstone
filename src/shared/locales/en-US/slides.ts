@@ -113,6 +113,7 @@ export const messages = {
 'slides.tool_comment': 'Comment',
 'slides.tool_print': 'Print / PDF',
 'slides.print_unavailable': 'Printing a deck is not available yet',
+'slides.print_empty': 'Nothing to print — every page is hidden',
 'slides.tool_share': 'Share',
 'slides.tool_save': 'Save',
 'slides.saved': 'Saved to the note',
