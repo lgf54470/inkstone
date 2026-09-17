@@ -292,6 +292,34 @@ export function parseSlidesOutline(markdown: string): BentoDoc {
   }
 }
 
+/**
+ * The outline dialect is a readable projection of a deck, not a faithful one: it carries
+ * titles, bullets, images, code and tables at the positions its own parser assigns, and
+ * nothing else — no shapes, charts, hand-placed geometry, assets or theme. A body in this
+ * mode therefore may only be written back while the document still round-trips through it;
+ * the moment an edit leaves the dialect behind, write.ts writes JSON instead, because
+ * losing the edit to keep the syntax is the one outcome nobody can see happening.
+ */
+export function outlineRoundTrips(data: BentoDoc): boolean {
+  return canonical(data) === canonical(parseSlidesOutline(serializeSlidesOutline(data)))
+}
+
+/**
+ * Key-order-insensitive comparison. The editor builds documents by spreading the ones it
+ * has (which keeps the author's key order) while the parser builds its own, so comparing
+ * the two as raw JSON text would report a loss that never happened and migrate a deck to
+ * JSON for no reason. `undefined` is dropped for the same reason JSON.stringify drops it.
+ */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).filter(([, entry]) => entry !== undefined)
+    entries.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonical(entry)}`).join(',')}}`
+  }
+  return JSON.stringify(value) ?? 'null'
+}
+
 export function serializeSlidesOutline(data: BentoDoc): string {
   const slideBlocks: string[] = []
 

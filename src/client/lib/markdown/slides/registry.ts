@@ -27,6 +27,8 @@ export interface SlidesMountOptions {
   editable: boolean
   writeBack?: SlidesWriter
   onOpenFullscreen?: (node: HTMLElement) => void
+  /** Told when a body leaves the outline syntax, so the host can say so once. */
+  onNotice?: () => void
 }
 
 interface Assignment {
@@ -121,6 +123,7 @@ function createEntry(node: HTMLElement, options: SlidesMountOptions): SlidesBloc
     root: null,
     ref: null,
     write: options.writeBack ?? null,
+    notice: options.onNotice ?? null,
     dirty: false,
     timer: null,
   }
@@ -148,6 +151,7 @@ function mountBlock(node: HTMLElement, entry: SlidesBlockEntry, options: SlidesM
   entry.locale = options.locale
   entry.ref = isSlidesWritableHere(node) ? { line: Number(node.dataset.line), body } : null
   entry.write = options.writeBack ?? null
+  entry.notice = options.onNotice ?? null
 
   const parsed = parseSlidesBody(body)
   if (!parsed.ok) {

@@ -45,6 +45,7 @@ export const messages = {
 'preview.slides_loading': 'Loading slides...',
 'preview.slides_render_failed': 'Slides failed to render',
 'preview.slides_source_moved': 'The slides moved in the note; reopen the note to keep editing',
+'preview.slides_body_rewritten': 'This deck outgrew the outline syntax — the block now stores slides as JSON',
 'preview.kanban_status_todo': 'To Do',
 'preview.kanban_status_in_progress': 'In Progress',
 'preview.kanban_status_done': 'Done',

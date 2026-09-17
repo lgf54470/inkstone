@@ -6,6 +6,25 @@ const allowed = new Map([
   ['src/client/lib/markdown/slides/body.ts', [
     '/**\n * Fills in what the editor needs while carrying everything else through: this model\n * is a superset of the body, not a projection of it. The fence body is the user\'s own\n * document, and an edit rewrites it whole, so a field this build does not model\n * (a layout, an embedded font, a remark on a slide) must survive parse → edit → write\n * rather than disappear because the normalizer never named it. Unknown keys are\n * therefore spread through at every level the writer touches, and a value that is\n * absent here stays absent — inventing a default would put a statement in the file\n * the author never made.\n */',
   ]],
+  ['src/client/lib/markdown/slides/outline.ts', [
+    '/**\n * The outline dialect is a readable projection of a deck, not a faithful one: it carries\n * titles, bullets, images, code and tables at the positions its own parser assigns, and\n * nothing else — no shapes, charts, hand-placed geometry, assets or theme. A body in this\n * mode therefore may only be written back while the document still round-trips through it;\n * the moment an edit leaves the dialect behind, write.ts writes JSON instead, because\n * losing the edit to keep the syntax is the one outcome nobody can see happening.\n */',
+    '/**\n * Key-order-insensitive comparison. The editor builds documents by spreading the ones it\n * has (which keeps the author\'s key order) while the parser builds its own, so comparing\n * the two as raw JSON text would report a loss that never happened and migrate a deck to\n * JSON for no reason. `undefined` is dropped for the same reason JSON.stringify drops it.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/outline.test.ts', [
+    '/** Every edit that leaves the dialect behind: it is the list write.ts must refuse to flatten. */',
+  ]],
+  ['src/client/lib/markdown/slides/write.ts', [
+    '/**\n * Which syntax the body is written back in. An outline body stays an outline for as long\n * as the document still fits it; an edit it cannot express (a shape, a moved element, an\n * imported asset) writes JSON from now on, so the note keeps holding the deck the editor\n * is showing. The mode is remembered rather than re-decided per write: the document is the\n * rich one from here on, and a retry after a failed write must not fall back to dropping it.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/write.test.ts', [
+    '/** Rewrites the text element an outline body produced, which is the edit that has to stay expressible. */',
+  ]],
+  ['src/client/lib/markdown/slides/entry.ts', [
+    '/** Host feedback for a change the user has to be told about (the body switching syntax). */',
+  ]],
+  ['src/client/lib/markdown/slides/registry.ts', [
+    '/** Told when a body leaves the outline syntax, so the host can say so once. */',
+  ]],
   ['scripts/bench-scrypt.mjs', [
     '/**\n * Measures scrypt cost with the production parameters\n * (SCRYPT_N = 2**14, r = 8, p = 5) so parameter and throttle-budget\n * decisions are grounded in measured numbers, not guesses.\n */',
     '// p worker threads need ~128 * N * r * p bytes of memory',

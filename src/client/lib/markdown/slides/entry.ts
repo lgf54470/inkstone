@@ -19,6 +19,8 @@ export interface SlidesBlockEntry {
   root: Root | null
   ref: SlidesFenceRef | null
   write: SlidesWriter | null
+  /** Host feedback for a change the user has to be told about (the body switching syntax). */
+  notice: (() => void) | null
   dirty: boolean
   timer: number | null
 }

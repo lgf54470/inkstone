@@ -54,6 +54,7 @@ export const messages = {
 'preview.slides_loading': '正在加载幻灯片…',
 'preview.slides_render_failed': '幻灯片渲染失败',
 'preview.slides_source_moved': '幻灯片在笔记中的位置已变化，请重新打开笔记后再编辑',
+'preview.slides_body_rewritten': '该演示稿已超出大纲语法的表达能力，代码块已改用 JSON 保存幻灯片',
 'preview.kanban_source_moved': '看板在笔记中的位置已变化，请重新打开笔记后再编辑',
 'preview.kanban_status_todo': '未开始',
 'preview.kanban_status_in_progress': '进行中',

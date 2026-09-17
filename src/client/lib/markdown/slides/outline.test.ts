@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseSlidesOutline, serializeSlidesOutline } from './outline'
-import type { BentoDoc } from './types'
+import { outlineRoundTrips, parseSlidesOutline, serializeSlidesOutline } from './outline'
+import type { BentoDoc, SlideElement } from './types'
 
 describe('parseSlidesOutline', () => {
   it('parses basic slides split by horizontal rule', () => {
@@ -60,6 +60,66 @@ Slide text
     expect(slide?.background).toBe('#09122c')
     expect(slide?.transition).toBe('morph')
     expect(slide?.notes).toBe('Speaker notes for this slide')
+  })
+})
+
+const SHAPE_ELEMENT: SlideElement = {
+  id: 'shape-1',
+  type: 'shape',
+  shape: 'rect',
+  fill: '#FF9E8A',
+  x: 100,
+  y: 300,
+  w: 200,
+  h: 120,
+}
+
+/** Every edit that leaves the dialect behind: it is the list write.ts must refuse to flatten. */
+function editsBeyondTheDialect(doc: BentoDoc): BentoDoc[] {
+  const slide = doc.slides[0]
+  if (!slide) throw new Error('missing slide')
+  return [
+    { ...doc, slides: [{ ...slide, elements: [...slide.elements, SHAPE_ELEMENT] }] },
+    {
+      ...doc,
+      slides: [{ ...slide, elements: slide.elements.map((el) => (el.id === 'title-1' ? { ...el, x: 300 } : el)) }],
+    },
+    { ...doc, assets: { logo: 'data:image/png;base64,AAA' } },
+    { ...doc, theme: { ...doc.theme, accent: '#00FF00' } },
+  ]
+}
+
+describe('outlineRoundTrips', () => {
+  it('accepts a deck that still fits the dialect', () => {
+    expect(outlineRoundTrips(parseSlidesOutline('# Title\n- one\n- two\n\n---\n\n# Second\nBody'))).toBe(true)
+  })
+
+  it('accepts an edited paragraph the serializer still writes verbatim', () => {
+    const doc = parseSlidesOutline('# Title\nBody text')
+    const slide = doc.slides[0]
+    if (!slide) throw new Error('missing slide')
+    const edited: BentoDoc = {
+      ...doc,
+      slides: [
+        {
+          ...slide,
+          elements: slide.elements.map((el) =>
+            el.id === 'body-1' && el.type === 'text' ? { ...el, html: '<p>Edited</p>' } : el,
+          ),
+        },
+      ],
+    }
+    expect(outlineRoundTrips(edited)).toBe(true)
+  })
+
+  it('rejects a shape, a moved element, an embedded asset and a custom theme', () => {
+    const candidates = editsBeyondTheDialect(parseSlidesOutline('# Title\nBody text'))
+    expect(candidates.map((candidate) => outlineRoundTrips(candidate))).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ])
   })
 })
 

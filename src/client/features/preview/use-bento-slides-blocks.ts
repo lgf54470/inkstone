@@ -15,7 +15,8 @@ import {
   openSlidesSession,
   type SlidesSession,
 } from '../../lib/markdown/slides'
-import { useLocale } from '../../lib/i18n'
+import { t, useLocale } from '../../lib/i18n'
+import { useUi } from '../../store/ui'
 import { createSlidesWriter } from './slides-sync'
 
 export interface SlidesFullscreenState {
@@ -41,6 +42,10 @@ export function useBentoSlidesBlocks(options: UseBentoSlidesBlocksOptions) {
     if (session) setFullscreen({ session })
   }, [])
 
+  const notifyBodyRewritten = useCallback(() => {
+    useUi.getState().toast({ title: t('preview.slides_body_rewritten') })
+  }, [])
+
   const closeFullscreen = useCallback(() => {
     setFullscreen((current) => {
       current?.session.moveBack()
@@ -60,10 +65,11 @@ export function useBentoSlidesBlocks(options: UseBentoSlidesBlocksOptions) {
       editable: true,
       writeBack: writer,
       onOpenFullscreen: openFullscreen,
+      onNotice: notifyBodyRewritten,
     }).catch((err: unknown) => {
       console.warn('[inkstone] bento slides mount failed', err)
     })
-  }, [committedHtml, dark, locale, noteId, scope, writer, hostRef, openFullscreen])
+  }, [committedHtml, dark, locale, noteId, scope, writer, hostRef, openFullscreen, notifyBodyRewritten])
 
   useSlidesTeardown(scope, setFullscreen)
 
