@@ -73,6 +73,14 @@ export const SlidesPresenter = memo(function SlidesPresenter({
 
   if (!currentSlide) return null
 
+  const present = doc.present ?? {}
+  const showNumber = present.slideNumber !== false && !currentSlide.unnumbered
+  // "Number hidden slides" decides whether the pages the show skips are numbered at all:
+  // with it on, both the count and the total follow the deck's own order instead of the
+  // order of what the audience happens to see.
+  const numbered = present.numberHidden ? doc.slides : slides
+  const numberShown = numbered.findIndex((slide) => slide.id === currentSlide.id) + 1
+  const numberTotal = numbered.length
   const progressPercent = total > 1 ? Math.round(((currentIndex + 1) / total) * 100) : 100
 
   return (
@@ -111,25 +119,57 @@ export const SlidesPresenter = memo(function SlidesPresenter({
         </div>
       )}
 
+      {showNumber && (
+        <span
+          data-present-number
+          className='absolute right-5 bottom-5 rounded px-2 py-0.5 text-sm font-medium text-white/75'
+        >
+          {numberShown} / {numberTotal}
+        </span>
+      )}
+
+      {present.controls && (
+        <div
+          data-present-arrows
+          className='pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between px-4'
+        >
+          <button
+            type='button'
+            onClick={goPrev}
+            disabled={currentIndex === 0}
+            aria-label={t('slides.previous_slide')}
+            className='pointer-events-auto rounded-full bg-black/45 p-3 text-white/80 hover:text-white disabled:opacity-0'
+          >
+            ◀
+          </button>
+          <button
+            type='button'
+            onClick={goNext}
+            disabled={currentIndex === total - 1}
+            aria-label={t('slides.next_slide')}
+            className='pointer-events-auto rounded-full bg-black/45 p-3 text-white/80 hover:text-white disabled:opacity-0'
+          >
+            ▶
+          </button>
+        </div>
+      )}
+
       <div className='absolute bottom-4 flex items-center gap-4 px-6 py-2 rounded-full bg-black/70 backdrop-blur text-white shadow-xl opacity-20 hover:opacity-100 transition-opacity'>
         <button
           type='button'
           onClick={goPrev}
           disabled={currentIndex === 0}
           className='p-1 hover:text-[var(--accent)] disabled:opacity-30'
-          title={t('slides.previous_slide')}
+          aria-label={t('slides.previous_slide')}
         >
           ◀
         </button>
-        <span className='text-sm font-medium'>
-          {currentIndex + 1} / {total}
-        </span>
         <button
           type='button'
           onClick={goNext}
           disabled={currentIndex === total - 1}
           className='p-1 hover:text-[var(--accent)] disabled:opacity-30'
-          title={t('slides.next_slide')}
+          aria-label={t('slides.next_slide')}
         >
           ▶
         </button>
@@ -154,7 +194,13 @@ export const SlidesPresenter = memo(function SlidesPresenter({
         </button>
       </div>
 
-      <div className='absolute bottom-0 left-0 h-1 bg-[var(--accent)] transition-all' style={{ width: `${progressPercent}%` }} />
+      {present.progress !== false && (
+        <div
+          data-present-progress
+          className='absolute bottom-0 left-0 h-1 bg-[var(--accent)] transition-all'
+          style={{ width: `${progressPercent}%` }}
+        />
+      )}
     </div>
   )
 })

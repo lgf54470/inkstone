@@ -2985,7 +2985,13 @@ const allowed = new Map([
     '// A colour input only accepts `#rrggbb`; a theme written as a named colour or a CSS',
     '// variable keeps its own value until the reader picks a new one here.',
   ]],
+  ['src/client/lib/markdown/slides/ui/slides-presenter.test.ts', [
+    '/** One, a hidden middle page, and Two — the deck that separates numbering from the show order. */',
+  ]],
   ['src/client/lib/markdown/slides/ui/slides-presenter.tsx', [
+    '// "Number hidden slides" decides whether the pages the show skips are numbered at all:',
+    "// with it on, both the count and the total follow the deck's own order instead of the",
+    '// order of what the audience happens to see.',
     "/** How much air a show leaves around the page on a screen that is not the page's shape. */",
     '/** A page blown up past this is a projector seen from far away, not a larger page. */',
   ]],
