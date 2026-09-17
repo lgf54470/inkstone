@@ -2988,6 +2988,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/slides/ui/copy-link.ts', [
     '/**\n * Copies the address of the page the deck is open on, which is the link to the note\n * holding it — the app keeps no per-note route, so the address bar is the most\n * specific thing pointing at this note.\n *\n * Copying fails for reasons the reader cannot see: an insecure origin, a denied\n * clipboard permission, a browser without the API at all. Each of those ends in a\n * toast rather than silence, because a copy that quietly did nothing is worse than\n * one that says it did not work — and the failure is logged for whoever has to\n * explain it later.\n */',
   ]],
+  ['src/client/lib/markdown/slides/ui/canvas-helpers.ts', [
+    '/** The element a pointer landed on, read from the box the canvas tags each element with. */',
+  ]],
   ['src/client/lib/markdown/slides/ui/chart-block.test.ts', [
     "/** A line carries its dots, so it is the one preset that draws another preset's mark too. */",
   ]],
@@ -3007,6 +3010,19 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/slides-canvas.tsx', [
     '/** The page this deck is authored against; the canvas never assumes a default one. */',
+    '/** The element the reader is typing into, which is what puts the caret in a text box. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-stage.tsx', [
+    '/** Rounds away the float noise a repeated ±0.1 leaves behind, so the label reads 110% not 110.00000000000001%. */',
+    '/**\n * The stage the deck is edited on: the active page at authoring scale, the corner controls that\n * show it or fit it back, and the pointer gestures the page itself owns.\n *\n * What the page *is* and what an edit to it *means* are two questions, so they live apart: this\n * file reads the pointer, the page size and the zoom, and hands every intent to the shell as a\n * callback. Nothing here reaches for the document.\n */',
+    '/** The corner cluster: start the show, or fit the page by a step at a time. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-context-menu.test.ts', [
+    '/** The thumbnail rail draws the same element boxes as the page, so every query is scoped to the page. */',
+    '/** Three boxes on the first page, so an order change is visible in the committed document. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-context-menu.tsx', [
+    '/**\n * The right-click menus, built from what this editor can actually do.\n *\n * A menu row exists only where there is a handler behind it: a deck\'s canvas is the one\n * place where a reader expects a full menu, so a row that quietly does nothing is worse\n * there than a shorter menu — the reader learns the menu is unreliable instead of learning\n * the feature is missing. Slice, group and paste rows therefore arrive with their features\n * (the clipboard and grouping pass), not before them.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-dialogs.test.ts', [
     '// Three cards, each a backdrop plus its text, behind the title.',
@@ -3031,6 +3047,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/slides-root.tsx', [
     '/** Whether every edit has reached the note; undefined on a surface without a save control. */',
+    '/** A double click and the menu\'s own row are the two ways into typing; both land here. */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-settings-dialog.tsx', [
     '// A colour input only accepts `#rrggbb`; a theme written as a named colour or a CSS',

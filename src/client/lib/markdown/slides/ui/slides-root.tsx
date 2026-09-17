@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import type {
   BentoDoc,
   ShapeType,
@@ -7,7 +7,7 @@ import type {
   SlidesTheme,
 } from '../types'
 import { useSlidesHistory } from '../history'
-import { SlidesCanvas } from './slides-canvas'
+import { SlidesStage } from './slides-stage'
 import { SlidesTopbar } from './slides-topbar'
 import { SlidesSidebar } from './slides-sidebar'
 import { SlidesInspector } from './slides-inspector'
@@ -16,6 +16,7 @@ import { SlidesHelpDialog } from './slides-help-dialog'
 import { SlidesSettingsDialog } from './slides-settings-dialog'
 import { SlidesInlinePreview } from './slides-inline-preview'
 import { LayoutPicker } from './layout-picker'
+import { SlidesContextMenu, type SlidesMenuState, type SlidesMenuTarget } from './slides-context-menu'
 import { instantiateLayout, layoutById } from '../layouts'
 import { copySlidesLink } from './copy-link'
 import {
@@ -55,6 +56,8 @@ export const SlidesRoot = memo(function SlidesRoot({
   const [activeElementId, setActiveElementId] = useState<string | null>(null)
   const [isPresentationMode, setIsPresentationMode] = useState(false)
   const [openDialog, setOpenDialog] = useState<'settings' | 'help' | 'layouts' | null>(null)
+  const [editingElementId, setEditingElementId] = useState<string | null>(null)
+  const [menu, setMenu] = useState<SlidesMenuState | null>(null)
   const [zoom, setZoom] = useState(1)
   const [inlineScale, setInlineScale] = useState(0.5)
   const inlineContainerRef = useRef<HTMLDivElement>(null)
@@ -240,6 +243,34 @@ export const SlidesRoot = memo(function SlidesRoot({
     [activeSlide, handleUpdateSlide],
   )
 
+  const openMenuAt = useCallback(
+    (event: { clientX: number; clientY: number; preventDefault: () => void }, target: SlidesMenuTarget) => {
+      event.preventDefault()
+      setMenu({ x: event.clientX, y: event.clientY, target })
+    },
+    [],
+  )
+
+  /** A double click and the menu's own row are the two ways into typing; both land here. */
+  const startTypingElement = useCallback(
+    (elementId: string) => {
+      const element = activeSlide?.elements.find((el) => el.id === elementId)
+      if (element?.type !== 'text') return
+      setActiveElementId(elementId)
+      setEditingElementId(elementId)
+    },
+    [activeSlide],
+  )
+
+  const handleStageContextMenu = useCallback(
+    (elementId: string | null, event: ReactMouseEvent<HTMLElement>) => {
+      const element = elementId ? activeSlide?.elements.find((el) => el.id === elementId) : undefined
+      if (element) setActiveElementId(element.id)
+      openMenuAt(event, element ? { kind: 'element', element } : { kind: 'canvas' })
+    },
+    [activeSlide, openMenuAt],
+  )
+
   const handleUpdateTheme = useCallback(
     (patch: Partial<SlidesTheme>) => {
       commitData({ ...data, theme: { ...data.theme, ...patch } })
@@ -280,11 +311,19 @@ export const SlidesRoot = memo(function SlidesRoot({
   }
 
   const handleReorderElement = useCallback(
-    (elId: string, direction: 'up' | 'down') => {
+    (elId: string, direction: 'up' | 'down' | 'front' | 'back') => {
       if (!activeSlide) return
       const idx = activeSlide.elements.findIndex((e) => e.id === elId)
       if (idx === -1) return
-      const targetIdx = direction === 'up' ? idx + 1 : idx - 1
+      const targetIdx =
+        direction === 'front'
+          ? activeSlide.elements.length - 1
+          : direction === 'back'
+            ? 0
+            : direction === 'up'
+              ? idx + 1
+              : idx - 1
+      if (targetIdx === idx) return
       if (targetIdx < 0 || targetIdx >= activeSlide.elements.length) return
       const next = [...activeSlide.elements]
       const [item] = next.splice(idx, 1)
@@ -342,6 +381,21 @@ export const SlidesRoot = memo(function SlidesRoot({
         onClose={() => setOpenDialog(null)}
       />
 
+      <SlidesContextMenu
+        menu={menu}
+        onClose={() => setMenu(null)}
+        actions={{
+          onEditText: startTypingElement,
+          onDuplicateElement: handleDuplicateElement,
+          onReorderElement: handleReorderElement,
+          onDeleteElement: handleDeleteElement,
+          onAddSlide: () => setOpenDialog('layouts'),
+          onDuplicateSlide: handleDuplicateSlide,
+          onMoveSlide: handleMoveSlide,
+          onDeleteSlide: handleDeleteSlide,
+        }}
+      />
+
       <div className='flex flex-1 overflow-hidden'>
         <SlidesSidebar
           slides={slides}
@@ -360,72 +414,24 @@ export const SlidesRoot = memo(function SlidesRoot({
           onDuplicateSlide={handleDuplicateSlide}
           onDeleteSlide={handleDeleteSlide}
           onMoveSlide={handleMoveSlide}
+          onContextMenuSlide={(slideId, event) => openMenuAt(event, { kind: 'slide', slideId })}
         />
 
-        <main className='bento-canvas-stage flex flex-1 items-center justify-center overflow-auto p-8 relative'>
-          {activeSlide && (
-            <div
-              style={{
-                width: `${data.size.width * zoom}px`,
-                height: `${data.size.height * zoom}px`,
-              }}
-              className='relative shrink-0'
-            >
-              <SlidesCanvas
-                slide={activeSlide}
-                theme={data.theme}
-                page={data.size}
-                scale={zoom}
-                editable={true}
-                activeElementId={activeElementId}
-                assets={data.assets}
-                onSelectElement={setActiveElementId}
-                onUpdateElement={handleUpdateElement}
-              />
-            </div>
-          )}
-
-          <div className='bento-corner-controls'>
-            <div className='bento-zoom-cluster flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-full px-2 py-0.5 shadow-md gap-1'>
-              <button
-                type='button'
-                onClick={() => setIsPresentationMode(true)}
-                className='flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors'
-                title={t('slides.slideshow')}
-              >
-                <span className='text-[length:var(--text-10)]'>▶</span>
-                <span>{t('slides.slideshow')}</span>
-              </button>
-
-              <span className='h-3.5 w-px bg-[var(--border-subtle)]' />
-
-              <button
-                type='button'
-                onClick={() => setZoom((z) => Math.max(0.4, Number((z - 0.1).toFixed(1))))}
-                className='bento-zoom-btn'
-                title={t('common.zoom_out')}
-              >
-                −
-              </button>
-              <button
-                type='button'
-                onClick={() => setZoom(1)}
-                className='bento-zoom-label hover:text-[var(--text-primary)] cursor-pointer'
-                title={t('slides.reset_zoom')}
-              >
-                {Math.round(zoom * 100)}%
-              </button>
-              <button
-                type='button'
-                onClick={() => setZoom((z) => Math.min(2.0, Number((z + 0.1).toFixed(1))))}
-                className='bento-zoom-btn'
-                title={t('common.zoom_in')}
-              >
-                +
-              </button>
-            </div>
-          </div>
-        </main>
+        <SlidesStage
+          slide={activeSlide}
+          theme={data.theme}
+          page={data.size}
+          zoom={zoom}
+          activeElementId={activeElementId}
+          editingElementId={editingElementId}
+          assets={data.assets}
+          onSelectElement={setActiveElementId}
+          onUpdateElement={handleUpdateElement}
+          onZoom={setZoom}
+          onStartSlideshow={() => setIsPresentationMode(true)}
+          onContextMenuAt={handleStageContextMenu}
+          onStartTyping={startTypingElement}
+        />
 
         {activeSlide && (
           <SlidesInspector

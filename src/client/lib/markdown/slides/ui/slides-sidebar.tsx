@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, type MouseEvent } from 'react'
 import { ChevronDown, ChevronUp, Copy, Plus, Trash2 } from 'lucide-react'
 import { IconButton } from '../../../../components/primitives'
 import type { Slide, SlidesTheme } from '../types'
@@ -23,6 +23,7 @@ interface SlideThumbnailProps {
   onDuplicate: (id: string) => void
   onDelete: (id: string) => void
   onMove: (id: string, direction: 'up' | 'down') => void
+  onContextMenu?: (slideId: string, event: MouseEvent) => void
 }
 
 /** The picture of a page: clicking it selects the page, and the buttons on top act on it. */
@@ -99,13 +100,14 @@ function ThumbnailActions({
 }
 
 const SlideThumbnail = memo(function SlideThumbnail(props: SlideThumbnailProps) {
-  const { slide, idx, isActive, size, onSelect } = props
+  const { slide, idx, isActive, size, onSelect, onContextMenu } = props
   const scale = THUMB_WIDTH / size.width
   const thumbHeight = Math.round(size.height * scale)
 
   return (
     <div
       data-slide-thumbnail
+      onContextMenu={(event) => onContextMenu?.(slide.id, event)}
       className={`group relative shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
         isActive
           ? 'border-[var(--accent)] ring-1 ring-[var(--accent)] shadow-xs'
@@ -144,6 +146,7 @@ interface SlidesSidebarProps {
   onDuplicateSlide: (id: string) => void
   onDeleteSlide: (id: string) => void
   onMoveSlide: (id: string, direction: 'up' | 'down') => void
+  onContextMenuSlide?: (slideId: string, event: MouseEvent) => void
 }
 
 export const SlidesSidebar = memo(function SlidesSidebar({
@@ -157,6 +160,7 @@ export const SlidesSidebar = memo(function SlidesSidebar({
   onDuplicateSlide,
   onDeleteSlide,
   onMoveSlide,
+  onContextMenuSlide,
 }: SlidesSidebarProps) {
   return (
     <aside
@@ -179,6 +183,7 @@ export const SlidesSidebar = memo(function SlidesSidebar({
           onDuplicate={onDuplicateSlide}
           onDelete={onDeleteSlide}
           onMove={onMoveSlide}
+          onContextMenu={onContextMenuSlide}
         />
       ))}
 

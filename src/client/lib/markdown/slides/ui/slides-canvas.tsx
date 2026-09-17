@@ -1,4 +1,4 @@
-import { memo, useRef, type MouseEvent, type ReactNode } from 'react'
+import { memo, useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
 import type {
   ImageElement,
   ShapeElement,
@@ -31,6 +31,8 @@ interface SlidesCanvasProps {
   scale?: number
   editable?: boolean
   activeElementId?: string | null
+  /** The element the reader is typing into, which is what puts the caret in a text box. */
+  editingElementId?: string | null
   assets?: Record<string, string>
   onSelectElement?: (id: string | null) => void
   onUpdateElement?: (id: string, patch: Partial<SlideElement>) => void
@@ -43,6 +45,7 @@ export const SlidesCanvas = memo(function SlidesCanvas({
   scale = 1,
   editable = false,
   activeElementId = null,
+  editingElementId = null,
   assets,
   onSelectElement,
   onUpdateElement,
@@ -115,6 +118,7 @@ export const SlidesCanvas = memo(function SlidesCanvas({
         return (
           <div
             key={el.id}
+            data-slide-element={el.id}
             style={{
               ...getElementBoxStyle(el),
               pointerEvents,
@@ -138,6 +142,7 @@ export const SlidesCanvas = memo(function SlidesCanvas({
               theme={theme}
               editable={editable}
               isSelected={isSelected}
+              editing={editingElementId === el.id}
               assets={assets}
               onUpdate={(patch) => onUpdateElement?.(el.id, patch)}
             />
@@ -161,6 +166,7 @@ function ElementRenderer({
   theme,
   editable,
   isSelected,
+  editing,
   assets,
   onUpdate,
 }: {
@@ -168,6 +174,7 @@ function ElementRenderer({
   theme: SlidesTheme
   editable: boolean
   isSelected: boolean
+  editing: boolean
   assets?: Record<string, string>
   onUpdate: (patch: Partial<SlideElement>) => void
 }): ReactNode {
@@ -178,6 +185,7 @@ function ElementRenderer({
           el={el}
           editable={editable}
           isSelected={isSelected}
+          editing={editing}
           onUpdate={onUpdate}
         />
       )
@@ -207,15 +215,24 @@ function TextRenderer({
   el,
   editable,
   isSelected,
+  editing,
   onUpdate,
 }: {
   el: TextElement
   editable: boolean
   isSelected: boolean
+  editing: boolean
   onUpdate: (patch: Partial<SlideElement>) => void
 }) {
+  const boxRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (editing) boxRef.current?.focus()
+  }, [editing])
+
   return (
     <div
+      ref={boxRef}
       style={getTextStyle(el)}
       className='size-full overflow-hidden leading-snug break-words'
       contentEditable={editable && isSelected}

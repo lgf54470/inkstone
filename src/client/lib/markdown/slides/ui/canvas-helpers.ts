@@ -78,6 +78,12 @@ export function getTableStyle(el: TableElement): CSSProperties {
   }
 }
 
+/** The element a pointer landed on, read from the box the canvas tags each element with. */
+export function elementIdAt(target: EventTarget | null): string | null {
+  const element = target instanceof Element ? target.closest('[data-slide-element]') : null
+  return element?.getAttribute('data-slide-element') ?? null
+}
+
 export function isBackgroundLayer(el: SlideElement, page: PageSize): boolean {
   return (
     (el.x === 0 && el.y === 0 && el.w >= page.width && el.h >= page.height) ||
