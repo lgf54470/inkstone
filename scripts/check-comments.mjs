@@ -3203,6 +3203,11 @@ const allowed = new Map([
     '// Only what this editor actually does: a help panel that lists shortcuts the app never',
     '// binds teaches the reader to distrust it.',
   ]],
+  ['src/client/lib/markdown/slides/ui/slides-inplace-edit.test.ts', [
+    '/** The box on the page. The rail draws its own copies, so every query is scoped to the page. */',
+    '/** The box that a caret can enter: the text view inside the frame the pointer meets. */',
+    '/** What a browser edit leaves behind, followed by the blur that commits it. */',
+  ]],
   ['src/client/lib/markdown/slides/ui/slides-inline-preview.tsx', [
     '/** Which deck this is, and where the reader is in it. */',
     '/** The three things this surface can do with a deck: step, play in place, or open the editor. */',
