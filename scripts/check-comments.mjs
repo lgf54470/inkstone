@@ -2918,6 +2918,10 @@ const allowed = new Map([
     "// surface's steps, so they are dropped rather than offered as undoable edits.",
     '/**\n   * The document belongs to the block, not to one surface of it. The full screen editor\n   * commits through the same entry, so a card mounted before those edits has to adopt\n   * them or it keeps painting the deck as it was when the block was mounted — the note\n   * says one thing and the card next to it another. A commit from this surface arrives\n   * as the very object it just dispatched, so this only ever fires for an outside writer.\n   */',
   ]],
+  ['src/client/lib/markdown/slides/code-palette.ts', [
+    '/**\n * The colours a code element\'s tokens are painted with. A deck may name any of them in\n * `theme.codePalette`; the values here are what a deck that names none is drawn with, and\n * the palette inspector edits the same table rather than keeping a second copy of it.\n *\n * The keys are single letters because the palette is written into the fence body, where a\n * slide\'s code colours travel next to everything else a reader might hand-edit.\n */',
+    '/**\n * The palette as custom properties on the element that holds the highlighted markup: the\n * colours are per-deck and change while the reader drags a colour input, which is exactly\n * what a CSS variable is for. The stylesheet names them once for every surface that draws\n * code, so the canvas, a thumbnail and a printed page cannot drift apart.\n */',
+  ]],
   ['src/client/lib/markdown/slides/page.ts', [
     "/** The page a deck gets when its body names no size of its own: the format's 16:9 default. */",
     '/**\n * The one scale a surface needs. Geometry is authored in absolute pixels of the page, so\n * a thumbnail, a card in a note and a projector all draw the same numbers behind a\n * different scale — none of them may assume the default page, because a deck that names\n * its own size would then be cropped (a 4:3 deck into a 16:9 frame) or stretched.\n */',
@@ -2956,6 +2960,13 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/copy-link.ts', [
     '/**\n * Copies the address of the page the deck is open on, which is the link to the note\n * holding it — the app keeps no per-note route, so the address bar is the most\n * specific thing pointing at this note.\n *\n * Copying fails for reasons the reader cannot see: an insecure origin, a denied\n * clipboard permission, a browser without the API at all. Each of those ends in a\n * toast rather than silence, because a copy that quietly did nothing is worse than\n * one that says it did not work — and the failure is logged for whoever has to\n * explain it later.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/code-block.test.ts', [
+    '// The grammar is loaded on demand; loading it here is what the effect would have to',
+    '// wait for, so the paint under test is the swap rather than the network.',
+  ]],
+  ['src/client/lib/markdown/slides/ui/code-block.tsx', [
+    '/**\n * A code element is text plus a language, and the language is what turns it into tokens a\n * deck can colour. Prism is loaded per language on demand, so this paints the plain text\n * first and swaps in the highlighted markup when the grammar arrives — a snippet is\n * readable either way, and a language nobody supports simply stays plain.\n *\n * The palette reaches the tokens as custom properties (see code-palette.ts): a deck may\n * recolour its code while the show is open, and the stylesheet names the variables once.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-canvas.tsx', [
     '/** The page this deck is authored against; the canvas never assumes a default one. */',

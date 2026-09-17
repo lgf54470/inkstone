@@ -170,3 +170,38 @@
 .bento-title-font {
   font-family: 'Fraunces', var(--font-serif);
 }
+
+.bento-slide-code .token.comment,
+.bento-slide-code .token.prolog,
+.bento-slide-code .token.doctype,
+.bento-slide-code .token.cdata {
+  color: var(--bento-code-c);
+}
+
+.bento-slide-code .token.string,
+.bento-slide-code .token.char,
+.bento-slide-code .token.attr-value,
+.bento-slide-code .token.regex {
+  color: var(--bento-code-s);
+}
+
+.bento-slide-code .token.number,
+.bento-slide-code .token.constant {
+  color: var(--bento-code-n);
+}
+
+.bento-slide-code .token.keyword,
+.bento-slide-code .token.boolean,
+.bento-slide-code .token.builtin {
+  color: var(--bento-code-k);
+}
+
+.bento-slide-code .token.function,
+.bento-slide-code .token.class-name {
+  color: var(--bento-code-f);
+}
+
+.bento-slide-code .token.punctuation,
+.bento-slide-code .token.operator {
+  color: var(--bento-code-p);
+}

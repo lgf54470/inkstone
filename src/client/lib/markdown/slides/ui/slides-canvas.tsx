@@ -1,7 +1,6 @@
 import { memo, useRef, type MouseEvent, type ReactNode } from 'react'
 import type {
   ChartElement,
-  CodeElement,
   ImageElement,
   ShapeElement,
   Slide,
@@ -21,6 +20,7 @@ import {
 import type { PageSize } from '../page'
 import { SelectionOverlay } from './selection-overlay'
 import { pasteSlideRichText, sanitizeSlideRichText, sanitizeSlideSvgMarkup } from '../sanitize'
+import { SlideCodeBlock } from './code-block'
 
 const CIRCLE_RADIUS = '50%'
 
@@ -198,7 +198,7 @@ function ElementRenderer({
     case 'chart':
       return <ChartRenderer el={el} defaultAccent={theme.accent} />
     case 'code':
-      return <CodeRenderer el={el} />
+      return <SlideCodeBlock el={el} palette={theme.codePalette} />
     default:
       return null
   }
@@ -365,15 +365,4 @@ function ChartRenderer({
   )
 }
 
-function CodeRenderer({ el }: { el: CodeElement }) {
-  return (
-    <div className='size-full overflow-hidden rounded-lg bg-[var(--bg-inset)] p-4 font-mono text-sm border border-[var(--border-subtle)]'>
-      <div className='mb-2 flex items-center justify-between text-xs text-[var(--text-tertiary)] border-b border-[var(--border-subtle)] pb-1'>
-        <span>{el.lang || 'code'}</span>
-      </div>
-      <pre className='overflow-x-auto text-[var(--text-primary)]'>
-        <code>{el.code}</code>
-      </pre>
-    </div>
-  )
-}
+
