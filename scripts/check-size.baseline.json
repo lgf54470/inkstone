@@ -33,9 +33,6 @@
   "src/client/lib/markdown/slides/ui/inspector-theme.tsx": {
     "longFns": 1
   },
-  "src/client/lib/markdown/slides/ui/slides-canvas.tsx": {
-    "longFns": 1
-  },
   "src/client/lib/markdown/slides/ui/slides-dialogs.test.ts": {
     "longFns": 1
   },

@@ -84,6 +84,21 @@ export function elementIdAt(target: EventTarget | null): string | null {
   return element?.getAttribute('data-slide-element') ?? null
 }
 
+/**
+ * Who takes a pointer on the canvas. While editing, an element is draggable — except the
+ * background layer, which stays inert until it is selected or nothing on top of it could
+ * ever be grabbed. In a show nothing is draggable, so only a clip keeps its own controls,
+ * which is the whole point of it being on the slide.
+ */
+export function elementPointerEvents(
+  el: SlideElement,
+  state: { editable: boolean; isSelected: boolean; isBackground: boolean },
+): 'auto' | 'none' {
+  if (state.isBackground && !state.isSelected) return 'none'
+  if (state.editable) return 'auto'
+  return el.type === 'media' ? 'auto' : 'none'
+}
+
 export function isBackgroundLayer(el: SlideElement, page: PageSize): boolean {
   return (
     (el.x === 0 && el.y === 0 && el.w >= page.width && el.h >= page.height) ||

@@ -2949,6 +2949,12 @@ const allowed = new Map([
     '/**\n * The colours a code element\'s tokens are painted with. A deck may name any of them in\n * `theme.codePalette`; the values here are what a deck that names none is drawn with, and\n * the palette inspector edits the same table rather than keeping a second copy of it.\n *\n * The keys are single letters because the palette is written into the fence body, where a\n * slide\'s code colours travel next to everything else a reader might hand-edit.\n */',
     '/**\n * The palette as custom properties on the element that holds the highlighted markup: the\n * colours are per-deck and change while the reader drags a colour input, which is exactly\n * what a CSS variable is for. The stylesheet names them once for every surface that draws\n * code, so the canvas, a thumbnail and a printed page cannot drift apart.\n */',
   ]],
+  ['src/client/lib/markdown/slides/media.ts', [
+    '/**\n * What a media element is allowed to point at. A deck\'s body is untrusted input, and a\n * media source is a URL a browser will fetch or a data: URI it will decode, so the rule is\n * the same one the SVG gate uses: bytes the file itself carries, or a plain web address.\n * `javascript:`, `file:` and friends never become a source, and a data: URI only counts\n * when its own media type is media — `data:text/html` is a document, not a clip.\n */',
+    '// No scheme at all is a relative or root-relative path, which resolves inside the app.',
+    '/**\n * The address a media element actually loads: `asset:<key>` names bytes in the document\'s\n * own table, everything else is the source as written. An asset key with no entry resolves\n * to the empty string so the caller paints a frame that says so, rather than a `<video>`\n * that silently plays nothing.\n */',
+    '/**\n * Whether a clip starts itself. Reduced motion wins over the document: a deck asking for\n * autoplay is a request, and the reader\'s system preference is the answer. Browsers only\n * start an unmuted clip on their own, which is why the caller mutes an autoplaying element.\n */',
+  ]],
   ['src/client/lib/markdown/slides/layouts.test.ts', [
     '// 160 x (1280/1600) = 128, 404 x (720/900) = 323.',
     '// Height is unscaled, so the 44pt heading keeps its size even though the page doubled.',
@@ -3007,6 +3013,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/canvas-helpers.ts', [
     '/** The element a pointer landed on, read from the box the canvas tags each element with. */',
+    '/**\n * Who takes a pointer on the canvas. While editing, an element is draggable — except the\n * background layer, which stays inert until it is selected or nothing on top of it could\n * ever be grabbed. In a show nothing is draggable, so only a clip keeps its own controls,\n * which is the whole point of it being on the slide.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/chart-block.test.ts', [
     "/** A line carries its dots, so it is the one preset that draws another preset's mark too. */",
@@ -3025,9 +3032,27 @@ const allowed = new Map([
   ['src/client/lib/markdown/slides/ui/code-block.tsx', [
     '/**\n * A code element is text plus a language, and the language is what turns it into tokens a\n * deck can colour. Prism is loaded per language on demand, so this paints the plain text\n * first and swaps in the highlighted markup when the grammar arrives — a snippet is\n * readable either way, and a language nobody supports simply stays plain.\n *\n * The palette reaches the tokens as custom properties (see code-palette.ts): a deck may\n * recolour its code while the show is open, and the stylesheet names the variables once.\n *\n * The sanitizer runs in the render expression rather than when the grammar arrives, because\n * the injection site is what the markup policy reads (tests/slides-sanitize-policy.test.ts):\n * a call one step away from the `__html` is the shape a future bypass hides in.\n */',
   ]],
+  ['src/client/lib/markdown/slides/ui/element-renderer.tsx', [
+    '/**\n * One element\'s own markup, chosen by its type. Everything a surface needs to draw a deck —\n * the canvas, a thumbnail, a printed page — comes through here, which is what keeps those\n * three from disagreeing about what an element looks like.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slide-element-box.tsx', [
+    '/**\n * One element as the pointer meets it: where it sits, whether it takes a click at all, the\n * drag it starts, and the handles a selection grows. It lives apart from the page it is\n * drawn on because those are two different questions — the box knows geometry and gestures,\n * the canvas knows which page is showing and what an edit means — and because a box has to\n * be able to own its own drag without the page listening for it.\n */',
+    '/** A drag is a pair of listeners on the window, so it keeps following a fast pointer. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/media-block.test.ts', [
+    '// React sets `muted` as a property rather than an attribute, so the property is where',
+    '// the browser reads it from too.',
+  ]],
+  ['src/client/lib/markdown/slides/ui/media-block.tsx', [
+    '/**\n   * Whether the clip takes pointer input, which is the show and not the editor: on the\n   * canvas the box has to stay draggable, so a video there is a frame rather than a player.\n   */',
+    '/**\n * A clip is played by the browser\'s own controls, never by a hand-built bar: they are the\n * controls the reader already knows, they are keyboard- and screen-reader-complete for\n * free, and a deck cannot get their focus behaviour wrong. What this component decides is\n * only what the format\'s fields mean — which bytes to load, and whether to start on its own.\n */',
+    '// A browser only starts a clip on its own while it is muted, so an autoplaying',
+    '// element is muted here rather than left to the document to remember.',
+  ]],
   ['src/client/lib/markdown/slides/ui/slides-canvas.tsx', [
     '/** The page this deck is authored against; the canvas never assumes a default one. */',
     '/** The element the reader is typing into, which is what puts the caret in a text box. */',
+    '/**\n * The page itself: its size, its colours and the boxes on it. What each box is and what the\n * pointer does to it belong to the box (see slide-element-box.tsx); this file answers the\n * other half of the question — which page is being drawn, and that a click on the page\'s own\n * background is a click on nothing.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-stage.tsx', [
     '/** Rounds away the float noise a repeated ±0.1 leaves behind, so the label reads 110% not 110.00000000000001%. */',

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  elementPointerEvents,
   getElementBoxStyle,
   getShapeStyle,
   getTableStyle,
@@ -8,12 +9,31 @@ import {
 } from './canvas-helpers'
 import { DEFAULT_PAGE_SIZE } from '../page'
 import type {
+  MediaElement,
   ShapeElement,
   TableElement,
   TextElement,
 } from '../types'
 
 const DEFAULT_PAGE = DEFAULT_PAGE_SIZE
+
+function clip(): MediaElement {
+  return { id: 'm1', type: 'media', kind: 'video', src: 'https://example.com/a.mp4', x: 0, y: 0, w: 100, h: 100 }
+}
+
+describe('pointer input', () => {
+  it('keeps the background layer inert on the canvas until it is selected', () => {
+    const state = { editable: true, isBackground: true }
+    expect(elementPointerEvents(clip(), { ...state, isSelected: false })).toBe('none')
+    expect(elementPointerEvents(clip(), { ...state, isSelected: true })).toBe('auto')
+  })
+
+  it('gives the show only the clips, which are the elements with something to press', () => {
+    const state = { editable: false, isBackground: false, isSelected: false }
+    expect(elementPointerEvents(clip(), state)).toBe('auto')
+    expect(elementPointerEvents({ ...clip(), type: 'text', html: 'x', fontSize: 20 } as TextElement, state)).toBe('none')
+  })
+})
 
 describe('canvas dimensions & layout', () => {
   it('computes box position, size and transformation', () => {

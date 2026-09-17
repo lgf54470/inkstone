@@ -173,4 +173,5 @@ export const messages = {
 'slides.chart_line': '折线图',
 'slides.pos_x': 'X',
 'slides.pos_y': 'Y',
+'slides.media_unavailable': '媒体不可用',
 }

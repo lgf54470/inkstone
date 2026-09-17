@@ -173,4 +173,5 @@ export const messages = {
 'slides.chart_line': 'Line Chart',
 'slides.pos_x': 'X',
 'slides.pos_y': 'Y',
+'slides.media_unavailable': 'Media unavailable',
 }
