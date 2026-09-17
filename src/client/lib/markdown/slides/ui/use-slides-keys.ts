@@ -22,6 +22,17 @@ export interface SlidesKeyIntents {
   onDuplicate: () => boolean
   onNudge: (dx: number, dy: number) => boolean
   onZoom: (command: 'in' | 'out' | 'reset') => boolean
+  /**
+   * An arrow key with nothing to nudge: left and right walk the deck instead. Optional, because
+   * a host with no rail has no page to walk to and must leave the key to the browser.
+   */
+  onPageStep?: (direction: 1 | -1) => boolean
+  /** F5 starts the show. */
+  onStartShow?: () => boolean
+  /** ⌘S writes the deck into the note. */
+  onSave?: () => boolean
+  /** ? opens the shortcut list. */
+  onHelp?: () => boolean
 }
 
 const NUDGE_STEP = 1
@@ -79,6 +90,14 @@ function keyIntent(event: KeyboardEvent, intents: SlidesKeyIntents): void {
     apply(event, modifierIntent(event, intents))
     return
   }
+  if (event.key === 'F5') {
+    apply(event, taken(intents.onStartShow))
+    return
+  }
+  if (event.key === '?') {
+    apply(event, taken(intents.onHelp))
+    return
+  }
   if (event.key === 'Delete' || event.key === 'Backspace') {
     apply(event, intents.onDelete())
     return
@@ -86,12 +105,29 @@ function keyIntent(event: KeyboardEvent, intents: SlidesKeyIntents): void {
   const direction = NUDGE_KEYS[event.key]
   if (!direction) return
   const step = event.shiftKey ? NUDGE_STEP_FAR : NUDGE_STEP
-  apply(event, intents.onNudge(direction[0] * step, direction[1] * step))
+  if (intents.onNudge(direction[0] * step, direction[1] * step)) {
+    event.preventDefault()
+    return
+  }
+  // Nothing to nudge — no selection, or a selection that cannot move. Left and right then mean
+  // the page, which is the one thing a reader with an empty selection can still be asking for.
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+  apply(event, intents.onPageStep?.(event.key === 'ArrowRight' ? 1 : -1) ?? false)
 }
 
-/** The path a held modifier takes: history-free commands only, because ⌘Z belongs to the browser. */
+/** An intent a host may not have at all: an absent one handled nothing, so the browser keeps the key. */
+function taken(intent?: () => boolean): boolean {
+  return intent ? intent() : false
+}
+
+/**
+ * The path a held modifier takes: history-free commands only, because ⌘Z belongs to the browser.
+ * That is also why every branch reports whether it acted — a modifier combination this build
+ * does not own has to reach the browser untouched (⌘R, ⌘L, a page saved from the address bar).
+ */
 function modifierIntent(event: KeyboardEvent, intents: SlidesKeyIntents): boolean {
   if (event.key === 'd' || event.key === 'D') return intents.onDuplicate()
+  if (event.key === 's' || event.key === 'S') return taken(intents.onSave)
   if (event.key === '=' || event.key === '+') return intents.onZoom('in')
   if (event.key === '-') return intents.onZoom('out')
   if (event.key === '0') return intents.onZoom('reset')

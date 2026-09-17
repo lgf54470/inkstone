@@ -1,11 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
-import type {
-  BentoDoc,
-  ShapeType,
-  Slide,
-  SlideElement,
-  SlidesTheme,
-} from '../types'
+import type { BentoDoc, SlideElement, SlidesTheme } from '../types'
 import { useSlidesHistory } from '../history'
 import { SlidesStage, zoomCommand } from './slides-stage'
 import { SlidesTopbar } from './slides-topbar'
@@ -20,17 +14,11 @@ import { useSlidesPrint } from './slides-print'
 import { SlidesContextMenu, type SlidesMenuState, type SlidesMenuTarget } from './slides-context-menu'
 import { instantiateLayout, layoutById } from '../layouts'
 import { duplicateSlide } from '../edits'
-import { moveSlide, reorderElement, reorderSlide } from '../order'
+import { moveSlide, reorderSlide } from '../order'
 import { copySlidesLink } from './copy-link'
 import { useSlidesImages } from './insert-image'
 import { useSlidesEditing } from './use-slides-editing'
-import {
-  createDefaultChart,
-  createDefaultCode,
-  createDefaultShape,
-  createDefaultTable,
-  createDefaultText,
-} from './element-factories'
+import { useSlidesPageEdits } from './use-slides-page-edits'
 import { t } from '../../../i18n'
 
 interface SlidesRootProps {
@@ -86,54 +74,13 @@ export const SlidesRoot = memo(function SlidesRoot({
     }
   }, [data.size.width, isFullscreen])
 
-  const handleUpdateSlide = useCallback(
-    (patch: Partial<Slide>) => {
-      if (!activeSlide) return
-      const nextSlides = slides.map((s, idx) =>
-        idx === activeSlideIndex ? { ...s, ...patch } : s,
-      )
-      commitData({ ...data, slides: nextSlides })
-    },
-    [activeSlide, activeSlideIndex, commitData, data, slides],
-  )
-
-  const handleUpdateElement = useCallback(
-    (elId: string, patch: Partial<SlideElement>) => {
-      if (!activeSlide) return
-      const nextElements = activeSlide.elements.map((el) =>
-        el.id === elId ? ({ ...el, ...patch } as SlideElement) : el,
-      )
-      handleUpdateSlide({ elements: nextElements })
-    },
-    [activeSlide, handleUpdateSlide],
-  )
-
-  const handleDeleteElement = useCallback(
-    (elId: string) => {
-      if (!activeSlide) return
-      const nextElements = activeSlide.elements.filter((el) => el.id !== elId)
-      handleUpdateSlide({ elements: nextElements })
-      if (activeElementId === elId) setActiveElementId(null)
-    },
-    [activeSlide, activeElementId, handleUpdateSlide],
-  )
-
-  const handleAddText = useCallback(() => {
-    if (!activeSlide) return
-    const newText = createDefaultText()
-    handleUpdateSlide({ elements: [...activeSlide.elements, newText] })
-    setActiveElementId(newText.id)
-  }, [activeSlide, handleUpdateSlide])
-
-  const handleAddShape = useCallback(
-    (shape: ShapeType) => {
-      if (!activeSlide) return
-      const newShape = createDefaultShape(shape, data.theme.accent || 'var(--accent)')
-      handleUpdateSlide({ elements: [...activeSlide.elements, newShape] })
-      setActiveElementId(newShape.id)
-    },
-    [activeSlide, data.theme.accent, handleUpdateSlide],
-  )
+  const pageEdits = useSlidesPageEdits({
+    doc: data,
+    slideIndex: activeSlideIndex,
+    commit: commitData,
+    selectedId: () => activeElementId,
+    select: setActiveElementId,
+  })
 
   /**
    * Adds one element to the slide it was asked for. The change resolves against the document
@@ -169,6 +116,29 @@ export const SlidesRoot = memo(function SlidesRoot({
     setZoom((current) => zoomCommand(current, command))
   }, [])
 
+  /**
+   * Left and right with nothing selected: the deck's own order, and nothing else. The ends
+   * answer false so the arrow reaches the browser rather than being swallowed at the edge.
+   */
+  const stepPage = useCallback(
+    (direction: 1 | -1) => {
+      const next = activeSlideIndex + direction
+      if (next < 0 || next >= slides.length) return false
+      setActiveSlideIndex(next)
+      setActiveElementId(null)
+      setEditingElementId(null)
+      return true
+    },
+    [activeSlideIndex, slides.length],
+  )
+
+  /** ⌘S with no save control (the card in a note) is not this editor's key to take. */
+  const saveDeck = useCallback(() => {
+    if (!onSave) return false
+    onSave()
+    return true
+  }, [onSave])
+
   const editing = useSlidesEditing({
     enabled: isFullscreen,
     doc: data,
@@ -182,31 +152,17 @@ export const SlidesRoot = memo(function SlidesRoot({
       const index = data.slides.findIndex((slide) => slide.id === slideId)
       if (index !== -1) setActiveSlideIndex(index)
     },
-  })
-
-  const handleAddTable = useCallback(() => {
-    if (!activeSlide) return
-    const newTable = createDefaultTable()
-    handleUpdateSlide({ elements: [...activeSlide.elements, newTable] })
-    setActiveElementId(newTable.id)
-  }, [activeSlide, handleUpdateSlide])
-
-  const handleAddChart = useCallback(
-    (preset: 'bar' | 'line' | 'pie' | 'scatter') => {
-      if (!activeSlide) return
-      const newChart = createDefaultChart(preset)
-      handleUpdateSlide({ elements: [...activeSlide.elements, newChart] })
-      setActiveElementId(newChart.id)
+    stepPage: (direction) => stepPage(direction),
+    startShow: () => {
+      setIsPresentationMode(true)
+      return true
     },
-    [activeSlide, handleUpdateSlide],
-  )
-
-  const handleAddCode = useCallback(() => {
-    if (!activeSlide) return
-    const newCode = createDefaultCode()
-    handleUpdateSlide({ elements: [...activeSlide.elements, newCode] })
-    setActiveElementId(newCode.id)
-  }, [activeSlide, handleUpdateSlide])
+    saveDeck: () => saveDeck(),
+    openHelp: () => {
+      setOpenDialog('help')
+      return true
+    },
+  })
 
   const addSlideFromLayout = useCallback(
     (layoutId: string) => {
@@ -263,23 +219,6 @@ export const SlidesRoot = memo(function SlidesRoot({
       setActiveSlideIndex(next.findIndex((slide) => slide.id === fromId))
     },
     [commitData, data, slides],
-  )
-
-  const handleDuplicateElement = useCallback(
-    (id: string) => {
-      if (!activeSlide) return
-      const target = activeSlide.elements.find((el) => el.id === id)
-      if (!target) return
-      const dup: SlideElement = {
-        ...target,
-        id: `${target.type}-${Date.now()}`,
-        x: target.x + 20,
-        y: target.y + 20,
-      }
-      handleUpdateSlide({ elements: [...activeSlide.elements, dup] })
-      setActiveElementId(dup.id)
-    },
-    [activeSlide, handleUpdateSlide],
   )
 
   const openMenuAt = useCallback(
@@ -349,16 +288,6 @@ export const SlidesRoot = memo(function SlidesRoot({
     )
   }
 
-  const handleReorderElement = useCallback(
-    (elId: string, direction: 'up' | 'down' | 'front' | 'back') => {
-      if (!activeSlide) return
-      const next = reorderElement(activeSlide.elements, elId, direction)
-      if (!next) return
-      handleUpdateSlide({ elements: next })
-    },
-    [activeSlide, handleUpdateSlide],
-  )
-
   return (
     <div className='flex flex-col size-full overflow-hidden bg-[var(--bg-surface)]'>
       <SlidesTopbar
@@ -368,12 +297,12 @@ export const SlidesRoot = memo(function SlidesRoot({
         onUndo={undo}
         onRedo={redo}
         onUpdateTitle={(title) => commitData({ ...data, title })}
-        onAddText={handleAddText}
-        onAddShape={handleAddShape}
+        onAddText={pageEdits.addText}
+        onAddShape={pageEdits.addShape}
         onAddImage={handleAddImage}
-        onAddTable={handleAddTable}
-        onAddChart={handleAddChart}
-        onAddCode={handleAddCode}
+        onAddTable={pageEdits.addTable}
+        onAddChart={pageEdits.addChart}
+        onAddCode={pageEdits.addCode}
         onClose={() => onToggleFullscreen?.()}
         onExportPdf={requestPrint}
         onShare={() => void copySlidesLink()}
@@ -419,9 +348,9 @@ export const SlidesRoot = memo(function SlidesRoot({
           onCopyElement: (elementId) => editing.copy([elementId]),
           onCutElement: (elementId) => editing.cut([elementId]),
           onPaste: editing.pasteFromClipboard,
-          onDuplicateElement: handleDuplicateElement,
-          onReorderElement: handleReorderElement,
-          onDeleteElement: handleDeleteElement,
+          onDuplicateElement: pageEdits.duplicateElement,
+          onReorderElement: pageEdits.reorderElement,
+          onDeleteElement: pageEdits.deleteElement,
           onAddSlide: () => setOpenDialog('layouts'),
           onDuplicateSlide: handleDuplicateSlide,
           onMoveSlide: handleMoveSlide,
@@ -460,7 +389,7 @@ export const SlidesRoot = memo(function SlidesRoot({
           editingElementId={editingElementId}
           assets={data.assets}
           onSelectElement={setActiveElementId}
-          onUpdateElement={handleUpdateElement}
+          onUpdateElement={pageEdits.updateElement}
           onZoom={setZoom}
           onStartSlideshow={() => setIsPresentationMode(true)}
           onContextMenuAt={handleStageContextMenu}
@@ -475,11 +404,11 @@ export const SlidesRoot = memo(function SlidesRoot({
             docSize={data.size}
             presentSettings={data.present}
             onSelectElement={setActiveElementId}
-            onUpdateSlide={handleUpdateSlide}
-            onUpdateElement={handleUpdateElement}
-            onDeleteElement={handleDeleteElement}
-            onDuplicateElement={handleDuplicateElement}
-            onReorderElement={handleReorderElement}
+            onUpdateSlide={pageEdits.updateSlide}
+            onUpdateElement={pageEdits.updateElement}
+            onDeleteElement={pageEdits.deleteElement}
+            onDuplicateElement={pageEdits.duplicateElement}
+            onReorderElement={pageEdits.reorderElement}
             onUpdateTheme={handleUpdateTheme}
             onUpdateDocSize={(size) => commitData({ ...data, size })}
             onUpdatePresentSettings={(presentPatch) =>

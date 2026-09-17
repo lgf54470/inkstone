@@ -1,9 +1,18 @@
-import { act, createElement, useEffect, useRef, useState } from 'react'
+import {
+  act,
+  createElement,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { renderElement } from '../../../test-render'
 import type { BentoDoc, Slide, TextElement } from '../types'
 import { useSlidesKeys, type SlidesKeyIntents } from './use-slides-keys'
-import { useSlidesEditing } from './use-slides-editing'
+import { useSlidesEditing, type SlidesEditingHost } from './use-slides-editing'
 import { zoomCommand } from './slides-stage'
 
 const PASTE_OFFSET = 20
@@ -29,6 +38,15 @@ interface Harness {
   selected: string[]
   zoom: number
   images: File[]
+  /** The directions an arrow took when it had nothing to nudge, in order. */
+  steps: number[]
+  showStarted: boolean
+  saved: boolean
+  helpOpened: boolean
+  /** Whether the host acts on a page step at all — false is the end of the deck. */
+  canStepPage: boolean
+  /** False stands for a host with no save control, which is the card in a note. */
+  canSave: boolean
 }
 
 let mounted: ReturnType<typeof renderElement> | null = null
@@ -38,11 +56,20 @@ let mounted: ReturnType<typeof renderElement> | null = null
  * picture path. Assertions read the harness, so what is checked is the document the hook edited
  * rather than the internals of the hook.
  */
-function DeckHost({ start, harness, selected: initially }: { start: BentoDoc; harness: Harness; selected: string[] }) {
-  const [data, setData] = useState(start)
-  const [zoom, setZoom] = useState(1)
-  const selected = useRef<string[]>(initially)
-  const editing = useSlidesEditing({
+interface HostParts {
+  data: BentoDoc
+  harness: Harness
+  selected: RefObject<string[]>
+  setData: Dispatch<SetStateAction<BentoDoc>>
+  setZoom: Dispatch<SetStateAction<number>>
+}
+
+/**
+ * The host the editor is wired to in these tests, with each intent writing its own fact onto the
+ * harness: what the hook asked for is checked by reading the harness, never the hook's insides.
+ */
+function hostFor({ data, harness, selected, setData, setZoom }: HostParts): SlidesEditingHost {
+  return {
     enabled: true,
     doc: data,
     targetSlideId: () => data.slides[0]?.id ?? null,
@@ -54,7 +81,31 @@ function DeckHost({ start, harness, selected: initially }: { start: BentoDoc; ha
     },
     zoom: (command) => setZoom((current) => zoomCommand(current, command)),
     pasteImage: (file) => harness.images.push(file),
-  })
+    stepPage: (direction) => {
+      harness.steps.push(direction)
+      return harness.canStepPage
+    },
+    startShow: () => {
+      harness.showStarted = true
+      return true
+    },
+    saveDeck: () => {
+      if (!harness.canSave) return false
+      harness.saved = true
+      return true
+    },
+    openHelp: () => {
+      harness.helpOpened = true
+      return true
+    },
+  }
+}
+
+function DeckHost({ start, harness, selected: initially }: { start: BentoDoc; harness: Harness; selected: string[] }) {
+  const [data, setData] = useState(start)
+  const [zoom, setZoom] = useState(1)
+  const selected = useRef<string[]>(initially)
+  const editing = useSlidesEditing(hostFor({ data, harness, selected, setData, setZoom }))
   useEffect(() => {
     harness.doc = data
     harness.zoom = zoom
@@ -82,7 +133,18 @@ const IDLE_INTENTS: SlidesKeyIntents = {
 }
 
 function mount(start = deck(), selected: string[] = ['a']): Harness {
-  const harness: Harness = { doc: start, selected, zoom: 1, images: [] }
+  const harness: Harness = {
+    doc: start,
+    selected,
+    zoom: 1,
+    images: [],
+    steps: [],
+    showStarted: false,
+    saved: false,
+    helpOpened: false,
+    canStepPage: true,
+    canSave: true,
+  }
   mounted = renderElement(createElement(DeckHost, { start, harness, selected }))
   return harness
 }
@@ -263,6 +325,46 @@ describe('the editor keyboard', () => {
     const harness = mount()
     expect(press('a')).toBe(false)
     expect(harness.doc.slides[0]?.elements[0]?.x).toBe(0)
+  })
+})
+
+describe('the keys that are not about a selection', () => {
+  it('walks the deck on an arrow once there is nothing selected to nudge', () => {
+    const harness = mount(deck(), [])
+    expect(press('ArrowRight')).toBe(true)
+    expect(press('ArrowLeft')).toBe(true)
+    expect(harness.steps).toEqual([1, -1])
+    expect(harness.doc.slides[0]?.elements[0]?.x).toBe(0)
+  })
+
+  it('leaves the arrow to the browser at the end of the deck, where a step is not taken', () => {
+    const harness = mount(deck(), [])
+    harness.canStepPage = false
+    expect(press('ArrowRight')).toBe(false)
+    expect(harness.steps).toEqual([1])
+  })
+
+  it('does not turn an up or down arrow into a page step: a deck walks sideways', () => {
+    const harness = mount(deck(), [])
+    expect(press('ArrowDown')).toBe(false)
+    expect(harness.steps).toEqual([])
+  })
+
+  it('takes F5 for the show, ? for the shortcut list and ⌘S for the save', () => {
+    const harness = mount()
+    expect(press('F5')).toBe(true)
+    expect(harness.showStarted).toBe(true)
+    expect(press('?')).toBe(true)
+    expect(harness.helpOpened).toBe(true)
+    expect(press('s', { metaKey: true })).toBe(true)
+    expect(harness.saved).toBe(true)
+  })
+
+  it('leaves ⌘S alone on a surface with nowhere to save it', () => {
+    const harness = mount()
+    harness.canSave = false
+    expect(press('s', { metaKey: true })).toBe(false)
+    expect(harness.saved).toBe(false)
   })
 })
 

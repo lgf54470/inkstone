@@ -22,6 +22,16 @@ export interface SlidesEditingHost {
   pasteImage: (file: File) => void
   /** A pasted page becomes the one the editor is on; optional for a host with no rail. */
   selectSlide?: (slideId: string | null) => void
+  /**
+   * The page the editor moves to when an arrow key had nothing to nudge, and the three commands
+   * that are not about the document at all (the show, the save, the shortcut list). Each answers
+   * whether it acted, so a host that has the control still leaves the key alone when it declines
+   * — the end of the deck is the plain case.
+   */
+  stepPage?: (direction: 1 | -1) => boolean
+  startShow?: () => boolean
+  saveDeck?: () => boolean
+  openHelp?: () => boolean
 }
 
 export interface SlidesEditing {
@@ -82,6 +92,10 @@ export function useSlidesEditing(host: SlidesEditingHost): SlidesEditing {
       current().zoom(command)
       return true
     },
+    onPageStep: (direction) => current().stepPage?.(direction) ?? false,
+    onStartShow: () => current().startShow?.() ?? false,
+    onSave: () => current().saveDeck?.() ?? false,
+    onHelp: () => current().openHelp?.() ?? false,
   }
   const copyPage = useCallback((slideId: string) => copyPageToClipboard(current(), slideId), [current])
   const pastePage = useCallback((afterSlideId: string) => {

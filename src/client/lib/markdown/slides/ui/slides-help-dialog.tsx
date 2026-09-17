@@ -32,6 +32,9 @@ function sections(): HelpSection[] {
         { keys: 'mod+v', label: t('slides.help_keys_paste') },
         { keys: 'mod+d', label: t('slides.help_keys_duplicate') },
         { keyCaps: ['←', '↑', '↓', '→'], label: t('slides.help_keys_nudge') },
+        { keys: 'arrowright', label: t('slides.help_keys_page_next') },
+        { keys: 'arrowleft', label: t('slides.help_keys_page_prev') },
+        { keys: '?', label: t('slides.help_keys_help') },
         { label: t('slides.help_tip_select') },
         { label: t('slides.help_tip_edit_text') },
         { label: t('slides.help_tip_resize') },
@@ -44,6 +47,7 @@ function sections(): HelpSection[] {
       rows: [
         { keys: 'arrowright', label: t('slides.help_present_next') },
         { keys: 'arrowleft', label: t('slides.help_present_prev') },
+        { keyCaps: ['F5'], label: t('slides.help_keys_start_show') },
         { keys: 's', label: t('slides.speaker_notes') },
         { keys: 'escape', label: t('slides.help_present_exit') },
         { keys: 'mod+=', label: t('slides.help_keys_zoom_in') },
@@ -54,6 +58,7 @@ function sections(): HelpSection[] {
     {
       title: t('slides.help_saving'),
       rows: [
+        { keys: 'mod+s', label: t('slides.help_keys_save') },
         { label: t('slides.help_tip_autosave') },
         { label: t('slides.help_tip_save_button') },
         { label: t('slides.help_tip_print') },

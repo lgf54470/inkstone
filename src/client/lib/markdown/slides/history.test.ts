@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import { act } from 'react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { renderElement } from '../../test-render'
 import { historyReducer, useSlidesHistory, type HistoryState } from './history'
 import type { BentoDoc } from './types'
@@ -137,5 +137,80 @@ describe('useSlidesHistory commit handler', () => {
     act(() => staleCommit((prev) => ({ ...prev, title: `${prev.title}+pasted` })))
 
     expect(read().title).toBe('typed+pasted')
+  })
+})
+
+let unmountHistory: (() => void) | null = null
+
+afterEach(() => {
+  unmountHistory?.()
+  unmountHistory = null
+})
+
+/**
+ * The history's own window listener, which is the only path ⌘Z takes: the editing hook
+deliberately leaves the key to the browser so this one owns it. The listener is shared with
+the host, so a probe that types into a field is how the guard against swallowing keystrokes
+gets checked at all.
+ */
+function mountHistoryKeys(): { host: { doc: BentoDoc }; commit: () => void } {
+  const host: { doc: BentoDoc } = { doc: makeDoc('Start') }
+  const commits: Array<(next: BentoDoc | ((prev: BentoDoc) => BentoDoc)) => void> = []
+  function Probe() {
+    const { commitData } = useSlidesHistory(host.doc, (next) => {
+      host.doc = next
+    })
+    commits.push(commitData)
+    return null
+  }
+  const rendered = renderElement(createElement(Probe))
+  unmountHistory = rendered.unmount
+  return {
+    host,
+    commit: () => {
+      const first = commits[0]
+      if (!first) throw new Error('the history hook did not render')
+      act(() => first((prev) => ({ ...prev, title: 'Edited' })))
+    },
+  }
+}
+
+function pressKey(key: string, options: KeyboardEventInit = {}, target?: EventTarget): boolean {
+  const event = new KeyboardEvent('keydown', { key, cancelable: true, bubbles: true, ...options })
+  act(() => {
+    ;(target ?? window).dispatchEvent(event)
+  })
+  return event.defaultPrevented
+}
+
+describe('the history keyboard', () => {
+  it('undoes on the modifier key and redoes on the shifted one', () => {
+    const { host, commit } = mountHistoryKeys()
+    commit()
+    expect(host.doc.title).toBe('Edited')
+
+    expect(pressKey('z', { ctrlKey: true })).toBe(true)
+    expect(host.doc.title).toBe('Start')
+
+    expect(pressKey('z', { ctrlKey: true, shiftKey: true })).toBe(true)
+    expect(host.doc.title).toBe('Edited')
+  })
+
+  it('does nothing for a plain key, which belongs to nobody here', () => {
+    const { host, commit } = mountHistoryKeys()
+    commit()
+    expect(pressKey('z')).toBe(false)
+    expect(host.doc.title).toBe('Edited')
+  })
+
+  it('leaves the keys to a form field while the reader is typing in one', () => {
+    const { host, commit } = mountHistoryKeys()
+    commit()
+    const field = document.createElement('input')
+    document.body.appendChild(field)
+
+    expect(pressKey('z', { ctrlKey: true }, field)).toBe(false)
+    expect(host.doc.title).toBe('Edited')
+    field.remove()
   })
 })
