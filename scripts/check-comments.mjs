@@ -3,28 +3,6 @@ import path from 'node:path'
 import ts from 'typescript'
 
 const allowed = new Map([
-  ['src/client/lib/markdown/slides/body.ts', [
-    '/**\n * Fills in what the editor needs while carrying everything else through: this model\n * is a superset of the body, not a projection of it. The fence body is the user\'s own\n * document, and an edit rewrites it whole, so a field this build does not model\n * (a layout, an embedded font, a remark on a slide) must survive parse → edit → write\n * rather than disappear because the normalizer never named it. Unknown keys are\n * therefore spread through at every level the writer touches, and a value that is\n * absent here stays absent — inventing a default would put a statement in the file\n * the author never made.\n */',
-  ]],
-  ['src/client/lib/markdown/slides/outline.ts', [
-    '/**\n * The outline dialect is a readable projection of a deck, not a faithful one: it carries\n * titles, bullets, images, code and tables at the positions its own parser assigns, and\n * nothing else — no shapes, charts, hand-placed geometry, assets or theme. A body in this\n * mode therefore may only be written back while the document still round-trips through it;\n * the moment an edit leaves the dialect behind, write.ts writes JSON instead, because\n * losing the edit to keep the syntax is the one outcome nobody can see happening.\n */',
-    '/**\n * Key-order-insensitive comparison. The editor builds documents by spreading the ones it\n * has (which keeps the author\'s key order) while the parser builds its own, so comparing\n * the two as raw JSON text would report a loss that never happened and migrate a deck to\n * JSON for no reason. `undefined` is dropped for the same reason JSON.stringify drops it.\n */',
-  ]],
-  ['src/client/lib/markdown/slides/outline.test.ts', [
-    '/** Every edit that leaves the dialect behind: it is the list write.ts must refuse to flatten. */',
-  ]],
-  ['src/client/lib/markdown/slides/write.ts', [
-    '/**\n * Which syntax the body is written back in. An outline body stays an outline for as long\n * as the document still fits it; an edit it cannot express (a shape, a moved element, an\n * imported asset) writes JSON from now on, so the note keeps holding the deck the editor\n * is showing. The mode is remembered rather than re-decided per write: the document is the\n * rich one from here on, and a retry after a failed write must not fall back to dropping it.\n */',
-  ]],
-  ['src/client/lib/markdown/slides/write.test.ts', [
-    '/** Rewrites the text element an outline body produced, which is the edit that has to stay expressible. */',
-  ]],
-  ['src/client/lib/markdown/slides/entry.ts', [
-    '/** Host feedback for a change the user has to be told about (the body switching syntax). */',
-  ]],
-  ['src/client/lib/markdown/slides/registry.ts', [
-    '/** Told when a body leaves the outline syntax, so the host can say so once. */',
-  ]],
   ['scripts/bench-scrypt.mjs', [
     '/**\n * Measures scrypt cost with the production parameters\n * (SCRYPT_N = 2**14, r = 8, p = 5) so parameter and throttle-budget\n * decisions are grounded in measured numbers, not guesses.\n */',
     '// p worker threads need ~128 * N * r * p bytes of memory',
@@ -2922,6 +2900,45 @@ const allowed = new Map([
     '/**\n * Prism token HTML is produced by the Prism grammar tokenizer from code text\n * (Prism escapes `<`/`&` inside tokens, so this is defense-in-depth). Only\n * `span` tokens with their `class` survive; anything Prism ever failed to\n * escape is parsed and then dropped as an element while its text content is\n * preserved, so the visible code never changes.\n */',
     '/**\n * KaTeX output spans/svg are generated from math source. `\\color` values are\n * strictly validated by KaTeX (hex or lowercase names only) so the `style`\n * attributes it emits never carry attacker-controlled CSS; `\\href`/`\\url` are\n * inert unless `trust` is enabled, so no link-carrying attributes are needed.\n * Navigation-capable attributes are still forbidden to contain a future KaTeX\n * regression that copies user text into an attribute value.\n */',
   ]],
+  ['src/client/lib/markdown/slides/body.ts', [
+    '/**\n * Fills in what the editor needs while carrying everything else through: this model\n * is a superset of the body, not a projection of it. The fence body is the user\'s own\n * document, and an edit rewrites it whole, so a field this build does not model\n * (a layout, an embedded font, a remark on a slide) must survive parse → edit → write\n * rather than disappear because the normalizer never named it. Unknown keys are\n * therefore spread through at every level the writer touches, and a value that is\n * absent here stays absent — inventing a default would put a statement in the file\n * the author never made.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/entry.ts', [
+    '/** Host feedback for a change the user has to be told about (the body switching syntax). */',
+  ]],
+  ['src/client/lib/markdown/slides/outline.test.ts', [
+    '/** Every edit that leaves the dialect behind: it is the list write.ts must refuse to flatten. */',
+  ]],
+  ['src/client/lib/markdown/slides/outline.ts', [
+    '/**\n * The outline dialect is a readable projection of a deck, not a faithful one: it carries\n * titles, bullets, images, code and tables at the positions its own parser assigns, and\n * nothing else — no shapes, charts, hand-placed geometry, assets or theme. A body in this\n * mode therefore may only be written back while the document still round-trips through it;\n * the moment an edit leaves the dialect behind, write.ts writes JSON instead, because\n * losing the edit to keep the syntax is the one outcome nobody can see happening.\n */',
+    '/**\n * Key-order-insensitive comparison. The editor builds documents by spreading the ones it\n * has (which keeps the author\'s key order) while the parser builds its own, so comparing\n * the two as raw JSON text would report a loss that never happened and migrate a deck to\n * JSON for no reason. `undefined` is dropped for the same reason JSON.stringify drops it.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/registry.ts', [
+    '/** Told when a body leaves the outline syntax, so the host can say so once. */',
+  ]],
+  ['src/client/lib/markdown/slides/sanitize.ts', [
+    '/**\n * The one gate every piece of markup a slide paints goes through.\n *\n * A block\'s body is untrusted input: it arrives from a note, from a pasted deck, from an\n * import, or from an agent writing the fence, and the text/table/SVG paths below inject it\n * as markup rather than as text. DOMPurify is the project\'s sanitizer of record, and the\n * two configs here are deliberately narrower than prose\'s: a slide\'s rich text is\n * ATTRIBUTE-FREE except for an anchor\'s href, so a tag can only ever mean what its name\n * means, and a diagram\'s markup is an SVG-only allowlist with no HTML and no remote refs.\n * Sanitizing runs on the way in as well as on the way out, so what a person edits is what\n * gets stored — a note never carries the payload forward to the next reader.\n */',
+    '// Only an anchor\'s target survives by name; DOMPurify\'s own URI check keeps',
+    '// `javascript:`/`data:` out of it, so a link can only be a web address.',
+    '/**\n * Diagrams are SVG, so the allowlist is SVG: DOMPurify\'s svg profile plus the filters a\n * deck\'s own grain/bokeh assets use. HTML elements are not on this list, which is what\n * closes the foreign-content breakout (`<svg><rect/><meta http-equiv=refresh></svg>` and\n * friends) without naming every carrier; `foreignObject` goes with them because its\n * children ARE html. `id` stays: gradients and markers resolve through `url(#…)`.\n */',
+    '// DOMPurify\'s svg profile refuses `use` outright, because a use that resolves OUTSIDE the',
+    '// document instances a subtree nobody vetted. Inside it is only a reference to a symbol',
+    '// this same markup already carries — which the walk below strips anyway when the href is',
+    '// not an in-document id, so a deck\'s symbol artwork survives without that door being open.',
+    '/** A reference a slide may resolve without leaving the note: an in-document id or embedded bytes. */',
+    '// A link inside a slide opens in its own tab: following it in place would take the',
+    '// editor (and the note being edited) away from the person who clicked it.',
+    '// A remote reference would fetch on paint: the deck stops being offline, the reader\'s',
+    '// IP leaves for a third party, and a blocked fetch is a hole in the artwork.',
+    '/** Pasted text as markup, with the line breaks a plain-text paste carries. */',
+    '/**\n * Inserts sanitized clipboard content at the caret and returns whether there was anything\n * to insert. The caller must therefore prevent the browser\'s own paste whenever this\n * answers true — letting the default run would put the unsanitized markup in the same box\n * this function just cleaned. With no caret inside `target` (a paste arriving from a\n * menu, say) the content lands at the end rather than nowhere.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/write.test.ts', [
+    '/** Rewrites the text element an outline body produced, which is the edit that has to stay expressible. */',
+  ]],
+  ['src/client/lib/markdown/slides/write.ts', [
+    '/**\n * Which syntax the body is written back in. An outline body stays an outline for as long\n * as the document still fits it; an edit it cannot express (a shape, a moved element, an\n * imported asset) writes JSON from now on, so the note keeps holding the deck the editor\n * is showing. The mode is remembered rather than re-decided per write: the document is the\n * rich one from here on, and a retry after a failed write must not fall back to dropping it.\n */',
+  ]],
   ['src/client/lib/note-filter.ts', [
     '/** Decide whether a note belongs to the active list view, optionally stacked with a multi-tag selection (`any` or `all` must match). */',
   ]],
@@ -3786,6 +3803,9 @@ const allowed = new Map([
   ]],
   ['tests/share-routes.test.ts', [
     '// visit recording runs via waitUntil; the test context must let us await it',
+  ]],
+  ['tests/slides-sanitize-policy.test.ts', [
+    '/**\n * A bento-slides body is untrusted input rendered as MARKUP (a note can carry a deck from\n * anywhere), so every injection site has to pass through lib/markdown/slides/sanitize.ts.\n * The renderer is where a bypass would be introduced — one `dangerouslySetInnerHTML` fed\n * a model field straight — and a bypass is invisible in review, because the code looks\n * like every other renderer in the tree. This walks the feature\'s source the way\n * tests/fullscreen-policy.test.ts walks src/client for native full screen: the shape is\n * the contract, and a new site that skips the gate fails here instead of shipping.\n */',
   ]],
   ['tests/throttle-session.test.ts', [
     '// Rewind the last attempt far enough to expire the window and the lock.',

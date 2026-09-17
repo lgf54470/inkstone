@@ -21,6 +21,7 @@ import {
   VIRTUAL_CANVAS_HEIGHT,
 } from './canvas-helpers'
 import { SelectionOverlay } from './selection-overlay'
+import { pasteSlideRichText, sanitizeSlideRichText, sanitizeSlideSvgMarkup } from '../sanitize'
 
 const CIRCLE_RADIUS = '50%'
 
@@ -183,8 +184,9 @@ function ElementRenderer({
       return <ShapeRenderer el={el} />
     case 'svg': {
       const markup = (el.asset && assets ? assets[el.asset] : el.markup || el.svg) ?? ''
-      return markup ? (
-        <div className='size-full overflow-hidden' dangerouslySetInnerHTML={{ __html: markup }} />
+      const sanitized = sanitizeSlideSvgMarkup(markup)
+      return sanitized ? (
+        <div className='size-full overflow-hidden' dangerouslySetInnerHTML={{ __html: sanitized }} />
       ) : null
     }
     case 'image':
@@ -218,10 +220,18 @@ function TextRenderer({
       contentEditable={editable && isSelected}
       suppressContentEditableWarning
       onBlur={(e) => {
-        const nextHtml = e.currentTarget.innerHTML
+        const nextHtml = sanitizeSlideRichText(e.currentTarget.innerHTML)
         if (nextHtml !== el.html) onUpdate({ html: nextHtml })
       }}
-      dangerouslySetInnerHTML={{ __html: el.html }}
+      onPaste={(e) => {
+        const clipboard = e.clipboardData
+        const handled = pasteSlideRichText(e.currentTarget, {
+          html: clipboard.getData('text/html') || null,
+          text: clipboard.getData('text/plain') || null,
+        })
+        if (handled) e.preventDefault()
+      }}
+      dangerouslySetInnerHTML={{ __html: sanitizeSlideRichText(el.html) }}
     />
   )
 }
@@ -301,7 +311,7 @@ function TableRenderer({ el }: { el: TableElement }) {
                 <td
                   key={`c-${cIdx}`}
                   className={`p-3 text-sm ${cell.bold ? 'font-semibold' : ''}`}
-                  dangerouslySetInnerHTML={{ __html: cell.html }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeSlideRichText(cell.html) }}
                 />
               ))}
             </tr>
