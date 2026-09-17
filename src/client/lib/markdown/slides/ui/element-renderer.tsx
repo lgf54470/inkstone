@@ -9,6 +9,7 @@ import type {
 } from '../types'
 import { getShapeStyle, getTableStyle, getTextStyle } from './canvas-helpers'
 import { pasteSlideRichText, sanitizeSlideRichText, sanitizeSlideSvgMarkup } from '../sanitize'
+import { pathDataIsDrawable, pathViewBox } from '../shape-path'
 import { SlideChartBlock } from './chart-block'
 import { SlideCodeBlock } from './code-block'
 import { SlideEmbedBlock } from './embed-block'
@@ -121,6 +122,7 @@ function TextRenderer({
 function renderSvgShape(el: ShapeElement): ReactNode {
   const strokeColor = el.stroke || el.fill || 'currentColor'
   const fill = el.fill || 'currentColor'
+  if (el.shape === 'path') return <PathShape el={el} />
   if (el.shape === 'triangle') {
     return (
       <svg viewBox='0 0 100 100' preserveAspectRatio='none' className='size-full overflow-visible'>
@@ -148,6 +150,28 @@ function renderSvgShape(el: ShapeElement): ReactNode {
   return (
     <svg viewBox='0 0 100 100' preserveAspectRatio='none' className='size-full overflow-visible'>
       <path d='M 10,90 Q 50,10 90,90' fill='none' stroke={strokeColor} strokeWidth={el.strokeWidth || 3} strokeLinecap='round' />
+    </svg>
+  )
+}
+
+/**
+ * A path is drawn from its own geometry or not at all: the default curve below is a shape of
+ * its own, and drawing it for a path whose `d` says something else would be a picture of
+ * nothing the document asked for.
+ */
+function PathShape({ el }: { el: ShapeElement }) {
+  if (!pathDataIsDrawable(el.d)) return null
+  return (
+    <svg viewBox={pathViewBox(el)} preserveAspectRatio='none' className='size-full overflow-visible'>
+      <path
+        d={el.d}
+        fill={el.fill && el.fill !== 'currentColor' ? el.fill : 'none'}
+        stroke={el.stroke || el.fill || 'currentColor'}
+        strokeWidth={el.strokeWidth || 3}
+        strokeLinecap='round'
+        strokeLinejoin='round'
+        strokeDasharray={el.strokeDash?.join(' ')}
+      />
     </svg>
   )
 }

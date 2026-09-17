@@ -2960,6 +2960,10 @@ const allowed = new Map([
     '/** An address a link may point at: a web address or a path inside the app. */',
     '/** The address an embed shows, or the empty string when it carries none worth offering. */',
   ]],
+  ['src/client/lib/markdown/slides/shape-path.ts', [
+    '/**\n * The characters an SVG path may be written with: path commands, digits and the separators\n * between them. A `d` that carries anything else is not geometry — and since a deck\'s body is\n * untrusted input, a value that is not geometry must not reach an attribute a browser parses\n * as one. Requiring a moveto as well is what keeps a lone number from drawing nothing at all\n * with no way to notice.\n */',
+    '/**\n * The coordinate space a path is written in. A path shape carries its own `pathBox`, because\n * its geometry is not a 0..100 square the way the built-in shapes are; without one the\n * conventional unit box is the only honest guess.\n */',
+  ]],
   ['src/client/lib/markdown/slides/layouts.test.ts', [
     '// 160 x (1280/1600) = 128, 404 x (720/900) = 323.',
     '// Height is unscaled, so the 44pt heading keeps its size even though the page doubled.',
@@ -3042,6 +3046,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/element-renderer.tsx', [
     '/**\n * One element\'s own markup, chosen by its type. Everything a surface needs to draw a deck —\n * the canvas, a thumbnail, a printed page — comes through here, which is what keeps those\n * three from disagreeing about what an element looks like.\n */',
+    '/**\n * A path is drawn from its own geometry or not at all: the default curve below is a shape of\n * its own, and drawing it for a path whose `d` says something else would be a picture of\n * nothing the document asked for.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/slide-element-box.tsx', [
     '/**\n * One element as the pointer meets it: where it sits, whether it takes a click at all, the\n * drag it starts, and the handles a selection grows. It lives apart from the page it is\n * drawn on because those are two different questions — the box knows geometry and gestures,\n * the canvas knows which page is showing and what an edit means — and because a box has to\n * be able to own its own drag without the page listening for it.\n */',
