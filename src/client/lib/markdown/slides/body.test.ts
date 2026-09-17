@@ -136,7 +136,8 @@ const FOREIGN_FIELDS_BODY = JSON.stringify({
   modified: '2026-09-17T08:00:00.000Z',
   title: 'Ported deck',
   size: { width: 1600, height: 900, unit: 'px' },
-  present: { slideNumber: false, progress: false, controls: true, numberHidden: true },
+  present: { slideNumber: false, progress: false, controls: true, numberHidden: true, morphSeconds: 0.6 },
+  meta: { author: 'Ada', subject: 'Parity' },
   assets: { grain: 'data:image/svg+xml;base64,PHN2Zy8+', logo: 'data:image/png;base64,AAA' },
   fonts: [{ family: 'Fraunces', asset: 'builtin:fraunces-900', weight: '900' }],
   layouts: [
@@ -172,6 +173,73 @@ const FOREIGN_FIELDS_BODY = JSON.stringify({
         },
       ],
     },
+    {
+      id: 'slide-2',
+      name: 'Media',
+      stateOf: 'slide-1',
+      hover: { focusGroup: 'cards' },
+      comments: [
+        {
+          id: 'c-1',
+          text: 'Swap the clip',
+          author: 'Ada',
+          elementId: 'clip-1',
+          resolved: false,
+          replies: [{ author: 'Bo', text: 'On it' }],
+        },
+      ],
+      elements: [
+        {
+          id: 'clip-1',
+          type: 'media',
+          kind: 'video',
+          src: 'asset:clip',
+          poster: 'asset:poster',
+          fit: 'cover',
+          autoplay: true,
+          loop: true,
+          muted: true,
+          controls: false,
+          radius: 12,
+          link: 'https://bento.page/slides',
+          groupId: 'cards',
+          showOnHover: 'reveal',
+        },
+        {
+          id: 'chart-live',
+          type: 'embed',
+          app: 'bento/chart',
+          view: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+          url: 'https://bento.page/dash/',
+          live: false,
+        },
+        {
+          id: 'wave',
+          type: 'shape',
+          shape: 'path',
+          d: 'M 0 40 C 20 0, 60 0, 80 40',
+          pathBox: { x: 0, y: 0, w: 80, h: 40 },
+          fill: 'none',
+          stroke: '#FF9E8A',
+          strokeWidth: 3,
+        },
+        {
+          id: 'shot',
+          type: 'image',
+          src: 'asset:photo',
+          fit: 'cover',
+          crop: { x: 0.5, y: 0, scale: 2 },
+        },
+        {
+          id: 'snippet',
+          type: 'code',
+          content: 'const deck = load()',
+          grammarName: 'typescript',
+          themeName: 'inkstone',
+          fontSize: 15,
+        },
+      ],
+    },
   ],
 })
 
@@ -184,6 +252,7 @@ describe('lossless round trip', () => {
       progress: false,
       controls: true,
       numberHidden: true,
+      morphSeconds: 0.6,
     })
     expect(result.data.assets).toEqual({
       grain: 'data:image/svg+xml;base64,PHN2Zy8+',
@@ -231,5 +300,33 @@ describe('applySlidesBodyAtFence & slidesFenceRange', () => {
     const target = { line: 0, body: '# Slide A' }
     const updated = applySlidesBodyAtFence(doc, target, '# Slide B')
     expect(updated).toBe('```ppt\n# Slide B\n```')
+  })
+})
+
+/** The format's own element kinds, read through the model rather than as leftovers. */
+describe('official model coverage', () => {
+  const parsed = () => {
+    const result = parseSlidesBody(FOREIGN_FIELDS_BODY)
+    if (!result.ok) throw new Error(`parse failed: ${result.error}`)
+    return result.data
+  }
+
+  it('names every element kind an imported deck can carry', () => {
+    const elements = parsed().slides[1]?.elements ?? []
+    const byId = (id: string) => elements.find((el) => el.id === id)
+    expect(byId('clip-1')).toMatchObject({ type: 'media', kind: 'video', autoplay: true, muted: true })
+    expect(byId('chart-live')).toMatchObject({ type: 'embed', app: 'bento/chart', live: false })
+    expect(byId('wave')).toMatchObject({ shape: 'path', d: 'M 0 40 C 20 0, 60 0, 80 40' })
+    expect(byId('shot')).toMatchObject({ crop: { x: 0.5, y: 0, scale: 2 } })
+    expect(byId('snippet')).toMatchObject({ content: 'const deck = load()' })
+  })
+
+  it('names the deck- and slide-level fields an imported deck carries', () => {
+    const doc = parsed()
+    expect(doc.slides[1]?.comments?.[0]).toMatchObject({ id: 'c-1', resolved: false })
+    expect(doc.slides[1]?.stateOf).toBe('slide-1')
+    expect(doc.slides[1]?.hover).toEqual({ focusGroup: 'cards' })
+    expect(doc.present?.morphSeconds).toBe(0.6)
+    expect(doc.meta).toEqual({ author: 'Ada', subject: 'Parity' })
   })
 })

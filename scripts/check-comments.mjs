@@ -2906,6 +2906,23 @@ const allowed = new Map([
     '/**\n * Prism token HTML is produced by the Prism grammar tokenizer from code text\n * (Prism escapes `<`/`&` inside tokens, so this is defense-in-depth). Only\n * `span` tokens with their `class` survive; anything Prism ever failed to\n * escape is parsed and then dropped as an element while its text content is\n * preserved, so the visible code never changes.\n */',
     '/**\n * KaTeX output spans/svg are generated from math source. `\\color` values are\n * strictly validated by KaTeX (hex or lowercase names only) so the `style`\n * attributes it emits never carry attacker-controlled CSS; `\\href`/`\\url` are\n * inert unless `trust` is enabled, so no link-carrying attributes are needed.\n * Navigation-capable attributes are still forbidden to contain a future KaTeX\n * regression that copies user text into an attribute value.\n */',
   ]],
+  ['src/client/lib/markdown/slides/body.test.ts', [
+    '/** The format\'s own element kinds, read through the model rather than as leftovers. */',
+  ]],
+  ['src/client/lib/markdown/slides/types.ts', [
+    '/**\n * The picture\'s window into its frame: the image COVERS the frame, `scale` enlarges it\n * inside, and `x`/`y` (0..1) pick which edge the frame aligns to. Absent means the whole\n * cover-fitted picture, centred at 1:1.\n */',
+    '/**\n * Presentation effects on one element. The editor authors these and the show consumes\n * them, which is why they ride in the document rather than in the show\'s own state.\n */',
+    '/** Element identity across slides, which is what a morph transition pairs on. */',
+    '/** What a layout calls this element when it is applied to another slide. */',
+    '/** What an empty box shows in the editor; never drawn in a show or a print. */',
+    '/** SVG path data: a `path` shape\'s geometry is its own coordinates, not a box. */',
+    '/**\n * Another Bento view carried inside the deck. `view` is inline artwork the file itself\n * carries; `url` is an address, which only runs where embedding is allowed (`live`),\n * because a note is not a viewer for arbitrary pages.\n */',
+    '/** A chart\'s own option object, as the format\'s chart engine carries it. */',
+    '/** The same source under the format\'s own name for it: an imported block carries only this. */',
+    '/** A review thread anchored to an element, a point on a slide, or the slide itself. */',
+    '/** The slide whose interaction state this one continues, which is how states navigate. */',
+    '/** Slide-shaped templates the document carries alongside the built-in ones. */',
+  ]],
   ['src/client/lib/markdown/slides/body.ts', [
     '/**\n * Fills in what the editor needs while carrying everything else through: this model\n * is a superset of the body, not a projection of it. The fence body is the user\'s own\n * document, and an edit rewrites it whole, so a field this build does not model\n * (a layout, an embedded font, a remark on a slide) must survive parse → edit → write\n * rather than disappear because the normalizer never named it. Unknown keys are\n * therefore spread through at every level the writer touches, and a value that is\n * absent here stays absent — inventing a default would put a statement in the file\n * the author never made.\n */',
   ]],
