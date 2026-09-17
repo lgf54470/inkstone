@@ -24,7 +24,9 @@ function path(over: Partial<ShapeElement> = {}): ShapeElement {
 
 describe('an image with a crop', () => {
   function image(over: Partial<ImageElement> = {}): ImageElement {
-    return { id: 'i1', type: 'image', src: 'asset:photo', fit: 'cover', x: 0, y: 0, w: 300, h: 200, ...over }
+    // A source these tests need nothing from but the box it is drawn in, which is what the
+    // crop is about — the asset table's own resolution is covered further down.
+    return { id: 'i1', type: 'image', src: 'data:image/png;base64,AAA', fit: 'cover', x: 0, y: 0, w: 300, h: 200, ...over }
   }
 
   it('draws the whole picture when the crop is the identity one', () => {
@@ -102,6 +104,40 @@ describe('a path shape', () => {
     expect(view.container.querySelector('[data-slide-unsupported]')).not.toBeNull()
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
+    view.unmount()
+  })
+})
+
+describe('an element whose bytes live in the document', () => {
+  function withAssets(el: SlideElement, assets: Record<string, string>) {
+    return renderElement(
+      createElement(ElementRenderer, { el, theme: THEME, editable: false, isSelected: false, editing: false, assets }),
+    )
+  }
+
+  it('loads a picture through its asset key rather than pointing at the key itself', () => {
+    const view = withAssets(
+      { id: 'i1', type: 'image', src: 'asset:photo', x: 0, y: 0, w: 300, h: 200 },
+      { photo: 'data:image/png;base64,AAA' },
+    )
+    expect(view.container.querySelector('img')?.getAttribute('src')).toBe('data:image/png;base64,AAA')
+    view.unmount()
+  })
+
+  it('says the picture is missing when the file carries no such key', () => {
+    const view = withAssets({ id: 'i1', type: 'image', src: 'asset:photo', x: 0, y: 0, w: 300, h: 200 }, {})
+    expect(view.container.querySelector('img')).toBeNull()
+    expect(view.container.querySelector('[data-slide-unavailable="image"]')).not.toBeNull()
+    view.unmount()
+  })
+
+  it('refuses a source that is a document rather than a picture', () => {
+    const view = withAssets(
+      { id: 'i1', type: 'image', src: 'data:text/html,<b>hi</b>', x: 0, y: 0, w: 300, h: 200 },
+      {},
+    )
+    expect(view.container.querySelector('img')).toBeNull()
+    expect(view.container.querySelector('[data-slide-unavailable="image"]')).not.toBeNull()
     view.unmount()
   })
 })

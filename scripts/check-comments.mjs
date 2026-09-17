@@ -2980,7 +2980,7 @@ const allowed = new Map([
   ['src/client/lib/markdown/slides/media.ts', [
     '/**\n * What a media element is allowed to point at. A deck\'s body is untrusted input, and a\n * media source is a URL a browser will fetch or a data: URI it will decode, so the rule is\n * the same one the SVG gate uses: bytes the file itself carries, or a plain web address.\n * `javascript:`, `file:` and friends never become a source, and a data: URI only counts\n * when its own media type is media — `data:text/html` is a document, not a clip.\n */',
     '// No scheme at all is a relative or root-relative path, which resolves inside the app.',
-    '/**\n * The address a media element actually loads: `asset:<key>` names bytes in the document\'s\n * own table, everything else is the source as written. An asset key with no entry resolves\n * to the empty string so the caller paints a frame that says so, rather than a `<video>`\n * that silently plays nothing.\n */',
+    '/**\n * The address an element actually loads — a clip, a picture, a poster: the format names bytes\n * the file carries as `asset:<key>` and everything else is the source as written, so one rule\n * covers every source an element can point at. An asset key with no entry resolves to the empty\n * string, so the caller paints a frame that says so rather than a `<video>` or an `<img>` that\n * silently loads nothing.\n */',
     '/**\n * Whether a clip starts itself. Reduced motion wins over the document: a deck asking for\n * autoplay is a request, and the reader\'s system preference is the answer. Browsers only\n * start an unmuted clip on their own, which is why the caller mutes an autoplaying element.\n */',
   ]],
   ['src/client/lib/markdown/slides/embed.ts', [
@@ -2989,6 +2989,8 @@ const allowed = new Map([
     '/** The address an embed shows, or the empty string when it carries none worth offering. */',
   ]],
   ['tests/slides-interop.test.ts', [
+    '// The picture is bytes the file carries, so what the canvas loads is the asset behind',
+    '// the key rather than the key itself (which would be an image the browser cannot fetch).',
     '/**\n * What happens when a note holds a deck this build did not author: a document in the\n * format\'s own shape, with the element kinds, slide fields and document tables an export\n * carries. Two things must hold, and neither is visible from the editor\'s side. The model\n * must carry every field through parse → edit → write (a field it drops is gone from the\n * note the next time anything is edited), and every element must DRAW SOMETHING — a deck\n * whose picture is missing an element looks finished, so the failure has no symptom until\n * the reader compares it with the original.\n */',
   ]],
   ['src/client/lib/markdown/slides/crop.ts', [
@@ -3106,6 +3108,10 @@ const allowed = new Map([
     '// policy that reads this file looks for the call AT the site, which is where a future',
     '// bypass would hide (tests/slides-sanitize-policy.test.ts).',
   ]],
+  ['src/client/lib/markdown/slides/ui/element-renderer.test.ts', [
+    '// A source these tests need nothing from but the box it is drawn in, which is what the',
+    '// crop is about — the asset table\'s own resolution is covered further down.',
+  ]],
   ['src/client/lib/markdown/slides/ui/element-renderer.tsx', [
     '/**\n * One element\'s own markup, chosen by its type. Everything a surface needs to draw a deck —\n * the canvas, a thumbnail, a printed page — comes through here, which is what keeps those\n * three from disagreeing about what an element looks like.\n */',
     '/**\n * A path is drawn from its own geometry or not at all: the default curve below is a shape of\n * its own, and drawing it for a path whose `d` says something else would be a picture of\n * nothing the document asked for — a claim the deck never made, so the unusable path is\n * announced as unusable instead.\n */',
@@ -3117,6 +3123,7 @@ const allowed = new Map([
     '// under it, so the radius belongs to the frame rather than to the picture.',
   ]],
   ['src/client/lib/markdown/slides/ui/unsupported-element.tsx', [
+    '/**\n * The frame an element gets when its bytes are not in the file: the element is drawn, and what\n * is drawn says which part is missing. It replaces an empty box — or worse, a `<video>` or an\n * `<img>` pointing at an address that resolves to nothing, which reads as a page that loaded\n * slowly forever. The kind serves the tests; the label serves the reader.\n */',
     '/**\n * The frame a deck gets when this build cannot draw one of its elements: a newer element\n * type, or a shape whose geometry does not parse. It exists because the alternative — the\n * empty box this replaced — is the one failure nobody can act on: the deck looks finished,\n * the element is simply missing from the picture, and by the time anyone notices the file has\n * been written back without a clue. The type name is shown rather than translated, so a\n * person can search for it, and the console line gives the same fact to whoever is reading.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/slide-element-box.tsx', [

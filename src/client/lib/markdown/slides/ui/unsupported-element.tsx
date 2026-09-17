@@ -10,6 +10,23 @@ import type { SlideElement } from '../types'
  * been written back without a clue. The type name is shown rather than translated, so a
  * person can search for it, and the console line gives the same fact to whoever is reading.
  */
+/**
+ * The frame an element gets when its bytes are not in the file: the element is drawn, and what
+ * is drawn says which part is missing. It replaces an empty box — or worse, a `<video>` or an
+ * `<img>` pointing at an address that resolves to nothing, which reads as a page that loaded
+ * slowly forever. The kind serves the tests; the label serves the reader.
+ */
+export function UnavailableFrame({ kind, label }: { kind: string; label: string }) {
+  return (
+    <div
+      data-slide-unavailable={kind}
+      className='flex size-full items-center justify-center overflow-hidden rounded border border-dashed border-[var(--border-subtle)] px-3 text-center text-xs text-[var(--text-tertiary)]'
+    >
+      {label}
+    </div>
+  )
+}
+
 export const UnsupportedElement = memo(function UnsupportedElement({
   el,
   reason,

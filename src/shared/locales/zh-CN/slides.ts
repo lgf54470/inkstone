@@ -175,6 +175,7 @@ export const messages = {
 'slides.pos_x': 'X',
 'slides.pos_y': 'Y',
 'slides.media_unavailable': '媒体不可用',
+'slides.image_unavailable': '图片不可用——这个文件里没有它的数据',
 'slides.embed_no_live': '在新标签页打开——笔记内不运行嵌入视图',
 'slides.embed_unavailable': '视图不可用',
 'slides.element_unsupported': '不支持的元素',

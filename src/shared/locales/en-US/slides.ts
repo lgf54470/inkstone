@@ -175,6 +175,7 @@ export const messages = {
 'slides.pos_x': 'X',
 'slides.pos_y': 'Y',
 'slides.media_unavailable': 'Media unavailable',
+'slides.image_unavailable': 'Picture unavailable — its bytes are not in this file',
 'slides.embed_no_live': 'Opens in a new tab — embeds do not run in a note',
 'slides.embed_unavailable': 'View unavailable',
 'slides.element_unsupported': 'Unsupported element',

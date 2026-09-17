@@ -9,13 +9,15 @@ import type {
 } from '../types'
 import { getShapeStyle, getTableStyle, getTextStyle } from './canvas-helpers'
 import { cropImageStyle, isIdentityCrop } from '../crop'
+import { resolveMediaSrc } from '../media'
+import { t } from '../../../i18n'
 import { pasteSlideRichText, sanitizeSlideRichText, sanitizeSlideSvgMarkup } from '../sanitize'
 import { pathDataIsDrawable, pathViewBox } from '../shape-path'
 import { SlideChartBlock } from './chart-block'
 import { SlideCodeBlock } from './code-block'
 import { SlideEmbedBlock } from './embed-block'
 import { SlideMediaBlock } from './media-block'
-import { UnsupportedElement } from './unsupported-element'
+import { UnavailableFrame, UnsupportedElement } from './unsupported-element'
 
 const CIRCLE_RADIUS = '50%'
 
@@ -62,7 +64,7 @@ export function ElementRenderer({
       ) : null
     }
     case 'image':
-      return <ImageRenderer el={el} />
+      return <ImageRenderer el={el} assets={assets} />
     case 'media':
       return <SlideMediaBlock el={el} assets={assets} interactive={!editable} />
     case 'embed':
@@ -206,12 +208,14 @@ function ShapeRenderer({ el }: { el: ShapeElement }) {
   return renderSvgShape(el)
 }
 
-function ImageRenderer({ el }: { el: ImageElement }) {
+function ImageRenderer({ el, assets }: { el: ImageElement; assets?: Record<string, string> }) {
+  const src = resolveMediaSrc(el.src, assets)
+  if (!src) return <UnavailableFrame kind='image' label={t('slides.image_unavailable')} />
   const radius = el.radius ? `${el.radius}px` : undefined
   const cropped = !isIdentityCrop(el.crop)
   const picture = (
     <img
-      src={el.src}
+      src={src}
       alt=''
       style={cropped && el.crop ? cropImageStyle(el.crop) : { borderRadius: radius }}
       className={`size-full overflow-hidden ${el.fit === 'cover' ? 'object-cover' : 'object-contain'}`}

@@ -19,10 +19,11 @@ export function mediaSrcIsSafe(src: string): boolean {
 }
 
 /**
- * The address a media element actually loads: `asset:<key>` names bytes in the document's
- * own table, everything else is the source as written. An asset key with no entry resolves
- * to the empty string so the caller paints a frame that says so, rather than a `<video>`
- * that silently plays nothing.
+ * The address an element actually loads — a clip, a picture, a poster: the format names bytes
+ * the file carries as `asset:<key>` and everything else is the source as written, so one rule
+ * covers every source an element can point at. An asset key with no entry resolves to the empty
+ * string, so the caller paints a frame that says so rather than a `<video>` or an `<img>` that
+ * silently loads nothing.
  */
 export function resolveMediaSrc(src: string, assets?: Record<string, string>): string {
   if (!src) return ''

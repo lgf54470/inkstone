@@ -133,7 +133,11 @@ describe('a deck in the format own shape', () => {
       'https://bento.page/dash/',
     )
     expect(view.container.querySelector('svg path')?.getAttribute('d')).toBe('M 0 40 C 20 0, 60 0, 80 40')
-    expect(view.container.querySelector('img')?.style.position).toBe('absolute')
+    // The picture is bytes the file carries, so what the canvas loads is the asset behind
+    // the key rather than the key itself (which would be an image the browser cannot fetch).
+    const picture = view.container.querySelector('img')
+    expect(picture?.getAttribute('src')).toBe('data:image/png;base64,AAA')
+    expect(picture?.style.position).toBe('absolute')
     expect(view.container.querySelector('code')).not.toBeNull()
     view.unmount()
   })

@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { t } from '../../../i18n'
 import type { MediaElement } from '../types'
 import { mediaAutoplays, mediaFit, resolveMediaSrc } from '../media'
+import { UnavailableFrame } from './unsupported-element'
 
 interface SlideMediaBlockProps {
   el: MediaElement
@@ -25,7 +26,7 @@ export const SlideMediaBlock = memo(function SlideMediaBlock({
   interactive,
 }: SlideMediaBlockProps) {
   const src = resolveMediaSrc(el.src, assets)
-  if (!src) return <MediaUnavailable />
+  if (!src) return <UnavailableFrame kind='media' label={t('slides.media_unavailable')} />
 
   const common = {
     src,
@@ -60,10 +61,3 @@ export const SlideMediaBlock = memo(function SlideMediaBlock({
   )
 })
 
-function MediaUnavailable() {
-  return (
-    <div className='flex size-full items-center justify-center rounded border border-dashed border-[var(--border-subtle)] px-3 text-center text-xs text-[var(--text-tertiary)]'>
-      {t('slides.media_unavailable')}
-    </div>
-  )
-}
