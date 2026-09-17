@@ -195,8 +195,12 @@ function handleFor(parts: HandleParts): ExcalidrawHandle {
       rerender(parts)
     },
     destroy: () => {
+      // Marked dead first, so a render already waiting on the microtask above gives up.
       parts.model.destroyed = true
-      parts.root.unmount()
+      // The teardown arrives from inside the host tree's commit — the pane closes, the block
+      // leaves the note — and React will not take one root down from inside another root's
+      // render: the unmount waits for a microtask, for the same reason a prop change does.
+      queueMicrotask(() => parts.root.unmount())
     },
   }
 }

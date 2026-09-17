@@ -128,6 +128,18 @@ function createEntry(node: HTMLElement, options: KanbanMountOptions): KanbanBloc
   return created
 }
 
+/**
+ * Tears one block's React root down. The unmount is deferred by a microtask because both callers run
+ * inside the host tree's own commit — the preview re-renders, a block leaves the note, and React
+ * refuses to take one root down from inside another root's render: it warns and leaves the teardown to
+ * race the commit it interrupted.
+ */
+function disposeEntry(entry: KanbanBlockEntry): void {
+  if (entry.timer !== null) window.clearTimeout(entry.timer)
+  const root = entry.root
+  if (root) queueMicrotask(() => root.unmount())
+}
+
 function renderKanbanEntry(entry: KanbanBlockEntry, options: KanbanMountOptions): void {
   if (!entry.root || !entry.data) return
   entry.root.render(
@@ -188,8 +200,7 @@ export async function mountKanbans(root: HTMLElement, options: KanbanMountOption
 
   for (const [key, entry] of entries) {
     if (entry.scope === options.scope && !assignments.some((a) => a.entry === entry)) {
-      if (entry.timer !== null) window.clearTimeout(entry.timer)
-      entry.root?.unmount()
+      disposeEntry(entry)
       entries.delete(key)
     }
   }
@@ -233,8 +244,7 @@ export function flushKanbans(scope: string): void {
 export function destroyKanbans(scope: string): void {
   for (const [key, entry] of entries) {
     if (entry.scope === scope) {
-      if (entry.timer !== null) window.clearTimeout(entry.timer)
-      entry.root?.unmount()
+      disposeEntry(entry)
       entries.delete(key)
     }
   }

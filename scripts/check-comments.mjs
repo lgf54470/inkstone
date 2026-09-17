@@ -2522,6 +2522,9 @@ const allowed = new Map([
     '/**\n   * The items of an `.excalidrawlib` file, whichever version wrote it: the library\'s own\n   * reader migrates the old `library: [[element…]…]` layout, which is what the public\n   * directory still hands out. Rejects when the file is not a library.\n   */',
     '/** The items as `.excalidrawlib` text, so a library can be saved and shared as a file. */',
   ]],
+  ['src/client/lib/markdown/excalidraw/vendor.test.ts', [
+    '/**\n * A board is a React root of its own inside a note the app renders, so tearing one down happens\n * from inside the host tree\'s own commit — the pane closes, the block leaves the note — and React\n * refuses to take one root down from inside another root\'s render: it warns and lets the teardown\n * race the commit it interrupted. The unmount waits for a microtask, which is what this case\n * holds in place. The library is stubbed because the drawing is not what is under test here;\n * scripts/e2e-visual.mjs is where the real one runs in a browser.\n */',
+  ]],
   ['src/client/lib/markdown/excalidraw/vendor.tsx', [
     '/**\n * The only module that touches Excalidraw (MIT, official React component). It is\n * reached exclusively through a dynamic import (see ./loader), so the library, its\n * stylesheet and its fonts stay in an async chunk and never reach the first screen.\n *\n * Excalidraw is a React component rather than a command-driven library, so this file\n * gives each block its own React root: the root renders the board into the element the\n * registry owns, and later prop changes (theme, variant, read-only) are applied by\n * rendering into that same root — which reconciles the tree instead of remounting it,\n * so the camera, the selection and the undo stack survive. Everything above this file\n * sees only ./types: a handle with the operations a block needs.\n */',
     '/** Canvas backgrounds for a still picture of a board that names none of its own. */',
@@ -2538,6 +2541,10 @@ const allowed = new Map([
     '/**\n * The canvas background is the one app state field handed back to the library: it is\n * plain `string`, so it needs no cast, while the toolbar\'s `currentItem*` unions (fill\n * style, arrowheads, alignment) cannot be validated here without duplicating the\n * library\'s own reader. Those are still persisted in the note, so a scene copied out to\n * excalidraw.com keeps them.\n */',
     '/** Panning, selecting and hovering must not look like a change worth writing to the note. */',
     '/**\n * A prop change is rendered on the next microtask, not inside the call that asked for\n * it: those calls arrive while the app is committing (a theme switch, the move into the\n * full screen overlay), and rendering the board\'s own root from inside another tree\'s\n * commit is the nested update React rejects.\n */',
+    '// Marked dead first, so a render already waiting on the microtask above gives up.',
+    '// The teardown arrives from inside the host tree\'s commit — the pane closes, the block',
+    '// leaves the note — and React will not take one root down from inside another root\'s',
+    '// render: the unmount waits for a microtask, for the same reason a prop change does.',
     '// `refresh()` re-measures but keeps the scroll, and the library\'s state only picks',
     '// the new size up on a later frame. Re-centering against the box the board just left',
     '// would leave the drawing off to one side, so it waits for the state to carry the',
@@ -2588,6 +2595,14 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/dnd.ts', [
     '// best-effort fallback if JSON parsing fails',
+  ]],
+  ['src/client/lib/markdown/kanban/registry.test.ts', [
+    '/**\n * Every kanban block in the preview is a React root of its own, living inside markup React did not\n * make, and those roots are torn down from the host tree\'s own effects: the pane goes away, or the\n * block leaves the note. A root may not be taken down from inside another root\'s commit — React\n * says so out loud ("Attempted to synchronously unmount a root while React was already rendering")\n * and then lets the teardown race the commit it interrupted. The unmount is deferred by a\n * microtask, and these cases are what hold it there: the board is still painted when the call\n * returns, and it is gone a microtask later, with no warning raised from inside a commit.\n */',
+    '/** The preview\'s own shape: the teardown runs from the cleaning-up side of the host root\'s commit. */',
+    '// The deferred unmount is React work of its own, so it is flushed before anything is read.',
+  ]],
+  ['src/client/lib/markdown/kanban/registry.ts', [
+    '/**\n * Tears one block\'s React root down. The unmount is deferred by a microtask because both callers run\n * inside the host tree\'s own commit — the preview re-renders, a block leaves the note, and React\n * refuses to take one root down from inside another root\'s render: it warns and leaves the teardown to\n * race the commit it interrupted.\n */',
   ]],
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
