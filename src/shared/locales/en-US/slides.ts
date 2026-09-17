@@ -89,6 +89,8 @@ export const messages = {
 'slides.tool_share': 'Share',
 'slides.tool_save': 'Save',
 'slides.saved': 'Saved to the note',
+'slides.share_copied': 'Link to this note copied',
+'slides.share_failed': 'Could not copy the link. Use your browser’s address bar.',
 'slides.unsaved_changes': 'Unsaved changes to this deck',
 'slides.tool_settings': 'Settings',
 'slides.tool_help': 'Help',

@@ -89,6 +89,8 @@ export const messages = {
 'slides.tool_share': '共享',
 'slides.tool_save': '保存',
 'slides.saved': '已保存到笔记',
+'slides.share_copied': '已复制本笔记的链接',
+'slides.share_failed': '复制链接失败，请直接使用浏览器地址栏。',
 'slides.unsaved_changes': '演示稿有未保存的修改',
 'slides.tool_settings': '设置',
 'slides.tool_help': '帮助',

@@ -2945,6 +2945,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/slides/session.ts', [
     '/** An edit exists that the note has not taken yet. */',
   ]],
+  ['src/client/lib/markdown/slides/ui/copy-link.ts', [
+    '/**\n * Copies the address of the page the deck is open on, which is the link to the note\n * holding it — the app keeps no per-note route, so the address bar is the most\n * specific thing pointing at this note.\n *\n * Copying fails for reasons the reader cannot see: an insecure origin, a denied\n * clipboard permission, a browser without the API at all. Each of those ends in a\n * toast rather than silence, because a copy that quietly did nothing is worse than\n * one that says it did not work — and the failure is logged for whoever has to\n * explain it later.\n */',
+  ]],
   ['src/client/lib/markdown/slides/ui/slides-fullscreen.tsx', [
     '/** Every edit has reached the note. */',
   ]],

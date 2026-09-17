@@ -15,6 +15,7 @@ import { SlidesPresenter } from './slides-presenter'
 import { SlidesHelpDialog } from './slides-help-dialog'
 import { SlidesSettingsDialog } from './slides-settings-dialog'
 import { SlidesInlinePreview } from './slides-inline-preview'
+import { copySlidesLink } from './copy-link'
 import { VIRTUAL_CANVAS_WIDTH } from './canvas-helpers'
 import {
   createDefaultChart,
@@ -316,11 +317,7 @@ export const SlidesRoot = memo(function SlidesRoot({
         onAddCode={handleAddCode}
         onClose={() => onToggleFullscreen?.()}
         onExportPdf={() => window.print()}
-        onShare={() => {
-          if (navigator.clipboard) {
-            navigator.clipboard.writeText(window.location.href)
-          }
-        }}
+        onShare={() => void copySlidesLink()}
         isSaved={isSaved ?? true}
         onSave={onSave}
         onOpenSettings={() => setOpenDialog('settings')}
