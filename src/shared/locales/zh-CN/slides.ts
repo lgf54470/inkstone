@@ -16,6 +16,8 @@ export const messages = {
 'slides.add_slide': '新建幻灯片',
 'slides.duplicate_slide': '复制幻灯片',
 'slides.delete_slide': '删除幻灯片',
+'slides.move_slide_up': '上移一张',
+'slides.move_slide_down': '下移一张',
 'slides.tab_slide': '幻灯片',
 'slides.tab_element': '元素',
 'slides.tab_theme': '主题',

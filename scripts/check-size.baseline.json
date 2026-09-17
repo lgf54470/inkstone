@@ -40,9 +40,6 @@
   "src/client/lib/markdown/slides/ui/slides-root.tsx": {
     "longFns": 1
   },
-  "src/client/lib/markdown/slides/ui/slides-sidebar.tsx": {
-    "longFns": 1
-  },
   "src/client/lib/markdown/slides/ui/slides-topbar.tsx": {
     "longFns": 1
   },

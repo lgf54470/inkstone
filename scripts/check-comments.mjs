@@ -3025,6 +3025,8 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/slides-sidebar.tsx', [
     "/** The deck's page, so a 4:3 deck gets 4:3 thumbnails instead of a cropped 16:9 one. */",
+    '/** The picture of a page: clicking it selects the page, and the buttons on top act on it. */',
+    '/** Duplicate, delete and move, reachable from the keyboard once the page is selected. */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-topbar.test.ts', [
     '// The overlay is a modal: it portals into the body, not into the render container.',

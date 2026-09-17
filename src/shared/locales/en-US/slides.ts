@@ -16,6 +16,8 @@ export const messages = {
 'slides.add_slide': 'Add Slide',
 'slides.duplicate_slide': 'Duplicate Slide',
 'slides.delete_slide': 'Delete Slide',
+'slides.move_slide_up': 'Move slide earlier',
+'slides.move_slide_down': 'Move slide later',
 'slides.tab_slide': 'Slide',
 'slides.tab_element': 'Element',
 'slides.tab_theme': 'Theme',

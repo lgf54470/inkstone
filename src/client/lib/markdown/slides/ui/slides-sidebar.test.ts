@@ -1,6 +1,7 @@
 import { createElement } from 'react'
 import { describe, expect, it } from 'vitest'
 import { renderElement } from '../../../test-render'
+import { t } from '../../../i18n'
 import type { Slide } from '../types'
 import { SlidesSidebar } from './slides-sidebar'
 
@@ -41,6 +42,53 @@ function thumbnailSize(size: { width: number; height: number }) {
   view.unmount()
   return { width: thumb?.style.width, height: thumb?.style.height }
 }
+
+function rail(
+  size: { width: number; height: number },
+  onMove: (id: string, direction: 'up' | 'down') => void = () => {},
+) {
+  return renderElement(
+    createElement(SlidesSidebar, {
+      slides: [slide, { ...slide, id: 'slide-2' }],
+      size,
+      activeSlideId: slide.id,
+      theme: { background: '#0B1220', color: '#F8FAFC', accent: '#FF9E8A' },
+      onSelectSlide: () => {},
+      onAddSlide: () => {},
+      onDuplicateSlide: () => {},
+      onDeleteSlide: () => {},
+      onMoveSlide: onMove,
+    }),
+  )
+}
+
+describe('the slide rail', () => {
+  it('names itself and marks the page being edited', () => {
+    const view = rail({ width: 1280, height: 720 })
+    expect(view.container.querySelector('aside')?.getAttribute('aria-label')).toBe(
+      t('slides.slide_list'),
+    )
+    const current = view.container.querySelector('[data-slide-select][aria-current="true"]')
+    expect(current?.getAttribute('aria-label')).toContain('1')
+    view.unmount()
+  })
+
+  it('moves a page from the rail, and cannot move the first one earlier', () => {
+    const moved: [string, string][] = []
+    const view = rail({ width: 1280, height: 720 }, (id, direction) => moved.push([id, direction]))
+    const up = view.container.querySelector<HTMLButtonElement>(
+      `button[aria-label="${t('slides.move_slide_up')}"]`,
+    )
+    const down = view.container.querySelector<HTMLButtonElement>(
+      `button[aria-label="${t('slides.move_slide_down')}"]`,
+    )
+    expect(up?.disabled).toBe(true)
+    expect(down?.disabled).toBe(false)
+    down?.click()
+    expect(moved).toEqual([[slide.id, 'down']])
+    view.unmount()
+  })
+})
 
 describe('slide thumbnails', () => {
   it('draws a 16:9 deck at the default shape', () => {
