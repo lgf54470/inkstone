@@ -3006,7 +3006,7 @@ const allowed = new Map([
     '// wait for, so the paint under test is the swap rather than the network.',
   ]],
   ['src/client/lib/markdown/slides/ui/code-block.tsx', [
-    '/**\n * A code element is text plus a language, and the language is what turns it into tokens a\n * deck can colour. Prism is loaded per language on demand, so this paints the plain text\n * first and swaps in the highlighted markup when the grammar arrives — a snippet is\n * readable either way, and a language nobody supports simply stays plain.\n *\n * The palette reaches the tokens as custom properties (see code-palette.ts): a deck may\n * recolour its code while the show is open, and the stylesheet names the variables once.\n */',
+    '/**\n * A code element is text plus a language, and the language is what turns it into tokens a\n * deck can colour. Prism is loaded per language on demand, so this paints the plain text\n * first and swaps in the highlighted markup when the grammar arrives — a snippet is\n * readable either way, and a language nobody supports simply stays plain.\n *\n * The palette reaches the tokens as custom properties (see code-palette.ts): a deck may\n * recolour its code while the show is open, and the stylesheet names the variables once.\n *\n * The sanitizer runs in the render expression rather than when the grammar arrives, because\n * the injection site is what the markup policy reads (tests/slides-sanitize-policy.test.ts):\n * a call one step away from the `__html` is the shape a future bypass hides in.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-canvas.tsx', [
     '/** The page this deck is authored against; the canvas never assumes a default one. */',

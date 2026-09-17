@@ -17,6 +17,10 @@ interface HighlightedCode {
  *
  * The palette reaches the tokens as custom properties (see code-palette.ts): a deck may
  * recolour its code while the show is open, and the stylesheet names the variables once.
+ *
+ * The sanitizer runs in the render expression rather than when the grammar arrives, because
+ * the injection site is what the markup policy reads (tests/slides-sanitize-policy.test.ts):
+ * a call one step away from the `__html` is the shape a future bypass hides in.
  */
 export const SlideCodeBlock = memo(function SlideCodeBlock({
   el,
@@ -32,7 +36,7 @@ export const SlideCodeBlock = memo(function SlideCodeBlock({
     setHighlighted(null)
     void highlightWithPrism(el.code, el.lang || 'text').then((result) => {
       if (cancelled || !result) return
-      setHighlighted({ html: sanitizeCodeTokenHtml(result.html), language: result.language })
+      setHighlighted({ html: result.html, language: result.language })
     })
     return () => {
       cancelled = true
@@ -52,7 +56,7 @@ export const SlideCodeBlock = memo(function SlideCodeBlock({
         {highlighted ? (
           <code
             className='bento-slide-code'
-            dangerouslySetInnerHTML={{ __html: highlighted.html }}
+            dangerouslySetInnerHTML={{ __html: sanitizeCodeTokenHtml(highlighted.html) }}
           />
         ) : (
           <code className='bento-slide-code'>{el.code}</code>
