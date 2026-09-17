@@ -21,6 +21,7 @@
 | 元素 / 幻灯片 / 空白三处右键菜单 | `slides-context-menu.test.ts` | 既有 |
 | 代码语法高亮与 `theme.codePalette` | `code-block.test.ts`、`code-palette.test.ts` | 既有 |
 | 图表 preset（bar/line/pie/scatter）与 `chartPalette` | `chart-block.test.ts`、`chart-geometry.test.ts` | 既有 |
+| charts-lite 的 `option` 图表：按每条 series 的 kind 画柱/线/散点/饼，`yAxisIndex` 决定哪条值轴缩放该系列，option 自带 `color` 优先于 `chartPalette` | `chart-option.test.ts`、`ui/chart-block.test.ts`、`tests/starter-deck-render.test.ts`（自带 Showcase 的 5 个图表逐个断言画出标记且无告警） | 本次（未提交） |
 | 媒体元素（video/audio）、来源白名单、自动播放遵守 reduced-motion 且自行静音 | `media.test.ts`、`media-block.test.ts` | `645d1eb7` |
 | 嵌入元素（文件自带 view 绘制、地址只作新标签页链接） | `embed.test.ts`、`embed-block.test.ts` | `906ac9ba` |
 | `path` 形状按自带 `d` 与 `pathBox` 绘制 | `shape-path.test.ts`、`element-renderer.test.ts` | `f473a62d` |
@@ -94,7 +95,7 @@
 | 9 种界面语言 + 语言包 | en-US / zh-CN，按本项目 i18n 现状 | 与应用其余部分共用同一套资源与门禁 |
 | 自更新、密码信封加密文件、单文件应用外壳 | 不做（导出形态在 P4 决策） | 块活在笔记里，文件级能力由 Inkstone 的分享/备份/实时栈承担 |
 | 媒体自动播放 | 遵守 `prefers-reduced-motion`，且自动播放一律静音 | 读者偏好优先；浏览器只允许静音自发播放 |
-| charts-lite 的 `option` 图表（数据可来自表格） | 仅 `preset`/`data` 路径已绘制；值只在 `option` 里、没有 `data` 的图表画成占位框并告警（自带的 Showcase 模板就是这种形状），不再让整张幻灯片抛 `TypeError` 崩掉——守卫：`ui/chart-block.test.ts`、`tests/slides-interop.test.ts` | `option` 图表的引擎与表格联动属 P2 面板项 |
+| charts-lite 的 `option` 图表（数据可来自表格） | series 的 kind 与值轴已按 `option` 绘制，值只在 `option` 里、没有 `data` 的图表不再是占位框（自带的 Showcase 模板正是这种形状）；仍不画的是 `dataZoom` 交互、`areaStyle` 填充、坐标轴名称与刻度、图例、tooltip；读不全的 `option`（第二个以上的值轴、不认识的 series kind、读不出数值的体）照旧画占位框并告警，不猜——守卫：`chart-option.test.ts`、`ui/chart-block.test.ts`、`tests/starter-deck-render.test.ts` | 轴/图例/tooltip 与表格联动属 P2 面板项 |
 
 ---
 

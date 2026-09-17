@@ -92,10 +92,11 @@ function dotAt(point: ChartPoint, index: number, data: ChartPoint[], box: ChartB
 /** One path through the dots: a line chart is the polyline, its dots are the same points. */
 export function lineChart(data: ChartPoint[], box: ChartBox): LineChart {
   const dots = data.map((point, index) => dotAt(point, index, data, box))
-  const d = dots
-    .map((dot, index) => `${index === 0 ? 'M' : 'L'} ${round(dot.x)} ${round(dot.y)}`)
-    .join(' ')
-  return { d, dots }
+  return { d: polyline(dots), dots }
+}
+
+function polyline(dots: ChartDot[]): string {
+  return dots.map((dot, index) => `${index === 0 ? 'M' : 'L'} ${round(dot.x)} ${round(dot.y)}`).join(' ')
 }
 
 export function scatterChart(data: ChartPoint[], box: ChartBox): ChartDot[] {
@@ -135,4 +136,121 @@ export function pieChart(data: ChartPoint[], box: ChartBox): PieSlice[] {
 
 function round(value: number): number {
   return Math.round(value * 100) / 100
+}
+
+/**
+ * A chart whose values arrive in series: several bars or lines side by side, each scaled by the
+ * value axis it belongs to. A second axis is a second scale in the same box rather than a second
+ * picture, which is how a chart can show two units — signups and a growth rate — at once.
+ */
+export interface ValueSeries {
+  kind: 'bar' | 'line' | 'scatter'
+  values: number[]
+  /** Scatter only: its x is data, so the pairs travel with the series. */
+  pairs: { x: number; y: number }[]
+  axis: 0 | 1
+}
+
+/** A bar of one of several series; which series it belongs to decides its colour. */
+export interface SeriesBar extends BarRect {
+  seriesIndex: number
+}
+
+/** A dot of one of several series, for the same reason. */
+export interface SeriesDot extends ChartDot {
+  seriesIndex: number
+}
+
+export interface SeriesLine {
+  seriesIndex: number
+  d: string
+  dots: ChartDot[]
+}
+
+/** Where the category marks stand: the floor of the plot, which every preset shares. */
+export function baselineY(box: ChartBox): number {
+  return CHART_PADDING + plotBox(box).height
+}
+
+/** Where the category slots sit, so the marks and their labels land on the same centres. */
+export function categorySlots(box: ChartBox, count: number): { slot: number; baseline: number } {
+  return { slot: plotBox(box).width / Math.max(count, 1), baseline: baselineY(box) }
+}
+
+/** The peak of each value axis, so each axis scales to its own tallest mark. */
+export function axisPeaks(series: ValueSeries[]): [number, number] {
+  const peaks: [number, number] = [MIN_SPAN, MIN_SPAN]
+  for (const one of series) {
+    const values = one.kind === 'scatter' ? one.pairs.map((pair) => pair.y) : one.values
+    peaks[one.axis] = Math.max(peaks[one.axis], ...values.map((value) => Math.max(value, 0)))
+  }
+  return peaks
+}
+
+/** Bars grouped inside each category slot: one bar per series, each against its own axis. */
+export function seriesBars({ values, seriesIndex, seriesCount, peak, labels, box }: {
+  values: number[]
+  seriesIndex: number
+  seriesCount: number
+  peak: number
+  labels: string[]
+  box: ChartBox
+}): SeriesBar[] {
+  const { slot, baseline } = categorySlots(box, values.length)
+  const group = slot * BAR_FILL_RATIO
+  const width = group / Math.max(seriesCount, 1)
+  const height = plotBox(box).height
+  return values.map((value, index) => ({
+    seriesIndex,
+    x: CHART_PADDING + index * slot + (slot - group) / 2 + seriesIndex * width,
+    y: baseline - (Math.max(value, 0) / peak) * height,
+    width,
+    height: (Math.max(value, 0) / peak) * height,
+    label: labels[index] ?? '',
+  }))
+}
+
+/** A polyline through the centre of each category slot — the slots the bars stand in. */
+export function seriesLine({ values, seriesIndex, peak, box }: {
+  values: number[]
+  seriesIndex: number
+  peak: number
+  box: ChartBox
+}): SeriesLine {
+  const { slot, baseline } = categorySlots(box, values.length)
+  const height = plotBox(box).height
+  const dots = values.map((value, index) => ({
+    x: round(CHART_PADDING + (index + 0.5) * slot),
+    y: round(baseline - (Math.max(value, 0) / peak) * height),
+    label: '',
+  }))
+  return { seriesIndex, dots, d: polyline(dots) }
+}
+
+/**
+ * Scatter in the data's own coordinates: each axis takes the spread it actually has. A series
+ * whose values share one x is centred rather than pinned to an edge, because a single column
+ * against the left edge would read as a value at the axis minimum.
+ */
+export function xyScatter({ pairs, seriesIndex, box }: {
+  pairs: { x: number; y: number }[]
+  seriesIndex: number
+  box: ChartBox
+}): SeriesDot[] {
+  const plot = plotBox(box)
+  const xs = pairs.map((pair) => pair.x)
+  const ys = pairs.map((pair) => pair.y)
+  return pairs.map((pair) => ({
+    seriesIndex,
+    x: round(spread(pair.x, xs, plot.width)),
+    y: round(CHART_PADDING + plot.height - spread(pair.y, ys, plot.height)),
+    label: '',
+  }))
+}
+
+function spread(value: number, values: number[], size: number): number {
+  const lowest = Math.min(...values)
+  const span = Math.max(...values) - lowest
+  if (span === 0) return CHART_PADDING + size / 2
+  return CHART_PADDING + ((value - lowest) / span) * size
 }

@@ -34,15 +34,22 @@ const marks = {
 } as const
 
 /**
- * The shape the app's own showcase deck ships in: a preset and the format's chart-engine
- * option, and no `data` list at all — mapping that missing list is what used to throw.
+ * The shape the app's own showcase deck ships in: a preset and the format's chart-engine option,
+ * and no `data` list at all — the values are the option's.
  */
 function optionChart(): ChartElement {
   return {
     id: 'chart-2',
     type: 'chart',
     preset: 'bar',
-    option: { xAxis: { data: ['Mon'] }, series: [{ type: 'bar', data: [42] }] },
+    option: {
+      color: ['#111111', '#222222'],
+      xAxis: { data: ['Mon', 'Tue'] },
+      series: [
+        { type: 'bar', data: [42, 68] },
+        { type: 'line', yAxisIndex: 1, data: [10, 20] },
+      ],
+    },
     x: 0,
     y: 0,
     w: 400,
@@ -91,14 +98,35 @@ describe('a slide chart', () => {
     expect(view.container.querySelector('svg')?.getAttribute('aria-label')).toBe('Monthly')
     view.unmount()
   })
+})
 
-  it('announces a chart whose values live in the option it was authored with', () => {
+describe('a slide chart carrying the format own option', () => {
+  it('draws the series the option states, in the colours and on the axes it states', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const view = draw(optionChart())
+    expect(view.container.querySelector('[data-slide-unsupported]')).toBeNull()
+    expect(view.container.querySelectorAll('[data-bar]')).toHaveLength(2)
+    expect(view.container.querySelector('[data-line]')).not.toBeNull()
+    expect(view.container.querySelectorAll('[data-point]')).toHaveLength(2)
+    // The option's own colours lead, one per series, and the labels are the axis' categories.
+    const fills = [...view.container.querySelectorAll('[data-bar]')].map((bar) => bar.getAttribute('fill'))
+    expect(fills).toEqual(['#111111', '#111111'])
+    const labels = [...view.container.querySelectorAll('text')].map((node) => node.textContent)
+    expect(labels).toEqual(['Mon', 'Tue'])
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+    view.unmount()
+  })
+
+  it('announces a chart whose option states nothing this build can draw', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const view = draw({ ...optionChart(), option: { series: [{ type: 'boxplot', data: [1] }] } })
     expect(view.container.querySelector('[data-bar]')).toBeNull()
-    const frame = view.container.querySelector('[data-slide-unsupported="chart"]')
-    expect(frame?.textContent).toContain('chart: option')
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('unsupported element type "chart"'))
+    expect(view.container.querySelector('[data-slide-unsupported="chart"]')?.textContent).toContain('chart: option')
+    // The console line names the reason, not an unsupported type: charts are a type this build draws.
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('cannot draw the "chart" element (id chart-2): chart: option'),
+    )
     warn.mockRestore()
     view.unmount()
   })

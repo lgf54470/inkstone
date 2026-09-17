@@ -149,17 +149,19 @@ describe('a deck in the format own shape', () => {
     expect(picture?.getAttribute('src')).toBe('data:image/png;base64,AAA')
     expect(picture?.style.position).toBe('absolute')
     expect(view.container.querySelector('code')).not.toBeNull()
+    // A chart whose values live in the format's own engine option draws that option's series:
+    // this is the shape the app's own showcase deck ships in, and the one that used to throw.
+    expect(view.container.querySelector('[data-slide-unsupported="chart"]')).toBeNull()
+    expect(view.container.querySelector('[data-slide-chart] [data-bar]')).not.toBeNull()
     view.unmount()
   })
 
   it('says which element it could not draw rather than leaving a hole', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const view = draw(parse())
+    // An element type newer than this build is announced under its own name, so a person can
+    // search for it, rather than left as an empty box that reads as a finished slide.
     expect(view.container.querySelector('[data-slide-unsupported="timeline"]')).not.toBeNull()
-    // A chart whose values are inside the format's own chart-engine option is announced for the
-    // same reason: this build draws the `data` path only, and drawing a preset over values it
-    // cannot read would be a picture the document never asked for.
-    expect(view.container.querySelector('[data-slide-unsupported="chart"]')).not.toBeNull()
     warn.mockRestore()
     view.unmount()
   })

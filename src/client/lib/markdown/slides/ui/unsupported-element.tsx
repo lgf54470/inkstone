@@ -35,8 +35,12 @@ export const UnsupportedElement = memo(function UnsupportedElement({
   reason?: string
 }) {
   useEffect(() => {
-    console.warn(`[inkstone] slides: unsupported element type "${el.type}" (id ${el.id})`)
-  }, [el.id, el.type])
+    // The reason is what names the trouble; without one the trouble is the type itself.
+    const trouble = reason
+      ? `cannot draw the "${el.type}" element (id ${el.id}): ${reason}`
+      : `unsupported element type "${el.type}" (id ${el.id})`
+    console.warn(`[inkstone] slides: ${trouble}`)
+  }, [el.id, el.type, reason])
 
   return (
     <div
