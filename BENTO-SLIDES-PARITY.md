@@ -31,6 +31,10 @@
 | 插入图片：本地选文件 → 优化 → 附件上传 → 按原图比例落框；取消/过大/上传失败/目标页已删各有提示 | `image-asset.test.ts`、`ui/insert-image.test.ts`、`ui/pick-image.test.ts`、`ui/element-factories.test.ts` | `5906a1ea` |
 | 导出 PDF：顶栏打印入口可用；每页按 `doc.size` 1:1 离屏排版（`inert` + `aria-hidden`），图片/字体落定后开打印框，`afterprint` 收尾；全页隐藏时提示而不开空打印框 | `flow.test.ts`、`ui/slides-print.test.ts`、`ui/slides-topbar.test.ts` | `5012ff15` |
 | 「放映与打印走哪几页」单一出处（`audienceSlides`，隐藏页既不上屏也不上纸） | `flow.test.ts`、`ui/slides-presenter.test.ts` | `5012ff15` |
+| 系统剪贴板四路：元素（跨笔记的纯文本载荷、asset 一并走）、图片（粘贴进同一条附件上传路）、文本（转义成文本框）、整页 | `clipboard.test.ts`、`edits.test.ts`、`ui/use-slides-editing.test.ts`、`ui/slides-context-menu.test.ts` | `f72b7af2`、`3386f261` |
+| 编辑器键盘：⌘C/⌘X/⌘V、⌘D 复制、Delete、方向键平移（⇧ 十像素）、⌘±/0 缩放；有高亮选区时把剪贴板还给浏览器 | `ui/use-slides-editing.test.ts` | `f72b7af2`、`3386f261` |
+| 就地编辑文本框（双击进入、失焦提交、提交前净化；输入框内键盘与剪贴板让位） | `ui/slides-inplace-edit.test.ts`、`ui/use-slides-editing.test.ts` | `f72b7af2` |
+| 放映的页面过渡（按 `transition` 画入场，`morph` 明说不画——避免把静态快照冒充变形） | `ui/slides-presenter.test.ts`、`ui/slides-dialogs.test.ts` | `0e77af38` |
 
 > `6e55f34b` 是工作区里既有的在途改动（代码块净化移到渲染处），提交前只补了缺失的白名单条目——它的缺失会让仓库级 `comments:check` 为红、pre-commit 钩子拦下所有提交。
 
@@ -40,17 +44,17 @@
 
 ### P2 编辑器核心
 
-- 多选、框选（marquee）、吸附与参考线、空格/中键平移、⌘±/0 缩放与 fit。
-- 系统剪贴板：元素 / 整页 / 图片 / 文本（跨笔记）。插入图片已走 Inkstone 附件上传（`5906a1ea`）；元素级复制/粘贴与图片粘贴仍缺。
+- 多选、框选（marquee）、吸附与参考线、空格/中键平移、适合窗口（fit）。
 - 图层真·置顶/置底已具备（`inspector-layers.tsx` 调 `reorderElement`）；图层列表内的拖拽排序仍缺。
 - 右侧面板分区补齐：排版（字族/行高/字距）、填充与描边、图片（fit/圆角/裁剪）、图表数据与表格联动、表格就地编辑、媒体源与播放、代码语言与主题、嵌入、效果、放映、布局、备注、交互。
 - 评论线程（元素/点/整页锚点、回复、已解决；仅编辑器可见，不进放映与打印）。
 - 顶栏测量式折叠与手机端 Insert/More 菜单。
-- 快捷键全表（并写进帮助弹窗，与实现同源）。
+- ⌘Z/⌘⇧Z 由 `history.ts` 自己的监听提供（纯 reducer 有 `history.test.ts`，键监听本身尚无守卫）。
+- 快捷键收口：无选中时方向键翻页、`F5` 放映、`⌘S` 保存、`?` 帮助、`[`/`]` 面板开关、`⌘G` 成组、`c` 评论模式——帮助弹窗已列出已实现的键，这些尚未接线的不在其中。
 
 ### P3 放映
 
-- 过渡与 morph（按 `morphId ?? id` 配对）、元素入场与交错、`countUp`、`kenburns`、`fx.loop`（motion-path / dash-march）。
+- morph（按 `morphId ?? id` 配对；页面过渡已做，见上表）、元素入场与交错、`countUp`、`kenburns`、`fx.loop`（motion-path / dash-march）。
 - `fx.step` 逐条显示：→ 逐条、← 回收、画布上的顺序徽标、右键菜单的真实行为。
 - 演讲者独立窗口（笔记 / 计时 / 当前与下一页预览 / `G` 全览 / 被拦截时的降级）。
 - 激光笔、黑屏、减少动画、元素 `link` 跳转、`stateOf` 状态页导航、`hover{focusGroup|reveal}`、`{{page}}/{{date}}` 字段。`stateOf` 落地前，`audienceSlides`（`flow.ts`）刻意不把它移出线性流：没有状态导航时移出会让那些内容无处可达；两份过滤在同一处，改的时候一次改完。
