@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { PageSize } from '../page'
-import type { SlideElement, TextElement, ShapeElement, TableElement, ChartElement } from '../types'
+import type { SlideElement, TextElement, ShapeElement, TableElement } from '../types'
 
 export function getElementBoxStyle(el: SlideElement): CSSProperties {
   const rot = el.rotation ? `rotate(${el.rotation}deg)` : undefined
@@ -76,10 +76,6 @@ export function getTableStyle(el: TableElement): CSSProperties {
     borderColor: st.borderColor ?? 'var(--border-subtle)',
     borderRadius: st.radius ? `${st.radius}px` : '8px',
   }
-}
-
-export function getChartColor(el: ChartElement, defaultAccent: string): string {
-  return el.color || defaultAccent || 'var(--accent)'
 }
 
 export function isBackgroundLayer(el: SlideElement, page: PageSize): boolean {

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  getChartColor,
   getElementBoxStyle,
   getShapeStyle,
   getTableStyle,
@@ -9,7 +8,6 @@ import {
 } from './canvas-helpers'
 import { DEFAULT_PAGE_SIZE } from '../page'
 import type {
-  ChartElement,
   ShapeElement,
   TableElement,
   TextElement,
@@ -102,19 +100,6 @@ describe('table and chart elements', () => {
       style: { radius: 10 },
     }
     expect(getTableStyle(tbl).borderRadius).toBe('10px')
-
-    const chart: ChartElement = {
-      id: 'c1',
-      type: 'chart',
-      preset: 'bar',
-      data: [],
-      x: 0,
-      y: 0,
-      w: 100,
-      h: 100,
-      color: '#ff0000',
-    }
-    expect(getChartColor(chart, '#00ff00')).toBe('#ff0000')
   })
 })
 

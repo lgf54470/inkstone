@@ -1,6 +1,5 @@
 import { memo, useRef, type MouseEvent, type ReactNode } from 'react'
 import type {
-  ChartElement,
   ImageElement,
   ShapeElement,
   Slide,
@@ -14,13 +13,13 @@ import {
   getShapeStyle,
   getTableStyle,
   getTextStyle,
-  getChartColor,
   isBackgroundLayer,
 } from './canvas-helpers'
 import type { PageSize } from '../page'
 import { SelectionOverlay } from './selection-overlay'
 import { pasteSlideRichText, sanitizeSlideRichText, sanitizeSlideSvgMarkup } from '../sanitize'
 import { SlideCodeBlock } from './code-block'
+import { SlideChartBlock } from './chart-block'
 
 const CIRCLE_RADIUS = '50%'
 
@@ -196,7 +195,7 @@ function ElementRenderer({
     case 'table':
       return <TableRenderer el={el} />
     case 'chart':
-      return <ChartRenderer el={el} defaultAccent={theme.accent} />
+      return <SlideChartBlock el={el} palette={theme.chartPalette} defaultAccent={theme.accent} />
     case 'code':
       return <SlideCodeBlock el={el} palette={theme.codePalette} />
     default:
@@ -324,45 +323,5 @@ function TableRenderer({ el }: { el: TableElement }) {
   )
 }
 
-function ChartRenderer({
-  el,
-  defaultAccent,
-}: {
-  el: ChartElement
-  defaultAccent: string
-}) {
-  const color = getChartColor(el, defaultAccent)
-  const maxVal = Math.max(...el.data.map((d) => d.value), 1)
-
-  return (
-    <div className='flex size-full flex-col justify-end p-4 rounded-xl bg-[var(--bg-raised)] border border-[var(--border-subtle)]'>
-      {el.title && (
-        <span className='mb-2 text-sm font-medium text-[var(--text-secondary)]'>
-          {el.title}
-        </span>
-      )}
-      <div className='flex flex-1 items-end gap-3'>
-        {el.data.map((d, idx) => {
-          const heightPercent = Math.round((d.value / maxVal) * 100)
-          return (
-            <div key={`cd-${idx}`} className='flex flex-1 flex-col items-center gap-1.5 h-full justify-end'>
-              <span className='text-xs font-semibold'>{d.value}</span>
-              <div
-                className='w-full rounded-t transition-all'
-                style={{
-                  height: `${heightPercent}%`,
-                  backgroundColor: color,
-                }}
-              />
-              <span className='truncate text-xs text-[var(--text-tertiary)]'>
-                {d.label}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
 
 

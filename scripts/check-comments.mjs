@@ -2918,6 +2918,16 @@ const allowed = new Map([
     "// surface's steps, so they are dropped rather than offered as undoable edits.",
     '/**\n   * The document belongs to the block, not to one surface of it. The full screen editor\n   * commits through the same entry, so a card mounted before those edits has to adopt\n   * them or it keeps painting the deck as it was when the block was mounted — the note\n   * says one thing and the card next to it another. A commit from this surface arrives\n   * as the very object it just dispatched, so this only ever fires for an outside writer.\n   */',
   ]],
+  ['src/client/lib/markdown/slides/chart-geometry.test.ts', [
+    '// Centre plus radius at -90°, i.e. straight up from the middle.',
+  ]],
+  ['src/client/lib/markdown/slides/chart-geometry.ts', [
+    '/** Air a preset leaves on every side; the marks are drawn inside it, never against the edge. */',
+    '/** The tallest value, so every preset shares one vertical scale (and a flat series cannot divide by zero). */',
+    '/** Bars stand on the baseline, so their y and height are both the value against the peak. */',
+    '/** One path through the dots: a line chart is the polyline, its dots are the same points. */',
+    '/**\n * Slices start at twelve o\'clock and run clockwise, so a deck\'s first value is always the\n * top-right wedge however many values follow it. Values are clamped at zero: a negative\n * count in a pie is not a smaller wedge, it is data the preset cannot show.\n */',
+  ]],
   ['src/client/lib/markdown/slides/code-palette.ts', [
     '/**\n * The colours a code element\'s tokens are painted with. A deck may name any of them in\n * `theme.codePalette`; the values here are what a deck that names none is drawn with, and\n * the palette inspector edits the same table rather than keeping a second copy of it.\n *\n * The keys are single letters because the palette is written into the fence body, where a\n * slide\'s code colours travel next to everything else a reader might hand-edit.\n */',
     '/**\n * The palette as custom properties on the element that holds the highlighted markup: the\n * colours are per-deck and change while the reader drags a colour input, which is exactly\n * what a CSS variable is for. The stylesheet names them once for every surface that draws\n * code, so the canvas, a thumbnail and a printed page cannot drift apart.\n */',
@@ -2960,6 +2970,13 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/slides/ui/copy-link.ts', [
     '/**\n * Copies the address of the page the deck is open on, which is the link to the note\n * holding it — the app keeps no per-note route, so the address bar is the most\n * specific thing pointing at this note.\n *\n * Copying fails for reasons the reader cannot see: an insecure origin, a denied\n * clipboard permission, a browser without the API at all. Each of those ends in a\n * toast rather than silence, because a copy that quietly did nothing is worse than\n * one that says it did not work — and the failure is logged for whoever has to\n * explain it later.\n */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/chart-block.test.ts', [
+    "/** A line carries its dots, so it is the one preset that draws another preset's mark too. */",
+  ]],
+  ['src/client/lib/markdown/slides/ui/chart-block.tsx', [
+    "/** The deck's chart colours, cycled per value; the element's own colour is the fallback. */",
+    '/**\n * A chart is drawn as markup rather than onto a canvas: a slide is printed, exported and\n * shown at whatever size the page turns out to be, and vector marks keep all three exact.\n * The preset decides the marks — bars, a polyline, wedges, points — and the deck\'s palette\n * decides their colours, so recolouring a deck\'s charts needs no edit here.\n */',
   ]],
   ['src/client/lib/markdown/slides/ui/code-block.test.ts', [
     '// The grammar is loaded on demand; loading it here is what the effect would have to',
