@@ -2948,8 +2948,22 @@ const allowed = new Map([
   ['src/client/lib/markdown/slides/ui/slides-fullscreen.tsx', [
     '/** Every edit has reached the note. */',
   ]],
+  ['src/client/lib/markdown/slides/ui/slides-help-dialog.tsx', [
+    '/** Key combination shown in the row, or a plain action name for a tip row. */',
+    '// Only what this editor actually does: a help panel that lists shortcuts the app never',
+    '// binds teaches the reader to distrust it.',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-inline-preview.tsx', [
+    '/** Which deck this is, and where the reader is in it. */',
+    '/** The three things this surface can do with a deck: step, play in place, or open the editor. */',
+    '/** The card a note shows for the block: one slide, page stepping, and the way into the editor. */',
+  ]],
   ['src/client/lib/markdown/slides/ui/slides-root.tsx', [
     '/** Whether every edit has reached the note; undefined on a surface without a save control. */',
+  ]],
+  ['src/client/lib/markdown/slides/ui/slides-settings-dialog.tsx', [
+    '// A colour input only accepts `#rrggbb`; a theme written as a named colour or a CSS',
+    '// variable keeps its own value until the reader picks a new one here.',
   ]],
   ['src/client/lib/markdown/slides/ui/slides-topbar.test.ts', [
     '// The overlay is a modal: it portals into the body, not into the render container.',

@@ -12,7 +12,10 @@ import { SlidesTopbar } from './slides-topbar'
 import { SlidesSidebar } from './slides-sidebar'
 import { SlidesInspector } from './slides-inspector'
 import { SlidesPresenter } from './slides-presenter'
-import { VIRTUAL_CANVAS_WIDTH, VIRTUAL_CANVAS_HEIGHT } from './canvas-helpers'
+import { SlidesHelpDialog } from './slides-help-dialog'
+import { SlidesSettingsDialog } from './slides-settings-dialog'
+import { SlidesInlinePreview } from './slides-inline-preview'
+import { VIRTUAL_CANVAS_WIDTH } from './canvas-helpers'
 import {
   createDefaultChart,
   createDefaultCode,
@@ -49,6 +52,7 @@ export const SlidesRoot = memo(function SlidesRoot({
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
   const [activeElementId, setActiveElementId] = useState<string | null>(null)
   const [isPresentationMode, setIsPresentationMode] = useState(false)
+  const [openDialog, setOpenDialog] = useState<'settings' | 'help' | null>(null)
   const [zoom, setZoom] = useState(1)
   const [inlineScale, setInlineScale] = useState(0.5)
   const inlineContainerRef = useRef<HTMLDivElement>(null)
@@ -262,81 +266,21 @@ export const SlidesRoot = memo(function SlidesRoot({
   }
 
   if (!isFullscreen) {
+    if (!activeSlide) return null
     return (
-      <div className='flex flex-col w-full overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-inset)] shadow-xs'>
-        <div className='flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs'>
-          <div className='flex items-center gap-2 font-medium'>
-            <span className='px-1.5 py-0.5 rounded bg-[var(--accent)] text-white text-[length:var(--text-10)] font-bold'>
-              {'Bento'}
-            </span>
-            <span className='truncate max-w-44'>{data.title}</span>
-            <span className='text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
-              {activeSlideIndex + 1} / {slides.length}
-            </span>
-          </div>
-
-          <div className='flex items-center gap-1'>
-            <button
-              type='button'
-              onClick={() => setActiveSlideIndex((p) => (p > 0 ? p - 1 : p))}
-              disabled={activeSlideIndex === 0}
-              className='flex size-6 items-center justify-center rounded hover:bg-[var(--bg-hover)] disabled:opacity-30'
-            >
-              ◀
-            </button>
-            <button
-              type='button'
-              onClick={() => setActiveSlideIndex((p) => (p < slides.length - 1 ? p + 1 : p))}
-              disabled={activeSlideIndex === slides.length - 1}
-              className='flex size-6 items-center justify-center rounded hover:bg-[var(--bg-hover)] disabled:opacity-30'
-            >
-              ▶
-            </button>
-            <div className='h-3 w-px bg-[var(--border-subtle)] mx-1' />
-            <button
-              type='button'
-              onClick={() => setIsPresentationMode(true)}
-              className='flex items-center gap-1 rounded px-2 py-1 hover:bg-[var(--bg-hover)] text-[length:var(--text-11)]'
-              title={t('slides.slideshow')}
-            >
-              <span>▶</span>
-              <span>{t('slides.play')}</span>
-            </button>
-            <button
-              type='button'
-              onClick={onToggleFullscreen}
-              className='flex size-6 items-center justify-center rounded hover:bg-[var(--bg-hover)]'
-              title={t('preview.slides_fullscreen')}
-            >
-              ⤢
-            </button>
-          </div>
-        </div>
-
-        <div
-          ref={inlineContainerRef}
-          className='relative w-full flex items-center justify-center bg-black/10 overflow-hidden'
-          style={{ height: `${VIRTUAL_CANVAS_HEIGHT * inlineScale}px` }}
-        >
-          {activeSlide && (
-            <div
-              style={{
-                width: `${VIRTUAL_CANVAS_WIDTH * inlineScale}px`,
-                height: `${VIRTUAL_CANVAS_HEIGHT * inlineScale}px`,
-              }}
-              className='relative'
-            >
-              <SlidesCanvas
-                slide={activeSlide}
-                theme={data.theme}
-                assets={data.assets}
-                scale={inlineScale}
-                editable={false}
-              />
-            </div>
-          )}
-        </div>
-      </div>
+      <SlidesInlinePreview
+        data={data}
+        slide={activeSlide}
+        slideIndex={activeSlideIndex}
+        slideCount={slides.length}
+        scale={inlineScale}
+        stageRef={inlineContainerRef}
+        onSelectSlide={(index) =>
+          setActiveSlideIndex(Math.min(Math.max(index, 0), slides.length - 1))
+        }
+        onPlay={() => setIsPresentationMode(true)}
+        onToggleFullscreen={onToggleFullscreen}
+      />
     )
   }
 
@@ -379,7 +323,22 @@ export const SlidesRoot = memo(function SlidesRoot({
         }}
         isSaved={isSaved ?? true}
         onSave={onSave}
+        onOpenSettings={() => setOpenDialog('settings')}
+        onOpenHelp={() => setOpenDialog('help')}
       />
+
+      <SlidesSettingsDialog
+        open={openDialog === 'settings'}
+        title={data.title}
+        size={data.size}
+        theme={data.theme}
+        onClose={() => setOpenDialog(null)}
+        onUpdateTitle={(title) => commitData({ ...data, title })}
+        onUpdateSize={(size) => commitData({ ...data, size })}
+        onUpdateTheme={handleUpdateTheme}
+      />
+
+      <SlidesHelpDialog open={openDialog === 'help'} onClose={() => setOpenDialog(null)} />
 
       <div className='flex flex-1 overflow-hidden'>
         <SlidesSidebar
