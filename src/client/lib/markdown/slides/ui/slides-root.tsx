@@ -16,7 +16,6 @@ import { SlidesHelpDialog } from './slides-help-dialog'
 import { SlidesSettingsDialog } from './slides-settings-dialog'
 import { SlidesInlinePreview } from './slides-inline-preview'
 import { copySlidesLink } from './copy-link'
-import { VIRTUAL_CANVAS_WIDTH } from './canvas-helpers'
 import {
   createDefaultChart,
   createDefaultCode,
@@ -66,13 +65,13 @@ export const SlidesRoot = memo(function SlidesRoot({
       const observer = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const w = entry.contentRect.width
-          if (w > 0) setInlineScale(Math.min(w / VIRTUAL_CANVAS_WIDTH, 1))
+          if (w > 0) setInlineScale(Math.min(w / data.size.width, 1))
         }
       })
       observer.observe(inlineContainerRef.current)
       return () => observer.disconnect()
     }
-  }, [isFullscreen])
+  }, [data.size.width, isFullscreen])
 
   const handleUpdateSlide = useCallback(
     (patch: Partial<Slide>) => {
@@ -340,6 +339,7 @@ export const SlidesRoot = memo(function SlidesRoot({
       <div className='flex flex-1 overflow-hidden'>
         <SlidesSidebar
           slides={slides}
+          size={data.size}
           activeSlideId={activeSlide?.id || ''}
           theme={data.theme}
           assets={data.assets}
@@ -368,6 +368,7 @@ export const SlidesRoot = memo(function SlidesRoot({
               <SlidesCanvas
                 slide={activeSlide}
                 theme={data.theme}
+                page={data.size}
                 scale={zoom}
                 editable={true}
                 activeElementId={activeElementId}

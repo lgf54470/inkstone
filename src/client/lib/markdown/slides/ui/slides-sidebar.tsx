@@ -2,17 +2,17 @@ import { memo } from 'react'
 import { Plus, Trash2, Copy } from 'lucide-react'
 import type { Slide, SlidesTheme } from '../types'
 import { SlidesCanvas } from './slides-canvas'
-import { VIRTUAL_CANVAS_WIDTH, VIRTUAL_CANVAS_HEIGHT } from './canvas-helpers'
+import type { PageSize } from '../page'
 import { t } from '../../../i18n'
 
 const THUMB_WIDTH = 156
-const THUMB_SCALE = THUMB_WIDTH / VIRTUAL_CANVAS_WIDTH
-const THUMB_HEIGHT = Math.round(VIRTUAL_CANVAS_HEIGHT * THUMB_SCALE)
 
 interface SlideThumbnailProps {
   slide: Slide
   idx: number
   isActive: boolean
+ /** The deck's page, so a 4:3 deck gets 4:3 thumbnails instead of a cropped 16:9 one. */
+  size: PageSize
   theme: SlidesTheme
   assets?: Record<string, string>
   canDelete: boolean
@@ -25,6 +25,7 @@ const SlideThumbnail = memo(function SlideThumbnail({
   slide,
   idx,
   isActive,
+  size,
   theme,
   assets,
   canDelete,
@@ -32,8 +33,11 @@ const SlideThumbnail = memo(function SlideThumbnail({
   onDuplicate,
   onDelete,
 }: SlideThumbnailProps) {
+  const scale = THUMB_WIDTH / size.width
+  const thumbHeight = Math.round(size.height * scale)
   return (
     <div
+      data-slide-thumbnail
       onClick={() => onSelect(slide.id)}
       className={`group relative rounded-lg border-2 transition-all cursor-pointer overflow-hidden select-none shrink-0 ${
         isActive
@@ -42,7 +46,7 @@ const SlideThumbnail = memo(function SlideThumbnail({
       }`}
       style={{
         width: `${THUMB_WIDTH}px`,
-        height: `${THUMB_HEIGHT}px`,
+        height: `${thumbHeight}px`,
       }}
     >
       <span className='absolute top-1 left-1 z-20 text-[length:var(--text-10)] font-semibold text-[var(--text-secondary)] bg-white/90 dark:bg-black/80 rounded px-1.5 py-0.5 shadow-xs'>
@@ -77,9 +81,9 @@ const SlideThumbnail = memo(function SlideThumbnail({
 
       <div
         style={{
-          width: `${VIRTUAL_CANVAS_WIDTH}px`,
-          height: `${VIRTUAL_CANVAS_HEIGHT}px`,
-          transform: `scale(${THUMB_SCALE})`,
+          width: `${size.width}px`,
+          height: `${size.height}px`,
+          transform: `scale(${scale})`,
           transformOrigin: 'top left',
           pointerEvents: 'none',
         }}
@@ -87,6 +91,7 @@ const SlideThumbnail = memo(function SlideThumbnail({
         <SlidesCanvas
           slide={slide}
           theme={theme}
+          page={size}
           assets={assets}
           scale={1}
           editable={false}
@@ -98,6 +103,7 @@ const SlideThumbnail = memo(function SlideThumbnail({
 
 interface SlidesSidebarProps {
   slides: Slide[]
+  size: PageSize
   activeSlideId: string
   theme: SlidesTheme
   assets?: Record<string, string>
@@ -110,6 +116,7 @@ interface SlidesSidebarProps {
 
 export const SlidesSidebar = memo(function SlidesSidebar({
   slides,
+  size,
   activeSlideId,
   theme,
   assets,
@@ -126,6 +133,7 @@ export const SlidesSidebar = memo(function SlidesSidebar({
           slide={slide}
           idx={idx}
           isActive={slide.id === activeSlideId}
+          size={size}
           theme={theme}
           assets={assets}
           canDelete={slides.length > 1}

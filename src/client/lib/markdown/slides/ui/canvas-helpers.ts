@@ -1,8 +1,6 @@
 import type { CSSProperties } from 'react'
+import type { PageSize } from '../page'
 import type { SlideElement, TextElement, ShapeElement, TableElement, ChartElement } from '../types'
-
-export const VIRTUAL_CANVAS_WIDTH = 1280
-export const VIRTUAL_CANVAS_HEIGHT = 720
 
 export function getElementBoxStyle(el: SlideElement): CSSProperties {
   const rot = el.rotation ? `rotate(${el.rotation}deg)` : undefined
@@ -84,9 +82,9 @@ export function getChartColor(el: ChartElement, defaultAccent: string): string {
   return el.color || defaultAccent || 'var(--accent)'
 }
 
-export function isBackgroundLayer(el: SlideElement): boolean {
+export function isBackgroundLayer(el: SlideElement, page: PageSize): boolean {
   return (
-    (el.x === 0 && el.y === 0 && el.w >= VIRTUAL_CANVAS_WIDTH && el.h >= VIRTUAL_CANVAS_HEIGHT) ||
+    (el.x === 0 && el.y === 0 && el.w >= page.width && el.h >= page.height) ||
     el.id === 'sd-glow' ||
     (el.type === 'svg' && (el.asset === 'grain' || el.asset === 'dots-ink' || el.asset === 'dots-paper'))
   )

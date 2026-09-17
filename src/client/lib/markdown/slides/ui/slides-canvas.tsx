@@ -17,9 +17,8 @@ import {
   getTextStyle,
   getChartColor,
   isBackgroundLayer,
-  VIRTUAL_CANVAS_WIDTH,
-  VIRTUAL_CANVAS_HEIGHT,
 } from './canvas-helpers'
+import type { PageSize } from '../page'
 import { SelectionOverlay } from './selection-overlay'
 import { pasteSlideRichText, sanitizeSlideRichText, sanitizeSlideSvgMarkup } from '../sanitize'
 
@@ -28,6 +27,8 @@ const CIRCLE_RADIUS = '50%'
 interface SlidesCanvasProps {
   slide: Slide
   theme: SlidesTheme
+  /** The page this deck is authored against; the canvas never assumes a default one. */
+  page: PageSize
   scale?: number
   editable?: boolean
   activeElementId?: string | null
@@ -39,6 +40,7 @@ interface SlidesCanvasProps {
 export const SlidesCanvas = memo(function SlidesCanvas({
   slide,
   theme,
+  page,
   scale = 1,
   editable = false,
   activeElementId = null,
@@ -95,8 +97,8 @@ export const SlidesCanvas = memo(function SlidesCanvas({
       ref={canvasRef}
       className='relative overflow-hidden select-none bento-slide-shadow rounded-xs'
       style={{
-        width: `${VIRTUAL_CANVAS_WIDTH}px`,
-        height: `${VIRTUAL_CANVAS_HEIGHT}px`,
+        width: `${page.width}px`,
+        height: `${page.height}px`,
         ...containerStyle,
       }}
       onMouseDown={(e) => {
@@ -108,7 +110,7 @@ export const SlidesCanvas = memo(function SlidesCanvas({
     >
       {slide.elements.map((el) => {
         const isSelected = editable && activeElementId === el.id
-        const isBg = isBackgroundLayer(el)
+        const isBg = isBackgroundLayer(el, page)
         const pointerEvents = !editable || (isBg && !isSelected) ? 'none' : 'auto'
 
         return (

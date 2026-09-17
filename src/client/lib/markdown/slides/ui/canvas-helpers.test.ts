@@ -6,9 +6,8 @@ import {
   getTableStyle,
   getTextStyle,
   isBackgroundLayer,
-  VIRTUAL_CANVAS_HEIGHT,
-  VIRTUAL_CANVAS_WIDTH,
 } from './canvas-helpers'
+import { DEFAULT_PAGE_SIZE } from '../page'
 import type {
   ChartElement,
   ShapeElement,
@@ -16,12 +15,9 @@ import type {
   TextElement,
 } from '../types'
 
-describe('canvas dimensions & layout', () => {
-  it('has standard 16:9 virtual canvas dimensions', () => {
-    expect(VIRTUAL_CANVAS_WIDTH).toBe(1280)
-    expect(VIRTUAL_CANVAS_HEIGHT).toBe(720)
-  })
+const DEFAULT_PAGE = DEFAULT_PAGE_SIZE
 
+describe('canvas dimensions & layout', () => {
   it('computes box position, size and transformation', () => {
     const el: TextElement = {
       id: 't1',
@@ -134,7 +130,7 @@ describe('isBackgroundLayer', () => {
       w: 1280,
       h: 720,
     }
-    expect(isBackgroundLayer(fullBleed)).toBe(true)
+    expect(isBackgroundLayer(fullBleed, DEFAULT_PAGE)).toBe(true)
 
     const glow: ShapeElement = {
       id: 'sd-glow',
@@ -146,7 +142,7 @@ describe('isBackgroundLayer', () => {
       w: 500,
       h: 500,
     }
-    expect(isBackgroundLayer(glow)).toBe(true)
+    expect(isBackgroundLayer(glow, DEFAULT_PAGE)).toBe(true)
 
     const normalShape: ShapeElement = {
       id: 's-normal',
@@ -158,6 +154,22 @@ describe('isBackgroundLayer', () => {
       w: 300,
       h: 200,
     }
-    expect(isBackgroundLayer(normalShape)).toBe(false)
+    expect(isBackgroundLayer(normalShape, DEFAULT_PAGE)).toBe(false)
+  })
+
+  it('measures page coverage against the deck own page', () => {
+    const fourThree: ShapeElement = {
+      id: 'bg-1',
+      type: 'shape',
+      shape: 'rect',
+      fill: 'transparent',
+      x: 0,
+      y: 0,
+      w: 1024,
+      h: 768,
+    }
+    expect(isBackgroundLayer(fourThree, { width: 1024, height: 768 })).toBe(true)
+    expect(isBackgroundLayer(fourThree, { width: 1920, height: 1080 })).toBe(false)
   })
 })
+

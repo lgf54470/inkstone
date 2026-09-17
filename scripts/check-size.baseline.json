@@ -15,6 +15,9 @@
     "longFns": 3,
     "deepFns": 2
   },
+  "src/client/lib/markdown/slides/ui/canvas-helpers.test.ts": {
+    "longFns": 1
+  },
   "src/client/lib/markdown/slides/ui/inspector-element.tsx": {
     "longFns": 1
   },

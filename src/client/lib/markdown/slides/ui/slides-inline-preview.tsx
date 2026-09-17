@@ -4,7 +4,6 @@ import { t } from '../../../i18n'
 import { Button, IconButton } from '../../../../components/primitives'
 import type { BentoDoc, Slide } from '../types'
 import { SlidesCanvas } from './slides-canvas'
-import { VIRTUAL_CANVAS_WIDTH, VIRTUAL_CANVAS_HEIGHT } from './canvas-helpers'
 
 const BENTO_BADGE_TEXT = 'Bento'
 
@@ -96,22 +95,21 @@ interface InlineStageProps {
 }
 
 function InlineStage({ data, slide, scale, stageRef }: InlineStageProps) {
+  const page = data.size
   return (
     <div
       ref={stageRef}
       className='relative flex w-full items-center justify-center overflow-hidden bg-black/10'
-      style={{ height: `${VIRTUAL_CANVAS_HEIGHT * scale}px` }}
+      style={{ height: `${page.height * scale}px` }}
     >
       <div
-        style={{
-          width: `${VIRTUAL_CANVAS_WIDTH * scale}px`,
-          height: `${VIRTUAL_CANVAS_HEIGHT * scale}px`,
-        }}
+        style={{ width: `${page.width * scale}px`, height: `${page.height * scale}px` }}
         className='relative'
       >
         <SlidesCanvas
           slide={slide}
           theme={data.theme}
+          page={page}
           assets={data.assets}
           scale={scale}
           editable={false}

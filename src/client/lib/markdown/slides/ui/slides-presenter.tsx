@@ -1,8 +1,13 @@
 import { memo, useEffect, useState, useMemo } from 'react'
 import type { BentoDoc } from '../types'
 import { SlidesCanvas } from './slides-canvas'
-import { VIRTUAL_CANVAS_WIDTH, VIRTUAL_CANVAS_HEIGHT } from './canvas-helpers'
+import { fitPageScale } from '../page'
 import { t } from '../../../i18n'
+
+/** How much air a show leaves around the page on a screen that is not the page's shape. */
+const SHOW_PADDING = 40
+/** A page blown up past this is a projector seen from far away, not a larger page. */
+const MAX_SHOW_SCALE = 1.8
 
 interface SlidesPresenterProps {
   doc: BentoDoc
@@ -33,18 +38,17 @@ export const SlidesPresenter = memo(function SlidesPresenter({
 
   useEffect(() => {
     const handleResize = () => {
-      const pad = 40
-      const availW = window.innerWidth - pad * 2
-      const availH = window.innerHeight - pad * 2
-      const scaleW = availW / VIRTUAL_CANVAS_WIDTH
-      const scaleH = availH / VIRTUAL_CANVAS_HEIGHT
-      setScale(Math.min(scaleW, scaleH, 1.8))
+      const box = {
+        width: window.innerWidth - SHOW_PADDING * 2,
+        height: window.innerHeight - SHOW_PADDING * 2,
+      }
+      setScale(Math.min(fitPageScale(doc.size, box), MAX_SHOW_SCALE))
     }
 
     handleResize()
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [])
+  }, [doc.size])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -76,14 +80,15 @@ export const SlidesPresenter = memo(function SlidesPresenter({
       <div className='flex flex-1 items-center justify-center w-full h-full overflow-hidden'>
         <div
           style={{
-            width: `${VIRTUAL_CANVAS_WIDTH * scale}px`,
-            height: `${VIRTUAL_CANVAS_HEIGHT * scale}px`,
+            width: `${doc.size.width * scale}px`,
+            height: `${doc.size.height * scale}px`,
           }}
           className='relative flex items-center justify-center'
         >
           <SlidesCanvas
             slide={currentSlide}
             theme={doc.theme}
+            page={doc.size}
             scale={scale}
             editable={false}
           />

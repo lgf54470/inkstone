@@ -4,6 +4,7 @@ import {
   type FenceRange,
 } from '../fence-edit'
 import { parseSlidesOutline, serializeSlidesOutline } from './outline'
+import { DEFAULT_PAGE_SIZE } from './page'
 import {
   DEFAULT_ACCENT_COLOR,
   DEFAULT_DARK_BG,
@@ -31,8 +32,6 @@ export function detectSlidesMode(body: string): SlidesMode {
   const trimmed = body.trimStart()
   return trimmed.startsWith('{') || trimmed.startsWith('[') ? 'json' : 'outline'
 }
-
-const DEFAULT_CANVAS_SIZE = { width: 1280, height: 720 }
 
 function defaultSlide(title: unknown): Slide {
   const text = typeof title === 'string' ? title : 'Welcome'
@@ -81,7 +80,7 @@ function normalizeBentoDoc(raw: Partial<BentoDoc>): BentoDoc {
     format: raw.format || BENTO_SLIDES_FORMAT,
     version: raw.version || BENTO_SLIDES_VERSION,
     title: typeof raw.title === 'string' ? raw.title : 'Bento Slides',
-    size: raw.size && raw.size.width > 0 ? { ...raw.size } : { ...DEFAULT_CANVAS_SIZE },
+    size: raw.size && raw.size.width > 0 ? { ...raw.size } : { ...DEFAULT_PAGE_SIZE },
     theme: {
       ...rawTheme,
       background: rawTheme.background || DEFAULT_DARK_BG,
