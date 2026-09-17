@@ -86,6 +86,7 @@ export const messages = {
 'slides.tool_media': '媒体',
 'slides.tool_comment': '评论',
 'slides.tool_print': '打印 / PDF',
+'slides.print_unavailable': '暂不支持打印演示稿',
 'slides.tool_share': '共享',
 'slides.tool_save': '保存',
 'slides.saved': '已保存到笔记',

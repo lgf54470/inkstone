@@ -316,7 +316,7 @@ export const SlidesRoot = memo(function SlidesRoot({
         onAddChart={handleAddChart}
         onAddCode={handleAddCode}
         onClose={() => onToggleFullscreen?.()}
-        onExportPdf={() => window.print()}
+
         onShare={() => void copySlidesLink()}
         isSaved={isSaved ?? true}
         onSave={onSave}

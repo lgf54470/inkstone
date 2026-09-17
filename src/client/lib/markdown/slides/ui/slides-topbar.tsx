@@ -398,8 +398,9 @@ export const SlidesTopbar = memo(function SlidesTopbar({
         <button
           type='button'
           onClick={onExportPdf}
-          title={t('slides.tool_print')}
-          className='flex size-7 items-center justify-center rounded hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+          disabled={!onExportPdf}
+          title={onExportPdf ? t('slides.tool_print') : t('slides.print_unavailable')}
+          className='flex size-7 items-center justify-center rounded hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] disabled:pointer-events-none disabled:opacity-40'
         >
           <Printer size={14} />
         </button>

@@ -86,6 +86,7 @@ export const messages = {
 'slides.tool_media': 'Media',
 'slides.tool_comment': 'Comment',
 'slides.tool_print': 'Print / PDF',
+'slides.print_unavailable': 'Printing a deck is not available yet',
 'slides.tool_share': 'Share',
 'slides.tool_save': 'Save',
 'slides.saved': 'Saved to the note',

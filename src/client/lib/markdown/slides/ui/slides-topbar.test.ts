@@ -100,3 +100,22 @@ describe('SlidesFullscreen save control', () => {
     view.unmount()
   })
 })
+
+describe('SlidesFullscreen print control', () => {
+  it('offers no print button while printing a deck has no pipeline behind it', () => {
+    const { entry } = makeEntry(parseSlidesOutline(source), source)
+    const view = renderElement(
+      createElement(SlidesFullscreen, {
+        session: sessionFor(entry),
+        isSaved: true,
+        onSave: () => {},
+        onClose: () => {},
+      }),
+    )
+    const print = document.querySelector<HTMLButtonElement>(
+      `button[title="${t('slides.print_unavailable')}"]`,
+    )
+    expect(print?.disabled).toBe(true)
+    view.unmount()
+  })
+})
