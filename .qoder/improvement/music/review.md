@@ -1,0 +1,300 @@
+# 音乐库功能模块审查报告（合并去重版）
+
+> 审查日期：2026-09-18。范围：`src/client/features/music/**`、`src/client/features/music/music-store/**`、`src/worker/routes/music/**`、`src/shared/{types,music-*,locales/*/music}.ts`、`src/client/lib/api/music.ts`、demo 后端 music 路由。约 93 个非测试文件 / 1.2 万行。
+> 方法：四路并行审查（UI 规范与交互、性能与状态、安全、功能完整性）+ 主审对最高影响结论逐条读码复核。
+> 溯源标记：✅ = 主审已直接读码复核证据行；◐ = 分审代理报告（附 file:line，未逐条独立复核）。
+> 严重度统一为 P0（立即修）/ P1（本迭代修）/ P2（排期修）/ P3（打磨/暂缓）。
+> 代价：S ≈ ≤半天，M ≈ 1–3 天，L ≈ 一周级，XL ≈ 需专项 + schema/后端设计。
+
+## 总览结论
+
+1. **底层工程扎实，表层接线失职。** 自研 ID3v2.2/2.3/2.4 + FLAC Vorbis + MP4 atom 解析、Range 只读标签字节、服务端跨设备续播、WebDAV 凭据走 Credential Vault 加密、SQL 全参数化 + 逐条 user_id 隔离——这些都对得起规范。但 29 个已备好却零引用的文案键暴露了一批「设计了没接上」的死控件、假表单、不可用导出。
+2. **一条可落地的账户接管链（SEC-1）**：WebDAV 流透传上游 `Content-Type` + CSP nonce 中间件给任何 `text/html` 响应内联脚本盖章，两个单点各自「还行」，叠加即同源任意 JS。必须同批修。
+3. **性能模型有三处结构性问题**：每行曲目复制一份全库派生计算（PERF-1）、播放心跳写全局 store（PERF-2）、一切以整库为单位读写（PERF-3）。三者互相放大，1000 首量级在「边播边搜」时可感知掉帧（估计 300–500 行开始可见，需实测）。
+4. **UI 有一对幽灵令牌**（`--accent-subtle` 被 21 个文件引用、`--sp-12` 均未定义），且现有 `tokens:check` 只校验定义端，抓不到「使用未定义 var」——选中态背景实际透明。
+5. **music 是全仓唯一零自动化覆盖的业务域**：无组件测试、不在 `e2e.mjs` / `e2e-visual.mjs` / `check-contrast.mjs` / bundle budget / surface coverage 名单内。上述多数问题本应被最低限度断言拦住。
+
+---
+
+## 一、安全（SEC）
+
+### SEC-1 【P0】WebDAV 流透传上游 Content-Type × CSP nonce 盖章 = 同源任意 JS → 账户接管 ✅◐
+
+- 证据：
+  - `src/worker/routes/music/stream.ts:74`：`'Content-Type': upstream.headers.get('Content-Type') ?? row.mime`（✅ 已复核）
+  - `src/worker/app.ts:197-208`：`applyScriptNonce` 对任何 `text/html` 响应里所有无 `src` 无 `nonce` 的 `<script>` 一律盖本次响应的合法 nonce（✅ 已复核）；`app.ts:67-70` 登录用户开 `preview.externalImages` 时 `img-src` 追加 `https:`（✅）。
+- 攻击路径：用户接入任意第三方 WebDAV（本功能卖点）→ 服务器对音频路径回 `text/html` + `<script>` → Worker 原样以本应用源返回 → 受害者顶层导航 `/api/music/tracks/:id/stream` 得到一份带合法 nonce 的同源文档 → `script-src` 失效，以受害者身份调用全部写接口（改备份目标、删笔记、开公开开关）→ 账户接管。`lookup.ts:25-26` 封面代理反射上游 `content-type` 是同一类问题（◐）。
+- 方案：① `stream.ts` WebDAV 分支只用 `row.mime`，最终 `Content-Type` 过 `keys.ts` 格式允许列表，非白名单降级 `application/octet-stream` + `Content-Disposition: attachment`；② nonce 盖章限定已知 HTML 文档路由（`/`、`/s/*`、`/authorize`），`/api/*` 拒绝 `text/html`；③ `lookup.ts` 响应类型限 `png/jpeg/webp`。
+- 范围：`stream.ts`、`app.ts`（全局中间件，建议单独 ADR）、`lookup.ts`。代价：S–M。**两条必须同批修，只修其一仍可利用。**
+
+### SEC-2 【P1】`coverUrl` PATCH 零格式校验 → 封面端点代理读取任意 `music/cover/` 对象（BOLA）✅
+
+- 证据：`schemas.ts:13` `coverUrl: z.string().max(2048).nullable().optional()`（✅，对比 `keys.ts:71-78` 的 `sanitizeCoverUrl` 只在 `upload.ts:113` 用）；`rows.ts:80` 把 `music/cover/` 前缀值换成代理 URL；`cover.ts:23-26` 直接当 R2/KV key 读。
+- 攻击：`PATCH` 自己曲目 `{"coverUrl":"music/cover/<day>/<他人trackId>.jpg"}` → 经自己曲目的 `/cover` 读出他人封面字节。key 含 128 位随机 id 不可盲枚举，但 `public.ts:100-112` 公开投影同时泄漏 `id` 与 `createdAt`，已发布 owner 的对象 key 可离线构造。
+- 方案：PATCH 路径改走 `sanitizeCoverUrl`（仅 `https?://` 或图片 data URL），显式拒绝 `MUSIC_OBJECT_PREFIX` 开头；服务端存储 key 只允许由本 trackId 派生。范围：`schemas.ts`、`tracks.ts`。代价：S。
+
+### SEC-3 【P1】删除路径信任用户可写 `object_key`，前缀检查代替归属检查 → 可删他人 R2/KV 对象 ✅◐
+
+- 证据：`webdav-routes.ts:70` `object_key: body.path`（✅，`importMusicSchema` 仅禁 `..` 段，`schemas.ts:93-96` ✅）；`tracks.ts:109` `keys.filter(isMusicObjectKey)` 仅前缀判定（◐）。
+- 攻击：导入时提交 `path: "music/<day>/<victim>.mp3"` 形态的字符串落库，删除该曲目时触发 `env.FILES.delete(任意 music/ 键)` → 跨租户破坏。WebDAV 源轨道本就不该触碰 R2 删除。
+- 方案：删 R2 对象须同时满足 `row.source === 'r2'` 且 key 由行数据重算（`musicObjectKey(...row.id...)`）；`importMusicSchema.path` 禁止以 `music/` 开头并加字符白名单。范围：`webdav-routes.ts`、`tracks.ts`、`schemas.ts`。代价：S。
+
+### SEC-4 【P1】「公开音乐库」是实例级全局 meta，任何 member 可开关/抢主 ✅
+
+- 证据：`settings.ts:8-9` 全局 key `music_public_enabled`/`music_public_owner`；`:27-33` 仅 `requireAuth`，无角色判定，禁用时不清 owner（✅ 全文件已读）。对照仓库约定 `routes/settings.ts:25`、`mcp-settings.ts:79` 均要求 `role === 'owner'`。
+- 攻击：开放注册实例（`auth.ts:138-139` 首用户 owner 其后 member）中，任一 member `PUT {enabled:true}` 即把公开投影指向自己（静默下线他人），或 `{enabled:false}` 拒绝他人服务。`public.ts:58/63` 的 `max-age=600/86400` 使取消发布后边缘缓存仍存活最长 24h。
+- 方案：加 `role === 'owner'` 判定（或按 `userId` 分键支持多 owner）；关闭时删 owner key；公开投影加可失效版本段。代价：S–M。
+
+### SEC-5 【P1】`GET /api/music/webdav` 带 MKCOL 写副作用且 GET 免检客户端头 → 顶层导航型 CSRF ◐
+
+- 证据：`webdav-routes.ts:18,45` GET 先 `ensureMusicDir` → `backup/webdav.ts:113-117` 发 `MKCOL`；`middleware/auth.ts:138-143` `requireClientHeader` 只对非 GET 生效，cookie `SameSite=Lax` 允许顶层 GET 带 cookie。
+- 方案：`ensureMusicDir` 移出只读浏览路径（改显式 POST 或仅写入时确保）；GET 浏览 `no-store`。代价：S。
+
+### SEC-6 【P1】cover-lookup 出站请求无主机白名单、无重定向管控、无限速 ◐
+
+- 证据：`lookup.ts:21` 直接 `fetch(artworkUrl)`（默认跟随重定向，未过 `isAllowedOutboundUrl`）；`music-cover-match.ts:11-27` 未校验 iTunes 响应里的 URL scheme/host。二阶 SSRF（`http://169.254.169.254`、重定向换源）+ Content-Type 反射（并入 SEC-1）。
+- 方案：`isAllowedOutboundUrl` + `*.apple.com` 白名单 + `redirect:'manual'` + 按 `music-lookup:<userId>` 预算。代价：S。
+
+### SEC-7 【P1】除上传外，音乐侧昂贵/写端点全部无速率限制 ◐
+
+- 证据：唯一预算在 `upload.ts:162-178`（200/h）；`webdav-routes.ts` import/upload/delete（每次对第三方发多请求并缓冲 64MB）、`tracks.ts:58` play、`playback.ts:41`、batch、`settings.ts:27`、`lookup.ts:16` 均无限流。单用户脚本可把用户自己的 WebDAV 打挂（应用沦为放大源）、打满 D1 写配额。
+- 方案：把 `backup.ts` 的 `OUTBOUND_BUDGETS` 模式抽成共享工具，给 `music-webdav:*`、`music-play:*`、`music-write:*`、`music-lookup:*` 设具名预算；CI 门禁要求新增出站端点必须声明预算。代价：M。
+
+### SEC-8 【P2】上传整体缓冲 + 配额 TOCTOU + 节流顺序 ◐
+
+- `upload.ts:45` 64MB 全进 isolate（并发即 OOM 风险）；`upload.ts:154-160` 先 SUM 再写的配额可被并发穿透；`upload.ts:33` 节流在体积校验前，可被用来「一次 429 锁人」。方案：R2 走 `put(key, stream)`（需实测 Hono `formData()` 流式可用性）、配额事务式收口、节流后置。代价：M。
+
+### SEC-9 【P2】第三方声明的 mime/size 无条件采信 ✅◐
+
+- `webdav-routes.ts:71`（✅ 片段已读：`stat.mime.startsWith('audio/')` 即采信任意子类型）；`stream.ts:83`（✅）用存储的 `size_bytes` 填 `Content-Length`，与实际正文不符时缓存污染/流挂起。方案：mime 过格式允许列表；`Content-Length` 只在 R2 分支设置。代价：S。
+
+### SEC-10 【P2】客户端 FLAC/MP4 解析越界抛异常且调用点未捕获（违反铁律 2）◐
+
+- `music-flac.ts:51-56` 0 长度 PICTURE 块即 `RangeError`；`music-mp4.ts:50-51` `mvhd size=8` 越界；`library-tracks.ts:17` 与 `music-hub-toolbar.tsx:149` 均无 catch → 恶意/畸形 WebDAV 字节让扫描静默中断。方案：解析器长度不足返回 `null`（同 `music-cover.ts:57` 的既有姿势），调用点补 catch + toast。代价：S。
+
+### SEC-11~14 【P3】
+
+- **SEC-11** `webdav-xml.ts:23` `String.fromCodePoint` 对 `&#99999999999;` 抛 RangeError → 整个 browse 500。一行修复 + `parseMultistatus` try 兜底。代价：S。◐
+- **SEC-12** `rows.ts:63` 把内部 `objectKey` 下发前端并写进 M3U 导出（与 FEAT-4 同根）；`rows.ts:79` 允许 `http://` 封面外链（混合内容 + 向第三方泄漏访问者 IP）。方案：类型不暴露 objectKey，封面统一 `sanitizeCoverUrl`。代价：S。◐
+- **SEC-13** SSRF 防护停留在字面 hostname（`outbound-url.ts:12-41`），DNS rebinding 在 Cloudflare 边缘不可达内网、但本地/自托管 workerd 可达——需人工确认部署形态声明；若支持自托管需解析后 IP 二次判定。代价：M。◐
+- **SEC-14** demo 后端 `music.ts:39,57` 采信 `file.type` 并回显（攻击者=用户本人，仅记录，防复制粘贴到真实路由）。代价：S。◐
+
+### 安全面核对通过项（无需修改）
+
+34 条路由除 `public.ts` 三条有意公开外全部 `requireAuth`；全部查询带 `user_id`（含 IN 批量分支）；SQL 全 prepared + 白名单列名；WebDAV 密码入 Credential Vault 加密、从不回传、不入日志；路径遍历三重收口（`joinRelative` + `normalizeMusicDir` + 逐段 encode）；id/对象 key 不可枚举；前端无 `dangerouslySetInnerHTML`，React 文本渲染 + `nosniff` + `Range` 边界处理正确；客户端存储无 token/密码。
+
+---
+
+## 二、UI 规范与交互（UI）
+
+### UI-1 【P0】正在播放面板收藏/置顶是死按钮 ✅
+
+- `music-now-playing.tsx:107-112` 两个 `IconButton` 无 `onClick`（✅ 已复核，相邻 Tags 按钮 :113 有）。点击零反馈。
+- 方案：接 `toggleFavorite`/`togglePin`（store action 与后端 PATCH 都在，纯漏接线）。代价：S。
+
+### UI-2 【P0】歌单描述收了就丢——静默数据丢失 ✅◐
+
+- `music-playlist-modal.tsx:30-36` 采集 `description`，保存路径只发 `{ name }`（`library-collections.ts:83`）；`api/music.ts:100` 与后端 schema 均支持 description。用户填完关窗内容凭空消失。
+- 方案：透传 description（新建 + 重命名 + 编辑态渲染回填），或删掉 Textarea。代价：S。
+
+### UI-3 【P0】沉浸式播放器无任何可见关闭入口、对话框无可访问名 ✅
+
+- `Modal` 头部/关闭按钮仅在传 `title` 时渲染（`components/overlay/modal.tsx:44` ✅）；`music-immersive-player.tsx:41`（✅）不传 `title`/`ariaLabel` → 画面上只有 Esc/遮罩可退，读屏器拿到通用 `overlay.dialog`。`music-hub-modal.tsx` 同样未传 `ariaLabel`，自绘 `<h2>` 未与 dialog 关联。未引用键 `music.exit_immersive` 是原意图证据。
+- 方案：传 `ariaLabel` 并在自绘头部放关闭 `IconButton`；两处 modal 补可访问名。代价：S。
+
+### UI-4 【P0】加载失败态无重试且直吐技术字符串 ◐
+
+- `music-hub-modal.tsx:106-107` `description={loadError}` 把 `fetch failed` 甚至字面量 `'error'` 给用户，`Empty` 支持 `action` 却不给；未引用键 `music.retry`。
+- 方案：action 接 `loadLibrary()` + `music.retry`；原始 error 只进 console。代价：S。
+
+### UI-5 【P1】幽灵令牌 `--accent-subtle`：选中态背景实际透明 ✅
+
+- `tokens.css` 只有 `--accent-soft/-softer/-ring/-muted`，**无 `--accent-subtle`**（✅ grep 0 定义），但 21 个文件引用（✅ 计数复核），含 music 的 sidebar/playlists/source-badge/edit-modal/transfer-dialog。结果：当前曲库范围、来源徽标、选中歌单在两套主题下都没有底色，状态只剩字重+文字色（同时踩「不得仅靠颜色传达」）。**全仓性问题，不止 music**（`components/hub-tag-item.tsx`、`share/*`、`blog/*`）。
+- 方案：统一替换 `--accent-soft`；给 `check-token-drift.mjs` 加反向校验（收集所有 `var(--x)` 使用点与定义集求差，非空即失败）——现有 `tokens:check`/`hardcoded:check` 都抓不到这类错误。范围：21 文件 + 1 脚本。代价：S（替换）+ M（门禁）。
+
+### UI-6 【P1】幽灵令牌 `--sp-12`：行高预留失效 ✅
+
+- `tokens.css:46-47` 间距从 `--sp-10:40px` 跳到 `--sp-16:64px`（✅），`music-track-row.tsx:14`（✅）`containIntrinsicSize: 'auto var(--sp-12)'` 拿无效值 → 离屏行不预留高度，长列表滚动条跳动/锚点漂移。
+- 方案：改 `'auto 48px'` 或补 `--sp-12: 48px` 令牌（后者需更新漂移基线）。代价：S。
+
+### UI-7 【P1】触屏设备整片不可用：hover/focus 才显形的控件 ◐
+
+- `music-track-row.tsx:210/219`、`music-track-card.tsx:58`、`music-queue-list.tsx:65` `opacity-0 group-hover:...:opacity-100`——触屏无 hover，行菜单/收藏/队列移除在移动端等于不存在；且 `opacity-0` 未配 `pointer-events-none`，透明按钮反向拦截行点击。同仓 `music-hub-tags.tsx:134` 已有正确范式（默认可见，`md:` 起降级）。
+- 方案：照 hub-tags 姿势改三处。代价：S。
+
+### UI-8 【P1】队列重复曲目索引错位 + key 重复 ✅
+
+- `music-queue-list.tsx:31`（✅）`index: queue.indexOf(id)` 对重复入队曲目恒返回首个下标 → 播放/移除操作错行；`key={id}-${index}` 随之重复，React 复用错节点。另 `indexOf` 在 map 内 O(Q²)（并入 PERF-21）。
+- 方案：`selected.map((id, index) => ...)`；根治是入队时生成条目 uid。代价：S。
+
+### UI-9 【P1】列表 ARIA 结构非法：`role=grid` 行内只有一个 gridcell ◐
+
+- `music-track-row.tsx:83-96,131` 序号/封面/标题/操作列全是裸 span/button，读屏表导航崩坏；表头 `columnheader`（`music-track-table.tsx:76-97`）无交互无 `aria-sort`；窄→宽切换来源列错位。
+- 方案：要么补齐 `table`+`aria-sort` 全列，要么降级 `list/listitem`。与 UI-18（表头排序）、FEAT-9（艺人列）合并做。代价：M。
+
+### UI-10 【P1】空搜索结果误报「库是空的，去上传」 ◐
+
+- `music-track-list.tsx:52` 有查询词时仍用 `no_tracks_hint`，无「清除搜索」出口；未引用键 `music.no_results`。方案：`hasQuery` 分支 + action 清 query。代价：S。
+
+### UI-11 【P1】WebDAV 浏览失败渲染成「空目录」 ◐
+
+- `music-webdav-modal.tsx:51-53,118-119` 列举失败时 `entries` 为空 → 显示 `webdav_empty`，真实错误只在未配置分支；未引用键 `music.webdav_failed`。方案：先判 `webdav.error` → 错误态 + 重试。代价：S。
+
+### UI-12 【P1】浮动播放器拖拽把手：`span role=button` + 误导文案（铁律 10）◐
+
+- `music-floating-player.tsx:136` `aria-label` 用 `music.drag_to_reorder`（「拖拽调整顺序」），实际是移动窗口；无 Enter/Space/Esc 语义。方案：换 `IconButton` + 新键 `music.move_player`，`music-drag.ts` 补键盘模式切换与 Esc。与 FEAT 报告的 B-11 同条。代价：S–M。
+
+### UI-13 【P1】可滚动容器键盘不可达 ◐
+
+- 歌词容器（`music-now-playing.tsx:49`、`music-immersive-player.tsx:51`）、WebDAV 列表（`music-webdav-modal.tsx:121`）、传输列表（`music-transfer-dialog.tsx:134`）缺 `tabIndex={0}`。代价：S。
+
+### UI-14 【P1】窄屏布局需实测：三栏 `shrink-0` 可能挤没中央列表 ◐（需人工确认）
+
+- `music-hub-modal.tsx:40` `min-h-145`（≈580px）小视口撑破；sidebar `w-56`/now-playing `w-64`/immersive `w-96` 均 `shrink-0`，<700px 时中央列表被压向 0。浮动播放器 bottom 偏移与状态栏重叠需 375px 实测。方案：`max-[900px]` 断点折叠左右栏为 Drawer。代价：M。
+
+### UI-15 【P1】歌单排序链路全就绪、零 UI 调用；且置顶永远覆盖播单顺序 ✅◐
+
+- `api/music.ts:118 reorderPlaylist` 与 `playlists.ts:101-114` 路由齐全，全仓无调用方（feature 与 UI 两路独立 grep 确认）；`library-load.ts:141` 所有 scope 统一置顶优先，播单手动顺序被抹平。方案：playlist scope 按 items 顺序短路排序 + 接拖拽/上下移菜单项（键盘等价）。代价：M。
+
+### UI-16~24 【P2】（各条含证据，方案均为局部改动，代价 S–M）
+
+- **UI-16** 视图切换/来源筛选手写 `role=radiogroup`（`music-track-list.tsx:110-128`、`music-hub-toolbar.tsx:39-60`）绕开现成 `Segmented`：无 roving tabindex、无方向键、组名误用选项文案。→ 换 `Segmented`。◐
+- **UI-17** 睡眠倒计时每秒变更落在 `role=status aria-live=polite`（`music-transport-widgets.tsx:222-227`）→ 读屏每秒轰炸。→ `role=timer aria-live=off`，仅开/关播报。◐
+- **UI-18** 破坏性确认不一致：单曲删除（`music-track-menu.tsx:77-82`）、歌单删除（`music-hub-playlists.tsx:52`）、清空队列直删，而批量删除/远端删除有 `confirm()`；`delete_track_confirm`/`delete_playlist_confirm` 两键未引用。→ 统一 `confirm({tone:'danger'})`，歌单文案注明「不删音频」。**真删 R2 对象无确认，属合规缺口。**✅（feature 路复核）
+- **UI-19** 音量控件双实现（`music-player-controls.tsx:102-126` vs 复用中的 `MusicVolumeSlider`）→ 组合复用。◐
+- **UI-20** 裸 `<img>` 绕过 `MusicArtwork` onError 兜底（`music-player-controls.tsx:66-68`、`music-now-playing.tsx:62-64`）→ 统一组件。◐
+- **UI-21** `music-popover.tsx` 伪装 dialog：触发器无 `aria-expanded/haspopup`，面板项键盘不可达（倍速/睡眠/队列/音量四处使用）→ 迁移 `Menu` 或补漫游焦点。◐
+- **UI-22** 搜索历史面板缺 combobox 语义（`music-hub-toolbar.tsx:172-201`）→ `role=listbox` + 方向键或改 `Menu`。◐
+- **UI-23** `--scrim` 上叠 `--text-inverse` 的时长角标（`music-track-card.tsx:36/39` 等 3 处）对比度存疑且 10px 字——未被任何门禁覆盖，需实测；建议专用 overlay-badge 令牌并把 music 纳入 `check-contrast.mjs`。◐（需人工确认）
+- **UI-24** 上传反馈缺口：`dismissUpload` 只是隐藏行、上传继续（用户以为取消）；只校验 `size>0` 不校验类型；逐文件 toast 不聚合（`library-collections.ts:169-171,223-225`）。→ 真 `cancelUpload`（AbortController）+ 扩展名过滤 + 汇总 toast。与 PERF-8/FEAT-3 同根。◐
+
+### UI-25~29 【P3】
+
+- **UI-25** `♪` 进可访问名、缺 `aria-current`；冗余原生 `title`（`music-queue-list.tsx:58`、`music-status-bar.tsx:50`）；`music-hub-tags.tsx:116` 裸 `<input>` 且借 notes 域键。代价：S。◐
+- **UI-26** 进度条无缓冲显示（`audio-engine` 已暴露 buffered 事件未用）；沉浸式无音量滑块。代价：S–M。◐
+- **UI-27** 双击复位/双击静音隐藏手势、`120` 魔法数（`music-floating-player.tsx:99`）。代价：S。◐
+- **UI-28** `as never` 断言（`selectors.ts:18,28`）、`pane` 死属性、占位 lambda 误读。代价：S。◐
+- **UI-29** 格式化不统一：`formatTotalDuration` 硬编码英文单位、模块内重复 `formatBytes`、`toLocaleDateString()` 用浏览器 locale 而非应用 locale（`music-utils.ts:19-33`、`music-now-playing.tsx:102`）。→ `Intl` + 复用 `lib/time.ts`。代价：S。◐
+
+### UI 正面结论
+
+无 `window.alert/confirm/prompt`、无 `!important`、无十六进制硬编码色、z-index 全走 `--z-*`、内联 style 仅运行时动态值、`Modal/Menu/confirm/Empty/Field` 复用到位、en/zh 键 228/228 对齐、源码零中文字面量、`prefers-reduced-motion` 有全局兜底且被歌词滚动正确尊重。
+
+---
+
+## 三、性能与状态（PERF）
+
+### PERF-1 【P0】每行曲目挂一份完整菜单 = 每行一次全库过滤排序 + ~30 个订阅 ✅
+
+- 证据：`music-track-row.tsx:116`（✅）行内挂 `<MusicTrackMenu target={{track}}>`；`music-track-menu.tsx:52-54`（✅）菜单 hooks 无条件执行且含 `useVisibleTracks()`；`selectors.ts:7-21`（✅）`useVisibleTracks` = 9 个原子订阅 + 每行自己的全库 `visibleTracks()` memo（scope→来源过滤→拼音模糊 rank→双排序→`collectTagIds` 不动点循环）。`target={{track}}` 行内字面量使菜单 memo 每行渲染必失效（含 `flattenTags` O(T²)）。
+- 触发：1000 首 + 输入 10 字符 ≈ 1 万次整库过滤；任何 store 写入（含 PERF-2 心跳）跑 3 万次 selector。需实测确认帧耗时（估计 300–500 行开始可见）。
+- 方案：①菜单改全局单例（store 存 `menuTarget`，hub 根部渲染一份）；②行内删 `useVisibleTracks`；③动作函数走 props 下传或 `useShallow`。范围：track-row/menu/table/list/card。代价：M。
+
+### PERF-2 【P0】播放心跳 `currentTimeMs` 写全局 store ✅
+
+- 证据：`audio-engine.ts:38` `timeupdate → bridge.onTime`；`player.ts:18`（✅）`set({ currentTimeMs })` 每 ~250ms 一次全局写入；9 个订阅点，沉浸式 modal 顶层订阅使整棵子树（歌词表 + 队列列表）每秒重建 4 次。
+- 方案：进度下沉为非 React 状态——`audio-engine` 暴露独立 `subscribeProgress`（或 `useSyncExternalStore` 小 store），seek 条/时间文本/歌词高亮各自订阅；主 store 只在 pause/ended/seek/切歌写一次；歌词高亮按 `activeLyricIndex` 变化才更新。代价：M。
+
+### PERF-3 【P0】整库无分页无字段裁剪（歌词随行下发），20+ mutation 后全量重载 ✅◐
+
+- 证据：`library.ts:36` SELECT 含 `lyric`（上限 128KB/首）（◐）；`library-load.ts:11` 一次拉全库（✅）；`library-collections.ts:128,139,154,164`、`library-tracks.ts:105,119`、`music-hub-modal.tsx:31`（每次打开 Hub 无条件 `loadLibrary()`，✅）各自整库重载。
+- 方案：①`/library?fields=light` 去 lyric，歌词懒取；②mutation 返回单条本地 merge（`mergeTracks` 已存在）；③`loadLibrary` 加 in-flight 去重 + 60s 新鲜度 + ETag；④后续加游标增量。范围：worker `library.ts` + store 各 mutation。代价：M。
+
+### PERF-4 【P0】KV 部署下每个 Range 请求把整首歌读进 isolate ◐
+
+- 证据：`storage.ts:60-63` `FILES_KV.get(key,'arrayBuffer')` 后 `subarray` 切片；`stream.ts:41` 所有 Range 走此路。用户拖一次进度条 = 拉整文件（≤25MB）再切小段，seek 连环请求。R2 分支（`storage.ts:54` 原生 range）无此问题。
+- 方案：KV 分支按 1MB 对齐窗口 + Cache API；或 KV 部署文档声明限制。代价：M。需实测。
+
+### PERF-5~13 【P1】
+
+- **PERF-5** WebDAV 批量导入每首「1 次 import + Range 探测 + PATCH + **整库重载**」串行（`webdav.ts:66-67,79`）→ 本地 append、循环尾一次 reload、并发 4–6。代价：S–M。◐
+- **PERF-6** 元数据扫描 256KB 步进循环里对**累积缓冲**重跑封面解码（`createImageBitmap`+canvas+`toDataURL` 同步）与整套 ID3 解析，`concatBytes` 每轮整体复制（6MB tag ≈ 72MB 累计拷贝，`music-metadata.ts:114-123,187`）→ 按 ID3 header 一次取精确长度、末次解码、chunks 单次 alloc、解析搬 Web Worker。代价：M。◐
+- **PERF-7** 下载全量缓冲内存峰值 ~3× 体积 + 每 chunk 写 store（`transfers.ts:35,54,96`）→ 流式 Blob / File System Access，进度 200ms 节流。代价：S–M。◐
+- **PERF-8** 上传/下载/WebDAV 导入/元数据刷新全部并发=1 严格串行（`library-collections.ts:175-177`、`transfers.ts`、`library-tracks.ts:14`）→ `mapWithConcurrency(items,4,fn)`，解析与 PUT 重叠。代价：S–M。◐
+- **PERF-9** 批量刷新元数据/匹配封面：500 首 = 500×(1–3 range + 6–7 条 D1 的 PATCH) 串行、无进度、不可取消、再点叠加（`library-tracks.ts:14-25`、`library-covers.ts`、`music-hub-toolbar.tsx:144-149`）→ 并入 transfers 任务模型 + `POST /tracks/batch-metadata`（D1 batch）。代价：M。◐
+- **PERF-10** 可视器 rAF 不随暂停/隐藏停止、`AudioContext` 从不 suspend/close（`music-visualizer.tsx:79-87`、`audio-engine.ts:150-170`），浮动播放器默认挂载 → 后台常驻 60fps + 移动端音频硬件占用。→ `!isPlaying` 停帧、visibility/IntersectionObserver 门控、暂停 5s 后 suspend。代价：S。✅（UI 路同报）
+- **PERF-11** 播放位置周期同步条件写错：`hasPlaybackChanged` 拿相邻 250ms 快照比较 4000ms 阈值（`playback-sync.ts:58-61`）→ 只听不切歌时位置几乎不落端（只剩 pagehide 兜底）；而一旦触发，5000 首队列 = 服务端 100 次串行 D1 往返（`playback.ts:57`）。→ 记 `lastSavedPositionMs` 显式量化；服务端单条 IN 查询；队列上限降 200–300 或只存来源指纹。代价：M。◐
+- **PERF-12** 搜索无 debounce（`music-hub-toolbar.tsx:86` 每键写 store），首次拉丁输入动态拉 280KB pinyin 块并同步罗马化整库（`library-load.ts:61`）→ debounce 150–250ms + `useDeferredValue` + 分片罗马化 + search index 按库版本缓存。代价：S–M。◐
+- **PERF-13** WebDAV 目录 >512KB 直接 500（`readResponseBytesWithinLimit` 抛非 ApiError）、>2000 条静默截断（`webdav-xml.ts:15,37`）→ 超限返回具名 `ApiError(502,'webdav_listing_too_large')` + UI 提示进子目录；`{entries, truncated}` 显式标记。代价：S–M。◐
+
+### PERF-14~24 【P2】
+
+- **PERF-14** 单条 PATCH 6–7 条 D1 且两次重复 `loadTrackRow`（`tracks.ts:41,43`）→ 删重复查询、tag 校验并入 batch。S。◐
+- **PERF-15** 歌单加一项 5 条串行语句、重排一项一条 UPDATE（`playlists.ts:140-160`）；客户端逐首 await（`library-collections.ts:137`）→ 路由 `db.batch` + 批量 items 接口。M。◐
+- **PERF-16** 列表无真实窗口化，`content-visibility` 只省绘制不省 DOM/hooks/订阅（`music-track-row.tsx:14`）→ 固定行高下 60 行自研 windowing 或 `@tanstack/react-virtual`（加依赖需按铁律 8 评估）。M。◐
+- **PERF-17** `handlers` memo 依赖 `selection` → 勾选一行全列表 props 换身份重渲染（`music-track-list.tsx`）→ `selectedSet` 入 store，行内原子订阅。M。◐
+- **PERF-18** 队列列表每渲染重建全库 Map + `indexOf` O(Q²) + index 进 key 致删队首全量 remount（`music-queue-list.tsx:29-39` ✅）→ useMemo + 条目 uid。S。
+- **PERF-19** `moveSelectionToTag` 无上限并发 PATCH（`library-collections.ts:122`）→ 并发 4–6 或 batch 端点。S。◐
+- **PERF-20** 每次打开 Hub 整库重拉且无 in-flight 去重（`music-hub-modal.tsx:31` ✅）——已并入 PERF-3。
+- **PERF-21** MediaSession 缺 `setPositionState`/`seekto`（`audio-engine.ts:105-144`）→ 锁屏/车机进度条不可拖。S。◐
+- **PERF-22** `readDurationMs` 无超时（`music-probe.ts:10-14`）→ 浏览器不解码不报错的容器让串行上传链永久挂起。`Promise.race` 8s 超时。S。◐
+- **PERF-23** 拖拽/进度指针事件直写 React state（`music-drag.ts:43` 60–120Hz、DropZone dragenter 抖动、XHR progress 每事件写 store）→ transform 直写 DOM、commit 才 set、进度聚合节流。S。◐
+- **PERF-24** 偏好每次变更同步 `JSON.stringify`+`localStorage.setItem`（`player.ts:194-198`、`state.ts:80-86`）→ 250ms trailing debounce。S。◐
+
+### PERF-25~27 【P3】
+
+- **PERF-25** 音乐代码在首屏关键路径：`index.ts` barrel 静态导出 StatusBar/FloatingPlayer/SessionSync → `music-seek-bar` chunk（53.8KiB）+ `shell`（223.7KiB，含可视器）被 app 静态引入，只有 hub modal（61.7KiB）是懒的；`check-bundle-budget.mjs` 对 music 零预算（✅ 产物与脚本双证）。→ store/engine 懒化 + BUDGETS 加 music 条目。M。
+- **PERF-26** 次级未 memo 扫描：`flattenTags` O(T²)（`music-utils.ts:152`）、工具条双遍 filter、`getState()` 渲染期读（`music-immersive-player.tsx:48` ✅ 同 UI/feature 报告）。S。
+- **PERF-27** demo 后端每次 Range 整文件读入、organizer reorder O(n²)、cover-lookup 响应 2MB 缓冲且匹配串行。S–M。◐
+
+### 性能面核对通过项
+
+`loading=lazy` + failedUrl 守卫无封面重试风暴；无 `createObjectURL` 泄漏；seek 条拖动只写本地 state 松手 commit（符合预期）；D1 复合索引命中主要查询路径；tagIds 单条 link 查询无 N+1；pinyin 动态 import 未进首屏 chunk；`activeLyricIndex` 二分。
+
+---
+
+## 四、功能完整性（FEAT）
+
+### FEAT-1 【P1】播放失败只会卡死，不会跳过 ◐
+
+- `player.ts:303-314` `reportPlaybackFailure` toast + `pause()`；404/解码失败/断流把整轮播放停住。听歌单中途一首坏文件即永久中断。
+- 方案：失败自动跳下一首（连续 N 首失败才停）+ 坏曲标记。M。
+
+### FEAT-2 【P1】「加入队列」静默去重无反馈 ◐
+
+- `player.ts:219-225` 重复入队被无声吞掉；`music.added_to_queue` 文案未引用。S。
+
+### FEAT-3 【P1】上传不支持文件夹、不能取消（signal 已预留未用）◐
+
+- `music-transfer-dialog.tsx:80-90` 无 `webkitdirectory`；`api/music.ts:139` 收 `signal` 但调用处从不传；4 条 `upload_*` 错误文案未引用。M（与 UI-24/PERF-8 同根）。
+
+### FEAT-4 【P1】M3U 导出内容不可播放（写内部 objectKey）✅◐
+
+- `music-export.ts:7` 写 `track.objectKey`（`music/<userId>/<uuid>.mp3`），既非 URL 也非文件名，任何播放器放不出来；`export_done` 文案未引用证明从未端到端跑通。方案：改签名 URL（带 expires）或纯文件名列表；根治靠 SEC-12 不再下发 objectKey。S–M。
+
+### FEAT-5~10 【P2】
+
+- **FEAT-5** mp4/webm 被静默降级为纯音频且无画面（`keys.ts` mp4→m4a；播放器只有 `<img>`）——传 MV 的用户「能播但永远黑屏」。至少明确提示或拒绝。M + 产品决策。◐
+- **FEAT-6** 元数据扫描只填空不纠错（`library-tracks.ts:41-51` 注释即策略），标签写错的曲目扫多少次都不变，无「强制覆盖」开关。S–M。◐
+- **FEAT-7** 搜索 200 条上限静默截断（`music-search.ts:64`），无「结果过多」提示。S。◐
+- **FEAT-8** 无任何播放快捷键：命令面板只有 `mod+shift+m` 打开中枢，空格/←→/上下曲全无绑定；`music.keyboard_hint` 未引用。桌面播放器基本盘。S–M。
+- **FEAT-9** 最近播放纯客户端（`state.ts:7` recentIds 上限 50），换设备即丢；`music_tracks` 无 `last_played_at` 列。加列 + 在已有 `POST /tracks/:id/play` 顺手写时间，成本低价值稳。M。◐
+- **FEAT-10** 离线播放明确不可能：`pwa.config.ts:161` 把 `/api/` 划为 network-only，而音频流是 `/api/music/tracks/:id/stream`；「下载」只是存系统目录。飞行模式一首都放不了。若定位为「随身音乐 app」这是分水岭功能：SW Cache Storage + 按曲下载 + 配额回收。L。✅（配置行已读）
+
+### FEAT-11~18 【P3，按 YAGNI 多数建议暂缓】
+
+- 队列拖拽重排/插入指定位置（M）；专辑/艺人分组视图（L，「像音乐 app」的分水岭，字段已入库后端零改动）；歌单分享/智能歌单/歌单封面（M–L）；重复文件检测（M–L，需 hash 列 + 回填，建议只对新增算）；gapless/crossfade/音量归一化/EQ（M–XL，暂缓）；睡眠「播完当前曲停」（S）；在线歌词搜索（M，可照抄 cover-lookup 代理范式，但需先定版权边界）；整库纳入备份体系（M，误删不可恢复的风险真实但低频）。◐
+
+### 功能面核对通过项
+
+4 种播放模式、6 档倍速、睡眠定时、跨设备续播（5s 节流 + pagehide）、播放计数、队列搜索/移除、shift 范围选、标签树作用域、拼音模糊搜索、批量收藏/置顶/删除/下载、R2 真删回收、WebDAV 浏览→勾选导入（可带歌词）→上传、ID3/FLAC/MP4 全格式自研解析 + Range 只读、iTunes 封面批量匹配、LRC 多时间戳 + 二分高亮、流式 20s 起播看门狗、WebDAV 401/404/502 映射、MediaSession 4 action、真字节进度传输中心。
+
+---
+
+## 五、修复路线图（按批次）
+
+| 批次 | 内容 | 条目 | 代价合计 |
+| --- | --- | --- | --- |
+| **① 安全补丁（下一个版本内，必须同批）** | Content-Type 白名单 + nonce 盖章限定路由 + coverUrl 校验 + object_key 归属化 + public-settings 收 owner 角色 + GET 去写副作用 | SEC-1~6 | S–M |
+| **② 死控件/静默丢失速修（纯前端接线）** | 收藏置顶按钮、歌单描述、关闭入口、失败重试、幽灵令牌×2、队列索引、触屏 opacity 控件、删除确认统一、aria-label 把手、加入队列反馈、M3U 导出 | UI-1~12、UI-18、FEAT-2、FEAT-4 | ~2–3 天 |
+| **③ 性能结构三件套** | 单例菜单、进度出 store、library 瘦身 + 增量 merge（含 KV Range 方案） | PERF-1~4 | ~1 周 |
+| **④ IO 模型与批量任务** | 并发 4–6 + transfers 任务模型 + debounce/DeferredValue + WebDAV 截断显式化 + 元数据解析进 Worker | PERF-5~13、PERF-22~23、UI-24、FEAT-3 | ~1 周 |
+| **⑤ 能力兑现（后端就绪只差 UI）** | 歌单排序、表头排序+升降序+艺人列、播放失败自动跳、元数据强制覆盖、播放快捷键、MediaSession positionState | UI-15、UI-9、FEAT-1、FEAT-6、FEAT-8、PERF-21 | ~1 周 |
+| **⑥ 门禁补位（防回归网）** | music 单测×3 + e2e-visual 基线（含 375px/reduced-motion）+ 纳入 check-contrast + token 反向校验 + bundle budget music 条目 + 出站预算门禁 | UI-5、UI-27、PERF-25、SEC-7 | ~3–4 天 |
+| **⑦ 产品分水岭（需先做产品决策）** | 离线播放、专辑/艺人分组视图、最近播放服务端化 | FEAT-10、FEAT-9、分组视图 | L，各开专项 |
+| **暂缓（YAGNI）** | EQ、ReplayGain、真 gapless、重复检测、智能歌单、视频播放 | FEAT-11~18 多数 | — |
+
+## 六、限制声明
+
+- 本报告为静态读码审查：未运行应用、未做 1000 首库压测（PERF-1/2/3 的帧耗时为推算，标「需实测」）；UI-14 窄屏破相、UI-23 角标对比度需真机/截图复核；SEC-3 的完整利用链前提（可控 WebDAV stat 返回 + 删除分支行为）依据 `tracks.ts:109` 前缀过滤读码得出，建议补一条集成测试实证。
+- 四路分审结论已交叉印证（如「29 个未引用文案键」由功能路与 UI 路各自独立比对得出；「reorderPlaylist 零调用」由两路独立 grep 确认）；主审对全部 P0 与最高影响 P1 直接复核了证据行（✅ 标记），其余保留代理结论 + 行号供按图索骥。
