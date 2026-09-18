@@ -2607,6 +2607,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.tsx', [
+    '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',
+    '// document is guaranteed blank; offer the file as an explicit new-tab action.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root-hooks.ts', [
     '// Board columns hand over their group key; it belongs to the view\'s groupBy',
     '// property, which is not necessarily `status`.',

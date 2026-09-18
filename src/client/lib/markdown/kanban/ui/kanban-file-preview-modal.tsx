@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Download, ExternalLink, Loader2 } from 'lucide-react'
+import { Download, ExternalLink, FileText, Loader2 } from 'lucide-react'
 import { Modal } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import type { KanbanFile } from '../types'
@@ -59,29 +59,27 @@ function TextFilePreview({ url }: { url: string }) {
   )
 }
 
+// CSP sets `object-src 'none'` and `frame-src 'none'`, so any embedded PDF
+// document is guaranteed blank; offer the file as an explicit new-tab action.
+function fileMetaLabel(file: KanbanFile): string {
+  return `${(file.size / 1024).toFixed(1)} KB · ${file.mime}`
+}
+
 function PdfPreview({ file }: { file: KanbanFile }) {
   return (
-    <div className='h-[70vh] w-full p-2'>
-      <object
-        data={file.url}
-        type='application/pdf'
-        className='h-full w-full rounded-[var(--r-md)] border border-[var(--border-subtle)]'
+    <div className='flex flex-col items-center justify-center gap-3 p-8 text-center'>
+      <FileText size={28} className='text-[var(--text-tertiary)]' />
+      <div className='text-[length:var(--text-14)] font-medium text-[var(--text-primary)]'>{file.name}</div>
+      <div className='text-[length:var(--text-12)] text-[var(--text-tertiary)]'>{fileMetaLabel(file)}</div>
+      <a
+        href={file.url}
+        target='_blank'
+        rel='noopener noreferrer'
+        className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] transition-colors hover:bg-[var(--accent-hover)]'
       >
-        <div className='flex h-full flex-col items-center justify-center gap-3 p-8 text-center'>
-          <p className='text-[length:var(--text-13)] text-[var(--text-secondary)]'>
-            {file.name}
-          </p>
-          <a
-            href={file.url}
-            target='_blank'
-            rel='noopener noreferrer'
-            className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-white transition-opacity hover:opacity-90'
-          >
-            <ExternalLink size={13} />
-            <span>{t('preview.open_in_new_tab')}</span>
-          </a>
-        </div>
-      </object>
+        <ExternalLink size={13} />
+        <span>{t('preview.open_in_new_tab')}</span>
+      </a>
     </div>
   )
 }
@@ -107,7 +105,7 @@ function PreviewContent({ file }: { file: KanbanFile }) {
     <div className='flex flex-col items-center justify-center gap-3 p-8 text-center'>
       <div className='text-[length:var(--text-14)] font-medium text-[var(--text-primary)]'>{file.name}</div>
       <div className='text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
-        {`${(file.size / 1024).toFixed(1)} KB · ${file.mime}`}
+        {fileMetaLabel(file)}
       </div>
     </div>
   )
