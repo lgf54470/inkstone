@@ -4418,6 +4418,8 @@ const allowed = new Map([
     '// Scanned artwork replaces the stored object; a decode failure keeps the previous cover.',
   ]],
   ['src/worker/routes/music/webdav-routes.ts', [
+    '// GET must stay side-effect free: the directory is created by the first',
+    '// upload (putMusicObject ensures it), browsing a missing one is simply empty.',
     '// Artwork is a nicety: a failed cover write must not fail the track upload.',
   ]],
   ['src/worker/routes/music/webdav.ts', [

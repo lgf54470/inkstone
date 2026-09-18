@@ -95,7 +95,7 @@ async function safeWebdavFetch(
   }
 }
 
-export async function ensureMusicDir(ctx: MusicWebdavContext): Promise<void> {
+async function ensureMusicDir(ctx: MusicWebdavContext): Promise<void> {
   await ensureDirs(ctx.base, ctx.auth, [ctx.dir], new Set())
 }
 

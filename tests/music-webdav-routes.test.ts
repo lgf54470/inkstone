@@ -151,6 +151,26 @@ describe('music webdav routes', () => {
     expect(typeof body.reason).toBe('string')
   })
 
+  it('browses a missing root directory as empty without creating it', async () => {
+    const methods: string[] = []
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = (init?.method ?? 'GET').toUpperCase()
+      methods.push(method)
+      if (method === 'PROPFIND') return new Response('', { status: 404 })
+      if (method === 'MKCOL') return new Response(null, { status: 201 })
+      return new Response('', { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await makeDb()
+    const app = makeApp({})
+    const res = await request(app, '/api/music/webdav')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.configured).toBe(true)
+    expect(body.entries).toEqual([])
+    expect(methods).not.toContain('MKCOL')
+  })
+
   it('imports a remote file and streams it back with range support', async () => {
     const { fetchMock } = fakeWebdav()
     vi.stubGlobal('fetch', fetchMock)

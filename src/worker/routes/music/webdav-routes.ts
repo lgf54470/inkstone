@@ -11,7 +11,7 @@ import { toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
 import { importMusicSchema, webdavPathSchema } from './schemas'
 import { childUrl } from '../../backup/webdav'
-import { deleteMusicObject, ensureMusicDir, listMusicDirectory, putMusicObject, resolveMusicWebdav, statMusicObject } from './webdav'
+import { deleteMusicObject, listMusicDirectory, putMusicObject, resolveMusicWebdav, statMusicObject } from './webdav'
 import { putMusicObject as putStoredMusicObject, requireMusicStorage } from './storage'
 
 export function registerMusicWebdavRoutes(routes: Hono<AppBindings>): void {
@@ -42,9 +42,17 @@ async function browse(c: Context<AppBindings>): Promise<Response> {
     }
     throw error
   }
-  await ensureMusicDir(ctx)
-  const entries = await listMusicDirectory(ctx, parsed.data.path)
-  return c.json({ configured: true, dir: ctx.dir, directory: musicDirectoryUrl(ctx, parsed.data.path), entries, reason: null })
+  // GET must stay side-effect free: the directory is created by the first
+  // upload (putMusicObject ensures it), browsing a missing one is simply empty.
+  try {
+    const entries = await listMusicDirectory(ctx, parsed.data.path)
+    return c.json({ configured: true, dir: ctx.dir, directory: musicDirectoryUrl(ctx, parsed.data.path), entries, reason: null })
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404 && !parsed.data.path) {
+      return c.json({ configured: true, dir: ctx.dir, directory: musicDirectoryUrl(ctx, ''), entries: [], reason: error.message })
+    }
+    throw error
+  }
 }
 
 async function importTrack(c: Context<AppBindings>): Promise<Response> {
