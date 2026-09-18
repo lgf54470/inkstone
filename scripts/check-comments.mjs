@@ -1232,6 +1232,10 @@ const allowed = new Map([
     '// panel would be invisible there, and the floating card has to escape its own',
     '// stacking context too.',
   ]],
+  ['src/client/features/music/music-queue-list.tsx', [
+    '// Duplicated tracks occupy several queue positions; each rendered occurrence',
+    '// takes the next free one so play/remove hit the right row.',
+  ]],
   ['src/client/features/music/music-search.ts', [
     '// The pinyin-pro dictionary is large: keep it behind this dynamic import so the always-mounted player never pulls it into the entry bundle.',
   ]],

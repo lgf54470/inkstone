@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { X } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { IconButton } from '../../components/primitives'
@@ -25,11 +26,8 @@ export function MusicQueueList({
 }) {
   const queue = useMusic((state) => state.queue)
   const tracks = useMusic((state) => state.tracks)
-  const selected = ids ?? queue
-  const byId = new Map(tracks.map((track) => [track.id, track]))
-  const rows: QueueRow[] = selected
-    .map((id) => ({ track: byId.get(id), index: queue.indexOf(id) }))
-    .filter((row): row is QueueRow => Boolean(row.track))
+  const byId = useMemo(() => new Map(tracks.map((track) => [track.id, track])), [tracks])
+  const rows = buildQueueRows(queue, ids ?? queue, byId)
 
   if (!rows.length) {
     return <p className='py-6 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{emptyText ?? t('music.queue_empty')}</p>
@@ -39,6 +37,24 @@ export function MusicQueueList({
       {rows.map((row) => <QueueRowItem key={`${row.track.id}-${row.index}`} row={row} rowClassName={rowClassName} />)}
     </div>
   )
+}
+
+// Duplicated tracks occupy several queue positions; each rendered occurrence
+// takes the next free one so play/remove hit the right row.
+function buildQueueRows(queue: string[], selected: string[], byId: Map<string, MusicTrack>): QueueRow[] {
+  const positions = new Map<string, number[]>()
+  queue.forEach((id, index) => {
+    const list = positions.get(id)
+    if (list) list.push(index)
+    else positions.set(id, [index])
+  })
+  const rows: QueueRow[] = []
+  for (const id of selected) {
+    const track = byId.get(id)
+    const index = positions.get(id)?.shift()
+    if (track && index !== undefined) rows.push({ track, index })
+  }
+  return rows
 }
 
 function QueueRowItem({ row, rowClassName }: { row: QueueRow; rowClassName?: string }) {
