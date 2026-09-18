@@ -83,7 +83,9 @@ describe('playback progress decoupled from the library store', () => {
     })
     expect(progressTimeMs()).toBe(0)
   })
+})
 
+describe('playback position persistence', () => {
   it('still schedules a position save from progress ticks', async () => {
     vi.useFakeTimers()
     await mountSessionSync()
@@ -96,5 +98,26 @@ describe('playback progress decoupled from the library store', () => {
     expect(api.music.savePlayback).toHaveBeenCalledWith(
       expect.objectContaining({ queue: [], currentIndex: 0, positionMs: 10_000 }),
     )
+  })
+
+  it('saves a steadily drifting position once per accumulated step, not per tick', async () => {
+    vi.useFakeTimers()
+    await mountSessionSync()
+    // Playback advances every 250ms; comparing against the previous tick alone
+    // never crosses the step, so listening in real time must not stall saves.
+    for (let ms = 250; ms <= 20_000; ms += 250) {
+      act(() => {
+        setProgressTime(ms)
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(250)
+      })
+    }
+    await act(async () => {
+      vi.advanceTimersByTime(6_000)
+    })
+    const saves = vi.mocked(api.music.savePlayback).mock.calls.length
+    expect(saves).toBeGreaterThan(0)
+    expect(saves).toBeLessThan(10)
   })
 })

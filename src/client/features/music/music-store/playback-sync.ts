@@ -56,9 +56,11 @@ interface PlaybackSnapshot {
   currentTimeMs: number
 }
 
-export function hasPlaybackChanged(state: PlaybackSnapshot, previous: PlaybackSnapshot): boolean {
+export function hasPlaybackChanged(state: PlaybackSnapshot, previous: PlaybackSnapshot, savedPositionMs: number): boolean {
   if (state.queue !== previous.queue || state.currentIndex !== previous.currentIndex) return true
-  return Math.abs(state.currentTimeMs - previous.currentTimeMs) > POSITION_STEP_MS
+  // Position is quantized against the last saved anchor, not the previous tick:
+  // adjacent progress updates land ~250ms apart and would never cross the step.
+  return Math.abs(state.currentTimeMs - savedPositionMs) > POSITION_STEP_MS
 }
 
 function mergeTracks(existing: MusicTrack[], restored: MusicTrack[]): MusicTrack[] {

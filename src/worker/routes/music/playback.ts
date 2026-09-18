@@ -7,7 +7,8 @@ import { TRACK_COLUMNS, toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
 import { savePlaybackSchema } from './schemas'
 
-const QUEUE_CHUNK = 50
+// D1 allows at most 100 bound parameters per statement; ids are the tail of the bind list.
+const QUEUE_CHUNK = 96
 
 // Shared with the public blog projection so both sides read a stored queue the same way.
 export function parseStoredMusicQueue(raw: string): string[] {
@@ -53,14 +54,23 @@ export function registerMusicPlaybackRoutes(routes: Hono<AppBindings>): void {
 
 async function loadQueueTracks(db: D1Database, userId: string, queue: string[]): Promise<MusicTrack[]> {
   if (!queue.length) return []
-  const byId = new Map<string, MusicTrack>()
-  for (let start = 0; start < queue.length; start += QUEUE_CHUNK) {
-    const chunk = queue.slice(start, start + QUEUE_CHUNK)
+  // One batch keeps even a full 500-track queue at a single round trip; awaiting each
+  // chunk serially used to cost the whole queue's latency.
+  const results = await db.batch(chunks(queue).map((chunk) => {
     const placeholders = chunk.map((_id, index) => '?' + (index + 2)).join(', ')
-    const rows = await db.prepare(
+    return db.prepare(
       `SELECT ${TRACK_COLUMNS} FROM music_tracks t WHERE t.user_id = ?1 AND t.id IN (${placeholders})`,
-    ).bind(userId, ...chunk).all<MusicTrackRow>()
-    for (const row of rows.results) byId.set(row.id, toTrack(row, []))
+    ).bind(userId, ...chunk)
+  }))
+  const byId = new Map<string, MusicTrack>()
+  for (const result of results) {
+    for (const row of (result.results ?? []) as MusicTrackRow[]) byId.set(row.id, toTrack(row, []))
   }
   return queue.map((id) => byId.get(id)).filter((track): track is MusicTrack => Boolean(track))
+}
+
+function chunks(ids: string[]): string[][] {
+  const out: string[][] = []
+  for (let start = 0; start < ids.length; start += QUEUE_CHUNK) out.push(ids.slice(start, start + QUEUE_CHUNK))
+  return out
 }

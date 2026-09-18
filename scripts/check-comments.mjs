@@ -1271,6 +1271,8 @@ const allowed = new Map([
   ['src/client/features/music/music-session-sync.tsx', [
     '// The heartbeat lives in the progress store now, so the save scheduler watches',
     '// both stores and compares its own combined snapshots of queue and position.',
+    '// Position drift is measured against the last point a save was scheduled or',
+    '// flushed, so steady listening still persists every POSITION_STEP_MS.',
   ]],
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
@@ -1303,6 +1305,10 @@ const allowed = new Map([
     '// Server mutation responses carry the full record; merging it keeps the local',
     '// library authoritative without a reload.',
   ]],
+  ['src/client/features/music/music-store/playback-sync.ts', [
+    '// Position is quantized against the last saved anchor, not the previous tick:',
+    '// adjacent progress updates land ~250ms apart and would never cross the step.',
+  ]],
   ['src/client/features/music/music-store/player.ts', [
     '// Imported tracks can arrive without a duration; the decoder knows it once played.',
     '// The hub loads the library lazily, so the transport has to fetch it itself',
@@ -1312,6 +1318,10 @@ const allowed = new Map([
     '// and they race: one reporter keeps the user from getting two messages.',
     '// A slow WebDAV object streams below realtime, so waiting for the first frame',
     '// forever would look like a frozen player. Surface it and stop pretending.',
+  ]],
+  ['src/client/features/music/music-store/progress.test.ts', [
+    '// Playback advances every 250ms; comparing against the previous tick alone',
+    '// never crosses the step, so listening in real time must not stall saves.',
   ]],
   ['src/client/features/music/music-store/progress.ts', [
     '// The ~250ms audio heartbeat lives here instead of the library store, so a tick',
@@ -4475,7 +4485,10 @@ const allowed = new Map([
     '// including via redirects.',
   ]],
   ['src/worker/routes/music/playback.ts', [
+    '// D1 allows at most 100 bound parameters per statement; ids are the tail of the bind list.',
     '// Shared with the public blog projection so both sides read a stored queue the same way.',
+    '// One batch keeps even a full 500-track queue at a single round trip; awaiting each',
+    '// chunk serially used to cost the whole queue\'s latency.',
   ]],
   ['src/worker/routes/music/playlists.ts', [
     '// Existence, ownership and the cap probe share one read round trip; the write shares another.',
@@ -4663,6 +4676,7 @@ const allowed = new Map([
     '// Records every statement the route prepares, so round-trip redundancy is assertable.',
     '// Counts round trips, not statements: every execution inside one batch shares a',
     '// single call, while an execution outside a batch costs its own round trip.',
+    '// Only the playback row itself stays outside the batch that reads the tracks.',
   ]],
   ['tests/schema-migrations.test.ts', [
     '// Simulate a database whose music tables came from an earlier build: different',

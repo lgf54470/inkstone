@@ -12,6 +12,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { LIMITS } from '../src/shared/constants'
 import { TABLE_STATEMENTS } from '../src/worker/db/schema/tables'
 import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
+import { MUSIC_PLAYBACK_MIGRATION_STATEMENTS } from '../src/worker/db/schema/music'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { musicRoutes } from '../src/worker/routes/music'
@@ -94,6 +95,7 @@ async function makeDb(): Promise<D1Shim> {
   const db = createDb()
   for (const statement of TABLE_STATEMENTS) await runSql(db, statement)
   for (const statement of INDEX_STATEMENTS) await runSql(db, statement)
+  for (const statement of MUSIC_PLAYBACK_MIGRATION_STATEMENTS) await runSql(db, statement)
   DB_ENV.env.DB = db as unknown as D1Database
   DB_ENV.env.FILES = fakeR2() as unknown as AppBindings['Bindings']['FILES']
   return db
@@ -661,6 +663,29 @@ describe('music playlist item round trips (real D1)', () => {
     expect(reordered.status).toBe(200)
     expect((await reordered.json()).items.map((item: { trackId: string }) => item.trackId)).toEqual([two.id, one.id])
     expect(stats.singles).toBe(0)
+  })
+})
+
+describe('music playback queue round trips (real D1)', () => {
+  it('loads a large saved queue in one batched read', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const queue: string[] = []
+    for (let index = 0; index < 150; index += 1) queue.push(String((await uploadTrack(app, `t${index}.mp3`)).id))
+    const saved = await json(app, '/api/music/playback', { queue, currentIndex: 5, positionMs: 12_345 }, 'PUT')
+    expect(saved.status).toBe(200)
+
+    const { proxy, stats } = countRoundTrips(db)
+    DB_ENV.env.DB = proxy as unknown as D1Database
+    const body = await (await request(app, '/api/music/playback')).json()
+    expect(body.playback.queue).toEqual(queue)
+    expect(body.playback.tracks.map((track: { id: string }) => track.id)).toEqual(queue)
+    expect(body.playback.currentIndex).toBe(5)
+    expect(body.playback.positionMs).toBe(12_345)
+    // Only the playback row itself stays outside the batch that reads the tracks.
+    expect(stats.batches).toBe(1)
+    expect(stats.singles).toBe(1)
   })
 })
 describe('music cover storage', () => {

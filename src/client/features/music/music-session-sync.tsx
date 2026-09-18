@@ -13,15 +13,22 @@ export function MusicSessionSync(): null {
       return { queue, currentIndex, currentTimeMs: progressTimeMs() }
     }
     let previous = snapshot()
+    // Position drift is measured against the last point a save was scheduled or
+    // flushed, so steady listening still persists every POSITION_STEP_MS.
+    let savedPositionMs = previous.currentTimeMs
     const check = (): void => {
       const next = snapshot()
-      if (hasPlaybackChanged(next, previous)) schedulePlaybackSave(get)
+      if (hasPlaybackChanged(next, previous, savedPositionMs)) {
+        schedulePlaybackSave(get)
+        savedPositionMs = next.currentTimeMs
+      }
       previous = next
     }
     const unsubscribeLibrary = useMusic.subscribe(check)
     const unsubscribeProgress = useProgress.subscribe(check)
     const flush = (): void => {
       if (document.visibilityState !== 'hidden') return
+      savedPositionMs = progressTimeMs()
       void savePlayback(get).catch((error: unknown) => {
         console.warn('[inkstone] music playback save failed:', error)
       })
