@@ -24,13 +24,14 @@ interface KanbanTableViewProps {
 
 interface TableHeaderRowProps {
   columns: KanbanProperty[]
+  hiddenColumns?: string[]
   sorts: KanbanSort[]
   isAllSelected: boolean
   onToggleAll: () => void
   onSortColumn: (propertyId: string) => void
 }
 
-function TableHeaderRow({ columns, sorts, isAllSelected, onToggleAll, onSortColumn }: TableHeaderRowProps) {
+function TableHeaderRow({ columns, hiddenColumns, sorts, isAllSelected, onToggleAll, onSortColumn }: TableHeaderRowProps) {
   const titleColumn = kanbanTitleColumn(columns)
   const sortFor = (columnId: string) => sorts.find((sort) => sort.propertyId === columnId)
   return (
@@ -49,7 +50,7 @@ function TableHeaderRow({ columns, sorts, isAllSelected, onToggleAll, onSortColu
         sort={sortFor(titleColumn.id)}
         onSort={onSortColumn}
       />
-      {kanbanPropertyColumns(columns).map((column) => (
+      {kanbanPropertyColumns(columns, hiddenColumns).map((column) => (
         <KanbanTableHeaderCell key={column.id} column={column} sort={sortFor(column.id)} onSort={onSortColumn} />
       ))}
     </div>
@@ -71,6 +72,7 @@ interface TableGroupListProps {
   groups: KanbanGroup[]
   groupByProp: string
   columns: KanbanProperty[]
+  hiddenColumns?: string[]
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
@@ -86,6 +88,7 @@ function TableGroupList({
   groups,
   groupByProp,
   columns,
+  hiddenColumns,
   selectedIds,
   onToggleSelect,
   onOpenDetail,
@@ -106,6 +109,7 @@ function TableGroupList({
           color={group.color}
           items={group.items}
           columns={columns}
+          hiddenColumns={hiddenColumns}
           selectedIds={selectedIds}
           onToggleSelect={onToggleSelect}
           onOpenDetail={onOpenDetail}
@@ -157,6 +161,7 @@ export const KanbanTableView = memo(function KanbanTableView({
       <div className='w-full min-w-max rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         <TableHeaderRow
           columns={data.columns}
+          hiddenColumns={view?.hiddenColumns}
           sorts={view?.sorts ?? []}
           isAllSelected={isAllSelected}
           onToggleAll={handleToggleAll}
@@ -166,6 +171,7 @@ export const KanbanTableView = memo(function KanbanTableView({
           groups={groups}
           groupByProp={groupByProp}
           columns={data.columns}
+          hiddenColumns={view?.hiddenColumns}
           selectedIds={selectedIds}
           onToggleSelect={onToggleSelect}
           onOpenDetail={onOpenDetail}

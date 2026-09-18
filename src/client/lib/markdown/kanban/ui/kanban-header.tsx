@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import {
+  Columns3,
   Filter,
   Maximize2,
   Minimize2,
@@ -51,6 +52,7 @@ interface KanbanHeaderProps {
   onClearTags?: () => void
   onChangeCardSize?: (size: CardSize) => void
   onChangeGroupBy?: (propId: string) => void
+  onToggleHiddenColumn?: (propertyId: string) => void
   onAddItem: () => void
   onToggleFullscreen?: () => void
 }
@@ -76,6 +78,7 @@ interface HeaderActionsProps {
   onChangeSorts: (sorts: KanbanSort[]) => void
   onChangeCardSize?: (size: CardSize) => void
   onChangeGroupBy?: (propId: string) => void
+  onToggleHiddenColumn?: (propertyId: string) => void
   onAddItem: () => void
   onToggleFullscreen?: () => void
 }
@@ -84,19 +87,26 @@ function KanbanViewOptionsAction({
   columns,
   groupBy,
   cardSize,
+  hiddenColumns,
   onChangeGroupBy,
   onChangeCardSize,
+  onToggleHiddenColumn,
 }: {
   columns: KanbanData['columns']
   groupBy: string
   cardSize?: CardSize
+  hiddenColumns?: string[]
   onChangeGroupBy?: (propId: string) => void
   onChangeCardSize?: (size: CardSize) => void
+  onToggleHiddenColumn?: (propertyId: string) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
-
-  if (!onChangeGroupBy || !onChangeCardSize || !cardSize) return null
+  // The column panel needs nothing but its toggle; the board panel keeps its
+  // older rule of showing up only once both of its own writers are wired.
+  const isColumnPanel = onToggleHiddenColumn !== undefined
+  if (!isColumnPanel && (!onChangeGroupBy || !onChangeCardSize || !cardSize)) return null
+  const label = t(isColumnPanel ? 'preview.kanban_columns' : 'preview.kanban_group_by')
 
   return (
     <>
@@ -105,10 +115,10 @@ function KanbanViewOptionsAction({
         type='button'
         onClick={() => setIsOpen((o) => !o)}
         className='inline-flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-        aria-label={t('preview.kanban_group_by')}
+        aria-label={label}
       >
-        <SlidersHorizontal size={13} />
-        <span>{t('preview.kanban_group_by')}</span>
+        {isColumnPanel ? <Columns3 size={13} /> : <SlidersHorizontal size={13} />}
+        <span>{label}</span>
       </button>
       <KanbanViewOptions
         open={isOpen}
@@ -117,8 +127,10 @@ function KanbanViewOptionsAction({
         columns={columns}
         groupBy={groupBy}
         cardSize={cardSize}
+        hiddenColumns={hiddenColumns}
         onChangeGroupBy={onChangeGroupBy}
         onChangeCardSize={onChangeCardSize}
+        onToggleHiddenColumn={onToggleHiddenColumn}
       />
     </>
   )
@@ -396,13 +408,15 @@ function KanbanHeaderActions(props: HeaderActionsProps) {
       <KanbanSearchBox searchQuery={searchQuery} onSearchChange={props.onSearchChange} />
       <KanbanFilterAction columns={columns} filters={filters} onChangeFilters={props.onChangeFilters} />
       <KanbanSortAction columns={columns} sorts={sorts} onChangeSorts={props.onChangeSorts} />
-      {activeView.type === 'board' && (
+      {(activeView.type === 'board' || activeView.type === 'table') && (
         <KanbanViewOptionsAction
           columns={columns}
           groupBy={activeView.groupBy || 'status'}
-          cardSize={cardSize}
-          onChangeGroupBy={props.onChangeGroupBy}
-          onChangeCardSize={props.onChangeCardSize}
+          cardSize={activeView.type === 'board' ? cardSize : undefined}
+          hiddenColumns={activeView.hiddenColumns}
+          onChangeGroupBy={activeView.type === 'board' ? props.onChangeGroupBy : undefined}
+          onChangeCardSize={activeView.type === 'board' ? props.onChangeCardSize : undefined}
+          onToggleHiddenColumn={activeView.type === 'table' ? props.onToggleHiddenColumn : undefined}
         />
       )}
       <KanbanWriteStatus unsaved={props.unsaved} onRetry={props.onRetryWrite} onDiscard={props.onDiscardWrite} />

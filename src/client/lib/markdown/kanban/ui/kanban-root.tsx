@@ -234,6 +234,7 @@ function KanbanTopBar({
       onClearTags={state.filterSort.onClearTags}
       onChangeCardSize={state.filterSort.setCardSize}
       onChangeGroupBy={state.columnOps.handleChangeGroupBy}
+      onToggleHiddenColumn={state.filterSort.toggleHiddenColumn}
       onAddItem={() => state.adds.handleAddItem()}
       onToggleFullscreen={onToggleFullscreen}
       unsaved={unsaved}

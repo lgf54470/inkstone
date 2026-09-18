@@ -150,6 +150,7 @@ export const messages = {
 'preview.kanban_column_color': '分组颜色',
 'preview.kanban_column_name_placeholder': '分组名称…',
 'preview.kanban_group_by': '分组依据',
+'preview.kanban_columns': '显示列',
 'preview.kanban_card_size': '卡片尺寸',
 'preview.kanban_card_size_small': '紧凑',
 'preview.kanban_card_size_medium': '适中',

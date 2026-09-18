@@ -2728,6 +2728,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-fullscreen.tsx', [
     '/**\n * Full screen view of one block. The overlay hosts the live instance the\n * preview mounted — the element is moved, never copied — so edits, history and\n * write-back stay with the single root that the inline block keeps using.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-header.tsx', [
+    '// The column panel needs nothing but its toggle; the board panel keeps its',
+    '// older rule of showing up only once both of its own writers are wired.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-history.ts', [
     '// Listening on the instance container (not window) keeps Ctrl+Z with the board',
     '// that actually owns the focused element: focus on the surrounding note or on a',
@@ -2744,6 +2748,8 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-property-cell.tsx', [
     '// Attachments live on the item, not in `properties`, so the table always has a',
     '// column for them even when the document schema does not declare one.',
+    '// The view\'s hidden list only reaches property columns: the title column is not',
+    '// part of this list at all, so no document can hide it.',
     '// Sorts read `properties[columnId]`, which attachments are not stored in, so',
     '// the files column stays a plain label.',
   ]],
@@ -2778,11 +2784,15 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-table-view.tsx', [
     '// One batch commit: per-row toggles would queue one state update per item.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-view-options.tsx', [
+    '// Each section renders when the caller wired it: the board gets grouping and',
+    '// card size, the table gets column visibility, neither sees the other\'s controls.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-state.ts', [
     '// Unset lists reuse these constants so memoized consumers keep the same',
     '// identity across renders that only touch other view fields.',
-    '// Reads the committed view rather than the render-time one, so two header',
-    '// clicks in one batch still cycle asc then desc instead of both writing asc.',
+    '// Both toggles read the committed view rather than the render-time one, so two',
+    '// clicks in one batch still cycle instead of both writing the same result.',
   ]],
   ['src/client/lib/markdown/kanban/url.ts', [
     '/**\n * Protocol whitelist for URLs that come from kanban fence content. Fence JSON is\n * user-authored (and arrives via shares/imports), so covers and file urls are\n * rendered from data we do not trust.\n */',

@@ -5,6 +5,7 @@ import {
   groupKanbanItems,
   searchKanbanItems,
   toggleKanbanColumnSort,
+  toggleKanbanHiddenColumn,
 } from './filter-sort'
 import type { KanbanItem, KanbanProperty } from './types'
 
@@ -151,6 +152,19 @@ describe('toggleKanbanColumnSort', () => {
 
   it('treats a view without any sort rule as unsorted', () => {
     expect(toggleKanbanColumnSort(undefined, 'priority')).toEqual([{ propertyId: 'priority', direction: 'asc' }])
+  })
+})
+
+describe('toggleKanbanHiddenColumn', () => {
+  it('hides a column a view never hid before', () => {
+    expect(toggleKanbanHiddenColumn(undefined, 'priority')).toEqual(['priority'])
+    expect(toggleKanbanHiddenColumn([], 'priority')).toEqual(['priority'])
+  })
+
+  it('restores a hidden column and leaves the other hidden ones alone', () => {
+    const hidden = toggleKanbanHiddenColumn(['status'], 'priority')
+    expect(hidden).toEqual(['status', 'priority'])
+    expect(toggleKanbanHiddenColumn(hidden, 'priority')).toEqual(['status'])
   })
 })
 

@@ -140,6 +140,7 @@ export const messages = {
 'preview.kanban_column_color': 'Group Color',
 'preview.kanban_column_name_placeholder': 'Group name…',
 'preview.kanban_group_by': 'Group By',
+'preview.kanban_columns': 'Columns',
 'preview.kanban_card_size': 'Card Size',
 'preview.kanban_card_size_small': 'Small',
 'preview.kanban_card_size_medium': 'Medium',

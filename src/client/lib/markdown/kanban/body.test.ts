@@ -127,6 +127,16 @@ describe('serializeKanban', () => {
     expect(out).toContain('## To Do')
     expect(out).toContain('- [ ] Write tests')
   })
+
+  it('keeps a view hidden column list through a read and write cycle', () => {
+    const withHidden: KanbanData = {
+      ...sampleData,
+      views: [{ id: 'view-table', name: 'Table', type: 'table', hiddenColumns: ['priority', 'files'] }],
+    }
+    const reread = parseKanbanBody(serializeKanban(withHidden, 'json'))
+    if (!reread.ok) throw new Error(reread.error)
+    expect(reread.data.views[0]?.hiddenColumns).toEqual(['priority', 'files'])
+  })
 })
 
 describe('applyKanbanBodyAtFence & kanbanFenceRange', () => {

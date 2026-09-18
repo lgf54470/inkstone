@@ -18,9 +18,12 @@ export function kanbanTitleColumn(columns: KanbanProperty[]): KanbanProperty {
   return columns.find((col) => col.type === 'title' || col.id === 'title') ?? KANBAN_TITLE_COLUMN
 }
 
-export function kanbanPropertyColumns(columns: KanbanProperty[]): KanbanProperty[] {
+// The view's hidden list only reaches property columns: the title column is not
+// part of this list at all, so no document can hide it.
+export function kanbanPropertyColumns(columns: KanbanProperty[], hidden?: string[]): KanbanProperty[] {
   const declared = columns.filter((col) => col.type !== 'title' && col.id !== 'title')
-  return declared.some((col) => col.type === 'files') ? declared : [...declared, KANBAN_FILES_COLUMN]
+  const withFiles = declared.some((col) => col.type === 'files') ? declared : [...declared, KANBAN_FILES_COLUMN]
+  return hidden ? withFiles.filter((col) => !hidden.includes(col.id)) : withFiles
 }
 
 const COLUMN_WIDTH: Record<KanbanPropertyType, string> = {

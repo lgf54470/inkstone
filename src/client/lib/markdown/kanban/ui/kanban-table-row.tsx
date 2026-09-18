@@ -14,6 +14,7 @@ import {
 interface KanbanTableRowProps {
   item: KanbanItem
   columns: KanbanProperty[]
+  hiddenColumns?: string[]
   isSelected: boolean
   onToggleSelect: () => void
   onOpenDetail: () => void
@@ -170,6 +171,7 @@ function ItemTitleCell({
 export function KanbanTableRow({
   item,
   columns,
+  hiddenColumns,
   isSelected,
   onToggleSelect,
   onOpenDetail,
@@ -180,7 +182,7 @@ export function KanbanTableRow({
 }: KanbanTableRowProps) {
   const [expanded, setExpanded] = useState(false)
   const titleColumn = kanbanTitleColumn(columns)
-  const propertyColumns = kanbanPropertyColumns(columns)
+  const propertyColumns = kanbanPropertyColumns(columns, hiddenColumns)
   const subtasks = item.subtasks || []
 
   return (

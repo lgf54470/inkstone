@@ -447,3 +447,37 @@ describe('KanbanTableView inline tag editing', () => {
     unmount()
   })
 })
+
+function tableHiding(hiddenColumns: string[]): KanbanData {
+  return { ...schemaData, views: [{ ...schemaData.views[0]!, hiddenColumns }] }
+}
+
+function schemaLabel(columnId: string): string {
+  const column = schemaColumns.find((col) => col.id === columnId)
+  if (!column) throw new Error(`no fixture column "${columnId}"`)
+  return formatKanbanPropertyName(column)
+}
+
+describe('KanbanTableView column visibility', () => {
+  it('drops a hidden column from the header and from every row', () => {
+    const { container, unmount } = mountTable(tableHiding(['story']), handlers())
+    expect(headerLabels(container)).not.toContain(schemaLabel('story'))
+    expect(container.querySelector('[data-kanban-column="story"]')).toBeNull()
+    expect(container.querySelector('[data-item-id="a"] [data-kanban-column="priority"]')).toBeTruthy()
+    unmount()
+  })
+
+  it('hides the attachments column too', () => {
+    const { container, unmount } = mountTable(tableHiding(['files']), handlers())
+    expect(headerLabels(container)).not.toContain(t('preview.kanban_files'))
+    expect(container.querySelector('[data-kanban-column="files"]')).toBeNull()
+    unmount()
+  })
+
+  it('keeps the title column whatever a document hides', () => {
+    const { container, unmount } = mountTable(tableHiding(['title']), handlers())
+    expect(headerLabels(container)[0]).toBe(schemaLabel('title'))
+    expect(container.querySelector('[data-item-id="a"] [data-kanban-column="title"]')).toBeTruthy()
+    unmount()
+  })
+})

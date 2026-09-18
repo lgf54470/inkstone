@@ -134,6 +134,7 @@ export interface KanbanView {
   sorts?: KanbanSort[]
   searchQuery?: string
   cardSize?: 'small' | 'medium' | 'large'
+  hiddenColumns?: string[]
 }
 
 export interface KanbanData {

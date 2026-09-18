@@ -84,6 +84,11 @@ export function toggleKanbanColumnSort(sorts: KanbanSort[] | undefined, property
   return []
 }
 
+export function toggleKanbanHiddenColumn(hidden: string[] | undefined, propertyId: string): string[] {
+  const current = hidden ?? []
+  return current.includes(propertyId) ? current.filter((id) => id !== propertyId) : [...current, propertyId]
+}
+
 function itemMatchesQuery(item: KanbanItem, q: string): boolean {
   if (item.title.toLowerCase().includes(q)) return true
   if (item.description?.toLowerCase().includes(q)) return true

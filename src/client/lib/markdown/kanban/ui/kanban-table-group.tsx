@@ -12,6 +12,7 @@ interface KanbanTableGroupProps {
   color?: KanbanColorName
   items: KanbanItem[]
   columns: KanbanProperty[]
+  hiddenColumns?: string[]
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
@@ -102,6 +103,7 @@ export function KanbanTableGroup({
   color,
   items,
   columns,
+  hiddenColumns,
   selectedIds,
   onToggleSelect,
   onOpenDetail,
@@ -133,6 +135,7 @@ export function KanbanTableGroup({
                 key={item.id}
                 item={item}
                 columns={columns}
+                hiddenColumns={hiddenColumns}
                 isSelected={selectedIds.has(item.id)}
                 onToggleSelect={() => onToggleSelect(item.id)}
                 onOpenDetail={() => onOpenDetail(item)}

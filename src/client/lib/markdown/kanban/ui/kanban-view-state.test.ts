@@ -115,3 +115,27 @@ describe('kanban column sort toggling', () => {
     unmount()
   })
 })
+
+describe('kanban column visibility state', () => {
+  it('hides and restores columns on the active view only', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    expect(holder.state.filterSort.hiddenColumns).toEqual([])
+    act(() => { holder.state.filterSort.toggleHiddenColumn('status') })
+    expect(commits.at(-1)!.views[0]!.hiddenColumns).toEqual(['status'])
+    expect(holder.state.filterSort.hiddenColumns).toEqual(['status'])
+    act(() => { holder.state.filterSort.toggleHiddenColumn('assignee') })
+    expect(commits.at(-1)!.views[0]!.hiddenColumns).toEqual(['status', 'assignee'])
+    act(() => { holder.state.filterSort.toggleHiddenColumn('status') })
+    expect(commits.at(-1)!.views[0]!.hiddenColumns).toEqual(['assignee'])
+    expect(commits.at(-1)!.views[1]!.hiddenColumns).toBeUndefined()
+    unmount()
+  })
+
+  it('keeps an unset hidden column list referentially stable across view edits', () => {
+    const { holder, unmount } = renderRootStateProbe()
+    const hidden = holder.state.filterSort.hiddenColumns
+    act(() => { holder.state.filterSort.setCardSize('large') })
+    expect(holder.state.filterSort.hiddenColumns).toBe(hidden)
+    unmount()
+  })
+})
