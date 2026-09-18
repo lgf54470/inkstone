@@ -67,6 +67,7 @@ export interface MusicWebdavState {
   directory: string
   path: string
   entries: MusicWebdavEntry[]
+  truncated: boolean
   error: string | null
   importingPaths: string[]
 }

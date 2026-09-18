@@ -6,6 +6,12 @@ export interface WebdavPropfindEntry {
   modifiedAt: number | null
 }
 
+// truncated is true when the entry cap stopped parsing before the document ended.
+export interface WebdavPropfindResult {
+  entries: WebdavPropfindEntry[]
+  truncated: boolean
+}
+
 const RESPONSE_RE = /<(?:[\w.-]+:)?response\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?response>/gi
 const HREF_RE = /<(?:[\w.-]+:)?href\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?href>/i
 const COLLECTION_RE = /<(?:[\w.-]+:)?collection\b[^>]*\/?>/i
@@ -38,7 +44,7 @@ function parseModified(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-export function parseMultistatus(xml: string): WebdavPropfindEntry[] {
+export function parseMultistatus(xml: string): WebdavPropfindResult {
   const entries: WebdavPropfindEntry[] = []
   RESPONSE_RE.lastIndex = 0
   let match = RESPONSE_RE.exec(xml)
@@ -63,7 +69,8 @@ export function parseMultistatus(xml: string): WebdavPropfindEntry[] {
     }
     match = RESPONSE_RE.exec(xml)
   }
-  return entries
+  // A leftover match means the cap stopped the loop with responses still unparsed.
+  return { entries, truncated: match !== null }
 }
 
 export function decodeHrefPath(href: string): string {

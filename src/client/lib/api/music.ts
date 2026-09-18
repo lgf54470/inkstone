@@ -43,6 +43,7 @@ export interface MusicWebdavListing {
   dir: string
   directory: string
   entries: MusicWebdavEntry[]
+  truncated: boolean
   reason: string | null
 }
 

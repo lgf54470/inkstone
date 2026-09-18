@@ -201,6 +201,7 @@ export const messages = {
 'music.webdav_empty': 'No audio files in this folder',
 'music.webdav_loading': 'Reading the WebDAV folder…',
 'music.webdav_failed': 'Could not read the WebDAV folder',
+'music.webdav_truncated': 'This folder holds too many items to show at once; only the first ones are listed. Open a subfolder to narrow the view.',
 'music.up': 'Up one level',
 'music.imported': 'Added to the library',
 'music.import_failed': 'Could not add the track',

@@ -13,6 +13,7 @@ const EMPTY_WEBDAV: MusicWebdavState = {
   directory: '',
   path: '',
   entries: [],
+  truncated: false,
   error: null,
   importingPaths: [],
 }
@@ -33,6 +34,7 @@ export async function browseWebdav(set: MusicSet, path: string): Promise<void> {
         directory: listing.directory ?? '',
         path,
         entries: listing.entries,
+        truncated: listing.truncated,
         error: listing.configured ? null : listing.reason,
         importingPaths: [],
       },

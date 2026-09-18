@@ -14,6 +14,7 @@ export type ApiErrorCode =
   | 'bad_request'
   | 'payload_too_large'
   | 'storage_unavailable'
+  | 'webdav_listing_too_large'
   | 'internal'
   | 'invalid_username'
   | 'invalid_profile_name'

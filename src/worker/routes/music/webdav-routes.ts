@@ -41,18 +41,18 @@ async function browse(c: Context<AppBindings>): Promise<Response> {
     ctx = await resolveMusicWebdav(c.env, c.get('user'), c.get('userId'))
   } catch (error) {
     if (error instanceof ApiError && error.status === 503) {
-      return c.json({ configured: false, dir: '', entries: [], reason: error.message })
+      return c.json({ configured: false, dir: '', entries: [], truncated: false, reason: error.message })
     }
     throw error
   }
   // GET must stay side-effect free: the directory is created by the first
   // upload (putMusicObject ensures it), browsing a missing one is simply empty.
   try {
-    const entries = await listMusicDirectory(ctx, parsed.data.path)
-    return c.json({ configured: true, dir: ctx.dir, directory: musicDirectoryUrl(ctx, parsed.data.path), entries, reason: null })
+    const listing = await listMusicDirectory(ctx, parsed.data.path)
+    return c.json({ configured: true, dir: ctx.dir, directory: musicDirectoryUrl(ctx, parsed.data.path), entries: listing.entries, truncated: listing.truncated, reason: null })
   } catch (error) {
     if (error instanceof ApiError && error.status === 404 && !parsed.data.path) {
-      return c.json({ configured: true, dir: ctx.dir, directory: musicDirectoryUrl(ctx, ''), entries: [], reason: error.message })
+      return c.json({ configured: true, dir: ctx.dir, directory: musicDirectoryUrl(ctx, ''), entries: [], truncated: false, reason: error.message })
     }
     throw error
   }

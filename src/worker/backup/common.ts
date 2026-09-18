@@ -39,6 +39,10 @@ export function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return a.every((value, index) => value === b[index])
 }
 
+// Named so callers can tell the safety cap from a genuine network failure.
+// The message stays as-is: backup paths map errors by message text.
+export class ResponseTooLargeError extends Error {}
+
 export async function readResponseBytesWithinLimit(
   response: Response,
   maxBytes: number,
@@ -46,7 +50,7 @@ export async function readResponseBytesWithinLimit(
   const declared = Number(response.headers.get('Content-Length'))
   if (Number.isFinite(declared) && declared > maxBytes) {
     await cancelStreamBestEffort(response.body)
-    throw new Error('The third-party response exceeds the safety limit')
+    throw new ResponseTooLargeError('The third-party response exceeds the safety limit')
   }
   if (!response.body) return new Uint8Array()
 
@@ -60,7 +64,7 @@ export async function readResponseBytesWithinLimit(
       total += value.byteLength
       if (total > maxBytes) {
         await cancelStreamBestEffort(reader)
-        throw new Error('The third-party response exceeds the safety limit')
+        throw new ResponseTooLargeError('The third-party response exceeds the safety limit')
       }
       chunks.push(value)
     }

@@ -5,7 +5,7 @@ vi.mock('../../../lib/api', () => ({
   api: {
     music: {
       importWebdav: vi.fn(),
-      browseWebdav: vi.fn(async () => ({ configured: true, dir: 'music', directory: '', entries: [] })),
+      browseWebdav: vi.fn(async () => ({ configured: true, dir: 'music', directory: '', entries: [], truncated: false, reason: null })),
       patchTrack: vi.fn(async (id: string, patch: object) => ({ id, ...patch })),
     },
   },
@@ -14,7 +14,7 @@ vi.mock('../music-feedback', () => ({ toastMusic: vi.fn(), toastMusicError: vi.f
 vi.mock('../music-metadata', () => ({ probeTrackDuration: vi.fn(async () => 4500) }))
 
 import { api } from '../../../lib/api'
-import { importWebdavFolder, importWebdavTrack } from './webdav'
+import { browseWebdav, importWebdavFolder, importWebdavTrack } from './webdav'
 import type { MusicStoreState } from './types'
 
 function entry(name: string): MusicWebdavEntry {
@@ -119,5 +119,27 @@ describe('importWebdavTrack', () => {
     expect(api.music.importWebdav).toHaveBeenCalledWith({ path: '/dav/solo.mp3', title: 'solo', artist: '' })
     expect(store.loadLibrary).toHaveBeenCalledTimes(1)
     expect(store.get().webdav.importingPaths).toEqual([])
+  })
+})
+
+describe('browseWebdav truncation', () => {
+  it('records that the server truncated a large listing', async () => {
+    vi.mocked(api.music.browseWebdav).mockResolvedValueOnce({
+      configured: true, dir: 'music', directory: '', entries: [entry('a.mp3')], truncated: true, reason: null,
+    })
+    const store = makeStore([])
+
+    await browseWebdav(store.set as never, '/dav')
+
+    expect(store.get().webdav.truncated).toBe(true)
+  })
+
+  it('clears the marker when the next listing comes back whole', async () => {
+    const store = makeStore([])
+    store.set({ webdav: { ...store.get().webdav, truncated: true } })
+
+    await browseWebdav(store.set as never, '/dav')
+
+    expect(store.get().webdav.truncated).toBe(false)
   })
 })

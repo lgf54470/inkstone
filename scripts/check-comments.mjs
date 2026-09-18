@@ -4124,6 +4124,10 @@ const allowed = new Map([
     '// The delete error is reported below; if the cleanup-row insert also fails,',
     '// the object simply waits for a later cleanup pass instead of being retried now.',
   ]],
+  ['src/worker/backup/common.ts', [
+    '// Named so callers can tell the safety cap from a genuine network failure.',
+    '// The message stays as-is: backup paths map errors by message text.',
+  ]],
   ['src/worker/backup/s3.ts', [
     '/* Best-effort: an unreadable error body falls back to the generic hints below. */',
   ]],
@@ -4549,12 +4553,16 @@ const allowed = new Map([
     '// Artwork is a nicety: a failed cover write must not fail the track upload.',
   ]],
   ['src/worker/routes/music/webdav-xml.ts', [
+    '// truncated is true when the entry cap stopped parsing before the document ended.',
     '// A server-side typo must not 500 the whole listing: an entity outside the',
     '// Unicode range is kept verbatim instead of throwing in fromCodePoint.',
     '// Boundary defence for third-party XML: one broken response block is',
     '// skipped with a warning instead of failing the whole listing.',
+    '// A leftover match means the cap stopped the loop with responses still unparsed.',
   ]],
   ['src/worker/routes/music/webdav.ts', [
+    '// The PROPFIND cap protects the isolate; the folder itself is merely too big to',
+    '// list at once, so surface a named error that points at subfolder browsing.',
     '// A fresh ArrayBuffer keeps the PUT body assignable to BodyInit without a cast.',
   ]],
   ['src/worker/routes/notes/edit.ts', [

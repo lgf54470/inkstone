@@ -113,6 +113,8 @@ function Browser({ parentPath }: { parentPath: string }) {
         </Tooltip>
       </div>
 
+      <WebdavNotices />
+
       {webdav.loading && !webdav.entries.length
         ? <p className='py-10 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]' role='status'>{t('music.webdav_loading')}</p>
         : webdav.entries.length === 0
@@ -133,6 +135,25 @@ function Browser({ parentPath }: { parentPath: string }) {
               ))}
             </ul>
           )}
+    </>
+  )
+}
+
+function WebdavNotices() {
+  const error = useMusic((state) => state.webdav.error)
+  const truncated = useMusic((state) => state.webdav.truncated)
+  return (
+    <>
+      {error ? (
+        <p role='status' className='py-1 text-center text-[length:var(--text-11)] text-[var(--text-secondary)]'>
+          {t('music.webdav_failed')}: {error}
+        </p>
+      ) : null}
+      {truncated ? (
+        <p role='status' className='py-1 text-center text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+          {t('music.webdav_truncated')}
+        </p>
+      ) : null}
     </>
   )
 }

@@ -124,6 +124,7 @@ describe('music webdav routes', () => {
     expect(body.entries.map((entry: { name: string }) => entry.name)).toEqual(['Live', 'song.mp3'])
     expect(body.entries[0].isDirectory).toBe(true)
     expect(body.entries[1]).toMatchObject({ path: 'song.mp3', sizeBytes: 16, mime: 'audio/mpeg' })
+    expect(body.truncated).toBe(false)
     const propfind = fetchMock.mock.calls.find((call) => (call[1] as RequestInit | undefined)?.method === 'PROPFIND')
     expect(String(propfind?.[0])).toBe('https://dav.example.com/dav/music')
   })
@@ -149,6 +150,44 @@ describe('music webdav routes', () => {
     expect(body.configured).toBe(false)
     expect(body.entries).toEqual([])
     expect(typeof body.reason).toBe('string')
+  })
+
+  it('reports a named error when the listing exceeds the size limit', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = (init?.method ?? 'GET').toUpperCase()
+      if (method === 'PROPFIND') {
+        return new Response('<D:multistatus xmlns:D="DAV:">' + 'x'.repeat(600 * 1024) + '</D:multistatus>', { status: 207 })
+      }
+      return new Response('', { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await makeDb()
+    const app = makeApp({})
+    const res = await request(app, '/api/music/webdav')
+    expect(res.status).toBe(502)
+    const body = await res.json()
+    expect(body.error.code).toBe('webdav_listing_too_large')
+    expect(body.error.message).toMatch(/subfolder/i)
+  })
+
+  it('marks a browse truncated when the folder holds more entries than the cap', async () => {
+    const blocks = Array.from(
+      { length: 2005 },
+      (_unused, index) => `<D:response><D:href>/dav/music/t${index}.mp3</D:href><D:propstat><D:prop><D:resourcetype/><D:getcontentlength>16</D:getcontentlength><D:getcontenttype>audio/mpeg</D:getcontenttype></D:prop></D:propstat></D:response>`,
+    ).join('')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = (init?.method ?? 'GET').toUpperCase()
+      if (method === 'PROPFIND') return new Response('<D:multistatus xmlns:D="DAV:">' + blocks + '</D:multistatus>', { status: 207 })
+      return new Response('', { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await makeDb()
+    const app = makeApp({})
+    const res = await request(app, '/api/music/webdav')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.entries).toHaveLength(2000)
+    expect(body.truncated).toBe(true)
   })
 
   it('browses a missing root directory as empty without creating it', async () => {

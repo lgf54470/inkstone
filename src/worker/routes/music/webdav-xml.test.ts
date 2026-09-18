@@ -36,7 +36,8 @@ const MULTISTATUS = `<?xml version="1.0" encoding="utf-8"?>
 
 describe('webdav multistatus parsing', () => {
   it('extracts hrefs, collections, sizes and timestamps', () => {
-    const entries = parseMultistatus(MULTISTATUS)
+    const { entries, truncated } = parseMultistatus(MULTISTATUS)
+    expect(truncated).toBe(false)
     expect(entries).toHaveLength(4)
     expect(entries[0]).toMatchObject({ href: '/dav/music/', isCollection: true })
     expect(entries[2]).toMatchObject({ href: '/dav/music/%E6%9C%88%E5%85%89.mp3', isCollection: false, sizeBytes: 4382, mime: 'audio/mpeg' })
@@ -45,13 +46,13 @@ describe('webdav multistatus parsing', () => {
 
   it('tolerates namespace-free and lowercase tags', () => {
     const plain = '<multistatus><response><href>/a/b.mp3</href><propstat><prop><resourcetype/><getcontentlength>7</getcontentlength></prop></propstat></response></multistatus>'
-    const entries = parseMultistatus(plain)
+    const { entries } = parseMultistatus(plain)
     expect(entries).toEqual([{ href: '/a/b.mp3', isCollection: false, sizeBytes: 7, mime: null, modifiedAt: null }])
   })
 
   it('returns nothing for an empty or unrelated body', () => {
-    expect(parseMultistatus('')).toEqual([])
-    expect(parseMultistatus('<html><body>nope</body></html>')).toEqual([])
+    expect(parseMultistatus('')).toEqual({ entries: [], truncated: false })
+    expect(parseMultistatus('<html><body>nope</body></html>')).toEqual({ entries: [], truncated: false })
   })
 
   it('decodes percent-encoded paths and falls back on malformed escapes', () => {
@@ -61,7 +62,7 @@ describe('webdav multistatus parsing', () => {
   })
 
   it('keeps collections and audio files, dropping other files', () => {
-    const [root, , song, notes] = parseMultistatus(MULTISTATUS)
+    const [root, , song, notes] = parseMultistatus(MULTISTATUS).entries
     expect(isAudioEntry(root!)).toBe(true)
     expect(isAudioEntry(song!)).toBe(true)
     expect(isAudioEntry(notes!)).toBe(false)
@@ -75,9 +76,18 @@ describe('webdav multistatus parsing', () => {
   it('keeps out-of-range numeric entities as literal text instead of throwing', () => {
     const xml = '<D:multistatus><D:response><D:href>/dav/music/song&#99999999999;.mp3</D:href><D:propstat><D:prop><D:resourcetype/><D:getcontenttype>audio/mpeg</D:getcontenttype></D:prop></D:propstat></D:response>'
       + '<D:response><D:href>/dav/music/night&#77;song.mp3</D:href><D:propstat><D:prop><D:resourcetype/></D:prop></D:propstat></D:response></D:multistatus>'
-    const entries = parseMultistatus(xml)
+    const entries = parseMultistatus(xml).entries
     expect(entries).toHaveLength(2)
     expect(entries[0]!.href).toBe('/dav/music/song&#99999999999;.mp3')
     expect(entries[1]!.href).toBe('/dav/music/nightMsong.mp3')
+  })
+})
+
+describe('webdav listing caps', () => {
+  it('marks listings beyond the entry cap as truncated', () => {
+    const blocks = Array.from({ length: 2001 }, (_unused, index) => `<response><href>/d/t${index}.mp3</href></response>`).join('')
+    const result = parseMultistatus(`<multistatus>${blocks}</multistatus>`)
+    expect(result.entries).toHaveLength(2000)
+    expect(result.truncated).toBe(true)
   })
 })

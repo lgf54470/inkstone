@@ -5,7 +5,7 @@ import type { AppBindings } from '../../env'
 import { decryptSecret } from '../../lib/crypto'
 import { ApiError } from '../../lib/errors'
 import { authHeader, baseUrl, childUrl, ensureDirs, webdavFetch, type WebdavSecret } from '../../backup/webdav'
-import { readResponseBytesWithinLimit } from '../../backup/common'
+import { readResponseBytesWithinLimit, ResponseTooLargeError } from '../../backup/common'
 import { cancelStreamBestEffort } from '../../lib/streams'
 import { decodeHrefPath, isAudioEntry, parseMultistatus } from './webdav-xml'
 
@@ -99,7 +99,25 @@ async function ensureMusicDir(ctx: MusicWebdavContext): Promise<void> {
   await ensureDirs(ctx.base, ctx.auth, [ctx.dir], new Set())
 }
 
-export async function listMusicDirectory(ctx: MusicWebdavContext, subPath: string): Promise<MusicWebdavEntry[]> {
+export interface MusicWebdavListing {
+  entries: MusicWebdavEntry[]
+  truncated: boolean
+}
+
+// The PROPFIND cap protects the isolate; the folder itself is merely too big to
+// list at once, so surface a named error that points at subfolder browsing.
+async function readListingBytes(response: Response): Promise<Uint8Array> {
+  try {
+    return await readResponseBytesWithinLimit(response, PROPFIND_MAX_BYTES)
+  } catch (error) {
+    if (error instanceof ResponseTooLargeError) {
+      throw new ApiError(502, 'webdav_listing_too_large', 'This folder is too large to list at once. Open a subfolder instead.')
+    }
+    throw error
+  }
+}
+
+export async function listMusicDirectory(ctx: MusicWebdavContext, subPath: string): Promise<MusicWebdavListing> {
   const relative = joinRelative(ctx.dir, subPath)
   const url = childUrl(ctx.base, relative)
   const response = await safeWebdavFetch(url, {
@@ -116,16 +134,17 @@ export async function listMusicDirectory(ctx: MusicWebdavContext, subPath: strin
   if (response.status !== 207 && !response.ok) {
     throw new ApiError(502, 'storage_unavailable', `WebDAV listing failed: HTTP ${response.status}`)
   }
-  const bytes = await readResponseBytesWithinLimit(response, PROPFIND_MAX_BYTES)
-  const body = new TextDecoder().decode(bytes)
+  const bytes = await readListingBytes(response)
+  const parsed = parseMultistatus(new TextDecoder().decode(bytes))
   const absoluteDir = trimSlashes(ctx.base.pathname + relative)
-  return parseMultistatus(body)
+  const entries = parsed.entries
     .map((entry) => toMusicEntry(entry, absoluteDir, subPath))
     .filter((entry): entry is MusicWebdavEntry => entry !== null)
     .filter((entry) => isAudioEntry({
       href: entry.name, isCollection: entry.isDirectory, sizeBytes: entry.sizeBytes, mime: entry.mime, modifiedAt: entry.modifiedAt,
     }))
     .sort((left, right) => Number(right.isDirectory) - Number(left.isDirectory) || left.name.localeCompare(right.name))
+  return { entries, truncated: parsed.truncated }
 }
 
 function toMusicEntry(
@@ -166,8 +185,8 @@ export async function statMusicObject(ctx: MusicWebdavContext, relativePath: str
   if (response.status === 401) throw new ApiError(401, 'unauthenticated', 'The WebDAV credentials were rejected')
   if (response.status === 404) return null
   if (response.status === 207) {
-    const bytes = await readResponseBytesWithinLimit(response, PROPFIND_MAX_BYTES)
-    const entries = parseMultistatus(new TextDecoder().decode(bytes))
+    const bytes = await readListingBytes(response)
+    const entries = parseMultistatus(new TextDecoder().decode(bytes)).entries
     if (!entries.length) return null
     const entry = entries[0]!
     return { sizeBytes: entry.sizeBytes, mime: entry.mime }

@@ -201,6 +201,7 @@ export const messages = {
 'music.webdav_empty': '这个目录里没有音频文件',
 'music.webdav_loading': '正在读取 WebDAV 目录…',
 'music.webdav_failed': '读取 WebDAV 目录失败',
+'music.webdav_truncated': '这个目录条目太多，只显示了前面一部分，请进入子目录查看。',
 'music.up': '上一级',
 'music.imported': '已添加到曲库',
 'music.import_failed': '添加失败',
