@@ -17,7 +17,7 @@
 - [x] K-04 筛选开启时拖拽落点错位 → 落点契约改 pivot 锚定（review #6；`kanban-board-dnd.ts:35-53`）
 - [x] K-05 子任务「复制名称」clipboard 无 catch → `?.` 守卫 + then/catch + toast（review #22c；`kanban-subtask-menu.tsx:81`）
 - [x] K-06 「转换为项目」实现为提升子任务→顶级卡；「打开子任务」死路径移除（review #22a/b）
-- [ ] K-07 text/plain 拖拽兜底无校验 → 校验 data-item-id（review #18）
+- [x] K-07 text/plain 拖拽兜底无校验 → 校验 data-item-id（review #18）
 - [ ] K-08 分组只按 id 匹配 → id/label 双匹配（review #20a；`filter-sort.ts:136`）
 - [ ] K-09 ID `Date.now()` 碰撞 → 不可碰撞生成（review #23）
 - [ ] K-10 头部进度条口径 → 传筛选后 items（review 共识#15）

@@ -2611,6 +2611,12 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-board-dnd.ts', [
+    '// parseKanbanDragData falls back to text/plain, so a card id can arrive from an',
+    '// external drop. The in-flight internal drag (draggedItem) is trusted directly; a',
+    '// payload id only moves a card after a [data-item-id] element for it is found in',
+    '// the same [data-kanban-board], so dropped text or another board\'s id is a no-op.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-convert-subtask.test.ts', [
     '// the detail modal portals onto document.body, so query the whole document',
   ]],

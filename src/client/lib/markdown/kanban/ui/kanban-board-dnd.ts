@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { parseKanbanDragData } from '../dnd'
-import type { KanbanMovePivot } from '../dnd'
+import type { KanbanDragPayload, KanbanMovePivot } from '../dnd'
 import type { groupKanbanItems } from '../filter-sort'
 
 export type { KanbanMovePivot }
@@ -31,6 +31,21 @@ function computeDropPosition(e: React.DragEvent, targetCardId: string): CardDrop
   return { cardId: targetCardId, position }
 }
 
+// parseKanbanDragData falls back to text/plain, so a card id can arrive from an
+// external drop. The in-flight internal drag (draggedItem) is trusted directly; a
+// payload id only moves a card after a [data-item-id] element for it is found in
+// the same [data-kanban-board], so dropped text or another board's id is a no-op.
+function resolveDroppedCardId(
+  e: React.DragEvent,
+  data: KanbanDragPayload | null,
+  draggedItem: DragItemState,
+): string | null {
+  if (draggedItem?.type === 'card') return draggedItem.id
+  if (data?.type !== 'card') return null
+  const board = e.currentTarget instanceof Element ? e.currentTarget.closest('[data-kanban-board]') : null
+  return board?.querySelector(`[data-item-id="${CSS.escape(data.itemId)}"]`) ? data.itemId : null
+}
+
 function processCardDrop(
   e: React.DragEvent,
   draggedItem: DragItemState,
@@ -40,7 +55,7 @@ function processCardDrop(
   onMoveItem: MoveCardFn,
 ) {
   const data = parseKanbanDragData(e.dataTransfer)
-  const cardId = data?.type === 'card' ? data.itemId : draggedItem?.type === 'card' ? draggedItem.id : null
+  const cardId = resolveDroppedCardId(e, data, draggedItem)
   if (cardId) {
     const position: KanbanMovePivot['position'] =
       cardDropTarget?.cardId === targetCardId && cardDropTarget.position === 'bottom' ? 'after' : 'before'
@@ -60,7 +75,7 @@ function processColumnDrop(
     const sourceKey = data?.type === 'column' ? data.groupKey : (draggedItem as { groupKey: string }).groupKey
     if (sourceKey && onReorderColumns) onReorderColumns(sourceKey, targetGroupKey)
   } else {
-    const cardId = data?.type === 'card' ? data.itemId : draggedItem?.type === 'card' ? draggedItem.id : null
+    const cardId = resolveDroppedCardId(e, data, draggedItem)
     if (cardId) onMoveItem(cardId, targetGroupKey)
   }
 }
