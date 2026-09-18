@@ -193,7 +193,7 @@ export function KanbanIconPicker({
       ref={panelRef}
       role='dialog'
       aria-label={t('preview.kanban_icon_picker')}
-      className='absolute z-50 mt-1 w-64 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] shadow-[var(--shadow-pop)]'
+      className='absolute z-[var(--z-popover)] mt-1 w-64 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] shadow-[var(--shadow-pop)]'
     >
       <PickerHeaderTabs
         tab={tab}

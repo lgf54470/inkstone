@@ -117,7 +117,7 @@ export function KanbanSubtaskMenu({
     <div
       ref={menuRef}
       role='menu'
-      className='absolute right-0 z-50 mt-1 w-44 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'
+      className='absolute right-0 z-[var(--z-popover)] mt-1 w-44 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'
     >
       <SubtaskMenuItems
         subtask={subtask}

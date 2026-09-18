@@ -195,7 +195,7 @@ export function TagCreatePopover({
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
-      className='absolute left-0 top-full z-50 mt-1 w-56 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2.5 shadow-[var(--shadow-pop)]'
+      className='absolute left-0 top-full z-[var(--z-popover)] mt-1 w-56 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2.5 shadow-[var(--shadow-pop)]'
     >
       <div className='flex flex-col gap-2'>
         <ExistingOptionsList

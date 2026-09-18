@@ -68,7 +68,7 @@ function DetailStatusDropdown({
       {open && (
         <div
           role='listbox'
-          className='absolute left-0 top-full z-50 mt-1 min-w-36 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'
+          className='absolute left-0 top-full z-[var(--z-popover)] mt-1 min-w-36 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'
         >
           {options.map((o) => (
             <StatusOptionItem

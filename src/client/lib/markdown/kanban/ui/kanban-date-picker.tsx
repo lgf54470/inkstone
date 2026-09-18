@@ -264,7 +264,7 @@ function DatePickerPopover({
       ref={popoverRef}
       role='dialog'
       aria-label={t('preview.kanban_select_date')}
-      className='absolute left-0 top-full z-50 mt-1 w-64 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-3 shadow-[var(--shadow-pop)]'
+      className='absolute left-0 top-full z-[var(--z-popover)] mt-1 w-64 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-3 shadow-[var(--shadow-pop)]'
     >
       <DatePickerHeader
         year={cursor.year}
