@@ -15,8 +15,7 @@ interface KanbanTableViewProps {
   onUpdateProperty?: (itemId: string, propertyId: string, value: unknown) => void
   onUpdateSubtasks?: (itemId: string, subtasks: KanbanSubtask[]) => void
   onAddItem: (propertyDefaults?: Record<string, unknown>) => void
-  onAddColumn?: () => void
-  onAddGroup?: () => void
+  onAddColumn: () => void
 }
 
 interface TableHeaderRowProps {
@@ -79,7 +78,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   onUpdateProperty,
   onUpdateSubtasks,
   onAddItem,
-  onAddGroup,
+  onAddColumn,
 }: KanbanTableViewProps) {
   const groupByProp = view?.groupBy || 'status'
   const groupCol = data.columns.find((c) => c.id === groupByProp)
@@ -113,7 +112,7 @@ export const KanbanTableView = memo(function KanbanTableView({
 
           <button
             type='button'
-            onClick={() => (onAddGroup ? onAddGroup() : onAddItem())}
+            onClick={onAddColumn}
             className='flex items-center gap-1.5 rounded-[var(--r-md)] border border-dashed border-[var(--border-default)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
           >
             <Plus size={14} />

@@ -160,6 +160,7 @@ describe('KanbanTableView select all', () => {
           onToggleAll,
           onOpenDetail: vi.fn(),
           onAddItem: vi.fn(),
+          onAddColumn: vi.fn(),
         }),
       )
     })
