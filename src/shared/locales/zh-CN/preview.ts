@@ -168,7 +168,6 @@ export const messages = {
 'preview.kanban_chart_group_by': '统计分组',
 'preview.kanban_chart_total_items': '总任务数',
 'preview.kanban_chart_completion_rate': '完成率',
-'preview.kanban_open_subitem': '打开子任务',
 'preview.kanban_move_to_item': '移至任务',
 'preview.kanban_duplicate_subitem': '创建副本',
 'preview.kanban_copy_subitem_name': '复制名称',

@@ -44,7 +44,7 @@ function SubtaskTrailingActions({
   subtask: KanbanSubtask
   onToggleDesc: () => void
   onDuplicate: () => void
-  onConvertToItem: () => void
+  onConvertToItem?: () => void
   onDelete: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -138,7 +138,7 @@ function SubtaskMainRow({
   onUpdateSubtask: (updated: KanbanSubtask) => void
   onToggleDesc: () => void
   onDuplicate: () => void
-  onConvertToItem: () => void
+  onConvertToItem?: () => void
   onDelete: () => void
 }) {
   return (
@@ -196,7 +196,7 @@ function SubtaskRow({
   onUpdateTitle: (title: string) => void
   onUpdateSubtask: (updated: KanbanSubtask) => void
   onDuplicate: () => void
-  onConvertToItem: () => void
+  onConvertToItem?: () => void
   onDelete: () => void
 }) {
   const [showDesc, setShowDesc] = useState(Boolean(subtask.description))
@@ -284,7 +284,7 @@ export function KanbanSubtaskList({
           onUpdateTitle={(title) => handleUpdateTitle(st.id, title)}
           onUpdateSubtask={handleUpdateSubtask}
           onDuplicate={() => handleDuplicate(st)}
-          onConvertToItem={() => onConvertToItem?.(st)}
+          onConvertToItem={onConvertToItem ? () => onConvertToItem(st) : undefined}
           onDelete={() => handleDelete(st.id)}
         />
       ))}

@@ -158,7 +158,6 @@ export const messages = {
 'preview.kanban_chart_group_by': 'Group By',
 'preview.kanban_chart_total_items': 'Total Tasks',
 'preview.kanban_chart_completion_rate': 'Completion Rate',
-'preview.kanban_open_subitem': 'Open subitem',
 'preview.kanban_move_to_item': 'Move to Item',
 'preview.kanban_duplicate_subitem': 'Duplicate',
 'preview.kanban_copy_subitem_name': 'Copy name',

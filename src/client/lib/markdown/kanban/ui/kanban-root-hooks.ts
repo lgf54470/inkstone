@@ -15,6 +15,7 @@ import type {
   KanbanOption,
   KanbanProperty,
   KanbanSort,
+  KanbanSubtask,
   KanbanView,
 } from '../types'
 import type { CardSize } from './kanban-view-options'
@@ -90,9 +91,7 @@ export function useKanbanItemMutations(
   data: KanbanData,
   commitData: (next: KanbanData | ((prev: KanbanData) => KanbanData)) => void,
   activeView: KanbanView,
-  detailItem: KanbanItem | null,
   setDetailItem: (item: KanbanItem | null) => void,
-  setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>,
 ) {
   const handleMoveItem = useCallback(
     (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => {
@@ -114,16 +113,6 @@ export function useKanbanItemMutations(
     setDetailItem(updated)
   }, [data, commitData, setDetailItem])
 
-  const handleDeleteItem = useCallback((id: string) => {
-    const nextItems = data.items.filter((item) => item.id !== id)
-    commitData({ ...data, items: nextItems })
-    if (detailItem?.id === id) setDetailItem(null)
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
-    })
-  }, [data, detailItem, commitData, setDetailItem, setSelectedIds])
   const handleUpdateTags = useCallback(
     (id: string, tags: string[], newOption?: KanbanOption) => {
       commitData((prev: KanbanData) => {
@@ -137,7 +126,78 @@ export function useKanbanItemMutations(
     [commitData],
   )
 
-  return { handleMoveItem, handleUpdateTitle, handleUpdateItem, handleDeleteItem, handleUpdateTags }
+  return { handleMoveItem, handleUpdateTitle, handleUpdateItem, handleUpdateTags }
+}
+
+export function useKanbanItemLifecycle(
+  data: KanbanData,
+  commitData: (next: KanbanData) => void,
+  detailItem: KanbanItem | null,
+  setDetailItem: (item: KanbanItem | null) => void,
+  setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>,
+) {
+  const handleDeleteItem = useCallback((id: string) => {
+    const nextItems = data.items.filter((item) => item.id !== id)
+    commitData({ ...data, items: nextItems })
+    if (detailItem?.id === id) setDetailItem(null)
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+  }, [data, detailItem, commitData, setDetailItem, setSelectedIds])
+
+  const handleConvertSubtaskToItem = useCallback((itemId: string, subtaskId: string) => {
+    const converted = convertSubtaskInItems(data.items, itemId, subtaskId)
+    if (!converted) return
+    commitData({ ...data, items: converted.items })
+    if (detailItem?.id === itemId) setDetailItem(converted.strippedParent)
+  }, [data, detailItem, commitData, setDetailItem])
+
+  return { handleDeleteItem, handleConvertSubtaskToItem }
+}
+
+function convertSubtaskInItems(
+  items: KanbanItem[],
+  itemId: string,
+  subtaskId: string,
+): { items: KanbanItem[]; strippedParent: KanbanItem } | null {
+  const parentIdx = items.findIndex((item) => item.id === itemId)
+  const parent = parentIdx === -1 ? undefined : items[parentIdx]
+  const subtask = parent?.subtasks?.find((st) => st.id === subtaskId)
+  if (!parent || !subtask) return null
+  const strippedParent: KanbanItem = {
+    ...parent,
+    subtasks: parent.subtasks?.filter((st) => st.id !== subtaskId),
+  }
+  const nextItems = [...items]
+  nextItems[parentIdx] = strippedParent
+  nextItems.splice(parentIdx + 1, 0, subtaskAsKanbanItem(subtask, parent.properties))
+  return { items: nextItems, strippedParent }
+}
+
+function subtaskAsKanbanItem(
+  subtask: KanbanSubtask,
+  parentProperties: Record<string, unknown>,
+): KanbanItem {
+  const properties: Record<string, unknown> = {}
+  const status = subtask.status ?? parentProperties.status
+  if (status !== undefined) properties.status = status
+  if (subtask.dueDate) properties.dueDate = subtask.dueDate
+  if (subtask.startDate) properties.startDate = subtask.startDate
+  if (subtask.priority) properties.priority = subtask.priority
+  if (subtask.tags?.length) properties.tags = [...subtask.tags]
+  const item: KanbanItem = {
+    id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    title: subtask.title,
+    properties,
+  }
+  if (subtask.icon) item.icon = subtask.icon
+  if (subtask.description) {
+    item.content = subtask.description
+    item.description = subtask.description
+  }
+  return item
 }
 
 function deleteColumnFromData(data: KanbanData, groupKey: string, groupByPropertyId: string): KanbanData {
@@ -329,7 +389,14 @@ export function useKanbanRootState(initialData: KanbanData, onUpdateData: (next:
 
   const filterSort = useKanbanFilterSort(data, activeViewId)
   const selection = useKanbanSelection(data, commitData)
-  const items = useKanbanItemMutations(data, commitData, filterSort.activeView, detailItem, setDetailItem, selection.setSelectedIds)
+  const items = useKanbanItemMutations(data, commitData, filterSort.activeView, setDetailItem)
+  const itemLifecycle = useKanbanItemLifecycle(
+    data,
+    commitData,
+    detailItem,
+    setDetailItem,
+    selection.setSelectedIds,
+  )
   const adds = useKanbanAddOperations(data, commitData, setDetailItem, filterSort.activeView)
   const columnOps = useKanbanColumnOperations(data, commitData, filterSort.activeView)
 
@@ -343,7 +410,7 @@ export function useKanbanRootState(initialData: KanbanData, onUpdateData: (next:
     commitData,
     filterSort,
     selection,
-    items,
+    items: { ...items, ...itemLifecycle },
     adds,
     columnOps,
     history,

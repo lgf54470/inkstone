@@ -267,6 +267,9 @@ function KanbanRootOverlays({
         onClose={() => state.setDetailItem(null)}
         onUpdate={state.items.handleUpdateItem}
         onDelete={state.items.handleDeleteItem}
+        onConvertSubtask={(subtaskId) => {
+          if (state.detailItem) state.items.handleConvertSubtaskToItem(state.detailItem.id, subtaskId)
+        }}
         onAddColumnOption={state.columnOps.handleAddColumnOption}
       />
       <KanbanContextMenu

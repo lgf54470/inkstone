@@ -25,6 +25,7 @@ interface KanbanItemDetailProps {
   onClose: () => void
   onUpdate: (updated: KanbanItem) => void
   onDelete: (id: string) => void
+  onConvertSubtask: (subtaskId: string) => void
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
@@ -152,6 +153,7 @@ function DetailModalContent({
   onPropertyChange,
   onAddTagOption,
   onUpdate,
+  onConvertSubtask,
 }: {
   item: KanbanItem
   columns: KanbanProperty[]
@@ -163,6 +165,7 @@ function DetailModalContent({
   onPropertyChange: (propertyId: string, value: unknown) => void
   onAddTagOption: (option: KanbanOption) => void
   onUpdate: (updated: KanbanItem) => void
+  onConvertSubtask: (subtaskId: string) => void
 }) {
   return (
     <div className='flex flex-col gap-5 py-2'>
@@ -201,7 +204,11 @@ function DetailModalContent({
         onChange={(desc) => onUpdate({ ...item, content: desc, description: desc })}
       />
 
-      <DetailAttachmentsAndSubtasks item={item} onUpdate={onUpdate} />
+      <DetailAttachmentsAndSubtasks
+        item={item}
+        onUpdate={onUpdate}
+        onConvertSubtask={onConvertSubtask}
+      />
     </div>
   )
 }
@@ -245,6 +252,7 @@ function KanbanItemDetailBody({
   onClose,
   onUpdate,
   onDelete,
+  onConvertSubtask,
   onAddColumnOption,
 }: KanbanItemDetailProps & { item: KanbanItem }) {
   const { statusCol, priorityCol, localTagOptions, handlePropertyChange, handleAddTagOption } =
@@ -283,6 +291,7 @@ function KanbanItemDetailBody({
         onPropertyChange={handlePropertyChange}
         onAddTagOption={handleAddTagOption}
         onUpdate={onUpdate}
+        onConvertSubtask={onConvertSubtask}
       />
     </Modal>
   )

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { ArrowUpRight, Copy, CornerDownRight, ExternalLink, Trash2 } from 'lucide-react'
+import { ArrowUpRight, Copy, CornerDownRight, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { useUi } from '../../../../store/ui'
 import type { KanbanSubtask } from '../types'
@@ -9,9 +9,8 @@ interface KanbanSubtaskMenuProps {
   subtask: KanbanSubtask
   anchorRef: React.RefObject<HTMLElement | null>
   onClose: () => void
-  onOpen?: () => void
   onDuplicate: () => void
-  onConvertToItem: () => void
+  onConvertToItem?: () => void
   onDelete: () => void
 }
 
@@ -65,16 +64,14 @@ function SubtaskMenuItem({
 
 function SubtaskMenuItems({
   subtask,
-  onOpen,
   onDuplicate,
   onConvertToItem,
   onDelete,
   onClose,
 }: {
   subtask: KanbanSubtask
-  onOpen?: () => void
   onDuplicate: () => void
-  onConvertToItem: () => void
+  onConvertToItem?: () => void
   onDelete: () => void
   onClose: () => void
 }) {
@@ -93,13 +90,6 @@ function SubtaskMenuItems({
 
   return (
     <>
-      {onOpen && (
-        <SubtaskMenuItem
-          icon={ExternalLink}
-          label={t('preview.kanban_open_subitem')}
-          onClick={() => { onOpen(); onClose() }}
-        />
-      )}
       <SubtaskMenuItem
         icon={Copy}
         label={t('preview.kanban_duplicate_subitem')}
@@ -110,11 +100,13 @@ function SubtaskMenuItems({
         label={t('preview.kanban_copy_subitem_name')}
         onClick={copyName}
       />
-      <SubtaskMenuItem
-        icon={ArrowUpRight}
-        label={t('preview.kanban_convert_to_item')}
-        onClick={() => { onConvertToItem(); onClose() }}
-      />
+      {onConvertToItem && (
+        <SubtaskMenuItem
+          icon={ArrowUpRight}
+          label={t('preview.kanban_convert_to_item')}
+          onClick={() => { onConvertToItem(); onClose() }}
+        />
+      )}
       <div className='my-1 h-px bg-[var(--border-subtle)]' />
       <SubtaskMenuItem
         icon={Trash2}
@@ -131,7 +123,6 @@ export function KanbanSubtaskMenu({
   subtask,
   anchorRef,
   onClose,
-  onOpen,
   onDuplicate,
   onConvertToItem,
   onDelete,
@@ -150,7 +141,6 @@ export function KanbanSubtaskMenu({
     >
       <SubtaskMenuItems
         subtask={subtask}
-        onOpen={onOpen}
         onDuplicate={onDuplicate}
         onConvertToItem={onConvertToItem}
         onDelete={onDelete}

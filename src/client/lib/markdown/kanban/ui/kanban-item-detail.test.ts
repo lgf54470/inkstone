@@ -33,6 +33,7 @@ function propsFor(nextItem: KanbanItem | null) {
     onClose: vi.fn(),
     onUpdate: vi.fn(),
     onDelete: vi.fn(),
+    onConvertSubtask: vi.fn(),
     onAddColumnOption: vi.fn(),
   }
 }

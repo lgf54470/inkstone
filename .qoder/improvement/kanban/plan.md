@@ -16,7 +16,7 @@
 - [x] K-03 PDF 预览被 CSP（`object-src 'none'`）挡死 → 移除 `<object>`，新标签打开 + 图片/文本内联（review #12）
 - [x] K-04 筛选开启时拖拽落点错位 → 落点契约改 pivot 锚定（review #6；`kanban-board-dnd.ts:35-53`）
 - [x] K-05 子任务「复制名称」clipboard 无 catch → `?.` 守卫 + then/catch + toast（review #22c；`kanban-subtask-menu.tsx:81`）
-- [ ] K-06 「转换为项目」「打开子任务」死操作 → 实现或移除（review #22a/b）
+- [x] K-06 「转换为项目」实现为提升子任务→顶级卡；「打开子任务」死路径移除（review #22a/b）
 - [ ] K-07 text/plain 拖拽兜底无校验 → 校验 data-item-id（review #18）
 - [ ] K-08 分组只按 id 匹配 → id/label 双匹配（review #20a；`filter-sort.ts:136`）
 - [ ] K-09 ID `Date.now()` 碰撞 → 不可碰撞生成（review #23）
@@ -65,4 +65,5 @@
 | 2026-09-18 | K-02 详情弹窗 hooks 早退 | e3f09756 | 新增 kanban-item-detail.test.ts 2/2 ✅（修复前捕获 "Internal React error: Expected static flag was missing"，修复后归零），kanban 68 测试 ✅，typecheck/size/escape ✅ |
 | 2026-09-18 | K-03 PDF 预览去 `<object>` | b365a151 | 新增 kanban-file-preview-modal.test.ts 2/2 ✅（修复前 object 存在为红），typecheck/tokens/hardcoded ✅ |
 | 2026-09-18 | K-04 拖拽落点 pivot 锚定 | 572bf9b8 | dnd.test.ts 重写为 pivot 契约 + 筛选/after/自拖 3 条回归 ✅（先红后绿），kanban 73 测试 ✅，全量 test:unit 1652 ✅，typecheck ✅ |
-| 2026-09-18 | K-05 复制名称 clipboard 兜底 | 本次提交（hash 由下一次提交回填） | 新增 kanban-subtask-menu.test.ts 3/3 ✅（修复前无 clipboard 即同步抛错为红），kanban 76 测试 ✅，全量 test:unit 1655 ✅，typecheck/size ✅ |
+| 2026-09-18 | K-05 复制名称 clipboard 兜底 | 1e934632 | 新增 kanban-subtask-menu.test.ts 3/3 ✅（修复前无 clipboard 即同步抛错为红），kanban 76 测试 ✅，全量 test:unit 1655 ✅，typecheck/size ✅ |
+| 2026-09-18 | K-06 子任务死操作 | 本次提交（hash 由下一次提交回填） | 新增 kanban-convert-subtask.test.ts 7/7 ✅（先红后绿），kanban 83 测试 ✅，全量 test:unit 1662 ✅，typecheck/size/i18n ✅ |

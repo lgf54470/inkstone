@@ -2611,6 +2611,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-convert-subtask.test.ts', [
+    '// the detail modal portals onto document.body, so query the whole document',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.tsx', [
     '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',
     '// document is guaranteed blank; offer the file as an explicit new-tab action.',

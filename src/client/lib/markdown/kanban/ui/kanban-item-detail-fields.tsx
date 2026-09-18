@@ -217,9 +217,11 @@ export function DetailPropertiesGrid({
 export function DetailAttachmentsAndSubtasks({
   item,
   onUpdate,
+  onConvertSubtask,
 }: {
   item: KanbanItem
   onUpdate: (updated: KanbanItem) => void
+  onConvertSubtask: (subtaskId: string) => void
 }) {
   return (
     <>
@@ -239,6 +241,7 @@ export function DetailAttachmentsAndSubtasks({
         <KanbanSubtaskList
           subtasks={item.subtasks ?? []}
           onUpdateSubtasks={(subtasks) => onUpdate({ ...item, subtasks })}
+          onConvertToItem={(subtask) => onConvertSubtask(subtask.id)}
         />
       </div>
     </>
