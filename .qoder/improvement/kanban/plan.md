@@ -66,4 +66,5 @@
 | 2026-09-18 | K-03 PDF 预览去 `<object>` | b365a151 | 新增 kanban-file-preview-modal.test.ts 2/2 ✅（修复前 object 存在为红），typecheck/tokens/hardcoded ✅ |
 | 2026-09-18 | K-04 拖拽落点 pivot 锚定 | 572bf9b8 | dnd.test.ts 重写为 pivot 契约 + 筛选/after/自拖 3 条回归 ✅（先红后绿），kanban 73 测试 ✅，全量 test:unit 1652 ✅，typecheck ✅ |
 | 2026-09-18 | K-05 复制名称 clipboard 兜底 | 1e934632 | 新增 kanban-subtask-menu.test.ts 3/3 ✅（修复前无 clipboard 即同步抛错为红），kanban 76 测试 ✅，全量 test:unit 1655 ✅，typecheck/size ✅ |
-| 2026-09-18 | K-06 子任务死操作 | 本次提交（hash 由下一次提交回填） | 新增 kanban-convert-subtask.test.ts 7/7 ✅（先红后绿），kanban 83 测试 ✅，全量 test:unit 1662 ✅，typecheck/size/i18n ✅ |
+| 2026-09-18 | K-06 子任务死操作 | a45ddda2 | 新增 kanban-convert-subtask.test.ts 7/7 ✅（先红后绿），kanban 83 测试 ✅，全量 test:unit 1662 ✅，typecheck/size/i18n ✅ |
+| 2026-09-18 | K-07 拖拽落点归属校验 | 889d584c | 新增 kanban-board-dnd.test.ts 5/5 ✅（3 例外部拖入先红后绿），kanban 88 测试 ✅，全量 test:unit 1667 ✅，typecheck/size/escape/comments/i18n ✅ |
