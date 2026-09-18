@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { aggregateKanbanChartData, buildChartJsConfig } from '../chart-helpers'
+import { readKanbanChartPalette } from '../chart-palette'
 import { formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanChartType, KanbanData, KanbanView } from '../types'
 
@@ -125,14 +126,17 @@ function MetricCards({ total, completedCount }: { total: number; completedCount:
   )
 }
 
-// Chart.js colours are baked into the config at creation time, so a theme
-// flip has to reach the renderer here — reading the attribute once would
-// freeze the palette (ADR-0002).
+// Chart.js bakes colours into the config at creation time, so the palette has
+// to be re-read whenever the theme, the accent (the line chart follows
+// `--accent`) or the white-background variant rewrites the tokens (ADR-0002).
 function useThemeRevision(): number {
   const [revision, setRevision] = useState(0)
   useEffect(() => {
     const observer = new MutationObserver(() => setRevision((r) => r + 1))
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'data-accent', 'data-background'],
+    })
     return () => observer.disconnect()
   }, [])
   return revision
@@ -144,6 +148,8 @@ function useChartRenderer(
   dataset: ReturnType<typeof aggregateKanbanChartData>,
 ) {
   const themeRevision = useThemeRevision()
+  // Each token costs a style recalculation, so read the palette per theme revision, not per data change.
+  const palette = useMemo(() => readKanbanChartPalette(), [themeRevision])
 
   useEffect(() => {
     let chartInstance: { destroy: () => void } | null = null
@@ -153,8 +159,7 @@ function useChartRenderer(
       const { Chart } = await import('chart.js/auto')
       if (!active || !canvasRef.current) return
 
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
-      const config = buildChartJsConfig(chartType, dataset, isDark)
+      const config = buildChartJsConfig(chartType, dataset, palette)
 
       chartInstance = new Chart(canvasRef.current, config as never)
     }
@@ -165,7 +170,7 @@ function useChartRenderer(
       active = false
       if (chartInstance) chartInstance.destroy()
     }
-  }, [canvasRef, chartType, dataset, themeRevision])
+  }, [canvasRef, chartType, dataset, palette])
 }
 
 function chartCanvasAriaLabel(

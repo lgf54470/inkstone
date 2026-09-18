@@ -96,7 +96,7 @@ export type KanbanChartType =
 export interface KanbanChartDataset {
   labels: string[]
   data: number[]
-  colors: string[]
+  colors: KanbanColorName[]
   total: number
 }
 

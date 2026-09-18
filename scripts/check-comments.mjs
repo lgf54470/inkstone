@@ -829,6 +829,15 @@ const allowed = new Map([
     '// Legacy rgba() carries its alpha as a fourth channel, not after a slash.',
     '// color(srgb r g b) — what Chrome computes a color-mix() into.',
   ]],
+  ['scripts/lib/theme-tokens.mjs', [
+    '// Reads the token layer as declared text rather than as painted pixels, for the',
+    '// gates that have to judge colours before anything renders them (see',
+    '// tests/kanban-tag-contrast.test.ts and tests/kanban-chart-tokens.test.ts).',
+    '// A theme is the cascade the browser would apply: the base `:root` block, then',
+    '// the theme block, then that theme\'s white-background override.',
+    '// The same selector may appear in several blocks (`:root` is not one block),',
+    '// and the cascade keeps whichever came last.',
+  ]],
   ['scripts/measure-longtask.mjs', [
     '// Best-effort probe: connection errors while the dev server boots are retried.',
     '// Best-effort close: closing an already-closed socket is a no-op.',
@@ -2617,6 +2626,11 @@ const allowed = new Map([
     '// A rejected protocol fails the whole fence into its error state rather than',
     '// silently dropping the field, so the author sees why the board will not open.',
   ]],
+  ['src/client/lib/markdown/kanban/chart-palette.ts', [
+    '// A probe that is in the document but not painted: `:root` custom properties',
+    '// only reach an attached element, and `color` is where the browser hands back',
+    '// what the token chain resolves to.',
+  ]],
   ['src/client/lib/markdown/kanban/dnd.test.ts', [
     '// A filter hides item \'1\', so the visible column is [2, 3]. Dropping \'4\'',
     '// above \'3\' must land between 2 and 3, not at the column start.',
@@ -2678,10 +2692,16 @@ const allowed = new Map([
     '// time through this ref, so their identity survives re-renders while the',
     '// drop still routes to the latest onMoveItem.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-chart-view.test.ts', [
+    '// The real reader asks the document how it resolves each token, which jsdom',
+    '// does not do; what matters here is *when* the view reads it and that the',
+    '// colours it hands Chart.js come from that read rather than from itself.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-chart-view.tsx', [
-    '// Chart.js colours are baked into the config at creation time, so a theme',
-    '// flip has to reach the renderer here — reading the attribute once would',
-    '// freeze the palette (ADR-0002).',
+    '// Chart.js bakes colours into the config at creation time, so the palette has',
+    '// to be re-read whenever the theme, the accent (the line chart follows',
+    '// `--accent`) or the white-background variant rewrites the tokens (ADR-0002).',
+    '// Each token costs a style recalculation, so read the palette per theme revision, not per data change.',
     '// Identity must survive unrelated commits: a fresh dataset object every',
     '// render tears the Chart.js instance down and rebuilds it.',
   ]],
@@ -4649,6 +4669,9 @@ const allowed = new Map([
     '// the graph used to answer with a 500 instead of a graph.',
     '// The links that came back are the ones that were seeded, and the degrees still come from the one',
     '// pre-aggregated pass over links rather than from the chunking.',
+  ]],
+  ['tests/kanban-chart-tokens.test.ts', [
+    '/**\n * The kanban chart used to keep a second, private palette: hex constants for the\n * axes, tooltips and slices, chosen by eye and never re-read when the theme or\n * accent changed. The board has one palette now, so nothing may paint a chart\n * colour that the token layer did not authorise — hence two checks: the chart\n * sources stay free of literal colours, and every token the chart asks the\n * document for actually exists in both themes (a missing one resolves to\n * nothing, and a canvas silently draws with whatever it last had).\n */',
   ]],
   ['tests/kanban-hover-focus.test.ts', [
     '/**\n * Hover-only controls (`opacity-0` until the card/row is hovered) are invisible\n * while being keyboard-focused, which strands Tab focus on an unseen button.\n * Every such control must also reveal itself on `focus-visible`; this keeps the\n * next `opacity-0` affordance from shipping without it.\n */',

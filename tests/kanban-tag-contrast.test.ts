@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { contrastRatio, over, parseColor } from '../scripts/lib/contrast.mjs'
+import { TOKENS_PATH, themeVars } from '../scripts/lib/theme-tokens.mjs'
 import { KANBAN_COLOR_NAMES } from '../src/client/lib/markdown/kanban/colors'
 
 /**
@@ -17,30 +18,10 @@ import { KANBAN_COLOR_NAMES } from '../src/client/lib/markdown/kanban/colors'
  * every solid surface of the theme, because the same chip appears on the
  * sunken board, the raised card and the overlay dialog.
  */
-const TOKENS = fs.readFileSync('src/client/styles/tokens.css', 'utf8')
+const TOKENS = fs.readFileSync(TOKENS_PATH, 'utf8')
 const KANBAN_CSS = fs.readFileSync('src/client/styles/kanban.css', 'utf8')
 const AA_NORMAL = 4.5
 const SURFACE_TOKENS = ['--bg-sunken', '--bg-base', '--bg-editor', '--bg-surface', '--bg-raised', '--bg-overlay', '--bg-inset']
-const THEME_SELECTORS = {
-  light: [':root {', ":root[data-theme='light'] {", ":root[data-theme='light'][data-background='white'] {"],
-  dark: [':root {', ":root[data-theme='dark'] {", ":root[data-theme='dark'][data-background='white'] {"],
-}
-
-function declarations(source, selector) {
-  const start = source.indexOf(selector)
-  if (start < 0) throw new Error(`missing ${selector}`)
-  const block = source.slice(start, source.indexOf('}', start))
-  const map = new Map()
-  for (const match of block.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) map.set(match[1], match[2].trim())
-  return map
-}
-
-function themeVars(theme) {
-  return THEME_SELECTORS[theme].reduce((acc, selector) => {
-    for (const [name, value] of declarations(TOKENS, selector)) acc.set(name, value)
-    return acc
-  }, new Map())
-}
 
 const COLOR_MIX_RE = /^color-mix\(in oklab,\s*(.+?)\s+([\d.]+)%\s*,\s*transparent\)$/
 const VAR_RE = /^var\((--[\w-]+)\)$/
@@ -64,7 +45,7 @@ function resolveColor(vars, raw, seen = new Set()) {
   return parsed
 }
 
-const VARS: Record<string, Map<string, string>> = { light: themeVars('light'), dark: themeVars('dark') }
+const VARS: Record<string, Map<string, string>> = { light: themeVars('light', TOKENS), dark: themeVars('dark', TOKENS) }
 
 function solidSurfaces(vars) {
   return SURFACE_TOKENS
