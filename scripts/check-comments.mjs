@@ -4420,6 +4420,9 @@ const allowed = new Map([
   ['src/worker/routes/music/stream.ts', [
     '// Shared by the authenticated library and the public blog player: only the owner and the',
     '// cache policy differ, the range and WebDAV handling stay in one place.',
+    '// Only echo the length the upstream declared for this very response: the',
+    '// stored size_bytes can drift from the remote file and a wrong',
+    '// Content-Length stalls or poisons downstream caches.',
   ]],
   ['src/worker/routes/music/tracks.ts', [
     '// Scanned artwork replaces the stored object; a decode failure keeps the previous cover.',

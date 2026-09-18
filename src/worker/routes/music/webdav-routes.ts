@@ -7,7 +7,7 @@ import { FORM_BODY_LIMITS, JSON_BODY_LIMITS, readFormDataWithinLimit, readJsonVa
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
 import { coverObjectKey, decodeCoverDataUrl } from './cover'
-import { mimeForFormat, resolveMusicFormat } from './keys'
+import { mimeForFormat, resolveMusicFormat, safeAudioMime } from './keys'
 import { toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
 import { importMusicSchema, webdavPathSchema } from './schemas'
@@ -80,7 +80,7 @@ async function importTrack(c: Context<AppBindings>): Promise<Response> {
     duration_ms: body.durationMs ?? 0,
     source: 'webdav',
     object_key: body.path,
-    mime: stat.mime && stat.mime.startsWith('audio/') ? stat.mime.split(';', 1)[0]! : mimeForFormat(format),
+    mime: safeAudioMime(stat.mime) ?? mimeForFormat(format),
     size_bytes: stat.sizeBytes,
     cover_url: null,
     lyric: null,

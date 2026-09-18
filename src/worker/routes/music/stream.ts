@@ -78,11 +78,13 @@ async function streamWebdavTrack(
     'Cache-Control': options.cacheControl,
     'X-Content-Type-Options': 'nosniff',
   }
+  // Only echo the length the upstream declared for this very response: the
+  // stored size_bytes can drift from the remote file and a wrong
+  // Content-Length stalls or poisons downstream caches.
   for (const header of ['Content-Length', 'Content-Range'] as const) {
     const value = upstream.headers.get(header)
     if (value) headers[header] = value
   }
-  if (!headers['Content-Range'] && row.size_bytes > 0) headers['Content-Length'] = String(row.size_bytes)
   if (!safeMime || options.download) headers['Content-Disposition'] = attachmentDisposition(row.title)
   return new Response(upstream.body as BodyInit, { status: upstream.status === 206 ? 206 : 200, headers })
 }
