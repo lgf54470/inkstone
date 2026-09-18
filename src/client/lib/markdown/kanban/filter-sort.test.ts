@@ -196,4 +196,12 @@ describe('groupKanbanItems', () => {
     expect(noStatus).toBeDefined()
     expect(noStatus?.items.map((i) => i.id)).toEqual(['item-orphan'])
   })
+
+  it('matches a group by option label when the item stores the label not the id', () => {
+    const labelValued: KanbanItem = { id: 'item-label', title: 'Labelled', properties: { status: 'In Progress' } }
+    const junkValued: KanbanItem = { id: 'item-junk', title: 'Junk', properties: { status: 'NotAnOption' } }
+    const groups = groupKanbanItems([labelValued, junkValued], 'status', statusColumn)
+    expect(groups.find((g) => g.groupKey === 'in_progress')?.items.map((i) => i.id)).toEqual(['item-label'])
+    expect(groups.find((g) => g.groupKey === '__none__')?.items.map((i) => i.id)).toEqual(['item-junk'])
+  })
 })

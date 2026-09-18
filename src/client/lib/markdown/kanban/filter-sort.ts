@@ -106,6 +106,17 @@ export interface KanbanGroup {
   items: KanbanItem[]
 }
 
+// Documents imported from other tools may store the option label where this
+// board expects the option id; matching only by id would hide all of those
+// cards in No Status, so fall back to a case-insensitive label match.
+function findGroupForValue(groups: KanbanGroup[], val: unknown): KanbanGroup | undefined {
+  const byId = groups.find((g) => g.groupKey === val)
+  if (byId) return byId
+  if (typeof val !== 'string') return undefined
+  const needle = val.toLowerCase()
+  return groups.find((g) => g.label.toLowerCase() === needle)
+}
+
 export function groupKanbanItems(
   items: KanbanItem[],
   groupPropertyId: string,
@@ -133,7 +144,7 @@ export function groupKanbanItems(
 
   for (const item of items) {
     const val = item.properties[groupPropertyId]
-    const matched = groups.find((g) => g.groupKey === val)
+    const matched = findGroupForValue(groups, val)
     if (matched) {
       matched.items.push(item)
     } else {
