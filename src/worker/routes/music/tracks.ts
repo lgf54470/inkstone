@@ -40,11 +40,11 @@ function registerPatchRoute(routes: Hono<AppBindings>): void {
   routes.patch('/tracks/:id', requireAuth, async (c) => {
     const userId = c.get('userId')
     const id = pathParam(c, 'id')
-    if (!(await loadTrackRow(c.env.DB, userId, id))) throw ApiError.notFound('Track not found')
+    const row = await loadTrackRow(c.env.DB, userId, id)
+    if (!row) throw ApiError.notFound('Track not found')
     await enforceMusicBudget(c.env.DB, 'write', userId)
     const body = await readJsonValidated(c, patchTrackSchema, JSON_BODY_LIMITS.musicTrack)
-    const row = await loadTrackRow(c.env.DB, userId, id)
-    if (body.coverDataUrl !== undefined && row) {
+    if (body.coverDataUrl !== undefined) {
       // Scanned artwork replaces the stored object; a decode failure keeps the previous cover.
       const key = await storeCoverObject(c.env, id, row.created_at, body.coverDataUrl)
       body.coverUrl = key ?? body.coverUrl
@@ -208,16 +208,19 @@ async function updateTrackRow(db: D1Database, userId: string, id: string, patch:
   ).bind(...values).run()
 }
 
+// Ownership is enforced by the insert-select, so a foreign tag id links nothing
+// and the whole rewrite stays inside one batched round trip.
 async function replaceTrackTags(db: D1Database, userId: string, trackId: string, tagIds: string[]): Promise<void> {
-  const owned = await db.prepare('SELECT id FROM music_tags WHERE user_id = ?1').bind(userId).all<{ id: string }>()
-  const ownedIds = new Set(owned.results.map((row) => row.id))
-  const accepted = [...new Set(tagIds)].filter((tagId) => ownedIds.has(tagId))
+  const unique = [...new Set(tagIds)]
+  const placeholders = unique.map((_, index) => `?${index + 3}`).join(', ')
   await db.batch([
     db.prepare('DELETE FROM music_track_tags WHERE user_id = ?1 AND track_id = ?2').bind(userId, trackId),
-    ...accepted.map((tagId) =>
-      db.prepare('INSERT OR IGNORE INTO music_track_tags (user_id, track_id, tag_id) VALUES (?1, ?2, ?3)')
-        .bind(userId, trackId, tagId),
-    ),
+    ...(unique.length
+      ? [db.prepare(
+        `INSERT OR IGNORE INTO music_track_tags (user_id, track_id, tag_id)
+         SELECT ?1, ?2, id FROM music_tags WHERE user_id = ?1 AND id IN (${placeholders})`,
+      ).bind(userId, trackId, ...unique)]
+      : []),
   ])
 }
 

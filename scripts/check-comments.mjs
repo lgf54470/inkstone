@@ -4503,6 +4503,8 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/music/tracks.ts', [
     '// Scanned artwork replaces the stored object; a decode failure keeps the previous cover.',
+    '// Ownership is enforced by the insert-select, so a foreign tag id links nothing',
+    '// and the whole rewrite stays inside one batched round trip.',
   ]],
   ['src/worker/routes/music/webdav-routes.ts', [
     '// GET must stay side-effect free: the directory is created by the first',
@@ -4632,6 +4634,9 @@ const allowed = new Map([
     '// Skeleton compares tag names and class tokens only (attribute order insensitive),',
     '// ignoring text: the root renderer emits i18n key literals without a provider in',
     '// tests, and both trees pin full output text via their own baseline snapshots.',
+  ]],
+  ['tests/music-routes.test.ts', [
+    '// Records every statement the route prepares, so round-trip redundancy is assertable.',
   ]],
   ['tests/schema-migrations.test.ts', [
     '// Simulate a database whose music tables came from an earlier build: different',

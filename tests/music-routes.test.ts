@@ -146,6 +146,23 @@ async function uploadTrack(app: Hono<AppBindings>, name = 'song.mp3', type = 'au
   return res.json() as Promise<Record<string, unknown>>
 }
 
+// Records every statement the route prepares, so round-trip redundancy is assertable.
+function recordingDb(db: D1Shim): { proxy: D1Shim; statements: string[] } {
+  const statements: string[] = []
+  const proxy = new Proxy(db, {
+    get(target, property, receiver) {
+      if (property === 'prepare') {
+        return (sql: string) => {
+          statements.push(sql)
+          return target.prepare(sql)
+        }
+      }
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  return { proxy, statements }
+}
+
 describe('music routes (real D1 + fake R2)', () => {
   it('requires authentication', async () => {
     const db = await makeDb()
@@ -285,6 +302,30 @@ describe('music routes (real D1 + fake R2)', () => {
 
     const missing = await json(app, '/api/music/tracks/nope', { title: 'x' }, 'PATCH')
     expect(missing.status).toBe(404)
+  })
+
+  it('PATCH reads the track row once before the write and validates tags inside the batch', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app)
+    const id = String(track.id)
+    const tag = await (await json(app, '/api/music/tags', { name: 'Soundtrack' })).json()
+
+    const { proxy, statements } = recordingDb(db)
+    DB_ENV.env.DB = proxy as unknown as D1Database
+    statements.length = 0
+
+    const patched = await json(app, `/api/music/tracks/${id}`, { title: 'Renamed', tagIds: [tag.id, 'not-mine'] }, 'PATCH')
+    expect(patched.status).toBe(200)
+    const body = await patched.json()
+    expect(body.title).toBe('Renamed')
+    expect(body.tagIds).toEqual([tag.id])
+
+    const trackRowReads = statements.filter((sql) => /FROM music_tracks WHERE id = \?1 AND user_id = \?2/.test(sql))
+    expect(trackRowReads).toHaveLength(2)
+    const tagOwnershipProbes = statements.filter((sql) => /SELECT id FROM music_tags/.test(sql))
+    expect(tagOwnershipProbes).toHaveLength(0)
   })
 
   it('batch-updates flags and deletes with object cleanup', async () => {
