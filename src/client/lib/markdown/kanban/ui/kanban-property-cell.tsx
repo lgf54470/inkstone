@@ -1,9 +1,10 @@
-import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
+import { useState } from 'react'
+import { getKanbanTagStyle } from '../colors'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
-import type { KanbanFile, KanbanItem, KanbanProperty, KanbanPropertyType } from '../types'
+import type { KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanPropertyType } from '../types'
+import { KanbanDatePicker } from './kanban-date-picker'
 import { KanbanFilesCell } from './kanban-files-cell'
-
-const EMPTY_VALUE_MARK = '-'
+import { KanbanTagPicker } from './kanban-tag-picker'
 
 export const KANBAN_TITLE_COLUMN: KanbanProperty = { id: 'title', name: 'Title', type: 'title' }
 
@@ -48,11 +49,46 @@ function readPlainText(value: unknown): string {
   return String(value)
 }
 
-function PlainValue({ text }: { text: string }) {
-  if (!text) {
-    return <span className='text-[var(--text-quaternary)]'>{EMPTY_VALUE_MARK}</span>
+function readNumber(text: string): number | '' {
+  return text.trim() === '' ? '' : Number(text)
+}
+
+interface EditableValueProps {
+  label: string
+  text: string
+  numberType?: boolean
+  onSubmit: (next: string) => void
+}
+
+function EditableValue({ label, text, numberType = false, onSubmit }: EditableValueProps) {
+  const [draft, setDraft] = useState(text)
+  const [committed, setCommitted] = useState(text)
+  if (text !== committed) {
+    setCommitted(text)
+    setDraft(text)
   }
-  return <span className='truncate text-[var(--text-primary)]'>{text}</span>
+
+  const submit = () => {
+    if (draft === committed) return
+    setCommitted(draft)
+    onSubmit(draft)
+  }
+
+  return (
+    <input
+      type={numberType ? 'number' : 'text'}
+      value={draft}
+      data-owns-escape='true'
+      aria-label={label}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={submit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') submit()
+        if (e.key === 'Escape') setDraft(committed)
+      }}
+      className='h-7 w-full rounded-[var(--r-sm)] border border-transparent bg-transparent px-1.5 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none hover:border-[var(--border-subtle)] focus:border-[var(--accent)]'
+    />
+  )
 }
 
 function SelectValue({
@@ -82,27 +118,6 @@ function SelectValue({
   )
 }
 
-function MultiSelectValue({ column, values }: { column: KanbanProperty; values: string[] }) {
-  if (values.length === 0) return <PlainValue text='' />
-  return (
-    <div className='flex flex-wrap items-center gap-1 py-1.5'>
-      {values.map((val) => {
-        const color = resolveKanbanTagColor(val, column.options)
-        const label = column.options?.find((opt) => opt.id === val || opt.label === val)?.label ?? val
-        return (
-          <span
-            key={val}
-            style={getKanbanTagStyle(color)}
-            className='inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold'
-          >
-            {formatKanbanOptionLabel(label, column.id)}
-          </span>
-        )
-      })}
-    </div>
-  )
-}
-
 function CheckboxValue({
   column,
   checked,
@@ -127,10 +142,17 @@ interface KanbanPropertyCellProps {
   column: KanbanProperty
   item: KanbanItem
   onUpdateProperty: (itemId: string, propertyId: string, value: unknown) => void
+  onUpdateMultiSelect: (itemId: string, columnId: string, values: string[], newOption?: KanbanOption) => void
   onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
 }
 
-function CellContent({ column, item, onUpdateProperty, onUpdateFiles }: KanbanPropertyCellProps) {
+function CellContent({
+  column,
+  item,
+  onUpdateProperty,
+  onUpdateMultiSelect,
+  onUpdateFiles,
+}: KanbanPropertyCellProps) {
   const value = item.properties[column.id]
   const write = (next: unknown) => onUpdateProperty(item.id, column.id, next)
 
@@ -138,7 +160,13 @@ function CellContent({ column, item, onUpdateProperty, onUpdateFiles }: KanbanPr
     return <SelectValue column={column} value={value} onChange={write} />
   }
   if (column.type === 'multi-select') {
-    return <MultiSelectValue column={column} values={readValues(value)} />
+    return (
+      <KanbanTagPicker
+        tags={readValues(value)}
+        options={column.options}
+        onChangeTags={(next, newOption) => onUpdateMultiSelect(item.id, column.id, next, newOption)}
+      />
+    )
   }
   if (column.type === 'checkbox') {
     return <CheckboxValue column={column} checked={Boolean(value)} onChange={write} />
@@ -146,7 +174,17 @@ function CellContent({ column, item, onUpdateProperty, onUpdateFiles }: KanbanPr
   if (column.type === 'files') {
     return <KanbanFilesCell files={item.files} onChangeFiles={(files) => onUpdateFiles(item.id, files)} />
   }
-  return <PlainValue text={readPlainText(value)} />
+  if (column.type === 'date') {
+    return <KanbanDatePicker value={readPlainText(value)} onChange={write} />
+  }
+  return (
+    <EditableValue
+      label={formatKanbanPropertyName(column)}
+      text={readPlainText(value)}
+      numberType={column.type === 'number'}
+      onSubmit={(next) => write(column.type === 'number' ? readNumber(next) : next)}
+    />
+  )
 }
 
 export function KanbanPropertyCell(props: KanbanPropertyCellProps) {

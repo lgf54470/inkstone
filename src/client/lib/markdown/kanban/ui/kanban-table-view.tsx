@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { groupKanbanItems } from '../filter-sort'
-import type { KanbanData, KanbanFile, KanbanItem, KanbanProperty, KanbanSubtask, KanbanView } from '../types'
+import type { KanbanData, KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask, KanbanView } from '../types'
 import { KanbanTableHeaderCell, kanbanPropertyColumns, kanbanTitleColumn } from './kanban-property-cell'
 import { KanbanTableGroup } from './kanban-table-group'
 
@@ -14,6 +14,7 @@ interface KanbanTableViewProps {
   onToggleAll: (ids: string[]) => void
   onOpenDetail: (item: KanbanItem) => void
   onUpdateProperty: (itemId: string, propertyId: string, value: unknown) => void
+  onUpdateMultiSelect: (itemId: string, columnId: string, values: string[], newOption?: KanbanOption) => void
   onUpdateSubtasks?: (itemId: string, subtasks: KanbanSubtask[]) => void
   onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
   onAddItem: (propertyDefaults?: Record<string, unknown>) => void
@@ -65,6 +66,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   onToggleAll,
   onOpenDetail,
   onUpdateProperty,
+  onUpdateMultiSelect,
   onUpdateSubtasks,
   onUpdateFiles,
   onAddItem,
@@ -92,6 +94,7 @@ export const KanbanTableView = memo(function KanbanTableView({
               onToggleSelect={onToggleSelect}
               onOpenDetail={onOpenDetail}
               onUpdateProperty={onUpdateProperty}
+              onUpdateMultiSelect={onUpdateMultiSelect}
               onUpdateSubtasks={onUpdateSubtasks}
               onUpdateFiles={onUpdateFiles}
               onAddItemInGroup={() => {

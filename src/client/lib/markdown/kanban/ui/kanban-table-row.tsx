@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, MessageSquare, Plus, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { createKanbanId } from '../id'
-import type { KanbanFile, KanbanItem, KanbanProperty, KanbanSubtask } from '../types'
+import type { KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import {
   KanbanPropertyCell,
@@ -18,6 +18,7 @@ interface KanbanTableRowProps {
   onToggleSelect: () => void
   onOpenDetail: () => void
   onUpdateProperty: (itemId: string, propertyId: string, value: unknown) => void
+  onUpdateMultiSelect: (itemId: string, columnId: string, values: string[], newOption?: KanbanOption) => void
   onUpdateSubtasks?: (itemId: string, subtasks: KanbanSubtask[]) => void
   onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
 }
@@ -173,6 +174,7 @@ export function KanbanTableRow({
   onToggleSelect,
   onOpenDetail,
   onUpdateProperty,
+  onUpdateMultiSelect,
   onUpdateSubtasks,
   onUpdateFiles,
 }: KanbanTableRowProps) {
@@ -208,6 +210,7 @@ export function KanbanTableRow({
             column={column}
             item={item}
             onUpdateProperty={onUpdateProperty}
+            onUpdateMultiSelect={onUpdateMultiSelect}
             onUpdateFiles={onUpdateFiles}
           />
         ))}

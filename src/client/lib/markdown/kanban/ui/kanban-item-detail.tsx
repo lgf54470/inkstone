@@ -212,8 +212,10 @@ function DetailModalContent({
         <KanbanTagPicker
           tags={tagVals}
           options={localTagOptions}
-          onChangeTags={(nextTags) => onPropertyChange('tags', nextTags)}
-          onAddOption={onAddTagOption}
+          onChangeTags={(nextTags, newOption) => {
+            onPropertyChange('tags', nextTags)
+            if (newOption) onAddTagOption(newOption)
+          }}
         />
       </div>
 

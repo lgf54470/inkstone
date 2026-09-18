@@ -4,7 +4,7 @@ import { t } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanOption, KanbanProperty } from '../types'
-import { TagCreatePopover } from './kanban-tag-picker'
+import { computeTagAddition, TagCreatePopover } from './kanban-tag-picker'
 
 function CardTagItem({
   tag,
@@ -57,14 +57,6 @@ function CardTagItem({
       )}
     </span>
   )
-}
-
-function computeTagAddition(name: string, color: KanbanColorName, tagVals: string[], options?: KanbanOption[]) {
-  const existing = options?.find((o) => o.id === name || o.label === name)
-  const tagId = existing ? existing.id : name.toLowerCase().replace(/\s+/g, '_')
-  const nextTags = !tagVals.includes(tagId) && !tagVals.includes(name) ? [...tagVals, tagId] : tagVals
-  const newOption = !existing || existing.color !== color ? { id: tagId, label: name, color } : undefined
-  return { nextTags, newOption }
 }
 
 interface CardAddTagButtonProps {

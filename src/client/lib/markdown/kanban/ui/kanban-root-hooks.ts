@@ -88,11 +88,46 @@ export function useKanbanFilterSort(
   }
 }
 
+function useKanbanValueWrites(commitData: CommitKanbanData) {
+  const handleUpdateFiles = useCallback((id: string, files: KanbanFile[]) => {
+    commitData((prev) => ({
+      ...prev,
+      items: prev.items.map((item) => (item.id === id ? { ...item, files } : item)),
+    }))
+  }, [commitData])
+
+  const handleUpdateMultiSelect = useCallback(
+    (id: string, columnId: string, values: string[], newOption?: KanbanOption) => {
+      commitData((prev: KanbanData) => {
+        const nextItems = prev.items.map((item) =>
+          item.id === id ? { ...item, properties: { ...item.properties, [columnId]: values } } : item,
+        )
+        const nextColumns = newOption
+          ? appendOptionToColumn(prev.columns, columnId, newOption)
+          : prev.columns
+        return { ...prev, items: nextItems, columns: nextColumns }
+      })
+    },
+    [commitData],
+  )
+
+  const handleUpdateTags = useCallback(
+    (id: string, tags: string[], newOption?: KanbanOption) => {
+      handleUpdateMultiSelect(id, 'tags', tags, newOption)
+    },
+    [handleUpdateMultiSelect],
+  )
+
+  return { handleUpdateFiles, handleUpdateMultiSelect, handleUpdateTags }
+}
+
 export function useKanbanItemMutations(
   commitData: CommitKanbanData,
   activeView: KanbanView,
   setDetailItem: (item: KanbanItem | null) => void,
 ) {
+  const valueWrites = useKanbanValueWrites(commitData)
+
   const handleMoveItem = useCallback(
     (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => {
       const groupPropertyId = activeView.groupBy || 'status'
@@ -119,27 +154,7 @@ export function useKanbanItemMutations(
     setDetailItem(updated)
   }, [commitData, setDetailItem])
 
-  const handleUpdateFiles = useCallback((id: string, files: KanbanFile[]) => {
-    commitData((prev) => ({
-      ...prev,
-      items: prev.items.map((item) => (item.id === id ? { ...item, files } : item)),
-    }))
-  }, [commitData])
-
-  const handleUpdateTags = useCallback(
-    (id: string, tags: string[], newOption?: KanbanOption) => {
-      commitData((prev: KanbanData) => {
-        const nextItems = prev.items.map((item) =>
-          item.id === id ? { ...item, properties: { ...item.properties, tags } } : item,
-        )
-        const nextColumns = newOption ? appendOptionToColumn(prev.columns, 'tags', newOption) : prev.columns
-        return { ...prev, items: nextItems, columns: nextColumns }
-      })
-    },
-    [commitData],
-  )
-
-  return { handleMoveItem, handleUpdateTitle, handleUpdateItem, handleUpdateFiles, handleUpdateTags }
+  return { handleMoveItem, handleUpdateTitle, handleUpdateItem, ...valueWrites }
 }
 
 export function useKanbanItemLifecycle(

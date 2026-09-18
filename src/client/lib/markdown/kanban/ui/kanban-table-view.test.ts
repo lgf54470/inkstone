@@ -14,7 +14,13 @@ beforeAll(async () => {
 type TableProps = ComponentProps<typeof KanbanTableView>
 type TableHandlers = Pick<
   TableProps,
-  'onAddItem' | 'onAddColumn' | 'onUpdateProperty' | 'onUpdateSubtasks' | 'onUpdateFiles' | 'selectedIds'
+  | 'onAddItem'
+  | 'onAddColumn'
+  | 'onUpdateProperty'
+  | 'onUpdateMultiSelect'
+  | 'onUpdateSubtasks'
+  | 'onUpdateFiles'
+  | 'selectedIds'
 >
 
 function mountTable(data: KanbanData, props: TableHandlers) {
@@ -101,7 +107,15 @@ const schemaColumns: KanbanProperty[] = [
   { id: 'spec', name: 'Spec file', type: 'text' },
   { id: 'story', name: 'Story points', type: 'number' },
   { id: 'deadline', name: 'Deadline', type: 'date' },
-  { id: 'tags', name: 'Tags', type: 'multi-select', options: [{ id: 'bug', label: 'Bug', color: 'red' }] },
+  {
+    id: 'tags',
+    name: 'Tags',
+    type: 'multi-select',
+    options: [
+      { id: 'bug', label: 'Bug', color: 'red' },
+      { id: 'feature', label: 'Feature', color: 'green' },
+    ],
+  },
   { id: 'reviewer', name: 'Reviewer', type: 'person' },
   { id: 'blocked', name: 'Blocked', type: 'checkbox' },
 ]
@@ -159,6 +173,7 @@ function handlers(overrides: Partial<TableHandlers> = {}): TableHandlers {
     onAddItem: vi.fn(),
     onAddColumn: vi.fn(),
     onUpdateProperty: vi.fn(),
+    onUpdateMultiSelect: vi.fn(),
     onUpdateFiles: vi.fn(),
     ...overrides,
   }
@@ -176,10 +191,10 @@ describe('KanbanTableView schema columns', () => {
 
   it('renders each property value in its own column', () => {
     const { container, unmount } = mountTable(schemaData, handlers())
-    expect(cellText(container, 'a', 'spec')).toContain('docs/a.md')
-    expect(cellText(container, 'a', 'story')).toContain('5')
+    expect(cellInput(container, 'a', 'spec').value).toBe('docs/a.md')
+    expect(cellInput(container, 'a', 'story').value).toBe('5')
+    expect(cellInput(container, 'a', 'reviewer').value).toBe('Nora')
     expect(cellText(container, 'a', 'deadline')).toContain('2026-09-30')
-    expect(cellText(container, 'a', 'reviewer')).toContain('Nora')
     expect(cellText(container, 'a', 'priority')).toContain(t('preview.kanban_priority_high'))
     expect(cellText(container, 'a', 'tags')).toContain(t('preview.kanban_tag_bug'))
     unmount()
@@ -218,11 +233,15 @@ describe('KanbanTableView schema cells', () => {
     unmount()
   })
 
-  it('marks a checked checkbox column and leaves an empty cell as a dash', () => {
+  it('marks a checked checkbox column and leaves an empty cell as an empty input', () => {
     const { container, unmount } = mountTable(schemaData, handlers())
     expect(cellOf(container, 'a', 'blocked').querySelector<HTMLInputElement>('input')?.checked).toBe(true)
-    expect(cellText(container, 'b', 'spec')).toBe('-')
-    expect(cellText(container, 'b', 'story')).toBe('-')
+    const text = cellOf(container, 'b', 'spec').querySelector<HTMLInputElement>('input')!
+    const number = cellOf(container, 'b', 'story').querySelector<HTMLInputElement>('input')!
+    expect(text.type).toBe('text')
+    expect(text.value).toBe('')
+    expect(number.type).toBe('number')
+    expect(number.value).toBe('')
     unmount()
   })
 })
@@ -237,6 +256,147 @@ describe('KanbanTableView attachments column', () => {
     )!
     act(() => { deleteButton.click() })
     expect(onUpdateFiles).toHaveBeenCalledWith('a', [])
+    unmount()
+  })
+})
+
+function typeInto(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+  setter.call(input, value)
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+function blur(input: HTMLElement) {
+  input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+}
+
+function pressKey(el: HTMLElement, key: string) {
+  el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
+}
+
+function cellInput(container: HTMLElement, itemId: string, columnId: string): HTMLInputElement {
+  const input = cellOf(container, itemId, columnId).querySelector<HTMLInputElement>('input:not([type=checkbox])')
+  if (!input) throw new Error(`no text input in cell "${itemId}"/"${columnId}"`)
+  return input
+}
+
+function buttonNamed(cell: HTMLElement, name: string): HTMLButtonElement {
+  const button = [...cell.querySelectorAll('button')].find((el) => el.getAttribute('aria-label') === name)
+  if (!button) throw new Error(`no button named "${name}" in ${cell.dataset.kanbanColumn}`)
+  return button
+}
+
+describe('KanbanTableView inline editing', () => {
+  it('commits a text cell once on blur and discards an escaped draft', () => {
+    const onUpdateProperty = vi.fn()
+    const { container, unmount } = mountTable(schemaData, handlers({ onUpdateProperty }))
+    const input = cellInput(container, 'a', 'spec')
+    expect(input.value).toBe('docs/a.md')
+    act(() => { typeInto(input, 'docs/a.md') })
+    expect(onUpdateProperty).not.toHaveBeenCalled()
+    act(() => { typeInto(input, 'docs/draft.md') })
+    expect(onUpdateProperty).not.toHaveBeenCalled()
+    act(() => { blur(input) })
+    expect(onUpdateProperty).toHaveBeenCalledTimes(1)
+    expect(onUpdateProperty).toHaveBeenCalledWith('a', 'spec', 'docs/draft.md')
+    act(() => { typeInto(input, 'Abandoned') })
+    act(() => { pressKey(input, 'Escape') })
+    act(() => { blur(input) })
+    expect(onUpdateProperty).toHaveBeenCalledTimes(1)
+    expect(input.value).not.toBe('Abandoned')
+    unmount()
+  })
+
+  it('commits a text cell on Enter as well', () => {
+    const onUpdateProperty = vi.fn()
+    const { container, unmount } = mountTable(schemaData, handlers({ onUpdateProperty }))
+    const input = cellInput(container, 'a', 'spec')
+    act(() => {
+      typeInto(input, 'docs/b.md')
+      pressKey(input, 'Enter')
+    })
+    expect(onUpdateProperty).toHaveBeenCalledWith('a', 'spec', 'docs/b.md')
+    unmount()
+  })
+})
+
+describe('KanbanTableView inline number editing', () => {
+  it('names the text and number cell controls after their own column', () => {
+    const { container, unmount } = mountTable(schemaData, handlers())
+    expect(cellInput(container, 'a', 'spec').getAttribute('aria-label')).toBe('Spec file')
+    expect(cellInput(container, 'a', 'story').getAttribute('aria-label')).toBe('Story points')
+    unmount()
+  })
+
+  it('writes a number cell as a number and an emptied one as blank', () => {
+    const onUpdateProperty = vi.fn()
+    const { container, unmount } = mountTable(schemaData, handlers({ onUpdateProperty }))
+    const input = cellInput(container, 'a', 'story')
+    expect(input.value).toBe('5')
+    act(() => {
+      typeInto(input, '8')
+      blur(input)
+    })
+    expect(onUpdateProperty).toHaveBeenCalledWith('a', 'story', 8)
+    act(() => {
+      typeInto(input, '')
+      blur(input)
+    })
+    expect(onUpdateProperty).toHaveBeenLastCalledWith('a', 'story', '')
+    unmount()
+  })
+})
+
+describe('KanbanTableView inline date editing', () => {
+  it('edits a date cell through the calendar and clears it', () => {
+    const onUpdateProperty = vi.fn()
+    const { container, unmount } = mountTable(schemaData, handlers({ onUpdateProperty }))
+    const cell = cellOf(container, 'a', 'deadline')
+    expect(cell.textContent).toContain('2026-09-30')
+    const trigger = cell.querySelector('button')!
+    act(() => { trigger.click() })
+    const dialog = container.querySelector<HTMLElement>('[role="dialog"]')!
+    act(() => { [...dialog.querySelectorAll('button')].find((el) => el.textContent === '15')!.click() })
+    expect(onUpdateProperty).toHaveBeenLastCalledWith('a', 'deadline', '2026-09-15')
+    act(() => { buttonNamed(cellOf(container, 'a', 'deadline'), t('preview.kanban_clear_date')).click() })
+    expect(onUpdateProperty).toHaveBeenLastCalledWith('a', 'deadline', '')
+    unmount()
+  })
+})
+
+describe('KanbanTableView inline tag editing', () => {
+  it('adds and removes tags in place through the multi-select writer', () => {
+    const onUpdateMultiSelect = vi.fn()
+    const { container, unmount } = mountTable(schemaData, handlers({ onUpdateMultiSelect }))
+    const cell = cellOf(container, 'a', 'tags')
+    act(() => { buttonNamed(cell, t('preview.mindmap_shortcut_remove')).click() })
+    expect(onUpdateMultiSelect).toHaveBeenCalledWith('a', 'tags', [], undefined)
+    act(() => { buttonNamed(cellOf(container, 'a', 'tags'), t('preview.kanban_new_tag')).click() })
+    const popover = container.querySelector<HTMLElement>('[role="dialog"]')!
+    const feature = [...popover.querySelectorAll('button')].find((el) =>
+      el.textContent?.includes(t('preview.kanban_tag_feat')),
+    )!
+    act(() => { feature.click() })
+    expect(onUpdateMultiSelect).toHaveBeenLastCalledWith('a', 'tags', ['bug', 'feature'], undefined)
+    unmount()
+  })
+
+  it('creates a missing tag option from the cell and hands it to the writer', () => {
+    const onUpdateMultiSelect = vi.fn()
+    const { container, unmount } = mountTable(schemaData, handlers({ onUpdateMultiSelect }))
+    const cell = cellOf(container, 'a', 'tags')
+    act(() => { buttonNamed(cell, t('preview.kanban_new_tag')).click() })
+    const popover = container.querySelector<HTMLElement>('[role="dialog"]')!
+    const field = popover.querySelector<HTMLInputElement>('input[type="text"]')!
+    act(() => {
+      typeInto(field, 'Urgent')
+      pressKey(field, 'Enter')
+    })
+    expect(onUpdateMultiSelect).toHaveBeenCalledWith('a', 'tags', ['bug', 'urgent'], {
+      id: 'urgent',
+      label: 'Urgent',
+      color: 'blue',
+    })
     unmount()
   })
 })

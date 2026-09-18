@@ -8,8 +8,20 @@ import type { KanbanColorName, KanbanOption } from '../types'
 interface KanbanTagPickerProps {
   tags: string[]
   options?: KanbanOption[]
-  onChangeTags: (tags: string[]) => void
-  onAddOption?: (newOption: KanbanOption) => void
+  onChangeTags: (tags: string[], newOption?: KanbanOption) => void
+}
+
+export function computeTagAddition(
+  name: string,
+  color: KanbanColorName,
+  tagVals: string[],
+  options?: KanbanOption[],
+) {
+  const existing = options?.find((o) => o.id === name || o.label === name)
+  const tagId = existing ? existing.id : name.toLowerCase().replace(/\s+/g, '_')
+  const nextTags = !tagVals.includes(tagId) && !tagVals.includes(name) ? [...tagVals, tagId] : tagVals
+  const newOption = !existing || existing.color !== color ? { id: tagId, label: name, color } : undefined
+  return { nextTags, newOption }
 }
 
 function TagChip({
@@ -228,7 +240,6 @@ export function KanbanTagPicker({
   tags = [],
   options = [],
   onChangeTags,
-  onAddOption,
 }: KanbanTagPickerProps) {
   const [open, setOpen] = useState(false)
   const addBtnRef = useRef<HTMLButtonElement>(null)
@@ -238,14 +249,8 @@ export function KanbanTagPicker({
   }
 
   const handleAdd = (name: string, color: KanbanColorName) => {
-    const existing = options.find((o) => o.id === name || o.label === name)
-    const tagId = existing ? existing.id : name.toLowerCase().replace(/\s+/g, '_')
-    if (!tags.includes(tagId) && !tags.includes(name)) {
-      onChangeTags([...tags, tagId])
-    }
-    if (!existing && onAddOption) {
-      onAddOption({ id: tagId, label: name, color })
-    }
+    const { nextTags, newOption } = computeTagAddition(name, color, tags, options)
+    onChangeTags(nextTags, newOption)
   }
 
   return (
