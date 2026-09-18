@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { toggleKanbanColumnSort } from '../filter-sort'
 import type { KanbanFilter, KanbanSort, KanbanView } from '../types'
 import type { CardSize } from './kanban-view-options'
 import type { CommitKanbanData } from './kanban-history'
@@ -28,7 +29,31 @@ export function useKanbanViewState(
   const setSearchQuery = useCallback((q: string) => updateActiveView({ searchQuery: q }), [updateActiveView])
   const setFilters = useCallback((next: KanbanFilter[]) => updateActiveView({ filters: next }), [updateActiveView])
   const setSorts = useCallback((next: KanbanSort[]) => updateActiveView({ sorts: next }), [updateActiveView])
+  // Reads the committed view rather than the render-time one, so two header
+  // clicks in one batch still cycle asc then desc instead of both writing asc.
+  const toggleSortColumn = useCallback(
+    (propertyId: string) => {
+      commitData((prev) => ({
+        ...prev,
+        views: prev.views.map((view) =>
+          view.id === activeViewId ? { ...view, sorts: toggleKanbanColumnSort(view.sorts, propertyId) } : view,
+        ),
+      }))
+    },
+    [activeViewId, commitData],
+  )
   const setCardSize = useCallback((next: CardSize) => updateActiveView({ cardSize: next }), [updateActiveView])
 
-  return { searchQuery, setSearchQuery, filters, setFilters, sorts, setSorts, cardSize, setCardSize, updateActiveView }
+  return {
+    searchQuery,
+    setSearchQuery,
+    filters,
+    setFilters,
+    sorts,
+    setSorts,
+    toggleSortColumn,
+    cardSize,
+    setCardSize,
+    updateActiveView,
+  }
 }

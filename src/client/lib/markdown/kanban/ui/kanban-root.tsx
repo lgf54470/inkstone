@@ -57,6 +57,7 @@ interface KanbanViewRendererProps {
   handleAddItemInGroup: (groupKey?: string) => void
   handleAddColumn: () => void
   handleUpdateView: (patch: Partial<KanbanData['views'][number]>) => void
+  handleToggleSortColumn: (propertyId: string) => void
   handleReorderColumns: (sourceGroupKey: string, targetGroupKey: string) => void
   handleUpdateColumn: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
   handleDeleteColumn: (groupKey: string) => void
@@ -86,11 +87,16 @@ function KanbanTimelineViews({ activeView, viewData, data, commitData, setDetail
   )
 }
 
+// Views edit one item's own fields; the writer keeps that shape in one place
+// while still committing the whole document like every other edit does.
+function kanbanItemWriter(data: KanbanData, commitData: (next: KanbanData) => void) {
+  return (id: string, patch: Partial<KanbanItem>) =>
+    commitData({ ...data, items: data.items.map((item) => (item.id === id ? { ...item, ...patch } : item)) })
+}
+
 function BoardTableView(props: KanbanViewRendererProps) {
-  const handleUpdateSubtasks = (id: string, subtasks: KanbanSubtask[]) => {
-    const next = props.data.items.map((it) => (it.id === id ? { ...it, subtasks } : it))
-    props.commitData({ ...props.data, items: next })
-  }
+  const writeItem = kanbanItemWriter(props.data, props.commitData)
+  const handleUpdateSubtasks = (id: string, subtasks: KanbanSubtask[]) => writeItem(id, { subtasks })
 
   if (props.activeView.type === 'board') {
     return (
@@ -133,15 +139,14 @@ function BoardTableView(props: KanbanViewRendererProps) {
       onUpdateMultiSelect={props.handleUpdateMultiSelect}
       onAddItem={props.handleAddItem}
       onAddColumn={props.handleAddColumn}
+      onSortColumn={props.handleToggleSortColumn}
     />
   )
 }
 
 function ListGalleryView(props: KanbanViewRendererProps) {
-  const handleUpdateSubtasks = (itemId: string, nextSubtasks: KanbanSubtask[]) => {
-    const next = props.data.items.map((it) => (it.id === itemId ? { ...it, subtasks: nextSubtasks } : it))
-    props.commitData({ ...props.data, items: next })
-  }
+  const writeItem = kanbanItemWriter(props.data, props.commitData)
+  const handleUpdateSubtasks = (id: string, subtasks: KanbanSubtask[]) => writeItem(id, { subtasks })
 
   if (props.activeView.type === 'list') {
     return (
@@ -264,6 +269,7 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
         handleAddItemInGroup={state.adds.handleAddItemInGroup}
         handleAddColumn={state.adds.handleAddColumn}
         handleUpdateView={state.filterSort.updateActiveView}
+        handleToggleSortColumn={state.filterSort.toggleSortColumn}
         handleReorderColumns={state.columnOps.handleReorderColumns}
         handleUpdateColumn={state.columnOps.handleUpdateColumn}
         handleDeleteColumn={state.columnOps.handleDeleteColumn}

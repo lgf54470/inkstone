@@ -2645,6 +2645,8 @@ const allowed = new Map([
     '/** Edits the note refused to accept; kept in memory until retry or discard. */',
   ]],
   ['src/client/lib/markdown/kanban/filter-sort.ts', [
+    '// A header click sorts by that column alone, so it replaces the rules the sort',
+    '// popover wrote; the popover and undo history remain the way back to them.',
     '// Documents imported from other tools may store the option label where this',
     '// board expects the option id; matching only by id would hide all of those',
     '// cards in No Status, so fall back to a case-insensitive label match.',
@@ -2742,6 +2744,8 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-property-cell.tsx', [
     '// Attachments live on the item, not in `properties`, so the table always has a',
     '// column for them even when the document schema does not declare one.',
+    '// Sorts read `properties[columnId]`, which attachments are not stored in, so',
+    '// the files column stays a plain label.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root-boundary.tsx', [
     '// Each kanban block is its own React root outside the host tree, so without a',
@@ -2759,6 +2763,8 @@ const allowed = new Map([
     '// multi-select column keeps its array shape.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root.tsx', [
+    '// Views edit one item\'s own fields; the writer keeps that shape in one place',
+    '// while still committing the whole document like every other edit does.',
     '// A host tree React did not make never re-renders this root, so the board listens',
     '// for language changes itself rather than trusting a mount option to carry them.',
     '// Clicking board whitespace focuses this container, so board-scoped',
@@ -2775,6 +2781,8 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-view-state.ts', [
     '// Unset lists reuse these constants so memoized consumers keep the same',
     '// identity across renders that only touch other view fields.',
+    '// Reads the committed view rather than the render-time one, so two header',
+    '// clicks in one batch still cycle asc then desc instead of both writing asc.',
   ]],
   ['src/client/lib/markdown/kanban/url.ts', [
     '/**\n * Protocol whitelist for URLs that come from kanban fence content. Fence JSON is\n * user-authored (and arrives via shares/imports), so covers and file urls are\n * rendered from data we do not trust.\n */',

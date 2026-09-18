@@ -1,8 +1,8 @@
 import { memo } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
-import { groupKanbanItems } from '../filter-sort'
-import type { KanbanData, KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask, KanbanView } from '../types'
+import { groupKanbanItems, type KanbanGroup } from '../filter-sort'
+import type { KanbanData, KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSort, KanbanSubtask, KanbanView } from '../types'
 import { KanbanTableHeaderCell, kanbanPropertyColumns, kanbanTitleColumn } from './kanban-property-cell'
 import { KanbanTableGroup } from './kanban-table-group'
 
@@ -19,15 +19,20 @@ interface KanbanTableViewProps {
   onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
   onAddItem: (propertyDefaults?: Record<string, unknown>) => void
   onAddColumn: () => void
+  onSortColumn: (propertyId: string) => void
 }
 
 interface TableHeaderRowProps {
   columns: KanbanProperty[]
+  sorts: KanbanSort[]
   isAllSelected: boolean
   onToggleAll: () => void
+  onSortColumn: (propertyId: string) => void
 }
 
-function TableHeaderRow({ columns, isAllSelected, onToggleAll }: TableHeaderRowProps) {
+function TableHeaderRow({ columns, sorts, isAllSelected, onToggleAll, onSortColumn }: TableHeaderRowProps) {
+  const titleColumn = kanbanTitleColumn(columns)
+  const sortFor = (columnId: string) => sorts.find((sort) => sort.propertyId === columnId)
   return (
     <div className='flex items-center border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
       <div className='w-10 shrink-0 p-2.5 text-center'>
@@ -39,9 +44,13 @@ function TableHeaderRow({ columns, isAllSelected, onToggleAll }: TableHeaderRowP
           aria-label={t('preview.kanban_select_all')}
         />
       </div>
-      <KanbanTableHeaderCell column={kanbanTitleColumn(columns)} />
+      <KanbanTableHeaderCell
+        column={titleColumn}
+        sort={sortFor(titleColumn.id)}
+        onSort={onSortColumn}
+      />
       {kanbanPropertyColumns(columns).map((column) => (
-        <KanbanTableHeaderCell key={column.id} column={column} />
+        <KanbanTableHeaderCell key={column.id} column={column} sort={sortFor(column.id)} onSort={onSortColumn} />
       ))}
     </div>
   )
@@ -58,6 +67,71 @@ function useTableToggleAll(
   return { isAllSelected, handleToggleAll }
 }
 
+interface TableGroupListProps {
+  groups: KanbanGroup[]
+  groupByProp: string
+  columns: KanbanProperty[]
+  selectedIds: Set<string>
+  onToggleSelect: (id: string) => void
+  onOpenDetail: (item: KanbanItem) => void
+  onUpdateProperty: (itemId: string, propertyId: string, value: unknown) => void
+  onUpdateMultiSelect: (itemId: string, columnId: string, values: string[], newOption?: KanbanOption) => void
+  onUpdateSubtasks?: (itemId: string, subtasks: KanbanSubtask[]) => void
+  onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
+  onAddItem: (propertyDefaults?: Record<string, unknown>) => void
+  onAddColumn: () => void
+}
+
+function TableGroupList({
+  groups,
+  groupByProp,
+  columns,
+  selectedIds,
+  onToggleSelect,
+  onOpenDetail,
+  onUpdateProperty,
+  onUpdateMultiSelect,
+  onUpdateSubtasks,
+  onUpdateFiles,
+  onAddItem,
+  onAddColumn,
+}: TableGroupListProps) {
+  return (
+    <div className='p-3'>
+      {groups.map((group) => (
+        <KanbanTableGroup
+          key={group.groupKey}
+          groupKey={group.groupKey}
+          label={group.label}
+          color={group.color}
+          items={group.items}
+          columns={columns}
+          selectedIds={selectedIds}
+          onToggleSelect={onToggleSelect}
+          onOpenDetail={onOpenDetail}
+          onUpdateProperty={onUpdateProperty}
+          onUpdateMultiSelect={onUpdateMultiSelect}
+          onUpdateSubtasks={onUpdateSubtasks}
+          onUpdateFiles={onUpdateFiles}
+          onAddItemInGroup={() => {
+            const defaults = group.groupKey !== '__none__' ? { [groupByProp]: group.groupKey } : {}
+            onAddItem(defaults)
+          }}
+        />
+      ))}
+
+      <button
+        type='button'
+        onClick={onAddColumn}
+        className='flex items-center gap-1.5 rounded-[var(--r-md)] border border-dashed border-[var(--border-default)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
+      >
+        <Plus size={14} />
+        <span>+ {t('preview.kanban_add_new_group')}</span>
+      </button>
+    </div>
+  )
+}
+
 export const KanbanTableView = memo(function KanbanTableView({
   data,
   view,
@@ -71,6 +145,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   onUpdateFiles,
   onAddItem,
   onAddColumn,
+  onSortColumn,
 }: KanbanTableViewProps) {
   const groupByProp = view?.groupBy || 'status'
   const groupCol = data.columns.find((c) => c.id === groupByProp)
@@ -80,39 +155,27 @@ export const KanbanTableView = memo(function KanbanTableView({
   return (
     <div className='h-full w-full overflow-auto p-4' role='region' aria-label={t('preview.kanban_view_table')}>
       <div className='w-full min-w-max rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
-        <TableHeaderRow columns={data.columns} isAllSelected={isAllSelected} onToggleAll={handleToggleAll} />
-        <div className='p-3'>
-          {groups.map((group) => (
-            <KanbanTableGroup
-              key={group.groupKey}
-              groupKey={group.groupKey}
-              label={group.label}
-              color={group.color}
-              items={group.items}
-              columns={data.columns}
-              selectedIds={selectedIds}
-              onToggleSelect={onToggleSelect}
-              onOpenDetail={onOpenDetail}
-              onUpdateProperty={onUpdateProperty}
-              onUpdateMultiSelect={onUpdateMultiSelect}
-              onUpdateSubtasks={onUpdateSubtasks}
-              onUpdateFiles={onUpdateFiles}
-              onAddItemInGroup={() => {
-                const defaults = group.groupKey !== '__none__' ? { [groupByProp]: group.groupKey } : {}
-                onAddItem(defaults)
-              }}
-            />
-          ))}
-
-          <button
-            type='button'
-            onClick={onAddColumn}
-            className='flex items-center gap-1.5 rounded-[var(--r-md)] border border-dashed border-[var(--border-default)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
-          >
-            <Plus size={14} />
-            <span>+ {t('preview.kanban_add_new_group')}</span>
-          </button>
-        </div>
+        <TableHeaderRow
+          columns={data.columns}
+          sorts={view?.sorts ?? []}
+          isAllSelected={isAllSelected}
+          onToggleAll={handleToggleAll}
+          onSortColumn={onSortColumn}
+        />
+        <TableGroupList
+          groups={groups}
+          groupByProp={groupByProp}
+          columns={data.columns}
+          selectedIds={selectedIds}
+          onToggleSelect={onToggleSelect}
+          onOpenDetail={onOpenDetail}
+          onUpdateProperty={onUpdateProperty}
+          onUpdateMultiSelect={onUpdateMultiSelect}
+          onUpdateSubtasks={onUpdateSubtasks}
+          onUpdateFiles={onUpdateFiles}
+          onAddItem={onAddItem}
+          onAddColumn={onAddColumn}
+        />
       </div>
     </div>
   )

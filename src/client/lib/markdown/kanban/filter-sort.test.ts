@@ -4,6 +4,7 @@ import {
   applyKanbanSorts,
   groupKanbanItems,
   searchKanbanItems,
+  toggleKanbanColumnSort,
 } from './filter-sort'
 import type { KanbanItem, KanbanProperty } from './types'
 
@@ -125,6 +126,31 @@ describe('applyKanbanSorts', () => {
     expect(asc[1]?.id).toBe('item-2')
     expect(asc[2]?.id).toBe('item-1')
     expect(asc[3]?.id).toBe('item-4')
+  })
+})
+
+describe('toggleKanbanColumnSort', () => {
+  it('makes an unsorted column the ascending rule', () => {
+    expect(toggleKanbanColumnSort([], 'priority')).toEqual([{ propertyId: 'priority', direction: 'asc' }])
+  })
+
+  it('flips ascending to descending and clears on the third click', () => {
+    const asc = toggleKanbanColumnSort([], 'priority')
+    const desc = toggleKanbanColumnSort(asc, 'priority')
+    expect(desc).toEqual([{ propertyId: 'priority', direction: 'desc' }])
+    expect(toggleKanbanColumnSort(desc, 'priority')).toEqual([])
+  })
+
+  it('replaces the multi-rule list the sort popover wrote with the clicked column', () => {
+    const popover = [
+      { propertyId: 'status', direction: 'asc' as const },
+      { propertyId: 'dueDate', direction: 'desc' as const },
+    ]
+    expect(toggleKanbanColumnSort(popover, 'priority')).toEqual([{ propertyId: 'priority', direction: 'asc' }])
+  })
+
+  it('treats a view without any sort rule as unsorted', () => {
+    expect(toggleKanbanColumnSort(undefined, 'priority')).toEqual([{ propertyId: 'priority', direction: 'asc' }])
   })
 })
 

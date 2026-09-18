@@ -5,7 +5,7 @@ import { initI18n, t } from '../../../../lib/i18n'
 import { installTestGlobals } from '../../../test-render'
 import { KanbanTableView } from './kanban-table-view'
 import { formatKanbanPropertyName } from '../i18n-helpers'
-import type { KanbanData, KanbanFile, KanbanProperty } from '../types'
+import type { KanbanData, KanbanFile, KanbanProperty, KanbanSort } from '../types'
 
 beforeAll(async () => {
   await initI18n()
@@ -16,6 +16,7 @@ type TableHandlers = Pick<
   TableProps,
   | 'onAddItem'
   | 'onAddColumn'
+  | 'onSortColumn'
   | 'onUpdateProperty'
   | 'onUpdateMultiSelect'
   | 'onUpdateSubtasks'
@@ -172,6 +173,7 @@ function handlers(overrides: Partial<TableHandlers> = {}): TableHandlers {
     selectedIds: new Set<string>(),
     onAddItem: vi.fn(),
     onAddColumn: vi.fn(),
+    onSortColumn: vi.fn(),
     onUpdateProperty: vi.fn(),
     onUpdateMultiSelect: vi.fn(),
     onUpdateFiles: vi.fn(),
@@ -360,6 +362,51 @@ describe('KanbanTableView inline date editing', () => {
     expect(onUpdateProperty).toHaveBeenLastCalledWith('a', 'deadline', '2026-09-15')
     act(() => { buttonNamed(cellOf(container, 'a', 'deadline'), t('preview.kanban_clear_date')).click() })
     expect(onUpdateProperty).toHaveBeenLastCalledWith('a', 'deadline', '')
+    unmount()
+  })
+})
+
+function headerCell(container: HTMLElement, columnId: string): HTMLElement {
+  const cell = [...container.querySelectorAll<HTMLElement>('[data-kanban-column]')]
+    .filter((el) => !el.closest('[data-item-id]'))
+    .find((el) => el.dataset.kanbanColumn === columnId)
+  if (!cell) throw new Error(`no header cell for column "${columnId}"`)
+  return cell
+}
+
+function tableWithSorts(sorts: KanbanSort[] | undefined): KanbanData {
+  return { ...schemaData, views: [{ ...schemaData.views[0]!, sorts }] }
+}
+
+describe('KanbanTableView header sorting', () => {
+  it('reports the clicked column so the view can sort by it', () => {
+    const onSortColumn = vi.fn()
+    const { container, unmount } = mountTable(schemaData, handlers({ onSortColumn }))
+    act(() => { headerCell(container, 'priority').querySelector('button')!.click() })
+    expect(onSortColumn).toHaveBeenCalledWith('priority')
+    act(() => { headerCell(container, 'title').querySelector('button')!.click() })
+    expect(onSortColumn).toHaveBeenLastCalledWith('title')
+    unmount()
+  })
+
+  it('names the header after the column sort stored on the view', () => {
+    const column = formatKanbanPropertyName('priority')
+    const unset = mountTable(tableWithSorts(undefined), handlers())
+    const asc = mountTable(tableWithSorts([{ propertyId: 'priority', direction: 'asc' }]), handlers())
+    expect(headerCell(unset.container, 'priority').querySelector('button')?.getAttribute('aria-label'))
+      .toBe(t('preview.kanban_sort_by_column', { column }))
+    expect(headerCell(asc.container, 'priority').querySelector('button')?.getAttribute('aria-label'))
+      .toBe(t('preview.kanban_sorted_ascending', { column }))
+    unset.unmount()
+    asc.unmount()
+  })
+
+  it('names a descending column sort and keeps the attachments column unsortable', () => {
+    const { container, unmount } = mountTable(tableWithSorts([{ propertyId: 'story', direction: 'desc' }]), handlers())
+    const storyColumn = schemaColumns.find((col) => col.id === 'story')!
+    expect(headerCell(container, 'story').querySelector('button')?.getAttribute('aria-label'))
+      .toBe(t('preview.kanban_sorted_descending', { column: formatKanbanPropertyName(storyColumn) }))
+    expect(headerCell(container, 'files').querySelector('button')).toBeNull()
     unmount()
   })
 })

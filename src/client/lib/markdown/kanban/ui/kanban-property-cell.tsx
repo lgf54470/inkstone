@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { ArrowDown, ArrowUp } from 'lucide-react'
+import { t } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
-import type { KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanPropertyType } from '../types'
+import type { KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanPropertyType, KanbanSort } from '../types'
 import { KanbanDatePicker } from './kanban-date-picker'
 import { KanbanFilesCell } from './kanban-files-cell'
 import { KanbanTagPicker } from './kanban-tag-picker'
@@ -198,13 +200,40 @@ export function KanbanPropertyCell(props: KanbanPropertyCellProps) {
   )
 }
 
-export function KanbanTableHeaderCell({ column }: { column: KanbanProperty }) {
+export function KanbanTableHeaderCell({
+  column,
+  sort,
+  onSort,
+}: {
+  column: KanbanProperty
+  sort?: KanbanSort
+  onSort?: (propertyId: string) => void
+}) {
+  const label = formatKanbanPropertyName(column)
+  // Sorts read `properties[columnId]`, which attachments are not stored in, so
+  // the files column stays a plain label.
+  const sortable = column.type !== 'files' && onSort !== undefined
+  const ariaLabel = !sort
+    ? t('preview.kanban_sort_by_column', { column: label })
+    : t(sort.direction === 'asc' ? 'preview.kanban_sorted_ascending' : 'preview.kanban_sorted_descending', { column: label })
   return (
     <div
       data-kanban-column={column.id}
       className={`border-l border-[var(--border-subtle)] px-3 py-2 ${column.type === 'checkbox' || column.type === 'files' ? 'text-center' : ''} ${kanbanColumnWidth(column)}`}
     >
-      <span>{formatKanbanPropertyName(column)}</span>
+      {sortable ? (
+        <button
+          type='button'
+          onClick={() => onSort(column.id)}
+          aria-label={ariaLabel}
+          className='flex w-full items-center gap-1 rounded-[var(--r-sm)] text-left text-inherit outline-none hover:text-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
+        >
+          <span>{label}</span>
+          {sort && (sort.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
+        </button>
+      ) : (
+        <span>{label}</span>
+      )}
     </div>
   )
 }

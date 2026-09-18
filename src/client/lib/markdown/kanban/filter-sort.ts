@@ -75,6 +75,15 @@ export function applyKanbanSorts(items: KanbanItem[], sorts?: KanbanSort[]): Kan
   })
 }
 
+// A header click sorts by that column alone, so it replaces the rules the sort
+// popover wrote; the popover and undo history remain the way back to them.
+export function toggleKanbanColumnSort(sorts: KanbanSort[] | undefined, propertyId: string): KanbanSort[] {
+  const current = (sorts ?? []).find((sort) => sort.propertyId === propertyId)
+  if (!current) return [{ propertyId, direction: 'asc' }]
+  if (current.direction === 'asc') return [{ propertyId, direction: 'desc' }]
+  return []
+}
+
 function itemMatchesQuery(item: KanbanItem, q: string): boolean {
   if (item.title.toLowerCase().includes(q)) return true
   if (item.description?.toLowerCase().includes(q)) return true

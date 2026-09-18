@@ -100,3 +100,18 @@ describe('kanban view state persistence', () => {
     unmount()
   })
 })
+
+describe('kanban column sort toggling', () => {
+  it('cycles a clicked column through asc, desc and unsorted on the active view', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    const toggle = holder.state.filterSort.toggleSortColumn
+    act(() => { holder.state.filterSort.toggleSortColumn('status') })
+    expect(commits.at(-1)!.views[0]!.sorts).toEqual([{ propertyId: 'status', direction: 'asc' }])
+    act(() => { holder.state.filterSort.toggleSortColumn('status') })
+    expect(commits.at(-1)!.views[0]!.sorts).toEqual([{ propertyId: 'status', direction: 'desc' }])
+    act(() => { holder.state.filterSort.toggleSortColumn('status') })
+    expect(commits.at(-1)!.views[0]!.sorts).toEqual([])
+    expect(holder.state.filterSort.toggleSortColumn).toBe(toggle)
+    unmount()
+  })
+})
