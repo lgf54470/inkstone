@@ -186,6 +186,7 @@ function KanbanTopBar({
   return (
     <KanbanHeader
       data={state.data}
+      visibleItems={state.filterSort.viewData.items}
       activeView={state.filterSort.activeView}
       searchQuery={state.filterSort.searchQuery}
       filters={state.filterSort.filters}

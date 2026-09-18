@@ -26,6 +26,7 @@ import { KanbanViewTabs } from './kanban-view-tabs'
 
 interface KanbanHeaderProps {
   data: KanbanData
+  visibleItems: KanbanData['items']
   activeView: KanbanView
   searchQuery: string
   filters: KanbanFilter[]
@@ -89,7 +90,7 @@ function KanbanSearchBox({
 
 interface HeaderActionsProps {
   columns: KanbanData['columns']
-  items: KanbanData['items']
+  visibleItems: KanbanData['items']
   filters: KanbanFilter[]
   sorts: KanbanSort[]
   searchQuery: string
@@ -414,13 +415,13 @@ function KanbanFullscreenTitle({
 }
 
 function KanbanHeaderActions(props: HeaderActionsProps) {
-  const { columns, items, filters, sorts, searchQuery, activeView, cardSize } = props
+  const { columns, visibleItems, filters, sorts, searchQuery, activeView, cardSize } = props
   const statusCol = columns.find((c) => c.id === 'status')
 
   return (
     <div className='relative flex items-center gap-1.5'>
       <div className='hidden md:flex items-center mr-1 w-28'>
-        <KanbanProgressBar items={items} statusColumn={statusCol} height={STATUS_PROGRESS_BAR_HEIGHT} />
+        <KanbanProgressBar items={visibleItems} statusColumn={statusCol} height={STATUS_PROGRESS_BAR_HEIGHT} />
       </div>
       <KanbanSearchBox searchQuery={searchQuery} onSearchChange={props.onSearchChange} />
       <KanbanFilterAction columns={columns} filters={filters} onChangeFilters={props.onChangeFilters} />
@@ -473,7 +474,6 @@ export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps)
         <KanbanHeaderActions
           {...props}
           columns={data.columns}
-          items={data.items}
           activeView={activeView}
         />
       </div>
