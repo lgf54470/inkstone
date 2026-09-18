@@ -156,6 +156,7 @@ function renderKanbanEntry(entry: KanbanBlockEntry, options: KanbanMountOptions)
       createElement(KanbanRoot, {
         initialData: entry.data,
         isFullscreen: inOverlay,
+        kanbanName: entry.noteId || 'default',
         unsaved: entry.unsaved,
         sourceData: sourceResult && sourceResult.ok ? sourceResult.data : undefined,
         onRetryWrite: entry.write ? () => {

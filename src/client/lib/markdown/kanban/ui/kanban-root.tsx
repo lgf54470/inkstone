@@ -12,6 +12,7 @@ import { KanbanBoardView } from './kanban-board-view'
 import { KanbanCalendarView } from './kanban-calendar-view'
 import { KanbanChartView } from './kanban-chart-view'
 import { KanbanContextMenu } from './kanban-context-menu'
+import { KanbanFilesScope } from './kanban-files-cell'
 import { KanbanGalleryView } from './kanban-gallery-view'
 import { KanbanGanttView } from './kanban-gantt-view'
 import { KanbanHeader } from './kanban-header'
@@ -25,6 +26,7 @@ import type { CardSize } from './kanban-view-options'
 interface KanbanRootProps {
   initialData: KanbanData
   isFullscreen?: boolean
+  kanbanName?: string
   unsaved?: boolean
   sourceData?: KanbanData
   onRetryWrite?: () => void
@@ -322,6 +324,7 @@ function KanbanRootOverlays({
 export const KanbanRoot = memo(function KanbanRoot({
   initialData,
   isFullscreen,
+  kanbanName,
   unsaved,
   sourceData,
   onRetryWrite,
@@ -342,17 +345,19 @@ export const KanbanRoot = memo(function KanbanRoot({
       onContextMenu={menu.handleContextMenu}
       className='flex h-full w-full flex-col overflow-hidden bg-[var(--bg-surface)] text-[var(--text-primary)]'
     >
-      <KanbanTopBar
-        state={state}
-        isFullscreen={isFullscreen}
-        unsaved={unsaved}
-        sourceData={sourceData}
-        onRetryWrite={onRetryWrite}
-        onDiscardWrite={onDiscardWrite}
-        onToggleFullscreen={onToggleFullscreen}
-      />
-      <KanbanMain state={state} />
-      <KanbanRootOverlays state={state} menu={menu} isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
+      <KanbanFilesScope.Provider value={kanbanName || 'default'}>
+        <KanbanTopBar
+          state={state}
+          isFullscreen={isFullscreen}
+          unsaved={unsaved}
+          sourceData={sourceData}
+          onRetryWrite={onRetryWrite}
+          onDiscardWrite={onDiscardWrite}
+          onToggleFullscreen={onToggleFullscreen}
+        />
+        <KanbanMain state={state} />
+        <KanbanRootOverlays state={state} menu={menu} isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
+      </KanbanFilesScope.Provider>
     </div>
   )
 })

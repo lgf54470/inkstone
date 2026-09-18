@@ -2665,6 +2665,10 @@ const allowed = new Map([
     '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',
     '// document is guaranteed blank; offer the file as an explicit new-tab action.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-files-cell.tsx', [
+    '// Which bucket new uploads land in. Deletions ignore it and address each file\'s',
+    '// own stored location, so files uploaded before a namespace change still clear.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-fullscreen.tsx', [
     '/**\n * Full screen view of one block. The overlay hosts the live instance the\n * preview mounted — the element is moved, never copied — so edits, history and\n * write-back stay with the single root that the inline block keeps using.\n */',
   ]],
@@ -2689,6 +2693,8 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/url.ts', [
     '/**\n * Protocol whitelist for URLs that come from kanban fence content. Fence JSON is\n * user-authored (and arrives via shares/imports), so covers and file urls are\n * rendered from data we do not trust.\n */',
     '// A leading slash is same-site; \'//\' would be a protocol-relative external request.',
+    '// Past notes keep whatever prefix their upload got, so a delete is addressed by',
+    '// the file\'s own stored location rather than by the board\'s current namespace.',
   ]],
   ['src/client/lib/markdown/kanban/view.ts', [
     '// While the live canvas sits in the full screen overlay, the inline placeholder',

@@ -22,3 +22,16 @@ export function safeKanbanUrl(raw: string | undefined): string | null {
   if (parsed.protocol === 'data:' && parsed.href.startsWith('data:image/')) return value
   return null
 }
+
+const API_FILE_URL = /^\/api\/kanban\/file\/([^/]+)\/([^/]+)$/
+const R2_FILE_KEY = /^kanban\/([^/]+)\/(.+)$/
+
+// Past notes keep whatever prefix their upload got, so a delete is addressed by
+// the file's own stored location rather than by the board's current namespace.
+export function kanbanFileLocation(file: { url?: string; r2Key?: string }): { kanbanName: string; filename: string } | null {
+  const fromUrl = API_FILE_URL.exec(file.url ?? '')
+  if (fromUrl) return { kanbanName: fromUrl[1]!, filename: fromUrl[2]! }
+  const fromKey = R2_FILE_KEY.exec(file.r2Key ?? '')
+  if (fromKey) return { kanbanName: fromKey[1]!, filename: fromKey[2]! }
+  return null
+}

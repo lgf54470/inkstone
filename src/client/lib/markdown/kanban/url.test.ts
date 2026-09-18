@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { safeKanbanUrl } from './url'
+import { kanbanFileLocation, safeKanbanUrl } from './url'
 
 describe('safeKanbanUrl protocol whitelist', () => {
   it('keeps same-site relative, http(s) and blob urls', () => {
@@ -27,5 +27,25 @@ describe('safeKanbanUrl protocol whitelist', () => {
     expect(safeKanbanUrl(undefined)).toBeNull()
     expect(safeKanbanUrl('mailto:someone@example.com')).toBeNull()
     expect(safeKanbanUrl('not a relative path')).toBeNull()
+  })
+})
+
+describe('kanbanFileLocation', () => {
+  it('splits a same-site file url into its delete parameters', () => {
+    expect(kanbanFileLocation({ url: '/api/kanban/file/default/7-report.pdf' }))
+      .toEqual({ kanbanName: 'default', filename: '7-report.pdf' })
+    expect(kanbanFileLocation({ url: '/api/kanban/file/note-9/1-photo.png' }))
+      .toEqual({ kanbanName: 'note-9', filename: '1-photo.png' })
+  })
+
+  it('falls back to the stored r2 key when the url is not the api route', () => {
+    expect(kanbanFileLocation({ url: 'https://old.example/f.png', r2Key: 'kanban/default/3-x.png' }))
+      .toEqual({ kanbanName: 'default', filename: '3-x.png' })
+  })
+
+  it('returns null for locations this app cannot delete', () => {
+    expect(kanbanFileLocation({ url: 'https://cdn.example.com/a.png' })).toBeNull()
+    expect(kanbanFileLocation({ url: 'blob:https://localhost/abc' })).toBeNull()
+    expect(kanbanFileLocation({ url: 'data:image/png;base64,AA' })).toBeNull()
   })
 })

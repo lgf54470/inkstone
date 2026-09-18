@@ -1,14 +1,18 @@
-import { useRef, useState } from 'react'
+import { createContext, useContext, useRef, useState } from 'react'
 import { File as FileIcon, FileText, Image as ImageIcon, Loader2, Plus, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
-import { uploadKanbanFile } from '../../../api'
+import { deleteKanbanFile, uploadKanbanFile } from '../../../api'
 import { useUi } from '../../../../store/ui'
+import { kanbanFileLocation } from '../url'
 import type { KanbanFile } from '../types'
 import { KanbanFilePreviewModal } from './kanban-file-preview-modal'
 
+// Which bucket new uploads land in. Deletions ignore it and address each file's
+// own stored location, so files uploaded before a namespace change still clear.
+export const KanbanFilesScope = createContext('default')
+
 interface KanbanFilesCellProps {
   files?: KanbanFile[]
-  kanbanName?: string
   readonly?: boolean
   onChangeFiles?: (nextFiles: KanbanFile[]) => void
 }
@@ -113,14 +117,26 @@ function FileUploadButton({
 
 export function KanbanFilesCell({
   files = [],
-  kanbanName = 'default',
   readonly = false,
   onChangeFiles,
 }: KanbanFilesCellProps) {
   const [previewFile, setPreviewFile] = useState<KanbanFile | null>(null)
+  const kanbanName = useContext(KanbanFilesScope)
 
-  const handleDelete = (id: string) => {
-    onChangeFiles?.(files.filter((f) => f.id !== id))
+  const handleDelete = async (file: KanbanFile) => {
+    onChangeFiles?.(files.filter((f) => f.id !== file.id))
+    const location = kanbanFileLocation(file)
+    if (!location) return
+    try {
+      await deleteKanbanFile(location.kanbanName, location.filename)
+    } catch (err: unknown) {
+      console.error('[kanban] file delete failed', err)
+      onChangeFiles?.(files)
+      useUi.getState().toast({
+        title: t('preview.kanban_file_delete_failed'),
+        tone: 'danger',
+      })
+    }
   }
 
   return (
@@ -131,7 +147,7 @@ export function KanbanFilesCell({
           file={file}
           readonly={readonly}
           onPreview={() => setPreviewFile(file)}
-          onDelete={() => handleDelete(file.id)}
+          onDelete={() => { void handleDelete(file) }}
         />
       ))}
 

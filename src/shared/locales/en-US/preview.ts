@@ -173,6 +173,7 @@ export const messages = {
 'preview.kanban_delete_file': 'Delete File',
 'preview.kanban_file_uploaded': 'File uploaded successfully',
 'preview.kanban_file_upload_failed': 'Failed to upload file',
+'preview.kanban_file_delete_failed': 'Failed to delete file',
 'preview.kanban_color_picker': 'Pick Color',
 'preview.kanban_add_tag': 'Add Tag',
 'preview.kanban_remove_tag': 'Remove tag',
