@@ -41,7 +41,8 @@ interface KanbanViewRendererProps {
   setDetailItem: (item: KanbanItem | null) => void
   handleUpdateTitle: (id: string, title: string) => void
   handleMoveItem: (itemId: string, targetGroupKey: string, targetIndex?: number) => void
-  handleAddItem: (defaultGroupKey?: string | Record<string, unknown>) => void
+  handleAddItem: (defaults?: Record<string, unknown>) => void
+  handleAddItemInGroup: (groupKey?: string) => void
   handleAddColumn: () => void
   handleReorderColumns: (sourceGroupKey: string, targetGroupKey: string) => void
   handleUpdateColumn: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
@@ -90,7 +91,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
         onUpdateTitle={props.handleUpdateTitle}
         onUpdateSubtasks={handleUpdateSubtasks}
         onMoveItem={props.handleMoveItem}
-        onAddItem={props.handleAddItem}
+        onAddItem={props.handleAddItemInGroup}
         onAddColumn={props.handleAddColumn}
         onReorderColumns={props.handleReorderColumns}
         onUpdateColumn={props.handleUpdateColumn}
@@ -227,6 +228,7 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
         handleUpdateTitle={state.items.handleUpdateTitle}
         handleMoveItem={state.items.handleMoveItem}
         handleAddItem={state.adds.handleAddItem}
+        handleAddItemInGroup={state.adds.handleAddItemInGroup}
         handleAddColumn={state.adds.handleAddColumn}
         handleReorderColumns={state.columnOps.handleReorderColumns}
         handleUpdateColumn={state.columnOps.handleUpdateColumn}

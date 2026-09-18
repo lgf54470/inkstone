@@ -236,18 +236,12 @@ export function useKanbanAddOperations(
   data: KanbanData,
   commitData: (next: KanbanData) => void,
   setDetailItem: (item: KanbanItem | null) => void,
+  activeView: KanbanView,
 ) {
-  const handleAddItem = useCallback((defaults?: string | Record<string, unknown>) => {
+  const handleAddItem = useCallback((defaults?: Record<string, unknown>) => {
     const newItemId = `item-${Date.now()}`
-    let propsObj: Record<string, unknown> = {}
-    if (typeof defaults === 'object' && defaults !== null) {
-      propsObj = { ...defaults }
-    } else if (typeof defaults === 'string' && defaults !== '__none__') {
-      propsObj = { status: defaults }
-    } else {
-      const statusVal = data.columns.find((c) => c.id === 'status')?.options?.[0]?.id || 'todo'
-      propsObj = { status: statusVal }
-    }
+    const statusVal = data.columns.find((c) => c.id === 'status')?.options?.[0]?.id || 'todo'
+    const propsObj: Record<string, unknown> = { status: statusVal, ...defaults }
     const newItem: KanbanItem = {
       id: newItemId,
       title: t('preview.kanban_new_task'),
@@ -256,6 +250,16 @@ export function useKanbanAddOperations(
     commitData({ ...data, items: [...data.items, newItem] })
     setDetailItem(newItem)
   }, [data, commitData, setDetailItem])
+
+  // Board columns hand over their group key; it belongs to the view's groupBy
+  // property, which is not necessarily `status`.
+  const handleAddItemInGroup = useCallback((groupKey?: string) => {
+    if (!groupKey || groupKey === '__none__') {
+      handleAddItem()
+      return
+    }
+    handleAddItem({ [activeView.groupBy || 'status']: groupKey })
+  }, [activeView.groupBy, handleAddItem])
 
   const handleAddColumn = useCallback(() => {
     const statusCol = data.columns.find((c) => c.id === 'status')
@@ -271,7 +275,7 @@ export function useKanbanAddOperations(
     commitData({ ...data, columns: nextCols })
   }, [data, commitData])
 
-  return { handleAddItem, handleAddColumn }
+  return { handleAddItem, handleAddItemInGroup, handleAddColumn }
 }
 
 export function useKanbanSelection(
@@ -325,7 +329,7 @@ export function useKanbanRootState(initialData: KanbanData, onUpdateData: (next:
   const filterSort = useKanbanFilterSort(data, activeViewId)
   const selection = useKanbanSelection(data, commitData)
   const items = useKanbanItemMutations(data, commitData, filterSort.activeView, detailItem, setDetailItem, selection.setSelectedIds)
-  const adds = useKanbanAddOperations(data, commitData, setDetailItem)
+  const adds = useKanbanAddOperations(data, commitData, setDetailItem, filterSort.activeView)
   const columnOps = useKanbanColumnOperations(data, commitData, filterSort.activeView)
 
   return {

@@ -9,7 +9,7 @@ import { KanbanIconBadge } from './kanban-icon-badge'
 interface KanbanCalendarViewProps {
   data: KanbanData
   onOpenDetail: (item: KanbanItem) => void
-  onAddItem: (dateStr?: string) => void
+  onAddItem: (defaults?: Record<string, unknown>) => void
 }
 
 interface CalendarHeaderProps {
@@ -115,11 +115,12 @@ function CalendarDayCellHeader({
   onAddItem,
 }: {
   day: CalendarDay
-  onAddItem: (dateStr: string) => void
+  onAddItem: (defaults?: Record<string, unknown>) => void
 }) {
+  const addOnThisDay = () => onAddItem({ startDate: day.dateStr })
   return (
     <div
-      onClick={() => onAddItem(day.dateStr)}
+      onClick={addOnThisDay}
       className='group/day flex cursor-pointer items-center justify-between p-1.5 transition-colors hover:bg-[var(--bg-hover)]/30'
     >
       <span
@@ -137,7 +138,7 @@ function CalendarDayCellHeader({
         type='button'
         onClick={(e) => {
           e.stopPropagation()
-          onAddItem(day.dateStr)
+          addOnThisDay()
         }}
         className='p-0.5 opacity-0 transition-opacity group-hover/day:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
         aria-label={t('preview.kanban_new_item')}
@@ -159,7 +160,7 @@ function CalendarWeekRow({
   items: KanbanItem[]
   statusCol?: KanbanProperty
   onOpenDetail: (item: KanbanItem) => void
-  onAddItem: (dateStr: string) => void
+  onAddItem: (defaults?: Record<string, unknown>) => void
 }) {
   const segments = useMemo(() => getWeekEventSegments(items, week), [items, week])
 

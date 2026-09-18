@@ -7,11 +7,11 @@
 ## 基线
 
 - [x] BASE-0 创建 worktree + `node_modules` 软链 + 复制 review.md
-- [ ] BASE-1 基线门禁全绿确认（typecheck / kanban 单测）
+- [x] BASE-1 基线门禁全绿确认（typecheck / 全量 test:unit 1644 通过；首跑 1 个失败套件为 worktree 缺 blog-frontend/node_modules，软链后通过）
 
 ## 第一批 · 止血（P0 + 安全最小集，按风险从小到大）
 
-- [ ] K-01 日历「新建」把 dateStr 写进 status → 改传日期字段（review #4；`kanban-calendar-view.tsx:12,122,140`、`kanban-root-hooks.ts:240-258`）
+- [x] K-01 日历「新建」把 dateStr 写进 status → 改传日期字段（review #4；`kanban-calendar-view.tsx:12,122,140`、`kanban-root-hooks.ts:240-258`）— 含 handleAddItem 去 string 联合、新增 handleAddItemInGroup 按 groupBy 归组（board 顺带修正 groupBy≠status 时误写 status）
 - [ ] K-02 详情弹窗早 return 后调 hooks → 拆外层判空 + Body（review #5；`kanban-item-detail.tsx:250-253`）
 - [ ] K-03 PDF 预览被 CSP（`object-src 'none'`）挡死 → 移除 `<object>`，新标签打开 + 图片/文本内联（review #12）
 - [ ] K-04 筛选开启时拖拽落点错位 → targetIndex 以全量数组换算（review #6；`kanban-board-dnd.ts:35-53`）
@@ -60,4 +60,5 @@
 
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
-| （执行时逐行追加） | | | |
+| 2026-09-18 | BASE-0/BASE-1 + plan/review 登记 | 9b282dce | typecheck ✅，kanban 61 测试 ✅ |
+| 2026-09-18 | K-01 日历/分组新建落字段 | 本次提交（hash 由下一次提交回填） | 新增 kanban-add-operations.test.ts 5/5 ✅（先红后绿），全量 test:unit 1644 ✅，typecheck ✅ |
