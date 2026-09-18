@@ -6,6 +6,7 @@ import { TABLE_STATEMENTS } from '../src/worker/db/schema/tables'
 import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
+import { getMeta } from '../src/worker/db/metadata'
 import { blogPublicRoutes } from '../src/worker/routes/blog'
 import { musicRoutes } from '../src/worker/routes/music'
 import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
@@ -62,16 +63,16 @@ async function makeDb(): Promise<D1Shim> {
   return db
 }
 
-function makeApp(): Hono<AppBindings> {
+function makeApp(userId = USER, row = USER_ROW): Hono<AppBindings> {
   const app = new Hono<AppBindings>()
   app.use('/api/music', async (c, next) => {
-    c.set('userId', USER)
-    c.set('user', USER_ROW)
+    c.set('userId', userId)
+    c.set('user', row)
     await next()
   })
   app.use('/api/music/*', async (c, next) => {
-    c.set('userId', USER)
-    c.set('user', USER_ROW)
+    c.set('userId', userId)
+    c.set('user', row)
     await next()
   })
   app.onError((err, c) => errorResponse(c, err))
@@ -197,5 +198,35 @@ describe('public music routes (real D1 + fake R2)', () => {
     expect(hidden.enabled).toBe(false)
     expect(hidden.tracks).toEqual([])
     expect((await request(app, `/api/blog/public/music/tracks/${track.id}/stream`)).status).toBe(404)
+  })
+
+  it('restricts the global publish switch to the owner account', async () => {
+    const db = await makeDb()
+    const app = makeApp()
+    await uploadTrack(app)
+    expect((await publish(app, true)).status).toBe(200)
+    await runSql(
+      db,
+      `INSERT INTO users (id, username, password_hash, login, name, avatar_url, created_at, last_seen_at)
+       VALUES (?1, 'member', 'x', 'member-login', 'Member', '', 1, 1)`,
+      OTHER_USER,
+    )
+    const memberRow = { id: OTHER_USER, username: 'member', login: 'member-login', name: 'Member', avatarUrl: '', role: 'member' as const, createdAt: 1, settingsRaw: '{}' }
+    const memberApp = makeApp(OTHER_USER, memberRow)
+
+    const hijack = await publish(memberApp, true)
+    expect(hijack.status).toBe(403)
+    const kept = await (await request(app, '/api/blog/public/music/library')).json() as { enabled: boolean; tracks: unknown[] }
+    expect(kept.enabled).toBe(true)
+    expect(kept.tracks).toHaveLength(1)
+
+    const unpublish = await publish(memberApp, false)
+    expect(unpublish.status).toBe(403)
+    expect(((await (await request(app, '/api/blog/public/music/library')).json()) as { enabled: boolean }).enabled).toBe(true)
+
+    expect((await publish(app, false)).status).toBe(200)
+    expect(await getMeta(db as unknown as D1Database, 'music_public_owner')).toBe('')
+    expect((await request(memberApp, '/api/music/public-settings')).status).toBe(200)
+    expect(((await (await request(memberApp, '/api/music/public-settings')).json()) as { enabled: boolean }).enabled).toBe(false)
   })
 })

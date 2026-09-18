@@ -1,6 +1,7 @@
 import type { Hono } from 'hono'
 import type { AppBindings } from '../../env'
 import { getMeta, setMeta } from '../../db/metadata'
+import { ApiError } from '../../lib/errors'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { musicPublicSettingsSchema } from './schemas'
@@ -25,10 +26,13 @@ export function registerMusicSettingsRoutes(routes: Hono<AppBindings>): void {
   })
 
   routes.put('/public-settings', requireAuth, async (c) => {
+    // The publish switch is one global meta pair; members must not be able to
+    // claim or unpublish the owner's scope.
+    if (c.get('user').role !== 'owner') throw ApiError.forbidden('Only the owner can change this setting')
     const body = await readJsonValidated(c, musicPublicSettingsSchema, JSON_BODY_LIMITS.small)
     const userId = c.get('userId')
     await setMeta(c.env.DB, PUBLIC_ENABLED_KEY, body.enabled ? '1' : '0')
-    if (body.enabled) await setMeta(c.env.DB, PUBLIC_OWNER_KEY, userId)
+    await setMeta(c.env.DB, PUBLIC_OWNER_KEY, body.enabled ? userId : '')
     return c.json({ enabled: body.enabled })
   })
 }

@@ -4404,6 +4404,8 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/music/settings.ts', [
     '// Publishing is opt-in: the public blog routes read this before serving anything.',
+    '// The publish switch is one global meta pair; members must not be able to',
+    '// claim or unpublish the owner\'s scope.',
   ]],
   ['src/worker/routes/music/storage.ts', [
     '// KV values cap at 25 MiB, well under the R2 allowance, so the upload limit follows the backend.',

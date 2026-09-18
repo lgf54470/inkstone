@@ -16,7 +16,7 @@
 - [x] M-02 SEC-1b `app.ts` nonce 盖章限定已知 HTML 文档路由（`/`、`/s/*`、`/authorize`），`/api/*` 的 `text/html` 响应拒绝盖章并强制降级；`lookup.ts` 响应类型限 png/jpeg/webp
 - [x] M-03 SEC-2 `patchTrackSchema.coverUrl` 改走 `sanitizeCoverUrl`，显式拒绝 `MUSIC_OBJECT_PREFIX` 前缀
 - [x] M-04 SEC-3 删除 R2 对象按行重算 key（`source==='r2'` 且派生匹配）；`importMusicSchema.path` 禁 `music/` 开头、绝对路径与控制字符（保留 Unicode 文件名）
-- [ ] M-05 SEC-4 `public-settings` 加 `role==='owner'` 判定，关闭时清 owner key
+- [x] M-05 SEC-4 `public-settings` 加 `role==='owner'` 判定，关闭时清 owner key
 - [ ] M-06 SEC-5 `GET /api/music/webdav` 移出 `ensureMusicDir` 写副作用（改显式 POST/写入时确保）
 - [ ] M-07 SEC-6 cover-lookup 出站 `isAllowedOutboundUrl` + `*.apple.com` 白名单 + `redirect:'manual'`
 - [ ] M-08 SEC-7 抽共享出站/写预算工具，`music-webdav:*`、`music-play:*`、`music-write:*`、`music-lookup:*` 设具名限额
@@ -85,4 +85,5 @@
 | 2026-09-18 | M-02b cover-lookup 响应类型白名单（SEC-1c） | 85f7eb4f | 新增 1 例先红后绿（上游 text/html 回显证实→500 拒绝），music-routes 16 ✅，typecheck ✅ |
 | 2026-09-18 | M-02 nonce 盖章限定非 /api（SEC-1b） | 3053d51b | 新增 tests/security-headers.test.ts 3 ✅（/api 不盖章、/s 与 / 盖章一致）；中间件抽至 src/worker/middleware/security-headers.ts；全量 test:unit 207 文件 1645 ✅，typecheck/comments ✅ |
 | 2026-09-18 | M-03 PATCH coverUrl 走 sanitizeCoverUrl 白名单（SEC-2） | b5e7f15f | 新增 2 例先红后绿（内部 music/cover key 被接受并代理证实→null+404；https 保留且省略字段不清空），music 2 套件 27 ✅，typecheck/comments ✅ |
-| 2026-09-18 | M-04 删除按行派生 key + 导入路径命名空间隔离（SEC-3） | 本次提交（hash 由下一次提交回填） | 新增 2 例先红后绿（伪造 victim key 被删证实→不删；music/ 前缀导入 201 证实→400），music 3 套件 32 ✅，typecheck/comments ✅ |
+| 2026-09-18 | M-04 删除按行派生 key + 导入路径命名空间隔离（SEC-3） | c372c1f1 | 新增 2 例先红后绿（伪造 victim key 被删证实→不删；music/ 前缀导入 201 证实→400），music 3 套件 32 ✅，typecheck/comments ✅ |
+| 2026-09-18 | M-05 public-settings 限 owner 且关闭清 key（SEC-4） | 本次提交（hash 由下一次提交回填） | 新增 1 例先红后绿（member PUT 曾 200 证实→403；关闭后 owner meta 为空），music 3 套件 33 ✅，typecheck/comments ✅ |
