@@ -8,6 +8,7 @@ import {
   KanbanPropertyCell,
   kanbanColumnWidth,
   kanbanPropertyColumns,
+  kanbanTableColumnCount,
   kanbanTitleColumn,
 } from './kanban-property-cell'
 
@@ -66,9 +67,11 @@ function SubitemItemRow({
 function SubitemsNestedTable({
   subtasks = [],
   onUpdateSubtasks,
+  columnCount,
 }: {
   subtasks: KanbanSubtask[]
   onUpdateSubtasks: (next: KanbanSubtask[]) => void
+  columnCount: number
 }) {
   const [newTitle, setNewTitle] = useState('')
 
@@ -83,33 +86,35 @@ function SubitemsNestedTable({
   }
 
   return (
-    <div className='border-t border-[var(--border-subtle)] bg-[var(--bg-inset)] py-2 pl-12 pr-4'>
-      <div className='mb-1.5 text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
-        {t('preview.kanban_subtasks')} ({subtasks.length})
-      </div>
-      <div className='flex flex-col gap-1'>
-        {subtasks.map((st) => (
-          <SubitemItemRow
-            key={st.id}
-            subtask={st}
-            onToggle={() =>
-              onUpdateSubtasks(
-                subtasks.map((s) => (s.id === st.id ? { ...s, completed: !s.completed } : s)),
-              )
-            }
-            onDelete={() => onUpdateSubtasks(subtasks.filter((s) => s.id !== st.id))}
-          />
-        ))}
-        <form onSubmit={handleAdd} className='mt-1 flex items-center gap-1.5'>
-          <Plus size={12} className='text-[var(--text-tertiary)]' />
-          <input
-            type='text'
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder={t('preview.kanban_add_subtask')}
-            className='w-full rounded-[var(--r-xs)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 text-[length:var(--text-11)] outline-none focus:border-[var(--accent)]'
-          />
-        </form>
+    <div role='row' className='border-t border-[var(--border-subtle)] bg-[var(--bg-inset)]'>
+      <div role='cell' aria-colspan={columnCount} className='py-2 pl-12 pr-4'>
+        <div className='mb-1.5 text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
+          {t('preview.kanban_subtasks')} ({subtasks.length})
+        </div>
+        <div className='flex flex-col gap-1'>
+          {subtasks.map((st) => (
+            <SubitemItemRow
+              key={st.id}
+              subtask={st}
+              onToggle={() =>
+                onUpdateSubtasks(
+                  subtasks.map((s) => (s.id === st.id ? { ...s, completed: !s.completed } : s)),
+                )
+              }
+              onDelete={() => onUpdateSubtasks(subtasks.filter((s) => s.id !== st.id))}
+            />
+          ))}
+          <form onSubmit={handleAdd} className='mt-1 flex items-center gap-1.5'>
+            <Plus size={12} className='text-[var(--text-tertiary)]' />
+            <input
+              type='text'
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder={t('preview.kanban_add_subtask')}
+              className='w-full rounded-[var(--r-xs)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 text-[length:var(--text-11)] outline-none focus:border-[var(--accent)]'
+            />
+          </form>
+        </div>
       </div>
     </div>
   )
@@ -132,6 +137,7 @@ function ItemTitleCell({
 }) {
   return (
     <div
+      role='rowheader'
       data-kanban-column={column.id}
       className={`flex items-center gap-2 border-l border-[var(--border-subtle)] px-3 py-2 ${kanbanColumnWidth(column)}`}
     >
@@ -186,9 +192,9 @@ export function KanbanTableRow({
   const subtasks = item.subtasks || []
 
   return (
-    <div data-item-id={item.id} className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-colors hover:bg-[var(--bg-hover)]'>
-      <div className='flex min-h-10 items-center text-[length:var(--text-12)]'>
-        <div className='w-10 shrink-0 p-2.5 text-center'>
+    <div role='presentation' data-item-id={item.id} className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-colors hover:bg-[var(--bg-hover)]'>
+      <div role='row' className='flex min-h-10 items-center text-[length:var(--text-12)]'>
+        <div role='cell' className='w-10 shrink-0 p-2.5 text-center'>
           <input
             type='checkbox'
             checked={isSelected}
@@ -221,6 +227,7 @@ export function KanbanTableRow({
       {expanded && onUpdateSubtasks && (
         <SubitemsNestedTable
           subtasks={subtasks}
+          columnCount={kanbanTableColumnCount(columns, hiddenColumns)}
           onUpdateSubtasks={(next) => onUpdateSubtasks(item.id, next)}
         />
       )}

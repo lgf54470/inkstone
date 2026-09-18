@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { groupKanbanItems, type KanbanGroup } from '../filter-sort'
 import type { KanbanData, KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSort, KanbanSubtask, KanbanView } from '../types'
-import { KanbanTableHeaderCell, kanbanPropertyColumns, kanbanTitleColumn } from './kanban-property-cell'
+import { KanbanTableHeaderCell, kanbanPropertyColumns, kanbanTableColumnCount, kanbanTitleColumn } from './kanban-property-cell'
 import { KanbanTableGroup } from './kanban-table-group'
 
 interface KanbanTableViewProps {
@@ -35,8 +35,8 @@ function TableHeaderRow({ columns, hiddenColumns, sorts, isAllSelected, onToggle
   const titleColumn = kanbanTitleColumn(columns)
   const sortFor = (columnId: string) => sorts.find((sort) => sort.propertyId === columnId)
   return (
-    <div className='flex items-center border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
-      <div className='w-10 shrink-0 p-2.5 text-center'>
+    <div role='row' className='flex items-center border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
+      <div role='columnheader' className='w-10 shrink-0 p-2.5 text-center'>
         <input
           type='checkbox'
           checked={isAllSelected}
@@ -99,8 +99,9 @@ function TableGroupList({
   onAddItem,
   onAddColumn,
 }: TableGroupListProps) {
+  const columnCount = kanbanTableColumnCount(columns, hiddenColumns)
   return (
-    <div className='p-3'>
+    <div role='presentation' className='p-3'>
       {groups.map((group) => (
         <KanbanTableGroup
           key={group.groupKey}
@@ -124,14 +125,18 @@ function TableGroupList({
         />
       ))}
 
-      <button
-        type='button'
-        onClick={onAddColumn}
-        className='flex items-center gap-1.5 rounded-[var(--r-md)] border border-dashed border-[var(--border-default)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
-      >
-        <Plus size={14} />
-        <span>+ {t('preview.kanban_add_new_group')}</span>
-      </button>
+      <div role='row'>
+        <div role='cell' aria-colspan={columnCount}>
+          <button
+            type='button'
+            onClick={onAddColumn}
+            className='flex items-center gap-1.5 rounded-[var(--r-md)] border border-dashed border-[var(--border-default)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
+          >
+            <Plus size={14} />
+            <span>+ {t('preview.kanban_add_new_group')}</span>
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -158,7 +163,7 @@ export const KanbanTableView = memo(function KanbanTableView({
 
   return (
     <div className='h-full w-full overflow-auto p-4' role='region' aria-label={t('preview.kanban_view_table')}>
-      <div className='w-full min-w-max rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
+      <div role='table' className='w-full min-w-max rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         <TableHeaderRow
           columns={data.columns}
           hiddenColumns={view?.hiddenColumns}

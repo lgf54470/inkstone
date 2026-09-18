@@ -4,6 +4,7 @@ import { t } from '../../../i18n'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanProgressBar } from './kanban-progress-bar'
+import { kanbanTableColumnCount } from './kanban-property-cell'
 import { KanbanTableRow } from './kanban-table-row'
 
 interface KanbanTableGroupProps {
@@ -28,6 +29,7 @@ function GroupHeader({
   localizedLabel,
   color,
   count,
+  columnCount,
   onToggleCollapse,
   onAddItem,
 }: {
@@ -35,34 +37,37 @@ function GroupHeader({
   localizedLabel: string
   color?: KanbanColorName
   count: number
+  columnCount: number
   onToggleCollapse: () => void
   onAddItem: () => void
 }) {
   const colorVar = color ? `var(--kanban-tag-${color}-fg)` : 'var(--accent)'
   return (
-    <div className='flex items-center justify-between border-y border-[var(--border-subtle)] bg-[var(--bg-raised)] px-3 py-2 text-[length:var(--text-13)] font-semibold'>
-      <div className='flex items-center gap-2'>
+    <div role='row' className='border-y border-[var(--border-subtle)] bg-[var(--bg-raised)] px-3 py-2 text-[length:var(--text-13)] font-semibold'>
+      <div role='cell' aria-colspan={columnCount} className='flex items-center justify-between'>
+        <div className='flex items-center gap-2'>
+          <button
+            type='button'
+            onClick={onToggleCollapse}
+            className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+          >
+            {collapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
+          </button>
+          <span style={{ color: colorVar }}>{localizedLabel}</span>
+          <span className='rounded-[var(--r-full)] bg-[var(--bg-hover)] px-2 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
+            {count}
+          </span>
+        </div>
+
         <button
           type='button'
-          onClick={onToggleCollapse}
-          className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+          onClick={onAddItem}
+          className='flex items-center gap-1 text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-primary)]'
         >
-          {collapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
+          <Plus size={13} />
+          <span>{t('preview.kanban_new_item')}</span>
         </button>
-        <span style={{ color: colorVar }}>{localizedLabel}</span>
-        <span className='rounded-[var(--r-full)] bg-[var(--bg-hover)] px-2 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
-          {count}
-        </span>
       </div>
-
-      <button
-        type='button'
-        onClick={onAddItem}
-        className='flex items-center gap-1 text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-primary)]'
-      >
-        <Plus size={13} />
-        <span>{t('preview.kanban_new_item')}</span>
-      </button>
     </div>
   )
 }
@@ -72,26 +77,30 @@ const GROUP_PROGRESS_HEIGHT = 6
 function GroupFooter({
   items,
   columns,
+  columnCount,
   onAddItem,
 }: {
   items: KanbanItem[]
   columns: KanbanProperty[]
+  columnCount: number
   onAddItem: () => void
 }) {
   const statusCol = columns.find((c) => c.id === 'status')
   return (
-    <div className='flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[length:var(--text-11)]'>
-      <button
-        type='button'
-        onClick={onAddItem}
-        className='flex items-center gap-1.5 text-[var(--text-tertiary)] hover:text-[var(--accent)]'
-      >
-        <Plus size={13} />
-        <span>+ {t('preview.kanban_new_item')}</span>
-      </button>
+    <div role='row' className='border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[length:var(--text-11)]'>
+      <div role='cell' aria-colspan={columnCount} className='flex items-center justify-between'>
+        <button
+          type='button'
+          onClick={onAddItem}
+          className='flex items-center gap-1.5 text-[var(--text-tertiary)] hover:text-[var(--accent)]'
+        >
+          <Plus size={13} />
+          <span>+ {t('preview.kanban_new_item')}</span>
+        </button>
 
-      <div className='w-48'>
-        <KanbanProgressBar items={items} statusColumn={statusCol} height={GROUP_PROGRESS_HEIGHT} />
+        <div className='w-48'>
+          <KanbanProgressBar items={items} statusColumn={statusCol} height={GROUP_PROGRESS_HEIGHT} />
+        </div>
       </div>
     </div>
   )
@@ -115,21 +124,23 @@ export function KanbanTableGroup({
 }: KanbanTableGroupProps) {
   const [collapsed, setCollapsed] = useState(false)
   const localizedLabel = formatKanbanGroupLabel(groupKey, label)
+  const columnCount = kanbanTableColumnCount(columns, hiddenColumns)
 
   return (
-    <div className='mb-6 overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-subtle)] shadow-2xs'>
+    <div role='rowgroup' className='mb-6 overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-subtle)] shadow-2xs'>
       <GroupHeader
         collapsed={collapsed}
         localizedLabel={localizedLabel}
         color={color}
         count={items.length}
+        columnCount={columnCount}
         onToggleCollapse={() => setCollapsed((c) => !c)}
         onAddItem={onAddItemInGroup}
       />
 
       {!collapsed && (
         <>
-          <div className='flex flex-col'>
+          <div role='presentation' className='flex flex-col'>
             {items.map((item) => (
               <KanbanTableRow
                 key={item.id}
@@ -146,7 +157,7 @@ export function KanbanTableGroup({
               />
             ))}
           </div>
-          <GroupFooter items={items} columns={columns} onAddItem={onAddItemInGroup} />
+          <GroupFooter items={items} columns={columns} columnCount={columnCount} onAddItem={onAddItemInGroup} />
         </>
       )}
     </div>

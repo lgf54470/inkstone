@@ -26,6 +26,12 @@ export function kanbanPropertyColumns(columns: KanbanProperty[], hidden?: string
   return hidden ? withFiles.filter((col) => !hidden.includes(col.id)) : withFiles
 }
 
+// A spanning row has to say how wide it is; the leading selection column and the
+// title column are rendered outside `kanbanPropertyColumns`, so they count too.
+export function kanbanTableColumnCount(columns: KanbanProperty[], hidden?: string[]): number {
+  return 2 + kanbanPropertyColumns(columns, hidden).length
+}
+
 const COLUMN_WIDTH: Record<KanbanPropertyType, string> = {
   title: 'flex-1 min-w-48',
   select: 'w-36 shrink-0',
@@ -201,6 +207,7 @@ function CellContent({
 export function KanbanPropertyCell(props: KanbanPropertyCellProps) {
   return (
     <div
+      role='cell'
       data-kanban-column={props.column.id}
       className={`border-l border-[var(--border-subtle)] px-2.5 py-1.5 text-[length:var(--text-12)] text-[var(--text-secondary)] ${kanbanColumnWidth(props.column)}`}
     >
@@ -227,6 +234,7 @@ export function KanbanTableHeaderCell({
     : t(sort.direction === 'asc' ? 'preview.kanban_sorted_ascending' : 'preview.kanban_sorted_descending', { column: label })
   return (
     <div
+      role='columnheader'
       data-kanban-column={column.id}
       className={`border-l border-[var(--border-subtle)] px-3 py-2 ${column.type === 'checkbox' || column.type === 'files' ? 'text-center' : ''} ${kanbanColumnWidth(column)}`}
     >

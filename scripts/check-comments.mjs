@@ -2782,6 +2782,8 @@ const allowed = new Map([
     '// column for them even when the document schema does not declare one.',
     '// The view\'s hidden list only reaches property columns: the title column is not',
     '// part of this list at all, so no document can hide it.',
+    '// A spanning row has to say how wide it is; the leading selection column and the',
+    '// title column are rendered outside `kanbanPropertyColumns`, so they count too.',
     '// Sorts read `properties[columnId]`, which attachments are not stored in, so',
     '// the files column stays a plain label.',
   ]],
@@ -2812,6 +2814,12 @@ const allowed = new Map([
     '// Each keystroke used to commit the whole dataset, so filtering re-ran and the',
     '// undo history grew per character; the draft holds the box, the parent the query.',
     '// A query set elsewhere (switching views, clearing filters) wins over the draft.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-table-semantics.test.ts', [
+    '/**\n * The board\'s table view is laid out with flex containers, so the markup gives no\n * clue that a value belongs to a column: a reader walks a row as one\n * undifferentiated run of controls (review #29). The roles asserted here are the\n * ones that relationship needs — and a row that spans the grid has to say how many\n * columns it covers, otherwise the column count a reader announces stops matching\n * the header, including after a column is hidden.\n */',
+    '// selection column + title + status + spec + the appended attachments column',
+    '/** The cells a row is made of, in visual order. */',
+    '/** The chevron that opens an item\'s subtask panel; it has no accessible name yet. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-table-view.tsx', [
     '// One batch commit: per-row toggles would queue one state update per item.',
