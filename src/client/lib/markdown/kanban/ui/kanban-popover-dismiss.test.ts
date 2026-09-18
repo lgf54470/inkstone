@@ -75,12 +75,15 @@ function openPanels(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[role="dialog"], [role="menu"], [role="listbox"]')
 }
 
+const PANEL_ID = 'panel-under-test'
+
 /** The panels whose parent owns `open`, so dismissal is one callback to observe. */
 const controlled: [string, (onClose: () => void) => ReactNode][] = [
   [
     'KanbanColumnMenu',
     (onClose) => createElement(KanbanColumnMenu, {
       open: true,
+      panelId: PANEL_ID,
       onClose,
       anchorRef: anchor(),
       groupKey: 'todo',
@@ -95,31 +98,32 @@ const controlled: [string, (onClose: () => void) => ReactNode][] = [
   [
     'KanbanSortPopover',
     (onClose) => createElement(KanbanSortPopover, {
-      open: true, onClose, anchorRef: anchor(), columns: COLUMNS, sorts: [], onChangeSorts: vi.fn(),
+      open: true, panelId: PANEL_ID, onClose, anchorRef: anchor(), columns: COLUMNS, sorts: [], onChangeSorts: vi.fn(),
     }),
   ],
   [
     'KanbanFilterPopover',
     (onClose) => createElement(KanbanFilterPopover, {
-      open: true, onClose, anchorRef: anchor(), columns: COLUMNS, filters: [], onChangeFilters: vi.fn(),
+      open: true, panelId: PANEL_ID, onClose, anchorRef: anchor(), columns: COLUMNS, filters: [], onChangeFilters: vi.fn(),
     }),
   ],
   [
     'KanbanViewOptions',
     (onClose) => createElement(KanbanViewOptions, {
-      open: true, onClose, anchorRef: anchor(), columns: COLUMNS, groupBy: 'status', onChangeGroupBy: vi.fn(),
+      open: true, panelId: PANEL_ID, onClose, anchorRef: anchor(), columns: COLUMNS, groupBy: 'status', onChangeGroupBy: vi.fn(),
     }),
   ],
   [
     'KanbanIconPicker',
     (onClose) => createElement(KanbanIconPicker, {
-      open: true, onClose, anchorRef: anchor(), onSelectIcon: vi.fn(),
+      open: true, panelId: PANEL_ID, onClose, anchorRef: anchor(), onSelectIcon: vi.fn(),
     }),
   ],
   [
     'KanbanSubtaskMenu',
     (onClose) => createElement(KanbanSubtaskMenu, {
       open: true,
+      panelId: PANEL_ID,
       onClose,
       anchorRef: anchor(),
       subtask: { id: 's1', title: 'Step', completed: false },
@@ -151,7 +155,7 @@ describe.each(controlled)('%s dismissal', (_name, build) => {
 
 describe('KanbanDatePicker dismissal', () => {
   function openCalendar(): void {
-    const rendered = mount(createElement(KanbanDatePicker, { onChange: vi.fn() }))
+    const rendered = mount(createElement(KanbanDatePicker, { propertyName: 'Start date', onChange: vi.fn() }))
     const trigger = [...rendered.container.querySelectorAll('button')]
       .find((button) => button.textContent?.includes(t('preview.kanban_select_date')))
     if (!trigger) throw new Error('the date trigger was not rendered')

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { AlignLeft, CheckSquare, MoreHorizontal, Plus, Smile, Square } from 'lucide-react'
 import { t } from '../../../i18n'
 import { createKanbanId } from '../id'
@@ -50,6 +50,7 @@ function SubtaskTrailingActions({
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
 
   return (
     <div className='flex items-center gap-0.5'>
@@ -70,11 +71,16 @@ function SubtaskTrailingActions({
           type='button'
           onClick={() => setMenuOpen((o) => !o)}
           className='opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 focus-visible:opacity-100'
+          aria-label={t('common.more_actions')}
+          aria-haspopup='menu'
+          aria-expanded={menuOpen}
+          {...(menuOpen ? { 'aria-controls': panelId } : {})}
         >
           <MoreHorizontal size={13} />
         </button>
         <KanbanSubtaskMenu
           open={menuOpen}
+          panelId={panelId}
           subtask={subtask}
           anchorRef={menuBtnRef}
           onClose={() => setMenuOpen(false)}
@@ -96,6 +102,7 @@ function SubtaskIconSelect({
 }) {
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
 
   return (
     <>
@@ -105,6 +112,9 @@ function SubtaskIconSelect({
         onClick={() => setOpen((o) => !o)}
         className='flex size-5 shrink-0 items-center justify-center rounded-[var(--r-xs)] hover:bg-[var(--bg-raised)]'
         title={t('preview.kanban_icon_picker')}
+        aria-haspopup='dialog'
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': panelId } : {})}
       >
         {icon ? (
           <KanbanIconBadge icon={icon} size={14} />
@@ -114,6 +124,7 @@ function SubtaskIconSelect({
       </button>
       <KanbanIconPicker
         open={open}
+        panelId={panelId}
         anchorRef={btnRef}
         onClose={() => setOpen(false)}
         onSelectIcon={(newIcon) => onSelectIcon(newIcon || undefined)}

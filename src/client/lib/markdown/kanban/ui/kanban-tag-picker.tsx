@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
@@ -164,12 +164,14 @@ function TagInputField({
 }
 
 export function TagCreatePopover({
+  panelId,
   options,
   existingTags,
   anchorRef,
   onClose,
   onAddTag,
 }: {
+  panelId: string
   options?: KanbanOption[]
   existingTags: string[]
   anchorRef: React.RefObject<HTMLButtonElement | null>
@@ -180,8 +182,15 @@ export function TagCreatePopover({
   const [tagName, setTagName] = useState('')
   const [tagColor, setTagColor] = useState<KanbanColorName>('blue')
 
-  useClickOutside([popoverRef, anchorRef], true, onClose)
-  useEscape(true, onClose)
+  // The autoFocused input takes focus when the panel opens, so closing has to hand it
+  // back — but only while it is still inside, since a click outside moved it already.
+  const dismiss = () => {
+    const hadFocus = popoverRef.current?.contains(document.activeElement) ?? false
+    onClose()
+    if (hadFocus) anchorRef.current?.focus()
+  }
+  useClickOutside([popoverRef, anchorRef], true, dismiss)
+  useEscape(true, dismiss)
 
   const unselectedOptions = (options ?? []).filter(
     (o) => !existingTags.includes(o.id) && !existingTags.includes(o.label),
@@ -189,6 +198,7 @@ export function TagCreatePopover({
 
   return (
     <div
+      id={panelId}
       ref={popoverRef}
       role='dialog'
       aria-label={t('preview.kanban_add_tag')}
@@ -202,7 +212,7 @@ export function TagCreatePopover({
           unselectedOptions={unselectedOptions}
           onSelectOption={(opt) => {
             onAddTag(opt.label || opt.id, opt.color)
-            onClose()
+            dismiss()
           }}
         />
         <TagInputField
@@ -210,7 +220,7 @@ export function TagCreatePopover({
           tagColor={tagColor}
           onChangeName={setTagName}
           onAddTag={onAddTag}
-          onClose={onClose}
+          onClose={dismiss}
         />
         <ColorDotPicker selected={tagColor} onSelect={setTagColor} />
       </div>
@@ -225,6 +235,7 @@ export function KanbanTagPicker({
 }: KanbanTagPickerProps) {
   const [open, setOpen] = useState(false)
   const addBtnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
 
   const handleRemove = (tagToRemove: string) => {
     onChangeTags(tags.filter((t) => t !== tagToRemove))
@@ -246,12 +257,16 @@ export function KanbanTagPicker({
         onClick={() => setOpen((o) => !o)}
         className='inline-flex items-center gap-1 rounded-[var(--r-xs)] border border-dashed border-[var(--border-default)] px-2 py-0.5 text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
         aria-label={t('preview.kanban_new_tag')}
+        aria-haspopup='dialog'
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': panelId } : {})}
       >
         <Plus size={11} />
         <span>{t('preview.kanban_new_tag')}</span>
       </button>
       {open && (
         <TagCreatePopover
+          panelId={panelId}
           options={options}
           existingTags={tags}
           anchorRef={addBtnRef}

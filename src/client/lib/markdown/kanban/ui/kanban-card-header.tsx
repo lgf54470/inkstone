@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { MoreHorizontal, Plus, X } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
@@ -70,6 +70,7 @@ interface CardAddTagButtonProps {
 function CardAddTagButton({ itemId, tagVals, tagsCol, onUpdateTags, onAddColumnOption }: CardAddTagButtonProps) {
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
 
   if (!onUpdateTags) return null
 
@@ -92,6 +93,9 @@ function CardAddTagButton({ itemId, tagVals, tagsCol, onUpdateTags, onAddColumnO
         className='inline-flex items-center gap-0.5 rounded-[var(--r-xs)] border border-dashed border-[var(--border-default)] px-1 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)] opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
         aria-label={t('preview.kanban_new_tag')}
         title={t('preview.kanban_new_tag')}
+        aria-haspopup='dialog'
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': panelId } : {})}
       >
         <Plus size={10} />
         <span>{t('preview.kanban_new_tag')}</span>
@@ -99,6 +103,7 @@ function CardAddTagButton({ itemId, tagVals, tagsCol, onUpdateTags, onAddColumnO
       {open && (
         <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           <TagCreatePopover
+            panelId={panelId}
             options={tagsCol?.options}
             existingTags={tagVals}
             anchorRef={btnRef}

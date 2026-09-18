@@ -35,6 +35,39 @@ export function StatusOptionItem({
   )
 }
 
+/** The listbox the status trigger opens; `id` is the target of its `aria-controls`. */
+export function StatusOptionList({
+  id,
+  label,
+  options,
+  current,
+  onSelect,
+}: {
+  id: string
+  label: string
+  options: KanbanOption[]
+  current?: unknown
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div
+      id={id}
+      role='listbox'
+      aria-label={label}
+      className='absolute left-0 top-full z-[var(--z-popover)] mt-1 min-w-36 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'
+    >
+      {options.map((o) => (
+        <StatusOptionItem
+          key={o.id}
+          option={o}
+          isSelected={o.id === current || o.label === current}
+          onSelect={onSelect}
+        />
+      ))}
+    </div>
+  )
+}
+
 export function PriorityChips({
   priorityCol,
   currentPriority,
@@ -117,7 +150,11 @@ export function DetailPropertyField({
         <label className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
           {formatKanbanPropertyName(column)}
         </label>
-        <KanbanDatePicker value={String(value ?? '')} onChange={onChange} />
+        <KanbanDatePicker
+          propertyName={formatKanbanPropertyName(column)}
+          value={String(value ?? '')}
+          onChange={onChange}
+        />
       </div>
     )
   }
@@ -246,6 +283,7 @@ export function DetailDatesGrid({
           {t('preview.kanban_prop_start_date')}
         </label>
         <KanbanDatePicker
+          propertyName={t('preview.kanban_prop_start_date')}
           value={String(startDateVal ?? '')}
           onChange={(val) => onPropertyChange('startDate', val)}
         />
@@ -255,6 +293,7 @@ export function DetailDatesGrid({
           {t('preview.kanban_prop_end_date')}
         </label>
         <KanbanDatePicker
+          propertyName={t('preview.kanban_prop_end_date')}
           value={String(dueDateVal ?? '')}
           onChange={(val) => onPropertyChange('dueDate', val)}
         />

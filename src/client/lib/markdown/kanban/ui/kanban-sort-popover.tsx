@@ -7,6 +7,7 @@ import type { KanbanProperty, KanbanSort } from '../types'
 
 interface KanbanSortPopoverProps {
   open: boolean
+  panelId: string
   onClose: () => void
   anchorRef: React.RefObject<HTMLElement | null>
   columns: KanbanProperty[]
@@ -117,6 +118,7 @@ function SortList({
 
 export const KanbanSortPopover = memo(function KanbanSortPopover({
   open,
+  panelId,
   onClose,
   anchorRef,
   columns,
@@ -142,6 +144,7 @@ export const KanbanSortPopover = memo(function KanbanSortPopover({
 
   return (
     <div
+      id={panelId}
       ref={panelRef}
       role='dialog'
       aria-label={t('preview.kanban_sort_rules')}

@@ -44,6 +44,7 @@ const KANBAN_COMMON_ICONS = [
 
 interface KanbanIconPickerProps {
   open: boolean
+  panelId: string
   currentIcon?: string | null
   anchorRef: React.RefObject<HTMLElement | null>
   onClose: () => void
@@ -171,6 +172,7 @@ function PickerHeaderTabs({
 
 export function KanbanIconPicker({
   open,
+  panelId,
   anchorRef,
   onClose,
   onSelectIcon,
@@ -190,6 +192,7 @@ export function KanbanIconPicker({
 
   return (
     <div
+      id={panelId}
       ref={panelRef}
       role='dialog'
       aria-label={t('preview.kanban_icon_picker')}

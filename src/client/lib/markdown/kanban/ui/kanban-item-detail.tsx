@@ -1,9 +1,9 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useId, useRef, useState } from 'react'
 import { ChevronDown, Smile } from 'lucide-react'
 import { Modal, useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { getKanbanDotColor } from '../colors'
-import { formatKanbanOptionLabel } from '../i18n-helpers'
+import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanIconPicker } from './kanban-icon-picker'
@@ -15,7 +15,7 @@ import {
   DetailFooter,
   DetailPropertiesGrid,
   PriorityChips,
-  StatusOptionItem,
+  StatusOptionList,
 } from './kanban-item-detail-fields'
 
 interface KanbanItemDetailProps {
@@ -41,6 +41,7 @@ function DetailStatusDropdown({
 }) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const panelId = useId()
   const options = statusCol?.options ?? []
   const opt = options.find((o) => o.id === statusVal || o.label === statusVal)
   const color = opt?.color ?? 'gray'
@@ -56,6 +57,9 @@ function DetailStatusDropdown({
         type='button'
         onClick={() => setOpen((o) => !o)}
         className='flex items-center gap-2 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-default)] hover:text-[var(--text-primary)]'
+        aria-haspopup='listbox'
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': panelId } : {})}
       >
         <span
           className='size-2.5 rounded-full shrink-0'
@@ -66,22 +70,16 @@ function DetailStatusDropdown({
       </button>
 
       {open && (
-        <div
-          role='listbox'
-          className='absolute left-0 top-full z-[var(--z-popover)] mt-1 min-w-36 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'
-        >
-          {options.map((o) => (
-            <StatusOptionItem
-              key={o.id}
-              option={o}
-              isSelected={o.id === statusVal || o.label === statusVal}
-              onSelect={(id) => {
-                onChangeStatus(id)
-                setOpen(false)
-              }}
-            />
-          ))}
-        </div>
+        <StatusOptionList
+          id={panelId}
+          label={statusCol ? formatKanbanPropertyName(statusCol) : t('preview.kanban_prop_status')}
+          options={options}
+          current={statusVal}
+          onSelect={(id) => {
+            onChangeStatus(id)
+            setOpen(false)
+          }}
+        />
       )}
     </div>
   )
@@ -148,6 +146,7 @@ function DetailHeader({
 }) {
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const iconBtnRef = useRef<HTMLButtonElement>(null)
+  const iconPanelId = useId()
 
   return (
     <div className='flex flex-col gap-2.5'>
@@ -164,11 +163,15 @@ function DetailHeader({
           onClick={() => setIconPickerOpen((o) => !o)}
           className='flex size-9 shrink-0 items-center justify-center rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-raised)] hover:bg-[var(--bg-hover)]'
           title={t('preview.kanban_icon_picker')}
+          aria-haspopup='dialog'
+          aria-expanded={iconPickerOpen}
+          {...(iconPickerOpen ? { 'aria-controls': iconPanelId } : {})}
         >
           {icon ? <KanbanIconBadge icon={icon} size={20} /> : <Smile size={18} className='text-[var(--text-tertiary)]' />}
         </button>
         <KanbanIconPicker
           open={iconPickerOpen}
+          panelId={iconPanelId}
           anchorRef={iconBtnRef}
           onClose={() => setIconPickerOpen(false)}
           onSelectIcon={onChangeIcon}

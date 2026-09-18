@@ -1,9 +1,14 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocale } from '../../../i18n'
 
 interface KanbanDatePickerProps {
+  /**
+   * The property this picker edits. The visible text is only the date, so a
+   * table row of dates would read as bare numbers; the name goes in beside it.
+   */
+  propertyName: string
   value?: string
   placeholder?: string
   onChange: (dateStr: string) => void
@@ -234,11 +239,13 @@ function useCalendarCursor(value?: string) {
 }
 
 function DatePickerPopover({
+  panelId,
   value,
   containerRef,
   onClose,
   onChange,
 }: {
+  panelId: string
   value?: string
   containerRef: React.RefObject<HTMLDivElement | null>
   onClose: () => void
@@ -261,6 +268,7 @@ function DatePickerPopover({
 
   return (
     <div
+      id={panelId}
       ref={popoverRef}
       role='dialog'
       aria-label={t('preview.kanban_select_date')}
@@ -291,12 +299,14 @@ function DatePickerPopover({
 }
 
 export function KanbanDatePicker({
+  propertyName,
   value,
   placeholder,
   onChange,
 }: KanbanDatePickerProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const panelId = useId()
 
   return (
     <div
@@ -307,7 +317,11 @@ export function KanbanDatePicker({
         type='button'
         onClick={() => setOpen((o) => !o)}
         className='flex flex-1 items-center gap-1.5 truncate text-left text-[length:var(--text-12)] text-[var(--text-primary)]'
+        aria-haspopup='dialog'
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': panelId } : {})}
       >
+        <span className='sr-only'>{propertyName}</span>
         <CalendarIcon size={13} className='shrink-0 text-[var(--text-tertiary)]' />
         <span className={value ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-quaternary)]'}>
           {value || placeholder || t('preview.kanban_select_date')}
@@ -327,6 +341,7 @@ export function KanbanDatePicker({
 
       {open && (
         <DatePickerPopover
+          panelId={panelId}
           value={value}
           containerRef={containerRef}
           onClose={() => setOpen(false)}

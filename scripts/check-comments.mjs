@@ -2734,6 +2734,9 @@ const allowed = new Map([
     '// mirrors useKanbanHistory: functional updaters resolve against the latest data',
     '// the detail modal portals onto document.body, so query the whole document',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-date-picker.tsx', [
+    '/**\n   * The property this picker edits. The visible text is only the date, so a\n   * table row of dates would read as bare numbers; the name goes in beside it.\n   */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.tsx', [
     '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',
     '// document is guaranteed blank; offer the file as an explicit new-tab action.',
@@ -2754,6 +2757,9 @@ const allowed = new Map([
     '// that actually owns the focused element: focus on the surrounding note or on a',
     '// second board must not undo this instance\'s history.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-item-detail-fields.tsx', [
+    '/** The listbox the status trigger opens; `id` is the target of its `aria-controls`. */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-manual-move.test.ts', [
     '// the app passes a freshly built filterSort object every render',
   ]],
@@ -2761,6 +2767,10 @@ const allowed = new Map([
     '// Identity tracks `moveItem` only: sorts are read at call time through the',
     '// ref, and `setSorts` is a stable state setter, so a stable moveItem yields',
     '// a stable handler for the whole drag.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-popover-aria.test.ts', [
+    '/**\n * A kanban panel that only answers the pointer is half a control: the trigger never says whether\n * it is open, and nothing points from the button to the panel it produced, so a reader pressing\n * Enter hears "button" and no state (review #26/#29). The contract asserted here is the one\n * `components/overlay/submenu.tsx` already keeps for the app\'s other popovers — `aria-haspopup`\n * with the panel\'s role, `aria-expanded` following `open`, and `aria-controls` naming a panel that\n * carries that `id` and has an accessible name of its own. The trigger and the panel usually live\n * in two components, so the relation is only observable by mounting whoever owns `open`.\n */',
+    '/**\n * Teardown belongs to the harness: a case that fails on its first assertion never reaches its own\n * `unmount()`, and the panel it left in `document.body` answers the next case\'s lookup first.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-popover-dismiss.test.ts', [
     '/**\n * Every panel in this module is dismissed by the pointer today and by nobody with a keyboard:\n * `Escape` reaches the board, finds no handler, and the reader is left inside an open popover\n * with the rest of the board dimmed behind their own focus (review #26/#29). The contract\n * asserted here is the one `components/overlay` already gives the app\'s other popovers —\n * `useEscape` plus the shared `useClickOutside` — so the panels close the same way, and a click\n * that lands inside the panel is still not a click outside it.\n */',
@@ -2805,6 +2815,10 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-table-view.tsx', [
     '// One batch commit: per-row toggles would queue one state update per item.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-tag-picker.tsx', [
+    '// The autoFocused input takes focus when the panel opens, so closing has to hand it',
+    '// back — but only while it is still inside, since a click outside moved it already.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-options.tsx', [
     '// Each section renders when the caller wired it: the board gets grouping and',

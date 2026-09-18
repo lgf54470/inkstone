@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanDotColor } from '../colors'
@@ -53,6 +53,7 @@ export function KanbanColumnHeader({
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
   const localizedLabel = formatKanbanGroupLabel(groupKey, label)
 
   return (
@@ -68,11 +69,15 @@ export function KanbanColumnHeader({
         onClick={() => setMenuOpen((o) => !o)}
         className='rounded-[var(--r-xs)] p-0.5 text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         aria-label={localizedLabel}
+        aria-haspopup='dialog'
+        aria-expanded={menuOpen}
+        {...(menuOpen ? { 'aria-controls': panelId } : {})}
       >
         <MoreHorizontal size={14} />
       </button>
       <KanbanColumnMenu
         open={menuOpen}
+        panelId={panelId}
         onClose={() => setMenuOpen(false)}
         anchorRef={menuBtnRef}
         groupKey={groupKey}

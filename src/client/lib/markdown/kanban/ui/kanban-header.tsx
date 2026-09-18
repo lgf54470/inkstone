@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useId, useRef, useState } from 'react'
 import {
   Columns3,
   Filter,
@@ -102,6 +102,7 @@ function KanbanViewOptionsAction({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
   // The column panel needs nothing but its toggle; the board panel keeps its
   // older rule of showing up only once both of its own writers are wired.
   const isColumnPanel = onToggleHiddenColumn !== undefined
@@ -116,12 +117,16 @@ function KanbanViewOptionsAction({
         onClick={() => setIsOpen((o) => !o)}
         className='inline-flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
         aria-label={label}
+        aria-haspopup='dialog'
+        aria-expanded={isOpen}
+        {...(isOpen ? { 'aria-controls': panelId } : {})}
       >
         {isColumnPanel ? <Columns3 size={13} /> : <SlidersHorizontal size={13} />}
         <span>{label}</span>
       </button>
       <KanbanViewOptions
         open={isOpen}
+        panelId={panelId}
         onClose={() => setIsOpen(false)}
         anchorRef={btnRef}
         columns={columns}
@@ -147,6 +152,7 @@ function KanbanFilterAction({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
   return (
     <>
       <button
@@ -156,6 +162,9 @@ function KanbanFilterAction({
         className={`inline-flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] ${
           filters.length > 0 ? 'text-[var(--accent)] font-semibold' : ''
         }`}
+        aria-haspopup='dialog'
+        aria-expanded={isOpen}
+        {...(isOpen ? { 'aria-controls': panelId } : {})}
       >
         <Filter size={13} />
         <span>{t('preview.kanban_filter')}</span>
@@ -163,6 +172,7 @@ function KanbanFilterAction({
       </button>
       <KanbanFilterPopover
         open={isOpen}
+        panelId={panelId}
         onClose={() => setIsOpen(false)}
         anchorRef={btnRef}
         columns={columns}
@@ -184,6 +194,7 @@ function KanbanSortAction({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
   return (
     <>
       <button
@@ -193,6 +204,9 @@ function KanbanSortAction({
         className={`inline-flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] ${
           sorts.length > 0 ? 'text-[var(--accent)] font-semibold' : ''
         }`}
+        aria-haspopup='dialog'
+        aria-expanded={isOpen}
+        {...(isOpen ? { 'aria-controls': panelId } : {})}
       >
         <SlidersHorizontal size={13} />
         <span>{t('preview.kanban_sort')}</span>
@@ -200,6 +214,7 @@ function KanbanSortAction({
       </button>
       <KanbanSortPopover
         open={isOpen}
+        panelId={panelId}
         onClose={() => setIsOpen(false)}
         anchorRef={btnRef}
         columns={columns}

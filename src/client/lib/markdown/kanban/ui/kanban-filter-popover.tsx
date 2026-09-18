@@ -7,6 +7,7 @@ import type { KanbanFilter, KanbanFilterOperator, KanbanProperty } from '../type
 
 interface KanbanFilterPopoverProps {
   open: boolean
+  panelId: string
   onClose: () => void
   anchorRef: React.RefObject<HTMLElement | null>
   columns: KanbanProperty[]
@@ -145,6 +146,7 @@ function FilterList({
 
 export const KanbanFilterPopover = memo(function KanbanFilterPopover({
   open,
+  panelId,
   onClose,
   anchorRef,
   columns,
@@ -182,6 +184,7 @@ export const KanbanFilterPopover = memo(function KanbanFilterPopover({
 
   return (
     <div
+      id={panelId}
       ref={panelRef}
       role='dialog'
       aria-label={t('preview.kanban_filter_rules')}

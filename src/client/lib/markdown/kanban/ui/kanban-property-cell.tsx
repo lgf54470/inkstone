@@ -180,7 +180,13 @@ function CellContent({
     return <KanbanFilesCell files={item.files} onChangeFiles={(files) => onUpdateFiles(item.id, files)} />
   }
   if (column.type === 'date') {
-    return <KanbanDatePicker value={readPlainText(value)} onChange={write} />
+    return (
+      <KanbanDatePicker
+        propertyName={formatKanbanPropertyName(column)}
+        value={readPlainText(value)}
+        onChange={write}
+      />
+    )
   }
   return (
     <EditableValue

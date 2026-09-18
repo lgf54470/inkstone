@@ -7,6 +7,7 @@ import type { KanbanColorName } from '../types'
 
 interface KanbanColumnMenuProps {
   open: boolean
+  panelId: string
   onClose: () => void
   anchorRef: React.RefObject<HTMLElement | null>
   groupKey: string
@@ -150,6 +151,7 @@ export const KanbanColumnMenu = memo(function KanbanColumnMenu({
   onChangeColor,
   onCollapse,
   onDelete,
+  panelId,
 }: KanbanColumnMenuProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   useClickOutside([panelRef, anchorRef], open, onClose)
@@ -161,6 +163,7 @@ export const KanbanColumnMenu = memo(function KanbanColumnMenu({
 
   return (
     <div
+      id={panelId}
       ref={panelRef}
       role='dialog'
       aria-label={t('preview.kanban_rename_column')}

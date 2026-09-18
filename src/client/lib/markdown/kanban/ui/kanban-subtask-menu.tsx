@@ -7,6 +7,7 @@ import type { KanbanSubtask } from '../types'
 
 interface KanbanSubtaskMenuProps {
   open: boolean
+  panelId: string
   subtask: KanbanSubtask
   anchorRef: React.RefObject<HTMLElement | null>
   onClose: () => void
@@ -99,6 +100,7 @@ function SubtaskMenuItems({
 
 export function KanbanSubtaskMenu({
   open,
+  panelId,
   subtask,
   anchorRef,
   onClose,
@@ -115,8 +117,10 @@ export function KanbanSubtaskMenu({
 
   return (
     <div
+      id={panelId}
       ref={menuRef}
       role='menu'
+      aria-label={t('common.more_actions')}
       className='absolute right-0 z-[var(--z-popover)] mt-1 w-44 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'
     >
       <SubtaskMenuItems

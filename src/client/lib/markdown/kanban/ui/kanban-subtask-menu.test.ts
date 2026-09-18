@@ -14,6 +14,7 @@ function mountMenu(overrides: Partial<Record<string, () => void>> = {}) {
   const rendered = renderElement(
     createElement(KanbanSubtaskMenu, {
       open: true,
+      panelId: 'subtask-menu-panel',
       subtask,
       anchorRef: createRef<HTMLElement>(),
       onClose,

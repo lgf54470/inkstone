@@ -10,6 +10,7 @@ export type CardSize = 'small' | 'medium' | 'large'
 
 interface KanbanViewOptionsProps {
   open: boolean
+  panelId: string
   onClose: () => void
   anchorRef: React.RefObject<HTMLElement | null>
   columns: KanbanProperty[]
@@ -128,6 +129,7 @@ function ColumnsSection({
 
 export const KanbanViewOptions = memo(function KanbanViewOptions({
   open,
+  panelId,
   onClose,
   anchorRef,
   columns,
@@ -148,6 +150,7 @@ export const KanbanViewOptions = memo(function KanbanViewOptions({
   // card size, the table gets column visibility, neither sees the other's controls.
   return (
     <div
+      id={panelId}
       ref={panelRef}
       role='dialog'
       aria-label={t(onToggleHiddenColumn ? 'preview.kanban_columns' : 'preview.kanban_group_by')}
