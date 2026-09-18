@@ -4440,6 +4440,10 @@ const allowed = new Map([
   ['src/worker/routes/folders/helpers.ts', [
     '// Patch format checks run in-route after the ownership lookup so cross-user writes surface 404 first.',
   ]],
+  ['src/worker/routes/kanban.ts', [
+    '// Objects predating owner metadata are treated as unreadable rather than public.',
+    '// Same rule as GET: an object without owner metadata is nobody\'s to delete.',
+  ]],
   ['src/worker/routes/mcp-authorize.ts', [
     '/* Unreadable user settings fall back to the Accept-Language header. */',
   ]],

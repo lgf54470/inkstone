@@ -71,7 +71,11 @@ function isSafeInlineMime(mime: string): boolean {
   return false
 }
 
-kanbanRoutes.get('/file/:kanbanName/:filename', async (c) => {
+function ownerOf(customMetadata: Record<string, string> | undefined): string | null {
+  return customMetadata?.userId ?? null
+}
+
+kanbanRoutes.get('/file/:kanbanName/:filename', requireAuth, async (c) => {
   const kanbanName = sanitizePathPart(c.req.param('kanbanName'), 'default')
   const filename = sanitizePathPart(c.req.param('filename'), 'file')
   const r2Key = `kanban/${kanbanName}/${filename}`
@@ -83,6 +87,10 @@ kanbanRoutes.get('/file/:kanbanName/:filename', async (c) => {
   const object = await c.env.FILES.get(r2Key)
   if (!object) {
     throw ApiError.notFound('File not found')
+  }
+  // Objects predating owner metadata are treated as unreadable rather than public.
+  if (ownerOf(object.customMetadata) !== c.get('userId')) {
+    throw ApiError.forbidden('You do not have permission to read this file')
   }
 
   const contentType = object.httpMetadata?.contentType || 'application/octet-stream'
@@ -110,9 +118,10 @@ kanbanRoutes.delete('/file/:kanbanName/:filename', requireAuth, async (c) => {
     if (!head) {
       throw ApiError.notFound('File not found')
     }
-    const ownerId = head.customMetadata?.userId
+    const ownerId = ownerOf(head.customMetadata)
     const currentUserId = c.get('userId')
-    if (ownerId && ownerId !== currentUserId) {
+    // Same rule as GET: an object without owner metadata is nobody's to delete.
+    if (!ownerId || ownerId !== currentUserId) {
       throw ApiError.forbidden('You do not have permission to delete this file')
     }
     await c.env.FILES.delete(r2Key)

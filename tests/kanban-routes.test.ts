@@ -4,15 +4,15 @@ import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { kanbanRoutes } from '../src/worker/routes/kanban'
 
-function fakeR2(initialFiles: Record<string, { body: string; mime: string; userId: string }> = {}) {
-  const store = new Map<string, { body: string; mime: string; userId: string }>(Object.entries(initialFiles))
+function fakeR2(initialFiles: Record<string, { body: string; mime: string; userId: string | null }> = {}) {
+  const store = new Map<string, { body: string; mime: string; userId: string | null }>(Object.entries(initialFiles))
 
   return {
     put: vi.fn(async (key: string, bytes: Uint8Array, opts: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> }) => {
       store.set(key, {
         body: new TextDecoder().decode(bytes),
         mime: opts.httpMetadata?.contentType || 'application/octet-stream',
-        userId: opts.customMetadata?.userId || '',
+        userId: opts.customMetadata?.userId ?? null,
       })
       return {}
     }),
@@ -27,7 +27,7 @@ function fakeR2(initialFiles: Record<string, { body: string; mime: string; userI
           },
         }),
         size: found.body.length,
-        customMetadata: { userId: found.userId },
+        customMetadata: found.userId === null ? undefined : { userId: found.userId },
         httpMetadata: { contentType: found.mime },
       }
     }),
@@ -36,7 +36,7 @@ function fakeR2(initialFiles: Record<string, { body: string; mime: string; userI
       if (!found) return null
       return {
         size: found.body.length,
-        customMetadata: { userId: found.userId },
+        customMetadata: found.userId === null ? undefined : { userId: found.userId },
         httpMetadata: { contentType: found.mime },
       }
     }),
@@ -46,12 +46,12 @@ function fakeR2(initialFiles: Record<string, { body: string; mime: string; userI
   }
 }
 
-function buildTestApp(r2 = fakeR2(), currentUserId = 'user-1') {
+function buildTestApp(r2 = fakeR2(), currentUserId: string | null = 'user-1') {
   const app = new Hono<AppBindings>()
   app.onError((err, c) => errorResponse(c, err))
 
   app.use('*', async (c, next) => {
-    c.set('userId', currentUserId)
+    if (currentUserId) c.set('userId', currentUserId)
     await next()
   })
 
@@ -122,5 +122,50 @@ describe('kanban backend routes', () => {
     )
     expect(res.status).toBe(200)
     expect(r2.delete).toHaveBeenCalledWith('kanban/default/my-file.png')
+  })
+
+  it('rejects an unauthenticated GET of a kanban file', async () => {
+    const r2 = fakeR2({
+      'kanban/default/my-file.png': { body: 'data', mime: 'image/png', userId: 'user-1' },
+    })
+    const { app } = buildTestApp(r2, null)
+
+    const res = await app.request('/api/kanban/file/default/my-file.png', {}, { FILES: r2 as never })
+    expect(res.status).toBe(401)
+  })
+
+  it('rejects GET of a file that belongs to another user', async () => {
+    const r2 = fakeR2({
+      'kanban/default/user2-file.png': { body: 'secret', mime: 'image/png', userId: 'user-2' },
+    })
+    const { app } = buildTestApp(r2, 'user-1')
+
+    const res = await app.request('/api/kanban/file/default/user2-file.png', {}, { FILES: r2 as never })
+    expect(res.status).toBe(403)
+  })
+
+  it('rejects GET when the stored object carries no owner metadata', async () => {
+    const r2 = fakeR2({
+      'kanban/default/legacy-file.png': { body: 'data', mime: 'image/png', userId: null },
+    })
+    const { app } = buildTestApp(r2, 'user-1')
+
+    const res = await app.request('/api/kanban/file/default/legacy-file.png', {}, { FILES: r2 as never })
+    expect(res.status).toBe(403)
+  })
+
+  it('rejects DELETE when the stored object carries no owner metadata', async () => {
+    const r2 = fakeR2({
+      'kanban/default/legacy-file.png': { body: 'data', mime: 'image/png', userId: null },
+    })
+    const { app } = buildTestApp(r2, 'user-1')
+
+    const res = await app.request(
+      '/api/kanban/file/default/legacy-file.png',
+      { method: 'DELETE' },
+      { FILES: r2 as never },
+    )
+    expect(res.status).toBe(403)
+    expect(r2.delete).not.toHaveBeenCalled()
   })
 })
