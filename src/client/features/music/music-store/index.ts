@@ -32,7 +32,6 @@ function initialMusicState(): Partial<MusicStoreState> {
     currentIndex: 0,
     isPlaying: false,
     streamLoading: false,
-    currentTimeMs: 0,
     durationMs: 0,
     volume: prefs.volume,
     muted: prefs.muted,
@@ -60,6 +59,7 @@ export type {
 export { currentTrack } from './player'
 export { PLAYBACK_RATES } from './state'
 export { hasPlaybackChanged, restorePlayback, savePlayback, schedulePlaybackSave } from './playback-sync'
+export { progressTimeMs, setProgressTime, useProgress } from './progress'
 export { resumeSleepTimer } from './player'
 export { visibleTracks, sortTracks } from './library-load'
 export { useCurrentTrack, useTagCounts, useVisibleTracks, buildTagCounts } from './selectors'

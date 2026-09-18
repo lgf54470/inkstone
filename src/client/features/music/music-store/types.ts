@@ -84,7 +84,6 @@ export interface MusicStoreState {
   currentIndex: number
   isPlaying: boolean
   streamLoading: boolean
-  currentTimeMs: number
   durationMs: number
   volume: number
   muted: boolean

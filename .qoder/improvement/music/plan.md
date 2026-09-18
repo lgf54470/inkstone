@@ -40,7 +40,7 @@
 ## 第三批 · 性能结构三件套（PERF-1~4，路线图③）
 
 - [x] M-22 PERF-1 曲目菜单全局单例化（store `menuTarget`），行内删 `useVisibleTracks` 与重复订阅
-- [ ] M-23 PERF-2 播放心跳出全局 store（独立 progress 订阅源），歌词高亮按 index 变化更新
+- [x] M-23 ] M-23 PERF-2 播放心跳出全局 store（独立 progress 订阅源），歌词高亮按 index 变化更新
 - [ ] M-24 PERF-3 `/library` 去 lyric 字段 + mutation 单条 merge + loadLibrary in-flight 去重/新鲜度
 - [ ] M-25 PERF-4 KV 分支 Range 请求窗口对齐（或文档化限制 + 禁尾部 range）
 
@@ -103,4 +103,5 @@
 | 2026-09-19 | M-19 重复入队曲目按自身位次播放/移除 + byId 记忆化（UI-8+PERF-18） | 526737b3 | 新增 2 例先红后绿（修复前 queue.indexOf 恒返回首个下标：第二次出现的 a 曾 removeFromQueue(0)/playQueueAt(0)→现均为 2，React 同时实测报出 duplicate key `a-0` 告警；修复后告警消失），O(Q²)→O(Q+S)，byId 以 useMemo 随 tracks 缓存，music 18 套件 93 ✅，typecheck/size/comments ✅ |
 | 2026-09-19 | M-20 单曲/歌单删除统一 danger 确认 + 加入队列 toast 反馈（UI-18+FEAT-2） | 3d57ecce | 新增 3 例先红后绿（三个入队分支曾全部静默→现均 toast music.added_to_queue，含去重换位分支）；删除确认复用既有 delete_track_confirm/delete_playlist_confirm 未引用键（歌单文案注明曲目保留），与批量/远端删除同 confirm({tone:'danger'}) 形态；确认弹窗为 overlay 门控，键盘路径手测（打开焦点入对话框/ESC 取消），视觉门禁随 M-44；music 19 套件 96 ✅，typecheck ✅ |
 | 2026-09-19 | M-21 浮动播放器把手换 IconButton 且文案改移动语义（UI-12） | 248ea804 | 新增 2 例先红后绿（修复前实测捕获 span[role=button] 且 ArrowRight 零调用→现为原生 button（aria-label=music.move_player 新键，en/zh 同步，删无引用的 drag_to_reorder 误导键）且 ArrowRight 提交 {x:116,y:100} 即 16px 键盘步长；键盘方向移动本就在 drag.onKeyDown，无需新行为），music 20 套件 98 ✅，typecheck/i18n ✅ |
-| 2026-09-19 | M-22 曲目菜单全局单例化：菜单请求入 store，行内不再各挂一份（PERF-1） | 本次提交（hash 由下一次提交回填） | 新增 5 例（4 例先红后绿：修复前每行各挂一份 MusicTrackMenu 且第二行开启时实测同时存在 2 个 role=menu、store 无 trackMenu 可用→现按钮/右键均只投递 {target,anchor} 请求，全 hub 唯一实例，条目执行后自动关闭）；useTrackMenuItems 删去每实例一次的 useVisibleTracks（9 订阅+整库派生），play-all 改为点击时对 getState() 惰性派生；行/卡删局部 isMenuOpen/menuButtonRef 与内联 target={{track}} 字面量；TrackGrid 与表格视图共用的 use-track-menu.ts 随死代码删除；handlers 仍在列表层构一次保持行 memo 生效。music 21 套件 103 ✅，typecheck/size/comments ✅ |
+| 2026-09-19 | M-22 曲目菜单全局单例化：菜单请求入 store，行内不再各挂一份（PERF-1） | e06460ce | 新增 5 例（4 例先红后绿：修复前每行各挂一份 MusicTrackMenu 且第二行开启时实测同时存在 2 个 role=menu、store 无 trackMenu 可用→现按钮/右键均只投递 {target,anchor} 请求，全 hub 唯一实例，条目执行后自动关闭）；useTrackMenuItems 删去每实例一次的 useVisibleTracks（9 订阅+整库派生），play-all 改为点击时对 getState() 惰性派生；行/卡删局部 isMenuOpen/menuButtonRef 与内联 target={{track}} 字面量；TrackGrid 与表格视图共用的 use-track-menu.ts 随死代码删除；handlers 仍在列表层构一次保持行 memo 生效。music 21 套件 103 ✅，typecheck/size/comments ✅ |
+| 2026-09-19 | M-23 播放心跳移出全局 store：独立 progress 订阅源，歌词高亮按 index 变化更新（PERF-2） | 本次提交（hash 由下一次提交回填） | 新增 6 例全部先红后绿（修复前 progress 模块不存在即红；现 heartbeat/seek 只写 progress store，主 store 状态对象身份实测不变，切歌清零进度，位置保存仍由进度心跳按 >4s 步长触发）；新增 music-store/progress.ts（zustand 小 store + setProgressTime/progressTimeMs），types/index 删 currentTimeMs；player.ts onTime/seek/playTrack/playCollection/playQueueAt/removeFromQueue/clearQueue/loadAndPlay 断点续播改走 progress；playback-sync restore/save 读写 progress，session-sync 双订阅合并快照保住原保存节奏；7 处 UI 订阅（悬浮条/进度环、控制条、状态栏、迷你与沉浸与侧栏歌词）改 useProgress，歌词高亮选择器返回行号数值→仅换行才重渲染；useSeekNudge 改点击时读 progressTimeMs() 不再每拍重渲染。music 22 套件 109 ✅，全量单测 218 套件 1695 ✅，typecheck/size/comments ✅ |

@@ -21,7 +21,7 @@ export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
     togglePlay: () => togglePlay(set, get),
     playNext: () => playNext(set, get),
     playPrevious: () => playPrevious(set, get),
-    seek: (ms) => seek(set, ms),
+    seek: (ms) => seek(ms),
     setVolume: (volume) => setVolume(set, get, volume),
     toggleMute: () => toggleMute(set, get),
     cycleMode: () => cycleMode(set, get),

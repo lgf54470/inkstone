@@ -1,15 +1,14 @@
 import { useMemo } from 'react'
 import { t } from '../../lib/i18n'
-import { useCurrentTrack, useMusic } from './music-store'
+import { useCurrentTrack, useMusic, useProgress } from './music-store'
 import { activeLyricIndex, parseLyric } from './music-utils'
 
 // Two lines are enough for a 288px widget; the immersive player shows the whole scroll.
 export function MusicFloatingLyrics() {
   const track = useCurrentTrack()
-  const currentTimeMs = useMusic((state) => state.currentTimeMs)
   const setImmersive = useMusic((state) => state.setImmersive)
   const lines = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
-  const activeIndex = activeLyricIndex(lines, currentTimeMs)
+  const activeIndex = useProgress((state) => activeLyricIndex(lines, state.currentTimeMs))
   if (!lines.length) return null
   const current = lines[Math.max(0, activeIndex)] ?? lines[0]
   const next = lines[Math.max(0, activeIndex) + 1]

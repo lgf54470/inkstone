@@ -5,7 +5,7 @@ import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
-import { useCurrentTrack, useMusic } from './music-store'
+import { useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { MusicPlayButtons } from './music-play-buttons'
 import { MusicQueueList } from './music-queue-list'
@@ -25,11 +25,10 @@ export function MusicImmersiveOverlay() {
 
 export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const track = useCurrentTrack()
-  const currentTimeMs = useMusic((state) => state.currentTimeMs)
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
   const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
-  const activeIndex = activeLyricIndex(lyrics, currentTimeMs)
+  const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs))
   const scrollerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -40,7 +39,7 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
   return (
     <Modal open={open} onClose={onClose} ariaLabel={t('music.immersive')} width={IMMERSIVE_WIDTH} className='h-[86vh] p-0 overflow-hidden' bodyClassName='p-0 flex-1 min-h-0 flex'>
       <div className='flex min-h-0 flex-1'>
-        <ImmersiveLeft track={track} currentTimeMs={currentTimeMs} durationMs={durationMs} seek={seek} />
+        <ImmersiveLeft track={track} durationMs={durationMs} seek={seek} />
         <section className='flex min-w-0 flex-1 flex-col'>
           <div className='flex h-10 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4'>
             <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>{t('music.lyrics')}</span>
@@ -63,15 +62,14 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
 
 function ImmersiveLeft({
   track,
-  currentTimeMs,
   durationMs,
   seek,
 }: {
   track: ReturnType<typeof useCurrentTrack>
-  currentTimeMs: number
   durationMs: number
   seek: (ms: number) => void
 }) {
+  const currentTimeMs = useProgress((state) => state.currentTimeMs)
   return (
     <>
         <section className='flex w-96 shrink-0 flex-col items-center gap-4 border-r border-[var(--border-subtle)] p-6'>

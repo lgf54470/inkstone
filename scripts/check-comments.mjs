@@ -1242,6 +1242,10 @@ const allowed = new Map([
   ['src/client/features/music/music-selection-bar.tsx', [
     '// Multi-select toolbar: file-manager style batches; select all and invert use the visible list.',
   ]],
+  ['src/client/features/music/music-session-sync.tsx', [
+    '// The heartbeat lives in the progress store now, so the save scheduler watches',
+    '// both stores and compares its own combined snapshots of queue and position.',
+  ]],
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
     '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
@@ -1269,6 +1273,10 @@ const allowed = new Map([
     '// and they race: one reporter keeps the user from getting two messages.',
     '// A slow WebDAV object streams below realtime, so waiting for the first frame',
     '// forever would look like a frozen player. Surface it and stop pretending.',
+  ]],
+  ['src/client/features/music/music-store/progress.ts', [
+    '// The ~250ms audio heartbeat lives here instead of the library store, so a tick',
+    '// re-renders only the small leaves that display progress rather than the whole hub.',
   ]],
   ['src/client/features/music/music-store/selectors.ts', [
     '// Counts tracks per tag directly; the sidebar tree rolls descendants into the parent\'s total.',

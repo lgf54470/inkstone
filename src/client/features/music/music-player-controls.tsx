@@ -5,7 +5,7 @@ import type { MusicTrack } from '@shared/types'
 import { IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
-import { useCurrentTrack, useMusic } from './music-store'
+import { useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicPlayButtons } from './music-play-buttons'
 import { MusicSeekBar } from './music-seek-bar'
 
@@ -20,7 +20,7 @@ export function MusicPlayerControls({
   const floatingVisible = useMusic((state) => state.floatingVisible)
   const toggleFloating = useMusic((state) => state.toggleFloating)
   const track = useCurrentTrack()
-  const currentTimeMs = useMusic((state) => state.currentTimeMs)
+  const currentTimeMs = useProgress((state) => state.currentTimeMs)
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
 

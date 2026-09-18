@@ -6,10 +6,11 @@ import type { Root } from 'react-dom/client'
 import type { MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { MusicNowPlaying } from './music-now-playing'
-import { useMusic } from './music-store'
+import { setProgressTime, useMusic } from './music-store'
 
 beforeAll(() => {
   ;(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
+  Element.prototype.scrollIntoView = vi.fn()
 })
 
 function playingTrack(): MusicTrack {
@@ -37,12 +38,12 @@ function playingTrack(): MusicTrack {
 
 let root: Root | null = null
 
-async function mountDetails(): Promise<HTMLDivElement> {
+async function mountPanel(tab: 'lyrics' | 'details' = 'details'): Promise<HTMLDivElement> {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   const node = createElement(MusicNowPlaying, {
-    tab: 'details' as const,
+    tab,
     onTabChange: () => {},
     onEditTags: () => {},
   }) as ReactNode
@@ -61,18 +62,19 @@ afterEach(() => {
   root = null
   document.body.innerHTML = ''
   vi.restoreAllMocks()
+  setProgressTime(0)
 })
 
 function seedStore(overrides: Record<string, unknown>) {
   const track = playingTrack()
-  useMusic.setState({ tracks: [track], queue: [track.id], currentIndex: 0, currentTimeMs: 0, ...overrides })
+  useMusic.setState({ tracks: [track], queue: [track.id], currentIndex: 0, ...overrides })
   return track
 }
 
 describe('MusicNowPlaying details panel', () => {
   it('routes a favorite click to the store toggle for the playing track', async () => {
     const track = seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn() })
-    const container = await mountDetails()
+    const container = await mountPanel()
     const favorite = buttonByLabel(container, t('music.favorite'))
     expect(favorite).toBeDefined()
     await act(async () => {
@@ -83,12 +85,29 @@ describe('MusicNowPlaying details panel', () => {
 
   it('routes a pin click to the store toggle for the playing track', async () => {
     const track = seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn() })
-    const container = await mountDetails()
+    const container = await mountPanel()
     const pin = buttonByLabel(container, t('music.pin'))
     expect(pin).toBeDefined()
     await act(async () => {
       pin?.click()
     })
     expect(useMusic.getState().togglePin).toHaveBeenCalledWith(track.id)
+  })
+})
+
+describe('MusicNowPlaying lyrics', () => {
+  it('moves the highlighted line from progress ticks alone', async () => {
+    const track = playingTrack()
+    track.lyric = '[00:00.00]First\n[00:05.00]Second'
+    seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn(), tracks: [track] })
+    const container = await mountPanel('lyrics')
+    const activeTexts = () => [...container.querySelectorAll('p')].flatMap((p) => (
+      p.getAttribute('data-active-line') === 'true' ? [p.textContent] : []
+    ))
+    expect(activeTexts()).toEqual(['First'])
+    await act(async () => {
+      setProgressTime(6_000)
+    })
+    expect(activeTexts()).toEqual(['Second'])
   })
 })

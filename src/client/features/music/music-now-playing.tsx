@@ -5,7 +5,7 @@ import { Segmented } from '../../components/form'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
-import { useCurrentTrack, useMusic } from './music-store'
+import { useCurrentTrack, useMusic, useProgress } from './music-store'
 import { activeLyricIndex, formatBytes, formatDuration, parseLyric } from './music-utils'
 
 export type MusicDetailTab = 'lyrics' | 'details'
@@ -20,9 +20,8 @@ export function MusicNowPlaying({
   onEditTags: () => void
 }) {
   const track = useCurrentTrack()
-  const currentTimeMs = useMusic((state) => state.currentTimeMs)
   const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
-  const activeIndex = activeLyricIndex(lyrics, currentTimeMs)
+  const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs))
   const scrollerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

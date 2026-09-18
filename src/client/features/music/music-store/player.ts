@@ -7,6 +7,7 @@ import {
   resumePlayback, seekTo, startPlayback, stopPlayback,
 } from '../audio-engine'
 import { loadLibrary, visibleTracks } from './library-load'
+import { progressTimeMs, setProgressTime } from './progress'
 import { pushRecent, savePreferences } from './state'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
@@ -15,7 +16,7 @@ const RESUME_THRESHOLD_MS = 1_000
 
 export function connectAudio(set: MusicSet, get: MusicGet): void {
   configureAudio({
-    onTime: (ms) => set({ currentTimeMs: ms }),
+    onTime: (ms) => setProgressTime(ms),
     onDuration: (ms) => {
       set({ durationMs: ms })
       recordLearnedDuration(get, ms)
@@ -54,20 +55,23 @@ export function currentTrack(state: MusicStoreState): MusicTrack | null {
 }
 
 export async function playTrack(set: MusicSet, get: MusicGet, id: string): Promise<void> {
-  set({ queue: [id], currentIndex: 0, currentTimeMs: 0, durationMs: 0 })
+  set({ queue: [id], currentIndex: 0, durationMs: 0 })
+  setProgressTime(0)
   await loadAndPlay(set, get)
 }
 
 export async function playCollection(set: MusicSet, get: MusicGet, ids: string[], startIndex = 0): Promise<void> {
   if (!ids.length) return
   const index = Math.max(0, Math.min(startIndex, ids.length - 1))
-  set({ queue: ids, currentIndex: index, currentTimeMs: 0, durationMs: 0 })
+  set({ queue: ids, currentIndex: index, durationMs: 0 })
+  setProgressTime(0)
   await loadAndPlay(set, get)
 }
 
 export async function playQueueAt(set: MusicSet, get: MusicGet, index: number): Promise<void> {
   if (index < 0 || index >= get().queue.length) return
-  set({ currentIndex: index, currentTimeMs: 0, durationMs: 0 })
+  set({ currentIndex: index, durationMs: 0 })
+  setProgressTime(0)
   await loadAndPlay(set, get)
 }
 
@@ -125,9 +129,9 @@ export async function playPrevious(set: MusicSet, get: MusicGet): Promise<void> 
   await playQueueAt(set, get, previous)
 }
 
-export function seek(set: MusicSet, ms: number): void {
+export function seek(ms: number): void {
   seekTo(ms)
-  set({ currentTimeMs: ms })
+  setProgressTime(ms)
 }
 
 export function setPlaybackRate(set: MusicSet, get: MusicGet, rate: number): void {
@@ -245,13 +249,15 @@ export function removeFromQueue(set: MusicSet, get: MusicGet, index: number): vo
     return
   }
   stopPlayback()
-  set({ isPlaying: false, currentTimeMs: 0, durationMs: 0 })
+  set({ isPlaying: false, durationMs: 0 })
+  setProgressTime(0)
   publishMediaSession(nextQueue.length ? currentTrack(get()) : null, false)
 }
 
 export function clearQueue(set: MusicSet): void {
   pausePlayback()
-  set({ queue: [], currentIndex: 0, isPlaying: false, currentTimeMs: 0, durationMs: 0 })
+  set({ queue: [], currentIndex: 0, isPlaying: false, durationMs: 0 })
+  setProgressTime(0)
   publishMediaSession(null, false)
 }
 
@@ -268,7 +274,7 @@ export function setFloatingPosition(set: MusicSet, get: MusicGet, position: { x:
 async function loadAndPlay(set: MusicSet, get: MusicGet): Promise<void> {
   const track = currentTrack(get())
   if (!track) return
-  const resumeMs = Math.round(get().currentTimeMs)
+  const resumeMs = Math.round(progressTimeMs())
   set({ streamLoading: true, durationMs: track.durationMs })
   streamFailedReported = false
   applyVolume(get().volume, get().muted)
@@ -284,7 +290,7 @@ async function loadAndPlay(set: MusicSet, get: MusicGet): Promise<void> {
   set({ isPlaying: true })
   if (resumeMs > RESUME_THRESHOLD_MS) {
     seekTo(resumeMs)
-    set({ currentTimeMs: resumeMs })
+    setProgressTime(resumeMs)
   }
   armStreamWatchdog(set, get)
   void api.music.countPlay(track.id).catch((error: unknown) => {

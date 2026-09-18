@@ -4,7 +4,7 @@ import { IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
 import type { CSSProperties } from 'react'
 import { t } from '../../lib/i18n'
-import { PLAYBACK_RATES } from './music-store'
+import { PLAYBACK_RATES, progressTimeMs } from './music-store'
 import { useMusic } from './music-store'
 import { MusicPopover } from './music-popover'
 import { MusicQueueBrowser } from './music-queue-browser'
@@ -15,13 +15,12 @@ import { cn } from '../../lib/cn'
 export const SEEK_STEP_MS = 10_000
 
 export function useSeekNudge(): (deltaMs: number) => void {
-  const currentTimeMs = useMusic((state) => state.currentTimeMs)
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
   return useCallback((deltaMs: number) => {
-    const target = currentTimeMs + deltaMs
+    const target = progressTimeMs() + deltaMs
     seek(Math.max(0, durationMs > 0 ? Math.min(target, durationMs) : target))
-  }, [currentTimeMs, durationMs, seek])
+  }, [durationMs, seek])
 }
 
 export function MusicNudgeButton({

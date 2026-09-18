@@ -1,6 +1,7 @@
 import { LIMITS } from '@shared/constants'
 import type { MusicTrack } from '@shared/types'
 import { api } from '../../../lib/api'
+import { progressTimeMs, setProgressTime } from './progress'
 import type { MusicGet, MusicSet } from './types'
 
 const SAVE_THROTTLE_MS = 5_000
@@ -21,9 +22,9 @@ export async function restorePlayback(set: MusicSet, get: MusicGet): Promise<voi
       tracks: mergeTracks(get().tracks, playback.tracks),
       queue,
       currentIndex,
-      currentTimeMs: Math.min(playback.positionMs, current?.durationMs ?? playback.positionMs),
       durationMs: current?.durationMs ?? 0,
     })
+    setProgressTime(Math.min(playback.positionMs, current?.durationMs ?? playback.positionMs))
   } catch (error) {
     console.warn('[inkstone] music playback restore failed:', error)
   }
@@ -35,7 +36,7 @@ export async function savePlayback(get: MusicGet): Promise<void> {
   await api.music.savePlayback({
     queue,
     currentIndex: Math.max(0, Math.min(state.currentIndex, Math.max(0, queue.length - 1))),
-    positionMs: Math.max(0, Math.round(state.currentTimeMs)),
+    positionMs: Math.max(0, Math.round(progressTimeMs())),
   })
 }
 
