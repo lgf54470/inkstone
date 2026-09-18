@@ -1265,6 +1265,9 @@ const allowed = new Map([
     '// panel would be invisible there, and the floating card has to escape its own',
     '// stacking context too.',
   ]],
+  ['src/client/features/music/music-probe.ts', [
+    '// Containers the browser never decodes must not hang the serial upload chain forever.',
+  ]],
   ['src/client/features/music/music-queue-list.tsx', [
     '// Duplicated tracks occupy several queue positions; each rendered occurrence',
     '// takes the next free one so play/remove hit the right row.',
