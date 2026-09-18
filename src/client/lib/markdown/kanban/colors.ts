@@ -28,7 +28,6 @@ export function getKanbanTagStyle(color?: KanbanColorName | string | null): CSSP
   return {
     backgroundColor: `var(--kanban-tag-${name}-bg)`,
     color: `var(--kanban-tag-${name}-fg)`,
-    borderColor: `var(--kanban-tag-${name}-border, transparent)`,
   }
 }
 

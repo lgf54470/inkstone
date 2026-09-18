@@ -110,9 +110,6 @@ const allowed = new Map([
     '// what shows through it is whatever it is painted on, which is not a token',
     '// question. The painted pairs cover those, so they are skipped here.',
     '/**\n * Every accent is one click away in the appearance panel, but the shell only\n * ever paints the one the account picked — so a pair whose tint *is* the accent\n * is re-measured here for all of them: the tint is the same mix of another\n * accent over the same surface, and the text is the same tier (or the accent\n * itself, for pairs that paint accent-coloured text on the tint).\n */',
-    '// --- colour math -----------------------------------------------------------',
-    '// Legacy rgba() carries its alpha as a fourth channel, not after a slash.',
-    '// color(srgb r g b) — what Chrome computes a color-mix() into.',
     '/**\n * Turns the painted text into (tier, surface) pairs. A tint is translucent, so\n * the surface underneath it is composited first and the pair is named after\n * both. Pairs without a tint are counted but not judged: they are the palette\'s\n * plain ladder, which the token calibration and axe already cover.\n */',
     '// The accent is the one colour a run can swap under the app (the appearance',
     '// setting paints any of seven), so a pair whose tint is the accent is recorded',
@@ -820,6 +817,17 @@ const allowed = new Map([
     '// Throttle a throwaway member account, not Owner-1: the visual e2e gate',
     '// signs in as Owner-1 right after this suite, and the 60s lock this block',
     '// triggers would block that login (see scripts/e2e-visual.mjs defaults).',
+  ]],
+  ['scripts/lib/contrast.mjs', [
+    '// The colour maths behind the contrast gates, shared by the browser gate',
+    '// (scripts/check-contrast.mjs, which measures the painted pairs) and the token',
+    '// gate (tests/kanban-tag-contrast.test.ts, which has to judge a palette before',
+    '// anything paints it). Both ask the same WCAG question, so neither may keep its',
+    '// own copy of what a contrast ratio is.',
+    '// Colours travel as {rgb:[r,g,b], alpha} so a translucent tint can be composited',
+    '// over the surface underneath it (`over`) before it is compared (`contrastRatio`).',
+    '// Legacy rgba() carries its alpha as a fourth channel, not after a slash.',
+    '// color(srgb r g b) — what Chrome computes a color-mix() into.',
   ]],
   ['scripts/measure-longtask.mjs', [
     '// Best-effort probe: connection errors while the dev server boots are retried.',
@@ -4644,6 +4652,14 @@ const allowed = new Map([
   ]],
   ['tests/kanban-hover-focus.test.ts', [
     '/**\n * Hover-only controls (`opacity-0` until the card/row is hovered) are invisible\n * while being keyboard-focused, which strands Tab focus on an unseen button.\n * Every such control must also reveal itself on `focus-visible`; this keeps the\n * next `opacity-0` affordance from shipping without it.\n */',
+  ]],
+  ['tests/kanban-tag-contrast.test.ts', [
+    '/**\n * Kanban labels are the one palette the app does not derive from the accent: the\n * user picks a colour per option, so it has to work on every surface the board\n * paints them on and in both themes. That also means nothing else guards it —\n * `scripts/check-contrast.mjs` measures what the running app paints, and this\n * palette is only painted once a board exists.\n *\n * So the gate reads the declarations instead. A chip is a translucent tint of\n * the label colour over whatever surface it lands on, so the pair that has to\n * clear 4.5:1 is (label colour, tint composited on that surface) — judged over\n * every solid surface of the theme, because the same chip appears on the\n * sunken board, the raised card and the overlay dialog.\n */',
+    '/** Resolves a token value to rgb + alpha the way the browser composites it. */',
+    '// Mixing with transparent keeps the colour and scales only its alpha.',
+    '// The palette is mostly addressed through template literals',
+    '// (`var(--kanban-tag-${name}-bg)`), so a reference is only checkable once its',
+    '// placeholder is expanded over the colour names the picker offers.',
   ]],
   ['tests/kanban-view-live-fields.test.ts', [
     '/**\n * KanbanView is persisted fence data: a declared field nobody reads is a dead\n * contract (review #19 left seven of them behind). Every field of the\n * KanbanView interface must be accessed (`view.<field>`) somewhere in the\n * client outside types.ts, so the next config knob ships wired or not at all.\n */',
