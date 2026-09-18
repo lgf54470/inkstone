@@ -4373,6 +4373,10 @@ const allowed = new Map([
     '// A failed drain is safe: the queue rows stay enqueued and the next cron trigger retries them.',
     '// A failed drain is safe: the queue rows stay enqueued and the next cron trigger retries them.',
   ]],
+  ['src/worker/routes/music/budget.ts', [
+    '// Each family that can trigger outbound requests or storage work gets one',
+    '// named hourly key, so no music route can be looped into unbounded load.',
+  ]],
   ['src/worker/routes/music/cover.ts', [
     '// Shared by the authenticated library and the public blog player.',
     '// Shared by uploads and metadata refreshes; a failed cover write must not fail the caller.',

@@ -46,6 +46,9 @@
   "src/client/lib/markdown/slides/ui/slides-topbar.tsx": {
     "longFns": 1
   },
+  "src/shared/constants.ts": {
+    "lines": 501
+  },
   "src/worker/db/schema/migrations.ts": {
     "lines": 559
   }

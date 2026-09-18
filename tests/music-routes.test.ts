@@ -9,6 +9,7 @@ vi.mock('../src/worker/lib/id', async (importOriginal) => {
 })
 
 import type { D1Database } from '@cloudflare/workers-types'
+import { LIMITS } from '../src/shared/constants'
 import { TABLE_STATEMENTS } from '../src/worker/db/schema/tables'
 import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import type { AppBindings } from '../src/worker/env'
@@ -530,5 +531,56 @@ describe('music cover lookup (real D1)', () => {
     stubCatalogue([])
     expect((await request(app, '/api/music/cover-lookup')).status).toBe(400)
     expect((await request(app, '/api/music/cover-lookup?title=Unknown%20Song')).status).toBe(404)
+  })
+})
+
+describe('music hourly budgets (real D1)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function stubArtwork(): void {
+    vi.stubGlobal('fetch', () => Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }] }),
+      headers: { get: () => 'image/jpeg' },
+      arrayBuffer: () => Promise.resolve(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]).buffer),
+    }))
+  }
+
+  it('blocks cover lookups once the hourly budget is spent', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    stubArtwork()
+    for (let i = 0; i < LIMITS.musicCoverLookupsPerHour; i++) {
+      const res = await request(app, '/api/music/cover-lookup?title=Moonlight&artist=Hu%20Yanbin')
+      expect(res.status).toBe(200)
+      await res.arrayBuffer()
+    }
+    const blocked = await request(app, '/api/music/cover-lookup?title=Moonlight&artist=Hu%20Yanbin')
+    expect(blocked.status).toBe(429)
+    const payload = (await blocked.json()) as { error: { code: string; message: string; details?: { retryAfter?: number } } }
+    expect(payload.error.code).toBe('too_many_attempts')
+    expect(payload.error.details?.retryAfter).toBeGreaterThan(0)
+    const otherFamily = await request(app, '/api/music/tracks/missing/play', { method: 'POST' })
+    expect(otherFamily.status).toBe(200)
+  })
+
+  it('spends write and play budgets on their own hourly keys', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app)
+    await json(app, `/api/music/tracks/${track.id}`, { title: 'Renamed' }, 'PATCH')
+    await request(app, `/api/music/tracks/${track.id}/play`, { method: 'POST' })
+    const { results } = await db.prepare('SELECT key, fails FROM login_attempts ORDER BY key').all<{ key: string; fails: number }>()
+    expect(results).toEqual(
+      expect.arrayContaining([
+        { key: 'music-play:user-1', fails: 1 },
+        { key: 'music-write:user-1', fails: 1 },
+      ]),
+    )
   })
 })

@@ -5,6 +5,7 @@ import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
 import { FORM_BODY_LIMITS, JSON_BODY_LIMITS, readFormDataWithinLimit, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
+import { enforceMusicBudget } from './budget'
 import { coverObjectKey, decodeCoverDataUrl } from './cover'
 import { mimeForFormat, resolveMusicFormat } from './keys'
 import { toTrack } from './rows'
@@ -22,6 +23,7 @@ export function registerMusicWebdavRoutes(routes: Hono<AppBindings>): void {
 }
 
 async function removeObject(c: Context<AppBindings>): Promise<Response> {
+  await enforceMusicBudget(c.env.DB, 'webdav', c.get('userId'))
   const parsed = webdavPathSchema.safeParse({ path: c.req.query('path') ?? '' })
   if (!parsed.success || !parsed.data.path) throw ApiError.badRequest('path: a relative path is required')
   const ctx = await resolveMusicWebdav(c.env, c.get('user'), c.get('userId'))
@@ -30,6 +32,7 @@ async function removeObject(c: Context<AppBindings>): Promise<Response> {
 }
 
 async function browse(c: Context<AppBindings>): Promise<Response> {
+  await enforceMusicBudget(c.env.DB, 'webdav', c.get('userId'))
   const subPath = c.req.query('path') ?? ''
   const parsed = webdavPathSchema.safeParse({ path: subPath })
   if (!parsed.success) throw ApiError.badRequest('path: invalid relative path')
@@ -57,6 +60,7 @@ async function browse(c: Context<AppBindings>): Promise<Response> {
 
 async function importTrack(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'webdav', userId)
   const body = await readJsonValidated(c, importMusicSchema, JSON_BODY_LIMITS.small)
   const ctx = await resolveMusicWebdav(c.env, c.get('user'), userId)
   const stat = await statMusicObject(ctx, body.path)
@@ -92,6 +96,7 @@ async function importTrack(c: Context<AppBindings>): Promise<Response> {
 
 async function uploadTrack(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'webdav', userId)
   const form = await readFormDataWithinLimit(c.req, FORM_BODY_LIMITS.music)
   const file = form.get('file')
   if (!(file instanceof File)) throw ApiError.badRequest('Missing file field')

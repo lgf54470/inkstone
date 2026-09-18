@@ -5,6 +5,7 @@ import { ApiError } from '../../lib/errors'
 import { isAllowedOutboundUrl } from '../../lib/outbound-url'
 import { cancelStreamBestEffort } from '../../lib/streams'
 import { requireAuth } from '../../middleware/auth'
+import { enforceMusicBudget } from './budget'
 import { coverHeaders } from './cover'
 import { coverLookupQuerySchema } from './schemas'
 
@@ -25,6 +26,7 @@ export function registerMusicCoverLookupRoutes(routes: Hono<AppBindings>): void 
   routes.get('/cover-lookup', requireAuth, async (c) => {
     const query = coverLookupQuerySchema.safeParse({ title: c.req.query('title'), artist: c.req.query('artist') })
     if (!query.success) throw ApiError.badRequest('Provide a track title to look up')
+    await enforceMusicBudget(c.env.DB, 'lookup', c.get('userId'))
     const artworkUrl = await findArtworkUrl(query.data.title, query.data.artist ?? '')
     if (!artworkUrl) throw ApiError.notFound('No cover matched this track')
     const response = await fetchAppleResource(artworkUrl, ARTWORK_ALLOWED_HOSTS, 'image/*')

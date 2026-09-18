@@ -4,6 +4,7 @@ import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
+import { enforceMusicBudget } from './budget'
 import { coverResponse, storeCoverObject } from './cover'
 import { isDerivedMusicObjectKey } from './keys'
 import { TRACK_COLUMNS, toTrack } from './rows'
@@ -39,6 +40,7 @@ function registerPatchRoute(routes: Hono<AppBindings>): void {
     const userId = c.get('userId')
     const id = pathParam(c, 'id')
     if (!(await loadTrackRow(c.env.DB, userId, id))) throw ApiError.notFound('Track not found')
+    await enforceMusicBudget(c.env.DB, 'write', userId)
     const body = await readJsonValidated(c, patchTrackSchema, JSON_BODY_LIMITS.musicTrack)
     const row = await loadTrackRow(c.env.DB, userId, id)
     if (body.coverDataUrl !== undefined && row) {
@@ -56,6 +58,7 @@ function registerPatchRoute(routes: Hono<AppBindings>): void {
 
 function registerPlayRoute(routes: Hono<AppBindings>): void {
   routes.post('/tracks/:id/play', requireAuth, async (c) => {
+    await enforceMusicBudget(c.env.DB, 'play', c.get('userId'))
     const result = await c.env.DB.prepare(
       'UPDATE music_tracks SET play_count = play_count + 1 WHERE id = ?1 AND user_id = ?2',
     ).bind(pathParam(c, 'id'), c.get('userId')).run()
@@ -66,6 +69,7 @@ function registerPlayRoute(routes: Hono<AppBindings>): void {
 function registerBatchRoute(routes: Hono<AppBindings>): void {
   routes.post('/tracks/batch', requireAuth, async (c) => {
     const userId = c.get('userId')
+    await enforceMusicBudget(c.env.DB, 'write', userId)
     const { ids, action } = await readJsonValidated(c, batchTrackSchema, JSON_BODY_LIMITS.small)
     const keys = await loadOwnedObjectKeys(c.env.DB, userId, ids)
     if (action === 'delete') {
@@ -84,6 +88,7 @@ function registerDeleteRoute(routes: Hono<AppBindings>): void {
     const userId = c.get('userId')
     const id = pathParam(c, 'id')
     if (!(await loadTrackRow(c.env.DB, userId, id))) throw ApiError.notFound('Track not found')
+    await enforceMusicBudget(c.env.DB, 'write', userId)
     const keys = await loadOwnedObjectKeys(c.env.DB, userId, [id])
     await deleteTracks(c.env, userId, [id], keys)
     return c.json({ ok: true })
