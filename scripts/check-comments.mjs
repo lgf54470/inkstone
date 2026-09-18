@@ -4392,6 +4392,10 @@ const allowed = new Map([
     '// Read-only projection of the owner\'s library for the blog player: no keys, sizes or flags.',
     '// The blog mirrors the queue the owner is listening to, so ids that left the library are dropped.',
   ]],
+  ['src/worker/routes/music/schemas.ts', [
+    '// An absent field must stay undefined so PATCH keeps the stored cover; anything',
+    '// else goes through the same whitelist the upload path uses.',
+  ]],
   ['src/worker/routes/music/settings.ts', [
     '// Publishing is opt-in: the public blog routes read this before serving anything.',
   ]],

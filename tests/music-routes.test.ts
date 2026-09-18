@@ -386,6 +386,38 @@ describe('music cover storage', () => {
     const missing = await request(app, '/api/music/tracks/' + track.id + '/cover')
     expect(missing.status).toBe(404)
   })
+
+  it('refuses a PATCH coverUrl pointing at an internal cover object', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app)
+    const id = String(track.id)
+
+    const patched = await json(app, `/api/music/tracks/${id}`, {
+      coverUrl: 'music/cover/2024-05-01/someone-else.jpg',
+    }, 'PATCH')
+    expect(patched.status).toBe(200)
+    expect((await patched.json()).coverUrl).toBeNull()
+    const stored = await db.prepare('SELECT cover_url FROM music_tracks WHERE id = ?1').bind(id).first<{ cover_url: string | null }>()
+    expect(stored?.cover_url).toBeNull()
+    const missing = await request(app, `/api/music/tracks/${id}/cover`)
+    expect(missing.status).toBe(404)
+  })
+
+  it('keeps a https cover and preserves it across PATCHes that omit coverUrl', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app)
+    const id = String(track.id)
+
+    const linked = await json(app, `/api/music/tracks/${id}`, { coverUrl: 'https://covers.example.com/a.png' }, 'PATCH')
+    expect((await linked.json()).coverUrl).toBe('https://covers.example.com/a.png')
+
+    const renamed = await json(app, `/api/music/tracks/${id}`, { title: 'Again' }, 'PATCH')
+    expect((await renamed.json()).coverUrl).toBe('https://covers.example.com/a.png')
+  })
 })
 
 describe('music cover lookup (real D1)', () => {

@@ -1,8 +1,14 @@
 import { z } from 'zod'
 import { LIMITS } from '@shared/constants'
+import { sanitizeCoverUrl } from './keys'
 
 const trimmed = (max: number) => z.string().trim().max(max)
 const optionalTrimmed = (max: number) => trimmed(max).optional()
+
+// An absent field must stay undefined so PATCH keeps the stored cover; anything
+// else goes through the same whitelist the upload path uses.
+const patchCoverUrl = z.string().max(2048).nullable().optional()
+  .transform((value) => (value === undefined ? undefined : sanitizeCoverUrl(value)))
 
 export const patchTrackSchema = z
   .object({
@@ -10,7 +16,7 @@ export const patchTrackSchema = z
     artist: optionalTrimmed(LIMITS.musicArtistMaxLength),
     album: optionalTrimmed(LIMITS.musicAlbumMaxLength),
     durationMs: z.number().int().min(0).max(24 * 60 * 60 * 1000).optional(),
-    coverUrl: z.string().max(2048).nullable().optional(),
+    coverUrl: patchCoverUrl,
     coverDataUrl: z.string().max(800_000).nullable().optional(),
     lyric: z.string().max(LIMITS.musicLyricMaxBytes).nullable().optional(),
     isFavorite: z.boolean().optional(),
