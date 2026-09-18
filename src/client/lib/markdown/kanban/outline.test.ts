@@ -73,4 +73,11 @@ describe('serializeKanbanOutline', () => {
     expect(reserialized).toContain('[end: 2026-10-05]')
     expect(reserialized).toContain('[progress: 60]')
   })
+
+  it('round-trips titles whose own brackets look like property tags', () => {
+    const data = parseKanbanOutline('## To Do\n- [ ] Deploy \\[v2: beta\\] board')
+    expect(data.items[0]?.title).toBe('Deploy [v2: beta] board')
+    expect(data.items[0]?.properties.v2).toBeUndefined()
+    expect(serializeKanbanOutline(data)).toContain('Deploy \\[v2: beta\\] board')
+  })
 })

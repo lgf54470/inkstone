@@ -21,6 +21,9 @@ export function flushKanbanEntry(entry: KanbanBlockEntry): KanbanWriteResult | n
   }
   if (!entry.write || !entry.ref || !entry.dirty || !entry.data) return null
   entry.dirty = false
+  // The outline format cannot store subtasks, files, views or the board title,
+  // so the first UI write promotes the fence to JSON instead of dropping them.
+  if (entry.mode === 'outline') entry.mode = 'json'
   const nextBody = serializeKanban(entry.data, entry.mode)
   if (nextBody === entry.source) return null
   const result = entry.write(entry.ref, nextBody)

@@ -2622,6 +2622,9 @@ const allowed = new Map([
     '// subtasks) produced duplicate keys. The monotonic sequence pins uniqueness per',
     '// tab; the random tail keeps ids distinct across tabs that share a millisecond.',
   ]],
+  ['src/client/lib/markdown/kanban/outline.ts', [
+    '// \\[ and \\] are literal brackets in a title, not the start of a property tag.',
+  ]],
   ['src/client/lib/markdown/kanban/registry.test.ts', [
     '/**\n * Every kanban block in the preview is a React root of its own, living inside markup React did not\n * make, and those roots are torn down from the host tree\'s own effects: the pane goes away, or the\n * block leaves the note. A root may not be taken down from inside another root\'s commit — React\n * says so out loud ("Attempted to synchronously unmount a root while React was already rendering")\n * and then lets the teardown race the commit it interrupted. The unmount is deferred by a\n * microtask, and these cases are what hold it there: the board is still painted when the call\n * returns, and it is gone a microtask later, with no warning raised from inside a commit.\n */',
     '/** The preview\'s own shape: the teardown runs from the cleaning-up side of the host root\'s commit. */',
@@ -2674,6 +2677,13 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/view.ts', [
     '// While the live canvas sits in the full screen overlay, the inline placeholder',
     '// shows this stand-in so the block keeps its height and does not collapse.',
+  ]],
+  ['src/client/lib/markdown/kanban/write.test.ts', [
+    '/**\n * The outline body cannot carry subtasks, files, icons, descriptions, custom\n * properties, views or even the board title — every one of those is editable in\n * the UI, so persisting an outline fence back as outline silently drops the\n * edit. The first UI write therefore promotes the fence to full-fidelity JSON.\n */',
+  ]],
+  ['src/client/lib/markdown/kanban/write.ts', [
+    '// The outline format cannot store subtasks, files, views or the board title,',
+    '// so the first UI write promotes the fence to JSON instead of dropping them.',
   ]],
   ['src/client/lib/markdown/mindmap/body.ts', [
     '/**\n * DOM-free helpers behind the ```mindmap fence: format detection, EOL handling\n * and the fence surgery that two-way editing needs (the map\'s own writes, and the\n * header\'s palette control). The vendor-backed parse/serialize pair lives in ./vendor,\n * so this file (and its tests) can be imported without pulling mind-elixir into the\n * caller\'s chunk.\n *\n * The surgery itself is not mind map specific — any block that rewrites its own\n * fence needs the same locate-and-replace — so it lives in ../fence-edit and this\n * module only adds what a mind map fence carries on top: its languages, its two\n * body formats, and the palette annotation on its info line.\n */',

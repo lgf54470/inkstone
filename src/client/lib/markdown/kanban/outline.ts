@@ -50,13 +50,17 @@ function assignOutlineProperty(properties: Record<string, unknown>, key: string,
 
 function parseOutlineProperties(rawText: string): { properties: Record<string, unknown>; cleanText: string } {
   const properties: Record<string, unknown> = {}
-  const tagMatches = [...rawText.matchAll(/\[([a-zA-Z0-9_\u4e00-\u9fa5]+):\s*([^\]]+)\]/g)]
+  // \[ and \] are literal brackets in a title, not the start of a property tag.
+  const tagMatches = [...rawText.matchAll(/(?<!\\)\[([a-zA-Z0-9_\u4e00-\u9fa5]+):\s*([^\]]+)\]/g)]
   for (const m of tagMatches) {
     const key = m[1]!.trim().toLowerCase()
     const val = m[2]!.trim()
     assignOutlineProperty(properties, key, val)
   }
-  const cleanText = rawText.replace(/\[[a-zA-Z0-9_\u4e00-\u9fa5]+:\s*([^\]]+)\]/g, '').trim()
+  const cleanText = rawText
+    .replace(/(?<!\\)\[[a-zA-Z0-9_\u4e00-\u9fa5]+:\s*([^\]]+)\]/g, '')
+    .replace(/\\([\[\]])/g, '$1')
+    .trim()
   return { properties, cleanText }
 }
 
@@ -139,7 +143,8 @@ export function serializeKanbanOutline(data: KanbanData): string {
       tags.push(`[tags: ${item.properties.tags.join(', ')}]`)
     }
     const tagSuffix = tags.length > 0 ? ` ${tags.join(' ')}` : ''
-    return `- ${check} ${item.title}${tagSuffix}`
+    const escapedTitle = item.title.replace(/\[/g, '\\[').replace(/\]/g, '\\]')
+    return `- ${check} ${escapedTitle}${tagSuffix}`
   }
 
   for (const opt of options) {
