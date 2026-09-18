@@ -57,11 +57,47 @@ export async function readMusicObjectStream(
     return { body, length: range ? range.length : object.size }
   }
   if (!env.FILES_KV) throw new ApiError(503, 'storage_unavailable', 'KV storage is not bound')
+  if (range) {
+    // KV has no native byte range: stream the value and slice, so a Range request
+    // never materialises the whole (up to 25 MiB) value inside the isolate.
+    const source = await env.FILES_KV.get(key, 'stream')
+    if (!source) return null
+    return { body: sliceKvStream(source as ReadableStream<Uint8Array>, range), length: range.length }
+  }
   const value = await env.FILES_KV.get(key, 'arrayBuffer')
   if (!value) return null
-  const bytes = new Uint8Array(value)
-  const slice = range ? bytes.subarray(range.offset, range.offset + range.length) : bytes
-  return { body: new Response(slice).body as ReadableStream<Uint8Array>, length: slice.byteLength }
+  return { body: new Response(value).body as ReadableStream<Uint8Array>, length: value.byteLength }
+}
+
+function sliceKvStream(source: ReadableStream<Uint8Array>, range: ByteRange): ReadableStream<Uint8Array> {
+  const reader = source.getReader()
+  const windowEnd = range.offset + range.length
+  let position = 0
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) {
+          controller.close()
+          return
+        }
+        const chunkStart = position
+        position += value.byteLength
+        if (position <= range.offset || chunkStart >= windowEnd) continue
+        const from = Math.max(0, range.offset - chunkStart)
+        const to = Math.min(value.byteLength, windowEnd - chunkStart)
+        controller.enqueue(value.subarray(from, to))
+        if (position >= windowEnd) {
+          await reader.cancel()
+          controller.close()
+        }
+        return
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason)
+    },
+  })
 }
 
 export async function musicObjectSize(

@@ -50,6 +50,46 @@ function fakeR2() {
   }
 }
 
+const KV_CHUNK_BYTES = 64 * 1024
+
+function fakeKv() {
+  const values = new Map<string, Uint8Array>()
+  const stats = { arrayBufferReads: 0, streamBytesPulled: 0, streamCancelled: false }
+  return {
+    values,
+    stats,
+    put: vi.fn(async (key: string, value: Uint8Array) => {
+      values.set(key, value.slice())
+      return {}
+    }),
+    delete: vi.fn(async (key: string) => values.delete(key)),
+    get: vi.fn(async (key: string, type?: string) => {
+      const stored = values.get(key)
+      if (!stored) return null
+      if (type === 'stream') {
+        let position = 0
+        return new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (position >= stored.byteLength) {
+              controller.close()
+              return
+            }
+            const chunk = stored.subarray(position, position + KV_CHUNK_BYTES)
+            position += chunk.byteLength
+            stats.streamBytesPulled += chunk.byteLength
+            controller.enqueue(chunk.slice())
+          },
+          cancel() {
+            stats.streamCancelled = true
+          },
+        })
+      }
+      stats.arrayBufferReads += 1
+      return stored.buffer.slice(stored.byteOffset, stored.byteOffset + stored.byteLength)
+    }),
+  }
+}
+
 async function makeDb(): Promise<D1Shim> {
   const db = createDb()
   for (const statement of TABLE_STATEMENTS) await runSql(db, statement)
@@ -295,6 +335,78 @@ describe('music routes (real D1 + fake R2)', () => {
     const ownKey = deleted.mock.calls.at(-1)![0] as string[]
     expect(ownKey).toHaveLength(1)
     expect(ownKey[0]).toMatch(new RegExp(`^music/\\d{4}-\\d{2}-\\d{2}/${mine.id}\\.mp3$`))
+  })
+})
+
+describe('music KV range streaming (real D1 + fake KV)', () => {
+  async function uploadToKv(bytes: Uint8Array) {
+    const db = await makeDb()
+    await seedUser(db)
+    const kv = fakeKv()
+    DB_ENV.env.FILES = undefined as unknown as AppBindings['Bindings']['FILES']
+    DB_ENV.env.FILES_KV = kv as unknown as AppBindings['Bindings']['FILES_KV']
+    const app = makeApp()
+    const form = new FormData()
+    form.append('file', new File([bytes], 'song.mp3', { type: 'audio/mpeg' }))
+    const res = await request(app, '/api/music/tracks', { method: 'POST', body: form })
+    expect(res.status).toBe(201)
+    const track = await res.json()
+    return { app, id: String(track.id), kv }
+  }
+
+  it('serves a small range from an aligned window without buffering the whole value', async () => {
+    const size = 3 * 1024 * 1024
+    const { app, id, kv } = await uploadToKv(new Uint8Array(size))
+
+    const ranged = await request(app, `/api/music/tracks/${id}/stream`, { headers: { Range: 'bytes=1048576-1048675' } })
+    expect(ranged.status).toBe(206)
+    expect(ranged.headers.get('Content-Range')).toBe('bytes 1048576-2097151/3145728')
+    expect(ranged.headers.get('Content-Length')).toBe(String(1024 * 1024))
+    expect((await ranged.arrayBuffer()).byteLength).toBe(1024 * 1024)
+
+    expect(kv.stats.arrayBufferReads).toBe(0)
+    expect(kv.stats.streamBytesPulled).toBeLessThanOrEqual(2 * 1024 * 1024 + KV_CHUNK_BYTES)
+    expect(kv.stats.streamCancelled).toBe(true)
+  })
+
+  it('clamps the aligned window to the object size for tiny files', async () => {
+    const { app, id, kv } = await uploadToKv(AUDIO)
+
+    const ranged = await request(app, `/api/music/tracks/${id}/stream`, { headers: { Range: 'bytes=2-5' } })
+    expect(ranged.status).toBe(206)
+    expect(ranged.headers.get('Content-Range')).toBe('bytes 0-15/16')
+    expect(await ranged.text()).toBe('0123456789abcdef')
+    expect(kv.stats.arrayBufferReads).toBe(0)
+  })
+
+  it('leaves requests at least one window long unaligned', async () => {
+    const size = 3 * 1024 * 1024
+    const { app, id } = await uploadToKv(new Uint8Array(size))
+
+    const ranged = await request(app, `/api/music/tracks/${id}/stream`, { headers: { Range: `bytes=100-${100 + 1024 * 1024 - 1}` } })
+    expect(ranged.status).toBe(206)
+    expect(ranged.headers.get('Content-Range')).toBe('bytes 100-1048675/3145728')
+    expect(ranged.headers.get('Content-Length')).toBe(String(1024 * 1024))
+  })
+
+  it('widens a range that straddles a window boundary to the next boundary', async () => {
+    const size = 3 * 1024 * 1024
+    const { app, id } = await uploadToKv(new Uint8Array(size))
+
+    const ranged = await request(app, `/api/music/tracks/${id}/stream`, { headers: { Range: 'bytes=1000000-1048700' } })
+    expect(ranged.status).toBe(206)
+    expect(ranged.headers.get('Content-Range')).toBe('bytes 0-2097151/3145728')
+    expect(ranged.headers.get('Content-Length')).toBe(String(2 * 1024 * 1024))
+  })
+
+  it('streams the full object through the arrayBuffer path', async () => {
+    const { app, id, kv } = await uploadToKv(AUDIO)
+
+    const full = await request(app, `/api/music/tracks/${id}/stream`)
+    expect(full.status).toBe(200)
+    expect(full.headers.get('Content-Length')).toBe('16')
+    expect(await full.text()).toBe('0123456789abcdef')
+    expect(kv.stats.arrayBufferReads).toBe(1)
   })
 })
 

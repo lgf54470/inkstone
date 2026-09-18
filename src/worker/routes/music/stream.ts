@@ -3,7 +3,7 @@ import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { cancelStreamBestEffort } from '../../lib/streams'
 import { isMusicObjectKey, safeAudioMime } from './keys'
-import { contentRangeHeader, parseByteRange } from './range'
+import { alignKvRangeWindow, contentRangeHeader, parseByteRange } from './range'
 import type { MusicTrackRow } from './rows'
 import { readMusicObjectStream, requireMusicStorage } from './storage'
 import { fetchMusicObject, resolveMusicWebdav } from './webdav'
@@ -37,7 +37,10 @@ export async function streamTrackResponse(
       headers: { 'Content-Range': `bytes */${row.size_bytes}`, 'Accept-Ranges': 'bytes' },
     })
   }
-  const range = requested.kind === 'partial' ? requested.range : null
+  let range = requested.kind === 'partial' ? requested.range : null
+  // On KV the served partial is a whole aligned window, so Content-Range must
+  // describe that window rather than the narrower client request.
+  if (range && storage === 'kv') range = alignKvRangeWindow(range, row.size_bytes)
   const object = await readMusicObjectStream(c.env, storage, row.object_key, range)
   if (!object) throw ApiError.notFound('Track data is missing')
 

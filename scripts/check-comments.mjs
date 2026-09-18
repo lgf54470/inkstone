@@ -4449,6 +4449,11 @@ const allowed = new Map([
     '// Read-only projection of the owner\'s library for the blog player: no keys, sizes or flags.',
     '// The blog mirrors the queue the owner is listening to, so ids that left the library are dropped.',
   ]],
+  ['src/worker/routes/music/range.ts', [
+    '// Workers KV cannot range-read server-side, so a ranged GET is served by streaming',
+    '// the value and slicing it. Aligning to windows keeps the bytes pulled from KV (and',
+    '// any future cache key) bounded by the window instead of the whole object.',
+  ]],
   ['src/worker/routes/music/rows.ts', [
     '// WebDAV keys are the user\'s own remote paths, already listed in the browse UI;',
     '// internal R2 storage keys must never reach the browser or a downloaded M3U.',
@@ -4469,10 +4474,14 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/music/storage.ts', [
     '// KV values cap at 25 MiB, well under the R2 allowance, so the upload limit follows the backend.',
+    '// KV has no native byte range: stream the value and slice, so a Range request',
+    '// never materialises the whole (up to 25 MiB) value inside the isolate.',
   ]],
   ['src/worker/routes/music/stream.ts', [
     '// Shared by the authenticated library and the public blog player: only the owner and the',
     '// cache policy differ, the range and WebDAV handling stay in one place.',
+    '// On KV the served partial is a whole aligned window, so Content-Range must',
+    '// describe that window rather than the narrower client request.',
     '// Only echo the length the upstream declared for this very response: the',
     '// stored size_bytes can drift from the remote file and a wrong',
     '// Content-Length stalls or poisons downstream caches.',
