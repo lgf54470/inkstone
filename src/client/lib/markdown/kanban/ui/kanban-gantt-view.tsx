@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react'
 import { Plus } from 'lucide-react'
+import { Slider } from '../../../../components/form'
 import { t } from '../../../i18n'
 import {
   buildTimelineDays,
@@ -20,10 +21,12 @@ function GanttTaskSidebar({
   items,
   onOpenDetail,
   onAddItem,
+  onUpdateProgress,
 }: {
   items: KanbanItem[]
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: () => void
+  onUpdateProgress: (itemId: string, progress: number) => void
 }) {
   return (
     <div className='w-72 shrink-0 border-r border-[var(--border-subtle)] bg-[var(--bg-raised)]'>
@@ -36,14 +39,22 @@ function GanttTaskSidebar({
           <div
             key={item.id}
             onClick={() => onOpenDetail(item)}
-            className='flex h-10 cursor-pointer items-center justify-between px-3 text-[length:var(--text-13)] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            className='flex h-10 cursor-pointer items-center justify-between gap-2 px-3 text-[length:var(--text-13)] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           >
             <div className='flex min-w-0 items-center gap-1.5'>
               <KanbanIconBadge icon={item.icon} size={14} />
               <span className='truncate'>{item.title}</span>
             </div>
-            <span className='shrink-0 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
-              {Number(item.properties.progress || 0)}%
+            <span className='w-36 shrink-0' onClick={(e) => e.stopPropagation()}>
+              <Slider
+                label={t('preview.kanban_progress')}
+                value={Math.min(100, Math.max(0, Number(item.properties.progress || 0)))}
+                min={0}
+                max={100}
+                step={5}
+                suffix='%'
+                onChange={(progress) => onUpdateProgress(item.id, progress)}
+              />
             </span>
           </div>
         ))}
@@ -66,12 +77,10 @@ function GanttBar({
   item,
   days,
   onOpenDetail,
-  onUpdateProgress,
 }: {
   item: KanbanItem
   days: TimelineDay[]
   onOpenDetail: (item: KanbanItem) => void
-  onUpdateProgress: (itemId: string, progress: number) => void
 }) {
   const { left, width } = calculateTimelineBarGeometry(item, days)
   const progress = Math.min(100, Math.max(0, Number(item.properties.progress || 0)))
@@ -81,10 +90,6 @@ function GanttBar({
       <div
         data-item-id={item.id}
         onClick={() => onOpenDetail(item)}
-        onDoubleClick={(e) => {
-          e.stopPropagation()
-          onUpdateProgress(item.id, (progress + 25) % 125)
-        }}
         style={{ left: `${left}px`, width: `${width}px` }}
         className='group/bar absolute top-2 h-6 cursor-pointer overflow-hidden rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-xs)]'
       >
@@ -102,12 +107,10 @@ function GanttTimelineChart({
   items,
   days,
   onOpenDetail,
-  onUpdateProgress,
 }: {
   items: KanbanItem[]
   days: TimelineDay[]
   onOpenDetail: (item: KanbanItem) => void
-  onUpdateProgress: (itemId: string, progress: number) => void
 }) {
   return (
     <div className='flex-1 overflow-x-auto'>
@@ -137,7 +140,6 @@ function GanttTimelineChart({
             item={item}
             days={days}
             onOpenDetail={onOpenDetail}
-            onUpdateProgress={onUpdateProgress}
           />
         ))}
       </div>
@@ -156,12 +158,16 @@ export const KanbanGanttView = memo(function KanbanGanttView({
   return (
     <div className='flex h-full w-full flex-col overflow-hidden p-4' role='region' aria-label={t('preview.kanban_view_gantt')}>
       <div className='flex flex-1 overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
-        <GanttTaskSidebar items={data.items} onOpenDetail={onOpenDetail} onAddItem={onAddItem} />
+        <GanttTaskSidebar
+          items={data.items}
+          onOpenDetail={onOpenDetail}
+          onAddItem={onAddItem}
+          onUpdateProgress={onUpdateProgress}
+        />
         <GanttTimelineChart
           items={data.items}
           days={days}
           onOpenDetail={onOpenDetail}
-          onUpdateProgress={onUpdateProgress}
         />
       </div>
     </div>
