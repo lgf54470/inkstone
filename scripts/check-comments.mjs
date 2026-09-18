@@ -314,6 +314,7 @@ const allowed = new Map([
     '// raw-text scan below can blank it out.',
     '// Music titles and artists in the search test are library data proving the',
     '// pinyin index matches hanzi, not UI copy rendered by the i18n layer.',
+    '// The romanization test seeds a track with a hanzi title to prove the lazy pass indexes it.',
     '// Cover matching is proved against real Chinese library titles, which are data rather than UI copy.',
     '// The OAuth consent page is a self-contained HTML document with its own',
     '// language switch (cookie-based); it does not use the React i18n layer.',
@@ -1247,8 +1248,14 @@ const allowed = new Map([
     '// Duplicated tracks occupy several queue positions; each rendered occurrence',
     '// takes the next free one so play/remove hit the right row.',
   ]],
+  ['src/client/features/music/music-search-box.tsx', [
+    '// Every store query write re-filters the library; typing must not pay for that per keystroke.',
+    '// Store writes this box did not send (cleared elsewhere, another surface) must still adopt.',
+  ]],
   ['src/client/features/music/music-search.ts', [
     '// The pinyin-pro dictionary is large: keep it behind this dynamic import so the always-mounted player never pulls it into the entry bundle.',
+    '// Romanizing a whole library blocks the thread per item; the loop yields between',
+    '// batches so typing stays responsive during the first latin search.',
   ]],
   ['src/client/features/music/music-selection-bar.tsx', [
     '// Multi-select toolbar: file-manager style batches; select all and invert use the visible list.',
@@ -1275,6 +1282,8 @@ const allowed = new Map([
     '// without paying for a full reload.',
     '// One menu instance for the whole hub; the rows only ever post requests to it.',
     '// The pinyin dictionary is only needed for search, so loading the library stays cheap.',
+    '// One dictionary load and one romanization pass at a time; debounced keystrokes',
+    '// and lazy fetches can otherwise pile up identical whole-library work.',
   ]],
   ['src/client/features/music/music-store/library-tracks.ts', [
     '// The library ships without lyric text, so the details views ask for it by id once.',
@@ -1300,6 +1309,8 @@ const allowed = new Map([
     '// re-renders only the small leaves that display progress rather than the whole hub.',
   ]],
   ['src/client/features/music/music-store/selectors.ts', [
+    '// Ranking the whole library is the expensive part; React may paint the previous',
+    '// result once more rather than block typing while a fresh query settles.',
     '// Counts tracks per tag directly; the sidebar tree rolls descendants into the parent\'s total.',
   ]],
   ['src/client/features/music/music-store/state.ts', [

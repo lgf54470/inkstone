@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MusicTrack } from '@shared/types'
-import { buildSearchIndex, ensureRomanized, needsRomanization, rankTracks } from './music-search'
+import { buildSearchIndex, ensureRomanized, needsRomanization, rankTracks, ROMANIZATION_BATCH } from './music-search'
 
 function track(id: string, title: string, artist = '', album = ''): MusicTrack {
   return {
@@ -60,5 +60,32 @@ describe('music search', () => {
     expect(missing).not.toBe(preset)
     expect(missing.cached).toBe('anything')
     expect(missing.fresh).toBeTruthy()
+  })
+})
+
+describe('ensureRomanized batching', () => {
+  it('publishes each bounded batch to the caller as it completes', async () => {
+    const total = ROMANIZATION_BATCH * 2 + 50
+    const texts = Object.fromEntries(
+      Array.from({ length: total }, (_, index) => [`t${index}`, '月光'])
+    )
+    const sizes: number[] = []
+
+    const result = await ensureRomanized(texts, {}, (partial) => { sizes.push(Object.keys(partial).length) })
+
+    expect(sizes).toEqual([ROMANIZATION_BATCH, ROMANIZATION_BATCH * 2, total])
+    expect(Object.keys(result)).toHaveLength(total)
+  })
+
+  it('yields the event loop between romanization batches', async () => {
+    let yielded = false
+    setTimeout(() => { yielded = true }, 0)
+    const texts = Object.fromEntries(
+      Array.from({ length: ROMANIZATION_BATCH * 2 }, (_, index) => [`t${index}`, '月光'])
+    )
+
+    await ensureRomanized(texts, {})
+
+    expect(yielded).toBe(true)
   })
 })

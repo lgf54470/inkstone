@@ -48,16 +48,25 @@ export function buildSearchIndex(tracks: MusicTrack[], romanized: Record<string,
   }
 }
 
+// Romanizing a whole library blocks the thread per item; the loop yields between
+// batches so typing stays responsive during the first latin search.
+export const ROMANIZATION_BATCH = 200
+
 export async function ensureRomanized(
   texts: Record<string, string>,
   existing: Record<string, string>,
+  onBatch?: (partial: Record<string, string>) => void,
 ): Promise<Record<string, string>> {
   const missing = Object.keys(texts).filter((id) => !(id in existing))
   if (!missing.length) return existing
   const romanize = await loadRomanizer()
   if (!romanize) return existing
   const next = { ...existing }
-  for (const id of missing) next[id] = romanize(texts[id]!)
+  for (let start = 0; start < missing.length; start += ROMANIZATION_BATCH) {
+    if (start > 0) await new Promise((resolve) => setTimeout(resolve, 0))
+    for (const id of missing.slice(start, start + ROMANIZATION_BATCH)) next[id] = romanize(texts[id]!)
+    onBatch?.({ ...next })
+  }
   return next
 }
 

@@ -107,10 +107,19 @@ export function clearSearchHistory(set: MusicSet): void {
   set({ searchHistory: [] })
 }
 
-export async function prepareRomanization(set: MusicSet, get: MusicGet): Promise<void> {
+// One dictionary load and one romanization pass at a time; debounced keystrokes
+// and lazy fetches can otherwise pile up identical whole-library work.
+let romanizationRequest: Promise<void> | null = null
+
+export function prepareRomanization(set: MusicSet, get: MusicGet): Promise<void> {
+  romanizationRequest ??= runRomanization(set, get).finally(() => { romanizationRequest = null })
+  return romanizationRequest
+}
+
+async function runRomanization(set: MusicSet, get: MusicGet): Promise<void> {
   const texts: Record<string, string> = {}
   for (const track of get().tracks) texts[track.id] = `${track.title} ${track.artist} ${track.album}`
-  const romanized = await ensureRomanized(texts, get().romanized)
+  const romanized = await ensureRomanized(texts, get().romanized, (partial) => set({ romanized: partial }))
   if (romanized !== get().romanized) set({ romanized })
 }
 

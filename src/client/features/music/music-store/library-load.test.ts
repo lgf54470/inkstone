@@ -4,9 +4,14 @@ import type { MusicStats, MusicTrack } from '@shared/types'
 vi.mock('../../../lib/api', () => ({
   api: { music: { library: vi.fn() } },
 }))
+vi.mock('../music-search', async (importOriginal) => {
+  const actual = await importOriginal<object>()
+  return { ...actual, ensureRomanized: vi.fn() }
+})
 
 import { api } from '../../../lib/api'
-import { loadLibrary } from './library-load'
+import { ensureRomanized } from '../music-search'
+import { loadLibrary, prepareRomanization } from './library-load'
 import type { MusicSet, MusicStoreState } from './types'
 
 const libraryPayload = { tracks: [] as MusicTrack[], tags: [], playlists: [], stats: statsFixture() }
@@ -29,6 +34,7 @@ function makeStore() {
 afterEach(() => {
   vi.useRealTimers()
   vi.mocked(api.music.library).mockReset()
+  vi.mocked(ensureRomanized).mockReset()
 })
 
 describe('loadLibrary in-flight dedup', () => {
@@ -83,5 +89,50 @@ describe('loadLibrary freshness window', () => {
     await loadLibrary(store.set, store.get)
     await loadLibrary(store.set, store.get, true)
     expect(api.music.library).toHaveBeenCalledTimes(2)
+  })
+})
+
+function romanizeStore() {
+  let state = {
+    tracks: [{ id: 't1', title: '月光', artist: '', album: '' } as MusicTrack],
+    romanized: {} as Record<string, string>,
+  } as unknown as MusicStoreState
+  const set: MusicSet = (patch) => {
+    const next = typeof patch === 'function'
+      ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state)
+      : (patch as Partial<MusicStoreState>)
+    state = { ...state, ...next }
+  }
+  return { set, get: () => state }
+}
+
+describe('prepareRomanization', () => {
+  it('shares one pass between concurrent requests', async () => {
+    let release: (value: Record<string, string>) => void = () => {}
+    vi.mocked(ensureRomanized).mockReturnValue(new Promise((resolve) => { release = resolve }))
+    const store = romanizeStore()
+
+    const first = prepareRomanization(store.set, store.get)
+    const second = prepareRomanization(store.set, store.get)
+    release({ t1: 'yueguang' })
+    await Promise.all([first, second])
+
+    expect(ensureRomanized).toHaveBeenCalledTimes(1)
+    expect(store.get().romanized).toEqual({ t1: 'yueguang' })
+  })
+
+  it('publishes each batch to the store before the pass finishes', async () => {
+    const store = romanizeStore()
+    const seenMidPass = { current: null as Record<string, string> | null }
+    vi.mocked(ensureRomanized).mockImplementation(async (_texts, _existing, onBatch) => {
+      onBatch?.({ t1: 'yueguang partial' })
+      seenMidPass.current = store.get().romanized
+      return { t1: 'yueguang yuegg final' }
+    })
+
+    await prepareRomanization(store.set, store.get)
+
+    expect(seenMidPass.current).toEqual({ t1: 'yueguang partial' })
+    expect(store.get().romanized).toEqual({ t1: 'yueguang yuegg final' })
   })
 })

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useDeferredValue, useMemo } from 'react'
 import type { MusicTrack } from '@shared/types'
 import { useMusic } from './index'
 import { visibleTracks } from './library-load'
@@ -14,9 +14,12 @@ export function useVisibleTracks(): MusicTrack[] {
   const sourceFilter = useMusic((s) => s.sourceFilter)
   const recentIds = useMusic((s) => s.recentIds)
   const romanized = useMusic((s) => s.romanized)
+  // Ranking the whole library is the expensive part; React may paint the previous
+  // result once more rather than block typing while a fresh query settles.
+  const deferredQuery = useDeferredValue(query)
   return useMemo(
-    () => visibleTracks({ tracks, playlists, tags, scope, query, sort, sourceFilter, recentIds, romanized } as never),
-    [tracks, playlists, tags, scope, query, sort, sourceFilter, recentIds, romanized],
+    () => visibleTracks({ tracks, playlists, tags, scope, query: deferredQuery, sort, sourceFilter, recentIds, romanized } as never),
+    [tracks, playlists, tags, scope, deferredQuery, sort, sourceFilter, recentIds, romanized],
   )
 }
 
