@@ -45,6 +45,7 @@ interface KanbanViewRendererProps {
   onToggleTag?: (tag: string) => void
   commitData: (d: KanbanData) => void
   handleToggleSelect: (id: string) => void
+  handleToggleAll: (ids: string[]) => void
   setDetailItem: (item: KanbanItem | null) => void
   handleUpdateTitle: (id: string, title: string) => void
   handleMoveItem: (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void
@@ -117,6 +118,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
       view={props.activeView}
       selectedIds={props.selectedIds}
       onToggleSelect={props.handleToggleSelect}
+      onToggleAll={props.handleToggleAll}
       onOpenDetail={props.setDetailItem}
       onUpdateProperty={(id, prop, val) => {
         const next = props.data.items.map((it) => (it.id === id ? { ...it, properties: { ...it.properties, [prop]: val } } : it))
@@ -246,6 +248,7 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
         onToggleTag={state.filterSort.onToggleTag}
         commitData={state.commitData}
         handleToggleSelect={state.selection.handleToggleSelect}
+        handleToggleAll={state.selection.handleToggleAll}
         setDetailItem={state.setDetailItem}
         handleUpdateTitle={state.items.handleUpdateTitle}
         handleMoveItem={state.items.handleMoveItem}

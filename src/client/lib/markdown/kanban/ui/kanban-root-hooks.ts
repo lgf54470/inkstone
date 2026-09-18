@@ -254,6 +254,16 @@ export function useKanbanAddOperations(
   return { handleAddItem, handleAddItemInGroup, handleAddColumn }
 }
 
+export function computeSelectionAfterToggleAll(prev: Set<string>, ids: string[]): Set<string> {
+  const next = new Set(prev)
+  const allSelected = ids.length > 0 && ids.every((id) => prev.has(id))
+  for (const id of ids) {
+    if (allSelected) next.delete(id)
+    else next.add(id)
+  }
+  return next
+}
+
 export function useKanbanSelection(
   commitData: CommitKanbanData,
   groupColumn?: KanbanProperty,
@@ -267,6 +277,10 @@ export function useKanbanSelection(
       else next.add(id)
       return next
     })
+  }, [])
+
+  const handleToggleAll = useCallback((ids: string[]) => {
+    setSelectedIds((prev) => computeSelectionAfterToggleAll(prev, ids))
   }, [])
 
   const handleClearSelection = useCallback(() => setSelectedIds(new Set()), [])
@@ -293,7 +307,15 @@ export function useKanbanSelection(
     setSelectedIds(new Set())
   }, [selectedIds, commitData])
 
-  return { selectedIds, setSelectedIds, handleToggleSelect, handleClearSelection, handleBatchGroupChange, handleBatchDelete }
+  return {
+    selectedIds,
+    setSelectedIds,
+    handleToggleSelect,
+    handleToggleAll,
+    handleClearSelection,
+    handleBatchGroupChange,
+    handleBatchDelete,
+  }
 }
 
 export function useKanbanRootState(

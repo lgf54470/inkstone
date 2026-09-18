@@ -2724,6 +2724,14 @@ const allowed = new Map([
     '// Clicking board whitespace focuses this container, so board-scoped',
     '// shortcuts (undo/redo) keep working when no card holds focus.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-search-box.tsx', [
+    '// Each keystroke used to commit the whole dataset, so filtering re-ran and the',
+    '// undo history grew per character; the draft holds the box, the parent the query.',
+    '// A query set elsewhere (switching views, clearing filters) wins over the draft.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-table-view.tsx', [
+    '// One batch commit: per-row toggles would queue one state update per item.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-state.ts', [
     '// Unset lists reuse these constants so memoized consumers keep the same',
     '// identity across renders that only touch other view fields.',

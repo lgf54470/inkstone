@@ -10,6 +10,7 @@ interface KanbanTableViewProps {
   view?: KanbanView
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
+  onToggleAll: (ids: string[]) => void
   onOpenDetail: (item: KanbanItem) => void
   onUpdateProperty?: (itemId: string, propertyId: string, value: unknown) => void
   onUpdateSubtasks?: (itemId: string, subtasks: KanbanSubtask[]) => void
@@ -60,19 +61,11 @@ function TableHeaderRow({ isAllSelected, onToggleAll }: TableHeaderRowProps) {
 function useTableToggleAll(
   items: KanbanItem[],
   selectedIds: Set<string>,
-  onToggleSelect: (id: string) => void,
+  onToggleAll: (ids: string[]) => void,
 ) {
   const isAllSelected = items.length > 0 && selectedIds.size === items.length
-  const handleToggleAll = () => {
-    const shouldSelectAll = !isAllSelected
-    for (const item of items) {
-      if (shouldSelectAll && !selectedIds.has(item.id)) {
-        onToggleSelect(item.id)
-      } else if (!shouldSelectAll && selectedIds.has(item.id)) {
-        onToggleSelect(item.id)
-      }
-    }
-  }
+  // One batch commit: per-row toggles would queue one state update per item.
+  const handleToggleAll = () => onToggleAll(items.map((item) => item.id))
   return { isAllSelected, handleToggleAll }
 }
 
@@ -81,6 +74,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   view,
   selectedIds,
   onToggleSelect,
+  onToggleAll,
   onOpenDetail,
   onUpdateProperty,
   onUpdateSubtasks,
@@ -90,7 +84,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   const groupByProp = view?.groupBy || 'status'
   const groupCol = data.columns.find((c) => c.id === groupByProp)
   const groups = groupKanbanItems(data.items, groupByProp, groupCol)
-  const { isAllSelected, handleToggleAll } = useTableToggleAll(data.items, selectedIds, onToggleSelect)
+  const { isAllSelected, handleToggleAll } = useTableToggleAll(data.items, selectedIds, onToggleAll)
 
   return (
     <div className='h-full w-full overflow-auto p-4' role='region' aria-label={t('preview.kanban_view_table')}>

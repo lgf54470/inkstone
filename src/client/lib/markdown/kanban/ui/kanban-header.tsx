@@ -6,7 +6,6 @@ import {
   Pencil,
   Plus,
   Redo2,
-  Search,
   SlidersHorizontal,
   Undo2,
 } from 'lucide-react'
@@ -19,6 +18,7 @@ import type {
 import { t } from '../../../i18n'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanProgressBar } from './kanban-progress-bar'
+import { KanbanSearchBox } from './kanban-search-box'
 import { KanbanSortPopover } from './kanban-sort-popover'
 import { KanbanTagFilterBar } from './kanban-tag-filter-bar'
 import { KanbanViewOptions, type CardSize } from './kanban-view-options'
@@ -53,43 +53,6 @@ interface KanbanHeaderProps {
   onChangeGroupBy?: (propId: string) => void
   onAddItem: () => void
   onToggleFullscreen?: () => void
-}
-
-function KanbanSearchBox({
-  searchQuery,
-  onSearchChange,
-}: {
-  searchQuery: string
-  onSearchChange: (q: string) => void
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-
-  if (isOpen) {
-    return (
-      <div className='flex items-center rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2 py-0.5'>
-        <Search size={13} className='text-[var(--text-tertiary)]' />
-        <input
-          type='text'
-          autoFocus
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder={t('preview.kanban_search_placeholder')}
-          className='w-28 border-0 bg-transparent px-1.5 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
-        />
-      </div>
-    )
-  }
-
-  return (
-    <button
-      type='button'
-      onClick={() => setIsOpen(true)}
-      className='inline-flex size-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-      aria-label={t('preview.kanban_search')}
-    >
-      <Search size={14} />
-    </button>
-  )
 }
 
 interface HeaderActionsProps {
