@@ -12,8 +12,8 @@
 
 ## 第一批 · 安全（SEC-1~14，路线图①）
 
-- [ ] M-01 SEC-1a `stream.ts` WebDAV 分支 Content-Type 只用 `row.mime` 并过格式允许列表，非白名单降级 `application/octet-stream` + attachment
-- [ ] M-02 SEC-1b `app.ts` nonce 盖章限定已知 HTML 文档路由（`/`、`/s/*`、`/authorize`），`/api/*` 的 `text/html` 响应拒绝盖章并强制降级；`lookup.ts` 响应类型限 png/jpeg/webp
+- [x] M-01 SEC-1a `stream.ts` WebDAV 分支 Content-Type 只用 `row.mime` 并过格式允许列表，非白名单降级 `application/octet-stream` + attachment
+- [x] M-02 SEC-1b `app.ts` nonce 盖章限定已知 HTML 文档路由（`/`、`/s/*`、`/authorize`），`/api/*` 的 `text/html` 响应拒绝盖章并强制降级；`lookup.ts` 响应类型限 png/jpeg/webp
 - [ ] M-03 SEC-2 `patchTrackSchema.coverUrl` 改走 `sanitizeCoverUrl`，显式拒绝 `MUSIC_OBJECT_PREFIX` 前缀
 - [ ] M-04 SEC-3 删除 R2 对象按行重算 key（`source==='r2'` 且派生匹配）；`importMusicSchema.path` 禁 `music/` 开头 + 字符白名单
 - [ ] M-05 SEC-4 `public-settings` 加 `role==='owner'` 判定，关闭时清 owner key
@@ -80,4 +80,6 @@
 
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
-| 2026-09-18 | BASE-0/BASE-1 worktree+计划登记 | 本次提交（hash 由下一次提交回填） | typecheck ✅，全量 test:unit exit 0 ✅ |
+| 2026-09-18 | BASE-0/BASE-1 worktree+计划登记 | be5e08cd | typecheck ✅，全量 test:unit exit 0 ✅ |
+| 2026-09-18 | M-01 流端点 Content-Type 白名单（SEC-1a） | 1700b4e3 | 新增 2 例先红后绿（text/html 回显证实），music 3 套件 27 ✅，pre-commit 全部门禁+增量测试 ✅ |
+| 2026-09-18 | M-02 nonce 盖章限定非 /api（SEC-1b） | 本次提交（hash 由下一次提交回填） | 新增 tests/security-headers.test.ts 3 ✅（/api 不盖章、/s 与 / 盖章一致）；中间件抽至 src/worker/middleware/security-headers.ts；全量 test:unit 207 文件 1645 ✅，typecheck/comments ✅ |
