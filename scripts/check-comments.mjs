@@ -2739,6 +2739,10 @@ const allowed = new Map([
     '// ref, and `setSorts` is a stable state setter, so a stable moveItem yields',
     '// a stable handler for the whole drag.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-property-cell.tsx', [
+    '// Attachments live on the item, not in `properties`, so the table always has a',
+    '// column for them even when the document schema does not declare one.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root-boundary.tsx', [
     '// Each kanban block is its own React root outside the host tree, so without a',
     '// boundary one throwing board whites out just that card with no failure state.',

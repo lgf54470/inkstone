@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
-import type { KanbanColorName, KanbanItem, KanbanProperty, KanbanSubtask } from '../types'
+import type { KanbanColorName, KanbanFile, KanbanItem, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanTableRow } from './kanban-table-row'
 
@@ -15,8 +15,9 @@ interface KanbanTableGroupProps {
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
-  onUpdateProperty?: (itemId: string, propertyId: string, value: unknown) => void
+  onUpdateProperty: (itemId: string, propertyId: string, value: unknown) => void
   onUpdateSubtasks?: (itemId: string, subtasks: KanbanSubtask[]) => void
+  onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
   onAddItemInGroup: () => void
 }
 
@@ -105,6 +106,7 @@ export function KanbanTableGroup({
   onOpenDetail,
   onUpdateProperty,
   onUpdateSubtasks,
+  onUpdateFiles,
   onAddItemInGroup,
 }: KanbanTableGroupProps) {
   const [collapsed, setCollapsed] = useState(false)
@@ -134,6 +136,7 @@ export function KanbanTableGroup({
                 onOpenDetail={() => onOpenDetail(item)}
                 onUpdateProperty={onUpdateProperty}
                 onUpdateSubtasks={onUpdateSubtasks}
+                onUpdateFiles={onUpdateFiles}
               />
             ))}
           </div>

@@ -2,7 +2,8 @@ import { memo } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { groupKanbanItems } from '../filter-sort'
-import type { KanbanData, KanbanItem, KanbanSubtask, KanbanView } from '../types'
+import type { KanbanData, KanbanFile, KanbanItem, KanbanProperty, KanbanSubtask, KanbanView } from '../types'
+import { KanbanTableHeaderCell, kanbanPropertyColumns, kanbanTitleColumn } from './kanban-property-cell'
 import { KanbanTableGroup } from './kanban-table-group'
 
 interface KanbanTableViewProps {
@@ -12,18 +13,20 @@ interface KanbanTableViewProps {
   onToggleSelect: (id: string) => void
   onToggleAll: (ids: string[]) => void
   onOpenDetail: (item: KanbanItem) => void
-  onUpdateProperty?: (itemId: string, propertyId: string, value: unknown) => void
+  onUpdateProperty: (itemId: string, propertyId: string, value: unknown) => void
   onUpdateSubtasks?: (itemId: string, subtasks: KanbanSubtask[]) => void
+  onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
   onAddItem: (propertyDefaults?: Record<string, unknown>) => void
   onAddColumn: () => void
 }
 
 interface TableHeaderRowProps {
+  columns: KanbanProperty[]
   isAllSelected: boolean
   onToggleAll: () => void
 }
 
-function TableHeaderRow({ isAllSelected, onToggleAll }: TableHeaderRowProps) {
+function TableHeaderRow({ columns, isAllSelected, onToggleAll }: TableHeaderRowProps) {
   return (
     <div className='flex items-center border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
       <div className='w-10 shrink-0 p-2.5 text-center'>
@@ -35,24 +38,10 @@ function TableHeaderRow({ isAllSelected, onToggleAll }: TableHeaderRowProps) {
           aria-label={t('preview.kanban_select_all')}
         />
       </div>
-      <div className='flex flex-1 min-w-48 items-center border-l border-[var(--border-subtle)] px-3 py-2'>
-        <span>{t('preview.kanban_task_name')}</span>
-      </div>
-      <div className='w-20 shrink-0 border-l border-[var(--border-subtle)] px-2 py-2 text-center'>
-        <span>{t('preview.kanban_owner')}</span>
-      </div>
-      <div className='w-36 shrink-0 border-l border-[var(--border-subtle)] px-3 py-2 text-center'>
-        <span>{t('preview.kanban_prop_status')}</span>
-      </div>
-      <div className='w-32 shrink-0 border-l border-[var(--border-subtle)] px-3 py-2'>
-        <span>{t('preview.kanban_due_date')}</span>
-      </div>
-      <div className='w-32 shrink-0 border-l border-[var(--border-subtle)] px-3 py-2'>
-        <span>{t('preview.kanban_timeline')}</span>
-      </div>
-      <div className='w-40 shrink-0 border-l border-[var(--border-subtle)] px-3 py-2 text-center'>
-        <span>{t('preview.kanban_files')}</span>
-      </div>
+      <KanbanTableHeaderCell column={kanbanTitleColumn(columns)} />
+      {kanbanPropertyColumns(columns).map((column) => (
+        <KanbanTableHeaderCell key={column.id} column={column} />
+      ))}
     </div>
   )
 }
@@ -77,6 +66,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   onOpenDetail,
   onUpdateProperty,
   onUpdateSubtasks,
+  onUpdateFiles,
   onAddItem,
   onAddColumn,
 }: KanbanTableViewProps) {
@@ -88,7 +78,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   return (
     <div className='h-full w-full overflow-auto p-4' role='region' aria-label={t('preview.kanban_view_table')}>
       <div className='w-full min-w-max rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
-        <TableHeaderRow isAllSelected={isAllSelected} onToggleAll={handleToggleAll} />
+        <TableHeaderRow columns={data.columns} isAllSelected={isAllSelected} onToggleAll={handleToggleAll} />
         <div className='p-3'>
           {groups.map((group) => (
             <KanbanTableGroup
@@ -103,6 +93,7 @@ export const KanbanTableView = memo(function KanbanTableView({
               onOpenDetail={onOpenDetail}
               onUpdateProperty={onUpdateProperty}
               onUpdateSubtasks={onUpdateSubtasks}
+              onUpdateFiles={onUpdateFiles}
               onAddItemInGroup={() => {
                 const defaults = group.groupKey !== '__none__' ? { [groupByProp]: group.groupKey } : {}
                 onAddItem(defaults)

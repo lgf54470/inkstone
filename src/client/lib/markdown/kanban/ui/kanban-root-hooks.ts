@@ -11,6 +11,7 @@ import { createKanbanId } from '../id'
 import type {
   KanbanColorName,
   KanbanData,
+  KanbanFile,
   KanbanFilter,
   KanbanItem,
   KanbanOption,
@@ -118,6 +119,13 @@ export function useKanbanItemMutations(
     setDetailItem(updated)
   }, [commitData, setDetailItem])
 
+  const handleUpdateFiles = useCallback((id: string, files: KanbanFile[]) => {
+    commitData((prev) => ({
+      ...prev,
+      items: prev.items.map((item) => (item.id === id ? { ...item, files } : item)),
+    }))
+  }, [commitData])
+
   const handleUpdateTags = useCallback(
     (id: string, tags: string[], newOption?: KanbanOption) => {
       commitData((prev: KanbanData) => {
@@ -131,7 +139,7 @@ export function useKanbanItemMutations(
     [commitData],
   )
 
-  return { handleMoveItem, handleUpdateTitle, handleUpdateItem, handleUpdateTags }
+  return { handleMoveItem, handleUpdateTitle, handleUpdateItem, handleUpdateFiles, handleUpdateTags }
 }
 
 export function useKanbanItemLifecycle(

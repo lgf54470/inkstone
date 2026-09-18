@@ -161,6 +161,8 @@ describe('KanbanTableView select all', () => {
           onOpenDetail: vi.fn(),
           onAddItem: vi.fn(),
           onAddColumn: vi.fn(),
+          onUpdateProperty: vi.fn(),
+          onUpdateFiles: vi.fn(),
         }),
       )
     })

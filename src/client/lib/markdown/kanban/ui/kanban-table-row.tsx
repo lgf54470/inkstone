@@ -1,20 +1,15 @@
 import { useState } from 'react'
-import {
-  Calendar as CalendarIcon,
-  ChevronDown,
-  ChevronRight,
-  MessageSquare,
-  Plus,
-  Trash2,
-  User as UserIcon,
-} from 'lucide-react'
+import { ChevronDown, ChevronRight, MessageSquare, Plus, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
-import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { createKanbanId } from '../id'
-import { formatKanbanOptionLabel } from '../i18n-helpers'
-import type { KanbanItem, KanbanProperty, KanbanSubtask } from '../types'
-import { KanbanFilesCell } from './kanban-files-cell'
+import type { KanbanFile, KanbanItem, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import {
+  KanbanPropertyCell,
+  kanbanColumnWidth,
+  kanbanPropertyColumns,
+  kanbanTitleColumn,
+} from './kanban-property-cell'
 
 interface KanbanTableRowProps {
   item: KanbanItem
@@ -22,54 +17,9 @@ interface KanbanTableRowProps {
   isSelected: boolean
   onToggleSelect: () => void
   onOpenDetail: () => void
-  onUpdateProperty?: (itemId: string, propertyId: string, value: unknown) => void
+  onUpdateProperty: (itemId: string, propertyId: string, value: unknown) => void
   onUpdateSubtasks?: (itemId: string, subtasks: KanbanSubtask[]) => void
-}
-
-function StatusCell({
-  item,
-  statusCol,
-  onUpdateProperty,
-}: {
-  item: KanbanItem
-  statusCol?: KanbanProperty
-  onUpdateProperty?: (itemId: string, propertyId: string, value: unknown) => void
-}) {
-  const currentVal = String(item.properties.status || '')
-  const currentOpt = statusCol?.options?.find((o) => o.id === currentVal || o.label === currentVal)
-
-  return (
-    <div className='flex items-center justify-center p-1.5'>
-      <select
-        value={currentOpt?.id || currentVal}
-        onChange={(e) => onUpdateProperty?.(item.id, 'status', e.target.value)}
-        style={getKanbanTagStyle(currentOpt?.color)}
-        className='h-7 w-full cursor-pointer rounded-[var(--r-sm)] border-none px-2 text-center text-[length:var(--text-11)] font-bold outline-none'
-      >
-        {statusCol?.options?.map((opt) => (
-          <option key={opt.id} value={opt.id} className='bg-[var(--bg-surface)] text-[var(--text-primary)]'>
-            {formatKanbanOptionLabel(opt, 'status')}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
-}
-
-function OwnerAvatar({ name }: { name?: string }) {
-  if (!name) {
-    return (
-      <div className='flex size-6 items-center justify-center rounded-[var(--r-full)] border border-dashed border-[var(--border-default)] text-[var(--text-quaternary)]'>
-        <UserIcon size={12} />
-      </div>
-    )
-  }
-  const initials = name.slice(0, 2).toUpperCase()
-  return (
-    <div className='flex size-6 items-center justify-center rounded-[var(--r-full)] bg-[var(--accent)] text-[length:var(--text-10)] font-bold text-[var(--accent-contrast)] shadow-xs'>
-      {initials}
-    </div>
-  )
+  onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
 }
 
 function SubitemItemRow({
@@ -165,23 +115,24 @@ function SubitemsNestedTable({
 
 function ItemTitleCell({
   item,
+  column,
   subtasksCount,
   expanded,
-  tagsCol,
-  tagVals,
   onToggleExpand,
   onOpenDetail,
 }: {
   item: KanbanItem
+  column: KanbanProperty
   subtasksCount: number
   expanded: boolean
-  tagsCol?: KanbanProperty
-  tagVals: string[]
   onToggleExpand: () => void
   onOpenDetail: () => void
 }) {
   return (
-    <div className='flex flex-1 min-w-48 items-center gap-2 border-l border-[var(--border-subtle)] px-3 py-2'>
+    <div
+      data-kanban-column={column.id}
+      className={`flex items-center gap-2 border-l border-[var(--border-subtle)] px-3 py-2 ${kanbanColumnWidth(column)}`}
+    >
       {subtasksCount > 0 && (
         <button
           type='button'
@@ -199,20 +150,6 @@ function ItemTitleCell({
       >
         {item.title}
       </button>
-      {tagVals.slice(0, 2).map((tag) => {
-        const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
-        const color = resolveKanbanTagColor(tag, tagsCol?.options)
-        const label = opt?.label ?? tag
-        return (
-          <span
-            key={tag}
-            style={getKanbanTagStyle(color)}
-            className='hidden sm:inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold'
-          >
-            {formatKanbanOptionLabel(label, 'tags')}
-          </span>
-        )
-      })}
       {subtasksCount > 0 && (
         <span className='rounded-[var(--r-full)] bg-[var(--bg-hover)] px-1.5 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
           {subtasksCount}
@@ -229,60 +166,6 @@ function ItemTitleCell({
   )
 }
 
-function ItemMetaCells({
-  item,
-  statusCol,
-  onUpdateProperty,
-}: {
-  item: KanbanItem
-  statusCol?: KanbanProperty
-  onUpdateProperty?: (itemId: string, propertyId: string, value: unknown) => void
-}) {
-  const ownerName = String(item.properties.assignee || item.properties.owner || '')
-  const dueDate = String(item.properties.dueDate || item.properties.date || '')
-  const timeline = String(item.properties.timeline || '')
-
-  return (
-    <>
-      <div className='w-20 shrink-0 border-l border-[var(--border-subtle)] px-2 py-2 text-center'>
-        <OwnerAvatar name={ownerName} />
-      </div>
-
-      <div className='w-36 shrink-0 border-l border-[var(--border-subtle)]'>
-        <StatusCell item={item} statusCol={statusCol} onUpdateProperty={onUpdateProperty} />
-      </div>
-
-      <div className='w-32 shrink-0 border-l border-[var(--border-subtle)] px-3 py-2 text-[var(--text-secondary)]'>
-        {dueDate ? (
-          <div className='flex items-center gap-1.5'>
-            <CalendarIcon size={12} className='text-[var(--text-tertiary)]' />
-            <span>{dueDate}</span>
-          </div>
-        ) : (
-          <span className='text-[var(--text-quaternary)]'>-</span>
-        )}
-      </div>
-
-      <div className='w-32 shrink-0 border-l border-[var(--border-subtle)] px-3 py-2'>
-        {timeline ? (
-          <span className='rounded-[var(--r-full)] bg-[var(--bg-hover)] px-2 py-0.5 text-[length:var(--text-10)] font-medium text-[var(--text-secondary)]'>
-            {timeline}
-          </span>
-        ) : (
-          <span className='text-[var(--text-quaternary)]'>-</span>
-        )}
-      </div>
-
-      <div className='w-40 shrink-0 border-l border-[var(--border-subtle)] px-2 py-1'>
-        <KanbanFilesCell
-          files={item.files}
-          onChangeFiles={(files) => onUpdateProperty?.(item.id, 'files', files)}
-        />
-      </div>
-    </>
-  )
-}
-
 export function KanbanTableRow({
   item,
   columns,
@@ -291,11 +174,11 @@ export function KanbanTableRow({
   onOpenDetail,
   onUpdateProperty,
   onUpdateSubtasks,
+  onUpdateFiles,
 }: KanbanTableRowProps) {
   const [expanded, setExpanded] = useState(false)
-  const statusCol = columns.find((c) => c.id === 'status')
-  const tagsCol = columns.find((c) => c.id === 'tags')
-  const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
+  const titleColumn = kanbanTitleColumn(columns)
+  const propertyColumns = kanbanPropertyColumns(columns)
   const subtasks = item.subtasks || []
 
   return (
@@ -312,15 +195,22 @@ export function KanbanTableRow({
 
         <ItemTitleCell
           item={item}
+          column={titleColumn}
           subtasksCount={subtasks.length}
           expanded={expanded}
-          tagsCol={tagsCol}
-          tagVals={tagVals}
           onToggleExpand={() => setExpanded((e) => !e)}
           onOpenDetail={onOpenDetail}
         />
 
-        <ItemMetaCells item={item} statusCol={statusCol} onUpdateProperty={onUpdateProperty} />
+        {propertyColumns.map((column) => (
+          <KanbanPropertyCell
+            key={column.id}
+            column={column}
+            item={item}
+            onUpdateProperty={onUpdateProperty}
+            onUpdateFiles={onUpdateFiles}
+          />
+        ))}
       </div>
 
       {expanded && onUpdateSubtasks && (

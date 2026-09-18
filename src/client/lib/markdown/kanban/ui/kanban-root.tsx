@@ -3,6 +3,7 @@ import { useLocale } from '../../../i18n'
 import type {
   KanbanColorName,
   KanbanData,
+  KanbanFile,
   KanbanItem,
   KanbanOption,
   KanbanSubtask,
@@ -49,6 +50,7 @@ interface KanbanViewRendererProps {
   handleToggleAll: (ids: string[]) => void
   setDetailItem: (item: KanbanItem | null) => void
   handleUpdateTitle: (id: string, title: string) => void
+  handleUpdateFiles: (id: string, files: KanbanFile[]) => void
   handleMoveItem: (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void
   handleAddItem: (defaults?: Record<string, unknown>) => void
   handleAddItemInGroup: (groupKey?: string) => void
@@ -126,6 +128,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
         props.commitData({ ...props.data, items: next })
       }}
       onUpdateSubtasks={handleUpdateSubtasks}
+      onUpdateFiles={props.handleUpdateFiles}
       onAddItem={props.handleAddItem}
       onAddColumn={props.handleAddColumn}
     />
@@ -252,6 +255,7 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
         handleToggleAll={state.selection.handleToggleAll}
         setDetailItem={state.setDetailItem}
         handleUpdateTitle={state.items.handleUpdateTitle}
+        handleUpdateFiles={state.items.handleUpdateFiles}
         handleMoveItem={state.items.handleMoveItem}
         handleAddItem={state.adds.handleAddItem}
         handleAddItemInGroup={state.adds.handleAddItemInGroup}
