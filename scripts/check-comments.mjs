@@ -2670,6 +2670,13 @@ const allowed = new Map([
     '// time through this ref, so their identity survives re-renders while the',
     '// drop still routes to the latest onMoveItem.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-chart-view.tsx', [
+    '// Chart.js colours are baked into the config at creation time, so a theme',
+    '// flip has to reach the renderer here — reading the attribute once would',
+    '// freeze the palette (ADR-0002).',
+    '// Identity must survive unrelated commits: a fresh dataset object every',
+    '// render tears the Chart.js instance down and rebuilds it.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-convert-subtask.test.ts', [
     '// mirrors useKanbanHistory: functional updaters resolve against the latest data',
     '// the detail modal portals onto document.body, so query the whole document',

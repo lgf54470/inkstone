@@ -51,6 +51,7 @@ interface KanbanViewRendererProps {
   handleAddItem: (defaults?: Record<string, unknown>) => void
   handleAddItemInGroup: (groupKey?: string) => void
   handleAddColumn: () => void
+  handleUpdateView: (patch: Partial<KanbanData['views'][number]>) => void
   handleReorderColumns: (sourceGroupKey: string, targetGroupKey: string) => void
   handleUpdateColumn: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
   handleDeleteColumn: (groupKey: string) => void
@@ -166,10 +167,7 @@ function KanbanViewRenderer(props: KanbanViewRendererProps) {
       <KanbanChartView
         data={props.viewData}
         view={props.activeView}
-        onUpdateView={(patch) => {
-          const nextViews = props.data.views.map((v) => (v.id === props.activeView.id ? { ...v, ...patch } : v))
-          props.commitData({ ...props.data, views: nextViews })
-        }}
+        onUpdateView={props.handleUpdateView}
       />
     )
   }
@@ -254,6 +252,7 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
         handleAddItem={state.adds.handleAddItem}
         handleAddItemInGroup={state.adds.handleAddItemInGroup}
         handleAddColumn={state.adds.handleAddColumn}
+        handleUpdateView={state.filterSort.updateActiveView}
         handleReorderColumns={state.columnOps.handleReorderColumns}
         handleUpdateColumn={state.columnOps.handleUpdateColumn}
         handleDeleteColumn={state.columnOps.handleDeleteColumn}

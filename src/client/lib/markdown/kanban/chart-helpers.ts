@@ -1,3 +1,4 @@
+import { t } from '../../i18n'
 import type {
   KanbanChartDataset,
   KanbanChartType,
@@ -58,8 +59,9 @@ export function aggregateKanbanChartData(
   const total = items.length
 
   if (!groupByProperty || !groupByProperty.options || groupByProperty.options.length === 0) {
-    counts.set('All Tasks', total)
-    labels.push('All Tasks')
+    const allLabel = t('preview.kanban_chart_all_tasks')
+    counts.set(allLabel, total)
+    labels.push(allLabel)
     data.push(total)
     colors.push(DEFAULT_PALETTE[0]!)
     return { labels, data, colors, total }
@@ -83,7 +85,7 @@ export function aggregateKanbanChartData(
   let remaining = 0
   for (const c of counts.values()) remaining += c
   if (remaining > 0) {
-    labels.push('No Value')
+    labels.push(t('preview.kanban_chart_no_value'))
     data.push(remaining)
     colors.push(resolveOptionColor('gray', labels.length))
   }
@@ -132,7 +134,7 @@ export function buildChartJsConfig(
       labels: dataset.labels,
       datasets: [
         {
-          label: 'Tasks',
+          label: t('preview.kanban_chart_dataset_tasks'),
           data: dataset.data,
           backgroundColor: type === 'line' ? 'rgba(59, 130, 246, 0.2)' : dataset.colors,
           borderColor: type === 'line' ? COLOR_LINE_BORDER : undefined,
