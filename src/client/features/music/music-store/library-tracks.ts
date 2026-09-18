@@ -14,8 +14,17 @@ export async function refreshTrackMetadata(set: MusicSet, get: MusicGet, ids: st
   for (const id of ordered) {
     const track = byId.get(id)
     if (!track) continue
-    const scanned = needsTagScan(track) ? await scanTrackMetadata(track) : null
-    const durationMs = track.durationMs > 0 ? 0 : (scanned?.durationMs ?? await probeTrackDuration(track))
+    let scanned: ScannedMetadata | null = null
+    let durationMs = 0
+    try {
+      scanned = needsTagScan(track) ? await scanTrackMetadata(track) : null
+      durationMs = track.durationMs > 0 ? 0 : (scanned?.durationMs ?? await probeTrackDuration(track))
+    } catch (error) {
+      // A malformed tag must only skip this track, never abort the whole scan.
+      console.warn('[inkstone] music metadata scan threw:', error)
+      unreadable += 1
+      continue
+    }
     const patch = scanPatch(track, scanned, durationMs)
     if (!Object.keys(patch).length) {
       if (!scanned?.coverDataUrl && !scanned?.lyric && !scanned?.artist) unreadable += 1

@@ -1251,6 +1251,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-store/library-tracks.ts', [
     '// Imported tracks often arrive without artwork or lyrics; the ID3 tag still has them.',
+    '// A malformed tag must only skip this track, never abort the whole scan.',
     '// A scan only fills gaps: manual edits and existing artwork always win.',
   ]],
   ['src/client/features/music/music-store/player.ts', [

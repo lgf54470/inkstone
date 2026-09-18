@@ -47,6 +47,7 @@ export function readMp4DurationMs(bytes: Uint8Array): number {
   if (!mvhd) return 0
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const isVersionOne = bytes[mvhd.start] === 1
+  if (mvhd.end - mvhd.start < (isVersionOne ? 32 : 20)) return 0
   const timescale = isVersionOne ? view.getUint32(mvhd.start + 20) : view.getUint32(mvhd.start + 12)
   const duration = isVersionOne ? Number(view.getBigUint64(mvhd.start + 24)) : view.getUint32(mvhd.start + 16)
   if (!timescale || !duration) return 0

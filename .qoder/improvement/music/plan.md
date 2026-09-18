@@ -21,7 +21,7 @@
 - [x] M-07 SEC-6 cover-lookup 出站 `isAllowedOutboundUrl` + `*.apple.com` 白名单 + `redirect:'manual'`
 - [x] M-08 SEC-7 抽共享出站/写预算工具，`music-webdav:*`、`music-play:*`、`music-write:*`、`music-lookup:*` 设具名限额
 - [x] M-09 SEC-9 导入 mime 过允许列表；`Content-Length` 仅 R2 分支设置
-- [ ] M-10 SEC-10 `music-flac.ts`/`music-mp4.ts` 越界返回 null；`scanTrackMetadata`/工具栏调用点补 catch + toast
+- [x] M-10 SEC-10 `music-flac.ts`/`music-mp4.ts` 越界返回 null；`scanTrackMetadata`/工具栏调用点补 catch + toast
 - [ ] M-11 SEC-11 `webdav-xml.ts` 实体解码 RangeError 防护 + parse 兜底
 - [ ] M-12 SEC-12+FEAT-4 `MusicTrack` 不再下发 `objectKey`（服务端下发 format/extension）；M3U 导出改文件名/签名 URL；封面 `http://` 走 sanitize
 
@@ -90,4 +90,5 @@
 | 2026-09-18 | M-06 webdav 浏览去掉 GET 期 MKCOL（SEC-5） | 7681d1e2 | 新增 1 例先红后绿（缺目录时 GET 曾 404/发 MKCOL→现 200 空列表且零 MKCOL），music 3 套件 34 ✅，typecheck/comments ✅ |
 | 2026-09-18 | M-07 cover-lookup 出站主机白名单+手动重定向（SEC-6） | f8bcd60d | 新增 2 例先红后绿（非 Apple 主机 artwork 曾被直取、302 曾被当 200 回显→均 500 且零内部请求），music-routes 21 ✅，typecheck/comments ✅ |
 | 2026-09-18 | M-08 音乐四类端点具名小时预算（SEC-7） | a0f0dcac | 新增 2 例先红后绿（lookup 60 次后曾无限 200→现 429 带 retryAfter 且 play 家族不受影响；write/play key 曾不记账→现各自 fails=1），music 3 套件 38 ✅，typecheck/size（constants.ts 501 行入 grandfather 基线，常量表豁免）/comments ✅ |
-| 2026-09-19 | M-09 导入 mime 过允许列表 + 代理不再伪造 Content-Length（SEC-9） | 本次提交（hash 由下一次提交回填） | 新增 2 例先红后绿（audio/mpegurl 曾被原样入库→现按格式规范为 audio/mpeg；上游省略时曾用 size_bytes 造出 Content-Length:16 而正文仅 8 字节→现不再伪造），music 3 套件 40 ✅，typecheck/size/comments ✅ |
+| 2026-09-19 | M-09 导入 mime 过允许列表 + 代理不再伪造 Content-Length（SEC-9） | 692d6a61 | 新增 2 例先红后绿（audio/mpegurl 曾被原样入库→现按格式规范为 audio/mpeg；上游省略时曾用 size_bytes 造出 Content-Length:16 而正文仅 8 字节→现不再伪造），music 3 套件 40 ✅，typecheck/size/comments ✅ |
+| 2026-09-19 | M-10 FLAC/MP4 解析越界返 null + 扫描调用点 catch（SEC-10） | 本次提交（hash 由下一次提交回填） | 新增 5 例先红后绿（picture 块 4 字节/vendor 2 字节/mvhd 截断曾抛 RangeError→现返回 null/0；scan 抛错曾中断整轮→现跳该曲计 unreadable 并 toast），music 客户端 5 套件 38 ✅，typecheck/size/comments ✅ |

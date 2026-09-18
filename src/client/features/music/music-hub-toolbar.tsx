@@ -6,6 +6,7 @@ import { Segmented, Input } from '../../components/form'
 import { Tooltip, useClickOutside } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
+import { toastMusicError } from './music-feedback'
 import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicSort } from './music-store'
 
@@ -146,7 +147,9 @@ function MetadataButtons({ tracks }: { tracks: MusicTrack[] }) {
   const scan = (): void => {
     if (!missingIds.length || scanning) return
     setScanning(true)
-    void refreshTrackMetadata(missingIds).finally(() => setScanning(false))
+    void refreshTrackMetadata(missingIds)
+      .catch((error: unknown) => toastMusicError(error, 'music.action_failed'))
+      .finally(() => setScanning(false))
   }
   const matchCovers = (): void => {
     if (!coverlessCount || matching) return

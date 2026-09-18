@@ -112,3 +112,21 @@ describe('readFlacMetadata', () => {
     expect(scanned.neededBytes).toBe(full.byteLength)
   })
 })
+
+describe('readFlacMetadata with malformed blocks', () => {
+  it('returns no cover for a picture block cut inside its own header', () => {
+    const bytes = flacFile(block(BLOCK_PICTURE, new Uint8Array(4), true))
+    expect(readFlacMetadata(bytes).cover).toBeNull()
+  })
+
+  it('returns no tags from a vorbis comment cut before the vendor length', () => {
+    const bytes = flacFile(block(BLOCK_VORBIS_COMMENT, new Uint8Array(2), true))
+    expect(readFlacMetadata(bytes).lyric).toBeNull()
+  })
+
+  it('returns no cover from a picture block that declares more than it carries', () => {
+    const mime = new TextEncoder().encode('image/jpeg')
+    const lying = concat(bigEndian32(3), bigEndian32(mime.byteLength), mime, bigEndian32(4_000_000_000))
+    expect(readFlacMetadata(flacFile(block(BLOCK_PICTURE, lying, true))).cover).toBeNull()
+  })
+})

@@ -49,11 +49,13 @@ export function readFlacMetadata(bytes: Uint8Array): FlacScan {
 function parsePictureBlock(payload: Uint8Array): ApicFrame | null {
   const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
   let cursor = 4
+  if (cursor + 4 > payload.byteLength) return null
   const mimeLength = view.getUint32(cursor)
   cursor += 4
   if (cursor + mimeLength > payload.byteLength) return null
   const mime = new TextDecoder().decode(payload.subarray(cursor, cursor + mimeLength))
   cursor += mimeLength
+  if (cursor + 4 > payload.byteLength) return null
   const descriptionLength = view.getUint32(cursor)
   cursor += 4 + descriptionLength + 16
   if (cursor + 4 > payload.byteLength) return null
@@ -70,6 +72,7 @@ function readVorbisTags(payload: Uint8Array): FlacTags {
   const tags: FlacTags = { title: null, artist: null, album: null, lyric: null }
   const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
   let cursor = 0
+  if (payload.byteLength < 4) return tags
   const vendorLength = view.getUint32(cursor, true)
   cursor += 4 + vendorLength
   if (cursor + 4 > payload.byteLength) return tags

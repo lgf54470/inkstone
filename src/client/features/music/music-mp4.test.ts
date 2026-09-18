@@ -72,6 +72,12 @@ describe('readMp4DurationMs', () => {
   it('returns zero without a movie header', () => {
     expect(readMp4DurationMs(moovWith([box('free', new Uint8Array(8))]))).toBe(0)
   })
+
+  it('returns zero for a movie header cut before its duration fields', () => {
+    expect(readMp4DurationMs(moovWith([box('mvhd', new Uint8Array(0))]))).toBe(0)
+    expect(readMp4DurationMs(moovWith([box('mvhd', new Uint8Array(4))]))).toBe(0)
+    expect(readMp4DurationMs(moovWith([box('mvhd', new Uint8Array([1, 0, 0, 0]))]))).toBe(0)
+  })
 })
 
 describe('findMp4Box', () => {
