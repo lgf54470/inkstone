@@ -70,7 +70,6 @@ function TransferBody() {
 function UploadPicker({ target }: { target: MusicTransferTarget }) {
   const uploadFiles = useMusic((state) => state.uploadFiles)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [isDragOver, setIsDragOver] = useState(false)
 
   const accept = useCallback((files: FileList | null) => {
     if (files?.length) void uploadFiles([...files], target)
@@ -78,12 +77,7 @@ function UploadPicker({ target }: { target: MusicTransferTarget }) {
 
   return (
     <>
-      <DropZone
-        isDragOver={isDragOver}
-        onDragOver={setIsDragOver}
-        onFiles={accept}
-        onChoose={() => inputRef.current?.click()}
-      />
+      <DropZone onFiles={accept} onChoose={() => inputRef.current?.click()} />
       <input
         ref={inputRef}
         type='file'
@@ -99,27 +93,32 @@ function UploadPicker({ target }: { target: MusicTransferTarget }) {
   )
 }
 
-function DropZone({
-  isDragOver,
-  onDragOver,
-  onFiles,
-  onChoose,
-}: {
-  isDragOver: boolean
-  onDragOver: (over: boolean) => void
+// dragenter and dragleave also fire when the pointer crosses a child, so the highlight
+// follows an enter/leave depth count and only clears once the pointer really leaves.
+export function DropZone({ onFiles, onChoose }: {
   onFiles: (files: FileList | null) => void
   onChoose: () => void
 }) {
+  const depthRef = useRef(0)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const setOver = (over: boolean): void => {
+    if (!over) depthRef.current = 0
+    setIsDragOver(over)
+  }
   return (
     <div
-      onDragOver={(event) => {
-        event.preventDefault()
-        onDragOver(true)
+      onDragEnter={() => {
+        depthRef.current += 1
+        setIsDragOver(true)
       }}
-      onDragLeave={() => onDragOver(false)}
+      onDragOver={(event) => event.preventDefault()}
+      onDragLeave={() => {
+        depthRef.current -= 1
+        if (depthRef.current <= 0) setOver(false)
+      }}
       onDrop={(event) => {
         event.preventDefault()
-        onDragOver(false)
+        setOver(false)
         onFiles(event.dataTransfer.files)
       }}
       className={cn(

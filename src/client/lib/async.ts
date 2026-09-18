@@ -36,3 +36,22 @@ export async function mapWithConcurrency<T, R>(
   await Promise.all(workers)
   return results
 }
+
+const PROGRESS_THROTTLE_MS = 200
+
+/**
+ * Progress callbacks land far faster than anyone reads a bar, and each store write copies
+ * the whole task list. The terminal update must be written outside this wrapper.
+ */
+export function throttledProgress(
+  report: (percent: number) => void,
+  intervalMs: number = PROGRESS_THROTTLE_MS,
+): (percent: number) => void {
+  let lastAt = 0
+  return (percent) => {
+    const now = Date.now()
+    if (now - lastAt < intervalMs) return
+    lastAt = now
+    report(percent)
+  }
+}

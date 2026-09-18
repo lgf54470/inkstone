@@ -32,6 +32,10 @@ export function MusicFloatingPlayer() {
   const [queueOpen, setQueueOpen] = useState(false)
   const { ref: cardRef, size } = useMeasuredSize({ width: CARD_WIDTH, height: CARD_HEIGHT_FALLBACK })
   const drag = useCardDrag(position, size, setFloatingPosition)
+  const attachCard = (node: HTMLElement | null): void => {
+    cardRef(node)
+    drag.setNode(node)
+  }
   const expandedFromBadge = !collapsed && position !== null
 
   useEffect(() => {
@@ -41,11 +45,11 @@ export function MusicFloatingPlayer() {
   }, [expandedFromBadge, position, size.width, size.height, setFloatingPosition])
 
   if (!visible) return null
-  if (collapsed) return <CollapsedBadge drag={drag} cardRef={cardRef} />
+  if (collapsed) return <CollapsedBadge drag={drag} cardRef={attachCard} />
 
   return (
     <aside
-      ref={cardRef}
+      ref={attachCard}
       aria-label={t('music.mini_player')}
       style={drag.style}
       className={cn(

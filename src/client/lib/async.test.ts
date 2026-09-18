@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { mapWithConcurrency } from './async'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { mapWithConcurrency, throttledProgress } from './async'
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {
   let resolve: () => void = () => {}
@@ -47,5 +47,25 @@ describe('mapWithConcurrency', () => {
   it('resolves an empty list without invoking the work', async () => {
     const fn = (async () => 1) as (item: never, index: number) => Promise<number>
     expect(await mapWithConcurrency([], 4, fn)).toEqual([])
+  })
+})
+
+describe('throttledProgress', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('lets the first report through and drops the burst that follows', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(1000)
+    const seen: number[] = []
+    const report = throttledProgress((percent) => seen.push(percent))
+    report(1)
+    report(2)
+    report(3)
+    expect(seen).toEqual([1])
+    vi.advanceTimersByTime(250)
+    report(4)
+    expect(seen).toEqual([1, 4])
   })
 })

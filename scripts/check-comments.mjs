@@ -1188,7 +1188,8 @@ const allowed = new Map([
     '// UTF-16 descriptions end on a null code unit, single byte encodings on one null.',
   ]],
   ['src/client/features/music/music-drag.ts', [
-    '// Listening on the window keeps a container from capturing the pointer, which would swallow every button click inside it.',
+    '// Pointer events arrive at 60-120Hz; writing the element style directly keeps the card',
+    '// under the cursor without a React render per move, and only the release commits to state.',
     '// The dragged element follows the cursor, so the release still lands on it',
     '// and would fire a click. Swallow that one click after a real drag.',
     '// The card is dragged by a handle inside it, so the clamp has to track the card',
@@ -1355,8 +1356,6 @@ const allowed = new Map([
     '// Downloads report real byte progress per chunk and save the assembled Blob at the end.',
     '// Chunks go straight into the Blob instead of a Uint8Array detour: the browser may back',
     '// a Blob with disk, while concatenating first held three full copies of the file at once.',
-    '// Chunk callbacks land far faster than anyone reads a progress bar, and each one rewrote',
-    '// the whole downloads array; the terminal 100 percent is written outside this wrapper.',
     '// Batch library work (tag scans, cover matching) reuses the transfers model so a',
     '// long pass shows progress where uploads and downloads already do, and only one',
     '// pass per kind can run at a time: a second call returns without stacking.',
@@ -1394,6 +1393,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-track-table.tsx', [
     '// The header box shows a dash while only part of the visible list is selected.',
+  ]],
+  ['src/client/features/music/music-transfer-dialog.tsx', [
+    '// dragenter and dragleave also fire when the pointer crosses a child, so the highlight',
+    '// follows an enter/leave depth count and only clears once the pointer really leaves.',
   ]],
   ['src/client/features/music/music-utils.ts', [
     '// Per-track network bursts (bulk upload/download/import/scan) stay pipelined but bounded:',
@@ -2160,6 +2163,7 @@ const allowed = new Map([
   ['src/client/lib/async.ts', [
     '/**\n * Resolves when the work does or when it has had long enough, so a slow artifact delays what\n * comes next instead of hanging it. The timeout is the contract: the caller cannot wait\n * forever, and it must not learn about a failure it can do nothing about.\n */',
     '/**\n * Runs `fn` over the items with at most `limit` in flight at once. Results stay in input\n * order no matter which work finishes first. The first rejected item fails the whole call;\n * callers that must survive individual failures catch inside `fn`.\n */',
+    '/**\n * Progress callbacks land far faster than anyone reads a bar, and each store write copies\n * the whole task list. The terminal update must be written outside this wrapper.\n */',
   ]],
   ['src/client/lib/calendar-prefs.ts', [
     '// Corrupt or missing stored prefs fall back to the defaults below.',

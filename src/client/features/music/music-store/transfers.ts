@@ -1,13 +1,12 @@
 import type { MusicTrack } from '@shared/types'
 import { musicStreamUrl } from '../../../lib/api'
-import { mapWithConcurrency } from '../../../lib/async'
+import { mapWithConcurrency, throttledProgress } from '../../../lib/async'
 import { saveBlob } from '../music-export'
 import { downloadFileName, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { toastMusic, toastMusicError } from '../music-feedback'
 import type { MusicDownloadTask, MusicGet, MusicLibraryJobKind, MusicSet, MusicTransferTarget } from './types'
 
 const DOWNLOAD_TIMEOUT_MS = 10 * 60_000
-const PROGRESS_THROTTLE_MS = 200
 
 // Downloads report real byte progress per chunk and save the assembled Blob at the end.
 export async function downloadTracks(set: MusicSet, get: MusicGet, ids: string[]): Promise<void> {
@@ -66,18 +65,6 @@ export async function streamToBlob({ body, totalBytes, mime, onProgress }: Downl
     }
   }
   return new Blob(parts, { type: mime })
-}
-
-// Chunk callbacks land far faster than anyone reads a progress bar, and each one rewrote
-// the whole downloads array; the terminal 100 percent is written outside this wrapper.
-function throttledProgress(report: (percent: number) => void): (percent: number) => void {
-  let lastAt = 0
-  return (percent) => {
-    const now = Date.now()
-    if (now - lastAt < PROGRESS_THROTTLE_MS) return
-    lastAt = now
-    report(percent)
-  }
 }
 
 function makeDownloadTask(track: MusicTrack, index: number): MusicDownloadTask {

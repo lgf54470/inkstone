@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { MusicTrack } from '@shared/types'
 
 vi.mock('../../../lib/api', () => ({
@@ -43,6 +43,10 @@ function audioFile(name: string): File {
   return new File(['some bytes'], name, { type: 'audio/mpeg' })
 }
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 function track(id: string): MusicTrack {
   return {
     id, title: id, artist: '', album: '', durationMs: 0, sizeBytes: 4, source: 'r2',
@@ -78,6 +82,31 @@ describe('uploadFiles', () => {
     await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3'), audioFile('b.mp3')])
 
     expect(store.get().loadLibrary).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('uploadFiles progress', () => {
+  it('collapses a burst of progress callbacks into one store write per task', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(1000)
+    vi.mocked(uploadMusicTrack).mockImplementation(async (...args: unknown[]) => {
+      const onProgress = args[2] as (percent: number) => void
+      for (let percent = 1; percent <= 50; percent += 1) onProgress(percent)
+      return { track: track('uploaded'), error: null }
+    })
+    const percents: number[] = []
+    const store = makeStore()
+    const record = store.set
+    store.set = ((patch: unknown) => {
+      record(patch)
+      const percent = (store.get() as { uploads: { percent: number }[] }).uploads[0]?.percent
+      if (percent !== undefined) percents.push(percent)
+    }) as never
+
+    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3')])
+
+    expect(percents).toEqual([0, 1, 100])
+    vi.useRealTimers()
   })
 })
 

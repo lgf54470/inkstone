@@ -1,6 +1,6 @@
 import type { MusicPlaylistDetail, MusicTag } from '@shared/types'
 import { api, uploadMusicToWebdav, uploadMusicTrack, type MusicPlaylistPatch } from '../../../lib/api'
-import { mapWithConcurrency } from '../../../lib/async'
+import { mapWithConcurrency, throttledProgress } from '../../../lib/async'
 import { toastMusic, toastMusicError, toastUploadError } from '../music-feedback'
 import { readFileMetadata } from '../music-metadata'
 import { readDurationMs } from '../music-probe'
@@ -232,7 +232,7 @@ async function uploadOne(set: MusicSet, file: File, task: MusicUploadTask): Prom
     durationMs,
     coverUrl: tags?.coverDataUrl ?? null,
   }
-  const progress = (percent: number): void => updateUpload(set, task.id, { percent })
+  const progress = throttledProgress((percent) => updateUpload(set, task.id, { percent }))
   const result = task.target === 'webdav'
     ? await uploadMusicToWebdav(file, meta, progress)
     : await uploadMusicTrack(file, { ...meta, tagIds: [] }, progress)
