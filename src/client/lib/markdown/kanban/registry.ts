@@ -1,6 +1,5 @@
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { AppLocale } from '@shared/types'
 import { parseKanbanBody } from './body'
 import type { KanbanBlockEntry } from './entry'
 import type { KanbanData, KanbanWriter } from './types'
@@ -23,8 +22,6 @@ import { flushKanbanEntry, discardKanbanWrite, retryKanbanWrite, scheduleKanbanW
 export interface KanbanMountOptions {
   scope: string
   noteId: string | null
-  dark: boolean
-  locale: AppLocale
   editable: boolean
   writeBack?: KanbanWriter
   onOpenFullscreen?: (node: HTMLElement) => void
@@ -117,8 +114,6 @@ function createEntry(node: HTMLElement, options: KanbanMountOptions): KanbanBloc
     mode: 'json',
     editable: options.editable,
     owner: 'inline',
-    dark: options.dark,
-    locale: options.locale,
     container: null,
     root: null,
     ref: null,
@@ -181,8 +176,6 @@ function mountBlock(node: HTMLElement, entry: KanbanBlockEntry, options: KanbanM
   entry.host = node
   entry.noteId = options.noteId
   decorateKanbanControls(node)
-  entry.dark = options.dark
-  entry.locale = options.locale
   // Unwritten edits outrank the note body: a re-render must not re-point the
   // fence or re-parse over them, or retry and discard lose what they resolve.
   if (!entry.unsaved) {

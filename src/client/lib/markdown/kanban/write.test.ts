@@ -30,8 +30,6 @@ function outlineEntry(): { entry: KanbanBlockEntry; write: ReturnType<typeof vi.
       mode: 'outline',
       editable: true,
       owner: 'inline',
-      dark: false,
-      locale: 'en-US',
       container: null,
       root: null,
       ref: { line: 3, body: OUTLINE_BODY },

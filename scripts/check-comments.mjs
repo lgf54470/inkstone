@@ -2658,6 +2658,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/outline.ts', [
     '// \\[ and \\] are literal brackets in a title, not the start of a property tag.',
   ]],
+  ['src/client/lib/markdown/kanban/registry-locale.test.ts', [
+    '/**\n * A kanban block is a React root of its own, mounted into markup React did not make, so nothing in\n * the app tree re-renders it when the language changes: its labels only follow the locale if the\n * board itself subscribes. `t()` reads the live locale, which is why a re-render is all it takes —\n * and why the host used to have to smuggle the locale in through a mount option nobody read.\n */',
+  ]],
   ['src/client/lib/markdown/kanban/registry.test.ts', [
     '/**\n * Every kanban block in the preview is a React root of its own, living inside markup React did not\n * make, and those roots are torn down from the host tree\'s own effects: the pane goes away, or the\n * block leaves the note. A root may not be taken down from inside another root\'s commit — React\n * says so out loud ("Attempted to synchronously unmount a root while React was already rendering")\n * and then lets the teardown race the commit it interrupted. The unmount is deferred by a\n * microtask, and these cases are what hold it there: the board is still painted when the call\n * returns, and it is gone a microtask later, with no warning raised from inside a commit.\n */',
     '/** The preview\'s own shape: the teardown runs from the cleaning-up side of the host root\'s commit. */',
@@ -2752,6 +2755,8 @@ const allowed = new Map([
     '// multi-select column keeps its array shape.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root.tsx', [
+    '// A host tree React did not make never re-renders this root, so the board listens',
+    '// for language changes itself rather than trusting a mount option to carry them.',
     '// Clicking board whitespace focuses this container, so board-scoped',
     '// shortcuts (undo/redo) keep working when no card holds focus.',
   ]],
@@ -4678,6 +4683,11 @@ const allowed = new Map([
   ]],
   ['tests/kanban-contrast-tokens.test.ts', [
     '/**\n * The board paints text on filled shapes: today\'s date on the accent (and, in\n * the timeline and gantt headers, on `--danger`), a tick on the colour the user\n * picked, initials on the accent. Hardcoding white for those looked right in\n * the light theme and fell apart in the dark one, where every fill is a light\n * colour — so the rule the board has to keep is the one the rest of the app\n * already keeps: text on a fill uses that fill\'s own contrast token, and the\n * pair must clear AA for every accent a session can be switched to.\n */',
+  ]],
+  ['tests/kanban-dead-code.test.ts', [
+    '/**\n * Dead code is only really gone while nothing re-introduces it, and these three shapes keep coming\n * back: mount options a registry stores but never reads, a `useMemo` keyed on the props object it\n * just received (a fresh reference on every render, so the memo never hits), and an `api` namespace\n * no caller uses because the module imports the functions by name.\n */',
+    '// The board root follows both by itself: colours through the tokens, labels through the locale',
+    '// store — so a mount option carrying them would be state the registry stores and never reads.',
   ]],
   ['tests/kanban-hover-focus.test.ts', [
     '/**\n * Hover-only controls (`opacity-0` until the card/row is hovered) are invisible\n * while being keyboard-focused, which strands Tab focus on an unseen button.\n * Every such control must also reveal itself on `focus-visible`; this keeps the\n * next `opacity-0` affordance from shipping without it.\n */',

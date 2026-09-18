@@ -43,8 +43,6 @@ async function mountSurface(onCloseFullscreen?: () => void): Promise<Surface> {
   await mountKanbans(host, {
     scope: SCOPE,
     noteId: 'note-1',
-    dark: false,
-    locale: 'en-US',
     editable: true,
     writeBack: (_ref, next) => {
       writes.push(next)

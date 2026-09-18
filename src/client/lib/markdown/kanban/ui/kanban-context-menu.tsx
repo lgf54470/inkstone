@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import {
   Copy,
   FileText,
@@ -230,7 +229,7 @@ const MENU_WIDTH = 208
 
 export function KanbanContextMenu(props: KanbanContextMenuProps) {
   const { point, onClose } = props
-  const items = useMemo(() => buildKanbanContextMenuItems(props), [props])
+  const items = buildKanbanContextMenuItems(props)
 
   if (!point || items.length === 0) return null
 

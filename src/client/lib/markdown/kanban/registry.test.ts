@@ -37,8 +37,6 @@ async function mountBoard(): Promise<HTMLElement> {
     await mountKanbans(host, {
       scope: SCOPE,
       noteId: 'note-1',
-      dark: false,
-      locale: 'en-US',
       editable: true,
     })
   })

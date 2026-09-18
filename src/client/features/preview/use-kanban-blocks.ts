@@ -6,7 +6,6 @@ import {
   openKanbanSession,
   type KanbanSession,
 } from '../../lib/markdown/kanban'
-import { useLocale } from '../../lib/i18n'
 import { createKanbanWriter } from './kanban-sync'
 
 export interface KanbanFullscreenState {
@@ -18,12 +17,10 @@ interface UseKanbanBlocksOptions {
   noteId: string | null
   hostRef: RefObject<HTMLDivElement | null>
   committedHtml: string
-  dark: boolean
 }
 
 export function useKanbanBlocks(options: UseKanbanBlocksOptions) {
-  const { scope, noteId, hostRef, committedHtml, dark } = options
-  const locale = useLocale()
+  const { scope, noteId, hostRef, committedHtml } = options
   const writer = useMemo(() => createKanbanWriter(noteId), [noteId])
   const [fullscreen, setFullscreen] = useState<KanbanFullscreenState | null>(null)
 
@@ -44,8 +41,6 @@ export function useKanbanBlocks(options: UseKanbanBlocksOptions) {
     void mountKanbans(host, {
       scope,
       noteId,
-      dark,
-      locale,
       editable: true,
       writeBack: writer,
       onOpenFullscreen: openFullscreen,
@@ -53,7 +48,7 @@ export function useKanbanBlocks(options: UseKanbanBlocksOptions) {
     }).catch((err: unknown) => {
       console.warn('[inkstone] kanban mount failed', err)
     })
-  }, [committedHtml, dark, locale, noteId, scope, writer, hostRef, openFullscreen, closeFullscreen])
+  }, [committedHtml, noteId, scope, writer, hostRef, openFullscreen, closeFullscreen])
 
   useKanbanTeardown(scope, setFullscreen)
 

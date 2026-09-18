@@ -40,7 +40,7 @@ async function mountBoard(): Promise<HTMLElement> {
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
   try {
     await act(async () => {
-      await mountKanbans(host, { scope: SCOPE, noteId: 'note-1', dark: false, locale: 'en-US', editable: true })
+      await mountKanbans(host, { scope: SCOPE, noteId: 'note-1', editable: true })
     })
   } finally {
     errors.mockRestore()

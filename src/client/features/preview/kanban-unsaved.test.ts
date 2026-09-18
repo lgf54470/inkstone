@@ -46,8 +46,6 @@ async function mountSurface(): Promise<Surface> {
   await mountKanbans(host, {
     scope: SCOPE,
     noteId: 'note-1',
-    dark: false,
-    locale: 'en-US',
     editable: true,
     writeBack: (_ref, next) => {
       if (outcome === 'written') writes.push(next)

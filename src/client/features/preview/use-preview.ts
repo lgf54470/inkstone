@@ -460,7 +460,7 @@ export function usePreview(props: PreviewProps) {
   const mindmap = useMindmapBlocks({ scope: `preview${instanceScope}`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
   // Whiteboards are mounted live, from the committed markup, by useExcalidrawBlocks.
   const excalidraw = useExcalidrawBlocks({ scope: `preview${instanceScope}-excalidraw`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
-  const kanban = useKanbanBlocks({ scope: `preview${instanceScope}-kanban`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
+  const kanban = useKanbanBlocks({ scope: `preview${instanceScope}-kanban`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml })
   const slides = useBentoSlidesBlocks({ scope: `preview${instanceScope}-slides`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
   const [previewFile, setPreviewFile] = useState<{ url: string; filename: string } | null>(null)
   const onClick = usePreviewInteractions({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, scrollerRef: src.scrollerRef, committedSourceRef: html.committedSourceRef, startMermaidRender, hideHover: hover.linkHover.hideNow, setPreviewFile, openMindmapFullscreen: mindmap.openFullscreen, openMindmapThemeMenu: mindmap.openThemeMenu, openExcalidrawFullscreen: excalidraw.openFullscreen, openExcalidrawLibraryMenu: excalidraw.openLibraryMenu, openKanbanFullscreen: kanban.openFullscreen, openSlidesFullscreen: slides.openFullscreen, api: src.api })
