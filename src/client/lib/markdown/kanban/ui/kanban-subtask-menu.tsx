@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ArrowUpRight, Copy, CornerDownRight, ExternalLink, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
+import { useUi } from '../../../../store/ui'
 import type { KanbanSubtask } from '../types'
 
 interface KanbanSubtaskMenuProps {
@@ -78,7 +79,15 @@ function SubtaskMenuItems({
   onClose: () => void
 }) {
   const copyName = () => {
-    void navigator.clipboard.writeText(subtask.title)
+    const fail = () => useUi.getState().toast({ title: t('preview.could_not_copy'), tone: 'danger' })
+    if (!navigator.clipboard?.writeText) {
+      fail()
+    } else {
+      navigator.clipboard
+        .writeText(subtask.title)
+        .then(() => useUi.getState().toast({ title: t('common.copied'), tone: 'success' }))
+        .catch(fail)
+    }
     onClose()
   }
 
