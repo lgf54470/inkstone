@@ -13,9 +13,10 @@ function fakeDataTransfer(values: Record<string, string>) {
   }
 }
 
-function fakeDragEvent(currentTarget: Element, values: Record<string, string>) {
+function fakeDragEvent(currentTarget: Element, values: Record<string, string>, clientY = 0) {
   return {
     currentTarget,
+    clientY,
     preventDefault: () => {},
     stopPropagation: () => {},
     dataTransfer: fakeDataTransfer(values),
@@ -183,6 +184,33 @@ describe('useKanbanBoardDndState handler stability', () => {
     } finally {
       rendered.unmount()
       board.cleanup()
+    }
+  })
+})
+
+describe('useKanbanBoardDndState dragover bail', () => {
+  it('keeps the drop-target identity for a frame repeating the same card and position, and updates on either change', () => {
+    const holder: { api: ReturnType<typeof useKanbanBoardDndState> | null } = { api: null }
+    function Probe() {
+      holder.api = useKanbanBoardDndState(() => {})
+      return null
+    }
+    const rendered = renderElement(createElement(Probe))
+    const card = document.createElement('div')
+    const rectSpy = vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({ top: 0, height: 100 } as DOMRect)
+    try {
+      act(() => { holder.api!.handleCardDragOver(fakeDragEvent(card, {}, 10), 'card-1') })
+      expect(holder.api!.cardDropTarget).toEqual({ cardId: 'card-1', position: 'top' })
+      const first = holder.api!.cardDropTarget
+      act(() => { holder.api!.handleCardDragOver(fakeDragEvent(card, {}, 12), 'card-1') })
+      expect(holder.api!.cardDropTarget).toBe(first)
+      act(() => { holder.api!.handleCardDragOver(fakeDragEvent(card, {}, 80), 'card-1') })
+      expect(holder.api!.cardDropTarget).toEqual({ cardId: 'card-1', position: 'bottom' })
+      act(() => { holder.api!.handleCardDragOver(fakeDragEvent(card, {}, 80), 'card-2') })
+      expect(holder.api!.cardDropTarget).toEqual({ cardId: 'card-2', position: 'bottom' })
+    } finally {
+      rectSpy.mockRestore()
+      rendered.unmount()
     }
   })
 })

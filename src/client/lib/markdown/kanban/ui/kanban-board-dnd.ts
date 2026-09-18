@@ -85,7 +85,7 @@ function processColumnDrop(
 // re-render just because a drag frame passed by.
 function useDndStartHandlers(
   setDraggedItem: (next: DragItemState) => void,
-  setCardDropTarget: (next: CardDropTarget | null) => void,
+  setCardDropTarget: React.Dispatch<React.SetStateAction<CardDropTarget | null>>,
 ) {
   const handleCardDragStart = useCallback((e: React.DragEvent, id: string, sourceGroupKey: string) => {
     initDragData(e, { type: 'card', itemId: id, sourceGroupKey }, id)
@@ -100,7 +100,13 @@ function useDndStartHandlers(
   const handleCardDragOver = useCallback((e: React.DragEvent, targetCardId: string) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-    setCardDropTarget(computeDropPosition(e, targetCardId))
+    const next = computeDropPosition(e, targetCardId)
+    // dragover fires every frame; hovering the same half of the same card is
+    // not a new drop target, so keep the previous object and memoized cards
+    // see an unchanged prop
+    setCardDropTarget((prev) =>
+      prev && prev.cardId === next.cardId && prev.position === next.position ? prev : next,
+    )
   }, [setCardDropTarget])
 
   return { handleCardDragStart, handleColumnDragStart, handleCardDragOver }
