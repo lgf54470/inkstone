@@ -4210,6 +4210,13 @@ const allowed = new Map([
     '// without getWithMetadata; real R2 and Workers KV always carry it, so a',
     '// missing userId may safely fall through to ownership-by-key.',
   ]],
+  ['src/worker/attachments/kanban-reclaim.ts', [
+    '// Best effort: nothing is lost by waiting, the next run re-derives the same candidates.',
+    '// An object this code cannot attribute to an account is kept: guessing an owner',
+    '// is how a reclaim turns into a data loss incident.',
+    '// A fresh upload can still be between the response and the save that references it.',
+    '// The objects are still there, so the next run finds and reaps them again.',
+  ]],
   ['src/worker/attachments/keys.ts', [
     '// The key embeds user_id so one account\'s upload can never collide with',
     '// another account\'s object; objects written before this format exist under',
@@ -4691,6 +4698,10 @@ const allowed = new Map([
   ]],
   ['tests/kanban-hover-focus.test.ts', [
     '/**\n * Hover-only controls (`opacity-0` until the card/row is hovered) are invisible\n * while being keyboard-focused, which strands Tab focus on an unseen button.\n * Every such control must also reveal itself on `focus-visible`; this keeps the\n * next `opacity-0` affordance from shipping without it.\n */',
+  ]],
+  ['tests/kanban-orphan-reclaim.test.ts', [
+    '// Another account naming the key cannot read it either: /api/kanban/file checks the',
+    '// stored owner, so honouring that reference would only pile up bytes nobody can serve.',
   ]],
   ['tests/kanban-tag-contrast.test.ts', [
     '/**\n * Kanban labels are the one palette the app does not derive from the accent: the\n * user picks a colour per option, so it has to work on every surface the board\n * paints them on and in both themes. That also means nothing else guards it —\n * `scripts/check-contrast.mjs` measures what the running app paints, and this\n * palette is only painted once a board exists.\n *\n * So the gate reads the declarations instead. A chip is a translucent tint of\n * the label colour over whatever surface it lands on, so the pair that has to\n * clear 4.5:1 is (label colour, tint composited on that surface) — judged over\n * every solid surface of the theme, because the same chip appears on the\n * sunken board, the raised card and the overlay dialog.\n */',
