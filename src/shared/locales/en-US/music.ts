@@ -221,7 +221,7 @@ export const messages = {
 'music.select_track': 'Select track',
 'music.source_filter': 'Filter by source',
 'music.webdav_target_missing': 'The selected WebDAV target no longer exists',
-'music.drag_to_reorder': 'Drag to reorder',
+'music.move_player': 'Move the player',
 'music.rewind': 'Rewind 10 seconds',
 'music.forward': 'Forward 10 seconds',
 'music.delete_remote_file': 'Delete the WebDAV file',

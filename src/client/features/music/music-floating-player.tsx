@@ -133,9 +133,9 @@ function FloatHeader({ drag }: { drag: ReturnType<typeof useCardDrag> }) {
       onPointerDown={drag.startDrag}
       className={cn('flex h-9 shrink-0 items-center gap-1.5 border-b border-[var(--border-subtle)] px-2.5', drag.isDragging ? 'cursor-grabbing' : 'cursor-grab')}
     >
-      <span tabIndex={0} role='button' aria-label={t('music.drag_to_reorder')} onKeyDown={drag.onKeyDown} className='rounded p-0.5 text-[var(--text-quaternary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]'>
+      <IconButton label={t('music.move_player')} size='sm' onKeyDown={drag.onKeyDown}>
         <GripVertical size={13} />
-      </span>
+      </IconButton>
       <span className='min-w-0 flex-1 truncate text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
         {t('music.now_playing')}
       </span>
