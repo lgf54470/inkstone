@@ -7,6 +7,7 @@ import type { KanbanData, KanbanWriter } from './types'
 import { KanbanRoot, KanbanRootBoundary } from './ui'
 import {
   createKanbanCanvas,
+  createKanbanReserve,
   decorateKanbanControls,
   isKanbanWritableHere,
   kanbanBlocks,
@@ -27,6 +28,7 @@ export interface KanbanMountOptions {
   editable: boolean
   writeBack?: KanbanWriter
   onOpenFullscreen?: (node: HTMLElement) => void
+  onCloseFullscreen?: (node: HTMLElement) => void
 }
 
 interface Assignment {
@@ -137,19 +139,24 @@ function createEntry(node: HTMLElement, options: KanbanMountOptions): KanbanBloc
 function disposeEntry(entry: KanbanBlockEntry): void {
   if (entry.timer !== null) window.clearTimeout(entry.timer)
   const root = entry.root
+  entry.root = null
   if (root) queueMicrotask(() => root.unmount())
 }
 
 function renderKanbanEntry(entry: KanbanBlockEntry, options: KanbanMountOptions): void {
   if (!entry.root || !entry.data) return
+  const inOverlay = entry.owner === 'overlay'
   entry.root.render(
     createElement(
       KanbanRootBoundary,
       { source: entry.source },
       createElement(KanbanRoot, {
         initialData: entry.data,
+        isFullscreen: inOverlay,
         onUpdateData: (next) => updateKanbanData(entry, () => next),
-        onToggleFullscreen: () => options.onOpenFullscreen?.(entry.host),
+        onToggleFullscreen: () => (
+          inOverlay ? options.onCloseFullscreen?.(entry.host) : options.onOpenFullscreen?.(entry.host)
+        ),
       }),
     ),
   )
@@ -172,8 +179,12 @@ function mountBlock(node: HTMLElement, entry: KanbanBlockEntry, options: KanbanM
   }
 
   const placeholder = kanbanPlaceholder(node)
-  if (placeholder && entry.owner === 'inline' && entry.container.parentNode !== placeholder) {
-    placeholder.replaceChildren(entry.container)
+  if (placeholder && entry.container) {
+    if (entry.owner === 'overlay') {
+      if (placeholder.childElementCount === 0) placeholder.append(createKanbanReserve())
+    } else if (entry.container.parentNode !== placeholder) {
+      placeholder.replaceChildren(entry.container)
+    }
   }
 
   if (entry.source !== body || !entry.data) {
@@ -218,17 +229,40 @@ export function updateKanbanData(entry: KanbanBlockEntry, updater: (prev: Kanban
   if (opts) renderKanbanEntry(entry, opts)
 }
 
+function rerenderAfterMove(entry: KanbanBlockEntry): void {
+  // The move runs from the overlay component's effect — sometimes inside
+  // another root's commit — so the refresh is deferred the same way a teardown
+  // is: rendering this root synchronously there races the commit.
+  queueMicrotask(() => {
+    const options = scopeOptions.get(entry.scope)
+    if (options) renderKanbanEntry(entry, options)
+  })
+}
+
+/**
+ * Hands the live board to the full screen overlay: the same root, so its edits,
+ * history and write-back are the ones the inline block keeps using afterwards —
+ * there is never a second copy of the same board to fall out of step.
+ */
 export function attachKanbanToOverlay(entry: KanbanBlockEntry, target: HTMLElement): void {
+  if (!entry.container) return
   entry.owner = 'overlay'
-  if (entry.container) target.append(entry.container)
+  entry.container.classList.add('is-fullscreen')
+  target.append(entry.container)
+  const placeholder = kanbanPlaceholder(entry.host)
+  if (placeholder && placeholder.childElementCount === 0) {
+    placeholder.append(createKanbanReserve())
+  }
+  rerenderAfterMove(entry)
 }
 
 export function detachKanbanFromOverlay(entry: KanbanBlockEntry): void {
+  if (!entry.container) return
   entry.owner = 'inline'
+  entry.container.classList.remove('is-fullscreen')
   const placeholder = kanbanPlaceholder(entry.host)
-  if (placeholder && entry.container) {
-    placeholder.replaceChildren(entry.container)
-  }
+  if (placeholder) placeholder.replaceChildren(entry.container)
+  rerenderAfterMove(entry)
 }
 
 export async function retryKanban(node: HTMLElement): Promise<void> {

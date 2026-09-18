@@ -140,6 +140,13 @@
   position: relative;
 }
 
+.kanban-canvas.is-fullscreen {
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+}
+
 .ink-prose .kanban-error {
   display: flex;
   flex-wrap: wrap;

@@ -49,6 +49,15 @@ export function createKanbanCanvas(editable: boolean): HTMLElement {
   return container
 }
 
+// While the live canvas sits in the full screen overlay, the inline placeholder
+// shows this stand-in so the block keeps its height and does not collapse.
+export function createKanbanReserve(): HTMLElement {
+  const reserve = document.createElement('div')
+  reserve.className = `${KANBAN_CANVAS_CLASS} is-reserve`
+  reserve.setAttribute('aria-hidden', 'true')
+  return reserve
+}
+
 export function kanbanBlocks(root: ParentNode): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(KANBAN_BLOCK_SELECTOR)]
 }

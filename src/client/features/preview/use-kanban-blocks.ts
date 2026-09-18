@@ -33,11 +33,9 @@ export function useKanbanBlocks(options: UseKanbanBlocksOptions) {
   }, [])
 
   const closeFullscreen = useCallback(() => {
-    setFullscreen((current) => {
-      current?.session.moveBack()
-      current?.session.flush()
-      return null
-    })
+    // The overlay's own cleanup moves the canvas back and flushes the session;
+    // this only takes the modal out of the tree.
+    setFullscreen(null)
   }, [])
 
   useLayoutEffect(() => {
@@ -51,10 +49,11 @@ export function useKanbanBlocks(options: UseKanbanBlocksOptions) {
       editable: true,
       writeBack: writer,
       onOpenFullscreen: openFullscreen,
+      onCloseFullscreen: closeFullscreen,
     }).catch((err: unknown) => {
       console.warn('[inkstone] kanban mount failed', err)
     })
-  }, [committedHtml, dark, locale, noteId, scope, writer, hostRef, openFullscreen])
+  }, [committedHtml, dark, locale, noteId, scope, writer, hostRef, openFullscreen, closeFullscreen])
 
   useKanbanTeardown(scope, setFullscreen)
 

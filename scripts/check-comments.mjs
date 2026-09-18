@@ -1806,6 +1806,13 @@ const allowed = new Map([
     '// The Worker thread is the sandbox: user code cannot reach page DOM or',
     '// storage, and terminate() is the only hard stop for endless loops.',
   ]],
+  ['src/client/features/preview/kanban-fullscreen.test.ts', [
+    '// A real user dismisses the menu before the overlay ends; leave no open',
+    '// portal behind for the teardown to trip over.',
+    '// Closing the overlay re-renders the moved board; flush that React work',
+    '// before the teardown in afterEach takes the root down.',
+    '// The exit control lives in the moved board, not the modal chrome.',
+  ]],
   ['src/client/features/preview/mindmap-fullscreen.test.ts', [
     '/** The block markup the preview would render for a note holding one fence. */',
     '/**\n * A vendor that reproduces the library\'s keyboard contract and nothing else: the\n * shortcuts are bound to the element the library draws in, Tab adds a child and\n * Enter adds a sibling, and each one reports an operation — which is exactly what\n * the registry turns into a write. The real library runs in a browser in\n * scripts/e2e-visual.mjs; here the question is what the app does with the\n * callbacks it gets.\n */',
@@ -1922,6 +1929,10 @@ const allowed = new Map([
     '/** Leaving the note (or the pane) writes the last drawing and drops the instances. */',
     '/**\n * Clicking a shape hands the board the DOM focus its shortcuts need — in a split view\n * the editor would otherwise swallow Tab, Delete and undo. The full screen overlay is\n * portaled outside this host, so it installs its own listener on its body; both resolve\n * the same entry and focusing twice is harmless.\n */',
     '// The note\'s menu is the one a right-click opens, here as on every other block.',
+  ]],
+  ['src/client/features/preview/use-kanban-blocks.ts', [
+    '// The overlay\'s own cleanup moves the canvas back and flushes the session;',
+    '// this only takes the modal out of the tree.',
   ]],
   ['src/client/features/preview/use-mindmap-blocks.ts', [
     '/**\n * Mounts a live mind map per block after each commit and keeps them out of the\n * preview\'s way: the map\'s element is re-parented into the fresh markup before\n * paint, so typing in the editor never restarts a map.\n */',
@@ -2618,6 +2629,10 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/registry.ts', [
     '/**\n * Tears one block\'s React root down. The unmount is deferred by a microtask because both callers run\n * inside the host tree\'s own commit — the preview re-renders, a block leaves the note, and React\n * refuses to take one root down from inside another root\'s render: it warns and leaves the teardown to\n * race the commit it interrupted.\n */',
+    '// The move runs from the overlay component\'s effect — sometimes inside',
+    '// another root\'s commit — so the refresh is deferred the same way a teardown',
+    '// is: rendering this root synchronously there races the commit.',
+    '/**\n * Hands the live board to the full screen overlay: the same root, so its edits,\n * history and write-back are the ones the inline block keeps using afterwards —\n * there is never a second copy of the same board to fall out of step.\n */',
   ]],
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
@@ -2634,6 +2649,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.tsx', [
     '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',
     '// document is guaranteed blank; offer the file as an explicit new-tab action.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-fullscreen.tsx', [
+    '/**\n * Full screen view of one block. The overlay hosts the live instance the\n * preview mounted — the element is moved, never copied — so edits, history and\n * write-back stay with the single root that the inline block keeps using.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-history.ts', [
     '// Listening on the instance container (not window) keeps Ctrl+Z with the board',
@@ -2652,6 +2670,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-root.tsx', [
     '// Clicking board whitespace focuses this container, so board-scoped',
     '// shortcuts (undo/redo) keep working when no card holds focus.',
+  ]],
+  ['src/client/lib/markdown/kanban/view.ts', [
+    '// While the live canvas sits in the full screen overlay, the inline placeholder',
+    '// shows this stand-in so the block keeps its height and does not collapse.',
   ]],
   ['src/client/lib/markdown/mindmap/body.ts', [
     '/**\n * DOM-free helpers behind the ```mindmap fence: format detection, EOL handling\n * and the fence surgery that two-way editing needs (the map\'s own writes, and the\n * header\'s palette control). The vendor-backed parse/serialize pair lives in ./vendor,\n * so this file (and its tests) can be imported without pulling mind-elixir into the\n * caller\'s chunk.\n *\n * The surgery itself is not mind map specific — any block that rewrites its own\n * fence needs the same locate-and-replace — so it lives in ../fence-edit and this\n * module only adds what a mind map fence carries on top: its languages, its two\n * body formats, and the palette annotation on its info line.\n */',
