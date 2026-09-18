@@ -201,13 +201,14 @@ function RowActions({
   onToggleFavorite: () => void
   onOpenMenu: () => void
 }) {
+  const revealActions = 'opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto'
   return (
     <>
       <IconButton
         label={isFavorite ? t('music.unfavorite') : t('music.favorite')}
         size='sm'
         onClick={onToggleFavorite}
-        className={cn('opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100', isFavorite && 'opacity-100 text-[var(--accent)]')}
+        className={cn(revealActions, isFavorite && 'md:opacity-100 md:pointer-events-auto text-[var(--accent)]')}
       >
         <Heart size={13} className={isFavorite ? 'fill-current' : undefined} />
       </IconButton>
@@ -216,7 +217,7 @@ function RowActions({
         label={t('music.open_menu')}
         size='sm'
         onClick={onOpenMenu}
-        className='opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100'
+        className={revealActions}
       >
         <MoreHorizontal size={14} />
       </IconButton>

@@ -55,7 +55,7 @@ function CardActions({
   onOpenMenu: () => void
 }) {
   return (
-    <div className='absolute top-3 right-3 flex flex-col gap-1 opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100'>
+    <div className='opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/card:opacity-100 md:group-hover/card:pointer-events-auto md:group-focus-within/card:opacity-100 md:group-focus-within/card:pointer-events-auto absolute top-3 right-3 flex flex-col gap-1'>
       <IconButton
         label={isFavorite ? t('music.unfavorite') : t('music.favorite')}
         size='sm'

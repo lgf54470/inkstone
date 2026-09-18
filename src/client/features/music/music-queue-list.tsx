@@ -62,7 +62,7 @@ function QueueRowItem({ row, rowClassName }: { row: QueueRow; rowClassName?: str
         label={t('music.remove_from_queue')}
         size='sm'
         onClick={() => removeFromQueue(row.index)}
-        className='opacity-0 group-hover/queue:opacity-100 group-focus-within/queue:opacity-100'
+        className='opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/queue:opacity-100 md:group-hover/queue:pointer-events-auto md:group-focus-within/queue:opacity-100 md:group-focus-within/queue:pointer-events-auto'
       >
         <X size={12} />
       </IconButton>
