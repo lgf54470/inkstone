@@ -185,7 +185,6 @@ export const messages = {
 'preview.kanban_file_upload_failed': 'Failed to upload file',
 'preview.kanban_file_delete_failed': 'Failed to delete file',
 'preview.kanban_sort_cleared_for_drag': 'Sorting cleared to apply your manual order',
-'preview.kanban_color_picker': 'Pick Color',
 'preview.kanban_add_tag': 'Add Tag',
 'preview.kanban_remove_tag': 'Remove tag',
 'preview.kanban_new_tag': 'Tag',
