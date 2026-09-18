@@ -2606,6 +2606,8 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/body.ts', [
     '/**\n * DOM-free helpers behind the ```kanban fence: format detection, JSON/Outline parsing\n * and fence surgery that two-way editing needs.\n */',
+    '// A rejected protocol fails the whole fence into its error state rather than',
+    '// silently dropping the field, so the author sees why the board will not open.',
   ]],
   ['src/client/lib/markdown/kanban/dnd.test.ts', [
     '// A filter hides item \'1\', so the visible column is [2, 3]. Dropping \'4\'',
@@ -2683,6 +2685,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-root.tsx', [
     '// Clicking board whitespace focuses this container, so board-scoped',
     '// shortcuts (undo/redo) keep working when no card holds focus.',
+  ]],
+  ['src/client/lib/markdown/kanban/url.ts', [
+    '/**\n * Protocol whitelist for URLs that come from kanban fence content. Fence JSON is\n * user-authored (and arrives via shares/imports), so covers and file urls are\n * rendered from data we do not trust.\n */',
+    '// A leading slash is same-site; \'//\' would be a protocol-relative external request.',
   ]],
   ['src/client/lib/markdown/kanban/view.ts', [
     '// While the live canvas sits in the full screen overlay, the inline placeholder',

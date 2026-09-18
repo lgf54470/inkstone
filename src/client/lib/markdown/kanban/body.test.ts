@@ -49,6 +49,49 @@ describe('parseKanbanBody with JSON', () => {
   })
 })
 
+describe('parseKanbanBody URL whitelist', () => {
+  it('keeps a board whose cover and file urls are on the whitelist', () => {
+    const json = JSON.stringify({
+      items: [{
+        id: '1',
+        title: 'Task 1',
+        cover: '/api/kanban/file/default/1-cover.png',
+        files: [{ id: 'f1', name: 'spec.pdf', size: 10, mime: 'application/pdf', url: 'https://cdn.example.com/spec.pdf' }],
+        properties: {},
+      }],
+    })
+    const result = parseKanbanBody(json)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.data.items[0]!.cover).toBe('/api/kanban/file/default/1-cover.png')
+  })
+
+  it('fails with an error state when item.cover uses a non-whitelisted protocol', () => {
+    const json = JSON.stringify({
+      items: [{ id: '1', title: 'Task 1', cover: 'javascript:alert(1)', properties: {} }],
+    })
+    const result = parseKanbanBody(json)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('cover')
+  })
+
+  it('fails with an error state when a file url uses a non-whitelisted protocol', () => {
+    const json = JSON.stringify({
+      items: [{
+        id: '1',
+        title: 'Task 1',
+        files: [{ id: 'f1', name: 'x', size: 1, mime: 'image/png', url: 'data:text/html,<script>' }],
+        properties: {},
+      }],
+    })
+    const result = parseKanbanBody(json)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('files')
+  })
+})
+
 describe('serializeKanban', () => {
   const sampleData: KanbanData = {
     title: 'Test Board',
