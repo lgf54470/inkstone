@@ -2,6 +2,7 @@ import { memo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { groupKanbanItems } from '../filter-sort'
+import type { KanbanMovePivot } from '../dnd'
 import type { KanbanColorName, KanbanData, KanbanItem, KanbanOption, KanbanSubtask, KanbanView } from '../types'
 import { useKanbanBoardDndState, type CardDropTarget } from './kanban-board-dnd'
 import { KanbanCard } from './kanban-card'
@@ -19,7 +20,7 @@ interface KanbanBoardViewProps {
   onToggleTag?: (tag: string) => void
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
-  onMoveItem: (itemId: string, targetGroupKey: string, targetIndex?: number) => void
+  onMoveItem: (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void
   onAddItem: (groupKey?: string) => void
   onAddColumn: () => void
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void
@@ -220,7 +221,7 @@ function AddColumnButton({ onAddColumn }: { onAddColumn: () => void }) {
 function useKanbanGroups(
   data: KanbanData,
   view: KanbanView,
-  onMoveItem: (itemId: string, targetGroupKey: string, targetIndex?: number) => void,
+  onMoveItem: (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void,
 ) {
   const groupPropertyId = view.groupBy || 'status'
   const groupProperty = data.columns.find((c) => c.id === groupPropertyId)

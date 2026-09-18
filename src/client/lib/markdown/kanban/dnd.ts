@@ -32,25 +32,37 @@ export function parseKanbanDragData(dataTransfer: DataTransfer): KanbanDragPaylo
   return null
 }
 
+export interface KanbanMovePivot {
+  itemId: string
+  position: 'before' | 'after'
+}
+
+function appendAfterTargetGroup(
+  result: KanbanItem[],
+  updatedItem: KanbanItem,
+  targetGroupItems: KanbanItem[],
+): KanbanItem[] {
+  const lastTargetItem = targetGroupItems[targetGroupItems.length - 1]!
+  const insertAfterIdx = result.findIndex((it) => it.id === lastTargetItem.id)
+  result.splice(insertAfterIdx + 1, 0, updatedItem)
+  return result
+}
+
 function insertIntoTargetGroup(
   withoutItem: KanbanItem[],
   updatedItem: KanbanItem,
   targetGroupItems: KanbanItem[],
-  targetIndex?: number,
+  pivot?: KanbanMovePivot,
 ): KanbanItem[] {
-  if (targetIndex === undefined || targetIndex >= targetGroupItems.length) {
-    const lastTargetItem = targetGroupItems[targetGroupItems.length - 1]!
-    const insertAfterIdx = withoutItem.findIndex((it) => it.id === lastTargetItem.id)
-    const result = [...withoutItem]
-    result.splice(insertAfterIdx + 1, 0, updatedItem)
-    return result
-  }
-
-  const pivotItem = targetGroupItems[Math.max(0, targetIndex)]!
-  const insertIdx = withoutItem.findIndex((it) => it.id === pivotItem.id)
   const result = [...withoutItem]
-  result.splice(insertIdx, 0, updatedItem)
-  return result
+  if (pivot) {
+    const pivotIdx = result.findIndex((it) => it.id === pivot.itemId)
+    if (pivotIdx !== -1) {
+      result.splice(pivot.position === 'before' ? pivotIdx : pivotIdx + 1, 0, updatedItem)
+      return result
+    }
+  }
+  return appendAfterTargetGroup(result, updatedItem, targetGroupItems)
 }
 
 export function reorderKanbanItems(
@@ -58,10 +70,11 @@ export function reorderKanbanItems(
   itemId: string,
   groupPropertyId: string,
   targetGroupKey: string,
-  targetIndex?: number,
+  pivot?: KanbanMovePivot,
 ): KanbanItem[] {
   const itemIndex = items.findIndex((it) => it.id === itemId)
   if (itemIndex === -1) return items
+  if (pivot && pivot.itemId === itemId) return items
 
   const currentItem = items[itemIndex]!
   const newGroupVal = targetGroupKey === '__none__' ? undefined : targetGroupKey
@@ -83,7 +96,7 @@ export function reorderKanbanItems(
     return [...withoutItem, updatedItem]
   }
 
-  return insertIntoTargetGroup(withoutItem, updatedItem, targetGroupItems, targetIndex)
+  return insertIntoTargetGroup(withoutItem, updatedItem, targetGroupItems, pivot)
 }
 
 export function reorderKanbanColumns(

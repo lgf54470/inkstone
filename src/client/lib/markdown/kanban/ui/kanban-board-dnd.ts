@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { parseKanbanDragData } from '../dnd'
+import type { KanbanMovePivot } from '../dnd'
 import type { groupKanbanItems } from '../filter-sort'
+
+export type { KanbanMovePivot }
 
 export type DragItemState =
   | { type: 'card'; id: string; sourceGroupKey: string }
@@ -13,6 +16,8 @@ export interface CardDropTarget {
 }
 
 type KanbanGroupType = ReturnType<typeof groupKanbanItems>[number]
+
+type MoveCardFn = (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void
 
 function initDragData(e: React.DragEvent, payload: unknown, text: string) {
   e.dataTransfer.setData('application/json', JSON.stringify(payload))
@@ -32,14 +37,14 @@ function processCardDrop(
   targetGroup: KanbanGroupType,
   targetCardId: string,
   cardDropTarget: CardDropTarget | null,
-  onMoveItem: (itemId: string, targetGroupKey: string, targetIndex?: number) => void,
+  onMoveItem: MoveCardFn,
 ) {
   const data = parseKanbanDragData(e.dataTransfer)
   const cardId = data?.type === 'card' ? data.itemId : draggedItem?.type === 'card' ? draggedItem.id : null
   if (cardId) {
-    const cardIdx = targetGroup.items.findIndex((it) => it.id === targetCardId)
-    const targetIndex = cardDropTarget?.position === 'bottom' ? cardIdx + 1 : cardIdx
-    onMoveItem(cardId, targetGroup.groupKey, targetIndex)
+    const position: KanbanMovePivot['position'] =
+      cardDropTarget?.cardId === targetCardId && cardDropTarget.position === 'bottom' ? 'after' : 'before'
+    onMoveItem(cardId, targetGroup.groupKey, { itemId: targetCardId, position })
   }
 }
 
@@ -47,7 +52,7 @@ function processColumnDrop(
   e: React.DragEvent,
   draggedItem: DragItemState,
   targetGroupKey: string,
-  onMoveItem: (itemId: string, targetGroupKey: string, targetIndex?: number) => void,
+  onMoveItem: MoveCardFn,
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void,
 ) {
   const data = parseKanbanDragData(e.dataTransfer)
@@ -61,7 +66,7 @@ function processColumnDrop(
 }
 
 export function useKanbanBoardDndState(
-  onMoveItem: (itemId: string, targetGroupKey: string, targetIndex?: number) => void,
+  onMoveItem: MoveCardFn,
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void,
 ) {
   const [draggedItem, setDraggedItem] = useState<DragItemState>(null)

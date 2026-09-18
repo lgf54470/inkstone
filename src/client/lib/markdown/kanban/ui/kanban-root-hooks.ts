@@ -6,6 +6,7 @@ import {
 } from '../filter-sort'
 import { t } from '../../../i18n'
 import { reorderKanbanColumns, reorderKanbanItems } from '../dnd'
+import type { KanbanMovePivot } from '../dnd'
 import type {
   KanbanColorName,
   KanbanData,
@@ -94,9 +95,9 @@ export function useKanbanItemMutations(
   setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>,
 ) {
   const handleMoveItem = useCallback(
-    (itemId: string, targetGroupKey: string, targetIndex?: number) => {
+    (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => {
       const groupPropertyId = activeView.groupBy || 'status'
-      const nextItems = reorderKanbanItems(data.items, itemId, groupPropertyId, targetGroupKey, targetIndex)
+      const nextItems = reorderKanbanItems(data.items, itemId, groupPropertyId, targetGroupKey, pivot)
       commitData({ ...data, items: nextItems })
     },
     [data, activeView.groupBy, commitData],

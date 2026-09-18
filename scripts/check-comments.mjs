@@ -2593,6 +2593,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/body.ts', [
     '/**\n * DOM-free helpers behind the ```kanban fence: format detection, JSON/Outline parsing\n * and fence surgery that two-way editing needs.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/dnd.test.ts', [
+    '// A filter hides item \'1\', so the visible column is [2, 3]. Dropping \'4\'',
+    '// above \'3\' must land between 2 and 3, not at the column start.',
+  ]],
   ['src/client/lib/markdown/kanban/dnd.ts', [
     '// best-effort fallback if JSON parsing fails',
   ]],

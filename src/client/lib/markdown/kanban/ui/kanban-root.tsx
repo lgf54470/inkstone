@@ -6,6 +6,7 @@ import type {
   KanbanOption,
   KanbanSubtask,
 } from '../types'
+import type { KanbanMovePivot } from '../dnd'
 import { KanbanBatchBar } from './kanban-batch-bar'
 import { KanbanBoardView } from './kanban-board-view'
 import { KanbanCalendarView } from './kanban-calendar-view'
@@ -40,7 +41,7 @@ interface KanbanViewRendererProps {
   handleToggleSelect: (id: string) => void
   setDetailItem: (item: KanbanItem | null) => void
   handleUpdateTitle: (id: string, title: string) => void
-  handleMoveItem: (itemId: string, targetGroupKey: string, targetIndex?: number) => void
+  handleMoveItem: (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void
   handleAddItem: (defaults?: Record<string, unknown>) => void
   handleAddItemInGroup: (groupKey?: string) => void
   handleAddColumn: () => void
