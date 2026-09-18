@@ -1,11 +1,12 @@
 import {
   BarChart2,
   Calendar,
+  ChartGantt,
   Kanban,
   LayoutGrid,
   List,
-  SlidersHorizontal,
   Table,
+  Timeline,
 } from 'lucide-react'
 import { formatKanbanViewName } from '../i18n-helpers'
 import type { KanbanView, KanbanViewType } from '../types'
@@ -20,8 +21,9 @@ function viewIcon(type: KanbanViewType) {
     case 'calendar':
       return <Calendar size={14} />
     case 'timeline':
+      return <Timeline size={14} />
     case 'gantt':
-      return <SlidersHorizontal size={14} />
+      return <ChartGantt size={14} />
     case 'list':
       return <List size={14} />
     case 'gallery':
