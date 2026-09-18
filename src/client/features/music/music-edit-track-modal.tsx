@@ -139,7 +139,7 @@ function TagPicker({
             className={cn(
               'inline-flex items-center gap-1 rounded-[var(--r-full)] border px-2 py-1 text-[length:var(--text-11)] transition-colors',
               active
-                ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
+                ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
                 : 'border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
             )}
           >

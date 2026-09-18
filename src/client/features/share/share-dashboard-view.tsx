@@ -454,7 +454,7 @@ function VisitBadges({ visit }: {
         </span>
       )}
       {visit.isOwner && (
-        <span className='rounded bg-[var(--accent-subtle)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--accent)]'>
+        <span className='rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--accent)]'>
           👤 {t('share.badge_owner')}
         </span>
       )}

@@ -173,7 +173,7 @@ function EmojiIconGrid({
             onClick={() => onSelect(emoji)}
             className={`size-7 flex items-center justify-center rounded-[var(--r-sm)] text-[length:var(--text-14)] transition-colors ${
               isSelected
-                ? 'bg-[var(--accent-subtle)] border border-[var(--accent)]'
+                ? 'bg-[var(--accent-soft)] border border-[var(--accent)]'
                 : 'hover:bg-[var(--bg-hover)]'
             }`}
           >

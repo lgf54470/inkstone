@@ -57,7 +57,7 @@ export function LinkCheckerModal({
         />
 
         {state.selectedIds.size > 0 && (
-          <div className='flex items-center justify-between rounded-[var(--r-md)] bg-[var(--accent-subtle)]/40 px-3 py-1.5'>
+          <div className='flex items-center justify-between rounded-[var(--r-md)] bg-[var(--accent-soft)]/40 px-3 py-1.5'>
             <span className='font-semibold text-[var(--accent)] text-[length:var(--text-11)]'>
               {t('blog.selected_links_count', { value0: state.selectedIds.size })}
             </span>
@@ -233,7 +233,7 @@ function CheckerRow({
   return (
     <div
       className={`flex items-center justify-between gap-3 p-2 rounded-[var(--r-md)] border transition-colors ${
-        isSelected ? 'border-[var(--accent)] bg-[var(--accent-subtle)]/20' : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)]'
+        isSelected ? 'border-[var(--accent)] bg-[var(--accent-soft)]/20' : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)]'
       }`}
     >
       <div className='flex items-center gap-2.5 min-w-0 flex-1'>

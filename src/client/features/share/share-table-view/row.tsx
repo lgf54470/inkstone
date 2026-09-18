@@ -39,7 +39,7 @@ export function ShareTableRow({ share, isSelected, folders, copiedSlug, onToggle
       onDragStart={(e) => { e.dataTransfer.setData('application/inkstone-share-note-ids', JSON.stringify([share.noteId])); e.dataTransfer.effectAllowed = 'copyMove' }}
       onContextMenu={(e) => { setIsFolderMenuOpen(false); contextMenu.onContextMenu(e) }}
       onDoubleClick={() => onOpenEdit(share)}
-      className={cn('group transition-colors hover:bg-[var(--bg-hover)] cursor-grab active:cursor-grabbing select-none', isSelected ? 'bg-[var(--accent-subtle)]/30' : '')}
+      className={cn('group transition-colors hover:bg-[var(--bg-hover)] cursor-grab active:cursor-grabbing select-none', isSelected ? 'bg-[var(--accent-soft)]/30' : '')}
     >
       <td className='px-3 py-2.5 text-center'>
         <Checkbox checked={isSelected} onChange={onToggleSelect} aria-label={share.noteTitle || t('common.untitled_note')} className='min-h-0' />

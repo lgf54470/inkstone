@@ -204,7 +204,7 @@ function FormatSelectButton({ current, target, label, icon, onSelect }: { curren
       onClick={() => onSelect(target)}
       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--r-sm)] text-[length:var(--text-11)] border transition-colors ${
         isSelected
-          ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
+          ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-medium'
           : 'border-[var(--border-subtle)] bg-[var(--bg-sunken)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
       }`}
     >

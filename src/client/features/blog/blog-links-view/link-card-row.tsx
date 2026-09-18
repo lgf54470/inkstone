@@ -60,7 +60,7 @@ export function LinkCardRow({
       }}
       className={cn(
         'group flex items-center justify-between gap-3 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 transition-colors hover:border-[var(--border-default)] hover:bg-[var(--bg-hover)]',
-        isSelected && 'border-[var(--accent)] bg-[var(--accent-subtle)]/20',
+        isSelected && 'border-[var(--accent)] bg-[var(--accent-soft)]/20',
         draggable && 'cursor-grab active:cursor-grabbing',
       )}
     >
@@ -109,7 +109,7 @@ function LinkRowHeader({
         {name}
       </span>
       {isPinned && (
-        <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-medium bg-[var(--accent-subtle)] text-[var(--accent)]'>
+        <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-medium bg-[var(--accent-soft)] text-[var(--accent)]'>
           <Pin size={10} />
           {t('blog.link_pin')}
         </span>

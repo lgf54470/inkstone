@@ -61,7 +61,7 @@ function CategoryList({ bundle }: { bundle: ShareHubSidebarBundle }) {
             className={cn(
               'flex h-8 w-full items-center gap-2 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] font-medium transition-colors',
               isSelected
-                ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
+                ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
             )}
           >

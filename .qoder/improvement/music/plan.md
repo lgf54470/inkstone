@@ -31,7 +31,7 @@
 - [x] M-14 UI-2 歌单描述透传落库（新建+重命名+编辑态回填），store 与 API 同步
 - [x] M-15 UI-3 沉浸式播放器与 Hub modal 补可见关闭入口与 `ariaLabel`
 - [x] M-16 UI-4 加载失败态：`music.retry` 重试按钮 + 技术字符串不外泄
-- [ ] M-17 UI-5/UI-6 幽灵令牌 `--accent-subtle`→`--accent-soft`（全仓 21 文件）+ `--sp-12` 修复
+- [x] M-17 UI-5/UI-6 幽灵令牌 `--accent-subtle`→`--accent-soft`（全仓 21 文件）+ `--sp-12` 修复
 - [ ] M-18 UI-7 触屏不可达的 hover-only 控件三处改 hub-tags 姿势（默认可见 + md: 降级 + pointer-events）
 - [ ] M-19 UI-8+PERF-18 队列 `indexOf` 索引错位修复 + byId useMemo + key 稳定化
 - [ ] M-20 UI-18+FEAT-2 单曲/歌单删除统一 `confirm(tone:'danger')`；加入队列 toast 反馈
@@ -97,4 +97,5 @@
 | 2026-09-19 | M-13 正在播放面板收藏/置顶按钮接线 store toggle（UI-1） | d475c695 | 新增 2 例先红后绿（收藏/置顶按钮曾无 onClick 点击零调用→现调用 toggleFavorite/togglePin 且带当前曲 id），jsdom createRoot 真实挂载断言语义标签定位，typecheck ✅ |
 | 2026-09-19 | M-14 歌单描述随新建/重命名落库并在编辑态回填（UI-2） | f0b4f136 | 新增 4 例（其中 2 例先红后绿：描述曾被 store 丢弃→现 trim 后随 createPlaylist/patchPlaylist 下发；无描述的重命名曾会清空→现 patch 不含 description 键），模态框描述框对已有歌单同样可见并预填，lib/api 桶补出 MusicPlaylistPatch，music 17 套件 115 ✅，typecheck/size/comments ✅ |
 | 2026-09-19 | M-15 沉浸式播放器补可见关闭按钮与对话框可访问名（UI-3） | b9fc0bcb | 新增 2 例先红后绿（dialog 曾挂通用 overlay.dialog 且无可点关闭→现 aria-label=music.immersive 且 exit_immersive 按钮点击调用 onClose 一次；修复前断言实测收到 'overlay.dialog'），hub modal 同法补 ariaLabel=music.hub_title（其关闭按钮原本已在），typecheck ✅ |
-| 2026-09-19 | M-16 加载失败态补重试按钮且技术字符串不外泄（UI-4） | 本次提交（hash 由下一次提交回填） | 新增 2 例（1 例先红后绿：修复前 dialog 实测渲染出 'fetch failed' 且无重试按钮→现仅显示 music.load_failed + Retry 接 loadLibrary，另 1 例守住成功态不出现失败面板）；原始 error 改由 library-load catch console.warn 记录；播放路径 toast 沿用模块统一 toastMusicError 形态未动（已记录）；music 18 套件 119 ✅，typecheck ✅ |
+| 2026-09-19 | M-16 加载失败态补重试按钮且技术字符串不外泄（UI-4） | 88bdd5c1 | 新增 2 例（1 例先红后绿：修复前 dialog 实测渲染出 'fetch failed' 且无重试按钮→现仅显示 music.load_failed + Retry 接 loadLibrary，另 1 例守住成功态不出现失败面板）；原始 error 改由 library-load catch console.warn 记录；播放路径 toast 沿用模块统一 toastMusicError 形态未动（已记录）；music 18 套件 119 ✅，typecheck ✅ |
+| 2026-09-19 | M-17 幽灵令牌 --accent-subtle 全量替换为 --accent-soft 并补 --sp-12（UI-5/UI-6） | 本次提交（hash 由下一次提交回填） | 修复前实测：tokens.css 定义 0 处、var 引用 27 处横跨 22 文件（选中态底色实际透明）；现全量替换并 grep 余 0，含 music/share/blog/components 与 blog-frontend 1 文件；tokens.css 补 --sp-12:48px（行高预留 containIntrinsicSize 生效，非共享令牌故漂移基线仍 88）；主仓 557 例 + blog 270 例 ✅，typecheck/tokens:check ✅；反向校验门禁按计划留待 M-42，视觉断言留待 M-44 |

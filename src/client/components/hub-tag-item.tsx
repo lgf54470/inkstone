@@ -336,7 +336,7 @@ function HubTagRow({
       className={cn(
         'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[length:var(--text-12)] font-medium transition-colors cursor-pointer',
         isSelected
-          ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
+          ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
       )}
     >

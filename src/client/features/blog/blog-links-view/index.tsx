@@ -440,7 +440,7 @@ function LinksBatchBar({
   onClear: () => void
 }) {
   return (
-    <div className='flex items-center justify-between gap-3 bg-[var(--accent-subtle)]/40 border-b border-[var(--border-subtle)] px-4 py-1.5 text-[length:var(--text-12)]'>
+    <div className='flex items-center justify-between gap-3 bg-[var(--accent-soft)]/40 border-b border-[var(--border-subtle)] px-4 py-1.5 text-[length:var(--text-12)]'>
       <span className='font-semibold text-[var(--accent)]'>
         {t('blog.selected_links_count', { value0: selectedCount })}
       </span>
