@@ -4,7 +4,7 @@ import { mapWithConcurrency } from '../../../lib/async'
 import { saveBlob } from '../music-export'
 import { downloadFileName, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { toastMusic, toastMusicError } from '../music-feedback'
-import type { MusicDownloadTask, MusicGet, MusicSet, MusicTransferTarget } from './types'
+import type { MusicDownloadTask, MusicGet, MusicLibraryJobKind, MusicSet, MusicTransferTarget } from './types'
 
 const DOWNLOAD_TIMEOUT_MS = 10 * 60_000
 
@@ -89,6 +89,39 @@ function updateDownload(set: MusicSet, id: string, patch: Partial<MusicDownloadT
 
 export function dismissDownload(set: MusicSet, id: string): void {
   set((state) => ({ downloads: state.downloads.filter((task) => task.id !== id) }))
+}
+
+// Batch library work (tag scans, cover matching) reuses the transfers model so a
+// long pass shows progress where uploads and downloads already do, and only one
+// pass per kind can run at a time: a second call returns without stacking.
+export async function runLibraryJob(
+  set: MusicSet,
+  get: MusicGet,
+  kind: MusicLibraryJobKind,
+  total: number,
+  body: (advance: () => void) => Promise<void>,
+): Promise<boolean> {
+  if (get().libraryJobs.some((job) => job.kind === kind && job.status === 'running')) return false
+  set((state) => ({
+    transfersOpen: true,
+    libraryJobs: [...state.libraryJobs.filter((job) => job.kind !== kind), { kind, done: 0, total, status: 'running' as const }],
+  }))
+  const advance = (): void => set((state) => ({
+    libraryJobs: state.libraryJobs.map((job) => (job.kind === kind ? { ...job, done: Math.min(job.total, job.done + 1) } : job)),
+  }))
+  try {
+    await body(advance)
+  } catch (error) {
+    set((state) => ({ libraryJobs: state.libraryJobs.map((job) => (job.kind === kind ? { ...job, status: 'failed' as const } : job)) }))
+    toastMusicError(error, 'music.action_failed')
+    return true
+  }
+  set((state) => ({ libraryJobs: state.libraryJobs.filter((job) => job.kind !== kind) }))
+  return true
+}
+
+export function dismissLibraryJob(set: MusicSet, kind: MusicLibraryJobKind): void {
+  set((state) => ({ libraryJobs: state.libraryJobs.filter((job) => job.kind !== kind) }))
 }
 
 export function setTransfersOpen(set: MusicSet, open: boolean): void {

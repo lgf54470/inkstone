@@ -5,7 +5,7 @@ import {
 } from './library-load'
 import { batchTracks, deleteTrack, ensureTrackLyric, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin } from './library-tracks'
 import { matchMissingCovers } from './library-covers'
-import { dismissDownload, downloadTracks, setTransfersOpen, setUploadTarget } from './transfers'
+import { dismissDownload, dismissLibraryJob, downloadTracks, setTransfersOpen, setUploadTarget } from './transfers'
 import {
   addSelectionToPlaylist, addToPlaylist, createPlaylist, createTag, deletePlaylist, deleteTag, dismissUpload,
   moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist, uploadFiles,
@@ -22,7 +22,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'createTag' | 'patchTag' | 'deleteTag'
   | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'addToPlaylist' | 'removeFromPlaylist'
   | 'uploadFiles' | 'dismissUpload'
-  | 'downloadTracks' | 'dismissDownload' | 'setTransfersOpen' | 'setUploadTarget'>
+  | 'downloadTracks' | 'dismissDownload' | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'>
 
 export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
   return {
@@ -69,6 +69,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     dismissUpload: (id) => dismissUpload(set, id),
     downloadTracks: (ids) => downloadTracks(set, get, ids),
     dismissDownload: (id) => dismissDownload(set, id),
+    dismissLibraryJob: (kind) => dismissLibraryJob(set, kind),
     setTransfersOpen: (open) => setTransfersOpen(set, open),
     setUploadTarget: (target) => setUploadTarget(set, target),
   }

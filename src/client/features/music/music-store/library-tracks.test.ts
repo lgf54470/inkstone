@@ -40,7 +40,7 @@ function track(id: string): MusicTrack {
 }
 
 function makeStore(tracks: MusicTrack[]) {
-  let state = { tracks } as unknown as MusicStoreState
+  let state = { tracks, libraryJobs: [] } as unknown as MusicStoreState
   return {
     get: () => state,
     set: (patch: unknown) => {

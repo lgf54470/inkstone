@@ -47,6 +47,7 @@ function initialMusicState(): Partial<MusicStoreState> {
     trackMenu: null,
     uploads: [],
     downloads: [],
+    libraryJobs: [],
     uploadTarget: 'r2',
     transfersOpen: false,
     webdav: initialWebdavState(),
@@ -54,7 +55,7 @@ function initialMusicState(): Partial<MusicStoreState> {
 }
 
 export type {
-  MusicBatch, MusicDownloadTask, MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
+  MusicBatch, MusicDownloadTask, MusicLibraryJob, MusicLibraryJobKind, MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
   MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,
 } from './types'
 export { currentTrack } from './player'

@@ -1215,6 +1215,9 @@ const allowed = new Map([
     '// not re-render the whole library (hundreds of rows).',
     '// Stable callbacks: the memoised panels below must not re-render when a dialog opens.',
   ]],
+  ['src/client/features/music/music-hub-toolbar.tsx', [
+    '// The running guard lives in the store, so remounting the toolbar cannot stack a second pass.',
+  ]],
   ['src/client/features/music/music-lyrics.ts', [
     '// The library ships tracks without lyric text; detail views mount this hook to',
     '// have the store fetch it by id once, then read the merged `track.lyric` themselves.',
@@ -1324,10 +1327,15 @@ const allowed = new Map([
     '// Downloads buffer the whole file so the browser can report real byte progress before saving.',
     '// Read chunk by chunk so the progress bar moves instead of waiting for the whole file.',
     '// A downloaded view can sit on a shared buffer, which the Blob constructor refuses.',
+    '// Batch library work (tag scans, cover matching) reuses the transfers model so a',
+    '// long pass shows progress where uploads and downloads already do, and only one',
+    '// pass per kind can run at a time: a second call returns without stacking.',
   ]],
   ['src/client/features/music/music-store/types.ts', [
     '// The anchor is the trigger element for a button-opened menu and the pointer for a',
     '// right-click; it only lives in the store while the single menu instance is open.',
+    '// One pass of batch library work; kind is unique while running, so a second',
+    '// click cannot stack a duplicate pass. Done passes leave the list.',
     '// Detail views call this for tracks the lazy library listed with a lyric but no text.',
   ]],
   ['src/client/features/music/music-store/webdav.ts', [

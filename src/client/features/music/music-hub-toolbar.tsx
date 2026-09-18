@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { MusicTrack } from '@shared/types'
 import { CloudDownload, ImageDown, RefreshCw, Server, Upload } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
@@ -6,7 +5,6 @@ import { Segmented } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { toastMusicError } from './music-feedback'
 import { SearchBox } from './music-search-box'
 import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicSort } from './music-store'
@@ -92,21 +90,16 @@ function ToolbarActions({ onUpload, onBrowseWebdav }: { onUpload: () => void; on
 function MetadataButtons({ tracks }: { tracks: MusicTrack[] }) {
   const refreshTrackMetadata = useMusic((state) => state.refreshTrackMetadata)
   const matchMissingCovers = useMusic((state) => state.matchMissingCovers)
-  const [scanning, setScanning] = useState(false)
-  const [matching, setMatching] = useState(false)
+  // The running guard lives in the store, so remounting the toolbar cannot stack a second pass.
+  const scanning = useMusic((state) => state.libraryJobs.some((job) => job.kind === 'metadata' && job.status === 'running'))
+  const matching = useMusic((state) => state.libraryJobs.some((job) => job.kind === 'covers' && job.status === 'running'))
   const missingIds = tracks.filter((track) => !track.coverUrl || (!track.hasLyric && !track.lyric) || track.durationMs === 0).map((track) => track.id)
   const coverlessCount = tracks.filter((track) => !track.coverUrl).length
   const scan = (): void => {
-    if (!missingIds.length || scanning) return
-    setScanning(true)
-    void refreshTrackMetadata(missingIds)
-      .catch((error: unknown) => toastMusicError(error, 'music.action_failed'))
-      .finally(() => setScanning(false))
+    if (missingIds.length) void refreshTrackMetadata(missingIds)
   }
   const matchCovers = (): void => {
-    if (!coverlessCount || matching) return
-    setMatching(true)
-    void matchMissingCovers().finally(() => setMatching(false))
+    if (coverlessCount) void matchMissingCovers()
   }
   return (
     <>

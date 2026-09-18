@@ -5,6 +5,7 @@ import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback
 import { probeTrackDuration, scanTrackMetadata, type ScannedMetadata } from '../music-metadata'
 import { isArtistSuffixedTitle, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { summarizeLibrary } from './library-load'
+import { runLibraryJob } from './transfers'
 import type { MusicGet, MusicSet, MusicStoreState, MusicTrackPatchInput } from './types'
 
 // The library ships without lyric text, so the details views ask for it by id once.
@@ -31,7 +32,13 @@ export async function refreshTrackMetadata(set: MusicSet, get: MusicGet, ids: st
   const counters = { updated: 0, unreadable: 0 }
   const byId = new Map(get().tracks.map((track) => [track.id, track]))
   const ordered = [...ids].sort((a, b) => Number(byId.get(a)?.source === 'webdav') - Number(byId.get(b)?.source === 'webdav'))
-  await mapWithConcurrency(ordered, TRACK_IO_CONCURRENCY, (id) => refreshOneTrack(set, byId, id, counters))
+  const ran = await runLibraryJob(set, get, 'metadata', ids.length, async (advance) => {
+    await mapWithConcurrency(ordered, TRACK_IO_CONCURRENCY, async (id) => {
+      await refreshOneTrack(set, byId, id, counters)
+      advance()
+    })
+  })
+  if (!ran) return 0
   if (counters.updated > 0) toastMusic('music.metadata_refreshed', { value0: counters.updated })
   else if (counters.unreadable > 0) toastMusicNotice('music.metadata_unavailable')
   return counters.updated

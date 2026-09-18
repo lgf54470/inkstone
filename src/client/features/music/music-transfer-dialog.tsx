@@ -5,7 +5,7 @@ import { Segmented } from '../../components/form'
 import { Modal } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import type { MusicDownloadTask, MusicTransferTarget, MusicUploadTask } from './music-store'
+import type { MusicDownloadTask, MusicLibraryJob, MusicLibraryJobKind, MusicTransferTarget, MusicUploadTask } from './music-store'
 import { useMusic } from './music-store'
 
 const TRANSFER_WIDTH = 520
@@ -31,10 +31,12 @@ export function MusicTransferDialog({ open, onClose }: { open: boolean; onClose:
 function TransferBody() {
   const uploads = useMusic((state) => state.uploads)
   const downloads = useMusic((state) => state.downloads)
+  const libraryJobs = useMusic((state) => state.libraryJobs)
   const target = useMusic((state) => state.uploadTarget)
   const setUploadTarget = useMusic((state) => state.setUploadTarget)
   const dismissUpload = useMusic((state) => state.dismissUpload)
   const dismissDownload = useMusic((state) => state.dismissDownload)
+  const dismissLibraryJob = useMusic((state) => state.dismissLibraryJob)
 
   return (
     <div className='space-y-3'>
@@ -54,6 +56,11 @@ function TransferBody() {
       {downloads.length > 0 && (
         <TaskSection label={t('music.transfers_downloads')}>
           {downloads.map((task) => <DownloadTaskRow key={task.id} task={task} onDismiss={() => dismissDownload(task.id)} />)}
+        </TaskSection>
+      )}
+      {libraryJobs.length > 0 && (
+        <TaskSection label={t('music.transfers_library_jobs')}>
+          {libraryJobs.map((job) => <LibraryJobRow key={job.kind} job={job} onDismiss={() => dismissLibraryJob(job.kind)} />)}
         </TaskSection>
       )}
     </div>
@@ -188,6 +195,29 @@ function DownloadTaskRow({ task, onDismiss }: { task: MusicDownloadTask; onDismi
       {task.status === 'downloading' && <Progress value={task.percent} label={t('music.download_progress', { value0: task.percent })} />}
       {task.status === 'failed' && (
         <span className='block truncate text-[length:var(--text-10)] text-[var(--danger)]'>{t('music.download_failed')}</span>
+      )}
+    </TaskRow>
+  )
+}
+
+const LIBRARY_JOB_LABELS: Record<MusicLibraryJobKind, 'music.job_metadata' | 'music.job_covers'> = {
+  metadata: 'music.job_metadata',
+  covers: 'music.job_covers',
+}
+
+function LibraryJobRow({ job, onDismiss }: { job: MusicLibraryJob; onDismiss: () => void }) {
+  const percent = job.total > 0 ? Math.round((job.done / job.total) * 100) : 100
+  const progressLabel = t('music.job_progress', { value0: job.done, value1: job.total })
+  return (
+    <TaskRow name={t(LIBRARY_JOB_LABELS[job.kind])} onDismiss={onDismiss}>
+      <span className='flex items-center gap-1.5 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
+        {job.status === 'running' && <Spinner size={11} />}
+        {job.status === 'failed' && <TriangleAlert size={11} className='text-[var(--danger)]' />}
+        {progressLabel}
+      </span>
+      {job.status === 'running' && <Progress value={percent} label={progressLabel} />}
+      {job.status === 'failed' && (
+        <span className='block truncate text-[length:var(--text-10)] text-[var(--danger)]'>{t('music.job_failed')}</span>
       )}
     </TaskRow>
   )

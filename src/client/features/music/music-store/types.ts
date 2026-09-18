@@ -49,6 +49,17 @@ export interface MusicDownloadTask {
   status: 'downloading' | 'done' | 'failed'
 }
 
+export type MusicLibraryJobKind = 'metadata' | 'covers'
+
+// One pass of batch library work; kind is unique while running, so a second
+// click cannot stack a duplicate pass. Done passes leave the list.
+export interface MusicLibraryJob {
+  kind: MusicLibraryJobKind
+  done: number
+  total: number
+  status: 'running' | 'failed'
+}
+
 export interface MusicWebdavState {
   loading: boolean
   configured: boolean
@@ -100,6 +111,7 @@ export interface MusicStoreState {
   trackMenu: TrackMenuRequest | null
   uploads: MusicUploadTask[]
   downloads: MusicDownloadTask[]
+  libraryJobs: MusicLibraryJob[]
   uploadTarget: MusicTransferTarget
   transfersOpen: boolean
   webdav: MusicWebdavState
@@ -162,6 +174,7 @@ export interface MusicStoreState {
   dismissUpload: (id: string) => void
   downloadTracks: (ids: string[]) => Promise<void>
   dismissDownload: (id: string) => void
+  dismissLibraryJob: (kind: MusicLibraryJobKind) => void
   setTransfersOpen: (open: boolean) => void
   setUploadTarget: (target: MusicTransferTarget) => void
 
