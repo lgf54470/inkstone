@@ -1,10 +1,11 @@
 import type { MusicTrack } from '@shared/types'
+import { downloadFileName } from './music-utils'
 
 export function downloadM3u(tracks: MusicTrack[], filename: string): void {
   const lines = ['#EXTM3U']
   for (const track of tracks) {
     lines.push('#EXTINF:' + Math.round(track.durationMs / 1000) + ',' + (track.artist ? track.artist + ' - ' : '') + track.title)
-    lines.push(track.objectKey)
+    lines.push(downloadFileName(track))
   }
   saveBlob(new Blob([lines.join('\n')], { type: 'audio/x-mpegurl' }), filename + '.m3u8')
 }

@@ -129,7 +129,9 @@ describe('music routes (real D1 + fake R2)', () => {
     expect(track.lyric).toBe('[00:01.000]first line')
     expect(track.mime).toBe('audio/mpeg')
     expect(track.durationMs).toBe(123000)
-    expect(String(track.objectKey)).toMatch(/^music\/\d{4}-\d{2}-\d{2}\//)
+    expect(track.objectKey).toBeUndefined()
+    expect(track.webdavPath).toBeNull()
+    expect(track.format).toBe('mp3')
     expect(DB_ENV.env.FILES.put).toHaveBeenCalledTimes(1)
 
     const library = await (await request(app, '/api/music/library')).json()
@@ -445,6 +447,17 @@ describe('music cover storage', () => {
 
     const renamed = await json(app, `/api/music/tracks/${id}`, { title: 'Again' }, 'PATCH')
     expect((await renamed.json()).coverUrl).toBe('https://covers.example.com/a.png')
+  })
+
+  it('upgrades an http cover link when serving the track', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app)
+    const id = String(track.id)
+    await json(app, `/api/music/tracks/${id}`, { coverUrl: 'http://covers.example.com/a.png' }, 'PATCH')
+    const served = await (await request(app, '/api/music/library')).json()
+    expect(served.tracks[0].coverUrl).toBe('https://covers.example.com/a.png')
   })
 })
 

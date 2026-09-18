@@ -4,7 +4,7 @@ import { buildSearchIndex, ensureRomanized, needsRomanization, rankTracks } from
 
 function track(id: string, title: string, artist = '', album = ''): MusicTrack {
   return {
-    id, title, artist, album, durationMs: 0, source: 'r2', objectKey: `music/${id}.mp3`, mime: 'audio/mpeg',
+    id, title, artist, album, durationMs: 0, source: 'r2', format: 'mp3', webdavPath: null, mime: 'audio/mpeg',
     sizeBytes: 0, coverUrl: null, lyric: null, tagIds: [], isFavorite: false, isPinned: false,
     playCount: 0, createdAt: 0, updatedAt: 0,
   }

@@ -1,5 +1,5 @@
 import { ACCENTS } from '@shared/constants'
-import type { MusicPlayMode, MusicTag } from '@shared/types'
+import type { MusicPlayMode, MusicTag, MusicTrack } from '@shared/types'
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
 
@@ -170,4 +170,25 @@ export function flattenTags(tags: MusicTag[]): FlatTag[] {
 
 function compareTags(a: MusicTag, b: MusicTag): number {
   return Number(b.isPinned) - Number(a.isPinned) || a.name.localeCompare(b.name)
+}
+const CONTENT_EXTENSIONS: Record<string, string> = {
+  'audio/mpeg': 'mp3',
+  'audio/mp3': 'mp3',
+  'audio/flac': 'flac',
+  'audio/x-flac': 'flac',
+  'audio/mp4': 'm4a',
+  'audio/aac': 'aac',
+  'audio/ogg': 'ogg',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+}
+
+export function downloadFileName(track: MusicTrack): string {
+  const base = [track.artist.trim(), track.title.trim()].filter(Boolean).join(' - ')
+  const safe = base.replace(/[\\/:*?"<>|]/g, '_').trim() || 'track'
+  return safe + extensionFor(track)
+}
+
+function extensionFor(track: MusicTrack): string {
+  return '.' + (track.format ?? CONTENT_EXTENSIONS[track.mime] ?? 'mp3')
 }

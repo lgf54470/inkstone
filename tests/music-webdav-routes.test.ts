@@ -181,7 +181,9 @@ describe('music webdav routes', () => {
     expect(imported.status).toBe(201)
     const track = await imported.json()
     expect(track.source).toBe('webdav')
-    expect(track.objectKey).toBe('song.mp3')
+    expect(track.objectKey).toBeUndefined()
+    expect(track.webdavPath).toBe('song.mp3')
+    expect(track.format).toBe('mp3')
     expect(track.sizeBytes).toBe(16)
     expect(track.mime).toBe('audio/mpeg')
 
@@ -238,7 +240,9 @@ describe('music webdav routes', () => {
     const track = await res.json()
     expect(track.source).toBe('webdav')
     expect(track.title).toBe('Local song')
-    expect(track.objectKey).toMatch(/^local-.*\.mp3$/)
+    expect(track.objectKey).toBeUndefined()
+    expect(String(track.webdavPath)).toMatch(/^local-.*\.mp3$/)
+    expect(track.format).toBe('mp3')
     expect(puts).toHaveLength(1)
     expect([...puts[0]!.body]).toEqual([...AUDIO])
 

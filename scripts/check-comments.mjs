@@ -4403,6 +4403,11 @@ const allowed = new Map([
     '// Read-only projection of the owner\'s library for the blog player: no keys, sizes or flags.',
     '// The blog mirrors the queue the owner is listening to, so ids that left the library are dropped.',
   ]],
+  ['src/worker/routes/music/rows.ts', [
+    '// WebDAV keys are the user\'s own remote paths, already listed in the browse UI;',
+    '// internal R2 storage keys must never reach the browser or a downloaded M3U.',
+    '// An http cover would be blocked as mixed content on our https pages.',
+  ]],
   ['src/worker/routes/music/schemas.ts', [
     '// An absent field must stay undefined so PATCH keeps the stored cover; anything',
     '// else goes through the same whitelist the upload path uses.',

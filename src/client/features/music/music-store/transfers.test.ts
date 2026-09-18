@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
 import type { MusicTrack } from '@shared/types'
 import { saveBlob } from '../music-export'
 import { toastMusicError } from '../music-feedback'
-import { collectStream, downloadFileName, downloadTracks } from './transfers'
+import { downloadFileName } from '../music-utils'
+import { collectStream, downloadTracks } from './transfers'
 import type { MusicDownloadTask, MusicStoreState } from './types'
 
 vi.mock('../music-export', () => ({ saveBlob: vi.fn() }))
@@ -16,7 +17,8 @@ function track(overrides: Partial<MusicTrack> = {}): MusicTrack {
     album: '',
     durationMs: 200_000,
     source: 'webdav',
-    objectKey: 'Music/Moonlight.flac',
+    format: 'flac',
+    webdavPath: 'Music/Moonlight.flac',
     mime: 'audio/flac',
     sizeBytes: 300,
     coverUrl: null,
@@ -68,12 +70,12 @@ afterEach(() => {
 describe('downloadFileName', () => {
   it('keeps the artist, title and the file extension of the stored object', () => {
     expect(downloadFileName(track())).toBe('Hu Yanbin - Moonlight.flac')
-    expect(downloadFileName(track({ artist: '', objectKey: 'Music/Only.flac' }))).toBe('Moonlight.flac')
+    expect(downloadFileName(track({ artist: '' }))).toBe('Moonlight.flac')
   })
 
   it('falls back to the content type and strips characters a file system rejects', () => {
-    expect(downloadFileName(track({ objectKey: '01m29y9s48zs8cf9x7798pytmx', mime: 'audio/mp4' }))).toBe('Hu Yanbin - Moonlight.m4a')
-    expect(downloadFileName(track({ title: 'A/B: "C"', objectKey: 'broken' }))).toBe('Hu Yanbin - A_B_ _C_.flac')
+    expect(downloadFileName(track({ format: null, mime: 'audio/mp4' }))).toBe('Hu Yanbin - Moonlight.m4a')
+    expect(downloadFileName(track({ title: 'A/B: "C"', format: null, mime: 'audio/flac' }))).toBe('Hu Yanbin - A_B_ _C_.flac')
   })
 })
 

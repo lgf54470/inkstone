@@ -173,7 +173,7 @@ function remoteDeleteItem(
         confirmLabel: t('music.delete'),
         tone: 'danger',
       }).then((ok) => {
-        if (ok) void deleteWebdavFiles([track.objectKey])
+        if (ok && track.webdavPath) void deleteWebdavFiles([track.webdavPath])
       })
     }),
   }

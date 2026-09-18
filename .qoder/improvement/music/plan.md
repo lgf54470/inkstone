@@ -23,7 +23,7 @@
 - [x] M-09 SEC-9 导入 mime 过允许列表；`Content-Length` 仅 R2 分支设置
 - [x] M-10 SEC-10 `music-flac.ts`/`music-mp4.ts` 越界返回 null；`scanTrackMetadata`/工具栏调用点补 catch + toast
 - [x] M-11 SEC-11 `webdav-xml.ts` 实体解码 RangeError 防护 + parse 兜底
-- [ ] M-12 SEC-12+FEAT-4 `MusicTrack` 不再下发 `objectKey`（服务端下发 format/extension）；M3U 导出改文件名/签名 URL；封面 `http://` 走 sanitize
+- [x] M-12 SEC-12+FEAT-4 `MusicTrack` 不再下发 `objectKey`（服务端下发 format/extension）；M3U 导出改文件名/签名 URL；封面 `http://` 走 sanitize
 
 ## 第二批 · 死控件与静默丢失（UI/FEAT P0-P1，路线图②）
 
@@ -92,4 +92,5 @@
 | 2026-09-18 | M-08 音乐四类端点具名小时预算（SEC-7） | a0f0dcac | 新增 2 例先红后绿（lookup 60 次后曾无限 200→现 429 带 retryAfter 且 play 家族不受影响；write/play key 曾不记账→现各自 fails=1），music 3 套件 38 ✅，typecheck/size（constants.ts 501 行入 grandfather 基线，常量表豁免）/comments ✅ |
 | 2026-09-19 | M-09 导入 mime 过允许列表 + 代理不再伪造 Content-Length（SEC-9） | 692d6a61 | 新增 2 例先红后绿（audio/mpegurl 曾被原样入库→现按格式规范为 audio/mpeg；上游省略时曾用 size_bytes 造出 Content-Length:16 而正文仅 8 字节→现不再伪造），music 3 套件 40 ✅，typecheck/size/comments ✅ |
 | 2026-09-19 | M-10 FLAC/MP4 解析越界返 null + 扫描调用点 catch（SEC-10） | e3cc0b7e | 新增 5 例先红后绿（picture 块 4 字节/vendor 2 字节/mvhd 截断曾抛 RangeError→现返回 null/0；scan 抛错曾中断整轮→现跳该曲计 unreadable 并 toast），music 客户端 5 套件 38 ✅，typecheck/size/comments ✅ |
-| 2026-09-19 | M-11 multistatus 数字实体越界防护 + 逐块兜底（SEC-11） | 本次提交（hash 由下一次提交回填） | 新增 1 例先红后绿（&#99999999999; 曾致 parseMultistatus 抛 RangeError→现保留原文且正常实体照常解码），webdav 2 套件 20 ✅，typecheck/size/comments ✅；逐块 try 兜底为边界防御（守卫后当前无可触达抛点，已在注释说明） |
+| 2026-09-19 | M-11 multistatus 数字实体越界防护 + 逐块兜底（SEC-11） | 547a8302 | 新增 1 例先红后绿（&#99999999999; 曾致 parseMultistatus 抛 RangeError→现保留原文且正常实体照常解码），webdav 2 套件 20 ✅，typecheck/size/comments ✅；逐块 try 兜底为边界防御（守卫后当前无可触达抛点，已在注释说明） |
+| 2026-09-19 | M-12 曲目契约不下发内部对象键 + M3U 可播放 + 封面 https 升级（SEC-12+FEAT-4） | 本次提交（hash 由下一次提交回填） | 4 处契约断言先红后绿（objectKey 曾随库下发→现 undefined 并以 format/webdavPath 代替，webdav 删除走 webdavPath；http 封面曾原样回显→现读时升级 https；M3U 曾写内部键不可播放→现写文件名），新增 music-export.test.ts 锁定 M3U 逐行输出；全量 test:unit 209 文件 1667 例 ✅，typecheck/size/comments ✅ |

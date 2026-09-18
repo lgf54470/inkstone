@@ -1,21 +1,11 @@
 import type { MusicTrack } from '@shared/types'
 import { musicStreamUrl } from '../../../lib/api'
 import { saveBlob } from '../music-export'
+import { downloadFileName } from '../music-utils'
 import { toastMusic, toastMusicError } from '../music-feedback'
 import type { MusicDownloadTask, MusicGet, MusicSet, MusicTransferTarget } from './types'
 
 const DOWNLOAD_TIMEOUT_MS = 10 * 60_000
-const CONTENT_EXTENSIONS: Record<string, string> = {
-  'audio/mpeg': 'mp3',
-  'audio/mp3': 'mp3',
-  'audio/flac': 'flac',
-  'audio/x-flac': 'flac',
-  'audio/mp4': 'm4a',
-  'audio/aac': 'aac',
-  'audio/ogg': 'ogg',
-  'audio/wav': 'wav',
-  'audio/x-wav': 'wav',
-}
 
 // Downloads buffer the whole file so the browser can report real byte progress before saving.
 export async function downloadTracks(set: MusicSet, get: MusicGet, ids: string[]): Promise<void> {
@@ -69,18 +59,6 @@ export async function collectStream(
     if (totalBytes > 0) onProgress(Math.min(99, Math.round((received / totalBytes) * 100)))
   }
   return concatChunks(chunks, received)
-}
-
-export function downloadFileName(track: MusicTrack): string {
-  const base = [track.artist.trim(), track.title.trim()].filter(Boolean).join(' - ')
-  const safe = base.replace(/[\\/:*?"<>|]/g, '_').trim() || 'track'
-  return safe + extensionFor(track)
-}
-
-function extensionFor(track: MusicTrack): string {
-  const fromKey = /\.[a-z0-9]{1,5}$/i.exec(track.objectKey)?.[0]
-  if (fromKey) return fromKey.toLowerCase()
-  return '.' + (CONTENT_EXTENSIONS[track.mime] ?? 'mp3')
 }
 
 // A downloaded view can sit on a shared buffer, which the Blob constructor refuses.

@@ -1,5 +1,6 @@
 import type { MusicPlaylist, MusicPlaylistDetail, MusicPlaylistItem, MusicStats, MusicTag, MusicTrack } from '@shared/types'
 import { isCoverObjectKey } from './cover'
+import { resolveMusicFormat, sanitizeCoverUrl } from './keys'
 
 export interface MusicTrackRow {
   id: string
@@ -60,7 +61,10 @@ export function toTrack(row: MusicTrackRow, tagIds: string[]): MusicTrack {
     album: row.album,
     durationMs: row.duration_ms,
     source: row.source === 'webdav' ? 'webdav' : 'r2',
-    objectKey: row.object_key,
+    format: resolveMusicFormat(row.object_key, row.mime),
+    // WebDAV keys are the user's own remote paths, already listed in the browse UI;
+    // internal R2 storage keys must never reach the browser or a downloaded M3U.
+    webdavPath: row.source === 'webdav' ? row.object_key : null,
     mime: row.mime,
     sizeBytes: row.size_bytes,
     coverUrl: coverUrlForTrack(row.id, row.cover_url),
@@ -76,7 +80,10 @@ export function toTrack(row: MusicTrackRow, tagIds: string[]): MusicTrack {
 
 function coverUrlForTrack(trackId: string, stored: string | null): string | null {
   if (!stored) return null
-  if (stored.startsWith('http://') || stored.startsWith('https://') || stored.startsWith('data:')) return stored
+  const external = sanitizeCoverUrl(stored)
+  // An http cover would be blocked as mixed content on our https pages.
+  if (external?.startsWith('http://')) return 'https://' + external.slice('http://'.length)
+  if (external) return external
   return isCoverObjectKey(stored) ? `/api/music/tracks/${encodeURIComponent(trackId)}/cover` : null
 }
 

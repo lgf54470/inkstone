@@ -19,7 +19,7 @@ function tag(id: string, name: string, parentId: string | null): MusicTag {
 
 function track(id: string, tagIds: string[]): MusicTrack {
   return {
-    id, title: id, artist: '', album: '', durationMs: 1, source: 'r2', objectKey: '', mime: 'audio/mpeg',
+    id, title: id, artist: '', album: '', durationMs: 1, source: 'r2', format: null, webdavPath: null, mime: 'audio/mpeg',
     sizeBytes: 1, coverUrl: null, lyric: null, tagIds, isFavorite: false, isPinned: false, playCount: 0,
     createdAt: 1, updatedAt: 1,
   }

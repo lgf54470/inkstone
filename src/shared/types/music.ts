@@ -12,7 +12,8 @@ export interface MusicTrack {
   album: string
   durationMs: number
   source: MusicSource
-  objectKey: string
+  format: MusicFormat | null
+  webdavPath: string | null
   mime: string
   sizeBytes: number
   coverUrl: string | null
