@@ -220,7 +220,7 @@ function ListSubtasksExpanded({ subtasks }: { subtasks: KanbanSubtask[] }) {
         <div key={st.id} className='flex items-center gap-2 text-[length:var(--text-12)]'>
           <span
             className={`flex size-3.5 shrink-0 items-center justify-center rounded-[var(--r-xs)] border ${
-              st.completed ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-[var(--border-default)]'
+              st.completed ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-contrast)]' : 'border-[var(--border-default)]'
             }`}
           >
             {st.completed && <Check size={10} />}

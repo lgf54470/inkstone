@@ -37,7 +37,7 @@ function SubtaskItemRow({
           }}
           aria-label={subtask.title}
         >
-          {subtask.completed && <Check size={10} className='text-white' />}
+          {subtask.completed && <Check size={10} className='text-[var(--accent-contrast)]' />}
         </button>
         {subtask.icon && <KanbanIconBadge icon={subtask.icon} size={13} />}
         <span

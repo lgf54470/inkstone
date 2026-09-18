@@ -79,7 +79,7 @@ function TimelineChart({
             <span
               className={
                 isToday
-                  ? 'flex size-5 items-center justify-center rounded-full bg-[var(--danger)] text-white font-bold'
+                  ? 'flex size-5 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] font-bold'
                   : 'text-[var(--text-tertiary)]'
               }
             >

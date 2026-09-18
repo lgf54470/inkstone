@@ -129,7 +129,7 @@ function CalendarDayCellHeader({
       <span
         className={`text-[length:var(--text-12)] ${
           day.isToday
-            ? 'flex size-5 items-center justify-center rounded-full bg-[var(--accent)] font-bold text-white shadow-2xs'
+            ? 'flex size-5 items-center justify-center rounded-full bg-[var(--accent)] font-bold text-[var(--accent-contrast)] shadow-2xs'
             : day.isCurrentMonth
             ? 'font-medium text-[var(--text-secondary)]'
             : 'text-[var(--text-quaternary)]'

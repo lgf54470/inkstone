@@ -66,7 +66,7 @@ function OwnerAvatar({ name }: { name?: string }) {
   }
   const initials = name.slice(0, 2).toUpperCase()
   return (
-    <div className='flex size-6 items-center justify-center rounded-[var(--r-full)] bg-[var(--accent)] text-[length:var(--text-10)] font-bold text-white shadow-xs'>
+    <div className='flex size-6 items-center justify-center rounded-[var(--r-full)] bg-[var(--accent)] text-[length:var(--text-10)] font-bold text-[var(--accent-contrast)] shadow-xs'>
       {initials}
     </div>
   )

@@ -139,7 +139,7 @@ export function KanbanFilePreviewModal({ file, onClose }: KanbanFilePreviewModal
           <a
             href={file.url}
             download={file.name}
-            className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-white transition-opacity hover:opacity-90'
+            className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] transition-opacity hover:opacity-90'
           >
             <Download size={14} />
             <span>{t('preview.kanban_download_file')}</span>

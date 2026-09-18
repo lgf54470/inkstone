@@ -38,7 +38,7 @@ function ColorSwatches({
             className='relative flex size-6 items-center justify-center rounded-[var(--r-full)] transition-transform hover:scale-110'
             style={{ backgroundColor: `var(--kanban-tag-${c}-fg)` }}
           >
-            {isSelected && <Check size={12} className='text-white drop-shadow-[var(--drop-shadow-sm)]' />}
+            {isSelected && <Check size={12} className='text-[var(--accent-contrast)]' />}
           </button>
         )
       })}

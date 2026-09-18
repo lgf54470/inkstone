@@ -31,3 +31,16 @@ export function themeVars(theme, source) {
     return acc
   }, new Map())
 }
+
+// The accent is a choice the user makes, so text drawn on it has to hold for
+// every one the stylesheet offers, not just the default.
+export function accentNames(source) {
+  return [...new Set([...source.matchAll(/\[data-accent='([\w-]+)'\]/g)].map((match) => match[1]))]
+}
+
+export function accentVars(theme, accent, source) {
+  const selector = `:root[data-accent='${accent}'][data-theme='${theme}'] {`
+  if (!source.includes(selector)) throw new Error(`missing ${selector}`)
+  // Two attribute selectors beat the plain `:root` default that follows them.
+  return new Map([...themeVars(theme, source), ...declarations(source, selector)])
+}

@@ -133,7 +133,7 @@ function DatePickerWeekRow({ weekStart, locale }: { weekStart: number; locale: s
 
 function getDayButtonClass(isSelected: boolean, isToday: boolean, isCurrentMonth: boolean): string {
   if (isSelected) {
-    return 'bg-[var(--accent)] font-bold text-white shadow-xs'
+    return 'bg-[var(--accent)] font-bold text-[var(--accent-contrast)] shadow-xs'
   }
   if (isToday) {
     return 'border border-[var(--accent)] font-bold text-[var(--accent)] hover:bg-[var(--bg-hover)]'

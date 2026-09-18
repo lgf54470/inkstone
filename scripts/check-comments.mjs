@@ -837,6 +837,9 @@ const allowed = new Map([
     '// the theme block, then that theme\'s white-background override.',
     '// The same selector may appear in several blocks (`:root` is not one block),',
     '// and the cascade keeps whichever came last.',
+    '// The accent is a choice the user makes, so text drawn on it has to hold for',
+    '// every one the stylesheet offers, not just the default.',
+    '// Two attribute selectors beat the plain `:root` default that follows them.',
   ]],
   ['scripts/measure-longtask.mjs', [
     '// Best-effort probe: connection errors while the dev server boots are retried.',
@@ -4672,6 +4675,9 @@ const allowed = new Map([
   ]],
   ['tests/kanban-chart-tokens.test.ts', [
     '/**\n * The kanban chart used to keep a second, private palette: hex constants for the\n * axes, tooltips and slices, chosen by eye and never re-read when the theme or\n * accent changed. The board has one palette now, so nothing may paint a chart\n * colour that the token layer did not authorise — hence two checks: the chart\n * sources stay free of literal colours, and every token the chart asks the\n * document for actually exists in both themes (a missing one resolves to\n * nothing, and a canvas silently draws with whatever it last had).\n */',
+  ]],
+  ['tests/kanban-contrast-tokens.test.ts', [
+    '/**\n * The board paints text on filled shapes: today\'s date on the accent (and, in\n * the timeline and gantt headers, on `--danger`), a tick on the colour the user\n * picked, initials on the accent. Hardcoding white for those looked right in\n * the light theme and fell apart in the dark one, where every fill is a light\n * colour — so the rule the board has to keep is the one the rest of the app\n * already keeps: text on a fill uses that fill\'s own contrast token, and the\n * pair must clear AA for every accent a session can be switched to.\n */',
   ]],
   ['tests/kanban-hover-focus.test.ts', [
     '/**\n * Hover-only controls (`opacity-0` until the card/row is hovered) are invisible\n * while being keyboard-focused, which strands Tab focus on an unseen button.\n * Every such control must also reveal itself on `focus-visible`; this keeps the\n * next `opacity-0` affordance from shipping without it.\n */',
