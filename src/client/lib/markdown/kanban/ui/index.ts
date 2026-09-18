@@ -1,4 +1,5 @@
 export { KanbanRoot } from './kanban-root'
+export { KanbanRootBoundary } from './kanban-root-boundary'
 export { KanbanHeader } from './kanban-header'
 export { KanbanBoardView } from './kanban-board-view'
 export { KanbanCard } from './kanban-card'

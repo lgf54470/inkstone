@@ -4,7 +4,7 @@ import type { AppLocale } from '@shared/types'
 import { parseKanbanBody } from './body'
 import type { KanbanBlockEntry } from './entry'
 import type { KanbanData, KanbanWriter } from './types'
-import { KanbanRoot } from './ui'
+import { KanbanRoot, KanbanRootBoundary } from './ui'
 import {
   createKanbanCanvas,
   decorateKanbanControls,
@@ -143,11 +143,15 @@ function disposeEntry(entry: KanbanBlockEntry): void {
 function renderKanbanEntry(entry: KanbanBlockEntry, options: KanbanMountOptions): void {
   if (!entry.root || !entry.data) return
   entry.root.render(
-    createElement(KanbanRoot, {
-      initialData: entry.data,
-      onUpdateData: (next) => updateKanbanData(entry, () => next),
-      onToggleFullscreen: () => options.onOpenFullscreen?.(entry.host),
-    }),
+    createElement(
+      KanbanRootBoundary,
+      { source: entry.source },
+      createElement(KanbanRoot, {
+        initialData: entry.data,
+        onUpdateData: (next) => updateKanbanData(entry, () => next),
+        onToggleFullscreen: () => options.onOpenFullscreen?.(entry.host),
+      }),
+    ),
   )
 }
 

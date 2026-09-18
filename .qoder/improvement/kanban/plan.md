@@ -22,7 +22,7 @@
 - [x] K-09 ID `Date.now()` 碰撞 → 不可碰撞生成（review #23）
 - [x] K-10 头部进度条口径 → 传筛选后 items（review 共识#15）
 - [x] K-11 undo 快捷键作用域 → 绑定实例容器、焦点归属判定（review #7；`kanban-history.ts:47-69`）
-- [ ] K-12 KanbanRoot ErrorBoundary（review #8；`registry.ts:143-151`）
+- [x] K-12 KanbanRoot ErrorBoundary（review #8；`registry.ts:143-151`）
 - [ ] K-13 全屏单根化四件套（review #1；moveInto + is-fullscreen 类 + 高度契约 + 内联占位 + 透传；含 Ctrl+Z 单实例化）
 - [ ] K-14 outline 写回升级 JSON + parse 正则吞标题修复（review #2）
 - [ ] K-15 冲突写回保留 dirty + 「未保存 · 重试/放弃」（review #3）
@@ -71,4 +71,5 @@
 | 2026-09-18 | K-08 分组 id/label 双匹配 | 67feb0e6 | filter-sort.test.ts 新增 1 例 ✅（先红后绿：label 存值归 in_progress 组、乱值仍进 No Status），kanban 89 测试 ✅，全量 test:unit 212 文件 ✅，typecheck/size/comments ✅ |
 | 2026-09-18 | K-09 ID 防碰撞生成 | 70dffabc | 新增 id.test.ts 2/2 ✅（先红：模块不存在即失败；2000 连击无重复），9 处 Date.now 生成点全部接线，kanban 91 测试 ✅，全量 test:unit 213 文件 ✅，typecheck/size/comments ✅ |
 | 2026-09-18 | K-10 进度条改可见口径 | 451d8bfc | 新增 kanban-header.test.ts 2/2 ✅（先红：筛选态仍按全量算 50%），header 增 visibleItems 并由 root 传 viewData.items，kanban 93 测试 ✅，全量 test:unit 214 文件 ✅，typecheck/size/escape/comments ✅ |
-| 2026-09-18 | K-11 undo 快捷键绑实例容器 | 本次提交（hash 由下一次提交回填） | 新增 kanban-history.test.ts 3/3 ✅（先红 2：body 触发与他板隔离；修复后全绿），keydown 从 window 改绑 containerRef，root 容器 tabIndex=-1 承接空白点击焦点，kanban 96 测试 ✅，preview 套件 149 ✅，全量 test:unit 215 文件 ✅，typecheck/size/comments ✅ |
+| 2026-09-18 | K-11 undo 快捷键绑实例容器 | 73b05d10 | 新增 kanban-history.test.ts 3/3 ✅（先红 2：body 触发与他板隔离；修复后全绿），keydown 从 window 改绑 containerRef，root 容器 tabIndex=-1 承接空白点击焦点，kanban 96 测试 ✅，preview 套件 149 ✅，全量 test:unit 215 文件 ✅，typecheck/size/comments ✅ |
+| 2026-09-18 | K-12 实例 ErrorBoundary | 本次提交（hash 由下一次提交回填） | 新增 registry-error-boundary.test.ts 2/2 ✅（先红 1：注入抛错后无错误态；修复后显示源码+提示、健康板不受影响），registry 渲染统一包 KanbanRootBoundary，kanban 98 测试 ✅，全量 test:unit 216 文件 ✅，typecheck/size/escape/hardcoded/comments ✅ |

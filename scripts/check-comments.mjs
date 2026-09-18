@@ -2640,6 +2640,11 @@ const allowed = new Map([
     '// that actually owns the focused element: focus on the surrounding note or on a',
     '// second board must not undo this instance\'s history.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-root-boundary.tsx', [
+    '// Each kanban block is its own React root outside the host tree, so without a',
+    '// boundary one throwing board whites out just that card with no failure state.',
+    '// The fallback keeps the fenced source visible for recovery, like the parse-error state.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root-hooks.ts', [
     '// Board columns hand over their group key; it belongs to the view\'s groupBy',
     '// property, which is not necessarily `status`.',
