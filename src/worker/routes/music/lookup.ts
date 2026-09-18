@@ -11,6 +11,7 @@ const LOOKUP_ENDPOINT = 'https://itunes.apple.com/search'
 const LOOKUP_LIMIT = 5
 const LOOKUP_TIMEOUT_MS = 12_000
 const MAX_ARTWORK_BYTES = 2 * 1024 * 1024
+const ARTWORK_MIME_ALLOWLIST = new Set(['image/png', 'image/jpeg', 'image/webp'])
 
 export function registerMusicCoverLookupRoutes(routes: Hono<AppBindings>): void {
   routes.get('/cover-lookup', requireAuth, async (c) => {
@@ -22,7 +23,8 @@ export function registerMusicCoverLookupRoutes(routes: Hono<AppBindings>): void 
     if (!response.ok) throw ApiError.internal('Cover artwork is unavailable')
     const bytes = await response.arrayBuffer()
     if (!bytes.byteLength || bytes.byteLength > MAX_ARTWORK_BYTES) throw ApiError.internal('Cover artwork is unusable')
-    const mime = response.headers.get('content-type')?.split(';')[0] || 'image/jpeg'
+    const mime = response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? ''
+    if (!ARTWORK_MIME_ALLOWLIST.has(mime)) throw ApiError.internal('Cover artwork is unusable')
     return new Response(bytes, { headers: coverHeaders(mime) })
   })
 }

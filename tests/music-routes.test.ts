@@ -391,7 +391,7 @@ describe('music cover storage', () => {
 describe('music cover lookup (real D1)', () => {
   const ARTWORK = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4])
 
-  function stubCatalogue(results: unknown[], status = 200): string[] {
+  function stubCatalogue(results: unknown[], status = 200, artworkContentType = 'image/jpeg'): string[] {
     const calls: string[] = []
     vi.stubGlobal('fetch', (url: string) => {
       calls.push(String(url))
@@ -401,7 +401,7 @@ describe('music cover lookup (real D1)', () => {
       return Promise.resolve({
         ok: true,
         status: 200,
-        headers: { get: () => 'image/jpeg' },
+        headers: { get: () => artworkContentType },
         arrayBuffer: () => Promise.resolve(ARTWORK.buffer.slice(0)),
       })
     })
@@ -424,6 +424,16 @@ describe('music cover lookup (real D1)', () => {
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(ARTWORK)
     expect(calls[0]).toContain('term=Moonlight%20Hu%20Yanbin')
     expect(calls[1]).toBe('https://is1-ssl.mzstatic.com/a/600x600bb.jpg')
+  })
+
+  it('refuses to relay artwork served with a non-image content type', async () => {
+    await makeDb()
+    await seedUser(DB_ENV.env.DB as unknown as D1Shim)
+    const app = makeApp()
+    stubCatalogue([{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }], 200, 'text/html')
+    const res = await request(app, '/api/music/cover-lookup?title=Moonlight&artist=Hu%20Yanbin')
+    expect(res.status).toBe(500)
+    expect(res.headers.get('content-type')).not.toContain('text/html')
   })
 
   it('rejects a lookup without a title and reports missing matches', async () => {

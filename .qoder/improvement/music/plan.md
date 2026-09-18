@@ -82,4 +82,5 @@
 | --- | --- | --- | --- |
 | 2026-09-18 | BASE-0/BASE-1 worktree+计划登记 | be5e08cd | typecheck ✅，全量 test:unit exit 0 ✅ |
 | 2026-09-18 | M-01 流端点 Content-Type 白名单（SEC-1a） | 1700b4e3 | 新增 2 例先红后绿（text/html 回显证实），music 3 套件 27 ✅，pre-commit 全部门禁+增量测试 ✅ |
-| 2026-09-18 | M-02 nonce 盖章限定非 /api（SEC-1b） | 本次提交（hash 由下一次提交回填） | 新增 tests/security-headers.test.ts 3 ✅（/api 不盖章、/s 与 / 盖章一致）；中间件抽至 src/worker/middleware/security-headers.ts；全量 test:unit 207 文件 1645 ✅，typecheck/comments ✅ |
+| 2026-09-18 | M-02b cover-lookup 响应类型白名单（SEC-1c） | 本次提交（hash 由下一次提交回填） | 新增 1 例先红后绿（上游 text/html 回显证实→500 拒绝），music-routes 16 ✅，typecheck ✅ |
+| 2026-09-18 | M-02 nonce 盖章限定非 /api（SEC-1b） | 3053d51b | 新增 tests/security-headers.test.ts 3 ✅（/api 不盖章、/s 与 / 盖章一致）；中间件抽至 src/worker/middleware/security-headers.ts；全量 test:unit 207 文件 1645 ✅，typecheck/comments ✅ |
