@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Heart, ListMusic, Pin } from 'lucide-react'
+import { Heart, ListMusic, Pin, X } from 'lucide-react'
 import { Modal } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
@@ -38,7 +38,7 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
   }, [activeIndex, open])
 
   return (
-    <Modal open={open} onClose={onClose} width={IMMERSIVE_WIDTH} className='h-[86vh] p-0 overflow-hidden' bodyClassName='p-0 flex-1 min-h-0 flex'>
+    <Modal open={open} onClose={onClose} ariaLabel={t('music.immersive')} width={IMMERSIVE_WIDTH} className='h-[86vh] p-0 overflow-hidden' bodyClassName='p-0 flex-1 min-h-0 flex'>
       <div className='flex min-h-0 flex-1'>
         <ImmersiveLeft track={track} currentTimeMs={currentTimeMs} durationMs={durationMs} seek={seek} />
         <section className='flex min-w-0 flex-1 flex-col'>
@@ -46,6 +46,7 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
             <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>{t('music.lyrics')}</span>
             <span className='flex items-center gap-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
               <ListMusic size={12} />{t('music.queue_count', { value0: useMusic.getState().queue.length })}
+              <IconButton label={t('music.exit_immersive')} size='sm' onClick={onClose}><X size={15} /></IconButton>
             </span>
           </div>
           <div ref={scrollerRef} className='min-h-0 flex-1 overflow-y-auto px-6 py-4'>

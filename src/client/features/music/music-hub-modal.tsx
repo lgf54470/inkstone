@@ -36,6 +36,7 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
       <Modal
         open={open}
         onClose={onClose}
+        ariaLabel={t('music.hub_title')}
         width={HUB_WIDTH}
         className='h-[84vh] min-h-145 max-h-220 p-0 overflow-hidden flex flex-col'
         bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'
