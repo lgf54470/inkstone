@@ -34,7 +34,10 @@ export {
   markKanbanLoading,
   markKanbanReady,
   showKanbanError,
+  showKanbanSourceAll,
 } from './view'
+
+export { renderStaticKanbans } from './static'
 
 export {
   mountKanbans,

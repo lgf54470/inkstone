@@ -64,6 +64,8 @@ async function prepareStagedHtml(opts: {
     mindmap: 'live',
     // Whiteboards are mounted live, from the committed markup, by useExcalidrawBlocks.
     excalidraw: 'live',
+    // Boards too: useKanbanBlocks mounts them from the committed markup and writes edits back to the fence.
+    kanban: 'live',
     // The preview is where the lightbox lives, so this is the surface whose images are controls.
     zoomableImages: true,
     dark: theme === 'dark',

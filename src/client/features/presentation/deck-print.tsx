@@ -156,6 +156,8 @@ async function prepareDeckSheet(root: HTMLElement, dark: boolean, metrics: Stage
       mermaid: true,
       mindmap: 'snapshot',
       excalidraw: 'snapshot',
+      // A board cannot run on the sheet either; its cards print as a list.
+      kanban: 'snapshot',
       dark,
       codeBlockCollapseLines: 0,
       // The printed page is the design canvas, so a mind map on it is drawn for

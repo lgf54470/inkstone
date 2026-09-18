@@ -48,6 +48,7 @@ export const messages = {
 'preview.kanban_fullscreen': '全屏',
 'preview.kanban_loading': '正在加载看板…',
 'preview.kanban_render_failed': '看板渲染失败',
+'preview.kanban_snapshot_empty': '这个看板还没有卡片。',
 'preview.slides': '幻灯片',
 'preview.slides_exit_fullscreen': '退出全屏',
 'preview.slides_fullscreen': '全屏',

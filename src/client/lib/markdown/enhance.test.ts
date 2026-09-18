@@ -236,3 +236,52 @@ describe('chart rendering — tolerant config parsing', () => {
     }
   })
 })
+
+describe('kanban blocks — what each surface gets', () => {
+  const BOARD = {
+    title: 'Release plan',
+    activeViewId: 'view-board',
+    columns: [
+      { id: 'title', name: 'Title', type: 'title' },
+      { id: 'status', name: 'Status', type: 'select', options: [{ id: 'todo', label: 'To Do', color: 'gray' }] },
+    ],
+    views: [{ id: 'view-board', name: 'Board', type: 'board', groupBy: 'status' }],
+    items: [{ id: 'i1', title: 'Write the changelog', properties: { status: 'todo' } }],
+  }
+
+  function boardRoot(): HTMLElement {
+    const root = document.createElement('div')
+    root.innerHTML = `<div class="kanban-block loading" data-kanban="${encodeDataValue(JSON.stringify(BOARD))}" data-kanban-index="0" aria-busy="true"><div class="kanban-block-head"><button type="button" data-kanban-fullscreen></button></div><div class="kanban-block-placeholder" data-kanban-placeholder>Loading kanban...</div></div>`
+    return root
+  }
+
+  it('shows the fence where the surface declares nothing about boards', async () => {
+    const root = boardRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false })
+
+    const node = root.querySelector<HTMLElement>('[data-kanban]')!
+    expect(node.getAttribute('aria-busy')).toBe('false')
+    expect(node.querySelector('code')?.textContent).toContain('Write the changelog')
+  })
+
+  it('leaves the block to its host when the surface mounts boards itself', async () => {
+    const root = boardRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, kanban: 'live' })
+
+    const node = root.querySelector<HTMLElement>('[data-kanban]')!
+    expect(node.classList.contains('loading')).toBe(true)
+    expect(node.getAttribute('aria-busy')).toBe('true')
+    expect(node.querySelector('[data-kanban-fullscreen]')).not.toBeNull()
+    expect(node.querySelector('code')).toBeNull()
+  })
+
+  it('draws the cards as a still list when the markup is serialized or printed', async () => {
+    const root = boardRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, kanban: 'snapshot' })
+
+    const node = root.querySelector<HTMLElement>('[data-kanban]')!
+    expect(node.querySelector('[data-kanban-snapshot]')?.textContent).toContain('Write the changelog')
+    expect(node.getAttribute('aria-busy')).toBe('false')
+    expect(node.querySelector('[data-kanban-fullscreen]')).toBeNull()
+  })
+})

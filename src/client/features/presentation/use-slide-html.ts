@@ -43,6 +43,8 @@ export function useSlideHtml(options: {
         mermaid: preview.mermaid,
         mindmap: 'snapshot',
         excalidraw: 'snapshot',
+        // The staged markup is cached and re-serialized into a page, so a board travels as its cards.
+        kanban: 'snapshot',
         dark,
         codeBlockCollapseLines: 0,
         // A mind map is drawn for a box, not for wherever the block happens to sit:

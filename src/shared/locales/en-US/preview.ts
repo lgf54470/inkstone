@@ -38,6 +38,7 @@ export const messages = {
 'preview.kanban_fullscreen': 'Full screen',
 'preview.kanban_loading': 'Loading kanban...',
 'preview.kanban_render_failed': 'Kanban failed to render',
+'preview.kanban_snapshot_empty': 'This board has no cards.',
 'preview.kanban_source_moved': 'The kanban moved in the note; reopen the note to keep editing',
 'preview.kanban_unsaved': 'Unsaved',
 'preview.kanban_discard_changes': 'Discard changes',

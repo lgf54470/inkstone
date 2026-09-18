@@ -1091,6 +1091,7 @@ const allowed = new Map([
     '// the map itself is edited, so this surface draws the still image the share',
     '// page draws rather than mounting a second editable map inside the editor.',
     '// The same reason holds for a whiteboard: the block in the pane is a picture.',
+    '// A board is no different: the pane shows its cards as a list while the fence stays the source of truth.',
     '// Collapsing is a control, and a click anywhere in the block drops the caret',
     '// into the source instead, so the block keeps its code unfolded.',
     '// The chart renderer only checks that the node is inside its root, so a chart',
@@ -1404,6 +1405,7 @@ const allowed = new Map([
     '// chart as a still — a picture of a canvas at whatever size that canvas had — so the sheet draws',
     '// live charts on its own canvases first, through the same enhancement the editor preview runs. The',
     '// webfonts have to be laid out too, or every page reflows while it is being drawn.',
+    '// A board cannot run on the sheet either; its cards print as a list.',
     '// The printed page is the design canvas, so a mind map on it is drawn for',
     '// the same content box the show measured it in.',
     '// Best-effort: a page whose charts or fonts did not settle still exports with the still picture',
@@ -1774,8 +1776,13 @@ const allowed = new Map([
     '// the slide list — and the idle preflight pass — all read the same prepared html per',
     '// content fingerprint, theme and slide. A cache hit is left alone: re-enhancing an',
     '// already prepared slide is what makes diagrams flash back to their placeholders.',
+    '// The staged markup is cached and re-serialized into a page, so a board travels as its cards.',
     '// A mind map is drawn for a box, not for wherever the block happens to sit:',
     '// the enhancement runs off-DOM, where nothing has a size to measure.',
+  ]],
+  ['src/client/features/preview/card-content.ts', [
+    '// A board left out of this check would sit at "Loading kanban…" inside the card forever.',
+    '// The card is a reader\'s surface, so a board travels as its list of cards.',
   ]],
   ['src/client/features/preview/excalidraw-fullscreen.test.ts', [
     '/** jsdom has no ResizeObserver, which the registry uses to re-measure a moved canvas. */',
@@ -1970,6 +1977,7 @@ const allowed = new Map([
   ['src/client/features/preview/use-preview.ts', [
     '// Mind maps are mounted live, from the committed markup, by useMindmapBlocks.',
     '// Whiteboards are mounted live, from the committed markup, by useExcalidrawBlocks.',
+    '// Boards too: useKanbanBlocks mounts them from the committed markup and writes edits back to the fence.',
     '// The preview is where the lightbox lives, so this is the surface whose images are controls.',
     '// One scope per preview instance: two panes showing the same note must not',
     '// claim each other\'s map or board instances.',
@@ -2299,6 +2307,7 @@ const allowed = new Map([
     '// shows the same placeholder as the preview instead of leaking image URLs.',
     '// The exported document is standalone, so a map travels as a drawn image.',
     '// The same for a whiteboard: a board cannot draw itself inside a document.',
+    '// And for a kanban, whose cards travel as the list the fence describes.',
   ]],
   ['src/client/lib/export-palette.test.ts', [
     '// Both directions of the export palette contract: every color the rendered',
@@ -2404,6 +2413,7 @@ const allowed = new Map([
   ['src/client/lib/markdown/enhance/index.ts', [
     '/**\n   * How this surface treats ```mindmap blocks. `live` means the caller mounts\n   * them itself (the preview pane); `snapshot` draws a still image here, for\n   * surfaces whose markup gets serialized or printed; omitted means the block\n   * shows its source, which is what a surface that knows nothing about mind maps\n   * should look like.\n   */',
     '/**\n   * How this surface treats ```excalidraw blocks, with the same three answers a mind\n   * map gets: `live` where the caller mounts the boards itself, `snapshot` where the\n   * markup gets serialized or printed, and omitted where the block shows its scene.\n   */',
+    '/**\n   * How this surface treats ```kanban blocks. A board is a React root that needs a host to\n   * write its edits back to, so only the preview pane runs one: `live` means the caller mounts\n   * the boards itself, `snapshot` draws the cards as a still list for markup that gets\n   * serialized or printed, and omitted leaves the block showing its fence.\n   */',
     '/**\n   * The box a `snapshot` mind map is drawn and fitted for. Surfaces that size\n   * their blocks themselves (a note, a share page) leave it out; a slide passes\n   * its content area, because a map drawn at the wrong size is a cropped one.\n   */',
     '/**\n   * Whether a prose image is a control that opens the lightbox. Surfaces that print or\n   * serialize their markup (export, share, slides) leave it off: a button there would be\n   * a control nobody can press once the markup is a document.\n   */',
     '// Pre-warm is best-effort; the on-demand loader retries when a diagram renders.',
@@ -2679,6 +2689,13 @@ const allowed = new Map([
     '// A forced flush is where a conflict first surfaces outside the debounce',
     '// timer, so the header badge has to be refreshed from here too.',
   ]],
+  ['src/client/lib/markdown/kanban/static.test.ts', [
+    '/**\n * A board on a surface that cannot run one: an exported document, a shared note, a slide, the\n * editor\'s live preview. Those channels used to leave the block at "Loading kanban…" with\n * `aria-busy` up forever — the fence had been rendered, but nothing would ever mount it. The\n * contract asserted here is the one every rich block in this repo already keeps: a still\n * rendering when the surface declares one, the source when it declares nothing, and never a\n * promise that is never kept.\n */',
+  ]],
+  ['src/client/lib/markdown/kanban/static.ts', [
+    '/**\n * A board as a still list, for every surface that serializes or prints its markup: an exported\n * document, a shared note, a slide, a link hover card, the editor\'s live preview. Those channels\n * cannot host a live board — a React root there would outlive the page it was drawn for, and every\n * control on it would be a button nobody can press — so the cards travel as the list the fence\n * describes. Grouping follows the board\'s own group column; the view\'s filters are deliberately not\n * applied, because a still has no control that could tell the reader it is looking at a subset.\n */',
+    '/** Draws every kanban block in `root` as a still list instead of a board that never arrives. */',
+  ]],
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
   ]],
@@ -2803,6 +2820,8 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/view.ts', [
     '// While the live canvas sits in the full screen overlay, the inline placeholder',
     '// shows this stand-in so the block keeps its height and does not collapse.',
+    '/**\n * Take out the controls that answer only to a mounted board. The preview pane binds both of\n * them (features/preview/preview-interactions.ts) and asks the live instance; everywhere else\n * they are buttons that look pressable and do nothing.\n */',
+    '/**\n * The answer for a surface that will never mount the board: the fence body it was\n * rendered from, with the controls that need a live instance taken out. Without it\n * such a block sits at "Loading kanban…" forever, which is a promise the surface\n * cannot keep.\n */',
   ]],
   ['src/client/lib/markdown/kanban/write.test.ts', [
     '/**\n * The outline body cannot carry subtasks, files, icons, descriptions, custom\n * properties, views or even the board title — every one of those is editable in\n * the UI, so persisting an outline fence back as outline silently drops the\n * edit. The first UI write therefore promotes the fence to full-fidelity JSON.\n */',
@@ -4724,6 +4743,9 @@ const allowed = new Map([
   ['tests/kanban-orphan-reclaim.test.ts', [
     '// Another account naming the key cannot read it either: /api/kanban/file checks the',
     '// stored owner, so honouring that reference would only pile up bytes nobody can serve.',
+  ]],
+  ['tests/kanban-render-channel.test.ts', [
+    '/**\n * Every surface that enhances markdown has to say what it does with a ```kanban fence.\n *\n * A board is a React root, and a root needs a host that mounts it and a fence to write\n * back to. The preview pane has both; a share page, an exported document, a slide, a link\n * hover card and the editor\'s live preview have neither, and for as long as `enhancePreview`\n * knew nothing about boards those surfaces sat at "Loading kanban…" with `aria-busy` up\n * forever (review #21). The option still defaults to "show the source", so a new surface is\n * never broken — but a new surface that forgot to answer is a board the reader cannot read,\n * and that is what this scan catches: each caller has to name its channel.\n */',
   ]],
   ['tests/kanban-tag-contrast.test.ts', [
     '/**\n * Kanban labels are the one palette the app does not derive from the accent: the\n * user picks a colour per option, so it has to work on every surface the board\n * paints them on and in both themes. That also means nothing else guards it —\n * `scripts/check-contrast.mjs` measures what the running app paints, and this\n * palette is only painted once a board exists.\n *\n * So the gate reads the declarations instead. A chip is a translucent tint of\n * the label colour over whatever surface it lands on, so the pair that has to\n * clear 4.5:1 is (label colour, tint composited on that surface) — judged over\n * every solid surface of the theme, because the same chip appears on the\n * sunken board, the raised card and the overlay dialog.\n */',

@@ -128,10 +128,13 @@ async function renderCardHtml(content: string, args: LoadCardArgs): Promise<{ ht
   if (nextHtml === undefined) {
     const staging = document.createElement('div')
     staging.innerHTML = renderMarkdown(truncatedContent, { externalImages }).html
-    if (staging.querySelector('pre code') || staging.querySelector('[data-math]') || staging.querySelector('[data-mermaid]') || staging.querySelector('[data-mindmap]')) {
+    // A board left out of this check would sit at "Loading kanban…" inside the card forever.
+    if (staging.querySelector('pre code') || staging.querySelector('[data-math]') || staging.querySelector('[data-mermaid]') || staging.querySelector('[data-mindmap]') || staging.querySelector('[data-kanban]')) {
       await enhancePreview(staging, {
         math: args.previewMath,
         mermaid: false,
+        // The card is a reader's surface, so a board travels as its list of cards.
+        kanban: 'snapshot',
         dark: args.dark,
         codeBlockCollapseLines: 0,
       })

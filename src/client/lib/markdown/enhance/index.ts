@@ -11,6 +11,7 @@ import { renderChartJs } from './chart'
 import { getLocale } from '../../i18n'
 import { renderStaticMindmaps, showMindmapSourceAll, type MindmapBox } from '../mindmap'
 import { renderStaticExcalidraws, showExcalidrawSourceAll } from '../excalidraw'
+import { renderStaticKanbans, showKanbanSourceAll } from '../kanban'
 
 interface EnhanceOptions {
   math: boolean
@@ -31,6 +32,13 @@ interface EnhanceOptions {
    * markup gets serialized or printed, and omitted where the block shows its scene.
    */
   excalidraw?: 'live' | 'snapshot'
+  /**
+   * How this surface treats ```kanban blocks. A board is a React root that needs a host to
+   * write its edits back to, so only the preview pane runs one: `live` means the caller mounts
+   * the boards itself, `snapshot` draws the cards as a still list for markup that gets
+   * serialized or printed, and omitted leaves the block showing its fence.
+   */
+  kanban?: 'live' | 'snapshot'
   /**
    * The box a `snapshot` mind map is drawn and fitted for. Surfaces that size
    * their blocks themselves (a note, a share page) leave it out; a slide passes
@@ -61,6 +69,10 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
     showMindmapSourceAll(root)
   if (!options.excalidraw)
     showExcalidrawSourceAll(root)
+  if (options.kanban === 'snapshot')
+    renderStaticKanbans(root)
+  else if (!options.kanban)
+    showKanbanSourceAll(root)
   if (!options.math)
     showMathSource(root)
   await Promise.allSettled([
