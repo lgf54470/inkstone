@@ -1,4 +1,4 @@
-import { act, createElement } from 'react'
+import { act, createElement, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../../test-render'
 import { useKanbanBoardDndState } from './kanban-board-dnd'
@@ -134,6 +134,54 @@ describe('kanban board drop trust check for internal drags', () => {
       expect(onMoveItem).toHaveBeenCalledWith('real-card', 'todo', { itemId: 'real-card', position: 'before' })
     } finally {
       unmount()
+      board.cleanup()
+    }
+  })
+})
+
+describe('useKanbanBoardDndState handler stability', () => {
+  it('keeps every handler identity across re-renders even when the move callback changes', () => {
+    const snapshots: ReturnType<typeof useKanbanBoardDndState>[] = []
+    function Probe() {
+      const [tick, setTick] = useState(0)
+      // a fresh arrow each render, like an unmemoized parent prop
+      snapshots.push(useKanbanBoardDndState(((_id: string, _group: string, _pivot?: KanbanMovePivot) => {})))
+      if (tick < 3) setTick((n) => n + 1)
+      return null
+    }
+    const rendered = renderElement(createElement(Probe))
+    rendered.unmount()
+    expect(snapshots.length).toBeGreaterThan(1)
+    const first = snapshots[0]!
+    for (const snap of snapshots.slice(1)) {
+      expect(snap.handleCardDragStart).toBe(first.handleCardDragStart)
+      expect(snap.handleColumnDragStart).toBe(first.handleColumnDragStart)
+      expect(snap.handleCardDragOver).toBe(first.handleCardDragOver)
+      expect(snap.handleCardDrop).toBe(first.handleCardDrop)
+      expect(snap.handleColumnDrop).toBe(first.handleColumnDrop)
+      expect(snap.handleDragEnd).toBe(first.handleDragEnd)
+    }
+  })
+
+  it('still routes a drop to the move callback from the latest render', () => {
+    const board = boardDom(['real-card'])
+    const moves: string[][] = []
+    const holder: { api: ReturnType<typeof useKanbanBoardDndState> | null } = { api: null }
+    function Probe() {
+      const [tick, setTick] = useState(0)
+      holder.api = useKanbanBoardDndState((itemId: string) => { moves.push([itemId, String(tick)]) })
+      if (tick < 2) setTick((n) => n + 1)
+      return null
+    }
+    const rendered = renderElement(createElement(Probe))
+    try {
+      const payload = JSON.stringify({ type: 'card', itemId: 'real-card', sourceGroupKey: 'todo' })
+      act(() => {
+        holder.api!.handleColumnDrop(fakeDragEvent(board.board, { 'application/json': payload }), 'doing')
+      })
+      expect(moves).toEqual([['real-card', '2']])
+    } finally {
+      rendered.unmount()
       board.cleanup()
     }
   })

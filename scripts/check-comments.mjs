@@ -2652,13 +2652,23 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-board-dnd.test.ts', [
+    '// a fresh arrow each render, like an unmemoized parent prop',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-board-dnd.ts', [
     '// parseKanbanDragData falls back to text/plain, so a card id can arrive from an',
     '// external drop. The in-flight internal drag (draggedItem) is trusted directly; a',
     '// payload id only moves a card after a [data-item-id] element for it is found in',
     '// the same [data-kanban-board], so dropped text or another board\'s id is a no-op.',
+    '// Drag-start / drag-over handlers only need the stable state setters, so they',
+    '// keep a stable identity for the whole drag and memoized columns/cards do not',
+    '// re-render just because a drag frame passed by.',
+    '// Drop handlers read the in-flight drag state and the move callbacks at call',
+    '// time through this ref, so their identity survives re-renders while the',
+    '// drop still routes to the latest onMoveItem.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-convert-subtask.test.ts', [
+    '// mirrors useKanbanHistory: functional updaters resolve against the latest data',
     '// the detail modal portals onto document.body, so query the whole document',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.tsx', [
@@ -2677,12 +2687,22 @@ const allowed = new Map([
     '// that actually owns the focused element: focus on the surrounding note or on a',
     '// second board must not undo this instance\'s history.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-manual-move.test.ts', [
+    '// the app passes a freshly built filterSort object every render',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-manual-move.ts', [
+    '// Identity tracks `moveItem` only: sorts are read at call time through the',
+    '// ref, and `setSorts` is a stable state setter, so a stable moveItem yields',
+    '// a stable handler for the whole drag.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root-boundary.tsx', [
     '// Each kanban block is its own React root outside the host tree, so without a',
     '// boundary one throwing board whites out just that card with no failure state.',
     '// The fallback keeps the fenced source visible for recovery, like the parse-error state.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root-hooks.ts', [
+    '// Keeps `data`: the stripped parent shown in the detail panel must be the',
+    '// same object inserted into the committed items array.',
     '// Board columns hand over their group key; it belongs to the view\'s groupBy',
     '// property, which is not necessarily `status`.',
   ]],

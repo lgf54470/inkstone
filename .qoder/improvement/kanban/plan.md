@@ -38,7 +38,7 @@
 
 ## 第二批 · 持久化与性能
 
-- [ ] K1-01 `commitData` 函数式更新去 `state.data` 依赖 + 回调稳定化（review #13）
+- [x] K1-01 `commitData` 函数式更新去 `state.data` 依赖 + 回调稳定化（review #13）
 - [ ] K1-02 dragover 同 cardId+position bail（review #13）
 - [ ] K1-03 视图状态按 viewId 持久化 + 7 死字段接线或删除（review #19）
 - [ ] K1-04 新建分组/批量泛化到 `activeView.groupBy`（review #20b）
@@ -84,4 +84,5 @@
 | 2026-09-18 | K-21 排序与拖拽冲突明确反馈 | e318400c | 新增 kanban-manual-move.ts + kanban-manual-move.test.ts 2 例（先红后绿）：makeMoveItemClearingSorts 在 sorts 生效时拖拽落卡即清空排序并 toast（preview.kanban_sort_cleared_for_drag 双语键），手动顺序立即可见，不再「数据变了显示没变」；无排序时静默不提示。useKanbanRootState 经 useMoveItemClearingSorts 接线替换 items.handleMoveItem（root-hooks 因 500 行/50 行上限拆出接线 hook）。全量 test:unit 222 文件 1718 测试 ✅，typecheck/11 项静态门禁 ✅ |
 | 2026-09-18 | K-22 详情标题草稿提交 | 42fcdf0e | kanban-item-detail.test.ts 新增 3 例（先红后绿）：DetailHeader 标题从每键 onUpdate（每次击键产生一条历史/写回）改为本地草稿——Enter 或失焦（focusout）提交一次、Escape 还原为上次提交值、切换详情目标（itemId 变化）时渲染中重置草稿；input 带 data-owns-escape 沿用既有豁免约定，编辑中按 Escape 不误关 Modal。review #17 其余项（MetricCards 栅格、description 限长、history 合并窗口）不在本项范围。全量 test:unit 222 文件 1721 测试 ✅，typecheck/11 项静态门禁 ✅ |
 | 2026-09-18 | K-23 hover-only 空白行与焦点可见 | ad1ac1b9 | 新增 kanban-card.test.ts 4 例（先红后绿）+ tests/kanban-hover-focus.test.ts 源码扫描 1 例：卡片无标签时整行 hover-only 头部（选择框/加标签/详情钮）不再占位——KanbanCard 按 cardSize 内边距把该行绝对定位叠加到卡片顶部（review 截图「卡片顶部空白行」根因），GalleryTagsHeader 同型同修（根节点补 relative，无标签行叠加到封面左上）；有标签时保持常规流。10 处 opacity-0 悬停控件（卡头×4、gallery、附件删除、日历新建、子任务×2、标题铅笔）全部补 focus-visible:opacity-100，Tab 聚焦不再落在隐形按钮上；扫描测试守住该目录后续新增。全量 test:unit 224 文件 1726 测试 ✅，typecheck/11 项静态门禁 ✅ |
-| 2026-09-18 | K-24 view-tabs timeline/gantt 图标区分 | 本次提交（hash 由下一次提交回填） | 新增 kanban-view-tabs.test.ts 1 例（先红后绿）：timeline 与 gantt 两个视图页签原本共用 SlidersHorizontal，用户无法从图标区分两种时间类视图；改为 Timeline 与 ChartGantt 两个语义图标（lucide 1.28 既有导出），测试断言两页签 svg 不同且 gantt 图标带 gantt 语义类。review #29 的 tablist 方向键/aria-controls 与其余图标可访问名称不在本项（K-24 只覆盖图标区分局部）。全量 test:unit 225 文件 1727 测试 ✅，typecheck/11 项静态门禁 ✅ |
+| 2026-09-18 | K-24 view-tabs timeline/gantt 图标区分 | 4c9bf705 | 新增 kanban-view-tabs.test.ts 1 例（先红后绿）：timeline 与 gantt 两个视图页签原本共用 SlidersHorizontal，用户无法从图标区分两种时间类视图；改为 Timeline 与 ChartGantt 两个语义图标（lucide 1.28 既有导出），测试断言两页签 svg 不同且 gantt 图标带 gantt 语义类。review #29 的 tablist 方向键/aria-controls 与其余图标可访问名称不在本项（K-24 只覆盖图标区分局部）。全量 test:unit 225 文件 1727 测试 ✅，typecheck/11 项静态门禁 ✅ |
+| 2026-09-18 | K1-01 commitData 稳定化与回调去 data 依赖 | 本次提交（hash 由下一次提交回填） | kanban-history.test.ts 新增 3 例（先红后绿）：commitData 用 dataRef/onUpdateRef 改 useCallback([])——跨 commit 身份不变、函数式 updater 始终对最新数据求值、解析结果照常转发 onUpdateData。kanban-root-hooks.ts 把移动/改题/改卡/删卡/列四操作/批量改状态/批量删除/复制共 11 个回调改函数式 commit 去掉 data 依赖（useKanbanSelection/useKanbanColumnOperations/useKanbanItemMutations 签名随之收窄）；Add 系与 handleConvertSubtaskToItem 保留 data 依赖并注明原因（新条目/降级父项身份要同步交给 setDetailItem）。kanban-board-dnd.ts 六个 handler 改 useCallback+drag 状态/回调 ref，drop 恒路由到最新 onMoveItem（新增 2 例断言身份稳定与最新路由）；useMoveItemClearingSorts 改经 sortsRef 调用期读取排序，memo 只跟 moveItem（新增 1 例断言跨渲染身份稳定）。review #13 的 dragover 同值 bail 属 K1-02。全量 test:unit 225 文件 1733 测试 ✅，typecheck/11 项静态门禁 ✅ |

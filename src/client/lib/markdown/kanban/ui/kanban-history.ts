@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useReducer, type RefObject } from 'react'
+import { useCallback, useEffect, useReducer, useRef, type RefObject } from 'react'
 import type { KanbanData } from '../types'
+
+export type CommitKanbanData = (next: KanbanData | ((prev: KanbanData) => KanbanData)) => void
 
 const MAX_HISTORY_STEPS = 30
 
@@ -89,28 +91,33 @@ export function useKanbanHistory(
     future: [],
   })
 
-  const commitData = useCallback(
-    (nextOrUpdater: KanbanData | ((prev: KanbanData) => KanbanData)) => {
-      const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(state.data) : nextOrUpdater
+  const dataRef = useRef(state.data)
+  dataRef.current = state.data
+  const onUpdateRef = useRef(onUpdateData)
+  onUpdateRef.current = onUpdateData
+
+  const commitData = useCallback<CommitKanbanData>(
+    (nextOrUpdater) => {
+      const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(dataRef.current) : nextOrUpdater
       dispatch({ type: 'commit', next })
-      onUpdateData(next)
+      onUpdateRef.current(next)
     },
-    [state.data, onUpdateData],
+    [],
   )
 
   const undo = useCallback(() => {
     if (state.past.length === 0) return
     const prev = state.past[state.past.length - 1]
     dispatch({ type: 'undo' })
-    onUpdateData(prev)
-  }, [state.past, onUpdateData])
+    onUpdateRef.current(prev)
+  }, [state.past])
 
   const redo = useCallback(() => {
     if (state.future.length === 0) return
     const next = state.future[0]
     dispatch({ type: 'redo' })
-    onUpdateData(next)
-  }, [state.future, onUpdateData])
+    onUpdateRef.current(next)
+  }, [state.future])
 
   useHistoryKeyboardShortcuts(undo, redo, containerRef)
 

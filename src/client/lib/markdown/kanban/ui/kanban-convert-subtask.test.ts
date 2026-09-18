@@ -51,7 +51,11 @@ function renderMutationsHook(data: KanbanData, detailItem: KanbanItem | null): {
   function Probe() {
     api = useKanbanItemLifecycle(
       data,
-      (next) => { commits.push(next) },
+      // mirrors useKanbanHistory: functional updaters resolve against the latest data
+      (nextOrUpdater) => {
+        const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(commits.at(-1) ?? data) : nextOrUpdater
+        commits.push(next)
+      },
       detailItem,
       setDetailItem,
       () => {},

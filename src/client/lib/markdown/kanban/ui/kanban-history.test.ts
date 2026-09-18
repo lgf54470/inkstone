@@ -89,3 +89,59 @@ describe('useKanbanHistory keyboard scope across boards', () => {
     }
   })
 })
+
+function StabilityProbe({ holder, onUpdate }: { holder: { api: HistoryApi | null }; onUpdate: (next: KanbanData) => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  holder.api = useKanbanHistory(makeData('s1'), onUpdate, ref)
+  return createElement('div', { ref })
+}
+
+function renderStabilityProbe(onUpdate = vi.fn()) {
+  const holder = { api: null as HistoryApi | null }
+  const rendered = renderElement(createElement(StabilityProbe, { holder, onUpdate }))
+  return { holder, rendered, onUpdate }
+}
+
+describe('useKanbanHistory commitData stability', () => {
+  it('keeps the same commitData identity across commits so memoized children stay stable', () => {
+    const { holder, rendered } = renderStabilityProbe()
+    try {
+      const commit = holder.api!.commitData
+      act(() => {
+        commit(makeData('s2'))
+      })
+      expect(holder.api!.commitData).toBe(commit)
+    } finally {
+      rendered.unmount()
+    }
+  })
+
+  it('resolves functional updaters against the newest data even from a captured commitData', () => {
+    const { holder, rendered } = renderStabilityProbe()
+    try {
+      const commit = holder.api!.commitData
+      act(() => {
+        commit((prev) => makeData(`${prev.title}+`))
+      })
+      act(() => {
+        commit((prev) => makeData(`${prev.title}+`))
+      })
+      expect(holder.api!.data.title).toBe('s1++')
+    } finally {
+      rendered.unmount()
+    }
+  })
+
+  it('forwards each resolved commit to onUpdateData', () => {
+    const { holder, rendered, onUpdate } = renderStabilityProbe()
+    try {
+      act(() => {
+        holder.api!.commitData((prev) => makeData(`${prev.title}+`))
+      })
+      expect(onUpdate).toHaveBeenCalledTimes(1)
+      expect((onUpdate.mock.calls[0]![0] as KanbanData).title).toBe('s1+')
+    } finally {
+      rendered.unmount()
+    }
+  })
+})

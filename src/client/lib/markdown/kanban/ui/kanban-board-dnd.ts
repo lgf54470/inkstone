@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { parseKanbanDragData } from '../dnd'
 import type { KanbanDragPayload, KanbanMovePivot } from '../dnd'
 import type { groupKanbanItems } from '../filter-sort'
@@ -80,6 +80,32 @@ function processColumnDrop(
   }
 }
 
+// Drag-start / drag-over handlers only need the stable state setters, so they
+// keep a stable identity for the whole drag and memoized columns/cards do not
+// re-render just because a drag frame passed by.
+function useDndStartHandlers(
+  setDraggedItem: (next: DragItemState) => void,
+  setCardDropTarget: (next: CardDropTarget | null) => void,
+) {
+  const handleCardDragStart = useCallback((e: React.DragEvent, id: string, sourceGroupKey: string) => {
+    initDragData(e, { type: 'card', itemId: id, sourceGroupKey }, id)
+    setDraggedItem({ type: 'card', id, sourceGroupKey })
+  }, [setDraggedItem])
+
+  const handleColumnDragStart = useCallback((e: React.DragEvent, groupKey: string) => {
+    initDragData(e, { type: 'column', groupKey }, groupKey)
+    setDraggedItem({ type: 'column', groupKey })
+  }, [setDraggedItem])
+
+  const handleCardDragOver = useCallback((e: React.DragEvent, targetCardId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setCardDropTarget(computeDropPosition(e, targetCardId))
+  }, [setCardDropTarget])
+
+  return { handleCardDragStart, handleColumnDragStart, handleCardDragOver }
+}
+
 export function useKanbanBoardDndState(
   onMoveItem: MoveCardFn,
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void,
@@ -88,41 +114,49 @@ export function useKanbanBoardDndState(
   const [dragOverGroupKey, setDragOverGroupKey] = useState<string | null>(null)
   const [cardDropTarget, setCardDropTarget] = useState<CardDropTarget | null>(null)
 
-  const handleDragEnd = () => {
+  // Drop handlers read the in-flight drag state and the move callbacks at call
+  // time through this ref, so their identity survives re-renders while the
+  // drop still routes to the latest onMoveItem.
+  const dragRef = useRef({ draggedItem, cardDropTarget, onMoveItem, onReorderColumns })
+  dragRef.current = { draggedItem, cardDropTarget, onMoveItem, onReorderColumns }
+
+  const handleDragEnd = useCallback(() => {
     setDraggedItem(null)
     setDragOverGroupKey(null)
     setCardDropTarget(null)
-  }
+  }, [])
+
+  const startHandlers = useDndStartHandlers(setDraggedItem, setCardDropTarget)
+
+  const handleCardDrop = useCallback(
+    (e: React.DragEvent, targetGroup: KanbanGroupType, targetCardId: string) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const { draggedItem: dragged, cardDropTarget: target, onMoveItem: move } = dragRef.current
+      processCardDrop(e, dragged, targetGroup, targetCardId, target, move)
+      handleDragEnd()
+    },
+    [handleDragEnd],
+  )
+
+  const handleColumnDrop = useCallback(
+    (e: React.DragEvent, targetGroupKey: string) => {
+      e.preventDefault()
+      const { draggedItem: dragged, onMoveItem: move, onReorderColumns: reorder } = dragRef.current
+      processColumnDrop(e, dragged, targetGroupKey, move, reorder)
+      handleDragEnd()
+    },
+    [handleDragEnd],
+  )
 
   return {
     dragOverGroupKey,
     setDragOverGroupKey,
     cardDropTarget,
     handleDragEnd,
-    handleCardDragStart: (e: React.DragEvent, id: string, sourceGroupKey: string) => {
-      initDragData(e, { type: 'card', itemId: id, sourceGroupKey }, id)
-      setDraggedItem({ type: 'card', id, sourceGroupKey })
-    },
-    handleColumnDragStart: (e: React.DragEvent, groupKey: string) => {
-      initDragData(e, { type: 'column', groupKey }, groupKey)
-      setDraggedItem({ type: 'column', groupKey })
-    },
-    handleCardDragOver: (e: React.DragEvent, targetCardId: string) => {
-      e.preventDefault()
-      e.dataTransfer.dropEffect = 'move'
-      setCardDropTarget(computeDropPosition(e, targetCardId))
-    },
-    handleCardDrop: (e: React.DragEvent, targetGroup: KanbanGroupType, targetCardId: string) => {
-      e.preventDefault()
-      e.stopPropagation()
-      processCardDrop(e, draggedItem, targetGroup, targetCardId, cardDropTarget, onMoveItem)
-      handleDragEnd()
-    },
-    handleColumnDrop: (e: React.DragEvent, targetGroupKey: string) => {
-      e.preventDefault()
-      processColumnDrop(e, draggedItem, targetGroupKey, onMoveItem, onReorderColumns)
-      handleDragEnd()
-    },
+    ...startHandlers,
+    handleCardDrop,
+    handleColumnDrop,
   }
 }
 

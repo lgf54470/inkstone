@@ -1,8 +1,29 @@
+import { createElement, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { makeMoveItemClearingSorts } from './kanban-manual-move'
+import { renderElement } from '../../../test-render'
+import { makeMoveItemClearingSorts, useMoveItemClearingSorts } from './kanban-manual-move'
 import type { KanbanSort } from '../types'
 
 const activeSorts: KanbanSort[] = [{ propertyId: 'title', direction: 'asc' }]
+
+describe('useMoveItemClearingSorts stability', () => {
+  it('returns a stable reference across re-renders when moveItem is unchanged', () => {
+    const identities: ((id: string, group: string) => void)[] = []
+    const moveItem = vi.fn()
+    const setSorts = vi.fn()
+    function Probe() {
+      const [tick, setTick] = useState(0)
+      // the app passes a freshly built filterSort object every render
+      identities.push(useMoveItemClearingSorts(moveItem, { sorts: [], setSorts }))
+      if (tick < 3) setTick((n) => n + 1)
+      return null
+    }
+    const rendered = renderElement(createElement(Probe))
+    rendered.unmount()
+    expect(identities.length).toBeGreaterThan(1)
+    expect(new Set(identities).size).toBe(1)
+  })
+})
 
 describe('manual card move while sorted', () => {
   it('clears the active sorts and notifies so the dragged order becomes visible', () => {
