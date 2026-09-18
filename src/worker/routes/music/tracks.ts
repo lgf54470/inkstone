@@ -5,7 +5,7 @@ import { ApiError } from '../../lib/errors'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { coverResponse, storeCoverObject } from './cover'
-import { isMusicObjectKey } from './keys'
+import { isDerivedMusicObjectKey } from './keys'
 import { TRACK_COLUMNS, toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
 import { batchTrackSchema, patchTrackSchema } from './schemas'
@@ -83,8 +83,8 @@ function registerDeleteRoute(routes: Hono<AppBindings>): void {
   routes.delete('/tracks/:id', requireAuth, async (c) => {
     const userId = c.get('userId')
     const id = pathParam(c, 'id')
+    if (!(await loadTrackRow(c.env.DB, userId, id))) throw ApiError.notFound('Track not found')
     const keys = await loadOwnedObjectKeys(c.env.DB, userId, [id])
-    if (!keys.length) throw ApiError.notFound('Track not found')
     await deleteTracks(c.env, userId, [id], keys)
     return c.json({ ok: true })
   })
@@ -106,10 +106,9 @@ async function deleteTracks(env: AppBindings['Bindings'], userId: string, ids: s
     env.DB.prepare(`DELETE FROM music_playlist_items WHERE user_id = ?1 AND track_id IN (${placeholders})`).bind(userId, ...ids),
     env.DB.prepare(`DELETE FROM music_tracks WHERE user_id = ?1 AND id IN (${placeholders})`).bind(userId, ...ids),
   ])
-  const localKeys = keys.filter((key) => isMusicObjectKey(key))
-  if (localKeys.length) {
+  if (keys.length) {
     const { deleteMusicObjects } = await import('./storage')
-    await deleteMusicObjects(env, requireMusicStorage(env), localKeys).catch((error: unknown) => {
+    await deleteMusicObjects(env, requireMusicStorage(env), keys).catch((error: unknown) => {
       console.warn('[inkstone] music object cleanup failed:', error)
     })
   }
@@ -131,9 +130,11 @@ async function loadOwnedObjectKeys(db: D1Database, userId: string, ids: string[]
   if (!ids.length) return []
   const placeholders = ids.map((_, index) => `?${index + 2}`).join(', ')
   const rows = await db.prepare(
-    `SELECT object_key FROM music_tracks WHERE user_id = ?1 AND id IN (${placeholders})`,
-  ).bind(userId, ...ids).all<{ object_key: string }>()
-  return rows.results.map((row) => row.object_key).filter((key) => key.length > 0)
+    `SELECT id, source, created_at, object_key FROM music_tracks WHERE user_id = ?1 AND id IN (${placeholders})`,
+  ).bind(userId, ...ids).all<{ id: string; source: string; created_at: number; object_key: string }>()
+  return rows.results
+    .filter((row) => row.source === 'r2' && isDerivedMusicObjectKey(row.id, row.created_at, row.object_key))
+    .map((row) => row.object_key)
 }
 
 async function loadTrackRow(db: D1Database, userId: string, id: string): Promise<MusicTrackRow | null> {

@@ -70,6 +70,15 @@ export function isMusicObjectKey(key: string): boolean {
   return key.startsWith(MUSIC_OBJECT_PREFIX) && !key.includes('..') && key.length > MUSIC_OBJECT_PREFIX.length
 }
 
+// A stored key may only be deleted when it is exactly the object this row's
+// upload would have derived; forged keys must not turn a delete into
+// cross-account storage access.
+export function isDerivedMusicObjectKey(id: string, createdAt: number, key: string): boolean {
+  const extension = key.includes('.') ? key.split('.').pop()!.toLowerCase() : ''
+  const format = EXTENSION_FORMAT[extension]
+  return format !== undefined && musicObjectKey(format, id, createdAt) === key
+}
+
 export function sanitizeCoverUrl(value: string | null | undefined): string | null {
   if (!value) return null
   const trimmed = value.trim()

@@ -190,6 +190,21 @@ describe('music webdav routes', () => {
     expect(traversal.status).toBe(400)
   })
 
+  it('rejects import paths inside the app namespace, absolute paths, and control characters', async () => {
+    const { fetchMock } = fakeWebdav()
+    vi.stubGlobal('fetch', fetchMock)
+    await makeDb()
+    const app = makeApp({})
+    const namespaced = await json(app, '/api/music/webdav/import', { path: 'music/2024-05-01/someone-else.mp3' })
+    expect(namespaced.status).toBe(400)
+    const absolute = await json(app, '/api/music/webdav/import', { path: '/etc/passwd.mp3' })
+    expect(absolute.status).toBe(400)
+    const control = await json(app, '/api/music/webdav/import', { path: 'song\u0000.mp3' })
+    expect(control.status).toBe(400)
+    const library = await (await request(app, '/api/music/library')).json()
+    expect(library.tracks).toEqual([])
+  })
+
   it('uploads to webdav and records a webdav-sourced track', async () => {
     const { fetchMock, puts } = fakeWebdav()
     vi.stubGlobal('fetch', fetchMock)

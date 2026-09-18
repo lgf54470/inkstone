@@ -237,6 +237,33 @@ describe('music routes (real D1 + fake R2)', () => {
     expect(single.status).toBe(200)
     expect(((await (await request(app, '/api/music/library')).json()).tracks)).toHaveLength(0)
   })
+
+  it('deletes only the track object derived from the row itself', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const victimKey = 'music/2024-05-01/victim.mp3'
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES (?1, ?2, 'Forged', '', '', 0, 'r2', ?3, 'audio/mpeg', 16, NULL, NULL, 0, 0, 0, ?4, ?4)`,
+      'forged-1', USER, victimKey, H.now,
+    )
+
+    const removed = await request(app, '/api/music/tracks/forged-1', { method: 'DELETE' })
+    expect(removed.status).toBe(200)
+    const deleted = (DB_ENV.env.FILES as unknown as { delete: ReturnType<typeof vi.fn> }).delete
+    const deletedKeys = deleted.mock.calls.flatMap((call) => call[0] as string[])
+    expect(deletedKeys).not.toContain(victimKey)
+
+    const mine = await uploadTrack(app, 'mine.mp3')
+    await request(app, `/api/music/tracks/${mine.id}`, { method: 'DELETE' })
+    expect(deleted.mock.calls.length).toBeGreaterThan(0)
+    const ownKey = deleted.mock.calls.at(-1)![0] as string[]
+    expect(ownKey).toHaveLength(1)
+    expect(ownKey[0]).toMatch(new RegExp(`^music/\\d{4}-\\d{2}-\\d{2}/${mine.id}\\.mp3$`))
+  })
 })
 
 describe('music tag routes (real D1)', () => {

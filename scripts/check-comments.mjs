@@ -4378,6 +4378,9 @@ const allowed = new Map([
     '// Shared by uploads and metadata refreshes; a failed cover write must not fail the caller.',
   ]],
   ['src/worker/routes/music/keys.ts', [
+    '// A stored key may only be deleted when it is exactly the object this row\'s',
+    '// upload would have derived; forged keys must not turn a delete into',
+    '// cross-account storage access.',
     '// Responses served from our origin must never carry a third-party-declared or',
     '// legacy content type: only allowlisted audio mimes stream inline, anything',
     '// else is forced to a download by the caller.',
@@ -4395,6 +4398,9 @@ const allowed = new Map([
   ['src/worker/routes/music/schemas.ts', [
     '// An absent field must stay undefined so PATCH keeps the stored cover; anything',
     '// else goes through the same whitelist the upload path uses.',
+    '// WebDAV paths stay relative to the user\'s music directory: no traversal, no',
+    '// absolute paths, no control characters, and never inside the app\'s own',
+    '// storage namespace (those keys would enter the local object lifecycle).',
   ]],
   ['src/worker/routes/music/settings.ts', [
     '// Publishing is opt-in: the public blog routes read this before serving anything.',
