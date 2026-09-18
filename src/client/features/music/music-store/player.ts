@@ -4,7 +4,7 @@ import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback
 import { computeNextIndex, computePrevIndex, nextPlayMode } from '../music-utils'
 import {
   applyVolume, audioElement, bindMediaSessionActions, configureAudio, pausePlayback, publishMediaSession,
-  resumePlayback, seekTo, startPlayback, stopPlayback,
+  resumePlayback, seekTo, startPlayback, stopPlayback, updateMediaSessionPosition,
 } from '../audio-engine'
 import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
@@ -16,7 +16,10 @@ const RESUME_THRESHOLD_MS = 1_000
 
 export function connectAudio(set: MusicSet, get: MusicGet): void {
   configureAudio({
-    onTime: (ms) => setProgressTime(ms),
+    onTime: (ms) => {
+      setProgressTime(ms)
+      updateMediaSessionPosition(ms, get().durationMs)
+    },
     onDuration: (ms) => {
       set({ durationMs: ms })
       recordLearnedDuration(get, ms)
@@ -38,6 +41,7 @@ export function connectAudio(set: MusicSet, get: MusicGet): void {
     pause: pausePlayback,
     next: () => void get().playNext(),
     prev: () => void get().playPrevious(),
+    seek: (ms) => seek(ms),
   })
 }
 
