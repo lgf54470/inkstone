@@ -1031,6 +1031,9 @@ const allowed = new Map([
     '// the flag follows `hasChanged`; a no-change catchup must not claim completeness (it would make',
     '// the client\'s full-snapshot consolidation replace its freshly collected folders with []).',
   ]],
+  ['src/client/demo/backend/routes/music-organizer.ts', [
+    '// Mirrors the worker\'s batch contract: unowned and already-listed ids are skipped, not fatal.',
+  ]],
   ['src/client/demo/backend/routes/music.ts', [
     '// Mirrors the worker: the list payload drops lyric text, details fetch it lazily by id.',
   ]],
@@ -1269,6 +1272,7 @@ const allowed = new Map([
     '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
     '// An absent description stays untouched: the sidebar rename only edits the name.',
     '// Multi-select actions: moving replaces the tag set, playlists append.',
+    '// One request for the whole selection; the endpoint reports what it skipped.',
     '// addItem answers with the stored item id, so the row can be appended locally',
     '// instead of paying for a whole library reload after one tap.',
   ]],
@@ -4460,6 +4464,13 @@ const allowed = new Map([
   ['src/worker/routes/music/playback.ts', [
     '// Shared with the public blog projection so both sides read a stored queue the same way.',
   ]],
+  ['src/worker/routes/music/playlists.ts', [
+    '// Existence, ownership and the cap probe share one read round trip; the write shares another.',
+    '// Multi-select "add to playlist": one request for the whole selection. Ids the',
+    '// user does not own or that are already inside the playlist are skipped, and the',
+    '// response says so, instead of failing the batch.',
+    '// D1 allows at most 100 bound parameters per statement; ids are the tail of the bind list.',
+  ]],
   ['src/worker/routes/music/public.ts', [
     '// Read-only projection of the owner\'s library for the blog player: no keys, sizes or flags.',
     '// The blog mirrors the queue the owner is listening to, so ids that left the library are dropped.',
@@ -4637,6 +4648,8 @@ const allowed = new Map([
   ]],
   ['tests/music-routes.test.ts', [
     '// Records every statement the route prepares, so round-trip redundancy is assertable.',
+    '// Counts round trips, not statements: every execution inside one batch shares a',
+    '// single call, while an execution outside a batch costs its own round trip.',
   ]],
   ['tests/schema-migrations.test.ts', [
     '// Simulate a database whose music tables came from an earlier build: different',

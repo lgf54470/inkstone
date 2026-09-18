@@ -120,6 +120,10 @@ export const playlistItemSchema = z.object({ trackId: z.string().max(64) })
 
 export type PlaylistItemBody = z.infer<typeof playlistItemSchema>
 
+export const batchPlaylistItemsSchema = z.object({ trackIds: z.array(z.string().max(64)).min(1).max(500) })
+
+export type BatchPlaylistItemsBody = z.infer<typeof batchPlaylistItemsSchema>
+
 export const reorderPlaylistSchema = z.object({
   itemIds: z.array(z.string().max(64)).max(LIMITS.musicPlaylistItemsMax),
 })

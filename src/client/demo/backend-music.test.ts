@@ -137,6 +137,28 @@ describe('demo music playlists', () => {
     expect(after.tracks).toEqual([])
     expect(after.playlists[0].items).toEqual([])
   })
+})
+
+describe('demo music batch endpoints', () => {
+  it('bulk-adds playlist items and reports what it skipped', async () => {
+    const backend = await authedBackend()
+    const first = await uploadTrack(backend)
+    const second = await uploadTrack(backend)
+    const playlist = await call(backend, '/api/music/playlists', jsonInit({ name: 'Bulk' }))
+    const playlistId = (await playlist.json()).id as string
+    await call(backend, `/api/music/playlists/${playlistId}/items`, jsonInit({ trackId: first.id }))
+
+    const bulk = await call(backend, `/api/music/playlists/${playlistId}/items/batch`,
+      jsonInit({ trackIds: [second.id, first.id, 'ghost'] }))
+    expect(bulk.status).toBe(200)
+    const body = await bulk.json()
+    expect(body.items.map((item: { trackId: string }) => item.trackId)).toEqual([second.id])
+    expect(body.added).toBe(1)
+    expect(body.skipped).toBe(2)
+
+    const stored = (await (await call(backend, '/api/music/library')).json()).playlists[0]
+    expect(stored.items.map((item: { trackId: string }) => item.trackId)).toEqual([first.id, second.id])
+  })
 
   it('batch-updates favourites across the selection', async () => {
     const backend = await authedBackend()

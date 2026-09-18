@@ -112,6 +112,27 @@ async function addItemHandler(c: Context, state: DemoState): Promise<Response> {
   return c.json({ id: item.id, added: true }, 201)
 }
 
+// Mirrors the worker's batch contract: unowned and already-listed ids are skipped, not fatal.
+async function addItemsHandler(c: Context, state: DemoState): Promise<Response> {
+  const playlist = state.musicPlaylists.get(c.req.param('id') ?? '')
+  if (!playlist) return apiError(404, 'not_found', 'Playlist not found')
+  const body = await jsonBody(c.req.raw)
+  const requested = Array.isArray(body.trackIds) ? body.trackIds.filter((id): id is string => typeof id === 'string') : []
+  const seen = new Set<string>()
+  const items = [...playlist.items]
+  const created: { id: string; trackId: string }[] = []
+  for (const trackId of requested) {
+    if (seen.has(trackId)) continue
+    seen.add(trackId)
+    if (!state.musicTracks.has(trackId) || items.some((item) => item.trackId === trackId)) continue
+    const item = makePlaylistItem(playlist.id, trackId, items.length)
+    items.push(item)
+    created.push({ id: item.id, trackId })
+  }
+  savePlaylist(state, { ...playlist, items })
+  return c.json({ items: created, added: created.length, skipped: seen.size - created.length })
+}
+
 async function reorderItemsHandler(c: Context, state: DemoState): Promise<Response> {
   const playlist = state.musicPlaylists.get(c.req.param('id') ?? '')
   if (!playlist) return apiError(404, 'not_found', 'Playlist not found')
@@ -142,6 +163,7 @@ export function registerMusicOrganizerRoutes(app: Hono, state: DemoState): void 
   app.patch('/api/music/playlists/:id', (c) => patchPlaylistHandler(c, state))
   app.delete('/api/music/playlists/:id', (c) => deletePlaylistHandler(c, state))
   app.post('/api/music/playlists/:id/items', (c) => addItemHandler(c, state))
+  app.post('/api/music/playlists/:id/items/batch', (c) => addItemsHandler(c, state))
   app.patch('/api/music/playlists/:id/items', (c) => reorderItemsHandler(c, state))
   app.delete('/api/music/playlists/:id/items/:itemId', (c) => removeItemHandler(c, state))
 }

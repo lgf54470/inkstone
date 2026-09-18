@@ -8,7 +8,7 @@ import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { toPlaylist, toPlaylistItem } from './rows'
 import type { MusicPlaylistItemRow, MusicPlaylistRow } from './rows'
-import { createPlaylistSchema, patchPlaylistSchema, playlistItemSchema, reorderPlaylistSchema } from './schemas'
+import { batchPlaylistItemsSchema, createPlaylistSchema, patchPlaylistSchema, playlistItemSchema, reorderPlaylistSchema } from './schemas'
 import { pathParam } from './params'
 
 const PLAYLIST_SELECT = 'id, name, description, is_pinned, is_favorite, sort_order, created_at, updated_at'
@@ -19,6 +19,7 @@ export function registerMusicPlaylistRoutes(routes: Hono<AppBindings>): void {
   routes.patch('/playlists/:id', requireAuth, (c) => patchPlaylist(c))
   routes.delete('/playlists/:id', requireAuth, (c) => deletePlaylist(c))
   routes.post('/playlists/:id/items', requireAuth, (c) => addItem(c))
+  routes.post('/playlists/:id/items/batch', requireAuth, (c) => addItems(c))
   routes.patch('/playlists/:id/items', requireAuth, (c) => reorderItems(c))
   routes.delete('/playlists/:id/items/:itemId', requireAuth, (c) => removeItem(c))
 }
@@ -81,35 +82,84 @@ async function deletePlaylist(c: Context<AppBindings>): Promise<Response> {
 async function addItem(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
   const playlistId = pathParam(c, 'id')
-  if (!(await playlistExists(c.env.DB, userId, playlistId))) throw ApiError.notFound('Playlist not found')
   const { trackId } = await readJsonValidated(c, playlistItemSchema, JSON_BODY_LIMITS.small)
-  const owned = await c.env.DB.prepare('SELECT id FROM music_tracks WHERE user_id = ?1 AND id = ?2')
-    .bind(userId, trackId).first<{ id: string }>()
-  if (!owned) throw ApiError.badRequest('The track does not exist')
-
-  const count = await countItems(c.env.DB, userId, playlistId)
+  // Existence, ownership and the cap probe share one read round trip; the write shares another.
+  const reads = await c.env.DB.batch([
+    playlistSelect(c.env.DB, userId, playlistId),
+    c.env.DB.prepare('SELECT id FROM music_tracks WHERE user_id = ?1 AND id = ?2').bind(userId, trackId),
+    c.env.DB.prepare(
+      'SELECT COUNT(*) AS total FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2',
+    ).bind(userId, playlistId),
+  ])
+  if (!reads[0]?.results?.length) throw ApiError.notFound('Playlist not found')
+  if (!reads[1]?.results?.length) throw ApiError.badRequest('The track does not exist')
+  const count = countOf(reads[2])
   if (count >= LIMITS.musicPlaylistItemsMax) throw ApiError.tooLarge('This playlist is full')
   const id = newId()
-  const result = await c.env.DB.prepare(
-    `INSERT OR IGNORE INTO music_playlist_items (id, user_id, playlist_id, track_id, sort_order, created_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-  ).bind(id, userId, playlistId, trackId, count, Date.now()).run()
-  await touchPlaylist(c.env.DB, userId, playlistId)
-  return c.json({ id, added: Boolean(result.meta.changes), existed: !result.meta.changes }, 201)
+  const [inserted] = await c.env.DB.batch([
+    c.env.DB.prepare(
+      `INSERT OR IGNORE INTO music_playlist_items (id, user_id, playlist_id, track_id, sort_order, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
+    ).bind(id, userId, playlistId, trackId, count, Date.now()),
+    touchStatement(c.env.DB, userId, playlistId),
+  ])
+  return c.json({ id, added: Boolean(inserted?.meta.changes), existed: !inserted?.meta.changes }, 201)
+}
+
+// Multi-select "add to playlist": one request for the whole selection. Ids the
+// user does not own or that are already inside the playlist are skipped, and the
+// response says so, instead of failing the batch.
+async function addItems(c: Context<AppBindings>): Promise<Response> {
+  const userId = c.get('userId')
+  const playlistId = pathParam(c, 'id')
+  const { trackIds } = await readJsonValidated(c, batchPlaylistItemsSchema, JSON_BODY_LIMITS.profile)
+  const wanted = [...new Set(trackIds)]
+  const reads = await c.env.DB.batch([
+    playlistSelect(c.env.DB, userId, playlistId),
+    c.env.DB.prepare(
+      'SELECT track_id FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2',
+    ).bind(userId, playlistId),
+    ...chunks(wanted).map((chunk) => c.env.DB.prepare(
+      `SELECT id FROM music_tracks WHERE user_id = ?1 AND id IN (${chunk.map((_, index) => `?${index + 2}`).join(', ')})`,
+    ).bind(userId, ...chunk)),
+  ])
+  if (!reads[0]?.results?.length) throw ApiError.notFound('Playlist not found')
+  const existing = new Set(columnOf(reads[1], 'track_id'))
+  const owned = new Set(reads.slice(2).flatMap((result) => columnOf(result, 'id')))
+  const toInsert = wanted.filter((trackId) => owned.has(trackId) && !existing.has(trackId))
+  if (existing.size + toInsert.length > LIMITS.musicPlaylistItemsMax) throw ApiError.tooLarge('This playlist is full')
+  const created = toInsert.map((trackId) => ({ id: newId(), trackId }))
+  if (created.length) {
+    const now = Date.now()
+    await c.env.DB.batch([
+      ...created.map((item, index) => c.env.DB.prepare(
+        `INSERT INTO music_playlist_items (id, user_id, playlist_id, track_id, sort_order, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
+      ).bind(item.id, userId, playlistId, item.trackId, existing.size + index, now)),
+      touchStatement(c.env.DB, userId, playlistId),
+    ])
+  }
+  return c.json({ items: created, added: created.length, skipped: wanted.length - created.length })
 }
 
 async function reorderItems(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
   const playlistId = pathParam(c, 'id')
-  if (!(await playlistExists(c.env.DB, userId, playlistId))) throw ApiError.notFound('Playlist not found')
   const { itemIds } = await readJsonValidated(c, reorderPlaylistSchema, JSON_BODY_LIMITS.profile)
-  const ordered = await resolveItemOrder(c.env.DB, userId, playlistId, itemIds)
-  const statements = ordered.map((itemId, index) =>
-    c.env.DB.prepare('UPDATE music_playlist_items SET sort_order = ?1 WHERE user_id = ?2 AND playlist_id = ?3 AND id = ?4')
-      .bind(index, userId, playlistId, itemId),
-  )
-  if (statements.length) await c.env.DB.batch(statements)
-  await touchPlaylist(c.env.DB, userId, playlistId)
+  const reads = await c.env.DB.batch([
+    playlistSelect(c.env.DB, userId, playlistId),
+    c.env.DB.prepare(
+      'SELECT id FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2 ORDER BY sort_order ASC, created_at ASC',
+    ).bind(userId, playlistId),
+  ])
+  if (!reads[0]?.results?.length) throw ApiError.notFound('Playlist not found')
+  const ordered = orderAfterReorder(columnOf(reads[1], 'id'), itemIds)
+  await c.env.DB.batch([
+    ...ordered.map((itemId, index) => c.env.DB.prepare(
+      'UPDATE music_playlist_items SET sort_order = ?1 WHERE user_id = ?2 AND playlist_id = ?3 AND id = ?4',
+    ).bind(index, userId, playlistId, itemId)),
+    touchStatement(c.env.DB, userId, playlistId),
+  ])
   return c.json(await loadPlaylist(c, userId, playlistId))
 }
 
@@ -117,23 +167,21 @@ async function removeItem(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
   const playlistId = pathParam(c, 'id')
   const itemId = pathParam(c, 'itemId')
-  const result = await c.env.DB.prepare(
-    'DELETE FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2 AND id = ?3',
-  ).bind(userId, playlistId, itemId).run()
-  if (!result.meta.changes) throw ApiError.notFound('The playlist item does not exist')
-  await touchPlaylist(c.env.DB, userId, playlistId)
+  const [deleted] = await c.env.DB.batch([
+    c.env.DB.prepare(
+      'DELETE FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2 AND id = ?3',
+    ).bind(userId, playlistId, itemId),
+    touchStatement(c.env.DB, userId, playlistId),
+  ])
+  if (!deleted?.meta.changes) throw ApiError.notFound('The playlist item does not exist')
   return c.json({ ok: true })
 }
 
-async function resolveItemOrder(db: D1Database, userId: string, playlistId: string, requested: string[]): Promise<string[]> {
-  const rows = await db.prepare(
-    'SELECT id FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2 ORDER BY sort_order ASC, created_at ASC',
-  ).bind(userId, playlistId).all<{ id: string }>()
-  const existing = rows.results.map((row) => row.id)
+function orderAfterReorder(existing: string[], requested: string[]): string[] {
   const known = new Set(existing)
   const listed = [...new Set(requested)].filter((id) => known.has(id))
-  const remainder = existing.filter((id) => !listed.includes(id))
-  return [...listed, ...remainder]
+  const listedSet = new Set(listed)
+  return [...listed, ...existing.filter((id) => !listedSet.has(id))]
 }
 
 async function playlistExists(db: D1Database, userId: string, id: string): Promise<boolean> {
@@ -142,11 +190,24 @@ async function playlistExists(db: D1Database, userId: string, id: string): Promi
   return Boolean(row)
 }
 
-async function countItems(db: D1Database, userId: string, playlistId: string): Promise<number> {
-  const row = await db.prepare(
-    'SELECT COUNT(*) AS total FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2',
-  ).bind(userId, playlistId).first<{ total: number }>()
-  return row?.total ?? 0
+// D1 allows at most 100 bound parameters per statement; ids are the tail of the bind list.
+function chunks(ids: string[]): string[][] {
+  const out: string[][] = []
+  for (let start = 0; start < ids.length; start += 96) out.push(ids.slice(start, start + 96))
+  return out
+}
+
+function columnOf(result: D1Result<unknown> | undefined, column: string): string[] {
+  return (result?.results ?? []).map((row) => String((row as Record<string, unknown> | undefined)?.[column] ?? ''))
+}
+
+function countOf(result: D1Result<unknown> | undefined): number {
+  const first = result?.results?.[0] as Record<string, unknown> | undefined
+  return Number(first?.total ?? 0)
+}
+
+function playlistSelect(db: D1Database, userId: string, id: string): D1PreparedStatement {
+  return db.prepare('SELECT id FROM music_playlists WHERE user_id = ?1 AND id = ?2').bind(userId, id)
 }
 
 async function nextSortOrder(db: D1Database, userId: string): Promise<number> {
@@ -156,9 +217,9 @@ async function nextSortOrder(db: D1Database, userId: string): Promise<number> {
   return row?.next ?? 0
 }
 
-async function touchPlaylist(db: D1Database, userId: string, id: string): Promise<void> {
-  await db.prepare('UPDATE music_playlists SET updated_at = ?1 WHERE user_id = ?2 AND id = ?3')
-    .bind(Date.now(), userId, id).run()
+function touchStatement(db: D1Database, userId: string, id: string): D1PreparedStatement {
+  return db.prepare('UPDATE music_playlists SET updated_at = ?1 WHERE user_id = ?2 AND id = ?3')
+    .bind(Date.now(), userId, id)
 }
 
 async function updatePlaylistRow(
@@ -187,11 +248,14 @@ async function updatePlaylistRow(
 }
 
 async function loadPlaylist(c: Context<AppBindings>, userId: string, id: string): Promise<MusicPlaylistDetail> {
-  const row = await c.env.DB.prepare(`SELECT ${PLAYLIST_SELECT} FROM music_playlists WHERE user_id = ?1 AND id = ?2`)
-    .bind(userId, id).first<MusicPlaylistRow>()
+  const [head, items] = await c.env.DB.batch([
+    c.env.DB.prepare(`SELECT ${PLAYLIST_SELECT} FROM music_playlists WHERE user_id = ?1 AND id = ?2`)
+      .bind(userId, id),
+    c.env.DB.prepare(
+      'SELECT id, playlist_id, track_id, sort_order FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2 ORDER BY sort_order ASC, created_at ASC',
+    ).bind(userId, id),
+  ])
+  const row = head?.results?.[0] as MusicPlaylistRow | undefined
   if (!row) throw ApiError.notFound('Playlist not found')
-  const items = await c.env.DB.prepare(
-    'SELECT id, playlist_id, track_id, sort_order FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2 ORDER BY sort_order ASC, created_at ASC',
-  ).bind(userId, id).all<MusicPlaylistItemRow>()
-  return toPlaylist(row, items.results.map(toPlaylistItem))
+  return toPlaylist(row, ((items?.results ?? []) as MusicPlaylistItemRow[]).map(toPlaylistItem))
 }

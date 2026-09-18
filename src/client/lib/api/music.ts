@@ -115,6 +115,12 @@ export const music = {
       body: { trackId },
     }),
 
+  addPlaylistItems: (playlistId: string, trackIds: string[]) =>
+    request<{ items: { id: string; trackId: string }[]; added: number; skipped: number }>(
+      `/api/music/playlists/${encodeURIComponent(playlistId)}/items/batch`,
+      { method: 'POST', body: { trackIds }, timeoutMs: 30_000 },
+    ),
+
   removePlaylistItem: (playlistId: string, itemId: string) =>
     request<{ ok: boolean }>(`/api/music/playlists/${encodeURIComponent(playlistId)}/items/${encodeURIComponent(itemId)}`, { method: 'DELETE' }),
 

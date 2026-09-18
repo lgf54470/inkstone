@@ -142,13 +142,10 @@ export async function addSelectionToPlaylist(set: MusicSet, get: MusicGet, playl
   if (!ids.length) return
   const name = get().playlists.find((entry) => entry.id === playlistId)?.name ?? ''
   try {
-    const added: { id: string; trackId: string }[] = []
-    for (const id of ids) {
-      const result = await api.music.addPlaylistItem(playlistId, id)
-      if (result.added) added.push({ id: result.id, trackId: id })
-    }
+    // One request for the whole selection; the endpoint reports what it skipped.
+    const result = await api.music.addPlaylistItems(playlistId, ids)
     set({ selectedIds: [] })
-    if (added.length) mergePlaylistItems(set, playlistId, added)
+    if (result.items.length) mergePlaylistItems(set, playlistId, result.items)
     toastMusic('music.added_to_playlist', { value0: name })
   } catch (error) {
     toastMusicError(error, 'music.action_failed')

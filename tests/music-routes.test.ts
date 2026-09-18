@@ -15,7 +15,7 @@ import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { musicRoutes } from '../src/worker/routes/music'
-import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
+import { createD1Database as createDb, runSql, type D1Prepared, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
 const AUDIO = new TextEncoder().encode('0123456789abcdef')
@@ -161,6 +161,44 @@ function recordingDb(db: D1Shim): { proxy: D1Shim; statements: string[] } {
     },
   })
   return { proxy, statements }
+}
+
+// Counts round trips, not statements: every execution inside one batch shares a
+// single call, while an execution outside a batch costs its own round trip.
+function countRoundTrips(db: D1Shim): { proxy: D1Shim; stats: { batches: number; singles: number } } {
+  const stats = { batches: 0, singles: 0 }
+  let insideBatch = false
+  const wrap = (statement: D1Prepared): D1Prepared => new Proxy(statement, {
+    get(target, property, receiver) {
+      if (property === 'bind') return (...values: unknown[]) => wrap(target.bind(...values))
+      if (property === 'run' || property === 'first' || property === 'all') {
+        const execute = target[property]
+        return () => {
+          if (!insideBatch) stats.singles += 1
+          return Promise.resolve(execute.call(target))
+        }
+      }
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  const proxy = new Proxy(db, {
+    get(target, property, receiver) {
+      if (property === 'prepare') return (sql: string) => wrap(target.prepare(sql))
+      if (property === 'batch') {
+        return async (statements: D1Prepared[]) => {
+          stats.batches += 1
+          insideBatch = true
+          try {
+            return await target.batch(statements)
+          } finally {
+            insideBatch = false
+          }
+        }
+      }
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  return { proxy, stats }
 }
 
 describe('music routes (real D1 + fake R2)', () => {
@@ -559,6 +597,70 @@ describe('music playlist routes (real D1)', () => {
     const list = await (await request(app, '/api/music/playlists')).json()
     expect(list.playlists[0].items).toEqual([])
     expect(list.playlists[0].trackCount).toBe(0)
+  })
+})
+
+describe('music playlist item round trips (real D1)', () => {
+  it('adds a single item with no unbatched statements', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app)
+    const playlist = await (await json(app, '/api/music/playlists', { name: 'P' })).json()
+
+    const { proxy, stats } = countRoundTrips(db)
+    DB_ENV.env.DB = proxy as unknown as D1Database
+    const added = await json(app, `/api/music/playlists/${playlist.id}/items`, { trackId: track.id })
+    expect(added.status).toBe(201)
+    expect((await added.json()).added).toBe(true)
+    expect(stats.singles).toBe(0)
+    expect(stats.batches).toBeLessThanOrEqual(2)
+  })
+
+  it('bulk-adds items in one request, skipping existing and foreign ids', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const first = await uploadTrack(app, 'one.mp3')
+    const second = await uploadTrack(app, 'two.mp3')
+    const third = await uploadTrack(app, 'three.mp3')
+    const playlist = await (await json(app, '/api/music/playlists', { name: 'P' })).json()
+    await json(app, `/api/music/playlists/${playlist.id}/items`, { trackId: first.id })
+
+    const { proxy, stats } = countRoundTrips(db)
+    DB_ENV.env.DB = proxy as unknown as D1Database
+    const res = await json(app, `/api/music/playlists/${playlist.id}/items/batch`, {
+      trackIds: [second.id, first.id, 'not-a-track', third.id, second.id],
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.items.map((item: { trackId: string }) => item.trackId)).toEqual([second.id, third.id])
+    expect(body.added).toBe(2)
+    expect(body.skipped).toBe(2)
+    expect(stats.singles).toBe(0)
+    expect(stats.batches).toBeLessThanOrEqual(2)
+
+    const list = await (await request(app, '/api/music/playlists')).json()
+    const stored = list.playlists.find((entry: { id: string }) => entry.id === playlist.id)
+    expect(stored.items.map((item: { trackId: string }) => item.trackId)).toEqual([first.id, second.id, third.id])
+  })
+
+  it('reorders with no unbatched statements', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const one = await uploadTrack(app, 'one.mp3')
+    const two = await uploadTrack(app, 'two.mp3')
+    const playlist = await (await json(app, '/api/music/playlists', { name: 'P' })).json()
+    const a = await (await json(app, `/api/music/playlists/${playlist.id}/items`, { trackId: one.id })).json()
+    const b = await (await json(app, `/api/music/playlists/${playlist.id}/items`, { trackId: two.id })).json()
+
+    const { proxy, stats } = countRoundTrips(db)
+    DB_ENV.env.DB = proxy as unknown as D1Database
+    const reordered = await json(app, `/api/music/playlists/${playlist.id}/items`, { itemIds: [b.id, a.id] }, 'PATCH')
+    expect(reordered.status).toBe(200)
+    expect((await reordered.json()).items.map((item: { trackId: string }) => item.trackId)).toEqual([two.id, one.id])
+    expect(stats.singles).toBe(0)
   })
 })
 describe('music cover storage', () => {
