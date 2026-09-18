@@ -1335,6 +1335,8 @@ const allowed = new Map([
     '// and they race: one reporter keeps the user from getting two messages.',
     '// A slow WebDAV object streams below realtime, so waiting for the first frame',
     '// forever would look like a frozen player. Surface it and stop pretending.',
+    '// Volume drags and queue churn used to serialise and write localStorage per event.',
+    '// A tab closed inside the debounce window must not silently lose the last change.',
   ]],
   ['src/client/features/music/music-store/progress.test.ts', [
     '// Playback advances every 250ms; comparing against the previous tick alone',
