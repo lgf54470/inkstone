@@ -1,0 +1,63 @@
+# 看板模块改进执行计划（kanban improvement plan）
+
+> 依据：`review.md`（合并版审查总报告，31 项台账）。分支：`kanban-improvement-qoder-qwen38f`（自 `dev` 53824e3c）。
+> 约定：每个条目 = 一个原子提交；顺序执行；每项先写能失败的复现测试，修复后跑回归（typecheck + 相关单测 + 受影响门禁）再提交，提交后更新本文件状态。
+> 状态图例：`[ ]` 待办 · `[~]` 进行中 · `[x]` 已提交（附 commit short hash）
+
+## 基线
+
+- [x] BASE-0 创建 worktree + `node_modules` 软链 + 复制 review.md
+- [ ] BASE-1 基线门禁全绿确认（typecheck / kanban 单测）
+
+## 第一批 · 止血（P0 + 安全最小集，按风险从小到大）
+
+- [ ] K-01 日历「新建」把 dateStr 写进 status → 改传日期字段（review #4；`kanban-calendar-view.tsx:12,122,140`、`kanban-root-hooks.ts:240-258`）
+- [ ] K-02 详情弹窗早 return 后调 hooks → 拆外层判空 + Body（review #5；`kanban-item-detail.tsx:250-253`）
+- [ ] K-03 PDF 预览被 CSP（`object-src 'none'`）挡死 → 移除 `<object>`，新标签打开 + 图片/文本内联（review #12）
+- [ ] K-04 筛选开启时拖拽落点错位 → targetIndex 以全量数组换算（review #6；`kanban-board-dnd.ts:35-53`）
+- [ ] K-05 子任务「复制名称」clipboard 无 catch → `?.` + try/catch + toast（review #22c；`kanban-subtask-menu.tsx:81`）
+- [ ] K-06 「转换为项目」「打开子任务」死操作 → 实现或移除（review #22a/b）
+- [ ] K-07 text/plain 拖拽兜底无校验 → 校验 data-item-id（review #18）
+- [ ] K-08 分组只按 id 匹配 → id/label 双匹配（review #20a；`filter-sort.ts:136`）
+- [ ] K-09 ID `Date.now()` 碰撞 → 不可碰撞生成（review #23）
+- [ ] K-10 头部进度条口径 → 传筛选后 items（review 共识#15）
+- [ ] K-11 undo 快捷键作用域 → 绑定实例容器、焦点归属判定（review #7；`kanban-history.ts:47-69`）
+- [ ] K-12 KanbanRoot ErrorBoundary（review #8；`registry.ts:143-151`）
+- [ ] K-13 全屏单根化四件套（review #1；moveInto + is-fullscreen 类 + 高度契约 + 内联占位 + 透传；含 Ctrl+Z 单实例化）
+- [ ] K-14 outline 写回升级 JSON + parse 正则吞标题修复（review #2）
+- [ ] K-15 冲突写回保留 dirty + 「未保存 · 重试/放弃」（review #3）
+- [ ] K-16 GET /api/kanban/file 鉴权 + DELETE metadata 缺失即拒（review #9；worker `kanban.ts:74,115`）
+- [ ] K-17 `safeKanbanUrl()` 协议白名单 + normalize 清洗（review #11）
+- [ ] K-18 附件删除接线 `deleteKanbanFile` + `kanbanName` 透传（review #10 删除侧）
+- [ ] K-19 上传 MIME 白名单/配额/节流对齐 organizer（review #10 增量）
+- [ ] K-20 甘特进度隐藏交互 → 可键盘进度控件（review #24b）
+- [ ] K-21 排序与拖拽静默冲突 → 明确反馈（review #24a）
+- [ ] K-22 详情标题每键提交 → 草稿 + Enter/blur（review #17）
+- [ ] K-23 hover-only 控件空白行 → 绝对定位叠加/常显（review 共识16）
+- [ ] K-24 子任务「复制名称」以外的 UI 微调（view-tabs timeline/gantt 图标区分）（review #29 局部）
+
+## 第二批 · 持久化与性能
+
+- [ ] K1-01 `commitData` 函数式更新去 `state.data` 依赖 + 回调稳定化（review #13）
+- [ ] K1-02 dragover 同 cardId+position bail（review #13）
+- [ ] K1-03 视图状态按 viewId 持久化 + 7 死字段接线或删除（review #19）
+- [ ] K1-04 新建分组/批量泛化到 `activeView.groupBy`（review #20b）
+- [ ] K1-05 图表 dataset memo + 主题跟随 + i18n + ARIA（review #14）
+- [ ] K1-06 搜索 debounce/`useDeferredValue` + 表格全选一次 set（review #16）
+- [ ] K1-07 `--kanban-tag-*`/chart 色板接令牌 + contrast 门禁（review #28；含 text-white×10、!important×2）
+- [ ] K1-08 死代码清理（entry.dark/locale、useMemo[props]、files.remove）（review #27）
+- [ ] K1-09 R2 存量孤儿回收（Cron 扫 kanban/ 前缀 + 删笔记联动）（review #10 存量）
+
+## 第三批 · 完整度与规范收敛
+
+- [ ] K2-01 表格 columns schema 驱动列（review #20c）
+- [ ] K2-02 分享/导出/放映 kanban 快照通道（review #21）
+- [ ] K2-03 浮层/控件迁移 overlay + a11y 专项（review #26/#29）
+- [ ] K2-04 i18n 平台键/周起始/句子拼接/借键清理（review #30）
+- [ ] K2-05 surfaces/e2e-visual/axe 纳入全屏看板场景（review #31）
+
+## 进度日志
+
+| 日期 | 条目 | commit | 回归结果 |
+| --- | --- | --- | --- |
+| （执行时逐行追加） | | | |
