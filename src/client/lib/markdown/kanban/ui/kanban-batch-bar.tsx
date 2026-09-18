@@ -6,36 +6,36 @@ import type { KanbanProperty } from '../types'
 
 interface KanbanBatchBarProps {
   selectedCount: number
-  statusColumn?: KanbanProperty
-  onBatchStatusChange: (statusId: string) => void
+  groupColumn?: KanbanProperty
+  onBatchGroupChange: (groupId: string) => void
   onBatchDelete: () => void
   onClearSelection: () => void
 }
 
-interface BatchStatusSelectProps {
-  statusColumn: KanbanProperty
-  onBatchStatusChange: (statusId: string) => void
+interface BatchGroupSelectProps {
+  groupColumn: KanbanProperty
+  onBatchGroupChange: (groupId: string) => void
 }
 
-function BatchStatusSelect({ statusColumn, onBatchStatusChange }: BatchStatusSelectProps) {
-  if (!statusColumn.options) return null
+function BatchGroupSelect({ groupColumn, onBatchGroupChange }: BatchGroupSelectProps) {
+  if (!groupColumn.options) return null
   return (
     <select
       defaultValue=''
       onChange={(e) => {
         if (e.target.value) {
-          onBatchStatusChange(e.target.value)
+          onBatchGroupChange(e.target.value)
           e.target.value = ''
         }
       }}
       className='h-7 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
     >
       <option value='' disabled>
-        {t('preview.kanban_batch_change_status')}
+        {t('preview.kanban_batch_change_group')}
       </option>
-      {statusColumn.options.map((opt) => (
+      {groupColumn.options.map((opt) => (
         <option key={opt.id} value={opt.id}>
-          {formatKanbanOptionLabel(opt, 'status')}
+          {formatKanbanOptionLabel(opt, groupColumn.id)}
         </option>
       ))}
     </select>
@@ -44,8 +44,8 @@ function BatchStatusSelect({ statusColumn, onBatchStatusChange }: BatchStatusSel
 
 export const KanbanBatchBar = memo(function KanbanBatchBar({
   selectedCount,
-  statusColumn,
-  onBatchStatusChange,
+  groupColumn,
+  onBatchGroupChange,
   onBatchDelete,
   onClearSelection,
 }: KanbanBatchBarProps) {
@@ -57,10 +57,10 @@ export const KanbanBatchBar = memo(function KanbanBatchBar({
         {t('preview.kanban_batch_selected')} {selectedCount} {t('preview.kanban_batch_items')}
       </span>
 
-      {statusColumn && (
-        <BatchStatusSelect
-          statusColumn={statusColumn}
-          onBatchStatusChange={onBatchStatusChange}
+      {groupColumn && (
+        <BatchGroupSelect
+          groupColumn={groupColumn}
+          onBatchGroupChange={onBatchGroupChange}
         />
       )}
 

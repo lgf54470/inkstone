@@ -262,8 +262,8 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
       />
       <KanbanBatchBar
         selectedCount={state.selection.selectedIds.size}
-        statusColumn={state.data.columns.find((c) => c.id === 'status')}
-        onBatchStatusChange={state.selection.handleBatchStatusChange}
+        groupColumn={state.groupColumn}
+        onBatchGroupChange={state.selection.handleBatchGroupChange}
         onBatchDelete={state.selection.handleBatchDelete}
         onClearSelection={state.selection.handleClearSelection}
       />

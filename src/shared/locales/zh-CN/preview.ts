@@ -81,7 +81,7 @@ export const messages = {
 'preview.kanban_search': '搜索',
 'preview.kanban_batch_selected': '已选择',
 'preview.kanban_batch_items': '项',
-'preview.kanban_batch_change_status': '变更状态…',
+'preview.kanban_batch_change_group': '变更分组…',
 'preview.kanban_batch_delete': '批量删除',
 'preview.kanban_clear_selection': '清除选择',
 'preview.kanban_select_all': '全选',

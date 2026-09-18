@@ -14,6 +14,7 @@ import type {
   KanbanFilter,
   KanbanItem,
   KanbanOption,
+  KanbanProperty,
   KanbanSort,
   KanbanSubtask,
   KanbanView,
@@ -234,25 +235,28 @@ export function useKanbanAddOperations(
     handleAddItem({ [activeView.groupBy || 'status']: groupKey })
   }, [activeView.groupBy, handleAddItem])
 
+  // The add-group button targets the column the active view groups by;
+  // option-less properties (text, date, ...) have no groups to add.
   const handleAddColumn = useCallback(() => {
-    const statusCol = data.columns.find((c) => c.id === 'status')
-    if (!statusCol) return
+    const groupCol = data.columns.find((c) => c.id === (activeView.groupBy || 'status'))
+    if (!groupCol?.options) return
     const colors: KanbanColorName[] = ['blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'red', 'gray']
-    const newColor = colors[(statusCol.options?.length ?? 0) % colors.length]!
+    const newColor = colors[groupCol.options.length % colors.length]!
     const newOpt: KanbanOption = {
-      id: `status-${createKanbanId()}`,
-      label: t('preview.kanban_new_group_title', { value0: (statusCol.options?.length ?? 0) + 1 }),
+      id: `${groupCol.id}-${createKanbanId()}`,
+      label: t('preview.kanban_new_group_title', { value0: groupCol.options.length + 1 }),
       color: newColor,
     }
-    const nextCols = data.columns.map((c) => (c.id === 'status' ? { ...c, options: [...(c.options ?? []), newOpt] } : c))
+    const nextCols = data.columns.map((c) => (c.id === groupCol.id ? { ...c, options: [...c.options!, newOpt] } : c))
     commitData({ ...data, columns: nextCols })
-  }, [data, commitData])
+  }, [data, commitData, activeView.groupBy])
 
   return { handleAddItem, handleAddItemInGroup, handleAddColumn }
 }
 
 export function useKanbanSelection(
   commitData: CommitKanbanData,
+  groupColumn?: KanbanProperty,
 ) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -267,15 +271,19 @@ export function useKanbanSelection(
 
   const handleClearSelection = useCallback(() => setSelectedIds(new Set()), [])
 
-  const handleBatchStatusChange = useCallback((statusId: string) => {
+  // Batch assignment follows the active view's grouping property; a
+  // multi-select column keeps its array shape.
+  const handleBatchGroupChange = useCallback((groupId: string) => {
+    const propertyId = groupColumn?.id || 'status'
+    const value = groupColumn?.type === 'multi-select' ? [groupId] : groupId
     commitData((prev) => ({
       ...prev,
       items: prev.items.map((item) =>
-        selectedIds.has(item.id) ? { ...item, properties: { ...item.properties, status: statusId } } : item,
+        selectedIds.has(item.id) ? { ...item, properties: { ...item.properties, [propertyId]: value } } : item,
       ),
     }))
     setSelectedIds(new Set())
-  }, [selectedIds, commitData])
+  }, [selectedIds, commitData, groupColumn?.id, groupColumn?.type])
 
   const handleBatchDelete = useCallback(() => {
     commitData((prev) => ({
@@ -285,7 +293,7 @@ export function useKanbanSelection(
     setSelectedIds(new Set())
   }, [selectedIds, commitData])
 
-  return { selectedIds, setSelectedIds, handleToggleSelect, handleClearSelection, handleBatchStatusChange, handleBatchDelete }
+  return { selectedIds, setSelectedIds, handleToggleSelect, handleClearSelection, handleBatchGroupChange, handleBatchDelete }
 }
 
 export function useKanbanRootState(
@@ -310,7 +318,8 @@ export function useKanbanRootState(
   )
 
   const filterSort = useKanbanFilterSort(data, activeViewId, commitData)
-  const selection = useKanbanSelection(commitData)
+  const groupColumn = data.columns.find((c) => c.id === (filterSort.activeView.groupBy || 'status'))
+  const selection = useKanbanSelection(commitData, groupColumn)
   const items = useKanbanItemMutations(commitData, filterSort.activeView, setDetailItem)
   const itemLifecycle = useKanbanItemLifecycle(
     data,
@@ -331,6 +340,7 @@ export function useKanbanRootState(
     setActiveViewId,
     commitData,
     filterSort,
+    groupColumn,
     selection,
     items: { ...items, ...itemLifecycle, handleMoveItem },
     adds,

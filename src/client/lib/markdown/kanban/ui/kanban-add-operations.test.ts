@@ -1,6 +1,6 @@
 import { act, createElement, type ReactNode } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { initI18n } from '../../../../lib/i18n'
+import { initI18n, t } from '../../../../lib/i18n'
 import { renderElement } from '../../../test-render'
 import { useKanbanAddOperations } from './kanban-root-hooks'
 import { KanbanCalendarView } from './kanban-calendar-view'
@@ -30,9 +30,11 @@ const priorityColumn = {
   ],
 }
 
+const assigneeColumn = { id: 'assignee', name: 'Assignee', type: 'text' as const }
+
 function makeData(overrides: Partial<KanbanData> = {}): KanbanData {
   return {
-    columns: [statusColumn, priorityColumn],
+    columns: [statusColumn, priorityColumn, assigneeColumn],
     items: [],
     views: [{ id: 'view-board', name: 'Board', type: 'board', groupBy: 'status' }],
     ...overrides,
@@ -63,7 +65,7 @@ function captureCommit(data: KanbanData, activeView: KanbanView) {
     commits.push(d)
   })
   const addedItem = () => commits[0]!.items[0]!
-  return { api, addedItem }
+  return { api, addedItem, commits }
 }
 
 describe('useKanbanAddOperations', () => {
@@ -92,6 +94,33 @@ describe('useKanbanAddOperations', () => {
     api.handleAddItemInGroup('__none__')
     expect(addedItem().properties.status).toBe('todo')
     expect(addedItem().properties.priority).toBeUndefined()
+  })
+})
+
+describe('useKanbanAddOperations handleAddColumn', () => {
+  it('handleAddColumn adds the option to the view groupBy column, not status', () => {
+    const { api, commits } = captureCommit(makeData(), { id: 'v', name: 'Board', type: 'board', groupBy: 'priority' })
+    act(() => { api.handleAddColumn() })
+    const committed = commits[0]!
+    const priority = committed.columns.find((c) => c.id === 'priority')!
+    const status = committed.columns.find((c) => c.id === 'status')!
+    expect(priority.options).toHaveLength(3)
+    expect(status.options).toHaveLength(2)
+    expect(priority.options![2]!.id.startsWith('priority-')).toBe(true)
+    expect(priority.options![2]!.label).toBe(t('preview.kanban_new_group_title', { value0: 3 }))
+  })
+
+  it('handleAddColumn still targets status when the view declares no groupBy', () => {
+    const { api, commits } = captureCommit(makeData(), { id: 'v', name: 'Board', type: 'board' })
+    act(() => { api.handleAddColumn() })
+    const status = commits[0]!.columns.find((c) => c.id === 'status')!
+    expect(status.options).toHaveLength(3)
+  })
+
+  it('handleAddColumn commits nothing when grouping by an option-less property', () => {
+    const { api, commits } = captureCommit(makeData(), { id: 'v', name: 'Board', type: 'board', groupBy: 'assignee' })
+    act(() => { api.handleAddColumn() })
+    expect(commits).toHaveLength(0)
   })
 })
 

@@ -71,7 +71,7 @@ export const messages = {
 'preview.kanban_search': 'Search',
 'preview.kanban_batch_selected': 'Selected',
 'preview.kanban_batch_items': 'items',
-'preview.kanban_batch_change_status': 'Change status...',
+'preview.kanban_batch_change_group': 'Change group...',
 'preview.kanban_batch_delete': 'Delete selected',
 'preview.kanban_clear_selection': 'Clear selection',
 'preview.kanban_select_all': 'Select all items',
