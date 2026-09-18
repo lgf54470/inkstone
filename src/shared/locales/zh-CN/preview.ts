@@ -184,6 +184,7 @@ export const messages = {
 'preview.kanban_file_uploaded': '文件已成功上传',
 'preview.kanban_file_upload_failed': '文件上传失败',
 'preview.kanban_file_delete_failed': '文件删除失败',
+'preview.kanban_sort_cleared_for_drag': '已清除排序以应用手动拖拽顺序',
 'preview.kanban_color_picker': '选择颜色',
 'preview.kanban_add_tag': '添加标签',
 'preview.kanban_remove_tag': '移除标签',

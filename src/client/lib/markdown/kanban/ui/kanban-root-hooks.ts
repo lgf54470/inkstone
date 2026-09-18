@@ -21,6 +21,7 @@ import type {
 } from '../types'
 import type { CardSize } from './kanban-view-options'
 import { useKanbanHistory } from './kanban-history'
+import { useMoveItemClearingSorts } from './kanban-manual-move'
 
 function filterAndSortItems(
   items: KanbanItem[],
@@ -405,6 +406,8 @@ export function useKanbanRootState(
   const adds = useKanbanAddOperations(data, commitData, setDetailItem, filterSort.activeView)
   const columnOps = useKanbanColumnOperations(data, commitData, filterSort.activeView)
 
+  const handleMoveItem = useMoveItemClearingSorts(items.handleMoveItem, filterSort)
+
   return {
     data,
     cardSize,
@@ -415,7 +418,7 @@ export function useKanbanRootState(
     commitData,
     filterSort,
     selection,
-    items: { ...items, ...itemLifecycle },
+    items: { ...items, ...itemLifecycle, handleMoveItem },
     adds,
     columnOps,
     history,
