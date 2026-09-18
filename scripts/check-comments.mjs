@@ -1813,6 +1813,9 @@ const allowed = new Map([
     '// before the teardown in afterEach takes the root down.',
     '// The exit control lives in the moved board, not the modal chrome.',
   ]],
+  ['src/client/features/preview/kanban-unsaved.test.ts', [
+    '/**\n * When a write loses the race against an external edit of the same fence, the\n * board must keep the in-memory edits, say so in the header, and offer retry /\n * discard instead of silently dropping the changes (review #3).\n */',
+  ]],
   ['src/client/features/preview/mindmap-fullscreen.test.ts', [
     '/** The block markup the preview would render for a note holding one fence. */',
     '/**\n * A vendor that reproduces the library\'s keyboard contract and nothing else: the\n * shortcuts are bound to the element the library draws in, Tab adds a child and\n * Enter adds a sibling, and each one reports an operation — which is exactly what\n * the registry turns into a write. The real library runs in a browser in\n * scripts/e2e-visual.mjs; here the question is what the app does with the\n * callbacks it gets.\n */',
@@ -2611,6 +2614,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/dnd.ts', [
     '// best-effort fallback if JSON parsing fails',
   ]],
+  ['src/client/lib/markdown/kanban/entry.ts', [
+    '/** Edits the note refused to accept; kept in memory until retry or discard. */',
+  ]],
   ['src/client/lib/markdown/kanban/filter-sort.ts', [
     '// Documents imported from other tools may store the option label where this',
     '// board expects the option id; matching only by id would hide all of those',
@@ -2632,10 +2638,14 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/registry.ts', [
     '/**\n * Tears one block\'s React root down. The unmount is deferred by a microtask because both callers run\n * inside the host tree\'s own commit — the preview re-renders, a block leaves the note, and React\n * refuses to take one root down from inside another root\'s render: it warns and leaves the teardown to\n * race the commit it interrupted.\n */',
-    '// The move runs from the overlay component\'s effect — sometimes inside',
-    '// another root\'s commit — so the refresh is deferred the same way a teardown',
-    '// is: rendering this root synchronously there races the commit.',
+    '// Unwritten edits outrank the note body: a re-render must not re-point the',
+    '// fence or re-parse over them, or retry and discard lose what they resolve.',
+    '// The move and the cleanup-time flush both run inside another root\'s commit —',
+    '// rendering this root synchronously there races the commit, so the refresh is',
+    '// deferred the same way a teardown is.',
     '/**\n * Hands the live board to the full screen overlay: the same root, so its edits,\n * history and write-back are the ones the inline block keeps using afterwards —\n * there is never a second copy of the same board to fall out of step.\n */',
+    '// A forced flush is where a conflict first surfaces outside the debounce',
+    '// timer, so the header badge has to be refreshed from here too.',
   ]],
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
@@ -2682,6 +2692,8 @@ const allowed = new Map([
     '/**\n * The outline body cannot carry subtasks, files, icons, descriptions, custom\n * properties, views or even the board title — every one of those is editable in\n * the UI, so persisting an outline fence back as outline silently drops the\n * edit. The first UI write therefore promotes the fence to full-fidelity JSON.\n */',
   ]],
   ['src/client/lib/markdown/kanban/write.ts', [
+    '// The flush lands after the React commit that scheduled it, so the header\'s',
+    '// unsaved badge only appears once the settle callback re-renders the root.',
     '// The outline format cannot store subtasks, files, views or the board title,',
     '// so the first UI write promotes the fence to JSON instead of dropping them.',
   ]],

@@ -25,6 +25,10 @@ import type { CardSize } from './kanban-view-options'
 interface KanbanRootProps {
   initialData: KanbanData
   isFullscreen?: boolean
+  unsaved?: boolean
+  sourceData?: KanbanData
+  onRetryWrite?: () => void
+  onDiscardWrite?: () => void
   onUpdateData: (data: KanbanData) => void
   onToggleFullscreen?: () => void
 }
@@ -177,10 +181,18 @@ function KanbanViewRenderer(props: KanbanViewRendererProps) {
 function KanbanTopBar({
   state,
   isFullscreen,
+  unsaved,
+  sourceData,
+  onRetryWrite,
+  onDiscardWrite,
   onToggleFullscreen,
 }: {
   state: ReturnType<typeof useKanbanRootState>
   isFullscreen?: boolean
+  unsaved?: boolean
+  sourceData?: KanbanData
+  onRetryWrite?: () => void
+  onDiscardWrite?: () => void
   onToggleFullscreen?: () => void
 }) {
   return (
@@ -209,6 +221,12 @@ function KanbanTopBar({
       onChangeGroupBy={state.columnOps.handleChangeGroupBy}
       onAddItem={() => state.adds.handleAddItem()}
       onToggleFullscreen={onToggleFullscreen}
+      unsaved={unsaved}
+      onRetryWrite={onRetryWrite}
+      onDiscardWrite={sourceData && onDiscardWrite ? () => {
+        state.commitData(sourceData)
+        onDiscardWrite()
+      } : undefined}
     />
   )
 }
@@ -304,6 +322,10 @@ function KanbanRootOverlays({
 export const KanbanRoot = memo(function KanbanRoot({
   initialData,
   isFullscreen,
+  unsaved,
+  sourceData,
+  onRetryWrite,
+  onDiscardWrite,
   onUpdateData,
   onToggleFullscreen,
 }: KanbanRootProps) {
@@ -320,7 +342,15 @@ export const KanbanRoot = memo(function KanbanRoot({
       onContextMenu={menu.handleContextMenu}
       className='flex h-full w-full flex-col overflow-hidden bg-[var(--bg-surface)] text-[var(--text-primary)]'
     >
-      <KanbanTopBar state={state} isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
+      <KanbanTopBar
+        state={state}
+        isFullscreen={isFullscreen}
+        unsaved={unsaved}
+        sourceData={sourceData}
+        onRetryWrite={onRetryWrite}
+        onDiscardWrite={onDiscardWrite}
+        onToggleFullscreen={onToggleFullscreen}
+      />
       <KanbanMain state={state} />
       <KanbanRootOverlays state={state} menu={menu} isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
     </div>

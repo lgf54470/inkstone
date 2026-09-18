@@ -25,7 +25,7 @@
 - [x] K-12 KanbanRoot ErrorBoundary（review #8；`registry.ts:143-151`）
 - [x] K-13 全屏单根化四件套（review #1；moveInto + is-fullscreen 类 + 高度契约 + 内联占位 + 透传；含 Ctrl+Z 单实例化）
 - [x] K-14 outline 写回升级 JSON + parse 正则吞标题修复（review #2）
-- [ ] K-15 冲突写回保留 dirty + 「未保存 · 重试/放弃」（review #3）
+- [x] K-15 冲突写回保留 dirty + 「未保存 · 重试/放弃」（review #3）
 - [ ] K-16 GET /api/kanban/file 鉴权 + DELETE metadata 缺失即拒（review #9；worker `kanban.ts:74,115`）
 - [ ] K-17 `safeKanbanUrl()` 协议白名单 + normalize 清洗（review #11）
 - [ ] K-18 附件删除接线 `deleteKanbanFile` + `kanbanName` 透传（review #10 删除侧）
@@ -74,4 +74,5 @@
 | 2026-09-18 | K-11 undo 快捷键绑实例容器 | 73b05d10 | 新增 kanban-history.test.ts 3/3 ✅（先红 2：body 触发与他板隔离；修复后全绿），keydown 从 window 改绑 containerRef，root 容器 tabIndex=-1 承接空白点击焦点，kanban 96 测试 ✅，preview 套件 149 ✅，全量 test:unit 215 文件 ✅，typecheck/size/comments ✅ |
 | 2026-09-18 | K-12 实例 ErrorBoundary | 02d3cc3b | 新增 registry-error-boundary.test.ts 2/2 ✅（先红 1：注入抛错后无错误态；修复后显示源码+提示、健康板不受影响），registry 渲染统一包 KanbanRootBoundary，kanban 98 测试 ✅，全量 test:unit 216 文件 ✅，typecheck/size/escape/hardcoded/comments ✅ |
 | 2026-09-18 | K-13 全屏单根化四件套 | 9329eced | 新增 2 例单根测试（先红：overlay 内无活 canvas/内联无 h2；修复后 moveInto/moveBack、is-fullscreen 类、占位不塌、退出钮走 onCloseFullscreen、撤销栈跨搬移）✅，全屏二次根删除，搬移后重渲染走微任务防与 commit 抢跑，kanban 98+preview 153 ✅，全量 test:unit 216 文件 1679 测试 ✅，typecheck/size/comments/i18n/全部门禁 ✅ |
-| 2026-09-18 | K-14 outline 写回升级 JSON + 方括号标题转义 | 本次提交（hash 由下一次提交回填） | 新增 write.test.ts 2 例 + outline.test.ts 转义往返 1 例（先红后绿）：flushKanbanEntry 首次写回把 outline 栅栏升级为 JSON，子任务/附件/views/标题不再静默丢弃；parse 两处正则加 (?<!\\) 反向断言并在 cleanText 还原 \[ \]，serialize 对标题转义方括号。mindmap 式「转换为 JSON/大纲」菜单动作与 undo toast 未纳入本提交（另项跟进）。kanban+preview 30 文件 156 ✅，全量 test:unit 217 文件 1682 测试 ✅，typecheck/size/comments/全部门禁 ✅ |
+| 2026-09-18 | K-14 outline 写回升级 JSON + 方括号标题转义 | 7dacb6ff | 新增 write.test.ts 2 例 + outline.test.ts 转义往返 1 例（先红后绿）：flushKanbanEntry 首次写回把 outline 栅栏升级为 JSON，子任务/附件/views/标题不再静默丢弃；parse 两处正则加 (?<!\\) 反向断言并在 cleanText 还原 \[ \]，serialize 对标题转义方括号。mindmap 式「转换为 JSON/大纲」菜单动作与 undo toast 未纳入本提交（另项跟进）。kanban+preview 30 文件 156 ✅，全量 test:unit 217 文件 1682 测试 ✅，typecheck/size/comments/全部门禁 ✅ |
+| 2026-09-18 | K-15 冲突写回未保存态 + 重试/放弃 | 本次提交（hash 由下一次提交回填） | 新增 kanban-unsaved.test.ts 3 例 + write.test.ts 3 例（先红后绿）：flush 失败置 entry.unsaved、改动留在内存；header 持久「未保存 · 重试/放弃」徽章（role=status，重试走 fence-edit 按当前正文重定位，放弃经 commitData 回到最后落盘体且不再触发写）；mountBlock 在 unsaved 时不再改 ref/重解析，preview 重渲染不冲掉未写入编辑。已知边界：unsaved 期间栅栏既移位置又被改 body 时按 index 匹配失败会重建实例（深层 rehost 问题，另项）。kanban+preview 31 文件 162 ✅，全量 test:unit 218 文件 1688 测试 ✅，typecheck/size/comments/全部门禁 ✅ |

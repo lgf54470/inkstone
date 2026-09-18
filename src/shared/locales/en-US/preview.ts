@@ -39,6 +39,8 @@ export const messages = {
 'preview.kanban_loading': 'Loading kanban...',
 'preview.kanban_render_failed': 'Kanban failed to render',
 'preview.kanban_source_moved': 'The kanban moved in the note; reopen the note to keep editing',
+'preview.kanban_unsaved': 'Unsaved',
+'preview.kanban_discard_changes': 'Discard changes',
 'preview.slides': 'Slides',
 'preview.slides_exit_fullscreen': 'Exit full screen',
 'preview.slides_fullscreen': 'Full screen',

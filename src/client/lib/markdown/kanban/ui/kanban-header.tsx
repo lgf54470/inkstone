@@ -23,6 +23,7 @@ import { KanbanSortPopover } from './kanban-sort-popover'
 import { KanbanTagFilterBar } from './kanban-tag-filter-bar'
 import { KanbanViewOptions, type CardSize } from './kanban-view-options'
 import { KanbanViewTabs } from './kanban-view-tabs'
+import { KanbanWriteStatus } from './kanban-write-status'
 
 interface KanbanHeaderProps {
   data: KanbanData
@@ -36,8 +37,11 @@ interface KanbanHeaderProps {
   isFullscreen?: boolean
   canUndo?: boolean
   canRedo?: boolean
+  unsaved?: boolean
   onUndo?: () => void
   onRedo?: () => void
+  onRetryWrite?: () => void
+  onDiscardWrite?: () => void
   onUpdateBoardTitle?: (title: string) => void
   onSelectView: (viewId: string) => void
   onSearchChange: (q: string) => void
@@ -99,8 +103,11 @@ interface HeaderActionsProps {
   isFullscreen?: boolean
   canUndo?: boolean
   canRedo?: boolean
+  unsaved?: boolean
   onUndo?: () => void
   onRedo?: () => void
+  onRetryWrite?: () => void
+  onDiscardWrite?: () => void
   onSearchChange: (q: string) => void
   onChangeFilters: (filters: KanbanFilter[]) => void
   onChangeSorts: (sorts: KanbanSort[]) => void
@@ -435,6 +442,7 @@ function KanbanHeaderActions(props: HeaderActionsProps) {
           onChangeCardSize={props.onChangeCardSize}
         />
       )}
+      <KanbanWriteStatus unsaved={props.unsaved} onRetry={props.onRetryWrite} onDiscard={props.onDiscardWrite} />
       <KanbanHeaderToolbar
         onAddItem={props.onAddItem}
         canUndo={props.canUndo}

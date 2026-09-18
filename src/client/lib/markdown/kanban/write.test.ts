@@ -7,7 +7,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { KanbanBlockEntry } from './entry'
 import { parseKanbanBody } from './body'
-import { flushKanbanEntry } from './write'
+import type { KanbanWriteResult } from './types'
+import { discardKanbanWrite, flushKanbanEntry, retryKanbanWrite } from './write'
 
 const OUTLINE_BODY = '## To Do\n- [ ] First Task'
 
@@ -15,7 +16,7 @@ function outlineEntry(): { entry: KanbanBlockEntry; write: ReturnType<typeof vi.
   const parsed = parseKanbanBody(OUTLINE_BODY)
   if (!parsed.ok) throw new Error('the outline fence should parse')
   parsed.data.items[0]!.subtasks = [{ id: 'sub-1', title: 'Draft schema', completed: false }]
-  const write = vi.fn(() => 'written' as const)
+  const write = vi.fn((): KanbanWriteResult => 'written')
   return {
     write,
     entry: {
@@ -36,6 +37,7 @@ function outlineEntry(): { entry: KanbanBlockEntry; write: ReturnType<typeof vi.
       ref: { line: 3, body: OUTLINE_BODY },
       write,
       dirty: true,
+      unsaved: false,
       timer: null,
     },
   }
@@ -64,5 +66,51 @@ describe('flushKanbanEntry format promotion', () => {
     const written = write.mock.calls[0][1] as string
     expect(written.startsWith('{')).toBe(true)
     expect(JSON.parse(written).items[0].subtasks).toBeDefined()
+  })
+})
+
+describe('flushKanbanEntry conflict handling', () => {
+  it('keeps the edits in memory and flags the entry unsaved when the write conflicts', () => {
+    const { entry, write } = outlineEntry()
+    write.mockReturnValue('conflict')
+    const edits = entry.data
+
+    flushKanbanEntry(entry)
+
+    expect(entry.unsaved).toBe(true)
+    expect(entry.dirty).toBe(false)
+    expect(entry.data).toBe(edits)
+    expect(entry.source).toBe(OUTLINE_BODY)
+  })
+})
+
+describe('retryKanbanWrite and discardKanbanWrite', () => {
+  it('retry writes once the fence resolves and clears the unsaved flag', () => {
+    const { entry, write } = outlineEntry()
+    write.mockReturnValue('conflict')
+    flushKanbanEntry(entry)
+    expect(entry.unsaved).toBe(true)
+
+    write.mockReturnValue('written')
+    const result = retryKanbanWrite(entry)
+
+    expect(result).toBe('written')
+    expect(entry.unsaved).toBe(false)
+    expect(write).toHaveBeenCalledTimes(2)
+    expect(entry.source).toBe(write.mock.calls[1][1])
+  })
+
+  it('discard clears the pending state without another write', () => {
+    const { entry, write } = outlineEntry()
+    write.mockReturnValue('conflict')
+    flushKanbanEntry(entry)
+
+    discardKanbanWrite(entry)
+
+    expect(entry.unsaved).toBe(false)
+    expect(entry.dirty).toBe(false)
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(flushKanbanEntry(entry)).toBeNull()
+    expect(write).toHaveBeenCalledTimes(1)
   })
 })

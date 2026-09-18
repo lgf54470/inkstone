@@ -20,5 +20,7 @@ export interface KanbanBlockEntry {
   ref: KanbanFenceRef | null
   write: KanbanWriter | null
   dirty: boolean
+  /** Edits the note refused to accept; kept in memory until retry or discard. */
+  unsaved: boolean
   timer: number | null
 }

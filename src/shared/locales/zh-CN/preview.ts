@@ -56,6 +56,8 @@ export const messages = {
 'preview.slides_source_moved': '幻灯片在笔记中的位置已变化，请重新打开笔记后再编辑',
 'preview.slides_body_rewritten': '该演示稿已超出大纲语法的表达能力，代码块已改用 JSON 保存幻灯片',
 'preview.kanban_source_moved': '看板在笔记中的位置已变化，请重新打开笔记后再编辑',
+'preview.kanban_unsaved': '未保存',
+'preview.kanban_discard_changes': '放弃改动',
 'preview.kanban_status_todo': '未开始',
 'preview.kanban_status_in_progress': '进行中',
 'preview.kanban_status_done': '已完成',
