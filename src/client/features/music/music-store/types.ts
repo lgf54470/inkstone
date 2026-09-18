@@ -20,6 +20,19 @@ export type MusicScope =
 
 export type MusicTransferTarget = 'r2' | 'webdav'
 
+export interface TrackMenuTarget {
+  track: MusicTrack
+  itemId?: string
+  playlistId?: string
+}
+
+// The anchor is the trigger element for a button-opened menu and the pointer for a
+// right-click; it only lives in the store while the single menu instance is open.
+export interface TrackMenuRequest {
+  target: TrackMenuTarget
+  anchor: HTMLElement | { x: number; y: number }
+}
+
 export interface MusicUploadTask {
   id: string
   name: string
@@ -84,6 +97,7 @@ export interface MusicStoreState {
   floatingCollapsed: boolean
   floatingPosition: { x: number; y: number } | null
   immersive: boolean
+  trackMenu: TrackMenuRequest | null
   uploads: MusicUploadTask[]
   downloads: MusicDownloadTask[]
   uploadTarget: MusicTransferTarget
@@ -97,6 +111,8 @@ export interface MusicStoreState {
   clearSearchHistory: () => void
   setSort: (sort: MusicSort) => void
   setViewMode: (mode: MusicViewMode) => void
+  openTrackMenu: (menu: TrackMenuRequest) => void
+  closeTrackMenu: () => void
   setSourceFilter: (filter: MusicSourceFilter) => void
   prepareRomanization: () => Promise<void>
   toggleSelect: (id: string, additive: boolean) => void

@@ -3,18 +3,14 @@ import { Download, Heart, ListEnd, ListPlus, ListStart, PencilLine, Pin, Server,
 import type { MusicTag, MusicTrack } from '@shared/types'
 import { Menu, confirm, submenuFor, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
-import { useMusic, useVisibleTracks } from './music-store'
+import { useMusic, visibleTracks, type TrackMenuTarget } from './music-store'
 import { flattenTags } from './music-utils'
+
+export type { TrackMenuTarget }
 
 const TRACK_MENU_WIDTH = 220
 
 type MenuRunner = (run: () => void) => () => void
-
-export interface TrackMenuTarget {
-  track: MusicTrack
-  itemId?: string
-  playlistId?: string
-}
 
 export function MusicTrackMenu({
   target,
@@ -34,7 +30,17 @@ export function MusicTrackMenu({
   return <Menu open={open} anchor={anchor} items={items} onClose={onClose} label={t('music.track_menu')} width={TRACK_MENU_WIDTH} />
 }
 
-export function useTrackMenuItems(
+// One instance for the whole hub. Rows and cards post their request to the store,
+// so the item builder below — with its store subscriptions — no longer runs per row.
+export function MusicTrackMenuHost({ onEdit }: { onEdit: (track: MusicTrack) => void }) {
+  const menu = useMusic((state) => state.trackMenu)
+  const closeTrackMenu = useMusic((state) => state.closeTrackMenu)
+  if (!menu) return null
+  const anchor = menu.anchor instanceof HTMLElement ? { current: menu.anchor } : menu.anchor
+  return <MusicTrackMenu target={menu.target} anchor={anchor} open onClose={closeTrackMenu} onEdit={onEdit} />
+}
+
+function useTrackMenuItems(
   target: TrackMenuTarget | null,
   onClose: () => void,
   onEdit: (track: MusicTrack) => void,
@@ -51,14 +57,13 @@ export function useTrackMenuItems(
   const deleteTrack = useMusic((state) => state.deleteTrack)
   const deleteWebdavFiles = useMusic((state) => state.deleteWebdavFiles)
   const downloadTracks = useMusic((state) => state.downloadTracks)
-  const visibleTracks = useVisibleTracks()
 
   return useMemo(() => {
     const track = target?.track
     if (!track) return []
     const wrap = closeThenRun(onClose)
     const actions = {
-      wrap, visibleTracks, playlists, tags, playCollection, addToQueue, addToPlaylist, patchTrack,
+      wrap, playlists, tags, playCollection, addToQueue, addToPlaylist, patchTrack,
       toggleFavorite, togglePin, onEdit, downloadTracks,
     }
     const items = baseMenuItems(track, actions)
@@ -82,12 +87,11 @@ export function useTrackMenuItems(
       onSelect: wrap(() => confirmDeleteTrack(track, deleteTrack)),
     })
     return items
-  }, [target, playlists, tags, playCollection, addToQueue, addToPlaylist, toggleFavorite, togglePin, patchTrack, removeFromPlaylist, deleteTrack, deleteWebdavFiles, downloadTracks, visibleTracks, onClose, onEdit])
+  }, [target, playlists, tags, playCollection, addToQueue, addToPlaylist, toggleFavorite, togglePin, patchTrack, removeFromPlaylist, deleteTrack, deleteWebdavFiles, downloadTracks, onClose, onEdit])
 }
 
 interface TrackMenuActions {
   wrap: MenuRunner
-  visibleTracks: MusicTrack[]
   playlists: { id: string; name: string }[]
   tags: MusicTag[]
   playCollection: (ids: string[], startIndex?: number) => Promise<void>
@@ -105,7 +109,7 @@ function baseMenuItems(track: MusicTrack, actions: TrackMenuActions): MenuItem[]
   return [
     { id: 'play-next', label: t('music.play_next'), icon: <ListStart size={14} />, onSelect: wrap(() => actions.addToQueue(track.id, true)) },
     { id: 'queue', label: t('music.add_to_queue'), icon: <ListEnd size={14} />, onSelect: wrap(() => actions.addToQueue(track.id)) },
-    { id: 'play-all', label: t('music.play_all'), onSelect: wrap(() => playFromTrack(actions.visibleTracks, track, actions.playCollection)) },
+    { id: 'play-all', label: t('music.play_all'), onSelect: wrap(() => playFromTrack(track, actions.playCollection)) },
     { id: 'to-playlist', label: t('music.add_to_playlist'), icon: <ListPlus size={14} />, separatorBefore: true, submenu: submenuFor(playlistSubmenu(actions.playlists, track, wrap, actions.addToPlaylist)) },
     { id: 'to-tag', label: t('music.add_tag'), icon: <Tag size={14} />, submenu: submenuFor(tagSubmenu(actions.tags, track, wrap, actions.patchTrack)) },
     { id: 'favorite', label: track.isFavorite ? t('music.unfavorite') : t('music.favorite'), icon: <Heart size={14} />, onSelect: wrap(() => void actions.toggleFavorite(track.id)) },
@@ -115,12 +119,10 @@ function baseMenuItems(track: MusicTrack, actions: TrackMenuActions): MenuItem[]
   ]
 }
 
-// Plays the current list starting at the clicked track, like the toolbar's play-all button.
-function playFromTrack(
-  visible: MusicTrack[],
-  track: MusicTrack,
-  playCollection: (ids: string[], startIndex?: number) => Promise<void>,
-): void {
+// Plays the current list starting at the clicked track, like the toolbar's play-all
+// button. The visible list is derived when the item runs, not on every row render.
+function playFromTrack(track: MusicTrack, playCollection: (ids: string[], startIndex?: number) => Promise<void>): void {
+  const visible = visibleTracks(useMusic.getState())
   const index = visible.findIndex((entry) => entry.id === track.id)
   void playCollection(visible.map((entry) => entry.id), index < 0 ? 0 : index)
 }

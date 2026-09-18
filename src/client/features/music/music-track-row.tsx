@@ -1,11 +1,11 @@
-import { memo, useCallback, useRef, useState } from 'react'
+import { memo, useCallback } from 'react'
 import { Heart, MoreHorizontal, Pause, Pin, Play } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { IconButton, Spinner } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { MusicArtwork } from './music-artwork'
-import { MusicTrackMenu, type TrackMenuTarget } from './music-track-menu'
+import type { TrackMenuTarget } from './music-track-menu'
 import { MusicSourceBadge } from './music-source-badge'
 import { MusicTrackTags } from './music-track-tags'
 import { formatDuration } from './music-utils'
@@ -18,6 +18,7 @@ export interface TrackRowHandlers {
   onToggleFavorite: (id: string) => void
   onSelect: (track: MusicTrack, modifiers: { shift: boolean; additive: boolean }) => void
   onContextMenu: (event: React.MouseEvent, target: TrackMenuTarget) => void
+  onMenuButton: (event: React.MouseEvent<HTMLElement>, target: TrackMenuTarget) => void
   onEdit: (track: MusicTrack) => void
 }
 
@@ -69,8 +70,6 @@ export const MusicTrackRow = memo(function MusicTrackRow({
   isSelected,
   handlers,
 }: TrackRowProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const menuButtonRef = useRef<HTMLButtonElement>(null)
   const handleFavourite = useCallback(() => handlers.onToggleFavorite(track.id), [handlers, track.id])
   const handleSelect = useCallback((event: React.MouseEvent) => {
     if (isInteractiveTarget(event.target)) return
@@ -109,11 +108,9 @@ export const MusicTrackRow = memo(function MusicTrackRow({
       <RowMeta track={track} />
       <RowActions
         isFavorite={track.isFavorite}
-        menuRef={menuButtonRef}
         onToggleFavorite={handleFavourite}
-        onOpenMenu={() => setIsMenuOpen(true)}
+        onOpenMenu={(event) => handlers.onMenuButton(event, { track })}
       />
-      <MusicTrackMenu target={{ track }} anchor={menuButtonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} onEdit={handlers.onEdit} />
     </div>
   )
 })
@@ -192,15 +189,14 @@ function RowArtwork({
 
 function RowActions({
   isFavorite,
-  menuRef,
   onToggleFavorite,
   onOpenMenu,
 }: {
   isFavorite: boolean
-  menuRef: React.RefObject<HTMLButtonElement | null>
   onToggleFavorite: () => void
-  onOpenMenu: () => void
+  onOpenMenu: (event: React.MouseEvent<HTMLElement>) => void
 }) {
+  // Row action buttons stay visible on touch; only from md up do they reveal on hover/focus.
   const revealActions = 'opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto'
   return (
     <>
@@ -213,7 +209,6 @@ function RowActions({
         <Heart size={13} className={isFavorite ? 'fill-current' : undefined} />
       </IconButton>
       <IconButton
-        ref={menuRef}
         label={t('music.open_menu')}
         size='sm'
         onClick={onOpenMenu}

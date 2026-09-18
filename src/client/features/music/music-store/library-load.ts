@@ -3,7 +3,7 @@ import { api } from '../../../lib/api'
 import { buildSearchIndex, ensureRomanized, needsRomanization, rankTracks } from '../music-search'
 import { collectTagIds } from '../music-utils'
 import { pushHistory } from './state'
-import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSourceFilter, MusicStoreState, MusicViewMode } from './types'
+import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest } from './types'
 
 export async function loadLibrary(set: MusicSet): Promise<void> {
   set({ loading: true, loadError: null })
@@ -32,6 +32,15 @@ export function setSort(set: MusicSet, sort: MusicSort): void {
 
 export function setViewMode(set: MusicSet, viewMode: MusicViewMode): void {
   set({ viewMode })
+}
+
+// One menu instance for the whole hub; the rows only ever post requests to it.
+export function openTrackMenu(set: MusicSet, menu: TrackMenuRequest): void {
+  set({ trackMenu: menu })
+}
+
+export function closeTrackMenu(set: MusicSet): void {
+  set({ trackMenu: null })
 }
 
 export function setSourceFilter(set: MusicSet, sourceFilter: MusicSourceFilter): void {

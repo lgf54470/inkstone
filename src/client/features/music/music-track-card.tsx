@@ -1,10 +1,10 @@
 import { Heart, MoreHorizontal, Pause, Pin, Play } from 'lucide-react'
-import { memo, useCallback, useRef, useState } from 'react'
+import { memo, useCallback } from 'react'
 import { IconButton, Spinner } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { MusicArtwork } from './music-artwork'
-import { MusicTrackMenu, type TrackMenuTarget } from './music-track-menu'
+import type { TrackMenuTarget } from './music-track-menu'
 import { MusicSourceBadge } from './music-source-badge'
 import { MusicTrackTags } from './music-track-tags'
 import { formatDuration } from './music-utils'
@@ -45,14 +45,12 @@ function CardArtwork({
 
 function CardActions({
   isFavorite,
-  menuRef,
   onToggleFavorite,
   onOpenMenu,
 }: {
   isFavorite: boolean
-  menuRef: React.RefObject<HTMLButtonElement | null>
   onToggleFavorite: () => void
-  onOpenMenu: () => void
+  onOpenMenu: (event: React.MouseEvent<HTMLElement>) => void
 }) {
   return (
     <div className='opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/card:opacity-100 md:group-hover/card:pointer-events-auto md:group-focus-within/card:opacity-100 md:group-focus-within/card:pointer-events-auto absolute top-3 right-3 flex flex-col gap-1'>
@@ -66,7 +64,6 @@ function CardActions({
         <Heart size={12} className={isFavorite ? 'fill-current' : undefined} />
       </IconButton>
       <IconButton
-        ref={menuRef}
         label={t('music.open_menu')}
         size='sm'
         onClick={onOpenMenu}
@@ -118,8 +115,6 @@ function CardInfo({ track, isCurrent }: { track: TrackRowProps['track']; isCurre
 
 export const MusicTrackCard = memo(function MusicTrackCard({ track, isCurrent, isPlaying, isStreamLoading, isSelected, handlers }: TrackRowProps) {
   const menuTarget: TrackMenuTarget = { track }
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const menuButtonRef = useRef<HTMLButtonElement>(null)
   const handleSelect = useCallback((event: React.MouseEvent) => {
     if (isInteractiveTarget(event.target)) return
     handlers.onSelect(track, { shift: event.shiftKey, additive: event.metaKey || event.ctrlKey })
@@ -150,11 +145,9 @@ export const MusicTrackCard = memo(function MusicTrackCard({ track, isCurrent, i
 
       <CardActions
         isFavorite={track.isFavorite}
-        menuRef={menuButtonRef}
         onToggleFavorite={() => handlers.onToggleFavorite(track.id)}
-        onOpenMenu={() => setIsMenuOpen(true)}
+        onOpenMenu={(event) => handlers.onMenuButton(event, menuTarget)}
       />
-      <MusicTrackMenu target={menuTarget} anchor={menuButtonRef} open={isMenuOpen} onClose={() => setIsMenuOpen(false)} onEdit={handlers.onEdit} />
     </div>
   )
 })

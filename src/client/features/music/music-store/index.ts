@@ -44,6 +44,7 @@ function initialMusicState(): Partial<MusicStoreState> {
     floatingCollapsed: prefs.floatingCollapsed,
     floatingPosition: prefs.floatingPosition,
     immersive: false,
+    trackMenu: null,
     uploads: [],
     downloads: [],
     uploadTarget: 'r2',
@@ -54,7 +55,7 @@ function initialMusicState(): Partial<MusicStoreState> {
 
 export type {
   MusicBatch, MusicDownloadTask, MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
-  MusicUploadTask, MusicViewMode, MusicWebdavState,
+  MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,
 } from './types'
 export { currentTrack } from './player'
 export { PLAYBACK_RATES } from './state'

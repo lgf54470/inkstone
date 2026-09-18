@@ -10,12 +10,11 @@ import { useMusic } from './music-store'
 import type { MusicViewMode } from './music-store'
 import { MusicSelectionBar } from './music-selection-bar'
 import { MusicTrackCard } from './music-track-card'
-import { MusicTrackMenu } from './music-track-menu'
+import { MusicTrackMenuHost } from './music-track-menu'
 import { MusicTrackTable } from './music-track-table'
 import type { TrackRowHandlers } from './music-track-row'
 import { useTrackListActions, useTrackSelection, shuffledIds, type TrackSelection } from './use-track-list'
 import { downloadM3u } from './music-export'
-import { useTrackMenu } from './use-track-menu'
 
 export const MusicTrackList = memo(function MusicTrackList({
   tracks,
@@ -33,6 +32,7 @@ export const MusicTrackList = memo(function MusicTrackList({
   const isStreamLoading = useMusic((state) => state.streamLoading)
   const viewMode = useMusic((state) => state.viewMode)
   const scope = useMusic((state) => state.scope)
+  const openTrackMenu = useMusic((state) => state.openTrackMenu)
   const actions = useTrackListActions(tracks, currentId, onEdit)
   const visibleIds = useMemo(() => tracks.map((track) => track.id), [tracks])
   const selection = useTrackSelection(visibleIds)
@@ -41,10 +41,16 @@ export const MusicTrackList = memo(function MusicTrackList({
     () => ({
       ...actions,
       onSelect: (track, modifiers) => selection.toggle(track.id, modifiers),
-      onContextMenu: () => undefined,
+      // The menu itself is a single hub-wide instance; rows only post these requests.
+      onContextMenu: (event, target) => {
+        event.preventDefault()
+        event.stopPropagation()
+        openTrackMenu({ target, anchor: { x: event.clientX, y: event.clientY } })
+      },
+      onMenuButton: (event, target) => openTrackMenu({ target, anchor: event.currentTarget }),
       onEdit,
     }),
-    [actions, selection, onEdit],
+    [actions, selection, onEdit, openTrackMenu],
   )
   const playback = useMemo(() => ({ isPlaying, isStreamLoading }), [isPlaying, isStreamLoading])
 
@@ -56,8 +62,9 @@ export const MusicTrackList = memo(function MusicTrackList({
       <ListHeader tracks={tracks} scopeKind={scope.kind} />
       <MusicSelectionBar visibleIds={visibleIds} />
       {viewMode === 'grid'
-        ? <TrackGrid tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} onEdit={onEdit} />
-        : <MusicTrackTable tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} onEdit={onEdit} />}
+        ? <TrackGrid tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} />
+        : <MusicTrackTable tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} />}
+      <MusicTrackMenuHost onEdit={onEdit} />
     </div>
   )
 })
@@ -133,16 +140,13 @@ function TrackGrid({
   playback,
   selection,
   handlers,
-  onEdit,
 }: {
   tracks: MusicTrack[]
   currentId: string | null
   playback: { isPlaying: boolean; isStreamLoading: boolean }
   selection: TrackSelection
   handlers: TrackRowHandlers
-  onEdit: (track: MusicTrack) => void
 }) {
-  const { menu, rowHandlers } = useTrackMenu(handlers)
   const selected = useMemo(() => new Set(selection.selectedIds), [selection.selectedIds])
   return (
     <div className='min-h-0 flex-1 overflow-y-auto p-3'>
@@ -156,17 +160,10 @@ function TrackGrid({
             isPlaying={playback.isPlaying}
             isStreamLoading={playback.isStreamLoading}
             isSelected={selected.has(track.id)}
-            handlers={rowHandlers}
+            handlers={handlers}
           />
         ))}
       </div>
-      <MusicTrackMenu
-        target={menu.target}
-        anchor={menu.anchor}
-        open={menu.open}
-        onClose={menu.onClose}
-        onEdit={onEdit}
-      />
     </div>
   )
 }

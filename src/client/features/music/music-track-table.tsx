@@ -2,9 +2,7 @@ import type { MusicTrack } from '@shared/types'
 import { memo, useEffect, useMemo, useRef } from 'react'
 import { t } from '../../lib/i18n'
 import { MusicTrackRow, type TrackRowHandlers } from './music-track-row'
-import { MusicTrackMenu } from './music-track-menu'
 import type { TrackSelection } from './use-track-list'
-import { useTrackMenu } from './use-track-menu'
 
 export const MusicTrackTable = memo(function MusicTrackTable({
   tracks,
@@ -12,16 +10,13 @@ export const MusicTrackTable = memo(function MusicTrackTable({
   playback,
   selection,
   handlers,
-  onEdit,
 }: {
   tracks: MusicTrack[]
   currentId: string | null
   playback: { isPlaying: boolean; isStreamLoading: boolean }
   selection: TrackSelection
   handlers: TrackRowHandlers
-  onEdit: (track: MusicTrack) => void
 }) {
-  const { menu, rowHandlers } = useTrackMenu(handlers)
   const selected = useMemo(() => new Set(selection.selectedIds), [selection.selectedIds])
   const allSelected = tracks.length > 0 && tracks.every((track) => selected.has(track.id))
   const someSelected = tracks.some((track) => selected.has(track.id))
@@ -43,17 +38,10 @@ export const MusicTrackTable = memo(function MusicTrackTable({
             isPlaying={playback.isPlaying}
             isStreamLoading={playback.isStreamLoading}
             isSelected={selected.has(track.id)}
-            handlers={rowHandlers}
+            handlers={handlers}
           />
         ))}
       </div>
-      <MusicTrackMenu
-        target={menu.target}
-        anchor={menu.anchor}
-        open={menu.open}
-        onClose={menu.onClose}
-        onEdit={onEdit}
-      />
     </div>
   )
 })

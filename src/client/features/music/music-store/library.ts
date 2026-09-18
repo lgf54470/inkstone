@@ -1,6 +1,6 @@
 import type { MusicBatchAction } from '../../../lib/api'
 import {
-  clearSearchHistory, clearSelection, commitQuery, invertSelection, loadLibrary, prepareRomanization,
+  clearSearchHistory, clearSelection, commitQuery, closeTrackMenu, invertSelection, loadLibrary, openTrackMenu, prepareRomanization,
   selectAll, setQuery, setScope, setSort, setSourceFilter, setViewMode, toggleSelect,
 } from './library-load'
 import { batchTracks, deleteTrack, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin } from './library-tracks'
@@ -15,7 +15,7 @@ import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type LibrarySlice = Pick<MusicStoreState,
   | 'loadLibrary' | 'setScope' | 'setQuery' | 'commitQuery' | 'clearSearchHistory' | 'setSort' | 'prepareRomanization'
-  | 'setViewMode' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
+  | 'setViewMode' | 'openTrackMenu' | 'closeTrackMenu' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
@@ -33,6 +33,8 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     clearSearchHistory: () => clearSearchHistory(set),
     setSort: (sort) => setSort(set, sort),
     setViewMode: (mode) => setViewMode(set, mode),
+    openTrackMenu: (menu) => openTrackMenu(set, menu),
+    closeTrackMenu: () => closeTrackMenu(set),
     setSourceFilter: (filter) => setSourceFilter(set, filter),
     prepareRomanization: () => prepareRomanization(set, get),
     toggleSelect: (id, additive) => toggleSelect(set, id, additive),

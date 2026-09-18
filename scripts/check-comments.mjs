@@ -1252,6 +1252,7 @@ const allowed = new Map([
     '// Cover lookup reaches a public catalogue, so it only runs while the listener asks for it.',
   ]],
   ['src/client/features/music/music-store/library-load.ts', [
+    '// One menu instance for the whole hub; the rows only ever post requests to it.',
     '// The pinyin dictionary is only needed for search, so loading the library stays cheap.',
   ]],
   ['src/client/features/music/music-store/library-tracks.ts', [
@@ -1280,6 +1281,10 @@ const allowed = new Map([
     '// Read chunk by chunk so the progress bar moves instead of waiting for the whole file.',
     '// A downloaded view can sit on a shared buffer, which the Blob constructor refuses.',
   ]],
+  ['src/client/features/music/music-store/types.ts', [
+    '// The anchor is the trigger element for a button-opened menu and the pointer for a',
+    '// right-click; it only lives in the store while the single menu instance is open.',
+  ]],
   ['src/client/features/music/music-store/webdav.ts', [
     '// The saved duration only labels the list; a failed patch must not undo an import.',
   ]],
@@ -1287,16 +1292,21 @@ const allowed = new Map([
     '// Older music tags stored a palette name instead of hex; display keeps working either way.',
   ]],
   ['src/client/features/music/music-track-list.tsx', [
+    '// The menu itself is a single hub-wide instance; rows only post these requests.',
     '// Ctrl/Cmd+A selects the visible list, matching the file-manager habit; text fields keep their own.',
   ]],
   ['src/client/features/music/music-track-menu.tsx', [
-    '// Plays the current list starting at the clicked track, like the toolbar\'s play-all button.',
+    '// One instance for the whole hub. Rows and cards post their request to the store,',
+    '// so the item builder below — with its store subscriptions — no longer runs per row.',
+    '// Plays the current list starting at the clicked track, like the toolbar\'s play-all',
+    '// button. The visible list is derived when the item runs, not on every row render.',
     '// Checkmarks show the track\'s current tags; picking one toggles it.',
     '// Menu actions close the menu before they run, so focus returns to the list first.',
   ]],
   ['src/client/features/music/music-track-row.tsx', [
     '// Off-screen rows skip layout and paint; the intrinsic size reserves their height.',
     '// Clicks on the row\'s own controls must not change the selection.',
+    '// Row action buttons stay visible on touch; only from md up do they reveal on hover/focus.',
   ]],
   ['src/client/features/music/music-track-table.tsx', [
     '// The header box shows a dash while only part of the visible list is selected.',
@@ -1311,9 +1321,6 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/use-track-list.ts', [
     '// File-manager semantics: click selects one row, Ctrl toggles a row, Shift extends from the anchor.',
-  ]],
-  ['src/client/features/music/use-track-menu.ts', [
-    '/**\n * The menu a right click on a row or a card opens, and the handlers the rows share. The\n * handlers are one object for the whole list on purpose: a fresh one per row would give\n * every row new props on every render and the memo on the row would never hold.\n */',
   ]],
   ['src/client/features/presentation/deck-export.ts', [
     '// Exporting a deck is the same pages read out two ways: printed, and rasterized to images. Both',
