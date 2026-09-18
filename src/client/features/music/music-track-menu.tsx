@@ -79,7 +79,7 @@ export function useTrackMenuItems(
       icon: <Trash2 size={14} />,
       tone: 'danger',
       separatorBefore: true,
-      onSelect: wrap(() => void deleteTrack(track.id)),
+      onSelect: wrap(() => confirmDeleteTrack(track, deleteTrack)),
     })
     return items
   }, [target, playlists, tags, playCollection, addToQueue, addToPlaylist, toggleFavorite, togglePin, patchTrack, removeFromPlaylist, deleteTrack, deleteWebdavFiles, downloadTracks, visibleTracks, onClose, onEdit])
@@ -153,6 +153,17 @@ function closeThenRun(onClose: () => void): MenuRunner {
     onClose()
     run()
   }
+}
+
+function confirmDeleteTrack(track: MusicTrack, deleteTrack: (id: string) => Promise<void>): void {
+  void confirm({
+    title: t('music.delete_track'),
+    description: t('music.delete_track_confirm', { value0: track.title }),
+    confirmLabel: t('music.delete'),
+    tone: 'danger',
+  }).then((ok) => {
+    if (ok) void deleteTrack(track.id)
+  })
 }
 
 function remoteDeleteItem(

@@ -1,6 +1,6 @@
 import type { MusicTrack } from '@shared/types'
 import { api } from '../../../lib/api'
-import { toastMusicError, toastMusicNotice } from '../music-feedback'
+import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import { computeNextIndex, computePrevIndex, nextPlayMode } from '../music-utils'
 import {
   applyVolume, audioElement, bindMediaSessionActions, configureAudio, pausePlayback, publishMediaSession,
@@ -214,15 +214,18 @@ export function addToQueue(set: MusicSet, get: MusicGet, id: string, next = fals
   const { queue, currentIndex } = get()
   if (!queue.length) {
     set({ queue: [id], currentIndex: 0 })
+    toastMusic('music.added_to_queue')
     return
   }
   const deduped = queue.filter((entry) => entry !== id)
   if (next) {
     deduped.splice(Math.min(currentIndex + 1, deduped.length), 0, id)
     set({ queue: deduped })
+    toastMusic('music.added_to_queue')
     return
   }
   set({ queue: [...deduped, id] })
+  toastMusic('music.added_to_queue')
 }
 
 export function removeFromQueue(set: MusicSet, get: MusicGet, index: number): void {

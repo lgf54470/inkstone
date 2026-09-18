@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Heart, ListMusic, MoreHorizontal, PencilLine, Pin, Play, Plus, Trash2 } from 'lucide-react'
 import type { MusicPlaylistDetail } from '@shared/types'
 import { IconButton } from '../../components/primitives'
-import { Menu, Tooltip, useContextMenu, type MenuItem } from '../../components/overlay'
+import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useMusic } from './music-store'
@@ -49,13 +49,24 @@ export function MusicHubPlaylists({ onCreate }: { onCreate: () => void }) {
                 onSelect={() => setScope({ kind: 'playlist', playlistId: playlist.id })}
                 onPlay={() => void playCollection(playlist.items.map((item) => item.trackId))}
                 onRename={(name) => void renamePlaylist(playlist.id, name)}
-                onDelete={() => void deletePlaylist(playlist.id)}
+                onDelete={() => confirmDeletePlaylist(playlist, deletePlaylist)}
               />
             ))}
         </div>
       )}
     </section>
   )
+}
+
+function confirmDeletePlaylist(playlist: MusicPlaylistDetail, deletePlaylist: (id: string) => Promise<void>): void {
+  void confirm({
+    title: t('music.delete_playlist'),
+    description: t('music.delete_playlist_confirm', { value0: playlist.name }),
+    confirmLabel: t('music.delete'),
+    tone: 'danger',
+  }).then((ok) => {
+    if (ok) void deletePlaylist(playlist.id)
+  })
 }
 
 function PlaylistRow({
