@@ -57,7 +57,8 @@ export function MusicVisualizer({
   return <canvas ref={canvasRef} aria-hidden='true' className={cn('block h-7 w-full', className)} />
 }
 
-// A paused player still shows a calm baseline so the strip keeps its place in the layout.
+// A paused or off-screen strip stops requesting frames entirely; the last painted
+// baseline stays in the layout, and a theme flip repaints it without restarting rAF.
 function paintLoop(
   canvas: HTMLCanvasElement | null,
   analyserRef: { current: AnalyserNode | null },
@@ -69,22 +70,64 @@ function paintLoop(
   if (!canvas || !context) return () => undefined
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const spectrum = new Uint8Array(analyserRef.current?.frequencyBinCount ?? FALLBACK_BINS)
-  let frame = 0
   let tick = 0
   let accent = readAccent(canvas)
-  const step = (): void => {
+  let frame = 0
+  let visible = true
+  const paintOnce = (): void => {
     if (tick % ACCENT_REFRESH_FRAMES === 0) accent = readAccent(canvas)
     tick += 1
     const analyser = analyserRef.current
     if (analyser && isPlaying) analyser.getByteFrequencyData(spectrum)
     else spectrum.fill(0)
-    const levels = visualizerLevels(spectrum, barCount)
-    paintFrame(canvas, context, levels, accent, variant, isPlaying)
-    if (!reduceMotion) frame = window.requestAnimationFrame(step)
+    paintFrame(canvas, context, visualizerLevels(spectrum, barCount), accent, variant, isPlaying)
   }
-  step()
-  if (reduceMotion) return () => undefined
-  return () => window.cancelAnimationFrame(frame)
+  const step = (): void => {
+    paintOnce()
+    frame = window.requestAnimationFrame(step)
+  }
+  const start = (): void => {
+    if (!frame && visible && isPlaying && !reduceMotion) frame = window.requestAnimationFrame(step)
+  }
+  const stop = (): void => {
+    if (frame) {
+      window.cancelAnimationFrame(frame)
+      frame = 0
+    }
+  }
+  const watchers = watchRepaints(canvas, (intersecting) => {
+    visible = intersecting
+    if (intersecting) start()
+    else stop()
+  }, () => {
+    if (frame) return
+    paintOnce()
+  })
+  paintOnce()
+  start()
+  return () => {
+    stop()
+    watchers()
+  }
+}
+
+// The first callback fires when the canvas enters or leaves the viewport, the second
+// when the theme flips tokens on the document root while the frame loop is stopped.
+function watchRepaints(
+  canvas: HTMLCanvasElement,
+  onVisibility: (visible: boolean) => void,
+  onThemeChange: () => void,
+): () => void {
+  const observer = new IntersectionObserver((entries) => {
+    onVisibility(entries.some((entry) => entry.isIntersecting))
+  })
+  observer.observe(canvas)
+  const themeWatcher = new MutationObserver(() => onThemeChange())
+  themeWatcher.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] })
+  return () => {
+    observer.disconnect()
+    themeWatcher.disconnect()
+  }
 }
 
 function paintFrame(

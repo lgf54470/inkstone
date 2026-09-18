@@ -15,8 +15,12 @@ let bridge: AudioBridge | null = null
 let analyserContext: AudioContext | null = null
 let analyserNode: AnalyserNode | null = null
 let analyserElement: HTMLAudioElement | null = null
+let suspendTimer: number | null = null
 const ANALYSER_FFT_SIZE = 256
 const ANALYSER_SMOOTHING = 0.82
+// Suspend a little after the pause instead of at it: transport taps and track changes
+// resume within this window and must not churn the audio hardware.
+const PAUSE_SUSPEND_DELAY_MS = 5_000
 
 export function configureAudio(next: AudioBridge): void {
   bridge = next
@@ -40,13 +44,42 @@ function createAudioElement(): HTMLAudioElement {
     if (Number.isFinite(audio.duration)) bridge?.onDuration(audio.duration * 1000)
   })
   audio.addEventListener('ended', () => bridge?.onEnded())
-  audio.addEventListener('play', () => bridge?.onPlayingChange(true))
+  audio.addEventListener('play', () => {
+    resumeAnalyserContext()
+    bridge?.onPlayingChange(true)
+  })
   audio.addEventListener('waiting', () => bridge?.onBuffering(true))
   audio.addEventListener('stalled', () => bridge?.onBuffering(true))
   audio.addEventListener('playing', () => bridge?.onBuffering(false))
-  audio.addEventListener('pause', () => bridge?.onPlayingChange(false))
+  audio.addEventListener('pause', () => {
+    scheduleAnalyserSuspend()
+    bridge?.onPlayingChange(false)
+  })
   audio.addEventListener('error', () => bridge?.onError(readMediaError(audio)))
   return audio
+}
+
+function scheduleAnalyserSuspend(): void {
+  if (!analyserContext) return
+  if (suspendTimer !== null) window.clearTimeout(suspendTimer)
+  suspendTimer = window.setTimeout(() => {
+    suspendTimer = null
+    void analyserContext?.suspend().catch((error: unknown) => {
+      console.warn('[inkstone] audio analyser could not suspend:', error)
+    })
+  }, PAUSE_SUSPEND_DELAY_MS)
+}
+
+function resumeAnalyserContext(): void {
+  if (suspendTimer !== null) {
+    window.clearTimeout(suspendTimer)
+    suspendTimer = null
+  }
+  if (analyserContext?.state === 'suspended') {
+    void analyserContext.resume().catch((error: unknown) => {
+      console.warn('[inkstone] audio analyser could not resume:', error)
+    })
+  }
 }
 
 function readMediaError(audio: HTMLAudioElement): string {

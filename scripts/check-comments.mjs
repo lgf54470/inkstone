@@ -1165,6 +1165,8 @@ const allowed = new Map([
     '/** Keeps the rolling date filter materialized: the window recomputes whenever a note save (or the day rollover) changes its anchor. Mount once, anywhere in the tree. */',
   ]],
   ['src/client/features/music/audio-engine.ts', [
+    '// Suspend a little after the pause instead of at it: transport taps and track changes',
+    '// resume within this window and must not churn the audio hardware.',
     '// Kept in the document so browsers that require a live node keep routing media keys.',
     '// Routing the element through a suspended context would silence playback, so the graph is only',
     '// built once the browser lets audio run; callers get null until then and retry on the next play.',
@@ -1373,7 +1375,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-visualizer.tsx', [
     '// Frequencies are sampled on a curve so the bass bins do not swallow the whole picture.',
-    '// A paused player still shows a calm baseline so the strip keeps its place in the layout.',
+    '// A paused or off-screen strip stops requesting frames entirely; the last painted',
+    '// baseline stays in the layout, and a theme flip repaints it without restarting rAF.',
+    '// The first callback fires when the canvas enters or leaves the viewport, the second',
+    '// when the theme flips tokens on the document root while the frame loop is stopped.',
   ]],
   ['src/client/features/music/use-track-list.ts', [
     '// File-manager semantics: click selects one row, Ctrl toggles a row, Shift extends from the anchor.',
