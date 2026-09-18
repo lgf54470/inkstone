@@ -4596,6 +4596,9 @@ const allowed = new Map([
     '// The links that came back are the ones that were seeded, and the degrees still come from the one',
     '// pre-aggregated pass over links rather than from the chunking.',
   ]],
+  ['tests/kanban-hover-focus.test.ts', [
+    '/**\n * Hover-only controls (`opacity-0` until the card/row is hovered) are invisible\n * while being keyboard-focused, which strands Tab focus on an unseen button.\n * Every such control must also reveal itself on `focus-visible`; this keeps the\n * next `opacity-0` affordance from shipping without it.\n */',
+  ]],
   ['tests/markdown-renderer-parity.test.ts', [
     '// Structural parity baseline: root and blog renderers keep (and must not silently',
     '// change) these tag/class skeleton differences. Any baseline item that converges',

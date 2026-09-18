@@ -359,7 +359,7 @@ function KanbanFullscreenTitleView({
         <button
           type='button'
           onClick={onStartEdit}
-          className='opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded-[var(--r-xs)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+          className='opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-0.5 rounded-[var(--r-xs)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           title={t('common.edit')}
           aria-label={t('common.edit')}
         >

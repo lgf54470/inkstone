@@ -33,7 +33,7 @@
 - [x] K-20 甘特进度隐藏交互 → 可键盘进度控件（review #24b）
 - [x] K-21 排序与拖拽静默冲突 → 明确反馈（review #24a）
 - [x] K-22 详情标题每键提交 → 草稿 + Enter/blur（review #17）
-- [ ] K-23 hover-only 控件空白行 → 绝对定位叠加/常显（review 共识16）
+- [x] K-23 hover-only 控件空白行 → 绝对定位叠加/常显（review 共识16）
 - [ ] K-24 子任务「复制名称」以外的 UI 微调（view-tabs timeline/gantt 图标区分）（review #29 局部）
 
 ## 第二批 · 持久化与性能
@@ -82,4 +82,5 @@
 | 2026-09-18 | K-19 上传 MIME 白名单/配额/节流 | 7ae296fe | kanban.ts /upload 对齐 organizer 样板（先红后绿 6 例）：逐小时节流 consumeAttemptBudget（key kanban-upload:${userId}，LIMITS.attachmentUploadsPerHour/1h，ThrottleError→429）；form 改经 readFormDataWithinLimit 强制 multipart 与体积上限；缺 FILES 绑定由静默假 200 改为显式 503；配额=attachments 表 SUM(size) + R2 `kanban/` 前缀分页 scan（customMetadata.userId 过滤）超 attachmentQuotaBytesR2 → 413 且不放 put；mime 由直取 file.type 改为 safeAttachmentMime 白名单+图片签名嗅探（伪装 png 落 octet-stream）。tests/kanban-routes.test.ts 依 files-routes 惯例迁入 node 工程（jsdom 无法解析 multipart 请求体）。孤儿清理 Cron 仍属 review #10 后续，不在本项。全量 test:unit 220 文件 1713 测试 ✅，typecheck/11 项静态门禁 ✅ |
 | 2026-09-18 | K-20 甘特进度改可键盘控件 | baff9376 | 新增 kanban-gantt-view.test.ts 3 例（先红后绿）：进度编辑从条形上「仅双击、(p+25)%125 回环归零、无键盘无提示」的隐藏交互，改为侧栏 Progress 列的项目库 Slider（原生 input[type=range]，0..100 step 5，aria-label 走 preview.kanban_progress，值文本自带 %）；条形移除 onDoubleClick，单击开详情不变，滑块点击 stopPropagation 不冒泡开详情。全量 test:unit 221 文件 1716 测试 ✅，typecheck/11 项静态门禁 ✅ |
 | 2026-09-18 | K-21 排序与拖拽冲突明确反馈 | e318400c | 新增 kanban-manual-move.ts + kanban-manual-move.test.ts 2 例（先红后绿）：makeMoveItemClearingSorts 在 sorts 生效时拖拽落卡即清空排序并 toast（preview.kanban_sort_cleared_for_drag 双语键），手动顺序立即可见，不再「数据变了显示没变」；无排序时静默不提示。useKanbanRootState 经 useMoveItemClearingSorts 接线替换 items.handleMoveItem（root-hooks 因 500 行/50 行上限拆出接线 hook）。全量 test:unit 222 文件 1718 测试 ✅，typecheck/11 项静态门禁 ✅ |
-| 2026-09-18 | K-22 详情标题草稿提交 | 本次提交（hash 由下一次提交回填） | kanban-item-detail.test.ts 新增 3 例（先红后绿）：DetailHeader 标题从每键 onUpdate（每次击键产生一条历史/写回）改为本地草稿——Enter 或失焦（focusout）提交一次、Escape 还原为上次提交值、切换详情目标（itemId 变化）时渲染中重置草稿；input 带 data-owns-escape 沿用既有豁免约定，编辑中按 Escape 不误关 Modal。review #17 其余项（MetricCards 栅格、description 限长、history 合并窗口）不在本项范围。全量 test:unit 222 文件 1721 测试 ✅，typecheck/11 项静态门禁 ✅ |
+| 2026-09-18 | K-22 详情标题草稿提交 | 42fcdf0e | kanban-item-detail.test.ts 新增 3 例（先红后绿）：DetailHeader 标题从每键 onUpdate（每次击键产生一条历史/写回）改为本地草稿——Enter 或失焦（focusout）提交一次、Escape 还原为上次提交值、切换详情目标（itemId 变化）时渲染中重置草稿；input 带 data-owns-escape 沿用既有豁免约定，编辑中按 Escape 不误关 Modal。review #17 其余项（MetricCards 栅格、description 限长、history 合并窗口）不在本项范围。全量 test:unit 222 文件 1721 测试 ✅，typecheck/11 项静态门禁 ✅ |
+| 2026-09-18 | K-23 hover-only 空白行与焦点可见 | 本次提交（hash 由下一次提交回填） | 新增 kanban-card.test.ts 4 例（先红后绿）+ tests/kanban-hover-focus.test.ts 源码扫描 1 例：卡片无标签时整行 hover-only 头部（选择框/加标签/详情钮）不再占位——KanbanCard 按 cardSize 内边距把该行绝对定位叠加到卡片顶部（review 截图「卡片顶部空白行」根因），GalleryTagsHeader 同型同修（根节点补 relative，无标签行叠加到封面左上）；有标签时保持常规流。10 处 opacity-0 悬停控件（卡头×4、gallery、附件删除、日历新建、子任务×2、标题铅笔）全部补 focus-visible:opacity-100，Tab 聚焦不再落在隐形按钮上；扫描测试守住该目录后续新增。全量 test:unit 224 文件 1726 测试 ✅，typecheck/11 项静态门禁 ✅ |

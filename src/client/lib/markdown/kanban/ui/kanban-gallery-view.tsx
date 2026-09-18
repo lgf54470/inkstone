@@ -62,14 +62,18 @@ function GalleryTagsHeader({
   onToggleSelect: () => void
 }) {
   return (
-    <div className='flex items-center justify-between gap-1.5'>
+    <div
+      className={`flex items-center justify-between gap-1.5 ${
+        tagVals.length === 0 ? 'absolute left-3 top-3' : ''
+      }`}
+    >
       <div className='flex min-w-0 flex-wrap items-center gap-1.5'>
         <input
           type='checkbox'
           checked={isSelected}
           onClick={(e) => e.stopPropagation()}
           onChange={onToggleSelect}
-          className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 group-hover/card:opacity-100 checked:opacity-100'
+          className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100 checked:opacity-100'
           aria-label={t('preview.kanban_select_card')}
         />
         {tagVals.slice(0, 3).map((tag) => {
@@ -206,7 +210,7 @@ function GalleryCard({
       onKeyDown={(e) => {
         if (e.key === 'Enter') onOpenDetail(item)
       }}
-      className={`group/card flex cursor-pointer flex-col overflow-hidden rounded-[var(--r-lg)] border bg-[var(--bg-surface)] text-left shadow-[var(--shadow-xs)] transition-[box-shadow,border-color] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] ${
+      className={`group/card relative flex cursor-pointer flex-col overflow-hidden rounded-[var(--r-lg)] border bg-[var(--bg-surface)] text-left shadow-[var(--shadow-xs)] transition-[box-shadow,border-color] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] ${
         isSelected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border-subtle)]'
       }`}
     >

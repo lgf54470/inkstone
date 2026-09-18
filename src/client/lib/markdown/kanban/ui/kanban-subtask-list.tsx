@@ -57,7 +57,7 @@ function SubtaskTrailingActions({
         type='button'
         onClick={onToggleDesc}
         title={t('preview.kanban_card_description')}
-        className={`opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 ${
+        className={`opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 focus-visible:opacity-100 ${
           hasDescription ? '!opacity-100 text-[var(--accent)]' : ''
         }`}
       >
@@ -69,7 +69,7 @@ function SubtaskTrailingActions({
           ref={menuBtnRef}
           type='button'
           onClick={() => setMenuOpen((o) => !o)}
-          className='opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100'
+          className='opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 focus-visible:opacity-100'
         >
           <MoreHorizontal size={13} />
         </button>

@@ -140,7 +140,7 @@ function CalendarDayCellHeader({
           e.stopPropagation()
           addOnThisDay()
         }}
-        className='p-0.5 opacity-0 transition-opacity group-hover/day:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+        className='p-0.5 opacity-0 transition-opacity group-hover/day:opacity-100 focus-visible:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
         aria-label={t('preview.kanban_new_item')}
       >
         <Plus size={12} />

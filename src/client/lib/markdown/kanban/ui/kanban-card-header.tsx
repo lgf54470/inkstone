@@ -49,7 +49,7 @@ function CardTagItem({
             e.preventDefault()
             onRemove(tag)
           }}
-          className='ml-0.5 rounded-[var(--r-xs)] p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 group-hover/tag:!opacity-100 hover:text-[var(--text-primary)]'
+          className='ml-0.5 rounded-[var(--r-xs)] p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 group-hover/tag:!opacity-100 focus-visible:!opacity-100 hover:text-[var(--text-primary)]'
           aria-label={t('preview.kanban_remove_tag')}
         >
           <X size={10} />
@@ -97,7 +97,7 @@ function CardAddTagButton({ itemId, tagVals, tagsCol, onUpdateTags, onAddColumnO
           e.preventDefault()
           setOpen((prev) => !prev)
         }}
-        className='inline-flex items-center gap-0.5 rounded-[var(--r-xs)] border border-dashed border-[var(--border-default)] px-1 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)] opacity-0 transition-opacity group-hover/card:opacity-100 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
+        className='inline-flex items-center gap-0.5 rounded-[var(--r-xs)] border border-dashed border-[var(--border-default)] px-1 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)] opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
         aria-label={t('preview.kanban_new_tag')}
         title={t('preview.kanban_new_tag')}
       >
@@ -123,6 +123,7 @@ export interface CardHeaderProps {
   isSelected: boolean
   itemId: string
   tagVals: string[]
+  overlayClass?: string
   tagsCol?: KanbanProperty
   selectedTags?: string[]
   onToggleSelect: () => void
@@ -136,6 +137,7 @@ export function CardHeader({
   isSelected,
   itemId,
   tagVals,
+  overlayClass,
   tagsCol,
   selectedTags,
   onToggleSelect,
@@ -149,14 +151,14 @@ export function CardHeader({
     : undefined
 
   return (
-    <div className='flex items-center justify-between gap-1.5'>
+    <div className={`flex items-center justify-between gap-1.5 ${overlayClass ?? ''}`}>
       <div className='flex min-w-0 flex-wrap items-center gap-1.5'>
         <input
           type='checkbox'
           checked={isSelected}
           onClick={(e) => e.stopPropagation()}
           onChange={onToggleSelect}
-          className='size-3.5 shrink-0 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 transition-opacity group-hover/card:opacity-100 checked:opacity-100'
+          className='size-3.5 shrink-0 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100 checked:opacity-100'
           aria-label={t('preview.kanban_select_card')}
         />
         {tagVals.slice(0, 5).map((tag) => (
@@ -183,7 +185,7 @@ export function CardHeader({
           e.stopPropagation()
           onOpenDetail()
         }}
-        className='opacity-0 transition-opacity group-hover/card:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+        className='opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
         aria-label={t('preview.kanban_card_details')}
       >
         <MoreHorizontal size={14} />

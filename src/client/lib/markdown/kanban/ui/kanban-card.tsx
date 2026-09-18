@@ -256,6 +256,12 @@ function CardBody({
   )
 }
 
+function headerOverlayClass(cardSize: 'small' | 'medium' | 'large', tagCount: number): string | undefined {
+  if (tagCount > 0) return undefined
+  const pad = cardSize === 'small' ? 'inset-x-2.5 top-2.5' : cardSize === 'large' ? 'inset-x-4 top-4' : 'inset-x-3 top-3'
+  return `absolute ${pad}`
+}
+
 export const KanbanCard = memo(function KanbanCard({
   item,
   columns,
@@ -280,6 +286,7 @@ export const KanbanCard = memo(function KanbanCard({
   const display = getCardDisplayProps(item, columns)
   const dndHandlers = useCardDragHandlers(item.id, onDragOverCard, onDropOnCard)
   const padClass = cardSize === 'small' ? 'p-2.5 gap-1.5' : cardSize === 'large' ? 'p-4 gap-3' : 'p-3 gap-2'
+  const headerOverlay = headerOverlayClass(cardSize, display.tagVals.length)
 
   return (
     <div
@@ -302,6 +309,7 @@ export const KanbanCard = memo(function KanbanCard({
         isSelected={isSelected}
         itemId={item.id}
         tagVals={display.tagVals}
+        overlayClass={headerOverlay}
         tagsCol={display.tagsCol}
         selectedTags={selectedTags}
         onToggleSelect={() => onToggleSelect(item.id)}
