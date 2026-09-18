@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Music, X } from 'lucide-react'
 import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
-import { IconButton } from '../../components/primitives'
+import { Button, IconButton } from '../../components/primitives'
 import { Modal } from '../../components/overlay'
 import { Empty } from '../../components/feedback'
 import { t } from '../../lib/i18n'
@@ -98,6 +98,7 @@ const HubCentre = memo(function HubCentre({
 }) {
   const loading = useMusic((state) => state.loading)
   const loadError = useMusic((state) => state.loadError)
+  const loadLibrary = useMusic((state) => state.loadLibrary)
   const scope = useMusic((state) => state.scope)
   const tracks = useVisibleTracks()
   return (
@@ -105,7 +106,12 @@ const HubCentre = memo(function HubCentre({
       <MusicHubToolbar onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} />
       <div className='min-h-0 flex-1'>
         {loadError && !tracks.length && !loading
-          ? <Empty art='search' title={t('music.load_failed')} description={loadError} compact />
+          ? <Empty
+              art='search'
+              title={t('music.load_failed')}
+              action={<Button size='sm' onClick={() => void loadLibrary()}>{t('music.retry')}</Button>}
+              compact
+            />
           : <MusicTrackList tracks={tracks} loading={loading} emptyTitle={emptyTitle(scope)} onEdit={onEditTrack} />}
       </div>
       <MusicQueuePanel open={queueOpen} onClose={onCloseQueue} />

@@ -17,6 +17,7 @@ export async function loadLibrary(set: MusicSet): Promise<void> {
       loading: false,
     })
   } catch (error) {
+    console.warn('[inkstone] music library load failed:', error)
     set({ loading: false, loadError: error instanceof Error ? error.message : 'error' })
   }
 }
