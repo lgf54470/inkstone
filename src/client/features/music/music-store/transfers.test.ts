@@ -3,7 +3,7 @@ import type { MusicTrack } from '@shared/types'
 import { saveBlob } from '../music-export'
 import { toastMusicError } from '../music-feedback'
 import { downloadFileName } from '../music-utils'
-import { collectStream, downloadTracks } from './transfers'
+import { downloadTracks, streamToBlob } from './transfers'
 import type { MusicDownloadTask, MusicStoreState } from './types'
 
 vi.mock('../music-export', () => ({ saveBlob: vi.fn() }))
@@ -80,19 +80,20 @@ describe('downloadFileName', () => {
   })
 })
 
-describe('collectStream', () => {
+describe('streamToBlob', () => {
   it('reports progress against the announced length and keeps every byte', async () => {
     const percents: number[] = []
-    const bytes = await collectStream(readerOf(chunks(100, 100, 100)), 300, (percent) => percents.push(percent))
-    expect(bytes.byteLength).toBe(300)
+    const blob = await streamToBlob({ body: readerOf(chunks(100, 100, 100)), totalBytes: 300, mime: 'audio/flac', onProgress: (percent) => percents.push(percent) })
+    expect(blob.size).toBe(300)
+    expect(blob.type).toBe('audio/flac')
     expect(percents).toEqual([33, 67, 99])
   })
 
   it('skips progress when the length is unknown and tolerates an empty body', async () => {
     const percents: number[] = []
-    expect((await collectStream(readerOf(chunks(50)), 0, (percent) => percents.push(percent))).byteLength).toBe(50)
+    expect((await streamToBlob({ body: readerOf(chunks(50)), totalBytes: 0, mime: '', onProgress: (percent) => percents.push(percent) })).size).toBe(50)
     expect(percents).toEqual([])
-    expect((await collectStream(null, 100, (percent) => percents.push(percent))).byteLength).toBe(0)
+    expect((await streamToBlob({ body: null, totalBytes: 100, mime: '', onProgress: (percent) => percents.push(percent) })).size).toBe(0)
   })
 })
 
@@ -118,6 +119,15 @@ describe('downloadTracks', () => {
     expect(store.state().downloads[0]?.status).toBe('failed')
   })
 
+  it('fails the task when the body turns out empty', async () => {
+    const store = makeStore([track()])
+    vi.stubGlobal('fetch', () => Promise.resolve(respond([], 0)))
+    await downloadTracks(store.set as never, store.get as never, ['track-1'])
+    expect(saveBlob).not.toHaveBeenCalled()
+    expect(String(vi.mocked(toastMusicError).mock.calls[0]![0])).toBe('Error: The downloaded file is empty')
+    expect(store.state().downloads[0]?.status).toBe('failed')
+  })
+
   it('opens the transfer dialog and ignores unknown ids', async () => {
     const store = makeStore([track()])
     vi.stubGlobal('fetch', () => Promise.resolve(respond(chunks(300), 300)))
@@ -128,11 +138,58 @@ describe('downloadTracks', () => {
   })
 })
 
-function readerOf(parts: Uint8Array[]): ReadableStream<Uint8Array> {
+function readerOf(parts: Uint8Array[]): ReadableStream<Uint8Array<ArrayBuffer>> {
   let index = 0
   return {
     getReader: () => ({
       read: () => Promise.resolve(index < parts.length ? { done: false, value: parts[index++]! } : { done: true, value: undefined }),
     }),
-  } as unknown as ReadableStream<Uint8Array>
+  } as unknown as ReadableStream<Uint8Array<ArrayBuffer>>
 }
+
+describe('download progress writes', () => {
+  it('collapses a burst of chunk callbacks into one store write', async () => {
+    vi.useFakeTimers()
+    const store = makeStore([track()])
+    const percents: number[] = []
+    const record = (patch: never) => {
+      store.set(patch)
+      percents.push(store.state().downloads[0]?.percent ?? -1)
+    }
+    vi.stubGlobal('fetch', () => Promise.resolve(respond(chunks(...Array.from({ length: 40 }, () => 10)), 400)))
+    await downloadTracks(record as never, store.get as never, ['track-1'])
+    const interim = percents.filter((percent) => percent > 0 && percent < 100)
+    expect(interim.length).toBeGreaterThan(0)
+    expect(interim.length).toBeLessThanOrEqual(2)
+    expect(store.state().downloads).toEqual([])
+    vi.useRealTimers()
+  })
+
+  it('keeps reporting while bytes trickle in slower than the throttle', async () => {
+    vi.useFakeTimers()
+    const store = makeStore([track()])
+    const percents: number[] = []
+    const record = (patch: never) => {
+      store.set(patch)
+      percents.push(store.state().downloads[0]?.percent ?? -1)
+    }
+    const parts = chunks(20, 20, 20, 20, 20)
+    let index = 0
+    const response = {
+      ok: true,
+      headers: { get: (name: string) => (name.toLowerCase() === 'content-length' ? '100' : null) },
+      body: {
+        getReader: () => ({
+          read: () => {
+            vi.advanceTimersByTime(250)
+            return Promise.resolve(index < parts.length ? { done: false, value: parts[index++] } : { done: true, value: undefined })
+          },
+        }),
+      },
+    }
+    vi.stubGlobal('fetch', () => Promise.resolve(response))
+    await downloadTracks(record as never, store.get as never, ['track-1'])
+    expect(percents.filter((percent) => percent > 0 && percent < 100)).toEqual([20, 40, 60, 80, 99])
+    vi.useRealTimers()
+  })
+})

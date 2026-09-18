@@ -7,8 +7,9 @@ import { toastMusic, toastMusicError } from '../music-feedback'
 import type { MusicDownloadTask, MusicGet, MusicLibraryJobKind, MusicSet, MusicTransferTarget } from './types'
 
 const DOWNLOAD_TIMEOUT_MS = 10 * 60_000
+const PROGRESS_THROTTLE_MS = 200
 
-// Downloads buffer the whole file so the browser can report real byte progress before saving.
+// Downloads report real byte progress per chunk and save the assembled Blob at the end.
 export async function downloadTracks(set: MusicSet, get: MusicGet, ids: string[]): Promise<void> {
   const tracks = ids
     .map((id) => get().tracks.find((track) => track.id === id))
@@ -22,8 +23,10 @@ export async function downloadTracks(set: MusicSet, get: MusicGet, ids: string[]
 
 async function downloadOne(set: MusicSet, track: MusicTrack, task: MusicDownloadTask): Promise<void> {
   try {
-    const bytes = await fetchTrackBytes(track, (percent) => updateDownload(set, task.id, { percent }))
-    saveBlob(new Blob([toArrayBuffer(bytes)], { type: track.mime || 'application/octet-stream' }), downloadFileName(track))
+    const report = throttledProgress((percent) => updateDownload(set, task.id, { percent }))
+    const blob = await fetchTrackBlob(track, report)
+    if (!blob.size) throw new Error('The downloaded file is empty')
+    saveBlob(blob, downloadFileName(track))
     updateDownload(set, task.id, { percent: 100, status: 'done' })
     toastMusic('music.download_done', { value0: track.title })
   } catch (error) {
@@ -32,51 +35,49 @@ async function downloadOne(set: MusicSet, track: MusicTrack, task: MusicDownload
   }
 }
 
-async function fetchTrackBytes(track: MusicTrack, onProgress: (percent: number) => void): Promise<Uint8Array> {
+async function fetchTrackBlob(track: MusicTrack, onProgress: (percent: number) => void): Promise<Blob> {
   const response = await fetch(musicStreamUrl(track.id), { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })
   if (!response.ok) throw new Error('Download failed with status ' + response.status)
   const totalBytes = Number(response.headers.get('content-length') ?? 0)
-  const bytes = await collectStream(response.body, totalBytes, onProgress)
-  if (!bytes.byteLength) throw new Error('The downloaded file is empty')
-  return bytes
+  return streamToBlob({ body: response.body, totalBytes, mime: track.mime || 'application/octet-stream', onProgress })
 }
 
-// Read chunk by chunk so the progress bar moves instead of waiting for the whole file.
-export async function collectStream(
-  body: ReadableStream<Uint8Array> | null,
-  totalBytes: number,
-  onProgress: (percent: number) => void,
-): Promise<Uint8Array> {
+interface DownloadStreamOptions {
+  body: ReadableStream<Uint8Array<ArrayBuffer>> | null
+  totalBytes: number
+  mime: string
+  onProgress: (percent: number) => void
+}
+
+// Chunks go straight into the Blob instead of a Uint8Array detour: the browser may back
+// a Blob with disk, while concatenating first held three full copies of the file at once.
+export async function streamToBlob({ body, totalBytes, mime, onProgress }: DownloadStreamOptions): Promise<Blob> {
   const reader = body?.getReader()
-  if (!reader) return new Uint8Array(0)
-  const chunks: Uint8Array[] = []
+  const parts: BlobPart[] = []
   let received = 0
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    if (!value?.byteLength) continue
-    chunks.push(value)
-    received += value.byteLength
-    if (totalBytes > 0) onProgress(Math.min(99, Math.round((received / totalBytes) * 100)))
+  if (reader) {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value?.byteLength) continue
+      parts.push(value)
+      received += value.byteLength
+      if (totalBytes > 0) onProgress(Math.min(99, Math.round((received / totalBytes) * 100)))
+    }
   }
-  return concatChunks(chunks, received)
+  return new Blob(parts, { type: mime })
 }
 
-// A downloaded view can sit on a shared buffer, which the Blob constructor refuses.
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  const buffer = new ArrayBuffer(bytes.byteLength)
-  new Uint8Array(buffer).set(bytes)
-  return buffer
-}
-
-function concatChunks(chunks: Uint8Array[], size: number): Uint8Array {
-  const merged = new Uint8Array(size)
-  let offset = 0
-  for (const chunk of chunks) {
-    merged.set(chunk, offset)
-    offset += chunk.byteLength
+// Chunk callbacks land far faster than anyone reads a progress bar, and each one rewrote
+// the whole downloads array; the terminal 100 percent is written outside this wrapper.
+function throttledProgress(report: (percent: number) => void): (percent: number) => void {
+  let lastAt = 0
+  return (percent) => {
+    const now = Date.now()
+    if (now - lastAt < PROGRESS_THROTTLE_MS) return
+    lastAt = now
+    report(percent)
   }
-  return merged
 }
 
 function makeDownloadTask(track: MusicTrack, index: number): MusicDownloadTask {
