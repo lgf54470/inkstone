@@ -2,7 +2,7 @@ import type { Context } from 'hono'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { cancelStreamBestEffort } from '../../lib/streams'
-import { isMusicObjectKey } from './keys'
+import { isMusicObjectKey, safeAudioMime } from './keys'
 import { contentRangeHeader, parseByteRange } from './range'
 import type { MusicTrackRow } from './rows'
 import { readMusicObjectStream, requireMusicStorage } from './storage'
@@ -41,14 +41,15 @@ export async function streamTrackResponse(
   const object = await readMusicObjectStream(c.env, storage, row.object_key, range)
   if (!object) throw ApiError.notFound('Track data is missing')
 
+  const safeMime = safeAudioMime(row.mime)
   const headers: Record<string, string> = {
-    'Content-Type': row.mime,
+    'Content-Type': safeMime ?? 'application/octet-stream',
     'Content-Length': String(object.length),
     'Accept-Ranges': 'bytes',
     'Cache-Control': options.cacheControl,
     'X-Content-Type-Options': 'nosniff',
   }
-  if (options.download) headers['Content-Disposition'] = attachmentDisposition(row.title)
+  if (!safeMime || options.download) headers['Content-Disposition'] = attachmentDisposition(row.title)
   if (range) {
     headers['Content-Range'] = contentRangeHeader(range, row.size_bytes)
     return new Response(object.body as BodyInit, { status: 206, headers })
@@ -70,8 +71,9 @@ async function streamWebdavTrack(
     await cancelStreamBestEffort(upstream.body)
     throw new ApiError(502, 'storage_unavailable', `WebDAV playback failed: HTTP ${upstream.status}`)
   }
+  const safeMime = safeAudioMime(row.mime)
   const headers: Record<string, string> = {
-    'Content-Type': upstream.headers.get('Content-Type') ?? row.mime,
+    'Content-Type': safeMime ?? 'application/octet-stream',
     'Accept-Ranges': 'bytes',
     'Cache-Control': options.cacheControl,
     'X-Content-Type-Options': 'nosniff',
@@ -81,7 +83,7 @@ async function streamWebdavTrack(
     if (value) headers[header] = value
   }
   if (!headers['Content-Range'] && row.size_bytes > 0) headers['Content-Length'] = String(row.size_bytes)
-  if (options.download) headers['Content-Disposition'] = attachmentDisposition(row.title)
+  if (!safeMime || options.download) headers['Content-Disposition'] = attachmentDisposition(row.title)
   return new Response(upstream.body as BodyInit, { status: upstream.status === 206 ? 206 : 200, headers })
 }
 

@@ -44,6 +44,8 @@ const MIME_FORMAT: Record<string, MusicFormat> = {
 const COVER_DATA_URL_RE = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/
 const COVER_DATA_URL_MAX = 400_000
 
+const AUDIO_MIME_ALLOWLIST = new Set<string>(Object.values(FORMAT_MIME))
+
 export const MUSIC_OBJECT_PREFIX = 'music/'
 
 export const MUSIC_MAX_BYTES = LIMITS.musicTrackMaxBytes
@@ -75,4 +77,13 @@ export function sanitizeCoverUrl(value: string | null | undefined): string | nul
   if (/^https?:\/\//i.test(trimmed)) return trimmed.length <= 2048 ? trimmed : null
   if (COVER_DATA_URL_RE.test(trimmed)) return trimmed.length <= COVER_DATA_URL_MAX ? trimmed : null
   return null
+}
+
+// Responses served from our origin must never carry a third-party-declared or
+// legacy content type: only allowlisted audio mimes stream inline, anything
+// else is forced to a download by the caller.
+export function safeAudioMime(mime: string | null | undefined): string | null {
+  if (!mime) return null
+  const normalized = mime.toLowerCase().split(';', 1)[0]!.trim()
+  return AUDIO_MIME_ALLOWLIST.has(normalized) ? normalized : null
 }

@@ -224,4 +224,42 @@ describe('music webdav routes', () => {
     expect(methods).not.toContain('DELETE')
     expect((await (await request(app, '/api/music/library')).json()).tracks).toEqual([])
   })
+
+  it('never echoes the upstream Content-Type when streaming a WebDAV track', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = (init?.method ?? 'GET').toUpperCase()
+      if (method === 'PROPFIND') {
+        const url = typeof input === 'string' ? input : String((input as { url?: string }).url ?? input)
+        const single = '<D:multistatus xmlns:D="DAV:"><D:response><D:href>' + new URL(url).pathname + '</D:href><D:propstat><D:prop><D:resourcetype/><D:getcontentlength>16</D:getcontentlength><D:getcontenttype>audio/mpeg</D:getcontenttype></D:prop></D:propstat></D:response></D:multistatus>'
+        return new Response(single, { status: 207 })
+      }
+      return new Response('<html><script>alert(1)</script></html>', { status: 200, headers: { 'Content-Type': 'text/html' } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await makeDb()
+    const app = makeApp({})
+    const track = await (await json(app, '/api/music/webdav/import', { path: 'song.mp3' })).json()
+    expect(track.mime).toBe('audio/mpeg')
+
+    const res = await request(app, `/api/music/tracks/${track.id}/stream`)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Content-Type')).toBe('audio/mpeg')
+  })
+
+  it('forces a download when the stored mime is not an allowlisted audio type', async () => {
+    const { fetchMock } = fakeWebdav()
+    vi.stubGlobal('fetch', fetchMock)
+    const db = await makeDb()
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes, cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES ('legacy-1', ?1, 'Legacy', '', '', 0, 'webdav', 'song.mp3', 'text/html', 16, NULL, NULL, 0, 0, 0, 1, 1)`,
+      USER,
+    )
+    const app = makeApp({})
+    const res = await request(app, '/api/music/tracks/legacy-1/stream')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Content-Type')).toBe('application/octet-stream')
+    expect(res.headers.get('Content-Disposition')).toContain('attachment')
+  })
 })

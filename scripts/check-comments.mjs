@@ -4362,6 +4362,11 @@ const allowed = new Map([
     '// Shared by the authenticated library and the public blog player.',
     '// Shared by uploads and metadata refreshes; a failed cover write must not fail the caller.',
   ]],
+  ['src/worker/routes/music/keys.ts', [
+    '// Responses served from our origin must never carry a third-party-declared or',
+    '// legacy content type: only allowlisted audio mimes stream inline, anything',
+    '// else is forced to a download by the caller.',
+  ]],
   ['src/worker/routes/music/lookup.ts', [
     '// The catalogue request runs here because the page\'s CSP forbids third party connections.',
   ]],
