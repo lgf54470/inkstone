@@ -1,15 +1,36 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { probeTrackDuration, scanTrackMetadata, type TrackProbe } from './music-metadata'
+import { probeTrackDuration, readFileMetadata, scanTrackMetadata, type TrackProbe } from './music-metadata'
 
 const ID3_TAG_BYTES = 45
 const ID3_HEADER_BYTES_EXTENDED = 10
+const LARGE_TAG_BYTES = 600 * 1024
 const MPEG1_320_KBPS = [0xff, 0xfb, 0xe0, 0x00]
+
+// The scan path must decode a tag exactly once, not once per downloaded chunk,
+// so the cover/tag readers are counted while delegating to the real module.
+const decodeCounts = vi.hoisted(() => ({ tags: 0, cover: 0 }))
+const rangeRequests = vi.hoisted(() => [] as number[][])
+vi.mock('./music-cover', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./music-cover')>()
+  return {
+    ...actual,
+    readEmbeddedTags: (bytes: Uint8Array) => {
+      decodeCounts.tags += 1
+      return actual.readEmbeddedTags(bytes)
+    },
+    coverDataUrlFromBytes: async (bytes: Uint8Array) => {
+      decodeCounts.cover += 1
+      return actual.coverDataUrlFromBytes(bytes)
+    },
+  }
+})
 
 function serve(bytes: Uint8Array): void {
   vi.stubGlobal('fetch', (_url: string, init?: RequestInit) => {
     const match = /bytes=(\d+)-(\d+)/.exec(String(new Headers(init?.headers).get('Range')))
     const start = match ? Number(match[1]) : 0
     const end = match ? Math.min(Number(match[2]) + 1, bytes.byteLength) : bytes.byteLength
+    if (match) rangeRequests.push([Number(match[1]), Number(match[2])])
     const body = bytes.slice(start, end)
     return Promise.resolve({ ok: start < bytes.byteLength, arrayBuffer: () => Promise.resolve(body.buffer) })
   })
@@ -84,8 +105,39 @@ function mp4Movie(timescale: number, duration: number): Uint8Array {
   return bytes
 }
 
+// An ID3 tag that declares 600KB but only fills its first bytes with frames:
+// spanning it needs several 256KB chunks, so any per-chunk reparse shows up in the counts.
+function id3LargeTag(): Uint8Array {
+  const text = (value: string): number[] => [3, ...new TextEncoder().encode(value)]
+  const frames = [
+    ...id3Frame('TIT2', text('Moonlight')),
+    ...id3Frame('USLT', [3, ...new TextEncoder().encode('eng'), 0, ...new TextEncoder().encode('[00:00.000]first line')]),
+  ]
+  const bytes = new Uint8Array(ID3_HEADER_BYTES_EXTENDED + LARGE_TAG_BYTES + 1_200_000)
+  bytes.set([0x49, 0x44, 0x33, 0x03, 0x00, 0x00], 0)
+  bytes.set([(LARGE_TAG_BYTES >> 21) & 0x7f, (LARGE_TAG_BYTES >> 14) & 0x7f, (LARGE_TAG_BYTES >> 7) & 0x7f, LARGE_TAG_BYTES & 0x7f], 6)
+  bytes.set(frames, ID3_HEADER_BYTES_EXTENDED)
+  bytes.set(MPEG1_320_KBPS, ID3_HEADER_BYTES_EXTENDED + LARGE_TAG_BYTES)
+  return bytes
+}
+
+// A File stand-in that records every window the code asks the browser to materialise.
+function fakeFile(bytes: Uint8Array, reads: number[][]): File {
+  return {
+    size: bytes.byteLength,
+    slice: (start?: number, end?: number) => {
+      reads.push([start ?? 0, end ?? bytes.byteLength])
+      const clipped = bytes.slice(start ?? 0, Math.min(end ?? bytes.byteLength, bytes.byteLength))
+      return { arrayBuffer: async () => clipped.buffer as ArrayBuffer }
+    },
+  } as unknown as File
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
+  decodeCounts.tags = 0
+  decodeCounts.cover = 0
+  rangeRequests.length = 0
 })
 
 describe('scanTrackMetadata', () => {
@@ -137,5 +189,29 @@ describe('probeTrackDuration', () => {
   it('needs no tag download for a track that already has metadata', async () => {
     serve(flacStreamInfo(48_000, 960_000))
     expect(await probeTrackDuration(probe(38 + 480_000, 'audio/flac'))).toBe(20_000)
+  })
+})
+
+describe('metadata decoding happens once', () => {
+  it('fetches a multi-chunk ID3 tag to its declared length and decodes it a single time', async () => {
+    const bytes = id3LargeTag()
+    serve(bytes)
+    const scan = await scanTrackMetadata(probe(bytes.byteLength, 'audio/mpeg'))
+    expect(scan.title).toBe('Moonlight')
+    expect(scan.lyric).toBe('[00:00.000]first line')
+    expect(decodeCounts.cover).toBe(1)
+    expect(decodeCounts.tags).toBe(1)
+    const tagWindowEnd = LARGE_TAG_BYTES + ID3_HEADER_BYTES_EXTENDED - 1
+    const insideTag = rangeRequests.filter(([start]) => start <= tagWindowEnd)
+    expect(Math.max(...insideTag.map(([, end]) => end))).toBe(tagWindowEnd)
+  })
+
+  it('materialises only the declared tag window when reading an uploaded file', async () => {
+    const bytes = id3LargeTag()
+    const reads: number[][] = []
+    const scan = await readFileMetadata(fakeFile(bytes, reads))
+    expect(scan.title).toBe('Moonlight')
+    expect(scan.lyric).toBe('[00:00.000]first line')
+    expect(Math.max(...reads.map(([, end]) => end))).toBe(LARGE_TAG_BYTES + ID3_HEADER_BYTES_EXTENDED)
   })
 })

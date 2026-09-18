@@ -66,13 +66,19 @@ export async function probeTrackDuration(track: TrackProbe): Promise<number> {
 }
 
 // Uploads read the same tags straight from the picked file, so the library keeps artist and lyrics.
+// Each format gets only the window its parser actually consults, never the 6MB tag ceiling up front.
 export async function readFileMetadata(file: File): Promise<TagScan> {
-  const head = new Uint8Array(await file.slice(0, MAX_TAG_BYTES).arrayBuffer())
-  if (isFlac(head)) return flacFileTags(file, head)
-  if (isMp4(head)) return mp4FileTags(file, head)
+  const head = await readFileBytes(file, ID3_HEADER_BYTES)
+  if (isFlac(head)) return flacFileTags(file, await readFileBytes(file, FLAC_WINDOW_BYTES))
+  if (isMp4(head)) return mp4FileTags(file, await readFileBytes(file, MP4_WINDOW_BYTES))
   const tagSize = readTagSize(head)
-  const bytes = tagSize > 0 ? head.subarray(0, tagSize + ID3_HEADER_BYTES) : head
+  if (tagSize <= 0) return NO_TAGS
+  const bytes = await readFileBytes(file, Math.min(tagSize + ID3_HEADER_BYTES, MAX_TAG_BYTES))
   return { coverDataUrl: await coverDataUrlFromBytes(bytes), ...readEmbeddedTags(bytes) }
+}
+
+async function readFileBytes(file: File, length: number): Promise<Uint8Array> {
+  return new Uint8Array(await file.slice(0, Math.min(length, file.size)).arrayBuffer())
 }
 
 async function flacFileTags(file: File, head: Uint8Array): Promise<TagScan> {
@@ -108,20 +114,14 @@ async function readFlacWindowDuration(trackId: string, start: number): Promise<n
   return window ? readFlacDurationMs(window) : 0
 }
 
-// Artwork can reach several megabytes inside one tag, so the tag is streamed and parsing
-// stops as soon as the picture and lyrics are complete instead of waiting for the whole tag.
+// The ID3 header declares the tag's exact length, so it is fetched whole in chunks and
+// decoded once: re-running the picture decode and frame walk on an accumulating buffer
+// re-processed every earlier byte for each new chunk.
 async function readId3Tags(trackId: string, tagSize: number): Promise<TagScan> {
   const limit = Math.min(tagSize + ID3_HEADER_BYTES, MAX_TAG_BYTES)
-  let bytes = await fetchRange(trackId, 0, Math.min(CHUNK_BYTES, limit) - 1)
+  const bytes = await fetchChunked(trackId, 0, limit - 1)
   if (!bytes) return NO_TAGS
-  for (;;) {
-    const coverDataUrl = await coverDataUrlFromBytes(bytes)
-    const tags = readEmbeddedTags(bytes)
-    const complete = bytes.byteLength >= limit || Boolean(coverDataUrl && tags.lyric)
-    const next = complete ? null : await fetchRange(trackId, bytes.byteLength, Math.min(bytes.byteLength + CHUNK_BYTES, limit) - 1)
-    if (!next || next.byteLength === 0) return { coverDataUrl, ...tags }
-    bytes = concatBytes(bytes, next)
-  }
+  return { coverDataUrl: await coverDataUrlFromBytes(bytes), ...readEmbeddedTags(bytes) }
 }
 
 // The first audio frame carries the bitrate, and usually a Xing/Info frame count for VBR files.
@@ -184,24 +184,24 @@ async function readBoxBytes(track: TrackProbe, windowStart: number, window: Uint
   return (await fetchChunked(track.id, box.header, box.end - 1)) ?? window.subarray(box.header - windowStart)
 }
 
-function concatBytes(left: Uint8Array, right: Uint8Array): Uint8Array {
-  const merged = new Uint8Array(left.byteLength + right.byteLength)
-  merged.set(left, 0)
-  merged.set(right, left.byteLength)
-  return merged
-}
-
 // One long range can outlive the timeout on a slow remote, so large spans arrive in chunks.
+// The destination is allocated once and filled in place: copying every chunk onto the
+// accumulated bytes re-copied the whole span once per chunk.
 async function fetchChunked(trackId: string, start: number, end: number): Promise<Uint8Array | null> {
-  let bytes: Uint8Array | null = null
-  let offset = start
-  while (offset <= end) {
-    const chunk = await fetchRange(trackId, offset, Math.min(offset + CHUNK_BYTES - 1, end))
+  const buffer = new Uint8Array(end - start + 1)
+  let offset = 0
+  while (offset < buffer.byteLength) {
+    const from = start + offset
+    const spanEnd = Math.min(end, from + CHUNK_BYTES - 1)
+    const chunk = await fetchRange(trackId, from, spanEnd)
     if (!chunk || chunk.byteLength === 0) break
-    bytes = bytes ? concatBytes(bytes, chunk) : chunk
-    offset += chunk.byteLength
+    const taken = Math.min(chunk.byteLength, buffer.byteLength - offset)
+    buffer.set(chunk.subarray(0, taken), offset)
+    offset += taken
+    // A short chunk means the object ended before the requested span.
+    if (chunk.byteLength < spanEnd - from + 1) break
   }
-  return bytes
+  return offset === 0 ? null : buffer.subarray(0, offset)
 }
 
 async function fetchRange(trackId: string, start: number, end: number): Promise<Uint8Array | null> {
