@@ -2,7 +2,7 @@ export { CLIENT_ID, ApiError } from './transport'
 export {
   musicStreamUrl, musicCoverLookupUrl, uploadMusicTrack, uploadMusicToWebdav,
   type MusicBatchAction, type MusicUploadResult, type MusicTrackPatch,
-  type MusicWebdavImportInput, type MusicWebdavListing,
+  type MusicWebdavImportInput, type MusicWebdavListing, type MusicPlaylistPatch,
 } from './music'
 import { account } from './account'
 import { vault } from './vault'

@@ -30,8 +30,8 @@ export function MusicPlaylistModal({
   const save = (): void => {
     const trimmed = name.trim()
     if (!trimmed) return
-    if (playlist) void renamePlaylist(playlist.id, trimmed)
-    else void createPlaylist(trimmed)
+    if (playlist) void renamePlaylist(playlist.id, trimmed, description)
+    else void createPlaylist(trimmed, description)
     onClose()
   }
 
@@ -57,11 +57,9 @@ export function MusicPlaylistModal({
             onKeyDown={(event) => { if (event.key === 'Enter') save() }}
           />
         </Field>
-        {!playlist && (
-          <Field label={t('music.playlist_description')}>
-            <Textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
-          </Field>
-        )}
+        <Field label={t('music.playlist_description')}>
+          <Textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
+        </Field>
       </div>
     </Modal>
   )

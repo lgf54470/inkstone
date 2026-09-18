@@ -1,5 +1,5 @@
 import type { MusicTag } from '@shared/types'
-import { api, uploadMusicToWebdav, uploadMusicTrack } from '../../../lib/api'
+import { api, uploadMusicToWebdav, uploadMusicTrack, type MusicPlaylistPatch } from '../../../lib/api'
 import { toastMusic, toastMusicError, toastUploadError } from '../music-feedback'
 import { readFileMetadata } from '../music-metadata'
 import { readDurationMs } from '../music-probe'
@@ -78,9 +78,10 @@ export async function deleteTag(set: MusicSet, id: string): Promise<void> {
   }
 }
 
-export async function createPlaylist(set: MusicSet, get: MusicGet, name: string): Promise<void> {
+export async function createPlaylist(set: MusicSet, get: MusicGet, name: string, description?: string): Promise<void> {
   try {
-    const created = await api.music.createPlaylist({ name: name.trim() })
+    const trimmed = description?.trim()
+    const created = await api.music.createPlaylist({ name: name.trim(), description: trimmed || undefined })
     set((state) => ({ playlists: [...state.playlists, created] }))
     await get().loadLibrary()
     toastMusic('music.playlist_created')
@@ -89,9 +90,13 @@ export async function createPlaylist(set: MusicSet, get: MusicGet, name: string)
   }
 }
 
-export async function renamePlaylist(set: MusicSet, get: MusicGet, id: string, name: string): Promise<void> {
+export async function renamePlaylist(set: MusicSet, get: MusicGet, id: string, name: string, description?: string): Promise<void> {
   try {
-    const updated = await api.music.patchPlaylist(id, { name: name.trim() })
+    // An absent description stays untouched: the sidebar rename only edits the name.
+    const patch: MusicPlaylistPatch = description === undefined
+      ? { name: name.trim() }
+      : { name: name.trim(), description: description.trim() }
+    const updated = await api.music.patchPlaylist(id, patch)
     set((state) => ({ playlists: state.playlists.map((entry) => (entry.id === id ? updated : entry)) }))
     await get().loadLibrary()
     toastMusic('music.saved')

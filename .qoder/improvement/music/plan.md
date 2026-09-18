@@ -28,7 +28,7 @@
 ## 第二批 · 死控件与静默丢失（UI/FEAT P0-P1，路线图②）
 
 - [x] M-13 UI-1 正在播放面板收藏/置顶按钮接线 `toggleFavorite`/`togglePin`
-- [ ] M-14 UI-2 歌单描述透传落库（新建+重命名+编辑态回填），store 与 API 同步
+- [x] M-14 UI-2 歌单描述透传落库（新建+重命名+编辑态回填），store 与 API 同步
 - [ ] M-15 UI-3 沉浸式播放器与 Hub modal 补可见关闭入口与 `ariaLabel`
 - [ ] M-16 UI-4 加载失败态：`music.retry` 重试按钮 + 技术字符串不外泄
 - [ ] M-17 UI-5/UI-6 幽灵令牌 `--accent-subtle`→`--accent-soft`（全仓 21 文件）+ `--sp-12` 修复
@@ -94,4 +94,5 @@
 | 2026-09-19 | M-10 FLAC/MP4 解析越界返 null + 扫描调用点 catch（SEC-10） | e3cc0b7e | 新增 5 例先红后绿（picture 块 4 字节/vendor 2 字节/mvhd 截断曾抛 RangeError→现返回 null/0；scan 抛错曾中断整轮→现跳该曲计 unreadable 并 toast），music 客户端 5 套件 38 ✅，typecheck/size/comments ✅ |
 | 2026-09-19 | M-11 multistatus 数字实体越界防护 + 逐块兜底（SEC-11） | 547a8302 | 新增 1 例先红后绿（&#99999999999; 曾致 parseMultistatus 抛 RangeError→现保留原文且正常实体照常解码），webdav 2 套件 20 ✅，typecheck/size/comments ✅；逐块 try 兜底为边界防御（守卫后当前无可触达抛点，已在注释说明） |
 | 2026-09-19 | M-12 曲目契约不下发内部对象键 + M3U 可播放 + 封面 https 升级（SEC-12+FEAT-4） | 88dddcf6 | 4 处契约断言先红后绿（objectKey 曾随库下发→现 undefined 并以 format/webdavPath 代替，webdav 删除走 webdavPath；http 封面曾原样回显→现读时升级 https；M3U 曾写内部键不可播放→现写文件名），新增 music-export.test.ts 锁定 M3U 逐行输出；全量 test:unit 209 文件 1667 例 ✅，typecheck/size/comments ✅ |
-| 2026-09-19 | M-13 正在播放面板收藏/置顶按钮接线 store toggle（UI-1） | 本次提交（hash 由下一次提交回填） | 新增 2 例先红后绿（收藏/置顶按钮曾无 onClick 点击零调用→现调用 toggleFavorite/togglePin 且带当前曲 id），jsdom createRoot 真实挂载断言语义标签定位，typecheck ✅ |
+| 2026-09-19 | M-13 正在播放面板收藏/置顶按钮接线 store toggle（UI-1） | d475c695 | 新增 2 例先红后绿（收藏/置顶按钮曾无 onClick 点击零调用→现调用 toggleFavorite/togglePin 且带当前曲 id），jsdom createRoot 真实挂载断言语义标签定位，typecheck ✅ |
+| 2026-09-19 | M-14 歌单描述随新建/重命名落库并在编辑态回填（UI-2） | 本次提交（hash 由下一次提交回填） | 新增 4 例（其中 2 例先红后绿：描述曾被 store 丢弃→现 trim 后随 createPlaylist/patchPlaylist 下发；无描述的重命名曾会清空→现 patch 不含 description 键），模态框描述框对已有歌单同样可见并预填，lib/api 桶补出 MusicPlaylistPatch，music 17 套件 115 ✅，typecheck/size/comments ✅ |

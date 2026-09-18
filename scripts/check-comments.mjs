@@ -1241,6 +1241,7 @@ const allowed = new Map([
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
     '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
+    '// An absent description stays untouched: the sidebar rename only edits the name.',
     '// Multi-select actions: moving replaces the tag set, playlists append.',
   ]],
   ['src/client/features/music/music-store/library-covers.ts', [

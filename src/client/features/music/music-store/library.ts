@@ -54,8 +54,8 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     patchTag: (id, patch) => patchTag(set, id, patch),
     deleteTag: (id) => deleteTag(set, id),
 
-    createPlaylist: (name) => createPlaylist(set, get, name),
-    renamePlaylist: (id, name) => renamePlaylist(set, get, id, name),
+    createPlaylist: (name, description) => createPlaylist(set, get, name, description),
+    renamePlaylist: (id, name, description) => renamePlaylist(set, get, id, name, description),
     deletePlaylist: (id) => deletePlaylist(set, get, id),
     addToPlaylist: (playlistId, trackId) => addToPlaylist(get, playlistId, trackId),
     removeFromPlaylist: (playlistId, itemId) => removeFromPlaylist(get, playlistId, itemId),
