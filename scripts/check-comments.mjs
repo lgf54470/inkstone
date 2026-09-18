@@ -2605,6 +2605,12 @@ const allowed = new Map([
     '// board expects the option id; matching only by id would hide all of those',
     '// cards in No Status, so fall back to a case-insensitive label match.',
   ]],
+  ['src/client/lib/markdown/kanban/id.ts', [
+    '// Kanban ids were built from Date.now() alone or with a short random suffix,',
+    '// so a burst of creates inside one millisecond (paste, batch add, duplicated',
+    '// subtasks) produced duplicate keys. The monotonic sequence pins uniqueness per',
+    '// tab; the random tail keeps ids distinct across tabs that share a millisecond.',
+  ]],
   ['src/client/lib/markdown/kanban/registry.test.ts', [
     '/**\n * Every kanban block in the preview is a React root of its own, living inside markup React did not\n * make, and those roots are torn down from the host tree\'s own effects: the pane goes away, or the\n * block leaves the note. A root may not be taken down from inside another root\'s commit — React\n * says so out loud ("Attempted to synchronously unmount a root while React was already rendering")\n * and then lets the teardown race the commit it interrupted. The unmount is deferred by a\n * microtask, and these cases are what hold it there: the board is still painted when the call\n * returns, and it is gone a microtask later, with no warning raised from inside a commit.\n */',
     '/** The preview\'s own shape: the teardown runs from the cleaning-up side of the host root\'s commit. */',

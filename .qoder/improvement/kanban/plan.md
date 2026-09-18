@@ -19,7 +19,7 @@
 - [x] K-06 「转换为项目」实现为提升子任务→顶级卡；「打开子任务」死路径移除（review #22a/b）
 - [x] K-07 text/plain 拖拽兜底无校验 → 校验 data-item-id（review #18）
 - [x] K-08 分组只按 id 匹配 → id/label 双匹配（review #20a；`filter-sort.ts:136`）
-- [ ] K-09 ID `Date.now()` 碰撞 → 不可碰撞生成（review #23）
+- [x] K-09 ID `Date.now()` 碰撞 → 不可碰撞生成（review #23）
 - [ ] K-10 头部进度条口径 → 传筛选后 items（review 共识#15）
 - [ ] K-11 undo 快捷键作用域 → 绑定实例容器、焦点归属判定（review #7；`kanban-history.ts:47-69`）
 - [ ] K-12 KanbanRoot ErrorBoundary（review #8；`registry.ts:143-151`）
@@ -68,4 +68,5 @@
 | 2026-09-18 | K-05 复制名称 clipboard 兜底 | 1e934632 | 新增 kanban-subtask-menu.test.ts 3/3 ✅（修复前无 clipboard 即同步抛错为红），kanban 76 测试 ✅，全量 test:unit 1655 ✅，typecheck/size ✅ |
 | 2026-09-18 | K-06 子任务死操作 | a45ddda2 | 新增 kanban-convert-subtask.test.ts 7/7 ✅（先红后绿），kanban 83 测试 ✅，全量 test:unit 1662 ✅，typecheck/size/i18n ✅ |
 | 2026-09-18 | K-07 拖拽落点归属校验 | 889d584c | 新增 kanban-board-dnd.test.ts 5/5 ✅（3 例外部拖入先红后绿），kanban 88 测试 ✅，全量 test:unit 1667 ✅，typecheck/size/escape/comments/i18n ✅ |
-| 2026-09-18 | K-08 分组 id/label 双匹配 | 本次提交（hash 由下一次提交回填） | filter-sort.test.ts 新增 1 例 ✅（先红后绿：label 存值归 in_progress 组、乱值仍进 No Status），kanban 89 测试 ✅，全量 test:unit 212 文件 ✅，typecheck/size/comments ✅ |
+| 2026-09-18 | K-08 分组 id/label 双匹配 | 67feb0e6 | filter-sort.test.ts 新增 1 例 ✅（先红后绿：label 存值归 in_progress 组、乱值仍进 No Status），kanban 89 测试 ✅，全量 test:unit 212 文件 ✅，typecheck/size/comments ✅ |
+| 2026-09-18 | K-09 ID 防碰撞生成 | 本次提交（hash 由下一次提交回填） | 新增 id.test.ts 2/2 ✅（先红：模块不存在即失败；2000 连击无重复），9 处 Date.now 生成点全部接线，kanban 91 测试 ✅，全量 test:unit 213 文件 ✅，typecheck/size/comments ✅ |

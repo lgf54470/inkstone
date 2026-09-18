@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
+import { createKanbanId } from '../id'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanItem, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanFilesCell } from './kanban-files-cell'
@@ -124,7 +125,7 @@ function SubitemsNestedTable({
     if (!newTitle.trim()) return
     onUpdateSubtasks([
       ...subtasks,
-      { id: `sub_${Date.now()}`, title: newTitle.trim(), completed: false },
+      { id: `sub_${createKanbanId()}`, title: newTitle.trim(), completed: false },
     ])
     setNewTitle('')
   }

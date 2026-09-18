@@ -7,6 +7,7 @@ import {
 import { t } from '../../../i18n'
 import { reorderKanbanColumns, reorderKanbanItems } from '../dnd'
 import type { KanbanMovePivot } from '../dnd'
+import { createKanbanId } from '../id'
 import type {
   KanbanColorName,
   KanbanData,
@@ -188,7 +189,7 @@ function subtaskAsKanbanItem(
   if (subtask.priority) properties.priority = subtask.priority
   if (subtask.tags?.length) properties.tags = [...subtask.tags]
   const item: KanbanItem = {
-    id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: `item-${createKanbanId()}`,
     title: subtask.title,
     properties,
   }
@@ -300,7 +301,7 @@ export function useKanbanAddOperations(
   activeView: KanbanView,
 ) {
   const handleAddItem = useCallback((defaults?: Record<string, unknown>) => {
-    const newItemId = `item-${Date.now()}`
+    const newItemId = `item-${createKanbanId()}`
     const statusVal = data.columns.find((c) => c.id === 'status')?.options?.[0]?.id || 'todo'
     const propsObj: Record<string, unknown> = { status: statusVal, ...defaults }
     const newItem: KanbanItem = {
@@ -328,7 +329,7 @@ export function useKanbanAddOperations(
     const colors: KanbanColorName[] = ['blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'red', 'gray']
     const newColor = colors[(statusCol.options?.length ?? 0) % colors.length]!
     const newOpt: KanbanOption = {
-      id: `status-${Date.now()}`,
+      id: `status-${createKanbanId()}`,
       label: t('preview.kanban_new_group_title', { value0: (statusCol.options?.length ?? 0) + 1 }),
       color: newColor,
     }
@@ -421,11 +422,11 @@ export function useKanbanRootState(initialData: KanbanData, onUpdateData: (next:
 function duplicateKanbanItem(item: KanbanItem): KanbanItem {
   return {
     ...item,
-    id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: `item-${createKanbanId()}`,
     title: `${item.title} (${t('common.copy')})`,
     subtasks: item.subtasks?.map((st) => ({
       ...st,
-      id: `subtask-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: `subtask-${createKanbanId()}`,
     })),
   }
 }

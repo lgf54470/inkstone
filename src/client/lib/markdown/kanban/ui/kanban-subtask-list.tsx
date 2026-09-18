@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { AlignLeft, CheckSquare, MoreHorizontal, Plus, Smile, Square } from 'lucide-react'
 import { t } from '../../../i18n'
+import { createKanbanId } from '../id'
 import type { KanbanSubtask } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanIconPicker } from './kanban-icon-picker'
@@ -267,7 +268,7 @@ export function KanbanSubtaskList({
   }
 
   const handleDuplicate = (st: KanbanSubtask) => {
-    onUpdateSubtasks([...subtasks, { ...st, id: `sub_${Date.now()}` }])
+    onUpdateSubtasks([...subtasks, { ...st, id: `sub_${createKanbanId()}` }])
   }
 
   const handleDelete = (id: string) => {
@@ -291,7 +292,7 @@ export function KanbanSubtaskList({
 
       <AddSubtaskForm
         onAdd={(title) =>
-          onUpdateSubtasks([...subtasks, { id: `sub_${Date.now()}`, title, completed: false }])
+          onUpdateSubtasks([...subtasks, { id: `sub_${createKanbanId()}`, title, completed: false }])
         }
       />
     </div>

@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import { Check, ChevronDown, ChevronRight, ListTodo, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
+import { createKanbanId } from '../id'
 import type { KanbanSubtask } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
@@ -205,7 +206,7 @@ export function KanbanCardSubtasks({
   const handleAddSubtask = (title: string) => {
     if (!onUpdateSubtasks) return
     const newSt: KanbanSubtask = {
-      id: `st-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      id: `st-${createKanbanId()}`,
       title,
       completed: false,
     }
