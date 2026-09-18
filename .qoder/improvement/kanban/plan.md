@@ -32,7 +32,7 @@
 - [x] K-19 上传 MIME 白名单/配额/节流对齐 organizer（review #10 增量）
 - [x] K-20 甘特进度隐藏交互 → 可键盘进度控件（review #24b）
 - [x] K-21 排序与拖拽静默冲突 → 明确反馈（review #24a）
-- [ ] K-22 详情标题每键提交 → 草稿 + Enter/blur（review #17）
+- [x] K-22 详情标题每键提交 → 草稿 + Enter/blur（review #17）
 - [ ] K-23 hover-only 控件空白行 → 绝对定位叠加/常显（review 共识16）
 - [ ] K-24 子任务「复制名称」以外的 UI 微调（view-tabs timeline/gantt 图标区分）（review #29 局部）
 
@@ -81,4 +81,5 @@
 | 2026-09-18 | K-18 附件删除接线 + 上传命名空间透传 | c27f3cbb | 新增 kanban-files-cell.test.ts 5 例 + url.test.ts kanbanFileLocation 3 例（先红后绿）：Trash2 删除由「只摘 JSON 引用」改为先摘引用、再按文件自己存的 url/r2Key 解析 (kanbanName, filename) 调 deleteKanbanFile 真删 R2 对象（deleteKanbanFile 自此有真实调用方）；外部/blob/data 文件只摘引用不瞎调 API；服务端拒绝时回滚引用并 toast（新增 preview.kanban_file_delete_failed 双语键）。上传命名空间经 KanbanFilesScope context 由 registry（entry.noteId）→ KanbanRoot 透传，不再全落 kanban/default/；删除按存量 URL 寻址，天然满足「旧前缀双读」，不迁历史 key。review #10 的孤儿清理 Cron、并轨 attachments 选型与配额（K-19）不在本项。kanban+preview 33 文件 177 ✅，全量 test:unit 220 文件 1707 测试 ✅，typecheck/11 项静态门禁 ✅ |
 | 2026-09-18 | K-19 上传 MIME 白名单/配额/节流 | 7ae296fe | kanban.ts /upload 对齐 organizer 样板（先红后绿 6 例）：逐小时节流 consumeAttemptBudget（key kanban-upload:${userId}，LIMITS.attachmentUploadsPerHour/1h，ThrottleError→429）；form 改经 readFormDataWithinLimit 强制 multipart 与体积上限；缺 FILES 绑定由静默假 200 改为显式 503；配额=attachments 表 SUM(size) + R2 `kanban/` 前缀分页 scan（customMetadata.userId 过滤）超 attachmentQuotaBytesR2 → 413 且不放 put；mime 由直取 file.type 改为 safeAttachmentMime 白名单+图片签名嗅探（伪装 png 落 octet-stream）。tests/kanban-routes.test.ts 依 files-routes 惯例迁入 node 工程（jsdom 无法解析 multipart 请求体）。孤儿清理 Cron 仍属 review #10 后续，不在本项。全量 test:unit 220 文件 1713 测试 ✅，typecheck/11 项静态门禁 ✅ |
 | 2026-09-18 | K-20 甘特进度改可键盘控件 | baff9376 | 新增 kanban-gantt-view.test.ts 3 例（先红后绿）：进度编辑从条形上「仅双击、(p+25)%125 回环归零、无键盘无提示」的隐藏交互，改为侧栏 Progress 列的项目库 Slider（原生 input[type=range]，0..100 step 5，aria-label 走 preview.kanban_progress，值文本自带 %）；条形移除 onDoubleClick，单击开详情不变，滑块点击 stopPropagation 不冒泡开详情。全量 test:unit 221 文件 1716 测试 ✅，typecheck/11 项静态门禁 ✅ |
-| 2026-09-18 | K-21 排序与拖拽冲突明确反馈 | 本次提交（hash 由下一次提交回填） | 新增 kanban-manual-move.ts + kanban-manual-move.test.ts 2 例（先红后绿）：makeMoveItemClearingSorts 在 sorts 生效时拖拽落卡即清空排序并 toast（preview.kanban_sort_cleared_for_drag 双语键），手动顺序立即可见，不再「数据变了显示没变」；无排序时静默不提示。useKanbanRootState 经 useMoveItemClearingSorts 接线替换 items.handleMoveItem（root-hooks 因 500 行/50 行上限拆出接线 hook）。全量 test:unit 222 文件 1718 测试 ✅，typecheck/11 项静态门禁 ✅ |
+| 2026-09-18 | K-21 排序与拖拽冲突明确反馈 | e318400c | 新增 kanban-manual-move.ts + kanban-manual-move.test.ts 2 例（先红后绿）：makeMoveItemClearingSorts 在 sorts 生效时拖拽落卡即清空排序并 toast（preview.kanban_sort_cleared_for_drag 双语键），手动顺序立即可见，不再「数据变了显示没变」；无排序时静默不提示。useKanbanRootState 经 useMoveItemClearingSorts 接线替换 items.handleMoveItem（root-hooks 因 500 行/50 行上限拆出接线 hook）。全量 test:unit 222 文件 1718 测试 ✅，typecheck/11 项静态门禁 ✅ |
+| 2026-09-18 | K-22 详情标题草稿提交 | 本次提交（hash 由下一次提交回填） | kanban-item-detail.test.ts 新增 3 例（先红后绿）：DetailHeader 标题从每键 onUpdate（每次击键产生一条历史/写回）改为本地草稿——Enter 或失焦（focusout）提交一次、Escape 还原为上次提交值、切换详情目标（itemId 变化）时渲染中重置草稿；input 带 data-owns-escape 沿用既有豁免约定，编辑中按 Escape 不误关 Modal。review #17 其余项（MetricCards 栅格、description 限长、history 合并窗口）不在本项范围。全量 test:unit 222 文件 1721 测试 ✅，typecheck/11 项静态门禁 ✅ |

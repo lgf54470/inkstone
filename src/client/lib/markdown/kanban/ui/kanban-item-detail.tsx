@@ -85,7 +85,48 @@ function DetailStatusDropdown({
   )
 }
 
+function DetailTitleDraft({
+  itemId,
+  title,
+  onChangeTitle,
+}: {
+  itemId: string
+  title: string
+  onChangeTitle: (t: string) => void
+}) {
+  const [draft, setDraft] = useState(title)
+  const lastTarget = useRef(itemId)
+  const lastSent = useRef(title)
+  if (lastTarget.current !== itemId) {
+    lastTarget.current = itemId
+    lastSent.current = title
+    setDraft(title)
+  }
+  const commitDraft = () => {
+    if (draft === lastSent.current) return
+    lastSent.current = draft
+    onChangeTitle(draft)
+  }
+
+  return (
+    <input
+      type='text'
+      value={draft}
+      data-owns-escape
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commitDraft}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commitDraft()
+        if (e.key === 'Escape') setDraft(lastSent.current)
+      }}
+      className='w-full rounded-[var(--r-xs)] border-0 bg-transparent text-[length:var(--text-18)] font-bold text-[var(--text-primary)] outline-none focus:bg-[var(--bg-inset)] px-1'
+      placeholder={t('preview.kanban_card_title')}
+    />
+  )
+}
+
 function DetailHeader({
+  itemId,
   icon,
   title,
   statusCol,
@@ -94,6 +135,7 @@ function DetailHeader({
   onChangeTitle,
   onChangeStatus,
 }: {
+  itemId: string
   icon?: string
   title: string
   statusCol?: KanbanProperty
@@ -130,13 +172,7 @@ function DetailHeader({
           onSelectIcon={onChangeIcon}
           currentIcon={icon}
         />
-        <input
-          type='text'
-          value={title}
-          onChange={(e) => onChangeTitle(e.target.value)}
-          className='w-full rounded-[var(--r-xs)] border-0 bg-transparent text-[length:var(--text-18)] font-bold text-[var(--text-primary)] outline-none focus:bg-[var(--bg-inset)] px-1'
-          placeholder={t('preview.kanban_card_title')}
-        />
+        <DetailTitleDraft itemId={itemId} title={title} onChangeTitle={onChangeTitle} />
       </div>
     </div>
   )
@@ -269,6 +305,7 @@ function KanbanItemDetailBody({
       width={DETAIL_MODAL_WIDTH}
       title={
         <DetailHeader
+          itemId={item.id}
           icon={item.icon}
           title={item.title}
           statusCol={statusCol}
