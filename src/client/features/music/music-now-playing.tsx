@@ -90,6 +90,8 @@ function Lyrics({ lines, activeIndex }: { lines: ReturnType<typeof parseLyric>; 
 }
 
 function Details({ track, onEditTags }: { track: ReturnType<typeof useCurrentTrack>; onEditTags: () => void }) {
+  const toggleFavorite = useMusic((state) => state.toggleFavorite)
+  const togglePin = useMusic((state) => state.togglePin)
   if (!track) {
     return <p className='py-8 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.nothing_playing')}</p>
   }
@@ -104,10 +106,10 @@ function Details({ track, onEditTags }: { track: ReturnType<typeof useCurrentTra
   return (
     <div className='space-y-2 py-1'>
       <div className='flex items-center gap-1'>
-        <IconButton label={track.isFavorite ? t('music.unfavorite') : t('music.favorite')} size='sm' active={track.isFavorite}>
+        <IconButton label={track.isFavorite ? t('music.unfavorite') : t('music.favorite')} size='sm' active={track.isFavorite} onClick={() => void toggleFavorite(track.id)}>
           <Heart size={13} className={track.isFavorite ? 'fill-current' : undefined} />
         </IconButton>
-        <IconButton label={track.isPinned ? t('music.unpin') : t('music.pin')} size='sm' active={track.isPinned}>
+        <IconButton label={track.isPinned ? t('music.unpin') : t('music.pin')} size='sm' active={track.isPinned} onClick={() => void togglePin(track.id)}>
           <Pin size={13} />
         </IconButton>
         <IconButton label={t('music.track_tags')} size='sm' onClick={onEditTags}><Tags size={13} /></IconButton>
