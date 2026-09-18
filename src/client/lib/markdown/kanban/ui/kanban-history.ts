@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useReducer, type RefObject } from 'react'
 import type { KanbanData } from '../types'
 
 const MAX_HISTORY_STEPS = 30
@@ -44,8 +44,17 @@ function historyReducer(state: HistoryState, action: HistoryAction): HistoryStat
   return state
 }
 
-function useHistoryKeyboardShortcuts(undo: () => void, redo: () => void) {
+// Listening on the instance container (not window) keeps Ctrl+Z with the board
+// that actually owns the focused element: focus on the surrounding note or on a
+// second board must not undo this instance's history.
+function useHistoryKeyboardShortcuts(
+  undo: () => void,
+  redo: () => void,
+  containerRef: RefObject<HTMLElement | null>,
+) {
   useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return
@@ -64,14 +73,15 @@ function useHistoryKeyboardShortcuts(undo: () => void, redo: () => void) {
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [undo, redo])
+    container.addEventListener('keydown', handleKeyDown)
+    return () => container.removeEventListener('keydown', handleKeyDown)
+  }, [undo, redo, containerRef])
 }
 
 export function useKanbanHistory(
   initialData: KanbanData,
   onUpdateData: (next: KanbanData) => void,
+  containerRef: RefObject<HTMLElement | null>,
 ) {
   const [state, dispatch] = useReducer(historyReducer, {
     data: initialData,
@@ -102,7 +112,7 @@ export function useKanbanHistory(
     onUpdateData(next)
   }, [state.future, onUpdateData])
 
-  useHistoryKeyboardShortcuts(undo, redo)
+  useHistoryKeyboardShortcuts(undo, redo, containerRef)
 
   return {
     data: state.data,

@@ -2635,9 +2635,18 @@ const allowed = new Map([
     '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',
     '// document is guaranteed blank; offer the file as an explicit new-tab action.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-history.ts', [
+    '// Listening on the instance container (not window) keeps Ctrl+Z with the board',
+    '// that actually owns the focused element: focus on the surrounding note or on a',
+    '// second board must not undo this instance\'s history.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root-hooks.ts', [
     '// Board columns hand over their group key; it belongs to the view\'s groupBy',
     '// property, which is not necessarily `status`.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-root.tsx', [
+    '// Clicking board whitespace focuses this container, so board-scoped',
+    '// shortcuts (undo/redo) keep working when no card holds focus.',
   ]],
   ['src/client/lib/markdown/mindmap/body.ts', [
     '/**\n * DOM-free helpers behind the ```mindmap fence: format detection, EOL handling\n * and the fence surgery that two-way editing needs (the map\'s own writes, and the\n * header\'s palette control). The vendor-backed parse/serialize pair lives in ./vendor,\n * so this file (and its tests) can be imported without pulling mind-elixir into the\n * caller\'s chunk.\n *\n * The surgery itself is not mind map specific — any block that rewrites its own\n * fence needs the same locate-and-replace — so it lives in ../fence-edit and this\n * module only adds what a mind map fence carries on top: its languages, its two\n * body formats, and the palette annotation on its info line.\n */',

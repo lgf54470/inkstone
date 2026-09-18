@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type RefObject } from 'react'
 import {
   applyKanbanFilters,
   applyKanbanSorts,
@@ -374,8 +374,12 @@ export function useKanbanSelection(
   return { selectedIds, setSelectedIds, handleToggleSelect, handleClearSelection, handleBatchStatusChange, handleBatchDelete }
 }
 
-export function useKanbanRootState(initialData: KanbanData, onUpdateData: (next: KanbanData) => void) {
-  const history = useKanbanHistory(initialData, onUpdateData)
+export function useKanbanRootState(
+  initialData: KanbanData,
+  onUpdateData: (next: KanbanData) => void,
+  containerRef: RefObject<HTMLElement | null>,
+) {
+  const history = useKanbanHistory(initialData, onUpdateData, containerRef)
   const { data, commitData } = history
   const [activeViewId, setActiveViewId] = useState<string>(() => initialData.activeViewId || initialData.views[0]?.id || 'view-board')
   const [detailItem, setDetailItem] = useState<KanbanItem | null>(null)

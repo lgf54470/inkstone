@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useRef } from 'react'
 import type {
   KanbanColorName,
   KanbanData,
@@ -307,11 +307,16 @@ export const KanbanRoot = memo(function KanbanRoot({
   onUpdateData,
   onToggleFullscreen,
 }: KanbanRootProps) {
-  const state = useKanbanRootState(initialData, onUpdateData)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const state = useKanbanRootState(initialData, onUpdateData, containerRef)
   const menu = useKanbanContextMenuState(state.data, state.commitData)
 
   return (
     <div
+      ref={containerRef}
+      // Clicking board whitespace focuses this container, so board-scoped
+      // shortcuts (undo/redo) keep working when no card holds focus.
+      tabIndex={-1}
       onContextMenu={menu.handleContextMenu}
       className='flex h-full w-full flex-col overflow-hidden bg-[var(--bg-surface)] text-[var(--text-primary)]'
     >
