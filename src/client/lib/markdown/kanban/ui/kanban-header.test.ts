@@ -32,7 +32,9 @@ const data: KanbanData = {
   views: [{ id: 'v', name: 'Board', type: 'board', groupBy: 'status' }],
 }
 
-function renderHeader(visibleItems: KanbanItem[], extra: Partial<ComponentProps<typeof KanbanHeader>> = {}) {
+type HeaderOverrides = Omit<Partial<ComponentProps<typeof KanbanHeader>>, 'viewPanelId'>
+
+function renderHeader(visibleItems: KanbanItem[], extra: HeaderOverrides = {}) {
   return renderElement(
     createElement(KanbanHeader, {
       data,
@@ -46,6 +48,7 @@ function renderHeader(visibleItems: KanbanItem[], extra: Partial<ComponentProps<
       onChangeFilters: vi.fn(),
       onChangeSorts: vi.fn(),
       onAddItem: vi.fn(),
+      viewPanelId: 'view-panel',
       ...extra,
     }),
   )
@@ -99,6 +102,7 @@ function renderTableHeader(hiddenColumns: string[], onToggleHiddenColumn = vi.fn
       onChangeSorts: vi.fn(),
       onAddItem: vi.fn(),
       onToggleHiddenColumn,
+      viewPanelId: 'view-panel',
     }),
   )
   return { ...rendered, onToggleHiddenColumn }

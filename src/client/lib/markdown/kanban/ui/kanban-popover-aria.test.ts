@@ -109,6 +109,7 @@ function headerNode(): ReactNode {
     onChangeFilters: vi.fn(),
     onChangeSorts: vi.fn(),
     onAddItem: vi.fn(),
+    viewPanelId: 'view-panel',
   })
 }
 

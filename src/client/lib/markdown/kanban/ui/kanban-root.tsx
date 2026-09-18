@@ -1,4 +1,4 @@
-import { memo, useRef } from 'react'
+import { memo, useId, useRef } from 'react'
 import { useLocale } from '../../../i18n'
 import type {
   KanbanColorName,
@@ -22,6 +22,7 @@ import { KanbanItemDetail } from './kanban-item-detail'
 import { KanbanListView } from './kanban-list-view'
 import { KanbanTableView } from './kanban-table-view'
 import { KanbanTimelineView } from './kanban-timeline-view'
+import { kanbanViewTabId } from './kanban-view-tabs'
 import { useKanbanContextMenuState, useKanbanRootState } from './kanban-root-hooks'
 import type { CardSize } from './kanban-view-options'
 
@@ -198,6 +199,7 @@ function KanbanTopBar({
   isFullscreen,
   unsaved,
   sourceData,
+  viewPanelId,
   onRetryWrite,
   onDiscardWrite,
   onToggleFullscreen,
@@ -206,6 +208,7 @@ function KanbanTopBar({
   isFullscreen?: boolean
   unsaved?: boolean
   sourceData?: KanbanData
+  viewPanelId: string
   onRetryWrite?: () => void
   onDiscardWrite?: () => void
   onToggleFullscreen?: () => void
@@ -237,6 +240,7 @@ function KanbanTopBar({
       onToggleHiddenColumn={state.filterSort.toggleHiddenColumn}
       onAddItem={() => state.adds.handleAddItem()}
       onToggleFullscreen={onToggleFullscreen}
+      viewPanelId={viewPanelId}
       unsaved={unsaved}
       onRetryWrite={onRetryWrite}
       onDiscardWrite={sourceData && onDiscardWrite ? () => {
@@ -247,9 +251,23 @@ function KanbanTopBar({
   )
 }
 
-function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> }) {
+function KanbanMain({
+  state,
+  viewPanelId,
+}: {
+  state: ReturnType<typeof useKanbanRootState>
+  viewPanelId: string
+}) {
   return (
-    <main className='relative flex-1 overflow-hidden'>
+    // The selected view is what its tab controls, so this box is the panel — hanging the role here
+    // rather than on a wrapper keeps the geometry untouched, and the board stops nesting a second
+    // `main` landmark inside the app shell's own one.
+    <div
+      id={viewPanelId}
+      role='tabpanel'
+      aria-labelledby={kanbanViewTabId(viewPanelId, state.filterSort.activeView.id)}
+      className='relative flex-1 overflow-hidden'
+    >
       <KanbanViewRenderer
         activeView={state.filterSort.activeView}
         viewData={state.filterSort.viewData}
@@ -284,7 +302,7 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
         onBatchDelete={state.selection.handleBatchDelete}
         onClearSelection={state.selection.handleClearSelection}
       />
-    </main>
+    </div>
   )
 }
 
@@ -352,6 +370,9 @@ export const KanbanRoot = memo(function KanbanRoot({
   onToggleFullscreen,
 }: KanbanRootProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  // One id names the panel and, through `kanbanViewTabId`, the tab that controls it; the header and
+  // the view render in two branches of this tree, so the pair is minted here.
+  const viewPanelId = useId()
   // A host tree React did not make never re-renders this root, so the board listens
   // for language changes itself rather than trusting a mount option to carry them.
   useLocale()
@@ -373,11 +394,12 @@ export const KanbanRoot = memo(function KanbanRoot({
           isFullscreen={isFullscreen}
           unsaved={unsaved}
           sourceData={sourceData}
+          viewPanelId={viewPanelId}
           onRetryWrite={onRetryWrite}
           onDiscardWrite={onDiscardWrite}
           onToggleFullscreen={onToggleFullscreen}
         />
-        <KanbanMain state={state} />
+        <KanbanMain state={state} viewPanelId={viewPanelId} />
         <KanbanRootOverlays state={state} menu={menu} isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
       </KanbanFilesScope.Provider>
     </div>

@@ -55,6 +55,7 @@ interface KanbanHeaderProps {
   onToggleHiddenColumn?: (propertyId: string) => void
   onAddItem: () => void
   onToggleFullscreen?: () => void
+  viewPanelId: string
 }
 
 interface HeaderActionsProps {
@@ -468,6 +469,7 @@ export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps)
           <KanbanViewTabs
             views={data.views}
             activeViewId={activeView.id}
+            panelId={props.viewPanelId}
             onSelectView={props.onSelectView}
           />
         </div>

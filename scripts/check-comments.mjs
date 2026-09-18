@@ -2805,6 +2805,11 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-root.tsx', [
     '// Views edit one item\'s own fields; the writer keeps that shape in one place',
     '// while still committing the whole document like every other edit does.',
+    '// The selected view is what its tab controls, so this box is the panel — hanging the role here',
+    '// rather than on a wrapper keeps the geometry untouched, and the board stops nesting a second',
+    '// `main` landmark inside the app shell\'s own one.',
+    '// One id names the panel and, through `kanbanViewTabId`, the tab that controls it; the header and',
+    '// the view render in two branches of this tree, so the pair is minted here.',
     '// A host tree React did not make never re-renders this root, so the board listens',
     '// for language changes itself rather than trusting a mount option to carry them.',
     '// Clicking board whitespace focuses this container, so board-scoped',
@@ -2837,6 +2842,14 @@ const allowed = new Map([
     '// identity across renders that only touch other view fields.',
     '// Both toggles read the committed view rather than the render-time one, so two',
     '// clicks in one batch still cycle instead of both writing the same result.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-view-tabs.test.ts', [
+    '/**\n * The view switcher announces itself as a tablist, but a reader who arrives there is still\n * navigating by accident: every tab is its own Tab stop, so crossing three views takes three\n * presses and the arrow keys do nothing, and nothing points from the selected tab to the region\n * it produced — the panel is reachable only by guessing it is further down the page (review #29).\n * The contract here is the one a horizontal tablist has to keep: one roving stop, Arrow/Home/End\n * moving both focus and selection, and `aria-controls` resolving to a real `role=\'tabpanel\'` that\n * names the selected tab back. The pair is only observable from whoever owns the panel, so the\n * last group mounts the whole board rather than the tabs alone.\n */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-view-tabs.tsx', [
+    '// The whole list drives one panel, so a tab\'s own name has to be derivable from that panel\'s id —',
+    '// the panel labels itself back with `aria-labelledby` and cannot know the view id by itself.',
+    '// A tablist is one entry point: the arrows carry both focus and selection, wrapping at the ends.',
   ]],
   ['src/client/lib/markdown/kanban/url.ts', [
     '/**\n * Protocol whitelist for URLs that come from kanban fence content. Fence JSON is\n * user-authored (and arrives via shares/imports), so covers and file urls are\n * rendered from data we do not trust.\n */',
