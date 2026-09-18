@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle, KANBAN_COLOR_NAMES, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
@@ -110,26 +111,6 @@ function ExistingOptionsList({
   )
 }
 
-function usePopoverDismiss(
-  popoverRef: React.RefObject<HTMLElement | null>,
-  anchorRef: React.RefObject<HTMLElement | null>,
-  onClose: () => void,
-) {
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (
-        popoverRef.current?.contains(e.target as Node) ||
-        anchorRef.current?.contains(e.target as Node)
-      ) {
-        return
-      }
-      onClose()
-    }
-    window.addEventListener('mousedown', handleClick)
-    return () => window.removeEventListener('mousedown', handleClick)
-  }, [anchorRef, onClose, popoverRef])
-}
-
 function TagInputField({
   tagName,
   tagColor,
@@ -199,7 +180,8 @@ export function TagCreatePopover({
   const [tagName, setTagName] = useState('')
   const [tagColor, setTagColor] = useState<KanbanColorName>('blue')
 
-  usePopoverDismiss(popoverRef, anchorRef, onClose)
+  useClickOutside([popoverRef, anchorRef], true, onClose)
+  useEscape(true, onClose)
 
   const unselectedOptions = (options ?? []).filter(
     (o) => !existingTags.includes(o.id) && !existingTags.includes(o.label),

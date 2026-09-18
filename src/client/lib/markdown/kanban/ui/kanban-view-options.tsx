@@ -1,6 +1,6 @@
 import { memo, useRef } from 'react'
 import { Columns3, Settings2, Sliders } from 'lucide-react'
-import { useClickOutside } from '../../../../components/overlay'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanProperty } from '../types'
@@ -140,6 +140,7 @@ export const KanbanViewOptions = memo(function KanbanViewOptions({
 }: KanbanViewOptionsProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   useClickOutside([panelRef, anchorRef], open, onClose)
+  useEscape(open, onClose)
 
   if (!open) return null
 

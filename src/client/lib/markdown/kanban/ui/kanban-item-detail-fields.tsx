@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { Flag, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanDotColor, getKanbanTagStyle } from '../colors'
@@ -7,23 +6,6 @@ import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
 import { KanbanDatePicker } from './kanban-date-picker'
 import { KanbanFilesCell } from './kanban-files-cell'
 import { KanbanSubtaskList } from './kanban-subtask-list'
-
-export function useDropdownDismiss(
-  open: boolean,
-  containerRef: React.RefObject<HTMLElement | null>,
-  onClose: () => void,
-) {
-  useEffect(() => {
-    if (!open) return
-    const handleDown = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) {
-        onClose()
-      }
-    }
-    window.addEventListener('mousedown', handleDown)
-    return () => window.removeEventListener('mousedown', handleDown)
-  }, [open, containerRef, onClose])
-}
 
 export function StatusOptionItem({
   option,

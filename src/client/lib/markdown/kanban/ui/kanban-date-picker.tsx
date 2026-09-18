@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocale } from '../../../i18n'
 
 interface KanbanDatePickerProps {
@@ -206,24 +207,6 @@ function DatePickerFooter({
   )
 }
 
-function usePopoverDismiss(
-  popoverRef: React.RefObject<HTMLDivElement | null>,
-  containerRef: React.RefObject<HTMLDivElement | null>,
-  onClose: () => void,
-) {
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (popoverRef.current?.contains(target) || containerRef.current?.contains(target)) {
-        return
-      }
-      onClose()
-    }
-    window.addEventListener('mousedown', handleClick)
-    return () => window.removeEventListener('mousedown', handleClick)
-  }, [popoverRef, containerRef, onClose])
-}
-
 function useCalendarCursor(value?: string) {
   const parsed = value ? new Date(value) : new Date()
   const initialYear = Number.isNaN(parsed.getTime()) ? new Date().getFullYear() : parsed.getFullYear()
@@ -267,7 +250,8 @@ function DatePickerPopover({
   const { cursor, prevMonth, nextMonth, resetToday } = useCalendarCursor(value)
   const todayStr = getTodayDateStr()
 
-  usePopoverDismiss(popoverRef, containerRef, onClose)
+  useClickOutside([popoverRef, containerRef], true, onClose)
+  useEscape(true, onClose)
   const days = buildMonthCalendarDays(cursor.year, cursor.month, weekStart)
 
   const handleSelect = (d: string) => {

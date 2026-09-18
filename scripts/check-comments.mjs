@@ -2762,6 +2762,11 @@ const allowed = new Map([
     '// ref, and `setSorts` is a stable state setter, so a stable moveItem yields',
     '// a stable handler for the whole drag.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-popover-dismiss.test.ts', [
+    '/**\n * Every panel in this module is dismissed by the pointer today and by nobody with a keyboard:\n * `Escape` reaches the board, finds no handler, and the reader is left inside an open popover\n * with the rest of the board dimmed behind their own focus (review #26/#29). The contract\n * asserted here is the one `components/overlay` already gives the app\'s other popovers —\n * `useEscape` plus the shared `useClickOutside` — so the panels close the same way, and a click\n * that lands inside the panel is still not a click outside it.\n */',
+    '/**\n * A test that fails mid-case never reaches its own `unmount()`, and a panel left in `document.body`\n * answers the next case\'s `querySelector` first — so teardown belongs to the harness.\n */',
+    '/** The panels whose parent owns `open`, so dismissal is one callback to observe. */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-property-cell.tsx', [
     '// Attachments live on the item, not in `properties`, so the table always has a',
     '// column for them even when the document schema does not declare one.',

@@ -1,6 +1,6 @@
 import { memo, useRef, useState } from 'react'
 import { ChevronLeft, Palette, Trash2 } from 'lucide-react'
-import { useClickOutside } from '../../../../components/overlay'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { getKanbanDotColor } from '../colors'
 import type { KanbanColorName } from '../types'
@@ -153,6 +153,7 @@ export const KanbanColumnMenu = memo(function KanbanColumnMenu({
 }: KanbanColumnMenuProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   useClickOutside([panelRef, anchorRef], open, onClose)
+  useEscape(open, onClose)
 
   if (!open) return null
 

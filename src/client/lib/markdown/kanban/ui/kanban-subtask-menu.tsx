@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { ArrowUpRight, Copy, CornerDownRight, Trash2 } from 'lucide-react'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { useUi } from '../../../../store/ui'
 import type { KanbanSubtask } from '../types'
@@ -12,28 +13,6 @@ interface KanbanSubtaskMenuProps {
   onDuplicate: () => void
   onConvertToItem?: () => void
   onDelete: () => void
-}
-
-function useMenuClickOutside(
-  open: boolean,
-  onClose: () => void,
-  menuRef: React.RefObject<HTMLDivElement | null>,
-  anchorRef: React.RefObject<HTMLElement | null>,
-) {
-  useEffect(() => {
-    if (!open) return
-    const handleClick = (e: MouseEvent) => {
-      if (
-        menuRef.current?.contains(e.target as Node) ||
-        anchorRef.current?.contains(e.target as Node)
-      ) {
-        return
-      }
-      onClose()
-    }
-    window.addEventListener('mousedown', handleClick)
-    return () => window.removeEventListener('mousedown', handleClick)
-  }, [open, onClose, anchorRef, menuRef])
 }
 
 function SubtaskMenuItem({
@@ -129,7 +108,8 @@ export function KanbanSubtaskMenu({
 }: KanbanSubtaskMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
-  useMenuClickOutside(open, onClose, menuRef, anchorRef)
+  useClickOutside([menuRef, anchorRef], open, onClose)
+  useEscape(open, onClose)
 
   if (!open) return null
 

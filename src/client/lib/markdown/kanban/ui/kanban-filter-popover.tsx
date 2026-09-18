@@ -1,6 +1,6 @@
 import { memo, useMemo, useRef } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
-import { useClickOutside } from '../../../../components/overlay'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanFilter, KanbanFilterOperator, KanbanProperty } from '../types'
@@ -153,6 +153,7 @@ export const KanbanFilterPopover = memo(function KanbanFilterPopover({
 }: KanbanFilterPopoverProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   useClickOutside([panelRef, anchorRef], open, onClose)
+  useEscape(open, onClose)
 
   const operators = useMemo<{ id: KanbanFilterOperator; label: string }[]>(
     () => [

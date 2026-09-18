@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { ChevronDown, Smile } from 'lucide-react'
-import { Modal } from '../../../../components/overlay'
+import { Modal, useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { getKanbanDotColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
@@ -16,7 +16,6 @@ import {
   DetailPropertiesGrid,
   PriorityChips,
   StatusOptionItem,
-  useDropdownDismiss,
 } from './kanban-item-detail-fields'
 
 interface KanbanItemDetailProps {
@@ -46,7 +45,10 @@ function DetailStatusDropdown({
   const opt = options.find((o) => o.id === statusVal || o.label === statusVal)
   const color = opt?.color ?? 'gray'
 
-  useDropdownDismiss(open, containerRef, () => setOpen(false))
+  const handleClose = () => setOpen(false)
+
+  useClickOutside([containerRef], open, handleClose)
+  useEscape(open, handleClose)
 
   return (
     <div ref={containerRef} className='relative inline-block'>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   AlertCircle,
   Bookmark,
@@ -16,6 +16,7 @@ import {
   Trash2,
   User,
 } from 'lucide-react'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 
 const KANBAN_COMMON_EMOJIS = [
@@ -121,28 +122,6 @@ function CustomEmojiInput({
   )
 }
 
-function useClickOutside(
-  open: boolean,
-  onClose: () => void,
-  panelRef: React.RefObject<HTMLDivElement | null>,
-  anchorRef: React.RefObject<HTMLElement | null>,
-) {
-  useEffect(() => {
-    if (!open) return
-    const handleClick = (e: MouseEvent) => {
-      if (
-        panelRef.current?.contains(e.target as Node) ||
-        anchorRef.current?.contains(e.target as Node)
-      ) {
-        return
-      }
-      onClose()
-    }
-    window.addEventListener('mousedown', handleClick)
-    return () => window.removeEventListener('mousedown', handleClick)
-  }, [open, onClose, anchorRef, panelRef])
-}
-
 function PickerHeaderTabs({
   tab,
   setTab,
@@ -199,7 +178,8 @@ export function KanbanIconPicker({
   const [tab, setTab] = useState<'emoji' | 'icon'>('emoji')
   const panelRef = useRef<HTMLDivElement>(null)
 
-  useClickOutside(open, onClose, panelRef, anchorRef)
+  useClickOutside([panelRef, anchorRef], open, onClose)
+  useEscape(open, onClose)
 
   if (!open) return null
 
