@@ -12,7 +12,7 @@
 ## 第一批 · 止血（P0 + 安全最小集，按风险从小到大）
 
 - [x] K-01 日历「新建」把 dateStr 写进 status → 改传日期字段（review #4；`kanban-calendar-view.tsx:12,122,140`、`kanban-root-hooks.ts:240-258`）— 含 handleAddItem 去 string 联合、新增 handleAddItemInGroup 按 groupBy 归组（board 顺带修正 groupBy≠status 时误写 status）
-- [ ] K-02 详情弹窗早 return 后调 hooks → 拆外层判空 + Body（review #5；`kanban-item-detail.tsx:250-253`）
+- [x] K-02 详情弹窗早 return 后调 hooks → 拆外层判空 + Body（review #5；`kanban-item-detail.tsx:250-253`）
 - [ ] K-03 PDF 预览被 CSP（`object-src 'none'`）挡死 → 移除 `<object>`，新标签打开 + 图片/文本内联（review #12）
 - [ ] K-04 筛选开启时拖拽落点错位 → targetIndex 以全量数组换算（review #6；`kanban-board-dnd.ts:35-53`）
 - [ ] K-05 子任务「复制名称」clipboard 无 catch → `?.` + try/catch + toast（review #22c；`kanban-subtask-menu.tsx:81`）
@@ -61,4 +61,5 @@
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
 | 2026-09-18 | BASE-0/BASE-1 + plan/review 登记 | 9b282dce | typecheck ✅，kanban 61 测试 ✅ |
-| 2026-09-18 | K-01 日历/分组新建落字段 | 本次提交（hash 由下一次提交回填） | 新增 kanban-add-operations.test.ts 5/5 ✅（先红后绿），全量 test:unit 1644 ✅，typecheck ✅ |
+| 2026-09-18 | K-01 日历/分组新建落字段 | 980c9926（软链误入库由 a7c5444d 移除） | 新增 kanban-add-operations.test.ts 5/5 ✅（先红后绿），全量 test:unit 1644 ✅，typecheck ✅ |
+| 2026-09-18 | K-02 详情弹窗 hooks 早退 | 本次提交（hash 由下一次提交回填） | 新增 kanban-item-detail.test.ts 2/2 ✅（修复前捕获 "Internal React error: Expected static flag was missing"，修复后归零），kanban 68 测试 ✅，typecheck/size/escape ✅ |

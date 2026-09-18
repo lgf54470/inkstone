@@ -239,16 +239,14 @@ function useKanbanDetailState(
   return { statusCol, priorityCol, tagsCol, localTagOptions, handlePropertyChange, handleAddTagOption }
 }
 
-export const KanbanItemDetail = memo(function KanbanItemDetail({
+function KanbanItemDetailBody({
   item,
   columns,
   onClose,
   onUpdate,
   onDelete,
   onAddColumnOption,
-}: KanbanItemDetailProps) {
-  if (!item) return null
-
+}: KanbanItemDetailProps & { item: KanbanItem }) {
   const { statusCol, priorityCol, localTagOptions, handlePropertyChange, handleAddTagOption } =
     useKanbanDetailState(item, columns, onUpdate, onAddColumnOption)
 
@@ -288,4 +286,9 @@ export const KanbanItemDetail = memo(function KanbanItemDetail({
       />
     </Modal>
   )
+}
+
+export const KanbanItemDetail = memo(function KanbanItemDetail(props: KanbanItemDetailProps) {
+  if (!props.item) return null
+  return <KanbanItemDetailBody {...props} item={props.item} />
 })
