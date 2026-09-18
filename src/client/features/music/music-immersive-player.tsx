@@ -13,6 +13,7 @@ import { MusicSeekBar } from './music-seek-bar'
 import {
   MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicVolumeButton,
 } from './music-transport-widgets'
+import { useTrackLyric } from './music-lyrics'
 import { activeLyricIndex, formatBytes, formatDuration, parseLyric } from './music-utils'
 
 const IMMERSIVE_WIDTH = 1000
@@ -27,6 +28,7 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
   const track = useCurrentTrack()
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
+  useTrackLyric(track)
   const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
   const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs))
   const scrollerRef = useRef<HTMLDivElement>(null)

@@ -18,6 +18,9 @@ export interface MusicTrack {
   sizeBytes: number
   coverUrl: string | null
   lyric: string | null
+  // The library payload ships without lyric text, so this flag is the only way
+  // list views know a track has lyrics worth fetching lazily by id.
+  hasLyric: boolean
   tagIds: string[]
   isFavorite: boolean
   isPinned: boolean

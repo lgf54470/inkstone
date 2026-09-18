@@ -64,7 +64,7 @@ export async function importWebdavTrack(set: MusicSet, get: MusicGet, entry: Mus
     const [title, artist] = splitName(base)
     const track = await api.music.importWebdav({ path: entry.path, title, artist })
     await patchImportedDuration(track)
-    await get().loadLibrary()
+    await get().loadLibrary(true)
     toastMusic('music.imported')
   } catch (error) {
     toastMusicError(error, 'music.import_failed')

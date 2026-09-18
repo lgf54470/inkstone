@@ -2,8 +2,8 @@ import type { Hono } from 'hono'
 import type { MusicLibrary, MusicStats } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { requireAuth } from '../../middleware/auth'
-import { attachTagIds, toPlaylist, toPlaylistItem, toTag } from './rows'
-import type { MusicPlaylistItemRow, MusicPlaylistRow, MusicTagRow, MusicTrackRow } from './rows'
+import { attachLightTagIds, toPlaylist, toPlaylistItem, toTag } from './rows'
+import type { MusicLightTrackRow, MusicPlaylistItemRow, MusicPlaylistRow, MusicTagRow } from './rows'
 
 export function registerMusicLibraryRoutes(routes: Hono<AppBindings>): void {
   routes.get('/library', requireAuth, async (c) => {
@@ -30,18 +30,19 @@ export function registerMusicLibraryRoutes(routes: Hono<AppBindings>): void {
   })
 }
 
-async function loadTracks(db: D1Database, userId: string): Promise<ReturnType<typeof attachTagIds>> {
+async function loadTracks(db: D1Database, userId: string): Promise<ReturnType<typeof attachLightTagIds>> {
   const [trackRows, tagRows] = await Promise.all([
     db.prepare(
-      `SELECT id, title, artist, album, duration_ms, source, object_key, mime, size_bytes, cover_url, lyric,
+      `SELECT id, title, artist, album, duration_ms, source, object_key, mime, size_bytes, cover_url,
+              (CASE WHEN lyric IS NULL OR lyric = '' THEN 0 ELSE 1 END) AS has_lyric,
               is_favorite, is_pinned, play_count, created_at, updated_at
          FROM music_tracks WHERE user_id = ?1
          ORDER BY is_pinned DESC, created_at DESC`,
-    ).bind(userId).all<MusicTrackRow>(),
+    ).bind(userId).all<MusicLightTrackRow>(),
     db.prepare('SELECT track_id, tag_id FROM music_track_tags WHERE user_id = ?1')
       .bind(userId).all<{ track_id: string; tag_id: string }>(),
   ])
-  return attachTagIds(trackRows.results, tagRows.results)
+  return attachLightTagIds(trackRows.results, tagRows.results)
 }
 
 async function loadTags(db: D1Database, userId: string): Promise<ReturnType<typeof toTag>[]> {

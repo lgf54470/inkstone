@@ -140,6 +140,35 @@ describe('music routes (real D1 + fake R2)', () => {
     expect(library.stats.totalBytes).toBe(AUDIO.byteLength)
   })
 
+  it('ships the library without lyric text and serves lyrics lazily', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const uploaded = await uploadTrack(app)
+    expect(uploaded.hasLyric).toBe(true)
+
+    const library = await (await request(app, '/api/music/library')).json()
+    expect(library.tracks[0].lyric).toBeNull()
+    expect(library.tracks[0].hasLyric).toBe(true)
+
+    const lyric = await (await request(app, `/api/music/tracks/${uploaded.id}/lyric`)).json()
+    expect(lyric.lyric).toBe('[00:01.000]first line')
+  })
+
+  it('reports the lyric flag from the stored text after a patch', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const uploaded = await uploadTrack(app)
+    const cleared = await (await json(app, `/api/music/tracks/${uploaded.id}`, { lyric: null }, 'PATCH')).json()
+    expect(cleared.lyric).toBeNull()
+    expect(cleared.hasLyric).toBe(false)
+    const library = await (await request(app, '/api/music/library')).json()
+    expect(library.tracks[0].hasLyric).toBe(false)
+    const lyric = await (await request(app, `/api/music/tracks/${uploaded.id}/lyric`)).json()
+    expect(lyric.lyric).toBeNull()
+  })
+
   it('rejects an unsupported audio format and an empty file', async () => {
     const db = await makeDb()
     await seedUser(db)

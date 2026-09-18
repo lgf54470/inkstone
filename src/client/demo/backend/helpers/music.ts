@@ -13,7 +13,10 @@ export function patchTrack(state: DemoState, track: MusicTrack, patch: Record<st
   if (typeof patch.album === 'string') next.album = patch.album
   if (typeof patch.durationMs === 'number') next.durationMs = patch.durationMs
   if (typeof patch.coverUrl === 'string' || patch.coverUrl === null) next.coverUrl = patch.coverUrl ?? null
-  if (typeof patch.lyric === 'string' || patch.lyric === null) next.lyric = patch.lyric ?? null
+  if (typeof patch.lyric === 'string' || patch.lyric === null) {
+    next.lyric = patch.lyric ?? null
+    next.hasLyric = Boolean(next.lyric)
+  }
   if (typeof patch.isFavorite === 'boolean') next.isFavorite = patch.isFavorite
   if (typeof patch.isPinned === 'boolean') next.isPinned = patch.isPinned
   if (Array.isArray(patch.tagIds)) {

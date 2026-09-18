@@ -3,7 +3,7 @@ import {
   clearSearchHistory, clearSelection, commitQuery, closeTrackMenu, invertSelection, loadLibrary, openTrackMenu, prepareRomanization,
   selectAll, setQuery, setScope, setSort, setSourceFilter, setViewMode, toggleSelect,
 } from './library-load'
-import { batchTracks, deleteTrack, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin } from './library-tracks'
+import { batchTracks, deleteTrack, ensureTrackLyric, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin } from './library-tracks'
 import { matchMissingCovers } from './library-covers'
 import { dismissDownload, downloadTracks, setTransfersOpen, setUploadTarget } from './transfers'
 import {
@@ -18,7 +18,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'setViewMode' | 'openTrackMenu' | 'closeTrackMenu' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
-  | 'patchTrack' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
+  | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
   | 'createTag' | 'patchTag' | 'deleteTag'
   | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'addToPlaylist' | 'removeFromPlaylist'
   | 'uploadFiles' | 'dismissUpload'
@@ -26,7 +26,7 @@ type LibrarySlice = Pick<MusicStoreState,
 
 export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
   return {
-    loadLibrary: () => loadLibrary(set),
+    loadLibrary: (force) => loadLibrary(set, get, force),
     setScope: (scope) => setScope(set, scope),
     setQuery: (query) => setQuery(set, get, query),
     commitQuery: (query) => commitQuery(set, get, query),
@@ -43,24 +43,23 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     clearSelection: () => clearSelection(set),
     moveSelectionToTag: (tagId) => moveSelectionToTag(set, get, tagId),
     addSelectionToPlaylist: (playlistId) => addSelectionToPlaylist(set, get, playlistId),
-
     patchTrack: (id, patch) => patchTrack(set, get, id, patch),
+    ensureTrackLyric: (id) => ensureTrackLyric(set, get, id),
     refreshTrackMetadata: (ids) => refreshTrackMetadata(set, get, ids),
     matchMissingCovers: () => matchMissingCovers(set, get),
     toggleFavorite: (id) => toggleFavorite(set, get, id),
     togglePin: (id) => togglePin(set, get, id),
     deleteTrack: (id) => deleteTrack(set, get, id),
     batchTracks: (action) => batchTracks(set, get, action as MusicBatchAction),
-
     createTag: (name, color) => createTag(set, get, name, color),
     patchTag: (id, patch) => patchTag(set, id, patch),
     deleteTag: (id) => deleteTag(set, id),
 
-    createPlaylist: (name, description) => createPlaylist(set, get, name, description),
-    renamePlaylist: (id, name, description) => renamePlaylist(set, get, id, name, description),
-    deletePlaylist: (id) => deletePlaylist(set, get, id),
-    addToPlaylist: (playlistId, trackId) => addToPlaylist(get, playlistId, trackId),
-    removeFromPlaylist: (playlistId, itemId) => removeFromPlaylist(get, playlistId, itemId),
+    createPlaylist: (name, description) => createPlaylist(set, name, description),
+    renamePlaylist: (id, name, description) => renamePlaylist(set, id, name, description),
+    deletePlaylist: (id) => deletePlaylist(set, id),
+    addToPlaylist: (playlistId, trackId) => addToPlaylist(set, get, playlistId, trackId),
+    removeFromPlaylist: (playlistId, itemId) => removeFromPlaylist(set, playlistId, itemId),
 
     uploadFiles: (files, target) => uploadFiles(set, get, files, target),
     browseWebdav: (path) => browseWebdav(set, path),

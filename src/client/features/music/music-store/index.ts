@@ -20,6 +20,7 @@ function initialMusicState(): Partial<MusicStoreState> {
     stats: null,
     loading: false,
     loadError: null,
+    lastLoadedAt: 0,
     scope: { kind: 'all' },
     query: '',
     sort: prefs.sort,

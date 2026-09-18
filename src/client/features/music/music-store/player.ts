@@ -98,7 +98,7 @@ export async function togglePlay(set: MusicSet, get: MusicGet): Promise<void> {
 // The hub loads the library lazily, so the transport has to fetch it itself
 // rather than dropping the click on an empty store.
 async function playFirstTrack(set: MusicSet, get: MusicGet): Promise<void> {
-  if (!get().tracks.length) await loadLibrary(set)
+  if (!get().tracks.length) await loadLibrary(set, get)
   const failure = get().loadError
   if (failure && !get().tracks.length) {
     toastMusicError(new Error(failure), 'music.load_failed')

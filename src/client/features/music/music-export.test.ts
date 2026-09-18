@@ -6,7 +6,7 @@ function track(overrides: Partial<MusicTrack> = {}): MusicTrack {
   return {
     id: 'track-1', title: 'Moonlight', artist: 'Hu Yanbin', album: '', durationMs: 200_000,
     source: 'r2', format: 'mp3', webdavPath: null, mime: 'audio/mpeg', sizeBytes: 1, coverUrl: null,
-    lyric: null, tagIds: [], isFavorite: false, isPinned: false, playCount: 0, createdAt: 1, updatedAt: 1,
+    lyric: null, hasLyric: false, tagIds: [], isFavorite: false, isPinned: false, playCount: 0, createdAt: 1, updatedAt: 1,
     ...overrides,
   }
 }

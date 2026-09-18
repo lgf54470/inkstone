@@ -1,12 +1,28 @@
-import type { MusicTrack } from '@shared/types'
+import type { MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack } from '@shared/types'
 import { api } from '../../../lib/api'
 import { buildSearchIndex, ensureRomanized, needsRomanization, rankTracks } from '../music-search'
 import { collectTagIds } from '../music-utils'
 import { pushHistory } from './state'
 import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest } from './types'
 
-export async function loadLibrary(set: MusicSet): Promise<void> {
+// Opening the hub, retrying, and several mutations all want the library at once;
+// one in-flight request is shared and a just-loaded library is trusted briefly.
+const LIBRARY_FRESH_MS = 60_000
+let libraryRequest: Promise<void> | null = null
+
+export async function loadLibrary(set: MusicSet, get: MusicGet, force = false): Promise<void> {
+  if (!force && Date.now() - get().lastLoadedAt < LIBRARY_FRESH_MS) return
+  if (libraryRequest) return libraryRequest
   set({ loading: true, loadError: null })
+  libraryRequest = fetchLibrary(set)
+  try {
+    await libraryRequest
+  } finally {
+    libraryRequest = null
+  }
+}
+
+async function fetchLibrary(set: MusicSet): Promise<void> {
   try {
     const library = await api.music.library()
     set({
@@ -15,11 +31,37 @@ export async function loadLibrary(set: MusicSet): Promise<void> {
       playlists: library.playlists,
       stats: library.stats,
       loading: false,
+      lastLoadedAt: Date.now(),
     })
   } catch (error) {
     console.warn('[inkstone] music library load failed:', error)
     set({ loading: false, loadError: error instanceof Error ? error.message : 'error' })
   }
+}
+
+// Mirrors the worker's summarize; mutations that merge single records keep stats honest
+// without paying for a full reload.
+export function summarizeLibrary(
+  tracks: MusicTrack[],
+  tags: MusicTag[],
+  playlists: MusicPlaylistDetail[],
+): MusicStats {
+  const stats: MusicStats = {
+    trackCount: tracks.length,
+    favoriteCount: 0,
+    pinnedCount: 0,
+    playlistCount: playlists.length,
+    tagCount: tags.length,
+    totalBytes: 0,
+    totalDurationMs: 0,
+  }
+  for (const track of tracks) {
+    if (track.isFavorite) stats.favoriteCount += 1
+    if (track.isPinned) stats.pinnedCount += 1
+    stats.totalBytes += track.sizeBytes
+    stats.totalDurationMs += track.durationMs
+  }
+  return stats
 }
 
 export function setScope(set: MusicSet, scope: MusicScope): void {

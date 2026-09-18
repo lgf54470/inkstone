@@ -79,6 +79,9 @@ export const music = {
   patchTrack: (id: string, patch: MusicTrackPatch) =>
     request<MusicTrack>(`/api/music/tracks/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch, timeoutMs: 30_000 }),
 
+  trackLyric: (id: string) =>
+    request<{ lyric: string | null }>(`/api/music/tracks/${encodeURIComponent(id)}/lyric`),
+
   deleteTrack: (id: string) =>
     request<{ ok: boolean }>(`/api/music/tracks/${encodeURIComponent(id)}`, { method: 'DELETE', timeoutMs: 30_000 }),
 

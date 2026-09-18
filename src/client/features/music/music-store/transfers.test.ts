@@ -23,6 +23,7 @@ function track(overrides: Partial<MusicTrack> = {}): MusicTrack {
     sizeBytes: 300,
     coverUrl: null,
     lyric: null,
+    hasLyric: false,
     tagIds: [],
     isFavorite: false,
     isPinned: false,

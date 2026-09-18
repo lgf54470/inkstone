@@ -21,6 +21,10 @@ export interface MusicTrackRow {
   updated_at: number
 }
 
+export interface MusicLightTrackRow extends Omit<MusicTrackRow, 'lyric'> {
+  has_lyric: number
+}
+
 export interface MusicTagRow {
   id: string
   name: string
@@ -69,6 +73,7 @@ export function toTrack(row: MusicTrackRow, tagIds: string[]): MusicTrack {
     sizeBytes: row.size_bytes,
     coverUrl: coverUrlForTrack(row.id, row.cover_url),
     lyric: row.lyric,
+    hasLyric: Boolean(row.lyric),
     tagIds,
     isFavorite: row.is_favorite === 1,
     isPinned: row.is_pinned === 1,
@@ -123,11 +128,26 @@ export function emptyStats(): MusicStats {
 }
 
 export function attachTagIds(trackRows: MusicTrackRow[], tagRows: Array<{ track_id: string; tag_id: string }>): MusicTrack[] {
+  const byTrack = tagIdsByTrack(tagRows)
+  return trackRows.map((row) => toTrack(row, byTrack.get(row.id) ?? []))
+}
+
+// /library ships every track without its lyric text; only the flag survives.
+export function toLightTrack(row: MusicLightTrackRow, tagIds: string[]): MusicTrack {
+  return { ...toTrack({ ...row, lyric: null }, tagIds), hasLyric: row.has_lyric === 1 }
+}
+
+export function attachLightTagIds(trackRows: MusicLightTrackRow[], tagRows: Array<{ track_id: string; tag_id: string }>): MusicTrack[] {
+  const byTrack = tagIdsByTrack(tagRows)
+  return trackRows.map((row) => toLightTrack(row, byTrack.get(row.id) ?? []))
+}
+
+function tagIdsByTrack(tagRows: Array<{ track_id: string; tag_id: string }>): Map<string, string[]> {
   const byTrack = new Map<string, string[]>()
   for (const link of tagRows) {
     const list = byTrack.get(link.track_id)
     if (list) list.push(link.tag_id)
     else byTrack.set(link.track_id, [link.tag_id])
   }
-  return trackRows.map((row) => toTrack(row, byTrack.get(row.id) ?? []))
+  return byTrack
 }

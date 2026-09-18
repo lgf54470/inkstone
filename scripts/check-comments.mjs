@@ -1030,6 +1030,9 @@ const allowed = new Map([
     '// the flag follows `hasChanged`; a no-change catchup must not claim completeness (it would make',
     '// the client\'s full-snapshot consolidation replace its freshly collected folders with []).',
   ]],
+  ['src/client/demo/backend/routes/music.ts', [
+    '// Mirrors the worker: the list payload drops lyric text, details fetch it lazily by id.',
+  ]],
   ['src/client/demo/blog-smoke.test.ts', [
     '// Every /api/blog/* route the client calls via src/client/lib/api/share.ts, with',
     '// representative payloads. Any gap here fails the smoke test instead of surfacing',
@@ -1189,6 +1192,10 @@ const allowed = new Map([
     '// Audio players get the duration from the file header; do the same instead of buffering audio.',
     '// FLAC STREAMINFO packs sample rate and total samples into the first metadata block.',
   ]],
+  ['src/client/features/music/music-edit-track-modal.tsx', [
+    '// The lazy lyric fetch must backfill the draft without discarding edits in flight.',
+    '// The lyric text may still be on its way; saving an empty draft would blank it server-side.',
+  ]],
   ['src/client/features/music/music-export.ts', [
     '// Shared by playlist export and track downloads: the browser saves what we hand it.',
   ]],
@@ -1203,6 +1210,10 @@ const allowed = new Map([
     '// Dialog state lives here, so the panels below are memoised: opening a dialog must',
     '// not re-render the whole library (hundreds of rows).',
     '// Stable callbacks: the memoised panels below must not re-render when a dialog opens.',
+  ]],
+  ['src/client/features/music/music-lyrics.ts', [
+    '// The library ships tracks without lyric text; detail views mount this hook to',
+    '// have the store fetch it by id once, then read the merged `track.lyric` themselves.',
   ]],
   ['src/client/features/music/music-metadata.test.ts', [
     '// A wrongly labelled FLAC that actually holds an ID3 tag followed by MP3 frames.',
@@ -1251,18 +1262,28 @@ const allowed = new Map([
     '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
     '// An absent description stays untouched: the sidebar rename only edits the name.',
     '// Multi-select actions: moving replaces the tag set, playlists append.',
+    '// addItem answers with the stored item id, so the row can be appended locally',
+    '// instead of paying for a whole library reload after one tap.',
   ]],
   ['src/client/features/music/music-store/library-covers.ts', [
     '// Cover lookup reaches a public catalogue, so it only runs while the listener asks for it.',
   ]],
   ['src/client/features/music/music-store/library-load.ts', [
+    '// Opening the hub, retrying, and several mutations all want the library at once;',
+    '// one in-flight request is shared and a just-loaded library is trusted briefly.',
+    '// Mirrors the worker\'s summarize; mutations that merge single records keep stats honest',
+    '// without paying for a full reload.',
     '// One menu instance for the whole hub; the rows only ever post requests to it.',
     '// The pinyin dictionary is only needed for search, so loading the library stays cheap.',
   ]],
   ['src/client/features/music/music-store/library-tracks.ts', [
+    '// The library ships without lyric text, so the details views ask for it by id once.',
+    '// Best effort: a failed lyric fetch only leaves the lyric view empty, the track still plays.',
     '// Imported tracks often arrive without artwork or lyrics; the ID3 tag still has them.',
     '// A malformed tag must only skip this track, never abort the whole scan.',
     '// A scan only fills gaps: manual edits and existing artwork always win.',
+    '// Server mutation responses carry the full record; merging it keeps the local',
+    '// library authoritative without a reload.',
   ]],
   ['src/client/features/music/music-store/player.ts', [
     '// Imported tracks can arrive without a duration; the decoder knows it once played.',
@@ -1292,6 +1313,7 @@ const allowed = new Map([
   ['src/client/features/music/music-store/types.ts', [
     '// The anchor is the trigger element for a button-opened menu and the pointer for a',
     '// right-click; it only lives in the store while the single menu instance is open.',
+    '// Detail views call this for tracks the lazy library listed with a lyric but no text.',
   ]],
   ['src/client/features/music/music-store/webdav.ts', [
     '// The saved duration only labels the list; a failed patch must not undo an import.',
@@ -4024,6 +4046,10 @@ const allowed = new Map([
   ['src/shared/types/list.ts', [
     '/** Exact row count of the current view; only present on the first page to keep deep-paging cheap. */',
   ]],
+  ['src/shared/types/music.ts', [
+    '// The library payload ships without lyric text, so this flag is the only way',
+    '// list views know a track has lyrics worth fetching lazily by id.',
+  ]],
   ['src/shared/types/notes.ts', [
     '/** True for categories shipped with the app; they cannot be renamed or deleted. */',
     '/** True for templates shipped with the app; they can be edited but not deleted. */',
@@ -4427,6 +4453,7 @@ const allowed = new Map([
     '// WebDAV keys are the user\'s own remote paths, already listed in the browse UI;',
     '// internal R2 storage keys must never reach the browser or a downloaded M3U.',
     '// An http cover would be blocked as mixed content on our https pages.',
+    '// /library ships every track without its lyric text; only the flag survives.',
   ]],
   ['src/worker/routes/music/schemas.ts', [
     '// An absent field must stay undefined so PATCH keeps the stored cover; anything',

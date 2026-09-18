@@ -70,6 +70,7 @@ export interface MusicStoreState {
   stats: MusicStats | null
   loading: boolean
   loadError: string | null
+  lastLoadedAt: number
 
   scope: MusicScope
   query: string
@@ -103,7 +104,7 @@ export interface MusicStoreState {
   transfersOpen: boolean
   webdav: MusicWebdavState
 
-  loadLibrary: () => Promise<void>
+  loadLibrary: (force?: boolean) => Promise<void>
   setScope: (scope: MusicScope) => void
   setQuery: (query: string) => void
   commitQuery: (query: string) => void
@@ -138,6 +139,8 @@ export interface MusicStoreState {
   playQueueAt: (index: number) => Promise<void>
 
   patchTrack: (id: string, patch: MusicTrackPatchInput) => Promise<void>
+  // Detail views call this for tracks the lazy library listed with a lyric but no text.
+  ensureTrackLyric: (id: string) => Promise<void>
   refreshTrackMetadata: (ids: string[]) => Promise<number>
   matchMissingCovers: () => Promise<number>
   toggleFavorite: (id: string) => Promise<void>

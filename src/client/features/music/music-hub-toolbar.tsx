@@ -128,7 +128,7 @@ function ToolbarActions({ onUpload, onBrowseWebdav }: { onUpload: () => void; on
       <Button size='sm' variant='primary' icon={<Upload size={12} />} onClick={onUpload}>{t('music.upload')}</Button>
       <Button size='sm' icon={<Server size={12} />} onClick={onBrowseWebdav}>{t('music.webdav_title')}</Button>
       <Tooltip label={t('common.refresh')} side='left'>
-        <IconButton label={t('common.refresh')} size='sm' disabled={loading} onClick={() => void loadLibrary()}>
+        <IconButton label={t('common.refresh')} size='sm' disabled={loading} onClick={() => void loadLibrary(true)}>
           <RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />
         </IconButton>
       </Tooltip>
@@ -142,7 +142,7 @@ function MetadataButtons({ tracks }: { tracks: MusicTrack[] }) {
   const matchMissingCovers = useMusic((state) => state.matchMissingCovers)
   const [scanning, setScanning] = useState(false)
   const [matching, setMatching] = useState(false)
-  const missingIds = tracks.filter((track) => !track.coverUrl || !track.lyric || track.durationMs === 0).map((track) => track.id)
+  const missingIds = tracks.filter((track) => !track.coverUrl || (!track.hasLyric && !track.lyric) || track.durationMs === 0).map((track) => track.id)
   const coverlessCount = tracks.filter((track) => !track.coverUrl).length
   const scan = (): void => {
     if (!missingIds.length || scanning) return

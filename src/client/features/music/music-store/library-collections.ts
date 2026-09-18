@@ -1,9 +1,10 @@
-import type { MusicTag } from '@shared/types'
+import type { MusicPlaylistDetail, MusicTag } from '@shared/types'
 import { api, uploadMusicToWebdav, uploadMusicTrack, type MusicPlaylistPatch } from '../../../lib/api'
 import { toastMusic, toastMusicError, toastUploadError } from '../music-feedback'
 import { readFileMetadata } from '../music-metadata'
 import { readDurationMs } from '../music-probe'
-import type { MusicGet, MusicSet, MusicTransferTarget, MusicUploadTask } from './types'
+import { summarizeLibrary } from './library-load'
+import type { MusicGet, MusicSet, MusicStoreState, MusicTransferTarget, MusicUploadTask } from './types'
 
 // "demo/test" creates the parent path first, matching how note tags nest by name.
 export async function createTag(set: MusicSet, get: MusicGet, name: string, color?: string | null): Promise<void> {
@@ -78,19 +79,18 @@ export async function deleteTag(set: MusicSet, id: string): Promise<void> {
   }
 }
 
-export async function createPlaylist(set: MusicSet, get: MusicGet, name: string, description?: string): Promise<void> {
+export async function createPlaylist(set: MusicSet, name: string, description?: string): Promise<void> {
   try {
     const trimmed = description?.trim()
     const created = await api.music.createPlaylist({ name: name.trim(), description: trimmed || undefined })
-    set((state) => ({ playlists: [...state.playlists, created] }))
-    await get().loadLibrary()
+    set((state) => resummarizePlaylists(state, [...state.playlists, created]))
     toastMusic('music.playlist_created')
   } catch (error) {
     toastMusicError(error, 'music.action_failed')
   }
 }
 
-export async function renamePlaylist(set: MusicSet, get: MusicGet, id: string, name: string, description?: string): Promise<void> {
+export async function renamePlaylist(set: MusicSet, id: string, name: string, description?: string): Promise<void> {
   try {
     // An absent description stays untouched: the sidebar rename only edits the name.
     const patch: MusicPlaylistPatch = description === undefined
@@ -98,21 +98,22 @@ export async function renamePlaylist(set: MusicSet, get: MusicGet, id: string, n
       : { name: name.trim(), description: description.trim() }
     const updated = await api.music.patchPlaylist(id, patch)
     set((state) => ({ playlists: state.playlists.map((entry) => (entry.id === id ? updated : entry)) }))
-    await get().loadLibrary()
     toastMusic('music.saved')
   } catch (error) {
     toastMusicError(error, 'music.save_failed')
   }
 }
 
-export async function deletePlaylist(set: MusicSet, get: MusicGet, id: string): Promise<void> {
+export async function deletePlaylist(set: MusicSet, id: string): Promise<void> {
   try {
     await api.music.deletePlaylist(id)
-    set((state) => ({
-      playlists: state.playlists.filter((playlist) => playlist.id !== id),
-      scope: state.scope.kind === 'playlist' && state.scope.playlistId === id ? { kind: 'all' } : state.scope,
-    }))
-    await get().loadLibrary()
+    set((state) => {
+      const playlists = state.playlists.filter((playlist) => playlist.id !== id)
+      return {
+        ...resummarizePlaylists(state, playlists),
+        scope: state.scope.kind === 'playlist' && state.scope.playlistId === id ? { kind: 'all' } : state.scope,
+      }
+    })
     toastMusic('music.deleted')
   } catch (error) {
     toastMusicError(error, 'music.delete_failed')
@@ -130,7 +131,7 @@ export async function moveSelectionToTag(set: MusicSet, get: MusicGet, tagId: st
     toastMusic('music.moved_to_tag', { value0: updated.length })
   } catch (error) {
     toastMusicError(error, 'music.action_failed')
-    await get().loadLibrary()
+    await get().loadLibrary(true)
   }
 }
 
@@ -139,16 +140,20 @@ export async function addSelectionToPlaylist(set: MusicSet, get: MusicGet, playl
   if (!ids.length) return
   const name = get().playlists.find((entry) => entry.id === playlistId)?.name ?? ''
   try {
-    for (const id of ids) await api.music.addPlaylistItem(playlistId, id)
+    const added: { id: string; trackId: string }[] = []
+    for (const id of ids) {
+      const result = await api.music.addPlaylistItem(playlistId, id)
+      if (result.added) added.push({ id: result.id, trackId: id })
+    }
     set({ selectedIds: [] })
-    await get().loadLibrary()
+    if (added.length) mergePlaylistItems(set, playlistId, added)
     toastMusic('music.added_to_playlist', { value0: name })
   } catch (error) {
     toastMusicError(error, 'music.action_failed')
   }
 }
 
-export async function addToPlaylist(get: MusicGet, playlistId: string, trackId: string): Promise<void> {
+export async function addToPlaylist(set: MusicSet, get: MusicGet, playlistId: string, trackId: string): Promise<void> {
   const name = get().playlists.find((entry) => entry.id === playlistId)?.name ?? ''
   try {
     const result = await api.music.addPlaylistItem(playlistId, trackId)
@@ -156,19 +161,52 @@ export async function addToPlaylist(get: MusicGet, playlistId: string, trackId: 
       toastMusic('music.already_in_playlist', { value0: name })
       return
     }
-    await get().loadLibrary()
+    mergePlaylistItems(set, playlistId, [{ id: result.id, trackId }])
     toastMusic('music.added_to_playlist', { value0: name })
   } catch (error) {
     toastMusicError(error, 'music.action_failed')
   }
 }
 
-export async function removeFromPlaylist(get: MusicGet, playlistId: string, itemId: string): Promise<void> {
+export async function removeFromPlaylist(set: MusicSet, playlistId: string, itemId: string): Promise<void> {
   try {
     await api.music.removePlaylistItem(playlistId, itemId)
-    await get().loadLibrary()
+    set((state) => ({
+      playlists: state.playlists.map((playlist) => {
+        if (playlist.id !== playlistId) return playlist
+        const items = playlist.items.filter((item) => item.id !== itemId)
+        return { ...playlist, items, trackCount: items.length }
+      }),
+    }))
   } catch (error) {
     toastMusicError(error, 'music.action_failed')
+  }
+}
+
+// addItem answers with the stored item id, so the row can be appended locally
+// instead of paying for a whole library reload after one tap.
+function mergePlaylistItems(set: MusicSet, playlistId: string, entries: { id: string; trackId: string }[]): void {
+  set((state) => ({
+    playlists: state.playlists.map((playlist) => {
+      if (playlist.id !== playlistId) return playlist
+      const known = new Set(playlist.items.map((item) => item.trackId))
+      let sortOrder = playlist.items.reduce((max, item) => Math.max(max, item.sortOrder + 1), 0)
+      const items = [...playlist.items]
+      for (const entry of entries) {
+        if (known.has(entry.trackId)) continue
+        known.add(entry.trackId)
+        items.push({ id: entry.id, playlistId, trackId: entry.trackId, sortOrder })
+        sortOrder += 1
+      }
+      return { ...playlist, items, trackCount: items.length }
+    }),
+  }))
+}
+
+function resummarizePlaylists(state: MusicStoreState, playlists: MusicPlaylistDetail[]): Partial<MusicStoreState> {
+  return {
+    playlists,
+    stats: state.stats ? summarizeLibrary(state.tracks, state.tags, playlists) : null,
   }
 }
 
@@ -180,7 +218,7 @@ export async function uploadFiles(set: MusicSet, get: MusicGet, files: File[], t
   for (let index = 0; index < accepted.length; index += 1) {
     await uploadOne(set, accepted[index]!, tasks[index]!)
   }
-  await get().loadLibrary()
+  await get().loadLibrary(true)
   set((state) => ({ uploads: state.uploads.filter((task) => task.status !== 'done') }))
 }
 

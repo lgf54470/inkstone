@@ -27,6 +27,7 @@ function playingTrack(): MusicTrack {
     sizeBytes: 1024,
     coverUrl: null,
     lyric: null,
+    hasLyric: false,
     tagIds: [],
     isFavorite: false,
     isPinned: false,

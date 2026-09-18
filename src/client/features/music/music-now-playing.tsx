@@ -6,6 +6,7 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { useCurrentTrack, useMusic, useProgress } from './music-store'
+import { useTrackLyric } from './music-lyrics'
 import { activeLyricIndex, formatBytes, formatDuration, parseLyric } from './music-utils'
 
 export type MusicDetailTab = 'lyrics' | 'details'
@@ -20,6 +21,7 @@ export function MusicNowPlaying({
   onEditTags: () => void
 }) {
   const track = useCurrentTrack()
+  useTrackLyric(track)
   const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
   const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs))
   const scrollerRef = useRef<HTMLDivElement>(null)

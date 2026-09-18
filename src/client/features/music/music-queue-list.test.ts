@@ -25,6 +25,7 @@ function track(id: string): MusicTrack {
     sizeBytes: 0,
     coverUrl: null,
     lyric: null,
+    hasLyric: false,
     tagIds: [],
     isFavorite: false,
     isPinned: false,

@@ -16,6 +16,7 @@ import { pathParam } from './params'
 
 export function registerMusicTrackRoutes(routes: Hono<AppBindings>): void {
   registerCoverRoute(routes)
+  registerLyricRoute(routes)
   registerStreamRoute(routes)
   registerPatchRoute(routes)
   registerPlayRoute(routes)
@@ -100,6 +101,14 @@ function registerCoverRoute(routes: Hono<AppBindings>): void {
     const row = await loadTrackRow(c.env.DB, c.get('userId'), pathParam(c, 'id'))
     if (!row) throw ApiError.notFound('Cover not found')
     return coverResponse(c.env, row)
+  })
+}
+
+function registerLyricRoute(routes: Hono<AppBindings>): void {
+  routes.get('/tracks/:id/lyric', requireAuth, async (c) => {
+    const row = await loadTrackRow(c.env.DB, c.get('userId'), pathParam(c, 'id'))
+    if (!row) throw ApiError.notFound('Track not found')
+    return c.json({ lyric: row.lyric })
   })
 }
 

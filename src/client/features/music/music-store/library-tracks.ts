@@ -3,7 +3,27 @@ import { api, type MusicBatchAction } from '../../../lib/api'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import { probeTrackDuration, scanTrackMetadata, type ScannedMetadata } from '../music-metadata'
 import { isArtistSuffixedTitle } from '../music-utils'
-import type { MusicGet, MusicSet, MusicTrackPatchInput } from './types'
+import { summarizeLibrary } from './library-load'
+import type { MusicGet, MusicSet, MusicStoreState, MusicTrackPatchInput } from './types'
+
+// The library ships without lyric text, so the details views ask for it by id once.
+const pendingLyrics = new Set<string>()
+
+export async function ensureTrackLyric(set: MusicSet, get: MusicGet, id: string): Promise<void> {
+  const track = get().tracks.find((entry) => entry.id === id)
+  if (!track || !track.hasLyric || track.lyric !== null) return
+  if (pendingLyrics.has(id)) return
+  pendingLyrics.add(id)
+  try {
+    const { lyric } = await api.music.trackLyric(id)
+    applyLocal(set, id, { lyric })
+  } catch (error) {
+    // Best effort: a failed lyric fetch only leaves the lyric view empty, the track still plays.
+    console.warn('[inkstone] music lyric fetch failed:', error)
+  } finally {
+    pendingLyrics.delete(id)
+  }
+}
 
 // Imported tracks often arrive without artwork or lyrics; the ID3 tag still has them.
 export async function refreshTrackMetadata(set: MusicSet, get: MusicGet, ids: string[]): Promise<number> {
@@ -32,7 +52,7 @@ export async function refreshTrackMetadata(set: MusicSet, get: MusicGet, ids: st
     }
     try {
       const updatedTrack = await api.music.patchTrack(id, patch)
-      set((state) => ({ tracks: state.tracks.map((entry) => (entry.id === id ? updatedTrack : entry)) }))
+      mergeTrack(set, id, updatedTrack)
       updated += 1
     } catch (error) {
       toastMusicError(error, 'music.save_failed')
@@ -44,14 +64,14 @@ export async function refreshTrackMetadata(set: MusicSet, get: MusicGet, ids: st
 }
 
 function needsTagScan(track: MusicTrack): boolean {
-  return !track.coverUrl || !track.lyric || !track.artist || !track.album
+  return !track.coverUrl || (!track.hasLyric && !track.lyric) || !track.artist || !track.album
 }
 
 // A scan only fills gaps: manual edits and existing artwork always win.
 function scanPatch(track: MusicTrack, scanned: ScannedMetadata | null, durationMs: number): MusicTrackPatchInput {
   const patch: MusicTrackPatchInput = {}
   if (scanned?.coverDataUrl && !track.coverUrl) patch.coverDataUrl = scanned.coverDataUrl
-  if (scanned?.lyric && !track.lyric) patch.lyric = scanned.lyric
+  if (scanned?.lyric && !track.hasLyric && !track.lyric) patch.lyric = scanned.lyric
   if (scanned?.artist && !track.artist) patch.artist = scanned.artist
   if (scanned?.album && !track.album) patch.album = scanned.album
   if (scanned?.title && isArtistSuffixedTitle(track.title, scanned.title, scanned.artist ?? '')) patch.title = scanned.title
@@ -70,7 +90,7 @@ export async function patchTrack(
   applyLocal(set, id, patch)
   try {
     const updated = await api.music.patchTrack(id, patch)
-    set((state) => ({ tracks: state.tracks.map((track) => (track.id === id ? updated : track)) }))
+    mergeTrack(set, id, updated)
   } catch (error) {
     applyLocal(set, id, previous)
     toastMusicError(error, 'music.save_failed')
@@ -99,7 +119,7 @@ async function toggleFlag(
   applyLocal(set, id, { [field]: next })
   try {
     const updated = await api.music.patchTrack(id, { [field]: next })
-    set((state) => ({ tracks: state.tracks.map((entry) => (entry.id === id ? updated : entry)) }))
+    mergeTrack(set, id, updated)
     toastMusic(next ? onKey : offKey)
   } catch (error) {
     applyLocal(set, id, { [field]: !next })
@@ -111,7 +131,7 @@ export async function deleteTrack(set: MusicSet, get: MusicGet, id: string): Pro
   try {
     await api.music.deleteTrack(id)
     dropFromQueue(set, get, new Set([id]))
-    await get().loadLibrary()
+    dropTracksLocally(set, new Set([id]))
     toastMusic('music.deleted')
   } catch (error) {
     toastMusicError(error, 'music.delete_failed')
@@ -123,9 +143,14 @@ export async function batchTracks(set: MusicSet, get: MusicGet, action: MusicBat
   if (!ids.length) return
   try {
     await api.music.batchTracks(ids, action)
-    if (action === 'delete') dropFromQueue(set, get, new Set(ids))
+    const affected = new Set(ids)
+    if (action === 'delete') {
+      dropFromQueue(set, get, affected)
+      dropTracksLocally(set, affected)
+    } else {
+      applyFlagsLocally(set, affected, action)
+    }
     set({ selectedIds: [] })
-    await get().loadLibrary()
     toastMusic('music.batch_done', { value0: ids.length })
   } catch (error) {
     toastMusicError(error, 'music.action_failed')
@@ -133,7 +158,48 @@ export async function batchTracks(set: MusicSet, get: MusicGet, action: MusicBat
 }
 
 function applyLocal(set: MusicSet, id: string, patch: Partial<MusicTrack>): void {
-  set((state) => ({ tracks: state.tracks.map((track) => (track.id === id ? { ...track, ...patch } : track)) }))
+  set((state) => resummarize(state, {
+    tracks: state.tracks.map((track) => (track.id === id ? { ...track, ...patch } : track)),
+  }))
+}
+
+// Server mutation responses carry the full record; merging it keeps the local
+// library authoritative without a reload.
+function mergeTrack(set: MusicSet, id: string, updated: MusicTrack): void {
+  set((state) => resummarize(state, {
+    tracks: state.tracks.map((entry) => (entry.id === id ? updated : entry)),
+  }))
+}
+
+function dropTracksLocally(set: MusicSet, removed: Set<string>): void {
+  set((state) => {
+    const tracks = state.tracks.filter((entry) => !removed.has(entry.id))
+    const playlists = state.playlists.map((playlist) => {
+      const items = playlist.items.filter((item) => !removed.has(item.trackId))
+      return items.length === playlist.items.length ? playlist : { ...playlist, items, trackCount: items.length }
+    })
+    return resummarize(state, {
+      tracks,
+      playlists,
+      selectedIds: state.selectedIds.filter((entry) => !removed.has(entry)),
+    })
+  })
+}
+
+function applyFlagsLocally(set: MusicSet, affected: Set<string>, action: MusicBatchAction): void {
+  const field = action === 'favorite' || action === 'unfavorite' ? 'isFavorite' : 'isPinned'
+  const value = action === 'favorite' || action === 'pin'
+  set((state) => {
+    const tracks = state.tracks.map((entry) => (affected.has(entry.id) ? { ...entry, [field]: value } : entry))
+    return resummarize(state, { tracks })
+  })
+}
+
+function resummarize(state: MusicStoreState, next: Partial<MusicStoreState>): Partial<MusicStoreState> {
+  if (!state.stats) return next
+  const tracks = next.tracks ?? state.tracks
+  const playlists = next.playlists ?? state.playlists
+  return { ...next, stats: summarizeLibrary(tracks, state.tags, playlists) }
 }
 
 export function dropFromQueue(set: MusicSet, get: MusicGet, removed: Set<string>): void {

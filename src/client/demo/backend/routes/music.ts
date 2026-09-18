@@ -7,7 +7,15 @@ import { apiError, jsonBody } from '../helpers/info'
 import { findTrack, parseByteRange, patchTrack, removeTrackEverywhere } from '../helpers/music'
 
 function libraryHandler(c: Context, state: DemoState): Response {
-  return c.json(demoMusicLibrary(state))
+  const library = demoMusicLibrary(state)
+  // Mirrors the worker: the list payload drops lyric text, details fetch it lazily by id.
+  return c.json({ ...library, tracks: library.tracks.map((track) => ({ ...track, lyric: null })) })
+}
+
+function lyricHandler(c: Context, state: DemoState): Response {
+  const track = findTrack(state, c.req.param('id') ?? '')
+  if (!track) return apiError(404, 'not_found', 'Track not found')
+  return c.json({ lyric: track.lyric })
 }
 
 async function createTrackHandler(c: Context, state: DemoState): Promise<Response> {
@@ -41,6 +49,7 @@ async function createTrackHandler(c: Context, state: DemoState): Promise<Respons
     sizeBytes: file.size,
     coverUrl: null,
     lyric: null,
+    hasLyric: false,
     tagIds: [],
     isFavorite: false,
     isPinned: false,
@@ -121,6 +130,7 @@ async function batchTracksHandler(c: Context, state: DemoState): Promise<Respons
 export function registerMusicRoutes(app: Hono, state: DemoState): void {
   app.get('/api/music/library', (c) => libraryHandler(c, state))
   app.post('/api/music/tracks', (c) => createTrackHandler(c, state))
+  app.get('/api/music/tracks/:id/lyric', (c) => lyricHandler(c, state))
   app.get('/api/music/tracks/:id/stream', (c) => streamHandler(c, state))
   app.patch('/api/music/tracks/:id', (c) => patchTrackHandler(c, state))
   app.delete('/api/music/tracks/:id', (c) => deleteTrackHandler(c, state))
