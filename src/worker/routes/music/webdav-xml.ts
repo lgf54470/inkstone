@@ -13,6 +13,14 @@ const LENGTH_RE = /<(?:[\w.-]+:)?getcontentlength\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+
 const TYPE_RE = /<(?:[\w.-]+:)?getcontenttype\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?getcontenttype>/i
 const MODIFIED_RE = /<(?:[\w.-]+:)?getlastmodified\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?getlastmodified>/i
 const MAX_ENTRIES = 2000
+const MAX_CODE_POINT = 0x10ff_ff
+
+function decodeNumericEntity(raw: string, code: string): string {
+  const value = Number(code)
+  // A server-side typo must not 500 the whole listing: an entity outside the
+  // Unicode range is kept verbatim instead of throwing in fromCodePoint.
+  return Number.isSafeInteger(value) && value >= 0 && value <= MAX_CODE_POINT ? String.fromCodePoint(value) : raw
+}
 
 function decodeXmlText(value: string): string {
   return value
@@ -20,7 +28,7 @@ function decodeXmlText(value: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_match, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&#(\d+);/g, decodeNumericEntity)
     .replace(/&amp;/g, '&')
     .trim()
 }
@@ -35,17 +43,23 @@ export function parseMultistatus(xml: string): WebdavPropfindEntry[] {
   RESPONSE_RE.lastIndex = 0
   let match = RESPONSE_RE.exec(xml)
   while (match && entries.length < MAX_ENTRIES) {
-    const block = match[1] ?? ''
-    const href = HREF_RE.exec(block)?.[1]
-    if (href) {
-      const modified = MODIFIED_RE.exec(block)?.[1]
-      entries.push({
-        href: decodeXmlText(href),
-        isCollection: COLLECTION_RE.test(block),
-        sizeBytes: Number(LENGTH_RE.exec(block)?.[1] ?? 0) || 0,
-        mime: TYPE_RE.exec(block)?.[1] ? decodeXmlText(TYPE_RE.exec(block)![1]!) : null,
-        modifiedAt: modified ? parseModified(decodeXmlText(modified)) : null,
-      })
+    try {
+      const block = match[1] ?? ''
+      const href = HREF_RE.exec(block)?.[1]
+      if (href) {
+        const modified = MODIFIED_RE.exec(block)?.[1]
+        entries.push({
+          href: decodeXmlText(href),
+          isCollection: COLLECTION_RE.test(block),
+          sizeBytes: Number(LENGTH_RE.exec(block)?.[1] ?? 0) || 0,
+          mime: TYPE_RE.exec(block)?.[1] ? decodeXmlText(TYPE_RE.exec(block)![1]!) : null,
+          modifiedAt: modified ? parseModified(decodeXmlText(modified)) : null,
+        })
+      }
+    } catch (error) {
+      // Boundary defence for third-party XML: one broken response block is
+      // skipped with a warning instead of failing the whole listing.
+      console.warn('[inkstone] webdav multistatus entry skipped:', error)
     }
     match = RESPONSE_RE.exec(xml)
   }

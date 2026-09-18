@@ -71,4 +71,13 @@ describe('webdav multistatus parsing', () => {
     expect(isAudioEntry({ href: 'track.bin', isCollection: false, sizeBytes: 1, mime: 'audio/flac', modifiedAt: null })).toBe(true)
     expect(isAudioEntry({ href: 'track.opus', isCollection: false, sizeBytes: 1, mime: null, modifiedAt: null })).toBe(true)
   })
+
+  it('keeps out-of-range numeric entities as literal text instead of throwing', () => {
+    const xml = '<D:multistatus><D:response><D:href>/dav/music/song&#99999999999;.mp3</D:href><D:propstat><D:prop><D:resourcetype/><D:getcontenttype>audio/mpeg</D:getcontenttype></D:prop></D:propstat></D:response>'
+      + '<D:response><D:href>/dav/music/night&#77;song.mp3</D:href><D:propstat><D:prop><D:resourcetype/></D:prop></D:propstat></D:response></D:multistatus>'
+    const entries = parseMultistatus(xml)
+    expect(entries).toHaveLength(2)
+    expect(entries[0]!.href).toBe('/dav/music/song&#99999999999;.mp3')
+    expect(entries[1]!.href).toBe('/dav/music/nightMsong.mp3')
+  })
 })

@@ -4433,6 +4433,12 @@ const allowed = new Map([
     '// upload (putMusicObject ensures it), browsing a missing one is simply empty.',
     '// Artwork is a nicety: a failed cover write must not fail the track upload.',
   ]],
+  ['src/worker/routes/music/webdav-xml.ts', [
+    '// A server-side typo must not 500 the whole listing: an entity outside the',
+    '// Unicode range is kept verbatim instead of throwing in fromCodePoint.',
+    '// Boundary defence for third-party XML: one broken response block is',
+    '// skipped with a warning instead of failing the whole listing.',
+  ]],
   ['src/worker/routes/music/webdav.ts', [
     '// A fresh ArrayBuffer keeps the PUT body assignable to BodyInit without a cast.',
   ]],
