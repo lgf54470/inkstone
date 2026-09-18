@@ -4387,6 +4387,9 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/music/lookup.ts', [
     '// The catalogue request runs here because the page\'s CSP forbids third party connections.',
+    '// Apple serves artwork from its own CDN and its subdomains share DNS trust,',
+    '// so the upstream-provided URL must never send the Worker to another origin —',
+    '// including via redirects.',
   ]],
   ['src/worker/routes/music/playback.ts', [
     '// Shared with the public blog projection so both sides read a stored queue the same way.',

@@ -495,6 +495,35 @@ describe('music cover lookup (real D1)', () => {
     expect(res.headers.get('content-type')).not.toContain('text/html')
   })
 
+  it('refuses to fetch artwork hosted outside the Apple domains', async () => {
+    await makeDb()
+    await seedUser(DB_ENV.env.DB as unknown as D1Shim)
+    const app = makeApp()
+    const calls = stubCatalogue([{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://evil.example.com/a/100x100bb.jpg' }])
+    const res = await request(app, '/api/music/cover-lookup?title=Moonlight&artist=Hu%20Yanbin')
+    expect(res.status).toBe(500)
+    expect(calls).toEqual([expect.stringContaining('itunes.apple.com')])
+  })
+
+  it('re-validates every redirect hop of an artwork request', async () => {
+    await makeDb()
+    await seedUser(DB_ENV.env.DB as unknown as D1Shim)
+    const app = makeApp()
+    const calls: string[] = []
+    vi.stubGlobal('fetch', (url: string | URL) => {
+      calls.push(String(url))
+      if (String(url).includes('itunes.apple.com')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
+          results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }],
+        }) })
+      }
+      return Promise.resolve({ ok: true, status: 302, headers: { get: (name: string) => (name.toLowerCase() === 'location' ? 'http://169.254.169.254/latest/meta-data/' : name.toLowerCase() === 'content-type' ? 'image/jpeg' : null) }, arrayBuffer: () => Promise.resolve(ARTWORK.buffer.slice(0)) })
+    })
+    const res = await request(app, '/api/music/cover-lookup?title=Moonlight&artist=Hu%20Yanbin')
+    expect(res.status).toBe(500)
+    expect(calls.some((call) => call.includes('169.254.169.254'))).toBe(false)
+  })
+
   it('rejects a lookup without a title and reports missing matches', async () => {
     await makeDb()
     const app = makeApp()

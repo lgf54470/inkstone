@@ -18,7 +18,7 @@
 - [x] M-04 SEC-3 删除 R2 对象按行重算 key（`source==='r2'` 且派生匹配）；`importMusicSchema.path` 禁 `music/` 开头、绝对路径与控制字符（保留 Unicode 文件名）
 - [x] M-05 SEC-4 `public-settings` 加 `role==='owner'` 判定，关闭时清 owner key
 - [x] M-06 SEC-5 `GET /api/music/webdav` 移出 `ensureMusicDir` 写副作用（改显式 POST/写入时确保）
-- [ ] M-07 SEC-6 cover-lookup 出站 `isAllowedOutboundUrl` + `*.apple.com` 白名单 + `redirect:'manual'`
+- [x] M-07 SEC-6 cover-lookup 出站 `isAllowedOutboundUrl` + `*.apple.com` 白名单 + `redirect:'manual'`
 - [ ] M-08 SEC-7 抽共享出站/写预算工具，`music-webdav:*`、`music-play:*`、`music-write:*`、`music-lookup:*` 设具名限额
 - [ ] M-09 SEC-9 导入 mime 过允许列表；`Content-Length` 仅 R2 分支设置
 - [ ] M-10 SEC-10 `music-flac.ts`/`music-mp4.ts` 越界返回 null；`scanTrackMetadata`/工具栏调用点补 catch + toast
@@ -87,4 +87,5 @@
 | 2026-09-18 | M-03 PATCH coverUrl 走 sanitizeCoverUrl 白名单（SEC-2） | b5e7f15f | 新增 2 例先红后绿（内部 music/cover key 被接受并代理证实→null+404；https 保留且省略字段不清空），music 2 套件 27 ✅，typecheck/comments ✅ |
 | 2026-09-18 | M-04 删除按行派生 key + 导入路径命名空间隔离（SEC-3） | c372c1f1 | 新增 2 例先红后绿（伪造 victim key 被删证实→不删；music/ 前缀导入 201 证实→400），music 3 套件 32 ✅，typecheck/comments ✅ |
 | 2026-09-18 | M-05 public-settings 限 owner 且关闭清 key（SEC-4） | 5bd5f6fc | 新增 1 例先红后绿（member PUT 曾 200 证实→403；关闭后 owner meta 为空），music 3 套件 33 ✅，typecheck/comments ✅ |
-| 2026-09-18 | M-06 webdav 浏览去掉 GET 期 MKCOL（SEC-5） | 本次提交（hash 由下一次提交回填） | 新增 1 例先红后绿（缺目录时 GET 曾 404/发 MKCOL→现 200 空列表且零 MKCOL），music 3 套件 34 ✅，typecheck/comments ✅ |
+| 2026-09-18 | M-06 webdav 浏览去掉 GET 期 MKCOL（SEC-5） | 7681d1e2 | 新增 1 例先红后绿（缺目录时 GET 曾 404/发 MKCOL→现 200 空列表且零 MKCOL），music 3 套件 34 ✅，typecheck/comments ✅ |
+| 2026-09-18 | M-07 cover-lookup 出站主机白名单+手动重定向（SEC-6） | 本次提交（hash 由下一次提交回填） | 新增 2 例先红后绿（非 Apple 主机 artwork 曾被直取、302 曾被当 200 回显→均 500 且零内部请求），music-routes 21 ✅，typecheck/comments ✅ |
