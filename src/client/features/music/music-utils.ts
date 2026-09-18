@@ -3,6 +3,10 @@ import type { MusicPlayMode, MusicTag, MusicTrack } from '@shared/types'
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
 
+// Per-track network bursts (bulk upload/download/import/scan) stay pipelined but bounded:
+// enough to overlap latency, low enough to avoid hammering the worker or the browser's per-host cap.
+export const TRACK_IO_CONCURRENCY = 4
+
 export function nextPlayMode(mode: MusicPlayMode): MusicPlayMode {
   const index = PLAY_MODES.indexOf(mode)
   return PLAY_MODES[(index + 1) % PLAY_MODES.length]!

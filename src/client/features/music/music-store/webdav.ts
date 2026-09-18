@@ -1,7 +1,9 @@
 import type { MusicTrack, MusicWebdavEntry } from '@shared/types'
 import { api } from '../../../lib/api'
+import { mapWithConcurrency } from '../../../lib/async'
 import { toastMusic, toastMusicError } from '../music-feedback'
 import { probeTrackDuration } from '../music-metadata'
+import { TRACK_IO_CONCURRENCY } from '../music-utils'
 import type { MusicGet, MusicSet, MusicWebdavState } from './types'
 
 const EMPTY_WEBDAV: MusicWebdavState = {
@@ -12,7 +14,7 @@ const EMPTY_WEBDAV: MusicWebdavState = {
   path: '',
   entries: [],
   error: null,
-  importingPath: null,
+  importingPaths: [],
 }
 
 export function initialWebdavState(): MusicWebdavState {
@@ -32,7 +34,7 @@ export async function browseWebdav(set: MusicSet, path: string): Promise<void> {
         path,
         entries: listing.entries,
         error: listing.configured ? null : listing.reason,
-        importingPath: null,
+        importingPaths: [],
       },
     })
   } catch (error) {
@@ -58,25 +60,60 @@ export async function importWebdavTrack(set: MusicSet, get: MusicGet, entry: Mus
     await browseWebdav(set, entry.path)
     return
   }
-  set((state) => ({ webdav: { ...state.webdav, importingPath: entry.path } }))
+  markImporting(set, entry.path, true)
   try {
-    const base = entry.name.replace(/\.[^.]+$/, '')
-    const [title, artist] = splitName(base)
-    const track = await api.music.importWebdav({ path: entry.path, title, artist })
-    await patchImportedDuration(track)
+    await importOneWebdav(entry)
     await get().loadLibrary(true)
     toastMusic('music.imported')
   } catch (error) {
     toastMusicError(error, 'music.import_failed')
   } finally {
-    set((state) => ({ webdav: { ...state.webdav, importingPath: null } }))
+    markImporting(set, entry.path, false)
   }
 }
 
 export async function importWebdavFolder(set: MusicSet, get: MusicGet): Promise<void> {
   const files = get().webdav.entries.filter((entry) => !entry.isDirectory)
   if (!files.length) return
-  for (const entry of files) await importWebdavTrack(set, get, entry)
+  await mapWithConcurrency(files, TRACK_IO_CONCURRENCY, async (entry) => {
+    markImporting(set, entry.path, true)
+    try {
+      const track = await importOneWebdav(entry)
+      appendImportedTrack(set, track)
+      toastMusic('music.imported')
+    } catch (error) {
+      toastMusicError(error, 'music.import_failed')
+    } finally {
+      markImporting(set, entry.path, false)
+    }
+  })
+  // Appends give instant feedback mid-pass; one reload at the end restores server truth.
+  await get().loadLibrary(true)
+}
+
+async function importOneWebdav(entry: MusicWebdavEntry): Promise<MusicTrack> {
+  const base = entry.name.replace(/\.[^.]+$/, '')
+  const [title, artist] = splitName(base)
+  const track = await api.music.importWebdav({ path: entry.path, title, artist })
+  await patchImportedDuration(track)
+  return track
+}
+
+function appendImportedTrack(set: MusicSet, track: MusicTrack): void {
+  set((state) => (
+    state.tracks.some((entry) => entry.id === track.id) ? {} : { tracks: [...state.tracks, track] }
+  ))
+}
+
+function markImporting(set: MusicSet, path: string, isImporting: boolean): void {
+  set((state) => ({
+    webdav: {
+      ...state.webdav,
+      importingPaths: isImporting
+        ? [...state.webdav.importingPaths, path]
+        : state.webdav.importingPaths.filter((entry) => entry !== path),
+    },
+  }))
 }
 
 async function patchImportedDuration(track: MusicTrack): Promise<void> {

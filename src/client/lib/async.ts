@@ -13,3 +13,26 @@ export function settleWithin(work: Promise<unknown>, timeoutMs: number): Promise
     void work.then(done, done)
   })
 }
+
+/**
+ * Runs `fn` over the items with at most `limit` in flight at once. Results stay in input
+ * order no matter which work finishes first. The first rejected item fails the whole call;
+ * callers that must survive individual failures catch inside `fn`.
+ */
+export async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length)
+  let cursor = 0
+  const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor
+      cursor += 1
+      results[index] = await fn(items[index]!, index)
+    }
+  })
+  await Promise.all(workers)
+  return results
+}

@@ -1,8 +1,10 @@
 import type { MusicPlaylistDetail, MusicTag } from '@shared/types'
 import { api, uploadMusicToWebdav, uploadMusicTrack, type MusicPlaylistPatch } from '../../../lib/api'
+import { mapWithConcurrency } from '../../../lib/async'
 import { toastMusic, toastMusicError, toastUploadError } from '../music-feedback'
 import { readFileMetadata } from '../music-metadata'
 import { readDurationMs } from '../music-probe'
+import { TRACK_IO_CONCURRENCY } from '../music-utils'
 import { summarizeLibrary } from './library-load'
 import type { MusicGet, MusicSet, MusicStoreState, MusicTransferTarget, MusicUploadTask } from './types'
 
@@ -215,9 +217,7 @@ export async function uploadFiles(set: MusicSet, get: MusicGet, files: File[], t
   if (!accepted.length) return
   const tasks = accepted.map((file, index) => makeUploadTask(file, index, target))
   set((state) => ({ uploads: [...state.uploads, ...tasks] }))
-  for (let index = 0; index < accepted.length; index += 1) {
-    await uploadOne(set, accepted[index]!, tasks[index]!)
-  }
+  await mapWithConcurrency(accepted, TRACK_IO_CONCURRENCY, (file, index) => uploadOne(set, file, tasks[index]!))
   await get().loadLibrary(true)
   set((state) => ({ uploads: state.uploads.filter((task) => task.status !== 'done') }))
 }

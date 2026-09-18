@@ -1316,6 +1316,7 @@ const allowed = new Map([
     '// Detail views call this for tracks the lazy library listed with a lyric but no text.',
   ]],
   ['src/client/features/music/music-store/webdav.ts', [
+    '// Appends give instant feedback mid-pass; one reload at the end restores server truth.',
     '// The saved duration only labels the list; a failed patch must not undo an import.',
   ]],
   ['src/client/features/music/music-tag-rows.ts', [
@@ -1342,6 +1343,8 @@ const allowed = new Map([
     '// The header box shows a dash while only part of the visible list is selected.',
   ]],
   ['src/client/features/music/music-utils.ts', [
+    '// Per-track network bursts (bulk upload/download/import/scan) stay pipelined but bounded:',
+    '// enough to overlap latency, low enough to avoid hammering the worker or the browser\'s per-host cap.',
     '// Shift-click selects everything between the anchor row and the clicked row.',
     '// Uploads name a track after its file; the tag title wins when the file only adds the artist.',
   ]],
@@ -2100,6 +2103,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/async.ts', [
     '/**\n * Resolves when the work does or when it has had long enough, so a slow artifact delays what\n * comes next instead of hanging it. The timeout is the contract: the caller cannot wait\n * forever, and it must not learn about a failure it can do nothing about.\n */',
+    '/**\n * Runs `fn` over the items with at most `limit` in flight at once. Results stay in input\n * order no matter which work finishes first. The first rejected item fails the whole call;\n * callers that must survive individual failures catch inside `fn`.\n */',
   ]],
   ['src/client/lib/calendar-prefs.ts', [
     '// Corrupt or missing stored prefs fall back to the defaults below.',

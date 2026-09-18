@@ -1,7 +1,8 @@
 import type { MusicTrack } from '@shared/types'
 import { musicStreamUrl } from '../../../lib/api'
+import { mapWithConcurrency } from '../../../lib/async'
 import { saveBlob } from '../music-export'
-import { downloadFileName } from '../music-utils'
+import { downloadFileName, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { toastMusic, toastMusicError } from '../music-feedback'
 import type { MusicDownloadTask, MusicGet, MusicSet, MusicTransferTarget } from './types'
 
@@ -15,7 +16,7 @@ export async function downloadTracks(set: MusicSet, get: MusicGet, ids: string[]
   if (!tracks.length) return
   const tasks = tracks.map((track, index) => makeDownloadTask(track, index))
   set((state) => ({ downloads: [...state.downloads, ...tasks], transfersOpen: true }))
-  for (let index = 0; index < tracks.length; index += 1) await downloadOne(set, tracks[index]!, tasks[index]!)
+  await mapWithConcurrency(tracks, TRACK_IO_CONCURRENCY, (track, index) => downloadOne(set, track, tasks[index]!))
   set((state) => ({ downloads: state.downloads.filter((task) => task.status !== 'done') }))
 }
 

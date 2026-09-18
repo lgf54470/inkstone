@@ -72,6 +72,26 @@ describe('refreshTrackMetadata', () => {
     expect(updated).toBe(0)
     expect(toastMusicNotice).toHaveBeenCalledWith('music.metadata_unavailable')
   })
+
+  it('scans several tracks at once but never more than the cap', async () => {
+    let active = 0
+    let maxActive = 0
+    vi.mocked(scanTrackMetadata).mockImplementation(async () => {
+      active += 1
+      maxActive = Math.max(maxActive, active)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      active -= 1
+      return { coverDataUrl: null, title: null, artist: 'Someone', album: null, lyric: null, durationMs: 0 }
+    })
+    const ids = Array.from({ length: 8 }, (_, index) => `c${index}`)
+    const store = makeStore(ids.map(track))
+
+    const updated = await refreshTrackMetadata(store.set as never, store.get as never, ids)
+
+    expect(updated).toBe(8)
+    expect(maxActive).toBeGreaterThan(1)
+    expect(maxActive).toBeLessThanOrEqual(4)
+  })
 })
 
 

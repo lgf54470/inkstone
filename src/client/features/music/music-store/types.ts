@@ -57,7 +57,7 @@ export interface MusicWebdavState {
   path: string
   entries: MusicWebdavEntry[]
   error: string | null
-  importingPath: string | null
+  importingPaths: string[]
 }
 
 export type MusicSet = StoreApi<MusicStoreState>['setState']

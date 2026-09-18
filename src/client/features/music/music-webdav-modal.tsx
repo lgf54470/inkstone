@@ -32,7 +32,7 @@ export function MusicWebdavModal({ open, onClose }: { open: boolean; onClose: ()
       footer={
         <>
           <Button size='sm' icon={<Upload size={13} />} onClick={() => inputRef.current?.click()}>{t('music.webdav_upload')}</Button>
-          <Button size='sm' variant='primary' disabled={!webdav.entries.length} onClick={() => void importWebdavFolder()}>
+          <Button size='sm' variant='primary' disabled={!webdav.entries.length || webdav.importingPaths.length > 0} loading={webdav.importingPaths.length > 0} onClick={() => void importWebdavFolder()}>
             {t('music.webdav_import_all')}
           </Button>
         </>
@@ -126,7 +126,7 @@ function Browser({ parentPath }: { parentPath: string }) {
                   path={entry.path}
                   isDirectory={entry.isDirectory}
                   sizeBytes={entry.sizeBytes}
-                  importing={webdav.importingPath === entry.path}
+                  importing={webdav.importingPaths.includes(entry.path)}
                   onOpen={() => void browseWebdav(entry.path)}
                   onImport={() => void importWebdavTrack(entry)}
                 />

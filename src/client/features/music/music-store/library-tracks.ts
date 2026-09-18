@@ -1,8 +1,9 @@
 import type { MusicTrack } from '@shared/types'
 import { api, type MusicBatchAction } from '../../../lib/api'
+import { mapWithConcurrency } from '../../../lib/async'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import { probeTrackDuration, scanTrackMetadata, type ScannedMetadata } from '../music-metadata'
-import { isArtistSuffixedTitle } from '../music-utils'
+import { isArtistSuffixedTitle, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { summarizeLibrary } from './library-load'
 import type { MusicGet, MusicSet, MusicStoreState, MusicTrackPatchInput } from './types'
 
@@ -27,40 +28,46 @@ export async function ensureTrackLyric(set: MusicSet, get: MusicGet, id: string)
 
 // Imported tracks often arrive without artwork or lyrics; the ID3 tag still has them.
 export async function refreshTrackMetadata(set: MusicSet, get: MusicGet, ids: string[]): Promise<number> {
-  let updated = 0
-  let unreadable = 0
+  const counters = { updated: 0, unreadable: 0 }
   const byId = new Map(get().tracks.map((track) => [track.id, track]))
   const ordered = [...ids].sort((a, b) => Number(byId.get(a)?.source === 'webdav') - Number(byId.get(b)?.source === 'webdav'))
-  for (const id of ordered) {
-    const track = byId.get(id)
-    if (!track) continue
-    let scanned: ScannedMetadata | null = null
-    let durationMs = 0
-    try {
-      scanned = needsTagScan(track) ? await scanTrackMetadata(track) : null
-      durationMs = track.durationMs > 0 ? 0 : (scanned?.durationMs ?? await probeTrackDuration(track))
-    } catch (error) {
-      // A malformed tag must only skip this track, never abort the whole scan.
-      console.warn('[inkstone] music metadata scan threw:', error)
-      unreadable += 1
-      continue
-    }
-    const patch = scanPatch(track, scanned, durationMs)
-    if (!Object.keys(patch).length) {
-      if (!scanned?.coverDataUrl && !scanned?.lyric && !scanned?.artist) unreadable += 1
-      continue
-    }
-    try {
-      const updatedTrack = await api.music.patchTrack(id, patch)
-      mergeTrack(set, id, updatedTrack)
-      updated += 1
-    } catch (error) {
-      toastMusicError(error, 'music.save_failed')
-    }
+  await mapWithConcurrency(ordered, TRACK_IO_CONCURRENCY, (id) => refreshOneTrack(set, byId, id, counters))
+  if (counters.updated > 0) toastMusic('music.metadata_refreshed', { value0: counters.updated })
+  else if (counters.unreadable > 0) toastMusicNotice('music.metadata_unavailable')
+  return counters.updated
+}
+
+async function refreshOneTrack(
+  set: MusicSet,
+  byId: Map<string, MusicTrack>,
+  id: string,
+  counters: { updated: number; unreadable: number },
+): Promise<void> {
+  const track = byId.get(id)
+  if (!track) return
+  let scanned: ScannedMetadata | null = null
+  let durationMs = 0
+  try {
+    scanned = needsTagScan(track) ? await scanTrackMetadata(track) : null
+    durationMs = track.durationMs > 0 ? 0 : (scanned?.durationMs ?? await probeTrackDuration(track))
+  } catch (error) {
+    // A malformed tag must only skip this track, never abort the whole scan.
+    console.warn('[inkstone] music metadata scan threw:', error)
+    counters.unreadable += 1
+    return
   }
-  if (updated > 0) toastMusic('music.metadata_refreshed', { value0: updated })
-  else if (unreadable > 0) toastMusicNotice('music.metadata_unavailable')
-  return updated
+  const patch = scanPatch(track, scanned, durationMs)
+  if (!Object.keys(patch).length) {
+    if (!scanned?.coverDataUrl && !scanned?.lyric && !scanned?.artist) counters.unreadable += 1
+    return
+  }
+  try {
+    const updatedTrack = await api.music.patchTrack(id, patch)
+    mergeTrack(set, id, updatedTrack)
+    counters.updated += 1
+  } catch (error) {
+    toastMusicError(error, 'music.save_failed')
+  }
 }
 
 function needsTagScan(track: MusicTrack): boolean {
