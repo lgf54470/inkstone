@@ -64,22 +64,34 @@ function resolveStartEndIndex(
   return { startIdx: todayIndex, endIdx: todayIndex }
 }
 
+export interface TimelineDateFields {
+  startField?: string
+  endField?: string
+}
+
+function resolveTimelineDate(item: KanbanItem, configuredField: string | undefined, legacyField: string): string {
+  const configured = configuredField ? item.properties[configuredField] : undefined
+  if (configured) return String(configured)
+  const legacy = item.properties[legacyField]
+  return legacy ? String(legacy) : ''
+}
+
 export function calculateTimelineBarGeometry(
   item: KanbanItem,
   days: TimelineDay[],
-  colWidth = TIMELINE_DAY_WIDTH,
+  fields?: TimelineDateFields,
 ): { left: number; width: number } {
-  if (days.length === 0) return { left: 0, width: colWidth - TIMELINE_BAR_GAP }
+  if (days.length === 0) return { left: 0, width: TIMELINE_DAY_WIDTH - TIMELINE_BAR_GAP }
 
   const baseDateStr = days[0].dateStr
-  const startProp = item.properties.startDate ? String(item.properties.startDate) : ''
-  const dueProp = item.properties.dueDate ? String(item.properties.dueDate) : ''
+  const startProp = resolveTimelineDate(item, fields?.startField, 'startDate')
+  const dueProp = resolveTimelineDate(item, fields?.endField, 'dueDate')
   const todayIndex = Math.max(0, days.findIndex((d) => d.isToday))
 
   const { startIdx, endIdx } = resolveStartEndIndex(startProp, dueProp, baseDateStr, todayIndex)
   const spanDays = Math.max(1, endIdx - startIdx + 1)
-  const left = startIdx * colWidth + TIMELINE_BAR_OFFSET
-  const width = Math.max(colWidth - TIMELINE_BAR_GAP, spanDays * colWidth - TIMELINE_BAR_GAP)
+  const left = startIdx * TIMELINE_DAY_WIDTH + TIMELINE_BAR_OFFSET
+  const width = Math.max(TIMELINE_DAY_WIDTH - TIMELINE_BAR_GAP, spanDays * TIMELINE_DAY_WIDTH - TIMELINE_BAR_GAP)
 
   return { left, width }
 }

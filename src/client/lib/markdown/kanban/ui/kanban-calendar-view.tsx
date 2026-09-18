@@ -3,11 +3,12 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getMonthWeeks, getWeekEventSegments, type CalendarDay, type WeekEventSegment } from '../calendar-helpers'
 import { getKanbanTagStyle } from '../colors'
-import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
+import type { KanbanData, KanbanItem, KanbanProperty, KanbanView } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanCalendarViewProps {
   data: KanbanData
+  view?: KanbanView
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: (defaults?: Record<string, unknown>) => void
 }
@@ -112,12 +113,14 @@ function CalendarEventBar({
 
 function CalendarDayCellHeader({
   day,
+  dateField,
   onAddItem,
 }: {
   day: CalendarDay
+  dateField?: string
   onAddItem: (defaults?: Record<string, unknown>) => void
 }) {
-  const addOnThisDay = () => onAddItem({ startDate: day.dateStr })
+  const addOnThisDay = () => onAddItem({ [dateField || 'startDate']: day.dateStr })
   return (
     <div
       onClick={addOnThisDay}
@@ -153,16 +156,18 @@ function CalendarWeekRow({
   week,
   items,
   statusCol,
+  dateField,
   onOpenDetail,
   onAddItem,
 }: {
   week: CalendarDay[]
   items: KanbanItem[]
   statusCol?: KanbanProperty
+  dateField?: string
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: (defaults?: Record<string, unknown>) => void
 }) {
-  const segments = useMemo(() => getWeekEventSegments(items, week), [items, week])
+  const segments = useMemo(() => getWeekEventSegments(items, week, dateField), [items, week, dateField])
 
   return (
     <div className='relative flex min-h-24 flex-1 flex-col border-b border-[var(--border-subtle)] last:border-b-0'>
@@ -182,6 +187,7 @@ function CalendarWeekRow({
           <CalendarDayCellHeader
             key={day.dateStr}
             day={day}
+            dateField={dateField}
             onAddItem={onAddItem}
           />
         ))}
@@ -203,6 +209,7 @@ function CalendarWeekRow({
 
 export const KanbanCalendarView = memo(function KanbanCalendarView({
   data,
+  view,
   onOpenDetail,
   onAddItem,
 }: KanbanCalendarViewProps) {
@@ -211,6 +218,7 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
   const month = currentDate.getMonth()
   const weeks = useMemo(() => getMonthWeeks(year, month), [year, month])
   const statusCol = data.columns.find((c) => c.id === 'status')
+  const dateField = view?.dateField
 
   return (
     <div className='flex h-full w-full flex-col overflow-hidden p-4' role='region' aria-label={t('preview.kanban_view_calendar')}>
@@ -229,6 +237,7 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
             week={week}
             items={data.items}
             statusCol={statusCol}
+            dateField={dateField}
             onOpenDetail={onOpenDetail}
             onAddItem={onAddItem}
           />

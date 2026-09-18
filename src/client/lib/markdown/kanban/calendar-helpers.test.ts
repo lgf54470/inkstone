@@ -76,3 +76,33 @@ describe('calendar-helpers cross-week and track collisions', () => {
     expect(segments[1].track).toBe(1)
   })
 })
+
+describe('calendar-helpers view-configured date field', () => {
+  it('places the event by the view-configured date field', () => {
+    const weeks = getMonthWeeks(2026, 8)
+    const targetWeek = weeks.find((w) => w.some((d) => d.dateStr === '2026-09-17'))!
+    const milestoneCol = targetWeek.findIndex((d) => d.dateStr === '2026-09-17')
+    const item: KanbanItem = {
+      id: 'task-cfg',
+      title: 'Configured date',
+      properties: { milestone: '2026-09-17' },
+    }
+    const segments = getWeekEventSegments([item], targetWeek, 'milestone')
+    expect(segments.length).toBe(1)
+    expect(segments[0].startCol).toBe(milestoneCol)
+    expect(segments[0].endCol).toBe(milestoneCol)
+  })
+
+  it('keeps the legacy fallback chain when the configured field holds no value', () => {
+    const weeks = getMonthWeeks(2026, 8)
+    const targetWeek = weeks.find((w) => w.some((d) => d.dateStr === '2026-09-17'))!
+    const item: KanbanItem = {
+      id: 'task-legacy',
+      title: 'Legacy due date',
+      properties: { dueDate: '2026-09-17' },
+    }
+    const segments = getWeekEventSegments([item], targetWeek, 'milestone')
+    expect(segments.length).toBe(1)
+    expect(segments[0].startCol).toBe(targetWeek.findIndex((d) => d.dateStr === '2026-09-17'))
+  })
+})

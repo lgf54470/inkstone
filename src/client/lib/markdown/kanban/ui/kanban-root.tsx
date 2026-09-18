@@ -60,18 +60,20 @@ interface KanbanViewRendererProps {
 
 function KanbanTimelineViews({ activeView, viewData, data, commitData, setDetailItem, handleAddItem }: KanbanViewRendererProps) {
   if (activeView.type === 'calendar') {
-    return <KanbanCalendarView data={viewData} onOpenDetail={setDetailItem} onAddItem={handleAddItem} />
+    return <KanbanCalendarView data={viewData} view={activeView} onOpenDetail={setDetailItem} onAddItem={handleAddItem} />
   }
   if (activeView.type === 'timeline') {
-    return <KanbanTimelineView data={viewData} onOpenDetail={setDetailItem} onAddItem={handleAddItem} />
+    return <KanbanTimelineView data={viewData} view={activeView} onOpenDetail={setDetailItem} onAddItem={handleAddItem} />
   }
   return (
     <KanbanGanttView
       data={viewData}
+      view={activeView}
       onOpenDetail={setDetailItem}
       onAddItem={handleAddItem}
       onUpdateProgress={(id, progress) => {
-        const next = data.items.map((it) => (it.id === id ? { ...it, properties: { ...it.properties, progress } } : it))
+        const progressKey = activeView.progressField || 'progress'
+        const next = data.items.map((it) => (it.id === id ? { ...it, properties: { ...it.properties, [progressKey]: progress } } : it))
         commitData({ ...data, items: next })
       }}
     />
@@ -206,7 +208,7 @@ function KanbanTopBar({
       filters={state.filterSort.filters}
       sorts={state.filterSort.sorts}
       selectedTags={state.filterSort.selectedTags}
-      cardSize={state.cardSize}
+      cardSize={state.filterSort.cardSize}
       isFullscreen={isFullscreen}
       canUndo={state.history.canUndo}
       canRedo={state.history.canRedo}
@@ -219,7 +221,7 @@ function KanbanTopBar({
       onChangeSorts={state.filterSort.setSorts}
       onToggleTag={state.filterSort.onToggleTag}
       onClearTags={state.filterSort.onClearTags}
-      onChangeCardSize={state.setCardSize}
+      onChangeCardSize={state.filterSort.setCardSize}
       onChangeGroupBy={state.columnOps.handleChangeGroupBy}
       onAddItem={() => state.adds.handleAddItem()}
       onToggleFullscreen={onToggleFullscreen}
@@ -241,7 +243,7 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
         viewData={state.filterSort.viewData}
         data={state.data}
         selectedIds={state.selection.selectedIds}
-        cardSize={state.cardSize}
+        cardSize={state.filterSort.cardSize}
         selectedTags={state.filterSort.selectedTags}
         onToggleTag={state.filterSort.onToggleTag}
         commitData={state.commitData}
@@ -299,7 +301,7 @@ function KanbanRootOverlays({
         selectedCount={state.selection.selectedIds.size}
         activeView={state.filterSort.activeView}
         views={state.data.views}
-        cardSize={state.cardSize}
+        cardSize={state.filterSort.cardSize}
         canUndo={state.history.canUndo}
         canRedo={state.history.canRedo}
         isFullscreen={isFullscreen}
@@ -310,7 +312,7 @@ function KanbanRootOverlays({
         onAddItem={() => state.adds.handleAddItem()}
         onAddColumn={state.adds.handleAddColumn}
         onSelectView={state.setActiveViewId}
-        onChangeCardSize={state.setCardSize}
+        onChangeCardSize={state.filterSort.setCardSize}
         onBatchDelete={state.selection.handleBatchDelete}
         onClearSelection={state.selection.handleClearSelection}
         onUndo={state.history.undo}

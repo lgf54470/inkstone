@@ -59,9 +59,10 @@ export function getMonthWeeks(year: number, month: number): CalendarDay[][] {
   return weeks
 }
 
-function resolveItemDateRange(item: KanbanItem): { start: string; end: string } | null {
-  const startKey = parseDateKey(item.properties.startDate || item.properties.dueDate || item.properties.date)
-  const endKey = parseDateKey(item.properties.dueDate || item.properties.endDate || item.properties.startDate || item.properties.date)
+function resolveItemDateRange(item: KanbanItem, dateField?: string): { start: string; end: string } | null {
+  const primary = dateField ? item.properties[dateField] : undefined
+  const startKey = parseDateKey(primary || item.properties.startDate || item.properties.dueDate || item.properties.date)
+  const endKey = parseDateKey(item.properties.dueDate || item.properties.endDate || primary || item.properties.startDate || item.properties.date)
   if (!startKey && !endKey) return null
 
   if (startKey && endKey) {
@@ -94,14 +95,14 @@ function assignTracks(rawSegments: Omit<WeekEventSegment, 'track'>[]): WeekEvent
   return segments
 }
 
-export function getWeekEventSegments(items: KanbanItem[], week: CalendarDay[]): WeekEventSegment[] {
+export function getWeekEventSegments(items: KanbanItem[], week: CalendarDay[], dateField?: string): WeekEventSegment[] {
   if (!week.length) return []
   const weekStart = week[0].dateStr
   const weekEnd = week[6].dateStr
   const rawSegments: Omit<WeekEventSegment, 'track'>[] = []
 
   for (const item of items) {
-    const range = resolveItemDateRange(item)
+    const range = resolveItemDateRange(item, dateField)
     if (!range || range.end < weekStart || range.start > weekEnd) continue
 
     const startCol = range.start < weekStart ? 0 : week.findIndex((d) => d.dateStr === range.start)

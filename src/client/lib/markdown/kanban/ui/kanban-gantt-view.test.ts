@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../../lib/i18n'
 import { installTestGlobals } from '../../../test-render'
 import { KanbanGanttView } from './kanban-gantt-view'
-import type { KanbanData, KanbanItem } from '../types'
+import type { KanbanData, KanbanItem, KanbanView } from '../types'
 
 beforeAll(async () => {
   await initI18n()
@@ -20,7 +20,7 @@ const task: KanbanItem = {
   },
 }
 
-function renderGantt(item: KanbanItem = task) {
+function renderGantt(item: KanbanItem = task, view?: KanbanView) {
   installTestGlobals()
   const data: KanbanData = { views: [], columns: [], items: [item] }
   const onOpenDetail = vi.fn()
@@ -32,6 +32,7 @@ function renderGantt(item: KanbanItem = task) {
   act(() => {
     root.render(createElement(KanbanGanttView, {
       data,
+      view,
       onOpenDetail,
       onAddItem,
       onUpdateProgress,
@@ -76,6 +77,20 @@ describe('kanban gantt progress control', () => {
     })
     expect(onOpenDetail).toHaveBeenCalledTimes(1)
     expect(onUpdateProgress).not.toHaveBeenCalled()
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  it('shows progress stored under the view-configured progress field', () => {
+    const item: KanbanItem = {
+      id: 't-cfg',
+      title: 'Configured progress',
+      properties: { startDate: '2026-09-16', endDate: '2026-09-22', completionRate: 80 },
+    }
+    const view: KanbanView = { id: 'v', name: 'G', type: 'gantt', progressField: 'completionRate' }
+    const { container, root } = renderGantt(item, view)
+    const slider = container.querySelector<HTMLInputElement>('input[type="range"]')!
+    expect(slider.value).toBe('80')
     act(() => root.unmount())
     container.remove()
   })

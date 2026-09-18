@@ -18,8 +18,8 @@ import type {
   KanbanSubtask,
   KanbanView,
 } from '../types'
-import type { CardSize } from './kanban-view-options'
 import { useKanbanHistory, type CommitKanbanData } from './kanban-history'
+import { useKanbanViewState } from './kanban-view-state'
 import { appendOptionToColumn, useKanbanColumnOperations } from './kanban-column-hooks'
 import { useMoveItemClearingSorts } from './kanban-manual-move'
 
@@ -43,12 +43,11 @@ function filterAndSortItems(
   return applyKanbanSorts(result, sorts)
 }
 
-export function useKanbanFilterSort(data: KanbanData, activeViewId: string) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filters, setFilters] = useState<KanbanFilter[]>([])
-  const [sorts, setSorts] = useState<KanbanSort[]>([])
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
-
+export function useKanbanFilterSort(
+  data: KanbanData,
+  activeViewId: string,
+  commitData: CommitKanbanData,
+) {
   const activeView: KanbanView = useMemo(() => {
     return data.views.find((v) => v.id === activeViewId) || data.views[0] || {
       id: 'view-board',
@@ -58,10 +57,8 @@ export function useKanbanFilterSort(data: KanbanData, activeViewId: string) {
     }
   }, [data.views, activeViewId])
 
-  const filteredItems = useMemo(
-    () => filterAndSortItems(data.items, searchQuery, selectedTags, filters, sorts),
-    [data.items, searchQuery, selectedTags, filters, sorts],
-  )
+  const viewState = useKanbanViewState(activeView, activeViewId, commitData)
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
 
   const onToggleTag = useCallback((tag: string) => {
     setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
@@ -71,16 +68,16 @@ export function useKanbanFilterSort(data: KanbanData, activeViewId: string) {
     setSelectedTags([])
   }, [])
 
+  const filteredItems = useMemo(
+    () => filterAndSortItems(data.items, viewState.searchQuery, selectedTags, viewState.filters, viewState.sorts),
+    [data.items, viewState.searchQuery, selectedTags, viewState.filters, viewState.sorts],
+  )
+
   const viewData: KanbanData = useMemo(() => ({ ...data, items: filteredItems }), [data, filteredItems])
 
   return {
     activeView,
-    searchQuery,
-    setSearchQuery,
-    filters,
-    setFilters,
-    sorts,
-    setSorts,
+    ...viewState,
     selectedTags,
     setSelectedTags,
     onToggleTag,
@@ -298,9 +295,12 @@ export function useKanbanRootState(
 ) {
   const history = useKanbanHistory(initialData, onUpdateData, containerRef)
   const { data, commitData } = history
-  const [activeViewId, setActiveViewId] = useState<string>(() => initialData.activeViewId || initialData.views[0]?.id || 'view-board')
+  const activeViewId = data.activeViewId || data.views[0]?.id || 'view-board'
   const [detailItem, setDetailItem] = useState<KanbanItem | null>(null)
-  const [cardSize, setCardSize] = useState<CardSize>('medium')
+
+  const setActiveViewId = useCallback((viewId: string) => {
+    commitData((prev) => ({ ...prev, activeViewId: viewId }))
+  }, [commitData])
 
   const handleUpdateBoardTitle = useCallback(
     (title: string) => {
@@ -309,7 +309,7 @@ export function useKanbanRootState(
     [commitData],
   )
 
-  const filterSort = useKanbanFilterSort(data, activeViewId)
+  const filterSort = useKanbanFilterSort(data, activeViewId, commitData)
   const selection = useKanbanSelection(commitData)
   const items = useKanbanItemMutations(commitData, filterSort.activeView, setDetailItem)
   const itemLifecycle = useKanbanItemLifecycle(
@@ -326,8 +326,6 @@ export function useKanbanRootState(
 
   return {
     data,
-    cardSize,
-    setCardSize,
     detailItem,
     setDetailItem,
     setActiveViewId,

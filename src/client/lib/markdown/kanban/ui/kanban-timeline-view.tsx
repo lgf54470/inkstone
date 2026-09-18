@@ -4,13 +4,15 @@ import { t } from '../../../i18n'
 import {
   buildTimelineDays,
   calculateTimelineBarGeometry,
+  type TimelineDateFields,
   type TimelineDay,
 } from '../timeline-helpers'
-import type { KanbanData, KanbanItem } from '../types'
+import type { KanbanData, KanbanItem, KanbanView } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanTimelineViewProps {
   data: KanbanData
+  view?: KanbanView
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: () => void
 }
@@ -58,10 +60,12 @@ function TimelineTaskSidebar({
 function TimelineChart({
   items,
   days,
+  fields,
   onOpenDetail,
 }: {
   items: KanbanItem[]
   days: TimelineDay[]
+  fields?: TimelineDateFields
   onOpenDetail: (item: KanbanItem) => void
 }) {
   return (
@@ -87,7 +91,7 @@ function TimelineChart({
 
       <div className='min-w-max divide-y divide-[var(--border-subtle)]'>
         {items.map((item) => {
-          const { left, width } = calculateTimelineBarGeometry(item, days)
+          const { left, width } = calculateTimelineBarGeometry(item, days, fields)
 
           return (
             <div key={item.id} className='relative h-10'>
@@ -109,6 +113,7 @@ function TimelineChart({
 
 export const KanbanTimelineView = memo(function KanbanTimelineView({
   data,
+  view,
   onOpenDetail,
   onAddItem,
 }: KanbanTimelineViewProps) {
@@ -118,7 +123,7 @@ export const KanbanTimelineView = memo(function KanbanTimelineView({
     <div className='flex h-full w-full flex-col overflow-hidden p-4' role='region' aria-label={t('preview.kanban_view_timeline')}>
       <div className='flex flex-1 overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         <TimelineTaskSidebar items={data.items} onOpenDetail={onOpenDetail} onAddItem={onAddItem} />
-        <TimelineChart items={data.items} days={days} onOpenDetail={onOpenDetail} />
+        <TimelineChart items={data.items} days={days} fields={{ startField: view?.startField, endField: view?.endField }} onOpenDetail={onOpenDetail} />
       </div>
     </div>
   )

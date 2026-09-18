@@ -128,13 +128,12 @@ export interface KanbanView {
   startField?: string
   endField?: string
   progressField?: string
-  coverField?: string
   chartType?: KanbanChartType
   chartGroupBy?: string
-  chartMetric?: string
   filters?: KanbanFilter[]
   sorts?: KanbanSort[]
-  hiddenProperties?: string[]
+  searchQuery?: string
+  cardSize?: 'small' | 'medium' | 'large'
 }
 
 export interface KanbanData {

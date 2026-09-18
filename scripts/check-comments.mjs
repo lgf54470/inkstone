@@ -2713,6 +2713,10 @@ const allowed = new Map([
     '// Clicking board whitespace focuses this container, so board-scoped',
     '// shortcuts (undo/redo) keep working when no card holds focus.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-view-state.ts', [
+    '// Unset lists reuse these constants so memoized consumers keep the same',
+    '// identity across renders that only touch other view fields.',
+  ]],
   ['src/client/lib/markdown/kanban/url.ts', [
     '/**\n * Protocol whitelist for URLs that come from kanban fence content. Fence JSON is\n * user-authored (and arrives via shares/imports), so covers and file urls are\n * rendered from data we do not trust.\n */',
     '// A leading slash is same-site; \'//\' would be a protocol-relative external request.',
@@ -4621,6 +4625,9 @@ const allowed = new Map([
   ]],
   ['tests/kanban-hover-focus.test.ts', [
     '/**\n * Hover-only controls (`opacity-0` until the card/row is hovered) are invisible\n * while being keyboard-focused, which strands Tab focus on an unseen button.\n * Every such control must also reveal itself on `focus-visible`; this keeps the\n * next `opacity-0` affordance from shipping without it.\n */',
+  ]],
+  ['tests/kanban-view-live-fields.test.ts', [
+    '/**\n * KanbanView is persisted fence data: a declared field nobody reads is a dead\n * contract (review #19 left seven of them behind). Every field of the\n * KanbanView interface must be accessed (`view.<field>`) somewhere in the\n * client outside types.ts, so the next config knob ships wired or not at all.\n */',
   ]],
   ['tests/markdown-renderer-parity.test.ts', [
     '// Structural parity baseline: root and blog renderers keep (and must not silently',

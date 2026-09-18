@@ -5,25 +5,32 @@ import { t } from '../../../i18n'
 import {
   buildTimelineDays,
   calculateTimelineBarGeometry,
+  type TimelineDateFields,
   type TimelineDay,
 } from '../timeline-helpers'
-import type { KanbanData, KanbanItem } from '../types'
+import type { KanbanData, KanbanItem, KanbanView } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanGanttViewProps {
   data: KanbanData
+  view?: KanbanView
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: () => void
   onUpdateProgress: (itemId: string, progress: number) => void
 }
 
+const ganttProgress = (item: KanbanItem, progressField: string) =>
+  Math.min(100, Math.max(0, Number(item.properties[progressField] || 0)))
+
 function GanttTaskSidebar({
   items,
+  progressField,
   onOpenDetail,
   onAddItem,
   onUpdateProgress,
 }: {
   items: KanbanItem[]
+  progressField: string
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: () => void
   onUpdateProgress: (itemId: string, progress: number) => void
@@ -48,7 +55,7 @@ function GanttTaskSidebar({
             <span className='w-36 shrink-0' onClick={(e) => e.stopPropagation()}>
               <Slider
                 label={t('preview.kanban_progress')}
-                value={Math.min(100, Math.max(0, Number(item.properties.progress || 0)))}
+                value={ganttProgress(item, progressField)}
                 min={0}
                 max={100}
                 step={5}
@@ -76,14 +83,18 @@ function GanttTaskSidebar({
 function GanttBar({
   item,
   days,
+  fields,
+  progressField,
   onOpenDetail,
 }: {
   item: KanbanItem
   days: TimelineDay[]
+  fields?: TimelineDateFields
+  progressField: string
   onOpenDetail: (item: KanbanItem) => void
 }) {
-  const { left, width } = calculateTimelineBarGeometry(item, days)
-  const progress = Math.min(100, Math.max(0, Number(item.properties.progress || 0)))
+  const { left, width } = calculateTimelineBarGeometry(item, days, fields)
+  const progress = ganttProgress(item, progressField)
 
   return (
     <div className='relative h-10'>
@@ -106,10 +117,14 @@ function GanttBar({
 function GanttTimelineChart({
   items,
   days,
+  fields,
+  progressField,
   onOpenDetail,
 }: {
   items: KanbanItem[]
   days: TimelineDay[]
+  fields?: TimelineDateFields
+  progressField: string
   onOpenDetail: (item: KanbanItem) => void
 }) {
   return (
@@ -139,6 +154,8 @@ function GanttTimelineChart({
             key={item.id}
             item={item}
             days={days}
+            fields={fields}
+            progressField={progressField}
             onOpenDetail={onOpenDetail}
           />
         ))}
@@ -149,17 +166,21 @@ function GanttTimelineChart({
 
 export const KanbanGanttView = memo(function KanbanGanttView({
   data,
+  view,
   onOpenDetail,
   onAddItem,
   onUpdateProgress,
 }: KanbanGanttViewProps) {
   const days = useMemo(() => buildTimelineDays(), [])
+  const fields: TimelineDateFields = { startField: view?.startField, endField: view?.endField }
+  const progressField = view?.progressField || 'progress'
 
   return (
     <div className='flex h-full w-full flex-col overflow-hidden p-4' role='region' aria-label={t('preview.kanban_view_gantt')}>
       <div className='flex flex-1 overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         <GanttTaskSidebar
           items={data.items}
+          progressField={progressField}
           onOpenDetail={onOpenDetail}
           onAddItem={onAddItem}
           onUpdateProgress={onUpdateProgress}
@@ -167,6 +188,8 @@ export const KanbanGanttView = memo(function KanbanGanttView({
         <GanttTimelineChart
           items={data.items}
           days={days}
+          fields={fields}
+          progressField={progressField}
           onOpenDetail={onOpenDetail}
         />
       </div>

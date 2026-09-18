@@ -90,3 +90,31 @@ describe('timeline-helpers single date and fallback geometry', () => {
     expect(geom.width).toBe(TIMELINE_DAY_WIDTH - TIMELINE_BAR_GAP)
   })
 })
+
+describe('timeline-helpers view-configured date fields', () => {
+  const baseDate = new Date('2026-06-15T00:00:00')
+
+  it('draws the bar from the view-configured start and end fields', () => {
+    const days = buildTimelineDays(5, 10, baseDate)
+    const item: KanbanItem = {
+      id: 'task-cfg',
+      title: 'Configured span',
+      properties: { milestone: '2026-06-13', finish: '2026-06-17' },
+    }
+    const geom = calculateTimelineBarGeometry(item, days, { startField: 'milestone', endField: 'finish' })
+    expect(geom.left).toBe(3 * TIMELINE_DAY_WIDTH + TIMELINE_BAR_OFFSET)
+    expect(geom.width).toBe(5 * TIMELINE_DAY_WIDTH - TIMELINE_BAR_GAP)
+  })
+
+  it('falls back to the legacy fields when the configured property holds no value', () => {
+    const days = buildTimelineDays(5, 10, baseDate)
+    const item: KanbanItem = {
+      id: 'task-mix',
+      title: 'Legacy dates only',
+      properties: { startDate: '2026-06-12', dueDate: '2026-06-15' },
+    }
+    const configured = calculateTimelineBarGeometry(item, days, { startField: 'kickoff', endField: 'finish' })
+    expect(configured.left).toBe(2 * TIMELINE_DAY_WIDTH + TIMELINE_BAR_OFFSET)
+    expect(configured.width).toBe(4 * TIMELINE_DAY_WIDTH - TIMELINE_BAR_GAP)
+  })
+})
