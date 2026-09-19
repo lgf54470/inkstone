@@ -30,7 +30,7 @@
 | 15 | SH-09 | 分享口令下限对齐 8、免费失败降 10、超长 400 不截断 | P2 | ✅ | e0b0e7cc |
 | 16 | SH-10 | batch 回真实受影响行数 + enable 原子化 | P2 | ✅ | ea51cc59 |
 | 17 | SH-11 | share 路由 LIKE 通配符转义（shares/visits/organizer 三处） | P3 | ✅ | 2ae84353 |
-| 18 | SH-12 | `DELETE /visits?type=all` 加 requireRecentAuth | P3 | ✅ | 待回填 |
+| 18 | SH-12 | `DELETE /visits?type=all` 加 requireRecentAuth | P3 | ✅ | bf2c2f35 |
 | 19 | SH-13 | slug 一致性：抢注 409、撤销清 share_asset_sessions | P3 | ⬜ | |
 | 20 | SH-18 | 搜索防抖 + AbortSignal + 在途去重 | P1 | ⬜ | |
 | 21 | SH-21 | hub 打开重复拉 folders/tags；写操作全量重拉 → 定向 patch | P2 | ⬜ | |
