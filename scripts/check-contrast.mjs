@@ -117,7 +117,9 @@ async function openMindmapFullscreen(page) {
  * that is true about the pixels and useless as a failure, because the layer is the thing being
  * measured. Measuring the surface twice keeps both answers and neither is taken on trust: the card
  * is judged with it open, the map's text with it away on the same instance, and the first pass is
- * only allowed to report the occlusion because the second has to come back without it.
+ * only allowed to report the occlusion because the second has to come back without it — except for
+ * the targets named by `alwaysOverlaid` below, which no re-read can ever clear.
+ * The removal here is asserted, not assumed: the wait fails the gate if the card is still mounted.
  */
 async function dismissMindmapCard(page) {
   await page.keyboard.press('Escape')
@@ -179,7 +181,14 @@ const SURFACES = [
     // with it up, because the card is the surface that was skipped, and the same instance is then
     // read a second time with the card away. Only a surface that declares the second read has the
     // items its layer occludes set aside, and only because that read has to pass without them.
-    occluder: { layer: 'keyboard reference card', dismiss: dismissMindmapCard },
+    // `alwaysOverlaid` names the one kind of occlusion the re-read can never clear: the library
+    // paints its connector layers (.lines/.subLines, full-canvas and pointer-events:none) after
+    // the topic nodes, so axe sees a non-ancestor element over every topic text in any map, card
+    // or not. Those targets are still named in the log rather than filtered in silence, and the
+    // text is not left unread: the measurement pass above walks each topic text through its
+    // ancestor background chain — the transparent overlays do not sit in that chain — and judges
+    // or reports it by the same token rule as everywhere else.
+    occluder: { layer: 'keyboard reference card', dismiss: dismissMindmapCard, alwaysOverlaid: 'me-tpc[' },
   },
 ]
 
@@ -189,16 +198,21 @@ const SURFACES = [
  * behind it. One theme, one freshly-opened panel, so the two answers are about
  * the same pixels.
  */
-async function judgeSurfaceAxe(surface, theme, page, occluder = null) {
+async function judgeSurfaceAxe(surface, theme, page, occluder = null, alwaysOverlaid = null) {
   const result = await runAxe(page, surface.axeRoot)
   if (result.passes === 0) throw new Error(`axe inspected nothing in the ${surface.name}`)
   // Under a transient layer the surface draws itself, text the layer covers comes back from axe as
   // something it could not judge rather than as something it measured. Those items are set aside for
   // this pass alone: the caller runs the second read of the same instance, and that one must return
   // without them, so a surface no longer gets quieter by painting over its own text.
-  const isOccluded = (item) => Boolean(occluder) && item.id === 'color-contrast' && item.note.includes(OCCLUSION_NOTE)
-  const occluded = result.incomplete.filter(isOccluded)
-  const review = result.incomplete.filter((item) => !isReviewedIncomplete(item) && !isOccluded(item))
+  const hasOcclusionNote = (item) => item.id === 'color-contrast' && item.note.includes(OCCLUSION_NOTE)
+  const isOccluded = (item) => Boolean(occluder) && hasOcclusionNote(item)
+  // The re-read's one exception: targets the surface permanently paints under, named by the
+  // surface's own `alwaysOverlaid` prefix. They are printed by target rather than dropped.
+  const isAlwaysOverlaid = (item) => Boolean(alwaysOverlaid) && hasOcclusionNote(item) && item.target.startsWith(alwaysOverlaid)
+  const occluded = result.incomplete.filter((item) => isOccluded(item) && !isAlwaysOverlaid(item))
+  const overlaid = result.incomplete.filter(isAlwaysOverlaid)
+  const review = result.incomplete.filter((item) => !isReviewedIncomplete(item) && !isOccluded(item) && !isAlwaysOverlaid(item))
   // The reviewed items are named in the count so "nothing to report" stays distinguishable from
   // "the pass measured nothing"; they are allowed by id and reason, never by silence.
   const allowed = result.incomplete.length - review.length
@@ -211,6 +225,10 @@ async function judgeSurfaceAxe(surface, theme, page, occluder = null) {
   }
   for (const item of occluded) {
     console.log(`      occluded: ${item.id} ×${item.count} — under the ${occluder.layer}`)
+    console.log(`        ${item.target}`)
+  }
+  for (const item of overlaid) {
+    console.log(`      always overlaid: ${item.id} ×${item.count} — the surface's own line layer sits over this text in any state`)
     console.log(`        ${item.target}`)
   }
   for (const item of review) {
@@ -630,11 +648,18 @@ async function main() {
         // A surface opened under a layer it draws itself has text that layer covers, and axe reports
         // exactly that text as unjudgeable instead of reading it. Those items fail nothing here
         // because the same instance is read again below with the layer away, where they have to be
-        // absent; the count line names how many were, so nothing is excused in silence.
+        // absent — save the targets the surface is always overlaid on, which that read still names
+        // one by one; the count line names how many were, so nothing is excused in silence.
         failures += await judgeSurfaceAxe(surface, theme, page, surface.occluder)
         if (surface.occluder) {
           await surface.occluder.dismiss(page)
-          failures += await judgeSurfaceAxe({ ...surface, name: `${surface.name} without its ${surface.occluder.layer}` }, theme, page)
+          failures += await judgeSurfaceAxe(
+            { ...surface, name: `${surface.name} without its ${surface.occluder.layer}` },
+            theme,
+            page,
+            null,
+            surface.occluder.alwaysOverlaid,
+          )
         }
         await surface.close(page)
       }
