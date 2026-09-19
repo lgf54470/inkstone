@@ -1455,6 +1455,7 @@ const allowed = new Map([
     '// One dictionary load and one romanization pass at a time; debounced keystrokes',
     '// and lazy fetches can otherwise pile up identical whole-library work.',
     '// A playlist row carries the order the user arranged; sorting or hoisting pins would rewrite it.',
+    '// FEAT-9: recency is the server-stamped last play, so the list survives a device switch.',
     '// The comparator describes the natural ascending order of the field; the',
     '// stored direction only flips it, and pins stay hoisted in both directions.',
   ]],
@@ -4305,6 +4306,8 @@ const allowed = new Map([
   ['src/shared/types/music.ts', [
     '// The library payload ships without lyric text, so this flag is the only way',
     '// list views know a track has lyrics worth fetching lazily by id.',
+    '// FEAT-9: stamped server-side by the play route, so the recently-played list',
+    '// survives a device switch instead of living in one browser\'s preferences.',
   ]],
   ['src/shared/types/notes.ts', [
     '/** True for categories shipped with the app; they cannot be renamed or deleted. */',
@@ -4404,6 +4407,8 @@ const allowed = new Map([
     '// shape the public directory lists), so the table becomes one row per name. The',
     '// single document an instance may already hold is carried over as the default',
     '// library, keeping its object key — no object is moved or rewritten.',
+    '// FEAT-9: the recently-played list must survive a device switch, so the last play',
+    '// timestamp lives on the row instead of only in one browser\'s preferences.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',

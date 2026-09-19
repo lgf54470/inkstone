@@ -42,7 +42,6 @@ function makeStore(mode: MusicStoreState['mode'] = 'order') {
     volume: 1,
     muted: false,
     playbackRate: 1,
-    recentIds: [] as string[],
     searchHistory: [] as string[],
   } as unknown as MusicStoreState
   return {

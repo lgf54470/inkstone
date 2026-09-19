@@ -61,8 +61,8 @@ function registerPlayRoute(routes: Hono<AppBindings>): void {
   routes.post('/tracks/:id/play', requireAuth, async (c) => {
     await enforceMusicBudget(c.env.DB, 'play', c.get('userId'))
     const result = await c.env.DB.prepare(
-      'UPDATE music_tracks SET play_count = play_count + 1 WHERE id = ?1 AND user_id = ?2',
-    ).bind(pathParam(c, 'id'), c.get('userId')).run()
+      'UPDATE music_tracks SET play_count = play_count + 1, last_played_at = ?3 WHERE id = ?1 AND user_id = ?2',
+    ).bind(pathParam(c, 'id'), c.get('userId'), Date.now()).run()
     return c.json({ ok: true, counted: Boolean(result.meta.changes) })
   })
 }

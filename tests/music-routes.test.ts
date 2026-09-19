@@ -229,6 +229,7 @@ describe('music routes (real D1 + fake R2)', () => {
     expect(track.objectKey).toBeUndefined()
     expect(track.webdavPath).toBeNull()
     expect(track.format).toBe('mp3')
+    expect(track.lastPlayedAt).toBeNull()
     expect(DB_ENV.env.FILES.put).toHaveBeenCalledTimes(1)
 
     const library = await (await request(app, '/api/music/library')).json()
@@ -337,6 +338,7 @@ describe('music routes (real D1 + fake R2)', () => {
     await json(app, `/api/music/tracks/${id}/play`, {})
     const counted = await (await request(app, '/api/music/library')).json()
     expect(counted.tracks[0].playCount).toBe(1)
+    expect(counted.tracks[0].lastPlayedAt).toBeTypeOf('number')
     expect(counted.stats.favoriteCount).toBe(1)
     expect(counted.stats.pinnedCount).toBe(1)
 

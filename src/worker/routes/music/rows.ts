@@ -17,6 +17,7 @@ export interface MusicTrackRow {
   is_favorite: number
   is_pinned: number
   play_count: number
+  last_played_at: number | null
   created_at: number
   updated_at: number
 }
@@ -55,7 +56,7 @@ export interface MusicPlaylistItemRow {
 }
 
 export const TRACK_COLUMNS = `t.id, t.title, t.artist, t.album, t.duration_ms, t.source, t.object_key, t.mime,
-  t.size_bytes, t.cover_url, t.lyric, t.is_favorite, t.is_pinned, t.play_count, t.created_at, t.updated_at`
+  t.size_bytes, t.cover_url, t.lyric, t.is_favorite, t.is_pinned, t.play_count, t.last_played_at, t.created_at, t.updated_at`
 
 export function toTrack(row: MusicTrackRow, tagIds: string[]): MusicTrack {
   return {
@@ -78,6 +79,7 @@ export function toTrack(row: MusicTrackRow, tagIds: string[]): MusicTrack {
     isFavorite: row.is_favorite === 1,
     isPinned: row.is_pinned === 1,
     playCount: row.play_count,
+    lastPlayedAt: row.last_played_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

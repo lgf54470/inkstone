@@ -37,6 +37,7 @@ function track(id: string): MusicTrack {
     isFavorite: false,
     isPinned: false,
     playCount: 0,
+    lastPlayedAt: null,
     createdAt: 0,
     updatedAt: 0,
   }
@@ -76,7 +77,6 @@ beforeEach(() => {
     viewMode: 'list',
     sourceFilter: 'all',
     selectedIds: [],
-    recentIds: [],
     romanized: {},
     queue: [],
     currentIndex: 0,

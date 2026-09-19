@@ -65,7 +65,6 @@ beforeEach(() => {
     viewMode: 'list',
     sourceFilter: 'all',
     selectedIds: [],
-    recentIds: [],
     romanized: {},
     queue: [],
     currentIndex: 0,

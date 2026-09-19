@@ -222,6 +222,22 @@ function sortableTrack(id: string, artist: string, album: string, durationMs: nu
   return { id, title: id, artist, album, durationMs, playCount: 0, createdAt: 0, isPinned } as MusicTrack
 }
 
+describe('recent scope reads the server-stamped last play — FEAT-9', () => {
+  function playedTrack(id: string, lastPlayedAt: number | null): MusicTrack {
+    return { ...sortableTrack(id, '', '', 0), lastPlayedAt }
+  }
+
+  it('lists only tracks the server saw played, most recent first', () => {
+    const store = makeStore()
+    store.set({
+      tracks: [playedTrack('a', 100), playedTrack('b', null), playedTrack('c', 300), playedTrack('d', 200)],
+      tags: [], playlists: [], query: '', sourceFilter: 'all', scope: { kind: 'recent' },
+      sort: 'recent', sortDirection: 'asc', romanized: {}, lastLoadedAt: 0,
+    } as Partial<MusicStoreState>)
+    expect(visibleTracks(store.get()).map((track) => track.id)).toEqual(['c', 'd', 'a'])
+  })
+})
+
 describe('sortTracks field and direction coverage (UI-9)', () => {
   const tracks = [
     sortableTrack('a', 'Zoe', 'Spark', 300),
@@ -262,7 +278,7 @@ describe('setSort and setSortDirection', () => {
     store.set({
       tracks: [sortableTrack('a', 'Zoe', 'Spark', 300), sortableTrack('b', 'Ann', 'Fog', 100)],
       tags: [], playlists: [], query: '', sourceFilter: 'all', scope: { kind: 'all' },
-      sort: 'duration', sortDirection: 'desc', recentIds: [], romanized: {}, lastLoadedAt: 0,
+      sort: 'duration', sortDirection: 'desc', romanized: {}, lastLoadedAt: 0,
     } as Partial<MusicStoreState>)
     expect(visibleTracks(store.get()).map((track) => track.id)).toEqual(['a', 'b'])
   })

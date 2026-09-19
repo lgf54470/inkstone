@@ -4,7 +4,6 @@ import type { MusicSort, MusicSortDirection, MusicSourceFilter, MusicViewMode } 
 export const MUSIC_PREFS_KEY = 'inkstone.music-prefs.v2'
 export const LEGACY_PREFS_KEY = 'inkstone.music-prefs.v1'
 export const SEARCH_HISTORY_MAX = 20
-export const RECENT_IDS_MAX = 50
 
 export interface MusicPreferences {
   volume: number
@@ -19,7 +18,6 @@ export interface MusicPreferences {
   floatingPosition: { x: number; y: number } | null
   playbackRate: number
   searchHistory: string[]
-  recentIds: string[]
   sleepEndsAt: number | null
 }
 
@@ -43,7 +41,6 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   floatingPosition: null,
   playbackRate: 1,
   searchHistory: [],
-  recentIds: [],
   sleepEndsAt: null,
 }
 
@@ -78,7 +75,6 @@ export function loadPreferences(): MusicPreferences {
     floatingPosition: readPosition(parsed.floatingPosition),
     playbackRate: readRate(parsed.playbackRate),
     searchHistory: readStrings(parsed.searchHistory, SEARCH_HISTORY_MAX),
-    recentIds: readStrings(parsed.recentIds, RECENT_IDS_MAX),
     sleepEndsAt: readTimestamp(parsed.sleepEndsAt),
   }
 }
@@ -122,6 +118,3 @@ export function pushHistory(history: string[], query: string): string[] {
   return [trimmed, ...history.filter((item) => item.toLowerCase() !== lowered)].slice(0, SEARCH_HISTORY_MAX)
 }
 
-export function pushRecent(ids: string[], id: string): string[] {
-  return [id, ...ids.filter((entry) => entry !== id)].slice(0, RECENT_IDS_MAX)
-}

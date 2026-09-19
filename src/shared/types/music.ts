@@ -25,6 +25,9 @@ export interface MusicTrack {
   isFavorite: boolean
   isPinned: boolean
   playCount: number
+  // FEAT-9: stamped server-side by the play route, so the recently-played list
+  // survives a device switch instead of living in one browser's preferences.
+  lastPlayedAt: number | null
   createdAt: number
   updatedAt: number
 }

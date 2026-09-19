@@ -105,7 +105,6 @@ export interface MusicStoreState {
   muted: boolean
   mode: MusicPlayMode
   playbackRate: number
-  recentIds: string[]
   sleepEndsAt: number | null
 
   floatingVisible: boolean

@@ -8,7 +8,7 @@ import {
 } from '../audio-engine'
 import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
-import { pushRecent, savePreferences } from './state'
+import { savePreferences } from './state'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 const STREAM_START_TIMEOUT_MS = 20_000
@@ -286,7 +286,6 @@ async function loadAndPlay(set: MusicSet, get: MusicGet): Promise<void> {
   streamFailedReported = false
   applyVolume(get().volume, get().muted)
   applyPlaybackRate(get().playbackRate)
-  set({ recentIds: pushRecent(get().recentIds, track.id) })
   persist(get)
   const outcome = await startPlayback(track)
   publishMediaSession(track, outcome === 'playing')
@@ -414,6 +413,5 @@ function writePreferences(get: MusicGet): void {
     sleepEndsAt: state.sleepEndsAt,
     playbackRate: state.playbackRate,
     searchHistory: state.searchHistory,
-    recentIds: state.recentIds,
   })
 }

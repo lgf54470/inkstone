@@ -87,6 +87,7 @@ async function importTrack(c: Context<AppBindings>): Promise<Response> {
     is_favorite: 0,
     is_pinned: 0,
     play_count: 0,
+    last_played_at: null,
     created_at: now,
     updated_at: now,
   }
@@ -129,6 +130,7 @@ async function uploadTrack(c: Context<AppBindings>): Promise<Response> {
     is_favorite: 0,
     is_pinned: 0,
     play_count: 0,
+    last_played_at: null,
     created_at: now,
     updated_at: now,
   }

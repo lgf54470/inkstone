@@ -54,6 +54,7 @@ async function createTrackHandler(c: Context, state: DemoState): Promise<Respons
     isFavorite: false,
     isPinned: false,
     playCount: 0,
+    lastPlayedAt: null,
     createdAt: now,
     updatedAt: now,
   }
@@ -103,7 +104,7 @@ function deleteTrackHandler(c: Context, state: DemoState): Response {
 function playTrackHandler(c: Context, state: DemoState): Response {
   const track = findTrack(state, c.req.param('id') ?? '')
   if (!track) return apiError(404, 'not_found', 'Track not found')
-  const next = { ...track, playCount: track.playCount + 1 }
+  const next = { ...track, playCount: track.playCount + 1, lastPlayedAt: Date.now() }
   state.musicTracks.set(next.id, { track: next, file: state.musicTracks.get(next.id)!.file })
   return c.json({ ok: true as const, counted: true })
 }

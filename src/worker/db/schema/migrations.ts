@@ -555,4 +555,14 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `DROP TABLE board_library_flat`,
     ],
   },
+  {
+    // FEAT-9: the recently-played list must survive a device switch, so the last play
+    // timestamp lives on the row instead of only in one browser's preferences.
+    version: 37,
+    skipIfColumnExists: { table: 'music_tracks', column: 'last_played_at' },
+    statements: [
+      `ALTER TABLE music_tracks ADD COLUMN last_played_at INTEGER`,
+      'CREATE INDEX IF NOT EXISTS idx_music_tracks_recent_play ON music_tracks(user_id, last_played_at DESC)',
+    ],
+  },
 ]

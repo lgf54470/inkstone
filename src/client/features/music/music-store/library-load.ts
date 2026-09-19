@@ -186,11 +186,11 @@ function applyScope(state: MusicStoreState): MusicTrack[] {
   return state.tracks
 }
 
+// FEAT-9: recency is the server-stamped last play, so the list survives a device switch.
 function recentTracks(state: MusicStoreState): MusicTrack[] {
-  const byId = new Map(state.tracks.map((track) => [track.id, track]))
-  return state.recentIds
-    .map((id) => byId.get(id))
-    .filter((track): track is MusicTrack => Boolean(track))
+  return state.tracks
+    .filter((track) => track.lastPlayedAt !== null)
+    .sort((a, b) => (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0))
 }
 
 function filterByTag(state: MusicStoreState, tagId: string): MusicTrack[] {

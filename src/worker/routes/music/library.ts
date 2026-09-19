@@ -35,7 +35,7 @@ async function loadTracks(db: D1Database, userId: string): Promise<ReturnType<ty
     db.prepare(
       `SELECT id, title, artist, album, duration_ms, source, object_key, mime, size_bytes, cover_url,
               (CASE WHEN lyric IS NULL OR lyric = '' THEN 0 ELSE 1 END) AS has_lyric,
-              is_favorite, is_pinned, play_count, created_at, updated_at
+              is_favorite, is_pinned, play_count, last_played_at, created_at, updated_at
          FROM music_tracks WHERE user_id = ?1
          ORDER BY is_pinned DESC, created_at DESC`,
     ).bind(userId).all<MusicLightTrackRow>(),

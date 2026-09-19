@@ -272,7 +272,8 @@
 - **FEAT-6** 元数据扫描只填空不纠错（`library-tracks.ts:41-51` 注释即策略），标签写错的曲目扫多少次都不变，无「强制覆盖」开关。S–M。◐
 - **FEAT-7** 搜索 200 条上限静默截断（`music-search.ts:64`），无「结果过多」提示。S。◐
 - **FEAT-8** 无任何播放快捷键：命令面板只有 `mod+shift+m` 打开中枢，空格/←→/上下曲全无绑定；`music.keyboard_hint` 未引用。桌面播放器基本盘。S–M。
-- **FEAT-9** 最近播放纯客户端（`state.ts:7` recentIds 上限 50），换设备即丢；`music_tracks` 无 `last_played_at` 列。加列 + 在已有 `POST /tracks/:id/play` 顺手写时间，成本低价值稳。M。◐
+- **FEAT-9** 最近播放纯客户端（旧 `state.ts` recentIds 上限 50），换设备即丢；`music_tracks` 无 `last_played_at` 列。加列 + 在已有 `POST /tracks/:id/play` 顺手写时间，成本低价值稳。M。✅（M-47 已修）
+  - 落地：迁移 v37 加列+索引，play 路由写 `last_played_at`，rows/library 投影 `lastPlayedAt`；客户端 recentIds 全链路删除，recent scope/侧栏计数改读服务端时间戳；demo 后端对齐。排序下拉「最近添加」维持 createdAt 语义（本次仅改 scope）。
 - **FEAT-10** 离线播放明确不可能：`pwa.config.ts:161` 把 `/api/` 划为 network-only，而音频流是 `/api/music/tracks/:id/stream`；「下载」只是存系统目录。飞行模式一首都放不了。若定位为「随身音乐 app」这是分水岭功能：SW Cache Storage + 按曲下载 + 配额回收。L。✅（配置行已读）
 
 ### FEAT-11~18 【P3，按 YAGNI 多数建议暂缓】

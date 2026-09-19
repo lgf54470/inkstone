@@ -32,7 +32,7 @@ function CollectionNav() {
   const stats = useMusic((state) => state.stats)
   const scope = useMusic((state) => state.scope)
   const setScope = useMusic((state) => state.setScope)
-  const recentCount = useMusic((state) => state.recentIds.length)
+  const recentCount = useMusic((state) => state.tracks.reduce((count, track) => count + (track.lastPlayedAt === null ? 0 : 1), 0))
   const items: { scope: MusicScope; icon: React.ReactNode; label: string; count: number }[] = [
     { scope: { kind: 'all' }, icon: <Library size={13} />, label: t('music.all_tracks'), count: stats?.trackCount ?? 0 },
     { scope: { kind: 'favorites' }, icon: <Heart size={13} />, label: t('music.favorites'), count: stats?.favoriteCount ?? 0 },

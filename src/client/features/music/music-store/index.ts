@@ -39,7 +39,6 @@ function initialMusicState(): Partial<MusicStoreState> {
     muted: prefs.muted,
     mode: prefs.mode,
     playbackRate: prefs.playbackRate,
-    recentIds: prefs.recentIds,
     sleepEndsAt: prefs.sleepEndsAt,
     floatingVisible: prefs.floatingVisible,
     floatingCollapsed: prefs.floatingCollapsed,

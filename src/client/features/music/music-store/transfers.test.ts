@@ -28,6 +28,7 @@ function track(overrides: Partial<MusicTrack> = {}): MusicTrack {
     isFavorite: false,
     isPinned: false,
     playCount: 0,
+    lastPlayedAt: null,
     createdAt: 1,
     updatedAt: 1,
     ...overrides,
