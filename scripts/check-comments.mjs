@@ -945,6 +945,9 @@ const allowed = new Map([
     '/** `fullscreen` fills the viewport and hands the body to a single surface (e.g. a mind map). */',
     '/** Accessible name for a surface that renders its own heading instead of using `title`. */',
   ]],
+  ['src/client/components/overlay/prompt.tsx', [
+    '// Passwords keep leading/trailing spaces, so they must not go through trim.',
+  ]],
   ['src/client/components/overlay/submenu.test.ts', [
     '/**\n * A list that nests one level deeper: the second row opens a panel of its own, and the\n * third row is disabled — the one the arrow keys have to step over rather than onto.\n */',
     '/** The menu the nested list hangs off: a plain row, then a row that opens that list. */',
@@ -1962,6 +1965,10 @@ const allowed = new Map([
     '// A new or replaced passcode must be at least 4 characters (the server',
     '// enforces the same minimum); short codes are trivially brute-forced.',
   ]],
+  ['src/client/features/share/share-helpers.ts', [
+    '// The wipe-all-logs endpoint requires the current password (SH-12); both clean',
+    '// entry points ask through this single prompt so wording stays identical.',
+  ]],
   ['src/client/features/share/share-page/index.ts', [
     '// Public interface of the share-page module. Kept separate from the parent',
     '// share module\'s index so the share page stays a self-contained lazy chunk',
@@ -1980,6 +1987,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-store/shares.ts', [
     '// Zero views on a paused row is the only client-side signal that this note has never been public.',
+  ]],
+  ['src/client/features/share/share-visit-logs-menu.test.ts', [
+    '// Opens the clean menu with a real click and picks the wipe-everything entry.',
   ]],
   ['src/client/features/share/use-share-settings-modal.ts', [
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
@@ -4468,6 +4478,10 @@ const allowed = new Map([
     '// The raw candidate may carry query tokens or fragments; only origin+path earns a column.',
     '/* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */',
     '/* An unparseable referer header simply means "no external referrer". */',
+  ]],
+  ['src/worker/routes/share/visits.ts', [
+    '// Wiping the whole audit trail is unrecoverable, so a stolen session must',
+    '// re-prove it holds the account password before the delete runs.',
   ]],
   ['src/worker/routes/sync.ts', [
     '// A non-empty `after` key always means the caller is mid-way through a',

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { ShareVisitsResponse } from '@shared/types'
 import { confirm } from '../../components/overlay'
-import { api } from '../../lib/api'
+import { api, ApiError } from '../../lib/api'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import type { UiState } from '../../store/ui'
-import { exportVisitsToCsv } from './share-helpers'
+import { exportVisitsToCsv, promptWipePassword } from './share-helpers'
 
 
 type VisitFilter = 'all' | 'real' | 'bot' | 'owner' | 'self'
@@ -112,16 +112,26 @@ async function cleanVisitsFlow(
   })
   if (!ok) return
 
+  let password: string | undefined
+  if (type === 'all') {
+    const entered = await promptWipePassword()
+    if (entered === null) return
+    password = entered
+  }
+
   ctx.setIsCleaning(true)
   try {
-    const res = await api.share.cleanVisits(type, days)
+    const res = await api.share.cleanVisits(type, days, password)
     ctx.toast({
       title: t('share.clean_success', { count: res.deleted }),
       tone: 'default',
     })
     await refetch()
-  } catch {
-    ctx.toast({ title: t('common.action_failed'), tone: 'danger' })
+  } catch (error) {
+    ctx.toast({
+      title: error instanceof ApiError ? error.message : t('common.action_failed'),
+      tone: 'danger',
+    })
   } finally {
     ctx.setIsCleaning(false)
   }

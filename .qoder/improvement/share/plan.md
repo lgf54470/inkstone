@@ -30,7 +30,7 @@
 | 15 | SH-09 | 分享口令下限对齐 8、免费失败降 10、超长 400 不截断 | P2 | ✅ | e0b0e7cc |
 | 16 | SH-10 | batch 回真实受影响行数 + enable 原子化 | P2 | ✅ | ea51cc59 |
 | 17 | SH-11 | share 路由 LIKE 通配符转义（shares/visits/organizer 三处） | P3 | ✅ | 2ae84353 |
-| 18 | SH-12 | `DELETE /visits?type=all` 加 requireRecentAuth | P3 | ⬜ | |
+| 18 | SH-12 | `DELETE /visits?type=all` 加 requireRecentAuth | P3 | ✅ | 待回填 |
 | 19 | SH-13 | slug 一致性：抢注 409、撤销清 share_asset_sessions | P3 | ⬜ | |
 | 20 | SH-18 | 搜索防抖 + AbortSignal + 在途去重 | P1 | ⬜ | |
 | 21 | SH-21 | hub 打开重复拉 folders/tags；写操作全量重拉 → 定向 patch | P2 | ⬜ | |
@@ -81,3 +81,12 @@
 - 测试：SH-11 describe 三个用例（列表 search `a_b` 只命中字面下划线笔记、访问日志 search 同理、tag 通配符不再误开关分组）。访问日志用例因 `shares.note_id UNIQUE` 把两条 visit 拆到两篇笔记上。对 visits.ts 做过变异核查（临时去掉 escapeLike → 用例变红 → 恢复）。
 - 顺带修既有测试：SH-09 第十次猜口令用例加 `{ timeout: 30_000 }` 并注释原因——11 次 scrypt 校验在慢机上超过 vitest 默认 5s（npm run test:unit 与 pre-commit `vitest related` 都用默认值，此前处于临界）。
 - 验证：红→绿 47/47；tsc=0；10 个静态门禁全绿（白名单已同步）；串行回归 211 文件 / 1698 用例全绿（REGRESSION_EXIT=0）。
+
+### 18 · SH-12 · DELETE /api/share/visits?type=all 需当前密码重认证（2026-09-19）
+
+- 服务端：`visits.ts` 清理路由在 `type==='all'` 时先 `readOptionalJsonValidated(shareVisitWipeSchema)` 读可选 JSON 体，再走 `lib/reauth.ts` 的 `requireCurrentPassword`（台账写的 requireRecentAuth 即此能力，仓库无该函数名）；缺体/错口令一律 401 wrong_password，删除不执行。bots/older_than 维持免口令。schema 里 password `.max(LIMITS.passwordMaxLength)` 可选。
+- 客户端：`components/overlay/prompt.tsx` 新增 `type: 'password'` 与 `autoComplete`（密码值不走 trim，footer 抽成 PromptFooter 以过 size 门禁）；`api.share.cleanVisits` 增第三参 password（有值才带 JSON 体）；两处清理入口（设置弹窗/日志弹窗）在 type=all 时 danger confirm 之后链一步 `promptWipePassword()`（放 share-helpers.ts 共用，取消即中止）；catch 区分 ApiError 用已本地化的 message 提示（wrong_password 在 api 错误映射表内）。
+- demo 后端 `routes/share.ts` clearShareVisits 对 type=all 比对 `state.password`，不一致回同样的 401 wrong_password，与 worker 行为镜像。
+- 测试：SH-12 三个用例（无体/错口令 401 且行全保留、正确口令全清、bots/older_than 不受影响）；seedUser 增 passwordHash 形参；既有 days 验证用例的 all 段改带口令。日志弹窗菜单测试改 mock prompt（断言带 `type:'password'` 调用、cleanVisits 收到密码、取消即不调用）。变异核查：摘掉服务端守卫 → refuse 用例变红 → 恢复。
+- 门禁：size 基线首次报 3 个新长函数，全部以真实拆分通过（helper 提取 + footer 组件 + 测试公共步骤 clickCleanAllItem），未使用 --update-baseline。
+- 验证：定向 50/50、client 相关 89/89；tsc=0；10 门禁全绿；串行全量 211 文件 / 1702 用例绿（REGRESSION_EXIT=0）。

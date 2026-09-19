@@ -47,6 +47,8 @@ export const messages = {
 'share.confirm_clear_all_logs': 'Are you sure you want to clear all visit logs? This action cannot be undone.',
 'share.confirm_clear_bot_logs': 'Are you sure you want to delete all crawler and bot logs?',
 'share.confirm_clear_older_logs': 'Are you sure you want to delete visit logs older than {days} days?',
+'share.verify_password_title': 'Confirm your password',
+'share.verify_password_clear_all': 'Clearing every visit log cannot be undone. Enter your current password to continue.',
 'share.confirm_publish_title': 'Publish this note to the public web?',
 'share.confirm_publish_desc': '"{title}" will get a public link that anyone with the URL can read.',
 'share.direct_access': 'Direct access',

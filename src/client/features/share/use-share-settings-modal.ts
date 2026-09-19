@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { confirm } from '../../components/overlay'
-import { api } from '../../lib/api'
+import { api, ApiError } from '../../lib/api'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import type { UiState } from '../../store/ui'
+import { promptWipePassword } from './share-helpers'
 import { useShareStore } from './share-store'
 
 export function useShareSettingsModal(onClose: () => void) {
@@ -88,15 +89,25 @@ async function cleanVisitsFlow(
   })
   if (!ok) return
 
+  let password: string | undefined
+  if (type === 'all') {
+    const entered = await promptWipePassword()
+    if (entered === null) return
+    password = entered
+  }
+
   setIsBusy(true)
   try {
-    const res = await api.share.cleanVisits(type, days)
+    const res = await api.share.cleanVisits(type, days, password)
     toast({
       title: t('share.clean_success', { count: res.deleted }),
       tone: 'default',
     })
-  } catch {
-    toast({ title: t('common.action_failed'), tone: 'danger' })
+  } catch (error) {
+    toast({
+      title: error instanceof ApiError ? error.message : t('common.action_failed'),
+      tone: 'danger',
+    })
   } finally {
     setIsBusy(false)
   }

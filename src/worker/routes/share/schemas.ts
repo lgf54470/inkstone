@@ -18,6 +18,10 @@ export const shareTagToggleSchema = z.object({
   enabled: z.boolean(),
 })
 
+export const shareVisitWipeSchema = z.object({
+  password: z.string().max(LIMITS.passwordMaxLength).optional(),
+})
+
 export const shareCreateSchema = z.object({
   password: z.string().nullable().optional(),
   expiresIn: z.number().nullable().optional(),

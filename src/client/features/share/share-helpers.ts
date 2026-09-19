@@ -1,4 +1,19 @@
+import { prompt } from '../../components/overlay'
+import { t } from '../../lib/i18n'
 import { QR_BG_COLOR } from '../../lib/qr-colors'
+
+
+// The wipe-all-logs endpoint requires the current password (SH-12); both clean
+// entry points ask through this single prompt so wording stays identical.
+export async function promptWipePassword(): Promise<string | null> {
+  return prompt({
+    title: t('share.verify_password_title'),
+    description: t('share.verify_password_clear_all'),
+    type: 'password',
+    autoComplete: 'current-password',
+    confirmLabel: t('share.clean_now'),
+  })
+}
 
 
 export function countryFlag(countryCode: string | null | undefined): string {

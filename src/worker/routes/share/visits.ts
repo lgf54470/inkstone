@@ -3,7 +3,10 @@ import { ShareVisitLog } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { escapeLike } from '../../lib/like'
+import { JSON_BODY_LIMITS, readOptionalJsonValidated } from '../../lib/request'
+import { requireCurrentPassword } from '../../lib/reauth'
 import { parseBotName } from '../../lib/share-analytics'
+import { shareVisitWipeSchema } from './schemas'
 
 interface VisitLogRow {
   id: number
@@ -83,6 +86,12 @@ function registerShareVisitsClearRoute(shareManageRoutes: Hono<AppBindings>): vo
     const days = parseInt(c.req.query('days') || '30', 10)
     if (type === 'older_than' && !(days >= 1)) {
       throw ApiError.badRequest('Cleaning logs older than N days requires a positive integer for days')
+    }
+    if (type === 'all') {
+      // Wiping the whole audit trail is unrecoverable, so a stolen session must
+      // re-prove it holds the account password before the delete runs.
+      const body = await readOptionalJsonValidated(c, shareVisitWipeSchema, JSON_BODY_LIMITS.small, {})
+      await requireCurrentPassword(c.env.DB, userId, body.password ?? '')
     }
     const res = await deleteVisitLogs(c.env.DB, userId, type, days)
     return c.json({ ok: true as const, deleted: res.meta.changes ?? 0 })

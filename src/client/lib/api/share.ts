@@ -58,8 +58,11 @@ export const share = {
       },
       signal?: AbortSignal,
     ) => request<ShareVisitsResponse>(`/api/share/visits${toQuery(params ?? {})}`, { signal }),
-    cleanVisits: (type: 'bots' | 'older_than' | 'all', days?: number) =>
-      request<{ ok: true; deleted: number }>(`/api/share/visits${toQuery({ type, days })}`, { method: 'DELETE' }),
+    cleanVisits: (type: 'bots' | 'older_than' | 'all', days?: number, password?: string) =>
+      request<{ ok: true; deleted: number }>(`/api/share/visits${toQuery({ type, days })}`, {
+        method: 'DELETE',
+        ...(password === undefined ? {} : { body: { password } }),
+      }),
     batch: (
       action: 'enable' | 'disable' | 'revoke' | 'expire' | 'move',
       noteIds: string[],

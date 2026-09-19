@@ -36,12 +36,12 @@ async function makeDb(): Promise<D1Shim> {
   return db
 }
 
-async function seedUser(db: D1Shim, id = USER): Promise<void> {
+async function seedUser(db: D1Shim, id = USER, passwordHash = 'x'): Promise<void> {
   await runSql(
     db,
     `INSERT INTO users (id, username, password_hash, login, name, avatar_url, created_at, last_seen_at)
-     VALUES (?1, ?2, 'x', 'login', 'Author', '', ?3, ?3)`,
-    id, `user-${id}`, H.now,
+     VALUES (?1, ?2, ?3, 'login', 'Author', '', ?4, ?4)`,
+    id, `user-${id}`, passwordHash, H.now,
   )
 }
 
@@ -128,6 +128,15 @@ function postJson(app: Hono<AppBindings>, path: string, body: unknown, headers: 
 function postJsonUnused(app: Hono<AppBindings>, path: string, body: unknown): Promise<Response> {
   return request(app, path, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+function deleteJson(app: Hono<AppBindings>, path: string, body?: unknown): Promise<Response> {
+  if (body === undefined) return request(app, path, { method: 'DELETE' })
+  return request(app, path, {
+    method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
@@ -328,6 +337,7 @@ describe('share visits route (real D1)', () => {
 
   it('leaves bots/all cleanup untouched by the days validation', async () => {
     const db = await makeDb()
+    await seedUser(db, USER, await hashPassword('wipe-days-1'))
     const n1 = await seedNote(db, {})
     await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-bot', is_bot: true })
     await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-real' })
@@ -337,7 +347,7 @@ describe('share visits route (real D1)', () => {
     expect(bots.status).toBe(200)
     expect((await bots.json()).deleted).toBe(1)
 
-    const all = await request(app, '/api/share/visits?type=all&days=0', { method: 'DELETE' })
+    const all = await deleteJson(app, '/api/share/visits?type=all&days=0', { password: 'wipe-days-1' })
     expect(all.status).toBe(200)
     expect((await all.json()).deleted).toBe(1)
   })
@@ -1000,5 +1010,56 @@ describe('share LIKE wildcard escaping (SH-11)', () => {
     expect(res.status).toBe(200)
     expect((await firstRow(db, 'SELECT is_enabled FROM shares WHERE slug = ?1', 'wild-1'))!.is_enabled).toBe(0)
     expect((await firstRow(db, 'SELECT is_enabled FROM shares WHERE slug = ?1', 'wild-2'))!.is_enabled).toBe(1)
+  })
+})
+
+describe('share visit wipe requires the current password (SH-12)', () => {
+  it('refuses to wipe all logs without the password and keeps every row', async () => {
+    const db = await makeDb()
+    await seedUser(db, USER, await hashPassword('wipe-12345678'))
+    const n1 = await seedNote(db, {})
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-1' })
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-2', is_bot: true })
+    const app = makeApp()
+
+    const noBody = await deleteJson(app, '/api/share/visits?type=all')
+    expect(noBody.status).toBe(401)
+    expect((await noBody.json()).error.code).toBe('wrong_password')
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE user_id = ?1', USER)).length).toBe(2)
+
+    const wrong = await deleteJson(app, '/api/share/visits?type=all', { password: 'not-it-12345678' })
+    expect(wrong.status).toBe(401)
+    expect((await wrong.json()).error.code).toBe('wrong_password')
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE user_id = ?1', USER)).length).toBe(2)
+  })
+
+  it('wipes every log once the current password is re-entered', async () => {
+    const db = await makeDb()
+    await seedUser(db, USER, await hashPassword('wipe-12345678'))
+    const n1 = await seedNote(db, {})
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-1' })
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-2', is_bot: true })
+    const app = makeApp()
+
+    const ok = await deleteJson(app, '/api/share/visits?type=all', { password: 'wipe-12345678' })
+    expect(ok.status).toBe(200)
+    expect((await ok.json()).deleted).toBe(2)
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE user_id = ?1', USER)).length).toBe(0)
+  })
+
+  it('keeps targeted cleanup (bots/older_than) free of the password requirement', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, {})
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-old-real', visited_at: Date.now() - 400 * 86_400_000 })
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-bot', is_bot: true })
+    const app = makeApp()
+
+    const bots = await deleteJson(app, '/api/share/visits?type=bots')
+    expect(bots.status).toBe(200)
+    expect((await bots.json()).deleted).toBe(1)
+
+    const older = await deleteJson(app, '/api/share/visits?type=older_than&days=30')
+    expect(older.status).toBe(200)
+    expect((await older.json()).deleted).toBe(1)
   })
 })

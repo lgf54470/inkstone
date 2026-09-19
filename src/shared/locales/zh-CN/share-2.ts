@@ -47,6 +47,8 @@ export const messages = {
 'share.confirm_clear_all_logs': '确定要清空全部访问日志吗？此操作不可撤销。',
 'share.confirm_clear_bot_logs': '确定要清理所有网络爬虫与蜘蛛抓取记录吗？',
 'share.confirm_clear_older_logs': '确定要清理 {days} 天前的历史访问日志吗？',
+'share.verify_password_title': '确认当前密码',
+'share.verify_password_clear_all': '清空全部访问日志不可撤销，请输入当前密码以继续。',
 'share.confirm_publish_title': '要将这篇笔记发布到公开网络吗？',
 'share.confirm_publish_desc': '「{title}」将生成公开链接，任何拿到该 URL 的人都能阅读。',
 'share.direct_access': '直接访问',

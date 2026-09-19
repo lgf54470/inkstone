@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../lib/test-render'
 import { api } from '../../lib/api'
-import { confirm } from '../../components/overlay'
+import { confirm, prompt } from '../../components/overlay'
 import { ShareVisitLogsModal } from './share-visit-logs-modal'
 
 vi.mock('../../lib/api', () => ({
@@ -16,7 +16,11 @@ vi.mock('../../lib/api', () => ({
 
 vi.mock('../../components/overlay', async (importOriginal) => {
   const module = await importOriginal<typeof import('../../components/overlay')>()
-  return { ...module, confirm: vi.fn(async () => true) }
+  return {
+    ...module,
+    confirm: vi.fn(async () => true),
+    prompt: vi.fn(async () => 'wipe-password-1'),
+  }
 })
 
 async function flush() {
@@ -33,10 +37,26 @@ function cleanTrigger(): HTMLElement {
   return trigger!
 }
 
+// Opens the clean menu with a real click and picks the wipe-everything entry.
+async function clickCleanAllItem(): Promise<void> {
+  await act(async () => {
+    cleanTrigger().click()
+  })
+  const allItem = [...document.body.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]')]
+    .find((item) => item.textContent?.includes('share.clean_all_logs'))
+  expect(allItem).toBeDefined()
+  await act(async () => {
+    allItem!.click()
+  })
+  await flush()
+}
+
 beforeEach(() => {
   vi.mocked(api.share.visits).mockClear()
   vi.mocked(api.share.cleanVisits).mockClear()
   vi.mocked(confirm).mockClear()
+  vi.mocked(prompt).mockClear()
+  vi.mocked(prompt).mockResolvedValue('wipe-password-1')
 })
 
 describe('share visit logs clean menu (SH-27)', () => {
@@ -66,20 +86,24 @@ describe('share visit logs clean menu (SH-27)', () => {
     const rendered = renderElement(createElement(ShareVisitLogsModal, { open: true, onClose: () => {} }))
     await flush()
 
-    await act(async () => {
-      cleanTrigger().click()
-    })
-    const allItem = [...document.body.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]')]
-      .find((item) => item.textContent?.includes('share.clean_all_logs'))
-    expect(allItem).toBeDefined()
-    await act(async () => {
-      allItem!.click()
-    })
-    await flush()
+    await clickCleanAllItem()
 
     expect(confirm).toHaveBeenCalled()
     expect(vi.mocked(confirm).mock.calls[0][0]).toMatchObject({ tone: 'danger' })
-    expect(api.share.cleanVisits).toHaveBeenCalledWith('all', 30)
+    expect(prompt).toHaveBeenCalledWith(expect.objectContaining({ type: 'password' }))
+    expect(api.share.cleanVisits).toHaveBeenCalledWith('all', 30, 'wipe-password-1')
+    rendered.unmount()
+  })
+
+  it('aborts the full wipe when the password prompt is dismissed', async () => {
+    vi.mocked(prompt).mockResolvedValueOnce(null)
+    const rendered = renderElement(createElement(ShareVisitLogsModal, { open: true, onClose: () => {} }))
+    await flush()
+
+    await clickCleanAllItem()
+
+    expect(prompt).toHaveBeenCalled()
+    expect(api.share.cleanVisits).not.toHaveBeenCalled()
     rendered.unmount()
   })
 })
