@@ -18,10 +18,13 @@ import {
   Network,
   Palette,
   Pencil,
+  Play,
   Plus,
   Presentation,
   Settings,
   Share2,
+  SkipBack,
+  SkipForward,
   Star,
   Sun,
   Trash2,
@@ -38,6 +41,7 @@ import { useNotes } from '../../../store/notes'
 import { useSession } from '../../../store/session'
 import { createContextualNote } from '../../../store/notes'
 import { generateKanbanFromOutline, generateMindmapFromOutline, generateSlidesFromOutline, getActiveEditorView, insertNoteTemplate } from '../../../editor/commands'
+import { useMusic } from '../../music'
 import type { Item } from './types'
 import type { ViewKind } from '@shared/types'
 
@@ -124,6 +128,15 @@ function hubCommands(deps: { openPanel: (panel: PanelName) => void }): CommandIt
   ]
 }
 
+// Audio keeps playing with the hub closed, so the palette reaches the store directly.
+export function playbackCommands(): CommandItem[] {
+  return [
+    { id: 'cmd-music-play-pause', kind: 'command', label: t('music.play_pause'), icon: <Play size={14} />, combo: 'space', group: t('command.commands'), run: () => void useMusic.getState().togglePlay() },
+    { id: 'cmd-music-previous', kind: 'command', label: t('music.previous'), icon: <SkipBack size={14} />, combo: 'mod+arrowleft', group: t('command.commands'), run: () => void useMusic.getState().playPrevious() },
+    { id: 'cmd-music-next', kind: 'command', label: t('music.next'), icon: <SkipForward size={14} />, combo: 'mod+arrowright', group: t('command.commands'), run: () => void useMusic.getState().playNext() },
+  ]
+}
+
 function navigationCommands(deps: { openView: (view: ViewKind) => void; openCalendarPeriod: (period: CalendarPeriod) => void; periods: ReturnType<typeof calendarPeriodsForDate> }): CommandItem[] {
   return [
     { id: 'cmd-trash', kind: 'command', label: t('command.open_trash'), icon: <Trash2 size={14} />, group: t('common.navigation'), run: () => deps.openView('trash') },
@@ -157,6 +170,7 @@ export function usePaletteCommands(ctx: { openCalendarPeriod: (period: CalendarP
       ...(activeNote ? currentNoteCommands(activeNote, { setStarred, setArchived, openPanel, deleteNote }) : []),
       ...interfaceCommands({ isDark, yearGridColumns, openPanel, updateSettings }),
       ...hubCommands({ openPanel }),
+      ...playbackCommands(),
       ...navigationCommands({ openView, openCalendarPeriod: ctx.openCalendarPeriod, periods }),
     ]
   }, [activeNoteId, appearanceTheme, locale, createFolder, deleteNote, notes, ctx.openCalendarPeriod, openPanel, openView, setStarred, updateSettings, yearGridColumns])

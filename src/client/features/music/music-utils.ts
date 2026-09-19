@@ -58,6 +58,14 @@ function randomOtherIndex(currentIndex: number, length: number): number {
   return draw >= currentIndex ? draw + 1 : draw
 }
 
+// The transport nudge buttons and the seek hotkeys move by the same amount.
+export const SEEK_STEP_MS = 10_000
+
+export function seekTargetMs(currentMs: number, durationMs: number, deltaMs: number): number {
+  const target = currentMs + deltaMs
+  return Math.max(0, durationMs > 0 ? Math.min(target, durationMs) : target)
+}
+
 export interface LyricLine {
   timeMs: number
   text: string

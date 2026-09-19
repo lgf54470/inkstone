@@ -11,15 +11,13 @@ import { MusicQueueBrowser } from './music-queue-browser'
 import { PlayModeIcon } from './music-play-buttons'
 import { playModeLabel } from './music-play-buttons'
 import { cn } from '../../lib/cn'
-
-export const SEEK_STEP_MS = 10_000
+import { SEEK_STEP_MS, seekTargetMs } from './music-utils'
 
 export function useSeekNudge(): (deltaMs: number) => void {
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
   return useCallback((deltaMs: number) => {
-    const target = progressTimeMs() + deltaMs
-    seek(Math.max(0, durationMs > 0 ? Math.min(target, durationMs) : target))
+    seek(seekTargetMs(progressTimeMs(), durationMs, deltaMs))
   }, [durationMs, seek])
 }
 

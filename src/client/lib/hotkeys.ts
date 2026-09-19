@@ -11,6 +11,9 @@ export interface Hotkey {
 
   allowInInput?: boolean
 
+  // Gate consulted after the combo matched; returning false leaves the key to the page.
+  when?: (event: KeyboardEvent) => boolean
+
   hidden?: boolean
 }
 
@@ -54,6 +57,7 @@ function onKeyDown(event: KeyboardEvent): void {
   for (const hotkey of registry.values()) {
     if (!matches(event, hotkey.combo)) continue
     if (inInput && !hotkey.allowInInput) continue
+    if (hotkey.when && !hotkey.when(event)) continue
     event.preventDefault()
     event.stopPropagation()
     hotkey.handler(event)
@@ -94,6 +98,7 @@ function matches(event: KeyboardEvent, combo: string): boolean {
   if (key.length === 1 && event.code.toLowerCase() === `key${key}`) return true
   if (key.length === 1 && event.code.toLowerCase() === `digit${key}`) return true
   if (key === 'esc' && pressed === 'escape') return true
+  if (key === 'space' && pressed === ' ') return true
   return false
 }
 
@@ -111,6 +116,8 @@ export function prettyCombo(combo: string): string[] {
       case 'escape':
       case 'esc':
         return 'Esc'
+      case 'space':
+        return 'Space'
       case 'enter':
         return '↵'
       case 'backspace':

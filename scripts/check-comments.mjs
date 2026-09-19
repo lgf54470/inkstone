@@ -1113,6 +1113,9 @@ const allowed = new Map([
   ['src/client/features/command/command-palette/index.tsx', [
     '// Counts each note once per ancestor folder (its own folder and every parent).',
   ]],
+  ['src/client/features/command/command-palette/use-commands.tsx', [
+    '// Audio keeps playing with the hub closed, so the palette reaches the store directly.',
+  ]],
   ['src/client/features/command/shortcuts-panel.test.ts', [
     '// Narrow the results to a single row; the cursor must clamp back inside.',
   ]],
@@ -1215,6 +1218,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-floating-lyrics.tsx', [
     '// Two lines are enough for a 288px widget; the immersive player shows the whole scroll.',
+  ]],
+  ['src/client/features/music/music-hotkeys.ts', [
+    '// Space is how keyboards press the focused button, and with nothing loaded it should',
+    '// still scroll the page — so the shortcut only claims the key on plain ground once a track exists.',
   ]],
   ['src/client/features/music/music-hub-modal.tsx', [
     '// Dialog state lives here, so the panels below are memoised: opening a dialog must',
@@ -1435,6 +1442,7 @@ const allowed = new Map([
   ['src/client/features/music/music-utils.ts', [
     '// Per-track network bursts (bulk upload/download/import/scan) stay pipelined but bounded:',
     '// enough to overlap latency, low enough to avoid hammering the worker or the browser\'s per-host cap.',
+    '// The transport nudge buttons and the seek hotkeys move by the same amount.',
     '// Shift-click selects everything between the anchor row and the clicked row.',
     '// Uploads name a track after its file; the tag title wins when the file only adds the artist.',
   ]],
@@ -2438,6 +2446,9 @@ const allowed = new Map([
     '// Trailing debounce. `resetKey` names the subject the value belongs to: when it changes',
     '// (another note, a session that just started) the held value belongs to the previous',
     '// subject, so the current one is returned at once instead of after the delay.',
+  ]],
+  ['src/client/lib/hotkeys.ts', [
+    '// Gate consulted after the combo matched; returning false leaves the key to the page.',
   ]],
   ['src/client/lib/i18n.ts', [
     '/** Provides typed runtime localization with on-demand locale loading. */',

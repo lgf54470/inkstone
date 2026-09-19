@@ -108,6 +108,9 @@ function ImmersiveLeft({
           <p className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
             {track ? formatDuration(track.durationMs) + ' · ' + formatBytes(track.sizeBytes) : ''}
           </p>
+          <p className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
+            {t('music.keyboard_hint')}
+          </p>
         </section>
     </>
   )

@@ -17,7 +17,7 @@ import { useUpdate } from '../../store/update'
 import { PresentationOverlay } from '../presentation'
 import { NoteList, useGapIndicator, useRollingDateFilter } from '../list'
 import { Sidebar } from '../sidebar'
-import { MusicFloatingPlayer, MusicHubModal, MusicImmersiveOverlay, MusicSessionSync } from '../music'
+import { MUSIC_HOTKEYS, MusicFloatingPlayer, MusicHubModal, MusicImmersiveOverlay, MusicSessionSync } from '../music'
 import { Resizer, SplitResizer } from './resizer'
 import { PinnedWindowsLayer } from '../preview'
 import { t } from '../../lib/i18n'
@@ -282,7 +282,7 @@ function OverlayHost() {
 }
 
 function useGlobalHotkeys(): void {
-  useEffect(() => registerAll(GLOBAL_HOTKEYS), [])
+  useEffect(() => registerAll([...GLOBAL_HOTKEYS, ...MUSIC_HOTKEYS]), [])
 }
 
 const GLOBAL_HOTKEYS: Hotkey[] = [
