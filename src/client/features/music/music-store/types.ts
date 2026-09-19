@@ -16,6 +16,11 @@ export type MusicScope =
   | { kind: 'favorites' }
   | { kind: 'pinned' }
   | { kind: 'recent' }
+  | { kind: 'albums' }
+  | { kind: 'artists' }
+  // A drilled-down album has to carry the artist too: different artists can share an album title.
+  | { kind: 'album'; artist: string; album: string }
+  | { kind: 'artist'; artist: string }
   | { kind: 'tag'; tagId: string }
   | { kind: 'playlist'; playlistId: string }
 

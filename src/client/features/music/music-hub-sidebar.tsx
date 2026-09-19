@@ -1,9 +1,10 @@
-import { memo } from 'react'
-import { Clock3, FolderHeart, Heart, Library, Pin } from 'lucide-react'
+import { memo, useMemo } from 'react'
+import { Clock3, Disc, FolderHeart, Heart, Library, Pin, Users } from 'lucide-react'
 import { Tooltip } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { MusicHubPlaylists } from './music-hub-playlists'
+import { buildGroups } from './music-grouping'
 import { MusicHubTags } from './music-hub-tags'
 import { useMusic } from './music-store'
 import type { MusicScope } from './music-store'
@@ -33,16 +34,24 @@ function CollectionNav() {
   const scope = useMusic((state) => state.scope)
   const setScope = useMusic((state) => state.setScope)
   const recentCount = useMusic((state) => state.tracks.reduce((count, track) => count + (track.lastPlayedAt === null ? 0 : 1), 0))
+  const tracks = useMusic((state) => state.tracks)
+  const albumCount = useMemo(() => buildGroups(tracks, 'albums').length, [tracks])
+  const artistCount = useMemo(() => buildGroups(tracks, 'artists').length, [tracks])
   const items: { scope: MusicScope; icon: React.ReactNode; label: string; count: number }[] = [
     { scope: { kind: 'all' }, icon: <Library size={13} />, label: t('music.all_tracks'), count: stats?.trackCount ?? 0 },
     { scope: { kind: 'favorites' }, icon: <Heart size={13} />, label: t('music.favorites'), count: stats?.favoriteCount ?? 0 },
     { scope: { kind: 'pinned' }, icon: <Pin size={13} />, label: t('music.pinned'), count: stats?.pinnedCount ?? 0 },
     { scope: { kind: 'recent' }, icon: <Clock3 size={13} />, label: t('music.recently_played'), count: recentCount },
+    { scope: { kind: 'albums' }, icon: <Disc size={13} />, label: t('music.albums'), count: albumCount },
+    { scope: { kind: 'artists' }, icon: <Users size={13} />, label: t('music.artists'), count: artistCount },
   ]
   return (
     <div className='space-y-0.5'>
       {items.map((item) => {
+        // A drilled-down album/artist keeps its browse entry highlighted as the owning view.
         const active = scope.kind === item.scope.kind
+          || (item.scope.kind === 'albums' && scope.kind === 'album')
+          || (item.scope.kind === 'artists' && scope.kind === 'artist')
         return (
           <button
             key={item.scope.kind}

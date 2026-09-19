@@ -238,6 +238,37 @@ describe('recent scope reads the server-stamped last play — FEAT-9', () => {
   })
 })
 
+describe('browse and group-detail scopes — M-50', () => {
+  function browseStore(scope: MusicStoreState['scope']) {
+    const store = makeStore()
+    store.set({
+      tracks: [
+        sortableTrack('a', 'Ann', 'Fog', 100),
+        sortableTrack('b', 'Zoe', 'Fog', 200),
+        sortableTrack('c', 'Ann', 'Spark', 300),
+      ],
+      tags: [], playlists: [], query: '', sourceFilter: 'all', sort: 'title', sortDirection: 'asc', romanized: {}, lastLoadedAt: 0,
+      scope,
+    } as Partial<MusicStoreState>)
+    return store
+  }
+
+  it('browse kinds render a grid elsewhere, so the track list stays empty', () => {
+    expect(visibleTracks(browseStore({ kind: 'albums' }).get())).toEqual([])
+    expect(visibleTracks(browseStore({ kind: 'artists' }).get())).toEqual([])
+  })
+
+  it('album detail filters on artist and album together', () => {
+    const ids = visibleTracks(browseStore({ kind: 'album', artist: 'Ann', album: 'Fog' }).get()).map((track) => track.id)
+    expect(ids).toEqual(['a'])
+  })
+
+  it('artist detail keeps both albums of that artist', () => {
+    const ids = visibleTracks(browseStore({ kind: 'artist', artist: 'Ann' }).get()).map((track) => track.id)
+    expect(ids).toEqual(['a', 'c'])
+  })
+})
+
 describe('sortTracks field and direction coverage (UI-9)', () => {
   const tracks = [
     sortableTrack('a', 'Zoe', 'Spark', 300),

@@ -1300,6 +1300,19 @@ const allowed = new Map([
   ['src/client/features/music/music-floating-lyrics.tsx', [
     '// Two lines are enough for a 288px widget; the immersive player shows the whole scroll.',
   ]],
+  ['src/client/features/music/music-group-browse.tsx', [
+    '// Albums and artists arrive as flat tag fields on each track (FEAT-10-era library),',
+    '// so the whole grouping view is derived client-side and never needs a server round-trip.',
+    '// The drilled-down album/artist list is the ordinary track list; this header restores',
+    '// the group context and the way back that a plain list would not offer.',
+  ]],
+  ['src/client/features/music/music-grouping.ts', [
+    '// ID3 text cannot carry a unit separator, so joining the raw parts keeps different',
+    '// artists\' same-titled albums apart.',
+    '// Raw album/artist value; \'\' means the tag was missing and the label renders localized.',
+    '// Unnamed groups (missing tag) sink below everything named.',
+    '// Which browse grid a drilled-down scope came back from, for the back button.',
+  ]],
   ['src/client/features/music/music-hotkeys.ts', [
     '// Space is how keyboards press the focused button, and with nothing loaded it should',
     '// still scroll the page — so the shortcut only claims the key on plain ground once a track exists.',
@@ -1321,10 +1334,12 @@ const allowed = new Map([
     '/* The active row\'s accent tint puts the dim tiers under AA, so its count takes the row\'s\n          accent — the one pairing the token system calibrates (accent as text on its own tint). */',
   ]],
   ['src/client/features/music/music-hub-sidebar.tsx', [
+    '// A drilled-down album/artist keeps its browse entry highlighted as the owning view.',
     '/* The active row\'s 14% accent tint puts the dim tiers under AA (tertiary measures\n                4.16–4.28 in light), so its count takes the row\'s accent — the one pairing the\n                token system calibrates (accent as text on its own tint). */',
   ]],
   ['src/client/features/music/music-hub-toolbar.tsx', [
-    '// Playlist scope shows the manual item order, so the sort control would change nothing.',
+    '// Playlist scope shows the manual item order, so the sort control would change nothing;',
+    '// the grouped browse grids sort their cards by name and ignore track sort entirely.',
     '// The running guard lives in the store, so remounting the toolbar cannot stack a second pass.',
     '// Force mode overwrites stored tags, so manual edits are lost — confirm before scanning everything visible.',
   ]],
@@ -1467,6 +1482,7 @@ const allowed = new Map([
     '// One dictionary load and one romanization pass at a time; debounced keystrokes',
     '// and lazy fetches can otherwise pile up identical whole-library work.',
     '// A playlist row carries the order the user arranged; sorting or hoisting pins would rewrite it.',
+    '// The browse kinds draw a grouped grid, not a track list; the list stays empty on purpose.',
     '// FEAT-9: recency is the server-stamped last play, so the list survives a device switch.',
     '// The comparator describes the natural ascending order of the field; the',
     '// stored direction only flips it, and pins stay hoisted in both directions.',
@@ -1542,6 +1558,7 @@ const allowed = new Map([
     '// pass per kind can run at a time: a second call returns without stacking.',
   ]],
   ['src/client/features/music/music-store/types.ts', [
+    '// A drilled-down album has to carry the artist too: different artists can share an album title.',
     '// The anchor is the trigger element for a button-opened menu and the pointer for a',
     '// right-click; it only lives in the store while the single menu instance is open.',
     '// One pass of batch library work; kind is unique while running, so a second',

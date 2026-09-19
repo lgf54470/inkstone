@@ -146,3 +146,20 @@ describe('source filter (UI-16)', () => {
     expect(tabbableCount(group(container))).toBe(1)
   })
 })
+
+describe('sort control while browsing groups (M-50)', () => {
+  function mountToolbar(): Promise<HTMLElement> {
+    return mount(createElement(MusicHubToolbar, { onUpload: () => {}, onBrowseWebdav: () => {} }))
+  }
+
+  it('hides the track sort control while a grouped grid is open', async () => {
+    useMusic.setState({ scope: { kind: 'albums' } })
+    const container = await mountToolbar()
+    expect(container.querySelector(`[aria-label="${t('music.sort')}"]`)).toBeNull()
+  })
+
+  it('keeps it in the ordinary library scope', async () => {
+    const container = await mountToolbar()
+    expect(container.querySelector(`[aria-label="${t('music.sort')}"]`)).toBeTruthy()
+  })
+})

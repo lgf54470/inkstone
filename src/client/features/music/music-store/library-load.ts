@@ -181,6 +181,10 @@ function applyScope(state: MusicStoreState): MusicTrack[] {
   if (scope.kind === 'favorites') return state.tracks.filter((track) => track.isFavorite)
   if (scope.kind === 'pinned') return state.tracks.filter((track) => track.isPinned)
   if (scope.kind === 'recent') return recentTracks(state)
+  // The browse kinds draw a grouped grid, not a track list; the list stays empty on purpose.
+  if (scope.kind === 'albums' || scope.kind === 'artists') return []
+  if (scope.kind === 'album') return state.tracks.filter((track) => track.artist === scope.artist && track.album === scope.album)
+  if (scope.kind === 'artist') return state.tracks.filter((track) => track.artist === scope.artist)
   if (scope.kind === 'tag') return filterByTag(state, scope.tagId)
   if (scope.kind === 'playlist') return playlistTracks(state, scope.playlistId)
   return state.tracks

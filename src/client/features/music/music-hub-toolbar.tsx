@@ -53,8 +53,9 @@ function ToolbarActions({ onUpload, onBrowseWebdav }: { onUpload: () => void; on
   const setSort = useMusic((state) => state.setSort)
   const loadLibrary = useMusic((state) => state.loadLibrary)
   const tracks = useVisibleTracks()
-  // Playlist scope shows the manual item order, so the sort control would change nothing.
-  const showSort = scope.kind !== 'playlist'
+  // Playlist scope shows the manual item order, so the sort control would change nothing;
+  // the grouped browse grids sort their cards by name and ignore track sort entirely.
+  const showSort = scope.kind !== 'playlist' && scope.kind !== 'albums' && scope.kind !== 'artists'
   return (
     <div className='flex items-center gap-2'>
       {showSort && (

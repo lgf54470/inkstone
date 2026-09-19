@@ -9,6 +9,7 @@ import { useMediaQuery } from '../../lib/hooks'
 import { Z_INDEX } from '../../lib/z-index'
 import { t } from '../../lib/i18n'
 import { MusicEditTrackModal } from './music-edit-track-modal'
+import { MusicGroupBrowse, MusicGroupDetailHeader } from './music-group-browse'
 import { MusicHubSidebar } from './music-hub-sidebar'
 import { MusicHubToolbar } from './music-hub-toolbar'
 import { MusicNowPlaying, type MusicDetailTab } from './music-now-playing'
@@ -187,9 +188,12 @@ const HubCentre = memo(function HubCentre({
   const loadLibrary = useMusic((state) => state.loadLibrary)
   const scope = useMusic((state) => state.scope)
   const tracks = useVisibleTracks()
+  const browseKind = scope.kind === 'albums' || scope.kind === 'artists' ? scope.kind : null
+  const detail = scope.kind === 'album' || scope.kind === 'artist' ? scope : null
   return (
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)]'>
       <MusicHubToolbar onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} />
+      {detail && <MusicGroupDetailHeader scope={detail} />}
       <div className='min-h-0 flex-1'>
         {loadError && !tracks.length && !loading
           ? <Empty
@@ -198,7 +202,9 @@ const HubCentre = memo(function HubCentre({
               action={<Button size='sm' onClick={() => void loadLibrary()}>{t('music.retry')}</Button>}
               compact
             />
-          : <MusicTrackList tracks={tracks} loading={loading} emptyTitle={emptyTitle(scope)} onEdit={onEditTrack} />}
+          : browseKind
+            ? <MusicGroupBrowse kind={browseKind} />
+            : <MusicTrackList tracks={tracks} loading={loading} emptyTitle={emptyTitle(scope)} onEdit={onEditTrack} />}
       </div>
       <MusicQueuePanel open={queueOpen} onClose={onCloseQueue} />
     </div>
