@@ -76,6 +76,14 @@ describe('card context menu items', () => {
     expect(items.find((i) => i.id === 'kanban-redo')?.disabled).toBe(true)
     expect(items.find((i) => i.id === 'kanban-toggle-fullscreen')?.combo).toBe('Esc')
   })
+
+  // A literal 'Ctrl+Y' would be a dead promise on macOS, where `kanban-history.ts` binds
+  // mod+Shift+Z; the canonical token is what lets the shared row render the real glyph.
+  it('names the history chords in the canonical form the menu renders per platform', () => {
+    const items = buildKanbanContextMenuItems(createDummyProps({ canUndo: true, canRedo: true }))
+    expect(items.find((i) => i.id === 'kanban-undo')?.combo).toBe('mod+z')
+    expect(items.find((i) => i.id === 'kanban-redo')?.combo).toBe('mod+shift+z')
+  })
 })
 
 describe('board context menu items', () => {

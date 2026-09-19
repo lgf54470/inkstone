@@ -156,6 +156,8 @@ export const messages = {
 'preview.kanban_copy_card': 'Duplicate Card',
 'preview.kanban_move_to_column': 'Move to Group',
 'preview.kanban_moved_to_group': 'Moved “{title}” to {group}',
+'preview.kanban_undo_shortcut': 'Undo ({shortcut})',
+'preview.kanban_redo_shortcut': 'Redo ({shortcut})',
 'preview.kanban_new_group_title': 'New group {value0}',
 'preview.kanban_untitled': 'Untitled Task',
 'preview.kanban_view_chart': 'Chart',

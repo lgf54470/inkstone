@@ -17,6 +17,7 @@ import type {
   KanbanView,
 } from '../types'
 import { t } from '../../../i18n'
+import { prettyCombo } from '../../../../lib/hotkeys'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSearchBox } from './kanban-search-box'
@@ -253,7 +254,7 @@ function KanbanHeaderToolbar({
           disabled={!canUndo}
           onClick={onUndo}
           className='inline-flex size-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-30 disabled:pointer-events-none'
-          title={`${t('common.undo')} (Ctrl+Z)`}
+          title={t('preview.kanban_undo_shortcut', { shortcut: prettyCombo('mod+z').join('+') })}
           aria-label={t('common.undo')}
         >
           <Undo2 size={14} />
@@ -265,7 +266,7 @@ function KanbanHeaderToolbar({
           disabled={!canRedo}
           onClick={onRedo}
           className='inline-flex size-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-30 disabled:pointer-events-none'
-          title={`${t('command.redo')} (Ctrl+Y)`}
+          title={t('preview.kanban_redo_shortcut', { shortcut: prettyCombo('mod+shift+z').join('+') })}
           aria-label={t('command.redo')}
         >
           <Redo2 size={14} />

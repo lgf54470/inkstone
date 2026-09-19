@@ -2740,6 +2740,10 @@ const allowed = new Map([
     '// Identity must survive unrelated commits: a fresh dataset object every',
     '// render tears the Chart.js instance down and rebuilds it.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-context-menu.test.ts', [
+    '// A literal \'Ctrl+Y\' would be a dead promise on macOS, where `kanban-history.ts` binds',
+    '// mod+Shift+Z; the canonical token is what lets the shared row render the real glyph.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-control-names.test.ts', [
     '/**\n * Every control the board renders has to say what it does: an icon-only button with no name reads\n * as "Button" in a screen reader, which is the same gap the popover pass closed for panels\n * (review #29). Rather than trusting a hand-tallied list of suspects, this mounts the real board,\n * walks every interactive element of each view and of the detail dialog, and fails with the\n * offending markup — so a new control that forgets its name is named by the suite, not by a review.\n */',
     '/** A control is unnamed when none of the ways HTML and ARIA give it a name produce text. */',
@@ -2763,6 +2767,12 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-fullscreen.tsx', [
     '/**\n * Full screen view of one block. The overlay hosts the live instance the\n * preview mounted — the element is moved, never copied — so edits, history and\n * write-back stay with the single root that the inline block keeps using.\n */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-header.test.ts', [
+    '// A hint assembled in JSX outlives a locale switch only in its parentheses; reading the expected',
+    '// text from the zh-CN resource is what proves the whole message, wrapper included, is translated.',
+    '// `IS_MAC` is frozen when the hotkeys module is first read, so the macOS branch needs a fresh',
+    '// module graph with the platform already stubbed — the same resetModules move the store tests use.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-header.tsx', [
     '// The column panel needs nothing but its toggle; the board panel keeps its',

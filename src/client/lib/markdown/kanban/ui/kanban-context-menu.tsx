@@ -100,7 +100,7 @@ function buildHistoryItems(props: KanbanContextMenuProps): MenuItem[] {
       id: 'kanban-undo',
       label: t('common.undo'),
       icon: <Undo2 size={14} />,
-      combo: 'Ctrl+Z',
+      combo: 'mod+z',
       disabled: !props.canUndo,
       separatorBefore: true,
       onSelect: props.onUndo,
@@ -111,7 +111,7 @@ function buildHistoryItems(props: KanbanContextMenuProps): MenuItem[] {
       id: 'kanban-redo',
       label: t('command.redo'),
       icon: <Redo2 size={14} />,
-      combo: 'Ctrl+Y',
+      combo: 'mod+shift+z',
       disabled: !props.canRedo,
       onSelect: props.onRedo,
     })
