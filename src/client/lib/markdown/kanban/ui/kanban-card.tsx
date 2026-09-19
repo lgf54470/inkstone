@@ -2,6 +2,8 @@ import { memo, useState, type KeyboardEvent } from 'react'
 import { Calendar, Flag, Paperclip } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
+import { getKanbanCardDate } from '../date-fields'
+import { formatDateKey } from '../../../time'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { CardHeader } from './kanban-card-header'
@@ -172,7 +174,7 @@ function getCardDisplayProps(item: KanbanItem, columns: KanbanProperty[]) {
   const tagsCol = columns.find((c) => c.id === 'tags')
   const tagVals = Array.isArray(item.properties.tags) ? item.properties.tags : []
   const filesCount = item.files?.length ?? 0
-  const dueDate = item.properties.dueDate || item.properties.startDate || item.properties.date
+  const dueDate = formatDateKey(getKanbanCardDate(item))
   return { priorityOpt, tagsCol, tagVals, filesCount, dueDate }
 }
 

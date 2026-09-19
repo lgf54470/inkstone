@@ -1,5 +1,36 @@
 import { describe, expect, it } from 'vitest'
-import { addDaysKey, dateKey, daysBetweenKeys, isWeekRangeKey, narrowWeekdayLabels, parseDateKey, rollingWindowKey, weekStartFor, weekStartKeyOf } from './time'
+import { localeTag } from './i18n'
+import { addDaysKey, dateKey, daysBetweenKeys, formatDateKey, isWeekRangeKey, narrowWeekdayLabels, parseDateKey, rollingWindowKey, weekStartFor, weekStartKeyOf } from './time'
+
+/** The label the reader's own calendar would produce, recomputed rather than written out. */
+function expectedLabel(key: string, withYear: boolean): string {
+  const [year, month, day] = key.split('-').map(Number)
+  const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+  if (withYear)
+    options.year = 'numeric'
+  return new Intl.DateTimeFormat(localeTag(), options).format(new Date(year, month - 1, day))
+}
+
+describe('formatDateKey', () => {
+  const now = new Date(2026, 8, 17)
+
+  it('renders a stored key as locale text without the year inside the current year', () => {
+    expect(formatDateKey('2026-09-05', now)).toBe(expectedLabel('2026-09-05', false))
+    expect(formatDateKey('2026-09-05', now)).not.toContain('2026')
+  })
+
+  it('adds the year for a day outside it, so a backlog does not read as this year', () => {
+    expect(formatDateKey('2025-12-31', now)).toBe(expectedLabel('2025-12-31', true))
+    expect(formatDateKey('2025-12-31', now)).toContain('2025')
+    expect(formatDateKey('2027-01-01', now)).toBe(expectedLabel('2027-01-01', true))
+  })
+
+  it('prints nothing for a missing day and keeps a key it cannot read', () => {
+    expect(formatDateKey('', now)).toBe('')
+    expect(formatDateKey('someday', now)).toBe('someday')
+    expect(formatDateKey('someday', now)).not.toContain('Invalid Date')
+  })
+})
 
 describe('dateKey', () => {
   it('formats local dates as zero-padded YYYY-MM-DD keys', () => {

@@ -1,3 +1,4 @@
+import { getKanbanDueDate, getKanbanStartDate } from './date-fields'
 import type { KanbanItem } from './types'
 
 export interface TimelineDay {
@@ -69,11 +70,10 @@ export interface TimelineDateFields {
   endField?: string
 }
 
-function resolveTimelineDate(item: KanbanItem, configuredField: string | undefined, legacyField: string): string {
+function resolveTimelineDate(item: KanbanItem, configuredField: string | undefined, fallback: () => string): string {
   const configured = configuredField ? item.properties[configuredField] : undefined
   if (configured) return String(configured)
-  const legacy = item.properties[legacyField]
-  return legacy ? String(legacy) : ''
+  return fallback()
 }
 
 export function calculateTimelineBarGeometry(
@@ -84,8 +84,8 @@ export function calculateTimelineBarGeometry(
   if (days.length === 0) return { left: 0, width: TIMELINE_DAY_WIDTH - TIMELINE_BAR_GAP }
 
   const baseDateStr = days[0].dateStr
-  const startProp = resolveTimelineDate(item, fields?.startField, 'startDate')
-  const dueProp = resolveTimelineDate(item, fields?.endField, 'dueDate')
+  const startProp = resolveTimelineDate(item, fields?.startField, () => getKanbanStartDate(item))
+  const dueProp = resolveTimelineDate(item, fields?.endField, () => getKanbanDueDate(item))
   const todayIndex = Math.max(0, days.findIndex((d) => d.isToday))
 
   const { startIdx, endIdx } = resolveStartEndIndex(startProp, dueProp, baseDateStr, todayIndex)

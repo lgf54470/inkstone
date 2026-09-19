@@ -78,6 +78,22 @@ describe('timeline-helpers single date and fallback geometry', () => {
     expect(geom.width).toBe(TIMELINE_DAY_WIDTH - TIMELINE_BAR_GAP)
   })
 
+  it('draws the same bar for an item that only has the schema end column', () => {
+    const days = buildTimelineDays(5, 10, baseDate)
+    const itemEndOnly: KanbanItem = {
+      id: 'task-5',
+      title: 'End only',
+      properties: { endDate: '2026-06-17' },
+    }
+    const itemDueOnly: KanbanItem = {
+      id: 'task-6',
+      title: 'Due only',
+      properties: { dueDate: '2026-06-17' },
+    }
+    expect(calculateTimelineBarGeometry(itemEndOnly, days)).toEqual(calculateTimelineBarGeometry(itemDueOnly, days))
+    expect(calculateTimelineBarGeometry(itemEndOnly, days).left).toBe(7 * TIMELINE_DAY_WIDTH + TIMELINE_BAR_OFFSET)
+  })
+
   it('falls back to today when no dates are specified', () => {
     const days = buildTimelineDays(5, 10, baseDate)
     const itemNoDates: KanbanItem = {

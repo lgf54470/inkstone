@@ -2676,6 +2676,10 @@ const allowed = new Map([
     '// only reach an attached element, and `color` is where the browser hands back',
     '// what the token chain resolves to.',
   ]],
+  ['src/client/lib/markdown/kanban/date-fields.ts', [
+    '/**\n * Which property holds which day is decided once here: every surface that prints a date reads it\n * through these accessors, so an item cannot show one day on the board and another in the gallery.\n * `dueDate` is what the detail modal\'s due field writes, `endDate` is the generated schema\'s own\n * end column, and both are deadlines — a card carries at most one of them.\n */',
+    '/** The day a card badge prints: its deadline, or the start when the card only has one. */',
+  ]],
   ['src/client/lib/markdown/kanban/dnd.test.ts', [
     '// A filter hides item \'1\', so the visible column is [2, 3]. Dropping \'4\'',
     '// above \'3\' must land between 2 and 3, not at the column start.',
@@ -2795,6 +2799,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-convert-subtask.test.ts', [
     '// mirrors useKanbanHistory: functional updaters resolve against the latest data',
     '// the detail modal portals onto document.body, so query the whole document',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-date-display.test.ts', [
+    '/**\n * One card used to read differently depending on which view looked at it (review #25\'s only\n * correctness row): the board fell back to `startDate`, the gallery and the list never read the\n * schema\'s own `endDate` column at all, and every badge printed the raw `YYYY-MM-DD` key. The three\n * surfaces now derive one label from one accessor, so the contract asserted here is one item, three\n * surfaces, one date — and that the printed text is the reader\'s own date format, not the stored key.\n */',
+    '// Both fixtures stay inside the running year so the label rule never has to carry a year.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-date-picker.test.ts', [
     '/**\n * The picker draws its calendar from the shared locale derivation, where the `Intl` reading itself is\n * pinned (`lib/time.test.ts`). What is checked here is that the rendered picker follows that one\n * number: its weekday row and the cells spilling in front of the 1st are read off the same value, so\n * a change to the derivation cannot move one of them and leave the other on Sunday.\n */',
@@ -4121,6 +4129,7 @@ const allowed = new Map([
     '/** Render a React node into a fresh container appended to document.body (portals land on body as usual). */',
   ]],
   ['src/client/lib/time.test.ts', [
+    '/** The label the reader\'s own calendar would produce, recomputed rather than written out. */',
     '/**\n * Which weekday opens a calendar is a fact about the reader\'s calendar, not about the two languages\n * this app happens to ship: `locale === \'zh-CN\' ? 1 : 0` gets today\'s locales right only because\n * they are the two it names, and would quietly open a German or Arabic calendar on Sunday the day a\n * third locale lands. These cases pin the derivation to locale data plus one explicit fallback for\n * a runtime without `Intl.Locale#getWeekInfo`.\n */',
     '// Sunday for the US, Monday for China and Germany, Saturday for Egypt — all CLDR, none of them',
     '// a language this app\'s own locale switch can even select today.',
@@ -4136,6 +4145,7 @@ const allowed = new Map([
     '// 2024-01-07 is a Sunday, so the offset alone selects the weekday.',
     '/** Key of the week\'s first day (per `weekStart`) containing `key`. */',
     '/** Whether an inclusive day-key range spans exactly one aligned week. */',
+    '/**\n * A stored day key as reader-facing text. Rich-media blocks persist `YYYY-MM-DD` because that is\n * what round-trips into a note body, so every surface that prints one goes through here instead of\n * showing the key; the year only appears when the day is not in the current year.\n */',
   ]],
   ['src/client/lib/undo-focus-pref.ts', [
     '// Corrupt or missing stored prefs fall back to the default below.',

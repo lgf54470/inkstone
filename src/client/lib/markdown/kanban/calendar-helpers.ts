@@ -1,3 +1,4 @@
+import { getKanbanDueDate, getKanbanStartDate } from './date-fields'
 import type { KanbanItem } from './types'
 
 export interface CalendarDay {
@@ -67,8 +68,8 @@ export function getMonthWeeks(year: number, month: number, weekStart: number): C
 
 function resolveItemDateRange(item: KanbanItem, dateField?: string): { start: string; end: string } | null {
   const primary = dateField ? item.properties[dateField] : undefined
-  const startKey = parseDateKey(primary || item.properties.startDate || item.properties.dueDate || item.properties.date)
-  const endKey = parseDateKey(item.properties.dueDate || item.properties.endDate || primary || item.properties.startDate || item.properties.date)
+  const startKey = parseDateKey(primary || getKanbanStartDate(item) || getKanbanDueDate(item))
+  const endKey = parseDateKey(getKanbanDueDate(item) || primary || getKanbanStartDate(item))
   if (!startKey && !endKey) return null
 
   if (startKey && endKey) {

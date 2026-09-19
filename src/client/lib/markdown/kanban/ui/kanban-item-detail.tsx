@@ -3,6 +3,7 @@ import { ChevronDown, Smile } from 'lucide-react'
 import { Modal, useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanDotColor } from '../colors'
+import { getKanbanDueDate } from '../date-fields'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
@@ -304,7 +305,7 @@ function KanbanItemDetailBody({
 
   const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
   const startDateVal = item.properties.startDate || ''
-  const dueDateVal = item.properties.dueDate || item.properties.endDate || ''
+  const dueDateVal = getKanbanDueDate(item)
 
   return (
     <Modal

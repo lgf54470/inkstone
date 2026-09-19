@@ -2,6 +2,8 @@ import { memo, useState } from 'react'
 import { Calendar, Check, CheckSquare, ChevronDown, ChevronRight, Flag, Paperclip, Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
+import { getKanbanCardDate } from '../date-fields'
+import { formatDateKey } from '../../../time'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
@@ -255,7 +257,7 @@ function getListItemDisplay(item: KanbanItem, statusCol?: KanbanProperty, priori
   const priorityOpt = priorityCol?.options?.find((o: KanbanOption) => o.id === priorityVal || o.label === priorityVal)
   const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
   const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
-  const dueDate = String(item.properties.dueDate || item.properties.startDate || '')
+  const dueDate = formatDateKey(getKanbanCardDate(item))
   return { statusOpt, priorityOpt, tagVals, desc, dueDate }
 }
 
