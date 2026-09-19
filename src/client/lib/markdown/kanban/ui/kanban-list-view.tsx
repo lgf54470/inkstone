@@ -78,6 +78,7 @@ function ListRowLeading({
   onToggleExpand,
   onToggleSelect,
   onToggleTag,
+  onOpen,
 }: {
   item: KanbanItem
   isSelected: boolean
@@ -89,6 +90,7 @@ function ListRowLeading({
   onToggleExpand?: () => void
   onToggleSelect: () => void
   onToggleTag?: (tag: string) => void
+  onOpen: () => void
 }) {
   const hasSubtasks = (item.subtasks?.length ?? 0) > 0
 
@@ -117,9 +119,13 @@ function ListRowLeading({
         aria-label={t('preview.kanban_select_card')}
       />
       <KanbanIconBadge icon={item.icon} size={15} />
-      <span className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
+      <button
+        type='button'
+        onClick={(e) => { e.stopPropagation(); onOpen() }}
+        className='truncate text-left cursor-pointer text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'
+      >
         {item.title || t('preview.kanban_untitled')}
-      </span>
+      </button>
       <ListRowTagBadges
         tagVals={tagVals}
         tagsCol={tagsCol}
@@ -271,12 +277,7 @@ function KanbanListRow({
   return (
     <div data-item-id={item.id} className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] last:border-b-0'>
       <div
-        role='button'
-        tabIndex={0}
         onClick={() => onOpenDetail(item)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') onOpenDetail(item)
-        }}
         className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--bg-hover)] ${
           isSelected ? 'bg-[var(--accent-softer)]' : ''
         }`}
@@ -292,6 +293,7 @@ function KanbanListRow({
           onToggleExpand={() => setExpanded((x) => !x)}
           onToggleSelect={() => onToggleSelect(item.id)}
           onToggleTag={onToggleTag}
+          onOpen={() => onOpenDetail(item)}
         />
         <ListRowTrailing
           item={item}

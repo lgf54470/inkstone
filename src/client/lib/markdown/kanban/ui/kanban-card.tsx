@@ -158,14 +158,9 @@ function useKanbanCardTitle(initialTitle: string, onUpdate: (title: string) => v
 
 function handleCardKeyDown(
   e: KeyboardEvent<HTMLDivElement>,
-  isEditing: boolean,
-  onOpen: () => void,
   onMove?: (direction: 'prev' | 'next') => void,
 ) {
-  if (e.key === 'Enter' && !isEditing) {
-    e.preventDefault()
-    onOpen()
-  } else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+  if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
     e.preventDefault()
     onMove?.(e.key === 'ArrowRight' ? 'next' : 'prev')
   }
@@ -288,10 +283,9 @@ export const KanbanCard = memo(function KanbanCard({
   const padClass = cardSize === 'small' ? 'p-2.5 gap-1.5' : cardSize === 'large' ? 'p-4 gap-3' : 'p-3 gap-2'
   const headerOverlay = headerOverlayClass(cardSize, display.tagVals.length)
 
+  // The container is only a pointer hit-area; keyboard users open the card through CardHeader's details button.
   return (
     <div
-      role='button'
-      tabIndex={0}
       data-item-id={item.id}
       draggable={!titleState.isEditing}
       onDragStart={(e) => onDragStart(e, item.id)}
@@ -299,7 +293,7 @@ export const KanbanCard = memo(function KanbanCard({
       onDragOver={dndHandlers.handleDragOver}
       onDrop={dndHandlers.handleDrop}
       onClick={() => onOpenDetail(item)}
-      onKeyDown={(e) => handleCardKeyDown(e, titleState.isEditing, () => onOpenDetail(item), onMoveColumn ? (d) => onMoveColumn(item.id, d) : undefined)}
+      onKeyDown={(e) => handleCardKeyDown(e, onMoveColumn ? (d) => onMoveColumn(item.id, d) : undefined)}
       className={`group/card relative flex flex-col rounded-[var(--r-lg)] border bg-[var(--bg-surface)] text-left shadow-[var(--shadow-xs)] transition-[box-shadow,border-color,background-color] hover:border-[var(--border-default)] hover:shadow-[var(--shadow-sm)] ${padClass} ${
         isSelected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border-subtle)]'
       }`}

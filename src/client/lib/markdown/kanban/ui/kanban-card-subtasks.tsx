@@ -152,35 +152,30 @@ function SubtaskSummaryBar({
   onToggleExpand: () => void
 }) {
   return (
-    <div
-      role='button'
-      tabIndex={0}
+    <button
+      type='button'
       onClick={(e) => {
         e.stopPropagation()
         onToggleExpand()
       }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.stopPropagation()
-          onToggleExpand()
-        }
-      }}
-      className='flex cursor-pointer items-center justify-between gap-2 py-0.5 text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)]'
+      aria-expanded={isExpanded}
+      className='flex w-full cursor-pointer items-center justify-between gap-2 py-0.5 text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)]'
     >
-      <div className='flex items-center gap-1.5 font-medium'>
+      <span className='flex items-center gap-1.5 font-medium'>
         <ListTodo size={12} className='text-[var(--accent)]' />
+        <span className='sr-only'>{t(isExpanded ? 'preview.kanban_collapse_subtasks' : 'preview.kanban_expand_subtasks')}</span>
         <span>{`${completedCount}/${totalCount}`}</span>
-      </div>
-      <div className='flex items-center gap-2'>
-        <div className='h-1.5 w-16 overflow-hidden rounded-full bg-[var(--border-subtle)]'>
-          <div
-            className='h-full rounded-full bg-[var(--accent)] transition-[width] duration-200'
+      </span>
+      <span className='flex items-center gap-2'>
+        <span className='block h-1.5 w-16 overflow-hidden rounded-full bg-[var(--border-subtle)]'>
+          <span
+            className='block h-full rounded-full bg-[var(--accent)] transition-[width] duration-200'
             style={{ width: `${percent}%` }}
           />
-        </div>
+        </span>
         {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-      </div>
-    </div>
+      </span>
+    </button>
   )
 }
 

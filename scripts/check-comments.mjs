@@ -2717,6 +2717,9 @@ const allowed = new Map([
     '// time through this ref, so their identity survives re-renders while the',
     '// drop still routes to the latest onMoveItem.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-card.tsx', [
+    '// The container is only a pointer hit-area; keyboard users open the card through CardHeader\'s details button.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-chart-view.test.ts', [
     '// The real reader asks the document how it resolves each token, which jsdom',
     '// does not do; what matters here is *when* the view reads it and that the',
@@ -2825,6 +2828,14 @@ const allowed = new Map([
     '// Each keystroke used to commit the whole dataset, so filtering re-ran and the',
     '// undo history grew per character; the draft holds the box, the parent the query.',
     '// A query set elsewhere (switching views, clearing filters) wins over the draft.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-semantic-controls.test.ts', [
+    '/**\n * AGENTS.md rule 10 forbids simulating a control with a div plus a click handler, and a card\n * container that also carries `role=\'button\'` is an axe `nested-interactive` violation the moment\n * anything focusable sits inside it — which is exactly the case for the board, gallery and list\n * cards, all of which hold a checkbox, a tag picker and a subtask expander (review #29). A fake\n * button there is worse than no button: it announces "button" for the whole card while a real\n * control inside may or may not answer Enter. These cases pin the shape the pass moved to — no\n * element in the board claims `role=\'button\'`, and opening an item goes through a real `<button>`\n * in every view that shows cards, so a keyboard reader has one unambiguous target per card.\n */',
+    '// A view that did not switch would leave the walk measuring the board instead.',
+    '/** The card\'s own open control: named after the item, or the details button the board card shows. */',
+    '// A user clicks the card body, not one of its controls; in the list row that handler sits on an inner element.',
+    '// The container is no longer focusable, so the chord is pressed on a control inside it.',
+    '/** The bar keeps its visible "1/2" counter, so its action label comes from a screen-reader-only span. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-table-semantics.test.ts', [
     '/**\n * The board\'s table view is laid out with flex containers, so the markup gives no\n * clue that a value belongs to a column: a reader walks a row as one\n * undifferentiated run of controls (review #29). The roles asserted here are the\n * ones that relationship needs — and a row that spans the grid has to say how many\n * columns it covers, otherwise the column count a reader announces stops matching\n * the header, including after a column is hidden.\n */',
