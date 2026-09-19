@@ -121,6 +121,19 @@ export async function runSql(db: D1Shim, sql: string, ...values: unknown[]): Pro
   await db.prepare(sql).bind(...values).run()
 }
 
+// Records every SQL string the code under test prepares (both serial reads and
+// statements that ride a batch), so a test can assert on the shape of the query,
+// not just on the response it produced.
+export function captureSql(db: D1Shim): string[] {
+  const seen: string[] = []
+  const realPrepare = db.prepare.bind(db)
+  db.prepare = (sql: string) => {
+    seen.push(sql.replace(/\s+/g, ' ').trim())
+    return realPrepare(sql)
+  }
+  return seen
+}
+
 export async function queryRows(
   db: D1Shim,
   sql: string,

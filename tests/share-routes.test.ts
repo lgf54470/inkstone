@@ -18,7 +18,7 @@ import { hashPassword } from '../src/worker/lib/password'
 import { computeVisitorFingerprint } from '../src/worker/lib/share-analytics'
 import { purgeExpiredOperationalData } from '../src/worker/lib/maintenance'
 import { shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
-import { createD1Database as createDb, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
+import { createD1Database as createDb, captureSql, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
 const DB_ENV = { env: { DB: null as unknown as D1Database, VISIT_FP_SECRET: undefined as string | undefined } }
@@ -678,6 +678,39 @@ describe('share analytics routes (real D1)', () => {
     expect(body.timeline.length).toBe(12)
     expect(body.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(0)
     expect(body.timeline[0].timestamp).toBeGreaterThan(0)
+  })
+
+  it('answers a global range=all with SQL aggregation instead of fetching every visit row', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'pd-g' })
+    await seedVisit(db, { note_id: n1, slug: 'pd-g', visited_at: Date.now() - 800 * 86_400_000, visitor_fp: 'fp-pd-g1' })
+    await seedVisit(db, { note_id: n1, slug: 'pd-g', visited_at: Date.now() - 60_000, visitor_fp: 'fp-pd-g2' })
+    const statements = captureSql(db)
+
+    const body = await (await request(makeApp(), '/api/share/analytics/global?range=all')).json()
+    expect(body.totalViews).toBe(2)
+    expect(body.totalVisitors).toBe(2)
+    expect(body.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(2)
+    expect(body.topNotes[0].views).toBe(2)
+    expect(statements.some((sql) => sql.includes('GROUP BY'))).toBe(true)
+    expect(statements.filter((sql) => /^SELECT visited_at, visitor_fp/.test(sql))).toEqual([])
+  })
+
+  it('answers a per-note range=all with SQL aggregation instead of fetching every visit row', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { id: 'pd-note-1' })
+    await seedShare(db, { note_id: n1, slug: 'pd-n' })
+    await seedVisit(db, { note_id: n1, slug: 'pd-n', visited_at: Date.now() - 800 * 86_400_000, visitor_fp: 'fp-pd-n1' })
+    await seedVisit(db, { note_id: n1, slug: 'pd-n', visited_at: Date.now() - 60_000, visitor_fp: 'fp-pd-n2' })
+    const statements = captureSql(db)
+
+    const body = await (await request(makeApp(), '/api/share/analytics/note/pd-note-1?range=all')).json()
+    expect(body.totalViews).toBe(2)
+    expect(body.totalVisitors).toBe(2)
+    expect(body.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(2)
+    expect(statements.some((sql) => sql.includes('GROUP BY'))).toBe(true)
+    expect(statements.filter((sql) => /^SELECT visited_at, visitor_fp/.test(sql))).toEqual([])
   })
 
   it('computes per-note analytics scoped to the note', async () => {

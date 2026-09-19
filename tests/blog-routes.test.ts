@@ -15,7 +15,7 @@ import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { blogManageRoutes, blogPublicRoutes } from '../src/worker/routes/blog'
-import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
+import { createD1Database as createDb, captureSql, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
 const DB_ENV = { env: { DB: null as unknown as D1Database, VISIT_FP_SECRET: undefined as string | undefined } }
@@ -584,8 +584,7 @@ describe('blog analytics routes (real D1)', () => {
     expect(analytics.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(3)
   })
 
-  it('keeps an empty range=all window recent rather than starting at epoch', async () => {
-    const db = await makeDb()
+  it('keeps an empty range=all window recent rather than starting at epoch', async () => {    const db = await makeDb()
     await seedUser(db)
     await seedBlogPost(db, { slug: 'quiet-post' })
 
@@ -593,6 +592,23 @@ describe('blog analytics routes (real D1)', () => {
     expect(analytics.timeline.length).toBe(12)
     expect(analytics.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(0)
     expect(analytics.timeline[0].timestamp).toBeGreaterThan(0)
+  })
+
+  it('estimates the breakdown from stored post views while no visit was logged', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'legacy-post', views: 20 })
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=all')).json()
+    expect(analytics.totalViews).toBe(20)
+    expect(analytics.totalVisitors).toBe(15)
+    expect(analytics.topCountries).toEqual([{ name: 'CN', count: 20, percentage: 100 }])
+    expect(analytics.devices.find((d: { name: string }) => d.name === 'desktop')).toEqual({
+      name: 'desktop', count: 12, percentage: 60,
+    })
+    expect(analytics.osList.find((o: { name: string }) => o.name === 'iOS')).toEqual({
+      name: 'iOS', count: 4, percentage: 20,
+    })
   })
 
 
@@ -626,7 +642,25 @@ describe('blog analytics routes (real D1)', () => {
     expect(analytics.topPosts[0].slug).toBe('stats-post')
   })
 
+  it('answers range=all with SQL aggregation instead of fetching every visit row', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const { id, slug } = await seedBlogPost(db, { slug: 'push-post' })
+    await seedVisitAt(db, id, slug, Date.now() - 800 * 86_400_000, 'fp-pd-1')
+    await seedVisitAt(db, id, slug, Date.now() - 60_000, 'fp-pd-2')
+    const statements = captureSql(db)
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=all')).json()
+    expect(analytics.totalViews).toBe(2)
+    expect(analytics.totalVisitors).toBe(2)
+    expect(analytics.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(2)
+    expect(analytics.topPosts[0].views).toBe(2)
+    expect(statements.some((sql) => sql.includes('GROUP BY'))).toBe(true)
+    expect(statements.filter((sql) => /^SELECT visited_at, visitor_fp/.test(sql))).toEqual([])
+  })
+
   it('deletes visit logs by type', async () => {
+
     const db = await makeDb()
     await seedUser(db)
     const { id, slug } = await seedBlogPost(db, { slug: 'clean-post' })
