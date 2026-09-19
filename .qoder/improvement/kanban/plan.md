@@ -203,6 +203,8 @@
 
 ### 功能类缺口（需产品决策，登记不施工）
 
+> 2026-09-19 更新：用户指令「全做，顺序自己定义」，本清单自第六批起逐项施工，产品决策由执行代理自决并在各条登记；此处保留原始判据与行号，不再代表「不施工」。
+
 1. 视图不可管理：`kanban-view-tabs.tsx:87-109` 只有 `onSelectView`，无新增/重命名/复制/删除/排序视图；`:83` 的 `flex flex-wrap` 在页签多或视图名长时换行撑高头部（第三方方案第三批原行 30 的后半，核验版未删但合并时掉出台账）
 2. 表格列的 schema 编辑：`data.columns` 全仓只有两个写入点且都是「追加选项」（`kanban-root-hooks.ts:106-108,273-274`），无重命名/改类型/增删列，`kanbanColumnWidth()` 按类型算而不落盘——即 K2-01 收了 review #20 方案里的「显隐 + 行内编辑 + 表头排序」，未收「重命名/类型/列宽与列序持久化」，收口时未登记剩余
 3. 空看板无引导/模板入口（空列只有一行 `preview.kanban_empty_column`）
@@ -213,6 +215,20 @@
 ### 性能类缺口（已实测，需单独批次）
 
 1. review #15：`data-kanban` 把整份栅栏体随每次预览重渲染重新编码进 DOM（`renderer/fence.ts:206`）。实测代价线性于板子大小：20/50/200 卡分别 4.8/8.6/26.0 ms 每次渲染（详见 K3-05 的表），jsdom 侧另有 +8.6 ms 的属性解析。修法必须同时服务 `kanbanBody()` 的五个 DOM 消费者（registry 挂载与 diff、错误态与只读表面的源码显示、导出/打印/分享静态快照、栅栏写回引用），并按同一形状覆盖 mindmap/excalidraw/bento-slides（`fence.ts:184,227`）——即「渲染期旁路 + 按 index 取回」的跨家族通道，走各目录公开入口，单独一批。验收方式风险：该批不能靠计时断言（并发门禁下必抖），需要以「同一文档渲染 N 次的属性字节数」这类确定性量测代替
+
+## 第六批 · 功能类缺口全量施工（2026-09-19）
+
+> 依据：第五批结案时「登记不施工」的功能类 6 条与性能类 1 条，用户指令「全做，顺序自己定义」——条目内的产品决策由本代理自决并逐条登记，不再回问。
+> 施工顺序：F-02 逾期语义 → F-03 筛选算子 → F-01 描述框限长/展开 → F-04 详情 markdown → F-05 视图 CRUD（含 `:83` 换行撑高）→ F-06 列 schema 编辑 → F-09 WIP 上限 → F-10 泳道 → F-12 归档 → F-13 评论/活动流 → F-08 CSV → F-07 空板引导 → F-14 长列表虚拟化 → P-01 栅栏体旁路。先做 F-02/F-03 是为了让「逾期」先成为可复用的判定，再进筛选与排序算子。
+
+- [x] F-02 日期徽章的逾期语义（功能类缺口第 4 条的「逾期 N 天着色与排序权重」前半，K3-03 明确留给本项）→ `cedff3ae`
+  - 事实：K3-03 之后三处视图共用同一 accessor，但「这一天是否已经过去」没有任何地方判定——卡片永远打印日期原文，`2026-03-10T12:00:00Z` 这类带时间的存量值还会被原样印给读者（K3-03 只规范化了读哪一天，没规范化打印口径）。完成判定同样散落：图表指标自己 `status === 'done'` 比字符串，导入自其他工具的板子把选项标签写进 `status` 时算不出完成率
+  - 进度：新增 `item-status.ts`（`isKanbanItemDone`，id 与标签两种存法都认）与 `date-fields.ts` 三个导出（`kanbanDayKey` 从 `calendar-helpers` 迁入并认带时间的 ISO、`getKanbanOverdueDays`、`readKanbanCardDate`）；新增 `ui/kanban-date-badge.tsx` 作卡片/列表/画廊三处唯一的日期徽章绘制点，`kanban-chart-view.tsx` 的完成数改调共享谓词，`calendar-helpers.ts` 删本地 `parseDateKey`。双语新增 `preview.kanban_overdue_days`
+  - 决策（自决）：逾期只认 deadline（`dueDate || endDate`），start 再早也不算迟到；已完成的卡片停止累计；措辞用单键 `{count}d overdue` / `逾期 {count} 天`。颜色的取舍得自实测：`--danger` 作为文字落在徽章自己的 `--bg-inset` 上，浅色主题 **3.38**、深色 5.97，小字号（`--text-11`）需 4.5，浅色不达；于是红色只给图标（图形门槛 3，3.38 通过），文字改 `--text-primary`（浅色 16.23），迟到那天保留在 `title` 并以 `data-kanban-overdue` 标注状态——WCAG 1.4.1 要求状态不得只靠颜色传达，这里由文字与图标形状共同承担
+  - 被否方案：①整枚徽章 `text-[var(--danger)]`（不达 AA，且测试里已有一条「小字不得取 danger 令牌」的守卫把它钉住）；②为徽章新增 `--danger-strong` 或加深 `--danger`（动共享令牌牵动全仓，`tokens:check` 漂移基线要重录，为一个局部徽章不值）；③`Intl.RelativeTimeFormat`（只会说「3 天前」，丢掉「逾期」这层语义，且 `t()` 无复数支持，两键方案同样不如一句话说得清）；④把 tone 作 prop 交回三处视图各写一份（回到本次要消灭的三份拷贝）
+  - 新增生产文件两条的必要性：`item-status.ts` 15 行——`date-fields.ts` 不能 import `filter-sort.ts`（F-03 将建立这条边，成环即死），而该谓词被指标与逾期两处共用；`ui/kanban-date-badge.tsx`——卡片与画廊的 chip 逐字符相同、列表为近似拷贝，第三次出现即抽取（AGENTS 规模条款），不是「为拆分而拆分」
+  - 验证：先红（`item-status` 模块不存在 + `kanban-label-language.test.ts` 2 例「the card draws no date badge」）后绿；补 21 例覆盖逾期判定（跨月 16 天、跨年 4 天、截止当天与未来为 0、`endDate` 计为 deadline、start-only 不迟到、`status:'Done'` 停止累计、带时间的 ISO 计 5 天、非日期值无意见）与三视图徽章一致性（文字、`title`、图标着色、小字色守卫）；kanban 50 文件 440 测试 ✅；typecheck ✅；13 项静态门禁 exit=0 ✅（`size:check` 两次拦下测试内 describe 回调 63→73 行，把 helpers 提到模块作用域并将四段重复断言收进 `expectOnEverySurface` 后通过，**未** resnapshot baseline）；`comments:check` 白名单重算 597 文件 / 3876 条；变异自检 11 次（10 杀 + 1 对照组「done 集合换序」存活）全部 restore-verified；全量 test:unit（串行，最终树，start 23:11:45 > 最后编辑 23:08）257 文件 **2086** 测试 ✅
+  - 局限：①「逾期 + 排序权重」只做了前半——日期列排序仍按字符串比较，判为「按解析后的日键比较、空值排末」需要列类型，而 `applyKanbanSorts(items, sorts)` 拿不到它，故整条并入 F-03 的算子表；②`data-kanban-date`/`data-kanban-overdue` 尚无浏览器门禁断言（`e2e-visual.mjs` 的看板场景以 `[role="table"]` 为「内容已到」判据，从不打开看板视图），像素层无证据；③仓内另有多处既有的 `--danger` 小字号文字（如 sidebar 标签选择上限提示、批量条删除项）同样落在浅色 3.38 下，按「不顺手修无关问题」未动，与 share 批次登记的 `*-subtle` 通病同类，待单独裁决
 
 ## 进度日志
 
@@ -286,3 +302,4 @@
 | 2026-09-19 | K3-04 画廊封面按需加载 | 32d79f60 | 看板模块两处 `<img>` 里唯一缺加载提示的那处（模态放大图刻意不改，本就该立即加载）：`GalleryCover` 补 `loading='lazy' decoding='async'`，与 `renderer/media.ts` 对正文图片的既有约定同族——画廊封面是整档原图且网格可滚动，此前首屏一画即按卡片数全量下载。新增 `kanban-gallery-cover.test.ts` 3 例（先红 2，第三条「无图不画 `<img>`」防断言落在从未出现的元素上）。变异自检 4/4 全杀（去 loading／去 decoding／lazy→eager／占位分支改画图）；驱动脚本 `\Q..\E` 内方括号不得再转义，第四次最初因「pattern not found」未真正施加。typecheck ✅，13 项静态门禁 exit=0 ✅（白名单 595 文件 / 3857 条），全量 test:unit（串行，最终树，start 21:25:11 > 最后编辑 21:23:17）257 文件 **2068** 测试 ✅。局限：jsdom 只断属性，真实推迟下载无门禁（看板 e2e 栅栏 fixture 无图卡）|
 | 2026-09-19 | K3-05 `data-kanban` 双份存储实测与登记 | df371845（本行两处措辞由紧随其后的 docs 更正提交收口） | 结论＝指控成立、本批不施工。临时探针（20/50/200 卡，跑完即删）量得 `renderMarkdown` 相对空栅栏文档的差值 4.83/8.58/26.04 ms，栅栏体→属性编码 0.97/2.50/7.01 ms，线性于板子大小；jsdom 侧同一份 HTML 带属性 10.22 ms vs 去属性 1.59 ms。不施工原因：该属性是 `kanbanBody()` 的唯一载体（registry 挂载与 diff、错误态/只读源码显示、导出/打印/分享快照、栅栏写回引用共五处 DOM 消费者），且 mindmap/excalidraw/bento-slides 同形状，去掉它属跨模块架构改动 → 新增「性能类缺口（已实测，需单独批次）」第 1 条，记明修法约束与「不能靠计时断言验收」的风险。被否方案三条（记忆化编码／属性存原始 JSON／只存长度哈希）各附理由。顺带就地结案功能类缺口第 6 条的「history 合并窗口」：`kanban-history.ts` 只有 30 步上限、全模块无时间窗合并，K-22 与 K3-01 草稿化后一次 `commitData` 恰一次用户动作。本批为 docs：pre-commit 的 11 项静态门禁在提交时实跑并全绿；`test:unit` 未重跑（无 src 改动，最后一次全量绿运行属 32d79f60 的 257 文件 2068 测试） |
 | 2026-09-19 | K4-01 图表指标行去掉 md:grid-cols-4 | 8a24bf5a | 功能类缺口第 6 条按「缺陷 vs 产品决策」拆半：栅格半项判为可视化缺陷就地修（只画 2 卡却声明 4 列，md 以上右半空轨道），描述框限长/展开态留注册。删 `md:grid-cols-4`；不补 3/4 号指标卡（被否：为对齐类名造内容）。新增 1 例探针「声明列数 ≤ 实画卡片数」，先红 `expected 4 to be less than or equal to 2`；变异自检 4 次（复原 md 类／`grid-cols-3`／删尽 `grid-cols` 由存在性断言接住＝3 杀，加第 3 张卡仍留 2 列＝对照组须绿）。typecheck ✅，13 项静态门禁 exit=0 ✅（comments 重算 595 文件 / 3860 条，+3 行；vendor/budget 在 build 之后跑），全量 test:unit（串行，最终树，start 22:01:38 > 最后编辑 21:57:14）257 文件 **2069** 测试 ✅。局限：jsdom 不布局，像素层无浏览器证据，视觉门禁未覆盖图表指标行 |
+| 2026-09-19 | F-02 日期徽章逾期语义 | cedff3ae | 第六批首项（功能类缺口第 4 条的逾期半项）。新增 `item-status.ts` + `date-fields.ts` 三导出（`kanbanDayKey`/`getKanbanOverdueDays`/`readKanbanCardDate`）+ `ui/kanban-date-badge.tsx` 单点渲染，卡片/列表/画廊三处 chip 拷贝归一，图表完成数改调共享谓词，日历助手删本地 `parseDateKey`；双语新键 `preview.kanban_overdue_days`。决策（自决）：逾期只认 deadline、完成即停算；实测 `--danger` 小字在 `--bg-inset` 浅色仅 3.38 → 红色只给图标（图形门槛 3），文字取 `--text-primary`（16.23），状态由文字 + 图标 + `title` 三重承载。被否 4 案（整枚涂红／加深 `--danger` 或加 `--danger-strong` 令牌／`Intl.RelativeTimeFormat`／tone 交回三处）。先红后绿；`size:check` 两拦 describe 回调 63→73 行，helpers 提模块作用域 + 重复断言收进 `expectOnEverySurface` 后过，未 resnapshot baseline。typecheck ✅，13 项静态门禁 exit=0 ✅（白名单重算 597 文件 / 3876 条），变异自检 11 次（10 杀 + 1 对照组存活）全 restore-verified，全量 test:unit（串行，最终树，start 23:11:45 > 最后编辑 23:08）257 文件 **2086** 测试 ✅。局限：日期列排序权重转 F-03；徽章无浏览器门禁断言；仓内既有 `--danger` 小字通病未动 |
