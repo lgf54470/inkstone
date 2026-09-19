@@ -37,7 +37,7 @@
 | 22 | SH-23 | store 派生 `Map<noteId, ShareRow>`，行订阅改原始值 | P2 | ✅ | d291a2be |
 | 23 | SH-22 | 表格行 memo + 菜单 items 惰性构建 + folders Map | P2 | ✅ | 245c74ce |
 | 24 | SH-19 | App 启动瘦身：`/api/share/summary` 轻量端点 | P1 | ✅ | 2b04d5cc |
-| 25 | SH-20 | code-split：barrel 拆 store/modals 入口（保持 blog 现有 import 不破） | P1 | ✅ | 待回填 |
+| 25 | SH-20 | code-split：barrel 拆 store/modals 入口（保持 blog 现有 import 不破） | P1 | ✅ | 3d6496e0 |
 | 26 | SH-17a | 列表接口 5 个统计查询 `db.batch` 并行化（第一步，不拆端点） | P0 部分 | ⬜ | |
 | 27 | SH-28 | 实时访问日志补时间窗 + 文案改「最近访问」 | P2 | ⬜ | |
 | 28 | SH-30 | 侧栏计数口径（软删过滤/expiring 互斥/全时段标注）+ LIMIT 500 truncated | P2 | ⬜ | |
