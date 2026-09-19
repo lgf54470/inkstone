@@ -3,7 +3,7 @@ import { api } from '../../../lib/api'
 import { buildSearchIndex, ensureRomanized, needsRomanization, rankTracks } from '../music-search'
 import { collectTagIds } from '../music-utils'
 import { pushHistory } from './state'
-import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest } from './types'
+import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest, TrackMenuTarget } from './types'
 
 // Opening the hub, retrying, and several mutations all want the library at once;
 // one in-flight request is shared and a just-loaded library is trusted briefly.
@@ -77,8 +77,19 @@ export function setViewMode(set: MusicSet, viewMode: MusicViewMode): void {
 }
 
 // One menu instance for the whole hub; the rows only ever post requests to it.
-export function openTrackMenu(set: MusicSet, menu: TrackMenuRequest): void {
-  set({ trackMenu: menu })
+export function openTrackMenu(set: MusicSet, get: MusicGet, menu: TrackMenuRequest): void {
+  set({ trackMenu: { ...menu, target: withPlaylistIdentity(get(), menu.target) } })
+}
+
+// Rows only post the track; inside a playlist the item identity is restored here,
+// which is what lets the menu offer unlink and move actions on that row.
+function withPlaylistIdentity(state: MusicStoreState, target: TrackMenuTarget): TrackMenuTarget {
+  const scope = state.scope
+  if (target.playlistId || scope.kind !== 'playlist') return target
+  const item = state.playlists
+    .find((playlist) => playlist.id === scope.playlistId)
+    ?.items.find((entry) => entry.trackId === target.track.id)
+  return item ? { ...target, itemId: item.id, playlistId: scope.playlistId } : target
 }
 
 export function closeTrackMenu(set: MusicSet): void {

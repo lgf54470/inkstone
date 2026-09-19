@@ -98,6 +98,8 @@ export const messages = {
 'music.added_to_queue': 'Added to the queue',
 'music.add_to_playlist': 'Add to playlist',
 'music.remove_from_playlist': 'Remove from playlist',
+'music.move_up': 'Move up',
+'music.move_down': 'Move down',
 'music.added_to_playlist': 'Added to "{value0}"',
 'music.already_in_playlist': 'Already in "{value0}"',
 'music.removed_from_playlist': 'Removed from the playlist',

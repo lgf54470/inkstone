@@ -11,6 +11,10 @@ vi.mock('../../../lib/api', () => ({
         added: 2,
         skipped: trackIds.length - 2,
       })),
+      reorderPlaylist: vi.fn(async (playlistId: string, itemIds: string[]) => ({
+        id: playlistId,
+        items: itemIds.map((id, index) => ({ id, playlistId, trackId: `track-${id}`, sortOrder: index })),
+      })),
     },
   },
 }))
@@ -21,7 +25,8 @@ vi.mock('../music-feedback', () => ({
 }))
 
 import { api } from '../../../lib/api'
-import { addSelectionToPlaylist, createPlaylist, renamePlaylist } from './library-collections'
+import { toastMusicError } from '../music-feedback'
+import { addSelectionToPlaylist, createPlaylist, movePlaylistItem, renamePlaylist } from './library-collections'
 import type { MusicStoreState } from './types'
 
 function makeStore() {
@@ -82,5 +87,54 @@ describe('playlist multi-select add', () => {
     expect(merged.map((item) => item.trackId)).toEqual(['t9', 't1', 't2'])
     expect(merged.map((item) => item.sortOrder)).toEqual([0, 1, 2])
     expect(store.get().selectedIds).toEqual([])
+  })
+})
+
+describe('movePlaylistItem', () => {
+  function makePlaylistStore() {
+    let state = {
+      playlists: [{
+        id: 'p1',
+        name: 'Road',
+        trackCount: 3,
+        items: [
+          { id: 'i1', playlistId: 'p1', trackId: 't1', sortOrder: 0 },
+          { id: 'i2', playlistId: 'p1', trackId: 't2', sortOrder: 1 },
+          { id: 'i3', playlistId: 'p1', trackId: 't3', sortOrder: 2 },
+        ],
+      } as unknown as MusicPlaylistDetail],
+    } as unknown as MusicStoreState
+    return {
+      set: (patch: unknown) => {
+        const next = typeof patch === 'function' ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state) : (patch as Partial<MusicStoreState>)
+        state = { ...state, ...next }
+      },
+      get: () => state,
+    }
+  }
+
+  it('swaps the item with its neighbour and sends the full ordering', async () => {
+    vi.mocked(api.music.reorderPlaylist).mockClear()
+    const store = makePlaylistStore()
+    await movePlaylistItem(store.set, store.get, 'p1', 'i2', -1)
+    expect(api.music.reorderPlaylist).toHaveBeenCalledWith('p1', ['i2', 'i1', 'i3'])
+    expect(store.get().playlists[0].items.map((item) => item.id)).toEqual(['i2', 'i1', 'i3'])
+  })
+
+  it('drops a move past the boundary without touching the server', async () => {
+    vi.mocked(api.music.reorderPlaylist).mockClear()
+    const store = makePlaylistStore()
+    await movePlaylistItem(store.set, store.get, 'p1', 'i1', -1)
+    await movePlaylistItem(store.set, store.get, 'p1', 'i3', 1)
+    expect(api.music.reorderPlaylist).not.toHaveBeenCalled()
+    expect(store.get().playlists[0].items.map((item) => item.id)).toEqual(['i1', 'i2', 'i3'])
+  })
+
+  it('keeps the stored order when the server rejects the reorder', async () => {
+    vi.mocked(api.music.reorderPlaylist).mockRejectedValueOnce(new Error('conflict'))
+    const store = makePlaylistStore()
+    await movePlaylistItem(store.set, store.get, 'p1', 'i2', 1)
+    expect(store.get().playlists[0].items.map((item) => item.id)).toEqual(['i1', 'i2', 'i3'])
+    expect(toastMusicError).toHaveBeenCalled()
   })
 })

@@ -182,6 +182,26 @@ export async function removeFromPlaylist(set: MusicSet, playlistId: string, item
   }
 }
 
+// The reorder endpoint takes the complete item order, so a move is a local
+// neighbour swap sent whole; the response replaces the entry like a patch would.
+export async function movePlaylistItem(set: MusicSet, get: MusicGet, playlistId: string, itemId: string, delta: number): Promise<void> {
+  const playlist = get().playlists.find((entry) => entry.id === playlistId)
+  if (!playlist) return
+  const ordered = [...playlist.items].sort((a, b) => a.sortOrder - b.sortOrder)
+  const index = ordered.findIndex((item) => item.id === itemId)
+  const neighbour = index + delta
+  if (index < 0 || neighbour < 0 || neighbour >= ordered.length) return
+  const itemIds = ordered.map((item) => item.id)
+  const [moved] = itemIds.splice(index, 1)
+  itemIds.splice(neighbour, 0, moved)
+  try {
+    const updated = await api.music.reorderPlaylist(playlistId, itemIds)
+    set((state) => ({ playlists: state.playlists.map((entry) => (entry.id === playlistId ? updated : entry)) }))
+  } catch (error) {
+    toastMusicError(error, 'music.action_failed')
+  }
+}
+
 // addItem answers with the stored item id, so the row can be appended locally
 // instead of paying for a whole library reload after one tap.
 function mergePlaylistItems(set: MusicSet, playlistId: string, entries: { id: string; trackId: string }[]): void {

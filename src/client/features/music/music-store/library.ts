@@ -8,7 +8,7 @@ import { matchMissingCovers } from './library-covers'
 import { dismissDownload, dismissLibraryJob, downloadTracks, setTransfersOpen, setUploadTarget } from './transfers'
 import {
   addSelectionToPlaylist, addToPlaylist, createPlaylist, createTag, deletePlaylist, deleteTag, dismissUpload,
-  moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist, uploadFiles,
+  movePlaylistItem, moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist, uploadFiles,
 } from './library-collections'
 import { browseWebdav, deleteWebdavObjects, importWebdavFolder, importWebdavTrack } from './webdav'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
@@ -20,7 +20,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
   | 'createTag' | 'patchTag' | 'deleteTag'
-  | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'addToPlaylist' | 'removeFromPlaylist'
+  | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem'
   | 'uploadFiles' | 'dismissUpload'
   | 'downloadTracks' | 'dismissDownload' | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'>
 
@@ -33,7 +33,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     clearSearchHistory: () => clearSearchHistory(set),
     setSort: (sort) => setSort(set, sort),
     setViewMode: (mode) => setViewMode(set, mode),
-    openTrackMenu: (menu) => openTrackMenu(set, menu),
+    openTrackMenu: (menu) => openTrackMenu(set, get, menu),
     closeTrackMenu: () => closeTrackMenu(set),
     setSourceFilter: (filter) => setSourceFilter(set, filter),
     prepareRomanization: () => prepareRomanization(set, get),
@@ -58,8 +58,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     createPlaylist: (name, description) => createPlaylist(set, name, description),
     renamePlaylist: (id, name, description) => renamePlaylist(set, id, name, description),
     deletePlaylist: (id) => deletePlaylist(set, id),
-    addToPlaylist: (playlistId, trackId) => addToPlaylist(set, get, playlistId, trackId),
-    removeFromPlaylist: (playlistId, itemId) => removeFromPlaylist(set, playlistId, itemId),
+    ...playlistActions(set, get),
 
     uploadFiles: (files, target) => uploadFiles(set, get, files, target),
     browseWebdav: (path) => browseWebdav(set, path),
@@ -72,5 +71,14 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     dismissLibraryJob: (kind) => dismissLibraryJob(set, kind),
     setTransfersOpen: (open) => setTransfersOpen(set, open),
     setUploadTarget: (target) => setUploadTarget(set, target),
+  }
+}
+type PlaylistItemActions = Pick<MusicStoreState, 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem'>
+
+function playlistActions(set: MusicSet, get: MusicGet): PlaylistItemActions {
+  return {
+    addToPlaylist: (playlistId, trackId) => addToPlaylist(set, get, playlistId, trackId),
+    removeFromPlaylist: (playlistId, itemId) => removeFromPlaylist(set, playlistId, itemId),
+    movePlaylistItem: (playlistId, itemId, delta) => movePlaylistItem(set, get, playlistId, itemId, delta),
   }
 }

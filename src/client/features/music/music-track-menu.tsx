@@ -1,5 +1,5 @@
 import { useMemo, type RefObject } from 'react'
-import { Download, Heart, ListEnd, ListPlus, ListStart, PencilLine, Pin, Server, Tag, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Download, Heart, ListEnd, ListPlus, ListStart, PencilLine, Pin, Server, Tag, Trash2, X } from 'lucide-react'
 import type { MusicTag, MusicTrack } from '@shared/types'
 import { Menu, confirm, submenuFor, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
@@ -54,6 +54,7 @@ function useTrackMenuItems(
   const togglePin = useMusic((state) => state.togglePin)
   const patchTrack = useMusic((state) => state.patchTrack)
   const removeFromPlaylist = useMusic((state) => state.removeFromPlaylist)
+  const movePlaylistItem = useMusic((state) => state.movePlaylistItem)
   const deleteTrack = useMusic((state) => state.deleteTrack)
   const deleteWebdavFiles = useMusic((state) => state.deleteWebdavFiles)
   const downloadTracks = useMusic((state) => state.downloadTracks)
@@ -67,16 +68,7 @@ function useTrackMenuItems(
       toggleFavorite, togglePin, onEdit, downloadTracks,
     }
     const items = baseMenuItems(track, actions)
-    if (target.itemId && target.playlistId) {
-      const playlistId = target.playlistId
-      const itemId = target.itemId
-      items.push({
-        id: 'unlink',
-        label: t('music.remove_from_playlist'),
-        icon: <X size={14} />,
-        onSelect: wrap(() => void removeFromPlaylist(playlistId, itemId)),
-      })
-    }
+    items.push(...playlistMenuItems({ target, playlists, wrap, movePlaylistItem, removeFromPlaylist }))
     if (track.source === 'webdav') items.push(remoteDeleteItem(track, wrap, deleteWebdavFiles))
     items.push({
       id: 'delete',
@@ -87,7 +79,28 @@ function useTrackMenuItems(
       onSelect: wrap(() => confirmDeleteTrack(track, deleteTrack)),
     })
     return items
-  }, [target, playlists, tags, playCollection, addToQueue, addToPlaylist, toggleFavorite, togglePin, patchTrack, removeFromPlaylist, deleteTrack, deleteWebdavFiles, downloadTracks, onClose, onEdit])
+  }, [target, playlists, tags, playCollection, addToQueue, addToPlaylist, toggleFavorite, togglePin, patchTrack, removeFromPlaylist, movePlaylistItem, deleteTrack, deleteWebdavFiles, downloadTracks, onClose, onEdit])
+}
+
+// Rows inside a playlist carry an item identity; these are the order-scoped actions.
+function playlistMenuItems(context: {
+  target: TrackMenuTarget
+  playlists: { id: string; items: { id: string; sortOrder: number }[] }[]
+  wrap: MenuRunner
+  movePlaylistItem: (playlistId: string, itemId: string, delta: number) => Promise<void>
+  removeFromPlaylist: (playlistId: string, itemId: string) => Promise<void>
+}): MenuItem[] {
+  const { target, playlists, wrap, movePlaylistItem, removeFromPlaylist } = context
+  const playlistId = target.playlistId
+  const itemId = target.itemId
+  if (!playlistId || !itemId) return []
+  const ordered = [...(playlists.find((playlist) => playlist.id === playlistId)?.items ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
+  const position = ordered.findIndex((item) => item.id === itemId)
+  return [
+    { id: 'move-up', label: t('music.move_up'), icon: <ArrowUp size={14} />, separatorBefore: true, disabled: position <= 0, onSelect: wrap(() => void movePlaylistItem(playlistId, itemId, -1)) },
+    { id: 'move-down', label: t('music.move_down'), icon: <ArrowDown size={14} />, disabled: position < 0 || position >= ordered.length - 1, onSelect: wrap(() => void movePlaylistItem(playlistId, itemId, 1)) },
+    { id: 'unlink', label: t('music.remove_from_playlist'), icon: <X size={14} />, onSelect: wrap(() => void removeFromPlaylist(playlistId, itemId)) },
+  ]
 }
 
 interface TrackMenuActions {

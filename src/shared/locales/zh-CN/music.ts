@@ -98,6 +98,8 @@ export const messages = {
 'music.added_to_queue': '已添加到队列',
 'music.add_to_playlist': '添加到歌单',
 'music.remove_from_playlist': '从歌单移除',
+'music.move_up': '上移',
+'music.move_down': '下移',
 'music.added_to_playlist': '已添加到「{value0}」',
 'music.already_in_playlist': '已在「{value0}」中',
 'music.removed_from_playlist': '已从歌单移除',

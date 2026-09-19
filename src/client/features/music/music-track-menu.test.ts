@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vite
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
-import type { MusicTrack } from '@shared/types'
+import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { MusicTrackList } from './music-track-list'
 import { useMusic } from './music-store'
@@ -161,5 +161,45 @@ describe('track menu singleton items', () => {
       menuItem(t('music.play_all'))?.click()
     })
     expect(useMusic.getState().playCollection).toHaveBeenCalledWith(['t1', 't2'], 1)
+  })
+})
+
+describe('playlist track menu', () => {
+  async function openPlaylistMenu(rowIndex: number): Promise<ReturnType<typeof vi.fn>> {
+    const movePlaylistItem = vi.fn(async () => {})
+    useMusic.setState({
+      scope: { kind: 'playlist', playlistId: 'p1' },
+      playlists: [{
+        id: 'p1',
+        name: 'Road',
+        items: [
+          { id: 'i2', playlistId: 'p1', trackId: 't2', sortOrder: 0 },
+          { id: 'i1', playlistId: 'p1', trackId: 't1', sortOrder: 1 },
+        ],
+      } as unknown as MusicPlaylistDetail],
+      movePlaylistItem,
+    })
+    await mountList()
+    await act(async () => {
+      menuButtons()[rowIndex]?.click()
+    })
+    return movePlaylistItem
+  }
+
+  it('offers move and unlink entries carrying the row item identity', async () => {
+    await openPlaylistMenu(0) // row t1: second in the manual order, so move-down is at the boundary
+    expect(useMusic.getState().trackMenu?.target).toMatchObject({ track: tracks[0], itemId: 'i1', playlistId: 'p1' })
+    expect(menuItem(t('music.move_up'))).toBeDefined()
+    expect(menuItem(t('music.move_down'))?.disabled).toBe(true)
+    expect(menuItem(t('music.remove_from_playlist'))).toBeDefined()
+  })
+
+  it('running move up asks the store to move the item one step', async () => {
+    const movePlaylistItem = await openPlaylistMenu(0)
+    await act(async () => {
+      menuItem(t('music.move_up'))?.click()
+    })
+    expect(movePlaylistItem).toHaveBeenCalledWith('p1', 'i1', -1)
+    expect(useMusic.getState().trackMenu).toBeNull()
   })
 })

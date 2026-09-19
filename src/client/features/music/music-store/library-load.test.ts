@@ -11,7 +11,7 @@ vi.mock('../music-search', async (importOriginal) => {
 
 import { api } from '../../../lib/api'
 import { ensureRomanized } from '../music-search'
-import { loadLibrary, prepareRomanization, visibleTracks } from './library-load'
+import { loadLibrary, openTrackMenu, prepareRomanization, visibleTracks } from './library-load'
 import type { MusicSet, MusicStoreState } from './types'
 
 const libraryPayload = { tracks: [] as MusicTrack[], tags: [], playlists: [], stats: statsFixture() }
@@ -171,5 +171,49 @@ describe('prepareRomanization', () => {
 
     expect(seenMidPass.current).toEqual({ t1: 'yueguang partial' })
     expect(store.get().romanized).toEqual({ t1: 'yueguang yuegg final' })
+  })
+})
+
+function trackMenuStore(scope: MusicStoreState['scope']): MusicStoreState {
+  return {
+    scope,
+    tracks: [],
+    playlists: [{ id: 'p1', name: 'Road', items: [
+      { id: 'i1', playlistId: 'p1', trackId: 't3', sortOrder: 0 },
+      { id: 'i2', playlistId: 'p1', trackId: 't1', sortOrder: 1 },
+    ] }] as unknown as MusicStoreState['playlists'],
+    trackMenu: null,
+  } as unknown as MusicStoreState
+}
+
+function menuSetter(state: { current: MusicStoreState }): MusicSet {
+  return (patch) => {
+    const next = typeof patch === 'function'
+      ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state.current)
+      : (patch as Partial<MusicStoreState>)
+    state.current = { ...state.current, ...next }
+  }
+}
+
+describe('openTrackMenu playlist identity', () => {
+  it('fills the item identity so playlist rows expose playlist actions', () => {
+    const holder = { current: trackMenuStore({ kind: 'playlist', playlistId: 'p1' }) }
+    const track = { id: 't1', title: 'x' } as MusicTrack
+    openTrackMenu(menuSetter(holder), () => holder.current, { target: { track }, anchor: { x: 0, y: 0 } })
+    expect(holder.current.trackMenu?.target).toEqual({ track, itemId: 'i2', playlistId: 'p1' })
+  })
+
+  it('leaves the target untouched outside playlist scope', () => {
+    const holder = { current: trackMenuStore({ kind: 'all' }) }
+    const track = { id: 't1', title: 'x' } as MusicTrack
+    openTrackMenu(menuSetter(holder), () => holder.current, { target: { track }, anchor: { x: 0, y: 0 } })
+    expect(holder.current.trackMenu?.target).toEqual({ track })
+  })
+
+  it('keeps an explicitly provided identity', () => {
+    const holder = { current: trackMenuStore({ kind: 'playlist', playlistId: 'p1' }) }
+    const track = { id: 't1', title: 'x' } as MusicTrack
+    openTrackMenu(menuSetter(holder), () => holder.current, { target: { track, itemId: 'iX', playlistId: 'p9' }, anchor: { x: 0, y: 0 } })
+    expect(holder.current.trackMenu?.target).toEqual({ track, itemId: 'iX', playlistId: 'p9' })
   })
 })
