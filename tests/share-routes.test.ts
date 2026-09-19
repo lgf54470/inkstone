@@ -427,6 +427,49 @@ describe('share analytics routes (real D1)', () => {
     expect(body.filterStats.bots).toBe(1)
   })
 
+  it('sanitizes an unknown range to the 30d window instead of answering with full history', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'r-1' })
+    await seedVisit(db, { note_id: n1, slug: 'r-1', visited_at: Date.now() - 400 * 86_400_000, visitor_fp: 'fp-ancient' })
+    await seedVisit(db, { note_id: n1, slug: 'r-1', visited_at: Date.now() - 60_000, visitor_fp: 'fp-recent' })
+    const app = makeApp()
+
+    const body = await (await request(app, '/api/share/analytics/global?range=zzz')).json()
+    expect(body.range).toBe('30d')
+    expect(body.totalViews).toBe(1)
+    expect(body.timeline.length).toBe(30)
+  })
+
+  it('buckets range=all from the earliest visit instead of 1970', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'al-1' })
+    const oldTs = Date.now() - 800 * 86_400_000
+    await seedVisit(db, { note_id: n1, slug: 'al-1', visited_at: oldTs, visitor_fp: 'fp-a' })
+    await seedVisit(db, { note_id: n1, slug: 'al-1', visited_at: Date.now() - 400 * 86_400_000, visitor_fp: 'fp-b' })
+    await seedVisit(db, { note_id: n1, slug: 'al-1', visited_at: Date.now() - 60_000, visitor_fp: 'fp-c' })
+    const app = makeApp()
+
+    const body = await (await request(app, '/api/share/analytics/global?range=all')).json()
+    expect(body.totalViews).toBe(3)
+    expect(body.timeline.length).toBe(12)
+    expect(body.timeline[0].timestamp).toBe(oldTs)
+    expect(body.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(3)
+  })
+
+  it('keeps an empty range=all window recent rather than starting at epoch', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'mt-1' })
+    const app = makeApp()
+
+    const body = await (await request(app, '/api/share/analytics/global?range=all')).json()
+    expect(body.timeline.length).toBe(12)
+    expect(body.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(0)
+    expect(body.timeline[0].timestamp).toBeGreaterThan(0)
+  })
+
   it('computes per-note analytics scoped to the note', async () => {
     const db = await makeDb()
     const n1 = await seedNote(db, { title: 'Only this' })

@@ -7,6 +7,13 @@ import { ShareRow } from './shares'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+const SHARE_ANALYTICS_RANGES: string[] = ['24h', '7d', '30d', 'all']
+
+function shareRangeFrom(raw: string | undefined): ShareTimelineRange {
+  if (!raw) return '7d'
+  return (SHARE_ANALYTICS_RANGES.includes(raw) ? raw : '30d') as ShareTimelineRange
+}
+
 interface AnalyticsContext {
   range: ShareTimelineRange
   clause: string
@@ -61,6 +68,7 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
   shareManageRoutes.get('/analytics/global', async (c) => {
     const userId = c.get('userId')
     const ctx = analyticsContext(c)
+    await scopeAllRangeWindow(c.env.DB, ctx, { userId })
     const summary = await loadShareSummary(c.env.DB, userId, ctx.now)
     const rows = await loadRangeVisits(c.env.DB, { userId, startTs: ctx.startTs, clause: ctx.clause })
     const prevStats = await loadPrevVisitStats(c.env.DB, userId, ctx.prevStartTs, ctx.startTs, ctx.clause)
@@ -108,6 +116,7 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
     const ctx = analyticsContext(c)
     const row = await loadNoteShare(c.env.DB, userId, noteId)
     if (!row) throw ApiError.notFound('Share or note not found')
+    await scopeAllRangeWindow(c.env.DB, ctx, { userId, noteId })
     const rows = await loadRangeVisits(c.env.DB, { userId, noteId, startTs: ctx.startTs, clause: ctx.clause })
     const recentVisits = await loadRecentVisits(c.env.DB, {
       userId,
@@ -145,7 +154,7 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
 }
 
 function analyticsContext(c: { req: { query(key: string): string | undefined } }): AnalyticsContext {
-  const range = (c.req.query('range') || '7d') as ShareTimelineRange
+  const range = shareRangeFrom(c.req.query('range'))
   const filters: ShareFilterOptions = {
     excludeBots: c.req.query('excludeBots') !== 'false',
     excludeSelfReferrers: c.req.query('excludeSelf') === 'true',
@@ -163,6 +172,26 @@ function analyticsContext(c: { req: { query(key: string): string | undefined } }
     duration,
     prevStartTs: startTs > 0 ? startTs - duration : 0,
   }
+}
+
+async function scopeAllRangeWindow(
+  db: D1Database,
+  ctx: AnalyticsContext,
+  params: { userId: string; noteId?: string },
+): Promise<void> {
+  if (ctx.range !== 'all') return
+  const noteWhere = params.noteId ? 'note_id = ?1 AND user_id = ?2' : 'user_id = ?1'
+  const binds = params.noteId ? [params.noteId, params.userId] : [params.userId]
+  const minRow = await db.prepare(
+    `SELECT MIN(visited_at) as min_ts FROM share_visits WHERE ${noteWhere}`,
+  )
+    .bind(...binds)
+    .first<{ min_ts: number | null }>()
+  const startTs = minRow?.min_ts ?? ctx.now - 30 * DAY_MS
+  const duration = Math.max(ctx.now - startTs, DAY_MS)
+  ctx.startTs = startTs
+  ctx.duration = duration
+  ctx.prevStartTs = startTs - duration
 }
 
 async function loadShareSummary(db: D1Database, userId: string, now: number): Promise<{ total_shares: number; active_shares: number } | null> {
