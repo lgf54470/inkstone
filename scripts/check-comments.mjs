@@ -1980,10 +1980,30 @@ const allowed = new Map([
     '// server enforces this too by omitting `https:` from CSP img-src on /s/*.',
     '// Invalid URLs are skipped; the attribute keeps its original value.',
   ]],
+  ['src/client/features/share/share-store/filters.ts', [
+    '// The input is controlled by store state, so it stays responsive; only the',
+    '// reload waits, so a burst of keystrokes costs one request.',
+  ]],
   ['src/client/features/share/share-store/index.ts', [
     '// Feed the notes store\'s visibility projection (shared note ids) without',
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
+  ]],
+  ['src/client/features/share/share-store/loaders.ts', [
+    '// The same query is already on the wire: reuse it instead of a parallel duplicate.',
+    '// A different query makes the previous result stale: cancel it so it stops',
+    '// consuming bandwidth and cannot surface its failure as a toast.',
+    '// Compare the controller, not just the key: an aborted earlier run of the',
+    '// same query must not free the slot owned by the run that superseded it.',
+  ]],
+  ['src/client/features/share/share-store/search-load.test.ts', [
+    '// A leaked debounce timer from a failed assertion would fire into the next case.',
+    '// Async advancing lets the first load settle first; otherwise in-flight',
+    '// dedup would mask a leaked debounce timer as a harmless duplicate.',
+    '// params P',
+    '// aborts p1',
+    '// params P again, aborts p2',
+    '// p1/p2 settling runs their finally hooks while p3 still owns the slot.',
   ]],
   ['src/client/features/share/share-store/shares.ts', [
     '// Zero views on a paused row is the only client-side signal that this note has never been public.',

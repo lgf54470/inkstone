@@ -32,7 +32,7 @@
 | 17 | SH-11 | share 路由 LIKE 通配符转义（shares/visits/organizer 三处） | P3 | ✅ | 2ae84353 |
 | 18 | SH-12 | `DELETE /visits?type=all` 加 requireRecentAuth | P3 | ✅ | bf2c2f35 |
 | 19 | SH-13 | slug 一致性：抢注 409、撤销清 share_asset_sessions | P3 | ✅ | 7a6cf67c |
-| 20 | SH-18 | 搜索防抖 + AbortSignal + 在途去重 | P1 | ⬜ | |
+| 20 | SH-18 | 搜索防抖 + AbortSignal + 在途去重 | P1 | ✅ | 待回填 |
 | 21 | SH-21 | hub 打开重复拉 folders/tags；写操作全量重拉 → 定向 patch | P2 | ⬜ | |
 | 22 | SH-23 | store 派生 `Map<noteId, ShareRow>`，行订阅改原始值 | P2 | ⬜ | |
 | 23 | SH-22 | 表格行 memo + 菜单 items 惰性构建 + folders Map | P2 | ⬜ | |
@@ -98,3 +98,14 @@
 - 撤销残留：`revokeSharesForNotes` 事务内第一条改为按 shares 子查询删 `share_asset_sessions`（子查询必须在 shares 删除前读，故置首），其后 shares/visits 不变；count 仍只算 shares 行（解构占位 `[, sharesDeleted]`）。单篇 DELETE 路由、批量 revoke、lifecycle 共用此 helper，一处覆盖三入口。
 - 未做（超出行范围）：note_id 双建竞态（同笔记并发首建仍 500）台账未列，不夹带。
 - 验证：SH-13 三用例红→绿 53/53；tsc=0；10 门禁全绿（白名单同步）；串行全量 211 文件 / 1705 用例绿（REGRESSION_EXIT=0）。
+
+## 20 — SH-18 搜索防抖 + AbortSignal + 在途去重（2026-09-19）
+
+- 现象：`setSearch` 每次按键立即 `loadShares()`；旧请求不取消，只靠 `loadEpoch` 丢弃结果；同参数并发会重复打网络。
+- 修复：
+  - `share-store/loaders.ts`：`loadSharesImpl` 先按参数 JSON 去重（在途同参直接复用同一 promise），异参则 `abort()` 上一个 `AbortController` 并把 `signal` 传给 `api.share.list`（该参数早已存在，无需改 transport）；`runShareLoad` 拆出以过 50 行函数门禁，结束时按 key 释放在途槽位。
+  - `share-store/filters.ts`：`setSearch` 立即写 state（输入框保持受控响应）但 300ms 防抖后再 `loadShares`；`applyShareFilter`/`setFiltersImpl`/`setCategoryImpl`/`setFolderIdImpl`/`setTagImpl` 五条即时加载路径先 `cancelPendingSearchReload()`，避免类别/状态切换后泄漏的定时器再补一刀重复请求。
+  - 新增 `share-store/search-load.test.ts` 5 例：连打只发一次且带最终词；即时筛选替换待触发搜索（变异验证：去掉 cancel 该用例转红；初版同步 `advanceTimersByTime` 被在途去重掩盖，改 `advanceTimersByTimeAsync` 先结算首载）；异参顶替时旧 signal 已 abort 且其 reject 不弹 toast 不落 error；同参并发只发一次；完成后再查同参正常发出（防去重过紧）。
+- 验证：目标 20/20 绿；`tsc=0`；十门禁全 0（含 size 拆分两个 describe 回调后）。全量串行回归见下方提交记录。
+- 补：`runShareLoad` 参数收敛为单对象（AGENTS「参数超过 3 个改对象传参」）；释放在途槽位改按 `controller` 身份而非 key 比对——被中止的同参旧 run 不得释放继任 run 的槽位，新增第 6 例「an aborted run does not free the dedup slot of its replacement」锁住（变异验证：改回 key 比对即转红）。
+- 事故记录：验证变异时用 `git checkout --` 还原，误将未提交的 loaders.ts 整体退回 HEAD，第一次全量回归（1710/1711）唯一失败即此竞态产物；重写后以 `/tmp` 备份做变异还原，并跑第二次干净回归。

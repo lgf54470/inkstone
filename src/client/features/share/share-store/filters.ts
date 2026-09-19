@@ -1,6 +1,10 @@
 import type { ShareCategory } from '@shared/types'
 import type { ShareStoreState, SetShareStoreState } from './types'
 
+const SEARCH_DEBOUNCE_MS = 300
+
+let searchReloadTimer: ReturnType<typeof setTimeout> | undefined
+
 export const shareFiltersActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'setCategory' | 'setFolderId' | 'setTag' | 'setStatusFilter' | 'setSearch' | 'setSort' | 'setViewMode' | 'setFilters' | 'setRetentionSettings' | 'toggleSelect' | 'toggleSelectAll' | 'clearSelection'> => ({
   setRetentionSettings: (settings) => setRetentionSettingsImpl(settings, set),
   setFilters: (newFilters) => setFiltersImpl(newFilters, set, get),
@@ -8,7 +12,7 @@ export const shareFiltersActions = (set: SetShareStoreState, get: () => ShareSto
   setFolderId: (folderId) => setFolderIdImpl(folderId, set, get),
   setTag: (tag) => setTagImpl(tag, set, get),
   setStatusFilter: (statusFilter) => applyShareFilter(set, get, { statusFilter }),
-  setSearch: (search) => applyShareFilter(set, get, { search }),
+  setSearch: (search) => setSearchImpl(search, set, get),
   setSort: (sort) => applyShareFilter(set, get, { sort }),
   setViewMode: (viewMode) => set({ viewMode }),
   toggleSelect: (noteId) => set((state) => ({ selectedNoteIds: toggleSelectedId(state.selectedNoteIds, noteId) })),
@@ -17,8 +21,27 @@ export const shareFiltersActions = (set: SetShareStoreState, get: () => ShareSto
 })
 
 function applyShareFilter(set: SetShareStoreState, get: () => ShareStoreState, patch: Partial<ShareStoreState>): void {
+  cancelPendingSearchReload()
   set(patch)
   void get().loadShares()
+}
+
+function setSearchImpl(search: string, set: SetShareStoreState, get: () => ShareStoreState): void {
+  // The input is controlled by store state, so it stays responsive; only the
+  // reload waits, so a burst of keystrokes costs one request.
+  set({ search })
+  cancelPendingSearchReload()
+  searchReloadTimer = setTimeout(() => {
+    searchReloadTimer = undefined
+    void get().loadShares()
+  }, SEARCH_DEBOUNCE_MS)
+}
+
+function cancelPendingSearchReload(): void {
+  if (searchReloadTimer !== undefined) {
+    clearTimeout(searchReloadTimer)
+    searchReloadTimer = undefined
+  }
 }
 
 function toggleSelectedId(ids: Set<string>, noteId: string): Set<string> {
@@ -75,6 +98,7 @@ function setFiltersImpl(
     persistShareFilters(updated)
     return updated
   })
+  cancelPendingSearchReload()
   void get().loadShares()
 }
 
@@ -96,6 +120,7 @@ function setCategoryImpl(category: ShareCategory, set: SetShareStoreState, get: 
     selectedNoteIds: new Set(),
     statusFilter: statusForCategory(category),
   })
+  cancelPendingSearchReload()
   void get().loadShares()
 }
 
@@ -119,6 +144,7 @@ function setFolderIdImpl(folderId: string | null, set: SetShareStoreState, get: 
     statusFilter: 'all',
     selectedNoteIds: new Set(),
   })
+  cancelPendingSearchReload()
   void get().loadShares()
 }
 
@@ -130,5 +156,6 @@ function setTagImpl(tag: string | null, set: SetShareStoreState, get: () => Shar
     statusFilter: 'all',
     selectedNoteIds: new Set(),
   })
+  cancelPendingSearchReload()
   void get().loadShares()
 }
