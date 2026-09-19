@@ -23,3 +23,4 @@ registerMusicPlaylistRoutes(musicRoutes)
 registerMusicSettingsRoutes(musicRoutes)
 
 export { registerMusicPublicRoutes } from './public'
+export { musicPageRoutes } from './page'

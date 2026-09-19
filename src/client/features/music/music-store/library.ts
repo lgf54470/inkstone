@@ -9,7 +9,8 @@ import { dismissDownload, dismissLibraryJob, downloadTracks, setTransfersOpen, s
 import { setTracksOffline, syncOfflineTracks, toggleTrackOffline } from './offline'
 import {
   addSelectionToPlaylist, addToPlaylist, createPlaylist, createTag, deletePlaylist, deleteTag, dismissUpload,
-  movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist, uploadFiles,
+  movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist,
+  sharePlaylist, unsharePlaylist, uploadFiles,
 } from './library-collections'
 import { browseWebdav, deleteWebdavObjects, importWebdavFolder, importWebdavTrack } from './webdav'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
@@ -21,7 +22,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
   | 'createTag' | 'patchTag' | 'deleteTag'
-  | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
+  | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'sharePlaylist' | 'unsharePlaylist' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
   | 'uploadFiles' | 'dismissUpload'
   | 'downloadTracks' | 'dismissDownload' | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'
   | 'syncOfflineTracks' | 'toggleTrackOffline' | 'setTracksOffline'>
@@ -61,6 +62,8 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     createPlaylist: (name, description) => createPlaylist(set, name, description),
     renamePlaylist: (id, name, description) => renamePlaylist(set, id, name, description),
     deletePlaylist: (id) => deletePlaylist(set, id),
+    sharePlaylist: (id) => sharePlaylist(set, id),
+    unsharePlaylist: (id) => unsharePlaylist(set, id),
     ...playlistActions(set, get),
 
     uploadFiles: (files, target) => uploadFiles(set, get, files, target),

@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono'
-import type { MusicPlaylistDetail, MusicTag } from '@shared/types'
+import type { MusicPlaylistDetail, MusicTag, MusicTrack } from '@shared/types'
 import type { DemoState } from '../../state'
+import { newDemoId } from '../../state'
 import { apiError, jsonBody } from '../helpers/info'
 import { makePlaylist, makePlaylistItem, makeTag, savePlaylist } from '../helpers/music'
 
@@ -100,6 +101,44 @@ function deletePlaylistHandler(c: Context, state: DemoState): Response {
   return c.json({ ok: true as const })
 }
 
+function sharePlaylistHandler(c: Context, state: DemoState): Response {
+  const playlist = state.musicPlaylists.get(c.req.param('id') ?? '')
+  if (!playlist) return apiError(404, 'not_found', 'Playlist not found')
+  if (playlist.shareSlug) return c.json(playlist)
+  return c.json(savePlaylist(state, { ...playlist, shareSlug: `demo-${newDemoId()}`, updatedAt: Date.now() }))
+}
+
+function unsharePlaylistHandler(c: Context, state: DemoState): Response {
+  const playlist = state.musicPlaylists.get(c.req.param('id') ?? '')
+  if (!playlist) return apiError(404, 'not_found', 'Playlist not found')
+  return c.json(savePlaylist(state, { ...playlist, shareSlug: null, updatedAt: Date.now() }))
+}
+
+function publicPlaylistHandler(c: Context, state: DemoState): Response {
+  const slug = c.req.param('slug') ?? ''
+  const playlist = [...state.musicPlaylists.values()].find((entry) => entry.shareSlug === slug)
+  if (!playlist) return apiError(404, 'not_found', 'Playlist not found')
+  const tracks = playlist.items
+    .map((item) => state.musicTracks.get(item.trackId)?.track)
+    .filter((track): track is MusicTrack => Boolean(track))
+  return c.json({
+    name: playlist.name,
+    description: playlist.description,
+    tracks: tracks.map((track) => ({
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      durationMs: track.durationMs,
+      lyric: track.lyric,
+      coverUrl: track.coverUrl,
+      streamUrl: `/api/music/tracks/${encodeURIComponent(track.id)}/stream`,
+      tagIds: [],
+      createdAt: track.createdAt,
+    })),
+  })
+}
+
 async function addItemHandler(c: Context, state: DemoState): Promise<Response> {
   const playlist = state.musicPlaylists.get(c.req.param('id') ?? '')
   if (!playlist) return apiError(404, 'not_found', 'Playlist not found')
@@ -162,6 +201,9 @@ export function registerMusicOrganizerRoutes(app: Hono, state: DemoState): void 
   app.post('/api/music/playlists', (c) => createPlaylistHandler(c, state))
   app.patch('/api/music/playlists/:id', (c) => patchPlaylistHandler(c, state))
   app.delete('/api/music/playlists/:id', (c) => deletePlaylistHandler(c, state))
+  app.post('/api/music/playlists/:id/share', (c) => sharePlaylistHandler(c, state))
+  app.delete('/api/music/playlists/:id/share', (c) => unsharePlaylistHandler(c, state))
+  app.get('/api/blog/public/music/playlists/:slug', (c) => publicPlaylistHandler(c, state))
   app.post('/api/music/playlists/:id/items', (c) => addItemHandler(c, state))
   app.post('/api/music/playlists/:id/items/batch', (c) => addItemsHandler(c, state))
   app.patch('/api/music/playlists/:id/items', (c) => reorderItemsHandler(c, state))

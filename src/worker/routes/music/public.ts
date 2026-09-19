@@ -47,7 +47,7 @@ export function registerMusicPublicRoutes(routes: Hono<AppBindings>): void {
     }
     return c.json({
       enabled: true,
-      tracks: tracks.results.map((row) => toPublicTrack(row, origin, byTrack.get(row.id) ?? [])),
+      tracks: tracks.results.map((row) => toPublicTrack(row, origin, byTrack.get(row.id) ?? [], `${PUBLIC_MUSIC_PATH}/tracks/${row.id}`)),
       tags: tags.results.map((row) => ({ id: row.id, name: row.name, color: row.color, parentId: row.parent_id })),
       queue: toPublicQueue(playback, tracks.results),
     })
@@ -60,6 +60,40 @@ export function registerMusicPublicRoutes(routes: Hono<AppBindings>): void {
 
   routes.get('/tracks/:id/cover', async (c) => {
     const target = await loadPublicTrack(c, pathParam(c, 'id'))
+    return coverResponse(c.env, target.row, 'public, max-age=86400')
+  })
+
+  registerSharedPlaylistRoutes(routes)
+}
+
+// Per-playlist sharing is its own opt-in (M-51): these routes answer from the
+// playlist's share_slug alone, never the library-wide public toggle.
+function registerSharedPlaylistRoutes(routes: Hono<AppBindings>): void {
+  routes.get('/playlists/:slug', async (c) => {
+    const slug = pathParam(c, 'slug')
+    const playlist = await c.env.DB
+      .prepare('SELECT id, name, description FROM music_playlists WHERE share_slug = ?1')
+      .bind(slug).first<{ id: string; name: string; description: string }>()
+    if (!playlist) throw ApiError.notFound('Playlist not found')
+    const tracks = await c.env.DB
+      .prepare(`SELECT ${TRACK_COLUMNS} FROM music_playlist_items pi JOIN music_tracks t ON t.id = pi.track_id AND t.user_id = pi.user_id
+                WHERE pi.playlist_id = ?1 ORDER BY pi.sort_order ASC, pi.created_at ASC`)
+      .bind(playlist.id).all<MusicTrackRow>()
+    const origin = new URL(c.req.url).origin
+    return c.json({
+      name: playlist.name,
+      description: playlist.description,
+      tracks: tracks.results.map((row) => toPublicTrack(row, origin, [], `${PUBLIC_MUSIC_PATH}/playlists/${encodeURIComponent(slug)}/tracks/${row.id}`)),
+    })
+  })
+
+  routes.get('/playlists/:slug/tracks/:id/stream', async (c) => {
+    const target = await loadSharedPlaylistTrack(c, pathParam(c, 'slug'), pathParam(c, 'id'))
+    return streamTrackResponse(c, target.row, target.owner, { download: false, cacheControl: 'public, max-age=600' })
+  })
+
+  routes.get('/playlists/:slug/tracks/:id/cover', async (c) => {
+    const target = await loadSharedPlaylistTrack(c, pathParam(c, 'slug'), pathParam(c, 'id'))
     return coverResponse(c.env, target.row, 'public, max-age=86400')
   })
 }
@@ -93,11 +127,30 @@ async function loadPublicTrack(c: Context<AppBindings>, id: string): Promise<Pub
     .bind(id, scope.userId)
     .first<MusicTrackRow>()
   if (!row) throw ApiError.notFound('Track not found')
-  const owner = await c.env.DB.prepare('SELECT settings FROM users WHERE id = ?1').bind(scope.userId).first<{ settings: string }>()
-  return { row, owner: { userId: scope.userId, settingsRaw: owner?.settings ?? '{}' } }
+  const owner = await loadStreamOwner(c.env.DB, scope.userId)
+  return { row, owner }
 }
 
-function toPublicTrack(row: MusicTrackRow, origin: string, tagIds: string[]): Record<string, unknown> {
+// Membership is the authorization: the track must sit in the playlist this slug points at.
+async function loadSharedPlaylistTrack(c: Context<AppBindings>, slug: string, trackId: string): Promise<PublicTrackTarget> {
+  const row = await c.env.DB
+    .prepare(`SELECT ${TRACK_COLUMNS}, p.user_id AS owner_id FROM music_playlists p
+              JOIN music_playlist_items pi ON pi.playlist_id = p.id
+              JOIN music_tracks t ON t.id = pi.track_id AND t.user_id = p.user_id
+              WHERE p.share_slug = ?1 AND pi.track_id = ?2`)
+    .bind(slug, trackId)
+    .first<MusicTrackRow & { owner_id: string }>()
+  if (!row) throw ApiError.notFound('Track not found')
+  const owner = await loadStreamOwner(c.env.DB, row.owner_id)
+  return { row, owner }
+}
+
+async function loadStreamOwner(db: D1Database, userId: string): Promise<StreamOwner> {
+  const user = await db.prepare('SELECT settings FROM users WHERE id = ?1').bind(userId).first<{ settings: string }>()
+  return { userId, settingsRaw: user?.settings ?? '{}' }
+}
+
+function toPublicTrack(row: MusicTrackRow, origin: string, tagIds: string[], path: string): Record<string, unknown> {
   return {
     id: row.id,
     title: row.title,
@@ -105,8 +158,8 @@ function toPublicTrack(row: MusicTrackRow, origin: string, tagIds: string[]): Re
     album: row.album,
     durationMs: row.duration_ms,
     lyric: row.lyric,
-    coverUrl: row.cover_url ? `${origin}${PUBLIC_MUSIC_PATH}/tracks/${row.id}/cover` : null,
-    streamUrl: `${origin}${PUBLIC_MUSIC_PATH}/tracks/${row.id}/stream`,
+    coverUrl: row.cover_url ? `${origin}${path}/cover` : null,
+    streamUrl: `${origin}${path}/stream`,
     tagIds,
     createdAt: row.created_at,
   }

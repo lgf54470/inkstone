@@ -42,6 +42,7 @@ export const MUSIC_TABLE_STATEMENTS: readonly string[] = [
       description TEXT NOT NULL DEFAULT '',
       is_pinned INTEGER NOT NULL DEFAULT 0,
       is_favorite INTEGER NOT NULL DEFAULT 0,
+      share_slug TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
@@ -66,6 +67,7 @@ export const MUSIC_INDEX_STATEMENTS: readonly string[] = [
   'CREATE INDEX IF NOT EXISTS idx_music_tags_list ON music_tags(user_id, sort_order ASC)',
   'CREATE INDEX IF NOT EXISTS idx_music_track_tags_tag ON music_track_tags(user_id, tag_id)',
   'CREATE INDEX IF NOT EXISTS idx_music_playlists_list ON music_playlists(user_id, sort_order ASC)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_music_playlists_share ON music_playlists(share_slug)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_music_playlist_items_unique ON music_playlist_items(playlist_id, track_id)',
   'CREATE INDEX IF NOT EXISTS idx_music_playlist_items_list ON music_playlist_items(playlist_id, sort_order ASC)',
 ]

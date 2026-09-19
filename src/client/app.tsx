@@ -15,6 +15,9 @@ const AppShell = lazy(() =>
 const SharePage = lazy(() =>
   import('./features/share/share-page').then((module) => ({ default: module.SharePage })),
 )
+const MusicPlaylistSharePage = lazy(() =>
+  import('./features/music/music-share-page').then((module) => ({ default: module.MusicPlaylistSharePage })),
+)
 
 function useShareSlug(): string | null {
   const [shareSlug] = useState(() => {
@@ -22,6 +25,14 @@ function useShareSlug(): string | null {
     return match?.[1] ?? null
   })
   return shareSlug
+}
+
+function usePlaylistShareSlug(): string | null {
+  const [playlistSlug] = useState(() => {
+    const match = /^\/playlist\/([A-Za-z0-9_-]+)/.exec(location.pathname)
+    return match?.[1] ?? null
+  })
+  return playlistSlug
 }
 
 function useAppBoot(shareSlug: string | null) {
@@ -79,6 +90,19 @@ function ShareRoute({ slug }: { slug: string }) {
   )
 }
 
+function PlaylistShareRoute({ slug }: { slug: string }) {
+  return (
+    <>
+      <ErrorBoundary>
+        <Suspense fallback={<PageFallback />}>
+          <MusicPlaylistSharePage slug={slug} />
+        </Suspense>
+      </ErrorBoundary>
+      <Toaster />
+    </>
+  )
+}
+
 function AuthedShell() {
   const status = useSession((s) => s.status)
   return (
@@ -97,12 +121,23 @@ function AuthedShell() {
 export function App() {
   useLocale()
   const shareSlug = useShareSlug()
-  useAppBoot(shareSlug)
+  const playlistSlug = usePlaylistShareSlug()
+  useAppBoot(shareSlug ?? playlistSlug)
 
   if (shareSlug) {
     return (
       <>
         <ShareRoute slug={shareSlug} />
+        <ConfirmHost />
+        <PromptHost />
+      </>
+    )
+  }
+
+  if (playlistSlug) {
+    return (
+      <>
+        <PlaylistShareRoute slug={playlistSlug} />
         <ConfirmHost />
         <PromptHost />
       </>

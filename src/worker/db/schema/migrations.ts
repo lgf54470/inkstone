@@ -565,4 +565,14 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       'CREATE INDEX IF NOT EXISTS idx_music_tracks_recent_play ON music_tracks(user_id, last_played_at DESC)',
     ],
   },
+  {
+    // M-51: sharing is per playlist, so the public slug lives on the playlist row.
+    // NULL means not shared; the unique index tolerates many NULLs.
+    version: 38,
+    skipIfColumnExists: { table: 'music_playlists', column: 'share_slug' },
+    statements: [
+      `ALTER TABLE music_playlists ADD COLUMN share_slug TEXT`,
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_music_playlists_share ON music_playlists(share_slug)',
+    ],
+  },
 ]

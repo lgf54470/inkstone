@@ -15,6 +15,8 @@ vi.mock('../../../lib/api', () => ({
         id: playlistId,
         items: itemIds.map((id, index) => ({ id, playlistId, trackId: `track-${id}`, sortOrder: index })),
       })),
+      sharePlaylist: vi.fn(async (id: string) => ({ id, items: [], shareSlug: 'slug-1' })),
+      unsharePlaylist: vi.fn(async (id: string) => ({ id, items: [], shareSlug: null })),
     },
   },
 }))
@@ -25,8 +27,8 @@ vi.mock('../music-feedback', () => ({
 }))
 
 import { api } from '../../../lib/api'
-import { toastMusicError } from '../music-feedback'
-import { addSelectionToPlaylist, createPlaylist, movePlaylistItem, movePlaylistItemToIndex, renamePlaylist } from './library-collections'
+import { toastMusic, toastMusicError } from '../music-feedback'
+import { addSelectionToPlaylist, createPlaylist, movePlaylistItem, movePlaylistItemToIndex, renamePlaylist, sharePlaylist, unsharePlaylist } from './library-collections'
 import type { MusicStoreState } from './types'
 
 function makeStore() {
@@ -184,5 +186,35 @@ describe('movePlaylistItemToIndex', () => {
     const store = threeItemStore()
     await movePlaylistItemToIndex(store.set, store.get, 'p1', 'i2', 1)
     expect(api.music.reorderPlaylist).not.toHaveBeenCalled()
+  })
+})
+
+describe('playlist sharing (M-51)', () => {
+  function makeStoreWithPlaylist(shareSlug: string | null) {
+    const store = makeStore()
+    store.set({ playlists: [{ id: 'pl-1', name: 'Road', shareSlug, items: [] } as unknown as MusicPlaylistDetail] })
+    return store
+  }
+
+  it('sharePlaylist merges the updated playlist and hands back the slug', async () => {
+    const store = makeStoreWithPlaylist(null)
+    expect(await sharePlaylist(store.set, 'pl-1')).toBe('slug-1')
+    expect(store.get().playlists[0]?.shareSlug).toBe('slug-1')
+  })
+
+  it('sharePlaylist returns null and toasts on failure without touching state', async () => {
+    const store = makeStoreWithPlaylist(null)
+    vi.mocked(api.music.sharePlaylist).mockRejectedValueOnce(new Error('nope'))
+    expect(await sharePlaylist(store.set, 'pl-1')).toBeNull()
+    expect(toastMusicError).toHaveBeenCalled()
+    expect(store.get().playlists[0]?.shareSlug).toBeNull()
+  })
+
+  it('unsharePlaylist clears the slug locally and confirms with a toast', async () => {
+    const store = makeStoreWithPlaylist('slug-1')
+    await unsharePlaylist(store.set, 'pl-1')
+    expect(api.music.unsharePlaylist).toHaveBeenCalledWith('pl-1')
+    expect(store.get().playlists[0]?.shareSlug).toBeNull()
+    expect(toastMusic).toHaveBeenCalledWith('music.unshared_playlist')
   })
 })

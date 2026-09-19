@@ -48,6 +48,8 @@ export interface MusicPlaylist {
   description: string
   isPinned: boolean
   isFavorite: boolean
+  // M-51: set when the owner shares this playlist publicly; null means not shared.
+  shareSlug: string | null
   trackCount: number
   sortOrder: number
   createdAt: number

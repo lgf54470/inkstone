@@ -3,7 +3,7 @@ import { LIMITS } from '@shared/constants'
 import type { MusicPlaylistDetail } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
-import { newId } from '../../lib/id'
+import { newId, newSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { toPlaylist, toPlaylistItem } from './rows'
@@ -11,13 +11,15 @@ import type { MusicPlaylistItemRow, MusicPlaylistRow } from './rows'
 import { batchPlaylistItemsSchema, createPlaylistSchema, patchPlaylistSchema, playlistItemSchema, reorderPlaylistSchema } from './schemas'
 import { pathParam } from './params'
 
-const PLAYLIST_SELECT = 'id, name, description, is_pinned, is_favorite, sort_order, created_at, updated_at'
+const PLAYLIST_SELECT = 'id, name, description, is_pinned, is_favorite, share_slug, sort_order, created_at, updated_at'
 
 export function registerMusicPlaylistRoutes(routes: Hono<AppBindings>): void {
   routes.get('/playlists', requireAuth, (c) => listPlaylists(c))
   routes.post('/playlists', requireAuth, (c) => createPlaylist(c))
   routes.patch('/playlists/:id', requireAuth, (c) => patchPlaylist(c))
   routes.delete('/playlists/:id', requireAuth, (c) => deletePlaylist(c))
+  routes.post('/playlists/:id/share', requireAuth, (c) => sharePlaylist(c))
+  routes.delete('/playlists/:id/share', requireAuth, (c) => unsharePlaylist(c))
   routes.post('/playlists/:id/items', requireAuth, (c) => addItem(c))
   routes.post('/playlists/:id/items/batch', requireAuth, (c) => addItems(c))
   routes.patch('/playlists/:id/items', requireAuth, (c) => reorderItems(c))
@@ -77,6 +79,29 @@ async function deletePlaylist(c: Context<AppBindings>): Promise<Response> {
     c.env.DB.prepare('DELETE FROM music_playlists WHERE user_id = ?1 AND id = ?2').bind(userId, id),
   ])
   return c.json({ ok: true })
+}
+
+async function sharePlaylist(c: Context<AppBindings>): Promise<Response> {
+  const userId = c.get('userId')
+  const id = pathParam(c, 'id')
+  const row = await c.env.DB.prepare('SELECT share_slug FROM music_playlists WHERE user_id = ?1 AND id = ?2')
+    .bind(userId, id).first<{ share_slug: string | null }>()
+  if (!row) throw ApiError.notFound('Playlist not found')
+  // Idempotent: re-sharing keeps the link already handed out stable.
+  if (!row.share_slug) {
+    await c.env.DB.prepare('UPDATE music_playlists SET share_slug = ?1, updated_at = ?2 WHERE user_id = ?3 AND id = ?4')
+      .bind(newSlug(), Date.now(), userId, id).run()
+  }
+  return c.json(await loadPlaylist(c, userId, id))
+}
+
+async function unsharePlaylist(c: Context<AppBindings>): Promise<Response> {
+  const userId = c.get('userId')
+  const id = pathParam(c, 'id')
+  if (!(await playlistExists(c.env.DB, userId, id))) throw ApiError.notFound('Playlist not found')
+  await c.env.DB.prepare('UPDATE music_playlists SET share_slug = NULL, updated_at = ?1 WHERE user_id = ?2 AND id = ?3')
+    .bind(Date.now(), userId, id).run()
+  return c.json(await loadPlaylist(c, userId, id))
 }
 
 async function addItem(c: Context<AppBindings>): Promise<Response> {

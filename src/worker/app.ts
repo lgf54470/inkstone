@@ -22,7 +22,7 @@ import { blogManageRoutes, blogPublicRoutes } from './routes/blog'
 import { transferRoutes } from './routes/transfer'
 import { updateRoutes } from './routes/update'
 import { communityTemplatesRoutes } from './routes/community-templates'
-import { musicRoutes } from './routes/music'
+import { musicPageRoutes, musicRoutes } from './routes/music'
 import { mcpAuthorizeRoutes } from './routes/mcp-authorize'
 import { mcpSettingsRoutes } from './routes/mcp-settings'
 import type { AppBindings } from './env'
@@ -43,6 +43,7 @@ export function createApp() {
   })
 
   app.route('/s', sharePageRoutes)
+  app.route('/playlist', musicPageRoutes)
   app.route('/', mcpAuthorizeRoutes)
 
   app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw))
@@ -56,6 +57,10 @@ function registerDatabaseMiddleware(app: Hono<AppBindings>): void {
     await next()
   })
   app.use('/s/*', async (c, next) => {
+    c.set('database', await initializeDatabase(c.env))
+    await next()
+  })
+  app.use('/playlist/*', async (c, next) => {
     c.set('database', await initializeDatabase(c.env))
     await next()
   })

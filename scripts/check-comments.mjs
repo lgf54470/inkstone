@@ -1331,6 +1331,7 @@ const allowed = new Map([
     '// Stable callbacks: the memoised panels below must not re-render when a dialog opens.',
   ]],
   ['src/client/features/music/music-hub-playlists.tsx', [
+    '// A link that quietly failed to copy is worse than one that says it did not work.',
     '/* The active row\'s accent tint puts the dim tiers under AA, so its count takes the row\'s\n          accent — the one pairing the token system calibrates (accent as text on its own tint). */',
   ]],
   ['src/client/features/music/music-hub-sidebar.tsx', [
@@ -1451,10 +1452,21 @@ const allowed = new Map([
     '// Position drift is measured against the last point a save was scheduled or',
     '// flushed, so steady listening still persists every POSITION_STEP_MS.',
   ]],
+  ['src/client/features/music/music-share-page/index.ts', [
+    '// Public interface of the anonymous playlist-share module. Kept separate from',
+    '// the parent music module\'s index so the viewer stays a self-contained lazy',
+    '// chunk (app.tsx code-splits on this boundary and must not pull the library UI in).',
+  ]],
+  ['src/client/features/music/music-share-page/page.tsx', [
+    '// The anonymous half of M-51: a shared playlist opens for anyone at',
+    '// /playlist/:slug with no session, so this page never touches the music store.',
+    '/* Keyed on the track id: the browser restarts playback of the new src, and the\n            native controls stay the only transport a reader without a session needs. */',
+  ]],
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
     '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
     '// An absent description stays untouched: the sidebar rename only edits the name.',
+    '// The share endpoint is idempotent, so the slug a visitor already holds keeps working.',
     '// Multi-select actions: moving replaces the tag set, playlists append.',
     '// One request for the whole selection; the endpoint reports what it skipped.',
     '// The reorder endpoint takes the complete item order, so a move is a local',
@@ -4364,6 +4376,7 @@ const allowed = new Map([
     '// list views know a track has lyrics worth fetching lazily by id.',
     '// FEAT-9: stamped server-side by the play route, so the recently-played list',
     '// survives a device switch instead of living in one browser\'s preferences.',
+    '// M-51: set when the owner shares this playlist publicly; null means not shared.',
   ]],
   ['src/shared/types/notes.ts', [
     '/** True for categories shipped with the app; they cannot be renamed or deleted. */',
@@ -4465,6 +4478,8 @@ const allowed = new Map([
     '// library, keeping its object key — no object is moved or rewritten.',
     '// FEAT-9: the recently-played list must survive a device switch, so the last play',
     '// timestamp lives on the row instead of only in one browser\'s preferences.',
+    '// M-51: sharing is per playlist, so the public slug lives on the playlist row.',
+    '// NULL means not shared; the unique index tolerates many NULLs.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
@@ -4763,6 +4778,10 @@ const allowed = new Map([
     '// so the upstream-provided URL must never send the Worker to another origin —',
     '// including via redirects.',
   ]],
+  ['src/worker/routes/music/page.ts', [
+    '// The anonymous playlist page (M-51): the shell only decides the <title> and',
+    '// noindex; the viewer itself is the client app routed at /playlist/:slug.',
+  ]],
   ['src/worker/routes/music/playback.ts', [
     '// D1 allows at most 100 bound parameters per statement; ids are the tail of the bind list.',
     '// Shared with the public blog projection so both sides read a stored queue the same way.',
@@ -4770,6 +4789,7 @@ const allowed = new Map([
     '// chunk serially used to cost the whole queue\'s latency.',
   ]],
   ['src/worker/routes/music/playlists.ts', [
+    '// Idempotent: re-sharing keeps the link already handed out stable.',
     '// Existence, ownership and the cap probe share one read round trip; the write shares another.',
     '// Multi-select "add to playlist": one request for the whole selection. Ids the',
     '// user does not own or that are already inside the playlist are skipped, and the',
@@ -4778,7 +4798,10 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/music/public.ts', [
     '// Read-only projection of the owner\'s library for the blog player: no keys, sizes or flags.',
+    '// Per-playlist sharing is its own opt-in (M-51): these routes answer from the',
+    '// playlist\'s share_slug alone, never the library-wide public toggle.',
     '// The blog mirrors the queue the owner is listening to, so ids that left the library are dropped.',
+    '// Membership is the authorization: the track must sit in the playlist this slug points at.',
   ]],
   ['src/worker/routes/music/range.ts', [
     '// Workers KV cannot range-read server-side, so a ranged GET is served by streaming',
@@ -4957,6 +4980,14 @@ const allowed = new Map([
     '// Skeleton compares tag names and class tokens only (attribute order insensitive),',
     '// ignoring text: the root renderer emits i18n key literals without a provider in',
     '// tests, and both trees pin full output text via their own baseline snapshots.',
+  ]],
+  ['tests/music-playlist-share.test.ts', [
+    '// Manual order: second was added first, so the public page must show it first.',
+    '// The outside track sits in another playlist that was never shared: only',
+    '// the share_slug condition may keep it out of this link\'s reach.',
+    '// The SPA asset fallback would otherwise swallow /playlist/:slug before the',
+    '// worker ever renders its shell (title and noindex), so both deployments must',
+    '// keep the path worker-first.',
   ]],
   ['tests/music-routes.test.ts', [
     '// Records every statement the route prepares, so round-trip redundancy is assertable.',

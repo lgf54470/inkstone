@@ -14,6 +14,8 @@ run_worker_first = [
   "/api/*",
   "/s",
   "/s/*",
+  "/playlist",
+  "/playlist/*",
   "/authorize",
   "/authorize/*",
   "/oauth/*",

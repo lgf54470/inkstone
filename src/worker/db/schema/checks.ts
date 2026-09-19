@@ -57,7 +57,7 @@ export const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   music_tracks: ['id', 'user_id', 'title', 'artist', 'album', 'duration_ms', 'source', 'object_key', 'mime', 'size_bytes', 'cover_url', 'lyric', 'is_favorite', 'is_pinned', 'play_count', 'last_played_at', 'created_at', 'updated_at'],
   music_tags: ['id', 'user_id', 'name', 'color', 'parent_id', 'is_pinned', 'sort_order', 'created_at'],
   music_track_tags: ['user_id', 'track_id', 'tag_id'],
-  music_playlists: ['id', 'user_id', 'name', 'description', 'is_pinned', 'is_favorite', 'sort_order', 'created_at', 'updated_at'],
+  music_playlists: ['id', 'user_id', 'name', 'description', 'is_pinned', 'is_favorite', 'share_slug', 'sort_order', 'created_at', 'updated_at'],
   music_playlist_items: ['id', 'user_id', 'playlist_id', 'track_id', 'sort_order', 'created_at'],
   board_library: ['user_id', 'name', 'storage', 'object_key', 'size', 'sha256', 'updated_at'],
 } as const
@@ -200,6 +200,7 @@ export const REQUIRED_INDEXES = [
   'idx_music_tags_list',
   'idx_music_track_tags_tag',
   'idx_music_playlists_list',
+  'idx_music_playlists_share',
   'idx_music_playlist_items_unique',
   'idx_music_playlist_items_list',
 ] as const

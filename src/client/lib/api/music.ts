@@ -38,6 +38,25 @@ export interface MusicUploadResult {
   error: string | null
 }
 
+export interface PublicPlaylistTrack {
+  id: string
+  title: string
+  artist: string
+  album: string
+  durationMs: number
+  lyric: string | null
+  coverUrl: string | null
+  streamUrl: string
+  tagIds: string[]
+  createdAt: number
+}
+
+export interface PublicPlaylist {
+  name: string
+  description: string
+  tracks: PublicPlaylistTrack[]
+}
+
 export interface MusicWebdavListing {
   configured: boolean
   dir: string
@@ -66,6 +85,9 @@ export const music = {
     request<MusicTrack>('/api/music/webdav/import', { method: 'POST', body: input, timeoutMs: 30_000 }),
 
   library: () => request<MusicLibrary>('/api/music/library'),
+
+  publicPlaylist: (slug: string) =>
+    request<PublicPlaylist>(`/api/blog/public/music/playlists/${encodeURIComponent(slug)}`),
 
   publicSettings: () => request<{ enabled: boolean }>('/api/music/public-settings'),
 
@@ -109,6 +131,12 @@ export const music = {
 
   deletePlaylist: (id: string) =>
     request<{ ok: boolean }>(`/api/music/playlists/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  sharePlaylist: (id: string) =>
+    request<MusicPlaylistDetail>(`/api/music/playlists/${encodeURIComponent(id)}/share`, { method: 'POST', body: {} }),
+
+  unsharePlaylist: (id: string) =>
+    request<MusicPlaylistDetail>(`/api/music/playlists/${encodeURIComponent(id)}/share`, { method: 'DELETE' }),
 
   addPlaylistItem: (playlistId: string, trackId: string) =>
     request<{ id: string; added: boolean }>(`/api/music/playlists/${encodeURIComponent(playlistId)}/items`, {

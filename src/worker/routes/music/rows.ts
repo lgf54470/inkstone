@@ -42,6 +42,7 @@ export interface MusicPlaylistRow {
   description: string
   is_pinned: number
   is_favorite: number
+  share_slug: string | null
   sort_order: number
   created_at: number
   updated_at: number
@@ -117,6 +118,7 @@ export function toPlaylist(row: MusicPlaylistRow, items: MusicPlaylistItem[]): M
     description: row.description,
     isPinned: row.is_pinned === 1,
     isFavorite: row.is_favorite === 1,
+    shareSlug: row.share_slug ?? null,
     trackCount: items.length,
     sortOrder: row.sort_order,
     createdAt: row.created_at,

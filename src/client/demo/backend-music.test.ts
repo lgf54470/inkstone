@@ -137,6 +137,29 @@ describe('demo music playlists', () => {
     expect(after.tracks).toEqual([])
     expect(after.playlists[0].items).toEqual([])
   })
+
+  it('mirrors the worker share contract: stable slug, public view, revocation', async () => {
+    const backend = await authedBackend()
+    const track = await uploadTrack(backend)
+    const playlist = await call(backend, '/api/music/playlists', jsonInit({ name: 'Shared' }))
+    const playlistId = (await playlist.json()).id as string
+    await call(backend, `/api/music/playlists/${playlistId}/items`, jsonInit({ trackId: track.id }))
+
+    const first = await (await call(backend, `/api/music/playlists/${playlistId}/share`, { method: 'POST' })).json()
+    const second = await (await call(backend, `/api/music/playlists/${playlistId}/share`, { method: 'POST' })).json()
+    expect(first.shareSlug).toBeTruthy()
+    expect(second.shareSlug).toBe(first.shareSlug)
+
+    const page = await call(backend, `/api/blog/public/music/playlists/${first.shareSlug}`)
+    expect(page.status).toBe(200)
+    const body = await page.json()
+    expect(body.name).toBe('Shared')
+    expect(body.tracks.map((entry: { id: string }) => entry.id)).toEqual([track.id])
+
+    const revoked = await call(backend, `/api/music/playlists/${playlistId}/share`, { method: 'DELETE' })
+    expect((await revoked.json()).shareSlug).toBeNull()
+    expect((await call(backend, `/api/blog/public/music/playlists/${first.shareSlug}`)).status).toBe(404)
+  })
 })
 
 describe('demo music batch endpoints', () => {

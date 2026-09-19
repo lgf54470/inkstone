@@ -25,3 +25,5 @@ registerShareVisitsRoutes(shareManageRoutes)
 registerShareNoteRoutes(shareManageRoutes)
 registerSharePublicRoutes(shareRoutes)
 registerSharePageRoutes(sharePageRoutes)
+
+export { renderShareShell } from './public'

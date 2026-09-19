@@ -106,6 +106,28 @@ export async function renamePlaylist(set: MusicSet, id: string, name: string, de
   }
 }
 
+// The share endpoint is idempotent, so the slug a visitor already holds keeps working.
+export async function sharePlaylist(set: MusicSet, id: string): Promise<string | null> {
+  try {
+    const updated = await api.music.sharePlaylist(id)
+    set((state) => ({ playlists: state.playlists.map((entry) => (entry.id === id ? updated : entry)) }))
+    return updated.shareSlug
+  } catch (error) {
+    toastMusicError(error, 'music.action_failed')
+    return null
+  }
+}
+
+export async function unsharePlaylist(set: MusicSet, id: string): Promise<void> {
+  try {
+    const updated = await api.music.unsharePlaylist(id)
+    set((state) => ({ playlists: state.playlists.map((entry) => (entry.id === id ? updated : entry)) }))
+    toastMusic('music.unshared_playlist')
+  } catch (error) {
+    toastMusicError(error, 'music.action_failed')
+  }
+}
+
 export async function deletePlaylist(set: MusicSet, id: string): Promise<void> {
   try {
     await api.music.deletePlaylist(id)

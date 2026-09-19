@@ -37,6 +37,7 @@ export function makePlaylist(name: string, description: string): MusicPlaylistDe
     description,
     isPinned: false,
     isFavorite: false,
+    shareSlug: null,
     trackCount: 0,
     sortOrder: 0,
     createdAt: now,

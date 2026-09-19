@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, Heart, ListMusic, MoreHorizontal, PencilLine, Pin, Play, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Heart, Link2, Link2Off, ListMusic, MoreHorizontal, PencilLine, Pin, Play, Plus, Trash2 } from 'lucide-react'
 import type { MusicPlaylistDetail } from '@shared/types'
 import { IconButton } from '../../components/primitives'
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { MusicArtwork } from './music-artwork'
+import { toastMusic, toastMusicNotice } from './music-feedback'
 import { useMusic } from './music-store'
 import { playlistCoverUrl } from './music-utils'
 
@@ -19,26 +20,13 @@ export function MusicHubPlaylists({ onCreate }: { onCreate: () => void }) {
   const playCollection = useMusic((state) => state.playCollection)
   const renamePlaylist = useMusic((state) => state.renamePlaylist)
   const deletePlaylist = useMusic((state) => state.deletePlaylist)
+  const sharePlaylist = useMusic((state) => state.sharePlaylist)
+  const unsharePlaylist = useMusic((state) => state.unsharePlaylist)
   const [open, setOpen] = useState(true)
 
   return (
     <section aria-label={t('music.section_playlists')} className='pt-1'>
-      <div className='group/head flex items-center justify-between px-2 pb-1'>
-        <button
-          type='button'
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          className='flex items-center gap-1 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'
-        >
-          {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          <span>{t('music.section_playlists')}</span>
-        </button>
-        <Tooltip label={t('music.new_playlist')} side='left'>
-          <IconButton label={t('music.new_playlist')} size='sm' onClick={onCreate} className='opacity-0 group-hover/head:opacity-100 group-focus-within/head:opacity-100'>
-            <Plus size={13} />
-          </IconButton>
-        </Tooltip>
-      </div>
+      <SectionHead open={open} onToggle={() => setOpen((value) => !value)} onCreate={onCreate} />
 
       {open && (
         <div className='space-y-0.5 pt-0.5'>
@@ -53,12 +41,39 @@ export function MusicHubPlaylists({ onCreate }: { onCreate: () => void }) {
                 onSelect={() => setScope({ kind: 'playlist', playlistId: playlist.id })}
                 onPlay={() => void playCollection(playlist.items.map((item) => item.trackId))}
                 onRename={(name) => void renamePlaylist(playlist.id, name)}
+                onShare={() => void sharePlaylistToClipboard(sharePlaylist, playlist)}
+                onUnshare={() => void unsharePlaylist(playlist.id)}
                 onDelete={() => confirmDeletePlaylist(playlist, deletePlaylist)}
               />
             ))}
         </div>
       )}
     </section>
+  )
+}
+
+function SectionHead({ open, onToggle, onCreate }: {
+  open: boolean
+  onToggle: () => void
+  onCreate: () => void
+}) {
+  return (
+    <div className='group/head flex items-center justify-between px-2 pb-1'>
+      <button
+        type='button'
+        onClick={onToggle}
+        aria-expanded={open}
+        className='flex items-center gap-1 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        <span>{t('music.section_playlists')}</span>
+      </button>
+      <Tooltip label={t('music.new_playlist')} side='left'>
+        <IconButton label={t('music.new_playlist')} size='sm' onClick={onCreate} className='opacity-0 group-hover/head:opacity-100 group-focus-within/head:opacity-100'>
+          <Plus size={13} />
+        </IconButton>
+      </Tooltip>
+    </div>
   )
 }
 
@@ -73,6 +88,23 @@ function confirmDeletePlaylist(playlist: MusicPlaylistDetail, deletePlaylist: (i
   })
 }
 
+async function sharePlaylistToClipboard(
+  sharePlaylist: (id: string) => Promise<string | null>,
+  playlist: MusicPlaylistDetail,
+): Promise<void> {
+  const slug = await sharePlaylist(playlist.id)
+  if (!slug) return
+  try {
+    if (!navigator.clipboard) throw new Error('clipboard unavailable')
+    await navigator.clipboard.writeText(`${window.location.origin}/playlist/${slug}`)
+    toastMusic('music.share_link_copied')
+  } catch (error) {
+    // A link that quietly failed to copy is worse than one that says it did not work.
+    console.warn('[inkstone] failed to copy the playlist share link', error)
+    toastMusicNotice('music.share_link_copy_failed')
+  }
+}
+
 function PlaylistRow({
   playlist,
   coverUrl,
@@ -80,6 +112,8 @@ function PlaylistRow({
   onSelect,
   onPlay,
   onRename,
+  onShare,
+  onUnshare,
   onDelete,
 }: {
   playlist: MusicPlaylistDetail
@@ -88,6 +122,8 @@ function PlaylistRow({
   onSelect: () => void
   onPlay: () => void
   onRename: (name: string) => void
+  onShare: () => void
+  onUnshare: () => void
   onDelete: () => void
 }) {
   const menu = useContextMenu()
@@ -98,6 +134,9 @@ function PlaylistRow({
   const items: MenuItem[] = [
     { id: 'play', label: t('music.play_all'), icon: <Play size={14} />, onSelect: onPlay },
     { id: 'rename', label: t('music.rename'), icon: <PencilLine size={14} />, separatorBefore: true, onSelect: () => setDraft(playlist.name) },
+    playlist.shareSlug
+      ? { id: 'unshare', label: t('music.unshare_playlist'), icon: <Link2Off size={14} />, separatorBefore: true, onSelect: onUnshare }
+      : { id: 'share', label: t('music.share_playlist'), icon: <Link2 size={14} />, separatorBefore: true, onSelect: onShare },
     { id: 'delete', label: t('music.delete_playlist'), icon: <Trash2 size={14} />, tone: 'danger', separatorBefore: true, onSelect: onDelete },
   ]
 
