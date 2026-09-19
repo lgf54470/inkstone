@@ -107,15 +107,16 @@ describe('visitor fingerprinting and privacy hashing', () => {
 })
 
 describe('custom slug validation', () => {
-  it('validates 3-64 character alphanumeric, hyphens, and underscores', () => {
+  it('validates 6-64 character alphanumeric, hyphens, and underscores', () => {
     expect(isValidCustomSlug('my-custom-note')).toBe(true)
     expect(isValidCustomSlug('Project_2026')).toBe(true)
-    expect(isValidCustomSlug('doc')).toBe(true)
+    expect(isValidCustomSlug('doc-page')).toBe(true)
     expect(isValidCustomSlug('a'.repeat(64))).toBe(true)
   })
 
   it('rejects invalid slug lengths and illegal characters', () => {
-    expect(isValidCustomSlug('no')).toBe(false) // too short (< 3)
+    expect(isValidCustomSlug('doc')).toBe(false) // too short (< 6)
+    expect(isValidCustomSlug('abcde')).toBe(false) // just below the 6-char floor
     expect(isValidCustomSlug('a'.repeat(65))).toBe(false) // too long (> 64)
     expect(isValidCustomSlug('my note')).toBe(false) // spaces
     expect(isValidCustomSlug('my/note')).toBe(false) // slashes

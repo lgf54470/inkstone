@@ -274,7 +274,7 @@ const RESERVED_SLUGS = new Set([
 export function isValidCustomSlug(slug: string): boolean {
   if (!slug || typeof slug !== 'string') return false
   const trimmed = slug.trim()
-  if (trimmed.length < 3 || trimmed.length > 64) return false
+  if (trimmed.length < 6 || trimmed.length > 64) return false
   if (RESERVED_SLUGS.has(trimmed.toLowerCase())) return false
   return /^[a-zA-Z0-9_-]+$/.test(trimmed)
 }

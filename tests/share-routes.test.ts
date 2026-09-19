@@ -212,10 +212,10 @@ describe('share note-share & upsert routes (real D1)', () => {
     const db = await makeDb()
     const n1 = await seedNote(db, {})
     const n2 = await seedNote(db, {})
-    await seedShare(db, { note_id: n1, slug: 'taken' })
+    await seedShare(db, { note_id: n1, slug: 'taken-slug' })
     const app = makeApp()
 
-    const res = await postJson(app, `/api/share/${n2}`, { customSlug: 'taken' })
+    const res = await postJson(app, `/api/share/${n2}`, { customSlug: 'taken-slug' })
     expect(res.status).toBe(409)
   })
 })
@@ -509,16 +509,19 @@ describe('share public note route (real D1)', () => {
     expect(body.author.name).toBe('Author')
   })
 
-  it('returns 403 for a disabled share and 404 for an expired one', async () => {
+  it('answers an identical 404 body for disabled, expired and unknown links (SH-07)', async () => {
     const db = await makeDb()
     const n1 = await seedNote(db, {})
     const n2 = await seedNote(db, {})
     await seedShare(db, { note_id: n1, slug: 'off-1', is_enabled: 0 })
-    await seedShare(db, { note_id: n2, slug: 'old-1', expires_at: H.now - 1000 })
+    await seedShare(db, { note_id: n2, slug: 'old-1', expires_at: Date.now() - 1000 })
     const app = makeApp()
 
-    expect((await postJson(app, '/api/public/off-1', {})).status).toBe(403)
-    expect((await postJson(app, '/api/public/old-1', {})).status).toBe(404)
+    const disabled = await (await postJson(app, '/api/public/off-1', {})).json()
+    const expired = await (await postJson(app, '/api/public/old-1', {})).json()
+    const missing = await (await postJson(app, '/api/public/nope-nope', {})).json()
+    expect(disabled).toEqual(missing)
+    expect(expired).toEqual(missing)
   })
 
   it('dedupes views per client IP, not per user-agent (SH-03)', async () => {
@@ -598,13 +601,11 @@ describe('share public note route (real D1)', () => {
     await seedShare(db, { note_id: n1, slug: 'pw-1', password_hash: shaOf('secret') })
     const app = makeApp()
 
-    const missing = await postJson(app, '/api/public/pw-1', {})
-    expect(missing.status).toBe(401)
-    expect((await missing.json()).error.code).toBe('password_required')
+    const missingBody = await (await postJson(app, '/api/public/pw-1', {})).json()
+    expect(missingBody.error.code).toBe('password_required')
 
-    const wrong = await postJson(app, '/api/public/pw-1', { password: 'nope' })
-    expect(wrong.status).toBe(401)
-    expect((await wrong.json()).error.code).toBe('password_invalid')
+    const wrongBody = await (await postJson(app, '/api/public/pw-1', { password: 'nope' })).json()
+    expect(wrongBody).toEqual(missingBody)
   })
 
   it('enforces the 6-character minimum on new passwords but keeps legacy 4-character ones verifiable', async () => {
@@ -821,5 +822,44 @@ describe('share visit log lifecycle (SH-05)', () => {
     const body = await (await request(app, '/api/share/visits')).json()
     expect(body.total).toBe(1)
     expect(body.visits.every((v: { slug: string }) => v.slug === 'list-1')).toBe(true)
+  })
+})
+
+describe('share slug anti-enumeration (SH-07)', () => {
+  it('requires at least six characters for a new custom slug', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    const app = makeApp()
+
+    const short = await postJson(app, `/api/share/${n1}`, { customSlug: 'abcde' })
+    expect(short.status).toBe(400)
+
+    const ok = await postJson(app, `/api/share/${n1}`, { customSlug: 'abcdef' })
+    expect(ok.status).toBe(200)
+    expect((await ok.json()).share.slug).toBe('abcdef')
+  })
+
+  it('check-slug hides the unavailability reason and throttles probing', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'taken-one' })
+    const app = makeApp()
+
+    const reserved = await (await request(app, '/api/share/check-slug?slug=api')).json()
+    expect(reserved.available).toBe(false)
+    expect(reserved.reason).toBeUndefined()
+
+    const taken = await (await request(app, '/api/share/check-slug?slug=taken-one')).json()
+    expect(taken.available).toBe(false)
+    expect(taken.reason).toBeUndefined()
+
+    let status = 200
+    for (let probe = 0; probe < 40; probe += 1) {
+      status = (await request(app, `/api/share/check-slug?slug=probe-${probe}`)).status
+      if (status === 429) break
+    }
+    expect(status).toBe(429)
   })
 })

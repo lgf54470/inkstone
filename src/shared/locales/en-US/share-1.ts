@@ -86,7 +86,7 @@ export const messages = {
 'share.create_new_share': 'Share Note',
 'share.custom_slug': 'Custom Short Link',
 'share.custom_slug_hint': 'Set a custom memorable slug (letters, numbers, hyphens, underscores)',
-'share.custom_slug_invalid': 'Custom slug must be 3-64 letters, numbers, hyphens, or underscores',
+'share.custom_slug_invalid': 'Custom slug must be 6-64 letters, numbers, hyphens, or underscores',
 'share.custom_slug_placeholder': 'e.g. weekly-report-2026',
 'share.custom_slug_taken': 'This short link is already taken by another share',
 'share.device_desktop': 'Desktop',

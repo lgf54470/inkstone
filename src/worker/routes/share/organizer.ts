@@ -4,6 +4,8 @@ import { z } from 'zod'
 
 import { createScopedFolder, createScopedTag, deleteScopedFolder, deleteScopedTag, listScopedFolders, listScopedTags, updateScopedFolder, updateScopedTag } from '../../lib/scoped-organizer'
 import { JSON_BODY_LIMITS, readJson, readJsonValidated } from '../../lib/request'
+import { ApiError } from '../../lib/errors'
+import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import { isValidCustomSlug } from '../../lib/share-analytics'
 
 const shareGroupToggleSchema = z.object({
@@ -19,12 +21,26 @@ export function registerShareOrganizerRoutes(shareManageRoutes: Hono<AppBindings
   registerShareGroupToggleRoute(shareManageRoutes)
 }
 
+const CHECK_SLUG_BUDGET = { maxAttempts: 30, windowMs: 10 * 60 * 1000 }
+
 function registerShareSlugCheckRoute(shareManageRoutes: Hono<AppBindings>): void {
   shareManageRoutes.get('/check-slug', async (c) => {
     const slug = c.req.query('slug') || ''
     const currentNoteId = c.req.query('currentNoteId')
+    const userId = c.get('userId')
+    try {
+      await consumeAttemptBudget(c.env.DB, [{ key: `share-check-slug:user:${userId}`, ...CHECK_SLUG_BUDGET }])
+    } catch (error) {
+      if (error instanceof ThrottleError) {
+        throw new ApiError(429, 'too_many_attempts', `Too many attempts. Try again in ${error.retryAfterSec} seconds`, {
+          retryAfter: error.retryAfterSec,
+        })
+      }
+      throw error
+    }
+    // Only the boolean ships: why a slug is unavailable (invalid vs taken) must not be a lookup oracle.
     if (!isValidCustomSlug(slug)) {
-      return c.json({ available: false, reason: 'invalid_format' })
+      return c.json({ available: false })
     }
     const existing = await c.env.DB.prepare(
       `SELECT note_id FROM shares WHERE slug = ?1`,
@@ -33,7 +49,7 @@ function registerShareSlugCheckRoute(shareManageRoutes: Hono<AppBindings>): void
       .first<{ note_id: string }>()
 
     if (existing && existing.note_id !== currentNoteId) {
-      return c.json({ available: false, reason: 'already_taken' })
+      return c.json({ available: false })
     }
     return c.json({ available: true })
   })

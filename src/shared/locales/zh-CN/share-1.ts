@@ -86,7 +86,7 @@ export const messages = {
 'share.create_new_share': '开启新分享',
 'share.custom_slug': '自定义链接短链',
 'share.custom_slug_hint': '为笔记设定个性化易记短链（支持字母、数字、短横线与下划线）',
-'share.custom_slug_invalid': '短链仅支持 3-64 位字母、数字、中划线或下划线',
+'share.custom_slug_invalid': '短链仅支持 6-64 位字母、数字、中划线或下划线',
 'share.custom_slug_placeholder': '例如: weekly-report-2026',
 'share.custom_slug_taken': '该短链已被其他分享占用，请更换',
 'share.device_desktop': '桌面端',

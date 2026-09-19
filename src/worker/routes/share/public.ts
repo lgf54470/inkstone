@@ -111,11 +111,10 @@ async function loadShareOrThrow(db: D1Database, slug: string): Promise<ShareRow>
   const share = await db.prepare(`SELECT * FROM shares WHERE slug = ?1`)
     .bind(slug)
     .first<ShareRow>()
-  if (!share) throw ApiError.notFound('The link does not exist or has been revoked')
-  if (share.is_enabled === 0) {
-    throw ApiError.forbidden('This share link has been temporarily disabled by the author')
+  // One identical answer for disabled, expired and unknown: the status of a share is not public information.
+  if (!share || share.is_enabled === 0 || (share.expires_at && share.expires_at < Date.now())) {
+    throw ApiError.notFound('The link does not exist or has been revoked')
   }
-  if (share.expires_at && share.expires_at < Date.now()) throw ApiError.notFound('The link has expired')
   return share
 }
 
@@ -159,7 +158,8 @@ async function authenticateShareAccess(
   }
   if (!(await verifyPassword(password, share.password_hash))) {
     await recordLoginFailure(c.env.DB, throttleKeys)
-    return c.json({ error: { code: 'password_invalid', message: 'Incorrect passcode' } }, 401)
+    // Same body as "password required": a wrong guess must be indistinguishable from no guess.
+    return c.json({ error: { code: 'password_required', message: 'An access password is required' } }, 401)
   }
   await clearLoginFailures(c.env.DB, [
     ...throttleKeys,

@@ -4449,7 +4449,12 @@ const allowed = new Map([
     '// notes and attachments carry several counts each; one pass over each table',
     '// replaces the four and two separate scans the per-metric subqueries made.',
   ]],
+  ['src/worker/routes/share/organizer.ts', [
+    '// Only the boolean ships: why a slug is unavailable (invalid vs taken) must not be a lookup oracle.',
+  ]],
   ['src/worker/routes/share/public.ts', [
+    '// One identical answer for disabled, expired and unknown: the status of a share is not public information.',
+    '// Same body as "password required": a wrong guess must be indistinguishable from no guess.',
     '// The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.',
     '// Without the instance secret record no fingerprint rather than fall back to the public date salt,',
     '// and salt per owner so one browser is not linkable across accounts (SH-04).',
@@ -4529,7 +4534,8 @@ const allowed = new Map([
     '// A new handle and a cleared fingerprint force the migration pass to run again.',
   ]],
   ['tests/share-analytics.test.ts', [
-    '// too short (< 3)',
+    '// too short (< 6)',
+    '// just below the 6-char floor',
     '// too long (> 64)',
     '// spaces',
     '// slashes',

@@ -123,7 +123,7 @@ function useCustomSlugCheck(open: boolean, enabled: boolean, customSlug: string,
       return
     }
     const trimmed = customSlug.trim()
-    if (!/^[a-zA-Z0-9_-]{3,64}$/.test(trimmed)) {
+    if (!/^[a-zA-Z0-9_-]{6,64}$/.test(trimmed)) {
       setSlugAvailable(false)
       setSlugError(t('share.custom_slug_invalid'))
       return
