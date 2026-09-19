@@ -28,6 +28,7 @@ import {
   PALETTE_PANEL,
   SETTINGS_PANEL,
   chromeExecutablePath,
+  clickButton,
   ensureAxe,
   ensurePaneVisible,
   isReviewedIncomplete,
@@ -136,6 +137,65 @@ async function closeMindmapFullscreen(page) {
   await sleep(SETTLE_MS)
 }
 
+// The two music panels are measured in the library's grid view on purpose: the duration badge
+// (UI-23) — --text-inverse on --scrim — is only painted there, and it is the one tinted chip in
+// the app whose backing is card artwork rather than a token surface.
+const MUSIC_HUB_DIALOG = 'div[role="dialog"][aria-label="音乐库"],div[role="dialog"][aria-label="Music library"]'
+const MUSIC_IMMERSIVE_DIALOG = 'div[role="dialog"][aria-label="沉浸式播放"],div[role="dialog"][aria-label="Full screen player"]'
+const MUSIC_GRID_PLAY = 'div.grid-cols-2 button[aria-label*="E2E Probe Audio"]'
+// Both footer states open the hub: the plain icon before anything plays, and — once a track is
+// current, which the grid click below itself causes on the second theme pass — the transport
+// row's expand button.
+const MUSIC_HUB_OPENER = 'xpath/.//footer//button[@aria-label="打开音乐库" or @aria-label="Open music library" or @aria-label="展开播放器" or @aria-label="Expand the player"]'
+
+async function openMusicHub(page) {
+  const openers = await page.$$(MUSIC_HUB_OPENER)
+  const opener = openers.at(-1) ?? await page.waitForSelector(MUSIC_HUB_OPENER, { timeout: SETTLE_TIMEOUT })
+  await opener.click()
+  await page.waitForSelector(MUSIC_HUB_DIALOG, { timeout: SETTLE_TIMEOUT })
+  await waitForPanelSettled(page, MUSIC_HUB_DIALOG)
+}
+
+async function closeDialog(page, selector) {
+  await page.keyboard.press('Escape')
+  await sleep(SETTLE_MS)
+  await page.waitForFunction((sel) => !document.querySelector(sel), { timeout: SETTLE_TIMEOUT }, selector)
+}
+
+// The list view's tinted rows — the current track's accent soft background and the selected
+// row's softer one — only paint here, and clicking a probe track's title both selects it and
+// makes it current, so one click sets up the states the measurement below reads.
+async function openMusicHubList(page) {
+  await openMusicHub(page)
+  await clickButton(page, ['列表视图', 'List view'])
+  const titles = await page.$$('xpath=.//div[@role="row"]//button[contains(., "E2E Probe Audio")]')
+  const title = titles.at(0)
+  if (title) await title.click()
+  await sleep(SETTLE_MS)
+}
+
+async function openMusicHubGrid(page) {
+  await openMusicHub(page)
+  await clickButton(page, ['网格视图', 'Grid view'])
+  try {
+    await page.waitForSelector(MUSIC_GRID_PLAY, { timeout: SETTLE_TIMEOUT })
+  }
+  catch {
+    throw new Error('music surface: no seeded probe tracks to measure — run scripts/e2e.mjs against this instance first')
+  }
+  // The card is the play control, so the same click that proves the grid painted also gives the
+  // immersive surface below a current track. On the second theme pass this click pauses what the
+  // first started; a current track is what immersive needs, playing or not.
+  await (await page.$$(MUSIC_GRID_PLAY)).at(0).click()
+  await sleep(SETTLE_MS)
+}
+
+async function openImmersivePlayer(page) {
+  await clickButton(page, ['沉浸式播放', 'Full screen player'])
+  await page.waitForSelector(MUSIC_IMMERSIVE_DIALOG, { timeout: SETTLE_TIMEOUT })
+  await waitForPanelSettled(page, MUSIC_IMMERSIVE_DIALOG)
+}
+
 // Panels rendered over the app, each opened the way a person opens it. Their
 // surfaces differ from the shell's, so they are their own measurements — and each
 // names the root the axe pass below inspects, because axe's color-contrast rule
@@ -189,6 +249,24 @@ const SURFACES = [
     // ancestor background chain — the transparent overlays do not sit in that chain — and judges
     // or reports it by the same token rule as everywhere else.
     occluder: { layer: 'keyboard reference card', dismiss: dismissMindmapCard, alwaysOverlaid: 'me-tpc[' },
+  },
+  {
+    name: 'music library list view',
+    axeRoot: MUSIC_HUB_DIALOG,
+    open: openMusicHubList,
+    close: (page) => closeDialog(page, MUSIC_HUB_DIALOG),
+  },
+  {
+    name: 'music library grid view',
+    axeRoot: MUSIC_HUB_DIALOG,
+    open: openMusicHubGrid,
+    close: (page) => closeDialog(page, MUSIC_HUB_DIALOG),
+  },
+  {
+    name: 'immersive player',
+    axeRoot: MUSIC_IMMERSIVE_DIALOG,
+    open: openImmersivePlayer,
+    close: (page) => closeDialog(page, MUSIC_IMMERSIVE_DIALOG),
   },
 ]
 
@@ -637,7 +715,8 @@ async function main() {
       // The shell first, then the dialog surfaces: they sit on --bg-overlay, the
       // lightest surface in either theme, and that is where a dim tier runs out of
       // contrast first. The mind map's full screen view joins them with its keyboard
-      // reference card up. It is opened last because it lands on a note of its own.
+      // reference card up. The music surfaces open last: they read seeded state (a
+      // note of its own, probe tracks from scripts/e2e.mjs) the earlier passes leave alone.
       for (const surface of SURFACES) {
         await surface.open(page)
         const collected = await page.evaluate(COLLECT)
