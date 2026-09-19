@@ -7,6 +7,8 @@ import {
   type KanbanSession,
 } from '../../lib/markdown/kanban'
 import { createKanbanWriter } from './kanban-sync'
+import { renderMarkdown } from '../../lib/markdown/renderer'
+import { useSession } from '../../store/session'
 
 export interface KanbanFullscreenState {
   session: KanbanSession
@@ -17,6 +19,16 @@ interface UseKanbanBlocksOptions {
   noteId: string | null
   hostRef: RefObject<HTMLDivElement | null>
   committedHtml: string
+}
+
+/**
+ * Runs a card description through the very renderer the note body uses, so the preview is the note's
+ * own surface rather than a second markdown implementation. Module-level and therefore stable: the
+ * board root is memoized, and a fresh closure per render would repaint every mounted board.
+ */
+function renderKanbanDescription(source: string): string {
+  const externalImages = useSession.getState().settings.preview.externalImages
+  return renderMarkdown(source, { externalImages, hideFrontMatter: true }).html
 }
 
 export function useKanbanBlocks(options: UseKanbanBlocksOptions) {
@@ -45,6 +57,7 @@ export function useKanbanBlocks(options: UseKanbanBlocksOptions) {
       writeBack: writer,
       onOpenFullscreen: openFullscreen,
       onCloseFullscreen: closeFullscreen,
+      renderDescription: renderKanbanDescription,
     }).catch((err: unknown) => {
       console.warn('[inkstone] kanban mount failed', err)
     })

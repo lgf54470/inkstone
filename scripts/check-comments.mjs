@@ -1858,6 +1858,9 @@ const allowed = new Map([
     '// The Worker thread is the sandbox: user code cannot reach page DOM or',
     '// storage, and terminate() is the only hard stop for endless loops.',
   ]],
+  ['src/client/features/preview/kanban-description-preview.test.ts', [
+    '/**\n * The preview pane is the only production caller that hands a board a description renderer, and it does\n * so through a hook. Nothing in the modal\'s own tests can tell whether that hand-off happened: a board\n * mounted without it still behaves perfectly in every unit test, it simply never offers the control.\n * So this drives the real hook over a real rendered fence.\n */',
+  ]],
   ['src/client/features/preview/kanban-fullscreen.test.ts', [
     '// A real user dismisses the menu before the overlay ends; leave no open',
     '// portal behind for the teardown to trip over.',
@@ -1986,6 +1989,7 @@ const allowed = new Map([
     '// The note\'s menu is the one a right-click opens, here as on every other block.',
   ]],
   ['src/client/features/preview/use-kanban-blocks.ts', [
+    '/**\n * Runs a card description through the very renderer the note body uses, so the preview is the note\'s\n * own surface rather than a second markdown implementation. Module-level and therefore stable: the\n * board root is memoized, and a fresh closure per render would repaint every mounted board.\n */',
     '// The overlay\'s own cleanup moves the canvas back and flushes the session;',
     '// this only takes the modal out of the tree.',
   ]],
@@ -2742,6 +2746,11 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/outline.ts', [
     '// \\[ and \\] are literal brackets in a title, not the start of a property tag.',
   ]],
+  ['src/client/lib/markdown/kanban/registry-description-renderer.test.ts', [
+    '/**\n * A card description is rendered by the host, not by this module — the markdown renderer already\n * imports the kanban, so importing it back would close a cycle, and the renderer therefore travels\n * down as a mount option. That makes four layers of pass-through no unit test of the detail modal can\n * see: if the option stopped at the board root, the modal would quietly offer nothing while every\n * modal test stayed green. These cases mount a real board through the registry and read the result.\n */',
+    '// The registry defers the root unmount by a microtask, and the detail modal lives in that root, so',
+    '// the board is taken down inside `act` before its host nodes leave the document.',
+  ]],
   ['src/client/lib/markdown/kanban/registry-locale.test.ts', [
     '/**\n * A kanban block is a React root of its own, mounted into markup React did not make, so nothing in\n * the app tree re-renders it when the language changes: its labels only follow the locale if the\n * board itself subscribes. `t()` reads the live locale, which is why a re-render is all it takes —\n * and why the host used to have to smuggle the locale in through a mount option nobody read.\n */',
   ]],
@@ -2751,6 +2760,7 @@ const allowed = new Map([
     '// The deferred unmount is React work of its own, so it is flushed before anything is read.',
   ]],
   ['src/client/lib/markdown/kanban/registry.ts', [
+    '/**\n   * Renders a card description as the host would render it in the note body. Injected rather than\n   * imported: the markdown renderer already imports this module, so reaching back for it would close\n   * a cycle. Absent means the host cannot render markdown (exports, snapshots), and the UI hides it.\n   */',
     '/**\n * Tears one block\'s React root down. The unmount is deferred by a microtask because both callers run\n * inside the host tree\'s own commit — the preview re-renders, a block leaves the note, and React\n * refuses to take one root down from inside another root\'s render: it warns and leaves the teardown to\n * race the commit it interrupted.\n */',
     '// Unwritten edits outrank the note body: a re-render must not re-point the',
     '// fence or re-parse over them, or retry and discard lose what they resolve.',
@@ -2919,13 +2929,28 @@ const allowed = new Map([
     '// No aria-label: the character is the option, and a reader tool speaks it from its own localised',
     '// emoji data — a label we ship would replace that answer with one written in two languages.',
   ]],
-  ['src/client/lib/markdown/kanban/ui/kanban-item-detail-fields.tsx', [
-    '/** The listbox the status trigger opens; `id` is the target of its `aria-controls`. */',
+  ['src/client/lib/markdown/kanban/ui/kanban-item-detail-description.tsx', [
     '/**\n * Descriptions are free prose stored inside the note body, so the box bounds how far one can grow\n * instead of letting a single card balloon the fence. Content a board already stores above the bound\n * stays editable: clamping it on the first keystroke would delete what the note already holds.\n */',
     '/** The counter appears for the last stretch, so the bound is seen coming rather than only hit. */',
     '/** What the length bound has to say about the draft in progress: the notice only after a rejection. */',
-    '/** The heading plus the control that trades the box\'s height for a wider view of it. */',
+    '/** The heading and the two controls that change how the box below it is drawn. */',
+    '/** The box itself: the same draft, either as source being edited or as prose the host rendered. */',
+    '// The host\'s renderer is the sanitizer: it is the very pipeline the note body goes through, so a',
+    '// description cannot preview a wider surface than the note it lives in already draws.',
     '// Enter commits nothing here: the description is the one multi-line field, so the key must stay a newline.',
+    '/**\n * Everything the description box remembers: the uncommitted draft, whether the last edit was refused\n * for length, and how tall / which face of the box is showing. All of it belongs to one card, which is\n * why the caller keys this component by item id — switching cards gives a fresh box instead of\n * carrying one card\'s draft into another, without a hand-rolled tracker of which card we were on.\n */',
+    '// An emptied draft has nothing to render, so offering the control there would be a dead button.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-item-detail-fields.tsx', [
+    '/** The listbox the status trigger opens; `id` is the target of its `aria-controls`. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-item-detail.test.ts', [
+    '/** The spies the cases assert on, plus whichever optional prop a case wants to hand the component. */',
+    '/** Idrefs that point at nothing: axe reads these as a broken relationship, not as an absent control. */',
+    '// Previewing shows what the note will hold, so entering it is also the commit.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-item-detail.tsx', [
+    '/** How this host turns description markdown into HTML; absent means the description stays source-only. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-label-language.test.ts', [
     '/**\n * Three kanban controls named themselves in a language the reader may not speak: a tag chip\'s remove\n * button borrowed the *mindmap* shortcut string, a subtask\'s completion toggle was the literal\n * `\'Mark complete\'`, and the progress bar\'s catch-all segment was the literal `\'Other\'`. Both label\n * probes that already existed pass on all three — the name is present, and nothing was concatenated —\n * so each case mounts the real surface once per shipped language and requires the phrase to be the\n * kanban resource\'s own entry for that action, with the thing it acts on named inside the message.\n */',
@@ -3012,6 +3037,7 @@ const allowed = new Map([
     '// multi-select column keeps its array shape.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root.tsx', [
+    '/** Passed down from the mount options: how the host renders description markdown. */',
     '// Views edit one item\'s own fields; the writer keeps that shape in one place',
     '// while still committing the whole document like every other edit does.',
     '// The selected view is what its tab controls, so this box is the panel — hanging the role here',

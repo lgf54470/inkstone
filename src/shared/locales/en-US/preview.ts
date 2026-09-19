@@ -165,6 +165,8 @@ export const messages = {
 'preview.kanban_card_description_placeholder': 'Add details or markdown notes…',
 'preview.kanban_expand_description': 'Expand description',
 'preview.kanban_collapse_description': 'Collapse description',
+'preview.kanban_preview_description': 'Preview description as formatted text',
+'preview.kanban_edit_description': 'Edit description source',
 'preview.kanban_desc_count': '{count} / {limit} characters',
 'preview.kanban_desc_limit_reached': 'The description cannot exceed {limit} characters',
 'preview.kanban_add_property': 'Add Property',

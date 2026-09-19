@@ -36,6 +36,8 @@ interface KanbanRootProps {
   onDiscardWrite?: () => void
   onUpdateData: (data: KanbanData) => void
   onToggleFullscreen?: () => void
+  /** Passed down from the mount options: how the host renders description markdown. */
+  renderDescription?: (source: string) => string
 }
 
 interface KanbanViewRendererProps {
@@ -311,11 +313,13 @@ function KanbanRootOverlays({
   menu,
   isFullscreen,
   onToggleFullscreen,
+  renderDescription,
 }: {
   state: ReturnType<typeof useKanbanRootState>
   menu: ReturnType<typeof useKanbanContextMenuState>
   isFullscreen?: boolean
   onToggleFullscreen?: () => void
+  renderDescription?: (source: string) => string
 }) {
   return (
     <>
@@ -329,6 +333,7 @@ function KanbanRootOverlays({
           if (state.detailItem) state.items.handleConvertSubtaskToItem(state.detailItem.id, subtaskId)
         }}
         onAddColumnOption={state.columnOps.handleAddColumnOption}
+        renderDescription={renderDescription}
       />
       <KanbanContextMenu
         point={menu.point}
@@ -368,6 +373,7 @@ export const KanbanRoot = memo(function KanbanRoot({
   onDiscardWrite,
   onUpdateData,
   onToggleFullscreen,
+  renderDescription,
 }: KanbanRootProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   // One id names the panel and, through `kanbanViewTabId`, the tab that controls it; the header and
@@ -400,7 +406,13 @@ export const KanbanRoot = memo(function KanbanRoot({
           onToggleFullscreen={onToggleFullscreen}
         />
         <KanbanMain state={state} viewPanelId={viewPanelId} />
-        <KanbanRootOverlays state={state} menu={menu} isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
+        <KanbanRootOverlays
+          state={state}
+          menu={menu}
+          isFullscreen={isFullscreen}
+          renderDescription={renderDescription}
+          onToggleFullscreen={onToggleFullscreen}
+        />
       </KanbanFilesScope.Provider>
     </div>
   )

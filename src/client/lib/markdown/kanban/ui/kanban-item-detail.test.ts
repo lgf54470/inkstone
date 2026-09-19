@@ -1,10 +1,10 @@
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi, type Mock } from 'vitest'
 import { initI18n, t } from '../../../../lib/i18n'
 import { installTestGlobals } from '../../../test-render'
 import { KanbanItemDetail } from './kanban-item-detail'
-import { KANBAN_DESCRIPTION_MAX_CHARS } from './kanban-item-detail-fields'
+import { KANBAN_DESCRIPTION_MAX_CHARS } from './kanban-item-detail-description'
 import type { KanbanItem, KanbanProperty } from '../types'
 
 beforeAll(async () => {
@@ -27,15 +27,21 @@ const item: KanbanItem = {
   subtasks: [{ id: 'sub-1', title: 'Step', completed: false }],
 }
 
-function propsFor(nextItem: KanbanItem | null) {
+type DetailTestProps = Parameters<typeof KanbanItemDetail>[0] & { renderDescription?: (source: string) => string }
+/** The spies the cases assert on, plus whichever optional prop a case wants to hand the component. */
+type SpiedProps = DetailTestProps & { onUpdate: Mock<(updated: KanbanItem) => void> }
+type ExtraProps = Pick<DetailTestProps, 'renderDescription'>
+
+function propsFor(nextItem: KanbanItem | null, extra: ExtraProps = {}): SpiedProps {
   return {
     item: nextItem,
     columns,
     onClose: vi.fn(),
-    onUpdate: vi.fn(),
+    onUpdate: vi.fn<(updated: KanbanItem) => void>(),
     onDelete: vi.fn(),
     onConvertSubtask: vi.fn(),
     onAddColumnOption: vi.fn(),
+    ...extra,
   }
 }
 
@@ -55,18 +61,18 @@ function typeInto(input: HTMLInputElement, value: string) {
 
 let mounted: ReturnType<typeof renderDetail> | null = null
 
-function renderDetail(nextItem: KanbanItem | null) {
+function renderDetail(nextItem: KanbanItem | null, extra: ExtraProps = {}) {
   installTestGlobals()
   const container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
-  const p = propsFor(nextItem)
+  const p = propsFor(nextItem, extra)
   act(() => root.render(createElement(KanbanItemDetail, p)))
   let disposed = false
   const view = {
     props: p,
     rerender(next: KanbanItem | null) {
-      act(() => root.render(createElement(KanbanItemDetail, propsFor(next))))
+      act(() => root.render(createElement(KanbanItemDetail, propsFor(next, extra))))
     },
     dispose() {
       if (disposed) return
@@ -103,9 +109,26 @@ function typeIntoBox(box: HTMLTextAreaElement, value: string) {
 }
 
 function descriptionBlock(): HTMLElement {
-  const block = descriptionBox().closest<HTMLElement>('[data-kanban-description]')
+  const block = document.querySelector<HTMLElement>('[data-kanban-description]')
   if (!block) throw new Error('description block not found')
   return block
+}
+
+function previewToggle(): HTMLElement | null {
+  return descriptionBlock().querySelector<HTMLElement>(
+    `button[aria-label="${t('preview.kanban_preview_description')}"], button[aria-label="${t('preview.kanban_edit_description')}"]`,
+  )
+}
+
+function previewBlock(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('[data-kanban-desc-preview]')
+}
+
+/** Idrefs that point at nothing: axe reads these as a broken relationship, not as an absent control. */
+function unresolvedAriaControls(): string[] {
+  return [...document.querySelectorAll<HTMLElement>('[aria-controls]')]
+    .map((el) => el.getAttribute('aria-controls') ?? '')
+    .filter((id) => !document.getElementById(id))
 }
 
 function descriptionPart(selector: string): HTMLElement | null {
@@ -286,6 +309,48 @@ describe('KanbanItemDetail description expander', () => {
 
     act(() => { descriptionToggle().click() })
     expect(box.rows).toBe(collapsedRows)
+    view.dispose()
+  })
+})
+
+describe('KanbanItemDetail description markdown preview', () => {
+  const stubHtml = (source: string) => `<p>rendered:${source}</p>`
+
+  it('offers no preview control when the host cannot render markdown', () => {
+    const view = renderDetail({ ...item, content: '**ship it**' })
+    expect(previewToggle()).toBeNull()
+    view.dispose()
+  })
+
+  it('renders the draft through the host renderer and back again', () => {
+    const renderDescription = vi.fn(stubHtml)
+    const view = renderDetail({ ...item, content: '**ship it**' }, { renderDescription })
+    const box = descriptionBox()
+    act(() => { typeIntoBox(box, '**ship it now**') })
+    const toggle = previewToggle()
+    expect(toggle, 'the host renderer draws no preview control').not.toBeNull()
+
+    act(() => { toggle!.click() })
+    expect(document.querySelector('textarea[placeholder]')).toBeNull()
+    // Previewing shows what the note will hold, so entering it is also the commit.
+    expect(view.props.onUpdate).toHaveBeenCalledTimes(1)
+    expect(view.props.onUpdate.mock.calls[0][0]).toMatchObject({ content: '**ship it now**' })
+    expect(previewBlock()?.innerHTML).toContain('rendered:**ship it now**')
+    expect(renderDescription).toHaveBeenCalledWith('**ship it now**')
+    expect(document.querySelectorAll('[aria-controls]').length).toBeGreaterThan(0)
+    expect(unresolvedAriaControls()).toEqual([])
+
+    act(() => { previewToggle()!.click() })
+    expect(previewBlock()).toBeNull()
+    expect(descriptionBox().value).toBe('**ship it now**')
+    view.dispose()
+  })
+
+  it('offers the control only once there is something to render', () => {
+    const view = renderDetail(item, { renderDescription: stubHtml })
+    expect(previewToggle()).toBeNull()
+    act(() => { typeIntoBox(descriptionBox(), 'x') })
+    expect(previewToggle()).not.toBeNull()
     view.dispose()
   })
 })

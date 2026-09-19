@@ -9,10 +9,10 @@ import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanIconPicker } from './kanban-icon-picker'
 import { KanbanTagPicker } from './kanban-tag-picker'
+import { DetailDescription } from './kanban-item-detail-description'
 import {
   DetailAttachmentsAndSubtasks,
   DetailDatesGrid,
-  DetailDescription,
   DetailFooter,
   DetailPropertiesGrid,
   PriorityChips,
@@ -27,6 +27,8 @@ interface KanbanItemDetailProps {
   onDelete: (id: string) => void
   onConvertSubtask: (subtaskId: string) => void
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
+  /** How this host turns description markdown into HTML; absent means the description stays source-only. */
+  renderDescription?: (source: string) => string
 }
 
 const DETAIL_MODAL_WIDTH = 640
@@ -196,6 +198,7 @@ function DetailModalContent({
   onAddTagOption,
   onUpdate,
   onConvertSubtask,
+  renderDescription,
 }: {
   item: KanbanItem
   columns: KanbanProperty[]
@@ -208,6 +211,7 @@ function DetailModalContent({
   onAddTagOption: (option: KanbanOption) => void
   onUpdate: (updated: KanbanItem) => void
   onConvertSubtask: (subtaskId: string) => void
+  renderDescription?: (source: string) => string
 }) {
   return (
     <div className='flex flex-col gap-5 py-2'>
@@ -244,8 +248,9 @@ function DetailModalContent({
       />
 
       <DetailDescription
-        itemId={item.id}
+        key={item.id}
         content={item.content || item.description}
+        renderDescription={renderDescription}
         onChange={(desc) => onUpdate({ ...item, content: desc, description: desc })}
       />
 
@@ -299,6 +304,7 @@ function KanbanItemDetailBody({
   onDelete,
   onConvertSubtask,
   onAddColumnOption,
+  renderDescription,
 }: KanbanItemDetailProps & { item: KanbanItem }) {
   const { statusCol, priorityCol, localTagOptions, handlePropertyChange, handleAddTagOption } =
     useKanbanDetailState(item, columns, onUpdate, onAddColumnOption)
@@ -338,6 +344,7 @@ function KanbanItemDetailBody({
         onAddTagOption={handleAddTagOption}
         onUpdate={onUpdate}
         onConvertSubtask={onConvertSubtask}
+        renderDescription={renderDescription}
       />
     </Modal>
   )

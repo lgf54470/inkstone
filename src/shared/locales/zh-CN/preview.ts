@@ -175,6 +175,8 @@ export const messages = {
 'preview.kanban_card_description_placeholder': '添加卡片详细说明或 Markdown 笔记…',
 'preview.kanban_expand_description': '展开描述框',
 'preview.kanban_collapse_description': '收起描述框',
+'preview.kanban_preview_description': '预览描述排版效果',
+'preview.kanban_edit_description': '编辑描述源码',
 'preview.kanban_desc_count': '{count} / {limit} 字符',
 'preview.kanban_desc_limit_reached': '描述最多 {limit} 字符，超出部分未被写入',
 'preview.kanban_add_property': '添加属性',

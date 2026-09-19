@@ -26,6 +26,12 @@ export interface KanbanMountOptions {
   writeBack?: KanbanWriter
   onOpenFullscreen?: (node: HTMLElement) => void
   onCloseFullscreen?: (node: HTMLElement) => void
+  /**
+   * Renders a card description as the host would render it in the note body. Injected rather than
+   * imported: the markdown renderer already imports this module, so reaching back for it would close
+   * a cycle. Absent means the host cannot render markdown (exports, snapshots), and the UI hides it.
+   */
+  renderDescription?: (source: string) => string
 }
 
 interface Assignment {
@@ -163,6 +169,7 @@ function renderKanbanEntry(entry: KanbanBlockEntry, options: KanbanMountOptions)
           settle()
         } : undefined,
         onUpdateData: (next) => updateKanbanData(entry, () => next),
+        renderDescription: options.renderDescription,
         onToggleFullscreen: () => (
           inOverlay ? options.onCloseFullscreen?.(entry.host) : options.onOpenFullscreen?.(entry.host)
         ),

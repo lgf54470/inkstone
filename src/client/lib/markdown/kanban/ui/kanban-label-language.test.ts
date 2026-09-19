@@ -10,7 +10,7 @@ import { act, createElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { KanbanItem, KanbanProperty } from '../types'
 import { KanbanCard } from './kanban-card'
-import { DetailDescription, KANBAN_DESCRIPTION_MAX_CHARS } from './kanban-item-detail-fields'
+import { DetailDescription, KANBAN_DESCRIPTION_MAX_CHARS } from './kanban-item-detail-description'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSubtaskList } from './kanban-subtask-list'
 import { KanbanTagPicker } from './kanban-tag-picker'
@@ -144,7 +144,6 @@ describe("the progress bar's catch-all segment", () => {
 describe('the description box length feedback', () => {
   async function mounted(code: LocaleCode): Promise<HTMLElement> {
     return mountIn(code, createElement(DetailDescription, {
-      itemId: 'item-1',
       content: 'Some body',
       onChange: vi.fn(),
     }))
