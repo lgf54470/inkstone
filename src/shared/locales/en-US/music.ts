@@ -143,6 +143,7 @@ export const messages = {
 'music.sort_plays': 'Most played',
 'music.view_list': 'List view',
 'music.view_grid': 'Grid view',
+'music.view_mode': 'View mode',
 'music.stats_tracks': 'Tracks',
 'music.stats_duration': 'Total length',
 'music.stats_size': 'Storage used',

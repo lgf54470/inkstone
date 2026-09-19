@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useState } from 'react'
 import { Download, Play, Shuffle } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { Button } from '../../components/primitives'
+import { Segmented } from '../../components/form'
 import { Empty, LoadingBlock } from '../../components/feedback'
 import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
@@ -178,21 +179,16 @@ function ListHeader({ tracks, scopeKind }: { tracks: MusicTrack[]; scopeKind: st
 
 function ViewModeToggle({ value, onChange }: { value: MusicViewMode; onChange: (mode: MusicViewMode) => void }) {
   return (
-    <div role='radiogroup' aria-label={t('music.view_list')} className='flex items-center rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] p-0.5'>
-      {(['list', 'grid'] as const).map((mode) => (
-        <button
-          key={mode}
-          type='button'
-          role='radio'
-          aria-checked={value === mode}
-          aria-label={mode === 'list' ? t('music.view_list') : t('music.view_grid')}
-          onClick={() => onChange(mode)}
-          className={`rounded-[var(--r-sm)] px-2 py-0.5 text-[length:var(--text-11)] transition-colors ${value === mode ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
-        >
-          {mode === 'list' ? t('music.view_list') : t('music.view_grid')}
-        </button>
-      ))}
-    </div>
+    <Segmented
+      label={t('music.view_mode')}
+      size='sm'
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: 'list' as const, label: t('music.view_list') },
+        { value: 'grid' as const, label: t('music.view_grid') },
+      ]}
+    />
   )
 }
 

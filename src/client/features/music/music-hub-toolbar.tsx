@@ -3,7 +3,6 @@ import { CloudDownload, ImageDown, RefreshCw, RotateCw, Server, Upload } from 'l
 import { Button, IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { Tooltip, confirm } from '../../components/overlay'
-import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { SearchBox } from './music-search-box'
 import { useMusic, useVisibleTracks } from './music-store'
@@ -37,25 +36,13 @@ function SourceFilter() {
     { value: 'webdav' as const, label: t('music.source_webdav') },
   ]
   return (
-    <div role='radiogroup' aria-label={t('music.source_filter')} className='flex items-center rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] p-0.5'>
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type='button'
-          role='radio'
-          aria-checked={sourceFilter === option.value}
-          onClick={() => setSourceFilter(option.value)}
-          className={cn(
-            'rounded-[var(--r-sm)] px-2 py-0.5 text-[length:var(--text-11)] transition-colors',
-            sourceFilter === option.value
-              ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-[var(--shadow-sm)]'
-              : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]',
-          )}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
+    <Segmented
+      label={t('music.source_filter')}
+      size='sm'
+      value={sourceFilter}
+      onChange={setSourceFilter}
+      options={options}
+    />
   )
 }
 

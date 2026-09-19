@@ -143,6 +143,7 @@ export const messages = {
 'music.sort_plays': '播放最多',
 'music.view_list': '列表视图',
 'music.view_grid': '网格视图',
+'music.view_mode': '视图模式',
 'music.stats_tracks': '歌曲',
 'music.stats_duration': '总时长',
 'music.stats_size': '占用空间',

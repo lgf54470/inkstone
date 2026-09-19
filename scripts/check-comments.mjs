@@ -1453,6 +1453,9 @@ const allowed = new Map([
     '// Shift-click selects everything between the anchor row and the clicked row.',
     '// Uploads name a track after its file; the tag title wins when the file only adds the artist.',
   ]],
+  ['src/client/features/music/music-view-toggles.test.ts', [
+    '// The old hand-written group stole \'List view\' as its name; it must not exist twice.',
+  ]],
   ['src/client/features/music/music-visualizer.tsx', [
     '// Frequencies are sampled on a curve so the bass bins do not swallow the whole picture.',
     '// A paused or off-screen strip stops requesting frames entirely; the last painted',
