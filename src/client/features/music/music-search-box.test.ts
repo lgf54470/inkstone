@@ -100,9 +100,9 @@ function pressKey(input: HTMLInputElement, key: string): void {
 // combobox semantics a screen-reader user cannot see it open or walk its rows.
 describe('music search history combobox semantics', () => {
   function mountWithHistory(): HTMLInputElement {
-    useMusic.setState({ searchHistory: ['jazz', 'moon'] })
-    const rendered = renderElement(createElement(SearchBox))
-    const input = inputOf(rendered.container)
+    act(() => { useMusic.setState({ searchHistory: ['jazz', 'moon'] }) })
+    historyRendered = renderElement(createElement(SearchBox))
+    const input = inputOf(historyRendered.container)
     act(() => { input.focus() })
     return input
   }
