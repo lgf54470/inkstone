@@ -2,6 +2,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
+import { t } from '../../lib/i18n'
 import { MusicSleepStatus } from './music-transport-widgets'
 import { useMusic } from './music-store'
 
@@ -24,7 +25,7 @@ afterEach(() => {
   act(() => root?.unmount())
   root = null
   document.body.innerHTML = ''
-  useMusic.setState({ sleepEndsAt: null })
+  useMusic.setState({ sleepEndsAt: null, sleepAfterCurrentTrack: false })
 })
 
 describe('sleep countdown semantics (UI-17)', () => {
@@ -40,5 +41,12 @@ describe('sleep countdown semantics (UI-17)', () => {
   it('renders nothing while no sleep timer is armed', async () => {
     await mountStatus()
     expect(document.querySelector('[role="timer"], [role="status"]')).toBeNull()
+  })
+
+  it('states the after-current stop once instead of counting', async () => {
+    useMusic.setState({ sleepAfterCurrentTrack: true })
+    await mountStatus()
+    const status = document.querySelector('[role="status"]')
+    expect(status?.textContent).toBe(t('music.sleep_after_current'))
   })
 })

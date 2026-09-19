@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { X } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ArrowDown, ArrowUp, X } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
@@ -12,6 +12,9 @@ interface QueueRow {
   track: MusicTrack
   index: number
 }
+
+// Touch shows row actions by default; desktop reveals them on hover/focus only.
+const REVEAL_ON_HOVER = 'opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/queue:opacity-100 md:group-hover/queue:pointer-events-auto md:group-focus-within/queue:opacity-100 md:group-focus-within/queue:pointer-events-auto'
 
 export function MusicQueueList({
   className,
@@ -26,15 +29,32 @@ export function MusicQueueList({
 }) {
   const queue = useMusic((state) => state.queue)
   const tracks = useMusic((state) => state.tracks)
+  const moveQueueItem = useMusic((state) => state.moveQueueItem)
   const byId = useMemo(() => new Map(tracks.map((track) => [track.id, track])), [tracks])
   const rows = buildQueueRows(queue, ids ?? queue, byId)
+  // Reordering only reads sensibly over the whole queue: with the browser's
+  // search filtering rows, a displayed neighbour is not an adjacent queue
+  // position. The browser hands back the very queue array when unfiltered.
+  const reorderable = ids === undefined || ids === queue
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
   if (!rows.length) {
     return <p className='py-6 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{emptyText ?? t('music.queue_empty')}</p>
   }
   return (
     <div className={cn('space-y-0.5', className)}>
-      {rows.map((row) => <QueueRowItem key={`${row.track.id}-${row.index}`} row={row} rowClassName={rowClassName} />)}
+      {rows.map((row) => (
+        <QueueRowItem
+          key={`${row.track.id}-${row.index}`}
+          row={row}
+          rowClassName={rowClassName}
+          reorderable={reorderable}
+          isDragSource={draggedIndex === row.index}
+          onDragStartRow={setDraggedIndex}
+          onDropRow={(from) => moveQueueItem(from, row.index)}
+          onDragEndRow={() => setDraggedIndex(null)}
+        />
+      ))}
     </div>
   )
 }
@@ -57,14 +77,65 @@ function buildQueueRows(queue: string[], selected: string[], byId: Map<string, M
   return rows
 }
 
-function QueueRowItem({ row, rowClassName }: { row: QueueRow; rowClassName?: string }) {
+interface RowDragContext {
+  reorderable: boolean
+  index: number
+  onDragStartRow: (index: number) => void
+  onDropRow: (from: number) => void
+  onDragEndRow: () => void
+}
+
+// The dragged row's queue position travels as plain text, same as the playlist
+// rows, so a drop outside any queue row simply cannot reorder anything.
+function queueDragProps({ reorderable, index, onDragStartRow, onDropRow, onDragEndRow }: RowDragContext) {
+  if (!reorderable) return { draggable: false as const }
+  return {
+    draggable: true as const,
+    onDragStart: (event: React.DragEvent) => {
+      event.dataTransfer.effectAllowed = 'move'
+      event.dataTransfer.setData('text/plain', String(index))
+      onDragStartRow(index)
+    },
+    onDragOver: (event: React.DragEvent) => {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'move'
+    },
+    onDrop: (event: React.DragEvent) => {
+      event.preventDefault()
+      const from = Number(event.dataTransfer.getData('text/plain'))
+      if (Number.isInteger(from)) onDropRow(from)
+      onDragEndRow()
+    },
+    onDragEnd: onDragEndRow,
+  }
+}
+
+function QueueRowItem({
+  row,
+  rowClassName,
+  reorderable,
+  isDragSource,
+  onDragStartRow,
+  onDropRow,
+  onDragEndRow,
+}: {
+  row: QueueRow
+  rowClassName?: string
+  reorderable: boolean
+  isDragSource: boolean
+  onDragStartRow: (index: number) => void
+  onDropRow: (from: number) => void
+  onDragEndRow: () => void
+}) {
   const currentIndex = useMusic((state) => state.currentIndex)
   const isPlaying = useMusic((state) => state.isPlaying)
   const playQueueAt = useMusic((state) => state.playQueueAt)
-  const removeFromQueue = useMusic((state) => state.removeFromQueue)
   const isCurrent = row.index === currentIndex
   return (
-    <div className={cn('group/queue flex h-9 items-center gap-2 rounded-[var(--r-sm)] px-2', isCurrent && 'bg-[var(--accent-soft)]', rowClassName)}>
+    <div
+      className={cn('group/queue flex h-9 items-center gap-2 rounded-[var(--r-sm)] px-2', isCurrent && 'bg-[var(--accent-soft)]', isDragSource && 'opacity-40', rowClassName)}
+      {...queueDragProps({ reorderable, index: row.index, onDragStartRow, onDropRow, onDragEndRow })}
+    >
       <MusicArtwork url={row.track.coverUrl} alt='' className='size-6 rounded-[var(--r-xs)]' iconSize={10} />
       <button
         type='button'
@@ -77,14 +148,30 @@ function QueueRowItem({ row, rowClassName }: { row: QueueRow; rowClassName?: str
           tertiary, measured over the immersive player's --bg-overlay — so that row's duration
           takes two tiers up, same rule as the sidebar's count badge. */}
       <span className={cn('tabular shrink-0 text-[length:var(--text-10)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>{formatDuration(row.track.durationMs)}</span>
-      <IconButton
-        label={t('music.remove_from_queue')}
-        size='sm'
-        onClick={() => removeFromQueue(row.index)}
-        className='opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/queue:opacity-100 md:group-hover/queue:pointer-events-auto md:group-focus-within/queue:opacity-100 md:group-focus-within/queue:pointer-events-auto'
-      >
+      <QueueRowActions index={row.index} reorderable={reorderable} />
+    </div>
+  )
+}
+
+function QueueRowActions({ index, reorderable }: { index: number; reorderable: boolean }) {
+  const queueLength = useMusic((state) => state.queue.length)
+  const removeFromQueue = useMusic((state) => state.removeFromQueue)
+  const moveQueueItem = useMusic((state) => state.moveQueueItem)
+  return (
+    <>
+      {reorderable && (
+        <>
+          <IconButton label={t('music.move_up')} size='sm' disabled={index === 0} onClick={() => moveQueueItem(index, index - 1)} className={REVEAL_ON_HOVER}>
+            <ArrowUp size={12} />
+          </IconButton>
+          <IconButton label={t('music.move_down')} size='sm' disabled={index >= queueLength - 1} onClick={() => moveQueueItem(index, index + 1)} className={REVEAL_ON_HOVER}>
+            <ArrowDown size={12} />
+          </IconButton>
+        </>
+      )}
+      <IconButton label={t('music.remove_from_queue')} size='sm' onClick={() => removeFromQueue(index)} className={REVEAL_ON_HOVER}>
         <X size={12} />
       </IconButton>
-    </div>
+    </>
   )
 }

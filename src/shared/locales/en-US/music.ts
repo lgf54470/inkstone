@@ -231,6 +231,7 @@ export const messages = {
 'music.off': 'Off',
 'music.sleep_minutes': '{value0} min',
 'music.sleep_remaining': 'Stops in {value0}',
+'music.sleep_after_current': 'Stops after the current track',
 'music.playback_rate': 'Playback speed',
 'music.immersive': 'Full screen player',
 'music.exit_immersive': 'Leave full screen',

@@ -40,6 +40,7 @@ function initialMusicState(): Partial<MusicStoreState> {
     mode: prefs.mode,
     playbackRate: prefs.playbackRate,
     sleepEndsAt: prefs.sleepEndsAt,
+    sleepAfterCurrentTrack: prefs.sleepAfterCurrentTrack,
     floatingVisible: prefs.floatingVisible,
     floatingCollapsed: prefs.floatingCollapsed,
     floatingPosition: prefs.floatingPosition,

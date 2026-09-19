@@ -150,13 +150,26 @@ export function setPlaybackRate(set: MusicSet, get: MusicGet, rate: number): voi
 export function setSleepTimer(set: MusicSet, get: MusicGet, minutes: number | null): void {
   clearSleepTimer(get)
   if (minutes === null || minutes <= 0) {
-    set({ sleepEndsAt: null })
+    set({ sleepEndsAt: null, sleepAfterCurrentTrack: false })
     return
   }
   const endsAt = Date.now() + minutes * 60_000
-  set({ sleepEndsAt: endsAt })
+  set({ sleepEndsAt: endsAt, sleepAfterCurrentTrack: false })
   persist(get)
   armSleepTimer(set, get, endsAt)
+}
+
+// The two sleep modes are exclusive: the minute timer counts wall time, this
+// one waits for the playing track to reach its end.
+export function setSleepAfterCurrentTrack(set: MusicSet, get: MusicGet, enabled: boolean): void {
+  if (!enabled) {
+    set({ sleepAfterCurrentTrack: false })
+    persist(get)
+    return
+  }
+  clearSleepTimer(get)
+  set({ sleepAfterCurrentTrack: true, sleepEndsAt: null })
+  persist(get)
 }
 
 export function resumeSleepTimer(set: MusicSet, get: MusicGet): void {
@@ -268,6 +281,26 @@ export function clearQueue(set: MusicSet): void {
   publishMediaSession(null, false)
 }
 
+// The audio keeps playing while rows shuffle, so only the queue array and the
+// index pointing at the playing entry change — a new array reference is what
+// tells the session sync to persist the reordered queue.
+export function moveQueueItem(set: MusicSet, get: MusicGet, from: number, to: number): void {
+  const { queue, currentIndex } = get()
+  if (from === to || from < 0 || to < 0 || from >= queue.length || to >= queue.length) return
+  const nextQueue = [...queue]
+  const [moved] = nextQueue.splice(from, 1)
+  nextQueue.splice(to, 0, moved)
+  let nextIndex = currentIndex
+  if (from === currentIndex) {
+    nextIndex = to
+  } else if (from < currentIndex && to >= currentIndex) {
+    nextIndex = currentIndex - 1
+  } else if (from > currentIndex && to <= currentIndex) {
+    nextIndex = currentIndex + 1
+  }
+  set({ queue: nextQueue, currentIndex: nextIndex })
+}
+
 export function toggleFloating(set: MusicSet, get: MusicGet): void {
   set({ floatingVisible: !get().floatingVisible })
   persist(get)
@@ -305,7 +338,15 @@ async function loadAndPlay(set: MusicSet, get: MusicGet): Promise<void> {
   })
 }
 
-async function handleEnded(set: MusicSet, get: MusicGet): Promise<void> {
+export async function handleEnded(set: MusicSet, get: MusicGet): Promise<void> {
+  // Stopping after this track wins over repeat-one: a looping track would
+  // otherwise never give the sleeper its cue.
+  if (get().sleepAfterCurrentTrack) {
+    set({ sleepAfterCurrentTrack: false })
+    persist(get)
+    pausePlayback()
+    return
+  }
   if (get().mode === 'repeat-one') {
     seekTo(0)
     await resumePlayback()
@@ -411,6 +452,7 @@ function writePreferences(get: MusicGet): void {
     floatingCollapsed: state.floatingCollapsed,
     floatingPosition: state.floatingPosition,
     sleepEndsAt: state.sleepEndsAt,
+    sleepAfterCurrentTrack: state.sleepAfterCurrentTrack,
     playbackRate: state.playbackRate,
     searchHistory: state.searchHistory,
   })

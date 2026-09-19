@@ -19,6 +19,7 @@ export interface MusicPreferences {
   playbackRate: number
   searchHistory: string[]
   sleepEndsAt: number | null
+  sleepAfterCurrentTrack: boolean
 }
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
@@ -42,6 +43,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   playbackRate: 1,
   searchHistory: [],
   sleepEndsAt: null,
+  sleepAfterCurrentTrack: false,
 }
 
 function readStored(key: string): Record<string, unknown> | null {
@@ -76,6 +78,7 @@ export function loadPreferences(): MusicPreferences {
     playbackRate: readRate(parsed.playbackRate),
     searchHistory: readStrings(parsed.searchHistory, SEARCH_HISTORY_MAX),
     sleepEndsAt: readTimestamp(parsed.sleepEndsAt),
+    sleepAfterCurrentTrack: parsed.sleepAfterCurrentTrack === true,
   }
 }
 

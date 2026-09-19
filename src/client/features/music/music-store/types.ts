@@ -106,6 +106,7 @@ export interface MusicStoreState {
   mode: MusicPlayMode
   playbackRate: number
   sleepEndsAt: number | null
+  sleepAfterCurrentTrack: boolean
 
   floatingVisible: boolean
   floatingCollapsed: boolean
@@ -149,8 +150,10 @@ export interface MusicStoreState {
   cycleMode: () => void
   setPlaybackRate: (rate: number) => void
   setSleepTimer: (minutes: number | null) => void
+  setSleepAfterCurrentTrack: (enabled: boolean) => void
   addToQueue: (id: string, next?: boolean) => void
   removeFromQueue: (index: number) => void
+  moveQueueItem: (from: number, to: number) => void
   clearQueue: () => void
   playQueueAt: (index: number) => Promise<void>
 

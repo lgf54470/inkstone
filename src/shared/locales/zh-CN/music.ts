@@ -231,6 +231,7 @@ export const messages = {
 'music.off': '关闭',
 'music.sleep_minutes': '{value0} 分钟',
 'music.sleep_remaining': '{value0} 后停止',
+'music.sleep_after_current': '播完当前曲后停止',
 'music.playback_rate': '播放速度',
 'music.immersive': '沉浸式播放',
 'music.exit_immersive': '退出沉浸式',

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, Square, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
 import type { CSSProperties } from 'react'
@@ -140,14 +140,16 @@ export function MusicVolumeSlider({ className }: { className?: string }) {
 
 export function MusicSleepButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   const sleepEndsAt = useMusic((state) => state.sleepEndsAt)
+  const sleepAfterCurrentTrack = useMusic((state) => state.sleepAfterCurrentTrack)
   const setSleepTimer = useMusic((state) => state.setSleepTimer)
+  const setSleepAfterCurrentTrack = useMusic((state) => state.setSleepAfterCurrentTrack)
   const [open, setOpen] = useState(false)
   const anchorRef = useRef<HTMLButtonElement>(null)
   const options = [15, 30, 45, 60]
   return (
     <>
       <Tooltip label={t('music.sleep_timer')} side='top'>
-        <IconButton ref={anchorRef} label={t('music.sleep_timer')} size={size} active={sleepEndsAt !== null} onClick={() => setOpen((value) => !value)}>
+        <IconButton ref={anchorRef} label={t('music.sleep_timer')} size={size} active={sleepEndsAt !== null || sleepAfterCurrentTrack} onClick={() => setOpen((value) => !value)}>
           <Moon size={14} />
         </IconButton>
       </Tooltip>
@@ -155,7 +157,7 @@ export function MusicSleepButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
         <button
           type='button'
           onClick={() => { setSleepTimer(null); setOpen(false) }}
-          className={cn('flex w-full items-center rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] hover:bg-[var(--bg-hover)]', sleepEndsAt === null ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]')}
+          className={cn('flex w-full items-center rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] hover:bg-[var(--bg-hover)]', sleepEndsAt === null && !sleepAfterCurrentTrack ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]')}
         >
           <Clock3 size={11} className='mr-1.5' />{t('music.off')}
         </button>
@@ -169,6 +171,13 @@ export function MusicSleepButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
             {t('music.sleep_minutes', { value0: minutes })}
           </button>
         ))}
+        <button
+          type='button'
+          onClick={() => { setSleepAfterCurrentTrack(true); setOpen(false) }}
+          className={cn('flex w-full items-center rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] hover:bg-[var(--bg-hover)]', sleepAfterCurrentTrack ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]')}
+        >
+          <Square size={11} className='mr-1.5' />{t('music.sleep_after_current')}
+        </button>
       </MusicPopover>
     </>
   )
@@ -205,6 +214,7 @@ export function MusicRateButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
 
 export function MusicSleepStatus() {
   const sleepEndsAt = useMusic((state) => state.sleepEndsAt)
+  const sleepAfterCurrentTrack = useMusic((state) => state.sleepAfterCurrentTrack)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (sleepEndsAt === null) return
@@ -212,7 +222,16 @@ export function MusicSleepStatus() {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [sleepEndsAt])
-  if (sleepEndsAt === null) return null
+  // A single static line about what the sleeper will do; announcing it once
+  // is the point, so a polite status fits while the countdown stays a timer.
+  if (sleepEndsAt === null) {
+    if (!sleepAfterCurrentTrack) return null
+    return (
+      <span role='status' className='shrink-0 text-[length:var(--text-10)] text-[var(--accent)]'>
+        {t('music.sleep_after_current')}
+      </span>
+    )
+  }
   const remaining = Math.max(0, sleepEndsAt - now)
   const minutes = Math.floor(remaining / 60_000)
   const seconds = Math.floor((remaining % 60_000) / 1000)

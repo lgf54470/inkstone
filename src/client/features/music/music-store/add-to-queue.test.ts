@@ -8,7 +8,7 @@ vi.mock('../music-feedback', () => ({
 }))
 
 import { toastMusic } from '../music-feedback'
-import { addToQueue } from './player'
+import { addToQueue, moveQueueItem } from './player'
 import type { MusicStoreState } from './types'
 
 function makeStore(queue: string[], currentIndex = 0) {
@@ -45,5 +45,37 @@ describe('addToQueue feedback', () => {
     addToQueue(store.set, store.get, 'z', true)
     expect(store.state().queue).toEqual(['x', 'z', 'y'])
     expect(toastMusic).toHaveBeenCalledWith('music.added_to_queue')
+  })
+})
+
+describe('moveQueueItem', () => {
+  it('reorders rows and keeps the playing entry pointed at when a row crosses it', () => {
+    const store = makeStore(['a', 'b', 'c', 'd'], 1)
+    moveQueueItem(store.set, store.get, 0, 2)
+    expect(store.state().queue).toEqual(['b', 'c', 'a', 'd'])
+    expect(store.state().currentIndex).toBe(0)
+  })
+
+  it('follows the playing row itself when it is moved', () => {
+    const store = makeStore(['a', 'b', 'c', 'd'], 1)
+    moveQueueItem(store.set, store.get, 1, 3)
+    expect(store.state().queue).toEqual(['a', 'c', 'd', 'b'])
+    expect(store.state().currentIndex).toBe(3)
+  })
+
+  it('shifts the playing entry when a later row moves up over it', () => {
+    const store = makeStore(['a', 'b', 'c', 'd'], 1)
+    moveQueueItem(store.set, store.get, 3, 1)
+    expect(store.state().queue).toEqual(['a', 'd', 'b', 'c'])
+    expect(store.state().currentIndex).toBe(2)
+  })
+
+  it('ignores no-op and out-of-range moves', () => {
+    const store = makeStore(['a', 'b'], 0)
+    moveQueueItem(store.set, store.get, 1, 1)
+    moveQueueItem(store.set, store.get, -1, 0)
+    moveQueueItem(store.set, store.get, 0, 2)
+    expect(store.state().queue).toEqual(['a', 'b'])
+    expect(store.state().currentIndex).toBe(0)
   })
 })

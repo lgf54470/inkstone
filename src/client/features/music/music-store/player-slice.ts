@@ -1,15 +1,15 @@
 import {
-  addToQueue, clearQueue, connectAudio, currentTrack, cycleMode, playCollection,
+  addToQueue, clearQueue, connectAudio, currentTrack, cycleMode, moveQueueItem, playCollection,
   playNext, playPrevious, playQueueAt, playTrack, removeFromQueue, seek, setFloatingPosition,
-  setImmersive, setPlaybackRate, setSleepTimer, setVolume, toggleFloating, toggleFloatingCollapsed,
-  toggleMute, togglePlay,
+  setImmersive, setPlaybackRate, setSleepAfterCurrentTrack, setSleepTimer, setVolume,
+  toggleFloating, toggleFloatingCollapsed, toggleMute, togglePlay,
 } from './player'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type PlayerSlice = Pick<MusicStoreState,
   | 'playTrack' | 'playCollection' | 'playQueueAt' | 'togglePlay' | 'playNext' | 'playPrevious'
-  | 'seek' | 'setVolume' | 'toggleMute' | 'cycleMode' | 'setPlaybackRate' | 'setSleepTimer' | 'setImmersive'
-  | 'addToQueue' | 'removeFromQueue' | 'clearQueue'
+  | 'seek' | 'setVolume' | 'toggleMute' | 'cycleMode' | 'setPlaybackRate' | 'setSleepTimer' | 'setSleepAfterCurrentTrack' | 'setImmersive'
+  | 'addToQueue' | 'removeFromQueue' | 'moveQueueItem' | 'clearQueue'
   | 'toggleFloating' | 'toggleFloatingCollapsed' | 'setFloatingPosition'>
 
 export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
@@ -27,9 +27,11 @@ export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
     cycleMode: () => cycleMode(set, get),
     setPlaybackRate: (rate) => setPlaybackRate(set, get, rate),
     setSleepTimer: (minutes) => setSleepTimer(set, get, minutes),
+    setSleepAfterCurrentTrack: (enabled) => setSleepAfterCurrentTrack(set, get, enabled),
     setImmersive: (open) => setImmersive(set, open),
     addToQueue: (id, next) => addToQueue(set, get, id, next),
     removeFromQueue: (index) => removeFromQueue(set, get, index),
+    moveQueueItem: (from, to) => moveQueueItem(set, get, from, to),
     clearQueue: () => clearQueue(set),
     toggleFloating: () => toggleFloating(set, get),
     toggleFloatingCollapsed: () => toggleFloatingCollapsed(set, get),
