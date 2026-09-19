@@ -85,9 +85,18 @@
 - [x] M-44c check-contrast 纳入 music 表面（hub modal 含 UI-23 时长角标 + 沉浸式播放器，双主题）
 - [x] M-45 UI-30 桌面浮动播放器/折叠徽标停靠避让状态栏右端（M-44b 实测发现，先于其提交）
 
-## 暂缓（需产品决策，见 review 路线图⑦）
+## 第七批 · 产品分水岭全量（2026-09-19 用户裁决「全做，顺序自己定义」，路线图⑦+原暂缓项）
 
-- 离线播放（FEAT-10）、专辑/艺人分组视图、最近播放服务端化（FEAT-9）、EQ/ReplayGain/gapless/重复检测/视频/歌词搜索/歌单分享
+- [x] M-46 UI-14 375px 窄屏布局：断点折叠左右栏（含 e2e-visual 375px 布局断言转正）
+- [ ] M-47 FEAT-9 最近播放服务端化（last_played_at 列 + play 写入 + 客户端读取）
+- [ ] M-48 队列拖拽重排 + 睡眠「播完当前曲停」
+- [ ] M-49 FEAT-10 离线播放（按曲下载 + SW Cache Storage + 配额回收）
+- [ ] M-50 专辑/艺人分组视图
+- [ ] M-51 歌单封面 + 歌单分享
+- [ ] M-52 在线歌词搜索（照 cover-lookup 代理范式；边界=私有账号内拉取缓存，不入共享页）
+- [ ] M-53 重复文件检测（hash 列只增、仅对新增计算）+ 整库纳入备份体系
+- [ ] M-54 EQ + 音量归一化（ReplayGain）+ 交叉淡化（gapless 近似，限制如实记录）
+- [ ] M-55 视频播放（video/* 走 <video> 原生控件）
 
 ## 进度日志
 
@@ -152,4 +161,5 @@
 | 2026-09-19 | M-45 UI-30 浮动播放器与折叠徽标停靠避让状态栏 | `7a614ba7` | M-44b 场景的「播放器矩形与状态栏按钮矩形不相交」断言在旧 CSS 上实测跑红（卡片 y656–884 压住按钮 y875+）后修复：`md:bottom-4`=16px < `--statusbar-h`=26px，aside 与 CollapsedBadge 两处停靠统一改 `md:bottom-[calc(var(--statusbar-h)+1rem)]`；播放会话由服务端恢复后状态栏换交替控制行、其右端「展开播放器」正落在旧被盖区（既遮显示又拦点击），避让后不再相交。review.md 登记 UI-30（含 UI-14 预告出处），375px 挤压主项仍留 UI-14/批次⑦。该断言的永久守卫随下一条 M-44b 提交入门禁；本条验证=改前跑红、改后 e2e-visual 全新实例跑绿 + 10 静态门禁/typecheck/串行全量（合并在 M-44b/c 末次运行覆盖最终树）。新增 0 例单测（CSS 停靠值无 jsdom 宿主，验证=实跑断言） |
 | 2026-09-19 | M-44b e2e-visual 纳入 music 表面（13 条断言） | `2f06d89a` | scripts/e2e-visual.mjs：assertMusicSurface 场景——上传自种 2 首探针音频→开库→入场动画>1ms→播放器与状态栏矩形不相交→reduced-motion 周期（重开库断言 ≤1ms，须排在入队前：服务端恢复的播放会话会把状态栏 opening 换成交替行，且 Added-to-queue toast 数秒内盖住浮动播放器按钮，注释已记）→moreActions 入队→网格/列表双视图 700px 行/卡片控件 computed 状态（opacity/pointer-events/宽度）→375px 触屏揭示规则（窄栏挤压主项留 UI-14，注释先误写 UI-27 后改正）→aside 不挡 nav→队列行/移除钮状态。头注释同步：LABELS 增 musicExpandPlayer，openMusicHub 同时接受两种 footer 态（restorePlayback 恢复会话后「打开音乐库」被「展开播放器」替换）。环境结论：无头 shell 为 hover:none/pointer:coarse，md:group-hover 揭示永不可测，走 focusRevealedActivate（focus+Enter 触发 group-focus-within）；上传接口非 GET 需 X-Inkstone-Client:1。UI-30 由本场景重叠断言在旧 CSS 上实测跑红而发现，修复拆至前置提交 M-45（`7a614ba7`）。验证：全新 ephemeral 实例 203/0 共三次（本树末次 203 passed 0 failed + console 无页错），HEAD 无 music 基线 190/0 未回退；一次「List view」presence 超时红发生在被前轮污染的同实例、后续 4 连跑全绿，记为污染 flake 不改码；变异证明（剪枝链控制 16/0）：每条 music 断言各自可红（入场 scrim/panel、矩形相交、reduced 220ms、队列、900px 语义显隐、行 opacity、375 揭示、nav 遮挡、可访问名、队列动作），perl -pe 无 /g 使 900×两条同改致双红已知。allowlist 本提交带 scripts/e2e-visual.mjs 区块。新增 0 例单测（视觉门禁无 jsdom 宿主，验证=全新实例实跑+变异）。回归：typecheck ✅、music 40 文件 237 ✅、10 静态门禁 ✅、串行全量 238 文件/1855 例 ✅（全量与门禁在最终树上统一跑一次，覆盖 M-45/44b/44c 三提交） |
 | 2026-09-19 | M-44c（上）对比度门禁实测的产品整改：UI-23/31/32 | `e8e484cc` | 门禁首跑（run2）即实测推翻 UI-23 的「需人工确认」：`--text-inverse` 落在 `--scrim` 上两套主题 1.77/1.01，track-card 时长角标/遮罩浮层、RowArtwork 浮层共 4 处改 `--text-primary`。run3 又炸出两类新缺陷：① 14% 强调软底上的暗文字层级——light 主题 tertiary 亦不达标（--bg-sunken 上 4.16–4.28、--bg-inset/覆盖 4.35–4.47），故当前行/队列当前行/侧栏与播单计数改走 secondary 或 accent（accent 文字落自身软底是令牌体系校准过的唯一配对），source-badge 本地音源变体 tertiary→secondary；② axe 在列表视图表面判出表头违规——`aria-multiselectable` 不属于 role=table、三个纯图标 columnheader 触发 empty-table-header，均已删（对齐改用无 role 占位 span，选择语义由行内 checkbox 承担），歌词/队列/滚动 div 补 role=group、hub 侧栏 aside 补 aria-label（新增 music.hub_sidebar en/zh 键，landmark-unique）。守卫测试跟进：music-track-table.test.ts 断言列头均有可读文本或具名 input、图标列保持无 role、table 不带 aria-multiselectable。review.md 登记 UI-31/UI-32 并回填 UI-23 ✅。新增 1 例单测 + 改写 1 例。验证：check-contrast 第 4 跑 exit 0（music 三表面双主题全 ✓、axe 0 违规）；typecheck、music 237 例、10 静态门禁、串行全量 1855 例已在最终树统一通过 |
-| 2026-09-19 | M-44c（下）check-contrast 纳入 music 三表面双主题判定 | 本次提交（hash 由下一次提交回填） | scripts/check-contrast.mjs：SURFACES 增 music library list view / music library grid view / immersive player——列表视图表面专测 14% 强调软底（点探针曲标题一次即同时置当前+选中两态，行内底色只有这里画）；网格表面点卡片顺带给沉浸式一个当前曲目；两 footer 态（打开音乐库/展开播放器）皆可入 hub，MUSIC_HUB_OPENER 双 xpath 取末位。运行史：run2 实测 UI-23（inverse/scrim 1.77/1.01）与 light quaternary 徽标；run3 暴露 light tertiary 不达标 + axe 三项（aria-prohibited-attr/empty-table-header×3/landmark-unique）；全部整改见上一条（e8e484cc）；run4 exit 0——music 三表面双主题全 ✓、axe 27/24/21 检查 0 违规。music 表面排最后：它们读 e2e.mjs 种子状态，前面的遍次不碰。回归：本次提交树上 typecheck、10 静态门禁、串行全量（含快照守卫测试）、check-contrast 与 e2e-visual（203/0）均已在最终树通过 |
+| 2026-09-19 | M-44c（下）check-contrast 纳入 music 三表面双主题判定 | 814dee08 | scripts/check-contrast.mjs：SURFACES 增 music library list view / music library grid view / immersive player——列表视图表面专测 14% 强调软底（点探针曲标题一次即同时置当前+选中两态，行内底色只有这里画）；网格表面点卡片顺带给沉浸式一个当前曲目；两 footer 态（打开音乐库/展开播放器）皆可入 hub，MUSIC_HUB_OPENER 双 xpath 取末位。运行史：run2 实测 UI-23（inverse/scrim 1.77/1.01）与 light quaternary 徽标；run3 暴露 light tertiary 不达标 + axe 三项（aria-prohibited-attr/empty-table-header×3/landmark-unique）；全部整改见上一条（e8e484cc）；run4 exit 0——music 三表面双主题全 ✓、axe 27/24/21 检查 0 违规。music 表面排最后：它们读 e2e.mjs 种子状态，前面的遍次不碰。回归：本次提交树上 typecheck、10 静态门禁、串行全量（含快照守卫测试）、check-contrast 与 e2e-visual（203/0）均已在最终树通过 |
+| 2026-09-19 | M-46 UI-14 窄屏折叠：hub 侧栏折叠为抽屉 + 沉浸式堆叠布局 | 本次提交（hash 由下一次提交回填） | music-utils.ts：新增 MUSIC_NARROW_BREAKPOINT=900 共享断点。music-hub-modal.tsx：断点改读共享常量，<900 时左右固定栏折叠为 header 按钮开启的 Drawer（zIndex=menu 盖过 modal），窄态去掉 min-h-145。music-immersive-player.tsx：ImmersiveLeft 窄态改为 w-full 横向行（封面 w-20 + 标题/进度/控件列堆叠于歌词之上），删残留 fragment；拆出 ImmersiveMeta/ImmersiveButtons 守住 50 行。hooks.ts：useMediaQuery 导出。locales：hub_open_navigation/hub_open_now_playing 三处入口。测试：hub-modal 折叠 4 例（matchMedia 桩）、immersive 堆叠 2 例。e2e-visual 新增 4 断言（375 折叠行宽≥300、抽屉可开、immersive 可开、歌词面板宽≥300），变异检验：去折叠后行宽 16px、歌词面板 246px 双双红。回归：typecheck、11 静态门禁、串行全量 238 套件 1859 例、pristine 7721 上 e2e 175/1 基线 + e2e-visual 207/0 + check-contrast 双主题全绿 |

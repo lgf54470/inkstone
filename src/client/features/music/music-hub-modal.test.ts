@@ -1,4 +1,4 @@
-import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
@@ -15,6 +15,16 @@ beforeAll(() => {
       disconnect() {}
     }
   }
+})
+
+// This jsdom ships no matchMedia at all; the hub reads one media query now.
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
 })
 
 let root: Root | null = null
@@ -34,6 +44,7 @@ afterEach(() => {
   document.body.innerHTML = ''
   useMusic.setState({ tracks: [], tags: [], playlists: [], loading: false, loadError: null, query: '', scope: { kind: 'all' } })
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe('MusicHubModal load failure state', () => {
@@ -58,5 +69,49 @@ describe('MusicHubModal load failure state', () => {
     await mountHub()
     const dialog = document.querySelector('[role="dialog"]')
     expect(dialog?.textContent).not.toContain(t('music.load_failed'))
+  })
+})
+
+describe('MusicHubModal column folding — UI-14', () => {
+  function stubViewportWidth(width: number): void {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: /min-width:\s*(\d+)px/.test(query) ? width >= Number(/min-width:\s*(\d+)px/.exec(query)?.[1]) : false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+  }
+
+  function findButton(dialog: Element | null, label: string): HTMLElement | undefined {
+    return [...(dialog?.querySelectorAll('button') ?? [])].find((button) => button.getAttribute('aria-label') === label)
+  }
+
+  it('keeps both side columns inline on a wide viewport', async () => {
+    stubViewportWidth(1280)
+    useMusic.setState({ loadLibrary: vi.fn(async () => {}) })
+    await mountHub()
+    const dialog = document.querySelector('[role="dialog"]')
+    expect(dialog?.querySelector(`aside[aria-label="${t('music.hub_sidebar')}"]`)).toBeDefined()
+    expect(dialog?.querySelector(`aside[aria-label="${t('music.now_playing')}"]`)).toBeNull()
+    expect(findButton(dialog, t('music.hub_open_navigation'))).toBeUndefined()
+  })
+
+  it('folds the side columns into drawers below the 900px breakpoint', async () => {
+    stubViewportWidth(375)
+    useMusic.setState({ loadLibrary: vi.fn(async () => {}) })
+    await mountHub()
+    const dialog = document.querySelector('[role="dialog"]')
+    expect(dialog?.querySelector(`aside[aria-label="${t('music.hub_sidebar')}"]`)).toBeNull()
+    const opener = findButton(dialog, t('music.hub_open_navigation'))
+    expect(opener).toBeDefined()
+    await act(async () => {
+      opener?.click()
+    })
+    const drawer = document.querySelector('[data-surface="drawer"]')
+    expect(drawer?.querySelector(`aside[aria-label="${t('music.hub_sidebar')}"]`)).toBeDefined()
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    expect(document.querySelector('[data-surface="drawer"]')).toBeNull()
   })
 })

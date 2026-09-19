@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { relativeTime } from './time'
 
 
-function useMediaQuery(query: string): boolean {
+export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() =>
     typeof window === 'undefined' ? false : window.matchMedia(query).matches,
   )

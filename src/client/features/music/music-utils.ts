@@ -7,6 +7,10 @@ const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuff
 // enough to overlap latency, low enough to avoid hammering the worker or the browser's per-host cap.
 export const TRACK_IO_CONCURRENCY = 4
 
+// Below this viewport width the music surfaces' fixed-width side columns squeeze the main area
+// toward zero, so they fold (UI-14): the hub into drawers, the immersive player into a stack.
+export const MUSIC_NARROW_BREAKPOINT = 900
+
 export function nextPlayMode(mode: MusicPlayMode): MusicPlayMode {
   const index = PLAY_MODES.indexOf(mode)
   return PLAY_MODES[(index + 1) % PLAY_MODES.length]!

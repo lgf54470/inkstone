@@ -148,9 +148,10 @@
 
 - 歌词容器（`music-now-playing.tsx:49`、`music-immersive-player.tsx:51`）、WebDAV 列表（`music-webdav-modal.tsx:121`）、传输列表（`music-transfer-dialog.tsx:134`）缺 `tabIndex={0}`。代价：S。
 
-### UI-14 【P1】窄屏布局需实测：三栏 `shrink-0` 可能挤没中央列表 ◐（需人工确认）
+### UI-14 【P1】窄屏布局需实测：三栏 `shrink-0` 可能挤没中央列表 ✅（M-46 已修）
 
 - `music-hub-modal.tsx:40` `min-h-145`（≈580px）小视口撑破；sidebar `w-56`/now-playing `w-64`/immersive `w-96` 均 `shrink-0`，<700px 时中央列表被压向 0。浮动播放器 bottom 偏移与状态栏重叠需 375px 实测。方案：`max-[900px]` 断点折叠左右栏为 Drawer。代价：M。
+- 落地：共享断点 `MUSIC_NARROW_BREAKPOINT=900`（music-utils.ts）；hub 窄态左右栏折叠为 header 开启的 Drawer（Z_INDEX.menu 盖过模态）、去 `min-h-145`；沉浸式窄态改堆叠（封面行横排于歌词之上）。浮动播放器避让状态栏一项已由 M-45 单独修复。375px 实测由 e2e-visual 4 条新断言转正：未折叠变异下行宽 16px、歌词面板 246px，均被断言拒绝。
 
 ### UI-15 【P1】歌单排序链路全就绪、零 UI 调用；且置顶永远覆盖播单顺序 ✅◐
 

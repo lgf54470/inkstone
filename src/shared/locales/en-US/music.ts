@@ -2,6 +2,8 @@ export const messages = {
 'music.title': 'Music',
 'music.hub_title': 'Music library',
 'music.hub_sidebar': 'Music navigation',
+'music.hub_open_navigation': 'Open music navigation',
+'music.hub_open_now_playing': 'Open now playing panel',
 'music.open_hub': 'Open music library',
 'music.close_player': 'Close player',
 'music.section_library': 'Library',

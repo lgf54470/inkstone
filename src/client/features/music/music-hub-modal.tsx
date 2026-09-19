@@ -1,9 +1,12 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { Music, X } from 'lucide-react'
+import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Music, PanelLeft, SlidersHorizontal, X } from 'lucide-react'
 import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { Button, IconButton } from '../../components/primitives'
-import { Modal } from '../../components/overlay'
+import { Drawer, Modal } from '../../components/overlay'
 import { Empty } from '../../components/feedback'
+import { cn } from '../../lib/cn'
+import { useMediaQuery } from '../../lib/hooks'
+import { Z_INDEX } from '../../lib/z-index'
 import { t } from '../../lib/i18n'
 import { MusicEditTrackModal } from './music-edit-track-modal'
 import { MusicHubSidebar } from './music-hub-sidebar'
@@ -18,14 +21,30 @@ import { MusicTransferDialog } from './music-transfer-dialog'
 import { MusicWebdavModal } from './music-webdav-modal'
 import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicScope } from './music-store'
+import { MUSIC_NARROW_BREAKPOINT } from './music-utils'
 
 const HUB_WIDTH = 1240
+// The side columns are fixed-width (224 + 256px); below the shared narrow breakpoint they
+// squeeze the track list toward zero, so they fold into drawers opened from the
+// header instead (UI-14).
+const HUB_NAVIGATION_DRAWER_WIDTH = 224
+const HUB_NOW_PLAYING_DRAWER_WIDTH = 256
+
+type NarrowPanel = 'navigation' | 'nowPlaying' | null
+
+function useNarrowColumns() {
+  const columnsWide = useMediaQuery(`(min-width: ${MUSIC_NARROW_BREAKPOINT}px)`)
+  const [narrowPanel, setNarrowPanel] = useState<NarrowPanel>(null)
+  useEffect(() => {
+    if (columnsWide) setNarrowPanel(null)
+  }, [columnsWide])
+  return { columnsWide, narrowPanel, openPanel: setNarrowPanel, closePanels: () => setNarrowPanel(null) }
+}
 
 export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const loadLibrary = useMusic((state) => state.loadLibrary)
-  const transfersOpen = useMusic((state) => state.transfersOpen)
-  const setTransfersOpen = useMusic((state) => state.setTransfersOpen)
   const dialogs = useHubDialogs()
+  const { columnsWide, narrowPanel, openPanel, closePanels } = useNarrowColumns()
 
   useEffect(() => {
     if (open) void loadLibrary()
@@ -38,12 +57,17 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
         onClose={onClose}
         ariaLabel={t('music.hub_title')}
         width={HUB_WIDTH}
-        className='h-[84vh] min-h-145 max-h-220 p-0 overflow-hidden flex flex-col'
+        className={cn('flex h-[84vh] max-h-220 flex-col overflow-hidden p-0', columnsWide ? 'min-h-145' : 'min-h-0')}
         bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'
       >
-        <HubHeader onClose={onClose} />
+        <HubHeader
+          onClose={onClose}
+          narrow={!columnsWide}
+          onOpenNavigation={() => openPanel('navigation')}
+          onOpenNowPlaying={() => openPanel('nowPlaying')}
+        />
         <div className='flex min-h-0 flex-1'>
-          <Sidebar onManageTags={dialogs.openTagManager} onCreatePlaylist={dialogs.openCreatePlaylist} />
+          {columnsWide && <Sidebar onManageTags={dialogs.openTagManager} onCreatePlaylist={dialogs.openCreatePlaylist} />}
           <HubCentre
             onEditTrack={dialogs.openEditTrack}
             onUpload={dialogs.openUpload}
@@ -51,11 +75,28 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
             queueOpen={dialogs.queueOpen}
             onCloseQueue={dialogs.closeQueue}
           />
-          <NowPlaying tab={dialogs.detailTab} onTabChange={dialogs.setDetailTab} onEditTags={dialogs.openEditTrackForCurrent} />
+          {columnsWide && <NowPlaying tab={dialogs.detailTab} onTabChange={dialogs.setDetailTab} onEditTags={dialogs.openEditTrackForCurrent} />}
         </div>
         <Controls queueOpen={dialogs.queueOpen} onToggleQueue={dialogs.toggleQueue} />
+        <FoldedColumns
+          wide={columnsWide}
+          panel={narrowPanel}
+          onClose={closePanels}
+          navigation={<Sidebar onManageTags={dialogs.openTagManager} onCreatePlaylist={dialogs.openCreatePlaylist} />}
+          nowPlaying={<NowPlaying tab={dialogs.detailTab} onTabChange={dialogs.setDetailTab} onEditTags={dialogs.openEditTrackForCurrent} />}
+        />
       </Modal>
+      <HubPeers dialogs={dialogs} />
+    </>
+  )
+}
 
+// The dialogs the hub opens sit beside the modal, not inside it.
+function HubPeers({ dialogs }: { dialogs: ReturnType<typeof useHubDialogs> }) {
+  const transfersOpen = useMusic((state) => state.transfersOpen)
+  const setTransfersOpen = useMusic((state) => state.setTransfersOpen)
+  return (
+    <>
       <MusicEditTrackModal track={dialogs.editingTrack} open={dialogs.editingTrack !== null} onClose={dialogs.closeEditTrack} />
       <MusicPlaylistModal playlist={dialogs.editingPlaylist} open={dialogs.playlistModalOpen} onClose={dialogs.closePlaylistModal} />
       <MusicTagManagerModal open={dialogs.tagManagerOpen} onClose={dialogs.closeTagManager} />
@@ -71,14 +112,59 @@ const Sidebar = memo(MusicHubSidebar)
 const NowPlaying = memo(MusicNowPlaying)
 const Controls = memo(MusicPlayerControls)
 
-function HubHeader({ onClose }: { onClose: () => void }) {
+// The drawers portal over the hub modal itself, so they take the next tier above --z-modal.
+function FoldedColumns({
+  wide,
+  panel,
+  onClose,
+  navigation,
+  nowPlaying,
+}: {
+  wide: boolean
+  panel: 'navigation' | 'nowPlaying' | null
+  onClose: () => void
+  navigation: ReactNode
+  nowPlaying: ReactNode
+}) {
+  if (wide) return null
+  return (
+    <>
+      <Drawer open={panel === 'navigation'} onClose={onClose} side='left' width={HUB_NAVIGATION_DRAWER_WIDTH} zIndex={Z_INDEX.menu} title={t('music.hub_sidebar')}>
+        {navigation}
+      </Drawer>
+      <Drawer open={panel === 'nowPlaying'} onClose={onClose} side='right' width={HUB_NOW_PLAYING_DRAWER_WIDTH} zIndex={Z_INDEX.menu} title={t('music.now_playing')}>
+        {nowPlaying}
+      </Drawer>
+    </>
+  )
+}
+
+function HubHeader({
+  onClose,
+  narrow,
+  onOpenNavigation,
+  onOpenNowPlaying,
+}: {
+  onClose: () => void
+  narrow: boolean
+  onOpenNavigation: () => void
+  onOpenNowPlaying: () => void
+}) {
   return (
     <header className='flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4'>
       <div className='flex items-center gap-2'>
         <Music size={16} className='text-[var(--accent)]' />
         <h2 className='text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>{t('music.hub_title')}</h2>
       </div>
-      <IconButton label={t('common.close')} size='sm' onClick={onClose}><X size={15} /></IconButton>
+      <div className='flex items-center gap-1'>
+        {narrow && (
+          <>
+            <IconButton label={t('music.hub_open_navigation')} size='sm' onClick={onOpenNavigation}><PanelLeft size={15} /></IconButton>
+            <IconButton label={t('music.hub_open_now_playing')} size='sm' onClick={onOpenNowPlaying}><SlidersHorizontal size={15} /></IconButton>
+          </>
+        )}
+        <IconButton label={t('common.close')} size='sm' onClick={onClose}><X size={15} /></IconButton>
+      </div>
     </header>
   )
 }

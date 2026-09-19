@@ -870,9 +870,14 @@ const allowed = new Map([
     '// The reduced-motion check reopens the hub from the status bar footer, so it has to run before',
     '// anything is queued: once a track is current, the footer swaps the hub opener for the transport',
     '// row, and the \'Added to the queue\' toast covers the floating player\'s own opener for seconds.',
-    '// At 375 the hub\'s fixed-width side columns squeeze the centre away (the deferred UI-14 layout',
-    '// decision), so only the reveal rule — never opacity-hidden or click-blocked on touch — is',
-    '// re-asserted here; a laid-out, clickable control is what the 700px checks above prove.',
+    '// Below the hub\'s 900px breakpoint the fixed-width side columns fold into drawers opened',
+    '// from the header (UI-14), so the centre list — and the touch reveal rule on its rows —',
+    '// now keeps the whole width instead of being squeezed away.',
+    '// The immersive player shares UI-14\'s fold: below the breakpoint its fixed-width artwork',
+    '// column stacks into a full-width row, so the lyrics pane keeps the viewport width instead',
+    '// of being squeezed by the 384px column.',
+    '// Scope the lookup inside the dialog itself: cssByLabels\' comma union would let an',
+    '// unscoped second branch match a background surface.',
     '// The sign-in helper also clears the owner\'s update prompt; every scenario below starts clicking',
     '// straight away, and the prompt\'s scrim would swallow the first of those clicks.',
     '// Demo backend intentionally logs a 401 for the logged-out ping; only',
@@ -1295,9 +1300,17 @@ const allowed = new Map([
     '// Space is how keyboards press the focused button, and with nothing loaded it should',
     '// still scroll the page — so the shortcut only claims the key on plain ground once a track exists.',
   ]],
+  ['src/client/features/music/music-hub-modal.test.ts', [
+    '// This jsdom ships no matchMedia at all; the hub reads one media query now.',
+  ]],
   ['src/client/features/music/music-hub-modal.tsx', [
+    '// The side columns are fixed-width (224 + 256px); below the shared narrow breakpoint they',
+    '// squeeze the track list toward zero, so they fold into drawers opened from the',
+    '// header instead (UI-14).',
+    '// The dialogs the hub opens sit beside the modal, not inside it.',
     '// Dialog state lives here, so the panels below are memoised: opening a dialog must',
     '// not re-render the whole library (hundreds of rows).',
+    '// The drawers portal over the hub modal itself, so they take the next tier above --z-modal.',
     '// Stable callbacks: the memoised panels below must not re-render when a dialog opens.',
   ]],
   ['src/client/features/music/music-hub-playlists.tsx', [
@@ -1311,8 +1324,13 @@ const allowed = new Map([
     '// The running guard lives in the store, so remounting the toolbar cannot stack a second pass.',
     '// Force mode overwrites stored tags, so manual edits are lost — confirm before scanning everything visible.',
   ]],
+  ['src/client/features/music/music-immersive-player.test.ts', [
+    '// This jsdom ships no matchMedia at all; the player reads one media query now.',
+  ]],
   ['src/client/features/music/music-immersive-player.tsx', [
     '/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */',
+    '// Mode/rate/volume/sleep plus the per-track favours; the wide layout also carries the',
+    '// file metadata and keyboard hint under these.',
   ]],
   ['src/client/features/music/music-lyrics.ts', [
     '// The library ships tracks without lyric text; detail views mount this hook to',
@@ -1560,6 +1578,8 @@ const allowed = new Map([
   ['src/client/features/music/music-utils.ts', [
     '// Per-track network bursts (bulk upload/download/import/scan) stay pipelined but bounded:',
     '// enough to overlap latency, low enough to avoid hammering the worker or the browser\'s per-host cap.',
+    '// Below this viewport width the music surfaces\' fixed-width side columns squeeze the main area',
+    '// toward zero, so they fold (UI-14): the hub into drawers, the immersive player into a stack.',
     '// The transport nudge buttons and the seek hotkeys move by the same amount.',
     '// Mirrors the worker\'s extension table so folder picks (which carry cover art, cue',
     '// sheets and other noise) only queue real audio, and nothing wastes a round trip',

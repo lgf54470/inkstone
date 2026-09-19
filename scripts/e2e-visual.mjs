@@ -99,6 +99,8 @@ const LABELS = {
   mindMapOutline: ['大纲思维导图', 'Outline Mind Map'],
   musicHub: ['音乐库', 'Music library'],
   musicOpenHub: ['打开音乐库', 'Open music library'],
+  musicHubNavigation: ['音乐导航', 'Music navigation'],
+  musicHubOpenNavigation: ['打开音乐导航', 'Open music navigation'],
   musicExpandPlayer: ['展开播放器', 'Expand the player'],
   musicAddToQueue: ['添加到队列', 'Add to queue'],
   musicGridView: ['网格视图', 'Grid view'],
@@ -109,6 +111,8 @@ const LABELS = {
   musicRemoveFromQueue: ['从队列移除', 'Remove from the queue'],
   musicMiniPlayer: ['浮动播放器', 'Floating player'],
   musicMobileNav: ['手机端导航', 'Mobile navigation'],
+  musicImmersive: ['沉浸式播放', 'Full screen player'],
+  musicLyrics: ['歌词', 'Lyrics'],
 }
 
 async function activeProse(page) {
@@ -2304,13 +2308,31 @@ async function assertMusicSurface(page) {
 
   await page.setViewport({ width: 375, height: 667 })
   await sleep(500)
-  // At 375 the hub's fixed-width side columns squeeze the centre away (the deferred UI-14 layout
-  // decision), so only the reveal rule — never opacity-hidden or click-blocked on touch — is
-  // re-asserted here; a laid-out, clickable control is what the 700px checks above prove.
+  // Below the hub's 900px breakpoint the fixed-width side columns fold into drawers opened
+  // from the header (UI-14), so the centre list — and the touch reveal rule on its rows —
+  // now keeps the whole width instead of being squeezed away.
   const narrowFavorite = await controlState(page, cssByLabels('div[role="row"] button', LABELS.musicFavorite))
   check('music: row actions keep the touch reveal rule at 375px',
     Boolean(narrowFavorite) && narrowFavorite.opacity === 1 && narrowFavorite.pointerEvents !== 'none',
     JSON.stringify(narrowFavorite))
+
+  const folded = await page.evaluate((navSelector) => {
+    const row = document.querySelector('[role="rowgroup"] [role="row"]')
+    return {
+      navInline: Boolean(document.querySelector(navSelector)),
+      rowWidth: row ? Math.round(row.getBoundingClientRect().width) : 0,
+    }
+  }, cssByLabels('aside', LABELS.musicHubNavigation))
+  check('music: the hub folds its side columns and keeps the list width at 375px',
+    !folded.navInline && folded.rowWidth >= 300, JSON.stringify(folded))
+
+  await page.click(cssByLabels('header button', LABELS.musicHubOpenNavigation))
+  const drawerOpened = await page
+    .waitForSelector(cssByLabels('[data-surface="drawer"] aside', LABELS.musicHubNavigation), { timeout: 15_000 })
+    .then(() => true, () => false)
+  check('music: the folded navigation opens as a drawer', drawerOpened)
+  await page.keyboard.press('Escape')
+  await sleep(300)
 
   await page.keyboard.press('Escape')
   await sleep(400)
@@ -2336,6 +2358,31 @@ async function assertMusicSurface(page) {
   check('music: queue actions stay visible and clickable on touch',
     Boolean(queueRemove) && queueRemove.opacity === 1 && queueRemove.pointerEvents !== 'none',
     JSON.stringify(queueRemove))
+
+  // The immersive player shares UI-14's fold: below the breakpoint its fixed-width artwork
+  // column stacks into a full-width row, so the lyrics pane keeps the viewport width instead
+  // of being squeezed by the 384px column.
+  await (await page.$$(cssByLabels('aside button', LABELS.musicImmersive))).at(-1).click()
+  const immersiveDialog = cssByLabels('[role="dialog"]', LABELS.musicImmersive)
+  const immersiveShown = await page.waitForSelector(immersiveDialog, { timeout: 15_000 }).then(() => true, () => false)
+  check('music: the floating player opens the immersive view at 375px', immersiveShown)
+  if (immersiveShown) {
+    // Scope the lookup inside the dialog itself: cssByLabels' comma union would let an
+    // unscoped second branch match a background surface.
+    const lyricsWidth = await page.evaluate((dialogLabels, lyricsLabels) => {
+      const dialog = dialogLabels
+        .map((label) => document.querySelector(`[role="dialog"][aria-label="${label}"]`))
+        .find(Boolean)
+      const lyrics = dialog && dialog.querySelector(lyricsLabels
+        .map((label) => `[role="group"][aria-label="${label}"]`)
+        .join(', '))
+      return lyrics ? Math.round(lyrics.getBoundingClientRect().width) : 0
+    }, LABELS.musicImmersive, LABELS.musicLyrics)
+    check('music: the immersive lyrics pane keeps its width at 375px',
+      lyricsWidth >= 300, String(lyricsWidth))
+    await page.keyboard.press('Escape')
+    await sleep(300)
+  }
 
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(400)

@@ -1,4 +1,4 @@
-import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
@@ -6,10 +6,33 @@ import type { MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { MusicImmersivePlayer } from './music-immersive-player'
 import { useMusic } from './music-store'
+import { MUSIC_NARROW_BREAKPOINT } from './music-utils'
 
 beforeAll(() => {
   ;(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
   Element.prototype.scrollIntoView = vi.fn()
+})
+
+// This jsdom ships no matchMedia at all; the player reads one media query now.
+function stubViewportWidth(width: number): void {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: width >= Number(/min-width:\s*(\d+)px/.exec(query)?.[1] ?? 0),
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
+}
+
+beforeEach(() => {
+  stubViewportWidth(1280)
+})
+
+afterEach(() => {
+  act(() => root?.unmount())
+  root = null
+  document.body.innerHTML = ''
+  useMusic.setState({ tracks: [], queue: [], currentIndex: 0 })
+  vi.unstubAllGlobals()
 })
 
 let root: Root | null = null
@@ -46,6 +69,28 @@ describe('MusicImmersivePlayer close affordances', () => {
       close?.click()
     })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('MusicImmersivePlayer column stacking — UI-14', () => {
+  function leftPane(): HTMLElement | null {
+    return document.querySelector('[role="dialog"] section')
+  }
+
+  it('keeps the artwork column beside the lyrics when the viewport is wide', async () => {
+    await mountPlayer(vi.fn())
+    const pane = leftPane()
+    expect(pane?.classList.contains('w-96')).toBe(true)
+    expect(pane?.parentElement?.classList.contains('flex-col')).toBe(false)
+  })
+
+  it('stacks the artwork row above the lyrics below the narrow breakpoint', async () => {
+    stubViewportWidth(MUSIC_NARROW_BREAKPOINT - 1)
+    await mountPlayer(vi.fn())
+    const pane = leftPane()
+    expect(pane?.classList.contains('w-full')).toBe(true)
+    expect(pane?.classList.contains('w-96')).toBe(false)
+    expect(pane?.parentElement?.classList.contains('flex-col')).toBe(true)
   })
 })
 

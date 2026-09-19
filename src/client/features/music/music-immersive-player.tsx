@@ -3,6 +3,7 @@ import { Heart, ListMusic, Pin, X } from 'lucide-react'
 import { Modal } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
+import { useMediaQuery } from '../../lib/hooks'
 import { t } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { useCurrentTrack, useMusic, useProgress } from './music-store'
@@ -14,7 +15,9 @@ import {
   MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicVolumeButton,
 } from './music-transport-widgets'
 import { useTrackLyric } from './music-lyrics'
-import { activeLyricIndex, formatBytes, formatDuration, parseLyric } from './music-utils'
+import {
+  activeLyricIndex, formatBytes, formatDuration, MUSIC_NARROW_BREAKPOINT, parseLyric,
+} from './music-utils'
 
 const IMMERSIVE_WIDTH = 1000
 
@@ -28,6 +31,7 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
   const track = useCurrentTrack()
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
+  const stacked = !useMediaQuery(`(min-width: ${MUSIC_NARROW_BREAKPOINT}px)`)
   useTrackLyric(track)
   const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
   const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs))
@@ -40,8 +44,8 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
 
   return (
     <Modal open={open} onClose={onClose} ariaLabel={t('music.immersive')} width={IMMERSIVE_WIDTH} className='h-[86vh] p-0 overflow-hidden' bodyClassName='p-0 flex-1 min-h-0 flex'>
-      <div className='flex min-h-0 flex-1'>
-        <ImmersiveLeft track={track} durationMs={durationMs} seek={seek} />
+      <div className={cn('flex min-h-0 flex-1', stacked && 'flex-col')}>
+        <ImmersiveLeft track={track} durationMs={durationMs} seek={seek} stacked={stacked} />
         <section className='flex min-w-0 flex-1 flex-col'>
           <div className='flex h-10 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4'>
             <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>{t('music.lyrics')}</span>
@@ -69,57 +73,89 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
   )
 }
 
-function ImmersiveLeft({
-  track,
-  durationMs,
-  seek,
-}: {
-  track: ReturnType<typeof useCurrentTrack>
-  durationMs: number
-  seek: (ms: number) => void
-}) {
-  const currentTimeMs = useProgress((state) => state.currentTimeMs)
+function ImmersiveMeta({ track, stacked }: { track: ReturnType<typeof useCurrentTrack>; stacked: boolean }) {
+  return (
+    <div className='w-full text-center'>
+      <h2 className='truncate text-[length:var(--text-18)] font-semibold text-[var(--text-primary)]'>
+        {track?.title ?? t('music.nothing_playing')}
+      </h2>
+      <p className='truncate text-[length:var(--text-12)] text-[var(--text-tertiary)]'>{track?.artist || t('music.unknown_artist')}</p>
+      {!stacked && (
+        <p className='truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{track?.album || t('music.unknown_album')}</p>
+      )}
+    </div>
+  )
+}
+
+// Mode/rate/volume/sleep plus the per-track favours; the wide layout also carries the
+// file metadata and keyboard hint under these.
+function ImmersiveButtons({ track, stacked }: { track: ReturnType<typeof useCurrentTrack>; stacked: boolean }) {
   return (
     <>
-        <section className='flex w-96 shrink-0 flex-col items-center gap-4 border-r border-[var(--border-subtle)] p-6'>
-          <MusicArtwork url={track?.coverUrl ?? null} alt={track?.title ?? ''} className='aspect-square w-64 rounded-[var(--r-xl)] shadow-[var(--shadow-modal)]' iconSize={48} />
-          <div className='w-full text-center'>
-            <h2 className='truncate text-[length:var(--text-18)] font-semibold text-[var(--text-primary)]'>
-              {track?.title ?? t('music.nothing_playing')}
-            </h2>
-            <p className='truncate text-[length:var(--text-12)] text-[var(--text-tertiary)]'>{track?.artist || t('music.unknown_artist')}</p>
-            <p className='truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{track?.album || t('music.unknown_album')}</p>
-          </div>
-          <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} showTime className='w-full' />
-          <div className='flex items-center gap-1'>
-            <MusicNudgeButton direction='back' size='md' iconSize={16} />
-            <MusicPlayButtons size='lg' />
-            <MusicNudgeButton direction='forward' size='md' iconSize={16} />
-          </div>
-          <div className='flex items-center gap-0.5'>
-            <MusicModeButton />
-            <MusicRateButton />
-            <MusicVolumeButton />
-            <MusicSleepButton />
-            {track && (
-              <>
-                <IconButton label={track.isFavorite ? t('music.unfavorite') : t('music.favorite')} active={track.isFavorite} onClick={() => void useMusic.getState().toggleFavorite(track.id)}>
-                  <Heart size={15} className={track.isFavorite ? 'fill-current' : undefined} />
-                </IconButton>
-                <IconButton label={track.isPinned ? t('music.unpin') : t('music.pin')} active={track.isPinned} onClick={() => void useMusic.getState().togglePin(track.id)}>
-                  <Pin size={15} />
-                </IconButton>
-              </>
-            )}
-          </div>
+      <div className='flex items-center gap-0.5'>
+        <MusicModeButton />
+        <MusicRateButton />
+        <MusicVolumeButton />
+        <MusicSleepButton />
+        {track && (
+          <>
+            <IconButton label={track.isFavorite ? t('music.unfavorite') : t('music.favorite')} active={track.isFavorite} onClick={() => void useMusic.getState().toggleFavorite(track.id)}>
+              <Heart size={15} className={track.isFavorite ? 'fill-current' : undefined} />
+            </IconButton>
+            <IconButton label={track.isPinned ? t('music.unpin') : t('music.pin')} active={track.isPinned} onClick={() => void useMusic.getState().togglePin(track.id)}>
+              <Pin size={15} />
+            </IconButton>
+          </>
+        )}
+      </div>
+      {!stacked && (
+        <>
           <p className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
             {track ? formatDuration(track.durationMs) + ' · ' + formatBytes(track.sizeBytes) : ''}
           </p>
           <p className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
             {t('music.keyboard_hint')}
           </p>
-        </section>
+        </>
+      )}
     </>
+  )
+}
+
+function ImmersiveLeft({
+  track,
+  durationMs,
+  seek,
+  stacked,
+}: {
+  track: ReturnType<typeof useCurrentTrack>
+  durationMs: number
+  seek: (ms: number) => void
+  stacked: boolean
+}) {
+  const currentTimeMs = useProgress((state) => state.currentTimeMs)
+  return (
+    <section className={cn(
+      'flex shrink-0 border-[var(--border-subtle)]',
+      stacked ? 'w-full flex-row items-center gap-3 p-4' : 'w-96 flex-col items-center gap-4 border-r p-6',
+    )}>
+      <MusicArtwork
+        url={track?.coverUrl ?? null}
+        alt={track?.title ?? ''}
+        className={cn('aspect-square rounded-[var(--r-xl)] shadow-[var(--shadow-modal)]', stacked ? 'w-20 shrink-0' : 'w-64')}
+        iconSize={stacked ? 28 : 48}
+      />
+      <div className={cn('min-w-0', stacked ? 'flex flex-1 flex-col items-center gap-1.5' : 'flex w-full flex-col items-center gap-4 text-center')}>
+        <ImmersiveMeta track={track} stacked={stacked} />
+        <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} showTime className='w-full' />
+        <div className='flex items-center gap-1'>
+          <MusicNudgeButton direction='back' size='md' iconSize={16} />
+          <MusicPlayButtons size={stacked ? 'md' : 'lg'} />
+          <MusicNudgeButton direction='forward' size='md' iconSize={16} />
+        </div>
+        <ImmersiveButtons track={track} stacked={stacked} />
+      </div>
+    </section>
   )
 }
 
