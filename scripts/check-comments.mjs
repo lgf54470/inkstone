@@ -2641,6 +2641,15 @@ const allowed = new Map([
     '// A rejected protocol fails the whole fence into its error state rather than',
     '// silently dropping the field, so the author sees why the board will not open.',
   ]],
+  ['src/client/lib/markdown/kanban/calendar-helpers.test.ts', [
+    '/**\n * Which weekday opens the grid is a fact about the reader\'s calendar, so `getMonthWeeks` is asked\n * for it rather than assuming Sunday. Sunday 2026-08-30, Monday 2026-08-31 and Saturday 2026-08-29\n * are the three cells September 2026 therefore begins on — CLDR answers for en-US, zh-CN and ar-EG,\n * checked here independently of any locale so the view can pass whatever `Intl` told it. The same\n * number has to close each row too: the Saturday case measured here is one where a Sunday-based\n * closing weekday spills a whole extra row of October days under September.\n */',
+  ]],
+  ['src/client/lib/markdown/kanban/calendar-helpers.ts', [
+    '/**\n * How many cells precede the first of the month in a grid that opens on `weekStart`. Both calendar\n * surfaces index JS `getDay()` (Sunday = 0), so `weekStart` is 0-based here too.\n */',
+    '/**\n * Which weekday opens a kanban calendar is a fact about the reader\'s calendar, so it is read off\n * locale data: `firstDay` is ISO-numbered (Monday = 1 … Sunday = 7) while the grids here index JS\n * `getDay()`, where Sunday is 0 — hence the modulo. Runtimes without `getWeekInfo` get the answer\n * these calendars shipped with before the API existed.\n */',
+    '/** The grid\'s seven column labels, in the same order as its columns. */',
+    '// 2024-01-07 is a Sunday, so the offset alone selects the weekday.',
+  ]],
   ['src/client/lib/markdown/kanban/chart-palette.ts', [
     '// A probe that is in the document but not painted: `:root` custom properties',
     '// only reach an attached element, and `color` is where the browser hands back',
@@ -2729,6 +2738,10 @@ const allowed = new Map([
     '// announcement; an item the board does not list has no known source group, and guessing would mean',
     '// reading out a column the card may not have left.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-calendar-view.test.ts', [
+    '/**\n * The calendar view drew its own week twice over: seven message keys listed Sunday→Saturday, and the\n * cells under them were generated assuming Sunday as well — self-consistent, so nothing looked wrong,\n * but neither half could follow the reader. Both now come off one locale-derived number, and these\n * probes read the pair the reader actually sees: the label sitting over the column, and the date that\n * column\'s first cell creates an item for. Asserting one against the other is what catches a header\n * that moved while the grid stayed put, which neither half alone would notice.\n */',
+    '// CLDR: the week opens Sunday in the US, Monday in China.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-card.tsx', [
     '// The container is only a pointer hit-area; keyboard users open the card through CardHeader\'s details button.',
   ]],
@@ -2768,7 +2781,6 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-date-picker.tsx', [
     '/**\n   * The property this picker edits. The visible text is only the date, so a\n   * table row of dates would read as bare numbers; the name goes in beside it.\n   */',
-    '/**\n * Which weekday opens the calendar is a fact about the reader\'s calendar, so it is read off locale\n * data: `firstDay` is ISO-numbered (Monday = 1 … Sunday = 7) while `buildMonthCalendarDays` and\n * `DatePickerWeekRow` index JS `getDay()`, where Sunday is 0 — hence the modulo. Runtimes without\n * `getWeekInfo` get the answer this picker shipped with before the API existed.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.tsx', [
     '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',

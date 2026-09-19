@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocale } from '../../../i18n'
+import { kanbanNarrowWeekdays, kanbanWeekStartFor } from '../calendar-helpers'
 
 interface KanbanDatePickerProps {
   /**
@@ -24,22 +25,6 @@ function getTodayDateStr(): string {
   const now = new Date()
   const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-}
-
-/**
- * Which weekday opens the calendar is a fact about the reader's calendar, so it is read off locale
- * data: `firstDay` is ISO-numbered (Monday = 1 … Sunday = 7) while `buildMonthCalendarDays` and
- * `DatePickerWeekRow` index JS `getDay()`, where Sunday is 0 — hence the modulo. Runtimes without
- * `getWeekInfo` get the answer this picker shipped with before the API existed.
- */
-export function kanbanWeekStartFor(locale: string): number {
-  const withWeekInfo = new Intl.Locale(locale) as Intl.Locale & {
-    getWeekInfo?: () => { firstDay?: number }
-  }
-  const firstDay = withWeekInfo.getWeekInfo?.()?.firstDay
-  if (typeof firstDay === 'number')
-    return firstDay % 7
-  return locale === 'zh-CN' ? 1 : 0
 }
 
 function buildMonthCalendarDays(year: number, month: number, weekStart: number): CalendarDay[] {
@@ -139,10 +124,7 @@ function DatePickerHeader({
 }
 
 function DatePickerWeekRow({ weekStart, locale }: { weekStart: number; locale: string }) {
-  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
-  const weekList = Array.from({ length: 7 }, (_, index) =>
-    formatter.format(new Date(2024, 0, 7 + ((weekStart + index) % 7))),
-  )
+  const weekList = kanbanNarrowWeekdays(locale, weekStart)
 
   return (
     <div className='grid grid-cols-7 pt-2 text-center text-[length:var(--text-10)] font-semibold text-[var(--text-tertiary)]'>

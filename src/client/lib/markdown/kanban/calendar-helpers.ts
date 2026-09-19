@@ -24,18 +24,49 @@ export function parseDateKey(val: unknown): string | null {
   return match ? match[0] : null
 }
 
-export function getMonthWeeks(year: number, month: number): CalendarDay[][] {
+/**
+ * How many cells precede the first of the month in a grid that opens on `weekStart`. Both calendar
+ * surfaces index JS `getDay()` (Sunday = 0), so `weekStart` is 0-based here too.
+ */
+function cellsBefore(day: number, weekStart: number): number {
+  return (day - weekStart + 7) % 7
+}
+
+/**
+ * Which weekday opens a kanban calendar is a fact about the reader's calendar, so it is read off
+ * locale data: `firstDay` is ISO-numbered (Monday = 1 … Sunday = 7) while the grids here index JS
+ * `getDay()`, where Sunday is 0 — hence the modulo. Runtimes without `getWeekInfo` get the answer
+ * these calendars shipped with before the API existed.
+ */
+export function kanbanWeekStartFor(locale: string): number {
+  const withWeekInfo = new Intl.Locale(locale) as Intl.Locale & {
+    getWeekInfo?: () => { firstDay?: number }
+  }
+  const firstDay = withWeekInfo.getWeekInfo?.()?.firstDay
+  if (typeof firstDay === 'number')
+    return firstDay % 7
+  return locale === 'zh-CN' ? 1 : 0
+}
+
+/** The grid's seven column labels, in the same order as its columns. */
+export function kanbanNarrowWeekdays(locale: string, weekStart: number): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
+  // 2024-01-07 is a Sunday, so the offset alone selects the weekday.
+  return Array.from({ length: 7 }, (_, index) =>
+    formatter.format(new Date(2024, 0, 7 + ((weekStart + index) % 7))),
+  )
+}
+
+export function getMonthWeeks(year: number, month: number, weekStart: number): CalendarDay[][] {
   const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
   const formatStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   const todayStr = formatStr(new Date())
 
   const firstDate = new Date(year, month, 1)
-  const firstDayOfWeek = firstDate.getDay()
-  const startDate = new Date(year, month, 1 - firstDayOfWeek)
+  const startDate = new Date(year, month, 1 - cellsBefore(firstDate.getDay(), weekStart))
 
   const lastDate = new Date(year, month + 1, 0)
-  const lastDayOfWeek = lastDate.getDay()
-  const endDate = new Date(year, month + 1, 6 - lastDayOfWeek)
+  const endDate = new Date(year, month + 1, 6 - cellsBefore(lastDate.getDay(), weekStart))
 
   const weeks: CalendarDay[][] = []
   const curr = new Date(startDate)

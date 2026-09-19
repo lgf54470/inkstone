@@ -10,7 +10,8 @@ import { act, createElement } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, setLocale } from '../../../../lib/i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
-import { KanbanDatePicker, kanbanWeekStartFor } from './kanban-date-picker'
+import { kanbanWeekStartFor } from '../calendar-helpers'
+import { KanbanDatePicker } from './kanban-date-picker'
 
 beforeAll(async () => {
   installTestGlobals()
