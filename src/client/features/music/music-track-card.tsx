@@ -33,10 +33,10 @@ function CardArtwork({
       className='group/art relative aspect-square w-full overflow-hidden rounded-[var(--r-md)]'
     >
       <MusicArtwork url={track.coverUrl} alt={track.title} className='size-full' iconSize={26} />
-      <span className='absolute inset-0 flex items-center justify-center bg-[var(--scrim)] text-[var(--text-inverse)] opacity-0 transition-opacity group-hover/art:opacity-100 group-focus-visible/art:opacity-100'>
+      <span className='absolute inset-0 flex items-center justify-center bg-[var(--scrim)] text-[var(--text-primary)] opacity-0 transition-opacity group-hover/art:opacity-100 group-focus-visible/art:opacity-100'>
         {isStreamLoading && isCurrent ? <Spinner size={18} /> : isCurrent && isPlaying ? <Pause size={20} /> : <Play size={20} />}
       </span>
-      <span className='tabular absolute right-1.5 bottom-1.5 rounded-[var(--r-sm)] bg-[var(--scrim)] px-1 text-[length:var(--text-10)] text-[var(--text-inverse)]'>
+      <span className='tabular absolute right-1.5 bottom-1.5 rounded-[var(--r-sm)] bg-[var(--scrim)] px-1 text-[length:var(--text-10)] text-[var(--text-primary)]'>
         {formatDuration(track.durationMs)}
       </span>
     </button>

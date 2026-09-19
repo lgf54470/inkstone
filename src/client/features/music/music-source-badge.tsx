@@ -12,7 +12,7 @@ export function MusicSourceBadge({ source, className }: { source: MusicSource; c
         'inline-flex items-center gap-1 rounded-[var(--r-full)] px-1.5 py-0.5 text-[length:var(--text-10)]',
         isRemote
           ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-          : 'bg-[var(--bg-inset)] text-[var(--text-tertiary)]',
+          : 'bg-[var(--bg-inset)] text-[var(--text-secondary)]',
         className,
       )}
       title={isRemote ? t('music.source_webdav') : t('music.source_r2')}

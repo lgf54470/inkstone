@@ -1287,6 +1287,12 @@ const allowed = new Map([
     '// not re-render the whole library (hundreds of rows).',
     '// Stable callbacks: the memoised panels below must not re-render when a dialog opens.',
   ]],
+  ['src/client/features/music/music-hub-playlists.tsx', [
+    '/* The active row\'s accent tint puts the dim tiers under AA, so its count takes the row\'s\n          accent — the one pairing the token system calibrates (accent as text on its own tint). */',
+  ]],
+  ['src/client/features/music/music-hub-sidebar.tsx', [
+    '/* The active row\'s 14% accent tint puts the dim tiers under AA (tertiary measures\n                4.16–4.28 in light), so its count takes the row\'s accent — the one pairing the\n                token system calibrates (accent as text on its own tint). */',
+  ]],
   ['src/client/features/music/music-hub-toolbar.tsx', [
     '// Playlist scope shows the manual item order, so the sort control would change nothing.',
     '// The running guard lives in the store, so remounting the toolbar cannot stack a second pass.',
@@ -1359,6 +1365,7 @@ const allowed = new Map([
   ['src/client/features/music/music-queue-list.tsx', [
     '// Duplicated tracks occupy several queue positions; each rendered occurrence',
     '// takes the next free one so play/remove hit the right row.',
+    '/* The current row carries a 14% accent tint; the dim tiers fall under AA on it — even\n          tertiary, measured over the immersive player\'s --bg-overlay — so that row\'s duration\n          takes two tiers up, same rule as the sidebar\'s count badge. */',
   ]],
   ['src/client/features/music/music-search-box.test.ts', [
     '// UI-22: the history dropdown is a popup list attached to the input; without',
@@ -1514,7 +1521,14 @@ const allowed = new Map([
     '// Off-screen rows skip layout and paint; the intrinsic size reserves their height.',
     '// Clicks on the row\'s own controls must not change the selection.',
     '// Drag handlers all need the row\'s track; spreading keeps the row itself presentational.',
+    '// The current row\'s 14% accent tint puts the dim tiers under AA (quaternary measures 4.08 in',
+    '// light), so its cells take two tiers up while the row is current.',
     '// Row action buttons stay visible on touch; only from md up do they reveal on hover/focus.',
+  ]],
+  ['src/client/features/music/music-track-table.test.ts', [
+    '// Artwork, favourite and menu columns carry nothing a screen reader could read, so they',
+    '// align through an empty spacer rather than an empty columnheader (axe empty-table-header).',
+    '// aria-multiselectable is not allowed on role=\'table\'; selection is carried per row checkbox.',
   ]],
   ['src/client/features/music/music-track-table.tsx', [
     '// The header box shows a dash while only part of the visible list is selected.',

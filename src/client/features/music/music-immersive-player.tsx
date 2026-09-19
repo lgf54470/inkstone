@@ -53,13 +53,14 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
           {/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */}
           <div
             ref={scrollerRef}
+            role='group'
             tabIndex={0}
             aria-label={t('music.lyrics')}
             className='min-h-0 flex-1 overflow-y-auto px-6 py-4'
           >
             <Lyrics lines={lyrics} activeIndex={activeIndex} />
           </div>
-          <div tabIndex={0} aria-label={t('music.queue')} className='max-h-40 shrink-0 overflow-y-auto border-t border-[var(--border-subtle)] p-2'>
+          <div role='group' tabIndex={0} aria-label={t('music.queue')} className='max-h-40 shrink-0 overflow-y-auto border-t border-[var(--border-subtle)] p-2'>
             <MusicQueueList />
           </div>
         </section>

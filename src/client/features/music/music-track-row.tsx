@@ -117,7 +117,7 @@ export const MusicTrackRow = memo(function MusicTrackRow({
       )}
     >
       <RowSelectCell track={track} isSelected={isSelected} onSelect={handlers.onSelect} />
-      <RowIndex index={index} isPlaying={isCurrent && isPlaying} />
+      <RowIndex index={index} isCurrent={isCurrent} isPlaying={isCurrent && isPlaying} />
       <RowArtwork
         track={track}
         label={label}
@@ -128,8 +128,8 @@ export const MusicTrackRow = memo(function MusicTrackRow({
       />
 
       <TrackTitle track={track} isCurrent={isCurrent} onPlay={handlers.onPlay} />
-      <RowArtist track={track} />
-      <RowMeta track={track} />
+      <RowArtist track={track} isCurrent={isCurrent} />
+      <RowMeta track={track} isCurrent={isCurrent} />
       <RowActions
         isFavorite={track.isFavorite}
         onToggleFavorite={handleFavourite}
@@ -159,33 +159,36 @@ function RowSelectCell({
   )
 }
 
-function RowMeta({ track }: { track: MusicTrack }) {
+function RowMeta({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean }) {
+  // The current row's 14% accent tint puts the dim tiers under AA (quaternary measures 4.08 in
+  // light), so its cells take two tiers up while the row is current.
+  const dim = isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]'
   return (
     <>
-      <span role='cell' className='hidden w-40 shrink-0 truncate text-[length:var(--text-11)] text-[var(--text-quaternary)] xl:block'>
+      <span role='cell' className={cn('hidden w-40 shrink-0 truncate text-[length:var(--text-11)] xl:block', dim)}>
         {track.album || '—'}
       </span>
       <span role='cell' className='hidden w-16 shrink-0 sm:block'>
         <MusicSourceBadge source={track.source} className='inline-flex' />
       </span>
-      <span role='cell' className='tabular w-11 shrink-0 text-right text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+      <span role='cell' className={cn('tabular w-11 shrink-0 text-right text-[length:var(--text-11)]', dim)}>
         {formatDuration(track.durationMs)}
       </span>
     </>
   )
 }
 
-function RowArtist({ track }: { track: MusicTrack }) {
+function RowArtist({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean }) {
   return (
-    <span role='cell' className='hidden w-32 shrink-0 truncate text-[length:var(--text-11)] text-[var(--text-quaternary)] xl:block'>
+    <span role='cell' className={cn('hidden w-32 shrink-0 truncate text-[length:var(--text-11)] xl:block', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
       {track.artist || t('music.unknown_artist')}
     </span>
   )
 }
 
-function RowIndex({ index, isPlaying }: { index: number; isPlaying: boolean }) {
+function RowIndex({ index, isCurrent, isPlaying }: { index: number; isCurrent: boolean; isPlaying: boolean }) {
   return (
-    <span role='cell' className='tabular w-5 shrink-0 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+    <span role='cell' className={cn('tabular w-5 shrink-0 text-center text-[length:var(--text-11)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
       {isPlaying ? <Pause size={11} className='mx-auto text-[var(--accent)]' /> : index + 1}
     </span>
   )
@@ -215,7 +218,7 @@ function RowArtwork({
         className='group/art relative size-9 rounded-[var(--r-sm)]'
       >
         <MusicArtwork url={track.coverUrl} alt={track.title} className='size-9 rounded-[var(--r-sm)]' />
-        <span className='absolute inset-0 flex items-center justify-center rounded-[var(--r-sm)] bg-[var(--scrim)] text-[var(--text-inverse)] opacity-0 transition-opacity group-hover/art:opacity-100 group-focus-visible/art:opacity-100'>
+        <span className='absolute inset-0 flex items-center justify-center rounded-[var(--r-sm)] bg-[var(--scrim)] text-[var(--text-primary)] opacity-0 transition-opacity group-hover/art:opacity-100 group-focus-visible/art:opacity-100'>
           {isStreamLoading && isCurrent ? <Spinner size={12} /> : isCurrent && isPlaying ? <Pause size={13} /> : <Play size={13} />}
         </span>
       </button>
@@ -276,7 +279,7 @@ function TrackTitle({
           {track.title}
         </span>
       </button>
-      <div className='flex min-w-0 items-center gap-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+      <div className={cn('flex min-w-0 items-center gap-1 text-[length:var(--text-11)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
         {track.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--warning)]' aria-hidden='true' />}
         <button type='button' onClick={() => onPlay(track)} className='min-w-0 shrink truncate text-left hover:text-[var(--text-secondary)] xl:hidden'>
           {track.artist || t('music.unknown_artist')}

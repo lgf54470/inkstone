@@ -73,7 +73,10 @@ function QueueRowItem({ row, rowClassName }: { row: QueueRow; rowClassName?: str
       >
         {row.track.title}{isCurrent && isPlaying ? ' ♪' : ''}
       </button>
-      <span className='tabular shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{formatDuration(row.track.durationMs)}</span>
+      {/* The current row carries a 14% accent tint; the dim tiers fall under AA on it — even
+          tertiary, measured over the immersive player's --bg-overlay — so that row's duration
+          takes two tiers up, same rule as the sidebar's count badge. */}
+      <span className={cn('tabular shrink-0 text-[length:var(--text-10)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>{formatDuration(row.track.durationMs)}</span>
       <IconButton
         label={t('music.remove_from_queue')}
         size='sm'

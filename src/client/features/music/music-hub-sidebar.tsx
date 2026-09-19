@@ -17,7 +17,7 @@ export const MusicHubSidebar = memo(function MusicHubSidebar({
   onManageTags: () => void
 }) {
   return (
-    <aside className='flex w-56 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sunken)] select-none'>
+    <aside aria-label={t('music.hub_sidebar')} className='flex w-56 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sunken)] select-none'>
       <div className='min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-3'>
         <CollectionNav />
         <MusicHubTags onManage={onManageTags} />
@@ -60,7 +60,10 @@ function CollectionNav() {
               {item.icon}
               <span className='truncate'>{item.label}</span>
             </span>
-            <span className='tabular shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{item.count}</span>
+            {/* The active row's 14% accent tint puts the dim tiers under AA (tertiary measures
+                4.16–4.28 in light), so its count takes the row's accent — the one pairing the
+                token system calibrates (accent as text on its own tint). */}
+            <span className={cn('tabular shrink-0 text-[length:var(--text-10)]', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>{item.count}</span>
           </button>
         )
       })}

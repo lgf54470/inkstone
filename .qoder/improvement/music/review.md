@@ -165,7 +165,7 @@
 - **UI-20** 裸 `<img>` 绕过 `MusicArtwork` onError 兜底（`music-player-controls.tsx:66-68`、`music-now-playing.tsx:62-64`）→ 统一组件。◐
 - **UI-21** `music-popover.tsx` 伪装 dialog：触发器无 `aria-expanded/haspopup`，面板项键盘不可达（倍速/睡眠/队列/音量四处使用）→ 迁移 `Menu` 或补漫游焦点。◐
 - **UI-22** 搜索历史面板缺 combobox 语义（`music-hub-toolbar.tsx:172-201`）→ `role=listbox` + 方向键或改 `Menu`。◐
-- **UI-23** `--scrim` 上叠 `--text-inverse` 的时长角标（`music-track-card.tsx:36/39` 等 3 处）对比度存疑且 10px 字——未被任何门禁覆盖，需实测；建议专用 overlay-badge 令牌并把 music 纳入 `check-contrast.mjs`。◐（需人工确认）
+- **UI-23** `--scrim` 上叠 `--text-inverse` 的时长角标（`music-track-card.tsx:36/39` 等 3 处）对比度存疑且 10px 字——未被任何门禁覆盖，需实测；建议专用 overlay-badge 令牌并把 music 纳入 `check-contrast.mjs`。✅（M-44c 实测坐实：inverse/scrim 两套主题 1.77/1.01，三处角标与封面浮层改 `--text-primary`，check-contrast 已纳入 music 三个表面并判此项）
 - **UI-24** 上传反馈缺口：`dismissUpload` 只是隐藏行、上传继续（用户以为取消）；只校验 `size>0` 不校验类型；逐文件 toast 不聚合（`library-collections.ts:169-171,223-225`）。→ 真 `cancelUpload`（AbortController）+ 扩展名过滤 + 汇总 toast。与 PERF-8/FEAT-3 同根。◐
 
 ### UI-25~29 【P3】
@@ -176,6 +176,8 @@
 - **UI-28** `as never` 断言（`selectors.ts:18,28`）、`pane` 死属性、占位 lambda 误读。代价：S。◐
 - **UI-29** 格式化不统一：`formatTotalDuration` 硬编码英文单位、模块内重复 `formatBytes`、`toLocaleDateString()` 用浏览器 locale 而非应用 locale（`music-utils.ts:19-33`、`music-now-playing.tsx:102`）。→ `Intl` + 复用 `lib/time.ts`。代价：S。◐
 - **UI-30** 桌面浮动播放器停靠位压住状态栏右端（UI-14 预告的子项，由 M-44b 视觉门禁实测复现）：`md:bottom-4`=16px < `--statusbar-h`=26px，卡片与折叠徽标盖住状态栏底部约 10px；播放会话恢复后状态栏换成交替控制行，右端的「展开播放器」按钮正落在被盖区域（既遮显示又拦点击）。修复：两处停靠改 `md:bottom-[calc(var(--statusbar-h)+1rem)]`，视觉门禁断言播放器矩形与状态栏按钮矩形不相交。375px 挤压主项仍留 UI-14/批次⑦。代价：S。✅（M-45 已修，门禁断言守住）
+- **UI-31** 曲表 ARIA 违规（M-44c 把 music 表面喂给 check-contrast 的 axe 后实测复现）：`role="table"` 上挂 `aria-multiselectable`（axe aria-allowed-attr），三个纯图标列（封面/收藏/菜单）挂着空的 `columnheader`（axe empty-table-header ×3）；歌词/详情/队列滚动 div 无角色却带 `aria-label`（aria-prohibited-attr）；hub 导航 aside 与外壳 aside 都无名（landmark-unique）。修复：去 multiselectable（选择语义由每行 checkbox 承担）、图标列改无角色占位、三个滚动容器补 `role='group'`、hub aside 新增 `music.hub_sidebar` 命名。回归由 `music-track-table.test.ts` 新增守卫例与两主题 axe 守住。代价：S。✅（M-44c）
+- **UI-32** current/active 行 14% 强调软底上的暗文字层级全线不达 AA（M-44c 列表视图表面实测，浅色主题为重灾区）：行内 quaternary 单元格 4.08、tertiary 4.16–4.47（导航计数/歌单计数/R2 徽章），深色队列时长落在 `--bg-overlay` 底上时 tertiary 4.16–4.44。修复：current 行的暗单元格（序号/艺人/专辑/时长/副行）升 `--text-secondary`，active 计数取行自带 `--accent`（accent-on-own-tint 是令牌体系校准过的唯一配对），队列 current 时长取 secondary，R2 徽章文字 secondary。`check-contrast.mjs` 新增 music 列表/网格/沉浸式三表面按 7 强调色 × 两主题判定，永久守住。代价：S。✅（M-44c）
 
 ### UI 正面结论
 

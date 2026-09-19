@@ -1,6 +1,7 @@
 export const messages = {
 'music.title': '音乐',
 'music.hub_title': '音乐库',
+'music.hub_sidebar': '音乐导航',
 'music.open_hub': '打开音乐库',
 'music.close_player': '关闭播放器',
 'music.section_library': '曲库',

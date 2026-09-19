@@ -109,7 +109,7 @@ function PlaylistRow({
         {draft === null
           ? <PlaylistSelectButton playlist={playlist} onSelect={onSelect} />
           : <PlaylistRenameInput draft={draft} onChange={setDraft} onCommit={onRename} originalName={playlist.name} />}
-        <PlaylistBadges playlist={playlist} />
+        <PlaylistBadges playlist={playlist} active={active} />
         <IconButton
           ref={anchorRef}
           label={t('music.open_menu')}
@@ -166,12 +166,14 @@ function PlaylistSelectButton({ playlist, onSelect }: { playlist: MusicPlaylistD
   )
 }
 
-function PlaylistBadges({ playlist }: { playlist: MusicPlaylistDetail }) {
+function PlaylistBadges({ playlist, active }: { playlist: MusicPlaylistDetail; active: boolean }) {
   return (
     <>
       {playlist.isFavorite && <Heart size={10} className='shrink-0 fill-current text-[var(--accent)]' aria-hidden='true' />}
       {playlist.isPinned && <Pin size={10} className='shrink-0 text-[var(--warning)]' aria-hidden='true' />}
-      <span className='tabular shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{playlist.items.length}</span>
+      {/* The active row's accent tint puts the dim tiers under AA, so its count takes the row's
+          accent — the one pairing the token system calibrates (accent as text on its own tint). */}
+      <span className={cn('tabular shrink-0 text-[length:var(--text-10)]', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>{playlist.items.length}</span>
     </>
   )
 }

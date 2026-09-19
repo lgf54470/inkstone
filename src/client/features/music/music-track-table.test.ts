@@ -145,7 +145,21 @@ describe('table ARIA structure', () => {
     expect(firstRow).toBeDefined()
     const childRoles = [...firstRow.children].map((child) => child.getAttribute('role'))
     expect(childRoles.every((role) => role === 'cell')).toBe(true)
-    const headerCells = [...headerRow().querySelectorAll('[role="columnheader"]')]
+    const headerCells = [...headerRow().children]
     expect(headerCells).toHaveLength(firstRow.children.length)
+  })
+
+  it('every columnheader is readable and icon-only columns stay unroled spacers', async () => {
+    await mountList()
+    const headerCells = [...headerRow().children]
+    // Artwork, favourite and menu columns carry nothing a screen reader could read, so they
+    // align through an empty spacer rather than an empty columnheader (axe empty-table-header).
+    const spacers = headerCells.filter((cell) => !cell.getAttribute('role'))
+    expect(spacers).toHaveLength(3)
+    for (const cell of headerCells.filter((child) => child.getAttribute('role') === 'columnheader')) {
+      expect(cell.textContent?.trim() || cell.querySelector('input[aria-label]')).toBeTruthy()
+    }
+    // aria-multiselectable is not allowed on role='table'; selection is carried per row checkbox.
+    expect(document.querySelector('[role="table"]')?.getAttribute('aria-multiselectable')).toBeNull()
   })
 })
