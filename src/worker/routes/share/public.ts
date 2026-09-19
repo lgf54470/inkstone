@@ -256,6 +256,16 @@ async function isRecentlySeenVisit(
   return Boolean(seen)
 }
 
+const REFERRER_PROTOCOLS = new Set(['http:', 'https:', 'android-app:', 'ios-app:'])
+
+function storedReferrerValue(u: URL): string {
+  // The raw candidate may carry query tokens or fragments; only origin+path earns a column.
+  if (u.protocol === 'http:' || u.protocol === 'https:') {
+    return `${u.origin}${u.pathname}`.slice(0, LIMITS.shareReferrerMaxLength)
+  }
+  return u.href.slice(0, LIMITS.shareReferrerMaxLength)
+}
+
 function deriveShareReferrer(
   c: Context<AppBindings>,
   body: ShareAccessBody,
@@ -270,8 +280,8 @@ function deriveShareReferrer(
   if (candidateReferrer) {
     try {
       const u = new URL(candidateReferrer)
-      if (u.pathname !== `/s/${slug}` && u.pathname !== `/s/${slug}/`) {
-        referrer = candidateReferrer
+      if (REFERRER_PROTOCOLS.has(u.protocol) && u.pathname !== `/s/${slug}` && u.pathname !== `/s/${slug}/`) {
+        referrer = storedReferrerValue(u)
         referrerHost = parseReferrerHost(candidateReferrer)
       }
     } catch { /* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */ }

@@ -1,4 +1,5 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
+import { LIMITS } from '@shared/constants'
 import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
@@ -104,7 +105,8 @@ export const share = {
     ) => request<{ share: ShareInfo }>(`/api/share/${noteId}`, { method: 'POST', body }),
     remove: (noteId: string) => request<{ ok: true }>(`/api/share/${noteId}`, { method: 'DELETE' }),
     read: (slug: string, password?: string, signal?: AbortSignal, referrer?: string) =>
-      request<PublicNote>(`/api/public/${slug}`, { method: 'POST', body: { password, referrer }, signal }),
+      // A long document.referrer must not turn into a 400 for a legitimate viewer; the server caps at the same length.
+      request<PublicNote>(`/api/public/${slug}`, { method: 'POST', body: { password, referrer: referrer?.slice(0, LIMITS.shareReferrerMaxLength) }, signal }),
   },
   blog: {
     stats: (signal?: AbortSignal) =>

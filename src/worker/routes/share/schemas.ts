@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LIMITS } from '@shared/constants'
 
 export const shareBatchSchema = z.object({
   action: z.enum(['enable', 'disable', 'revoke', 'expire', 'move']),
@@ -28,5 +29,5 @@ export const shareCreateSchema = z.object({
 
 export const shareAccessSchema = z.object({
   password: z.string().optional(),
-  referrer: z.string().optional(),
+  referrer: z.string().max(LIMITS.shareReferrerMaxLength).optional(),
 })

@@ -620,3 +620,55 @@ describe('share public note route (real D1)', () => {
     expect(legacy.status).toBe(200)
   })
 })
+
+async function publicVisitAccess(app: Hono<AppBindings>, slug: string, referrer: string): Promise<Response> {
+  const pending: Promise<unknown>[] = []
+  const ctx = { waitUntil: (task: Promise<unknown>) => pending.push(task) } as unknown as ExecutionContext
+  const res = await app.request(`/api/public/${slug}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'user-agent': 'Mozilla/5.0 RefProbe/1.0' },
+    body: JSON.stringify({ referrer }),
+  }, DB_ENV.env as AppBindings['Bindings'], ctx)
+  await Promise.all(pending)
+  return res
+}
+
+describe('share public referrer hygiene (SH-08)', () => {
+  it('drops non-browser scheme referrers instead of storing them raw', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'ref-js' })
+
+    const res = await publicVisitAccess(makeApp(), 'ref-js', 'javascript:alert(document.domain)')
+
+    expect(res.status).toBe(200)
+    const row = await firstRow(db, 'SELECT referrer FROM share_visits WHERE slug = ?1', 'ref-js')
+    expect(row?.referrer).toBeNull()
+  })
+
+  it('stores only origin and path of an http referrer, never the query', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'ref-https' })
+
+    const res = await publicVisitAccess(makeApp(), 'ref-https', 'https://news.example.com/article/42?token=secret#frag')
+
+    expect(res.status).toBe(200)
+    const row = await firstRow(db, 'SELECT referrer FROM share_visits WHERE slug = ?1', 'ref-https')
+    expect(row?.referrer).toBe('https://news.example.com/article/42')
+  })
+
+  it('rejects an oversized referrer in the access body with 400', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'ref-long' })
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/public/ref-long', { referrer: 'https://a.example/?' + 'x'.repeat(600) })
+
+    expect(res.status).toBe(400)
+  })
+})

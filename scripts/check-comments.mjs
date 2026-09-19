@@ -2058,6 +2058,9 @@ const allowed = new Map([
   ['src/client/lib/api/board-library.ts', [
     '/**\n * Whiteboard libraries (lib/markdown/excalidraw/library.ts) are a set of named documents\n * per account, so the API hands each one back verbatim and stores whatever it is given:\n * keeping the format knowledge on the client is what lets an `.excalidrawlib` body\n * round-trip with excalidraw.com untouched.\n */',
   ]],
+  ['src/client/lib/api/share.ts', [
+    '// A long document.referrer must not turn into a 400 for a legitimate viewer; the server caps at the same length.',
+  ]],
   ['src/client/lib/api/transport.ts', [
     '/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker\'s ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */',
   ]],
@@ -4444,6 +4447,7 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/share/public.ts', [
     '// The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.',
+    '// The raw candidate may carry query tokens or fragments; only origin+path earns a column.',
     '/* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */',
     '/* An unparseable referer header simply means "no external referrer". */',
   ]],
