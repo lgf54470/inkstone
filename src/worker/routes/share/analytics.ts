@@ -350,7 +350,7 @@ function aggregateVisitMaps(rows: VisitRow[]): {
 async function loadTopNotes(
   db: D1Database,
   topNoteMap: Map<string, { views: number; uvs: Set<string>; slug: string }>,
-): Promise<Array<{ noteId: string; noteTitle: string; slug: string; views: number; visitors: number }>> {
+): Promise<Array<{ noteId: string; noteTitle: string | null; slug: string; views: number; visitors: number }>> {
   const topNotesRaw = Array.from(topNoteMap.entries())
     .map(([noteId, d]) => ({ noteId, views: d.views, visitors: d.uvs.size, slug: d.slug }))
     .sort((a, b) => b.views - a.views)
@@ -368,7 +368,7 @@ async function loadTopNotes(
   }
   return topNotesRaw.map((n) => ({
     noteId: n.noteId,
-    noteTitle: noteTitles.get(n.noteId) || 'Untitled note',
+    noteTitle: noteTitles.get(n.noteId) ?? null,
     slug: n.slug,
     views: n.views,
     visitors: n.visitors,
@@ -416,7 +416,7 @@ function recentVisitsStatement(db: D1Database, params: {
       `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
               sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser, sv.user_agent,
               sv.is_bot, sv.is_self_referrer, sv.is_owner,
-              COALESCE(n.title, 'Untitled note') as note_title
+              n.title as note_title
          FROM share_visits sv
          LEFT JOIN notes n ON n.id = sv.note_id
         WHERE sv.user_id = ?1 AND sv.visited_at >= ?2 ${clause}
@@ -434,7 +434,7 @@ function toVisitLog(r: RecentVisitRow, noteTitle?: string): ShareVisitLog {
   return {
     id: r.id,
     noteId: r.note_id,
-    noteTitle: r.note_title ?? noteTitle ?? 'Untitled note',
+    noteTitle: r.note_title ?? noteTitle ?? null,
     slug: r.slug,
     visitedAt: r.visited_at,
     country: r.country,

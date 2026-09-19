@@ -21,7 +21,7 @@ import { IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
-import { countryFlag, countryNameLocalized } from './share-helpers'
+import { countryFlag, countryNameLocalized, localizeEnvName, localizeReferrerName } from './share-helpers'
 import { LoadErrorState } from './share-load-error'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import type { useShareDashboardView } from './use-share-dashboard-view'
@@ -214,7 +214,7 @@ function TopNotesCard({ analytics, onSelectNoteAnalytics }: {
   const topNotes = analytics?.topNotes ?? []
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
-      <CardHeader icon={<BarChart3 size={15} className='text-[var(--accent)]' />} title={t('share.top_notes_title')} badge='TOP 10' />
+      <CardHeader icon={<BarChart3 size={15} className='text-[var(--accent)]' />} title={t('share.top_notes_title')} badge={t('share.top_notes_badge')} />
       <div className='divide-y divide-[var(--border-subtle)] pt-1'>
         {topNotes.length === 0 ? (
           <EmptyRow label={t('share.no_data_yet')} />
@@ -252,10 +252,10 @@ function TopNoteRow({ note, index, maxVal, onSelect }: {
       <div className='flex-1 min-w-0'>
         <div className='flex items-center justify-between text-[length:var(--text-12)]'>
           <span className='truncate font-medium text-[var(--text-primary)]'>
-            {note.noteTitle}
+            {note.noteTitle || t('common.untitled_note')}
           </span>
           <span className='font-mono font-semibold text-[var(--text-primary)] ml-2'>
-            {note.views} <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>{'PV'}</span>
+            {note.views} <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>{t('share.unit_pv')}</span>
           </span>
         </div>
         <div className='mt-1 h-1.5 w-full rounded-full bg-[var(--bg-base)] overflow-hidden'>
@@ -319,7 +319,7 @@ function ReferrerBreakdownCard({ analytics }: { analytics: ShareGlobalAnalytics 
           topReferrers.map((item) => (
             <BreakdownRow
               key={item.name}
-              name={item.name}
+              name={localizeReferrerName(item.name)}
               count={item.count}
               percentage={item.percentage ?? 0}
             />
@@ -358,7 +358,7 @@ function DevicesBreakdownCard({ analytics }: { analytics: ShareGlobalAnalytics |
           {osList.slice(0, 5).map((os) => (
             <BreakdownRow
               key={os.name}
-              name={os.name}
+              name={localizeEnvName(os.name)}
               count={os.count}
               percentage={os.percentage ?? 0}
             />
@@ -428,7 +428,7 @@ function RecentVisitRow({ visit, locale }: {
       <div className='flex items-center gap-2'>
         <span>{countryFlag(visit.country)}</span>
         <span className='font-medium text-[var(--text-primary)]'>
-          {visit.noteTitle || 'Untitled note'}
+          {visit.noteTitle || t('common.untitled_note')}
         </span>
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
           ({countryNameLocalized(visit.country, locale)}
@@ -439,7 +439,7 @@ function RecentVisitRow({ visit, locale }: {
 
       <div className='flex items-center gap-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         <span className='rounded bg-[var(--bg-base)] px-1.5 py-0.5 font-mono'>
-          {visit.browser || 'Other'} / {visit.os || 'other'}
+          {localizeEnvName(visit.browser)} / {localizeEnvName(visit.os)}
         </span>
         {visit.referrerHost && (
           <span className='truncate max-w-30'>{visit.referrerHost}</span>

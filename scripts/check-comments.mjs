@@ -4104,6 +4104,10 @@ const allowed = new Map([
     '/** Name of the whiteboard library the boards open; `default` is the reserved one. */',
     '/** Tag(s, comma-separated) that file notes into the sidebar to-do tree; null falls back to the locale default. */',
   ]],
+  ['src/shared/types/share.ts', [
+    '// Null when the note was deleted but its visit rows survive; the client',
+    '// labels it (SH-34), the worker must not bake in an English fallback.',
+  ]],
   ['src/worker/app.ts', [
     '// Ensure the schema exists (WeakMap-cached), then read against the raw D1.',
     '/** Adds a per-response nonce to every inline script in an HTML response and returns the CSP script source. */',
@@ -4664,6 +4668,14 @@ const allowed = new Map([
     '// Files that must pull the modals in dynamically instead of statically.',
     '// Files whose static closure touches each banned module (pre-image of the',
     '// ban), computed by one reverse-DFS over static edges.',
+  ]],
+  ['tests/share-english-literals.test.ts', [
+    '/**\n * SH-34: the share UI drew English-only literals (\'PV\', \'CUSTOM\', \'Untitled\n * note\', machine fallback tokens) straight into the page, and the worker\n * baked \'Untitled note\' into visit rows instead of reporting the missing\n * note to the client. Every user-visible string must go through i18n\n * message ids, so these banned substrings must not reappear.\n */',
+    '// Worker aggregate buckets keep machine tokens on purpose (they are Map keys',
+    '// the client localizes via share-helpers); only the row-level title fallback',
+    '// is banned here.',
+    '// The public reader page renders without the app\'s i18n runtime; its title',
+    '// fallback is tracked outside SH-34.',
   ]],
   ['tests/share-palette-tokens.test.ts', [
     '/**\n * SH-32: the share feature styled some states with raw Tailwind palette\n * classes (`text-amber-500`, `bg-white`, `text-white`), which bypass the\n * theme tokens and keep one hue across both themes. `check-hardcoded` only\n * scans hex literals and arbitrary values, so palette classes need this\n * narrower guard: every drawn color inside `features/share` must come from\n * `src/client/styles/tokens.css`.\n */',

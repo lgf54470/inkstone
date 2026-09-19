@@ -528,6 +528,25 @@ describe('share visits route (real D1)', () => {
   })
 })
 
+describe('visit rows of deleted notes report a missing title (SH-34)', () => {
+  it('returns null noteTitle in the visits list, recent visits and top notes', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Deleted soon' })
+    await seedShare(db, { note_id: n1, slug: 'dg-1' })
+    await seedVisit(db, { note_id: n1, slug: 'dg-1' })
+    await runSql(db, 'DELETE FROM notes WHERE id = ?1', n1)
+    const app = makeApp()
+
+    const visits = await (await request(app, '/api/share/visits')).json()
+    expect(visits.visits[0].noteTitle).toBeNull()
+
+    const global = await (await request(app, '/api/share/analytics/global?range=30d')).json()
+    expect(global.recentVisits[0].noteTitle).toBeNull()
+    expect(global.topNotes[0].noteTitle).toBeNull()
+    expect(global.topNotes[0].views).toBe(1)
+  })
+})
+
 describe('share list and batch beyond the D1 bind budget (real D1)', () => {
   async function seedScaleShares(count: number): Promise<{ db: D1Shim; app: ReturnType<typeof makeApp>; ids: string[] }> {
     const db = await makeDb()

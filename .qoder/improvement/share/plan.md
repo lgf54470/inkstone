@@ -44,7 +44,7 @@
 | 29 | SH-31 | a11y 批量：Switch label、IconButton、hub ariaLabel、行「更多」键盘入口 | P2 | ✅ | 0526b88e |
 | 30 | SH-32 | 调色板类 → 设计令牌（visit-logs/sidebar/qr/dashboard 等） | P2 | ✅ | ac3941fb |
 | 31 | SH-33 | 裸控件换组件体系 + CSV 导出全量 + 复制失败 toast + 日志按分享过滤入口 | P2 | ✅ | c5824e95 |
-| 32 | SH-34 | 英文字面量进 locale + 服务端回落值改 null + countryName locale 显式 | P2 | ⬜ | |
+| 32 | SH-34 | 英文字面量进 locale + 服务端回落值改 null + countryName locale 显式 | P2 | ✅ | 待回填 |
 | 33 | SH-35 | 窄屏：侧栏折叠/宽模态 fullscreen/批量条换行/触控尺寸 | P2 | ⬜ | |
 | 34 | SH-36 | 小项集合（口令长度统一、effect 重开、子模态重置、th scope、role=status 等） | P3 | ⬜ | |
 | F1 | SH-29 | 🧊 `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，等用户决定 | P2 | 🧊 | |
@@ -239,3 +239,11 @@
 - 日志按分享过滤入口：`use-share-hub-modal.ts` 新增 `logsNoteId` + `openLogs(noteId?)`（关日志时清空），hub 三处入口改走 `openLogs`（`() => hub.openLogs()` 包裹，防事件对象误作 noteId）；`share-note-analytics-modal.tsx` RecentActivityCard 头部新增 `share.view_all_logs` 按钮（仅宿主传入 `onOpenLogs` 时渲染），hub 里传 `openLogs(analyticsNoteId)`——`ShareVisitLogsModal` 的 `initialNoteId` prop 由死参转正。
 - 新增 locale 键 `share.share_link`（en/zh）。尺寸门禁 6 个新超 50 行函数全部真实拆分（RecentVisitRow / HubInsightOverlays / SlugEditorRow / 两 hook 压缩 + 测试 mount/export 公共步骤），未动基线。
 - 变异：`<Input`→`<input` → 守护红；`EXPORT_PAGE_SIZE`→25 → 导出两例红；删 copy toast → 静默断言红；`onOpenLogs&&`→`false&&` → 入口断言红（均 /tmp/mut31 还原）。
+
+## 32 — SH-34 英文字面量进 locale + 服务端回落值改 null + countryName locale 显式（2026-09-19）
+
+- 静态守护 `tests/share-english-literals.test.ts`（先红 client 10 处 + worker 4 处，后绿）：client 侧 ban `{'PV'}/{'UV'}/{'CUSTOM'}/'TOP 10'/'Untitled note'/|| 'Bot'/|| 'Unknown'/|| 'Other'/|| 'other'/= 'zh-CN'`；worker 侧只 ban 行级 `'Untitled note'`（聚合桶 'Direct'/'UNKNOWN'/'desktop'/'other' 等是 Map 键，保留机器令牌由客户端本地化——台账「回落值改 null」按此解释执行）；`public.ts` 进白名单（公开阅读页无 i18n 运行时，另行处理）。
+- 服务端（`analytics.ts`/`visits.ts`）：topNotes/recentVisits/visits 三处 `'Untitled note'` 回落与 COALESCE 全删，笔记已删的访问行 `noteTitle` 返回 null；契约 `ShareVisitLog.noteTitle` 与 `topNotes[].noteTitle` 改 `string | null`（types/share.ts 注释说明语义）。`tests/share-routes.test.ts` 新 describe：seed→DELETE notes→三端点断言 null（先红后绿）。
+- 客户端字面量：PV/UV → `share.unit_pv`/`unit_uv`（表格行 + 看板 TOP 行），`TOP 10` 徽章 → `share.top_notes_badge`，CUSTOM 徽章 → `share.custom_slug_badge`，`Untitled note`/`Bot`/`Unknown` 回落 → 既有 `common.untitled_note`/`share.badge_bot` + 新 `share.env_unknown`。
+- `share-helpers.ts`：`countryNameLocalized` locale 改必传（无默认 zh-CN；blog 两处调用点本就显式传 locale，编译面强制），`UNKNOWN`/null 令牌改回 `share.country_unknown`（顺带影响 blog 看板未知国行由回显 'UNKNOWN' 变为本地化标签，属该 helper 既定职责）；`Intl.DisplayNames` 加 `Map<locale, DisplayNames>` 缓存；新增 `localizeReferrerName`（'Direct'→direct_access）与 `localizeEnvName`（缺失/'other'→env_unknown），沿用 `localizeDeviceName` 的桶令牌本地化模式；看板来源/系统两卡与最近活动行、日志表格 LogRow（`useLocale()` 下发）全部改走这四个本地化器。`share-fallback-labels.test.ts` 6 例：locale 显式解析、UNKNOWN 哨兵、DisplayNames 每 locale 只构造一次（子类计数）、Direct/other 令牌、null 字段整表渲染无英文字面量。
+- 新增 6 个 locale 键（en/zh `share-2.ts`）。变异 5 发：去缓存读 → 计数例红；visits COALESCE 回填 → D1 visits 断言红；topNotes `|| 'Untitled note'` 回填 → D1 topNotes 断言红（recentVisits 断言不受扰，三条各守一路径）；`{'PV'}` 回填 → 守护红；UNKNOWN 哨兵回显回填 → 单测+渲染双红（均 /tmp/mut32 还原）。

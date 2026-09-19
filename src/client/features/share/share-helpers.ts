@@ -23,14 +23,32 @@ export function countryFlag(countryCode: string | null | undefined): string {
   return code.replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
 }
 
-export function countryNameLocalized(countryCode: string | null | undefined, locale = 'zh-CN'): string {
-  if (!countryCode || countryCode === 'UNKNOWN') return countryCode || ''
+const displayNamesByLocale = new Map<string, Intl.DisplayNames>()
+
+function regionNames(locale: string): Intl.DisplayNames {
+  const cached = displayNamesByLocale.get(locale)
+  if (cached) return cached
+  const names = new Intl.DisplayNames([locale], { type: 'region' })
+  displayNamesByLocale.set(locale, names)
+  return names
+}
+
+export function countryNameLocalized(countryCode: string | null | undefined, locale: string): string {
+  if (!countryCode || countryCode === 'UNKNOWN') return t('share.country_unknown')
   try {
-    const names = new Intl.DisplayNames([locale], { type: 'region' })
-    return names.of(countryCode.toUpperCase()) || countryCode
+    return regionNames(locale).of(countryCode.toUpperCase()) || countryCode
   } catch {
     return countryCode
   }
+}
+
+export function localizeReferrerName(name: string): string {
+  return name === 'Direct' ? t('share.direct_access') : name
+}
+
+export function localizeEnvName(name: string | null | undefined): string {
+  if (!name || name.toLowerCase() === 'other') return t('share.env_unknown')
+  return name
 }
 
 export function generateRandomSlug(length = 6): string {
@@ -45,7 +63,7 @@ export function generateRandomSlug(length = 6): string {
 export function exportVisitsToCsv(visits: Array<{
   id: number
   visitedAt: number
-  noteTitle?: string
+  noteTitle?: string | null
   slug: string
   country?: string | null
   city?: string | null

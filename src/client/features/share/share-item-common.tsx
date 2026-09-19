@@ -188,7 +188,7 @@ export function SlugChip({ share, copiedSlug, onCopy, className, grouped }: { sh
 function CustomBadge() {
   return (
     <span className='rounded bg-[var(--accent-subtle)] px-1 py-0.2 text-[length:var(--text-9)] font-semibold text-[var(--accent)]'>
-      {'CUSTOM'}
+      {t('share.custom_slug_badge')}
     </span>
   )
 }

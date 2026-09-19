@@ -80,8 +80,8 @@ function RowStatsCells({ share }: { share: ShareInfo }) {
   return (
     <>
       <td className='px-3 py-2.5 text-right font-mono text-[length:var(--text-12)]'>
-        <div className='text-[var(--text-primary)] font-semibold'>{share.views} <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>{'PV'}</span></div>
-        <div className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{share.uniqueVisitors ?? 0} <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{'UV'}</span></div>
+        <div className='text-[var(--text-primary)] font-semibold'>{share.views} <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>{t('share.unit_pv')}</span></div>
+        <div className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{share.uniqueVisitors ?? 0} <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{t('share.unit_uv')}</span></div>
       </td>
       <td className='px-3 py-2.5 text-right text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
         {share.lastViewedAt ? relativeTime(share.lastViewedAt) : t('share.never_visited')}

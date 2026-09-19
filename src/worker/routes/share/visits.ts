@@ -26,7 +26,7 @@ interface VisitLogRow {
   is_bot: number
   is_self_referrer: number
   is_owner: number
-  note_title: string
+  note_title: string | null
 }
 
 export function registerShareVisitsRoutes(shareManageRoutes: Hono<AppBindings>): void {
@@ -60,7 +60,7 @@ function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): voi
       `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
               sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser, sv.user_agent,
               sv.visitor_fp, sv.is_bot, sv.is_self_referrer, sv.is_owner,
-              COALESCE(n.title, 'Untitled note') as note_title
+              n.title as note_title
          FROM share_visits sv
          LEFT JOIN notes n ON n.id = sv.note_id
         WHERE ${conditions.join(' AND ')}

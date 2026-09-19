@@ -18,8 +18,8 @@ import { Menu, Modal, type MenuItem } from '../../components/overlay'
 import { Input } from '../../components/form'
 import { Button, IconButton } from '../../components/primitives'
 import { relativeTime } from '../../lib/time'
-import { t } from '../../lib/i18n'
-import { countryFlag, countryNameLocalized } from './share-helpers'
+import { t, useLocale } from '../../lib/i18n'
+import { countryFlag, countryNameLocalized, localizeEnvName } from './share-helpers'
 import type { useShareVisitLogs } from './use-share-visit-logs-modal'
 import { useShareVisitLogs as useVisitLogs } from './use-share-visit-logs-modal'
 
@@ -220,7 +220,7 @@ function LogRow({ log }: {
   log: VisitLog
 }) {
   const flag = countryFlag(log.country)
-  const countryName = countryNameLocalized(log.country)
+  const countryName = countryNameLocalized(log.country, useLocale())
   return (
     <tr className='transition-colors hover:bg-[var(--bg-hover)]'>
       <VisitTimeCell log={log} />
@@ -262,7 +262,7 @@ function VisitNoteCell({ log }: { log: VisitLog }) {
     <td className='px-3 py-2'>
       <div className='flex flex-col max-w-40'>
         <span className='truncate font-medium text-[length:var(--text-12)] text-[var(--text-primary)]'>
-          {log.noteTitle}
+          {log.noteTitle || t('common.untitled_note')}
         </span>
         <span className='truncate font-mono text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
           {`/s/${log.slug}`}
@@ -309,7 +309,7 @@ function VisitClientCell({ log }: { log: VisitLog }) {
       <div className='flex items-center gap-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
         {deviceIcon(log.deviceType)}
         <span>
-          {log.browser || 'Unknown'} / {log.os || 'Unknown'}
+          {localizeEnvName(log.browser)} / {localizeEnvName(log.os)}
         </span>
       </div>
     </td>
@@ -322,7 +322,7 @@ function VisitTypeBadge({ log }: {
   if (log.isBot) {
     return (
       <span className='inline-flex items-center gap-1 rounded bg-[var(--warning)]/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--warning)] border border-[var(--warning)]/20'>
-        <Bot size={11} /> {log.botName || 'Bot'}
+        <Bot size={11} /> {log.botName || t('share.badge_bot')}
       </span>
     )
   }
